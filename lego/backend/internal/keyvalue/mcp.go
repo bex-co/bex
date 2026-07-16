@@ -30,8 +30,10 @@ import (
 // list_key_value_instances spelling remains as a deprecated compatibility alias.
 // Render's MCP server exposes no delete/suspend/resume KV tools, so bex mirrors
 // that exactly — those lifecycle verbs live on REST + GraphQL only (a deliberate
-// match, noted in docs/ADR018-render-parity.md, not a gap). Every tool delegates
-// to the same Service method REST and GraphQL call, so the surfaces can't drift.
+// match, noted in docs/ADR018-render-parity.md, not a gap). rename_key_value is a
+// bex extension (Render's MCP server has no KV rename tool either), the sibling of
+// rename_postgres. Every tool delegates to the same Service method REST and
+// GraphQL call, so the surfaces can't drift.
 
 // keyValueArgs is the shared single-instance argument. Render's tools key on
 // `keyValueId`; for bex that id is the KeyValue name (opaque, round-tripped from
@@ -64,6 +66,14 @@ type createKeyValueArgs struct {
 	MaxmemoryPolicy    string                  `json:"maxmemoryPolicy,omitempty" jsonschema:"key-eviction policy at the memory budget (omit for the default allkeys-lru), e.g. noeviction, allkeys-lru, volatile-ttl"`
 	PersistenceMode    string                  `json:"persistenceMode,omitempty" jsonschema:"persistence: journal-snapshot (default), snapshot (RDB only), or off"`
 	DryRun             bool                    `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
+}
+
+// renameKeyValueArgs is rename_key_value's input. A rename changes only the
+// mutable display name; the id, connection details, and data plane stay put.
+type renameKeyValueArgs struct {
+	KeyValueID string `json:"keyValueId" jsonschema:"the immutable key-value id (red-...), as returned by list_key_value"`
+	Name       string `json:"name" jsonschema:"the new display name (lowercase letters, digits, and hyphens; at most 30 characters)"`
+	DryRun     bool   `json:"dryRun,omitempty" jsonschema:"if true, validate and preview the rename without any writes"`
 }
 
 // listKeyValueResult wraps the array — MCP tool outputs must be JSON objects.
@@ -139,6 +149,19 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		} else {
 			v, err = s.SetPlan(ctx, in.KeyValueID, in.Plan)
 		}
+		return nil, v, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "rename_key_value",
+		Description: "Rename a managed key-value store without changing its immutable id, connection details, project/environment membership, or data-plane objects. Pass dryRun:true to validate and preview without writes.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in renameKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
+		patch := KeyValuePatch{Name: &in.Name}
+		if in.DryRun {
+			v, err := s.PreviewUpdateKeyValue(ctx, in.KeyValueID, patch)
+			return nil, v, err
+		}
+		v, err := s.UpdateKeyValue(ctx, in.KeyValueID, patch)
 		return nil, v, err
 	})
 }

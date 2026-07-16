@@ -18,6 +18,7 @@ Registered prefixes (the `id.Kind` registry — Render's public-API spellings, s
 | `tea-` | workspace (tenant)          | teams  |
 | `srv-` | service (app)               | srv    |
 | `dpg-` | managed Postgres database   | dpg    |
+| `red-` | managed key-value store     | red    |
 | `cdm-` | custom domain               | cdm    |
 | `evt-` | service event (**derived**) | evt    |
 | `crr-` | cron-job run (**derived**)  | —      |
@@ -63,8 +64,7 @@ Prose rules rot; these don't — the enforcement is layered, compiler first:
 
 ## Known deviations (deliberate, documented)
 
-- **Key Value still uses its name as the id rather than `red-<xid>`.** `internal/keyvalue` remains name-keyed, a documented Render divergence to revisit when Key Value needs rename-stable references.
-- **Legacy Postgres ids are grandfathered.** New managed Postgres resources use a minted `dpg-<xid>` as `Database.metadata.name` and keep the mutable display name in `spec.name`. Databases created before this split retain their existing metadata name as their stable API id; the migration only backfills `spec.name` and never re-keys a live CR. This is an intentional compatibility exception, not a second mint path.
+- **Legacy Postgres and Key Value ids are grandfathered.** New managed Postgres / Key Value resources use a minted `dpg-<xid>` / `red-<xid>` as their `metadata.name` and keep the mutable display name in `spec.name`. Resources created before that split retain their existing metadata name as their stable API id; the backfill migration (`scripts/postgres-name-migrate.sh` / `scripts/keyvalue-name-migrate.sh`) only fills `spec.name` and never re-keys a live CR. This is an intentional compatibility exception, not a second mint path. (Managed Postgres shipped this in w9/m3; Key Value in w9/m6 — the last name-as-id datastore deviation, now closed.)
 - **API keys carry Hydra's `client_id`, not a bex id.** OAuth2 clients are minted by Ory Hydra ([ADR012-auth.md](ADR012-auth.md)); their id format is Hydra's, outside this convention by design.
 
 ## Alternatives considered

@@ -20,10 +20,11 @@ limitations under the License.
 // the connection strings (which embed the password) are surfaced — to an
 // authenticated caller — read from the operator-generated Secret at request time.
 //
-// It is the datastore sibling of internal/postgres, but KeyValue still keeps its
-// user-chosen name as its id (name-as-id). Postgres now separates a mutable
-// display name from its stable dpg- id; KeyValue's remaining deviation is tracked
-// in docs/ADR020-identifiers.md § Known deviations.
+// It is the datastore sibling of internal/postgres: a managed key-value store
+// carries a stable, immutable red- resource id (metadata.name) and a separate
+// mutable display name (spec.name), the same identity split Postgres shipped in
+// w9/m3. Legacy CRs created before the split keep working — reads fall back to
+// metadata.name until the backfill sets spec.name (see DisplayName).
 package keyvalue
 
 import (
@@ -39,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -68,7 +70,7 @@ type Service struct {
 // KeyValue CR fields (w5/011); the object stays a safe superset a Render client
 // can read (docs/ADR018-render-parity.md § Key Value).
 type KeyValueView struct {
-	ID        string `json:"id"` // the KeyValue name (name-as-id)
+	ID        string `json:"id"` // the immutable red- id (metadata.name); stable across rename
 	Name      string `json:"name"`
 	Plan      string `json:"plan"`
 	Version   string `json:"version,omitempty"`
@@ -172,6 +174,16 @@ var validPersistenceModes = []string{"journal-snapshot", "snapshot", "off"}
 func renderToCRD(s string) string { return strings.ReplaceAll(s, "_", "-") }
 func crdToRender(s string) string { return strings.ReplaceAll(s, "-", "_") }
 
+// validateKeyValueName enforces the user-facing display-name shape (the CRD's
+// spec.name markers). Shared by create and rename so the two paths can never
+// accept different names — the same courtesy validateDatabaseName extends.
+func validateKeyValueName(name string) error {
+	if !appv1alpha1.ValidKeyValueName(name) {
+		return fmt.Errorf("%w: name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen", core.ErrBadRequest)
+	}
+	return nil
+}
+
 // kvStatus maps bex's KeyValue phase onto a Render-shaped keyValueStatus string.
 func kvStatus(p appv1alpha1.KeyValuePhase) string {
 	switch p {
@@ -191,7 +203,7 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 	}
 	return KeyValueView{
 		ID:              kv.Name,
-		Name:            kv.Name,
+		Name:            kv.DisplayName(),
 		Plan:            kv.Spec.Plan,
 		Version:         kv.Spec.Version,
 		Status:          kvStatus(kv.Status.Phase),
@@ -269,6 +281,28 @@ func (s *Service) ListKeyValues(ctx context.Context, ownerID string) ([]KeyValue
 	return out, nil
 }
 
+// ensureKeyValueNameAvailable enforces Render's workspace-scoped display-name
+// uniqueness without coupling identity to that name (mirrors postgres's
+// ensureDatabaseNameAvailable). excludeID is the stable metadata.name of an
+// object being renamed. Unlabelled legacy/dev objects form their own scope when
+// the control-plane tenant resolver is disabled.
+func (s *Service) ensureKeyValueNameAvailable(ctx context.Context, tenantID, name, excludeID string) error {
+	var list appv1alpha1.KeyValueList
+	if err := s.Client.List(ctx, &list, client.InNamespace(s.Namespace)); err != nil {
+		return fmt.Errorf("checking key-value name: %w", err)
+	}
+	for i := range list.Items {
+		kv := &list.Items[i]
+		if kv.Name == excludeID || kv.Labels[core.LabelTenant] != tenantID {
+			continue
+		}
+		if kv.DisplayName() == name {
+			return fmt.Errorf("%w: a key-value store named %q already exists in this workspace", core.ErrConflict, name)
+		}
+	}
+	return nil
+}
+
 // GetKeyValue returns one managed key-value store, or core.ErrNotFound.
 func (s *Service) GetKeyValue(ctx context.Context, name string) (KeyValueView, error) {
 	kv, err := s.fetchKeyValue(ctx, core.RelCanView, name)
@@ -285,8 +319,8 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return KeyValueView{}, err
 	}
-	if req.Name == "" {
-		return KeyValueView{}, fmt.Errorf("%w: name is required", core.ErrBadRequest)
+	if err := validateKeyValueName(req.Name); err != nil {
+		return KeyValueView{}, err
 	}
 	if req.Plan != "" {
 		if _, ok := tiers.Valkey.ByID(req.Plan); !ok {
@@ -305,6 +339,9 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 		return KeyValueView{}, fmt.Errorf("%w: unknown persistenceMode %q (valid: %v)", core.ErrBadRequest, req.PersistenceMode, validPersistenceModes)
 	}
 	tenantID, tenantOK := s.Tenant(ctx)
+	if err := s.ensureKeyValueNameAvailable(ctx, tenantID, req.Name, ""); err != nil {
+		return KeyValueView{}, err
+	}
 	var environment core.EnvironmentAssignment
 	if req.EnvironmentID != "" {
 		if s.Environments == nil || !tenantOK {
@@ -329,8 +366,9 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 		}
 	}
 	kv := &appv1alpha1.KeyValue{
-		ObjectMeta: metav1.ObjectMeta{Name: req.Name, Namespace: s.Namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.KeyValue), Namespace: s.Namespace},
 		Spec: appv1alpha1.KeyValueSpec{
+			Name:            req.Name,
 			Plan:            req.Plan,
 			Version:         req.Version,
 			StorageGB:       req.StorageGB,
@@ -358,6 +396,9 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	}
 	resourcemeta.Touch(kv, s.Now())
 	if err := s.Client.Create(ctx, kv); err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			return KeyValueView{}, fmt.Errorf("%w: generated key-value id collision; retry the request", core.ErrConflict)
+		}
 		return KeyValueView{}, err
 	}
 	return kvView(kv), nil
@@ -522,6 +563,85 @@ func (s *Service) patchKeyValueObj(ctx context.Context, kv *appv1alpha1.KeyValue
 		return KeyValueView{}, err
 	}
 	return kvView(kv), nil
+}
+
+// KeyValuePatch is the mutable-field set for PATCH /v1/key-value/{id} — Render's
+// "only the fields you pass are changed" semantics (nil = leave unchanged,
+// mirroring the pointer fields on the CLI's generated KeyValuePATCHInput). name
+// is the rename field this milestone (w9/m6) adds; plan keeps the pre-existing
+// plan-change path (the GraphQL updateKeyValuePlan / MCP update_key_value_plan
+// verbs still call SetPlan directly). Extend this set as more KeyValue fields
+// become updatable, exactly as PostgresPatch grew.
+type KeyValuePatch struct {
+	Name *string
+	Plan *string
+}
+
+// validate checks every field present in the patch before any write; shared by
+// UpdateKeyValue and PreviewUpdateKeyValue so the two paths can never accept
+// different inputs (mirrors PostgresPatch.validate).
+func (patch KeyValuePatch) validate() error {
+	if patch.Name != nil {
+		if err := validateKeyValueName(*patch.Name); err != nil {
+			return err
+		}
+	}
+	if patch.Plan != nil {
+		if _, ok := tiers.Valkey.ByID(*patch.Plan); !ok {
+			return fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Valkey.IDs(), "|"))
+		}
+	}
+	return nil
+}
+
+func (patch KeyValuePatch) apply(kv *appv1alpha1.KeyValue) {
+	if patch.Name != nil {
+		kv.Spec.Name = *patch.Name
+	}
+	if patch.Plan != nil {
+		kv.Spec.Plan = *patch.Plan
+	}
+}
+
+// UpdateKeyValue applies a partial update (Render's PATCH /key-value/{id}
+// semantics — only fields set in patch change). SetPlan above stays the
+// plan-only entry point GraphQL/MCP use; this is the general handler REST's
+// PATCH route needs so `keyvalues update --name` (which sends no plan) stops
+// 400ing, and the rename lands on the immutable red- id.
+func (s *Service) UpdateKeyValue(ctx context.Context, name string, patch KeyValuePatch) (KeyValueView, error) {
+	kv, err := s.fetchKeyValue(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return KeyValueView{}, err
+	}
+	if err := patch.validate(); err != nil {
+		return KeyValueView{}, err
+	}
+	if patch.Name != nil {
+		if err := s.ensureKeyValueNameAvailable(ctx, kv.Labels[core.LabelTenant], *patch.Name, kv.Name); err != nil {
+			return KeyValueView{}, err
+		}
+	}
+	return s.patchKeyValueObj(ctx, kv, patch.apply)
+}
+
+// PreviewUpdateKeyValue is UpdateKeyValue's dry-run twin (w2/m29 pattern): same
+// validation, zero side effects. Requires can_view (no audit event, no write).
+func (s *Service) PreviewUpdateKeyValue(ctx context.Context, name string, patch KeyValuePatch) (KeyValueView, error) {
+	kv, err := s.fetchKeyValue(ctx, core.RelCanView, name)
+	if err != nil {
+		return KeyValueView{}, err
+	}
+	if err := patch.validate(); err != nil {
+		return KeyValueView{}, err
+	}
+	if patch.Name != nil {
+		if err := s.ensureKeyValueNameAvailable(ctx, kv.Labels[core.LabelTenant], *patch.Name, kv.Name); err != nil {
+			return KeyValueView{}, err
+		}
+	}
+	preview := kv.DeepCopy()
+	patch.apply(preview)
+	return kvView(preview), nil
 }
 
 // KeyValueConnectionInfo assembles the internal + external connection strings

@@ -230,6 +230,10 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "详情",
     description: "Key Value detail metadata card title",
   },
+  "keyvalue.metaId": {
+    message: "ID",
+    description: "Key Value detail metadata row label (immutable red- id)",
+  },
   "keyvalue.metaStatus": {
     message: "状态",
     description: "Key Value detail metadata row label",
@@ -447,6 +451,36 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.networkingError": {
     message: "无法保存允许列表：{error}",
     description: "Toast when saving the allowlist fails",
+  },
+  // --- Name section (rename control) ---
+  "keyvalue.nameTitle": {
+    message: "Key Value 名称",
+    description: "Key Value detail rename card title",
+  },
+  "keyvalue.nameDescription": {
+    message: "更改显示名称。Key Value ID 和所有连接信息保持不变。",
+    description: "Key Value detail rename card description",
+  },
+  "keyvalue.nameSave": {
+    message: "保存名称",
+    description: "Key Value rename save button",
+  },
+  "keyvalue.nameSuccess": {
+    message: "Key Value 存储已重命名为 {name}。",
+    description: "Toast after a Key Value rename succeeds",
+  },
+  "keyvalue.nameError": {
+    message: "无法重命名 Key Value 存储，请重试。",
+    description: "Toast when a Key Value rename fails unexpectedly",
+  },
+  "keyvalue.nameConflict": {
+    message: "此工作区中已存在同名的 Key Value 存储。",
+    description: "Toast when a Key Value rename collides with another name",
+  },
+  "keyvalue.nameInvalid": {
+    message:
+      "请使用小写字母、数字和连字符（最多 30 个字符），且不能以连字符开头或结尾。",
+    description: "Key Value rename validation message",
   },
 };
 

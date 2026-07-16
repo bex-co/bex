@@ -231,6 +231,10 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Details",
     description: "Key Value detail metadata card title",
   },
+  "keyvalue.metaId": {
+    message: "ID",
+    description: "Key Value detail metadata row label (immutable red- id)",
+  },
   "keyvalue.metaStatus": {
     message: "Status",
     description: "Key Value detail metadata row label",
@@ -452,6 +456,37 @@ const enKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.networkingError": {
     message: "Couldn't save the allowlist: {error}",
     description: "Toast when saving the allowlist fails",
+  },
+  // --- Name section (rename control) ---
+  "keyvalue.nameTitle": {
+    message: "Key Value name",
+    description: "Key Value detail rename card title",
+  },
+  "keyvalue.nameDescription": {
+    message:
+      "Change the display name. The Key Value ID and all connection details stay the same.",
+    description: "Key Value detail rename card description",
+  },
+  "keyvalue.nameSave": {
+    message: "Save name",
+    description: "Key Value rename save button",
+  },
+  "keyvalue.nameSuccess": {
+    message: "Renamed Key Value store to {name}.",
+    description: "Toast after a Key Value rename succeeds",
+  },
+  "keyvalue.nameError": {
+    message: "Couldn't rename the Key Value store. Please try again.",
+    description: "Toast when a Key Value rename fails unexpectedly",
+  },
+  "keyvalue.nameConflict": {
+    message: "A Key Value store with that name already exists in this workspace.",
+    description: "Toast when a Key Value rename collides with another name",
+  },
+  "keyvalue.nameInvalid": {
+    message:
+      "Use lowercase letters, digits, and hyphens (up to 30 characters); don't start or end with a hyphen.",
+    description: "Key Value rename validation message",
   },
 };
 

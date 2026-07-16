@@ -26,7 +26,6 @@ import (
 	"strings"
 	"time"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
@@ -142,6 +141,7 @@ type StackDatabaseView struct {
 }
 
 type StackKeyValueView struct {
+	ID     string `json:"id"`
 	Name   string `json:"name"`
 	Status string `json:"status"`
 }
@@ -1158,6 +1158,7 @@ func parseKeyValue(k bexService) (parsedKeyValue, error) {
 		return parsedKeyValue{}, fmt.Errorf("%w: key-value %q persistenceMode %q is invalid", core.ErrBadRequest, k.Name, k.PersistenceMode)
 	}
 	return parsedKeyValue{name: k.Name, spec: appv1alpha1.KeyValueSpec{
+		Name:            k.Name,
 		Plan:            k.Plan,
 		IPAllowList:     allow,
 		MaxmemoryPolicy: k.MaxmemoryPolicy,
@@ -1578,14 +1579,35 @@ func applyGroupingLabels(labels map[string]string, assignment core.EnvironmentAs
 }
 
 func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignment core.EnvironmentAssignment) (StackKeyValueView, error) {
-	var existing appv1alpha1.KeyValue
-	err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: kv.name}, &existing)
-	if err == nil {
+	// Resolve an existing store by its mutable DISPLAY name within the workspace,
+	// not by metadata.name — a store now carries an opaque red- id, so a re-apply
+	// of the same bex.yml entry must match on the user-facing name (w9/m6,
+	// mirroring applyDatabase).
+	var keyValues appv1alpha1.KeyValueList
+	if err := s.Client.List(ctx, &keyValues, client.InNamespace(s.Namespace)); err != nil {
+		return StackKeyValueView{}, err
+	}
+	tenantID, scoped := s.Tenant(ctx)
+	var existing *appv1alpha1.KeyValue
+	for i := range keyValues.Items {
+		candidate := &keyValues.Items[i]
+		if scoped && candidate.Labels[core.LabelTenant] != tenantID {
+			continue
+		}
+		if candidate.DisplayName() != kv.name {
+			continue
+		}
+		if existing != nil {
+			return StackKeyValueView{}, fmt.Errorf("%w: key-value name %q is already used more than once in this workspace; run the key-value name migration before applying this Blueprint", core.ErrConflict, kv.name)
+		}
+		existing = candidate
+	}
+	if existing != nil {
 		specChanged := keyValueOwnedSpecChanged(existing.Spec, kv.spec)
 		groupingSpecified := kv.grouping != "" || kv.ungrouped
 		groupingChanged := groupingSpecified && (existing.Labels[core.LabelEnvironment] != assignment.ID || existing.Labels[core.LabelProject] != assignment.ProjectID)
 		if !specChanged && !groupingChanged {
-			return stackKeyValueView(&existing), nil
+			return stackKeyValueView(existing), nil
 		}
 		base := client.MergeFrom(existing.DeepCopy())
 		if specChanged {
@@ -1597,17 +1619,14 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 			}
 			applyGroupingLabels(existing.Labels, assignment)
 		}
-		resourcemeta.Touch(&existing, s.Now())
-		if err := s.Client.Patch(ctx, &existing, base); err != nil {
+		resourcemeta.Touch(existing, s.Now())
+		if err := s.Client.Patch(ctx, existing, base); err != nil {
 			return StackKeyValueView{}, err
 		}
-		return stackKeyValueView(&existing), nil
-	}
-	if !apierrors.IsNotFound(err) {
-		return StackKeyValueView{}, err
+		return stackKeyValueView(existing), nil
 	}
 	resource := &appv1alpha1.KeyValue{
-		ObjectMeta: metav1.ObjectMeta{Name: kv.name, Namespace: s.Namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.KeyValue), Namespace: s.Namespace},
 		Spec:       kv.spec,
 	}
 	if tenantID, ok := s.Tenant(ctx); ok {
@@ -1627,7 +1646,7 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 }
 
 func stackKeyValueView(kv *appv1alpha1.KeyValue) StackKeyValueView {
-	return StackKeyValueView{Name: kv.Name, Status: string(kv.Status.Phase)}
+	return StackKeyValueView{ID: kv.Name, Name: kv.DisplayName(), Status: string(kv.Status.Phase)}
 }
 
 // applyDatabaseSpec copies the Blueprint-owned Database fields onto dst (the set
@@ -1645,6 +1664,7 @@ func applyDatabaseSpec(dst *appv1alpha1.DatabaseSpec, want appv1alpha1.DatabaseS
 }
 
 func applyKeyValueSpec(dst *appv1alpha1.KeyValueSpec, want appv1alpha1.KeyValueSpec) {
+	dst.Name = want.Name
 	dst.Plan = want.Plan
 	dst.IPAllowList = want.IPAllowList
 	dst.MaxmemoryPolicy = want.MaxmemoryPolicy

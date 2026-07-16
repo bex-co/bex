@@ -61,6 +61,7 @@ var (
 	Workspace    = Kind{prefix: "tea", desc: "workspace (tenant/team)"}   // Render: teams are tea-
 	Service      = Kind{prefix: "srv", desc: "service (app)"}             // Render: services are srv-
 	Postgres     = Kind{prefix: "dpg", desc: "managed Postgres database"} // Render: Postgres databases are dpg-
+	KeyValue     = Kind{prefix: "red", desc: "managed key-value store"}   // Render: Key Value (Redis-compatible) stores are red-
 	Domain       = Kind{prefix: "cdm", desc: "custom domain"}             // Render: custom domains are cdm-
 	EnvGroup     = Kind{prefix: "evg", desc: "environment group"}         // Render: env groups are evg-
 	Deploy       = Kind{prefix: "dep", desc: "deploy"}                    // Render: deploys are dep-
@@ -96,7 +97,7 @@ var (
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Postgres, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, Job, SSHKey, SSHSession}
+var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, Job, SSHKey, SSHSession}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

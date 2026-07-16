@@ -18,13 +18,33 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
+
+// ValidKeyValueName reports whether name is a valid user-facing managed
+// key-value name. Keeping this next to KeyValueSpec.Name makes the CRD contract
+// and every API/Blueprint writer share one validation rule — the same shape
+// ValidDatabaseName enforces for managed Postgres (w9/m6, mirroring w9/m3).
+func ValidKeyValueName(name string) bool {
+	return len(name) <= 30 && len(validation.IsDNS1123Label(name)) == 0
+}
 
 // KeyValueSpec is the desired state of a managed Valkey (Redis-compatible)
 // key-value store — the Render-style "add a Key Value" unit. The operator
 // projects it to a single-instance Valkey StatefulSet in the same namespace; the
 // plan sets resources/storage. See docs/ADR021-keyvalue-management.md.
 type KeyValueSpec struct {
+	// Name is the mutable, user-facing key-value name. metadata.name is the
+	// immutable red-... resource id and the data-plane identity used for every
+	// StatefulSet/PVC/Secret/route name. Empty is the legacy representation:
+	// readers fall back to metadata.name until the backfill sets this field
+	// (w9/m6, mirroring Postgres's spec.name split from w9/m3).
+	// +optional
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=30
+	// +kubebuilder:validation:Pattern=`^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$`
+	Name string `json:"name,omitempty"`
+
 	// Plan selects the resource allocation (compute + storage). MVP plans are
 	// single-instance and fit one node. Names follow Render's Key Value product
 	// (free / starter / standard — the web-service vocabulary, not Postgres).
@@ -155,6 +175,16 @@ type KeyValue struct {
 	Spec KeyValueSpec `json:"spec"`
 	// +optional
 	Status KeyValueStatus `json:"status,omitzero"`
+}
+
+// DisplayName returns the mutable user-facing name. KeyValue CRs created before
+// spec.name existed keep working by falling back to their metadata.name until
+// the migration backfills the field (mirrors Database.DisplayName, w9/m3).
+func (kv *KeyValue) DisplayName() string {
+	if kv.Spec.Name != "" {
+		return kv.Spec.Name
+	}
+	return kv.Name
 }
 
 // +kubebuilder:object:root=true

@@ -57,6 +57,18 @@ The `valkey` tier family uses Render's **Key Value** plan vocabulary (`free` / `
 3. **Surface connection info** → the Secret's `uri` / `externalUri` / `host` / `port` / `password` (a later API layer assembles the Connections panel from these).
 4. **Delete** → deleting the `KeyValue` garbage-collects the StatefulSet, Service, PVC, Secret, and the external SNI route via owner references.
 
+### 6. Identity and rename (stable `red-` id + mutable name, w9/m6)
+
+Identity and display name are separate, exactly as managed Postgres shipped in w9/m3 (ADR009 §Rename and legacy migration):
+
+- **New stores mint `KeyValue.metadata.name = red-<xid>`** through `internal/id` (`id.KeyValue`, Render's Key Value prefix). This immutable value is the REST/GraphQL/MCP id and the root of every physical object name — the StatefulSet, headless Service, PVC, credentials Secret, and the external SNI hostname (`<red-id>.<BEX_KV_DOMAIN>`). Because the id (not the name) lives in the hostname and Secret, a **rename never breaks a connection string**.
+- **`KeyValue.spec.name` is the mutable, user-facing DNS-label name** (`ValidKeyValueName`: ≤30 chars, DNS-1123 label). It is workspace-scoped unique — two workspaces may reuse a name; a duplicate inside one workspace is rejected (`core.ErrConflict`).
+- **Legacy CRs with no `spec.name`** expose `metadata.name` as a fallback (`KeyValue.DisplayName()`) and retain that value as their grandfathered stable id.
+
+`PATCH /v1/key-value/{id}` changes only `spec.name` (and/or `plan`); the KeyValue metadata name/UID, StatefulSet, PVC, credentials Secret, Service, external route, project/environment membership, and connection strings all remain attached to the immutable id. The same core mutation (`UpdateKeyValue`) backs REST, GraphQL `renameKeyValue`, MCP `rename_key_value`, and the dashboard; `dryRun=true` runs identical validation without writing. The GET-by-id item route resolves by the opaque id only — the official Render CLI resolves a typed name to a `red-` id via the list filter, then routes every item call by that id, so the split is what makes the unmodified CLI's `keyvalues update <name> --name <new>` land on the right store.
+
+**Legacy backfill + rollout.** `scripts/keyvalue-name-migrate.sh` (dry-run by default, `--apply` to write, `--namespace`/`--all-namespaces`) backfills only a missing `spec.name` from `metadata.name`; reruns are byte-for-byte no-ops, and it fails before any write on an un-representable legacy id or a workspace-scoped duplicate. It never creates, deletes, or re-keys a CR. Roll the CRD + compatible code first, backfill second, then enable rename traffic — the same ordering (and safe, additive rollback) ADR009 documents for Postgres.
+
 ## MVP scope
 
 Ship only what fits the current single node — single-instance plans differing by compute + storage (above). Internal-URL-first (connect from an in-cluster App); the Traefik-SNI external route is opt-in per store via `spec.public` + `BEX_KV_DOMAIN`, with the direct-TLS caveat noted in §3.

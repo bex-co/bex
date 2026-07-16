@@ -74,9 +74,15 @@ vi.mock("@/features/keyvalue/hooks/use-update-key-value-plan", () => ({
   useUpdateKeyValuePlan: () => ({ updatePlan: vi.fn(), busy: false }),
 }));
 
+// KeyValueNameSection's rename hook wraps Apollo's useMutation — mocked at the
+// hook boundary like every other data hook above (no ApolloProvider here).
+vi.mock("@/features/keyvalue/hooks/use-rename-key-value", () => ({
+  useRenameKeyValue: () => ({ rename: vi.fn(), busy: false }),
+}));
+
 function kv(overrides: Partial<KeyValueView> = {}): KeyValueView {
   return {
-    id: "sessions-cache",
+    id: "red-sessions",
     name: "sessions-cache",
     status: "available",
     plan: "starter",
