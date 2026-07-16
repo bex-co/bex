@@ -724,6 +724,15 @@ func (s *Server) restHandler() http.Handler {
 			r.RegisterREST(mux)
 		}
 	}
+	// Render supports "workflows" as a resource type; the official CLI probes
+	// GET /v1/workflows when resolving --resources for multi-resource log queries.
+	// bex does not implement workflows, so stub the list endpoint to return an
+	// empty array rather than 404 (which the CLI treats as a fatal resolution
+	// error). The {id} sub-routes are omitted — only the list is probed.
+	mux.HandleFunc("GET /v1/workflows", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte("[]")) //nolint:errcheck
+	})
 	return mux
 }
 
