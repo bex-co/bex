@@ -104,6 +104,8 @@ func statusErrID(code int) string {
 		return "conflict"
 	case http.StatusRequestEntityTooLarge:
 		return "payload_too_large"
+	case http.StatusTooManyRequests:
+		return "too_many_requests"
 	case http.StatusServiceUnavailable:
 		return "unavailable"
 	default:
