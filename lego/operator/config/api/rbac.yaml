@@ -70,6 +70,14 @@ rules:
   - apiGroups: ["batch"]
     resources: ["jobs"]
     verbs: ["get", "list", "delete"]
+  # Live build following (w3/m14): select the App-labelled build pod and read
+  # only its log subresource in BEX_BUILD_NAMESPACE.
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
   - apiGroups: ["kpack.io"]
     resources: ["images"]
     verbs: ["get", "list", "delete"]

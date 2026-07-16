@@ -17,6 +17,7 @@ limitations under the License.
 package logs
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -231,7 +232,9 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	// Headers are already sent, so a refusal can't be an HTTP status. For SSE
 	// callers surface it as a terminal error event; for NDJSON callers it is
 	// a best-effort final line (the client should treat a non-JSON tail as EOF).
-	if errors.Is(err, core.ErrLogsUnavailable) || errors.Is(err, core.ErrLogStoreUnavailable) {
+	// Cancellation/disconnect is normal and silent; named refusals such as
+	// ErrBuildNotRunning must reach the client instead of leaving an empty stream.
+	if err != nil && !errors.Is(err, context.Canceled) {
 		if useSSE {
 			_, _ = fmt.Fprintf(w, "event: error\ndata: %q\n\n", err.Error())
 		} else {

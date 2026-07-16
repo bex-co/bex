@@ -45,7 +45,7 @@ import (
 type logFilters struct {
 	Resource   []string `json:"resource" jsonschema:"service ids (bex App names) to read logs for; all must belong to the same owner"`
 	Level      []string `json:"level,omitempty" jsonschema:"filter logs by severity level (debug|info|warn|error|unknown); * wildcards supported"`
-	Type       []string `json:"type,omitempty" jsonschema:"filter logs by type: app (the service's own output) | request (edge access logs) | build (no backend in bex — always empty)"`
+	Type       []string `json:"type,omitempty" jsonschema:"filter logs by type: app (the service's own output) | request (edge access logs) | build (build output)"`
 	Instance   []string `json:"instance,omitempty" jsonschema:"filter logs by the instance (replica) they were emitted from; applies to app logs"`
 	Host       []string `json:"host,omitempty" jsonschema:"filter request logs by their host; * wildcards supported"`
 	StatusCode []string `json:"statusCode,omitempty" jsonschema:"filter request logs by status code (e.g. 404 or the class 4xx); * wildcards supported"`

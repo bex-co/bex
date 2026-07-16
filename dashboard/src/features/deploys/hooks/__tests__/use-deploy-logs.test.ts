@@ -1,23 +1,36 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { useDeployLogs } from "@/features/deploys/hooks/use-deploy-logs";
+import type { EventSourceLike } from "@/features/logs/hooks/use-live-logs";
 
 const mockUseQuery = vi.fn();
 vi.mock("@apollo/client/react", () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
 }));
 
-// useLiveLogs opens an EventSource connection — stub it to a no-op in tests.
-// The deploy-logs hook merges live lines below; integration of the two is covered
-// by use-live-logs.test.ts and the deploy-log-panel tests.
-vi.mock("@/features/logs/hooks/use-live-logs", () => ({
-  useLiveLogs: () => ({ lines: [], status: "idle" }),
-}));
-
 interface Call {
   type: string;
   skip?: boolean;
 }
+
+class FakeEventSource implements EventSourceLike {
+  onopen: (() => void) | null = null;
+  onmessage: ((ev: { data: string }) => void) | null = null;
+  onerror: ((ev: { data?: unknown }) => void) | null = null;
+  closed = false;
+
+  constructor(public url: string) {}
+
+  close() {
+    this.closed = true;
+  }
+}
+
+let stream: FakeEventSource | null = null;
+const streamFactory = (url: string) => {
+  stream = new FakeEventSource(url);
+  return stream;
+};
 
 const entry = (timestamp: string, message: string, type: string) => ({
   __typename: "LogEntry",
@@ -37,19 +50,27 @@ function stubByType(
   responses: Record<string, { logs: unknown[] } | undefined>,
   calls: Call[],
 ) {
-  mockUseQuery.mockImplementation((_doc: unknown, opts: Record<string, unknown>) => {
-    const variables = opts.variables as { type: string };
-    calls.push({ type: variables.type, skip: opts.skip as boolean | undefined });
-    return {
-      data: responses[variables.type] ? { logs: responses[variables.type]!.logs } : undefined,
-      loading: false,
-      error: undefined,
-    };
-  });
+  mockUseQuery.mockImplementation(
+    (_doc: unknown, opts: Record<string, unknown>) => {
+      const variables = opts.variables as { type: string };
+      calls.push({
+        type: variables.type,
+        skip: opts.skip as boolean | undefined,
+      });
+      return {
+        data: responses[variables.type]
+          ? { logs: responses[variables.type]!.logs }
+          : undefined,
+        loading: false,
+        error: undefined,
+      };
+    },
+  );
 }
 
 beforeEach(() => {
   mockUseQuery.mockReset();
+  stream = null;
 });
 
 describe("useDeployLogs", () => {
@@ -63,6 +84,7 @@ describe("useDeployLogs", () => {
         "2026-07-14T00:00:00Z",
         "2026-07-14T00:05:00Z",
         true,
+        false,
       ),
     );
 
@@ -88,7 +110,7 @@ describe("useDeployLogs", () => {
     stubByType({}, calls);
 
     renderHook(() =>
-      useDeployLogs("web", "2026-07-14T00:00:00Z", undefined, false),
+      useDeployLogs("web", "2026-07-14T00:00:00Z", undefined, false, false),
     );
 
     const predeployCall = calls.find((c) => c.type === "predeploy");
@@ -108,7 +130,9 @@ describe("useDeployLogs", () => {
           ],
         },
         predeploy: {
-          logs: [entry("2026-07-14T00:00:01.000Z", "pre-deploy ok", "predeploy")],
+          logs: [
+            entry("2026-07-14T00:00:01.000Z", "pre-deploy ok", "predeploy"),
+          ],
         },
         app: {
           logs: [entry("2026-07-14T00:00:03.000Z", "app started", "app")],
@@ -118,7 +142,7 @@ describe("useDeployLogs", () => {
     );
 
     const { result } = renderHook(() =>
-      useDeployLogs("web", "2026-07-14T00:00:00Z", undefined, true),
+      useDeployLogs("web", "2026-07-14T00:00:00Z", undefined, true, false),
     );
 
     expect(result.current.lines.map((l) => l.message)).toEqual([
@@ -130,23 +154,65 @@ describe("useDeployLogs", () => {
   });
 
   it("surfaces buildStoreUnavailable without erroring the whole panel", () => {
-    mockUseQuery.mockImplementation((_doc: unknown, opts: Record<string, unknown>) => {
-      const variables = opts.variables as { type: string };
-      if (variables.type === "build") {
-        return {
-          data: undefined,
-          loading: false,
-          error: new Error("logs: the durable log store is not configured"),
-        };
-      }
-      return { data: { logs: [] }, loading: false, error: undefined };
-    });
+    mockUseQuery.mockImplementation(
+      (_doc: unknown, opts: Record<string, unknown>) => {
+        const variables = opts.variables as { type: string };
+        if (variables.type === "build") {
+          return {
+            data: undefined,
+            loading: false,
+            error: new Error("logs: the durable log store is not configured"),
+          };
+        }
+        return { data: { logs: [] }, loading: false, error: undefined };
+      },
+    );
 
     const { result } = renderHook(() =>
-      useDeployLogs("web", "2026-07-14T00:00:00Z", undefined, true),
+      useDeployLogs("web", "2026-07-14T00:00:00Z", undefined, true, false),
     );
 
     expect(result.current.buildStoreUnavailable).toBe(true);
     expect(result.current.error).toBeUndefined();
+  });
+
+  it("merges the active build SSE tail into history while followBuild is enabled", () => {
+    const calls: Call[] = [];
+    stubByType({}, calls);
+
+    const { result } = renderHook(() =>
+      useDeployLogs(
+        "web",
+        "2026-07-14T00:00:00Z",
+        undefined,
+        false,
+        true,
+        streamFactory,
+      ),
+    );
+
+    expect(stream?.url).toContain("type=build");
+    act(() => stream?.onopen?.());
+    act(() =>
+      stream?.onmessage?.({
+        data: JSON.stringify({
+          timestamp: "2026-07-14T00:00:01Z",
+          message: "streamed build step",
+          labels: [
+            { name: "type", value: "build" },
+            { name: "instance", value: "bld-web-gen-1-pod" },
+          ],
+        }),
+      }),
+    );
+
+    expect(result.current.buildLiveStatus).toBe("open");
+    expect(result.current.lines.map((line) => line.message)).toEqual([
+      "streamed build step",
+    ]);
+
+    act(() => stream?.onerror?.({ data: "no running build" }));
+    expect(result.current.buildLiveStatus).toBe("error");
+    expect(stream?.closed).toBe(true);
   });
 });

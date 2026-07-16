@@ -23,6 +23,7 @@ package logs
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -33,14 +34,14 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // Log types — Render's `type` vocabulary. `app` is the App container's own
 // output; `request` is Traefik's access log, shipped and labelled by the
 // log-shipper (deploy/gitops/base/log-shipper.yaml) and served from the durable
-// store. `build` has no backend in bex (builds run in a separate plane,
-// docs/ADR001-go-and-gitops.md), so it resolves to an honest empty result — the
-// one type that is empty by design, and documented as such.
+// store. `build` history is store-backed, while the SSE tail follows the active
+// build pod directly in BEX_BUILD_NAMESPACE.
 // `application` is accepted as an input alias for `app`.
 const (
 	LogTypeApp     = "app"
@@ -56,6 +57,11 @@ const (
 	// surfaces have always accepted.
 	logTypeApplicationAlias = "application"
 )
+
+// ErrBuildNotRunning terminates a type=build SSE subscription when there is no
+// active build pod. A named terminal event is honest and lets clients fall back
+// to history instead of holding an empty stream forever.
+var ErrBuildNotRunning = errors.New("no running build is available to follow")
 
 // The log labels Render's clients filter and discover by (`list_log_label_values`'s
 // enum). Each maps onto a stream label the shipper attaches — except LabelHost,
@@ -499,9 +505,10 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 
 // FollowLogs streams an App's new log lines to emit until ctx is cancelled or
 // emit errors. The tail always reads live pod logs (never the store — real-time,
-// zero ingest lag), so it serves app logs with the text/time/instance filters and
-// refuses the store-only ones (ErrLogStoreUnavailable), exactly as the fallback
-// query path does. Requires a PodLogStream (nil => core.ErrLogsUnavailable).
+// zero ingest lag). It serves app logs from App pods and type=build from the
+// active build pod in BuildNamespace, with the text/time/instance filters; it
+// refuses store-only filters. Requires a PodLogStream (nil =>
+// core.ErrLogsUnavailable).
 func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry) error) error {
 	requested := q.App
 	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, requested)
@@ -524,9 +531,10 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	if err := q.tailSupports(); err != nil {
 		return err
 	}
-	wantsBuild := q.wants(LogTypeBuild)
-	wantsApp := q.wants(LogTypeApp)
-	if !wantsApp && !wantsBuild {
+	if len(q.Types) == 1 && q.Types[0] == LogTypeBuild {
+		return s.followBuildLogs(ctx, q, resource, emit)
+	}
+	if !q.wants(LogTypeApp) {
 		<-ctx.Done() // nothing to stream; hold until the client disconnects
 		return ctx.Err()
 	}
@@ -536,35 +544,16 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	ch := make(chan LogEntry, 64)
 	var wg sync.WaitGroup
 
-	if wantsBuild {
-		buildNS := s.BuildNamespace
-		if buildNS == "" {
-			buildNS = s.Namespace
-		}
-		buildPods, err := s.BuildPods(ctx, q.App, buildNS)
-		if err != nil {
-			return err
-		}
-		for i := range buildPods {
-			wg.Add(1)
-			go func(pod string) {
-				defer wg.Done()
-				s.streamBuildPodLog(ctx, q.App, buildNS, pod, ch)
-			}(buildPods[i].Name)
-		}
+	pods, err := s.appPodNames(ctx, q)
+	if err != nil {
+		return err
 	}
-	if wantsApp {
-		pods, err := s.appPodNames(ctx, q)
-		if err != nil {
-			return err
-		}
-		for i := range pods {
-			wg.Add(1)
-			go func(pod string) {
-				defer wg.Done()
-				s.streamPodLogs(ctx, q.App, pod, ch)
-			}(pods[i])
-		}
+	for i := range pods {
+		wg.Add(1)
+		go func(pod string) {
+			defer wg.Done()
+			s.streamPodLogs(ctx, q.App, pod, ch)
+		}(pods[i])
 	}
 	go func() { wg.Wait(); close(ch) }()
 
@@ -585,6 +574,92 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 			}
 		}
 	}
+}
+
+// followBuildLogs streams every currently-running container from the newest
+// active build pod. Container discovery covers unsigned BuildKit (buildkit),
+// signed BuildKit (buildkit init then sign), and kpack's generated step names.
+// Completed pods are deliberately excluded: their history comes from Loki and
+// following them would replay an older deploy under the current subscription.
+func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource string, emit func(LogEntry) error) error {
+	pods, err := s.BuildPods(ctx, q.App, s.BuildNamespace)
+	if err != nil {
+		return err
+	}
+	active := pods[:0]
+	for i := range pods {
+		if pods[i].Status.Phase == corev1.PodRunning && q.keepPod(pods[i].Name) {
+			active = append(active, pods[i])
+		}
+	}
+	if len(active) == 0 {
+		return ErrBuildNotRunning
+	}
+	sort.SliceStable(active, func(i, j int) bool {
+		if active[i].CreationTimestamp.Time.Equal(active[j].CreationTimestamp.Time) {
+			return active[i].Name < active[j].Name
+		}
+		return active[i].CreationTimestamp.Time.Before(active[j].CreationTimestamp.Time)
+	})
+	pod := active[len(active)-1]
+	containers := runningContainers(pod)
+	if len(containers) == 0 {
+		return ErrBuildNotRunning
+	}
+
+	ns := s.BuildNamespace
+	if ns == "" {
+		ns = s.Namespace
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	ch := make(chan LogEntry, 64)
+	var opened atomic.Bool
+	var wg sync.WaitGroup
+	for _, container := range containers {
+		wg.Add(1)
+		go func(container string) {
+			defer wg.Done()
+			s.streamContainerLogs(ctx, ns, q.App, pod.Name, container, LogTypeBuild, ch, &opened)
+		}(container)
+	}
+	go func() { wg.Wait(); close(ch) }()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case e, ok := <-ch:
+			if !ok {
+				if !opened.Load() {
+					return ErrBuildNotRunning
+				}
+				return nil
+			}
+			if !q.keep(e) {
+				continue
+			}
+			setLogEntryResource(&e, resource)
+			if err := emit(e); err != nil {
+				return err
+			}
+		}
+	}
+}
+
+func runningContainers(pod corev1.Pod) []string {
+	var out []string
+	for i := range pod.Status.InitContainerStatuses {
+		if pod.Status.InitContainerStatuses[i].State.Running != nil {
+			out = append(out, pod.Status.InitContainerStatuses[i].Name)
+		}
+	}
+	for i := range pod.Status.ContainerStatuses {
+		if pod.Status.ContainerStatuses[i].State.Running != nil {
+			out = append(out, pod.Status.ContainerStatuses[i].Name)
+		}
+	}
+	return out
 }
 
 // appLogResource is the public resource identity each returned log line carries.
@@ -706,11 +781,18 @@ func (s *Service) collectPreDeployLogs(ctx context.Context, q LogQuery) ([]LogEn
 // streamPodLogs follows one pod's log into ch until ctx ends or the stream
 // closes. A replica going away ends its stream without failing the subscription.
 func (s *Service) streamPodLogs(ctx context.Context, service, pod string, ch chan<- LogEntry) {
-	rc, err := s.PodLogsFollow(ctx, s.Namespace, pod, core.AppContainer)
+	s.streamContainerLogs(ctx, s.Namespace, service, pod, core.AppContainer, LogTypeApp, ch, nil)
+}
+
+func (s *Service) streamContainerLogs(ctx context.Context, namespace, service, pod, container, logType string, ch chan<- LogEntry, opened *atomic.Bool) {
+	rc, err := s.PodLogsFollow(ctx, namespace, pod, container)
 	if err != nil {
 		return
 	}
 	defer func() { _ = rc.Close() }()
+	if opened != nil {
+		opened.Store(true)
+	}
 
 	sc := bufio.NewScanner(rc)
 	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
@@ -718,49 +800,8 @@ func (s *Service) streamPodLogs(ctx context.Context, service, pod string, ch cha
 		select {
 		case <-ctx.Done():
 			return
-		case ch <- parseLogLine(service, pod, sc.Text()):
+		case ch <- parseContainerLogLine(service, pod, container, logType, sc.Text()):
 		}
-	}
-}
-
-// streamBuildPodLog follows one build Job pod's log (core.BuildContainer, w3/m14)
-// into ch until ctx ends or the stream closes. The build Job terminates when the
-// build completes, so the stream naturally drains and closes.
-func (s *Service) streamBuildPodLog(ctx context.Context, service, namespace, pod string, ch chan<- LogEntry) {
-	rc, err := s.PodLogsFollow(ctx, namespace, pod, core.BuildContainer)
-	if err != nil {
-		return
-	}
-	defer func() { _ = rc.Close() }()
-
-	sc := bufio.NewScanner(rc)
-	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-	for sc.Scan() {
-		select {
-		case <-ctx.Done():
-			return
-		case ch <- parseBuildLogLine(service, pod, sc.Text()):
-		}
-	}
-}
-
-func parseBuildLogLine(service, pod, line string) LogEntry {
-	ts, msg := "", line
-	if i := strings.IndexByte(line, ' '); i > 0 {
-		if t, err := time.Parse(time.RFC3339Nano, line[:i]); err == nil {
-			ts = t.UTC().Format(time.RFC3339Nano)
-			msg = line[i+1:]
-		}
-	}
-	return LogEntry{
-		Timestamp: ts,
-		Message:   msg,
-		Labels: map[string]string{
-			"service":   service,
-			"instance":  pod,
-			"container": core.BuildContainer,
-			LabelType:   LogTypeBuild,
-		},
 	}
 }
 
@@ -768,6 +809,10 @@ func parseBuildLogLine(service, pod, line string) LogEntry {
 // a space, then the message) off a log line, tagging it with Render-shaped
 // labels. A line without a parseable stamp is kept whole as the message.
 func parseLogLine(service, pod, line string) LogEntry {
+	return parseContainerLogLine(service, pod, core.AppContainer, LogTypeApp, line)
+}
+
+func parseContainerLogLine(service, pod, container, logType, line string) LogEntry {
 	ts, msg := "", line
 	if i := strings.IndexByte(line, ' '); i > 0 {
 		if t, err := time.Parse(time.RFC3339Nano, line[:i]); err == nil {
@@ -781,8 +826,8 @@ func parseLogLine(service, pod, line string) LogEntry {
 		Labels: map[string]string{
 			"service":   service,
 			"instance":  pod,
-			"container": core.AppContainer,
-			LabelType:   LogTypeApp, // the pod-log path reads the App container only
+			"container": container,
+			LabelType:   logType,
 		},
 	}
 }

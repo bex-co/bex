@@ -38,7 +38,9 @@ vi.mock("../deploy-timeline", () => ({
   DeployTimeline: () => <div data-testid="deploy-timeline" />,
 }));
 vi.mock("../deploy-log-panel", () => ({
-  DeployLogPanel: () => <div data-testid="build-log" />,
+  DeployLogPanel: ({ followBuild }: { followBuild: boolean }) => (
+    <div data-testid="build-log" data-follow-build={String(followBuild)} />
+  ),
 }));
 
 beforeEach(() => {
@@ -46,6 +48,7 @@ beforeEach(() => {
     ...deployState.deploy,
     id: "dep-1",
     status: "live",
+    finishedAt: "2026-07-14T00:01:00Z",
   };
   deployState.loading = false;
   deployState.error = undefined;
@@ -60,6 +63,22 @@ describe("DeployDetailPage", () => {
     expect(screen.getByTestId("deploy-actions")).toBeInTheDocument();
     expect(screen.getByTestId("deploy-timeline")).toBeInTheDocument();
     expect(screen.getByTestId("build-log")).toBeInTheDocument();
+    expect(screen.getByTestId("build-log")).toHaveAttribute(
+      "data-follow-build",
+      "false",
+    );
+  });
+
+  it("switches the build pane to SSE only during build_in_progress", () => {
+    deployState.deploy.status = "build_in_progress";
+    deployState.deploy.finishedAt = null;
+
+    render(<DeployDetailPage serviceId="web" deployId="dep-1" />);
+
+    expect(screen.getByTestId("build-log")).toHaveAttribute(
+      "data-follow-build",
+      "true",
+    );
   });
 
   it("shows a not-found state for an unknown deploy id", () => {

@@ -8,6 +8,7 @@ const logState: UseDeployLogsResult = {
   loading: false,
   error: undefined,
   buildStoreUnavailable: false,
+  buildLiveStatus: "idle",
 };
 
 vi.mock("../../hooks/use-deploy-logs", () => ({
@@ -19,6 +20,7 @@ beforeEach(() => {
   logState.loading = false;
   logState.error = undefined;
   logState.buildStoreUnavailable = false;
+  logState.buildLiveStatus = "idle";
 });
 
 describe("DeployLogPanel", () => {
@@ -31,6 +33,7 @@ describe("DeployLogPanel", () => {
         startTime="2026-07-14T00:00:00Z"
         endTime={undefined}
         hasPreDeploy={false}
+        followBuild={false}
       />,
     );
 
@@ -38,5 +41,23 @@ describe("DeployLogPanel", () => {
       screen.getByText("Build logs need the log store."),
     ).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Search logs…")).toBeInTheDocument();
+  });
+
+  it("reports a refused live build stream instead of leaving an empty pane unexplained", () => {
+    logState.buildLiveStatus = "error";
+
+    render(
+      <DeployLogPanel
+        resource="web"
+        startTime="2026-07-14T00:00:00Z"
+        endTime={undefined}
+        hasPreDeploy={false}
+        followBuild
+      />,
+    );
+
+    expect(
+      screen.getByText("Live tail disconnected — reconnecting…"),
+    ).toBeInTheDocument();
   });
 });

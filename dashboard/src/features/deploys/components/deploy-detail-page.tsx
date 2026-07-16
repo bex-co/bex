@@ -91,6 +91,7 @@ export function DeployDetailPage({
         startTime={window ? window.start : (deploy.createdAt ?? undefined)}
         endTime={window ? window.end : (deploy.finishedAt ?? undefined)}
         hasPreDeploy={!!deploy.preDeployStatus}
+        followBuild={deploy.status === "build_in_progress"}
         range={range}
         onRangeChange={onRangeChange}
       />
