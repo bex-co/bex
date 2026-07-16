@@ -402,7 +402,12 @@ func TestRESTLogsSubscribeSSE(t *testing.T) {
 		"web-1": {"2026-07-05T00:00:01Z live one", "2026-07-05T00:00:02Z live two"},
 	}, sampleApp("web"), podFor("web", "web-1"))
 
-	rec := serveREST(svc, "GET", "/v1/logs/subscribe?resource=web")
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe?resource=web", nil)
+	req.Header.Set("Accept", "text/event-stream")
+	mux.ServeHTTP(rec, req)
 	if rec.Code != 200 || rec.Header().Get("Content-Type") != "text/event-stream" {
 		t.Fatalf("subscribe => 200 SSE, got %d %q", rec.Code, rec.Header().Get("Content-Type"))
 	}

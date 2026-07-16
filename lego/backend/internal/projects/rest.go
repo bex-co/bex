@@ -111,6 +111,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			writeErr(w, err)
 			return
 		}
+		after, limit := core.PageParams(r.URL.Query())
+		ps = core.StablePage(ps, after, limit, true, func(p ProjectView) string { return p.ID })
 		out := make([]renderProjectWithCursor, 0, len(ps))
 		for _, p := range ps {
 			rendered, err := s.renderProject(r.Context(), p)

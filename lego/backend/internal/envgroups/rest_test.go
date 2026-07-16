@@ -19,6 +19,7 @@ package envgroups
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -159,6 +160,23 @@ func TestREST_EnvGroupsPaginationWalkUsesRenderEnvelope(t *testing.T) {
 	}
 	if len(got) != 5 {
 		t.Fatalf("pagination walk returned %d groups, want 5: %v", len(got), got)
+	}
+}
+
+func TestREST_EnvGroupsAbsentLimitUsesRenderDefault(t *testing.T) {
+	svc := newService(newFakeStore())
+	for i := 0; i < core.DefaultPageLimit+1; i++ {
+		if _, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{Name: fmt.Sprintf("group-%02d", i)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	w := serveREST(svc, http.MethodGet, "/v1/env-groups", "")
+	var page []envGroupWithCursor
+	if err := json.Unmarshal(w.Body.Bytes(), &page); err != nil {
+		t.Fatal(err)
+	}
+	if len(page) != core.DefaultPageLimit {
+		t.Fatalf("absent limit returned %d groups, want Render default %d", len(page), core.DefaultPageLimit)
 	}
 }
 

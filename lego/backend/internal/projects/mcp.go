@@ -29,6 +29,8 @@ import (
 
 type listProjectsArgs struct {
 	OwnerID string `json:"ownerId,omitempty" jsonschema:"the workspace id (tea-…); omit to use the session's selected workspace, if any"`
+	Cursor  string `json:"cursor,omitempty" jsonschema:"resume after the id of the last project from the previous page"`
+	Limit   int    `json:"limit,omitempty" jsonschema:"page size, 1-100; omit cursor and limit together to preserve the complete-list compatibility response"`
 }
 
 type projectIDArgs struct {
@@ -62,17 +64,31 @@ type setProjectKeyValuesArgs struct {
 
 type projectsResult struct {
 	Projects []ProjectView `json:"projects"`
+	Cursor   string        `json:"cursor,omitempty"`
 }
 
 // RegisterMCP adds the project management tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_projects",
-		Description: "List all projects in a workspace. bex extension.",
+		Description: "List projects in a workspace. Optional cursor/limit select stable id-ordered pages; omitting both returns the complete list for compatibility. bex extension.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in listProjectsArgs) (*mcp.CallToolResult, projectsResult, error) {
 		ownerID := core.SelectedWorkspace(s.Selections, req, in.OwnerID)
 		ps, err := s.List(ctx, ownerID)
-		return nil, projectsResult{Projects: ps}, err
+		if err != nil {
+			return nil, projectsResult{}, err
+		}
+		requested := in.Cursor != "" || in.Limit != 0
+		limit := core.DefaultPageLimit
+		if in.Limit != 0 {
+			limit = core.PageLimit(in.Limit)
+		}
+		ps = core.StablePage(ps, in.Cursor, limit, requested, func(project ProjectView) string { return project.ID })
+		result := projectsResult{Projects: ps}
+		if requested && len(ps) > 0 {
+			result.Cursor = ps[len(ps)-1].ID
+		}
+		return nil, result, nil
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
