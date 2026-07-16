@@ -56,6 +56,17 @@ for dir in deploy/gitops/base deploy/gitops/overlays/*/ deploy/gitops/charts/*/;
   kubectl kustomize "$dir" >/dev/null || { echo "FAIL: $dir does not render" >&2; fail=1; }
 done
 
+# The production kernel requires CAP_SYS_ADMIN to create the meter's private
+# pin directory on Cilium's bpffs mount. Keep the complete set explicit: the
+# container drops ALL first and remains non-privileged, but omitting any one of
+# these capabilities leaves outbound accounting unready after rollout.
+echo "==> egress-meter has the production bpffs/BPF capability set"
+egress_caps="$(yq -N '.spec.template.spec.containers[] | select(.name == "egress-meter") | .securityContext.capabilities.add | sort | join(",")' lego/operator/config/egress-meter/daemonset.yaml)"
+if [ "$egress_caps" != "BPF,NET_ADMIN,PERFMON,SYS_ADMIN,SYS_RESOURCE" ]; then
+  echo "FAIL: egress-meter capabilities are '$egress_caps', want BPF,NET_ADMIN,PERFMON,SYS_ADMIN,SYS_RESOURCE" >&2
+  fail=1
+fi
+
 # Platform CNPG drain-safety guard (w1/m38): the auth/control-plane databases
 # must have a standby on another platform node. CNPG performs a planned
 # switchover before a drain evicts a primary, but only when a replica exists;
