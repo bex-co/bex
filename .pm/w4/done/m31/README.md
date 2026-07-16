@@ -1,17 +1,17 @@
 # w4 · m31 — Auth-gate hardening: revocation epoch + device-route rate limiting
 
-**Worker:** worker4 **Goal:** A CLI logout no longer stalls every in-flight cache-miss introspection process-wide, and the three credential-less device-flow routes stop being unmetered Hydra amplification — the two design-laden findings w4/m27's simplify pass deferred to `w4/023`, both re-verified live in code on 2026-07-15. **Status:** todo
+**Worker:** worker4 **Goal:** A CLI logout no longer stalls every in-flight cache-miss introspection process-wide, and the three credential-less device-flow routes stop being unmetered Hydra amplification — the two design-laden findings w4/m27's simplify pass deferred to `w4/023`, both re-verified live in code on 2026-07-15. **Status:** DONE 2026-07-16
 
 ## Tasks (in order)
 
-| id   | title                                                                                                     | est  | depends_on |
-| ---- | ---------------------------------------------------------------------------------------------------------- | ---- | ---------- |
-| t001 | Atomic revocation epoch: lock-free Hydra RTT, conditional cache `Put`, invariant-preserving               | 2h   | —          |
-| t002 | IP-keyed token bucket on the three public device-flow routes, OAuth-dialect 429s                          | 1.5h | —          |
-| t003 | Render parity                                                                                               | 20m  | t001, t002 |
-| t004 | Simplify                                                                                                    | 15m  | t003       |
-| t005 | Test coverage                                                                                               | 45m  | t003       |
-| t006 | Closeout                                                                                                    | 15m  | t005       |
+| id   | title                                                                                                     | est  | depends_on | status |
+| ---- | ---------------------------------------------------------------------------------------------------------- | ---- | ---------- | --- |
+| t001 | Atomic revocation epoch: lock-free Hydra RTT, conditional cache `Put`, invariant-preserving               | 2h   | —          | DONE |
+| t002 | IP-keyed token bucket on the three public device-flow routes, OAuth-dialect 429s                          | 1.5h | —          | DONE |
+| t003 | Render parity                                                                                               | 20m  | t001, t002 | DONE (CLI ceremony not live-verified — no cluster access) |
+| t004 | Simplify                                                                                                    | 15m  | t003       | DONE |
+| t005 | Test coverage                                                                                               | 45m  | t003       | DONE |
+| t006 | Closeout                                                                                                    | 15m  | t005       | DONE |
 
 ## Definition of done
 

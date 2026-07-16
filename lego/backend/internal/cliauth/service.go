@@ -26,6 +26,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -58,6 +59,11 @@ type Service struct {
 	// introspection cache so logout takes effect immediately, not after its
 	// TTL. Injected by the composition root (the cache is the auth gate's).
 	invalidate func(string, core.Identity)
+	// RateLimiter guards the three public device-flow routes (w4/m31/t002).
+	// nil (the New default) disables limiting — set post-construction from
+	// the composition root once BEX_DEVICE_RATE_LIMIT is known, the same
+	// convention Server.RateLimiter itself uses.
+	RateLimiter *DeviceRateLimiter
 }
 
 // New returns a Render CLI authentication adapter. Empty URLs leave the routes
@@ -75,10 +81,33 @@ func New(publicURL, adminURL string, apiKeys APIKeyRevoker, invalidate func(stri
 
 // RegisterPublic mounts only the protocol initiation/exchange routes. They are
 // public by design; every resource route and logout remain behind bex auth.
+// Each is wrapped by the IP-keyed device rate limiter (w4/m31/t002) — these
+// routes mount outside the auth gate, so nothing else meters them, and each
+// hit costs a full Hydra round trip before this fix.
 func (s *Service) RegisterPublic(mux *http.ServeMux) {
-	mux.HandleFunc("POST /v1/device-grant", s.deviceGrant)
-	mux.HandleFunc("POST /v1/device-token", s.deviceToken)
-	mux.HandleFunc("POST /v1/token/refresh/", s.refreshToken)
+	mux.HandleFunc("POST /v1/device-grant", s.rateLimited(s.deviceGrant))
+	mux.HandleFunc("POST /v1/device-token", s.rateLimited(s.deviceToken))
+	mux.HandleFunc("POST /v1/token/refresh/", s.rateLimited(s.refreshToken))
+}
+
+// rateLimited wraps handler with the device rate limiter check, never
+// touching Hydra before the bucket check. A shed request gets an
+// OAuth-dialect 429 with RFC 8628's slow_down code — the signal the official
+// CLI's device-token poller (and any other RFC 8628 client) already knows to
+// back off on — never Render's REST error shape (these are OAuth protocol
+// routes, w9/done/m39's one deliberate dialect exception). s.RateLimiter nil
+// (the default) disables limiting entirely — behavior identical to before.
+func (s *Service) rateLimited(handler http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if s.RateLimiter != nil {
+			if ok, wait := s.RateLimiter.allow(r); !ok {
+				w.Header().Set("Retry-After", strconv.Itoa(wait))
+				writeOAuthError(w, http.StatusTooManyRequests, "slow_down")
+				return
+			}
+		}
+		handler(w, r)
+	}
 }
 
 // RegisterREST contributes Render's authenticated POST /v1/oauth/revoke to the

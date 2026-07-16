@@ -94,6 +94,14 @@ type Server struct {
 	RegistryCreds *registrycreds.Service
 	Webhooks      *webhooks.Service
 	Jobs          *jobs.Service
+	// DeviceRateLimiter guards the official Render CLI's three
+	// credential-less device-flow routes (w4/m31/t002) — nil disables
+	// limiting. Set by the composition root once BEX_DEVICE_RATE_LIMIT is
+	// known, BEFORE calling Handler(), the same convention RateLimiter
+	// itself uses; Handler() wires it onto the cliauth.Service it
+	// constructs internally (which needs the auth gate's invalidate
+	// callback, so it can't itself be built any earlier than Handler()).
+	DeviceRateLimiter *cliauth.DeviceRateLimiter
 
 	CORSOrigin string // comma-separated allowed origins; empty => no CORS
 
@@ -653,6 +661,7 @@ func (s *Server) Handler() (http.Handler, error) {
 	// Its authenticated revoke route registers into the one REST router below;
 	// authGate.invalidate lets logout evict this pod's introspection cache.
 	cliAuth := cliauth.New(s.OAuthIssuer, s.HydraAdminURL, s.APIKeys, authGate.invalidate)
+	cliAuth.RateLimiter = s.DeviceRateLimiter
 	cliAuth.RegisterPublic(mux)
 	// The git push webhook authenticates by HMAC signature, not the OAuth gate,
 	// so it mounts directly (ahead of the /v1/ wildcard — a more specific pattern

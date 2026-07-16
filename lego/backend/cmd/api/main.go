@@ -51,6 +51,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/authz"
+	"github.com/bex-co/bex/lego/backend/internal/cliauth"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/environments"
@@ -486,6 +487,22 @@ func main() {
 	burstStr := envOr("BEX_RATE_BURST", "0")
 	burst, _ := strconv.Atoi(burstStr)
 	srv.RateLimiter = api.NewRateLimiter(rpm, burst) // nil when rpm=0 (disabled)
+
+	// Device-flow rate limiting (w4/m31/t002). BEX_DEVICE_RATE_LIMIT=0
+	// disables it. Set here, before Handler(), like every other cap: Handler()
+	// wires this onto the cliauth.Service it constructs internally (it can't
+	// be built any earlier, since it needs the auth gate's invalidate
+	// callback, which is also Handler()-scoped) — but the limiter itself only
+	// needs the env-derived rpm/burst, so there's no reason its configuration
+	// should wait until after Handler() the way its consumer's construction
+	// must.
+	deviceRPMStr := envOr("BEX_DEVICE_RATE_LIMIT", "30")
+	deviceRPM, err := strconv.ParseFloat(deviceRPMStr, 64)
+	if err != nil {
+		log.Fatalf("bex-api: bad BEX_DEVICE_RATE_LIMIT %q: %v", deviceRPMStr, err)
+	}
+	deviceBurst, _ := strconv.Atoi(envOr("BEX_DEVICE_RATE_BURST", "0"))
+	srv.DeviceRateLimiter = cliauth.NewDeviceRateLimiter(deviceRPM, deviceBurst)
 
 	maxBody, _ := strconv.ParseInt(envOr("BEX_MAX_BODY_BYTES", "2097152"), 10, 64)
 	srv.MaxBodyBytes = maxBody
