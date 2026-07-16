@@ -1,6 +1,6 @@
 # w4 · m23 — Audit & payload-parity chores round 2
 
-**Worker:** worker4 **Goal:** Close the four open w4 inbox notes in one grouped pass (the m20/m23-style chores pattern): audit-log `direction` honored, `suspenders` on the service object, the denied-read audit fan-out latency fix, and Render's Environment `ipAllowList` wire shape. **Status:** in progress — t001–t005 + t007 **done** 2026-07-15 (implemented by a parallel session working the inbox notes directly, merged; resolutions in each task file + `../done/013`–`017`); t006 (simplify) + t008 (closeout) remain
+**Worker:** worker4 **Goal:** Close the four open w4 inbox notes in one grouped pass (the m20/m23-style chores pattern): audit-log `direction` honored, `suspenders` on the service object, the denied-read audit fan-out latency fix, and Render's Environment `ipAllowList` wire shape. **Status:** done 2026-07-15 — t001–t005 + t007 implemented by a parallel session working the inbox notes directly (resolutions in each task file + `../013`–`017`); t006's simplify pass applied five cleanups over `cc2156b8` (shared `core.ParseDirection`, one `pageKeyset` helper, `auditsDenial` predicate, zero-I/O aggregate-denial workspace, no redundant PATCH `Get`) and filed the declined-depth findings as `w4/022.md`
 
 ## Tasks (in order)
 
@@ -11,9 +11,9 @@
 | t003 | Denied-read audit fan-out: decide detach-vs-cap for `AuthorizeApp`'s name-collision loop, implement, regression-test — **DONE** | 60m | —                      |
 | t004 | Environment `ipAllowList` REST wire shape: `{cidrBlock, description}` objects on standard POST/PATCH — **DONE**           | 30m | —                      |
 | t005 | Render parity — cross-surface consistency check for t001/t002/t004; compare Render behavior, flag drift — **DONE**        | 20m | t001, t002, t003, t004 |
-| t006 | Simplify — `/simplify` over the code this milestone changed                                                    | 20m | t005                   |
+| t006 | Simplify — `/simplify` over the code this milestone changed — **DONE**                                        | 20m | t005                   |
 | t007 | Test coverage — meaningful tests for each chore's behavior + failure modes — **DONE**                                     | 30m | t005                   |
-| t008 | Closeout — DoD met → move milestone to `done/`                                                                 | 10m | t007                   |
+| t008 | Closeout — DoD met → move milestone to `done/` — **DONE**                                                     | 10m | t007                   |
 
 ## Definition of done
 

@@ -122,11 +122,7 @@ func (s *PGStore) ListAuditEvents(ctx context.Context, workspaceID string, filte
 		args = append(args, filter.Until)
 		query += fmt.Sprintf(" AND at <= $%d", len(args))
 	}
-	page := pageNewestFirst
-	if filter.OldestFirst {
-		page = pageOldestFirst
-	}
-	query, args = page(query, args, "audit_events", "at", filter.Cursor, limit)
+	query, args = pageKeyset(query, args, "audit_events", "at", filter.Cursor, limit, filter.OldestFirst)
 
 	rows, err := s.Pool.Query(ctx, query, args...)
 	if err != nil {

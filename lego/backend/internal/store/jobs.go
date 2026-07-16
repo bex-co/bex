@@ -124,7 +124,7 @@ func (s *PGStore) ListJobs(ctx context.Context, serviceName, tenantID string, fi
 		query += fmt.Sprintf(" AND finished_at > $%d", len(args))
 	}
 
-	query, args = pageNewestFirst(query, args, "jobs", "created_at", filter.Cursor, clampPageLimit(filter.Limit))
+	query, args = pageKeyset(query, args, "jobs", "created_at", filter.Cursor, clampPageLimit(filter.Limit), false)
 
 	rows, err := s.Pool.Query(ctx, query, args...)
 	if err != nil {

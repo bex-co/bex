@@ -1059,27 +1059,18 @@ func clampPageLimit(n int) int {
 	return min(n, core.MaxPageLimit)
 }
 
-// pageNewestFirst appends the keyset-pagination tail shared by the store's
-// newest-first list queries (ListDeploys, ListAuditEvents): the cursor resume
-// clause, the (sortCol DESC, id DESC) total order — the id tiebreak makes the
-// order total, so paging can never skip or repeat two rows created in the
-// same instant — and the LIMIT (skipped when limit <= 0, the unbounded case).
-// The cursor resumes strictly older than the cursor row's own (sortCol, id);
-// an unknown cursor id matches no subquery row, so the comparison is NULL
-// (never true) — an invalid cursor yields an empty page, not a crash or a
-// leak of the unfiltered list.
-func pageNewestFirst(query string, args []any, table, sortCol, cursor string, limit int) (string, []any) {
-	return pageKeyset(query, args, table, sortCol, cursor, limit, false)
-}
-
-// pageOldestFirst is pageNewestFirst mirrored (ASC order, cursor resumes
-// strictly NEWER) — Render's direction=forward on audit logs (w4/013). A
-// cursor row's meaning depends on the direction it is paged under: the same
-// id resumes older rows backward and newer rows forward.
-func pageOldestFirst(query string, args []any, table, sortCol, cursor string, limit int) (string, []any) {
-	return pageKeyset(query, args, table, sortCol, cursor, limit, true)
-}
-
+// pageKeyset appends the keyset-pagination tail shared by the store's list
+// queries (ListDeploys, ListJobs, ListAuditEvents): the cursor resume clause,
+// the (sortCol, id) total order — the id tiebreak makes the order total, so
+// paging can never skip or repeat two rows created in the same instant — and
+// the LIMIT (skipped when limit <= 0, the unbounded case). oldestFirst=false
+// is newest-first (DESC, the default everywhere); oldestFirst=true is the
+// mirror (ASC) — Render's direction=forward on audit logs (w4/013). The
+// cursor resumes strictly PAST the cursor row's own (sortCol, id) in the
+// paging direction — the same cursor id resumes older rows newest-first and
+// newer rows oldest-first; an unknown cursor id matches no subquery row, so
+// the comparison is NULL (never true) — an invalid cursor yields an empty
+// page, not a crash or a leak of the unfiltered list.
 func pageKeyset(query string, args []any, table, sortCol, cursor string, limit int, oldestFirst bool) (string, []any) {
 	cmp, ord := "<", "DESC"
 	if oldestFirst {
@@ -1136,7 +1127,7 @@ func (s *PGStore) ListDeploys(ctx context.Context, appID string, filter DeployFi
 		args = append(args, filter.FinishedBefore)
 		query += fmt.Sprintf(" AND finished_at < $%d", len(args))
 	}
-	query, args = pageNewestFirst(query, args, "deploys", "created_at", filter.Cursor, clampPageLimit(filter.Limit))
+	query, args = pageKeyset(query, args, "deploys", "created_at", filter.Cursor, clampPageLimit(filter.Limit), false)
 	rows, err := s.Pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err

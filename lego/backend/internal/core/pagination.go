@@ -18,10 +18,32 @@ package core
 
 import (
 	"cmp"
+	"fmt"
 	"net/url"
 	"slices"
 	"strconv"
 )
+
+// Render's `direction` ordering enum, shared by every list endpoint that
+// honors it (logs and audit logs): backward is newest-first (the default),
+// forward starts with the oldest item in the window.
+const (
+	DirectionBackward = "backward"
+	DirectionForward  = "forward"
+)
+
+// ParseDirection validates Render's `direction` param — one vocabulary and
+// one 400 message for every surface, so a second direction-honoring list
+// can't drift from the first ("nothing accepted is ignored", w3/m8).
+// "" or DirectionBackward is newest-first (oldestFirst=false),
+// DirectionForward oldest-first; anything else is a named ErrBadRequest.
+func ParseDirection(direction string) (oldestFirst bool, err error) {
+	if direction != "" && direction != DirectionBackward && direction != DirectionForward {
+		return false, fmt.Errorf("%w: unknown direction %q (want %s|%s)",
+			ErrBadRequest, direction, DirectionBackward, DirectionForward)
+	}
+	return direction == DirectionForward, nil
+}
 
 // Render's cursor-pagination contract for list endpoints
 // (docs/render-artifacts/owners-api.md, pagination.md): the `limit` query
