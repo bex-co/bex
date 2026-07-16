@@ -119,6 +119,15 @@ spec:
             value: bex-registry-push
           - name: BEX_REGISTRY_PULL_SECRET
             value: bex-registry-pull
+          # Per-App pull credentials (w7/m36, docs/ADR022-tenant-isolation.md
+          # § Per-App pull credentials): the operator manages the Zot config
+          # (zot-config Secret) + htpasswd entries + per-App reg-pull-<name>
+          # Secrets in this namespace, superseding the shared PULL_SECRET above.
+          # The Zot chart (deploy/gitops/base/zot.yaml) mounts zot-config with
+          # mountConfig=false and depends on the operator minting it — leaving
+          # this unset strands the Zot pod on a missing-Secret mount.
+          - name: BEX_REGISTRY_NS
+            value: bex-registry
           # Namespace containing tenant App/Database/KeyValue CRs and their
           # credentials Secrets. The manager caches Secrets only in this namespace
           # so its namespace Role is sufficient; keep aligned with bex-api's
