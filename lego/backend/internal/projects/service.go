@@ -40,7 +40,10 @@ type ProjectStore interface {
 	ListProjects(ctx context.Context, tenantID string) ([]store.Project, error)
 	RenameProject(ctx context.Context, id, name string) error
 	DeleteProject(ctx context.Context, id string) error
-	SetProjectServices(ctx context.Context, projectID, tenantID string, serviceNames []string) error
+	// SetProjectServices returns the departing names that carried a non-null
+	// environment_id (w4/m32) — Service.SetServices' cue to also clear their
+	// App CR's environment-projected fields via EnvironmentIndex.
+	SetProjectServices(ctx context.Context, projectID, tenantID string, serviceNames []string) ([]string, error)
 	ListProjectServices(ctx context.Context, projectID string) ([]string, error)
 }
 
@@ -61,16 +64,42 @@ type KeyValueIndex interface {
 	SetProjectID(ctx context.Context, name, projectID string) error
 }
 
+// EnvironmentIndex is the narrow contract projects needs from the
+// environments feature so a service's project departure (SetServices) or a
+// project's deletion (Delete) never leaves a member App/Database/KeyValue CR
+// frozen with a stale environment inbound-IP layer (w4/m32). The store-row
+// side already clears correctly on its own — FK ON DELETE SET NULL/CASCADE
+// (SetServices' own environment_id NULL, DeleteProject's cascade) — but
+// nothing else re-syncs an already-existing k8s CR after a raw store write,
+// which is exactly what these two calls do. Optional: nil (environments
+// unwired) => the clear is skipped, matching every other optional
+// cross-feature index in this codebase. *environments.Service satisfies this
+// structurally.
+type EnvironmentIndex interface {
+	// ClearServiceEnvironmentLayer clears the environment-projected fields on
+	// every named App CR, independent of any specific environment row.
+	ClearServiceEnvironmentLayer(ctx context.Context, serviceNames []string) error
+	// ClearMembersForProject clears the environment-projected layer from every
+	// member of every environment under projectID — called BEFORE the project
+	// row is deleted, while the environment rows this needs to enumerate still
+	// exist. No separate tenantID: every store.Environment already carries its
+	// own TenantID (denormalized from its project at creation, always correct).
+	ClearMembersForProject(ctx context.Context, projectID string) error
+}
+
 // Service is the projects feature service. Store nil => ErrProjectsUnavailable.
-// Databases/KeyValues nil => the corresponding *Ids field resolves empty and
-// SetDatabases/SetKeyValues report ErrProjectsUnavailable — Store is the only
-// hard dependency (matching every other verb here).
+// Databases/KeyValues/Environments nil => the corresponding functionality
+// degrades (Databases/KeyValues: the *Ids field resolves empty and
+// SetDatabases/SetKeyValues report ErrProjectsUnavailable; Environments: the
+// w4/m32 member-clear fan-out is skipped) — Store is the only hard
+// dependency (matching every other verb here).
 type Service struct {
 	*core.Base
-	Store      ProjectStore
-	Databases  DatabaseIndex
-	KeyValues  KeyValueIndex
-	Selections core.WorkspaceSelectionReader
+	Store        ProjectStore
+	Databases    DatabaseIndex
+	KeyValues    KeyValueIndex
+	Environments EnvironmentIndex
+	Selections   core.WorkspaceSelectionReader
 }
 
 // ErrProjectsUnavailable is returned when the control-plane store is not wired
@@ -231,7 +260,14 @@ func (s *Service) Rename(ctx context.Context, id, name string) (ProjectView, err
 	return toView(p, sids, dids, kids), nil
 }
 
-// Delete removes a project (its services' project_id is set to NULL by the DB cascade).
+// Delete removes a project (its services' project_id is set to NULL by the DB
+// cascade, and — since the same FK behavior nulls apps.environment_id for
+// members of every child environment, which the cascade also deletes — the
+// store rows end up consistent on their own). What the DB cascade can't do is
+// touch the already-existing k8s CRs: before the row disappears, fan the
+// environment-projected layer clear out to every member of every child
+// environment (w4/m32), so a deleted project's protected/isolated
+// environments don't leave their Apps/Databases/KeyValues silently blocked.
 func (s *Service) Delete(ctx context.Context, id string) error {
 	if s.Store == nil {
 		return ErrProjectsUnavailable
@@ -243,11 +279,20 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if err := s.AuthorizeOn(ctx, core.RelCanCreate, core.WorkspaceObject(p.TenantID)); err != nil {
 		return err
 	}
+	if s.Environments != nil {
+		if err := s.Environments.ClearMembersForProject(ctx, p.ID); err != nil {
+			return err
+		}
+	}
 	return mapStoreErr(s.Store.DeleteProject(ctx, id))
 }
 
 // SetServices replaces the full list of services in a project.
-// serviceNames are App CR names (e.g. "whoami"), not store UUIDs.
+// serviceNames are App CR names (e.g. "whoami"), not store UUIDs. A service
+// leaving the project that also carried a stale environment membership has
+// its App CR's environment-projected layer cleared too (w4/m32) — the store
+// already NULLs apps.environment_id for it, but only a k8s Patch can clear
+// the CR spec fields that projection stamped.
 func (s *Service) SetServices(ctx context.Context, id string, serviceNames []string) (ProjectView, error) {
 	if s.Store == nil {
 		return ProjectView{}, ErrProjectsUnavailable
@@ -259,8 +304,14 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceNames []str
 	if err := s.AuthorizeOn(ctx, core.RelCanCreate, core.WorkspaceObject(p.TenantID)); err != nil {
 		return ProjectView{}, err
 	}
-	if err := s.Store.SetProjectServices(ctx, id, p.TenantID, serviceNames); err != nil {
+	departedWithEnv, err := s.Store.SetProjectServices(ctx, id, p.TenantID, serviceNames)
+	if err != nil {
 		return ProjectView{}, err
+	}
+	if len(departedWithEnv) > 0 && s.Environments != nil {
+		if err := s.Environments.ClearServiceEnvironmentLayer(ctx, departedWithEnv); err != nil {
+			return ProjectView{}, err
+		}
 	}
 	sids, err := s.Store.ListProjectServices(ctx, id)
 	if err != nil {

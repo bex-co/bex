@@ -252,3 +252,216 @@ func TestSetACL_EmptyListProjectsDenyAll(t *testing.T) {
 		t.Errorf("empty rule set should project the deny-all placeholder, got %v", got)
 	}
 }
+
+// TestClearServiceEnvironmentLayer_ClearsLabelAndAllowList is w4/m32/t001's
+// CR-level proof: projects.Service calls this when a departing service
+// carried a stale environment_id, and the App CR — not just a DB row — must
+// actually lose the projected fields.
+func TestClearServiceEnvironmentLayer_ClearsLabelAndAllowList(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	svc, cl := newServiceWithClient(st, sampleApp("web"), sampleApp("worker"))
+
+	e, err := svc.Create(ctxAs("user-a"), "prj-1", "staging")
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if _, err := svc.SetACL(ctxAs("user-a"), e.ID, ProtectedStatusUnprotected, true, []core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/8"}}); err != nil {
+		t.Fatalf("SetACL: %v", err)
+	}
+	if _, err := svc.SetServices(ctxAs("user-a"), e.ID, []string{"web"}); err != nil {
+		t.Fatalf("SetServices: %v", err)
+	}
+	if got := getApp(t, cl, "web"); got.Labels[core.LabelNetworkIsolation] != e.ID || len(got.Spec.EnvironmentIPAllowList) != 1 {
+		t.Fatalf("precondition: web should carry the environment layer, got labels=%v spec=%v", got.Labels, got.Spec.EnvironmentIPAllowList)
+	}
+
+	if err := svc.clearServiceEnvironmentLayer(ctxAs("user-a"), []string{"web"}); err != nil {
+		t.Fatalf("ClearServiceEnvironmentLayer: %v", err)
+	}
+	got := getApp(t, cl, "web")
+	if _, ok := got.Labels[core.LabelNetworkIsolation]; ok {
+		t.Errorf("web's core.LabelNetworkIsolation should be cleared, got %v", got.Labels)
+	}
+	if got.Spec.EnvironmentIPAllowList != nil {
+		t.Errorf("web's spec.EnvironmentIPAllowList should be cleared, got %v", got.Spec.EnvironmentIPAllowList)
+	}
+	if got := getApp(t, cl, "worker").Labels[core.LabelNetworkIsolation]; got != "" {
+		t.Errorf("worker (never named) must not be touched")
+	}
+	// The environment row itself is untouched — this clears a departed
+	// service's CR, not the environment.
+	if _, err := svc.Get(ctxAs("user-a"), e.ID); err != nil {
+		t.Errorf("environment row should still exist: %v", err)
+	}
+}
+
+// TestClearMembersForProject_ClearsEveryChildEnvironmentsMembers is
+// w4/m32/t002's CR-level proof: projects.Service.Delete calls this before
+// the project row (and its cascaded environment rows) disappear, and every
+// member CR kind — App and Database — must lose the projected layer.
+func TestClearMembersForProject_ClearsEveryChildEnvironmentsMembers(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	svc, cl := newServiceWithClient(st, sampleApp("web"))
+	dbs := newDatabaseIndex()
+	dbs.add(postgres.PostgresView{ID: "indb", OwnerID: "tea-a", EnvironmentID: ""})
+	svc.Databases = dbs
+	kvs := newKeyValueIndex()
+	kvs.add(keyvalue.KeyValueView{ID: "inkv", OwnerID: "tea-a", EnvironmentID: ""})
+	svc.KeyValues = kvs
+
+	e, err := svc.Create(ctxAs("user-a"), "prj-1", "staging")
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if _, err := svc.SetACL(ctxAs("user-a"), e.ID, ProtectedStatusUnprotected, false, []core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/8"}}); err != nil {
+		t.Fatalf("SetACL: %v", err)
+	}
+	if _, err := svc.SetServices(ctxAs("user-a"), e.ID, []string{"web"}); err != nil {
+		t.Fatalf("SetServices: %v", err)
+	}
+	dbs.dbs["indb"] = postgres.PostgresView{ID: "indb", OwnerID: "tea-a", EnvironmentID: e.ID}
+	if err := dbs.SetEnvironmentIPAllowList(context.Background(), "indb", []string{"10.0.0.0/8"}); err != nil {
+		t.Fatalf("seed db layer: %v", err)
+	}
+	kvs.kvs["inkv"] = keyvalue.KeyValueView{ID: "inkv", OwnerID: "tea-a", EnvironmentID: e.ID}
+	if err := kvs.SetEnvironmentIPAllowList(context.Background(), "inkv", []string{"10.0.0.0/8"}); err != nil {
+		t.Fatalf("seed kv layer: %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.EnvironmentIPAllowList; len(got) != 1 {
+		t.Fatalf("precondition: web should carry the environment layer, got %v", got)
+	}
+
+	if err := svc.clearMembersForProject(ctxAs("user-a"), "prj-1"); err != nil {
+		t.Fatalf("ClearMembersForProject: %v", err)
+	}
+	if got := getApp(t, cl, "web"); got.Spec.EnvironmentIPAllowList != nil {
+		t.Errorf("web's spec.EnvironmentIPAllowList should be cleared, got %v", got.Spec.EnvironmentIPAllowList)
+	} else if _, ok := got.Labels[core.LabelNetworkIsolation]; ok {
+		t.Errorf("web's core.LabelNetworkIsolation should be cleared, got %v", got.Labels)
+	}
+	if got := dbs.envLayers["indb"]; got != nil {
+		t.Errorf("indb's projected environment layer should be cleared, got %v", got)
+	}
+	if got := kvs.envLayers["inkv"]; got != nil {
+		t.Errorf("inkv's projected environment layer should be cleared, got %v", got)
+	}
+	// The environment row itself is untouched — projects.Service.Delete calls
+	// this BEFORE deleting the project row, which is what actually removes it.
+	if _, err := svc.Get(ctxAs("user-a"), e.ID); err != nil {
+		t.Errorf("environment row should still exist: %v", err)
+	}
+}
+
+// TestBackfillAppliesFanOutForPreM28Environments is w4/m32/t003's core case:
+// an environment whose non-empty rules predate w4/m28 — its ACL and
+// membership exist at the store level (set directly here, bypassing
+// SetACL/SetServices' own fan-out, to simulate history) but its member App
+// CR was never stamped, since nothing ever triggered the write-time fan-out
+// for it. Backfill must apply it, and a second run must be a no-op.
+func TestBackfillAppliesFanOutForPreM28Environments(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	svc, cl := newServiceWithClient(st, sampleApp("web"))
+
+	e, err := svc.Create(ctxAs("user-a"), "prj-1", "staging")
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	st.mu.Lock()
+	env := st.envs[e.ID]
+	env.NetworkIsolationEnabled = true
+	env.IPAllowList = []core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/8"}}
+	st.envs[e.ID] = env
+	if st.assign[e.ID] == nil {
+		st.assign[e.ID] = map[string]bool{}
+	}
+	st.assign[e.ID]["web"] = true
+	st.mu.Unlock()
+
+	if got := getApp(t, cl, "web"); got.Labels[core.LabelNetworkIsolation] != "" || len(got.Spec.EnvironmentIPAllowList) != 0 {
+		t.Fatalf("precondition: web should carry no environment layer yet, got labels=%v spec=%v", got.Labels, got.Spec.EnvironmentIPAllowList)
+	}
+
+	report, err := svc.backfill(ctxAs("user-a"))
+	if err != nil {
+		t.Fatalf("Backfill: %v", err)
+	}
+	if report.EnvironmentsSwept != 1 {
+		t.Errorf("EnvironmentsSwept = %d, want 1", report.EnvironmentsSwept)
+	}
+	got := getApp(t, cl, "web")
+	if got.Labels[core.LabelNetworkIsolation] != e.ID {
+		t.Errorf("after Backfill, LabelNetworkIsolation = %q, want %q", got.Labels[core.LabelNetworkIsolation], e.ID)
+	}
+	if len(got.Spec.EnvironmentIPAllowList) != 1 || got.Spec.EnvironmentIPAllowList[0] != "10.0.0.0/8" {
+		t.Errorf("after Backfill, EnvironmentIPAllowList = %v, want [10.0.0.0/8]", got.Spec.EnvironmentIPAllowList)
+	}
+
+	// Idempotent: a second run touches nothing further.
+	report2, err := svc.backfill(ctxAs("user-a"))
+	if err != nil {
+		t.Fatalf("Backfill (2nd run): %v", err)
+	}
+	if report2.EnvironmentsSwept != 1 {
+		t.Errorf("2nd run EnvironmentsSwept = %d, want 1 (still swept, a no-op write)", report2.EnvironmentsSwept)
+	}
+	got2 := getApp(t, cl, "web")
+	if got2.Labels[core.LabelNetworkIsolation] != e.ID || len(got2.Spec.EnvironmentIPAllowList) != 1 {
+		t.Errorf("state changed on 2nd run: labels=%v spec=%v", got2.Labels, got2.Spec.EnvironmentIPAllowList)
+	}
+}
+
+// TestBackfillRepairsDriftedEnvironmentIDsAndClearsTheirCR is w4/m32/t001's
+// residue-repair case: the store reports app names whose environment_id was
+// just NULLed by RepairDriftedEnvironmentIDs, and Backfill must clear their
+// App CR's environment-projected fields too — the store can't reach
+// Kubernetes itself.
+func TestBackfillRepairsDriftedEnvironmentIDsAndClearsTheirCR(t *testing.T) {
+	st := newFakeStore()
+	svc, cl := newServiceWithClient(st, sampleApp("web"))
+	a := getApp(t, cl, "web")
+	if a.Labels == nil {
+		a.Labels = map[string]string{}
+	}
+	a.Labels[core.LabelNetworkIsolation] = "env-stale"
+	a.Spec.EnvironmentIPAllowList = []string{"10.0.0.0/8"}
+	if err := cl.Update(context.Background(), a); err != nil {
+		t.Fatal(err)
+	}
+	st.driftedReturn = []string{"web"}
+
+	report, err := svc.backfill(ctxAs("user-a"))
+	if err != nil {
+		t.Fatalf("Backfill: %v", err)
+	}
+	if report.DriftedAppsRepaired != 1 {
+		t.Errorf("DriftedAppsRepaired = %d, want 1", report.DriftedAppsRepaired)
+	}
+	got := getApp(t, cl, "web")
+	if _, ok := got.Labels[core.LabelNetworkIsolation]; ok {
+		t.Errorf("stale core.LabelNetworkIsolation should be cleared, got %v", got.Labels)
+	}
+	if got.Spec.EnvironmentIPAllowList != nil {
+		t.Errorf("stale spec.EnvironmentIPAllowList should be cleared, got %v", got.Spec.EnvironmentIPAllowList)
+	}
+}
+
+// TestClearMembersForProjectClearsEnvGroupMembership is a regression test for
+// a real bug the w4/m32 /simplify pass found and fixed: the first-cut
+// clearMembersForProject was written independently of Delete and, unlike
+// Delete (TestDeleteEnvironmentClearsEnvGroupMembership, envgroups_test.go),
+// never cleared env group membership — silently leaving a group pointing at
+// an environment about to be cascade-deleted. Both now share
+// clearEnvironmentMembers, so this must hold for the project-cascade path
+// exactly as it already does for direct environment deletion.
+func TestClearMembersForProjectClearsEnvGroupMembership(t *testing.T) {
+	svc, idx, e := envGroupFixture(t)
+	if err := svc.clearMembersForProject(ctxAs("user-a"), e.ProjectID); err != nil {
+		t.Fatalf("clearMembersForProject: %v", err)
+	}
+	if idx.groups[1].EnvironmentID != "" {
+		t.Fatalf("clearMembersForProject left dangling membership %q", idx.groups[1].EnvironmentID)
+	}
+}

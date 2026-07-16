@@ -36,12 +36,25 @@ import (
 type fakeProjectStore struct {
 	projects map[string]store.Project
 	services map[string][]string
+	// envAttached simulates apps.environment_id IS NOT NULL for a service name
+	// — w4/m32's SetProjectServices tests use withEnv to seed it, then assert
+	// the departure return value/clearing behavior against it.
+	envAttached map[string]bool
 }
 
 func newFakeProjectStore(projects ...store.Project) *fakeProjectStore {
-	f := &fakeProjectStore{projects: map[string]store.Project{}, services: map[string][]string{}}
+	f := &fakeProjectStore{projects: map[string]store.Project{}, services: map[string][]string{}, envAttached: map[string]bool{}}
 	for _, p := range projects {
 		f.projects[p.ID] = p
+	}
+	return f
+}
+
+// withEnv marks names as carrying a (simulated) non-null environment_id —
+// see envAttached.
+func (f *fakeProjectStore) withEnv(names ...string) *fakeProjectStore {
+	for _, n := range names {
+		f.envAttached[n] = true
 	}
 	return f
 }
@@ -89,9 +102,20 @@ func (f *fakeProjectStore) DeleteProject(_ context.Context, projectID string) er
 	return nil
 }
 
-func (f *fakeProjectStore) SetProjectServices(_ context.Context, projectID, _ string, serviceNames []string) error {
+func (f *fakeProjectStore) SetProjectServices(_ context.Context, projectID, _ string, serviceNames []string) ([]string, error) {
+	want := make(map[string]bool, len(serviceNames))
+	for _, n := range serviceNames {
+		want[n] = true
+	}
+	var departedWithEnv []string
+	for _, n := range f.services[projectID] {
+		if !want[n] && f.envAttached[n] {
+			departedWithEnv = append(departedWithEnv, n)
+			delete(f.envAttached, n) // simulates environment_id NULLed in the same transaction
+		}
+	}
 	f.services[projectID] = append([]string(nil), serviceNames...)
-	return nil
+	return departedWithEnv, nil
 }
 
 func (f *fakeProjectStore) ListProjectServices(_ context.Context, projectID string) ([]string, error) {
@@ -352,4 +376,112 @@ func TestProjectListPaginationAcrossExtensionSurfaces(t *testing.T) {
 			t.Fatalf("unpaged MCP list = %d with cursor %q, want %d with no cursor", len(all.Projects), all.Cursor, len(seeded))
 		}
 	})
+}
+
+// recordingEnvironmentIndex is a call-recording EnvironmentIndex double for
+// w4/m32's cross-feature member-clear fan-out — projects_test.go can't import
+// environments' own test fixtures (different package), so this stands in for
+// *environments.Service structurally.
+type recordingEnvironmentIndex struct {
+	clearedServices []string
+	clearedProjects []string
+	err             error
+}
+
+func (r *recordingEnvironmentIndex) ClearServiceEnvironmentLayer(_ context.Context, serviceNames []string) error {
+	r.clearedServices = append(r.clearedServices, serviceNames...)
+	return r.err
+}
+
+func (r *recordingEnvironmentIndex) ClearMembersForProject(_ context.Context, projectID string) error {
+	r.clearedProjects = append(r.clearedProjects, projectID)
+	return r.err
+}
+
+// TestSetServicesClearsEnvironmentLayerForDeparting is w4/m32/t001: a service
+// leaving its project that also carried a (simulated) non-null
+// environment_id must have its App CR's environment-projected layer cleared
+// via EnvironmentIndex — the store already NULLs the column, but only this
+// fan-out can touch the k8s CR.
+func TestSetServicesClearsEnvironmentLayerForDeparting(t *testing.T) {
+	st := newFakeProjectStore(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"}).withEnv("web")
+	st.services["prj-1"] = []string{"web", "worker"}
+	envIdx := &recordingEnvironmentIndex{}
+	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st, Environments: envIdx}
+
+	if _, err := svc.SetServices(ctxAs("user-a"), "prj-1", []string{"worker"}); err != nil {
+		t.Fatalf("SetServices: %v", err)
+	}
+	if len(envIdx.clearedServices) != 1 || envIdx.clearedServices[0] != "web" {
+		t.Errorf("cleared services = %v, want [web] (worker stayed, web departed carrying environment_id)", envIdx.clearedServices)
+	}
+}
+
+// TestSetServicesSkipsClearForDeparturesWithNoEnvironment: a departing
+// service that never carried an environment_id triggers no EnvironmentIndex
+// call at all — nothing to clear, and the optional fan-out should not fire
+// on every ordinary membership change.
+func TestSetServicesSkipsClearForDeparturesWithNoEnvironment(t *testing.T) {
+	st := newFakeProjectStore(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	st.services["prj-1"] = []string{"web", "worker"}
+	envIdx := &recordingEnvironmentIndex{}
+	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st, Environments: envIdx}
+
+	if _, err := svc.SetServices(ctxAs("user-a"), "prj-1", []string{"worker"}); err != nil {
+		t.Fatalf("SetServices: %v", err)
+	}
+	if len(envIdx.clearedServices) != 0 {
+		t.Errorf("cleared services = %v, want none", envIdx.clearedServices)
+	}
+}
+
+// TestSetServicesToleratesUnwiredEnvironments: Environments nil (unwired)
+// degrades the same way every other optional cross-feature index in this
+// codebase does — SetServices still succeeds, the clear is just skipped.
+func TestSetServicesToleratesUnwiredEnvironments(t *testing.T) {
+	st := newFakeProjectStore(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"}).withEnv("web")
+	st.services["prj-1"] = []string{"web", "worker"}
+	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st}
+
+	if _, err := svc.SetServices(ctxAs("user-a"), "prj-1", []string{"worker"}); err != nil {
+		t.Fatalf("SetServices with Environments unwired: %v", err)
+	}
+}
+
+// TestDeleteClearsEnvironmentMembersBeforeRemovingProject is w4/m32/t002:
+// deleting a project fans the environment-layer clear to every child
+// environment's members via EnvironmentIndex before the project row (and its
+// cascaded environment rows) disappear.
+func TestDeleteClearsEnvironmentMembersBeforeRemovingProject(t *testing.T) {
+	st := newFakeProjectStore(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	envIdx := &recordingEnvironmentIndex{}
+	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st, Environments: envIdx}
+
+	if err := svc.Delete(ctxAs("user-a"), "prj-1"); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if len(envIdx.clearedProjects) != 1 || envIdx.clearedProjects[0] != "prj-1" {
+		t.Errorf("cleared projects = %v, want one entry for prj-1", envIdx.clearedProjects)
+	}
+	if _, err := st.GetProject(ctxAs("user-a"), "prj-1"); !errors.Is(err, store.ErrNotFound) {
+		t.Errorf("project still exists after Delete: %v", err)
+	}
+}
+
+// TestDeleteAbortsBeforeRemovingProjectIfEnvironmentClearFails: an error
+// clearing member CRs must stop the delete — never remove the project row
+// (and cascade its environments away) while member CRs might still carry
+// stale enforcement, since there would be no environment row left to re-derive
+// the correct state from.
+func TestDeleteAbortsBeforeRemovingProjectIfEnvironmentClearFails(t *testing.T) {
+	st := newFakeProjectStore(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	envIdx := &recordingEnvironmentIndex{err: errors.New("clear failed")}
+	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st, Environments: envIdx}
+
+	if err := svc.Delete(ctxAs("user-a"), "prj-1"); err == nil {
+		t.Fatal("Delete succeeded despite the environment-clear failure")
+	}
+	if _, err := st.GetProject(ctxAs("user-a"), "prj-1"); err != nil {
+		t.Errorf("project should still exist after the aborted delete: %v", err)
+	}
 }

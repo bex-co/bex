@@ -51,12 +51,17 @@ type EnvironmentStore interface {
 	CreateEnvironment(ctx context.Context, projectID, tenantID, name string) (store.Environment, error)
 	GetEnvironment(ctx context.Context, id string) (store.Environment, error)
 	ListEnvironments(ctx context.Context, projectID string) ([]store.Environment, error)
+	// ListAllEnvironments backs the w4/m32/t003 backfill sweep (Backfill) —
+	// every environment, not scoped to one project.
+	ListAllEnvironments(ctx context.Context) ([]store.Environment, error)
 	RenameEnvironment(ctx context.Context, id, name string) error
 	DeleteEnvironment(ctx context.Context, id string) error
 	SetEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceNames []string) error
 	ListEnvironmentServices(ctx context.Context, environmentID, projectID string) ([]string, error)
 	// SetEnvironmentACL replaces the protected-environment ACL triple (w6/m19).
 	SetEnvironmentACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) error
+	// RepairDriftedEnvironmentIDs backs Backfill's t001-residue repair phase.
+	RepairDriftedEnvironmentIDs(ctx context.Context) ([]string, error)
 }
 
 // DatabaseIndex is the narrow contract environments needs from managed
@@ -487,6 +492,135 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 	return s.applyACL(ctx, toView(e, nil, nil, nil, nil), status, isolated, allowList)
 }
 
+// ProjectMemberClearer adapts Service to the projects feature's
+// EnvironmentIndex seam (satisfied structurally — this package never imports
+// projects), mirroring apps.WorkspacePurger's shape: an internal system
+// operation invoked after the calling verb (projects.Service.SetServices/
+// Delete) has already authorized, with no separate caller identity of its
+// own to check against — never call s.Authorize/AuthorizeOn in these methods
+// (w4/m32).
+type ProjectMemberClearer struct{ *Service }
+
+// ClearServiceEnvironmentLayer clears the environment-projected fields
+// (core.LabelNetworkIsolation, spec.environmentIPAllowList) on every named
+// App CR, with no environment row involved — the seam projects.Service uses
+// when a service leaving its project also carries a stale
+// apps.environment_id: the store NULLs the column, but nothing else re-syncs
+// the already-existing k8s CR after that raw write, and environments' own
+// verbs never see the departure (the app already dropped out of
+// ListEnvironmentServices by the time this runs).
+func (c *ProjectMemberClearer) ClearServiceEnvironmentLayer(ctx context.Context, serviceNames []string) error {
+	return c.clearServiceEnvironmentLayer(ctx, serviceNames)
+}
+
+func (s *Service) clearServiceEnvironmentLayer(ctx context.Context, serviceNames []string) error {
+	if err := s.applyAppEnvironmentLabels(ctx, serviceNames, "", false); err != nil {
+		return err
+	}
+	return s.applyAppAllowLists(ctx, serviceNames, nil)
+}
+
+// ClearMembersForProject clears the environment-projected layer from every
+// member (App, Database, KeyValue, environment group) of every environment
+// under projectID — the seam projects.Service.Delete uses BEFORE the project
+// row is deleted, while the environment rows this needs to enumerate still
+// exist. The DB cascade (environments.project_id ON DELETE CASCADE, then
+// apps.environment_id ON DELETE SET NULL transitively) already leaves the
+// store rows consistent on its own; only the k8s CRs need this explicit
+// fan-out.
+func (c *ProjectMemberClearer) ClearMembersForProject(ctx context.Context, projectID string) error {
+	return c.clearMembersForProject(ctx, projectID)
+}
+
+func (s *Service) clearMembersForProject(ctx context.Context, projectID string) error {
+	if s.Store == nil {
+		return nil
+	}
+	envs, err := s.Store.ListEnvironments(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	for _, e := range envs {
+		if err := s.clearEnvironmentMembers(ctx, e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// BackfillReport summarizes one Backfill sweep — an operational count, not an
+// API-stable shape.
+type BackfillReport struct {
+	// DriftedAppsRepaired is how many apps had a pre-w4/m32/t001 stale
+	// environment_id NULLed (and their App CR cleared) by this run.
+	DriftedAppsRepaired int
+	// EnvironmentsSwept is how many environments had their member fan-out
+	// re-applied — every environment, not just ones this run changed
+	// anything for (the per-resource patches are equality-gated, so a
+	// steady-state environment costs a read pass and no writes).
+	EnvironmentsSwept int
+}
+
+// Backfiller adapts Service to the w4/m32/t003 one-shot admin sweep (the
+// `api environments-backfill` subcommand), mirroring ProjectMemberClearer's
+// shape: an internal system operation with no request-time caller identity
+// — never call s.Authorize/AuthorizeOn in Run or backfill.
+type Backfiller struct{ *Service }
+
+// Run executes one Backfill sweep. See backfill's doc comment for what it does.
+func (b *Backfiller) Run(ctx context.Context) (BackfillReport, error) {
+	return b.backfill(ctx)
+}
+
+// backfill is the w4/m32/t003 one-shot idempotent repair: it NULLs any
+// apps.environment_id left drifted by pre-w4/m32/t001 SetProjectServices
+// calls (RepairDriftedEnvironmentIDs) and clears those apps' CRs, then
+// re-applies the standard member fan-out (isolation label + inbound-IP
+// layer) to every environment's CURRENT members — the fix for environments
+// whose non-empty rules predate w4/m28 and so never triggered the fan-out at
+// write time, their members carrying no projected layer at all until an
+// unrelated write happened to touch them. Every per-App/Database/KeyValue
+// patch this reaches is already equality-gated
+// (setAppEnvironmentLabel/setAppEnvironmentAllowList and the Database/
+// KeyValue SetEnvironmentIPAllowList callers all skip a no-op patch), so a
+// second run finds nothing left to do — safe to re-run, not just a one-time
+// migration step. Intended to run once per cluster after this milestone
+// deploys, mirroring scripts/ipallowlist-normalize.sh's one-shot-sweep shape.
+func (s *Service) backfill(ctx context.Context) (BackfillReport, error) {
+	if s.Store == nil {
+		return BackfillReport{}, ErrEnvironmentsUnavailable
+	}
+	var report BackfillReport
+	repaired, err := s.Store.RepairDriftedEnvironmentIDs(ctx)
+	if err != nil {
+		return BackfillReport{}, err
+	}
+	if len(repaired) > 0 {
+		if err := s.clearServiceEnvironmentLayer(ctx, repaired); err != nil {
+			return BackfillReport{}, err
+		}
+		report.DriftedAppsRepaired = len(repaired)
+	}
+	envs, err := s.Store.ListAllEnvironments(ctx)
+	if err != nil {
+		return BackfillReport{}, err
+	}
+	for _, e := range envs {
+		names, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
+		if err != nil {
+			return BackfillReport{}, err
+		}
+		if err := s.applyAppEnvironmentLabels(ctx, names, e.ID, e.NetworkIsolationEnabled); err != nil {
+			return BackfillReport{}, err
+		}
+		if err := s.propagateIPAllowList(ctx, e.TenantID, e.ID, names, core.EnvironmentLayerCIDRs(e.IPAllowList)); err != nil {
+			return BackfillReport{}, err
+		}
+		report.EnvironmentsSwept++
+	}
+	return report, nil
+}
+
 // Delete removes an environment (its services' environment_id is set to NULL
 // by the DB cascade; their project_id is untouched — deleting an environment
 // doesn't remove a service from the project it also belongs to). Member
@@ -507,6 +641,20 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
+	if err := s.clearEnvironmentMembers(ctx, e); err != nil {
+		return err
+	}
+	return mapStoreErr(s.Store.DeleteEnvironment(ctx, e.ID))
+}
+
+// clearEnvironmentMembers clears the environment-projected layer — the
+// isolation label, the inbound-IP layer (Apps/Databases/KeyValues), and env
+// group membership — from every current member of e, without touching the
+// environment row itself. Shared by Delete (the row disappears right after)
+// and clearMembersForProject (w4/m32; the row survives here — only
+// projects.Service.Delete's cascade removes it, after every member across
+// every child environment has already been cleared).
+func (s *Service) clearEnvironmentMembers(ctx context.Context, e store.Environment) error {
 	names, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
 	if err != nil {
 		return err
@@ -514,26 +662,27 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if err := s.applyAppEnvironmentLabels(ctx, names, "", false); err != nil {
 		return err
 	}
-	// Clear the inbound-IP layer on every member (w4/m28) — a deleted
-	// environment must not leave its rules enforced on orphaned members.
+	// Clear the inbound-IP layer on every member (w4/m28) — an environment
+	// leaving service must not leave its rules enforced on orphaned members.
 	if err := s.propagateIPAllowList(ctx, e.TenantID, e.ID, names, nil); err != nil {
 		return err
 	}
-	if s.EnvGroups != nil {
-		workspaceCtx := core.WithWorkspace(ctx, e.TenantID)
-		groups, err := s.EnvGroups.ListEnvironmentMemberships(workspaceCtx, e.TenantID)
-		if err != nil {
-			return err
-		}
-		for _, g := range groups {
-			if g.EnvironmentID == e.ID {
-				if err := s.EnvGroups.SetEnvironmentID(workspaceCtx, g.ID, ""); err != nil {
-					return err
-				}
+	if s.EnvGroups == nil {
+		return nil
+	}
+	workspaceCtx := core.WithWorkspace(ctx, e.TenantID)
+	groups, err := s.EnvGroups.ListEnvironmentMemberships(workspaceCtx, e.TenantID)
+	if err != nil {
+		return err
+	}
+	for _, g := range groups {
+		if g.EnvironmentID == e.ID {
+			if err := s.EnvGroups.SetEnvironmentID(workspaceCtx, g.ID, ""); err != nil {
+				return err
 			}
 		}
 	}
-	return mapStoreErr(s.Store.DeleteEnvironment(ctx, e.ID))
+	return nil
 }
 
 // SetServices replaces the full list of services in an environment.

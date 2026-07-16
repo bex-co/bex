@@ -1,18 +1,18 @@
 # w4 · m32 — Environment IP-layer lifecycle correctness (cross-feature edges + backfill)
 
-**Worker:** worker4 **Goal:** the environment inbound-IP layer m28 made enforcement-bearing survives ordinary project-membership lifecycle: pulling a service out of its project clears its layer (no frozen deny-all), deleting a project un-stamps every member, and environments that predate m28 actually enforce their existing rules on member Apps. **Status:** todo
+**Worker:** worker4 **Goal:** the environment inbound-IP layer m28 made enforcement-bearing survives ordinary project-membership lifecycle: pulling a service out of its project clears its layer (no frozen deny-all), deleting a project un-stamps every member, and environments that predate m28 actually enforce their existing rules on member Apps. **Status:** DONE 2026-07-16
 
 ## Tasks (in order)
 
-| id   | title                                                                                                                | est | depends_on |
-| ---- | -------------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | `SetProjectServices` clears `environment_id` for departing services + one-shot sweep for already-drifted rows         | 45m | —          |
-| t002 | `projects.Delete` fans the environment-layer clear to member Apps/DBs/KVs of cascaded environments                    | 45m | t001       |
-| t003 | Idempotent backfill sweep: re-run the fan-out for every environment; drop byte-identical datastore clobber residue    | 60m | t002       |
-| t004 | Render parity — lifecycle semantics match Render's documented environment-rule behavior across surfaces               | 30m | t003       |
-| t005 | Simplify — `/simplify` over the changed code                                                                          | 20m | t004       |
-| t006 | Test coverage — lifecycle-edge and idempotency tests asserting real enforcement outcomes                              | 45m | t004       |
-| t007 | Closeout — verify DoD, sync status, move to done                                                                      | 15m | t006       |
+| id   | title                                                                                                                | est | depends_on | status |
+| ---- | -------------------------------------------------------------------------------------------------------------------- | --- | ---------- | --- |
+| t001 | `SetProjectServices` clears `environment_id` for departing services + one-shot sweep for already-drifted rows         | 45m | —          | DONE |
+| t002 | `projects.Delete` fans the environment-layer clear to member Apps/DBs/KVs of cascaded environments                    | 45m | t001       | DONE |
+| t003 | Idempotent backfill sweep: re-run the fan-out for every environment; drop byte-identical datastore clobber residue    | 60m | t002       | DONE (residue-drop declined, see t003) |
+| t004 | Render parity — lifecycle semantics match Render's documented environment-rule behavior across surfaces               | 30m | t003       | DONE |
+| t005 | Simplify — `/simplify` over the changed code                                                                          | 20m | t004       | DONE |
+| t006 | Test coverage — lifecycle-edge and idempotency tests asserting real enforcement outcomes                              | 45m | t004       | DONE |
+| t007 | Closeout — verify DoD, sync status, move to done                                                                      | 15m | t006       | DONE |
 
 ## Definition of done
 
