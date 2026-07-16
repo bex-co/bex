@@ -210,9 +210,10 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 
 // promQueryFor builds the PromQL range query for a request metric over Traefik's
 // counters. HTTP count/latency retain their service selector; bandwidth uses
-// exact router identities so shared backends remain attributable. The counters
-// carry no host/path labels, so those filters are rejected upstream (see
-// MetricQuery.Host) and absent from RequestMetricsRequest.
+// exact router identities so shared backends remain attributable. Traefik's
+// Prometheus counters carry no host or path labels (the router label is a name,
+// not a matched Host()/PathPrefix() value), so host/path filters are refused
+// upstream (MetricQuery.Host/Path → 400) and absent from RequestMetricsRequest.
 func promQueryFor(req RequestMetricsRequest) string {
 	selector := fmt.Sprintf(`service=~".*%s.*"`, promEscape(req.App))
 	if req.Metric == MetricBandwidth {
