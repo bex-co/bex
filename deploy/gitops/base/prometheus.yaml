@@ -594,7 +594,7 @@ spec:
                       !=
                       count(
                         kube_node_info
-                        unless on (node) kube_node_labels{label_bex_co_pool="platform"}
+                        unless on (node) kube_node_spec_taint{key="bex.co/platform", value="true"}
                         unless on (node) kube_node_role{role="control-plane"}
                       )
                     for: 2m
