@@ -102,12 +102,38 @@ func (s *PGStore) DeleteProject(ctx context.Context, id string) error {
 
 // SetProjectServices replaces the full list of services in a project
 // (within tenantID): clears any apps currently assigned to it, then assigns
-// only the named apps. Runs in a single transaction. Service names not found
-// in tenantID are silently skipped (the UPDATE affects 0 rows for them).
-func (s *PGStore) SetProjectServices(ctx context.Context, projectID, tenantID string, serviceNames []string) error {
-	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+// only the named apps. Also NULLs environment_id on departing rows in the
+// same transaction (w4/m32) — a service leaving its project must not keep a
+// stale apps.environment_id (and the App CR's frozen spec.environmentIPAllowList
+// that implies): ListEnvironmentServices already filters on project_id too,
+// so the row silently drops out of every future environment fan-out while
+// its k8s-projected rules stay stuck. Returns the departing names that
+// carried a non-null environment_id — the store layer's cue for the service
+// layer's k8s-side clear, since a raw SQL UPDATE can't itself patch a CR.
+// Service names not found in tenantID are silently skipped (the UPDATE
+// affects 0 rows for them).
+func (s *PGStore) SetProjectServices(ctx context.Context, projectID, tenantID string, serviceNames []string) ([]string, error) {
+	var departedWithEnv []string
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx,
+			`SELECT name FROM apps WHERE project_id = $1 AND tenant_id = $2 AND environment_id IS NOT NULL`,
+			projectID, tenantID)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var name string
+			if err := rows.Scan(&name); err != nil {
+				return err
+			}
+			departedWithEnv = append(departedWithEnv, name)
+		}
+		if err := rows.Err(); err != nil {
+			return err
+		}
 		if _, err := tx.Exec(ctx,
-			`UPDATE apps SET project_id = NULL, updated_at = now()
+			`UPDATE apps SET project_id = NULL, environment_id = NULL, updated_at = now()
 			 WHERE project_id = $1 AND tenant_id = $2`,
 			projectID, tenantID); err != nil {
 			return err
@@ -115,12 +141,13 @@ func (s *PGStore) SetProjectServices(ctx context.Context, projectID, tenantID st
 		if len(serviceNames) == 0 {
 			return nil
 		}
-		_, err := tx.Exec(ctx,
+		_, err = tx.Exec(ctx,
 			`UPDATE apps SET project_id = $1, updated_at = now()
 			 WHERE name = ANY($2) AND tenant_id = $3`,
 			projectID, serviceNames, tenantID)
 		return err
 	})
+	return departedWithEnv, err
 }
 
 // ListProjectServices returns the names of all services currently in the project.

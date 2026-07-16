@@ -385,6 +385,69 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 		t.Fatalf("legacy string-list row = %+v (err %v), want cidr-only entry", got.IPAllowList, err)
 	}
 
+	// w4/m32/t001: SetProjectServices must NULL environment_id (not just
+	// project_id) for a departing row, in the same transaction — leaving a
+	// project must not strand a stale apps.environment_id (and the App CR's
+	// frozen spec.environmentIPAllowList it implies) behind. app is currently
+	// a member of prod (both project_id and environment_id set).
+	departed, err := s.SetProjectServices(ctx, proj.ID, ten.ID, nil)
+	if err != nil {
+		t.Fatalf("SetProjectServices(remove all): %v", err)
+	}
+	if len(departed) != 1 || departed[0] != app.Name {
+		t.Fatalf("SetProjectServices departedWithEnv = %v, want [%s] (app carried a non-null environment_id)", departed, app.Name)
+	}
+	var gotEnvID *string
+	if err := pool.QueryRow(ctx, `SELECT project_id, environment_id FROM apps WHERE id = $1`, app.ID).Scan(&gotProjectID, &gotEnvID); err != nil {
+		t.Fatal(err)
+	}
+	if gotProjectID != nil || gotEnvID != nil {
+		t.Errorf("after departing the project, project_id=%v environment_id=%v, want both NULL", gotProjectID, gotEnvID)
+	}
+	// Rejoin so the DeleteEnvironment/DeleteProject assertions below (which
+	// assume app is a prod member) still hold.
+	if err := s.SetEnvironmentServices(ctx, prod.ID, proj.ID, ten.ID, []string{app.Name}); err != nil {
+		t.Fatalf("rejoin prod: %v", err)
+	}
+
+	// w4/m32/t003: RepairDriftedEnvironmentIDs is the one-shot backfill for
+	// rows drifted BEFORE this milestone's fix — the store API itself can no
+	// longer produce that state (SetProjectServices nulls environment_id,
+	// SetEnvironmentServices always syncs project_id), so simulate the legacy
+	// row directly: app still points at prod (proj's environment) but its own
+	// project_id has drifted to a different project.
+	if list, err := s.ListAllEnvironments(ctx); err != nil || len(list) != 2 {
+		t.Fatalf("ListAllEnvironments = %+v (err %v), want 2 (env + prod, across every project)", list, err)
+	}
+	otherProj, err := s.CreateProject(ctx, ten.ID, "other-stack")
+	if err != nil {
+		t.Fatalf("create other project: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE apps SET project_id = $1 WHERE id = $2`, otherProj.ID, app.ID); err != nil {
+		t.Fatalf("seed legacy drift: %v", err)
+	}
+	repaired, err := s.RepairDriftedEnvironmentIDs(ctx)
+	if err != nil {
+		t.Fatalf("RepairDriftedEnvironmentIDs: %v", err)
+	}
+	if len(repaired) != 1 || repaired[0] != app.Name {
+		t.Fatalf("RepairDriftedEnvironmentIDs = %v, want [%s]", repaired, app.Name)
+	}
+	if err := pool.QueryRow(ctx, `SELECT environment_id FROM apps WHERE id = $1`, app.ID).Scan(&gotEnvID); err != nil {
+		t.Fatal(err)
+	}
+	if gotEnvID != nil {
+		t.Errorf("after repair, environment_id = %v, want NULL", gotEnvID)
+	}
+	if repaired2, err := s.RepairDriftedEnvironmentIDs(ctx); err != nil || len(repaired2) != 0 {
+		t.Errorf("2nd RepairDriftedEnvironmentIDs = %v (err %v), want none — idempotent", repaired2, err)
+	}
+	// Restore app's project membership so the DeleteEnvironment/DeleteProject
+	// assertions below (which assume app.project_id == proj.ID) still hold.
+	if _, err := pool.Exec(ctx, `UPDATE apps SET project_id = $1 WHERE id = $2`, proj.ID, app.ID); err != nil {
+		t.Fatalf("restore project: %v", err)
+	}
+
 	// Deleting an environment un-assigns its services but leaves their
 	// project membership untouched (only setProjectServices/deleting the
 	// PROJECT does that).

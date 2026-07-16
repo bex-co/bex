@@ -53,6 +53,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/authz"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
+	"github.com/bex-co/bex/lego/backend/internal/environments"
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
@@ -390,6 +391,29 @@ func main() {
 	deps.MaxKeyValues, _ = strconv.Atoi(os.Getenv("BEX_MAX_KEYVALUES"))
 
 	srv := api.NewServer(base, deps)
+
+	// environments-backfill mode: `api environments-backfill` runs the
+	// w4/m32/t003 one-shot idempotent repair (drifted apps.environment_id
+	// rows left over from before w4/m32/t001's fix, and the member fan-out
+	// for environments whose non-empty rules predate w4/m28) once and exits —
+	// no HTTP server, no per-request caller. environments.Backfiller (like
+	// apps.WorkspacePurger) never calls Authorize/AuthorizeOn itself — an
+	// operator-invoked one-shot sweep has no caller identity to check, the
+	// same trust level the reconciler's own direct store access already runs
+	// at — so no auth-gate mutation is needed here. Requires BEX_CP_DB_URI
+	// (srv.Environments needs its Store wired); mirrors
+	// scripts/ipallowlist-normalize.sh's one-shot-sweep shape for the
+	// control-plane-store half of this feature.
+	if len(os.Args) > 1 && os.Args[1] == "environments-backfill" {
+		report, err := (&environments.Backfiller{Service: srv.Environments}).Run(ctx)
+		if err != nil {
+			log.Fatalf("bex-api environments-backfill: %v", err)
+		}
+		log.Printf("bex-api environments-backfill: repaired %d drifted app(s), swept %d environment(s)",
+			report.DriftedAppsRepaired, report.EnvironmentsSwept)
+		return
+	}
+
 	// Wire the reconciler ↔ apps.Service now that both exist (w2/m11):
 	// - CloneSecrets: the projector mints clone Secrets for private-repo rows
 	//   created via the internal CP API (store/api.go POST /v1/apps).

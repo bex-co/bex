@@ -111,6 +111,59 @@ func (s *PGStore) ListEnvironments(ctx context.Context, projectID string) ([]Env
 	return out, rows.Err()
 }
 
+// ListAllEnvironments returns every environment across every project/tenant —
+// unlike ListEnvironments (scoped to one project), this backs the w4/m32/t003
+// backfill sweep, which must re-run the member fan-out for every environment
+// regardless of owner.
+func (s *PGStore) ListAllEnvironments(ctx context.Context) ([]Environment, error) {
+	rows, err := s.Pool.Query(ctx, `SELECT `+environmentColumns+` FROM environments ORDER BY created_at`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Environment
+	for rows.Next() {
+		e, err := scanEnvironment(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
+// RepairDriftedEnvironmentIDs is the w4/m32/t003 one-shot repair for rows
+// already drifted before SetProjectServices started NULLing environment_id
+// on project departure (w4/m32/t001): an app whose environment_id points at
+// an environment belonging to a DIFFERENT project than the app's own
+// project_id — the exact staleness the pre-fix SetProjectServices could
+// leave behind. Idempotent: once repaired, the WHERE clause matches nothing,
+// so a second run is a no-op. Returns the repaired app names, the caller's
+// cue to also clear their App CR's environment-projected fields.
+func (s *PGStore) RepairDriftedEnvironmentIDs(ctx context.Context) ([]string, error) {
+	rows, err := s.Pool.Query(ctx, `
+		UPDATE apps SET environment_id = NULL, updated_at = now()
+		WHERE id IN (
+			SELECT apps.id FROM apps
+			JOIN environments ON apps.environment_id = environments.id
+			WHERE apps.project_id IS DISTINCT FROM environments.project_id
+		)
+		RETURNING name`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		out = append(out, name)
+	}
+	return out, rows.Err()
+}
+
 func (s *PGStore) RenameEnvironment(ctx context.Context, id, name string) error {
 	tag, err := s.Pool.Exec(ctx,
 		`UPDATE environments SET name = $2, updated_at = now() WHERE id = $1`,

@@ -89,6 +89,13 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		// w4/m30: Update rides the same applyACL fan-out as SetACL/CreateWithACL
 		// above whenever the patch touches the ACL triple; same reasoning.
 		"environments.Update": "fans AuthorizeApp out over member Apps via applyACL when the patch touches the ACL triple; not itself a per-App verb",
+		// w4/m32: two more member-clear fan-outs, called cross-package by
+		// projects.Service (SetServices/Delete) rather than by this feature's
+		// own REST/GraphQL/MCP surface — same "fans AuthorizeApp out, not
+		// itself a per-App verb" reasoning as the entries above.
+		"environments.ClearServiceEnvironmentLayer": "fans AuthorizeApp out over member Apps clearing the environment layer; not itself a per-App verb",
+		"environments.ClearMembersForProject":       "fans AuthorizeApp out over every child environment's member Apps; not itself a per-App verb",
+		"environments.Run": "Backfiller.Run, the one-shot admin sweep (w4/m32/t003, `api environments-backfill`) fans out over every environment's members; not itself a per-App verb, and (like apps.WorkspacePurger.PurgeWorkspace) has no request-time caller to attribute an event to",
 	}
 	// w6/m17 moved every resource-scoped write verb off a separate Authorize
 	// call onto the single AuthorizeApp/AuthorizeDatabase/AuthorizeKeyValue seam
