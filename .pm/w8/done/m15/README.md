@@ -1,6 +1,6 @@
 # w8 · m15 — Complete outbound-bandwidth accounting: HTTP + WebSocket + direct + datastore TCP
 
-**Worker:** worker8 **Goal:** Replace the HTTP-only `egress_bytes` source with an explicit, loss-detecting composition that covers App HTTP responses, WebSocket downstream frames, App-initiated public traffic, and public Postgres/Key Value responses without charging same-cluster private traffic. **Status:** in progress (implementation + local Cilium validation done; production evidence origin pending)
+**Worker:** worker8 **Goal:** Replace the HTTP-only `egress_bytes` source with an explicit, loss-detecting composition that covers App HTTP responses, WebSocket downstream frames, App-initiated public traffic, and public Postgres/Key Value responses without charging same-cluster private traffic. **Status:** done
 
 ## Tasks (in order)
 
@@ -14,12 +14,12 @@
 | t006 | Export Postgres proxy backend-to-client bytes by Database | 45m | t001 | — **DONE** |
 | t007 | Put public Key Value traffic through a metered SNI front door | 60m | t001 | — **DONE** |
 | t014 | Meter WebSocket downstream frames at the public edge | 60m | t001, t002 | — **DONE** |
-| t008 | Compose hourly egress collection by resource kind and restart bandwidth evidence | 60m | t002, t005, t006, t007, t014 |  |
+| t008 | Compose hourly egress collection by resource kind and restart bandwidth evidence | 60m | t002, t005, t006, t007, t014 | — **DONE** |
 | t009 | Validate attribution, exclusions, resets, and no double counting on the Cilium path | 45m | t008 | — **DONE** |
 | t010 | Render parity — audit REST, GraphQL, MCP, dashboard, and documented category semantics | 30m | t009 | — **DONE** |
 | t011 | Simplify — remove duplicate query and proxy accounting paths | 20m | t010 | — **DONE** |
 | t012 | Test coverage — source failures, counter resets, attribution, and traffic matrix | 45m | t010 | — **DONE** |
-| t013 | Closeout — DoD met → move milestone to `done/` | 10m | t011, t012 |  |
+| t013 | Closeout — DoD met → move milestone to `done/` | 10m | t011, t012 | — **DONE** |
 
 ## Definition of done
 
@@ -29,7 +29,7 @@ For each closed UTC hour, `egress_bytes` is a contiguous, retryable sum of indep
 
 On 2026-07-15, `scripts/verify-egress-meter.sh` passed on a fresh three-node kind cluster using the production Cilium 1.19.5 datapath settings. Aggregate deltas in the final run were HTTP 4,096 B, WebSocket downstream 4,100 B, direct UDP 544 B, direct TCP 4,372 B, Postgres response 6,031 B, and Key Value response 6,030 B; private and policy-dropped traffic remained zero. Pod replacement, meter restart, deliberate counter-map deletion, and node reboot were exercised. The deliberate deletion exposed a 544 B checkpoint gap through a counter decrease and the reboot proved that durable counter-loss state loaded before recording a second event; both affected hourly windows fail closed even when a restore does not fall below the last Prometheus scrape.
 
-The repository implementation, isolated manual CI workflow, full Go/dashboard suites, GitOps rendering, and Prometheus rule tests are complete. `t008` remains open only for the exact first whole UTC hour after a production rollout; this worktree is intentionally uncommitted and unshipped, so `.pm/w8/001.md` cannot yet contain a truthful new bandwidth evidence origin. `t013` must remain open until that rollout evidence exists.
+Production run `29483278762` rolled bex onto the signed `e45b638d` image at 2026-07-16T08:34:41Z and completed successfully at 08:35:15Z. The first whole post-rollout hour was `2026-07-16T09:00:00Z` through `10:00:00Z`. At the closing boundary every required Prometheus job had all 240 expected 15-second samples with minimum `up=1` and minimum source health `1`; process resets, meter reconcile errors, counter-loss events, attribution gaps, and firing outbound-meter alerts were all zero. The control-plane store then contained two `service/egress_bytes` zero anchors for the two service rows, plus the applicable Postgres egress/compute/storage anchors, all at exactly `09:00:00Z`. No workspace ids or raw tenant traffic are retained in this record.
 
 ## Source + Goal linkage
 
