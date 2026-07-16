@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"slices"
 	"strings"
 	"testing"
@@ -98,9 +99,9 @@ func TestREST_EnvGroupsLifecycle(t *testing.T) {
 	}
 
 	// List and get.
-	var list []EnvGroupView
+	var list []envGroupWithCursor
 	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/env-groups", "").Body.Bytes(), &list)
-	if len(list) != 1 || list[0].ID != g.ID {
+	if len(list) != 1 || list[0].EnvGroup.ID != g.ID || list[0].Cursor != g.ID {
 		t.Fatalf("list: %+v", list)
 	}
 
@@ -113,6 +114,51 @@ func TestREST_EnvGroupsLifecycle(t *testing.T) {
 	}
 	if c := serveREST(svc, "GET", "/v1/env-groups/"+g.ID, "").Code; c != 404 {
 		t.Fatalf("deleted group GET => 404, got %d", c)
+	}
+}
+
+func TestREST_EnvGroupsPaginationWalkUsesRenderEnvelope(t *testing.T) {
+	svc := newService(newFakeStore())
+	for _, name := range []string{"echo", "alpha", "delta", "bravo", "charlie"} {
+		if _, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{Name: name}); err != nil {
+			t.Fatalf("create %s: %v", name, err)
+		}
+	}
+
+	var got []string
+	cursor := ""
+	for pageNo := 0; pageNo < 10; pageNo++ {
+		path := "/v1/env-groups?limit=2"
+		if cursor != "" {
+			path += "&cursor=" + url.QueryEscape(cursor)
+		}
+		w := serveREST(svc, http.MethodGet, path, "")
+		if w.Code != http.StatusOK {
+			t.Fatalf("page %d status = %d: %s", pageNo, w.Code, w.Body.String())
+		}
+		var page []envGroupWithCursor
+		if err := json.Unmarshal(w.Body.Bytes(), &page); err != nil {
+			t.Fatalf("page %d decode Render envelope: %v (%s)", pageNo, err, w.Body.String())
+		}
+		if len(page) == 0 {
+			break
+		}
+		if len(page) > 2 {
+			t.Fatalf("page %d length = %d, want <= 2", pageNo, len(page))
+		}
+		for _, item := range page {
+			if item.EnvGroup.ID == "" || item.Cursor != item.EnvGroup.ID {
+				t.Fatalf("page %d item is not {envGroup,cursor}: %+v", pageNo, item)
+			}
+			if slices.Contains(got, item.EnvGroup.ID) {
+				t.Fatalf("pagination duplicated %s across pages: %v", item.EnvGroup.ID, got)
+			}
+			got = append(got, item.EnvGroup.ID)
+		}
+		cursor = page[len(page)-1].Cursor
+	}
+	if len(got) != 5 {
+		t.Fatalf("pagination walk returned %d groups, want 5: %v", len(got), got)
 	}
 }
 

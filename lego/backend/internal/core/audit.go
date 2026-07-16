@@ -65,6 +65,11 @@ const (
 	// both may be emitted by one atomic ConfigureMaintenanceMode write.
 	AuditVerbMaintenanceModeEnabled    = "apps.SetMaintenanceMode"
 	AuditVerbMaintenanceModeURIUpdated = "apps.SetMaintenanceModeURI"
+	// AuditVerbEnvGroupOwnershipMigrated is the one-time system event emitted
+	// when a pre-attribution environment group is assigned to the bootstrap
+	// workspace. It is fixed vocabulary so migration code cannot inject an
+	// arbitrary action into the audit trail.
+	AuditVerbEnvGroupOwnershipMigrated = "envgroups.MigrateOwnership"
 )
 
 // WithAuditMaintenanceModeTo attaches Render's one typed maintenance-toggle
@@ -133,6 +138,26 @@ func DatabaseTarget(name string) string { return "database:" + name }
 // KeyValueTarget is ServiceTarget's sibling for a managed KeyValue
 // (AuthorizeKeyValue).
 func KeyValueTarget(name string) string { return "keyvalue:" + name }
+
+// EnvGroupTarget is the audit target of the one-time environment-group
+// ownership migration. Group ids are opaque resource identifiers, never
+// secret values.
+func EnvGroupTarget(groupID string) string { return "envgroup:" + groupID }
+
+// RecordEnvGroupOwnershipMigration records the lazy ownership migration as a
+// system action. This deliberately bypasses caller identity: the read merely
+// discovers the legacy row, while the platform performs the migration.
+func (b *Base) RecordEnvGroupOwnershipMigration(ctx context.Context, groupID, workspaceID string) {
+	b.recordAudit(ctx, AuditEvent{
+		Caller:       "system",
+		CallerMethod: "system",
+		Verb:         AuditVerbEnvGroupOwnershipMigrated,
+		Resource:     WorkspaceObject(workspaceID),
+		Target:       EnvGroupTarget(groupID),
+		Outcome:      AuditAllowed,
+		At:           b.Now(),
+	})
+}
 
 // AuditSink persists audit events. Base.emit bounds every call to
 // auditRecordTimeout and always swallows a Record error (logged, never
@@ -300,10 +325,6 @@ func unexportedHelperMethod(name, short string) bool {
 // swallowed, never returned: audit recording must never fail the verb it's
 // recording.
 func (b *Base) emit(ctx context.Context, verb, resource, target string, authzErr error) {
-	sink := b.Audit
-	if sink == nil {
-		sink = NoopAuditSink
-	}
 	outcome := AuditAllowed
 	if authzErr != nil {
 		outcome = AuditDenied
@@ -317,9 +338,19 @@ func (b *Base) emit(ctx context.Context, verb, resource, target string, authzErr
 	if id, ok := IdentityFrom(ctx); ok {
 		ev.Caller, ev.CallerMethod = id.Subject, id.Method
 	}
+	b.recordAudit(ctx, ev)
+}
+
+// recordAudit is the one bounded, fail-open sink path for both authorization
+// events and typed system events.
+func (b *Base) recordAudit(ctx context.Context, ev AuditEvent) {
+	sink := b.Audit
+	if sink == nil {
+		sink = NoopAuditSink
+	}
 	recordCtx, cancel := context.WithTimeout(ctx, auditRecordTimeout)
 	defer cancel()
 	if err := sink.Record(recordCtx, ev); err != nil {
-		log.Printf("audit: record %s %s: %v", verb, resource, err)
+		log.Printf("audit: record %s %s: %v", ev.Verb, ev.Resource, err)
 	}
 }

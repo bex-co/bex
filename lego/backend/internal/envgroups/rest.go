@@ -23,6 +23,22 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
+// envGroupWithCursor is Render's list envelope. Render's endpoint OpenAPI
+// currently misdeclares the live response as []envGroupMeta, but its official
+// pagination contract and live API return the cursor beside the resource.
+type envGroupWithCursor struct {
+	EnvGroup EnvGroupView `json:"envGroup"`
+	Cursor   string       `json:"cursor"`
+}
+
+func envGroupList(groups []EnvGroupView) []envGroupWithCursor {
+	out := make([]envGroupWithCursor, 0, len(groups))
+	for _, group := range groups {
+		out = append(out, envGroupWithCursor{EnvGroup: group, Cursor: group.ID})
+	}
+	return out
+}
+
 // rest.go is the env-groups REST fragment (Render's /v1/env-groups): group CRUD,
 // its env vars + secret files, and service link/unlink. Behavior lives in the
 // Service, so GraphQL and MCP stay identical.
@@ -31,12 +47,15 @@ import (
 // returns core.ErrSecretsUnavailable => 503 on these routes only.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/env-groups", func(w http.ResponseWriter, r *http.Request) {
-		out, err := s.ListEnvGroups(r.Context(), r.URL.Query().Get("ownerId"))
+		q := r.URL.Query()
+		out, err := s.ListEnvGroups(r.Context(), q.Get("ownerId"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, out)
+		after, limit := core.PageParams(q)
+		page := pageEnvGroups(out, after, limit, q.Has("cursor") || q.Has("limit"))
+		core.WriteJSON(w, http.StatusOK, envGroupList(page))
 	})
 	mux.HandleFunc("POST /v1/env-groups", func(w http.ResponseWriter, r *http.Request) {
 		var req CreateEnvGroupRequest
