@@ -210,32 +210,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, s.renderOneKeyValue(r.Context(), kv))
 	})
-	mux.HandleFunc("PATCH "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			Plan   string `json:"plan"`
-			DryRun bool   `json:"dryRun,omitempty"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeBadRequestBody(w, err)
-			return
-		}
-		dryRun := req.DryRun || r.URL.Query().Get("dryRun") == "true"
-		if dryRun {
-			kv, err := s.PreviewSetPlan(r.Context(), r.PathValue("id"), req.Plan)
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, s.renderOneKeyValue(r.Context(), kv))
-			return
-		}
-		kv, err := s.SetPlan(r.Context(), r.PathValue("id"), req.Plan)
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, s.renderOneKeyValue(r.Context(), kv))
-	})
+	mux.HandleFunc("PATCH "+base+"/{id}", s.handleUpdateKeyValue)
 	mux.HandleFunc("DELETE "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
 		if err := s.DeleteKeyValue(r.Context(), r.PathValue("id")); err != nil {
 			core.WriteErr(w, err)
@@ -301,4 +276,42 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, s.renderOneKeyValue(r.Context(), kv))
 	})
+}
+
+// handleUpdateKeyValue is PATCH /v1/key-value/{id} — pulled out of RegisterREST
+// to keep that function's complexity down (mirrors postgres.handleUpdatePostgres).
+// Render's KeyValuePATCHInput is all-pointer: an omitted field means "leave
+// unchanged", not "clear". The prior handler decoded plan as a plain string and
+// called SetPlan unconditionally, so `keyvalues update <name> --name <new>`
+// (which sends no plan) 400'd with "plan must be one of ..." — the same class of
+// bug the identical Postgres handler fixed. Routing to the item by its opaque
+// red- id is what makes the official CLI's rename land on the right store.
+func (s *Service) handleUpdateKeyValue(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Name   *string `json:"name,omitempty"`
+		Plan   *string `json:"plan,omitempty"`
+		DryRun bool    `json:"dryRun,omitempty"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeBadRequestBody(w, err)
+		return
+	}
+	id := r.PathValue("id")
+	patch := KeyValuePatch{Name: req.Name, Plan: req.Plan}
+	dryRun := req.DryRun || r.URL.Query().Get("dryRun") == "true"
+	if dryRun {
+		kv, err := s.PreviewUpdateKeyValue(r.Context(), id, patch)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, s.renderOneKeyValue(r.Context(), kv))
+		return
+	}
+	kv, err := s.UpdateKeyValue(r.Context(), id, patch)
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	core.WriteJSON(w, http.StatusOK, s.renderOneKeyValue(r.Context(), kv))
 }

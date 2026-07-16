@@ -157,7 +157,7 @@ projects:
 	for _, item := range []struct {
 		name   string
 		object client.Object
-	}{{name: result.Databases[0].ID, object: &appv1alpha1.Database{}}, {name: "cache", object: &appv1alpha1.KeyValue{}}} {
+	}{{name: result.Databases[0].ID, object: &appv1alpha1.Database{}}, {name: result.KeyValues[0].ID, object: &appv1alpha1.KeyValue{}}} {
 		if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: item.name}, item.object); err != nil {
 			t.Fatal(err)
 		}

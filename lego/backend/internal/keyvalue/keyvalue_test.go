@@ -49,6 +49,13 @@ func newService(objs ...client.Object) (*Service, client.Client) {
 	return &Service{Base: &core.Base{Client: cl, Namespace: "default"}}, cl
 }
 
+// mintedKVID reports whether id is a freshly minted opaque key-value id
+// (id.New(id.KeyValue) => "red-<20-char xid>"), the metadata.name a create now
+// mints in place of the user-chosen display name (the postgres dpg- split).
+func mintedKVID(id string) bool {
+	return strings.HasPrefix(id, "red-") && len(id) == len("red-")+20
+}
+
 func serveREST(svc *Service, method, path, body string) *httptest.ResponseRecorder {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
@@ -111,15 +118,20 @@ func TestRESTKeyValueCRUD(t *testing.T) {
 	}
 	var kv KeyValueView
 	_ = json.Unmarshal(w.Body.Bytes(), &kv)
-	if kv.ID != "cache-1" || kv.Name != "cache-1" || kv.Plan != "starter" || !kv.Public || kv.ProjectID != "prj-platform" || kv.EnvironmentID != "env-staging" {
+	// Identity split (w9/m6): metadata.name is now a minted red- id; the
+	// user-chosen name is the display name.
+	if !mintedKVID(kv.ID) || kv.Name != "cache-1" || kv.Plan != "starter" || !kv.Public || kv.ProjectID != "prj-platform" || kv.EnvironmentID != "env-staging" {
 		t.Fatalf("view wrong: %+v", kv)
 	}
 	if kv.Suspended != core.RenderNotSuspended {
 		t.Errorf("fresh store should be not_suspended, got %q", kv.Suspended)
 	}
 	var got appv1alpha1.KeyValue
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "cache-1"}, &got); err != nil {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: kv.ID}, &got); err != nil {
 		t.Fatalf("kv CR not created: %v", err)
+	}
+	if got.Spec.Name != "cache-1" {
+		t.Fatalf("spec.name = %q, want cache-1", got.Spec.Name)
 	}
 	if got.Labels[core.LabelProject] != "prj-platform" || got.Labels[core.LabelEnvironment] != "env-staging" {
 		t.Fatalf("kv environment labels = %v", got.Labels)
@@ -130,16 +142,16 @@ func TestRESTKeyValueCRUD(t *testing.T) {
 	if len(list) != 1 {
 		t.Fatalf("list => 1, got %d", len(list))
 	}
-	if serveREST(svc, "GET", "/v1/key-value/cache-1", "").Code != 200 {
+	if serveREST(svc, "GET", "/v1/key-value/"+kv.ID, "").Code != 200 {
 		t.Fatal("get failed")
 	}
 	if serveREST(svc, "GET", "/v1/key-value/nope", "").Code != 404 {
 		t.Error("unknown => 404")
 	}
-	if serveREST(svc, "DELETE", "/v1/key-value/cache-1", "").Code != 204 {
+	if serveREST(svc, "DELETE", "/v1/key-value/"+kv.ID, "").Code != 204 {
 		t.Error("delete => 204")
 	}
-	if serveREST(svc, "GET", "/v1/key-value/cache-1", "").Code != 404 {
+	if serveREST(svc, "GET", "/v1/key-value/"+kv.ID, "").Code != 404 {
 		t.Error("deleted store should be gone")
 	}
 }
@@ -275,8 +287,11 @@ func TestKeyValueMaxmemoryPersistence(t *testing.T) {
 		t.Fatalf("view settings = %q/%q", view.Options.MaxmemoryPolicy, view.Options.PersistenceMode)
 	}
 	var made appv1alpha1.KeyValue
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "cache-mm"}, &made); err != nil {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: view.ID}, &made); err != nil {
 		t.Fatalf("get CR: %v", err)
+	}
+	if made.Spec.Name != "cache-mm" {
+		t.Fatalf("spec.name = %q, want cache-mm", made.Spec.Name)
 	}
 	if made.Spec.MaxmemoryPolicy != "volatile-ttl" || made.Spec.PersistenceMode != "off" {
 		t.Fatalf("spec settings = %q/%q", made.Spec.MaxmemoryPolicy, made.Spec.PersistenceMode)
@@ -301,21 +316,21 @@ func TestKeyValueMaxmemoryPersistence(t *testing.T) {
 	res := graphql.Do(graphql.Params{
 		Schema:        schema,
 		Context:       context.Background(),
-		RequestString: `mutation { createKeyValue(name:"cache-gql-mm", maxmemoryPolicy:"allkeys-lfu", persistenceMode:"snapshot") { maxmemoryPolicy persistenceMode } }`,
+		RequestString: `mutation { createKeyValue(name:"cache-gql-mm", maxmemoryPolicy:"allkeys-lfu", persistenceMode:"snapshot") { id name maxmemoryPolicy persistenceMode } }`,
 	})
 	if len(res.Errors) > 0 {
 		t.Fatalf("gql create: %v", res.Errors)
 	}
 	obj := res.Data.(map[string]any)["createKeyValue"].(map[string]any)
-	if obj["maxmemoryPolicy"] != "allkeys_lfu" || obj["persistenceMode"] != "snapshot" {
+	if !mintedKVID(obj["id"].(string)) || obj["name"] != "cache-gql-mm" || obj["maxmemoryPolicy"] != "allkeys_lfu" || obj["persistenceMode"] != "snapshot" {
 		t.Fatalf("gql view = %v", obj)
 	}
 	var gqlMade appv1alpha1.KeyValue
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "cache-gql-mm"}, &gqlMade); err != nil {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: obj["id"].(string)}, &gqlMade); err != nil {
 		t.Fatalf("get gql CR: %v", err)
 	}
-	if gqlMade.Spec.MaxmemoryPolicy != "allkeys-lfu" || gqlMade.Spec.PersistenceMode != "snapshot" {
-		t.Fatalf("gql spec = %q/%q", gqlMade.Spec.MaxmemoryPolicy, gqlMade.Spec.PersistenceMode)
+	if gqlMade.Spec.Name != "cache-gql-mm" || gqlMade.Spec.MaxmemoryPolicy != "allkeys-lfu" || gqlMade.Spec.PersistenceMode != "snapshot" {
+		t.Fatalf("gql spec = %q/%q/%q", gqlMade.Spec.Name, gqlMade.Spec.MaxmemoryPolicy, gqlMade.Spec.PersistenceMode)
 	}
 }
 
@@ -428,12 +443,12 @@ func TestGraphQLKeyValue(t *testing.T) {
 	}
 	svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
 	svc.Environments = &fixedCreateEnvironment{assignment: core.EnvironmentAssignment{ID: "env-staging", ProjectID: "prj-platform", WorkspaceID: "tea-a"}}
-	created := run(`mutation { createKeyValue(name:"gql-new", plan:"standard", environmentId:"env-staging") { id projectId environmentId } }`)["createKeyValue"].(map[string]any)
-	if created["projectId"] != "prj-platform" || created["environmentId"] != "env-staging" {
+	created := run(`mutation { createKeyValue(name:"gql-new", plan:"standard", environmentId:"env-staging") { id name projectId environmentId } }`)["createKeyValue"].(map[string]any)
+	if !mintedKVID(created["id"].(string)) || created["name"] != "gql-new" || created["projectId"] != "prj-platform" || created["environmentId"] != "env-staging" {
 		t.Fatalf("createKeyValue association = %+v", created)
 	}
 	var made appv1alpha1.KeyValue
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "gql-new"}, &made); err != nil || made.Spec.Plan != "standard" {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: created["id"].(string)}, &made); err != nil || made.Spec.Plan != "standard" || made.Spec.Name != "gql-new" {
 		t.Fatalf("createKeyValue did not create the CR with plan: %v %+v", err, made.Spec)
 	}
 	svc.Workspace = nil
@@ -525,11 +540,13 @@ func TestMCPKeyValue(t *testing.T) {
 	}
 	svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
 	svc.Environments = &fixedCreateEnvironment{assignment: core.EnvironmentAssignment{ID: "env-staging", ProjectID: "prj-platform", WorkspaceID: "tea-a"}}
-	if got := call("create_key_value", map[string]any{"name": "mcp-new", "plan": "standard", "environmentId": "env-staging"}); got["id"] != "mcp-new" || got["projectId"] != "prj-platform" || got["environmentId"] != "env-staging" {
-		t.Fatalf("create_key_value id = %v", got["id"])
+	created := call("create_key_value", map[string]any{"name": "mcp-new", "plan": "standard", "environmentId": "env-staging"})
+	createdID, _ := created["id"].(string)
+	if !mintedKVID(createdID) || created["name"] != "mcp-new" || created["projectId"] != "prj-platform" || created["environmentId"] != "env-staging" {
+		t.Fatalf("create_key_value = %+v", created)
 	}
 	var made appv1alpha1.KeyValue
-	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "mcp-new"}, &made); err != nil || made.Spec.Plan != "standard" {
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: createdID}, &made); err != nil || made.Spec.Plan != "standard" || made.Spec.Name != "mcp-new" {
 		t.Fatalf("create_key_value did not create the CR: %v %+v", err, made.Spec)
 	}
 }
@@ -580,14 +597,20 @@ func TestRESTIPAllowList(t *testing.T) {
 	if w.Code != 201 {
 		t.Fatalf("create => 201, got %d: %s", w.Code, w.Body.String())
 	}
+	var createdView renderKeyValue
+	_ = json.Unmarshal(w.Body.Bytes(), &createdView)
+	if !mintedKVID(createdView.ID) || createdView.Name != "acl-rest" {
+		t.Fatalf("create view identity wrong: %+v", createdView)
+	}
+	id := createdView.ID
 	var made appv1alpha1.KeyValue
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "acl-rest"}, &made); err != nil || len(made.Spec.IPAllowList) != 1 {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: id}, &made); err != nil || len(made.Spec.IPAllowList) != 1 || made.Spec.Name != "acl-rest" {
 		t.Fatalf("create must seed spec.ipAllowList: %v %+v", err, made.Spec)
 	}
 
 	// PUT replaces; the response is the updated view carrying ipAllowList,
 	// wrapped as Render's {cidrBlock,description} entries (not bare strings).
-	w = serveREST(svc, "PUT", "/v1/key-value/acl-rest/ip-allow-list", `{"cidrs":["10.0.0.0/8","192.0.2.0/24"]}`)
+	w = serveREST(svc, "PUT", "/v1/key-value/"+id+"/ip-allow-list", `{"cidrs":["10.0.0.0/8","192.0.2.0/24"]}`)
 	if w.Code != 200 {
 		t.Fatalf("put => 200, got %d: %s", w.Code, w.Body.String())
 	}
@@ -598,7 +621,7 @@ func TestRESTIPAllowList(t *testing.T) {
 	}
 
 	// GET returns the {"cidrs": ...} envelope
-	w = serveREST(svc, "GET", "/v1/key-value/acl-rest/ip-allow-list", "")
+	w = serveREST(svc, "GET", "/v1/key-value/"+id+"/ip-allow-list", "")
 	if w.Code != 200 {
 		t.Fatalf("get => 200, got %d: %s", w.Code, w.Body.String())
 	}
@@ -611,7 +634,7 @@ func TestRESTIPAllowList(t *testing.T) {
 	}
 
 	// a bad CIDR is a 400
-	w = serveREST(svc, "PUT", "/v1/key-value/acl-rest/ip-allow-list", `{"cidrs":["not-a-cidr"]}`)
+	w = serveREST(svc, "PUT", "/v1/key-value/"+id+"/ip-allow-list", `{"cidrs":["not-a-cidr"]}`)
 	if w.Code != 400 {
 		t.Fatalf("bad CIDR => 400, got %d: %s", w.Code, w.Body.String())
 	}
@@ -658,9 +681,12 @@ func TestGraphQLIPAllowList(t *testing.T) {
 		t.Fatalf("keyValueIpAllowList => %v", l)
 	}
 	// create with a seed
-	run(`mutation { createKeyValue(name:"acl-gql-new", ipAllowList:["10.0.0.0/8"]) { id } }`)
+	created := run(`mutation { createKeyValue(name:"acl-gql-new", ipAllowList:["10.0.0.0/8"]) { id name } }`)["createKeyValue"].(map[string]any)
+	if !mintedKVID(created["id"].(string)) || created["name"] != "acl-gql-new" {
+		t.Fatalf("createKeyValue identity wrong: %+v", created)
+	}
 	var made appv1alpha1.KeyValue
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "acl-gql-new"}, &made); err != nil || len(made.Spec.IPAllowList) != 1 || made.Spec.IPAllowList[0].CIDR != "10.0.0.0/8" {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: created["id"].(string)}, &made); err != nil || made.Spec.Name != "acl-gql-new" || len(made.Spec.IPAllowList) != 1 || made.Spec.IPAllowList[0].CIDR != "10.0.0.0/8" {
 		t.Fatalf("createKeyValue must seed spec.ipAllowList: %v %+v", err, made.Spec)
 	}
 
@@ -718,8 +744,12 @@ func TestMCPCreateIPAllowList(t *testing.T) {
 	} else if e, ok := l[0].(map[string]any); !ok || e["cidrBlock"] != "203.0.113.0/24" || e["description"] != "" {
 		t.Fatalf("create_key_value view ipAllowList entry = %v", l[0])
 	}
+	createdID, _ := out["id"].(string)
+	if !mintedKVID(createdID) || out["name"] != "acl-mcp" {
+		t.Fatalf("create_key_value view identity = id:%v name:%v", out["id"], out["name"])
+	}
 	var made appv1alpha1.KeyValue
-	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "acl-mcp"}, &made); err != nil || len(made.Spec.IPAllowList) != 1 {
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: createdID}, &made); err != nil || made.Spec.Name != "acl-mcp" || len(made.Spec.IPAllowList) != 1 {
 		t.Fatalf("create_key_value must seed spec.ipAllowList: %v %+v", err, made.Spec)
 	}
 }
@@ -924,5 +954,214 @@ func TestMCPSetKeyValuePlan(t *testing.T) {
 	})
 	if !bad.IsError {
 		t.Error("invalid plan must yield tool error")
+	}
+}
+
+// --- w9/m6/t009: rename (identity split — display name mutable, red- id stable) ---
+
+// createKVForRename creates a store through REST and returns its minted id.
+func createKVForRename(t *testing.T, svc *Service, name string) string {
+	t.Helper()
+	w := serveREST(svc, "POST", "/v1/key-value", `{"name":"`+name+`","plan":"starter"}`)
+	if w.Code != 201 {
+		t.Fatalf("create %q => 201, got %d: %s", name, w.Code, w.Body.String())
+	}
+	var view renderKeyValue
+	_ = json.Unmarshal(w.Body.Bytes(), &view)
+	if !mintedKVID(view.ID) || view.Name != name {
+		t.Fatalf("create view identity wrong: %+v", view)
+	}
+	return view.ID
+}
+
+// TestRESTRenameKeyValue pins the PATCH-rename happy path: the display name
+// changes, the opaque red- id and metadata.name do not, and the CLI's
+// name→id resolution (GET ?name=) follows the new display name off the old.
+func TestRESTRenameKeyValue(t *testing.T) {
+	svc, cl := newService()
+	id := createKVForRename(t, svc, "cache-orig")
+
+	w := serveREST(svc, "PATCH", "/v1/key-value/"+id, `{"name":"renamed"}`)
+	if w.Code != 200 {
+		t.Fatalf("rename => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var view renderKeyValue
+	_ = json.Unmarshal(w.Body.Bytes(), &view)
+	if view.ID != id || view.Name != "renamed" {
+		t.Fatalf("rename changed id or missed display name: id=%q (want %q) name=%q", view.ID, id, view.Name)
+	}
+
+	// The rename patched only spec.name; metadata.name (the id) is untouched.
+	var got appv1alpha1.KeyValue
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: id}, &got); err != nil {
+		t.Fatalf("get CR: %v", err)
+	}
+	if got.Name != id || got.Spec.Name != "renamed" {
+		t.Fatalf("rename should patch only spec.name, got metadata.name=%q spec.name=%q", got.Name, got.Spec.Name)
+	}
+
+	// The official CLI resolves a name through GET ?name=...: the new display
+	// name resolves to this id, the old one no longer does.
+	var filtered []keyValueWithCursor
+	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/key-value?name=renamed", "").Body.Bytes(), &filtered)
+	if len(filtered) != 1 || filtered[0].KeyValue.ID != id {
+		t.Fatalf("new name filter did not resolve the id: %+v", filtered)
+	}
+	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/key-value?name=cache-orig", "").Body.Bytes(), &filtered)
+	if len(filtered) != 0 {
+		t.Fatalf("old display name should no longer resolve, got %+v", filtered)
+	}
+}
+
+// TestRenameKeyValueDuplicateRejected pins the workspace-scoped display-name
+// uniqueness on rename: renaming one store to a sibling's name in the same
+// workspace is a 409/ErrConflict and leaves spec.name untouched. Two stores in
+// a different workspace may reuse a name — proven by the cross-workspace helper
+// below.
+func TestRenameKeyValueDuplicateRejected(t *testing.T) {
+	svc, cl := newService()
+	ctx := context.Background()
+	firstID := createKVForRename(t, svc, "kv-one")
+	secondID := createKVForRename(t, svc, "kv-two")
+
+	// Renaming kv-two to kv-one's name collides in the shared (unlabelled) scope.
+	name := "kv-one"
+	if _, err := svc.UpdateKeyValue(ctx, secondID, KeyValuePatch{Name: &name}); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("duplicate rename: got %v, want ErrConflict", err)
+	}
+
+	// REST surfaces the same collision as a 409.
+	if w := serveREST(svc, "PATCH", "/v1/key-value/"+secondID, `{"name":"kv-one"}`); w.Code != 409 {
+		t.Fatalf("duplicate rename over REST => 409, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// spec.name on kv-two is unchanged, and kv-one is still itself.
+	var got appv1alpha1.KeyValue
+	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: secondID}, &got)
+	if got.Spec.Name != "kv-two" {
+		t.Fatalf("rejected rename must not change spec.name, got %q", got.Spec.Name)
+	}
+	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: firstID}, &got)
+	if got.Spec.Name != "kv-one" {
+		t.Fatalf("untouched store spec.name = %q, want kv-one", got.Spec.Name)
+	}
+}
+
+// TestRenameKeyValueDuplicateAcrossWorkspacesAllowed proves the uniqueness is
+// per-workspace: two stores owned by different tenants may carry the same
+// display name, so renaming into a name held only in another workspace succeeds.
+func TestRenameKeyValueDuplicateAcrossWorkspacesAllowed(t *testing.T) {
+	a := sampleKeyValue("red-aaaaaaaaaaaaaaaaaaaa")
+	a.Labels = map[string]string{core.LabelTenant: "tea-a"}
+	a.Spec.Name = "shared"
+	b := sampleKeyValue("red-bbbbbbbbbbbbbbbbbbbb")
+	b.Labels = map[string]string{core.LabelTenant: "tea-b"}
+	b.Spec.Name = "b-name"
+	svc, cl := newService(a, b)
+	ctx := context.Background()
+
+	// tea-b's store renames to "shared" — a name only tea-a holds — and it works.
+	name := "shared"
+	if _, err := svc.UpdateKeyValue(ctx, "red-bbbbbbbbbbbbbbbbbbbb", KeyValuePatch{Name: &name}); err != nil {
+		t.Fatalf("cross-workspace name reuse should be allowed, got %v", err)
+	}
+	var got appv1alpha1.KeyValue
+	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "red-bbbbbbbbbbbbbbbbbbbb"}, &got)
+	if got.Spec.Name != "shared" {
+		t.Fatalf("cross-workspace rename spec.name = %q, want shared", got.Spec.Name)
+	}
+}
+
+// TestRenameKeyValueDryRun pins that a dry-run rename previews the new name on
+// the same id without persisting spec.name.
+func TestRenameKeyValueDryRun(t *testing.T) {
+	svc, cl := newService()
+	id := createKVForRename(t, svc, "dry-orig")
+
+	w := serveREST(svc, "PATCH", "/v1/key-value/"+id, `{"name":"dry-renamed","dryRun":true}`)
+	if w.Code != 200 {
+		t.Fatalf("dry-run rename => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var view renderKeyValue
+	_ = json.Unmarshal(w.Body.Bytes(), &view)
+	if view.ID != id || view.Name != "dry-renamed" {
+		t.Fatalf("dry-run preview = id:%q name:%q, want id:%q name:dry-renamed", view.ID, view.Name, id)
+	}
+
+	// Nothing persisted: spec.name still the original.
+	var got appv1alpha1.KeyValue
+	_ = cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: id}, &got)
+	if got.Spec.Name != "dry-orig" {
+		t.Fatalf("dry-run must not persist spec.name, got %q", got.Spec.Name)
+	}
+}
+
+// TestGraphQLRenameKeyValue proves GraphQL's renameKeyValue reaches the same
+// core UpdateKeyValue verb: the display name changes, the id stays put.
+func TestGraphQLRenameKeyValue(t *testing.T) {
+	svc, cl := newService()
+	seedKeyValue(t, cl, "gql-rn") // grandfathered: metadata.name is also the id
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	res := graphql.Do(graphql.Params{
+		Schema:        schema,
+		RequestString: `mutation { renameKeyValue(id:"gql-rn", name:"gql-renamed") { id name } }`,
+		Context:       context.Background(),
+	})
+	if len(res.Errors) > 0 {
+		t.Fatalf("renameKeyValue: %v", res.Errors)
+	}
+	obj := res.Data.(map[string]any)["renameKeyValue"].(map[string]any)
+	if obj["id"] != "gql-rn" || obj["name"] != "gql-renamed" {
+		t.Fatalf("renameKeyValue changed identity/missed name: %+v", obj)
+	}
+	var got appv1alpha1.KeyValue
+	_ = cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "gql-rn"}, &got)
+	if got.Name != "gql-rn" || got.Spec.Name != "gql-renamed" {
+		t.Fatalf("renameKeyValue should patch only spec.name, got metadata.name=%q spec.name=%q", got.Name, got.Spec.Name)
+	}
+}
+
+// TestMCPRenameKeyValue proves MCP's rename_key_value reaches the same core
+// UpdateKeyValue verb.
+func TestMCPRenameKeyValue(t *testing.T) {
+	svc, cl := newService()
+	seedKeyValue(t, cl, "mcp-rn")
+
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	ctx := context.Background()
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	defer cs.Close()
+
+	res, err := cs.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "rename_key_value",
+		Arguments: map[string]any{"keyValueId": "mcp-rn", "name": "mcp-renamed"},
+	})
+	if err != nil || res.IsError {
+		t.Fatalf("rename_key_value: err=%v isErr=%v", err, res.IsError)
+	}
+	out := map[string]any{}
+	b, _ := json.Marshal(res.StructuredContent)
+	_ = json.Unmarshal(b, &out)
+	if out["id"] != "mcp-rn" || out["name"] != "mcp-renamed" {
+		t.Fatalf("rename_key_value changed identity/missed name: %+v", out)
+	}
+	var got appv1alpha1.KeyValue
+	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "mcp-rn"}, &got)
+	if got.Name != "mcp-rn" || got.Spec.Name != "mcp-renamed" {
+		t.Fatalf("rename_key_value should patch only spec.name, got metadata.name=%q spec.name=%q", got.Name, got.Spec.Name)
 	}
 }

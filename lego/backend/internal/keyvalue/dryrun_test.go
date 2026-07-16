@@ -72,7 +72,9 @@ func TestRESTDryRunCreateKeyValue(t *testing.T) {
 	}
 	var got KeyValueView
 	_ = json.Unmarshal(rec.Body.Bytes(), &got)
-	if got.ID != "preview-kv" || got.Plan != "starter" {
+	// A dry-run mints an opaque red- id (identity split, w9/m6) but writes no CR;
+	// the display name is what the caller supplied.
+	if !mintedKVID(got.ID) || got.Name != "preview-kv" || got.Plan != "starter" {
 		t.Fatalf("preview wrong: %+v", got)
 	}
 	if n := countKeyValues(t, cl); n != 0 {
@@ -140,14 +142,14 @@ func TestGraphQLDryRunCreateKeyValue(t *testing.T) {
 	}
 	res := graphql.Do(graphql.Params{
 		Schema:        schema,
-		RequestString: `mutation { createKeyValue(name:"gql-preview", plan:"starter", dryRun:true) { id plan } }`,
+		RequestString: `mutation { createKeyValue(name:"gql-preview", plan:"starter", dryRun:true) { id name plan } }`,
 		Context:       context.Background(),
 	})
 	if len(res.Errors) > 0 {
 		t.Fatalf("gql createKeyValue dryRun: %v", res.Errors)
 	}
 	data := res.Data.(map[string]any)["createKeyValue"].(map[string]any)
-	if data["id"] != "gql-preview" || data["plan"] != "starter" {
+	if !mintedKVID(data["id"].(string)) || data["name"] != "gql-preview" || data["plan"] != "starter" {
 		t.Fatalf("preview wrong: %+v", data)
 	}
 	if n := countKeyValues(t, cl); n != 0 {
@@ -221,7 +223,7 @@ func TestMCPDryRunCreateKeyValue(t *testing.T) {
 		"plan":   "starter",
 		"dryRun": true,
 	})
-	if got["id"] != "mcp-preview" || got["plan"] != "starter" {
+	if id, _ := got["id"].(string); !mintedKVID(id) || got["name"] != "mcp-preview" || got["plan"] != "starter" {
 		t.Fatalf("preview wrong: %+v", got)
 	}
 	if n := countKeyValues(t, cl); n != 0 {

@@ -133,6 +133,13 @@ mutation UpdateKeyValuePlan($id: String!, $plan: String!) {
   }
 }
 
+mutation RenameKeyValue($id: String!, $name: String!) {
+  renameKeyValue(id: $id, name: $name) {
+    id
+    name
+  }
+}
+
 mutation DeleteKeyValue($id: String!) {
   deleteKeyValue(id: $id)
 }

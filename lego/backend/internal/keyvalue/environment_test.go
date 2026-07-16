@@ -69,12 +69,15 @@ func TestCreateKeyValueEnvironmentResolution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if view.ProjectID != "prj-platform" || view.EnvironmentID != "env-staging" || resolver.calls != 1 {
+	if !mintedKVID(view.ID) || view.Name != "cache" || view.ProjectID != "prj-platform" || view.EnvironmentID != "env-staging" || resolver.calls != 1 {
 		t.Fatalf("view = %+v, resolver calls = %d", view, resolver.calls)
 	}
 	var keyValue appv1alpha1.KeyValue
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "cache"}, &keyValue); err != nil {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: view.ID}, &keyValue); err != nil {
 		t.Fatal(err)
+	}
+	if keyValue.Spec.Name != "cache" {
+		t.Fatalf("spec.name = %q, want cache", keyValue.Spec.Name)
 	}
 	if keyValue.Labels[core.LabelProject] != "prj-platform" || keyValue.Labels[core.LabelEnvironment] != "env-staging" {
 		t.Fatalf("labels = %v", keyValue.Labels)

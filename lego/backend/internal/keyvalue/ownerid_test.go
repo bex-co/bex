@@ -128,12 +128,15 @@ func TestCreateKeyValue_StampsBothLabels(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateKeyValue: %v", err)
 	}
-	if view.OwnerID != "tea-a" {
-		t.Fatalf("created view OwnerID = %q, want tea-a", view.OwnerID)
+	if view.OwnerID != "tea-a" || !mintedKVID(view.ID) || view.Name != "kv1" {
+		t.Fatalf("created view = %+v, want OwnerID=tea-a, minted id, name=kv1", view)
 	}
 	var kv appv1alpha1.KeyValue
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "kv1"}, &kv); err != nil {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: view.ID}, &kv); err != nil {
 		t.Fatalf("get KeyValue: %v", err)
+	}
+	if kv.Spec.Name != "kv1" {
+		t.Fatalf("spec.name = %q, want kv1", kv.Spec.Name)
 	}
 	if kv.Labels[core.LabelTenant] != "tea-a" || kv.Labels[core.LabelWorkspace] != "tea-a" {
 		t.Fatalf("KeyValue labels = %+v, want both LabelTenant and LabelWorkspace = tea-a", kv.Labels)

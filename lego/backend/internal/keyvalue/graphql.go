@@ -213,6 +213,23 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return s.SetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
 			},
 		},
+		"renameKeyValue": &graphql.Field{
+			Type: keyValueGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				name := p.Args["name"].(string)
+				patch := KeyValuePatch{Name: &name}
+				dryRun, _ := p.Args["dryRun"].(bool)
+				if dryRun {
+					return s.PreviewUpdateKeyValue(p.Context, p.Args["id"].(string), patch)
+				}
+				return s.UpdateKeyValue(p.Context, p.Args["id"].(string), patch)
+			},
+		},
 		"suspendKeyValue": &graphql.Field{
 			Type: keyValueGQLType,
 			Args: gqlutil.IDArg(),

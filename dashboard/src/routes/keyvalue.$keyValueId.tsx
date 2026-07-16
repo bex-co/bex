@@ -13,6 +13,7 @@ import { KeyValueLifecycleActions } from "@/features/keyvalue/components/key-val
 import { ConnectionInfoPanel } from "@/features/keyvalue/components/connection-info-panel";
 import { KeyValueNetworkingPanel } from "@/features/keyvalue/components/key-value-networking-panel";
 import { KeyValuePlanSection } from "@/features/keyvalue/components/key-value-plan-section";
+import { KeyValueNameSection } from "@/features/keyvalue/components/key-value-name-section";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
@@ -66,6 +67,11 @@ export function KeyValueDetailPage() {
           ) : keyValue ? (
             <>
               <MetadataCard keyValue={keyValue} />
+              <KeyValueNameSection
+                key={`name-${keyValue.name}`}
+                keyValue={keyValue}
+                onChanged={() => void refetch()}
+              />
               <ConnectionInfoPanel id={keyValue.id} />
               <KeyValueNetworkingPanel
                 id={keyValue.id}
@@ -96,6 +102,12 @@ function MetadataCard({ keyValue }: { keyValue: KeyValueView }) {
     <MetadataList
       title={t("keyvalue.metaTitle")}
       rows={[
+        {
+          label: t("keyvalue.metaId"),
+          value: (
+            <code className="font-mono text-xs break-all">{keyValue.id}</code>
+          ),
+        },
         { label: t("keyvalue.metaStatus"), value: keyValue.status || "—" },
         { label: t("keyvalue.metaPlan"), value: keyValue.plan ?? "—" },
         {

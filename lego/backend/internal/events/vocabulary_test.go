@@ -67,6 +67,7 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		"postgres.UpdatePostgres":   "REST's general PATCH handler (rename-rejection/disk/HA/ip-allow-list/version, supersedes dedicated setters for that surface); postgres has no events feed integration yet",
 		"postgres.SetVersion":       "managed Postgres has no events feed integration yet; the workspace audit log still records the targeted write",
 		"keyvalue.SetEnvironmentID": "mirrors keyvalue.SetProjectID; keyvalue has no events feed integration yet",
+		"keyvalue.UpdateKeyValue":   "REST's general PATCH handler (rename/plan, mirrors postgres.UpdatePostgres); keyvalue has no events feed integration yet",
 		// w6/m19: these environment verbs call AuthorizeApp per MEMBER App as a
 		// fan-out side effect of an environment-level action (syncing
 		// core.LabelNetworkIsolation for NetworkPolicy scoping, SetACL's

@@ -99,3 +99,24 @@ export const UpdateKeyValuePlanDocument = gql`
   UpdateKeyValuePlanMutation,
   UpdateKeyValuePlanVars
 >;
+
+// --- display-name update (mirrors databases' RenameDatabase) ---
+
+export interface RenameKeyValueVars {
+  id: string;
+  name: string;
+}
+export interface RenameKeyValueMutation {
+  renameKeyValue: {
+    id: string | null;
+    name: string | null;
+  } | null;
+}
+export const RenameKeyValueDocument = gql`
+  mutation RenameKeyValue($id: String!, $name: String!) {
+    renameKeyValue(id: $id, name: $name) {
+      id
+      name
+    }
+  }
+` as unknown as TypedDocumentNode<RenameKeyValueMutation, RenameKeyValueVars>;
