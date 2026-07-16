@@ -19,10 +19,12 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { NewEnvGroupDialog } from "@/features/env-groups/components/new-env-group-dialog";
+import { EnvGroupMetadata } from "@/features/env-groups/components/env-group-metadata";
 import {
   classifyEnvGroupError,
   useEnvGroups,
 } from "@/features/env-groups/hooks/use-env-groups";
+import { useServices } from "@/features/services/hooks/use-services";
 
 export const Route = createFileRoute("/env-groups")({
   component: EnvGroupsPage,
@@ -36,6 +38,7 @@ export function EnvGroupsPage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const { groups, loading, error, refetch } = useEnvGroups();
+  const { services, loading: servicesLoading } = useServices();
   const errorKind = classifyEnvGroupError(error);
   const initialLoading = loading && groups.length === 0;
 
@@ -50,6 +53,8 @@ export function EnvGroupsPage() {
         </div>
         <NewEnvGroupDialog
           refetch={refetch}
+          services={services}
+          servicesLoading={servicesLoading}
           onCreated={(groupId) =>
             void navigate({
               to: "/env-groups/$groupId",
@@ -99,25 +104,28 @@ export function EnvGroupsPage() {
                         {group.id}
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="flex flex-wrap gap-2">
-                      <Badge variant="secondary">
-                        <KeyRound />
-                        {t("envGroups.varCount", {
-                          count: group.envVarKeys.length,
-                        })}
-                      </Badge>
-                      <Badge variant="secondary">
-                        <FileLock2 />
-                        {t("envGroups.fileCount", {
-                          count: group.secretFileNames.length,
-                        })}
-                      </Badge>
-                      <Badge variant="secondary">
-                        <Server />
-                        {t("envGroups.serviceCount", {
-                          count: group.serviceLinks.length,
-                        })}
-                      </Badge>
+                    <CardContent className="space-y-4">
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="secondary">
+                          <KeyRound />
+                          {t("envGroups.varCount", {
+                            count: group.envVarKeys.length,
+                          })}
+                        </Badge>
+                        <Badge variant="secondary">
+                          <FileLock2 />
+                          {t("envGroups.fileCount", {
+                            count: group.secretFileNames.length,
+                          })}
+                        </Badge>
+                        <Badge variant="secondary">
+                          <Server />
+                          {t("envGroups.serviceCount", {
+                            count: group.serviceLinks.length,
+                          })}
+                        </Badge>
+                      </div>
+                      <EnvGroupMetadata group={group} />
                     </CardContent>
                   </Card>
                 </Link>

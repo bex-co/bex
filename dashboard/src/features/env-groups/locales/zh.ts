@@ -18,8 +18,96 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Create env-group dialog title",
   },
   "envGroups.createDescription": {
-    message: "先创建组，然后添加变量、文件和关联服务。",
+    message: "现在添加变量、密钥文件和服务关联，或将它们留空。",
     description: "Create env-group dialog description",
+  },
+  "envGroups.createVarsTitle": {
+    message: "环境变量",
+    description: "Initial environment variables section title",
+  },
+  "envGroups.createVarsDescription": {
+    message: "在创建时设置值或生成高强度密钥。",
+    description: "Initial environment variables section description",
+  },
+  "envGroups.varKeyLabel": {
+    message: "键",
+    description: "Initial environment variable key label",
+  },
+  "envGroups.varKeyPlaceholder": {
+    message: "API_TOKEN",
+    description: "Initial environment variable key placeholder",
+  },
+  "envGroups.varValueLabel": {
+    message: "值",
+    description: "Initial environment variable value label",
+  },
+  "envGroups.varValuePlaceholder": {
+    message: "密钥值",
+    description: "Initial environment variable value placeholder",
+  },
+  "envGroups.generateValue": {
+    message: "生成",
+    description: "Generate an initial environment variable value",
+  },
+  "envGroups.removeVar": {
+    message: "删除变量 {index}",
+    description: "Remove an initial environment variable row",
+  },
+  "envGroups.addInitialVar": {
+    message: "添加环境变量",
+    description: "Add an initial environment variable row",
+  },
+  "envGroups.createFilesTitle": {
+    message: "密钥文件",
+    description: "Initial secret files section title",
+  },
+  "envGroups.createFilesDescription": {
+    message: "文件会被加密并挂载到 /etc/secrets。",
+    description: "Initial secret files section description",
+  },
+  "envGroups.fileNameLabel": {
+    message: "文件名",
+    description: "Initial secret file name label",
+  },
+  "envGroups.fileNamePlaceholder": {
+    message: "credentials.json",
+    description: "Initial secret file name placeholder",
+  },
+  "envGroups.fileContentLabel": {
+    message: "内容",
+    description: "Initial secret file contents label",
+  },
+  "envGroups.fileContentPlaceholder": {
+    message: "文件内容",
+    description: "Initial secret file contents placeholder",
+  },
+  "envGroups.removeFile": {
+    message: "删除密钥文件 {index}",
+    description: "Remove an initial secret file row",
+  },
+  "envGroups.addInitialFile": {
+    message: "添加密钥文件",
+    description: "Add an initial secret file row",
+  },
+  "envGroups.createServicesTitle": {
+    message: "关联服务",
+    description: "Initial service links section title",
+  },
+  "envGroups.createServicesDescription": {
+    message: "选中的服务会在组创建后立即获得这些配置。",
+    description: "Initial service links section description",
+  },
+  "envGroups.servicesLoading": {
+    message: "正在加载工作区服务…",
+    description: "Initial service links loading state",
+  },
+  "envGroups.noServicesToLink": {
+    message: "此工作区还没有可关联的服务。",
+    description: "Initial service links empty state",
+  },
+  "envGroups.invalidInitialContents": {
+    message: "请先修正无效的变量键或文件名。",
+    description: "Invalid initial env-group contents message",
   },
   "envGroups.nameLabel": {
     message: "组名称",
@@ -60,6 +148,22 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
   "envGroups.serviceCount": {
     message: "{count} 个关联服务",
     description: "Env-group linked-service count",
+  },
+  "envGroups.metadataTitle": {
+    message: "组元数据",
+    description: "Env-group metadata card title",
+  },
+  "envGroups.ownerLabel": {
+    message: "所有者",
+    description: "Env-group owner id label",
+  },
+  "envGroups.createdAtLabel": {
+    message: "创建时间",
+    description: "Env-group created timestamp label",
+  },
+  "envGroups.updatedAtLabel": {
+    message: "更新时间",
+    description: "Env-group updated timestamp label",
   },
   "envGroups.unavailableTitle": {
     message: "环境变量组不可用",

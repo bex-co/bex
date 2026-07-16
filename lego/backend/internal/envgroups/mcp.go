@@ -40,9 +40,12 @@ type listEnvGroupsArgs struct {
 }
 
 type createEnvGroupArgs struct {
-	Name          string `json:"name" jsonschema:"the env group name"`
-	OwnerID       string `json:"ownerId,omitempty" jsonschema:"workspace id to create the group in; defaults to the selected or caller's default workspace"`
-	EnvironmentID string `json:"environmentId,omitempty" jsonschema:"optional environment id (env-...) in the same workspace to assign this group to"`
+	Name          string              `json:"name" jsonschema:"the env group name"`
+	OwnerID       string              `json:"ownerId,omitempty" jsonschema:"workspace id to create the group in; defaults to the selected or caller's default workspace"`
+	EnvironmentID string              `json:"environmentId,omitempty" jsonschema:"optional environment id (env-...) in the same workspace to assign this group to"`
+	EnvVars       []CreateEnvVarInput `json:"envVars,omitempty" jsonschema:"optional initial {key,value|generateValue} variables"`
+	SecretFiles   []SecretFileView    `json:"secretFiles,omitempty" jsonschema:"optional initial {name,content} secret files"`
+	ServiceIDs    []string            `json:"serviceIds,omitempty" jsonschema:"optional service ids to link atomically during creation"`
 }
 
 type renameEnvGroupArgs struct {
@@ -110,9 +113,13 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_env_group",
-		Description: "Create an environment group with a name; add vars/files and link services afterward.",
+		Description: "Create an environment group, optionally with initial variables, secret files, and service links in one atomic operation.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createEnvGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
-		g, err := s.CreateEnvGroup(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID), in.Name, in.EnvironmentID)
+		g, err := s.CreateEnvGroup(ctx, CreateEnvGroupRequest{
+			Name: in.Name, OwnerID: core.SelectedWorkspace(s.Selections, req, in.OwnerID),
+			EnvironmentID: in.EnvironmentID, EnvVars: in.EnvVars,
+			SecretFiles: in.SecretFiles, ServiceIDs: in.ServiceIDs,
+		})
 		return nil, g, err
 	})
 

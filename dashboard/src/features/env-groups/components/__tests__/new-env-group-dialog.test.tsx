@@ -33,8 +33,95 @@ describe("NewEnvGroupDialog", () => {
     await user.type(screen.getByLabelText("Group name"), "Shared production");
     await user.click(submit);
 
-    expect(createGroup).toHaveBeenCalledWith("Shared production");
+    expect(createGroup).toHaveBeenCalledWith({
+      name: "Shared production",
+      envVars: [],
+      secretFiles: [],
+      serviceIds: [],
+    });
     expect(onCreated).toHaveBeenCalledWith("eg-new");
+  });
+
+  it("submits initial variables, secret files, and service links once", async () => {
+    const user = userEvent.setup();
+    render(
+      <NewEnvGroupDialog
+        open
+        onCreated={vi.fn()}
+        services={[
+          { id: "srv-web", name: "Web API" } as never,
+          { id: "srv-worker", name: "Worker" } as never,
+        ]}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Group name"), "Shared production");
+    await user.click(
+      screen.getByRole("button", { name: "Add Environment Variable" }),
+    );
+    await user.type(screen.getByLabelText("Key"), "API_TOKEN");
+    await user.type(screen.getByLabelText("Value"), "secret");
+    await user.click(screen.getByRole("button", { name: "Add Secret File" }));
+    await user.type(screen.getByLabelText("File name"), "ca.pem");
+    await user.type(screen.getByLabelText("Contents"), "CERT");
+    await user.click(screen.getByLabelText(/Web API/));
+    await user.click(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    );
+
+    expect(createGroup).toHaveBeenCalledTimes(1);
+    expect(createGroup).toHaveBeenCalledWith({
+      name: "Shared production",
+      envVars: [
+        { key: "API_TOKEN", value: "secret", generateValue: undefined },
+      ],
+      secretFiles: [{ name: "ca.pem", content: "CERT" }],
+      serviceIds: ["srv-web"],
+    });
+  });
+
+  it("sends generateValue without a conflicting literal", async () => {
+    const user = userEvent.setup();
+    render(<NewEnvGroupDialog open onCreated={vi.fn()} />);
+
+    await user.type(screen.getByLabelText("Group name"), "Generated secrets");
+    await user.click(
+      screen.getByRole("button", { name: "Add Environment Variable" }),
+    );
+    await user.type(screen.getByLabelText("Key"), "SESSION_SECRET");
+    await user.click(screen.getByRole("button", { name: "Generate" }));
+    expect(screen.getByLabelText("Value")).toBeDisabled();
+    await user.click(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    );
+
+    expect(createGroup).toHaveBeenCalledWith({
+      name: "Generated secrets",
+      envVars: [
+        { key: "SESSION_SECRET", value: undefined, generateValue: true },
+      ],
+      secretFiles: [],
+      serviceIds: [],
+    });
+  });
+
+  it("blocks invalid variable keys before calling create", async () => {
+    const user = userEvent.setup();
+    render(<NewEnvGroupDialog open onCreated={vi.fn()} />);
+
+    await user.type(screen.getByLabelText("Group name"), "shared");
+    await user.click(
+      screen.getByRole("button", { name: "Add Environment Variable" }),
+    );
+    await user.type(screen.getByLabelText("Key"), "bad key");
+    await user.click(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    );
+
+    expect(createGroup).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Fix invalid variable keys or file names",
+    );
   });
 
   it("stays open and does not navigate when creation fails", async () => {

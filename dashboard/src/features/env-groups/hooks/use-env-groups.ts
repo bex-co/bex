@@ -20,7 +20,10 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { EnvGroupQuery, EnvGroupsQuery } from "@/graphql/definitions";
-import type { EnvGroupView } from "@/features/env-groups/types";
+import type {
+  CreateEnvGroupInput,
+  EnvGroupView,
+} from "@/features/env-groups/types";
 import type { EnvVarKey, SecretFileName } from "@/features/services/types";
 
 type RawGroup = NonNullable<NonNullable<EnvGroupsQuery["envGroups"]>[number]>;
@@ -33,6 +36,9 @@ export function mapEnvGroup(
   return {
     id: raw.id,
     name: raw.name,
+    ownerId: raw.ownerId ?? null,
+    createdAt: raw.createdAt ?? null,
+    updatedAt: raw.updatedAt ?? null,
     serviceLinks: (raw.serviceLinks ?? []).filter(
       (serviceId): serviceId is string => serviceId != null,
     ),
@@ -127,7 +133,7 @@ async function bestEffortRefetch(refetch: Refetch | undefined) {
 }
 
 export interface UseEnvGroupMutationsResult {
-  createGroup: (name: string) => Promise<string | null>;
+  createGroup: (input: CreateEnvGroupInput) => Promise<string | null>;
   renameGroup: (id: string, name: string) => Promise<boolean>;
   deleteGroup: (id: string) => Promise<boolean>;
   linkGroup: (id: string, serviceId: string) => Promise<boolean>;
@@ -150,27 +156,33 @@ export function useEnvGroupMutations(
   const [busy, setBusy] = useState(false);
 
   const createGroup = useCallback(
-    async (name: string) => {
+    async (input: CreateEnvGroupInput) => {
       // Scoped to the switcher's selected workspace (w6/m24) — refused (never
       // sent with a null ownerId, which the backend would silently route to
       // the caller's default workspace) until the workspace list resolves,
       // mirroring useCreateApiKey.
       if (currentWorkspaceId == null) {
-        toast.error(t("envGroups.createError", { name }));
+        toast.error(t("envGroups.createError", { name: input.name }));
         return null;
       }
       setBusy(true);
       try {
         const result = await createEnvGroup({
-          variables: { name, ownerId: currentWorkspaceId },
+          variables: {
+            name: input.name,
+            ownerId: currentWorkspaceId,
+            envVars: input.envVars,
+            secretFiles: input.secretFiles,
+            serviceIds: input.serviceIds,
+          },
         });
         const id = result.data?.createEnvGroup?.id ?? null;
         if (!id) throw new Error("createEnvGroup returned no id");
         await bestEffortRefetch(refetch);
-        toast.success(t("envGroups.createSuccess", { name }));
+        toast.success(t("envGroups.createSuccess", { name: input.name }));
         return id;
       } catch {
-        toast.error(t("envGroups.createError", { name }));
+        toast.error(t("envGroups.createError", { name: input.name }));
         return null;
       } finally {
         setBusy(false);

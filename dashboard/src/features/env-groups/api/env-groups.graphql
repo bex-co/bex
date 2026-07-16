@@ -8,6 +8,9 @@ query EnvGroups($ownerId: String) {
   envGroups(ownerId: $ownerId) {
     id
     name
+    ownerId
+    createdAt
+    updatedAt
     serviceLinks
     envVars {
       key
@@ -22,6 +25,9 @@ query EnvGroup($id: String!) {
   envGroup(id: $id) {
     id
     name
+    ownerId
+    createdAt
+    updatedAt
     serviceLinks
     envVars {
       key
@@ -46,8 +52,20 @@ query EnvGroupSecretFileContent($id: String!, $name: String!) {
   }
 }
 
-mutation CreateEnvGroup($name: String!, $ownerId: String) {
-  createEnvGroup(name: $name, ownerId: $ownerId) {
+mutation CreateEnvGroup(
+  $name: String!
+  $ownerId: String
+  $envVars: [EnvGroupVarInput!]
+  $secretFiles: [EnvGroupSecretFileInput!]
+  $serviceIds: [String!]
+) {
+  createEnvGroup(
+    name: $name
+    ownerId: $ownerId
+    envVars: $envVars
+    secretFiles: $secretFiles
+    serviceIds: $serviceIds
+  ) {
     id
     name
   }

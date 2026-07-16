@@ -19,8 +19,97 @@ const enEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.createDescription": {
     message:
-      "Create the group first, then add variables, files, and linked services.",
+      "Add variables, secret files, and service links now or leave them empty.",
     description: "Create env-group dialog description",
+  },
+  "envGroups.createVarsTitle": {
+    message: "Environment Variables",
+    description: "Initial environment variables section title",
+  },
+  "envGroups.createVarsDescription": {
+    message: "Set literal values or generate strong secrets during creation.",
+    description: "Initial environment variables section description",
+  },
+  "envGroups.varKeyLabel": {
+    message: "Key",
+    description: "Initial environment variable key label",
+  },
+  "envGroups.varKeyPlaceholder": {
+    message: "API_TOKEN",
+    description: "Initial environment variable key placeholder",
+  },
+  "envGroups.varValueLabel": {
+    message: "Value",
+    description: "Initial environment variable value label",
+  },
+  "envGroups.varValuePlaceholder": {
+    message: "Secret value",
+    description: "Initial environment variable value placeholder",
+  },
+  "envGroups.generateValue": {
+    message: "Generate",
+    description: "Generate an initial environment variable value",
+  },
+  "envGroups.removeVar": {
+    message: "Remove variable {index}",
+    description: "Remove an initial environment variable row",
+  },
+  "envGroups.addInitialVar": {
+    message: "Add Environment Variable",
+    description: "Add an initial environment variable row",
+  },
+  "envGroups.createFilesTitle": {
+    message: "Secret Files",
+    description: "Initial secret files section title",
+  },
+  "envGroups.createFilesDescription": {
+    message: "Files are encrypted and mounted under /etc/secrets.",
+    description: "Initial secret files section description",
+  },
+  "envGroups.fileNameLabel": {
+    message: "File name",
+    description: "Initial secret file name label",
+  },
+  "envGroups.fileNamePlaceholder": {
+    message: "credentials.json",
+    description: "Initial secret file name placeholder",
+  },
+  "envGroups.fileContentLabel": {
+    message: "Contents",
+    description: "Initial secret file contents label",
+  },
+  "envGroups.fileContentPlaceholder": {
+    message: "File contents",
+    description: "Initial secret file contents placeholder",
+  },
+  "envGroups.removeFile": {
+    message: "Remove secret file {index}",
+    description: "Remove an initial secret file row",
+  },
+  "envGroups.addInitialFile": {
+    message: "Add Secret File",
+    description: "Add an initial secret file row",
+  },
+  "envGroups.createServicesTitle": {
+    message: "Linked Services",
+    description: "Initial service links section title",
+  },
+  "envGroups.createServicesDescription": {
+    message: "Selected services receive this group as soon as it is created.",
+    description: "Initial service links section description",
+  },
+  "envGroups.servicesLoading": {
+    message: "Loading workspace services…",
+    description: "Initial service links loading state",
+  },
+  "envGroups.noServicesToLink": {
+    message: "This workspace has no services to link yet.",
+    description: "Initial service links empty state",
+  },
+  "envGroups.invalidInitialContents": {
+    message:
+      "Fix invalid variable keys or file names before creating the group.",
+    description: "Invalid initial env-group contents message",
   },
   "envGroups.nameLabel": {
     message: "Group name",
@@ -62,6 +151,22 @@ const enEnvGroups: Record<string, TranslationEntry> = {
   "envGroups.serviceCount": {
     message: "{count} linked service(s)",
     description: "Env-group linked-service count",
+  },
+  "envGroups.metadataTitle": {
+    message: "Group Metadata",
+    description: "Env-group metadata card title",
+  },
+  "envGroups.ownerLabel": {
+    message: "Owner",
+    description: "Env-group owner id label",
+  },
+  "envGroups.createdAtLabel": {
+    message: "Created",
+    description: "Env-group created timestamp label",
+  },
+  "envGroups.updatedAtLabel": {
+    message: "Updated",
+    description: "Env-group updated timestamp label",
   },
   "envGroups.unavailableTitle": {
     message: "Environment groups unavailable",

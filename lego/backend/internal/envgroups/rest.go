@@ -39,16 +39,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, out)
 	})
 	mux.HandleFunc("POST /v1/env-groups", func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			Name          string `json:"name"`
-			OwnerID       string `json:"ownerId"`
-			EnvironmentID string `json:"environmentId"`
-		}
+		var req CreateEnvGroupRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
-		g, err := s.CreateEnvGroup(r.Context(), req.OwnerID, req.Name, req.EnvironmentID)
+		g, err := s.CreateEnvGroup(r.Context(), req)
 		if err != nil {
 			core.WriteErr(w, err)
 			return

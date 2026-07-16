@@ -78,6 +78,27 @@ type SecretFileView struct {
 	Content string `json:"content,omitempty"`
 }
 
+// CreateEnvVarInput is Render's create-time value-or-generate env-var shape.
+// GenerateValue is resolved before the group id is minted, so a generation or
+// validation failure cannot leave a partially created group behind.
+type CreateEnvVarInput struct {
+	Key           string `json:"key"`
+	Value         string `json:"value,omitempty"`
+	GenerateValue bool   `json:"generateValue,omitempty"`
+}
+
+// CreateEnvGroupRequest is the one neutral create input shared by REST,
+// GraphQL, and MCP. All optional initial contents and links are validated before
+// any store, Secret, or App mutation is attempted.
+type CreateEnvGroupRequest struct {
+	Name          string              `json:"name"`
+	OwnerID       string              `json:"ownerId,omitempty"`
+	EnvironmentID string              `json:"environmentId,omitempty"`
+	EnvVars       []CreateEnvVarInput `json:"envVars,omitempty"`
+	SecretFiles   []SecretFileView    `json:"secretFiles,omitempty"`
+	ServiceIDs    []string            `json:"serviceIds,omitempty"`
+}
+
 // EnvGroupView is the Render-shaped env-group object. EnvVars/SecretFiles carry
 // keys/names only (no secret material) — a list/get never leaks values; the
 // per-var / per-file reveal verbs return them under the sensitive scope.
@@ -216,43 +237,219 @@ func (s *Service) GetEnvGroup(ctx context.Context, gid string) (EnvGroupView, er
 	return s.viewFromMeta(ctx, gid, m)
 }
 
-// CreateEnvGroup mints a group with a name in ownerID's workspace ("" => the
-// caller's default, Render's `ownerId`, w6/m24), optionally assigns it to an
-// Environment in that same workspace, and materializes its (empty) projection
-// Secrets so a link can reference them immediately. Manage scope.
-func (s *Service) CreateEnvGroup(ctx context.Context, ownerID, name, environmentID string) (EnvGroupView, error) {
-	ctx = core.WithWorkspace(ctx, ownerID)
+// CreateEnvGroup atomically creates a group in req.OwnerID's workspace ("" =>
+// the caller's default), optionally populated with vars/files and linked to
+// services. Every value, filename, Environment, and service link is validated
+// before the id is minted or any state is written. Runtime write failures are
+// compensated best-effort across OpenBao, projection Secrets, and App patches;
+// validation failures therefore have exactly zero side effects. Manage scope.
+func (s *Service) CreateEnvGroup(ctx context.Context, req CreateEnvGroupRequest) (EnvGroupView, error) {
+	ctx = core.WithWorkspace(ctx, req.OwnerID)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return EnvGroupView{}, err
 	}
 	if s.Store == nil {
 		return EnvGroupView{}, core.ErrSecretsUnavailable
 	}
-	name = strings.TrimSpace(name)
+	name := strings.TrimSpace(req.Name)
 	if name == "" {
 		return EnvGroupView{}, fmt.Errorf("%w: env group name is required", core.ErrBadRequest)
 	}
-	gid := id.New(id.EnvGroup)
 	workspace, _ := s.Tenant(ctx) // "" with the store off, matching AppView.OwnerID
-	if err := s.validateEnvironment(ctx, environmentID, workspace); err != nil {
+	if err := s.validateEnvironment(ctx, req.EnvironmentID, workspace); err != nil {
 		return EnvGroupView{}, err
 	}
+	env, err := prepareCreateEnv(req.EnvVars)
+	if err != nil {
+		return EnvGroupView{}, err
+	}
+	files, err := prepareCreateFiles(req.SecretFiles)
+	if err != nil {
+		return EnvGroupView{}, err
+	}
+	services, links, err := s.prepareCreateServices(ctx, req.ServiceIDs, workspace)
+	if err != nil {
+		return EnvGroupView{}, err
+	}
+
+	gid := id.New(id.EnvGroup)
 	now := s.now()
-	m := meta{name: name, workspace: workspace, environment: environmentID, createdAt: now, updatedAt: now}
-	if err := s.writeMeta(ctx, gid, m); err != nil {
-		return EnvGroupView{}, err
+	m := meta{
+		name: name, links: links, workspace: workspace, environment: req.EnvironmentID,
+		createdAt: now, updatedAt: now,
 	}
-	if err := s.upsertSecret(ctx, envSecretName(gid), nil); err != nil {
-		return EnvGroupView{}, err
-	}
-	if err := s.upsertSecret(ctx, filesSecretName(gid), nil); err != nil {
+	if err := s.persistCreate(ctx, gid, m, env, files, services); err != nil {
 		return EnvGroupView{}, err
 	}
 	return EnvGroupView{
-		ID: gid, Name: name, OwnerID: workspace, EnvironmentID: environmentID,
-		ServiceLinks: []string{}, EnvVars: []EnvVarView{}, SecretFiles: []SecretFileView{},
+		ID: gid, Name: name, OwnerID: workspace, EnvironmentID: req.EnvironmentID,
+		ServiceLinks: links, EnvVars: envKeyViews(env), SecretFiles: fileNameViews(files),
 		CreatedAt: now, UpdatedAt: now,
 	}, nil
+}
+
+// prepareCreateEnv validates and resolves Render's literal-or-generated input
+// before CreateEnvGroup mints an id. Duplicate keys follow the existing
+// replace-all semantics: the last declaration wins.
+func prepareCreateEnv(vars []CreateEnvVarInput) (map[string]string, error) {
+	env := make(map[string]string, len(vars))
+	for _, input := range vars {
+		key := strings.TrimSpace(input.Key)
+		if !core.ValidEnvKey(key) {
+			return nil, fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
+		}
+		if input.GenerateValue && input.Value != "" {
+			return nil, fmt.Errorf("%w: env var %q sets both value and generateValue — pick one", core.ErrBadRequest, key)
+		}
+		value := input.Value
+		if input.GenerateValue {
+			var err error
+			value, err = core.GenerateValue()
+			if err != nil {
+				return nil, err
+			}
+		}
+		env[key] = value
+	}
+	return env, nil
+}
+
+// prepareCreateFiles validates every filename without ever including its
+// content in an error. Duplicate names use the final supplied content.
+func prepareCreateFiles(files []SecretFileView) (map[string]string, error) {
+	out := make(map[string]string, len(files))
+	for _, input := range files {
+		name := strings.TrimSpace(input.Name)
+		if !core.ValidSecretFileName(name) {
+			return nil, fmt.Errorf("%w: invalid secret file name %q", core.ErrBadRequest, name)
+		}
+		out[name] = input.Content
+	}
+	return out, nil
+}
+
+// prepareCreateServices resolves every serviceId inside the create workspace
+// without calling another public verb (and therefore without a second audit
+// event). It is read-only: all links are proven before any group state exists.
+func (s *Service) prepareCreateServices(
+	ctx context.Context,
+	serviceIDs []string,
+	workspace string,
+) ([]*appv1alpha1.App, []string, error) {
+	apps := make([]*appv1alpha1.App, 0, len(serviceIDs))
+	links := make([]string, 0, len(serviceIDs))
+	seen := make(map[string]struct{}, len(serviceIDs))
+	for _, raw := range serviceIDs {
+		serviceID := strings.TrimSpace(raw)
+		if serviceID == "" {
+			return nil, nil, fmt.Errorf("%w: serviceId is required", core.ErrBadRequest)
+		}
+		if _, ok := seen[serviceID]; ok {
+			continue
+		}
+		a, err := s.findCreateService(ctx, serviceID, workspace)
+		if err != nil {
+			return nil, nil, fmt.Errorf("serviceId %q: %w", serviceID, err)
+		}
+		seen[serviceID] = struct{}{}
+		apps = append(apps, a)
+		links = append(links, serviceID)
+	}
+	return apps, links, nil
+}
+
+// findCreateService reuses Base's id/name-compatible App resolution, then
+// narrows the result to the group workspace. GetApp's resource gate has no
+// audit side effect, so the composite create still emits exactly one event.
+func (s *Service) findCreateService(ctx context.Context, serviceID, workspace string) (*appv1alpha1.App, error) {
+	a, err := s.GetApp(ctx, core.RelCanCreate, serviceID)
+	if err != nil {
+		return nil, err
+	}
+	if !s.createWorkspaceMatches(a.Labels, workspace) {
+		return nil, core.ErrForbidden
+	}
+	return a, nil
+}
+
+func (s *Service) createWorkspaceMatches(labels map[string]string, workspace string) bool {
+	if s.Workspace == nil {
+		return true // store-off compatibility: one unscoped workspace
+	}
+	return labels[core.LabelTenant] == workspace
+}
+
+// persistCreate applies the already-validated create plan. The metadata write
+// is last, so the group becomes discoverable only after its contents,
+// projection Secrets, and service refs exist. Any error triggers compensation.
+func (s *Service) persistCreate(
+	ctx context.Context,
+	gid string,
+	m meta,
+	env, files map[string]string,
+	services []*appv1alpha1.App,
+) error {
+	patched := make([]*appv1alpha1.App, 0, len(services))
+	rollback := func(cause error) error {
+		cleanupCtx := context.WithoutCancel(ctx)
+		var cleanup []error
+		for i := len(patched) - 1; i >= 0; i-- {
+			before := patched[i]
+			var current appv1alpha1.App
+			key := client.ObjectKeyFromObject(before)
+			if err := s.Client.Get(cleanupCtx, key, &current); err != nil {
+				cleanup = append(cleanup, fmt.Errorf("restore service %q: %w", before.Name, err))
+				continue
+			}
+			restored := before.DeepCopy()
+			restored.ResourceVersion = current.ResourceVersion
+			if err := s.Client.Patch(cleanupCtx, restored, client.MergeFrom(current.DeepCopy())); err != nil {
+				cleanup = append(cleanup, fmt.Errorf("restore service %q: %w", before.Name, err))
+			}
+		}
+		for _, name := range []string{envSecretName(gid), filesSecretName(gid)} {
+			if err := s.deleteSecret(cleanupCtx, name); err != nil {
+				cleanup = append(cleanup, fmt.Errorf("delete projection Secret %q: %w", name, err))
+			}
+		}
+		for _, path := range []string{envPath(gid), filesPath(gid), metaPath(gid)} {
+			if err := s.Store.Delete(cleanupCtx, path); err != nil {
+				cleanup = append(cleanup, fmt.Errorf("delete %q: %w", path, err))
+			}
+		}
+		if len(cleanup) == 0 {
+			return cause
+		}
+		return errors.Join(append([]error{cause}, cleanup...)...)
+	}
+
+	if err := s.storeMap(ctx, envPath(gid), env); err != nil {
+		return rollback(err)
+	}
+	if err := s.storeMap(ctx, filesPath(gid), files); err != nil {
+		return rollback(err)
+	}
+	if err := s.upsertSecret(ctx, envSecretName(gid), env); err != nil {
+		return rollback(err)
+	}
+	if err := s.upsertSecret(ctx, filesSecretName(gid), files); err != nil {
+		return rollback(err)
+	}
+	for _, a := range services {
+		before := a.DeepCopy()
+		base := client.MergeFrom(before)
+		a.Spec.EnvFromSecrets = addString(a.Spec.EnvFromSecrets, envSecretName(gid))
+		a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, filesSecretName(gid))
+		a.Spec.RestartedAt = m.updatedAt
+		if err := s.Client.Patch(ctx, a, base); err != nil {
+			return rollback(err)
+		}
+		patched = append(patched, before)
+	}
+	if err := s.writeMeta(ctx, gid, m); err != nil {
+		return rollback(err)
+	}
+	return nil
 }
 
 // SetEnvironmentID assigns or unassigns one group from an Environment. A

@@ -139,7 +139,12 @@ describe("EnvGroupsPanel", () => {
     await user.clear(nameInput);
     await user.type(nameInput, "shared");
     await user.click(screen.getByRole("button", { name: /^Create$/ }));
-    expect(mockCreateGroup).toHaveBeenCalledWith("shared");
+    expect(mockCreateGroup).toHaveBeenCalledWith({
+      name: "shared",
+      envVars: [],
+      secretFiles: [],
+      serviceIds: [],
+    });
   });
 
   it("deletes a group after confirming", async () => {
