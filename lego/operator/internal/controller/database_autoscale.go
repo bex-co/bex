@@ -1,0 +1,238 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package controller
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
+
+const (
+	databaseDiskAutoscaleThreshold = 0.90
+	databaseDiskAutoscaleCapGB     = int32(16 * 1024)
+	databaseDiskAutoscaleCooldown  = 12 * time.Hour
+	databaseDiskAutoscaleInterval  = time.Minute
+	databaseDiskResizeHistoryLimit = 20
+
+	annotDiskAutoscaleAt       = "app.bex.co/disk-autoscale-at"
+	annotDiskAutoscaleFromGB   = "app.bex.co/disk-autoscale-from-gb"
+	annotDiskAutoscaleToGB     = "app.bex.co/disk-autoscale-to-gb"
+	annotDiskAutoscaleUsed     = "app.bex.co/disk-autoscale-used-bytes"
+	annotDiskAutoscaleCapacity = "app.bex.co/disk-autoscale-capacity-bytes"
+)
+
+// DatabaseDiskUsage is the fullest CNPG instance PVC's current kubelet sample.
+// HA replicas each hold a complete copy, so the fullest replica drives growth.
+type DatabaseDiskUsage struct {
+	PVC           string
+	UsedBytes     int64
+	CapacityBytes int64
+}
+
+func (u DatabaseDiskUsage) ratio() float64 {
+	if u.UsedBytes < 0 || u.CapacityBytes <= 0 {
+		return 0
+	}
+	return float64(u.UsedBytes) / float64(u.CapacityBytes)
+}
+
+// DatabaseDiskUsageReader reads current PVC usage without depending on the
+// optional control-plane store. Production uses Prometheus's already-scraped
+// kubelet_volume_stats series; tests inject a deterministic reader.
+type DatabaseDiskUsageReader func(ctx context.Context, namespace, database string) (DatabaseDiskUsage, error)
+
+// NewPrometheusDatabaseDiskUsageReader returns a reader over the cluster's
+// existing kubelet PVC series. No new scrape or Kubernetes RBAC is required.
+func NewPrometheusDatabaseDiskUsageReader(base string, hc *http.Client) DatabaseDiskUsageReader {
+	if hc == nil {
+		hc = http.DefaultClient
+	}
+	base = strings.TrimRight(base, "/")
+	return func(ctx context.Context, namespace, database string) (DatabaseDiskUsage, error) {
+		pattern := "^" + regexp.QuoteMeta(database) + `-[0-9]+$`
+		selector := fmt.Sprintf(`{namespace=%s,persistentvolumeclaim=~%s}`, strconv.Quote(namespace), strconv.Quote(pattern))
+		used, err := promInstantQuery(ctx, hc, base, "kubelet_volume_stats_used_bytes"+selector)
+		if err != nil {
+			return DatabaseDiskUsage{}, fmt.Errorf("query used bytes: %w", err)
+		}
+		capacity, err := promInstantQuery(ctx, hc, base, "kubelet_volume_stats_capacity_bytes"+selector)
+		if err != nil {
+			return DatabaseDiskUsage{}, fmt.Errorf("query capacity bytes: %w", err)
+		}
+
+		capacityByPVC := make(map[string]float64, len(capacity))
+		for _, sample := range capacity {
+			pvc := sample.labels["persistentvolumeclaim"]
+			if pvc != "" && sample.value > capacityByPVC[pvc] {
+				capacityByPVC[pvc] = sample.value
+			}
+		}
+		var fullest DatabaseDiskUsage
+		for _, sample := range used {
+			pvc := sample.labels["persistentvolumeclaim"]
+			capBytes := capacityByPVC[pvc]
+			if pvc == "" || capBytes <= 0 {
+				continue
+			}
+			candidate := DatabaseDiskUsage{
+				PVC:           pvc,
+				UsedBytes:     int64(sample.value),
+				CapacityBytes: int64(capBytes),
+			}
+			if fullest.PVC == "" || candidate.ratio() > fullest.ratio() {
+				fullest = candidate
+			}
+		}
+		if fullest.PVC == "" {
+			return DatabaseDiskUsage{}, fmt.Errorf("no complete PVC usage sample for %s/%s", namespace, database)
+		}
+		return fullest, nil
+	}
+}
+
+// nextDatabaseDiskSize applies Render's captured rule: add 50%, round upward
+// to a 5 GB multiple, and stop at 16 TB. It is strictly grow-only.
+func nextDatabaseDiskSize(currentGB int32) int32 {
+	if currentGB <= 0 || currentGB >= databaseDiskAutoscaleCapGB {
+		return currentGB
+	}
+	// ceil(current * 1.5), followed by ceil-to-5GB.
+	target := (currentGB*3 + 1) / 2
+	target = ((target + 4) / 5) * 5
+	if target > databaseDiskAutoscaleCapGB {
+		return databaseDiskAutoscaleCapGB
+	}
+	return target
+}
+
+func databaseDiskAutoscaleDecision(currentGB int32, usage DatabaseDiskUsage, lastResize, now time.Time) (int32, bool) {
+	if usage.ratio() < databaseDiskAutoscaleThreshold {
+		return currentGB, false
+	}
+	if !lastResize.IsZero() && now.Sub(lastResize) < databaseDiskAutoscaleCooldown {
+		return currentGB, false
+	}
+	next := nextDatabaseDiskSize(currentGB)
+	return next, next > currentGB
+}
+
+func (r *DatabaseReconciler) databaseNow() time.Time {
+	if r.Now != nil {
+		return r.Now().UTC()
+	}
+	return time.Now().UTC()
+}
+
+// applyDiskAutoscaling evaluates one sample and persists a resize intent. The
+// last-resize annotation is patched atomically with spec.storageGB; that is the
+// anti-flap source of truth while CNPG and kubelet catch up. Status history is
+// reconstructed from those annotations if a later status write is interrupted.
+func (r *DatabaseReconciler) applyDiskAutoscaling(ctx context.Context, db *appv1alpha1.Database) (time.Duration, error) {
+	statusBefore := db.DeepCopy()
+	if r.syncLastDiskResizeStatus(db) {
+		if err := r.Status().Patch(ctx, db, client.MergeFrom(statusBefore)); err != nil {
+			return databaseDiskAutoscaleInterval, fmt.Errorf("persist disk autoscale status: %w", err)
+		}
+	}
+	if !db.Spec.DiskAutoscaling || db.Spec.Suspended {
+		return 0, nil
+	}
+	if r.DiskUsageReader == nil {
+		return databaseDiskAutoscaleInterval, nil
+	}
+
+	usage, err := r.DiskUsageReader(ctx, db.Namespace, db.Name)
+	if err != nil {
+		logf.FromContext(ctx).Info("database disk autoscaling sample unavailable", "name", db.Name, "reason", err)
+		return databaseDiskAutoscaleInterval, nil
+	}
+
+	_, currentGB := resolvePlan(db.Spec)
+	now := r.databaseNow()
+	lastResize, _ := time.Parse(time.RFC3339, db.Annotations[annotDiskAutoscaleAt])
+	nextGB, grow := databaseDiskAutoscaleDecision(currentGB, usage, lastResize, now)
+	if !grow {
+		return databaseDiskAutoscaleInterval, nil
+	}
+
+	before := db.DeepCopy()
+	if db.Annotations == nil {
+		db.Annotations = map[string]string{}
+	}
+	db.Spec.StorageGB = nextGB
+	db.Annotations[annotDiskAutoscaleAt] = now.Format(time.RFC3339)
+	db.Annotations[annotDiskAutoscaleFromGB] = strconv.FormatInt(int64(currentGB), 10)
+	db.Annotations[annotDiskAutoscaleToGB] = strconv.FormatInt(int64(nextGB), 10)
+	db.Annotations[annotDiskAutoscaleUsed] = strconv.FormatInt(usage.UsedBytes, 10)
+	db.Annotations[annotDiskAutoscaleCapacity] = strconv.FormatInt(usage.CapacityBytes, 10)
+	if err := r.Patch(ctx, db, client.MergeFrom(before)); err != nil {
+		return databaseDiskAutoscaleInterval, fmt.Errorf("persist disk autoscale intent: %w", err)
+	}
+	if r.Recorder != nil {
+		r.Recorder.Eventf(db, "Normal", "DiskAutoscaled",
+			"grew Postgres storage from %d GB to %d GB after PVC %s reached %.1f%% full",
+			currentGB, nextGB, usage.PVC, usage.ratio()*100)
+	}
+	statusBefore = db.DeepCopy()
+	if r.syncLastDiskResizeStatus(db) {
+		if err := r.Status().Patch(ctx, db, client.MergeFrom(statusBefore)); err != nil {
+			return databaseDiskAutoscaleInterval, fmt.Errorf("persist disk autoscale status: %w", err)
+		}
+	}
+	logf.FromContext(ctx).Info("database disk autoscaled", "name", db.Name, "pvc", usage.PVC,
+		"fromGB", currentGB, "toGB", nextGB, "usagePercent", usage.ratio()*100)
+	return databaseDiskAutoscaleInterval, nil
+}
+
+func (r *DatabaseReconciler) syncLastDiskResizeStatus(db *appv1alpha1.Database) bool {
+	annotations := db.Annotations
+	if annotations == nil || annotations[annotDiskAutoscaleAt] == "" {
+		return false
+	}
+	entry := appv1alpha1.DatabaseDiskResizeStatus{At: annotations[annotDiskAutoscaleAt]}
+	from, errFrom := strconv.ParseInt(annotations[annotDiskAutoscaleFromGB], 10, 32)
+	to, errTo := strconv.ParseInt(annotations[annotDiskAutoscaleToGB], 10, 32)
+	used, errUsed := strconv.ParseInt(annotations[annotDiskAutoscaleUsed], 10, 64)
+	capacity, errCapacity := strconv.ParseInt(annotations[annotDiskAutoscaleCapacity], 10, 64)
+	if errFrom != nil || errTo != nil || errUsed != nil || errCapacity != nil || to <= from {
+		return false
+	}
+	entry.FromGB = int32(from)
+	entry.ToGB = int32(to)
+	entry.UsedBytes = used
+	entry.CapacityBytes = capacity
+	for _, existing := range db.Status.DiskResizeHistory {
+		if existing.At == entry.At && existing.ToGB == entry.ToGB {
+			return false
+		}
+	}
+	db.Status.DiskResizeHistory = append(db.Status.DiskResizeHistory, entry)
+	if excess := len(db.Status.DiskResizeHistory) - databaseDiskResizeHistoryLimit; excess > 0 {
+		db.Status.DiskResizeHistory = append([]appv1alpha1.DatabaseDiskResizeStatus(nil), db.Status.DiskResizeHistory[excess:]...)
+	}
+	return true
+}

@@ -43,6 +43,7 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"databaseName":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.DatabaseName })},
 		"databaseUser":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.DatabaseUser })},
 		"diskSizeGB":              &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v PostgresView) any { return v.DiskSizeGB })},
+		"diskAutoscalingEnabled":  &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v PostgresView) any { return v.DiskAutoscalingEnabled })},
 		"highAvailabilityEnabled": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v PostgresView) any { return v.HighAvailabilityEnabled })},
 		"readReplicas":            &graphql.Field{Type: graphql.NewList(readReplicaViewGQLType), Resolve: gqlutil.Field(func(v PostgresView) any { return v.ReadReplicas })},
 		"suspended":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.Suspended })},
@@ -465,6 +466,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"plan":                   &graphql.ArgumentConfig{Type: graphql.String},
 				"version":                &graphql.ArgumentConfig{Type: graphql.String},
 				"diskSizeGB":             &graphql.ArgumentConfig{Type: graphql.Int},
+				"enableDiskAutoscaling":  &graphql.ArgumentConfig{Type: graphql.Boolean},
 				"public":                 &graphql.ArgumentConfig{Type: graphql.Boolean},
 				"enableHighAvailability": &graphql.ArgumentConfig{Type: graphql.Boolean},
 				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
@@ -482,6 +484,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				}
 				if v, ok := p.Args["diskSizeGB"].(int); ok {
 					req.DiskSizeGB = int32(v)
+				}
+				if v, ok := p.Args["enableDiskAutoscaling"].(bool); ok {
+					req.EnableDiskAutoscaling = v
 				}
 				if v, ok := p.Args["public"].(bool); ok {
 					req.Public = v
@@ -525,6 +530,17 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetVersion(p.Context, p.Args["id"].(string), p.Args["version"].(string))
+			},
+		},
+		"updateDatabaseDiskAutoscaling": &graphql.Field{
+			Type: postgresGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"enabled": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Boolean)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				enabled := p.Args["enabled"].(bool)
+				return s.UpdatePostgres(p.Context, p.Args["id"].(string), PostgresPatch{EnableDiskAutoscaling: &enabled})
 			},
 		},
 		"renameDatabase": &graphql.Field{

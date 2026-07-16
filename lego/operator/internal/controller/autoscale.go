@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"time"
@@ -185,7 +186,7 @@ type promInstantSample struct {
 // result vector as (labels, float64) pairs.
 func promInstantQuery(ctx context.Context, hc *http.Client, base, query string) ([]promInstantSample, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		fmt.Sprintf("%s/api/v1/query?query=%s", base, query), nil)
+		fmt.Sprintf("%s/api/v1/query?query=%s", base, url.QueryEscape(query)), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -217,13 +218,8 @@ func promInstantQuery(ctx context.Context, hc *http.Client, base, query string) 
 		if !ok {
 			continue
 		}
-		val, err := fmt.Sscanf(str, "%f", new(float64))
-		_ = val
-		if err != nil {
-			continue
-		}
-		var f float64
-		if _, err := fmt.Sscanf(str, "%f", &f); err != nil || math.IsNaN(f) {
+		f, err := strconv.ParseFloat(str, 64)
+		if err != nil || math.IsNaN(f) {
 			continue
 		}
 		out = append(out, promInstantSample{labels: r.Metric, value: f})

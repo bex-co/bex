@@ -40,6 +40,31 @@ interface IdVars {
   id: string;
 }
 
+export interface UpdateDatabaseDiskAutoscalingVars extends IdVars {
+  enabled: boolean;
+}
+
+export interface UpdateDatabaseDiskAutoscalingMutation {
+  updateDatabaseDiskAutoscaling: {
+    id: string | null;
+    diskSizeGB: number | null;
+    diskAutoscalingEnabled: boolean | null;
+  } | null;
+}
+
+export const UpdateDatabaseDiskAutoscalingDocument = gql`
+  mutation UpdateDatabaseDiskAutoscaling($id: String!, $enabled: Boolean!) {
+    updateDatabaseDiskAutoscaling(id: $id, enabled: $enabled) {
+      id
+      diskSizeGB
+      diskAutoscalingEnabled
+    }
+  }
+` as unknown as TypedDocumentNode<
+  UpdateDatabaseDiskAutoscalingMutation,
+  UpdateDatabaseDiskAutoscalingVars
+>;
+
 // --- queries ---
 
 export interface DatabaseRecoveryInfoQuery {

@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -402,6 +403,12 @@ func deleteOptionalObject(ctx context.Context, c client.Client, o *unstructured.
 type DatabaseReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	// Recorder emits a Kubernetes Event for every automatic storage increase.
+	// Nil is allowed in tests and disables Event emission only.
+	Recorder record.EventRecorder
+	// DiskUsageReader reads the fullest CNPG PVC's kubelet usage sample. Nil
+	// leaves the field round-trippable but disables the automatic control loop.
+	DiskUsageReader DatabaseDiskUsageReader
 	// DBDomain is the wildcard base for external endpoints, e.g. "db.bex.co".
 	// Empty => Public databases get no external route.
 	DBDomain string
@@ -422,6 +429,7 @@ type DatabaseReconciler struct {
 // +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters/status,verbs=patch
 // +kubebuilder:rbac:groups=traefik.io,resources=ingressroutetcps;middlewaretcps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;delete
+// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch;update
 // Secrets access is namespace-scoped to the apps namespace via deploy/gitops/base/operator-apps-rbac.yaml.
 
 // upsertOwned creates-or-updates an owned unstructured object (gvk/name in the
@@ -469,6 +477,11 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{Requeue: true}, nil
+	}
+
+	diskRequeue, err := r.applyDiskAutoscaling(ctx, &db)
+	if err != nil {
+		return r.dbFail(ctx, &db, "DiskAutoscalingFailed", err)
 	}
 
 	plan, storageGB := resolvePlan(db.Spec)
@@ -594,7 +607,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		desiredInstances = 2
 	}
 
-	return r.reconcileDatabaseReadiness(ctx, &db, cluster, desiredInstances, backupEnabled, targetBackupServerName, exportRequeue)
+	return r.reconcileDatabaseReadiness(ctx, &db, cluster, desiredInstances, backupEnabled, targetBackupServerName, soonerRequeue(exportRequeue, diskRequeue))
 }
 
 // reconcileDatabaseReadiness maps CNPG's status-only lifecycle onto the public

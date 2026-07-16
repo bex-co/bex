@@ -55,6 +55,14 @@ spec:
               the same namespace; the plan sets resources/storage. See
               docs/ADR009-postgresql-management.md.
             properties:
+              diskAutoscaling:
+                description: |-
+                  DiskAutoscaling enables automatic grow-only storage increases when the
+                  fullest CNPG instance PVC reaches the platform threshold. The operator
+                  records every resize in status.diskResizeHistory. It never shrinks a PVC.
+                  Render's enableDiskAutoscaling write field / diskAutoscalingEnabled read
+                  field map to this intent.
+                type: boolean
               exports:
                 description: |-
                   Exports is the append-only logical-export intent log. bex-api mints an
@@ -359,6 +367,39 @@ spec:
                   active PGDATA image. During a major upgrade this remains the source version
                   until pg_upgrade succeeds, while spec.version already holds the target.
                 type: string
+              diskResizeHistory:
+                description: |-
+                  DiskResizeHistory is a bounded, newest-last audit trail of automatic
+                  storage growth. The operator is the sole writer; credentials and other
+                  sensitive values never enter it.
+                items:
+                  description: |-
+                    DatabaseDiskResizeStatus records one operator-triggered, grow-only storage
+                    resize. UsedBytes and CapacityBytes are the kubelet volume-stat sample that
+                    crossed the threshold; FromGB/ToGB are the persisted Database intent.
+                  properties:
+                    at:
+                      description: At is the RFC3339 time the operator accepted the
+                        resize.
+                      type: string
+                    capacityBytes:
+                      format: int64
+                      type: integer
+                    fromGB:
+                      format: int32
+                      type: integer
+                    toGB:
+                      format: int32
+                      type: integer
+                    usedBytes:
+                      format: int64
+                      type: integer
+                  required:
+                  - at
+                  - fromGB
+                  - toGB
+                  type: object
+                type: array
               exports:
                 description: |-
                   Exports reports the lifecycle and artifact identity for requested logical

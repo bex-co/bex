@@ -60,6 +60,14 @@ type DatabaseSpec struct {
 	// +optional
 	StorageGB int32 `json:"storageGB,omitempty"`
 
+	// DiskAutoscaling enables automatic grow-only storage increases when the
+	// fullest CNPG instance PVC reaches the platform threshold. The operator
+	// records every resize in status.diskResizeHistory. It never shrinks a PVC.
+	// Render's enableDiskAutoscaling write field / diskAutoscalingEnabled read
+	// field map to this intent.
+	// +optional
+	DiskAutoscaling bool `json:"diskAutoscaling,omitempty"`
+
 	// Public, when true and the controller's BEX_DB_DOMAIN is set, exposes the
 	// database at "<name>.<BEX_DB_DOMAIN>" via a Traefik TCP/SNI route (TLS
 	// passthrough — Postgres terminates its own TLS). Default: in-cluster only.
@@ -294,6 +302,12 @@ type DatabaseStatus struct {
 	// +optional
 	CurrentVersion string `json:"currentVersion,omitempty"`
 
+	// DiskResizeHistory is a bounded, newest-last audit trail of automatic
+	// storage growth. The operator is the sole writer; credentials and other
+	// sensitive values never enter it.
+	// +optional
+	DiskResizeHistory []DatabaseDiskResizeStatus `json:"diskResizeHistory,omitempty"`
+
 	// Host is the in-cluster read-write hostname (CNPG "<cluster>-rw" Service).
 	// +optional
 	Host string `json:"host,omitempty"`
@@ -388,6 +402,27 @@ type DatabaseStatus struct {
 	// +listMapKey=type
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+// DatabaseDiskResizeStatus records one operator-triggered, grow-only storage
+// resize. UsedBytes and CapacityBytes are the kubelet volume-stat sample that
+// crossed the threshold; FromGB/ToGB are the persisted Database intent.
+type DatabaseDiskResizeStatus struct {
+	// At is the RFC3339 time the operator accepted the resize.
+	// +required
+	At string `json:"at"`
+
+	// +required
+	FromGB int32 `json:"fromGB"`
+
+	// +required
+	ToGB int32 `json:"toGB"`
+
+	// +optional
+	UsedBytes int64 `json:"usedBytes,omitempty"`
+
+	// +optional
+	CapacityBytes int64 `json:"capacityBytes,omitempty"`
 }
 
 // DatabaseReadReplicaStatus reports the resolved connection URLs for one named

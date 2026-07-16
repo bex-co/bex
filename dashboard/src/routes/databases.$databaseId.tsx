@@ -18,6 +18,7 @@ import { InsightsPanel } from "@/features/databases/components/insights-panel";
 import { DatabasePlanSection } from "@/features/databases/components/database-plan-section";
 import { DatabaseVersionControl } from "@/features/databases/components/database-version-control";
 import { DatabaseNameSection } from "@/features/databases/components/database-name-section";
+import { DatabaseDiskAutoscalingControl } from "@/features/databases/components/database-disk-autoscaling-control";
 import { SQLConsole } from "@/features/databases/components/sql-console";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import type { DatabaseDetailView } from "@/features/databases/types";
@@ -89,6 +90,12 @@ export function DatabaseDetailPage() {
                 kind="database"
                 resource={database.id}
                 highAvailabilityEnabled={database.highAvailabilityEnabled}
+                diskHeaderExtra={
+                  <DatabaseDiskAutoscalingControl
+                    database={database}
+                    onChanged={() => void refetch()}
+                  />
+                }
               />
               <DatabasePlanSection
                 database={database}

@@ -18,6 +18,7 @@ query Databases($ownerId: String) {
     version
     status
     diskSizeGB
+    diskAutoscalingEnabled
     suspended
     createdAt
     public
@@ -34,6 +35,7 @@ query Database($id: String!) {
     databaseName
     databaseUser
     diskSizeGB
+    diskAutoscalingEnabled
     highAvailabilityEnabled
     readReplicas {
       name
@@ -256,6 +258,14 @@ mutation UpdateDatabaseVersion($id: String!, $version: String!) {
     id
     version
     status
+  }
+}
+
+mutation UpdateDatabaseDiskAutoscaling($id: String!, $enabled: Boolean!) {
+  updateDatabaseDiskAutoscaling(id: $id, enabled: $enabled) {
+    id
+    diskSizeGB
+    diskAutoscalingEnabled
   }
 }
 

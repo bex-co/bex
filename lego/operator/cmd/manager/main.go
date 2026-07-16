@@ -293,16 +293,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := (&controller.DatabaseReconciler{
+	databaseReconciler := &controller.DatabaseReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("database-controller"),
 		DBDomain: envOr("BEX_DB_DOMAIN", ""),
 		Backup: controller.BackupStore{
 			DestinationPath: envOr("BEX_DB_BACKUP_DESTINATION", ""),
 			EndpointURL:     envOr("BEX_DB_BACKUP_ENDPOINT", ""),
 			S3Secret:        envOr("BEX_DB_BACKUP_S3_SECRET", ""),
 		},
-	}).SetupWithManager(mgr); err != nil {
+	}
+	if promURL := os.Getenv("BEX_PROM_URL"); promURL != "" {
+		databaseReconciler.DiskUsageReader = controller.NewPrometheusDatabaseDiskUsageReader(promURL, nil)
+	}
+	if err := databaseReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "database")
 		os.Exit(1)
 	}

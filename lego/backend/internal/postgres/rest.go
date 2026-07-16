@@ -398,6 +398,7 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 		Plan                   *string                  `json:"plan,omitempty"`
 		Version                *string                  `json:"version,omitempty"`
 		DiskSizeGB             *int32                   `json:"diskSizeGB,omitempty"`
+		EnableDiskAutoscaling  *bool                    `json:"enableDiskAutoscaling,omitempty"`
 		EnableHighAvailability *bool                    `json:"enableHighAvailability,omitempty"`
 		IPAllowList            *[]core.IPAllowListEntry `json:"ipAllowList,omitempty"`
 		DryRun                 bool                     `json:"dryRun,omitempty"`
@@ -407,7 +408,11 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	patch := PostgresPatch{Name: req.Name, Plan: req.Plan, Version: req.Version, DiskSizeGB: req.DiskSizeGB, EnableHighAvailability: req.EnableHighAvailability, IPAllowList: req.IPAllowList}
+	patch := PostgresPatch{
+		Name: req.Name, Plan: req.Plan, Version: req.Version, DiskSizeGB: req.DiskSizeGB,
+		EnableDiskAutoscaling: req.EnableDiskAutoscaling, EnableHighAvailability: req.EnableHighAvailability,
+		IPAllowList: req.IPAllowList,
+	}
 	dryRun := req.DryRun || r.URL.Query().Get("dryRun") == "true"
 	if dryRun {
 		pg, err := s.PreviewUpdatePostgres(r.Context(), id, patch)
