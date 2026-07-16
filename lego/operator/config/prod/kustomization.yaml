@@ -5,6 +5,7 @@ resources:
   - api-pdb.yaml
   - pg-sni-proxy-lb.yaml
   - kv-sni-proxy-lb.yaml
+  - edge-proxy-network-policy.yaml
 patches:
   - target:
       group: apps

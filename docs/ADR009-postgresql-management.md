@@ -79,7 +79,7 @@ spec:
       protocol: TCP
 ```
 
-The kustomization applies this object with the rest of the operator; it is not a manual post-deploy step. `Local` preserves the public client's source IP for the proxy allowlist and ensures the Hetzner health check sends traffic only to platform workers with a local proxy pod.
+The kustomization applies this object with the rest of the operator; it is not a manual post-deploy step. `Local` preserves the public client's source IP for the proxy allowlist and ensures the Hetzner health check sends traffic only to platform workers with a local proxy pod. The production `allow-production-edge-proxies` NetworkPolicy admits public traffic only to the PostgreSQL/Valkey proxy pods on their two public ports; every other `bex-system` workload remains under the namespace default deny. SNI routing and the resource-specific IP allowlist remain enforced inside the proxy.
 
 ### 4. Naming convention (copy Render's reasoning, not its strings)
 
