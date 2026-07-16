@@ -1,27 +1,25 @@
 #!/usr/bin/env bash
 
-# Print the public IP addresses currently advertised by the Traefik
-# LoadBalancer. Hetzner includes the LoadBalancer's private-network address in
-# the same status list, but that address must never be published in public DNS.
+# Print the public IP addresses of the Terraform-owned production edge. The
+# Kubernetes Traefik Service is intentionally a NodePort and has no
+# status.loadBalancer ingress after the shared-LB ownership fix.
 bex_ssh_public_ingress_addresses() {
-  local namespace="${BEX_TRAEFIK_NAMESPACE:-traefik}"
-  local service="${BEX_TRAEFIK_SERVICE:-traefik}"
+  local name="${BEX_EDGE_LOAD_BALANCER:-bex-traefik}"
+  local response count
+  : "${HCLOUD_TOKEN:?set the Hetzner Cloud API token}"
 
-  kubectl -n "$namespace" get service "$service" \
-    -o jsonpath='{range .status.loadBalancer.ingress[*]}{.ip}{"\n"}{end}' |
-    awk '
-      function private_v4(ip, octets) {
-        split(ip, octets, ".")
-        return octets[1] == 10 ||
-          (octets[1] == 172 && octets[2] >= 16 && octets[2] <= 31) ||
-          (octets[1] == 192 && octets[2] == 168)
-      }
-      {
-        ip = tolower($0)
-        if (ip ~ /^[0-9]+\./ && private_v4(ip)) next
-        if (ip ~ /:/ && (ip ~ /^f[cd]/ || ip ~ /^fe[89ab]/)) next
-        if (ip != "") print ip
-      }
-    ' |
-    sort -u
+  response="$(curl --fail --silent --show-error \
+    -H "Authorization: Bearer ${HCLOUD_TOKEN}" \
+    "https://api.hetzner.cloud/v1/load_balancers?name=${name}")"
+  count="$(jq -r '.load_balancers | length' <<<"$response")"
+  if [[ "$count" != 1 ]]; then
+    echo "expected exactly one Hetzner Load Balancer named $name, found $count" >&2
+    return 1
+  fi
+  jq -r '
+    .load_balancers[0].public_net |
+    select(.enabled == true) |
+    .ipv4.ip, .ipv6.ip |
+    select(. != null and . != "")
+  ' <<<"$response" | sort -u
 }

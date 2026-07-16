@@ -55,7 +55,7 @@ Two mirrors track it, value-less, and are kept in sync by rule (see [CLAUDE.md](
 
 ### App SSH gateway host key is a separate credential
 
-Running-instance app SSH ([ADR035](ADR035-ssh.md)) uses a dedicated Ed25519 **server host key**, not the `bex` node-admin client key above. Its private file stays on the operator laptop at `BEX_SSH_HOST_KEY_FILE`; [`scripts/ssh-host-key-secret.sh`](../scripts/ssh-host-key-secret.sh) installs it out of band as `bex-system/bex-ssh-host-key`. The public fingerprint may be published. The key is stable across ordinary deploys; rotation is an explicit maintenance event because OpenSSH clients pin it in `known_hosts`. [`scripts/ssh-activate.sh`](../scripts/ssh-activate.sh) refuses to advertise the host until the complete public A/AAAA set equals Traefik's LoadBalancer ingress-address set and TCP/22 presents that exact key; `--check` runs those gates without mutation.
+Running-instance app SSH ([ADR035](ADR035-ssh.md)) uses a dedicated Ed25519 **server host key**, not the `bex` node-admin client key above. Its private file stays on the operator laptop at `BEX_SSH_HOST_KEY_FILE`; [`scripts/ssh-host-key-secret.sh`](../scripts/ssh-host-key-secret.sh) installs it out of band as `bex-system/bex-ssh-host-key`. The public fingerprint may be published. The key is stable across ordinary deploys; rotation is an explicit maintenance event because OpenSSH clients pin it in `known_hosts`. [`scripts/ssh-activate.sh`](../scripts/ssh-activate.sh) refuses to advertise the host until the complete public A/AAAA set equals the Terraform-owned Hetzner edge's public address set and TCP/22 presents that exact key; `--check` runs those gates without mutation.
 
 ## Decisions
 

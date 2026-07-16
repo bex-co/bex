@@ -9,17 +9,9 @@ trap 'rm -rf "$tmp"' EXIT
 export BEX_SSH_HOST=ssh.example.test
 export BEX_SSH_DNS_ZONE=example.test
 export CLOUDFLARE_API_TOKEN=test-token-must-not-appear-in-output
-export TEST_EDGE_ADDRESSES=$'192.0.2.10\n2001:db8::10\n10.10.0.7\nfd00::7'
+export HCLOUD_TOKEN=test-hcloud-token-must-not-appear-in-output
 export TEST_CF_STATE="$tmp/records.json"
 export TEST_CF_TRACE="$tmp/cloudflare.trace"
-
-kubectl() {
-  if [[ "$*" == *"get service traefik"* ]]; then
-    printf '%s\n' "$TEST_EDGE_ADDRESSES"
-    return
-  fi
-  return 2
-}
 
 curl() {
   local method=GET
@@ -47,6 +39,11 @@ curl() {
         ;;
     esac
   done
+
+  if [[ "$url" == https://api.hetzner.cloud/v1/load_balancers* ]]; then
+    jq -cn '{load_balancers: [{name: "bex-traefik", public_net: {enabled: true, ipv4: {ip: "192.0.2.10"}, ipv6: {ip: "2001:db8::10"}}}]}'
+    return
+  fi
 
   local path="${url#https://api.cloudflare.com/client/v4}"
   printf '%s %s\n' "$method" "$path" >>"$TEST_CF_TRACE"
@@ -88,7 +85,7 @@ curl() {
   esac
 }
 
-export -f kubectl curl
+export -f curl
 
 write_state() {
   printf '%s\n' "$1" >"$TEST_CF_STATE"
@@ -135,7 +132,7 @@ if bash "$reconcile" --check >"$tmp/mismatch.out" 2>&1; then
   echo 'expected proxied or stale Cloudflare records to fail check mode' >&2
   exit 1
 fi
-assert_contains 'do not match the public Traefik ingress addresses' "$tmp/mismatch.out"
+assert_contains 'do not match the Terraform edge Load Balancer addresses' "$tmp/mismatch.out"
 
 write_state '[
   {"id":"a-primary","type":"A","name":"ssh.example.test","content":"192.0.2.10","ttl":1,"proxied":true},

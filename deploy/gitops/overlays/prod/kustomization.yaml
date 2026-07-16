@@ -61,9 +61,8 @@ patches:
       - op: add
         path: /spec/sources/0/helm/valueFiles/-
         value: $values/deploy/gitops/overlays/prod/values/openbao.values.yaml
-  # Traefik: layer the prod values file — the Service adopts the Terraform-owned,
-  # delete-protected bex-traefik LB by name. The CCM reconciles its private-IP
-  # targets and listeners without owning the stable public-IP-bearing object.
+  # Traefik: layer the prod values file — fixed source-preserving NodePorts sit
+  # behind the wholly Terraform-owned, delete-protected bex-traefik LB.
   - target:
       group: argoproj.io
       version: v1alpha1

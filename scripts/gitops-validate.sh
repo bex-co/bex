@@ -41,6 +41,40 @@ if ! grep -Eq '^[[:space:]]*prevent_destroy[[:space:]]*=[[:space:]]*true[[:space
   fail=1
 fi
 
+echo "==> Terraform is the sole owner of all production edge listeners"
+terraform_target_block="$(awk '
+  /^resource "hcloud_load_balancer_target" "traefik_workers" \{/ { found=1 }
+  found { print }
+  found && /^}$/ { exit }
+' infra/terraform/main.tf)"
+for required in \
+  'type             = "label_selector"' \
+  'label_selector   = "caph-cluster-bex=owned,machine_type=worker"' \
+  'use_private_ip   = true'; do
+  grep -qF "$required" <<<"$terraform_target_block" || {
+    echo "FAIL: Terraform Traefik worker target lost: $required" >&2
+    fail=1
+  }
+done
+for edge in ssh:22:32207 http:80:31218 https:443:31976 postgres:5432:31056 valkey:6379:31892; do
+  name="${edge%%:*}"
+  ports="${edge#*:}"
+  listen="${ports%%:*}"
+  destination="${ports##*:}"
+  block="$(awk -v name="$name" '
+    $0 == "resource \"hcloud_load_balancer_service\" \"" name "\" {" { found=1 }
+    found { print }
+    found && /^}$/ { exit }
+  ' infra/terraform/main.tf)"
+  if [ -z "$block" ] ||
+    ! grep -Eq "^[[:space:]]*listen_port[[:space:]]*=[[:space:]]*${listen}[[:space:]]*$" <<<"$block" ||
+    ! grep -Eq "^[[:space:]]*destination_port[[:space:]]*=[[:space:]]*${destination}[[:space:]]*$" <<<"$block" ||
+    ! grep -Eq "^[[:space:]]*port[[:space:]]*=[[:space:]]*${destination}[[:space:]]*$" <<<"$block"; then
+    echo "FAIL: Terraform edge listener $name must map :$listen to NodePort $destination with the same health-check port" >&2
+    fail=1
+  fi
+done
+
 echo "==> SSH activation safety gates"
 bash scripts/ssh-activate.test.sh || { echo "FAIL: SSH activation safety gates" >&2; fail=1; }
 
@@ -312,12 +346,25 @@ helm template traefik "$tmp/traefik-$(yq '.spec.sources[0].targetRevision' deplo
 kubectl kustomize deploy/gitops/overlays/prod >"$tmp/prod-apps.yaml"
 kubectl kustomize lego/operator/config/prod >"$tmp/bex-operator-prod.yaml"
 
-echo "==> production Traefik Service adopts the stable load balancer by name"
-traefik_lb_name="$(yq -N 'select(.kind == "Service" and .metadata.name == "traefik") | .metadata.annotations."load-balancer.hetzner.cloud/name"' "$tmp/traefik-prod.yaml" | tr -d '\n')"
-if [ "$traefik_lb_name" != "bex-traefik" ]; then
-  echo "FAIL: rendered production Traefik Service adopts '$traefik_lb_name', want 'bex-traefik'" >&2
-  fail=1
-fi
+check_fixed_edge_nodeport() {
+  local label="$1" manifest="$2" service="$3" port_name="$4" expected="$5"
+  local service_type traffic_policy node_port lb_name
+  service_type="$(yq -N "select(.kind == \"Service\" and .metadata.name == \"$service\") | .spec.type" "$manifest" | tr -d '\n')"
+  traffic_policy="$(yq -N "select(.kind == \"Service\" and .metadata.name == \"$service\") | .spec.externalTrafficPolicy" "$manifest" | tr -d '\n')"
+  node_port="$(yq -N "select(.kind == \"Service\" and .metadata.name == \"$service\") | .spec.ports[] | select(.name == \"$port_name\") | .nodePort" "$manifest" | tr -d '\n')"
+  lb_name="$(yq -N "select(.kind == \"Service\" and .metadata.name == \"$service\") | .metadata.annotations.\"load-balancer.hetzner.cloud/name\"" "$manifest" | tr -d '\n')"
+  if [ "$service_type" != NodePort ] || [ "$traffic_policy" != Local ] || [ "$node_port" != "$expected" ] || { [ -n "$lb_name" ] && [ "$lb_name" != null ]; }; then
+    echo "FAIL: $label must render NodePort $expected with externalTrafficPolicy=Local and no hcloud LB adoption annotation (got type=$service_type policy=$traffic_policy nodePort=$node_port annotation=$lb_name)" >&2
+    fail=1
+  fi
+}
+
+echo "==> production edge Services expose fixed source-preserving NodePorts"
+check_fixed_edge_nodeport Traefik-SSH "$tmp/traefik-prod.yaml" traefik ssh 32207
+check_fixed_edge_nodeport Traefik-HTTP "$tmp/traefik-prod.yaml" traefik web 31218
+check_fixed_edge_nodeport Traefik-HTTPS "$tmp/traefik-prod.yaml" traefik websecure 31976
+check_fixed_edge_nodeport PostgreSQL-proxy "$tmp/bex-operator-prod.yaml" bex-pg-sni-proxy-public postgres 31056
+check_fixed_edge_nodeport Valkey-proxy "$tmp/bex-operator-prod.yaml" bex-kv-sni-proxy-public valkey 31892
 
 check_request_path_ha() {
   local label="$1" manifest="$2" deployment="$3" pdb_manifest="$4" pdb="$5"

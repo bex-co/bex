@@ -20,7 +20,7 @@ if [[ ! "$BEX_SSH_HOST" =~ ^([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z0-
   exit 1
 fi
 
-for command in dig kubectl ssh-keygen ssh-keyscan; do
+for command in curl dig jq kubectl ssh-keygen ssh-keyscan; do
   command -v "$command" >/dev/null || { echo "missing required command: $command" >&2; exit 1; }
 done
 [[ -f "$key_file" ]] || { echo "missing host key file: $key_file" >&2; exit 1; }
@@ -42,7 +42,7 @@ expected="$(printf '%s\n' "$public_key" | ssh-keygen -lf - | awk '{print $2}')"
 edge_addresses="$(bex_ssh_public_ingress_addresses)"
 dns_addresses="$({ dig +short A "$BEX_SSH_HOST" || true; dig +short AAAA "$BEX_SSH_HOST" || true; } | awk '/^[0-9a-fA-F:.]+$/' | sort -u)"
 if [[ -z "$edge_addresses" || "$dns_addresses" != "$edge_addresses" ]]; then
-  echo "refusing activation: public A/AAAA records must equal the Traefik LoadBalancer ingress addresses" >&2
+  echo "refusing activation: public A/AAAA records must equal the Terraform edge Load Balancer addresses" >&2
   echo "edge addresses: ${edge_addresses:-<none>}" >&2
   echo "DNS addresses: ${dns_addresses:-<none>}" >&2
   exit 1

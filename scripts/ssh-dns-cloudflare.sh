@@ -24,7 +24,7 @@ fi
 : "${BEX_SSH_HOST:?set the public gateway hostname}"
 : "${CLOUDFLARE_API_TOKEN:?set a zone-scoped Cloudflare API token}"
 
-for command in curl jq kubectl; do
+for command in curl jq; do
   command -v "$command" >/dev/null || { echo "missing required command: $command" >&2; exit 1; }
 done
 
@@ -55,11 +55,11 @@ if ! bex_ssh_public_ingress_addresses |
     /:/ { print "AAAA\t" $0; next }
     { exit 1 }
   ' >"$desired"; then
-  echo "Traefik reported an invalid public LoadBalancer address" >&2
+  echo "the Terraform edge reported an invalid public LoadBalancer address" >&2
   exit 1
 fi
 if [[ ! -s "$desired" ]]; then
-  echo "Traefik has no public LoadBalancer ingress addresses" >&2
+  echo "the Terraform edge has no public LoadBalancer addresses" >&2
   exit 1
 fi
 
@@ -132,7 +132,7 @@ records_match() {
 }
 
 print_mismatch() {
-  echo "Cloudflare A/AAAA records for $hostname do not match the public Traefik ingress addresses" >&2
+  echo "Cloudflare A/AAAA records for $hostname do not match the Terraform edge Load Balancer addresses" >&2
   echo "desired (DNS-only):" >&2
   normalized_desired | sed 's/^/  /' >&2
   echo "current:" >&2

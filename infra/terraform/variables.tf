@@ -68,3 +68,15 @@ variable "bootstrap_enabled" {
   type        = bool
   default     = false
 }
+
+variable "app_network_id" {
+  description = "Hetzner ID of the CAPH-managed app-cluster network. CI discovers the network named `bex`; 0 leaves the post-bootstrap edge projection absent until CAPH has created it."
+  type        = number
+  default     = 0
+}
+
+variable "traefik_private_ip" {
+  description = "Stable private IP of the production edge Load Balancer on the CAPH-managed app network."
+  type        = string
+  default     = "10.10.0.7"
+}

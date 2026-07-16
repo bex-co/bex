@@ -57,24 +57,40 @@ jobs:
             -backend-config="access_key=${{ secrets.TF_STATE_ACCESS_KEY }}" \
             -backend-config="secret_key=${{ secrets.TF_STATE_SECRET_KEY }}"
 
+      # CAPH creates the app-cluster network after the day-0 Terraform pass.
+      # Discover it on every stateful run; zero keeps the durable LB object but
+      # defers its cluster projection until the network exists.
+      - name: discover app-cluster network
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          response="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer ${HCLOUD_TOKEN}" \
+            'https://api.hetzner.cloud/v1/networks?name=bex')"
+          count="$(jq -r '.networks | length' <<<"${response}")"
+          case "${count}" in
+            0) app_network_id=0 ;;
+            1) app_network_id="$(jq -r '.networks[0].id' <<<"${response}")" ;;
+            *)
+              echo "expected at most one app-cluster network named bex, found ${count}" >&2
+              exit 1
+              ;;
+          esac
+          echo "TF_VAR_app_network_id=${app_network_id}" >>"${GITHUB_ENV}"
+          echo "APP_NETWORK_ID=${app_network_id}" >>"${GITHUB_ENV}"
+
       - name: validate
         run: terraform validate
 
-      # w1/m41: the production LB predates Terraform ownership. On the first
-      # main-branch run only, adopt the exact named object into remote state
-      # before apply can consider creating it. A fresh installation has no such
-      # object and falls through to the normal Terraform create path. PRs and
-      # scheduled drift checks remain read-only.
-      - name: adopt existing Traefik load balancer
+      # w1/m41: the production edge predates full Terraform ownership. On the
+      # first main-branch run, adopt the named LB and every existing projection
+      # object before apply can consider recreating them. A fresh installation
+      # falls through to normal creation. PRs and scheduled checks stay read-only.
+      - name: adopt existing production edge
         if: github.event_name == 'push'
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
         run: |
-          if terraform state show hcloud_load_balancer.traefik >/dev/null 2>&1; then
-            echo "bex-traefik is already Terraform-managed"
-            exit 0
-          fi
-
           response="$(curl --fail --silent --show-error \
             -H "Authorization: Bearer ${HCLOUD_TOKEN}" \
             'https://api.hetzner.cloud/v1/load_balancers?name=bex-traefik')"
@@ -82,16 +98,61 @@ jobs:
           case "${count}" in
             0)
               echo "no existing bex-traefik load balancer; Terraform will create it"
+              exit 0
               ;;
             1)
               lb_id="$(jq -r '.load_balancers[0].id' <<<"${response}")"
-              terraform import hcloud_load_balancer.traefik "${lb_id}"
               ;;
             *)
               echo "expected at most one bex-traefik load balancer, found ${count}" >&2
               exit 1
               ;;
           esac
+
+          if ! terraform state show hcloud_load_balancer.traefik >/dev/null 2>&1; then
+            terraform import hcloud_load_balancer.traefik "${lb_id}"
+          fi
+          if [ "${APP_NETWORK_ID}" = 0 ]; then
+            echo "app-cluster network is absent; edge projection remains deferred"
+            exit 0
+          fi
+
+          edge="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer ${HCLOUD_TOKEN}" \
+            "https://api.hetzner.cloud/v1/load_balancers/${lb_id}")"
+
+          if jq -e --argjson network "${APP_NETWORK_ID}" \
+            '.load_balancer.private_net[]? | select(.network == $network)' \
+            <<<"${edge}" >/dev/null && \
+            ! terraform state show 'hcloud_load_balancer_network.traefik[0]' >/dev/null 2>&1; then
+            terraform import 'hcloud_load_balancer_network.traefik[0]' \
+              "${lb_id}-${APP_NETWORK_ID}"
+          fi
+
+          selector='caph-cluster-bex=owned,machine_type=worker'
+          if jq -e --arg selector "${selector}" \
+            '.load_balancer.targets[]? | select(.type == "label_selector" and .label_selector.selector == $selector)' \
+            <<<"${edge}" >/dev/null && \
+            ! terraform state show 'hcloud_load_balancer_target.traefik_workers[0]' >/dev/null 2>&1; then
+            terraform import 'hcloud_load_balancer_target.traefik_workers[0]' \
+              "${lb_id}__label_selector__${selector}"
+          fi
+
+          while read -r name port; do
+            address="hcloud_load_balancer_service.${name}[0]"
+            if jq -e --argjson port "${port}" \
+              '.load_balancer.services[]? | select(.listen_port == $port)' \
+              <<<"${edge}" >/dev/null && \
+              ! terraform state show "${address}" >/dev/null 2>&1; then
+              terraform import "${address}" "${lb_id}__${port}"
+            fi
+          done <<'SERVICES'
+          ssh 22
+          http 80
+          https 443
+          postgres 5432
+          valkey 6379
+          SERVICES
 
       # PRs, schedule (drift), manual: plan only — never mutate from a PR.
       - name: plan
@@ -102,3 +163,51 @@ jobs:
       - name: apply
         if: github.event_name == 'push'
         run: terraform apply -auto-approve -no-color
+
+      # The former CCM owner registered one target per current worker. Terraform
+      # first creates the equivalent autoscaling-safe label selector, then this
+      # one-time/idempotent cleanup removes only those legacy server targets.
+      - name: remove legacy per-server edge targets
+        if: github.event_name == 'push'
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          if [ "${APP_NETWORK_ID}" = 0 ]; then
+            exit 0
+          fi
+          response="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer ${HCLOUD_TOKEN}" \
+            'https://api.hetzner.cloud/v1/load_balancers?name=bex-traefik')"
+          lb_id="$(jq -r '.load_balancers[0].id' <<<"${response}")"
+
+          wait_action() {
+            local action_id="$1" status
+            for _ in $(seq 1 30); do
+              status="$(curl --fail --silent --show-error \
+                -H "Authorization: Bearer ${HCLOUD_TOKEN}" \
+                "https://api.hetzner.cloud/v1/actions/${action_id}" |
+                jq -r '.action.status')"
+              case "${status}" in
+                success) return 0 ;;
+                error) echo "Hetzner action ${action_id} failed" >&2; return 1 ;;
+              esac
+              sleep 2
+            done
+            echo "timed out waiting for Hetzner action ${action_id}" >&2
+            return 1
+          }
+
+          edge="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer ${HCLOUD_TOKEN}" \
+            "https://api.hetzner.cloud/v1/load_balancers/${lb_id}")"
+          while read -r server_id; do
+            [ -n "${server_id}" ] || continue
+            action_id="$(curl --fail --silent --show-error \
+              -X POST \
+              -H "Authorization: Bearer ${HCLOUD_TOKEN}" \
+              -H 'Content-Type: application/json' \
+              -d "{\"type\":\"server\",\"server\":{\"id\":${server_id}}}" \
+              "https://api.hetzner.cloud/v1/load_balancers/${lb_id}/actions/remove_target" |
+              jq -r '.action.id')"
+            wait_action "${action_id}"
+          done < <(jq -r '.load_balancer.targets[]? | select(.type == "server") | .server.id' <<<"${edge}")

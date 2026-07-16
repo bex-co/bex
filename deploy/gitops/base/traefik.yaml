@@ -17,10 +17,9 @@
 # balancers label that kubeadm puts on control-plane nodes). STABLE-IP UPGRADE (multi-node
 # / IP survives node replacement) is now wired for prod (w1/m7 t005): the prod overlay
 # layers overlays/prod/values/traefik.values.yaml, which flips service.spec.type to
-# LoadBalancer + the load-balancer.hetzner.cloud/{name,location,use-private-ip}
-# annotations; Terraform owns the durable LB and the CCM (networking.enabled=true)
-# adopts it by name, targeting nodes over the private network. Base stays
-# hostNetwork for local + single-node.
+# NodePort with fixed ports and Local traffic policy. Terraform owns the durable
+# LB, its private-network worker targets, and all listeners. Base stays hostNetwork
+# for local + single-node.
 #
 # Multi-source (like openbao.yaml): the Helm repo provides the chart, the git source
 # (ref: values) provides base/values/traefik.values.yaml; overlays append their own.
