@@ -1,7 +1,9 @@
 # Dashboard parity walk
 
-**Captured:** 2026-07-15  
-**Scope:** authenticated, page-by-page comparison of Render's live dashboard and the bex dashboard running against the local mock cluster  
+**Captured:** 2026-07-15
+
+**Scope:** authenticated, page-by-page comparison of Render's live dashboard and the bex dashboard running against the local mock cluster
+
 **Verdict:** the shipped page families are substantially aligned, with seven actionable gaps: six bounded dashboard-polish notes and one cross-layer Postgres-logs milestone.
 
 This is a UI-depth audit, not a new product surface. It complements the capability-level matrix in [ADR018](../../ADR018-render-parity.md) by checking the controls, page structure, and empty/degraded states that a checked UI cell can otherwise hide.
