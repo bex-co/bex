@@ -379,14 +379,15 @@ var _ = Describe("KeyValue Controller", func() {
 	})
 })
 
-// The backward-compatibility contract through a REAL apiserver (envtest):
-// a pre-m24 KeyValue serialized spec.ipAllowList as bare CIDR strings. The
-// Schemaless CRD must keep accepting that shape, the typed client must decode
-// it (empty descriptions), and enforcement must render byte-identically to a
-// structured cidr-only list — with descriptions never influencing the
-// rendered middleware.
-var _ = Describe("KeyValue legacy ipAllowList shape", func() {
-	const name = "legacy-acl-kv"
+// The w4/m29 admission contract through a REAL apiserver (envtest): the
+// pre-m24 bare-CIDR-string serialization was normalized fleet-wide
+// (scripts/ipallowlist-normalize.sh) and the CRD field is structural again —
+// a string entry (or an object missing cidr) is REJECTED at admission, the
+// structured shape round-trips with descriptions preserved, and descriptions
+// never influence the rendered middleware. This inverts the m24-era test that
+// pinned legacy acceptance; that contract was retired deliberately.
+var _ = Describe("KeyValue ipAllowList structural schema", func() {
+	const name = "structural-acl-kv"
 	ctx := context.Background()
 	nn := types.NamespacedName{Name: name, Namespace: "default"}
 
@@ -396,8 +397,8 @@ var _ = Describe("KeyValue legacy ipAllowList shape", func() {
 		}
 	})
 
-	It("accepts a legacy string-list CR, reads it back with empty descriptions, and enforces identically", func() {
-		By("applying the pre-m24 serialization (bare CIDR strings) through the apiserver")
+	It("rejects the retired string shape at admission and round-trips structured entries", func() {
+		By("refusing the pre-m24 serialization (bare CIDR strings) at the apiserver")
 		legacy := &unstructured.Unstructured{Object: map[string]any{
 			"apiVersion": "app.bex.co/v1alpha1",
 			"kind":       "KeyValue",
@@ -408,32 +409,41 @@ var _ = Describe("KeyValue legacy ipAllowList shape", func() {
 				"ipAllowList": []any{"203.0.113.0/24", "10.0.0.0/8"},
 			},
 		}}
-		Expect(k8sClient.Create(ctx, legacy)).To(Succeed())
+		Expect(k8sClient.Create(ctx, legacy)).NotTo(Succeed(),
+			"the w4/m29 structural schema must reject bare-string entries")
 
-		By("decoding it through the typed client with empty descriptions")
-		kv := &appv1alpha1.KeyValue{}
-		Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
-		Expect(kv.Spec.IPAllowList).To(Equal([]appv1alpha1.IPAllowEntry{
-			{CIDR: "203.0.113.0/24"},
-			{CIDR: "10.0.0.0/8"},
-		}))
+		By("refusing an object entry missing its required cidr")
+		nocidr := &unstructured.Unstructured{Object: map[string]any{
+			"apiVersion": "app.bex.co/v1alpha1",
+			"kind":       "KeyValue",
+			"metadata":   map[string]any{"name": name, "namespace": "default"},
+			"spec": map[string]any{
+				"plan":        "free",
+				"public":      true,
+				"ipAllowList": []any{map[string]any{"description": "no cidr"}},
+			},
+		}}
+		Expect(k8sClient.Create(ctx, nocidr)).NotTo(Succeed(),
+			"cidr is required on every entry")
 
-		By("rendering the exact middleware a cidr-only structured spec renders")
-		fromLegacy := ipAllowListMiddlewareSpec(kv.Spec.IPAllowList)
-		structured := ipAllowListMiddlewareSpec([]appv1alpha1.IPAllowEntry{
-			{CIDR: "203.0.113.0/24"},
-			{CIDR: "10.0.0.0/8"},
-		})
-		Expect(fromLegacy).To(Equal(structured))
-
-		By("keeping the rendered middleware byte-identical when only descriptions change")
-		kv.Spec.IPAllowList[0].Description = "office"
-		kv.Spec.IPAllowList[1].Description = "vpn"
-		Expect(k8sClient.Update(ctx, kv)).To(Succeed())
-		relabeled := &appv1alpha1.KeyValue{}
-		Expect(k8sClient.Get(ctx, nn, relabeled)).To(Succeed())
-		Expect(relabeled.Spec.IPAllowList[0].Description).To(Equal("office"), "descriptions persist on the CR")
-		Expect(ipAllowListMiddlewareSpec(relabeled.Spec.IPAllowList)).To(Equal(fromLegacy),
-			"a description-only change must not re-render enforcement")
+		By("accepting and round-tripping the structured shape, descriptions preserved")
+		kv := &appv1alpha1.KeyValue{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+			Spec: appv1alpha1.KeyValueSpec{
+				Plan:   "free",
+				Public: true,
+				IPAllowList: []appv1alpha1.IPAllowEntry{
+					{CIDR: "203.0.113.0/24", Description: "office"},
+					{CIDR: "10.0.0.0/8"},
+				},
+			},
+		}
+		Expect(k8sClient.Create(ctx, kv)).To(Succeed())
+		got := &appv1alpha1.KeyValue{}
+		Expect(k8sClient.Get(ctx, nn, got)).To(Succeed())
+		Expect(got.Spec.IPAllowList).To(Equal(kv.Spec.IPAllowList))
+		// Description-blind middleware rendering is a pure function pinned by
+		// TestIPAllowListMiddlewareSpec (database_test.go) — not re-asserted
+		// through the apiserver here.
 	})
 })

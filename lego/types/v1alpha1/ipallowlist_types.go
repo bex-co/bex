@@ -16,20 +16,21 @@ limitations under the License.
 
 package v1alpha1
 
-import "encoding/json"
+// History, deliberately detached from the type's godoc so it never reaches
+// the generated CRD description: a pre-m24 CR stored the list as bare CIDR
+// strings, decoded by a custom UnmarshalJSON union while the CRD field was
+// Schemaless. w4/m29 normalized the fleet (scripts/ipallowlist-normalize.sh,
+// verified clean) and retired the decoder; the structural schema (required
+// cidr) now rejects a bare string at admission. The legacy shape survives
+// only as a test fixture (ipallowlist_types_test.go). The backend's
+// core.IPAllowListEntry keeps its own wire-side union decoder — that surface
+// contract is unchanged.
 
 // IPAllowEntry is one ipAllowList item on a Database/KeyValue spec: the CIDR
 // the operator enforces plus an optional human-facing description that rides
 // along untouched (Render's {cidrBlock, description} pairs, stored
 // product-neutrally as {cidr, description}). Enforcement reads CIDR only
 // (the operator's ipAllowListMiddlewareSpec).
-//
-// A pre-m24 CR stored the list as bare CIDR strings; UnmarshalJSON still
-// accepts that shape (description empty), so legacy CRs decode without any
-// migration. The field carrying this type is marked Schemaless in the CRD
-// (both serializations must validate), so writers are responsible for
-// validating the CIDR before it lands in a spec (bex-api's
-// core.ValidateCIDRs gate).
 type IPAllowEntry struct {
 	// CIDR is the source range this entry allows (e.g. "10.0.0.0/8").
 	CIDR string `json:"cidr"`
@@ -38,25 +39,4 @@ type IPAllowEntry struct {
 	// Never read by enforcement.
 	// +optional
 	Description string `json:"description,omitempty"`
-}
-
-// UnmarshalJSON accepts both the structured {cidr, description} object and the
-// legacy bare-string serialization ("10.0.0.0/8") a pre-m24 CR carries.
-// The backend's core.IPAllowListEntry.UnmarshalJSON is this decoder's
-// wire-side twin (same union semantics over the {cidrBlock} key) — keep the
-// two behaviorally identical.
-func (e *IPAllowEntry) UnmarshalJSON(data []byte) error {
-	if len(data) > 0 && data[0] == '"' {
-		e.Description = ""
-		return json.Unmarshal(data, &e.CIDR)
-	}
-	// A local alias drops the method set so the object form decodes without
-	// recursing into this method.
-	type entry IPAllowEntry
-	var v entry
-	if err := json.Unmarshal(data, &v); err != nil {
-		return err
-	}
-	*e = IPAllowEntry(v)
-	return nil
 }

@@ -54,8 +54,10 @@ type IPAllowListEntry struct {
 // UnmarshalJSON also accepts a bare CIDR string — the pre-m24 serialization
 // still present in legacy environment store rows, and the lenient shape old
 // bex clients sent on the wire before RC12/RC14 aligned it with Render's.
-// v1alpha1.IPAllowEntry.UnmarshalJSON is this decoder's CR-side twin (same
-// union semantics over the {cidr} key) — keep the two behaviorally identical.
+// Its CR-side twin (v1alpha1.IPAllowEntry.UnmarshalJSON) was retired in
+// w4/m29 after the fleet normalization made the CRD structural again; this
+// wire-side leniency is a deliberate surface-contract survivor, not a mirror
+// of the CR.
 func (e *IPAllowListEntry) UnmarshalJSON(data []byte) error {
 	if len(data) > 0 && data[0] == '"' {
 		e.Description = ""
