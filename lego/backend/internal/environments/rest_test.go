@@ -20,8 +20,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -37,6 +42,22 @@ func TestToRenderEnvironmentUsesOfficialCLIFields(t *testing.T) {
 	}
 	if len(got.IPAllowList) != 1 || got.IPAllowList[0].CIDRBlock != "10.0.0.0/8" {
 		t.Fatalf("Render ipAllowList = %+v", got.IPAllowList)
+	}
+	raw, err := json.Marshal(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields map[string]any
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		t.Fatal(err)
+	}
+	for _, extension := range []string{"ownerId", "createdAt", "updatedAt"} {
+		if _, ok := fields[extension]; ok {
+			t.Errorf("Render environment unexpectedly exposes bex extension %q: %s", extension, raw)
+		}
+	}
+	if environmentGQLType.Fields()["ownerId"] == nil || environmentGQLType.Fields()["createdAt"] == nil {
+		t.Fatal("GraphQL bex extensions ownerId/createdAt disappeared")
 	}
 }
 
@@ -112,6 +133,188 @@ func TestREST_CreateRejectsBadACLWithoutOrphan(t *testing.T) {
 	}
 	if len(list) != 0 {
 		t.Errorf("environment created despite the 400: %+v", list)
+	}
+}
+
+func TestCreateWithACLAcrossRESTGraphQLAndMCP(t *testing.T) {
+	assertACL := func(t *testing.T, got EnvironmentView) {
+		t.Helper()
+		if got.ProtectedStatus != ProtectedStatusProtected || !got.NetworkIsolationEnabled ||
+			len(got.IPAllowList) != 1 || got.IPAllowList[0].CIDRBlock != "10.0.0.0/8" || got.IPAllowList[0].Description != "office" {
+			t.Fatalf("created ACL = %+v", got)
+		}
+	}
+
+	t.Run("REST", func(t *testing.T) {
+		_, mux := restHarness(t)
+		rec := doREST(t, mux, http.MethodPost, "/v1/environments", `{
+			"name":"rest","projectId":"prj-1","protectedStatus":"protected",
+			"networkIsolationEnabled":true,
+			"ipAllowList":[{"cidrBlock":"10.0.0.0/8","description":"office"}]
+		}`)
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("REST create = %d: %s", rec.Code, rec.Body.String())
+		}
+		var wire renderEnvironment
+		if err := json.Unmarshal(rec.Body.Bytes(), &wire); err != nil {
+			t.Fatal(err)
+		}
+		assertACL(t, EnvironmentView{ProtectedStatus: wire.ProtectedStatus, NetworkIsolationEnabled: wire.NetworkIsolationEnabled, IPAllowList: wire.IPAllowList})
+	})
+
+	t.Run("GraphQL", func(t *testing.T) {
+		svc, _ := restHarness(t)
+		field := svc.GraphQLMutation()["createEnvironment"]
+		out, err := field.Resolve(graphql.ResolveParams{Context: ctxAs("user-a"), Args: map[string]any{
+			"name": "graphql", "projectId": "prj-1", "protectedStatus": "protected",
+			"networkIsolationEnabled": true,
+			"ipAllowList":             []any{map[string]any{"cidrBlock": "10.0.0.0/8", "description": "office"}},
+		}})
+		if err != nil {
+			t.Fatalf("GraphQL create: %v", err)
+		}
+		assertACL(t, out.(EnvironmentView))
+	})
+
+	t.Run("MCP", func(t *testing.T) {
+		svc, _ := restHarness(t)
+		ctx := ctxAs("user-a")
+		server := mcp.NewServer(&mcp.Implementation{Name: "bex", Version: "0"}, nil)
+		svc.RegisterMCP(server)
+		serverTransport, clientTransport := mcp.NewInMemoryTransports()
+		if _, err := server.Connect(ctx, serverTransport, nil); err != nil {
+			t.Fatal(err)
+		}
+		client, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = client.Close() })
+		res, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "create_environment", Arguments: map[string]any{
+			"name": "mcp", "projectId": "prj-1", "protectedStatus": "protected",
+			"networkIsolationEnabled": true,
+			"ipAllowList":             []any{map[string]any{"cidrBlock": "10.0.0.0/8", "description": "office"}},
+		}})
+		if err != nil || res.IsError {
+			t.Fatalf("MCP create: err=%v result=%+v", err, res)
+		}
+		raw, _ := json.Marshal(res.StructuredContent)
+		var got EnvironmentView
+		if err := json.Unmarshal(raw, &got); err != nil {
+			t.Fatal(err)
+		}
+		assertACL(t, got)
+	})
+}
+
+func TestCreateWithACLInvalidCIDRLeavesNoOrphanAcrossMachineSurfaces(t *testing.T) {
+	t.Run("GraphQL", func(t *testing.T) {
+		svc, _ := restHarness(t)
+		field := svc.GraphQLMutation()["createEnvironment"]
+		_, err := field.Resolve(graphql.ResolveParams{Context: ctxAs("user-a"), Args: map[string]any{
+			"name": "bad", "projectId": "prj-1",
+			"ipAllowList": []any{map[string]any{"cidrBlock": "not-a-cidr"}},
+		}})
+		if err == nil {
+			t.Fatal("GraphQL invalid CIDR succeeded")
+		}
+		if got, listErr := svc.List(ctxAs("user-a"), "prj-1"); listErr != nil || len(got) != 0 {
+			t.Fatalf("GraphQL invalid create left orphan: %+v err=%v", got, listErr)
+		}
+	})
+
+	t.Run("MCP", func(t *testing.T) {
+		svc, _ := restHarness(t)
+		ctx := ctxAs("user-a")
+		server := mcp.NewServer(&mcp.Implementation{Name: "bex", Version: "0"}, nil)
+		svc.RegisterMCP(server)
+		serverTransport, clientTransport := mcp.NewInMemoryTransports()
+		_, _ = server.Connect(ctx, serverTransport, nil)
+		client, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = client.Close() })
+		res, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "create_environment", Arguments: map[string]any{
+			"name": "bad", "projectId": "prj-1",
+			"ipAllowList": []any{map[string]any{"cidrBlock": "not-a-cidr"}},
+		}})
+		if err == nil && !res.IsError {
+			t.Fatal("MCP invalid CIDR succeeded")
+		}
+		if got, listErr := svc.List(ctxAs("user-a"), "prj-1"); listErr != nil || len(got) != 0 {
+			t.Fatalf("MCP invalid create left orphan: %+v err=%v", got, listErr)
+		}
+	})
+}
+
+func TestREST_ListEnvironmentDocumentedFiltersHonoredOrRejected(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "alpha-project"})
+	st.addProject(store.Project{ID: "prj-2", TenantID: "tea-b", Name: "bravo-project"})
+	base := time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC)
+	for _, environment := range []store.Environment{
+		{ID: "env-alpha", ProjectID: "prj-1", TenantID: "tea-a", Name: "alpha", CreatedAt: base.Add(-2 * time.Hour), ProtectedStatus: ProtectedStatusUnprotected},
+		{ID: "env-bravo", ProjectID: "prj-1", TenantID: "tea-a", Name: "bravo", CreatedAt: base.Add(-time.Hour), ProtectedStatus: ProtectedStatusUnprotected},
+		{ID: "env-charlie", ProjectID: "prj-2", TenantID: "tea-b", Name: "charlie", CreatedAt: base, ProtectedStatus: ProtectedStatusUnprotected},
+	} {
+		st.envs[environment.ID] = environment
+	}
+	svc, _ := newServiceWithClient(st)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	tests := []struct {
+		name      string
+		query     string
+		wantNames []string
+		wantCode  int
+		wantError string
+	}{
+		{name: "projectId", query: "projectId=prj-1", wantNames: []string{"alpha", "bravo"}},
+		{name: "name", query: "projectId=prj-1,prj-2&name=bravo", wantNames: []string{"bravo"}},
+		{name: "repeated names", query: "projectId=prj-1,prj-2&name=alpha&name=charlie", wantNames: []string{"alpha", "charlie"}},
+		{name: "environmentId", query: "projectId=prj-1,prj-2&environmentId=env-charlie", wantNames: []string{"charlie"}},
+		{name: "ownerId", query: "projectId=prj-1,prj-2&ownerId=tea-b", wantNames: []string{"charlie"}},
+		{name: "createdBefore", query: "projectId=prj-1,prj-2&createdBefore=2026-07-15T11:30:00Z", wantNames: []string{"alpha", "bravo"}},
+		{name: "createdAfter", query: "projectId=prj-1,prj-2&createdAfter=2026-07-15T10:30:00Z", wantNames: []string{"bravo", "charlie"}},
+		{name: "updatedBefore", query: "projectId=prj-1&updatedBefore=2026-07-15T12:00:00Z", wantCode: http.StatusBadRequest, wantError: "updatedBefore"},
+		{name: "updatedAfter", query: "projectId=prj-1&updatedAfter=2026-07-15T12:00:00Z", wantCode: http.StatusBadRequest, wantError: "updatedAfter"},
+		{name: "invalid created timestamp", query: "projectId=prj-1&createdBefore=yesterday", wantCode: http.StatusBadRequest, wantError: "createdBefore"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := doREST(t, mux, http.MethodGet, "/v1/environments?limit=100&"+tt.query, "")
+			wantCode := tt.wantCode
+			if wantCode == 0 {
+				wantCode = http.StatusOK
+			}
+			if rec.Code != wantCode {
+				t.Fatalf("status = %d, want %d: %s", rec.Code, wantCode, rec.Body.String())
+			}
+			if wantCode != http.StatusOK {
+				if !strings.Contains(rec.Body.String(), tt.wantError) {
+					t.Fatalf("error %q does not name %q", rec.Body.String(), tt.wantError)
+				}
+				return
+			}
+			var page []environmentWithCursor
+			if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
+				t.Fatal(err)
+			}
+			got := make([]string, len(page))
+			for i := range page {
+				got[i] = page[i].Environment.Name
+			}
+			if len(got) != len(tt.wantNames) {
+				t.Fatalf("names = %v, want %v", got, tt.wantNames)
+			}
+			for _, name := range tt.wantNames {
+				if !slices.Contains(got, name) {
+					t.Fatalf("names = %v, missing %q", got, name)
+				}
+			}
+		})
 	}
 }
 

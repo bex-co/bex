@@ -19,11 +19,76 @@ package environments
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"net/url"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
+
+func queryList(q url.Values, key string) []string {
+	var out []string
+	for _, raw := range q[key] {
+		for _, value := range strings.Split(raw, ",") {
+			value = strings.TrimSpace(value)
+			if value != "" && !slices.Contains(out, value) {
+				out = append(out, value)
+			}
+		}
+	}
+	return out
+}
+
+func queryTime(q url.Values, key string) (time.Time, error) {
+	raw := q.Get(key)
+	if raw == "" {
+		return time.Time{}, nil
+	}
+	parsed, err := time.Parse(time.RFC3339, raw)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("%w: %s must be an RFC3339 timestamp", core.ErrBadRequest, key)
+	}
+	return parsed, nil
+}
+
+func filterEnvironmentList(environments []EnvironmentView, q url.Values) ([]EnvironmentView, error) {
+	for _, key := range []string{"updatedBefore", "updatedAfter"} {
+		if q.Has(key) {
+			return nil, fmt.Errorf("%w: %s is unsupported because environments do not expose updatedAt", core.ErrBadRequest, key)
+		}
+	}
+	createdBefore, err := queryTime(q, "createdBefore")
+	if err != nil {
+		return nil, err
+	}
+	createdAfter, err := queryTime(q, "createdAfter")
+	if err != nil {
+		return nil, err
+	}
+	names := queryList(q, "name")
+	owners := queryList(q, "ownerId")
+	ids := queryList(q, "environmentId")
+	out := make([]EnvironmentView, 0, len(environments))
+	for _, environment := range environments {
+		switch {
+		case len(names) > 0 && !slices.Contains(names, environment.Name):
+			continue
+		case len(owners) > 0 && !slices.Contains(owners, environment.OwnerID):
+			continue
+		case len(ids) > 0 && !slices.Contains(ids, environment.ID):
+			continue
+		case !createdBefore.IsZero() && !environment.CreatedAt.Before(createdBefore):
+			continue
+		case !createdAfter.IsZero() && !environment.CreatedAt.After(createdAfter):
+			continue
+		}
+		out = append(out, environment)
+	}
+	return out, nil
+}
 
 // rest.go is the environments REST fragment, mirroring internal/projects/
 // rest.go's shape exactly: GET/POST /v1/environments, GET/PATCH/DELETE
@@ -96,33 +161,34 @@ func writeErr(w http.ResponseWriter, err error) {
 // RegisterREST mounts the environment CRUD endpoints.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/environments", func(w http.ResponseWriter, r *http.Request) {
-		var projectIDs []string
-		for _, raw := range r.URL.Query()["projectId"] {
-			for _, id := range strings.Split(raw, ",") {
-				if id = strings.TrimSpace(id); id != "" {
-					projectIDs = append(projectIDs, id)
-				}
-			}
-		}
+		q := r.URL.Query()
+		projectIDs := queryList(q, "projectId")
 		if len(projectIDs) == 0 {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
-		var out []environmentWithCursor
+		var environments []EnvironmentView
 		for _, projectID := range projectIDs {
 			es, err := s.List(r.Context(), projectID)
 			if err != nil {
 				writeErr(w, err)
 				return
 			}
-			for _, e := range es {
-				out = append(out, environmentWithCursor{Environment: toRenderEnvironment(e), Cursor: e.ID})
-			}
+			environments = append(environments, es...)
+		}
+		environments, err := filterEnvironmentList(environments, q)
+		if err != nil {
+			writeErr(w, err)
+			return
+		}
+		out := make([]environmentWithCursor, 0, len(environments))
+		for _, e := range environments {
+			out = append(out, environmentWithCursor{Environment: toRenderEnvironment(e), Cursor: e.ID})
 		}
 		// Render's list schema is [{environment, cursor}], not a flat array.
 		// The official CLI unwraps the environment member and otherwise decodes
 		// every flat object as an all-zero Environment.
-		after, limit := core.PageParams(r.URL.Query())
+		after, limit := core.PageParams(q)
 		out = core.Page(out, after, limit, func(e environmentWithCursor) string { return e.Cursor })
 		if out == nil {
 			out = []environmentWithCursor{}
@@ -138,40 +204,15 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// an orphaned environment, then applied through the same SetACL verb the
 	// bex-native /acl route uses.
 	mux.HandleFunc("POST /v1/environments", func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			Name                    string                  `json:"name"`
-			ProjectID               string                  `json:"projectId"`
-			ProtectedStatus         string                  `json:"protectedStatus"`
-			NetworkIsolationEnabled bool                    `json:"networkIsolationEnabled"`
-			IPAllowList             []core.IPAllowListEntry `json:"ipAllowList"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Name) == "" || req.ProjectID == "" {
+		var req CreateEnvironmentRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
-		// A fresh environment defaults to unprotected/unisolated/open (the
-		// store's own defaults), so the SetACL round-trip only runs when the
-		// caller named an ACL field.
-		hasACL := req.ProtectedStatus != "" || req.NetworkIsolationEnabled || len(req.IPAllowList) > 0
-		if req.ProtectedStatus == "" {
-			req.ProtectedStatus = ProtectedStatusUnprotected
-		}
-		if hasACL {
-			if err := validateACL(req.ProtectedStatus, req.IPAllowList); err != nil {
-				writeErr(w, err)
-				return
-			}
-		}
-		e, err := s.Create(r.Context(), req.ProjectID, strings.TrimSpace(req.Name))
+		e, err := s.CreateWithACL(r.Context(), req)
 		if err != nil {
 			writeErr(w, err)
 			return
-		}
-		if hasACL {
-			if e, err = s.SetACL(r.Context(), e.ID, req.ProtectedStatus, req.NetworkIsolationEnabled, req.IPAllowList); err != nil {
-				writeErr(w, err)
-				return
-			}
 		}
 		core.WriteJSON(w, http.StatusCreated, toRenderEnvironment(e))
 	})

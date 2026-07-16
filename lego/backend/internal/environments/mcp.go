@@ -37,8 +37,11 @@ type environmentIDArgs struct {
 }
 
 type createEnvironmentArgs struct {
-	Name      string `json:"name" jsonschema:"the environment name (unique within the project)"`
-	ProjectID string `json:"projectId" jsonschema:"the project id (prj-…) to create the environment under"`
+	Name                    string                  `json:"name" jsonschema:"the environment name (unique within the project)"`
+	ProjectID               string                  `json:"projectId" jsonschema:"the project id (prj-…) to create the environment under"`
+	ProtectedStatus         string                  `json:"protectedStatus,omitempty" jsonschema:"optional 'protected' or 'unprotected' status"`
+	NetworkIsolationEnabled bool                    `json:"networkIsolationEnabled,omitempty" jsonschema:"when true, isolate member service network traffic to this environment"`
+	IPAllowList             []core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"optional {cidrBlock,description} entries propagated to member datastores"`
 }
 
 type renameEnvironmentArgs struct {
@@ -102,7 +105,10 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "create_environment",
 		Description: "Create a named environment under a project (e.g. staging/production) to group a subset of its services. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createEnvironmentArgs) (*mcp.CallToolResult, EnvironmentView, error) {
-		e, err := s.Create(ctx, in.ProjectID, in.Name)
+		e, err := s.CreateWithACL(ctx, CreateEnvironmentRequest{
+			Name: in.Name, ProjectID: in.ProjectID, ProtectedStatus: in.ProtectedStatus,
+			NetworkIsolationEnabled: in.NetworkIsolationEnabled, IPAllowList: in.IPAllowList,
+		})
 		return nil, e, err
 	})
 
