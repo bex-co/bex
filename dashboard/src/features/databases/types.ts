@@ -42,6 +42,8 @@ export interface DatabaseDetailView extends DatabaseView {
   /** Owner role, `<db>_user`. */
   databaseUser: string | null;
   highAvailabilityEnabled: boolean;
+  /** Render's diskAutoscalingEnabled read field. */
+  diskAutoscalingEnabled: boolean;
   /** Named read replicas, each with host-only connection info (no password). */
   readReplicas: ReadReplicaView[];
   /** SNI host for the external endpoint, or null when private. */

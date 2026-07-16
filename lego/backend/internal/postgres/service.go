@@ -92,6 +92,9 @@ type PostgresView struct {
 	DatabaseName string `json:"databaseName"` // the actual (normalized) db
 	DatabaseUser string `json:"databaseUser"`
 	DiskSizeGB   int32  `json:"diskSizeGB,omitempty"`
+	// DiskAutoscalingEnabled is Render's read-side field. Writes use the
+	// intentionally asymmetric enableDiskAutoscaling input name.
+	DiskAutoscalingEnabled bool `json:"diskAutoscalingEnabled"`
 
 	// HighAvailabilityEnabled reflects the operator's observed state (≥2 ready
 	// instances). Render's highAvailabilityEnabled read field.
@@ -195,7 +198,9 @@ type CreatePostgresRequest struct {
 	Plan          string `json:"plan,omitempty"`
 	Version       string `json:"version,omitempty"`
 	DiskSizeGB    int32  `json:"diskSizeGB,omitempty"`
-	Public        bool   `json:"public,omitempty"`
+	// EnableDiskAutoscaling is Render's create/update input field.
+	EnableDiskAutoscaling bool `json:"enableDiskAutoscaling,omitempty"`
+	Public                bool `json:"public,omitempty"`
 	// IPAllowList optionally seeds the external-endpoint allowlist at create.
 	// Render's wire shape ({cidrBlock, description} entries) — see
 	// core.IPAllowListEntry; both fields persist on the CR (w4/m24).
@@ -270,6 +275,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		DatabaseName:            dbn,
 		DatabaseUser:            dbn + "_user",
 		DiskSizeGB:              d.Spec.StorageGB,
+		DiskAutoscalingEnabled:  d.Spec.DiskAutoscaling,
 		HighAvailabilityEnabled: d.Status.HighAvailabilityEnabled,
 		ReadReplicas:            replicas,
 		Suspended:               core.SuspendedEnum(d.Spec.Suspended),
@@ -426,6 +432,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 			Plan:             req.Plan,
 			Version:          req.Version,
 			StorageGB:        req.DiskSizeGB,
+			DiskAutoscaling:  req.EnableDiskAutoscaling,
 			Public:           req.Public,
 			IPAllowList:      core.AllowListToSpec(req.IPAllowList),
 			Pooler:           req.Pooler,
@@ -574,6 +581,7 @@ type PostgresPatch struct {
 	Plan                   *string
 	Version                *string
 	DiskSizeGB             *int32
+	EnableDiskAutoscaling  *bool
 	EnableHighAvailability *bool
 	IPAllowList            *[]core.IPAllowListEntry // nil = unchanged; non-nil empty slice clears it
 }
@@ -615,6 +623,9 @@ func (patch PostgresPatch) apply(d *appv1alpha1.Database) {
 	}
 	if patch.DiskSizeGB != nil {
 		d.Spec.StorageGB = *patch.DiskSizeGB
+	}
+	if patch.EnableDiskAutoscaling != nil {
+		d.Spec.DiskAutoscaling = *patch.EnableDiskAutoscaling
 	}
 	if patch.EnableHighAvailability != nil {
 		d.Spec.HighAvailability = *patch.EnableHighAvailability

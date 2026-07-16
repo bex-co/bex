@@ -1,19 +1,19 @@
 # w8 · m14 — Postgres disk autoscaling
 
-**Worker:** worker8 **Goal:** Render's `enableDiskAutoscaling`/`diskAutoscalingEnabled` exists for managed Postgres: the operator grows `spec.storageGB` automatically when usage crosses the captured threshold, with a cap and an audit trail — never a silent resize. **Status:** todo
+**Worker:** worker8 **Goal:** Render's `enableDiskAutoscaling`/`diskAutoscalingEnabled` exists for managed Postgres: the operator grows `spec.storageGB` automatically when usage crosses the captured threshold, with a cap and an audit trail — never a silent resize. **Status:** done
 
 ## Tasks (in order)
 
-| id   | title                                                   | est | depends_on |
-| ---- | -------------------------------------------------------- | --- | ---------- |
-| t001 | Capture Render's trigger/step/cap semantics               | 30m | —          |
-| t002 | Operator: usage-watch → grow `storageGB` (cap + events)   | 60m | t001       |
-| t003 | Field on REST/GraphQL/MCP create + PATCH + read           | 40m | t002       |
-| t004 | Dashboard: toggle beside the disk chart                   | 30m | t003       |
-| t005 | Render parity                                             | 30m | t004       |
-| t006 | Simplify                                                  | 30m | t005       |
-| t007 | Test coverage                                             | 45m | t005       |
-| t008 | Closeout                                                  | 15m | t007       |
+| id   | title                                                                 | est | depends_on |
+| ---- | --------------------------------------------------------------------- | --- | ---------- |
+| t001 | Capture Render's trigger/step/cap semantics — **DONE**                 | 30m | —          |
+| t002 | Operator: usage-watch → grow `storageGB` (cap + events) — **DONE**     | 60m | t001       |
+| t003 | Field on REST/GraphQL/MCP create + PATCH + read — **DONE**             | 40m | t002       |
+| t004 | Dashboard: toggle beside the disk chart — **DONE**                     | 30m | t003       |
+| t005 | Render parity — **DONE**                                               | 30m | t004       |
+| t006 | Simplify — **DONE**                                                    | 30m | t005       |
+| t007 | Test coverage — **DONE**                                               | 45m | t005       |
+| t008 | Closeout — **DONE**                                                    | 15m | t007       |
 
 ## Definition of done
 

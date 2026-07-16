@@ -179,6 +179,15 @@ Mirrors the compute and KeyValue lifecycle verbs, writing intent to the `Databas
 - The dashboard's version row opens a target selector with only newer catalog versions, an explicit offline/downtime warning, and inline guard errors. The detail query polls through `upgrading` until the operator reports the new current version.
 - Render comparison and the live CNPG 16→17/data-intact proof are captured in [render-artifacts/postgres-version-upgrade.md](render-artifacts/postgres-version-upgrade.md).
 
+### Disk autoscaling (w8/m14)
+
+- `Database.spec.diskAutoscaling` is desired intent. When enabled, the operator samples the existing Prometheus `kubelet_volume_stats_{used,capacity}_bytes` series once a minute and uses the fullest CNPG instance PVC. It is independent of the optional control-plane database (`BEX_CP_DB_URI`); unset `BEX_PROM_URL` disables the loop without changing API round-trip behavior.
+- Render's captured rule is applied exactly: at 90% full, grow the current `spec.storageGB` by 50%, round upward to the next 5 GB, cap at 16 TB, wait 12 hours before another increase, and never shrink. The last resize annotation is persisted atomically with the new desired size, preventing a stale kubelet sample or slow CNPG expansion from causing a second bump.
+- Every resize emits a Kubernetes Event (`DiskAutoscaled`) and appends a bounded `status.diskResizeHistory` entry with timestamp, old/new size, and the triggering used/capacity sample. Render does not publish a notification contract; this is bex's explicit auditability extension.
+- The Render field asymmetry is preserved: `enableDiskAutoscaling` on REST, GraphQL, and MCP create inputs / REST PATCH; `diskAutoscalingEnabled` on every returned Postgres object. GraphQL `updateDatabaseDiskAutoscaling` and MCP `update_postgres_disk_autoscaling` are thin adapters over the same guarded core mutation. The detail page places the toggle beside the disk chart and displays the current size and 16 TB cap.
+- Constants, public evidence, and the deliberate notification/status divergence are pinned in [render-artifacts/postgres-disk-autoscaling.md](render-artifacts/postgres-disk-autoscaling.md).
+- Live CAPD/CNPG verification grew a threshold-crossing 1 GiB database to 5 GiB, observed the status audit entry and Kubernetes Event, and confirmed the PVC's requested and reported capacity converged after CSI filesystem expansion. The exact samples and mock-substrate setup are recorded in the capture above.
+
 ### Access & connection
 
 - **IP allowlist** (`spec.ipAllowList`) gates the **external** SNI route only: the controller projects a Traefik `ipAllowList` `MiddlewareTCP` (source-range) referenced by the route, so only listed CIDRs reach the public endpoint. Empty ⇒ open to all source IPs; the internal `-rw` path is never gated. This closes the "public was an on/off toggle with no source restriction" gap (§7). Entries are `{cidr, description}` pairs (w4/m24): the description is operator-facing metadata that persists on the CR and never reaches the rendered middleware; pre-m24 CRs serialized bare CIDR strings, which still decode (empty description) and enforce identically.
@@ -209,7 +218,7 @@ Shipped 2026-07-12. All three Render fields verified against the live API ([rend
 
 ## Consequences
 
-- Deferred: storage autoscaling, the Accelerated tier, metering/billing. Backups + PITR + lifecycle + access shipped in **w1/m17**; HA/replicas/failover in **w1/m22**.
+- Deferred: the Accelerated tier and payment collection. Backups + PITR + lifecycle + access shipped in **w1/m17**; HA/replicas/failover in **w1/m22**; disk autoscaling in **w8/m14**.
 - **`bex-db` (the control plane's own DB) runs two cross-node instances plus continuous WAL archiving and nightly backups** — required pod anti-affinity and CNPG switchover cover one platform-node drain (w1/m38); the off-cluster backup/PITR path covers correlated loss (w2/m27, [ADR031-platform-data-backup.md](ADR031-platform-data-backup.md)).
 - The external-endpoint IP allowlist and pooler routes ride the same `*.db.bex.co` wildcard SNI entrypoint (§3) — no per-DB LoadBalancer; the pooled endpoint adds an `<id>-pool.<domain>` SNI hostname.
 

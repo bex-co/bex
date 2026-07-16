@@ -285,6 +285,31 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "存储",
     description: "Database detail metadata row label (disk size)",
   },
+  "databases.diskAutoscalingLabel": {
+    message: "磁盘自动扩容",
+    description: "Label beside the database disk-usage chart toggle",
+  },
+  "databases.diskAutoscalingSize": {
+    message: "当前 {current} GB · 上限 {cap} GB",
+    description: "Current and maximum Postgres disk size beside autoscaling",
+  },
+  "databases.diskAutoscalingHint": {
+    message:
+      "使用率达到 90% 时，存储将增加 50% 并向上取整到 5 GB。扩容不可逆，且每 12 小时最多一次。",
+    description: "Accessible explanation of Postgres disk autoscaling",
+  },
+  "databases.diskAutoscalingEnabled": {
+    message: "已启用磁盘自动扩容。",
+    description: "Toast after enabling Postgres disk autoscaling",
+  },
+  "databases.diskAutoscalingDisabled": {
+    message: "已停用磁盘自动扩容。",
+    description: "Toast after disabling Postgres disk autoscaling",
+  },
+  "databases.diskAutoscalingError": {
+    message: "无法更新磁盘自动扩容设置。请重试。",
+    description: "Toast when the disk-autoscaling mutation fails",
+  },
   "databases.metaHighAvailability": {
     message: "高可用",
     description:

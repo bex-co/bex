@@ -286,6 +286,31 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Storage",
     description: "Database detail metadata row label (disk size)",
   },
+  "databases.diskAutoscalingLabel": {
+    message: "Disk autoscaling",
+    description: "Label beside the database disk-usage chart toggle",
+  },
+  "databases.diskAutoscalingSize": {
+    message: "{current} GB current · {cap} GB max",
+    description: "Current and maximum Postgres disk size beside autoscaling",
+  },
+  "databases.diskAutoscalingHint": {
+    message:
+      "At 90% full, storage grows by 50%, rounded up to 5 GB. Increases are permanent and limited to once every 12 hours.",
+    description: "Accessible explanation of Postgres disk autoscaling",
+  },
+  "databases.diskAutoscalingEnabled": {
+    message: "Disk autoscaling enabled.",
+    description: "Toast after enabling Postgres disk autoscaling",
+  },
+  "databases.diskAutoscalingDisabled": {
+    message: "Disk autoscaling disabled.",
+    description: "Toast after disabling Postgres disk autoscaling",
+  },
+  "databases.diskAutoscalingError": {
+    message: "Couldn't update disk autoscaling. Please try again.",
+    description: "Toast when the disk-autoscaling mutation fails",
+  },
   "databases.metaHighAvailability": {
     message: "High availability",
     description:

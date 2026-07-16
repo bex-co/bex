@@ -640,6 +640,7 @@ function makeDatabase(over = {}) {
     databaseName: dbn,
     databaseUser: `${dbn}_user`,
     diskSizeGB: 5,
+    diskAutoscalingEnabled: false,
     highAvailabilityEnabled: false,
     readReplicas: [],
     suspended: "not_suspended",
@@ -1511,6 +1512,12 @@ function resolveGraphQL({ operationName, variables = {} }) {
       const i = DATABASES.findIndex((d) => d.id === variables.id);
       if (i >= 0) DATABASES.splice(i, 1);
       return { deleteDatabase: true };
+    }
+    case "UpdateDatabaseDiskAutoscaling": {
+      const database = DATABASES.find((d) => d.id === variables.id);
+      if (!database) throw new Error("not found");
+      database.diskAutoscalingEnabled = Boolean(variables.enabled);
+      return { updateDatabaseDiskAutoscaling: database };
     }
     // Advanced managed-Postgres surface (w1/m17) + observability (w2/m25) —
     // no bex-stub source for any of these (they read the operator's live

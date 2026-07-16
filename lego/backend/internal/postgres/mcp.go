@@ -48,6 +48,7 @@ type createPostgresArgs struct {
 	Plan                   string `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, basic-256mb, basic-1gb"`
 	Version                string `json:"version,omitempty" jsonschema:"the PostgreSQL major version, e.g. 16 (omit for the default)"`
 	DiskSizeGB             int32  `json:"diskSizeGB,omitempty" jsonschema:"disk size in GB (omit for the plan default)"`
+	EnableDiskAutoscaling  bool   `json:"enableDiskAutoscaling,omitempty" jsonschema:"automatically grow storage at 90 percent full"`
 	Public                 bool   `json:"public,omitempty" jsonschema:"expose an external TLS endpoint"`
 	EnableHighAvailability bool   `json:"enableHighAvailability,omitempty" jsonschema:"provision a replicated cluster (primary + standby) for high availability"`
 	DryRun                 bool   `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
@@ -82,6 +83,11 @@ type updatePlanArgs struct {
 type updateVersionArgs struct {
 	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id, as returned by list_postgres_instances"`
 	Version    string `json:"version" jsonschema:"the target PostgreSQL major version (13 through 18); it must be newer than the running version"`
+}
+
+type updateDiskAutoscalingArgs struct {
+	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id, as returned by list_postgres_instances"`
+	Enabled    bool   `json:"enabled" jsonschema:"whether automatic grow-only disk scaling is enabled"`
 }
 
 // renamePostgresArgs is rename_postgres's input. A rename changes only the
@@ -127,6 +133,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			Plan:                   in.Plan,
 			Version:                in.Version,
 			DiskSizeGB:             in.DiskSizeGB,
+			EnableDiskAutoscaling:  in.EnableDiskAutoscaling,
 			Public:                 in.Public,
 			EnableHighAvailability: in.EnableHighAvailability,
 			DryRun:                 in.DryRun,
@@ -169,6 +176,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Upgrade a managed Postgres database to a newer supported major version. The database is offline during CNPG's pg_upgrade. Durable plans require a completed physical backup first; downgrades and unknown versions are rejected.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateVersionArgs) (*mcp.CallToolResult, PostgresView, error) {
 		v, err := s.SetVersion(ctx, in.PostgresID, in.Version)
+		return nil, v, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "update_postgres_disk_autoscaling",
+		Description: "Enable or disable automatic grow-only storage scaling for a managed Postgres database. At 90% full, storage grows by 50% rounded up to 5 GB, capped at 16 TB with a 12-hour cooldown.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateDiskAutoscalingArgs) (*mcp.CallToolResult, PostgresView, error) {
+		v, err := s.UpdatePostgres(ctx, in.PostgresID, PostgresPatch{EnableDiskAutoscaling: &in.Enabled})
 		return nil, v, err
 	})
 

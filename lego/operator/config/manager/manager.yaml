@@ -150,6 +150,11 @@ spec:
           # wildcard *.db.bex.co -> node IP (Cloudflare can't proxy raw TCP:5432).
           - name: BEX_DB_DOMAIN
             value: db.bex.co
+          # Postgres disk autoscaling reads the already-scraped kubelet PVC
+          # used/capacity series from Prometheus. Unset disables only the
+          # automatic loop; the API field continues to round-trip.
+          - name: BEX_PROM_URL
+            value: http://prometheus-server.monitoring.svc
           # Managed key-value (Valkey) external endpoints: KeyValue{public:true}
           # is exposed at "<name>.kv.bex.co" via Traefik TCP/SNI on the valkey
           # entrypoint (:6379). Same DNS-only wildcard caveat as Postgres above.

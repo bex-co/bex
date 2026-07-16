@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import {
   Card,
   CardContent,
@@ -40,6 +40,8 @@ interface DatastoreMetricsPanelProps {
    * clear N/A state rather than a broken/empty chart. Ignored for keyvalue.
    */
   highAvailabilityEnabled?: boolean;
+  /** Database-only control rendered beside the disk chart heading. */
+  diskHeaderExtra?: ReactNode;
 }
 
 /**
@@ -53,6 +55,7 @@ export function DatastoreMetricsPanel({
   kind,
   resource,
   highAvailabilityEnabled,
+  diskHeaderExtra,
 }: DatastoreMetricsPanelProps) {
   const { t } = useTranslations();
   const isDatabase = kind === "database";
@@ -117,13 +120,16 @@ export function DatastoreMetricsPanel({
           title={t("metrics.diskTitle")}
           result={disk}
           headerExtra={
-            diskCapacityValue != null ? (
-              <span className="text-xs text-muted-foreground">
-                {t("metrics.diskCapacityLabel", {
-                  value: formatMetricValue("bytes", diskCapacityValue),
-                })}
-              </span>
-            ) : undefined
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              {diskCapacityValue != null ? (
+                <span className="text-xs text-muted-foreground">
+                  {t("metrics.diskCapacityLabel", {
+                    value: formatMetricValue("bytes", diskCapacityValue),
+                  })}
+                </span>
+              ) : null}
+              {diskHeaderExtra}
+            </div>
           }
         >
           <SvgLineChart
