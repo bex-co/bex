@@ -24,35 +24,9 @@ import (
 	"net/url"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
-
-func queryList(q url.Values, key string) []string {
-	var out []string
-	for _, raw := range q[key] {
-		for _, value := range strings.Split(raw, ",") {
-			value = strings.TrimSpace(value)
-			if value != "" && !slices.Contains(out, value) {
-				out = append(out, value)
-			}
-		}
-	}
-	return out
-}
-
-func queryTime(q url.Values, key string) (time.Time, error) {
-	raw := q.Get(key)
-	if raw == "" {
-		return time.Time{}, nil
-	}
-	parsed, err := time.Parse(time.RFC3339, raw)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("%w: %s must be an RFC3339 timestamp", core.ErrBadRequest, key)
-	}
-	return parsed, nil
-}
 
 func filterEnvironmentList(environments []EnvironmentView, q url.Values) ([]EnvironmentView, error) {
 	for _, key := range []string{"updatedBefore", "updatedAfter"} {
@@ -60,17 +34,17 @@ func filterEnvironmentList(environments []EnvironmentView, q url.Values) ([]Envi
 			return nil, fmt.Errorf("%w: %s is unsupported because environments do not expose updatedAt", core.ErrBadRequest, key)
 		}
 	}
-	createdBefore, err := queryTime(q, "createdBefore")
+	createdBefore, err := core.QueryTime(q, "createdBefore")
 	if err != nil {
 		return nil, err
 	}
-	createdAfter, err := queryTime(q, "createdAfter")
+	createdAfter, err := core.QueryTime(q, "createdAfter")
 	if err != nil {
 		return nil, err
 	}
-	names := queryList(q, "name")
-	owners := queryList(q, "ownerId")
-	ids := queryList(q, "environmentId")
+	names := core.QueryList(q, "name")
+	owners := core.QueryList(q, "ownerId")
+	ids := core.QueryList(q, "environmentId")
 	out := make([]EnvironmentView, 0, len(environments))
 	for _, environment := range environments {
 		switch {
@@ -162,7 +136,7 @@ func writeErr(w http.ResponseWriter, err error) {
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/environments", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
-		projectIDs := queryList(q, "projectId")
+		projectIDs := core.QueryList(q, "projectId")
 		if len(projectIDs) == 0 {
 			core.WriteErr(w, core.ErrBadRequest)
 			return

@@ -30,6 +30,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -150,19 +151,76 @@ type meta struct {
 // nil), groups aren't attributed and the list stays unfiltered, byte-identical
 // to before. View scope.
 func (s *Service) ListEnvGroups(ctx context.Context, ownerID string) ([]EnvGroupView, error) {
-	groups, err := s.listScopedMeta(ctx, ownerID)
-	if err != nil {
-		return nil, err
+	filter := EnvGroupListFilter{}
+	if ownerID != "" {
+		filter.OwnerIDs = []string{ownerID}
 	}
-	out := make([]EnvGroupView, 0, len(groups))
-	for _, group := range groups {
-		v, err := s.viewFromMeta(ctx, group.id, group.meta)
+	return s.ListEnvGroupsFiltered(ctx, filter)
+}
+
+// EnvGroupListFilter is Render's GET /v1/env-groups filter contract. Values
+// within one slice are OR alternatives; different fields compose with AND.
+// Empty OwnerIDs targets the caller's default workspace.
+type EnvGroupListFilter struct {
+	Names          []string
+	OwnerIDs       []string
+	EnvironmentIDs []string
+	CreatedBefore  time.Time
+	CreatedAfter   time.Time
+	UpdatedBefore  time.Time
+	UpdatedAfter   time.Time
+}
+
+// ListEnvGroupsFiltered narrows metadata before loading group contents and
+// before any caller paginates the result. Multiple owner ids are each resolved
+// through the existing membership-checked workspace seam, then unioned.
+func (s *Service) ListEnvGroupsFiltered(ctx context.Context, filter EnvGroupListFilter) ([]EnvGroupView, error) {
+	owners := filter.OwnerIDs
+	if len(owners) == 0 {
+		owners = []string{""}
+	}
+	seen := make(map[string]struct{})
+	var matched []scopedMeta
+	for _, ownerID := range owners {
+		groups, err := s.listScopedMeta(ctx, ownerID)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, v)
+		for _, group := range groups {
+			if _, ok := seen[group.id]; ok || !matchesEnvGroupFilter(group, filter) {
+				continue
+			}
+			seen[group.id] = struct{}{}
+			matched = append(matched, group)
+		}
+	}
+	out := make([]EnvGroupView, 0, len(matched))
+	for _, group := range matched {
+		view, err := s.viewFromMeta(ctx, group.id, group.meta)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, view)
 	}
 	return out, nil
+}
+
+func matchesEnvGroupFilter(group scopedMeta, filter EnvGroupListFilter) bool {
+	return (len(filter.Names) == 0 || slices.Contains(filter.Names, group.name)) &&
+		(len(filter.EnvironmentIDs) == 0 || slices.Contains(filter.EnvironmentIDs, group.environment)) &&
+		matchesTimeWindow(group.createdAt, filter.CreatedBefore, filter.CreatedAfter) &&
+		matchesTimeWindow(group.updatedAt, filter.UpdatedBefore, filter.UpdatedAfter)
+}
+
+func matchesTimeWindow(raw string, before, after time.Time) bool {
+	if before.IsZero() && after.IsZero() {
+		return true
+	}
+	value, err := time.Parse(time.RFC3339, raw)
+	if err != nil {
+		return false
+	}
+	return (before.IsZero() || value.Before(before)) && (after.IsZero() || value.After(after))
 }
 
 // pageEnvGroups is the shared GraphQL/MCP/REST paging rule. Callers pass

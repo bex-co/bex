@@ -22,7 +22,39 @@ import (
 	"net/url"
 	"slices"
 	"strconv"
+	"strings"
+	"time"
 )
+
+// QueryList parses Render's form/explode-false list filters while also
+// accepting repeated query keys. Values are trimmed and deduplicated in first
+// occurrence order, giving OR alternatives within one filter dimension.
+func QueryList(q url.Values, key string) []string {
+	var out []string
+	for _, raw := range q[key] {
+		for value := range strings.SplitSeq(raw, ",") {
+			value = strings.TrimSpace(value)
+			if value != "" && !slices.Contains(out, value) {
+				out = append(out, value)
+			}
+		}
+	}
+	return out
+}
+
+// QueryTime parses one optional RFC3339 list-filter boundary and returns a
+// named bad request for malformed input, so adapters never silently ignore it.
+func QueryTime(q url.Values, key string) (time.Time, error) {
+	raw := q.Get(key)
+	if raw == "" {
+		return time.Time{}, nil
+	}
+	parsed, err := time.Parse(time.RFC3339, raw)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("%w: %s must be an RFC3339 timestamp", ErrBadRequest, key)
+	}
+	return parsed, nil
+}
 
 // Render's `direction` ordering enum, shared by every list endpoint that
 // honors it (logs and audit logs): backward is newest-first (the default),

@@ -19,9 +19,31 @@ package envgroups
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
+
+func envGroupListFilter(q url.Values) (EnvGroupListFilter, error) {
+	filter := EnvGroupListFilter{
+		Names: core.QueryList(q, "name"), OwnerIDs: core.QueryList(q, "ownerId"),
+		EnvironmentIDs: core.QueryList(q, "environmentId"),
+	}
+	var err error
+	if filter.CreatedBefore, err = core.QueryTime(q, "createdBefore"); err != nil {
+		return EnvGroupListFilter{}, err
+	}
+	if filter.CreatedAfter, err = core.QueryTime(q, "createdAfter"); err != nil {
+		return EnvGroupListFilter{}, err
+	}
+	if filter.UpdatedBefore, err = core.QueryTime(q, "updatedBefore"); err != nil {
+		return EnvGroupListFilter{}, err
+	}
+	if filter.UpdatedAfter, err = core.QueryTime(q, "updatedAfter"); err != nil {
+		return EnvGroupListFilter{}, err
+	}
+	return filter, nil
+}
 
 // envGroupWithCursor is Render's list envelope. Render's endpoint OpenAPI
 // currently misdeclares the live response as []envGroupMeta, but its official
@@ -48,7 +70,12 @@ func envGroupList(groups []EnvGroupView) []envGroupWithCursor {
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/env-groups", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
-		out, err := s.ListEnvGroups(r.Context(), q.Get("ownerId"))
+		filter, err := envGroupListFilter(q)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		out, err := s.ListEnvGroupsFiltered(r.Context(), filter)
 		if err != nil {
 			core.WriteErr(w, err)
 			return

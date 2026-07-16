@@ -99,7 +99,7 @@ type okResult struct {
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_env_groups",
-		Description: "List one workspace's environment groups (names, linked services, and env-var keys / secret-file names — no values).",
+		Description: "List one workspace's environment groups with cursor paging (names, linked services, and env-var keys / secret-file names — no values); Render's name, environment, and timestamp filters are REST-only.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in listEnvGroupsArgs) (*mcp.CallToolResult, listEnvGroupsResult, error) {
 		groups, err := s.ListEnvGroups(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
 		if err == nil {
