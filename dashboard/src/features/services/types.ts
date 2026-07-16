@@ -80,6 +80,12 @@ export interface ServiceView {
   /** Dockerfile path relative to rootDir; empty means Dockerfile. */
   dockerfilePath: string | null;
   /**
+   * Stored private-registry credential bound to a prebuilt image or repository
+   * Docker build. Empty/null means no explicit credential. Only selected by the
+   * detail `server` query.
+   */
+  registryCredentialId: string | null;
+  /**
    * Render's Build Filters (`spec.buildFilter`, w1/m34): repository-root-relative
    * glob patterns gating git-push auto-deploys. null when unset (every matching
    * push deploys) or not selected. Only the detail `server` query selects it.

@@ -50,6 +50,28 @@ vi.mock("@/features/services/hooks/use-trigger-deploy", () => ({
   useTriggerDeploy: () => ({ deploying: false, trigger: triggerDeploy }),
 }));
 
+vi.mock(
+  "@/features/registry-credentials/hooks/use-registry-credentials",
+  () => ({
+    useRegistryCredentials: () => ({
+      credentials: [
+        {
+          id: "rgc-private",
+          name: "Private GHCR",
+          host: "ghcr.io",
+          username: "robot",
+          expiresAt: null,
+          status: "active",
+          createdAt: null,
+        },
+      ],
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    }),
+  }),
+);
+
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   return {
     id: "app",
@@ -65,6 +87,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     plan: "starter",
     repo: "https://github.com/bex-co/hello-go.git",
     branch: "main",
+    registryCredentialId: null,
     schedule: null,
     ...overrides,
   } as ServiceView;
@@ -163,6 +186,25 @@ describe("ServiceDetailHeader", () => {
     expect(screen.getByText("Instances")).toBeInTheDocument();
     expect(screen.getByText("Revision")).toBeInTheDocument();
     expect(screen.getByText("r1")).toBeInTheDocument();
+  });
+
+  it("shows a bound image credential by name and links to its settings panel", async () => {
+    renderHeader(
+      svc({ repo: null, branch: null, registryCredentialId: "rgc-private" }),
+    );
+
+    expect(await screen.findByText("Registry credential:")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Private GHCR" })).toHaveAttribute(
+      "href",
+      "/settings#registry-credentials",
+    );
+  });
+
+  it("does not add credential metadata to an unbound service", async () => {
+    renderHeader(svc({ registryCredentialId: null }));
+
+    await screen.findByRole("heading", { name: "app" });
+    expect(screen.queryByText("Registry credential:")).not.toBeInTheDocument();
   });
 
   it("shows a cron job's schedule in place of the URL row", async () => {

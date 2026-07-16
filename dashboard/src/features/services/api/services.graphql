@@ -126,6 +126,16 @@ mutation CreateService(
   }
 }
 
+# Existing-image and repository-Docker services can bind one stored workspace
+# registry credential. The backend uses an explicit empty string to clear the
+# binding; omission is not a clear operation.
+mutation SetRegistryCredential($id: String!, $registryCredentialId: String!) {
+  setRegistryCredential(id: $id, registryCredentialId: $registryCredentialId) {
+    id
+    registryCredentialId
+  }
+}
+
 # The create form's debounced availability check (w4/m19) — a bex extension,
 # Render has no public availability API. Scoped to the caller's own workspace
 # (the resolved default; the form has no ownerId argument to override it with

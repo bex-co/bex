@@ -25,6 +25,7 @@ import { DeployHookSection } from "@/features/services/components/deploy-hook-se
 import { MaxShutdownDelayRow } from "@/features/services/components/max-shutdown-delay-row";
 import { ServiceNetworkingPanel } from "@/features/services/components/service-networking-panel";
 import { MaintenanceModeSection } from "@/features/services/components/maintenance-mode-section";
+import { RegistryCredentialSection } from "@/features/services/components/registry-credential-section";
 import {
   isCron,
   isStaticSite,
@@ -53,6 +54,12 @@ export function ServiceSettingsPage() {
   const cron = service ? isCron(service) : false;
   const staticSite = service ? isStaticSite(service) : false;
   const worker = service ? isWorker(service) : false;
+  const registryCredentialEligible =
+    service != null &&
+    !staticSite &&
+    (!service.repo ||
+      service.runtime === "docker" ||
+      (!service.runtime && service.builder === "dockerfile"));
 
   return (
     <div className="space-y-6">
@@ -211,6 +218,15 @@ export function ServiceSettingsPage() {
           )}
         </>
       )}
+
+      {registryCredentialEligible ? (
+        <RegistryCredentialSection
+          key={serviceId}
+          serviceId={serviceId}
+          registryCredentialId={service.registryCredentialId}
+          onChanged={() => void refetch()}
+        />
+      ) : null}
 
       {/* Notifications (w4/m21): the per-service deploy-failure override applies
           to every service type (Render places it at the service level, not

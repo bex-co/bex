@@ -2114,13 +2114,53 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Create-wizard registry credential picker placeholder",
   },
   "services.createRegistryCredentialNone": {
-    message: "无（公开镜像仓库）",
+    message: "无凭据 — 公开镜像",
     description: "Create-wizard registry credential picker empty option",
   },
   "services.createRegistryCredentialDescription": {
     message:
       "如果镜像或 Dockerfile 基础镜像是私有的，请选择工作区中已存储的凭据。",
     description: "Create-wizard registry credential picker help text",
+  },
+  "services.registryCredentialEmpty": {
+    message: "没有可用的已存储镜像仓库凭据。",
+    description: "Registry credential selector empty state",
+  },
+  "services.registryCredentialListError": {
+    message: "无法加载镜像仓库凭据。",
+    description: "Registry credential selector load error",
+  },
+  "services.registryCredentialManage": {
+    message: "管理镜像仓库凭据",
+    description: "Link from a service credential selector to account settings",
+  },
+  "services.registryCredentialSettingsTitle": {
+    message: "镜像仓库凭据",
+    description: "Service Settings private-image credential card title",
+  },
+  "services.registryCredentialSettingsDescription": {
+    message: "选择用于拉取此私有镜像或 Dockerfile 基础镜像的已存储凭据。",
+    description: "Service Settings private-image credential card description",
+  },
+  "services.registryCredentialSave": {
+    message: "保存凭据",
+    description: "Service Settings registry credential save action",
+  },
+  "services.registryCredentialSaved": {
+    message: "镜像仓库凭据已更新。",
+    description: "Toast after attaching or changing a registry credential",
+  },
+  "services.registryCredentialCleared": {
+    message: "镜像仓库凭据已清除。",
+    description: "Toast after clearing a registry credential",
+  },
+  "services.registryCredentialError": {
+    message: "无法更新镜像仓库凭据。",
+    description: "Toast after a registry credential update fails",
+  },
+  "services.headerRegistryCredential": {
+    message: "镜像仓库凭据：",
+    description: "Service detail header label for a bound registry credential",
   },
   "services.createSettingsTitle": {
     message: "设置",

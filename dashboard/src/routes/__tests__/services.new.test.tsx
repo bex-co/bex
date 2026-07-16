@@ -11,6 +11,7 @@ import {
 import { NewServicePage } from "../services.new";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 import type { RepoView } from "@/features/services/hooks/use-repos";
+import type { RegistryCredentialView } from "@/features/registry-credentials/types";
 
 beforeAll(() => {
   if (!Element.prototype.hasPointerCapture) {
@@ -87,18 +88,20 @@ vi.mock("@/features/git/hooks/use-git-connection", () => ({
   useGitConnection: () => connectionState,
 }));
 
-const registryCredentialsState = {
-  credentials: [
-    {
-      id: "rgc-private",
-      name: "Private GHCR",
-      host: "ghcr.io",
-      username: "robot",
-      expiresAt: null,
-      status: "active",
-      createdAt: null,
-    },
-  ],
+const PRIVATE_REGISTRY_CREDENTIAL: RegistryCredentialView = {
+  id: "rgc-private",
+  name: "Private GHCR",
+  host: "ghcr.io",
+  username: "robot",
+  expiresAt: null,
+  status: "active",
+  createdAt: null,
+};
+const registryCredentialsState: {
+  credentials: RegistryCredentialView[];
+  loading: boolean;
+} = {
+  credentials: [PRIVATE_REGISTRY_CREDENTIAL],
   loading: false,
 };
 
@@ -223,6 +226,8 @@ beforeEach(() => {
   nameAvailabilityState.taken = false;
   nameAvailabilityState.suggestion = null;
   nameAvailabilityState.checking = false;
+  registryCredentialsState.credentials = [PRIVATE_REGISTRY_CREDENTIAL];
+  registryCredentialsState.loading = false;
 });
 
 // ── tests ─────────────────────────────────────────────────────────────────────
@@ -570,6 +575,34 @@ describe("NewServicePage", () => {
       expect(
         screen.getByPlaceholderText("docker.io/library/nginx:latest"),
       ).toBeInTheDocument();
+    });
+
+    it("links to credential settings when the workspace has no stored credentials", async () => {
+      registryCredentialsState.credentials = [];
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("tab", { name: /Existing Image/i }),
+      );
+
+      expect(
+        screen.getByText("No stored registry credentials are available."),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Manage registry credentials" }),
+      ).toHaveAttribute("href", "/settings#registry-credentials");
+    });
+
+    it("keeps the credential selector hidden for a native Git source", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+
+      expect(
+        screen.queryByRole("combobox", { name: /Registry credential/i }),
+      ).not.toBeInTheDocument();
     });
 
     it("submits the selected registry credential with an existing image", async () => {

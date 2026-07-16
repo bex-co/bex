@@ -56,6 +56,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     builder: null,
     startCommand: null,
     dockerfilePath: null,
+    registryCredentialId: null,
     ipAllowList: null,
     ...overrides,
   };
@@ -101,6 +102,7 @@ describe("toServiceView", () => {
       builder: null,
       startCommand: null,
       dockerfilePath: null,
+      registryCredentialId: null,
       buildFilter: null,
       autoDeploy: null,
       notifyOnFail: null,
@@ -172,6 +174,7 @@ describe("toServiceView", () => {
       builder: "dockerfile",
       startCommand: "bin/server",
       dockerfilePath: "docker/Dockerfile.prod",
+      registryCredentialId: "rgc-private",
       schedule: null,
       command: null,
       runs: [],
@@ -184,6 +187,7 @@ describe("toServiceView", () => {
     expect(v.builder).toBe("dockerfile");
     expect(v.startCommand).toBe("bin/server");
     expect(v.dockerfilePath).toBe("docker/Dockerfile.prod");
+    expect(v.registryCredentialId).toBe("rgc-private");
   });
 
   it("leaves build settings null for a list node (not selected)", () => {
@@ -195,6 +199,7 @@ describe("toServiceView", () => {
     expect(v.builder).toBeNull();
     expect(v.startCommand).toBeNull();
     expect(v.dockerfilePath).toBeNull();
+    expect(v.registryCredentialId).toBeNull();
   });
 
   it("reads slug from a detail server node, incl. the random-suffix case", () => {

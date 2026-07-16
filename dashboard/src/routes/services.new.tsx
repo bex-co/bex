@@ -71,7 +71,7 @@ import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 import { generateEnvValue } from "@/features/services/lib/generate-env-value";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
-import { useRegistryCredentials } from "@/features/registry-credentials/hooks/use-registry-credentials";
+import { RegistryCredentialSelect } from "@/features/services/components/registry-credential-select";
 
 // A C-locale env-var name — kept in sync with backend/internal/secrets validEnvKey.
 const VALID_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -445,18 +445,13 @@ export function NewServicePage() {
     useCreateService();
   const { repos, loading: reposLoading } = useRepos();
   const { connection, loading: connectionLoading } = useGitConnection();
-  const {
-    credentials: registryCredentials,
-    loading: registryCredentialsLoading,
-  } = useRegistryCredentials();
-
   const [serviceType, setServiceType] = useState<ServiceType>("web_service");
   const [tab, setTab] = useState<SourceTab>("github");
   const [selectedRepo, setSelectedRepo] = useState<RepoView | null>(null);
   const [repoSearch, setRepoSearch] = useState("");
   const [gitUrl, setGitUrl] = useState("");
   const [imageVal, setImageVal] = useState("");
-  const [registryCredentialId, setRegistryCredentialId] = useState("none");
+  const [registryCredentialId, setRegistryCredentialId] = useState("");
   const [name, setName] = useState("");
   const [nameEdited, setNameEdited] = useState(false);
   const [branch, setBranch] = useState("");
@@ -610,9 +605,7 @@ export function NewServicePage() {
       registryCredentialId:
         tab === "image" ||
         (isGitSource && !isStaticType && runtime === "docker")
-          ? registryCredentialId === "none"
-            ? ""
-            : registryCredentialId
+          ? registryCredentialId
           : undefined,
       branch: branchVal,
       rootDir: rootDir || undefined,
@@ -661,36 +654,6 @@ export function NewServicePage() {
 
   const gitHubDisconnected =
     !connectionLoading && connection?.connected !== true;
-
-  const registryCredentialField = (id: string) => (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{t("services.createRegistryCredentialLabel")}</Label>
-      <Select
-        value={registryCredentialId}
-        onValueChange={setRegistryCredentialId}
-        disabled={registryCredentialsLoading}
-      >
-        <SelectTrigger id={id}>
-          <SelectValue
-            placeholder={t("services.createRegistryCredentialPlaceholder")}
-          />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="none">
-            {t("services.createRegistryCredentialNone")}
-          </SelectItem>
-          {registryCredentials.map((credential) => (
-            <SelectItem key={credential.id} value={credential.id}>
-              {credential.name} ({credential.host})
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <p className="text-xs text-muted-foreground">
-        {t("services.createRegistryCredentialDescription")}
-      </p>
-    </div>
-  );
 
   return (
     <DashboardLayout>
@@ -876,7 +839,14 @@ export function NewServicePage() {
                           autoComplete="off"
                         />
                       </div>
-                      {registryCredentialField("svc-registry-credential-image")}
+                      <RegistryCredentialSelect
+                        id="svc-registry-credential-image"
+                        value={registryCredentialId}
+                        onValueChange={setRegistryCredentialId}
+                        description={t(
+                          "services.createRegistryCredentialDescription",
+                        )}
+                      />
                     </div>
                   </TabsContent>
                 </Tabs>
@@ -1067,9 +1037,14 @@ export function NewServicePage() {
                                 {t("services.createFieldDockerfilePathHint")}
                               </p>
                             </div>
-                            {registryCredentialField(
-                              "svc-registry-credential-docker",
-                            )}
+                            <RegistryCredentialSelect
+                              id="svc-registry-credential-docker"
+                              value={registryCredentialId}
+                              onValueChange={setRegistryCredentialId}
+                              description={t(
+                                "services.createRegistryCredentialDescription",
+                              )}
+                            />
                             {!isCronType ? (
                               <div className="space-y-2">
                                 <Label htmlFor="svc-docker-command">
