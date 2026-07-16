@@ -92,6 +92,11 @@ type dockerfilePathArgs struct {
 	DockerfilePath string `json:"dockerfilePath" jsonschema:"path to the Dockerfile relative to rootDir; empty restores Dockerfile"`
 }
 
+type registryCredentialArgs struct {
+	ServiceID            string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	RegistryCredentialID string `json:"registryCredentialId" jsonschema:"the registry credential id to bind; empty clears the binding"`
+}
+
 // buildFilterArg is Render's Build Filters object, shared by set_build_filter and
 // create_web_service: repository-root-relative globs deciding whether a git push
 // triggers an auto-deploy. Patterns support *, **, ?, and [class] wildcards.
@@ -219,6 +224,7 @@ type createWebServiceArgs struct {
 	Type                    string              `json:"type,omitempty" jsonschema:"service type: web_service (default), private_service, or background_worker. Use create_cron_job for a cron_job"`
 	Repo                    string              `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
 	Image                   string              `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
+	RegistryCredentialID    *string             `json:"registryCredentialId,omitempty" jsonschema:"stored registry credential id for a private prebuilt image; omit for automatic host matching, empty to explicitly use none"`
 	Branch                  string              `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
 	RootDir                 string              `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
 	BuildFilter             *buildFilterArg     `json:"buildFilter,omitempty" jsonschema:"Render's Build Filters: glob patterns (paths/ignoredPaths) gating git-push auto-deploys; omit for no filter"`
@@ -277,6 +283,7 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 		Type:                    a.Type,
 		Repo:                    a.Repo,
 		Image:                   a.Image,
+		RegistryCredentialID:    cloneStringPtr(a.RegistryCredentialID),
 		Branch:                  a.Branch,
 		RootDir:                 a.RootDir,
 		BuildFilter:             a.BuildFilter.toView(),
@@ -305,51 +312,53 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 // tracks create_web_service but requires a schedule and has no port/replicas
 // (a cron runs its command to completion on the schedule, not as a server).
 type createCronJobArgs struct {
-	OwnerID        string          `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
-	EnvironmentID  string          `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
-	Name           string          `json:"name" jsonschema:"the cron job name (a DNS label, 1-30 chars)"`
-	Schedule       string          `json:"schedule" jsonschema:"the cron schedule (standard 5-field crontab, e.g. '0 * * * *')"`
-	Command        string          `json:"command,omitempty" jsonschema:"overrides the image's default entrypoint for each run, e.g. 'npm run report'; omit to run the image's own command"`
-	Repo           string          `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
-	Image          string          `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
-	Branch         string          `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
-	RootDir        string          `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
-	Runtime        string          `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, or docker"`
-	BuildCommand   string          `json:"buildCommand" jsonschema:"command used to build a native-runtime cron job; ignored for docker"`
-	StartCommand   string          `json:"startCommand" jsonschema:"command run by the native-runtime cron job; ignored for docker"`
-	DockerfilePath string          `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
-	Builder        string          `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
-	Plan           string          `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro (default free)"`
-	EnvVars        []envVarArg     `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the job"`
-	SecretFiles    []secretFileArg `json:"secretFiles,omitempty" jsonschema:"secret files mounted under /etc/secrets from first boot"`
-	AutoDeploy     string          `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
-	NotifyOnFail   string          `json:"notifyOnFail,omitempty" jsonschema:"deploy-failure notification override: default (defer to each member's own preference), notify (always email every member), or ignore (never email anyone for this service); default if omitted"`
-	DryRun         bool            `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
+	OwnerID              string          `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
+	EnvironmentID        string          `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
+	Name                 string          `json:"name" jsonschema:"the cron job name (a DNS label, 1-30 chars)"`
+	Schedule             string          `json:"schedule" jsonschema:"the cron schedule (standard 5-field crontab, e.g. '0 * * * *')"`
+	Command              string          `json:"command,omitempty" jsonschema:"overrides the image's default entrypoint for each run, e.g. 'npm run report'; omit to run the image's own command"`
+	Repo                 string          `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
+	Image                string          `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
+	RegistryCredentialID *string         `json:"registryCredentialId,omitempty" jsonschema:"stored registry credential id for a private prebuilt image; omit for automatic host matching, empty to explicitly use none"`
+	Branch               string          `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	RootDir              string          `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
+	Runtime              string          `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, or docker"`
+	BuildCommand         string          `json:"buildCommand" jsonschema:"command used to build a native-runtime cron job; ignored for docker"`
+	StartCommand         string          `json:"startCommand" jsonschema:"command run by the native-runtime cron job; ignored for docker"`
+	DockerfilePath       string          `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
+	Builder              string          `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
+	Plan                 string          `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro (default free)"`
+	EnvVars              []envVarArg     `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the job"`
+	SecretFiles          []secretFileArg `json:"secretFiles,omitempty" jsonschema:"secret files mounted under /etc/secrets from first boot"`
+	AutoDeploy           string          `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
+	NotifyOnFail         string          `json:"notifyOnFail,omitempty" jsonschema:"deploy-failure notification override: default (defer to each member's own preference), notify (always email every member), or ignore (never email anyone for this service); default if omitted"`
+	DryRun               bool            `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
 func (a createCronJobArgs) toCreateRequest() CreateRequest {
 	return CreateRequest{
-		OwnerID:        a.OwnerID,
-		EnvironmentID:  a.EnvironmentID,
-		Name:           a.Name,
-		Type:           appv1alpha1.TypeCronJob,
-		Schedule:       a.Schedule,
-		Command:        a.Command,
-		Repo:           a.Repo,
-		Image:          a.Image,
-		Branch:         a.Branch,
-		RootDir:        a.RootDir,
-		Runtime:        a.Runtime,
-		BuildCommand:   a.BuildCommand,
-		StartCommand:   a.StartCommand,
-		DockerfilePath: a.DockerfilePath,
-		Builder:        a.Builder,
-		Plan:           a.Plan,
-		Env:            toEnvVars(a.EnvVars),
-		SecretFiles:    toSecretFiles(a.SecretFiles),
-		AutoDeploy:     parseYesNo(a.AutoDeploy),
-		NotifyOnFail:   a.NotifyOnFail,
-		DryRun:         a.DryRun,
+		OwnerID:              a.OwnerID,
+		EnvironmentID:        a.EnvironmentID,
+		Name:                 a.Name,
+		Type:                 appv1alpha1.TypeCronJob,
+		Schedule:             a.Schedule,
+		Command:              a.Command,
+		Repo:                 a.Repo,
+		Image:                a.Image,
+		RegistryCredentialID: cloneStringPtr(a.RegistryCredentialID),
+		Branch:               a.Branch,
+		RootDir:              a.RootDir,
+		Runtime:              a.Runtime,
+		BuildCommand:         a.BuildCommand,
+		StartCommand:         a.StartCommand,
+		DockerfilePath:       a.DockerfilePath,
+		Builder:              a.Builder,
+		Plan:                 a.Plan,
+		Env:                  toEnvVars(a.EnvVars),
+		SecretFiles:          toSecretFiles(a.SecretFiles),
+		AutoDeploy:           parseYesNo(a.AutoDeploy),
+		NotifyOnFail:         a.NotifyOnFail,
+		DryRun:               a.DryRun,
 	}
 }
 
@@ -781,6 +790,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Change a repo-backed Docker service's Dockerfile Path, relative to its Root Directory. Empty restores the default Dockerfile. Triggers a fresh build. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in dockerfilePathArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.SetDockerfilePath(ctx, in.ServiceID, in.DockerfilePath)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_registry_credential",
+		Description: "Bind an image-backed service to a stored private-registry credential. The credential must belong to the service workspace and match the image registry host. Pass an empty registryCredentialId to clear the binding.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in registryCredentialArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetRegistryCredential(ctx, in.ServiceID, in.RegistryCredentialID)
 		if err != nil {
 			return nil, renderService{}, err
 		}

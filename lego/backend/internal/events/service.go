@@ -54,7 +54,7 @@ limitations under the License.
 //	dockerfile_path_changed     apps.SetDockerfilePath
 //	build_filter_changed        apps.SetBuildFilter
 //	commands_changed            apps.SetCommands
-//	source_changed              apps.SetSource
+//	source_changed              apps.SetSource / apps.SetRegistryCredential / apps.SetSourceAndRegistryCredential
 //	display_name_changed        apps.SetDisplayName
 //	pre_deploy_command_changed  apps.SetPreDeployCommand
 //	max_shutdown_delay_changed  apps.SetMaxShutdownDelay
@@ -209,6 +209,8 @@ var eventTypes = map[string]string{
 	"apps.SetBuildFilter":                   TypeBuildFilterChanged,
 	"apps.SetCommands":                      TypeCommandsChanged,
 	"apps.SetSource":                        TypeSourceChanged,
+	"apps.SetRegistryCredential":            TypeSourceChanged,
+	"apps.SetSourceAndRegistryCredential":   TypeSourceChanged,
 	"apps.SetDisplayName":                   TypeDisplayNameChanged,
 	"apps.SetPreDeployCommand":              TypePreDeployChanged,
 	"apps.SetMaxShutdownDelay":              TypeMaxShutdownDelayChanged,

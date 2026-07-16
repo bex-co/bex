@@ -508,6 +508,16 @@ spec:
                   the origin prefix root IS the site root. Required when Type is static_site;
                   ignored for every other type. See docs/ADR029-static-sites.md.
                 type: string
+              registryCredentialId:
+                description: |-
+                  RegistryCredentialID is Render's explicit registryCredentialId binding.
+                  A non-nil, non-empty value pins this App to that workspace credential; a
+                  non-nil empty value explicitly disables registry authentication. nil keeps
+                  the legacy bex behavior of resolving the newest workspace credential whose
+                  host matches Image. ExternalRegistryPullSecret is the derived Kubernetes
+                  Secret name; this field is the durable user intent used to re-materialize
+                  that Secret on later deploys.
+                type: string
               replicas:
                 default: 1
                 description: Replicas for the kubernetes runtime (pods bin-packed

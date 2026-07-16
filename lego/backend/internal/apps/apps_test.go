@@ -643,7 +643,7 @@ func (r *recordingStore) SetAppIdleTTL(_ context.Context, id string, seconds int
 	return nil
 }
 
-func (r *recordingStore) SetAppSource(_ context.Context, id, repo, image, branch string) error {
+func (r *recordingStore) SetAppSource(_ context.Context, id, repo, image, branch string, registryCredentialID *string) error {
 	return r.err
 }
 

@@ -337,6 +337,12 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// repo/branch are the build-from-git source, empty for an image-backed App.
 		"repo":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Repo })},
 		"branch": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Branch })},
+		"registryCredentialId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any {
+			if a.RegistryCredentialID == nil {
+				return nil
+			}
+			return *a.RegistryCredentialID
+		})},
 		// buildFilter is Render's Build Filters (spec.buildFilter): the glob
 		// patterns gating git-push auto-deploys. Null when unset.
 		"buildFilter": &graphql.Field{
@@ -825,19 +831,20 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// twin of the services list filter above, and the same optional
 				// contract REST's create body has: omitted => the caller's default
 				// workspace; a workspace they don't belong to => forbidden.
-				"ownerId":       &graphql.ArgumentConfig{Type: graphql.String},
-				"environmentId": &graphql.ArgumentConfig{Type: graphql.String},
-				"type":          &graphql.ArgumentConfig{Type: graphql.String}, // web_service (default) | private_service | background_worker | cron_job
-				"schedule":      &graphql.ArgumentConfig{Type: graphql.String}, // cron expression, required when type is cron_job
-				"command":       &graphql.ArgumentConfig{Type: graphql.String}, // overrides the image's entrypoint for a cron_job
-				"repo":          &graphql.ArgumentConfig{Type: graphql.String},
-				"image":         &graphql.ArgumentConfig{Type: graphql.String},
-				"branch":        &graphql.ArgumentConfig{Type: graphql.String},
-				"rootDir":       &graphql.ArgumentConfig{Type: graphql.String},       // subdirectory of repo to build from (monorepo support)
-				"buildFilter":   &graphql.ArgumentConfig{Type: buildFilterInputType}, // Render's Build Filters: globs gating push auto-deploys
-				"runtime":       &graphql.ArgumentConfig{Type: graphql.String},       // Render runtime: native language | docker | image
-				"buildCommand":  &graphql.ArgumentConfig{Type: graphql.String},
-				"startCommand":  &graphql.ArgumentConfig{Type: graphql.String},
+				"ownerId":              &graphql.ArgumentConfig{Type: graphql.String},
+				"environmentId":        &graphql.ArgumentConfig{Type: graphql.String},
+				"type":                 &graphql.ArgumentConfig{Type: graphql.String}, // web_service (default) | private_service | background_worker | cron_job
+				"schedule":             &graphql.ArgumentConfig{Type: graphql.String}, // cron expression, required when type is cron_job
+				"command":              &graphql.ArgumentConfig{Type: graphql.String}, // overrides the image's entrypoint for a cron_job
+				"repo":                 &graphql.ArgumentConfig{Type: graphql.String},
+				"image":                &graphql.ArgumentConfig{Type: graphql.String},
+				"registryCredentialId": &graphql.ArgumentConfig{Type: graphql.String},
+				"branch":               &graphql.ArgumentConfig{Type: graphql.String},
+				"rootDir":              &graphql.ArgumentConfig{Type: graphql.String},       // subdirectory of repo to build from (monorepo support)
+				"buildFilter":          &graphql.ArgumentConfig{Type: buildFilterInputType}, // Render's Build Filters: globs gating push auto-deploys
+				"runtime":              &graphql.ArgumentConfig{Type: graphql.String},       // Render runtime: native language | docker | image
+				"buildCommand":         &graphql.ArgumentConfig{Type: graphql.String},
+				"startCommand":         &graphql.ArgumentConfig{Type: graphql.String},
 				// dockerfilePath is Render's Dockerfile Path, relative to rootDir; docker runtime only.
 				"dockerfilePath": &graphql.ArgumentConfig{Type: graphql.String},
 				"builder":        &graphql.ArgumentConfig{Type: graphql.String}, // auto (default) | buildpack | dockerfile
@@ -884,6 +891,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					Command:                 gqlutil.Str(p.Args, "command"),
 					Repo:                    gqlutil.Str(p.Args, "repo"),
 					Image:                   gqlutil.Str(p.Args, "image"),
+					RegistryCredentialID:    gqlutil.StrPtr(p.Args, "registryCredentialId"),
 					Branch:                  gqlutil.Str(p.Args, "branch"),
 					RootDir:                 gqlutil.Str(p.Args, "rootDir"),
 					BuildFilter:             gqlBuildFilterInput(p.Args, "buildFilter"),
@@ -993,6 +1001,19 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetDisplayName(p.Context, p.Args["id"].(string), p.Args["displayName"].(string))
+			},
+		},
+		// setRegistryCredential binds an image-backed service to one stored
+		// workspace credential. Empty clears the binding; the service verb owns
+		// the same membership/host checks used by REST and MCP.
+		"setRegistryCredential": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":                   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"registryCredentialId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetRegistryCredential(p.Context, p.Args["id"].(string), p.Args["registryCredentialId"].(string))
 			},
 		},
 		// scaleService: Render's manual-scaling verb. numInstances mirrors the

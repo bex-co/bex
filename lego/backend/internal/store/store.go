@@ -71,18 +71,22 @@ type App struct {
 	// platform-wide, or "<name>-<4-char suffix>" when CreateApp had to mint one
 	// to avoid a cross-tenant collision (w4/m19). The operator reads this —
 	// never Name — to derive the platform host.
-	Slug           string    `json:"slug"`
-	Repo           string    `json:"repo,omitempty"`
-	Image          string    `json:"image,omitempty"`
-	Branch         string    `json:"branch"`
-	Port           int32     `json:"port"`
-	Replicas       int32     `json:"replicas"`
-	Tier           string    `json:"tier"`
-	IdleTTLSeconds int32     `json:"idleTTLSeconds"`
-	Suspended      bool      `json:"suspended"`
-	ProjectID      string    `json:"projectId,omitempty"`
-	EnvironmentID  string    `json:"environmentId,omitempty"`
-	CreatedAt      time.Time `json:"createdAt"`
+	Slug  string `json:"slug"`
+	Repo  string `json:"repo,omitempty"`
+	Image string `json:"image,omitempty"`
+	// RegistryCredentialID preserves Render's tri-state image credential
+	// binding: nil is legacy host auto-resolution, pointer-to-empty explicitly
+	// selects no credential, and a non-empty value pins one workspace credential.
+	RegistryCredentialID *string   `json:"registryCredentialId,omitempty"`
+	Branch               string    `json:"branch"`
+	Port                 int32     `json:"port"`
+	Replicas             int32     `json:"replicas"`
+	Tier                 string    `json:"tier"`
+	IdleTTLSeconds       int32     `json:"idleTTLSeconds"`
+	Suspended            bool      `json:"suspended"`
+	ProjectID            string    `json:"projectId,omitempty"`
+	EnvironmentID        string    `json:"environmentId,omitempty"`
+	CreatedAt            time.Time `json:"createdAt"`
 	// FirstDeployCommit is CreateApp INPUT only (w9/001): the resolved commit
 	// stamped onto the first deploy row (trigger "create") CreateApp opens in
 	// the same transaction. Not an apps column — never persisted on, or read
@@ -300,8 +304,9 @@ type Store interface {
 	// idle-timeout verb on store-managed Apps (the projector owns
 	// spec.idleTTLSeconds), same row-first rationale as SetAppReplicas.
 	SetAppIdleTTL(ctx context.Context, id string, seconds int32) error
-	// SetAppSource atomically updates the projector-owned source tuple.
-	SetAppSource(ctx context.Context, id, repo, image, branch string) error
+	// SetAppSource atomically updates the projector-owned source tuple and its
+	// context-sensitive registry credential binding.
+	SetAppSource(ctx context.Context, id, repo, image, branch string, registryCredentialID *string) error
 	// SetAppImage updates the row's image — the single write path for a
 	// rollback's restored image on store-managed Apps (the projector owns
 	// spec.image), same row-first rationale as SetAppReplicas (w2/m10).
@@ -593,10 +598,10 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 	for attempt := 0; ; attempt++ {
 		err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 			if err := tx.QueryRow(ctx,
-				`INSERT INTO apps (id, tenant_id, name, slug, repo, image, branch, port, replicas, tier, idle_ttl_seconds, suspended, project_id, environment_id)
-				 VALUES ($1, $2, $3, $4, NULLIF($5,''), NULLIF($6,''), $7, $8, $9, $10, $11, $12, NULLIF($13,''), NULLIF($14,''))
+				`INSERT INTO apps (id, tenant_id, name, slug, repo, image, registry_credential_id, branch, port, replicas, tier, idle_ttl_seconds, suspended, project_id, environment_id)
+				 VALUES ($1, $2, $3, $4, NULLIF($5,''), NULLIF($6,''), $7, $8, $9, $10, $11, $12, $13, NULLIF($14,''), NULLIF($15,''))
 				 RETURNING created_at`,
-				a.ID, a.TenantID, a.Name, a.Slug, a.Repo, a.Image, a.Branch, a.Port, a.Replicas, a.Tier, a.IdleTTLSeconds, a.Suspended, a.ProjectID, a.EnvironmentID,
+				a.ID, a.TenantID, a.Name, a.Slug, a.Repo, a.Image, a.RegistryCredentialID, a.Branch, a.Port, a.Replicas, a.Tier, a.IdleTTLSeconds, a.Suspended, a.ProjectID, a.EnvironmentID,
 			).Scan(&a.CreatedAt); err != nil {
 				return err
 			}
@@ -619,14 +624,14 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 	}
 }
 
-const appColumns = `a.id, a.tenant_id, a.name, a.slug, COALESCE(a.repo,''), COALESCE(a.image,''),
+const appColumns = `a.id, a.tenant_id, a.name, a.slug, COALESCE(a.repo,''), COALESCE(a.image,''), a.registry_credential_id,
 	a.branch, a.port, a.replicas, a.tier, a.idle_ttl_seconds, a.suspended,
 	COALESCE(a.project_id::text,''), COALESCE(a.environment_id::text,''), a.created_at`
 
 func scanApp(row pgx.Row) (App, error) {
 	var a App
 	err := row.Scan(&a.ID, &a.TenantID, &a.Name, &a.Slug, &a.Repo, &a.Image,
-		&a.Branch, &a.Port, &a.Replicas, &a.Tier, &a.IdleTTLSeconds, &a.Suspended,
+		&a.RegistryCredentialID, &a.Branch, &a.Port, &a.Replicas, &a.Tier, &a.IdleTTLSeconds, &a.Suspended,
 		&a.ProjectID, &a.EnvironmentID, &a.CreatedAt)
 	return a, err
 }
@@ -781,7 +786,7 @@ func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 	for rows.Next() {
 		var d DesiredApp
 		err := rows.Scan(&d.ID, &d.TenantID, &d.Name, &d.Slug, &d.Repo, &d.Image,
-			&d.Branch, &d.Port, &d.Replicas, &d.Tier, &d.IdleTTLSeconds, &d.Suspended,
+			&d.RegistryCredentialID, &d.Branch, &d.Port, &d.Replicas, &d.Tier, &d.IdleTTLSeconds, &d.Suspended,
 			&d.ProjectID, &d.EnvironmentID, &d.CreatedAt, &d.TenantName)
 		if err != nil {
 			return nil, err
@@ -885,12 +890,12 @@ func (s *PGStore) SetAppIdleTTL(ctx context.Context, id string, seconds int32) e
 	return nil
 }
 
-// SetAppSource atomically updates repo/image/branch so the projector never
-// observes a transient service with both source kinds (or neither).
-func (s *PGStore) SetAppSource(ctx context.Context, id, repo, image, branch string) error {
+// SetAppSource atomically updates repo/image/branch and the explicit registry
+// credential binding so the projector never observes mismatched source/auth.
+func (s *PGStore) SetAppSource(ctx context.Context, id, repo, image, branch string, registryCredentialID *string) error {
 	tag, err := s.Pool.Exec(ctx,
-		`UPDATE apps SET repo = NULLIF($2, ''), image = NULLIF($3, ''), branch = $4, updated_at = now() WHERE id = $1`,
-		id, repo, image, branch)
+		`UPDATE apps SET repo = NULLIF($2, ''), image = NULLIF($3, ''), branch = $4, registry_credential_id = $5, updated_at = now() WHERE id = $1`,
+		id, repo, image, branch, registryCredentialID)
 	if err != nil {
 		return classify("app", err)
 	}

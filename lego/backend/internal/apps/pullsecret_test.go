@@ -31,18 +31,25 @@ import (
 
 // fakePullSecrets is a stub PullSecretSource.
 type fakePullSecrets struct {
-	name          string
-	ok            bool
-	err           error
-	calls         int
-	lastImage     string
-	lastWorkspace string
+	name           string
+	ok             bool
+	err            error
+	calls          int
+	lastImage      string
+	lastWorkspace  string
+	lastID         *string
+	credentialName string
 }
 
-func (f *fakePullSecrets) MaterializePullSecret(_ context.Context, workspaceID string, _ *appv1alpha1.App, image string) (string, bool, error) {
+func (f *fakePullSecrets) RegistryCredentialName(_ context.Context, _, _ string) (string, bool) {
+	return f.credentialName, f.credentialName != ""
+}
+
+func (f *fakePullSecrets) MaterializePullSecret(_ context.Context, workspaceID string, _ *appv1alpha1.App, image string, credentialID *string) (string, bool, error) {
 	f.calls++
 	f.lastWorkspace = workspaceID
 	f.lastImage = image
+	f.lastID = cloneStringPtr(credentialID)
 	return f.name, f.ok, f.err
 }
 

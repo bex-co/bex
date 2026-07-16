@@ -2090,6 +2090,22 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "docker.io/library/nginx:latest",
     description: "Create-wizard Existing Image tab input placeholder",
   },
+  "services.createRegistryCredentialLabel": {
+    message: "镜像仓库凭据",
+    description: "Create-wizard private-image registry credential label",
+  },
+  "services.createRegistryCredentialPlaceholder": {
+    message: "选择镜像仓库凭据",
+    description: "Create-wizard registry credential picker placeholder",
+  },
+  "services.createRegistryCredentialNone": {
+    message: "无（公开镜像）",
+    description: "Create-wizard registry credential picker empty option",
+  },
+  "services.createRegistryCredentialDescription": {
+    message: "如果这是私有镜像，请选择工作区中已存储的凭据。",
+    description: "Create-wizard registry credential picker help text",
+  },
   "services.createSettingsTitle": {
     message: "设置",
     description: "Create-wizard settings section heading",

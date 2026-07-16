@@ -107,6 +107,11 @@ func (in *AppSpec) DeepCopyInto(out *AppSpec) {
 		*out = new(BuildFilterSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.RegistryCredentialID != nil {
+		in, out := &in.RegistryCredentialID, &out.RegistryCredentialID
+		*out = new(string)
+		**out = **in
+	}
 	if in.Env != nil {
 		in, out := &in.Env, &out.Env
 		*out = make([]EnvVar, len(*in))

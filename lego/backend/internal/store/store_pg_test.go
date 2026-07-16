@@ -216,6 +216,31 @@ func assertRegistryCredentials(ctx context.Context, t *testing.T, s *PGStore, te
 		t.Errorf("explicit name not stored: %q", c2.Name)
 	}
 
+	bound, err := s.CreateApp(ctx, App{
+		TenantID: ten.ID, Name: "registry-bound", Image: "docker.io/acme/private:1",
+		RegistryCredentialID: &c2.ID, Branch: "main", Port: 80, Replicas: 1, Tier: "starter",
+	})
+	if err != nil {
+		t.Fatalf("create registry-bound app: %v", err)
+	}
+	defer func() {
+		if err := s.DeleteApp(ctx, bound.ID); err != nil {
+			t.Errorf("delete registry-bound app: %v", err)
+		}
+	}()
+	gotBound, err := s.GetApp(ctx, bound.ID)
+	if err != nil || gotBound.RegistryCredentialID == nil || *gotBound.RegistryCredentialID != c2.ID {
+		t.Fatalf("get registry-bound app = %+v (err %v)", gotBound, err)
+	}
+	empty := ""
+	if err := s.SetAppSource(ctx, bound.ID, "", "docker.io/acme/private:2", "main", &empty); err != nil {
+		t.Fatalf("clear registry binding: %v", err)
+	}
+	gotBound, err = s.GetApp(ctx, bound.ID)
+	if err != nil || gotBound.RegistryCredentialID == nil || *gotBound.RegistryCredentialID != "" {
+		t.Fatalf("explicit empty registry binding did not persist: %+v (err %v)", gotBound, err)
+	}
+
 	list, err := s.ListRegistryCredentials(ctx, ten.ID)
 	if err != nil || len(list) != 2 || list[0].ID != c2.ID {
 		t.Fatalf("list (want newest first) = %+v (err %v)", list, err)
@@ -224,6 +249,13 @@ func assertRegistryCredentials(ctx context.Context, t *testing.T, s *PGStore, te
 	got, err := s.GetRegistryCredential(ctx, ten.ID, c.ID)
 	if err != nil || got.Host != "ghcr.io" || got.Username != "alice" {
 		t.Fatalf("get = %+v (err %v)", got, err)
+	}
+	gotByID, err := s.GetRegistryCredentialByID(ctx, c.ID)
+	if err != nil || gotByID.WorkspaceID != ten.ID {
+		t.Fatalf("unscoped binding lookup = %+v (err %v)", gotByID, err)
+	}
+	if _, err := s.GetRegistryCredentialByID(ctx, "rgc-no-such"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("unscoped unknown binding lookup: want ErrNotFound, got %v", err)
 	}
 	if _, err := s.GetRegistryCredential(ctx, other.ID, c.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("get scoped to the wrong workspace: want ErrNotFound, got %v", err)

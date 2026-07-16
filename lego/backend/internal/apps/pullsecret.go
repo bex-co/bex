@@ -19,11 +19,13 @@ package apps
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -39,7 +41,13 @@ type PullSecretSource interface {
 	// workspace hasn't stored credentials for — leave alone. A non-nil err
 	// means a credential DID match but materializing it failed, which the
 	// caller must surface.
-	MaterializePullSecret(ctx context.Context, workspaceID string, a *appv1alpha1.App, image string) (secretName string, ok bool, err error)
+	// credentialID carries Render's explicit binding. nil preserves the legacy
+	// host-match behavior; pointer-to-empty explicitly disables credentials.
+	MaterializePullSecret(ctx context.Context, workspaceID string, a *appv1alpha1.App, image string, credentialID *string) (secretName string, ok bool, err error)
+	// RegistryCredentialName resolves the non-secret display metadata Render
+	// includes on service reads. ok=false keeps reads resilient if a credential
+	// was deleted after the App binding was persisted.
+	RegistryCredentialName(ctx context.Context, workspaceID, credentialID string) (name string, ok bool)
 }
 
 // ensureExternalRegistryPullSecret resolves and materializes (when the
@@ -55,10 +63,19 @@ type PullSecretSource interface {
 // "" (no error) when RegistryCreds is off, the App has no Image, or no
 // credential matches — the common case, left untouched.
 func (s *Service) ensureExternalRegistryPullSecret(ctx context.Context, a *appv1alpha1.App) (string, error) {
-	if s.RegistryCreds == nil || a.Spec.Image == "" {
+	if a.Spec.Image == "" {
+		if a.Spec.RegistryCredentialID != nil && strings.TrimSpace(*a.Spec.RegistryCredentialID) != "" {
+			return "", fmt.Errorf("%w: registryCredentialId currently applies only to an image-backed service", core.ErrBadRequest)
+		}
 		return "", nil
 	}
-	name, ok, err := s.RegistryCreds.MaterializePullSecret(ctx, s.deployWorkspace(ctx, a), a, a.Spec.Image)
+	if s.RegistryCreds == nil {
+		if a.Spec.RegistryCredentialID != nil && strings.TrimSpace(*a.Spec.RegistryCredentialID) != "" {
+			return "", core.ErrRegistryCredentialsUnavailable
+		}
+		return "", nil
+	}
+	name, ok, err := s.RegistryCreds.MaterializePullSecret(ctx, s.deployWorkspace(ctx, a), a, a.Spec.Image, a.Spec.RegistryCredentialID)
 	if err != nil {
 		return "", fmt.Errorf("materializing registry pull secret for %s: %w", a.Spec.Image, err)
 	}

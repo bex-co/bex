@@ -481,20 +481,27 @@ func (r *Reconciler) projectApp(ctx context.Context, d DesiredApp) *appv1alpha1.
 // hostname (<name>.<BEX_BASE_DOMAIN>) even before a custom domain exists.
 func projectSpec(d DesiredApp) appv1alpha1.AppSpec {
 	s := appv1alpha1.AppSpec{
-		Repo:           d.Repo,
-		Image:          d.Image,
-		Branch:         d.Branch,
-		Replicas:       d.Replicas,
-		Port:           d.Port,
-		Tier:           d.Tier,
-		IdleTTLSeconds: d.IdleTTLSeconds,
-		Suspended:      d.Suspended,
-		Expose:         true,
-		Subdomain:      d.Slug,
+		Repo:                 d.Repo,
+		Image:                d.Image,
+		RegistryCredentialID: copyStringPtr(d.RegistryCredentialID),
+		Branch:               d.Branch,
+		Replicas:             d.Replicas,
+		Port:                 d.Port,
+		Tier:                 d.Tier,
+		IdleTTLSeconds:       d.IdleTTLSeconds,
+		Suspended:            d.Suspended,
+		Expose:               true,
+		Subdomain:            d.Slug,
 	}
 	s.Host = d.PrimaryHost
 	s.Hosts = slices.Clone(d.Hosts)
 	s.HostRedirects = maps.Clone(d.HostRedirects)
+	if d.RegistryCredentialID != nil && *d.RegistryCredentialID != "" {
+		// Explicit credentials materialize to a deterministic Secret name. Keep
+		// this in the desired spec (not only projectApp) so every later resync
+		// preserves the reference instead of treating it as stale owned state.
+		s.ExternalRegistryPullSecret = CRName(d.TenantName, d.Name) + "-registry-pull"
+	}
 	return s
 }
 
@@ -512,6 +519,17 @@ func applyOwnedSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) bool {
 	}
 	set(&dst.Repo, want.Repo)
 	set(&dst.Image, want.Image)
+	if !equalStringPtrs(dst.RegistryCredentialID, want.RegistryCredentialID) {
+		dst.RegistryCredentialID = copyStringPtr(want.RegistryCredentialID)
+		changed = true
+	}
+	// A non-nil binding is explicit, so the projector owns the corresponding
+	// deterministic Secret reference (including explicit-empty => clear). nil
+	// retains legacy host auto-resolution, whose reference is API-managed.
+	if want.RegistryCredentialID != nil && dst.ExternalRegistryPullSecret != want.ExternalRegistryPullSecret {
+		dst.ExternalRegistryPullSecret = want.ExternalRegistryPullSecret
+		changed = true
+	}
 	set(&dst.Branch, want.Branch)
 	set(&dst.Tier, want.Tier)
 	set(&dst.Host, want.Host)
@@ -538,4 +556,19 @@ func applyOwnedSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) bool {
 		dst.HostRedirects, changed = maps.Clone(want.HostRedirects), true
 	}
 	return changed
+}
+
+func copyStringPtr(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	return &copy
+}
+
+func equalStringPtrs(left, right *string) bool {
+	if left == nil || right == nil {
+		return left == nil && right == nil
+	}
+	return *left == *right
 }

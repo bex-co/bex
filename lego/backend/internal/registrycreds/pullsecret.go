@@ -21,6 +21,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -74,17 +75,39 @@ func registryHost(image string) string {
 // an Authorize call, so exposing it as a public Service verb would (rightly)
 // trip TestAuthzGuardsEveryVerb — the same reason github.Service's cloneToken
 // is unexported behind tokenSource.
-func (s *Service) materializePullSecret(ctx context.Context, workspaceID string, app *appv1alpha1.App, image string) (secretName string, ok bool, err error) {
+func (s *Service) materializePullSecret(ctx context.Context, workspaceID string, app *appv1alpha1.App, image string, credentialID *string) (secretName string, ok bool, err error) {
+	if credentialID != nil && strings.TrimSpace(*credentialID) == "" {
+		return "", false, nil // explicit clear: do not fall back to host matching
+	}
 	if !s.configured() {
-		return "", false, nil // registry credentials not wired at all — same as "no match"
+		if credentialID != nil {
+			return "", false, core.ErrRegistryCredentialsUnavailable
+		}
+		return "", false, nil // legacy auto-match remains optional when unwired
 	}
 	host := registryHost(image)
-	cred, err := s.Store.GetRegistryCredentialByHost(ctx, workspaceID, host)
-	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
+	var cred store.RegistryCredential
+	var lookupErr error
+	if credentialID != nil {
+		id := strings.TrimSpace(*credentialID)
+		cred, lookupErr = s.Store.GetRegistryCredentialByID(ctx, id)
+		if lookupErr == nil && cred.WorkspaceID != workspaceID {
+			return "", false, fmt.Errorf("%w: registry credential %q does not belong to the target workspace", core.ErrForbidden, id)
+		}
+		if lookupErr == nil && !strings.EqualFold(cred.Host, host) {
+			return "", false, fmt.Errorf("%w: registry credential %q is for %s, not %s", core.ErrBadRequest, id, cred.Host, host)
+		}
+	} else {
+		cred, lookupErr = s.Store.GetRegistryCredentialByHost(ctx, workspaceID, host)
+	}
+	if lookupErr != nil {
+		if errors.Is(lookupErr, store.ErrNotFound) {
+			if credentialID != nil {
+				return "", false, core.ErrNotFound
+			}
 			return "", false, nil
 		}
-		return "", false, err
+		return "", false, lookupErr
 	}
 	secretMap, err := s.Secret.Get(ctx, secretPath(workspaceID, cred.ID))
 	if err != nil {
@@ -144,8 +167,22 @@ func dockerConfigJSON(host, username, password string) []byte {
 type pullSecretSource struct{ s *Service }
 
 // MaterializePullSecret satisfies apps.PullSecretSource.
-func (p pullSecretSource) MaterializePullSecret(ctx context.Context, workspaceID string, app *appv1alpha1.App, image string) (string, bool, error) {
-	return p.s.materializePullSecret(ctx, workspaceID, app, image)
+func (p pullSecretSource) MaterializePullSecret(ctx context.Context, workspaceID string, app *appv1alpha1.App, image string, credentialID *string) (string, bool, error) {
+	return p.s.materializePullSecret(ctx, workspaceID, app, image, credentialID)
+}
+
+// RegistryCredentialName supplies the safe summary metadata Render includes
+// on service reads. Keep this on the deploy adapter rather than exporting a
+// second unguarded Service verb; the caller has already authorized the App.
+func (p pullSecretSource) RegistryCredentialName(ctx context.Context, workspaceID, credentialID string) (string, bool) {
+	if p.s.Store == nil {
+		return "", false
+	}
+	credential, err := p.s.Store.GetRegistryCredential(ctx, workspaceID, credentialID)
+	if err != nil {
+		return "", false
+	}
+	return credential.Name, true
 }
 
 // DeployPullSecretSource returns the deploy path's pull-secret seam (wired

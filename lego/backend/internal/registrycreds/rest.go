@@ -19,6 +19,7 @@ package registrycreds
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -103,7 +104,9 @@ func parseExpiresAt(s string) (*time.Time, error) {
 	return &t, nil
 }
 
-// RegisterREST mounts the registry-credentials CRUD surface.
+// RegisterREST mounts the registry-credentials CRUD surface. The canonical
+// Render spelling is /registrycredentials; the hyphenated route predates the
+// official-CLI harness and remains as a bex alias.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/registry-credentials", func(w http.ResponseWriter, r *http.Request) {
 		views, err := s.List(r.Context(), r.URL.Query().Get("ownerId"))
@@ -176,4 +179,15 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
+
+	// The official CLI resolves --registry-credential through the canonical
+	// Render path before it sends the service mutation. Forwarding through this
+	// same mux means both spellings use byte-identical handlers and policies.
+	canonical := func(w http.ResponseWriter, r *http.Request) {
+		clone := r.Clone(r.Context())
+		clone.URL.Path = strings.Replace(r.URL.Path, "/v1/registrycredentials", "/v1/registry-credentials", 1)
+		mux.ServeHTTP(w, clone)
+	}
+	mux.HandleFunc("/v1/registrycredentials", canonical)
+	mux.HandleFunc("/v1/registrycredentials/", canonical)
 }

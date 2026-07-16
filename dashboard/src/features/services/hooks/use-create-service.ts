@@ -22,6 +22,7 @@ export interface CreateServiceInput {
   environmentId?: string;
   repo?: string;
   image?: string;
+  registryCredentialId?: string;
   branch?: string;
   rootDir?: string;
   runtime?:
@@ -98,6 +99,7 @@ export function useCreateService(): UseCreateServiceResult {
             environmentId: input.environmentId,
             repo: input.repo,
             image: input.image,
+            registryCredentialId: input.registryCredentialId,
             branch: input.branch,
             rootDir: input.rootDir,
             runtime: input.runtime,

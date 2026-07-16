@@ -80,6 +80,50 @@ func TestReconcileCreatesAppCR(t *testing.T) {
 	}
 }
 
+func TestReconcileProjectsExplicitRegistryCredential(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t)
+	ten, _ := store.CreateTenant(ctx, "acme", "free")
+	credentialID := "rgc-private"
+	row, _ := store.CreateApp(ctx, App{
+		TenantID: ten.ID, Name: "web", Image: "ghcr.io/acme/private:1", Branch: "main",
+		RegistryCredentialID: &credentialID, Port: 80, Replicas: 1, Tier: "starter",
+	})
+
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	app := getApp(t, cl)
+	if app.Spec.RegistryCredentialID == nil || *app.Spec.RegistryCredentialID != credentialID {
+		t.Fatalf("registry credential id = %v, want %q", app.Spec.RegistryCredentialID, credentialID)
+	}
+	if app.Spec.ExternalRegistryPullSecret != "acme-web-registry-pull" {
+		t.Errorf("pull secret = %q, want acme-web-registry-pull", app.Spec.ExternalRegistryPullSecret)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("second reconcile: %v", err)
+	}
+	app = getApp(t, cl)
+	if app.Spec.ExternalRegistryPullSecret != "acme-web-registry-pull" {
+		t.Errorf("second reconcile cleared pull secret = %q", app.Spec.ExternalRegistryPullSecret)
+	}
+
+	empty := ""
+	if err := store.SetAppSource(ctx, row.ID, "", "ghcr.io/acme/private:2", "main", &empty); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile clear: %v", err)
+	}
+	app = getApp(t, cl)
+	if app.Spec.RegistryCredentialID == nil || *app.Spec.RegistryCredentialID != "" {
+		t.Fatalf("cleared registry credential id = %v, want explicit empty", app.Spec.RegistryCredentialID)
+	}
+	if app.Spec.ExternalRegistryPullSecret != "" {
+		t.Errorf("cleared pull secret reference = %q, want empty", app.Spec.ExternalRegistryPullSecret)
+	}
+}
+
 func TestReconcileUpdatesOwnedFieldsOnly(t *testing.T) {
 	ctx := context.Background()
 	rec, store, cl := newTestReconciler(t)

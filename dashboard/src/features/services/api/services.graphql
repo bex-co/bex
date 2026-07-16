@@ -78,6 +78,7 @@ mutation CreateService(
   $type: String
   $repo: String
   $image: String
+  $registryCredentialId: String
   $branch: String
   $rootDir: String
   $runtime: String
@@ -99,6 +100,7 @@ mutation CreateService(
     type: $type
     repo: $repo
     image: $image
+    registryCredentialId: $registryCredentialId
     branch: $branch
     rootDir: $rootDir
     runtime: $runtime
@@ -119,6 +121,7 @@ mutation CreateService(
     phase
     projectId
     environmentId
+    registryCredentialId
   }
 }
 

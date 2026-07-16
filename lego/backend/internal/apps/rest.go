@@ -208,8 +208,8 @@ type secretFileInput struct {
 }
 
 // imageRef is Render's prebuilt-image object: the image path lives under
-// `image.imagePath`, not a bare top-level string. An explicit registry
-// credential is decoded so unsupportedField can reject it honestly.
+// `image.imagePath`, not a bare top-level string. registryCredentialId is a
+// RawMessage so omission remains distinct from an explicit empty-string clear.
 type imageRef struct {
 	ImagePath            string          `json:"imagePath"`
 	RegistryCredentialID json.RawMessage `json:"registryCredentialId"`
@@ -275,38 +275,59 @@ type envSpecificDetailsReq struct {
 // enforce. Rejecting it is materially safer than accepting a command whose
 // requested runtime behavior is then absent.
 func (r createServiceRequest) unsupportedField() string {
-	if r.Image != nil && len(r.Image.RegistryCredentialID) > 0 {
-		return "registryCredentialId"
-	}
 	if r.ServiceDetails == nil {
 		return ""
 	}
 	if len(r.ServiceDetails.Previews) > 0 {
 		return "previews"
-	}
-	if r.ServiceDetails.EnvSpecificDetails != nil && len(r.ServiceDetails.EnvSpecificDetails.RegistryCredentialID) > 0 {
-		return "registryCredentialId"
 	}
 	return ""
 }
 
 func (r patchServiceRequest) unsupportedField() string {
-	if r.Image != nil && len(r.Image.RegistryCredentialID) > 0 {
-		return "registryCredentialId"
-	}
 	if r.ServiceDetails == nil {
 		return ""
 	}
 	if len(r.ServiceDetails.Previews) > 0 {
 		return "previews"
 	}
-	if len(r.ServiceDetails.EnvSpecific) > 0 {
-		var fields map[string]json.RawMessage
-		if json.Unmarshal(r.ServiceDetails.EnvSpecific, &fields) == nil && len(fields["registryCredentialId"]) > 0 {
-			return "registryCredentialId"
-		}
-	}
 	return ""
+}
+
+// decodeRegistryCredentialID preserves the PATCH tri-state: omitted => nil,
+// string => set/change, empty string => clear. Render's OpenAPI declares a
+// string (not nullable), so null and non-string values are named bad requests.
+func decodeRegistryCredentialID(raw json.RawMessage) (*string, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	if string(raw) == "null" {
+		return nil, fmt.Errorf("%w: registryCredentialId must be a string", core.ErrBadRequest)
+	}
+	var value string
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return nil, fmt.Errorf("%w: registryCredentialId must be a string", core.ErrBadRequest)
+	}
+	value = strings.TrimSpace(value)
+	return &value, nil
+}
+
+func oneRegistryCredentialID(first, second json.RawMessage) (*string, error) {
+	a, err := decodeRegistryCredentialID(first)
+	if err != nil {
+		return nil, err
+	}
+	b, err := decodeRegistryCredentialID(second)
+	if err != nil {
+		return nil, err
+	}
+	if a != nil && b != nil && *a != *b {
+		return nil, fmt.Errorf("%w: registryCredentialId is set to conflicting values", core.ErrBadRequest)
+	}
+	if a != nil {
+		return a, nil
+	}
+	return b, nil
 }
 
 // ipAllowEntry is components.schemas.cidrBlockAndDescription — Render's wire
@@ -345,10 +366,11 @@ func fromIPAllowListEntries(entries []ipAllowEntry) []string {
 // neutral CreateRequest. serviceDetails is Render's canonical location for
 // plan/numInstances/healthCheckPath; the top-level plan is a bex convenience
 // fallback. type:private_service maps to the in-cluster-only flag.
-func (r createServiceRequest) toCreateRequest() CreateRequest {
+func (r createServiceRequest) toCreateRequest() (CreateRequest, error) {
 	plan, health, schedule, command, publishPath := r.Plan, "", r.Schedule, r.Command, r.PublishPath
 	rootDir := r.RootDir
 	var runtime, buildCommand, startCommand, dockerfilePath string
+	var nestedRegistryCredentialID json.RawMessage
 	preDeploy := r.PreDeployCommand
 	var replicas int32
 	var maxShutdownDelaySeconds *int32
@@ -369,6 +391,7 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 			if strings.EqualFold(runtime, "docker") {
 				startCommand = r.ServiceDetails.EnvSpecificDetails.DockerCommand
 				dockerfilePath = r.ServiceDetails.EnvSpecificDetails.DockerfilePath
+				nestedRegistryCredentialID = r.ServiceDetails.EnvSpecificDetails.RegistryCredentialID
 				if rootDir == "" {
 					rootDir = r.ServiceDetails.EnvSpecificDetails.DockerContext
 				}
@@ -399,8 +422,14 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		}
 	}
 	image := ""
+	var imageRegistryCredentialID json.RawMessage
 	if r.Image != nil {
 		image = r.Image.ImagePath
+		imageRegistryCredentialID = r.Image.RegistryCredentialID
+	}
+	registryCredentialID, err := oneRegistryCredentialID(imageRegistryCredentialID, nestedRegistryCredentialID)
+	if err != nil {
+		return CreateRequest{}, err
 	}
 	var env []appv1alpha1.EnvVar
 	for _, e := range r.EnvVars {
@@ -426,6 +455,7 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		Command:                 command,
 		Repo:                    r.Repo,
 		Image:                   image,
+		RegistryCredentialID:    registryCredentialID,
 		Branch:                  r.Branch,
 		Builder:                 r.Builder,
 		Runtime:                 runtime,
@@ -452,7 +482,7 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		Headers:                 headerViewsFromRender(r.Headers),
 		IPAllowList:             ipAllowList,
 		DryRun:                  r.DryRun,
-	}
+	}, nil
 }
 
 // routeViewsFromRender / headerViewsFromRender convert the Render-shaped decode
@@ -604,6 +634,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var idleTTL *int32
 		var maxShutdownDelay optionalInt32
 		var healthCheckPath, preDeployCommand, schedule, publishPath, buildCommand, startCommand, dockerfilePath *string
+		var nestedRegistryCredentialID json.RawMessage
 		var patchIPAllowList *[]string // nil = not provided (leave unchanged); non-nil = replace
 		if req.ServiceDetails != nil {
 			plan, idleTTL = req.ServiceDetails.Plan, req.ServiceDetails.IdleTTLSeconds
@@ -624,10 +655,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			}
 			if len(req.ServiceDetails.EnvSpecific) > 0 && string(req.ServiceDetails.EnvSpecific) != "null" {
 				var envSpecific struct {
-					BuildCommand   *string `json:"buildCommand"`
-					StartCommand   *string `json:"startCommand"`
-					DockerCommand  *string `json:"dockerCommand"`
-					DockerfilePath *string `json:"dockerfilePath"`
+					BuildCommand         *string         `json:"buildCommand"`
+					StartCommand         *string         `json:"startCommand"`
+					DockerCommand        *string         `json:"dockerCommand"`
+					DockerfilePath       *string         `json:"dockerfilePath"`
+					RegistryCredentialID json.RawMessage `json:"registryCredentialId"`
 				}
 				if err := json.Unmarshal(req.ServiceDetails.EnvSpecific, &envSpecific); err != nil {
 					core.WriteErr(w, core.ErrBadRequest)
@@ -641,7 +673,17 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 					startCommand = envSpecific.DockerCommand
 				}
 				dockerfilePath = envSpecific.DockerfilePath
+				nestedRegistryCredentialID = envSpecific.RegistryCredentialID
 			}
+		}
+		var imageRegistryCredentialID json.RawMessage
+		if req.Image != nil {
+			imageRegistryCredentialID = req.Image.RegistryCredentialID
+		}
+		registryCredentialID, registryErr := oneRegistryCredentialID(imageRegistryCredentialID, nestedRegistryCredentialID)
+		if registryErr != nil {
+			core.WriteErr(w, registryErr)
+			return
 		}
 		autoDeploy := parseYesNo(req.AutoDeploy) // nil => not provided (don't change)
 
@@ -673,7 +715,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				return
 			}
 		}
-		if plan == "" && idleTTL == nil && !maxShutdownDelay.Set && displayName == nil && req.Repo == nil && req.Image == nil && req.Branch == nil && req.RootDir == nil && req.BuildFilter == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil && req.NotifyOnFail == nil && req.RenderSubdomainPolicy == nil && healthCheckPath == nil && preDeployCommand == nil && schedule == nil && publishPath == nil && buildCommand == nil && startCommand == nil && dockerfilePath == nil && patchIPAllowList == nil && maintenanceMode == nil {
+		if plan == "" && idleTTL == nil && !maxShutdownDelay.Set && displayName == nil && req.Repo == nil && req.Image == nil && req.Branch == nil && registryCredentialID == nil && req.RootDir == nil && req.BuildFilter == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil && req.NotifyOnFail == nil && req.RenderSubdomainPolicy == nil && healthCheckPath == nil && preDeployCommand == nil && schedule == nil && publishPath == nil && buildCommand == nil && startCommand == nil && dockerfilePath == nil && patchIPAllowList == nil && maintenanceMode == nil {
 			get(w, r) // no supported field present => read-only no-op
 			return
 		}
@@ -691,8 +733,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if req.Image != nil {
 			image = &req.Image.ImagePath
 		}
-		if req.Repo != nil || image != nil || req.Branch != nil {
-			if app, err = s.SetSource(r.Context(), id, req.Repo, image, req.Branch); err != nil {
+		if req.Repo != nil || image != nil || req.Branch != nil || registryCredentialID != nil {
+			if app, err = s.SetSourceAndRegistryCredential(r.Context(), id, req.Repo, image, req.Branch, registryCredentialID); err != nil {
 				core.WriteErr(w, err)
 				return
 			}
@@ -864,7 +906,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if !req.DryRun && r.URL.Query().Get("dryRun") == "true" {
 			req.DryRun = true
 		}
-		app, err := s.Create(r.Context(), req.toCreateRequest())
+		createReq, err := req.toCreateRequest()
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		app, err := s.Create(r.Context(), createReq)
 		if err != nil {
 			core.WriteErr(w, err)
 			return

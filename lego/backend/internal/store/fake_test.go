@@ -389,7 +389,7 @@ func (m *memStore) SetAppIdleTTL(_ context.Context, id string, seconds int32) er
 	return nil
 }
 
-func (m *memStore) SetAppSource(_ context.Context, id, repo, image, branch string) error {
+func (m *memStore) SetAppSource(_ context.Context, id, repo, image, branch string, registryCredentialID *string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	a, ok := m.apps[id]
@@ -397,6 +397,7 @@ func (m *memStore) SetAppSource(_ context.Context, id, repo, image, branch strin
 		return fmt.Errorf("app: %w", ErrNotFound)
 	}
 	a.Repo, a.Image, a.Branch = repo, image, branch
+	a.RegistryCredentialID = registryCredentialID
 	m.apps[id] = a
 	return nil
 }

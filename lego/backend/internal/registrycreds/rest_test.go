@@ -62,6 +62,32 @@ func TestRESTCreateReturnsNoSecretAndReadsBack(t *testing.T) {
 	}
 }
 
+func TestRESTCanonicalRenderAliasGetsCredential(t *testing.T) {
+	_, mux := testMux()
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registry-credentials", strings.NewReader(`{"host":"ghcr.io","username":"alice","authToken":"hunter2"}`)))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create => %d: %s", rec.Code, rec.Body)
+	}
+	var created credentialWire
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/registrycredentials/"+created.ID, nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("canonical get => %d: %s", rec.Code, rec.Body)
+	}
+	var got credentialWire
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != created.ID || got.Name != created.Name {
+		t.Fatalf("canonical get = %+v, want %+v", got, created)
+	}
+}
+
 func TestRESTCreateMissingFieldsIsBadRequest(t *testing.T) {
 	_, mux := testMux()
 	rec := httptest.NewRecorder()
