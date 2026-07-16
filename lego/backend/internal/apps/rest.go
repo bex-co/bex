@@ -999,6 +999,49 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
+		q := r.URL.Query()
+		// Filter by verificationStatus (Render: "pending" | "verified").
+		if vs := q.Get("verificationStatus"); vs != "" {
+			switch vs {
+			case "pending", "verified":
+				filtered := make([]DomainView, 0, len(domains))
+				for _, d := range domains {
+					if d.VerificationStatus == vs {
+						filtered = append(filtered, d)
+					}
+				}
+				domains = filtered
+			default:
+				core.WriteErr(w, fmt.Errorf("%w: unknown verificationStatus %q (want pending|verified)",
+					core.ErrBadRequest, vs))
+				return
+			}
+		}
+		// Filter by domainType (Render: "apex" | "subdomain").
+		if dt := q.Get("domainType"); dt != "" {
+			switch dt {
+			case "apex", "subdomain":
+				filtered := make([]DomainView, 0, len(domains))
+				for _, d := range domains {
+					if d.DomainType == dt {
+						filtered = append(filtered, d)
+					}
+				}
+				domains = filtered
+			default:
+				core.WriteErr(w, fmt.Errorf("%w: unknown domainType %q (want apex|subdomain)",
+					core.ErrBadRequest, dt))
+				return
+			}
+		}
+		// Cursor/limit pagination — cursor is the domain name, matching the per-item cursor
+		// emitted by toCustomDomainList. Pagination is applied only when either cursor or
+		// limit is explicitly provided (StablePage's "requested" flag).
+		after, limit := core.PageParams(q)
+		_, cursorRequested := q["cursor"]
+		_, limitRequested := q["limit"]
+		domains = core.StablePage(domains, after, limit, cursorRequested || limitRequested,
+			func(d DomainView) string { return d.Name })
 		core.WriteJSON(w, http.StatusOK, toCustomDomainList(domains))
 	}
 	addDomain := func(w http.ResponseWriter, r *http.Request) {

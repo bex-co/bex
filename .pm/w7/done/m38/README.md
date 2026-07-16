@@ -1,18 +1,18 @@
 # w7 · m38 — Custom-domains list: honor cursor/limit + verificationStatus/domainType filters
 
-**Worker:** worker7 **Goal:** `GET /v1/services/{id}/custom-domains` stops ignoring its documented request parameters: `cursor`/`limit` paginate (today it emits per-item cursors it never honors — the projects-style loop hazard) and Render's `verificationStatus`/`domainType` filters filter. **Status:** todo
+**Worker:** worker7 **Goal:** `GET /v1/services/{id}/custom-domains` stops ignoring its documented request parameters: `cursor`/`limit` paginate (today it emits per-item cursors it never honors — the projects-style loop hazard) and Render's `verificationStatus`/`domainType` filters filter. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Confirm Render's custom-domains list params in the pinned OpenAPI                    | 15m | —          |
-| t002 | Implement `cursor`/`limit` + `verificationStatus`/`domainType`; check GraphQL/MCP    | 50m | t001       |
-| t003 | Update the ADR018 custom-domains row's divergence list                               | 15m | t002       |
-| t004 | Render parity                                                                         | 25m | t003       |
-| t005 | Simplify                                                                              | 20m | t004       |
-| t006 | Test coverage                                                                         | 30m | t004       |
-| t007 | Closeout                                                                              | 15m | t006       |
+| t001 | Confirm Render's custom-domains list params in the pinned OpenAPI                    | 15m | —          | — **DONE** |
+| t002 | Implement `cursor`/`limit` + `verificationStatus`/`domainType`; check GraphQL/MCP    | 50m | t001       | — **DONE** |
+| t003 | Update the ADR018 custom-domains row's divergence list                               | 15m | t002       | — **DONE** |
+| t004 | Render parity                                                                         | 25m | t003       | — **DONE** |
+| t005 | Simplify                                                                              | 20m | t004       | — **DONE** |
+| t006 | Test coverage                                                                         | 30m | t004       | — **DONE** |
+| t007 | Closeout                                                                              | 15m | t006       | — **DONE** |
 
 ## Definition of done
 
