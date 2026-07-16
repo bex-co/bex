@@ -183,8 +183,18 @@ function renderPage() {
     path: "/",
     component: NewServicePage,
   });
+  const serviceRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/services/$serviceId",
+    component: () => <div>service landing</div>,
+  });
+  const deployRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/services/$serviceId/deploys/$deployId",
+    component: () => <div>deploy landing</div>,
+  });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([newRoute]),
+    routeTree: rootRoute.addChildren([newRoute, serviceRoute, deployRoute]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
     context: { client: {} as never, session: null },
   });
@@ -203,7 +213,10 @@ beforeEach(() => {
   };
   connectionState.loading = false;
   create.mockReset();
-  create.mockResolvedValue("srv-abc123");
+  create.mockResolvedValue({
+    serviceId: "srv-abc123",
+    deployId: "dep-first",
+  });
   clearNameConflict.mockReset();
   createServiceState.capLimit = null;
   createServiceState.nameConflict = false;
@@ -762,6 +775,32 @@ describe("NewServicePage", () => {
       const callArg = create.mock.calls[0][0] as Record<string, unknown>;
       expect(callArg.schedule).toBeUndefined();
       expect(callArg.publishPath).toBeUndefined();
+    });
+
+    it("lands a successful create on its first deploy detail page", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+
+      expect(await screen.findByText("deploy landing")).toBeInTheDocument();
+    });
+
+    it("falls back to the service page when create has no deploy record", async () => {
+      create.mockResolvedValueOnce({
+        serviceId: "srv-local",
+        deployId: null,
+      });
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+
+      expect(await screen.findByText("service landing")).toBeInTheDocument();
     });
   });
 });

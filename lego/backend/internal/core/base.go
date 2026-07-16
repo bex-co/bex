@@ -36,15 +36,15 @@ const (
 	PodLabelApp      = "app.bex.co/app"
 	PodLabelRevision = "app.bex.co/revision"
 	AppContainer     = "app"
+	// PodLabelBuild identifies the build Job/Build pods for one App (w7/m28).
+	// Build containers are discovered from the Pod status rather than named here:
+	// BuildKit, signed BuildKit, and kpack use different container names.
+	PodLabelBuild = "app.bex.co/build"
 	// PodLabelPreDeploy + PreDeployContainer name the pre-deploy step's Job pod
 	// (w1/m33, lego/operator/internal/predeploy) so the logs feature can read a
 	// migration's output. Kept in sync by hand, like PodLabelApp above.
 	PodLabelPreDeploy  = "app.bex.co/predeploy"
 	PreDeployContainer = "predeploy"
-	// PodLabelBuild + BuildContainer name the build Job pod (w3/m14) so the
-	// logs feature can stream a running build live. Kept in sync by hand.
-	PodLabelBuild  = "app.bex.co/build"
-	BuildContainer = "buildkit"
 )
 
 // Checker is the feature services' seam to the authorization service
@@ -877,10 +877,9 @@ func (b *Base) PreDeployPods(ctx context.Context, app, namespace string) ([]core
 	return pods.Items, nil
 }
 
-// BuildPods lists an App's build Job pods (the app.bex.co/build label, w3/m14) in
-// namespace — the logs feature streams a running build's output from these.
-// namespace is the operator's build namespace (BEX_BUILD_NAMESPACE); empty falls
-// back to the API's own namespace, the operator's default when that env is unset.
+// BuildPods lists an App's build pods in the operator's build namespace. Both
+// the ephemeral BuildKit Job and kpack stamp app.bex.co/build=<app>, so the logs
+// feature can follow either implementation without importing the operator.
 func (b *Base) BuildPods(ctx context.Context, app, namespace string) ([]corev1.Pod, error) {
 	if namespace == "" {
 		namespace = b.Namespace

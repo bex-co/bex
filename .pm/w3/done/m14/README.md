@@ -1,6 +1,6 @@
 # w3 · m14 — Live deploy following: land on the deploy, watch it build
 
-**Worker:** worker3 **Goal:** Render's live deploy loop: creating a service or triggering a Manual Deploy lands the browser on the in-flight deploy's page, where build-log lines stream live and the status flips without a refresh. **Status:** done
+**Worker:** worker3 **Goal:** Render's live deploy loop: creating a service or triggering a Manual Deploy lands the browser on the in-flight deploy's page, where build-log lines stream live and the status flips without a refresh. **Status:** done — verified 2026-07-15 on local CAPD/dev-3 with real Chrome: Manual Deploy navigated to its deploy page and visibly appended BuildKit lines; the open page changed terminal without refresh; a create-triggered build streamed 128 frames and reached `live`/App `Running`.
 
 ## Tasks (in order)
 

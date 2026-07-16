@@ -26,6 +26,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -78,6 +79,25 @@ func podFor(app, name string) *corev1.Pod {
 	return &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
 		Name: name, Namespace: "default", Labels: map[string]string{core.PodLabelApp: app},
 	}}
+}
+
+func buildPodFor(app, name, namespace, container string, created time.Time) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              name,
+			Namespace:         namespace,
+			Labels:            map[string]string{core.PodLabelBuild: app},
+			CreationTimestamp: metav1.NewTime(created),
+		},
+		Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: container}}},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name:  container,
+				State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{}},
+			}},
+		},
+	}
 }
 
 // staticLogs serves canned, timestamped lines per pod.
@@ -414,6 +434,54 @@ func TestRESTLogsSubscribeSSE(t *testing.T) {
 	body := rec.Body.String()
 	if !strings.Contains(body, "data: ") || !strings.Contains(body, "live one") || !strings.Contains(body, "live two") {
 		t.Errorf("SSE body missing streamed lines: %q", body)
+	}
+}
+
+func TestFollowBuildLogsStreamsNewestActiveBuildPod(t *testing.T) {
+	old := buildPodFor("web", "bld-web-gen-1-old", "builds", "buildkit", time.Unix(1, 0))
+	newest := buildPodFor("web", "bld-web-gen-2-new", "builds", "buildkit", time.Unix(2, 0))
+	svc := newService(map[string][]string{
+		old.Name:    {"2026-07-05T00:00:00Z stale build"},
+		newest.Name: {"2026-07-05T00:00:01Z live build one", "2026-07-05T00:00:02Z live build two"},
+	}, sampleApp("web"), old, newest)
+	svc.BuildNamespace = "builds"
+
+	var entries []LogEntry
+	err := svc.FollowLogs(context.Background(), LogQuery{App: "web", Types: []string{LogTypeBuild}}, func(entry LogEntry) error {
+		entries = append(entries, entry)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("FollowLogs(type=build): %v", err)
+	}
+	if len(entries) != 2 || entries[0].Message != "live build one" || entries[1].Message != "live build two" {
+		t.Fatalf("build entries = %+v, want newest build's two lines", entries)
+	}
+	for _, entry := range entries {
+		if entry.Labels[LabelType] != LogTypeBuild || entry.Labels["instance"] != newest.Name || entry.Labels["container"] != "buildkit" {
+			t.Errorf("build labels = %+v", entry.Labels)
+		}
+	}
+}
+
+func TestFollowBuildLogsNoActivePodIsNamedTerminalOutcome(t *testing.T) {
+	completed := buildPodFor("web", "bld-web-gen-1-done", "builds", "buildkit", time.Unix(1, 0))
+	completed.Status.Phase = corev1.PodSucceeded
+	svc := newService(nil, sampleApp("web"), completed)
+	svc.BuildNamespace = "builds"
+
+	err := svc.FollowLogs(context.Background(), LogQuery{App: "web", Types: []string{LogTypeBuild}}, func(LogEntry) error { return nil })
+	if !errors.Is(err, ErrBuildNotRunning) {
+		t.Fatalf("no active build => %v, want ErrBuildNotRunning", err)
+	}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/v1/logs/subscribe?resource=web&type=build", nil)
+	req.Header.Set("Accept", "text/event-stream")
+	mux.ServeHTTP(rec, req)
+	if body := rec.Body.String(); !strings.Contains(body, "event: error") || !strings.Contains(body, ErrBuildNotRunning.Error()) {
+		t.Fatalf("terminal SSE body = %q", body)
 	}
 }
 

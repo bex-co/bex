@@ -1,33 +1,46 @@
-# Live deploy following
+# Render live deploy following
 
-Render's UX for a git-sourced service: after creation or manual redeploy, the dashboard navigates immediately to the in-flight deploy's detail page and streams build output live without any manual refresh.
+**Captured:** 2026-07-15
 
-## Observed behaviour
+**Method:** Render's public documentation (no authenticated production service was mutated for this capture).
 
-### Service creation (git-source)
+## Observed contract
 
-1. User completes the create wizard and clicks **Deploy**.
-2. Dashboard navigates directly to `/services/<id>/deploys/<firstDeployId>`.
-3. The deploy detail page shows phase `building` — a live build-log pane streams the BuildKit / CNB stdout in real time (individual lines appear as the builder runs, not batched at the end).
-4. When the build finishes, the phase flips to `live` (or `failed`) without any reload — the deploy poll detects the status change automatically.
+- Creating a service kicks off its first deploy and opens the new service's deploy-progress log explorer. Render tells users to “open your new service's page” and follow the build and start commands as they run.
+- The deploy log feed updates in real time. A successful deploy changes its displayed status to **Live**; a failed deploy changes to **Failed** while leaving its log feed available for diagnosis.
+- A dashboard Manual Deploy starts immediately from the service's Events page. An individual deploy is opened by selecting **Deploy** in its event entry; that page is the deploy-specific log explorer and is also where an in-progress deploy can be canceled.
+- Render's general log explorer exposes **Live tail** as a time-range mode, and the deploy-specific explorer is documented as the place to follow build/start progress.
 
-### Manual redeploy
+These sources establish the observable outcome—remain on the deploy-specific progress view while logs and status advance—but do not publish the dashboard's private navigation implementation. bex therefore treats the landing URL itself as UI behavior and keeps its public wire contract unchanged.
 
-1. User clicks the **Manual Deploy** button from the deploy list or service header.
-2. Dashboard navigates immediately to the new deploy's detail page.
-3. Same live build streaming as above.
+## Terminal behavior
 
-## bex implementation (w3/m14)
+- Success: status becomes **Live** and the accumulated deploy log remains visible.
+- Failure: status becomes **Failed** and the accumulated log remains visible for troubleshooting.
+- Cancellation: the deploy details page exposes **Cancel deploy** while the deploy is in progress.
 
-| Surface | Mechanism |
-| --- | --- |
-| Navigate on create | `createService` mutation returns `latestDeployId`; wizard navigates to `/services/$id/deploys/$deployId` when present |
-| Navigate on manual deploy | `manual-deploy-button.tsx` already navigates on mutation success (`deploys/useManualDeploy`) |
-| Live build streaming | `GET /v1/logs/subscribe?type=build&resource=<name>` — SSE from the build Job pod's `buildkit` container (`core.BuildContainer`); `FollowLogs` now streams `type=build` in addition to `type=app` |
-| Deploy status auto-refresh | `useDeploy` polls every 3 s while `isTerminalDeployStatus` is false — no extra wiring needed |
-| History fallback | `useDeployLogs` keeps the GraphQL `type=build` query for historical log reads (store-backed); the SSE leg is `enabled: !endTime` (in-flight only) |
+## Sources
 
-## Gaps vs Render
+- [Your First Render Deploy — Monitor your deploy](https://render.com/docs/your-first-deploy#monitor-your-deploy)
+- [Deploying on Render — Manual deploys and canceling a deploy](https://render.com/docs/deploys)
+- [Logs in the Render Dashboard — individual deploy logs and Live tail](https://render.com/docs/logging)
 
-- Render streams build output via WebSocket; bex uses SSE. Wire format identical (log lines) — transport is the documented divergence (ADR006, ADR010).
-- Render shows a "cancel build" button inline on the build pane; bex exposes cancel via the deploy-actions menu (w2/m10), not inline in the log pane.
+## bex comparison (before w3/m14)
+
+- Deploy detail already polled all non-terminal statuses every three seconds and stopped at every terminal status.
+- Manual Deploy already navigated to the returned deploy id.
+- The detail log pane polled Loki history; `GET /v1/logs/subscribe?type=build` refused build logs as store-only.
+- Create navigated to the service overview even though store-managed create opened its first deploy row transactionally.
+
+w3/m14 closes the last two gaps: build SSE follows the active build pod, and create returns/navigates to the first deploy with an honest service-page fallback when no deploy id is available.
+
+## bex live verification (2026-07-15)
+
+Verified on the local CAPD cluster through w3's isolated `dev-3` identity/API stack and a real headless Chrome session against the dashboard:
+
+- a create-triggered git build produced 128 `type=build` SSE frames and transitioned `build_in_progress` → `live`; the App reached `Running`;
+- the dashboard Manual Deploy confirmation navigated directly to `/services/<service>/deploys/<deploy>`; its build panel visibly appended BuildKit lines while Chrome remained on that page;
+- the same open page updated its deploy header, timestamps, and timeline to terminal `Build Failed` without a refresh when exercised once without the temporary registry;
+- a subscription after the build had ended emitted the named terminal `no running build is available to follow` error instead of hanging.
+
+The temporary test services, registry, pull/push Secrets, and browser profile were removed after verification. No production service was mutated.

@@ -40,8 +40,9 @@ const defaultCreateEventSource: EventSourceFactory = (url) =>
 
 // bex-api's REST/SSE base lives in config (config.apiBaseUrl) — the same origin
 // as GraphQL, minus `/graphql`. Only the tail-honorable filters (type app/all,
-// text, instance) reach the stream — the store-only ones can't be tailed, so the
-// viewer keeps live tail off while any is active (docs/ADR010-observability.md).
+// standalone build, text, instance) reach the stream — the store-only ones can't
+// be tailed, so the viewer keeps live tail off while any is active
+// (docs/ADR010-observability.md).
 function subscribeUrl(
   resource: string,
   type: LogTypeFilter,

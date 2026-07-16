@@ -36,15 +36,17 @@ beforeEach(() => {
 
 describe("useCreateService", () => {
   it("sends the switcher's workspace as ownerId", async () => {
-    const mutate = vi
-      .fn()
-      .mockResolvedValue({ data: { createService: { id: "srv-1" } } });
+    const mutate = vi.fn().mockResolvedValue({
+      data: {
+        createService: { id: "srv-1", latestDeployId: "dep-first" },
+      },
+    });
     mockUseMutation.mockReturnValue([mutate, { loading: false }]);
 
     const { result } = renderHook(() => useCreateService());
-    let id: CreateServiceResult | null | undefined;
+    let created: CreateServiceResult | null | undefined;
     await act(async () => {
-      id = await result.current.create({
+      created = await result.current.create({
         name: "web",
         type: "web_service",
         environmentId: "env-production",
@@ -57,7 +59,7 @@ describe("useCreateService", () => {
       });
     });
 
-    expect(id).toEqual({ id: "srv-1", deployId: undefined });
+    expect(created).toEqual({ id: "srv-1", deployId: "dep-first" });
     expect(mutate).toHaveBeenCalledWith(
       expect.objectContaining({
         variables: expect.objectContaining({
@@ -129,15 +131,15 @@ describe("useCreateService", () => {
     currentWorkspaceId = null;
 
     const { result } = renderHook(() => useCreateService());
-    let id: CreateServiceResult | null | undefined;
+    let created: CreateServiceResult | null | undefined;
     await act(async () => {
-      id = await result.current.create({ name: "web" });
+      created = await result.current.create({ name: "web" });
     });
 
     // Sending a null ownerId would silently create in the caller's default
     // workspace — the very bug this wiring exists to prevent.
     expect(mutate).not.toHaveBeenCalled();
-    expect(id).toBeNull();
+    expect(created).toBeNull();
     expect(toastError).toHaveBeenCalledWith(
       "Couldn't create web. Please try again.",
     );

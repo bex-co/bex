@@ -2,8 +2,13 @@ import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { LogsDocument } from "@/graphql/definitions";
 import { toLogLines, dedupeLogLines } from "@/features/logs/lib/map";
-import { useLiveLogs } from "@/features/logs/hooks/use-live-logs";
-import { LOG_TYPE_BUILD, type LogLine } from "@/features/logs/types";
+import {
+  useLiveLogs,
+  type EventSourceFactory,
+  type LiveStatus,
+} from "@/features/logs/hooks/use-live-logs";
+import { LOG_TYPE_BUILD } from "@/features/logs/types";
+import type { LogLine } from "@/features/logs/types";
 
 // bex-api caps a single logs() page at 100 rows (Render's paging range,
 // internal/logs/service.go) — same limit the Logs-tab history hook uses.
@@ -27,6 +32,8 @@ export interface UseDeployLogsResult {
   error: Error | undefined;
   /** True when the build-log leg 503'd because no durable store is wired. */
   buildStoreUnavailable: boolean;
+  /** SSE state while the active build pod is being followed. */
+  buildLiveStatus: LiveStatus;
 }
 
 interface LogsWindow {
@@ -41,11 +48,7 @@ interface LogsWindow {
 // `skip`. Still three separate hook calls (GraphQL's `type` arg is single-
 // valued and `predeploy` must be requested alone, internal/logs/service.go's
 // validate()) — this just removes the per-call options boilerplate.
-function useTypedDeployLogs(
-  type: string,
-  window: LogsWindow,
-  skip?: boolean,
-) {
+function useTypedDeployLogs(type: string, window: LogsWindow, skip?: boolean) {
   return useQuery(LogsDocument, {
     variables: { ...window, type },
     fetchPolicy: "cache-and-network",
@@ -77,9 +80,9 @@ export function useDeployLogs(
   startTime: string | undefined,
   endTime: string | undefined,
   hasPreDeploy: boolean,
+  followBuild: boolean,
+  createEventSource?: EventSourceFactory,
 ): UseDeployLogsResult {
-  const inFlight = !endTime;
-
   const window = useMemo(
     () => ({ resource, startTime, endTime, limit: LOGS_LIMIT }),
     [resource, startTime, endTime],
@@ -88,17 +91,13 @@ export function useDeployLogs(
   const build = useTypedDeployLogs("build", window);
   const predeploy = useTypedDeployLogs("predeploy", window, !hasPreDeploy);
   const app = useTypedDeployLogs("app", window);
-
-  // While the build is running, stream the build Job pod stdout live so new
-  // lines appear without waiting for a 5 s poll cycle. Lines are merged and
-  // deduped below, so a line that arrives via SSE and then via the next store
-  // flush is drawn exactly once.
-  const { lines: liveBuildLines } = useLiveLogs({
+  const liveBuild = useLiveLogs({
     resource,
-    enabled: inFlight,
+    enabled: followBuild,
     type: LOG_TYPE_BUILD,
     text: "",
     instance: "",
+    createEventSource,
   });
 
   const buildStoreUnavailable = !!(
@@ -106,20 +105,19 @@ export function useDeployLogs(
   );
 
   const lines = useMemo(() => {
-    const merged = [
-      ...toLogLines(build.data?.logs),
-      ...liveBuildLines,
-      ...toLogLines(predeploy.data?.logs),
-      ...toLogLines(app.data?.logs),
-    ];
+    const merged = [build.data, predeploy.data, app.data].flatMap((d) =>
+      toLogLines(d?.logs),
+    );
+    merged.push(...liveBuild.lines);
     merged.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
     return dedupeLogLines(merged);
-  }, [build.data, liveBuildLines, predeploy.data, app.data]);
+  }, [build.data, predeploy.data, app.data, liveBuild.lines]);
 
   return {
     lines,
     loading: [build, predeploy, app].some((r) => r.loading && !r.data),
     error: app.error && !buildStoreUnavailable ? app.error : undefined,
     buildStoreUnavailable,
+    buildLiveStatus: liveBuild.status,
   };
 }

@@ -9,7 +9,7 @@ export interface LogLine {
   time: string; // `timestamp` formatted as Render's line clock, computed once
   instance: string; // replica id (Render's `[bv612]`), or ""
   message: string;
-  type: string; // Render's `type` label value: `app` or `request`
+  type: string; // Render's `type` label value: `app`, `request`, or `build`
   // Request/HTTP-line labels (populated for `type=request`; empty for app
   // lines). The Logs viewer renders a request line as method/status chips
   // instead of the raw Traefik JSON (w5/008, docs/ADR010-observability.md).
@@ -28,6 +28,8 @@ export interface LogLine {
 export const LOG_TYPE_ALL = "all";
 export const LOG_TYPE_APP = "app";
 export const LOG_TYPE_REQUEST = "request";
+// Build is not offered in the service Logs-tab dropdown; deploy detail uses it
+// internally to follow the active build pod (w3/m14).
 export const LOG_TYPE_BUILD = "build";
 
 export type LogTypeFilter =

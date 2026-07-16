@@ -1,5 +1,11 @@
 import { useMemo, useState } from "react";
-import { Loader2, Maximize2, Minimize2, Settings2 } from "lucide-react";
+import {
+  Loader2,
+  Maximize2,
+  Minimize2,
+  Settings2,
+  WifiOff,
+} from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useDebounce } from "@/common/hooks/use-debounce";
 import { EmptyState } from "@/common/components/empty-state";
@@ -17,6 +23,7 @@ import {
 } from "@/common/components/ui/dropdown-menu";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { LogLineList } from "@/features/logs/components/log-line-list";
+import type { EventSourceFactory } from "@/features/logs/hooks/use-live-logs";
 import { useDeployLogs } from "../hooks/use-deploy-logs";
 import { LOG_RANGES, RANGE_LABEL_KEYS, type LogRange } from "../lib/log-range";
 
@@ -29,11 +36,15 @@ export interface DeployLogPanelProps {
   endTime: string | undefined;
   /** Whether this deploy has a pre-deploy step — skips the predeploy log leg when false. */
   hasPreDeploy: boolean;
+  /** Follow the active build pod while this deploy is build_in_progress. */
+  followBuild: boolean;
   /** The active `?r=` relative window (w9/003); undefined = the deploy window. */
   range?: LogRange;
   /** Selects a relative window (undefined = back to the deploy window).
    *  Omitted => the range picker is hidden (no URL to write it to). */
   onRangeChange?: (range: LogRange | undefined) => void;
+  /** Test seam for the build SSE source. */
+  createEventSource?: EventSourceFactory;
 }
 
 /**
@@ -55,8 +66,10 @@ export function DeployLogPanel({
   startTime,
   endTime,
   hasPreDeploy,
+  followBuild,
   range,
   onRangeChange,
+  createEventSource,
 }: DeployLogPanelProps) {
   const { t } = useTranslations();
   const [search, setSearch] = useState("");
@@ -65,12 +78,15 @@ export function DeployLogPanel({
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [maximized, setMaximized] = useState(false);
 
-  const { lines, loading, error, buildStoreUnavailable } = useDeployLogs(
-    resource,
-    startTime,
-    endTime,
-    hasPreDeploy,
-  );
+  const { lines, loading, error, buildStoreUnavailable, buildLiveStatus } =
+    useDeployLogs(
+      resource,
+      startTime,
+      endTime,
+      hasPreDeploy,
+      followBuild,
+      createEventSource,
+    );
 
   const filtered = useMemo(
     () =>
@@ -139,6 +155,12 @@ export function DeployLogPanel({
         {buildStoreUnavailable && (
           <span className="text-xs text-muted-foreground">
             {t("deploys.buildLogsStoreUnavailable")}
+          </span>
+        )}
+        {followBuild && buildLiveStatus === "error" && (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <WifiOff className="h-3.5 w-3.5" />
+            {t("logs.disconnected")}
           </span>
         )}
         <div className="ml-auto flex shrink-0 items-center gap-1">
