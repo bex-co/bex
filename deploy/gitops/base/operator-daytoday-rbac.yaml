@@ -1,0 +1,97 @@
+# Scoped (non-system:masters) operator credential for day-to-day ops.
+# The full admin kubeconfig (CN=kubernetes-admin, O=system:masters, ~1-year validity)
+# is reserved for break-glass use only; routine access uses the ClusterRole below
+# (mint a token-based kubeconfig with scripts/operator-kubeconfig.sh).
+#
+# What day-to-day ops need:
+#   - Read all workload and platform state (status, describe, events)
+#   - Interactive debugging: exec, port-forward, logs
+#   - Pod delete (soft restart without touching the controller)
+#   - One-shot Job creation from CronJobs (manual backup trigger)
+# What is intentionally omitted (break-glass territory):
+#   - Create/update/patch/delete Deployments, StatefulSets, Services, Ingresses
+#   - Create/modify ClusterRoles, ClusterRoleBindings, CRDs, Namespaces
+#   - Scale, drain, or label Nodes
+# docs/ADR019-infra-credentials.md, w7/m37
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bex-operator
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: bex-operator-day-to-day
+rules:
+  # Cluster topology and node health (read)
+  - apiGroups: [""]
+    resources: [nodes, namespaces, persistentvolumes]
+    verbs: [get, list, watch]
+  # Pod and workload visibility across all namespaces (read)
+  - apiGroups: [""]
+    resources: [pods, services, endpoints, configmaps, serviceaccounts,
+                persistentvolumeclaims, resourcequotas, limitranges, events]
+    verbs: [get, list, watch]
+  # Pod lifecycle: delete restarts without touching the owning controller
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [delete]
+  # Interactive debugging: logs, exec, port-forward, attach
+  - apiGroups: [""]
+    resources: [pods/log, pods/exec, pods/portforward, pods/attach]
+    verbs: [get, create]
+  # Workloads read (describe / rollout status)
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets, daemonsets, replicasets, controllerrevisions]
+    verbs: [get, list, watch]
+  # CronJob and Job read
+  - apiGroups: [batch]
+    resources: [cronjobs, jobs]
+    verbs: [get, list, watch]
+  # One-shot Job creation for manual maintenance triggers (e.g. kubectl create job --from=cronjob/etcd-backup)
+  - apiGroups: [batch]
+    resources: [jobs]
+    verbs: [create, delete]
+  # Bex CRDs read
+  - apiGroups: [app.bex.co]
+    resources: [apps, databases, keyvalues]
+    verbs: [get, list, watch]
+  # Networking read (ingress rules, network policies)
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses, networkpolicies, ingressclasses]
+    verbs: [get, list, watch]
+  # RBAC read only — audit current permissions without escalation
+  - apiGroups: [rbac.authorization.k8s.io]
+    resources: [clusterroles, clusterrolebindings, roles, rolebindings]
+    verbs: [get, list, watch]
+  # Storage classes for PV troubleshooting
+  - apiGroups: [storage.k8s.io]
+    resources: [storageclasses, volumeattachments]
+    verbs: [get, list, watch]
+  # Resource metrics (kubectl top node/pod)
+  - apiGroups: [metrics.k8s.io]
+    resources: [nodes, pods]
+    verbs: [get, list]
+  # Cert-manager certificate status
+  - apiGroups: [cert-manager.io]
+    resources: [certificates, certificaterequests, issuers, clusterissuers]
+    verbs: [get, list, watch]
+  # CNPG cluster and backup status
+  - apiGroups: [postgresql.cnpg.io]
+    resources: [clusters, backups, scheduledbackups, poolers]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: bex-operator-day-to-day
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: bex-operator-day-to-day
+subjects:
+  - kind: ServiceAccount
+    name: bex-operator
+    namespace: kube-system

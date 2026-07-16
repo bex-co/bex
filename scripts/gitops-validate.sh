@@ -366,6 +366,26 @@ if [ -f "$LOGSHIP" ]; then
     || { echo "FAIL: log-shipper.yaml's discovery.kubernetes \"pods\" block lost its node-scope field selector — every replica would discover every pod cluster-wide again (N× log duplication)" >&2; fail=1; }
 fi
 
+# Operator day-to-day RBAC guard (w7/m37, docs/ADR019-infra-credentials.md): the
+# scoped ClusterRole must NOT grant write verbs on cluster-administrative resources
+# (namespaces, ClusterRoles, ClusterRoleBindings, nodes, or CRDs). Day-to-day ops
+# need read + exec + one-shot-job; admin writes are break-glass territory.
+DAYTODAY_RBAC="deploy/gitops/base/operator-daytoday-rbac.yaml"
+if [ -f "$DAYTODAY_RBAC" ]; then
+  echo "==> $DAYTODAY_RBAC does not grant admin writes"
+  dangerous_write="$(yq -N \
+    '. | select(.kind == "ClusterRole" and .metadata.name == "bex-operator-day-to-day") |
+      .rules[] | select(.verbs[] | test("^(create|update|patch|delete|deletecollection)$")) |
+      .resources[]?' \
+    "$DAYTODAY_RBAC" \
+    | grep -E '^(namespaces|clusterroles|clusterrolebindings|nodes|customresourcedefinitions)$' \
+    || true)"
+  if [ -n "$dangerous_write" ]; then
+    echo "FAIL: bex-operator-day-to-day ClusterRole grants write access to admin resources: $dangerous_write" >&2
+    fail=1
+  fi
+fi
+
 # CNPG bootstrap vs tenant egress deny guard (w7/m33): the deny policy must
 # carve out CNPG-managed pods (cnpg.io/cluster label) so CNPG init/instance
 # pods can reach the Kubernetes API (10.96.0.1:443). The workspace label stays
