@@ -54,7 +54,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		after, limit := core.PageParams(q)
-		page := pageEnvGroups(out, after, limit, q.Has("cursor") || q.Has("limit"))
+		page := pageEnvGroups(out, after, limit, true)
 		core.WriteJSON(w, http.StatusOK, envGroupList(page))
 	})
 	mux.HandleFunc("POST /v1/env-groups", func(w http.ResponseWriter, r *http.Request) {

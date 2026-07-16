@@ -262,3 +262,94 @@ func TestUnavailableStoreAcrossAdapters(t *testing.T) {
 		}
 	})
 }
+
+func TestProjectListPaginationAcrossExtensionSurfaces(t *testing.T) {
+	seeded := make([]store.Project, 0, 5)
+	for i := 1; i <= 5; i++ {
+		seeded = append(seeded, store.Project{
+			ID:       fmt.Sprintf("prj-%02d", i),
+			TenantID: "tea-1",
+			Name:     fmt.Sprintf("project-%02d", i),
+		})
+	}
+	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: newFakeProjectStore(seeded...)}
+	ctx := ctxAs("user-a")
+
+	t.Run("GraphQL", func(t *testing.T) {
+		schema, err := graphql.NewSchema(graphql.SchemaConfig{
+			Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		page := func(cursor string, paged bool) []string {
+			t.Helper()
+			args := `ownerId: "tea-1"`
+			if paged {
+				args += `, limit: 2`
+				if cursor != "" {
+					args += fmt.Sprintf(`, cursor: %q`, cursor)
+				}
+			}
+			result := graphql.Do(graphql.Params{
+				Schema:        schema,
+				Context:       ctx,
+				RequestString: `{ projects(` + args + `) { id } }`,
+			})
+			if len(result.Errors) > 0 {
+				t.Fatalf("GraphQL errors: %#v", result.Errors)
+			}
+			raw, _ := json.Marshal(result.Data)
+			var body struct {
+				Projects []struct {
+					ID string `json:"id"`
+				} `json:"projects"`
+			}
+			if err := json.Unmarshal(raw, &body); err != nil {
+				t.Fatal(err)
+			}
+			ids := make([]string, len(body.Projects))
+			for i := range body.Projects {
+				ids[i] = body.Projects[i].ID
+			}
+			return ids
+		}
+		if got := page("", true); strings.Join(got, ",") != "prj-01,prj-02" {
+			t.Fatalf("first GraphQL page = %v", got)
+		}
+		if got := page("prj-02", true); strings.Join(got, ",") != "prj-03,prj-04" {
+			t.Fatalf("second GraphQL page = %v", got)
+		}
+		if got := page("", false); len(got) != len(seeded) {
+			t.Fatalf("unpaged GraphQL list = %d, want %d", len(got), len(seeded))
+		}
+	})
+
+	t.Run("MCP", func(t *testing.T) {
+		client := newMCPClient(t, ctx, svc)
+		call := func(args map[string]any) projectsResult {
+			t.Helper()
+			result, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "list_projects", Arguments: args})
+			if err != nil || result.IsError {
+				t.Fatalf("list_projects(%v): err=%v isError=%v", args, err, result.IsError)
+			}
+			raw, _ := json.Marshal(result.StructuredContent)
+			var out projectsResult
+			if err := json.Unmarshal(raw, &out); err != nil {
+				t.Fatal(err)
+			}
+			return out
+		}
+		first := call(map[string]any{"ownerId": "tea-1", "limit": 2})
+		if len(first.Projects) != 2 || first.Projects[0].ID != "prj-01" || first.Cursor != "prj-02" {
+			t.Fatalf("first MCP page = %+v", first)
+		}
+		second := call(map[string]any{"ownerId": "tea-1", "limit": 2, "cursor": first.Cursor})
+		if len(second.Projects) != 2 || second.Projects[0].ID != "prj-03" || second.Cursor != "prj-04" {
+			t.Fatalf("second MCP page = %+v", second)
+		}
+		if all := call(map[string]any{"ownerId": "tea-1"}); len(all.Projects) != len(seeded) || all.Cursor != "" {
+			t.Fatalf("unpaged MCP list = %d with cursor %q, want %d with no cursor", len(all.Projects), all.Cursor, len(seeded))
+		}
+	})
+}
