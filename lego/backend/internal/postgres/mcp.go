@@ -18,11 +18,28 @@ package postgres
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
+
+// parseMCPTimeWindow parses optional RFC3339 start/end strings for MCP tool inputs.
+func parseMCPTimeWindow(startTime, endTime string) (since, end time.Time, err error) {
+	if startTime != "" {
+		if since, err = time.Parse(time.RFC3339, startTime); err != nil {
+			return time.Time{}, time.Time{}, fmt.Errorf("%w: startTime: %s", core.ErrBadRequest, err)
+		}
+	}
+	if endTime != "" {
+		if end, err = time.Parse(time.RFC3339, endTime); err != nil {
+			return time.Time{}, time.Time{}, fmt.Errorf("%w: endTime: %s", core.ErrBadRequest, err)
+		}
+	}
+	return since, end, nil
+}
 
 // mcp.go is the MCP fragment for managed Postgres. Tool names track Render's
 // official MCP server (render-oss/render-mcp-server): list_postgres_instances /
@@ -204,6 +221,47 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	s.registerRecoveryMCP(srv)
 	s.registerAccessMCP(srv)
 	s.registerInsightsMCP(srv)
+	s.registerLogsMCP(srv)
+}
+
+// postgresLogsArgs is get_postgres_logs' input — the postgres id and the same
+// filter vocabulary as Render's app list_logs.
+type postgresLogsArgs struct {
+	PostgresID string   `json:"postgresId" jsonschema:"the immutable postgres id, as returned by list_postgres_instances"`
+	Text       string   `json:"text,omitempty" jsonschema:"case-insensitive substring to match against log lines"`
+	StartTime  string   `json:"startTime,omitempty" jsonschema:"RFC3339 lower bound (inclusive)"`
+	EndTime    string   `json:"endTime,omitempty" jsonschema:"RFC3339 upper bound (exclusive)"`
+	Limit      int      `json:"limit,omitempty" jsonschema:"max lines to return (1–100, default 20)"`
+	Direction  string   `json:"direction,omitempty" jsonschema:"backward (default, newest) or forward (oldest)"`
+	Instance   []string `json:"instance,omitempty" jsonschema:"restrict to these pod names (empty = all replicas)"`
+}
+
+type postgresLogsResult struct {
+	Logs []DatabaseLogEntry `json:"logs"`
+}
+
+func (s *Service) registerLogsMCP(srv *mcp.Server) {
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "get_postgres_logs",
+		Description: "Return recent log lines from a managed Postgres database's CNPG pods, oldest-first and capped at limit (default 20, max 100). CNPG pods are not shipped to a durable log store, so this is a live pod-log read: only currently running pods contribute, and lines do not survive restarts. bex extension — Render has no equivalent REST endpoint.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresLogsArgs) (*mcp.CallToolResult, postgresLogsResult, error) {
+		since, end, err := parseMCPTimeWindow(in.StartTime, in.EndTime)
+		if err != nil {
+			return nil, postgresLogsResult{}, err
+		}
+		entries, err := s.QueryDatabaseLogs(ctx, in.PostgresID, DatabaseLogQuery{
+			Search:    in.Text,
+			Since:     since,
+			End:       end,
+			Limit:     int64(in.Limit),
+			Direction: in.Direction,
+			Instance:  in.Instance,
+		})
+		if err != nil {
+			return nil, postgresLogsResult{}, err
+		}
+		return nil, postgresLogsResult{Logs: entries}, nil
+	})
 }
 
 // registerLifecycleMCP adds suspend/resume/restart/failover — bex extensions

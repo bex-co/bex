@@ -96,7 +96,9 @@ const (
 // The Service depends on this narrow function instead of a full clientset so the
 // domain layer stays apiserver-thin and is trivial to fake; production wires it
 // via NewPodLogSource. nil => the read verbs report core.ErrLogsUnavailable.
-type PodLogSource func(ctx context.Context, namespace, pod, container string, tail int64) (io.ReadCloser, error)
+// Type alias of core.PodLogSource so the postgres logs feature (w3/m28) can
+// inject the same source without importing the logs package.
+type PodLogSource = core.PodLogSource
 
 // PodLogStream streams a pod container's logs live (Follow:true) until ctx is
 // cancelled. PodLogSource's tail-follow sibling — kept separate so the domain

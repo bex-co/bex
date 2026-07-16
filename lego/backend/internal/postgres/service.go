@@ -76,6 +76,10 @@ type Service struct {
 	// may own. 0 = unlimited (the default; byte-identical to before). Only
 	// enforced when the caller's tenant is resolvable (w7/m9).
 	MaxPostgres int
+	// PodLogs fetches live pod log streams for QueryDatabaseLogs (w3/m28).
+	// CNPG pods are NOT shipped to Loki, so direct pod-log read is the only
+	// available source. nil => QueryDatabaseLogs reports ErrLogsUnavailable.
+	PodLogs core.PodLogSource
 	// queryExecutor is the SQL transport seam used by Query and ExecuteQuery.
 	// Production leaves it nil and uses pgx; tests replace it so the REST and
 	// GraphQL adapters can exercise authz + secret resolution without a live DB.
