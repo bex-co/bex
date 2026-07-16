@@ -27,76 +27,99 @@ import (
 
 // rest.go mounts Render's owner-scoped audit-logs path
 // (GET /owners/{ownerId}/audit-logs, docs/ADR018-render-parity.md "Audit logs" row) —
-// NOT a bex-own /v1/audit-events noun (t003's explicit instruction). Render's
-// dashboard documents each entry as Timestamp/Actor/Event/Status/Metadata
-// columns (render.com/docs/audit-logs); its exact JSON field names weren't
-// resolvable from public docs at authoring time (api-docs.render.com's
-// reference page lists only the query parameters), so the field names below
-// are bex's best-effort rendering of that vocabulary — divergence tracked by
-// t007/docs/ADR018-render-parity.md, not silently assumed byte-identical.
+// NOT a bex-own /v1/audit-events noun (t003's explicit instruction). The wire
+// shape below matches Render's published `auditLog` schema, captured from the
+// public OpenAPI 2026-07-15 (w4/m26 — the schema was unresolvable from public
+// docs when this surface was built; docs/render-artifacts/audit-logs-api.md
+// records the capture): required id/timestamp/event/status/actor/metadata,
+// actor an object {type, email?, id?}, metadata a string map, and status the
+// closed success|error enum.
 //
-// renderAuditLog renders one Event in that vocabulary. status is "success"/
-// "denied" (bex's outcome is binary allow/deny, not Render's success/error —
-// a documented divergence: an authorization denial isn't the same thing as an
-// action that started and then errored). resource is a bex extra (the OpenFGA
-// object authorized against) Render has no equivalent field for.
+// renderAuditLog renders one Event in that vocabulary. resource is a bex
+// extra (the OpenFGA object authorized against) Render has no equivalent
+// field for; extra fields are tolerated by Render's open object schema.
 type renderAuditLog struct {
-	ID          string               `json:"id"`
-	Timestamp   string               `json:"timestamp"`
-	Actor       string               `json:"actor"`
-	ActorMethod string               `json:"actorMethod,omitempty"` // bex extra: "oauth2" | "session"
-	Action      string               `json:"action"`
-	Status      string               `json:"status"`             // "success" | "denied"
-	Resource    string               `json:"resource,omitempty"` // bex extra
-	Metadata    *renderAuditMetadata `json:"metadata,omitempty"`
+	ID        string            `json:"id"`
+	Timestamp string            `json:"timestamp"`
+	Event     string            `json:"event"`
+	Status    string            `json:"status"` // "success" | "error" (Render's closed enum)
+	Actor     renderAuditActor  `json:"actor"`
+	Metadata  map[string]string `json:"metadata"`           // always present, string values (Render's additionalProperties: string)
+	Resource  string            `json:"resource,omitempty"` // bex extra
 }
 
-// renderAuditMetadata is intentionally closed: Render defines `to` for a
-// MaintenanceModeEnabledEvent, and no arbitrary verb argument can be added.
-type renderAuditMetadata struct {
-	To *bool `json:"to,omitempty"`
+// renderAuditActor is Render's actor object. type is the closed
+// user|rest_api|system enum (actorType); id carries bex's caller subject.
+// email is omitted: the audit row deliberately stores only the subject
+// (redaction-by-structure), and Render marks the field optional.
+type renderAuditActor struct {
+	Type string `json:"type"`
+	ID   string `json:"id,omitempty"`
 }
 
-func renderStatus(outcome string) string {
-	if outcome == string(core.AuditDenied) {
-		return "denied"
+// actorType maps bex's stored caller method onto Render's closed actor.type
+// enum: a Kratos browser session is a human "user"; an oauth2 bearer (API
+// key or OAuth client) is "rest_api"; bex's own system rows — and an
+// unattributed caller (e.g. a denied unauthenticated request), which has no
+// better bucket in Render's vocabulary — are "system".
+func actorType(method string) string {
+	switch method {
+	case "session":
+		return "user"
+	case "oauth2":
+		return "rest_api"
+	default:
+		return "system"
+	}
+}
+
+// renderStatus maps bex's binary allow/deny outcome onto Render's closed
+// success|error enum: a denial is an action that did not succeed. The
+// distinction Render's enum cannot carry is preserved in metadata
+// ("outcome": "denied") — nothing accepted is dropped. GraphQL (bex's own
+// dialect, not a Render surface) keeps the richer "denied" value directly.
+func renderStatus(e Event) string {
+	if denied(e) {
+		return "error"
 	}
 	return "success"
 }
 
-func renderAction(verb string) string {
-	switch verb {
-	case core.AuditVerbMaintenanceModeEnabled:
-		return "MaintenanceModeEnabledEvent"
-	case core.AuditVerbMaintenanceModeURIUpdated:
-		return "MaintenanceModeURIUpdatedEvent"
-	default:
-		return verb
+// renderMetadata builds Render's required string-map metadata: the audited
+// target keyed by its kind (Render's own example is {"service": "srv-…"}),
+// the maintenance-mode `to` flag, and the denied marker renderStatus's enum
+// mapping would otherwise lose. Always non-nil so the field serializes as {}
+// rather than null (the schema requires it).
+func renderMetadata(e Event) map[string]string {
+	md := map[string]string{}
+	if kind, name, ok := core.SplitTarget(e.Target); ok {
+		md[kind] = name
 	}
+	if e.MaintenanceModeTo != nil {
+		md["to"] = strconv.FormatBool(*e.MaintenanceModeTo)
+	}
+	if denied(e) {
+		md["outcome"] = "denied"
+	}
+	return md
 }
 
 func toRenderAuditLog(e Event) renderAuditLog {
-	out := renderAuditLog{
-		ID:          e.ID,
-		Timestamp:   e.At.UTC().Format(time.RFC3339),
-		Actor:       e.Caller,
-		ActorMethod: e.CallerMethod,
-		Action:      renderAction(e.Verb),
-		Status:      renderStatus(e.Outcome),
-		Resource:    e.Resource,
+	return renderAuditLog{
+		ID:        e.ID,
+		Timestamp: e.At.UTC().Format(time.RFC3339),
+		Event:     renderEvent(e.Verb),
+		Status:    renderStatus(e),
+		Actor:     renderAuditActor{Type: actorType(e.CallerMethod), ID: e.Caller},
+		Metadata:  renderMetadata(e),
+		Resource:  e.Resource,
 	}
-	if e.MaintenanceModeTo != nil {
-		out.Metadata = &renderAuditMetadata{To: e.MaintenanceModeTo}
-	} else if e.Verb == core.AuditVerbMaintenanceModeURIUpdated {
-		out.Metadata = &renderAuditMetadata{}
-	}
-	return out
 }
 
-// auditLogWithCursor is the list-item envelope — the same {object, cursor}
-// shape deploys/env-vars use (bex's own established pagination story; Render's
-// own audit-logs response envelope wasn't resolvable from public docs — see
-// the package doc above). The event id is a stable, opaque cursor.
+// auditLogWithCursor is Render's list-item envelope — the response is an
+// array of {cursor, auditLog}, both required (auditLogWithCursor in the
+// captured OpenAPI; the same {object, cursor} pattern deploys/env-vars use).
+// The event id is a stable, opaque cursor.
 type auditLogWithCursor struct {
 	AuditLog renderAuditLog `json:"auditLog"`
 	Cursor   string         `json:"cursor"`

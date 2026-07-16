@@ -28,12 +28,13 @@ import (
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
-// DefaultAuditPageSize/MaxAuditPageSize bound ListAuditEvents' page (Render's
-// GET .../audit-logs defaults to 20, caps at 1000 — bex caps lower pending
-// real volume data, a documented divergence, docs/ADR018-render-parity.md).
+// DefaultAuditPageSize/MaxAuditPageSize bound ListAuditEvents' page —
+// Render's audit-specific limit param (default 20, maximum 1000; captured
+// from the public OpenAPI's auditLogLimitParam, w4/m26 — note the cap is
+// audit-specific, NOT the general core.MaxPageLimit of 100).
 const (
 	DefaultAuditPageSize = 20
-	MaxAuditPageSize     = 200
+	MaxAuditPageSize     = 1000
 )
 
 // AuditRow is one persisted audit_events row.

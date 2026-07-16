@@ -1,18 +1,18 @@
 # w4 · m26 — Audit-log Render-shape verification (evidence-first)
 
-**Worker:** worker4 **Goal:** The last unowned ◐ on the parity ledger gets resolved with evidence: Render's actual audit-log response schema — unresolvable from public docs when bex's audit surface was built "best-effort" — is hunted down with the tools that now exist (pinned OpenAPI, official CLI source, live capture from the real Render account), and bex's shape is aligned or the divergence is recorded as verified. **Status:** todo
+**Worker:** worker4 **Goal:** The last unowned ◐ on the parity ledger gets resolved with evidence: Render's actual audit-log response schema — unresolvable from public docs when bex's audit surface was built "best-effort" — is hunted down with the tools that now exist (pinned OpenAPI, official CLI source, live capture from the real Render account), and bex's shape is aligned or the divergence is recorded as verified. **Status:** done 2026-07-15 — the blockage had expired: Render's public OpenAPI now publishes the full audit-log schema (corroborated by the official CLI's generated client types); REST aligned to it exactly (event/actor-object/success|error/string-map metadata/limit 1000), GraphQL deliberately keeps bex's dialect, capture in docs/render-artifacts/audit-logs-api.md, ledger ◐→✅
 
 ## Tasks (in order)
 
 | id   | title                                                                       | est | depends_on |
 | ---- | ----------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Hunt Render's actual audit-log response schema                              | 40m | —          |
-| t002 | Diff vs bex's fields + envelope; align, or record parity-by-evidence        | 60m | t001       |
-| t003 | Update ADR018:134 with the evidence and resolution                          | 15m | t002       |
-| t004 | Render parity                                                                 | 20m | t003       |
-| t005 | Simplify                                                                      | 15m | t004       |
-| t006 | Test coverage                                                                 | 25m | t004       |
-| t007 | Closeout                                                                      | 15m | t006       |
+| t001 | Hunt Render's actual audit-log response schema — **DONE** | 40m | —          |
+| t002 | Diff vs bex's fields + envelope; align, or record parity-by-evidence — **DONE** | 60m | t001       |
+| t003 | Update ADR018:134 with the evidence and resolution — **DONE** | 15m | t002       |
+| t004 | Render parity — **DONE** | 20m | t003       |
+| t005 | Simplify — **DONE** | 15m | t004       |
+| t006 | Test coverage — **DONE** | 25m | t004       |
+| t007 | Closeout — **DONE** | 15m | t006       |
 
 ## Definition of done
 

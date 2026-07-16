@@ -144,6 +144,19 @@ func KeyValueTarget(name string) string { return "keyvalue:" + name }
 // secret values.
 func EnvGroupTarget(groupID string) string { return "envgroup:" + groupID }
 
+// SplitTarget is the constructors' inverse — the one place the
+// "<kind>:<name>" target format is decoded (the audit read surface keys its
+// Render metadata by kind, w4/m26), kept beside the mint sites above so the
+// format stays a single contract. ok is false for an empty or kindless
+// target (a workspace-wide verb records none).
+func SplitTarget(target string) (kind, name string, ok bool) {
+	kind, name, ok = strings.Cut(target, ":")
+	if !ok || kind == "" || name == "" {
+		return "", "", false
+	}
+	return kind, name, true
+}
+
 // RecordEnvGroupOwnershipMigration records the lazy ownership migration as a
 // system action. This deliberately bypasses caller identity: the read merely
 // discovers the legacy row, while the platform performs the migration.

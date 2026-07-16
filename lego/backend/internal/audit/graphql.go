@@ -30,6 +30,10 @@ import (
 // Resolves through the same List verb as REST, so the two surfaces can't
 // diverge (t007 asserts this).
 
+// auditMetadataGQLType stays deliberately closed to the maintenance `to`
+// flag: the dashboard's audit table shows verb + actor + resource and has no
+// target column, so REST's richer kind-keyed target metadata (w4/m26) is not
+// mirrored here until a consumer exists — a scope cut, not an oversight.
 var auditMetadataGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AuditLogMetadata",
 	Fields: graphql.Fields{
@@ -49,9 +53,18 @@ var auditLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"timestamp":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.At.UTC().Format(time.RFC3339) })},
 		"actor":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.Caller })},
 		"actorMethod": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.CallerMethod })},
-		"action":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return renderAction(e.Verb) })},
-		"status":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return renderStatus(e.Outcome) })},
-		"resource":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.Resource })},
+		"action":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return renderEvent(e.Verb) })},
+		// status keeps bex's richer denied value here: GraphQL is bex's own
+		// dialect (Render has no public GraphQL), and the dashboard's badge
+		// distinguishes a denial from an error. REST maps it onto Render's
+		// closed success|error enum (renderStatus).
+		"status": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any {
+			if denied(e) {
+				return "denied"
+			}
+			return "success"
+		})},
+		"resource": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.Resource })},
 		"metadata": &graphql.Field{Type: auditMetadataGQLType, Resolve: gqlutil.Field(func(e Event) any {
 			if e.MaintenanceModeTo == nil && e.Verb != core.AuditVerbMaintenanceModeURIUpdated {
 				return nil

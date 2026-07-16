@@ -65,6 +65,7 @@ type Event struct {
 	CallerMethod      string
 	Verb              string
 	Resource          string
+	Target            string // the resource acted ON ("service:my-api"); Render's metadata carries it
 	Outcome           string
 	At                time.Time
 	MaintenanceModeTo *bool
@@ -77,6 +78,7 @@ func view(r store.AuditRow) Event {
 		CallerMethod:      r.CallerMethod,
 		Verb:              r.Verb,
 		Resource:          r.Resource,
+		Target:            r.Target,
 		Outcome:           r.Outcome,
 		At:                r.At,
 		MaintenanceModeTo: r.MaintenanceModeTo,
@@ -91,11 +93,60 @@ const (
 	DirectionForward  = core.DirectionForward
 )
 
+// renderEvents maps a bex verb onto Render's audit-log event vocabulary
+// (docs/render-artifacts/audit-logs-api.md, w4/m26) where an unambiguous 1:1
+// exists — the lifecycle verbs plus the ip-allow-list and service-rename
+// writes; every other verb passes through renderEvent as bex's own
+// "<feature>.<Verb>" event value — a documented extension, never a guessed
+// mapping onto a Render name whose semantics might not match. The SINGLE
+// source of this vocabulary, consumed by both the REST and GraphQL fragments
+// (the events feed's eventTypes and webhooks' verbEvents are its snake_case
+// siblings for their own surfaces); TestRenderEventVerbsExist guards the
+// keys against silent service-method renames.
+var renderEvents = map[string]string{
+	"apps.Create":             "CreateServerEvent",
+	"apps.Delete":             "DeleteServerEvent",
+	"apps.Suspend":            "SuspendServiceEvent",
+	"apps.Resume":             "ResumeServiceEvent",
+	"apps.SetDisplayName":     "UpdateServiceNameEvent",
+	"apps.SetIPAllowList":     "UpdateIPAllowListEvent",
+	"postgres.CreatePostgres": "CreatePostgresEvent",
+	"postgres.DeletePostgres": "DeletePostgresEvent",
+	"postgres.Suspend":        "SuspendPostgresEvent",
+	"postgres.Resume":         "ResumePostgresEvent",
+	"postgres.SetIPAllowList": "UpdateIPAllowListEvent",
+	"keyvalue.CreateKeyValue": "CreateRedisEvent",
+	"keyvalue.DeleteKeyValue": "DeleteRedisEvent",
+	"keyvalue.SetIPAllowList": "UpdateIPAllowListEvent",
+	"projects.Create":         "CreateProjectEvent",
+	"projects.Delete":         "DeleteProjectEvent",
+	"workspaces.Create":       "CreateWorkspaceEvent",
+	"workspaces.Delete":       "DeleteWorkspaceEvent",
+	"environments.Create":     "CreateEnvironmentEvent",
+	"environments.Delete":     "DeleteEnvironmentEvent",
+
+	core.AuditVerbMaintenanceModeEnabled:    "MaintenanceModeEnabledEvent",
+	core.AuditVerbMaintenanceModeURIUpdated: "MaintenanceModeURIUpdatedEvent",
+}
+
+func renderEvent(verb string) string {
+	if ev, ok := renderEvents[verb]; ok {
+		return ev
+	}
+	return verb
+}
+
+// denied is the one place the package reads the binary outcome vocabulary —
+// REST's success|error mapping, its metadata denied marker, and GraphQL's
+// richer denied status all consult it, so the three can't drift if the
+// outcome vocabulary ever grows.
+func denied(e Event) bool { return e.Outcome == string(core.AuditDenied) }
+
 // Filter narrows List — the neutral shape the REST/GraphQL adapters translate
 // Render's startTime/endTime/direction/cursor/limit query params into.
 type Filter struct {
-	Since  time.Time
-	Until  time.Time
+	Since time.Time
+	Until time.Time
 	// Direction is Render's ordering enum: "" or DirectionBackward is
 	// newest-first, DirectionForward oldest-first; anything else is a named
 	// 400 (w3/m8's "nothing accepted is ignored" — w4/013 closed the drift
