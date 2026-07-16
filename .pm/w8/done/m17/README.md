@@ -1,21 +1,28 @@
 # w8 · m17 — Disk-autoscaling hardening: loud sample-failure signal + single-sourced 16 TB cap
 
-**Worker:** worker8 **Goal:** the disk-autoscaling loop fails loudly when it can't sample disk usage — instead of silently no-oping while a tenant database fills to 100% — and the 16 TB cap stops living as four independent literals. **Status:** todo
+**Worker:** worker8 **Goal:** the disk-autoscaling loop fails loudly when it can't sample disk usage — instead of silently no-oping while a tenant database fills to 100% — and the 16 TB cap stops living as four independent literals. **Status:** done
 
 ## Tasks (in order)
 
-| id   | title                                                                                     | est | depends_on |
-| ---- | ----------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Design the persistent sample-failure signal: Event vs status condition, N-failure debounce | 30m | —          |
-| t002 | Implement + test the sample-failure signal                                                 | 45m | t001       |
-| t003 | Single-source the 16 TB cap across operator, dashboard, and MCP description                | 30m | —          |
-| t004 | Simplify — `/simplify` over the milestone's diff                                           | 20m | t002, t003 |
-| t005 | Test coverage — meaningful tests for the shipped behavior                                  | 30m | t002, t003 |
-| t006 | Closeout — verify DoD, sync status, move to `done/`                                        | 15m | t005       |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Design the persistent sample-failure signal: Event vs status condition, N-failure debounce — **DONE** | 30m | — |
+| t002 | Implement + test the sample-failure signal — **DONE** | 45m | t001 |
+| t003 | Single-source the 16 TB cap across operator, dashboard, and MCP description — **DONE** | 30m | — |
+| t004 | Simplify — `/simplify` over the milestone's diff — **DONE** | 20m | t002, t003 |
+| t005 | Test coverage — meaningful tests for the shipped behavior — **DONE** | 30m | t002, t003 |
+| t006 | Closeout — verify DoD, sync status, move to `done/` — **DONE** | 15m | t005 |
 
 ## Definition of done
 
 With `diskAutoscalingEnabled: true` and the disk-usage reader failing N consecutive reconciles (Prometheus unreachable or PVC series absent), the Database emits a durable Warning signal observable via `kubectl describe database` — distinguishable from benign first-reconcile "no PVC yet" noise — and a test proves it. A guard test fails the build if the operator cap constant, the dashboard display constant, and the MCP tool-description "16 TB" drift from one another.
+
+## Validation evidence
+
+- `cd lego/operator && make test`, `cd lego/backend && go test ./...`, and `cd dashboard && yarn typecheck && yarn lint && yarn test` passed; the dashboard suite reported 1,231 passing tests. `cd lego/operator && make lint` also passed both Go modules with zero issues.
+- Production deploy run `29532639809` passed operator/backend/dashboard tests, image signing, and critical-vulnerability gates, then pinned and rolled the image built from `015a6328`.
+- A disposable production `dev-8-m17/m17-sample-proof` Database stayed quiet while Provisioning, persisted failure counts 1 and 2 without an Event, and showed one `Warning DiskAutoscalingSampleUnavailable` in `kubectl describe database` on failure 3. Failure 4 kept the count at 3 and the Event count at 1; disabling autoscaling removed the annotation. The namespace was deleted afterward.
+- The 16,384 GB cap now lives in `lego/types/tiers/tiers.yaml`; operator and backend consume it directly, while dashboard and MCP guard tests fail on drift.
 
 ## Source + Goal linkage
 
