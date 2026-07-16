@@ -188,6 +188,16 @@ func TestLogoutFailsClosed(t *testing.T) {
 		if rec.Code != http.StatusServiceUnavailable {
 			t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
 		}
+		// /v1/oauth/revoke speaks the Render {"error","message","id"} dialect on
+		// every branch, not the OAuth {"error":"temporarily_unavailable"} body
+		// (w9/m38, w9/008).
+		var body map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("body not JSON: %v (%s)", err, rec.Body.String())
+		}
+		if body["message"] == nil || body["id"] != "unavailable" || body["error"] == "temporarily_unavailable" {
+			t.Fatalf("revoke 503 not Render-shaped: %s", rec.Body.String())
+		}
 	})
 	t.Run("api key error", func(t *testing.T) {
 		rec := httptest.NewRecorder()
