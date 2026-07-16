@@ -24,6 +24,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -449,6 +450,111 @@ func TestLogoutCannotBeUndoneByInflightIntrospection(t *testing.T) {
 	}
 	if calls.Load() != 2 {
 		t.Fatalf("introspection calls = %d, want 2", calls.Load())
+	}
+}
+
+// blockingHydra returns a Hydra stand-in that blocks the FIRST request that
+// reaches it until release is closed (a second, concurrent, or later request
+// proceeds immediately), then answers active:true for sub/clientID — the
+// shared setup TestInvalidateDoesNotBlockDuringInFlightUpstreamRTT and
+// TestEpochBumpDuringRTTDiscardsStalePut both need. calls counts every
+// request that reaches the handler, blocking or not.
+func blockingHydra(t *testing.T, sub, clientID string) (srv *httptest.Server, started, release chan struct{}, calls *atomic.Int32) {
+	t.Helper()
+	started = make(chan struct{})
+	release = make(chan struct{})
+	calls = &atomic.Int32{}
+	var once sync.Once
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		once.Do(func() {
+			close(started)
+			<-release
+		})
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"active": true, "sub": sub, "client_id": clientID,
+		})
+	}))
+	t.Cleanup(srv.Close)
+	return srv, started, release, calls
+}
+
+// TestInvalidateDoesNotBlockDuringInFlightUpstreamRTT is w4/m31/t001's
+// motivating fix, proven directly: under the old sync.RWMutex design,
+// invalidate's Lock() call blocked until every in-flight introspectUpstream
+// RTT released its RLock (sync.RWMutex admits no new readers once a writer
+// is pending, and here a writer would be BLOCKED on an in-flight reader) —
+// so one logout stalled invalidate itself for up to the full Hydra RTT. The
+// lock-free RTT + epoch design means invalidate never waits on anything but
+// its own atomic bump and cache delete.
+func TestInvalidateDoesNotBlockDuringInFlightUpstreamRTT(t *testing.T) {
+	hydra, started, release, _ := blockingHydra(t, "human-a", "client-a")
+
+	auth := newOryAuth(hydra.URL, "", "", "", "", nil, nil)
+	introspected := make(chan struct{})
+	go func() {
+		_, _ = auth.introspect(context.Background(), "in-flight-token")
+		close(introspected)
+	}()
+	<-started
+
+	invalidateDone := make(chan struct{})
+	go func() {
+		auth.invalidate("someone-elses-token", core.Identity{
+			Subject: "human-b", Method: "oauth2", ClientID: "client-b", Human: true,
+		})
+		close(invalidateDone)
+	}()
+	select {
+	case <-invalidateDone:
+		// invalidate returned without waiting for the in-flight RTT — the fix.
+	case <-time.After(2 * time.Second):
+		t.Fatal("invalidate blocked behind an in-flight introspection's Hydra RTT")
+	}
+	close(release)
+	<-introspected
+}
+
+// TestEpochBumpDuringRTTDiscardsStalePut isolates the epoch mechanism itself
+// (as opposed to TestLogoutCannotBeUndoneByInflightIntrospection, where
+// invalidate's own Delete/DeleteIf calls happen to match the in-flight
+// token): invalidate here revokes a COMPLETELY UNRELATED credential — a
+// different token, client, and subject that invalidate's own cache
+// mutations cannot possibly reach — so if the in-flight introspection's
+// result still never lands in the cache, it can only be because the
+// concurrent epoch bump made introspectUpstream's post-RTT check discard its
+// own Put.
+func TestEpochBumpDuringRTTDiscardsStalePut(t *testing.T) {
+	hydra, started, release, calls := blockingHydra(t, "human-a", "client-a")
+
+	auth := newOryAuth(hydra.URL, "", "", "", "", nil, nil)
+	introspected := make(chan struct{})
+	go func() {
+		_, _ = auth.introspect(context.Background(), "in-flight-token")
+		close(introspected)
+	}()
+	<-started
+
+	auth.invalidate("totally-unrelated-token", core.Identity{
+		Subject: "human-z", Method: "oauth2", ClientID: "client-z", Human: true,
+	})
+	close(release)
+	<-introspected
+
+	if _, ok := auth.cache.Get("in-flight-token"); ok {
+		t.Fatal("in-flight introspection's Put landed despite a concurrent epoch bump from an unrelated revocation")
+	}
+	if calls.Load() != 1 {
+		t.Fatalf("hydra calls = %d, want 1", calls.Load())
+	}
+	// A follow-up call re-introspects (miss) rather than treating the token as
+	// permanently poisoned — the epoch only discards ONE stale result.
+	id, err := auth.introspect(context.Background(), "in-flight-token")
+	if err != nil || id.Subject != "human-a" {
+		t.Fatalf("re-introspection after discard = %+v, %v", id, err)
+	}
+	if calls.Load() != 2 {
+		t.Fatalf("hydra calls after re-introspection = %d, want 2", calls.Load())
 	}
 }
 

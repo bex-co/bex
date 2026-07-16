@@ -24,6 +24,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/sync/singleflight"
@@ -88,11 +89,29 @@ type oryAuth struct {
 	// writes the cache exactly once per upstream call.
 	cache *core.TTLCache[core.Identity]
 	group singleflight.Group
-	// revocationMu makes an upstream introspection + cache population atomic
-	// with local invalidation. Logout takes the write lock only after Hydra has
-	// revoked the credential; an older in-flight positive result must finish
-	// before its cache entry is deleted and therefore cannot resurrect it.
-	revocationMu sync.RWMutex
+	// revocationEpoch + epochMu make an upstream introspection's cache write
+	// coherent with a concurrent local invalidation WITHOUT holding any lock
+	// across the Hydra round trip (w4/m31 — the RWMutex this replaced blocked
+	// every new cache-miss introspection process-wide for up to the full
+	// Hydra RTT whenever a logout was in flight, since sync.RWMutex admits no
+	// new readers once a writer is pending).
+	//
+	// introspectUpstream snapshots the epoch BEFORE the RTT (lock-free — a
+	// stale snapshot only ever makes the later check stricter, never looser).
+	// The RTT itself runs under no lock at all. Only the tail — the epoch
+	// re-check immediately before the cache Put — takes epochMu, and
+	// invalidate's epoch bump + cache delete also run under epochMu: this is
+	// the part that MUST be atomic, because "Load the epoch, then Put" is not
+	// one operation — a bare atomic re-check with no lock leaves a window
+	// where invalidate's Add()+Delete() can complete strictly between the
+	// Load() and the Put(), which would let the stale result land in the
+	// cache anyway (found in review; a plain atomic re-check is NOT
+	// sufficient). epochMu is held only for that instant — an atomic op plus
+	// a map write/delete, no I/O — so invalidate can still never be blocked
+	// by an in-flight Hydra RTT (the fix's whole point): it only ever
+	// contends with introspectUpstream's tail, never its network wait.
+	revocationEpoch atomic.Uint64
+	epochMu         sync.Mutex
 
 	// touch records a key's last-used metadata after a successful API-key
 	// introspection (w4/m13). Fire-and-forget + self-throttling on the callee
@@ -126,8 +145,19 @@ func newOryAuth(hydraAdminURL, kratosURL, resource, issuer, resourceMetadataURL 
 // the revoke request would leave the immediately previous token usable until
 // PositiveTTL.
 func (a *oryAuth) invalidate(token string, identity core.Identity) {
-	a.revocationMu.Lock()
-	defer a.revocationMu.Unlock()
+	// The bump must be serialized against introspectUpstream's epoch-check+Put
+	// (epochMu — see its doc comment): a bare atomic Add here, with no lock,
+	// would leave a window where introspectUpstream's Load()-then-Put() could
+	// straddle this Add(), passing its check a moment before the bump and
+	// still Putting a moment after it — resurrecting the very entry this call
+	// means to revoke (found in review; this is not a hypothetical). Holding
+	// epochMu only around the Add (not the deletes below, which are already
+	// independently safe via the cache's own internal lock and only need to
+	// run at some point after this Add, not atomically with it) keeps the
+	// critical section to a single non-blocking instruction.
+	a.epochMu.Lock()
+	a.revocationEpoch.Add(1)
+	a.epochMu.Unlock()
 	a.cache.Delete(token)
 	if identity.Method == "oauth2" {
 		a.cache.DeleteIf(func(cached core.Identity) bool {
@@ -222,10 +252,12 @@ func (a *oryAuth) introspect(ctx context.Context, token string) (core.Identity, 
 
 // introspectUpstream performs the Hydra round trip and populates the cache;
 // its only output channel is the cache — introspect re-reads it afterward so
-// a concurrent revocation is always observed (see introspect's comment).
+// a concurrent revocation is always observed (see introspect's comment). The
+// round trip itself runs lock-free (see revocationEpoch's doc comment); only
+// the epoch snapshot at entry and the epoch check immediately before Put
+// guard against a stale positive result racing a concurrent invalidate.
 func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
-	a.revocationMu.RLock()
-	defer a.revocationMu.RUnlock()
+	epoch := a.revocationEpoch.Load()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		a.hydraAdminURL+"/admin/oauth2/introspect",
 		strings.NewReader(url.Values{"token": {token}}.Encode()))
@@ -292,6 +324,23 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 	expires := time.Now().Add(core.PositiveTTL)
 	if exp := time.Unix(int64(out.Exp), 0); out.Exp > 0 && exp.Before(expires) {
 		expires = exp
+	}
+	// If a revocation ran anywhere during the RTT above, this result may be
+	// stale (Hydra can still answer active=true for a token whose revoke
+	// hasn't finished propagating server-side) — drop it rather than risk
+	// resurrecting a just-revoked credential. The token simply misses the
+	// cache on the next call and gets a fresh, authoritative introspection.
+	//
+	// The check and the Put below MUST happen in the same epochMu critical
+	// section as one unit — a bare "Load, then Put" (no lock) leaves a gap
+	// where invalidate's Add() can complete strictly between them, which
+	// would let this stale result land anyway (found in review). epochMu is
+	// held only for this instant (an atomic load + a map write, no I/O), so
+	// it can never be the thing an in-flight invalidate blocks behind.
+	a.epochMu.Lock()
+	defer a.epochMu.Unlock()
+	if a.revocationEpoch.Load() != epoch {
+		return nil
 	}
 	a.cache.Put(token, id, expires)
 	return nil

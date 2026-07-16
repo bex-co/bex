@@ -20,11 +20,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -219,4 +222,157 @@ func TestLogoutFailsClosed(t *testing.T) {
 			t.Fatalf("status = %d revoked=%q body=%s", rec.Code, revoker.id, rec.Body.String())
 		}
 	})
+}
+
+// deviceGrantRequest builds a valid device-grant request from sourceIP —
+// the smallest of the three protocol bodies, used by the rate-limiter tests
+// below where the request's content doesn't matter, only whether it reaches
+// the (fake) upstream at all.
+func deviceGrantRequest(sourceIP string) *http.Request {
+	r := renderRequest(http.MethodPost, "/v1/device-grant", `{"client_id":"`+RenderCLIClientID+`"}`)
+	r.RemoteAddr = sourceIP + ":54321"
+	return r
+}
+
+// countingUpstream is a minimal Hydra stand-in that always answers the
+// device-grant shape and counts how many requests actually reached it — the
+// rate-limiter tests assert this count to prove a shed request never
+// touches Hydra.
+func countingUpstream(t *testing.T, calls *atomic.Int32) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"device_code": "device-1", "user_code": "ABCDEF",
+			"verification_uri": "https://dashboard.bex.co/auth/device",
+			"expires_in":        600, "interval": 5,
+		})
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+// newDeviceLimitedMux wires a Service (backed by a counting fake Hydra) with
+// its RegisterPublic routes behind a device rate limiter at rpm/burst — the
+// shared setup every rate-limiter test below needs, varying only the
+// rpm/burst under test.
+func newDeviceLimitedMux(t *testing.T, rpm float64, burst int) (*http.ServeMux, *atomic.Int32) {
+	t.Helper()
+	var calls atomic.Int32
+	upstream := countingUpstream(t, &calls)
+	svc := New(upstream.URL, "", nil, nil)
+	svc.RateLimiter = NewDeviceRateLimiter(rpm, burst)
+	mux := http.NewServeMux()
+	svc.RegisterPublic(mux)
+	return mux, &calls
+}
+
+// TestDeviceRateLimiterShedsFloodPerIPNotGlobally is w4/m31/t002's core
+// acceptance criterion: a flood from one IP is shed before any Hydra call,
+// and a second IP is entirely unaffected — proving the limiter is IP-keyed,
+// not a single shared bucket every anonymous caller starves.
+func TestDeviceRateLimiterShedsFloodPerIPNotGlobally(t *testing.T) {
+	mux, calls := newDeviceLimitedMux(t, 60, 3) // burst 3, refills at 1/s
+
+	for i := range 3 {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, deviceGrantRequest("203.0.113.1"))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("request %d from the flooding IP = %d, want 200 (within burst)", i, rec.Code)
+		}
+	}
+	if got := calls.Load(); got != 3 {
+		t.Fatalf("upstream calls after burst = %d, want 3", got)
+	}
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, deviceGrantRequest("203.0.113.1"))
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("4th request from the flooding IP = %d, want 429", rec.Code)
+	}
+	if got := calls.Load(); got != 3 {
+		t.Fatalf("upstream calls after the shed request = %d, want still 3 — a shed request must never reach Hydra", got)
+	}
+
+	// A different IP has its own, untouched bucket.
+	rec2 := httptest.NewRecorder()
+	mux.ServeHTTP(rec2, deviceGrantRequest("198.51.100.7"))
+	if rec2.Code != http.StatusOK {
+		t.Fatalf("request from the second IP = %d, want 200 (unaffected by the first IP's flood)", rec2.Code)
+	}
+	if got := calls.Load(); got != 4 {
+		t.Fatalf("upstream calls after the second IP's request = %d, want 4", got)
+	}
+}
+
+// TestDeviceCeremonyAtPollingCadenceIsNotThrottled proves a steady arrival
+// rate at (not bursting past) the limiter's sustained rate is never shed —
+// modeling the official CLI's device-token poll loop (a fixed interval, RFC
+// 8628 default 5s) without waiting out a real ceremony: a limiter configured
+// for N requests/second only ever throttles a caller who arrives FASTER than
+// that, so proving steady arrivals at the limit succeed generalizes to any
+// slower real polling interval.
+func TestDeviceCeremonyAtPollingCadenceIsNotThrottled(t *testing.T) {
+	// 600 rpm = 10/s, burst 1 — forces every request past the first to wait
+	// out a real refill tick rather than coast on burst capacity, so this
+	// only passes if the sustained-rate admission actually works.
+	mux, calls := newDeviceLimitedMux(t, 600, 1)
+
+	const ceremonyRequests = 8
+	for i := range ceremonyRequests {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, deviceGrantRequest("203.0.113.1"))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("ceremony request %d = %d, want 200 (arriving no faster than the sustained rate)", i, rec.Code)
+		}
+		time.Sleep(110 * time.Millisecond) // just over one 100ms (10/s) refill tick
+	}
+	if got := calls.Load(); got != ceremonyRequests {
+		t.Fatalf("upstream calls = %d, want %d — every ceremony request should have reached Hydra", got, ceremonyRequests)
+	}
+}
+
+// TestDeviceRateLimit429IsOAuthDialect proves a shed request on every one of
+// the three device-flow routes gets the OAuth-shaped {"error":"slow_down"}
+// body (RFC 8628's polling-backoff signal, understood by the official CLI)
+// plus Retry-After — never Render's REST error envelope (id/message).
+func TestDeviceRateLimit429IsOAuthDialect(t *testing.T) {
+	mux, _ := newDeviceLimitedMux(t, 60, 1) // burst 1 — a single priming request exhausts it
+
+	for i, path := range []string{"/v1/device-grant", "/v1/device-token", "/v1/token/refresh/"} {
+		t.Run(path, func(t *testing.T) {
+			// A distinct source IP per subtest — each gets its own fresh bucket,
+			// since all three routes share one IP-keyed limiter (one abuse
+			// surface) and this test only wants to isolate the response DIALECT,
+			// not re-prove the per-IP isolation TestDeviceRateLimiterShedsFloodPerIPNotGlobally
+			// already covers.
+			ip := fmt.Sprintf("203.0.113.%d", 20+i)
+			first := httptest.NewRecorder()
+			mux.ServeHTTP(first, deviceGrantRequest(ip))
+			if first.Code != http.StatusOK {
+				t.Fatalf("priming request = %d, want 200", first.Code)
+			}
+
+			rec := httptest.NewRecorder()
+			req := renderRequest(http.MethodPost, path, `{}`)
+			req.RemoteAddr = ip + ":54321"
+			mux.ServeHTTP(rec, req)
+			if rec.Code != http.StatusTooManyRequests {
+				t.Fatalf("%s shed request = %d, want 429", path, rec.Code)
+			}
+			if rec.Header().Get("Retry-After") == "" {
+				t.Errorf("%s: missing Retry-After header", path)
+			}
+			var body map[string]string
+			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+				t.Fatalf("%s: decode body: %v", path, err)
+			}
+			if body["error"] != "slow_down" {
+				t.Errorf("%s body = %v, want OAuth-shaped {\"error\":\"slow_down\"}", path, body)
+			}
+			if _, hasID := body["id"]; hasID {
+				t.Errorf("%s body carries Render's \"id\" field — leaked the wrong error dialect: %v", path, body)
+			}
+		})
+	}
 }
