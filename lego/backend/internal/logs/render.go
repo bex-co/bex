@@ -68,11 +68,16 @@ type renderLogList struct {
 
 // logID synthesizes a stable, unique id (Render ids are opaque; bex derives one
 // from instance + timestamp + a message hash so the same line is always the same
-// id).
+// id). Request logs carry no instance label (they come from the edge, not a
+// replica), so fall back to the service name to avoid a leading "-".
 func logID(e LogEntry) string {
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(e.Message))
-	return fmt.Sprintf("%s-%s-%08x", e.Labels["instance"], e.Timestamp, h.Sum32())
+	instance := e.Labels[LabelInstance]
+	if instance == "" {
+		instance = e.Labels["service"]
+	}
+	return fmt.Sprintf("%s-%s-%08x", instance, e.Timestamp, h.Sum32())
 }
 
 func toRenderLog(e LogEntry) renderLog {

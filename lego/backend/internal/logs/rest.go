@@ -26,8 +26,17 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gorilla/websocket"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
+
+// wsUpgrader upgrades the subscribe connection to WebSocket when the Render
+// CLI (v2+) requests it. Origin checking is skipped — auth is already enforced
+// at the HTTP auth-gate that wraps this handler.
+var wsUpgrader = websocket.Upgrader{
+	CheckOrigin: func(*http.Request) bool { return true },
+}
 
 // rest.go is the REST logs adapter — Render logs-API compatible. It maps the
 // query string (resource/type/text/startTime/endTime/limit) and the {hasMore,
@@ -125,8 +134,14 @@ func (s *Service) logsQuery(w http.ResponseWriter, r *http.Request) {
 	core.WriteJSON(w, http.StatusOK, toRenderLogList(all, merged.Limit, merged.Since, merged.End))
 }
 
-// logsSubscribe serves GET /v1/logs/subscribe — a live tail over Server-Sent
-// Events (one `data: <renderLog JSON>` frame per line, following one resource).
+// logsSubscribe serves GET /v1/logs/subscribe — a live tail, following one
+// resource. Three wire formats are supported:
+//
+//   - WebSocket upgrade → WS text frames, one per log line; the Render CLI
+//     v2+ sends Upgrade: websocket and expects this protocol.
+//   - Accept: text/event-stream → SSE (`data: <JSON>\n\n` per line); for
+//     browser EventSource and curl -N.
+//   - Anything else → NDJSON (`<JSON>\n` per line).
 func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	if s.MaxSSEConns > 0 {
 		if s.sseConns.Add(1) > s.MaxSSEConns {
@@ -145,17 +160,52 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 	q.App = resources[0] // subscribe follows a single App
 
+	// WebSocket path: Render CLI v2+ sends an upgrade request.
+	if websocket.IsWebSocketUpgrade(r) {
+		conn, wsErr := wsUpgrader.Upgrade(w, r, nil)
+		if wsErr != nil {
+			return // upgrader already wrote the error response
+		}
+		defer conn.Close()
+		// Read pump: keep-alive + detect client disconnect.
+		go func() {
+			for {
+				if _, _, err := conn.NextReader(); err != nil {
+					conn.Close()
+					return
+				}
+			}
+		}()
+		followErr := s.FollowLogs(r.Context(), q, func(e LogEntry) error {
+			payload, mErr := json.Marshal(toRenderLog(e))
+			if mErr != nil {
+				return mErr
+			}
+			return conn.WriteMessage(websocket.TextMessage, payload)
+		})
+		if errors.Is(followErr, core.ErrLogsUnavailable) || errors.Is(followErr, core.ErrLogStoreUnavailable) {
+			msg, _ := json.Marshal(map[string]string{"error": followErr.Error()})
+			_ = conn.WriteMessage(websocket.TextMessage, msg)
+		}
+		return
+	}
+
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		core.WriteErrStatus(w, http.StatusInternalServerError, "streaming unsupported")
 		return
 	}
-	// SSE is long-lived; clear the per-request write deadline so the server's
-	// WriteTimeout doesn't kill the stream.
+	// Stream is long-lived; clear the per-request write deadline so the
+	// server's WriteTimeout doesn't kill it.
 	rc := http.NewResponseController(w)
 	_ = rc.SetWriteDeadline(time.Time{})
 
-	w.Header().Set("Content-Type", "text/event-stream")
+	useSSE := r.Header.Get("Accept") == "text/event-stream"
+	if useSSE {
+		w.Header().Set("Content-Type", "text/event-stream")
+	} else {
+		w.Header().Set("Content-Type", "application/x-ndjson")
+	}
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.WriteHeader(http.StatusOK)
@@ -166,18 +216,27 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 		if mErr != nil {
 			return mErr
 		}
-		if _, wErr := fmt.Fprintf(w, "data: %s\n\n", payload); wErr != nil {
+		var wErr error
+		if useSSE {
+			_, wErr = fmt.Fprintf(w, "data: %s\n\n", payload)
+		} else {
+			_, wErr = fmt.Fprintf(w, "%s\n", payload)
+		}
+		if wErr != nil {
 			return wErr
 		}
 		flusher.Flush()
 		return nil
 	})
-	// Headers are already sent, so a refusal can't be an HTTP status: surface the
-	// reason as a terminal SSE event. ErrLogStoreUnavailable lands here when the
-	// tail is asked for a store-only filter (level/statusCode/…) — the tail reads
-	// pod logs by design, so it says so rather than streaming unfiltered lines.
+	// Headers are already sent, so a refusal can't be an HTTP status. For SSE
+	// callers surface it as a terminal error event; for NDJSON callers it is
+	// a best-effort final line (the client should treat a non-JSON tail as EOF).
 	if errors.Is(err, core.ErrLogsUnavailable) || errors.Is(err, core.ErrLogStoreUnavailable) {
-		_, _ = fmt.Fprintf(w, "event: error\ndata: %q\n\n", err.Error())
+		if useSSE {
+			_, _ = fmt.Fprintf(w, "event: error\ndata: %q\n\n", err.Error())
+		} else {
+			_, _ = fmt.Fprintf(w, "{\"error\":%q}\n", err.Error())
+		}
 		flusher.Flush()
 	}
 }
