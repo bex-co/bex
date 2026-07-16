@@ -28,21 +28,23 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 const (
 	databaseDiskAutoscaleThreshold = 0.90
-	databaseDiskAutoscaleCapGB     = int32(16 * 1024)
 	databaseDiskAutoscaleCooldown  = 12 * time.Hour
 	databaseDiskAutoscaleInterval  = time.Minute
 	databaseDiskResizeHistoryLimit = 20
+	databaseDiskSampleFailureLimit = 3
 
 	annotDiskAutoscaleAt       = "app.bex.co/disk-autoscale-at"
 	annotDiskAutoscaleFromGB   = "app.bex.co/disk-autoscale-from-gb"
 	annotDiskAutoscaleToGB     = "app.bex.co/disk-autoscale-to-gb"
 	annotDiskAutoscaleUsed     = "app.bex.co/disk-autoscale-used-bytes"
 	annotDiskAutoscaleCapacity = "app.bex.co/disk-autoscale-capacity-bytes"
+	annotDiskSampleFailures    = "app.bex.co/disk-autoscale-sample-failures"
 )
 
 // DatabaseDiskUsage is the fullest CNPG instance PVC's current kubelet sample.
@@ -117,14 +119,15 @@ func NewPrometheusDatabaseDiskUsageReader(base string, hc *http.Client) Database
 // nextDatabaseDiskSize applies Render's captured rule: add 50%, round upward
 // to a 5 GB multiple, and stop at 16 TB. It is strictly grow-only.
 func nextDatabaseDiskSize(currentGB int32) int32 {
-	if currentGB <= 0 || currentGB >= databaseDiskAutoscaleCapGB {
+	capGB := tiers.Postgres.DiskAutoscalingCapGB()
+	if currentGB <= 0 || currentGB >= capGB {
 		return currentGB
 	}
 	// ceil(current * 1.5), followed by ceil-to-5GB.
 	target := (currentGB*3 + 1) / 2
 	target = ((target + 4) / 5) * 5
-	if target > databaseDiskAutoscaleCapGB {
-		return databaseDiskAutoscaleCapGB
+	if target > capGB {
+		return capGB
 	}
 	return target
 }
@@ -159,6 +162,9 @@ func (r *DatabaseReconciler) applyDiskAutoscaling(ctx context.Context, db *appv1
 		}
 	}
 	if !db.Spec.DiskAutoscaling || db.Spec.Suspended {
+		if err := r.resetDiskSampleFailures(ctx, db); err != nil {
+			return 0, err
+		}
 		return 0, nil
 	}
 	if r.DiskUsageReader == nil {
@@ -168,7 +174,10 @@ func (r *DatabaseReconciler) applyDiskAutoscaling(ctx context.Context, db *appv1
 	usage, err := r.DiskUsageReader(ctx, db.Namespace, db.Name)
 	if err != nil {
 		logf.FromContext(ctx).Info("database disk autoscaling sample unavailable", "name", db.Name, "reason", err)
-		return databaseDiskAutoscaleInterval, nil
+		return databaseDiskAutoscaleInterval, r.recordDiskSampleFailure(ctx, db, err)
+	}
+	if err := r.resetDiskSampleFailures(ctx, db); err != nil {
+		return databaseDiskAutoscaleInterval, err
 	}
 
 	_, currentGB := resolvePlan(db.Spec)
@@ -206,6 +215,51 @@ func (r *DatabaseReconciler) applyDiskAutoscaling(ctx context.Context, db *appv1
 	logf.FromContext(ctx).Info("database disk autoscaled", "name", db.Name, "pvc", usage.PVC,
 		"fromGB", currentGB, "toGB", nextGB, "usagePercent", usage.ratio()*100)
 	return databaseDiskAutoscaleInterval, nil
+}
+
+// recordDiskSampleFailure debounces transient/no-PVC startup noise. Only a
+// Database already observed Ready accrues failures; the persisted annotation
+// survives manager restarts. The Warning event fires once on the transition to
+// the threshold and remains visible in kubectl describe.
+func (r *DatabaseReconciler) recordDiskSampleFailure(ctx context.Context, db *appv1alpha1.Database, sampleErr error) error {
+	if db.Status.Phase != appv1alpha1.DBPhaseReady {
+		return nil
+	}
+	failures, _ := strconv.Atoi(db.Annotations[annotDiskSampleFailures])
+	if failures >= databaseDiskSampleFailureLimit {
+		return nil
+	}
+	failures++
+	before := db.DeepCopy()
+	if db.Annotations == nil {
+		db.Annotations = map[string]string{}
+	}
+	db.Annotations[annotDiskSampleFailures] = strconv.Itoa(failures)
+	if err := r.Patch(ctx, db, client.MergeFrom(before)); err != nil {
+		return fmt.Errorf("persist disk autoscale sample failure: %w", err)
+	}
+	if failures == databaseDiskSampleFailureLimit {
+		if r.Recorder != nil {
+			r.Recorder.Eventf(db, "Warning", "DiskAutoscalingSampleUnavailable",
+				"could not sample Postgres disk usage for %d consecutive reconciles: %v",
+				databaseDiskSampleFailureLimit, sampleErr)
+		}
+		logf.FromContext(ctx).Error(sampleErr, "database disk autoscaling sample persistently unavailable",
+			"name", db.Name, "consecutiveFailures", failures)
+	}
+	return nil
+}
+
+func (r *DatabaseReconciler) resetDiskSampleFailures(ctx context.Context, db *appv1alpha1.Database) error {
+	if db.Annotations == nil || db.Annotations[annotDiskSampleFailures] == "" {
+		return nil
+	}
+	before := db.DeepCopy()
+	delete(db.Annotations, annotDiskSampleFailures)
+	if err := r.Patch(ctx, db, client.MergeFrom(before)); err != nil {
+		return fmt.Errorf("reset disk autoscale sample failures: %w", err)
+	}
+	return nil
 }
 
 func (r *DatabaseReconciler) syncLastDiskResizeStatus(db *appv1alpha1.Database) bool {

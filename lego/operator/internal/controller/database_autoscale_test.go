@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -105,6 +106,124 @@ func TestDatabaseDiskAutoscaleDecision(t *testing.T) {
 				t.Fatalf("decision = (%d, %v), want (%d, %v)", got, resized, tt.want, tt.wantResize)
 			}
 		})
+	}
+}
+
+func TestPostgresDiskAutoscalingCapUsesSharedCatalogContract(t *testing.T) {
+	if got := tiers.Postgres.DiskAutoscalingCapGB(); got != 16*1024 {
+		t.Fatalf("operator cap source = %d GB, want the 16384 GB contract in lego/types/tiers/tiers.yaml", got)
+	}
+	if got := nextDatabaseDiskSize(12000); got != tiers.Postgres.DiskAutoscalingCapGB() {
+		t.Fatalf("operator growth capped at %d GB, want shared catalog cap %d GB", got, tiers.Postgres.DiskAutoscalingCapGB())
+	}
+}
+
+func TestDiskAutoscalingSampleFailuresDebouncePersistAndReset(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-sample-failures", Namespace: "default"},
+		Spec:       appv1alpha1.DatabaseSpec{Plan: "free", StorageGB: 10, DiskAutoscaling: true},
+		Status:     appv1alpha1.DatabaseStatus{Phase: appv1alpha1.DBPhaseReady},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&appv1alpha1.Database{}).WithObjects(db).Build()
+	recorder := record.NewFakeRecorder(10)
+	readerFails := true
+	reader := func(context.Context, string, string) (DatabaseDiskUsage, error) {
+		if readerFails {
+			return DatabaseDiskUsage{}, fmt.Errorf("prometheus unavailable")
+		}
+		return DatabaseDiskUsage{PVC: "dpg-sample-failures-1", UsedBytes: 1, CapacityBytes: 10}, nil
+	}
+	key := client.ObjectKeyFromObject(db)
+	apply := func(r *DatabaseReconciler) appv1alpha1.Database {
+		t.Helper()
+		var current appv1alpha1.Database
+		if err := cl.Get(context.Background(), key, &current); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := r.applyDiskAutoscaling(context.Background(), &current); err != nil {
+			t.Fatal(err)
+		}
+		if err := cl.Get(context.Background(), key, &current); err != nil {
+			t.Fatal(err)
+		}
+		return current
+	}
+
+	r := &DatabaseReconciler{Client: cl, Scheme: scheme, Recorder: recorder, DiskUsageReader: reader}
+	first := apply(r)
+	if first.Annotations[annotDiskSampleFailures] != "1" {
+		t.Fatalf("first failure count = %q, want 1", first.Annotations[annotDiskSampleFailures])
+	}
+	// A fresh reconciler proves the debounce counter survives manager restart.
+	restarted := &DatabaseReconciler{Client: cl, Scheme: scheme, Recorder: recorder, DiskUsageReader: reader}
+	second := apply(restarted)
+	if second.Annotations[annotDiskSampleFailures] != "2" {
+		t.Fatalf("second failure count after restart = %q, want 2", second.Annotations[annotDiskSampleFailures])
+	}
+	select {
+	case event := <-recorder.Events:
+		t.Fatalf("N-1 failures emitted an event: %q", event)
+	default:
+	}
+	third := apply(restarted)
+	if third.Annotations[annotDiskSampleFailures] != "3" {
+		t.Fatalf("third failure count = %q, want 3", third.Annotations[annotDiskSampleFailures])
+	}
+	select {
+	case event := <-recorder.Events:
+		if !strings.Contains(event, "Warning DiskAutoscalingSampleUnavailable") || !strings.Contains(event, "3 consecutive") {
+			t.Fatalf("warning event = %q", event)
+		}
+	default:
+		t.Fatal("third consecutive sample failure did not emit a Warning event")
+	}
+	_ = apply(restarted)
+	select {
+	case event := <-recorder.Events:
+		t.Fatalf("failure beyond threshold emitted a duplicate event: %q", event)
+	default:
+	}
+
+	readerFails = false
+	afterSuccess := apply(restarted)
+	if _, exists := afterSuccess.Annotations[annotDiskSampleFailures]; exists {
+		t.Fatalf("successful sample did not reset persisted failures: %v", afterSuccess.Annotations)
+	}
+}
+
+func TestDiskAutoscalingSampleFailureStaysQuietBeforeDatabaseReady(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-provisioning", Namespace: "default"},
+		Spec:       appv1alpha1.DatabaseSpec{DiskAutoscaling: true},
+		Status:     appv1alpha1.DatabaseStatus{Phase: appv1alpha1.DBPhaseProvisioning},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&appv1alpha1.Database{}).WithObjects(db).Build()
+	recorder := record.NewFakeRecorder(1)
+	r := &DatabaseReconciler{Client: cl, Scheme: scheme, Recorder: recorder, DiskUsageReader: func(context.Context, string, string) (DatabaseDiskUsage, error) {
+		return DatabaseDiskUsage{}, fmt.Errorf("no complete PVC usage sample")
+	}}
+	if _, err := r.applyDiskAutoscaling(context.Background(), db.DeepCopy()); err != nil {
+		t.Fatal(err)
+	}
+	var got appv1alpha1.Database
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(db), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Annotations[annotDiskSampleFailures] != "" {
+		t.Fatalf("provisioning database accrued sample failures: %v", got.Annotations)
+	}
+	select {
+	case event := <-recorder.Events:
+		t.Fatalf("provisioning database emitted warning: %q", event)
+	default:
 	}
 }
 

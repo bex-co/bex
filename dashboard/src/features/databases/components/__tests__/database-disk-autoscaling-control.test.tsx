@@ -1,7 +1,12 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DatabaseDiskAutoscalingControl } from "@/features/databases/components/database-disk-autoscaling-control";
+import {
+  DatabaseDiskAutoscalingControl,
+  DISK_AUTOSCALING_CAP_GB,
+} from "@/features/databases/components/database-disk-autoscaling-control";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
 const updateDiskAutoscaling = vi.fn();
@@ -40,6 +45,17 @@ beforeEach(() => {
 });
 
 describe("DatabaseDiskAutoscalingControl", () => {
+  it("matches the shared Go operator/backend cap contract", () => {
+    const catalog = readFileSync(
+      resolve(process.cwd(), "../lego/types/tiers/tiers.yaml"),
+      "utf8",
+    );
+    const match = catalog.match(/^\s*diskAutoscalingCapGB:\s*(\d+)\s*$/m);
+
+    expect(match, "tiers.yaml must declare diskAutoscalingCapGB").not.toBeNull();
+    expect(DISK_AUTOSCALING_CAP_GB).toBe(Number(match?.[1]));
+  });
+
   it("shows the current size, cap, and enabled state beside the disk chart", () => {
     render(
       <DatabaseDiskAutoscalingControl

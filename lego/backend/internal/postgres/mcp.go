@@ -24,6 +24,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/types/tiers"
 )
 
 // parseMCPTimeWindow parses optional RFC3339 start/end strings for MCP tool inputs.
@@ -203,7 +204,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "update_postgres_disk_autoscaling",
-		Description: "Enable or disable automatic grow-only storage scaling for a managed Postgres database. At 90% full, storage grows by 50% rounded up to 5 GB, capped at 16 TB with a 12-hour cooldown.",
+		Description: fmt.Sprintf("Enable or disable automatic grow-only storage scaling for a managed Postgres database. At 90%% full, storage grows by 50%% rounded up to 5 GB, capped at %d TB with a 12-hour cooldown.", tiers.Postgres.DiskAutoscalingCapGB()/1024),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateDiskAutoscalingArgs) (*mcp.CallToolResult, PostgresView, error) {
 		v, err := s.UpdatePostgres(ctx, in.PostgresID, PostgresPatch{EnableDiskAutoscaling: &in.Enabled})
 		return nil, v, err

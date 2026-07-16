@@ -101,9 +101,10 @@ type ComputeCatalog struct {
 
 // PostgresCatalog is the parsed, validated Postgres ladder.
 type PostgresCatalog struct {
-	tiers     []PostgresTier
-	byID      map[string]PostgresTier
-	defaultID string
+	tiers                []PostgresTier
+	byID                 map[string]PostgresTier
+	defaultID            string
+	diskAutoscalingCapGB int32
 }
 
 // ValkeyCatalog is the parsed, validated key-value (Valkey) ladder.
@@ -190,6 +191,11 @@ func (c PostgresCatalog) IDs() []string {
 	return ids
 }
 
+// DiskAutoscalingCapGB is the shared maximum grow-only Postgres disk size.
+// The reviewed catalog is the runtime source for both operator decisions and
+// backend tool descriptions; the dashboard mirror is guarded against it.
+func (c PostgresCatalog) DiskAutoscalingCapGB() int32 { return c.diskAutoscalingCapGB }
+
 // --- Valkey ---
 
 // Default returns the plan an empty/unknown KeyValue spec.plan resolves to
@@ -219,8 +225,9 @@ type catalogFile struct {
 		Tiers   []ComputeTier `json:"tiers"`
 	} `json:"compute"`
 	Postgres struct {
-		Default string         `json:"default"`
-		Tiers   []PostgresTier `json:"tiers"`
+		Default              string         `json:"default"`
+		DiskAutoscalingCapGB int32          `json:"diskAutoscalingCapGB"`
+		Tiers                []PostgresTier `json:"tiers"`
 	} `json:"postgres"`
 	Valkey struct {
 		Default string       `json:"default"`
@@ -253,6 +260,7 @@ func parse(raw []byte) (ComputeCatalog, PostgresCatalog, ValkeyCatalog, error) {
 	if err != nil {
 		return ComputeCatalog{}, PostgresCatalog{}, ValkeyCatalog{}, fmt.Errorf("valkey: %w", err)
 	}
+	p.diskAutoscalingCapGB = f.Postgres.DiskAutoscalingCapGB
 	return c, p, v, nil
 }
 

@@ -19,14 +19,17 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -157,4 +160,34 @@ func TestDiskAutoscalingCreateParityGraphQLAndMCP(t *testing.T) {
 	if mcpView["diskAutoscalingEnabled"] != true {
 		t.Fatalf("MCP create = %+v", mcpView)
 	}
+}
+
+func TestDiskAutoscalingMCPDescriptionUsesSharedCatalogCap(t *testing.T) {
+	svc, _ := newService()
+	server := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(server)
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	if _, err := server.Connect(ctx, serverTransport, nil); err != nil {
+		t.Fatal(err)
+	}
+	clientSession, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clientSession.Close()
+	tools, err := clientSession.ListTools(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := fmt.Sprintf("capped at %d TB", tiers.Postgres.DiskAutoscalingCapGB()/1024)
+	for _, tool := range tools.Tools {
+		if tool.Name == "update_postgres_disk_autoscaling" {
+			if !strings.Contains(tool.Description, want) {
+				t.Fatalf("MCP cap description = %q, want shared catalog phrase %q", tool.Description, want)
+			}
+			return
+		}
+	}
+	t.Fatal("update_postgres_disk_autoscaling tool not registered")
 }
