@@ -26,6 +26,19 @@ hydra:
       # OAuth 2.1 user access tokens shorten too — they carry refresh tokens, so
       # the shorter access token is transparent to those callers.
       access_token: 15m
+    oauth2:
+      grant:
+        refresh_token:
+          # Graceful refresh-token rotation. The official Render CLI refreshes on
+          # EVERY command once a token is within 24h of expiry — with the 15m
+          # access-token TTL above, that is every command, so each invocation
+          # consumes and rotates the refresh token. With Hydra's default 0s a
+          # rotated-but-unpersisted token (interrupted command) or two concurrent
+          # CLI invocations reuse a spent refresh token, which revokes the whole
+          # token chain and strands the CLI in `your token is expired` until a
+          # fresh device-code login. 60s lets near-simultaneous refreshes of the
+          # same token succeed; schema max without a reuse count is 5m.
+          rotation_grace_period: 60s
     urls:
       self:
         issuer: https://oauth.bex.co # must match the public host (t005/ingress)
