@@ -483,6 +483,11 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 	_ = json.NewEncoder(w).Encode(body)
 }
 
+// writeErr/writeJSON are the internal control-plane API's own minimal error
+// dialect ({"error"} only), deliberately NOT core.WriteErr's Render-shaped
+// envelope (w9/m38): this API (BEX_CP_ADDR, :8091, bearer-token) is consumed by
+// bex's own operator/projector, never a Render client, and its ErrInvalid/
+// ErrNotFound/ErrConflict sentinels are package-local, not core's.
 func writeErr(w http.ResponseWriter, err error) {
 	code := http.StatusInternalServerError
 	switch {

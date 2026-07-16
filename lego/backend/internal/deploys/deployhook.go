@@ -267,7 +267,7 @@ func (s *Service) DeployHookHandler() http.Handler {
 		w.Header().Set("Cache-Control", "no-store")
 		if r.Method != http.MethodGet && r.Method != http.MethodPost {
 			w.Header().Set("Allow", "GET, POST")
-			core.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+			core.WriteErrStatus(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 		token := r.PathValue("token")

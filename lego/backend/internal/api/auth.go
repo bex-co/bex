@@ -165,7 +165,7 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 		}
 		switch {
 		case err != nil: // Ory unreachable/broken — fail closed, honestly
-			http.Error(w, `{"error":"auth upstream unavailable"}`, http.StatusServiceUnavailable)
+			core.WriteErrStatus(w, http.StatusServiceUnavailable, "auth upstream unavailable")
 		case id == core.Identity{}:
 			a.unauthorized(w)
 		default:
@@ -177,7 +177,7 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 			// request that can't be tenanted must not be served un-tenanted.
 			if a.onboard != nil && id.Human {
 				if _, err := a.onboard.EnsureTenant(r.Context(), id.Subject, id.Email); err != nil {
-					http.Error(w, `{"error":"tenant onboarding unavailable"}`, http.StatusServiceUnavailable)
+					core.WriteErrStatus(w, http.StatusServiceUnavailable, "tenant onboarding unavailable")
 					return
 				}
 			}
@@ -348,7 +348,7 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
 // that hit the API unauthenticated finds the authorization server).
 func (a *oryAuth) unauthorized(w http.ResponseWriter) {
 	w.Header().Set("WWW-Authenticate", a.challenge)
-	http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+	core.WriteErrStatus(w, http.StatusUnauthorized, "unauthorized")
 }
 
 // withCORS adds CORS for a comma-separated allowlist of origins and answers

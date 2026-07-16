@@ -754,7 +754,7 @@ func (s *Server) graphqlHandler() http.Handler {
 			Variables     map[string]any `json:"variables"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, `{"error":"bad request"}`, http.StatusBadRequest)
+			core.WriteErrStatus(w, http.StatusBadRequest, "bad request")
 			return
 		}
 		// Env-var reads nest under the apps Service type but live in the secrets

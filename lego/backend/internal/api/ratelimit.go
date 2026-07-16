@@ -172,12 +172,11 @@ func withBodyLimit(max int64) func(http.Handler) http.Handler {
 				buf, err := io.ReadAll(io.LimitReader(r.Body, max+1))
 				_ = r.Body.Close()
 				if err != nil {
-					core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "failed to read request body"})
+					core.WriteErrStatus(w, http.StatusBadRequest, "failed to read request body")
 					return
 				}
 				if int64(len(buf)) > max {
-					core.WriteJSON(w, http.StatusRequestEntityTooLarge,
-						map[string]string{"error": fmt.Sprintf("request body exceeds %d bytes", max)})
+					core.WriteErrStatus(w, http.StatusRequestEntityTooLarge, fmt.Sprintf("request body exceeds %d bytes", max))
 					return
 				}
 				r.Body = io.NopCloser(bytes.NewReader(buf))

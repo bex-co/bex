@@ -135,7 +135,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		mux.HandleFunc("POST "+base, func(w http.ResponseWriter, r *http.Request) {
 			var req CreatePostgresRequest
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
+				core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
 				return
 			}
 			if !req.DryRun && r.URL.Query().Get("dryRun") == "true" {
@@ -182,7 +182,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				AllowWrites bool   `json:"allowWrites"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
+				core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
 				return
 			}
 			result, err := s.ExecuteQuery(r.Context(), r.PathValue("id"), req.SQL, req.AllowWrites)
@@ -220,7 +220,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		mux.HandleFunc("POST "+base+"/{id}/recover", func(w http.ResponseWriter, r *http.Request) {
 			var req RecoverRequest
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
+				core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
 				return
 			}
 			pg, err := s.Recover(r.Context(), r.PathValue("id"), req)
@@ -281,7 +281,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				CIDRs []core.IPAllowListEntry `json:"cidrs"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
+				core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
 				return
 			}
 			pg, err := s.SetIPAllowList(r.Context(), r.PathValue("id"), req.CIDRs)
@@ -304,7 +304,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				Name string `json:"name"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
+				core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
 				return
 			}
 			res, err := s.CreateUser(r.Context(), r.PathValue("id"), req.Name)
@@ -368,7 +368,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				Parameters map[string]string `json:"parameters"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
+				core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
 				return
 			}
 			pg, err := s.SetParameterOverrides(r.Context(), r.PathValue("id"), req.Parameters)
@@ -404,7 +404,7 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 		DryRun                 bool                     `json:"dryRun,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
+		core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
 		return
 	}
 	id := r.PathValue("id")

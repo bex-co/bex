@@ -147,7 +147,7 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		core.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "streaming unsupported"})
+		core.WriteErrStatus(w, http.StatusInternalServerError, "streaming unsupported")
 		return
 	}
 	// SSE is long-lived; clear the per-request write deadline so the server's

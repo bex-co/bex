@@ -1,17 +1,17 @@
 # w9 · m38 — One error dialect: every error path speaks Render's shape
 
-**Worker:** worker9 **Goal:** Every non-2xx response bex-api emits carries `Content-Type: application/json` and Render's `message` key — the second, bare-`{"error"}`/text-plain dialect is retired. **Status:** todo
+**Worker:** worker9 **Goal:** Every non-2xx response bex-api emits carries `Content-Type: application/json` and Render's `message` key — the second, bare-`{"error"}`/text-plain dialect is retired. **Status:** DONE
 
 ## Tasks (in order)
 
 | id   | title                                                                                  | est | depends_on |
 | ---- | -------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Route auth-gate 401/503 + GraphQL decode 400 through `core.WriteErr`                   | 30m | —          |
-| t002 | Route metrics 400s + deploy-hook 405 through `core.WriteErr`; sweep remaining sites    | 40m | —          |
-| t003 | Render parity                                                                           | 30m | t001, t002 |
-| t004 | Simplify                                                                                | 20m | t003       |
-| t005 | Test coverage                                                                           | 30m | t003       |
-| t006 | Closeout                                                                                | 15m | t005       |
+| t001 | Route auth-gate 401/503 + GraphQL decode 400 through `core.WriteErr`                   | 30m | — — **DONE** |
+| t002 | Route metrics 400s + deploy-hook 405 through `core.WriteErr`; sweep remaining sites    | 40m | — — **DONE** |
+| t003 | Render parity                                                                           | 30m | t001, t002 — **DONE** |
+| t004 | Simplify                                                                                | 20m | t003 — **DONE** |
+| t005 | Test coverage                                                                           | 30m | t003 — **DONE** |
+| t006 | Closeout                                                                                | 15m | t005 — **DONE** |
 
 ## Definition of done
 
