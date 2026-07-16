@@ -3,17 +3,25 @@
 # docs/ADR022-tenant-isolation.md § Registry access control) — no secret material
 # in git or Argo-managed manifests (repo rule; same posture as auth-secrets.sh).
 #
-# Zot denies anonymous catalog/pull/push (accessControl defaultPolicy []). Two
-# bcrypt-hashed users live in the htpasswd Secret Zot mounts:
-#   bex-builder  read/create/update/delete  — the build Job's push (buildkit + cosign)
-#   bex-puller   read                       — tenant pods' imagePullSecret (kubelet pulls)
-# The htpasswd holds only bcrypt HASHES (safe); the matching plaintext rides two
-# docker-config Secrets so buildkitd authenticates the push and kubelet the pull.
+# Per-App pull credentials (w7/m36): the bex-puller shared credential is no longer
+# used. Each App gets its own "app-<name>" htpasswd user and a per-repo Zot ACL
+# entry, managed dynamically by the operator. This script:
+#   - seeds zot-htpasswd with bex-builder only (bex-puller removed);
+#   - does NOT create bex-registry-pull (deprecated; superseded by per-App
+#     "reg-pull-<name>" Secrets in the apps namespace created by the operator).
+#   - creates bex-registry-pull in the BUILD namespace only (for the static-site
+#     publish Job's extract initContainer which uses the push credential path).
+#
+# Zot denies anonymous catalog/pull/push (accessControl defaultPolicy []). The
+# htpasswd holds only bcrypt HASHES (safe); the matching plaintext rides:
+#   bex-builder  push Secret     — build Jobs authenticate via bex-registry-push
+#   app-<name>   per-App Secret  — tenant pods' "reg-pull-<name>" (operator-minted)
 #
 # Reads the repo-local .env (gitignored — never commit or print it). Required keys
 # (names only; values are never echoed):
 #   BEX_REGISTRY_BUILDER_PASSWORD  push credential         (>= 12 chars; hex/alnum is safest)
-#   BEX_REGISTRY_PULLER_PASSWORD   pull credential         (>= 12 chars; hex/alnum is safest)
+# No longer required (per-App credentials are minted by the operator):
+#   BEX_REGISTRY_PULLER_PASSWORD   (removed; kept only for backward-compat check)
 # Optional (defaults match deploy/gitops/base + lego/operator/config/manager):
 #   BEX_REGISTRY             registry host the docker-config `auths` key targets
 #                             (default zot.bex-registry.svc:5000)
@@ -21,14 +29,12 @@
 #                             plain HTTP in upstream kpack (default zot.local:5000)
 #   BEX_BUILD_NAMESPACE      ns the build Job runs in → where the push Secret lives
 #                             (default bex-system; manager.yaml BEX_BUILD_NAMESPACE)
-#   BEX_CP_APPS_NAMESPACE    ns tenant pods run in → where the pull Secret lives
-#                             (default default)
 #
 # Secrets created (idempotent — re-run to rotate):
-#   bex-registry/zot-htpasswd        key htpasswd         (bcrypt, both users)
-#   <build-ns>/bex-registry-push     key config.json      (docker-config, bex-builder)
+#   bex-registry/zot-htpasswd        key htpasswd   (bcrypt, bex-builder only; per-App added by operator)
+#   <build-ns>/bex-registry-push     key config.json  (docker-config, bex-builder)
 #   <build-ns>/bex-registry-push-kpack type dockerconfigjson (same credential + alias)
-#   <apps-ns>/bex-registry-pull      type dockerconfigjson (bex-puller)
+#   <build-ns>/bex-registry-pull     type dockerconfigjson (bex-builder cred for publish Job)
 #
 # Usage: scripts/registry-secrets.sh             # create/update the Secrets
 #        DRY_RUN=1 scripts/registry-secrets.sh   # print what would be applied (names only)
@@ -56,12 +62,10 @@ require() {
 }
 
 require BEX_REGISTRY_BUILDER_PASSWORD 12
-require BEX_REGISTRY_PULLER_PASSWORD 12
 
 REGISTRY="${BEX_REGISTRY:-zot.bex-registry.svc:5000}"
 KPACK_REGISTRY="${BEX_KPACK_REGISTRY:-zot.local:5000}"
 BUILD_NS="${BEX_BUILD_NAMESPACE:-bex-system}"
-APPS_NS="${BEX_CP_APPS_NAMESPACE:-default}"
 
 command -v kubectl >/dev/null || { echo "error: kubectl not found" >&2; exit 1; }
 command -v jq >/dev/null || { echo "error: jq not found" >&2; exit 1; }
@@ -97,11 +101,11 @@ registry_config() {
 
 if [ "${DRY_RUN:-}" = "1" ]; then
   echo "would ensure namespace $REGISTRY_NS"
-  echo "would apply secret $REGISTRY_NS/zot-htpasswd (key htpasswd, users: bex-builder bex-puller)"
+  echo "would apply secret $REGISTRY_NS/zot-htpasswd (key htpasswd, user: bex-builder only — per-App users added by operator)"
   echo "would apply secret $BUILD_NS/bex-registry-push (key config.json, user bex-builder → $REGISTRY)"
   echo "would apply secret $BUILD_NS/bex-registry-push-kpack (dockerconfigjson, user bex-builder → $KPACK_REGISTRY)"
-  echo "would apply secret $APPS_NS/bex-registry-pull (dockerconfigjson, user bex-puller → $REGISTRY + $KPACK_REGISTRY)"
-  echo "would apply secret $BUILD_NS/bex-registry-pull (dockerconfigjson, for the publish Job)"
+  echo "would apply secret $BUILD_NS/bex-registry-pull (dockerconfigjson, bex-builder for publish Job)"
+  echo "NOTE: bex-registry-pull in apps namespace is no longer created — operator mints reg-pull-<name> per App"
   exit 0
 fi
 
@@ -112,8 +116,9 @@ kubectl get namespace "$REGISTRY_NS" >/dev/null 2>&1 || kubectl create namespace
 kubectl get namespace "$BUILD_NS" >/dev/null 2>&1 || kubectl create namespace "$BUILD_NS" >/dev/null
 
 # 1. htpasswd (bcrypt) Zot mounts via externalSecrets (deploy/gitops/base/zot.yaml).
-HTPASSWD="$(htpasswd_line bex-builder "$BEX_REGISTRY_BUILDER_PASSWORD")
-$(htpasswd_line bex-puller "$BEX_REGISTRY_PULLER_PASSWORD")"
+# Only bex-builder is seeded here. Per-App users ("app-<name>") are added by the
+# operator as each App is reconciled (w7/m36).
+HTPASSWD="$(htpasswd_line bex-builder "$BEX_REGISTRY_BUILDER_PASSWORD")"
 kubectl create secret generic zot-htpasswd -n "$REGISTRY_NS" \
   --from-literal=htpasswd="$HTPASSWD" \
   --dry-run=client -o yaml | kubectl apply -f - >/dev/null
@@ -131,16 +136,17 @@ kubectl create secret generic bex-registry-push-kpack -n "$BUILD_NS" \
   --from-literal=.dockerconfigjson="$(registry_config bex-builder "$BEX_REGISTRY_BUILDER_PASSWORD")" \
   --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 
-# 3. Pull credential (imagePullSecret, kubelet reads it). Created in BOTH the
-# apps namespace (tenant Deployments/CronJobs pull here) AND the build namespace
-# (the static-site publish Job's extract initContainer pulls the built image here).
-for pull_ns in "$APPS_NS" "$BUILD_NS"; do
-  kubectl get namespace "$pull_ns" >/dev/null 2>&1 || kubectl create namespace "$pull_ns" >/dev/null
-  kubectl create secret generic bex-registry-pull -n "$pull_ns" \
-    --type=kubernetes.io/dockerconfigjson \
-    --from-literal=.dockerconfigjson="$(registry_config bex-puller "$BEX_REGISTRY_PULLER_PASSWORD")" \
-    --dry-run=client -o yaml | kubectl apply -f - >/dev/null
-done
+# 3. Pull credential for the build namespace only — used by the static-site publish
+# Job's extract initContainer to pull the built image. The builder password is used
+# here because bex-builder has read access in the ** wildcard ACL.
+# NOTE: the apps-namespace bex-registry-pull is no longer created; the operator
+# mints per-App "reg-pull-<name>" Secrets (w7/m36, docs/ADR022-tenant-isolation.md).
+kubectl get namespace "$BUILD_NS" >/dev/null 2>&1 || kubectl create namespace "$BUILD_NS" >/dev/null
+kubectl create secret generic bex-registry-pull -n "$BUILD_NS" \
+  --type=kubernetes.io/dockerconfigjson \
+  --from-literal=.dockerconfigjson="$(registry_config bex-builder "$BEX_REGISTRY_BUILDER_PASSWORD")" \
+  --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 
-echo "applied: $REGISTRY_NS/zot-htpasswd, $BUILD_NS/bex-registry-push{,-kpack}, $APPS_NS/bex-registry-pull"
-echo "remember to rollout restart zot so it re-reads the htpasswd:  kubectl rollout restart statefulset zot -n $REGISTRY_NS"
+echo "applied: $REGISTRY_NS/zot-htpasswd (bex-builder only), $BUILD_NS/bex-registry-push{,-kpack,-pull}"
+echo "operator will mint per-App reg-pull-<name> Secrets and add app-<name> htpasswd entries as Apps are reconciled"
+echo "after first reconcile, restart Zot to load initial zot-config:  kubectl rollout restart statefulset zot -n $REGISTRY_NS"

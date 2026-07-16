@@ -40,6 +40,7 @@ import (
 
 	"github.com/bex-co/bex/lego/operator/internal/controller"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
+	"github.com/bex-co/bex/lego/operator/internal/registry"
 	bexruntime "github.com/bex-co/bex/lego/operator/internal/runtime"
 	bexwebhook "github.com/bex-co/bex/lego/operator/internal/webhook"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -271,6 +272,18 @@ func main() {
 		TenantSignImage:     envOr("BEX_TENANT_SIGNING_IMAGE", ""),
 		RegistryPushSecret:  os.Getenv("BEX_REGISTRY_PUSH_SECRET"),
 		RegistryPullSecret:  os.Getenv("BEX_REGISTRY_PULL_SECRET"),
+	}
+	// Per-App registry pull credentials (w7/m36). Active when BEX_REGISTRY_NS is
+	// set (typically "bex-registry"). Supersedes the shared bex-puller path.
+	if zotNS := os.Getenv("BEX_REGISTRY_NS"); zotNS != "" {
+		appReconciler.PerAppRegistry = &registry.Creds{
+			Client:        mgr.GetClient(),
+			ZotNamespace:  zotNS,
+			HTPasswdName:  envOr("BEX_ZOT_HTPASSWD_SECRET", "zot-htpasswd"),
+			ConfigName:    envOr("BEX_ZOT_CONFIG_SECRET", "zot-config"),
+			Registry:      envOr("BEX_REGISTRY", "127.0.0.1:5050"),
+			KpackRegistry: os.Getenv("BEX_KPACK_REGISTRY"),
+		}
 	}
 	if cs != nil {
 		appReconciler.MetricsReader = controller.NewMetricsServerReader(cs)

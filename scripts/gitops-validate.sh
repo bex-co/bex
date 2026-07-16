@@ -194,16 +194,20 @@ if [ -f "$ZOT" ]; then
   echo "$rev" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+' \
     || { echo "FAIL: zot targetRevision is '$rev' — pin an exact chart version (no wildcard)" >&2; fail=1; }
   vals="$(yq '.spec.source.helm.values' "$ZOT")"
-  # A custom config carrying auth must be shipped (not the chart's auth-off defaults).
-  echo "$vals" | yq -e '.mountConfig == true' >/dev/null \
-    || { echo "FAIL: zot mountConfig must be true (ship the authed config)" >&2; fail=1; }
-  # The auth/accessControl tokens must all be present (htpasswd auth, the accessControl
-  # block, and the two named users). One grep pass over the committed values string.
-  echo "$vals" | grep -qE '"(htpasswd|accessControl|bex-builder|bex-puller)"' \
-    || { echo "FAIL: zot config missing auth/accessControl tokens (htpasswd/accessControl/bex-builder/bex-puller)" >&2; fail=1; }
-  # defaultPolicy must be empty — anonymous denied everything (catalog/pull/push).
-  echo "$vals" | grep -q '"defaultPolicy": *\[\]' \
-    || { echo "FAIL: zot accessControl.defaultPolicy must be [] (anonymous denied)" >&2; fail=1; }
+  # Per-App pull credentials (w7/m36): the operator manages the full Zot config via
+  # the zot-config Secret, so mountConfig must be false (chart must not override it).
+  echo "$vals" | yq -e '.mountConfig == false' >/dev/null \
+    || { echo "FAIL: zot mountConfig must be false (operator manages config via zot-config Secret, w7/m36)" >&2; fail=1; }
+  # Both externalSecrets (zot-config and zot-htpasswd) must be present.
+  echo "$vals" | grep -q 'zot-config' \
+    || { echo "FAIL: zot externalSecrets must reference zot-config Secret (operator-managed config, w7/m36)" >&2; fail=1; }
+  echo "$vals" | grep -q 'zot-htpasswd' \
+    || { echo "FAIL: zot externalSecrets must reference zot-htpasswd Secret" >&2; fail=1; }
+  # The bex-puller shared credential must NOT appear in the Zot chart values —
+  # it is absent from the operator-managed per-App scheme (ADR022:204 closed).
+  if echo "$vals" | grep -q 'bex-puller'; then
+    echo "FAIL: zot values must not reference bex-puller (shared credential removed in w7/m36)" >&2; fail=1
+  fi
 fi
 
 tmp="$(mktemp -d)"

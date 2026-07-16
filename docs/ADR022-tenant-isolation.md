@@ -199,18 +199,27 @@ A unit test (`lego/operator/internal/build/build_test.go`) asserts the credentia
 
 ### Read policy (decision)
 
-**Authenticated read** (`defaultPolicy: []`, anonymous denied). Pulls authenticate via the read-only `bex-puller` `imagePullSecret` the operator attaches to tenant Deployments/CronJobs when the image is registry-hosted (`BEX_REGISTRY_PULL_SECRET`). This is stronger than anonymous-read: a tenant build pod can no longer pull another tenant's image at all, because it has no credential. Kubelet pulls keep working because the node-side NetworkPolicy (the `host`/`remote-node` Cilium entity, w1/m19) still reaches Zot, now presenting the `imagePullSecret`.
+**Authenticated read** (`defaultPolicy: []`, anonymous denied). Pulls authenticate via per-App pull credentials (w7/m36, see below). The earlier shared `bex-puller` credential (w7/m8) has been superseded; the shared-credential residual recorded at line 204 is now closed.
 
-**Accepted residual:** a _compromised tenant runtime pod_ still holding the shared `bex-puller` cred can read every tenant's images (the read cred is shared, not per-App). This is a strictly harder threat than the one being closed (it requires RCE in the tenant's own running app, which already runs the tenant's code) and is the same shared-cred tradeoff documented above; closing it needs per-App pull creds, which needs per-App htpasswd entries — deferred for the same sequencing reason as the rest of w7 (before real tenants).
+#### Per-App pull credentials (w7/m36)
+
+Each App that builds and pushes an image to Zot receives its own Zot user `app-<name>` and a per-repo ACL entry that restricts that user to reading only `<name>/**`. The operator manages:
+
+- **`zot-htpasswd`** Secret (in `bex-registry`): bcrypt entry `app-<name>:hash` added on App reconcile, removed on App delete. `bex-puller` is no longer present.
+- **`zot-config`** Secret (in `bex-registry`): full Zot `config.json` managed by the operator; per-App entry `"<name>": {"policies": [{"users": ["app-<name>"], "actions": ["read"]}]}` added on App reconcile, removed on App delete. The `**` wildcard policy only lists `bex-builder` (push); no shared read user is in the global ACL.
+- **`reg-pull-<name>`** Secret (in the App namespace): `kubernetes.io/dockerconfigjson` with plaintext `app-<name>:password` credential, referenced as `imagePullSecret` on all tenant workloads. Deleted by the operator finalizer on App delete.
+
+**Closed residual (was ADR022:204):** a compromised tenant runtime pod holding `app-foo`'s pull credential can only pull from the `foo` repository. It cannot read `bar`'s images because `app-foo` is absent from `bar`'s per-repo ACL and the `**` wildcard `defaultPolicy: []` provides no fallback. Live proof: `scripts/verify-per-app-registry-isolation.sh`.
 
 ### TLS posture (residual)
 
-`registry.insecure=true` on the build push and HTTP-only Zot means the `bex-builder`/`bex-puller` credentials cross the cluster network in plaintext. This is acceptable **inside** a trusted cluster network (the same trust boundary the in-cluster control plane relies on) but is the reason Zot must be `ClusterIP`-only (never exposed) — the platform-side NetworkPolicy already denies tenant pods; this residual is about east-west between platform namespaces, not north-south. Fronting Zot with TLS + a public face is a prod-hardening follow-up, not in m8 scope; documented here so it is not silently inherited.
+`registry.insecure=true` on the build push and HTTP-only Zot means the `bex-builder` and per-App credentials cross the cluster network in plaintext. This is acceptable **inside** a trusted cluster network (the same trust boundary the in-cluster control plane relies on) but is the reason Zot must be `ClusterIP`-only (never exposed) — the platform-side NetworkPolicy already denies tenant pods; this residual is about east-west between platform namespaces, not north-south. Fronting Zot with TLS + a public face is a prod-hardening follow-up; documented here so it is not silently inherited.
 
 ### Verification
 
-- **Live** — `scripts/verify-registry-auth.sh` asserts from a build-labeled probe pod that anonymous `GET /v2/_catalog` and an anonymous push are both refused (`401`), and that a credentialed build-from-git App round-trips (build → push → deploy → serve). It complements `verify-tenant-isolation.sh`, which already proves the network-layer deny (tenant pod → zot) — together they cover both the network and application layers.
-- **CI** — `scripts/gitops-validate.sh` asserts `deploy/gitops/base/zot.yaml` carries the auth stanza (`mountConfig`, `auth.htpasswd`, `accessControl` with `defaultPolicy: []`) and a pinned chart; a regression that removes auth fails CI before Argo applies it.
+- **Live (auth)** — `scripts/verify-registry-auth.sh` asserts anonymous `GET /v2/_catalog` and push are both refused (`401`), and that a credentialed build-from-git App round-trips.
+- **Live (per-App isolation)** — `scripts/verify-per-app-registry-isolation.sh` asserts App A's credential cannot pull App B's image (expected `401`), proves App A can pull its own image, and verifies credential revocation on App delete (htpasswd + config entries removed).
+- **CI** — `scripts/gitops-validate.sh` asserts `deploy/gitops/base/zot.yaml` carries the auth stanza (`auth.htpasswd`, `accessControl` with `defaultPolicy: []`) and a pinned chart; a regression that removes auth fails CI before Argo applies it.
 
 ## Rejected options
 
