@@ -299,6 +299,7 @@ func (s *Service) ListExports(ctx context.Context, name string) ([]ExportView, e
 // owns the pg_dump/upload Job and writes the lifecycle back to status; bex-api
 // never handles dump bytes. Render permits only one in-progress export per DB.
 func (s *Service) CreateExport(ctx context.Context, name string) (ExportView, error) {
+	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return ExportView{}, err
@@ -328,5 +329,6 @@ func (s *Service) CreateExport(ctx context.Context, name string) (ExportView, er
 	if err := s.Client.Update(ctx, d); err != nil {
 		return ExportView{}, err
 	}
+	s.RecordDatabaseEffect(ctx, d, core.DatabaseBackupStarted)
 	return ExportView{ID: exportID, CreatedAt: requestedAt, Status: string(appv1alpha1.DatabaseExportCreated)}, nil
 }

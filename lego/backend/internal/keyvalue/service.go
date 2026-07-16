@@ -401,7 +401,6 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 		}
 		return KeyValueView{}, err
 	}
-	s.RecordKeyValueCreated(ctx, kv)
 	return kvView(kv), nil
 }
 
@@ -524,6 +523,7 @@ func (s *Service) SetIPAllowList(ctx context.Context, name string, entries []cor
 // to 400/a GraphQL error, listing the valid plans). A plan change resizes the
 // Valkey StatefulSet's pod resources on the next operator reconcile.
 func (s *Service) SetPlan(ctx context.Context, name, plan string) (KeyValueView, error) {
+	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	kv, err := s.fetchKeyValue(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return KeyValueView{}, err
@@ -531,9 +531,19 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (KeyValueView,
 	if _, ok := tiers.Valkey.ByID(plan); !ok {
 		return KeyValueView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Valkey.IDs(), "|"))
 	}
-	return s.patchKeyValueObj(ctx, kv, func(kv *appv1alpha1.KeyValue) {
+	from := kv.Spec.Plan
+	view, err := s.patchKeyValueObj(ctx, kv, func(kv *appv1alpha1.KeyValue) {
 		kv.Spec.Plan = plan
 	})
+	if err != nil {
+		return KeyValueView{}, err
+	}
+	if from != plan {
+		s.RecordKeyValueEffect(ctx, kv, core.KeyValuePlanChanged)
+	} else {
+		s.RecordKeyValueEffect(ctx, kv, core.KeyValueUpdated)
+	}
+	return view, nil
 }
 
 // PreviewSetPlan returns what SetPlan would produce without writing — the same
@@ -610,6 +620,7 @@ func (patch KeyValuePatch) apply(kv *appv1alpha1.KeyValue) {
 // PATCH route needs so `keyvalues update --name` (which sends no plan) stops
 // 400ing, and the rename lands on the immutable red- id.
 func (s *Service) UpdateKeyValue(ctx context.Context, name string, patch KeyValuePatch) (KeyValueView, error) {
+	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	kv, err := s.fetchKeyValue(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return KeyValueView{}, err
@@ -622,7 +633,17 @@ func (s *Service) UpdateKeyValue(ctx context.Context, name string, patch KeyValu
 			return KeyValueView{}, err
 		}
 	}
-	return s.patchKeyValueObj(ctx, kv, patch.apply)
+	fromPlan := kv.Spec.Plan
+	view, err := s.patchKeyValueObj(ctx, kv, patch.apply)
+	if err != nil {
+		return KeyValueView{}, err
+	}
+	if patch.Plan != nil && fromPlan != kv.Spec.Plan {
+		s.RecordKeyValueEffect(ctx, kv, core.KeyValuePlanChanged)
+	} else {
+		s.RecordKeyValueEffect(ctx, kv, core.KeyValueUpdated)
+	}
+	return view, nil
 }
 
 // PreviewUpdateKeyValue is UpdateKeyValue's dry-run twin (w2/m29 pattern): same

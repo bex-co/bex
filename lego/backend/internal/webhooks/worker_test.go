@@ -28,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -284,6 +285,31 @@ func TestDispatchFansOutOnlyToSubscribedEndpointsOfTheEventsWorkspace(t *testing
 		if p.Data.ID != d.EventID || p.Data.ServiceID == "" || p.Timestamp == "" {
 			t.Errorf("payload = %+v, delivery = %+v", p, d)
 		}
+	}
+}
+
+func TestProjectDatastoreAuditEventUsesRenderThinPayload(t *testing.T) {
+	row := store.WebhookEventRow{
+		Key:         "aud-postgres-created:",
+		At:          time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC),
+		TenantID:    "tea-acme",
+		ServiceID:   "dpg-orders",
+		ServiceName: "orders",
+		Source:      store.EventSourceAudit,
+		Verb:        core.AuditVerbPostgresCreated,
+	}
+
+	eventType, data, ok := project(row)
+	if !ok || eventType != TypePostgresCreated {
+		t.Fatalf("project type = (%q, %v), want (%q, true)", eventType, ok, TypePostgresCreated)
+	}
+	if data.ID == "" || data.ServiceID != "dpg-orders" || data.ServiceName != "orders" || data.Status != "" {
+		t.Fatalf("project data = %+v", data)
+	}
+
+	row.Verb = core.AuditVerbPostgresUpdated
+	if eventType, _, ok := project(row); ok {
+		t.Fatalf("unrelated datastore update projected as %q", eventType)
 	}
 }
 

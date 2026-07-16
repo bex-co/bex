@@ -83,29 +83,23 @@ import (
 // is Render's own and differs from its list-events enum where the two overlap
 // (webhooks say service_suspended; the events feed says suspender_added).
 const (
-	TypeDeployStarted             = "deploy_started"
-	TypeDeployEnded               = "deploy_ended"
-	TypeServerRestarted           = "server_restarted"
-	TypeServiceSuspended          = "service_suspended"
-	TypeServiceResumed            = "service_resumed"
-	TypeInstanceCountChanged      = "instance_count_changed"
-	TypeAutoscalingConfigChanged  = "autoscaling_config_changed"
-	TypeCronJobRunStarted         = "cron_job_run_started"
-	TypeCronJobRunEnded           = "cron_job_run_ended"
-	TypeMaintenanceModeEnabled    = "maintenance_mode_enabled"
-	TypeMaintenanceModeURIUpdated = "maintenance_mode_uri_updated"
-	// Managed datastore events (w3/m26): Render's webhook vocabulary extended to
-	// Postgres and Key Value lifecycle transitions. Render does not document these
-	// publicly — bex defines them following the service_* naming convention so a
-	// Render-shaped receiver can extend its handler without a schema break.
-	TypePostgresCreated   = "postgres_created"
-	TypePostgresDeleted   = "postgres_deleted"
-	TypePostgresSuspended = "postgres_suspended"
-	TypePostgresResumed   = "postgres_resumed"
-	TypeKeyValueCreated   = "key_value_created"
-	TypeKeyValueDeleted   = "key_value_deleted"
-	TypeKeyValueSuspended = "key_value_suspended"
-	TypeKeyValueResumed   = "key_value_resumed"
+	TypeDeployStarted              = "deploy_started"
+	TypeDeployEnded                = "deploy_ended"
+	TypeServerRestarted            = "server_restarted"
+	TypeServiceSuspended           = "service_suspended"
+	TypeServiceResumed             = "service_resumed"
+	TypeInstanceCountChanged       = "instance_count_changed"
+	TypeAutoscalingConfigChanged   = "autoscaling_config_changed"
+	TypeCronJobRunStarted          = "cron_job_run_started"
+	TypeCronJobRunEnded            = "cron_job_run_ended"
+	TypeMaintenanceModeEnabled     = "maintenance_mode_enabled"
+	TypeMaintenanceModeURIUpdated  = "maintenance_mode_uri_updated"
+	TypePlanChanged                = "plan_changed"
+	TypePostgresCreated            = "postgres_created"
+	TypePostgresRestarted          = "postgres_restarted"
+	TypePostgresCredentialsCreated = "postgres_credentials_created"
+	TypePostgresCredentialsDeleted = "postgres_credentials_deleted"
+	TypePostgresBackupStarted      = "postgres_backup_started"
 )
 
 // verbEvents maps an audited verb ("<package>.<Method>", the same key
@@ -115,27 +109,25 @@ const (
 // event. Deploy transitions come from deploys rows, not a verb (see
 // eventTypeOf).
 var verbEvents = map[string]string{
-	"apps.Restart":                          TypeServerRestarted,
-	"apps.Suspend":                          TypeServiceSuspended,
-	"apps.Resume":                           TypeServiceResumed,
-	"apps.Scale":                            TypeInstanceCountChanged,
-	"apps.SetAutoscaling":                   TypeAutoscalingConfigChanged,
-	"apps.DeleteAutoscaling":                TypeAutoscalingConfigChanged,
-	"apps.TriggerCronRun":                   TypeCronJobRunStarted,
-	"apps.CancelCronRun":                    TypeCronJobRunEnded,
-	"apps.CancelCurrentCronRun":             TypeCronJobRunEnded,
-	core.AuditVerbMaintenanceModeEnabled:    TypeMaintenanceModeEnabled,
-	core.AuditVerbMaintenanceModeURIUpdated: TypeMaintenanceModeURIUpdated,
-	// Managed datastore lifecycle verbs (w3/m26) — picked up by the
-	// database/keyvalue UNION ALL arms in store.webhookEventsQuery.
-	core.AuditVerbCreatePostgres:  TypePostgresCreated,
-	core.AuditVerbDeletePostgres:  TypePostgresDeleted,
-	core.AuditVerbSuspendPostgres: TypePostgresSuspended,
-	core.AuditVerbResumePostgres:  TypePostgresResumed,
-	core.AuditVerbCreateKeyValue:  TypeKeyValueCreated,
-	core.AuditVerbDeleteKeyValue:  TypeKeyValueDeleted,
-	core.AuditVerbSuspendKeyValue: TypeKeyValueSuspended,
-	core.AuditVerbResumeKeyValue:  TypeKeyValueResumed,
+	"apps.Restart":                           TypeServerRestarted,
+	"apps.Suspend":                           TypeServiceSuspended,
+	"apps.Resume":                            TypeServiceResumed,
+	"apps.Scale":                             TypeInstanceCountChanged,
+	"apps.SetAutoscaling":                    TypeAutoscalingConfigChanged,
+	"apps.DeleteAutoscaling":                 TypeAutoscalingConfigChanged,
+	"apps.TriggerCronRun":                    TypeCronJobRunStarted,
+	"apps.CancelCronRun":                     TypeCronJobRunEnded,
+	"apps.CancelCurrentCronRun":              TypeCronJobRunEnded,
+	core.AuditVerbMaintenanceModeEnabled:     TypeMaintenanceModeEnabled,
+	core.AuditVerbMaintenanceModeURIUpdated:  TypeMaintenanceModeURIUpdated,
+	core.AuditVerbSetPlan:                    TypePlanChanged,
+	core.AuditVerbPostgresCreated:            TypePostgresCreated,
+	core.AuditVerbPostgresRestarted:          TypePostgresRestarted,
+	core.AuditVerbPostgresCredentialsCreated: TypePostgresCredentialsCreated,
+	core.AuditVerbPostgresCredentialsDeleted: TypePostgresCredentialsDeleted,
+	core.AuditVerbPostgresBackupStarted:      TypePostgresBackupStarted,
+	core.AuditVerbPostgresPlanChanged:        TypePlanChanged,
+	core.AuditVerbKeyValuePlanChanged:        TypePlanChanged,
 }
 
 // auditVerbs is verbEvents' key set — the dispatcher's push-down filter,

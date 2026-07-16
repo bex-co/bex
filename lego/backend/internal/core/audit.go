@@ -49,17 +49,21 @@ type AuditEvent struct {
 	Verb         string // the verb's short name, e.g. "apps.Suspend" (derived, never hand-set)
 	Resource     string // the OpenFGA object authorized against, e.g. "workspace:tea-abc"
 	Target       string // the resource acted ON, e.g. "service:my-api"; empty for a workspace-wide verb
-	Outcome      AuditOutcome
-	At           time.Time
+	// TargetName is the non-secret display name for a typed target. Datastore
+	// webhook payloads require both the immutable dpg-/red- id (Target) and this
+	// human name; ordinary audit rows may leave it empty.
+	TargetName string
+	Outcome    AuditOutcome
+	At         time.Time
 	// MaintenanceModeTo is Render's MaintenanceModeEnabledEvent metadata.to.
 	// Nil for every other verb; a pointer preserves an explicit false value.
 	MaintenanceModeTo *bool
 	// Per-verb typed detail fields — exactly as maintenance_mode_to, one column per
 	// value, no free-form object. Nil for every verb that does not define them.
-	PlanFrom          *string
-	PlanTo            *string
-	InstanceCountFrom *int32
-	InstanceCountTo   *int32
+	PlanFrom           *string
+	PlanTo             *string
+	InstanceCountFrom  *int32
+	InstanceCountTo    *int32
 	AutoscalingMinFrom *int32
 	AutoscalingMaxFrom *int32
 	AutoscalingMinTo   *int32
@@ -91,25 +95,57 @@ const (
 	AuditVerbSetAutoscaling    = "apps.SetAutoscaling"
 	AuditVerbDeleteAutoscaling = "apps.DeleteAutoscaling"
 	AuditVerbSetAutoDeploy     = "apps.SetAutoDeploy"
-	// AuditVerbCreate/Delete/Suspend/ResumePostgres and the KeyValue equivalents
-	// are explicit constants rather than derived verbs because the create path
-	// uses a workspace-level s.Authorize (no resource target), so the normal
-	// callerVerb emit carries no DatabaseTarget/KeyValueTarget. The explicit
-	// RecordDatabaseCreated/RecordKeyValueCreated helpers emit a second event
-	// after a successful create with the correct target, which the webhook
-	// worker's new database/keyvalue UNION ALL arms pick up (w3/m26).
-	// Delete/Suspend/Resume already emit via AuthorizeDatabase/AuthorizeKeyValue
-	// with a target; the constants keep the verbEvents map in internal/webhooks
-	// from hand-spelling the verb strings.
-	AuditVerbCreatePostgres  = "postgres.CreatePostgres"
-	AuditVerbDeletePostgres  = "postgres.DeletePostgres"
-	AuditVerbSuspendPostgres = "postgres.Suspend"
-	AuditVerbResumePostgres  = "postgres.Resume"
-	AuditVerbCreateKeyValue  = "keyvalue.CreateKeyValue"
-	AuditVerbDeleteKeyValue  = "keyvalue.DeleteKeyValue"
-	AuditVerbSuspendKeyValue = "keyvalue.Suspend"
-	AuditVerbResumeKeyValue  = "keyvalue.Resume"
+	// Fixed datastore effects that have exact Render webhook counterparts. These
+	// are recorded only after the underlying mutation succeeds, then consumed by
+	// the outbound-webhook projection. Keeping them fixed prevents arbitrary
+	// event vocabulary from entering the audit feed.
+	AuditVerbPostgresCreated            = "postgres.CreatePostgres"
+	AuditVerbPostgresRestarted          = "postgres.Restart"
+	AuditVerbPostgresCredentialsCreated = "postgres.CreateUser"
+	AuditVerbPostgresCredentialsDeleted = "postgres.DeleteUser"
+	AuditVerbPostgresBackupStarted      = "postgres.CreateExport"
+	AuditVerbPostgresPlanChanged        = "postgres.SetPlan"
+	AuditVerbPostgresUpdated            = "postgres.UpdatePostgres"
+	AuditVerbKeyValuePlanChanged        = "keyvalue.SetPlan"
+	AuditVerbKeyValueUpdated            = "keyvalue.UpdateKeyValue"
 )
+
+// DatabaseAuditEffect is the closed set of successful Database mutations that
+// project to Render webhook events.
+type DatabaseAuditEffect int
+
+const (
+	DatabaseCreated DatabaseAuditEffect = iota
+	DatabaseRestarted
+	DatabaseCredentialsCreated
+	DatabaseCredentialsDeleted
+	DatabaseBackupStarted
+	DatabasePlanChanged
+	DatabaseUpdated
+)
+
+var databaseAuditVerbs = map[DatabaseAuditEffect]string{
+	DatabaseCreated:            AuditVerbPostgresCreated,
+	DatabaseRestarted:          AuditVerbPostgresRestarted,
+	DatabaseCredentialsCreated: AuditVerbPostgresCredentialsCreated,
+	DatabaseCredentialsDeleted: AuditVerbPostgresCredentialsDeleted,
+	DatabaseBackupStarted:      AuditVerbPostgresBackupStarted,
+	DatabasePlanChanged:        AuditVerbPostgresPlanChanged,
+	DatabaseUpdated:            AuditVerbPostgresUpdated,
+}
+
+// KeyValueAuditEffect is the closed successful-write vocabulary for Key Value.
+type KeyValueAuditEffect int
+
+const (
+	KeyValuePlanChanged KeyValueAuditEffect = iota
+	KeyValueUpdated
+)
+
+var keyValueAuditVerbs = map[KeyValueAuditEffect]string{
+	KeyValuePlanChanged: AuditVerbKeyValuePlanChanged,
+	KeyValueUpdated:     AuditVerbKeyValueUpdated,
+}
 
 // WithAuditMaintenanceModeTo attaches Render's one typed maintenance-toggle
 // audit detail to the authorization context. It is deliberately narrower than
@@ -278,30 +314,42 @@ func (b *Base) RecordAutoDeployChanged(ctx context.Context, app *appv1alpha1.App
 	b.recordAudit(ctx, ev)
 }
 
-// RecordDatabaseCreated emits an explicit post-create audit event for a
-// managed Postgres with a DatabaseTarget so the webhook worker's database arm
-// can pick it up (w3/m26). The workspace-level s.Authorize call in
-// CreatePostgres already emits one event with no target; this second event
-// carries the target and is the one the webhook feed joins against.
-func (b *Base) RecordDatabaseCreated(ctx context.Context, d *appv1alpha1.Database) {
+// RecordDatabaseEffect records one successful, sourceable managed-Postgres
+// effect for the outbound-webhook feed. Callers pair it with
+// WithDeferredAllowedWriteAudit so failed validation/writes never emit.
+func (b *Base) RecordDatabaseEffect(ctx context.Context, d *appv1alpha1.Database, effect DatabaseAuditEffect) {
+	verb, ok := databaseAuditVerbs[effect]
+	if !ok {
+		log.Printf("audit: unknown database effect %d", effect)
+		return
+	}
 	resource, err := b.resourceWorkspace(ctx, d.Labels)
 	if err != nil {
-		log.Printf("audit: resolve database-created resource: %v", err)
+		log.Printf("audit: resolve database-effect resource: %v", err)
 		return
 	}
-	b.recordAudit(ctx, b.verbAuditEvent(ctx, AuditVerbCreatePostgres, resource, DatabaseTarget(d.Name)))
+	ev := b.verbAuditEvent(ctx, verb, resource, DatabaseTarget(d.Name))
+	ev.TargetName = d.DisplayName()
+	b.recordAudit(ctx, ev)
 }
 
-// RecordKeyValueCreated emits an explicit post-create audit event for a
-// managed KeyValue with a KeyValueTarget — the same pattern as
-// RecordDatabaseCreated (w3/m26).
-func (b *Base) RecordKeyValueCreated(ctx context.Context, kv *appv1alpha1.KeyValue) {
-	resource, err := b.resourceWorkspace(ctx, kv.Labels)
-	if err != nil {
-		log.Printf("audit: resolve keyvalue-created resource: %v", err)
+// RecordKeyValueEffect records a successful Key Value mutation. Plan changes
+// project to Render's plan_changed webhook; the generic update effect preserves
+// the ordinary audit row when a deferred PATCH changes other fields only.
+func (b *Base) RecordKeyValueEffect(ctx context.Context, kv *appv1alpha1.KeyValue, effect KeyValueAuditEffect) {
+	verb, ok := keyValueAuditVerbs[effect]
+	if !ok {
+		log.Printf("audit: unknown key-value effect %d", effect)
 		return
 	}
-	b.recordAudit(ctx, b.verbAuditEvent(ctx, AuditVerbCreateKeyValue, resource, KeyValueTarget(kv.Name)))
+	resource, err := b.resourceWorkspace(ctx, kv.Labels)
+	if err != nil {
+		log.Printf("audit: resolve key-value plan-change resource: %v", err)
+		return
+	}
+	ev := b.verbAuditEvent(ctx, verb, resource, KeyValueTarget(kv.Name))
+	ev.TargetName = kv.DisplayName()
+	b.recordAudit(ctx, ev)
 }
 
 // verbAuditEvent builds a pre-populated AuditEvent for a deferred allowed-write
