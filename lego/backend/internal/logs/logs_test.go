@@ -552,3 +552,37 @@ func TestMCPLogsMaxQueryHoursBounds(t *testing.T) {
 		}
 	}
 }
+
+// TestLogsSubscribeCapSpeaksRenderErrorDialect pins w9/m39/t001: the
+// GET /v1/logs/subscribe SSE-connection-cap 429 answers in the one Render error
+// dialect ({error,message,id}), not a bare {"error"}, so a Render client reading
+// .message on a rejected live tail sees a real reason. sseConns is pre-filled to
+// the cap so the next connection is refused without a live blocking stream.
+func TestLogsSubscribeCapSpeaksRenderErrorDialect(t *testing.T) {
+	s := &Service{Base: &core.Base{Namespace: "default"}, MaxSSEConns: 1}
+	s.sseConns.Store(1) // at the cap already
+
+	rec := httptest.NewRecorder()
+	s.logsSubscribe(rec, httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe?resource=srv-x", nil))
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("status = %d, want 429; body=%q", rec.Code, rec.Body.String())
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+		t.Errorf("Content-Type = %q, want application/json", ct)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("body not JSON: %v (%q)", err, rec.Body.String())
+	}
+	if msg, ok := body["message"].(string); !ok || msg == "" {
+		t.Errorf("429 body missing non-empty string `message`: %v", body)
+	}
+	if body["id"] != "too_many_requests" {
+		t.Errorf("429 body id = %v, want too_many_requests", body["id"])
+	}
+	// The cap must be released on rejection, not leaked.
+	if got := s.sseConns.Load(); got != 1 {
+		t.Errorf("sseConns leaked: got %d, want 1", got)
+	}
+}

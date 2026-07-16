@@ -1,20 +1,20 @@
 # w9 · m39 — CLI-surface evidence & dialect chores: 429 escapee + revoke dialect + checklist evidence
 
-**Worker:** worker9 **Goal:** no non-deliberate bex-api error path emits a body without Render's `message` shape, and the CLI checklist's login / `workspace set` / `psql` rows carry live evidence instead of ◐ guesses. **Status:** todo
+**Worker:** worker9 **Goal:** no non-deliberate bex-api error path emits a body without Render's `message` shape, and the CLI checklist's login / `workspace set` / `psql` rows carry live evidence instead of ◐ guesses. **Status:** in progress — t001 + t002 (the code half) and t005 (psql friction assessment) done; t003/t004 (live `render login` / interactive `workspace set` probes) blocked on live cluster access; t006–t009 (parity/simplify/test/closeout) gated on t003/t004.
 
 ## Tasks (in order)
 
-| id   | title                                                                                  | est | depends_on                   |
-| ---- | -------------------------------------------------------------------------------------- | --- | ---------------------------- |
-| t001 | Fix the logs-subscribe 429 to Render's error shape + regression-test it                 | 20m | —                            |
-| t002 | Unify the `/v1/oauth/revoke` failure dialect (absorbs `008`)                            | 30m | —                            |
-| t003 | Live `render login` bad-key probe — attach evidence to the checklist login row          | 30m | t001                         |
-| t004 | Verify the official CLI's interactive `workspace set` flow — flip the ◐ row or file gap | 30m | —                            |
-| t005 | Assess CLI `psql` out-of-box friction — record the answer on the checklist row          | 30m | —                            |
-| t006 | Render parity — sweep every surface the dialect fixes touch                             | 30m | t001, t002, t003, t004, t005 |
-| t007 | Simplify — `/simplify` over the milestone's diff                                        | 20m | t006                         |
-| t008 | Test coverage — meaningful tests for the shipped behavior                               | 30m | t006                         |
-| t009 | Closeout — verify DoD, sync status, move to `done/`                                     | 15m | t008                         |
+| id   | title                                                                                  | est | depends_on                   | status |
+| ---- | -------------------------------------------------------------------------------------- | --- | ---------------------------- | ------ |
+| t001 | Fix the logs-subscribe 429 to Render's error shape + regression-test it                 | 20m | —                            | — **DONE** |
+| t002 | Unify the `/v1/oauth/revoke` failure dialect (absorbs `008`)                            | 30m | —                            | — **DONE** |
+| t003 | Live `render login` bad-key probe — attach evidence to the checklist login row          | 30m | t001                         | todo (live infra) |
+| t004 | Verify the official CLI's interactive `workspace set` flow — flip the ◐ row or file gap | 30m | —                            | todo (live infra) |
+| t005 | Assess CLI `psql` out-of-box friction — record the answer on the checklist row          | 30m | —                            | — **DONE** |
+| t006 | Render parity — sweep every surface the dialect fixes touch                             | 30m | t001, t002, t003, t004, t005 | todo |
+| t007 | Simplify — `/simplify` over the milestone's diff                                        | 20m | t006                         | todo |
+| t008 | Test coverage — meaningful tests for the shipped behavior                               | 30m | t006                         | todo |
+| t009 | Closeout — verify DoD, sync status, move to `done/`                                     | 15m | t008                         | todo |
 
 ## Definition of done
 

@@ -131,9 +131,9 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	if s.MaxSSEConns > 0 {
 		if s.sseConns.Add(1) > s.MaxSSEConns {
 			s.sseConns.Add(-1)
-			core.WriteJSON(w, http.StatusTooManyRequests, map[string]string{
-				"error": "too many active log subscriptions",
-			})
+			// Render's one error dialect ({error,message,id}) on every branch, so a
+			// Render client reads .message here too, not a bare {error} (w9/m39).
+			core.WriteErrStatus(w, http.StatusTooManyRequests, "too many active log subscriptions")
 			return
 		}
 		defer s.sseConns.Add(-1)
