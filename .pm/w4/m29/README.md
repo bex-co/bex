@@ -1,13 +1,13 @@
 # w4 · m29 — Retire the ipAllowList legacy-string shim (one-shot CR normalization + schema tightening)
 
-**Worker:** worker4 **Goal:** `Database`/`KeyValue` `spec.ipAllowList` regains apiserver-side validation: an idempotent one-shot normalization rewrites legacy bare-CIDR-string entries to `{cidr}` objects, the CRD field returns to a structural object schema (required `cidr`), and the `IPAllowEntry.UnmarshalJSON` union decoder is demoted to a test fixture. **Status:** todo
+**Worker:** worker4 **Goal:** `Database`/`KeyValue` `spec.ipAllowList` regains apiserver-side validation: an idempotent one-shot normalization rewrites legacy bare-CIDR-string entries to `{cidr}` objects, the CRD field returns to a structural object schema (required `cidr`), and the `IPAllowEntry.UnmarshalJSON` union decoder is demoted to a test fixture. **Status:** in progress — t001+t002 done 2026-07-15 (normalizer + harness shipped; prod fleet verified already clean, evidence/normalize-2026-07-15.md); t003 schema tightening must ride a LATER deploy than this commit
 
 ## Tasks (in order)
 
 | id   | title                                                                          | est | depends_on |
 | ---- | ------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Idempotent one-shot normalization: bare strings → `{cidr}` (RC5 backfill precedent) | 45m | —          |
-| t002 | Verify + record zero string-shaped CRs remain (prod + local evidence)          | 20m | t001       |
+| t001 | Idempotent one-shot normalization: bare strings → `{cidr}` (RC5 backfill precedent) — **DONE** | 45m | —          |
+| t002 | Verify + record zero string-shaped CRs remain (prod + local evidence) — **DONE**          | 20m | t001       |
 | t003 | Restore structural object schema on the CRD; drop Schemaless/PreserveUnknown   | 30m | t002       |
 | t004 | Demote the `UnmarshalJSON` union decoder to a test fixture                     | 20m | t003       |
 | t005 | Simplify                                                                       | 20m | t004       |
