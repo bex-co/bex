@@ -1,18 +1,18 @@
 # w4 · m30 — Environments partial-update core verb + AuthorizeApp loop hoist
 
-**Worker:** worker4 **Goal:** the environments PATCH merge lives exactly once in the service layer (all three surfaces can partial-update), and `AuthorizeApp`'s name-collision fallback resolves the acting workspace once, not once per candidate. **Status:** todo
+**Worker:** worker4 **Goal:** the environments PATCH merge lives exactly once in the service layer (all three surfaces can partial-update), and `AuthorizeApp`'s name-collision fallback resolves the acting workspace once, not once per candidate. **Status:** DONE 2026-07-16
 
 ## Tasks (in order)
 
-| id   | title                                                                                                                | est | depends_on |
-| ---- | ---------------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Core `EnvironmentPatch` + `Update(ctx, id, patch)` verb owning the merge + pre-migration default; REST PATCH thins to decode+call | 45m | —          |
-| t002 | GraphQL `updateEnvironment` + MCP `update_environment` riding the core verb                                             | 30m | t001       |
-| t003 | Hoist the acting-workspace resolution above `AuthorizeApp`'s candidate loops; assess OpenFGA BatchCheck (verify-first)   | 40m | —          |
-| t004 | Render parity — PATCH semantics identical across REST/GraphQL/MCP; compare against Render's `PATCH /environments/{id}`  | 30m | t002       |
-| t005 | Simplify — `/simplify` over the changed code                                                                             | 20m | t003, t004 |
-| t006 | Test coverage — merge semantics in the service layer across surfaces; store-call-count assertion on the collision path   | 40m | t003, t004 |
-| t007 | Closeout — verify DoD, sync status, move to done                                                                         | 15m | t006       |
+| id   | title                                                                                                                | est | depends_on | status |
+| ---- | ---------------------------------------------------------------------------------------------------------------------- | --- | ---------- | --- |
+| t001 | Core `EnvironmentPatch` + `Update(ctx, id, patch)` verb owning the merge + pre-migration default; REST PATCH thins to decode+call | 45m | —          | DONE |
+| t002 | GraphQL `updateEnvironment` + MCP `update_environment` riding the core verb                                             | 30m | t001       | DONE |
+| t003 | Hoist the acting-workspace resolution above `AuthorizeApp`'s candidate loops; assess OpenFGA BatchCheck (verify-first)   | 40m | —          | DONE |
+| t004 | Render parity — PATCH semantics identical across REST/GraphQL/MCP; compare against Render's `PATCH /environments/{id}`  | 30m | t002       | DONE |
+| t005 | Simplify — `/simplify` over the changed code                                                                             | 20m | t003, t004 | DONE |
+| t006 | Test coverage — merge semantics in the service layer across surfaces; store-call-count assertion on the collision path   | 40m | t003, t004 | DONE |
+| t007 | Closeout — verify DoD, sync status, move to done                                                                         | 15m | t006       | DONE |
 
 ## Definition of done
 

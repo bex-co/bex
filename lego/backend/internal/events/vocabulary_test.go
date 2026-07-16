@@ -86,6 +86,9 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		"postgres.SetEnvironmentIPAllowList": "environment inbound-IP layer projection; postgres has no events feed integration",
 		"keyvalue.SetEnvironmentIPAllowList": "environment inbound-IP layer projection; keyvalue has no events feed integration",
 		"environments.CreateWithACL":         "may fan AuthorizeApp out over member Apps while applying the initial ACL; not itself a per-App verb",
+		// w4/m30: Update rides the same applyACL fan-out as SetACL/CreateWithACL
+		// above whenever the patch touches the ACL triple; same reasoning.
+		"environments.Update": "fans AuthorizeApp out over member Apps via applyACL when the patch touches the ACL triple; not itself a per-App verb",
 	}
 	// w6/m17 moved every resource-scoped write verb off a separate Authorize
 	// call onto the single AuthorizeApp/AuthorizeDatabase/AuthorizeKeyValue seam

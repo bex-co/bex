@@ -131,6 +131,19 @@ func StrPtr(args map[string]any, key string) *string {
 	return &v
 }
 
+// BoolPtr reads an optional Boolean argument as a tri-state *bool — nil when
+// absent, so the caller can leave a field unchanged rather than forcing it
+// false. StrPtr's Boolean-typed sibling; graduated here (w4/m30) after
+// apps/graphql.go and environments/graphql.go each carried an identical
+// `gqlBoolPtr` copy, the same duplication threshold StrPtr itself graduated
+// on (w10/m2).
+func BoolPtr(args map[string]any, key string) *bool {
+	if v, ok := args[key].(bool); ok {
+		return &v
+	}
+	return nil
+}
+
 // StringList coerces a `[String]` argument value ([]any from graphql-go) into
 // []string, skipping non-string entries. Nil or absent => nil. Shared by the
 // CIDR-allowlist arguments (setDatabaseIpAllowList, setKeyValueIpAllowList,

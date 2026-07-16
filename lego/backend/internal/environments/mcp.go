@@ -69,6 +69,14 @@ type setEnvironmentEnvGroupsArgs struct {
 	EnvGroupIDs []string `json:"envGroupIds" jsonschema:"environment group ids (evg-...) to assign to the environment — replaces the full list"`
 }
 
+type updateEnvironmentArgs struct {
+	ID                      string                   `json:"id" jsonschema:"the environment id (env-…)"`
+	Name                    *string                  `json:"name,omitempty" jsonschema:"new environment name; omit to leave unchanged"`
+	ProtectedStatus         *string                  `json:"protectedStatus,omitempty" jsonschema:"'protected' or 'unprotected'; omit to leave unchanged"`
+	NetworkIsolationEnabled *bool                    `json:"networkIsolationEnabled,omitempty" jsonschema:"when true, member services' NetworkPolicy is scoped to only other services in this environment; omit to leave unchanged"`
+	IPAllowList             *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the full CIDR allowlist propagated to member Postgres/KeyValue resources; omit to leave unchanged, pass [] to deny all"`
+}
+
 type setEnvironmentACLArgs struct {
 	ID                      string   `json:"id" jsonschema:"the environment id (env-…)"`
 	ProtectedStatus         string   `json:"protectedStatus" jsonschema:"'protected' or 'unprotected' — protected blocks unguarded delete/suspend/direct-deploy-override on member services"`
@@ -117,6 +125,19 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Rename an environment. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in renameEnvironmentArgs) (*mcp.CallToolResult, EnvironmentView, error) {
 		e, err := s.Rename(ctx, in.ID, in.Name)
+		return nil, e, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "update_environment",
+		Description: "Partially update an environment: name and/or the protected-environment ACL triple (protectedStatus, networkIsolationEnabled, ipAllowList). Only the fields you pass change — the ACL fields merge into the current triple, unlike set_environment_acl's full-replace. bex extension (Render parity: PATCH /environments/{id}).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateEnvironmentArgs) (*mcp.CallToolResult, EnvironmentView, error) {
+		e, err := s.Update(ctx, in.ID, EnvironmentPatch{
+			Name:                    in.Name,
+			ProtectedStatus:         in.ProtectedStatus,
+			NetworkIsolationEnabled: in.NetworkIsolationEnabled,
+			IPAllowList:             in.IPAllowList,
+		})
 		return nil, e, err
 	})
 
