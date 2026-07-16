@@ -77,6 +77,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- `024.md` — verify/close the w1/m36 manual default-SA `imagePullSecrets` patch (undeclared prod gitops drift; likely mooted by w7/m36's per-App pull creds — verify-first, revert or declare) ← filed by `/pm-brainstorm` round 18's closeout-residual sweep, 2026-07-15
 
 _(`018`, `019` promoted to `m30` 2026-07-13)_
 
