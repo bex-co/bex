@@ -36,6 +36,10 @@ resources:
 # The Postgres SNI front-door (w1/m29): handles the PostgreSQL SSLRequest preamble
 # so standard preamble-mode clients can connect to external managed databases.
 - ../pg-sni-proxy
+# TLS/SNI pass-through, metered public Key Value front door.
+- ../kv-sni-proxy
+# Node-local App→public egress accounting. Runs only on untainted tenant nodes.
+- ../egress-meter
 # Admission-time tenant-image signature verification webhook (w7/m11).
 # Requires cert-manager to be installed (it signs the TLS cert and injects
 # the caBundle into the ValidatingWebhookConfiguration).

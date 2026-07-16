@@ -38,6 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/egressquery"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -190,14 +191,17 @@ func (m *memUsageStore) compactCalls() []time.Time {
 // --- Prometheus fake ---
 
 func fakeProm(value float64) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		v := "0"
-		if value > 0 {
+		if strings.Contains(r.URL.Query().Get("query"), "healthy") || strings.Contains(r.URL.Query().Get("query"), `up{job=`) {
+			v = "1"
+		} else if value > 0 {
 			v = strconv.FormatFloat(value, 'f', -1, 64)
 		}
 		resp := map[string]any{
 			"status": "success",
 			"data": map[string]any{
+				"resultType": "vector",
 				"result": []map[string]any{
 					{"value": []any{float64(time.Now().Unix()), v}},
 				},
@@ -267,10 +271,23 @@ func publicAppMeterClient(t *testing.T, app store.App, crName, backend string, h
 }
 
 func TestQueryEgressBytesUsesExactRoutersForSharedBackend(t *testing.T) {
-	var gotQuery string
+	var mu sync.Mutex
+	var gotQueries []string
 	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotQuery = r.URL.Query().Get("query")
-		_, _ = w.Write([]byte(`{"status":"success","data":{"result":[{"value":[0,"42"]}]}}`))
+		query := r.URL.Query().Get("query")
+		mu.Lock()
+		gotQueries = append(gotQueries, query)
+		mu.Unlock()
+		value := "1"
+		switch {
+		case strings.Contains(query, "traefik_router_responses_bytes_total"):
+			value = "42"
+		case strings.Contains(query, "bex_websocket_egress_bytes_total"):
+			value = "3"
+		case strings.Contains(query, "bex_app_direct_egress_bytes_total"):
+			value = "5"
+		}
+		_, _ = fmt.Fprintf(w, `{"status":"success","data":{"resultType":"vector","result":[{"value":[0,%q]}]}}`, value)
 	}))
 	defer prom.Close()
 
@@ -279,9 +296,12 @@ func TestQueryEgressBytesUsesExactRoutersForSharedBackend(t *testing.T) {
 	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, nil, prom.URL, prom.Client())
 
 	quantity, ok := svc.queryEgressBytes(context.Background(), app, time.Now().Add(-time.Hour), time.Now())
-	if !ok || quantity != 42 {
-		t.Fatalf("queryEgressBytes: got quantity=%d ok=%v, want 42/true", quantity, ok)
+	if !ok || quantity != 50 {
+		t.Fatalf("queryEgressBytes: got quantity=%d ok=%v, want 50/true", quantity, ok)
 	}
+	mu.Lock()
+	gotQuery := strings.Join(gotQueries, "\n")
+	mu.Unlock()
 	for _, exact := range []string{
 		"default-tea-one-static-site-onbex-co@kubernetes",
 		"default-tea-one-static-www-example-com@kubernetes",
@@ -299,8 +319,12 @@ func TestQueryEgressBytesUsesExactRoutersForSharedBackend(t *testing.T) {
 }
 
 func TestQueryEgressBytesEmptyVectorIsSuccessfulZero(t *testing.T) {
-	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`{"status":"success","data":{"result":[]}}`))
+	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if query := r.URL.Query().Get("query"); strings.Contains(query, "healthy") || strings.Contains(query, `up{job=`) {
+			_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[{"value":[0,"1"]}]}}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[]}}`))
 	}))
 	defer prom.Close()
 	app := store.App{ID: "srv-quiet", TenantID: "tea-one", Name: "quiet"}
@@ -310,6 +334,24 @@ func TestQueryEgressBytesEmptyVectorIsSuccessfulZero(t *testing.T) {
 	quantity, ok := svc.queryEgressBytes(context.Background(), app, time.Now().Add(-time.Hour), time.Now())
 	if !ok || quantity != 0 {
 		t.Fatalf("empty Prometheus vector: got quantity=%d ok=%v, want successful zero", quantity, ok)
+	}
+}
+
+func TestQueryEgressBytesRejectsPartialSourceHealth(t *testing.T) {
+	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		value := "1"
+		if strings.Contains(r.URL.Query().Get("query"), "bex_websocket_meter_healthy") {
+			value = "0"
+		}
+		_, _ = fmt.Fprintf(w, `{"status":"success","data":{"resultType":"vector","result":[{"value":[0,%q]}]}}`, value)
+	}))
+	defer prom.Close()
+	app := store.App{ID: "srv-partial", TenantID: "tea-one", Name: "partial"}
+	cl := publicAppMeterClient(t, app, "tea-one-partial", "tea-one-partial", "partial.onbex.co")
+	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, nil, prom.URL, prom.Client())
+
+	if quantity, ok := svc.queryEgressBytes(context.Background(), app, time.Now().Add(-time.Hour), time.Now()); ok || quantity != 0 {
+		t.Fatalf("partial source health produced a successful sum: quantity=%d ok=%v", quantity, ok)
 	}
 }
 
@@ -851,13 +893,13 @@ func TestBuildSecondsFromFakeJobs(t *testing.T) {
 	}
 }
 
-func TestPromInstantScalarParsesCorrectly(t *testing.T) {
+func TestSharedPromInstantParsesCorrectly(t *testing.T) {
 	srv := fakeProm(42.5)
 	defer srv.Close()
 
-	v, err := promInstantScalar(context.Background(), nil, srv.URL, `up`, time.Now())
+	v, err := egressquery.Instant(context.Background(), nil, srv.URL, `up`, time.Now())
 	if err != nil {
-		t.Fatalf("promInstantScalar: %v", err)
+		t.Fatalf("Instant: %v", err)
 	}
 	const want = 42.5
 	if v != want {
@@ -950,7 +992,7 @@ func TestQueryStorageGBSecondsUsesPVCUsedBytes(t *testing.T) {
 			var query string
 			prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				query = r.URL.Query().Get("query")
-				_, _ = w.Write([]byte(`{"status":"success","data":{"result":[{"value":[0,"2000000000"]}]}}`))
+				_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[{"value":[0,"2000000000"]}]}}`))
 			}))
 			defer prom.Close()
 
@@ -986,6 +1028,95 @@ func TestProcessDatastoreWindowUpsertsStorage(t *testing.T) {
 	}
 }
 
+func TestPublicDatastoreEgressUsesExactProxyResource(t *testing.T) {
+	var mu sync.Mutex
+	var queries []string
+	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query().Get("query")
+		mu.Lock()
+		queries = append(queries, query)
+		mu.Unlock()
+		value := "1"
+		if strings.Contains(query, "bex_pg_proxy_egress_bytes_total") {
+			value = "17"
+		}
+		_, _ = fmt.Fprintf(w, `{"status":"success","data":{"resultType":"vector","result":[{"value":[0,%q]}]}}`, value)
+	}))
+	defer prom.Close()
+	svc := NewService(&core.Base{}, nil, prom.URL, prom.Client())
+	window := time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC)
+	got, ok := svc.queryDatastoreEgressBytes(context.Background(), datastoreEntry{
+		ID: "db-one", Kind: store.ResourceKindPostgres, Public: true,
+	}, window, window.Add(time.Hour))
+	if !ok || got != 17 {
+		t.Fatalf("public datastore egress = %d,%v; want 17,true", got, ok)
+	}
+	mu.Lock()
+	query := strings.Join(queries, "\n")
+	mu.Unlock()
+	if !strings.Contains(query, `resource_id="db-one"`) || !strings.Contains(query, `resource_kind="postgres"`) {
+		t.Fatalf("proxy query is not exact-resource attributed: %q", query)
+	}
+}
+
+func TestDatastoreEgressCursorRetriesIndependently(t *testing.T) {
+	var mu sync.Mutex
+	failEgress := true
+	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query().Get("query")
+		if strings.Contains(query, "bex_pg_proxy_egress_bytes_total") {
+			mu.Lock()
+			fail := failEgress
+			if failEgress {
+				failEgress = false
+			}
+			mu.Unlock()
+			if fail {
+				http.Error(w, "temporary", http.StatusServiceUnavailable)
+				return
+			}
+		}
+		value := "1"
+		if strings.Contains(query, "kubelet_volume_stats_used_bytes") {
+			value = "1000000000"
+		}
+		_, _ = fmt.Fprintf(w, `{"status":"success","data":{"resultType":"vector","result":[{"value":[0,%q]}]}}`, value)
+	}))
+	defer prom.Close()
+
+	st := newMemUsageStore()
+	svc := NewService(&core.Base{}, st, prom.URL, prom.Client())
+	ds := datastoreEntry{ID: "db-one", Name: "db-one", TenantID: "tea-one", Plan: "basic", Kind: store.ResourceKindPostgres, Public: true}
+	previous := time.Date(2026, 7, 10, 9, 0, 0, 0, time.UTC)
+	for _, kind := range datastoreMeterKinds {
+		tier := ""
+		if kind == store.UsageKindInstanceSeconds {
+			tier = ds.Plan
+		}
+		_ = st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+			WorkspaceID: ds.TenantID, ServiceID: ds.ID, ResourceKind: ds.Kind,
+			Kind: kind, Tier: tier, WindowStart: previous,
+		})
+	}
+
+	svc.catchUpDatastoreThrough(context.Background(), ds, previous.Add(time.Hour))
+	for _, kind := range []string{store.UsageKindInstanceSeconds, store.UsageKindStorageGBSeconds} {
+		latest, err := st.LatestUsageWindow(context.Background(), ds.Kind, ds.ID, kind)
+		if err != nil || !latest.Equal(previous.Add(time.Hour)) {
+			t.Fatalf("healthy %s cursor did not advance: %s %v", kind, latest, err)
+		}
+	}
+	latest, _ := st.LatestUsageWindow(context.Background(), ds.Kind, ds.ID, store.UsageKindEgressBytes)
+	if !latest.Equal(previous) {
+		t.Fatalf("failed egress cursor advanced to %s", latest)
+	}
+	svc.catchUpDatastoreThrough(context.Background(), ds, previous.Add(time.Hour))
+	latest, _ = st.LatestUsageWindow(context.Background(), ds.Kind, ds.ID, store.UsageKindEgressBytes)
+	if !latest.Equal(previous.Add(time.Hour)) {
+		t.Fatalf("egress cursor did not retry and advance: %s", latest)
+	}
+}
+
 func TestDatastoreStorageCatchUpRetriesWithoutGaps(t *testing.T) {
 	var mu sync.Mutex
 	storageCalls := 0
@@ -1003,7 +1134,7 @@ func TestDatastoreStorageCatchUpRetriesWithoutGaps(t *testing.T) {
 			}
 			value = "1000000000"
 		}
-		_, _ = fmt.Fprintf(w, `{"status":"success","data":{"result":[{"value":[0,%q]}]}}`, value)
+		_, _ = fmt.Fprintf(w, `{"status":"success","data":{"resultType":"vector","result":[{"value":[0,%q]}]}}`, value)
 	}))
 	defer prom.Close()
 
@@ -1032,9 +1163,10 @@ func TestDatastoreStorageCatchUpRetriesWithoutGaps(t *testing.T) {
 	}
 }
 
-// TestProcessDatastoreWindowNoEgressOrBuild verifies that datastore rollup
-// writes compute + storage, but never service-only egress/build meters.
-func TestProcessDatastoreWindowNoEgressOrBuild(t *testing.T) {
+// TestProcessDatastoreWindowPrivateEgressZero verifies that public-proxy egress
+// is explicit N/A for a private datastore, represented by a successful zero;
+// build remains service-only.
+func TestProcessDatastoreWindowPrivateEgressZero(t *testing.T) {
 	prom := fakeProm(1.0)
 	defer prom.Close()
 
@@ -1057,9 +1189,13 @@ func TestProcessDatastoreWindowNoEgressOrBuild(t *testing.T) {
 
 	st.mu.Lock()
 	defer st.mu.Unlock()
+	egress, found := st.rows[usageKey{store.ResourceKindKeyValue, "mykv", store.UsageKindEgressBytes, "", window}]
+	if !found || egress.Quantity != 0 {
+		t.Errorf("private datastore egress anchor: got %+v present=%v", egress, found)
+	}
 	for k := range st.rows {
-		if k.serviceID == "mykv" && (k.kind == store.UsageKindEgressBytes || k.kind == store.UsageKindBuildSeconds) {
-			t.Errorf("unexpected %s row for datastore mykv", k.kind)
+		if k.serviceID == "mykv" && k.kind == store.UsageKindBuildSeconds {
+			t.Errorf("unexpected build_seconds row for datastore mykv")
 		}
 	}
 }

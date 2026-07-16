@@ -7,29 +7,58 @@ bex records month-to-date resource consumption per workspace and exposes it over
 | Meter | Unit | Source |
 | --- | --- | --- |
 | `instance_seconds` | seconds (per tier) | cAdvisor container-presence signal via Prometheus — pod count × window seconds |
-| `egress_bytes` | bytes | Traefik `traefik_router_responses_bytes_total` increase over the window, attributed by the App's exact Ingress router identities |
+| `egress_bytes` | bytes | loss-detecting sum of exact App HTTP + WebSocket + direct-public sources, or the public datastore proxy response source |
 | `build_seconds` | seconds | k8s build-Job `completionTime − startTime` for Jobs whose completion falls in the window |
 | `storage_gb_seconds` | decimal GB-seconds | average `kubelet_volume_stats_used_bytes` over the window × window seconds, summed across a datastore's PVCs |
 
 The first three meters match Render's compute, bandwidth, and pipeline-minute dimensions. Storage adds the separately-priced Postgres dimension while remaining API-first. Render charges provisioned Postgres capacity; bex meters actual used PVC bytes, so the rate is comparable but the usage basis is deliberately more usage-sensitive. Render has no separate Key Value storage line; bex exposes the same storage meter for Valkey because it also owns a persistent volume.
 
-### Outbound-bandwidth completeness prerequisite (w8/m15)
+### Complete outbound-bandwidth contract (w8/m15)
 
-The current `egress_bytes` implementation is deliberately narrower than its final product meaning: it counts Traefik HTTP response bytes by exact App Ingress/router identity, including static sites whose Ingress points at the shared static-server Service. It does **not** yet count WebSocket frames after upgrade, App-initiated traffic to public destinations, public Postgres responses, or public Key Value responses. Do not use this HTTP-only quantity for a full outbound-bandwidth cap. `w8/m15` owns the remaining prerequisite expansion; `w8/001` remains gated until it ships and then accumulates a fresh 28-day bandwidth window.
+`egress_bytes` is a composition, not a synonym for one edge metric. An App row sums every applicable App source; a public Database or Key Value row reads its metered public proxy. Private datastores have no public-egress source and persist a successful zero. The collector never returns a partial sum: required-source absence, health loss, or an ambiguous counter decrease leaves the hour absent and holds that meter's cursor for retry.
 
 The HTTP component resolves a control-plane App row to its projected CR through the immutable `bex.co/app-id` label, reads that CR's actual operator-owned Ingress, and reproduces the router-key algorithm from the production-pinned Traefik v3.7.5. Prometheus selectors are anchored to the complete `router@kubernetes` labels; display-name substrings and backend Service names are never used for bandwidth attribution. This keeps ordinary services, custom domains, and shared-backend static sites separate. A genuinely private App with no Ingress records a successful zero. A missing projected CR, missing expected public Ingress, unsupported Ingress shape, ambiguous projection or cross-Ingress router label, Kubernetes failure, or Prometheus failure writes no row and is retried by the per-meter cursor.
 
-The target contract follows Render's documented categories while keeping bex's source boundaries explicit. Traefik's HTTP response-size capture stops at connection hijack, so HTTP responses and WebSocket downstream frames are separate sources rather than one counter with an optimistic label:
+The contract follows Render's documented categories while keeping bex's source boundaries explicit. Traefik's HTTP response-size capture stops at connection hijack, so HTTP responses and WebSocket downstream frames are separate sources rather than one counter with an optimistic label:
 
 | Traffic class | Counted source | Attribution | Excluded / double-count guard |
 | --- | --- | --- | --- |
 | App HTTP responses, including `static_site` | Traefik router response-byte counter | App Ingress/router identity | The App→Traefik private hop is not counted by the direct meter |
 | App WebSocket downstream frames after upgrade | dedicated metered edge connection wrapper | exact App router identity | handshake HTTP bytes stay in the router counter; client→App frames and the private backend hop are excluded |
-| App-initiated TCP/UDP to a public destination | Dedicated node-local eBPF meter at the App pod boundary | immutable pod UID → `service` resource | cluster/private/link-local/node destinations, DNS-to-cluster, dropped packets |
-| Public managed-Postgres responses | existing Postgres SNI proxy's backend→client copy counter | resolved parent `Database` (RW/pooler/replica all roll up) | client→backend requests, internal DB clients, backups |
+| App-initiated TCP/UDP to a public destination | node-local post-policy netfilter eBPF meter | immutable Pod UID + Pod IP → `service` resource | cluster/private/link-local/node destinations, DNS-to-cluster, dropped packets |
+| Public managed-Postgres responses | Postgres-aware SNI proxy's backend→client copy counter | resolved parent `Database` (RW/pooler/replica all roll up) | client→backend requests, internal DB clients, backups |
 | Public managed-Key-Value responses | metered SNI pass-through front door's backend→client copy counter | resolved `KeyValue` | client→backend requests and internal KV clients |
 
-Each source is monotonic and independently health-checked. The hourly collector treats any required-source failure, unsupported attachment, counter loss, or ambiguous reset as unavailable: it writes no row and retries the meter's oldest missing hour under the existing `m11` cursor contract. A successful empty vector remains a real zero. The implementation must document the precise byte basis at each boundary; the total is a stable bex usage quantity, not a claim that it reproduces a cloud provider's opaque invoice byte-for-byte.
+The byte bases are intentionally explicit:
+
+- HTTP is Traefik's response-body bytes on the exact `router@kubernetes` counter. Response headers are not included.
+- WebSocket is the number of bytes successfully written on the hijacked public downstream connection after the `101` header. It includes WebSocket frame headers and payload, but not the HTTP handshake or client→server frames.
+- Direct public traffic is L3 wire length at host `POST_ROUTING` after Cilium policy and before source NAT: IPv4 `total_length`, or the 40-byte IPv6 header plus `payload_len`. It includes IP and TCP/UDP headers, retransmissions that reach the hook, and payload; it excludes L2 framing.
+- Postgres and Key Value are encrypted backend→client TCP bytes successfully copied by the public SNI proxy after route selection. TLS records, including the backend TLS handshake, are included. The PostgreSQL proxy's synthetic one-byte `S` response and all client→backend bytes are excluded.
+
+Each source is monotonic and independently health-checked. The hourly collector treats any required-source failure, unsupported attachment, counter loss, reset, malformed Prometheus response, or non-finite/negative sample as unavailable: it writes no row and retries the meter's oldest missing hour under the existing `m11` cursor contract. Only an explicit successful empty Prometheus vector is a real zero. Every health query checks `up`, the source-specific health gauge, at least 80% of the expected 15-second samples across the complete window, and zero counter resets, so a missing target or unknowable pre-reset tail cannot masquerade as an exact delta. HTTP, WebSocket, Postgres, and Key Value also expose process-start time: a restart before the first in-window scrape is rejected even though Prometheus has no preceding sample from which `resets()` could infer it. Direct-meter health additionally requires a durable last-loss timestamp older than the complete window. A checkpoint restoration equal to the last scrape can otherwise hide unsampled bytes without producing a Prometheus reset; the persisted timestamp closes that boundary case and rejects every overlapping hour.
+
+The node meter pins its IPv4/IPv6 netfilter links and maps in bpffs. A process restart reopens the same links, uses a node-persistent `source_instance`, and preserves packet coverage and counter continuity; the link is replaced only when its map identities or hook contract do not match. A host checkpoint restores counters after map loss. The durable `/var/lib/bex-egress-meter/counter-loss.json` state carries both `bex_egress_meter_counter_loss_events_total` and `bex_egress_meter_last_counter_loss_time_seconds` across process/node restarts. `EgressMeterCounterLoss` pages on a recent event, while the collector's timestamp and `resets()` guards invalidate the exact overlapping windows. A live decrease below the last checkpoint marks the exporter itself unhealthy and preserves the older checkpoint instead of writing a smaller baseline. Proxy and edge process resets also invalidate their overlapping windows because their process-local pre-scrape tails are not reconstructable. The DaemonSet uses `HostToContainer` propagation for bpffs so a Cilium remount during node boot becomes visible to the meter's attachment retry loop.
+
+### Live Cilium traffic matrix (2026-07-15)
+
+`scripts/verify-egress-meter.sh` passed on a three-node kind cluster with Cilium 1.19.5, kube-proxy replacement, VXLAN, WireGuard, and `bpf.hostLegacyRouting=true`. The isolated manual workflow is `.github/workflows/egress-meter-live.yml`; it is not part of routine unit-test runs. Only aggregate fixture results are retained:
+
+| path | expected | observed |
+| --- | --: | --: |
+| exact HTTP router response body | 4,096 B | 4,096 B |
+| WebSocket server frame on the hijacked public connection | 4,100 B wire frame | 4,100 B |
+| WebSocket client frame | excluded | 0 B |
+| direct public UDP | 512 B payload + 4 B fixture header + 28 B IPv4/UDP | 544 B |
+| direct public TCP | payload plus TCP/IP control overhead | 4,372 B |
+| same-cluster TCP including cluster-DNS lookup | excluded | 0 B |
+| Cilium-policy-dropped public UDP | excluded | 0 B |
+| public Postgres backend→client TLS with a 65,536 B request | encrypted response direction only | 6,031–6,032 B across final reruns |
+| public Key Value backend→client TLS with a 65,536 B request | encrypted response direction only | 6,031–6,032 B across final reruns |
+
+Pod replacement retained the resource counter and attributed the replacement only after its new Pod UID/IP reconciliation. A meter process restart retained both `source_instance` and the pinned total. Deliberate map deletion restored the last checkpoint, exposed a 544 B pre-checkpoint gap through a counter decrease and a durable loss event, and therefore made the affected hourly direct source fail. A subsequent node-container reboot retained the restored total and source identity, loaded the first durable loss event, recorded a second restoration event, and advanced rather than reset the loss timestamp; the meter reached Ready after Cilium remounted bpffs. No tenant identifiers or raw traffic are recorded.
+
+This total is a stable bex usage quantity, not a claim that it reproduces a cloud provider's opaque invoice byte-for-byte.
 
 The source audit rejected tempting shortcuts for concrete correctness reasons:
 
@@ -38,7 +67,7 @@ The source audit rejected tempting shortcuts for concrete correctness reasons:
 - **Cilium policy statistics** are useful diagnostics, not a durable usage ledger. In v1.19.5 the [stats map](https://github.com/cilium/cilium/blob/v1.19.5/pkg/maps/policymap/statsmap.go) is a bounded per-CPU LRU hash keyed by endpoint id and policy key. [Endpoint removal](https://github.com/cilium/cilium/blob/v1.19.5/pkg/maps/policymap/cell.go) removes the endpoint policy map but not old stats, and [policy updates](https://github.com/cilium/cilium/blob/v1.19.5/pkg/maps/policymap/policymap.go) zero the associated stat only in debug mode. Eviction, endpoint-id reuse, and reset semantics can therefore silently lose or misattribute quota bytes.
 - **Traefik service response bytes alone** cover HTTP only. Traefik documents [router response-byte metrics](https://doc.traefik.io/traefik/reference/install-configuration/observability/metrics/#router-metrics), which solve shared-backend HTTP attribution, but its [capture writer](https://github.com/traefik/traefik/blob/v3.7.5/pkg/middlewares/capture/capture.go) returns the underlying connection on `Hijack`, so WebSocket frames bypass `ResponseSize`; it also exposes no equivalent per-TCP-service response-byte counter for public datastore routes.
 
-This design intentionally owns the accounting datapath instead of scraping a CNI's debug ABI. Production still uses Cilium and the local CAPD overlay still uses Calico; the node-meter attachment must be proven on a focused Cilium fixture, fail closed as a meter when unsupported, and coexist with the CNI without replacing its programs.
+This design intentionally owns the accounting datapath instead of scraping a CNI's debug ABI. Production Cilium is configured with `bpf.hostLegacyRouting=true` so allowed pod egress traverses host netfilter; the meter attaches only its own `POST_ROUTING` links and does not replace Cilium programs. The local CAPD overlay still uses Calico, so the focused validation uses a dedicated Cilium 1.19.5 fixture. Unsupported kernels fail readiness and export health zero.
 
 ## Meter applicability by resource kind
 
@@ -47,7 +76,7 @@ The rollup loop emits meters for three resource kinds. Not every meter applies t
 | Meter | App service (`service`) | Managed Postgres (`postgres`) | Managed Key Value (`key_value`) |
 | --- | --- | --- | --- |
 | `instance_seconds` | ✅ ReplicaSet pods (`<name>-[a-z0-9]+-[a-z0-9]{5}`) | ✅ CNPG stateful pods (`<name>-[0-9]+`) | ✅ Valkey stateful pods (`<name>-[0-9]+`) |
-| `egress_bytes` | ✅ Traefik HTTP router counter | — TCP/SNI routes not tracked by Traefik's HTTP metrics | — TCP/SNI routes not tracked by Traefik's HTTP metrics |
+| `egress_bytes` | ✅ exact HTTP router + WebSocket downstream + direct-public composition | ✅ public proxy response bytes; private is explicit zero | ✅ public proxy response bytes; private is explicit zero |
 | `build_seconds` | ✅ CNB build Job `completionTime − startTime` | — no build step | — no build step |
 | `storage_gb_seconds` | — stateless App storage is not a supported product surface | ✅ CNPG PVCs (`<name>-<n>`) | ✅ Valkey PVC (`data-<name>-<n>`) |
 
@@ -59,18 +88,18 @@ Migration `0022_usage_storage_kind.up.sql` extends both row-oriented tables' `ki
 
 An hourly rollup loop (`usage.Service.Run`) writes rows to the `usage_hourly` table (migration `0006_usage.up.sql`) whenever both `BEX_CP_DB_URI` (the control-plane store) and `BEX_PROM_URL` (Prometheus) are set. Each row is keyed on `(resource_kind, service_id, kind, tier, window_start)` and is idempotent: re-processing a window (`ON CONFLICT … DO UPDATE`) never double-counts. On startup and every hourly pass, the loop catches up missed windows bounded to the last 48 hours.
 
-### Successful zeroes and gap-free App-meter cursors
+### Successful zeroes and gap-free per-resource meter cursors
 
-For App services, each meter (`instance_seconds`, `egress_bytes`, and `build_seconds`) owns an independent, contiguous cursor:
+For App services, each meter (`instance_seconds`, `egress_bytes`, and `build_seconds`) owns an independent, contiguous cursor. Datastore instance, storage, and egress meters use the same independent-cursor rule:
 
 - A successful source read always persists an hourly row, including quantity zero. An empty Prometheus vector or a successful Kubernetes Job list with no completed build is measured zero usage, not missing data.
 - An unavailable source (unset Prometheus/Kubernetes client or a failed request/list) and a failed store write persist no row. That meter stops at the failed window and retries it on the next hourly pass before advancing to newer windows.
-- The three meters advance independently and are collected concurrently. A transient egress failure therefore cannot hold build/instance metering back, and vice versa.
+- The meters advance independently and are collected concurrently. A transient egress failure therefore cannot hold build/instance/storage metering back, and vice versa.
 - The existing 48-hour catch-up bound still applies and is clamped to the App's creation hour, so a new service never gains synthetic pre-creation coverage. Outages longer than 48 hours are visible as gaps rather than silently synthesized as zero.
 
 Successful zero egress/build rows are coverage anchors in `usage_hourly`; the period aggregation omits their all-zero groups so REST/GraphQL/MCP response semantics remain unchanged. `instance_seconds` retains zero groups for tiered suspended services, as before. Any analysis that needs to prove collection completeness must query raw hourly rows from the deployment time of this corrected contract; older positive-only rows are consumption evidence, not coverage evidence.
 
-The loop iterates `ListApps` (App services) and then all `Database` and `KeyValue` CRs in the operator's namespace — both using the `bex.co/tenant` label to identify the owning workspace. Database/KeyValue CRs use their immutable CR metadata name as `service_id`; for new Postgres this is the typed `dpg-…` id, while legacy Postgres and Key Value retain their grandfathered/name-keyed ids ([docs/ADR020-identifiers.md](ADR020-identifiers.md)). For each closed datastore window, the collector averages the kubelet used-byte gauge across the hour, sums all matching PVCs (including CNPG replicas), converts bytes to decimal GB, and multiplies by elapsed seconds. Per-meter catch-up cursors let storage backfill independently for up to 48 hours and idempotent upserts prevent double-counting when a window is retried.
+The loop iterates `ListApps` (App services) and then all `Database` and `KeyValue` CRs in the operator's namespace — both using the `bex.co/tenant` label to identify the owning workspace. Database/KeyValue CRs use their immutable CR metadata name as `service_id`; for new Postgres this is the typed `dpg-…` id, while legacy Postgres and Key Value retain their grandfathered/name-keyed ids ([docs/ADR020-identifiers.md](ADR020-identifiers.md)). For each closed datastore window, the collector averages the kubelet used-byte gauge across the hour, sums all matching PVCs (including CNPG replicas), converts bytes to decimal GB, and multiplies by elapsed seconds. Public datastore egress is collected from the exact proxy counter in the same window; private datastore egress is successful zero. Per-meter catch-up cursors let storage and egress backfill independently for up to 48 hours and idempotent upserts prevent double-counting when a window is retried.
 
 With `BEX_CP_DB_URI` set but `BEX_PROM_URL` absent the service is wired (the month-to-date read still works) but the metering side of the loop is skipped — only the retention compaction below runs.
 

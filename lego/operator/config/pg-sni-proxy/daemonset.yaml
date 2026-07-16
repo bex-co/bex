@@ -30,20 +30,28 @@ spec:
             - containerPort: 5432
               hostPort: 5432  # bind the node's :5432 directly (dev hostNetwork edge)
               protocol: TCP
+            - name: metrics
+              containerPort: 9092
+              protocol: TCP
           env:
             - name: BEX_PROXY_ADDR
               value: ":5432"
             # Must match the operator manager's BEX_DB_DOMAIN (manager.yaml).
             - name: BEX_DB_DOMAIN
               value: db.bex.co
+            - name: BEX_PROXY_METRICS_ADDR
+              value: ":9092"
           readinessProbe:
-            tcpSocket:
-              port: 5432
+            httpGet:
+              path: /metrics
+              port: metrics
             initialDelaySeconds: 2
             periodSeconds: 5
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
               drop: [ALL]
-              add: [NET_BIND_SERVICE]  # required to bind privileged port :5432
             readOnlyRootFilesystem: true
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { cpu: 100m, memory: 96Mi }

@@ -12,6 +12,7 @@ resources:
   - cluster-api.yaml             # Cluster API + provider controllers (the node-provisioning engine)
   - autoscaler.yaml              # Cluster Autoscaler, in-cluster post-pivot (w1/m19; bootstrap phase uses scripts/install-autoscaler.sh)
   - traefik.yaml                 # edge / ingress controller (Hetzner LB front door)
+  - traefik-plugins.yaml         # exact-router WebSocket downstream-byte middleware source (wave 0)
   - metrics-server.yaml          # resource-metrics backend (metrics.k8s.io) for bex-api metrics
   - prometheus.yaml              # request-metrics backend (scrapes Traefik) for bex-api metrics
   - loki.yaml                    # durable log-history backend (single-binary, filesystem PVC) for bex-api logs

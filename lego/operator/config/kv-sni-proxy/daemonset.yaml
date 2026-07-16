@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kv-sni-proxy
+  namespace: system
+spec:
+  selector:
+    matchLabels:
+      app.bex.co/component: kv-sni-proxy
+  template:
+    metadata:
+      labels:
+        app.bex.co/component: kv-sni-proxy
+    spec:
+      serviceAccountName: kv-sni-proxy
+      nodeSelector:
+        bex.co/pool: platform
+      tolerations:
+        - key: bex.co/platform
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      containers:
+        - name: kv-sni-proxy
+          image: controller:latest
+          command: ["/kv-sni-proxy"]
+          ports:
+            - name: valkey
+              containerPort: 6379
+              hostPort: 6379
+              protocol: TCP
+            - name: metrics
+              containerPort: 9093
+              protocol: TCP
+          env:
+            - name: BEX_KV_PROXY_ADDR
+              value: ":6379"
+            - name: BEX_KV_PROXY_METRICS_ADDR
+              value: ":9093"
+            - name: BEX_KV_DOMAIN
+              value: kv.bex.co
+          readinessProbe:
+            httpGet: { path: /metrics, port: metrics }
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { cpu: 100m, memory: 96Mi }
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]

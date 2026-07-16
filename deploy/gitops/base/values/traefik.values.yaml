@@ -7,7 +7,24 @@
 # order, later wins.
 deployment:
   replicas: 1 # one edge pod — it owns the hostNetwork node's public IP
+  # A second pod cannot bind the same host ports on the pinned edge node, so a
+  # rolling update deadlocks with the new pod Pending. Recreate gives restarts
+  # a deterministic counter reset and a brief, explicit edge interruption.
+  strategy:
+    type: Recreate
   dnsPolicy: ClusterFirstWithHostNet # reach in-cluster API/DNS under hostNetwork
+  additionalVolumes:
+    - name: bex-websocket-egress-plugin
+      configMap:
+        name: bex-websocket-egress-plugin
+experimental:
+  abortOnPluginFailure: true
+  localPlugins:
+    bexWebsocketEgress:
+      type: localPath
+      moduleName: github.com/bex-co/bex-websocket-egress
+      mountPath: /plugins-local/src/github.com/bex-co/bex-websocket-egress
+      volumeName: bex-websocket-egress-plugin
 # w1/m19 t003: platform pool
 nodeSelector:
   bex.co/pool: platform
@@ -39,8 +56,8 @@ ports:
     protocol: TCP
   # postgres entrypoint removed (w1/m29): the bex-pg-sni-proxy DaemonSet now
   # owns host :5432 and routes directly to CNPG backends after handling the
-  # PostgreSQL SSLRequest preamble. Traefik's IngressRouteTCP resources for
-  # postgres are retained (owned by Database CRs) but no longer carry traffic.
+  # PostgreSQL SSLRequest preamble. The operator removes pre-m15
+  # IngressRouteTCP resources as the metered proxy becomes the sole public path.
   metrics:
     port: 9100 # Prometheus scrape target (in-cluster only)
     expose:

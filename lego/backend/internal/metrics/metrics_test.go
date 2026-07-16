@@ -20,9 +20,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -285,6 +287,8 @@ func TestBandwidthMetricResolvesExactIngressRouters(t *testing.T) {
 		return []MetricSeries{}, nil
 	}
 	app := sampleApp("static")
+	app.Labels = map[string]string{core.LabelAppID: "srv-static"}
+	app.Spec.Type = appv1alpha1.TypeStaticSite
 	app.Spec.Host = "site.onbex.co"
 	app.Spec.Hosts = []string{"www.example.com"}
 	svc := newService(nil, req, app, ingressFor("static", "shared-static-server", "site.onbex.co", "www.example.com"))
@@ -298,6 +302,29 @@ func TestBandwidthMetricResolvesExactIngressRouters(t *testing.T) {
 	}
 	if len(got.Routers) != len(want) || got.Routers[0] != want[0] || got.Routers[1] != want[1] {
 		t.Fatalf("resolved routers: got %v, want %v", got.Routers, want)
+	}
+	if got.AppID != "srv-static" || got.Direct {
+		t.Fatalf("bandwidth attribution/applicability: appID=%q direct=%v", got.AppID, got.Direct)
+	}
+}
+
+func TestMonthToDateBandwidthReportsRealCategoriesAndExpandedTotal(t *testing.T) {
+	app := sampleApp("web")
+	app.Labels = map[string]string{core.LabelAppID: "srv-web"}
+	app.Spec.Host = "web.onbex.co"
+	svc := newService(nil, nil, app, ingressFor("web", "web", "web.onbex.co"))
+	svc.MonthToDateBandwidthSource = func(_ context.Context, appID string, routers []string, direct bool, _, _ time.Time) (BandwidthBytes, error) {
+		if appID != "srv-web" || len(routers) != 1 || !direct {
+			t.Fatalf("source identity/applicability: id=%q routers=%v direct=%v", appID, routers, direct)
+		}
+		return BandwidthBytes{HTTP: 1 << 20, NAT: 2 << 20, WebSocket: 3 << 20}, nil
+	}
+	got, err := svc.MonthToDateBandwidth(context.Background(), "web")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.HTTPEgressBandwidthMB != 1 || got.NATEgressBandwidthMB != 2 || got.WebsocketEgressBandwidthMB != 3 || got.EgressBandwidthMB != 6 || got.PrivateLinkEgressBandwidthMB != 0 {
+		t.Fatalf("month bandwidth categories: %+v", got)
 	}
 }
 
@@ -491,11 +518,13 @@ func TestPromQueryFor(t *testing.T) {
 		t.Errorf("latency:\n got %q\nwant %q", lat, want)
 	}
 	bandwidth := promQueryFor(RequestMetricsRequest{
-		Metric: MetricBandwidth, Resolution: 60 * time.Second,
+		Metric: MetricBandwidth, Resolution: 60 * time.Second, AppID: "srv-web", Direct: true,
 		Routers: []string{"default-web-web.onbex.co@kubernetes", "default-web-api-web.onbex.co@kubernetes"},
 	})
-	if want := `sum(rate(traefik_router_responses_bytes_total{router=~"^(default-web-api-web\\.onbex\\.co@kubernetes|default-web-web\\.onbex\\.co@kubernetes)$"}[60s]))`; bandwidth != want {
-		t.Errorf("bandwidth:\n got %q\nwant %q", bandwidth, want)
+	for _, metric := range []string{"traefik_router_responses_bytes_total", "bex_websocket_egress_bytes_total", "bex_app_direct_egress_bytes_total"} {
+		if strings.Count(bandwidth, metric) != 1 {
+			t.Errorf("bandwidth query should contain %s exactly once: %q", metric, bandwidth)
+		}
 	}
 }
 
@@ -545,19 +574,36 @@ func TestPrometheusRequestSourceSkipsPrivateBandwidthQuery(t *testing.T) {
 }
 
 func TestMonthToDateBandwidthSourceUsesExactRouterCounter(t *testing.T) {
-	var gotQuery string
+	var mu sync.Mutex
+	var gotQueries []string
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotQuery = r.URL.Query().Get("query")
-		_, _ = w.Write([]byte(`{"status":"success","data":{"result":[{"value":[0,"1048576"]}]}}`))
+		query := r.URL.Query().Get("query")
+		mu.Lock()
+		gotQueries = append(gotQueries, query)
+		mu.Unlock()
+		value := "1"
+		switch {
+		case strings.Contains(query, "traefik_router_responses_bytes_total"):
+			value = "1048576"
+		case strings.Contains(query, "bex_websocket_egress_bytes_total"):
+			value = "2097152"
+		case strings.Contains(query, "bex_app_direct_egress_bytes_total"):
+			value = "3145728"
+		}
+		_, _ = fmt.Fprintf(w, `{"status":"success","data":{"resultType":"vector","result":[{"value":[0,%q]}]}}`, value)
 	}))
 	defer ts.Close()
+	now := time.Now()
 	value, err := NewMonthToDateBandwidthSource(ts.URL, ts.Client())(
-		context.Background(), []string{"default-web-web-onbex-co@kubernetes"}, time.Now().Add(-time.Hour))
-	if err != nil || value != 1048576 {
+		context.Background(), "srv-web", []string{"default-web-web-onbex-co@kubernetes"}, true, now.Add(-time.Hour), now)
+	if err != nil || value.HTTP != 1048576 || value.WebSocket != 2097152 || value.NAT != 3145728 {
 		t.Fatalf("month source: value=%v err=%v", value, err)
 	}
+	mu.Lock()
+	gotQuery := strings.Join(gotQueries, "\n")
+	mu.Unlock()
 	if !strings.Contains(gotQuery, "traefik_router_responses_bytes_total") ||
-		!strings.Contains(gotQuery, `router=~"^default-web-web-onbex-co@kubernetes$"`) ||
+		!strings.Contains(gotQuery, `router=~"^(default-web-web-onbex-co@kubernetes)$"`) ||
 		strings.Contains(gotQuery, "traefik_service_responses_bytes_total") {
 		t.Fatalf("month source query is not exact-router based: %q", gotQuery)
 	}

@@ -31,6 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -47,10 +48,12 @@ const (
 	// kvStorageClass is the StorageClass for Valkey data volumes (same class the
 	// Database controller uses for Postgres PVCs).
 	kvStorageClass = "hcloud-volumes"
-	// kvEntryPoint is the Traefik TCP entrypoint bound to :6379 (traefik values).
-	kvEntryPoint = "valkey"
 	// kvPort is the Valkey listen + Service port.
 	kvPort = 6379
+	// kvTLSPort is private to the public pass-through proxy. Keeping plaintext on
+	// kvPort preserves existing in-cluster redis:// clients while external
+	// rediss:// clients terminate end-to-end TLS inside Valkey.
+	kvTLSPort = 6380
 	// kvDataPath is where Valkey writes its AOF data inside the container.
 	kvDataPath = "/data"
 	// kvDefaultImage is the Valkey image used when spec.version is empty.
@@ -64,6 +67,8 @@ const (
 	// StatefulSet selector + Service selector so the two stay coupled.
 	labelKeyValue = "app.bex.co/keyvalue"
 )
+
+var certManagerCertificateGVK = schema.GroupVersionKind{Group: "cert-manager.io", Version: "v1", Kind: "Certificate"}
 
 // growOnlyStorage raises a requested volume size to a plan's floor — storage
 // can grow past the plan, never shrink below it. Shared by the Database
@@ -154,14 +159,17 @@ func generatePassword() (string, error) {
 
 // KeyValueReconciler projects a KeyValue into a single-instance Valkey
 // StatefulSet plus a headless Service (internal DNS) plus a credentials Secret,
-// and optionally exposes an external SNI endpoint via Traefik. It is a thin
-// executor — the Valkey image does the actual key-value lifecycle.
+// and optionally a cert-manager certificate for the metered SNI front door. It
+// is a thin executor — the Valkey image does the actual key-value lifecycle.
 type KeyValueReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 	// KvDomain is the wildcard base for external endpoints, e.g. "kv.bex.co".
 	// Empty => public KeyValues get no external route.
 	KvDomain string
+	// ClusterIssuer signs the end-to-end Valkey server certificate used only by
+	// the proxy-facing TLS port. Public endpoints fail closed when it is empty.
+	ClusterIssuer string
 }
 
 // +kubebuilder:rbac:groups=app.bex.co,resources=keyvalues,verbs=get;list;watch;create;update;patch;delete
@@ -170,6 +178,7 @@ type KeyValueReconciler struct {
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=traefik.io,resources=ingressroutetcps;middlewaretcps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=cert-manager.io,resources=certificates,verbs=get;list;watch;create;update;patch;delete
 // Secrets access is namespace-scoped to the apps namespace via deploy/gitops/base/operator-apps-rbac.yaml.
 
 func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -187,6 +196,33 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	plan, storageGB := resolveKVPlan(kv.Spec)
 	internalHost := fmt.Sprintf("%s.%s.svc", kv.Name, kv.Namespace)
+	public := kv.Spec.Public && r.KvDomain != ""
+	tlsSecretName := kv.Name + "-kv-tls"
+	certificateName := tlsSecretName
+	// Remove the old unmetered path before validating or creating the new one.
+	// A missing TLS issuer must fail closed, not leave a legacy route serving.
+	if err := cleanupLegacyKeyValueRoutes(ctx, r.Client, &kv); err != nil {
+		return r.kvFail(ctx, &kv, "RouteCleanupFailed", err)
+	}
+	if public && r.ClusterIssuer == "" {
+		kv.Status.ExternalHost = ""
+		return r.kvFail(ctx, &kv, "TLSIssuerMissing", fmt.Errorf("BEX_CLUSTER_ISSUER is required for a public Key Value endpoint"))
+	}
+	if public {
+		host := fmt.Sprintf("%s.%s", kv.Name, r.KvDomain)
+		certificateSpec := map[string]any{
+			"secretName": tlsSecretName,
+			"dnsNames":   []any{host},
+			"issuerRef": map[string]any{
+				"name": r.ClusterIssuer, "kind": "ClusterIssuer",
+			},
+		}
+		if err := upsertOwned(ctx, r.Client, r.Scheme, &kv, certManagerCertificateGVK, certificateName, certificateSpec); err != nil {
+			return r.kvFail(ctx, &kv, "CertificateFailed", err)
+		}
+	} else if err := deleteOwned(ctx, r.Client, &kv, certManagerCertificateGVK, certificateName); err != nil {
+		return r.kvFail(ctx, &kv, "CertificateCleanupFailed", err)
+	}
 	// Suspended => scale to zero (the PVC, Secret, Service and route are kept, so
 	// resume restores the same data, password and endpoint). Render's KV suspend.
 	replicas := plan.Instances
@@ -247,6 +283,9 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		svc.Spec.ClusterIP = corev1.ClusterIPNone
 		svc.Spec.Selector = labels
 		svc.Spec.Ports = []corev1.ServicePort{{Port: kvPort, TargetPort: intstr.FromInt(kvPort), Name: "valkey"}}
+		if public {
+			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{Port: kvTLSPort, TargetPort: intstr.FromInt(kvTLSPort), Name: "valkey-tls"})
+		}
 		return controllerutil.SetControllerReference(&kv, svc, r.Scheme)
 	}); err != nil {
 		return r.kvFail(ctx, &kv, "ServiceFailed", err)
@@ -294,16 +333,34 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 				Key:                  "password",
 			}},
 		}
+		serverArgs := valkeyArgs(kv.Spec, plan)
+		serverPorts := []corev1.ContainerPort{{ContainerPort: kvPort, Name: "valkey"}}
+		var serverMounts []corev1.VolumeMount
+		sts.Spec.Template.Spec.Volumes = nil
+		if public {
+			serverArgs = append(serverArgs,
+				"--tls-port", strconv.Itoa(kvTLSPort),
+				"--tls-cert-file", "/tls/tls.crt",
+				"--tls-key-file", "/tls/tls.key",
+				"--tls-ca-cert-file", "/tls/tls.crt",
+				"--tls-auth-clients", "no",
+			)
+			serverPorts = append(serverPorts, corev1.ContainerPort{ContainerPort: kvTLSPort, Name: "valkey-tls"})
+			serverMounts = append(serverMounts, corev1.VolumeMount{Name: "public-tls", MountPath: "/tls", ReadOnly: true})
+			sts.Spec.Template.Spec.Volumes = []corev1.Volume{{Name: "public-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{SecretName: tlsSecretName},
+			}}}
+		}
 		sts.Spec.Template.Spec.Containers = []corev1.Container{{
 			Name:  "valkey",
 			Image: valkeyImage(kv.Spec.Version),
 			// VALKEY_PASSWORD (env, below) expands in args — k8s substitutes
 			// $(VAR) from the container env list. appendonly persists to the PVC.
-			Args:         valkeyArgs(kv.Spec, plan),
-			Ports:        []corev1.ContainerPort{{ContainerPort: kvPort, Name: "valkey"}},
+			Args:         serverArgs,
+			Ports:        serverPorts,
 			Env:          []corev1.EnvVar{passwordEnv},
 			Resources:    kvResources(plan),
-			VolumeMounts: []corev1.VolumeMount{{Name: "data", MountPath: kvDataPath}},
+			VolumeMounts: append([]corev1.VolumeMount{{Name: "data", MountPath: kvDataPath}}, serverMounts...),
 			ReadinessProbe: &corev1.Probe{ProbeHandler: corev1.ProbeHandler{
 				TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt(kvPort)},
 			}},
@@ -327,56 +384,14 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return r.kvFail(ctx, &kv, "StatefulSetFailed", err)
 	}
 
-	// --- optional external SNI endpoint via Traefik (mirrors the Database route) ---
-	route := &unstructured.Unstructured{}
-	route.SetGroupVersionKind(traefikIngressRouteTCPGVK)
-	route.SetName(kv.Name + "-kv")
-	route.SetNamespace(kv.Namespace)
-	mwName := kv.Name + "-kv-allow"
-	envMwName := kv.Name + "-kv-env-allow"
+	// --- optional external SNI endpoint via the metered Key Value front door ---
+	// The shared kv-sni-proxy watches this KeyValue directly and owns SNI,
+	// resource/environment IP allowlisting, TLS pass-through, and
+	// backend→client accounting.
 	if kv.Spec.Public && r.KvDomain != "" {
-		// IP allowlist layers, CHAINED so a source must pass every present one
-		// (w4/m28): the store's own list and the environment-projected list
-		// each render their own middleware on the SNI route (the same gates
-		// the Database external route uses). No layers => open route;
-		// internal access is never gated.
-		var middlewares []any
-		if len(kv.Spec.IPAllowList) > 0 {
-			if err := upsertOwned(ctx, r.Client, r.Scheme, &kv, traefikMiddlewareTCPGVK, mwName, ipAllowListMiddlewareSpec(kv.Spec.IPAllowList)); err != nil {
-				return r.kvFail(ctx, &kv, "RouteFailed", err)
-			}
-			middlewares = append(middlewares, map[string]any{"name": mwName, "namespace": kv.Namespace})
-		} else if err := deleteOwned(ctx, r.Client, &kv, traefikMiddlewareTCPGVK, mwName); err != nil {
-			return r.kvFail(ctx, &kv, "RouteFailed", err)
-		}
-		if len(kv.Spec.EnvironmentIPAllowList) > 0 {
-			if err := upsertOwned(ctx, r.Client, r.Scheme, &kv, traefikMiddlewareTCPGVK, envMwName, cidrMiddlewareSpec(kv.Spec.EnvironmentIPAllowList)); err != nil {
-				return r.kvFail(ctx, &kv, "RouteFailed", err)
-			}
-			middlewares = append(middlewares, map[string]any{"name": envMwName, "namespace": kv.Namespace})
-		} else if err := deleteOwned(ctx, r.Client, &kv, traefikMiddlewareTCPGVK, envMwName); err != nil {
-			return r.kvFail(ctx, &kv, "RouteFailed", err)
-		}
 		externalHost := fmt.Sprintf("%s.%s", kv.Name, r.KvDomain)
-		if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, route, func() error {
-			route.Object["spec"] = ingressRouteTCPSpec(kvEntryPoint, externalHost, kv.Name, kvPort, middlewares)
-			return controllerutil.SetControllerReference(&kv, route, r.Scheme)
-		}); err != nil {
-			return r.kvFail(ctx, &kv, "RouteFailed", err)
-		}
 		kv.Status.ExternalHost = externalHost
 	} else {
-		// Not public (or no base domain): best-effort remove any route and
-		// allowlist middleware we made.
-		if err := deleteOptionalObject(ctx, r.Client, route); err != nil {
-			return r.kvFail(ctx, &kv, "RouteCleanupFailed", err)
-		}
-		if err := deleteOwned(ctx, r.Client, &kv, traefikMiddlewareTCPGVK, mwName); err != nil {
-			return r.kvFail(ctx, &kv, "RouteCleanupFailed", err)
-		}
-		if err := deleteOwned(ctx, r.Client, &kv, traefikMiddlewareTCPGVK, envMwName); err != nil {
-			return r.kvFail(ctx, &kv, "RouteCleanupFailed", err)
-		}
 		kv.Status.ExternalHost = ""
 	}
 
@@ -419,6 +434,22 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 }
 
+func cleanupLegacyKeyValueRoutes(ctx context.Context, c client.Client, kv *appv1alpha1.KeyValue) error {
+	route := &unstructured.Unstructured{}
+	route.SetGroupVersionKind(traefikIngressRouteTCPGVK)
+	route.SetName(kv.Name + "-kv")
+	route.SetNamespace(kv.Namespace)
+	if err := deleteOptionalObject(ctx, c, route); err != nil {
+		return err
+	}
+	for _, name := range []string{kv.Name + "-kv-allow", kv.Name + "-kv-env-allow"} {
+		if err := deleteOwned(ctx, c, kv, traefikMiddlewareTCPGVK, name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (r *KeyValueReconciler) kvFail(ctx context.Context, kv *appv1alpha1.KeyValue, reason string, err error) (ctrl.Result, error) {
 	kv.Status.Phase = appv1alpha1.KVPhaseFailed
 	meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
@@ -429,12 +460,10 @@ func (r *KeyValueReconciler) kvFail(ctx context.Context, kv *appv1alpha1.KeyValu
 	return ctrl.Result{}, err
 }
 
-// SetupWithManager wires the controller. It owns the StatefulSet, Service,
-// Secret, and (optional) Traefik route so deletes cascade and child changes
-// re-trigger reconcile.
+// SetupWithManager wires the controller. It owns the StatefulSet, Service, and
+// Secret; the unstructured Certificate also has an owner reference but needs no
+// watch because cert-manager owns its issuance lifecycle.
 func (r *KeyValueReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	route := &unstructured.Unstructured{}
-	route.SetGroupVersionKind(traefikIngressRouteTCPGVK)
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appv1alpha1.KeyValue{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&appsv1.StatefulSet{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
@@ -443,7 +472,6 @@ func (r *KeyValueReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// keeps credential drift self-healing while the manager cache scopes this
 		// watch to BEX_APPS_NAMESPACE (NamespacedSecretCacheOptions).
 		Owns(&corev1.Secret{}, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
-		Owns(route, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Named("keyvalue").
 		Complete(r)
 }

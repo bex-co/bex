@@ -50,7 +50,8 @@ const enUsage: Record<string, TranslationEntry> = {
     description: "Bandwidth section heading on the Usage page",
   },
   "usage.bandwidthDescription": {
-    message: "Outbound egress metered by Traefik",
+    message:
+      "HTTP, WebSocket, direct public, and public datastore response egress",
     description: "Bandwidth section description",
   },
   "usage.buildTitle": {

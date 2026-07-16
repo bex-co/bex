@@ -167,6 +167,9 @@ jobs:
       # everything by default (they run on ALL nodes, both pools + CP). The operator
       # is bootstrap-critical (no CNI anywhere until it runs) and already tolerates
       # the CP taint — pin it to the CP like the CCM.
+      # bpf.hostLegacyRouting keeps pod egress on the host netfilter path after
+      # Cilium policy. The outbound meter attaches at POST_ROUTING there so denied
+      # traffic is excluded while the original pod source address is still visible.
       - name: install Cilium (CNI)
         run: |
           # devices/direct-routing-device pinned to the CAPH private interface
@@ -181,6 +184,7 @@ jobs:
             --set encryption.enabled=true \
             --set encryption.type=wireguard \
             --set encryption.nodeEncryption=true \
+            --set bpf.hostLegacyRouting=true \
             --set devices=enp7s0 \
             --set extraConfig.direct-routing-device=enp7s0 \
             --set 'operator.nodeSelector.node-role\.kubernetes\.io/control-plane='

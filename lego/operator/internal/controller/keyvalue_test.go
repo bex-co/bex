@@ -18,6 +18,8 @@ package controller
 
 import (
 	"context"
+	"slices"
+	"strconv"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -65,17 +67,16 @@ func TestValkeyImage(t *testing.T) {
 	}
 }
 
-// TestKeyValueIPAllowListProjection drives the full reconcile against a fake
-// client with the Traefik kinds registered (envtest has no Traefik CRDs) and
-// pins the allowlist contract: public + non-empty ipAllowList => a MiddlewareTCP
-// with those CIDRs, referenced by the SNI route; emptying the list removes the
-// middleware and the route reference; going private removes route + middleware.
-func TestKeyValueIPAllowListProjection(t *testing.T) {
+// TestKeyValuePublicFrontDoorMigration pins the m15 cutover: the CR keeps its
+// external hostname/allowlist intent for kv-sni-proxy, while any legacy
+// Traefik TCP route and middleware are removed to prevent bypass/double count.
+func TestKeyValuePublicFrontDoorMigration(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = appv1alpha1.AddToScheme(scheme)
 	scheme.AddKnownTypeWithName(traefikIngressRouteTCPGVK, &unstructured.Unstructured{})
 	scheme.AddKnownTypeWithName(traefikMiddlewareTCPGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(certManagerCertificateGVK, &unstructured.Unstructured{})
 
 	kv := &appv1alpha1.KeyValue{
 		ObjectMeta: metav1.ObjectMeta{Name: "acl-kv", Namespace: "default"},
@@ -87,88 +88,103 @@ func TestKeyValueIPAllowListProjection(t *testing.T) {
 			},
 		},
 	}
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv).
+	legacyRoute := &unstructured.Unstructured{}
+	legacyRoute.SetGroupVersionKind(traefikIngressRouteTCPGVK)
+	legacyRoute.SetName("acl-kv-kv")
+	legacyRoute.SetNamespace("default")
+	legacyRoute.Object["spec"] = map[string]any{}
+	legacyMiddleware := &unstructured.Unstructured{}
+	legacyMiddleware.SetGroupVersionKind(traefikMiddlewareTCPGVK)
+	legacyMiddleware.SetName("acl-kv-kv-allow")
+	legacyMiddleware.SetNamespace("default")
+	legacyMiddleware.Object["spec"] = map[string]any{}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv, legacyRoute, legacyMiddleware).
+		WithStatusSubresource(&appv1alpha1.KeyValue{}).Build()
+	r := &KeyValueReconciler{Client: cl, Scheme: scheme, KvDomain: "kv.example.test", ClusterIssuer: "letsencrypt-prod"}
+	ctx := context.Background()
+	nn := types.NamespacedName{Name: "acl-kv", Namespace: "default"}
+	if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if err := cl.Get(ctx, nn, kv); err != nil {
+		t.Fatal(err)
+	}
+	if kv.Status.ExternalHost != "acl-kv.kv.example.test" {
+		t.Fatalf("external host = %q", kv.Status.ExternalHost)
+	}
+	if len(kv.Spec.IPAllowList) != 2 {
+		t.Fatal("allowlist intent was mutated")
+	}
+	certificate := &unstructured.Unstructured{}
+	certificate.SetGroupVersionKind(certManagerCertificateGVK)
+	if err := cl.Get(ctx, types.NamespacedName{Name: "acl-kv-kv-tls", Namespace: "default"}, certificate); err != nil {
+		t.Fatalf("public TLS Certificate not created: %v", err)
+	}
+	if dnsNames, _, _ := unstructured.NestedStringSlice(certificate.Object, "spec", "dnsNames"); len(dnsNames) != 1 || dnsNames[0] != "acl-kv.kv.example.test" {
+		t.Fatalf("Certificate dnsNames = %v", dnsNames)
+	}
+	var service corev1.Service
+	if err := cl.Get(ctx, nn, &service); err != nil {
+		t.Fatal(err)
+	}
+	if len(service.Spec.Ports) != 2 || service.Spec.Ports[1].Port != kvTLSPort {
+		t.Fatalf("public Service ports = %#v, want plaintext %d + TLS %d", service.Spec.Ports, kvPort, kvTLSPort)
+	}
+	var sts appsv1.StatefulSet
+	if err := cl.Get(ctx, nn, &sts); err != nil {
+		t.Fatal(err)
+	}
+	args := sts.Spec.Template.Spec.Containers[0].Args
+	if !slices.Contains(args, "--tls-port") || !slices.Contains(args, strconv.Itoa(kvTLSPort)) {
+		t.Fatalf("public Valkey args lack TLS port: %v", args)
+	}
+	if err := cl.Get(ctx, types.NamespacedName{Name: "acl-kv-kv", Namespace: "default"}, legacyRoute); !apierrors.IsNotFound(err) {
+		t.Fatalf("legacy route was not deleted: %v", err)
+	}
+	if err := cl.Get(ctx, types.NamespacedName{Name: "acl-kv-kv-allow", Namespace: "default"}, legacyMiddleware); !apierrors.IsNotFound(err) {
+		t.Fatalf("legacy middleware was not deleted: %v", err)
+	}
+}
+
+func TestKeyValuePublicFrontDoorFailsClosedWithoutIssuer(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	scheme.AddKnownTypeWithName(traefikIngressRouteTCPGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(traefikMiddlewareTCPGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(certManagerCertificateGVK, &unstructured.Unstructured{})
+
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "no-issuer", Namespace: "default"},
+		Spec:       appv1alpha1.KeyValueSpec{Plan: "free", Public: true},
+	}
+	legacyRoute := &unstructured.Unstructured{}
+	legacyRoute.SetGroupVersionKind(traefikIngressRouteTCPGVK)
+	legacyRoute.SetName("no-issuer-kv")
+	legacyRoute.SetNamespace("default")
+	legacyMiddleware := &unstructured.Unstructured{}
+	legacyMiddleware.SetGroupVersionKind(traefikMiddlewareTCPGVK)
+	legacyMiddleware.SetName("no-issuer-kv-allow")
+	legacyMiddleware.SetNamespace("default")
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv, legacyRoute, legacyMiddleware).
 		WithStatusSubresource(&appv1alpha1.KeyValue{}).Build()
 	r := &KeyValueReconciler{Client: cl, Scheme: scheme, KvDomain: "kv.example.test"}
 	ctx := context.Background()
-	nn := types.NamespacedName{Name: "acl-kv", Namespace: "default"}
-	mwNN := types.NamespacedName{Name: "acl-kv-kv-allow", Namespace: "default"}
-	routeNN := types.NamespacedName{Name: "acl-kv-kv", Namespace: "default"}
-	reconcile1 := func() {
-		t.Helper()
-		if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
-			t.Fatalf("reconcile: %v", err)
-		}
+	nn := types.NamespacedName{Name: "no-issuer", Namespace: "default"}
+	if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err == nil {
+		t.Fatal("public Key Value unexpectedly reconciled without a TLS issuer")
 	}
-	getObj := func(gvk types.NamespacedName, kind string) (*unstructured.Unstructured, error) {
-		o := &unstructured.Unstructured{}
-		if kind == "route" {
-			o.SetGroupVersionKind(traefikIngressRouteTCPGVK)
-		} else {
-			o.SetGroupVersionKind(traefikMiddlewareTCPGVK)
-		}
-		return o, cl.Get(ctx, gvk, o)
-	}
-
-	// Public + allowlist => middleware with the CIDRs, referenced by the route.
-	reconcile1()
-	mw, err := getObj(mwNN, "middleware")
-	if err != nil {
-		t.Fatalf("middleware not created: %v", err)
-	}
-	ranges, _, _ := unstructured.NestedSlice(mw.Object, "spec", "ipAllowList", "sourceRange")
-	if len(ranges) != 2 || ranges[0] != "203.0.113.0/24" || ranges[1] != "10.0.0.0/8" {
-		t.Fatalf("sourceRange = %v", ranges)
-	}
-	route, err := getObj(routeNN, "route")
-	if err != nil {
-		t.Fatalf("route not created: %v", err)
-	}
-	routes, _, _ := unstructured.NestedSlice(route.Object, "spec", "routes")
-	mws, ok := routes[0].(map[string]any)["middlewares"].([]any)
-	if !ok || len(mws) != 1 {
-		t.Fatalf("route middlewares = %v, want 1 ref", routes[0].(map[string]any)["middlewares"])
-	}
-	if ref := mws[0].(map[string]any); ref["name"] != "acl-kv-kv-allow" || ref["namespace"] != "default" {
-		t.Fatalf("middleware ref = %v", ref)
-	}
-
-	// Emptying the list removes the middleware and the route reference.
 	if err := cl.Get(ctx, nn, kv); err != nil {
-		t.Fatalf("get kv: %v", err)
+		t.Fatal(err)
 	}
-	kv.Spec.IPAllowList = nil
-	if err := cl.Update(ctx, kv); err != nil {
-		t.Fatalf("clear allowlist: %v", err)
+	if kv.Status.Phase != appv1alpha1.KVPhaseFailed || kv.Status.ExternalHost != "" {
+		t.Fatalf("status = phase %q host %q, want failed with no public host", kv.Status.Phase, kv.Status.ExternalHost)
 	}
-	reconcile1()
-	if _, err := getObj(mwNN, "middleware"); !apierrors.IsNotFound(err) {
-		t.Fatalf("emptied allowlist must delete the middleware, got %v", err)
+	if err := cl.Get(ctx, types.NamespacedName{Name: "no-issuer-kv", Namespace: "default"}, legacyRoute); !apierrors.IsNotFound(err) {
+		t.Fatalf("legacy route survived fail-closed reconcile: %v", err)
 	}
-	route, err = getObj(routeNN, "route")
-	if err != nil {
-		t.Fatalf("route must survive an emptied allowlist: %v", err)
-	}
-	routes, _, _ = unstructured.NestedSlice(route.Object, "spec", "routes")
-	if _, has := routes[0].(map[string]any)["middlewares"]; has {
-		t.Fatalf("emptied allowlist must drop the route's middleware ref: %v", routes[0])
-	}
-
-	// Going private removes the route and any middleware.
-	if err := cl.Get(ctx, nn, kv); err != nil {
-		t.Fatalf("get kv: %v", err)
-	}
-	kv.Spec.Public = false
-	kv.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24"}}
-	if err := cl.Update(ctx, kv); err != nil {
-		t.Fatalf("make private: %v", err)
-	}
-	reconcile1()
-	if _, err := getObj(routeNN, "route"); !apierrors.IsNotFound(err) {
-		t.Fatalf("private store must have no route, got %v", err)
-	}
-	if _, err := getObj(mwNN, "middleware"); !apierrors.IsNotFound(err) {
-		t.Fatalf("private store must have no allowlist middleware, got %v", err)
+	if err := cl.Get(ctx, types.NamespacedName{Name: "no-issuer-kv-allow", Namespace: "default"}, legacyMiddleware); !apierrors.IsNotFound(err) {
+		t.Fatalf("legacy middleware survived fail-closed reconcile: %v", err)
 	}
 }
 
@@ -194,6 +210,7 @@ func TestKeyValuePlanChangeReconcile(t *testing.T) {
 	_ = appv1alpha1.AddToScheme(scheme)
 	scheme.AddKnownTypeWithName(traefikIngressRouteTCPGVK, &unstructured.Unstructured{})
 	scheme.AddKnownTypeWithName(traefikMiddlewareTCPGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(certManagerCertificateGVK, &unstructured.Unstructured{})
 
 	kv := &appv1alpha1.KeyValue{
 		ObjectMeta: metav1.ObjectMeta{Name: "plan-change-kv", Namespace: "default"},
@@ -244,9 +261,7 @@ var _ = Describe("KeyValue Controller", func() {
 
 	// k8sClient is only set in BeforeSuite — build the reconciler lazily, never
 	// in the container body. KvDomain is left empty so the reconcile takes the
-	// internal-only path: the Traefik CRD is not installed in envtest, so the
-	// public-route branch is covered by ingressRouteTCPSpec's pure-function test
-	// (shared with the Database controller in database_test.go).
+	// internal-only path.
 	var r *KeyValueReconciler
 	BeforeEach(func() {
 		r = &KeyValueReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}

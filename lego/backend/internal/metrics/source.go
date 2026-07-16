@@ -33,6 +33,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/egressquery"
 )
 
 // source.go holds the production metrics backends — the domain depends only on
@@ -107,6 +108,18 @@ func NewPrometheusRequestSource(base string, hc *http.Client) RequestMetricsSour
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req RequestMetricsRequest) ([]MetricSeries, error) {
+		if req.Metric == MetricBandwidth {
+			seconds := int64(req.End.Sub(req.Start) / time.Second)
+			for _, spec := range egressquery.App(req.AppID, req.Routers, req.Direct) {
+				health, err := egressquery.Instant(ctx, hc, base, egressquery.Health(spec, seconds), req.End)
+				if err != nil {
+					return nil, err
+				}
+				if health < 1 {
+					return nil, fmt.Errorf("egress source %s unhealthy", spec.Source)
+				}
+			}
+		}
 		query := promQueryFor(req)
 		if query == "" {
 			return []MetricSeries{}, nil
@@ -196,7 +209,7 @@ func NewPrometheusResourceSource(base string, hc *http.Client) ResourceMetricsRa
 // pod-sandbox/aggregate rows that survive the scrape-side relabeling.
 func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 	matchers := fmt.Sprintf(`namespace=%q,pod=~"%s-[a-z0-9]+-[a-z0-9]{5}",container!=""`,
-		req.Namespace, promEscape(req.App))
+		req.Namespace, egressquery.RegexEscape(req.App))
 	switch req.Metric {
 	case MetricMemory:
 		return fmt.Sprintf(`sum by (pod) (container_memory_working_set_bytes{%s})`, matchers)
@@ -215,13 +228,9 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 // not a matched Host()/PathPrefix() value), so host/path filters are refused
 // upstream (MetricQuery.Host/Path → 400) and absent from RequestMetricsRequest.
 func promQueryFor(req RequestMetricsRequest) string {
-	selector := fmt.Sprintf(`service=~".*%s.*"`, promEscape(req.App))
+	selector := fmt.Sprintf(`service=~".*%s.*"`, egressquery.RegexEscape(req.App))
 	if req.Metric == MetricBandwidth {
-		matcher := core.TraefikRouterMatcher(req.Routers)
-		if matcher == "" {
-			return ""
-		}
-		selector = fmt.Sprintf(`router=~%q`, matcher)
+		return egressquery.SumRates(egressquery.App(req.AppID, req.Routers, req.Direct), stepSeconds(req.Resolution))
 	}
 	sel := []string{selector}
 	if c := codeMatcher(req.StatusCode); c != "" {
@@ -238,8 +247,6 @@ func promQueryFor(req RequestMetricsRequest) string {
 		}
 		return fmt.Sprintf(`histogram_quantile(%s, sum(rate(traefik_service_request_duration_seconds_bucket{%s}[%s])) by (%s))`,
 			strconv.FormatFloat(req.Quantile, 'g', -1, 64), matchers, window, by)
-	case MetricBandwidth:
-		return sumRate("traefik_router_responses_bytes_total", matchers, window, groupLabel(req.GroupBy))
 	default: // http_requests
 		return sumRate("traefik_service_requests_total", matchers, window, groupLabel(req.GroupBy))
 	}
@@ -276,18 +283,6 @@ func groupLabel(groupBy string) string {
 	}
 }
 
-// promEscape escapes regex metacharacters in an App name used inside a =~ matcher.
-func promEscape(s string) string {
-	var b strings.Builder
-	for _, r := range s {
-		if strings.ContainsRune(`.+*?()|[]{}^$\`, r) {
-			b.WriteByte('\\')
-		}
-		b.WriteRune(r)
-	}
-	return b.String()
-}
-
 // promStatusSuccess is Prometheus's "status" field on a successful response.
 const promStatusSuccess = "success"
 
@@ -305,77 +300,42 @@ type promRangeResponse struct {
 
 // --- Month-to-date bandwidth: a Prometheus increase() instant query ---
 
-// NewMonthToDateBandwidthSource returns the production MonthToDateBandwidthSource
-// — a single Prometheus instant query for cumulative HTTP egress since a time.
+// NewMonthToDateBandwidthSource returns the production composed App egress
+// source. It validates every applicable source before summing its category.
 func NewMonthToDateBandwidthSource(base string, hc *http.Client) MonthToDateBandwidthSource {
 	if hc == nil {
 		hc = http.DefaultClient
 	}
 	base = strings.TrimRight(base, "/")
-	return func(ctx context.Context, routers []string, since time.Time) (float64, error) {
-		matcher := core.TraefikRouterMatcher(routers)
-		if matcher == "" {
-			return 0, nil
-		}
-		elapsed := time.Since(since)
+	return func(ctx context.Context, appID string, routers []string, direct bool, since, at time.Time) (BandwidthBytes, error) {
+		elapsed := at.Sub(since)
 		if elapsed <= 0 {
-			return 0, nil
+			return BandwidthBytes{}, nil
 		}
-		q := fmt.Sprintf(`sum(increase(traefik_router_responses_bytes_total{router=~%q}[%ds]))`,
-			matcher, int64(elapsed/time.Second))
-		u := fmt.Sprintf("%s/api/v1/query?%s", base, url.Values{"query": {q}}.Encode())
-
-		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
-		if err != nil {
-			return 0, err
+		var out BandwidthBytes
+		for _, spec := range egressquery.App(appID, routers, direct) {
+			health, err := egressquery.Instant(ctx, hc, base, egressquery.Health(spec, int64(elapsed/time.Second)), at)
+			if err != nil || health < 1 {
+				if err == nil {
+					err = fmt.Errorf("egress source %s unhealthy", spec.Source)
+				}
+				return BandwidthBytes{}, err
+			}
+			value, err := egressquery.Instant(ctx, hc, base, egressquery.Increase(spec, int64(elapsed/time.Second)), at)
+			if err != nil {
+				return BandwidthBytes{}, err
+			}
+			switch spec.Source {
+			case egressquery.HTTP:
+				out.HTTP += value
+			case egressquery.Direct:
+				out.NAT += value
+			case egressquery.WebSocket:
+				out.WebSocket += value
+			}
 		}
-		resp, err := hc.Do(httpReq)
-		if err != nil {
-			return 0, err
-		}
-		defer func() { _ = resp.Body.Close() }()
-		if resp.StatusCode != http.StatusOK {
-			return 0, fmt.Errorf("prometheus: status %d", resp.StatusCode)
-		}
-		var pr promInstantResponse
-		if err := json.NewDecoder(resp.Body).Decode(&pr); err != nil {
-			return 0, fmt.Errorf("decode prometheus response: %w", err)
-		}
-		return parsePromScalarSum(pr)
+		return out, nil
 	}
-}
-
-// promInstantResponse is the subset of Prometheus's instant /api/v1/query result.
-type promInstantResponse struct {
-	Status string `json:"status"`
-	Data   struct {
-		Result []struct {
-			Value []any `json:"value"` // [unixSeconds(float), "value"(string)]
-		} `json:"result"`
-	} `json:"data"`
-}
-
-// parsePromScalarSum sums every returned vector element's value.
-func parsePromScalarSum(pr promInstantResponse) (float64, error) {
-	if pr.Status != "" && pr.Status != promStatusSuccess {
-		return 0, fmt.Errorf("prometheus status %q", pr.Status)
-	}
-	var total float64
-	for _, res := range pr.Data.Result {
-		if len(res.Value) != 2 {
-			continue
-		}
-		str, ok := res.Value[1].(string)
-		if !ok {
-			continue
-		}
-		val, err := strconv.ParseFloat(str, 64)
-		if err != nil || math.IsNaN(val) {
-			continue
-		}
-		total += val
-	}
-	return total, nil
 }
 
 // --- Datastore metrics: PVC stats + CNPG's postgres_exporter over Prometheus ---
@@ -431,7 +391,7 @@ func NewPrometheusKeyValueStatsSource(base string, hc *http.Client) KeyValueStat
 			metric, unit = "redis_connected_clients", unitCount
 		}
 		q := fmt.Sprintf(`sum by (pod) (%s{namespace=%q,pod=~%q})`,
-			metric, req.Namespace, fmt.Sprintf(`%s-[0-9]+`, promEscape(req.Resource)))
+			metric, req.Namespace, fmt.Sprintf(`%s-[0-9]+`, egressquery.RegexEscape(req.Resource)))
 		series, err := promQueryRange(ctx, hc, base, q, req.Start, req.End, stepSeconds(req.Resolution))
 		if err != nil {
 			return nil, err
@@ -481,7 +441,7 @@ func NewPrometheusDBConnectionsSource(base string, hc *http.Client) DBConnection
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req DBConnectionsRequest) ([]MetricSeries, error) {
 		q := fmt.Sprintf(`sum by (pod) (cnpg_backends_total{namespace=%q,cnpg_io_cluster=%q})`,
-			req.Namespace, promEscape(req.Cluster))
+			req.Namespace, egressquery.RegexEscape(req.Cluster))
 		return cnpgInstanceQuery(ctx, hc, base, q, req.Cluster, unitCount, req.Start, req.End, stepSeconds(req.Resolution))
 	}
 }
@@ -501,7 +461,7 @@ func NewPrometheusReplicationLagSource(base string, hc *http.Client) Replication
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req ReplicationLagRequest) ([]MetricSeries, error) {
 		q := fmt.Sprintf(`max by (pod) (cnpg_pg_replication_lag{namespace=%q,cnpg_io_cluster=%q})`,
-			req.Namespace, promEscape(req.Cluster))
+			req.Namespace, egressquery.RegexEscape(req.Cluster))
 		return cnpgInstanceQuery(ctx, hc, base, q, req.Cluster, unitSeconds, req.Start, req.End, stepSeconds(req.Resolution))
 	}
 }
@@ -516,7 +476,7 @@ func NewPrometheusFilterValuesSource(base string, hc *http.Client) MetricsFilter
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, _, app, label string) ([]string, error) {
-		match := fmt.Sprintf(`traefik_service_requests_total{service=~".*%s.*"}`, promEscape(app))
+		match := fmt.Sprintf(`traefik_service_requests_total{service=~".*%s.*"}`, egressquery.RegexEscape(app))
 		u := fmt.Sprintf("%s/api/v1/label/%s/values?%s", base, url.PathEscape(label), url.Values{"match[]": {match}}.Encode())
 
 		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)

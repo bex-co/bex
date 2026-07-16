@@ -2,7 +2,7 @@ import { useQuery } from "@apollo/client/react";
 import { MonthToDateBandwidthDocument } from "@/graphql/definitions";
 
 export interface UseMonthToDateBandwidthResult {
-  /** bex only meters HTTP egress (Traefik-scraped) — null while loading. */
+  /** Composed public outbound bytes across every applicable source. */
   egressBandwidthMB: number | null;
   loading: boolean;
   error: Error | undefined;

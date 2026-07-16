@@ -385,7 +385,9 @@ var _ = Describe("App Controller", func() {
 		It("rolls on restartedAt, hibernates on suspend, restores on resume", func() {
 			By("creating a running-shaped App with 2 replicas and a host")
 			app := &appv1alpha1.App{
-				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default", Labels: map[string]string{
+					labelAppID: "srv-c185th5c2rvvnhbfiltg",
+				}},
 				Spec: appv1alpha1.AppSpec{
 					Image: "traefik/whoami", Port: 3000, Replicas: 2,
 					Host: "lifecycle.1.2.3.4.sslip.io",
@@ -395,6 +397,8 @@ var _ = Describe("App Controller", func() {
 			reconcileN()
 			dep := getDep()
 			Expect(*dep.Spec.Replicas).To(Equal(int32(2)))
+			Expect(dep.Spec.Template.Labels[labelAppID]).To(Equal("srv-c185th5c2rvvnhbfiltg"),
+				"the node meter must receive immutable resource attribution")
 			Expect(dep.Spec.Template.Annotations).NotTo(HaveKey("app.bex.co/restarted-at"))
 
 			By("restart: setting spec.restartedAt stamps the pod template")

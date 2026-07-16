@@ -11,6 +11,10 @@ spec:
       port: 5432
       targetPort: 5432
       protocol: TCP
+    - name: metrics
+      port: 9092
+      targetPort: metrics
+      protocol: TCP
   # ClusterIP (default) exposes the proxy to in-cluster clients.
   # For external access the proxy uses hostPort (dev) or a LoadBalancer
   # overlay (prod). See deploy/gitops/overlays/prod/pg-sni-proxy-lb.yaml.

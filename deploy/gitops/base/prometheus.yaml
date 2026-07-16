@@ -155,6 +155,25 @@ spec:
                     replacement: ${1}:9100
                   - source_labels: [__meta_kubernetes_pod_name]
                     target_label: pod
+              - job_name: traefik-websocket-meter
+                scrape_interval: 15s
+                kubernetes_sd_configs:
+                  - role: pod
+                    namespaces:
+                      names: [traefik]
+                relabel_configs:
+                  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+                    action: keep
+                    regex: traefik
+                  - source_labels: [__meta_kubernetes_pod_ip]
+                    target_label: __address__
+                    replacement: ${1}:9101
+                  - source_labels: [__meta_kubernetes_pod_name]
+                    target_label: pod
+                metric_relabel_configs:
+                  - source_labels: [__name__]
+                    regex: bex_websocket_(egress_bytes_total|meter_healthy|meter_process_start_time_seconds)
+                    action: keep
               # cAdvisor: the raw series behind bex-api's cpu/memory/instance-count
               # history. Node SD, scraped THROUGH the apiserver proxy
               # (/api/v1/nodes/<node>/proxy/metrics/cadvisor) rather than the
@@ -204,6 +223,68 @@ spec:
                 scrape_interval: 15s
                 static_configs:
                   - targets: [bex-ssh-gateway.bex-system.svc:9090]
+              # One post-policy netfilter meter per untainted tenant node. Pod discovery
+              # (rather than the round-robin Service) preserves the node and
+              # source_instance labels needed to detect a missing/reset source.
+              - job_name: bex-egress-meter
+                scrape_interval: 15s
+                kubernetes_sd_configs:
+                  - role: pod
+                    namespaces:
+                      names: [bex-system]
+                relabel_configs:
+                  - source_labels: [__meta_kubernetes_pod_label_app_bex_co_component]
+                    action: keep
+                    regex: egress-meter
+                  - source_labels: [__meta_kubernetes_pod_ip]
+                    target_label: __address__
+                    replacement: ${1}:9091
+                  - source_labels: [__meta_kubernetes_pod_node_name]
+                    target_label: node
+                metric_relabel_configs:
+                  - source_labels: [__name__]
+                    regex: bex_(app_direct_egress_bytes_total|egress_meter_.*)
+                    action: keep
+              # Public Postgres front doors: backend→client bytes are counted
+              # inside the SNI splice, labeled by the parent Database id.
+              - job_name: bex-pg-proxy
+                scrape_interval: 15s
+                kubernetes_sd_configs:
+                  - role: pod
+                    namespaces:
+                      names: [bex-system]
+                relabel_configs:
+                  - source_labels: [__meta_kubernetes_pod_label_app_bex_co_component]
+                    action: keep
+                    regex: pg-sni-proxy
+                  - source_labels: [__meta_kubernetes_pod_ip]
+                    target_label: __address__
+                    replacement: ${1}:9092
+                  - source_labels: [__meta_kubernetes_pod_name]
+                    target_label: pod
+                metric_relabel_configs:
+                  - source_labels: [__name__]
+                    regex: bex_pg_proxy_(egress_bytes_total|healthy|process_start_time_seconds)
+                    action: keep
+              - job_name: bex-kv-proxy
+                scrape_interval: 15s
+                kubernetes_sd_configs:
+                  - role: pod
+                    namespaces:
+                      names: [bex-system]
+                relabel_configs:
+                  - source_labels: [__meta_kubernetes_pod_label_app_bex_co_component]
+                    action: keep
+                    regex: kv-sni-proxy
+                  - source_labels: [__meta_kubernetes_pod_ip]
+                    target_label: __address__
+                    replacement: ${1}:9093
+                  - source_labels: [__meta_kubernetes_pod_name]
+                    target_label: pod
+                metric_relabel_configs:
+                  - source_labels: [__name__]
+                    regex: bex_kv_proxy_(egress_bytes_total|healthy|process_start_time_seconds)
+                    action: keep
               # kubelet /metrics (NOT cadvisor): only kubelet_volume_stats_* — the
               # PVC used/capacity bytes behind the PersistentVolumeFillingUp alert.
               # Same apiserver-proxy pattern as cadvisor; metric_relabel keeps just
@@ -507,6 +588,88 @@ spec:
 
               - name: bex
                 rules:
+                  - alert: EgressMeterTargetMissing
+                    expr: |
+                      count(up{job="bex-egress-meter"} == 1)
+                      !=
+                      count(
+                        kube_node_info
+                        unless on (node) kube_node_labels{label_bex_co_pool="platform"}
+                        unless on (node) kube_node_role{role="control-plane"}
+                      )
+                    for: 2m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Not every tenant node has a scrapeable egress meter"
+                      description: "Outbound accounting is incomplete: the Ready egress-meter target count differs from the untainted tenant-node count. Do not collect affected hourly egress windows. Debug: kubectl -n bex-system get pods -l app.bex.co/component=egress-meter -o wide; kubectl get nodes --show-labels"
+
+                  - alert: EgressMeterUnhealthy
+                    expr: min by (node) (bex_egress_meter_healthy) == 0
+                    for: 2m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Egress meter on {{ $labels.node }} is incomplete"
+                      description: "At least one App Pod IP lacks stable attribution, or the meter reported a map/checkpoint error. The affected hourly source must fail rather than become zero. Debug: kubectl -n bex-system logs -l app.bex.co/component=egress-meter --prefix"
+
+                  - alert: EgressMeterCounterLoss
+                    expr: max by (node) (bex_egress_meter_last_counter_loss_time_seconds) > 0 and (time() - max by (node) (bex_egress_meter_last_counter_loss_time_seconds)) < 3600
+                    for: 1m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Egress meter on {{ $labels.node }} detected counter loss"
+                      description: "The meter restored a node checkpoint or observed a counter decrease within the last hour. Its durable event timestamp rejects every overlapping direct-egress window automatically; inspect the node and pinned maps."
+
+                  - alert: EgressMeterMapPressure
+                    expr: max by (node) (bex_egress_meter_resource_map_pressure_ratio) > 0.80
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Egress meter resource map on {{ $labels.node }} is {{ $value | humanizePercentage }} full"
+                      description: "The bounded App counter map is above 80%; reaching capacity makes new attribution fail closed. Debug: kubectl -n bex-system logs -l app.bex.co/component=egress-meter --prefix"
+
+                  - alert: WebSocketEgressMeterUnavailable
+                    expr: |
+                      sum(absent(up{job="traefik-websocket-meter"}))
+                      or min(up{job="traefik-websocket-meter"}) == 0
+                      or sum(absent(bex_websocket_meter_healthy))
+                      or min(bex_websocket_meter_healthy) == 0
+                    for: 2m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "WebSocket outbound accounting is unavailable"
+                      description: "The Traefik hijack-path byte meter is missing or unhealthy. Public WebSocket usage windows must fail rather than omit frames. Debug: kubectl -n traefik logs -l app.kubernetes.io/name=traefik; kubectl -n traefik get pods -o wide"
+
+                  - alert: PostgresEgressProxyUnavailable
+                    expr: |
+                      sum(absent(up{job="bex-pg-proxy"}))
+                      or min(up{job="bex-pg-proxy"}) == 0
+                      or sum(absent(bex_pg_proxy_healthy{resource_kind="postgres"}))
+                      or min(bex_pg_proxy_healthy{resource_kind="postgres"}) == 0
+                    for: 2m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Postgres outbound accounting is unavailable"
+                      description: "The public Postgres proxy meter is missing or unhealthy. Public Database usage windows must fail rather than undercount. Debug: kubectl -n bex-system get pods -l app.bex.co/component=pg-sni-proxy -o wide"
+
+                  - alert: KeyValueEgressProxyUnavailable
+                    expr: |
+                      sum(absent(up{job="bex-kv-proxy"}))
+                      or min(up{job="bex-kv-proxy"}) == 0
+                      or sum(absent(bex_kv_proxy_healthy{resource_kind="key_value"}))
+                      or min(bex_kv_proxy_healthy{resource_kind="key_value"}) == 0
+                    for: 2m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Key Value outbound accounting is unavailable"
+                      description: "The public Key Value proxy meter is missing or unhealthy. Public Key Value usage windows must fail rather than undercount. Debug: kubectl -n bex-system get pods -l app.bex.co/component=kv-sni-proxy -o wide"
+
                   - alert: BackupCronJobStale
                     expr: |
                       (time() - kube_cronjob_status_last_successful_time{cronjob=~"etcd-backup|openbao-backup"}) > (26 * 3600)

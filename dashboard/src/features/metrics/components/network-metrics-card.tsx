@@ -48,10 +48,9 @@ const GROUP_BY_ALL = "all";
  * Render's "Network Metrics" card: Total Requests, Response Times, Outbound
  * Bandwidth — Prometheus-backed time-series honoring the range/resolution.
  * The toolbar's Status Code filter applies to requests + latency; bandwidth
- * is deliberately left unfiltered — Traefik's responses-bytes counter carries
- * no `code` label, so filtering it would empty the chart rather than filter
- * it (same honesty rule as the backend's rejected host/path filters, which
- * return a 400 rather than silently-unfiltered series — w3/m12).
+ * is deliberately left unfiltered because its composed HTTP, WebSocket, and
+ * direct-public sources do not share a status-code label (same honesty rule as
+ * the backend's rejected host/path filters — w3/m12).
  */
 export function NetworkMetricsCard({
   resource,

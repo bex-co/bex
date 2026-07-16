@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bex-pg-sni-proxy-public
+  namespace: bex-system
+  annotations:
+    load-balancer.hetzner.cloud/name: bex-traefik
+    load-balancer.hetzner.cloud/location: fsn1
+    load-balancer.hetzner.cloud/use-private-ip: "true"
+    load-balancer.hetzner.cloud/uses-proxyprotocol: "false"
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  selector:
+    app.bex.co/component: pg-sni-proxy
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+      protocol: TCP

@@ -31,19 +31,25 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
+	"net/netip"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -52,12 +58,9 @@ const (
 	sslRequestLen   = int32(8)
 	sslByte         = byte('S') // server replies 'S' to accept SSL
 
-	tlsHandshakeType = byte(0x16) // TLS ContentType: Handshake
-
-	maxClientHello = 16 * 1024 // cap on how many bytes of a TLS record we buffer
-
-	defaultAddr = ":5432"
-	dialTimeout = 10 * time.Second
+	defaultAddr        = ":5432"
+	defaultMetricsAddr = ":9092"
+	dialTimeout        = 10 * time.Second
 )
 
 var scheme = runtime.NewScheme()
@@ -70,25 +73,82 @@ func init() {
 // SNI hostname `<dbname>.<domain>` is resolved at connection time. The router is
 // kept up-to-date by a controller-runtime reconciler watching Database events.
 type dbRouter struct {
-	mu     sync.RWMutex
-	domain string            // BEX_DB_DOMAIN, e.g. "db.bex.co"
-	table  map[string]string // dbname → namespace
+	mu      sync.RWMutex
+	domain  string                    // BEX_DB_DOMAIN, e.g. "db.bex.co"
+	table   map[string]dbRoutingEntry // dbname → exact public routing intent
+	invalid map[string]bool           // malformed CRs keep global source health false
+}
+
+type dbRoutingEntry struct {
+	namespace string
+	pooler    bool
+	replicas  map[string]bool
+	allow     []netip.Prefix
+	envAllow  []netip.Prefix
+}
+
+type dbRoute struct {
+	Database string
+	Backend  string
 }
 
 func newRouter(domain string) *dbRouter {
-	return &dbRouter{domain: domain, table: make(map[string]string)}
+	return &dbRouter{
+		domain:  strings.ToLower(strings.TrimSuffix(domain, ".")),
+		table:   make(map[string]dbRoutingEntry),
+		invalid: make(map[string]bool),
+	}
 }
 
-func (r *dbRouter) set(name, ns string) {
+func (r *dbRouter) set(db *appv1alpha1.Database) error {
+	if !db.Spec.Public || r.domain == "" {
+		r.delete(db.Name)
+		return nil
+	}
+	entry := dbRoutingEntry{namespace: db.Namespace, pooler: db.Spec.Pooler, replicas: map[string]bool{}}
+	for _, replica := range db.Spec.ReadReplicas {
+		entry.replicas[replica.Name] = true
+	}
+	for _, item := range db.Spec.IPAllowList {
+		prefix, err := netip.ParsePrefix(item.CIDR)
+		if err != nil {
+			r.mu.Lock()
+			delete(r.table, db.Name)
+			r.invalid[db.Name] = true
+			r.mu.Unlock()
+			return fmt.Errorf("invalid allowlist CIDR %q: %w", item.CIDR, err)
+		}
+		entry.allow = append(entry.allow, prefix.Masked())
+	}
+	for _, cidr := range db.Spec.EnvironmentIPAllowList {
+		prefix, err := netip.ParsePrefix(cidr)
+		if err != nil {
+			r.mu.Lock()
+			delete(r.table, db.Name)
+			r.invalid[db.Name] = true
+			r.mu.Unlock()
+			return fmt.Errorf("invalid environment allowlist CIDR %q: %w", cidr, err)
+		}
+		entry.envAllow = append(entry.envAllow, prefix.Masked())
+	}
 	r.mu.Lock()
-	r.table[name] = ns
+	r.table[db.Name] = entry
+	delete(r.invalid, db.Name)
 	r.mu.Unlock()
+	return nil
 }
 
 func (r *dbRouter) delete(name string) {
 	r.mu.Lock()
 	delete(r.table, name)
+	delete(r.invalid, name)
 	r.mu.Unlock()
+}
+
+func (r *dbRouter) healthy() bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return len(r.invalid) == 0
 }
 
 // resolve maps an SNI hostname to a backend TCP address.
@@ -96,27 +156,45 @@ func (r *dbRouter) delete(name string) {
 //   - <dbname>.<domain>           → <dbname>-rw.<ns>.svc.cluster.local:5432
 //   - <dbname>-pool.<domain>      → <dbname>-pooler.<ns>.svc.cluster.local:5432
 //   - <dbname>-ro-<rep>.<domain>  → <dbname>-ro.<ns>.svc.cluster.local:5432
-func (r *dbRouter) resolve(sni string) (string, bool) {
+func (r *dbRouter) resolve(sni string, source netip.Addr) (dbRoute, bool) {
 	if r.domain == "" {
-		return "", false
+		return dbRoute{}, false
 	}
-	base, ok := strings.CutSuffix(sni, "."+r.domain)
+	base, ok := strings.CutSuffix(strings.ToLower(strings.TrimSuffix(sni, ".")), "."+r.domain)
 	if !ok {
-		return "", false
+		return dbRoute{}, false
 	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	for name, ns := range r.table {
+	for name, entry := range r.table {
+		if !allowedByLayer(source, entry.allow) || !allowedByLayer(source, entry.envAllow) {
+			continue
+		}
 		switch {
 		case base == name:
-			return fmt.Sprintf("%s-rw.%s.svc.cluster.local:5432", name, ns), true
-		case base == name+"-pool":
-			return fmt.Sprintf("%s-pooler.%s.svc.cluster.local:5432", name, ns), true
-		case strings.HasPrefix(base, name+"-ro-"):
-			return fmt.Sprintf("%s-ro.%s.svc.cluster.local:5432", name, ns), true
+			backend := fmt.Sprintf("%s-rw.%s.svc.cluster.local:5432", name, entry.namespace)
+			return dbRoute{Database: name, Backend: backend}, true
+		case base == name+"-pool" && entry.pooler:
+			backend := fmt.Sprintf("%s-pooler.%s.svc.cluster.local:5432", name, entry.namespace)
+			return dbRoute{Database: name, Backend: backend}, true
+		case strings.HasPrefix(base, name+"-ro-") && entry.replicas[strings.TrimPrefix(base, name+"-ro-")]:
+			backend := fmt.Sprintf("%s-ro.%s.svc.cluster.local:5432", name, entry.namespace)
+			return dbRoute{Database: name, Backend: backend}, true
 		}
 	}
-	return "", false
+	return dbRoute{}, false
+}
+
+func allowedByLayer(source netip.Addr, prefixes []netip.Prefix) bool {
+	if len(prefixes) == 0 {
+		return true
+	}
+	for _, prefix := range prefixes {
+		if prefix.Contains(source.Unmap()) {
+			return true
+		}
+	}
+	return false
 }
 
 // dbWatcher is a controller-runtime reconciler that keeps dbRouter in sync with
@@ -124,6 +202,7 @@ func (r *dbRouter) resolve(sni string) (string, bool) {
 type dbWatcher struct {
 	client.Client
 	router *dbRouter
+	meter  *sniproxy.ByteMeter
 }
 
 func (w *dbWatcher) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
@@ -131,14 +210,17 @@ func (w *dbWatcher) Reconcile(ctx context.Context, req reconcile.Request) (recon
 	if err := w.Get(ctx, req.NamespacedName, &db); err != nil {
 		if apierrors.IsNotFound(err) {
 			w.router.delete(req.Name)
+			w.meter.SetHealthy(w.router.healthy())
 		}
 		return reconcile.Result{}, client.IgnoreNotFound(err)
 	}
 	if !db.DeletionTimestamp.IsZero() {
 		w.router.delete(db.Name)
-	} else {
-		w.router.set(db.Name, db.Namespace)
+	} else if err := w.router.set(&db); err != nil {
+		w.meter.SetHealthy(w.router.healthy())
+		return reconcile.Result{}, err
 	}
+	w.meter.SetHealthy(w.router.healthy())
 	return reconcile.Result{}, nil
 }
 
@@ -156,10 +238,13 @@ func main() {
 	}
 
 	router := newRouter(domain)
+	registry := prometheus.NewRegistry()
+	meter := sniproxy.NewByteMeter(registry, "pg_proxy", "postgres")
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
-		// No webhook, no metrics, no leader election — lightweight watcher only.
+		// Dedicated plaintext Prometheus listener below; disable controller-runtime's.
+		Metrics:        metricsserver.Options{BindAddress: "0"},
 		LeaderElection: false,
 	})
 	if err != nil {
@@ -169,7 +254,7 @@ func main() {
 
 	if err := ctrl.NewControllerManagedBy(mgr).
 		For(&appv1alpha1.Database{}).
-		Complete(&dbWatcher{Client: mgr.GetClient(), router: router}); err != nil {
+		Complete(&dbWatcher{Client: mgr.GetClient(), router: router, meter: meter}); err != nil {
 		log.Error(err, "unable to set up Database watcher")
 		os.Exit(1)
 	}
@@ -187,6 +272,22 @@ func main() {
 		log.Error(fmt.Errorf("cache sync timed out"), "failed to sync Database cache")
 		os.Exit(1)
 	}
+	meter.SetHealthy(true)
+	metricsAddr := os.Getenv("BEX_PROXY_METRICS_ADDR")
+	if metricsAddr == "" {
+		metricsAddr = defaultMetricsAddr
+	}
+	metricsServer := &http.Server{
+		Addr: metricsAddr, Handler: promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	go func() {
+		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error(err, "metrics listener failed", "addr", metricsAddr)
+			cancel()
+		}
+	}()
+	defer func() { _ = metricsServer.Close() }()
 	log.Info("cache synced, starting TCP listener", "addr", addr)
 
 	ln, err := net.Listen("tcp", addr)
@@ -219,7 +320,7 @@ func main() {
 				continue
 			}
 		}
-		go handleConn(conn, router, log)
+		go handleConn(conn, router, meter, log)
 	}
 }
 
@@ -229,7 +330,7 @@ func main() {
 //  3. Dials the matching CNPG backend.
 //  4. Re-negotiates SSL with the backend (for preamble-mode clients).
 //  5. Splices the connection bidirectionally.
-func handleConn(conn net.Conn, router *dbRouter, log interface {
+func handleConn(conn net.Conn, router *dbRouter, meter *sniproxy.ByteMeter, log interface {
 	Info(msg string, keysAndValues ...any)
 	Error(err error, msg string, keysAndValues ...any)
 }) {
@@ -244,7 +345,7 @@ func handleConn(conn net.Conn, router *dbRouter, log interface {
 	msgLen := int32(binary.BigEndian.Uint32(peek[0:4]))
 	msgCode := int32(binary.BigEndian.Uint32(peek[4:8]))
 	isSSLRequest := msgLen == sslRequestLen && msgCode == sslRequestMagic
-	isDirectTLS := peek[0] == tlsHandshakeType
+	isDirectTLS := peek[0] == sniproxy.TLSHandshakeType
 
 	if !isSSLRequest && !isDirectTLS {
 		log.Info("unknown protocol header, closing", "byte0", fmt.Sprintf("%02x", peek[0]))
@@ -264,27 +365,31 @@ func handleConn(conn net.Conn, router *dbRouter, log interface {
 		initial = peek[:] // first 8 bytes are the start of the TLS record
 	}
 
-	clientHello, err := readTLSRecord(conn, initial)
+	clientHello, err := sniproxy.ReadTLSRecord(conn, initial)
 	if err != nil {
 		log.Info("failed to read TLS ClientHello", "err", err)
 		return
 	}
 
-	sni, err := extractSNI(clientHello)
+	sni, err := sniproxy.ExtractSNI(clientHello)
 	if err != nil || sni == "" {
 		log.Info("no SNI in ClientHello", "err", err)
 		return
 	}
 
-	backend, ok := router.resolve(sni)
+	source, err := sniproxy.RemoteIP(conn.RemoteAddr())
+	if err != nil {
+		return
+	}
+	route, ok := router.resolve(sni, source)
 	if !ok {
 		log.Info("no route for SNI", "sni", sni)
 		return
 	}
 
-	back, err := net.DialTimeout("tcp", backend, dialTimeout)
+	back, err := net.DialTimeout("tcp", route.Backend, dialTimeout)
 	if err != nil {
-		log.Error(err, "dial backend failed", "backend", backend)
+		log.Error(err, "dial backend failed", "backend", route.Backend)
 		return
 	}
 	defer func() { _ = back.Close() }()
@@ -313,147 +418,5 @@ func handleConn(conn net.Conn, router *dbRouter, log interface {
 
 	// Splice the two sides bidirectionally. The TLS session is end-to-end between
 	// the client and CNPG — the proxy never sees the plaintext.
-	done := make(chan struct{}, 2)
-	go func() { _, _ = io.Copy(back, conn); done <- struct{}{} }()
-	go func() { _, _ = io.Copy(conn, back); done <- struct{}{} }()
-	<-done
-}
-
-// readTLSRecord reads one TLS record from r, prepending any bytes already
-// consumed from the stream (initial). Returns the complete record bytes
-// (5-byte header + body), capped at maxClientHello.
-func readTLSRecord(r io.Reader, initial []byte) ([]byte, error) {
-	// Build the 5-byte TLS record header.
-	hdr := make([]byte, 5)
-	n := copy(hdr, initial)
-	if n < 5 {
-		if _, err := io.ReadFull(r, hdr[n:]); err != nil {
-			return nil, fmt.Errorf("read TLS header: %w", err)
-		}
-	}
-	if hdr[0] != tlsHandshakeType {
-		return nil, fmt.Errorf("not a TLS handshake record: byte0=0x%02x", hdr[0])
-	}
-	recLen := int(hdr[3])<<8 | int(hdr[4])
-	if recLen > maxClientHello {
-		return nil, fmt.Errorf("TLS record too large: %d", recLen)
-	}
-
-	// Assemble the full record buffer.
-	buf := make([]byte, 5+recLen)
-	copy(buf, hdr)
-
-	// Bytes from initial that are part of the body (beyond the 5-byte header).
-	bodyFromInitial := initial[min(5, len(initial)):]
-	if len(bodyFromInitial) > recLen {
-		bodyFromInitial = bodyFromInitial[:recLen]
-	}
-	copy(buf[5:], bodyFromInitial)
-
-	// Read the remaining body bytes from the reader.
-	alreadyHave := 5 + len(bodyFromInitial)
-	if alreadyHave < 5+recLen {
-		if _, err := io.ReadFull(r, buf[alreadyHave:]); err != nil {
-			return nil, fmt.Errorf("read TLS body: %w", err)
-		}
-	}
-	return buf, nil
-}
-
-// extractSNI parses the SNI hostname from a TLS ClientHello record.
-// Returns ("", nil) when there is no SNI extension (not an error — the caller
-// must decide what to do with SNI-less connections).
-func extractSNI(record []byte) (string, error) {
-	// Record header: type(1) + version(2) + length(2) = 5 bytes.
-	if len(record) < 5 || record[0] != tlsHandshakeType {
-		return "", fmt.Errorf("not a handshake record")
-	}
-	recLen := int(record[3])<<8 | int(record[4])
-	if len(record) < 5+recLen {
-		return "", fmt.Errorf("record truncated")
-	}
-	data := record[5 : 5+recLen]
-
-	// Handshake header: type(1) + length(3) = 4 bytes.
-	if len(data) < 4 || data[0] != 0x01 { // 0x01 = ClientHello
-		return "", fmt.Errorf("not a ClientHello")
-	}
-	hsLen := int(data[1])<<16 | int(data[2])<<8 | int(data[3])
-	if len(data) < 4+hsLen {
-		return "", fmt.Errorf("ClientHello truncated")
-	}
-	ch := data[4 : 4+hsLen]
-
-	// Skip: legacy_version(2) + random(32) = 34 bytes.
-	if len(ch) < 34 {
-		return "", fmt.Errorf("ClientHello too short")
-	}
-	pos := 34
-
-	// session_id: 1-byte length + data.
-	if pos >= len(ch) {
-		return "", nil
-	}
-	pos += 1 + int(ch[pos])
-
-	// cipher_suites: 2-byte length + data.
-	if pos+2 > len(ch) {
-		return "", nil
-	}
-	pos += 2 + (int(ch[pos])<<8 | int(ch[pos+1]))
-
-	// compression_methods: 1-byte length + data.
-	if pos >= len(ch) {
-		return "", nil
-	}
-	pos += 1 + int(ch[pos])
-
-	// extensions: 2-byte total length.
-	if pos+2 > len(ch) {
-		return "", nil // no extensions
-	}
-	extTotal := int(ch[pos])<<8 | int(ch[pos+1])
-	pos += 2
-	end := pos + extTotal
-
-	for pos+4 <= end && pos+4 <= len(ch) {
-		extType := uint16(ch[pos])<<8 | uint16(ch[pos+1])
-		extLen := int(ch[pos+2])<<8 | int(ch[pos+3])
-		pos += 4
-		if pos+extLen > len(ch) {
-			break
-		}
-		if extType == 0x0000 { // SNI extension
-			name, ok := parseSNIExtension(ch[pos : pos+extLen])
-			if ok {
-				return name, nil
-			}
-		}
-		pos += extLen
-	}
-	return "", nil
-}
-
-// parseSNIExtension extracts the first host_name entry from an SNI extension value.
-func parseSNIExtension(ext []byte) (string, bool) {
-	// list_length(2) + entries
-	if len(ext) < 2 {
-		return "", false
-	}
-	listLen := int(ext[0])<<8 | int(ext[1])
-	pos := 2
-	end := pos + listLen
-	for pos+3 <= end && pos+3 <= len(ext) {
-		nameType := ext[pos]
-		nameLen := int(ext[pos+1])<<8 | int(ext[pos+2])
-		pos += 3
-		if pos+nameLen > len(ext) {
-			break
-		}
-		if nameType == 0x00 { // host_name
-			return string(ext[pos : pos+nameLen]), true
-		}
-		pos += nameLen
-	}
-	return "", false
+	sniproxy.CopyBidirectional(conn, back, meter, route.Database, "postgres")
 }

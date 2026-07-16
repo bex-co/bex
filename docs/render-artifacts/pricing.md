@@ -60,9 +60,9 @@ Render does not publish a separate Key Value storage price: persistence is a pla
 
 ## Bandwidth (egress)
 
-Source: render.com/docs/bandwidth
+Source: render.com/docs/outbound-bandwidth and render.com/docs/new-workspace-plans
 
-$0.10 per GB outbound above the plan's included allowance.
+$0.15 per GB outbound above the current plan's included allowance. Re-verified 2026-07-15 after Render's April 23, 2026 workspace-plan change; legacy workspaces remain in a migration period until August 1, 2026.
 
 ---
 

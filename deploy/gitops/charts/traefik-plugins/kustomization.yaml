@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: traefik
+generatorOptions:
+  disableNameSuffixHash: true
+configMapGenerator:
+  - name: bex-websocket-egress-plugin
+    files:
+      - .traefik.yml=websocketegress/.traefik.yml
+      - go.mod=websocketegress/go.mod
+      - websocketegress.go=websocketegress/websocketegress.go
