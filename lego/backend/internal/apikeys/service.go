@@ -55,6 +55,12 @@ type APIKeyStore interface {
 	// Touch stamps the key `id` as used at `at`. Best-effort, called off the
 	// request path (throttled by the Service); a no-op for non-api-key clients.
 	Touch(ctx context.Context, id string, at time.Time) error
+	// KeyOwner resolves key `id` to the identity subject that minted it (the
+	// bex.co/created-by stamp, w4/m13) — the key→identity binding a machine
+	// caller's GET /v1/users resolves its owning human through (w4/m25).
+	// ok=false for an unknown/non-API-key client or a key minted before the
+	// stamp existed.
+	KeyOwner(ctx context.Context, id string) (subject string, ok bool)
 }
 
 // KeyBinder ties a minted API key to its tenant: the mapping row that lets a
@@ -347,15 +353,27 @@ func (h *hydraAPIKeys) List(ctx context.Context) ([]APIKey, error) {
 	return keys, nil
 }
 
+// getAPIKey fetches one Hydra client and gates on the bex API-key marker — the
+// shared preamble of every verb that reads or acts on an existing key. A
+// non-API-key client (platform/OIDC) is core.ErrNotFound, indistinguishable
+// from an absent one, so no verb can list away, revoke, stamp, or resolve a
+// client bex didn't mint.
+func (h *hydraAPIKeys) getAPIKey(ctx context.Context, id string) (hydraClient, error) {
+	var c hydraClient
+	if err := h.do(ctx, http.MethodGet, "/admin/clients/"+id, nil, http.StatusOK, &c); err != nil {
+		return hydraClient{}, err
+	}
+	if !isAPIKey(c) {
+		return hydraClient{}, core.ErrNotFound
+	}
+	return c, nil
+}
+
 func (h *hydraAPIKeys) Delete(ctx context.Context, id string) error {
 	// Only bex-minted keys are revocable here — deleting a platform client (e.g.
 	// bex-bootstrap) through this endpoint would brick its owner.
-	var c hydraClient
-	if err := h.do(ctx, http.MethodGet, "/admin/clients/"+id, nil, http.StatusOK, &c); err != nil {
+	if _, err := h.getAPIKey(ctx, id); err != nil {
 		return err
-	}
-	if !isAPIKey(c) {
-		return core.ErrNotFound
 	}
 	return h.do(ctx, http.MethodDelete, "/admin/clients/"+id, nil, http.StatusNoContent, nil)
 }
@@ -368,15 +386,11 @@ func (h *hydraAPIKeys) Delete(ctx context.Context, id string) error {
 // (RFC 6901: "/" => "~1"). Best-effort by contract — the caller throttles + runs
 // it off the request path, so a failed stamp only means a slightly stale last-used.
 func (h *hydraAPIKeys) Touch(ctx context.Context, id string, at time.Time) error {
-	var c hydraClient
-	if err := h.do(ctx, http.MethodGet, "/admin/clients/"+id, nil, http.StatusOK, &c); err != nil {
+	if _, err := h.getAPIKey(ctx, id); err != nil {
 		if errors.Is(err, core.ErrNotFound) {
-			return nil // unknown/revoked client — nothing to stamp
+			return nil // unknown/revoked or platform/OIDC client — nothing to stamp
 		}
 		return err
-	}
-	if !isAPIKey(c) {
-		return nil // platform/OIDC client — not a bex API key
 	}
 	patch, _ := json.Marshal([]map[string]any{{
 		"op":    "add",
@@ -384,6 +398,19 @@ func (h *hydraAPIKeys) Touch(ctx context.Context, id string, at time.Time) error
 		"value": at.UTC().Format(time.RFC3339),
 	}})
 	return h.do(ctx, http.MethodPatch, "/admin/clients/"+id, patch, http.StatusOK, nil)
+}
+
+// KeyOwner reads back the client's created-by stamp. Any failure (unknown
+// client, not a bex API key, no stamp, Hydra unreachable) is ok=false — the
+// honest-omit contract workspaces.KeyOwnerReader documents; the caller then
+// degrades to its earliest-admin-email fallback rather than failing the request.
+func (h *hydraAPIKeys) KeyOwner(ctx context.Context, id string) (string, bool) {
+	c, err := h.getAPIKey(ctx, id)
+	if err != nil {
+		return "", false
+	}
+	k := apiKeyFromHydra(c)
+	return k.CreatedBy, k.CreatedBy != ""
 }
 
 // jsonPointerEscape escapes a metadata key for use as a JSON Pointer path segment

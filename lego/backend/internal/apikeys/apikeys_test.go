@@ -71,6 +71,11 @@ func (f *fakeKeyStore) Touch(_ context.Context, id string, at time.Time) error {
 	return nil
 }
 
+func (f *fakeKeyStore) KeyOwner(_ context.Context, id string) (string, bool) {
+	k, ok := f.keys[id]
+	return k.CreatedBy, ok && k.CreatedBy != ""
+}
+
 func newService(store APIKeyStore) *Service {
 	return &Service{Base: &core.Base{Namespace: "default"}, APIKeys: store}
 }
@@ -610,8 +615,9 @@ type recordingStore struct {
 func (recordingStore) Create(context.Context, string, string) (APIKey, error) {
 	return APIKey{}, nil
 }
-func (recordingStore) List(context.Context) ([]APIKey, error) { return nil, nil }
-func (recordingStore) Delete(context.Context, string) error   { return nil }
+func (recordingStore) List(context.Context) ([]APIKey, error)          { return nil, nil }
+func (recordingStore) Delete(context.Context, string) error            { return nil }
+func (recordingStore) KeyOwner(context.Context, string) (string, bool) { return "", false }
 func (r recordingStore) Touch(_ context.Context, _ string, at time.Time) error {
 	r.touchCh <- at
 	return nil

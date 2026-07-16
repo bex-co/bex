@@ -320,7 +320,11 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Revoker:      d.WorkspaceRevoker,
 		Kick:         d.WorkspaceKick,
 		Purgers:      d.WorkspacePurgers,
-		Identities:   d.Identities,
+		Identities: d.Identities,
+		// APIKeys satisfies workspaces.KeyOwnerReader structurally (KeyOwner has
+		// the identical signature) — no adapter, and no cache: the lookup runs at
+		// most once per GET /v1/users (cold path), only for API-key callers.
+		KeyOwners:    d.APIKeys,
 		Selections:   selections,
 		MaxServices:  d.MaxServices,
 		MaxPostgres:  d.MaxPostgres,
@@ -507,7 +511,6 @@ func (a identityEmailLookup) LookupEmail(ctx context.Context, subject string) (s
 	attrs, ok := a.Identities.Lookup(ctx, subject)
 	return attrs.Email, ok
 }
-
 // Feature registration contracts. A feature implements the fragments it has; the
 // root type-asserts each service against these when assembling the surfaces, so a
 // feature with no mutations (logs, metrics) simply omits GraphQLMutation.

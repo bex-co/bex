@@ -27,7 +27,9 @@ type Identity struct {
 	// ClientID is Hydra's OAuth2 client_id. It stays empty for Kratos-session
 	// callers. Human OAuth tokens keep Subject as their Kratos identity while
 	// ClientID identifies the public app that minted the token; machine tokens
-	// usually have Subject == ClientID.
+	// usually have Subject == ClientID — which is how CurrentUser knows to
+	// resolve a key's minting human instead of probing Kratos with a client id
+	// that can never be there (w4/m25).
 	ClientID string
 	// Human distinguishes an OAuth authorization/device token carrying an end-user
 	// `sub` (distinct from client_id) from a client_credentials machine token. It
@@ -39,6 +41,11 @@ type Identity struct {
 	// redeemed against on first login (internal/api/tenancy.go), not an
 	// authorization input — the subject remains the tenant-scoping hook.
 	Email string
+	// Name is the caller's display name (the optional Kratos `name` trait,
+	// w4/m25), populated for session callers alongside Email; empty for machine
+	// callers and for identities that never set the trait. Presentation only —
+	// never an authorization or invite-redemption input.
+	Name string
 }
 
 type identityCtxKey struct{}

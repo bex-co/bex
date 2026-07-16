@@ -91,10 +91,10 @@ func renderTeamMemberRole(role string) string {
 	}
 }
 
-// renderTeamMember mirrors components.schemas.teamMember. bex's Kratos schema
-// defines only an email trait (no name), so Name is always "" — the key is
-// still present (required in the pinned spec), an honest empty value rather
-// than a faked one.
+// renderTeamMember mirrors components.schemas.teamMember. Name is the member's
+// optional Kratos `name` trait (w4/m25); the key is always present (required in
+// the pinned spec) and "" for an identity that never set the trait — an honest
+// empty value rather than a faked one.
 type renderTeamMember struct {
 	UserID     string `json:"userId"`
 	Name       string `json:"name"`
@@ -108,6 +108,7 @@ func toRenderTeamMember(m MemberView) renderTeamMember {
 	return renderTeamMember{
 		// Render's userId is an opaque own- id, not the raw Kratos subject (w6/m7).
 		UserID: m.OwnerID,
+		Name:   m.Name,
 		Email:  m.Email,
 		// bex tracks no invited/deactivated member state yet — every row in
 		// tenant_members is an active member.

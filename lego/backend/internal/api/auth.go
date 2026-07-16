@@ -324,6 +324,7 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
 			ID     string `json:"id"`
 			Traits struct {
 				Email string `json:"email"`
+				Name  string `json:"name"`
 			} `json:"traits"`
 		} `json:"identity"`
 	}
@@ -335,11 +336,13 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
 	}
 	// traits.email is the standard Kratos identity schema's email field — the key
 	// a pending workspace invite is redeemed against on this caller's first login.
+	// traits.name is bex's optional display-name trait (w4/m25); "" when unset.
 	return core.Identity{
 		Subject: out.Identity.ID,
 		Method:  "session",
 		Human:   true,
 		Email:   strings.ToLower(out.Identity.Traits.Email),
+		Name:    out.Identity.Traits.Name,
 	}, nil
 }
 

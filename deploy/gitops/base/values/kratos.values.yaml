@@ -35,6 +35,11 @@ kratos:
                   "verification": { "via": "email" },
                   "recovery": { "via": "email" }
                 }
+              },
+              "name": {
+                "type": "string",
+                "title": "Name",
+                "maxLength": 100
               }
             },
             "required": ["email"],
