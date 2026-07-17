@@ -194,6 +194,24 @@ func (p pullSecretSource) RegistryCredentialName(ctx context.Context, workspaceI
 	return credential.Name, true
 }
 
+// ResolveCredentialNames batch-resolves display names for a slice of credential
+// ids (one query for the whole page). Unknown ids are silently omitted. Callers
+// have already authorized each App that owns these ids.
+func (p pullSecretSource) ResolveCredentialNames(ctx context.Context, ids []string) map[string]string {
+	if p.s.Store == nil || len(ids) == 0 {
+		return nil
+	}
+	creds, err := p.s.Store.GetRegistryCredentialsByIDs(ctx, ids)
+	if err != nil {
+		return nil
+	}
+	out := make(map[string]string, len(creds))
+	for _, c := range creds {
+		out[c.ID] = c.Name
+	}
+	return out
+}
+
 // DeployPullSecretSource returns the deploy path's pull-secret seam (wired
 // onto apps.Service in the composition root).
 func (s *Service) DeployPullSecretSource() pullSecretSource { return pullSecretSource{s} }

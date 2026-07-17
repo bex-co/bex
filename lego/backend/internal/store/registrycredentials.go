@@ -116,6 +116,31 @@ func (s *PGStore) GetRegistryCredentialByID(ctx context.Context, id string) (Reg
 	return c, nil
 }
 
+// GetRegistryCredentialsByIDs returns the credentials matching any id in ids.
+// It is unscoped to a workspace, so callers must only use this for batch
+// display enrichment (name resolution) where per-resource authorization has
+// already been satisfied. Unknown ids are silently omitted.
+func (s *PGStore) GetRegistryCredentialsByIDs(ctx context.Context, ids []string) ([]RegistryCredential, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	rows, err := s.Pool.Query(ctx,
+		`SELECT `+registryCredentialColumns+` FROM registry_credentials WHERE id = ANY($1)`, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []RegistryCredential
+	for rows.Next() {
+		c, err := scanRegistryCredential(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
 // GetRegistryCredentialByHost returns the workspace's credential for host, if
 // any — the lookup the operator-wiring materialization path (w2/m14/t002)
 // uses to decide whether an App's image needs a pull secret. Newest wins when

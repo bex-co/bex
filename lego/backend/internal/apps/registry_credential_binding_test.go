@@ -239,6 +239,39 @@ func TestRESTDockerBuildRegistryCredentialCreatePatchAndEcho(t *testing.T) {
 	}
 }
 
+func TestRestServicesBatchesCredentialLookups(t *testing.T) {
+	// Three apps: two different credential ids, one repeated. Verifies that
+	// ResolveCredentialNames is called exactly once (batch), not per-app (N+1).
+	idA := "rgc-alpha"
+	idB := "rgc-beta"
+	rc := &fakePullSecrets{
+		credNames: map[string]string{idA: "Alpha Registry", idB: "Beta Registry"},
+	}
+	svc, _ := rcService(rc)
+	ctx := context.Background()
+
+	apps := []AppView{
+		{Name: "web-1", RegistryCredentialID: &idA},
+		{Name: "web-2", RegistryCredentialID: &idB},
+		{Name: "web-3", RegistryCredentialID: &idA}, // duplicate — must not add a second query
+	}
+	rendered := svc.restServices(ctx, apps)
+
+	if rc.resolveCalls != 1 {
+		t.Fatalf("ResolveCredentialNames called %d times, want 1 (batch)", rc.resolveCalls)
+	}
+	wantNames := []string{"Alpha Registry", "Beta Registry", "Alpha Registry"}
+	for i, svc := range rendered {
+		if svc.RegistryCredential == nil {
+			t.Errorf("rendered[%d].RegistryCredential = nil, want non-nil", i)
+			continue
+		}
+		if svc.RegistryCredential.Name != wantNames[i] {
+			t.Errorf("rendered[%d] name = %q, want %q", i, svc.RegistryCredential.Name, wantNames[i])
+		}
+	}
+}
+
 func assertDockerBuildCredentialEcho(t *testing.T, raw []byte, want string) {
 	t.Helper()
 	var response serviceAndDeploy
