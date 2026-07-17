@@ -575,6 +575,7 @@ func (r *recordingStore) CreateApp(_ context.Context, a store.App) (store.App, e
 		return store.App{}, r.err
 	}
 	a.ID = "srv-test"
+	a.FirstDeployID = "dep-test"
 	r.appCreates = append(r.appCreates, a)
 	return a, nil
 }

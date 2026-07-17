@@ -921,7 +921,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		// Render: create => 201, body wraps the service under serviceAndDeploy.
-		core.WriteJSON(w, http.StatusCreated, serviceAndDeploy{Service: s.restService(r.Context(), app)})
+		core.WriteJSON(w, http.StatusCreated, serviceAndDeploy{Service: s.restService(r.Context(), app), DeployID: app.LatestDeployID})
 	}
 
 	// deleteSvc handles DELETE /v1/services/{id} — remove the service and let the
