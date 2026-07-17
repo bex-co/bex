@@ -5,9 +5,9 @@ import type { SidebarNavGroup } from "@/common/components/dashboard-layout/sideb
 // docs/render-artifacts/dashboard-routes.md § Sidebar navigation): top-level
 // items, then **Monitor** (Logs, Metrics) and **Manage** (Environment,
 // Scaling, Plan). Differences, both deliberate: Render has NO Deploys entry
-// (its service root IS the deploy history — bex's root also redirects to
-// Deploys, but the explicit entry aids discoverability), and Plan is bex-only
-// (Render folds instance type into scaling/settings). Render's Shell,
+// (its service root IS the deploy history — bex's unified Events page shows
+// both deploys and audit events, matching Render's behavior; w1/m47). Plan is
+// bex-only (Render folds instance type into scaling/settings). Render's Shell,
 // Previews, Disk, and One-Off Jobs entries are DO_NOT_DO non-goals.
 //
 // One source of truth: the service sidebar
@@ -17,7 +17,6 @@ export const SERVICE_NAV_GROUPS: SidebarNavGroup[] = [
   {
     items: [
       { labelKey: "services.navEvents", to: "/services/$serviceId/events" },
-      { labelKey: "services.navDeploys", to: "/services/$serviceId/deploys" },
       { labelKey: "services.navSettings", to: "/services/$serviceId/settings" },
     ],
   },

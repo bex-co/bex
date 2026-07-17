@@ -16,6 +16,12 @@ query ServiceEvents($serviceId: String!, $cursor: String, $limit: Int) {
       preDeployStatus
       actor
       triggeredByUser
+      # Deploy enrichment (w1/m47): image, commit info, timing for dashboard display
+      image
+      commitId
+      commitMessage
+      startedAt
+      finishedAt
       trigger {
         firstBuild
         envUpdated
