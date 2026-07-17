@@ -110,9 +110,12 @@ func TestZotConfigACLRoundTrip(t *testing.T) {
 	if !zotConfigHasRepo(updated, "myapp") {
 		t.Fatal("myapp repo should be present after add")
 	}
-	// bex-builder's ** wildcard must remain.
+	// bex-builder's global authorization must remain.
 	if !zotConfigHasRepo(updated, "**") {
 		t.Fatal("** wildcard must survive after adding myapp")
+	}
+	if !zotConfigHasBuilderAdminPolicy(updated) {
+		t.Fatal("bex-builder admin policy must survive after adding myapp")
 	}
 
 	// Verify the ACL content.
@@ -146,6 +149,43 @@ func TestZotConfigACLRoundTrip(t *testing.T) {
 	}
 	if !zotConfigHasRepo(final, "**") {
 		t.Fatal("** wildcard should remain after remove")
+	}
+}
+
+// TestZotConfigBuilderAdminPolicyMigration verifies that existing configs are
+// upgraded even when the per-App repository entry already exists. This is the
+// production regression path: Zot's exact repo policy shadows the ** policy.
+func TestZotConfigBuilderAdminPolicyMigration(t *testing.T) {
+	base := (&Creds{}).baseZotConfig()
+
+	var historical map[string]any
+	if err := json.Unmarshal(base, &historical); err != nil {
+		t.Fatal(err)
+	}
+	httpBlock, _ := historical["http"].(map[string]any)
+	accessControl, _ := httpBlock["accessControl"].(map[string]any)
+	delete(accessControl, "adminPolicy")
+	historicalJSON, err := json.Marshal(historical)
+	if err != nil {
+		t.Fatal(err)
+	}
+	historicalJSON, err = addZotACLEntry(historicalJSON, "myapp", "app-myapp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if zotConfigHasBuilderAdminPolicy(historicalJSON) {
+		t.Fatal("historical config unexpectedly has builder admin policy")
+	}
+
+	migrated, err := ensureZotBuilderAdminPolicy(historicalJSON)
+	if err != nil {
+		t.Fatalf("ensureZotBuilderAdminPolicy: %v", err)
+	}
+	if !zotConfigHasBuilderAdminPolicy(migrated) {
+		t.Fatal("builder admin policy missing after migration")
+	}
+	if !zotConfigHasRepo(migrated, "myapp") {
+		t.Fatal("migration removed existing per-App repository ACL")
 	}
 }
 
@@ -264,6 +304,15 @@ func TestBaseZotConfigNoBexPuller(t *testing.T) {
 				t.Error("bex-puller shared user must not appear in base config ** wildcard (w7/m36 closes ADR022:204)")
 			}
 		}
+	}
+}
+
+// TestBaseZotConfigBuilderAdminPolicy pins the global builder authorization.
+// Zot exact repository rules override **, so this must remain an adminPolicy.
+func TestBaseZotConfigBuilderAdminPolicy(t *testing.T) {
+	cfg := (&Creds{}).baseZotConfig()
+	if !zotConfigHasBuilderAdminPolicy(cfg) {
+		t.Fatal("base config must grant bex-builder global read/create/update/delete through adminPolicy")
 	}
 }
 

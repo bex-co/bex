@@ -184,7 +184,7 @@ Zot's `htpasswd` + `accessControl` is **static-file** config — per-App credent
 | `bex-builder` | `read, create, update, delete` | the build Job's buildkitd + cosign containers (pod filesystem only) | `bex-registry-push` docker-config Secret, build namespace |
 | `bex-puller` | `read` | tenant runtime pods, via `imagePullSecrets` (read by kubelet) | `bex-registry-pull` docker-config Secret, apps namespace |
 
-`accessControl.repositories["**"].defaultPolicy: []` — **anonymous is denied everything** (catalog, list, pull, push all `401`). The two users get explicit policies; everyone else gets nothing.
+`accessControl.repositories["**"].defaultPolicy: []` — **anonymous is denied everything** (catalog, list, pull, push all `401`). The builder is also listed in `accessControl.adminPolicy`, because Zot applies only the longest matching repository rule: an exact per-App pull rule shadows the `**` repository policy. Everyone else gets nothing.
 
 ### Why a docker-config mount is safe from tenant `RUN` steps
 
@@ -208,7 +208,7 @@ Repository-backed Docker services may also bind a workspace registry credential 
 Each App that builds and pushes an image to Zot receives its own Zot user `app-<name>` and a per-repo ACL entry that restricts that user to reading only `<name>/**`. The operator manages:
 
 - **`zot-htpasswd`** Secret (in `bex-registry`): bcrypt entry `app-<name>:hash` added on App reconcile, removed on App delete. `bex-puller` is no longer present.
-- **`zot-config`** Secret (in `bex-registry`): full Zot `config.json` managed by the operator; per-App entry `"<name>": {"policies": [{"users": ["app-<name>"], "actions": ["read"]}]}` added on App reconcile, removed on App delete. The `**` wildcard policy only lists `bex-builder` (push); no shared read user is in the global ACL.
+- **`zot-config`** Secret (in `bex-registry`): full Zot `config.json` managed by the operator; per-App entry `"<name>": {"policies": [{"users": ["app-<name>"], "actions": ["read"]}]}` added on App reconcile, removed on App delete. The global `adminPolicy` grants `bex-builder` push access even when an exact repository rule matches; no shared read user is in the global ACL.
 - **`reg-pull-<name>`** Secret (in the App namespace): `kubernetes.io/dockerconfigjson` with plaintext `app-<name>:password` credential, referenced as `imagePullSecret` on all tenant workloads. Deleted by the operator finalizer on App delete.
 
 **Closed residual (was ADR022:204):** a compromised tenant runtime pod holding `app-foo`'s pull credential can only pull from the `foo` repository. It cannot read `bar`'s images because `app-foo` is absent from `bar`'s per-repo ACL and the `**` wildcard `defaultPolicy: []` provides no fallback. Live proof: `scripts/verify-per-app-registry-isolation.sh`.
