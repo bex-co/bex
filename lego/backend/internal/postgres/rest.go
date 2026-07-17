@@ -120,6 +120,76 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				}
 				out = filtered
 			}
+			if envIDs := q["environmentId"]; len(envIDs) > 0 {
+				filtered := make([]PostgresView, 0, len(out))
+				for _, p := range out {
+					if slices.Contains(envIDs, p.EnvironmentID) {
+						filtered = append(filtered, p)
+					}
+				}
+				out = filtered
+			}
+			// suspended= filters by Render's string enum (w2/m53). Unknown value → 400.
+			if sv := q.Get("suspended"); sv != "" {
+				if sv != core.RenderSuspended && sv != core.RenderNotSuspended {
+					core.WriteErr(w, fmt.Errorf("%w: suspended must be %q or %q", core.ErrBadRequest, core.RenderSuspended, core.RenderNotSuspended))
+					return
+				}
+				filtered := make([]PostgresView, 0, len(out))
+				for _, p := range out {
+					if p.Suspended == sv {
+						filtered = append(filtered, p)
+					}
+				}
+				out = filtered
+			}
+			// Time-window filters (w2/m53): RFC3339, named 400 on malformed, empty
+			// timestamp passes (legacy DBs without stored timestamps are never excluded).
+			for _, tf := range []struct {
+				before, after string
+				get            func(PostgresView) string
+			}{
+				{"createdBefore", "createdAfter", func(p PostgresView) string { return p.CreatedAt }},
+				{"updatedBefore", "updatedAfter", func(p PostgresView) string { return p.UpdatedAt }},
+			} {
+				var before, after time.Time
+				if v := q.Get(tf.before); v != "" {
+					t, err := time.Parse(time.RFC3339, v)
+					if err != nil {
+						core.WriteErr(w, fmt.Errorf("%w: %s must be RFC3339", core.ErrBadRequest, tf.before))
+						return
+					}
+					before = t
+				}
+				if v := q.Get(tf.after); v != "" {
+					t, err := time.Parse(time.RFC3339, v)
+					if err != nil {
+						core.WriteErr(w, fmt.Errorf("%w: %s must be RFC3339", core.ErrBadRequest, tf.after))
+						return
+					}
+					after = t
+				}
+				if before.IsZero() && after.IsZero() {
+					continue
+				}
+				filtered := make([]PostgresView, 0, len(out))
+				for _, p := range out {
+					raw := tf.get(p)
+					if raw == "" {
+						filtered = append(filtered, p)
+						continue
+					}
+					v, err := time.Parse(time.RFC3339, raw)
+					if err != nil {
+						filtered = append(filtered, p)
+						continue
+					}
+					if (before.IsZero() || v.Before(before)) && (after.IsZero() || v.After(after)) {
+						filtered = append(filtered, p)
+					}
+				}
+				out = filtered
+			}
 			// Render's cursor-pagination envelope (components.schemas.postgresWithCursor),
 			// verified against the render-oss/cli generated client: a bare array of
 			// Postgres objects breaks the official CLI's list decode. Omission of both

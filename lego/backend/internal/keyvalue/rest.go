@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
@@ -165,7 +166,65 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if names := q["name"]; len(names) > 0 {
 			filtered := make([]KeyValueView, 0, len(out))
 			for _, kv := range out {
-				if slices.Contains(names, kv.Name) {
+				if slices.Contains(names, kv.Name) || slices.Contains(names, kv.ID) {
+					filtered = append(filtered, kv)
+				}
+			}
+			out = filtered
+		}
+		if envIDs := q["environmentId"]; len(envIDs) > 0 {
+			filtered := make([]KeyValueView, 0, len(out))
+			for _, kv := range out {
+				if slices.Contains(envIDs, kv.EnvironmentID) {
+					filtered = append(filtered, kv)
+				}
+			}
+			out = filtered
+		}
+		if sv := q.Get("suspended"); sv != "" {
+			if sv != core.RenderSuspended && sv != core.RenderNotSuspended {
+				core.WriteErr(w, fmt.Errorf("%w: suspended must be %q or %q", core.ErrBadRequest, core.RenderSuspended, core.RenderNotSuspended))
+				return
+			}
+			filtered := make([]KeyValueView, 0, len(out))
+			for _, kv := range out {
+				if kv.Suspended == sv {
+					filtered = append(filtered, kv)
+				}
+			}
+			out = filtered
+		}
+		for _, tf := range []struct {
+			param  string
+			getVal func(KeyValueView) string
+			before bool
+		}{
+			{"createdBefore", func(kv KeyValueView) string { return kv.CreatedAt }, true},
+			{"createdAfter", func(kv KeyValueView) string { return kv.CreatedAt }, false},
+			{"updatedBefore", func(kv KeyValueView) string { return kv.UpdatedAt }, true},
+			{"updatedAfter", func(kv KeyValueView) string { return kv.UpdatedAt }, false},
+		} {
+			raw := q.Get(tf.param)
+			if raw == "" {
+				continue
+			}
+			pivot, err := time.Parse(time.RFC3339, raw)
+			if err != nil {
+				core.WriteErr(w, fmt.Errorf("%w: %s must be RFC3339", core.ErrBadRequest, tf.param))
+				return
+			}
+			filtered := make([]KeyValueView, 0, len(out))
+			for _, kv := range out {
+				val := tf.getVal(kv)
+				if val == "" {
+					filtered = append(filtered, kv)
+					continue
+				}
+				t, err := time.Parse(time.RFC3339, val)
+				if err != nil {
+					continue
+				}
+				if tf.before && t.Before(pivot) || !tf.before && t.After(pivot) {
 					filtered = append(filtered, kv)
 				}
 			}
