@@ -1,0 +1,15 @@
+# bex.yml — Node.js hello-world web service.
+# Replace repo/rootDir with your own checkout; bex builds from the Dockerfile and
+# returns a live https URL. A git push redeploys automatically via the push webhook.
+apps:
+  - name: hello-node
+    repo: https://github.com/bex-co/bex # replace with your fork/checkout
+    rootDir: examples/hello-node
+    branch: main
+    builder: auto # Dockerfile present ⇒ docker build
+    port: 3000
+    tier: free
+    healthCheckPath: /
+    envVars:
+      - key: MESSAGE
+        value: "hello from bex (node)"

@@ -1,0 +1,12 @@
+# bex.yml — static_site example: bex publishes this directory to object storage
+# and serves it through the shared static-server at a https URL.
+# No Dockerfile or build command needed — files in publishPath are served as-is.
+# A git push redeploys automatically via the push webhook.
+services:
+  - name: static-site
+    type: static
+    repo: https://github.com/bex-co/bex # replace with your fork/checkout
+    rootDir: examples/static-site
+    branch: main
+    publishPath: . # serve the rootDir itself; set to "dist" if you have a build step
+    plan: free

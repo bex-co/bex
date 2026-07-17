@@ -1,0 +1,15 @@
+# bex.yml — cron_job example: bex runs this as a Kubernetes CronJob on the
+# declared schedule. No port, no Deployment, no Ingress — just periodic work.
+# Check logs via `bex logs cron-demo` after each run.
+services:
+  - name: cron-demo
+    type: cron
+    repo: https://github.com/bex-co/bex # replace with your fork/checkout
+    rootDir: examples/cron-demo
+    branch: main
+    builder: auto # Dockerfile present ⇒ docker build
+    schedule: "*/5 * * * *" # every 5 minutes
+    plan: free
+    envVars:
+      - key: MESSAGE
+        value: "hello from the bex cron job"
