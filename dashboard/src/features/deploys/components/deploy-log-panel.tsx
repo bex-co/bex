@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  ChevronDown,
   Loader2,
   Maximize2,
   Minimize2,
@@ -30,6 +31,24 @@ import { LOG_RANGES, RANGE_LABEL_KEYS, type LogRange } from "../lib/log-range";
 // The radio group needs a value for "no ?r= param" (the deploy window).
 const DEPLOY_WINDOW = "deploy";
 
+// Render's deploy-page type selector (w1/029): All logs / Application logs /
+// Build logs — a client-side filter over the already-merged lines, so the
+// three windowed queries stay untouched. "app" covers app + pre-deploy lines
+// (Render's Application bucket has no separate pre-deploy entry).
+type LogTypeChoice = "all" | "app" | "build";
+
+const LOG_TYPE_KEYS: Record<LogTypeChoice, string> = {
+  all: "deploys.logTypeAll",
+  app: "deploys.logTypeApp",
+  build: "deploys.logTypeBuild",
+};
+
+function matchesTypeChoice(lineType: string, choice: LogTypeChoice): boolean {
+  if (choice === "all") return true;
+  if (choice === "build") return lineType === "build";
+  return lineType !== "build";
+}
+
 export interface DeployLogPanelProps {
   resource: string;
   startTime: string | undefined;
@@ -49,13 +68,15 @@ export interface DeployLogPanelProps {
 
 /**
  * The deploy detail page's log viewer (w9/m1/t003): a deploy-window-scoped
- * twin of the Logs tab's full viewer, minus the type/level/method filter
- * dropdowns the Logs tab needs and this page doesn't — a deploy already knows
- * its own window and always wants build+predeploy+app interleaved. Search is
- * a plain client-side substring filter over the merged lines (the windowed
- * query itself has no `text` arg wired here, since it would triple-fetch on
- * every keystroke across three type queries); follow-to-bottom comes from the
- * reused LogLineList.
+ * twin of the Logs tab's full viewer, minus the level/method filter dropdowns
+ * the Logs tab needs and this page doesn't — a deploy already knows its own
+ * window and defaults to build+predeploy+app interleaved. Render's deploy
+ * explorer offers exactly a type selector (All / Application / Build logs) on
+ * top of that default, so this panel carries the same three-way choice as a
+ * client-side filter over the merged lines (w1/029). Search is likewise a
+ * plain client-side substring filter (the windowed query itself has no `text`
+ * arg wired here, since it would triple-fetch on every keystroke across three
+ * type queries); follow-to-bottom comes from the reused LogLineList.
  *
  * w9/003 adds Render's viewer affordances: an options menu (the `?r=` time
  * range the URL owns, plus wrap/timestamp display toggles) and a maximize
@@ -74,6 +95,7 @@ export function DeployLogPanel({
   const { t } = useTranslations();
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
+  const [typeChoice, setTypeChoice] = useState<LogTypeChoice>("all");
   const [wrap, setWrap] = useState(true);
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [maximized, setMaximized] = useState(false);
@@ -88,15 +110,20 @@ export function DeployLogPanel({
       createEventSource,
     );
 
-  const filtered = useMemo(
-    () =>
-      debouncedSearch
-        ? lines.filter((l) =>
-            l.message.toLowerCase().includes(debouncedSearch.toLowerCase()),
-          )
-        : lines,
-    [lines, debouncedSearch],
-  );
+  const filtered = useMemo(() => {
+    let out =
+      typeChoice === "all"
+        ? lines
+        : lines.filter((l) => matchesTypeChoice(l.type, typeChoice));
+    if (debouncedSearch) {
+      out = out.filter((l) =>
+        l.message.toLowerCase().includes(debouncedSearch.toLowerCase()),
+      );
+    }
+    return out;
+  }, [lines, debouncedSearch, typeChoice]);
+
+  const narrowed = !!debouncedSearch || typeChoice !== "all";
 
   let body;
   if (error) {
@@ -114,7 +141,7 @@ export function DeployLogPanel({
         {t("logs.loading")}
       </div>
     );
-  } else if (debouncedSearch && filtered.length === 0) {
+  } else if (narrowed && lines.length > 0 && filtered.length === 0) {
     body = (
       <EmptyState
         iconName="ScrollText"
@@ -160,6 +187,30 @@ export function DeployLogPanel({
       )}
     >
       <div className="flex items-center gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              className="shrink-0"
+              aria-label={t("deploys.logTypeFilter")}
+            >
+              {t(LOG_TYPE_KEYS[typeChoice] as Parameters<typeof t>[0])}
+              <ChevronDown className="ml-1 h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuRadioGroup
+              value={typeChoice}
+              onValueChange={(v) => setTypeChoice(v as LogTypeChoice)}
+            >
+              {(Object.keys(LOG_TYPE_KEYS) as LogTypeChoice[]).map((choice) => (
+                <DropdownMenuRadioItem key={choice} value={choice}>
+                  {t(LOG_TYPE_KEYS[choice] as Parameters<typeof t>[0])}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}

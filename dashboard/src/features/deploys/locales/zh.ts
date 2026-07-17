@@ -116,6 +116,24 @@ const zhDeploys: Record<string, TranslationEntry> = {
     message: "搜索日志…",
     description: "Deploy detail page: log search input placeholder",
   },
+  "deploys.logTypeFilter": {
+    message: "日志类型",
+    description:
+      "Deploy log viewer: aria-label of the log-type filter dropdown (Render's All/Application/Build selector)",
+  },
+  "deploys.logTypeAll": {
+    message: "全部日志",
+    description: "Deploy log viewer type filter: show every log type",
+  },
+  "deploys.logTypeApp": {
+    message: "应用日志",
+    description:
+      "Deploy log viewer type filter: app + pre-deploy lines, matching Render's Application bucket",
+  },
+  "deploys.logTypeBuild": {
+    message: "构建日志",
+    description: "Deploy log viewer type filter: build lines only",
+  },
   "deploys.buildLogsStoreUnavailable": {
     message: "历史构建日志不可用",
     description:

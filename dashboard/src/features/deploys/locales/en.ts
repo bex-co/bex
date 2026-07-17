@@ -116,6 +116,24 @@ const enDeploys: Record<string, TranslationEntry> = {
     message: "Search logs…",
     description: "Deploy detail page: log search input placeholder",
   },
+  "deploys.logTypeFilter": {
+    message: "Log type",
+    description:
+      "Deploy log viewer: aria-label of the log-type filter dropdown (Render's All/Application/Build selector)",
+  },
+  "deploys.logTypeAll": {
+    message: "All logs",
+    description: "Deploy log viewer type filter: show every log type",
+  },
+  "deploys.logTypeApp": {
+    message: "Application logs",
+    description:
+      "Deploy log viewer type filter: app + pre-deploy lines, matching Render's Application bucket",
+  },
+  "deploys.logTypeBuild": {
+    message: "Build logs",
+    description: "Deploy log viewer type filter: build lines only",
+  },
   "deploys.buildLogsStoreUnavailable": {
     message: "Historical build logs are unavailable",
     description:

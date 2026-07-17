@@ -30,6 +30,7 @@ import (
 	"maps"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -56,6 +57,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/sshkeys"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
 	"github.com/bex-co/bex/lego/backend/internal/webhooks"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
@@ -364,6 +366,30 @@ func NewServer(base *core.Base, d Deps) *Server {
 		exportSigner = postgres.NewS3ExportSigner(base.Client)
 	}
 	logSvc := &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory, LabelValues: d.LogLabelValues, BuildNamespace: d.DeployBuildNamespace}
+	if d.DeployStore != nil {
+		// Platform progress lines (w1/m48): adapt the deploy store into the logs
+		// domain's own shape — newest-first, coarse created-before bound, page-
+		// capped; the logs service applies the exact window per line.
+		ds := d.DeployStore
+		logSvc.DeployProgress = func(ctx context.Context, resource string, end time.Time) ([]logs.DeployProgress, error) {
+			rows, err := ds.ListDeploys(ctx, resource, store.DeployFilter{CreatedBefore: end, Limit: core.MaxPageLimit})
+			if err != nil {
+				return nil, err
+			}
+			out := make([]logs.DeployProgress, 0, len(rows))
+			for _, r := range rows {
+				p := logs.DeployProgress{ID: r.ID, Status: r.Status, Image: r.Image, Commit: r.Commit, CreatedAt: r.CreatedAt}
+				if r.StartedAt != nil {
+					p.StartedAt = *r.StartedAt
+				}
+				if r.FinishedAt != nil {
+					p.FinishedAt = *r.FinishedAt
+				}
+				out = append(out, p)
+			}
+			return out, nil
+		}
+	}
 	pg := &postgres.Service{
 		Base:         base,
 		ExportSigner: exportSigner,

@@ -1,0 +1,50 @@
+# build-image-prewarm (w1/030) — keeps the BuildKit image warm on every worker
+# so a tenant build's pod never spends minutes in Pending/ContainerCreating
+# pulling it on a cold node. Evidence: dep-d9d8r3h07a5s73dj32ag (2026-07-17)
+# sat ~2 min with zero build output while a cold tenant node pulled
+# moby/buildkit — the silent window behind the deploy-page build-log incident
+# (docs/render-artifacts/live-deploy-following.md § 2026-07-17).
+#
+# Mechanism: a DaemonSet whose one container IS the BuildKit image, idling. The
+# kubelet pulls it the moment any node joins (autoscaled nodes included), and
+# the running container pins the image against kubelet image GC. Build Jobs
+# (lego/operator/internal/build/build.go) set no nodeSelector, so every worker
+# is a potential build host; control-plane nodes are tainted and excluded (no
+# toleration here). On a node minted BY a pending build, the DaemonSet's pull
+# and the Job's pull are the same image — kubelet coalesces them, so this never
+# adds work to the hot path.
+#
+# The image ref MUST stay in lockstep with build.go's defaultBuildkitImage —
+# a drifted ref warms the wrong image and silently reverts cold-node builds to
+# the 2-minute pull. (If BEX_TENANT_SIGNING_KEY_SECRET ever turns on in prod,
+# the cosign image becomes a second candidate to warm the same way.)
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: build-image-prewarm
+  namespace: bex-system
+  labels:
+    app: build-image-prewarm
+spec:
+  selector:
+    matchLabels:
+      app: build-image-prewarm
+  template:
+    metadata:
+      labels:
+        app: build-image-prewarm
+    spec:
+      containers:
+        - name: buildkit
+          # = lego/operator/internal/build/build.go defaultBuildkitImage
+          image: moby/buildkit:v0.13.2-rootless
+          command: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: 1m
+              memory: 8Mi
+            limits:
+              memory: 32Mi
+          securityContext:
+            allowPrivilegeEscalation: false

@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { DeployLogPanel } from "../deploy-log-panel";
 import type { UseDeployLogsResult } from "../../hooks/use-deploy-logs";
+import type { LogLine } from "@/features/logs/types";
 
 const logState: UseDeployLogsResult = {
   lines: [],
@@ -81,6 +83,55 @@ describe("DeployLogPanel", () => {
 
     expect(screen.getByText("logs query unavailable")).toBeInTheDocument();
     expect(screen.queryByText("No logs yet")).not.toBeInTheDocument();
+  });
+
+  it("filters to build or application lines via Render's type selector (w1/029)", async () => {
+    const line = (key: string, message: string, type: string): LogLine => ({
+      key,
+      timestamp: "2026-07-17T20:16:14Z",
+      time: "20:16:14",
+      instance: "",
+      message,
+      type,
+      level: "",
+      method: "",
+      statusCode: "",
+    });
+    logState.lines = [
+      line("1", "==> Build queued", "build"),
+      line("2", "running migration", "predeploy"),
+      line("3", "server listening", "app"),
+    ];
+
+    render(
+      <DeployLogPanel
+        resource="web"
+        startTime="2026-07-14T00:00:00Z"
+        endTime={undefined}
+        hasPreDeploy
+        followBuild={false}
+      />,
+    );
+    const user = userEvent.setup();
+
+    // Default: All logs — everything interleaved.
+    expect(screen.getByText("==> Build queued")).toBeInTheDocument();
+    expect(screen.getByText("server listening")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Log type" }));
+    await user.click(screen.getByRole("menuitemradio", { name: "Build logs" }));
+    expect(screen.getByText("==> Build queued")).toBeInTheDocument();
+    expect(screen.queryByText("server listening")).not.toBeInTheDocument();
+    expect(screen.queryByText("running migration")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Log type" }));
+    await user.click(
+      screen.getByRole("menuitemradio", { name: "Application logs" }),
+    );
+    // Application = app + pre-deploy, matching Render's two-bucket split.
+    expect(screen.queryByText("==> Build queued")).not.toBeInTheDocument();
+    expect(screen.getByText("server listening")).toBeInTheDocument();
+    expect(screen.getByText("running migration")).toBeInTheDocument();
   });
 
   it("reports a refused live build stream instead of leaving an empty pane unexplained", () => {
