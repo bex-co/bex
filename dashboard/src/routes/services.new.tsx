@@ -112,7 +112,7 @@ const RUNTIME_COMMANDS: Record<
 
 export const Route = createFileRoute("/services/new")({
   component: NewServicePage,
-  beforeLoad: requireAuth("/services/new"),
+  beforeLoad: requireAuth(),
   head: () => ({
     meta: [{ title: "New Service · bex dashboard" }],
   }),

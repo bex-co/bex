@@ -30,7 +30,7 @@ import {
 
 export const Route = createFileRoute("/new/workspace")({
   component: NewWorkspacePage,
-  beforeLoad: requireAuth("/new/workspace"),
+  beforeLoad: requireAuth(),
   head: () => ({
     meta: [{ title: "New Workspace · bex dashboard" }],
   }),

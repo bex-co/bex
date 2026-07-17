@@ -4,7 +4,7 @@ import SettingsPage from "@/features/auth/pages/settings-page";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,
-  beforeLoad: requireAuth("/settings"),
+  beforeLoad: requireAuth(),
   // GitHub's cross-site install callback redirects failures here with one
   // bounded reason code. Keep it advisory: unknown values render the generic
   // connect error and never flow into markup or backend requests.

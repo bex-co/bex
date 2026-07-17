@@ -76,7 +76,7 @@ func listLikeVerb(ctx context.Context, b *Base) error {
 // (apps.Service.Get's AuthorizeApp-family shape): same allowed/denied split
 // as listLikeVerb, but with a Target recorded on denial.
 func getAppLikeVerb(ctx context.Context, b *Base, service string) error {
-	return b.AuthorizeTarget(ctx, RelCanView, ServiceTarget(service))
+	return b.AuthorizeOnTarget(ctx, RelCanView, DefaultWorkspace, ServiceTarget(service))
 }
 
 // scaleLikeVerb stands in for a SERVICE-SCOPED write verb (apps.Service.Scale's
@@ -84,10 +84,10 @@ func getAppLikeVerb(ctx context.Context, b *Base, service string) error {
 // row attributable to one service — and therefore what makes the events feed a
 // view rather than a second write path.
 func scaleLikeVerb(ctx context.Context, b *Base, service string) error {
-	return b.AuthorizeTarget(ctx, RelCanOperate, ServiceTarget(service))
+	return b.AuthorizeOnTarget(ctx, RelCanOperate, DefaultWorkspace, ServiceTarget(service))
 }
 
-// TestAuditTargetNamesTheResourceActedOn is w3/m7's write side: AuthorizeTarget
+// TestAuditTargetNamesTheResourceActedOn is w3/m7's write side: AuthorizeOnTarget
 // records WHICH service a verb changed (Resource stays the workspace it was
 // authorized against — the two are different questions), it resolves the verb
 // name from the same frame depth Authorize does, and a plain Authorize still
@@ -114,7 +114,7 @@ func TestAuditTargetNamesTheResourceActedOn(t *testing.T) {
 		t.Errorf("Resource = %q, want the workspace the verb was authorized against (%q)", targeted.Resource, DefaultWorkspace)
 	}
 	// The frame skip must be identical on both entry points, or the verb name
-	// silently becomes "Base.AuthorizeTarget" and every event type goes unmapped.
+	// silently becomes "Base.AuthorizeOnTarget" and every event type goes unmapped.
 	if targeted.Verb != "core.scaleLikeVerb" {
 		t.Errorf("Verb = %q, want %q", targeted.Verb, "core.scaleLikeVerb")
 	}
@@ -310,7 +310,7 @@ func (s *helperVerbService) setSuspended(ctx context.Context, service string) er
 }
 
 func (s *helperVerbService) writeThroughStore(ctx context.Context, service string) error {
-	return s.base.AuthorizeTarget(ctx, RelCanOperate, ServiceTarget(service))
+	return s.base.AuthorizeOnTarget(ctx, RelCanOperate, DefaultWorkspace, ServiceTarget(service))
 }
 
 func TestCallerVerbWalksPastUnexportedHelperMethods(t *testing.T) {

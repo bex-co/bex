@@ -20,7 +20,7 @@ import type { KeyValueView } from "@/features/keyvalue/types";
 
 export const Route = createFileRoute("/keyvalue/$keyValueId")({
   component: KeyValueDetailPage,
-  beforeLoad: requireAuth("/keyvalue/$keyValueId"),
+  beforeLoad: requireAuth(),
   validateSearch: (search: Record<string, unknown>): { tab?: "logs" } =>
     search.tab === "logs" ? { tab: "logs" } : {},
   head: ({ params }) => ({

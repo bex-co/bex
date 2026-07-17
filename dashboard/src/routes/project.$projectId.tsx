@@ -4,7 +4,7 @@ import { DashboardLayout } from "@/common/components/dashboard-layout";
 
 export const Route = createFileRoute("/project/$projectId")({
   component: RouteComponent,
-  beforeLoad: requireAuth("/"),
+  beforeLoad: requireAuth(),
 });
 
 /**

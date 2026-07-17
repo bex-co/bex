@@ -10,7 +10,7 @@ import SettingsPage from "@/features/auth/pages/settings-page";
  */
 export const Route = createFileRoute("/auth/reset-password")({
   component: SettingsPage,
-  beforeLoad: requireAuth("/auth/reset-password"),
+  beforeLoad: requireAuth(),
   head: () => ({
     meta: [{ title: "Reset password — bex" }],
   }),

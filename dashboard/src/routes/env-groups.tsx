@@ -28,7 +28,7 @@ import { useServices } from "@/features/services/hooks/use-services";
 
 export const Route = createFileRoute("/env-groups")({
   component: EnvGroupsPage,
-  beforeLoad: requireAuth("/env-groups"),
+  beforeLoad: requireAuth(),
   head: () => ({
     meta: [{ title: "Environment Groups · bex dashboard" }],
   }),

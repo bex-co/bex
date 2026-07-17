@@ -4,7 +4,7 @@ import { UsagePage } from "@/features/usage/components/usage-page";
 
 export const Route = createFileRoute("/usage")({
   component: UsagePage,
-  beforeLoad: requireAuth("/usage"),
+  beforeLoad: requireAuth(),
   head: () => ({
     meta: [{ title: "Usage · bex dashboard" }],
   }),
