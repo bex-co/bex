@@ -72,6 +72,7 @@ import type { InstanceTypeView } from "@/features/services/hooks/use-instance-ty
 import { generateEnvValue } from "@/features/services/lib/generate-env-value";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 import { RegistryCredentialSelect } from "@/features/services/components/registry-credential-select";
+import { PathList } from "@/features/services/components/build-deploy-section";
 
 // A C-locale env-var name — kept in sync with backend/internal/secrets validEnvKey.
 const VALID_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -465,6 +466,9 @@ export function NewServicePage() {
   const [schedule, setSchedule] = useState("");
   const [command, setCommand] = useState("");
   const [publishPath, setPublishPath] = useState("");
+  const [staticBuildCommand, setStaticBuildCommand] = useState("");
+  const [buildFilterPaths, setBuildFilterPaths] = useState<string[]>([]);
+  const [buildFilterIgnored, setBuildFilterIgnored] = useState<string[]>([]);
   const [envVars, setEnvVars] = useState<EnvVarEntry[]>([]);
   const [secretFiles, setSecretFiles] = useState<SecretFileEntry[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -615,10 +619,13 @@ export function NewServicePage() {
           : isGitSource && !isStaticType
             ? runtime
             : undefined,
-      buildCommand:
-        isGitSource && !isStaticType && runtime !== "docker"
-          ? buildCommand.trim()
-          : undefined,
+      buildCommand: isGitSource
+        ? isStaticType
+          ? staticBuildCommand.trim() || undefined
+          : runtime !== "docker"
+            ? buildCommand.trim()
+            : undefined
+        : undefined,
       startCommand:
         isGitSource && !isStaticType
           ? isCronType
@@ -628,6 +635,17 @@ export function NewServicePage() {
       dockerfilePath:
         isGitSource && !isStaticType && runtime === "docker"
           ? dockerfilePath.trim() || undefined
+          : undefined,
+      buildFilter:
+        isGitSource && isStaticType &&
+        (buildFilterPaths.some((p) => p.trim()) ||
+          buildFilterIgnored.some((p) => p.trim()))
+          ? {
+              paths: buildFilterPaths.map((p) => p.trim()).filter(Boolean),
+              ignoredPaths: buildFilterIgnored
+                .map((p) => p.trim())
+                .filter(Boolean),
+            }
           : undefined,
       plan: showPlan ? plan || undefined : undefined,
       autoDeploy: isGitSource ? autoDeploy : undefined,
@@ -1113,6 +1131,61 @@ export function NewServicePage() {
                       <p className="text-sm text-muted-foreground">
                         {t("services.createFieldCommandHint")}
                       </p>
+                    </div>
+                  </>
+                ) : null}
+
+                {/* Static site build command + build filters (git source only) */}
+                {isStaticType && isGitSource ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="svc-static-build-command">
+                        {t("services.createFieldBuildCommand")}
+                      </Label>
+                      <Input
+                        id="svc-static-build-command"
+                        value={staticBuildCommand}
+                        onChange={(e) =>
+                          setStaticBuildCommand(e.target.value)
+                        }
+                        placeholder={t("services.buildCommandPlaceholder")}
+                        autoComplete="off"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        {t("services.buildCommandHint")}
+                      </p>
+                    </div>
+                    <div className="space-y-4 rounded-md border p-4">
+                      <div>
+                        <div className="text-sm font-medium">
+                          {t("services.buildFilterLabel")}
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {t("services.buildFilterHint")}
+                        </div>
+                      </div>
+                      <PathList
+                        title={t("services.buildFilterIncludedTitle")}
+                        hint={t("services.buildFilterIncludedHint")}
+                        placeholder={t(
+                          "services.buildFilterIncludedPlaceholder",
+                        )}
+                        addLabel={t("services.buildFilterAddIncluded")}
+                        removeLabel={t("services.buildFilterRemoveIncluded")}
+                        values={buildFilterPaths}
+                        onChange={setBuildFilterPaths}
+                      />
+                      <PathList
+                        title={t("services.buildFilterIgnoredTitle")}
+                        hint={t("services.buildFilterIgnoredHint")}
+                        placeholder={t(
+                          "services.buildFilterIgnoredPlaceholder",
+                        )}
+                        addLabel={t("services.buildFilterAddIgnored")}
+                        removeLabel={t("services.buildFilterRemoveIgnored")}
+                        values={buildFilterIgnored}
+                        onChange={setBuildFilterIgnored}
+                      />
                     </div>
                   </>
                 ) : null}

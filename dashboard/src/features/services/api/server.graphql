@@ -39,6 +39,10 @@ query Server($id: String!) {
     rootDir
     runtime
     builder
+    # buildCommand is Render's Build Command (w7/m41) — the shell command that
+    # produces the build artifacts (e.g. npm run build for a static site).
+    # Null/empty means the runtime default. Readable in the Build & Deploy section.
+    buildCommand
     startCommand
     dockerfilePath
     # Explicit private-registry binding for prebuilt images and repository

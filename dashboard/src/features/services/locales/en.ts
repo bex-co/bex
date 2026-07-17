@@ -1558,6 +1558,48 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't update the Start Command. Please try again.",
     description: "Toast after setStartCommand fails",
   },
+  "services.buildCommandLabel": {
+    message: "Build Command",
+    description: "Build & Deploy: build-command field label (static_site settings)",
+  },
+  "services.buildCommandHint": {
+    message:
+      "The command that builds your site's static output (e.g., npm run build). Leave blank to use the runtime default.",
+    description: "Build & Deploy: build-command help text",
+  },
+  "services.buildCommandEmpty": {
+    message: "Uses the runtime default",
+    description: "Build & Deploy: empty build-command state label",
+  },
+  "services.buildCommandConfirmEmpty": {
+    message: "Runtime default",
+    description: "Build & Deploy: empty build-command phrase in confirmation title",
+  },
+  "services.buildCommandPlaceholder": {
+    message: "npm run build",
+    description: "Build & Deploy: build-command input placeholder",
+  },
+  "services.buildCommandEdit": {
+    message: "Edit build command",
+    description: "Build & Deploy: accessible build-command edit button label",
+  },
+  "services.buildCommandConfirmTitle": {
+    message: "Change build command to {value}?",
+    description: "Build & Deploy: build-command change confirmation title",
+  },
+  "services.buildCommandConfirmBody": {
+    message:
+      "Service will redeploy with the new build command. Existing requests will be drained before old instances are replaced.",
+    description: "Build & Deploy: build-command change confirmation body",
+  },
+  "services.buildCommandSuccess": {
+    message: "Build Command updated.",
+    description: "Toast after setBuildCommand succeeds",
+  },
+  "services.buildCommandError": {
+    message: "Couldn't update the Build Command. Please try again.",
+    description: "Toast after setBuildCommand fails",
+  },
   "services.dockerfilePathLabel": {
     message: "Dockerfile Path",
     description: "Build & Deploy: Dockerfile-path field label",

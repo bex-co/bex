@@ -1530,6 +1530,48 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法更新启动命令，请重试。",
     description: "Toast after setStartCommand fails",
   },
+  "services.buildCommandLabel": {
+    message: "构建命令",
+    description: "Build & Deploy: build-command field label (static_site settings)",
+  },
+  "services.buildCommandHint": {
+    message:
+      "生成静态输出的命令（例如 npm run build）。留空则使用运行时默认值。",
+    description: "Build & Deploy: build-command help text",
+  },
+  "services.buildCommandEmpty": {
+    message: "使用运行时默认值",
+    description: "Build & Deploy: empty build-command state label",
+  },
+  "services.buildCommandConfirmEmpty": {
+    message: "运行时默认值",
+    description: "Build & Deploy: empty build-command phrase in confirmation title",
+  },
+  "services.buildCommandPlaceholder": {
+    message: "npm run build",
+    description: "Build & Deploy: build-command input placeholder",
+  },
+  "services.buildCommandEdit": {
+    message: "编辑构建命令",
+    description: "Build & Deploy: accessible build-command edit button label",
+  },
+  "services.buildCommandConfirmTitle": {
+    message: "将构建命令更改为 {value}？",
+    description: "Build & Deploy: build-command change confirmation title",
+  },
+  "services.buildCommandConfirmBody": {
+    message:
+      "服务将使用新的构建命令重新部署。现有请求完成后才会替换旧实例。",
+    description: "Build & Deploy: build-command change confirmation body",
+  },
+  "services.buildCommandSuccess": {
+    message: "构建命令已更新。",
+    description: "Toast after setBuildCommand succeeds",
+  },
+  "services.buildCommandError": {
+    message: "无法更新构建命令，请重试。",
+    description: "Toast after setBuildCommand fails",
+  },
   "services.dockerfilePathLabel": {
     message: "Dockerfile 路径",
     description: "Build & Deploy: Dockerfile-path field label",

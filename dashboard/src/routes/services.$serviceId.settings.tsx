@@ -154,6 +154,7 @@ export function ServiceSettingsPage() {
               rootDir={service.rootDir}
               runtime={service.runtime}
               builder={service.builder}
+              buildCommand={service.buildCommand}
               startCommand={service.startCommand}
               dockerfilePath={service.dockerfilePath}
               buildFilter={service.buildFilter}
@@ -162,6 +163,7 @@ export function ServiceSettingsPage() {
               // Pre-Deploy Command applies to web/private/worker; a static_site
               // has no running container, so hide the field for it (w1/m33).
               showPreDeployCommand={!staticSite}
+              showBuildCommand={staticSite}
               showStartCommand={!staticSite}
               showDockerfilePath={!staticSite}
             />

@@ -56,6 +56,7 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     rootDir: "rootDir" in s ? (s.rootDir ?? null) : null,
     runtime: "runtime" in s ? (s.runtime ?? null) : null,
     builder: "builder" in s ? (s.builder ?? null) : null,
+    buildCommand: "buildCommand" in s ? (s.buildCommand ?? null) : null,
     startCommand: "startCommand" in s ? (s.startCommand ?? null) : null,
     dockerfilePath: "dockerfilePath" in s ? (s.dockerfilePath ?? null) : null,
     registryCredentialId:

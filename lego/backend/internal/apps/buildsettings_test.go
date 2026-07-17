@@ -223,3 +223,98 @@ func TestMCPBuildSettingsRoundTrip(t *testing.T) {
 		t.Fatalf("set_dockerfile_path = %#v", path)
 	}
 }
+
+// TestSetBuildCommandOnStaticSite verifies that SetCommands sets (and clears)
+// spec.BuildCommand for a static_site repo-backed App and surfaces it in the
+// AppView. This is the same SetCommands verb native-runtime services use; the
+// difference is that static sites pass a nil startCommand pointer.
+func TestSetBuildCommandOnStaticSite(t *testing.T) {
+	a := repoApp("site", "https://github.com/x/site", "main")
+	a.Spec.Type = "static_site"
+	a.Spec.PublishPath = "dist"
+	svc, cl := newService(nil, a)
+
+	cmd := "npm run build"
+	view, err := svc.SetCommands(context.Background(), "site", &cmd, nil)
+	if err != nil {
+		t.Fatalf("SetCommands: %v", err)
+	}
+	if view.BuildCommand != "npm run build" {
+		t.Fatalf("AppView.BuildCommand = %q, want %q", view.BuildCommand, "npm run build")
+	}
+	if got := getApp(t, cl, "site").Spec.BuildCommand; got != "npm run build" {
+		t.Fatalf("spec.BuildCommand after set = %q", got)
+	}
+
+	// Clear via empty string — should revert to empty (runtime default).
+	empty := ""
+	if _, err := svc.SetCommands(context.Background(), "site", &empty, nil); err != nil {
+		t.Fatalf("clear BuildCommand: %v", err)
+	}
+	if got := getApp(t, cl, "site").Spec.BuildCommand; got != "" {
+		t.Fatalf("spec.BuildCommand after clear = %q", got)
+	}
+}
+
+// TestGraphQLSetBuildCommandRoundTrip verifies the setBuildCommand GraphQL
+// mutation persists and is readable via the server query (w7/m41).
+func TestGraphQLSetBuildCommandRoundTrip(t *testing.T) {
+	a := repoApp("site", "https://github.com/x/site", "main")
+	a.Spec.Type = "static_site"
+	a.Spec.PublishPath = "dist"
+	svc, _ := newService(nil, a)
+	schema := mustSchema(t, svc)
+	run := func(query string) map[string]any {
+		t.Helper()
+		res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: query})
+		if len(res.Errors) > 0 {
+			t.Fatalf("GraphQL %s: %v", query, res.Errors)
+		}
+		return res.Data.(map[string]any)
+	}
+
+	mut := run(`mutation { setBuildCommand(id:"site", command:"npm run build") { buildCommand } }`)["setBuildCommand"].(map[string]any)
+	if mut["buildCommand"] != "npm run build" {
+		t.Fatalf("setBuildCommand response = %#v", mut)
+	}
+	read := run(`{ server(id:"site") { buildCommand } }`)["server"].(map[string]any)
+	if read["buildCommand"] != "npm run build" {
+		t.Fatalf("server.buildCommand after set = %#v", read)
+	}
+	cleared := run(`mutation { setBuildCommand(id:"site", command:"") { buildCommand } }`)["setBuildCommand"].(map[string]any)
+	if cleared["buildCommand"] != "" {
+		t.Fatalf("setBuildCommand clear = %#v", cleared)
+	}
+}
+
+// TestCreateServiceWithBuildFilterGraphQL verifies that createService accepts a
+// buildFilter for a static_site and surfaces it on the resulting App (w7/m41).
+func TestCreateServiceWithBuildFilterGraphQL(t *testing.T) {
+	svc, cl := newService(nil)
+	schema := mustSchema(t, svc)
+
+	const q = `mutation {
+		createService(
+			name: "mysite"
+			type: "static_site"
+			repo: "https://github.com/x/site"
+			branch: "main"
+			publishPath: "dist"
+			buildFilter: {paths: ["src/**"], ignoredPaths: ["**/*.test.ts"]}
+		) { id }
+	}`
+	ctx := context.Background()
+	res := graphql.Do(graphql.Params{Schema: schema, Context: ctx, RequestString: q})
+	if len(res.Errors) > 0 {
+		t.Fatalf("createService: %v", res.Errors)
+	}
+
+	app := getApp(t, cl, "mysite")
+	bf := app.Spec.BuildFilter
+	if bf == nil || len(bf.Paths) != 1 || bf.Paths[0] != "src/**" {
+		t.Fatalf("spec.BuildFilter.Paths = %#v", bf)
+	}
+	if bf == nil || len(bf.IgnoredPaths) != 1 || bf.IgnoredPaths[0] != "**/*.test.ts" {
+		t.Fatalf("spec.BuildFilter.IgnoredPaths = %#v", bf)
+	}
+}

@@ -24,6 +24,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useRootDir } from "@/features/services/hooks/use-root-dir";
 import { useStartCommand } from "@/features/services/hooks/use-start-command";
+import { useBuildCommand } from "@/features/services/hooks/use-build-command";
 import { useDockerfilePath } from "@/features/services/hooks/use-dockerfile-path";
 import { usePreDeployCommand } from "@/features/services/hooks/use-pre-deploy-command";
 import { useAutoDeploy } from "@/features/services/hooks/use-auto-deploy";
@@ -67,6 +68,10 @@ export interface BuildDeploySectionProps {
   showStartCommand?: boolean;
   /** False for cron/static services, whose Docker build settings live elsewhere. */
   showDockerfilePath?: boolean;
+  /** spec.buildCommand; the shell command that produces build artifacts. */
+  buildCommand?: string | null;
+  /** True for static_site — shows the Build Command editor (w7/m41). */
+  showBuildCommand?: boolean;
 }
 
 /**
@@ -93,10 +98,13 @@ export function BuildDeploySection({
   showPreDeployCommand,
   showStartCommand = false,
   showDockerfilePath = true,
+  buildCommand = null,
+  showBuildCommand = false,
 }: BuildDeploySectionProps) {
   const { t } = useTranslations();
   const { setRootDir, busy } = useRootDir();
   const { setStartCommand, busy: startCommandBusy } = useStartCommand();
+  const { setBuildCommand, busy: buildCommandBusy } = useBuildCommand();
   const { setDockerfilePath, busy: dockerfilePathBusy } = useDockerfilePath();
   const { setPreDeployCommand, busy: preDeployBusy } = usePreDeployCommand();
   const { setAutoDeploy, busy: autoDeployBusy } = useAutoDeploy();
@@ -176,6 +184,25 @@ export function BuildDeploySection({
           busy={busy}
           onSave={(value) => setRootDir(serviceId, value)}
         />
+
+        {showBuildCommand && (
+          <InlineEditSetting
+            label={t("services.buildCommandLabel")}
+            hint={t("services.buildCommandHint")}
+            currentValue={buildCommand ?? ""}
+            emptyValue={t("services.buildCommandEmpty")}
+            confirmEmptyValue={t("services.buildCommandConfirmEmpty")}
+            placeholder={t("services.buildCommandPlaceholder")}
+            editLabel={t("services.buildCommandEdit")}
+            confirmTitle={(value) =>
+              t("services.buildCommandConfirmTitle", { value })
+            }
+            confirmBody={t("services.buildCommandConfirmBody")}
+            optional
+            busy={buildCommandBusy}
+            onSave={(value) => setBuildCommand(serviceId, value)}
+          />
+        )}
 
         {showStartCommand && (
           <InlineEditSetting
@@ -554,8 +581,9 @@ function BuildFilterEditor({
  * One editable glob list (Included or Ignored Paths): a row of monospace inputs
  * with a per-row remove and an add button, mirroring the static-site RoutesEditor
  * shape. The parent owns the value/onChange so both lists save as one draft.
+ * Exported so the create wizard can reuse it without a mutation (w7/m41).
  */
-function PathList({
+export function PathList({
   title,
   hint,
   placeholder,

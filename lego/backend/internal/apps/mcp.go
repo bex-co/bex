@@ -79,9 +79,14 @@ type rootDirArgs struct {
 	RootDir   string `json:"rootDir" jsonschema:"subdirectory of the repo to build from; empty builds from the repo root"`
 }
 
-// startCommandArgs and dockerfilePathArgs expose the two remaining Build &
+// buildCommandArgs, startCommandArgs and dockerfilePathArgs expose Build &
 // Deploy command/path settings through the same scalar-setter grammar as
-// set_root_directory. Render's official MCP has no update tools for either.
+// set_root_directory. Render's official MCP has no update tools for any of them.
+type buildCommandArgs struct {
+	ServiceID    string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	BuildCommand string `json:"buildCommand" jsonschema:"the build command (e.g. npm run build); empty clears it"`
+}
+
 type startCommandArgs struct {
 	ServiceID    string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	StartCommand string `json:"startCommand" jsonschema:"the command used to start the service; empty restores the image default where supported"`
@@ -774,6 +779,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Set a build-from-git service's Root Directory: the subdirectory of its repo to build from (monorepo support). Triggers a fresh build scoped to that subdirectory. Tracks Render's Root Directory setting.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in rootDirArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.SetRootDir(ctx, in.ServiceID, in.RootDir)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_build_command",
+		Description: "Change the build command for a repo-backed service (e.g. npm run build). Applies to static sites and native-runtime services. Empty clears the command (builder default). bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in buildCommandArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetCommands(ctx, in.ServiceID, &in.BuildCommand, nil)
 		if err != nil {
 			return nil, renderService{}, err
 		}

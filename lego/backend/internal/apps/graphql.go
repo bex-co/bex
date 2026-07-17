@@ -1071,6 +1071,21 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return s.SetRootDir(p.Context, p.Args["id"].(string), p.Args["rootDir"].(string))
 			},
 		},
+		// setBuildCommand changes the build command for a repo-backed service.
+		// Applies to static_site (the primary user) and native-runtime services.
+		// The shared SetCommands verb also backs Render's REST PATCH shape; this
+		// scalar setter is the dashboard-friendly GraphQL projection.
+		"setBuildCommand": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"command": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				command := p.Args["command"].(string)
+				return s.SetCommands(p.Context, p.Args["id"].(string), &command, nil)
+			},
+		},
 		// setStartCommand changes the command used to start an existing service.
 		// The shared SetCommands verb also backs Render's REST PATCH shape; this
 		// scalar setter is the dashboard-friendly GraphQL projection.

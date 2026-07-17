@@ -7,6 +7,7 @@ const setRootDir = vi.fn(async () => true);
 const setAutoDeploy = vi.fn(async () => true);
 const setPreDeployCommand = vi.fn(async () => true);
 const setBuildFilter = vi.fn(async () => true);
+const setBuildCommand = vi.fn(async () => true);
 const setStartCommand = vi.fn(async () => true);
 const setDockerfilePath = vi.fn(async () => true);
 
@@ -16,6 +17,10 @@ vi.mock("@/features/services/hooks/use-root-dir", () => ({
 
 vi.mock("@/features/services/hooks/use-build-filter", () => ({
   useBuildFilter: () => ({ setBuildFilter, busy: false }),
+}));
+
+vi.mock("@/features/services/hooks/use-build-command", () => ({
+  useBuildCommand: () => ({ setBuildCommand, busy: false }),
 }));
 
 vi.mock("@/features/services/hooks/use-start-command", () => ({
@@ -53,6 +58,8 @@ beforeEach(() => {
   setPreDeployCommand.mockResolvedValue(true);
   setBuildFilter.mockClear();
   setBuildFilter.mockResolvedValue(true);
+  setBuildCommand.mockClear();
+  setBuildCommand.mockResolvedValue(true);
   setStartCommand.mockClear();
   setStartCommand.mockResolvedValue(true);
   setDockerfilePath.mockClear();
@@ -601,5 +608,50 @@ describe("BuildDeploySection", () => {
 
     // Ignored list cleared, included list preserved.
     expect(setBuildFilter).toHaveBeenCalledWith("app", ["src/**"], []);
+  });
+
+  it("shows the Build Command editor only when showBuildCommand is true (w7/m41)", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/site"
+        branch="main"
+        rootDir={null}
+        buildCommand={null}
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+    expect(screen.queryByText("Build Command")).not.toBeInTheDocument();
+
+    rerender(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/site"
+        branch="main"
+        rootDir={null}
+        buildCommand="npm run build"
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+        showBuildCommand
+      />,
+    );
+    expect(screen.getByText("Build Command")).toBeInTheDocument();
+    expect(screen.getByText("npm run build")).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Edit build command" }),
+    );
+    const input = screen.getByDisplayValue("npm run build");
+    await user.clear(input);
+    await user.type(input, "yarn build");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(setBuildCommand).toHaveBeenCalledWith("app", "yarn build");
   });
 });

@@ -75,6 +75,12 @@ export interface ServiceView {
   runtime: string | null;
   /** Internal build strategy, used to recognize legacy Dockerfile-built Apps. */
   builder: string | null;
+  /**
+   * Render's Build Command (`spec.buildCommand`, w7/m41): the shell command that
+   * produces build artifacts (e.g., npm run build). null/empty means the runtime
+   * default. Only selected by the detail `server` query.
+   */
+  buildCommand: string | null;
   /** Native Start Command or Docker Command override. */
   startCommand: string | null;
   /** Dockerfile path relative to rootDir; empty means Dockerfile. */
