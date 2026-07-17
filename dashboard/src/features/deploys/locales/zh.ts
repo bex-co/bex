@@ -49,6 +49,11 @@ const zhDeploys: Record<string, TranslationEntry> = {
     message: "未知",
     description: "Deploy status: unrecognized backend value",
   },
+  "deploys.statusLabel": {
+    message: "部署状态",
+    description:
+      "Deploy detail header: explicit label distinguishing deploy status from service phase",
+  },
   "deploys.created": {
     message: "创建于",
     description: "Deploy header: created-at label",
@@ -65,9 +70,26 @@ const zhDeploys: Record<string, TranslationEntry> = {
     message: "完成于",
     description: "Deploy header: finished-at label",
   },
+  "deploys.duration": {
+    message: "耗时",
+    description: "Deploy header: elapsed build/deploy time label",
+  },
+  "deploys.durationValue": {
+    message: "耗时 {duration}",
+    description: "Deploy row: elapsed build/deploy time",
+  },
+  "deploys.durationInProgress": {
+    message: "计时中",
+    description: "Deploy row: elapsed time is still running",
+  },
+  "deploys.deployedAt": {
+    message: "部署于 {timestamp}",
+    description: "Deploy row: created/deployed timestamp",
+  },
   "deploys.notYet": {
     message: "—",
-    description: "Deploy header: placeholder for a timestamp that hasn't happened yet",
+    description:
+      "Deploy header: placeholder for a timestamp that hasn't happened yet",
   },
   "deploys.triggerCreate": {
     message: "首次部署",
@@ -79,7 +101,8 @@ const zhDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.triggerRollback": {
     message: "回滚至 {deployId}",
-    description: "Deploy header: trigger label for a rollback deploy, naming the restored deploy",
+    description:
+      "Deploy header: trigger label for a rollback deploy, naming the restored deploy",
   },
   "deploys.notFoundTitle": {
     message: "未找到部署",
@@ -94,8 +117,14 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description: "Deploy detail page: log search input placeholder",
   },
   "deploys.buildLogsStoreUnavailable": {
-    message: "构建日志需要日志存储。",
-    description: "Deploy detail page: shown when the durable log store isn't wired, so build-log lines can't be fetched",
+    message: "历史构建日志不可用",
+    description:
+      "Deploy detail page: title shown when the durable log store isn't wired",
+  },
+  "deploys.buildLogsStoreUnavailableBody": {
+    message: "此控制台尚未连接持久日志存储。该部署的应用日志仍可能显示在这里。",
+    description:
+      "Deploy detail page: accurate explanation of a storeless build-log response",
   },
   "deploys.timelineTitle": {
     message: "状态时间线",
@@ -154,21 +183,56 @@ const zhDeploys: Record<string, TranslationEntry> = {
     message: "全部状态",
     description: "Deploys tab: status filter option matching every deploy",
   },
+  "deploys.listSearchPlaceholder": {
+    message: "搜索已加载的部署和提交…",
+    description:
+      "Deploys tab: placeholder for client-side deploy-history search",
+  },
+  "deploys.listSearchLabel": {
+    message: "搜索已加载的部署和提交",
+    description: "Deploys tab: accessible label for deploy-history search",
+  },
+  "deploys.listEmptySearch": {
+    message: "已加载的部署中没有匹配项。",
+    description:
+      "Deploys tab: empty state when client-side search has no match",
+  },
+  "deploys.listCountOne": {
+    message: "{count} 个部署",
+    description: "Deploys tab: complete singular deploy count",
+  },
+  "deploys.listCountMany": {
+    message: "{count} 个部署",
+    description: "Deploys tab: complete plural deploy count",
+  },
+  "deploys.listCountLoadedOne": {
+    message: "已加载 {count} 个部署",
+    description:
+      "Deploys tab: singular loaded count when more server pages remain",
+  },
+  "deploys.listCountLoadedMany": {
+    message: "已加载 {count} 个部署",
+    description:
+      "Deploys tab: plural loaded count when more server pages remain",
+  },
   "deploys.listLoadMore": {
     message: "加载更多",
     description: "Deploys tab: button fetching the next page of deploy history",
   },
   "deploys.logOptions": {
     message: "日志选项",
-    description: "Deploy log viewer: aria-label/tooltip of the options menu button",
+    description:
+      "Deploy log viewer: aria-label/tooltip of the options menu button",
   },
   "deploys.logRangeLabel": {
     message: "时间范围",
-    description: "Deploy log viewer options menu: heading over the time-range choices",
+    description:
+      "Deploy log viewer options menu: heading over the time-range choices",
   },
   "deploys.logRangeDeploy": {
     message: "部署时间窗",
-    description: "Deploy log viewer: the default time range — the deploy's own createdAt..finishedAt window",
+    description:
+      "Deploy log viewer: the default time range — the deploy's own createdAt..finishedAt window",
   },
   "deploys.logRangeLast15m": {
     message: "最近 15 分钟",
@@ -192,19 +256,23 @@ const zhDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.logWrap": {
     message: "自动换行",
-    description: "Deploy log viewer options menu: toggle wrapping long log lines vs horizontal scroll",
+    description:
+      "Deploy log viewer options menu: toggle wrapping long log lines vs horizontal scroll",
   },
   "deploys.logTimestamps": {
     message: "显示时间戳",
-    description: "Deploy log viewer options menu: toggle the per-line timestamp column",
+    description:
+      "Deploy log viewer options menu: toggle the per-line timestamp column",
   },
   "deploys.logMaximize": {
     message: "最大化",
-    description: "Deploy log viewer: button expanding the viewer to fill the screen",
+    description:
+      "Deploy log viewer: button expanding the viewer to fill the screen",
   },
   "deploys.logMinimize": {
     message: "退出全屏",
-    description: "Deploy log viewer: button restoring the maximized viewer to its inline size",
+    description:
+      "Deploy log viewer: button restoring the maximized viewer to its inline size",
   },
 };
 

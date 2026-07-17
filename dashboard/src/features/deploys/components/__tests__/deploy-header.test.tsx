@@ -96,17 +96,28 @@ describe("DeployHeader", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows a placeholder for a started/finished timestamp that hasn't happened yet", () => {
+  it("shows duration through the shared formatter", () => {
+    render(<DeployHeader deploy={deploy()} />);
+
+    expect(screen.getByText("Duration:")).toBeInTheDocument();
+    expect(screen.getByText("59s")).toBeInTheDocument();
+  });
+
+  it("omits timestamps and duration that haven't happened instead of inventing values", () => {
     render(
       <DeployHeader
         deploy={deploy({
           status: "update_in_progress",
-          startedAt: "2026-07-14T00:00:01Z",
+          createdAt: null,
+          updatedAt: null,
+          startedAt: null,
           finishedAt: null,
         })}
       />,
     );
-    // "—" appears once, for the not-yet-finished deploy.
-    expect(screen.getAllByText("—")).toHaveLength(1);
+
+    expect(screen.queryByText("Created:")).not.toBeInTheDocument();
+    expect(screen.queryByText("Duration:")).not.toBeInTheDocument();
+    expect(screen.queryByText("—")).not.toBeInTheDocument();
   });
 });

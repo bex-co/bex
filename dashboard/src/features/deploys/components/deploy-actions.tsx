@@ -18,7 +18,10 @@ import {
   AlertDialogTitle,
 } from "@/common/components/ui/alert-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { isCancelableDeployStatus } from "@/features/deploys/lib/deploy-status";
+import {
+  isCancelableDeployStatus,
+  isRollbackableDeployStatus,
+} from "@/features/deploys/lib/deploy-status";
 
 type ConfirmAction = "cancel" | "rollback";
 
@@ -82,7 +85,7 @@ export function DeployActions({
   }
 
   const canCancel = isCancelableDeployStatus(status);
-  const canRollback = status === "live";
+  const canRollback = isRollbackableDeployStatus(status);
   if (!canCancel && !canRollback) return null;
 
   return (

@@ -89,4 +89,23 @@ describe("DeployActions", () => {
       );
     });
   });
+
+  it("offers rollback for a deactivated deploy that previously went live", async () => {
+    renderActions("deactivated");
+
+    expect(
+      await screen.findByRole("button", { name: "Roll Back to This Deploy" }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers neither action for a failed deploy", async () => {
+    renderActions("build_failed");
+
+    expect(
+      screen.queryByRole("button", { name: "Roll Back to This Deploy" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancel" }),
+    ).not.toBeInTheDocument();
+  });
 });

@@ -13,6 +13,7 @@ import {
   type DeployTimelineStepKind,
 } from "@/features/deploys/lib/deploy-timeline";
 import { deployStatusKey } from "@/features/deploys/lib/deploy-status";
+import { formatDeployTimestamp } from "@/features/deploys/lib/deploy-presentation";
 
 const STEP_KEYS: Record<DeployTimelineStepKind, string> = {
   created: "deploys.timelineCreated",
@@ -23,12 +24,6 @@ const STEP_KEYS: Record<DeployTimelineStepKind, string> = {
   canceled: "deploys.timelineCanceled",
   deactivated: "deploys.timelineDeactivated",
 };
-
-function formatTimestamp(iso: string | null): string {
-  if (!iso) return "";
-  const parsed = new Date(iso);
-  return Number.isNaN(parsed.getTime()) ? "" : parsed.toLocaleString();
-}
 
 export interface DeployTimelineProps {
   serviceId: string;
@@ -70,7 +65,7 @@ export function DeployTimeline({ serviceId, deploy }: DeployTimelineProps) {
                   dateTime={step.timestamp}
                   className="text-xs text-muted-foreground"
                 >
-                  {formatTimestamp(step.timestamp)}
+                  {formatDeployTimestamp(step.timestamp)}
                 </time>
               ) : null}
             </li>

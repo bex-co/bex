@@ -6,6 +6,7 @@ import { Button } from "@/common/components/ui/button";
 import { Card, CardContent } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServer } from "@/features/services/hooks/use-server";
+import { useLatestDeploy } from "@/features/deploys/hooks/use-latest-deploy";
 import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
 import {
   ServiceDetailHeader,
@@ -32,6 +33,7 @@ function RouteComponent() {
  */
 export function ServiceDetailLayout({ serviceId }: { serviceId: string }) {
   const { service, loading, error, refetch } = useServer(serviceId);
+  const { deploy: latestDeploy } = useLatestDeploy(serviceId);
   const { pending, run } = useServiceLifecycle({ refetch });
   const { t } = useTranslations();
 
@@ -106,6 +108,7 @@ export function ServiceDetailLayout({ serviceId }: { serviceId: string }) {
         {service ? (
           <ServiceDetailHeader
             service={service}
+            latestDeploy={latestDeploy}
             pending={pending?.id === service.id ? pending.action : null}
             onRun={run}
           />

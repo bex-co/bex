@@ -176,6 +176,31 @@ describe("useDeployLogs", () => {
     expect(result.current.error).toBeUndefined();
   });
 
+  it.each(["build", "predeploy", "app"])(
+    "surfaces a non-store %s query failure",
+    (failedType) => {
+      mockUseQuery.mockImplementation(
+        (_doc: unknown, opts: Record<string, unknown>) => {
+          const variables = opts.variables as { type: string };
+          return {
+            data: variables.type === failedType ? undefined : { logs: [] },
+            loading: false,
+            error:
+              variables.type === failedType
+                ? new Error(`${failedType} query failed`)
+                : undefined,
+          };
+        },
+      );
+
+      const { result } = renderHook(() =>
+        useDeployLogs("web", "2026-07-14T00:00:00Z", undefined, true, false),
+      );
+
+      expect(result.current.error?.message).toBe(`${failedType} query failed`);
+    },
+  );
+
   it("merges the active build SSE tail into history while followBuild is enabled", () => {
     const calls: Call[] = [];
     stubByType({}, calls);

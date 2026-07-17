@@ -38,9 +38,16 @@ import { isSleeping } from "@/features/services/lib/status";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
 import type { RunServiceAction } from "@/features/services/hooks/use-service-lifecycle";
 import { useRegistryCredentials } from "@/features/registry-credentials/hooks/use-registry-credentials";
+import {
+  deployStatusKey,
+  deployStatusVariant,
+} from "@/features/deploys/lib/deploy-status";
+import type { LatestDeploySummary } from "@/features/deploys/hooks/use-latest-deploy";
 
 export interface ServiceDetailHeaderProps {
   service: ServiceView;
+  /** Newest control-plane deploy, named separately from operator/App phase. */
+  latestDeploy?: LatestDeploySummary | null;
   /** The lifecycle action in flight for this service, or null. */
   pending: LifecycleAction | null;
   onRun: RunServiceAction;
@@ -60,6 +67,7 @@ export interface ServiceDetailHeaderProps {
  */
 export function ServiceDetailHeader({
   service,
+  latestDeploy,
   pending,
   onRun,
 }: ServiceDetailHeaderProps) {
@@ -82,7 +90,31 @@ export function ServiceDetailHeader({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <h1 className="truncate text-xl font-semibold">{service.name}</h1>
+          <span className="text-xs font-medium text-muted-foreground">
+            {t("services.headerServicePhase")}
+          </span>
           <ServiceStatusBadge service={service} />
+          {latestDeploy ? (
+            <Link
+              to="/services/$serviceId/deploys/$deployId"
+              params={{ serviceId: service.id, deployId: latestDeploy.id }}
+              aria-label={`${t("services.headerLatestDeploy")}: ${t(
+                deployStatusKey(latestDeploy.status) as Parameters<typeof t>[0],
+              )}`}
+              className="flex items-center gap-1.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="text-xs font-medium text-muted-foreground">
+                {t("services.headerLatestDeploy")}
+              </span>
+              <Badge variant={deployStatusVariant(latestDeploy.status)}>
+                {t(
+                  deployStatusKey(latestDeploy.status) as Parameters<
+                    typeof t
+                  >[0],
+                )}
+              </Badge>
+            </Link>
+          ) : null}
           {instanceType ? (
             <Link
               to="/services/$serviceId/plan"
@@ -92,6 +124,14 @@ export function ServiceDetailHeader({
                 {instanceType.name}
               </Badge>
             </Link>
+          ) : null}
+          {service.runtime?.trim() ? (
+            <Badge variant="secondary" className="gap-1">
+              <span className="text-muted-foreground">
+                {t("services.headerRuntime")}
+              </span>
+              <span className="capitalize">{service.runtime.trim()}</span>
+            </Badge>
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">

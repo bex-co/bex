@@ -34,6 +34,15 @@ export function isCancelableDeployStatus(status: string): boolean {
   return CANCELABLE_STATUSES.has(status);
 }
 
+/**
+ * Rollback targets are deploys that reached live and retained a resolved image.
+ * bex-api exposes those rows as either the current `live` deploy or a historical
+ * `deactivated` deploy; the server performs the final image-availability check.
+ */
+export function isRollbackableDeployStatus(status: string): boolean {
+  return status === "live" || status === "deactivated";
+}
+
 export function deployStatusVariant(status: string): DeployBadgeVariant {
   switch (status) {
     case "live":

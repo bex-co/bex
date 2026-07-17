@@ -49,6 +49,11 @@ const enDeploys: Record<string, TranslationEntry> = {
     message: "Unknown",
     description: "Deploy status: unrecognized backend value",
   },
+  "deploys.statusLabel": {
+    message: "Deploy status",
+    description:
+      "Deploy detail header: explicit label distinguishing deploy status from service phase",
+  },
   "deploys.created": {
     message: "Created",
     description: "Deploy header: created-at label",
@@ -65,9 +70,26 @@ const enDeploys: Record<string, TranslationEntry> = {
     message: "Finished",
     description: "Deploy header: finished-at label",
   },
+  "deploys.duration": {
+    message: "Duration",
+    description: "Deploy header: elapsed build/deploy time label",
+  },
+  "deploys.durationValue": {
+    message: "Duration {duration}",
+    description: "Deploy row: elapsed build/deploy time",
+  },
+  "deploys.durationInProgress": {
+    message: "Duration in progress",
+    description: "Deploy row: elapsed time is still running",
+  },
+  "deploys.deployedAt": {
+    message: "Deployed {timestamp}",
+    description: "Deploy row: created/deployed timestamp",
+  },
   "deploys.notYet": {
     message: "—",
-    description: "Deploy header: placeholder for a timestamp that hasn't happened yet",
+    description:
+      "Deploy header: placeholder for a timestamp that hasn't happened yet",
   },
   "deploys.triggerCreate": {
     message: "first deploy",
@@ -79,7 +101,8 @@ const enDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.triggerRollback": {
     message: "rollback to {deployId}",
-    description: "Deploy header: trigger label for a rollback deploy, naming the restored deploy",
+    description:
+      "Deploy header: trigger label for a rollback deploy, naming the restored deploy",
   },
   "deploys.notFoundTitle": {
     message: "Deploy not found",
@@ -94,8 +117,15 @@ const enDeploys: Record<string, TranslationEntry> = {
     description: "Deploy detail page: log search input placeholder",
   },
   "deploys.buildLogsStoreUnavailable": {
-    message: "Build logs need the log store.",
-    description: "Deploy detail page: shown when the durable log store isn't wired, so build-log lines can't be fetched",
+    message: "Historical build logs are unavailable",
+    description:
+      "Deploy detail page: title shown when the durable log store isn't wired",
+  },
+  "deploys.buildLogsStoreUnavailableBody": {
+    message:
+      "This dashboard isn't connected to durable log storage. Application logs can still appear for this deploy.",
+    description:
+      "Deploy detail page: accurate explanation of a storeless build-log response",
   },
   "deploys.timelineTitle": {
     message: "Status timeline",
@@ -154,21 +184,56 @@ const enDeploys: Record<string, TranslationEntry> = {
     message: "All statuses",
     description: "Deploys tab: status filter option matching every deploy",
   },
+  "deploys.listSearchPlaceholder": {
+    message: "Search loaded deploys and commits…",
+    description:
+      "Deploys tab: placeholder for client-side deploy-history search",
+  },
+  "deploys.listSearchLabel": {
+    message: "Search loaded deploys and commits",
+    description: "Deploys tab: accessible label for deploy-history search",
+  },
+  "deploys.listEmptySearch": {
+    message: "No loaded deploys match your search.",
+    description:
+      "Deploys tab: empty state when client-side search has no match",
+  },
+  "deploys.listCountOne": {
+    message: "{count} deploy",
+    description: "Deploys tab: complete singular deploy count",
+  },
+  "deploys.listCountMany": {
+    message: "{count} deploys",
+    description: "Deploys tab: complete plural deploy count",
+  },
+  "deploys.listCountLoadedOne": {
+    message: "{count} deploy loaded",
+    description:
+      "Deploys tab: singular loaded count when more server pages remain",
+  },
+  "deploys.listCountLoadedMany": {
+    message: "{count} deploys loaded",
+    description:
+      "Deploys tab: plural loaded count when more server pages remain",
+  },
   "deploys.listLoadMore": {
     message: "Load more",
     description: "Deploys tab: button fetching the next page of deploy history",
   },
   "deploys.logOptions": {
     message: "Log options",
-    description: "Deploy log viewer: aria-label/tooltip of the options menu button",
+    description:
+      "Deploy log viewer: aria-label/tooltip of the options menu button",
   },
   "deploys.logRangeLabel": {
     message: "Time range",
-    description: "Deploy log viewer options menu: heading over the time-range choices",
+    description:
+      "Deploy log viewer options menu: heading over the time-range choices",
   },
   "deploys.logRangeDeploy": {
     message: "Deploy window",
-    description: "Deploy log viewer: the default time range — the deploy's own createdAt..finishedAt window",
+    description:
+      "Deploy log viewer: the default time range — the deploy's own createdAt..finishedAt window",
   },
   "deploys.logRangeLast15m": {
     message: "Last 15 minutes",
@@ -192,19 +257,23 @@ const enDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.logWrap": {
     message: "Wrap lines",
-    description: "Deploy log viewer options menu: toggle wrapping long log lines vs horizontal scroll",
+    description:
+      "Deploy log viewer options menu: toggle wrapping long log lines vs horizontal scroll",
   },
   "deploys.logTimestamps": {
     message: "Show timestamps",
-    description: "Deploy log viewer options menu: toggle the per-line timestamp column",
+    description:
+      "Deploy log viewer options menu: toggle the per-line timestamp column",
   },
   "deploys.logMaximize": {
     message: "Maximize",
-    description: "Deploy log viewer: button expanding the viewer to fill the screen",
+    description:
+      "Deploy log viewer: button expanding the viewer to fill the screen",
   },
   "deploys.logMinimize": {
     message: "Exit full screen",
-    description: "Deploy log viewer: button restoring the maximized viewer to its inline size",
+    description:
+      "Deploy log viewer: button restoring the maximized viewer to its inline size",
   },
 };
 
