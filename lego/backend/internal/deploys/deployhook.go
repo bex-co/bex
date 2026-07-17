@@ -252,9 +252,8 @@ func (rl *DeployHookRateLimiter) reserve(token string) (bool, time.Duration) {
 }
 
 // DeployHookHandler serves the open credential-gated endpoint. It accepts GET
-// and POST like Render, supports Render's `ref` commit query parameter, and
-// returns Render's {deploy:{id}} success envelope. `imgURL` remains unsupported
-// because bex has no safe image-origin matching/override verb yet.
+// and POST like Render, supports Render's `ref` commit query parameter and
+// `imgURL` image override, and returns Render's {deploy:{id}} success envelope.
 func (s *Service) DeployHookHandler() http.Handler {
 	limiter := s.DeployHookLimiter
 	if limiter == nil {
@@ -288,12 +287,9 @@ func (s *Service) DeployHookHandler() http.Handler {
 			})
 			return
 		}
-		if r.URL.Query().Get("imgURL") != "" {
-			core.WriteErr(w, fmt.Errorf("%w: imgURL is not supported by bex deploy hooks", core.ErrBadRequest))
-			return
-		}
 		d, err := s.triggerFetched(r.Context(), deployHookServiceName(a), a, TriggerParams{
 			CommitID: r.URL.Query().Get("ref"),
+			ImageURL: r.URL.Query().Get("imgURL"),
 		}, store.TriggerDeployHook)
 		if err != nil {
 			core.WriteErr(w, err)

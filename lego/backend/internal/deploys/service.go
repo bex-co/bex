@@ -326,7 +326,7 @@ func (s *Service) Get(ctx context.Context, service, deployID string) (DeployView
 }
 
 // TriggerParams carries the optional body fields of Render's CreateDeploy
-// request (commitId, clearCache, deployMode) that bex can honestly honor.
+// request (commitId, clearCache, deployMode, imageUrl) that bex can honestly honor.
 // Zero value = default behavior (Branch HEAD, full build-and-deploy).
 type TriggerParams struct {
 	// CommitID pins the build to a specific Git ref instead of Branch HEAD.
@@ -339,6 +339,14 @@ type TriggerParams struct {
 	// artifact; any spec change unconditionally rebuilds from source). Empty
 	// or "build_and_deploy" is the normal full-rebuild path.
 	DeployMode string
+	// ImageURL overrides the image for this deploy (Render's imageUrl). Only
+	// accepted for image-backed services; rejected with ErrBadRequest for
+	// repo-backed ones (the origin-safety rule: a git-sourced service must be
+	// rebuilt from source — swapping its image at trigger time would silently
+	// divorce the running container from the committed source and is always a
+	// mistake, not an oversight). Any valid image reference is accepted for an
+	// image-backed service (the authenticated caller chooses the image).
+	ImageURL string
 }
 
 // Trigger starts a fresh deploy (Render's POST .../deploys): bumps
@@ -385,6 +393,16 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		return DeployView{}, fmt.Errorf("%w: deployMode \"deploy_only\" is not supported for repo-backed services — "+
 			"bex has no cached build artifact; use \"build_and_deploy\" (or omit deployMode) to rebuild from source", core.ErrBadRequest)
 	}
+	// imageUrl is rejected for repo-backed services: bex rebuilds from source on
+	// every trigger; swapping the image would silently divorce the running
+	// container from the committed code. Image-backed services can deploy any
+	// valid image ref the caller supplies (origin-safety rule: gate on service
+	// kind, not registry domain — the caller is authenticated and chooses the
+	// image; that is the point of the verb).
+	if p.ImageURL != "" && a.Spec.Repo != "" {
+		return DeployView{}, fmt.Errorf("%w: imageUrl is not supported for repo-backed services — "+
+			"bex rebuilds from source on every trigger; use commitId to pin a ref instead", core.ErrBadRequest)
+	}
 	// commitId is meaningless for a cron_job: a cron runs on a schedule, not
 	// per-commit. Reject early rather than silently ignoring the field.
 	if p.CommitID != "" && a.Spec.Type == appv1alpha1.TypeCronJob {
@@ -401,6 +419,11 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		// Branch HEAD. This ensures a trigger without commitId never inherits the
 		// commit a previous trigger pinned.
 		a.Spec.BuildCommit = p.CommitID
+		// imageUrl overrides the running image for this deploy; the operator
+		// picks up the new spec.image on its next reconcile.
+		if p.ImageURL != "" {
+			a.Spec.Image = p.ImageURL
+		}
 	}); err != nil {
 		return DeployView{}, err
 	}

@@ -228,6 +228,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				CommitID   string `json:"commitId"`
 				ClearCache string `json:"clearCache"`
 				DeployMode string `json:"deployMode"`
+				ImageURL   string `json:"imageUrl"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil && !errors.Is(err, io.EOF) {
 				core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
@@ -241,6 +242,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			d, err := s.Trigger(r.Context(), r.PathValue("id"), TriggerParams{
 				CommitID:   body.CommitID,
 				DeployMode: body.DeployMode,
+				ImageURL:   body.ImageURL,
 			})
 			if err != nil {
 				core.WriteErr(w, err)

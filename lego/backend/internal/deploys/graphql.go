@@ -188,13 +188,16 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"serviceId":  &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
 				"commitId":   &graphql.ArgumentConfig{Type: graphql.String},
 				"deployMode": &graphql.ArgumentConfig{Type: graphql.String},
+				"imageUrl":   &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				commitID, _ := p.Args["commitId"].(string)
 				deployMode, _ := p.Args["deployMode"].(string)
+				imageURL, _ := p.Args["imageUrl"].(string)
 				return s.Trigger(p.Context, p.Args["serviceId"].(string), TriggerParams{
 					CommitID:   commitID,
 					DeployMode: deployMode,
+					ImageURL:   imageURL,
 				})
 			},
 		},
