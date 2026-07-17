@@ -147,10 +147,11 @@ type serviceWithCursor struct {
 // render-oss/cli generated client (ServiceAndDeploy: {deployId?, service?}). A
 // client that unwraps `.service` from the create response (the official CLI's
 // ServiceRepo.CreateService does exactly this) breaks against a bare service
-// object. DeployId is omitted (bex's create doesn't yet mint a deploy record
-// id inline) rather than faked — an honest subset, not a wrong value.
+// object. DeployID is omitted when no control-plane store is active (no deploy
+// row is minted without a store) — an honest subset, never a wrong value.
 type serviceAndDeploy struct {
-	Service renderService `json:"service"`
+	Service  renderService `json:"service"`
+	DeployID string        `json:"deployId,omitempty"`
 }
 
 // renderServiceInstance is the official CLI's serviceInstance wire shape.

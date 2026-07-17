@@ -232,6 +232,35 @@ func TestREST_CreateWithANonMemberOwnerIDIs403(t *testing.T) {
 	}
 }
 
+func TestREST_CreateResponseContainsDeployIDWhenStoreActive(t *testing.T) {
+	// Render's POST /v1/services returns {service, deployId} (serviceAndDeploy).
+	// When the control-plane store is active it mints a deploy row and the
+	// response should carry its id; without a store the field is omitted.
+	rec := &recordingStore{}
+	svc, _ := newTenantStoreService(fakeWorkspace{"id-a": "tea-a"}, rec)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	body := `{"name":"web","image":{"imagePath":"nginx"}}`
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/v1/services", strings.NewReader(body))
+	mux.ServeHTTP(rr, req.WithContext(core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "session"})))
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("POST /v1/services: %d body=%s", rr.Code, rr.Body.String())
+	}
+	var out serviceAndDeploy
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if out.DeployID != "dep-test" {
+		t.Errorf("deployId = %q, want dep-test", out.DeployID)
+	}
+	if out.Service.ID == "" {
+		t.Errorf("service.id missing")
+	}
+}
+
 // --- GraphQL (t004) ---
 
 // gqlSchema builds the one-feature schema the mutation tests execute against —
