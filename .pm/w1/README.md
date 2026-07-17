@@ -81,9 +81,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `028.md` — GraphQL `Domain.id` returns the domain name, not the minted `cdm-` id — the sibling of the service deviation m46 closes; audit REST's shape first (name-as-id may be the honest contract for hostname-addressed domains) ← filed during m46 materialization 2026-07-16
-- `027.md` — m45 simplify-pass residuals: migrate 17 static `requireAuth("<path>")` sites to the no-arg dynamic-`next` form (five pass literal `$param` patterns), a `sidebar` prop on `DashboardLayout` before a third param-sniffing branch, merge the two per-segment alias tables if a third attribute appears ← filed by w1/m45/t008's `/simplify` pass 2026-07-16
-- `026.md` — m33 simplify-pass residuals: dead `core.Base.AuthorizeTarget` (+ four-way entry-point family), generic `targetName` REST audit metadata vs the per-kind `email` branch, hoisting one identity-lookup contract to a leaf package (rule of three met across workspaces/members/notifications), aggregate deadline on the login-path audit/granter loops ← filed by w1/m33/t009's `/simplify` pass 2026-07-16
+(All inbox items complete as of 2026-07-17.)
 
 _(`024.md` absorbed and closed by `w10/m4` 2026-07-15 — the prod SA patch was verified gone with the declared operator path load-bearing. `025.md` — Traefik LB `ignore_changes = [labels]` — absorbed into **w10/m6** (t001) 2026-07-15; note moved to `done/`.)_
 
