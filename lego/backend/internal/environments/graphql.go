@@ -54,9 +54,22 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Type: graphql.NewList(environmentGQLType),
 			Args: graphql.FieldConfigArgument{
 				"projectId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"cursor":    &graphql.ArgumentConfig{Type: graphql.String},
+				"limit":     &graphql.ArgumentConfig{Type: graphql.Int},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.List(p.Context, p.Args["projectId"].(string))
+				out, err := s.List(p.Context, p.Args["projectId"].(string))
+				if err != nil {
+					return nil, err
+				}
+				cursor, cursorSet := p.Args["cursor"].(string)
+				limit, limitSet := p.Args["limit"].(int)
+				if !limitSet {
+					limit = core.DefaultPageLimit
+				} else {
+					limit = core.PageLimit(limit)
+				}
+				return core.StablePage(out, cursor, limit, cursorSet || limitSet, func(e EnvironmentView) string { return e.ID }), nil
 			},
 		},
 		"environment": &graphql.Field{

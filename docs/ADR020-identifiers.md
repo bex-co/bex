@@ -66,6 +66,7 @@ Prose rules rot; these don't — the enforcement is layered, compiler first:
 
 - **Legacy Postgres and Key Value ids are grandfathered.** New managed Postgres / Key Value resources use a minted `dpg-<xid>` / `red-<xid>` as their `metadata.name` and keep the mutable display name in `spec.name`. Resources created before that split retain their existing metadata name as their stable API id; the backfill migration (`scripts/postgres-name-migrate.sh` / `scripts/keyvalue-name-migrate.sh`) only fills `spec.name` and never re-keys a live CR. This is an intentional compatibility exception, not a second mint path. (Managed Postgres shipped this in w9/m3; Key Value in w9/m6 — the last name-as-id datastore deviation, now closed.)
 - **API keys carry Hydra's `client_id`, not a bex id.** OAuth2 clients are minted by Ory Hydra ([ADR012-auth.md](ADR012-auth.md)); their id format is Hydra's, outside this convention by design.
+- **GraphQL `Service.id` returns the App name, not `srv-…`.** All GraphQL service verbs (`server(id)`, `suspendService(id)`, `deleteService(id)`, etc.) resolve by App name (Kubernetes CR metadata.name); routing the minted `srv-…` id through them requires changing every verb's resolution layer, which is out of scope for the consistency pass (w2/m43). REST and MCP already use `srv-…` consistently. Dashboard navigation builds URLs from the App name (the current GraphQL `id`) so the deviation is routing-safe; agents should prefer REST or MCP for id-stable cross-surface joins.
 
 ## Alternatives considered
 
