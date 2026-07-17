@@ -40,7 +40,7 @@ The baseline production configuration is two parallel builds:
 | --- | --- | --- | --- |
 | App dispatch/observation | `BEX_APP_RECONCILE_WORKERS` | `2` | Maximum concurrent App reconcile loops in the active operator manager |
 | Tenant admission | `BEX_MAX_CONCURRENT_BUILDS` | `2` | Maximum active build Jobs for one labeled workspace; `0` means unlimited |
-| Physical capacity | schedulable node CPU/memory | At least enough for two build Pod requests | Cluster-wide scheduler and node-pool constraint |
+| Physical capacity | schedulable node CPU/memory | One schedulable 4 GiB slot per admitted build | Cluster-wide scheduler and node-pool constraint |
 
 With the current synchronous reconciler, the practical global build concurrency is bounded by the App worker count. For a particular workspace it is also bounded by its workspace cap. In simplified form:
 
@@ -59,7 +59,9 @@ Values must be raised deliberately and together with a capacity check. A high re
 
 Adding build Pods can improve throughput without adding machines only while existing nodes have spare allocatable CPU, memory, ephemeral storage, and network bandwidth. Once that headroom is exhausted, extra Pods either contend on the same node or remain Pending; they do not manufacture compute.
 
-The current BuildKit container requests `500m` CPU and `1Gi` memory and is limited to 4 CPU and 8 GiB. Kubernetes schedules from requests, not likely peak usage. Two build Pods can therefore fit on one nominally available node while both burst and compete for much more CPU or memory. Requests are admission signals, not a guarantee that two simultaneous builds will finish twice as fast.
+The BuildKit and kpack builders request `500m` CPU and 4 GiB memory and are limited to 4 CPU and 6 GiB. Kubernetes schedules from requests, not likely peak usage. On the baseline 8 GB tenant nodes, two build requests therefore cannot fit together: Pending builders make the real capacity shortage visible to Cluster Autoscaler instead of silently competing on one host. The 6 GiB limit leaves memory for kubelet and node daemons; advertising an 8 GiB container limit on an 8 GB machine offered protection only on paper.
+
+This sizing was corrected after a production incident on 2026-07-16/17: two builders admitted under the former 1 GiB-request/8 GiB-limit shape consumed about 4.07 GB and 1.87 GB while total container working set on the tenant node reached about 7.15 GB. The kernel reported `SystemOOM`, the node became unreachable, and MachineHealthCheck replaced it. The recovered builds completed, but recovery is not admission control; the 4 GiB request prevents the same co-location pattern, and the tenant pool's one-to-three autoscaling range can supply a separate node for each of the two admitted builds.
 
 Production build Pods contain untrusted tenant code. They currently have no build-specific node selector or toleration; platform nodes are tainted, so builds land on the untainted tenant pool. They must never be made eligible for the platform pool merely to gain capacity.
 

@@ -12,8 +12,9 @@
 #                clusters have every declared instance Ready
 #   6. SCHEDULER: kube-scheduler carries the MostAllocated config
 #   7. CSR:       controller-manager logs contain no CSRValidationFailed in 24h
-#   8. NETWORK:   CAPH owns network bex; both LBs use healthy private-IP targets;
-#                a remote node scan sees only SSH on the public interface
+#   8. NETWORK:   CAPH owns network bex; both LBs use private-IP targets and
+#                every listener has a healthy backend; a remote node scan sees
+#                only SSH on the public interface
 #   9. AUTOSCALER: the Argo-managed in-cluster autoscaler is Running
 #  10. NO PET:    no bootstrap pet server exists on Hetzner
 #
@@ -186,10 +187,24 @@ TRAEFIK_PORTS=$(jq -r '[.load_balancers[] | select(.name == "bex-traefik") | .se
 APISERVER_PORTS=$(jq -r '[.load_balancers[] | select(.name | startswith("bex-kube-apiserver")) | .services[].listen_port] | sort | join(",")' <<<"$LBS_JSON")
 BAD_LB=$(jq --argjson id "$NETWORK_ID" '[.load_balancers[]
   | select(.name == "bex-traefik" or (.name | startswith("bex-kube-apiserver")))
+  | (.targets // []) as $targets
+  | ([.services[].listen_port] | unique) as $ports
+  # An explicit server target carries health_status directly. A label-selector
+  # target carries its resolved server targets (and their health) under targets.
+  # With externalTrafficPolicy=Local, matched workers without a local endpoint
+  # are expected to be unhealthy; availability requires one healthy backend for
+  # every listener, not every selector-matched worker healthy for every port.
+  | ([$targets[]
+      | if .type == "label_selector" then (.targets // [])[] else . end
+      | .health_status[]?
+      | select(.status == "healthy")
+      | .listen_port] | unique) as $healthy_ports
   | select(((any(.private_net[]?; .network == $id)) | not)
-      or ((all(.targets[]; .use_private_ip == true and all(.health_status[]; .status == "healthy"))) | not))] | length' <<<"$LBS_JSON")
-[ "$TRAEFIK_PORTS" = "22,80,443" ] && [ "$APISERVER_PORTS" = "443" ] && [ "$BAD_LB" -eq 0 ] \
-  || fail "network: LB ports traefik/api=$TRAEFIK_PORTS/$APISERVER_PORTS, unhealthy-or-public-target LBs=$BAD_LB"
+      or (($targets | length) == 0)
+      or any($targets[]?; .use_private_ip != true)
+      or (($ports - $healthy_ports) | length) > 0)] | length' <<<"$LBS_JSON")
+[ "$TRAEFIK_PORTS" = "22,80,443,5432,6379" ] && [ "$APISERVER_PORTS" = "443" ] && [ "$BAD_LB" -eq 0 ] \
+  || fail "network: LB ports traefik/api=$TRAEFIK_PORTS/$APISERVER_PORTS, unavailable-or-public-target LBs=$BAD_LB"
 
 SOURCE_IP=$(jq -r '[.servers[] | select(.labels.machine_type == "control_plane")][0].public_net.ipv4.ip // ""' <<<"$SERVERS_JSON")
 TARGET_IP=$(jq -r --arg source "$SOURCE_IP" '[.servers[] | select(.public_net.ipv4.ip != $source)][0].public_net.ipv4.ip // ""' <<<"$SERVERS_JSON")

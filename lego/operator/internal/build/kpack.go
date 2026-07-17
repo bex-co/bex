@@ -63,8 +63,8 @@ func KpackImage(o Options) *unstructured.Unstructured {
 	build := map[string]any{
 		"buildTimeout": int64(buildTimeout / time.Second),
 		"resources": map[string]any{
-			"requests": map[string]any{"cpu": "500m", "memory": "1Gi"},
-			"limits":   map[string]any{"cpu": "4", "memory": "8Gi"},
+			"requests": map[string]any{"cpu": buildCPURequest, "memory": buildMemoryRequest},
+			"limits":   map[string]any{"cpu": buildCPULimit, "memory": buildMemoryLimit},
 		},
 	}
 	if len(env) > 0 {
