@@ -91,20 +91,23 @@ type DeployStartedNotifier interface {
 // DeployView is the neutral projection of a store.Deploy the adapters render
 // in Render's deploy shape. CommitID/CommitMessage (w9/001) are the resolved
 // commit a build-from-git deploy ran, "" when unresolved — the adapters omit
-// rather than fake them. RollbackOf is a bex extra (w2/m10): empty for every
-// deploy except one Rollback created, naming the source deploy it restores.
+// rather than fake them. CommitAuthorAt (w2/m42) is the git author timestamp
+// captured from the same GitHub commit object — nil when unavailable.
+// RollbackOf is a bex extra (w2/m10): empty for every deploy except one
+// Rollback created, naming the source deploy it restores.
 type DeployView struct {
-	ID            string
-	Status        string
-	Image         string
-	Trigger       string
-	RollbackOf    string
-	CommitID      string
-	CommitMessage string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	StartedAt     *time.Time
-	FinishedAt    *time.Time
+	ID             string
+	Status         string
+	Image          string
+	Trigger        string
+	RollbackOf     string
+	CommitID       string
+	CommitMessage  string
+	CommitAuthorAt *time.Time
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	StartedAt      *time.Time
+	FinishedAt     *time.Time
 	// PreDeployStatus is the pre-deploy command's outcome for this deploy (w1/m33):
 	// "" (no step) | "running" | "succeeded" | "failed". A deploy that fails its
 	// migration is update_failed with PreDeployStatus "failed"; one that fails its
@@ -123,6 +126,7 @@ func view(d store.Deploy) DeployView {
 		RollbackOf:      d.RollbackOf,
 		CommitID:        d.Commit,
 		CommitMessage:   d.CommitMessage,
+		CommitAuthorAt:  d.CommitAuthorAt,
 		CreatedAt:       d.CreatedAt,
 		UpdatedAt:       d.UpdatedAt,
 		StartedAt:       d.StartedAt,

@@ -40,11 +40,12 @@ var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"trigger":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.Trigger })},
 		"image":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.Image })},
 		"rollbackOf": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.RollbackOf })},
-		// The resolved commit this deploy ran (w9/001) — flat fields, the
-		// fragment's existing style (REST nests them as Render's commit object).
-		// Empty when unresolved; clients omit rather than fake.
-		"commitId":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.CommitID })},
-		"commitMessage": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.CommitMessage })},
+		// The resolved commit this deploy ran (w9/001 + w2/m42) — flat fields,
+		// the fragment's existing style (REST nests them as Render's commit
+		// object). Empty/nil when unresolved; clients omit rather than fake.
+		"commitId":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.CommitID })},
+		"commitMessage":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.CommitMessage })},
+		"commitCreatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTimePtr(d.CommitAuthorAt) })},
 		"createdAt":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTime(d.CreatedAt) })},
 		"updatedAt":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTime(d.UpdatedAt) })},
 		"startedAt":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTimePtr(d.StartedAt) })},

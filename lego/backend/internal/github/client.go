@@ -247,12 +247,13 @@ func (c *Client) RepoAccessible(ctx context.Context, token, owner, repo string) 
 	}
 }
 
-// Commit is the resolved tip of a ref — the SHA plus its message (w9/001).
-// The subset of GitHub's commit object the deploy path stamps onto a deploy
-// row as provenance.
+// Commit is the resolved tip of a ref — the SHA plus its message and author
+// timestamp (w9/001 + w2/m42). The subset of GitHub's commit object the
+// deploy path stamps onto a deploy row as provenance.
 type Commit struct {
-	SHA     string `json:"sha"`
-	Message string `json:"message"`
+	SHA      string     `json:"sha"`
+	Message  string     `json:"message"`
+	AuthorAt *time.Time `json:"authorAt,omitempty"`
 }
 
 // GetCommit resolves ref (a branch name, tag, or SHA) to the exact commit it
@@ -280,12 +281,15 @@ func (c *Client) GetCommit(ctx context.Context, token, owner, repo, ref string) 
 		SHA    string `json:"sha"`
 		Commit struct {
 			Message string `json:"message"`
+			Author  struct {
+				Date *time.Time `json:"date"`
+			} `json:"author"`
 		} `json:"commit"`
 	}
 	if err := json.Unmarshal(body, &out); err != nil {
 		return Commit{}, fmt.Errorf("github: decode commit response: %w", err)
 	}
-	return Commit{SHA: out.SHA, Message: out.Commit.Message}, nil
+	return Commit{SHA: out.SHA, Message: out.Commit.Message, AuthorAt: out.Commit.Author.Date}, nil
 }
 
 // ghRepo is GitHub's wire shape; mapped to the exported Repo.

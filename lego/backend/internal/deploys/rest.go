@@ -38,11 +38,13 @@ import (
 // Behavior lives in the Service, so GraphQL and MCP stay identical.
 
 // renderCommit is Render's nested deploy.commit object — the resolved commit
-// a build-from-git deploy ran (w9/001). Render also carries createdAt; bex
-// doesn't capture the author date, so the field is omitted, not faked.
+// a build-from-git deploy ran (w9/001 + w2/m42). createdAt is the git author
+// timestamp captured at deploy-open time; nil when unavailable (omitted, not
+// faked).
 type renderCommit struct {
-	ID      string `json:"id"`
-	Message string `json:"message,omitempty"`
+	ID        string  `json:"id"`
+	Message   string  `json:"message,omitempty"`
+	CreatedAt *string `json:"createdAt,omitempty"`
 }
 
 // renderDeployImage is Render's nested deploy.image object
@@ -110,7 +112,12 @@ func toRenderDeploy(d DeployView) renderDeploy {
 		out.Image = &renderDeployImage{Ref: d.Image}
 	}
 	if d.CommitID != "" {
-		out.Commit = &renderCommit{ID: d.CommitID, Message: d.CommitMessage}
+		rc := &renderCommit{ID: d.CommitID, Message: d.CommitMessage}
+		if d.CommitAuthorAt != nil {
+			s := formatTime(*d.CommitAuthorAt)
+			rc.CreatedAt = &s
+		}
+		out.Commit = rc
 	}
 	return out
 }

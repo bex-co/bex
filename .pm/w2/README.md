@@ -45,7 +45,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [ ] **m39** — SSH into running service instances (13 tasks) ← user explicitly reopened the narrow SSH surface from `.pm/DO_NOT_DO.md`, 2026-07-14; hosted sandboxes, ephemeral shells, jobs, and browser shell remain excluded
 - [x] **m40** — Blueprint environment-scoped env groups (7 tasks; DONE 2026-07-16 — named unsupported error removed; groups created with environment membership; validate/sync accept the nesting; `envGroupIds` on the environment reflects the assignment; full test suite + lint green) ← promotes `010` 2026-07-15; `projects[].environments[].envVarGroups` (Render's official nesting) previously returned a named unsupported error — the membership mechanism it needed shipped in `w6/m24`
 - [ ] **m41** — Blueprint Key Value resources + keyvalue `fromService` refs (10 tasks) ← from `/pm-brainstorm` round 12, 2026-07-15 (`blueprint.go:73`'s wire-compat placeholder + `deploy.go:1200`'s named rejection + checklist line 84); makes all three managed resource types Blueprint-first-class; t010 folds `014` (blueprint by-id read parity: REST GET /v1/blueprints/{id} + MCP get_blueprint), `/pm-brainstorm` round 17
-- [ ] **m42** — Deploy commit author timestamp: `commit.createdAt` (7 tasks) ← promotes `011` 2026-07-15 (filed by `w2/m38`'s Render recheck); captured at deploy-open, never inferred from deploy time
+- [x] **m42** — Deploy commit author timestamp: `commit.createdAt` (7 tasks; DONE 2026-07-16 — `github.GetCommit` now parses `commit.author.date`; migration 0040 adds `commit_author_at` column; `renderCommit.CreatedAt` populated on REST+MCP; GraphQL `commitCreatedAt` field added; dashboard deploy-header shows author date when present; all tests pass) ← promotes `011` 2026-07-15
 - [x] **m43** — Machine-surface list consistency: GraphQL/MCP pagination + service identity drift (7 tasks; DONE 2026-07-16 — GraphQL `services`/`environments` paged via `StablePage`; MCP `list_environments` paged; `Service.id` deviation documented in ADR020; `updatedAt` added to GraphQL `Service`; all ~26 "(bex App name)" MCP descriptions removed; MCP `list_services` arg-free confirmed by-design) ← from `/pm-brainstorm` round 13, 2026-07-15
 - [ ] **m44** — Image-origin override: manual-deploy `imageUrl` + deploy-hook `imgURL` (8 tasks) ← promotes `012` + the unowned m30 residual (`w2/done/m30/t005.md:41`), `/pm-brainstorm` round 14, 2026-07-15; one origin-safety design (t001) unlocks both entry points, retiring the deploy surface's last two named-rejection 400s
 - [ ] **m45** — Blueprint `initialDeployHook`: one-time first-deploy command (7 tasks) ← promotes `013`, `/pm-brainstorm` round 17, 2026-07-15; rides the w1/m33 pre-deploy Job mechanism with a ran-once marker, retiring ADR018:49's "recorded as unsupported" blueprint field
@@ -56,7 +56,6 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - `013.md` — Blueprint `initialDeployHook` one-time command (ADR018:49; likely rides the w1/m33 pre-deploy Job mechanism) ← from `/pm-brainstorm` round 12, 2026-07-15
 
 _(`011.md` promoted to **m42** 2026-07-15; note moved to `done/`. `010.md` promoted to **m40** 2026-07-15; note moved to `done/`)_
-
 
 > 006.md promoted to done 2026-07-12: `triggerDeploy` GraphQL mutation shipped in `internal/deploys/graphql.go`.
 
