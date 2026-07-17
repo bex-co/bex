@@ -28,8 +28,14 @@ export function parseRangePreset(value: unknown): RangePreset | null {
   return RANGE_PRESETS.find((preset) => preset.id === value) ?? null;
 }
 
-/** Resolves a preset into the startTime/endTime/resolutionSeconds query args. */
-export function resolveRange(preset: RangePreset, now: Date) {
+// A relative window is just a span + a bucket size — the preset `id` is a
+// picker/URL concern, so consumers with a fixed window (e.g. the Scaling
+// page's 48h Recent Metrics, w7/m43) can pass a bare window without minting a
+// fake preset id.
+export type RangeWindow = Pick<RangePreset, "spanSeconds" | "resolutionSeconds">;
+
+/** Resolves a window into the startTime/endTime/resolutionSeconds query args. */
+export function resolveRange(preset: RangeWindow, now: Date) {
   const end = now.toISOString();
   const start = new Date(
     now.getTime() - preset.spanSeconds * 1000,

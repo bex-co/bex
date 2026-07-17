@@ -351,6 +351,59 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "保存更改",
     description: "Autoscaling form save-changes button",
   },
+  "services.scalingDisableConfirmTitle": {
+    message: "关闭自动扩缩容？",
+    description: "Autoscaling disable confirmation dialog title (w7/m43)",
+  },
+  "services.scalingDisableConfirmBody": {
+    message: "服务将按「手动扩缩容」中指定的固定实例数量运行。",
+    description: "Autoscaling disable confirmation dialog body",
+  },
+  "services.scalingDisableConfirmAction": {
+    message: "关闭",
+    description: "Autoscaling disable confirmation dialog confirm button",
+  },
+  "services.scalingManualTitle": {
+    message: "手动扩缩容",
+    description: "Scaling page: manual instance-count card title (w7/m43)",
+  },
+  "services.scalingManualDescription": {
+    message:
+      "运行多个自动负载均衡的实例。所有实例使用相同的实例类型并按此计费。",
+    description: "Scaling page: manual instance-count card description",
+  },
+  "services.scalingManualInstances": {
+    message: "实例",
+    description: "Scaling page: manual instance-count slider label",
+  },
+  "services.scalingMetricsTitle": {
+    message: "近期指标",
+    description: "Scaling page: recent-metrics section title (w7/m43)",
+  },
+  "services.scalingMetricsNote": {
+    message: "显示过去 48 小时的指标。",
+    description: "Scaling page: recent-metrics window note",
+  },
+  "services.scalingMetricsViewAll": {
+    message: "查看全部指标。",
+    description: "Scaling page: link to the full Metrics tab",
+  },
+  "services.scalingMetricsMemory": {
+    message: "平均内存利用率",
+    description: "Scaling page: averaged memory utilization chart title",
+  },
+  "services.scalingMetricsCPU": {
+    message: "平均 CPU 利用率",
+    description: "Scaling page: averaged CPU utilization chart title",
+  },
+  "services.scalingMetricsAcross": {
+    message: "所有实例平均",
+    description: "Scaling page: recent-metrics chart subtitle",
+  },
+  "services.scalingMetricsEmpty": {
+    message: "过去 48 小时未采集到数据",
+    description: "Scaling page: recent-metrics empty state",
+  },
   "services.notFoundTitle": {
     message: "未找到服务",
     description: "Overview page state when server(id) returns nothing",
@@ -2373,27 +2426,6 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.createError": {
     message: "无法创建 {name}，请重试。",
     description: "Toast shown after createService fails",
-  },
-  "services.scalingInstanceCount": {
-    message: "实例数量",
-    description:
-      "Settings row label for the manual instance-count stepper (w5/m16)",
-  },
-  "services.scalingInstanceCountHint": {
-    message: "同时运行的实例数量。",
-    description: "Settings row help text for the manual instance-count stepper",
-  },
-  "services.scalingDecrement": {
-    message: "减少实例数量",
-    description: "aria-label for the − stepper button",
-  },
-  "services.scalingIncrement": {
-    message: "增加实例数量",
-    description: "aria-label for the + stepper button",
-  },
-  "services.scalingSaveCount": {
-    message: "保存",
-    description: "Save button label on the instance-count stepper",
   },
   "services.scaleSuccess": {
     message: "已缩放至 {count} 个实例。",

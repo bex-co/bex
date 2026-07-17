@@ -6,6 +6,16 @@ import { Button } from "@/common/components/ui/button";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { Slider } from "@/common/components/ui/slider";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/common/components/ui/alert-dialog";
+import {
   Card,
   CardHeader,
   CardTitle,
@@ -13,13 +23,17 @@ import {
   CardContent,
 } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useAutoscaling } from "@/features/services/hooks/use-autoscaling";
+import type { UseAutoscalingResult } from "@/features/services/hooks/use-autoscaling";
 
-// Render uses 1–25 for instance count and 1–90 for utilisation targets.
-const INSTANCE_MIN = 1;
-const INSTANCE_MAX = 25;
+// Render uses 1–100 for instance count and 1–90 for utilisation targets, with
+// 60% as the first-enable default target (live capture 2026-07-16, w7/m43).
+// The backend validates the same 1–100 (store.MaxReplicas). The bounds are
+// exported for the Manual Scaling card, which shares them.
+export const INSTANCE_MIN = 1;
+export const INSTANCE_MAX = 100;
 const UTIL_MIN = 1;
 const UTIL_MAX = 90;
+const DEFAULT_TARGET_PERCENT = 60;
 
 interface FormState {
   minInstances: number;
@@ -28,11 +42,6 @@ interface FormState {
   targetCPUPercent: number;
   memEnabled: boolean;
   targetMemoryPercent: number;
-}
-
-interface Draft {
-  enabled: boolean;
-  form: FormState;
 }
 
 function clamp(v: number, lo: number, hi: number) {
@@ -47,8 +56,10 @@ function validate(form: FormState): string | null {
   return null;
 }
 
-// A slider + numeric input pair sharing the same value.
-function SliderInput({
+// A slider + numeric input pair sharing the same value. Exported for the
+// Manual Scaling card, which uses the same control for its instance count
+// (w7/m43).
+export function SliderInput({
   id,
   value,
   min,
@@ -162,34 +173,41 @@ function RangeSliderInput({
   );
 }
 
-export function AutoscalingSection({ serviceId }: { serviceId: string }) {
+// Takes the hook result rather than calling useAutoscaling itself: the route
+// already holds one instance for the manual-card exclusion gate, and a second
+// instance would carry its own (divergent) `saving` state (w7/m43 simplify).
+export function AutoscalingSection({
+  autoscaling: as,
+}: {
+  autoscaling: UseAutoscalingResult;
+}) {
   const { t } = useTranslations();
-  const as = useAutoscaling(serviceId);
 
-  // null = no local edits; fall through to server state.
-  const [draft, setDraft] = useState<Draft | null>(null);
+  // null = no local edits; fall through to server state. A draft's existence
+  // is what keeps the card open, so a draft is always "enabled" — the old
+  // separate enabled flag was invariantly true (w7/m43 simplify).
+  const [draft, setDraft] = useState<FormState | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  // Disabling reverts the service to its fixed Manual Scaling instance count —
+  // confirm first with that explanation (Render's disable dialog, w7/m43).
+  const [confirmDisable, setConfirmDisable] = useState(false);
 
-  const serverState = useMemo<Draft>(
+  const serverForm = useMemo<FormState>(
     () => ({
-      enabled: as.enabled,
-      form: {
-        minInstances: clamp(as.minInstances, INSTANCE_MIN, INSTANCE_MAX),
-        maxInstances: clamp(as.maxInstances, INSTANCE_MIN, INSTANCE_MAX),
-        cpuEnabled: as.targetCPUPercent != null,
-        targetCPUPercent:
-          as.targetCPUPercent != null
-            ? clamp(as.targetCPUPercent, UTIL_MIN, UTIL_MAX)
-            : 75,
-        memEnabled: as.targetMemoryPercent != null,
-        targetMemoryPercent:
-          as.targetMemoryPercent != null
-            ? clamp(as.targetMemoryPercent, UTIL_MIN, UTIL_MAX)
-            : 90,
-      },
+      minInstances: clamp(as.minInstances, INSTANCE_MIN, INSTANCE_MAX),
+      maxInstances: clamp(as.maxInstances, INSTANCE_MIN, INSTANCE_MAX),
+      cpuEnabled: as.targetCPUPercent != null,
+      targetCPUPercent:
+        as.targetCPUPercent != null
+          ? clamp(as.targetCPUPercent, UTIL_MIN, UTIL_MAX)
+          : DEFAULT_TARGET_PERCENT,
+      memEnabled: as.targetMemoryPercent != null,
+      targetMemoryPercent:
+        as.targetMemoryPercent != null
+          ? clamp(as.targetMemoryPercent, UTIL_MIN, UTIL_MAX)
+          : DEFAULT_TARGET_PERCENT,
     }),
     [
-      as.enabled,
       as.minInstances,
       as.maxInstances,
       as.targetCPUPercent,
@@ -197,19 +215,30 @@ export function AutoscalingSection({ serviceId }: { serviceId: string }) {
     ],
   );
 
-  const { enabled, form } = draft ?? serverState;
+  const enabled = draft != null || as.enabled;
+  const form = draft ?? serverForm;
 
   function patch(partial: Partial<FormState>) {
-    setDraft({ enabled, form: { ...form, ...partial } });
+    setDraft({ ...form, ...partial });
     setValidationError(null);
   }
 
-  async function handleMainToggle(checked: boolean) {
-    setDraft({ enabled: checked, form });
-    if (!checked) {
-      const ok = await as.disable();
-      if (ok) setDraft(null);
+  function handleMainToggle(checked: boolean) {
+    if (checked) {
+      setDraft(form);
+    } else if (as.enabled) {
+      // A server-enabled config asks for confirmation before disabling…
+      setConfirmDisable(true);
+    } else {
+      // …while toggling off a merely-drafted enable just discards the draft.
+      handleCancel();
     }
+  }
+
+  async function handleDisableConfirmed() {
+    setConfirmDisable(false);
+    const ok = await as.disable();
+    if (ok) setDraft(null);
   }
 
   async function handleSave() {
@@ -392,6 +421,25 @@ export function AutoscalingSection({ serviceId }: { serviceId: string }) {
           </div>
         </CardContent>
       )}
+
+      <AlertDialog open={confirmDisable} onOpenChange={setConfirmDisable}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("services.scalingDisableConfirmTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("services.scalingDisableConfirmBody")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("services.scalingCancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void handleDisableConfirmed()}>
+              {t("services.scalingDisableConfirmAction")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

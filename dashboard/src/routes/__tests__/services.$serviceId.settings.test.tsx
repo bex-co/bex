@@ -321,24 +321,27 @@ describe("ServiceSettingsPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows Custom Domains + Idle timeout + instance count stepper, no Deploy section, for a web service", async () => {
+  it("shows Custom Domains + Idle timeout, no instance stepper (moved to Scaling, w7/m43), no Deploy section, for a web service", async () => {
     serverState.service = svc({ type: "web_service" });
     renderSettings();
 
     expect(await screen.findByText("Custom Domains")).toBeInTheDocument();
     expect(screen.getByText("Idle timeout")).toBeInTheDocument();
-    expect(screen.getByText("Instance count")).toBeInTheDocument();
+    // Manual instance count lives on the Scaling tab beside autoscaling
+    // (w7/m43 — Render's placement; supersedes the w5/m16 Settings stepper).
+    expect(screen.queryByText("Instance count")).not.toBeInTheDocument();
     expect(screen.getByText("Max shutdown delay")).toBeInTheDocument();
     expect(screen.getByText("Deploy Hook")).toBeInTheDocument();
     expect(screen.getByText("Maintenance Mode")).toBeInTheDocument();
     expect(screen.queryByText("Deploy")).not.toBeInTheDocument();
   });
 
-  it("shows instance count stepper for a background_worker", async () => {
+  it("shows Idle timeout + Max shutdown delay for a background_worker, without the moved instance stepper", async () => {
     serverState.service = svc({ type: "background_worker" });
     renderSettings();
 
-    expect(await screen.findByText("Instance count")).toBeInTheDocument();
+    expect(await screen.findByText("Idle timeout")).toBeInTheDocument();
+    expect(screen.queryByText("Instance count")).not.toBeInTheDocument();
     expect(screen.getByText("Max shutdown delay")).toBeInTheDocument();
     expect(screen.queryByText("Maintenance Mode")).not.toBeInTheDocument();
   });

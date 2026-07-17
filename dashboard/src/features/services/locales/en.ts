@@ -326,7 +326,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.scalingInstancesHint": {
     message:
-      "Render scales the number of instances for this service within the range you specify.",
+      "bex scales the number of instances for this service within the range you specify.",
     description: "Autoscaling instances range-slider section description",
   },
   "services.scalingCPUTitle": {
@@ -354,6 +354,60 @@ const enServices: Record<string, TranslationEntry> = {
   "services.scalingSaveChanges": {
     message: "Save Changes",
     description: "Autoscaling form save-changes button",
+  },
+  "services.scalingDisableConfirmTitle": {
+    message: "Disable autoscaling?",
+    description: "Autoscaling disable confirmation dialog title (w7/m43)",
+  },
+  "services.scalingDisableConfirmBody": {
+    message:
+      "Your service will run the fixed number of instances specified under Manual Scaling.",
+    description: "Autoscaling disable confirmation dialog body",
+  },
+  "services.scalingDisableConfirmAction": {
+    message: "Disable",
+    description: "Autoscaling disable confirmation dialog confirm button",
+  },
+  "services.scalingManualTitle": {
+    message: "Manual Scaling",
+    description: "Scaling page: manual instance-count card title (w7/m43)",
+  },
+  "services.scalingManualDescription": {
+    message:
+      "Run multiple instances that are automatically load balanced. All instances use the same instance type and are billed accordingly.",
+    description: "Scaling page: manual instance-count card description",
+  },
+  "services.scalingManualInstances": {
+    message: "Instances",
+    description: "Scaling page: manual instance-count slider label",
+  },
+  "services.scalingMetricsTitle": {
+    message: "Recent Metrics",
+    description: "Scaling page: recent-metrics section title (w7/m43)",
+  },
+  "services.scalingMetricsNote": {
+    message: "Showing metrics for the past 48 hours.",
+    description: "Scaling page: recent-metrics window note",
+  },
+  "services.scalingMetricsViewAll": {
+    message: "View all metrics.",
+    description: "Scaling page: link to the full Metrics tab",
+  },
+  "services.scalingMetricsMemory": {
+    message: "Average Memory Utilization",
+    description: "Scaling page: averaged memory utilization chart title",
+  },
+  "services.scalingMetricsCPU": {
+    message: "Average CPU Utilization",
+    description: "Scaling page: averaged CPU utilization chart title",
+  },
+  "services.scalingMetricsAcross": {
+    message: "Across all instances",
+    description: "Scaling page: recent-metrics chart subtitle",
+  },
+  "services.scalingMetricsEmpty": {
+    message: "No data captured in the past 48 hours",
+    description: "Scaling page: recent-metrics empty state",
   },
   "services.notFoundTitle": {
     message: "Service not found",
@@ -2413,27 +2467,6 @@ const enServices: Record<string, TranslationEntry> = {
   "services.createError": {
     message: "Couldn't create {name}. Please try again.",
     description: "Toast shown after createService fails",
-  },
-  "services.scalingInstanceCount": {
-    message: "Instance count",
-    description:
-      "Settings row label for the manual instance-count stepper (w5/m16)",
-  },
-  "services.scalingInstanceCountHint": {
-    message: "Number of instances to run simultaneously.",
-    description: "Settings row help text for the manual instance-count stepper",
-  },
-  "services.scalingDecrement": {
-    message: "Decrease instance count",
-    description: "aria-label for the − stepper button",
-  },
-  "services.scalingIncrement": {
-    message: "Increase instance count",
-    description: "aria-label for the + stepper button",
-  },
-  "services.scalingSaveCount": {
-    message: "Save",
-    description: "Save button label on the instance-count stepper",
   },
   "services.scaleSuccess": {
     message: "Scaled to {count} instance(s).",
