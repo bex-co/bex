@@ -196,6 +196,14 @@ function MetadataCard({
           label: t("databases.metaExternalHost"),
           value: database.externalHost ?? "—",
         },
+        ...(database.region
+          ? [
+              {
+                label: t("databases.metaRegion"),
+                value: database.region,
+              },
+            ]
+          : []),
         {
           label: t("databases.metaCreated"),
           value: formatRelativeAge(database.createdAt),

@@ -91,6 +91,7 @@ function kv(overrides: Partial<KeyValueView> = {}): KeyValueView {
     externalHost: null,
     public: false,
     suspended: false,
+    region: null,
     ...overrides,
   };
 }
@@ -166,5 +167,21 @@ describe("KeyValueDetailPage", () => {
     expect(
       await screen.findByText("Key Value store not found"),
     ).toBeInTheDocument();
+  });
+
+  it("renders the Region row when region is configured (w9/m42/t004)", async () => {
+    keyValueState.keyValue = kv({ region: "fsn1" });
+    renderPage();
+
+    expect(await screen.findByText("Region")).toBeInTheDocument();
+    expect(screen.getByText("fsn1")).toBeInTheDocument();
+  });
+
+  it("omits the Region row when region is null (BEX_REGION unset)", async () => {
+    keyValueState.keyValue = kv({ region: null });
+    renderPage();
+
+    await screen.findByText("sessions-cache");
+    expect(screen.queryByText("Region")).not.toBeInTheDocument();
   });
 });

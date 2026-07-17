@@ -30,6 +30,7 @@ export function toKeyValueView(d: KeyValueNode | KeyValueDetailNode): KeyValueVi
     externalHost: d.externalHost ?? null,
     public: d.public ?? false,
     suspended: isSuspended(d.suspended ?? null),
+    region: "region" in d ? (d.region ?? null) : null,
   };
 }
 

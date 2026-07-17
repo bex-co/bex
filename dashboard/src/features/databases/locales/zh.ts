@@ -323,6 +323,10 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "外部主机",
     description: "Database detail metadata row label (SNI hostname)",
   },
+  "databases.metaRegion": {
+    message: "区域",
+    description: "Database detail metadata row label (platform placement)",
+  },
   "databases.metaCreated": {
     message: "创建时间",
     description: "Database detail metadata row label (relative age)",

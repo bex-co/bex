@@ -24,6 +24,8 @@ export interface KeyValueView {
   public: boolean;
   /** Derived from Render's string `suspended` enum (services/lib/status's isSuspended), not a raw boolean field. */
   suspended: boolean;
+  /** Platform placement name (e.g. "fsn1"); null when BEX_REGION is unset. */
+  region: string | null;
 }
 
 /** The connection strings, fetched on demand (never in the list). The

@@ -122,6 +122,14 @@ function MetadataCard({ keyValue }: { keyValue: KeyValueView }) {
           label: t("keyvalue.metaExternalHost"),
           value: keyValue.externalHost ?? "—",
         },
+        ...(keyValue.region
+          ? [
+              {
+                label: t("keyvalue.metaRegion"),
+                value: keyValue.region,
+              },
+            ]
+          : []),
         {
           label: t("keyvalue.metaCreated"),
           value: formatRelativeAge(keyValue.createdAt),

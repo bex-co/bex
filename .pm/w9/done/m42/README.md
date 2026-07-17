@@ -1,19 +1,19 @@
 # w9 · m42 — Datastore metadata parity on GraphQL/MCP: region · dashboardUrl · updatedAt
 
-**Worker:** worker9 **Goal:** the Render resource metadata REST ships for Postgres and Key Value (`region`, `dashboardUrl`, authoritative `updatedAt`) exists with identical semantics on their GraphQL and MCP surfaces — closing the divergence w9/m41's audit documented and locking it with cross-surface tests — and the dashboard (GraphQL-only) can finally show a datastore's region, as Render's does. **Status:** todo
+**Worker:** worker9 **Goal:** the Render resource metadata REST ships for Postgres and Key Value (`region`, `dashboardUrl`, authoritative `updatedAt`) exists with identical semantics on their GraphQL and MCP surfaces — closing the divergence w9/m41's audit documented and locking it with cross-surface tests — and the dashboard (GraphQL-only) can finally show a datastore's region, as Render's does. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                    | est | depends_on |
 | ---- | ----------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Add `region`/`dashboardUrl`/`updatedAt` to Postgres + KeyValue GraphQL types via `resourcemeta` | 45m | —          |
-| t002 | Mirror the fields on the MCP get/list tool outputs                                         | 30m | t001       |
-| t003 | Extend m41's cross-sibling parity tests to lock the new fields; update the ADR018 note      | 30m | t002       |
-| t004 | Dashboard: render region on database/keyvalue detail pages                                  | 30m | t003       |
-| t005 | Render parity — cross-surface field/semantics check vs Render's datastore objects           | 20m | t004       |
-| t006 | Simplify — `/simplify` over the milestone's diff                                            | 20m | t005       |
-| t007 | Test coverage — meaningful tests for the shipped behavior                                   | 20m | t005       |
-| t008 | Closeout — move to `done/` when the DoD holds                                               | 15m | t007       |
+| t001 | Add `region`/`dashboardUrl`/`updatedAt` to Postgres + KeyValue GraphQL types via `resourcemeta` | 45m | —          | — **DONE** |
+| t002 | Mirror the fields on the MCP get/list tool outputs                                         | 30m | t001       | — **DONE** |
+| t003 | Extend m41's cross-sibling parity tests to lock the new fields; update the ADR018 note      | 30m | t002       | — **DONE** |
+| t004 | Dashboard: render region on database/keyvalue detail pages                                  | 30m | t003       | — **DONE** |
+| t005 | Render parity — cross-surface field/semantics check vs Render's datastore objects           | 20m | t004       | — **DONE** |
+| t006 | Simplify — `/simplify` over the milestone's diff                                            | 20m | t005       | — **DONE** |
+| t007 | Test coverage — meaningful tests for the shipped behavior                                   | 20m | t005       | — **DONE** |
+| t008 | Closeout — move to `done/` when the DoD holds                                               | 15m | t007       | — **DONE** |
 
 ## Definition of done
 

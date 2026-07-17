@@ -37,6 +37,7 @@ query KeyValue($id: String!) {
     createdAt
     externalHost
     public
+    region
   }
 }
 

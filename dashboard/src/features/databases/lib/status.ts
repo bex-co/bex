@@ -77,6 +77,7 @@ export function toDatabaseDetailView(
       })),
     externalHost: d.externalHost ?? null,
     backupsEnabled: d.backupsEnabled ?? false,
+    region: d.region ?? null,
   };
 }
 

@@ -254,6 +254,10 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "外部主机",
     description: "Key Value detail metadata row label (SNI hostname)",
   },
+  "keyvalue.metaRegion": {
+    message: "区域",
+    description: "Key Value detail metadata row label (platform placement)",
+  },
   "keyvalue.metaCreated": {
     message: "创建时间",
     description: "Key Value detail metadata row label (relative age)",
