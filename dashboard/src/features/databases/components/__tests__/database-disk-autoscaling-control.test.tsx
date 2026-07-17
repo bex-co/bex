@@ -37,6 +37,7 @@ const database: DatabaseDetailView = {
   readReplicas: [],
   externalHost: null,
   backupsEnabled: false,
+  region: null,
 };
 
 beforeEach(() => {

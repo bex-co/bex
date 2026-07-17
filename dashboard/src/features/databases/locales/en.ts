@@ -324,6 +324,10 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "External host",
     description: "Database detail metadata row label (SNI hostname)",
   },
+  "databases.metaRegion": {
+    message: "Region",
+    description: "Database detail metadata row label (platform placement)",
+  },
   "databases.metaCreated": {
     message: "Created",
     description: "Database detail metadata row label (relative age)",

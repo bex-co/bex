@@ -36,6 +36,7 @@ describe("toKeyValueViews", () => {
       externalHost: "sessions-cache.kv.bex.co",
       public: true,
       suspended: false,
+      region: null,
     });
   });
 

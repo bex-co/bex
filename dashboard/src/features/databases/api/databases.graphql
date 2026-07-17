@@ -51,6 +51,7 @@ query Database($id: String!) {
     poolerEnabled
     backupsEnabled
     ipAllowList
+    region
   }
 }
 

@@ -50,6 +50,8 @@ export interface DatabaseDetailView extends DatabaseView {
   externalHost: string | null;
   /** Whether the operator has configured continuous physical backups. */
   backupsEnabled: boolean;
+  /** Platform placement name (e.g. "fsn1"); null when BEX_REGION is unset. */
+  region: string | null;
 }
 
 /** Full connection strings (with password) for one named read replica. */

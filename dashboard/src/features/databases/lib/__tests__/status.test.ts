@@ -81,11 +81,34 @@ describe("toDatabaseDetailView", () => {
       createdAt: null,
       externalHost: "db1.db.bex.co",
       public: true,
+      region: null,
     });
     expect(d.databaseName).toBe("db1");
     expect(d.databaseUser).toBe("db1_user");
     expect(d.externalHost).toBe("db1.db.bex.co");
     expect(d.highAvailabilityEnabled).toBe(false);
+    expect(d.region).toBeNull();
+  });
+
+  it("carries region through from the wire type when configured (w9/m42/t004)", () => {
+    const d = toDatabaseDetailView({
+      __typename: "Database",
+      id: "db2",
+      name: "db2",
+      plan: "free",
+      version: "18",
+      status: "available",
+      databaseName: "db2",
+      databaseUser: "db2_user",
+      diskSizeGB: 1,
+      highAvailabilityEnabled: false,
+      suspended: "not_suspended",
+      createdAt: null,
+      externalHost: null,
+      public: false,
+      region: "fsn1",
+    });
+    expect(d.region).toBe("fsn1");
   });
 });
 

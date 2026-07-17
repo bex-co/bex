@@ -255,6 +255,10 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "External host",
     description: "Key Value detail metadata row label (SNI hostname)",
   },
+  "keyvalue.metaRegion": {
+    message: "Region",
+    description: "Key Value detail metadata row label (platform placement)",
+  },
   "keyvalue.metaCreated": {
     message: "Created",
     description: "Key Value detail metadata row label (relative age)",

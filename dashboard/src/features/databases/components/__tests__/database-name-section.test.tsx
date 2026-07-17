@@ -24,6 +24,7 @@ const database: DatabaseDetailView = {
   highAvailabilityEnabled: false,
   readReplicas: [],
   externalHost: null,
+  region: null,
 };
 
 beforeEach(() => {
