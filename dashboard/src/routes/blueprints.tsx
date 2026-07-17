@@ -28,7 +28,7 @@ import { formatRelativeAge } from "@/features/services/lib/format";
 
 export const Route = createFileRoute("/blueprints")({
   component: BlueprintsPage,
-  beforeLoad: requireAuth("/blueprints"),
+  beforeLoad: requireAuth(),
   head: () => ({
     meta: [{ title: "Blueprints · bex dashboard" }],
   }),

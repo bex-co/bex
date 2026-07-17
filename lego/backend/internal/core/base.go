@@ -271,22 +271,6 @@ func (b *Base) Authorize(ctx context.Context, relation string) error {
 	return b.authorizeAndAudit(ctx, relation, object, "", callerVerb(verbFrameSkip), err)
 }
 
-// AuthorizeTarget is Authorize for a verb that acts on ONE named resource: the
-// same caller-workspace check, plus the target (e.g. core.ServiceTarget(name))
-// recorded on the audit event. It is what makes the per-service events feed a
-// view rather than a second write path (internal/events): the audit row already
-// written on every write verb now also says WHICH service the verb acted on.
-//
-// The target is the name the caller ASKED for, resolved before the App is
-// fetched — so a verb that then 404s or 403s still records its attempt, exactly
-// as the audit log already does for a denied authorize. internal/events filters
-// those out (allowed-only, workspace-scoped) so they cannot pollute a feed.
-// Pass a resource NAME, never a value: Target is on the redacted-by-structure
-// side of the audit contract (core.AuditEvent).
-func (b *Base) AuthorizeTarget(ctx context.Context, relation, target string) error {
-	object, err := b.callerWorkspace(ctx)
-	return b.authorizeAndAudit(ctx, relation, object, target, callerVerb(verbFrameSkip), err)
-}
 
 // callerWorkspace is the OpenFGA object of the workspace the caller is acting
 // in: workspace:tea-<id> for the workspace they NAMED (once membership-checked)

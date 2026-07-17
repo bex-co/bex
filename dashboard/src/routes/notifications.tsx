@@ -10,7 +10,7 @@ import { NotificationSettingsPanel } from "@/features/notifications/components/n
  */
 export const Route = createFileRoute("/notifications")({
   component: NotificationsPage,
-  beforeLoad: requireAuth("/notifications"),
+  beforeLoad: requireAuth(),
   head: () => ({
     meta: [{ title: "Notifications · bex dashboard" }],
   }),

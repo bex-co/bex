@@ -41,15 +41,22 @@ function DashboardHeader() {
 /**
  * Dashboard layout — persistent sidebar + header chrome wrapping every
  * authenticated page (preserved from the original scaffold's design).
+ * If sidebar is not provided, defaults to DashboardSidebar.
  */
-export function DashboardLayout({ children }: { children?: React.ReactNode }) {
+export function DashboardLayout({
+  children,
+  sidebar,
+}: {
+  children?: React.ReactNode;
+  sidebar?: React.ReactNode;
+}) {
   return (
     <SidebarProvider>
       <Authenticated>
         <InviteRedemption />
       </Authenticated>
       <div className="flex h-(--visual-viewport-height,100vh) w-full">
-        <DashboardSidebar />
+        {sidebar || <DashboardSidebar />}
         <main className="flex flex-1 flex-col min-w-0 w-full">
           <DashboardHeader />
           {children}

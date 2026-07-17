@@ -29,7 +29,7 @@ import { useServices } from "@/features/services/hooks/use-services";
 // the list mounted because it has no <Outlet />.
 export const Route = createFileRoute("/env-groups_/$groupId")({
   component: EnvGroupDetailPage,
-  beforeLoad: requireAuth("/env-groups/$groupId"),
+  beforeLoad: requireAuth(),
   head: ({ params }) => ({
     meta: [{ title: `${params.groupId} · Environment Groups · bex dashboard` }],
   }),

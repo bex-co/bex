@@ -26,7 +26,7 @@ import type { DatabaseDetailView } from "@/features/databases/types";
 
 export const Route = createFileRoute("/databases/$databaseId")({
   component: DatabaseDetailPage,
-  beforeLoad: requireAuth("/databases/$databaseId"),
+  beforeLoad: requireAuth(),
   validateSearch: (search: Record<string, unknown>): { tab?: "logs" } =>
     search.tab === "logs" ? { tab: "logs" } : {},
   head: ({ params }) => ({

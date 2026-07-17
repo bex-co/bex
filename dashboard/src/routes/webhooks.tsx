@@ -11,7 +11,7 @@ import { WebhooksPanel } from "@/features/webhooks/components/webhooks-panel";
  */
 export const Route = createFileRoute("/webhooks")({
   component: WebhooksPage,
-  beforeLoad: requireAuth("/webhooks"),
+  beforeLoad: requireAuth(),
   head: () => ({
     meta: [{ title: "Webhooks · bex dashboard" }],
   }),

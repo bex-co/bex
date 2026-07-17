@@ -71,7 +71,7 @@ const FREE_PLAN = "free";
 
 export const Route = createFileRoute("/keyvalue/new")({
   component: NewKeyValuePage,
-  beforeLoad: requireAuth("/keyvalue/new"),
+  beforeLoad: requireAuth(),
   head: () => ({
     meta: [{ title: "New Key Value · bex dashboard" }],
   }),

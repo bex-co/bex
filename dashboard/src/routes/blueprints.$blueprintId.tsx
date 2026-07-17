@@ -31,7 +31,7 @@ import { protectedServiceName } from "@/features/services/lib/protected-confirma
 
 export const Route = createFileRoute("/blueprints/$blueprintId")({
   component: BlueprintDetailPage,
-  beforeLoad: requireAuth("/blueprints/$blueprintId"),
+  beforeLoad: requireAuth(),
   head: ({ params }) => ({
     meta: [{ title: `${params.blueprintId} · Blueprints · bex dashboard` }],
   }),
