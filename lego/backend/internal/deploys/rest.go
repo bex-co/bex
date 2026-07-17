@@ -63,6 +63,7 @@ type renderDeployImage struct {
 // GitHub connection — omitted, not faked, otherwise.
 type renderDeploy struct {
 	ID         string             `json:"id"`
+	ServiceID  string             `json:"serviceId,omitempty"`
 	Status     string             `json:"status"`
 	Trigger    string             `json:"trigger,omitempty"`    // bex extra: "create" | "api" | "deploy_hook" | "rollback"
 	Image      *renderDeployImage `json:"image,omitempty"`      // Render's nested image object, not a bare string
@@ -99,6 +100,7 @@ func formatTimePtr(t *time.Time) string {
 func toRenderDeploy(d DeployView) renderDeploy {
 	out := renderDeploy{
 		ID:              d.ID,
+		ServiceID:       d.ServiceID,
 		Status:          d.Status,
 		Trigger:         d.Trigger,
 		RollbackOf:      d.RollbackOf,
