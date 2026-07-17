@@ -37,6 +37,8 @@ Evidence:
 
 Environment-level rules live under **Networking → Inbound IP Restrictions** on eligible Scale/Enterprise plans. The editor is a replaceable list: edit an existing CIDR, **Add source**, delete with the trash control, then **Save**. Render seeds `0.0.0.0/0` as the allow-all default. Deleting every rule means deny-all, and a source must pass every applicable workspace, Environment, and service rule. Only IPv4 CIDRs are supported. See [Inbound IP Rules](https://render.com/docs/inbound-ip-rules).
 
+The captured editor uses two columns, **Source** and **Description**. The description is editable and optional; the public API exposes the same pair as `{cidrBlock, description}`. Render's official documentation was rechecked on 2026-07-16 and still specifies the same edit/add/delete/save flow for the shared service, Environment, and workspace editor.
+
 Evidence: `.playwright-mcp/render-environment-ip-rules.png` (current official dashboard image captured through the docs page).
 
 ## Public API contract
@@ -51,6 +53,8 @@ Evidence: `.playwright-mcp/render-environment-ip-rules.png` (current official da
 ## bex implementation decisions and drift
 
 `w5/m31` mirrors the discoverability of Render's Environment card: **All settings** opens protection, cross-environment isolation, and a full-replace CIDR editor. It also exposes Environment-group membership in the existing **Manage resources** dialog and reuses one Project/Environment selector across service, Postgres, and Key Value creation.
+
+`w5/m38` completes the Environment editor's rule fidelity: its GraphQL read/write path uses `ipAllowListEntries {cidrBlock, description}`, existing rules expose editable CIDR and optional-description fields, and new rules accept both values. Description-less legacy entries normalize to an empty optional description instead of disappearing. Add, edit, delete, save, and empty-list deny-all behavior now match the captured Render editor. The established product divergences remain explicit: bex supports IPv6 CIDRs and seeded existing environments with both `0.0.0.0/0` and `::/0`, whereas Render documents IPv4-only rules with a single IPv4 default.
 
 For protected actions, bex follows its already-shipped backend contract rather than pretending Render has the same authorization model. A first delete, suspend, or Blueprint sync that would override a protected service returns the authoritative bex phrase (`sudo <verb> service <name>`). The dashboard displays that exact phrase, requires an exact match, and retries with it; it never synthesizes the phrase or turns a generic error into a bypass. Unprotected actions retain their existing confirmation flow.
 

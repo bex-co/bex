@@ -35,7 +35,9 @@ describe("useSetEnvironmentACL", () => {
       ok = await result.current.saveACL("env-1", "production", {
         protectedStatus: "protected",
         networkIsolationEnabled: true,
-        ipAllowList: ["10.0.0.0/8"],
+        ipAllowListEntries: [
+          { cidrBlock: "10.0.0.0/8", description: "office" },
+        ],
       });
     });
 
@@ -44,7 +46,9 @@ describe("useSetEnvironmentACL", () => {
         id: "env-1",
         protectedStatus: "protected",
         networkIsolationEnabled: true,
-        ipAllowList: ["10.0.0.0/8"],
+        ipAllowListEntries: [
+          { cidrBlock: "10.0.0.0/8", description: "office" },
+        ],
       },
     });
     expect(mockUseMutation.mock.calls[0][1]).toMatchObject({
@@ -66,7 +70,7 @@ describe("useSetEnvironmentACL", () => {
       ok = await result.current.saveACL("env-1", "production", {
         protectedStatus: "unprotected",
         networkIsolationEnabled: false,
-        ipAllowList: [],
+        ipAllowListEntries: [],
       });
     });
 

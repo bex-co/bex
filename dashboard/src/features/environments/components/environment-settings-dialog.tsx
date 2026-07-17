@@ -32,11 +32,11 @@ export function EnvironmentSettingsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <EnvironmentSettingsForm
-          key={[
+          key={JSON.stringify([
             environment.protectedStatus,
             environment.networkIsolationEnabled,
-            ...environment.ipAllowList,
-          ].join(":")}
+            environment.ipAllowListEntries,
+          ])}
           environment={environment}
           onClose={() => onOpenChange(false)}
         />
@@ -60,28 +60,58 @@ function EnvironmentSettingsForm({
   const [networkIsolationEnabled, setNetworkIsolationEnabled] = useState(
     environment.networkIsolationEnabled,
   );
-  const [ipAllowList, setIPAllowList] = useState(environment.ipAllowList);
-  const [entry, setEntry] = useState("");
+  const [ipAllowListEntries, setIPAllowListEntries] = useState(
+    environment.ipAllowListEntries,
+  );
+  const [cidrBlock, setCIDRBlock] = useState("");
+  const [description, setDescription] = useState("");
+
+  const originalEntries = JSON.stringify(environment.ipAllowListEntries);
+  const draftEntries = JSON.stringify(ipAllowListEntries);
 
   const dirty =
     isProtected !== (environment.protectedStatus === "protected") ||
     networkIsolationEnabled !== environment.networkIsolationEnabled ||
-    ipAllowList.length !== environment.ipAllowList.length ||
-    ipAllowList.some((cidr, index) => cidr !== environment.ipAllowList[index]);
+    draftEntries !== originalEntries;
 
   function addCIDR() {
-    const cidr = entry.trim();
-    if (cidr && !ipAllowList.includes(cidr)) {
-      setIPAllowList([...ipAllowList, cidr]);
+    const cidr = cidrBlock.trim();
+    if (cidr && !ipAllowListEntries.some((entry) => entry.cidrBlock === cidr)) {
+      setIPAllowListEntries([
+        ...ipAllowListEntries,
+        { cidrBlock: cidr, description: description.trim() },
+      ]);
     }
-    setEntry("");
+    setCIDRBlock("");
+    setDescription("");
+  }
+
+  function updateEntry(
+    index: number,
+    field: "cidrBlock" | "description",
+    value: string,
+  ) {
+    setIPAllowListEntries((current) =>
+      current.map((entry, entryIndex) =>
+        entryIndex === index ? { ...entry, [field]: value } : entry,
+      ),
+    );
+  }
+
+  function removeEntry(index: number) {
+    setIPAllowListEntries((current) =>
+      current.filter((_, entryIndex) => entryIndex !== index),
+    );
   }
 
   async function save() {
     const ok = await saveACL(environment.id, environment.name, {
       protectedStatus: isProtected ? "protected" : "unprotected",
       networkIsolationEnabled,
-      ipAllowList,
+      ipAllowListEntries: ipAllowListEntries.map((entry) => ({
+        cidrBlock: entry.cidrBlock.trim(),
+        description: entry.description.trim(),
+      })),
     });
     if (ok) onClose();
   }
@@ -137,46 +167,84 @@ function EnvironmentSettingsForm({
           <p className="text-sm text-muted-foreground">
             {t("environments.ipAllowListHint")}
           </p>
-          <div className="flex flex-wrap gap-2">
-            {ipAllowList.length === 0 ? (
+          <div className="space-y-2">
+            {ipAllowListEntries.length === 0 ? (
               <span className="text-sm text-muted-foreground">
                 {t("environments.ipAllowListOpen")}
               </span>
             ) : (
-              ipAllowList.map((cidr) => (
-                <span
-                  key={cidr}
-                  className="inline-flex items-center gap-1 rounded-md border bg-muted px-2 py-1 text-xs"
+              ipAllowListEntries.map((entry, index) => (
+                <div
+                  key={index}
+                  className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
                 >
-                  <code className="font-mono">{cidr}</code>
-                  <button
-                    type="button"
-                    aria-label={t("environments.ipAllowListRemove", { cidr })}
-                    onClick={() =>
-                      setIPAllowList(
-                        ipAllowList.filter((item) => item !== cidr),
-                      )
+                  <Input
+                    value={entry.cidrBlock}
+                    onChange={(event) =>
+                      updateEntry(index, "cidrBlock", event.target.value)
                     }
-                    className="text-muted-foreground hover:text-foreground"
+                    aria-label={t("environments.ipAllowListRuleCIDR", {
+                      number: index + 1,
+                    })}
+                    placeholder="203.0.113.0/24"
+                    className="font-mono"
+                    disabled={saving}
+                  />
+                  <Input
+                    value={entry.description}
+                    onChange={(event) =>
+                      updateEntry(index, "description", event.target.value)
+                    }
+                    aria-label={t("environments.ipAllowListRuleDescription", {
+                      number: index + 1,
+                    })}
+                    placeholder={t(
+                      "environments.ipAllowListDescriptionPlaceholder",
+                    )}
+                    disabled={saving}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t("environments.ipAllowListRemove", {
+                      cidr: entry.cidrBlock,
+                    })}
+                    onClick={() => removeEntry(index)}
                     disabled={saving}
                   >
-                    <Trash2 className="size-3" />
-                  </button>
-                </span>
+                    <Trash2 />
+                  </Button>
+                </div>
               ))
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Input
-              value={entry}
-              onChange={(event) => setEntry(event.target.value)}
+              value={cidrBlock}
+              onChange={(event) => setCIDRBlock(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
                   addCIDR();
                 }
               }}
+              aria-label={t("environments.ipAllowListNewCIDR")}
               placeholder="203.0.113.0/24"
+              className="max-w-xs"
+              disabled={saving}
+            />
+            <Input
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  addCIDR();
+                }
+              }}
+              aria-label={t("environments.ipAllowListNewDescription")}
+              placeholder={t("environments.ipAllowListDescriptionPlaceholder")}
               className="max-w-xs"
               disabled={saving}
             />
@@ -184,7 +252,7 @@ function EnvironmentSettingsForm({
               variant="outline"
               size="sm"
               onClick={addCIDR}
-              disabled={saving || !entry.trim()}
+              disabled={saving || !cidrBlock.trim()}
             >
               <Plus />
               {t("environments.ipAllowListAdd")}
