@@ -82,10 +82,9 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `031` — prod ops follow-ups, user's call: remint `agentmarketcap-1`'s clone token (no access to its private repo ⇒ every build fails at clone) + configure the GitHub App in prod (`BEX_GITHUB_APP_*` unset ⇒ git-connect verbs 503) ← 2026-07-17 incident — **blocked on operator credentials** (needs a GitHub PAT/App owned by the user; not executable by an agent)
-- `032` — verify m48's deploy narration on prod's Loki-backed history reads after the next bex-api deploy (dev-1 is storeless; the history leg is unit-pinned only) ← m48 closeout 2026-07-17
+- `032` — verify on prod after the next bex-api deploy: m48's narration on Loki-backed history reads, AND the trigger-time clone-token remint on a manual `agentmarketcap-1` deploy ← m48 closeout + `031`'s corrected diagnosis, 2026-07-17
 
-> **Done 2026-07-17:** `029` (deploy-page All/Application/Build type filter) and `030` (BuildKit pre-warm DaemonSet, `deploy/gitops/base/build-image-prewarm.yaml`) — both implemented in the m48 working set; notes moved to `done/` with resolutions.
+> **Done 2026-07-17:** `029` (deploy-page All/Application/Build type filter) and `030` (BuildKit pre-warm DaemonSet, `deploy/gitops/base/build-image-prewarm.yaml`) — both implemented in the m48 working set; notes moved to `done/` with resolutions. `031` resolved-superseded the same day: CLI-driven debugging showed both halves misdiagnosed — the GitHub App IS configured (secretKeyRef-wired) and the token is a 1h installation token bex must remint per deploy; the real bug (manual Trigger/deploy-hook never reminted, so private-repo manual builds ran on the previous deploy's expired token) is fixed in `internal/deploys` with the `store.CloneSecreter` bridge; verification folded into `032`.
 
 _(`024.md` absorbed and closed by `w10/m4` 2026-07-15 — the prod SA patch was verified gone with the declared operator path load-bearing. `025.md` — Traefik LB `ignore_changes = [labels]` — absorbed into **w10/m6** (t001) 2026-07-15; note moved to `done/`.)_
 

@@ -164,6 +164,31 @@ type Service struct {
 	// namespace, must match so the Job identity resolves); empty falls back to
 	// the App's own namespace, the operator's own default (w2/m10).
 	BuildNamespace string
+	// CloneSecrets refreshes a repo-backed App's private-clone credential at
+	// trigger time (apps.Service's reconciler bridge, wired in the composition
+	// root). GitHub App installation tokens live ONE HOUR — a manual trigger or
+	// deploy hook that only bumps the generation makes the operator rebuild
+	// with the PREVIOUS deploy's token, which git surfaces as the misleading
+	// "could not read Username" (its 401-then-prompt fallback). Found live on
+	// prod 2026-07-17 (agentmarketcap-1: every trigger=api build failed at
+	// clone while webhook-triggered siblings built fine). nil ⇒ no refresh
+	// (GitHub integration off), prior behavior.
+	CloneSecrets store.CloneSecreter
+}
+
+// deployWorkspace resolves the workspace whose GitHub connection owns this
+// App's clone token — the App's own tenant label first (the deploy hook
+// carries no caller identity), then the caller's tenant, then the
+// single-workspace default; the same precedence as apps.Service's
+// deployWorkspace, duplicated because deploys must not import apps.
+func (s *Service) deployWorkspace(ctx context.Context, a *appv1alpha1.App) string {
+	if t := a.Labels[core.LabelTenant]; t != "" {
+		return t
+	}
+	if t, ok := s.Tenant(ctx); ok && t != "" {
+		return t
+	}
+	return core.DefaultTenant
 }
 
 // buildJobName mirrors lego/operator/internal/build.JobName's naming
@@ -410,6 +435,19 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	if p.CommitID != "" && a.Spec.Type == appv1alpha1.TypeCronJob {
 		return DeployView{}, fmt.Errorf("%w: commitId is not supported for cron_job services", core.ErrBadRequest)
 	}
+	// Refresh the private-repo clone credential BEFORE the generation bump: the
+	// build this trigger starts must never run with the previous deploy's
+	// expired installation token. A mint failure fails the trigger loudly —
+	// same rule as the create path (clonesecret.go): a private repo must never
+	// silently fall back to a stale or absent credential.
+	cloneSecret := ""
+	if s.CloneSecrets != nil && a.Spec.Repo != "" {
+		name, err := s.CloneSecrets.EnsureCloneSecret(ctx, a.Namespace, a.Name, s.deployWorkspace(ctx, a), a.Spec.Repo)
+		if err != nil {
+			return DeployView{}, err
+		}
+		cloneSecret = name
+	}
 	// Resolve the triggering ref to its exact commit BEFORE the CR patch that
 	// starts the rollout (w9/001) — best-effort provenance: the deploy row
 	// opens either way, so a GitHub hiccup can never block a deploy.
@@ -417,6 +455,11 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	previousGeneration := a.Generation
 	if err := s.patchApp(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339Nano)
+		// A freshly minted clone credential rides the same patch as the bump;
+		// "" (public/unconnected repo, or GitHub off) leaves the field alone.
+		if cloneSecret != "" {
+			a.Spec.CloneSecret = cloneSecret
+		}
 		// Always write BuildCommit — set to the requested ref, or "" to reset to
 		// Branch HEAD. This ensures a trigger without commitId never inherits the
 		// commit a previous trigger pinned.
