@@ -37,7 +37,7 @@ function RouteComponent() {
 export function ServiceDetailLayout({ serviceId }: { serviceId: string }) {
   const { service, loading, error, refetch } = useServer(serviceId);
   const { deploy: latestDeploy } = useLatestDeploy(serviceId);
-  const { pending, run } = useServiceLifecycle({ refetch });
+  const { pending } = useServiceLifecycle({ refetch });
   const { t } = useTranslations();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -127,7 +127,6 @@ export function ServiceDetailLayout({ serviceId }: { serviceId: string }) {
             service={service}
             latestDeploy={latestDeploy}
             pending={pending?.id === service.id ? pending.action : null}
-            onRun={run}
           />
         ) : (
           <ServiceDetailHeaderSkeleton name={serviceId} />

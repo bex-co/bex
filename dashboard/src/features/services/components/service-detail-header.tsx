@@ -23,7 +23,6 @@ import { Skeleton } from "@/common/components/ui/skeleton.tsx";
 import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ManualDeployButton } from "@/features/services/components/manual-deploy-button";
-import { ServiceRowActions } from "@/features/services/components/service-row-actions";
 import { ServiceStatusBadge } from "@/features/services/components/service-status-badge";
 import { useInstanceTypes } from "@/features/services/hooks/use-instance-types";
 import { formatRelativeAge } from "@/features/services/lib/format";
@@ -36,7 +35,6 @@ import {
 } from "@/features/services/lib/service-type";
 import { isSleeping } from "@/features/services/lib/status";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
-import type { RunServiceAction } from "@/features/services/hooks/use-service-lifecycle";
 import { useRegistryCredentials } from "@/features/registry-credentials/hooks/use-registry-credentials";
 import {
   deployStatusKey,
@@ -50,7 +48,6 @@ export interface ServiceDetailHeaderProps {
   latestDeploy?: LatestDeploySummary | null;
   /** The lifecycle action in flight for this service, or null. */
   pending: LifecycleAction | null;
-  onRun: RunServiceAction;
 }
 
 /**
@@ -69,7 +66,6 @@ export function ServiceDetailHeader({
   service,
   latestDeploy,
   pending,
-  onRun,
 }: ServiceDetailHeaderProps) {
   const { t } = useTranslations();
   const { byID } = useInstanceTypes();
@@ -137,13 +133,6 @@ export function ServiceDetailHeader({
         <div className="flex shrink-0 items-center gap-2">
           <ServiceConnectButton service={service} />
           <ManualDeployButton service={service} pending={pending !== null} />
-          <ServiceRowActions
-            service={service}
-            pending={pending}
-            onRun={onRun}
-            hideRestart
-            hideSuspend
-          />
         </div>
       </div>
 
