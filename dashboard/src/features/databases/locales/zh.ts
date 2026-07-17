@@ -408,6 +408,24 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "加载中…",
     description: "Generic loading placeholder in a detail panel",
   },
+  // --- Bottom action row (Render parity: Info page footer buttons) ---
+  "databases.dangerDelete": {
+    message: "删除数据库",
+    description: "Detail-page bottom action: permanently delete the database",
+  },
+  "databases.dangerRestart": {
+    message: "重启数据库",
+    description: "Detail-page bottom action: rolling restart of the primary",
+  },
+  "databases.dangerSuspend": {
+    message: "暂停数据库",
+    description:
+      "Detail-page bottom action: hibernate the database (stop compute, keep data)",
+  },
+  "databases.dangerResume": {
+    message: "恢复数据库",
+    description: "Detail-page bottom action: wake a suspended database",
+  },
   // --- Lifecycle actions (suspend / resume / restart) ---
   "databases.actionSuspend": {
     message: "暂停",

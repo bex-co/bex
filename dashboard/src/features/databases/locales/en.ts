@@ -411,6 +411,24 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Loading…",
     description: "Generic loading placeholder in a detail panel",
   },
+  // --- Bottom action row (Render parity: Info page footer buttons) ---
+  "databases.dangerDelete": {
+    message: "Delete Database",
+    description: "Detail-page bottom action: permanently delete the database",
+  },
+  "databases.dangerRestart": {
+    message: "Restart Database",
+    description: "Detail-page bottom action: rolling restart of the primary",
+  },
+  "databases.dangerSuspend": {
+    message: "Suspend Database",
+    description:
+      "Detail-page bottom action: hibernate the database (stop compute, keep data)",
+  },
+  "databases.dangerResume": {
+    message: "Resume Database",
+    description: "Detail-page bottom action: wake a suspended database",
+  },
   // --- Lifecycle actions (suspend / resume / restart) ---
   "databases.actionSuspend": {
     message: "Suspend",

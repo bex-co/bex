@@ -10,6 +10,7 @@ import { useDatabase } from "@/features/databases/hooks/use-database";
 import { useDatabaseLifecycle } from "@/features/databases/hooks/use-database-lifecycle";
 import { DatabaseStatusBadge } from "@/features/databases/components/database-status-badge";
 import { DatabaseRowActions } from "@/features/databases/components/database-row-actions";
+import { DatabaseDangerActions } from "@/features/databases/components/database-danger-actions";
 import { ConnectionInfoPanel } from "@/features/databases/components/connection-info-panel";
 import { RecoveryPanel } from "@/features/databases/components/recovery-panel";
 import { AccessControlPanel } from "@/features/databases/components/access-control-panel";
@@ -140,6 +141,11 @@ export function DatabaseDetailPage() {
               <InsightsPanel id={database.id} />
               <RecoveryPanel id={database.id} />
               <AccessControlPanel id={database.id} />
+              <DatabaseDangerActions
+                database={database}
+                onDeleted={() => void navigate({ to: "/" })}
+                lifecycle={lifecycle}
+              />
             </>
           ) : (
             <Skeleton className="h-64 w-full" />
