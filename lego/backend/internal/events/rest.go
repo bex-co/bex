@@ -67,11 +67,20 @@ type renderEvent struct {
 // from/to use `any` so the same JSON keys work for string (plan_changed) and
 // int (instance_count_changed): only one set is non-nil per event, omitempty
 // suppresses the other. autoscaling_config_changed uses previous/current objects.
+//
+// Deploy detail enrichment (w1/m47): image, commit info, timing — populated for
+// deploy events to enable rich dashboard display without additional queries.
 type renderDetails struct {
 	DeployID        string         `json:"deployId,omitempty"`
 	DeployStatus    string         `json:"deployStatus,omitempty"`
 	PreDeployStatus string         `json:"preDeployStatus,omitempty"` // bex extra (w1/m33): the deploy's pre-deploy step outcome
 	Trigger         *renderTrigger `json:"trigger,omitempty"`
+	// Deploy enrichment for dashboard (w1/m47)
+	Image         string `json:"image,omitempty"`
+	CommitID      string `json:"commitId,omitempty"`
+	CommitMessage string `json:"commitMessage,omitempty"`
+	StartedAt     string `json:"startedAt,omitempty"`   // RFC3339; nil → omitted
+	FinishedAt    string `json:"finishedAt,omitempty"`  // RFC3339; nil → omitted
 	Actor           string         `json:"actor,omitempty"`
 	TriggeredByUser string         `json:"triggeredByUser,omitempty"`
 	// plan_changed and instance_count_changed both use "from"/"to" — the value
@@ -107,6 +116,11 @@ func toRenderEvent(e Event) renderEvent {
 		DeployID:        e.Details.DeployID,
 		DeployStatus:    e.Details.DeployStatus,
 		PreDeployStatus: e.Details.PreDeployStatus,
+		Image:           e.Details.Image,
+		CommitID:        e.Details.CommitID,
+		CommitMessage:   e.Details.CommitMessage,
+		StartedAt:       formatTime(e.Details.StartedAt),
+		FinishedAt:      formatTime(e.Details.FinishedAt),
 		Actor:           e.Details.Actor,
 		TriggeredByUser: e.Details.TriggeredByUser,
 	}

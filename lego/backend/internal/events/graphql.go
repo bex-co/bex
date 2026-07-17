@@ -58,6 +58,12 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// dashboard's Events tab shows it to tell a migration failure apart from a
 		// health-check failure. Empty when no pre-deploy step ran.
 		"preDeployStatus": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.PreDeployStatus })},
+		// Deploy enrichment for dashboard Events view (w1/m47): image, commit info, timing
+		"image":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.Image })},
+		"commitId":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.CommitID })},
+		"commitMessage": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.CommitMessage })},
+		"startedAt":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return formatTime(d.StartedAt) })},
+		"finishedAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return formatTime(d.FinishedAt) })},
 		"actor":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.Actor })},
 		"triggeredByUser": &graphql.Field{
 			Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.TriggeredByUser }),
@@ -81,6 +87,14 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"autoscalingMaxTo":   &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(d Details) any { return d.AutoscalingMaxTo })},
 	},
 })
+
+// formatTime formats a *time.Time to RFC3339 string, or empty if nil (w1/m47)
+func formatTime(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return t.UTC().Format(time.RFC3339)
+}
 
 var eventGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ServiceEvent",

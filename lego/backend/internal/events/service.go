@@ -307,6 +307,12 @@ type Details struct {
 	// only. Distinguishes a migration failure from a health-check failure.
 	PreDeployStatus string
 	Trigger         *Trigger // deploy_started only
+	// Deploy details enriched for dashboard (w1/m47): deployed image, commit info, timing
+	Image         string    // container image URI; empty for non-deploy events
+	CommitID      string    // git revision; empty for non-deploy events
+	CommitMessage string    // commit description; empty for non-deploy events
+	StartedAt     *time.Time // when deploy started executing; nil for non-deploy or not-yet-started
+	FinishedAt    *time.Time // when deploy reached terminal status; nil for non-deploy or ongoing
 	// suspender_added / suspender_removed
 	Actor string
 	// server_restarted
@@ -471,6 +477,12 @@ func view(r store.ServiceEventRow, service string) Event {
 	switch r.Source {
 	case store.EventSourceDeploy:
 		ev.Details.DeployID = r.DeployID
+		// Enrich with deploy details for dashboard display (w1/m47)
+		ev.Details.Image = r.Image
+		ev.Details.CommitID = r.CommitID
+		ev.Details.CommitMessage = r.CommitMessage
+		ev.Details.StartedAt = r.StartedAt
+		ev.Details.FinishedAt = r.FinishedAt
 		if r.Phase == store.EventPhaseStarted {
 			ev.Type = TypeDeployStarted
 			ev.Details.Trigger = &Trigger{
