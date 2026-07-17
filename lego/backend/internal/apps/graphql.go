@@ -250,7 +250,9 @@ func gqlEnvVarInputs(args map[string]any, key string) ([]appv1alpha1.EnvVar, err
 var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Service",
 	Fields: graphql.Fields{
-		// Render-shaped fields (id is the App name; type is the serviceType enum).
+		// id returns the App name for routing compatibility (all GraphQL verbs resolve
+		// by name); aligning to the minted srv-… id requires verb-layer changes.
+		// Documented as a known deviation in docs/ADR020-identifiers.md.
 		"id":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Name })},
 		"name": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Name })},
 		// slug is the globally-unique platform-host segment (w4/m19/w4/m20/t002) —
@@ -266,6 +268,7 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"dashboardUrl": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.DashboardURL })},
 		"url":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.URL })},
 		"createdAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.CreatedAt })},
+		"updatedAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.UpdatedAt })},
 		"sshAddress":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.SSHAddress })},
 		// bex-native extras.
 		"phase":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Phase })},
@@ -685,8 +688,23 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Args: graphql.FieldConfigArgument{
 				// ownerId mirrors Render's REST/MCP services list filter (w6/m2/t004).
 				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"cursor":  &graphql.ArgumentConfig{Type: graphql.String},
+				"limit":   &graphql.ArgumentConfig{Type: graphql.Int},
 			},
-			Resolve: func(p graphql.ResolveParams) (any, error) { return s.List(p.Context, gqlutil.Str(p.Args, "ownerId")) },
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				out, err := s.List(p.Context, gqlutil.Str(p.Args, "ownerId"))
+				if err != nil {
+					return nil, err
+				}
+				cursor, cursorSet := p.Args["cursor"].(string)
+				limit, limitSet := p.Args["limit"].(int)
+				if !limitSet {
+					limit = core.DefaultPageLimit
+				} else {
+					limit = core.PageLimit(limit)
+				}
+				return core.StablePage(out, cursor, limit, cursorSet || limitSet, func(a AppView) string { return a.ID }), nil
+			},
 		},
 		"server": &graphql.Field{ // Render's dashboard query name
 			Type: serviceGQLType,

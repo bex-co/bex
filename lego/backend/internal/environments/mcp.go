@@ -30,6 +30,8 @@ import (
 
 type listEnvironmentsArgs struct {
 	ProjectID string `json:"projectId" jsonschema:"the project id (prj-…) to list environments under"`
+	Cursor    string `json:"cursor,omitempty" jsonschema:"cursor from a previous list_environments call to fetch the next page; omit for the first page"`
+	Limit     int    `json:"limit,omitempty" jsonschema:"max environments to return (1-100, default 20); omit for the default page size"`
 }
 
 type environmentIDArgs struct {
@@ -98,7 +100,12 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "List all environments under a project. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listEnvironmentsArgs) (*mcp.CallToolResult, environmentsResult, error) {
 		es, err := s.List(ctx, in.ProjectID)
-		return nil, environmentsResult{Environments: es}, err
+		if err != nil {
+			return nil, environmentsResult{}, err
+		}
+		limit := core.PageLimit(in.Limit)
+		paged := core.StablePage(es, in.Cursor, limit, in.Cursor != "" || in.Limit != 0, func(e EnvironmentView) string { return e.ID })
+		return nil, environmentsResult{Environments: paged}, nil
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{

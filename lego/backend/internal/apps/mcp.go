@@ -36,7 +36,7 @@ import (
 // `serviceId` (see get_service); for bex that id is the App name (opaque,
 // round-tripped from list_services).
 type serviceArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 }
 
 // listServicesResult wraps the array — MCP tool outputs must be JSON objects.
@@ -53,7 +53,7 @@ type listServicesArgs struct {
 // updatePlanArgs is update_service_plan's input — Render's plan spelling
 // (e.g. "pro_plus"), same as the REST/GraphQL surfaces.
 type updatePlanArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	Plan      string `json:"plan" jsonschema:"the new instance plan, e.g. starter, standard, pro, pro_plus, pro_max, pro_ultra"`
 	DryRun    bool   `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
@@ -61,21 +61,21 @@ type updatePlanArgs struct {
 // scaleArgs is scale_service's input — the desired running instance count,
 // keyed on numInstances like Render's REST/GraphQL surfaces.
 type scaleArgs struct {
-	ServiceID    string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID    string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	NumInstances int32  `json:"numInstances" jsonschema:"the desired number of running instances (1-100)"`
 }
 
 // idleTimeoutArgs is update_idle_timeout's input — the free-tier auto-sleep
 // window in seconds (0 = controller default). A bex extension, no Render tool.
 type idleTimeoutArgs struct {
-	ServiceID      string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID      string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	IdleTTLSeconds int32  `json:"idleTTLSeconds" jsonschema:"seconds a free-tier service may idle before it auto-sleeps; 0 restores the controller default"`
 }
 
 // rootDirArgs is set_root_directory's input — Render's Root Directory setting:
 // the subdirectory of a build-from-git service's repo to build from.
 type rootDirArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	RootDir   string `json:"rootDir" jsonschema:"subdirectory of the repo to build from; empty builds from the repo root"`
 }
 
@@ -83,17 +83,17 @@ type rootDirArgs struct {
 // Deploy command/path settings through the same scalar-setter grammar as
 // set_root_directory. Render's official MCP has no update tools for either.
 type startCommandArgs struct {
-	ServiceID    string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID    string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	StartCommand string `json:"startCommand" jsonschema:"the command used to start the service; empty restores the image default where supported"`
 }
 
 type dockerfilePathArgs struct {
-	ServiceID      string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID      string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	DockerfilePath string `json:"dockerfilePath" jsonschema:"path to the Dockerfile relative to rootDir; empty restores Dockerfile"`
 }
 
 type registryCredentialArgs struct {
-	ServiceID            string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID            string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	RegistryCredentialID string `json:"registryCredentialId" jsonschema:"the registry credential id to bind; empty clears the binding"`
 }
 
@@ -116,7 +116,7 @@ func (a *buildFilterArg) toView() *BuildFilterView {
 
 // buildFilterArgs is set_build_filter's input — Render's Build Filters setting.
 type buildFilterArgs struct {
-	ServiceID   string         `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID   string         `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	BuildFilter buildFilterArg `json:"buildFilter" jsonschema:"the glob patterns gating git-push auto-deploys; pass empty paths and ignoredPaths to clear the filter"`
 }
 
@@ -139,7 +139,7 @@ func (a *maintenanceModeArg) toView() *MaintenanceModeView {
 
 // maintenanceModeArgs is set_maintenance_mode's input.
 type maintenanceModeArgs struct {
-	ServiceID       string             `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID       string             `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	MaintenanceMode maintenanceModeArg `json:"maintenanceMode" jsonschema:"the maintenanceMode object to set"`
 }
 
@@ -148,39 +148,39 @@ type maintenanceModeArgs struct {
 // crontab expression (required); command is a pointer so nil means "keep the
 // existing override" and an empty string means "clear it."
 type updateCronJobArgs struct {
-	ServiceID string  `json:"serviceId" jsonschema:"the cron job id (bex App name), as returned by list_services"`
+	ServiceID string  `json:"serviceId" jsonschema:"the cron job id, as returned by list_services"`
 	Schedule  string  `json:"schedule" jsonschema:"the new cron schedule (5-field crontab, e.g. '0 0 * * *'); required"`
 	Command   *string `json:"command,omitempty" jsonschema:"overrides the image's default entrypoint for each run, e.g. 'npm run report'; omit to keep the existing override, empty string to clear it"`
 }
 
 // autoDeployArgs is set_auto_deploy's input — Render's Auto-Deploy toggle.
 type autoDeployArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	Enabled   bool   `json:"enabled" jsonschema:"true = a git push to the tracked branch redeploys; false = only explicit deploys"`
 }
 
 // notifyOnFailArgs is set_notify_on_fail's input — Render's per-service
 // deploy-failure notification override (docs/render-artifacts/notify-on-fail.md).
 type notifyOnFailArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	Value     string `json:"value" jsonschema:"default (defer to each member's own preference), notify (always email every member on a failed deploy), or ignore (never email anyone for this service)"`
 }
 
 type notificationsToSendArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	Value     string `json:"value" jsonschema:"default (inherit failure-only workspace/member settings), failure, all, or none"`
 }
 
 // displayNameArgs is set_display_name's input. The service id remains the
 // immutable App name; displayName is only the mutable human-facing label.
 type displayNameArgs struct {
-	ServiceID   string `json:"serviceId" jsonschema:"the immutable service id (bex App name), as returned by list_services"`
+	ServiceID   string `json:"serviceId" jsonschema:"the immutable service id, as returned by list_services"`
 	DisplayName string `json:"displayName" jsonschema:"the human-facing service label; empty clears it and falls back to the immutable service name"`
 }
 
 // healthCheckPathArgs is set_health_check_path's input.
 type healthCheckPathArgs struct {
-	ServiceID       string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID       string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	HealthCheckPath string `json:"healthCheckPath" jsonschema:"HTTP path the platform GETs to gate pod readiness; must start with / or be empty to restore the platform default /"`
 }
 
@@ -188,26 +188,26 @@ type healthCheckPathArgs struct {
 // MCP currently has no setter for this REST/Blueprint field, so the tool is a
 // bex extension following the existing scalar setter grammar.
 type maxShutdownDelayArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	Seconds   int32  `json:"seconds" jsonschema:"maximum seconds to wait after SIGTERM before SIGKILL; must be 1-300"`
 }
 
 // preDeployCommandArgs is set_pre_deploy_command's input.
 type preDeployCommandArgs struct {
-	ServiceID        string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID        string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	PreDeployCommand string `json:"preDeployCommand" jsonschema:"a command run to completion against the new image before it serves traffic (Render's Pre-Deploy Command, e.g. a DB migration); empty clears the step"`
 }
 
 // subdomainPolicyArgs is set_subdomain_policy's input — Render's
 // renderSubdomainPolicy field (enabled|disabled).
 type subdomainPolicyArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	Policy    string `json:"policy" jsonschema:"enabled (platform subdomain <slug>.onbex.co is active) or disabled (platform host dropped; only custom domains serve the App)"`
 }
 
 // serviceIPAllowListArgs is set_service_ip_allow_list's input.
 type serviceIPAllowListArgs struct {
-	ServiceID string   `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID string   `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	CIDRs     []string `json:"cidrs,omitempty" jsonschema:"CIDR blocks to allow (e.g. '1.2.3.4/32'); empty or null clears the allowlist (open to all source IPs)"`
 }
 
@@ -435,7 +435,7 @@ type syncBlueprintArgs struct {
 // /v1/services/{id}/autoscaling request body (minInstances / maxInstances /
 // targetCPUPercent / targetMemoryPercent).
 type autoscalingArgs struct {
-	ServiceID           string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID           string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	MinInstances        int32  `json:"minInstances" jsonschema:"minimum running instances (≥ 0; default 1)"`
 	MaxInstances        int32  `json:"maxInstances" jsonschema:"maximum running instances (≥ 1; must be ≥ minInstances)"`
 	TargetCPUPercent    *int32 `json:"targetCPUPercent,omitempty" jsonschema:"target average CPU utilization % of tier limit (1-100); required if targetMemoryPercent is absent"`
@@ -444,7 +444,7 @@ type autoscalingArgs struct {
 
 // domainArgs is the shared custom-domain argument (serviceId + domain name).
 type domainArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	Name      string `json:"name" jsonschema:"the custom domain FQDN, e.g. www.example.com"`
 }
 
@@ -506,17 +506,17 @@ func (a createStaticSiteArgs) toCreateRequest() CreateRequest {
 // routesArgs / headersArgs / publishPathArgs are the static-site edge-rule tool
 // inputs; the set tools replace the whole list (Render's bulk update).
 type routesArgs struct {
-	ServiceID string           `json:"serviceId" jsonschema:"the static site id (bex App name), as returned by list_services"`
+	ServiceID string           `json:"serviceId" jsonschema:"the static site id, as returned by list_services"`
 	Routes    []staticRouteArg `json:"routes" jsonschema:"the full ordered list of redirect/rewrite rules to set (replaces the existing routes)"`
 }
 
 type headersArgs struct {
-	ServiceID string            `json:"serviceId" jsonschema:"the static site id (bex App name), as returned by list_services"`
+	ServiceID string            `json:"serviceId" jsonschema:"the static site id, as returned by list_services"`
 	Headers   []staticHeaderArg `json:"headers" jsonschema:"the full list of custom response-header rules to set (replaces the existing headers)"`
 }
 
 type publishPathArgs struct {
-	ServiceID   string `json:"serviceId" jsonschema:"the static site id (bex App name), as returned by list_services"`
+	ServiceID   string `json:"serviceId" jsonschema:"the static site id, as returned by list_services"`
 	PublishPath string `json:"publishPath" jsonschema:"the built output directory to serve as the site root, e.g. dist"`
 }
 
@@ -567,7 +567,7 @@ type deletedResult struct {
 // ignored (harmless) when the service isn't a member of a protected
 // Environment.
 type serviceConfirmArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	Confirm   string `json:"confirm,omitempty" jsonschema:"required only if this service belongs to a protectedStatus=protected Environment: the exact phrase from the error message of a first, unconfirmed call"`
 }
 
