@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/graphql-go/graphql"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -168,6 +169,43 @@ func TestQueryDatabaseLogsTextFilter(t *testing.T) {
 	}
 	if len(entries) != 1 || !strings.Contains(entries[0].Message, "checkpoint") {
 		t.Errorf("text filter = %+v, want only the checkpoint line", entries)
+	}
+}
+
+func TestGQLDatabaseLogEntryExposesInstanceAndType(t *testing.T) {
+	// Regression for w2/m50: databaseLogGQLType previously omitted "instance"
+	// and "type" even though the service layer populated Labels with both. This
+	// test drives the real GraphQL schema to confirm the fields are present and
+	// correctly resolved.
+	svc, cl := newService()
+	seedDatabase(t, cl, "my-pg")
+	seedPods(t, svc, "my-pg", "my-pg-1")
+	svc.PodLogs = staticPodLogs(map[string]string{
+		"my-pg-1": "2026-07-16T12:00:00.000000000Z LOG: checkpoint complete\n",
+	})
+	schema, err := pgGQLSchema(svc)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "any", Method: "session"})
+	res := graphql.Do(graphql.Params{
+		Schema:        schema,
+		RequestString: `{ databaseLogs(id:"my-pg") { timestamp message instance type } }`,
+		Context:       ctx,
+	})
+	if len(res.Errors) > 0 {
+		t.Fatalf("gql databaseLogs: %v", res.Errors)
+	}
+	rows, _ := res.Data.(map[string]any)["databaseLogs"].([]any)
+	if len(rows) != 1 {
+		t.Fatalf("got %d rows, want 1", len(rows))
+	}
+	row := rows[0].(map[string]any)
+	if row["instance"] != "my-pg-1" {
+		t.Errorf("instance = %v, want my-pg-1", row["instance"])
+	}
+	if row["type"] != "postgres" {
+		t.Errorf("type = %v, want postgres", row["type"])
 	}
 }
 

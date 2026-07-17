@@ -213,6 +213,8 @@ var databaseLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Fields: graphql.Fields{
 		"timestamp": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e DatabaseLogEntry) any { return e.Timestamp })},
 		"message":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e DatabaseLogEntry) any { return e.Message })},
+		"instance":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e DatabaseLogEntry) any { return e.Labels["instance"] })},
+		"type":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e DatabaseLogEntry) any { return e.Labels["type"] })},
 	},
 })
 
