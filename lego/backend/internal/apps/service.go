@@ -1227,6 +1227,11 @@ type CreateRequest struct {
 	// (applyCreateToSpec deliberately leaves it alone — it's a runtime state,
 	// not desired build config; see that function's doc comment).
 	MaintenanceMode *MaintenanceModeView
+	// Autoscaling is Render's scaling block at create time (w2/m49): only the
+	// Blueprint path sets this field (render.yaml `scaling:`); direct create
+	// callers leave it nil and configure autoscaling later via SetAutoscaling.
+	// Non-nil enables autoscaling immediately — same validation as SetAutoscaling.
+	Autoscaling *SetAutoscalingRequest
 	// DryRun, when true, resolves the spec and returns a preview without any
 	// Kubernetes or control-plane-store writes — zero side effects (w2/m29).
 	// The response shape is identical to a live create; the caller knows it is a
@@ -1921,6 +1926,13 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if len(req.Hosts) > 0 {
 		spec.Host = req.Hosts[0]
 		spec.Hosts = append([]string(nil), req.Hosts[1:]...)
+	}
+	if req.Autoscaling != nil {
+		as, err := autoscalingSpec(*req.Autoscaling)
+		if err != nil {
+			return appv1alpha1.AppSpec{}, err
+		}
+		spec.Autoscaling = &as
 	}
 	return spec, nil
 }
@@ -3121,6 +3133,38 @@ type SetAutoscalingRequest struct {
 	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty"`
 }
 
+// autoscalingSpec validates a SetAutoscalingRequest and returns the
+// corresponding AutoscalingSpec (Enabled:true). Shared by SetAutoscaling and
+// specFromCreate (the Blueprint scaling: block path, w2/m49) so validation
+// is identical regardless of entry point.
+func autoscalingSpec(req SetAutoscalingRequest) (appv1alpha1.AutoscalingSpec, error) {
+	if req.MinInstances < 0 {
+		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: minInstances must be ≥ 0", core.ErrBadRequest)
+	}
+	if req.MaxInstances < 1 {
+		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: maxInstances must be ≥ 1", core.ErrBadRequest)
+	}
+	if req.MinInstances > req.MaxInstances {
+		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: minInstances must be ≤ maxInstances", core.ErrBadRequest)
+	}
+	if req.TargetCPUPercent != nil && (*req.TargetCPUPercent < 1 || *req.TargetCPUPercent > 100) {
+		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: targetCPUPercent must be 1–100", core.ErrBadRequest)
+	}
+	if req.TargetMemoryPercent != nil && (*req.TargetMemoryPercent < 1 || *req.TargetMemoryPercent > 100) {
+		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: targetMemoryPercent must be 1–100", core.ErrBadRequest)
+	}
+	if req.TargetCPUPercent == nil && req.TargetMemoryPercent == nil {
+		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: at least one of targetCPUPercent or targetMemoryPercent is required", core.ErrBadRequest)
+	}
+	return appv1alpha1.AutoscalingSpec{
+		Enabled:             true,
+		MinReplicas:         req.MinInstances,
+		MaxReplicas:         req.MaxInstances,
+		TargetCPUPercent:    req.TargetCPUPercent,
+		TargetMemoryPercent: req.TargetMemoryPercent,
+	}, nil
+}
+
 // autoscalingView projects spec.autoscaling onto the neutral view. Nil
 // spec.autoscaling => disabled with zero bounds (the disabled state).
 func autoscalingView(a *appv1alpha1.App) AutoscalingView {
@@ -3156,23 +3200,9 @@ func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutosc
 	if err != nil {
 		return AutoscalingView{}, err
 	}
-	if req.MinInstances < 0 {
-		return AutoscalingView{}, fmt.Errorf("%w: minInstances must be ≥ 0", core.ErrBadRequest)
-	}
-	if req.MaxInstances < 1 {
-		return AutoscalingView{}, fmt.Errorf("%w: maxInstances must be ≥ 1", core.ErrBadRequest)
-	}
-	if req.MinInstances > req.MaxInstances {
-		return AutoscalingView{}, fmt.Errorf("%w: minInstances must be ≤ maxInstances", core.ErrBadRequest)
-	}
-	if req.TargetCPUPercent != nil && (*req.TargetCPUPercent < 1 || *req.TargetCPUPercent > 100) {
-		return AutoscalingView{}, fmt.Errorf("%w: targetCPUPercent must be 1–100", core.ErrBadRequest)
-	}
-	if req.TargetMemoryPercent != nil && (*req.TargetMemoryPercent < 1 || *req.TargetMemoryPercent > 100) {
-		return AutoscalingView{}, fmt.Errorf("%w: targetMemoryPercent must be 1–100", core.ErrBadRequest)
-	}
-	if req.TargetCPUPercent == nil && req.TargetMemoryPercent == nil {
-		return AutoscalingView{}, fmt.Errorf("%w: at least one of targetCPUPercent or targetMemoryPercent is required", core.ErrBadRequest)
+	as, err := autoscalingSpec(req)
+	if err != nil {
+		return AutoscalingView{}, err
 	}
 	var fromMin, fromMax *int32
 	if a.Spec.Autoscaling != nil && a.Spec.Autoscaling.Enabled {
@@ -3180,13 +3210,7 @@ func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutosc
 		fromMax = &a.Spec.Autoscaling.MaxReplicas
 	}
 	_, err = s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
-		a.Spec.Autoscaling = &appv1alpha1.AutoscalingSpec{
-			Enabled:             true,
-			MinReplicas:         req.MinInstances,
-			MaxReplicas:         req.MaxInstances,
-			TargetCPUPercent:    req.TargetCPUPercent,
-			TargetMemoryPercent: req.TargetMemoryPercent,
-		}
+		a.Spec.Autoscaling = &as
 	})
 	if err != nil {
 		return AutoscalingView{}, err
