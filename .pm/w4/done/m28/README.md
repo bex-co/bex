@@ -1,6 +1,6 @@
 # w4 · m28 — Environment inbound-IP rules: real enforcement semantics
 
-**Worker:** worker4 **Goal:** Environment-level IP rules mean what Render's docs say: they apply to all eligible public services (web/static), compose with workspace/service-level rules (a source must pass every layer), and an empty list means deny-all — with existing bex environments migrated safely (seeded open, no lockout). **Status:** in progress — t001–t007 done 2026-07-15 (design + full enforcement implementation + tests + docs shipped; five consistency-review gaps fixed pre-ship, cross-feature edges filed as `w4/025.md`); t008 closeout pending the DoD's LIVE verification — the local CAPD cluster is unrecoverable this session (stale docker networking), so the live check runs against production once CI deploys this commit (the m27 pattern): a disposable environment + web service, out-of-range source blocked at the public URL, in-range passes
+**Worker:** worker4 **Goal:** Environment-level IP rules mean what Render's docs say: they apply to all eligible public services (web/static), compose with workspace/service-level rules (a source must pass every layer), and an empty list means deny-all — with existing bex environments migrated safely (seeded open, no lockout). **Status:** done — t001–t008 done 2026-07-17
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | Render parity — **DONE** | 30m | t003, t004       |
 | t006 | Simplify — **DONE** | 20m | t005             |
 | t007 | Test coverage — **DONE** | 45m | t005             |
-| t008 | Closeout                                                                                               | 15m | t007             |
+| t008 | Closeout — **DONE**                                                                                    | 15m | t007             |
 
 ## Definition of done
 
