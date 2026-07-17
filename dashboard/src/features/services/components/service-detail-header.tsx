@@ -142,6 +142,7 @@ export function ServiceDetailHeader({
             pending={pending}
             onRun={onRun}
             hideRestart
+            hideSuspend
           />
         </div>
       </div>

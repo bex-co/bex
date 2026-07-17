@@ -2072,6 +2072,24 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't load cron runs.",
     description: "Cron run history read error",
   },
+  "services.suspendCardTitle": {
+    message: "Suspend Service",
+    description: "Settings tab suspend section title",
+  },
+  "services.suspendCardDescription": {
+    message:
+      "Suspending your service will shut it down and stop it from serving traffic. Its URL and certificates are kept, and you can resume it at any time.",
+    description: "Settings tab suspend section description",
+  },
+  "services.resumeCardTitle": {
+    message: "Resume Service",
+    description: "Settings tab resume section title (shown when service is suspended)",
+  },
+  "services.resumeCardDescription": {
+    message:
+      "Resuming your service will bring it back online and start serving traffic again.",
+    description: "Settings tab resume section description",
+  },
   "services.dangerZoneTitle": {
     message: "Danger Zone",
     description: "Settings tab delete section title (destructive)",

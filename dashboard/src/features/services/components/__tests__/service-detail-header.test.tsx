@@ -305,31 +305,29 @@ describe("ServiceDetailHeader", () => {
     // so every restart opens a deploy-history row (not a separate onRun path).
     expect(triggerDeploy).toHaveBeenCalledWith("app");
 
-    // the "•••" menu keeps Suspend but no longer offers Restart — it's owned
-    // by Manual Deploy on this page (Render's own grouping)
+    // The "•••" menu in the header no longer offers Restart or Suspend —
+    // Restart is owned by Manual Deploy (Render's own grouping) and
+    // Suspend/Resume moved to the Settings page.
     await user.click(screen.getByRole("button", { name: "Open actions menu" }));
     expect(
-      screen.getByRole("menuitem", { name: "Suspend" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("menuitem", { name: "Suspend" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("menuitem", { name: "Restart" }),
     ).not.toBeInTheDocument();
   });
 
-  it("fires a lifecycle action through the reused row-actions control", async () => {
+  it("the header's •••  menu has no lifecycle items — suspend/resume moved to Settings", async () => {
     const onRun = vi.fn(async () => ({ status: "success" as const }));
-    const suspended = svc({ suspended: true, phase: "Hibernated", url: null });
     const user = userEvent.setup();
 
-    renderHeader(suspended, { onRun });
-
-    // a suspended service exposes only Resume, which runs without a confirm
+    // Live service: no Suspend in header dropdown (moved to Settings).
+    renderHeader(svc(), { onRun });
     await user.click(
       await screen.findByRole("button", { name: "Open actions menu" }),
     );
-    await user.click(screen.getByRole("menuitem", { name: "Resume" }));
-
-    expect(onRun).toHaveBeenCalledWith("resume", suspended);
+    expect(screen.queryByRole("menuitem", { name: "Suspend" })).not.toBeInTheDocument();
+    expect(onRun).not.toHaveBeenCalled();
   });
 
   it("disables the actions control while an action is in flight (poll-to-converge)", async () => {

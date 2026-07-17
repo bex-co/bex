@@ -16,6 +16,8 @@ import { CustomDomainsSection } from "@/features/services/components/custom-doma
 import { PlatformSubdomainSection } from "@/features/services/components/platform-subdomain-section";
 import { CronDeploySection } from "@/features/services/components/cron-deploy-section";
 import { DeleteServiceCard } from "@/features/services/components/delete-service-card";
+import { SuspendServiceCard } from "@/features/services/components/suspend-service-card";
+import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
 import { StaticSiteSection } from "@/features/services/components/static-site-section";
 import { ScalingRow } from "@/features/services/components/scaling-row";
 import { HealthCheckPathRow } from "@/features/services/components/health-check-path-row";
@@ -50,6 +52,7 @@ export const Route = createFileRoute("/services/$serviceId/settings")({
 export function ServiceSettingsPage() {
   const { serviceId } = Route.useParams();
   const { service, loading, refetch } = useServer(serviceId);
+  const { pending, run } = useServiceLifecycle({ refetch });
   const { t } = useTranslations();
   const cron = service ? isCron(service) : false;
   const staticSite = service ? isStaticSite(service) : false;
@@ -249,6 +252,16 @@ export function ServiceSettingsPage() {
       </Card>
 
       <DeployHookSection serviceId={serviceId} />
+
+      {/* Suspend / Resume: mirrors Render's bottom-of-settings placement.
+          Only once the service has loaded so we know its suspended state. */}
+      {service && (
+        <SuspendServiceCard
+          service={service}
+          pending={pending?.id === service.id ? pending.action : null}
+          onRun={run}
+        />
+      )}
 
       {/* Danger zone: type-to-confirm delete (every service type). Only once the
           service has loaded — the confirm matches against its immutable id. */}
