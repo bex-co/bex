@@ -110,6 +110,11 @@ type KeyValueView struct {
 	// unassigned. Set via SetEnvironmentID; the environments feature is the
 	// only writer.
 	EnvironmentID string `json:"environmentId,omitempty"`
+
+	// Region / DashboardURL mirror the Render fields on services; populated by
+	// the Service.view wrapper (not kvView) so they flow through GraphQL/MCP.
+	Region       string `json:"region,omitempty"`
+	DashboardURL string `json:"dashboardUrl,omitempty"`
 }
 
 // KeyValueConnectionInfo mirrors Render's keyValueConnectionInfo schema: the
@@ -221,6 +226,15 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 	}
 }
 
+// view wraps kvView and stamps the platform region and dashboard URL, matching
+// the apps.Service.view pattern so GraphQL and MCP return the enriched shape.
+func (s *Service) view(kv *appv1alpha1.KeyValue) KeyValueView {
+	v := kvView(kv)
+	v.Region = s.Metadata.PlatformRegion()
+	v.DashboardURL = s.Metadata.DashboardURL(resourcemeta.KeyValueDashboardRoute, v.ID)
+	return v
+}
+
 // fetchKeyValue resolves a KeyValue by name through the shared core.Base seam
 // (w6/m17's core.Base.AuthorizeKeyValue: authorize + fetch in one call, against
 // the KeyValue's OWN workspace — the same rule apps.AuthorizeApp applies) — kept
@@ -276,7 +290,7 @@ func (s *Service) ListKeyValues(ctx context.Context, ownerID string) ([]KeyValue
 	}
 	out := make([]KeyValueView, 0, len(list.Items))
 	for i := range list.Items {
-		out = append(out, kvView(&list.Items[i]))
+		out = append(out, s.view(&list.Items[i]))
 	}
 	return out, nil
 }
@@ -309,7 +323,7 @@ func (s *Service) GetKeyValue(ctx context.Context, name string) (KeyValueView, e
 	if err != nil {
 		return KeyValueView{}, err
 	}
-	return kvView(kv), nil
+	return s.view(kv), nil
 }
 
 // CreateKeyValue provisions a managed key-value store (a KeyValue CR the operator
@@ -394,7 +408,7 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	}
 	// Dry-run: return the resolved spec preview without any k8s write (w2/m29).
 	if req.DryRun {
-		return kvView(kv), nil
+		return s.view(kv), nil
 	}
 	resourcemeta.Touch(kv, s.Now())
 	if err := s.Client.Create(ctx, kv); err != nil {
@@ -403,7 +417,7 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 		}
 		return KeyValueView{}, err
 	}
-	return kvView(kv), nil
+	return s.view(kv), nil
 }
 
 // DeleteKeyValue removes a managed key-value store (cascades the StatefulSet,
@@ -442,7 +456,7 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 			return KeyValueView{}, err
 		}
 	}
-	return kvView(kv), nil
+	return s.view(kv), nil
 }
 
 // SetProjectID assigns (or, with an empty projectID, clears) this KeyValue's
@@ -534,7 +548,7 @@ func (s *Service) SetIPAllowList(ctx context.Context, name string, entries []cor
 	if err := s.Client.Update(ctx, kv); err != nil {
 		return KeyValueView{}, err
 	}
-	return kvView(kv), nil
+	return s.view(kv), nil
 }
 
 // SetPlan changes the managed key-value store's instance type (spec.plan).
@@ -577,7 +591,7 @@ func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (KeyVal
 	}
 	preview := kv.DeepCopy()
 	preview.Spec.Plan = plan
-	return kvView(preview), nil
+	return s.view(preview), nil
 }
 
 // patchKeyValueObj applies mutate to an already-fetched KeyValue and merge-
@@ -591,7 +605,7 @@ func (s *Service) patchKeyValueObj(ctx context.Context, kv *appv1alpha1.KeyValue
 	if err := s.Client.Patch(ctx, kv, patch); err != nil {
 		return KeyValueView{}, err
 	}
-	return kvView(kv), nil
+	return s.view(kv), nil
 }
 
 // KeyValuePatch is the mutable-field set for PATCH /v1/key-value/{id} — Render's
@@ -681,7 +695,7 @@ func (s *Service) PreviewUpdateKeyValue(ctx context.Context, name string, patch 
 	}
 	preview := kv.DeepCopy()
 	patch.apply(preview)
-	return kvView(preview), nil
+	return s.view(preview), nil
 }
 
 // KeyValueConnectionInfo assembles the internal + external connection strings
