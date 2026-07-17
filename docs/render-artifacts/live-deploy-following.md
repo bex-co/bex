@@ -56,3 +56,32 @@ A real production deploy (`dep-d9d8r3h07a5s73dj32ag`) showed only old-revision a
 An authenticated dashboard.render.com walk (`/web/srv-…/deploys/dep-…`) confirmed the deploy page is Render's general log explorer scoped to the deploy's absolute window (`?r=start~end`) with an **All logs** default filter offering **All logs / Application logs / Build logs** — bex's interleaving is parity-correct. Render additionally synthesizes platform progress lines (`==> Cloning from…`, `==> Checking out commit…`, `==> Running build command…`), so its feed is never silent during scheduling; bex emits no platform lines (open parity gap).
 
 Fixes shipped with this recheck: `followBuildLogs` now waits for a Pending build pod to start instead of terminating (completed-only or no pods remains the immediate named terminal outcome), the dashboard build tail reopens a terminated subscription every 5s while the deploy is still `build_in_progress`, and the deploy page's windowed queries keep polling 15s past `finishedAt` to absorb store ingest lag.
+
+## Platform progress-line contract (w1/m48/t001)
+
+Render's platform narrates a deploy inside the log feed itself. From [Your First Render Deploy](https://render.com/docs/your-first-deploy) and public build-log excerpts, the canonical lines are `==> Cloning from https://github.com/…`, `==> Checking out commit <sha> in branch <branch>`, `==> Running build command '<cmd>'…`, `==> Build successful 🎉`, `==> Deploying…`, and `==> Your service is live 🎉`. Render's docs do not publish which API log `type` carries them or their label/id shape (the reference workspace's retained logs had expired, so this could not be captured live — recorded uncertainty; bex needs only a compatible _reading experience_, not byte equality).
+
+bex synthesizes from what its control plane actually observes — the deploy row's three timestamps plus terminal status — never inventing clone/checkout moments it cannot see (those arrive as real BuildKit stdout once the pod runs):
+
+| bex phase (deploys row) | timestamp | line (repo-backed) | line (image-backed) |
+| --- | --- | --- | --- |
+| row created | `created_at` | `==> Build queued` | `==> Deploy queued` |
+| `started_at` set | `started_at` | `==> Building from <repo>@<commit\|branch>` | `==> Deploying image <image>` |
+| terminal `live` / `deactivated` | `finished_at` | `==> Your service is live 🎉` | same |
+| terminal `build_failed` | `finished_at` | `==> Build failed` | same |
+| terminal `pre_deploy_failed` | `finished_at` | `==> Pre-deploy failed` | same |
+| terminal `update_failed` | `finished_at` | `==> Deploy failed` | same |
+| terminal `canceled` | `finished_at` | `==> Deploy canceled` | same |
+
+Labels: `type=build`, `instance=<dep-… id>`, `container=platform`. Ids come from the existing `logID` derivation (instance + timestamp + message hash, `internal/logs/render.go`), so identical lines are deterministic across reads and dedupe against the SSE tail for free. Synthesis applies only when a query explicitly asks for `type=build` (matching which streams the store selector includes), is additive (a missing Loki still reports `buildStoreUnavailable`; platform lines never masquerade as a successful empty build history), and `deactivated` deploys keep their `live` closing line — deactivation is a later replacement event outside the deploy's own window.
+
+## bex live verification (2026-07-17, w1/m48)
+
+Verified on the local CAPD cluster through w1's isolated `dev-1` stack (fresh identity, fresh workspace, repo-backed service `m48-narrate` → `https://github.com/bex-co/hello-go.git`):
+
+- an SSE `type=build` subscription opened seconds after create streamed `==> Build queued` immediately (no build pod existed yet) and `==> Building from https://github.com/bex-co/hello-go.git@main` live as `started_at` landed — the wait-loop transition emission;
+- a later subscription caught up on both lines with byte-identical deterministic ids (`dep-…-<timestamp>-<hash>`);
+- the dashboard deploy page rendered both platform lines mid-`Building` with the storeless `buildStoreUnavailable` banner still shown (synthesis does not mask it), the w1/029 **Log type** selector present, and its **Build logs** choice retaining the narration;
+- the **unmodified official Render CLI** (`render logs --resources srv-… --type build --tail`) printed the same two lines with the same ids through a bex-minted API key.
+
+dev-1 runs storeless, so the Loki-backed history leg (`GET /v1/logs?type=build` merging narration with real BuildKit stdout) is pinned by unit tests only; the prod check after the next bex-api deploy is `w1/032`. The temporary service, user, and API key were removed after verification.

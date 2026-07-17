@@ -168,6 +168,11 @@ type Service struct {
 	// for a Pending build pod to start (scheduling + image pull take minutes on
 	// a cold node). 0 = the 2s default; tests shrink it.
 	BuildPodWaitInterval time.Duration
+	// DeployProgress, when wired (the control-plane store is configured), backs
+	// platform progress-line synthesis (w1/m48) — Render-style `==>` narration
+	// derived from deploy rows, merged into explicit type=build reads and the
+	// live build tail. nil => no synthesis (byte-identical prior behavior).
+	DeployProgress DeployProgressSource
 
 	sseConns atomic.Int64
 }
@@ -461,7 +466,11 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 		// The store applies every filter (labels + line) server-side and returns
 		// oldest-first, capped at q.Limit.
 		entries, err := s.History(ctx, s.Namespace, q)
-		return setLogResource(entries, resource), err
+		if err != nil {
+			return nil, err
+		}
+		entries = s.synthesizeProgress(ctx, q, resource, app.Spec.Repo, app.Spec.Branch, entries)
+		return setLogResource(entries, resource), nil
 	}
 	if q.needsStore() {
 		return nil, core.ErrLogStoreUnavailable
@@ -731,7 +740,7 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 		return err
 	}
 	if len(q.Types) == 1 && q.Types[0] == LogTypeBuild {
-		return s.followBuildLogs(ctx, q, resource, emit)
+		return s.followBuildLogs(ctx, q, resource, app.Spec.Repo, app.Spec.Branch, emit)
 	}
 	if !q.wants(LogTypeApp) {
 		<-ctx.Done() // nothing to stream; hold until the client disconnects
@@ -780,8 +789,19 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 // signed BuildKit (buildkit init then sign), and kpack's generated step names.
 // Completed pods are deliberately excluded: their history comes from Loki and
 // following them would replay an older deploy under the current subscription.
-func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource string, emit func(LogEntry) error) error {
-	pod, containers, err := s.awaitBuildPod(ctx, q)
+//
+// Platform progress lines (w1/m48): before and while waiting for the pod, the
+// tail speaks the deploy's own narration — queued/building lines at subscribe,
+// new phases as the wait loop observes them — so a subscriber never stares at
+// a silent stream while the build image pulls. After the pod's stream ends,
+// one final check emits the closing line if the deploy row already turned
+// terminal; otherwise it rides the history read's post-deploy grace poll.
+func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource, repo, branch string, emit func(LogEntry) error) error {
+	prog := s.newProgressFollower(q, resource, repo, branch)
+	if err := prog.emitReached(ctx, emit); err != nil {
+		return err
+	}
+	pod, containers, err := s.awaitBuildPod(ctx, q, prog, emit)
 	if err != nil {
 		return err
 	}
@@ -813,7 +833,9 @@ func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource stri
 				if !opened.Load() {
 					return ErrBuildNotRunning
 				}
-				return nil
+				// The build's stdout is done — if the deploy row has already
+				// closed, speak the terminal line before ending the stream.
+				return prog.emitReached(ctx, emit)
 			}
 			if !q.keep(e) {
 				continue
@@ -834,8 +856,10 @@ func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource stri
 // the terminal "no running build" event and give up right before the build
 // speaks. ErrBuildNotRunning is returned only when nothing is pending or
 // running — the honestly-terminal case (no build, or it already completed and
-// its history belongs to Loki).
-func (s *Service) awaitBuildPod(ctx context.Context, q LogQuery) (corev1.Pod, []string, error) {
+// its history belongs to Loki). Each wait tick also re-reads the deploy row
+// through prog (nil-safe) so phase transitions narrate live while the pod is
+// still silent.
+func (s *Service) awaitBuildPod(ctx context.Context, q LogQuery, prog *progressFollower, emit func(LogEntry) error) (corev1.Pod, []string, error) {
 	wait := s.BuildPodWaitInterval
 	if wait <= 0 {
 		wait = 2 * time.Second
@@ -875,6 +899,9 @@ func (s *Service) awaitBuildPod(ctx context.Context, q LogQuery) (corev1.Pod, []
 		}
 		if !waiting {
 			return corev1.Pod{}, nil, ErrBuildNotRunning
+		}
+		if err := prog.emitReached(ctx, emit); err != nil {
+			return corev1.Pod{}, nil, err
 		}
 		select {
 		case <-ctx.Done():

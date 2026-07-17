@@ -17,6 +17,7 @@ resources:
   - prometheus.yaml              # request-metrics backend (scrapes Traefik) for bex-api metrics
   - loki.yaml                    # durable log-history backend (single-binary, filesystem PVC) for bex-api logs
   - log-shipper.yaml             # Alloy DaemonSet: tails App pod logs -> Loki (after loki)
+  - build-image-prewarm.yaml     # DaemonSet: keeps the BuildKit image warm on every worker (w1/030)
   - cert-manager.yaml            # automated Let's Encrypt TLS
   - cert-manager-issuers.yaml    # letsencrypt-staging + -prod ClusterIssuers (after cert-manager)
   - cnpg-operator.yaml           # CloudNativePG operator (Postgres)

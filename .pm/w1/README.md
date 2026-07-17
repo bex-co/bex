@@ -14,7 +14,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m48** — Deploy progress lines: a never-silent deploy log feed (8 tasks) ← from the 2026-07-17 deploy-page build-log incident (dead-tail/ingest-race half shipped as `52882f22`; evidence + Render recheck in `docs/render-artifacts/live-deploy-following.md` § 2026-07-17) — synthesize Render-style `==>` platform lines from the deploy lifecycle across REST/GraphQL/MCP/SSE so a cold node's minutes-long pre-build window is narrated, never silent
+- [x] **m48** — Deploy progress lines: a never-silent deploy log feed (8 tasks) ← from the 2026-07-17 deploy-page build-log incident (dead-tail/ingest-race half shipped as `52882f22`; evidence + Render recheck in `docs/render-artifacts/live-deploy-following.md` § 2026-07-17) — **Done 2026-07-17**: `internal/logs/progress.go` synthesizes the `==>` narration from deploy rows into explicit `type=build` reads (one core verb ⇒ REST/GraphQL/MCP identical) + the SSE tail (subscribe catch-up, wait-loop transitions, post-stream terminal line); live-proven on dev-1 incl. the deploy page mid-build and the unmodified official Render CLI; Loki-backed prod check filed as `032`; moved to `done/m48/`
 - [x] **m47** — Events/Deploys consolidation for Render parity (9 tasks) ← user request 2026-07-16 (merge dashboard Events + Deploys pages into unified timeline; verify MCP has events tool; achieve REST/GraphQL/MCP surface consistency) — **Done 2026-07-16**: backend GraphQL enrichment (image, commit, timing), dashboard Events consolidation with deploy details display, Deploys tab removed, all surfaces consistent, tests green; moved to `done/m47/`
 - [x] **m1** — Reliability: fix config drift + back up etcd (4 tasks) ← from `009`, `007` — done 2026-07-05, moved to `done/m1/`
 - [x] **m2** — Control plane: Postgres source of truth in `lego/backend` (7 tasks; DONE 2026-07-09 — committed `aebbd43`, prod `BEX_CP_DB_URI` on since m9, live acceptance via `scripts/auth-tenant-e2e.sh` in m9/t004) ← from `005`, moved to `done/m2/`
@@ -82,9 +82,10 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `029` — deploy-page log type filter (All / Application / Build selector, Render parity; sub-hour, client-side over the merged lines) ← 2026-07-17 incident's Render walk
-- `030` — shrink the cold-start build silence: pre-warm the BuildKit image on build nodes (bake into the m36 `bex-worker` snapshot or a gitops pre-pull DaemonSet; verify which pool runs build Jobs first) ← 2026-07-17 incident
-- `031` — prod ops follow-ups, user's call: remint `agentmarketcap-1`'s clone token (no access to its private repo ⇒ every build fails at clone) + configure the GitHub App in prod (`BEX_GITHUB_APP_*` unset ⇒ git-connect verbs 503) ← 2026-07-17 incident
+- `031` — prod ops follow-ups, user's call: remint `agentmarketcap-1`'s clone token (no access to its private repo ⇒ every build fails at clone) + configure the GitHub App in prod (`BEX_GITHUB_APP_*` unset ⇒ git-connect verbs 503) ← 2026-07-17 incident — **blocked on operator credentials** (needs a GitHub PAT/App owned by the user; not executable by an agent)
+- `032` — verify m48's deploy narration on prod's Loki-backed history reads after the next bex-api deploy (dev-1 is storeless; the history leg is unit-pinned only) ← m48 closeout 2026-07-17
+
+> **Done 2026-07-17:** `029` (deploy-page All/Application/Build type filter) and `030` (BuildKit pre-warm DaemonSet, `deploy/gitops/base/build-image-prewarm.yaml`) — both implemented in the m48 working set; notes moved to `done/` with resolutions.
 
 _(`024.md` absorbed and closed by `w10/m4` 2026-07-15 — the prod SA patch was verified gone with the declared operator path load-bearing. `025.md` — Traefik LB `ignore_changes = [labels]` — absorbed into **w10/m6** (t001) 2026-07-15; note moved to `done/`.)_
 

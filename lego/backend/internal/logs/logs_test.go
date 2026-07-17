@@ -663,6 +663,201 @@ func TestFollowBuildLogsNoActivePodIsNamedTerminalOutcome(t *testing.T) {
 	}
 }
 
+// --- Platform progress lines (w1/m48) ---
+
+// inFlightDeploy is a repo-backed deploy row mid-build: queued + building
+// lines earned, no terminal line yet.
+func inFlightDeploy() DeployProgress {
+	return DeployProgress{
+		ID:        "dep-progress-1",
+		Status:    "build_in_progress",
+		Commit:    "abc1234def5678",
+		CreatedAt: time.Date(2026, 7, 17, 20, 16, 14, 0, time.UTC),
+		StartedAt: time.Date(2026, 7, 17, 20, 16, 16, 0, time.UTC),
+	}
+}
+
+func TestQueryLogsSynthesizesProgressLinesForExplicitBuildType(t *testing.T) {
+	app := sampleApp("web")
+	app.Spec.Repo = "https://github.com/x/y.git"
+	svc := newService(nil, app)
+	svc.History = func(_ context.Context, _ string, q LogQuery) ([]LogEntry, error) {
+		if !slices.Contains(q.Types, LogTypeBuild) {
+			return []LogEntry{{Timestamp: "2026-07-17T20:17:00Z", Message: "app noise", Labels: map[string]string{LabelType: LogTypeApp}}}, nil
+		}
+		return []LogEntry{{Timestamp: "2026-07-17T20:18:20Z", Message: "#1 real build line", Labels: map[string]string{LabelType: LogTypeBuild, LabelInstance: "bld-pod"}}}, nil
+	}
+	failed := inFlightDeploy()
+	failed.Status = "build_failed"
+	failed.FinishedAt = time.Date(2026, 7, 17, 20, 18, 46, 0, time.UTC)
+	svc.DeployProgress = func(_ context.Context, resource string, _ time.Time) ([]DeployProgress, error) {
+		if resource != "web" {
+			t.Errorf("progress source keyed by %q, want the public resource id", resource)
+		}
+		return []DeployProgress{failed}, nil
+	}
+
+	q := LogQuery{App: "web", Types: []string{LogTypeBuild},
+		Since: time.Date(2026, 7, 17, 20, 16, 14, 0, time.UTC),
+		End:   time.Date(2026, 7, 17, 20, 18, 46, 0, time.UTC)}
+	entries, err := svc.QueryLogs(context.Background(), q)
+	if err != nil {
+		t.Fatalf("QueryLogs: %v", err)
+	}
+	want := []string{
+		"==> Build queued",
+		"==> Building from https://github.com/x/y.git@abc1234",
+		"#1 real build line",
+		"==> Build failed",
+	}
+	if len(entries) != len(want) {
+		t.Fatalf("entries = %+v, want %d lines", entries, len(want))
+	}
+	for i, w := range want {
+		if entries[i].Message != w {
+			t.Errorf("entry %d = %q, want %q (chronological interleave)", i, entries[i].Message, w)
+		}
+	}
+	for _, e := range entries {
+		if e.Message == "#1 real build line" {
+			continue
+		}
+		if e.Labels[LabelType] != LogTypeBuild || e.Labels[LabelInstance] != "dep-progress-1" || e.Labels["container"] != progressContainer {
+			t.Errorf("synthesized labels = %+v", e.Labels)
+		}
+	}
+
+	// Determinism: a second identical read yields identical entries and ids.
+	again, err := svc.QueryLogs(context.Background(), q)
+	if err != nil {
+		t.Fatalf("QueryLogs (second read): %v", err)
+	}
+	for i := range entries {
+		if logID(entries[i]) != logID(again[i]) {
+			t.Errorf("entry %d id drifted across reads: %q vs %q", i, logID(entries[i]), logID(again[i]))
+		}
+	}
+}
+
+// A query that does not explicitly ask for build logs gets no narration — the
+// same condition under which the store selector excludes build streams.
+func TestQueryLogsNoProgressLinesWithoutExplicitBuildType(t *testing.T) {
+	app := sampleApp("web")
+	app.Spec.Repo = "https://github.com/x/y.git"
+	svc := newService(nil, app)
+	svc.History = func(context.Context, string, LogQuery) ([]LogEntry, error) {
+		return []LogEntry{{Timestamp: "2026-07-17T20:17:00Z", Message: "app noise", Labels: map[string]string{LabelType: LogTypeApp}}}, nil
+	}
+	svc.DeployProgress = func(context.Context, string, time.Time) ([]DeployProgress, error) {
+		return []DeployProgress{inFlightDeploy()}, nil
+	}
+	entries, err := svc.QueryLogs(context.Background(), LogQuery{App: "web"})
+	if err != nil {
+		t.Fatalf("QueryLogs: %v", err)
+	}
+	for _, e := range entries {
+		if strings.HasPrefix(e.Message, "==>") {
+			t.Errorf("untyped query synthesized %q — narration must be explicit-build only", e.Message)
+		}
+	}
+}
+
+// Without a durable store, type=build history stays the named 503 — platform
+// lines never masquerade as a successful (empty) build history.
+func TestQueryLogsBuildTypeStillRefusedStorelessDespiteProgressSource(t *testing.T) {
+	svc := newService(nil, sampleApp("web"))
+	svc.DeployProgress = func(context.Context, string, time.Time) ([]DeployProgress, error) {
+		return []DeployProgress{inFlightDeploy()}, nil
+	}
+	_, err := svc.QueryLogs(context.Background(), LogQuery{App: "web", Types: []string{LogTypeBuild}})
+	if !errors.Is(err, core.ErrLogStoreUnavailable) {
+		t.Fatalf("storeless type=build => ErrLogStoreUnavailable, got %v", err)
+	}
+}
+
+// The build tail narrates immediately: queued/building lines arrive while the
+// pod is still Pending (image pull), before any real stdout exists — the
+// incident this milestone closes (a subscriber staring at silence for the
+// build's whole cold start).
+func TestFollowBuildLogsNarratesWhileAwaitingPendingPod(t *testing.T) {
+	pending := buildPodFor("web", "bld-web-gen-9-slow", "builds", "buildkit", time.Unix(9, 0))
+	pending.Status = corev1.PodStatus{Phase: corev1.PodPending}
+	app := sampleApp("web")
+	app.Spec.Repo = "https://github.com/x/y.git"
+	svc := newService(map[string][]string{
+		pending.Name: {"2026-07-17T20:18:20Z real build line"},
+	}, app, pending)
+	svc.BuildNamespace = "builds"
+	svc.BuildPodWaitInterval = 5 * time.Millisecond
+	svc.DeployProgress = func(context.Context, string, time.Time) ([]DeployProgress, error) {
+		return []DeployProgress{inFlightDeploy()}, nil
+	}
+
+	go func() {
+		time.Sleep(25 * time.Millisecond)
+		started := buildPodFor("web", pending.Name, "builds", "buildkit", time.Unix(9, 0))
+		started.ResourceVersion = pending.ResourceVersion
+		if err := svc.Client.Status().Update(context.Background(), started); err != nil {
+			t.Errorf("flip pod to Running: %v", err)
+		}
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var msgs []string
+	err := svc.FollowLogs(ctx, LogQuery{App: "web", Types: []string{LogTypeBuild}}, func(e LogEntry) error {
+		msgs = append(msgs, e.Message)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("FollowLogs: %v", err)
+	}
+	want := []string{"==> Build queued", "==> Building from https://github.com/x/y.git@abc1234", "real build line"}
+	if !slices.Equal(msgs, want) {
+		t.Fatalf("tail = %v, want narration before stdout, each line once: %v", msgs, want)
+	}
+}
+
+// Subscribing to an already-terminal deploy whose pod output is still
+// streamable catches up on every earned line exactly once, including the
+// closing one.
+func TestFollowBuildLogsEmitsTerminalLineOnce(t *testing.T) {
+	running := buildPodFor("web", "bld-web-gen-9-live", "builds", "buildkit", time.Unix(9, 0))
+	app := sampleApp("web")
+	app.Spec.Repo = "https://github.com/x/y.git"
+	svc := newService(map[string][]string{
+		running.Name: {"2026-07-17T20:18:20Z real build line"},
+	}, app, running)
+	svc.BuildNamespace = "builds"
+	failed := inFlightDeploy()
+	failed.Status = "build_failed"
+	failed.FinishedAt = time.Date(2026, 7, 17, 20, 18, 46, 0, time.UTC)
+	svc.DeployProgress = func(context.Context, string, time.Time) ([]DeployProgress, error) {
+		return []DeployProgress{failed}, nil
+	}
+
+	var msgs []string
+	err := svc.FollowLogs(context.Background(), LogQuery{App: "web", Types: []string{LogTypeBuild}}, func(e LogEntry) error {
+		msgs = append(msgs, e.Message)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("FollowLogs: %v", err)
+	}
+	count := 0
+	for _, m := range msgs {
+		if m == "==> Build failed" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("terminal line emitted %d times in %v, want exactly once", count, msgs)
+	}
+	if !slices.Contains(msgs, "real build line") {
+		t.Fatalf("real stdout missing from %v", msgs)
+	}
+}
+
 // --- GraphQL logs fragment ---
 
 func TestGraphQLLogs(t *testing.T) {
