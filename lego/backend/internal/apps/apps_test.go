@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -1115,6 +1116,124 @@ func TestRESTUsesTypedServiceIDForResponseAndLifecycle(t *testing.T) {
 	}
 	if got := getApp(t, cl, core.CRName("tea-a", "web")).Spec.RestartedAt; got == "" {
 		t.Fatal("restart by typed id did not stamp restartedAt")
+	}
+}
+
+func TestRESTListTypeFilter(t *testing.T) {
+	// GET /v1/services?type= filters by Render serviceType (w2/m52).
+	web := sampleApp("web")
+	worker := sampleApp("worker")
+	worker.Spec.Type = appv1alpha1.TypeBackgroundWorker
+	cron := sampleApp("cron")
+	cron.Spec.Type = appv1alpha1.TypeCronJob
+
+	svc, _ := newService(nil, web, worker, cron)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	listNames := func(query string) []string {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services"+query, nil))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET %s = %d: %s", query, rec.Code, rec.Body.String())
+		}
+		var page []serviceWithCursor
+		if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		names := make([]string, 0, len(page))
+		for _, s := range page {
+			names = append(names, s.Service.Name)
+		}
+		slices.Sort(names)
+		return names
+	}
+
+	if got := listNames("?type=background_worker"); !slices.Equal(got, []string{"worker"}) {
+		t.Errorf("type=background_worker = %v, want [worker]", got)
+	}
+	if got := listNames("?type=web_service"); !slices.Equal(got, []string{"web"}) {
+		t.Errorf("type=web_service = %v, want [web]", got)
+	}
+	if got := listNames("?type=web_service,background_worker"); !slices.Equal(got, []string{"web", "worker"}) {
+		t.Errorf("type=web_service,background_worker = %v, want [web, worker]", got)
+	}
+	if got := listNames("?type=cron_job&type=web_service"); !slices.Equal(got, []string{"cron", "web"}) {
+		t.Errorf("repeated type= = %v, want [cron, web]", got)
+	}
+}
+
+func TestRESTListSuspendedFilter(t *testing.T) {
+	// GET /v1/services?suspended=true|false filters by suspension state (w2/m52).
+	web := sampleApp("web")
+	susp := sampleApp("susp")
+	susp.Spec.Suspended = true
+
+	svc, _ := newService(nil, web, susp)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?suspended=true", nil))
+	var page []serviceWithCursor
+	if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(page) != 1 || page[0].Service.Name != "susp" {
+		t.Errorf("suspended=true = %v, want [susp]", page)
+	}
+
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?suspended=false", nil))
+	if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(page) != 1 || page[0].Service.Name != "web" {
+		t.Errorf("suspended=false = %v, want [web]", page)
+	}
+
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?suspended=maybe", nil))
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("suspended=maybe => 400, got %d", rec.Code)
+	}
+}
+
+func TestRESTListTimeFilters(t *testing.T) {
+	// GET /v1/services?createdBefore/After/updatedBefore/After (w2/m52).
+	early := sampleApp("early")
+	late := sampleApp("late")
+
+	svc, _ := newService(nil, early, late)
+	// Manually set CreatedAt on the views by patching the underlying CRs'
+	// resource version timestamps — the fake client doesn't set CreationTimestamp,
+	// so we rely on the fact that both views will have empty CreatedAt and thus
+	// PASS any time filter (legacy-group rule: empty timestamp → include).
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	// Malformed timestamp → 400.
+	for _, param := range []string{"createdBefore", "createdAfter", "updatedBefore", "updatedAfter"} {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?"+param+"=yesterday", nil))
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("%s=yesterday => 400, got %d", param, rec.Code)
+		}
+	}
+
+	// Empty CreatedAt on apps (fake client has no creation timestamp) → passes
+	// any time window (same rule as matchesTimeWindow in envgroups).
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?createdBefore=2020-01-01T00:00:00Z", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("createdBefore with empty timestamps => 200, got %d", rec.Code)
+	}
+	var page []serviceWithCursor
+	if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(page) != 2 {
+		t.Errorf("empty createdAt passes time filter: got %d results, want 2", len(page))
 	}
 }
 
