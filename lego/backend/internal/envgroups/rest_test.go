@@ -287,6 +287,36 @@ func TestREST_EnvGroupFiltersBeforePagination(t *testing.T) {
 	}
 }
 
+func TestREST_EnvGroupLegacyEmptyTimestampPassesTimeFilter(t *testing.T) {
+	// Legacy env groups pre-dating w6/m24's timestamp stamping have empty
+	// createdAt/updatedAt. Before w2/m51 matchesTimeWindow returned false on a
+	// parse error, silently excluding them from any time-filtered list.
+	// After the fix: an empty timestamp passes any time window (it can't be
+	// placed in one, so it is not excluded — omitted data ≠ excluded).
+	store := newFakeStore()
+	// Legacy group: no timestamps at all.
+	if err := store.Put(context.Background(), metaPath("evg-legacy"), map[string]string{
+		"name": "legacy", "workspace": "tea-a",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	svc := &Service{
+		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: multiWorkspace{"filter-user": {"tea-a"}}},
+		Store: store,
+	}
+	// A createdBefore filter that excludes all known-created groups must still
+	// return the legacy group (empty timestamp → pass).
+	got := envGroupListNames(t, serveFilterREST(svc, "/v1/env-groups?createdBefore=2020-01-01T00:00:00Z"))
+	if !slices.Equal(got, []string{"legacy"}) {
+		t.Fatalf("legacy group with empty createdAt should pass time filter, got %v", got)
+	}
+	// Same for updatedBefore.
+	got = envGroupListNames(t, serveFilterREST(svc, "/v1/env-groups?updatedBefore=2020-01-01T00:00:00Z"))
+	if !slices.Equal(got, []string{"legacy"}) {
+		t.Fatalf("legacy group with empty updatedAt should pass time filter, got %v", got)
+	}
+}
+
 func TestREST_EnvGroupsUnconfigured503(t *testing.T) {
 	svc := newService(nil)
 	if c := serveREST(svc, "GET", "/v1/env-groups", "").Code; c != 503 {
