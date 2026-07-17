@@ -80,6 +80,16 @@ type ServiceEventRow struct {
 	// PreDeployStatus is the deploy's pre-deploy step outcome (w1/m33): '' |
 	// 'running' | 'succeeded' | 'failed'; the ended phase only.
 	PreDeployStatus string
+	// Deployed image URI; empty for non-deploy rows. (w1/m47)
+	Image string
+	// Commit ID (git revision); empty for non-deploy rows. (w1/m47)
+	CommitID string
+	// Commit message; empty for non-deploy rows. (w1/m47)
+	CommitMessage string
+	// When the deploy started executing; nil for non-deploy or not-yet-started. (w1/m47)
+	StartedAt *time.Time
+	// When the deploy finished (terminal status reached); nil for non-deploy or ongoing. (w1/m47)
+	FinishedAt *time.Time
 
 	// Audit rows only.
 	Verb   string // e.g. "apps.Suspend"
@@ -185,7 +195,12 @@ WITH feed AS (
            NULL::integer                       AS autoscaling_max_from,
            NULL::integer                       AS autoscaling_min_to,
            NULL::integer                       AS autoscaling_max_to,
-           NULL::boolean                       AS auto_deploy_enabled
+           NULL::boolean                       AS auto_deploy_enabled,
+           d.image                             AS image,
+           d.commit                            AS commit_id,
+           d.commit_message                    AS commit_message,
+           d.started_at                        AS started_at,
+           d.finished_at                       AS finished_at
     FROM deploys d
     WHERE d.app_id = $1 AND '` + EventPhaseStarted + `' = ANY($5)
   UNION ALL
@@ -207,7 +222,12 @@ WITH feed AS (
            NULL::integer,
            NULL::integer,
            NULL::integer,
-           NULL::boolean
+           NULL::boolean,
+           d.image,
+           d.commit,
+           d.commit_message,
+           d.started_at,
+           d.finished_at
     FROM deploys d
     WHERE d.app_id = $1 AND d.finished_at IS NOT NULL AND '` + EventPhaseEnded + `' = ANY($5)
   UNION ALL
@@ -229,7 +249,12 @@ WITH feed AS (
            a.autoscaling_max_from,
            a.autoscaling_min_to,
            a.autoscaling_max_to,
-           a.auto_deploy_enabled
+           a.auto_deploy_enabled,
+           ''::text,
+           ''::text,
+           ''::text,
+           NULL::timestamptz,
+           NULL::timestamptz
     FROM audit_events a
     WHERE a.target = $2
       AND a.outcome = 'allowed'
@@ -243,7 +268,7 @@ WITH feed AS (
 SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, verb, caller,
        plan_from, plan_to, instance_count_from, instance_count_to,
        autoscaling_min_from, autoscaling_max_from, autoscaling_min_to, autoscaling_max_to,
-       auto_deploy_enabled
+       auto_deploy_enabled, image, commit_id, commit_message, started_at, finished_at
 FROM feed
 WHERE ($6::timestamptz IS NULL OR at >= $6)
   AND ($7::timestamptz IS NULL OR at <= $7)
@@ -316,6 +341,6 @@ func scanServiceEventRow(row pgx.Row) (ServiceEventRow, error) {
 	err := row.Scan(&r.Key, &r.At, &r.Source, &r.Phase, &r.DeployID, &r.Trigger, &r.Status, &r.PreDeployStatus, &r.Verb, &r.Caller,
 		&r.PlanFrom, &r.PlanTo, &r.InstanceCountFrom, &r.InstanceCountTo,
 		&r.AutoscalingMinFrom, &r.AutoscalingMaxFrom, &r.AutoscalingMinTo, &r.AutoscalingMaxTo,
-		&r.AutoDeployEnabled)
+		&r.AutoDeployEnabled, &r.Image, &r.CommitID, &r.CommitMessage, &r.StartedAt, &r.FinishedAt)
 	return r, err
 }
