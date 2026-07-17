@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -569,6 +570,82 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			filtered := make([]AppView, 0, len(apps))
 			for _, a := range apps {
 				if slices.Contains(environmentIDs, a.EnvironmentID) {
+					filtered = append(filtered, a)
+				}
+			}
+			apps = filtered
+		}
+		// type= filters by Render's serviceType enum (w2/m52): repeated or
+		// comma-separated values are OR'd, mirroring the name/environmentId pattern.
+		if types := renderListParam(q["type"]); len(types) > 0 {
+			filtered := make([]AppView, 0, len(apps))
+			for _, a := range apps {
+				if slices.Contains(types, effectiveType(a.Type)) {
+					filtered = append(filtered, a)
+				}
+			}
+			apps = filtered
+		}
+		// suspended= is Render's boolean string filter ("true"/"false"). Unknown
+		// values return a named 400; absent means unfiltered.
+		if sv := q.Get("suspended"); sv != "" {
+			if sv != "true" && sv != "false" {
+				core.WriteErr(w, fmt.Errorf("%w: suspended must be true or false", core.ErrBadRequest))
+				return
+			}
+			want := sv == "true"
+			filtered := make([]AppView, 0, len(apps))
+			for _, a := range apps {
+				if a.Suspended == want {
+					filtered = append(filtered, a)
+				}
+			}
+			apps = filtered
+		}
+		// Time-window filters (w2/m52): Render's createdBefore/createdAfter and
+		// updatedBefore/updatedAfter RFC3339 params. An empty/missing AppView
+		// timestamp passes the filter (legacy Apps without stored timestamps are
+		// never silently excluded — same rule as matchesTimeWindow in envgroups).
+		for _, tf := range []struct {
+			before, after, field string
+			get                  func(AppView) string
+		}{
+			{"createdBefore", "createdAfter", "createdAt", func(a AppView) string { return a.CreatedAt }},
+			{"updatedBefore", "updatedAfter", "updatedAt", func(a AppView) string { return a.UpdatedAt }},
+		} {
+			var before, after time.Time
+			if v := q.Get(tf.before); v != "" {
+				t, err := time.Parse(time.RFC3339, v)
+				if err != nil {
+					core.WriteErr(w, fmt.Errorf("%w: %s must be RFC3339", core.ErrBadRequest, tf.before))
+					return
+				}
+				before = t
+			}
+			if v := q.Get(tf.after); v != "" {
+				t, err := time.Parse(time.RFC3339, v)
+				if err != nil {
+					core.WriteErr(w, fmt.Errorf("%w: %s must be RFC3339", core.ErrBadRequest, tf.after))
+					return
+				}
+				after = t
+			}
+			if before.IsZero() && after.IsZero() {
+				continue
+			}
+			filtered := make([]AppView, 0, len(apps))
+			for _, a := range apps {
+				raw := tf.get(a)
+				if raw == "" {
+					filtered = append(filtered, a) // legacy: no timestamp → passes
+					continue
+				}
+				v, err := time.Parse(time.RFC3339, raw)
+				if err != nil {
+					filtered = append(filtered, a)
+					continue
+				}
+				if (before.IsZero() || v.Before(before)) && (after.IsZero() || v.After(after)) {
 					filtered = append(filtered, a)
 				}
 			}
