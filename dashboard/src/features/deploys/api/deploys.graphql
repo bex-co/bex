@@ -35,6 +35,7 @@ query Deploys(
     rollbackOf
     commitId
     commitMessage
+    commitCreatedAt
     createdAt
     updatedAt
     startedAt

@@ -11,6 +11,7 @@ query Deploy($serviceId: String!, $deployId: String!) {
     rollbackOf
     commitId
     commitMessage
+    commitCreatedAt
     createdAt
     updatedAt
     startedAt

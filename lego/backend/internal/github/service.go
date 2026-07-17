@@ -351,7 +351,7 @@ func (s *Service) resolveCommit(ctx context.Context, workspaceID, repoURL, ref s
 		}
 		return store.CommitInfo{}, false, err
 	}
-	return store.CommitInfo{Hash: c.SHA, Message: c.Message}, true, nil
+	return store.CommitInfo{Hash: c.SHA, Message: c.Message, AuthorAt: c.AuthorAt}, true, nil
 }
 
 // ownerRepo extracts the "owner"/"repo" pair from a git URL of any form

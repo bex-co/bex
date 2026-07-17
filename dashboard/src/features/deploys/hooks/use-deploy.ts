@@ -12,9 +12,11 @@ export interface DeployView {
   trigger: string;
   image: string;
   rollbackOf: string;
-  /** The resolved commit this deploy ran (w9/001); "" when unresolved. */
+  /** The resolved commit this deploy ran (w9/001 + w2/m42); "" when unresolved. */
   commitId: string;
   commitMessage: string;
+  /** Git author timestamp of the commit (w2/m42); null when unavailable. */
+  commitCreatedAt: string | null;
   createdAt: string | null;
   updatedAt: string | null;
   startedAt: string | null;
@@ -81,6 +83,7 @@ function toDeployView(
     rollbackOf: d.rollbackOf ?? "",
     commitId: d.commitId ?? "",
     commitMessage: d.commitMessage ?? "",
+    commitCreatedAt: d.commitCreatedAt ?? null,
     createdAt: d.createdAt ?? null,
     updatedAt: d.updatedAt ?? null,
     startedAt: d.startedAt ?? null,

@@ -78,10 +78,11 @@ export function DeployHeader({
           </p>
         )}
 
-        {/* The resolved commit this deploy ran (w9/001) — Render's deploy-page
-            header leads with it for repo-backed deploys: short SHA + the
-            message's first line. Absent (image-backed, or no GitHub connection
-            to resolve through) => omitted, not faked. */}
+        {/* The resolved commit this deploy ran (w9/001 + w2/m42) — Render's
+            deploy-page header leads with it for repo-backed deploys: short
+            SHA + the message's first line + author date when available. Absent
+            (image-backed, or no GitHub connection to resolve through) =>
+            omitted, not faked. */}
         {deploy.commitId && (
           <p className="truncate text-xs text-foreground">
             <span className="font-mono text-muted-foreground">
@@ -89,6 +90,11 @@ export function DeployHeader({
             </span>
             {deploy.commitMessage && (
               <> {deploy.commitMessage.split("\n")[0]}</>
+            )}
+            {deploy.commitCreatedAt && (
+              <span className="ml-2 text-muted-foreground">
+                {new Date(deploy.commitCreatedAt).toLocaleString()}
+              </span>
             )}
           </p>
         )}
