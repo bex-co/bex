@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>bex static site</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: system-ui, sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+      }
+      .card {
+        text-align: center;
+        padding: 3rem 4rem;
+        border: 1px solid #1e293b;
+        border-radius: 1rem;
+        background: #1e293b;
+        max-width: 480px;
+      }
+      h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        color: #f8fafc;
+      }
+      p {
+        margin-top: 0.75rem;
+        color: #94a3b8;
+        line-height: 1.6;
+      }
+      .badge {
+        display: inline-block;
+        margin-top: 1.5rem;
+        padding: 0.35rem 0.85rem;
+        border-radius: 9999px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        background: #6366f1;
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Hello from bex</h1>
+      <p>
+        This static site is served by bex — no server, no Dockerfile. Edit
+        <code>index.html</code>, push to git, and bex redeploys instantly.
+      </p>
+      <span class="badge">static_site</span>
+    </div>
+  </body>
+</html>
