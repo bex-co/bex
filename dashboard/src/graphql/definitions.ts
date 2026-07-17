@@ -3317,7 +3317,7 @@ export type ServiceEventsQueryVariables = Exact<{
 }>;
 
 
-export type ServiceEventsQuery = { serviceEvents: Array<{ __typename: 'ServiceEvent', id: string | null, type: string | null, timestamp: string | null, cursor: string | null, details: { __typename: 'ServiceEventDetails', deployId: string | null, deployStatus: string | null, preDeployStatus: string | null, actor: string | null, triggeredByUser: string | null, trigger: { __typename: 'DeployTrigger', firstBuild: boolean | null, envUpdated: boolean | null, manual: boolean | null, deployedByRender: boolean | null, clearCache: boolean | null, rollback: boolean | null } | null } | null } | null> | null };
+export type ServiceEventsQuery = { serviceEvents: Array<{ __typename: 'ServiceEvent', id: string | null, type: string | null, timestamp: string | null, cursor: string | null, details: { __typename: 'ServiceEventDetails', deployId: string | null, deployStatus: string | null, preDeployStatus: string | null, actor: string | null, triggeredByUser: string | null, image: string | null, commitId: string | null, commitMessage: string | null, startedAt: string | null, finishedAt: string | null, trigger: { __typename: 'DeployTrigger', firstBuild: boolean | null, envUpdated: boolean | null, manual: boolean | null, deployedByRender: boolean | null, clearCache: boolean | null, rollback: boolean | null } | null } | null } | null> | null };
 
 export type TriggerDeployMutationVariables = Exact<{
   serviceId: Scalars['String']['input'];
