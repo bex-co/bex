@@ -68,16 +68,20 @@ spec:
     server: https://kubernetes.default.svc
     namespace: bex-registry
   # StatefulSet volumeClaimTemplates are immutable. The existing PVC is grown
-  # online out of band; ignoring only this field keeps Argo from attempting an
-  # illegal StatefulSet patch while ensuring a recreated StatefulSet starts at
-  # the desired size above.
+  # online out of band; ignore its storage request plus the apiVersion/kind
+  # defaults Kubernetes adds to the embedded PVC template. Ignoring the whole
+  # requests map also prevents an empty-map diff after storage is removed by
+  # Argo's normalizer, while a recreated StatefulSet still starts at the desired
+  # size above.
   ignoreDifferences:
     - group: apps
       kind: StatefulSet
       name: zot
       namespace: bex-registry
       jsonPointers:
-        - /spec/volumeClaimTemplates/0/spec/resources/requests/storage
+        - /spec/volumeClaimTemplates/0/apiVersion
+        - /spec/volumeClaimTemplates/0/kind
+        - /spec/volumeClaimTemplates/0/spec/resources/requests
   syncPolicy:
     automated: { prune: true, selfHeal: true }
     syncOptions: [CreateNamespace=true, RespectIgnoreDifferences=true]
