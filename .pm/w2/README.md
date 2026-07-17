@@ -52,10 +52,9 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `012.md` — deploy-hook `imgURL`: design the safe image-origin override before building (`deployhook.go:256`) ← from `/pm-brainstorm` round 12, 2026-07-15
-- `013.md` — Blueprint `initialDeployHook` one-time command (ADR018:49; likely rides the w1/m33 pre-deploy Job mechanism) ← from `/pm-brainstorm` round 12, 2026-07-15
+_(empty — all notes promoted to milestones or moved to `done/`)_
 
-_(`011.md` promoted to **m42** 2026-07-15; note moved to `done/`. `010.md` promoted to **m40** 2026-07-15; note moved to `done/`)_
+_(`012.md` promoted to **m44** 2026-07-16; moved to `done/`. `013.md` promoted to **m45** 2026-07-16; moved to `done/`. `011.md` promoted to **m42** 2026-07-15; moved to `done/`. `010.md` promoted to **m40** 2026-07-15; moved to `done/`)_
 
 > 006.md promoted to done 2026-07-12: `triggerDeploy` GraphQL mutation shipped in `internal/deploys/graphql.go`.
 

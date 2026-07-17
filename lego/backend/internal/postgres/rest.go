@@ -36,13 +36,11 @@ type renderOwner struct {
 	Type  string `json:"type"`
 }
 
-// renderPostgres is the REST-only Render enrichment. PostgresView remains the
-// neutral GraphQL/MCP contract and retains bex's ownerId extension.
+// renderPostgres is the REST-only Render enrichment wrapping PostgresView
+// (which now carries region/dashboardUrl) with the owner object.
 type renderPostgres struct {
 	PostgresView
-	Owner        *renderOwner `json:"owner,omitempty"`
-	Region       string       `json:"region,omitempty"`
-	DashboardURL string       `json:"dashboardUrl,omitempty"`
+	Owner *renderOwner `json:"owner,omitempty"`
 }
 
 // postgresWithCursor is components.schemas.postgresWithCursor — the list-item
@@ -63,11 +61,7 @@ func (s *Service) renderPostgres(ctx context.Context, pgs []PostgresView) []rend
 	owners := resourcemeta.ResolveOwners(ctx, s.Owners, ownerIDs)
 	out := make([]renderPostgres, 0, len(pgs))
 	for _, pg := range pgs {
-		rendered := renderPostgres{
-			PostgresView: pg,
-			Region:       s.Metadata.PlatformRegion(),
-			DashboardURL: s.Metadata.DashboardURL(resourcemeta.PostgresDashboardRoute, pg.ID),
-		}
+		rendered := renderPostgres{PostgresView: pg}
 		if owner, ok := owners[pg.OwnerID]; ok && owner.Available() {
 			rendered.Owner = &renderOwner{ID: owner.ID, Name: owner.Name, Email: owner.Email, Type: owner.Type}
 		}

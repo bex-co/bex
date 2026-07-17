@@ -49,7 +49,7 @@ type keyValueOptionsView struct {
 // off KeyValueView) silently zero-valued or failed to decode client-side
 // because Render's real contract nests owner/options. The allow list is
 // core.IPAllowListEntry — already Render's {cidrBlock, description} shape.
-// Region/dashboardUrl are populated via resourcemeta, matching postgres/apps.
+// Region/dashboardUrl are propagated from KeyValueView (populated by Service.view).
 // Version is the one field genuinely omitted — bex doesn't track it.
 type renderKeyValue struct {
 	ID            string                  `json:"id"`
@@ -73,14 +73,16 @@ type renderKeyValue struct {
 
 func toRenderKeyValue(kv KeyValueView) renderKeyValue {
 	return renderKeyValue{
-		ID:        kv.ID,
-		Name:      kv.Name,
-		Plan:      kv.Plan,
-		Status:    kv.Status,
-		Suspended: kv.Suspended,
-		CreatedAt: kv.CreatedAt,
-		UpdatedAt: kv.UpdatedAt,
-		Version:   kv.Version,
+		ID:           kv.ID,
+		Name:         kv.Name,
+		Plan:         kv.Plan,
+		Status:       kv.Status,
+		Suspended:    kv.Suspended,
+		CreatedAt:    kv.CreatedAt,
+		UpdatedAt:    kv.UpdatedAt,
+		Region:       kv.Region,
+		DashboardURL: kv.DashboardURL,
+		Version:      kv.Version,
 		Options: keyValueOptionsView{
 			MaxmemoryPolicy: kv.MaxmemoryPolicy,
 			PersistenceMode: kv.PersistenceMode,
@@ -102,8 +104,6 @@ func (s *Service) renderKeyValues(ctx context.Context, kvs []KeyValueView) []ren
 	out := make([]renderKeyValue, 0, len(kvs))
 	for _, kv := range kvs {
 		rendered := toRenderKeyValue(kv)
-		rendered.Region = s.Metadata.PlatformRegion()
-		rendered.DashboardURL = s.Metadata.DashboardURL(resourcemeta.KeyValueDashboardRoute, kv.ID)
 		if owner, ok := owners[kv.OwnerID]; ok && owner.Available() {
 			rendered.Owner = &keyValueOwner{ID: owner.ID, Name: owner.Name, Email: owner.Email, Type: owner.Type}
 		}

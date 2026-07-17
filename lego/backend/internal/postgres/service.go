@@ -117,6 +117,11 @@ type PostgresView struct {
 	CreatedAt string `json:"createdAt,omitempty"`
 	UpdatedAt string `json:"updatedAt,omitempty"`
 
+	// Region / DashboardURL mirror the Render fields on services; populated by
+	// the Service.view wrapper (not pgView) so they flow through GraphQL/MCP.
+	Region       string `json:"region,omitempty"`
+	DashboardURL string `json:"dashboardUrl,omitempty"`
+
 	// bex-native extras (Render clients ignore unknown keys).
 	ExternalHost string `json:"externalHost,omitempty"`
 	Public       bool   `json:"public"`
@@ -301,6 +306,16 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 	}
 }
 
+// view wraps pgView and stamps the platform region and dashboard URL onto the
+// result, matching the apps.Service.view pattern so all external-facing verbs
+// return the enriched shape through GraphQL and MCP as well as REST.
+func (s *Service) view(d *appv1alpha1.Database) PostgresView {
+	v := pgView(d)
+	v.Region = s.Metadata.PlatformRegion()
+	v.DashboardURL = s.Metadata.DashboardURL(resourcemeta.PostgresDashboardRoute, v.ID)
+	return v
+}
+
 // fetchDatabase resolves a Database by name through the shared core.Base seam
 // (w6/m17's core.Base.AuthorizeDatabase: authorize + fetch in one call, against
 // the Database's OWN workspace — the same rule apps.AuthorizeApp applies; also
@@ -352,7 +367,7 @@ func (s *Service) ListPostgres(ctx context.Context, ownerID string) ([]PostgresV
 	}
 	out := make([]PostgresView, 0, len(list.Items))
 	for i := range list.Items {
-		out = append(out, pgView(&list.Items[i]))
+		out = append(out, s.view(&list.Items[i]))
 	}
 	return out, nil
 }
@@ -363,7 +378,7 @@ func (s *Service) GetPostgres(ctx context.Context, name string) (PostgresView, e
 	if err != nil {
 		return PostgresView{}, err
 	}
-	return pgView(d), nil
+	return s.view(d), nil
 }
 
 // ensureDatabaseNameAvailable enforces Render's workspace-scoped display-name
@@ -466,7 +481,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	}
 	// Dry-run: return the resolved spec preview without any k8s write (w2/m29).
 	if req.DryRun {
-		return pgView(d), nil
+		return s.view(d), nil
 	}
 	resourcemeta.Touch(d, s.Now())
 	if err := s.Client.Create(ctx, d); err != nil {
@@ -476,7 +491,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 		return PostgresView{}, err
 	}
 	s.RecordDatabaseEffect(ctx, d, core.DatabaseCreated)
-	return pgView(d), nil
+	return s.view(d), nil
 }
 
 // DeletePostgres removes a managed Postgres (cascades the CNPG Cluster, PVC,
@@ -593,7 +608,7 @@ func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (Postgr
 	}
 	preview := d.DeepCopy()
 	preview.Spec.Plan = plan
-	return pgView(preview), nil
+	return s.view(preview), nil
 }
 
 // PostgresPatch is the mutable-field set for PATCH /v1/postgres/{id} — Render's
@@ -738,7 +753,7 @@ func (s *Service) PreviewUpdatePostgres(ctx context.Context, name string, patch 
 	}
 	preview := d.DeepCopy()
 	patch.apply(preview)
-	return pgView(preview), nil
+	return s.view(preview), nil
 }
 
 func unknownPostgresVersionError(version string) error {
@@ -858,7 +873,7 @@ func (s *Service) patchDatabaseObj(ctx context.Context, d *appv1alpha1.Database,
 	if err := s.Client.Patch(ctx, d, patch); err != nil {
 		return PostgresView{}, err
 	}
-	return pgView(d), nil
+	return s.view(d), nil
 }
 
 // patchDatabase fetches the Database and merge-patches it — the spec-intent
