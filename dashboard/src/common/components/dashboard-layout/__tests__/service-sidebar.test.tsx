@@ -64,11 +64,11 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
 
     // Render's groups (docs/render-artifacts/dashboard-routes.md § Sidebar
     // navigation): Monitor{Logs, Metrics}, Manage{Environment, Scaling, Plan}.
+    // No Deploys entry — the unified Events page IS the deploy history (w1/m47).
     expect(screen.getByText("Monitor")).toBeInTheDocument();
     expect(screen.getByText("Manage")).toBeInTheDocument();
     for (const [name, href] of [
       ["Events", "/services/srv-1/events"],
-      ["Deploys", "/services/srv-1/deploys"],
       ["Settings", "/services/srv-1/settings"],
       ["Logs", "/services/srv-1/logs"],
       ["Metrics", "/services/srv-1/metrics"],
@@ -78,6 +78,9 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
     ] as const) {
       expect(screen.getByRole("link", { name })).toHaveAttribute("href", href);
     }
+    expect(
+      screen.queryByRole("link", { name: "Deploys" }),
+    ).not.toBeInTheDocument();
   });
 
   it("hides the service nav (not the back link) for a service the caller can't see", async () => {

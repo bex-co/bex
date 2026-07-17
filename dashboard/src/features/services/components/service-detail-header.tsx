@@ -59,8 +59,8 @@ export interface ServiceDetailHeaderProps {
  * where the identity facts live: it also carries the bex-native ones the retired
  * Overview panel showed — instances, revision, age.
  *
- * Reuses the list's `ServiceRowActions` (and, via it, m4's confirm + poll-to-
- * converge) so the lifecycle verbs behave identically on the list and here.
+ * Lifecycle verbs: restart lives in the Manual Deploy dropdown (w2/m30),
+ * suspend/resume on the Settings page — the header carries no "•••" menu.
  */
 export function ServiceDetailHeader({
   service,
