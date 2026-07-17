@@ -39,6 +39,11 @@ spec:
         # credential covers only its own repository (ADR022-tenant-isolation.md:204).
         mountConfig: false
         persistence: true
+        # The registry must absorb concurrent large image pushes between Zot's
+        # daily retention/GC passes. Hetzner's 10 GiB minimum filled during two
+        # overlapping Beancount builds and turned uploads into opaque 500s.
+        pvc:
+          storage: 40Gi
         # kpack publishes its generated builder as Docker schema 2; Zot's
         # docker2s2 compatibility mode accepts that manifest format.
         mountSecret: false
@@ -62,6 +67,17 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: bex-registry
+  # StatefulSet volumeClaimTemplates are immutable. The existing PVC is grown
+  # online out of band; ignoring only this field keeps Argo from attempting an
+  # illegal StatefulSet patch while ensuring a recreated StatefulSet starts at
+  # the desired size above.
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      name: zot
+      namespace: bex-registry
+      jsonPointers:
+        - /spec/volumeClaimTemplates/0/spec/resources/requests/storage
   syncPolicy:
     automated: { prune: true, selfHeal: true }
-    syncOptions: [CreateNamespace=true]
+    syncOptions: [CreateNamespace=true, RespectIgnoreDifferences=true]
