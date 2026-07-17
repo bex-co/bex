@@ -169,6 +169,7 @@ func TestSSHEligibilityFailsClosed(t *testing.T) {
 		"unknown plan": func(app *appv1alpha1.App) { app.Spec.Tier = "mystery" },
 		"suspended":    func(app *appv1alpha1.App) { app.Spec.Suspended = true },
 		"cron":         func(app *appv1alpha1.App) { app.Spec.Type = appv1alpha1.TypeCronJob },
+		"static":       func(app *appv1alpha1.App) { app.Spec.Type = appv1alpha1.TypeStaticSite },
 		"not running":  func(app *appv1alpha1.App) { app.Status.Phase = appv1alpha1.PhaseDeploying },
 		"no revision":  func(app *appv1alpha1.App) { app.Status.ActiveRevision = "" },
 		"no image":     func(app *appv1alpha1.App) { app.Status.Image = "" },
