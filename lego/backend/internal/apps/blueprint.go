@@ -70,10 +70,8 @@ type BlueprintValidationError struct {
 	Path   *string `json:"path,omitempty"`
 }
 
-// BlueprintValidationPlan is Render's dry-run resource summary. bex currently
-// supports services, Postgres databases, and env groups in a Blueprint; the
-// keyValue field is retained for wire compatibility and will be omitted until
-// render.yaml Key Value entries are supported by the shared parser.
+// BlueprintValidationPlan is Render's dry-run resource summary for a Blueprint
+// dry-run: services, managed Postgres databases, key-value stores, and env groups.
 type BlueprintValidationPlan struct {
 	Services     []string `json:"services,omitempty"`
 	Databases    []string `json:"databases,omitempty"`
@@ -130,6 +128,7 @@ func blueprintValidationPlan(st parsedStack) BlueprintValidationPlan {
 	plan := BlueprintValidationPlan{
 		Services:  make([]string, 0, len(st.services)),
 		Databases: make([]string, 0, len(st.databases)),
+		KeyValue:  make([]string, 0, len(st.keyValues)),
 		EnvGroups: make([]string, 0, len(st.envGroups)),
 	}
 	for _, svc := range st.services {
@@ -137,6 +136,9 @@ func blueprintValidationPlan(st parsedStack) BlueprintValidationPlan {
 	}
 	for _, db := range st.databases {
 		plan.Databases = append(plan.Databases, db.name)
+	}
+	for _, kv := range st.keyValues {
+		plan.KeyValue = append(plan.KeyValue, kv.name)
 	}
 	for _, group := range st.envGroups {
 		plan.EnvGroups = append(plan.EnvGroups, group.name)
@@ -220,6 +222,26 @@ func blueprintErrorField(message string) string {
 		return ".envVars"
 	}
 	return ""
+}
+
+// GetBlueprintByID returns a single blueprint by its opaque id, scoped to the
+// caller's workspace (prevents cross-workspace reads). ownerID is optional.
+func (s *Service) GetBlueprintByID(ctx context.Context, id, ownerID string) (BlueprintView, error) {
+	if ownerID != "" {
+		ctx = core.WithWorkspace(ctx, ownerID)
+	}
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return BlueprintView{}, err
+	}
+	if s.Blueprints == nil {
+		return BlueprintView{}, ErrBlueprintsUnavailable
+	}
+	tenantID := s.resolveTenantID(ctx)
+	b, err := s.Blueprints.GetBlueprint(ctx, id, tenantID)
+	if err != nil {
+		return BlueprintView{}, err
+	}
+	return toBlueprintView(b), nil
 }
 
 // ListBlueprints returns all active blueprints for a workspace, newest first.

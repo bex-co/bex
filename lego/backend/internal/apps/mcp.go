@@ -423,6 +423,12 @@ type listBlueprintsResult struct {
 	Blueprints []BlueprintView `json:"blueprints"`
 }
 
+// getBlueprintArgs is get_blueprint's input (w2/m41).
+type getBlueprintArgs struct {
+	ID      string `json:"id" jsonschema:"the blueprint id (blp-…), as returned by list_blueprints or a prior deploy call"`
+	OwnerID string `json:"ownerId,omitempty" jsonschema:"workspace id (tea-...); omit to use the session's selected workspace"`
+}
+
 // syncBlueprintArgs is sync_blueprint's input (w2/m15).
 type syncBlueprintArgs struct {
 	ID      string `json:"id" jsonschema:"the blueprint id (blp-…), as returned by list_blueprints or a prior deploy call"`
@@ -1079,7 +1085,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, toRenderService(app), nil
 	})
 
-	// Blueprint verbs (w2/m15): validate_bex_yml · list_blueprints · sync_blueprint.
+	// Blueprint verbs (w2/m15 + w2/m41): validate_bex_yml · list_blueprints · get_blueprint · sync_blueprint.
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "validate_bex_yml",
 		Description: "Dry-run parse a bex.yml (render.yaml Blueprint) and return structured per-entry errors plus a resource plan without applying anything — the safe pre-flight check before a deploy call. Returns {valid, errors: [{error, line?, column?, path?}], plan?}. Requires no store; always available. bex extension (pillar 4 agent safety).",
@@ -1094,6 +1100,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in listBlueprintsArgs) (*mcp.CallToolResult, listBlueprintsResult, error) {
 		views, err := s.ListBlueprints(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
 		return nil, listBlueprintsResult{Blueprints: views}, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "get_blueprint",
+		Description: "Get a single blueprint by its id. Returns {id, name, repo, branch, status, createdAt, updatedAt}. bex extension.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in getBlueprintArgs) (*mcp.CallToolResult, BlueprintView, error) {
+		view, err := s.GetBlueprintByID(ctx, in.ID, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
+		return nil, view, err
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{

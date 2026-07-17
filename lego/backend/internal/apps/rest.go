@@ -1163,9 +1163,18 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, toRenderHeaders(app.Headers))
 	}
 
-	// Blueprint routes (w2/m15): validate · list · sync.
+	// Blueprint routes (w2/m15 + w2/m41): validate · list · get-by-id · sync.
 	// POST /v1/blueprints/validate is registered before POST /v1/blueprints/{id}/sync
 	// — Go 1.22+ ServeMux resolves the more specific (literal) path first.
+	mux.HandleFunc("GET /v1/blueprints/{id}", func(w http.ResponseWriter, r *http.Request) {
+		ownerID := r.URL.Query().Get("ownerId")
+		view, err := s.GetBlueprintByID(r.Context(), r.PathValue("id"), ownerID)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, view)
+	})
 	mux.HandleFunc("POST /v1/blueprints/validate", func(w http.ResponseWriter, r *http.Request) {
 		ownerID, bexYAML, err := decodeBlueprintValidationRequest(w, r)
 		if err != nil {
