@@ -212,7 +212,10 @@ export function HomePage() {
       <CreateDatabaseDialog
         open={newDatabaseOpen}
         onOpenChange={setNewDatabaseOpen}
-        onCreated={() => void refetchDatabases()}
+        // refetchAll, not just the databases list: a create with a project or
+        // environment assignment also changes the Projects query this page's
+        // grouping is built from.
+        onCreated={() => refetchAll()}
       />
       <NewProjectDialog
         open={newProjectOpen}

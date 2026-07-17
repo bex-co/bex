@@ -29,9 +29,11 @@ export interface UseTriggerDeployResult {
 
 /**
  * Render's header-level "Manual Deploy" verb. It lives in the service header
- * (not on the Events tab), but the Events list is what shows its result, so the
- * mutation refetches the active `ServiceEvents` query by name — the new deploy
- * event then appears without the header having to know the tab's variables.
+ * (not on the Events tab), but the Events list and the deploy history are what
+ * show its result, so the mutation refetches the active `ServiceEvents` and
+ * `Deploys` queries by name (the latter also drives the header's latest-deploy
+ * chrome) — the new deploy then appears without the header having to know
+ * either tab's variables.
  *
  * Also used for "Restart service" (w2/m30 consolidation): passing no opts
  * triggers a rebuild for repo-backed services and a pure restart for
@@ -40,7 +42,7 @@ export interface UseTriggerDeployResult {
 export function useTriggerDeploy(): UseTriggerDeployResult {
   const { t } = useTranslations();
   const [triggerDeploy, { loading }] = useMutation(TriggerDeployDocument, {
-    refetchQueries: ["ServiceEvents"],
+    refetchQueries: ["ServiceEvents", "Deploys"],
     awaitRefetchQueries: true,
   });
 
