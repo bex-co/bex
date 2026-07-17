@@ -8,19 +8,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/common/components/ui/dialog";
-import { Input } from "@/common/components/ui/input";
-import { Label } from "@/common/components/ui/label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useDeleteDatabase } from "@/features/databases/hooks/use-delete-database";
 import { isSuspended } from "@/features/databases/lib/status";
+import {
+  DeleteDatabaseDialog,
+  DatabaseLifecycleConfirmDialog,
+} from "@/features/databases/components/database-confirm-dialogs";
 import { MoveToProjectMenu } from "@/features/projects/components/move-to-project-menu";
 import type {
   DatabaseLifecycleAction,
@@ -50,14 +44,13 @@ export function DatabaseRowActions({
   const { t } = useTranslations();
   const { remove, deleting } = useDeleteDatabase();
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [typed, setTyped] = useState("");
   // The disruptive lifecycle verb awaiting confirmation (suspend | restart).
-  const [confirmVerb, setConfirmVerb] =
-    useState<DatabaseLifecycleAction | null>(null);
+  const [confirmVerb, setConfirmVerb] = useState<
+    Extract<DatabaseLifecycleAction, "suspend" | "restart"> | null
+  >(null);
 
   const lifecycleBusy = lifecycle?.pending?.id === database.id;
   const busy = deleting === database.id || lifecycleBusy;
-  const canDelete = typed === database.name && !busy;
   const suspended = isSuspended(database);
 
   async function handleDelete() {
@@ -66,11 +59,6 @@ export function DatabaseRowActions({
       setConfirmOpen(false);
       onDeleted(database.id);
     }
-  }
-
-  function handleOpenChange(next: boolean) {
-    setConfirmOpen(next);
-    if (!next) setTyped("");
   }
 
   async function runLifecycle(action: DatabaseLifecycleAction) {
@@ -129,91 +117,21 @@ export function DatabaseRowActions({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Delete: typed-name confirm (destructive, irreversible). */}
-      <Dialog open={confirmOpen} onOpenChange={handleOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {t("databases.deleteConfirmTitle", { name: database.name })}
-            </DialogTitle>
-            <DialogDescription>
-              {t("databases.deleteConfirmBody")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="db-delete-confirm">
-              {t("databases.deleteConfirmPrompt", { name: database.name })}
-            </Label>
-            <Input
-              id="db-delete-confirm"
-              value={typed}
-              onChange={(e) => setTyped(e.target.value)}
-              autoComplete="off"
-              placeholder={database.name}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-              disabled={busy}
-            >
-              {t("databases.deleteCancel")}
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => void handleDelete()}
-              disabled={!canDelete}
-            >
-              {busy ? <Loader2 className="animate-spin" /> : null}
-              {t("databases.deleteConfirm")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteDatabaseDialog
+        database={database}
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        busy={busy}
+        onConfirm={() => void handleDelete()}
+      />
 
-      {/* Suspend / restart: simple confirm (disruptive but reversible). */}
-      <Dialog
-        open={confirmVerb !== null}
-        onOpenChange={(next) => !next && setConfirmVerb(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {confirmVerb === "suspend"
-                ? t("databases.suspendConfirmTitle", { name: database.name })
-                : t("databases.restartConfirmTitle", { name: database.name })}
-            </DialogTitle>
-            <DialogDescription>
-              {confirmVerb === "suspend"
-                ? t("databases.suspendConfirmBody")
-                : t("databases.restartConfirmBody")}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setConfirmVerb(null)}
-              disabled={lifecycleBusy}
-            >
-              {t("databases.deleteCancel")}
-            </Button>
-            <Button
-              onClick={() => {
-                const verb = confirmVerb;
-                setConfirmVerb(null);
-                if (verb) void runLifecycle(verb);
-              }}
-              disabled={lifecycleBusy}
-            >
-              {lifecycleBusy ? <Loader2 className="animate-spin" /> : null}
-              {confirmVerb === "suspend"
-                ? t("databases.actionSuspend")
-                : t("databases.actionRestart")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DatabaseLifecycleConfirmDialog
+        database={database}
+        verb={confirmVerb}
+        busy={lifecycleBusy}
+        onClose={() => setConfirmVerb(null)}
+        onConfirm={(verb) => void runLifecycle(verb)}
+      />
     </>
   );
 }
