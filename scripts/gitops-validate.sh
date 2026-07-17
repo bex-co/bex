@@ -293,6 +293,17 @@ if [ -f "$ZOT" ]; then
   if echo "$vals" | grep -q 'bex-puller'; then
     echo "FAIL: zot values must not reference bex-puller (shared credential removed in w7/m36)" >&2; fail=1
   fi
+  # Kubernetes defaults apiVersion/kind on StatefulSet PVC templates. Once Argo
+  # removes the ignored immutable storage request, it also has to ignore the
+  # whole requests map or the resulting empty-map shape self-heals forever.
+  zot_ignores="$(yq -r '.spec.ignoreDifferences[] | select(.group == "apps" and .kind == "StatefulSet" and .name == "zot") | .jsonPointers[]' "$ZOT")"
+  for pointer in \
+    /spec/volumeClaimTemplates/0/apiVersion \
+    /spec/volumeClaimTemplates/0/kind \
+    /spec/volumeClaimTemplates/0/spec/resources/requests; do
+    printf '%s\n' "$zot_ignores" | grep -qxF "$pointer" \
+      || { echo "FAIL: zot ignoreDifferences is missing $pointer (prevents StatefulSet PVC normalization drift)" >&2; fail=1; }
+  done
 fi
 
 tmp="$(mktemp -d)"
