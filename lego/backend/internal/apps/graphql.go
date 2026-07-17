@@ -250,10 +250,13 @@ func gqlEnvVarInputs(args map[string]any, key string) ([]appv1alpha1.EnvVar, err
 var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Service",
 	Fields: graphql.Fields{
-		// id returns the App name for routing compatibility (all GraphQL verbs resolve
-		// by name); aligning to the minted srv-… id requires verb-layer changes.
-		// Documented as a known deviation in docs/ADR020-identifiers.md.
-		"id":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Name })},
+		// id is the minted Render-shaped srv-… id (w1/m46, closing ADR020's
+		// GraphQL name-as-id deviation) — the same value REST/MCP serve; legacy
+		// hand-applied CRs without LabelAppID fall back to the name (publicID).
+		// Routing accepts BOTH shapes: every verb funnels through
+		// core.Base.AuthorizeApp/GetApp, which resolve LabelAppID first and fall
+		// back to LabelServiceName, so pre-flip name URLs keep working.
+		"id":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.ID })},
 		"name": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Name })},
 		// slug is the globally-unique platform-host segment (w4/m19/w4/m20/t002) —
 		// distinct from name, which is only workspace-unique.

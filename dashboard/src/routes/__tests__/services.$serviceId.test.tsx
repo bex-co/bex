@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import {
   RouterProvider,
   createRouter,
@@ -161,6 +161,19 @@ describe("service-detail layout routing", () => {
     expect(scrollContainer).toContainElement(search);
     expect(scrollContainer).not.toContainElement(
       screen.getByRole("link", { name: "Events" }),
+    );
+  });
+
+  it("swaps the id-shaped title segment for the service name once resolved (w1/m46)", async () => {
+    // Post-m46 the URL param is the opaque srv- id; tab heads template it into
+    // the title, and the shell swaps it for the human name (Render titles by
+    // name). The harness's param is "app" — give the service a different name.
+    serverState.service = svc({ id: "app", name: "friendly" });
+    document.title = "app · Logs · bex dashboard";
+    renderAt("/services/app/logs");
+
+    await waitFor(() =>
+      expect(document.title).toBe("friendly · Logs · bex dashboard"),
     );
   });
 
