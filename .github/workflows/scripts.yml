@@ -12,6 +12,11 @@ on:
       - "scripts/gh-secrets.sh"
       - "scripts/postgres-name-migrate.sh"
       - "scripts/postgres-name-migrate.test.sh"
+      - "scripts/keyvalue-name-migrate.sh"
+      - "scripts/keyvalue-name-migrate.test.sh"
+      - "scripts/keyvalue-rename-verify.sh"
+      - "scripts/postgres-rename-verify.sh"
+      - "scripts/rename-verify.test.sh"
       - ".env.example"
       - ".env.template"
       - ".github/workflows/scripts.yml"
@@ -25,6 +30,11 @@ on:
       - "scripts/gh-secrets.sh"
       - "scripts/postgres-name-migrate.sh"
       - "scripts/postgres-name-migrate.test.sh"
+      - "scripts/keyvalue-name-migrate.sh"
+      - "scripts/keyvalue-name-migrate.test.sh"
+      - "scripts/keyvalue-rename-verify.sh"
+      - "scripts/postgres-rename-verify.sh"
+      - "scripts/rename-verify.test.sh"
       - ".env.example"
       - ".env.template"
       - ".github/workflows/scripts.yml"
@@ -45,3 +55,7 @@ jobs:
         run: bash scripts/bao-init.test.sh
       - name: Postgres name-migration unit tests
         run: bash scripts/postgres-name-migrate.test.sh
+      - name: Key-value name-migration unit tests
+        run: bash scripts/keyvalue-name-migrate.test.sh
+      - name: Rename-verify snapshot error-handling unit tests
+        run: bash scripts/rename-verify.test.sh

@@ -33,7 +33,7 @@ Code-complete and test-verified across all four first-party surfaces; the one re
 - **Tests (t009):** backend `go test ./...`, operator `make test`, backend lint, and the migration test all pass. New backend coverage: REST/GraphQL/MCP rename, dry-run, workspace-scoped duplicate rejection, cross-workspace name reuse, id-stable-across-rename, and `?name=` resolves new-not-old.
 - **Simplify (t008):** changes are a direct mirror of the already-simplified Postgres sibling; manual review found no behavior-preserving reduction to apply (the `$simplify` skill was not run).
 
-**Remaining (t006 → t010):** run `keyvalue-name-migrate.sh` then `keyvalue-rename-cli-smoke.sh` against dev-1…dev-10 and production with the pinned official CLI, capture before/after identity evidence, then flip the checklist/ADR018 rows to ✅ and move the milestone to `w9/done/m6/`.
+**Remaining (t006 → t010):** run `keyvalue-name-migrate.sh` then `keyvalue-rename-cli-smoke.sh` against dev-1…dev-10 and production with the pinned official CLI, capture before/after identity evidence, then flip the checklist/ADR018 rows to ✅ and move the milestone to `w9/done/m6/`. — **Completed 2026-07-17 by w9/m40** (`.pm/w9/done/m40/oplog.md`): dev-1…dev-10 + production backfilled/verified (both fleets held zero pre-m6 stores; apply path proven on a synthetic legacy store in dev-9), production official-CLI rename smoke green with all five Kubernetes identities preserved (`red-d9db3fp07a5s73dj32i0`).
 
 ## Source + Goal linkage
 

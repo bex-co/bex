@@ -57,9 +57,22 @@ resources=(
 )
 
 snapshot() {
-  local resource json
+  local resource json err
+  err="$(mktemp)"
+  # shellcheck disable=SC2064
+  trap "rm -f '$err'" RETURN
   for resource in "${resources[@]}"; do
-    json="$(kubectl -n "$NAMESPACE" get "$resource" -o json 2>/dev/null || true)"
+    if ! json="$(kubectl -n "$NAMESPACE" get "$resource" -o json 2>"$err")"; then
+      # Only an uninstalled resource type may be skipped (e.g. Traefik CRDs on
+      # a cluster without them). Any other list failure must not be silently
+      # dropped: a vanished line would read as identity churn in compare.
+      if grep -qiE "doesn't have a resource type|could not find the requested resource" "$err"; then
+        continue
+      fi
+      echo "error: listing $resource in $NAMESPACE failed:" >&2
+      cat "$err" >&2
+      exit 1
+    fi
     [ -n "$json" ] || continue
     jq -r --arg id "$KEYVALUE" '
       .items[]
