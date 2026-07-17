@@ -109,6 +109,74 @@ func TestParseStackProjectsServicesAndDatabases(t *testing.T) {
 	}
 }
 
+func TestParseStackScalingBlockPopulatesAutoscaling(t *testing.T) {
+	// render.yaml scaling: block (w2/m49) must flow through parseStack →
+	// CreateRequest.Autoscaling and then onto spec.autoscaling via specFromCreate.
+	const manifest = `
+services:
+  - name: web
+    type: web
+    image: {url: nginx:1}
+    scaling:
+      minInstances: 2
+      maxInstances: 10
+      targetCPUPercent: 70
+`
+	st, err := parseStack(DeployRequest{Manifest: manifest})
+	if err != nil {
+		t.Fatalf("parseStack: %v", err)
+	}
+	req := findSvc(t, st, "web").req
+	if req.Autoscaling == nil {
+		t.Fatal("Autoscaling is nil, want non-nil")
+	}
+	if req.Autoscaling.MinInstances != 2 {
+		t.Errorf("MinInstances = %d, want 2", req.Autoscaling.MinInstances)
+	}
+	if req.Autoscaling.MaxInstances != 10 {
+		t.Errorf("MaxInstances = %d, want 10", req.Autoscaling.MaxInstances)
+	}
+	if req.Autoscaling.TargetCPUPercent == nil || *req.Autoscaling.TargetCPUPercent != 70 {
+		t.Errorf("TargetCPUPercent = %v, want 70", req.Autoscaling.TargetCPUPercent)
+	}
+	// specFromCreate must materialize spec.autoscaling with Enabled:true.
+	spec, err := specFromCreate(req)
+	if err != nil {
+		t.Fatalf("specFromCreate: %v", err)
+	}
+	if spec.Autoscaling == nil || !spec.Autoscaling.Enabled {
+		t.Fatal("spec.Autoscaling not enabled after create")
+	}
+	if spec.Autoscaling.MinReplicas != 2 || spec.Autoscaling.MaxReplicas != 10 {
+		t.Errorf("spec.Autoscaling bounds = %d/%d, want 2/10", spec.Autoscaling.MinReplicas, spec.Autoscaling.MaxReplicas)
+	}
+}
+
+func TestParseStackScalingBlockValidation(t *testing.T) {
+	// An invalid scaling block (no target set) is rejected by specFromCreate,
+	// not silently accepted.
+	const manifest = `
+services:
+  - name: web
+    type: web
+    image: {url: nginx:1}
+    scaling:
+      minInstances: 1
+      maxInstances: 5
+`
+	st, err := parseStack(DeployRequest{Manifest: manifest})
+	if err != nil {
+		t.Fatalf("parseStack: %v", err)
+	}
+	req := findSvc(t, st, "web").req
+	if req.Autoscaling == nil {
+		t.Fatal("Autoscaling is nil")
+	}
+	if _, err := specFromCreate(req); err == nil {
+		t.Error("specFromCreate with no target should fail, got nil")
+	}
+}
+
 func TestParseStackLegacyAppsUnchanged(t *testing.T) {
 	// A legacy single-service `apps:` file must parse into exactly one service,
 	// byte-identical to the pre-m24 behavior (deploy_test's sampleManifest).

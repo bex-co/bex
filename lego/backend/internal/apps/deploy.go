@@ -245,6 +245,7 @@ type bexService struct {
 	MaxShutdownDelaySeconds *int32              `json:"maxShutdownDelaySeconds"` // Render's graceful SIGTERM window (1-300; default 30)
 	PreDeployCommand        string              `json:"preDeployCommand"`        // render.yaml Pre-Deploy Command (spec.preDeployCommand)
 	InitialDeployHook       string              `json:"initialDeployHook"`       // render.yaml one-time first-deploy command (w2/m45)
+	Scaling                 *bexScaling         `json:"scaling"`                 // render.yaml autoscaling block (w2/m49)
 	MaintenanceMode         *bexMaintenanceMode `json:"maintenanceMode"`         // Render: paid web services only; uri optional
 	AutoDeploy              *bool               `json:"autoDeploy"`              // deprecated render.yaml bool; nil => default
 	AutoDeployTrigger       string              `json:"autoDeployTrigger"`       // render.yaml: commit|checksPass|off
@@ -264,6 +265,17 @@ type bexService struct {
 type bexMaintenanceMode struct {
 	Enabled bool   `json:"enabled"`
 	URI     string `json:"uri"`
+}
+
+// bexScaling is render.yaml's `scaling:` block — Render's autoscaling config at
+// Blueprint create time (w2/m49). Mirrors Render's minInstances/maxInstances/
+// targetCPUPercent/targetMemoryPercent fields; at least one target is required
+// when the block is present (validated in specFromCreate via SetAutoscalingRequest).
+type bexScaling struct {
+	MinInstances        int32  `json:"minInstances"`
+	MaxInstances        int32  `json:"maxInstances"`
+	TargetCPUPercent    *int32 `json:"targetCPUPercent"`
+	TargetMemoryPercent *int32 `json:"targetMemoryPercent"`
 }
 
 // bexImage is render.yaml's `image: {url, creds}` — bex honors just the url.
@@ -1143,7 +1155,23 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, e
 		MaintenanceMode:         maintenanceMode,
 		PublishPath:             publish,
 		MaxShutdownDelaySeconds: a.MaxShutdownDelaySeconds,
+		Autoscaling:             scalingToAutoscalingRequest(a.Scaling),
 	}, se, nil
+}
+
+// scalingToAutoscalingRequest converts a render.yaml scaling block into the
+// SetAutoscalingRequest that specFromCreate passes to spec.autoscaling.
+// nil scaling (absent block) returns nil (no autoscaling on the new service).
+func scalingToAutoscalingRequest(s *bexScaling) *SetAutoscalingRequest {
+	if s == nil {
+		return nil
+	}
+	return &SetAutoscalingRequest{
+		MinInstances:        s.MinInstances,
+		MaxInstances:        s.MaxInstances,
+		TargetCPUPercent:    s.TargetCPUPercent,
+		TargetMemoryPercent: s.TargetMemoryPercent,
+	}
 }
 
 // parseDatabase maps one databases[] entry onto a DatabaseSpec. Names are
