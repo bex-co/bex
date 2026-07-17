@@ -11,6 +11,10 @@ fragment EnvironmentFields on Environment {
   protectedStatus
   networkIsolationEnabled
   ipAllowList
+  ipAllowListEntries {
+    cidrBlock
+    description
+  }
 }
 
 query Environments($projectId: String!) {
@@ -63,13 +67,13 @@ mutation SetEnvironmentACL(
   $id: String!
   $protectedStatus: String!
   $networkIsolationEnabled: Boolean!
-  $ipAllowList: [String!]
+  $ipAllowListEntries: [IPAllowListEntryInput!]
 ) {
   setEnvironmentACL(
     id: $id
     protectedStatus: $protectedStatus
     networkIsolationEnabled: $networkIsolationEnabled
-    ipAllowList: $ipAllowList
+    ipAllowListEntries: $ipAllowListEntries
   ) {
     ...EnvironmentFields
   }

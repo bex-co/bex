@@ -232,16 +232,38 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     description: "Environment inbound-IP allowlist heading",
   },
   "environments.ipAllowListHint": {
-    message: "只有列出的 CIDR 网段才能访问该环境的公开服务、静态站点和数据存储。来源还必须通过每个资源自身的 IP 规则。",
+    message:
+      "只有列出的 CIDR 网段才能访问该环境的公开服务、静态站点和数据存储。来源还必须通过每个资源自身的 IP 规则。",
     description: "Environment inbound-IP allowlist explanation",
   },
   "environments.ipAllowListOpen": {
-    message: "没有规则 — 该环境的公开成员将拒绝所有流量。添加 0.0.0.0/0 和 ::/0 可允许全部来源。",
+    message:
+      "没有规则 — 该环境的公开成员将拒绝所有流量。添加 0.0.0.0/0 和 ::/0 可允许全部来源。",
     description: "Empty environment inbound-IP allowlist state",
   },
   "environments.ipAllowListRemove": {
     message: "移除 {cidr}",
     description: "Accessible label for an inbound-IP rule remove button",
+  },
+  "environments.ipAllowListRuleCIDR": {
+    message: "规则 {number} 的 CIDR 网段",
+    description: "Accessible label for an existing inbound-IP rule CIDR",
+  },
+  "environments.ipAllowListRuleDescription": {
+    message: "规则 {number} 的描述",
+    description: "Accessible label for an existing inbound-IP rule description",
+  },
+  "environments.ipAllowListNewCIDR": {
+    message: "新 CIDR 网段",
+    description: "Accessible label for a new inbound-IP rule CIDR",
+  },
+  "environments.ipAllowListNewDescription": {
+    message: "新规则描述",
+    description: "Accessible label for a new inbound-IP rule description",
+  },
+  "environments.ipAllowListDescriptionPlaceholder": {
+    message: "描述（可选）",
+    description: "Placeholder for an inbound-IP rule description",
   },
   "environments.ipAllowListAdd": {
     message: "添加来源",

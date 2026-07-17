@@ -69,7 +69,7 @@ describe("useEnvironments", () => {
       // w6/m19: absent ACL fields default to Render's own defaults.
       protectedStatus: "unprotected",
       networkIsolationEnabled: false,
-      ipAllowList: [],
+      ipAllowListEntries: [],
     });
   });
 
@@ -87,7 +87,20 @@ describe("useEnvironments", () => {
             serviceIds: ["svc-a"],
             protectedStatus: "protected",
             networkIsolationEnabled: true,
-            ipAllowList: ["10.0.0.0/24", null],
+            ipAllowList: ["198.51.100.0/24"],
+            ipAllowListEntries: [
+              {
+                __typename: "IPAllowListEntry",
+                cidrBlock: "10.0.0.0/24",
+                description: "office",
+              },
+              {
+                __typename: "IPAllowListEntry",
+                cidrBlock: "192.168.0.0/16",
+                description: null,
+              },
+              null,
+            ],
           },
         ],
       },
@@ -101,9 +114,40 @@ describe("useEnvironments", () => {
     expect(result.current.environments[0]).toMatchObject({
       protectedStatus: "protected",
       networkIsolationEnabled: true,
-      // null CIDR entries are filtered out, same as null service ids.
-      ipAllowList: ["10.0.0.0/24"],
+      // Object-form entries take precedence over the legacy string list;
+      // null descriptions normalize to the editor's optional empty value.
+      ipAllowListEntries: [
+        { cidrBlock: "10.0.0.0/24", description: "office" },
+        { cidrBlock: "192.168.0.0/16", description: "" },
+      ],
     });
+  });
+
+  it("maps legacy plain-string rules when entries are unavailable", () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        environments: [
+          {
+            __typename: "Environment",
+            id: "env-1",
+            projectId: "prj-1",
+            name: "legacy",
+            ownerId: "tea-1",
+            ipAllowList: ["10.0.0.0/8", null],
+            ipAllowListEntries: null,
+          },
+        ],
+      },
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+
+    const { result } = renderHook(() => useEnvironments("prj-1"));
+
+    expect(result.current.environments[0].ipAllowListEntries).toEqual([
+      { cidrBlock: "10.0.0.0/8", description: "" },
+    ]);
   });
 
   it("returns an empty list (not a crash) when data is undefined", () => {

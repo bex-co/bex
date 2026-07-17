@@ -251,6 +251,26 @@ const enEnvironments: Record<string, TranslationEntry> = {
     message: "Remove {cidr}",
     description: "Accessible label for an inbound-IP rule remove button",
   },
+  "environments.ipAllowListRuleCIDR": {
+    message: "CIDR block for rule {number}",
+    description: "Accessible label for an existing inbound-IP rule CIDR",
+  },
+  "environments.ipAllowListRuleDescription": {
+    message: "Description for rule {number}",
+    description: "Accessible label for an existing inbound-IP rule description",
+  },
+  "environments.ipAllowListNewCIDR": {
+    message: "New CIDR block",
+    description: "Accessible label for a new inbound-IP rule CIDR",
+  },
+  "environments.ipAllowListNewDescription": {
+    message: "New rule description",
+    description: "Accessible label for a new inbound-IP rule description",
+  },
+  "environments.ipAllowListDescriptionPlaceholder": {
+    message: "Description (optional)",
+    description: "Placeholder for an inbound-IP rule description",
+  },
   "environments.ipAllowListAdd": {
     message: "Add source",
     description: "Button adding an inbound-IP CIDR rule",

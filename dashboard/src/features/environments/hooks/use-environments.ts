@@ -2,6 +2,11 @@ import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { EnvironmentsDocument } from "@/graphql/definitions";
 
+export interface EnvironmentIPAllowListEntry {
+  cidrBlock: string;
+  description: string;
+}
+
 export interface EnvironmentView {
   id: string;
   projectId: string;
@@ -15,7 +20,7 @@ export interface EnvironmentView {
   /** Render's protectedStatus (w6/m19): "protected" or "unprotected". */
   protectedStatus: string;
   networkIsolationEnabled: boolean;
-  ipAllowList: string[];
+  ipAllowListEntries: EnvironmentIPAllowListEntry[];
 }
 
 export interface UseEnvironmentsResult {
@@ -64,9 +69,19 @@ export function useEnvironments(
         ),
         protectedStatus: e.protectedStatus ?? "unprotected",
         networkIsolationEnabled: e.networkIsolationEnabled ?? false,
-        ipAllowList: (e.ipAllowList ?? []).filter(
-          (c): c is string => c != null,
-        ),
+        ipAllowListEntries:
+          e.ipAllowListEntries != null
+            ? e.ipAllowListEntries
+                .filter((entry): entry is NonNullable<typeof entry> => {
+                  return entry != null && entry.cidrBlock !== "";
+                })
+                .map((entry) => ({
+                  cidrBlock: entry.cidrBlock,
+                  description: entry.description ?? "",
+                }))
+            : (e.ipAllowList ?? [])
+                .filter((cidr): cidr is string => cidr != null && cidr !== "")
+                .map((cidrBlock) => ({ cidrBlock, description: "" })),
       }));
   }, [data]);
 

@@ -3,11 +3,12 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { SetEnvironmentAclDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import type { EnvironmentIPAllowListEntry } from "@/features/environments/hooks/use-environments";
 
 export interface EnvironmentACLInput {
   protectedStatus: "protected" | "unprotected";
   networkIsolationEnabled: boolean;
-  ipAllowList: string[];
+  ipAllowListEntries: EnvironmentIPAllowListEntry[];
 }
 
 export interface UseSetEnvironmentACLResult {

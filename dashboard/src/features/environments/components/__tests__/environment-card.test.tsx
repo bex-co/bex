@@ -46,7 +46,7 @@ const env: EnvironmentView = {
   envGroupIds: [],
   protectedStatus: "unprotected",
   networkIsolationEnabled: false,
-  ipAllowList: [],
+  ipAllowListEntries: [],
 };
 
 function renderCard(
@@ -197,6 +197,9 @@ describe("EnvironmentCard", () => {
     );
 
     const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText(/will DENY all traffic/),
+    ).toBeInTheDocument();
     await user.click(
       within(dialog).getByRole("switch", { name: "Protected environment" }),
     );
@@ -206,8 +209,12 @@ describe("EnvironmentCard", () => {
       }),
     );
     await user.type(
-      within(dialog).getByPlaceholderText("203.0.113.0/24"),
+      within(dialog).getByRole("textbox", { name: "New CIDR block" }),
       "10.0.0.0/24",
+    );
+    await user.type(
+      within(dialog).getByRole("textbox", { name: "New rule description" }),
+      "office",
     );
     await user.click(
       within(dialog).getByRole("button", { name: "Add source" }),
@@ -217,7 +224,52 @@ describe("EnvironmentCard", () => {
     expect(saveACL).toHaveBeenCalledWith("env-1", "staging", {
       protectedStatus: "protected",
       networkIsolationEnabled: true,
-      ipAllowList: ["10.0.0.0/24"],
+      ipAllowListEntries: [{ cidrBlock: "10.0.0.0/24", description: "office" }],
+    });
+  });
+
+  it("edits and removes existing rules and keeps descriptions optional", async () => {
+    const user = userEvent.setup();
+    renderCard({
+      environment: {
+        ...env,
+        ipAllowListEntries: [
+          { cidrBlock: "10.0.0.0/8", description: "office" },
+          { cidrBlock: "192.168.0.0/16", description: "" },
+        ],
+      },
+    });
+
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "All settings" }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    const description = within(dialog).getByRole("textbox", {
+      name: "Description for rule 1",
+    });
+    await user.clear(description);
+    await user.type(description, "headquarters");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Remove 192.168.0.0/16" }),
+    );
+    await user.type(
+      within(dialog).getByRole("textbox", { name: "New CIDR block" }),
+      "203.0.113.0/24",
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Add source" }),
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(saveACL).toHaveBeenCalledWith("env-1", "staging", {
+      protectedStatus: "unprotected",
+      networkIsolationEnabled: false,
+      ipAllowListEntries: [
+        { cidrBlock: "10.0.0.0/8", description: "headquarters" },
+        { cidrBlock: "203.0.113.0/24", description: "" },
+      ],
     });
   });
 });

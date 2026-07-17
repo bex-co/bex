@@ -107,7 +107,7 @@ const env: EnvironmentView = {
   envGroupIds: ["evg-shared"],
   protectedStatus: "unprotected",
   networkIsolationEnabled: false,
-  ipAllowList: [],
+  ipAllowListEntries: [],
 };
 
 beforeEach(() => {

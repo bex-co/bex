@@ -1,17 +1,17 @@
 # w5 · m38 — Environment IP rules UI: description-carrying entries
 
-**Worker:** worker5 **Goal:** the environment ACL editor stops being the odd one out — it reads and writes the backend's description-carrying `ipAllowListEntries` form (like the datastore access panels already do, and like Render's `cidrBlockAndDescription` shape), so an environment rule can carry a human label. **Status:** todo
+**Worker:** worker5 **Goal:** the environment ACL editor stops being the odd one out — it reads and writes the backend's description-carrying `ipAllowListEntries` form (like the datastore access panels already do, and like Render's `cidrBlockAndDescription` shape), so an environment rule can carry a human label. **Status:** done
 
 ## Tasks (in order)
 
-| id   | title                                                                                        | est | depends_on |
-| ---- | ---------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Swap the env ACL query/mutation to `ipAllowListEntries` (`{cidrBlock, description}`) + hook     | 30m | —          |
-| t002 | Editor UI: per-rule description input + display, locales (en/zh), matching the datastore panel  | 45m | t001       |
-| t003 | Render parity — env-rule editing vs Render's protected-environment UX                           | 20m | t002       |
-| t004 | Simplify — `/simplify` over the milestone's diff                                                | 15m | t003       |
-| t005 | Test coverage — meaningful tests for the shipped behavior                                       | 30m | t003       |
-| t006 | Closeout — move to `done/` when the DoD holds                                                   | 15m | t005       |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Swap the env ACL query/mutation to `ipAllowListEntries` (`{cidrBlock, description}`) + hook — **DONE** | 30m | — |
+| t002 | Editor UI: per-rule description input + display, locales (en/zh), matching the datastore panel — **DONE** | 45m | t001 |
+| t003 | Render parity — env-rule editing vs Render's protected-environment UX — **DONE** | 20m | t002 |
+| t004 | Simplify — `/simplify` over the milestone's diff — **DONE** | 15m | t003 |
+| t005 | Test coverage — meaningful tests for the shipped behavior — **DONE** | 30m | t003 |
+| t006 | Closeout — move to `done/` when the DoD holds — **DONE** | 15m | t005 |
 
 ## Definition of done
 
