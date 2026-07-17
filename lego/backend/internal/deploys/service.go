@@ -97,6 +97,7 @@ type DeployStartedNotifier interface {
 // Rollback created, naming the source deploy it restores.
 type DeployView struct {
 	ID             string
+	ServiceID      string
 	Status         string
 	Image          string
 	Trigger        string
@@ -120,6 +121,7 @@ type DeployView struct {
 func view(d store.Deploy) DeployView {
 	return DeployView{
 		ID:              d.ID,
+		ServiceID:       d.AppID,
 		Status:          d.Status,
 		Image:           d.Image,
 		Trigger:         d.Trigger,
