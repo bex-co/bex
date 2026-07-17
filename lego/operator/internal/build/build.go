@@ -60,6 +60,18 @@ const defaultSignImage = "gcr.io/projectsigstore/cosign:v2.4.1"
 // reaped rather than lingering).
 const buildTimeout = 20 * time.Minute
 
+// Build execution resources are shared by BuildKit and kpack. The memory
+// request deliberately prevents two builders from co-locating on the baseline
+// 8 GB tenant nodes; Cluster Autoscaler can then add one node per admitted
+// build. The limit leaves headroom for kubelet and node daemons instead of
+// offering a container more memory than those nodes can safely supply.
+const (
+	buildCPURequest    = "500m"
+	buildMemoryRequest = "4Gi"
+	buildCPULimit      = "4"
+	buildMemoryLimit   = "6Gi"
+)
+
 // pollInterval is how often Build re-reads the Job while waiting for it.
 const pollInterval = 3 * time.Second
 
@@ -344,12 +356,12 @@ func BuildJob(o Options, image string) *batchv1.Job {
 		},
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("500m"),
-				corev1.ResourceMemory: resource.MustParse("1Gi"),
+				corev1.ResourceCPU:    resource.MustParse(buildCPURequest),
+				corev1.ResourceMemory: resource.MustParse(buildMemoryRequest),
 			},
 			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("4"),
-				corev1.ResourceMemory: resource.MustParse("8Gi"),
+				corev1.ResourceCPU:    resource.MustParse(buildCPULimit),
+				corev1.ResourceMemory: resource.MustParse(buildMemoryLimit),
 			},
 		},
 	}

@@ -412,25 +412,17 @@ func dockerConfigValue(envs []corev1.EnvVar) string {
 func TestBuildJobResourceLimits(t *testing.T) {
 	c := BuildJob(opts(), opts().ImageRef()).Spec.Template.Spec.Containers[0]
 	r, l := c.Resources.Requests, c.Resources.Limits
-	// resource.Quantity.Cpu()/Memory() return zero-value Quantity, not nil, for
-	// absent keys — no nil guards needed before IsZero().
-	if r.Cpu().IsZero() {
-		t.Error("build Job cpu request must not be zero")
+	if got := r.Cpu().String(); got != buildCPURequest {
+		t.Errorf("build Job cpu request = %s, want %s", got, buildCPURequest)
 	}
-	if r.Memory().IsZero() {
-		t.Error("build Job memory request must not be zero")
+	if got := r.Memory().String(); got != buildMemoryRequest {
+		t.Errorf("build Job memory request = %s, want %s", got, buildMemoryRequest)
 	}
-	if l.Cpu().IsZero() {
-		t.Error("build Job cpu limit must not be zero")
+	if got := l.Cpu().String(); got != buildCPULimit {
+		t.Errorf("build Job cpu limit = %s, want %s", got, buildCPULimit)
 	}
-	if l.Memory().IsZero() {
-		t.Error("build Job memory limit must not be zero")
-	}
-	if l.Cpu().Cmp(*r.Cpu()) < 0 {
-		t.Error("cpu limit must be >= cpu request")
-	}
-	if l.Memory().Cmp(*r.Memory()) < 0 {
-		t.Error("memory limit must be >= memory request")
+	if got := l.Memory().String(); got != buildMemoryLimit {
+		t.Errorf("build Job memory limit = %s, want %s", got, buildMemoryLimit)
 	}
 }
 
@@ -462,6 +454,14 @@ func TestBuildpackImageShapeAndSuccess(t *testing.T) {
 	}
 	if image.GetName() != "bld-hello-gen-7" || image.GetLabels()["app.bex.co/component"] != "build" {
 		t.Errorf("image metadata = %s %#v", image.GetName(), image.GetLabels())
+	}
+	requests, _, _ := unstructured.NestedStringMap(image.Object, "spec", "build", "resources", "requests")
+	limits, _, _ := unstructured.NestedStringMap(image.Object, "spec", "build", "resources", "limits")
+	if requests["cpu"] != buildCPURequest || requests["memory"] != buildMemoryRequest {
+		t.Errorf("kpack build requests = %#v", requests)
+	}
+	if limits["cpu"] != buildCPULimit || limits["memory"] != buildMemoryLimit {
+		t.Errorf("kpack build limits = %#v", limits)
 	}
 
 	ready := kpackImageWithCondition(o, corev1.ConditionTrue, "BuildSuccess", "", "zot.local:5000/hello@sha256:abc")

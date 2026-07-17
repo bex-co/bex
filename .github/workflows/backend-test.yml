@@ -80,4 +80,8 @@ jobs:
         env:
           BEX_TEST_DB_URI: postgres://postgres:pw@localhost:5432/postgres?sslmode=disable
           BEX_TEST_OPENFGA_URL: http://localhost:8080
-        run: go test ./...
+        # The integration packages share this one ephemeral database, and
+        # legacy store suites intentionally TRUNCATE their fixtures. Serialize
+        # package test binaries so those resets cannot erase another package's
+        # live rows; tests within each package remain normally parallelizable.
+        run: go test -p 1 ./...
