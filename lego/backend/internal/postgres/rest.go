@@ -66,7 +66,7 @@ func (s *Service) renderPostgres(ctx context.Context, pgs []PostgresView) []rend
 		rendered := renderPostgres{
 			PostgresView: pg,
 			Region:       s.Metadata.PlatformRegion(),
-			DashboardURL: s.Metadata.DashboardURL("databases", pg.ID),
+			DashboardURL: s.Metadata.DashboardURL(resourcemeta.PostgresDashboardRoute, pg.ID),
 		}
 		if owner, ok := owners[pg.OwnerID]; ok && owner.Available() {
 			rendered.Owner = &renderOwner{ID: owner.ID, Name: owner.Name, Email: owner.Email, Type: owner.Type}

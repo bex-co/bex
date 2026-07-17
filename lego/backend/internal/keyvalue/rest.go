@@ -103,7 +103,7 @@ func (s *Service) renderKeyValues(ctx context.Context, kvs []KeyValueView) []ren
 	for _, kv := range kvs {
 		rendered := toRenderKeyValue(kv)
 		rendered.Region = s.Metadata.PlatformRegion()
-		rendered.DashboardURL = s.Metadata.DashboardURL("keyvalue", kv.ID)
+		rendered.DashboardURL = s.Metadata.DashboardURL(resourcemeta.KeyValueDashboardRoute, kv.ID)
 		if owner, ok := owners[kv.OwnerID]; ok && owner.Available() {
 			rendered.Owner = &keyValueOwner{ID: owner.ID, Name: owner.Name, Email: owner.Email, Type: owner.Type}
 		}

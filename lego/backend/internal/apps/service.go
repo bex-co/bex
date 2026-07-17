@@ -309,8 +309,10 @@ type AppView struct {
 	SSHAddress string `json:"sshAddress,omitempty"`
 	CreatedAt  string `json:"createdAt"`
 	UpdatedAt  string `json:"updatedAt,omitempty"`
-	// DashboardURL is the control-plane detail route. URL above remains the
-	// hosted data-plane endpoint; the two are never interchangeable.
+	// DashboardURL is the control-plane detail route, in Render's
+	// `/{web|worker|pserv|static|cron}/{id}` shape (docs/render-artifacts/
+	// dashboard-routes.md). URL above remains the hosted data-plane endpoint;
+	// the two are never interchangeable.
 	DashboardURL string `json:"dashboardUrl,omitempty"`
 	Region       string `json:"region,omitempty"`
 	// IdleTTLSeconds is how long a free-tier App may be idle before it
@@ -733,7 +735,7 @@ func suspenders(suspended bool) []string {
 
 func (s *Service) view(a *appv1alpha1.App) AppView {
 	v := view(a)
-	v.DashboardURL = s.Metadata.DashboardURL("services", v.ID)
+	v.DashboardURL = s.Metadata.DashboardURL(resourcemeta.ServiceDashboardRoute(v.Type), v.ID)
 	v.Region = s.Metadata.PlatformRegion()
 	host := strings.ToLower(strings.TrimSpace(s.SSHHost))
 	if strings.Contains(host, ".") && len(validation.IsDNS1123Subdomain(host)) == 0 && sshEligible(v) {

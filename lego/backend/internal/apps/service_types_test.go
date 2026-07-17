@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -288,5 +289,30 @@ func TestGraphQLCreateServiceTypeAndCronFields(t *testing.T) {
 	}
 	if getApp(t, cl, "nightly").Spec.RunAt == "" {
 		t.Error("runCronJob must set spec.runAt")
+	}
+}
+
+// --- dashboardUrl carries Render's type-aware dashboard segment (w5/m39) ---
+
+// Render's API and CLI shape dashboard deep links as
+// `<dashboard>/{web|worker|pserv|static|cron}/{id}`
+// (docs/render-artifacts/dashboard-routes.md); the Render projection must pick
+// the segment from the service type, with the CLI's `web` fallback.
+func TestDashboardURLUsesRenderTypeSegments(t *testing.T) {
+	metadata := resourcemeta.Config{DashboardBaseURL: "https://dashboard.bex.co"}
+	cases := map[string]string{
+		appv1alpha1.TypeWebService:       "web",
+		appv1alpha1.TypePrivateService:   "pserv",
+		appv1alpha1.TypeBackgroundWorker: "worker",
+		appv1alpha1.TypeCronJob:          "cron",
+		appv1alpha1.TypeStaticSite:       "static",
+		"someday_new_type":               "web",
+	}
+	for serviceType, segment := range cases {
+		r := toRenderServiceWithMetadata(AppView{ID: "srv-seg", Type: serviceType}, metadata)
+		want := "https://dashboard.bex.co/" + segment + "/srv-seg"
+		if r.DashboardURL != want {
+			t.Errorf("type %q dashboardUrl = %q, want %q", serviceType, r.DashboardURL, want)
+		}
 	}
 }

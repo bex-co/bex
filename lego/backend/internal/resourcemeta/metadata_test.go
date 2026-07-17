@@ -73,3 +73,33 @@ func TestConfigAndTimestampOmissionRules(t *testing.T) {
 		t.Fatalf("managed-field timestamp = %q", got)
 	}
 }
+
+// Render's dashboard URL scheme (docs/render-artifacts/dashboard-routes.md):
+// type-aware service segments with the CLI's `web` fallback, `/d/` for
+// Postgres, `/r/` for Key Value.
+func TestServiceDashboardRouteMatchesRenderScheme(t *testing.T) {
+	cases := map[string]string{
+		"web_service":       "web",
+		"private_service":   "pserv",
+		"background_worker": "worker",
+		"cron_job":          "cron",
+		"static_site":       "static",
+		"":                  "web", // unknown/unset falls back like Render's CLI
+		"someday_new_type":  "web",
+	}
+	for serviceType, want := range cases {
+		if got := ServiceDashboardRoute(serviceType); got != want {
+			t.Errorf("ServiceDashboardRoute(%q) = %q, want %q", serviceType, got, want)
+		}
+	}
+	c := Config{DashboardBaseURL: "https://dashboard.bex.co"}
+	if got := c.DashboardURL(ServiceDashboardRoute("cron_job"), "srv-x"); got != "https://dashboard.bex.co/cron/srv-x" {
+		t.Errorf("service URL = %q", got)
+	}
+	if got := c.DashboardURL(PostgresDashboardRoute, "dpg-x"); got != "https://dashboard.bex.co/d/dpg-x" {
+		t.Errorf("postgres URL = %q", got)
+	}
+	if got := c.DashboardURL(KeyValueDashboardRoute, "red-x"); got != "https://dashboard.bex.co/r/red-x" {
+		t.Errorf("key-value URL = %q", got)
+	}
+}

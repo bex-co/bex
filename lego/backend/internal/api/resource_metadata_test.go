@@ -120,9 +120,11 @@ func TestResourceRESTMetadataUsesOwnWorkspaceAndAuthoritativeSources(t *testing.
 		path, envelope, dashboard string
 		service                   bool
 	}{
-		{"/v1/services?ownerId=" + target.ID, "service", "https://dashboard.bex.co/services/srv-metadata00000000000", true},
-		{"/v1/postgres?ownerId=" + target.ID, "postgres", "https://dashboard.bex.co/databases/pg-metadata", false},
-		{"/v1/key-value?ownerId=" + target.ID, "keyValue", "https://dashboard.bex.co/keyvalue/kv-metadata", false},
+		// Render-shaped dashboard routes (docs/render-artifacts/dashboard-routes.md):
+		// type-aware service segment, /d/ for Postgres, /r/ for Key Value.
+		{"/v1/services?ownerId=" + target.ID, "service", "https://dashboard.bex.co/web/srv-metadata00000000000", true},
+		{"/v1/postgres?ownerId=" + target.ID, "postgres", "https://dashboard.bex.co/d/pg-metadata", false},
+		{"/v1/key-value?ownerId=" + target.ID, "keyValue", "https://dashboard.bex.co/r/kv-metadata", false},
 	}
 	for _, tt := range tests {
 		rec := do(t, h, http.MethodGet, tt.path, testToken, "")
