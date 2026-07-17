@@ -1,6 +1,6 @@
 # w2 · m44 — Image-origin override: manual-deploy `imageUrl` + deploy-hook `imgURL`
 
-**Worker:** worker2 **Goal:** An image-backed service can deploy a specific image via Render's `POST /v1/services/{id}/deploys {imageUrl}` on all three surfaces and via `?imgURL=` on its deploy hook — gated by one written origin-safety rule, with unsafe origins rejected by a Render-shaped 400 that names the rule. **Status:** todo
+**Worker:** worker2 **Goal:** An image-backed service can deploy a specific image via Render's `POST /v1/services/{id}/deploys {imageUrl}` on all three surfaces and via `?imgURL=` on its deploy hook — gated by one written origin-safety rule, with unsafe origins rejected by a Render-shaped 400 that names the rule. **Status:** DONE 2026-07-16
 
 ## Tasks (in order)
 

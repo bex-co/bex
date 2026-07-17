@@ -500,6 +500,36 @@ func TestTriggerDeployOnlyAcceptsImageBacked(t *testing.T) {
 	}
 }
 
+// --- imageUrl accept/reject paths (w2/m44) ------------------------------------
+
+func TestTriggerImageURLRejectsRepoBacked(t *testing.T) {
+	ds := newFakeStore()
+	app := sampleApp("svc", "srv-10")
+	app.Spec.Image = ""
+	app.Spec.Repo = "https://github.com/bex-co/hello.git"
+	svc, _ := newService(ds, app)
+
+	_, err := svc.Trigger(context.Background(), "svc", TriggerParams{ImageURL: "nginx:1.27"})
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("imageUrl for repo-backed: want core.ErrBadRequest, got %v", err)
+	}
+}
+
+func TestTriggerImageURLAcceptsImageBacked(t *testing.T) {
+	ds := newFakeStore()
+	app := sampleApp("svc", "srv-11")
+	svc, cl := newService(ds, app)
+
+	_, err := svc.Trigger(context.Background(), "svc", TriggerParams{ImageURL: "nginx:1.27"})
+	if err != nil {
+		t.Fatalf("imageUrl for image-backed: want nil, got %v", err)
+	}
+	// The App spec must carry the new image so the operator pulls the override.
+	if got := getApp(t, cl, "svc").Spec.Image; got != "nginx:1.27" {
+		t.Errorf("spec.image after imageUrl trigger = %q, want nginx:1.27", got)
+	}
+}
+
 // --- Restart opens a deploy row (t009) -----------------------------------------
 
 func TestRestartOpensDeploy(t *testing.T) {
