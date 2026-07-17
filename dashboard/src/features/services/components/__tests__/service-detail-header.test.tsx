@@ -11,22 +11,7 @@ import {
 import { ServiceDetailHeader } from "@/features/services/components/service-detail-header";
 import type { ServiceView } from "@/features/services/types";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
-import type { RunServiceAction } from "@/features/services/hooks/use-service-lifecycle";
 import type { LatestDeploySummary } from "@/features/deploys/hooks/use-latest-deploy";
-
-// ServiceDetailHeader renders ServiceRowActions, which renders a "Move to
-// project" submenu via useMoveToProject — needs an ApolloProvider + workspace
-// context neither this render nor the component under test cares about; stub
-// it to the empty-projects shape (the submenu renders nothing with no projects).
-vi.mock("@/features/projects/hooks/use-move-to-project", () => ({
-  useMoveToProject: () => ({
-    projects: [],
-    currentProjectId: () => null,
-    moveTo: vi.fn(),
-    removeFromProject: vi.fn(),
-    busyId: null,
-  }),
-}));
 
 // The instance-type chip and the Manual Deploy button both go through Apollo;
 // stub them at the hook boundary (the pattern every other panel's test uses) so
@@ -99,7 +84,6 @@ function renderHeader(
   service: ServiceView,
   props: Partial<{
     pending: null | "restart";
-    onRun: RunServiceAction;
     latestDeploy: LatestDeploySummary | null;
   }> = {},
 ) {
@@ -112,9 +96,6 @@ function renderHeader(
         service={service}
         latestDeploy={props.latestDeploy}
         pending={props.pending ?? null}
-        onRun={
-          props.onRun ?? vi.fn(async () => ({ status: "success" as const }))
-        }
       />
     ),
   });
@@ -288,7 +269,7 @@ describe("ServiceDetailHeader", () => {
     ).not.toBeInTheDocument();
   });
 
-  it('restarts through the Manual Deploy dropdown via triggerDeploy (w2/m30), not a duplicate control in the "•••" menu', async () => {
+  it("restarts through the Manual Deploy dropdown via triggerDeploy (w2/m30)", async () => {
     triggerDeploy.mockClear();
     const user = userEvent.setup();
     renderHeader(svc());
@@ -301,39 +282,27 @@ describe("ServiceDetailHeader", () => {
     );
     await user.click(screen.getByRole("button", { name: "Proceed" }));
 
-    // Restart now routes through the same triggerDeploy mutation as Deploy,
+    // Restart routes through the same triggerDeploy mutation as Deploy,
     // so every restart opens a deploy-history row (not a separate onRun path).
     expect(triggerDeploy).toHaveBeenCalledWith("app");
+  });
 
-    // The "•••" menu in the header no longer offers Restart or Suspend —
-    // Restart is owned by Manual Deploy (Render's own grouping) and
-    // Suspend/Resume moved to the Settings page.
-    await user.click(screen.getByRole("button", { name: "Open actions menu" }));
+  it('has no "•••" actions menu — restart lives in Manual Deploy, suspend/resume on Settings', async () => {
+    renderHeader(svc());
+
+    // The header's only controls are Connect + Manual Deploy: the old
+    // single-item "•••" dropdown was removed outright rather than left as a
+    // hidden-action menu.
+    await screen.findByRole("button", { name: "Manual Deploy" });
     expect(
-      screen.queryByRole("menuitem", { name: "Suspend" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("menuitem", { name: "Restart" }),
+      screen.queryByRole("button", { name: "Open actions menu" }),
     ).not.toBeInTheDocument();
   });
 
-  it("the header's •••  menu has no lifecycle items — suspend/resume moved to Settings", async () => {
-    const onRun = vi.fn(async () => ({ status: "success" as const }));
-    const user = userEvent.setup();
-
-    // Live service: no Suspend in header dropdown (moved to Settings).
-    renderHeader(svc(), { onRun });
-    await user.click(
-      await screen.findByRole("button", { name: "Open actions menu" }),
-    );
-    expect(screen.queryByRole("menuitem", { name: "Suspend" })).not.toBeInTheDocument();
-    expect(onRun).not.toHaveBeenCalled();
-  });
-
-  it("disables the actions control while an action is in flight (poll-to-converge)", async () => {
+  it("disables Manual Deploy while an action is in flight (poll-to-converge)", async () => {
     renderHeader(svc(), { pending: "restart" });
     expect(
-      await screen.findByRole("button", { name: "Open actions menu" }),
+      await screen.findByRole("button", { name: "Manual Deploy" }),
     ).toBeDisabled();
   });
 
