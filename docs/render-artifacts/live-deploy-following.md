@@ -44,3 +44,15 @@ Verified on the local CAPD cluster through w3's isolated `dev-3` identity/API st
 - a subscription after the build had ended emitted the named terminal `no running build is available to follow` error instead of hanging.
 
 The temporary test services, registry, pull/push Secrets, and browser profile were removed after verification. No production service was mutated.
+
+## 2026-07-17 production incident + Render deploy-page recheck
+
+A real production deploy (`dep-d9d8r3h07a5s73dj32ag`) showed only old-revision app lines while its build ran. Three compounding causes, verified against prod Loki and the deploy row:
+
+- The build pod stayed Pending for ~2 minutes (cold buildkit image pull), emitting nothing; `followBuildLogs` answered the deploy page's one SSE subscription with the terminal `no running build` event, and the client never retried — the tail was dead before the build's first line.
+- The build then failed within seconds; the deploy closed its window and the page stopped polling immediately, racing Loki ingest for the few in-window build lines.
+- The still-running previous revision kept logging into the open window — correct interleaving, but the only visible content.
+
+An authenticated dashboard.render.com walk (`/web/srv-…/deploys/dep-…`) confirmed the deploy page is Render's general log explorer scoped to the deploy's absolute window (`?r=start~end`) with an **All logs** default filter offering **All logs / Application logs / Build logs** — bex's interleaving is parity-correct. Render additionally synthesizes platform progress lines (`==> Cloning from…`, `==> Checking out commit…`, `==> Running build command…`), so its feed is never silent during scheduling; bex emits no platform lines (open parity gap).
+
+Fixes shipped with this recheck: `followBuildLogs` now waits for a Pending build pod to start instead of terminating (completed-only or no pods remains the immediate named terminal outcome), the dashboard build tail reopens a terminated subscription every 5s while the deploy is still `build_in_progress`, and the deploy page's windowed queries keep polling 15s past `finishedAt` to absorb store ingest lag.

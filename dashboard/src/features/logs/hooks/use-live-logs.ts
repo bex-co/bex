@@ -66,6 +66,10 @@ export interface UseLiveLogsOptions {
   instance: string;
   /** Ring-buffer cap on retained live lines; oldest drop first. */
   maxLines?: number;
+  /** Reopen a server-terminated stream after this many ms while still enabled —
+   *  for tails whose terminal reason can be transient, like a build tail opened
+   *  before the build pod exists. 0/omitted = a terminal error closes for good. */
+  retryDelayMs?: number;
   /** Injectable stream factory (tests). Defaults to a credentialed EventSource. */
   createEventSource?: EventSourceFactory;
 }
@@ -89,12 +93,17 @@ export function useLiveLogs({
   text,
   instance,
   maxLines = DEFAULT_MAX_LINES,
+  retryDelayMs = 0,
   createEventSource = defaultCreateEventSource,
 }: UseLiveLogsOptions): UseLiveLogsResult {
   // Status while the stream should be live but hasn't opened yet vs. paused.
   const pendingStatus: LiveStatus = enabled ? "connecting" : "idle";
   const [lines, setLines] = useState<LogLine[]>([]);
   const [status, setStatus] = useState<LiveStatus>(pendingStatus);
+  // Bumped to reopen a terminated stream (retryDelayMs); deliberately NOT part
+  // of subKey below — a retry continues the same subscription, so the buffer
+  // survives and dedupe absorbs any replayed lines.
+  const [attempt, setAttempt] = useState(0);
 
   // Reset the tail the instant the subscription identity changes (or it
   // pauses) — during render, React's sanctioned "adjust state when a prop
@@ -111,6 +120,7 @@ export function useLiveLogs({
   useEffect(() => {
     if (!enabled) return;
 
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
     const es = createEventSource(subscribeUrl(resource, type, text, instance));
 
     es.onopen = () => setStatus("open");
@@ -138,11 +148,32 @@ export function useLiveLogs({
       // `event: error` frame carrying `data`; a bare error is a transport drop
       // (EventSource auto-reconnects under the hood — `onopen` clears this).
       setStatus("error");
-      if (ev && typeof ev.data !== "undefined") es.close();
+      if (ev && typeof ev.data !== "undefined") {
+        es.close();
+        // A terminal reason can be transient while the caller still wants the
+        // tail (a build subscription racing its own pod's creation) — reopen
+        // after a delay rather than staying dead for the rest of the deploy.
+        if (retryDelayMs > 0) {
+          retryTimer = setTimeout(() => setAttempt((a) => a + 1), retryDelayMs);
+        }
+      }
     };
 
-    return () => es.close();
-  }, [resource, enabled, type, text, instance, maxLines, createEventSource]);
+    return () => {
+      if (retryTimer !== undefined) clearTimeout(retryTimer);
+      es.close();
+    };
+  }, [
+    resource,
+    enabled,
+    type,
+    text,
+    instance,
+    maxLines,
+    retryDelayMs,
+    createEventSource,
+    attempt,
+  ]);
 
   return { lines, status };
 }

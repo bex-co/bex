@@ -240,4 +240,69 @@ describe("useDeployLogs", () => {
     expect(result.current.buildLiveStatus).toBe("error");
     expect(stream?.closed).toBe(true);
   });
+
+  it("reopens a terminated build tail while the build is still being followed", () => {
+    vi.useFakeTimers();
+    try {
+      const calls: Call[] = [];
+      stubByType({}, calls);
+
+      renderHook(() =>
+        useDeployLogs(
+          "web",
+          "2026-07-14T00:00:00Z",
+          undefined,
+          false,
+          true,
+          streamFactory,
+        ),
+      );
+
+      const first = stream!;
+      // The subscribe-races-the-pod case: the server ends the tail before the
+      // build pod exists; followBuild is still true, so the tail must retry.
+      act(() => first.onerror?.({ data: "no running build" }));
+      expect(first.closed).toBe(true);
+
+      act(() => vi.advanceTimersByTime(5000));
+      expect(stream).not.toBe(first);
+      expect(stream?.url).toContain("type=build");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps polling a closed window for the ingest-lag grace, then stops", () => {
+    vi.useFakeTimers();
+    try {
+      const polls: number[] = [];
+      mockUseQuery.mockImplementation(
+        (_doc: unknown, opts: Record<string, unknown>) => {
+          polls.push(opts.pollInterval as number);
+          return { data: undefined, loading: false, error: undefined };
+        },
+      );
+
+      const { rerender } = renderHook(
+        ({ end }: { end?: string }) =>
+          useDeployLogs("web", "2026-07-14T00:00:00Z", end, true, false),
+        { initialProps: {} as { end?: string } },
+      );
+      expect(polls.length).toBeGreaterThan(0);
+      expect(polls.every((p) => p === 5000)).toBe(true); // open window polls
+
+      polls.length = 0;
+      rerender({ end: "2026-07-14T00:05:00Z" });
+      // Window just closed — the grace window still polls so store-flushed
+      // build lines land without a manual reload.
+      expect(polls.every((p) => p === 5000)).toBe(true);
+
+      polls.length = 0;
+      act(() => vi.advanceTimersByTime(15000));
+      expect(polls.length).toBeGreaterThan(0);
+      expect(polls.every((p) => p === 0)).toBe(true); // settled: polling off
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@apollo/client/react";
 import { LogsDocument } from "@/graphql/definitions";
 import { toLogLines, dedupeLogLines } from "@/features/logs/lib/map";
@@ -19,6 +19,19 @@ const LOGS_LIMIT = 100;
 // the build GraphQL leg only polls on completion to pick up any store-flushed
 // lines once the deploy finishes.
 const POLL_INTERVAL_MS = 5000;
+
+// How long the windowed queries keep polling after the deploy closes its
+// window (finishedAt set). Loki ingests a build pod's lines seconds behind the
+// pod writing them, and a build that fails the moment it speaks closes the
+// window immediately — stopping on the very first closed-window fetch can
+// permanently miss those lines until a manual reload.
+const SETTLE_MS = 15000;
+
+// Reopen delay for the build SSE tail after a server-terminated subscription.
+// The tail can terminate transiently — subscribing the instant a deploy opens
+// can race the build Job's pod into existence — so while the deploy is still
+// build_in_progress a dead tail retries instead of staying silent.
+const BUILD_RETRY_MS = 5000;
 
 // The message bex-api returns when a type=build query hits a deployment with
 // no durable store wired (core.ErrLogStoreUnavailable → 503) — build logs are
@@ -48,14 +61,39 @@ interface LogsWindow {
 // `skip`. Still three separate hook calls (GraphQL's `type` arg is single-
 // valued and `predeploy` must be requested alone, internal/logs/service.go's
 // validate()) — this just removes the per-call options boilerplate.
-function useTypedDeployLogs(type: string, window: LogsWindow, skip?: boolean) {
+function useTypedDeployLogs(
+  type: string,
+  window: LogsWindow,
+  poll: boolean,
+  skip?: boolean,
+) {
   return useQuery(LogsDocument, {
     variables: { ...window, type },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
-    pollInterval: window.endTime ? 0 : POLL_INTERVAL_MS,
+    pollInterval: poll ? POLL_INTERVAL_MS : 0,
     skip,
   });
+}
+
+// True while the windowed queries should still poll: always for an open window,
+// and for SETTLE_MS after a closed one first renders — the ingest-lag grace.
+function useWindowPolling(endTime: string | undefined): boolean {
+  const [settled, setSettled] = useState(false);
+  // Reset during render when the window identity changes (endTime cleared by a
+  // range switch, or set by the deploy finishing) — the same sanctioned
+  // adjust-state-on-prop-change pattern as use-live-logs' subKey reset.
+  const [prevEnd, setPrevEnd] = useState(endTime);
+  if (prevEnd !== endTime) {
+    setPrevEnd(endTime);
+    setSettled(false);
+  }
+  useEffect(() => {
+    if (!endTime) return;
+    const timer = setTimeout(() => setSettled(true), SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [endTime]);
+  return !endTime || !settled;
 }
 
 /**
@@ -88,15 +126,17 @@ export function useDeployLogs(
     [resource, startTime, endTime],
   );
 
-  const build = useTypedDeployLogs("build", window);
-  const predeploy = useTypedDeployLogs("predeploy", window, !hasPreDeploy);
-  const app = useTypedDeployLogs("app", window);
+  const poll = useWindowPolling(endTime);
+  const build = useTypedDeployLogs("build", window, poll);
+  const predeploy = useTypedDeployLogs("predeploy", window, poll, !hasPreDeploy);
+  const app = useTypedDeployLogs("app", window, poll);
   const liveBuild = useLiveLogs({
     resource,
     enabled: followBuild,
     type: LOG_TYPE_BUILD,
     text: "",
     instance: "",
+    retryDelayMs: BUILD_RETRY_MS,
     createEventSource,
   });
 

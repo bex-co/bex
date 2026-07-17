@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import {
   useLiveLogs,
@@ -127,6 +127,49 @@ describe("useLiveLogs", () => {
     act(() => last!.terminate("logs source not configured"));
     expect(result.current.status).toBe("error");
     expect(last!.closed).toBe(true);
+  });
+
+  it("reopens after a terminal error when retryDelayMs is set, keeping the buffer", () => {
+    vi.useFakeTimers();
+    try {
+      const { result } = renderHook(() =>
+        useLiveLogs(baseOpts({ retryDelayMs: 5000 })),
+      );
+      act(() => last!.frame(renderLog("01")));
+      const first = last!;
+      // The build-tail race: the server terminates because the pod isn't up yet.
+      act(() => first.terminate("no running build is available to follow"));
+      expect(first.closed).toBe(true);
+      expect(result.current.status).toBe("error");
+
+      act(() => vi.advanceTimersByTime(5000));
+      expect(last).not.toBe(first); // a fresh subscription opened
+      expect(result.current.lines).toHaveLength(1); // buffer survived the retry
+
+      act(() => last!.open());
+      act(() => last!.frame(renderLog("02")));
+      expect(result.current.status).toBe("open");
+      expect(result.current.lines.map((l) => l.message)).toEqual(["01", "02"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("cancels a pending retry when the tail is disabled", () => {
+    vi.useFakeTimers();
+    try {
+      const { rerender } = renderHook((props) => useLiveLogs(props), {
+        initialProps: baseOpts({ retryDelayMs: 5000 }),
+      });
+      const first = last!;
+      act(() => first.terminate("no running build is available to follow"));
+
+      rerender(baseOpts({ retryDelayMs: 5000, enabled: false }));
+      act(() => vi.advanceTimersByTime(10000));
+      expect(last).toBe(first); // no new stream after the pause
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("resets the buffer and reopens when the filter changes", () => {
