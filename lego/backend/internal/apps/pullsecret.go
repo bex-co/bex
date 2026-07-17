@@ -45,10 +45,9 @@ type PullSecretSource interface {
 	// credentialID carries Render's explicit binding. nil preserves the legacy
 	// host-match behavior; pointer-to-empty explicitly disables credentials.
 	MaterializePullSecret(ctx context.Context, workspaceID string, a *appv1alpha1.App, image string, credentialID *string) (secretName string, ok bool, err error)
-	// RegistryCredentialName resolves the non-secret display metadata Render
-	// includes on service reads. ok=false keeps reads resilient if a credential
-	// was deleted after the App binding was persisted.
-	RegistryCredentialName(ctx context.Context, workspaceID, credentialID string) (name string, ok bool)
+	// ResolveCredentialNames batch-resolves names for a slice of credential ids
+	// (one query for the page). Unknown ids are silently omitted.
+	ResolveCredentialNames(ctx context.Context, ids []string) map[string]string
 }
 
 // ensureExternalRegistryPullSecret resolves and materializes the docker-config

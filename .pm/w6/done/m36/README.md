@@ -1,16 +1,16 @@
 # w6 · m36 — Read-path correctness chores: legacy-timestamp filter + registry-cred batch lookup
 
-**Worker:** worker6 **Goal:** two verified read-path defects land as one chores round (the w1/m30 grouped pattern): env groups with no persisted `createdAt`/`updatedAt` stop silently vanishing from time-filtered lists, and `restServices` stops paying one registry-credential DB query per bound service on a page it already batch-resolves owners for. **Status:** todo
+**Worker:** worker6 **Goal:** two verified read-path defects land as one chores round (the w1/m30 grouped pattern): env groups with no persisted `createdAt`/`updatedAt` stop silently vanishing from time-filtered lists, and `restServices` stops paying one registry-credential DB query per bound service on a page it already batch-resolves owners for. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                          | est | depends_on   |
 | ---- | ------------------------------------------------------------------------------------------------ | --- | ------------ |
-| t001 | `matchesTimeWindow`: legacy groups with missing/unparseable timestamps stop being silently dropped | 30m | —            |
-| t002 | Batch registry-credential name resolution in `restServices` (one `IN (…)` lookup per page)         | 30m | —            |
-| t003 | Simplify — `/simplify` over the milestone's diff                                                   | 20m | t001, t002   |
-| t004 | Test coverage — meaningful tests for the shipped behavior                                          | 30m | t001, t002   |
-| t005 | Closeout — move to `done/` when the DoD holds                                                      | 15m | t004         |
+| t001 | `matchesTimeWindow`: legacy groups with missing/unparseable timestamps stop being silently dropped | 30m | —            | — **DONE** (w2/m51) |
+| t002 | Batch registry-credential name resolution in `restServices` (one `IN (…)` lookup per page)         | 30m | —            | — **DONE** 2026-07-16 |
+| t003 | Simplify — `/simplify` over the milestone's diff                                                   | 20m | t001, t002   | — **DONE** (no changes needed) |
+| t004 | Test coverage — meaningful tests for the shipped behavior                                          | 30m | t001, t002   | — **DONE** 2026-07-16 |
+| t005 | Closeout — move to `done/` when the DoD holds                                                      | 15m | t004         | — **DONE** 2026-07-16 |
 
 ## Definition of done
 

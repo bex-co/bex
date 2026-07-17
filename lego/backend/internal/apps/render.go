@@ -343,31 +343,52 @@ func (s *Service) renderService(a AppView) renderService {
 	return toRenderServiceWithMetadata(a, s.Metadata)
 }
 
-// restServices enriches a whole page through one owner batch lookup.
+// restServices enriches a whole page through one owner batch lookup and one
+// registry-credential batch lookup (each at most one query per page).
 func (s *Service) restServices(ctx context.Context, apps []AppView) []renderService {
 	ownerIDs := make([]string, 0, len(apps))
 	for _, app := range apps {
 		ownerIDs = append(ownerIDs, app.OwnerID)
 	}
 	owners := resourcemeta.ResolveOwners(ctx, s.Owners, ownerIDs)
+	credNames := s.resolveCredentialNames(ctx, apps)
 	out := make([]renderService, 0, len(apps))
 	for _, app := range apps {
 		rendered := s.renderService(app)
 		if owner, ok := owners[app.OwnerID]; ok {
 			rendered.Owner = ownerToRender(owner)
 		}
-		if app.RegistryCredentialID != nil && *app.RegistryCredentialID != "" && s.RegistryCreds != nil {
-			workspaceID := app.OwnerID
-			if workspaceID == "" {
-				workspaceID, _ = s.Tenant(ctx)
-			}
-			if name, ok := s.RegistryCreds.RegistryCredentialName(ctx, workspaceID, *app.RegistryCredentialID); ok {
-				rendered.RegistryCredential = &renderRegistryCredentialSummary{ID: *app.RegistryCredentialID, Name: name}
+		if app.RegistryCredentialID != nil && *app.RegistryCredentialID != "" {
+			id := *app.RegistryCredentialID
+			if name, ok := credNames[id]; ok {
+				rendered.RegistryCredential = &renderRegistryCredentialSummary{ID: id, Name: name}
 			}
 		}
 		out = append(out, rendered)
 	}
 	return out
+}
+
+// resolveCredentialNames collects the unique credential ids from apps and
+// resolves them in a single batch query (one IN(…) per page, not per app).
+func (s *Service) resolveCredentialNames(ctx context.Context, apps []AppView) map[string]string {
+	if s.RegistryCreds == nil {
+		return nil
+	}
+	seen := make(map[string]struct{})
+	ids := make([]string, 0)
+	for _, app := range apps {
+		if app.RegistryCredentialID == nil || *app.RegistryCredentialID == "" {
+			continue
+		}
+		id := *app.RegistryCredentialID
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	return s.RegistryCreds.ResolveCredentialNames(ctx, ids)
 }
 
 func (s *Service) restService(ctx context.Context, app AppView) renderService {

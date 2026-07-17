@@ -39,10 +39,29 @@ type fakePullSecrets struct {
 	lastWorkspace  string
 	lastID         *string
 	credentialName string
+	// credNames, when non-nil, backs ResolveCredentialNames batch lookups.
+	credNames map[string]string
+	// resolveCalls counts ResolveCredentialNames invocations.
+	resolveCalls int
 }
 
-func (f *fakePullSecrets) RegistryCredentialName(_ context.Context, _, _ string) (string, bool) {
-	return f.credentialName, f.credentialName != ""
+func (f *fakePullSecrets) ResolveCredentialNames(_ context.Context, ids []string) map[string]string {
+	f.resolveCalls++
+	out := make(map[string]string)
+	for _, id := range ids {
+		if f.credNames != nil {
+			if name, ok := f.credNames[id]; ok {
+				out[id] = name
+			}
+		} else if f.credentialName != "" {
+			// backward-compat fallback: old tests set credentialName, not credNames.
+			out[id] = f.credentialName
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 func (f *fakePullSecrets) MaterializePullSecret(_ context.Context, workspaceID string, _ *appv1alpha1.App, image string, credentialID *string) (string, bool, error) {

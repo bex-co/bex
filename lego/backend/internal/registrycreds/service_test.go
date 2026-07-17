@@ -76,6 +76,16 @@ func (f *fakeStore) GetRegistryCredentialByID(_ context.Context, id string) (sto
 	return c, nil
 }
 
+func (f *fakeStore) GetRegistryCredentialsByIDs(_ context.Context, ids []string) ([]store.RegistryCredential, error) {
+	var out []store.RegistryCredential
+	for _, id := range ids {
+		if c, ok := f.rows[id]; ok {
+			out = append(out, c)
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeStore) GetRegistryCredentialByHost(_ context.Context, workspaceID, host string) (store.RegistryCredential, error) {
 	for _, c := range f.rows {
 		if c.WorkspaceID == workspaceID && c.Host == host {
