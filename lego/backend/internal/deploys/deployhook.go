@@ -27,10 +27,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
-	"golang.org/x/time/rate"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -191,32 +189,17 @@ func deployHookServiceName(a *appv1alpha1.App) string {
 // limiter it is replica-local; bex-api currently runs one replica. Keys are
 // SHA-256 digests so the raw credential is not retained in the limiter map.
 type DeployHookRateLimiter struct {
-	mu        sync.Mutex
-	entries   map[[sha256.Size]byte]*deployHookLimitEntry
-	rps       rate.Limit
-	burst     int
-	lastSweep time.Time
-}
-
-type deployHookLimitEntry struct {
-	lim  *rate.Limiter
-	last time.Time
+	*core.KeyedRateLimiter[[sha256.Size]byte]
 }
 
 // NewDeployHookRateLimiter constructs a per-token limiter. Non-positive rpm
 // disables it (nil), matching the main API limiter's constructor contract.
 func NewDeployHookRateLimiter(rpm float64, burst int) *DeployHookRateLimiter {
-	if rpm <= 0 {
+	inner := core.NewKeyedRateLimiter[[sha256.Size]byte](rpm, burst, deployHookLimiterIdle, deployHookLimiterSweepEvery)
+	if inner == nil {
 		return nil
 	}
-	if burst <= 0 {
-		burst = int(math.Ceil(rpm))
-	}
-	return &DeployHookRateLimiter{
-		entries: make(map[[sha256.Size]byte]*deployHookLimitEntry),
-		rps:     rate.Limit(rpm / 60),
-		burst:   burst,
-	}
+	return &DeployHookRateLimiter{KeyedRateLimiter: inner}
 }
 
 // reserve returns whether a request may proceed and, when denied, the delay
@@ -226,24 +209,8 @@ func (rl *DeployHookRateLimiter) reserve(token string) (bool, time.Duration) {
 		return true, 0
 	}
 	key := sha256.Sum256([]byte(token))
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-	now := time.Now()
-	if now.Sub(rl.lastSweep) > deployHookLimiterSweepEvery {
-		for k, e := range rl.entries {
-			if now.Sub(e.last) > deployHookLimiterIdle {
-				delete(rl.entries, k)
-			}
-		}
-		rl.lastSweep = now
-	}
-	e := rl.entries[key]
-	if e == nil {
-		e = &deployHookLimitEntry{lim: rate.NewLimiter(rl.rps, rl.burst)}
-		rl.entries[key] = e
-	}
-	e.last = now
-	res := e.lim.Reserve()
+	lim := rl.Bucket(key)
+	res := lim.Reserve()
 	if delay := res.Delay(); delay > 0 {
 		res.Cancel()
 		return false, delay

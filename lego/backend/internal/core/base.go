@@ -271,7 +271,6 @@ func (b *Base) Authorize(ctx context.Context, relation string) error {
 	return b.authorizeAndAudit(ctx, relation, object, "", callerVerb(verbFrameSkip), err)
 }
 
-
 // callerWorkspace is the OpenFGA object of the workspace the caller is acting
 // in: workspace:tea-<id> for the workspace they NAMED (once membership-checked)
 // or, naming none, for the one the resolver resolves them to; workspace:default
@@ -305,7 +304,35 @@ func (b *Base) callerWorkspace(ctx context.Context) (string, error) {
 // "" (no error) means no workspace resolves — the store is off, the caller has
 // no identity, or it is an unbound machine key / the bootstrap — which leaves
 // the caller on workspace:default, exactly as before.
+// resolveWorkspace returns the workspace this request acts in: the caller's
+// default, or the one they explicitly named. It is the ONE place a request's
+// effective workspace is decided (w6/m14) — every gate on Base reads it, so the
+// three surfaces cannot drift on which workspace a request acts in.
+//
+// The result is memoized in the context: callers that need to resolve once and
+// then evaluate many candidates (GetApp's name-collision fallback loop) should
+// call resolveWorkspaceMemo instead and propagate the returned context, so each
+// downstream AuthorizeLabeled/resourceWorkspaceFor call reuses the same result
+// without redundant Workspace.Tenant / IsMember round trips (w4/027).
 func (b *Base) resolveWorkspace(ctx context.Context) (string, error) {
+	if cached, ok := resolvedWorkspaceFrom(ctx); ok {
+		return cached.acting, cached.err
+	}
+	return b.resolveWorkspaceUncached(ctx)
+}
+
+// resolveWorkspaceMemo is resolveWorkspace plus context memoization. Use it when
+// the resolved workspace must be reused across multiple downstream calls in the
+// same request.
+func (b *Base) resolveWorkspaceMemo(ctx context.Context) (context.Context, string, error) {
+	if cached, ok := resolvedWorkspaceFrom(ctx); ok {
+		return ctx, cached.acting, cached.err
+	}
+	acting, err := b.resolveWorkspaceUncached(ctx)
+	return withResolvedWorkspace(ctx, acting, err), acting, err
+}
+
+func (b *Base) resolveWorkspaceUncached(ctx context.Context) (string, error) {
 	if b.Workspace == nil {
 		return "", nil // store off: one workspace, nothing to resolve or override
 	}
@@ -772,7 +799,7 @@ func appCandidateNames(acting, name string) []string {
 // duplicate (Service.create scopes its own probe to the target workspace
 // directly, never through GetApp, for exactly that reason).
 func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.App, error) {
-	acting, err := b.resolveWorkspace(ctx)
+	ctx, acting, err := b.resolveWorkspaceMemo(ctx)
 	if err != nil {
 		return nil, err
 	}

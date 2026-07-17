@@ -27,8 +27,6 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/time/rate"
-
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
@@ -61,11 +59,7 @@ func TestRateLimiterDisabledWhenZero(t *testing.T) {
 
 func TestRateLimiterPerCallerIsolation(t *testing.T) {
 	// burst=1: first request for any key passes, second immediately fails.
-	rl := &RateLimiter{
-		entries: make(map[string]*limEntry),
-		rps:     rate.Limit(1000), // high fill rate; burst is the constraint
-		burst:   1,
-	}
+	rl := NewRateLimiter(60000, 1) // high fill rate; burst is the constraint
 	h := rl.Middleware(ok200)
 
 	// Alice: first passes, second is 429.
@@ -91,11 +85,7 @@ func TestRateLimiterPerCallerIsolation(t *testing.T) {
 }
 
 func TestRateLimiterRetryAfterHeader(t *testing.T) {
-	rl := &RateLimiter{
-		entries: make(map[string]*limEntry),
-		rps:     rate.Limit(1),
-		burst:   1,
-	}
+	rl := NewRateLimiter(60, 1)
 	h := rl.Middleware(ok200)
 
 	id := core.Identity{Subject: "user1", Method: "oauth2"}
@@ -118,11 +108,7 @@ func TestRateLimiterRetryAfterHeader(t *testing.T) {
 }
 
 func TestRateLimiterRESTShape(t *testing.T) {
-	rl := &RateLimiter{
-		entries: make(map[string]*limEntry),
-		rps:     rate.Limit(1000),
-		burst:   1,
-	}
+	rl := NewRateLimiter(60000, 1)
 	h := rl.Middleware(ok200)
 	id := core.Identity{Subject: "u1"}
 	r := reqWith("GET", "/v1/services", id)
@@ -147,11 +133,7 @@ func TestRateLimiterRESTShape(t *testing.T) {
 }
 
 func TestRateLimiterGraphQLShape(t *testing.T) {
-	rl := &RateLimiter{
-		entries: make(map[string]*limEntry),
-		rps:     rate.Limit(1000),
-		burst:   1,
-	}
+	rl := NewRateLimiter(60000, 1)
 	h := rl.Middleware(ok200)
 	id := core.Identity{Subject: "gql-user"}
 	gqlReq := func() *http.Request {
@@ -180,11 +162,7 @@ func TestRateLimiterGraphQLShape(t *testing.T) {
 }
 
 func TestRateLimiterIPFallback(t *testing.T) {
-	rl := &RateLimiter{
-		entries: make(map[string]*limEntry),
-		rps:     rate.Limit(1000),
-		burst:   1,
-	}
+	rl := NewRateLimiter(60000, 1)
 	h := rl.Middleware(ok200)
 	// Request with no identity — falls back to remote IP.
 	r := httptest.NewRequest("GET", "/v1/services", nil)
@@ -436,11 +414,7 @@ func TestRateLimitWiredInHandler(t *testing.T) {
 	srv := NewServer(base, Deps{})
 	srv.HydraAdminURL = fakeHydraURL(t)
 	// Burst=1: after consuming the token, the next request is 429.
-	srv.RateLimiter = &RateLimiter{
-		entries: make(map[string]*limEntry),
-		rps:     rate.Limit(1000),
-		burst:   1,
-	}
+	srv.RateLimiter = NewRateLimiter(60000, 1)
 	h, err := srv.Handler()
 	if err != nil {
 		t.Fatalf("Handler: %v", err)

@@ -153,7 +153,7 @@ The role enum is **UPPERCASE** (verified live against the dashboard in [`team-me
 }
 ```
 
-Used by every error response (`401Unauthorized`, `404NotFound`, `406NotAcceptable`, `410Gone`, `429RateLimit`, `500InternalServerError`, `503ServiceUnavailable`). **bex diverges here:** its existing `core.WriteErr` renders `{"error": "…"}` across all endpoints (t002: "consistent with existing endpoints"). Adopting Render's `{id, message}` would be a cross-cutting change to every endpoint, so it is a documented divergence, not an owners-only concern.
+Used by every error response (`401Unauthorized`, `404NotFound`, `406NotAcceptable`, `410Gone`, `429RateLimit`, `500InternalServerError`, `503ServiceUnavailable`). **Shipped behavior:** `w9/m38` unified `core.WriteErr`/`WriteErrStatus` (`lego/backend/internal/core/http.go:37-90`) to emit Render's `{error, id, message}` envelope on every non-2xx path while keeping the `error` key for bex-only callers; live-verified via the official CLI's bad-key 401 (`docs/cli-compatibility-checklist.md` line 74). The earlier `{"error": "…"}` divergence is gone.
 
 ## `own-` vs `usr-` — resolved
 

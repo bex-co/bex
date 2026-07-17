@@ -20,10 +20,9 @@ import (
 	"math"
 	"net"
 	"net/http"
-	"sync"
 	"time"
 
-	"golang.org/x/time/rate"
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // DeviceRateLimiter is an IP-keyed token-bucket limiter guarding the three
@@ -31,26 +30,16 @@ import (
 // Hydra round trip with no metering, and these routes mount outside the auth
 // gate by design (internal/api/CLAUDE.md's always-public inventory), so the
 // identity-keyed internal/api.RateLimiter never sees them and would key every
-// anonymous caller into one shared bucket even if it did. This mirrors that
-// limiter's shape (map + mutex + idle sweep over golang.org/x/time/rate) but
-// stays IP-only (there is never an identity here) and lives in this package
-// rather than internal/api to avoid a cliauth->api->cliauth import cycle
-// (internal/api/server.go already imports cliauth to wire it in).
+// anonymous caller into one shared bucket even if it did. It wraps the shared
+// core.KeyedRateLimiter and stays IP-only (there is never an identity here) in
+// this package rather than internal/api to avoid a cliauth->api->cliauth import
+// cycle (internal/api/server.go already imports cliauth to wire it in).
 //
 // NOTE: single-replica, like internal/api.RateLimiter — the same
 // FUTURE-MAYBE boundary (a distributed counter is the follow-up if bex-api
 // scales out).
 type DeviceRateLimiter struct {
-	mu        sync.Mutex
-	entries   map[string]*rateEntry
-	rps       rate.Limit
-	burst     int
-	lastSweep time.Time
-}
-
-type rateEntry struct {
-	lim  *rate.Limiter
-	last time.Time
+	*core.KeyedRateLimiter[string]
 }
 
 const (
@@ -63,23 +52,17 @@ const (
 // burst <= 0 defaults to ceil(rpm) — the same convention
 // internal/api.NewRateLimiter uses.
 func NewDeviceRateLimiter(rpm float64, burst int) *DeviceRateLimiter {
-	if rpm <= 0 {
+	inner := core.NewKeyedRateLimiter[string](rpm, burst, deviceLimiterIdle, deviceLimiterSweepEvery)
+	if inner == nil {
 		return nil
 	}
-	if burst <= 0 {
-		burst = int(math.Ceil(rpm))
-	}
-	return &DeviceRateLimiter{
-		entries: make(map[string]*rateEntry),
-		rps:     rate.Limit(rpm / 60),
-		burst:   burst,
-	}
+	return &DeviceRateLimiter{KeyedRateLimiter: inner}
 }
 
 // allow reports whether the request's source IP may proceed now; if not, the
 // seconds the caller should wait before retrying.
 func (rl *DeviceRateLimiter) allow(r *http.Request) (bool, int) {
-	lim := rl.bucket(clientIP(r))
+	lim := rl.Bucket(clientIP(r))
 	res := lim.Reserve()
 	if d := res.Delay(); d > 0 {
 		res.Cancel()
@@ -90,29 +73,6 @@ func (rl *DeviceRateLimiter) allow(r *http.Request) (bool, int) {
 		return false, wait
 	}
 	return true, 0
-}
-
-// bucket returns (and lazily creates) the per-IP limiter, sweeping idle
-// entries periodically to bound memory use.
-func (rl *DeviceRateLimiter) bucket(key string) *rate.Limiter {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-	now := time.Now()
-	if now.Sub(rl.lastSweep) > deviceLimiterSweepEvery {
-		for k, e := range rl.entries {
-			if now.Sub(e.last) > deviceLimiterIdle {
-				delete(rl.entries, k)
-			}
-		}
-		rl.lastSweep = now
-	}
-	e, ok := rl.entries[key]
-	if !ok {
-		e = &rateEntry{lim: rate.NewLimiter(rl.rps, rl.burst)}
-		rl.entries[key] = e
-	}
-	e.last = now
-	return e.lim
 }
 
 // clientIP extracts the request's source IP, falling back to the raw
