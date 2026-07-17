@@ -19,6 +19,7 @@ package notifications
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 
@@ -172,7 +173,8 @@ func TestNotifyDeployStartedRespectsStartedPreference(t *testing.T) {
 	if len(mailer.sent) != 1 || mailer.sent[0].to != "alice@example.com" {
 		t.Fatalf("sent = %+v, want exactly one deploy-start mail to opted-in alice", mailer.sent)
 	}
-	if mailer.sent[0].subject != "Deploy started: web" || mailer.sent[0].body != "A deploy of \"web\" has started.\n" {
+	if mailer.sent[0].subject != "Deploy started: web" ||
+		mailer.sent[0].body != "A deploy of \"web\" has started. We'll email you when it finishes.\n" {
 		t.Errorf("deploy-start mail = %+v", mailer.sent[0])
 	}
 }
@@ -349,4 +351,106 @@ func TestNotifyDeployNoopWithoutMailerOrStore(t *testing.T) {
 	// No store: nothing to look recipients up from, must not panic.
 	svc2 := newTestService(nil, nil, &fakeMailer{}, fakeIdentities{"alice": "alice@example.com"})
 	svc2.NotifyDeploy(context.Background(), store.DeployNotification{TenantID: "tea-a", AppName: "web", Status: store.DeployLive, NotifyOnFail: "default"})
+}
+
+// TestDeployEmailContent covers the enriched deploy-email body (w7/m44): the
+// per-kind impact framing, the commit block (present when the deploy has a
+// commit, omitted otherwise), and the "View Logs" link (present when a logs URL
+// is supplied, omitted otherwise).
+func TestDeployEmailContent(t *testing.T) {
+	const commit = "fix(backend): correct typo computeUnitePerDay to computeUnitPerDay\n\n- rename across all files"
+	const logsURL = "https://dashboard.bex.co/services/web/deploys/dep-123"
+
+	t.Run("failure carries framing, commit, and logs link", func(t *testing.T) {
+		subject, body := deployEmail("web", deployMailFailed, deployDetails{commitMessage: commit}, logsURL)
+		if subject != "Deploy failed: web" {
+			t.Errorf("subject = %q", subject)
+		}
+		for _, want := range []string{
+			"We encountered an error during the deploy process for \"web\"",
+			"may not be live",
+			"Commit:\n" + commit,
+			"View logs:\n" + logsURL,
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("failure body missing %q:\n%s", want, body)
+			}
+		}
+	})
+
+	t.Run("image-backed deploy (no commit) omits the commit block", func(t *testing.T) {
+		_, body := deployEmail("web", deployMailFailed, deployDetails{}, logsURL)
+		if strings.Contains(body, "Commit:") {
+			t.Errorf("body should omit the empty commit block:\n%s", body)
+		}
+		if !strings.Contains(body, "View logs:\n"+logsURL) {
+			t.Errorf("body should still carry the logs link:\n%s", body)
+		}
+	})
+
+	t.Run("no dashboard URL omits the View Logs line", func(t *testing.T) {
+		_, body := deployEmail("web", deployMailFailed, deployDetails{commitMessage: commit}, "")
+		if strings.Contains(body, "View logs") {
+			t.Errorf("body should omit the logs line when no URL is available:\n%s", body)
+		}
+	})
+
+	t.Run("succeeded and started frame their own outcome", func(t *testing.T) {
+		_, ok := deployEmail("web", deployMailSucceeded, deployDetails{}, "")
+		if !strings.Contains(ok, "live") {
+			t.Errorf("succeeded body = %q", ok)
+		}
+		_, started := deployEmail("web", deployMailStarted, deployDetails{}, "")
+		if !strings.Contains(started, "has started") {
+			t.Errorf("started body = %q", started)
+		}
+	})
+}
+
+// TestDeployLogsURL covers the "View Logs" deep-link builder: the deploy-detail
+// route when the dashboard URL is set, and honest-omit when it (or the deploy
+// id) is absent.
+func TestDeployLogsURL(t *testing.T) {
+	set := &Service{DashboardBaseURL: "https://dashboard.bex.co"}
+	if got := set.deployLogsURL("web", "dep-123"); got != "https://dashboard.bex.co/services/web/deploys/dep-123" {
+		t.Errorf("deployLogsURL = %q", got)
+	}
+	if got := set.deployLogsURL("web", ""); got != "" {
+		t.Errorf("no deploy id should omit the link, got %q", got)
+	}
+	unset := &Service{}
+	if got := unset.deployLogsURL("web", "dep-123"); got != "" {
+		t.Errorf("no dashboard URL should omit the link, got %q", got)
+	}
+}
+
+// TestNotifyDeployFailedIncludesCommitAndLink is the end-to-end assertion that
+// a failed-deploy notification carries the commit message and the View Logs
+// deep link the reconciler now threads through DeployNotification (w7/m44).
+func TestNotifyDeployFailedIncludesCommitAndLink(t *testing.T) {
+	st := newFakeStore()
+	st.recipients["tea-a"] = []store.NotifyRecipient{{Subject: "alice", DeployFailed: true}}
+	mailer := &fakeMailer{}
+	svc := newTestService(st, nil, mailer, fakeIdentities{"alice": "alice@example.com"})
+	svc.DashboardBaseURL = "https://dashboard.bex.co"
+
+	svc.NotifyDeploy(context.Background(), store.DeployNotification{
+		TenantID:      "tea-a",
+		AppName:       "web",
+		Status:        store.DeployUpdateFailed,
+		DeployID:      "dep-123",
+		CommitMessage: "fix: correct a typo",
+		NotifyOnFail:  "default",
+	})
+
+	if len(mailer.sent) != 1 {
+		t.Fatalf("sent = %+v, want one failure mail", mailer.sent)
+	}
+	body := mailer.sent[0].body
+	if !strings.Contains(body, "fix: correct a typo") {
+		t.Errorf("failure mail missing commit message:\n%s", body)
+	}
+	if !strings.Contains(body, "https://dashboard.bex.co/services/web/deploys/dep-123") {
+		t.Errorf("failure mail missing View Logs link:\n%s", body)
+	}
 }

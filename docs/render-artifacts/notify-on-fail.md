@@ -44,8 +44,35 @@ bex now implements Render's service-level `notificationsToSend` policy and exact
 | Default migration | Schema defaults and absent settings rows are failure-only. Rows still equal to the former all-enabled default are migrated to failure-only; customized rows are not overwritten. |
 | Unknown value | `core.ErrBadRequest` (named 400), matching bex's `SetPlan`/`normalizeType` enum-validation convention |
 
+## Email content (w7/m44)
+
+The policy above decides _who_ is emailed; this section is _what_ the deploy email says. Render's captured deploy-failure email (2026-07-17) carries three things beyond a bare status line: an impact-framing sentence, the failing **commit message**, and a **View Logs** link.
+
+> We encountered an error during the deploy process for backend-v2. This means your deploy didn't complete successfully and your latest changes may not be live. Commit: `<full commit subject + body>` View Logs
+
+bex now matches that shape (`internal/notifications/deployEmail`). The failure body:
+
+```
+Subject: Deploy failed: backend-v2
+
+We encountered an error during the deploy process for "backend-v2". This means
+your deploy didn't complete successfully and your latest changes may not be live.
+
+Commit:
+<the deploy's commit subject + body>
+
+View logs:
+https://dashboard.bex.co/services/backend-v2/deploys/dep-…
+```
+
+- **Impact framing** matches Render's register per lifecycle kind: failed ("encountered an error … may not be live"), succeeded ("is live … now serving"), started ("has started …").
+- **Commit block** is included when the deploy has a commit (repo-backed builds — `Deploy.CommitMessage`); an image-backed deploy with no commit omits the block rather than printing an empty `Commit:` label.
+- **View Logs** is the deploy-detail deep link (`<BEX_DASHBOARD_URL>/services/<service>/deploys/<deployId>`, which renders build/deploy logs), omitted when `BEX_DASHBOARD_URL` is unset — the same honest-omit the workspace-invite email uses for its link.
+- **Consistency**: the reconcile-time failure/succeeded path carries commit + link (the deploy row is in hand); the request-time started path has no deploy row, so its email carries the framing only ("when available" — never a broken or half link).
+
 ## Divergences from Render, stated
 
 - Workspace defaults remain member-scoped instead of Render's owner-wide email/Slack configuration.
 - Slack and preview-environment notification behavior are not implemented. The service endpoint exposes `previewNotificationsEnabled: default` only.
 - bex includes deploy-started email in `all`; Render's public enum does not enumerate individual event types.
+- Email is **plain-text** (the shared `mailer.SMTP` relay), where Render's is HTML; the "View Logs" target is bex's own deploy-detail route. The service name is quoted (`"backend-v2"`) where Render's prose is unquoted — cosmetic.
