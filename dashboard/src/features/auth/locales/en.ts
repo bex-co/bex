@@ -162,6 +162,26 @@ const enAuth: Record<string, TranslationEntry> = {
     message: "Return to your terminal to continue.",
     description: "Device authorization success page terminal hint",
   },
+  "auth.deviceSuccessWaiting": {
+    message: "Waiting for browser authorization…",
+    description:
+      "Device success page terminal replica: the CLI line shown while it polls for tokens",
+  },
+  "auth.deviceSuccessDone": {
+    message: "Authorization complete. You are signed in.",
+    description:
+      "Device success page terminal replica: the CLI success line (rendered after a ✓ glyph)",
+  },
+  "auth.deviceSuccessClose": {
+    message: "You can close this tab.",
+    description:
+      "Device success page: follow-up sentence after the return-to-terminal hint",
+  },
+  "auth.deviceSuccessDashboard": {
+    message: "Open the dashboard",
+    description:
+      "Device success page: quiet link to the dashboard home for users staying in the browser",
+  },
 };
 
 export default enAuth;
