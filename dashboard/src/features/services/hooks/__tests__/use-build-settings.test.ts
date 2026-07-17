@@ -16,6 +16,7 @@ vi.mock("sonner", () => ({
 }));
 
 import { useStartCommand } from "@/features/services/hooks/use-start-command";
+import { useBuildCommand } from "@/features/services/hooks/use-build-command";
 import { useDockerfilePath } from "@/features/services/hooks/use-dockerfile-path";
 
 beforeEach(() => {
@@ -97,6 +98,37 @@ describe("Build & Deploy setting hooks", () => {
     });
     expect(toastError).toHaveBeenCalledWith(
       "Couldn't update the Dockerfile Path. Please try again.",
+    );
+  });
+
+  it("persists a build command through setBuildCommand (w7/m41)", async () => {
+    const mutate = vi.fn().mockResolvedValue({});
+    mockUseMutation.mockReturnValue([mutate]);
+    const { result } = renderHook(() => useBuildCommand());
+
+    await act(async () => {
+      expect(
+        await result.current.setBuildCommand("site-1", "npm run build"),
+      ).toBe(true);
+    });
+
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { id: "site-1", command: "npm run build" },
+    });
+    expect(toastSuccess).toHaveBeenCalledWith("Build Command updated.");
+  });
+
+  it("reports a build-command mutation failure", async () => {
+    mockUseMutation.mockReturnValue([
+      vi.fn().mockRejectedValue(new Error("not allowed")),
+    ]);
+    const { result } = renderHook(() => useBuildCommand());
+
+    await act(async () => {
+      expect(await result.current.setBuildCommand("site-1", "bad")).toBe(false);
+    });
+    expect(toastError).toHaveBeenCalledWith(
+      "Couldn't update the Build Command. Please try again.",
     );
   });
 });

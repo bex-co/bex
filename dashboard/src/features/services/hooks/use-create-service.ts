@@ -37,6 +37,8 @@ export interface CreateServiceInput {
   buildCommand?: string;
   startCommand?: string;
   dockerfilePath?: string;
+  /** Render's Build Filters (glob paths/ignoredPaths) gating git-push auto-deploys. */
+  buildFilter?: { paths: string[]; ignoredPaths: string[] };
   plan?: string;
   autoDeploy?: boolean;
   schedule?: string;
@@ -112,6 +114,7 @@ export function useCreateService(): UseCreateServiceResult {
             buildCommand: input.buildCommand,
             startCommand: input.startCommand,
             dockerfilePath: input.dockerfilePath,
+            buildFilter: input.buildFilter,
             plan: input.plan,
             autoDeploy: input.autoDeploy,
             schedule: input.schedule,
