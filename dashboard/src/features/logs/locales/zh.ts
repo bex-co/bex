@@ -63,6 +63,16 @@ const zhLogs: Record<string, TranslationEntry> = {
     message: "请求路径",
     description: "Accessible label for the request-path filter input",
   },
+  "logs.filtersButton": {
+    message: "筛选",
+    description:
+      "Trigger for the structured-filters popover (level/method/status/instance/path)",
+  },
+  "logs.chipRemove": {
+    message: "移除{label}筛选",
+    description:
+      "Accessible label for an active-filter chip's clear button; {label} is the filter's field name",
+  },
   "logs.pathPlaceholder": {
     message: "按路径筛选",
     description: "Placeholder for the request-path filter input",

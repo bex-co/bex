@@ -64,6 +64,16 @@ const enLogs: Record<string, TranslationEntry> = {
     message: "Request path",
     description: "Accessible label for the request-path filter input",
   },
+  "logs.filtersButton": {
+    message: "Filters",
+    description:
+      "Trigger for the structured-filters popover (level/method/status/instance/path)",
+  },
+  "logs.chipRemove": {
+    message: "Remove {label} filter",
+    description:
+      "Accessible label for an active-filter chip's clear button; {label} is the filter's field name",
+  },
   "logs.pathPlaceholder": {
     message: "Filter by path",
     description: "Placeholder for the request-path filter input",
