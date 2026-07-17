@@ -246,6 +246,9 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 	if a.PreDeployCommand != "" {
 		set("preDeployCommand", a.PreDeployCommand) // webServiceDetails.preDeployCommand (w1/m33)
 	}
+	if a.InitialDeployHook != "" {
+		set("initialDeployHook", a.InitialDeployHook) // w2/m45: blueprint-only one-time first-deploy command
+	}
 	if a.MaxShutdownDelaySeconds > 0 {
 		// Render places this on web/private/background-worker serviceDetails.
 		// view() supplies the shared Render/Kubernetes default (30) when the CR

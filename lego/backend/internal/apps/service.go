@@ -380,6 +380,11 @@ type AppView struct {
 	// means no pre-deploy step. The Settings → Build & Deploy section reads/writes
 	// it via SetPreDeployCommand.
 	PreDeployCommand string `json:"preDeployCommand,omitempty"`
+	// InitialDeployHook is the blueprint-only one-time first-deploy command (Render's
+	// initialDeployHook, w2/m45). Echoed from the bex.co/initial-deploy-hook
+	// annotation; empty on services not created from a blueprint or where no hook
+	// was declared.
+	InitialDeployHook string `json:"initialDeployHook,omitempty"`
 	// PublishPath is the built output directory a static_site serves as its
 	// document root (spec.publishPath, Render's "Publish Directory"). Empty for
 	// every other type.
@@ -713,8 +718,9 @@ func view(a *appv1alpha1.App) AppView {
 		MaxShutdownDelaySeconds: effectiveMaxShutdownDelaySeconds(
 			svcType, a.Spec.MaxShutdownDelaySeconds,
 		),
-		PreDeployCommand: a.Spec.PreDeployCommand,
-		PublishPath:      a.Spec.PublishPath,
+		PreDeployCommand:  a.Spec.PreDeployCommand,
+		InitialDeployHook: a.Annotations[initialDeployHookAnnotation],
+		PublishPath:       a.Spec.PublishPath,
 		Routes:           staticRouteViews(a.Spec.Routes),
 		Headers:          staticHeaderViews(a.Spec.Headers),
 		IPAllowList:      a.Spec.IPAllowList,
@@ -1195,6 +1201,12 @@ type CreateRequest struct {
 	// traffic (typically a DB migration); a non-zero exit fails the deploy. Empty
 	// means no pre-deploy step. Ignored for cron_job/static_site.
 	PreDeployCommand string
+	// InitialDeployHook is Render's initialDeployHook (w2/m45): a blueprint-only
+	// command that runs exactly once, on the first successful deploy. REST/GraphQL/MCP
+	// callers leave this empty; it is populated only by the blueprint parse path.
+	// Gated by the bex.co/initial-deploy-hook-ran annotation on the App CR; after it
+	// runs, subsequent deploys and blueprint re-syncs use PreDeployCommand instead.
+	InitialDeployHook string
 	// PublishPath is the built output directory a static_site serves (Render's
 	// "Publish Directory", spec.publishPath). Required when Type is static_site,
 	// ignored otherwise.
@@ -1615,6 +1627,15 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 		return AppView{}, err
 	}
 	a.Spec.ExternalRegistryPullSecret = pullSecretName
+	// Persist the initialDeployHook command for echo-back on reads (w2/m45).
+	// The ran-once annotation is added by applyCreate once the first pre-deploy
+	// Job succeeds; createNewApp only stores the command.
+	if req.InitialDeployHook != "" {
+		if a.Annotations == nil {
+			a.Annotations = map[string]string{}
+		}
+		a.Annotations[initialDeployHookAnnotation] = req.InitialDeployHook
+	}
 	resourcemeta.Touch(a, s.Now())
 	if err := s.writeNewApp(ctx, req.Name, a, req.SecretFiles); err != nil {
 		return AppView{}, err

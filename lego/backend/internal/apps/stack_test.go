@@ -547,6 +547,109 @@ func TestDeployStackFromServiceKeyValueInvalidProperty(t *testing.T) {
 	}
 }
 
+// --- initialDeployHook: parse + ran-once semantics (w2/m45) ---
+
+const hookManifest = `
+services:
+  - name: web
+    image: nginx:1.26
+    initialDeployHook: npm run db:setup
+    preDeployCommand: npm run db:migrate
+`
+
+// TestParseStackInitialDeployHookParsed verifies the field is read from bex.yml.
+func TestParseStackInitialDeployHookParsed(t *testing.T) {
+	st, err := parseStack(DeployRequest{Manifest: hookManifest})
+	if err != nil {
+		t.Fatalf("parseStack: %v", err)
+	}
+	req := findSvc(t, st, "web").req
+	if req.InitialDeployHook != "npm run db:setup" {
+		t.Errorf("InitialDeployHook = %q, want npm run db:setup", req.InitialDeployHook)
+	}
+	if req.PreDeployCommand != "npm run db:migrate" {
+		t.Errorf("PreDeployCommand = %q, want npm run db:migrate", req.PreDeployCommand)
+	}
+}
+
+// TestDeployStackInitialHookSetsPreDeployCommandOnFirstCreate verifies that on
+// first create the hook overrides spec.preDeployCommand and the annotation is set.
+func TestDeployStackInitialHookSetsPreDeployCommandOnFirstCreate(t *testing.T) {
+	svc, cl := newService(nil)
+	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: hookManifest}); err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	app := getApp(t, cl, "web")
+	if app.Spec.PreDeployCommand != "npm run db:setup" {
+		t.Errorf("preDeployCommand = %q, want npm run db:setup (hook on first deploy)", app.Spec.PreDeployCommand)
+	}
+	if app.Annotations[initialDeployHookAnnotation] != "npm run db:setup" {
+		t.Errorf("annotation %s = %q, want npm run db:setup", initialDeployHookAnnotation, app.Annotations[initialDeployHookAnnotation])
+	}
+	if app.Annotations[initialDeployHookRanAnnotation] != "" {
+		t.Errorf("ran-once annotation must be absent before hook runs; got %q", app.Annotations[initialDeployHookRanAnnotation])
+	}
+}
+
+// TestDeployStackInitialHookMarkedRanWhenPreDeploySucceeds verifies that a
+// re-sync after the first pre-deploy Job succeeds writes the ran-once annotation
+// and restores the regular preDeployCommand.
+func TestDeployStackInitialHookMarkedRanWhenPreDeploySucceeds(t *testing.T) {
+	svc, cl := newService(nil)
+	ctx := context.Background()
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: hookManifest}); err != nil {
+		t.Fatalf("first DeployStack: %v", err)
+	}
+	// Simulate the operator: first pre-deploy Job succeeded.
+	app := getApp(t, cl, "web")
+	app.Status.PreDeploy = &appv1alpha1.PreDeployStatus{Status: appv1alpha1.PreDeploySucceeded}
+	if err := cl.Update(ctx, app); err != nil {
+		t.Fatalf("update status: %v", err)
+	}
+	// Re-sync: hook should not rerun; ran-once annotation should appear.
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: hookManifest}); err != nil {
+		t.Fatalf("second DeployStack: %v", err)
+	}
+	app = getApp(t, cl, "web")
+	if app.Annotations[initialDeployHookRanAnnotation] != "true" {
+		t.Errorf("ran-once annotation = %q, want true", app.Annotations[initialDeployHookRanAnnotation])
+	}
+	if app.Spec.PreDeployCommand != "npm run db:migrate" {
+		t.Errorf("preDeployCommand after hook ran = %q, want npm run db:migrate (regular command)", app.Spec.PreDeployCommand)
+	}
+}
+
+// TestDeployStackInitialHookSkippedWhenAlreadyRan verifies that once the
+// ran-once annotation is set, subsequent syncs never re-apply the hook.
+func TestDeployStackInitialHookSkippedWhenAlreadyRan(t *testing.T) {
+	svc, cl := newService(nil)
+	ctx := context.Background()
+	// Create with ran-once annotation already set (simulates a fully-converged state).
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "web", Namespace: "default",
+			Annotations: map[string]string{
+				initialDeployHookAnnotation:    "npm run db:setup",
+				initialDeployHookRanAnnotation: "true",
+			},
+		},
+		Spec: appv1alpha1.AppSpec{
+			Image:            "nginx:1.26",
+			PreDeployCommand: "npm run db:migrate",
+		},
+	}
+	if err := cl.Create(ctx, app); err != nil {
+		t.Fatalf("create app: %v", err)
+	}
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: hookManifest}); err != nil {
+		t.Fatalf("DeployStack with ran-once set: %v", err)
+	}
+	got := getApp(t, cl, "web")
+	if got.Spec.PreDeployCommand != "npm run db:migrate" {
+		t.Errorf("preDeployCommand = %q, want npm run db:migrate (hook must not rerun)", got.Spec.PreDeployCommand)
+	}
+}
+
 func TestDeployRejectsStackViaSingleServiceDeploy(t *testing.T) {
 	// Deploy is the single-service convenience; a multi-resource manifest must
 	// point at the stack form rather than silently returning the first service.

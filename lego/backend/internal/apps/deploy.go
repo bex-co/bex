@@ -38,6 +38,17 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
+const (
+	// initialDeployHookAnnotation persists the blueprint-declared initialDeployHook
+	// command on the App CR so reads can echo it back. CR-annotation-only: the
+	// operator need not know about it, keeping the feature CRD-neutral.
+	initialDeployHookAnnotation = "bex.co/initial-deploy-hook"
+	// initialDeployHookRanAnnotation is set to "true" after the hook's pre-deploy
+	// Job succeeded on the first deploy. Its presence gates subsequent blueprint
+	// syncs so the hook never reruns (w2/m45).
+	initialDeployHookRanAnnotation = "bex.co/initial-deploy-hook-ran"
+)
+
 // deploy.go is the deploy-from-chat mapper (pillar 4): it turns a repo + a
 // render.yaml-shaped bex.yml into a stack of CreateRequests + Database specs and
 // rides Core.Create, so "deploy this repo (web + worker + postgres)" is one agent
@@ -233,6 +244,7 @@ type bexService struct {
 	Schedule                string              `json:"schedule"`                // cron expression, required when type is cron
 	MaxShutdownDelaySeconds *int32              `json:"maxShutdownDelaySeconds"` // Render's graceful SIGTERM window (1-300; default 30)
 	PreDeployCommand        string              `json:"preDeployCommand"`        // render.yaml Pre-Deploy Command (spec.preDeployCommand)
+	InitialDeployHook       string              `json:"initialDeployHook"`       // render.yaml one-time first-deploy command (w2/m45)
 	MaintenanceMode         *bexMaintenanceMode `json:"maintenanceMode"`         // Render: paid web services only; uri optional
 	AutoDeploy              *bool               `json:"autoDeploy"`              // deprecated render.yaml bool; nil => default
 	AutoDeployTrigger       string              `json:"autoDeployTrigger"`       // render.yaml: commit|checksPass|off
@@ -1127,6 +1139,7 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, e
 		Hosts:                   a.Domains,
 		AutoDeploy:              autoDeploy,
 		PreDeployCommand:        a.PreDeployCommand,
+		InitialDeployHook:       strings.TrimSpace(a.InitialDeployHook),
 		MaintenanceMode:         maintenanceMode,
 		PublishPath:             publish,
 		MaxShutdownDelaySeconds: a.MaxShutdownDelaySeconds,
@@ -1432,7 +1445,27 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 				return AppView{}, err
 			}
 		}
+		// initialDeployHook: use the one-time command as preDeployCommand on first
+		// create so the operator runs it on the first deploy (w2/m45).
+		if req.InitialDeployHook != "" {
+			desired.PreDeployCommand = req.InitialDeployHook
+		}
 		return s.createNewApp(ctx, req, desired)
+	}
+	// initialDeployHook ran-once gate (w2/m45): decide whether to use the hook
+	// or the regular preDeployCommand for this sync based on the ran-once annotation
+	// and the current pre-deploy status.
+	markHookRan := false
+	if req.InitialDeployHook != "" {
+		if existing.Annotations[initialDeployHookRanAnnotation] != "" {
+			// Hook already ran: desired.PreDeployCommand is the regular one from req.
+		} else if pd := existing.Status.PreDeploy; pd != nil && pd.Status == appv1alpha1.PreDeploySucceeded {
+			// First pre-deploy just succeeded: mark ran, revert to regular command.
+			markHookRan = true
+		} else {
+			// Hook still pending: keep it as the preDeployCommand.
+			desired.PreDeployCommand = req.InitialDeployHook
+		}
 	}
 	final := existing.DeepCopy()
 	applyCreateToSpec(&final.Spec, desired)
@@ -1459,8 +1492,8 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 			existing.Labels[core.LabelNetworkIsolation] != desiredIsolation
 	}
 	// Idempotent update: short-circuit when both create-owned spec and explicit
-	// Blueprint grouping already match.
-	if !specChanged && !environmentChanged {
+	// Blueprint grouping already match and no ran-once annotation needs writing.
+	if !specChanged && !environmentChanged && !markHookRan {
 		return s.view(existing), nil
 	}
 	// A real change to an EXISTING service via the stack-apply path is the
@@ -1541,6 +1574,13 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 			existing.Spec.CloneSecret = secretName
 		}
 		existing.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
+	}
+	// Mark the initialDeployHook as ran so subsequent syncs skip it (w2/m45).
+	if markHookRan {
+		if existing.Annotations == nil {
+			existing.Annotations = map[string]string{}
+		}
+		existing.Annotations[initialDeployHookRanAnnotation] = "true"
 	}
 	resourcemeta.Touch(existing, s.Now())
 	if err := s.Client.Patch(ctx, existing, base); err != nil {
