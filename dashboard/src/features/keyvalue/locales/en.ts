@@ -492,6 +492,87 @@ const enKeyValue: Record<string, TranslationEntry> = {
       "Use lowercase letters, digits, and hyphens (up to 30 characters); don't start or end with a hyphen.",
     description: "Key Value rename validation message",
   },
+  // --- Tab navigation ---
+  "keyvalue.detailNavLabel": {
+    message: "Key Value detail navigation",
+    description: "aria-label for the detail-page tab nav",
+  },
+  "keyvalue.overviewTab": {
+    message: "Overview",
+    description: "Detail-page Overview tab label",
+  },
+  "keyvalue.logsTab": {
+    message: "Logs",
+    description: "Detail-page Logs tab label",
+  },
+  // --- Logs viewer ---
+  "keyvalue.logsRangeLabel": {
+    message: "Time range",
+    description: "Accessible label for the log time-range select",
+  },
+  "keyvalue.logsRange1h": {
+    message: "Last 1 hour",
+    description: "Log time range option",
+  },
+  "keyvalue.logsRange6h": {
+    message: "Last 6 hours",
+    description: "Log time range option",
+  },
+  "keyvalue.logsRange24h": {
+    message: "Last 24 hours",
+    description: "Log time range option",
+  },
+  "keyvalue.logsInstanceLabel": {
+    message: "Instance",
+    description: "Accessible label for the log instance (pod) select",
+  },
+  "keyvalue.logsAllInstances": {
+    message: "All instances",
+    description: "Default option in the instance filter (no filter applied)",
+  },
+  "keyvalue.logsSearchPlaceholder": {
+    message: "Search logs…",
+    description: "Placeholder for the log text-search input",
+  },
+  "keyvalue.logsLoading": {
+    message: "Loading logs…",
+    description: "Loading state message while fetching logs",
+  },
+  "keyvalue.logsEmptyTitle": {
+    message: "No log lines",
+    description: "Empty state title when no log lines are returned",
+  },
+  "keyvalue.logsEmptyBody": {
+    message:
+      "No log lines in this time range. Valkey logs key-space events, slow queries, and startup messages.",
+    description: "Empty state body when no log lines and no filters active",
+  },
+  "keyvalue.logsEmptyFilteredBody": {
+    message: "No log lines match the active filters.",
+    description: "Empty state body when filters are active and nothing matches",
+  },
+  "keyvalue.logsUnavailableTitle": {
+    message: "Logs not available",
+    description: "Empty state title when the logs source is not configured",
+  },
+  "keyvalue.logsUnavailableBody": {
+    message:
+      "The platform's log source is not configured. Contact your platform admin to enable BEX_LOKI_URL.",
+    description: "Empty state body when BEX_LOKI_URL is not set",
+  },
+  "keyvalue.logsUnauthorizedTitle": {
+    message: "Access denied",
+    description: "Empty state title when the caller lacks can_view_logs",
+  },
+  "keyvalue.logsUnauthorizedBody": {
+    message:
+      "You don't have permission to view logs for this Key Value store.",
+    description: "Empty state body for a 403 on the logs query",
+  },
+  "keyvalue.logsErrorTitle": {
+    message: "Couldn't load logs",
+    description: "Empty state title for an unexpected logs fetch error",
+  },
 };
 
 export default enKeyValue;

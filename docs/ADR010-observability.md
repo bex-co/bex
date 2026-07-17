@@ -23,13 +23,13 @@ flowchart LR
 ```
 
 - **`Core.Logs(name, tail)`** — tail-N aggregation across replicas; the unfiltered convenience read. Returns `LogEntry{timestamp, message, labels}` (labels `service`/`instance`/`container`).
-- **`Core.QueryLogs(LogQuery)`** — adds Render's filters and paging; the read path all three adapters (REST, GraphQL, MCP `list_logs`) go through. A `dpg-…` resource dispatches to the Database-authorized Postgres path while preserving the same public operation (w3/m28).
+- **`Core.QueryLogs(LogQuery)`** — adds Render's filters and paging; the read path all three adapters (REST, GraphQL, MCP `list_logs`) go through. A `dpg-…` resource dispatches to the Database-authorized Postgres path (w3/m28); a `red-…` resource dispatches to the KeyValue-authorized Valkey path (w3/m30). Both preserve the same public operation.
 - **`Core.FollowLogs(LogQuery, emit)`** — live tail; the SSE stream.
 
 Two backends sit behind the read verbs, each an injected source so the domain stays clientset/HTTP-free (like `PodLogSource`, both are faked in tests with no cluster):
 
 - **`LogHistorySource`** (`NewLokiSource`, gated by `BEX_LOKI_URL`) — the **durable** backend `Core.QueryLogs`/`Logs` prefer when wired. It translates the authorized `LogQuery` into a LogQL `query_range`: `{namespace, app}` for services or `{namespace, database}` for managed Postgres, plus text, time, instance, and limit. Alloy feeds both sources. This is what makes logs **survive a pod restart**: pre-restart App and CNPG lines remain searchable.
-- **`PodLogSource`** (`NewPodLogSource`) — the **live fallback** for `QueryLogs`/`Logs` when `BEX_LOKI_URL` is unset: reads the kubelet's `pods/log` ring buffer directly (the one subresource controller-runtime's client can't serve). Apps select `app.bex.co/app` and container `app`; Postgres selects exact `cnpg.io/cluster=<dpg-id>` and container `postgres`. No history — a restart loses the buffer — but zero extra infrastructure.
+- **`PodLogSource`** (`NewPodLogSource`) — the **live fallback** for `QueryLogs`/`Logs` when `BEX_LOKI_URL` is unset: reads the kubelet's `pods/log` ring buffer directly (the one subresource controller-runtime's client can't serve). Apps select `app.bex.co/app` and container `app`; Postgres selects exact `cnpg.io/cluster=<dpg-id>` and container `postgres`; Key Value selects `app.bex.co/keyvalue=<red-id>` and container `valkey`. No history — a restart loses the buffer — but zero extra infrastructure.
 
 `PodLogSource`/`PodLogStream` live in `podlogs.go`; `LogHistorySource` in `loki.go`. All three are injected in `cmd/api/main.go`.
 
@@ -43,7 +43,7 @@ Loki keeps **7 days** of searchable history (`limits_config.retention_period: 16
 
 ### Cluster enablement
 
-`deploy/gitops/base/loki.yaml` runs the one Loki (single-binary, filesystem PVC, 7-day retention) and `deploy/gitops/base/log-shipper.yaml` runs the Grafana **Alloy** DaemonSet that ships App (`type=app`), request (`type=request`), build, and managed-Postgres (`type=postgres`) streams. The Postgres pipeline requires the operator-stamped `app.bex.co/component=database` marker, keeps only the `postgres` container, and labels the stream with the immutable CNPG cluster/Database id; platform CNPG clusters are excluded. `BEX_LOKI_URL=http://loki.monitoring.svc:3100` points bex-api at it and flips historical reads from pod buffers to durable history.
+`deploy/gitops/base/loki.yaml` runs the one Loki (single-binary, filesystem PVC, 7-day retention) and `deploy/gitops/base/log-shipper.yaml` runs the Grafana **Alloy** DaemonSet that ships App (`type=app`), request (`type=request`), build, managed-Postgres (`type=postgres`), and managed-Valkey Key Value (`type=keyvalue`) streams. The Postgres pipeline requires the operator-stamped `app.bex.co/component=database` marker, keeps only the `postgres` container, and labels the stream with the immutable CNPG cluster/Database id; platform CNPG clusters are excluded. The Key Value pipeline selects pods whose `app.bex.co/keyvalue` label is non-empty (operator-stamped tenant Valkey pods only), keeps only the `valkey` container, and labels the stream with the `keyvalue=<red-id>` label. `BEX_LOKI_URL=http://loki.monitoring.svc:3100` points bex-api at it and flips historical reads from pod buffers to durable history.
 
 ### Log labels (and the cardinality budget)
 
@@ -82,7 +82,7 @@ Every filter Render's logs API documents is honored, and each maps to exactly on
 | `direction` | `backward` (default) / `forward` | which end of the window `limit` keeps; the returned slice stays oldest-first either way |
 | `limit` | line cap | default 20, max 100 (Render's paging range) |
 
-Managed Postgres uses the shared time/text/direction/limit behavior plus `instance`; service/request-only filters are named 400s. Instance discovery is scoped to `{namespace, database}` in Loki and falls back to the already authorized Database's exact CNPG pod set. See the [captured contract and attribution rules](render-artifacts/postgres-logs.md).
+Managed Postgres uses the shared time/text/direction/limit behavior plus `instance`; service/request-only filters are named 400s. Instance discovery is scoped to `{namespace, database}` in Loki and falls back to the already authorized Database's exact CNPG pod set. See the [captured contract and attribution rules](render-artifacts/postgres-logs.md). Managed Key Value (Valkey) uses the same subset; instance discovery is scoped to `{namespace, keyvalue}` in Loki and falls back to pods matching the `app.bex.co/keyvalue=<red-id>` label. Live-tail (`FollowLogs`) returns a named 400 for Key Value resources — there is no persistent Valkey connection-scoped log stream to tail.
 
 Multiple values for one filter OR together (Render's arrays); different filters AND. A `*` wildcard is supported per value; everything else is a literal (Render also documents full regex — **bex honors the wildcard subset**, a stated divergence rather than a silent one). Every interpolated value is escaped (`%q` + `regexp.QuoteMeta`), so no service name or filter value can break out of a matcher and inject a selector — the label-injection guard, unit-tested.
 

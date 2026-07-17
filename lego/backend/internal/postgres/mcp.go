@@ -249,7 +249,7 @@ type postgresLogsResult struct {
 func (s *Service) registerLogsMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_postgres_logs",
-		Description: "Return recent log lines from a managed Postgres database's CNPG pods, oldest-first and capped at limit (default 20, max 100). CNPG pods are not shipped to a durable log store, so this is a live pod-log read: only currently running pods contribute, and lines do not survive restarts. bex extension — Render has no equivalent REST endpoint.",
+		Description: "Return recent log lines from a managed Postgres database, oldest-first and capped at limit (default 20, max 100). With BEX_LOKI_URL configured, lines survive pod restarts (standard Loki history). Without Loki, falls back to a live CNPG pod-log read: only currently running pods contribute and restarted-pod history is gone. bex extension — Render has no equivalent REST endpoint.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresLogsArgs) (*mcp.CallToolResult, postgresLogsResult, error) {
 		since, end, err := parseMCPTimeWindow(in.StartTime, in.EndTime)
 		if err != nil {

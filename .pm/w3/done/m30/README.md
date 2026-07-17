@@ -1,21 +1,21 @@
 # w3 · m30 — Datastore logs completion: Key Value coverage + Postgres-logs surface consistency
 
-**Worker:** worker3 **Goal:** Key Value (Valkey) stores get the same logs story Postgres got in m28 — durable, queryable over REST/GraphQL/MCP, visible in a dashboard Logs tab — and the two verified consistency escapes in the day-old Postgres-logs surface (GraphQL dropping `labels`/`instance`; stale "no durable store" MCP description) are fixed. **Status:** todo
+**Worker:** worker3 **Goal:** Key Value (Valkey) stores get the same logs story Postgres got in m28 — durable, queryable over REST/GraphQL/MCP, visible in a dashboard Logs tab — and the two verified consistency escapes in the day-old Postgres-logs surface (GraphQL dropping `labels`/`instance`; stale "no durable store" MCP description) are fixed. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                                            | est | depends_on       |
 | ---- | ---------------------------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Capture Render's Key Value logs contract into `docs/render-artifacts/`                                            | 30m | —                |
-| t002 | Ship Valkey pod streams via Alloy under immutable keyvalue labels (CNPG marker pattern)                            | 45m | t001             |
-| t003 | Backend core: route KeyValue resources through the shared durable log query with `AuthorizeKeyValue`              | 60m | t002             |
-| t004 | REST `resource=` support + GraphQL query + MCP tool, with the honest store-off fallback                            | 45m | t003             |
-| t005 | Dashboard Logs tab on keyvalue detail, cloned from `postgres-log-viewer.tsx`                                       | 45m | t004             |
-| t006 | Postgres-logs consistency: `instance`/`type` on `databaseLogs` GraphQL; refresh stale "live only" descriptions     | 30m | —                |
-| t007 | Render parity — same fields/semantics/errors across REST/GraphQL/MCP/UI vs Render's Key Value logs                 | 30m | t004, t005, t006 |
-| t008 | Simplify — `/simplify` over the milestone's diff                                                                   | 20m | t007             |
-| t009 | Test coverage — meaningful tests for the shipped behavior                                                          | 30m | t007             |
-| t010 | Closeout — move to `done/` when the DoD holds                                                                      | 15m | t009             |
+| t001 | Capture Render's Key Value logs contract into `docs/render-artifacts/`                                            | 30m | —                | — **DONE** |
+| t002 | Ship Valkey pod streams via Alloy under immutable keyvalue labels (CNPG marker pattern)                            | 45m | t001             | — **DONE** |
+| t003 | Backend core: route KeyValue resources through the shared durable log query with `AuthorizeKeyValue`              | 60m | t002             | — **DONE** |
+| t004 | REST `resource=` support + GraphQL query + MCP tool, with the honest store-off fallback                            | 45m | t003             | — **DONE** |
+| t005 | Dashboard Logs tab on keyvalue detail, cloned from `postgres-log-viewer.tsx`                                       | 45m | t004             | — **DONE** |
+| t006 | Postgres-logs consistency: `instance`/`type` on `databaseLogs` GraphQL; refresh stale "live only" descriptions     | 30m | —                | — **DONE** |
+| t007 | Render parity — same fields/semantics/errors across REST/GraphQL/MCP/UI vs Render's Key Value logs                 | 30m | t004, t005, t006 | — **DONE** |
+| t008 | Simplify — `/simplify` over the milestone's diff                                                                   | 20m | t007             | — **DONE** |
+| t009 | Test coverage — meaningful tests for the shipped behavior                                                          | 30m | t007             | — **DONE** |
+| t010 | Closeout — move to `done/` when the DoD holds                                                                      | 15m | t009             | — **DONE** |
 
 ## Definition of done
 

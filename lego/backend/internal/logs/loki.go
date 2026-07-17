@@ -189,12 +189,15 @@ func lokiDirection(q LogQuery) string {
 // selector or a line filter — the label-injection guard, covered in tests.
 func lokiSelectorFor(namespace string, q LogQuery) string {
 	matchers := []string{fmt.Sprintf("namespace=%q", namespace)}
-	if q.Database != "" {
+	switch {
+	case q.Database != "":
 		matchers = append(matchers, fmt.Sprintf("database=%q", q.Database))
-	} else {
+	case q.KeyValue != "":
+		matchers = append(matchers, fmt.Sprintf("keyvalue=%q", q.KeyValue))
+	default:
 		matchers = append(matchers, fmt.Sprintf("app=%q", q.App))
 	}
-	if q.Database == "" {
+	if q.Database == "" && q.KeyValue == "" {
 		if m := lokiTypeMatcher(q); m != "" {
 			matchers = append(matchers, m)
 		}

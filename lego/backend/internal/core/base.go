@@ -53,6 +53,13 @@ const (
 	// instance discovery.
 	PodLabelCNPGCluster   = "cnpg.io/cluster"
 	CNPGPostgresContainer = "postgres"
+	// PodLabelKeyValue + ValkeyContainer identify Valkey pods for a managed Key
+	// Value store. The KeyValue reconciler stamps app.bex.co/keyvalue=<name> on
+	// every StatefulSet pod template; the main Valkey server container is always
+	// named "valkey". The keyvalue logs feature (w3/m30) uses these for exact
+	// pod fallback and Loki instance discovery.
+	PodLabelKeyValue = "app.bex.co/keyvalue"
+	ValkeyContainer  = "valkey"
 )
 
 // PodLogSource fetches the raw (timestamped) log stream for one pod container.
@@ -960,6 +967,20 @@ func (b *Base) DatabasePods(ctx context.Context, clusterName string) ([]corev1.P
 	if err := b.Client.List(ctx, &pods,
 		client.InNamespace(b.Namespace),
 		client.MatchingLabels{PodLabelCNPGCluster: clusterName}); err != nil {
+		return nil, err
+	}
+	return pods.Items, nil
+}
+
+// KeyValuePods lists the Valkey pods for a managed Key Value store — selected
+// by the app.bex.co/keyvalue=<name> label the KeyValue reconciler stamps on
+// every StatefulSet pod template. Used by the keyvalue logs feature (w3/m30);
+// name is the KeyValue CR's metadata.name (the immutable red- id).
+func (b *Base) KeyValuePods(ctx context.Context, name string) ([]corev1.Pod, error) {
+	var pods corev1.PodList
+	if err := b.Client.List(ctx, &pods,
+		client.InNamespace(b.Namespace),
+		client.MatchingLabels{PodLabelKeyValue: name}); err != nil {
 		return nil, err
 	}
 	return pods.Items, nil
