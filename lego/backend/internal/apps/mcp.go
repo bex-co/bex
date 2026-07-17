@@ -34,8 +34,9 @@ import (
 // REST/GraphQL call, so the three surfaces cannot drift.
 
 // serviceArgs is the shared single-service argument. Render's tools key on
-// `serviceId` (see get_service); for bex that id is the App name (opaque,
-// round-tripped from list_services).
+// `serviceId` (see get_service); for bex that id is the minted srv-… id
+// (opaque, round-tripped from list_services; legacy hand-applied CRs fall
+// back to the App name — w1/m46).
 type serviceArgs struct {
 	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 }
@@ -84,7 +85,7 @@ type rootDirArgs struct {
 // Deploy command/path settings through the same scalar-setter grammar as
 // set_root_directory. Render's official MCP has no update tools for any of them.
 type buildCommandArgs struct {
-	ServiceID    string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	ServiceID    string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	BuildCommand string `json:"buildCommand" jsonschema:"the build command (e.g. npm run build); empty clears it"`
 }
 

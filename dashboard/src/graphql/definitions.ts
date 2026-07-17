@@ -193,8 +193,10 @@ export type DatabaseInstanceType = {
 
 export type DatabaseLogEntry = {
   __typename: 'DatabaseLogEntry';
+  instance: Maybe<Scalars['String']['output']>;
   message: Maybe<Scalars['String']['output']>;
   timestamp: Maybe<Scalars['String']['output']>;
+  type: Maybe<Scalars['String']['output']>;
 };
 
 export type DatabaseParameterOverride = {
@@ -1705,7 +1707,11 @@ export type QueryCustomDomainArgs = {
 
 
 export type QueryCustomDomainsArgs = {
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  domainType?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  verificationStatus?: InputMaybe<Scalars['String']['input']>;
 };
 
 

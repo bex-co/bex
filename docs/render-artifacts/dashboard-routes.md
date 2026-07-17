@@ -44,7 +44,7 @@ Because tab names already agree, the alias redirect needs **no segment renaming*
 
 ## Decision (w5/m39)
 
-bex's `/services/...`, `/databases/...`, `/keyvalue/...` routes stay **canonical** (internal links, tests, and docs unchanged); Render-shaped paths are thin **redirect aliases**. bex-api's emitted `dashboardUrl` flips to the Render shape — type-aware segment for services (`web`/`worker`/`pserv`/`static`/`cron`, fallback `web`), `/d/` for Postgres, `/r/` for Key Value — so API responses are byte-shape-compatible with Render's and the redirect makes every emitted link land.
+bex's `/services/...`, `/databases/...`, `/keyvalue/...` routes stay **canonical** (internal links, tests, and docs unchanged); Render-shaped paths are thin **redirect aliases**. Since w1/m46 the `/services/{id}` segment carries the minted `srv-…` id (GraphQL emits it, so the dashboard links by it — matching Render's own id-addressed URLs); the service NAME still resolves as an inbound fallback, so pre-m46 bookmarks keep landing. bex-api's emitted `dashboardUrl` flips to the Render shape — type-aware segment for services (`web`/`worker`/`pserv`/`static`/`cron`, fallback `web`), `/d/` for Postgres, `/r/` for Key Value — so API responses are byte-shape-compatible with Render's and the redirect makes every emitted link land.
 
 ## Workspace / user / create scheme (2026-07-16 live probes, w1/m45)
 

@@ -1,4 +1,5 @@
-import { createFileRoute, Outlet, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { createFileRoute, Outlet, Link, useRouterState } from "@tanstack/react-router";
 import { SearchX, TriangleAlert } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
@@ -15,7 +16,10 @@ import {
 
 export const Route = createFileRoute("/services/$serviceId")({
   component: RouteComponent,
-  beforeLoad: requireAuth("/services/$serviceId"),
+  // No-arg requireAuth: `next` is the requested href (the old form passed the
+  // literal "$serviceId" pattern), so a login bounce returns to the actual
+  // service URL — id- or name-shaped.
+  beforeLoad: requireAuth(),
 });
 
 function RouteComponent() {
@@ -35,6 +39,20 @@ export function ServiceDetailLayout({ serviceId }: { serviceId: string }) {
   const { deploy: latestDeploy } = useLatestDeploy(serviceId);
   const { pending, run } = useServiceLifecycle({ refetch });
   const { t } = useTranslations();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  // Each tab's head() templates the URL param into the title — post-m46 that
+  // param is the opaque srv- id, but the human name should lead (Render titles
+  // by name: "tp-backend ・ Web Service ・ …"). Once the service resolves, swap
+  // the id segment for the name; the param stays as the SSR/first-paint
+  // fallback. pathname is a dep so tab navigation (which re-mints the
+  // param-based title) gets re-fixed.
+  useEffect(() => {
+    if (!service || service.name === serviceId) return;
+    if (document.title.startsWith(serviceId)) {
+      document.title = service.name + document.title.slice(serviceId.length);
+    }
+  }, [service, serviceId, pathname]);
 
   // A failed `server(id)` query is not evidence that the service is absent.
   // Keep it distinct from not-found so schema skew, auth failures, and backend
