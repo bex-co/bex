@@ -10,7 +10,15 @@
 #     — reads and writes the zot-htpasswd Secret (per-App htpasswd entry) and
 #     creates/reads/updates the zot-config Secret (per-App Zot ACL entry).
 #   app_controller.handleAppDeletion (RevokeCreds): same — removes htpasswd+ACL
-#     on App delete so revoked credentials cannot authenticate after deletion.
+#     on App delete. The running zot keeps accepting removed entries until it
+#     restarts, so revocation also triggers the rate-limited bounce below.
+#   registry.EnsureActive/tryBounce (w9/m43): pods get/list/delete — zot loads
+#     credentials only at process start (lego/operator/internal/registry/verify.go,
+#     docs/ADR022-tenant-isolation.md § Credential activation), so the operator
+#     bounces the zot pod to activate new entries and deactivate removed ones.
+#     Scoped here, not in the manager ClusterRole: the operator must never gain
+#     pod-delete on tenant or platform namespaces. Deliberately "delete", never
+#     "deletecollection" (bounceZot lists then deletes each pod).
 #
 # This file lives in deploy/gitops (not lego/operator/config/rbac) because
 # config/default's kustomize namePrefix+namespace transform would rewrite any
@@ -25,6 +33,9 @@ rules:
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

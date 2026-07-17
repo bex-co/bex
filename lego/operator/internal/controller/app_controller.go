@@ -474,9 +474,15 @@ func (r *AppReconciler) buildNamespace(appNS string) string {
 //   - app.Spec.ExternalRegistryPullSecret, when bex-api has materialized one for
 //     this App's image host (w2/m14) — the operator just references it by name,
 //     unaware of which registry or credential it corresponds to.
+//
+// registryHosted reports whether image lives in the platform registry.
+func (r *AppReconciler) registryHosted(image string) bool {
+	return r.Registry != "" && strings.HasPrefix(image, r.Registry+"/")
+}
+
 func (r *AppReconciler) imagePullSecrets(app *appv1alpha1.App, image string) []corev1.LocalObjectReference {
 	var out []corev1.LocalObjectReference
-	if r.Registry != "" && strings.HasPrefix(image, r.Registry+"/") {
+	if r.registryHosted(image) {
 		if r.PerAppRegistry != nil {
 			// Per-App pull secret (w7/m36): "reg-pull-<name>" in the app namespace.
 			out = append(out, corev1.LocalObjectReference{Name: registry.PullSecretName(app.Name)})
@@ -508,7 +514,7 @@ func (r *AppReconciler) backfillWorkloadPullSecrets(ctx context.Context, app *ap
 			return nil
 		}
 		image := podSpec.Containers[0].Image
-		if !strings.HasPrefix(image, r.Registry+"/") {
+		if !r.registryHosted(image) {
 			return nil
 		}
 		desired := r.imagePullSecrets(app, image)
@@ -684,6 +690,26 @@ func maintenanceEnabled(app *appv1alpha1.App) bool {
 //
 //nolint:gocyclo // one cohesive linear reconcile pass (Deployment → Service → Ingress → status); each step is a guarded CreateOrUpdate, and splitting it solely to satisfy the counter would fragment a coherent unit without aiding readability.
 func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, error) {
+	// Registry credential activation gate (w9/m43): zot only loads per-App
+	// credentials at process start (see registry/verify.go), so before rolling
+	// any workload (Deployment, CronJob, static-site publish Job) to a
+	// registry-hosted image, verify zot accepts this App's credential.
+	// Suspended Apps skip the gate: they scale to zero and pull nothing.
+	if r.PerAppRegistry != nil && !app.Spec.Suspended && r.registryHosted(image) {
+		active, err := r.PerAppRegistry.EnsureActive(ctx, app.Name, app.Namespace)
+		if err != nil {
+			// Probe impossible (zot or the pull Secret unreachable) — a platform
+			// hiccup, not an App failure; keep the previous revision serving and retry.
+			logf.FromContext(ctx).Error(err, "registry credential probe failed; requeueing", "app", app.Name)
+			return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
+		}
+		if !active {
+			r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "RegistryCredsPending",
+				"Waiting for the registry to accept this app's pull credential")
+			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+		}
+	}
+
 	// A cron_job diverges entirely: a batch/v1 CronJob, no Deployment/Service/Ingress.
 	if app.Spec.Type == appv1alpha1.TypeCronJob {
 		return r.reconcileCronJob(ctx, app, image, port)
