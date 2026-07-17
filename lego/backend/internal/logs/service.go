@@ -60,7 +60,9 @@ const (
 )
 
 // ErrBuildNotRunning terminates a type=build SSE subscription when there is no
-// active build pod. A named terminal event is honest and lets clients fall back
+// active build pod — none pending, none running; a build that hasn't started
+// yet is waited for, not refused (followBuildLogs).
+// A named terminal event is honest and lets clients fall back
 // to history instead of holding an empty stream forever.
 var ErrBuildNotRunning = errors.New("no running build is available to follow")
 
@@ -162,6 +164,10 @@ type Service struct {
 	// right namespace (w1/m33). Empty falls back to the API's own namespace, the
 	// operator's default when the env is unset.
 	BuildNamespace string
+	// BuildPodWaitInterval is the re-list cadence while a type=build tail waits
+	// for a Pending build pod to start (scheduling + image pull take minutes on
+	// a cold node). 0 = the 2s default; tests shrink it.
+	BuildPodWaitInterval time.Duration
 
 	sseConns atomic.Int64
 }
@@ -775,29 +781,9 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 // Completed pods are deliberately excluded: their history comes from Loki and
 // following them would replay an older deploy under the current subscription.
 func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource string, emit func(LogEntry) error) error {
-	pods, err := s.BuildPods(ctx, q.App, s.BuildNamespace)
+	pod, containers, err := s.awaitBuildPod(ctx, q)
 	if err != nil {
 		return err
-	}
-	active := pods[:0]
-	for i := range pods {
-		if pods[i].Status.Phase == corev1.PodRunning && q.keepPod(pods[i].Name) {
-			active = append(active, pods[i])
-		}
-	}
-	if len(active) == 0 {
-		return ErrBuildNotRunning
-	}
-	sort.SliceStable(active, func(i, j int) bool {
-		if active[i].CreationTimestamp.Time.Equal(active[j].CreationTimestamp.Time) {
-			return active[i].Name < active[j].Name
-		}
-		return active[i].CreationTimestamp.Time.Before(active[j].CreationTimestamp.Time)
-	})
-	pod := active[len(active)-1]
-	containers := runningContainers(pod)
-	if len(containers) == 0 {
-		return ErrBuildNotRunning
 	}
 
 	ns := s.BuildNamespace
@@ -836,6 +822,64 @@ func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource stri
 			if err := emit(e); err != nil {
 				return err
 			}
+		}
+	}
+}
+
+// awaitBuildPod resolves the newest build pod with at least one running
+// container. A Pending pod (or a Running one whose containers haven't started)
+// is a build in flight, not a missing one — scheduling plus a cold image pull
+// keep the pod silent for minutes in production, and a subscriber connecting
+// the moment its deploy opens must wait for the first line rather than receive
+// the terminal "no running build" event and give up right before the build
+// speaks. ErrBuildNotRunning is returned only when nothing is pending or
+// running — the honestly-terminal case (no build, or it already completed and
+// its history belongs to Loki).
+func (s *Service) awaitBuildPod(ctx context.Context, q LogQuery) (corev1.Pod, []string, error) {
+	wait := s.BuildPodWaitInterval
+	if wait <= 0 {
+		wait = 2 * time.Second
+	}
+	for {
+		pods, err := s.BuildPods(ctx, q.App, s.BuildNamespace)
+		if err != nil {
+			return corev1.Pod{}, nil, err
+		}
+		var active []corev1.Pod
+		waiting := false
+		for i := range pods {
+			if !q.keepPod(pods[i].Name) {
+				continue
+			}
+			switch pods[i].Status.Phase {
+			case corev1.PodRunning:
+				active = append(active, pods[i])
+			case corev1.PodPending:
+				waiting = true
+			}
+		}
+		if len(active) > 0 {
+			sort.SliceStable(active, func(i, j int) bool {
+				if active[i].CreationTimestamp.Time.Equal(active[j].CreationTimestamp.Time) {
+					return active[i].Name < active[j].Name
+				}
+				return active[i].CreationTimestamp.Time.Before(active[j].CreationTimestamp.Time)
+			})
+			pod := active[len(active)-1]
+			if containers := runningContainers(pod); len(containers) > 0 {
+				return pod, containers, nil
+			}
+			// Running phase with no container up resolves within seconds —
+			// either a container starts or the phase turns terminal.
+			waiting = true
+		}
+		if !waiting {
+			return corev1.Pod{}, nil, ErrBuildNotRunning
+		}
+		select {
+		case <-ctx.Done():
+			return corev1.Pod{}, nil, ctx.Err()
+		case <-time.After(wait):
 		}
 	}
 }

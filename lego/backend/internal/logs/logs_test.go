@@ -603,6 +603,45 @@ func TestFollowBuildLogsStreamsNewestActiveBuildPod(t *testing.T) {
 	}
 }
 
+// A Pending build pod (scheduling, image pull — minutes on a cold node) is a
+// build in flight: the tail must wait for it to start, not answer the terminal
+// "no running build" event to a subscriber who connected the moment the deploy
+// opened (the prod symptom behind w9: a deploy page that never showed a single
+// build line because its one subscription died before buildkit's image arrived).
+func TestFollowBuildLogsWaitsForPendingPodToStart(t *testing.T) {
+	pending := buildPodFor("web", "bld-web-gen-3-slow", "builds", "buildkit", time.Unix(3, 0))
+	pending.Status = corev1.PodStatus{Phase: corev1.PodPending}
+	svc := newService(map[string][]string{
+		pending.Name: {"2026-07-05T00:00:01Z build line one", "2026-07-05T00:00:02Z build line two"},
+	}, sampleApp("web"), pending)
+	svc.BuildNamespace = "builds"
+	svc.BuildPodWaitInterval = 5 * time.Millisecond
+
+	// Flip the pod to Running (container up) after the tail has begun waiting.
+	go func() {
+		time.Sleep(25 * time.Millisecond)
+		started := buildPodFor("web", pending.Name, "builds", "buildkit", time.Unix(3, 0))
+		started.ResourceVersion = pending.ResourceVersion
+		if err := svc.Client.Status().Update(context.Background(), started); err != nil {
+			t.Errorf("flip pod to Running: %v", err)
+		}
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var entries []LogEntry
+	err := svc.FollowLogs(ctx, LogQuery{App: "web", Types: []string{LogTypeBuild}}, func(entry LogEntry) error {
+		entries = append(entries, entry)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("FollowLogs(type=build) while pod Pending->Running: %v", err)
+	}
+	if len(entries) != 2 || entries[0].Message != "build line one" || entries[1].Message != "build line two" {
+		t.Fatalf("build entries = %+v, want the started pod's two lines", entries)
+	}
+}
+
 func TestFollowBuildLogsNoActivePodIsNamedTerminalOutcome(t *testing.T) {
 	completed := buildPodFor("web", "bld-web-gen-1-done", "builds", "buildkit", time.Unix(1, 0))
 	completed.Status.Phase = corev1.PodSucceeded
