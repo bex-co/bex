@@ -761,11 +761,61 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 		},
 		// Custom domains — Render-dashboard-shaped queries.
+		// cursor/limit + verificationStatus/domainType added in w7/m40 to match
+		// the REST filters w7/m38 shipped.
 		"customDomains": &graphql.Field{
 			Type: graphql.NewList(customDomainGQLType),
-			Args: gqlutil.IDArg(),
+			Args: graphql.FieldConfigArgument{
+				"id":                 &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"cursor":             &graphql.ArgumentConfig{Type: graphql.String},
+				"limit":              &graphql.ArgumentConfig{Type: graphql.Int},
+				"verificationStatus": &graphql.ArgumentConfig{Type: graphql.String},
+				"domainType":         &graphql.ArgumentConfig{Type: graphql.String},
+			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ListDomains(p.Context, p.Args["id"].(string))
+				out, err := s.ListDomains(p.Context, p.Args["id"].(string))
+				if err != nil {
+					return nil, err
+				}
+				if vs := gqlutil.Str(p.Args, "verificationStatus"); vs != "" {
+					switch vs {
+					case "pending", "verified":
+						filtered := make([]DomainView, 0, len(out))
+						for _, d := range out {
+							if d.VerificationStatus == vs {
+								filtered = append(filtered, d)
+							}
+						}
+						out = filtered
+					default:
+						return nil, fmt.Errorf("%w: unknown verificationStatus %q (want pending|verified)",
+							core.ErrBadRequest, vs)
+					}
+				}
+				if dt := gqlutil.Str(p.Args, "domainType"); dt != "" {
+					switch dt {
+					case "apex", "subdomain":
+						filtered := make([]DomainView, 0, len(out))
+						for _, d := range out {
+							if d.DomainType == dt {
+								filtered = append(filtered, d)
+							}
+						}
+						out = filtered
+					default:
+						return nil, fmt.Errorf("%w: unknown domainType %q (want apex|subdomain)",
+							core.ErrBadRequest, dt)
+					}
+				}
+				cursor, cursorSet := p.Args["cursor"].(string)
+				limit, limitSet := p.Args["limit"].(int)
+				if !limitSet {
+					limit = core.DefaultPageLimit
+				} else {
+					limit = core.PageLimit(limit)
+				}
+				return core.StablePage(out, cursor, limit, cursorSet || limitSet,
+					func(d DomainView) string { return d.Name }), nil
 			},
 		},
 		"customDomain": &graphql.Field{

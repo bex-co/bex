@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -459,6 +460,16 @@ type domainArgs struct {
 	Name      string `json:"name" jsonschema:"the custom domain FQDN, e.g. www.example.com"`
 }
 
+// listCustomDomainsArgs extends serviceId with the pagination + filter params
+// w7/m40 added to match REST (w7/m38).
+type listCustomDomainsArgs struct {
+	ServiceID          string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
+	Cursor             string `json:"cursor,omitempty" jsonschema:"resume after this cursor; omit for the first page"`
+	Limit              int    `json:"limit,omitempty" jsonschema:"page size, 1-100 (default 20)"`
+	VerificationStatus string `json:"verificationStatus,omitempty" jsonschema:"filter by verification status: pending or verified"`
+	DomainType         string `json:"domainType,omitempty" jsonschema:"filter by domain type: apex or subdomain"`
+}
+
 // staticRouteArg / staticHeaderArg are the MCP shapes of a static_site's edge
 // rules — Render's route (type/source/destination) and header (path/name/value).
 type staticRouteArg struct {
@@ -563,8 +574,10 @@ func headerArgViews(in []staticHeaderArg) []StaticHeaderView {
 }
 
 // domainListResult wraps the array — MCP tool outputs must be JSON objects.
+// Cursor is the last item's domain name; omit to get the next page.
 type domainListResult struct {
 	CustomDomains []renderCustomDomain `json:"customDomains"`
+	Cursor        string               `json:"cursor,omitempty"`
 }
 
 // deletedResult is delete_custom_domain's return object.
@@ -989,17 +1002,59 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	// Custom domain tools — tracking render-oss/render-mcp-server tool names.
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_custom_domains",
-		Description: "List all custom domains configured for a service.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, domainListResult, error) {
+		Description: "List custom domains configured for a service. Optional verificationStatus (pending|verified) and domainType (apex|subdomain) filters narrow the result; cursor/limit page it (default 20 per page).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listCustomDomainsArgs) (*mcp.CallToolResult, domainListResult, error) {
 		domains, err := s.ListDomains(ctx, in.ServiceID)
 		if err != nil {
 			return nil, domainListResult{}, err
 		}
-		out := make([]renderCustomDomain, 0, len(domains))
-		for _, d := range domains {
+		if vs := in.VerificationStatus; vs != "" {
+			switch vs {
+			case "pending", "verified":
+				filtered := make([]DomainView, 0, len(domains))
+				for _, d := range domains {
+					if d.VerificationStatus == vs {
+						filtered = append(filtered, d)
+					}
+				}
+				domains = filtered
+			default:
+				return nil, domainListResult{}, fmt.Errorf("%w: unknown verificationStatus %q (want pending|verified)",
+					core.ErrBadRequest, vs)
+			}
+		}
+		if dt := in.DomainType; dt != "" {
+			switch dt {
+			case "apex", "subdomain":
+				filtered := make([]DomainView, 0, len(domains))
+				for _, d := range domains {
+					if d.DomainType == dt {
+						filtered = append(filtered, d)
+					}
+				}
+				domains = filtered
+			default:
+				return nil, domainListResult{}, fmt.Errorf("%w: unknown domainType %q (want apex|subdomain)",
+					core.ErrBadRequest, dt)
+			}
+		}
+		limit := in.Limit
+		if limit == 0 {
+			limit = core.DefaultPageLimit
+		} else {
+			limit = core.PageLimit(limit)
+		}
+		page := core.StablePage(domains, in.Cursor, limit, in.Cursor != "" || in.Limit != 0,
+			func(d DomainView) string { return d.Name })
+		out := make([]renderCustomDomain, 0, len(page))
+		for _, d := range page {
 			out = append(out, toRenderCustomDomain(d))
 		}
-		return nil, domainListResult{CustomDomains: out}, nil
+		result := domainListResult{CustomDomains: out}
+		if len(page) > 0 {
+			result.Cursor = page[len(page)-1].Name
+		}
+		return nil, result, nil
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
