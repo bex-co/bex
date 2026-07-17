@@ -577,6 +577,11 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// two seams that actually initiate deploys.
 	srv.Apps.StartedNotifier = notificationsSvc
 	srv.Deploys.StartedNotifier = notificationsSvc
+	// Manual triggers + deploy hooks refresh the private-repo clone credential
+	// through the same bridge the control-plane reconciler uses — installation
+	// tokens live an hour, so every deploy-initiating seam must remint, never
+	// build with the previous deploy's token.
+	srv.Deploys.CloneSecrets = srv.Apps.ReconcilerCloneSecreter()
 	return srv
 }
 
