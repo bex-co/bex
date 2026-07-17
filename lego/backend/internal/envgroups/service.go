@@ -216,6 +216,12 @@ func matchesTimeWindow(raw string, before, after time.Time) bool {
 	if before.IsZero() && after.IsZero() {
 		return true
 	}
+	// Legacy groups pre-dating w6/m24's timestamp stamping have an empty raw
+	// string. We can't place them in a time window, so we include them rather
+	// than silently dropping them — omitted data doesn't imply exclusion.
+	if raw == "" {
+		return true
+	}
 	value, err := time.Parse(time.RFC3339, raw)
 	if err != nil {
 		return false
