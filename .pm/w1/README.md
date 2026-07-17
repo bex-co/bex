@@ -14,7 +14,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m47** — Events/Deploys consolidation for Render parity (9 tasks) ← user request 2026-07-16 (merge dashboard Events + Deploys pages into unified timeline; verify MCP has events tool; achieve REST/GraphQL/MCP surface consistency)
+- [x] **m47** — Events/Deploys consolidation for Render parity (9 tasks) ← user request 2026-07-16 (merge dashboard Events + Deploys pages into unified timeline; verify MCP has events tool; achieve REST/GraphQL/MCP surface consistency) — **Done 2026-07-16**: backend GraphQL enrichment (image, commit, timing), dashboard Events consolidation with deploy details display, Deploys tab removed, all surfaces consistent, tests green; moved to `done/m47/`
 - [x] **m1** — Reliability: fix config drift + back up etcd (4 tasks) ← from `009`, `007` — done 2026-07-05, moved to `done/m1/`
 - [x] **m2** — Control plane: Postgres source of truth in `lego/backend` (7 tasks; DONE 2026-07-09 — committed `aebbd43`, prod `BEX_CP_DB_URI` on since m9, live acceptance via `scripts/auth-tenant-e2e.sh` in m9/t004) ← from `005`, moved to `done/m2/`
 - [x] **m2.5** — Refactor bex-api into feature packages (one package per feature) (9 tasks) ← from `/pm` architecture review 2026-07-06 — done (shipped `06f247e` 2026-07-06, verified + board synced 2026-07-08), in `done/m2.5/`
