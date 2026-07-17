@@ -11,11 +11,9 @@ import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ApiKeysPanel } from "@/features/api-keys/components/api-keys-panel";
-import { NotificationSettingsPanel } from "@/features/notifications/components/notification-settings-panel";
 import { SecurityComplianceSection } from "@/features/auth/pages/settings-page/security-compliance-section";
 import { ConnectGithubCard } from "@/features/git/components/connect-github-card";
 import { RegistryCredentialsPanel } from "@/features/registry-credentials/components/registry-credentials-panel";
-import { WebhooksPanel } from "@/features/webhooks/components/webhooks-panel";
 import { SSHKeysPanel } from "@/features/ssh-keys/components/ssh-keys-panel";
 
 /**
@@ -64,10 +62,8 @@ export default function SettingsPage() {
           )}
           <ConnectGithubCard callbackError={search.git_error} />
           <RegistryCredentialsPanel />
-          <WebhooksPanel />
           <ApiKeysPanel />
           <SSHKeysPanel />
-          <NotificationSettingsPanel />
           <SecurityComplianceSection />
         </div>
       </div>

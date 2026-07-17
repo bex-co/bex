@@ -211,9 +211,9 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "部署你的第一个 App，它就会出现在这里。",
     description: "Services list empty state body",
   },
-  "services.navLabel": {
-    message: "服务导航",
-    description: "Accessible label for the service-detail tab nav",
+  "services.navPlan": {
+    message: "套餐",
+    description: "Service sidebar link to the instance-type (plan) page",
   },
   "services.headerServiceId": {
     message: "服务 ID：",

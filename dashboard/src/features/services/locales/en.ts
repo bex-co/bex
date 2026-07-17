@@ -213,9 +213,9 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Deploy your first App and it'll show up here.",
     description: "Services list empty state body",
   },
-  "services.navLabel": {
-    message: "Service navigation",
-    description: "Accessible label for the service-detail tab nav",
+  "services.navPlan": {
+    message: "Plan",
+    description: "Service sidebar link to the instance-type (plan) page",
   },
   "services.headerServiceId": {
     message: "Service ID:",

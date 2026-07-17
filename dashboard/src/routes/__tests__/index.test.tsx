@@ -103,6 +103,17 @@ vi.mock("@/features/keyvalue/hooks/use-delete-key-value", () => ({
 vi.mock("@/features/projects/hooks/use-create-project", () => ({
   useCreateProject: () => ({ create: vi.fn(), busy: false }),
 }));
+// The database dialog's Project/Environment selector reads environments over
+// Apollo when OPEN (the ?new=database cases below) — same stub
+// keyvalue.new.test.tsx uses.
+vi.mock("@/features/environments/hooks/use-environments", () => ({
+  useEnvironments: () => ({
+    environments: [],
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(async () => undefined),
+  }),
+}));
 
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   return {
@@ -147,16 +158,22 @@ function kv(overrides: Partial<KeyValueView> = {}): KeyValueView {
   };
 }
 
-function renderHomePage() {
+function renderHomePage(initialPath = "/") {
   const rootRoute = createRootRoute();
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
     component: HomePage,
+    validateSearch: (
+      search: Record<string, unknown>,
+    ): { new?: "database" | "project" } =>
+      search.new === "database" || search.new === "project"
+        ? { new: search.new }
+        : {},
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute]),
-    history: createMemoryHistory({ initialEntries: ["/"] }),
+    history: createMemoryHistory({ initialEntries: [initialPath] }),
     context: { client: {} as never, session: null },
   });
   return render(<RouterProvider router={router} />);
@@ -290,5 +307,27 @@ describe("HomePage", () => {
 
     expect(await screen.findByText("No resources yet")).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+});
+
+// w1/m45: the URL owns the create dialogs, so Render's New-menu aliases
+// (`/d/new`, `/new/database`, `/new/project`) can land straight in them.
+describe("URL-owned create dialogs (w1/m45)", () => {
+  it("?new=database opens the database create dialog", async () => {
+    renderHomePage("/?new=database");
+    expect(
+      await screen.findByText("Create a Postgres database"),
+    ).toBeInTheDocument();
+  });
+
+  it("?new=project opens the project create dialog", async () => {
+    renderHomePage("/?new=project");
+    expect(await screen.findByText("New Project")).toBeInTheDocument();
+  });
+
+  it("plain / opens no dialog", () => {
+    renderHomePage("/");
+    expect(screen.queryByText("Create a Postgres database")).not.toBeInTheDocument();
+    expect(screen.queryByText("New Project")).not.toBeInTheDocument();
   });
 });

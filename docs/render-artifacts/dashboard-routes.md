@@ -45,3 +45,29 @@ Because tab names already agree, the alias redirect needs **no segment renaming*
 ## Decision (w5/m39)
 
 bex's `/services/...`, `/databases/...`, `/keyvalue/...` routes stay **canonical** (internal links, tests, and docs unchanged); Render-shaped paths are thin **redirect aliases**. bex-api's emitted `dashboardUrl` flips to the Render shape — type-aware segment for services (`web`/`worker`/`pserv`/`static`/`cron`, fallback `web`), `/d/` for Postgres, `/r/` for Key Value — so API responses are byte-shape-compatible with Render's and the redirect makes every emitted link land.
+
+## Workspace / user / create scheme (2026-07-16 live probes, w1/m45)
+
+Authenticated probes on `dashboard.render.com`, extending the resource-deep-link capture above with the shapes it never covered:
+
+| Render URL | Live behavior (evidence) | bex pre-m45 | m45 disposition |
+| --- | --- | --- | --- |
+| `/w/settings` | canonicalizes to `/w/{tea-id}/settings` — Render resolves the caller's current workspace into the URL (header "Workspace settings" nav link mints the id-less form) | 404 | `w.$` alias → `/workspace/settings` |
+| `/w/{tea-id}/settings` | workspace settings, workspace named by the URL | 404 | `w.$` alias: select that workspace (membership-checked — a foreign id is refused, never silently shown as the caller's own), then `/workspace/settings` |
+| `/w/{tea-id}/billing` | workspace billing (sidebar Workspace → Billing) | 404 | same selection, land on `/usage` (bex's deliberate usage-not-billing counterpart, ADR023) |
+| `/billing/update-plan` | plan-change page (upgrade CTAs sitewide) | 404 | alias → `/workspace/settings?plan=change` (the plan dialog); billing proper stays a non-goal |
+| `/settings` | canonicalizes to `/u/{usr-id}/settings` — account settings are user-scoped; one long page (Profile / Appearance / Account Security / CLI Tokens / API Keys / SSH Public Keys / PR Requests), no sub-URLs | `/settings` works (matches the inbound shape); `/u/…` 404 | `u.$` alias → `/settings` (page is caller-scoped; per the m39 rule, never validate the id) |
+| `/web/new`, `/static/new`, `/pserv/new`, `/cron/new`, `/worker/new` | New-menu service creates live under the type segment | already land on `/services/new` via the m39 aliases | keep (verified) |
+| `/d/new` | New menu's "Postgres" entry | **broken**: the `d.$` alias redirected it to nonexistent `/databases/new` → 404 catch-all | special-cased to the database create landing |
+| `/new/database`, `/new/redis`, `/new/project` | New-menu datastore/project creates live under `/new/` | 404 | `/new/redis` → `/keyvalue/new`; database/project → URL-owned create dialogs on `/` (`?new=database` / `?new=project`) |
+| `/workflow/new`, `/wf/{id}` | New menu / CLI switch | 404 | non-goal (workflows off-roadmap) |
+| `/login`, `/register` | auth pages | `/auth/login`, `/auth/sign-up` | thin redirects (query/hash preserved — an `?invite=` token must survive) |
+| `/observability`, `/private-links`, `/dedicated-ips`, `/invites`, `/documents` | sidebar/footer pages | 404 | non-goals (drains, managed-infra, referral program, compliance docs — `.pm/DO_NOT_DO.md`) |
+
+## Sidebar navigation (2026-07-16 live probes, w1/m45)
+
+**Global sidebar** — identical on `/`, workspace settings, and account settings: ungrouped **Projects** (`/`), **Blueprints**, **Environment Groups**; group **Integrations** — Observability, Webhooks, Notifications; group **Networking** — Private Links, Dedicated IPs; group **Workspace** — Billing, Settings; footer — Changelog, Invite a friend, Contact support, Render Status. bex mapping (m45): keep the ungrouped trio; Integrations carries Webhooks + Notifications only (Observability = drains non-goal); the Networking group is omitted entirely (both entries non-goals); Workspace carries Usage (Billing counterpart) + Settings; the footer is out of scope (not capability navigation).
+
+**Service pages** — Render **replaces** the global sidebar with a resource-scoped one: a "Dashboard" back link (`/`), then **Events**, **Settings**, group **Monitor** — Logs, Metrics; group **Manage** — Environment, Shell, Scaling, Previews, Disk, One-Off Jobs. Notably **no Deploys entry**: the service root (`/{seg}/{id}`) _is_ the deploy history. bex mapping (m45): the same sidebar-swap pattern (precedent: the project sidebar), with Events / Deploys (bex keeps an explicit entry — its root also redirects to Deploys, but the entry aids discoverability) / Settings, Monitor{Logs, Metrics}, Manage{Environment, Scaling, Plan (bex-only)}; Shell, Previews, Disk, and One-Off Jobs are non-goals.
+
+**Datastore pages** — Render tabs Info / Logs / Metrics / Recovery ([dashboard-walk/datastores.md](dashboard-walk/datastores.md)); bex's consolidated `?tab=` detail page was ruled an IA-only difference ("not a gap") by the m32 walk — that ruling stands.

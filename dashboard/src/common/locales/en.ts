@@ -13,9 +13,25 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "Loading…",
     description: "Generic loading state label",
   },
-  "common.navDashboardGroup": {
-    message: "Dashboard",
-    description: "Sidebar nav section label",
+  "common.navIntegrationsGroup": {
+    message: "Integrations",
+    description: "Sidebar nav section label (webhooks, notifications) — Render's grouping",
+  },
+  "common.navWorkspaceGroup": {
+    message: "Workspace",
+    description: "Sidebar nav section label (usage, settings) — Render's grouping",
+  },
+  "common.navMonitorGroup": {
+    message: "Monitor",
+    description: "Service sidebar section label (logs, metrics) — Render's grouping",
+  },
+  "common.navWebhooks": {
+    message: "Webhooks",
+    description: "Sidebar nav link to the outbound event webhooks page",
+  },
+  "common.navNotifications": {
+    message: "Notifications",
+    description: "Sidebar nav link to the notification settings page",
   },
   "common.navProjects": {
     message: "Projects",

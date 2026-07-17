@@ -12,7 +12,6 @@ import {
   ServiceDetailHeader,
   ServiceDetailHeaderSkeleton,
 } from "@/features/services/components/service-detail-header";
-import { ServiceNav } from "@/features/services/components/service-nav";
 
 export const Route = createFileRoute("/services/$serviceId")({
   component: RouteComponent,
@@ -115,7 +114,6 @@ export function ServiceDetailLayout({ serviceId }: { serviceId: string }) {
         ) : (
           <ServiceDetailHeaderSkeleton name={serviceId} />
         )}
-        <ServiceNav serviceId={serviceId} />
         <div className="p-4 sm:p-6">
           <div className="mx-auto w-full max-w-4xl space-y-6">
             <Outlet />
