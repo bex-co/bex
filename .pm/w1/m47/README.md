@@ -1,20 +1,20 @@
 # w1 · m47 — Events/Deploys consolidation for Render parity
 
-**Worker:** worker1 **Goal:** Unify the Deploys and Events dashboard pages into a single, Render-compatible Events view that shows deployment history + service activity in one timeline. Achieve full API surface parity (REST/GraphQL/MCP all expose events correctly). **Status:** todo
+**Worker:** worker1 **Goal:** Unify the Deploys and Events dashboard pages into a single, Render-compatible Events view that shows deployment history + service activity in one timeline. Achieve full API surface parity (REST/GraphQL/MCP all expose events correctly). **Status:** done — deployed to dashboard, backend tests green, all surfaces consistent
 
 ## Tasks (in order)
 
-| id   | title                                                                                    | est   | depends_on |
-| ---- | ---------------------------------------------------------------------------------------- | ----- | ---------- |
-| t001 | Audit Render's events UX: review render.com/web/srv-…/events, capture exact behavior    | 45m   | —          |
-| t002 | Verify MCP has events tool; add if missing                                              | 30m   | —          |
-| t003 | Consolidate dashboard: enrich Events GraphQL query to carry full deploy details          | 2h    | t001       |
-| t004 | Merge Deploys and Events pages: unified tab showing both deploy history + config events | 2h    | t003       |
-| t005 | Remove or hide the separate Deploys tab; update navigation                              | 30m   | t004       |
-| t006 | Render parity: verify REST/GraphQL/MCP consistency across surfaces                      | 1h    | t005       |
-| t007 | Simplify: reuse patterns, clean up dead page/component code from old Deploys path       | 1h    | t006       |
-| t008 | Test coverage: add tests for merged Events page with deploy + audit event interleaving  | 1h    | t007       |
-| t009 | Closeout: verify DoD met, move milestone to done                                         | 15m   | t008       |
+| id   | title                                                                                    | est   | depends_on | status    |
+| ---- | ---------------------------------------------------------------------------------------- | ----- | ---------- | --------- |
+| t001 | Audit Render's events UX: review render.com/web/srv-…/events, capture exact behavior    | 45m   | —          | — **DONE** |
+| t002 | Verify MCP has events tool; add if missing                                              | 30m   | —          | — **DONE** |
+| t003 | Consolidate dashboard: enrich Events GraphQL query to carry full deploy details          | 2h    | t001       | — **DONE** |
+| t004 | Merge Deploys and Events pages: unified tab showing both deploy history + config events | 2h    | t003       | — **DONE** |
+| t005 | Remove or hide the separate Deploys tab; update navigation                              | 30m   | t004       | — **DONE** |
+| t006 | Render parity: verify REST/GraphQL/MCP consistency across surfaces                      | 1h    | t005       | — **DONE** |
+| t007 | Simplify: reuse patterns, clean up dead page/component code from old Deploys path       | 1h    | t006       | — **DONE** |
+| t008 | Test coverage: add tests for merged Events page with deploy + audit event interleaving  | 1h    | t007       | — **DONE** |
+| t009 | Closeout: verify DoD met, move milestone to done                                         | 15m   | t008       | — **DONE** |
 
 ## Definition of done
 
