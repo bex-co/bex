@@ -541,6 +541,27 @@ func (s *Service) SetEnvironmentID(ctx context.Context, gid, environmentID strin
 	return err
 }
 
+// SetGroupEnvironment assigns the named env group to an Environment, satisfying
+// the apps.EnvGroupApplier seam called by the Blueprint apply path when a group is
+// declared under projects[].environments[].envVarGroups. The lookup-by-name is
+// workspace-scoped (the caller's tenant context), matching ApplyEnvGroup's contract.
+func (s *Service) SetGroupEnvironment(ctx context.Context, name, environmentID string) error {
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return err
+	}
+	if s.Store == nil {
+		return core.ErrSecretsUnavailable
+	}
+	gid, _, found, err := s.findGroupByName(ctx, name)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return fmt.Errorf("%w: env group %q not found", core.ErrNotFound, name)
+	}
+	return s.SetEnvironmentID(ctx, gid, environmentID)
+}
+
 // RenameEnvGroup updates a group's display name without changing its id,
 // contents, links, or materialized Secrets. The name is metadata only, so this
 // does not roll linked services. Manage scope.
