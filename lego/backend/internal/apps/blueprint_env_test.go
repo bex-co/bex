@@ -47,13 +47,14 @@ type appliedGroup struct {
 }
 
 type fakeEnvGroups struct {
-	preexisting []string                // names that already exist in the workspace
-	applied     map[string]appliedGroup // name -> last ApplyEnvGroup args
-	links       []string                // "group->service" in call order
+	preexisting  []string                // names that already exist in the workspace
+	applied      map[string]appliedGroup // name -> last ApplyEnvGroup args
+	links        []string                // "group->service" in call order
+	environments map[string]string       // name -> environmentID from SetGroupEnvironment
 }
 
 func newFakeEnvGroups(preexisting ...string) *fakeEnvGroups {
-	return &fakeEnvGroups{preexisting: preexisting, applied: map[string]appliedGroup{}}
+	return &fakeEnvGroups{preexisting: preexisting, applied: map[string]appliedGroup{}, environments: map[string]string{}}
 }
 
 func (f *fakeEnvGroups) GroupNames(context.Context) ([]string, error) {
@@ -82,6 +83,11 @@ func (f *fakeEnvGroups) ApplyEnvGroup(_ context.Context, name string, literals m
 
 func (f *fakeEnvGroups) LinkEnvGroup(_ context.Context, name, service string) error {
 	f.links = append(f.links, name+"->"+service)
+	return nil
+}
+
+func (f *fakeEnvGroups) SetGroupEnvironment(_ context.Context, name, environmentID string) error {
+	f.environments[name] = environmentID
 	return nil
 }
 
@@ -324,6 +330,90 @@ func TestDeployStackFromGroupWithKeyRejected(t *testing.T) {
 		t.Fatalf("fromGroup with a key => ErrBadRequest, got %v", err)
 	}
 	assertNoApps(t, cl)
+}
+
+// --- environment-scoped env groups (m40) ----------------------------------------
+
+const envScopedGroupManifest = `
+projects:
+  - name: platform
+    environments:
+      - name: production
+        services:
+          - name: web
+            image: web:1
+        envVarGroups:
+          - name: prod-config
+            envVars:
+              - {key: LOG_LEVEL, value: warn}
+              - {key: SECRET, generateValue: true}
+`
+
+func TestParseStackEnvironmentScopedEnvGroup(t *testing.T) {
+	st, err := parseStack(DeployRequest{Manifest: envScopedGroupManifest})
+	if err != nil {
+		t.Fatalf("parseStack: %v", err)
+	}
+	if len(st.envGroups) != 1 {
+		t.Fatalf("envGroups = %d, want 1", len(st.envGroups))
+	}
+	g := st.envGroups[0]
+	if g.name != "prod-config" {
+		t.Errorf("group name = %q, want prod-config", g.name)
+	}
+	if g.literals["LOG_LEVEL"] != "warn" {
+		t.Errorf("literals = %v", g.literals)
+	}
+	if len(g.generates) != 1 || g.generates[0] != "SECRET" {
+		t.Errorf("generates = %v", g.generates)
+	}
+	if g.grouping == "" {
+		t.Errorf("grouping is empty — environment-scoped group must carry its grouping key")
+	}
+}
+
+func TestValidateBlueprintAcceptsEnvironmentScopedEnvGroup(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	v, err := svc.ValidateBlueprint(context.Background(), "", envScopedGroupManifest)
+	if err != nil {
+		t.Fatalf("ValidateBlueprint: %v", err)
+	}
+	if !v.Valid || len(v.Errors) != 0 {
+		t.Errorf("environment-scoped group: want valid, got %+v", v)
+	}
+	if v.Plan == nil || len(v.Plan.EnvGroups) != 1 || v.Plan.EnvGroups[0] != "prod-config" {
+		t.Errorf("plan = %+v", v.Plan)
+	}
+}
+
+func TestDeployStackEnvironmentScopedEnvGroupAssigned(t *testing.T) {
+	grpStore := &blueprintGroupingTestStore{recordingStore: &recordingStore{}}
+	groups := newFakeEnvGroups()
+	svc, _ := newTenantStoreService(fakeWorkspace{"id-a": "tea-a"}, grpStore)
+	svc.BlueprintGroups = grpStore
+	svc.Environments = grpStore
+	svc.EnvGroups = groups
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "oauth2"})
+
+	if _, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Manifest: envScopedGroupManifest}); err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	// Group must have been applied.
+	if _, ok := groups.applied["prod-config"]; !ok {
+		t.Errorf("ApplyEnvGroup not called for prod-config")
+	}
+	// Group must have been assigned to the created environment.
+	envID := groups.environments["prod-config"]
+	if envID == "" {
+		t.Fatalf("SetGroupEnvironment not called for prod-config")
+	}
+	// Verify the assigned environment ID actually matches what was created.
+	if len(grpStore.environments) == 0 {
+		t.Fatalf("no environments created")
+	}
+	if grpStore.environments[0].ID != envID {
+		t.Errorf("SetGroupEnvironment envID = %q, want %q", envID, grpStore.environments[0].ID)
+	}
 }
 
 func assertNoApps(t *testing.T, cl client.Client) {

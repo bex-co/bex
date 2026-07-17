@@ -100,6 +100,10 @@ type EnvGroupApplier interface {
 	// LinkEnvGroup links the named group to a service. Idempotent (an already-linked
 	// service is not re-patched, so a re-apply doesn't roll the pod).
 	LinkEnvGroup(ctx context.Context, name, service string) error
+	// SetGroupEnvironment assigns the named group to an environment. Called after
+	// ApplyEnvGroup when a Blueprint env group is declared under a
+	// projects[].environments[] nesting. Idempotent when already assigned.
+	SetGroupEnvironment(ctx context.Context, name, environmentID string) error
 }
 
 // EnvSeeder is the blueprint apply path's seam onto the env-vars feature
@@ -354,11 +358,14 @@ type parsedGrouping struct {
 }
 
 // parsedEnvGroup is a validated envVarGroups[] entry: literal vars keyed to their
-// value, plus the keys whose value the apply mints (generateValue).
+// value, plus the keys whose value the apply mints (generateValue). grouping is set
+// when the group is declared under a projects[].environments[] nesting and carries
+// the blueprintGroupingKey used to look up the environment ID after apply.
 type parsedEnvGroup struct {
 	name      string
 	literals  map[string]string
 	generates []string
+	grouping  string
 }
 
 // parsedService is a service ready to apply plus the blueprint env work deferred
@@ -478,6 +485,13 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 	for _, g := range st.envGroups {
 		if err := s.EnvGroups.ApplyEnvGroup(ctx, g.name, g.literals, g.generates); err != nil {
 			return res, fmt.Errorf("env group %q: %w", g.name, err)
+		}
+		if g.grouping != "" {
+			if assignment := assignments[g.grouping]; assignment.ID != "" {
+				if err := s.EnvGroups.SetGroupEnvironment(ctx, g.name, assignment.ID); err != nil {
+					return res, fmt.Errorf("assigning env group %q to environment: %w", g.name, err)
+				}
+			}
 		}
 	}
 	// Databases next: a service's fromDatabase env points (via secretRef) at the
@@ -717,7 +731,14 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 	for _, database := range m.Databases {
 		databases = append(databases, databaseDecl{value: database})
 	}
-	envGroups := append([]bexEnvGroup(nil), m.EnvVarGroups...)
+	type envGroupDecl struct {
+		value    bexEnvGroup
+		grouping string
+	}
+	envGroups := make([]envGroupDecl, 0, len(m.EnvVarGroups))
+	for _, eg := range m.EnvVarGroups {
+		envGroups = append(envGroups, envGroupDecl{value: eg})
+	}
 	if m.Ungrouped != nil {
 		for _, service := range m.Ungrouped.Services {
 			services = append(services, serviceDecl{value: service, ungrouped: true})
@@ -725,7 +746,9 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 		for _, database := range m.Ungrouped.Databases {
 			databases = append(databases, databaseDecl{value: database, ungrouped: true})
 		}
-		envGroups = append(envGroups, m.Ungrouped.EnvVarGroups...)
+		for _, eg := range m.Ungrouped.EnvVarGroups {
+			envGroups = append(envGroups, envGroupDecl{value: eg})
+		}
 	}
 	st := parsedStack{}
 	projectNames := map[string]bool{}
@@ -754,10 +777,10 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 			if environment.Permissions.Protection != "" && environment.Permissions.Protection != "enabled" && environment.Permissions.Protection != "disabled" {
 				return parsedStack{}, fmt.Errorf("%w: project %q environment %q permissions.protection must be enabled or disabled", core.ErrBadRequest, projectName, environmentName)
 			}
-			if len(environment.EnvVarGroups) > 0 {
-				return parsedStack{}, fmt.Errorf("%w: project %q environment %q contains envVarGroups; environment-scoped env groups are not supported yet", core.ErrBadRequest, projectName, environmentName)
-			}
 			grouping := blueprintGroupingKey(projectName, environmentName)
+			for _, eg := range environment.EnvVarGroups {
+				envGroups = append(envGroups, envGroupDecl{value: eg, grouping: grouping})
+			}
 			protectedStatus := "unprotected"
 			if environment.Permissions.Protection == "enabled" {
 				protectedStatus = "protected"
@@ -782,8 +805,8 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 
 	// Env groups first (validated + name-deduped); a service's fromGroup links one.
 	groupNames := make(map[string]bool, len(envGroups))
-	for _, g := range envGroups {
-		pg, err := parseEnvGroup(g)
+	for _, egDecl := range envGroups {
+		pg, err := parseEnvGroup(egDecl.value)
 		if err != nil {
 			return parsedStack{}, err
 		}
@@ -791,6 +814,7 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 			return parsedStack{}, fmt.Errorf("%w: duplicate env group name %q", core.ErrBadRequest, pg.name)
 		}
 		groupNames[pg.name] = true
+		pg.grouping = egDecl.grouping
 		st.envGroups = append(st.envGroups, pg)
 	}
 
