@@ -256,6 +256,62 @@ spec:
                 forward_to = [loki.write.default.receiver]
               }
 
+              // --- type=keyvalue: managed tenant Valkey logs ---
+
+              discovery.relabel "keyvalue_pods" {
+                targets = discovery.kubernetes.pods.targets
+
+                // The KeyValue reconciler stamps this label on every Valkey
+                // StatefulSet pod template (labelKeyValue, keyvalue_controller.go).
+                // Infra/platform Valkey instances that do not carry it are excluded.
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_label_app_bex_co_keyvalue"]
+                  regex         = ""
+                  action        = "drop"
+                }
+                // Only the `valkey` server container; the `metrics` sidecar's
+                // prometheus exposition is not a tenant log source.
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_container_name"]
+                  regex         = "valkey"
+                  action        = "keep"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace"]
+                  target_label  = "namespace"
+                }
+                // The operator names the KeyValue pod after the immutable red- id.
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_label_app_bex_co_keyvalue"]
+                  target_label  = "keyvalue"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_name"]
+                  target_label  = "pod"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_container_name"]
+                  target_label  = "container"
+                }
+              }
+
+              loki.source.kubernetes "keyvalue_pods" {
+                targets    = discovery.relabel.keyvalue_pods.output
+                forward_to = [loki.process.keyvalue_logs.receiver]
+              }
+
+              loki.process "keyvalue_logs" {
+                stage.drop {
+                  source              = "keyvalue"
+                  expression          = "^$"
+                  drop_counter_reason = "missing_keyvalue_id"
+                }
+                stage.static_labels {
+                  values = { type = "keyvalue" }
+                }
+                forward_to = [loki.write.default.receiver]
+              }
+
               // --- type=build: build Job pod logs ---
               //
               // Build pods carry app.bex.co/component=build (set by the operator

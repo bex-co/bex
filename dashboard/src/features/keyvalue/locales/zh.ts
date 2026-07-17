@@ -486,6 +486,85 @@ const zhKeyValue: Record<string, TranslationEntry> = {
       "请使用小写字母、数字和连字符（最多 30 个字符），且不能以连字符开头或结尾。",
     description: "Key Value rename validation message",
   },
+  // --- Tab navigation ---
+  "keyvalue.detailNavLabel": {
+    message: "Key Value 详情导航",
+    description: "aria-label for the detail-page tab nav",
+  },
+  "keyvalue.overviewTab": {
+    message: "概览",
+    description: "Detail-page Overview tab label",
+  },
+  "keyvalue.logsTab": {
+    message: "日志",
+    description: "Detail-page Logs tab label",
+  },
+  // --- Logs viewer ---
+  "keyvalue.logsRangeLabel": {
+    message: "时间范围",
+    description: "Accessible label for the log time-range select",
+  },
+  "keyvalue.logsRange1h": {
+    message: "最近 1 小时",
+    description: "Log time range option",
+  },
+  "keyvalue.logsRange6h": {
+    message: "最近 6 小时",
+    description: "Log time range option",
+  },
+  "keyvalue.logsRange24h": {
+    message: "最近 24 小时",
+    description: "Log time range option",
+  },
+  "keyvalue.logsInstanceLabel": {
+    message: "实例",
+    description: "Accessible label for the log instance (pod) select",
+  },
+  "keyvalue.logsAllInstances": {
+    message: "所有实例",
+    description: "Default option in the instance filter (no filter applied)",
+  },
+  "keyvalue.logsSearchPlaceholder": {
+    message: "搜索日志…",
+    description: "Placeholder for the log text-search input",
+  },
+  "keyvalue.logsLoading": {
+    message: "加载日志中…",
+    description: "Loading state message while fetching logs",
+  },
+  "keyvalue.logsEmptyTitle": {
+    message: "暂无日志",
+    description: "Empty state title when no log lines are returned",
+  },
+  "keyvalue.logsEmptyBody": {
+    message:
+      "此时间范围内没有日志。Valkey 会记录键空间事件、慢查询和启动消息。",
+    description: "Empty state body when no log lines and no filters active",
+  },
+  "keyvalue.logsEmptyFilteredBody": {
+    message: "没有匹配当前过滤条件的日志。",
+    description: "Empty state body when filters are active and nothing matches",
+  },
+  "keyvalue.logsUnavailableTitle": {
+    message: "日志不可用",
+    description: "Empty state title when the logs source is not configured",
+  },
+  "keyvalue.logsUnavailableBody": {
+    message: "平台日志源未配置。请联系平台管理员启用 BEX_LOKI_URL。",
+    description: "Empty state body when BEX_LOKI_URL is not set",
+  },
+  "keyvalue.logsUnauthorizedTitle": {
+    message: "访问被拒绝",
+    description: "Empty state title when the caller lacks can_view_logs",
+  },
+  "keyvalue.logsUnauthorizedBody": {
+    message: "您没有权限查看此 Key Value 存储的日志。",
+    description: "Empty state body for a 403 on the logs query",
+  },
+  "keyvalue.logsErrorTitle": {
+    message: "无法加载日志",
+    description: "Empty state title for an unexpected logs fetch error",
+  },
 };
 
 export default zhKeyValue;

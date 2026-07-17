@@ -186,6 +186,10 @@ type LogQuery struct {
 	// AuthorizeDatabase. Adapters continue to use Render's single `resource`
 	// field (stored in App on input); callers cannot set this selector directly.
 	Database string
+	// KeyValue is resolved internally after a red- resource has passed
+	// AuthorizeKeyValue. Adapters use Render's single `resource` field (stored
+	// in App on input); callers cannot set this selector directly.
+	KeyValue string
 	Types    []string  // empty == all types; values: app | request | build
 	Search   string    // case-insensitive substring on the message (Render's `text`)
 	Since    time.Time // zero == no lower bound
@@ -419,6 +423,9 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	if isPostgresResource(q.App) {
 		return s.queryPostgresLogs(ctx, q)
 	}
+	if isKeyValueResource(q.App) {
+		return s.queryKeyValueLogs(ctx, q)
+	}
 	requested := q.App
 	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, requested)
 	if err != nil {
@@ -509,6 +516,53 @@ func (q LogQuery) validatePostgres() error {
 	return nil
 }
 
+// queryKeyValueLogs is the one datastore-scoped core read behind the existing
+// REST, GraphQL, and MCP key-value log adapters. Mirrors queryPostgresLogs with
+// AuthorizeKeyValue and the Loki `keyvalue` stream label.
+func (s *Service) queryKeyValueLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
+	requested := q.App
+	kv, err := s.AuthorizeKeyValue(ctx, core.RelCanViewLogs, requested)
+	if err != nil {
+		return nil, err
+	}
+	q.App = ""
+	q.KeyValue = kv.Name
+	if err := q.validateKeyValue(); err != nil {
+		return nil, err
+	}
+	if s.History == nil && s.PodLogs == nil {
+		return nil, core.ErrLogsUnavailable
+	}
+	q = q.normalized()
+	if s.History != nil {
+		entries, err := s.History(ctx, s.Namespace, q)
+		return setLogResource(entries, requested), err
+	}
+	entries, err := s.collectKeyValuePodLogs(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	return setLogResource(q.filterAndCap(entries), requested), nil
+}
+
+func isKeyValueResource(resource string) bool {
+	kind, ok := ids.KindOf(resource)
+	return ok && kind == ids.KeyValue
+}
+
+// validateKeyValue pins the supported managed Key Value contract: time range,
+// direction, text search, limit, and instance. HTTP request/build filters are
+// service concepts; refusing them is safer than silently dropping them.
+func (q LogQuery) validateKeyValue() error {
+	if err := q.validate(); err != nil {
+		return err
+	}
+	if len(q.Types) > 0 || len(q.Level) > 0 || len(q.Host) > 0 || len(q.StatusCode) > 0 || len(q.Method) > 0 || len(q.Path) > 0 {
+		return fmt.Errorf("%w: managed Key Value logs support text, time range, direction, limit, and instance filters", core.ErrBadRequest)
+	}
+	return nil
+}
+
 // filterAndCap applies the line-level search/time filters (in place — skipping
 // the pass entirely on the common no-filter query) and clamps to q.Limit. The
 // pod-log path's shared tail, used by both the app and pre-deploy reads.
@@ -535,6 +589,9 @@ func (q LogQuery) filterAndCap(entries []LogEntry) []LogEntry {
 func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) ([]string, error) {
 	if isPostgresResource(q.App) {
 		return s.postgresLogLabelValues(ctx, label, q)
+	}
+	if isKeyValueResource(q.App) {
+		return s.keyValueLogLabelValues(ctx, label, q)
 	}
 	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, q.App)
 	if err != nil {
@@ -596,6 +653,37 @@ func (s *Service) postgresLogLabelValues(ctx context.Context, label string, q Lo
 	return slices.Compact(slices.Sorted(slices.Values(values))), nil
 }
 
+func (s *Service) keyValueLogLabelValues(ctx context.Context, label string, q LogQuery) ([]string, error) {
+	kv, err := s.AuthorizeKeyValue(ctx, core.RelCanViewLogs, q.App)
+	if err != nil {
+		return nil, err
+	}
+	q.App = ""
+	q.KeyValue = kv.Name
+	if err := q.validateKeyValue(); err != nil {
+		return nil, err
+	}
+	if label != LabelInstance {
+		return nil, fmt.Errorf("%w: managed Key Value log label %q is unsupported (want %s)", core.ErrBadRequest, label, LabelInstance)
+	}
+	if s.LabelValues != nil {
+		values, err := s.LabelValues(ctx, s.Namespace, label, q.normalized())
+		if err != nil {
+			return nil, err
+		}
+		return slices.Compact(slices.Sorted(slices.Values(values))), nil
+	}
+	pods, err := s.KeyValuePods(ctx, kv.Name)
+	if err != nil {
+		return nil, err
+	}
+	values := make([]string, 0, len(pods))
+	for i := range pods {
+		values = append(values, pods[i].Name)
+	}
+	return slices.Compact(slices.Sorted(slices.Values(values))), nil
+}
+
 // FollowLogs streams an App's new log lines to emit until ctx is cancelled or
 // emit errors. The tail always reads live pod logs (never the store — real-time,
 // zero ingest lag). It serves app logs from App pods and type=build from the
@@ -608,6 +696,12 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 			return err
 		}
 		return fmt.Errorf("%w: managed Postgres live log subscription is not supported; use the historical logs query", core.ErrBadRequest)
+	}
+	if isKeyValueResource(q.App) {
+		if _, err := s.AuthorizeKeyValue(ctx, core.RelCanViewLogs, q.App); err != nil {
+			return err
+		}
+		return fmt.Errorf("%w: managed Key Value live log subscription is not supported; use the historical logs query", core.ErrBadRequest)
 	}
 	requested := q.App
 	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, requested)
@@ -821,6 +915,29 @@ func (s *Service) collectDatabasePodLogs(ctx context.Context, q LogQuery) ([]Log
 		}
 		for j := range entries {
 			entries[j].Labels[LabelType] = "postgres"
+		}
+		out = append(out, entries...)
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Timestamp < out[j].Timestamp })
+	return out, nil
+}
+
+func (s *Service) collectKeyValuePodLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
+	pods, err := s.KeyValuePods(ctx, q.KeyValue)
+	if err != nil {
+		return nil, err
+	}
+	var out []LogEntry
+	for i := range pods {
+		if !q.keepPod(pods[i].Name) {
+			continue
+		}
+		entries, err := s.readContainerLogs(ctx, s.Namespace, q.KeyValue, pods[i].Name, core.ValkeyContainer, q.Limit)
+		if err != nil {
+			return nil, err
+		}
+		for j := range entries {
+			entries[j].Labels[LabelType] = "keyvalue"
 		}
 		out = append(out, entries...)
 	}

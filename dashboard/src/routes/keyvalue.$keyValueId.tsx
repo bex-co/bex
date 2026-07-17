@@ -14,12 +14,15 @@ import { ConnectionInfoPanel } from "@/features/keyvalue/components/connection-i
 import { KeyValueNetworkingPanel } from "@/features/keyvalue/components/key-value-networking-panel";
 import { KeyValuePlanSection } from "@/features/keyvalue/components/key-value-plan-section";
 import { KeyValueNameSection } from "@/features/keyvalue/components/key-value-name-section";
+import { KeyValueLogViewer } from "@/features/keyvalue/components/key-value-log-viewer";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
 export const Route = createFileRoute("/keyvalue/$keyValueId")({
   component: KeyValueDetailPage,
   beforeLoad: requireAuth("/keyvalue/$keyValueId"),
+  validateSearch: (search: Record<string, unknown>): { tab?: "logs" } =>
+    search.tab === "logs" ? { tab: "logs" } : {},
   head: ({ params }) => ({
     meta: [{ title: `${params.keyValueId} · Key Value · bex dashboard` }],
   }),
@@ -27,6 +30,7 @@ export const Route = createFileRoute("/keyvalue/$keyValueId")({
 
 export function KeyValueDetailPage() {
   const { keyValueId } = Route.useParams();
+  const { tab } = Route.useSearch();
   const { t } = useTranslations();
   const navigate = useNavigate();
   const { keyValue, loading, refetch } = useKeyValue(keyValueId);
@@ -55,6 +59,36 @@ export function KeyValueDetailPage() {
         ) : null}
       </div>
 
+      <nav
+        aria-label={t("keyvalue.detailNavLabel")}
+        className="flex gap-1 border-b px-4 sm:px-6"
+      >
+        <button
+          type="button"
+          className={cn(
+            "border-b-2 px-3 py-2 text-sm",
+            tab !== "logs"
+              ? "border-foreground text-foreground"
+              : "border-transparent text-muted-foreground",
+          )}
+          onClick={() => void navigate({ to: ".", search: {} })}
+        >
+          {t("keyvalue.overviewTab")}
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "border-b-2 px-3 py-2 text-sm",
+            tab === "logs"
+              ? "border-foreground text-foreground"
+              : "border-transparent text-muted-foreground",
+          )}
+          onClick={() => void navigate({ to: ".", search: { tab: "logs" } })}
+        >
+          {t("keyvalue.logsTab")}
+        </button>
+      </nav>
+
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto w-full max-w-4xl space-y-6">
           {showNotFound ? (
@@ -64,6 +98,8 @@ export function KeyValueDetailPage() {
                 {t("keyvalue.notFoundBody", { name: keyValueId })}
               </p>
             </div>
+          ) : keyValue && tab === "logs" ? (
+            <KeyValueLogViewer resource={keyValue.id} />
           ) : keyValue ? (
             <>
               <MetadataCard keyValue={keyValue} />

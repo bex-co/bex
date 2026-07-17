@@ -18,6 +18,8 @@ package keyvalue
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -164,4 +166,57 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		v, err := s.UpdateKeyValue(ctx, in.KeyValueID, patch)
 		return nil, v, err
 	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "get_key_value_logs",
+		Description: "Return recent log lines from a managed Valkey/Redis key-value store, oldest-first and capped at limit (default 20, max 100). With BEX_LOKI_URL configured, lines survive pod restarts (standard Loki history). Without Loki, falls back to a live Valkey pod-log read: only currently running pods contribute and restarted-pod history is gone. bex extension — Render has no equivalent endpoint.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in kvLogsArgs) (*mcp.CallToolResult, kvLogsResult, error) {
+		since, end, err := parseKVMCPTimeWindow(in.StartTime, in.EndTime)
+		if err != nil {
+			return nil, kvLogsResult{}, err
+		}
+		entries, err := s.QueryKeyValueLogs(ctx, in.KeyValueID, KeyValueLogQuery{
+			Search:    in.Text,
+			Since:     since,
+			End:       end,
+			Limit:     int64(in.Limit),
+			Direction: in.Direction,
+			Instance:  in.Instance,
+		})
+		if err != nil {
+			return nil, kvLogsResult{}, err
+		}
+		return nil, kvLogsResult{Logs: entries}, nil
+	})
+}
+
+// kvLogsArgs is get_key_value_logs' input.
+type kvLogsArgs struct {
+	KeyValueID string   `json:"keyValueId" jsonschema:"the key-value id, as returned by list_key_value"`
+	Text       string   `json:"text,omitempty" jsonschema:"case-insensitive substring to match against log lines"`
+	StartTime  string   `json:"startTime,omitempty" jsonschema:"RFC3339 lower bound (inclusive)"`
+	EndTime    string   `json:"endTime,omitempty" jsonschema:"RFC3339 upper bound (exclusive)"`
+	Limit      int      `json:"limit,omitempty" jsonschema:"max lines to return (1–100, default 20)"`
+	Direction  string   `json:"direction,omitempty" jsonschema:"backward (default, newest) or forward (oldest)"`
+	Instance   []string `json:"instance,omitempty" jsonschema:"restrict to these pod names (empty = all replicas)"`
+}
+
+type kvLogsResult struct {
+	Logs []KeyValueLogEntry `json:"logs"`
+}
+
+// parseKVMCPTimeWindow parses optional RFC3339 start/end strings for MCP tool
+// inputs — same contract as parseMCPTimeWindow in postgres/mcp.go.
+func parseKVMCPTimeWindow(startTime, endTime string) (since, end time.Time, err error) {
+	if startTime != "" {
+		if since, err = time.Parse(time.RFC3339, startTime); err != nil {
+			return time.Time{}, time.Time{}, fmt.Errorf("%w: startTime: %s", core.ErrBadRequest, err)
+		}
+	}
+	if endTime != "" {
+		if end, err = time.Parse(time.RFC3339, endTime); err != nil {
+			return time.Time{}, time.Time{}, fmt.Errorf("%w: endTime: %s", core.ErrBadRequest, err)
+		}
+	}
+	return since, end, nil
 }

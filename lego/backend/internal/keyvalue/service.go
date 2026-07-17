@@ -63,6 +63,14 @@ type Service struct {
 	// may own. 0 = unlimited (the default; byte-identical to before). Only
 	// enforced when the caller's tenant is resolvable (w7/m9).
 	MaxKeyValues int
+	// KeyValueLogs is the production query seam for typed red- resources. The
+	// compatibility adapters (REST/GraphQL/MCP) call QueryKeyValueLogs, which
+	// delegates here; the logs feature wires it via api/server.go. nil with no
+	// PodLogs source => ErrLogsUnavailable.
+	KeyValueLogs KeyValueLogQuerySource
+	// PodLogs backs the direct-pod fallback when KeyValueLogs is nil (no durable
+	// store). nil with no KeyValueLogs source => ErrLogsUnavailable.
+	PodLogs core.PodLogSource
 }
 
 // KeyValueView is the Render-shaped "key-value" object. maxmemoryPolicy /

@@ -17,11 +17,30 @@ limitations under the License.
 package keyvalue
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
+
+// parseKVGQLTimeWindow parses optional startTime/endTime RFC3339 string args
+// from a GraphQL resolver's args map — same contract as parsePGTimeWindow.
+func parseKVGQLTimeWindow(args map[string]any) (since, end time.Time, err error) {
+	if s, _ := args["startTime"].(string); s != "" {
+		if since, err = time.Parse(time.RFC3339, s); err != nil {
+			return time.Time{}, time.Time{}, fmt.Errorf("%w: startTime: %s", core.ErrBadRequest, err)
+		}
+	}
+	if e, _ := args["endTime"].(string); e != "" {
+		if end, err = time.Parse(time.RFC3339, e); err != nil {
+			return time.Time{}, time.Time{}, fmt.Errorf("%w: endTime: %s", core.ErrBadRequest, err)
+		}
+	}
+	return since, end, nil
+}
 
 // The GraphQL noun is "keyValue" — matching bex's own KeyValue CRD and Render's
 // current "Key Value" product branding (the same way the postgres feature's
@@ -74,6 +93,18 @@ var keyValueConnectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"internalConnectionString": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueConnectionInfo) any { return v.InternalConnectionString })},
 		"externalConnectionString": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueConnectionInfo) any { return v.ExternalConnectionString })},
 		"cliCommand":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueConnectionInfo) any { return v.CLICommand })},
+	},
+})
+
+// keyValueLogGQLType is one Valkey log line — timestamp, message, and labels
+// (instance, type). Mirrors databaseLogGQLType in postgres/graphql.go.
+var keyValueLogGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "KeyValueLogEntry",
+	Fields: graphql.Fields{
+		"timestamp": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e KeyValueLogEntry) any { return e.Timestamp })},
+		"message":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e KeyValueLogEntry) any { return e.Message })},
+		"instance":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e KeyValueLogEntry) any { return e.Labels["instance"] })},
+		"type":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e KeyValueLogEntry) any { return e.Labels["type"] })},
 	},
 })
 
@@ -133,6 +164,37 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 					return nil, err
 				}
 				return core.AllowListCIDRs(list), nil
+			},
+		},
+		// --- logs (w3/m30) ---
+		"keyValueLogs": &graphql.Field{
+			Type: graphql.NewList(keyValueLogGQLType),
+			Args: graphql.FieldConfigArgument{
+				"id":        &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"text":      &graphql.ArgumentConfig{Type: graphql.String},
+				"startTime": &graphql.ArgumentConfig{Type: graphql.String},
+				"endTime":   &graphql.ArgumentConfig{Type: graphql.String},
+				"limit":     &graphql.ArgumentConfig{Type: graphql.Int},
+				"direction": &graphql.ArgumentConfig{Type: graphql.String},
+				"instance":  &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				since, end, err := parseKVGQLTimeWindow(p.Args)
+				if err != nil {
+					return nil, err
+				}
+				var limit int64
+				if v, ok := p.Args["limit"].(int); ok {
+					limit = int64(v)
+				}
+				return s.QueryKeyValueLogs(p.Context, p.Args["id"].(string), KeyValueLogQuery{
+					Search:    gqlutil.Str(p.Args, "text"),
+					Since:     since,
+					End:       end,
+					Limit:     limit,
+					Direction: gqlutil.Str(p.Args, "direction"),
+					Instance:  gqlutil.StringList(p.Args["instance"]),
+				})
 			},
 		},
 	}
