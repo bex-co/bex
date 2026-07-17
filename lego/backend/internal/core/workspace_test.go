@@ -236,3 +236,53 @@ func (s *recordingSink) Record(_ context.Context, e AuditEvent) error {
 	s.events = append(s.events, e)
 	return nil
 }
+
+// TestGetAppCollisionFallbackResolvesActingWorkspaceOnce is w4/027: GetApp's
+// LabelServiceName fallback loop used to call AuthorizeLabeled for each
+// candidate, and AuthorizeLabeled re-ran resolveWorkspace (and its
+// Workspace.Tenant store query) once per candidate even though the acting
+// workspace is ctx-invariant across the whole loop. GetApp now resolves once
+// and propagates the cached context, so N colliding candidates cost exactly one
+// Tenant() call.
+func TestGetAppCollisionFallbackResolvesActingWorkspaceOnce(t *testing.T) {
+	ctx := WithIdentity(context.Background(), Identity{Subject: "identity-a", Method: "session"})
+
+	t.Run("denied — every candidate checked", func(t *testing.T) {
+		apps := collidingApps(5)
+		calls := 0
+		b := &Base{
+			Client:    fakeAppClient(appObjects(apps)...),
+			Namespace: "default",
+			Workspace: countingWorkspaceResolver{fakeWorkspace{"identity-a": "tea-a"}, &calls},
+			Authz:     fakeDenyChecker{},
+		}
+		if _, err := b.GetApp(ctx, RelCanView, "web"); !errors.Is(err, ErrForbidden) {
+			t.Fatalf("got %v, want ErrForbidden", err)
+		}
+		if calls != 1 {
+			t.Errorf("Workspace.Tenant called %d times for %d colliding candidates, want exactly 1", calls, len(apps))
+		}
+	})
+
+	t.Run("allowed partway through — short-circuits, still exactly one resolution", func(t *testing.T) {
+		apps := collidingApps(5)
+		allowed := apps[2]
+		calls := 0
+		b := &Base{
+			Client:    fakeAppClient(appObjects(apps)...),
+			Namespace: "default",
+			Workspace: countingWorkspaceResolver{multiWorkspace{"identity-a": {"tea-a", allowed.Labels[LabelTenant]}}, &calls},
+			Authz:     denyAllButChecker{allowed: WorkspaceObject(allowed.Labels[LabelTenant])},
+		}
+		got, err := b.GetApp(ctx, RelCanView, "web")
+		if err != nil {
+			t.Fatalf("GetApp: %v", err)
+		}
+		if got.Name != allowed.Name {
+			t.Fatalf("served %q, want %q", got.Name, allowed.Name)
+		}
+		if calls != 1 {
+			t.Errorf("Workspace.Tenant called %d times, want exactly 1", calls)
+		}
+	})
+}

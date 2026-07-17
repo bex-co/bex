@@ -25,10 +25,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"sync"
 	"time"
-
-	"golang.org/x/time/rate"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -46,16 +43,7 @@ import (
 // budget is rpm×replicas. Acceptable today; a distributed counter (Redis token
 // bucket) is the follow-up when bex-api scales out.
 type RateLimiter struct {
-	mu        sync.Mutex
-	entries   map[string]*limEntry
-	rps       rate.Limit
-	burst     int
-	lastSweep time.Time
-}
-
-type limEntry struct {
-	lim  *rate.Limiter
-	last time.Time
+	*core.KeyedRateLimiter[string]
 }
 
 const (
@@ -67,17 +55,11 @@ const (
 // requests/minute with the given burst depth. Zero or negative rpm returns nil
 // (disabled). burst ≤ 0 defaults to ceil(rpm).
 func NewRateLimiter(rpm float64, burst int) *RateLimiter {
-	if rpm <= 0 {
+	inner := core.NewKeyedRateLimiter[string](rpm, burst, limiterIdle, limiterSweepEvery)
+	if inner == nil {
 		return nil
 	}
-	if burst <= 0 {
-		burst = int(math.Ceil(rpm))
-	}
-	return &RateLimiter{
-		entries: make(map[string]*limEntry),
-		rps:     rate.Limit(rpm / 60),
-		burst:   burst,
-	}
+	return &RateLimiter{KeyedRateLimiter: inner}
 }
 
 // Middleware returns an http.Handler wrapper that enforces the rate limit.
@@ -85,7 +67,7 @@ func NewRateLimiter(rpm float64, burst int) *RateLimiter {
 func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := callerKey(r)
-		lim := rl.bucket(key)
+		lim := rl.Bucket(key)
 		res := lim.Reserve()
 		if d := res.Delay(); d > 0 {
 			res.Cancel()
@@ -99,29 +81,6 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-// bucket returns (and lazily creates) the per-caller limiter, sweeping idle
-// entries periodically to bound memory use.
-func (rl *RateLimiter) bucket(key string) *rate.Limiter {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-	now := time.Now()
-	if now.Sub(rl.lastSweep) > limiterSweepEvery {
-		for k, e := range rl.entries {
-			if now.Sub(e.last) > limiterIdle {
-				delete(rl.entries, k)
-			}
-		}
-		rl.lastSweep = now
-	}
-	e, ok := rl.entries[key]
-	if !ok {
-		e = &limEntry{lim: rate.NewLimiter(rl.rps, rl.burst)}
-		rl.entries[key] = e
-	}
-	e.last = now
-	return e.lim
 }
 
 // callerKey derives the rate-limit key from the request: the authenticated

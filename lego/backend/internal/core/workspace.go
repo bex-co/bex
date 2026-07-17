@@ -55,3 +55,33 @@ func WorkspaceFrom(ctx context.Context) (string, bool) {
 	tenantID, ok := ctx.Value(workspaceKey{}).(string)
 	return tenantID, ok && tenantID != ""
 }
+
+// resolvedWorkspaceKey caches the result of Base.resolveWorkspace for the
+// lifetime of one request context. resolveWorkspace depends only on the caller's
+// identity and the workspace they named (both immutable for a given request), so
+// memoizing it eliminates redundant Workspace.Tenant / IsMember round trips when
+// collision loops call AuthorizeLabeled repeatedly (w4/027).
+type resolvedWorkspaceKey struct{}
+
+type resolvedWorkspace struct {
+	acting string
+	err    error
+}
+
+// resolvedWorkspaceFrom returns the cached resolved workspace, if any. A nil
+// context simply reports a cache miss rather than panicking — some tests call
+// Base methods with a nil context and a nil Workspace resolver, which is legal
+// because resolveWorkspace's uncached path short-circuits on b.Workspace == nil.
+func resolvedWorkspaceFrom(ctx context.Context) (resolvedWorkspace, bool) {
+	if ctx == nil {
+		return resolvedWorkspace{}, false
+	}
+	r, ok := ctx.Value(resolvedWorkspaceKey{}).(resolvedWorkspace)
+	return r, ok
+}
+
+// withResolvedWorkspace caches the resolved workspace result on ctx. Callers
+// should treat the returned context as read-only for this value.
+func withResolvedWorkspace(ctx context.Context, acting string, err error) context.Context {
+	return context.WithValue(ctx, resolvedWorkspaceKey{}, resolvedWorkspace{acting: acting, err: err})
+}
