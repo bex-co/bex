@@ -62,6 +62,15 @@ vi.mock("@/features/services/hooks/use-delete-service", () => ({
   }),
 }));
 
+// The suspend/resume card calls useServiceLifecycle (Apollo mutations) —
+// mock it so section-presence assertions don't hit Apollo.
+vi.mock("@/features/services/hooks/use-service-lifecycle", () => ({
+  useServiceLifecycle: () => ({
+    pending: null,
+    run: vi.fn(async () => ({ status: "success" as const })),
+  }),
+}));
+
 // Scaling row (w5/m16) calls scaleService; mock so section-presence assertions
 // don't hit Apollo.
 vi.mock("@/features/services/hooks/use-scale-service", () => ({

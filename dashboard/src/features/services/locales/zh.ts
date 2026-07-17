@@ -2037,6 +2037,23 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法加载定时任务运行记录。",
     description: "Cron run history read error",
   },
+  "services.suspendCardTitle": {
+    message: "暂停服务",
+    description: "Settings tab suspend section title",
+  },
+  "services.suspendCardDescription": {
+    message:
+      "暂停服务将关闭它并停止流量服务。服务的 URL 和证书将保留，您可以随时恢复。",
+    description: "Settings tab suspend section description",
+  },
+  "services.resumeCardTitle": {
+    message: "恢复服务",
+    description: "Settings tab resume section title (shown when service is suspended)",
+  },
+  "services.resumeCardDescription": {
+    message: "恢复服务将使其重新上线并开始处理流量。",
+    description: "Settings tab resume section description",
+  },
   "services.dangerZoneTitle": {
     message: "危险区域",
     description: "Settings tab delete section title (destructive)",

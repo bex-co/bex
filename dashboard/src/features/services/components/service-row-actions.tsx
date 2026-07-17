@@ -64,6 +64,12 @@ export interface ServiceRowActionsProps {
    * menus. The services list still gets the full set; only the header opts in.
    */
   hideRestart?: boolean;
+  /**
+   * Omit "Suspend" and "Resume" from this menu (service-detail header only):
+   * the settings page surfaces both as a dedicated card so they aren't
+   * offered in two places simultaneously.
+   */
+  hideSuspend?: boolean;
 }
 
 export function ServiceRowActions({
@@ -71,6 +77,7 @@ export function ServiceRowActions({
   pending,
   onRun,
   hideRestart = false,
+  hideSuspend = false,
 }: ServiceRowActionsProps) {
   const { t } = useTranslations();
   const [confirm, setConfirm] = useState<LifecycleAction | null>(null);
@@ -82,11 +89,16 @@ export function ServiceRowActions({
 
   // A suspended App can only be resumed; a live one can be suspended or
   // restarted (restart omitted when the caller already surfaces it elsewhere).
-  const actions: LifecycleAction[] = service.suspended
-    ? ["resume"]
-    : hideRestart
-      ? ["suspend"]
-      : ["suspend", "restart"];
+  // Suspend/resume are omitted when the settings page card already surfaces them.
+  const actions: LifecycleAction[] = hideSuspend
+    ? hideRestart
+      ? []
+      : ["restart"]
+    : service.suspended
+      ? ["resume"]
+      : hideRestart
+        ? ["suspend"]
+        : ["suspend", "restart"];
 
   function handleSelect(action: LifecycleAction) {
     if (CONFIRM[action]) {
