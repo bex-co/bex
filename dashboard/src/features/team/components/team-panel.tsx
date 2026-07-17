@@ -28,6 +28,7 @@ import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useTeam } from "@/features/team/hooks/use-team";
 import { useChangeRole } from "@/features/team/hooks/use-change-role";
 import { useRemoveMember } from "@/features/team/hooks/use-remove-member";
+import { useResendInvite } from "@/features/team/hooks/use-resend-invite";
 import { MemberRow } from "@/features/team/components/member-row";
 import { InviteMemberDialog } from "@/features/team/components/invite-member-dialog";
 
@@ -48,9 +49,15 @@ export function TeamPanel() {
   const { t } = useTranslations();
   const { currentWorkspaceId: workspaceId, loading: workspaceLoading } =
     useWorkspace();
-  const { members, invites, loading, error, canManage, refetch } = useTeam(workspaceId);
+  const { members, invites, seats, loading, error, canManage, refetch } =
+    useTeam(workspaceId);
   const { changeRole, changing } = useChangeRole(workspaceId ?? "");
   const { removeMember, revokeInvite, removing } = useRemoveMember(workspaceId ?? "");
+  const { resendInvite, resending } = useResendInvite(workspaceId ?? "");
+  // Seats full on a LIMITED plan disables the invite entry point up front —
+  // the same wall the server's cap enforces, seen before the click instead of
+  // as the dialog's refusal (which stays as the recovery path).
+  const seatsFull = seats != null && seats.limit > 0 && seats.used >= seats.limit;
   const [search, setSearch] = useState("");
   const normalizedSearch = search.trim().toLocaleLowerCase();
   const filteredMembers = useMemo(
@@ -77,16 +84,32 @@ export function TeamPanel() {
   async function handleRevoke(inviteId: string) {
     if (await revokeInvite(inviteId)) await refetch();
   }
+  async function handleResend(inviteId: string) {
+    if (await resendInvite(inviteId)) await refetch();
+  }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("team.title")}</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          {t("team.title")}
+          {seats ? (
+            <span className="text-sm font-normal text-muted-foreground tabular-nums">
+              {seats.limit > 0
+                ? t("team.seatUsage", {
+                    used: seats.used,
+                    limit: seats.limit,
+                  })
+                : t("team.seatCount", { used: seats.used })}
+            </span>
+          ) : null}
+        </CardTitle>
         <CardDescription>{t("team.description")}</CardDescription>
         {canManage && workspaceId ? (
           <CardAction>
             <InviteMemberDialog
               workspaceId={workspaceId}
+              seatsFull={seatsFull}
               onInvited={() => void refetch()}
             />
           </CardAction>
@@ -176,17 +199,31 @@ export function TeamPanel() {
                           <Badge variant="secondary">{t(`team.role.${invite.role}`)}</Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={removing === invite.id}
-                            onClick={() => void handleRevoke(invite.id)}
-                          >
-                            {removing === invite.id ? (
-                              <Loader2 className="animate-spin" />
-                            ) : null}
-                            {t("team.revokeInvite")}
-                          </Button>
+                          {(
+                            [
+                              {
+                                labelKey: "team.resendInvite",
+                                busy: resending === invite.id,
+                                onClick: handleResend,
+                              },
+                              {
+                                labelKey: "team.revokeInvite",
+                                busy: removing === invite.id,
+                                onClick: handleRevoke,
+                              },
+                            ] as const
+                          ).map(({ labelKey, busy, onClick }) => (
+                            <Button
+                              key={labelKey}
+                              variant="ghost"
+                              size="sm"
+                              disabled={busy}
+                              onClick={() => void onClick(invite.id)}
+                            >
+                              {busy ? <Loader2 className="animate-spin" /> : null}
+                              {t(labelKey)}
+                            </Button>
+                          ))}
                         </TableCell>
                       </TableRow>
                     ))}

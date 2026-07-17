@@ -6,6 +6,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { WorkspaceDetailsCard } from "@/features/workspaces/components/workspace-details-card";
 import { DeleteWorkspaceCard } from "@/features/workspaces/components/delete-workspace-card";
+import { TeamPanel } from "@/features/team/components/team-panel";
 
 export const Route = createFileRoute("/workspace/settings")({
   component: WorkspaceSettingsPage,
@@ -62,6 +63,10 @@ export function WorkspaceSettingsPage() {
                 changePlanOpen={plan === "change"}
                 onChangePlanOpenChange={setChangePlanOpen}
               />
+              {/* Team management lives here (w1/m33/t006) — members are
+                  workspace-scoped objects, and this is where Render puts them;
+                  it lived on account /settings from w4/m12 until now. */}
+              <TeamPanel />
               <DeleteWorkspaceCard workspace={currentWorkspace} />
             </>
           )}

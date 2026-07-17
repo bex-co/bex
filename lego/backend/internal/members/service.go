@@ -33,6 +33,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"net/mail"
 	"strings"
 	"time"
@@ -80,10 +81,11 @@ type Service struct {
 	// https://dashboard.bex.co). Empty => the email carries instructions without a
 	// deep link (acceptance is by email match regardless).
 	InviteBaseURL string
-	// Identities resolves a member's email from the identity provider — the same
-	// enrichment the owners API performs (w6/m2). Nil (BEX_KRATOS_ADMIN_URL
-	// unset) => Email omitted (honest subset); List still succeeds.
-	Identities EmailLookup
+	// Identities resolves a member's email + MFA state from the identity
+	// provider — the same enrichment the owners API performs (w6/m2, w1/m33).
+	// Nil (BEX_KRATOS_ADMIN_URL unset) => Email/MFAEnabled omitted (honest
+	// subset); List still succeeds.
+	Identities IdentityLookup
 }
 
 // MembersStore is the slice of the source of truth this feature writes through —
@@ -101,21 +103,37 @@ type MembersStore interface {
 	ListInvites(ctx context.Context, tenantID string) ([]store.Invite, error)
 	GetInvite(ctx context.Context, tenantID, id string) (store.Invite, error)
 	DeleteInvite(ctx context.Context, tenantID, id string) error
+	// RefreshInvite pushes an unaccepted invite's expiry forward (the resend
+	// verb, w1/m33); token unchanged, accepted/unknown is ErrNotFound.
+	RefreshInvite(ctx context.Context, tenantID, id string, expiresAt time.Time) (store.Invite, error)
+	// AcceptInviteByToken redeems one invite by its emailed token for subject —
+	// the direct-accept path (w1/m33); plan/seat guards run at redemption
+	// exactly like the login-time email match.
+	AcceptInviteByToken(ctx context.Context, token, subject string) (store.Invite, error)
 	// OwnerIDForSubject resolves a subject's stable opaque "own-" id, minting one
 	// on first sight — the same identity enrichment the owners API performs
 	// (workspaces.WorkspaceStore, w6/m7). *store.PGStore already satisfies it.
 	OwnerIDForSubject(ctx context.Context, subject string) (string, error)
 }
 
-// EmailLookup resolves a subject's email from the identity provider (Kratos
-// admin API) — the members-package seam for the same enrichment
-// workspaces.IdentityReader performs for the owners API (named return type
-// differs across packages, so this feature keeps its own narrow interface;
-// the composition root adapts workspaces.IdentityReader to it). Nil
-// (BEX_KRATOS_ADMIN_URL unset) or a lookup miss => Email omitted (honest
-// subset) — List still succeeds.
-type EmailLookup interface {
-	LookupEmail(ctx context.Context, subject string) (string, bool)
+// IdentityAttrs is the slice of identity-provider state a member row is
+// enriched with: the email (w6/m10) plus the MFA-enrollment flag (w1/m33 —
+// Render's Team Members query carries user.otpEnabled; bex spells it
+// mfaEnabled, matching its own owners read API).
+type IdentityAttrs struct {
+	Email      string
+	MFAEnabled bool
+}
+
+// IdentityLookup resolves a subject's identity attributes from the identity
+// provider (Kratos admin API) — the members-package seam for the same
+// enrichment workspaces.IdentityReader performs for the owners API (named
+// return type differs across packages, so this feature keeps its own narrow
+// interface; the composition root adapts workspaces.IdentityReader to it).
+// Nil (BEX_KRATOS_ADMIN_URL unset) or a lookup miss => Email/MFAEnabled
+// omitted (honest subset) — List still succeeds.
+type IdentityLookup interface {
+	LookupIdentity(ctx context.Context, subject string) (IdentityAttrs, bool)
 }
 
 // RoleGranter writes a member's OpenFGA role tuple on a workspace (the authz
@@ -144,13 +162,16 @@ type Mailer interface {
 // opaque "own-" id the owners API reports as `userId` (w6/m7); Email is
 // resolved via Identities, same as the owners API — both honest-omit
 // (""/unset) when the identity reader is nil or a lookup misses (w6/m10).
-// Role is UPPERCASE (Render enum).
+// Role is UPPERCASE (Render enum). MFAEnabled mirrors Render's per-member
+// otpEnabled under bex's own owners-API spelling — honest-false when the
+// identity reader is nil or the lookup misses, like Email.
 type MemberView struct {
-	Subject   string `json:"subject"`
-	UserID    string `json:"userId"`
-	Email     string `json:"email"`
-	Role      string `json:"role"`
-	CreatedAt string `json:"createdAt"`
+	Subject    string `json:"subject"`
+	UserID     string `json:"userId"`
+	Email      string `json:"email"`
+	Role       string `json:"role"`
+	CreatedAt  string `json:"createdAt"`
+	MFAEnabled bool   `json:"mfaEnabled"`
 }
 
 // InviteView is the neutral projection of a pending invite — Render's
@@ -161,6 +182,25 @@ type InviteView struct {
 	Role      string `json:"role"`
 	ExpiresAt string `json:"expiresAt"`
 	CreatedAt string `json:"createdAt"`
+}
+
+// SeatUsageView is the workspace's seat consumption — Render's
+// owner.usage.users { used, limit } (docs/render-artifacts/team-members.graphql).
+// Used counts accepted members PLUS outstanding invites, the same formula the
+// invite verb's cap enforces (store.CanAddMember), so what the UI displays and
+// what the guard refuses can never disagree. Limit 0 means unlimited (the
+// paid plans), mirroring store.PlanLimits.MaxMembers.
+type SeatUsageView struct {
+	Used  int `json:"used"`
+	Limit int `json:"limit"`
+}
+
+// AcceptedInviteView is what redeeming an invite token returns: the workspace
+// joined, its display name (for the dashboard's toast), and the role granted.
+type AcceptedInviteView struct {
+	WorkspaceID   string `json:"workspaceId"`
+	WorkspaceName string `json:"workspaceName"`
+	Role          string `json:"role"`
 }
 
 func memberView(m store.TenantMember) MemberView {
@@ -222,13 +262,51 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]MemberView, e
 		}
 		mv.UserID = ownID
 		if s.Identities != nil {
-			if email, ok := s.Identities.LookupEmail(ctx, m.Subject); ok {
-				mv.Email = email
+			if attrs, ok := s.Identities.LookupIdentity(ctx, m.Subject); ok {
+				mv.Email = attrs.Email
+				mv.MFAEnabled = attrs.MFAEnabled
 			}
 		}
 		out = append(out, mv)
 	}
 	return out, nil
+}
+
+// SeatUsage returns the workspace's seat consumption (used/limit) —
+// viewer-and-up like List: Render shows the seat bar to every role, and the
+// numbers reveal nothing the members list doesn't.
+func (s *Service) SeatUsage(ctx context.Context, workspaceID string) (SeatUsageView, error) {
+	if err := s.AuthorizeOn(ctx, core.RelCanView, core.WorkspaceObject(workspaceID)); err != nil {
+		return SeatUsageView{}, err
+	}
+	if s.Store == nil {
+		return SeatUsageView{}, ErrMembersUnavailable
+	}
+	tenant, err := s.Store.GetTenant(ctx, workspaceID)
+	if err != nil {
+		return SeatUsageView{}, mapStoreErr(err)
+	}
+	used, err := s.seatsUsed(ctx, workspaceID)
+	if err != nil {
+		return SeatUsageView{}, err
+	}
+	return SeatUsageView{Used: used, Limit: store.LimitsFor(tenant.Plan).MaxMembers}, nil
+}
+
+// seatsUsed is the ONE seat-consumption formula — accepted members plus
+// outstanding invites — shared by the Invite verb's cap guard and the
+// SeatUsage read, so what the UI displays and what the guard refuses are
+// structurally the same number.
+func (s *Service) seatsUsed(ctx context.Context, workspaceID string) (int, error) {
+	members, err := s.Store.CountTenantMembers(ctx, workspaceID)
+	if err != nil {
+		return 0, err
+	}
+	pending, err := s.Store.CountInvites(ctx, workspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return members + pending, nil
 }
 
 // ListInvites returns a workspace's outstanding invites. Admin-only (managing
@@ -257,6 +335,10 @@ func (s *Service) ListInvites(ctx context.Context, workspaceID string) ([]Invite
 // email/role. The invite redeems on the recipient's first login by email match
 // (internal/api/tenancy.go); the token backs a direct-accept link.
 func (s *Service) Invite(ctx context.Context, workspaceID, email, role string) (InviteView, error) {
+	// The allowed-write audit row is deferred to after the invite row exists —
+	// its target (the invite id) is minted by the store, so recording at
+	// authorize time could carry no target at all. Denials record immediately.
+	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)); err != nil {
 		return InviteView{}, err
 	}
@@ -282,15 +364,11 @@ func (s *Service) Invite(ctx context.Context, workspaceID, email, role string) (
 	}
 	// Seat cap: accepted members + outstanding invites both consume a seat, so a
 	// single-member (Hobby) workspace can't invite a second person until upgraded.
-	members, err := s.Store.CountTenantMembers(ctx, workspaceID)
+	used, err := s.seatsUsed(ctx, workspaceID)
 	if err != nil {
 		return InviteView{}, err
 	}
-	pending, err := s.Store.CountInvites(ctx, workspaceID)
-	if err != nil {
-		return InviteView{}, err
-	}
-	if !store.CanAddMember(tenant.Plan, members+pending) {
+	if !store.CanAddMember(tenant.Plan, used) {
 		lim := store.LimitsFor(tenant.Plan)
 		return InviteView{}, core.NewPlanLimitError(
 			fmt.Sprintf("the %s plan is limited to %d workspace member(s); upgrade to invite more", tenant.Plan, lim.MaxMembers),
@@ -303,6 +381,7 @@ func (s *Service) Invite(ctx context.Context, workspaceID, email, role string) (
 	if err != nil {
 		return InviteView{}, mapStoreErr(err)
 	}
+	s.RecordMemberInvited(ctx, workspaceID, inv.ID, inv.Email, inv.Role)
 	// Best-effort delivery: a failed send does NOT unwind the invite (it's
 	// recoverable — an admin can resend, and acceptance is by email match, not the
 	// mail). Surfaced only in logs, not to the caller, so a flaky relay doesn't
@@ -311,12 +390,94 @@ func (s *Service) Invite(ctx context.Context, workspaceID, email, role string) (
 	return inviteView(inv), nil
 }
 
+// ResendInvite re-delivers a pending invite's email and pushes its expiry
+// forward — how an admin recovers a lost or lapsed invite without revoke +
+// re-invite (which would churn the invite id). Admin-only. The token is
+// unchanged, so the original email's link stays redeemable. An accepted or
+// unknown invite is a 404 on every surface.
+func (s *Service) ResendInvite(ctx context.Context, workspaceID, inviteID string) (InviteView, error) {
+	if err := s.AuthorizeOnTarget(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID), core.InviteTarget(inviteID)); err != nil {
+		return InviteView{}, err
+	}
+	if s.Store == nil {
+		return InviteView{}, ErrMembersUnavailable
+	}
+	// Refresh first: the tenant row is only needed for the email body, so a 404
+	// invite (accepted/unknown/cross-workspace) doesn't pay a wasted read.
+	inv, err := s.Store.RefreshInvite(ctx, workspaceID, inviteID, s.Now().Add(s.inviteTTL()))
+	if err != nil {
+		return InviteView{}, mapStoreErr(err)
+	}
+	tenant, err := s.Store.GetTenant(ctx, workspaceID)
+	if err != nil {
+		return InviteView{}, mapStoreErr(err)
+	}
+	s.sendInvite(ctx, inv, tenant)
+	return inviteView(inv), nil
+}
+
+// AcceptInvite redeems an invite by its emailed token for the CALLER — the
+// direct-accept path that works when the recipient signed up under a different
+// email than the one invited (the login-time email match can never redeem
+// those). The token is the capability; the gate here is only "an authenticated,
+// onboarded caller" (can_view on their own workspace — every fresh signup's
+// personal workspace grants it), not membership of the joined workspace, which
+// is exactly what's being established. Plan/seat guards run at redemption in
+// the store, same as the login path.
+func (s *Service) AcceptInvite(ctx context.Context, token string) (AcceptedInviteView, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return AcceptedInviteView{}, err
+	}
+	if s.Store == nil {
+		return AcceptedInviteView{}, ErrMembersUnavailable
+	}
+	if strings.TrimSpace(token) == "" {
+		return AcceptedInviteView{}, fmt.Errorf("%w: missing invite token", core.ErrBadRequest)
+	}
+	id, ok := core.IdentityFrom(ctx)
+	if !ok {
+		return AcceptedInviteView{}, core.ErrForbidden
+	}
+	inv, err := s.Store.AcceptInviteByToken(ctx, token, id.Subject)
+	if err != nil {
+		return AcceptedInviteView{}, mapStoreErr(err)
+	}
+	if err := s.grantRole(ctx, inv.TenantID, "user:"+id.Subject, inv.Role); err != nil {
+		// Row is the source of truth; the tuple is re-driven on the next login
+		// (tenancy's ensureGranted path), same best-effort model as the email path.
+		log.Printf("members: granting %s on workspace %s to %s: %v", inv.Role, inv.TenantID, id.Subject, err)
+	}
+	s.recordAccepted(ctx, inv, id)
+	view := AcceptedInviteView{WorkspaceID: inv.TenantID, Role: wireRole(inv.Role)}
+	if tenant, err := s.Store.GetTenant(ctx, inv.TenantID); err == nil {
+		view.WorkspaceName = tenant.Name
+	}
+	return view, nil
+}
+
+// recordAccepted writes the members.AcceptInvite audit row for a token
+// redemption — the caller is the accepting identity, mirroring what the login
+// path records (internal/api/tenancy.go).
+func (s *Service) recordAccepted(ctx context.Context, inv store.Invite, id core.Identity) {
+	if s.Base == nil {
+		return
+	}
+	core.RecordInviteAccepted(ctx, s.Base.Audit, s.Now(),
+		inv.TenantID, inv.ID, inv.Email, inv.Role, id.Subject, id.Method)
+}
+
 // ChangeRole changes an existing member's role. Admin-only. Refuses demoting the
 // last admin (a workspace nobody can administer). No-op when the role is
 // unchanged. Writes the row (source of truth) then reconciles OpenFGA: grants the
 // new relation, revokes the old — so the auth gate follows the row.
 func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role string) (MemberView, error) {
-	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)); err != nil {
+	// Deferred allowed-write recording: the success row carries the typed
+	// old→new role pair (RecordMemberRoleChanged), which isn't known until the
+	// member is fetched — a refused change (bad role, plan gate, last admin)
+	// leaves only the denial/attempt trail. Denials record immediately, with
+	// the member target the caller asked to change.
+	ctx = core.WithDeferredAllowedWriteAudit(ctx)
+	if err := s.AuthorizeOnTarget(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID), core.MemberTarget(subject)); err != nil {
 		return MemberView{}, err
 	}
 	if s.Store == nil {
@@ -355,6 +516,7 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 		return MemberView{}, fmt.Errorf("workspace %s: granting role failed: %w", workspaceID, err)
 	}
 	s.revokeRole(ctx, workspaceID, "user:"+subject, m.Role)
+	s.RecordMemberRoleChanged(ctx, workspaceID, subject, m.Role, role)
 	m.Role = role
 	return memberView(m), nil
 }
@@ -363,7 +525,7 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 // Admin-only. Refuses removing the last admin. The revoke is best-effort (an
 // already-gone tuple is not an error), so a retried remove completes.
 func (s *Service) Remove(ctx context.Context, workspaceID, subject string) error {
-	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)); err != nil {
+	if err := s.AuthorizeOnTarget(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID), core.MemberTarget(subject)); err != nil {
 		return err
 	}
 	if s.Store == nil {
@@ -385,7 +547,7 @@ func (s *Service) Remove(ctx context.Context, workspaceID, subject string) error
 
 // RevokeInvite deletes a pending invite before it's redeemed. Admin-only.
 func (s *Service) RevokeInvite(ctx context.Context, workspaceID, inviteID string) error {
-	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)); err != nil {
+	if err := s.AuthorizeOnTarget(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID), core.InviteTarget(inviteID)); err != nil {
 		return err
 	}
 	if s.Store == nil {

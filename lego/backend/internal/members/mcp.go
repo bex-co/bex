@@ -60,6 +60,10 @@ type revokeInviteArgs struct {
 	InviteID    string `json:"inviteId" jsonschema:"the pending invite id, inv-…"`
 }
 
+type acceptInviteArgs struct {
+	Token string `json:"token" jsonschema:"the invite token from the invitation email's accept link"`
+}
+
 type okResult struct {
 	OK bool `json:"ok"`
 }
@@ -112,5 +116,29 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in revokeInviteArgs) (*mcp.CallToolResult, okResult, error) {
 		err := s.RevokeInvite(ctx, in.WorkspaceID, in.InviteID)
 		return nil, okResult{OK: err == nil}, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "get_workspace_seat_usage",
+		Description: "A workspace's member-seat usage: used counts accepted members plus outstanding invites; limit 0 means unlimited (paid plans). bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in workspaceArg) (*mcp.CallToolResult, SeatUsageView, error) {
+		u, err := s.SeatUsage(ctx, in.WorkspaceID)
+		return nil, u, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "resend_workspace_invite",
+		Description: "Re-send a pending workspace invite's email and refresh its expiry; the invite id and token are unchanged. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in revokeInviteArgs) (*mcp.CallToolResult, InviteView, error) {
+		inv, err := s.ResendInvite(ctx, in.WorkspaceID, in.InviteID)
+		return nil, inv, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "accept_workspace_invite",
+		Description: "Redeem a workspace invite token for the authenticated caller — joins the inviting workspace at the invited role even when the caller signed up under a different email. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in acceptInviteArgs) (*mcp.CallToolResult, AcceptedInviteView, error) {
+		acc, err := s.AcceptInvite(ctx, in.Token)
+		return nil, acc, err
 	})
 }

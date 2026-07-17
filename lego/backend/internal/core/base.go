@@ -348,6 +348,20 @@ func (b *Base) AuthorizeOn(ctx context.Context, relation, object string) error {
 	return b.authorizeAndAudit(ctx, relation, object, "", callerVerb(verbFrameSkip), nil)
 }
 
+// AuthorizeOnTarget is AuthorizeOn for a verb that acts on ONE named
+// sub-resource of the named workspace — AuthorizeTarget's explicit-object
+// sibling (the members verbs act on a member/invite OF a workspace the caller
+// administers, which may not be their default one). The target (e.g.
+// core.MemberTarget(subject)) is recorded on the audit event exactly as
+// AuthorizeTarget records a service name: the identifier the caller ASKED to
+// act on, resolved before any fetch, never a verb argument's value. Calls
+// callerVerb itself rather than delegating to a sibling entry point — see
+// verbFrameSkip's comment for why delegation would silently rename every
+// recorded verb.
+func (b *Base) AuthorizeOnTarget(ctx context.Context, relation, object, target string) error {
+	return b.authorizeAndAudit(ctx, relation, object, target, callerVerb(verbFrameSkip), nil)
+}
+
 // authorizeAndAudit runs the OpenFGA check and records the outcome
 // (audit.go) — the one place Authorize, AuthorizeTarget and AuthorizeOn
 // funnel through, so a verb is recorded exactly once regardless of which

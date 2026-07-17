@@ -90,4 +90,42 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
+	// Seat usage — Render's owner.usage.users {used, limit} as a REST read
+	// (w1/m33); limit 0 means unlimited (the paid plans).
+	mux.HandleFunc("GET /v1/workspaces/{workspaceId}/seat-usage", func(w http.ResponseWriter, r *http.Request) {
+		u, err := s.SeatUsage(r.Context(), r.PathValue("workspaceId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, u)
+	})
+	// Resend a pending invite (w1/m33): fresh email, refreshed expiry, same id
+	// and token.
+	mux.HandleFunc("POST /v1/workspaces/{workspaceId}/invites/{inviteId}/resend", func(w http.ResponseWriter, r *http.Request) {
+		inv, err := s.ResendInvite(r.Context(), r.PathValue("workspaceId"), r.PathValue("inviteId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, inv)
+	})
+	// Redeem an invite token for the authenticated caller (w1/m33). Not
+	// workspace-scoped: the token identifies the invite; the caller may not
+	// (yet) be a member of the workspace it joins them to.
+	mux.HandleFunc("POST /v1/invites/accept", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Token string `json:"token"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		acc, err := s.AcceptInvite(r.Context(), req.Token)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, acc)
+	})
 }

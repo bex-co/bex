@@ -81,6 +81,11 @@ type tenantService struct {
 	// map would let membership churn evict every caller's default-workspace
 	// resolution, sending them all back to Postgres.
 	members *core.TTLCache[string]
+	// Audit records the members.AcceptInvite row for each login-time invite
+	// redemption (w1/m33) — the one membership mutation that happens outside a
+	// feature verb's authorize interception. Nil => unrecorded (store-off /
+	// ssh-gateway), the same degrade as core.Base's own sink.
+	Audit core.AuditSink
 }
 
 // NewTenantService wires the store-backed resolver + onboarding mint. granter
@@ -175,6 +180,12 @@ func (t *tenantService) acceptInvites(ctx context.Context, identityID, email str
 	if err != nil {
 		log.Printf("tenancy: redeeming invites for %s: %v", identityID, err)
 		return
+	}
+	for _, inv := range accepted {
+		// The caller is the ACCEPTING identity — the teammate joining on login,
+		// method "session" by construction (only session callers reach EnsureTenant).
+		core.RecordInviteAccepted(ctx, t.Audit, time.Now(),
+			inv.TenantID, inv.ID, inv.Email, inv.Role, identityID, methodSession)
 	}
 	if t.granter == nil {
 		return

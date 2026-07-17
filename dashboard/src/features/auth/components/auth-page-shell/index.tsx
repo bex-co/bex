@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import type { LucideIcon } from "lucide-react";
 import { LanguageSwitcher } from "@/features/i18n/language-switcher";
+import { stashInviteTokenFromURL } from "@/common/lib/invite-token";
 
 export type AuthFeature = {
   icon: LucideIcon;
@@ -28,6 +30,12 @@ export function AuthPageShell({
   features,
   children,
 }: AuthPageShellProps) {
+  // An invite email lands on /auth/sign-up?invite=<token> (w1/m33) — stash the
+  // token so it survives the Kratos sign-up/login round-trip; the
+  // authenticated layout redeems it (useInviteRedemption).
+  useEffect(() => {
+    stashInviteTokenFromURL();
+  }, []);
   return (
     <div className="min-h-screen flex bg-background relative">
       <div className="absolute top-4 right-4 z-10">

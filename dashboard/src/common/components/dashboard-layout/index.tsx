@@ -5,7 +5,16 @@ import {
 } from "@/common/components/ui/sidebar.tsx";
 import { Authenticated } from "@/common/components/authenticated";
 import { UserNav } from "@/common/components/user-nav.tsx";
+import { useInviteRedemption } from "@/features/team/hooks/use-invite-redemption";
 import { DashboardSidebar } from "./dashboard-sidebar";
+
+/** Redeems a pending workspace-invite token once the caller is authenticated
+ *  (w1/m33) — a child component (not a hook call inside DashboardLayout) so it
+ *  only runs behind the Authenticated gate. */
+function InviteRedemption() {
+  useInviteRedemption();
+  return null;
+}
 
 function DashboardHeader() {
   const { state, isMobile, openMobile } = useSidebar();
@@ -36,6 +45,9 @@ function DashboardHeader() {
 export function DashboardLayout({ children }: { children?: React.ReactNode }) {
   return (
     <SidebarProvider>
+      <Authenticated>
+        <InviteRedemption />
+      </Authenticated>
       <div className="flex h-(--visual-viewport-height,100vh) w-full">
         <DashboardSidebar />
         <main className="flex flex-1 flex-col min-w-0 w-full">

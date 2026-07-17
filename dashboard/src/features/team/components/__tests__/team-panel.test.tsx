@@ -2,17 +2,19 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TeamPanel } from "@/features/team/components/team-panel";
-import type { MemberView, InviteView } from "@/features/team/types";
+import type { MemberView, InviteView, SeatUsage } from "@/features/team/types";
 
 const teamState: {
   members: MemberView[];
   invites: InviteView[];
+  seats: SeatUsage | null;
   loading: boolean;
   error: Error | undefined;
   canManage: boolean;
 } = {
   members: [],
   invites: [],
+  seats: null,
   loading: false,
   error: undefined,
   canManage: true,
@@ -53,6 +55,11 @@ vi.mock("@/features/team/hooks/use-remove-member", () => ({
   },
 }));
 
+const resendInvite = vi.fn();
+vi.mock("@/features/team/hooks/use-resend-invite", () => ({
+  useResendInvite: () => ({ resendInvite, resending: null }),
+}));
+
 vi.mock("@/features/team/components/invite-member-dialog", () => ({
   InviteMemberDialog: () => <div data-testid="invite-dialog" />,
 }));
@@ -60,6 +67,7 @@ vi.mock("@/features/team/components/invite-member-dialog", () => ({
 beforeEach(() => {
   teamState.members = [];
   teamState.invites = [];
+  teamState.seats = null;
   teamState.loading = false;
   teamState.error = undefined;
   teamState.canManage = true;
@@ -68,6 +76,7 @@ beforeEach(() => {
   changeRole.mockReset();
   removeMember.mockReset();
   revokeInvite.mockReset();
+  resendInvite.mockReset();
   useTeamSpy.mockReset();
   useChangeRoleSpy.mockReset();
   useRemoveMemberSpy.mockReset();
@@ -197,6 +206,63 @@ describe("TeamPanel", () => {
     render(<TeamPanel />);
     expect(screen.getByText("Pending invites")).toBeInTheDocument();
     expect(screen.getByText("carol@example.com")).toBeInTheDocument();
+  });
+
+  it("shows seat usage against a limited plan's cap (w1/m33)", () => {
+    teamState.seats = { used: 1, limit: 1 };
+    render(<TeamPanel />);
+    expect(screen.getByText("1 of 1 seats")).toBeInTheDocument();
+  });
+
+  it("shows a plain seat count on an unlimited plan (w1/m33)", () => {
+    teamState.seats = { used: 3, limit: 0 };
+    render(<TeamPanel />);
+    expect(screen.getByText("3 seats used")).toBeInTheDocument();
+  });
+
+  it("resending a pending invite calls resendInvite and refetches (w1/m33)", async () => {
+    teamState.invites = [
+      {
+        id: "inv-9",
+        email: "late@example.com",
+        role: "DEVELOPER",
+        expiresAt: null,
+      },
+    ];
+    resendInvite.mockResolvedValue(true);
+    const user = userEvent.setup();
+    render(<TeamPanel />);
+
+    await user.click(screen.getByRole("button", { name: "Resend" }));
+
+    expect(resendInvite).toHaveBeenCalledWith("inv-9");
+    expect(refetch).toHaveBeenCalled();
+  });
+
+  it("marks a member with a second factor enrolled (w1/m33)", () => {
+    teamState.members = [
+      {
+        subject: "id-secure",
+        userId: "own-1",
+        email: "secure@example.com",
+        role: "ADMIN",
+        createdAt: null,
+        mfaEnabled: true,
+      },
+      {
+        subject: "id-plain",
+        userId: "own-2",
+        email: "plain@example.com",
+        role: "VIEWER",
+        createdAt: null,
+        mfaEnabled: false,
+      },
+    ];
+    render(<TeamPanel />);
+    const secureRow = screen.getByText("secure@example.com").closest("tr")!;
+    const plainRow = screen.getByText("plain@example.com").closest("tr")!;
+    expect(within(secureRow).getByText("2FA")).toBeInTheDocument();
+    expect(within(plainRow).queryByText("2FA")).not.toBeInTheDocument();
   });
 
   it("filters accepted members by email or fallback identity without hiding invites", async () => {

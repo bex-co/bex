@@ -69,6 +69,12 @@ type AuditEvent struct {
 	AutoscalingMinTo   *int32
 	AutoscalingMaxTo   *int32
 	AutoDeployEnabled  *bool
+	// RoleFrom/RoleTo are the member-role detail of the team-membership verbs
+	// (w1/m33): a role change records old→new; an invite/acceptance records the
+	// granted role in RoleTo alone. Roles are the closed members.Roles ladder,
+	// never free-form.
+	RoleFrom *string
+	RoleTo   *string
 }
 
 type auditMaintenanceModeToKey struct{}
@@ -108,6 +114,14 @@ const (
 	AuditVerbPostgresUpdated            = "postgres.UpdatePostgres"
 	AuditVerbKeyValuePlanChanged        = "keyvalue.SetPlan"
 	AuditVerbKeyValueUpdated            = "keyvalue.UpdateKeyValue"
+	// Team-membership effects (w1/m33). Invite and ChangeRole are spelled exactly
+	// as callerVerb() derives them (deferred-success recording, like SetPlan);
+	// AcceptInvite is recorded explicitly — redemption happens on the auth gate's
+	// login path (email match) or the token verb, neither of which passes a
+	// write-relation authorize for the joined workspace.
+	AuditVerbMemberInvited     = "members.Invite"
+	AuditVerbMemberRoleChanged = "members.ChangeRole"
+	AuditVerbInviteAccepted    = "members.AcceptInvite"
 )
 
 // DatabaseAuditEffect is the closed set of successful Database mutations that
@@ -219,6 +233,16 @@ func KeyValueTarget(name string) string { return "keyvalue:" + name }
 // secret values.
 func EnvGroupTarget(groupID string) string { return "envgroup:" + groupID }
 
+// MemberTarget is the audit target of a verb acting on one workspace MEMBER
+// (role change, removal). The subject is the member's identity id — an opaque
+// identifier, never a value; the events feed never reads this kind (members
+// have no per-service feed), so it exists for the workspace audit trail alone.
+func MemberTarget(subject string) string { return "member:" + subject }
+
+// InviteTarget is MemberTarget's sibling for a pending invite (revoke, resend,
+// acceptance). Invite ids are opaque inv-… identifiers.
+func InviteTarget(inviteID string) string { return "invite:" + inviteID }
+
 // SplitTarget is the constructors' inverse — the one place the
 // "<kind>:<name>" target format is decoded (the audit read surface keys its
 // Render metadata by kind, w4/m26), kept beside the mint sites above so the
@@ -312,6 +336,50 @@ func (b *Base) RecordAutoDeployChanged(ctx context.Context, app *appv1alpha1.App
 	ev := b.verbAuditEvent(ctx, AuditVerbSetAutoDeploy, resource, canonicalAppTarget(app))
 	ev.AutoDeployEnabled = &enabled
 	b.recordAudit(ctx, ev)
+}
+
+// RecordMemberInvited records a successful workspace invite with its typed
+// role detail (w1/m33). Recorded only after the invite row is written — paired
+// with WithDeferredAllowedWriteAudit on the verb's authorize, because the
+// invite id (the target) does not exist at authorize time. TargetName carries
+// the invited email: the invite's human identifier, shown to the same
+// manage-tier audience the pending-invites list already shows it to.
+func (b *Base) RecordMemberInvited(ctx context.Context, workspaceID, inviteID, email, role string) {
+	ev := b.verbAuditEvent(ctx, AuditVerbMemberInvited, WorkspaceObject(workspaceID), InviteTarget(inviteID))
+	ev.TargetName = email
+	ev.RoleTo = &role
+	b.recordAudit(ctx, ev)
+}
+
+// RecordMemberRoleChanged records a successful member role change with the
+// typed old→new pair, exactly like apps' RecordPlanChanged. Paired with
+// WithDeferredAllowedWriteAudit on the verb's authorize so a refused change
+// (plan-gated role, last admin) leaves only the denial/attempt trail.
+func (b *Base) RecordMemberRoleChanged(ctx context.Context, workspaceID, subject, fromRole, toRole string) {
+	ev := b.verbAuditEvent(ctx, AuditVerbMemberRoleChanged, WorkspaceObject(workspaceID), MemberTarget(subject))
+	ev.RoleFrom = &fromRole
+	ev.RoleTo = &toRole
+	b.recordAudit(ctx, ev)
+}
+
+// RecordInviteAccepted writes the members.AcceptInvite audit event through
+// sink — a package-level recorder (rather than only a Base helper) because one
+// of its two callers is the auth gate's login-time email-match redemption
+// (internal/api/tenancy.go), which has no feature Base. The caller identity is
+// the ACCEPTING one — the invited teammate joining, not an admin acting on
+// them.
+func RecordInviteAccepted(ctx context.Context, sink AuditSink, at time.Time, workspaceID, inviteID, email, role, callerSubject, callerMethod string) {
+	RecordAuditEvent(ctx, sink, AuditEvent{
+		Caller:       callerSubject,
+		CallerMethod: callerMethod,
+		Verb:         AuditVerbInviteAccepted,
+		Resource:     WorkspaceObject(workspaceID),
+		Target:       InviteTarget(inviteID),
+		TargetName:   email,
+		Outcome:      AuditAllowed,
+		At:           at,
+		RoleTo:       &role,
+	})
 }
 
 // RecordDatabaseEffect records one successful, sourceable managed-Postgres
@@ -492,7 +560,7 @@ var receiverRE = regexp.MustCompile(`\(\*?\w+\)\.`)
 // is the verb that called it — CLAUDE.md's "every verb starts with s.Authorize"
 // invariant is what makes this constant, not a per-call guess.
 //
-// Named so all THREE entry points in base.go can't drift to different skip
+// Named so all FOUR entry points in base.go can't drift to different skip
 // counts — and note this is why each of them calls callerVerb(verbFrameSkip)
 // itself rather than delegating to a sibling: one entry point implemented in
 // terms of another would add a frame, silently rename every recorded verb to
@@ -600,7 +668,14 @@ func (b *Base) emit(ctx context.Context, verb, resource, target string, authzErr
 // recordAudit is the one bounded, fail-open sink path for both authorization
 // events and typed system events.
 func (b *Base) recordAudit(ctx context.Context, ev AuditEvent) {
-	sink := b.Audit
+	RecordAuditEvent(ctx, b.Audit, ev)
+}
+
+// RecordAuditEvent writes ev through sink with the same bounded, fail-open
+// semantics as Base's own recording — for the recorders that live outside a
+// feature service (the auth gate's invite redemption, internal/api/tenancy.go).
+// A nil sink is the store-off no-op; a Record error is logged, never returned.
+func RecordAuditEvent(ctx context.Context, sink AuditSink, ev AuditEvent) {
 	if sink == nil {
 		sink = NoopAuditSink
 	}

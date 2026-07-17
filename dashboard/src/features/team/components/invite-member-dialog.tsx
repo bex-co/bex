@@ -32,6 +32,10 @@ import { ROLES, type Role } from "@/features/team/types";
 
 export interface InviteMemberDialogProps {
   workspaceId: string;
+  /** Seats exhausted on a limited plan (w1/m33): the dialog opens straight to
+   *  the plan wall with submit disabled — the caller sees the cap before
+   *  composing an invite the server would refuse. */
+  seatsFull?: boolean;
   /** Called once an invite succeeds (the pending list refetches). */
   onInvited: () => void;
 }
@@ -45,10 +49,15 @@ export interface InviteMemberDialogProps {
  * inline with an upgrade CTA that opens the change-plan dialog on workspace
  * settings (w6/m15/t001) — the rejection used to be a toast with nowhere to go.
  */
-export function InviteMemberDialog({ workspaceId, onInvited }: InviteMemberDialogProps) {
+export function InviteMemberDialog({
+  workspaceId,
+  seatsFull = false,
+  onInvited,
+}: InviteMemberDialogProps) {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const { invite, busy, planLimit } = useInviteMember(workspaceId);
+  const planWall = planLimit ?? (seatsFull ? t("team.seatsFullBody") : null);
 
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -115,11 +124,11 @@ export function InviteMemberDialog({ workspaceId, onInvited }: InviteMemberDialo
             </SelectContent>
           </Select>
         </div>
-        {planLimit ? (
+        {planWall ? (
           <Alert variant="destructive">
             <AlertTitle>{t("team.inviteErrorPlanTitle")}</AlertTitle>
             <AlertDescription className="flex flex-col items-start gap-2">
-              <span>{planLimit}</span>
+              <span>{planWall}</span>
               <Button
                 variant="link"
                 className="h-auto p-0"
@@ -138,7 +147,10 @@ export function InviteMemberDialog({ workspaceId, onInvited }: InviteMemberDialo
               {t("team.inviteCancel")}
             </Button>
           </DialogClose>
-          <Button onClick={() => void handleSubmit()} disabled={!email.trim() || busy}>
+          <Button
+            onClick={() => void handleSubmit()}
+            disabled={!email.trim() || busy || seatsFull}
+          >
             {busy ? <Loader2 className="animate-spin" /> : null}
             {t("team.inviteSubmit")}
           </Button>

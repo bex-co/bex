@@ -153,6 +153,58 @@ const enTeam: Record<string, TranslationEntry> = {
     message: "Revoke",
     description: "Revoke pending-invite button",
   },
+  "team.resendInvite": {
+    message: "Resend",
+    description: "Resend pending-invite button (fresh email, refreshed expiry)",
+  },
+  "team.resendInviteSuccess": {
+    message: "Invitation re-sent to {email}",
+    description: "Toast after a successful invite resend",
+  },
+  "team.resendInviteError": {
+    message: "Couldn't resend that invitation",
+    description: "Toast after a failed invite resend",
+  },
+  "team.seatUsage": {
+    message: "{used} of {limit} seats",
+    description:
+      "Seat usage in the Team card title on a limited plan — accepted members plus pending invites over the plan cap",
+  },
+  "team.seatCount": {
+    message: "{used} seats used",
+    description:
+      "Seat count in the Team card title on an unlimited plan (no cap to show)",
+  },
+  "team.seatsFullBody": {
+    message:
+      "This workspace has used every seat its plan offers. Upgrade to invite more members.",
+    description:
+      "Invite dialog wall when seats are exhausted before composing an invite",
+  },
+  "team.mfaEnabled": {
+    message: "2FA",
+    description: "Badge on a member row whose account has a second factor enrolled",
+  },
+  "team.mfaEnabledTooltip": {
+    message: "Two-factor authentication enabled",
+    description: "Tooltip for the member-row 2FA badge",
+  },
+  "team.inviteAccepted": {
+    message: "You've joined {workspace}",
+    description: "Toast after an emailed invite link is redeemed successfully",
+  },
+  "team.inviteAcceptedAlready": {
+    message: "That invitation was already used",
+    description: "Toast when an invite token was already redeemed",
+  },
+  "team.inviteAcceptExpired": {
+    message: "That invitation has expired — ask for a new one",
+    description: "Toast when an invite token is past its expiry",
+  },
+  "team.inviteAcceptError": {
+    message: "Couldn't accept that invitation",
+    description: "Toast when redeeming an invite token fails",
+  },
   "team.revokeInviteSuccess": {
     message: "Invitation revoked",
     description: "Toast after a successful invite revoke",

@@ -12,7 +12,6 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ApiKeysPanel } from "@/features/api-keys/components/api-keys-panel";
 import { NotificationSettingsPanel } from "@/features/notifications/components/notification-settings-panel";
-import { TeamPanel } from "@/features/team/components/team-panel";
 import { SecurityComplianceSection } from "@/features/auth/pages/settings-page/security-compliance-section";
 import { ConnectGithubCard } from "@/features/git/components/connect-github-card";
 import { RegistryCredentialsPanel } from "@/features/registry-credentials/components/registry-credentials-panel";
@@ -63,7 +62,6 @@ export default function SettingsPage() {
               <Skeleton className="h-10 w-full" />
             </div>
           )}
-          <TeamPanel />
           <ConnectGithubCard callbackError={search.git_error} />
           <RegistryCredentialsPanel />
           <WebhooksPanel />

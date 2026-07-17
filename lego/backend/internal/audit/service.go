@@ -70,6 +70,10 @@ type Event struct {
 	Outcome           string
 	At                time.Time
 	MaintenanceModeTo *bool
+	// RoleFrom/RoleTo are the team-membership verbs' typed role detail
+	// (w1/m33, migration 0040) — nil for every other verb.
+	RoleFrom *string
+	RoleTo   *string
 }
 
 func view(r store.AuditRow) Event {
@@ -84,6 +88,8 @@ func view(r store.AuditRow) Event {
 		Outcome:           r.Outcome,
 		At:                r.At,
 		MaintenanceModeTo: r.MaintenanceModeTo,
+		RoleFrom:          r.RoleFrom,
+		RoleTo:            r.RoleTo,
 	}
 }
 

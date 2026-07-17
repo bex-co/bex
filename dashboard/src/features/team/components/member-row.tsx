@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, ShieldCheck, Trash2 } from "lucide-react";
 import { TableCell, TableRow } from "@/common/components/ui/table";
+import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import {
   Select,
@@ -55,7 +56,19 @@ export function MemberRow({
   return (
     <TableRow>
       <TableCell className="break-all">
-        <div>{identity}</div>
+        <div className="flex items-center gap-2">
+          <span>{identity}</span>
+          {member.mfaEnabled ? (
+            <Badge
+              variant="outline"
+              className="gap-1 text-muted-foreground"
+              title={t("team.mfaEnabledTooltip")}
+            >
+              <ShieldCheck className="size-3" aria-hidden />
+              {t("team.mfaEnabled")}
+            </Badge>
+          ) : null}
+        </div>
         {identity !== member.subject ? (
           <div className="font-mono text-xs text-muted-foreground">
             {member.subject}
