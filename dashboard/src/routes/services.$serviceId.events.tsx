@@ -277,6 +277,11 @@ export function ServiceEventsPage() {
                     preDeployStatus={details?.preDeployStatus ?? ""}
                     preDeploy={preDeploy}
                     timestamp={event.timestamp}
+                    image={details?.image || null}
+                    commitId={details?.commitId || null}
+                    commitMessage={details?.commitMessage || null}
+                    startedAt={details?.startedAt || null}
+                    finishedAt={details?.finishedAt || null}
                   />
                 );
                 const hasAction =
@@ -333,6 +338,11 @@ function EventSummary({
   preDeployStatus,
   preDeploy,
   timestamp,
+  image,
+  commitId,
+  commitMessage,
+  startedAt,
+  finishedAt,
 }: {
   type: string;
   status: string;
@@ -342,11 +352,20 @@ function EventSummary({
   preDeployStatus: string;
   preDeploy: string | null;
   timestamp: string | null;
+  image?: string | null;
+  commitId?: string | null;
+  commitMessage?: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
 }) {
   const { t } = useTranslations();
   const isDeploy = type === "deploy_started" || type === "deploy_ended";
   const exactTimestamp = timestamp
     ? new Date(timestamp).toLocaleString()
+    : null;
+  // Compute deploy duration (w1/m47): startedAt → finishedAt
+  const deployDuration = startedAt && finishedAt
+    ? Math.round((new Date(finishedAt).getTime() - new Date(startedAt).getTime()) / 1000)
     : null;
 
   return (
@@ -383,6 +402,25 @@ function EventSummary({
             </time>
           ) : null}
         </div>
+        {/* Deploy enrichment (w1/m47): show commit, image, duration for deploy events */}
+        {isDeploy && (
+          <div className="text-muted-foreground mt-2 space-y-1 text-xs">
+            {commitMessage ? (
+              <p className="line-clamp-1">{commitMessage}</p>
+            ) : null}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              {commitId ? (
+                <span className="font-mono">{commitId.slice(0, 8)}</span>
+              ) : null}
+              {image ? (
+                <span className="truncate">{image}</span>
+              ) : null}
+              {deployDuration !== null ? (
+                <span>{deployDuration}s</span>
+              ) : null}
+            </div>
+          </div>
+        )}
         {preDeploy ? (
           <p
             className={`mt-2 text-xs ${
