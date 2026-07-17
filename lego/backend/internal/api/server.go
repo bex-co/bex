@@ -501,10 +501,11 @@ func NewServer(base *core.Base, d Deps) *Server {
 		return e.OwnerID, nil
 	}
 	notificationsSvc := &notifications.Service{
-		Base:       base,
-		Store:      d.NotificationsStore,
-		Mailer:     d.Mailer,
-		Identities: identityEmailLookup{d.Identities},
+		Base:             base,
+		Store:            d.NotificationsStore,
+		Mailer:           d.Mailer,
+		Identities:       identityEmailLookup{d.Identities},
+		DashboardBaseURL: d.DashboardURL,
 	}
 	sshHost := ""
 	if d.SSHKeysStore != nil {

@@ -32,9 +32,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"path"
+	"strings"
 	"sync"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -72,6 +75,10 @@ type Service struct {
 	Store      NotificationsStore
 	Mailer     Mailer
 	Identities EmailLookup
+	// DashboardBaseURL (BEX_DASHBOARD_URL) builds the "View Logs" deep link in
+	// the deploy email (w7/m44); empty ⇒ the link is omitted, honest-omit like
+	// the invite email's link.
+	DashboardBaseURL string
 }
 
 // SettingsView is the neutral projection of a member's deploy-notification
@@ -161,7 +168,10 @@ const (
 // reconciler's close-time DeployNotifier: callers invoke it off their hot path,
 // and this method applies each member's deployStarted preference.
 func (s *Service) NotifyDeployStarted(ctx context.Context, tenantID, appName, notificationsToSend string) {
-	s.notifyDeploy(ctx, tenantID, appName, deployMailStarted, notificationsToSend)
+	// The request-time start path has no deploy row in hand (it fires off the
+	// App-CR trigger), so the started email carries the framing but omits the
+	// commit + View Logs link — the honest-omit "when available" contract.
+	s.notifyDeploy(ctx, tenantID, appName, deployMailStarted, notificationsToSend, deployDetails{})
 }
 
 // NotifyDeploy is store.DeployNotifier: called by the reconciler the instant
@@ -196,12 +206,23 @@ func (s *Service) NotifyDeploy(ctx context.Context, n store.DeployNotification) 
 			}
 		}
 	}
-	s.notifyDeploy(ctx, n.TenantID, n.AppName, kind, policy)
+	s.notifyDeploy(ctx, n.TenantID, n.AppName, kind, policy, deployDetails{
+		deployID:      n.DeployID,
+		commitMessage: n.CommitMessage,
+	})
+}
+
+// deployDetails carries the optional per-deploy facts the email renders when
+// they are available (w7/m44): the deploy id (for the "View Logs" link) and the
+// commit message. Both empty for the started path / image-backed deploys.
+type deployDetails struct {
+	deployID      string
+	commitMessage string
 }
 
 // notifyDeploy performs the common preference lookup and bounded email fan-out
 // for both the request-time and reconcile-time notifier seams.
-func (s *Service) notifyDeploy(ctx context.Context, tenantID, appName string, kind deployMailKind, notificationsToSend string) {
+func (s *Service) notifyDeploy(ctx context.Context, tenantID, appName string, kind deployMailKind, notificationsToSend string, details deployDetails) {
 	if s.Store == nil || s.Mailer == nil {
 		return
 	}
@@ -213,6 +234,11 @@ func (s *Service) notifyDeploy(ctx context.Context, tenantID, appName string, ki
 	if s.Identities == nil {
 		return // nowhere to resolve an address — nothing this pass can send
 	}
+	// The email is identical for every recipient — compose it once, before the
+	// fan-out, rather than rebuilding the same URL + body inside each goroutine
+	// (w7/m44 simplify).
+	logsURL := s.deployLogsURL(appName, details.deployID)
+	emailSubject, body := deployEmail(appName, kind, details, logsURL)
 	// Each recipient costs two blocking network round-trips (an identity
 	// lookup, then an SMTP send) — run them concurrently, capped, so a large
 	// workspace's fan-out costs roughly one round-trip's latency instead of
@@ -246,7 +272,7 @@ func (s *Service) notifyDeploy(ctx context.Context, tenantID, appName string, ki
 		go func(subject string) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			s.notifyOne(ctx, subject, appName, kind)
+			s.notifyOne(ctx, subject, appName, kind, emailSubject, body)
 		}(r.Subject)
 	}
 	wg.Wait()
@@ -257,32 +283,56 @@ func (s *Service) notifyDeploy(ctx context.Context, tenantID, appName string, ki
 // unbounded number of SMTP connections for a very large workspace.
 const notifyConcurrency = 8
 
-// notifyOne resolves one recipient's address and sends the deploy email,
-// logging (never propagating) any failure — see NotifyDeploy's doc.
-func (s *Service) notifyOne(ctx context.Context, subject, appName string, kind deployMailKind) {
-	email, ok := s.Identities.LookupEmail(ctx, subject)
+// notifyOne resolves one recipient's address and sends the pre-composed deploy
+// email, logging (never propagating) any failure — see NotifyDeploy's doc.
+// appName/kind are carried only to label that log line.
+func (s *Service) notifyOne(ctx context.Context, recipient, appName string, kind deployMailKind, emailSubject, body string) {
+	email, ok := s.Identities.LookupEmail(ctx, recipient)
 	if !ok {
 		return // no known address — nothing to send to (honest omit)
 	}
-	emailSubject, body := deployEmail(appName, kind)
 	if err := s.Mailer.Send(ctx, email, emailSubject, body); err != nil {
 		log.Printf("notifications: sending deploy %s email for %s to %s: %v", kind, appName, email, err)
 	}
 }
 
-// deployEmail composes the plain-text deploy notification.
-func deployEmail(appName string, kind deployMailKind) (subject, body string) {
+// deployLogsURL is the "View Logs" deep link to the deploy's detail page, which
+// renders build/deploy logs (w7/m44). Empty when the dashboard URL is unset or
+// there is no deploy id — the email then omits the link. Reuses the shared
+// dashboard-URL joiner (trailing-slash-safe, guards a malformed base).
+func (s *Service) deployLogsURL(appName, deployID string) string {
+	if s.DashboardBaseURL == "" || appName == "" || deployID == "" {
+		return ""
+	}
+	cfg := resourcemeta.Config{DashboardBaseURL: s.DashboardBaseURL}
+	return cfg.DashboardURL(path.Join("services", appName, "deploys"), deployID)
+}
+
+// deployEmail composes the plain-text deploy notification (w7/m44): impact
+// framing that matches Render's register, then the commit message and a "View
+// Logs" link when each is available — image-backed deploys carry no commit, and
+// the link is omitted when the dashboard URL is unset.
+func deployEmail(appName string, kind deployMailKind, details deployDetails, logsURL string) (subject, body string) {
+	var b strings.Builder
 	switch kind {
 	case deployMailStarted:
-		return fmt.Sprintf("Deploy started: %s", appName),
-			fmt.Sprintf("A deploy of %q has started.\n", appName)
+		subject = fmt.Sprintf("Deploy started: %s", appName)
+		fmt.Fprintf(&b, "A deploy of %q has started. We'll email you when it finishes.\n", appName)
 	case deployMailSucceeded:
-		return fmt.Sprintf("Deploy succeeded: %s", appName),
-			fmt.Sprintf("A new deploy of %q went live.\n", appName)
+		subject = fmt.Sprintf("Deploy succeeded: %s", appName)
+		fmt.Fprintf(&b, "A new deploy of %q is live. Your latest changes are now serving.\n", appName)
 	default:
-		return fmt.Sprintf("Deploy failed: %s", appName),
-			fmt.Sprintf("A deploy of %q failed.\n", appName)
+		subject = fmt.Sprintf("Deploy failed: %s", appName)
+		fmt.Fprintf(&b, "We encountered an error during the deploy process for %q. "+
+			"This means your deploy didn't complete successfully and your latest changes may not be live.\n", appName)
 	}
+	if msg := strings.TrimSpace(details.commitMessage); msg != "" {
+		fmt.Fprintf(&b, "\nCommit:\n%s\n", msg)
+	}
+	if logsURL != "" {
+		fmt.Fprintf(&b, "\nView logs:\n%s\n", logsURL)
+	}
+	return subject, b.String()
 }
 
 func (k deployMailKind) String() string {

@@ -43,7 +43,7 @@ func TestServiceNotificationPolicyDecisionTable(t *testing.T) {
 				st.recipients["tea-a"] = []store.NotifyRecipient{{Subject: "alice", DeployFailed: true}}
 				mailer := &fakeMailer{}
 				svc := newTestService(st, nil, mailer, fakeIdentities{"alice": "alice@example.com"})
-				svc.notifyDeploy(context.Background(), "tea-a", "web", event.kind, tc.policy)
+				svc.notifyDeploy(context.Background(), "tea-a", "web", event.kind, tc.policy, deployDetails{})
 				if got := len(mailer.sent) == 1; got != tc.want[event.kind] {
 					t.Fatalf("sent=%v, want %v", got, tc.want[event.kind])
 				}

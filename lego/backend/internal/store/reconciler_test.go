@@ -730,6 +730,12 @@ func TestRecordDeployNotifiesExactlyOnceOnClose(t *testing.T) {
 	if calls := notifier.snapshot(); len(calls) != 1 || calls[0].TenantID != ten.ID || calls[0].AppName != "web" || calls[0].Status != DeployLive {
 		t.Fatalf("calls after close = %+v, want exactly one (tenant=%s app=web status=%s)", calls, ten.ID, DeployLive)
 	}
+	// The notification carries the closing deploy's id so the email can build a
+	// "View Logs" deep link (w7/m44); it's threaded from the same open row that
+	// supplies the (here empty, image-backed) commit message.
+	if calls := notifier.snapshot(); calls[0].DeployID == "" {
+		t.Errorf("DeployNotification.DeployID = %q, want the closed deploy's id", calls[0].DeployID)
+	}
 
 	if err := rec.ReconcileOnce(ctx); err != nil { // pass 3: nothing left open — no re-notify
 		t.Fatalf("reconcile: %v", err)

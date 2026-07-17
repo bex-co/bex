@@ -95,6 +95,11 @@ type DeployNotification struct {
 	TenantID string
 	AppName  string
 	Status   string
+	// DeployID and CommitMessage enrich the notification email (w7/m44): the
+	// deploy id builds the "View Logs" deep link, the commit message names what
+	// was deploying. Both empty-friendly — an image-backed deploy has no commit.
+	DeployID      string
+	CommitMessage string
 	// NotifyOnFail is the legacy failure-only override. NotificationsToSend is
 	// the authoritative Render policy when non-empty.
 	NotifyOnFail        string
@@ -309,6 +314,8 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 			TenantID:            d.TenantID,
 			AppName:             d.Name,
 			Status:              status,
+			DeployID:            open.ID,
+			CommitMessage:       open.CommitMessage,
 			NotifyOnFail:        cur.Spec.NotifyOnFail,
 			NotificationsToSend: cur.Spec.NotificationsToSend,
 		})
