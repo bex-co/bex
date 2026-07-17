@@ -6,7 +6,12 @@ import {
   type WorkspaceMembersQuery,
   type WorkspaceInvitesQuery,
 } from "@/graphql/definitions";
-import type { MemberView, InviteView, Role } from "@/features/team/types";
+import type {
+  MemberView,
+  InviteView,
+  Role,
+  SeatUsage,
+} from "@/features/team/types";
 
 function toMembers(
   raw: WorkspaceMembersQuery["workspaceMembers"] | undefined,
@@ -19,6 +24,7 @@ function toMembers(
       email: m.email ?? "",
       role: (m.role as Role) ?? "VIEWER",
       createdAt: m.createdAt,
+      mfaEnabled: m.mfaEnabled ?? false,
     }));
 }
 
@@ -38,6 +44,8 @@ function toInvites(
 export interface UseTeamResult {
   members: MemberView[];
   invites: InviteView[];
+  /** Seat consumption (w1/m33) — null until the query resolves. */
+  seats: SeatUsage | null;
   loading: boolean;
   error: Error | undefined;
   /** Whether the caller may manage members (invites query succeeds only for
@@ -77,6 +85,15 @@ export function useTeam(workspaceId: string | null): UseTeamResult {
     () => toInvites(invitesQ.data?.workspaceInvites),
     [invitesQ.data],
   );
+  // Seat usage rides the members document (one request, both viewer-and-up).
+  const rawSeats = membersQ.data?.workspaceSeatUsage;
+  const seats = useMemo<SeatUsage | null>(
+    () =>
+      rawSeats && typeof rawSeats.used === "number"
+        ? { used: rawSeats.used, limit: rawSeats.limit ?? 0 }
+        : null,
+    [rawSeats],
+  );
 
   const canManage = !invitesQ.error && !skip;
 
@@ -87,6 +104,7 @@ export function useTeam(workspaceId: string | null): UseTeamResult {
   return {
     members,
     invites,
+    seats,
     loading: membersQ.loading,
     error: membersQ.error,
     canManage,

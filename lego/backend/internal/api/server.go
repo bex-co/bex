@@ -529,20 +529,27 @@ func NewServer(base *core.Base, d Deps) *Server {
 	return srv
 }
 
-// identityEmailLookup adapts workspaces.IdentityReader to members.EmailLookup
-// (the two packages can't share the interface directly — IdentityReader.Lookup
-// returns workspaces.IdentityAttrs, a type members doesn't import). A nil
-// Identities (BEX_KRATOS_ADMIN_URL unset) degrades to an honest miss rather
-// than panicking on a nil interface call.
+// identityEmailLookup adapts workspaces.IdentityReader to
+// members.IdentityLookup (the two packages can't share the interface directly
+// — IdentityReader.Lookup returns workspaces.IdentityAttrs, a type members
+// doesn't import). A nil Identities (BEX_KRATOS_ADMIN_URL unset) degrades to
+// an honest miss rather than panicking on a nil interface call.
 type identityEmailLookup struct {
 	Identities workspaces.IdentityReader
 }
 
-func (a identityEmailLookup) LookupEmail(ctx context.Context, subject string) (string, bool) {
+func (a identityEmailLookup) LookupIdentity(ctx context.Context, subject string) (members.IdentityAttrs, bool) {
 	if a.Identities == nil {
-		return "", false
+		return members.IdentityAttrs{}, false
 	}
 	attrs, ok := a.Identities.Lookup(ctx, subject)
+	return members.IdentityAttrs{Email: attrs.Email, MFAEnabled: attrs.MFAEnabled}, ok
+}
+
+// LookupEmail keeps the same adapter serving notifications.EmailLookup (the
+// notification-settings feature needs only the address).
+func (a identityEmailLookup) LookupEmail(ctx context.Context, subject string) (string, bool) {
+	attrs, ok := a.LookupIdentity(ctx, subject)
 	return attrs.Email, ok
 }
 

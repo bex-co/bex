@@ -67,12 +67,13 @@ func (f *fakeStore) OwnerIDForSubject(_ context.Context, subject string) (string
 	return id, nil
 }
 
-// fakeEmailLookup is a minimal EmailLookup — subject -> email, miss on absence.
-type fakeEmailLookup map[string]string
+// fakeIdentities is the one IdentityLookup fake — subject -> attrs (email +
+// MFA state), miss on absence.
+type fakeIdentities map[string]IdentityAttrs
 
-func (f fakeEmailLookup) LookupEmail(_ context.Context, subject string) (string, bool) {
-	email, ok := f[subject]
-	return email, ok
+func (f fakeIdentities) LookupIdentity(_ context.Context, subject string) (IdentityAttrs, bool) {
+	attrs, ok := f[subject]
+	return attrs, ok
 }
 
 func (f *fakeStore) seedMember(subject, role string) {
@@ -175,6 +176,44 @@ func (f *fakeStore) DeleteInvite(_ context.Context, _, id string) error {
 	}
 	delete(f.invites, id)
 	return nil
+}
+
+func (f *fakeStore) RefreshInvite(_ context.Context, _, id string, expiresAt time.Time) (store.Invite, error) {
+	inv, ok := f.invites[id]
+	if !ok || inv.AcceptedAt != nil {
+		return store.Invite{}, fmt.Errorf("invite: %w", store.ErrNotFound)
+	}
+	inv.ExpiresAt = expiresAt
+	f.invites[id] = inv
+	return inv, nil
+}
+
+func (f *fakeStore) AcceptInviteByToken(_ context.Context, token, subject string) (store.Invite, error) {
+	for id, inv := range f.invites {
+		if inv.Token != token {
+			continue
+		}
+		switch {
+		case inv.AcceptedAt != nil:
+			return store.Invite{}, fmt.Errorf("invite already accepted: %w", store.ErrConflict)
+		case time.Now().After(inv.ExpiresAt):
+			return store.Invite{}, fmt.Errorf("invite expired: %w", store.ErrConflict)
+		}
+		if !store.RoleAllowedOnPlan(f.tenant.Plan, inv.Role) {
+			return store.Invite{}, fmt.Errorf("plan cannot seat this invite: %w", store.ErrConflict)
+		}
+		if lim := store.LimitsFor(f.tenant.Plan).MaxMembers; lim > 0 {
+			if _, already := f.members[subject]; !already && len(f.members) >= lim {
+				return store.Invite{}, fmt.Errorf("plan cannot seat this invite: %w", store.ErrConflict)
+			}
+		}
+		f.members[subject] = store.TenantMember{TenantID: inv.TenantID, Subject: subject, Role: inv.Role, CreatedAt: time.Unix(2, 0)}
+		now := time.Now()
+		inv.AcceptedAt = &now
+		f.invites[id] = inv
+		return inv, nil
+	}
+	return store.Invite{}, fmt.Errorf("invite: %w", store.ErrNotFound)
 }
 
 // fakeGranter records grants + revokes and answers Check over its tuple set.
@@ -403,7 +442,7 @@ func TestListEnrichesUserIDAndEmail(t *testing.T) {
 	st := newFakeStore(store.PlanPro)
 	st.seedMember("admin-1", "admin")
 	s := svc(st, newFakeGranter(), nil, roleChecker{relation: "viewer"})
-	s.Identities = fakeEmailLookup{"admin-1": "admin@example.com"}
+	s.Identities = fakeIdentities{"admin-1": {Email: "admin@example.com"}}
 	ms, err := s.List(ctxWith("viewer-1"), "tea-1")
 	if err != nil {
 		t.Fatalf("list: %v", err)
@@ -448,7 +487,7 @@ func TestListEmailLookupMissDegradesOnlyThatMember(t *testing.T) {
 	st.seedMember("admin-1", "admin")
 	st.seedMember("admin-2", "admin")
 	s := svc(st, newFakeGranter(), nil, roleChecker{relation: "viewer"})
-	s.Identities = fakeEmailLookup{"admin-1": "admin@example.com"} // admin-2 is a miss
+	s.Identities = fakeIdentities{"admin-1": {Email: "admin@example.com"}} // admin-2 is a miss
 	ms, err := s.List(ctxWith("viewer-1"), "tea-1")
 	if err != nil {
 		t.Fatalf("list: %v", err)

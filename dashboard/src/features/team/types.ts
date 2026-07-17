@@ -16,13 +16,16 @@ export type Role = (typeof ROLES)[number];
  *  key (role change / remove), a bex-native contract distinct from Render's
  *  `userId` surface (docs/render-artifacts/owners-api.md). `userId` is the
  *  opaque own- id and `email` the resolved identity email (w6/m10) — both may
- *  be empty when the identity provider is unwired or the lookup misses. */
+ *  be empty when the identity provider is unwired or the lookup misses.
+ *  `mfaEnabled` mirrors Render's per-member otpEnabled (w1/m33) — honest-false
+ *  on a lookup miss, like email. */
 export interface MemberView {
   subject: string;
   userId: string;
   email: string;
   role: Role;
   createdAt: string | null;
+  mfaEnabled: boolean;
 }
 
 /** A pending (unaccepted) invite — Render's pendingInvites shape. */
@@ -31,4 +34,12 @@ export interface InviteView {
   email: string;
   role: Role;
   expiresAt: string | null;
+}
+
+/** Seat consumption — Render's owner.usage.users {used, limit} (w1/m33).
+ *  `used` counts accepted members plus outstanding invites (the same formula
+ *  the server's invite cap enforces); `limit` 0 means unlimited. */
+export interface SeatUsage {
+  used: number;
+  limit: number;
 }

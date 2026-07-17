@@ -6,6 +6,9 @@
 # (the switcher / current-workspace source) is the `Workspaces` query owned by
 # features/workspaces/api/workspaces.graphql — one operation name, one document.
 
+# Members + seat usage in ONE request (both viewer-and-up): seat usage is
+# Render's owner.usage.users {used, limit} (w1/m33) — used counts accepted
+# members plus outstanding invites; limit 0 means unlimited.
 query WorkspaceMembers($workspaceId: String!) {
   workspaceMembers(workspaceId: $workspaceId) {
     subject
@@ -13,6 +16,11 @@ query WorkspaceMembers($workspaceId: String!) {
     email
     role
     createdAt
+    mfaEnabled
+  }
+  workspaceSeatUsage(workspaceId: $workspaceId) {
+    used
+    limit
   }
 }
 
@@ -62,4 +70,26 @@ mutation RemoveWorkspaceMember($workspaceId: String!, $subject: String!) {
 
 mutation RevokeWorkspaceInvite($workspaceId: String!, $inviteId: String!) {
   revokeWorkspaceInvite(workspaceId: $workspaceId, inviteId: $inviteId)
+}
+
+# Resend a pending invite (w1/m33): fresh email, refreshed expiry, same id and
+# token — no revoke + re-invite churn.
+mutation ResendWorkspaceInvite($workspaceId: String!, $inviteId: String!) {
+  resendWorkspaceInvite(workspaceId: $workspaceId, inviteId: $inviteId) {
+    id
+    email
+    role
+    expiresAt
+    createdAt
+  }
+}
+
+# Redeem an emailed invite token for the authenticated caller (w1/m33) — joins
+# the inviting workspace even when the caller signed up under a different email.
+mutation AcceptWorkspaceInvite($token: String!) {
+  acceptWorkspaceInvite(token: $token) {
+    workspaceId
+    workspaceName
+    role
+  }
 }

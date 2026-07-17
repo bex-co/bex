@@ -43,8 +43,9 @@ func (s *Service) sendInvite(ctx context.Context, inv store.Invite, tenant store
 
 // inviteBody is the plain-text invite. It names the workspace and role, and —
 // when an InviteBaseURL is configured — links to the dashboard to sign up / log
-// in with the invited address. The token rides the link for a future
-// direct-accept path; acceptance today is by email match.
+// in. The token in the link is redeemable directly (AcceptInvite, w1/m33), so
+// the invite works even when the recipient signs up under a different email;
+// email-match acceptance on login remains the linkless fallback.
 func (s *Service) inviteBody(inv store.Invite, tenant store.Tenant) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "You've been invited to join the %q workspace on bex as a %s.\n\n",

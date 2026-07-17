@@ -32,11 +32,31 @@ import (
 var memberGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "WorkspaceMember",
 	Fields: graphql.Fields{
-		"subject":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.Subject })},
-		"userId":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.UserID })},
-		"email":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.Email })},
-		"role":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.Role })},
-		"createdAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.CreatedAt })},
+		"subject":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.Subject })},
+		"userId":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.UserID })},
+		"email":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.Email })},
+		"role":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.Role })},
+		"createdAt":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.CreatedAt })},
+		"mfaEnabled": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(m MemberView) any { return m.MFAEnabled })},
+	},
+})
+
+// seatUsageGQLType mirrors Render's owner.usage.users {used, limit}
+// (docs/render-artifacts/team-members.graphql); limit 0 = unlimited.
+var seatUsageGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "WorkspaceSeatUsage",
+	Fields: graphql.Fields{
+		"used":  &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(u SeatUsageView) any { return u.Used })},
+		"limit": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(u SeatUsageView) any { return u.Limit })},
+	},
+})
+
+var acceptedInviteGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AcceptedWorkspaceInvite",
+	Fields: graphql.Fields{
+		"workspaceId":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AcceptedInviteView) any { return a.WorkspaceID })},
+		"workspaceName": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AcceptedInviteView) any { return a.WorkspaceName })},
+		"role":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AcceptedInviteView) any { return a.Role })},
 	},
 })
 
@@ -72,6 +92,13 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Args: workspaceIDArg(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ListInvites(p.Context, p.Args["workspaceId"].(string))
+			},
+		},
+		"workspaceSeatUsage": &graphql.Field{
+			Type: seatUsageGQLType,
+			Args: workspaceIDArg(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SeatUsage(p.Context, p.Args["workspaceId"].(string))
 			},
 		},
 	}
@@ -130,6 +157,25 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					return nil, err
 				}
 				return inviteID, nil
+			},
+		},
+		"resendWorkspaceInvite": &graphql.Field{
+			Type: inviteGQLType,
+			Args: graphql.FieldConfigArgument{
+				"workspaceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"inviteId":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.ResendInvite(p.Context, p.Args["workspaceId"].(string), p.Args["inviteId"].(string))
+			},
+		},
+		"acceptWorkspaceInvite": &graphql.Field{
+			Type: acceptedInviteGQLType,
+			Args: graphql.FieldConfigArgument{
+				"token": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.AcceptInvite(p.Context, p.Args["token"].(string))
 			},
 		},
 	}

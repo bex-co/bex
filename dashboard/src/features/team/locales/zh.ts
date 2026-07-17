@@ -150,6 +150,57 @@ const zhTeam: Record<string, TranslationEntry> = {
     message: "撤销",
     description: "Revoke pending-invite button",
   },
+  "team.resendInvite": {
+    message: "重发",
+    description: "Resend pending-invite button (fresh email, refreshed expiry)",
+  },
+  "team.resendInviteSuccess": {
+    message: "已重新发送邀请至 {email}",
+    description: "Toast after a successful invite resend",
+  },
+  "team.resendInviteError": {
+    message: "无法重新发送该邀请",
+    description: "Toast after a failed invite resend",
+  },
+  "team.seatUsage": {
+    message: "已用 {used} / {limit} 席位",
+    description:
+      "Seat usage in the Team card title on a limited plan — accepted members plus pending invites over the plan cap",
+  },
+  "team.seatCount": {
+    message: "已用 {used} 个席位",
+    description:
+      "Seat count in the Team card title on an unlimited plan (no cap to show)",
+  },
+  "team.seatsFullBody": {
+    message: "此工作区已用完当前套餐的全部席位。升级套餐以邀请更多成员。",
+    description:
+      "Invite dialog wall when seats are exhausted before composing an invite",
+  },
+  "team.mfaEnabled": {
+    message: "两步验证",
+    description: "Badge on a member row whose account has a second factor enrolled",
+  },
+  "team.mfaEnabledTooltip": {
+    message: "已启用两步验证",
+    description: "Tooltip for the member-row 2FA badge",
+  },
+  "team.inviteAccepted": {
+    message: "你已加入 {workspace}",
+    description: "Toast after an emailed invite link is redeemed successfully",
+  },
+  "team.inviteAcceptedAlready": {
+    message: "该邀请已被使用",
+    description: "Toast when an invite token was already redeemed",
+  },
+  "team.inviteAcceptExpired": {
+    message: "该邀请已过期——请索取新的邀请",
+    description: "Toast when an invite token is past its expiry",
+  },
+  "team.inviteAcceptError": {
+    message: "无法接受该邀请",
+    description: "Toast when redeeming an invite token fails",
+  },
   "team.revokeInviteSuccess": {
     message: "已撤销邀请",
     description: "Toast after a successful invite revoke",

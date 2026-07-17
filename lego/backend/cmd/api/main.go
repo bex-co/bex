@@ -312,6 +312,9 @@ func main() {
 			granter = g
 		}
 		tenantSvc := api.NewTenantService(st, granter)
+		// Login-time invite redemptions record members.AcceptInvite audit rows
+		// through the same store the feature verbs' sink writes (w1/m33).
+		tenantSvc.Audit = st
 		base.Workspace = tenantSvc
 		deps.Onboard = tenantSvc
 		deps.KeyBinder = tenantSvc

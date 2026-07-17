@@ -94,9 +94,22 @@ func renderMetadata(e Event) map[string]string {
 	md := map[string]string{}
 	if kind, name, ok := core.SplitTarget(e.Target); ok {
 		md[kind] = name
+		// Team-membership detail (w1/m33): an invite's display name is its
+		// email — the same manage-tier audience the pending-invites list
+		// already shows it to.
+		if kind == "invite" && e.TargetName != "" {
+			md["email"] = e.TargetName
+		}
 	}
 	if e.MaintenanceModeTo != nil {
 		md["to"] = strconv.FormatBool(*e.MaintenanceModeTo)
+	}
+	// The invited/changed role pair (w1/m33).
+	if e.RoleFrom != nil {
+		md["roleFrom"] = *e.RoleFrom
+	}
+	if e.RoleTo != nil {
+		md["roleTo"] = *e.RoleTo
 	}
 	if denied(e) {
 		md["outcome"] = "denied"

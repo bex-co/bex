@@ -96,6 +96,14 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		"environments.ClearServiceEnvironmentLayer": "fans AuthorizeApp out over member Apps clearing the environment layer; not itself a per-App verb",
 		"environments.ClearMembersForProject":       "fans AuthorizeApp out over every child environment's member Apps; not itself a per-App verb",
 		"environments.Run": "Backfiller.Run, the one-shot admin sweep (w4/m32/t003, `api environments-backfill`) fans out over every environment's members; not itself a per-App verb, and (like apps.WorkspacePurger.PurgeWorkspace) has no request-time caller to attribute an event to",
+		// w1/m33: the members verbs record member:/invite: targets on the
+		// WORKSPACE audit trail — kinds the per-SERVICE events feed can never
+		// join (there is no members feed); the workspace audit log is their
+		// surface.
+		"members.ChangeRole":   "member: target on the workspace audit trail; members have no per-service events feed",
+		"members.Remove":       "member: target on the workspace audit trail; members have no per-service events feed",
+		"members.RevokeInvite": "invite: target on the workspace audit trail; members have no per-service events feed",
+		"members.ResendInvite": "invite: target on the workspace audit trail; members have no per-service events feed",
 	}
 	// w6/m17 moved every resource-scoped write verb off a separate Authorize
 	// call onto the single AuthorizeApp/AuthorizeDatabase/AuthorizeKeyValue seam
@@ -183,11 +191,14 @@ func featurePackages(t *testing.T) []string {
 }
 
 // targetingCalls are the core.Base entry points that record a target on their
-// audit event — AuthorizeTarget, and (w6/m17) the AuthorizeApp/AuthorizeDatabase/
+// audit event — AuthorizeTarget, (w6/m17) the AuthorizeApp/AuthorizeDatabase/
 // AuthorizeKeyValue seam that replaced the old Authorize+GetApp pair and always
-// targets the resource it fetched.
+// targets the resource it fetched, and (w1/m33) AuthorizeOnTarget, the
+// explicit-workspace sibling the members verbs record member:/invite: targets
+// through.
 var targetingCalls = map[string]bool{
 	"AuthorizeTarget":   true,
+	"AuthorizeOnTarget": true,
 	"AuthorizeApp":      true,
 	"AuthorizeDatabase": true,
 	"AuthorizeKeyValue": true,

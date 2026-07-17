@@ -36,7 +36,7 @@ func TestThreeSurfaceParity_UserIDAndEmail(t *testing.T) {
 	st := newFakeStore("pro")
 	st.seedMember("admin-1", "admin")
 	s := svc(st, newFakeGranter(), nil, roleChecker{relation: "viewer"})
-	s.Identities = fakeEmailLookup{"admin-1": "admin@example.com"}
+	s.Identities = fakeIdentities{"admin-1": {Email: "admin@example.com"}}
 	ctx := ctxWith("viewer-1")
 
 	// REST

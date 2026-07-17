@@ -183,6 +183,23 @@ func (s *PGStore) GetInvite(ctx context.Context, tenantID, id string) (Invite, e
 	return inv, nil
 }
 
+// RefreshInvite pushes an unaccepted invite's expiry forward — the resend
+// verb's write half (w1/m33). The token is deliberately untouched: the link in
+// the original email must stay redeemable. An expired-but-unaccepted invite is
+// revived (resend is how an admin recovers a lapsed invite without churning
+// the id); an accepted or unknown invite is ErrNotFound — accepted rows are
+// audit history, not pending work.
+func (s *PGStore) RefreshInvite(ctx context.Context, tenantID, id string, expiresAt time.Time) (Invite, error) {
+	inv, err := scanInvite(s.Pool.QueryRow(ctx,
+		`UPDATE tenant_invites SET expires_at = $3
+		 WHERE tenant_id = $1 AND id = $2 AND accepted_at IS NULL
+		 RETURNING `+inviteColumns, tenantID, id, expiresAt))
+	if err != nil {
+		return Invite{}, classify("invite", err)
+	}
+	return inv, nil
+}
+
 // DeleteInvite revokes a pending invite (ErrNotFound when absent / another
 // workspace's). Idempotency is the caller's concern; a missing row is a 404.
 func (s *PGStore) DeleteInvite(ctx context.Context, tenantID, id string) error {
@@ -254,14 +271,7 @@ func (s *PGStore) AcceptInvitesForEmail(ctx context.Context, email, subject stri
 			if !ok {
 				continue
 			}
-			if _, err := tx.Exec(ctx,
-				`INSERT INTO tenant_members (tenant_id, subject, role) VALUES ($1, $2, $3)
-				 ON CONFLICT (tenant_id, subject) DO UPDATE SET role = EXCLUDED.role`,
-				inv.TenantID, subject, inv.Role); err != nil {
-				return err
-			}
-			if _, err := tx.Exec(ctx,
-				`UPDATE tenant_invites SET accepted_at = now() WHERE id = $1`, inv.ID); err != nil {
+			if err := redeemInvite(ctx, tx, inv, subject); err != nil {
 				return err
 			}
 			accepted = append(accepted, inv)
@@ -270,6 +280,64 @@ func (s *PGStore) AcceptInvitesForEmail(ctx context.Context, email, subject stri
 	})
 	if err != nil {
 		return nil, classify("invite", err)
+	}
+	return accepted, nil
+}
+
+// redeemInvite is the one redemption write both acceptance paths share: the
+// membership upsert (ON CONFLICT DO UPDATE so an invite can UPGRADE an
+// existing membership's role) plus marking the invite accepted, inside the
+// caller's transaction.
+func redeemInvite(ctx context.Context, tx pgx.Tx, inv Invite, subject string) error {
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO tenant_members (tenant_id, subject, role) VALUES ($1, $2, $3)
+		 ON CONFLICT (tenant_id, subject) DO UPDATE SET role = EXCLUDED.role`,
+		inv.TenantID, subject, inv.Role); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `UPDATE tenant_invites SET accepted_at = now() WHERE id = $1`, inv.ID)
+	return err
+}
+
+// AcceptInviteByToken redeems ONE invite by its emailed token for subject —
+// the direct-accept path (w1/m33) that makes the invite link real: the
+// recipient may have signed up under a DIFFERENT email than the one invited,
+// which the login-time email match (AcceptInvitesForEmail) can never redeem.
+// The token is the capability; possession of the link is the authorization.
+// Named refusals rather than a silent no-op: unknown token is ErrNotFound,
+// an already-accepted or expired invite is ErrConflict (the caller can say
+// WHY the link failed), and a workspace whose current plan cannot seat the
+// invite refuses with ErrConflict exactly like the login path's silent skip —
+// except here the caller is told, because they asked explicitly.
+func (s *PGStore) AcceptInviteByToken(ctx context.Context, token, subject string) (Invite, error) {
+	var accepted Invite
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		inv, err := scanInvite(tx.QueryRow(ctx,
+			`SELECT `+inviteColumns+` FROM tenant_invites WHERE token = $1 FOR UPDATE`, token))
+		if err != nil {
+			return err // pgx.ErrNoRows → classify's ErrNotFound below
+		}
+		switch {
+		case inv.AcceptedAt != nil:
+			return fmt.Errorf("invite already accepted: %w", ErrConflict)
+		case time.Now().After(inv.ExpiresAt):
+			return fmt.Errorf("invite expired: %w", ErrConflict)
+		}
+		ok, err := planAllowsJoin(ctx, tx, inv, subject)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("the workspace's current plan cannot seat this invite; upgrade the workspace and retry: %w", ErrConflict)
+		}
+		if err := redeemInvite(ctx, tx, inv, subject); err != nil {
+			return err
+		}
+		accepted = inv
+		return nil
+	})
+	if err != nil {
+		return Invite{}, classify("invite", err)
 	}
 	return accepted, nil
 }

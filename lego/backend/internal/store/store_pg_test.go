@@ -1565,6 +1565,104 @@ func TestMembersAndInvites(t *testing.T) {
 	}
 }
 
+// TestInviteResendAndTokenAcceptance exercises the w1/m33 additions against a
+// real database: RefreshInvite (expiry pushed, token stable, revives a lapsed
+// invite, 404 on accepted) and AcceptInviteByToken (cross-email join, named
+// already-accepted/expired refusals, plan-seat refusal on a full Hobby
+// workspace).
+func TestInviteResendAndTokenAcceptance(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if _, err := pool.Exec(ctx, `TRUNCATE tenants CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+	s := NewPGStore(pool)
+
+	ten, err := s.CreateWorkspace(ctx, "acme", PlanPro, "admin-1")
+	if err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+
+	// RefreshInvite: expiry moves, id + token do not; a LAPSED (expired,
+	// unaccepted) invite is revived.
+	lapsed := time.Now().Add(-time.Hour)
+	inv, err := s.CreateInvite(ctx, ten.ID, "late@example.com", "developer", "tok-late", "admin-1", lapsed)
+	if err != nil {
+		t.Fatalf("create invite: %v", err)
+	}
+	if pending, _ := s.ListInvites(ctx, ten.ID); len(pending) != 0 {
+		t.Fatalf("expired invite still pending: %d", len(pending))
+	}
+	fresh := time.Now().Add(48 * time.Hour)
+	resent, err := s.RefreshInvite(ctx, ten.ID, inv.ID, fresh)
+	if err != nil {
+		t.Fatalf("refresh: %v", err)
+	}
+	if resent.ID != inv.ID || resent.Token != "tok-late" {
+		t.Errorf("refresh churned identity: %+v", resent)
+	}
+	if pending, _ := s.ListInvites(ctx, ten.ID); len(pending) != 1 {
+		t.Errorf("revived invite not pending: %d", len(pending))
+	}
+	if _, err := s.RefreshInvite(ctx, "tea-other", inv.ID, fresh); !errors.Is(err, ErrNotFound) {
+		t.Errorf("cross-workspace refresh: want ErrNotFound, got %v", err)
+	}
+
+	// AcceptInviteByToken: the recipient signed up under a different email —
+	// the token is the capability; the membership lands at the invited role.
+	acc, err := s.AcceptInviteByToken(ctx, "tok-late", "identity-newcomer")
+	if err != nil {
+		t.Fatalf("accept by token: %v", err)
+	}
+	if acc.ID != inv.ID || acc.TenantID != ten.ID {
+		t.Errorf("accepted = %+v", acc)
+	}
+	if m, err := s.GetTenantMember(ctx, ten.ID, "identity-newcomer"); err != nil || m.Role != "developer" {
+		t.Fatalf("member after token accept = %+v (%v)", m, err)
+	}
+	// Named refusals: second redemption, refresh of an accepted invite, unknown
+	// and expired tokens.
+	if _, err := s.AcceptInviteByToken(ctx, "tok-late", "identity-other"); !errors.Is(err, ErrConflict) {
+		t.Errorf("second redemption: want ErrConflict, got %v", err)
+	}
+	if _, err := s.RefreshInvite(ctx, ten.ID, inv.ID, fresh); !errors.Is(err, ErrNotFound) {
+		t.Errorf("refresh accepted invite: want ErrNotFound, got %v", err)
+	}
+	if _, err := s.AcceptInviteByToken(ctx, "tok-ghost", "identity-x"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("unknown token: want ErrNotFound, got %v", err)
+	}
+	if _, err := s.CreateInvite(ctx, ten.ID, "expired@example.com", "developer", "tok-exp", "admin-1", time.Now().Add(-time.Minute)); err != nil {
+		t.Fatalf("create expired invite: %v", err)
+	}
+	if _, err := s.AcceptInviteByToken(ctx, "tok-exp", "identity-x"); !errors.Is(err, ErrConflict) {
+		t.Errorf("expired token: want ErrConflict, got %v", err)
+	}
+
+	// Plan-seat refusal: a full Hobby workspace refuses the token redemption
+	// (named), unlike the login path's silent skip.
+	hobby, err := s.CreateWorkspace(ctx, "solo", PlanHobby, "owner-1")
+	if err != nil {
+		t.Fatalf("create hobby workspace: %v", err)
+	}
+	if _, err := s.CreateInvite(ctx, hobby.ID, "second@example.com", "admin", "tok-full", "owner-1", time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("create hobby invite: %v", err)
+	}
+	if _, err := s.AcceptInviteByToken(ctx, "tok-full", "identity-second"); !errors.Is(err, ErrConflict) {
+		t.Errorf("full hobby workspace: want ErrConflict, got %v", err)
+	}
+}
+
 // TestCheckOwnership verifies that CheckOwnership returns nil when all
 // public-schema tables are owned by the connecting role (the normal post-
 // migration state), and returns an error when a table has drifted to a
