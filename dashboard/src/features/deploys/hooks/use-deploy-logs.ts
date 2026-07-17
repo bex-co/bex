@@ -101,7 +101,13 @@ export function useDeployLogs(
   });
 
   const buildStoreUnavailable = !!(
-    build.error && build.error.message.includes(STORE_UNAVAILABLE_MARKER)
+    build.error &&
+    build.error.message.toLowerCase().includes(STORE_UNAVAILABLE_MARKER)
+  );
+  const queryError = [build.error, predeploy.error, app.error].find(
+    (candidate) =>
+      candidate &&
+      !candidate.message.toLowerCase().includes(STORE_UNAVAILABLE_MARKER),
   );
 
   const lines = useMemo(() => {
@@ -116,7 +122,7 @@ export function useDeployLogs(
   return {
     lines,
     loading: [build, predeploy, app].some((r) => r.loading && !r.data),
-    error: app.error && !buildStoreUnavailable ? app.error : undefined,
+    error: queryError,
     buildStoreUnavailable,
     buildLiveStatus: liveBuild.status,
   };

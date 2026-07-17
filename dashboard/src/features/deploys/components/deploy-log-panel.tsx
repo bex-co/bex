@@ -114,14 +114,28 @@ export function DeployLogPanel({
         {t("logs.loading")}
       </div>
     );
+  } else if (debouncedSearch && filtered.length === 0) {
+    body = (
+      <EmptyState
+        iconName="ScrollText"
+        title={t("logs.emptyTitle")}
+        description={t("logs.emptyFilteredBody")}
+      />
+    );
+  } else if (buildStoreUnavailable && lines.length === 0) {
+    body = (
+      <EmptyState
+        iconName="DatabaseZap"
+        title={t("deploys.buildLogsStoreUnavailable")}
+        description={t("deploys.buildLogsStoreUnavailableBody")}
+      />
+    );
   } else if (filtered.length === 0) {
     body = (
       <EmptyState
         iconName="ScrollText"
         title={t("logs.emptyTitle")}
-        description={
-          debouncedSearch ? t("logs.emptyFilteredBody") : t("logs.emptyBody")
-        }
+        description={t("logs.emptyBody")}
       />
     );
   } else {
@@ -152,11 +166,6 @@ export function DeployLogPanel({
           placeholder={t("deploys.logSearchPlaceholder")}
           className="max-w-sm"
         />
-        {buildStoreUnavailable && (
-          <span className="text-xs text-muted-foreground">
-            {t("deploys.buildLogsStoreUnavailable")}
-          </span>
-        )}
         {followBuild && buildLiveStatus === "error" && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <WifiOff className="h-3.5 w-3.5" />
@@ -234,6 +243,17 @@ export function DeployLogPanel({
           </Button>
         </div>
       </div>
+      {buildStoreUnavailable && lines.length > 0 ? (
+        <div
+          role="status"
+          className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground"
+        >
+          <span className="font-medium text-foreground">
+            {t("deploys.buildLogsStoreUnavailable")}.
+          </span>{" "}
+          {t("deploys.buildLogsStoreUnavailableBody")}
+        </div>
+      ) : null}
       {body}
     </div>
   );

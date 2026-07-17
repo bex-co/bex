@@ -4,6 +4,7 @@ import {
   deployStatusKey,
   deployStatusVariant,
   isCancelableDeployStatus,
+  isRollbackableDeployStatus,
   isTerminalDeployStatus,
 } from "./deploy-status";
 
@@ -36,5 +37,12 @@ describe("deployStatusKey", () => {
   it("never returns an empty or unscoped translation key", () => {
     expect(deployStatusKey("")).toBe("deploys.statusUnknown");
     expect(deployStatusKey("surprise")).toBe("deploys.statusUnknown");
+  });
+
+  it("allows rollback to current and historical successful deploys only", () => {
+    expect(isRollbackableDeployStatus("live")).toBe(true);
+    expect(isRollbackableDeployStatus("deactivated")).toBe(true);
+    expect(isRollbackableDeployStatus("build_failed")).toBe(false);
+    expect(isRollbackableDeployStatus("update_in_progress")).toBe(false);
   });
 });

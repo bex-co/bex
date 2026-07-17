@@ -221,6 +221,19 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Service ID:",
     description: "Service-detail header metadata label for the service id",
   },
+  "services.headerServicePhase": {
+    message: "Service",
+    description:
+      "Service-detail header label distinguishing operator/App phase from deploy status",
+  },
+  "services.headerLatestDeploy": {
+    message: "Latest deploy",
+    description: "Service-detail header label for the newest deploy status",
+  },
+  "services.headerRuntime": {
+    message: "Runtime",
+    description: "Service-detail header label for the selected runtime",
+  },
   "services.headerSchedule": {
     message: "Schedule:",
     description:

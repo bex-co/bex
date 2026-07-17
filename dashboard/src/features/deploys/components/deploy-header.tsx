@@ -9,6 +9,10 @@ import {
   deployTriggerKey,
   preDeployStatusKey,
 } from "@/features/deploys/lib/deploy-status";
+import {
+  formatDeployDuration,
+  formatDeployTimestamp,
+} from "@/features/deploys/lib/deploy-presentation";
 import type { DeployView } from "../hooks/use-deploy";
 
 function triggerLabel(
@@ -16,17 +20,9 @@ function triggerLabel(
   rollbackOf: string,
   t: Translate,
 ): string {
-  if (rollbackOf)
-    return t("deploys.triggerRollback", { deployId: rollbackOf });
+  if (rollbackOf) return t("deploys.triggerRollback", { deployId: rollbackOf });
   const key = deployTriggerKey(trigger);
   return key ? t(key as Parameters<Translate>[0]) : trigger;
-}
-
-function formatTimestamp(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString();
 }
 
 export interface DeployHeaderProps {
@@ -41,18 +37,41 @@ export interface DeployHeaderProps {
  * status→badge mapping as the Events tab (deploy-status.ts) so the two
  * surfaces can't drift on what a given status looks like.
  */
-export function DeployHeader({
-  deploy,
-  actions,
-}: DeployHeaderProps) {
+export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
   const { t } = useTranslations();
   const preDeploy = preDeployStatusKey(deploy.preDeployStatus);
+  const commitCreatedAt = formatDeployTimestamp(deploy.commitCreatedAt);
+  const facts = [
+    {
+      label: t("deploys.created"),
+      value: formatDeployTimestamp(deploy.createdAt),
+    },
+    {
+      label: t("deploys.updated"),
+      value: formatDeployTimestamp(deploy.updatedAt),
+    },
+    {
+      label: t("deploys.started"),
+      value: formatDeployTimestamp(deploy.startedAt),
+    },
+    {
+      label: t("deploys.finished"),
+      value: formatDeployTimestamp(deploy.finishedAt),
+    },
+    {
+      label: t("deploys.duration"),
+      value: formatDeployDuration(deploy.startedAt, deploy.finishedAt),
+    },
+  ].filter((fact): fact is { label: string; value: string } => !!fact.value);
 
   return (
     <Card>
       <CardContent className="space-y-3 py-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground">
+              {t("deploys.statusLabel")}
+            </span>
             <Badge variant={deployStatusVariant(deploy.status)}>
               {t(deployStatusKey(deploy.status) as Parameters<typeof t>[0])}
             </Badge>
@@ -91,9 +110,9 @@ export function DeployHeader({
             {deploy.commitMessage && (
               <> {deploy.commitMessage.split("\n")[0]}</>
             )}
-            {deploy.commitCreatedAt && (
+            {commitCreatedAt && (
               <span className="ml-2 text-muted-foreground">
-                {new Date(deploy.commitCreatedAt).toLocaleString()}
+                {commitCreatedAt}
               </span>
             )}
           </p>
@@ -105,28 +124,16 @@ export function DeployHeader({
           </p>
         ) : null}
 
-        <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <dt className="inline font-medium">{t("deploys.created")}: </dt>
-            <dd className="inline">{formatTimestamp(deploy.createdAt)}</dd>
-          </div>
-          <div>
-            <dt className="inline font-medium">{t("deploys.updated")}: </dt>
-            <dd className="inline">{formatTimestamp(deploy.updatedAt)}</dd>
-          </div>
-          <div>
-            <dt className="inline font-medium">{t("deploys.started")}: </dt>
-            <dd className="inline">
-              {formatTimestamp(deploy.startedAt) || t("deploys.notYet")}
-            </dd>
-          </div>
-          <div>
-            <dt className="inline font-medium">{t("deploys.finished")}: </dt>
-            <dd className="inline">
-              {formatTimestamp(deploy.finishedAt) || t("deploys.notYet")}
-            </dd>
-          </div>
-        </dl>
+        {facts.length > 0 ? (
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-5">
+            {facts.map((fact) => (
+              <div key={fact.label}>
+                <dt className="inline font-medium">{fact.label}: </dt>
+                <dd className="inline">{fact.value}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
       </CardContent>
     </Card>
   );

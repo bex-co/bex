@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { Search } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { EmptyState } from "@/common/components/empty-state";
 import {
@@ -10,6 +11,7 @@ import {
 } from "@/common/components/ui/card";
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
+import { Input } from "@/common/components/ui/input";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   Select,
@@ -23,8 +25,16 @@ import {
   deployStatusVariant,
   deployStatusKey,
   deployTriggerKey,
+  isCancelableDeployStatus,
+  isTerminalDeployStatus,
   preDeployStatusKey,
 } from "../lib/deploy-status";
+import {
+  deployMatchesSearch,
+  formatDeployDuration,
+  formatDeployTimestamp,
+} from "../lib/deploy-presentation";
+import { DeployActions } from "./deploy-actions";
 
 // Radix Select can't hold "" — the log-filter-bar's "all" sentinel idiom.
 const ALL = "all";
@@ -52,7 +62,8 @@ export interface DeploysListPageProps {
 type Translate = ReturnType<typeof useTranslations>["t"];
 
 function triggerLabel(d: DeployRow, t: Translate): string {
-  if (d.rollbackOf) return t("deploys.triggerRollback", { deployId: d.rollbackOf });
+  if (d.rollbackOf)
+    return t("deploys.triggerRollback", { deployId: d.rollbackOf });
   const key = deployTriggerKey(d.trigger);
   return key ? t(key as Parameters<Translate>[0]) : d.trigger;
 }
@@ -68,8 +79,21 @@ function triggerLabel(d: DeployRow, t: Translate): string {
 export function DeploysListPage({ serviceId }: DeploysListPageProps) {
   const { t } = useTranslations();
   const [status, setStatus] = useState("");
+  const [search, setSearch] = useState("");
   const { deploys, loading, loadingMore, error, hasMore, loadMore } =
     useDeploys(serviceId, status ? [status] : []);
+  const visibleDeploys = useMemo(
+    () => deploys.filter((deploy) => deployMatchesSearch(deploy, search)),
+    [deploys, search],
+  );
+
+  const countKey = hasMore
+    ? visibleDeploys.length === 1
+      ? "deploys.listCountLoadedOne"
+      : "deploys.listCountLoadedMany"
+    : visibleDeploys.length === 1
+      ? "deploys.listCountOne"
+      : "deploys.listCountMany";
 
   let body;
   if (error && deploys.length === 0) {
@@ -94,52 +118,93 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
         {status ? t("deploys.listEmptyFiltered") : t("deploys.listEmpty")}
       </p>
     );
+  } else if (visibleDeploys.length === 0) {
+    body = (
+      <p className="text-sm text-muted-foreground">
+        {t("deploys.listEmptySearch")}
+      </p>
+    );
   } else {
     body = (
       <div className="divide-y">
-        {deploys.map((d) => {
+        {visibleDeploys.map((d) => {
           const preDeploy = preDeployStatusKey(d.preDeployStatus);
+          const createdAt = formatDeployTimestamp(d.createdAt);
+          const duration = formatDeployDuration(d.startedAt, d.finishedAt);
+          const durationText = duration
+            ? t("deploys.durationValue", { duration })
+            : d.startedAt && !isTerminalDeployStatus(d.status)
+              ? t("deploys.durationInProgress")
+              : null;
+          const hasListAction =
+            isCancelableDeployStatus(d.status) || d.status === "deactivated";
           return (
-            <Link
+            <div
               key={d.id}
-              to="/services/$serviceId/deploys/$deployId"
-              params={{ serviceId, deployId: d.id }}
-              className="block py-3"
+              className="hover:bg-muted/30 flex flex-col gap-3 py-4 transition-colors sm:flex-row sm:items-center"
             >
-              <div className="flex items-center gap-2">
-                <Badge variant={deployStatusVariant(d.status)}>
-                  {t(deployStatusKey(d.status) as Parameters<typeof t>[0])}
-                </Badge>
-                <span className="text-xs capitalize text-muted-foreground">
-                  {triggerLabel(d, t)}
-                </span>
-                <span className="font-mono text-xs text-muted-foreground">
-                  {d.id}
-                </span>
-              </div>
-              {d.commitId && (
-                <p className="mt-1 truncate text-xs text-muted-foreground">
-                  <span className="font-mono">{d.commitId.slice(0, 7)}</span>
-                  {d.commitMessage && <> {d.commitMessage.split("\n")[0]}</>}
-                </p>
-              )}
-              {preDeploy && (
-                <p
-                  className={`mt-1 text-xs ${
-                    d.preDeployStatus === "failed"
-                      ? "text-destructive"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {t(preDeploy as Parameters<typeof t>[0])}
-                </p>
-              )}
-              {d.createdAt && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {new Date(d.createdAt).toLocaleString()}
-                </p>
-              )}
-            </Link>
+              <Link
+                to="/services/$serviceId/deploys/$deployId"
+                params={{ serviceId, deployId: d.id }}
+                className="group min-w-0 flex-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <Badge variant={deployStatusVariant(d.status)}>
+                    {t(deployStatusKey(d.status) as Parameters<typeof t>[0])}
+                  </Badge>
+                  <span className="text-xs capitalize text-muted-foreground">
+                    {triggerLabel(d, t)}
+                  </span>
+                  <span
+                    className="truncate font-mono text-xs text-muted-foreground"
+                    title={d.id}
+                  >
+                    {d.id}
+                  </span>
+                </div>
+                {d.commitId ? (
+                  <p className="mt-1 truncate text-sm text-foreground">
+                    <span
+                      className="font-mono text-xs text-muted-foreground"
+                      title={d.commitId}
+                    >
+                      {d.commitId.slice(0, 7)}
+                    </span>
+                    {d.commitMessage ? (
+                      <> {d.commitMessage.split("\n")[0]}</>
+                    ) : null}
+                  </p>
+                ) : null}
+                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  {createdAt ? (
+                    <span>
+                      {t("deploys.deployedAt", { timestamp: createdAt })}
+                    </span>
+                  ) : null}
+                  {durationText ? <span>{durationText}</span> : null}
+                  {preDeploy ? (
+                    <span
+                      className={
+                        d.preDeployStatus === "failed"
+                          ? "text-destructive"
+                          : undefined
+                      }
+                    >
+                      {t(preDeploy as Parameters<typeof t>[0])}
+                    </span>
+                  ) : null}
+                </div>
+              </Link>
+              {hasListAction ? (
+                <div className="shrink-0 self-end sm:self-center">
+                  <DeployActions
+                    serviceId={serviceId}
+                    deployId={d.id}
+                    status={d.status}
+                  />
+                </div>
+              ) : null}
+            </div>
           );
         })}
       </div>
@@ -148,28 +213,49 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>{t("deploys.listTitle")}</CardTitle>
-        <Select
-          value={status === "" ? ALL : status}
-          onValueChange={(v) => setStatus(v === ALL ? "" : v)}
-        >
-          <SelectTrigger
-            size="sm"
-            className="w-44"
-            aria-label={t("deploys.listStatusFilterLabel")}
+      <CardHeader className="space-y-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <CardTitle>{t("deploys.listTitle")}</CardTitle>
+          {!loading ? (
+            <p className="text-xs text-muted-foreground" aria-live="polite">
+              {t(countKey as Parameters<typeof t>[0], {
+                count: visibleDeploys.length,
+              })}
+            </p>
+          ) : null}
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t("deploys.listSearchPlaceholder")}
+              aria-label={t("deploys.listSearchLabel")}
+              className="pl-9"
+            />
+          </div>
+          <Select
+            value={status === "" ? ALL : status}
+            onValueChange={(v) => setStatus(v === ALL ? "" : v)}
           >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>{t("deploys.listStatusAll")}</SelectItem>
-            {STATUS_OPTIONS.map((s) => (
-              <SelectItem key={s} value={s}>
-                {t(deployStatusKey(s) as Parameters<typeof t>[0])}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+            <SelectTrigger
+              size="sm"
+              className="w-full sm:w-44"
+              aria-label={t("deploys.listStatusFilterLabel")}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>{t("deploys.listStatusAll")}</SelectItem>
+              {STATUS_OPTIONS.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {t(deployStatusKey(s) as Parameters<typeof t>[0])}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </CardHeader>
       <CardContent>
         {body}

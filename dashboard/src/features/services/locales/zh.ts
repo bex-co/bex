@@ -219,6 +219,19 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "服务 ID：",
     description: "Service-detail header metadata label for the service id",
   },
+  "services.headerServicePhase": {
+    message: "服务",
+    description:
+      "Service-detail header label distinguishing operator/App phase from deploy status",
+  },
+  "services.headerLatestDeploy": {
+    message: "最新部署",
+    description: "Service-detail header label for the newest deploy status",
+  },
+  "services.headerRuntime": {
+    message: "运行时",
+    description: "Service-detail header label for the selected runtime",
+  },
   "services.headerSchedule": {
     message: "调度：",
     description:

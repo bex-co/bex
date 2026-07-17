@@ -23,6 +23,13 @@ const serverState: UseServerResult = {
 vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: () => serverState,
 }));
+vi.mock("@/features/deploys/hooks/use-latest-deploy", () => ({
+  useLatestDeploy: () => ({
+    deploy: null,
+    loading: false,
+    error: undefined,
+  }),
+}));
 const run = vi.fn();
 vi.mock("@/features/services/hooks/use-service-lifecycle", () => ({
   useServiceLifecycle: () => ({ pending: null, run }),

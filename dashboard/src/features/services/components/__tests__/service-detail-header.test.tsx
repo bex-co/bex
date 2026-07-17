@@ -12,6 +12,7 @@ import { ServiceDetailHeader } from "@/features/services/components/service-deta
 import type { ServiceView } from "@/features/services/types";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 import type { RunServiceAction } from "@/features/services/hooks/use-service-lifecycle";
+import type { LatestDeploySummary } from "@/features/deploys/hooks/use-latest-deploy";
 
 // ServiceDetailHeader renders ServiceRowActions, which renders a "Move to
 // project" submenu via useMoveToProject — needs an ApolloProvider + workspace
@@ -96,7 +97,11 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
 // The header links to the plan tab, so it needs a router around it.
 function renderHeader(
   service: ServiceView,
-  props: Partial<{ pending: null | "restart"; onRun: RunServiceAction }> = {},
+  props: Partial<{
+    pending: null | "restart";
+    onRun: RunServiceAction;
+    latestDeploy: LatestDeploySummary | null;
+  }> = {},
 ) {
   const rootRoute = createRootRoute();
   const indexRoute = createRoute({
@@ -105,6 +110,7 @@ function renderHeader(
     component: () => (
       <ServiceDetailHeader
         service={service}
+        latestDeploy={props.latestDeploy}
         pending={props.pending ?? null}
         onRun={
           props.onRun ?? vi.fn(async () => ({ status: "success" as const }))
@@ -132,6 +138,37 @@ describe("ServiceDetailHeader", () => {
     expect(
       screen.getByRole("link", { name: "https://app.onbex.co" }),
     ).toHaveAttribute("href", "https://app.onbex.co");
+  });
+
+  it("names service phase and latest deploy status separately and shows runtime", async () => {
+    renderHeader(svc({ phase: "Building", runtime: "node" }), {
+      latestDeploy: { id: "dep-failed", status: "build_failed" },
+    });
+
+    expect(await screen.findByText("Service")).toBeInTheDocument();
+    expect(screen.getByText("Building")).toBeInTheDocument();
+    expect(screen.getByText("Latest deploy")).toBeInTheDocument();
+    expect(screen.getByText("Build Failed")).toBeInTheDocument();
+    expect(screen.getByText("Runtime")).toBeInTheDocument();
+    expect(screen.getByText("node")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Latest deploy: Build Failed" }),
+    ).toHaveAttribute("href", "/services/app/deploys/dep-failed");
+  });
+
+  it("omits runtime and latest-deploy facts when the API does not supply them", async () => {
+    renderHeader(svc({ runtime: null }), { latestDeploy: null });
+
+    await screen.findByRole("heading", { name: "app" });
+    expect(screen.queryByText("Runtime")).not.toBeInTheDocument();
+    expect(screen.queryByText("Latest deploy")).not.toBeInTheDocument();
+  });
+
+  it("renders Docker as an API-supplied runtime without inventing a language", async () => {
+    renderHeader(svc({ runtime: "docker" }));
+
+    expect(await screen.findByText("Runtime")).toBeInTheDocument();
+    expect(screen.getByText("docker")).toBeInTheDocument();
   });
 
   it("shows a copy-ready SSH command in the Connect menu", async () => {
