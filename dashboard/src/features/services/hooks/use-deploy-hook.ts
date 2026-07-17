@@ -29,7 +29,19 @@ export function useDeployHook(serviceId: string): UseDeployHookResult {
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
   });
-  const [mutate] = useMutation(RegenerateDeployHookDocument);
+  const [mutate] = useMutation(RegenerateDeployHookDocument, {
+    // Write the rotated URL through to the cached DeployHook query — without
+    // this a remount's cache-and-network read briefly serves the revoked URL.
+    update(cache, result) {
+      const next = result.data?.regenerateDeployHook;
+      if (!next?.url) return;
+      cache.writeQuery({
+        query: DeployHookDocument,
+        variables: { serviceId },
+        data: { deployHook: next },
+      });
+    },
+  });
   const [url, setURL] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
 

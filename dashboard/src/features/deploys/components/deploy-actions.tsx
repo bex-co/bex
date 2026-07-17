@@ -46,10 +46,18 @@ export function DeployActions({
   const { t } = useTranslations();
   const navigate = useNavigate();
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
-  const [cancelDeploy, { loading: canceling }] =
-    useMutation(CancelDeployDocument);
+  // Both verbs change the deploy history and the events feed: rollback mints a
+  // brand-new deploy (which no cached list contains) and cancel appends an
+  // event row. Refetch the active `Deploys` (history tab + the service
+  // header's latest-deploy chrome) and `ServiceEvents` queries by name so
+  // every mounted surface converges without each caller having to know.
+  const [cancelDeploy, { loading: canceling }] = useMutation(
+    CancelDeployDocument,
+    { refetchQueries: ["Deploys", "ServiceEvents"] },
+  );
   const [rollbackService, { loading: rollingBack }] = useMutation(
     RollbackServiceDocument,
+    { refetchQueries: ["Deploys", "ServiceEvents"] },
   );
   const busy = canceling || rollingBack;
 

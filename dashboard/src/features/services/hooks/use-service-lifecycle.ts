@@ -80,7 +80,10 @@ export function useServiceLifecycle(
   const [suspend] = useMutation(SuspendServiceDocument);
   const [resume] = useMutation(ResumeServiceDocument);
   const [triggerDeploy] = useMutation(TriggerDeployDocument, {
-    refetchQueries: ["ServiceEvents"],
+    // Restart opens a deploy-history row, so refresh the active Events feed
+    // and Deploys queries (history tab + the detail header's latest-deploy
+    // chrome) wherever they're mounted.
+    refetchQueries: ["ServiceEvents", "Deploys"],
   });
   const mutate: Record<
     LifecycleAction,
