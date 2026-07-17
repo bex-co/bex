@@ -1,0 +1,29 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { requireAuth } from "@/common/lib/auth/auth";
+import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { NotificationSettingsPanel } from "@/features/notifications/components/notification-settings-panel";
+
+/**
+ * Notification settings as a first-class page (w1/m45) — Render's sidebar
+ * treats Notifications as an Integrations page at `/notifications` (live
+ * capture 2026-07-16); the panel lived on account `/settings` since w3/m9.
+ */
+export const Route = createFileRoute("/notifications")({
+  component: NotificationsPage,
+  beforeLoad: requireAuth("/notifications"),
+  head: () => ({
+    meta: [{ title: "Notifications · bex dashboard" }],
+  }),
+});
+
+function NotificationsPage() {
+  return (
+    <DashboardLayout>
+      <div className="flex-1 overflow-auto p-4 sm:p-6">
+        <div className="mx-auto w-full max-w-2xl space-y-6">
+          <NotificationSettingsPanel />
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}

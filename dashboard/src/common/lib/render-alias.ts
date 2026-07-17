@@ -22,10 +22,36 @@ const RENDER_ALIAS_TARGETS = {
 export type RenderAliasSegment = keyof typeof RENDER_ALIAS_TARGETS;
 
 /**
+ * Where each segment's CREATE URL lands (w1/m45). Render's New menu puts
+ * service creates under the type segment (`/web/new` … — live capture,
+ * 2026-07-16); the generic `${target}/${rest}` join happens to land those on
+ * `/services/new` and `/r/new` on `/keyvalue/new`, but sent `/d/new` to a
+ * NONEXISTENT `/databases/new` (bex creates databases via a dialog, reached
+ * through the overview's URL-owned `?new=database`). Explicit landings make
+ * the create shape a contract instead of an accident.
+ */
+export const RENDER_CREATE_LANDINGS: Record<RenderAliasSegment, string> = {
+  web: "/services/new",
+  worker: "/services/new",
+  pserv: "/services/new",
+  static: "/services/new",
+  cron: "/services/new",
+  d: "/?new=database",
+  r: "/keyvalue/new",
+};
+
+/** Splat → path parts, tolerating a leading slash and empties — the one
+ *  normalization every splat alias route shares. */
+export function splatParts(splat: string | undefined): string[] {
+  return (splat ?? "").split("/").filter(Boolean);
+}
+
+/**
  * Redirect a Render-shaped alias path to its bex canonical route, preserving
  * any sub-path (`/web/srv-x/deploys/dep-y` → `/services/srv-x/deploys/dep-y`)
  * plus the query string and hash. A bare segment with no id (`/web`) has no
- * Render meaning — send it to the workspace overview.
+ * Render meaning — send it to the workspace overview. `/{segment}/new` is the
+ * segment's create URL (RENDER_CREATE_LANDINGS above).
  */
 export function redirectRenderAlias(
   segment: RenderAliasSegment,
@@ -33,7 +59,28 @@ export function redirectRenderAlias(
   location: ParsedLocation,
 ): never {
   const rest = (splat ?? "").replace(/^\/+/, "");
-  const path = rest ? `${RENDER_ALIAS_TARGETS[segment]}/${rest}` : "/";
-  const suffix = location.href.slice(location.pathname.length);
+  const path =
+    rest === "new"
+      ? RENDER_CREATE_LANDINGS[segment]
+      : rest
+        ? `${RENDER_ALIAS_TARGETS[segment]}/${rest}`
+        : "/";
+  redirectPreservingSuffix(path, location);
+}
+
+/**
+ * Throw a replace-redirect to `path`, carrying the incoming query string and
+ * hash along (the alias contract: `/web/srv-x/logs?level=error` keeps its
+ * filter). A landing that already carries its own query (`/?new=database`)
+ * folds the incoming one in with `&`.
+ */
+export function redirectPreservingSuffix(
+  path: string,
+  location: ParsedLocation,
+): never {
+  let suffix = location.href.slice(location.pathname.length);
+  if (suffix.startsWith("?") && path.includes("?")) {
+    suffix = "&" + suffix.slice(1);
+  }
   throw redirect({ href: `${path}${suffix}`, replace: true });
 }

@@ -13,9 +13,25 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "加载中…",
     description: "Generic loading state label",
   },
-  "common.navDashboardGroup": {
-    message: "仪表盘",
-    description: "Sidebar nav section label",
+  "common.navIntegrationsGroup": {
+    message: "集成",
+    description: "Sidebar nav section label (webhooks, notifications) — Render's grouping",
+  },
+  "common.navWorkspaceGroup": {
+    message: "工作区",
+    description: "Sidebar nav section label (usage, settings) — Render's grouping",
+  },
+  "common.navMonitorGroup": {
+    message: "监控",
+    description: "Service sidebar section label (logs, metrics) — Render's grouping",
+  },
+  "common.navWebhooks": {
+    message: "Webhooks",
+    description: "Sidebar nav link to the outbound event webhooks page",
+  },
+  "common.navNotifications": {
+    message: "通知",
+    description: "Sidebar nav link to the notification settings page",
   },
   "common.navProjects": {
     message: "项目",

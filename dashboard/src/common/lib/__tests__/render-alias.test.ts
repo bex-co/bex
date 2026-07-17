@@ -72,6 +72,25 @@ describe("redirectRenderAlias", () => {
     expect(hrefOf("d", "", locationOf("/d"))).toBe("/");
   });
 
+  // Render's New menu puts creates under the segment (`/web/new`, `/d/new` —
+  // live capture 2026-07-16, w1/m45). `/d/new` used to fall through the
+  // generic join onto the nonexistent `/databases/new`.
+  it("sends each segment's /new to its create landing", () => {
+    for (const segment of ["web", "worker", "pserv", "static", "cron"] as const) {
+      expect(hrefOf(segment, "new", locationOf(`/${segment}/new`))).toBe(
+        "/services/new",
+      );
+    }
+    expect(hrefOf("d", "new", locationOf("/d/new"))).toBe("/?new=database");
+    expect(hrefOf("r", "new", locationOf("/r/new"))).toBe("/keyvalue/new");
+  });
+
+  it("folds an incoming query into a landing that already has one", () => {
+    expect(hrefOf("d", "new", locationOf("/d/new", "?from=cli"))).toBe(
+      "/?new=database&from=cli",
+    );
+  });
+
   it("replaces history instead of stacking the alias entry", () => {
     try {
       redirectRenderAlias("web", "srv-abc", locationOf("/web/srv-abc"));

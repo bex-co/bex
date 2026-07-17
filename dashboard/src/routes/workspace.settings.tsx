@@ -10,7 +10,10 @@ import { TeamPanel } from "@/features/team/components/team-panel";
 
 export const Route = createFileRoute("/workspace/settings")({
   component: WorkspaceSettingsPage,
-  beforeLoad: requireAuth("/workspace/settings"),
+  // No-arg requireAuth (w1/m45): `next` keeps the full href so the
+  // `?plan=change` deep link (blocked-invite CTA, /billing/update-plan alias)
+  // survives the SSR login bounce.
+  beforeLoad: requireAuth(),
   // `?plan=change` arrives from the blocked-invite CTA (w6/m15/t001) and opens
   // the change-plan dialog straight away, so an invite the plan refused is one
   // click from the upgrade that would allow it. Advisory: anything else just

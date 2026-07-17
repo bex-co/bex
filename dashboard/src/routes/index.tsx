@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
@@ -33,7 +33,21 @@ import { NewProjectCard } from "@/features/projects/components/new-project-card"
 
 export const Route = createFileRoute("/")({
   component: HomePage,
-  beforeLoad: requireAuth("/"),
+  // No-arg requireAuth: `next` defaults to the requested href, so
+  // `?new=database` — the create-dialog param Render's New-menu aliases land
+  // with (w1/m45) — survives the SSR login bounce.
+  beforeLoad: requireAuth(),
+  // `?new=database|project` opens the matching create dialog (w1/m45) — the
+  // URL owns the dialog state (the `?plan=change` pattern,
+  // routes/workspace.settings.tsx) so Render's New-menu URLs (`/new/database`,
+  // `/d/new`, `/new/project`) can alias onto it. Optional key, same rationale
+  // as workspace.settings' validateSearch.
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { new?: "database" | "project" } =>
+    search.new === "database" || search.new === "project"
+      ? { new: search.new }
+      : {},
   head: () => ({
     meta: [{ title: "Overview · bex dashboard" }],
   }),
@@ -61,8 +75,21 @@ export function HomePage() {
   } = useKeyValues();
   const { projects, loading: projectsLoading, refetch: refetchProjects } = useProjects();
   const { pending, run } = useServiceLifecycle({ refetch: refetchServices });
-  const [newDatabaseOpen, setNewDatabaseOpen] = useState(false);
-  const [newProjectOpen, setNewProjectOpen] = useState(false);
+  // The URL owns which create dialog is open (`?new=…`), so Render's New-menu
+  // aliases land directly in the dialog; `replace` keeps open/close out of the
+  // back-button history (the workspace.settings `?plan=change` idiom).
+  const { new: newParam } = Route.useSearch();
+  const routeNavigate = Route.useNavigate();
+  const newDatabaseOpen = newParam === "database";
+  const newProjectOpen = newParam === "project";
+  function setCreateDialog(kind: "database" | "project", open: boolean) {
+    void routeNavigate({
+      search: open ? { new: kind } : {},
+      replace: true,
+    });
+  }
+  const setNewDatabaseOpen = (open: boolean) => setCreateDialog("database", open);
+  const setNewProjectOpen = (open: boolean) => setCreateDialog("project", open);
 
   const databaseStats = useMemo(() => computeDatabaseStats(databases), [databases]);
   const keyValueStats = useMemo(() => computeKeyValueStats(keyValues), [keyValues]);

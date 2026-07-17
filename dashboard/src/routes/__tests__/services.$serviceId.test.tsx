@@ -35,6 +35,10 @@ vi.mock("@/features/services/hooks/use-service-lifecycle", () => ({
   useServiceLifecycle: () => ({ pending: null, run }),
 }));
 
+// (The service sidebar — w1/m45's resource-scoped nav that replaced the tab
+// strip — reads the same useServer hook as the shell, mocked above, so the
+// two agree on whether the service exists by construction.)
+
 // The header's instance-type chip + Manual Deploy button both go through Apollo;
 // stub them at the hook boundary so this routing test needs no ApolloProvider.
 const STARTER: InstanceTypeView = {
@@ -149,14 +153,15 @@ describe("service-detail layout routing", () => {
       screen.getByRole("link", { name: "https://app.onbex.co" }),
     ).toHaveAttribute("href", "https://app.onbex.co");
 
-    // The service header, tab bar, and tab content share one scroll container,
-    // so the header and tabs scroll away instead of staying frozen above it.
+    // The service header and tab content share one scroll container, so the
+    // header scrolls away instead of staying frozen above it. (The service nav
+    // moved into the resource-scoped sidebar, w1/m45 — outside this container.)
     const scrollContainer = heading.closest(".overflow-auto");
     expect(scrollContainer).toContainElement(heading);
-    expect(scrollContainer).toContainElement(
-      screen.getByRole("navigation", { name: "Service navigation" }),
-    );
     expect(scrollContainer).toContainElement(search);
+    expect(scrollContainer).not.toContainElement(
+      screen.getByRole("link", { name: "Events" }),
+    );
   });
 
   it("keeps Events directly reachable in the Render tab set, with no Overview tab", async () => {

@@ -34,6 +34,15 @@ describe("Render dashboard-route aliases", () => {
     ["/cron/$"],
     ["/d/$"],
     ["/r/$"],
+    // w1/m45: workspace/user-scoped + create-flow + auth shapes
+    ["/w/$"],
+    ["/u/$"],
+    ["/billing/$"],
+    ["/login"],
+    ["/register"],
+    ["/new/database"],
+    ["/new/redis"],
+    ["/new/project"],
   ])("mounts the %s alias", (fullPath) => {
     expect(topLevel.find((route) => route.fullPath === fullPath)).toBeDefined();
   });
@@ -41,6 +50,17 @@ describe("Render dashboard-route aliases", () => {
   it("keeps the root 404 catch-all for unknown segments", () => {
     expect(topLevel.find((route) => route.fullPath === "/$")).toBeDefined();
   });
+
+  // w1/m45: Webhooks/Notifications became first-class pages (Render's
+  // Integrations sidebar entries), not aliases — but their routes must mount.
+  it.each([["/webhooks"], ["/notifications"]])(
+    "mounts the %s page",
+    (fullPath) => {
+      expect(
+        topLevel.find((route) => route.fullPath === fullPath),
+      ).toBeDefined();
+    },
+  );
 
   // Prove the redirect actually navigates: a minimal router (no auth guards)
   // wired exactly like the alias route files, loaded on a Render-shaped deploy

@@ -1,102 +1,39 @@
-import { useEffect, useRef } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
-import { useTranslations } from "@/common/hooks/use-translations";
-import { cn } from "@/common/lib/utils/utils.ts";
-import type { en } from "@/i18n";
+import type { SidebarNavGroup } from "@/common/components/dashboard-layout/sidebar-nav-groups";
 
-// bex's subset of Render's service sidebar (docs .pm/w5/m5 "Render reference"):
-// Events is the landing tab (Render's service root lands on Events/deploys too —
-// there is no Overview page; the identity facts live in the detail header), then
-// the Environment tab (env vars, w4/m6.5), the Monitor-group Logs + Metrics
-// items, Scaling, and Settings (Instance Type, w5/m7).
-interface ServiceNavItem {
-  labelKey: keyof typeof en;
-  to: string;
-  exact: boolean;
-}
-
-const ITEMS: ServiceNavItem[] = [
+// bex's subset of Render's service-page navigation, grouped the way Render's
+// resource-scoped sidebar groups it (live capture 2026-07-16,
+// docs/render-artifacts/dashboard-routes.md § Sidebar navigation): top-level
+// items, then **Monitor** (Logs, Metrics) and **Manage** (Environment,
+// Scaling, Plan). Differences, both deliberate: Render has NO Deploys entry
+// (its service root IS the deploy history — bex's root also redirects to
+// Deploys, but the explicit entry aids discoverability), and Plan is bex-only
+// (Render folds instance type into scaling/settings). Render's Shell,
+// Previews, Disk, and One-Off Jobs entries are DO_NOT_DO non-goals.
+//
+// One source of truth: the service sidebar
+// (common/components/dashboard-layout/service-sidebar.tsx) renders these
+// groups; nothing else may fork the list.
+export const SERVICE_NAV_GROUPS: SidebarNavGroup[] = [
   {
-    labelKey: "services.navEvents",
-    to: "/services/$serviceId/events",
-    exact: false,
-  },
-  // The dedicated deploy-history tab (w9/002) — Render's standalone Deploys
-  // list. exact:false keeps it highlighted on the nested per-deploy pages
-  // (/deploys/$deployId).
-  {
-    labelKey: "services.navDeploys",
-    to: "/services/$serviceId/deploys",
-    exact: false,
+    items: [
+      { labelKey: "services.navEvents", to: "/services/$serviceId/events" },
+      { labelKey: "services.navDeploys", to: "/services/$serviceId/deploys" },
+      { labelKey: "services.navSettings", to: "/services/$serviceId/settings" },
+    ],
   },
   {
-    labelKey: "services.navEnvironment",
-    to: "/services/$serviceId/env",
-    exact: false,
+    labelKey: "common.navMonitorGroup",
+    items: [
+      { labelKey: "services.navLogs", to: "/services/$serviceId/logs" },
+      { labelKey: "services.navMetrics", to: "/services/$serviceId/metrics" },
+    ],
   },
   {
-    labelKey: "services.navLogs",
-    to: "/services/$serviceId/logs",
-    exact: false,
-  },
-  {
-    labelKey: "services.navMetrics",
-    to: "/services/$serviceId/metrics",
-    exact: false,
-  },
-  {
-    labelKey: "services.navScaling",
-    to: "/services/$serviceId/scaling",
-    exact: false,
-  },
-  {
-    labelKey: "services.navSettings",
-    to: "/services/$serviceId/settings",
-    exact: false,
+    labelKey: "common.navManageGroup",
+    items: [
+      { labelKey: "services.navEnvironment", to: "/services/$serviceId/env" },
+      { labelKey: "services.navScaling", to: "/services/$serviceId/scaling" },
+      { labelKey: "services.navPlan", to: "/services/$serviceId/plan" },
+    ],
   },
 ];
-
-export function ServiceNav({ serviceId }: { serviceId: string }) {
-  const { t } = useTranslations();
-  const pathname = useRouterState({
-    select: (state) => state.location.pathname,
-  });
-  const navRef = useRef<HTMLElement>(null);
-
-  // The tab row scrolls horizontally on narrow screens. Keep the current tab
-  // visible after direct navigation (especially Scaling and Settings, which
-  // otherwise start beyond the right edge with no visible active indicator).
-  useEffect(() => {
-    const active = navRef.current?.querySelector<HTMLElement>(
-      '[data-status="active"]',
-    );
-    active?.scrollIntoView?.({
-      behavior: "instant",
-      block: "nearest",
-      inline: "center",
-    });
-  }, [pathname]);
-
-  return (
-    <nav
-      ref={navRef}
-      aria-label={t("services.navLabel")}
-      className="flex snap-x gap-1 overflow-x-auto border-b px-2 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden"
-    >
-      {ITEMS.map((item) => (
-        <Link
-          key={item.to}
-          to={item.to}
-          params={{ serviceId }}
-          activeOptions={{ exact: item.exact }}
-          className={cn(
-            "shrink-0 snap-start whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground",
-            "data-[status=active]:border-foreground data-[status=active]:text-foreground",
-          )}
-        >
-          {t(item.labelKey)}
-        </Link>
-      ))}
-    </nav>
-  );
-}
