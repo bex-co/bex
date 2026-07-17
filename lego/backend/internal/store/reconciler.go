@@ -57,14 +57,19 @@ const (
 	// operator's propagation to pod templates share one canonical value.
 	LabelWorkspace      = core.LabelWorkspace
 	defaultResyncPeriod = 30 * time.Second
-	// defaultDeployGateTimeout bounds how long a deploy may sit open
-	// (update_in_progress) before recordDeploy gives up on it and calls it
-	// failed. Needed because a bad image (ImagePullBackOff) never makes the
-	// App CR's own phase machine reach PhaseFailed — it polls PhaseDeploying
+	// Phase-specific gate timeouts bound how long a deploy may sit open before
+	// recordDeploy gives up on it and calls it failed. BuildKit Jobs have a
+	// 20-minute active deadline and pre-deploy Jobs have a 10-minute deadline,
+	// so their control-plane budgets must be longer than the mechanism they
+	// observe. Each budget starts from the deploy row's last phase transition.
+	// The shorter rollout budget is needed because a bad image
+	// (ImagePullBackOff) never makes the App CR's own phase machine reach PhaseFailed — it polls PhaseDeploying
 	// forever (lego/operator/internal/controller/app_controller.go) — so
 	// health gating (docs/ADR004-deployment.md) needs its own timeout, not just the
 	// CR's phase, to ever report a deploy as failed.
-	defaultDeployGateTimeout = 3 * time.Minute
+	defaultBuildGateTimeout     = 25 * time.Minute
+	defaultPreDeployGateTimeout = 12 * time.Minute
+	defaultDeployGateTimeout    = 3 * time.Minute
 )
 
 // CloneSecreter is called by the Reconciler when projecting a new App CR for
@@ -122,7 +127,9 @@ type Reconciler struct {
 	// DeployGateTimeout bounds how long a deploy may stay open before
 	// recordDeploy closes it as failed even though the CR's phase never
 	// reached Failed on its own (see defaultDeployGateTimeout).
-	DeployGateTimeout time.Duration
+	DeployGateTimeout    time.Duration
+	BuildGateTimeout     time.Duration
+	PreDeployGateTimeout time.Duration
 	// CloneSecrets, when non-nil, is called for each new projected App CR
 	// whose row has a non-empty Repo, to mint and write the per-app
 	// clone-credential Secret. Useful for rows created via the internal CP
@@ -141,12 +148,14 @@ type Reconciler struct {
 
 func NewReconciler(cl client.Client, store Store, namespace string) *Reconciler {
 	return &Reconciler{
-		Client:            cl,
-		Store:             store,
-		Namespace:         namespace,
-		Resync:            defaultResyncPeriod,
-		DeployGateTimeout: defaultDeployGateTimeout,
-		kick:              make(chan struct{}, 1),
+		Client:               cl,
+		Store:                store,
+		Namespace:            namespace,
+		Resync:               defaultResyncPeriod,
+		DeployGateTimeout:    defaultDeployGateTimeout,
+		BuildGateTimeout:     defaultBuildGateTimeout,
+		PreDeployGateTimeout: defaultPreDeployGateTimeout,
+		kick:                 make(chan struct{}, 1),
 	}
 }
 
@@ -269,7 +278,7 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 		}
 	}
 
-	status := observedDeployStatus(open, cur, time.Since(open.CreatedAt) > r.DeployGateTimeout)
+	status := observedDeployStatus(open, cur, r.deployTimedOut(d, open))
 	if status == "" {
 		return
 	}
@@ -304,6 +313,30 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 			NotificationsToSend: cur.Spec.NotificationsToSend,
 		})
 	}
+}
+
+// deployTimedOut applies the budget for the deploy row's last observed phase.
+// Using UpdatedAt resets the clock on each legal transition: a six-minute build
+// that has just entered rollout receives the full rollout health-gate window
+// instead of inheriting six minutes of elapsed build time.
+func (r *Reconciler) deployTimedOut(d DesiredApp, open Deploy) bool {
+	timeout := r.DeployGateTimeout
+	switch open.Status {
+	case DeployCreated:
+		if d.Repo != "" {
+			timeout = r.BuildGateTimeout
+		}
+	case DeployQueued, DeployBuildInProgress:
+		timeout = r.BuildGateTimeout
+	case DeployPreDeployInProgress:
+		timeout = r.PreDeployGateTimeout
+	}
+
+	phaseStarted := open.UpdatedAt
+	if phaseStarted.IsZero() {
+		phaseStarted = open.CreatedAt
+	}
+	return time.Since(phaseStarted) > timeout
 }
 
 // observedDeployStatus maps only current-generation evidence to a Render

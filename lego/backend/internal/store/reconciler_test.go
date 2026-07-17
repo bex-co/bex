@@ -608,6 +608,56 @@ func TestRecordDeployClosesFailedOnGateTimeout(t *testing.T) {
 	}
 }
 
+func TestDeployTimedOutUsesPhaseSpecificBudgets(t *testing.T) {
+	rec := NewReconciler(nil, nil, "default")
+	now := time.Now()
+
+	tests := []struct {
+		name string
+		app  DesiredApp
+		open Deploy
+		want bool
+	}{
+		{
+			name: "repo build may exceed rollout gate",
+			app:  DesiredApp{App: App{Repo: "https://github.com/acme/web"}},
+			open: Deploy{Status: DeployBuildInProgress, UpdatedAt: now.Add(-4 * time.Minute)},
+		},
+		{
+			name: "repo created phase uses build budget",
+			app:  DesiredApp{App: App{Repo: "https://github.com/acme/web"}},
+			open: Deploy{Status: DeployCreated, UpdatedAt: now.Add(-4 * time.Minute)},
+		},
+		{
+			name: "pre-deploy may exceed rollout gate",
+			open: Deploy{Status: DeployPreDeployInProgress, UpdatedAt: now.Add(-4 * time.Minute)},
+		},
+		{
+			name: "build eventually times out",
+			open: Deploy{Status: DeployBuildInProgress, UpdatedAt: now.Add(-26 * time.Minute)},
+			want: true,
+		},
+		{
+			name: "rollout uses short health gate",
+			open: Deploy{Status: DeployUpdateInProgress, UpdatedAt: now.Add(-4 * time.Minute)},
+			want: true,
+		},
+		{
+			name: "image deploy created phase uses rollout gate",
+			open: Deploy{Status: DeployCreated, UpdatedAt: now.Add(-4 * time.Minute)},
+			want: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := rec.deployTimedOut(tc.app, tc.open); got != tc.want {
+				t.Fatalf("deployTimedOut = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 // fakeDeployNotifier records NotifyDeploy calls. Thread-safe and signals each
 // call on a channel: recordDeploy fires DeployNotifier in a goroutine (w3/m9,
 // so a slow relay can't block ReconcileOnce), so a test asserting on calls

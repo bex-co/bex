@@ -24,7 +24,8 @@ limitations under the License.
 //
 // The operator manages two Secrets in the Zot namespace:
 //   - zot-htpasswd: htpasswd file (bcrypt) with bex-builder + per-App entries.
-//   - zot-config:   full Zot config.json with per-App repo ACL entries.
+//   - zot-config:   full Zot config.json with a global builder admin policy and
+//     per-App repo ACL entries.
 //
 // Both are mounted as external Secrets by the Zot Helm chart
 // (deploy/gitops/base/zot.yaml). Kubernetes propagates Secret updates to the
@@ -309,7 +310,11 @@ func (c *Creds) removeHTPasswdEntry(ctx context.Context, username string) error 
 // -- Zot config helpers -------------------------------------------------------
 
 // ensureZotConfigEntry adds a per-repo ACL entry for the App to the zot-config
-// Secret. Creates the Secret with the base config if it does not exist.
+// Secret and ensures the global builder admin policy is present. The admin
+// policy migration is required for configs created before per-App ACLs: Zot
+// applies only the longest repository match, so an exact per-App rule shadows
+// the builder's ** rule. Creates the Secret with the base config if it does not
+// exist.
 func (c *Creds) ensureZotConfigEntry(ctx context.Context, appName, zotUser string) error {
 	for range 3 {
 		var sec corev1.Secret
@@ -339,13 +344,19 @@ func (c *Creds) ensureZotConfigEntry(ctx context.Context, appName, zotUser strin
 		}
 
 		existing := sec.Data["config.json"]
-		if zotConfigHasRepo(existing, appName) {
+		if zotConfigHasRepo(existing, appName) && zotConfigHasBuilderAdminPolicy(existing) {
 			return nil
 		}
 
-		updated, err := addZotACLEntry(existing, appName, zotUser)
+		updated, err := ensureZotBuilderAdminPolicy(existing)
 		if err != nil {
 			return err
+		}
+		if !zotConfigHasRepo(updated, appName) {
+			updated, err = addZotACLEntry(updated, appName, zotUser)
+			if err != nil {
+				return err
+			}
 		}
 		patch := sec.DeepCopy()
 		patch.Data["config.json"] = updated
@@ -501,6 +512,68 @@ func zotConfigHasRepo(configJSON []byte, repo string) bool {
 	return ok
 }
 
+// zotConfigHasBuilderAdminPolicy reports whether bex-builder has the global
+// actions required by buildkitd and cosign. A ** repository policy is not
+// sufficient because Zot gives a longer exact per-repository rule precedence.
+func zotConfigHasBuilderAdminPolicy(configJSON []byte) bool {
+	var data map[string]any
+	if err := json.Unmarshal(configJSON, &data); err != nil {
+		return false
+	}
+	httpBlock, _ := data["http"].(map[string]any)
+	accessControl, _ := httpBlock["accessControl"].(map[string]any)
+	adminPolicy, _ := accessControl["adminPolicy"].(map[string]any)
+	users, _ := adminPolicy["users"].([]any)
+	actions, _ := adminPolicy["actions"].([]any)
+
+	if !containsString(users, "bex-builder") {
+		return false
+	}
+	for _, action := range []string{"read", "create", "update", "delete"} {
+		if !containsString(actions, action) {
+			return false
+		}
+	}
+	return true
+}
+
+// ensureZotBuilderAdminPolicy migrates an existing Zot config to the global
+// builder policy. zot-config is operator-managed, so this policy is canonical.
+func ensureZotBuilderAdminPolicy(configJSON []byte) ([]byte, error) {
+	if zotConfigHasBuilderAdminPolicy(configJSON) {
+		return configJSON, nil
+	}
+
+	var data map[string]any
+	if err := json.Unmarshal(configJSON, &data); err != nil {
+		return nil, err
+	}
+	httpBlock, _ := data["http"].(map[string]any)
+	if httpBlock == nil {
+		httpBlock = map[string]any{}
+		data["http"] = httpBlock
+	}
+	accessControl, _ := httpBlock["accessControl"].(map[string]any)
+	if accessControl == nil {
+		accessControl = map[string]any{}
+		httpBlock["accessControl"] = accessControl
+	}
+	accessControl["adminPolicy"] = map[string]any{
+		"users":   []any{"bex-builder"},
+		"actions": []any{"read", "create", "update", "delete"},
+	}
+	return json.Marshal(data)
+}
+
+func containsString(values []any, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
+}
+
 // addZotACLEntry adds a per-repo policy for zotUser in the Zot config JSON.
 func addZotACLEntry(configJSON []byte, repo, zotUser string) ([]byte, error) {
 	var data map[string]any
@@ -610,6 +683,7 @@ func (c *Creds) baseZotConfig() []byte {
 	}
 	type accessControl struct {
 		Repositories map[string]repoACL `json:"repositories"`
+		AdminPolicy  policy             `json:"adminPolicy"`
 	}
 	type httpBlock struct {
 		Address       string        `json:"address"`
@@ -673,6 +747,10 @@ func (c *Creds) baseZotConfig() []byte {
 						},
 						DefaultPolicy: []string{},
 					},
+				},
+				AdminPolicy: policy{
+					Users:   []string{"bex-builder"},
+					Actions: []string{"read", "create", "update", "delete"},
 				},
 			},
 		},

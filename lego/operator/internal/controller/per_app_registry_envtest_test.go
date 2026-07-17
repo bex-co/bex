@@ -142,6 +142,13 @@ var _ = Describe("Per-App registry pull credentials (w7/m36)", func() {
 		ac, _ := http["accessControl"].(map[string]any)
 		repos, _ := ac["repositories"].(map[string]any)
 		Expect(repos).To(HaveKey(name))
+		// Exact per-App rules shadow ** in Zot, so builder push access must be
+		// granted by the global admin policy.
+		adminPolicy, _ := ac["adminPolicy"].(map[string]any)
+		adminUsers, _ := adminPolicy["users"].([]any)
+		adminActions, _ := adminPolicy["actions"].([]any)
+		Expect(adminUsers).To(ContainElement("bex-builder"))
+		Expect(adminActions).To(ConsistOf("read", "create", "update", "delete"))
 		// bex-puller must NOT be in ** wildcard.
 		wildcard, _ := repos["**"].(map[string]any)
 		policies, _ := wildcard["policies"].([]any)
@@ -152,6 +159,28 @@ var _ = Describe("Per-App registry pull credentials (w7/m36)", func() {
 				Expect(u).NotTo(Equal("bex-puller"), "bex-puller must not appear in ** wildcard (w7/m36)")
 			}
 		}
+
+		// Simulate the production config written before builder adminPolicy was
+		// introduced. Reconciliation must migrate it even though this App's exact
+		// repository entry already exists.
+		delete(ac, "adminPolicy")
+		historicalConfig, err := json.Marshal(zotCfg)
+		Expect(err).NotTo(HaveOccurred())
+		cfgSec.Data["config.json"] = historicalConfig
+		Expect(k8sClient.Update(ctx, cfgSec)).To(Succeed())
+		reconcileN(r, nn, 1)
+
+		migratedCfgSec := &corev1.Secret{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: "zot-config", Namespace: zotNamespace}, migratedCfgSec)).To(Succeed())
+		var migratedZotCfg map[string]any
+		Expect(json.Unmarshal(migratedCfgSec.Data["config.json"], &migratedZotCfg)).To(Succeed())
+		migratedHTTP, _ := migratedZotCfg["http"].(map[string]any)
+		migratedAC, _ := migratedHTTP["accessControl"].(map[string]any)
+		migratedAdmin, _ := migratedAC["adminPolicy"].(map[string]any)
+		migratedUsers, _ := migratedAdmin["users"].([]any)
+		migratedActions, _ := migratedAdmin["actions"].([]any)
+		Expect(migratedUsers).To(ContainElement("bex-builder"))
+		Expect(migratedActions).To(ConsistOf("read", "create", "update", "delete"))
 
 		cleanupApp(r, name)
 	})
