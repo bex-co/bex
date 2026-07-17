@@ -70,6 +70,20 @@ export interface LogFilters {
   path: string;
 }
 
+// The five structured filter fields (everything but the type dropdown and the
+// free-text search) — the ONE list that drives the URL schema (log-search.ts),
+// the Filters popover rows + active chips (log-filter-bar.tsx), and the
+// filtered-empty-state check (log-viewer.tsx). Adding a filter field here fans
+// out to all of them; a hand-copied list would silently drift (w7/m42).
+export const STRUCTURED_FILTER_KEYS = [
+  "level",
+  "method",
+  "statusCode",
+  "instance",
+  "path",
+] as const;
+export type StructuredFilterKey = (typeof STRUCTURED_FILTER_KEYS)[number];
+
 export const EMPTY_LOG_FILTERS: LogFilters = {
   type: LOG_TYPE_ALL,
   text: "",

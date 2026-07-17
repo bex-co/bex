@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { LogViewer } from "../log-viewer";
 import type { UseLogHistoryResult } from "../../hooks/use-log-history";
 import { RANGE_PRESETS } from "@/features/metrics/lib/range";
+import { EMPTY_LOG_FILTERS } from "../../types";
 
 // Drive the viewer's states by stubbing its data layer, mirroring the
 // services.$serviceId routing test's approach.
@@ -86,5 +87,50 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
         "The range limits history. Live mode appends new lines as they arrive.",
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe("LogViewer URL-backed filter state (w7/m42)", () => {
+  it("derives the initial filter + live state from the URL and queries with it", () => {
+    const onFiltersChange = vi.fn();
+    render(
+      <LogViewer
+        resource="web"
+        initialFilters={{ ...EMPTY_LOG_FILTERS, level: "error" }}
+        initialLive={false}
+        onFiltersChange={onFiltersChange}
+      />,
+    );
+
+    // The history query receives the URL-derived filters…
+    expect(useHistorySpy.mock.calls.at(-1)?.[1]).toMatchObject({
+      level: "error",
+    });
+    // …and the mount does NOT sync upward — that state was just derived from
+    // the URL, so there is nothing to write (and a mount-time navigate loops
+    // under hydration).
+    expect(onFiltersChange).not.toHaveBeenCalled();
+  });
+
+  it("reports a debounced filter change upward for the URL write", async () => {
+    const onFiltersChange = vi.fn();
+    render(<LogViewer resource="web" onFiltersChange={onFiltersChange} />);
+    onFiltersChange.mockClear();
+
+    fireEvent.change(screen.getByLabelText("Search logs"), {
+      target: { value: "boom" },
+    });
+
+    // The URL write rides the same 300ms debounce as the query refetch.
+    expect(onFiltersChange).not.toHaveBeenCalledWith(
+      expect.objectContaining({ text: "boom" }),
+      true,
+    );
+    await waitFor(() =>
+      expect(onFiltersChange).toHaveBeenCalledWith(
+        { ...EMPTY_LOG_FILTERS, text: "boom" },
+        true,
+      ),
+    );
   });
 });

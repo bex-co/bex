@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AlertCircle, Loader2, WifiOff } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useDebounce } from "@/common/hooks/use-debounce";
@@ -13,6 +13,7 @@ import { mergeLogLines } from "../lib/map";
 import {
   EMPTY_LOG_FILTERS,
   LOG_TYPE_ALL,
+  STRUCTURED_FILTER_KEYS,
   usesStoreOnlyFilters,
   type LogFilters,
 } from "../types";
@@ -30,6 +31,19 @@ interface LogViewerProps {
   createEventSource?: EventSourceFactory;
   range?: RangePreset;
   onRangeChange?: (range: RangePreset) => void;
+  /**
+   * Initial filter state (from the URL, w7/m42); read ONCE at mount — a later
+   * search-only navigation to an already-mounted viewer is ignored (URL→state
+   * back/forward sync is deferred with that feature).
+   */
+  initialFilters?: LogFilters;
+  initialLive?: boolean;
+  /**
+   * URL sync (w7/m42): fired with the debounced filter + live state after each
+   * real change (never at mount — that state was just derived from the URL) so
+   * the route can mirror the state into the query string.
+   */
+  onFiltersChange?: (filters: LogFilters, live: boolean) => void;
 }
 
 /**
@@ -43,19 +57,62 @@ export function LogViewer({
   createEventSource,
   range = DEFAULT_RANGE_PRESET,
   onRangeChange = () => undefined,
+  initialFilters,
+  initialLive,
+  onFiltersChange,
 }: LogViewerProps) {
   const { t } = useTranslations();
-  const [filters, setFilters] = useState<LogFilters>(EMPTY_LOG_FILTERS);
-  const [live, setLive] = useState(true);
+  const [filters, setFilters] = useState<LogFilters>(
+    initialFilters ?? EMPTY_LOG_FILTERS,
+  );
+  const [live, setLive] = useState(initialLive ?? true);
 
   // Debounce the free-text filters so a keystroke doesn't refetch history and
-  // reopen the stream on every character.
+  // reopen the stream on every character. Scalar deps (not the filters object,
+  // whose identity churns per keystroke) keep queryFilters' identity stable
+  // while typing, so the URL-sync effect below fires only on settled values.
   const debouncedText = useDebounce(filters.text, 300);
   const debouncedPath = useDebounce(filters.path, 300);
   const queryFilters = useMemo<LogFilters>(
-    () => ({ ...filters, text: debouncedText, path: debouncedPath }),
-    [filters, debouncedText, debouncedPath],
+    () => ({
+      type: filters.type,
+      level: filters.level,
+      method: filters.method,
+      statusCode: filters.statusCode,
+      instance: filters.instance,
+      text: debouncedText,
+      path: debouncedPath,
+    }),
+    [
+      filters.type,
+      filters.level,
+      filters.method,
+      filters.statusCode,
+      filters.instance,
+      debouncedText,
+      debouncedPath,
+    ],
   );
+
+  // Mirror the debounced state into the URL (w7/m42). The first run is
+  // skipped — the mount state was just derived from the URL, and navigating
+  // during hydration triggers a full document reload loop under TanStack
+  // Start (observed live). The ref keeps the route's inline callback out of
+  // the sync effect's deps so only real filter/live changes fire; it is
+  // refreshed in its own every-render effect (declared first, so it has run
+  // by the time the sync effect fires in the same flush).
+  const onFiltersChangeRef = useRef(onFiltersChange);
+  useEffect(() => {
+    onFiltersChangeRef.current = onFiltersChange;
+  });
+  const syncedOnce = useRef(false);
+  useEffect(() => {
+    if (!syncedOnce.current) {
+      syncedOnce.current = true;
+      return;
+    }
+    onFiltersChangeRef.current?.(queryFilters, live);
+  }, [queryFilters, live]);
 
   // The live tail reads pod stdout, so it can't serve request logs or the
   // store-only filters — offer live only when none is active (instance is fine,
@@ -162,14 +219,7 @@ export function LogViewer({
 // Whether any structured/text field filter (beyond the type dropdown) is set —
 // drives the "no logs match this filter" vs "no logs yet" empty-state copy.
 function hasFieldFilter(f: LogFilters): boolean {
-  return (
-    f.text !== "" ||
-    f.level !== "" ||
-    f.instance !== "" ||
-    f.method !== "" ||
-    f.statusCode !== "" ||
-    f.path !== ""
-  );
+  return f.text !== "" || STRUCTURED_FILTER_KEYS.some((key) => f[key] !== "");
 }
 
 // The footer under the log list: a live pulse while streaming, a paused note

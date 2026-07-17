@@ -1,4 +1,5 @@
-import { Search } from "lucide-react";
+import { type ReactNode } from "react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -9,6 +10,12 @@ import {
 import { Input } from "@/common/components/ui/input.tsx";
 import { Switch } from "@/common/components/ui/switch.tsx";
 import { Label } from "@/common/components/ui/label.tsx";
+import { Badge } from "@/common/components/ui/badge";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/common/components/ui/popover";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { en } from "@/i18n";
 import { Button } from "@/common/components/ui/button";
@@ -27,15 +34,21 @@ import {
   LOG_TYPE_APP,
   LOG_TYPE_FILTERS,
   LOG_TYPE_REQUEST,
+  STRUCTURED_FILTER_KEYS,
   type LogFilters,
   type LogTypeFilter,
+  type StructuredFilterKey,
 } from "../types";
 
 // Render's Logs filter row (design source .pm/w5/m6/README.md + the request/
-// structured filters of .pm/w5/008): a type dropdown, the level/method/status/
-// instance dropdowns fed by `logLabelValues`, a request-path text filter, a wide
-// search box, and a live toggle. Every value bex-api honors (w3/m8); the
-// dropdowns discover real observed values rather than guessing.
+// structured filters of .pm/w5/008, simplified to Render's minimal default in
+// w7/m42): the always-visible primary toolbar carries only what Render's does —
+// the type dropdown, the wide search box, the range presets, and the live
+// toggle. The five structured filters (level/method/status/instance/path) live
+// behind one "Filters" popover with an active-count badge, and any active
+// structured filter surfaces as a removable chip so nothing is hidden when set.
+// Every value bex-api honors (w3/m8); the dropdowns discover real observed
+// values rather than guessing.
 // LOG_TYPE_BUILD is not a user-selectable filter in the Logs tab — it is only
 // used by the deploy detail page's build pane — so it is excluded from this map.
 const TYPE_LABEL_KEYS: Record<
@@ -66,6 +79,16 @@ function mergeOptions(fallback: string[], discovered: string[]): string[] {
   const extra = discovered.filter((v) => !fallback.includes(v)).sort();
   return [...fallback, ...extra];
 }
+
+// The five structured filters live behind the Filters popover — one row each
+// in the popover, one removable chip each while active (list owned by types.ts).
+const STRUCTURED_LABEL_KEYS: Record<StructuredFilterKey, keyof typeof en> = {
+  level: "logs.levelLabel",
+  method: "logs.methodLabel",
+  statusCode: "logs.statusCodeLabel",
+  instance: "logs.instanceLabel",
+  path: "logs.pathLabel",
+};
 
 interface LogFilterBarProps {
   /** App name — scopes the `logLabelValues` discovery queries. */
@@ -115,20 +138,10 @@ export function LogFilterBar({
     useLogLabelValues(resource, LOG_LABEL_INSTANCE),
   );
 
+  const active = STRUCTURED_FILTER_KEYS.filter((key) => filters[key] !== "");
+
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div className="flex flex-wrap gap-1" aria-label={t("logs.rangeLabel")}>
-        {RANGE_PRESETS.map((preset) => (
-          <Button
-            key={preset.id}
-            size="sm"
-            variant={preset.id === range.id ? "default" : "outline"}
-            onClick={() => onRangeChange(preset)}
-          >
-            {preset.id}
-          </Button>
-        ))}
-      </div>
       <Select
         value={filters.type}
         onValueChange={(v) => onChange({ type: v as LogTypeFilter })}
@@ -149,43 +162,6 @@ export function LogFilterBar({
         </SelectContent>
       </Select>
 
-      <FilterSelect
-        ariaLabel={t("logs.levelLabel")}
-        allLabel={t("logs.levelAll")}
-        value={filters.level}
-        options={levels}
-        onValueChange={(level) => onChange({ level })}
-      />
-      <FilterSelect
-        ariaLabel={t("logs.methodLabel")}
-        allLabel={t("logs.methodAll")}
-        value={filters.method}
-        options={methods}
-        onValueChange={(method) => onChange({ method })}
-      />
-      <FilterSelect
-        ariaLabel={t("logs.statusCodeLabel")}
-        allLabel={t("logs.statusCodeAll")}
-        value={filters.statusCode}
-        options={statuses}
-        onValueChange={(statusCode) => onChange({ statusCode })}
-      />
-      <FilterSelect
-        ariaLabel={t("logs.instanceLabel")}
-        allLabel={t("logs.instanceAll")}
-        value={filters.instance}
-        options={instances}
-        onValueChange={(instance) => onChange({ instance })}
-      />
-
-      <Input
-        value={filters.path}
-        onChange={(e) => onChange({ path: e.target.value })}
-        placeholder={t("logs.pathPlaceholder")}
-        aria-label={t("logs.pathLabel")}
-        className="h-9 w-40"
-      />
-
       <div className="relative min-w-48 flex-1">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -196,6 +172,75 @@ export function LogFilterBar({
           className="h-9 pl-8"
         />
       </div>
+
+      <div className="flex flex-wrap gap-1" aria-label={t("logs.rangeLabel")}>
+        {RANGE_PRESETS.map((preset) => (
+          <Button
+            key={preset.id}
+            size="sm"
+            variant={preset.id === range.id ? "default" : "outline"}
+            onClick={() => onRangeChange(preset)}
+          >
+            {preset.id}
+          </Button>
+        ))}
+      </div>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button size="sm" variant="outline" className="gap-1.5">
+            <SlidersHorizontal className="h-4 w-4" />
+            {t("logs.filtersButton")}
+            {active.length > 0 ? (
+              <Badge
+                variant="secondary"
+                className="h-5 min-w-5 rounded-full px-1.5"
+              >
+                {active.length}
+              </Badge>
+            ) : null}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-72 space-y-3">
+          <SelectFilterRow
+            label={t("logs.levelLabel")}
+            allLabel={t("logs.levelAll")}
+            value={filters.level}
+            options={levels}
+            onValueChange={(level) => onChange({ level })}
+          />
+          <SelectFilterRow
+            label={t("logs.methodLabel")}
+            allLabel={t("logs.methodAll")}
+            value={filters.method}
+            options={methods}
+            onValueChange={(method) => onChange({ method })}
+          />
+          <SelectFilterRow
+            label={t("logs.statusCodeLabel")}
+            allLabel={t("logs.statusCodeAll")}
+            value={filters.statusCode}
+            options={statuses}
+            onValueChange={(statusCode) => onChange({ statusCode })}
+          />
+          <SelectFilterRow
+            label={t("logs.instanceLabel")}
+            allLabel={t("logs.instanceAll")}
+            value={filters.instance}
+            options={instances}
+            onValueChange={(instance) => onChange({ instance })}
+          />
+          <FilterRow label={t("logs.pathLabel")}>
+            <Input
+              value={filters.path}
+              onChange={(e) => onChange({ path: e.target.value })}
+              placeholder={t("logs.pathPlaceholder")}
+              aria-label={t("logs.pathLabel")}
+              className="h-9"
+            />
+          </FilterRow>
+        </PopoverContent>
+      </Popover>
 
       <div className="flex items-center gap-2">
         <Switch
@@ -212,42 +257,77 @@ export function LogFilterBar({
           {t("logs.live")}
         </Label>
       </div>
+
+      {active.length > 0 ? (
+        <div className="flex w-full flex-wrap items-center gap-1.5">
+          {active.map((key) => {
+            const label = t(STRUCTURED_LABEL_KEYS[key]);
+            return (
+              <Badge key={key} variant="secondary" className="gap-1 pr-1">
+                {label}: {filters[key]}
+                <button
+                  type="button"
+                  aria-label={t("logs.chipRemove", { label })}
+                  onClick={() => onChange({ [key]: "" })}
+                  className="rounded-full p-0.5 hover:bg-muted-foreground/20"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-// One discovery-fed filter dropdown: single-select with an "all" sentinel, the
-// current value self-describing in the trigger (no separate visible label —
-// aria-label carries the field name for a11y).
-function FilterSelect({
-  ariaLabel,
+// One labeled row inside the Filters popover — a visible label above the
+// control (the control keeps its own aria-label, so a11y queries are stable
+// whether the control sits in the bar or the popover).
+function FilterRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+// One labeled discovery-fed dropdown row in the Filters popover: single-select
+// with an "all" sentinel, the label doubling as the trigger's aria-label so
+// a11y queries are the same whether the control sits in a bar or a popover.
+function SelectFilterRow({
+  label,
   allLabel,
   value,
   options,
   onValueChange,
 }: {
-  ariaLabel: string;
+  label: string;
   allLabel: string;
   value: string;
   options: string[];
   onValueChange: (value: string) => void;
 }) {
   return (
-    <Select
-      value={value === "" ? ALL : value}
-      onValueChange={(v) => onValueChange(v === ALL ? "" : v)}
-    >
-      <SelectTrigger size="sm" className="w-36" aria-label={ariaLabel}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={ALL}>{allLabel}</SelectItem>
-        {options.map((o) => (
-          <SelectItem key={o} value={o}>
-            {o}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <FilterRow label={label}>
+      <Select
+        value={value === "" ? ALL : value}
+        onValueChange={(v) => onValueChange(v === ALL ? "" : v)}
+      >
+        <SelectTrigger size="sm" className="w-full" aria-label={label}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL}>{allLabel}</SelectItem>
+          {options.map((o) => (
+            <SelectItem key={o} value={o}>
+              {o}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </FilterRow>
   );
 }
