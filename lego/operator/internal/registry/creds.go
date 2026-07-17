@@ -28,9 +28,10 @@ limitations under the License.
 //     per-App repo ACL entries.
 //
 // Both are mounted as external Secrets by the Zot Helm chart
-// (deploy/gitops/base/zot.yaml). Kubernetes propagates Secret updates to the
-// Zot pod; Zot hot-reloads htpasswd on each auth request and reloads
-// config.json on SIGHUP or pod restart.
+// (deploy/gitops/base/zot.yaml). The running Zot never re-reads them — writes
+// only take effect after a zot pod restart (w9/m43; the full account lives in
+// verify.go and docs/ADR022-tenant-isolation.md § Credential activation), so
+// EnsureActive (verify.go) verifies activation and bounces the pod when needed.
 package registry
 
 import (
@@ -39,7 +40,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -60,6 +64,18 @@ type Creds struct {
 	Registry       string // canonical registry host (e.g. "zot.bex-registry.svc:5000")
 	KpackRegistry  string // optional alias used by containerd on nodes (e.g. "zot.local:5000")
 	RetentionCount int    // mostRecentlyPushedCount in baseZotConfig; 0 defaults to 5
+
+	// Credential activation (w9/m43, verify.go). Zero values mean the package
+	// defaults; tests shrink them.
+	HTTPClient      *http.Client  // probe client; nil => shared 5s-timeout default
+	ActivationGrace time.Duration // rejected-probe tolerance before bouncing zot (default 30s)
+	BounceCooldown  time.Duration // minimum time between zot bounces, across all Apps (default 2m)
+
+	mu            sync.Mutex
+	activated     map[string]bool      // app name -> probe accepted (invalidated on rotate/revoke)
+	writtenAt     map[string]time.Time // app name -> last htpasswd write by this process
+	firstRejected map[string]time.Time // app name -> first rejected probe (grace fallback anchor)
+	lastBounce    time.Time
 }
 
 // ErrConflictRequeue is returned when a Kubernetes write conflict persists
@@ -133,9 +149,14 @@ func (c *Creds) EnsureCreds(ctx context.Context, appName, appNS string) error {
 		}
 	}
 
-	// 2. Ensure htpasswd entry.
-	if err := c.ensureHTPasswdEntry(ctx, zotUser, password); err != nil {
+	// 2. Ensure htpasswd entry. A genuinely new entry starts the activation
+	// clock (verify.go): the running zot won't accept it until restarted.
+	added, err := c.ensureHTPasswdEntry(ctx, zotUser, password)
+	if err != nil {
 		return fmt.Errorf("htpasswd: %w", err)
+	}
+	if added {
+		c.recordWrite(appName)
 	}
 
 	// 3. Ensure Zot config per-repo ACL.
@@ -150,7 +171,13 @@ func (c *Creds) EnsureCreds(ctx context.Context, appName, appNS string) error {
 // The per-App pull Secret must be explicitly deleted by the caller (cross-namespace
 // objects cannot carry owner references, so owner-ref GC does not apply here).
 // The app controller's handleAppDeletion does this at app_controller.go:2306-2311.
+//
+// The running zot keeps accepting the removed credential until it restarts
+// (the same no-reload behavior activation works around), so revocation ends
+// with a best-effort rate-limited bounce; if the cooldown skips it, the
+// credential stays live until the next bounce or zot restart.
 func (c *Creds) RevokeCreds(ctx context.Context, appName string) error {
+	c.clearActivation(appName)
 	zotUser := ZotUsername(appName)
 	if err := c.removeHTPasswdEntry(ctx, zotUser); err != nil {
 		return fmt.Errorf("htpasswd revoke: %w", err)
@@ -158,6 +185,7 @@ func (c *Creds) RevokeCreds(ctx context.Context, appName string) error {
 	if err := c.removeZotConfigEntry(ctx, appName); err != nil {
 		return fmt.Errorf("zot config revoke: %w", err)
 	}
+	c.tryBounce(ctx)
 	return nil
 }
 
@@ -173,9 +201,11 @@ func (c *Creds) RevokeCreds(ctx context.Context, appName string) error {
 //	bex.co/rotate-registry-creds: "true"
 //
 // on the App CR. The reconciler detects this, calls RotateCreds, then clears
-// the annotation. All running workloads pick up the new pull Secret on the
-// next kubelet credential refresh cycle (typically <1 min for pre-pulled images;
-// new pod starts always use the latest Secret).
+// the annotation. Workloads pick up the new pull Secret on the next kubelet
+// credential refresh, but the running zot still holds the old hash until the
+// activation loop (verify.go) re-proves the credential — expect a short
+// RegistryCredsPending window (bounded by the activation grace + a bounce)
+// after every rotation.
 func (c *Creds) RotateCreds(ctx context.Context, appName, appNS string) error {
 	log := logf.FromContext(ctx)
 	zotUser := ZotUsername(appName)
@@ -203,31 +233,35 @@ func (c *Creds) RotateCreds(ctx context.Context, appName, appNS string) error {
 	if err := c.replaceHTPasswdEntry(ctx, zotUser, newPassword); err != nil {
 		return fmt.Errorf("htpasswd rotation: %w", err)
 	}
+	// The running zot deterministically rejects the new password until it
+	// restarts: restart the activation clock and drop the stale acceptance.
+	c.recordWrite(appName)
 	return nil
 }
 
 // -- htpasswd helpers ---------------------------------------------------------
 
 // ensureHTPasswdEntry adds or refreshes the user entry in the zot-htpasswd
-// Secret. Uses optimistic locking (ResourceVersion) to handle concurrent
-// reconciles; retries up to 3 times on conflict before returning ErrConflictRequeue.
-func (c *Creds) ensureHTPasswdEntry(ctx context.Context, username, password string) error {
+// Secret, reporting whether it actually added one. Uses optimistic locking
+// (ResourceVersion) to handle concurrent reconciles; retries up to 3 times on
+// conflict before returning ErrConflictRequeue.
+func (c *Creds) ensureHTPasswdEntry(ctx context.Context, username, password string) (added bool, err error) {
 	for range 3 {
 		var sec corev1.Secret
 		if err := c.Client.Get(ctx, client.ObjectKey{
 			Namespace: c.ZotNamespace, Name: c.HTPasswdName,
 		}, &sec); err != nil {
-			return err
+			return false, err
 		}
 
 		existing := sec.Data["htpasswd"]
 		if htpasswdHasUser(existing, username) {
-			return nil
+			return false, nil
 		}
 
 		updated, err := addHTPasswdLine(existing, username, password)
 		if err != nil {
-			return err
+			return false, err
 		}
 		patch := sec.DeepCopy()
 		if patch.Data == nil {
@@ -238,11 +272,11 @@ func (c *Creds) ensureHTPasswdEntry(ctx context.Context, username, password stri
 			if apierrors.IsConflict(err) {
 				continue
 			}
-			return err
+			return false, err
 		}
-		return nil
+		return true, nil
 	}
-	return ErrConflictRequeue
+	return false, ErrConflictRequeue
 }
 
 // replaceHTPasswdEntry always replaces the user entry in the zot-htpasswd

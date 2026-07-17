@@ -19,7 +19,10 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -32,6 +35,19 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/registry"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
+
+// staticStatusTransport answers every registry probe with the given HTTP
+// status, standing in for zot: 200 = credential loaded, 401 = stale (loaded
+// only at zot startup — w9/m43). Togglable per test via the atomic.
+type staticStatusTransport struct{ status *atomic.Int32 }
+
+func (t staticStatusTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: int(t.status.Load()),
+		Body:       http.NoBody,
+		Header:     http.Header{},
+	}, nil
+}
 
 var _ = Describe("Per-App registry pull credentials (w7/m36)", func() {
 	const (
@@ -53,7 +69,10 @@ var _ = Describe("Per-App registry pull credentials (w7/m36)", func() {
 		_ = k8sClient.Create(ctx, htpasswd)
 	}
 
-	newReconciler := func() *AppReconciler {
+	// newReconcilerAt wires a reconciler whose registry probe always answers
+	// with the given (togglable) status; most specs pin 200 (credential
+	// accepted) so the w9/m43 activation gate stays open.
+	newReconcilerAt := func(status *atomic.Int32) *AppReconciler {
 		return &AppReconciler{
 			Client: k8sClient, Scheme: k8sClient.Scheme(), Mode: ModeKubernetes,
 			Registry: registry_,
@@ -63,8 +82,14 @@ var _ = Describe("Per-App registry pull credentials (w7/m36)", func() {
 				HTPasswdName: "zot-htpasswd",
 				ConfigName:   "zot-config",
 				Registry:     registry_,
+				HTTPClient:   &http.Client{Transport: staticStatusTransport{status: status}},
 			},
 		}
+	}
+	newReconciler := func() *AppReconciler {
+		accepted := &atomic.Int32{}
+		accepted.Store(http.StatusOK)
+		return newReconcilerAt(accepted)
 	}
 	reconcileN := func(r *AppReconciler, nn types.NamespacedName, count int) {
 		for range count {
@@ -256,6 +281,53 @@ var _ = Describe("Per-App registry pull credentials (w7/m36)", func() {
 			}
 		}
 		Expect(count).To(Equal(1), "htpasswd must have exactly one entry per App user")
+
+		cleanupApp(r, name)
+	})
+
+	It("gates the workload on credential activation and bounces zot when stale (w9/m43)", func() {
+		const name = "per-app-cred-gate"
+		status := &atomic.Int32{}
+		status.Store(http.StatusUnauthorized) // zot hasn't loaded the credential
+		r := newReconcilerAt(status)
+		r.PerAppRegistry.ActivationGrace = time.Nanosecond // past grace on the second probe
+
+		// A labeled zot pod for the bounce to find.
+		zotPod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "zot-0", Namespace: zotNamespace,
+				Labels: map[string]string{registry.ZotPodLabelKey: registry.ZotPodLabelValue},
+			},
+			Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "zot", Image: "zot:test"}}},
+		}
+		Expect(k8sClient.Create(ctx, zotPod)).To(Succeed())
+
+		nn := types.NamespacedName{Name: name, Namespace: namespace}
+		image := registry_ + "/" + name + ":gen-1"
+		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+			Spec:       appv1alpha1.AppSpec{Image: image, Port: 3000},
+		})).To(Succeed())
+
+		// While the credential is rejected: requeue, no Deployment rolled.
+		reconcileN(r, nn, 3)
+		Expect(k8sClient.Get(ctx, nn, &appsv1.Deployment{})).NotTo(Succeed(),
+			"no workload may roll to an image the registry would refuse to serve")
+		app := &appv1alpha1.App{}
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseDeploying))
+
+		// Past the grace the reconciler bounced the zot pod (envtest has no
+		// StatefulSet controller, so the pod is simply gone/terminating).
+		gone := &corev1.Pod{}
+		err := k8sClient.Get(ctx, types.NamespacedName{Name: "zot-0", Namespace: zotNamespace}, gone)
+		Expect(err != nil || gone.DeletionTimestamp != nil).To(BeTrue(),
+			"stale credential past grace must bounce the zot pod")
+
+		// "Restarted" zot accepts the credential: the workload proceeds.
+		status.Store(http.StatusOK)
+		reconcileN(r, nn, 1)
+		Expect(k8sClient.Get(ctx, nn, &appsv1.Deployment{})).To(Succeed())
 
 		cleanupApp(r, name)
 	})
