@@ -160,6 +160,26 @@ const zhAuth: Record<string, TranslationEntry> = {
     message: "请返回终端继续。",
     description: "Device authorization success page terminal hint",
   },
+  "auth.deviceSuccessWaiting": {
+    message: "正在等待浏览器授权…",
+    description:
+      "Device success page terminal replica: the CLI line shown while it polls for tokens",
+  },
+  "auth.deviceSuccessDone": {
+    message: "授权完成，你已登录。",
+    description:
+      "Device success page terminal replica: the CLI success line (rendered after a ✓ glyph)",
+  },
+  "auth.deviceSuccessClose": {
+    message: "你可以关闭此标签页。",
+    description:
+      "Device success page: follow-up sentence after the return-to-terminal hint",
+  },
+  "auth.deviceSuccessDashboard": {
+    message: "打开仪表盘",
+    description:
+      "Device success page: quiet link to the dashboard home for users staying in the browser",
+  },
 };
 
 export default zhAuth;
