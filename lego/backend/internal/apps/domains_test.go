@@ -1212,6 +1212,164 @@ func TestRESTListDomainsInvalidEnumBadRequest(t *testing.T) {
 	}
 }
 
+// --- w7/m40: GraphQL + MCP list filters & pagination ---
+
+// TestGQLCustomDomainsFilters: verificationStatus / domainType / cursor / limit
+// args on customDomains(id:…) match the REST semantics w7/m38 shipped.
+func TestGQLCustomDomainsFilters(t *testing.T) {
+	// foo.com is apex (pending — no TLS secret); www.foo.com is subdomain+redirect.
+	app := appWithHosts("web", "foo.com", "api.example.com")
+	app.Spec.Host = "web.onbex.co"
+	// api.example.com gets a TLS secret → verified.
+	secret := tlsSecret("default", "web-tls-api.example.com")
+	cl := fakeClient(app, secret)
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}, BaseDomain: "onbex.co"}
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	run := func(args string) []any {
+		t.Helper()
+		res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+			RequestString: `{ customDomains(` + args + `) { name verificationStatus domainType } }`})
+		if len(res.Errors) > 0 {
+			t.Fatalf("customDomains(%s): %v", args, res.Errors)
+		}
+		return res.Data.(map[string]any)["customDomains"].([]any)
+	}
+
+	// verificationStatus filter.
+	verified := run(`id: "web", verificationStatus: "verified"`)
+	if len(verified) != 1 || verified[0].(map[string]any)["name"] != "api.example.com" {
+		t.Errorf("verificationStatus=verified: want [api.example.com], got %v", verified)
+	}
+	pending := run(`id: "web", verificationStatus: "pending"`)
+	if len(pending) != 1 || pending[0].(map[string]any)["name"] != "foo.com" {
+		t.Errorf("verificationStatus=pending: want [foo.com], got %v", pending)
+	}
+
+	// domainType filter.
+	apexes := run(`id: "web", domainType: "apex"`)
+	if len(apexes) != 1 || apexes[0].(map[string]any)["name"] != "foo.com" {
+		t.Errorf("domainType=apex: want [foo.com], got %v", apexes)
+	}
+	subs := run(`id: "web", domainType: "subdomain"`)
+	if len(subs) != 1 || subs[0].(map[string]any)["name"] != "api.example.com" {
+		t.Errorf("domainType=subdomain: want [api.example.com], got %v", subs)
+	}
+
+	// Unknown enum → error.
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `{ customDomains(id: "web", verificationStatus: "VERIFIED") { name } }`})
+	if len(res.Errors) == 0 {
+		t.Error("unknown verificationStatus should return an error")
+	}
+}
+
+// TestGQLCustomDomainsPagination: cursor/limit args page the list the same way
+// REST does, returning all items exactly once in stable order.
+func TestGQLCustomDomainsPagination(t *testing.T) {
+	app := appWithHosts("web",
+		"a.example.com", "b.example.com", "c.example.com", "d.example.com", "e.example.com",
+	)
+	app.Spec.Host = "web.onbex.co"
+	svc, _ := newService(nil, app)
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	var (
+		cursor   string
+		allNames []string
+	)
+	for {
+		args := `id: "web", limit: 2`
+		if cursor != "" {
+			args += `, cursor: "` + cursor + `"`
+		}
+		res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+			RequestString: `{ customDomains(` + args + `) { name } }`})
+		if len(res.Errors) > 0 {
+			t.Fatalf("customDomains page: %v", res.Errors)
+		}
+		page := res.Data.(map[string]any)["customDomains"].([]any)
+		if len(page) == 0 {
+			break
+		}
+		for _, item := range page {
+			name := item.(map[string]any)["name"].(string)
+			allNames = append(allNames, name)
+			cursor = name
+		}
+	}
+	if len(allNames) != 5 {
+		t.Fatalf("pagination walk: got %d names, want 5: %v", len(allNames), allNames)
+	}
+	seen := map[string]bool{}
+	for _, n := range allNames {
+		if seen[n] {
+			t.Errorf("duplicate domain in GraphQL paginated walk: %q", n)
+		}
+		seen[n] = true
+	}
+}
+
+// TestMCPListCustomDomainsFilters: verificationStatus / domainType / cursor /
+// limit args on list_custom_domains match the REST semantics.
+func TestMCPListCustomDomainsFilters(t *testing.T) {
+	app := appWithHosts("web", "foo.com", "api.example.com")
+	app.Spec.Host = "web.onbex.co"
+	secret := tlsSecret("default", "web-tls-api.example.com")
+	cl := fakeClient(app, secret)
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}, BaseDomain: "onbex.co"}
+	call, cleanup := appsMCPClient(t, svc)
+	defer cleanup()
+
+	domainNames := func(res map[string]any) []string {
+		t.Helper()
+		domains, _ := res["customDomains"].([]any)
+		names := make([]string, 0, len(domains))
+		for _, d := range domains {
+			names = append(names, d.(map[string]any)["name"].(string))
+		}
+		return names
+	}
+
+	// verificationStatus filter.
+	got := domainNames(call("list_custom_domains", map[string]any{"serviceId": "web", "verificationStatus": "verified"}))
+	if len(got) != 1 || got[0] != "api.example.com" {
+		t.Errorf("verificationStatus=verified: want [api.example.com], got %v", got)
+	}
+	got = domainNames(call("list_custom_domains", map[string]any{"serviceId": "web", "verificationStatus": "pending"}))
+	if len(got) != 1 || got[0] != "foo.com" {
+		t.Errorf("verificationStatus=pending: want [foo.com], got %v", got)
+	}
+
+	// domainType filter.
+	got = domainNames(call("list_custom_domains", map[string]any{"serviceId": "web", "domainType": "apex"}))
+	if len(got) != 1 || got[0] != "foo.com" {
+		t.Errorf("domainType=apex: want [foo.com], got %v", got)
+	}
+	got = domainNames(call("list_custom_domains", map[string]any{"serviceId": "web", "domainType": "subdomain"}))
+	if len(got) != 1 || got[0] != "api.example.com" {
+		t.Errorf("domainType=subdomain: want [api.example.com], got %v", got)
+	}
+
+	// cursor is present and non-empty in each page's result.
+	res := call("list_custom_domains", map[string]any{"serviceId": "web", "limit": float64(1)})
+	if _, ok := res["cursor"]; !ok || res["cursor"] == "" {
+		t.Errorf("list_custom_domains page: expected non-empty cursor, got %v", res)
+	}
+}
+
 // --- helpers ---
 
 func managedAppWithHosts(name, appID string, hosts ...string) *appv1alpha1.App {
