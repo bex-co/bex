@@ -438,6 +438,115 @@ func TestDeployStackPreservesNonOwnedFieldsOnReapply(t *testing.T) {
 	}
 }
 
+// --- keyvalue Blueprint tests (w2/m41) ---
+
+// kvManifest is a minimal stack with one keyvalue store and a web service that
+// references it via fromService (connectionString + host + port + password).
+const kvManifest = `
+services:
+  - name: cache
+    type: redis
+    plan: free
+  - name: web
+    image: nginx
+    envVars:
+      - key: REDIS_URL
+        fromService: {name: cache, type: redis, property: connectionString}
+      - key: REDIS_HOST
+        fromService: {name: cache, type: redis, property: host}
+      - key: REDIS_PORT
+        fromService: {name: cache, type: redis, property: port}
+      - key: REDIS_PASS
+        fromService: {name: cache, type: redis, property: password}
+`
+
+func TestDeployStackKeyValueProvisionedAndValidationPlan(t *testing.T) {
+	svc, cl := newService(nil)
+	ctx := context.Background()
+	res, err := svc.DeployStack(ctx, DeployRequest{Manifest: kvManifest})
+	if err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	if len(res.KeyValues) != 1 || res.KeyValues[0].Name != "cache" {
+		t.Fatalf("keyValues = %+v, want [{Name:cache}]", res.KeyValues)
+	}
+	kvID := res.KeyValues[0].ID
+	if !strings.HasPrefix(kvID, "red-") {
+		t.Errorf("keyvalue id = %q, want red-...", kvID)
+	}
+	// The keyvalue CR must exist.
+	var kv appv1alpha1.KeyValue
+	if err := cl.Get(ctx, key(kvID), &kv); err != nil {
+		t.Fatalf("keyvalue %s not created: %v", kvID, err)
+	}
+	// The web service must have 4 SecretKeyRef env vars pointing at the KV secret.
+	app := getApp(t, cl, "web")
+	for _, tc := range []struct {
+		key  string
+		want string
+	}{
+		{"REDIS_URL", "uri"},
+		{"REDIS_HOST", "host"},
+		{"REDIS_PORT", "port"},
+		{"REDIS_PASS", "password"},
+	} {
+		e := findEnv(t, app.Spec.Env, tc.key)
+		if e.ValueFrom == nil || e.ValueFrom.SecretKeyRef == nil {
+			t.Errorf("%s: want SecretKeyRef, got %+v", tc.key, e)
+			continue
+		}
+		if e.ValueFrom.SecretKeyRef.Name != kvID {
+			t.Errorf("%s: secret name = %q, want %q", tc.key, e.ValueFrom.SecretKeyRef.Name, kvID)
+		}
+		if e.ValueFrom.SecretKeyRef.Key != tc.want {
+			t.Errorf("%s: secret key = %q, want %q", tc.key, e.ValueFrom.SecretKeyRef.Key, tc.want)
+		}
+	}
+	// Validation plan must include the keyvalue name.
+	st, err := parseStack(DeployRequest{Manifest: kvManifest})
+	if err != nil {
+		t.Fatalf("parseStack: %v", err)
+	}
+	plan := blueprintValidationPlan(st)
+	if len(plan.KeyValue) != 1 || plan.KeyValue[0] != "cache" {
+		t.Errorf("plan.KeyValue = %v, want [cache]", plan.KeyValue)
+	}
+	if plan.TotalActions != 2 { // 1 service + 1 keyvalue
+		t.Errorf("plan.TotalActions = %d, want 2", plan.TotalActions)
+	}
+}
+
+func TestDeployStackFromServiceKeyValueUnknownTarget(t *testing.T) {
+	manifest := `
+services:
+  - name: web
+    image: nginx
+    envVars:
+      - key: REDIS_URL
+        fromService: {name: missing, type: redis, property: connectionString}
+`
+	svc, _ := newService(nil)
+	_, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: manifest})
+	if err == nil || !strings.Contains(err.Error(), "missing") {
+		t.Errorf("unknown keyvalue fromService => error naming the target, got %v", err)
+	}
+}
+
+func TestDeployStackFromServiceKeyValueInvalidProperty(t *testing.T) {
+	bad := []string{
+		// no property
+		"services:\n  - name: cache\n    type: redis\n    plan: free\n  - name: web\n    image: x\n    envVars:\n      - {key: K, fromService: {name: cache, type: redis}}\n",
+		// unsupported property
+		"services:\n  - name: cache\n    type: redis\n    plan: free\n  - name: web\n    image: x\n    envVars:\n      - {key: K, fromService: {name: cache, type: redis, property: user}}\n",
+	}
+	for _, m := range bad {
+		svc, _ := newService(nil)
+		if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: m}); err == nil {
+			t.Errorf("invalid keyvalue fromService => error, got nil for: %s", m)
+		}
+	}
+}
+
 func TestDeployRejectsStackViaSingleServiceDeploy(t *testing.T) {
 	// Deploy is the single-service convenience; a multi-resource manifest must
 	// point at the stack form rather than silently returning the first service.

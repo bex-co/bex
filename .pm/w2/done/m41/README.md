@@ -1,6 +1,6 @@
 # w2 · m41 — Blueprint Key Value resources + keyvalue `fromService` refs
 
-**Worker:** worker2 **Goal:** a `bex.yml`/render.yaml Blueprint with `keyValue` entries validates, syncs, and provisions live Valkey stores, and env vars can reference a key-value connection via `fromService` — closing the Blueprint family's last resource-type hole. **Status:** todo
+**Worker:** worker2 **Goal:** a `bex.yml`/render.yaml Blueprint with `keyValue` entries validates, syncs, and provisions live Valkey stores, and env vars can reference a key-value connection via `fromService` — closing the Blueprint family's last resource-type hole. **Status:** DONE 2026-07-16
 
 ## Tasks (in order)
 

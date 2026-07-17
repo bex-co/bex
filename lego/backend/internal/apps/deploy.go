@@ -374,6 +374,7 @@ type parsedEnvGroup struct {
 type parsedService struct {
 	req           CreateRequest
 	databaseRefs  []bexEnvVar       // resolved after database IDs are known
+	kvRefs        []bexEnvVar       // resolved after keyvalue CR names are known
 	groupLinks    []string          // fromGroup names to link after create
 	seedLiterals  map[string]string // sync:false literals, seeded once
 	seedGenerates []string          // generateValue keys, minted + seeded once
@@ -418,6 +419,16 @@ var dbPropertyKey = map[string]string{
 // resolves because every bex Service is named after its App in one namespace.
 var serviceRefProperty = map[string]bool{
 	"host": true, "port": true, "hostport": true,
+}
+
+// kvPropertyKey maps a render.yaml fromService (type:keyvalue/redis) property to
+// the key in the keyvalue credentials Secret (the operator writes uri/host/port/
+// password/username; docs/ADR021-keyvalue-management.md).
+var kvPropertyKey = map[string]string{
+	"connectionString": "uri",
+	"host":             "host",
+	"port":             "port",
+	"password":         "password",
 }
 
 // Deploy maps a repo + single-service bex.yml onto one Create — the legacy
@@ -480,6 +491,7 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 	ctx = withConfirm(ctx, req.Confirm)
 	res := StackResult{}
 	databaseIDs := make(map[string]string, len(st.databases))
+	kvCRNames := make(map[string]string, len(st.keyValues))
 	// Env groups first: a service's fromGroup links one, which needs the group
 	// (and its projection Secret) to exist before the service is patched.
 	for _, g := range st.envGroups {
@@ -512,10 +524,18 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 			return res, err
 		}
 		res.KeyValues = append(res.KeyValues, v)
+		kvCRNames[kv.name] = v.ID // CR name = Secret name (kv.Status.SecretName = kv.Name)
 	}
 	for _, svc := range st.services {
 		for _, ref := range svc.databaseRefs {
 			ev, err := resolveDatabaseRef(ref, databaseIDs)
+			if err != nil {
+				return res, fmt.Errorf("%w: service %q: %v", core.ErrBadRequest, svc.req.Name, err)
+			}
+			svc.req.Env = append(svc.req.Env, ev)
+		}
+		for _, ref := range svc.kvRefs {
+			ev, err := resolveKeyValueRef(ref, kvCRNames)
 			if err != nil {
 				return res, fmt.Errorf("%w: service %q: %v", core.ErrBadRequest, svc.req.Name, err)
 			}
@@ -821,6 +841,7 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 	// Databases next into the stack (and into the name index services reference).
 	names := make(map[string]bool, len(services)+len(databases))
 	databaseNames := make(map[string]bool, len(databases))
+	kvStackNames := make(map[string]bool)
 	for _, d := range databases {
 		ds, err := parseDatabase(d.value)
 		if err != nil {
@@ -863,6 +884,7 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 				return parsedStack{}, fmt.Errorf("%w: duplicate name %q — every service and database name in a bex.yml must be unique", core.ErrBadRequest, kv.name)
 			}
 			names[kv.name] = true
+			kvStackNames[kv.name] = true
 			kv.grouping = a.grouping
 			kv.ungrouped = a.ungrouped
 			st.keyValues = append(st.keyValues, kv)
@@ -901,6 +923,13 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 					return parsedStack{}, fmt.Errorf("%w: service %q: fromDatabase references unknown database %q (declare it under databases: in the same file)", core.ErrBadRequest, svc.req.Name, r.FromDatabase.Name)
 				}
 				svc.databaseRefs = append(svc.databaseRefs, r)
+				continue
+			}
+			if r.FromService != nil && (r.FromService.Type == "keyvalue" || r.FromService.Type == "redis") {
+				if !kvStackNames[r.FromService.Name] {
+					return parsedStack{}, fmt.Errorf("%w: service %q: fromService references unknown key value %q (declare it under services: with type: keyvalue in the same file)", core.ErrBadRequest, svc.req.Name, r.FromService.Name)
+				}
+				svc.kvRefs = append(svc.kvRefs, r)
 				continue
 			}
 			ev, err := resolveRef(r, names, servicePorts, serviceKnownEnv)
@@ -1231,7 +1260,12 @@ func validateKeyedEnv(e bexEnvVar) error {
 				return fmt.Errorf("fromService sets both envVarKey and property — pick one")
 			}
 		case ref.Type == "keyvalue" || ref.Type == "redis":
-			return fmt.Errorf("fromService to a keyvalue connection is not supported")
+			if ref.Property == "" {
+				return fmt.Errorf("fromService keyvalue needs a property (connectionString, host, port, or password)")
+			}
+			if _, ok := kvPropertyKey[ref.Property]; !ok {
+				return fmt.Errorf("fromService keyvalue property %q is not supported (want connectionString, host, port, or password)", ref.Property)
+			}
 		case ref.Property == "":
 			return fmt.Errorf("fromService needs a property (host, port, hostport) or an envVarKey")
 		case !serviceRefProperty[ref.Property]:
@@ -1264,6 +1298,31 @@ func resolveDatabaseRef(e bexEnvVar, databaseIDs map[string]string) (appv1alpha1
 			SecretKeyRef: &appv1alpha1.SecretKeySelector{
 				Name: databaseID + "-app",
 				Key:  dbPropertyKey[ref.Property],
+			},
+		},
+	}, nil
+}
+
+// resolveKeyValueRef turns a validated fromService (type:keyvalue/redis) entry
+// into a SecretKeyRef pointing at the key-value credentials Secret. kvCRNames
+// maps display name → CR name; the operator names the Secret after the CR
+// (kv.Status.SecretName = kv.Name, docs/ADR021-keyvalue-management.md).
+func resolveKeyValueRef(e bexEnvVar, kvCRNames map[string]string) (appv1alpha1.EnvVar, error) {
+	ref := e.FromService
+	if ref == nil {
+		return appv1alpha1.EnvVar{}, fmt.Errorf("not a keyvalue reference")
+	}
+	crName := kvCRNames[ref.Name]
+	if crName == "" {
+		return appv1alpha1.EnvVar{}, fmt.Errorf("fromService references unresolved key value %q", ref.Name)
+	}
+	key := kvPropertyKey[ref.Property]
+	return appv1alpha1.EnvVar{
+		Name: e.Key,
+		ValueFrom: &appv1alpha1.EnvVarSource{
+			SecretKeyRef: &appv1alpha1.SecretKeySelector{
+				Name: crName,
+				Key:  key,
 			},
 		},
 	}, nil
