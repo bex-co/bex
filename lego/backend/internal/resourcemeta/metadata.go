@@ -93,6 +93,34 @@ type Config struct {
 // configuration as unavailable.
 func (c Config) PlatformRegion() string { return strings.TrimSpace(c.Region) }
 
+// Render dashboard path segments (docs/render-artifacts/dashboard-routes.md).
+// Render's API returns `<dashboard>/{segment}/{id}` dashboardUrl values and its
+// official CLI constructs the same shapes client-side, so bex emits them too;
+// the dashboard serves them as redirect aliases onto its canonical routes.
+const (
+	PostgresDashboardRoute = "d"
+	KeyValueDashboardRoute = "r"
+)
+
+// serviceDashboardRoutes maps Render serviceType enum values to their dashboard
+// path segments.
+var serviceDashboardRoutes = map[string]string{
+	"web_service":       "web",
+	"private_service":   "pserv",
+	"background_worker": "worker",
+	"cron_job":          "cron",
+	"static_site":       "static",
+}
+
+// ServiceDashboardRoute returns the type-aware Render dashboard segment for a
+// service, with Render's own CLI fallback (`web`) for unknown types.
+func ServiceDashboardRoute(serviceType string) string {
+	if segment, ok := serviceDashboardRoutes[serviceType]; ok {
+		return segment
+	}
+	return "web"
+}
+
 // DashboardURL joins a known dashboard route and resource id onto the trusted
 // dashboard origin. Invalid/relative configuration and empty ids are omitted.
 func (c Config) DashboardURL(route, id string) string {

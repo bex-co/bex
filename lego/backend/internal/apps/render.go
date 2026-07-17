@@ -278,7 +278,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 			TargetMemoryPercent: a.Autoscaling.TargetMemoryPercent,
 		}
 	}
-	dashboardURL := metadata.DashboardURL("services", publicID)
+	dashboardURL := metadata.DashboardURL(resourcemeta.ServiceDashboardRoute(svcType), publicID)
 	if dashboardURL == "" {
 		dashboardURL = a.DashboardURL
 	}
