@@ -305,11 +305,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	lifecycle("/resume", s.Resume)
 
 	// IP allowlist (Render's Networking control) — same GET/PUT pair the
-	// postgres feature exposes at /v1/postgres/{id}/ip-allow-list. Not called
-	// by the official CLI's KeyValue commands directly (`keyvalues update
-	// --ip-allow-list` goes through PATCH instead — that flow isn't wired up
-	// on bex's side yet, a separate gap from this REST wire-shape fix), but
-	// {"cidrs": [...]} stays bex-native-plain in the response since nothing
+	// postgres feature exposes at /v1/postgres/{id}/ip-allow-list. The official
+	// CLI's `keyvalues update --ip-allow-list` / `--clear-ip-allow-list` goes
+	// through the PATCH route above instead (KeyValuePatch.IPAllowList, w7/m45),
+	// which writes the same kv.Spec.IPAllowList this PUT does — both converge.
+	// This GET/PUT pair stays for parity with postgres; {"cidrs": [...]} stays
+	// bex-native-plain in the response since nothing
 	// Render-side depends on this endpoint's shape; descriptions travel
 	// through the Render-shaped create/get/list. The PUT body's array elements
 	// decode as either bare CIDR strings or {cidrBlock, description} objects
@@ -374,16 +375,18 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 // red- id is what makes the official CLI's rename land on the right store.
 func (s *Service) handleUpdateKeyValue(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Name   *string `json:"name,omitempty"`
-		Plan   *string `json:"plan,omitempty"`
-		DryRun bool    `json:"dryRun,omitempty"`
+		Name            *string                  `json:"name,omitempty"`
+		Plan            *string                  `json:"plan,omitempty"`
+		MaxmemoryPolicy *string                  `json:"maxmemoryPolicy,omitempty"`
+		IPAllowList     *[]core.IPAllowListEntry `json:"ipAllowList,omitempty"`
+		DryRun          bool                     `json:"dryRun,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeBadRequestBody(w, err)
 		return
 	}
 	id := r.PathValue("id")
-	patch := KeyValuePatch{Name: req.Name, Plan: req.Plan}
+	patch := KeyValuePatch{Name: req.Name, Plan: req.Plan, MaxmemoryPolicy: req.MaxmemoryPolicy, IPAllowList: req.IPAllowList}
 	dryRun := req.DryRun || r.URL.Query().Get("dryRun") == "true"
 	if dryRun {
 		kv, err := s.PreviewUpdateKeyValue(r.Context(), id, patch)

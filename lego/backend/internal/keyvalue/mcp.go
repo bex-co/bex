@@ -85,6 +85,18 @@ type renameKeyValueArgs struct {
 	DryRun     bool   `json:"dryRun,omitempty" jsonschema:"if true, validate and preview the rename without any writes"`
 }
 
+type setKeyValueMaxmemoryPolicyArgs struct {
+	KeyValueID      string `json:"keyValueId" jsonschema:"the key-value id, as returned by list_key_value"`
+	MaxmemoryPolicy string `json:"maxmemoryPolicy" jsonschema:"the eviction policy at the memory budget, e.g. noeviction, allkeys-lru, volatile-ttl"`
+	DryRun          bool   `json:"dryRun,omitempty" jsonschema:"if true, validate and preview without any writes"`
+}
+
+type setKeyValueIPAllowListArgs struct {
+	KeyValueID string                  `json:"keyValueId" jsonschema:"the key-value id, as returned by list_key_value"`
+	CIDRs      []string                `json:"cidrs,omitempty" jsonschema:"CIDR allowlist for the external endpoint; empty list clears it (open to all source IPs)"`
+	Entries    []core.IPAllowListEntry `json:"entries,omitempty" jsonschema:"allowlist entries as {cidrBlock, description} objects; use instead of cidrs to keep per-entry descriptions"`
+}
+
 // listKeyValueResult wraps the array — MCP tool outputs must be JSON objects.
 type listKeyValueResult struct {
 	KeyValues []KeyValueView `json:"keyValues"`
@@ -179,6 +191,28 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			return nil, v, err
 		}
 		v, err := s.UpdateKeyValue(ctx, in.KeyValueID, patch)
+		return nil, v, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_key_value_maxmemory_policy",
+		Description: "Change a managed key-value store's eviction policy (maxmemoryPolicy) after creation, e.g. noeviction (job queue) or allkeys-lru (cache). Underscore or hyphen forms both accepted. Pass dryRun:true to preview without writes.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setKeyValueMaxmemoryPolicyArgs) (*mcp.CallToolResult, KeyValueView, error) {
+		patch := KeyValuePatch{MaxmemoryPolicy: &in.MaxmemoryPolicy}
+		if in.DryRun {
+			v, err := s.PreviewUpdateKeyValue(ctx, in.KeyValueID, patch)
+			return nil, v, err
+		}
+		v, err := s.UpdateKeyValue(ctx, in.KeyValueID, patch)
+		return nil, v, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_key_value_ip_allow_list",
+		Description: "Replace the external-endpoint IP allowlist for a managed key-value store (Render's Networking control). Pass entries as {cidrBlock, description} objects to keep per-entry descriptions, or bare CIDR strings. An empty list clears the allowlist (opens the endpoint to all source IPs). The MCP mirror of the REST PUT .../ip-allow-list and GraphQL setKeyValueIpAllowList.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setKeyValueIPAllowListArgs) (*mcp.CallToolResult, KeyValueView, error) {
+		entries := core.AllowListOrCIDRs(in.Entries, in.CIDRs)
+		v, err := s.SetIPAllowList(ctx, in.KeyValueID, entries)
 		return nil, v, err
 	})
 

@@ -13,7 +13,7 @@ Legend: `[x]` verified working · `[~]` works with a documented limitation · `[
 
 ### Real gaps found this pass (bex-side, worth filing)
 
-- **`keyvalues update --memory-policy` / `--ip-allow-list` / `--clear-ip-allow-list` are silent no-ops** — the CLI sends them, bex-api returns `200` with an empty diff, the field is unchanged. Root cause: `handleUpdateKeyValue` (`lego/backend/internal/keyvalue/rest.go`) and `KeyValuePatch` (`.../service.go`) decode only `name`/`plan`, so those keys are dropped. (A separate `PUT /v1/key-value/{id}/ip-allow-list` route exists, but `update` doesn't call it.)
+- ~~**`keyvalues update --memory-policy` / `--ip-allow-list` / `--clear-ip-allow-list` are silent no-ops**~~ — **fixed (w7/m45)**: `KeyValuePatch` now carries `MaxmemoryPolicy` + `IPAllowList` and `handleUpdateKeyValue` decodes them, so the CLI's update flags mutate the store; GraphQL `setKeyValueMaxmemoryPolicy` + MCP `set_key_value_maxmemory_policy`/`set_key_value_ip_allow_list` bring the programmatic surfaces to parity. (Dashboard memory-policy editing after create is a tracked follow-up.)
 - **`postgres create --database-name` / `--database-user` are silently ignored** — `CreatePostgresRequest` has no such fields; bex server-generates `dpg_<id>` / `dpg_<id>_user`.
 - **`postgres create/update --datadog-api-key` / `--datadog-site` are silently ignored** — no Datadog integration; accepted with `200`, never applied.
 - _(upstream CLI, not bex)_ **`skills list` / `skills update` panic** (nil-pointer) in every non-TTY output mode.
@@ -57,9 +57,9 @@ Legend: `[x]` verified working · `[~]` works with a documented limitation · `[
   - [x] `keyvalues update <id|name>` — resolves by opaque id; core fields apply
     - [x] `--name` — rename; opaque `red-` id stays stable
     - [x] `--plan`
-    - [ ] `--memory-policy` — **silent no-op** (bex-api drops the field; `200`, empty diff)
-    - [ ] `--ip-allow-list` — **silent no-op** (same gap)
-    - [ ] `--clear-ip-allow-list` — **silent no-op** (same gap)
+    - [x] `--memory-policy` — mutates `maxmemoryPolicy` on read-back (fixed w7/m45)
+    - [x] `--ip-allow-list` — replaces the allow-list; CIDR + description return (fixed w7/m45)
+    - [x] `--clear-ip-allow-list` — empties the allow-list (fixed w7/m45)
   - [x] `keyvalues suspend <id|name>`
   - [x] `keyvalues resume <id|name>`
   - [x] `keyvalues delete <id|name>`

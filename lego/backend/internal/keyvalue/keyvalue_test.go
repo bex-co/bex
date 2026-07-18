@@ -334,6 +334,196 @@ func TestKeyValueMaxmemoryPersistence(t *testing.T) {
 	}
 }
 
+// TestKeyValueUpdateMemoryPolicyAndAllowList pins the w7/m45 fix: the official
+// CLI's `keyvalues update --memory-policy` / `--ip-allow-list` /
+// `--clear-ip-allow-list` (all of which ride the PATCH /v1/key-value/{id} route)
+// actually MUTATE the store. Before the fix handleUpdateKeyValue decoded only
+// name/plan, so bex returned 200 with an empty diff and left the field
+// unchanged — a silent no-op the CLI reported as success. Every leg asserts a
+// real read-back change on both the view and the CR spec, so the no-op cannot
+// return; run against the pre-fix code, the very first memory-policy assertion
+// fails.
+func TestKeyValueUpdateMemoryPolicyAndAllowList(t *testing.T) {
+	svc, cl := newService()
+
+	w := serveREST(svc, "POST", "/v1/key-value", `{"name":"mut-kv","plan":"starter"}`)
+	if w.Code != 201 {
+		t.Fatalf("create => 201, got %d: %s", w.Code, w.Body.String())
+	}
+	var created renderKeyValue
+	_ = json.Unmarshal(w.Body.Bytes(), &created)
+	id := created.ID
+
+	patch := func(body string) *httptest.ResponseRecorder {
+		return serveREST(svc, "PATCH", "/v1/key-value/"+id, body)
+	}
+	spec := func() appv1alpha1.KeyValueSpec {
+		var kv appv1alpha1.KeyValue
+		if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: id}, &kv); err != nil {
+			t.Fatalf("get CR: %v", err)
+		}
+		return kv.Spec
+	}
+
+	// --- memory-policy: the underscore wire form the CLI sends mutates view + spec.
+	w = patch(`{"maxmemoryPolicy":"noeviction"}`)
+	if w.Code != 200 {
+		t.Fatalf("update memory-policy => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var v renderKeyValue
+	_ = json.Unmarshal(w.Body.Bytes(), &v)
+	if v.Options.MaxmemoryPolicy != "noeviction" {
+		t.Fatalf("view maxmemoryPolicy = %q, want noeviction (silent no-op regression)", v.Options.MaxmemoryPolicy)
+	}
+	if got := spec().MaxmemoryPolicy; got != "noeviction" {
+		t.Fatalf("spec maxmemoryPolicy = %q, want noeviction", got)
+	}
+	// Render's underscore form normalizes to the hyphenated CRD value on spec.
+	if w := patch(`{"maxmemoryPolicy":"allkeys_lfu"}`); w.Code != 200 {
+		t.Fatalf("update underscore memory-policy => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if got := spec().MaxmemoryPolicy; got != "allkeys-lfu" {
+		t.Fatalf("spec maxmemoryPolicy = %q, want allkeys-lfu", got)
+	}
+	// unknown policy => named 400, no write.
+	if w := patch(`{"maxmemoryPolicy":"evict-everything"}`); w.Code != 400 {
+		t.Fatalf("bad memory-policy => 400, got %d: %s", w.Code, w.Body.String())
+	}
+	if got := spec().MaxmemoryPolicy; got != "allkeys-lfu" {
+		t.Fatalf("rejected memory-policy must not write, spec = %q", got)
+	}
+
+	// --- ip-allow-list replace: CIDR AND description round-trip on the view + spec.
+	w = patch(`{"ipAllowList":[{"cidrBlock":"203.0.113.0/24","description":"hq"}]}`)
+	if w.Code != 200 {
+		t.Fatalf("update ip-allow-list => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	_ = json.Unmarshal(w.Body.Bytes(), &v)
+	if len(v.IPAllowList) != 1 || v.IPAllowList[0].CIDRBlock != "203.0.113.0/24" || v.IPAllowList[0].Description != "hq" {
+		t.Fatalf("view ipAllowList = %v, want [{203.0.113.0/24 hq}]", v.IPAllowList)
+	}
+	if got := core.AllowListFromSpec(spec().IPAllowList); len(got) != 1 || got[0].CIDRBlock != "203.0.113.0/24" || got[0].Description != "hq" {
+		t.Fatalf("spec ipAllowList = %v", got)
+	}
+	// The PATCH route and the dedicated GET/PUT .../ip-allow-list converge on the
+	// same spec field: the CIDR just written via PATCH is visible through GET.
+	gw := serveREST(svc, "GET", "/v1/key-value/"+id+"/ip-allow-list", "")
+	if gw.Code != 200 || !strings.Contains(gw.Body.String(), "203.0.113.0/24") {
+		t.Fatalf("GET ip-allow-list after PATCH = %d %s", gw.Code, gw.Body.String())
+	}
+	// invalid CIDR => 400, unchanged.
+	if w := patch(`{"ipAllowList":[{"cidrBlock":"nonsense"}]}`); w.Code != 400 {
+		t.Fatalf("bad CIDR => 400, got %d: %s", w.Code, w.Body.String())
+	}
+	if got := core.AllowListFromSpec(spec().IPAllowList); len(got) != 1 {
+		t.Fatalf("rejected allowlist must not write, spec = %v", got)
+	}
+
+	// --- clear: the explicit empty array `--clear-ip-allow-list` sends empties it.
+	if w := patch(`{"ipAllowList":[]}`); w.Code != 200 {
+		t.Fatalf("clear ip-allow-list => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if got := spec().IPAllowList; len(got) != 0 {
+		t.Fatalf("cleared allowlist should be empty, spec = %v", got)
+	}
+
+	// --- nil = unchanged: a rename must NOT clear the memory policy set earlier.
+	if w := patch(`{"maxmemoryPolicy":"volatile-ttl"}`); w.Code != 200 {
+		t.Fatalf("set policy => 200, got %d", w.Code)
+	}
+	if w := patch(`{"name":"mut-kv-renamed"}`); w.Code != 200 {
+		t.Fatalf("rename => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if got := spec().MaxmemoryPolicy; got != "volatile-ttl" {
+		t.Fatalf("rename cleared memory-policy (nil-pointer regression), spec = %q", got)
+	}
+}
+
+// TestGraphQLSetKeyValueMaxmemoryPolicy pins the GraphQL mirror of the w7/m45
+// PATCH field: setKeyValueMaxmemoryPolicy mutates the policy through the same
+// UpdateKeyValue core, and an unknown value is a named error, not a silent no-op.
+func TestGraphQLSetKeyValueMaxmemoryPolicy(t *testing.T) {
+	svc, cl := newService()
+	seedKeyValue(t, cl, "gql-mm")
+
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `mutation { setKeyValueMaxmemoryPolicy(id:"gql-mm", maxmemoryPolicy:"noeviction") { id maxmemoryPolicy } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("setKeyValueMaxmemoryPolicy: %v", res.Errors)
+	}
+	obj := res.Data.(map[string]any)["setKeyValueMaxmemoryPolicy"].(map[string]any)
+	if obj["id"] != "gql-mm" || obj["maxmemoryPolicy"] != "noeviction" {
+		t.Fatalf("gql view = %v", obj)
+	}
+	var got appv1alpha1.KeyValue
+	_ = cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "gql-mm"}, &got)
+	if got.Spec.MaxmemoryPolicy != "noeviction" {
+		t.Fatalf("spec maxmemoryPolicy = %q, want noeviction", got.Spec.MaxmemoryPolicy)
+	}
+	bad := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `mutation { setKeyValueMaxmemoryPolicy(id:"gql-mm", maxmemoryPolicy:"evict-everything") { id } }`})
+	if len(bad.Errors) == 0 {
+		t.Fatal("unknown maxmemoryPolicy should error, not silently succeed")
+	}
+}
+
+// TestMCPKeyValueUpdateVerbs pins the two MCP tools w7/m45 adds so the MCP
+// surface reaches parity with REST/GraphQL: set_key_value_maxmemory_policy and
+// set_key_value_ip_allow_list both mutate the CR spec through the shared verbs.
+func TestMCPKeyValueUpdateVerbs(t *testing.T) {
+	svc, cl := newService()
+	seedKeyValue(t, cl, "mcp-upd")
+
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	ctx := context.Background()
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	defer cs.Close()
+
+	call := func(name string, args map[string]any) {
+		res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
+		if err != nil || res.IsError {
+			t.Fatalf("%s: err=%v isErr=%v", name, err, res.IsError)
+		}
+	}
+	spec := func() appv1alpha1.KeyValueSpec {
+		var kv appv1alpha1.KeyValue
+		_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "mcp-upd"}, &kv)
+		return kv.Spec
+	}
+
+	call("set_key_value_maxmemory_policy", map[string]any{"keyValueId": "mcp-upd", "maxmemoryPolicy": "noeviction"})
+	if got := spec().MaxmemoryPolicy; got != "noeviction" {
+		t.Fatalf("MCP maxmemory spec = %q, want noeviction", got)
+	}
+	call("set_key_value_ip_allow_list", map[string]any{
+		"keyValueId": "mcp-upd",
+		"entries":    []map[string]any{{"cidrBlock": "10.0.0.0/8", "description": "net"}},
+	})
+	if got := core.AllowListFromSpec(spec().IPAllowList); len(got) != 1 || got[0].CIDRBlock != "10.0.0.0/8" || got[0].Description != "net" {
+		t.Fatalf("MCP ip-allow-list spec = %v", got)
+	}
+	// empty entries clears it.
+	call("set_key_value_ip_allow_list", map[string]any{"keyValueId": "mcp-upd", "cidrs": []string{}})
+	if got := spec().IPAllowList; len(got) != 0 {
+		t.Fatalf("MCP clear ip-allow-list spec = %v, want empty", got)
+	}
+}
+
 func TestRESTKeyValueConnectionInfo(t *testing.T) {
 	svc, cl := newService()
 	seedKeyValue(t, cl, "conn-kv")

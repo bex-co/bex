@@ -281,6 +281,26 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return s.SetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
 			},
 		},
+		// setKeyValueMaxmemoryPolicy is the GraphQL/MCP mirror of the REST PATCH's
+		// maxmemoryPolicy field (w7/m45): the per-field verb pattern updateKeyValuePlan
+		// / setKeyValueIpAllowList already follow, routed through the shared
+		// UpdateKeyValue so all surfaces normalize + validate the policy identically.
+		"setKeyValueMaxmemoryPolicy": &graphql.Field{
+			Type: keyValueGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":              &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"maxmemoryPolicy": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"dryRun":          &graphql.ArgumentConfig{Type: graphql.Boolean},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				policy := p.Args["maxmemoryPolicy"].(string)
+				patch := KeyValuePatch{MaxmemoryPolicy: &policy}
+				if dryRun, _ := p.Args["dryRun"].(bool); dryRun {
+					return s.PreviewUpdateKeyValue(p.Context, p.Args["id"].(string), patch)
+				}
+				return s.UpdateKeyValue(p.Context, p.Args["id"].(string), patch)
+			},
+		},
 		"renameKeyValue": &graphql.Field{
 			Type: keyValueGQLType,
 			Args: graphql.FieldConfigArgument{
