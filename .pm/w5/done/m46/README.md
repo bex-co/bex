@@ -1,18 +1,18 @@
 # w5 · m46 — Automated PTY verification of official Render CLI `pgcli`
 
-**Worker:** worker5 **Goal:** Make the unmodified official Render CLI's interactive-only `pgcli <dpg-id|name>` command reproducibly verifiable from automation: a bounded pseudo-terminal run must resolve a live bex Postgres by opaque id and by name, obtain its external connection information, invoke `pgcli`, execute a harmless SQL probe, and exit without leaking credentials. **Status:** todo
+**Worker:** worker5 **Goal:** Make the unmodified official Render CLI's interactive-only `pgcli <dpg-id|name>` command reproducibly verifiable from automation: a bounded pseudo-terminal run must resolve a live bex Postgres by opaque id and by name, obtain its external connection information, invoke `pgcli`, execute a harmless SQL probe, and exit without leaking credentials. **Status:** DONE 2026-07-18 — unmodified Render CLI v2.21.0 crossed the real TTY guard, resolved a disposable dev-5 Postgres by id and name, ran the SQL probe through pgcli 4.5.0 twice, and left no fixture or credential-bearing artifact.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Build a bounded, redaction-safe pseudo-terminal runner for interactive Render CLI commands | 45m | — |
-| t002 | Verify `pgcli` id/name resolution and child-process handoff against non-production bex | 45m | t001 |
-| t003 | Drive a real `pgcli` SQL session through the PTY and clean up the disposable database | 45m | t002 |
-| t004 | Publish durable evidence and re-grade the CLI compatibility checklist | 30m | t002, t003 |
-| t005 | Simplify the PTY and `pgcli` verification code (standing) | 20m | t004 |
-| t006 | Add regression coverage for TTY detection, timeouts, handoff, and secret redaction (standing) | 30m | t004 |
-| t007 | Closeout (standing) | 15m | t005, t006 |
+| t001 | Build a bounded, redaction-safe pseudo-terminal runner for interactive Render CLI commands — **DONE** | 45m | — |
+| t002 | Verify `pgcli` id/name resolution and child-process handoff against non-production bex — **DONE** | 45m | t001 |
+| t003 | Drive a real `pgcli` SQL session through the PTY and clean up the disposable database — **DONE** | 45m | t002 |
+| t004 | Publish durable evidence and re-grade the CLI compatibility checklist — **DONE** | 30m | t002, t003 |
+| t005 | Simplify the PTY and `pgcli` verification code (standing) — **DONE** | 20m | t004 |
+| t006 | Add regression coverage for TTY detection, timeouts, handoff, and secret redaction (standing) — **DONE** | 30m | t004 |
+| t007 | Closeout (standing) — **DONE** | 15m | t005, t006 |
 
 ## Definition of done
 
@@ -23,6 +23,16 @@ A non-production verification provisions or selects a disposable public bex Post
 A second run replaces the shim with an installed real `pgcli`, sends `SELECT 1 AS bex_pgcli_probe;` followed by `\q` through the PTY, observes the expected value and a zero exit by both id and name, and removes every disposable database, local config, shim, transcript, and credential-bearing temporary file on success or failure. The evidence artifact records the CLI and `pgcli` versions, non-production target, redacted request/child-process sequence, negative guard control, id/name results, and cleanup proof. Only then does `docs/cli-compatibility-checklist.md` change the `pgcli` row from `[ ]` to `[x]`; partial proof leaves the row and milestone open with the exact failed gate named.
 
 The PTY runner and verifier have automated failure-path coverage for non-TTY execution, missing client binaries, timeout/hang, empty external connection information, malformed or unexpected child arguments, non-zero child exit, and planted-secret redaction. Markdown formatting, script syntax checks, focused tests, and `git diff --check` pass.
+
+## Completion record
+
+- **Live proof:** on the non-production local CAPD `dev-5` target, the pinned, unmodified Render CLI v2.21.0 passed its official piped non-TTY rejection and then crossed the same guard through the new PTY. A verifier-created public Free Postgres resolved to one immutable `dpg-…` identity by id and exact name; real pgcli 4.5.0 executed `SELECT 1 AS bex_pgcli_probe;`, observed value `1`, accepted `\q`, and exited zero on both paths.
+- **Handoff and redaction:** the official CLI requested connection information only after target resolution and passed `--csv -q` in order. The shim retained only allow-listed host/database/TLS/id/label/flag facts. The PTY retained a bounded in-memory marker tail and emitted no raw terminal bytes. A planted bearer/password/URI value was absent from every captured output and temporary artifact on happy and failure paths.
+- **Failure coverage:** deterministic runs through the official client cover unknown and ambiguous names before child invocation, empty and malformed external URIs, unexpected flag order, a missing command, a missing real client, exit 23/42 propagation, a hung child, a surviving descendant, an exited PTY leader, and forced `CI`/`TERM=dumb`/`RENDER_OUTPUT` inputs. Every wait has an explicit deadline.
+- **Cleanup:** verifier cleanup requires an actual HTTP 404 after deleting a created Database. The live Database, temporary SNI proxy and port-forwards, short-lived API key/identity files, PTY/pgcli configs, wrappers, and scheduling/domain overrides were removed; a final cluster audit found no verifier Database or listener and confirmed the original node taints plus `BEX_DB_DOMAIN=db.bex.co` were restored. Existing dev-5 fixtures were not mutated.
+- **Evidence and grade:** [`docs/render-artifacts/pgcli-cli.md`](../../../../docs/render-artifacts/pgcli-cli.md) records the reproducible safe proof, and the CLI checklist's `pgcli [id|name]` row is now `[x]`. ADR018 had no stale `pgcli` claim to update.
+- **Quality gates:** Python AST parsing, `bash -n`, `bash scripts/render-cli-pty.test.sh`, `bash scripts/pgcli-compat-verify.test.sh`, Prettier 3.4.2, and `git diff --check` pass. The live run used the same final SQL/handoff path; subsequent changes only tightened teardown, exact-version validation, and config isolation and were rerun through both deterministic suites.
+- **Evidence boundary:** the live namespace exercised a missing-name rejection; duplicate display names are not a normal disposable fixture state, so ambiguous-name rejection is proven with the unmodified CLI against the deterministic API fixture. This is a test-layer boundary, not a shipped compatibility gap.
 
 ## Source + Goal linkage
 

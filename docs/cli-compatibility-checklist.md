@@ -200,7 +200,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
 ## Session
 
 - [ ] **`kv-cli [id|name]`** — automated PTY harness reaches the interactive CLI without a human TTY; full public `rediss://` id/name acceptance is pending (`scripts/cli-compat.sh kv-cli-verify`)
-- [ ] **`pgcli [id|name]`** — interactive-only client guard; not verifiable headlessly
+- [x] **`pgcli [id|name]`** — a bounded pseudo-terminal crosses the real interactive-only guard, resolves one disposable public bex Postgres by opaque id and exact name, preserves passthrough flags, and runs `SELECT 1 AS bex_pgcli_probe;` through real pgcli 4.5.0 twice; the negative piped guard, redacted shim handoff, SQL markers, and cleanup proof are recorded in [the pgcli CLI artifact](render-artifacts/pgcli-cli.md)
 - [~] **`psql [id|name]`** — reaches bex, resolves the target by id **and** name, then stops at the Render-parity IP-allow-list gate (no `BEX_DB_DOMAIN`/allow-list in dev-9 — the same block Render imposes)
   - [~] `-c, --command <SQL>` — flag parses, required in non-TTY, drives the full path to the same gate
 - [~] **`ssh [serviceID|serviceName|instanceID]`** — command present and parses; interactive-only + no SSH gateway in dev-9, so not exercisable headlessly here (the running-instance path has separate production evidence, [ADR035](ADR035-ssh.md))

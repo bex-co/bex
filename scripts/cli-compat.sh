@@ -23,6 +23,7 @@
 # Usage:
 #   scripts/cli-compat.sh <render-cli-args...>
 #   scripts/cli-compat.sh verify        # re-run the ✅ rows, exit non-zero on regression (t006)
+#   scripts/cli-compat.sh pgcli-verify  # headless PTY + disposable live Postgres acceptance
 #   scripts/cli-compat.sh registry-credential-verify
 #   BEX_KV_VERIFY_ALLOW_CIDR=203.0.113.4/32 scripts/cli-compat.sh kv-cli-verify
 #
@@ -62,6 +63,13 @@ export RENDER_API_KEY="$TOKEN"
 export HYDRA_PUBLIC_URL # verify.sh's logout leg re-exchanges a throwaway key here
 export RENDER_WORKSPACE="${CLI_COMPAT_TENANT_ID:-}"
 export CLI_COMPAT_EMAIL="${CLI_COMPAT_EMAIL:-}" # the key-minting user's email (verify.sh's whoami row)
+
+if [ "${1:-}" = "pgcli-verify" ]; then
+  export BEX_PGCLI_TARGET_CLASS="${BEX_PGCLI_TARGET_CLASS:-local CAPD dev-9}"
+  export BEX_PGCLI_NON_PRODUCTION="${BEX_PGCLI_NON_PRODUCTION:-1}"
+  exec bash scripts/pgcli-compat-verify.sh
+fi
+
 export RENDER_CLI_CONFIG_PATH="${RENDER_CLI_CONFIG_PATH:-$(mktemp -d)/cli.yaml}"
 
 if [ "${1:-}" = "verify" ]; then
