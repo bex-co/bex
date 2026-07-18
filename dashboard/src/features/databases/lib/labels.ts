@@ -11,5 +11,6 @@ export const STATUS_LABEL: Record<DatabaseStatusKey, keyof typeof en> = {
   creating: "databases.statusCreating",
   upgrading: "databases.statusUpgrading",
   unavailable: "databases.statusUnavailable",
+  suspended: "databases.statusSuspended",
   unknown: "databases.statusUnknown",
 };

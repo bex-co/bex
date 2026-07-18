@@ -140,7 +140,7 @@ function ManageResourcesForm({
             items={databases.map((d) => ({
               id: d.id,
               name: d.name,
-              badge: <DatabaseStatusBadge status={d.status} />,
+              badge: <DatabaseStatusBadge database={d} />,
             }))}
             initialChecked={environment.databaseIds}
             busy={databasesBusyId === environment.id}
@@ -156,7 +156,7 @@ function ManageResourcesForm({
             items={keyValues.map((k) => ({
               id: k.id,
               name: k.name,
-              badge: <KeyValueStatusBadge status={k.status} />,
+              badge: <KeyValueStatusBadge keyValue={k} />,
             }))}
             initialChecked={environment.keyValueIds}
             busy={keyValuesBusyId === environment.id}

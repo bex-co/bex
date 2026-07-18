@@ -71,22 +71,29 @@ describe("toKeyValueViews", () => {
 
 describe("deriveStatus", () => {
   it("maps Render's status enum to a badge key + variant, case-insensitively", () => {
-    expect(deriveStatus({ status: "available" })).toEqual({
+    expect(deriveStatus({ status: "available", suspended: false })).toEqual({
       key: "available",
       variant: "default",
     });
-    expect(deriveStatus({ status: "Creating" })).toEqual({
+    expect(deriveStatus({ status: "Creating", suspended: false })).toEqual({
       key: "creating",
       variant: "outline",
     });
-    expect(deriveStatus({ status: "unavailable" })).toEqual({
+    expect(deriveStatus({ status: "unavailable", suspended: false })).toEqual({
       key: "unavailable",
       variant: "destructive",
     });
   });
 
+  it("lets suspension win over the status enum — a suspended store still reports status available", () => {
+    expect(deriveStatus({ status: "available", suspended: true })).toEqual({
+      key: "suspended",
+      variant: "secondary",
+    });
+  });
+
   it("falls back to unknown for an unrecognized status", () => {
-    expect(deriveStatus({ status: "weird" })).toEqual({
+    expect(deriveStatus({ status: "weird", suspended: false })).toEqual({
       key: "unknown",
       variant: "outline",
     });
@@ -102,13 +109,14 @@ describe("isConverging", () => {
 });
 
 describe("computeStats", () => {
-  it("counts total / available / creating", () => {
+  it("counts total / available / creating, excluding suspended from available", () => {
     const stats = computeStats([
-      { status: "available" },
-      { status: "available" },
-      { status: "creating" },
-      { status: "unavailable" },
+      { status: "available", suspended: false },
+      { status: "available", suspended: false },
+      { status: "available", suspended: true },
+      { status: "creating", suspended: false },
+      { status: "unavailable", suspended: false },
     ] as unknown as Parameters<typeof computeStats>[0]);
-    expect(stats).toEqual({ total: 4, available: 2, creating: 1 });
+    expect(stats).toEqual({ total: 5, available: 2, creating: 1 });
   });
 });

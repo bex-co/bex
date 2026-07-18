@@ -92,16 +92,30 @@ const STATUS_MAP: Record<string, DatabaseStatus> = {
   unavailable: { key: "unavailable", variant: "destructive" },
 };
 
-/** Resolve a database's display status from Render's status enum. */
-export function deriveStatus(d: { status: string }): DatabaseStatus {
-  const status = STATUS_MAP[d.status.toLowerCase()];
-  if (status) return status;
-  return { key: "unknown", variant: "outline" };
+function fromStatus(status: string): DatabaseStatus {
+  return (
+    STATUS_MAP[status.toLowerCase()] ?? { key: "unknown", variant: "outline" }
+  );
+}
+
+/**
+ * Resolve a database's display status. Suspension wins over the status enum —
+ * a suspended Postgres still reports status "available" (Render keeps `status`
+ * and `suspended` as separate fields; the operator holds phase Ready while
+ * hibernated), but "suspended" is the state the user asked for and acts on, so
+ * it's what the badge shows (mirrors services' deriveStatus).
+ */
+export function deriveStatus(d: {
+  status: string;
+  suspended: string;
+}): DatabaseStatus {
+  if (isSuspended(d)) return { key: "suspended", variant: "secondary" };
+  return fromStatus(d.status);
 }
 
 /** True while the database is still converging (used to poll the list live). */
 export function isConverging(d: { status: string }): boolean {
-  const key = deriveStatus(d).key;
+  const key = fromStatus(d.status).key;
   return key === "creating" || key === "upgrading";
 }
 

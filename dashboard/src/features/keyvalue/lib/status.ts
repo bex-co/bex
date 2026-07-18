@@ -60,16 +60,30 @@ const STATUS_MAP: Record<string, KeyValueStatus> = {
   unavailable: { key: "unavailable", variant: "destructive" },
 };
 
-/** Resolve a Key Value store's display status from Render's status enum. */
-export function deriveStatus(d: { status: string }): KeyValueStatus {
-  const status = STATUS_MAP[d.status.toLowerCase()];
-  if (status) return status;
-  return { key: "unknown", variant: "outline" };
+function fromStatus(status: string): KeyValueStatus {
+  return (
+    STATUS_MAP[status.toLowerCase()] ?? { key: "unknown", variant: "outline" }
+  );
+}
+
+/**
+ * Resolve a Key Value store's display status. Suspension wins over the status
+ * enum — a suspended store still reports status "available" (Render keeps
+ * `status` and `suspended` as separate fields), but "suspended" is the state
+ * the user asked for and acts on, so it's what the badge shows (mirrors
+ * services' and databases' deriveStatus).
+ */
+export function deriveStatus(d: {
+  status: string;
+  suspended: boolean;
+}): KeyValueStatus {
+  if (d.suspended) return { key: "suspended", variant: "secondary" };
+  return fromStatus(d.status);
 }
 
 /** True while the store is still converging (used to poll the list/detail live). */
 export function isConverging(d: { status: string }): boolean {
-  return deriveStatus(d).key === "creating";
+  return fromStatus(d.status).key === "creating";
 }
 
 /** Stat-tile counts computed from the live list (total / available / creating). */

@@ -64,6 +64,11 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "不可用",
     description: "Database status badge (provisioning failed)",
   },
+  "databases.statusSuspended": {
+    message: "已暂停",
+    description:
+      "Database status badge (hibernated; suspension wins over the status enum)",
+  },
   "databases.statusUnknown": {
     message: "未知",
     description: "Database status badge for an unrecognized status",

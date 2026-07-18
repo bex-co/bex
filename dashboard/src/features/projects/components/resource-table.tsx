@@ -286,9 +286,9 @@ function ResourceStatus({ row }: { row: ResourceRow }) {
   if (row.kind === "service" && row.service)
     return <ServiceStatusBadge service={row.service} />;
   if (row.kind === "database" && row.database)
-    return <DatabaseStatusBadge status={row.database.status} />;
+    return <DatabaseStatusBadge database={row.database} />;
   if (row.kind === "keyvalue" && row.keyValue)
-    return <KeyValueStatusBadge status={row.keyValue.status} />;
+    return <KeyValueStatusBadge keyValue={row.keyValue} />;
   return <UnknownValue />;
 }
 

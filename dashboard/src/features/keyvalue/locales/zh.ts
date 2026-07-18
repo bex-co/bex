@@ -56,6 +56,11 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "不可用",
     description: "Key Value status badge (provisioning failed)",
   },
+  "keyvalue.statusSuspended": {
+    message: "已暂停",
+    description:
+      "Key Value status badge (hibernated; suspension wins over the status enum)",
+  },
   "keyvalue.statusUnknown": {
     message: "未知",
     description: "Key Value status badge for an unrecognized status",

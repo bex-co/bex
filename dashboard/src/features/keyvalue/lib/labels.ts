@@ -10,5 +10,6 @@ export const STATUS_LABEL: Record<KeyValueStatusKey, keyof typeof en> = {
   available: "keyvalue.statusAvailable",
   creating: "keyvalue.statusCreating",
   unavailable: "keyvalue.statusUnavailable",
+  suspended: "keyvalue.statusSuspended",
   unknown: "keyvalue.statusUnknown",
 };
