@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -23,6 +24,7 @@ import {
   type LineSeriesInput,
 } from "@/features/metrics/components/svg-line-chart";
 import { MetricSection } from "@/features/metrics/components/metric-section";
+import { MetricUnavailable } from "@/features/metrics/components/metric-unavailable";
 import { seriesColor } from "@/features/metrics/components/chart-layout";
 import {
   useMetrics,
@@ -261,19 +263,40 @@ export function NetworkMetricsCard({
         <MetricSection
           title={t("metrics.outboundBandwidth")}
           result={bandwidth}
+          headerExtra={
+            bandwidth.degradedSources.length > 0 ? (
+              <BandwidthDegradedBadge sources={bandwidth.degradedSources} />
+            ) : undefined
+          }
         >
-          <SvgLineChart
-            unit={bandwidth.series[0]?.unit ?? "bytes"}
-            series={bandwidthSeries}
-            markers={markers}
-            markersServiceId={resource}
-          />
+          {bandwidth.error ? (
+            // A real query error is not "No data in range" — the w1/m50
+            // masking fix: the transport/server failure gets its own state.
+            <MetricUnavailable message={t("metrics.bandwidthError")} />
+          ) : (
+            <SvgLineChart
+              unit={bandwidth.series[0]?.unit ?? "bytes"}
+              series={bandwidthSeries}
+              markers={markers}
+              markersServiceId={resource}
+            />
+          )}
         </MetricSection>
         {monthToDate.egressBandwidthMB != null && (
-          <p className="text-sm text-muted-foreground">
+          <p
+            className="text-sm text-muted-foreground"
+            title={
+              monthToDate.degradedSources.length > 0
+                ? t("metrics.bandwidthDegradedDetail", {
+                    sources: monthToDate.degradedSources.join(", "),
+                  })
+                : undefined
+            }
+          >
             {t("metrics.monthToDateBandwidth", {
               amount: formatMegabytes(monthToDate.egressBandwidthMB),
             })}
+            {monthToDate.degradedSources.length > 0 ? " *" : null}
           </p>
         )}
       </CardContent>
@@ -284,4 +307,25 @@ export function NetworkMetricsCard({
 /** The grouped series' display name: its status code or method label. */
 function groupLabel(labels: Record<string, string>): string {
   return labels["code"] ?? labels["method"] ?? "";
+}
+
+/**
+ * The bandwidth degradation annotation (w1/m50): an egress source's health
+ * product failed inside the window, so the chart still renders but may
+ * undercount around the gap. Named sources come from bex-api's
+ * degraded_sources label (raw tokens: http/websocket/direct).
+ */
+function BandwidthDegradedBadge({ sources }: { sources: string[] }) {
+  const { t } = useTranslations();
+  return (
+    <span
+      className="text-muted-foreground flex items-center gap-1 text-xs"
+      title={t("metrics.bandwidthDegradedDetail", {
+        sources: sources.join(", "),
+      })}
+    >
+      <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+      {t("metrics.bandwidthDegraded")}
+    </span>
+  );
 }

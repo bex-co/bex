@@ -100,6 +100,13 @@ func parsePodMetrics(raw []byte) ([]PodResourceUsage, error) {
 
 // --- Request metrics: Traefik scraped by Prometheus ---
 
+// LabelDegradedSources is the reserved series label carrying the comma-joined
+// egress sources whose health product failed inside the queried window
+// (ADR023 § Observability reads vs billing reads). It rides the existing
+// labels array so REST/GraphQL/MCP expose it without a schema change; absent
+// means every applicable source was healthy for the whole window.
+const LabelDegradedSources = "degraded_sources"
+
 // NewPrometheusRequestSource returns the production RequestMetricsSource, backed
 // by a Prometheus range query over Traefik's metrics.
 func NewPrometheusRequestSource(base string, hc *http.Client) RequestMetricsSource {
@@ -108,7 +115,14 @@ func NewPrometheusRequestSource(base string, hc *http.Client) RequestMetricsSour
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req RequestMetricsRequest) ([]MetricSeries, error) {
+		var degraded []string
 		if req.Metric == MetricBandwidth {
+			// Interactive reads are best-effort (ADR023 § Observability reads
+			// vs billing reads, w1/m50): a source failing its health product
+			// (up gap, in-window counter reset, counter loss) no longer
+			// rejects the whole window — the series is served and the failing
+			// sources travel as the degraded_sources label so clients can
+			// annotate. The usage rollup keeps the strict gate.
 			seconds := int64(req.End.Sub(req.Start) / time.Second)
 			for _, spec := range egressquery.App(req.AppID, req.Routers, req.Direct) {
 				health, err := egressquery.Instant(ctx, hc, base, egressquery.Health(spec, seconds), req.End)
@@ -116,7 +130,7 @@ func NewPrometheusRequestSource(base string, hc *http.Client) RequestMetricsSour
 					return nil, err
 				}
 				if health < 1 {
-					return nil, fmt.Errorf("egress source %s unhealthy", spec.Source)
+					degraded = append(degraded, string(spec.Source))
 				}
 			}
 		}
@@ -124,7 +138,19 @@ func NewPrometheusRequestSource(base string, hc *http.Client) RequestMetricsSour
 		if query == "" {
 			return []MetricSeries{}, nil
 		}
-		return promQueryRange(ctx, hc, base, query, req.Start, req.End, stepSeconds(req.Resolution))
+		series, err := promQueryRange(ctx, hc, base, query, req.Start, req.End, stepSeconds(req.Resolution))
+		if err != nil {
+			return nil, err
+		}
+		if len(degraded) > 0 {
+			for i := range series {
+				if series[i].Labels == nil {
+					series[i].Labels = map[string]string{}
+				}
+				series[i].Labels[LabelDegradedSources] = strings.Join(degraded, ",")
+			}
+		}
+		return series, nil
 	}
 }
 
@@ -301,29 +327,33 @@ type promRangeResponse struct {
 // --- Month-to-date bandwidth: a Prometheus increase() instant query ---
 
 // NewMonthToDateBandwidthSource returns the production composed App egress
-// source. It validates every applicable source before summing its category.
+// source. Best-effort (ADR023 § Observability reads vs billing reads, w1/m50):
+// a source failing its health product still contributes whatever its counters
+// recorded — chart-grade, not billing-grade — and is named in the returned
+// degraded list instead of rejecting the whole month.
 func NewMonthToDateBandwidthSource(base string, hc *http.Client) MonthToDateBandwidthSource {
 	if hc == nil {
 		hc = http.DefaultClient
 	}
 	base = strings.TrimRight(base, "/")
-	return func(ctx context.Context, appID string, routers []string, direct bool, since, at time.Time) (BandwidthBytes, error) {
+	return func(ctx context.Context, appID string, routers []string, direct bool, since, at time.Time) (BandwidthBytes, []string, error) {
 		elapsed := at.Sub(since)
 		if elapsed <= 0 {
-			return BandwidthBytes{}, nil
+			return BandwidthBytes{}, nil, nil
 		}
 		var out BandwidthBytes
+		var degraded []string
 		for _, spec := range egressquery.App(appID, routers, direct) {
 			health, err := egressquery.Instant(ctx, hc, base, egressquery.Health(spec, int64(elapsed/time.Second)), at)
-			if err != nil || health < 1 {
-				if err == nil {
-					err = fmt.Errorf("egress source %s unhealthy", spec.Source)
-				}
-				return BandwidthBytes{}, err
+			if err != nil {
+				return BandwidthBytes{}, nil, err
+			}
+			if health < 1 {
+				degraded = append(degraded, string(spec.Source))
 			}
 			value, err := egressquery.Instant(ctx, hc, base, egressquery.Increase(spec, int64(elapsed/time.Second)), at)
 			if err != nil {
-				return BandwidthBytes{}, err
+				return BandwidthBytes{}, nil, err
 			}
 			switch spec.Source {
 			case egressquery.HTTP:
@@ -334,7 +364,7 @@ func NewMonthToDateBandwidthSource(base string, hc *http.Client) MonthToDateBand
 				out.WebSocket += value
 			}
 		}
-		return out, nil
+		return out, degraded, nil
 	}
 }
 

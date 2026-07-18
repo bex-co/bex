@@ -143,6 +143,22 @@ const enMetrics: Record<string, TranslationEntry> = {
     description:
       "Footer under the Outbound Bandwidth chart, showing month-to-date egress",
   },
+  "metrics.bandwidthDegraded": {
+    message: "Partial data",
+    description:
+      "Badge on the Outbound Bandwidth chart when an egress source's health check failed inside the window (w1/m50)",
+  },
+  "metrics.bandwidthDegradedDetail": {
+    message:
+      "The {sources} egress source was unhealthy for part of this window — bandwidth may be undercounted.",
+    description:
+      "Tooltip expanding the Partial data badge; {sources} is the comma-joined raw source tokens (http/websocket/direct)",
+  },
+  "metrics.bandwidthError": {
+    message: "Couldn't load bandwidth — try refreshing",
+    description:
+      "Bandwidth chart body when the query itself failed (network/server error, not an empty window)",
+  },
   "metrics.sourceNotConfigured": {
     message: "Metrics source not configured",
     description: "Shown when bex-api reports no metrics backend is wired up",

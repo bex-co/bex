@@ -52,6 +52,14 @@ export interface UseMetricsResult {
   unavailable: boolean;
   /** Any other error (network, auth, ...). */
   error: Error | undefined;
+  /**
+   * Egress sources whose health product failed inside the window — bex-api's
+   * `degraded_sources` series label on BANDWIDTH (w1/m50, ADR023 §
+   * Observability reads vs billing reads). Empty for healthy windows and for
+   * every non-bandwidth metric. The series still carries data; it may be
+   * undercounted around the gap.
+   */
+  degradedSources: string[];
 }
 
 /**
@@ -116,10 +124,18 @@ export function useMetrics(
     [data],
   );
 
+  const degradedSources = useMemo(() => {
+    const joined = series.find((s) => s.labels["degraded_sources"])?.labels[
+      "degraded_sources"
+    ];
+    return joined ? joined.split(",") : [];
+  }, [series]);
+
   return {
     series,
     loading,
     unavailable,
     error: unavailable ? undefined : error,
+    degradedSources,
   };
 }

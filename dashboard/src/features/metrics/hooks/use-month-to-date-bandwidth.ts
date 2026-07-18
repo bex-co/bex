@@ -4,6 +4,9 @@ import { MonthToDateBandwidthDocument } from "@/graphql/definitions";
 export interface UseMonthToDateBandwidthResult {
   /** Composed public outbound bytes across every applicable source. */
   egressBandwidthMB: number | null;
+  /** Sources whose health product failed inside the month window (w1/m50) —
+   * the MB figure still includes what they recorded. */
+  degradedSources: string[];
   loading: boolean;
   error: Error | undefined;
 }
@@ -25,6 +28,9 @@ export function useMonthToDateBandwidth(
 
   return {
     egressBandwidthMB: data?.monthToDateBandwidth?.egressBandwidthMB ?? null,
+    degradedSources: (data?.monthToDateBandwidth?.degradedSources ?? []).filter(
+      (s): s is string => !!s,
+    ),
     loading,
     error,
   };

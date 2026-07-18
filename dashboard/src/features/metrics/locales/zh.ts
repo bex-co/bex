@@ -143,6 +143,21 @@ const zhMetrics: Record<string, TranslationEntry> = {
     description:
       "Footer under the Outbound Bandwidth chart, showing month-to-date egress",
   },
+  "metrics.bandwidthDegraded": {
+    message: "部分数据",
+    description:
+      "Badge on the Outbound Bandwidth chart when an egress source's health check failed inside the window (w1/m50)",
+  },
+  "metrics.bandwidthDegradedDetail": {
+    message: "{sources} 出口数据源在此时间窗口内部分时间不健康——带宽可能被低估。",
+    description:
+      "Tooltip expanding the Partial data badge; {sources} is the comma-joined raw source tokens (http/websocket/direct)",
+  },
+  "metrics.bandwidthError": {
+    message: "无法加载带宽数据——请尝试刷新",
+    description:
+      "Bandwidth chart body when the query itself failed (network/server error, not an empty window)",
+  },
   "metrics.sourceNotConfigured": {
     message: "未配置指标数据源",
     description: "Shown when bex-api reports no metrics backend is wired up",

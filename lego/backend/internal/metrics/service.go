@@ -193,8 +193,10 @@ type BandwidthBytes struct {
 }
 
 // MonthToDateBandwidthSource returns all applicable App egress categories in
-// bytes since the given time. Any required-source failure rejects the result.
-type MonthToDateBandwidthSource func(ctx context.Context, appID string, routers []string, direct bool, since, at time.Time) (BandwidthBytes, error)
+// bytes since the given time, plus the names of sources whose health product
+// failed inside the window (best-effort — ADR023 § Observability reads vs
+// billing reads, w1/m50; only a transport failure rejects the result).
+type MonthToDateBandwidthSource func(ctx context.Context, appID string, routers []string, direct bool, since, at time.Time) (BandwidthBytes, []string, error)
 
 // MetricsFilterValuesSource discovers a Prometheus label's observed values (e.g.
 // the `code` label backing STATUS_CODE) for an App's request metrics. nil =>
@@ -609,6 +611,10 @@ type MonthToDateBandwidth struct {
 	NATEgressBandwidthMB         float64
 	PrivateLinkEgressBandwidthMB float64
 	WebsocketEgressBandwidthMB   float64
+	// DegradedSources names the egress sources whose health product failed
+	// inside the month window (bex extension; empty = fully healthy). The
+	// figures above still include whatever those sources recorded.
+	DegradedSources []string
 }
 
 // MonthToDateBandwidth returns the App's month-to-date bandwidth usage. The query
@@ -628,7 +634,7 @@ func (s *Service) MonthToDateBandwidth(ctx context.Context, app string) (MonthTo
 	}
 	now := s.Now().UTC()
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
-	bytesByCategory, err := s.MonthToDateBandwidthSource(
+	bytesByCategory, degraded, err := s.MonthToDateBandwidthSource(
 		ctx, appResourceID(resolved, app), routers,
 		resolved.Spec.Type != appv1alpha1.TypeStaticSite, monthStart, now,
 	)
@@ -644,6 +650,7 @@ func (s *Service) MonthToDateBandwidth(ctx context.Context, app string) (MonthTo
 		HTTPEgressBandwidthMB:      httpMB,
 		NATEgressBandwidthMB:       natMB,
 		WebsocketEgressBandwidthMB: wsMB,
+		DegradedSources:            degraded,
 	}, nil
 }
 

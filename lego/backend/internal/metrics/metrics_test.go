@@ -598,11 +598,11 @@ func TestMonthToDateBandwidthReportsRealCategoriesAndExpandedTotal(t *testing.T)
 	app.Labels = map[string]string{core.LabelAppID: "srv-web"}
 	app.Spec.Host = "web.onbex.co"
 	svc := newService(nil, nil, app, ingressFor("web", "web", "web.onbex.co"))
-	svc.MonthToDateBandwidthSource = func(_ context.Context, appID string, routers []string, direct bool, _, _ time.Time) (BandwidthBytes, error) {
+	svc.MonthToDateBandwidthSource = func(_ context.Context, appID string, routers []string, direct bool, _, _ time.Time) (BandwidthBytes, []string, error) {
 		if appID != "srv-web" || len(routers) != 1 || !direct {
 			t.Fatalf("source identity/applicability: id=%q routers=%v direct=%v", appID, routers, direct)
 		}
-		return BandwidthBytes{HTTP: 1 << 20, NAT: 2 << 20, WebSocket: 3 << 20}, nil
+		return BandwidthBytes{HTTP: 1 << 20, NAT: 2 << 20, WebSocket: 3 << 20}, []string{"direct"}, nil
 	}
 	got, err := svc.MonthToDateBandwidth(context.Background(), "web")
 	if err != nil {
@@ -610,6 +610,11 @@ func TestMonthToDateBandwidthReportsRealCategoriesAndExpandedTotal(t *testing.T)
 	}
 	if got.HTTPEgressBandwidthMB != 1 || got.NATEgressBandwidthMB != 2 || got.WebsocketEgressBandwidthMB != 3 || got.EgressBandwidthMB != 6 || got.PrivateLinkEgressBandwidthMB != 0 {
 		t.Fatalf("month bandwidth categories: %+v", got)
+	}
+	// The degraded list passes through as data — best-effort, never an error
+	// (w1/m50, ADR023 § Observability reads vs billing reads).
+	if len(got.DegradedSources) != 1 || got.DegradedSources[0] != "direct" {
+		t.Fatalf("degraded sources: %+v", got.DegradedSources)
 	}
 }
 
@@ -879,10 +884,13 @@ func TestMonthToDateBandwidthSourceUsesExactRouterCounter(t *testing.T) {
 	}))
 	defer ts.Close()
 	now := time.Now()
-	value, err := NewMonthToDateBandwidthSource(ts.URL, ts.Client())(
+	value, degraded, err := NewMonthToDateBandwidthSource(ts.URL, ts.Client())(
 		context.Background(), "srv-web", []string{"default-web-web-onbex-co@kubernetes"}, true, now.Add(-time.Hour), now)
 	if err != nil || value.HTTP != 1048576 || value.WebSocket != 2097152 || value.NAT != 3145728 {
 		t.Fatalf("month source: value=%v err=%v", value, err)
+	}
+	if len(degraded) != 0 {
+		t.Fatalf("healthy fixture reported degraded sources: %v", degraded)
 	}
 	mu.Lock()
 	gotQuery := strings.Join(gotQueries, "\n")

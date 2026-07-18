@@ -194,6 +194,12 @@ var monthToDateBandwidthGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"websocketEgressBandwidthMB": &graphql.Field{Type: graphql.Float, Resolve: func(p graphql.ResolveParams) (any, error) {
 			return p.Source.(MonthToDateBandwidth).WebsocketEgressBandwidthMB, nil
 		}},
+		// bex extension (w1/m50, ADR023 § Observability reads vs billing
+		// reads): egress sources whose health product failed inside the month
+		// window. The MB figures still include what those sources recorded.
+		"degradedSources": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: func(p graphql.ResolveParams) (any, error) {
+			return p.Source.(MonthToDateBandwidth).DegradedSources, nil
+		}},
 	},
 })
 
