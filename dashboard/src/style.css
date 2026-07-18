@@ -278,6 +278,39 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Keep the interaction affordance consistent for native controls and
+     headless-UI components. Disabled controls are intentionally excluded. */
+  :where(
+      a[href],
+      button:not(:disabled),
+      summary,
+      label[for],
+      select:not(:disabled),
+      input:not(:disabled):is(
+          [type="button"],
+          [type="checkbox"],
+          [type="color"],
+          [type="file"],
+          [type="radio"],
+          [type="range"],
+          [type="reset"],
+          [type="submit"]
+        ),
+      [role="button"],
+      [role="checkbox"],
+      [role="link"],
+      [role="menuitem"],
+      [role="menuitemcheckbox"],
+      [role="menuitemradio"],
+      [role="option"],
+      [role="radio"],
+      [role="slider"],
+      [role="switch"],
+      [role="tab"]
+    ):not([aria-disabled="true"]):not([data-disabled]) {
+    cursor: pointer;
+  }
 }
 
 /* Hide Monaco Editor cursor in read-only mode */
