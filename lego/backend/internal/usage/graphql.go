@@ -45,6 +45,7 @@ var serviceUsageGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ServiceUsage",
 	Fields: graphql.Fields{
 		"serviceId":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s ServiceUsage) any { return s.ServiceID })},
+		"serviceName":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s ServiceUsage) any { return s.ServiceName })},
 		"resourceKind": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s ServiceUsage) any { return s.ResourceKind })},
 		"rows":         &graphql.Field{Type: graphql.NewList(usageRowGQLType), Resolve: gqlutil.Field(func(s ServiceUsage) any { return s.Rows })},
 	},

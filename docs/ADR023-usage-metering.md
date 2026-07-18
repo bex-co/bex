@@ -144,6 +144,7 @@ Response:
   "services": [
     {
       "serviceId": "srv-xyz456",
+      "serviceName": "my-web-app",
       "resourceKind": "service",
       "rows": [
         { "kind": "instance_seconds", "tier": "starter", "total": 14400 },
@@ -153,6 +154,7 @@ Response:
     },
     {
       "serviceId": "mydb",
+      "serviceName": "shared",
       "resourceKind": "postgres",
       "rows": [
         { "kind": "instance_seconds", "tier": "basic-256mb", "total": 3600 },
@@ -163,7 +165,7 @@ Response:
 }
 ```
 
-`tier` is omitted on the JSON response when it is the empty string (non-compute meters). `resourceKind` identifies the resource type (`"service"`, `"postgres"`, `"key_value"`). `services` is always a JSON array (never `null`).
+`tier` is omitted on the JSON response when it is the empty string (non-compute meters). `resourceKind` identifies the resource type (`"service"`, `"postgres"`, `"key_value"`). `services` is always a JSON array (never `null`). `serviceName` is the resource's user-facing display name, resolved best-effort at read time (Apps from the control-plane store, datastores from their CR spec); it is omitted when the resource no longer exists — presenters fall back to `serviceId`.
 
 ### GraphQL
 
@@ -174,6 +176,7 @@ query Usage($period: String) {
     period
     services {
       serviceId
+      serviceName
       resourceKind
       rows {
         kind

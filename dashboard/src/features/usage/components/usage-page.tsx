@@ -92,6 +92,7 @@ function buildMonthOptions(
 
 interface ComputeRow {
   serviceId: string;
+  serviceName: string;
   resourceKind: string;
   tier: string;
   total: number;
@@ -99,6 +100,7 @@ interface ComputeRow {
 
 interface ServiceTotalRow {
   serviceId: string;
+  serviceName: string;
   total: number;
 }
 
@@ -114,6 +116,11 @@ function extractRows<T>(
   return services.flatMap((svc) =>
     svc.rows.filter((r) => r.kind === kind).map((r) => pick(svc, r)),
   );
+}
+
+/** Display name with id fallback for resources that no longer resolve to one. */
+function serviceLabel(r: { serviceId: string; serviceName: string }): string {
+  return r.serviceName || r.serviceId;
 }
 
 // --- section components ---
@@ -183,7 +190,9 @@ function ComputeSection({
             <TableBody>
               {rows.map((r) => (
                 <TableRow key={`${r.resourceKind}:${r.serviceId}:${r.tier}`}>
-                  <TableCell className="font-medium">{r.serviceId}</TableCell>
+                  <TableCell className="font-medium">
+                    {serviceLabel(r)}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {r.resourceKind || "service"}
                   </TableCell>
@@ -245,7 +254,9 @@ function BandwidthSection({
             <TableBody>
               {rows.map((r) => (
                 <TableRow key={r.serviceId}>
-                  <TableCell className="font-medium">{r.serviceId}</TableCell>
+                  <TableCell className="font-medium">
+                    {serviceLabel(r)}
+                  </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {egressBytesToDisplay(r.total)}
                   </TableCell>
@@ -301,7 +312,9 @@ function BuildSection({
             <TableBody>
               {rows.map((r) => (
                 <TableRow key={r.serviceId}>
-                  <TableCell className="font-medium">{r.serviceId}</TableCell>
+                  <TableCell className="font-medium">
+                    {serviceLabel(r)}
+                  </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {buildSecondsToMinutes(r.total)}
                   </TableCell>
@@ -358,7 +371,9 @@ function StorageSection({
             <TableBody>
               {rows.map((r) => (
                 <TableRow key={`${r.resourceKind}:${r.serviceId}`}>
-                  <TableCell className="font-medium">{r.serviceId}</TableCell>
+                  <TableCell className="font-medium">
+                    {serviceLabel(r)}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {r.resourceKind}
                   </TableCell>
@@ -559,6 +574,7 @@ export function UsagePage() {
     "instance_seconds",
     (svc, r) => ({
       serviceId: svc.serviceId,
+      serviceName: svc.serviceName,
       resourceKind: svc.resourceKind,
       tier: r.tier,
       total: r.total,
@@ -569,6 +585,7 @@ export function UsagePage() {
     "egress_bytes",
     (svc, r) => ({
       serviceId: svc.serviceId,
+      serviceName: svc.serviceName,
       total: r.total,
     }),
   );
@@ -577,6 +594,7 @@ export function UsagePage() {
     "build_seconds",
     (svc, r) => ({
       serviceId: svc.serviceId,
+      serviceName: svc.serviceName,
       total: r.total,
     }),
   );
@@ -585,6 +603,7 @@ export function UsagePage() {
     "storage_gb_seconds",
     (svc, r) => ({
       serviceId: svc.serviceId,
+      serviceName: svc.serviceName,
       resourceKind: svc.resourceKind,
       total: r.total,
     }),

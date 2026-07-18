@@ -121,6 +121,9 @@ func TestRESTAdapterReturnsUsageData(t *testing.T) {
 	if len(resp.Services) != 1 || resp.Services[0].ServiceID != "srv-001" {
 		t.Errorf("services: want [srv-001], got %v", resp.Services)
 	}
+	if resp.Services[0].ServiceName != "myapp" {
+		t.Errorf("serviceName: want myapp, got %q", resp.Services[0].ServiceName)
+	}
 	if len(resp.Services[0].Rows) != 2 {
 		t.Errorf("rows: want 2, got %d", len(resp.Services[0].Rows))
 	}
@@ -222,7 +225,7 @@ func TestGraphQLAdapterReturnsUsageData(t *testing.T) {
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user:alice"})
 	result := graphql.Do(graphql.Params{
 		Schema:        schema,
-		RequestString: `{ usage { workspaceId services { serviceId rows { kind tier total } } } }`,
+		RequestString: `{ usage { workspaceId services { serviceId serviceName rows { kind tier total } } } }`,
 		Context:       ctx,
 	})
 	if len(result.Errors) > 0 {
@@ -241,6 +244,9 @@ func TestGraphQLAdapterReturnsUsageData(t *testing.T) {
 	svcData := services[0].(map[string]any)
 	if svcData["serviceId"] != "srv-001" {
 		t.Errorf("serviceId: want srv-001, got %v", svcData["serviceId"])
+	}
+	if svcData["serviceName"] != "myapp" {
+		t.Errorf("serviceName: want myapp, got %v", svcData["serviceName"])
 	}
 	rows, _ := svcData["rows"].([]any)
 	if len(rows) != 2 {
@@ -352,6 +358,15 @@ func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 	if restKinds["mykv"] != store.ResourceKindKeyValue {
 		t.Errorf("REST: mykv resourceKind: want %q, got %q", store.ResourceKindKeyValue, restKinds["mykv"])
 	}
+	restNames := map[string]string{}
+	for _, svcEntry := range restResp.Services {
+		restNames[svcEntry.ServiceID] = svcEntry.ServiceName
+	}
+	// The App resolves through the store; the datastores have no k8s client
+	// here, so their names stay empty (presenters fall back to the id).
+	if restNames["srv-mix"] != "webapi" {
+		t.Errorf("REST: srv-mix serviceName: want webapi, got %q", restNames["srv-mix"])
+	}
 
 	// GraphQL — same complete entries, modulo its envelope.
 	schema, err := buildTestSchema(svc)
@@ -360,7 +375,7 @@ func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 	}
 	gql := graphql.Do(graphql.Params{
 		Schema:        schema,
-		RequestString: `{ usage { services { serviceId resourceKind rows { kind tier total } } } }`,
+		RequestString: `{ usage { services { serviceId serviceName resourceKind rows { kind tier total } } } }`,
 		Context:       ctx,
 	})
 	if len(gql.Errors) > 0 {
@@ -376,8 +391,9 @@ func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 	for _, raw := range gqlServices {
 		s := raw.(map[string]any)
 		sid, _ := s["serviceId"].(string)
+		sname, _ := s["serviceName"].(string)
 		rk, _ := s["resourceKind"].(string)
-		entry := usageServiceEntry{ServiceID: sid, ResourceKind: rk}
+		entry := usageServiceEntry{ServiceID: sid, ServiceName: sname, ResourceKind: rk}
 		for _, rawRow := range s["rows"].([]any) {
 			row := rawRow.(map[string]any)
 			entry.Rows = append(entry.Rows, usageRow{

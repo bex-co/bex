@@ -14,6 +14,7 @@ query Usage($period: String, $ownerId: String) {
     period
     services {
       serviceId
+      serviceName
       resourceKind
       rows {
         kind

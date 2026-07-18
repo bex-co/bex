@@ -91,7 +91,8 @@ function dataState() {
       period: "2026-07",
       services: [
         {
-          serviceId: "eden-cms-v2",
+          serviceId: "srv-cms",
+          serviceName: "eden-cms-v2",
           resourceKind: "service",
           rows: [
             { kind: "instance_seconds", tier: "starter", total: 7200 },
@@ -101,11 +102,13 @@ function dataState() {
         },
         {
           serviceId: "email-worker",
+          serviceName: "",
           resourceKind: "service",
           rows: [{ kind: "instance_seconds", tier: "hobby", total: 3600 }],
         },
         {
-          serviceId: "shared",
+          serviceId: "dbs-shared",
+          serviceName: "shared",
           resourceKind: "postgres",
           rows: [
             { kind: "instance_seconds", tier: "free", total: 3600 },
@@ -113,7 +116,8 @@ function dataState() {
           ],
         },
         {
-          serviceId: "shared",
+          serviceId: "red-shared",
+          serviceName: "shared",
           resourceKind: "key_value",
           rows: [
             { kind: "instance_seconds", tier: "free", total: 1800 },
@@ -212,6 +216,19 @@ describe("UsagePage", () => {
     expect(screen.getAllByText("postgres").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("key_value").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("shared")).toHaveLength(4);
+  });
+
+  it("shows the service name, falling back to the id when the name is empty", () => {
+    mockUseUsage.mockReturnValue(dataState());
+
+    render(<UsagePage />);
+
+    // Named service renders its display name (compute + bandwidth + build rows),
+    // never the srv- id.
+    expect(screen.getAllByText("eden-cms-v2")).toHaveLength(3);
+    expect(screen.queryByText("srv-cms")).not.toBeInTheDocument();
+    // A service without a resolved name falls back to its id.
+    expect(screen.getByText("email-worker")).toBeInTheDocument();
   });
 
   it("converts egress_bytes to MB in the Bandwidth table", () => {
