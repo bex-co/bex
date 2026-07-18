@@ -328,6 +328,7 @@ func TestTypeFilterIsPushedDown(t *testing.T) {
 		// One type, four verbs — all must reach the query, or an env-var delete (or
 		// a blueprint seed) would silently vanish from an env_vars_changed filter.
 		{TypeEnvVarsChanged, []string{"secrets.DeleteEnvVar", "secrets.SeedEnvVars", "secrets.SetEnvVar", "secrets.SetEnvVars"}, nil},
+		{TypeServiceEnvironmentChanged, []string{"secrets.PatchEnvironment"}, nil},
 		// An unknown type asks the store for nothing at all: an empty feed, not a
 		// page of zero items a client can't tell from the end of the feed.
 		{"no_such_type", nil, nil},

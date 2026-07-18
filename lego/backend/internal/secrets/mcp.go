@@ -84,8 +84,23 @@ type deleteSecretFileResult struct {
 	Deleted bool `json:"deleted"`
 }
 
+type patchEnvironmentArgs struct {
+	ServiceID   string            `json:"serviceId" jsonschema:"the service id (bex App name)"`
+	EnvVars     []EnvVarPatch     `json:"envVars,omitempty" jsonschema:"sparse environment-variable set, generate, or delete operations"`
+	SecretFiles []SecretFilePatch `json:"secretFiles,omitempty" jsonschema:"sparse secret-file set or delete operations"`
+	SaveMode    SaveMode          `json:"saveMode" jsonschema:"save_only projects configuration without a rollout; deploy rolls exactly once"`
+}
+
 // RegisterMCP adds the env-var tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "patch_service_environment",
+		Description: "Apply one sparse env-var and secret-file patch without returning secret material; save_only causes no rollout and deploy rolls the service once.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in patchEnvironmentArgs) (*mcp.CallToolResult, EnvironmentPatchResult, error) {
+		result, err := s.PatchEnvironment(ctx, in.ServiceID, EnvironmentPatch{EnvVars: in.EnvVars, SecretFiles: in.SecretFiles, SaveMode: in.SaveMode})
+		return nil, result, err
+	})
+
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_env_vars",
 		Description: "List a service's environment variables (key/value), sorted by key.",

@@ -48,3 +48,21 @@ mutation SetEnvVar(
 mutation DeleteEnvVar($serviceId: String!, $key: String!) {
   deleteEnvVar(serviceId: $serviceId, key: $key)
 }
+
+mutation PatchServiceEnvironment(
+  $serviceId: String!
+  $envVars: [EnvironmentEnvVarPatchInput!]
+  $secretFiles: [EnvironmentSecretFilePatchInput!]
+  $saveMode: String!
+) {
+  patchServiceEnvironment(
+    serviceId: $serviceId
+    envVars: $envVars
+    secretFiles: $secretFiles
+    saveMode: $saveMode
+  ) {
+    envVarKeys
+    secretFileNames
+    rolledOut
+  }
+}

@@ -20,6 +20,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// Pending environment projection annotations let bex-api stage the first
+// service-local Secret without changing App.spec (and therefore without
+// rolling the current pods). The operator consumes these names the next time
+// some independent spec change deliberately reconciles the workload.
+const (
+	PendingEnvSecretAnnotation   = "app.bex.co/pending-env-secret"
+	PendingFilesSecretAnnotation = "app.bex.co/pending-files-secret"
+)
+
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 

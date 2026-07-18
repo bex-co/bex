@@ -347,8 +347,20 @@ func (s *Service) SecretFileContent(ctx context.Context, service, name string) (
 // lingers. The operator merges this Secret with any linked env-group file Secrets
 // into the single /etc/secrets projected volume (docs/ADR013-secrets.md).
 func (s *Service) materializeFiles(ctx context.Context, a *appv1alpha1.App, files map[string]string) error {
-	name := filesSecretName(a.Name)
 	base := client.MergeFrom(a.DeepCopy())
+	if err := s.projectFiles(ctx, a, files); err != nil {
+		return err
+	}
+	s.bumpRestart(a)
+	return s.Client.Patch(ctx, a, base)
+}
+
+// projectFiles updates the derived Kubernetes Secret and App reference without
+// changing restartedAt or persisting the App. It is the no-roll primitive used
+// by PatchEnvironment; materializeFiles layers the legacy immediate rollout on
+// top for existing clients.
+func (s *Service) projectFiles(ctx context.Context, a *appv1alpha1.App, files map[string]string) error {
+	name := filesSecretName(a.Name)
 	if len(files) == 0 {
 		if err := s.deleteSecret(ctx, name); err != nil {
 			return err
@@ -360,8 +372,7 @@ func (s *Service) materializeFiles(ctx context.Context, a *appv1alpha1.App, file
 		}
 		a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, name)
 	}
-	s.bumpRestart(a)
-	return s.Client.Patch(ctx, a, base)
+	return nil
 }
 
 // deleteSecret removes a projection Secret by name (idempotent — absence is fine).

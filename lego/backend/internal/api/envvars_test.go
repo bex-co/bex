@@ -162,7 +162,51 @@ func TestEnvVars_UnconfiguredIs503(t *testing.T) {
 	if code := do(t, h, "PUT", "/v1/services/web/env-vars", testToken, `[]`).Code; code != 503 {
 		t.Errorf("PUT env-vars without a store => 503, got %d", code)
 	}
+	if code := do(t, h, "PATCH", "/v1/services/web/environment", testToken, `{"saveMode":"save_only"}`).Code; code != 503 {
+		t.Errorf("PATCH environment without a store => 503, got %d", code)
+	}
 	if code := do(t, h, "GET", "/v1/services/web", testToken, "").Code; code != 200 {
 		t.Errorf("service read unaffected by nil store, got %d", code)
+	}
+}
+
+func TestEnvironmentBatch_RESTAndGraphQLWiring(t *testing.T) {
+	store := newMemSecretStore()
+	store.m[envKey("web")] = map[string]string{"KEEP": "opaque-secret", "RENAME": "rename-secret"}
+	store.m["services/web/files"] = map[string]string{"keep.pem": "opaque-file"}
+	base := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default",
+		Clock: func() time.Time { return time.Unix(1_000_000, 0).UTC() }}
+	h, _ := serverWith(t, base, Deps{Secrets: store})
+
+	rec := do(t, h, "PATCH", "/v1/services/web/environment", testToken,
+		`{"saveMode":"save_only","envVars":[{"key":"RENAMED","fromKey":"RENAME"},{"key":"ADDED","value":"new-secret"}],"secretFiles":[{"name":"new.pem","content":"new-file"}]}`)
+	if rec.Code != 200 {
+		t.Fatalf("REST batch => %d: %s", rec.Code, rec.Body.String())
+	}
+	for _, secret := range []string{"opaque-secret", "rename-secret", "new-secret", "opaque-file", "new-file"} {
+		if strings.Contains(rec.Body.String(), secret) {
+			t.Fatalf("REST batch response leaked %q: %s", secret, rec.Body.String())
+		}
+	}
+	if store.m[envKey("web")]["KEEP"] != "opaque-secret" || store.m[envKey("web")]["RENAMED"] != "rename-secret" {
+		t.Fatalf("REST batch lost omitted/renamed values: %+v", store.m[envKey("web")])
+	}
+
+	result := gql(t, h, `mutation {
+		patchServiceEnvironment(
+			serviceId:"web",
+			envVars:[{key:"ADDED", delete:true}],
+			secretFiles:[{name:"keep.pem", delete:true}],
+			saveMode:"deploy"
+		) { envVarKeys secretFileNames rolledOut }
+	}`)["patchServiceEnvironment"].(map[string]any)
+	if result["rolledOut"] != true {
+		t.Fatalf("GraphQL deploy result: %+v", result)
+	}
+	if _, ok := store.m[envKey("web")]["ADDED"]; ok {
+		t.Fatalf("GraphQL batch did not delete env var: %+v", store.m[envKey("web")])
+	}
+	if _, ok := store.m["services/web/files"]["keep.pem"]; ok {
+		t.Fatalf("GraphQL batch did not delete file: %+v", store.m["services/web/files"])
 	}
 }

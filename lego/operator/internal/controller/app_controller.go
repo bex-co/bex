@@ -369,8 +369,9 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 				return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("relocating clone secret to %s: %w", buildNs, err))
 			}
 		}
-		if builder == build.BuilderNative && app.Spec.EnvFromSecret != "" && buildNs != app.Namespace {
-			if err := r.copyCloneSecret(ctx, app.Namespace, buildNs, app.Spec.EnvFromSecret); err != nil {
+		runtimeSecret := runtimeEnvSecret(&app)
+		if builder == build.BuilderNative && runtimeSecret != "" && buildNs != app.Namespace {
+			if err := r.copyCloneSecret(ctx, app.Namespace, buildNs, runtimeSecret); err != nil {
 				return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("relocating native build env to %s: %w", buildNs, err))
 			}
 		}
@@ -387,7 +388,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			BuildCommand:     app.Spec.BuildCommand,
 			StartCommand:     app.Spec.StartCommand,
 			BuildEnv:         buildEnv(builder, app.Spec.Env),
-			RuntimeEnvSecret: app.Spec.EnvFromSecret,
+			RuntimeEnvSecret: runtimeSecret,
 			Revision:         fmt.Sprintf("gen-%d", app.Generation),
 			Namespace:        buildNs,
 			AppNamespace:     app.Namespace,
@@ -2183,12 +2184,13 @@ func appEnv(app *appv1alpha1.App, port int) []corev1.EnvVar {
 
 // envFromSources wires the App's secret-backed env into the container: each linked
 // environment group's "<evg-id>-env" Secret (spec.envFromSecrets) FIRST, then the
-// service's own "<name>-env" Secret (spec.envFromSecret) LAST. Kubernetes applies
+// service's own "<name>-env" Secret (active spec reference or save-only pending
+// annotation) LAST. Kubernetes applies
 // envFrom sources in order and the last wins on a key collision, so a service's own
 // variable overrides a linked group's — matching Render (docs/ADR013-secrets.md). The
 // group sources are marked optional so a briefly-absent group Secret can't wedge
-// the pod; the service's own set keeps its original (non-optional) shape. Empty
-// spec => no envFrom, unchanged behavior.
+// the pod; the service's own set keeps its original (non-optional) shape. No
+// active or pending service reference => no service envFrom.
 func envFromSources(app *appv1alpha1.App) []corev1.EnvFromSource {
 	var out []corev1.EnvFromSource
 	optional := true
@@ -2203,10 +2205,10 @@ func envFromSources(app *appv1alpha1.App) []corev1.EnvFromSource {
 			},
 		})
 	}
-	if app.Spec.EnvFromSecret != "" {
+	if name := runtimeEnvSecret(app); name != "" {
 		out = append(out, corev1.EnvFromSource{
 			SecretRef: &corev1.SecretEnvSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: app.Spec.EnvFromSecret},
+				LocalObjectReference: corev1.LocalObjectReference{Name: name},
 			},
 		})
 	}
@@ -2220,8 +2222,9 @@ const (
 	secretFilesMountPath  = "/etc/secrets"
 )
 
-// secretFileMounts projects spec.filesFromSecrets into one read-only /etc/secrets
-// volume + mount (docs/ADR013-secrets.md — secret files): each named Secret's keys become
+// secretFileMounts projects spec.filesFromSecrets plus a save-only pending
+// service-file annotation into one read-only /etc/secrets volume + mount
+// (docs/ADR013-secrets.md — secret files): each named Secret's keys become
 // files "/etc/secrets/<key>". A service's own files ("<name>-files") and each
 // linked group's files ("<evg-id>-files") merge into the single projected volume,
 // each source optional so an absent one contributes no files rather than failing
@@ -2240,6 +2243,14 @@ func secretFileMounts(app *appv1alpha1.App) (*corev1.Volume, *corev1.VolumeMount
 			},
 		})
 	}
+	if name := app.Annotations[appv1alpha1.PendingFilesSecretAnnotation]; name != "" && !containsSecretProjection(sources, name) {
+		sources = append(sources, corev1.VolumeProjection{
+			Secret: &corev1.SecretProjection{
+				LocalObjectReference: corev1.LocalObjectReference{Name: name},
+				Optional:             &optional,
+			},
+		})
+	}
 	if len(sources) == 0 {
 		return nil, nil
 	}
@@ -2249,6 +2260,26 @@ func secretFileMounts(app *appv1alpha1.App) (*corev1.Volume, *corev1.VolumeMount
 	}
 	mount := &corev1.VolumeMount{Name: secretFilesVolumeName, MountPath: secretFilesMountPath, ReadOnly: true}
 	return vol, mount
+}
+
+// runtimeEnvSecret prefers the active spec reference and falls back to the
+// metadata-only projection staged by a save-only Environment patch. Metadata
+// updates do not enqueue this generation-filtered controller; a later restart
+// or deploy does, and consumes the pending Secret without an intermediate roll.
+func runtimeEnvSecret(app *appv1alpha1.App) string {
+	if app.Spec.EnvFromSecret != "" {
+		return app.Spec.EnvFromSecret
+	}
+	return app.Annotations[appv1alpha1.PendingEnvSecretAnnotation]
+}
+
+func containsSecretProjection(sources []corev1.VolumeProjection, name string) bool {
+	for _, source := range sources {
+		if source.Secret != nil && source.Secret.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 // effectiveReplicas derives the Deployment size: spec.replicas (default 1),

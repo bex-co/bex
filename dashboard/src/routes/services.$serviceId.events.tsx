@@ -86,6 +86,8 @@ function eventTitleKey(type: string): string {
       return "services.eventsTypeCronRunFinished";
     case "env_vars_changed":
       return "services.eventsTypeEnvVarsChanged";
+    case "service_environment_changed":
+      return "services.eventsTypeEnvironmentChanged";
     case "env_group_linked":
       return "services.eventsTypeEnvGroupLinked";
     case "env_group_unlinked":

@@ -360,13 +360,25 @@ func envSecretName(service string) string { return service + "-env" }
 // the Deployment; bumping spec.restartedAt rolls the pods, since envFrom is read
 // only at pod creation — the same no-downtime mechanism as the restart verb.
 func (s *Service) materializeEnv(ctx context.Context, a *appv1alpha1.App, env map[string]string) error {
+	base := client.MergeFrom(a.DeepCopy())
+	if err := s.projectEnv(ctx, a, env); err != nil {
+		return err
+	}
+	s.bumpRestart(a)
+	return s.Client.Patch(ctx, a, base)
+}
+
+// projectEnv updates the derived Kubernetes Secret and App reference without
+// changing restartedAt or persisting the App. Batch environment writes call it
+// together with projectFiles, then patch the App exactly once when a rollout was
+// requested. The older single-item verbs keep calling materializeEnv and retain
+// their immediate-roll behavior.
+func (s *Service) projectEnv(ctx context.Context, a *appv1alpha1.App, env map[string]string) error {
 	if err := s.upsertSecret(ctx, a, envSecretName(a.Name), env); err != nil {
 		return err
 	}
-	base := client.MergeFrom(a.DeepCopy())
 	a.Spec.EnvFromSecret = envSecretName(a.Name)
-	s.bumpRestart(a)
-	return s.Client.Patch(ctx, a, base)
+	return nil
 }
 
 // bumpRestart stamps spec.restartedAt so the pods roll on the next reconcile.

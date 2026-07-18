@@ -67,6 +67,22 @@ func toSecretFileList(files []SecretFileView) []secretFileWithCursor {
 // the Service returns core.ErrSecretsUnavailable => 503 on these routes only.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	for _, base := range []string{"/v1/services", "/v1/apps"} {
+		// Bex's coherent environment-save extension. Existing Render-compatible
+		// env-var and secret-file routes below retain their immediate-roll behavior.
+		mux.HandleFunc("PATCH "+base+"/{id}/environment", func(w http.ResponseWriter, r *http.Request) {
+			var in EnvironmentPatch
+			if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+				core.WriteErr(w, core.ErrBadRequest)
+				return
+			}
+			result, err := s.PatchEnvironment(r.Context(), r.PathValue("id"), in)
+			if err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			core.WriteJSON(w, http.StatusOK, result)
+		})
+
 		mux.HandleFunc("GET "+base+"/{id}/env-vars", func(w http.ResponseWriter, r *http.Request) {
 			q := r.URL.Query()
 			var vars []EnvVarView
