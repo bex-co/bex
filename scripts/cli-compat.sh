@@ -24,6 +24,7 @@
 #   scripts/cli-compat.sh <render-cli-args...>
 #   scripts/cli-compat.sh verify        # re-run the ✅ rows, exit non-zero on regression (t006)
 #   scripts/cli-compat.sh registry-credential-verify
+#   BEX_KV_VERIFY_ALLOW_CIDR=203.0.113.4/32 scripts/cli-compat.sh kv-cli-verify
 #
 # Env (all have dev-9 defaults so this runs with zero setup once dev-9 is up):
 #   BEX_API_URL       bex-api base, default http://localhost:54090
@@ -31,6 +32,13 @@
 #   CLI_KEY_ENV       path to a KEY_ID/KEY_SECRET env file, default .pm/w9/dev-9/.cli-key.env
 #     (bash .pm/w9/dev-9/bootstrap-key.sh mints one — see docs/cli-compatibility-checklist.md)
 #   RENDER_BIN        path to the built render binary, default .pm/w9/dev-9/bin/render
+#
+# kv-cli-verify is an opt-in mutation against a full public-edge environment,
+# not part of the dev-9 verify suite. Override BEX_API_URL/HYDRA_PUBLIC_URL and
+# CLI_KEY_ENV for that environment, and set BEX_KV_VERIFY_ALLOW_CIDR to this
+# runner's explicit public source CIDR. It creates and deletes one public Key
+# Value. BEX_KV_VERIFY_READY_TIMEOUT_SECONDS and
+# BEX_KV_VERIFY_CLEANUP_TIMEOUT_SECONDS bound its convergence waits.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -68,6 +76,10 @@ fi
 
 if [ "${1:-}" = "registry-credential-verify" ]; then
   exec bash scripts/registry-credential-cli-verify.sh
+fi
+
+if [ "${1:-}" = "kv-cli-verify" ]; then
+  exec bash scripts/keyvalue-cli-verify.sh
 fi
 
 exec "$RENDER_BIN" "$@"

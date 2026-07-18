@@ -153,4 +153,18 @@ bash "$reconcile" >"$tmp/create.out"
 assert_contains 'POST /zones/zone-test/dns_records' "$TEST_CF_TRACE"
 assert_reconciled_state
 
+# The same implementation may target one exact wildcard for another raw-TCP
+# edge. Its wildcard is retained literally and is always made DNS-only.
+export BEX_EDGE_DNS_HOST='*.kv.example.test'
+export BEX_EDGE_DNS_ZONE=example.test
+export BEX_EDGE_DNS_LABEL='Key Value datastore'
+write_state '[
+  {"id":"kv-a","type":"A","name":"*.kv.example.test","content":"192.0.2.10","ttl":1,"proxied":true},
+  {"id":"kv-aaaa","type":"AAAA","name":"*.kv.example.test","content":"2001:db8::10","ttl":1,"proxied":true}
+]'
+output="$(bash "$reconcile")"
+[[ "$output" == "reconciled Cloudflare Key Value datastore DNS host=*.kv.example.test addresses=192.0.2.10,2001:db8::10" ]]
+jq -e 'all(.[]; .name == "*.kv.example.test" and .proxied == false and .comment == "bex key value datastore raw TCP edge")' "$TEST_CF_STATE" >/dev/null
+unset BEX_EDGE_DNS_HOST BEX_EDGE_DNS_ZONE BEX_EDGE_DNS_LABEL
+
 echo 'PASS Cloudflare SSH DNS reconciliation safety gates'
