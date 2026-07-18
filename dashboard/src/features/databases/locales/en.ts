@@ -350,14 +350,6 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "No",
     description: "Metadata value for a false boolean field",
   },
-  "databases.notFoundTitle": {
-    message: "Database not found",
-    description: "Detail page state when database(id) returns nothing",
-  },
-  "databases.notFoundBody": {
-    message: "No database named {name} exists, or you don't have access to it.",
-    description: "Detail page not-found body",
-  },
   // --- Connection info panel ---
   "databases.connTitle": {
     message: "Connections",

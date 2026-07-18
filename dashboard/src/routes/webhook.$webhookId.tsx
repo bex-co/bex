@@ -3,6 +3,7 @@ import { AlertTriangle } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { WebhookDetailContext } from "@/features/webhooks/components/webhook-detail-context";
 import { WebhookDetailHeader } from "@/features/webhooks/components/webhook-detail-header";
@@ -59,7 +60,12 @@ function WebhookDetailShell() {
   const { webhookId } = Route.useParams();
   const { t } = useTranslations();
   const detail = useWebhook(webhookId);
-  const { endpoint, loading, notFound } = detail;
+  const { endpoint, loading, notFound, error } = detail;
+
+  // `notFound` also settles true when the query itself failed (errorPolicy
+  // "all" leaves data empty), so exclude `error`: a dead id redirects home
+  // (w9/m55), a failed query stays put on the inline error state below.
+  useNotFoundRedirect(notFound && !error);
 
   return (
     <DashboardLayout>
@@ -82,7 +88,7 @@ function WebhookDetailShell() {
             </div>
           </div>
         </>
-      ) : loading ? (
+      ) : loading || (notFound && !error) ? (
         <div className="space-y-4 p-4 sm:p-6">
           <Skeleton className="h-24" />
           <Skeleton className="h-64" />
@@ -90,13 +96,9 @@ function WebhookDetailShell() {
       ) : (
         <div className="flex flex-col items-center gap-2 py-12 text-center">
           <AlertTriangle className="text-destructive size-8" />
-          <p className="font-medium">
-            {notFound ? t("webhooks.notFoundTitle") : t("webhooks.errorTitle")}
-          </p>
+          <p className="font-medium">{t("webhooks.errorTitle")}</p>
           <p className="text-muted-foreground text-sm">
-            {notFound
-              ? t("webhooks.notFoundBody", { id: webhookId })
-              : t("webhooks.errorBody")}
+            {t("webhooks.errorBody")}
           </p>
           <Link to="/webhooks" className="text-sm underline">
             {t("webhooks.backToList")}

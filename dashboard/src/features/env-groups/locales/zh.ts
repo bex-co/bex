@@ -201,14 +201,6 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     message: "出错了，请重试。",
     description: "Env-group editor error body",
   },
-  "envGroups.notFoundTitle": {
-    message: "找不到环境变量组",
-    description: "Missing env-group detail title",
-  },
-  "envGroups.notFoundBody": {
-    message: "不存在 ID 为 {id} 的环境变量组。",
-    description: "Missing env-group detail body",
-  },
   "envGroups.backToList": {
     message: "返回环境变量组",
     description: "Detail-page back button label",

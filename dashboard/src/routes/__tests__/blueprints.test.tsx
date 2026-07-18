@@ -85,19 +85,25 @@ function renderBlueprintsPage() {
 
 function renderDetailPage(blueprintId = "blp-abc123") {
   const rootRoute = createRootRoute();
+  const homeRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => <div>services home</div>,
+  });
   const route = createRoute({
     getParentRoute: () => rootRoute,
     path: "/blueprints/$blueprintId",
     component: BlueprintDetailPage,
   });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([route]),
+    routeTree: rootRoute.addChildren([homeRoute, route]),
     history: createMemoryHistory({
       initialEntries: [`/blueprints/${blueprintId}`],
     }),
     context: { client: {} as never, session: null },
   });
-  return render(<RouterProvider router={router} />);
+  render(<RouterProvider router={router} />);
+  return router;
 }
 
 beforeEach(() => {
@@ -162,11 +168,21 @@ describe("BlueprintDetailPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows not-found state when blueprint is null after loading", async () => {
+  it("redirects a dead blueprint id home (w9/m55)", async () => {
     blueprintDetailState.blueprint = null;
-    renderDetailPage("blp-missing");
+    const router = renderDetailPage("blp-missing");
 
-    expect(await screen.findByText("Blueprint not found")).toBeInTheDocument();
+    expect(await screen.findByText("services home")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/");
+  });
+
+  it("stays put on the inline error state when the query fails (w9/m55)", async () => {
+    blueprintDetailState.blueprint = null;
+    blueprintDetailState.error = new Error("bex-api unreachable");
+    const router = renderDetailPage("blp-missing");
+
+    expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/blueprints/blp-missing");
   });
 
   it("calls sync when the confirm dialog is accepted", async () => {

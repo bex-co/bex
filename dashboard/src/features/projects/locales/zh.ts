@@ -81,11 +81,6 @@ const zhProjects: Record<string, TranslationEntry> = {
     description:
       'The dashed "+ create project" tile at the end of the project grid',
   },
-  "projects.notFound": {
-    message: "未找到项目。",
-    description:
-      "Shown on a project page when the id doesn't match any project",
-  },
   "projects.errorTitle": {
     message: "资源加载失败",
     description: "Error state heading on the unified Projects page",

@@ -121,11 +121,7 @@ export function ProjectPage() {
             <p className="text-sm text-destructive">
               {t("projects.errorTitle")}
             </p>
-          ) : showNotFound ? (
-            <p className="text-sm text-muted-foreground">
-              {t("projects.notFound")}
-            </p>
-          ) : (
+          ) : showNotFound ? null : ( // the layout's redirect home is in flight (w9/m55)
             <>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

@@ -85,12 +85,13 @@ describe("/w/{tea-id} alias (w1/m45)", () => {
     expect(setCurrentWorkspaceId).toHaveBeenCalledWith("tea-other");
   });
 
-  it("refuses a foreign workspace id — not-found, never the caller's own settings", async () => {
+  it("refuses a foreign workspace id — redirects home, never the caller's own settings (w9/m55)", async () => {
     const router = renderAt("/w/tea-foreign/settings");
-    // The not-found page renders; no navigation, no selection change.
-    expect(await screen.findByText(/not found/i)).toBeInTheDocument();
+    // Redirects home with a not-found toast; never a selection change, and
+    // never a silent landing on the caller's own settings.
+    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+    expect(screen.getByText("landed:/")).toBeInTheDocument();
     expect(setCurrentWorkspaceId).not.toHaveBeenCalled();
-    expect(router.state.location.pathname).toBe("/w/tea-foreign/settings");
   });
 
   it("does not judge the id while the membership list is loading", async () => {

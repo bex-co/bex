@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { EmptyState } from "@/common/components/empty-state";
+import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useDeploy } from "../hooks/use-deploy";
 import { rangeStart, type LogRange } from "../lib/log-range";
@@ -35,6 +36,21 @@ export function DeployDetailPage({
   const { t } = useTranslations();
   const { deploy, loading, error, notFound } = useDeploy(serviceId, deployId);
 
+  // A dead deploy id under a live service redirects to that service's Deploys
+  // tab — the nearest live parent — not all the way home (w9/m55). A dead
+  // SERVICE id never reaches here: the services.$serviceId layout redirects
+  // before mounting its Outlet. `useDeploy` already excludes query errors
+  // from `notFound`, so outages keep the inline error state below.
+  const deploysTab = useMemo(
+    () => ({
+      to: "/services/$serviceId/deploys" as const,
+      params: { serviceId },
+      replace: true,
+    }),
+    [serviceId],
+  );
+  useNotFoundRedirect(notFound, deploysTab);
+
   // The log window: `?r=` overrides with [now - range, now) — open-ended so
   // the viewer keeps polling live, exactly like a still-running deploy.
   // Memoized on the range value so re-renders don't shift the window (and
@@ -43,16 +59,6 @@ export function DeployDetailPage({
     if (range) return { start: rangeStart(range), end: undefined };
     return undefined;
   }, [range]);
-
-  if (notFound) {
-    return (
-      <EmptyState
-        iconName="SearchX"
-        title={t("deploys.notFoundTitle")}
-        description={t("deploys.notFoundBody", { deployId })}
-      />
-    );
-  }
 
   if (error) {
     return (

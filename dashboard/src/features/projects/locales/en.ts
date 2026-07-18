@@ -81,11 +81,6 @@ const enProjects: Record<string, TranslationEntry> = {
     description:
       'The dashed "+ create project" tile at the end of the project grid',
   },
-  "projects.notFound": {
-    message: "Project not found.",
-    description:
-      "Shown on a project page when the id doesn't match any project",
-  },
   "projects.errorTitle": {
     message: "Couldn't load resources",
     description: "Error state heading on the unified Projects page",

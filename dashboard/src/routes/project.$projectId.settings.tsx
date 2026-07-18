@@ -101,12 +101,13 @@ export function ProjectSettingsPage() {
   }
 
   if (!project) {
+    // not-found renders nothing: the layout's redirect home is in flight
+    // (w9/m55). Only a query error stays put, on its inline message.
+    if (projectResult.state !== "error") return null;
     return (
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <p className="text-sm text-muted-foreground">
-          {projectResult.state === "error"
-            ? t("projects.errorTitle")
-            : t("projects.notFound")}
+          {t("projects.errorTitle")}
         </p>
       </div>
     );

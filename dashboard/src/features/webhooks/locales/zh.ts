@@ -55,7 +55,8 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     description: "Create dialog title",
   },
   "webhooks.createDescription": {
-    message: "每当订阅的事件发生时，bex 会向此 URL POST 一个带签名的 JSON 负载。",
+    message:
+      "每当订阅的事件发生时，bex 会向此 URL POST 一个带签名的 JSON 负载。",
     description: "Create dialog description",
   },
   "webhooks.fieldName": {
@@ -239,7 +240,8 @@ const zhWebhooks: Record<string, TranslationEntry> = {
   },
   "webhooks.searchNoMatches": {
     message: "没有匹配的事件",
-    description: "Event-picker empty state while a search filters everything out",
+    description:
+      "Event-picker empty state while a search filters everything out",
   },
   "webhooks.allEvents": {
     message: "全部事件",
@@ -440,14 +442,6 @@ const zhWebhooks: Record<string, TranslationEntry> = {
   "webhooks.filterFailed": {
     message: "失败",
     description: "Activity delivery filter tab — failed only",
-  },
-  "webhooks.notFoundTitle": {
-    message: "未找到 Webhook",
-    description: "Detail page state for an unknown/foreign id",
-  },
-  "webhooks.notFoundBody": {
-    message: "此工作区中没有 ID 为 {id} 的 Webhook。",
-    description: "Detail page not-found body",
   },
   "webhooks.enabledBadge": {
     message: "已启用",

@@ -150,6 +150,16 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "Something went wrong.",
     description: "Fallback error message when none is provided",
   },
+  "common.resourceNotFoundToast": {
+    message: "That resource doesn't exist or was deleted.",
+    description:
+      "Toast shown after a dead resource URL redirects to the home page (w9/m55)",
+  },
+  "common.resourceErrorBody": {
+    message: "The resource couldn't be loaded. Check the API and try again.",
+    description:
+      "Body text of a detail page's inline error state when the resource query failed",
+  },
 };
 
 export default enCommon;

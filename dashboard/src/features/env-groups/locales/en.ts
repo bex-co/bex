@@ -204,14 +204,6 @@ const enEnvGroups: Record<string, TranslationEntry> = {
     message: "Something went wrong. Please try again.",
     description: "Env-group editor error body",
   },
-  "envGroups.notFoundTitle": {
-    message: "Environment group not found",
-    description: "Missing env-group detail title",
-  },
-  "envGroups.notFoundBody": {
-    message: "No environment group exists with id {id}.",
-    description: "Missing env-group detail body",
-  },
   "envGroups.backToList": {
     message: "Back to environment groups",
     description: "Detail-page back button label",

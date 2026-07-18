@@ -280,14 +280,6 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "否",
     description: "Metadata value for a false boolean field",
   },
-  "keyvalue.notFoundTitle": {
-    message: "未找到键值存储",
-    description: "Detail page state when keyValue(id) returns nothing",
-  },
-  "keyvalue.notFoundBody": {
-    message: "不存在名为 {name} 的键值存储，或者你没有访问权限。",
-    description: "Detail page not-found body",
-  },
   // --- Connection info panel ---
   "keyvalue.connTitle": {
     message: "连接",

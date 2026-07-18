@@ -89,14 +89,6 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "bex.yml 清单",
     description: "Blueprint detail section heading for the stored manifest",
   },
-  "blueprints.notFoundTitle": {
-    message: "蓝图未找到",
-    description: "Blueprint detail not-found state heading",
-  },
-  "blueprints.notFoundBody": {
-    message: '此工作空间中不存在 id 为 "{id}" 的蓝图。',
-    description: "Blueprint detail not-found state body",
-  },
   // --- Sync action ---
   "blueprints.syncButton": {
     message: "同步",

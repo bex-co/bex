@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -96,10 +96,13 @@ describe("ProjectSettingsPage", () => {
     expect(screen.getByDisplayValue("storefront")).toBeInTheDocument();
   });
 
-  it("shows a not-found state for an unknown project id", async () => {
+  it("renders nothing for an unknown project id — the layout's redirect home is in flight (w9/m55)", async () => {
     renderSettingsPage("prj-missing");
 
-    expect(await screen.findByText("Project not found.")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByText("Project Name")).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByText("Project not found.")).not.toBeInTheDocument();
   });
 
   it("renames the project through the inline Edit control", async () => {

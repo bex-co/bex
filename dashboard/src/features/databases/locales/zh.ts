@@ -348,14 +348,6 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "否",
     description: "Metadata value for a false boolean field",
   },
-  "databases.notFoundTitle": {
-    message: "未找到数据库",
-    description: "Detail page state when database(id) returns nothing",
-  },
-  "databases.notFoundBody": {
-    message: "不存在名为 {name} 的数据库，或者你没有访问权限。",
-    description: "Detail page not-found body",
-  },
   // --- Connection info panel ---
   "databases.connTitle": {
     message: "连接",

@@ -104,14 +104,6 @@ const enDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy header: trigger label for a rollback deploy, naming the restored deploy",
   },
-  "deploys.notFoundTitle": {
-    message: "Deploy not found",
-    description: "Deploy detail page: not-found state title",
-  },
-  "deploys.notFoundBody": {
-    message: "No deploy {deployId} exists for this service.",
-    description: "Deploy detail page: not-found state body",
-  },
   "deploys.logSearchPlaceholder": {
     message: "Search logs…",
     description: "Deploy detail page: log search input placeholder",
