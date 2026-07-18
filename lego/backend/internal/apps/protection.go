@@ -39,10 +39,8 @@ import (
 // (confirmFrom) rather than taking a new parameter, because they are reached
 // through generic REST/GraphQL/MCP forwarding helpers shared with unguarded
 // verbs (Restart, Resume, …) that all share a fixed func(ctx, name string)
-// shape. This context seam is local to this package — unlike
-// core.WithWorkspace (consumed by core.Base itself, every feature), no
-// package outside apps needs a confirmation phrase, so it doesn't belong in
-// the shared kernel.
+// shape. The context seam lives in core because Apps, Postgres, and Key Value
+// now share the same transport-independent confirmation mechanism.
 
 // withConfirm records a caller-supplied confirmation phrase for this request.
 // Empty is a no-op (no confirmation offered).

@@ -42,7 +42,13 @@ import (
 // list_key_value; the former list_key_value_instances alias returns the same).
 type keyValueArgs struct {
 	KeyValueID string `json:"keyValueId" jsonschema:"the key-value id (bex KeyValue name), as returned by list_key_value"`
-	Confirm    string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned when a protected environment blocks the action"`
+}
+
+// suspendKeyValueArgs keeps the protected-environment confirmation field
+// scoped to suspend_keyvalue instead of advertising it on get_key_value.
+type suspendKeyValueArgs struct {
+	KeyValueID string `json:"keyValueId" jsonschema:"the key-value id (bex KeyValue name), as returned by list_key_value"`
+	Confirm    string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned when a protected environment blocks suspend"`
 }
 
 // updateKeyValuePlanArgs is update_key_value_plan's input.
@@ -142,7 +148,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "suspend_keyvalue",
 		Description: "Suspend a managed key-value store (stop compute while preserving its data volume). bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in keyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in suspendKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
 		v, err := s.Suspend(core.WithConfirm(ctx, in.Confirm), in.KeyValueID)
 		return nil, v, err
 	})

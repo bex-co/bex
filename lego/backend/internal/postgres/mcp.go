@@ -55,7 +55,13 @@ func parseMCPTimeWindow(startTime, endTime string) (since, end time.Time, err er
 // list_postgres_instances (legacy resources retain their original id).
 type postgresArgs struct {
 	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id, as returned by list_postgres_instances"`
-	Confirm    string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned when a protected environment blocks the action"`
+}
+
+// suspendPostgresArgs keeps the protected-environment confirmation field
+// scoped to suspend_postgres instead of advertising it on unrelated tools.
+type suspendPostgresArgs struct {
+	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id, as returned by list_postgres_instances"`
+	Confirm    string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned when a protected environment blocks suspend"`
 }
 
 // createPostgresArgs mirrors the create body the REST/GraphQL surfaces accept
@@ -289,7 +295,7 @@ func (s *Service) registerLifecycleMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "suspend_postgres",
 		Description: "Suspend a managed Postgres database (hibernate: stop compute, keep the data volume). bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, PostgresView, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in suspendPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		v, err := s.Suspend(core.WithConfirm(ctx, in.Confirm), in.PostgresID)
 		return nil, v, err
 	})
