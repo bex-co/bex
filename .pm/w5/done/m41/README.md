@@ -1,6 +1,6 @@
 # w5 · m41 — Populated project overview parity
 
-**Worker:** worker5 **Goal:** A populated bex Project has the same fast operating surface as Render: one selected Environment, contextual creation, truthful Runtime/Region/Updated facts, and bulk Move. **Status:** in progress (t001–t006 done; deployed live verification pending)
+**Worker:** worker5 **Goal:** A populated bex Project has the same fast operating surface as Render: one selected Environment, contextual creation, truthful Runtime/Region/Updated facts, and bulk Move. **Status:** done (2026-07-17)
 
 ## Tasks (in order)
 
@@ -12,10 +12,10 @@
 | t004 | Contextual New Service with Project/Environment preselection — **DONE** | 40m | t003 |
 | t005 | Render-shaped resource metadata columns with honest missing-value states — **DONE** | 45m | t002, t003 |
 | t006 | Row selection and bulk Move for the selected Environment — **DONE** | 60m | t001, t003 |
-| t007 | Render parity: live populated-project re-walk and ledger/evidence refresh | 30m | t004-t006 |
-| t008 | Simplify: behavior-preserving pass over the project resource flow | 20m | t007 |
-| t009 | Test coverage: selection, URL state, metadata, create context, and bulk Move | 45m | t007 |
-| t010 | Closeout — move to `done/` when the Definition of Done holds | 15m | t008, t009 |
+| t007 | Render parity: live populated-project re-walk and ledger/evidence refresh — **DONE** | 30m | t004-t006 |
+| t008 | Simplify: behavior-preserving pass over the project resource flow — **DONE** | 20m | t007 |
+| t009 | Test coverage: selection, URL state, metadata, create context, and bulk Move — **DONE** | 45m | t007 |
+| t010 | Closeout — move to `done/` when the Definition of Done holds — **DONE** | 15m | t008, t009 |
 
 ## Definition of done
 
@@ -25,7 +25,7 @@ Against a populated dev project, the dashboard shows one URL-owned Environment a
 
 - **Source:** user-requested authenticated comparison on 2026-07-17 between a live bex Project and a live Render Project. Render's populated `Production` view showed `All (8) · Services (8) · Env Groups (0)`, eight rows, `Name · Status · Runtime · Region · Updated`, a contextual **New service**, row checkboxes, and `0 services selected: Move`. bex showed uncounted type filters on a `prod` Environment card plus a separate **All resources** table, `Name · Type · Status · Created`, no project-context create action, and no selection toolbar. The bex fixture happened to be empty, so the repository implementation was also inspected to distinguish data absence from missing controls.
 - **Already shipped; do not duplicate:** inline project rename and contextual Overview/Manage/Settings navigation; Add/New Environment and environment CRUD/settings; Manage resources; per-row lifecycle/Options menus and Move-to-project; URL-owned project resource search plus All/Services/Databases/Key Values/Env Groups filters (`w5/m25`, `w5/m31`, `w5/m36`).
-- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md) pillar 1, Render parity, and [ADR032](../../../docs/ADR032-environments.md), making Projects/Environments operable at real resource counts rather than only feature-complete in isolation.
+- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md) pillar 1, Render parity, and [ADR032](../../../../docs/ADR032-environments.md), making Projects/Environments operable at real resource counts rather than only feature-complete in isolation.
 - **Expected outcome:** a user can scan and reorganize a busy project from one table, see the operational facts Render puts in that table, and create a service without reselecting the project/environment in a second form.
 - **Why now:** the earlier dashboard walk classified the Environment-card layout as an information-architecture choice and closed only search/filtering. This populated comparator exposed the controls and metadata that the sparse comparison did not: contextual create, authoritative update/placement/runtime facts, and selection-based Move. The backend now carries most of these facts (`updatedAt`, runtime, `BEX_REGION`), making the remaining gap actionable rather than speculative.
 - **Render parity closing task included:** this milestone changes dashboard behavior and adds the one missing GraphQL Service metadata field needed by that UI; t007 verifies the complete contract and refreshes evidence/ledger claims.
@@ -37,3 +37,12 @@ Against a populated dev project, the dashboard shows one URL-owned Environment a
 - `BEX_REGION` is installation placement, not user-selectable per-resource placement. Display it when configured; do not add a region picker.
 - Preserve the existing full environment-management capability. The selected-Environment overview is an operating view, not a removal of create/rename/delete/settings/Manage resources.
 - T001 must verify what Render's Move dialog targets before implementation. Do not infer cross-project versus cross-Environment semantics from the collapsed toolbar label.
+
+## Closeout notes (2026-07-17)
+
+- **Shipped:** the Project overview now has one URL-selected Environment, accurate pre-search counts, authoritative Runtime/Region/Updated columns, contextual New Service, accessible mixed-kind selection and Environment-targeted Move, reload-stable Unassigned access, and all pre-existing management/per-row controls.
+- **Live proof:** a clean-room production fixture covered two Environments, three services, Postgres, Key Value, and an environment group. Chromium exercised search, all five filters, row actions, contextual create, select-all, four-kind Move, refresh persistence, unrelated-target preservation, and direct Unassigned reload with no product request or console errors. GraphQL, REST, and MCP agreed on stable ids, `fsn1`, and update timestamps. The disposable workspace and every local verifier were removed; the bootstrap principal returned to zero workspaces.
+- **Defects closed during proof:** `8b9c25af` made Project/Environment service memberships read canonical public `srv-…` ids while keeping legacy service-name writes compatible; `3f9418df` remounts the contextual-create link after its asynchronous Environment resolves. The final [deploy run](https://github.com/bex-co/bex/actions/runs/29626096638) passed all repository, signing, CVE, and rollout gates.
+- **Simplify:** canonical membership conversion stays at the store boundary, and Project/Environment writes share the same compatibility rule. The dashboard continues to use its existing typed per-kind projection/mutation helpers; a generic four-kind abstraction was declined because it would erase distinct server contracts without removing meaningful duplication. The contextual-link remount is keyed only by resolved Environment id.
+- **Residual:** multi-replica streamable-HTTP MCP sessions can intermittently lose replica affinity; the tools passed after reaching the owning replica. This independent infrastructure issue is documented in `w2/015` and is not hidden behind the Project parity claim.
+- **Quality gates:** backend `go test ./...`, `make lint-backend`, and a real-Postgres `TestPGStore` regression passed. Dashboard formatting, lint/typecheck, production build, 222 files / 1,356 tests, and the full deploy workflow passed.
