@@ -359,6 +359,11 @@ const zhKeyValue: Record<string, TranslationEntry> = {
       "这会将存储缩容至零并断开所有活动连接。数据会被保留，随时可以恢复。",
     description: "Suspend-confirmation dialog body",
   },
+  "keyvalue.confirmSuspendPrompt": {
+    message: "输入 {phrase} 以确认",
+    description:
+      "Label for Render's exact Key Value suspend confirmation phrase",
+  },
   "keyvalue.confirmCancel": {
     message: "取消",
     description: "Suspend-confirmation dialog cancel button",
