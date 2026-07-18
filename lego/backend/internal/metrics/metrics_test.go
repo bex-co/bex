@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -43,6 +44,13 @@ import (
 )
 
 const webInst = "web-1"
+
+const (
+	managedAppID         = "srv-c185th5c2rvvnhbfiltg"
+	managedAppName       = "tea-d98210cbbpdc73dcrkvg-bex"
+	managedAppPublicName = "bex"
+	managedAppPod        = managedAppName + "-6d5896f9c9-abcde"
+)
 
 func testScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
@@ -90,10 +98,10 @@ func ingressFor(app, backend string, hosts ...string) *networkingv1.Ingress {
 	return ingress
 }
 
-// podWithLimits is podFor("web", name) plus a 1-core / 1Gi limit, so
+// podWithLimitsFor is podFor(app, name) plus a 1-core / 1Gi limit, so
 // percentage-mode metrics have a denominator.
-func podWithLimits(name string) *corev1.Pod {
-	p := podFor("web", name)
+func podWithLimitsFor(app, name string) *corev1.Pod {
+	p := podFor(app, name)
 	p.Spec.Containers = []corev1.Container{{
 		Name: core.AppContainer,
 		Resources: corev1.ResourceRequirements{Limits: corev1.ResourceList{
@@ -102,6 +110,10 @@ func podWithLimits(name string) *corev1.Pod {
 		}},
 	}}
 	return p
+}
+
+func podWithLimits(name string) *corev1.Pod {
+	return podWithLimitsFor("web", name)
 }
 
 func staticResourceMetrics(usage map[string]PodResourceUsage) ResourceMetricsSource {
@@ -122,6 +134,77 @@ func newService(rm ResourceMetricsSource, req RequestMetricsSource, objs ...clie
 		ResourceMetrics: rm,
 		RequestMetrics:  req,
 	}
+}
+
+type managedMetricsCalls struct {
+	ranged  []ResourceMetricsRangeRequest
+	request []RequestMetricsRequest
+	filters []string
+}
+
+// newManagedMetricsService reproduces the production identity shape: the
+// public service name, stable srv- id, and Kubernetes App name are all
+// different. Every backend source rejects the public id so a test can only pass
+// when the service resolves operational selectors through the authorized App.
+func newManagedMetricsService(t *testing.T) (*Service, *managedMetricsCalls) {
+	t.Helper()
+	app := sampleApp(managedAppName)
+	app.Labels = map[string]string{
+		core.LabelAppID:       managedAppID,
+		core.LabelServiceName: managedAppPublicName,
+	}
+	app.Spec.Host = managedAppPublicName + ".onbex.co"
+
+	calls := &managedMetricsCalls{}
+	svc := newService(nil, nil,
+		app,
+		podWithLimitsFor(managedAppName, managedAppPod),
+		ingressFor(managedAppName, managedAppName, app.Spec.Host),
+	)
+	svc.ResourceMetricsRange = func(_ context.Context, req ResourceMetricsRangeRequest) ([]MetricSeries, error) {
+		calls.ranged = append(calls.ranged, req)
+		if req.App != managedAppName {
+			return nil, fmt.Errorf("resource selector app = %q, want %q", req.App, managedAppName)
+		}
+		labels := map[string]string{"resource": managedAppName}
+		value := float64(1)
+		if req.Metric != MetricInstanceCount {
+			labels["instance"] = managedAppPod
+		}
+		switch req.Metric {
+		case MetricCPU:
+			value = 0.5
+		case MetricMemory:
+			value = 512 << 20
+		}
+		return []MetricSeries{{
+			Labels: labels,
+			Points: []MetricPoint{{Timestamp: fixedClock().Format(time.RFC3339), Value: value}},
+		}}, nil
+	}
+	svc.RequestMetrics = func(_ context.Context, req RequestMetricsRequest) ([]MetricSeries, error) {
+		calls.request = append(calls.request, req)
+		if req.App != managedAppName {
+			return nil, fmt.Errorf("request selector app = %q, want %q", req.App, managedAppName)
+		}
+		if req.AppID != managedAppID {
+			return nil, fmt.Errorf("request app id = %q, want %q", req.AppID, managedAppID)
+		}
+		return []MetricSeries{{
+			Points: []MetricPoint{{Timestamp: fixedClock().Format(time.RFC3339), Value: 7}},
+		}}, nil
+	}
+	svc.MetricsFilterValuesSource = func(_ context.Context, _, app, label string) ([]string, error) {
+		calls.filters = append(calls.filters, app)
+		if app != managedAppName {
+			return nil, fmt.Errorf("filter selector app = %q, want %q", app, managedAppName)
+		}
+		if label != "code" {
+			return nil, fmt.Errorf("filter label = %q, want code", label)
+		}
+		return []string{"200", "500"}, nil
+	}
+	return svc, calls
 }
 
 // --- Verb logic ---
@@ -219,6 +302,158 @@ func TestRequestMetricResolvesQueryAndUnits(t *testing.T) {
 	_, _ = svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPLatency})
 	if got.Quantile != defaultQuantile {
 		t.Errorf("latency should default quantile to p95, got %v", got.Quantile)
+	}
+}
+
+func TestManagedServiceIDUsesResolvedAppNameForEveryMetricsLookup(t *testing.T) {
+	svc, calls := newManagedMetricsService(t)
+	ctx := context.Background()
+
+	resourceCases := []struct {
+		metric     string
+		percentage bool
+		wantValue  float64
+	}{
+		{metric: MetricCPU, percentage: true, wantValue: 50},
+		{metric: MetricMemory, wantValue: 512 << 20},
+		{metric: MetricCPULimit, wantValue: 1},
+		{metric: MetricMemoryLimit, wantValue: 1 << 30},
+		{metric: MetricInstanceCount, wantValue: 1},
+	}
+	for _, tc := range resourceCases {
+		t.Run(tc.metric, func(t *testing.T) {
+			series, err := svc.Metrics(ctx, MetricQuery{
+				App: managedAppID, Metric: tc.metric, Percentage: tc.percentage,
+			})
+			if err != nil || len(series) != 1 {
+				t.Fatalf("Metrics: err=%v series=%+v", err, series)
+			}
+			if got := series[0].Labels["resource"]; got != managedAppID {
+				t.Errorf("response resource = %q, want public id %q", got, managedAppID)
+			}
+			if got := series[0].Points[0].Value; got != tc.wantValue {
+				t.Errorf("value = %v, want %v", got, tc.wantValue)
+			}
+		})
+	}
+
+	for _, metric := range []string{MetricHTTPRequests, MetricHTTPLatency, MetricBandwidth} {
+		t.Run(metric, func(t *testing.T) {
+			series, err := svc.Metrics(ctx, MetricQuery{App: managedAppID, Metric: metric})
+			if err != nil || len(series) != 1 || series[0].Points[0].Value != 7 {
+				t.Fatalf("Metrics: err=%v series=%+v", err, series)
+			}
+		})
+	}
+
+	if len(calls.ranged) != 3 {
+		t.Fatalf("ranged source calls = %d, want CPU, memory, and instance count", len(calls.ranged))
+	}
+	for _, req := range calls.ranged {
+		if req.App != managedAppName {
+			t.Errorf("ranged source app = %q, want %q", req.App, managedAppName)
+		}
+	}
+	if len(calls.request) != 3 {
+		t.Fatalf("request source calls = %d, want request count, latency, and bandwidth", len(calls.request))
+	}
+	for _, req := range calls.request {
+		if req.App != managedAppName || req.AppID != managedAppID {
+			t.Errorf("request source identity = app %q id %q", req.App, req.AppID)
+		}
+		if req.Metric == MetricBandwidth && len(req.Routers) != 1 {
+			t.Errorf("bandwidth routers = %v, want the resolved App ingress router", req.Routers)
+		}
+	}
+
+	filters, err := svc.MetricsFilters(ctx, MetricsFiltersQuery{
+		App: managedAppID, OutputFilters: []string{filterFieldResource, "INSTANCE", "STATUS_CODE"},
+	})
+	if err != nil {
+		t.Fatalf("MetricsFilters: %v", err)
+	}
+	if len(filters) != 3 || len(filters[0].Values) != 1 || filters[0].Values[0] != managedAppID {
+		t.Fatalf("resource filter should retain public id: %+v", filters)
+	}
+	if len(filters[1].Values) != 1 || filters[1].Values[0] != managedAppPod {
+		t.Errorf("instance filter should come from resolved App pods: %+v", filters[1])
+	}
+	if len(filters[2].Values) != 2 || filters[2].Values[1] != "500" {
+		t.Errorf("status filter should come from resolved Prometheus selector: %+v", filters[2])
+	}
+	if len(calls.filters) != 1 || calls.filters[0] != managedAppName {
+		t.Errorf("filter source apps = %v, want [%s]", calls.filters, managedAppName)
+	}
+}
+
+func TestManagedServiceIDMetricsAcrossRESTGraphQLAndMCP(t *testing.T) {
+	svc, _ := newManagedMetricsService(t)
+
+	var rest []renderMetricSeries
+	rec := serveREST(svc, "/v1/metrics/cpu?resource="+managedAppID)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("REST status = %d: %s", rec.Code, rec.Body.String())
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil || len(rest) != 1 {
+		t.Fatalf("REST decode: err=%v series=%+v", err, rest)
+	}
+	var restResource string
+	for _, label := range rest[0].Labels {
+		if label.Field == "resource" {
+			restResource = label.Value
+		}
+	}
+	if restResource != managedAppID {
+		t.Errorf("REST resource label = %q, want %q", restResource, managedAppID)
+	}
+
+	schema, err := gqlSchema(svc)
+	if err != nil {
+		t.Fatalf("GraphQL schema: %v", err)
+	}
+	gql := graphql.Do(graphql.Params{
+		Schema: schema, Context: context.Background(),
+		RequestString: fmt.Sprintf(`{ metrics(query: {filters: [{field: "RESOURCE", values: [%q]}], name: "CPU"}) { unit values { value } } }`, managedAppID),
+	})
+	if len(gql.Errors) > 0 {
+		t.Fatalf("GraphQL errors: %v", gql.Errors)
+	}
+	gqlSeries := gql.Data.(map[string]any)["metrics"].([]any)
+	if len(gqlSeries) != 1 || gqlSeries[0].(map[string]any)["unit"] != unitCores {
+		t.Fatalf("GraphQL series = %+v", gqlSeries)
+	}
+
+	ctx := context.Background()
+	server := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(server)
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	if _, err := server.Connect(ctx, serverTransport, nil); err != nil {
+		t.Fatalf("MCP server connect: %v", err)
+	}
+	clientSession, err := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("MCP client connect: %v", err)
+	}
+	defer clientSession.Close()
+	result, err := clientSession.CallTool(ctx, &mcp.CallToolParams{
+		Name: "get_metrics",
+		Arguments: map[string]any{
+			"resource": []string{managedAppID}, "metricTypes": []string{MetricCPU},
+		},
+	})
+	if err != nil || result.IsError {
+		t.Fatalf("MCP get_metrics: err=%v result=%+v", err, result)
+	}
+	raw, err := json.Marshal(result.StructuredContent)
+	if err != nil {
+		t.Fatalf("MCP marshal: %v", err)
+	}
+	var mcpMetrics getMetricsResult
+	if err := json.Unmarshal(raw, &mcpMetrics); err != nil || len(mcpMetrics.Series) != 1 {
+		t.Fatalf("MCP decode: err=%v series=%+v raw=%s", err, mcpMetrics.Series, raw)
+	}
+	if got := mcpMetrics.Series[0].Labels["resource"]; got != managedAppID {
+		t.Errorf("MCP resource label = %q, want %q", got, managedAppID)
 	}
 }
 
