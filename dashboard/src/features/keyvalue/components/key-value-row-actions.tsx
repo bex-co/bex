@@ -12,6 +12,7 @@ import { DeleteKeyValueDialog } from "@/features/keyvalue/components/key-value-c
 import { useDeleteKeyValue } from "@/features/keyvalue/hooks/use-delete-key-value";
 import type { KeyValueView } from "@/features/keyvalue/types";
 import { MoveToProjectMenu } from "@/features/projects/components/move-to-project-menu";
+import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 
 export interface KeyValueRowActionsProps {
   keyValue: KeyValueView;
@@ -34,13 +35,22 @@ export function KeyValueRowActions({
   const { t } = useTranslations();
   const { remove, deleting } = useDeleteKeyValue();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [protectedConfirmation, setProtectedConfirmation] = useState<
+    string | null
+  >(null);
 
   const busy = deleting === keyValue.id;
 
-  async function handleDelete() {
-    const ok = await remove(keyValue.id, keyValue.name);
-    if (ok) {
+  async function handleDelete(confirmation?: string) {
+    const result = confirmation
+      ? await remove(keyValue.id, keyValue.name, confirmation)
+      : await remove(keyValue.id, keyValue.name);
+    if (result.status === "confirmation_required") {
       setConfirmOpen(false);
+      setProtectedConfirmation(result.confirmation);
+    } else if (result.status === "success") {
+      setConfirmOpen(false);
+      setProtectedConfirmation(null);
       onDeleted(keyValue.id);
     }
   }
@@ -79,6 +89,17 @@ export function KeyValueRowActions({
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         busy={busy}
+        onConfirm={handleDelete}
+      />
+
+      <ProtectedConfirmationDialog
+        key={protectedConfirmation ? `open:${protectedConfirmation}` : "closed"}
+        open={protectedConfirmation !== null}
+        resourceName={keyValue.name}
+        requiredConfirmation={protectedConfirmation ?? ""}
+        actionLabel={t("keyvalue.deleteConfirm")}
+        busy={busy}
+        onOpenChange={(open) => !open && setProtectedConfirmation(null)}
         onConfirm={handleDelete}
       />
     </>

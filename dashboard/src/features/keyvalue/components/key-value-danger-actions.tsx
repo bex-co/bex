@@ -9,6 +9,7 @@ import {
 import { useDeleteKeyValue } from "@/features/keyvalue/hooks/use-delete-key-value";
 import { useKeyValueLifecycle } from "@/features/keyvalue/hooks/use-key-value-lifecycle";
 import type { KeyValueView } from "@/features/keyvalue/types";
+import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 
 export interface KeyValueDangerActionsProps {
   keyValue: KeyValueView;
@@ -33,26 +34,50 @@ export function KeyValueDangerActions({
   const { pending, run } = useKeyValueLifecycle();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [suspendOpen, setSuspendOpen] = useState(false);
+  const [protectedConfirm, setProtectedConfirm] = useState<{
+    action: "delete" | "suspend";
+    confirmation: string;
+  } | null>(null);
 
   const deleteBusy = deleting === keyValue.id;
   const busy = deleteBusy || pending !== null;
 
-  async function handleDelete() {
-    const ok = await remove(keyValue.id, keyValue.name);
-    if (!ok) return;
-    setDeleteOpen(false);
-    onDeleted(keyValue.id);
+  async function handleDelete(confirmation?: string) {
+    const result = confirmation
+      ? await remove(keyValue.id, keyValue.name, confirmation)
+      : await remove(keyValue.id, keyValue.name);
+    if (result.status === "confirmation_required") {
+      setDeleteOpen(false);
+      setProtectedConfirm({
+        action: "delete",
+        confirmation: result.confirmation,
+      });
+    } else if (result.status === "success") {
+      setDeleteOpen(false);
+      setProtectedConfirm(null);
+      onDeleted(keyValue.id);
+    }
   }
 
-  async function handleSuspend() {
+  async function handleSuspend(confirmation?: string) {
     setSuspendOpen(false);
-    const ok = await run("suspend", keyValue.id, keyValue.name);
-    if (ok) onChanged();
+    const result = confirmation
+      ? await run("suspend", keyValue.id, keyValue.name, confirmation)
+      : await run("suspend", keyValue.id, keyValue.name);
+    if (result.status === "confirmation_required") {
+      setProtectedConfirm({
+        action: "suspend",
+        confirmation: result.confirmation,
+      });
+    } else if (result.status === "success") {
+      setProtectedConfirm(null);
+      onChanged();
+    }
   }
 
   async function handleResume() {
-    const ok = await run("resume", keyValue.id, keyValue.name);
-    if (ok) onChanged();
+    const result = await run("resume", keyValue.id, keyValue.name);
+    if (result.status === "success") onChanged();
   }
 
   return (
@@ -108,6 +133,26 @@ export function KeyValueDangerActions({
         onOpenChange={setSuspendOpen}
         busy={busy}
         onConfirm={handleSuspend}
+      />
+      <ProtectedConfirmationDialog
+        key={
+          protectedConfirm ? `open:${protectedConfirm.confirmation}` : "closed"
+        }
+        open={protectedConfirm !== null}
+        resourceName={keyValue.name}
+        requiredConfirmation={protectedConfirm?.confirmation ?? ""}
+        actionLabel={
+          protectedConfirm?.action === "delete"
+            ? t("keyvalue.deleteConfirm")
+            : t("keyvalue.actionSuspend")
+        }
+        busy={busy}
+        onOpenChange={(open) => !open && setProtectedConfirm(null)}
+        onConfirm={(confirmation) =>
+          protectedConfirm?.action === "delete"
+            ? handleDelete(confirmation)
+            : handleSuspend(confirmation)
+        }
       />
     </div>
   );

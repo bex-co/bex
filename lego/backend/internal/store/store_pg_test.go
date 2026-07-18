@@ -377,6 +377,12 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 		len(got.IPAllowList) != 2 || got.IPAllowList[0] != acl[0] || got.IPAllowList[1] != acl[1] {
 		t.Fatalf("ACL round-trip = %+v (err %v), want %+v", got.IPAllowList, err, acl)
 	}
+	if got, err := s.GetEnvironmentProtectedStatus(ctx, env.ID); err != nil || got != "protected" {
+		t.Fatalf("GetEnvironmentProtectedStatus(protected) = %q, %v", got, err)
+	}
+	if got, err := s.GetEnvironmentProtectedStatus(ctx, "env-deleted"); err != nil || got != "unprotected" {
+		t.Fatalf("GetEnvironmentProtectedStatus(missing) = %q, %v, want unprotected, nil", got, err)
+	}
 	// A pre-m24 row holds bare CIDR strings (exactly what migration 0034's
 	// to_jsonb conversion leaves in place) — it must read back with empty
 	// descriptions, never an error or a fabricated description.

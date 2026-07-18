@@ -30,18 +30,19 @@ import (
 // official MCP server (render-oss/render-mcp-server): list_key_value /
 // get_key_value / create_key_value, keyed on Render's `keyValueId`. The former
 // list_key_value_instances spelling remains as a deprecated compatibility alias.
-// Render's MCP server exposes no delete/suspend/resume KV tools, so bex mirrors
-// that exactly — those lifecycle verbs live on REST + GraphQL only (a deliberate
-// match, noted in docs/ADR018-render-parity.md, not a gap). rename_key_value is a
-// bex extension (Render's MCP server has no KV rename tool either), the sibling of
-// rename_postgres. Every tool delegates to the same Service method REST and
-// GraphQL call, so the surfaces can't drift.
+// Render's MCP server exposes no delete/suspend/resume KV tools. bex keeps
+// delete absent, but exposes suspend_keyvalue as a deliberate lifecycle
+// extension so agents can use the same protected-environment safety gate as
+// REST, GraphQL, and the dashboard. rename_key_value is likewise a bex
+// extension, the sibling of rename_postgres. Every tool delegates to the same
+// Service method REST and GraphQL call, so the surfaces can't drift.
 
 // keyValueArgs is the shared single-instance argument. Render's tools key on
 // `keyValueId`; for bex that id is the KeyValue name (opaque, round-tripped from
 // list_key_value; the former list_key_value_instances alias returns the same).
 type keyValueArgs struct {
 	KeyValueID string `json:"keyValueId" jsonschema:"the key-value id (bex KeyValue name), as returned by list_key_value"`
+	Confirm    string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned when a protected environment blocks the action"`
 }
 
 // updateKeyValuePlanArgs is update_key_value_plan's input.
@@ -136,6 +137,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			return nil, KeyValueView{}, err
 		}
 		return nil, v, nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "suspend_keyvalue",
+		Description: "Suspend a managed key-value store (stop compute while preserving its data volume). bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in keyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
+		v, err := s.Suspend(core.WithConfirm(ctx, in.Confirm), in.KeyValueID)
+		return nil, v, err
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{

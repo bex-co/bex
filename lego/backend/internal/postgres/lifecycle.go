@@ -51,6 +51,11 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 	if err != nil {
 		return PostgresView{}, err
 	}
+	if suspended {
+		if err := s.requireUnprotected(ctx, d, "suspend"); err != nil {
+			return PostgresView{}, err
+		}
+	}
 	if d.Spec.Suspended == suspended {
 		return pgView(d), nil
 	}

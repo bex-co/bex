@@ -36,7 +36,7 @@ const DB: DatabaseView = {
 
 beforeEach(() => {
   remove.mockReset();
-  remove.mockResolvedValue(true);
+  remove.mockResolvedValue({ status: "success" });
 });
 
 describe("DatabaseRowActions", () => {
@@ -64,6 +64,50 @@ describe("DatabaseRowActions", () => {
 
     await user.click(confirm);
     expect(remove).toHaveBeenCalledWith("shop-db", "shop-db");
+    expect(onDeleted).toHaveBeenCalledWith("shop-db");
+  });
+
+  it("retries a protected delete only with the server-issued phrase", async () => {
+    remove
+      .mockResolvedValueOnce({
+        status: "confirmation_required",
+        confirmation: "sudo delete database shop-db",
+      })
+      .mockResolvedValueOnce({ status: "success" });
+    const onDeleted = vi.fn();
+    const user = userEvent.setup();
+    render(<DatabaseRowActions database={DB} onDeleted={onDeleted} />);
+
+    await user.click(screen.getByRole("button", { name: "Open actions menu" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    const localDialog = await screen.findByRole("dialog");
+    await user.type(
+      within(localDialog).getByRole("textbox"),
+      "sudo delete postgres shop-db",
+    );
+    await user.click(
+      within(localDialog).getByRole("button", { name: "Delete database" }),
+    );
+
+    const protectedDialog = await screen.findByRole("dialog");
+    expect(
+      within(protectedDialog).getByText("sudo delete database shop-db"),
+    ).toBeInTheDocument();
+    const retry = within(protectedDialog).getByRole("button", {
+      name: "Delete database",
+    });
+    expect(retry).toBeDisabled();
+    await user.type(
+      within(protectedDialog).getByRole("textbox"),
+      "sudo delete database shop-db",
+    );
+    await user.click(retry);
+
+    expect(remove).toHaveBeenLastCalledWith(
+      "shop-db",
+      "shop-db",
+      "sudo delete database shop-db",
+    );
     expect(onDeleted).toHaveBeenCalledWith("shop-db");
   });
 });

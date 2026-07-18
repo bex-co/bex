@@ -91,7 +91,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// (suspend/resume 202, restart 200 — same as services).
 	verb := func(status int, fn func(context.Context, string) (PostgresView, error)) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			pg, err := fn(r.Context(), r.PathValue("id"))
+			ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
+			pg, err := fn(ctx, r.PathValue("id"))
 			if err != nil {
 				core.WriteErr(w, err)
 				return
@@ -147,7 +148,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			// timestamp passes (legacy DBs without stored timestamps are never excluded).
 			for _, tf := range []struct {
 				before, after string
-				get            func(PostgresView) string
+				get           func(PostgresView) string
 			}{
 				{"createdBefore", "createdAfter", func(p PostgresView) string { return p.CreatedAt }},
 				{"updatedBefore", "updatedAfter", func(p PostgresView) string { return p.UpdatedAt }},
@@ -229,7 +230,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		})
 		mux.HandleFunc("PATCH "+base+"/{id}", s.handleUpdatePostgres)
 		mux.HandleFunc("DELETE "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
-			if err := s.DeletePostgres(r.Context(), r.PathValue("id")); err != nil {
+			ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
+			if err := s.DeletePostgres(ctx, r.PathValue("id")); err != nil {
 				core.WriteErr(w, err)
 				return
 			}

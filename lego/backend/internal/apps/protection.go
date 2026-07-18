@@ -44,21 +44,15 @@ import (
 // package outside apps needs a confirmation phrase, so it doesn't belong in
 // the shared kernel.
 
-type confirmKey struct{}
-
 // withConfirm records a caller-supplied confirmation phrase for this request.
 // Empty is a no-op (no confirmation offered).
 func withConfirm(ctx context.Context, confirm string) context.Context {
-	if confirm == "" {
-		return ctx
-	}
-	return context.WithValue(ctx, confirmKey{}, confirm)
+	return core.WithConfirm(ctx, confirm)
 }
 
 // confirmFrom returns the confirmation phrase the caller supplied, or "" if none.
 func confirmFrom(ctx context.Context) string {
-	confirm, _ := ctx.Value(confirmKey{}).(string)
-	return confirm
+	return core.ConfirmFrom(ctx)
 }
 
 // ProtectedConfirmation is the exact phrase a caller must echo back (REST

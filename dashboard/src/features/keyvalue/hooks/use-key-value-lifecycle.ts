@@ -1,15 +1,27 @@
 import { useCallback, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
-import { SuspendKeyValueDocument, ResumeKeyValueDocument } from "@/graphql/definitions";
+import {
+  SuspendKeyValueDocument,
+  ResumeKeyValueDocument,
+} from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import {
+  protectedConfirmationFromError,
+  type ProtectedActionResult,
+} from "@/features/services/lib/protected-confirmation";
 
 export type KeyValueLifecycleAction = "suspend" | "resume";
 
 export interface UseKeyValueLifecycleResult {
   pending: KeyValueLifecycleAction | null;
   /** Fires suspendKeyValue/resumeKeyValue; resolves true on success (toasted either way). */
-  run: (action: KeyValueLifecycleAction, id: string, name: string) => Promise<boolean>;
+  run: (
+    action: KeyValueLifecycleAction,
+    id: string,
+    name: string,
+    confirmation?: string,
+  ) => Promise<ProtectedActionResult>;
 }
 
 const SUCCESS_KEY: Record<KeyValueLifecycleAction, string> = {
@@ -37,16 +49,29 @@ export function useKeyValueLifecycle(): UseKeyValueLifecycleResult {
   const [pending, setPending] = useState<KeyValueLifecycleAction | null>(null);
 
   const run = useCallback(
-    async (action: KeyValueLifecycleAction, id: string, name: string) => {
+    async (
+      action: KeyValueLifecycleAction,
+      id: string,
+      name: string,
+      confirmation?: string,
+    ) => {
       setPending(action);
       try {
-        if (action === "suspend") await suspendMutate({ variables: { id } });
+        if (action === "suspend")
+          await suspendMutate({ variables: { id, confirm: confirmation } });
         else await resumeMutate({ variables: { id } });
         toast.success(t(SUCCESS_KEY[action], { name }));
-        return true;
-      } catch {
+        return { status: "success" } as const;
+      } catch (err) {
+        const requiredConfirmation = protectedConfirmationFromError(err);
+        if (requiredConfirmation) {
+          return {
+            status: "confirmation_required",
+            confirmation: requiredConfirmation,
+          } as const;
+        }
         toast.error(t(ERROR_KEY[action], { name }));
-        return false;
+        return { status: "error" } as const;
       } finally {
         setPending(null);
       }

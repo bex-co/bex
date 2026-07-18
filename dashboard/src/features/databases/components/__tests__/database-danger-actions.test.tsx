@@ -22,13 +22,15 @@ const DB: DatabaseView = {
   suspended: "not_suspended",
 };
 
-function lifecycleStub(): UseDatabaseLifecycleResult {
-  return { pending: null, run: vi.fn().mockResolvedValue(undefined) };
+function lifecycleStub(
+  run = vi.fn().mockResolvedValue({ status: "success" }),
+): UseDatabaseLifecycleResult {
+  return { pending: null, run };
 }
 
 beforeEach(() => {
   remove.mockReset();
-  remove.mockResolvedValue(true);
+  remove.mockResolvedValue({ status: "success" });
 });
 
 describe("DatabaseDangerActions — detail-page bottom action row", () => {
@@ -130,5 +132,46 @@ describe("DatabaseDangerActions — detail-page bottom action row", () => {
 
     await user.click(screen.getByRole("button", { name: "Resume Database" }));
     expect(lifecycle.run).toHaveBeenCalledWith("resume", suspended);
+  });
+
+  it("prompts with the server-issued phrase when a protected suspend is blocked", async () => {
+    const run = vi
+      .fn()
+      .mockResolvedValueOnce({
+        status: "confirmation_required",
+        confirmation: "sudo suspend database shop-db",
+      })
+      .mockResolvedValueOnce({ status: "success" });
+    const user = userEvent.setup();
+    render(
+      <DatabaseDangerActions
+        database={DB}
+        onDeleted={vi.fn()}
+        lifecycle={lifecycleStub(run)}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Suspend Database" }));
+    const firstDialog = await screen.findByRole("dialog");
+    await user.click(
+      within(firstDialog).getByRole("button", { name: "Suspend" }),
+    );
+
+    const protectedDialog = await screen.findByRole("dialog");
+    expect(
+      within(protectedDialog).getByText("sudo suspend database shop-db"),
+    ).toBeInTheDocument();
+    await user.type(
+      within(protectedDialog).getByRole("textbox"),
+      "sudo suspend database shop-db",
+    );
+    await user.click(
+      within(protectedDialog).getByRole("button", { name: "Suspend" }),
+    );
+    expect(run).toHaveBeenLastCalledWith(
+      "suspend",
+      DB,
+      "sudo suspend database shop-db",
+    );
   });
 });

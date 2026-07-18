@@ -37,7 +37,7 @@ const KV: KeyValueView = {
 
 beforeEach(() => {
   remove.mockReset();
-  remove.mockResolvedValue(true);
+  remove.mockResolvedValue({ status: "success" });
 });
 
 describe("KeyValueRowActions", () => {
@@ -65,6 +65,48 @@ describe("KeyValueRowActions", () => {
 
     await user.click(confirm);
     expect(remove).toHaveBeenCalledWith("sessions-cache", "sessions-cache");
+    expect(onDeleted).toHaveBeenCalledWith("sessions-cache");
+  });
+
+  it("retries a protected delete only with the server-issued phrase", async () => {
+    remove
+      .mockResolvedValueOnce({
+        status: "confirmation_required",
+        confirmation: "sudo delete key value sessions-cache",
+      })
+      .mockResolvedValueOnce({ status: "success" });
+    const onDeleted = vi.fn();
+    const user = userEvent.setup();
+    render(<KeyValueRowActions keyValue={KV} onDeleted={onDeleted} />);
+
+    await user.click(screen.getByRole("button", { name: "Open actions menu" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    const localDialog = await screen.findByRole("dialog");
+    await user.type(
+      within(localDialog).getByRole("textbox"),
+      "sudo delete key value sessions-cache",
+    );
+    await user.click(
+      within(localDialog).getByRole("button", {
+        name: "Delete Key Value Instance",
+      }),
+    );
+
+    const protectedDialog = await screen.findByRole("dialog");
+    await user.type(
+      within(protectedDialog).getByRole("textbox"),
+      "sudo delete key value sessions-cache",
+    );
+    await user.click(
+      within(protectedDialog).getByRole("button", {
+        name: "Delete Key Value Instance",
+      }),
+    );
+    expect(remove).toHaveBeenLastCalledWith(
+      "sessions-cache",
+      "sessions-cache",
+      "sudo delete key value sessions-cache",
+    );
     expect(onDeleted).toHaveBeenCalledWith("sessions-cache");
   });
 });

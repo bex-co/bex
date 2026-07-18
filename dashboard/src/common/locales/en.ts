@@ -1,6 +1,27 @@
 import type { TranslationEntry } from "@/i18n";
 
 const enCommon: Record<string, TranslationEntry> = {
+  "common.protectedConfirmationTitle": {
+    message: "Protected environment confirmation required",
+    description:
+      "Title for the retry dialog shown after a protected environment blocks a destructive action",
+  },
+  "common.protectedConfirmationBody": {
+    message:
+      "{name} belongs to a protected environment. Type the exact command below to continue.",
+    description:
+      "Resource-neutral explanation for a protected environment confirmation gate",
+  },
+  "common.protectedConfirmationPrompt": {
+    message: "Type {phrase} below to confirm.",
+    description:
+      "Prompt naming the server-issued protected environment confirmation phrase",
+  },
+  "common.protectedConfirmationCancel": {
+    message: "Cancel",
+    description:
+      "Cancel button in the protected environment confirmation dialog",
+  },
   "common.navEnvGroups": {
     message: "Environment Groups",
     description: "Workspace sidebar link to environment groups",

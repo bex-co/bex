@@ -14,7 +14,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 
 export interface ProtectedConfirmationDialogProps {
   open: boolean;
-  serviceName: string;
+  resourceName: string;
   requiredConfirmation: string;
   actionLabel: string;
   busy: boolean;
@@ -25,7 +25,7 @@ export interface ProtectedConfirmationDialogProps {
 /** Typed retry dialog driven by the exact phrase returned by bex-api. */
 export function ProtectedConfirmationDialog({
   open,
-  serviceName,
+  resourceName,
   requiredConfirmation,
   actionLabel,
   busy,
@@ -45,14 +45,14 @@ export function ProtectedConfirmationDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t("services.protectedConfirmationTitle")}</DialogTitle>
+          <DialogTitle>{t("common.protectedConfirmationTitle")}</DialogTitle>
           <DialogDescription>
-            {t("services.protectedConfirmationBody", { name: serviceName })}
+            {t("common.protectedConfirmationBody", { name: resourceName })}
           </DialogDescription>
         </DialogHeader>
         <SudoCommandField
-          id="protected-service-confirmation"
-          promptKey="services.protectedConfirmationPrompt"
+          id="protected-resource-confirmation"
+          promptKey="common.protectedConfirmationPrompt"
           phrase={requiredConfirmation}
           value={confirmation}
           onValueChange={setConfirmation}
@@ -63,7 +63,7 @@ export function ProtectedConfirmationDialog({
             onClick={() => handleOpenChange(false)}
             disabled={busy}
           >
-            {t("services.confirmCancel")}
+            {t("common.protectedConfirmationCancel")}
           </Button>
           <Button
             variant="destructive"
