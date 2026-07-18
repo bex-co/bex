@@ -1,8 +1,13 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+# ClusterRole, not a namespaced Role: the resolver lists static_site Apps across
+# ALL namespaces when BEX_STATIC_NAMESPACE is empty (the default — the base sets
+# no namespace, so the resolver does a cluster-scoped List). A namespaced Role
+# cannot satisfy a cluster-scoped list and the resolver logs "apps.app.bex.co is
+# forbidden ... at the cluster scope", serving 404 for every host (w9/m44). Scope
+# this to a namespaced Role only if you also set BEX_STATIC_NAMESPACE to it.
+kind: ClusterRole
 metadata:
   name: static-server
-  namespace: bex-system
 rules:
   # Read Apps to map an incoming host to its static_site's current revision and
   # edge rules (routes/headers). Read-only — the static-server never mutates.
