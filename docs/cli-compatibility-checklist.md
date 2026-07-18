@@ -1,236 +1,232 @@
 # Render CLI compatibility checklist
 
-The full command surface of the official [Render CLI](https://render.com/docs/cli) (`render-oss/cli` **v2.21.0**), enumerated straight from `render --help` for bex compatibility tracking. Every command, subcommand, and flag is a dedicated checklist item so each can be graded independently.
+The full command surface of the official [Render CLI](https://render.com/docs/cli) (`render-oss/cli` **v2.21.0**), enumerated from `render --help` and **graded against a live bex** by driving the unmodified CLI through its REST API. Every command, subcommand, and flag is a dedicated checklist item.
 
-Legend: `[x]` supported · `[~]` supported with a limitation · `[ ]` not yet supported / unverified · `[-]` deliberate non-goal.
+Legend: `[x]` verified working · `[~]` works with a documented limitation · `[ ]` not working / not verifiable here · `[-]` deliberate bex non-goal.
 
-Global flags on every command: `--confirm` (skip confirmation prompts), `-o, --output <interactive|json|yaml|text>` (auto-switches to `text` on non-TTY), `-h, --help`, `-v, --version`.
+## How this pass was verified
 
-> Regenerate this tree with `render <subcommand> --help` (recurse into each `SUBCOMMANDS` block). Grouping below mirrors the CLI's own `render --help` sections.
+- **CLI:** `render-oss/cli` v2.21.0, built unmodified from `./cli`, driven only through [`scripts/cli-compat.sh`](../scripts/cli-compat.sh) (Hydra `client_credentials` token exchange per call, `RENDER_HOST` → local bex-api). Production was never touched.
+- **Target:** the isolated local **dev-9** environment (`.pm/w9/dev-9`, bex-api at `:54090`), current `lego/backend` HEAD, on **2026-07-18**.
+- **Method:** the maintained regression suite `scripts/cli-compat.sh verify` (whole-shape `checkFields` assertions over the core families) **plus** a six-agent parallel sweep of the entire flag matrix and every command `verify` doesn't cover. Each item was graded on the unmodified CLI's exit status and the wire shape read back via `-o json` and raw REST `GET`.
+- **dev-9 does not run** (so paths needing them are marked accordingly, distinguishing a real bex gap from an environment limit): build infra (kpack/zot), OpenBao (env-vars/secret-file store), the registry-credential store, Loki (durable log store), Prometheus, cert-manager, OpenFGA (authz is allow-all here), `BEX_DB_DOMAIN`/`BEX_KV_DOMAIN` (external datastore connect), and the SSH gateway.
+
+### Real gaps found this pass (bex-side, worth filing)
+
+- **`keyvalues update --memory-policy` / `--ip-allow-list` / `--clear-ip-allow-list` are silent no-ops** — the CLI sends them, bex-api returns `200` with an empty diff, the field is unchanged. Root cause: `handleUpdateKeyValue` (`lego/backend/internal/keyvalue/rest.go`) and `KeyValuePatch` (`.../service.go`) decode only `name`/`plan`, so those keys are dropped. (A separate `PUT /v1/key-value/{id}/ip-allow-list` route exists, but `update` doesn't call it.)
+- **`postgres create --database-name` / `--database-user` are silently ignored** — `CreatePostgresRequest` has no such fields; bex server-generates `dpg_<id>` / `dpg_<id>_user`.
+- **`postgres create/update --datadog-api-key` / `--datadog-site` are silently ignored** — no Datadog integration; accepted with `200`, never applied.
+- _(upstream CLI, not bex)_ **`skills list` / `skills update` panic** (nil-pointer) in every non-TTY output mode.
+
+### Intended divergences (not bugs)
+
+- `--region` is accepted but **platform-stamped** (`local-capd`); the value submitted is not persisted. This is what makes a bare `services create --from` clone fail — the CLI re-validates the source's `local-capd` region against its own enum — so clones need an explicit `--region`.
+- `--previews` is rejected platform-wide (`400 "not supported by this platform"`).
+- `services update --runtime` is rejected via the CLI by design ("cannot switch runtimes via the CLI"); `services --ip-allow-list` keeps the CIDR but drops per-entry descriptions (Postgres/Key Value do persist them).
+
+> Regenerate the command tree with `render <subcommand> --help`. Re-run the graded baseline with `scripts/cli-compat.sh verify`. Grouping mirrors the CLI's own `render --help` sections.
 
 ## Core
 
-- [ ] **`deploys`** — list, create, and cancel deploys
-  - [ ] `deploys list <serviceID>` — list deploys for a service
-  - [ ] `deploys create <serviceID>` — trigger a deploy and stream logs
-    - [ ] `--clear-cache` — clear build cache before deploying
-    - [ ] `--commit <id>` — deploy the specified commit ID
-    - [ ] `--image <url>` — deploy the specified Docker image URL
-    - [ ] `--wait` — wait for completion and exit non-zero on failure
-  - [ ] `deploys cancel <serviceID> <deployID>` — cancel a running deploy
-- [ ] **`jobs`** — create and manage one-off jobs
-  - [ ] `jobs list <serviceID>` — list jobs for a service
-  - [ ] `jobs create <serviceID>` — create a one-off job (uses the service image)
-    - [ ] `--start-command <cmd>` — set the job start command
-    - [ ] `--plan-id <id>` — set the plan ID for the job
-  - [ ] `jobs cancel <serviceID> <jobID>` — cancel a running job
-- [ ] **`keyvalues`** (alias `kv`) — manage Render Key Value instances
-  - [ ] `keyvalues create` — create a Key Value instance
-    - [ ] `--name <string>` — instance name (generated if unset)
-    - [ ] `--plan <free|starter|standard|pro|pro_plus>` — plan
-    - [ ] `--region <frankfurt|ohio|oregon|singapore|virginia>` — region
-    - [ ] `--memory-policy <cache|queue|raw policy>` — eviction policy
-    - [ ] `--ip-allow-list cidr=…,description=…` — inbound IP allow-list entry (repeatable)
-    - [ ] `--workspace <id|name>` — target workspace
-    - [ ] `--project <id|name>` — scope environment lookup to a project
-    - [ ] `--environment <id|name>` — target environment
-  - [ ] `keyvalues list` — list Key Value instances
-  - [ ] `keyvalues get <id|name>` — get instance details
-  - [ ] `keyvalues update <id|name>` — update an instance
-    - [ ] `--name <string>` — rename the instance
-    - [ ] `--plan <string>` — change plan
-    - [ ] `--memory-policy <enum>` — change eviction policy
-    - [ ] `--ip-allow-list cidr=…,description=…` — replace the allow-list (repeatable)
-    - [ ] `--clear-ip-allow-list` — remove all allow-list entries
-  - [ ] `keyvalues suspend <id|name>` — suspend an instance
-  - [ ] `keyvalues resume <id|name>` — resume a suspended instance
-  - [ ] `keyvalues delete <id|name>` — delete an instance
-- [ ] **`logs`** — view logs for services and datastores (single command)
-  - [ ] query mode — filter over a time range and print
-  - [ ] `--tail` — stream new logs live
-  - [ ] `-r, --resources <ids>` — filter by resource IDs (required in non-interactive mode)
-  - [ ] `--instance <ids>` — filter by instance IDs
-  - [ ] `--start <time>` — logs at or after this time
-  - [ ] `--end <time>` — logs at or before this time
-  - [ ] `--direction <backward|forward>` — query direction
-  - [ ] `--limit <count>` — cap the number of logs (default 100)
-  - [ ] `--text <query>` — filter by text values
-  - [ ] `--level <levels>` — filter by log levels
-  - [ ] `--type <types>` — filter by log types
-  - [ ] `--host <hosts>` — filter by host values
-  - [ ] `--status-code <codes>` — filter by HTTP status codes
-  - [ ] `--method <methods>` — filter by HTTP methods
-  - [ ] `--path <paths>` — filter by request paths
-  - [ ] `--task-id <ids>` — filter by task IDs
-  - [ ] `--task-run-id <ids>` — filter by task run IDs
-- [ ] **`postgres`** (alias `pg`) — manage Render Postgres databases
-  - [ ] `postgres create` — create a database
-    - [ ] `--name <string>` — database name (generated if unset)
-    - [ ] `--plan <free|basic_*|pro_*|accelerated_*>` — plan
-    - [ ] `--region <frankfurt|ohio|oregon|singapore|virginia>` — region
-    - [ ] `--version <int>` — Postgres major version (default 18)
-    - [ ] `--disk-size-gb <int>` — disk size in GB
-    - [ ] `--disk-autoscaling` — enable disk autoscaling
-    - [ ] `--high-availability` — enable HA (Pro plans and above)
-    - [ ] `--read-replica <name>` — create a read replica (repeatable)
-    - [ ] `--ip-allow-list cidr=…,description=…` — inbound IP allow-list entry (repeatable)
-    - [ ] `--database-name <string>` — initial database name
-    - [ ] `--database-user <string>` — initial database user
-    - [ ] `--datadog-api-key <string>` — Datadog monitoring key
-    - [ ] `--datadog-site <string>` — Datadog region/site
-    - [ ] `--workspace <id|name>` — target workspace
-    - [ ] `--project <id|name>` — scope environment lookup to a project
-    - [ ] `--environment <id|name>` — target environment
-  - [ ] `postgres list` — list databases
-  - [ ] `postgres get <id|name>` — get database details
-  - [ ] `postgres update <id|name>` — update a database
-    - [ ] `--name <string>` — rename the database
-    - [ ] `--plan <string>` — change plan
-    - [ ] `--disk-size-gb <int>` — change disk size
-    - [ ] `--disk-autoscaling` — toggle disk autoscaling
-    - [ ] `--high-availability` — toggle HA
-    - [ ] `--ip-allow-list cidr=…,description=…` — replace the allow-list (repeatable)
-    - [ ] `--clear-ip-allow-list` — remove all allow-list entries
-    - [ ] `--datadog-api-key <string>` — set/clear Datadog key
-    - [ ] `--datadog-site <string>` — set Datadog region/site
-    - [ ] `--project <id|name>` — narrow lookup to a project
-    - [ ] `--environment <id|name>` — narrow lookup to an environment
-  - [ ] `postgres suspend <id|name>` — suspend a database
-  - [ ] `postgres resume <id|name>` — resume a suspended database
-  - [ ] `postgres delete <id|name>` — delete a database
-- [ ] **`restart <resourceID>`** — restart a service by resource ID
-- [ ] **`services`** — list services and datastores; bare `services` lists them
-  - [ ] `-e, --environment-ids <ids>` — filter list by environment IDs
-  - [ ] `--include-previews` — include preview environments in the list
-  - [ ] `services create` — create a service (or clone with `--from`)
-    - [ ] `--name <string>` — service name
-    - [ ] `--type <string>` — service type
-    - [ ] `--runtime <string>` — runtime environment
-    - [ ] `--repo <url>` — Git repository URL
-    - [ ] `--branch <string>` — Git branch
-    - [ ] `--image <url>` — Docker image URL
-    - [ ] `--plan <string>` — service plan
-    - [ ] `--region <string>` — deployment region
-    - [ ] `--num-instances <count>` — number of instances
-    - [ ] `--build-command <cmd>` — build command
-    - [ ] `--start-command <cmd>` — start command
-    - [ ] `--pre-deploy-command <cmd>` — pre-deploy command
-    - [ ] `--cron-command <cmd>` — cron command
-    - [ ] `--cron-schedule <schedule>` — cron schedule
-    - [ ] `--health-check-path <path>` — health check path
-    - [ ] `--auto-deploy` — enable auto-deploy (default true)
-    - [ ] `--previews <mode>` — preview generation mode
-    - [ ] `--publish-directory <path>` — publish directory
-    - [ ] `--root-directory <path>` — root directory
-    - [ ] `--env-var KEY=VALUE` — set an env var (repeatable)
-    - [ ] `--secret-file NAME:PATH` — set a secret file (repeatable)
-    - [ ] `--registry-credential <cred>` — registry credential
-    - [ ] `--ip-allow-list cidr=…,description=…` — inbound IP allow-list entry (repeatable)
-    - [ ] `--build-filter-path <path>` — build filter path (repeatable)
-    - [ ] `--build-filter-ignored-path <path>` — build filter ignored path (repeatable)
-    - [ ] `--maintenance-mode` — enable maintenance mode
-    - [ ] `--maintenance-mode-uri <uri>` — maintenance mode URI
-    - [ ] `--max-shutdown-delay <seconds>` — max shutdown delay
-    - [ ] `--environment-id <id>` — target environment
-    - [ ] `--from <serviceID>` — clone config from an existing service
-  - [ ] `services update <service>` — update a service's configuration
-    - [ ] `--name <string>` — rename the service
-    - [ ] `--plan <string>` — change plan
-    - [ ] `--runtime <enum>` — runtime environment
-    - [ ] `--repo <string>` — Git repository URL
-    - [ ] `--branch <string>` — Git branch
-    - [ ] `--image <string>` — Docker image URL
-    - [ ] `--build-command <string>` — build command
-    - [ ] `--start-command <string>` — start command
-    - [ ] `--pre-deploy-command <string>` — pre-deploy command
-    - [ ] `--cron-command <string>` — cron command
-    - [ ] `--cron-schedule <string>` — cron schedule
-    - [ ] `--health-check-path <string>` — health check path
-    - [ ] `--auto-deploy` — toggle auto-deploy
-    - [ ] `--previews <enum>` — preview generation mode
-    - [ ] `--publish-directory <string>` — publish directory
-    - [ ] `--root-directory <string>` — root directory
-    - [ ] `--registry-credential <string>` — registry credential
-    - [ ] `--ip-allow-list cidr=…,description=…` — replace allow-list (repeatable)
-    - [ ] `--build-filter-path <path>` — build filter path (repeatable)
-    - [ ] `--build-filter-ignored-path <path>` — build filter ignored path (repeatable)
-    - [ ] `--maintenance-mode` — toggle maintenance mode
-    - [ ] `--maintenance-mode-uri <string>` — maintenance mode URI
-    - [ ] `--max-shutdown-delay <int>` — max shutdown delay
-  - [ ] `services instances <serviceID>` — list instances for a service
-  - [ ] `services delete <serviceID>` — delete a service
-- [-] **`workflows`** — manage Render Workflows (deliberate bex non-goal)
-  - [-] `workflows list` — list workflow services
-  - [-] `workflows create` — create a workflow service
-  - [-] `workflows init` — scaffold a new Workflows project
-  - [-] `workflows dev` — start a workflow service in development mode
-  - [-] `workflows start` — start a task run (shortcut for `tasks runs start`)
-  - [-] `workflows cancel` — cancel a task run (shortcut for `tasks runs cancel`)
-  - [-] `workflows tasks` — list tasks and manage their runs
-    - [-] `workflows tasks list <versionID>` — list tasks in a workflow version
-    - [-] `workflows tasks runs` — start, list, and inspect task runs
-      - [-] `… runs start` — start a task run (`--task`, `--input`)
-      - [-] `… runs list` — list runs for a task (`--task`)
-      - [-] `… runs show <runID>` — show task-run details
-      - [-] `… runs cancel <runID>` — cancel a running task run
-  - [-] `workflows versions` — list and release workflow versions
-    - [-] `workflows versions list <workflowID>` — list versions of a workflow
-    - [-] `workflows versions release <workflowID>` — release a new version
-- [ ] **`workspaces`** — list workspaces available to your account
+- [x] **`deploys`** — list, create, and cancel deploys
+  - [x] `deploys list <serviceID>` — carries Render's nested `{image:{ref,…}}` shape
+  - [x] `deploys create <serviceID>` — returns a deploy id; accepts the CLI's `clearCache` string enum
+    - [x] `--clear-cache`
+    - [x] `--commit <id>`
+    - [x] `--image <url>`
+    - [x] `--wait`
+  - [x] `deploys cancel <serviceID> <deployID>` — resolves and cancels an open deploy
+- [x] **`jobs`** — create and manage one-off jobs
+  - [x] `jobs list <serviceID>` — lists jobs with status/planId/startCommand
+  - [x] `jobs create <serviceID>` — returns a `job-…` record
+    - [x] `--start-command <cmd>`
+    - [x] `--plan-id <id>` — `starter`/`free` accepted, echoed back
+  - [x] `jobs cancel <serviceID> <jobID>` — cancels a running job
+- [x] **`keyvalues`** (alias `kv`) — manage Render Key Value instances
+  - [x] `keyvalues create` — nested owner/options, opaque `red-<xid>` id, underscore `maxmemoryPolicy`
+    - [x] `--name`
+    - [x] `--plan <free|starter|standard|pro|pro_plus>`
+    - [~] `--region` — accepted but echoes `local-capd` (single fixed region)
+    - [x] `--memory-policy <cache|queue|raw policy>` — `cache`→`allkeys_lru` alias and raw policies round-trip
+    - [x] `--ip-allow-list cidr=…,description=…` — CIDR **and** description round-trip
+    - [x] `--workspace <id|name>`
+    - [~] `--project <id|name>` — flag parsed; needs an existing project (none creatable via CLI)
+    - [~] `--environment <id|name>` — flag parsed; needs an existing project/environment
+  - [x] `keyvalues list`
+  - [x] `keyvalues get <id|name>`
+  - [x] `keyvalues update <id|name>` — resolves by opaque id; core fields apply
+    - [x] `--name` — rename; opaque `red-` id stays stable
+    - [x] `--plan`
+    - [ ] `--memory-policy` — **silent no-op** (bex-api drops the field; `200`, empty diff)
+    - [ ] `--ip-allow-list` — **silent no-op** (same gap)
+    - [ ] `--clear-ip-allow-list` — **silent no-op** (same gap)
+  - [x] `keyvalues suspend <id|name>`
+  - [x] `keyvalues resume <id|name>`
+  - [x] `keyvalues delete <id|name>`
+- [x] **`logs`** — view logs for services and datastores (single command)
+  - [x] query mode — resolves a service by name; empty windows return stable cursors (no parse crash)
+  - [x] `--tail` — streams live pod-log JSON
+  - [x] `-r, --resources <ids>` — required in non-interactive mode; honored
+  - [x] `--instance <ids>` — in live-pod mode the instance label is the pod name
+  - [x] `--start <time>`
+  - [x] `--end <time>`
+  - [x] `--direction <backward|forward>`
+  - [x] `--limit <count>`
+  - [x] `--text <query>` — filter genuinely applied (empty result on no match)
+  - [~] `--level <levels>` — `503`, needs the durable store (`BEX_LOKI_URL`)
+  - [~] `--type <types>` — `app` works live; `request` needs the durable store
+  - [~] `--host <hosts>` — `503`, needs the durable store
+  - [~] `--status-code <codes>` — `503`, needs the durable store
+  - [~] `--method <methods>` — `503`, needs the durable store
+  - [~] `--path <paths>` — `503`, needs the durable store
+  - [x] `--task-id <ids>` — accepted as a filter
+  - [x] `--task-run-id <ids>` — accepted as a filter
+- [x] **`postgres`** (alias `pg`) — manage Render Postgres databases
+  - [x] `postgres create` — id/name/ipAllowList wire shape correct (description persists)
+    - [x] `--name`
+    - [x] `--plan <free|basic_*|pro_*|accelerated_*>`
+    - [~] `--region <frankfurt|ohio|oregon|singapore|virginia>` — accepted; platform-stamped `local-capd`
+    - [x] `--version <int>`
+    - [x] `--disk-size-gb <int>`
+    - [x] `--disk-autoscaling`
+    - [x] `--high-availability` — persists to the CR spec (status flips once replicas are ready)
+    - [x] `--read-replica <name>` — persists to the CR spec
+    - [ ] `--database-name <string>` — **silently ignored** (server-generates `dpg_<id>`)
+    - [ ] `--database-user <string>` — **silently ignored** (server-generates `dpg_<id>_user`)
+    - [ ] `--datadog-api-key <string>` — **silently ignored** (no Datadog integration)
+    - [ ] `--datadog-site <string>` — **silently ignored**
+    - [x] `--workspace <id|name>`
+    - [~] `--project <id|name>` — flag parsed; needs an existing project
+    - [~] `--environment <id|name>` — flag parsed; needs an existing project/environment
+  - [x] `postgres list` — resolves through the RC3 cursor envelope
+  - [x] `postgres get <id|name>` — resolves by name; every field intact; `-o text` renders Workspace/Region
+  - [x] `postgres update <id|name>`
+    - [x] `--name` — rename; opaque `dpg-` id stays stable
+    - [x] `--plan`
+    - [x] `--disk-size-gb`
+    - [x] `--disk-autoscaling` — flips true↔false
+    - [x] `--high-availability`
+    - [x] `--ip-allow-list cidr=…,description=…` — replaces list; description returns
+    - [x] `--clear-ip-allow-list` — empties the list
+    - [ ] `--datadog-api-key <string>` — **silently ignored**
+    - [ ] `--datadog-site <string>` — **silently ignored**
+    - [~] `--project <id|name>` — flag parsed; needs an existing project
+    - [~] `--environment <id|name>` — flag parsed; needs an existing environment
+  - [x] `postgres suspend <id|name>`
+  - [x] `postgres resume <id|name>`
+  - [x] `postgres delete <id|name>`
+- [x] **`restart <resourceID>`** — restarts by typed id (`restart <resourceID>` is the CLI's only documented form)
+- [x] **`services`** — list services and datastores; bare `services` lists them
+  - [x] `-e, --environment-ids <ids>` — filter list by environment IDs
+  - [x] `--include-previews` — accepted list flag
+  - [x] `services create` — returns the `{service,deployId}` record; raw `dashboardUrl` is `…/<type>/<srv-id>` (`/web/`, `/cron/`, `/static/`)
+    - [x] `--name`
+    - [x] `--type` — `web_service`, `cron_job`, `static_site` all accepted
+    - [x] `--runtime` — round-trips (build not exercised in dev-9)
+    - [x] `--repo` — round-trips (build not exercised)
+    - [x] `--branch`
+    - [x] `--image`
+    - [x] `--plan`
+    - [~] `--region` — accepted; bex overwrites to `local-capd` (CLI enum rejects `local-capd` itself)
+    - [x] `--num-instances`
+    - [x] `--build-command` — round-trips (build not exercised)
+    - [x] `--start-command`
+    - [x] `--pre-deploy-command`
+    - [x] `--cron-command` — on `cron_job`
+    - [x] `--cron-schedule` — on `cron_job`
+    - [x] `--health-check-path`
+    - [x] `--auto-deploy`
+    - [-] `--previews` — `400 "not supported by this platform"` (deliberate non-goal)
+    - [x] `--publish-directory` — on `static_site`
+    - [x] `--root-directory` — on repo services
+    - [~] `--env-var KEY=VALUE` — accepted; round-trip needs OpenBao (`503` in dev-9)
+    - [~] `--secret-file NAME:PATH` — needs OpenBao (`503` in dev-9)
+    - [~] `--registry-credential <cred>` — bex resolves it (workspace-scoped "no credential found"); cred store not configured in dev-9
+    - [x] `--ip-allow-list cidr=…,description=…` — CIDR round-trips; description dropped (Postgres/KV keep it)
+    - [x] `--build-filter-path <path>`
+    - [x] `--build-filter-ignored-path <path>`
+    - [x] `--maintenance-mode` — requires a paid plan (`400` on free)
+    - [x] `--maintenance-mode-uri <uri>`
+    - [x] `--max-shutdown-delay <seconds>`
+    - [x] `--environment-id <id>`
+    - [~] `--from <serviceID>` — clones fine, but needs an explicit `--region` (CLI re-validates the source's `local-capd`)
+  - [x] `services update <service>`
+    - [x] `--name` — rename
+    - [x] `--plan`
+    - [ ] `--runtime` — bex rejects runtime switch via CLI by design ("use the API directly")
+    - [x] `--repo`
+    - [x] `--branch`
+    - [x] `--image`
+    - [x] `--build-command`
+    - [x] `--start-command`
+    - [x] `--pre-deploy-command`
+    - [ ] `--cron-command` — native-runtime only; not buildable in dev-9 (image cron rejected)
+    - [x] `--cron-schedule`
+    - [x] `--health-check-path`
+    - [x] `--auto-deploy`
+    - [-] `--previews` — `400 "not supported by this platform"`
+    - [x] `--publish-directory` — on `static_site`
+    - [x] `--root-directory` — on repo services (image services correctly `400`)
+    - [~] `--registry-credential` — reaches bex; `503` cred store not configured in dev-9
+    - [x] `--ip-allow-list cidr=…,description=…` — CIDR round-trips
+    - [x] `--build-filter-path <path>`
+    - [x] `--build-filter-ignored-path <path>`
+    - [x] `--maintenance-mode`
+    - [x] `--maintenance-mode-uri <string>`
+    - [x] `--max-shutdown-delay <int>`
+  - [x] `services instances <serviceID>` — decodes live pod ids; suspended service returns `[]`; unknown id fails not-found
+  - [x] `services delete <serviceID>` — returns the deleted record
+- [-] **`workflows`** — Render Workflows (deliberate bex non-goal; `GET /v1/workflows` is a `200 []` stub, everything else `404`/`405`/TTY-blocked)
+  - [-] `workflows list` — returns empty from the stub (exit 0)
+  - [-] `workflows create` — `405 Method Not Allowed`
+  - [-] `workflows init` — client-side scaffolding works, no bex call
+  - [-] `workflows dev` — client-side dev server, no bex call
+  - [-] `workflows start` / `workflows cancel` — shortcuts; `404` / TTY-blocked
+  - [-] `workflows tasks` — `tasks list` / `tasks runs {start,list,show,cancel}` all `404` / TTY-blocked
+  - [-] `workflows versions` — `versions list` / `versions release` `404`
+- [x] **`workspaces`** — lists the caller's real `tea-…` workspace
 
 ## Auth
 
-- [ ] **`login`** — log in via the Render Dashboard (browser/device flow)
-- [ ] **`logout`** — log out
-- [ ] **`whoami`** — display the current user
-- [ ] **`workspace`** — manage the CLI's active workspace
-  - [ ] `workspace current` — show the selected workspace
-  - [ ] `workspace set <id>` — set the active workspace
+- [x] **`login`** — recognizes `RENDER_API_KEY` (already-authenticated short-circuit); full browser/device flow verified separately in production
+- [x] **`logout`** — drives the OAuth revoke path; the credential's `client_credentials` grant fails afterward
+- [x] **`whoami`** — reports the key-minting user's email (Kratos-admin lookup)
+- [x] **`workspace`** — manage the CLI's active workspace
+  - [x] `workspace current` — returns the active tenant
+  - [x] `workspace set <id>` — set→persist→read round-trip verified
 
 ## Session
 
-- [ ] **`kv-cli [id|name]`** — open a redis-cli/valkey-cli session (interactive only; pass-through args after `--`)
-- [ ] **`pgcli [id|name]`** — open a pgcli session (interactive only; pass-through args after `--`)
-- [ ] **`psql [id|name]`** — open a psql session
-  - [ ] `-c, --command <SQL>` — execute SQL non-interactively (pass-through psql args after `--`)
-- [ ] **`ssh [serviceID|serviceName|instanceID]`** — SSH into a service instance (interactive only; pass-through ssh args after `--`)
-  - [ ] `-e, --ephemeral` — connect to an ephemeral instance
-  - [ ] `--plan <string>` — plan for the ephemeral instance (only with `--ephemeral`)
+- [ ] **`kv-cli [id|name]`** — interactive-only client guard fires before any bex call; not verifiable headlessly
+- [ ] **`pgcli [id|name]`** — interactive-only client guard; not verifiable headlessly
+- [~] **`psql [id|name]`** — reaches bex, resolves the target by id **and** name, then stops at the Render-parity IP-allow-list gate (no `BEX_DB_DOMAIN`/allow-list in dev-9 — the same block Render imposes)
+  - [~] `-c, --command <SQL>` — flag parses, required in non-TTY, drives the full path to the same gate
+- [~] **`ssh [serviceID|serviceName|instanceID]`** — command present and parses; interactive-only + no SSH gateway in dev-9, so not exercisable headlessly here (the running-instance path has separate production evidence, [ADR035](ADR035-ssh.md))
+  - [-] `-e, --ephemeral` — deliberate bex non-goal (flag parses)
+  - [-] `--plan <string>` — tied to `--ephemeral` (non-goal)
 
 ## Management
 
-- [ ] **`blueprints`** — manage Blueprints (infrastructure as code)
-  - [ ] `blueprints validate <render.yaml>` — validate a Blueprint YAML file
-- [ ] **`environments <projectID>`** — list a project's environments
-- [ ] **`projects`** — list projects in the active workspace
+- [x] **`blueprints`** — manage Blueprints (infrastructure as code)
+  - [x] `blueprints validate <render.yaml>` — accepts the multipart request, returns `{plan,valid:true}`
+- [x] **`environments <projectID>`** — decodes the RC15 cursor envelope into real values; unknown project fails not-found
+- [x] **`projects`** — lists projects in the active workspace
 
 ## Additional commands
 
-- [ ] **`docs`** — open the Render docs in the browser (no API call)
-- [ ] **`ea`** — early-access commands (subject to change)
-  - [ ] `ea objects` — manage object storage
-    - [ ] `--local` — use local storage (`.render/objects/`) instead of cloud
-    - [ ] `--region <REGION>` — target region (or `RENDER_REGION`)
-    - [ ] `ea objects list` — list objects
-    - [ ] `ea objects put <key> --file <path>` — upload an object
-    - [ ] `ea objects get <key> --file <path>` — download an object
-    - [ ] `ea objects delete <key>` — delete one or more objects
-  - [ ] `ea sandbox` — manage sandboxes
-    - [ ] `ea sandbox create` — create a sandbox
-      - [ ] `--base <string>` — base image
-      - [ ] `--plan <starter|standard|pro>` — compute plan
-      - [ ] `--region <string>` — region to run in
-      - [ ] `--timeout <int>` — max sandbox lifetime in seconds
-    - [ ] `ea sandbox exec <sandboxID> -- <cmd>` — run a command in a sandbox
-    - [ ] `ea sandbox list` — list sandboxes (`--all`)
-    - [ ] `ea sandbox stop <id>` — terminate a sandbox
-- [ ] **`skills`** — manage Render agent skills for AI coding tools
-  - [ ] `skills install` — install skills
-    - [ ] `--tool <claude|codex|opencode|cursor>` — install to a specific tool
-    - [ ] `--scope <user|project>` — installation scope
-    - [ ] `--skill <skill>` — install specific skills only (repeatable)
-    - [ ] `--dry-run` — show what would be installed
-  - [ ] `skills list` — list installed skills and detected tools
-  - [ ] `skills update` — update previously installed skills
-  - [ ] `skills remove` — remove installed skills
-- [ ] **`help [command]`** — help about any command
+- [x] **`docs`** — opens `render.com/docs` client-side (no bex call)
+- [-] **`ea`** — early-access surfaces, not implemented by bex (outside the compatibility target)
+  - [-] `ea objects list` — bex `/v1/objects` → `404` (`--local` works client-side)
+  - [-] `ea objects put` — `404` (`--local` works client-side)
+  - [-] `ea objects get` — `404` (`--local` works client-side)
+  - [-] `ea objects delete` — `404` (`--local` works client-side)
+  - [-] `ea sandbox create` — `/v1/sandboxes` → `404`
+  - [-] `ea sandbox exec` — `404`
+  - [-] `ea sandbox list` — `404`
+  - [-] `ea sandbox stop` — `404`
+- [~] **`skills`** — manage Render agent skills for AI coding tools (client-side; no bex dependency)
+  - [x] `skills install` — works; `--dry-run` reports intended changes without writing
+  - [ ] `skills list` — **upstream CLI panic** (nil-pointer) in every non-TTY output mode
+  - [ ] `skills update` — same upstream non-TTY panic; no `--dry-run`
+  - [x] `skills remove` — works
+- [x] **`help [command]`** — CLI builtin, no bex call
