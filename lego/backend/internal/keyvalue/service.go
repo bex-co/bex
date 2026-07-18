@@ -188,6 +188,14 @@ var validPersistenceModes = []string{"journal-snapshot", "snapshot", "off"}
 func renderToCRD(s string) string { return strings.ReplaceAll(s, "_", "-") }
 func crdToRender(s string) string { return strings.ReplaceAll(s, "-", "_") }
 
+// maxmemoryPolicyKnown converts a Render-shaped (underscore) maxmemoryPolicy to
+// the CRD's hyphenated form and reports whether it is a valid policy — the one
+// check shared by CreateKeyValue and KeyValuePatch.validate so create and update
+// can never accept different values.
+func maxmemoryPolicyKnown(render string) bool {
+	return slices.Contains(validMaxmemoryPolicies, renderToCRD(render))
+}
+
 // validateKeyValueName enforces the user-facing display-name shape (the CRD's
 // spec.name markers). Shared by create and rename so the two paths can never
 // accept different names — the same courtesy validateDatabaseName extends.
@@ -354,7 +362,7 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 		return KeyValueView{}, err
 	}
 	maxmemoryPolicy := renderToCRD(req.MaxmemoryPolicy)
-	if maxmemoryPolicy != "" && !slices.Contains(validMaxmemoryPolicies, maxmemoryPolicy) {
+	if req.MaxmemoryPolicy != "" && !maxmemoryPolicyKnown(req.MaxmemoryPolicy) {
 		return KeyValueView{}, fmt.Errorf("%w: unknown maxmemoryPolicy %q (valid: %v)", core.ErrBadRequest, req.MaxmemoryPolicy, validMaxmemoryPolicies)
 	}
 	persistenceMode := renderToCRD(req.PersistenceMode)
@@ -635,6 +643,14 @@ func (s *Service) patchKeyValueObj(ctx context.Context, kv *appv1alpha1.KeyValue
 type KeyValuePatch struct {
 	Name *string
 	Plan *string
+	// MaxmemoryPolicy is Render's eviction policy (w7/m45): nil = unchanged.
+	// Render-shaped (underscore) or hyphenated values both accepted, like create.
+	MaxmemoryPolicy *string
+	// IPAllowList is the external-endpoint allowlist (w7/m45): nil = unchanged;
+	// a non-nil empty slice CLEARS it (what `keyvalues update --clear-ip-allow-list`
+	// sends). Mirrors PostgresPatch.IPAllowList; the same field the dedicated
+	// PUT .../ip-allow-list route writes, so both entry points converge.
+	IPAllowList *[]core.IPAllowListEntry
 }
 
 // validate checks every field present in the patch before any write; shared by
@@ -651,6 +667,14 @@ func (patch KeyValuePatch) validate() error {
 			return fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Valkey.IDs(), "|"))
 		}
 	}
+	if patch.MaxmemoryPolicy != nil && !maxmemoryPolicyKnown(*patch.MaxmemoryPolicy) {
+		return fmt.Errorf("%w: unknown maxmemoryPolicy %q (valid: %v)", core.ErrBadRequest, *patch.MaxmemoryPolicy, validMaxmemoryPolicies)
+	}
+	if patch.IPAllowList != nil {
+		if err := core.ValidateAllowList(*patch.IPAllowList); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -660,6 +684,12 @@ func (patch KeyValuePatch) apply(kv *appv1alpha1.KeyValue) {
 	}
 	if patch.Plan != nil {
 		kv.Spec.Plan = *patch.Plan
+	}
+	if patch.MaxmemoryPolicy != nil {
+		kv.Spec.MaxmemoryPolicy = renderToCRD(*patch.MaxmemoryPolicy)
+	}
+	if patch.IPAllowList != nil {
+		kv.Spec.IPAllowList = core.AllowListToSpec(*patch.IPAllowList)
 	}
 }
 
