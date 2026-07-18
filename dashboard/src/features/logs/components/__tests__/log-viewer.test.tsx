@@ -133,4 +133,40 @@ describe("LogViewer URL-backed filter state (w7/m42)", () => {
       ),
     );
   });
+
+  it("turns a clicked short instance slug into the exact instance filter", async () => {
+    const instance = "web-6f7d8f9c4b-bv612";
+    historyState.lines = [
+      {
+        key: "k-instance",
+        timestamp: "t",
+        time: "10:36:01",
+        instance,
+        message: "hello from one replica",
+        type: "app",
+        level: "",
+        method: "",
+        statusCode: "",
+      },
+    ];
+    const onFiltersChange = vi.fn();
+    render(<LogViewer resource="web" onFiltersChange={onFiltersChange} />);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: `Filter logs by instance ${instance}`,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(useHistorySpy.mock.calls.at(-1)?.[1]).toEqual({
+        ...EMPTY_LOG_FILTERS,
+        instance,
+      }),
+    );
+    expect(onFiltersChange).toHaveBeenCalledWith(
+      { ...EMPTY_LOG_FILTERS, instance },
+      true,
+    );
+  });
 });

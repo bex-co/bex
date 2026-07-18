@@ -60,6 +60,11 @@ const enLogs: Record<string, TranslationEntry> = {
     message: "All instances",
     description: "Instance filter option: no instance filter",
   },
+  "logs.filterByInstance": {
+    message: "Filter logs by instance {instance}",
+    description:
+      "Accessible label for the clickable instance slug on an application log line",
+  },
   "logs.pathLabel": {
     message: "Request path",
     description: "Accessible label for the request-path filter input",
