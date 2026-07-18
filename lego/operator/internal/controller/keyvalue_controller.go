@@ -324,6 +324,13 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		}
 		sts.Spec.Replicas = &replicas
 		sts.Spec.Template.Labels = podLabels
+		// A managed key-value store is a single-replica stateful service: an
+		// eviction is downtime, so the cluster-autoscaler must never bin-pack
+		// its node away. Manual/CAPI drains (node upgrades) still evict it —
+		// the StatefulSet reschedules it elsewhere.
+		sts.Spec.Template.Annotations = map[string]string{
+			"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
+		}
 		// The Valkey password, shared by the server (arg expansion) and the metrics
 		// exporter (authenticated INFO scrape).
 		passwordEnv := corev1.EnvVar{
