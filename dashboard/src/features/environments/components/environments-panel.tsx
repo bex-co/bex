@@ -171,6 +171,7 @@ export function EnvironmentsPanel({
         <div className="flex flex-wrap gap-2">
           <Button asChild size="sm">
             <Link
+              key={contextualEnvironmentId ?? "project-only"}
               to="/services/new"
               search={{
                 projectId,

@@ -5,8 +5,16 @@ import { EnvironmentsPanel } from "@/features/environments/components/environmen
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children }: { children: React.ReactNode }) => (
-    <a href="#new">{children}</a>
+  Link: ({
+    children,
+    search,
+  }: {
+    children: React.ReactNode;
+    search?: Record<string, string>;
+  }) => (
+    <a href="#new" data-search={JSON.stringify(search)}>
+      {children}
+    </a>
   ),
 }));
 
@@ -120,6 +128,40 @@ describe("EnvironmentsPanel", () => {
     renderPanel();
     const cards = screen.getAllByTestId("env-card");
     expect(cards.map((c) => c.textContent)).toEqual(["staging"]);
+  });
+
+  it("carries the selected project and environment into New Service", () => {
+    environmentsState.environments = [
+      {
+        id: "env-production",
+        projectId: "prj-1",
+        name: "production",
+        ownerId: "tea-1",
+        createdAt: null,
+        serviceIds: [],
+        databaseIds: [],
+        keyValueIds: [],
+        envGroupIds: [],
+        protectedStatus: "unprotected",
+        networkIsolationEnabled: false,
+        ipAllowListEntries: [],
+      },
+    ];
+    renderPanel({
+      resourceFilter: {
+        environmentId: "env-production",
+        query: "",
+        kind: "all",
+      },
+    });
+
+    expect(screen.getByRole("link", { name: "New Service" })).toHaveAttribute(
+      "data-search",
+      JSON.stringify({
+        projectId: "prj-1",
+        environmentId: "env-production",
+      }),
+    );
   });
 
   it("opens the new-environment dialog from the header button", async () => {
