@@ -186,7 +186,12 @@ export function LogViewer({
             {t("logs.disconnected")}
           </div>
         ) : null}
-        <LogLineList lines={lines} />
+        <LogLineList
+          lines={lines}
+          onInstanceFilter={(instance) =>
+            setFilters((previous) => ({ ...previous, instance }))
+          }
+        />
         <StreamStatus
           live={live && liveSupported}
           liveSupported={liveSupported}

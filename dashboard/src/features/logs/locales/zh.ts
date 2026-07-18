@@ -59,6 +59,11 @@ const zhLogs: Record<string, TranslationEntry> = {
     message: "全部实例",
     description: "Instance filter option: no instance filter",
   },
+  "logs.filterByInstance": {
+    message: "按实例 {instance} 筛选日志",
+    description:
+      "Accessible label for the clickable instance slug on an application log line",
+  },
   "logs.pathLabel": {
     message: "请求路径",
     description: "Accessible label for the request-path filter input",

@@ -32,6 +32,9 @@ const VIEWPORT_HEIGHT = 520;
 
 interface LogLineListProps {
   lines: LogLine[];
+  /** Select an application-log instance as a filter. When supplied, pod names
+   * are presented as their short Kubernetes instance slug. */
+  onInstanceFilter?: (instance: string) => void;
   /** Wrap long lines (default). false => single-line rows with horizontal scroll. */
   wrap?: boolean;
   /** Show the per-line timestamp column (default). */
@@ -51,6 +54,7 @@ interface LogLineListProps {
  */
 export function LogLineList({
   lines,
+  onInstanceFilter,
   wrap = true,
   showTimestamps = true,
   fill = false,
@@ -105,9 +109,23 @@ export function LogLineList({
                 </span>
               ) : null}
               {line.instance ? (
-                <span className="shrink-0 text-muted-foreground/70">
-                  [{line.instance}]
-                </span>
+                onInstanceFilter ? (
+                  <button
+                    type="button"
+                    className="shrink-0 cursor-pointer rounded-sm text-muted-foreground/70 underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={t("logs.filterByInstance", {
+                      instance: line.instance,
+                    })}
+                    title={line.instance}
+                    onClick={() => onInstanceFilter(line.instance)}
+                  >
+                    [{shortInstance(line.instance)}]
+                  </button>
+                ) : (
+                  <span className="shrink-0 text-muted-foreground/70">
+                    [{line.instance}]
+                  </span>
+                )
               ) : null}
               {/* A request line leads with method/status chips from its labels
                   (w5/008) — the at-a-glance structure Render's request rows show,
@@ -151,4 +169,13 @@ export function LogLineList({
       ) : null}
     </div>
   );
+}
+
+// Deployment-managed pods end in Kubernetes's five-character replica slug
+// (`service-<replicaset>-bv612`). Render leads with the same compact instance
+// shape; keep the full pod name in the callback/title so filtering remains
+// exact and only abbreviate the presentation when that suffix is present.
+function shortInstance(instance: string): string {
+  const suffix = instance.split("-").at(-1) ?? instance;
+  return suffix.length === 5 ? suffix : instance;
 }

@@ -58,6 +58,9 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+_(`021.md` implemented 2026-07-17 — compact clickable instance slugs on service
+log rows; completed as sub-hour work and moved to `done/`.)_
+
 _(`015.md`–`020.md` absorbed into **m36** 2026-07-15; notes moved to `done/`)_
 
 _(`014.md` folded into **m31** (t005) 2026-07-15; note moved to `done/`)_

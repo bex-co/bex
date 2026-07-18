@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { LogLineList } from "../log-line-list";
 import type { LogLine } from "../../types";
 
@@ -48,5 +48,25 @@ describe("LogLineList request-line rendering (w5/008)", () => {
     expect(screen.getByText("starting up")).toBeInTheDocument();
     expect(screen.queryByText("GET")).not.toBeInTheDocument();
     expect(screen.queryByText("200")).not.toBeInTheDocument();
+  });
+
+  it("shows a short clickable pod slug and filters with the full instance", () => {
+    const onInstanceFilter = vi.fn();
+    const instance = "hello-go-6f7d8f9c4b-bv612";
+    render(
+      <LogLineList
+        lines={[line({ instance })]}
+        onInstanceFilter={onInstanceFilter}
+      />,
+    );
+
+    const instanceButton = screen.getByRole("button", {
+      name: `Filter logs by instance ${instance}`,
+    });
+    expect(instanceButton).toHaveTextContent("[bv612]");
+    expect(instanceButton).toHaveAttribute("title", instance);
+
+    fireEvent.click(instanceButton);
+    expect(onInstanceFilter).toHaveBeenCalledWith(instance);
   });
 });
