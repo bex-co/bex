@@ -5,9 +5,6 @@ import { EnvGroupsPanel } from "@/features/services/components/env-groups-panel"
 
 export const Route = createFileRoute("/services/$serviceId/env")({
   component: ServiceEnvPage,
-  head: ({ params }) => ({
-    meta: [{ title: `${params.serviceId} · Environment · bex dashboard` }],
-  }),
 });
 
 // The Environment tab (w4/m6.5): a Render-style environment surface over bex-api.

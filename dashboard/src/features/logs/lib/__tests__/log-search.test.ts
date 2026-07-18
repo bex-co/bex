@@ -25,7 +25,7 @@ describe("log range URL state", () => {
 describe("log filter URL state (w7/m42)", () => {
   it("round-trips the full filter set through parse → filters → serialize", () => {
     const search = parseLogSearch({
-      range: "6h",
+      range: "4h",
       type: "request",
       level: "error",
       method: "GET",
@@ -36,7 +36,7 @@ describe("log filter URL state (w7/m42)", () => {
       live: 0,
     });
     expect(search).toEqual({
-      range: "6h",
+      range: "4h",
       type: "request",
       level: "error",
       method: "GET",
@@ -117,19 +117,28 @@ describe("Render deep-link aliases (w7/m42/t003)", () => {
     expect(parseLogSearch({ type: "app", t: "request" })).toEqual({
       type: "app",
     });
-    expect(parseLogSearch({ range: "3h", r: "1h" })).toEqual({ range: "3h" });
+    expect(parseLogSearch({ range: "4h", r: "1h" })).toEqual({ range: "4h" });
   });
 
-  it("maps Render's own r grammar (15m|24h|7d) onto the nearest bex preset", () => {
+  it("maps Render's own r grammar (15m|6h) onto the nearest bex preset; 24h/7d now parse directly (w5/m42)", () => {
     expect(parseLogSearch({ r: "15m" })).toEqual({ range: "30m" });
-    expect(parseLogSearch({ r: "24h" })).toEqual({ range: "1d" });
-    expect(parseLogSearch({ r: "7d" })).toEqual({ range: "1d" });
+    expect(parseLogSearch({ r: "6h" })).toEqual({ range: "4h" });
+    expect(parseLogSearch({ r: "24h" })).toEqual({ range: "24h" });
+    expect(parseLogSearch({ r: "7d" })).toEqual({ range: "7d" });
   });
 
   it("falls back to defaults for an r value bex has no preset for", () => {
     const search = parseLogSearch({ r: "45m" });
     expect(search).toEqual({});
     expect(logRangeFromSearch(search).id).toBe("1h");
+  });
+
+  it("degrades a retired preset id (pre-w5/m42 bookmark) to the default range", () => {
+    for (const retired of ["3h", "6h", "1d"]) {
+      const search = parseLogSearch({ range: retired });
+      expect(search.range).toBeUndefined();
+      expect(logRangeFromSearch(search).id).toBe("1h");
+    }
   });
 
   it("never re-emits alias keys: the serializer writes canonical keys only", () => {
@@ -144,7 +153,7 @@ describe("Render deep-link aliases (w7/m42/t003)", () => {
 describe("logSearchEquals (the route's skip-when-unchanged guard)", () => {
   it("treats a round-tripped state as equal so the mount sync never navigates", () => {
     const search = parseLogSearch({
-      range: "6h",
+      range: "4h",
       type: "app",
       level: "error",
       live: 0,

@@ -17,8 +17,8 @@ describe("useTranslations", () => {
   it("interpolates params into the message", () => {
     const { result } = renderHook(() => useTranslations());
 
-    expect(result.current.t("metrics.responseTimes", { quantile: 0.95 })).toBe(
-      "Response Times (0.95)",
+    expect(result.current.t("metrics.requestsCount", { count: "7,266" })).toBe(
+      "7,266 requests",
     );
   });
 

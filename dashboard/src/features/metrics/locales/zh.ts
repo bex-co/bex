@@ -46,10 +46,6 @@ const zhMetrics: Record<string, TranslationEntry> = {
     message: "服务已更改",
     description: "Fallback event timeline label",
   },
-  "metrics.subtitle": {
-    message: "指标——来自 bex-api 的实时数据",
-    description: "Subtitle on the service metrics page",
-  },
   "metrics.networkTitle": {
     message: "网络指标",
     description: "Network metrics card title",
@@ -63,9 +59,17 @@ const zhMetrics: Record<string, TranslationEntry> = {
     description: "Network metrics chart section title",
   },
   "metrics.responseTimes": {
-    message: "响应时间（{quantile}）",
+    message: "响应时间",
+    description: "Network metrics chart section title",
+  },
+  "metrics.percentile": {
+    message: "百分位",
+    description: "Response Times section control label",
+  },
+  "metrics.requestsCount": {
+    message: "{count} 个请求",
     description:
-      "Network metrics chart section title, with the selected quantile",
+      "Aggregate request count beside the Total Requests section title",
   },
   "metrics.outboundBandwidth": {
     message: "出站带宽",
@@ -84,14 +88,14 @@ const zhMetrics: Record<string, TranslationEntry> = {
     message: "应用指标",
     description: "Application metrics card title",
   },
-  "metrics.applicationDescription": {
-    message: "所选时间范围内各实例的资源使用情况",
-    description: "Application metrics card description",
-  },
-  "metrics.limitLabel": {
-    message: "限额 {value}",
+  "metrics.limitLink": {
+    message: "限额",
     description:
-      "Resource limit annotation on the Memory/CPU chart headers, e.g. 'Limit 512 MiB'",
+      "Link to the Instance Type tab on the Memory/CPU chart headers, followed by the limit value when configured",
+  },
+  "metrics.manageScaling": {
+    message: "管理扩缩容",
+    description: "Link to the Scaling tab on the Total Instances chart header",
   },
   "metrics.noLimitConfigured": {
     message: "未配置资源限额——无法计算百分比",
@@ -198,21 +202,37 @@ const zhMetrics: Record<string, TranslationEntry> = {
     message: "过去一小时",
     description: "Metrics time-range filter option",
   },
-  "metrics.rangeLast3Hours": {
-    message: "过去 3 小时",
-    description: "Metrics time-range filter option",
-  },
-  "metrics.rangeLast6Hours": {
-    message: "过去 6 小时",
+  "metrics.rangeLast4Hours": {
+    message: "过去 4 小时",
     description: "Metrics time-range filter option",
   },
   "metrics.rangeLast12Hours": {
     message: "过去 12 小时",
     description: "Metrics time-range filter option",
   },
-  "metrics.rangeLastDay": {
-    message: "过去 1 天",
+  "metrics.rangeLast24Hours": {
+    message: "过去 24 小时",
     description: "Metrics time-range filter option",
+  },
+  "metrics.rangeLast2Days": {
+    message: "过去 2 天",
+    description: "Metrics time-range filter option",
+  },
+  "metrics.rangeLast7Days": {
+    message: "过去 7 天",
+    description: "Metrics time-range filter option",
+  },
+  "metrics.rangeLast14Days": {
+    message: "过去 14 天",
+    description: "Metrics time-range filter option",
+  },
+  "metrics.rangeLabel": {
+    message: "时间范围",
+    description: "Accessible label for the time-range dropdown",
+  },
+  "metrics.eventsToggle": {
+    message: "显示事件时间线",
+    description: "Accessible label for the Metrics event-timeline toggle",
   },
 };
 

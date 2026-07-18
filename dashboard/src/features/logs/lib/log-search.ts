@@ -1,5 +1,4 @@
 import {
-  DEFAULT_RANGE_PRESET,
   parseRangePreset,
   type RangePreset,
   type RangePresetID,
@@ -45,11 +44,12 @@ const SEARCH_KEYS = ["range", "type", ...TEXT_KEYS, "live"] as const;
 // Render's `r` tokens without an exact bex preset (Render's grammar is
 // 15m|1h|6h|24h|7d — the captured deploy-page contract, see
 // features/deploys/lib/log-range.ts) map onto the nearest bex preset; the
-// overlapping tokens (1h/6h) and bex's own ids parse directly.
+// overlapping tokens (1h/24h/7d) and bex's own ids parse directly. bex's
+// retired preset ids (3h/6h/1d, pre-w5/m42) are deliberately not aliased —
+// an old bookmark degrades to the default range rather than a guess.
 const RENDER_RANGE_ALIASES: Record<string, RangePresetID> = {
   "15m": "30m",
-  "24h": "1d",
-  "7d": "1d",
+  "6h": "4h",
 };
 
 // TanStack Router JSON-parses each query value, so `?statusCode=404` arrives as
@@ -104,9 +104,14 @@ export function parseLogSearch(search: Record<string, unknown>): LogSearch {
   return out;
 }
 
+// The Logs tab keeps its documented one-hour default query span (bex-api's
+// own default) — the Metrics page follows Render's 12-hour default instead
+// (w5/m42), so the two tabs deliberately no longer share one default.
+export const DEFAULT_LOG_RANGE = parseRangePreset("1h")!;
+
 /** Restores the URL range, falling back to the documented one-hour default. */
 export function logRangeFromSearch(search: LogSearch): RangePreset {
-  return parseRangePreset(search.range) ?? DEFAULT_RANGE_PRESET;
+  return parseRangePreset(search.range) ?? DEFAULT_LOG_RANGE;
 }
 
 /** Restores the filter state named by the URL (absent keys = defaults). */

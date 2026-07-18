@@ -20,10 +20,8 @@ import {
 import { LogFilterBar } from "./log-filter-bar";
 import { LogLineList } from "./log-line-list";
 import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
-import {
-  DEFAULT_RANGE_PRESET,
-  type RangePreset,
-} from "@/features/metrics/lib/range";
+import { type RangePreset } from "@/features/metrics/lib/range";
+import { DEFAULT_LOG_RANGE } from "../lib/log-search";
 
 interface LogViewerProps {
   resource: string;
@@ -55,7 +53,7 @@ interface LogViewerProps {
 export function LogViewer({
   resource,
   createEventSource,
-  range = DEFAULT_RANGE_PRESET,
+  range = DEFAULT_LOG_RANGE,
   onRangeChange = () => undefined,
   initialFilters,
   initialLive,

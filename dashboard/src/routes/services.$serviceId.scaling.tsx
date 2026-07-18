@@ -8,9 +8,6 @@ import { isCron, isStaticSite } from "@/features/services/lib/service-type";
 
 export const Route = createFileRoute("/services/$serviceId/scaling")({
   component: RouteComponent,
-  head: ({ params }) => ({
-    meta: [{ title: `${params.serviceId} · Scaling · bex dashboard` }],
-  }),
 });
 
 function RouteComponent() {

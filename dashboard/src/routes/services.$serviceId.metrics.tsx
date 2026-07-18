@@ -3,34 +3,30 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ApplicationMetricsCard } from "@/features/metrics/components/application-metrics-card";
 import { NetworkMetricsCard } from "@/features/metrics/components/network-metrics-card";
 import { MetricsFilters } from "@/features/metrics/components/metrics-filters";
-import { useMetricsFilterValues } from "@/features/metrics/hooks/use-metrics-filter-values";
 import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
 import {
   DEFAULT_RANGE_PRESET,
   type RangePreset,
 } from "@/features/metrics/lib/range";
 import { EventTimeline } from "@/features/events/components/event-timeline";
+import type { EventTimelineFilter } from "@/features/events/lib/timeline";
 
 export const Route = createFileRoute("/services/$serviceId/metrics")({
   component: ServiceMetricsPage,
-  head: ({ params }) => ({
-    meta: [{ title: `${params.serviceId} · Metrics · bex dashboard` }],
-  }),
 });
 
 // The metrics tab. The service chrome (DashboardLayout + header + nav) and the
 // content container come from the `services.$serviceId` layout route; this
-// renders only the tab's own filters + charts into the shared `<Outlet/>`.
+// renders only the tab's own toolbar + charts into the shared `<Outlet/>`.
+// Render's scoping (captured live 2026-07-17, w5/m42): the page level owns
+// only time + the event-timeline controls; Percentage/Total, Status Code, and
+// Percentile live on the cards they alter.
 function ServiceMetricsPage() {
   const { serviceId } = Route.useParams();
   const [range, setRange] = useState<RangePreset>(DEFAULT_RANGE_PRESET);
-  const [percentage, setPercentage] = useState(true); // Render defaults to Percentage
-  const [quantile, setQuantile] = useState(0.95); // bex-api's own default quantile
-  const [statusCode, setStatusCode] = useState(""); // "" = all
-  const discoveredStatusCodes = useMetricsFilterValues(
-    serviceId,
-    "STATUS_CODE",
-  );
+  // Render hides the timeline until its toolbar toggle reveals it.
+  const [timelineShown, setTimelineShown] = useState(false);
+  const [eventFilter, setEventFilter] = useState<EventTimelineFilter>("all");
   // ONE live window for the whole page (a single tick timer; both cards'
   // x-axes stay in sync). pollIntervalMs: 0 — the window's own tick already
   // forces a refetch by changing startTime/endTime; Apollo's poll timer would
@@ -42,32 +38,23 @@ function ServiceMetricsPage() {
       <MetricsFilters
         range={range}
         onRangeChange={setRange}
-        percentage={percentage}
-        onPercentageChange={setPercentage}
-        quantile={quantile}
-        onQuantileChange={setQuantile}
-        statusCode={statusCode}
-        onStatusCodeChange={setStatusCode}
-        discoveredStatusCodes={discoveredStatusCodes}
+        eventFilter={eventFilter}
+        onEventFilterChange={setEventFilter}
+        timelineShown={timelineShown}
+        onTimelineShownChange={setTimelineShown}
       />
 
-      <EventTimeline
-        serviceId={serviceId}
-        startTime={window.startTime}
-        endTime={window.endTime}
-      />
+      {timelineShown && (
+        <EventTimeline
+          serviceId={serviceId}
+          startTime={window.startTime}
+          endTime={window.endTime}
+          filter={eventFilter}
+        />
+      )}
 
-      <ApplicationMetricsCard
-        resource={serviceId}
-        percentage={percentage}
-        window={window}
-      />
-      <NetworkMetricsCard
-        resource={serviceId}
-        window={window}
-        quantile={quantile}
-        statusCode={statusCode}
-      />
+      <ApplicationMetricsCard resource={serviceId} window={window} />
+      <NetworkMetricsCard resource={serviceId} window={window} />
     </>
   );
 }

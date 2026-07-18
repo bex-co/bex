@@ -5,9 +5,6 @@ import { useServer } from "@/features/services/hooks/use-server";
 
 export const Route = createFileRoute("/services/$serviceId/plan")({
   component: ServicePlanPage,
-  head: ({ params }) => ({
-    meta: [{ title: `${params.serviceId} · Instance Type · bex dashboard` }],
-  }),
 });
 
 /**

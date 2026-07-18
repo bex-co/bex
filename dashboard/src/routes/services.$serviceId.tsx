@@ -1,5 +1,10 @@
 import { useEffect } from "react";
-import { createFileRoute, Outlet, Link, useRouterState } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Outlet,
+  Link,
+  useRouterState,
+} from "@tanstack/react-router";
 import { SearchX, TriangleAlert } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
@@ -9,6 +14,10 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useServer } from "@/features/services/hooks/use-server";
 import { useLatestDeploy } from "@/features/deploys/hooks/use-latest-deploy";
 import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
+import {
+  deriveServiceType,
+  SERVICE_TYPE_LABEL,
+} from "@/features/services/lib/service-type";
 import {
   ServiceDetailHeader,
   ServiceDetailHeaderSkeleton,
@@ -20,6 +29,13 @@ export const Route = createFileRoute("/services/$serviceId")({
   // literal "$serviceId" pattern), so a login bounce returns to the actual
   // service URL — id- or name-shaped.
   beforeLoad: requireAuth(),
+  // The SSR/first-paint fallback for every service tab — the layout's title
+  // effect below completes it to Render's `<name> · <type> · <brand>` shape
+  // once the service resolves (head() only knows the URL param; the name and
+  // type arrive with the Apollo query).
+  head: ({ params }) => ({
+    meta: [{ title: `${params.serviceId} · bex dashboard` }],
+  }),
 });
 
 function RouteComponent() {
@@ -41,18 +57,17 @@ export function ServiceDetailLayout({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  // Each tab's head() templates the URL param into the title — post-m46 that
-  // param is the opaque srv- id, but the human name should lead (Render titles
-  // by name: "tp-backend ・ Web Service ・ …"). Once the service resolves, swap
-  // the id segment for the name; the param stays as the SSR/first-paint
-  // fallback. pathname is a dep so tab navigation (which re-mints the
-  // param-based title) gets re-fixed.
+  // The layout's head() templates the URL param into the fallback title —
+  // post-m46 that param is the opaque srv- id, but Render titles every tab of
+  // a service identically by name + type ("backend-v2 ・ Web Service ・ …",
+  // captured live, w5/m42). Once the service resolves, write the full shape;
+  // the param-based fallback covers SSR/first paint. pathname is a dep so tab
+  // navigation (which re-mints the fallback) gets re-fixed.
   useEffect(() => {
-    if (!service || service.name === serviceId) return;
-    if (document.title.startsWith(serviceId)) {
-      document.title = service.name + document.title.slice(serviceId.length);
-    }
-  }, [service, serviceId, pathname]);
+    if (!service) return;
+    const typeLabel = t(SERVICE_TYPE_LABEL[deriveServiceType(service.type)]);
+    document.title = `${service.name} · ${typeLabel} · bex dashboard`;
+  }, [service, serviceId, pathname, t]);
 
   // A failed `server(id)` query is not evidence that the service is absent.
   // Keep it distinct from not-found so schema skew, auth failures, and backend

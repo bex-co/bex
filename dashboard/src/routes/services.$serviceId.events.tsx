@@ -37,9 +37,6 @@ import { useServiceEvents } from "@/features/events/hooks/use-service-events";
 
 export const Route = createFileRoute("/services/$serviceId/events")({
   component: ServiceEventsPage,
-  head: ({ params }) => ({
-    meta: [{ title: `${params.serviceId} · Events · bex dashboard` }],
-  }),
 });
 
 // ServiceEventDetails.trigger is the Trigger object (boolean flags), a
@@ -364,9 +361,13 @@ function EventSummary({
     ? new Date(timestamp).toLocaleString()
     : null;
   // Compute deploy duration (w1/m47): startedAt → finishedAt
-  const deployDuration = startedAt && finishedAt
-    ? Math.round((new Date(finishedAt).getTime() - new Date(startedAt).getTime()) / 1000)
-    : null;
+  const deployDuration =
+    startedAt && finishedAt
+      ? Math.round(
+          (new Date(finishedAt).getTime() - new Date(startedAt).getTime()) /
+            1000,
+        )
+      : null;
 
   return (
     <div className="flex min-w-0 items-start gap-3">
@@ -412,12 +413,8 @@ function EventSummary({
               {commitId ? (
                 <span className="font-mono">{commitId.slice(0, 8)}</span>
               ) : null}
-              {image ? (
-                <span className="truncate">{image}</span>
-              ) : null}
-              {deployDuration !== null ? (
-                <span>{deployDuration}s</span>
-              ) : null}
+              {image ? <span className="truncate">{image}</span> : null}
+              {deployDuration !== null ? <span>{deployDuration}s</span> : null}
             </div>
           </div>
         )}
