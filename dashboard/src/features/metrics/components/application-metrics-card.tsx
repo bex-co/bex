@@ -23,12 +23,15 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatMetricValue } from "@/features/metrics/lib/format";
 import { latestValue } from "@/features/metrics/lib/series";
+import type { ChartEventMarker } from "@/features/metrics/lib/chart-events";
 
 interface ApplicationMetricsCardProps {
   /** The service id — names the metrics resource and the plan/scaling links. */
   resource: string;
   /** The page's resolved live window (route-owned, shared with the network card). */
   window: UseMetricsOptions;
+  /** Service events in the window, marked on every chart (route-derived). */
+  markers?: ChartEventMarker[];
 }
 
 /**
@@ -51,6 +54,7 @@ interface ApplicationMetricsCardProps {
 export function ApplicationMetricsCard({
   resource,
   window,
+  markers,
 }: ApplicationMetricsCardProps) {
   const { t } = useTranslations();
   const [percentage, setPercentage] = useState(true); // Render defaults to Percentage
@@ -103,6 +107,7 @@ export function ApplicationMetricsCard({
           limitUnit="bytes"
           target={latestValue(memoryTarget.series)}
           percentage={percentage}
+          markers={markers}
         />
         <ResourceSection
           title={t("metrics.cpu")}
@@ -112,6 +117,7 @@ export function ApplicationMetricsCard({
           limitUnit="cpu"
           target={latestValue(cpuTarget.series)}
           percentage={percentage}
+          markers={markers}
         />
         <MetricSection
           title={t("metrics.totalInstances")}
@@ -133,7 +139,12 @@ export function ApplicationMetricsCard({
             </div>
           }
         >
-          <SvgLineChart unit="count" series={instancesSeries} />
+          <SvgLineChart
+            unit="count"
+            series={instancesSeries}
+            markers={markers}
+            markersServiceId={resource}
+          />
         </MetricSection>
       </CardContent>
     </Card>
@@ -157,6 +168,7 @@ interface ResourceSectionProps {
    */
   target?: number | null;
   percentage: boolean;
+  markers?: ChartEventMarker[];
 }
 
 /**
@@ -173,6 +185,7 @@ function ResourceSection({
   limitUnit,
   target,
   percentage,
+  markers,
 }: ResourceSectionProps) {
   const { t } = useTranslations();
 
@@ -251,6 +264,8 @@ function ResourceSection({
                   ? limit
                   : undefined
             }
+            markers={markers}
+            markersServiceId={serviceId}
           />
           <ChartLegend entries={series} />
         </>

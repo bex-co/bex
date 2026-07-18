@@ -12,6 +12,14 @@ import {
   frameTooltipRows,
   type SeriesInput,
 } from "@/features/metrics/components/chart-layout";
+import {
+  ChartEventLines,
+  ChartEventStrip,
+} from "@/features/metrics/components/chart-event-markers";
+import {
+  clusterMarkers,
+  type ChartEventMarker,
+} from "@/features/metrics/lib/chart-events";
 
 const MAX_BAR_WIDTH = 24;
 const BAR_GAP = 2;
@@ -23,6 +31,10 @@ interface SvgBarChartProps {
   unit: string;
   /** Segments stack per time bucket (e.g. per status code); one entry = plain bars. */
   series: BarSeriesInput[];
+  /** Service events to mark on the chart (vertical line + badge strip). */
+  markers?: ChartEventMarker[];
+  /** The service the markers' badges link into; required to render markers. */
+  markersServiceId?: string;
 }
 
 /**
@@ -33,10 +45,33 @@ interface SvgBarChartProps {
  * stack per time bucket (Render's grouped Total Requests), sharing one y scale
  * normalized to the tallest stack.
  */
-export function SvgBarChart({ unit, series }: SvgBarChartProps) {
+export function SvgBarChart({
+  unit,
+  series,
+  markers,
+  markersServiceId,
+}: SvgBarChartProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const frames = useMemo(() => groupPointsByTime(series), [series]);
+
+  // Bars are slot-positioned by index, so the marker x-mapping interpolates a
+  // fractional index from the frame times (frames share one query step, so
+  // index is linear in time) and lands on that slot's center.
+  const eventClusters = useMemo(() => {
+    if (!markers?.length || !markersServiceId || frames.length === 0) {
+      return [];
+    }
+    const innerWidth = WIDTH - PAD.left - PAD.right;
+    const slot = innerWidth / frames.length;
+    const t0 = frames[0].time;
+    const tN = frames[frames.length - 1].time;
+    const xForT = (t: number) =>
+      tN === t0
+        ? PAD.left + innerWidth / 2
+        : PAD.left + (((t - t0) / (tN - t0)) * (frames.length - 1) + 0.5) * slot;
+    return clusterMarkers(markers, xForT, PAD.left, WIDTH - PAD.right);
+  }, [markers, markersServiceId, frames]);
 
   if (frames.length === 0) {
     return <EmptyChart height={HEIGHT} />;
@@ -55,6 +90,12 @@ export function SvgBarChart({ unit, series }: SvgBarChartProps) {
 
   return (
     <div className="relative">
+      {markersServiceId && (
+        <ChartEventStrip
+          clusters={eventClusters}
+          serviceId={markersServiceId}
+        />
+      )}
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="w-full"
@@ -86,6 +127,11 @@ export function SvgBarChart({ unit, series }: SvgBarChartProps) {
             </g>
           );
         })}
+
+        {/* Event markers' vertical lines, under the bars. */}
+        {eventClusters.length > 0 && (
+          <ChartEventLines clusters={eventClusters} />
+        )}
 
         {frames.map((frame, i) => {
           const x = PAD.left + i * slot + (slot - barWidth) / 2;

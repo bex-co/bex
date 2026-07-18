@@ -46,6 +46,69 @@ const zhMetrics: Record<string, TranslationEntry> = {
     message: "服务已更改",
     description: "Fallback event timeline label",
   },
+  "metrics.eventMarkersLabel": {
+    message: "服务事件",
+    description: "Accessible label for the event-marker strip above a chart",
+  },
+  "metrics.eventMarkerCluster": {
+    message: "{count} 个事件",
+    description:
+      "Accessible label for a clustered chart event marker (count badge)",
+  },
+  "metrics.eventMarkerHint": {
+    message: "点击查看详情",
+    description: "Footer line of the chart event-marker hover tooltip",
+  },
+  "metrics.eventDeployStarted": {
+    message: "部署已开始",
+    description: "Chart event-marker label: a deploy began",
+  },
+  "metrics.eventDeployLiveFor": {
+    message: "部署已上线（{commit}）",
+    description:
+      "Chart event-marker label: a deploy went live, with its commit short id",
+  },
+  "metrics.eventDeployLive": {
+    message: "部署已上线",
+    description: "Chart event-marker label: a deploy went live (no commit id)",
+  },
+  "metrics.eventDeployFailed": {
+    message: "部署失败",
+    description: "Chart event-marker label: a deploy failed",
+  },
+  "metrics.eventDeployCanceled": {
+    message: "部署已取消",
+    description: "Chart event-marker label: a deploy was canceled",
+  },
+  "metrics.eventDeployEnded": {
+    message: "部署已结束",
+    description:
+      "Chart event-marker label: a deploy finished with an unrecognized status",
+  },
+  "metrics.eventServerRestarted": {
+    message: "服务已重启",
+    description: "Chart event-marker label: the service was restarted",
+  },
+  "metrics.eventSuspended": {
+    message: "服务已暂停",
+    description: "Chart event-marker label: the service was suspended",
+  },
+  "metrics.eventResumed": {
+    message: "服务已恢复",
+    description: "Chart event-marker label: the service was resumed",
+  },
+  "metrics.eventInstanceCountChanged": {
+    message: "实例数量已变更",
+    description: "Chart event-marker label: manual scaling changed the count",
+  },
+  "metrics.eventAutoscalingChanged": {
+    message: "自动扩缩配置已变更",
+    description: "Chart event-marker label: autoscaling settings changed",
+  },
+  "metrics.eventPlanChanged": {
+    message: "实例类型已变更",
+    description: "Chart event-marker label: the service's plan changed",
+  },
   "metrics.networkTitle": {
     message: "网络指标",
     description: "Network metrics card title",

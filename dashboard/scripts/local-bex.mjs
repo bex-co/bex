@@ -292,8 +292,178 @@ let deployHookGeneration = 1;
 // and ServiceEventDetails is {deployStatus, actor, triggeredByUser, trigger:
 // {firstBuild,envUpdated,manual,deployedByRender,clearCache,rollback}} — a
 // different shape from the Deploy mutations' plain-string trigger/no envelope.
+// Wall-clock-relative timestamps (computed at boot) so the Metrics tab's live
+// window — capped at "Last day" — always contains some events; the fixed-date
+// rows below age out of it and only show on the Events tab.
+const minutesAgo = (m) => new Date(Date.now() - m * 60_000).toISOString();
+
+// Synthetic per-metric waveforms for the Metrics tab (metrics.graphql's
+// MetricsQueryInput → MetricSeries[]), so its charts — and the chart event
+// markers overlaid on them — render offline. Deterministic in wall-clock time:
+// a poll tick extends the series instead of redrawing a new random shape.
+function syntheticMetrics(query) {
+  const name = query?.name ?? "";
+  const resource =
+    (query?.filters ?? []).find((f) => f?.field === "RESOURCE")?.values?.[0] ??
+    "app";
+  const end = query?.end ? Date.parse(query.end) : Date.now();
+  const start = query?.start ? Date.parse(query.start) : end - 3_600_000;
+  const stepMs = (query?.resolution || 60) * 1000;
+  const wobble = (t, periodSeconds, amp) =>
+    amp * Math.sin((t / 1000 / periodSeconds) * 2 * Math.PI);
+  const series = (unit, valueAt) => {
+    const values = [];
+    for (let t = start; t <= end; t += stepMs) {
+      values.push({
+        __typename: "MetricValue",
+        time: new Date(t).toISOString(),
+        value: valueAt(t),
+      });
+    }
+    return [
+      {
+        __typename: "MetricSeries",
+        unit,
+        labels: [
+          {
+            __typename: "MetricLabel",
+            field: "instance",
+            value: `${resource}-stub-1`,
+          },
+        ],
+        values,
+        parameters: null,
+      },
+    ];
+  };
+  switch (name) {
+    case "CPU":
+      return series(
+        "cpu",
+        (t) => 0.08 + wobble(t, 900, 0.03) + wobble(t, 137, 0.01),
+      );
+    case "CPU_LIMIT":
+      return series("cpu", () => 0.5);
+    case "MEMORY":
+      return series(
+        "bytes",
+        (t) => 200e6 + wobble(t, 1200, 30e6) + wobble(t, 173, 5e6),
+      );
+    case "MEMORY_LIMIT":
+      return series("bytes", () => 512 * 1024 * 1024);
+    case "INSTANCES":
+      return series("count", () => 1);
+    case "HTTP_REQUESTS":
+      return series("count", (t) =>
+        Math.max(0, Math.round(40 + wobble(t, 600, 15) + wobble(t, 97, 6))),
+      );
+    case "HTTP_LATENCY":
+      return series("seconds", (t) => 0.12 + Math.abs(wobble(t, 700, 0.05)));
+    case "BANDWIDTH":
+      return series("bytes", (t) => 2e6 + Math.abs(wobble(t, 800, 1.2e6)));
+    default:
+      // CPU_TARGET / MEMORY_TARGET etc.: autoscaling off — no series.
+      return [];
+  }
+}
+
 const EVENTS_BY_SERVICE = {
   "eden-cms-v2": [
+    // Recent events in the real wire vocabulary (deploy_started/deploy_ended
+    // + store.RenderDeployStatus's succeeded|failed), so the Metrics tab's
+    // chart event markers and timeline render offline.
+    {
+      __typename: "ServiceEvent",
+      id: "evt-restart-002",
+      type: "server_restarted",
+      timestamp: minutesAgo(8),
+      cursor: "evt-restart-002",
+      details: {
+        __typename: "ServiceEventDetails",
+        deployId: null,
+        deployStatus: null,
+        preDeployStatus: null,
+        actor: "dev@localhost",
+        triggeredByUser: "dev@localhost",
+        image: null,
+        commitId: null,
+        commitMessage: null,
+        startedAt: null,
+        finishedAt: null,
+        trigger: null,
+      },
+    },
+    {
+      __typename: "ServiceEvent",
+      id: "evt-ended-002",
+      type: "deploy_ended",
+      timestamp: minutesAgo(22),
+      cursor: "evt-ended-002",
+      details: {
+        __typename: "ServiceEventDetails",
+        deployId: "dep-live-001",
+        deployStatus: "succeeded",
+        preDeployStatus: "succeeded",
+        actor: "dev@localhost",
+        triggeredByUser: "dev@localhost",
+        image: null,
+        commitId: "a1318dbcafe0123",
+        commitMessage: "feat: stub deploy",
+        startedAt: null,
+        finishedAt: null,
+        trigger: null,
+      },
+    },
+    {
+      __typename: "ServiceEvent",
+      id: "evt-start-002",
+      type: "deploy_started",
+      timestamp: minutesAgo(26),
+      cursor: "evt-start-002",
+      details: {
+        __typename: "ServiceEventDetails",
+        deployId: "dep-live-001",
+        deployStatus: null,
+        preDeployStatus: null,
+        actor: "dev@localhost",
+        triggeredByUser: "dev@localhost",
+        image: null,
+        commitId: null,
+        commitMessage: null,
+        startedAt: null,
+        finishedAt: null,
+        trigger: {
+          __typename: "DeployTrigger",
+          firstBuild: false,
+          envUpdated: false,
+          manual: true,
+          deployedByRender: false,
+          clearCache: false,
+          rollback: false,
+        },
+      },
+    },
+    {
+      __typename: "ServiceEvent",
+      id: "evt-ended-001f",
+      type: "deploy_ended",
+      timestamp: minutesAgo(45),
+      cursor: "evt-ended-001f",
+      details: {
+        __typename: "ServiceEventDetails",
+        deployId: "dep-failed-000",
+        deployStatus: "failed",
+        preDeployStatus: "failed",
+        actor: "github",
+        triggeredByUser: null,
+        image: null,
+        commitId: null,
+        commitMessage: null,
+        startedAt: null,
+        finishedAt: null,
+        trigger: null,
+      },
+    },
     {
       __typename: "ServiceEvent",
       id: "evt-live-001",
@@ -1332,7 +1502,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
         metricsFilters: { __typename: "MetricsFiltersResult", values: [] },
       };
     case "Metrics":
-      return { metrics: [] };
+      return { metrics: syntheticMetrics(variables.query ?? {}) };
     case "MonthToDateBandwidth":
       return { monthToDateBandwidth: null };
     // Scaling tab (w1/m20): no autoscaling configured for any stub service.
