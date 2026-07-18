@@ -43,7 +43,8 @@ describe("useUsage", () => {
           workspaceId: "ws-abc123",
           services: [
             {
-              serviceId: "eden-cms-v2",
+              serviceId: "srv-cms",
+              serviceName: "eden-cms-v2",
               resourceKind: "service",
               rows: [
                 { kind: "instance_seconds", tier: "starter", total: 7200 },
@@ -70,7 +71,8 @@ describe("useUsage", () => {
       period: "",
       services: [
         {
-          serviceId: "eden-cms-v2",
+          serviceId: "srv-cms",
+          serviceName: "eden-cms-v2",
           resourceKind: "service",
           rows: [
             { kind: "instance_seconds", tier: "starter", total: 7200 },
@@ -79,7 +81,9 @@ describe("useUsage", () => {
           ],
         },
         {
+          // serviceName absent from the response maps to "" (id fallback).
           serviceId: "nightly-report",
+          serviceName: "",
           resourceKind: "service",
           rows: [{ kind: "build_seconds", tier: "", total: 600 }],
         },

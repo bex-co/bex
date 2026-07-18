@@ -108,7 +108,11 @@ type Summary struct {
 // ServiceUsage is one service's contribution to the workspace's month-to-date
 // totals, broken out by kind (and tier for instance_seconds).
 type ServiceUsage struct {
-	ServiceID    string
+	ServiceID string
+	// ServiceName is the user-facing display name, resolved best-effort from
+	// the store (Apps) or the CR spec (datastores). Empty when the resource no
+	// longer exists — presenters fall back to ServiceID.
+	ServiceName  string
 	ResourceKind string // store.ResourceKind* — "service", "postgres", "key_value"
 	Rows         []store.UsageSummaryRow
 }
@@ -141,9 +145,39 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 		return Summary{}, fmt.Errorf("usage: %w", err)
 	}
 	sum := summarise(tenantID, rows)
+	s.resolveServiceNames(ctx, sum.Services)
 	sum.Period = now.Format("2006-01")
 	sum.EstimatedCost = pricing.Default.Estimate(rows)
 	return sum, nil
+}
+
+// resolveServiceNames fills each ServiceUsage's display name from the store
+// (Apps) and the Database/KeyValue CRs (datastores). Best-effort: a lookup
+// failure or a since-deleted resource leaves ServiceName empty and the summary
+// otherwise intact. Keys pair ResourceKind with the id because different kinds
+// may legally share a service_id.
+func (s *Service) resolveServiceNames(ctx context.Context, svcs []ServiceUsage) {
+	if len(svcs) == 0 {
+		return
+	}
+	names := map[string]string{}
+	if apps, err := s.Store.ListApps(ctx); err != nil {
+		log.Printf("usage: resolve names: list apps: %v", err)
+	} else {
+		for _, app := range apps {
+			names[store.ResourceKindService+"/"+app.ID] = app.Name
+		}
+	}
+	if datastores, err := s.listDatastores(ctx); err != nil {
+		log.Printf("usage: resolve names: list datastores: %v", err)
+	} else {
+		for _, ds := range datastores {
+			names[ds.Kind+"/"+ds.ID] = ds.Display
+		}
+	}
+	for i := range svcs {
+		svcs[i].ServiceName = names[svcs[i].ResourceKind+"/"+svcs[i].ServiceID]
+	}
 }
 
 // MonthToDate returns ownerID's month-to-date usage summary for the current
@@ -277,6 +311,7 @@ func (s *Service) compact(ctx context.Context) {
 type datastoreEntry struct {
 	ID       string // immutable CR name (== service_id in usage rows)
 	Name     string // immutable data-plane name used in Prometheus selectors
+	Display  string // mutable user-facing name (DisplayName())
 	TenantID string // from core.LabelTenant
 	Plan     string // Spec.Plan (== tier in usage rows)
 	Kind     string // store.ResourceKindPostgres or store.ResourceKindKeyValue
@@ -303,6 +338,7 @@ func (s *Service) listDatastores(ctx context.Context) ([]datastoreEntry, error) 
 		out = append(out, datastoreEntry{
 			ID:       d.Name,
 			Name:     d.Name,
+			Display:  d.DisplayName(),
 			TenantID: tenantID,
 			Plan:     d.Spec.Plan,
 			Kind:     store.ResourceKindPostgres,
@@ -321,6 +357,7 @@ func (s *Service) listDatastores(ctx context.Context) ([]datastoreEntry, error) 
 		out = append(out, datastoreEntry{
 			ID:       kv.Name,
 			Name:     kv.Name,
+			Display:  kv.DisplayName(),
 			TenantID: tenantID,
 			Plan:     kv.Spec.Plan,
 			Kind:     store.ResourceKindKeyValue,

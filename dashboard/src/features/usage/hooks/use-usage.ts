@@ -25,6 +25,8 @@ export interface UsageRow {
 
 export interface ServiceUsage {
   serviceId: string;
+  /** User-facing display name; empty when the resource no longer exists — fall back to serviceId. */
+  serviceName: string;
   resourceKind: string;
   rows: UsageRow[];
 }
@@ -79,6 +81,7 @@ export function useUsage(period?: string): UseUsageResult {
             period: raw.period ?? "",
             services: (raw.services ?? []).filter(Boolean).map((s) => ({
               serviceId: s!.serviceId ?? "",
+              serviceName: s!.serviceName ?? "",
               resourceKind: s!.resourceKind ?? "service",
               rows: (s!.rows ?? []).filter(Boolean).map((r) => ({
                 kind: r!.kind ?? "",

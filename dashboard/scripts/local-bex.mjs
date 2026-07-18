@@ -1404,7 +1404,8 @@ function resolveGraphQL({ operationName, variables = {} }) {
           services: [
             {
               __typename: "ServiceUsage",
-              serviceId: "eden-cms-v2",
+              serviceId: "srv-edencms0001",
+              serviceName: "eden-cms-v2",
               resourceKind: "service",
               rows: [
                 {
@@ -1429,7 +1430,8 @@ function resolveGraphQL({ operationName, variables = {} }) {
             },
             {
               __typename: "ServiceUsage",
-              serviceId: "email-worker",
+              serviceId: "srv-emailwrk0001",
+              serviceName: "email-worker",
               resourceKind: "service",
               rows: [
                 {
@@ -1448,7 +1450,8 @@ function resolveGraphQL({ operationName, variables = {} }) {
             },
             {
               __typename: "ServiceUsage",
-              serviceId: "nightly-report",
+              serviceId: "srv-nightly0001",
+              serviceName: "nightly-report",
               resourceKind: "service",
               rows: [
                 {
