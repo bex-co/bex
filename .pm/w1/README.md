@@ -88,6 +88,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 - `033` — m49 simplify residuals (shared type-to-confirm delete dialog, long-date formatter, field block, detail-shell data-sharing convention, backend event-group keys, set-equality helpers; + m51's per-source egress-health loop fold) — each waits on its trigger firing
 - `037` — confirm m52's zero-error rolls on the first post-`/ship` prod deploy (two clean rolls of both Deployments under load with the shipped image; also confirm the dashboard's new `/healthz` readiness gate) — closes m52's t004/t008
+- `038` — flaky operator CI test (`kv-sni-proxy` meter assertion, races the async byte-meter) failed the `3cb335cf` deploy run once; rerun passed. Fix when it recurs: poll the meter delta instead of one post-write read
 
 > **Promoted 2026-07-18:** `036` (post-roll dashboard SSR error page) → **m52** (its t002); note moved to `done/`.
 
