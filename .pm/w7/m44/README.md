@@ -1,15 +1,15 @@
 # w9 · m44 — Sample lifecycle verification on prod: deploy → up → suspend → down → resume → up → delete → gone, for every `examples/` sample, via the official Render CLI
 
-**Worker:** worker9 **Goal:** every sample in `examples/` provably completes the full Render lifecycle on production through the official Render CLI — deploy reaches `live` and serves at `*.onbex.co`, suspend takes it down, resume brings it back, delete removes it without residue — and every problem the sweep exposes is fixed or filed **Status:** in progress — sweep complete, 5/7 GREEN on prod; hello-python + static-site fixed & validated locally, awaiting `/ship` (their Dockerfile fixes must reach `origin/main` before the prod re-run); pipeline-green + Argo re-enable are the user's `/ship` + prod-cluster steps
+**Worker:** worker9 **Goal:** every sample in `examples/` provably completes the full Render lifecycle on production through the official Render CLI — deploy reaches `live` and serves at `*.onbex.co`, suspend takes it down, resume brings it back, delete removes it without residue — and every problem the sweep exposes is fixed or filed **Status:** in progress — shipped (`61a18797`), `deploy.yml` fully GREEN, **6/7 samples GREEN on prod** (hello-go, hello-node, hello-python, whoami, cron-demo, stack-demo); static-site builds but its publish step fails on prod (filed `.pm/w9/012`, needs prod-cluster diagnosis). Remaining: user re-enables Argo automated sync; static-site publish + follow-ups (`010`–`013`) are filed, not silently skipped
 
 ## Tasks (in order)
 
 | id   | title                                                                                        | est | depends_on       | status |
 | ---- | -------------------------------------------------------------------------------------------- | --- | ---------------- | ------ |
-| t001 | Unblock the deploy pipeline: fix the red dashboard test, land the m43 digest, re-enable Argo | 45m | —                | ◐ dashboard test fixed (1339 green); ship + Argo = user's `/ship` |
+| t001 | Unblock the deploy pipeline: fix the red dashboard test, land the m43 digest, re-enable Argo | 45m | —                | ◐ dashboard test fixed → `deploy.yml` fully GREEN (`61a18797`), CI pinned the digest; Argo re-enable = user |
 | t002 | Lifecycle harness: `scripts/samples-lifecycle.sh` (CLI-first, REST where the CLI lacks verbs) | 45m | t001             | — **DONE** (hello-go green on prod) |
-| t003 | Web-service samples on prod: hello-go, hello-node, hello-python, whoami (image)              | 45m | t002             | ◐ hello-go/node/whoami GREEN; hello-python fixed, needs push + re-run |
-| t004 | Special-type samples on prod: static-site, cron-demo, stack-demo                             | 60m | t002             | ◐ cron-demo/stack-demo GREEN; static-site fixed, needs push + re-run |
+| t003 | Web-service samples on prod: hello-go, hello-node, hello-python, whoami (image)              | 45m | t002             | — **DONE** (all four GREEN; hello-python fixed) |
+| t004 | Special-type samples on prod: static-site, cron-demo, stack-demo                             | 60m | t002             | ◐ cron-demo/stack-demo GREEN; static-site build ✅ but publish ✖ on prod (filed `012`) |
 | t005 | Fix problems the sweep found (small: in-milestone; large: file follow-ups)                   | 60m | t003, t004       | — **DONE** (4 fixes; follow-ups `.pm/w9/010`, `011` filed) |
 | t006 | Render parity: any fixes must land consistently on REST/GraphQL/MCP/dashboard                | 30m | t005             | — **DONE** (no bex-api/dashboard surface changed; product gaps filed w/ Render comparison) |
 | t007 | Simplify: `/simplify` over the code this milestone changed                                   | 20m | t006             | — **DONE** (`json_find_id` consolidation; micro-fetch/reuse findings skipped w/ reason) |
@@ -20,16 +20,20 @@
 
 Prod sweep executed against `api.bex.co` via `scripts/samples-lifecycle.sh` (user-authorized). Each leg is CLI-first; service suspend/resume use raw REST (the CLI lacks them). verify-down requires the URL to stop serving for 3 consecutive checks (a transient 502 during the suspend reconcile must not count as "down"); verify-up asserts a unique per-run token.
 
-**GREEN on prod (5/7):** hello-go, hello-node, whoami, cron-demo, stack-demo. Prod verified clean after (no residue; only pre-existing user resources remain).
+Shipped `61a18797` and `deploy.yml` ran **fully GREEN** (all four test gates + build-and-deploy) — the red dashboard test is fixed and CI pinned the operator+dashboard digest (built from a commit that includes the m43 operator `f9e82786`). Argo automated sync stays suspended until the user re-enables it (needs the Hetzner prod kubeconfig).
+
+**GREEN on prod (6/7):** hello-go, hello-node, hello-python, whoami, cron-demo, stack-demo — each the full 8-leg lifecycle. hello-python is green post-`/ship` under a unique name (`hello-python-x1`). Prod verified clean after each run (no residue; only pre-existing/other-user resources remain).
 
 **Problems found → fixed (t005):**
 
 - **hello-python** — Dockerfile ran `flask run` with no `FLASK_APP` → container crash-loop (`Could not locate a Flask application`), deploy `update_failed`. Fixed → `CMD ["python", "main.py"]`; docker build+run validated locally. Needs push + prod re-run.
 - **whoami** — bound `:80` → `bind: permission denied` (tenant pods drop ALL caps incl. NET_BIND_SERVICE, w7/m2; and whoami ignores `$PORT` while bex routes an image service to 3000). Fixed harness spec + `examples/whoami-app.yaml` (`WHOAMI_PORT_NUMBER`, high port) → GREEN on prod. Broader "no listening-port auto-detection" gap filed `.pm/w9/011`.
-- **static-site** — `--type static_site` went down the Docker build path and failed (`no Dockerfile`); bex's static build is Dockerfile-only (ADR029) but the sample had none and its `bex.yml` over-promised "no Dockerfile needed". Stopgap: added a minimal Dockerfile + honest comment; extract-simulation validated locally. Real no-Dockerfile-publish fix filed `.pm/w9/010`. Needs push + prod re-run.
+- **static-site** — two problems. (1) `--type static_site` went down the Docker build path and failed (`no Dockerfile`); bex's static build is Dockerfile-only (ADR029) but the sample had none and over-promised "no Dockerfile needed". Fixed + shipped: a minimal Dockerfile + honest comment (extract-simulation validated locally); real no-Dockerfile-publish fix filed `.pm/w9/010`. (2) Post-`/ship` the build now **succeeds** but the deploy fails post-build — the **publish Job** (extract → S3) fails on prod; its logs aren't surfaced by `render logs`, so root-causing needs the prod kubeconfig. Filed `.pm/w9/012`. static-site is therefore **not GREEN**; both problems are fixed/filed, none skipped.
 - **cron-demo** — Render CLI requires `--cron-command` even for an image-entrypoint cron. Fixed harness → GREEN (run → no-run-while-suspended → run-again, proven via logs).
 
-**Blocked on the user (`/ship` + Argo):** the two remaining prod re-runs (hello-python, static-site) need their Dockerfile fixes on `origin/main`; the deploy-pipeline-green + m43-digest-pin come from that same `/ship`; Argo re-enable on `bex-operator` + `bex-platform-prod` needs the Hetzner prod kubeconfig (runbook `w9/done/m43/done/t004.md`). After `/ship`: re-run the two samples → 7/7, confirm `deploy.yml` green + operator on the CI digest + Argo held, then t009 closeout.
+Additional platform findings filed (not fixed in-milestone — larger than a sample tweak): `.pm/w9/011` (no image listening-port auto-detection), `.pm/w9/013` (recreating an app with the same name can run the previous `gen-1` image — reference tenant images by digest).
+
+**Remaining (user):** re-enable Argo automated sync on `bex-operator` + `bex-platform-prod` (needs the Hetzner prod kubeconfig; runbook `w9/done/m43/done/t004.md`) so the operator rolls onto the CI-pinned digest. The static-site publish defect (`012`) needs prod-cluster diagnosis of the publish Job. This milestone's remaining doc updates (evidence + follow-ups `012`/`013`) are uncommitted, staged for the next `/ship`.
 
 ## Definition of done
 
