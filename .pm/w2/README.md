@@ -60,7 +60,8 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-_(empty — all notes promoted to milestones or moved to `done/`)_
+- `015.md` — make stateful MCP sessions reliable across multiple bex-api replicas; production retries proved requests lose affinity to the replica that owns the session ← production verification 2026-07-17
+- `016.md` — reshape the Deploys history into Render's explicit Deploy / Trigger / Duration / action columns, with human trigger labels and rollback only when available; backend fields and mutations already exist ← user-directed Render comparison 2026-07-17
 
 _(`012.md` promoted to **m44** 2026-07-16; moved to `done/`. `013.md` promoted to **m45** 2026-07-16; moved to `done/`. `011.md` promoted to **m42** 2026-07-15; moved to `done/`. `010.md` promoted to **m40** 2026-07-15; moved to `done/`)_
 
