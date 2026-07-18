@@ -12,7 +12,8 @@ Legend: `[x]` verified working · `[~]` works with a documented limitation · `[
 - **Configured service pass:** a disposable local OpenBao plus auth-enabled persistent Zot augmented dev-9 for the second service run. It proved CLI env vars, secret files, create/update registry-credential binding, a genuinely private kubelet pull, and native cron commands.
 - **Postgres create supplement (w6/m38):** [`scripts/postgres-create-cli-smoke.sh`](../scripts/postgres-create-cli-smoke.sh) drove the same unmodified CLI against isolated **dev-6** and a real local CNPG cluster on **2026-07-18**. It proved both custom names, database-only and user-only independent defaults, the CR intent, generated Secret metadata, and `current_database()`/`current_user` inside PostgreSQL. It also proved that unsupported Datadog create/update flags fail with a named 400 and leave no resource behind.
 - **Production SSH supplement (w6/020):** [`scripts/ssh-verify.sh`](../scripts/ssh-verify.sh) drove the checksum-verified, unmodified v2.21.0 release through `https://api.bex.co` and the public `ssh.bex.co:22` gateway in a real PTY on **2026-07-18**. Service name, service id with the interactive **Any instance** selection, and complete instance id all reached the asserted running container and runtime environment; the verifier also re-proved the pinned host key, raw any/exact OpenSSH, PTY resize, exit status, restart/redeploy closure, suspended/free/stale/shell-less/unknown/deleted denial, and deleted its disposable key, service, and Scale workspace. The broader viewer/foreign/static/cron denial matrix remains captured in the prior [production acceptance](../.pm/w2/done/m39/evidence/2026-07-17-production-acceptance.md).
-- **Base dev-9 does not run** (so paths needing them are marked accordingly, distinguishing a real bex gap from an environment limit): build infra (kpack/zot), OpenBao (env-vars/secret-file store), the registry-credential store, Loki (durable log store), Prometheus, cert-manager, OpenFGA (authz is allow-all here), `BEX_DB_DOMAIN`/`BEX_KV_DOMAIN` (external datastore connect), and the SSH gateway.
+- **Production durable-logs supplement:** [`scripts/cli-logs-verify.sh`](../scripts/cli-logs-verify.sh) drove the unmodified v2.21.0 CLI through `https://api.bex.co` against the deployed Loki + log-shipper on **2026-07-18**, closing the store-only `logs` filter rows the Loki-less dev-9 baseline could only grade `503`. A disposable busybox web-service fixture planted one JSON error line, one JSON info line, and one plaintext line at boot, then served a `200` on `/` and a `404` on a nonce path through the public edge; `render logs -o json` then proved every filter with a positive match AND a negative exclusion — the `app`/`request` split clean both ways, `--level error` isolating exactly the planted line (`critical` an honest empty), `--path`/`--host` matching only the probe values, `--method GET` positive with `POST` empty, and `--status-code` exact `404`/`200` exclusion both ways plus the `4xx` class shorthand. The fixture is deleted on exit; the raw REST/MCP halves of the same durable-store paths remain covered by [`scripts/logs-verify.sh`](../scripts/logs-verify.sh).
+- **Base dev-9 does not run** (so paths needing them are marked accordingly, distinguishing a real bex gap from an environment limit): build infra (kpack/zot), OpenBao (env-vars/secret-file store), the registry-credential store, Loki (durable log store — but see the production durable-logs supplement above), Prometheus, cert-manager, OpenFGA (authz is allow-all here), `BEX_DB_DOMAIN`/`BEX_KV_DOMAIN` (external datastore connect), and the SSH gateway.
 
 ### Real gaps found this pass (bex-side, worth filing)
 
@@ -78,12 +79,12 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
   - [x] `--direction <backward|forward>`
   - [x] `--limit <count>`
   - [x] `--text <query>` — filter genuinely applied (empty result on no match)
-  - [~] `--level <levels>` — `503`, needs the durable store (`BEX_LOKI_URL`)
-  - [~] `--type <types>` — `app` works live; `request` needs the durable store
-  - [~] `--host <hosts>` — `503`, needs the durable store
-  - [~] `--status-code <codes>` — `503`, needs the durable store
-  - [~] `--method <methods>` — `503`, needs the durable store
-  - [~] `--path <paths>` — `503`, needs the durable store
+  - [x] `--level <levels>` — durable-logs supplement: a planted JSON `error` line is isolated exactly; an unmatched level is an honest empty. (The CLI's own `--level` enum has no `unknown`, so bex's honest plaintext bucket is reachable over REST only — upstream flag shape, not a bex gap.) Dev-9 (no Loki) answers `503`
+  - [x] `--type <types>` — `app` works live even without the store; durable-logs supplement proved the `app`/`request` split clean in both directions
+  - [x] `--host <hosts>` — durable-logs supplement: matches only the probe host; an absent host is an honest empty. Dev-9 (no Loki) answers `503`
+  - [x] `--status-code <codes>` — durable-logs supplement: exact `404`/`200` exclude each other's probe lines, and the `4xx` class shorthand matches. Dev-9 (no Loki) answers `503`
+  - [x] `--method <methods>` — durable-logs supplement: the GET probes match; a never-sent method is an honest empty. Dev-9 (no Loki) answers `503`
+  - [x] `--path <paths>` — durable-logs supplement: matches only the probe path; an absent path is an honest empty. Dev-9 (no Loki) answers `503`
   - [x] `--task-id <ids>` — accepted as a filter
   - [x] `--task-run-id <ids>` — accepted as a filter
 - [x] **`postgres`** (alias `pg`) — manage Render Postgres databases
