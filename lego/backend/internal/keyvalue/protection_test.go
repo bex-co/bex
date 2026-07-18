@@ -18,6 +18,7 @@ package keyvalue
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -110,6 +111,14 @@ func TestProtectedKeyValueDeleteAndSuspend(t *testing.T) {
 		}
 	})
 
+	t.Run("unwired protection store is a no-op", func(t *testing.T) {
+		kv := keyValueForProtection("red-hand-applied", "hand-applied", true)
+		svc, _ := newService(kv)
+		if _, err := svc.Suspend(context.Background(), kv.Name); err != nil {
+			t.Fatalf("DB-less Suspend: %v", err)
+		}
+	})
+
 	t.Run("unprotected environment needs no confirmation", func(t *testing.T) {
 		kv := keyValueForProtection("red-staging", "staging", true)
 		svc, _, store := protectedKeyValueService(kv)
@@ -185,6 +194,23 @@ func TestProtectedKeyValueConfirmationAcrossAdapters(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer clientSession.Close()
+		tools, err := clientSession.ListTools(ctx, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var suspendSchema, getSchema string
+		for _, tool := range tools.Tools {
+			encoded, _ := json.Marshal(tool.InputSchema)
+			switch tool.Name {
+			case "suspend_keyvalue":
+				suspendSchema = string(encoded)
+			case "get_key_value":
+				getSchema = string(encoded)
+			}
+		}
+		if !strings.Contains(suspendSchema, `"confirm"`) || strings.Contains(getSchema, `"confirm"`) {
+			t.Fatalf("confirm schema scope: suspend=%s get=%s", suspendSchema, getSchema)
+		}
 		blocked, err := clientSession.CallTool(ctx, &mcp.CallToolParams{Name: "suspend_keyvalue", Arguments: map[string]any{"keyValueId": kv.Name}})
 		if err != nil || !blocked.IsError {
 			t.Fatalf("unconfirmed MCP = %#v, %v", blocked, err)
