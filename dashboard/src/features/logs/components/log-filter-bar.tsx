@@ -19,11 +19,9 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { en } from "@/i18n";
 import { Button } from "@/common/components/ui/button";
-import {
-  DEFAULT_RANGE_PRESET,
-  RANGE_PRESETS,
-  type RangePreset,
-} from "@/features/metrics/lib/range";
+import { RangeSelect } from "@/features/metrics/components/range-select";
+import { type RangePreset } from "@/features/metrics/lib/range";
+import { DEFAULT_LOG_RANGE } from "../lib/log-search";
 import { useLogLabelValues } from "../hooks/use-log-label-values";
 import {
   LOG_LABEL_INSTANCE,
@@ -114,7 +112,7 @@ export function LogFilterBar({
   live,
   onLiveChange,
   liveSupported,
-  range = DEFAULT_RANGE_PRESET,
+  range = DEFAULT_LOG_RANGE,
   onRangeChange = () => undefined,
 }: LogFilterBarProps) {
   const { t } = useTranslations();
@@ -173,18 +171,11 @@ export function LogFilterBar({
         />
       </div>
 
-      <div className="flex flex-wrap gap-1" aria-label={t("logs.rangeLabel")}>
-        {RANGE_PRESETS.map((preset) => (
-          <Button
-            key={preset.id}
-            size="sm"
-            variant={preset.id === range.id ? "default" : "outline"}
-            onClick={() => onRangeChange(preset)}
-          >
-            {preset.id}
-          </Button>
-        ))}
-      </div>
+      <RangeSelect
+        range={range}
+        onRangeChange={onRangeChange}
+        ariaLabel={t("logs.rangeLabel")}
+      />
 
       <Popover>
         <PopoverTrigger asChild>
@@ -285,7 +276,13 @@ export function LogFilterBar({
 // One labeled row inside the Filters popover — a visible label above the
 // control (the control keeps its own aria-label, so a11y queries are stable
 // whether the control sits in the bar or the popover).
-function FilterRow({ label, children }: { label: string; children: ReactNode }) {
+function FilterRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
   return (
     <div className="space-y-1">
       <span className="text-xs font-medium text-muted-foreground">{label}</span>

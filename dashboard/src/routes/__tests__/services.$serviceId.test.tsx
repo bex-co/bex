@@ -164,16 +164,28 @@ describe("service-detail layout routing", () => {
     );
   });
 
-  it("swaps the id-shaped title segment for the service name once resolved (w1/m46)", async () => {
-    // Post-m46 the URL param is the opaque srv- id; tab heads template it into
-    // the title, and the shell swaps it for the human name (Render titles by
-    // name). The harness's param is "app" — give the service a different name.
+  it("writes Render's `<name> · <type> · <brand>` title once the service resolves (w5/m42)", async () => {
+    // Post-m46 the URL param is the opaque srv- id; the layout head templates
+    // it into the fallback title, and the shell completes the Render shape by
+    // name + type ("backend-v2 ・ Web Service ・ Render Dashboard", captured
+    // live). The harness's param is "app" — give the service a different name
+    // to prove the swap.
     serverState.service = svc({ id: "app", name: "friendly" });
-    document.title = "app · Logs · bex dashboard";
+    document.title = "app · bex dashboard";
     renderAt("/services/app/logs");
 
     await waitFor(() =>
-      expect(document.title).toBe("friendly · Logs · bex dashboard"),
+      expect(document.title).toBe("friendly · Web Service · bex dashboard"),
+    );
+  });
+
+  it("titles a cron job by its own type label, not Web Service (w5/m42)", async () => {
+    serverState.service = svc({ id: "app", name: "nightly", type: "cron_job" });
+    document.title = "app · bex dashboard";
+    renderAt("/services/app/logs");
+
+    await waitFor(() =>
+      expect(document.title).toBe("nightly · Cron Job · bex dashboard"),
     );
   });
 

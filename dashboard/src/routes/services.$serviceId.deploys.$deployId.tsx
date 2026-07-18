@@ -1,13 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DeployDetailPage } from "@/features/deploys/components/deploy-detail-page";
-import {
-  parseLogRange,
-  type LogRange,
-} from "@/features/deploys/lib/log-range";
+import { parseLogRange, type LogRange } from "@/features/deploys/lib/log-range";
 
-export const Route = createFileRoute(
-  "/services/$serviceId/deploys/$deployId",
-)({
+export const Route = createFileRoute("/services/$serviceId/deploys/$deployId")({
   component: RouteComponent,
   // `?r=<range>` (w9/003) is the log viewer's shareable relative time window
   // (Render's own deploy-page param): absent => the deploy's own
@@ -18,9 +13,6 @@ export const Route = createFileRoute(
     const r = parseLogRange(search.r);
     return r ? { r } : {};
   },
-  head: ({ params }) => ({
-    meta: [{ title: `${params.serviceId} · Deploy · bex dashboard` }],
-  }),
 });
 
 // The per-deploy page (w9/m1): Render's `/web/srv-…/deploys/dep-…` twin.

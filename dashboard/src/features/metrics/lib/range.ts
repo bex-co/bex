@@ -1,24 +1,29 @@
 export interface RangePreset {
-  id: "30m" | "1h" | "3h" | "6h" | "12h" | "1d";
+  id: "30m" | "1h" | "4h" | "12h" | "24h" | "2d" | "7d" | "14d";
   spanSeconds: number;
   resolutionSeconds: number;
 }
 
+// Render's preset ladder, captured live 2026-07-17 (w5/m42): 30 min / hour /
+// 4 hours / 12 hours / 24 hours / 2 days / 7 days / 14 days. Render's
+// plan-gated "Last 30 days" and "Custom" are deliberately not offered.
 // Resolution scales with span so a series stays readable (~120 points, not
 // thousands) while still resolving fine-grained enough to show shape.
-// Display labels live in metrics-filters.tsx's RANGE_LABEL_KEYS (i18n).
+// Display labels live in range-select.tsx's RANGE_LABEL_KEYS (i18n).
 // Ranges beyond Prometheus's retention (deploy/gitops/base/prometheus.yaml)
 // simply show the retained window — same as Render past its own horizon.
 export const RANGE_PRESETS: RangePreset[] = [
   { id: "30m", spanSeconds: 30 * 60, resolutionSeconds: 15 },
   { id: "1h", spanSeconds: 60 * 60, resolutionSeconds: 30 },
-  { id: "3h", spanSeconds: 3 * 60 * 60, resolutionSeconds: 90 },
-  { id: "6h", spanSeconds: 6 * 60 * 60, resolutionSeconds: 180 },
+  { id: "4h", spanSeconds: 4 * 60 * 60, resolutionSeconds: 120 },
   { id: "12h", spanSeconds: 12 * 60 * 60, resolutionSeconds: 300 },
-  { id: "1d", spanSeconds: 24 * 60 * 60, resolutionSeconds: 720 },
+  { id: "24h", spanSeconds: 24 * 60 * 60, resolutionSeconds: 720 },
+  { id: "2d", spanSeconds: 2 * 24 * 60 * 60, resolutionSeconds: 1440 },
+  { id: "7d", spanSeconds: 7 * 24 * 60 * 60, resolutionSeconds: 5040 },
+  { id: "14d", spanSeconds: 14 * 24 * 60 * 60, resolutionSeconds: 10080 },
 ];
 
-export const DEFAULT_RANGE_PRESET = RANGE_PRESETS[1]; // "1h", matches bex-api's own default span
+export const DEFAULT_RANGE_PRESET = RANGE_PRESETS[3]; // "12h" — Render's own default
 
 export type RangePresetID = RangePreset["id"];
 
@@ -32,7 +37,10 @@ export function parseRangePreset(value: unknown): RangePreset | null {
 // picker/URL concern, so consumers with a fixed window (e.g. the Scaling
 // page's 48h Recent Metrics, w7/m43) can pass a bare window without minting a
 // fake preset id.
-export type RangeWindow = Pick<RangePreset, "spanSeconds" | "resolutionSeconds">;
+export type RangeWindow = Pick<
+  RangePreset,
+  "spanSeconds" | "resolutionSeconds"
+>;
 
 /** Resolves a window into the startTime/endTime/resolutionSeconds query args. */
 export function resolveRange(preset: RangeWindow, now: Date) {

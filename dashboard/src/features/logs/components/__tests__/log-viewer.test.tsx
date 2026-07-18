@@ -72,7 +72,7 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
   });
 
   it("passes the selected relative range as concrete history-query bounds", () => {
-    const range = RANGE_PRESETS.find((preset) => preset.id === "6h")!;
+    const range = RANGE_PRESETS.find((preset) => preset.id === "4h")!;
     render(<LogViewer resource="web" range={range} />);
 
     const window = useHistorySpy.mock.calls.at(-1)?.[2] as {
@@ -80,7 +80,7 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
       endTime: string;
     };
     expect(Date.parse(window.endTime) - Date.parse(window.startTime)).toBe(
-      6 * 60 * 60 * 1000,
+      4 * 60 * 60 * 1000,
     );
     expect(
       screen.getByText(

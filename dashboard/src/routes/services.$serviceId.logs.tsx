@@ -20,9 +20,6 @@ export const Route = createFileRoute("/services/$serviceId/logs")({
   // links, which re-enters TanStack Start's full-document reload path
   // (observed live, w7/m42). The aliases instead leave the URL on the first
   // interaction, via `write`'s CLEARED_LOG_SEARCH spread below.
-  head: ({ params }) => ({
-    meta: [{ title: `${params.serviceId} · Logs · bex dashboard` }],
-  }),
 });
 
 function RouteComponent() {

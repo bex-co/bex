@@ -1,11 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card.tsx";
+import { Tabs, TabsList, TabsTrigger } from "@/common/components/ui/tabs.tsx";
 import {
   SvgLineChart,
   ChartLegend,
@@ -24,8 +25,8 @@ import { formatMetricValue } from "@/features/metrics/lib/format";
 import { latestValue } from "@/features/metrics/lib/series";
 
 interface ApplicationMetricsCardProps {
+  /** The service id — names the metrics resource and the plan/scaling links. */
   resource: string;
-  percentage: boolean;
   /** The page's resolved live window (route-owned, shared with the network card). */
   window: UseMetricsOptions;
 }
@@ -34,7 +35,9 @@ interface ApplicationMetricsCardProps {
  * Render's "Application Metrics" card: Memory, CPU, Total Instances as
  * stepped history charts over the selected range — one line per instance
  * (cAdvisor via Prometheus, or a single current point on the metrics-server
- * fallback; docs/ADR010-observability.md).
+ * fallback; docs/ADR010-observability.md). The Percentage/Total tabs sit in
+ * the card header (Render's placement, captured live 2026-07-17, w5/m42) —
+ * they alter only this card, so their state lives here, not on the page.
  *
  * Percentage/Total is computed client-side from two already-fetched series
  * (the raw metric + its _limit counterpart, aggregated to one max value) —
@@ -47,10 +50,10 @@ interface ApplicationMetricsCardProps {
  */
 export function ApplicationMetricsCard({
   resource,
-  percentage,
   window,
 }: ApplicationMetricsCardProps) {
   const { t } = useTranslations();
+  const [percentage, setPercentage] = useState(true); // Render defaults to Percentage
   const cpu = useMetrics(resource, "cpu", window);
   const memory = useMetrics(resource, "memory", window);
   const cpuLimit = useMetrics(resource, "cpu_limit", {
@@ -77,13 +80,24 @@ export function ApplicationMetricsCard({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex-row items-center justify-between">
         <CardTitle>{t("metrics.applicationTitle")}</CardTitle>
-        <CardDescription>{t("metrics.applicationDescription")}</CardDescription>
+        <Tabs
+          value={percentage ? "percentage" : "total"}
+          onValueChange={(v) => setPercentage(v === "percentage")}
+        >
+          <TabsList>
+            <TabsTrigger value="percentage">
+              {t("metrics.filterPercentage")}
+            </TabsTrigger>
+            <TabsTrigger value="total">{t("metrics.filterTotal")}</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </CardHeader>
       <CardContent className="space-y-6">
         <ResourceSection
           title={t("metrics.memory")}
+          serviceId={resource}
           result={memory}
           limit={latestValue(memoryLimit.series)}
           limitUnit="bytes"
@@ -92,6 +106,7 @@ export function ApplicationMetricsCard({
         />
         <ResourceSection
           title={t("metrics.cpu")}
+          serviceId={resource}
           result={cpu}
           limit={latestValue(cpuLimit.series)}
           limitUnit="cpu"
@@ -102,11 +117,20 @@ export function ApplicationMetricsCard({
           title={t("metrics.totalInstances")}
           result={instances}
           headerExtra={
-            <LatestValue
-              result={instances}
-              unit="count"
-              value={latestValue(instances.series)}
-            />
+            <div className="flex items-baseline gap-2">
+              <Link
+                to="/services/$serviceId/scaling"
+                params={{ serviceId: resource }}
+                className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              >
+                {t("metrics.manageScaling")}
+              </Link>
+              <LatestValue
+                result={instances}
+                unit="count"
+                value={latestValue(instances.series)}
+              />
+            </div>
           }
         >
           <SvgLineChart unit="count" series={instancesSeries} />
@@ -118,6 +142,8 @@ export function ApplicationMetricsCard({
 
 interface ResourceSectionProps {
   title: string;
+  /** Names the header's `Limit` link target (the service's Instance Type tab). */
+  serviceId: string;
   result: UseMetricsResult;
   /** The App's limit (max across instances) — null when none is configured. */
   limit: number | null;
@@ -141,6 +167,7 @@ interface ResourceSectionProps {
  */
 function ResourceSection({
   title,
+  serviceId,
   result,
   limit,
   limitUnit,
@@ -179,13 +206,18 @@ function ResourceSection({
       result={result}
       headerExtra={
         <div className="flex items-baseline gap-2">
-          {hasLimit && (
-            <span className="text-xs text-muted-foreground">
-              {t("metrics.limitLabel", {
-                value: formatMetricValue(limitUnit, limit),
-              })}
-            </span>
-          )}
+          <span className="text-xs text-muted-foreground">
+            {/* Render links "Limit" to the plan page — with no limit set, the
+                link still leads where one is configured (w5/m42). */}
+            <Link
+              to="/services/$serviceId/plan"
+              params={{ serviceId }}
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              {t("metrics.limitLink")}
+            </Link>
+            {hasLimit && <> {formatMetricValue(limitUnit, limit)}</>}
+          </span>
           {percentage && hasTarget && (
             <span className="text-xs text-muted-foreground">
               {t("metrics.targetLabel", {

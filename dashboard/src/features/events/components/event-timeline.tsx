@@ -1,19 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { AlertCircle, CircleDot, Loader2 } from "lucide-react";
-import { useState } from "react";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/common/components/ui/select";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatRelativeAge } from "@/features/services/lib/format";
 import { useServiceEvents } from "@/features/events/hooks/use-service-events";
@@ -22,48 +14,28 @@ import {
   type EventTimelineFilter,
 } from "@/features/events/lib/timeline";
 
+// The category filter lives in the Metrics toolbar (Render's filter-events
+// control, w5/m42) — the timeline itself just renders whatever the filter
+// admits, so it stays a pure presentation of the selected range.
 export function EventTimeline({
   serviceId,
   startTime,
   endTime,
+  filter = "all",
 }: {
   serviceId: string;
   startTime: string;
   endTime: string;
+  filter?: EventTimelineFilter;
 }) {
   const { t } = useTranslations();
   const { events, loading, error } = useServiceEvents(serviceId, 100);
-  const [filter, setFilter] = useState<EventTimelineFilter>("all");
   const visible = filterTimelineEvents(events, startTime, endTime, filter);
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between">
+      <CardHeader>
         <CardTitle>{t("metrics.eventsTitle")}</CardTitle>
-        <Select
-          value={filter}
-          onValueChange={(value) => setFilter(value as EventTimelineFilter)}
-        >
-          <SelectTrigger
-            size="sm"
-            className="w-40"
-            aria-label={t("metrics.eventsFilterLabel")}
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("metrics.eventsFilterAll")}</SelectItem>
-            <SelectItem value="deploy">
-              {t("metrics.eventsFilterDeploys")}
-            </SelectItem>
-            <SelectItem value="lifecycle">
-              {t("metrics.eventsFilterLifecycle")}
-            </SelectItem>
-            <SelectItem value="config">
-              {t("metrics.eventsFilterConfig")}
-            </SelectItem>
-          </SelectContent>
-        </Select>
       </CardHeader>
       <CardContent>
         {loading && events.length === 0 ? (

@@ -21,8 +21,9 @@ query Metrics($query: MetricsQueryInput!) {
 }
 
 # Render's "Usage this month" bandwidth footer, captured live from the
-# dashboard. bex only meters HTTP egress (Traefik-scraped) — nat/privateLink/
-# websocket always report 0, an honest subset, never a fabricated total.
+# dashboard. bex composes real HTTP + NAT (direct-public L3) + WebSocket
+# egress (w8/m15); only privateLink reports 0 — an honest subset, never a
+# fabricated total.
 query MonthToDateBandwidth($resourceId: String!) {
   monthToDateBandwidth(resourceId: $resourceId) {
     egressBandwidthMB

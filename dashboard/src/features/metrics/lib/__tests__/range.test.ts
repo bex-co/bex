@@ -7,14 +7,16 @@ import {
 } from "../range";
 
 describe("RANGE_PRESETS", () => {
-  it("offers Render's preset ladder in ascending span order", () => {
+  it("offers Render's preset ladder in ascending span order (w5/m42)", () => {
     expect(RANGE_PRESETS.map((p) => p.id)).toEqual([
       "30m",
       "1h",
-      "3h",
-      "6h",
+      "4h",
       "12h",
-      "1d",
+      "24h",
+      "2d",
+      "7d",
+      "14d",
     ]);
     for (let i = 1; i < RANGE_PRESETS.length; i++) {
       expect(RANGE_PRESETS[i].spanSeconds).toBeGreaterThan(
@@ -31,12 +33,16 @@ describe("RANGE_PRESETS", () => {
     }
   });
 
-  it("defaults to the 1h preset", () => {
-    expect(DEFAULT_RANGE_PRESET.id).toBe("1h");
+  it("defaults to the 12h preset (Render's own default)", () => {
+    expect(DEFAULT_RANGE_PRESET.id).toBe("12h");
   });
 
-  it("parses supported URL values and rejects malformed ones", () => {
-    expect(parseRangePreset("6h")?.id).toBe("6h");
+  it("parses supported URL values and rejects malformed/retired ones", () => {
+    expect(parseRangePreset("4h")?.id).toBe("4h");
+    expect(parseRangePreset("14d")?.id).toBe("14d");
+    // retired pre-w5/m42 ids and unsupported spans are rejected, not guessed
+    expect(parseRangePreset("6h")).toBeNull();
+    expect(parseRangePreset("1d")).toBeNull();
     expect(parseRangePreset("30d")).toBeNull();
     expect(parseRangePreset(["1h"])).toBeNull();
   });

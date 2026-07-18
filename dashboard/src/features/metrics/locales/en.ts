@@ -46,10 +46,6 @@ const enMetrics: Record<string, TranslationEntry> = {
     message: "Service changed",
     description: "Fallback event timeline label",
   },
-  "metrics.subtitle": {
-    message: "Metrics — live from bex-api",
-    description: "Subtitle on the service metrics page",
-  },
   "metrics.networkTitle": {
     message: "Network Metrics",
     description: "Network metrics card title",
@@ -63,9 +59,17 @@ const enMetrics: Record<string, TranslationEntry> = {
     description: "Network metrics chart section title",
   },
   "metrics.responseTimes": {
-    message: "Response Times ({quantile})",
+    message: "Response Times",
+    description: "Network metrics chart section title",
+  },
+  "metrics.percentile": {
+    message: "Percentile",
+    description: "Response Times section control label",
+  },
+  "metrics.requestsCount": {
+    message: "{count} requests",
     description:
-      "Network metrics chart section title, with the selected quantile",
+      "Aggregate request count beside the Total Requests section title",
   },
   "metrics.outboundBandwidth": {
     message: "Outbound Bandwidth",
@@ -84,14 +88,14 @@ const enMetrics: Record<string, TranslationEntry> = {
     message: "Application Metrics",
     description: "Application metrics card title",
   },
-  "metrics.applicationDescription": {
-    message: "Per-instance resource usage over the selected range",
-    description: "Application metrics card description",
-  },
-  "metrics.limitLabel": {
-    message: "Limit {value}",
+  "metrics.limitLink": {
+    message: "Limit",
     description:
-      "Resource limit annotation on the Memory/CPU chart headers, e.g. 'Limit 512 MiB'",
+      "Link to the Instance Type tab on the Memory/CPU chart headers, followed by the limit value when configured",
+  },
+  "metrics.manageScaling": {
+    message: "Manage scaling",
+    description: "Link to the Scaling tab on the Total Instances chart header",
   },
   "metrics.noLimitConfigured": {
     message: "No limit configured — percentage is undefined",
@@ -199,21 +203,37 @@ const enMetrics: Record<string, TranslationEntry> = {
     message: "Last hour",
     description: "Metrics time-range filter option",
   },
-  "metrics.rangeLast3Hours": {
-    message: "Last 3 hours",
-    description: "Metrics time-range filter option",
-  },
-  "metrics.rangeLast6Hours": {
-    message: "Last 6 hours",
+  "metrics.rangeLast4Hours": {
+    message: "Last 4 hours",
     description: "Metrics time-range filter option",
   },
   "metrics.rangeLast12Hours": {
     message: "Last 12 hours",
     description: "Metrics time-range filter option",
   },
-  "metrics.rangeLastDay": {
-    message: "Last day",
+  "metrics.rangeLast24Hours": {
+    message: "Last 24 hours",
     description: "Metrics time-range filter option",
+  },
+  "metrics.rangeLast2Days": {
+    message: "Last 2 days",
+    description: "Metrics time-range filter option",
+  },
+  "metrics.rangeLast7Days": {
+    message: "Last 7 days",
+    description: "Metrics time-range filter option",
+  },
+  "metrics.rangeLast14Days": {
+    message: "Last 14 days",
+    description: "Metrics time-range filter option",
+  },
+  "metrics.rangeLabel": {
+    message: "Time range",
+    description: "Accessible label for the time-range dropdown",
+  },
+  "metrics.eventsToggle": {
+    message: "Show event timeline",
+    description: "Accessible label for the Metrics event-timeline toggle",
   },
 };
 

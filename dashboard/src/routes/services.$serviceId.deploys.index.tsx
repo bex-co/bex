@@ -3,9 +3,6 @@ import { DeploysListPage } from "@/features/deploys/components/deploys-list-page
 
 export const Route = createFileRoute("/services/$serviceId/deploys/")({
   component: RouteComponent,
-  head: ({ params }) => ({
-    meta: [{ title: `${params.serviceId} · Deploys · bex dashboard` }],
-  }),
 });
 
 // The dedicated Deploys tab (w9/002): Render's standalone deploy-history

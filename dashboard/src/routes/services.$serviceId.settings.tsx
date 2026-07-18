@@ -37,9 +37,6 @@ import {
 
 export const Route = createFileRoute("/services/$serviceId/settings")({
   component: ServiceSettingsPage,
-  head: ({ params }) => ({
-    meta: [{ title: `${params.serviceId} · Settings · bex dashboard` }],
-  }),
 });
 
 /**
