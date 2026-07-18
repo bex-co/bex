@@ -71,16 +71,18 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
     expect(
       screen.queryByRole("link", { name: "Deploys" }),
     ).not.toBeInTheDocument();
-    for (const [name, href] of [
-      ["Events", "/services/srv-1/events"],
-      ["Settings", "/services/srv-1/settings"],
-      ["Logs", "/services/srv-1/logs"],
-      ["Metrics", "/services/srv-1/metrics"],
-      ["Environment", "/services/srv-1/env"],
-      ["Scaling", "/services/srv-1/scaling"],
-      ["Plan", "/services/srv-1/plan"],
+    for (const [name, href, iconClass] of [
+      ["Events", "/services/srv-1/events", "lucide-activity"],
+      ["Settings", "/services/srv-1/settings", "lucide-settings"],
+      ["Logs", "/services/srv-1/logs", "lucide-scroll-text"],
+      ["Metrics", "/services/srv-1/metrics", "lucide-chart-no-axes-combined"],
+      ["Environment", "/services/srv-1/env", "lucide-braces"],
+      ["Scaling", "/services/srv-1/scaling", "lucide-scaling"],
+      ["Plan", "/services/srv-1/plan", "lucide-credit-card"],
     ] as const) {
-      expect(screen.getByRole("link", { name })).toHaveAttribute("href", href);
+      const link = screen.getByRole("link", { name });
+      expect(link).toHaveAttribute("href", href);
+      expect(link.querySelector("svg")).toHaveClass(iconClass);
     }
   });
 
@@ -91,7 +93,9 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
     expect(
       await screen.findByRole("link", { name: "Dashboard" }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Events" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Events" }),
+    ).not.toBeInTheDocument();
     // The header still names what was asked for (the id, no resolved name).
     expect(screen.getByText("srv-1")).toBeInTheDocument();
   });
@@ -101,6 +105,8 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
     serverState.loading = true;
     renderAt("/services/srv-1/logs");
 
-    expect(await screen.findByRole("link", { name: "Events" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("link", { name: "Events" }),
+    ).toBeInTheDocument();
   });
 });
