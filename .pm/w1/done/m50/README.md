@@ -1,6 +1,6 @@
 # w1 · m50 — Outbound Bandwidth: un-blank the panel (observability vs billing health gates)
 
-**Worker:** worker1 **Goal:** make the service metrics page's Outbound Bandwidth panel actually show data on prod — split ADR023's billing-grade egress health gate (correctly strict for usage metering) from the observability read path (which must be best-effort), surface per-source health as data instead of an error, and stop the dashboard from masking gate errors as "No data in range". **Status:** in progress — t001–t005 + t007–t009 done 2026-07-18 (implementation complete: best-effort interactive reads with degraded-as-data, dashboard three-state panel, ADR023/ADR010/ADR018 updated, roll-acceptance decision recorded; the ungated query verified against prod Prometheus returns 145 points / 80 non-zero for the reference service); t006 prod verification awaits the next deploy, t010 closes after it
+**Worker:** worker1 **Goal:** make the service metrics page's Outbound Bandwidth panel actually show data on prod — split ADR023's billing-grade egress health gate (correctly strict for usage metering) from the observability read path (which must be best-effort), surface per-source health as data instead of an error, and stop the dashboard from masking gate errors as "No data in range". **Status:** done — **Done 2026-07-18**: implementation + prod verification complete on the `119800de` roll (12h/7d bandwidth series render with honest "Partial data" degradation, month-to-date 83.1 MB as data with degradedSources, July usage rows byte-identical pre/post — billing untouched); the t006 sanity check additionally surfaced two pre-existing defects filed as `w1/034` (egress rollup records nothing on prod) and `w1/035` (router matcher misses the websecure sibling — HTTPS bytes uncounted, billing included); evidence in ADR023 § Observability reads vs billing reads.
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | t003 | Backend: per-source health as data on the bandwidth payload — **DONE** | 30m | t002 |
 | t004 | Dashboard: three panel states — data / empty / source-degraded — **DONE** | 45m | t003 |
 | t005 | Platform mitigation: shrink the meter's up-gap surface (DS rolls, scheduling) — **DONE** | 45m | t001 |
-| t006 | Prod verification: bandwidth renders through deploys and meter rolls | 30m | t002, t004, t005 |
+| t006 | Prod verification: bandwidth renders through deploys and meter rolls — **DONE** | 30m | t002, t004, t005 |
 | t007 | Render parity — REST/GraphQL/MCP consistency for the changed bandwidth surface — **DONE** | 30m | t006 |
 | t008 | Simplify — `/simplify` over the changed code — **DONE** | 30m | t007 |
 | t009 | Test coverage — bucket/degraded gating against synthetic reset+gap fixtures — **DONE** | 45m | t007 |
-| t010 | Closeout — verify DoD, sync status, move to done | 15m | t008, t009 |
+| t010 | Closeout — verify DoD, sync status, move to done — **DONE** | 15m | t008, t009 |
 
 ## Definition of done
 
