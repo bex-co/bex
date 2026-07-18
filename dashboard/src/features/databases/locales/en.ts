@@ -159,6 +159,36 @@ const enDatabases: Record<string, TranslationEntry> = {
       "Use lowercase letters, digits, and hyphens (up to 30 characters); can't start or end with a hyphen.",
     description: "Create-database name validation message",
   },
+  "databases.physicalNamesTitle": {
+    message: "PostgreSQL names (optional)",
+    description: "Create-database advanced physical-name section title",
+  },
+  "databases.physicalNamesHint": {
+    message:
+      "Set these only at creation. Leave blank to generate stable names.",
+    description: "Create-database physical-name helper text",
+  },
+  "databases.fieldDatabaseName": {
+    message: "Database name",
+    description: "Create-database physical PostgreSQL database label",
+  },
+  "databases.fieldDatabaseNamePlaceholder": {
+    message: "orders_data",
+    description: "Create-database physical PostgreSQL database placeholder",
+  },
+  "databases.fieldDatabaseUser": {
+    message: "Database user",
+    description: "Create-database physical PostgreSQL owner-role label",
+  },
+  "databases.fieldDatabaseUserPlaceholder": {
+    message: "orders_owner",
+    description: "Create-database physical PostgreSQL owner-role placeholder",
+  },
+  "databases.fieldPhysicalNameError": {
+    message:
+      "Use up to 63 lowercase letters, digits, and underscores; start with a letter or underscore.",
+    description: "Create-database physical PostgreSQL identifier validation",
+  },
   "databases.fieldPlan": {
     message: "Instance type",
     description: "Create-database form field label (plan / tier)",

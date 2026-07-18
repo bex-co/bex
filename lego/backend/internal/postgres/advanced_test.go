@@ -63,11 +63,12 @@ func seedDatabaseSpec(t *testing.T, cl client.Client, name string, spec appv1alp
 			SecretName: name + "-app", BackupsEnabled: backupsEnabled,
 		},
 	}
-	dbn := pgIdent(name)
+	dbn := spec.EffectiveDatabaseName(name)
+	dbUser := spec.EffectiveDatabaseUser(name)
 	sec := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: name + "-app", Namespace: "default"},
 		Data: map[string][]byte{
-			"username": []byte(dbn + "_user"), "password": []byte("s3cret"),
+			"username": []byte(dbUser), "password": []byte("s3cret"),
 			"dbname": []byte(dbn),
 			"uri":    []byte("postgresql://" + dbn + "_user:s3cret@" + name + "-rw.default:5432/" + dbn),
 		},
@@ -155,7 +156,9 @@ func TestRecoveryInfoEnabled(t *testing.T) {
 
 func TestRecoverCreatesNewInstanceLeavingSourceUntouched(t *testing.T) {
 	svc, cl := newService()
-	seedDatabaseSpec(t, cl, "src-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb", Version: "16"}, true)
+	seedDatabaseSpec(t, cl, "src-db", appv1alpha1.DatabaseSpec{
+		Plan: "basic-1gb", Version: "16", DatabaseName: "orders_data", DatabaseUser: "orders_owner",
+	}, true)
 	ctx := context.Background()
 
 	v, err := svc.Recover(ctx, "src-db", RecoverRequest{Name: "restored-db", TargetTime: "2026-07-09T10:00:00Z"})
@@ -179,6 +182,10 @@ func TestRecoverCreatesNewInstanceLeavingSourceUntouched(t *testing.T) {
 	}
 	if made.Spec.Plan != "basic-1gb" || made.Spec.Version != "16" {
 		t.Fatalf("new db should inherit source plan/version: %+v", made.Spec)
+	}
+	if made.Spec.DatabaseName != "orders_data" || made.Spec.DatabaseUser != "orders_owner" ||
+		v.DatabaseName != "orders_data" || v.DatabaseUser != "orders_owner" {
+		t.Fatalf("recovery did not preserve physical identity: spec=%+v view=%+v", made.Spec, v)
 	}
 	// Source is untouched (no recovery block).
 	var src appv1alpha1.Database

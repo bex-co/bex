@@ -9,19 +9,19 @@ Legend: `[x]` verified working · `[~]` works with a documented limitation · `[
 - **CLI:** `render-oss/cli` v2.21.0, built unmodified from `./cli`, driven only through [`scripts/cli-compat.sh`](../scripts/cli-compat.sh) (Hydra `client_credentials` token exchange per call, `RENDER_HOST` → local bex-api). Production was never touched.
 - **Target:** the isolated local **dev-9** environment (`.pm/w9/dev-9`, bex-api at `:54090`), current `lego/backend` HEAD, on **2026-07-18**.
 - **Method:** the maintained regression suite `scripts/cli-compat.sh verify` (whole-shape `checkFields` assertions over the core families) **plus** a six-agent parallel sweep of the entire flag matrix and every command `verify` doesn't cover. Each item was graded on the unmodified CLI's exit status and the wire shape read back via `-o json` and raw REST `GET`.
+- **Postgres create supplement (w6/m38):** [`scripts/postgres-create-cli-smoke.sh`](../scripts/postgres-create-cli-smoke.sh) drove the same unmodified CLI against isolated **dev-6** and a real local CNPG cluster on **2026-07-18**. It proved both custom names, database-only and user-only independent defaults, the CR intent, generated Secret metadata, and `current_database()`/`current_user` inside PostgreSQL. It also proved that unsupported Datadog create/update flags fail with a named 400 and leave no resource behind.
 - **dev-9 does not run** (so paths needing them are marked accordingly, distinguishing a real bex gap from an environment limit): build infra (kpack/zot), OpenBao (env-vars/secret-file store), the registry-credential store, Loki (durable log store), Prometheus, cert-manager, OpenFGA (authz is allow-all here), `BEX_DB_DOMAIN`/`BEX_KV_DOMAIN` (external datastore connect), and the SSH gateway.
 
 ### Real gaps found this pass (bex-side, worth filing)
 
 - ~~**`keyvalues update --memory-policy` / `--ip-allow-list` / `--clear-ip-allow-list` are silent no-ops**~~ — **fixed (w7/m45)**: `KeyValuePatch` now carries `MaxmemoryPolicy` + `IPAllowList` and `handleUpdateKeyValue` decodes them, so the CLI's update flags mutate the store; GraphQL `setKeyValueMaxmemoryPolicy` + MCP `set_key_value_maxmemory_policy`/`set_key_value_ip_allow_list` bring the programmatic surfaces to parity. (Dashboard memory-policy editing after create is a tracked follow-up.)
-- **`postgres create --database-name` / `--database-user` are silently ignored** — `CreatePostgresRequest` has no such fields; bex server-generates `dpg_<id>` / `dpg_<id>_user`.
-- **`postgres create/update --datadog-api-key` / `--datadog-site` are silently ignored** — no Datadog integration; accepted with `200`, never applied.
 - _(upstream CLI, not bex)_ **`skills list` / `skills update` panic** (nil-pointer) in every non-TTY output mode.
 
 ### Intended divergences (not bugs)
 
 - `--region` is accepted but **platform-stamped** (`local-capd`); the value submitted is not persisted. This is what makes a bare `services create --from` clone fail — the CLI re-validates the source's `local-capd` region against its own enum — so clones need an explicit `--region`.
 - `--previews` is rejected platform-wide (`400 "not supported by this platform"`).
+- Postgres Datadog forwarding is not implemented. Supplying `--datadog-api-key` or `--datadog-site` on create or update returns a named 400; bex never accepts or persists the credential.
 - `services update --runtime` is rejected via the CLI by design ("cannot switch runtimes via the CLI"); `services --ip-allow-list` keeps the CIDR but drops per-entry descriptions (Postgres/Key Value do persist them).
 
 > Regenerate the command tree with `render <subcommand> --help`. Re-run the graded baseline with `scripts/cli-compat.sh verify`. Grouping mirrors the CLI's own `render --help` sections.
@@ -91,10 +91,10 @@ Legend: `[x]` verified working · `[~]` works with a documented limitation · `[
     - [x] `--disk-autoscaling`
     - [x] `--high-availability` — persists to the CR spec (status flips once replicas are ready)
     - [x] `--read-replica <name>` — persists to the CR spec
-    - [ ] `--database-name <string>` — **silently ignored** (server-generates `dpg_<id>`)
-    - [ ] `--database-user <string>` — **silently ignored** (server-generates `dpg_<id>_user`)
-    - [ ] `--datadog-api-key <string>` — **silently ignored** (no Datadog integration)
-    - [ ] `--datadog-site <string>` — **silently ignored**
+    - [x] `--database-name <string>` — persisted as the immutable physical database name and live-proven through CNPG SQL identity
+    - [x] `--database-user <string>` — persisted as the immutable owner role and live-proven through CNPG SQL identity; either custom-name flag may be omitted independently
+    - [-] `--datadog-api-key <string>` — deliberate non-goal; named 400, credential never persisted
+    - [-] `--datadog-site <string>` — deliberate non-goal; named 400
     - [x] `--workspace <id|name>`
     - [~] `--project <id|name>` — flag parsed; needs an existing project
     - [~] `--environment <id|name>` — flag parsed; needs an existing project/environment
@@ -108,8 +108,8 @@ Legend: `[x]` verified working · `[~]` works with a documented limitation · `[
     - [x] `--high-availability`
     - [x] `--ip-allow-list cidr=…,description=…` — replaces list; description returns
     - [x] `--clear-ip-allow-list` — empties the list
-    - [ ] `--datadog-api-key <string>` — **silently ignored**
-    - [ ] `--datadog-site <string>` — **silently ignored**
+    - [-] `--datadog-api-key <string>` — deliberate non-goal; named 400, credential never persisted
+    - [-] `--datadog-site <string>` — deliberate non-goal; named 400
     - [~] `--project <id|name>` — flag parsed; needs an existing project
     - [~] `--environment <id|name>` — flag parsed; needs an existing environment
   - [x] `postgres suspend <id|name>`

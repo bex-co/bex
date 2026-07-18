@@ -70,6 +70,8 @@ type createPostgresArgs struct {
 	OwnerID               string   `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
 	EnvironmentID         string   `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
 	Name                  string   `json:"name" jsonschema:"the database name"`
+	DatabaseName          string   `json:"databaseName,omitempty" jsonschema:"optional physical PostgreSQL database name; lowercase letters, digits, and underscores"`
+	DatabaseUser          string   `json:"databaseUser,omitempty" jsonschema:"optional physical PostgreSQL owner role; lowercase letters, digits, and underscores"`
 	Plan                  string   `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, basic-256mb, basic-1gb"`
 	Version               string   `json:"version,omitempty" jsonschema:"the PostgreSQL major version, e.g. 16 (omit for the default)"`
 	DiskSizeGB            int32    `json:"diskSizeGB,omitempty" jsonschema:"disk size in GB (omit for the plan default)"`
@@ -153,12 +155,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_postgres",
-		Description: "Create a managed Postgres database. name is required; plan, version, diskSizeGB, public, ipAllowList/ipAllowListEntries and enableHighAvailability are optional. Pass dryRun:true to preview the resolved spec without any writes.",
+		Description: "Create a managed Postgres database. name is required; databaseName, databaseUser, plan, version, diskSizeGB, public, ipAllowList/ipAllowListEntries and enableHighAvailability are optional. Pass dryRun:true to preview the resolved spec without any writes.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		v, err := s.CreatePostgres(ctx, CreatePostgresRequest{
 			OwnerID:                core.SelectedWorkspace(s.Selections, req, in.OwnerID),
 			EnvironmentID:          in.EnvironmentID,
 			Name:                   in.Name,
+			DatabaseName:           in.DatabaseName,
+			DatabaseUser:           in.DatabaseUser,
 			Plan:                   in.Plan,
 			Version:                in.Version,
 			DiskSizeGB:             in.DiskSizeGB,

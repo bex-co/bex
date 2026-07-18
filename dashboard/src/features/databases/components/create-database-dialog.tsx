@@ -35,6 +35,7 @@ import {
   formatInstanceMemory,
 } from "@/features/services/lib/instance-type";
 import { POSTGRES_VERSIONS } from "@/features/databases/lib/versions";
+import { isValidPostgresIdentifier } from "@/features/databases/lib/identifiers";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 
 // PostgreSQL major versions bex offers. Keep in sync with the Database CRD's
@@ -80,6 +81,8 @@ export function CreateDatabaseDialog({
   const [openState, setOpenState] = useState(false);
   const open = controlled ? openProp : openState;
   const [name, setName] = useState("");
+  const [databaseName, setDatabaseName] = useState("");
+  const [databaseUser, setDatabaseUser] = useState("");
   // Only an explicit user pick is stored; the effective plan defaults to the
   // catalog's first (default) tier, so no effect is needed to seed it once the
   // async catalog loads (React: "you might not need an effect").
@@ -98,10 +101,17 @@ export function CreateDatabaseDialog({
 
   const nameValid = isValidDnsLabel(name);
   const showNameError = name.length > 0 && !nameValid;
-  const canSubmit = nameValid && plan !== "" && !busy;
+  const databaseNameValid =
+    databaseName === "" || isValidPostgresIdentifier(databaseName);
+  const databaseUserValid =
+    databaseUser === "" || isValidPostgresIdentifier(databaseUser);
+  const canSubmit =
+    nameValid && databaseNameValid && databaseUserValid && plan !== "" && !busy;
 
   function reset() {
     setName("");
+    setDatabaseName("");
+    setDatabaseUser("");
     setPlanOverride(null);
     setVersion(VERSION_DEFAULT);
     setDiskSizeGB("");
@@ -120,6 +130,8 @@ export function CreateDatabaseDialog({
     if (!canSubmit) return;
     const id = await create({
       name,
+      databaseName,
+      databaseUser,
       plan,
       version: version === VERSION_DEFAULT ? "" : version,
       diskSizeGB: Number(diskSizeGB) || 0,
@@ -177,6 +189,55 @@ export function CreateDatabaseDialog({
                 {t("databases.fieldNameError")}
               </p>
             ) : null}
+          </div>
+
+          <div className="space-y-3 rounded-md border p-3">
+            <div>
+              <p className="text-sm font-medium">
+                {t("databases.physicalNamesTitle")}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {t("databases.physicalNamesHint")}
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="db-database-name">
+                  {t("databases.fieldDatabaseName")}
+                </Label>
+                <Input
+                  id="db-database-name"
+                  value={databaseName}
+                  onChange={(e) => setDatabaseName(e.target.value)}
+                  placeholder={t("databases.fieldDatabaseNamePlaceholder")}
+                  autoComplete="off"
+                  aria-invalid={!databaseNameValid}
+                />
+                {!databaseNameValid ? (
+                  <p className="text-sm text-destructive">
+                    {t("databases.fieldPhysicalNameError")}
+                  </p>
+                ) : null}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="db-database-user">
+                  {t("databases.fieldDatabaseUser")}
+                </Label>
+                <Input
+                  id="db-database-user"
+                  value={databaseUser}
+                  onChange={(e) => setDatabaseUser(e.target.value)}
+                  placeholder={t("databases.fieldDatabaseUserPlaceholder")}
+                  autoComplete="off"
+                  aria-invalid={!databaseUserValid}
+                />
+                {!databaseUserValid ? (
+                  <p className="text-sm text-destructive">
+                    {t("databases.fieldPhysicalNameError")}
+                  </p>
+                ) : null}
+              </div>
+            </div>
           </div>
 
           <div className="space-y-2">

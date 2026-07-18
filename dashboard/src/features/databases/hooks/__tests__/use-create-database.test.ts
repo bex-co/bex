@@ -26,6 +26,8 @@ import { useCreateDatabase } from "@/features/databases/hooks/use-create-databas
 
 const input = {
   name: "db",
+  databaseName: "orders_data",
+  databaseUser: "orders_owner",
   plan: "starter",
   version: "16",
   diskSizeGB: 10,
@@ -57,6 +59,8 @@ describe("useCreateDatabase", () => {
       expect.objectContaining({
         variables: {
           name: "db",
+          databaseName: "orders_data",
+          databaseUser: "orders_owner",
           ownerId: "tea-1",
           plan: "starter",
           version: "16",

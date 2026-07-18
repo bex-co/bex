@@ -210,9 +210,19 @@ type CreatePostgresRequest struct {
 	OwnerID       string `json:"ownerId,omitempty"`
 	EnvironmentID string `json:"environmentId,omitempty"`
 	Name          string `json:"name"`
-	Plan          string `json:"plan,omitempty"`
-	Version       string `json:"version,omitempty"`
-	DiskSizeGB    int32  `json:"diskSizeGB,omitempty"`
+	// DatabaseName and DatabaseUser are optional create-time physical PostgreSQL
+	// identifiers. Empty preserves the stable resource-id-derived defaults.
+	DatabaseName string `json:"databaseName,omitempty"`
+	DatabaseUser string `json:"databaseUser,omitempty"`
+	Plan         string `json:"plan,omitempty"`
+	Version      string `json:"version,omitempty"`
+	DiskSizeGB   int32  `json:"diskSizeGB,omitempty"`
+	// Datadog fields are decoded so the Render CLI receives an explicit
+	// unsupported error instead of a successful no-op. Pointers distinguish an
+	// omitted field from an explicitly supplied empty string without ever
+	// echoing the credential.
+	DatadogAPIKey *string `json:"datadogAPIKey,omitempty"`
+	DatadogSite   *string `json:"datadogSite,omitempty"`
 	// EnableDiskAutoscaling is Render's create/update input field.
 	EnableDiskAutoscaling bool `json:"enableDiskAutoscaling,omitempty"`
 	Public                bool `json:"public,omitempty"`
@@ -235,15 +245,43 @@ type CreatePostgresRequest struct {
 	DryRun bool `json:"dryRun,omitempty"`
 }
 
-// pgIdent mirrors the operator's normalizeIdent: a valid unquoted PostgreSQL
-// identifier (lowercase, hyphens -> underscores).
-func pgIdent(name string) string { return strings.ToLower(strings.ReplaceAll(name, "-", "_")) }
-
 func validateDatabaseName(name string) error {
 	if !appv1alpha1.ValidDatabaseName(name) {
 		return fmt.Errorf("%w: name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen", core.ErrBadRequest)
 	}
 	return nil
+}
+
+func validatePhysicalIdentifier(field, name string) error {
+	if name == "" {
+		return nil
+	}
+	if !appv1alpha1.ValidPostgresIdentifier(name) {
+		return core.NewBadRequestError(
+			"POSTGRES_IDENTIFIER_INVALID",
+			fmt.Sprintf("%s must start with a lowercase letter or underscore, contain only lowercase letters, digits, and underscores, and be at most 63 bytes", field),
+			map[string]any{"field": field},
+		)
+	}
+	return nil
+}
+
+func unsupportedDatadogError() error {
+	return core.NewBadRequestError(
+		"POSTGRES_DATADOG_UNSUPPORTED",
+		"Postgres Datadog monitoring is not supported; remove datadogAPIKey and datadogSite",
+		nil,
+	)
+}
+
+func (req CreatePostgresRequest) validatePhysicalIdentifiers() error {
+	if req.DatadogAPIKey != nil || req.DatadogSite != nil {
+		return unsupportedDatadogError()
+	}
+	if err := validatePhysicalIdentifier("databaseName", req.DatabaseName); err != nil {
+		return err
+	}
+	return validatePhysicalIdentifier("databaseUser", req.DatabaseUser)
 }
 
 // dbStatus maps bex's Database phase onto Render's databaseStatus enum.
@@ -265,7 +303,8 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 	if !d.CreationTimestamp.IsZero() {
 		created = d.CreationTimestamp.UTC().Format(time.RFC3339)
 	}
-	dbn := pgIdent(d.Name)
+	dbn := d.Spec.EffectiveDatabaseName(d.Name)
+	dbUser := d.Spec.EffectiveDatabaseUser(d.Name)
 	replicas := make([]ReadReplicaView, 0, len(d.Status.ReadReplicaStatuses))
 	for _, rs := range d.Status.ReadReplicaStatuses {
 		rv := ReadReplicaView{Name: rs.Name}
@@ -288,7 +327,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		Version:                 version,
 		Status:                  dbStatus(d.Status.Phase),
 		DatabaseName:            dbn,
-		DatabaseUser:            dbn + "_user",
+		DatabaseUser:            dbUser,
 		DiskSizeGB:              d.Spec.StorageGB,
 		DiskAutoscalingEnabled:  d.Spec.DiskAutoscaling,
 		HighAvailabilityEnabled: d.Status.HighAvailabilityEnabled,
@@ -414,6 +453,9 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if err := validateDatabaseName(req.Name); err != nil {
 		return PostgresView{}, err
 	}
+	if err := req.validatePhysicalIdentifiers(); err != nil {
+		return PostgresView{}, err
+	}
 	tenantID, tenantOK := s.Tenant(ctx)
 	if err := s.ensureDatabaseNameAvailable(ctx, tenantID, req.Name, ""); err != nil {
 		return PostgresView{}, err
@@ -455,6 +497,8 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.Postgres), Namespace: s.Namespace},
 		Spec: appv1alpha1.DatabaseSpec{
 			Name:             req.Name,
+			DatabaseName:     req.DatabaseName,
+			DatabaseUser:     req.DatabaseUser,
 			Plan:             req.Plan,
 			Version:          req.Version,
 			StorageGB:        req.DiskSizeGB,
@@ -620,6 +664,8 @@ func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (Postgr
 // mirroring the pointer fields on the CLI's generated PostgresPATCHInput).
 type PostgresPatch struct {
 	Name                   *string
+	DatadogAPIKey          *string
+	DatadogSite            *string
 	Plan                   *string
 	Version                *string
 	DiskSizeGB             *int32
@@ -633,6 +679,9 @@ type PostgresPatch struct {
 // before any write; shared by UpdatePostgres and PreviewUpdatePostgres so the
 // two paths can never accept different inputs.
 func (patch PostgresPatch) validate() error {
+	if patch.DatadogAPIKey != nil || patch.DatadogSite != nil {
+		return unsupportedDatadogError()
+	}
 	if patch.Name != nil {
 		if err := validateDatabaseName(*patch.Name); err != nil {
 			return err

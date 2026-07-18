@@ -110,6 +110,27 @@ func TestParseStackProjectsServicesAndDatabases(t *testing.T) {
 	}
 }
 
+func TestParseStackDatabasePhysicalIdentifiers(t *testing.T) {
+	const manifest = `
+databases:
+  - name: orders
+    databaseName: orders_data
+    user: orders_owner
+`
+	st, err := parseStack(DeployRequest{Manifest: manifest})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(st.databases) != 1 || st.databases[0].spec.DatabaseName != "orders_data" || st.databases[0].spec.DatabaseUser != "orders_owner" {
+		t.Fatalf("physical identifier spec = %+v", st.databases)
+	}
+
+	bad := strings.Replace(manifest, "orders_data", "Orders-Data", 1)
+	if _, err := parseStack(DeployRequest{Manifest: bad}); err == nil || !strings.Contains(err.Error(), "databaseName") {
+		t.Fatalf("invalid databaseName error = %v", err)
+	}
+}
+
 func TestParseStackScalingBlockPopulatesAutoscaling(t *testing.T) {
 	// render.yaml scaling: block (w2/m49) must flow through parseStack →
 	// CreateRequest.Autoscaling and then onto spec.autoscaling via specFromCreate.
@@ -414,6 +435,42 @@ func TestDeployStackIdempotentReapplyIsNoOp(t *testing.T) {
 	}
 	if getDB(t, cl, firstDBID).ResourceVersion != firstDB {
 		t.Error("Database was patched on a no-op re-apply")
+	}
+}
+
+func TestDeployStackCustomPhysicalIdentifiersAreCreateOnlyAndIdempotent(t *testing.T) {
+	const manifest = `
+databases:
+  - name: orders
+    databaseName: orders_data
+    user: orders_owner
+`
+	svc, cl := newService(nil)
+	ctx := context.Background()
+	first, err := svc.DeployStack(ctx, DeployRequest{Manifest: manifest})
+	if err != nil {
+		t.Fatalf("first DeployStack: %v", err)
+	}
+	db := getDB(t, cl, first.Databases[0].ID)
+	if db.Spec.DatabaseName != "orders_data" || db.Spec.DatabaseUser != "orders_owner" {
+		t.Fatalf("physical identifiers = %q/%q", db.Spec.DatabaseName, db.Spec.DatabaseUser)
+	}
+	resourceVersion := db.ResourceVersion
+
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("idempotent DeployStack: %v", err)
+	}
+	if got := getDB(t, cl, db.Name).ResourceVersion; got != resourceVersion {
+		t.Fatalf("idempotent reapply patched Database: resourceVersion %q -> %q", resourceVersion, got)
+	}
+
+	changed := strings.Replace(manifest, "orders_data", "other_data", 1)
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: changed}); err == nil || !strings.Contains(err.Error(), "databaseName is immutable") {
+		t.Fatalf("changed physical identifier error = %v", err)
+	}
+	unchanged := getDB(t, cl, db.Name)
+	if unchanged.Spec.DatabaseName != "orders_data" || unchanged.Spec.DatabaseUser != "orders_owner" {
+		t.Fatalf("rejected reapply mutated identifiers = %q/%q", unchanged.Spec.DatabaseName, unchanged.Spec.DatabaseUser)
 	}
 }
 

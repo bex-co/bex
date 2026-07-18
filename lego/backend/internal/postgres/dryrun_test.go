@@ -64,7 +64,7 @@ func TestRESTDryRunCreatePostgres(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	// dryRun in request body => 200, no CR created.
-	body := `{"name":"preview-db","plan":"basic-1gb","dryRun":true}`
+	body := `{"name":"preview-db","databaseName":"preview_data","databaseUser":"preview_owner","plan":"basic-1gb","dryRun":true}`
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/postgres", strings.NewReader(body)))
 	if rec.Code != http.StatusOK {
@@ -72,7 +72,7 @@ func TestRESTDryRunCreatePostgres(t *testing.T) {
 	}
 	var got PostgresView
 	_ = json.Unmarshal(rec.Body.Bytes(), &got)
-	if !strings.HasPrefix(got.ID, "dpg-") || got.Name != "preview-db" || got.Plan != "basic-1gb" {
+	if !strings.HasPrefix(got.ID, "dpg-") || got.Name != "preview-db" || got.DatabaseName != "preview_data" || got.DatabaseUser != "preview_owner" || got.Plan != "basic-1gb" {
 		t.Fatalf("preview wrong: %+v", got)
 	}
 	if n := countDatabases(t, cl); n != 0 {

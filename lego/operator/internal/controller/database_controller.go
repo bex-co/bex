@@ -116,13 +116,6 @@ func (b BackupStore) configured() bool {
 	return b.DestinationPath != "" && b.EndpointURL != "" && b.S3Secret != ""
 }
 
-// normalizeIdent turns an App/DB name into a valid unquoted PostgreSQL
-// identifier: lowercase, hyphens -> underscores. So a client never has to
-// double-quote the db/role name (docs/ADR009-postgresql-management.md §4).
-func normalizeIdent(name string) string {
-	return strings.ToLower(strings.ReplaceAll(name, "-", "_"))
-}
-
 // resolvePlan returns the plan (defaulting per the shared catalog — free)
 // and the effective storage size in GB (never below the plan floor — storage
 // only grows). The ladder is lego/types/tiers' postgres family, the Database
@@ -456,8 +449,8 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	plan, storageGB := resolvePlan(db.Spec)
-	dbname := normalizeIdent(db.Name)
-	owner := dbname + "_user"
+	dbname := db.Spec.EffectiveDatabaseName(db.Name)
+	owner := db.Spec.EffectiveDatabaseUser(db.Name)
 
 	// Backups (and so recovery/PITR) require the store to be configured; whether
 	// this cluster gets its OWN backups additionally needs the plan to opt in.

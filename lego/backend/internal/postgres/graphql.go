@@ -519,7 +519,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createDatabase": &graphql.Field{
 			Type: postgresGQLType,
 			Args: graphql.FieldConfigArgument{
-				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name":         &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"databaseName": &graphql.ArgumentConfig{Type: graphql.String},
+				"databaseUser": &graphql.ArgumentConfig{Type: graphql.String},
 				// ownerId is the workspace to create IN (w6/m14) — the write-side
 				// twin of the databases list filter; optional, defaulting to the
 				// caller's default workspace, forbidden for a non-member.
@@ -542,6 +544,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				ownerID, _ := p.Args["ownerId"].(string)
 				environmentID, _ := p.Args["environmentId"].(string)
 				req := CreatePostgresRequest{Name: p.Args["name"].(string), OwnerID: ownerID, EnvironmentID: environmentID}
+				req.DatabaseName, _ = p.Args["databaseName"].(string)
+				req.DatabaseUser, _ = p.Args["databaseUser"].(string)
 				if v, ok := p.Args["plan"].(string); ok {
 					req.Plan = v
 				}

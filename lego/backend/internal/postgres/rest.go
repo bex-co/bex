@@ -504,6 +504,8 @@ func parsePGTimeWindow(startTime, endTime string) (since, end time.Time, err err
 func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name                   *string                  `json:"name,omitempty"`
+		DatadogAPIKey          *string                  `json:"datadogAPIKey,omitempty"`
+		DatadogSite            *string                  `json:"datadogSite,omitempty"`
 		Plan                   *string                  `json:"plan,omitempty"`
 		Version                *string                  `json:"version,omitempty"`
 		DiskSizeGB             *int32                   `json:"diskSizeGB,omitempty"`
@@ -519,7 +521,8 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 	}
 	id := r.PathValue("id")
 	patch := PostgresPatch{
-		Name: req.Name, Plan: req.Plan, Version: req.Version, DiskSizeGB: req.DiskSizeGB,
+		Name: req.Name, DatadogAPIKey: req.DatadogAPIKey, DatadogSite: req.DatadogSite,
+		Plan: req.Plan, Version: req.Version, DiskSizeGB: req.DiskSizeGB,
 		EnableDiskAutoscaling: req.EnableDiskAutoscaling, EnableHighAvailability: req.EnableHighAvailability,
 		IPAllowList:        req.IPAllowList,
 		ParameterOverrides: req.ParameterOverrides,

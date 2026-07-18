@@ -158,6 +158,34 @@ const zhDatabases: Record<string, TranslationEntry> = {
       "请使用小写字母、数字和连字符（最多 30 个字符），且不能以连字符开头或结尾。",
     description: "Create-database name validation message",
   },
+  "databases.physicalNamesTitle": {
+    message: "PostgreSQL 名称（可选）",
+    description: "Create-database advanced physical-name section title",
+  },
+  "databases.physicalNamesHint": {
+    message: "这些名称只能在创建时设置。留空则生成稳定名称。",
+    description: "Create-database physical-name helper text",
+  },
+  "databases.fieldDatabaseName": {
+    message: "数据库名称",
+    description: "Create-database physical PostgreSQL database label",
+  },
+  "databases.fieldDatabaseNamePlaceholder": {
+    message: "orders_data",
+    description: "Create-database physical PostgreSQL database placeholder",
+  },
+  "databases.fieldDatabaseUser": {
+    message: "数据库用户",
+    description: "Create-database physical PostgreSQL owner-role label",
+  },
+  "databases.fieldDatabaseUserPlaceholder": {
+    message: "orders_owner",
+    description: "Create-database physical PostgreSQL owner-role placeholder",
+  },
+  "databases.fieldPhysicalNameError": {
+    message: "请使用最多 63 个小写字母、数字和下划线，并以字母或下划线开头。",
+    description: "Create-database physical PostgreSQL identifier validation",
+  },
   "databases.fieldPlan": {
     message: "实例类型",
     description: "Create-database form field label (plan / tier)",
