@@ -24,6 +24,7 @@
 #   scripts/cli-compat.sh <render-cli-args...>
 #   scripts/cli-compat.sh verify        # re-run the ✅ rows, exit non-zero on regression (t006)
 #   scripts/cli-compat.sh pgcli-verify  # headless PTY + disposable live Postgres acceptance
+#   scripts/cli-compat.sh psql-verify   # non-interactive `psql -c` + disposable live Postgres acceptance
 #   scripts/cli-compat.sh services-parity-verify [configured]
 #   scripts/cli-compat.sh services-parity-self-test
 #   scripts/cli-compat.sh registry-credential-verify
@@ -74,6 +75,12 @@ if [ "${1:-}" = "pgcli-verify" ]; then
   export BEX_PGCLI_TARGET_CLASS="${BEX_PGCLI_TARGET_CLASS:-local CAPD dev-9}"
   export BEX_PGCLI_NON_PRODUCTION="${BEX_PGCLI_NON_PRODUCTION:-1}"
   exec bash scripts/pgcli-compat-verify.sh
+fi
+
+if [ "${1:-}" = "psql-verify" ]; then
+  export BEX_PSQL_TARGET_CLASS="${BEX_PSQL_TARGET_CLASS:-local CAPD dev-9}"
+  export BEX_PSQL_NON_PRODUCTION="${BEX_PSQL_NON_PRODUCTION:-1}"
+  exec bash scripts/psql-compat-verify.sh
 fi
 
 export RENDER_CLI_CONFIG_PATH="${RENDER_CLI_CONFIG_PATH:-$(mktemp -d)/cli.yaml}"
