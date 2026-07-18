@@ -7,6 +7,7 @@ set -euo pipefail
 # host key and record only the non-secret destination selected by the CLI.
 : "${BEX_SSH_VERIFY_REAL_SSH:?missing real OpenSSH path}"
 : "${BEX_SSH_VERIFY_CLI_KNOWN_HOSTS:?missing verifier known_hosts path}"
+: "${BEX_SSH_VERIFY_PRIVATE_KEY_FILE:?missing verifier private-key path}"
 : "${BEX_SSH_VERIFY_CLI_TARGET_LOG:?missing verifier target-log path}"
 
 target="${1:?missing SSH destination}"
@@ -19,4 +20,5 @@ exec "$BEX_SSH_VERIFY_REAL_SSH" \
   -o StrictHostKeyChecking=yes \
   -o "UserKnownHostsFile=$BEX_SSH_VERIFY_CLI_KNOWN_HOSTS" \
   -o IdentitiesOnly=yes \
+  -i "$BEX_SSH_VERIFY_PRIVATE_KEY_FILE" \
   "$@"

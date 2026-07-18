@@ -17,8 +17,9 @@ limitations under the License.
 package sshgateway
 
 import (
-	"bytes"
+	"bufio"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strings"
@@ -74,25 +75,73 @@ func TestPublicGatewayPTYResize(t *testing.T) {
 	if err != nil {
 		t.Fatal("attach public SSH stdin")
 	}
-	var terminal bytes.Buffer
-	session.Stdout = &terminal
-	session.Stderr = &terminal
-	if err := session.RequestPty("xterm-256color", 24, 80, ssh.TerminalModes{}); err != nil {
+	stdout, err := session.StdoutPipe()
+	if err != nil {
+		t.Fatal("attach public SSH stdout")
+	}
+	if err := session.RequestPty("xterm-256color", 24, 80, ssh.TerminalModes{ssh.ECHO: 0}); err != nil {
 		t.Fatal("request public SSH PTY")
 	}
 	if err := session.Shell(); err != nil {
 		t.Fatal("start public SSH shell")
 	}
+	lines := make(chan string, 16)
+	scanDone := make(chan error, 1)
+	go func() {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			lines <- scanner.Text()
+		}
+		if err := scanner.Err(); err != nil {
+			scanDone <- err
+		} else {
+			scanDone <- io.EOF
+		}
+	}()
+	waitForLine := func(want string, timeout time.Duration) error {
+		deadline := time.NewTimer(timeout)
+		defer deadline.Stop()
+		for {
+			select {
+			case line := <-lines:
+				if strings.Contains(line, want) {
+					return nil
+				}
+			case err := <-scanDone:
+				return err
+			case <-deadline.C:
+				return fmt.Errorf("timed out waiting for redacted PTY marker")
+			}
+		}
+	}
+	const readyMarker = "__BEX_M39_PTY_READY__"
+	command := `test "$BEX_SSH_SMOKE_VALUE" = "w2-m39-runtime" || exit 42; echo ` + readyMarker
+	if _, err := fmt.Fprintln(stdin, command); err != nil {
+		t.Fatal("drive public SSH shell")
+	}
+	if err := waitForLine(readyMarker, 10*time.Second); err != nil {
+		t.Fatal("public SSH shell or runtime environment check failed")
+	}
+	// The readiness marker proves the trap is installed in the attached app
+	// PTY, so this request cannot be mistaken for the initial terminal size.
 	if err := session.WindowChange(41, 113); err != nil {
 		t.Fatal("resize public SSH PTY")
 	}
-	if _, err := fmt.Fprintln(stdin, `stty size; test "$BEX_SSH_SMOKE_VALUE" = "w2-m39-runtime" || exit 42; exit`); err != nil {
-		t.Fatal("drive public SSH shell")
+	time.Sleep(time.Second)
+	if _, err := fmt.Fprintln(stdin, `stty size; exit`); err != nil {
+		t.Fatal("inspect resized public SSH PTY")
 	}
-	if err := session.Wait(); err != nil {
-		t.Fatal("public SSH shell or runtime environment check failed")
-	}
-	if !strings.Contains(strings.ReplaceAll(terminal.String(), "\r", ""), "41 113\n") {
+	if err := waitForLine("41 113", 10*time.Second); err != nil {
 		t.Fatal("public SSH terminal resize was not observed")
+	}
+	waitDone := make(chan error, 1)
+	go func() { waitDone <- session.Wait() }()
+	select {
+	case err := <-waitDone:
+		if err != nil {
+			t.Fatal("public SSH shell or runtime environment check failed")
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("public SSH shell did not exit after resize")
 	}
 }
