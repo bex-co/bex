@@ -83,8 +83,8 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     description: "Create dialog cancel button",
   },
   "webhooks.createSubmit": {
-    message: "创建",
-    description: "Create dialog submit button",
+    message: "创建 Webhook",
+    description: "Create page submit button (Render: 'Create Webhook')",
   },
   "webhooks.createSuccess": {
     message: "Webhook 已创建",
@@ -227,6 +227,290 @@ const zhWebhooks: Record<string, TranslationEntry> = {
   "webhooks.loadMore": {
     message: "加载更多",
     description: "Delivery-history pagination button",
+  },
+  // --- event picker (w1/m49/t002) ---
+  "webhooks.selectedCount": {
+    message: "已选择 {count} 个事件",
+    description: "Event-picker live selection counter",
+  },
+  "webhooks.searchEvents": {
+    message: "搜索事件",
+    description: "Event-picker search box placeholder + accessible label",
+  },
+  "webhooks.searchNoMatches": {
+    message: "没有匹配的事件",
+    description: "Event-picker empty state while a search filters everything out",
+  },
+  "webhooks.allEvents": {
+    message: "全部事件",
+    description: "Event-picker tri-state master checkbox label",
+  },
+  "webhooks.groupToggle": {
+    message: "展开/收起 {group} 事件",
+    description: "Accessible label of a group's expand/collapse chevron",
+  },
+  "webhooks.group.deploy": {
+    message: "部署",
+    description: "Event-picker group — deploy lifecycle events",
+  },
+  "webhooks.group.cronJobRun": {
+    message: "定时任务运行",
+    description: "Event-picker group — cron job run events",
+  },
+  "webhooks.group.maintenanceMode": {
+    message: "维护模式",
+    description: "Event-picker group — maintenance mode events",
+  },
+  "webhooks.group.postgres": {
+    message: "Postgres",
+    description: "Event-picker group — managed Postgres events",
+  },
+  "webhooks.group.suspension": {
+    message: "暂停",
+    description: "Event-picker group — suspend/resume events",
+  },
+  "webhooks.group.other": {
+    message: "其他",
+    description:
+      "Event-picker fallback group for served keys the catalog doesn't know yet",
+  },
+  "webhooks.event.deploy_started": {
+    message: "部署开始",
+    description: "Event label — deploy_started",
+  },
+  "webhooks.event.deploy_ended": {
+    message: "部署结束",
+    description: "Event label — deploy_ended",
+  },
+  "webhooks.event.cron_job_run_started": {
+    message: "定时任务开始",
+    description: "Event label — cron_job_run_started",
+  },
+  "webhooks.event.cron_job_run_ended": {
+    message: "定时任务结束",
+    description: "Event label — cron_job_run_ended",
+  },
+  "webhooks.event.maintenance_mode_enabled": {
+    message: "维护模式已启用",
+    description: "Event label — maintenance_mode_enabled",
+  },
+  "webhooks.event.maintenance_mode_uri_updated": {
+    message: "维护模式 URI 已更新",
+    description: "Event label — maintenance_mode_uri_updated",
+  },
+  "webhooks.event.postgres_created": {
+    message: "Postgres 已创建",
+    description: "Event label — postgres_created",
+  },
+  "webhooks.event.postgres_restarted": {
+    message: "Postgres 已重启",
+    description: "Event label — postgres_restarted",
+  },
+  "webhooks.event.postgres_credentials_created": {
+    message: "Postgres 凭据已创建",
+    description: "Event label — postgres_credentials_created",
+  },
+  "webhooks.event.postgres_credentials_deleted": {
+    message: "Postgres 凭据已删除",
+    description: "Event label — postgres_credentials_deleted",
+  },
+  "webhooks.event.postgres_backup_started": {
+    message: "Postgres 备份开始",
+    description: "Event label — postgres_backup_started",
+  },
+  "webhooks.event.service_suspended": {
+    message: "服务已暂停",
+    description: "Event label — service_suspended",
+  },
+  "webhooks.event.service_resumed": {
+    message: "服务已恢复",
+    description: "Event label — service_resumed",
+  },
+  "webhooks.event.server_restarted": {
+    message: "服务器已重启",
+    description: "Event label — server_restarted",
+  },
+  "webhooks.event.instance_count_changed": {
+    message: "实例数量已变更",
+    description: "Event label — instance_count_changed",
+  },
+  "webhooks.event.autoscaling_config_changed": {
+    message: "自动扩缩容配置已变更",
+    description: "Event label — autoscaling_config_changed",
+  },
+  "webhooks.event.plan_changed": {
+    message: "套餐已变更",
+    description:
+      "Event label — plan_changed (bex's slot for Render's Instance Type Changed)",
+  },
+  // --- /webhooks/new create page (w1/m49/t003) ---
+  "webhooks.newTitle": {
+    message: "创建新 Webhook",
+    description: "Create page heading (Render: 'Create a new Webhook')",
+  },
+  "webhooks.backToList": {
+    message: "返回 Webhook 列表",
+    description: "Accessible label of the create/detail pages' back link",
+  },
+  "webhooks.fieldNameHelp": {
+    message: "此 Webhook 的唯一名称。",
+    description: "Create page name-field helper copy",
+  },
+  "webhooks.fieldUrlHelp": {
+    message: "bex 将每条通知以 POST 请求发送到此 URL。",
+    description: "Create page URL-field helper copy",
+  },
+  "webhooks.fieldUrlPlaceholder": {
+    message: "https://example.com/webhooks/bex",
+    description: "Create page URL-field placeholder",
+  },
+  "webhooks.fieldEventsHelp": {
+    message: "选择工作区中哪些事件会触发 Webhook 通知。",
+    description: "Create page events-field helper copy",
+  },
+  "webhooks.createdView": {
+    message: "查看 Webhook",
+    description: "Secret step button that opens the new webhook's page",
+  },
+  // --- /webhook/$id detail page (w1/m49/t004) ---
+  "webhooks.detailKicker": {
+    message: "Webhook",
+    description: "Detail page header kicker above the endpoint name",
+  },
+  "webhooks.idLabel": {
+    message: "Webhook ID:",
+    description: "Detail header id row label",
+  },
+  "webhooks.copyId": {
+    message: "复制 Webhook ID",
+    description: "Accessible label of the header id copy button",
+  },
+  "webhooks.copyUrl": {
+    message: "复制端点 URL",
+    description: "Accessible label of the header URL copy button",
+  },
+  "webhooks.copiedGeneric": {
+    message: "已复制到剪贴板",
+    description: "Toast after copying the id or URL",
+  },
+  "webhooks.showMore": {
+    message: "再显示 {count} 个",
+    description: "Event-chip expander on the detail header",
+  },
+  "webhooks.showLess": {
+    message: "收起",
+    description: "Event-chip collapser on the detail header",
+  },
+  "webhooks.createdByOn": {
+    message: "由 {creator} 创建于 {date}",
+    description: "Detail header provenance line when the creator is known",
+  },
+  "webhooks.createdOn": {
+    message: "创建于 {date}",
+    description: "Detail header provenance line without a creator",
+  },
+  "webhooks.tabActivity": {
+    message: "活动",
+    description: "Detail page tab — delivery history",
+  },
+  "webhooks.tabSettings": {
+    message: "设置",
+    description: "Detail page tab — edit + delete",
+  },
+  "webhooks.recentDeliveries": {
+    message: "最近投递",
+    description: "Activity tab heading",
+  },
+  "webhooks.recentDeliveriesHint": {
+    message: "刷新表格以获取最新事件",
+    description: "Activity tab heading hint",
+  },
+  "webhooks.refresh": {
+    message: "刷新",
+    description: "Accessible label of the Activity refresh button",
+  },
+  "webhooks.filterAll": {
+    message: "全部",
+    description: "Activity delivery filter tab",
+  },
+  "webhooks.filterSuccessful": {
+    message: "成功",
+    description: "Activity delivery filter tab — delivered only",
+  },
+  "webhooks.filterFailed": {
+    message: "失败",
+    description: "Activity delivery filter tab — failed only",
+  },
+  "webhooks.notFoundTitle": {
+    message: "未找到 Webhook",
+    description: "Detail page state for an unknown/foreign id",
+  },
+  "webhooks.notFoundBody": {
+    message: "此工作区中没有 ID 为 {id} 的 Webhook。",
+    description: "Detail page not-found body",
+  },
+  "webhooks.enabledBadge": {
+    message: "已启用",
+    description: "Detail header status badge while enabled",
+  },
+  "webhooks.disabledBadge": {
+    message: "已禁用",
+    description: "Detail header status badge while disabled",
+  },
+  "webhooks.view": {
+    message: "查看 Webhook",
+    description: "Accessible label of the list row's open-detail link",
+  },
+  // --- Settings tab (w1/m49/t005 + t006) ---
+  "webhooks.settingsGeneral": {
+    message: "常规",
+    description: "Settings tab first section heading",
+  },
+  "webhooks.settingsStatus": {
+    message: "状态",
+    description: "Settings status-toggle label",
+  },
+  "webhooks.settingsStatusHelp": {
+    message: "禁用期间不会发送任何通知。",
+    description: "Settings status-toggle helper copy",
+  },
+  "webhooks.settingsEvents": {
+    message: "订阅的事件",
+    description: "Settings events section heading",
+  },
+  "webhooks.saveChanges": {
+    message: "保存更改",
+    description: "Settings submit button (disabled until dirty)",
+  },
+  "webhooks.updateSuccess": {
+    message: "Webhook 已更新",
+    description: "Toast after a successful settings save",
+  },
+  "webhooks.updateError": {
+    message: "无法更新 Webhook",
+    description: "Toast after a failed settings save",
+  },
+  "webhooks.secretLabel": {
+    message: "签名密钥",
+    description: "Settings signing-secret row label",
+  },
+  "webhooks.secretMintOnceNote": {
+    message:
+      "签名密钥仅在创建 Webhook 时显示一次，无法再次获取。如需新密钥，请删除并重新创建 Webhook。",
+    description:
+      "Settings note documenting bex's mint-once secret contract (w1/m49/t006 decision — deliberate Render divergence)",
+  },
+  "webhooks.deleteSection": {
+    message: "删除 Webhook",
+    description: "Settings danger-zone heading",
+  },
+  "webhooks.deleteTypeToConfirm": {
+    message: "在下方输入 {command} 以确认。",
+    description: "Type-to-confirm instruction in the delete dialog",
+  },
+  "webhooks.deleteCommandLabel": {
+    message: "确认命令",
+    description: "Accessible label of the type-to-confirm input",
   },
 };
 

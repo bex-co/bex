@@ -62,7 +62,10 @@ export function ResourceChecklist({
       {items.length === 0 ? (
         <p className="py-4 text-sm text-muted-foreground">{emptyLabel}</p>
       ) : (
-        <ScrollArea className="max-h-72 pr-3">
+        // Height constraint on the VIEWPORT, not the root — a root max-h
+        // constrains nothing and the list overflows the dialog onto the
+        // footer buttons (the w1/m49 webhook-modal bug).
+        <ScrollArea className="pr-3" viewportClassName="max-h-72">
           <div className="space-y-1">
             {items.map((item) => (
               <Label
