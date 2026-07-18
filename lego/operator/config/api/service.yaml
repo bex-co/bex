@@ -13,6 +13,17 @@ spec:
     - name: http
       port: 80
       targetPort: http
+    # Container-port alias of `http` (w1/m52 closeout finding): the dashboard
+    # image has always baked VITE_SSR_API_URL=http://bex-api.bex-system.svc:8090
+    # (deploy.yml), but this Service only exposed 80 — every prod SSR data
+    # fetch was silently connection-refused (hydration papered over it; the
+    # 036 post-roll error page was its visible edge) and the m52 readiness
+    # latch surfaced it by refusing to go Ready. Exposing 8090 makes the URL
+    # baked into every existing image generation valid — rollbacks included —
+    # instead of forcing an image rebuild to change the ARG.
+    - name: http-alt
+      port: 8090
+      targetPort: http
     # Cluster-internal tenant API (control plane); only answers when the
     # backend is started with BEX_CP_DB_URI. Reachable at bex-api:8091.
     - name: internal

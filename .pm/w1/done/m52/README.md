@@ -1,6 +1,6 @@
 # w1 · m52 — Zero-error deploy rolls: bex-api drain + dashboard roll resilience
 
-**Worker:** worker1 **Goal:** a routine `deploy.yml` roll of bex-api + the dashboard is invisible to users — no failed API calls, no "Couldn't load resources", no SSR error page, no stranded error state that needs a manual reload. **Status:** in progress — all code + manifests implemented and verified (local cluster rolls, prod dashboard rolls, live browser recovery); the strict prod DoD run of the shipped bex-api image rides the first post-`/ship` deploy roll (t004 note).
+**Worker:** worker1 **Goal:** a routine `deploy.yml` roll of bex-api + the dashboard is invisible to users — no failed API calls, no "Couldn't load resources", no SSR error page, no stranded error state that needs a manual reload. **Status:** done — shipped as `3cb335cf` and DoD verified on prod 2026-07-18 (two consecutive clean rolls of both Deployments under load; evidence below).
 
 ## The incident (evidence)
 
@@ -8,16 +8,16 @@
 
 ## Tasks (in order)
 
-| id   | title                                                                                             | est | depends_on       |
-| ---- | ------------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | bex-api pre-shutdown drain window + rollout strategy hardening — **DONE**                         | 45m | —                |
-| t002 | Dashboard roll: readiness gated on upstream reachability + post-roll SSR error page (folds `036`) — **DONE** | 60m | —                |
-| t003 | Dashboard client resilience: retry transient reads, re-run SSR-errored loaders on hydration — **DONE** | 45m | —                |
-| t004 | Controlled-roll end-to-end verification under synthetic load — verified local+prod-mechanism; prod run of the shipped image pends `/ship` | 45m | t001, t002, t003 |
-| t005 | Render parity check — **DONE**                                                                    | 20m | t004             |
-| t006 | Simplify — **DONE**                                                                               | 30m | t005             |
-| t007 | Test coverage — **DONE**                                                                          | 45m | t005             |
-| t008 | Closeout — pends t004's post-ship confirmation                                                    | 15m | t007             |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | bex-api pre-shutdown drain window + rollout strategy hardening — **DONE** | 45m | — |
+| t002 | Dashboard roll: readiness gated on upstream reachability + post-roll SSR error page (folds `036`) — **DONE** | 60m | — |
+| t003 | Dashboard client resilience: retry transient reads, re-run SSR-errored loaders on hydration — **DONE** | 45m | — |
+| t004 | Controlled-roll end-to-end verification under synthetic load — **DONE** | 45m | t001, t002, t003 |
+| t005 | Render parity check — **DONE** | 20m | t004 |
+| t006 | Simplify — **DONE** | 30m | t005 |
+| t007 | Test coverage — **DONE** | 45m | t005 |
+| t008 | Closeout — **DONE** | 15m | t007 |
 
 ## Verification evidence (2026-07-18, all times UTC)
 
@@ -33,7 +33,11 @@
 
 **Tests (t007):** backend `go test ./...` green (new `internal/serve` drain-sequence + readiness tests, m30 tests migrated there); operator `make test` (envtest) green; dashboard 242 files / 1518 tests + typecheck + lint green (new: retry-link, loader-error-retry, health-latch, document-title reconcile tests).
 
-**Remaining for closeout (t008):** after the next `/ship`, the first `deploy.yml` roll (or a manual quiet-hour restart of both prod Deployments) under the t004 load loop is the confirmatory end-to-end — expected zero non-2xx / zero error pages now that both halves are in the image + manifests.
+**Prod DoD run (post-ship, 2026-07-18 10:24–10:51 UTC):** shipped as `3cb335cf`; under continuous load loops, deploy roll #1 (Argo convergence onto the new image/manifests) and a manual roll #2 of both Deployments completed with **api 3523 requests / dashboard 1454 requests, zero non-2xx, zero error-page bodies** (one correlated client-side rc=28 timeout on both loops at 10:43:48, between rolls — a shared network-path blip, not a roll effect). The old bex-api pod exited `Completed` after its drain window; `maxUnavailable: 0` kept service up even while the interim mixed-generation state below blocked the handover.
+
+**Two latent prod bugs surfaced and fixed at closeout** — the readiness latch refused to lie about them: (1) the dashboard image has always baked `VITE_SSR_API_URL=http://bex-api.bex-system.svc:8090/graphql` (deploy.yml) but the bex-api Service only exposed port 80, and (2) `deny-tenant-ingress` (bex-system) never admitted the dashboard namespace — so **every prod SSR data fetch had been silently connection-refused**, dehydrating error states that client hydration papered over (the deeper root of 036's error page). Fixed live and in git: a port-8090 `http-alt` alias on the Service (`lego/operator/config/api/service.yaml` — keeps the URL baked into every existing image generation valid, rollbacks included) + a scoped `allow-dashboard-ssr-to-bex-api` NetworkPolicy (`deploy/gitops/base/network-policies.yaml`). **These two files were changed after `3cb335cf` shipped and ride the next `/ship`; prod carries equivalent live objects meanwhile.** With them in place, prod SSR pages fetch real data server-side for the first time.
+
+Also from the roll: a deploy-ordering gap worth knowing — Argo syncs manifest changes the moment they land on main, ~10 min before CI's digest write-back, so a probe/spec change referencing new-binary behavior briefly produces a NotReady surge pod on the old image; `maxUnavailable: 0` makes that window harmless (old pods keep serving) and the roll self-heals when the pin lands. The operator CI flake that cost one deploy cycle is `w1/038`.
 
 ## Definition of done
 
@@ -42,7 +46,7 @@ Two consecutive controlled rolls (bex-api and the dashboard, e.g. `kubectl rollo
 ## Source + Goal linkage
 
 - **Source:** 2026-07-18 prod incident (user report: move-to-project errors + "Couldn't load resources" on `/project/prj-d9dgeo0bd9nc73a0vh1g`; root-caused same day to the 06:54 UTC roll collision — audit log + k8s events above) + inbox note `036` (post-roll SSR error page, observed twice on 2026-07-18, filed at the m51 closeout).
-- **Goal linkage:** w1's charter is "de-risk the live system" — production reliability of the Render-alternative core (docs/ADR008-vision.md). Render's own dashboard never surfaces their deploys to users; bex currently does, several times a day. Completes the arc m30 started (SIGTERM in-process graceful shutdown drains in-flight requests) — what remains is the window where Traefik still routes *new* requests to a terminating pod, and the dashboard's blind readiness/dehydrated-error behavior around it.
+- **Goal linkage:** w1's charter is "de-risk the live system" — production reliability of the Render-alternative core (docs/ADR008-vision.md). Render's own dashboard never surfaces their deploys to users; bex currently does, several times a day. Completes the arc m30 started (SIGTERM in-process graceful shutdown drains in-flight requests) — what remains is the window where Traefik still routes _new_ requests to a terminating pod, and the dashboard's blind readiness/dehydrated-error behavior around it.
 - **Expected outcome:** `deploy.yml`'s many daily rolls stop being user-visible error windows; mid-roll user actions and page loads succeed or transparently recover.
 - **Why now:** deploy cadence is the risk multiplier — five prod rolls in 40 minutes the same morning; the incident reproduced twice in one day (m50, m51 rolls) and will keep reproducing on every deploy until fixed.
 - **Render parity included** (t005): the fix touches the dashboard UI's user-visible error/recovery behavior; REST/GraphQL/MCP contracts are expected to be untouched, and t005 verifies exactly that plus compares the roll-window UX against Render's dashboard.
