@@ -62,11 +62,15 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
     ).toHaveAttribute("href", "/");
     expect(screen.getByText("storefront-api")).toBeInTheDocument();
 
-    // Render's groups (docs/render-artifacts/dashboard-routes.md § Sidebar
-    // navigation): Monitor{Logs, Metrics}, Manage{Environment, Scaling, Plan}.
-    // No Deploys entry — the unified Events page IS the deploy history (w1/m47).
+    // navigation): top items {Events, Settings}, Monitor {Logs, Metrics},
+    // Manage {Environment, Scaling, Plan}. No Deploys entry — bex's unified
+    // Events page IS the deploy history (w1/m47, service-nav.tsx), matching
+    // Render's own root-is-deploy-history behavior.
     expect(screen.getByText("Monitor")).toBeInTheDocument();
     expect(screen.getByText("Manage")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Deploys" }),
+    ).not.toBeInTheDocument();
     for (const [name, href] of [
       ["Events", "/services/srv-1/events"],
       ["Settings", "/services/srv-1/settings"],
@@ -78,9 +82,6 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
     ] as const) {
       expect(screen.getByRole("link", { name })).toHaveAttribute("href", href);
     }
-    expect(
-      screen.queryByRole("link", { name: "Deploys" }),
-    ).not.toBeInTheDocument();
   });
 
   it("hides the service nav (not the back link) for a service the caller can't see", async () => {

@@ -129,4 +129,22 @@ Postgres rename has a focused smoke test in [`scripts/postgres-rename-cli-smoke.
 
 Key Value rename has the mirror smoke test in [`scripts/keyvalue-rename-cli-smoke.sh`](../scripts/keyvalue-rename-cli-smoke.sh) (`keyvalue-rename-verify.sh` snapshots/compares the StatefulSet/PVC/Secret/Service/route identities). Run [`scripts/keyvalue-name-migrate.sh`](../scripts/keyvalue-name-migrate.sh) first for legacy records; [ADR021 §6](ADR021-keyvalue-management.md) documents the same rollout/rollback order (w9/m6).
 
+## Sample lifecycle sweep
+
+[`scripts/samples-lifecycle.sh`](../scripts/samples-lifecycle.sh) drives each `examples/` sample through the full Render lifecycle — deploy → verify-up → suspend → verify-down → resume → verify-up → delete → verify-gone — CLI-first, against whatever bex the `render` CLI targets (it reads `~/.render/cli.yaml`, or takes `RENDER_HOST`/`RENDER_API_KEY` like `cli-compat.sh`). Run one sample or `all`:
+
+```sh
+scripts/samples-lifecycle.sh hello-go        # one sample
+scripts/samples-lifecycle.sh all             # every sample, sequentially
+DRY_RUN=1 scripts/samples-lifecycle.sh all   # print the CLI/REST calls, execute nothing
+```
+
+It is an **on-demand guard** (like `cli-compat.sh verify`), never CI — it creates and deletes real services. verify-up asserts a unique per-run token (so a cached response can't pass); verify-down requires the suspended URL to stop serving for `DOWN_CONFIRM` (default 3) consecutive checks; cron is proven via a run's log line, not a URL; `RESIDUE_KUBE=1` adds pod/`reg-pull`/htpasswd residue checks when kubectl points at the target cluster. One green production run (w9/m44, 2026-07-17): hello-go, hello-node, whoami, cron-demo, stack-demo.
+
+CLI gaps the sweep documents (each handled per-leg):
+
+- **Service suspend/resume are dashboard-only** in Render's CLI — no `render services suspend|resume`. The harness falls back to raw REST `POST /v1/services/{id}/suspend|resume` (202, [ADR007](ADR007-restart-suspend-and-resume.md)), tagged `[via REST]`. (Postgres/Key Value **do** have CLI `suspend`/`resume`.)
+- **Cron create requires `--cron-command`** even when the image supplies its own `ENTRYPOINT` — `render services create --type cron_job --cron-schedule …` alone errors `cron-command and cron-schedule are required for cron jobs`. The harness passes the image's entrypoint binary explicitly.
+- **No blueprint apply** — the CLI has no `render.yaml` apply, so a Blueprint stack (web + worker + postgres) is composed leg-by-leg: `postgres create`, read its internal connection string, then two `services create` with `DATABASE_URL` wired via `--env-var` (the blueprint's `fromDatabase` secretRef has no CLI equivalent).
+
 The cross-surface backlog remains in [ADR018-render-parity.md](ADR018-render-parity.md); this document does not duplicate ownership tracking.

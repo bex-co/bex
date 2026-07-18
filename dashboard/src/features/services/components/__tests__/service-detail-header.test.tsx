@@ -287,13 +287,19 @@ describe("ServiceDetailHeader", () => {
     expect(triggerDeploy).toHaveBeenCalledWith("app");
   });
 
-  it('has no "•••" actions menu — restart lives in Manual Deploy, suspend/resume on Settings', async () => {
+  it('has no "•••" actions menu — only Connect + Manual Deploy; restart in Manual Deploy, suspend/resume on Settings', async () => {
     renderHeader(svc());
 
-    // The header's only controls are Connect + Manual Deploy: the old
-    // single-item "•••" dropdown was removed outright rather than left as a
-    // hidden-action menu.
-    await screen.findByRole("button", { name: "Manual Deploy" });
+    // The header's only action controls are Connect + Manual Deploy; the old
+    // single-item "•••" dropdown was removed outright (e31388b2) rather than
+    // left as a hidden-action menu — Restart is owned by Manual Deploy and
+    // Suspend/Resume moved to the Settings page.
+    expect(
+      await screen.findByRole("button", { name: "Connect" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Manual Deploy" }),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Open actions menu" }),
     ).not.toBeInTheDocument();

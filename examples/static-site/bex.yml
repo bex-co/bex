@@ -1,6 +1,9 @@
-# bex.yml — static_site example: bex publishes this directory to object storage
-# and serves it through the shared static-server at a https URL.
-# No Dockerfile or build command needed — files in publishPath are served as-is.
+# bex.yml — static_site example: bex builds this dir (its Dockerfile stages the
+# files), publishes the publishPath output to object storage, and serves it through
+# the shared static-server at a https URL (docs/ADR029-static-sites.md).
+# bex's static build plane is Dockerfile-only today, so this sample ships a tiny
+# Dockerfile that just copies index.html; a no-Dockerfile "publish a directory
+# as-is" flow is a tracked follow-up (.pm/w9/010).
 # A git push redeploys automatically via the push webhook.
 services:
   - name: static-site
@@ -8,5 +11,5 @@ services:
     repo: https://github.com/bex-co/bex # replace with your fork/checkout
     rootDir: examples/static-site
     branch: main
-    publishPath: . # serve the rootDir itself; set to "dist" if you have a build step
+    publishPath: . # serve the built image's WORKDIR; set to "dist" for a real build step
     plan: free
