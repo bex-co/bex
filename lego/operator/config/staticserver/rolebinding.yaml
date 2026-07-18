@@ -1,11 +1,13 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+# ClusterRoleBinding to match the cluster-scoped ClusterRole (see role.yaml): the
+# resolver lists Apps cluster-wide, so a namespaced RoleBinding would not authorize
+# it. The subject SA keeps its namespace; the binding itself is cluster-scoped.
+kind: ClusterRoleBinding
 metadata:
   name: static-server
-  namespace: bex-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: Role
+  kind: ClusterRole
   name: static-server
 subjects:
   - kind: ServiceAccount

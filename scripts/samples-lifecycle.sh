@@ -392,15 +392,22 @@ leg_verify_gone() {
   else
     fail "gone: $SVC_NAME still present in services list"
   fi
-  # 2) URL dead (only meaningful for URL-bearing samples)
+  # 2) URL dead (only meaningful for URL-bearing samples). Poll rather than check
+  #    once: a static_site keeps serving from the shared static-server's cached
+  #    host→site snapshot until its next resync (~10s) after the App is deleted,
+  #    and DNS/Ingress teardown can lag too — a single immediate check races that.
   if [ "$HAS_URL" -eq 1 ] && [ -z "${DRY_RUN:-}" ]; then
-    local code; code="$(app_get "$SVC_URL")"
-    if [ "$code" != "200" ]; then pass "gone: $SVC_URL dead (status $code)"; else fail "gone: $SVC_URL still serves 200"; fi
+    if poll "$SVC_URL to stop serving (200 → dead)" _url_not_200 "$SVC_URL"; then
+      pass "gone: $SVC_URL dead (status $(app_get "$SVC_URL"))"
+    else
+      fail "gone: $SVC_URL still serves 200 after delete"
+    fi
   fi
   # 3) cluster residue — only if a kubeconfig is reachable; else API-only (degrade)
   verify_no_residue
 }
 _service_absent() { [ -z "$(service_id_by_name "$1" || true)" ]; }
+_url_not_200() { [ "$(app_get "$1")" != "200" ]; }
 
 # --------------------------------------------------------------------------- #
 # cron-specific up/down (no URL — prove via schedule + a run's log line)
