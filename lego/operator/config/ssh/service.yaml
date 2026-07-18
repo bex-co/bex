@@ -15,3 +15,10 @@ spec:
       port: 9090
       targetPort: metrics
       protocol: TCP
+    # Browser Web Shell WebSocket (w2/m55). Traefik terminates TLS and routes
+    # wss://ssh.bex.co/shell here; the listener runs only when the shared
+    # BEX_SHELL_TICKET_SECRET is installed.
+    - name: shell
+      port: 8080
+      targetPort: shell
+      protocol: TCP

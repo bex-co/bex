@@ -1,0 +1,9 @@
+# serviceInstances lists a service's running instances ({id, createdAt}) —
+# Render's per-service instance list, the source for the Web Shell instance
+# picker (w2/m55). Mirrors REST GET /v1/services/{id}/instances.
+query ServiceInstances($id: String!) {
+  serviceInstances(id: $id) {
+    id
+    createdAt
+  }
+}

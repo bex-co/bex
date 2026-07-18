@@ -40,6 +40,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/backend/internal/shellticket"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -70,6 +71,15 @@ type Service struct {
 	// serviceDetails.sshAddress values. Authorization and runtime readiness are
 	// still checked by the gateway for every connection.
 	SSHHost string
+	// ShellTicketSecret and ShellWSURL wire the Browser Web Shell
+	// (docs/ADR035-ssh.md § Browser Web Shell). Secret is the HMAC key
+	// (BEX_SHELL_TICKET_SECRET) shared only with the isolated gateway;
+	// ShellWSURL (BEX_SHELL_WS_URL) is the browser-reachable gateway WebSocket
+	// origin handed to the terminal. Either empty => CreateShellSession returns
+	// ErrShellUnavailable (503) and native `ssh` is unaffected. bex-api mints the
+	// ticket but never gains pods/exec.
+	ShellTicketSecret []byte
+	ShellWSURL        string
 	// Store is the Postgres source of truth for store-managed Apps (those carrying
 	// both the managed-by and app-id labels). Suspend/Resume write the row first — the row owns
 	// spec.suspended, and the projection loop reverts CR patches it didn't
@@ -721,10 +731,10 @@ func view(a *appv1alpha1.App) AppView {
 		PreDeployCommand:  a.Spec.PreDeployCommand,
 		InitialDeployHook: a.Annotations[initialDeployHookAnnotation],
 		PublishPath:       a.Spec.PublishPath,
-		Routes:           staticRouteViews(a.Spec.Routes),
-		Headers:          staticHeaderViews(a.Spec.Headers),
-		IPAllowList:      a.Spec.IPAllowList,
-		MaintenanceMode:  maintenanceModeView(a.Spec.MaintenanceMode),
+		Routes:            staticRouteViews(a.Spec.Routes),
+		Headers:           staticHeaderViews(a.Spec.Headers),
+		IPAllowList:       a.Spec.IPAllowList,
+		MaintenanceMode:   maintenanceModeView(a.Spec.MaintenanceMode),
 	}
 }
 
@@ -1022,6 +1032,63 @@ func (s *Service) ResolveSSHSession(ctx context.Context, username string) (SSHIn
 		}
 	}
 	return SSHInstanceTarget{}, core.ErrNotFound
+}
+
+// shellTicketTTL bounds a Browser Web Shell exec ticket. It is short because
+// the dashboard opens the gateway WebSocket immediately after minting it; a
+// tight window limits the value of a leaked ticket and the single-use nonce
+// makes reuse a no-op on a given gateway replica.
+const shellTicketTTL = 90 * time.Second
+
+// ShellSessionView is the minted exec ticket the dashboard terminal presents to
+// the gateway WebSocket to open a Browser Web Shell (docs/ADR035-ssh.md
+// § Browser Web Shell). It carries no terminal content and no SSH key.
+type ShellSessionView struct {
+	Ticket    string `json:"ticket"`
+	URL       string `json:"url"`
+	ExpiresAt string `json:"expiresAt"`
+}
+
+// CreateShellSession authorizes can_operate on the service and mints a
+// short-lived exec ticket the isolated gateway validates to open a browser
+// terminal. bex-api never gains pods/exec — it only authorizes and signs; the
+// gateway re-authorizes and re-resolves the instance for every connection. The
+// eligibility gate mirrors sshAddress (paid, non-suspended web/private/worker,
+// Running with a live revision and image); a specific instanceID, when given,
+// must belong to the service (the gateway still re-validates it is Ready).
+func (s *Service) CreateShellSession(ctx context.Context, name, instanceID string) (ShellSessionView, error) {
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return ShellSessionView{}, err
+	}
+	if len(s.ShellTicketSecret) == 0 || strings.TrimSpace(s.ShellWSURL) == "" {
+		return ShellSessionView{}, core.ErrShellUnavailable
+	}
+	v := s.view(a)
+	if !sshEligible(v) || v.Phase != string(appv1alpha1.PhaseRunning) || v.Revision == "" || v.Image == "" {
+		return ShellSessionView{}, fmt.Errorf("%w: service is not eligible and running", core.ErrConflict)
+	}
+	instanceID = strings.TrimSpace(instanceID)
+	if instanceID != "" && !strings.HasPrefix(instanceID, v.ID+"-") {
+		return ShellSessionView{}, fmt.Errorf("%w: instance does not belong to this service", core.ErrBadRequest)
+	}
+	id, _ := core.IdentityFrom(ctx)
+	if id.Subject == "" {
+		return ShellSessionView{}, core.ErrForbidden
+	}
+	now := s.Now()
+	expires := now.Add(shellTicketTTL)
+	token, err := shellticket.Mint(s.ShellTicketSecret, shellticket.Claims{
+		Subject:    id.Subject,
+		ServiceID:  v.ID,
+		InstanceID: instanceID,
+		IssuedAt:   now.Unix(),
+		ExpiresAt:  expires.Unix(),
+	})
+	if err != nil {
+		return ShellSessionView{}, err
+	}
+	return ShellSessionView{Ticket: token, URL: s.ShellWSURL, ExpiresAt: expires.UTC().Format(time.RFC3339)}, nil
 }
 
 func parseSSHUsername(username string) (serviceID, instanceID string, err error) {

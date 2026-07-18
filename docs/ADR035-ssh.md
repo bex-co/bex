@@ -1,12 +1,12 @@
 # ADR035 — SSH into running service instances
 
-**Status:** accepted; implemented behind production activation and live verification (2026-07-14)
+**Status:** accepted; running-instance SSH implemented behind production activation and live verification (2026-07-14); in-dashboard Browser Web Shell over that same running instance added (w2/m55, 2026-07-17)
 
 ## Context
 
 Render supports public-key SSH into paid web services, private services, and background workers. Its current CLI reads `serviceDetails.sshAddress`, verifies a live deploy, optionally lists `GET /v1/services/{id}/instances`, and invokes the user's local OpenSSH binary. This is narrower than an ephemeral shell product: it attaches to one container that is already serving the App.
 
-bex previously grouped every exec-shaped feature under the hosted-execution non-goal. The user reopened only running-instance SSH. Ephemeral instances, one-off jobs, browser terminals, and sandboxes remain excluded in [`.pm/DO_NOT_DO.md`](../.pm/DO_NOT_DO.md).
+bex previously grouped every exec-shaped feature under the hosted-execution non-goal. The user reopened running-instance SSH (2026-07-14) and, later, the in-dashboard Browser Web Shell over that same already-running instance (2026-07-17 — see [Browser Web Shell](#browser-web-shell)). Ephemeral instances, one-off jobs, and hosted sandboxes remain excluded in [`.pm/DO_NOT_DO.md`](../.pm/DO_NOT_DO.md).
 
 The security constraint is stronger than ordinary API reads: Kubernetes `pods/exec` can read the complete runtime environment and act with the workload's identity. bex-api must not inherit that permission.
 
@@ -34,7 +34,7 @@ Keys are identity-scoped. One person can use the same key in every workspace whe
 - MCP: `list_ssh_keys`, `add_ssh_key`, `delete_ssh_key`
 - Dashboard: Account Settings → SSH Public Keys
 
-Eligible service pages expose the command through a Connect → SSH menu and a left-nav Shell page, matching Render's information architecture while keeping private keys and terminal streams out of the browser. The Shell page is a copy-ready running-instance SSH guide, not Render's browser-hosted terminal; unavailable services explain the missing address without inventing one.
+Eligible service pages expose the command through a Connect → SSH menu and a left-nav Shell page, matching Render's information architecture. The Shell page shows the copy-ready running-instance SSH command **and** hosts an in-browser terminal (see [Browser Web Shell](#browser-web-shell)); unavailable services explain the missing address without inventing one. Private keys never enter the browser — the in-browser terminal authenticates with the caller's dashboard session, not an SSH key.
 
 The store contains typed `ssk-…` id, subject, display name, canonical public key, SHA-256 fingerprint, and creation time. It never accepts or stores private material. Supported key types match Render's documented set: Ed25519, RSA (minimum 2048 bits, authenticated only with SHA-2 signatures), ECDSA P-256/P-384/P-521, and OpenSSH security-key Ed25519/ECDSA. Comments are discarded. Multiple records, `authorized_keys` options, trailing payloads, oversized input, malformed text, and duplicate key material are rejected. Options are rejected rather than silently stripped because a user might otherwise believe an option such as `command=` still restricts the registered account key.
 
@@ -116,9 +116,26 @@ After authorization, Kubernetes errors remain bounded. A pod disappearing during
 - **Compromised gateway:** namespaced pod/exec RBAC limits the Kubernetes blast radius to the configured App namespace; it cannot read platform Secrets. This remains a powerful tenant-workload privilege, which is why the binary and ServiceAccount are isolated. The initial deployment still uses the control-plane application's database credential for key lookup and audit writes; replacing it with a separately granted lookup/insert/update-only role is a defense-in-depth follow-up because the narrow Go `Store` interface does not constrain a stolen database credential.
 - **Host-key substitution:** stable out-of-band custody and published fingerprints make unexpected replacement visible to OpenSSH.
 
+## Browser Web Shell
+
+Render's Shell page hosts an in-browser terminal alongside the copy-ready `ssh` command. bex matches this (w2/m55) without weakening the isolation above: the browser terminal rides the **same** isolated gateway, `KubeExecutor`, Render-compatible instance targeting, `AuthorizeApp(can_operate)`, session caps, and content-free audit as native SSH. It adds only a browser transport and a session-authenticated ticket path. It does **not** give bex-api `pods/exec`, and it never puts an SSH private key in the browser.
+
+### Connection path
+
+1. In the dashboard Shell page the authenticated caller (a Kratos session, HttpOnly cookie) requests a short-lived **exec ticket** from bex-api: `POST /v1/services/{id}/shell-ticket` (GraphQL `createShellSession`). bex-api runs `AuthorizeApp(can_operate)` and the same eligibility gate as `sshAddress` (paid, non-suspended web/private/worker, Running with a live revision), then returns `{ticket, url, expiresAt}`.
+2. The ticket is an HMAC-SHA256-signed token over `{subject, serviceId, instanceId?, issuedAt, expiresAt, nonce}`, signed with `BEX_SHELL_TICKET_SECRET` — a secret shared only between bex-api and the gateway. bex-api can mint it; it cannot exec. The TTL is short (seconds) and the nonce makes it single-use.
+3. The browser opens a WebSocket to the gateway at `url` (`wss://…/shell?ticket=…`, Traefik-terminated to the gateway's plain-HTTP `BEX_SHELL_WS_ADDR`). The gateway verifies the ticket signature, expiry, and single-use, attaches `core.Identity{Subject}`, and calls the same `ResolveSSHSession` used by native SSH — so the gateway **re-authorizes** `can_operate` against the App's workspace and re-selects a Ready, current-image, current-revision pod. bex-api's authorization is not trusted transitively.
+4. One WebSocket maps to one `pods/exec` stream in the `app` container (`/bin/sh`, TTY). Browser stdin/stdout are binary WebSocket frames; JSON text frames carry terminal resize (mapped to the same `TerminalSizeQueue`) and the terminal exit/error. The gateway never logs or persists the stream.
+
+### Boundary and audit
+
+The re-drawn boundary is: **terminal bytes reach the browser, but only over an authenticated, `can_operate`-gated gateway WebSocket, and only for an already-running instance.** `pods/exec` stays confined to the gateway ServiceAccount; bex-api gains no exec permission (the structural RBAC test still guards this). A browser session counts against the same global/per-identity caps and writes the same `ssn-…` `ssh_sessions` audit row (subject, workspace, service, instance, remote address, start/end, result) — with **no** command, argv, or terminal-content field. Metrics stay bounded exactly as for SSH.
+
+Unset `BEX_SHELL_TICKET_SECRET` (on bex-api or the gateway) disables the Web Shell: bex-api returns 503 for the ticket verb and the gateway does not start its WebSocket listener. That is the byte-identical default; native `ssh` is unaffected.
+
 ## Explicit non-goals
 
-This ADR does not authorize ephemeral shell instances, `--ephemeral`, one-off jobs, cron shell access, browser terminals, hosted sandboxes, SFTP/SCP, forwarding, agent forwarding, direct TCP/Unix-socket channels, shell installation, or an sshd sidecar.
+This ADR does not authorize ephemeral shell instances, `--ephemeral`, one-off jobs, cron shell access, hosted sandboxes, SFTP/SCP, forwarding, agent forwarding, direct TCP/Unix-socket channels, shell installation, or an sshd sidecar. The in-dashboard [Browser Web Shell](#browser-web-shell) attaches to an already-running instance and is in scope; ephemeral and hosted execution remain excluded.
 
 ## Verification
 

@@ -58,6 +58,7 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		"apps.ConfigureMaintenanceMode": "one atomic write records its typed field effects only after the patch succeeds",
 		"deploys.Trigger":               "the deploys row it opens IS the deploy_started event — mapping the verb too would double-count",
 		"apps.ResolveSSHSession":        "the dedicated ssh_sessions row records the real stream start/end; authorization may succeed before a channel opens",
+		"apps.CreateShellSession":       "mints a Browser Web Shell exec ticket only; the gateway's ssh_sessions row records the real stream when (and if) the terminal connects — mirrors apps.ResolveSSHSession",
 		// w6/m20: new verbs from scratch (not a w6/m17 seam-collapse side
 		// effect — see below), deliberately deferred the same way their
 		// SetProjectID siblings were: postgres/keyvalue have no events feed

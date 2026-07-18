@@ -66,12 +66,28 @@ spec:
               value: "100"
             - name: BEX_SSH_MAX_SESSIONS_PER_IDENTITY
               value: "5"
+            # Browser Web Shell (w2/m55, docs/ADR035-ssh.md § Browser Web Shell):
+            # the plain-HTTP WebSocket Traefik terminates TLS onto. The listener
+            # starts only when BEX_SHELL_TICKET_SECRET is present (optional), so
+            # the feature stays disabled until the shared secret is installed and
+            # must match bex-api's BEX_SHELL_TICKET_SECRET.
+            - name: BEX_SHELL_WS_ADDR
+              value: ":8080"
+            - name: BEX_SHELL_TICKET_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bex-shell-ticket
+                  key: secret
+                  optional: true
           ports:
             - name: ssh
               containerPort: 2222
               protocol: TCP
             - name: metrics
               containerPort: 9090
+              protocol: TCP
+            - name: shell
+              containerPort: 8080
               protocol: TCP
           readinessProbe:
             httpGet:

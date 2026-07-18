@@ -116,6 +116,12 @@ var (
 	// w9/008), unlike the RFC 8628 device endpoints whose OAuth-shaped bodies the
 	// CLI parses as token responses.
 	ErrLogoutUnavailable = errors.New("logout revocation service unavailable")
+	// ErrShellUnavailable is returned by the Web Shell ticket verb when the
+	// browser-terminal transport is not configured (BEX_SHELL_TICKET_SECRET or
+	// BEX_SHELL_WS_URL unset); adapters surface it as 503. Native `ssh` is
+	// unaffected — the copy-ready command still works (docs/ADR035-ssh.md
+	// § Browser Web Shell).
+	ErrShellUnavailable = errors.New("web shell transport not configured")
 )
 
 // constErr is a comparable string error for fixed messages (config refusals,

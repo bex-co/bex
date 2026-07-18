@@ -80,6 +80,62 @@ const zhServices: Record<string, TranslationEntry> = {
       "Shell 访问需要正在运行的付费 Web、私有或后台服务，以及已启用的 SSH 网关。",
     description: "Unavailable SSH connection card explanation",
   },
+  "services.shellWebTitle": {
+    message: "Web Shell",
+    description: "In-browser terminal card title",
+  },
+  "services.shellWebDescription": {
+    message: "在浏览器中直接进入正在运行的实例执行命令。",
+    description: "In-browser terminal card description",
+  },
+  "services.shellConnecting": {
+    message: "正在连接到运行中的实例…",
+    description: "Web shell status while the terminal is connecting",
+  },
+  "services.shellConnected": {
+    message: "已连接",
+    description: "Web shell status when the terminal stream is live",
+  },
+  "services.shellClosed": {
+    message: "会话已关闭",
+    description: "Web shell status when the terminal stream has ended",
+  },
+  "services.shellErrorStatus": {
+    message: "连接错误",
+    description: "Web shell status when the session failed to connect or errored",
+  },
+  "services.shellReconnect": {
+    message: "重新连接",
+    description: "Button that re-opens a closed web shell session",
+  },
+  "services.shellConnect": {
+    message: "启动 Shell",
+    description: "Button that opens a web shell session",
+  },
+  "services.shellErrorGeneric": {
+    message: "无法启动 Shell 会话。",
+    description: "Web shell generic connection error",
+  },
+  "services.shellErrorUnavailable": {
+    message: "此平台未启用浏览器内 Shell。请改用下方的 SSH 命令。",
+    description: "Web shell error when the browser transport is unconfigured (503)",
+  },
+  "services.shellInstanceLabel": {
+    message: "实例",
+    description: "Label for the web shell instance picker",
+  },
+  "services.shellInstanceAny": {
+    message: "任意就绪实例",
+    description: "Web shell instance picker option that selects a random ready replica",
+  },
+  "services.shellInstanceSelect": {
+    message: "选择实例",
+    description: "Placeholder for the web shell instance picker",
+  },
+  "services.shellSshFallback": {
+    message: "想用自己的终端？请使用下方的 SSH 命令。",
+    description: "Hint pointing web shell users to the copy-ready SSH command",
+  },
   "services.actions": {
     message: "操作",
     description: "Accessible heading for service configuration row actions",

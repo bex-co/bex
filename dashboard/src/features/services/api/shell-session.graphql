@@ -1,0 +1,11 @@
+# createShellSession mints a Browser Web Shell exec ticket (w2/m55,
+# docs/ADR035-ssh.md § Browser Web Shell). The terminal opens the returned
+# gateway WebSocket `url` with the `ticket`; `instanceId` pins one Ready replica
+# (omitted selects a random one, matching native SSH). bex extension over Render.
+mutation CreateShellSession($id: String!, $instanceId: String) {
+  createShellSession(id: $id, instanceId: $instanceId) {
+    ticket
+    url
+    expiresAt
+  }
+}

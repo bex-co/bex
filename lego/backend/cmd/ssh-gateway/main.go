@@ -110,6 +110,7 @@ func main() {
 		Executor:         &sshgateway.KubeExecutor{Config: restConfig, Client: clientset},
 		Signer:           signer,
 		Metrics:          sshgateway.NewMetrics(registry),
+		TicketSecret:     []byte(os.Getenv("BEX_SHELL_TICKET_SECRET")),
 		HandshakeTimeout: durationEnv("BEX_SSH_HANDSHAKE_TIMEOUT", 10*time.Second),
 		SessionTimeout:   durationEnv("BEX_SSH_SESSION_TIMEOUT", 4*time.Hour),
 		MaxSessions:      intEnv("BEX_SSH_MAX_SESSIONS", 100),
@@ -139,6 +140,33 @@ func main() {
 		defer cancel()
 		_ = metricsServer.Shutdown(shutdownCtx)
 	}()
+
+	// Browser Web Shell WebSocket listener (docs/ADR035-ssh.md § Browser Web
+	// Shell). Started only when BEX_SHELL_TICKET_SECRET is set; Traefik
+	// terminates TLS onto this plain-HTTP listener. The handler shares the
+	// gateway's session caps and content-free audit with native SSH.
+	if gateway.WebSocketEnabled() {
+		shellMux := http.NewServeMux()
+		shellMux.Handle("GET /shell", gateway.WebSocketHandler())
+		shellMux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+		shellServer := &http.Server{Handler: shellMux, ReadHeaderTimeout: 5 * time.Second}
+		shellAddr := envOr("BEX_SHELL_WS_ADDR", ":8080")
+		shellListener, err := net.Listen("tcp", shellAddr)
+		if err != nil {
+			log.Fatalf("ssh gateway: web shell listen %s: %v", shellAddr, err)
+		}
+		go func() {
+			if err := shellServer.Serve(shellListener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				stop()
+			}
+		}()
+		defer func() {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = shellServer.Shutdown(shutdownCtx)
+		}()
+		log.Printf("web shell listening on %s", shellAddr)
+	}
 	log.Printf("ssh gateway listening on %s", addr)
 	if err := gateway.Serve(ctx, listener); err != nil && !errors.Is(err, context.Canceled) {
 		log.Fatalf("ssh gateway: %v", err)
