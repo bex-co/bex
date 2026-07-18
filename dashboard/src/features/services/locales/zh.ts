@@ -2766,6 +2766,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "环境变量已更改",
     description: "Service activity type: environment variables changed",
   },
+  "services.eventsTypeEnvironmentChanged": {
+    message: "环境配置已更改",
+    description:
+      "Service activity type: environment variables and secret files changed",
+  },
   "services.eventsTypeEnvGroupLinked": {
     message: "已关联环境组",
     description: "Service activity type: environment group linked",
@@ -2993,6 +2998,245 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.networkingError": {
     message: "更新 IP 允许列表失败：{error}",
     description: "Toast on failed setServiceIpAllowList mutation (w7/m32)",
+  },
+  "services.environmentPageTitle": {
+    message: "环境",
+    description: "Service Environment page heading",
+  },
+  "services.environmentPageDescription": {
+    message: "管理此服务的环境变量、机密文件和已关联的环境组。",
+    description: "Service Environment page introduction",
+  },
+  "services.environmentEdit": {
+    message: "编辑",
+    description: "Enter the coherent service environment draft",
+  },
+  "services.environmentMaskedValue": {
+    message: "已遮蔽的机密值",
+    description: "Accessible label for an unrevealed secret",
+  },
+  "services.environmentUnchangedMasked": {
+    message: "未更改（已遮蔽）",
+    description: "Placeholder for an opaque unchanged draft value",
+  },
+  "services.environmentDuplicateKey": {
+    message: "每个变量键必须唯一。",
+    description: "Draft validation for a duplicate environment key",
+  },
+  "services.environmentValueRequired": {
+    message: "请为此新变量输入值。",
+    description: "Draft validation for a new variable without a value",
+  },
+  "services.environmentStagedDelete": {
+    message: "将被移除",
+    description: "Badge on a staged environment deletion",
+  },
+  "services.environmentUndo": {
+    message: "撤销",
+    description: "Undo a staged environment deletion",
+  },
+  "services.environmentUnsavedTitle": {
+    message: "未保存的环境更改",
+    description: "Combined draft save bar heading",
+  },
+  "services.environmentUnsavedSummary": {
+    message: "{variables} 个变量操作 · {files} 个文件操作",
+    description: "Combined draft operation count",
+  },
+  "services.environmentSaveOptions": {
+    message: "环境保存选项",
+    description: "Accessible label for the split save menu",
+  },
+  "services.environmentSaveOnly": {
+    message: "仅保存",
+    description: "Persist and project without rolling the service",
+  },
+  "services.environmentSaveDeploy": {
+    message: "保存并部署",
+    description: "Persist and roll the current image once",
+  },
+  "services.environmentSaveRebuild": {
+    message: "保存、重新构建并部署",
+    description: "Persist then start one source build and deploy",
+  },
+  "services.environmentSaveOnlySuccess": {
+    message: "环境已保存，未部署",
+    description: "Toast after save-only succeeds",
+  },
+  "services.environmentSaveDeploySuccess": {
+    message: "环境已保存，部署已开始",
+    description: "Toast after save-and-deploy succeeds",
+  },
+  "services.environmentSaveError": {
+    message: "无法保存环境。草稿仍保留。",
+    description: "Batch environment save failure",
+  },
+  "services.environmentSavedDeployFailedTitle": {
+    message: "配置已保存，但部署未启动",
+    description: "Partial rebuild failure heading",
+  },
+  "services.environmentSavedDeployFailedBody": {
+    message: "环境更改已存储。准备好后只需重试部署。",
+    description: "Partial rebuild failure recovery explanation",
+  },
+  "services.environmentRetryDeploy": {
+    message: "重试部署",
+    description: "Retry only the failed deploy phase",
+  },
+  "services.environmentDiscardTitle": {
+    message: "放弃环境更改？",
+    description: "Dirty navigation guard title",
+  },
+  "services.environmentDiscardBody": {
+    message: "这些更改尚未保存，离开后将丢失。",
+    description: "Dirty navigation guard explanation",
+  },
+  "services.environmentKeepEditing": {
+    message: "继续编辑",
+    description: "Cancel dirty navigation",
+  },
+  "services.environmentDiscard": {
+    message: "放弃并离开",
+    description: "Confirm dirty navigation",
+  },
+  "services.envReveal": {
+    message: "显示",
+    description: "Reveal one masked environment value",
+  },
+  "services.envHide": {
+    message: "隐藏",
+    description: "Mask one revealed environment value",
+  },
+  "services.envCopy": {
+    message: "复制环境变量",
+    description: "Copy the complete dotenv export",
+  },
+  "services.envDownload": {
+    message: "下载 .env",
+    description: "Download the complete dotenv export",
+  },
+  "services.envCopySuccess": {
+    message: "环境已复制",
+    description: "Toast after the complete dotenv export is copied",
+  },
+  "services.envAddVariable": {
+    message: "添加变量",
+    description: "Add one blank draft variable",
+  },
+  "services.envAddGenerated": {
+    message: "生成机密",
+    description: "Add one previewable generated secret",
+  },
+  "services.envImport": {
+    message: "从 .env 导入",
+    description: "Open the dotenv import dialog",
+  },
+  "services.envImportTitle": {
+    message: "导入环境变量",
+    description: "Dotenv import dialog title",
+  },
+  "services.envImportDescription": {
+    message:
+      "粘贴 dotenv 赋值或选择文本文件。导入的值会保留在草稿中，直到保存。",
+    description: "Dotenv import dialog explanation",
+  },
+  "services.envImportTextLabel": {
+    message: "Dotenv 内容",
+    description: "Accessible label for the dotenv import textarea",
+  },
+  "services.envImportPlaceholder": {
+    message: "API_URL=https://example.com\nSECRET=replace-me",
+    description: "Dotenv import textarea placeholder",
+  },
+  "services.envImportChooseFile": {
+    message: "选择文件",
+    description: "Dotenv file picker button",
+  },
+  "services.envImportAdd": {
+    message: "添加变量",
+    description: "Stage parsed dotenv variables",
+  },
+  "services.envImportLineError": {
+    message: "第 {line} 行不是有效的 dotenv 赋值。",
+    description: "Line-numbered dotenv parse error",
+  },
+  "services.envImportFileError": {
+    message: "请选择不超过 1 MiB 的可读文本文件。",
+    description: "Dotenv file read or size error",
+  },
+  "services.secretFileUpload": {
+    message: "上传文件",
+    description: "Stage multiple local text files",
+  },
+  "services.secretFileUploadError": {
+    message:
+      "部分文件已跳过。请使用唯一且安全的名称、文本内容，并确保文件不超过 1 MiB。",
+    description: "Secret-file upload validation summary",
+  },
+  "services.secretFileDuplicateName": {
+    message: "每个机密文件名必须唯一。",
+    description: "Draft validation for a duplicate file name",
+  },
+  "services.secretFileContentRequired": {
+    message: "请为此新文件添加内容。",
+    description: "Draft validation for missing new-file content",
+  },
+  "services.secretFileViewContent": {
+    message: "查看内容",
+    description: "Reveal or inspect secret-file contents in a dialog",
+  },
+  "services.secretFileEditContent": {
+    message: "编辑内容",
+    description: "Edit staged secret-file contents in a dialog",
+  },
+  "services.secretFileContentDialogTitle": {
+    message: "{name} 的内容",
+    description: "Secret-file content dialog title",
+  },
+  "services.secretFileContentDialogDescription": {
+    message: "下次部署后，此文件将以只读方式挂载到 /etc/secrets。",
+    description: "Secret-file content dialog explanation",
+  },
+  "services.secretFileLoadingContent": {
+    message: "正在加载内容…",
+    description: "Secret-file content reveal progress",
+  },
+  "services.secretFileContentDone": {
+    message: "完成",
+    description: "Close and stage secret-file content edits",
+  },
+  "services.secretFileUntitled": {
+    message: "未命名文件",
+    description: "Fallback title for a new unnamed secret file",
+  },
+  "services.secretFileDelete": {
+    message: "删除机密文件",
+    description: "Accessible label for a staged secret-file deletion",
+  },
+  "services.envGroupsLinkedTitle": {
+    message: "已关联的环境组",
+    description: "Service-side environment group card title",
+  },
+  "services.envGroupsLinkedCount": {
+    message: "已关联（{count}）",
+    description: "Count of groups linked to this service",
+  },
+  "services.envGroupsAvailableCount": {
+    message: "可关联（{count}）",
+    description: "Count of groups available to link",
+  },
+  "services.envGroupsNoneLinked": {
+    message: "此服务尚未关联环境组。",
+    description: "Service group empty linked state",
+  },
+  "services.envGroupsNoneAvailable": {
+    message: "工作区中的所有环境组都已关联。",
+    description: "Service group empty available state",
+  },
+  "services.envGroupsNoneAvailableCreate": {
+    message:
+      "工作区中还没有环境组。创建一个包含变量和文件、并预先选择此服务的环境组。",
+    description: "Service group create-first empty state",
   },
 };
 

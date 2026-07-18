@@ -57,27 +57,17 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 - [x] **m41** — Populated project overview parity (10 tasks) — **DONE 2026-07-17** ([done/m41](done/m41/README.md)) ← one URL-selected Environment, authoritative Runtime/Region/Updated facts, contextual create, mixed-kind bulk Move, canonical stable memberships, and reload-safe Unassigned access; clean-room production browser + GraphQL/REST/MCP proof passed and all fixtures were removed
 - [x] **m42** — Metrics page simplification: Render's card-level controls + Render-shaped title (9 tasks) ← user request 2026-07-17, live authenticated capture of both metrics pages: single range dropdown (Render presets, default 12h; shared with Logs, which keeps its 1h default), default-hidden event timeline, Percentage/Total + Limit links on the Application card, Status Code + per-section Percentile (p90) on the Network card, `<name> · <type> · bex dashboard` titles; Host/Path filters + percentile "All" + Custom/30d ranges recorded as drift, observability-drain banner excluded per DO_NOT_DO — done 2026-07-17 (dev-5 live walk + 1,363 tests; [docs/render-artifacts/metrics-page.md](../../docs/render-artifacts/metrics-page.md)), moved to [done/m42](done/m42/README.md)
 - [x] **m43** — Chart event markers on the service Metrics tab (Render parity) (6 tasks) — **DONE 2026-07-17** ([done/m43](done/m43/README.md)) ← from user request 2026-07-17, implemented directly from a live Render capture: every metrics chart overlays in-window service events as a vertical dashed line + kind-styled icon badge (started = neutral dashed, live = green, failed = red, lifecycle = dot), overlap-clustered with count badges, hover tooltip (label + time), badges linking to the deploy detail page; `chart-events` lib + `chart-event-markers` overlay wired into both chart kinds via the existing `serviceEvents` feed, en/zh locales, unit tests, `local-bex` stub extended (synthetic metric waveforms + wire-vocabulary events) for the browser-verified end-to-end proof.
+- [x] **m44** — Service Environment page parity: staged editor, bulk import/export, rollout choices, secret-file upload, and linked-group UX (12 tasks) — **DONE 2026-07-17** ([done/m44](done/m44/README.md); [parity evidence](../../docs/render-artifacts/service-environment-page.md)) ← from user request 2026-07-17; live Render capture, production-shaped desktop/mobile browser proof, and full backend/operator/dashboard gates
 
 ## Inbox
 
-_(`024.md` implemented 2026-07-17 — all destructive type-to-confirm gates
-unified on Render's sudo-command dialog pattern (shared `SudoCommandField`,
-bold phrase as body copy, "Sudo Command" input label; service delete now
-`sudo delete <type words> <name>`); completed as bounded single-session work
-and recorded directly in `done/`.)_
+_(`024.md` implemented 2026-07-17 — all destructive type-to-confirm gates unified on Render's sudo-command dialog pattern (shared `SudoCommandField`, bold phrase as body copy, "Sudo Command" input label; service delete now `sudo delete <type words> <name>`); completed as bounded single-session work and recorded directly in `done/`.)_
 
-_(`023.md` implemented 2026-07-17 — compact clickable instance slugs and an
-exact, removable instance filter on deploy-detail log rows; completed as
-sub-hour work and moved to `done/`.)_
+_(`023.md` implemented 2026-07-17 — compact clickable instance slugs and an exact, removable instance filter on deploy-detail log rows; completed as sub-hour work and moved to `done/`.)_
 
-_(`021.md` implemented 2026-07-17 — compact clickable instance slugs on service
-log rows; completed as sub-hour work and moved to `done/`.)_
+_(`021.md` implemented 2026-07-17 — compact clickable instance slugs on service log rows; completed as sub-hour work and moved to `done/`.)_
 
-_(`022.md` implemented 2026-07-17 — typed `srv-…` metrics requests now use the
-resolved Kubernetes App name for pod, cAdvisor, and Traefik lookups while
-preserving the requested public identity; regression coverage spans CPU,
-memory, limits, instances, request metrics, filters, REST/GraphQL/MCP, and
-legacy label-less Apps; moved to `done/`.)_
+_(`022.md` implemented 2026-07-17 — typed `srv-…` metrics requests now use the resolved Kubernetes App name for pod, cAdvisor, and Traefik lookups while preserving the requested public identity; regression coverage spans CPU, memory, limits, instances, request metrics, filters, REST/GraphQL/MCP, and legacy label-less Apps; moved to `done/`.)_
 
 _(`015.md`–`020.md` absorbed into **m36** 2026-07-15; notes moved to `done/`)_
 

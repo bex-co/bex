@@ -30,10 +30,9 @@ export interface UseTriggerDeployResult {
 /**
  * Render's header-level "Manual Deploy" verb. It lives in the service header
  * (not on the Events tab), but the Events list and the deploy history are what
- * show its result, so the mutation refetches the active `ServiceEvents` and
- * `Deploys` queries by name (the latter also drives the header's latest-deploy
- * chrome) — the new deploy then appears without the header having to know
- * either tab's variables.
+ * show its result, so the mutation refetches active queries after success. This
+ * refreshes whichever of Events, Deploys, and header chrome are mounted without
+ * asking Apollo to refetch an inactive named query (which emits a dev warning).
  *
  * Also used for "Restart service" (w2/m30 consolidation): passing no opts
  * triggers a rebuild for repo-backed services and a pure restart for
@@ -42,7 +41,7 @@ export interface UseTriggerDeployResult {
 export function useTriggerDeploy(): UseTriggerDeployResult {
   const { t } = useTranslations();
   const [triggerDeploy, { loading }] = useMutation(TriggerDeployDocument, {
-    refetchQueries: ["ServiceEvents", "Deploys"],
+    refetchQueries: "active",
     awaitRefetchQueries: true,
   });
 

@@ -2815,6 +2815,11 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Environment variables changed",
     description: "Service activity type: environment variables changed",
   },
+  "services.eventsTypeEnvironmentChanged": {
+    message: "Environment configuration changed",
+    description:
+      "Service activity type: environment variables and secret files changed",
+  },
   "services.eventsTypeEnvGroupLinked": {
     message: "Environment group linked",
     description: "Service activity type: environment group linked",
@@ -3046,6 +3051,248 @@ const enServices: Record<string, TranslationEntry> = {
   "services.networkingError": {
     message: "Failed to update IP allowlist: {error}",
     description: "Toast on failed setServiceIpAllowList mutation (w7/m32)",
+  },
+  "services.environmentPageTitle": {
+    message: "Environment",
+    description: "Service Environment page heading",
+  },
+  "services.environmentPageDescription": {
+    message:
+      "Manage service-specific variables, secret files, and linked environment groups.",
+    description: "Service Environment page introduction",
+  },
+  "services.environmentEdit": {
+    message: "Edit",
+    description: "Enter the coherent service environment draft",
+  },
+  "services.environmentMaskedValue": {
+    message: "Masked secret value",
+    description: "Accessible label for an unrevealed secret",
+  },
+  "services.environmentUnchangedMasked": {
+    message: "Unchanged (masked)",
+    description: "Placeholder for an opaque unchanged draft value",
+  },
+  "services.environmentDuplicateKey": {
+    message: "Each variable key must be unique.",
+    description: "Draft validation for a duplicate environment key",
+  },
+  "services.environmentValueRequired": {
+    message: "Enter a value for this new variable.",
+    description: "Draft validation for a new variable without a value",
+  },
+  "services.environmentStagedDelete": {
+    message: "Will be removed",
+    description: "Badge on a staged environment deletion",
+  },
+  "services.environmentUndo": {
+    message: "Undo",
+    description: "Undo a staged environment deletion",
+  },
+  "services.environmentUnsavedTitle": {
+    message: "Unsaved environment changes",
+    description: "Combined draft save bar heading",
+  },
+  "services.environmentUnsavedSummary": {
+    message: "{variables} variable operations · {files} file operations",
+    description: "Combined draft operation count",
+  },
+  "services.environmentSaveOptions": {
+    message: "Environment save options",
+    description: "Accessible label for the split save menu",
+  },
+  "services.environmentSaveOnly": {
+    message: "Save only",
+    description: "Persist and project without rolling the service",
+  },
+  "services.environmentSaveDeploy": {
+    message: "Save and deploy",
+    description: "Persist and roll the current image once",
+  },
+  "services.environmentSaveRebuild": {
+    message: "Save, rebuild, and deploy",
+    description: "Persist then start one source build and deploy",
+  },
+  "services.environmentSaveOnlySuccess": {
+    message: "Environment saved without a deploy",
+    description: "Toast after save-only succeeds",
+  },
+  "services.environmentSaveDeploySuccess": {
+    message: "Environment saved and deployment started",
+    description: "Toast after save-and-deploy succeeds",
+  },
+  "services.environmentSaveError": {
+    message: "Couldn't save the environment. Your draft is still here.",
+    description: "Batch environment save failure",
+  },
+  "services.environmentSavedDeployFailedTitle": {
+    message: "Configuration saved; deploy didn't start",
+    description: "Partial rebuild failure heading",
+  },
+  "services.environmentSavedDeployFailedBody": {
+    message:
+      "Your environment changes are stored. Retry only the deploy when you're ready.",
+    description: "Partial rebuild failure recovery explanation",
+  },
+  "services.environmentRetryDeploy": {
+    message: "Retry deploy",
+    description: "Retry only the failed deploy phase",
+  },
+  "services.environmentDiscardTitle": {
+    message: "Discard environment changes?",
+    description: "Dirty navigation guard title",
+  },
+  "services.environmentDiscardBody": {
+    message: "These changes haven't been saved and will be lost if you leave.",
+    description: "Dirty navigation guard explanation",
+  },
+  "services.environmentKeepEditing": {
+    message: "Keep editing",
+    description: "Cancel dirty navigation",
+  },
+  "services.environmentDiscard": {
+    message: "Discard and leave",
+    description: "Confirm dirty navigation",
+  },
+  "services.envReveal": {
+    message: "Reveal",
+    description: "Reveal one masked environment value",
+  },
+  "services.envHide": {
+    message: "Hide",
+    description: "Mask one revealed environment value",
+  },
+  "services.envCopy": {
+    message: "Copy env vars",
+    description: "Copy the complete dotenv export",
+  },
+  "services.envDownload": {
+    message: "Download .env",
+    description: "Download the complete dotenv export",
+  },
+  "services.envCopySuccess": {
+    message: "Environment copied",
+    description: "Toast after the complete dotenv export is copied",
+  },
+  "services.envAddVariable": {
+    message: "Add variable",
+    description: "Add one blank draft variable",
+  },
+  "services.envAddGenerated": {
+    message: "Generated secret",
+    description: "Add one previewable generated secret",
+  },
+  "services.envImport": {
+    message: "Import from .env",
+    description: "Open the dotenv import dialog",
+  },
+  "services.envImportTitle": {
+    message: "Import environment variables",
+    description: "Dotenv import dialog title",
+  },
+  "services.envImportDescription": {
+    message:
+      "Paste dotenv assignments or choose a text file. Imported values stay in this draft until you save.",
+    description: "Dotenv import dialog explanation",
+  },
+  "services.envImportTextLabel": {
+    message: "Dotenv contents",
+    description: "Accessible label for the dotenv import textarea",
+  },
+  "services.envImportPlaceholder": {
+    message: "API_URL=https://example.com\nSECRET=replace-me",
+    description: "Dotenv import textarea placeholder",
+  },
+  "services.envImportChooseFile": {
+    message: "Choose a file",
+    description: "Dotenv file picker button",
+  },
+  "services.envImportAdd": {
+    message: "Add variables",
+    description: "Stage parsed dotenv variables",
+  },
+  "services.envImportLineError": {
+    message: "Line {line} isn't a valid dotenv assignment.",
+    description: "Line-numbered dotenv parse error",
+  },
+  "services.envImportFileError": {
+    message: "Choose a readable text file no larger than 1 MiB.",
+    description: "Dotenv file read or size error",
+  },
+  "services.secretFileUpload": {
+    message: "Upload files",
+    description: "Stage multiple local text files",
+  },
+  "services.secretFileUploadError": {
+    message:
+      "Some files were skipped. Use unique safe names, text content, and files no larger than 1 MiB.",
+    description: "Secret-file upload validation summary",
+  },
+  "services.secretFileDuplicateName": {
+    message: "Each secret file name must be unique.",
+    description: "Draft validation for a duplicate file name",
+  },
+  "services.secretFileContentRequired": {
+    message: "Add contents for this new file.",
+    description: "Draft validation for missing new-file content",
+  },
+  "services.secretFileViewContent": {
+    message: "View contents",
+    description: "Reveal or inspect secret-file contents in a dialog",
+  },
+  "services.secretFileEditContent": {
+    message: "Edit contents",
+    description: "Edit staged secret-file contents in a dialog",
+  },
+  "services.secretFileContentDialogTitle": {
+    message: "Contents of {name}",
+    description: "Secret-file content dialog title",
+  },
+  "services.secretFileContentDialogDescription": {
+    message:
+      "This file is mounted read-only at /etc/secrets after the next deploy.",
+    description: "Secret-file content dialog explanation",
+  },
+  "services.secretFileLoadingContent": {
+    message: "Loading contents…",
+    description: "Secret-file content reveal progress",
+  },
+  "services.secretFileContentDone": {
+    message: "Done",
+    description: "Close and stage secret-file content edits",
+  },
+  "services.secretFileUntitled": {
+    message: "untitled file",
+    description: "Fallback title for a new unnamed secret file",
+  },
+  "services.secretFileDelete": {
+    message: "Delete secret file",
+    description: "Accessible label for a staged secret-file deletion",
+  },
+  "services.envGroupsLinkedTitle": {
+    message: "Linked Environment Groups",
+    description: "Service-side environment group card title",
+  },
+  "services.envGroupsLinkedCount": {
+    message: "Linked ({count})",
+    description: "Count of groups linked to this service",
+  },
+  "services.envGroupsAvailableCount": {
+    message: "Available to link ({count})",
+    description: "Count of groups available to link",
+  },
+  "services.envGroupsNoneLinked": {
+    message: "No environment groups are linked to this service.",
+    description: "Service group empty linked state",
+  },
+  "services.envGroupsNoneAvailable": {
+    message: "Every workspace environment group is already linked.",
+    description: "Service group empty available state",
+  },
+  "services.envGroupsNoneAvailableCreate": {
+    message:
+      "No workspace environment groups yet. Create one with variables, files, and this service already selected.",
+    description: "Service group create-first empty state",
   },
 };
 

@@ -43,6 +43,8 @@ export interface NewEnvGroupDialogProps {
   servicesLoading?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Service ids checked each time the dialog opens (service-page create path). */
+  initialServiceIds?: string[];
 }
 
 /** One-step workspace create: name, initial contents, and links share one mutation. */
@@ -53,6 +55,7 @@ export function NewEnvGroupDialog({
   servicesLoading = false,
   open: openProp,
   onOpenChange: onOpenChangeProp,
+  initialServiceIds = [],
 }: NewEnvGroupDialogProps) {
   const { t } = useTranslations();
   const { createGroup, busy } = useEnvGroupMutations(refetch);
@@ -62,7 +65,7 @@ export function NewEnvGroupDialog({
   const [name, setName] = useState("");
   const [envVars, setEnvVars] = useState<EnvVarRow[]>([]);
   const [secretFiles, setSecretFiles] = useState<SecretFileRow[]>([]);
-  const [serviceIds, setServiceIds] = useState<string[]>([]);
+  const [serviceIds, setServiceIds] = useState<string[]>(initialServiceIds);
   const [invalid, setInvalid] = useState(false);
   const open = controlled ? openProp : openState;
   const contentsValid =
@@ -74,7 +77,7 @@ export function NewEnvGroupDialog({
     setName("");
     setEnvVars([]);
     setSecretFiles([]);
-    setServiceIds([]);
+    setServiceIds(initialServiceIds);
     setInvalid(false);
   }
 
@@ -82,6 +85,7 @@ export function NewEnvGroupDialog({
     if (controlled) onOpenChangeProp?.(next);
     else setOpenState(next);
     if (!next) reset();
+    else setServiceIds(initialServiceIds);
   }
 
   function addEnvVar() {

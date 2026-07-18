@@ -21,6 +21,7 @@ import (
 	"net"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -53,6 +54,10 @@ func TestCopyBidirectionalCountsOnlyBackendToClient(t *testing.T) {
 	_ = client.Close()
 	<-done
 
+	deadline := time.Now().Add(time.Second)
+	for testutil.ToFloat64(meter.responseBytes.WithLabelValues("dpg-one", "postgres")) != float64(len(response)) && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
 	if got := testutil.ToFloat64(meter.responseBytes.WithLabelValues("dpg-one", "postgres")); got != float64(len(response)) {
 		t.Fatalf("egress counter = %v, want backend response %d (request must be zero)", got, len(response))
 	}

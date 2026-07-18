@@ -274,6 +274,29 @@ const CRON = {
 
 const SERVICES = [SERVICE, WORKER, CRON];
 
+// Environment-page fixtures (w5/m44): values stay in memory and list queries
+// return keys/names only, matching bex-api's sensitive-read boundary. Set
+// LOCAL_BEX_FAIL_ENV_SAVE_ONCE=1 to make the next coherent save fail, or
+// LOCAL_BEX_FAIL_DEPLOY_ONCE=1 to exercise save-success/deploy-failure recovery.
+const ENV_BY_SERVICE = new Map([
+  [
+    SERVICE.id,
+    new Map([
+      ["APP_MODE", "production"],
+      ["DATABASE_URL", "postgres://local:local@db.local/eden"],
+    ]),
+  ],
+  [WORKER.id, new Map([["QUEUE_NAME", "outbound-email"]])],
+  [CRON.id, new Map()],
+]);
+const SECRET_FILES_BY_SERVICE = new Map([
+  [SERVICE.id, new Map([["service-account.json", '{"project":"local"}\n']])],
+  [WORKER.id, new Map()],
+  [CRON.id, new Map()],
+]);
+let failEnvironmentSaveOnce = process.env.LOCAL_BEX_FAIL_ENV_SAVE_ONCE === "1";
+let failDeployOnce = process.env.LOCAL_BEX_FAIL_DEPLOY_ONCE === "1";
+
 // Secret Deploy Hook URLs (w2/m33). These are synthetic dev-only values, kept
 // per service so the Settings control can reveal/copy/rotate offline.
 const DEPLOY_HOOKS = new Map(
@@ -1682,18 +1705,151 @@ function resolveGraphQL({ operationName, variables = {} }) {
       };
     case "EnvVarKeys":
       return {
-        service: { __typename: "Service", id: variables.id, envVarKeys: [] },
+        envVars: [
+          ...(ENV_BY_SERVICE.get(variables.serviceId) ?? new Map()).keys(),
+        ]
+          .sort()
+          .map((key) => ({
+            __typename: "EnvVarWithCursor",
+            envVar: { __typename: "EnvVarListValue", id: key, key },
+            cursor: key,
+          })),
       };
+    case "EnvVarValue": {
+      const value = ENV_BY_SERVICE.get(variables.id)?.get(variables.key);
+      return {
+        service:
+          value === undefined
+            ? null
+            : {
+                __typename: "Service",
+                id: variables.id,
+                envVar: {
+                  __typename: "EnvVar",
+                  id: variables.key,
+                  key: variables.key,
+                  value,
+                },
+              },
+      };
+    }
     case "SecretFileNames":
       return {
-        service: {
-          __typename: "Service",
-          id: variables.id,
-          secretFileNames: [],
+        secretFiles: [
+          ...(
+            SECRET_FILES_BY_SERVICE.get(variables.serviceId) ?? new Map()
+          ).keys(),
+        ]
+          .sort()
+          .map((name) => ({
+            __typename: "SecretFileWithCursor",
+            secretFile: { __typename: "SecretFileListValue", id: name, name },
+            cursor: name,
+          })),
+      };
+    case "SecretFileContent": {
+      const content = SECRET_FILES_BY_SERVICE.get(variables.id)?.get(
+        variables.name,
+      );
+      return {
+        service:
+          content === undefined
+            ? null
+            : {
+                __typename: "Service",
+                id: variables.id,
+                secretFile: {
+                  __typename: "SecretFile",
+                  id: variables.name,
+                  name: variables.name,
+                  content,
+                },
+              },
+      };
+    }
+    case "PatchServiceEnvironment": {
+      if (failEnvironmentSaveOnce) {
+        failEnvironmentSaveOnce = false;
+        throw new Error("local-bex injected environment save failure");
+      }
+      const env = ENV_BY_SERVICE.get(variables.serviceId) ?? new Map();
+      const secretFiles =
+        SECRET_FILES_BY_SERVICE.get(variables.serviceId) ?? new Map();
+      for (const patch of variables.envVars ?? []) {
+        if (patch.fromKey) {
+          if (!env.has(patch.fromKey)) throw new Error("not found");
+          const value = env.get(patch.fromKey);
+          env.delete(patch.fromKey);
+          env.set(patch.key, value);
+        } else if (patch.delete) env.delete(patch.key);
+        else env.set(patch.key, patch.value ?? "");
+      }
+      for (const patch of variables.secretFiles ?? []) {
+        if (patch.fromName) {
+          if (!secretFiles.has(patch.fromName)) throw new Error("not found");
+          const content = secretFiles.get(patch.fromName);
+          secretFiles.delete(patch.fromName);
+          secretFiles.set(patch.name, content);
+        } else if (patch.delete) secretFiles.delete(patch.name);
+        else secretFiles.set(patch.name, patch.content ?? "");
+      }
+      ENV_BY_SERVICE.set(variables.serviceId, env);
+      SECRET_FILES_BY_SERVICE.set(variables.serviceId, secretFiles);
+      return {
+        patchServiceEnvironment: {
+          __typename: "EnvironmentPatchResult",
+          envVarKeys: [...env.keys()].sort(),
+          secretFileNames: [...secretFiles.keys()].sort(),
+          rolledOut: variables.saveMode === "deploy",
         },
       };
+    }
     case "EnvGroups":
       return { envGroups: byOwner(ENV_GROUPS, variables.ownerId) };
+    case "CreateEnvGroup": {
+      const now = new Date().toISOString();
+      const group = {
+        __typename: "EnvGroup",
+        id: `evg-local${Date.now().toString(36)}`,
+        name: variables.name,
+        ownerId: variables.ownerId ?? WORKSPACE_DEFAULT,
+        createdAt: now,
+        updatedAt: now,
+        serviceLinks: [...(variables.serviceIds ?? [])],
+        envVars: (variables.envVars ?? []).map(({ key }) => ({
+          __typename: "EnvVar",
+          key,
+        })),
+        secretFiles: (variables.secretFiles ?? []).map(({ name }) => ({
+          __typename: "SecretFile",
+          name,
+        })),
+      };
+      ENV_GROUPS.push(group);
+      return { createEnvGroup: group };
+    }
+    case "LinkEnvGroup": {
+      const group = ENV_GROUPS.find(
+        (candidate) => candidate.id === variables.id,
+      );
+      if (!group) throw new Error("not found");
+      if (!group.serviceLinks.includes(variables.serviceId)) {
+        group.serviceLinks.push(variables.serviceId);
+        group.updatedAt = new Date().toISOString();
+      }
+      return { linkEnvGroup: true };
+    }
+    case "UnlinkEnvGroup": {
+      const group = ENV_GROUPS.find(
+        (candidate) => candidate.id === variables.id,
+      );
+      if (!group) throw new Error("not found");
+      group.serviceLinks = group.serviceLinks.filter(
+        (serviceId) => serviceId !== variables.serviceId,
+      );
+      group.updatedAt = new Date().toISOString();
+      return { unlinkEnvGroup: true };
+    }
     // Workspace lifecycle (w6/m1 verbs, w6/m3 dashboard UX) — an interactive
     // in-memory store so the switcher/create/rename/delete flow is exercisable
     // offline, including the Hobby-plan-cap inline error.
@@ -2123,6 +2279,10 @@ function resolveGraphQL({ operationName, variables = {} }) {
     // NOT variables.id — this mutation's arg is serviceId (deployMutationArgs'
     // shape), matching Cancel/Rollback below.
     case "TriggerDeploy": {
+      if (failDeployOnce) {
+        failDeployOnce = false;
+        throw new Error("local-bex injected deploy trigger failure");
+      }
       const svc = serviceById(variables.serviceId);
       const deploy = makeDeploy({
         id: `dep-stub-${Date.now().toString(36)}`,

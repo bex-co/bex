@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -131,6 +132,18 @@ func TestEnvFromSources(t *testing.T) {
 	if got[2].SecretRef.Optional != nil {
 		t.Error("the service's own env source should not be optional")
 	}
+
+	// A save-only first write is metadata-only. It remains invisible until a
+	// later generation reconcile, at which point the pending service-local
+	// source occupies the same last-wins position as an active spec reference.
+	got = envFromSources(&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+		appv1alpha1.PendingEnvSecretAnnotation: "web-pending-env",
+	}}, Spec: appv1alpha1.AppSpec{EnvFromSecrets: []string{"evg-1-env"}}})
+	if len(got) != 2 || got[1].SecretRef.Name != "web-pending-env" || runtimeEnvSecret(&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+		appv1alpha1.PendingEnvSecretAnnotation: "web-pending-env",
+	}}}) != "web-pending-env" {
+		t.Fatalf("pending env source = %v", got)
+	}
 }
 
 func TestSecretFileMounts(t *testing.T) {
@@ -156,6 +169,13 @@ func TestSecretFileMounts(t *testing.T) {
 	}
 	if vol.Projected.Sources[0].Secret.Name != "web-files" || vol.Projected.Sources[1].Secret.Name != "evg-1-files" {
 		t.Fatalf("projected sources = %v, want [web-files evg-1-files]", vol.Projected.Sources)
+	}
+
+	vol, mount = secretFileMounts(&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+		appv1alpha1.PendingFilesSecretAnnotation: "web-pending-files",
+	}}})
+	if vol == nil || mount == nil || len(vol.Projected.Sources) != 1 || vol.Projected.Sources[0].Secret.Name != "web-pending-files" {
+		t.Fatalf("pending file projection = volume %+v, mount %+v", vol, mount)
 	}
 }
 

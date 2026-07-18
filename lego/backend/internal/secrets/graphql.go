@@ -88,6 +88,64 @@ var secretFileWithCursorGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var envVarPatchGQLType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "EnvironmentEnvVarPatchInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"key":           &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"fromKey":       &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"value":         &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"generateValue": &graphql.InputObjectFieldConfig{Type: graphql.Boolean},
+		"delete":        &graphql.InputObjectFieldConfig{Type: graphql.Boolean},
+	},
+})
+
+var secretFilePatchGQLType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "EnvironmentSecretFilePatchInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"name":     &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"fromName": &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"content":  &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"delete":   &graphql.InputObjectFieldConfig{Type: graphql.Boolean},
+	},
+})
+
+var environmentPatchResultGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "EnvironmentPatchResult",
+	Fields: graphql.Fields{
+		"envVarKeys":      &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Resolve: gqlutil.Field(func(v EnvironmentPatchResult) any { return v.EnvVarKeys })},
+		"secretFileNames": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Resolve: gqlutil.Field(func(v EnvironmentPatchResult) any { return v.SecretFileNames })},
+		"rolledOut":       &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v EnvironmentPatchResult) any { return v.RolledOut })},
+	},
+})
+
+func environmentPatchFromArgs(p graphql.ResolveParams) EnvironmentPatch {
+	patch := EnvironmentPatch{SaveMode: SaveMode(p.Args["saveMode"].(string))}
+	if raw, ok := p.Args["envVars"].([]any); ok {
+		for _, item := range raw {
+			m, _ := item.(map[string]any)
+			write := EnvVarPatch{}
+			write.Key, _ = m["key"].(string)
+			write.FromKey, _ = m["fromKey"].(string)
+			write.Value, _ = m["value"].(string)
+			write.GenerateValue, _ = m["generateValue"].(bool)
+			write.Delete, _ = m["delete"].(bool)
+			patch.EnvVars = append(patch.EnvVars, write)
+		}
+	}
+	if raw, ok := p.Args["secretFiles"].([]any); ok {
+		for _, item := range raw {
+			m, _ := item.(map[string]any)
+			write := SecretFilePatch{}
+			write.Name, _ = m["name"].(string)
+			write.FromName, _ = m["fromName"].(string)
+			write.Content, _ = m["content"].(string)
+			write.Delete, _ = m["delete"].(bool)
+			patch.SecretFiles = append(patch.SecretFiles, write)
+		}
+	}
+	return patch
+}
+
 // GraphQLQuery exposes the paged env-var and secret-file lists as the GraphQL
 // twins of Render's REST envelopes. The existing nested service.envVarKeys /
 // service.secretFileNames fields remain intact for old dashboard clients; new
@@ -150,6 +208,18 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"key":       &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
 	}
 	return graphql.Fields{
+		"patchServiceEnvironment": &graphql.Field{
+			Type: graphql.NewNonNull(environmentPatchResultGQLType),
+			Args: graphql.FieldConfigArgument{
+				"serviceId":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"envVars":     &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(envVarPatchGQLType))},
+				"secretFiles": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(secretFilePatchGQLType))},
+				"saveMode":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.PatchEnvironment(p.Context, p.Args["serviceId"].(string), environmentPatchFromArgs(p))
+			},
+		},
 		"setEnvVars": &graphql.Field{ // Render's replace-all
 			Type: graphql.Boolean,
 			Args: graphql.FieldConfigArgument{

@@ -47,6 +47,7 @@ limitations under the License.
 // and these bex-named types, for writes Render's vocabulary has no name for:
 //
 //	env_vars_changed            secrets.Set/DeleteEnvVar(s)     (KEYS and VALUES both absent — see Redaction)
+//	service_environment_changed secrets.PatchEnvironment        (env vars + files; names and values absent)
 //	env_group_linked/unlinked   envgroups.Link/UnlinkService
 //	auto_deploy_enabled         apps.SetAutoDeploy(enabled=true)  — new rows only
 //	auto_deploy_disabled        apps.SetAutoDeploy(enabled=false) — new rows only
@@ -139,9 +140,10 @@ const (
 // bex-named types — real writes Render's vocabulary has no name for. Named in
 // Render's snake_case house style so they read as one vocabulary.
 const (
-	TypeEnvVarsChanged   = "env_vars_changed"
-	TypeEnvGroupLinked   = "env_group_linked"
-	TypeEnvGroupUnlinked = "env_group_unlinked"
+	TypeEnvVarsChanged            = "env_vars_changed"
+	TypeServiceEnvironmentChanged = "service_environment_changed"
+	TypeEnvGroupLinked            = "env_group_linked"
+	TypeEnvGroupUnlinked          = "env_group_unlinked"
 	// TypeAutoDeployEnabled and TypeAutoDeployDisabled replace the bex-named
 	// TypeAutoDeployChanged for new rows that carry the auto_deploy_enabled boolean.
 	// Legacy rows without a recorded value still produce TypeAutoDeployChanged.
@@ -223,6 +225,7 @@ var eventTypes = map[string]string{
 	"secrets.SetEnvVar":                     TypeEnvVarsChanged,
 	"secrets.DeleteEnvVar":                  TypeEnvVarsChanged,
 	"secrets.SeedEnvVars":                   TypeEnvVarsChanged, // blueprint seed-once (w1/m35)
+	"secrets.PatchEnvironment":              TypeServiceEnvironmentChanged,
 	"envgroups.LinkService":                 TypeEnvGroupLinked,
 	"envgroups.UnlinkService":               TypeEnvGroupUnlinked,
 	"envgroups.LinkEnvGroup":                TypeEnvGroupLinked, // blueprint fromGroup (w1/m35)
@@ -308,9 +311,9 @@ type Details struct {
 	PreDeployStatus string
 	Trigger         *Trigger // deploy_started only
 	// Deploy details enriched for dashboard (w1/m47): deployed image, commit info, timing
-	Image         string    // container image URI; empty for non-deploy events
-	CommitID      string    // git revision; empty for non-deploy events
-	CommitMessage string    // commit description; empty for non-deploy events
+	Image         string     // container image URI; empty for non-deploy events
+	CommitID      string     // git revision; empty for non-deploy events
+	CommitMessage string     // commit description; empty for non-deploy events
 	StartedAt     *time.Time // when deploy started executing; nil for non-deploy or not-yet-started
 	FinishedAt    *time.Time // when deploy reached terminal status; nil for non-deploy or ongoing
 	// suspender_added / suspender_removed

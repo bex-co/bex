@@ -410,6 +410,28 @@ export type Environment = {
   serviceIds: Maybe<Array<Maybe<Scalars['String']['output']>>>;
 };
 
+export type EnvironmentEnvVarPatchInput = {
+  delete?: InputMaybe<Scalars['Boolean']['input']>;
+  fromKey?: InputMaybe<Scalars['String']['input']>;
+  generateValue?: InputMaybe<Scalars['Boolean']['input']>;
+  key: Scalars['String']['input'];
+  value?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type EnvironmentPatchResult = {
+  __typename: 'EnvironmentPatchResult';
+  envVarKeys: Array<Scalars['String']['output']>;
+  rolledOut: Scalars['Boolean']['output'];
+  secretFileNames: Array<Scalars['String']['output']>;
+};
+
+export type EnvironmentSecretFilePatchInput = {
+  content?: InputMaybe<Scalars['String']['input']>;
+  delete?: InputMaybe<Scalars['Boolean']['input']>;
+  fromName?: InputMaybe<Scalars['String']['input']>;
+  name: Scalars['String']['input'];
+};
+
 export type EstimatedCost = {
   __typename: 'EstimatedCost';
   meters: Maybe<Array<Maybe<MeterEstimate>>>;
@@ -665,6 +687,7 @@ export type Mutation = {
   failoverDatabase: Maybe<Scalars['Boolean']['output']>;
   inviteWorkspaceMember: Maybe<WorkspaceInvite>;
   linkEnvGroup: Maybe<Scalars['Boolean']['output']>;
+  patchServiceEnvironment: EnvironmentPatchResult;
   recoverDatabase: Maybe<Database>;
   regenerateDeployHook: Maybe<DeployHook>;
   removeWorkspaceMember: Maybe<Scalars['String']['output']>;
@@ -1058,6 +1081,14 @@ export type MutationInviteWorkspaceMemberArgs = {
 
 export type MutationLinkEnvGroupArgs = {
   id: Scalars['String']['input'];
+  serviceId: Scalars['String']['input'];
+};
+
+
+export type MutationPatchServiceEnvironmentArgs = {
+  envVars?: InputMaybe<Array<EnvironmentEnvVarPatchInput>>;
+  saveMode: Scalars['String']['input'];
+  secretFiles?: InputMaybe<Array<EnvironmentSecretFilePatchInput>>;
   serviceId: Scalars['String']['input'];
 };
 
@@ -3339,6 +3370,16 @@ export type DeleteEnvVarMutationVariables = Exact<{
 
 export type DeleteEnvVarMutation = { deleteEnvVar: boolean | null };
 
+export type PatchServiceEnvironmentMutationVariables = Exact<{
+  serviceId: Scalars['String']['input'];
+  envVars?: InputMaybe<Array<EnvironmentEnvVarPatchInput> | EnvironmentEnvVarPatchInput>;
+  secretFiles?: InputMaybe<Array<EnvironmentSecretFilePatchInput> | EnvironmentSecretFilePatchInput>;
+  saveMode: Scalars['String']['input'];
+}>;
+
+
+export type PatchServiceEnvironmentMutation = { patchServiceEnvironment: { __typename: 'EnvironmentPatchResult', envVarKeys: Array<string>, secretFileNames: Array<string>, rolledOut: boolean } };
+
 export type ServiceEventsQueryVariables = Exact<{
   serviceId: Scalars['String']['input'];
   cursor?: InputMaybe<Scalars['String']['input']>;
@@ -3935,6 +3976,7 @@ export const EnvVarValueDocument = {"kind":"Document","definitions":[{"kind":"Op
 export const SetEnvVarsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SetEnvVars"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"envVars"}},"type":{"kind":"NonNullType","type":{"kind":"ListType","type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"EnvVarInput"}}}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"setEnvVars"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"serviceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"envVars"},"value":{"kind":"Variable","name":{"kind":"Name","value":"envVars"}}}]}]}}]} as unknown as DocumentNode<SetEnvVarsMutation, SetEnvVarsMutationVariables>;
 export const SetEnvVarDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SetEnvVar"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"key"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"value"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"generateValue"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"setEnvVar"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"serviceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"key"},"value":{"kind":"Variable","name":{"kind":"Name","value":"key"}}},{"kind":"Argument","name":{"kind":"Name","value":"value"},"value":{"kind":"Variable","name":{"kind":"Name","value":"value"}}},{"kind":"Argument","name":{"kind":"Name","value":"generateValue"},"value":{"kind":"Variable","name":{"kind":"Name","value":"generateValue"}}}]}]}}]} as unknown as DocumentNode<SetEnvVarMutation, SetEnvVarMutationVariables>;
 export const DeleteEnvVarDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteEnvVar"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"key"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteEnvVar"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"serviceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"key"},"value":{"kind":"Variable","name":{"kind":"Name","value":"key"}}}]}]}}]} as unknown as DocumentNode<DeleteEnvVarMutation, DeleteEnvVarMutationVariables>;
+export const PatchServiceEnvironmentDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"PatchServiceEnvironment"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"envVars"}},"type":{"kind":"ListType","type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"EnvironmentEnvVarPatchInput"}}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"secretFiles"}},"type":{"kind":"ListType","type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"EnvironmentSecretFilePatchInput"}}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"saveMode"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"patchServiceEnvironment"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"serviceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"envVars"},"value":{"kind":"Variable","name":{"kind":"Name","value":"envVars"}}},{"kind":"Argument","name":{"kind":"Name","value":"secretFiles"},"value":{"kind":"Variable","name":{"kind":"Name","value":"secretFiles"}}},{"kind":"Argument","name":{"kind":"Name","value":"saveMode"},"value":{"kind":"Variable","name":{"kind":"Name","value":"saveMode"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"envVarKeys"}},{"kind":"Field","name":{"kind":"Name","value":"secretFileNames"}},{"kind":"Field","name":{"kind":"Name","value":"rolledOut"}}]}}]}}]} as unknown as DocumentNode<PatchServiceEnvironmentMutation, PatchServiceEnvironmentMutationVariables>;
 export const ServiceEventsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ServiceEvents"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"cursor"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"serviceEvents"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"serviceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"cursor"},"value":{"kind":"Variable","name":{"kind":"Name","value":"cursor"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"cursor"}},{"kind":"Field","name":{"kind":"Name","value":"details"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deployId"}},{"kind":"Field","name":{"kind":"Name","value":"deployStatus"}},{"kind":"Field","name":{"kind":"Name","value":"preDeployStatus"}},{"kind":"Field","name":{"kind":"Name","value":"actor"}},{"kind":"Field","name":{"kind":"Name","value":"triggeredByUser"}},{"kind":"Field","name":{"kind":"Name","value":"image"}},{"kind":"Field","name":{"kind":"Name","value":"commitId"}},{"kind":"Field","name":{"kind":"Name","value":"commitMessage"}},{"kind":"Field","name":{"kind":"Name","value":"startedAt"}},{"kind":"Field","name":{"kind":"Name","value":"finishedAt"}},{"kind":"Field","name":{"kind":"Name","value":"trigger"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstBuild"}},{"kind":"Field","name":{"kind":"Name","value":"envUpdated"}},{"kind":"Field","name":{"kind":"Name","value":"manual"}},{"kind":"Field","name":{"kind":"Name","value":"deployedByRender"}},{"kind":"Field","name":{"kind":"Name","value":"clearCache"}},{"kind":"Field","name":{"kind":"Name","value":"rollback"}}]}}]}}]}}]}}]} as unknown as DocumentNode<ServiceEventsQuery, ServiceEventsQueryVariables>;
 export const TriggerDeployDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"TriggerDeploy"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"commitId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"deployMode"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"triggerDeploy"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"serviceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"commitId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"commitId"}}},{"kind":"Argument","name":{"kind":"Name","value":"deployMode"},"value":{"kind":"Variable","name":{"kind":"Name","value":"deployMode"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"trigger"}},{"kind":"Field","name":{"kind":"Name","value":"rollbackOf"}},{"kind":"Field","name":{"kind":"Name","value":"image"}}]}}]}}]} as unknown as DocumentNode<TriggerDeployMutation, TriggerDeployMutationVariables>;
 export const CancelDeployDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CancelDeploy"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"deployId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cancelDeploy"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"serviceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"deployId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"deployId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}}]} as unknown as DocumentNode<CancelDeployMutation, CancelDeployMutationVariables>;

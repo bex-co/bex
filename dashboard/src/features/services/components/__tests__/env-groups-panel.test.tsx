@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { EnvGroupView } from "@/features/env-groups/types";
 
@@ -10,6 +10,15 @@ const mockCreateGroup = vi.fn();
 const mockDeleteGroup = vi.fn();
 const mockLinkGroup = vi.fn();
 const mockUnlinkGroup = vi.fn();
+
+vi.mock("@/features/services/hooks/use-server", () => ({
+  useServer: (id: string) => ({
+    service: { id, name: id },
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+  }),
+}));
 
 vi.mock(
   "@/features/env-groups/hooks/use-env-groups",
@@ -59,7 +68,9 @@ describe("EnvGroupsPanel", () => {
   it("renders the empty state when there are no groups", () => {
     mockUseEnvGroups.mockReturnValue(groupsResult([]));
     render(<EnvGroupsPanel serviceId="web" />);
-    expect(screen.getByText("No environment groups")).toBeInTheDocument();
+    expect(
+      screen.getByText(/No workspace environment groups yet/),
+    ).toBeInTheDocument();
   });
 
   it("lists groups with their var keys + file names and a Link action when not linked", () => {
@@ -133,21 +144,25 @@ describe("EnvGroupsPanel", () => {
 
     // blank name => no mutation
     await user.type(nameInput, "   ");
-    await user.click(screen.getByRole("button", { name: /^Create$/ }));
+    expect(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    ).toBeDisabled();
     expect(mockCreateGroup).not.toHaveBeenCalled();
 
     await user.clear(nameInput);
     await user.type(nameInput, "shared");
-    await user.click(screen.getByRole("button", { name: /^Create$/ }));
+    await user.click(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    );
     expect(mockCreateGroup).toHaveBeenCalledWith({
       name: "shared",
       envVars: [],
       secretFiles: [],
-      serviceIds: [],
+      serviceIds: ["web"],
     });
   });
 
-  it("deletes a group after confirming", async () => {
+  it("does not expose workspace-destructive group deletion", () => {
     mockUseEnvGroups.mockReturnValue(
       groupsResult([
         {
@@ -159,14 +174,10 @@ describe("EnvGroupsPanel", () => {
         },
       ]),
     );
-    const user = userEvent.setup();
     render(<EnvGroupsPanel serviceId="web" />);
-
-    await user.click(screen.getByRole("button", { name: "Delete" }));
-    const dialog = await screen.findByRole("alertdialog");
-    expect(within(dialog).getByText("Delete shared?")).toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
-
-    await waitFor(() => expect(mockDeleteGroup).toHaveBeenCalledWith("eg1"));
+    expect(
+      screen.queryByRole("button", { name: "Delete" }),
+    ).not.toBeInTheDocument();
+    expect(mockDeleteGroup).not.toHaveBeenCalled();
   });
 });
