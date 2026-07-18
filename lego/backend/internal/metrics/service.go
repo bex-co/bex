@@ -536,6 +536,14 @@ func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1al
 	}
 	unit := requestUnit(q.Metric)
 	for i := range series {
+		if series[i].Labels == nil {
+			series[i].Labels = map[string]string{}
+		}
+		// Prometheus aggregation commonly removes every selector label. Restore
+		// the caller-facing resource identity here: operational selectors use the
+		// resolved App name, but multi-resource REST/GraphQL/MCP responses must
+		// remain attributable to the public id or name the caller requested.
+		series[i].Labels["resource"] = q.App
 		if series[i].Unit == "" {
 			series[i].Unit = unit
 		}

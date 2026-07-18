@@ -343,6 +343,9 @@ func TestManagedServiceIDUsesResolvedAppNameForEveryMetricsLookup(t *testing.T) 
 			if err != nil || len(series) != 1 || series[0].Points[0].Value != 7 {
 				t.Fatalf("Metrics: err=%v series=%+v", err, series)
 			}
+			if got := series[0].Labels["resource"]; got != managedAppID {
+				t.Errorf("response resource = %q, want public id %q", got, managedAppID)
+			}
 		})
 	}
 
@@ -413,7 +416,7 @@ func TestManagedServiceIDMetricsAcrossRESTGraphQLAndMCP(t *testing.T) {
 	}
 	gql := graphql.Do(graphql.Params{
 		Schema: schema, Context: context.Background(),
-		RequestString: fmt.Sprintf(`{ metrics(query: {filters: [{field: "RESOURCE", values: [%q]}], name: "CPU"}) { unit values { value } } }`, managedAppID),
+		RequestString: fmt.Sprintf(`{ metrics(query: {filters: [{field: "RESOURCE", values: [%q]}], name: "CPU"}) { unit labels { field value } values { value } } }`, managedAppID),
 	})
 	if len(gql.Errors) > 0 {
 		t.Fatalf("GraphQL errors: %v", gql.Errors)
@@ -421,6 +424,16 @@ func TestManagedServiceIDMetricsAcrossRESTGraphQLAndMCP(t *testing.T) {
 	gqlSeries := gql.Data.(map[string]any)["metrics"].([]any)
 	if len(gqlSeries) != 1 || gqlSeries[0].(map[string]any)["unit"] != unitCores {
 		t.Fatalf("GraphQL series = %+v", gqlSeries)
+	}
+	var gqlResource string
+	for _, label := range gqlSeries[0].(map[string]any)["labels"].([]any) {
+		fields := label.(map[string]any)
+		if fields["field"] == "resource" {
+			gqlResource, _ = fields["value"].(string)
+		}
+	}
+	if gqlResource != managedAppID {
+		t.Errorf("GraphQL resource label = %q, want %q", gqlResource, managedAppID)
 	}
 
 	ctx := context.Background()
@@ -454,6 +467,43 @@ func TestManagedServiceIDMetricsAcrossRESTGraphQLAndMCP(t *testing.T) {
 	}
 	if got := mcpMetrics.Series[0].Labels["resource"]; got != managedAppID {
 		t.Errorf("MCP resource label = %q, want %q", got, managedAppID)
+	}
+}
+
+func TestLegacyLabelLessAppNameMetricsCompatibility(t *testing.T) {
+	const (
+		appName = "legacy"
+		podName = "legacy-6d5896f9c9-abcde"
+	)
+	var resourceApp string
+	resourceSource := func(_ context.Context, _, app string) ([]PodResourceUsage, error) {
+		resourceApp = app
+		return []PodResourceUsage{{Pod: podName, CPUCores: 0.25}}, nil
+	}
+	var request RequestMetricsRequest
+	requestSource := func(_ context.Context, req RequestMetricsRequest) ([]MetricSeries, error) {
+		request = req
+		return []MetricSeries{{Points: []MetricPoint{{Value: 3}}}}, nil
+	}
+	svc := newService(resourceSource, requestSource,
+		sampleApp(appName), // no id or public-name labels: legacy hand-applied CR
+		podFor(appName, podName),
+	)
+
+	cpu, err := svc.Metrics(context.Background(), MetricQuery{App: appName, Metric: MetricCPU})
+	if err != nil || len(cpu) != 1 || cpu[0].Points[0].Value != 0.25 {
+		t.Fatalf("legacy CPU metrics: err=%v series=%+v", err, cpu)
+	}
+	if resourceApp != appName || cpu[0].Labels["resource"] != appName {
+		t.Errorf("legacy resource identity: selector=%q labels=%+v", resourceApp, cpu[0].Labels)
+	}
+
+	httpSeries, err := svc.Metrics(context.Background(), MetricQuery{App: appName, Metric: MetricHTTPRequests})
+	if err != nil || len(httpSeries) != 1 || httpSeries[0].Points[0].Value != 3 {
+		t.Fatalf("legacy HTTP metrics: err=%v series=%+v", err, httpSeries)
+	}
+	if request.App != appName || request.AppID != appName || httpSeries[0].Labels["resource"] != appName {
+		t.Errorf("legacy request identity: request=%+v labels=%+v", request, httpSeries[0].Labels)
 	}
 }
 
