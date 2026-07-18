@@ -269,12 +269,23 @@ func main() {
 			Region:   envOr("BEX_STATIC_S3_REGION", ""),
 			Secret:   envOr("BEX_STATIC_S3_SECRET", ""),
 		},
-		StaticServerService: envOr("BEX_STATIC_SERVER_SERVICE", ""),
-		StaticServerPort:    staticServerPort,
-		TenantSignKeySecret: os.Getenv("BEX_TENANT_SIGNING_KEY_SECRET"),
-		TenantSignImage:     envOr("BEX_TENANT_SIGNING_IMAGE", ""),
-		RegistryPushSecret:  os.Getenv("BEX_REGISTRY_PUSH_SECRET"),
-		RegistryPullSecret:  os.Getenv("BEX_REGISTRY_PULL_SECRET"),
+		StaticServerService:     envOr("BEX_STATIC_SERVER_SERVICE", ""),
+		StaticServerPort:        staticServerPort,
+		TenantSignKeySecret:     os.Getenv("BEX_TENANT_SIGNING_KEY_SECRET"),
+		TenantSignImage:         envOr("BEX_TENANT_SIGNING_IMAGE", ""),
+		RegistryPushSecret:      os.Getenv("BEX_REGISTRY_PUSH_SECRET"),
+		RegistryPullSecret:      os.Getenv("BEX_REGISTRY_PULL_SECRET"),
+		RegistryBuildPullSecret: os.Getenv("BEX_REGISTRY_BUILD_PULL_SECRET"),
+	}
+	// Build-namespace pull credential for build-plane Jobs (the static-site publish
+	// Job) that pull the just-built tenant image from Zot. The per-App/shared tenant
+	// pull secret lives in the App namespace and is unreachable when the build Job
+	// runs in a separate BEX_BUILD_NAMESPACE, so this is a distinct build-ns secret
+	// (scripts/registry-secrets.sh's bex-registry-pull, bex-builder with wildcard
+	// read). Default to that conventional name whenever the push credential is set
+	// (i.e. Zot auth is enabled); unset in dev ⇒ anonymous pull, byte-identical.
+	if appReconciler.RegistryBuildPullSecret == "" && appReconciler.RegistryPushSecret != "" {
+		appReconciler.RegistryBuildPullSecret = "bex-registry-pull"
 	}
 	// Per-App registry pull credentials (w7/m36). Active when BEX_REGISTRY_NS is
 	// set (typically "bex-registry"). Supersedes the shared bex-puller path.

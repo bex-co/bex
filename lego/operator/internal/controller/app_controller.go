@@ -178,6 +178,15 @@ type AppReconciler struct {
 	// kubelet pulls authenticate against an auth-enabled registry (w7/m8). Empty
 	// => no imagePullSecret attached. Superseded by PerAppRegistry when set.
 	RegistryPullSecret string
+	// RegistryBuildPullSecret names a dockerconfigjson Secret in the BUILD namespace
+	// used as the imagePullSecret for build-plane Jobs that pull the just-built
+	// tenant image from Zot — today the static-site publish Job's extract
+	// initContainer. The tenant pull secret (per-App reg-pull-<name> / shared
+	// RegistryPullSecret) lives in the App namespace and is unreachable when the
+	// build Job runs in a separate BEX_BUILD_NAMESPACE, so this is a distinct
+	// build-ns credential (scripts/registry-secrets.sh's bex-registry-pull,
+	// bex-builder with wildcard read). Empty => anonymous pull (dev default).
+	RegistryBuildPullSecret string
 	// PerAppRegistry, when non-nil, enables per-App Zot pull credentials (w7/m36,
 	// docs/ADR022-tenant-isolation.md §Read policy). Each App gets its own
 	// "app-<name>" htpasswd user scoped to its image repository, replacing the
@@ -495,6 +504,25 @@ func (r *AppReconciler) imagePullSecrets(app *appv1alpha1.App, image string) []c
 		out = append(out, corev1.LocalObjectReference{Name: app.Spec.ExternalRegistryPullSecret})
 	}
 	return out
+}
+
+// buildJobPullSecret returns the single imagePullSecret name a build-plane Job
+// (the static-site publish Job) uses to pull the just-built, always platform-
+// registry-hosted tenant image from Zot. When the build Job runs in a separate
+// BEX_BUILD_NAMESPACE, the tenant pull secret (per-App reg-pull-<name> or shared
+// RegistryPullSecret) lives in the App namespace and is NOT reachable from the
+// build namespace, so use the build-namespace credential (RegistryBuildPullSecret).
+// When the build and App namespaces coincide, the tenant pull secret is right
+// here. Empty => anonymous pull (dev's unauthenticated Zot). This is the pull
+// counterpart to the build Job's own build-namespace RegistryPushSecret.
+func (r *AppReconciler) buildJobPullSecret(app *appv1alpha1.App) string {
+	if r.buildNamespace(app.Namespace) != app.Namespace {
+		return r.RegistryBuildPullSecret
+	}
+	if r.PerAppRegistry != nil {
+		return registry.PullSecretName(app.Name)
+	}
+	return r.RegistryPullSecret
 }
 
 // backfillWorkloadPullSecrets converges existing long-running pod templates
@@ -1407,8 +1435,13 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 			Revision:    rev,
 			Store:       r.StaticStore,
 			Namespace:   r.buildNamespace(app.Namespace),
-			PullSecret:  r.RegistryPullSecret, // w7/m8: extract pulls the built image from authed Zot
-			Client:      r.Client,
+			// The extract initContainer pulls the built image from authed Zot. Use
+			// the BUILD-namespace pull credential: the per-App/shared tenant pull
+			// secret lives in the App namespace, unreachable when the publish Job
+			// runs in a separate BEX_BUILD_NAMESPACE (w9/m44 — static-site publish
+			// failed on prod pulling with the apps-ns secret; docs/ADR029).
+			PullSecret: r.buildJobPullSecret(app),
+			Client:     r.Client,
 		}); err != nil {
 			return r.fail(ctx, app, "PublishFailed", err)
 		}
