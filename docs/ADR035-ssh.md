@@ -133,6 +133,10 @@ The re-drawn boundary is: **terminal bytes reach the browser, but only over an a
 
 Unset `BEX_SHELL_TICKET_SECRET` (on bex-api or the gateway) disables the Web Shell: bex-api returns 503 for the ticket verb and the gateway does not start its WebSocket listener. That is the byte-identical default; native `ssh` is unaffected.
 
+### Production activation
+
+The Web Shell rides the same isolated gateway as native SSH, so it inherits that fail-closed sequence and adds one edge route and one shared secret. In order: deploy the image and manifests (they already wire `BEX_SHELL_TICKET_SECRET` into **both** bex-api and the gateway as an _optional_ Secret ref, set the gateway's `BEX_SHELL_WS_ADDR` to `:8080`, and set bex-api's `BEX_SHELL_WS_URL` to `wss://ssh.bex.co/shell`); confirm the gateway Service exposes the plain-HTTP shell port (8080), the `ssh-shell` Ingress publishes `wss://ssh.bex.co/shell` with a valid cert-manager TLS cert, and the gateway NetworkPolicy admits Traefik → 8080; and only then install the shared HMAC key with [`scripts/shell-ticket-secret.sh`](../scripts/shell-ticket-secret.sh) (the same `bex-shell-ticket` Secret both Deployments mount). Installing that Secret is the single activation flip: before it, `createShellSession` honestly 503s ("web shell transport not configured") and the gateway starts no WebSocket listener; after it, the script rolls both Deployments and the dashboard terminal connects. `BEX_SHELL_WS_URL` is static — the Secret, not the URL, gates the feature — so the URL may be present before the edge is reachable without ever minting a redeemable-nowhere ticket.
+
 ## Explicit non-goals
 
 This ADR does not authorize ephemeral shell instances, `--ephemeral`, one-off jobs, cron shell access, hosted sandboxes, SFTP/SCP, forwarding, agent forwarding, direct TCP/Unix-socket channels, shell installation, or an sshd sidecar. The in-dashboard [Browser Web Shell](#browser-web-shell) attaches to an already-running instance and is in scope; ephemeral and hosted execution remain excluded.

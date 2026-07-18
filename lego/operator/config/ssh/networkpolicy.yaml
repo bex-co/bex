@@ -16,6 +16,12 @@ spec:
       ports:
         - port: 2222
           protocol: TCP
+        # Browser Web Shell WebSocket (w2/m55): Traefik terminates TLS for
+        # wss://ssh.bex.co/shell and forwards to the gateway's plain-HTTP
+        # BEX_SHELL_WS_ADDR (:8080). The listener runs only when the shared
+        # BEX_SHELL_TICKET_SECRET is installed.
+        - port: 8080
+          protocol: TCP
     - from:
         - namespaceSelector:
             matchLabels:

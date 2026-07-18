@@ -183,6 +183,25 @@ spec:
                   name: bex-smtp
                   key: password
                   optional: true
+            # Browser Web Shell (w2/m55, docs/ADR035-ssh.md § Browser Web Shell):
+            # bex-api mints the short-lived exec ticket the isolated ssh-gateway
+            # verifies, signed with the HMAC key BOTH processes share via the
+            # bex-shell-ticket Secret (the gateway mounts the same Secret). bex-api
+            # never gains pods/exec — it only authorizes (can_operate) and signs.
+            # BEX_SHELL_WS_URL is the browser-reachable, Traefik-terminated gateway
+            # WebSocket origin handed to the dashboard terminal. optional:true ⇒ an
+            # absent Secret leaves the ticket verb 503 ("web shell transport not
+            # configured"); native ssh is unaffected. The Secret is the activation
+            # gate: install it (scripts/shell-ticket-secret.sh) only after the
+            # ssh.bex.co /shell edge route + gateway are verified reachable.
+            - name: BEX_SHELL_TICKET_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bex-shell-ticket
+                  key: secret
+                  optional: true
+            - name: BEX_SHELL_WS_URL
+              value: wss://ssh.bex.co/shell
           ports:
             - name: http
               containerPort: 8090
