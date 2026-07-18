@@ -71,14 +71,14 @@ export function DeployActions({
         const { data } = await rollbackService({
           variables: { serviceId, deployId },
         });
-        toast.success(t("services.rollbackSuccess"));
         const rollbackId = data?.rollbackService?.id;
-        if (rollbackId) {
-          void navigate({
-            to: "/services/$serviceId/deploys/$deployId",
-            params: { serviceId, deployId: rollbackId },
-          });
-        }
+        if (!rollbackId)
+          throw new Error("rollbackService returned no deploy id");
+        toast.success(t("services.rollbackSuccess"));
+        void navigate({
+          to: "/services/$serviceId/deploys/$deployId",
+          params: { serviceId, deployId: rollbackId },
+        });
       }
       onChanged?.();
     } catch {

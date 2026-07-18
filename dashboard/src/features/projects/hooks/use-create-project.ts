@@ -33,7 +33,8 @@ export function useCreateProject(): UseCreateProjectResult {
         const res = await mutate({
           variables: { name, ownerId: currentWorkspaceId },
         });
-        const id = res.data?.createProject?.id ?? null;
+        const id = res.data?.createProject?.id;
+        if (!id) throw new Error("createProject returned no id");
         toast.success(t("projects.createSuccess", { name }));
         return id;
       } catch {

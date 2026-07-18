@@ -203,7 +203,7 @@ function renderPage(initialEntry = "/") {
     history: createMemoryHistory({ initialEntries: [initialEntry] }),
     context: { client: {} as never, session: null },
   });
-  return render(<RouterProvider router={router} />);
+  return { ...render(<RouterProvider router={router} />), router };
 }
 
 // ── setup ─────────────────────────────────────────────────────────────────────
@@ -219,7 +219,7 @@ beforeEach(() => {
   connectionState.loading = false;
   create.mockReset();
   create.mockResolvedValue({
-    serviceId: "srv-abc123",
+    id: "srv-abc123",
     deployId: "dep-first",
   });
   clearNameConflict.mockReset();
@@ -895,28 +895,46 @@ describe("NewServicePage", () => {
 
     it("lands a successful create on its first deploy detail page", async () => {
       const user = userEvent.setup();
-      renderPage();
+      const { router } = renderPage();
       await user.click(
         await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
       );
       await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
 
       expect(await screen.findByText("deploy landing")).toBeInTheDocument();
+      expect(router.state.location.pathname).toBe(
+        "/services/srv-abc123/deploys/dep-first",
+      );
     });
 
     it("falls back to the service page when create has no deploy record", async () => {
       create.mockResolvedValueOnce({
-        serviceId: "srv-local",
+        id: "srv-local",
         deployId: null,
       });
       const user = userEvent.setup();
-      renderPage();
+      const { router } = renderPage();
       await user.click(
         await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
       );
       await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
 
       expect(await screen.findByText("service landing")).toBeInTheDocument();
+      expect(router.state.location.pathname).toBe("/services/srv-local");
+    });
+
+    it("does not navigate when create fails", async () => {
+      create.mockResolvedValueOnce(null);
+      const user = userEvent.setup();
+      const { router } = renderPage();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+
+      expect(create).toHaveBeenCalled();
+      expect(router.state.location.pathname).toBe("/");
+      expect(screen.getByLabelText("Name")).toHaveValue("web-frontend");
     });
   });
 });

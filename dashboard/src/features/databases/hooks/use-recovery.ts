@@ -137,26 +137,28 @@ export function useRecovery(id: string) {
   }, [createExportMut, id, refetchExports, t]);
 
   const recover = useCallback(
-    async (input: RecoverInput): Promise<boolean> => {
+    async (input: RecoverInput): Promise<string | null> => {
       try {
-        await recoverMut({
+        const result = await recoverMut({
           variables: {
             id,
             name: input.name,
             targetTime: input.targetTime || null,
           },
         });
+        const recoveredID = result.data?.recoverDatabase?.id;
+        if (!recoveredID) throw new Error("recoverDatabase returned no id");
         toast.success(
           t("databases.recoveryRestoreStarted", { name: input.name }),
         );
-        return true;
+        return recoveredID;
       } catch (e) {
         toast.error(
           t("databases.recoveryRestoreError", {
             error: (e as Error).message,
           }),
         );
-        return false;
+        return null;
       }
     },
     [recoverMut, id, t],

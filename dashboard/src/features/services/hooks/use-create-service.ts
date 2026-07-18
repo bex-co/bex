@@ -127,7 +127,8 @@ export function useCreateService(): UseCreateServiceResult {
           },
         });
         const svc = res.data?.createService;
-        const id = svc?.id ?? input.name;
+        const id = svc?.id;
+        if (!id) throw new Error("createService returned no id");
         const deployId = svc?.latestDeployId ?? undefined;
         toast.success(t("services.createSuccess", { name: input.name }));
         return { id, deployId };

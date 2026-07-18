@@ -245,14 +245,20 @@ export function HomePage() {
         // refetchAll, not just the databases list: a create with a project or
         // environment assignment also changes the Projects query this page's
         // grouping is built from.
-        onCreated={() => refetchAll()}
+        onCreated={(databaseId) => {
+          refetchAll();
+          return navigate({
+            to: "/databases/$databaseId",
+            params: { databaseId },
+          });
+        }}
       />
       <NewProjectDialog
         open={newProjectOpen}
         onOpenChange={setNewProjectOpen}
         onCreated={(id) => {
           void refetchProjects();
-          void navigate({
+          return navigate({
             to: "/project/$projectId",
             params: { projectId: id },
           });

@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { RecoveryPanel } from "@/features/databases/components/recovery-panel";
 import type { ExportItem } from "@/features/databases/hooks/use-recovery";
+
+const navigate = vi.fn();
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => navigate,
+}));
 
 const createExport = vi.fn();
 const recover = vi.fn();
@@ -33,6 +39,7 @@ beforeEach(() => {
   state.exportInProgress = false;
   createExport.mockReset();
   recover.mockReset();
+  navigate.mockReset();
 });
 
 describe("RecoveryPanel logical exports", () => {
@@ -102,5 +109,42 @@ describe("RecoveryPanel logical exports", () => {
     expect(
       screen.getByText("The export is still being prepared."),
     ).toBeInTheDocument();
+  });
+
+  it("opens the recovered database by its returned immutable id", async () => {
+    recover.mockResolvedValue("dpg-recovered-id");
+    const user = userEvent.setup();
+    render(<RecoveryPanel id="dpg-source" />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Restore to new instance" }),
+    );
+    await user.type(screen.getByLabelText("New database name"), "recovered");
+    await user.click(screen.getByRole("button", { name: "Restore" }));
+
+    expect(recover).toHaveBeenCalledWith({
+      name: "recovered",
+      targetTime: undefined,
+    });
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/databases/$databaseId",
+      params: { databaseId: "dpg-recovered-id" },
+    });
+  });
+
+  it("keeps the recovery dialog in place when recovery fails", async () => {
+    recover.mockResolvedValue(null);
+    const user = userEvent.setup();
+    render(<RecoveryPanel id="dpg-source" />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Restore to new instance" }),
+    );
+    await user.type(screen.getByLabelText("New database name"), "recovered");
+    await user.click(screen.getByRole("button", { name: "Restore" }));
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByLabelText("New database name")).toHaveValue("recovered");
   });
 });

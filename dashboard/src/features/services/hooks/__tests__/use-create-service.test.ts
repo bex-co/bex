@@ -144,4 +144,23 @@ describe("useCreateService", () => {
       "Couldn't create web. Please try again.",
     );
   });
+
+  it("does not invent a name-based id when the create response omits its id", async () => {
+    const mutate = vi
+      .fn()
+      .mockResolvedValue({ data: { createService: { id: null } } });
+    mockUseMutation.mockReturnValue([mutate, { loading: false }]);
+
+    const { result } = renderHook(() => useCreateService());
+    let created: CreateServiceResult | null | undefined;
+    await act(async () => {
+      created = await result.current.create({ name: "friendly-web" });
+    });
+
+    expect(created).toBeNull();
+    expect(toastSuccess).not.toHaveBeenCalled();
+    expect(toastError).toHaveBeenCalledWith(
+      "Couldn't create friendly-web. Please try again.",
+    );
+  });
 });

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
   createRouter,
@@ -106,8 +107,9 @@ vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
     error: undefined,
   }),
 }));
+const createDatabase = vi.fn();
 vi.mock("@/features/databases/hooks/use-create-database", () => ({
-  useCreateDatabase: () => ({ create: vi.fn(), busy: false }),
+  useCreateDatabase: () => ({ create: createDatabase, busy: false }),
 }));
 // DatabaseRowActions/KeyValueRowActions call their delete hook unconditionally
 // (not gated behind the closed "•••" menu), same as useCreateDatabase above.
@@ -117,8 +119,9 @@ vi.mock("@/features/databases/hooks/use-delete-database", () => ({
 vi.mock("@/features/keyvalue/hooks/use-delete-key-value", () => ({
   useDeleteKeyValue: () => ({ remove: vi.fn(), deleting: null }),
 }));
+const createProject = vi.fn();
 vi.mock("@/features/projects/hooks/use-create-project", () => ({
-  useCreateProject: () => ({ create: vi.fn(), busy: false }),
+  useCreateProject: () => ({ create: createProject, busy: false }),
 }));
 // The database dialog's Project/Environment selector reads environments over
 // Apollo when OPEN (the ?new=database cases below) — same stub
@@ -188,15 +191,26 @@ function renderHomePage(initialPath = "/") {
         ? { new: search.new }
         : {},
   });
+  const databaseRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/databases/$databaseId",
+    component: () => <p>Database destination</p>,
+  });
+  const projectRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/project/$projectId",
+    component: () => <p>Project destination</p>,
+  });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute]),
+    routeTree: rootRoute.addChildren([indexRoute, databaseRoute, projectRoute]),
     history: createMemoryHistory({ initialEntries: [initialPath] }),
     context: { client: {} as never, session: null },
   });
-  return render(<RouterProvider router={router} />);
+  return { ...render(<RouterProvider router={router} />), router };
 }
 
 beforeEach(() => {
+  vi.clearAllMocks();
   servicesState.services = [];
   servicesState.loading = false;
   servicesState.error = undefined;
@@ -209,6 +223,8 @@ beforeEach(() => {
   projectsState.projects = [];
   projectsState.loading = false;
   projectsState.error = undefined;
+  createDatabase.mockResolvedValue("dpg-returned-id");
+  createProject.mockResolvedValue("prj-returned-id");
   run.mockReset();
 });
 
@@ -352,5 +368,76 @@ describe("URL-owned create dialogs (w1/m45)", () => {
     renderHomePage("/");
     expect(screen.queryByText("New Postgres")).not.toBeInTheDocument();
     expect(screen.queryByText("New Project")).not.toBeInTheDocument();
+  });
+
+  it("closes the Postgres search dialog before landing on the returned immutable id", async () => {
+    const user = userEvent.setup();
+    const { router } = renderHomePage("/?new=database");
+
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "friendly-name");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Create database" }),
+    );
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/databases/dpg-returned-id"),
+    );
+    expect(router.state.location.search).toEqual({});
+    expect(databasesState.refetch).toHaveBeenCalled();
+    expect(projectsState.refetch).toHaveBeenCalled();
+  });
+
+  it("keeps the Postgres form and route in place when create fails", async () => {
+    createDatabase.mockResolvedValueOnce(null);
+    const user = userEvent.setup();
+    const { router } = renderHomePage("/?new=database");
+
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "friendly-name");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Create database" }),
+    );
+
+    await waitFor(() => expect(createDatabase).toHaveBeenCalled());
+    expect(router.state.location.pathname).toBe("/");
+    expect(router.state.location.search).toEqual({ new: "database" });
+    expect(within(dialog).getByLabelText("Name")).toHaveValue("friendly-name");
+  });
+
+  it("lands a new Project on the returned immutable id after closing its search dialog", async () => {
+    const user = userEvent.setup();
+    const { router } = renderHomePage("/?new=project");
+
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "Friendly project");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Create Project" }),
+    );
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/project/prj-returned-id"),
+    );
+    expect(router.state.location.search).toEqual({});
+    expect(projectsState.refetch).toHaveBeenCalled();
+  });
+
+  it("keeps the Project form and route in place when create fails", async () => {
+    createProject.mockResolvedValueOnce(null);
+    const user = userEvent.setup();
+    const { router } = renderHomePage("/?new=project");
+
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "Friendly project");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Create Project" }),
+    );
+
+    await waitFor(() => expect(createProject).toHaveBeenCalled());
+    expect(router.state.location.pathname).toBe("/");
+    expect(router.state.location.search).toEqual({ new: "project" });
+    expect(within(dialog).getByLabelText("Name")).toHaveValue(
+      "Friendly project",
+    );
   });
 });
