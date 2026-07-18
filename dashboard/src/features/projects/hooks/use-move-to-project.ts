@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react";
-import { useMutation } from "@apollo/client/react";
+import { useApolloClient, useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import {
+  ProjectsDocument,
   SetProjectServicesDocument,
   SetProjectDatabasesDocument,
   SetProjectKeyValuesDocument,
@@ -50,7 +51,8 @@ export function useMoveToProject(
   kind: ProjectResourceKind,
 ): UseMoveToProjectResult {
   const { t } = useTranslations();
-  const { projects, refetch } = useProjects();
+  const client = useApolloClient();
+  const { projects } = useProjects();
   const [setServices] = useMutation(SetProjectServicesDocument);
   const [setDatabases] = useMutation(SetProjectDatabasesDocument);
   const [setKeyValues] = useMutation(SetProjectKeyValuesDocument);
@@ -77,6 +79,18 @@ export function useMoveToProject(
     [projects, kind],
   );
 
+  // Post-move refresh. Selecting a menu item closes the dropdown, which
+  // unmounts the menu (and this hook) and aborts any query the unmounted
+  // instance still had in flight — so the refresh goes through the client
+  // (lifecycle-independent, updates the overview page's own watcher) and is
+  // fire-and-forget: the mutations already succeeded and updated the cache,
+  // so a refresh failure must never be reported as a failed move.
+  const refreshProjects = useCallback(() => {
+    client
+      .refetchQueries({ include: [ProjectsDocument] })
+      .catch(() => undefined);
+  }, [client]);
+
   const moveTo = useCallback(
     async (resourceId: string, resourceName: string, targetProjectId: string) => {
       const from = projects.find((p) => idsOf(kind, p).includes(resourceId));
@@ -91,19 +105,19 @@ export function useMoveToProject(
           );
         }
         await runSet(to.id, [...idsOf(kind, to), resourceId]);
-        toast.success(
-          t("projects.moveSuccess", { name: resourceName, project: to.name }),
-        );
-        await refetch();
-        return true;
       } catch {
         toast.error(t("projects.moveError", { name: resourceName }));
         return false;
       } finally {
         setBusyId(null);
       }
+      toast.success(
+        t("projects.moveSuccess", { name: resourceName, project: to.name }),
+      );
+      refreshProjects();
+      return true;
     },
-    [projects, kind, runSet, refetch, t],
+    [projects, kind, runSet, refreshProjects, t],
   );
 
   const removeFromProject = useCallback(
@@ -116,17 +130,17 @@ export function useMoveToProject(
           from.id,
           idsOf(kind, from).filter((id) => id !== resourceId),
         );
-        toast.success(t("projects.removeSuccess", { name: resourceName }));
-        await refetch();
-        return true;
       } catch {
         toast.error(t("projects.removeError", { name: resourceName }));
         return false;
       } finally {
         setBusyId(null);
       }
+      toast.success(t("projects.removeSuccess", { name: resourceName }));
+      refreshProjects();
+      return true;
     },
-    [projects, kind, runSet, refetch, t],
+    [projects, kind, runSet, refreshProjects, t],
   );
 
   return { projects, currentProjectId, moveTo, removeFromProject, busyId };
