@@ -159,9 +159,9 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     description: "Workspace settings delete section description",
   },
   "workspaces.deleteConfirmLabel": {
-    message: "在下方输入 {phrase} 以确认",
+    message: "在下方输入 {phrase} 以确认。",
     description:
-      "Delete-guard input label naming the exact 'sudo delete workspace <name>' phrase to type",
+      "Body prompt naming the exact 'sudo delete workspace <name>' phrase (rendered bold by SudoCommandField)",
   },
   "workspaces.deleteErrorTitle": {
     message: "删除工作区失败",

@@ -54,7 +54,9 @@ describe("DeleteWorkspaceCard — sudo-phrase confirm guard (w6/m3/t004, w6/m5/t
     const user = userEvent.setup();
     render(<DeleteWorkspaceCard workspace={WORKSPACE} />);
 
-    const input = screen.getByLabelText(new RegExp(`Type ${PHRASE} below to confirm`));
+    // The exact phrase is body copy; the input itself is labeled "Sudo Command".
+    expect(screen.getByText(PHRASE)).toBeInTheDocument();
+    const input = screen.getByLabelText("Sudo Command");
     const button = screen.getByRole("button", { name: "Delete Workspace" });
     expect(button).toBeDisabled();
 
@@ -73,7 +75,7 @@ describe("DeleteWorkspaceCard — sudo-phrase confirm guard (w6/m3/t004, w6/m5/t
     render(<DeleteWorkspaceCard workspace={WORKSPACE} />);
 
     await user.type(
-      screen.getByLabelText(new RegExp(`Type ${PHRASE} below to confirm`)),
+      screen.getByLabelText("Sudo Command"),
       `${PHRASE} `,
     );
     const button = screen.getByRole("button", { name: "Delete Workspace" });
@@ -88,7 +90,7 @@ describe("DeleteWorkspaceCard — sudo-phrase confirm guard (w6/m3/t004, w6/m5/t
     render(<DeleteWorkspaceCard workspace={WORKSPACE} />);
 
     await user.type(
-      screen.getByLabelText(new RegExp(`Type ${PHRASE} below to confirm`)),
+      screen.getByLabelText("Sudo Command"),
       PHRASE,
     );
     await user.click(screen.getByRole("button", { name: "Delete Workspace" }));
@@ -104,7 +106,7 @@ describe("DeleteWorkspaceCard — sudo-phrase confirm guard (w6/m3/t004, w6/m5/t
     render(<DeleteWorkspaceCard workspace={WORKSPACE} />);
 
     await user.type(
-      screen.getByLabelText(new RegExp(`Type ${PHRASE} below to confirm`)),
+      screen.getByLabelText("Sudo Command"),
       PHRASE,
     );
     await user.click(screen.getByRole("button", { name: "Delete Workspace" }));

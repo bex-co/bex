@@ -105,12 +105,13 @@ const enDatabases: Record<string, TranslationEntry> = {
   },
   "databases.deleteConfirmBody": {
     message:
-      "This permanently deletes the database and all its data — the Postgres cluster, its storage, and its connection credentials. This cannot be undone.",
-    description: "Delete-confirmation dialog body",
+      "This action cannot be undone. Are you sure you want to delete this Postgres instance?",
+    description: "Delete-confirmation dialog body (Render-style copy)",
   },
   "databases.deleteConfirmPrompt": {
-    message: "Type {name} to confirm.",
-    description: "Delete-confirmation typed-name prompt label",
+    message: "Type {phrase} below to confirm.",
+    description:
+      "Body prompt naming the exact 'sudo delete postgres <name>' phrase (rendered bold by SudoCommandField)",
   },
   "databases.deleteCancel": {
     message: "Cancel",

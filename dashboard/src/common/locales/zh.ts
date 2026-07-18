@@ -13,6 +13,11 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "加载中…",
     description: "Generic loading state label",
   },
+  "common.sudoCommandLabel": {
+    message: "Sudo 命令",
+    description:
+      "Input label on Render-style destructive type-to-confirm gates (live capture: docs/render-artifacts/workspace-lifecycle.md)",
+  },
   "common.navIntegrationsGroup": {
     message: "集成",
     description: "Sidebar nav section label (webhooks, notifications) — Render's grouping",

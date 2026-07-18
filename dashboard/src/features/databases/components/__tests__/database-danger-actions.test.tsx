@@ -51,7 +51,7 @@ describe("DatabaseDangerActions — detail-page bottom action row", () => {
     ).toBeEnabled();
   });
 
-  it("gates delete behind a typed-name confirmation", async () => {
+  it("gates delete behind the sudo type-to-confirm phrase", async () => {
     const onDeleted = vi.fn();
     const user = userEvent.setup();
     render(
@@ -69,7 +69,15 @@ describe("DatabaseDangerActions — detail-page bottom action row", () => {
     });
     expect(confirm).toBeDisabled();
 
-    await user.type(within(dialog).getByRole("textbox"), "shop-db");
+    expect(
+      within(dialog).getByText("sudo delete postgres shop-db"),
+    ).toBeInTheDocument();
+    const input = within(dialog).getByLabelText("Sudo Command");
+    // The bare database name is deliberately insufficient.
+    await user.type(input, "shop-db");
+    expect(confirm).toBeDisabled();
+    await user.clear(input);
+    await user.type(input, "sudo delete postgres shop-db");
     expect(confirm).toBeEnabled();
 
     await user.click(confirm);

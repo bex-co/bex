@@ -11,8 +11,9 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Body of a protected-service destructive-action retry dialog",
   },
   "services.protectedConfirmationPrompt": {
-    message: "Type {confirmation} to confirm",
-    description: "Label for the exact protected-action confirmation phrase",
+    message: "Type {phrase} below to confirm.",
+    description:
+      "Body prompt naming the exact protected-action confirmation phrase (rendered bold by SudoCommandField)",
   },
   "services.connect": {
     message: "Connect",
@@ -2205,12 +2206,14 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.deleteConfirmBody": {
     message:
-      "This permanently removes the service, its deployment, and its URL. This can't be undone.",
-    description: "Delete-confirm dialog body",
+      "This action cannot be undone. Are you sure you want to delete this {type}?",
+    description:
+      "Delete-confirm dialog body ({type} = lowercase Render type words, e.g. 'web service')",
   },
   "services.deleteConfirmPrompt": {
-    message: "Type {name} to confirm",
-    description: "Delete-confirm input label naming the immutable service id",
+    message: "Type {phrase} below to confirm.",
+    description:
+      "Body prompt naming Render's exact 'sudo delete <type> <name>' phrase (rendered bold by SudoCommandField)",
   },
   "services.deleteCancel": {
     message: "Cancel",

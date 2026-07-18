@@ -234,12 +234,14 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Delete env-group dialog title",
   },
   "envGroups.deleteDescription": {
-    message: "此操作会永久删除该组，并从所有服务取消关联。",
-    description: "Delete env-group dialog warning",
+    message:
+      "此操作无法撤销。确定要删除此环境变量组吗？它将从所有服务取消关联。",
+    description: "Delete env-group dialog warning (Render-style copy)",
   },
   "envGroups.deletePrompt": {
-    message: "输入 {id} 以确认。",
-    description: "Delete env-group typed-confirm prompt",
+    message: "在下方输入 {phrase} 以确认。",
+    description:
+      "Body prompt naming the exact 'sudo delete env group <name>' phrase (rendered bold by SudoCommandField)",
   },
   "envGroups.deleteConfirm": {
     message: "删除环境变量组",

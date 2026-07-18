@@ -75,9 +75,11 @@ describe("KeyValueDangerActions — Render-parity bottom action row", () => {
     const confirm = within(dialog).getByRole("button", {
       name: "Delete Key Value Instance",
     });
-    const input = within(dialog).getByLabelText(
-      "Type sudo delete key value sessions-cache below to confirm",
-    );
+    // The exact phrase is body copy; the input itself is labeled "Sudo Command".
+    expect(
+      within(dialog).getByText("sudo delete key value sessions-cache"),
+    ).toBeInTheDocument();
+    const input = within(dialog).getByLabelText("Sudo Command");
     expect(confirm).toBeDisabled();
 
     await user.type(input, "sudo delete key value sessions-cache");
@@ -115,9 +117,10 @@ describe("KeyValueDangerActions — Render-parity bottom action row", () => {
     const confirm = within(dialog).getByRole("button", {
       name: "Suspend Key Value Instance",
     });
-    const input = within(dialog).getByLabelText(
-      "Type sudo suspend key value sessions-cache below to confirm",
-    );
+    expect(
+      within(dialog).getByText("sudo suspend key value sessions-cache"),
+    ).toBeInTheDocument();
+    const input = within(dialog).getByLabelText("Sudo Command");
     expect(confirm).toBeDisabled();
 
     await user.type(input, "sudo suspend key value sessions-cache");

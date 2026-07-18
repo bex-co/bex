@@ -9,8 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/common/components/ui/dialog";
-import { Input } from "@/common/components/ui/input";
-import { Label } from "@/common/components/ui/label";
+import { SudoCommandField } from "@/common/components/sudo-command-field";
 import { useTranslations } from "@/common/hooks/use-translations";
 
 export interface ProtectedConfirmationDialogProps {
@@ -51,20 +50,13 @@ export function ProtectedConfirmationDialog({
             {t("services.protectedConfirmationBody", { name: serviceName })}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2">
-          <Label htmlFor="protected-service-confirmation">
-            {t("services.protectedConfirmationPrompt", {
-              confirmation: requiredConfirmation,
-            })}
-          </Label>
-          <Input
-            id="protected-service-confirmation"
-            value={confirmation}
-            onChange={(event) => setConfirmation(event.target.value)}
-            autoComplete="off"
-            placeholder={requiredConfirmation}
-          />
-        </div>
+        <SudoCommandField
+          id="protected-service-confirmation"
+          promptKey="services.protectedConfirmationPrompt"
+          phrase={requiredConfirmation}
+          value={confirmation}
+          onValueChange={setConfirmation}
+        />
         <DialogFooter>
           <Button
             variant="outline"

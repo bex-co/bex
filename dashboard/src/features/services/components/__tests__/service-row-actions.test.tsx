@@ -49,9 +49,11 @@ describe("ServiceRowActions", () => {
 
     expect(onRun).toHaveBeenNthCalledWith(1, "suspend", service);
     const protectedDialog = await screen.findByRole("dialog");
-    const input = within(protectedDialog).getByLabelText(
-      /sudo suspend service app/,
-    );
+    // The backend's phrase is body copy; the input is labeled "Sudo Command".
+    expect(
+      within(protectedDialog).getByText("sudo suspend service app"),
+    ).toBeInTheDocument();
+    const input = within(protectedDialog).getByLabelText("Sudo Command");
     const retry = within(protectedDialog).getByRole("button", {
       name: "Suspend",
     });

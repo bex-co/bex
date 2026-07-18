@@ -19,8 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/common/components/ui/alert-dialog";
-import { Input } from "@/common/components/ui/input";
-import { Label } from "@/common/components/ui/label";
+import { SudoCommandField } from "@/common/components/sudo-command-field";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
@@ -59,18 +58,13 @@ export function DeleteKeyValueDialog({
             {t("keyvalue.deleteConfirmBody")}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2">
-          <Label htmlFor="kv-delete-confirm">
-            {t("keyvalue.deleteConfirmPrompt", { phrase: confirmPhrase })}
-          </Label>
-          <Input
-            id="kv-delete-confirm"
-            value={typed}
-            onChange={(event) => setTyped(event.target.value)}
-            autoComplete="off"
-            placeholder={confirmPhrase}
-          />
-        </div>
+        <SudoCommandField
+          id="kv-delete-confirm"
+          promptKey="keyvalue.deleteConfirmPrompt"
+          phrase={confirmPhrase}
+          value={typed}
+          onValueChange={setTyped}
+        />
         <DialogFooter>
           <Button
             variant="outline"
@@ -133,18 +127,13 @@ export function SuspendKeyValueDialog({
             </span>
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <div className="space-y-2">
-          <Label htmlFor="kv-suspend-confirm">
-            {t("keyvalue.confirmSuspendPrompt", { phrase: confirmPhrase })}
-          </Label>
-          <Input
-            id="kv-suspend-confirm"
-            value={confirmation}
-            onChange={(event) => setConfirmation(event.target.value)}
-            autoComplete="off"
-            placeholder={confirmPhrase}
-          />
-        </div>
+        <SudoCommandField
+          id="kv-suspend-confirm"
+          promptKey="keyvalue.confirmSuspendPrompt"
+          phrase={confirmPhrase}
+          value={confirmation}
+          onValueChange={setConfirmation}
+        />
         <AlertDialogFooter>
           <AlertDialogCancel>{t("keyvalue.confirmCancel")}</AlertDialogCancel>
           <AlertDialogAction

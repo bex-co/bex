@@ -305,13 +305,13 @@ describe("EnvGroupDetailPage", () => {
     );
     await user.click(screen.getByRole("button", { name: "Delete" }));
     const deleteDialog = screen.getByRole("dialog");
-    const confirm = within(deleteDialog).getByLabelText("Type eg1 to confirm.");
+    const confirm = within(deleteDialog).getByLabelText("Sudo Command");
     expect(
       within(deleteDialog).getByRole("button", {
         name: "Delete Environment Group",
       }),
     ).toBeDisabled();
-    await user.type(confirm, "eg1");
+    await user.type(confirm, "sudo delete env group shared");
     await user.click(
       within(deleteDialog).getByRole("button", {
         name: "Delete Environment Group",

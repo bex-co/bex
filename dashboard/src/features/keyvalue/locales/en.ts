@@ -98,12 +98,14 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.deleteConfirmBody": {
     message:
-      "This permanently deletes the Key Value store and all its data — the Valkey instance, its storage, and its connection credentials. This cannot be undone.",
-    description: "Delete-confirmation dialog body",
+      "This action cannot be undone. Are you sure you want to delete this Key Value instance?",
+    description:
+      "Delete-confirmation dialog body (verbatim Render copy, docs/render-artifacts/key-value.md)",
   },
   "keyvalue.deleteConfirmPrompt": {
-    message: "Type {phrase} below to confirm",
-    description: "Render-style exact sudo delete confirmation prompt",
+    message: "Type {phrase} below to confirm.",
+    description:
+      "Body prompt naming Render's exact sudo delete phrase (rendered bold by SudoCommandField)",
   },
   "keyvalue.deleteCancel": {
     message: "Cancel",
@@ -364,9 +366,9 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description: "Suspend-confirmation consequences and named instance",
   },
   "keyvalue.confirmSuspendPrompt": {
-    message: "Type {phrase} below to confirm",
+    message: "Type {phrase} below to confirm.",
     description:
-      "Label for Render's exact Key Value suspend confirmation phrase",
+      "Body prompt naming Render's exact Key Value suspend phrase (rendered bold by SudoCommandField)",
   },
   "keyvalue.confirmCancel": {
     message: "Cancel",

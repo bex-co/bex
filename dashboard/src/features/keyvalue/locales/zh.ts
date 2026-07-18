@@ -96,13 +96,14 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Delete-confirmation dialog title",
   },
   "keyvalue.deleteConfirmBody": {
-    message:
-      "这将永久删除该键值存储及其所有数据——Valkey 实例、存储卷及连接凭据。此操作无法撤销。",
-    description: "Delete-confirmation dialog body",
+    message: "此操作无法撤销。确定要删除此键值存储实例吗？",
+    description:
+      "Delete-confirmation dialog body (verbatim Render copy, docs/render-artifacts/key-value.md)",
   },
   "keyvalue.deleteConfirmPrompt": {
-    message: "输入 {phrase} 以确认",
-    description: "Render-style exact sudo delete confirmation prompt",
+    message: "在下方输入 {phrase} 以确认。",
+    description:
+      "Body prompt naming Render's exact sudo delete phrase (rendered bold by SudoCommandField)",
   },
   "keyvalue.deleteCancel": {
     message: "取消",
@@ -360,9 +361,9 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Suspend-confirmation consequences and named instance",
   },
   "keyvalue.confirmSuspendPrompt": {
-    message: "输入 {phrase} 以确认",
+    message: "在下方输入 {phrase} 以确认。",
     description:
-      "Label for Render's exact Key Value suspend confirmation phrase",
+      "Body prompt naming Render's exact Key Value suspend phrase (rendered bold by SudoCommandField)",
   },
   "keyvalue.confirmCancel": {
     message: "取消",

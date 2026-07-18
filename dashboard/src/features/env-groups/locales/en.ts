@@ -238,12 +238,13 @@ const enEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.deleteDescription": {
     message:
-      "This permanently removes the group and unlinks it from every service.",
-    description: "Delete env-group dialog warning",
+      "This action cannot be undone. Are you sure you want to delete this environment group? It will be unlinked from every service.",
+    description: "Delete env-group dialog warning (Render-style copy)",
   },
   "envGroups.deletePrompt": {
-    message: "Type {id} to confirm.",
-    description: "Delete env-group typed-confirm prompt",
+    message: "Type {phrase} below to confirm.",
+    description:
+      "Body prompt naming the exact 'sudo delete env group <name>' phrase (rendered bold by SudoCommandField)",
   },
   "envGroups.deleteConfirm": {
     message: "Delete Environment Group",

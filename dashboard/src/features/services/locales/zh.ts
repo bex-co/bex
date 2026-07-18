@@ -11,8 +11,9 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Body of a protected-service destructive-action retry dialog",
   },
   "services.protectedConfirmationPrompt": {
-    message: "输入 {confirmation} 以确认",
-    description: "Label for the exact protected-action confirmation phrase",
+    message: "在下方输入 {phrase} 以确认。",
+    description:
+      "Body prompt naming the exact protected-action confirmation phrase (rendered bold by SudoCommandField)",
   },
   "services.connect": {
     message: "连接",
@@ -2163,12 +2164,14 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Delete-confirm dialog title",
   },
   "services.deleteConfirmBody": {
-    message: "此操作将永久移除该服务、其部署及其 URL，且无法撤销。",
-    description: "Delete-confirm dialog body",
+    message: "此操作无法撤销。确定要删除此 {type} 吗？",
+    description:
+      "Delete-confirm dialog body ({type} = lowercase Render type words, e.g. 'web service')",
   },
   "services.deleteConfirmPrompt": {
-    message: "输入 {name} 以确认",
-    description: "Delete-confirm input label naming the immutable service id",
+    message: "在下方输入 {phrase} 以确认。",
+    description:
+      "Body prompt naming Render's exact 'sudo delete <type> <name>' phrase (rendered bold by SudoCommandField)",
   },
   "services.deleteCancel": {
     message: "取消",
