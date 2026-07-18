@@ -1,0 +1,34 @@
+# Browser Web Shell edge route (w2/m55, docs/ADR035-ssh.md § Browser Web Shell).
+# The dashboard terminal opens wss://ssh.bex.co/shell?ticket=…; Traefik terminates
+# TLS on :443 and forwards the (transparently upgraded) WebSocket to the isolated
+# gateway's plain-HTTP shell listener (Service port 8080 → BEX_SHELL_WS_ADDR). This
+# is HTTP host-based routing and is independent of native SSH, which rides the
+# separate `ssh` TCP entrypoint (:2222 → public :22) on the same hostname.
+#
+# The route + cert can exist ahead of activation: the feature stays disabled (the
+# ticket verb 503s and the gateway's listener does not start) until the shared
+# bex-shell-ticket Secret is installed (scripts/shell-ticket-secret.sh).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ssh-shell
+  namespace: system
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - ssh.bex.co
+      secretName: bex-ssh-shell-tls
+  rules:
+    - host: ssh.bex.co
+      http:
+        paths:
+          - path: /shell
+            pathType: Prefix
+            backend:
+              service:
+                name: ssh-gateway # kustomize rewrites to bex-ssh-gateway (namePrefix)
+                port:
+                  number: 8080

@@ -198,9 +198,12 @@ if [ "$ssh_namespace" != 'default' ] || [ "$ssh_namespaced_rules" != $'app.bex.c
   echo "FAIL: SSH gateway tenant Role must remain default-only App/pod get/list + pods/exec create" >&2
   fail=1
 fi
-ssh_ingress="$(yq -N '.spec.ingress[] | [.from[0].namespaceSelector.matchLabels."kubernetes.io/metadata.name", .ports[0].port] | join(":")' lego/operator/config/ssh/networkpolicy.yaml)"
-if [ "$ssh_ingress" != $'traefik:2222\nmonitoring:9090' ]; then
-  echo "FAIL: SSH gateway ingress must remain Traefik SSH + monitoring metrics only" >&2
+# Traefik reaches the gateway on 2222 (native SSH) + 8080 (Browser Web Shell
+# WebSocket, w2/m55); monitoring scrapes 9090. Enumerate every port per rule so a
+# stray added port can't slip past a ports[0]-only check.
+ssh_ingress="$(yq -N '.spec.ingress[] | [.from[0].namespaceSelector.matchLabels."kubernetes.io/metadata.name", (.ports | map(.port | tostring) | join(","))] | join(":")' lego/operator/config/ssh/networkpolicy.yaml)"
+if [ "$ssh_ingress" != $'traefik:2222,8080\nmonitoring:9090' ]; then
+  echo "FAIL: SSH gateway ingress must remain Traefik SSH+shell + monitoring metrics only" >&2
   fail=1
 fi
 ssh_rendered="$(kubectl kustomize lego/operator/config/default)"

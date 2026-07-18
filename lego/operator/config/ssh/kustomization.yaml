@@ -3,6 +3,7 @@ resources:
   - deployment.yaml
   - service.yaml
   - ingressroutetcp.yaml
+  - ingress-shell.yaml
   - networkpolicy.yaml
   - pdb.yaml
 
