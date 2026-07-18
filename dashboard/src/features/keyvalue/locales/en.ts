@@ -363,6 +363,11 @@ const enKeyValue: Record<string, TranslationEntry> = {
       "This scales the store to zero and drops all active connections. Data is preserved; resume it any time.",
     description: "Suspend-confirmation dialog body",
   },
+  "keyvalue.confirmSuspendPrompt": {
+    message: "Type {phrase} below to confirm",
+    description:
+      "Label for Render's exact Key Value suspend confirmation phrase",
+  },
   "keyvalue.confirmCancel": {
     message: "Cancel",
     description: "Suspend-confirmation dialog cancel button",

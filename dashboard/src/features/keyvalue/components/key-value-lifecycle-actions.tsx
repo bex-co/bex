@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { Button } from "@/common/components/ui/button";
+import { Button, buttonVariants } from "@/common/components/ui/button";
+import { Input } from "@/common/components/ui/input";
+import { Label } from "@/common/components/ui/label";
 import {
   Card,
   CardContent,
@@ -32,8 +34,8 @@ export interface KeyValueLifecycleActionsProps {
  * The detail page's suspend/resume control, matching Render's captured KV
  * detail "Suspend Key Value Instance" action (docs/render-artifacts/key-value.md)
  * — bex's scale-to-zero via `spec.suspended` (w2/m7). Suspend is disruptive
- * (drops connections), so it confirms first, mirroring services'
- * suspend/restart confirm gate; resume is a safe recovery and runs immediately.
+ * (drops connections), so it requires Render's exact typed sudo confirmation;
+ * resume is a safe recovery and runs immediately.
  */
 export function KeyValueLifecycleActions({
   keyValue,
@@ -42,10 +44,14 @@ export function KeyValueLifecycleActions({
   const { t } = useTranslations();
   const { pending, run } = useKeyValueLifecycle();
   const [confirmSuspend, setConfirmSuspend] = useState(false);
+  const [confirmation, setConfirmation] = useState("");
   const busy = pending !== null;
+  const confirmPhrase = `sudo suspend key value ${keyValue.name}`;
+  const canSuspend = confirmation === confirmPhrase && !busy;
 
   async function handleSuspend() {
-    setConfirmSuspend(false);
+    if (!canSuspend) return;
+    handleOpenChange(false);
     const ok = await run("suspend", keyValue.id, keyValue.name);
     if (ok) onChanged();
   }
@@ -53,6 +59,11 @@ export function KeyValueLifecycleActions({
   async function handleResume() {
     const ok = await run("resume", keyValue.id, keyValue.name);
     if (ok) onChanged();
+  }
+
+  function handleOpenChange(open: boolean) {
+    setConfirmSuspend(open);
+    if (!open) setConfirmation("");
   }
 
   return (
@@ -70,16 +81,18 @@ export function KeyValueLifecycleActions({
         ) : (
           <Button
             variant="destructive"
-            onClick={() => setConfirmSuspend(true)}
+            onClick={() => handleOpenChange(true)}
             disabled={busy}
           >
-            {pending === "suspend" ? <Loader2 className="animate-spin" /> : null}
+            {pending === "suspend" ? (
+              <Loader2 className="animate-spin" />
+            ) : null}
             {t("keyvalue.actionSuspend")}
           </Button>
         )}
       </CardContent>
 
-      <AlertDialog open={confirmSuspend} onOpenChange={setConfirmSuspend}>
+      <AlertDialog open={confirmSuspend} onOpenChange={handleOpenChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -89,9 +102,25 @@ export function KeyValueLifecycleActions({
               {t("keyvalue.confirmSuspendBody")}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="kv-suspend-confirm">
+              {t("keyvalue.confirmSuspendPrompt", { phrase: confirmPhrase })}
+            </Label>
+            <Input
+              id="kv-suspend-confirm"
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+              autoComplete="off"
+              placeholder={confirmPhrase}
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("keyvalue.confirmCancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void handleSuspend()}>
+            <AlertDialogAction
+              className={buttonVariants({ variant: "destructive" })}
+              onClick={() => void handleSuspend()}
+              disabled={!canSuspend}
+            >
               {t("keyvalue.actionSuspend")}
             </AlertDialogAction>
           </AlertDialogFooter>
