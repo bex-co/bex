@@ -85,8 +85,8 @@ const enWebhooks: Record<string, TranslationEntry> = {
     description: "Create dialog cancel button",
   },
   "webhooks.createSubmit": {
-    message: "Create",
-    description: "Create dialog submit button",
+    message: "Create webhook",
+    description: "Create page submit button (Render: 'Create Webhook')",
   },
   "webhooks.createSuccess": {
     message: "Webhook created",
@@ -230,6 +230,291 @@ const enWebhooks: Record<string, TranslationEntry> = {
   "webhooks.loadMore": {
     message: "Load more",
     description: "Delivery-history pagination button",
+  },
+  // --- event picker (w1/m49/t002) ---
+  "webhooks.selectedCount": {
+    message: "{count} events selected",
+    description: "Event-picker live selection counter",
+  },
+  "webhooks.searchEvents": {
+    message: "Search for events",
+    description: "Event-picker search box placeholder + accessible label",
+  },
+  "webhooks.searchNoMatches": {
+    message: "No events match your search",
+    description: "Event-picker empty state while a search filters everything out",
+  },
+  "webhooks.allEvents": {
+    message: "All events",
+    description: "Event-picker tri-state master checkbox label",
+  },
+  "webhooks.groupToggle": {
+    message: "Toggle {group} events",
+    description: "Accessible label of a group's expand/collapse chevron",
+  },
+  "webhooks.group.deploy": {
+    message: "Deploy",
+    description: "Event-picker group — deploy lifecycle events",
+  },
+  "webhooks.group.cronJobRun": {
+    message: "Cron Job Run",
+    description: "Event-picker group — cron job run events",
+  },
+  "webhooks.group.maintenanceMode": {
+    message: "Maintenance Mode",
+    description: "Event-picker group — maintenance mode events",
+  },
+  "webhooks.group.postgres": {
+    message: "Postgres",
+    description: "Event-picker group — managed Postgres events",
+  },
+  "webhooks.group.suspension": {
+    message: "Suspension",
+    description: "Event-picker group — suspend/resume events",
+  },
+  "webhooks.group.other": {
+    message: "Other",
+    description:
+      "Event-picker fallback group for served keys the catalog doesn't know yet",
+  },
+  "webhooks.event.deploy_started": {
+    message: "Deploy Started",
+    description: "Event label — deploy_started",
+  },
+  "webhooks.event.deploy_ended": {
+    message: "Deploy Ended",
+    description: "Event label — deploy_ended",
+  },
+  "webhooks.event.cron_job_run_started": {
+    message: "Cron Job Run Started",
+    description: "Event label — cron_job_run_started",
+  },
+  "webhooks.event.cron_job_run_ended": {
+    message: "Cron Job Run Ended",
+    description: "Event label — cron_job_run_ended",
+  },
+  "webhooks.event.maintenance_mode_enabled": {
+    message: "Maintenance Mode Enabled",
+    description: "Event label — maintenance_mode_enabled",
+  },
+  "webhooks.event.maintenance_mode_uri_updated": {
+    message: "Maintenance Mode URI Updated",
+    description: "Event label — maintenance_mode_uri_updated",
+  },
+  "webhooks.event.postgres_created": {
+    message: "Postgres Created",
+    description: "Event label — postgres_created",
+  },
+  "webhooks.event.postgres_restarted": {
+    message: "Postgres Restarted",
+    description: "Event label — postgres_restarted",
+  },
+  "webhooks.event.postgres_credentials_created": {
+    message: "Postgres Credentials Created",
+    description: "Event label — postgres_credentials_created",
+  },
+  "webhooks.event.postgres_credentials_deleted": {
+    message: "Postgres Credentials Deleted",
+    description: "Event label — postgres_credentials_deleted",
+  },
+  "webhooks.event.postgres_backup_started": {
+    message: "Postgres Backup Started",
+    description: "Event label — postgres_backup_started",
+  },
+  "webhooks.event.service_suspended": {
+    message: "Service Suspended",
+    description: "Event label — service_suspended",
+  },
+  "webhooks.event.service_resumed": {
+    message: "Service Resumed",
+    description: "Event label — service_resumed",
+  },
+  "webhooks.event.server_restarted": {
+    message: "Server Restarted",
+    description: "Event label — server_restarted",
+  },
+  "webhooks.event.instance_count_changed": {
+    message: "Instance Count Changed",
+    description: "Event label — instance_count_changed",
+  },
+  "webhooks.event.autoscaling_config_changed": {
+    message: "Autoscaling Config Changed",
+    description: "Event label — autoscaling_config_changed",
+  },
+  "webhooks.event.plan_changed": {
+    message: "Plan Changed",
+    description:
+      "Event label — plan_changed (bex's slot for Render's Instance Type Changed)",
+  },
+  // --- /webhooks/new create page (w1/m49/t003) ---
+  "webhooks.newTitle": {
+    message: "Create a new webhook",
+    description: "Create page heading (Render: 'Create a new Webhook')",
+  },
+  "webhooks.backToList": {
+    message: "Back to webhooks",
+    description: "Accessible label of the create/detail pages' back link",
+  },
+  "webhooks.fieldNameHelp": {
+    message: "A unique name for this webhook.",
+    description: "Create page name-field helper copy",
+  },
+  "webhooks.fieldUrlHelp": {
+    message: "bex sends each notification to this URL as a POST request.",
+    description: "Create page URL-field helper copy",
+  },
+  "webhooks.fieldUrlPlaceholder": {
+    message: "https://example.com/webhooks/bex",
+    description: "Create page URL-field placeholder",
+  },
+  "webhooks.fieldEventsHelp": {
+    message:
+      "Choose which events in your workspace will trigger a webhook notification.",
+    description: "Create page events-field helper copy",
+  },
+  "webhooks.createdView": {
+    message: "View webhook",
+    description: "Secret step button that opens the new webhook's page",
+  },
+  // --- /webhook/$id detail page (w1/m49/t004) ---
+  "webhooks.detailKicker": {
+    message: "Webhook",
+    description: "Detail page header kicker above the endpoint name",
+  },
+  "webhooks.idLabel": {
+    message: "Webhook ID:",
+    description: "Detail header id row label",
+  },
+  "webhooks.copyId": {
+    message: "Copy webhook ID",
+    description: "Accessible label of the header id copy button",
+  },
+  "webhooks.copyUrl": {
+    message: "Copy endpoint URL",
+    description: "Accessible label of the header URL copy button",
+  },
+  "webhooks.copiedGeneric": {
+    message: "Copied to clipboard",
+    description: "Toast after copying the id or URL",
+  },
+  "webhooks.showMore": {
+    message: "Show {count} more",
+    description: "Event-chip expander on the detail header",
+  },
+  "webhooks.showLess": {
+    message: "Show less",
+    description: "Event-chip collapser on the detail header",
+  },
+  "webhooks.createdByOn": {
+    message: "Created by {creator} on {date}",
+    description: "Detail header provenance line when the creator is known",
+  },
+  "webhooks.createdOn": {
+    message: "Created on {date}",
+    description: "Detail header provenance line without a creator",
+  },
+  "webhooks.tabActivity": {
+    message: "Activity",
+    description: "Detail page tab — delivery history",
+  },
+  "webhooks.tabSettings": {
+    message: "Settings",
+    description: "Detail page tab — edit + delete",
+  },
+  "webhooks.recentDeliveries": {
+    message: "Recent deliveries",
+    description: "Activity tab heading",
+  },
+  "webhooks.recentDeliveriesHint": {
+    message: "Refresh the table to fetch the latest events",
+    description: "Activity tab heading hint",
+  },
+  "webhooks.refresh": {
+    message: "Refresh",
+    description: "Accessible label of the Activity refresh button",
+  },
+  "webhooks.filterAll": {
+    message: "All",
+    description: "Activity delivery filter tab",
+  },
+  "webhooks.filterSuccessful": {
+    message: "Successful",
+    description: "Activity delivery filter tab — delivered only",
+  },
+  "webhooks.filterFailed": {
+    message: "Failed",
+    description: "Activity delivery filter tab — failed only",
+  },
+  "webhooks.notFoundTitle": {
+    message: "Webhook not found",
+    description: "Detail page state for an unknown/foreign id",
+  },
+  "webhooks.notFoundBody": {
+    message: "No webhook with id {id} in this workspace.",
+    description: "Detail page not-found body",
+  },
+  "webhooks.enabledBadge": {
+    message: "Enabled",
+    description: "Detail header status badge while enabled",
+  },
+  "webhooks.disabledBadge": {
+    message: "Disabled",
+    description: "Detail header status badge while disabled",
+  },
+  "webhooks.view": {
+    message: "View webhook",
+    description: "Accessible label of the list row's open-detail link",
+  },
+  // --- Settings tab (w1/m49/t005 + t006) ---
+  "webhooks.settingsGeneral": {
+    message: "General",
+    description: "Settings tab first section heading",
+  },
+  "webhooks.settingsStatus": {
+    message: "Status",
+    description: "Settings status-toggle label",
+  },
+  "webhooks.settingsStatusHelp": {
+    message: "Webhooks do not send any notifications while disabled.",
+    description: "Settings status-toggle helper copy",
+  },
+  "webhooks.settingsEvents": {
+    message: "Subscribed events",
+    description: "Settings events section heading",
+  },
+  "webhooks.saveChanges": {
+    message: "Save changes",
+    description: "Settings submit button (disabled until dirty)",
+  },
+  "webhooks.updateSuccess": {
+    message: "Webhook updated",
+    description: "Toast after a successful settings save",
+  },
+  "webhooks.updateError": {
+    message: "Couldn't update the webhook",
+    description: "Toast after a failed settings save",
+  },
+  "webhooks.secretLabel": {
+    message: "Signing secret",
+    description: "Settings signing-secret row label",
+  },
+  "webhooks.secretMintOnceNote": {
+    message:
+      "The signing secret was shown once when this webhook was created and can't be retrieved again. Delete and recreate the webhook to mint a new one.",
+    description:
+      "Settings note documenting bex's mint-once secret contract (w1/m49/t006 decision — deliberate Render divergence)",
+  },
+  "webhooks.deleteSection": {
+    message: "Delete webhook",
+    description: "Settings danger-zone heading",
+  },
+  "webhooks.deleteTypeToConfirm": {
+    message: "Type {command} below to confirm.",
+    description: "Type-to-confirm instruction in the delete dialog",
+  },
+  "webhooks.deleteCommandLabel": {
+    message: "Confirmation",
+    description: "Accessible label of the type-to-confirm input",
   },
 };
 

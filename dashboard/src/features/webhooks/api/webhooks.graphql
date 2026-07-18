@@ -17,6 +17,21 @@ query WebhookEndpoints($ownerId: String) {
   }
 }
 
+# One endpoint by id — the /webhook/$webhookId detail page (w1/m49). Never
+# requests `secret` (the server resolves it empty on reads anyway).
+query WebhookEndpoint($id: String!, $ownerId: String) {
+  webhookEndpoint(id: $id, ownerId: $ownerId) {
+    id
+    name
+    url
+    eventTypes
+    enabled
+    disabledReason
+    createdAt
+    createdBy
+  }
+}
+
 # The subscribable event-type vocabulary — drives the create form's picker so
 # the dashboard never hardcodes (and drifts from) the server's set.
 query WebhookEventTypes {
@@ -48,6 +63,38 @@ mutation CreateWebhookEndpoint($ownerId: String, $name: String, $url: String!, $
     enabled
     secret
     createdAt
+  }
+}
+
+# Edit an endpoint in place — the detail Settings tab (w1/m49/t005). The
+# backend verb shipped with w3/m11 (service.Update: URL re-validation +
+# event-type normalization; omitted args keep their current values); this is
+# the dashboard finally wiring it. Same field semantics as REST's
+# `PATCH /v1/webhooks/{id}`.
+mutation UpdateWebhookEndpoint(
+  $id: String!
+  $ownerId: String
+  $name: String
+  $url: String
+  $eventTypes: [String]
+  $enabled: Boolean
+) {
+  updateWebhookEndpoint(
+    id: $id
+    ownerId: $ownerId
+    name: $name
+    url: $url
+    eventTypes: $eventTypes
+    enabled: $enabled
+  ) {
+    id
+    name
+    url
+    eventTypes
+    enabled
+    disabledReason
+    createdAt
+    createdBy
   }
 }
 

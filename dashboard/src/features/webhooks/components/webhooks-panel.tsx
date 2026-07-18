@@ -1,4 +1,6 @@
-import { AlertTriangle, ShieldAlert, Webhook } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { AlertTriangle, Plus, ShieldAlert, Webhook } from "lucide-react";
+import { Button } from "@/common/components/ui/button";
 import {
   Card,
   CardHeader,
@@ -20,10 +22,8 @@ import {
 } from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWebhooks } from "@/features/webhooks/hooks/use-webhooks";
-import { useDeleteWebhook } from "@/features/webhooks/hooks/use-delete-webhook";
 import { useSetWebhookEnabled } from "@/features/webhooks/hooks/use-set-webhook-enabled";
 import { WebhookRow } from "@/features/webhooks/components/webhook-row";
-import { CreateWebhookDialog } from "@/features/webhooks/components/create-webhook-dialog";
 
 type ErrorKind = "forbidden" | "generic";
 
@@ -42,18 +42,11 @@ function classifyWebhooksError(error: Error | undefined): ErrorKind | null {
  */
 export function WebhooksPanel() {
   const { t } = useTranslations();
-  const { endpoints, loading, error, refetch } = useWebhooks();
-  const { remove, deleting } = useDeleteWebhook();
+  const { endpoints, loading, error } = useWebhooks();
   const { setEnabled, toggling } = useSetWebhookEnabled();
 
   const errorKind = classifyWebhooksError(error);
   const initialLoading = loading && endpoints.length === 0 && !error;
-
-  async function handleDelete(id: string, name: string) {
-    const ok = await remove(id, name);
-    if (ok) await refetch();
-    return ok;
-  }
 
   // No refetch on toggle: the mutation's selection set (id/enabled/
   // disabledReason) updates the normalized Apollo cache row in place; only
@@ -68,7 +61,12 @@ export function WebhooksPanel() {
         <CardTitle>{t("webhooks.title")}</CardTitle>
         <CardDescription>{t("webhooks.description")}</CardDescription>
         <CardAction>
-          <CreateWebhookDialog onCreated={() => void refetch()} />
+          {/* Render's create flow is a page, not a dialog (w1/m49/t003). */}
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/webhooks/new">
+              <Plus /> {t("webhooks.create")}
+            </Link>
+          </Button>
         </CardAction>
       </CardHeader>
       <CardContent>
@@ -94,9 +92,7 @@ export function WebhooksPanel() {
                   key={entry.id}
                   entry={entry}
                   onToggle={handleToggle}
-                  onDelete={handleDelete}
                   toggling={toggling === entry.id}
-                  deleting={deleting === entry.id}
                 />
               ))}
             </TableBody>

@@ -25,6 +25,7 @@ function toViews(
       enabled: e.enabled ?? false,
       disabledReason: e.disabledReason ?? "",
       createdAt: e.createdAt,
+      createdBy: "", // list rows never request the creator; the detail query does
     }));
 }
 

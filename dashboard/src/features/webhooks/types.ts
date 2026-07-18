@@ -14,6 +14,9 @@ export interface WebhookEndpointView {
    * auto-disable writes its own reason here. */
   disabledReason: string;
   createdAt: string | null;
+  /** Creator identity (email) — "" when the API has none recorded. Only the
+   * detail query requests it; list rows leave it empty. */
+  createdBy: string;
 }
 
 /** A freshly registered endpoint — the one and only time its secret is available. */
