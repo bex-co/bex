@@ -565,6 +565,7 @@ func TestRecordDeployClosesFailedOnCRFailed(t *testing.T) {
 	app.Status.Phase = appv1alpha1.PhaseFailed
 	app.Status.Conditions = []metav1.Condition{{
 		Type: "Ready", Status: metav1.ConditionFalse, Reason: "IngressFailed",
+		Message:            "ingress rejected host example.com",
 		ObservedGeneration: app.Generation,
 	}}
 	if err := cl.Status().Update(ctx, app); err != nil {
@@ -577,6 +578,10 @@ func TestRecordDeployClosesFailedOnCRFailed(t *testing.T) {
 	deploys, err := store.ListDeploys(ctx, row.ID, DeployFilter{})
 	if err != nil || len(deploys) != 1 || deploys[0].Status != DeployUpdateFailed || deploys[0].FinishedAt == nil {
 		t.Fatalf("deploys = %+v (err %v), want exactly one, update_failed, with finished_at set", deploys, err)
+	}
+	// w9/011: the failing close carries the CR's own diagnosis.
+	if deploys[0].FailureReason != "ingress rejected host example.com" {
+		t.Errorf("failure_reason = %q, want the Ready-condition message", deploys[0].FailureReason)
 	}
 }
 
@@ -605,6 +610,44 @@ func TestRecordDeployClosesFailedOnGateTimeout(t *testing.T) {
 	deploys, err := store.ListDeploys(ctx, row.ID, DeployFilter{})
 	if err != nil || len(deploys) != 1 || deploys[0].Status != DeployUpdateFailed {
 		t.Fatalf("deploys = %+v (err %v), want exactly one, update_failed via the gate timeout", deploys, err)
+	}
+	// w9/011: a pure-timeout close still explains itself.
+	if deploys[0].FailureReason == "" {
+		t.Error("failure_reason empty on a gate-timeout close, want the synthesized timeout line")
+	}
+}
+
+// TestFailureReasonFor pins the w9/011 stamp choice: the operator's concrete
+// diagnoses (CrashLoopBackOff / ImagePullBackOff / BuildFailed /
+// PreDeployFailed) surface their condition message verbatim; anything else
+// gets the synthesized health-gate line.
+func TestFailureReasonFor(t *testing.T) {
+	mk := func(phase appv1alpha1.AppPhase, reason, msg string) *appv1alpha1.App {
+		app := &appv1alpha1.App{}
+		app.Generation = 3
+		app.Status.Phase = phase
+		app.Status.Conditions = []metav1.Condition{{
+			Type: "Ready", Status: metav1.ConditionFalse, Reason: reason,
+			Message: msg, ObservedGeneration: 3,
+		}}
+		return app
+	}
+	crash := "container exited shortly after start and is restarting repeatedly (last exit code 1) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (3000), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped)."
+	if got := failureReasonFor(mk(appv1alpha1.PhaseDeploying, "CrashLoopBackOff", crash)); got != crash {
+		t.Errorf("CrashLoopBackOff reason = %q, want the condition message", got)
+	}
+	if got := failureReasonFor(mk(appv1alpha1.PhaseDeploying, "ImagePullBackOff", "image pull is failing: 401")); got != "image pull is failing: 401" {
+		t.Errorf("ImagePullBackOff reason = %q, want the condition message", got)
+	}
+	// A bland in-progress condition proves nothing — synthesize the timeout line.
+	if got := failureReasonFor(mk(appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for img")); got == "" || got == "Reconciling Deployment for img" {
+		t.Errorf("bland Deploying condition reason = %q, want the synthesized timeout line", got)
+	}
+	// A stale-generation condition proves nothing either.
+	stale := mk(appv1alpha1.PhaseDeploying, "CrashLoopBackOff", crash)
+	stale.Status.Conditions[0].ObservedGeneration = 2
+	if got := failureReasonFor(stale); got == crash {
+		t.Error("stale-generation condition message must not be stamped")
 	}
 }
 

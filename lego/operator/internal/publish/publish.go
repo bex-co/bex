@@ -28,6 +28,7 @@ package publish
 import (
 	"context"
 	"fmt"
+	"path"
 	"strings"
 	"time"
 
@@ -43,6 +44,10 @@ import (
 // CLIs send CRC64 checksums that S3-compatibles (Wasabi/Hetzner) reject — the
 // same pin the etcd/OpenBao backup CronJobs use (docs/ADR011-etcd-backup-restore.md).
 const DefaultAWSCLIImage = "amazon/aws-cli:2.22.35"
+
+// DefaultGitImage is the clone image the direct (no-Dockerfile) publish path
+// uses (w9/010) — pinned like every other platform-plane image.
+const DefaultGitImage = "alpine/git:v2.43.0"
 
 // publishTimeout bounds a single publish Job's wall-clock; the Job's own
 // activeDeadlineSeconds matches so a stuck upload is reaped, not left lingering.
@@ -86,15 +91,28 @@ func (s Store) Configured() bool {
 	return s.Bucket != "" && s.Endpoint != "" && s.Secret != ""
 }
 
-// Options configures a single static-site publish.
+// Options configures a single static-site publish. Exactly one source is set:
+// Image (extract the built site from an OCI image — the build path) or Repo
+// (direct publish, w9/010 — clone the repo and publish RootDir/PublishPath
+// as-is, the way Render handles a static site with no build step).
 type Options struct {
-	Image       string        // OCI image the build produced (holds the built site)
-	PublishPath string        // dir within the image to serve (App.spec.publishPath)
-	AppID       string        // the service name — the first object-key segment
-	Revision    string        // e.g. "rev-7" — the second key segment (immutable per revision)
-	Store       Store         // object-store target (bucket/endpoint/secret)
-	Namespace   string        // namespace the publish Job runs in
-	Client      client.Client // cluster client used to create + watch the Job
+	Image       string // OCI image the build produced (holds the built site)
+	PublishPath string // dir within the image (or repo) to serve (App.spec.publishPath)
+	// Direct-publish source (used only when Image is empty):
+	Repo    string // git URL to clone
+	Ref     string // branch or commit; empty = the remote's default branch (HEAD)
+	RootDir string // subdirectory of Repo the site lives under (App.spec.rootDir)
+	// CloneSecret names a Secret (in Namespace, key "token") whose value
+	// authenticates a private Repo clone — the same contract as
+	// build.Options.CloneSecret; empty = public clone.
+	CloneSecret string
+	// GitImage overrides the clone image (tests / air-gapped).
+	GitImage  string
+	AppID     string        // the service name — the first object-key segment
+	Revision  string        // e.g. "rev-7" — the second key segment (immutable per revision)
+	Store     Store         // object-store target (bucket/endpoint/secret)
+	Namespace string        // namespace the publish Job runs in
+	Client    client.Client // cluster client used to create + watch the Job
 	// AWSCLIImage overrides the uploader image (tests / air-gapped).
 	AWSCLIImage string
 	// PullSecret names an imagePullSecret (in Namespace) that authenticates the
@@ -114,6 +132,12 @@ func (o Options) Prefix() string {
 // destURI is the s3:// sync target for this publish.
 func (o Options) destURI() string {
 	return "s3://" + o.Store.Bucket + "/" + o.Prefix()
+}
+
+// srcDir is the checkout-relative directory a direct publish copies:
+// RootDir/PublishPath, cleaned. "." when both are empty/".".
+func (o Options) srcDir() string {
+	return path.Join(o.RootDir, o.PublishPath)
 }
 
 // imagePullSecrets returns the imagePullSecrets the publish pod carries so its
@@ -138,6 +162,16 @@ func Publish(ctx context.Context, o Options) error {
 	}
 	if o.PublishPath == "" {
 		return fmt.Errorf("publish: empty publishPath")
+	}
+	if (o.Image == "") == (o.Repo == "") {
+		return fmt.Errorf("publish: exactly one of Image (extract) or Repo (direct publish) must be set")
+	}
+	if o.Image == "" {
+		// The clone container cds to /work/<rootDir>/<publishPath>; refuse a
+		// path that would escape the checkout.
+		if src := o.srcDir(); src == ".." || strings.HasPrefix(src, "../") || path.IsAbs(src) {
+			return fmt.Errorf("publish: rootDir/publishPath %q escapes the repository checkout", src)
+		}
 	}
 	if !o.Store.Configured() {
 		return fmt.Errorf("publish: object store not configured (set BEX_STATIC_S3_ENDPOINT/BUCKET/SECRET)")
@@ -197,6 +231,19 @@ func PublishJob(o Options) *batchv1.Job {
 		uploadEnv = append(uploadEnv, corev1.EnvVar{Name: "AWS_DEFAULT_REGION", Value: o.Store.Region})
 	}
 
+	// First step: stage the site's files into the shared emptyDir — from the
+	// built image (extract) or straight from a git checkout (direct publish).
+	stage := extractContainer(o)
+	var pullSecrets []corev1.LocalObjectReference
+	if o.Image == "" {
+		stage = cloneContainer(o)
+	} else {
+		// The extract initContainer pulls o.Image (the just-built Zot image) —
+		// authenticate it under an auth-enabled registry (w7/m8). Clone mode
+		// pulls only public platform images, so it carries no pull secret.
+		pullSecrets = imagePullSecrets(o.PullSecret)
+	}
+
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      JobName(o.AppID, o.Revision),
@@ -215,27 +262,13 @@ func PublishJob(o Options) *batchv1.Job {
 					Labels: map[string]string{"app.bex.co/publish": o.AppID},
 				},
 				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyNever,
-					// The extract initContainer pulls o.Image (the just-built Zot
-					// image) — authenticate it under an auth-enabled registry (w7/m8).
-					ImagePullSecrets: imagePullSecrets(o.PullSecret),
+					RestartPolicy:    corev1.RestartPolicyNever,
+					ImagePullSecrets: pullSecrets,
 					Volumes: []corev1.Volume{{
 						Name:         outVolume,
 						VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 					}},
-					InitContainers: []corev1.Container{{
-						Name:  "extract",
-						Image: o.Image,
-						// PublishPath via env (not the command string) so a hostile
-						// value can't inject shell. cp -a preserves the tree; the
-						// trailing /. copies contents, not the dir itself.
-						Command: []string{"sh", "-c", `set -e; cp -a "$PUBLISH_PATH"/. ` + outMount + `/`},
-						Env:     []corev1.EnvVar{{Name: "PUBLISH_PATH", Value: o.PublishPath}},
-						VolumeMounts: []corev1.VolumeMount{
-							{Name: outVolume, MountPath: outMount},
-						},
-						Resources: modestResources(),
-					}},
+					InitContainers: []corev1.Container{stage},
 					Containers: []corev1.Container{{
 						Name:  "upload",
 						Image: awsImage,
@@ -259,6 +292,78 @@ func PublishJob(o Options) *batchv1.Job {
 				},
 			},
 		},
+	}
+}
+
+// extractContainer stages the site from the built OCI image: run the image and
+// copy PublishPath's contents into the shared emptyDir. PublishPath is passed
+// via env (not the command string) so a hostile spec.publishPath can't inject
+// shell. cp -a preserves the tree; the trailing /. copies contents, not the
+// dir itself.
+func extractContainer(o Options) corev1.Container {
+	return corev1.Container{
+		Name:    "extract",
+		Image:   o.Image,
+		Command: []string{"sh", "-c", `set -e; cp -a "$PUBLISH_PATH"/. ` + outMount + `/`},
+		Env:     []corev1.EnvVar{{Name: "PUBLISH_PATH", Value: o.PublishPath}},
+		VolumeMounts: []corev1.VolumeMount{
+			{Name: outVolume, MountPath: outMount},
+		},
+		Resources: modestResources(),
+	}
+}
+
+// cloneContainer stages the site straight from the repository — the direct,
+// no-Dockerfile publish path (w9/010): shallow-fetch Repo@Ref, then copy
+// RootDir/PublishPath's contents into the shared emptyDir. All values arrive
+// via env, never interpolated into the script, so a hostile spec can't inject
+// shell. init+fetch (not clone --branch) so Ref may be a branch OR a commit
+// sha; an unset Ref fetches the remote's default branch (HEAD). A private
+// repo authenticates through the same CloneSecret token contract as the build
+// plane (x-access-token basic auth), supplied to git via an inline credential
+// helper so the token never lands in argv or on disk.
+func cloneContainer(o Options) corev1.Container {
+	img := o.GitImage
+	if img == "" {
+		img = DefaultGitImage
+	}
+	ref := o.Ref
+	if ref == "" {
+		ref = "HEAD"
+	}
+	script := `set -e
+mkdir -p /work && cd /work
+git init -q .
+git remote add origin "$REPO"
+git -c credential.helper='!f() { echo "username=x-access-token"; echo "password=$GIT_AUTH_TOKEN"; }; f' fetch -q --depth 1 origin "$REF"
+git checkout -q FETCH_HEAD
+cd "/work/$SRC_DIR"
+cp -a . ` + outMount + `/`
+	env := []corev1.EnvVar{
+		{Name: "REPO", Value: o.Repo},
+		{Name: "REF", Value: ref},
+		{Name: "SRC_DIR", Value: o.srcDir()},
+	}
+	if o.CloneSecret != "" {
+		env = append(env, corev1.EnvVar{
+			Name: "GIT_AUTH_TOKEN",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: o.CloneSecret},
+					Key:                  "token",
+				},
+			},
+		})
+	}
+	return corev1.Container{
+		Name:    "clone",
+		Image:   img,
+		Command: []string{"sh", "-c", script},
+		Env:     env,
+		VolumeMounts: []corev1.VolumeMount{
+			{Name: outVolume, MountPath: outMount},
+		},
+		Resources: modestResources(),
 	}
 }
 

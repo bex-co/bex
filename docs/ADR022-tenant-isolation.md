@@ -130,6 +130,10 @@ Defense-in-depth: even if the tenant-side policy regresses, platform namespaces 
 
 Each namespace gets an ingress NetworkPolicy that allows the known-legitimate callers and implicitly blocks everything else (including tenant apps pods) by virtue of `policyTypes: [Ingress]`.
 
+## Tenant container hardening (w7/m2)
+
+Every tenant container (Deployments, CronJobs, pre-deploy Jobs) is stamped with a hardening SecurityContext (`tenantSecCtx()`, `app_controller.go`): `allowPrivilegeEscalation: false`, **all Linux capabilities dropped**, RuntimeDefault seccomp. `runAsNonRoot` is deliberately absent — tenant images may run as root (PSS baseline, not restricted). A user-visible consequence of dropping ALL: `NET_BIND_SERVICE` is gone, so **a tenant container cannot bind ports below 1024 even as root** — stock port-80 images (nginx, httpd, whoami) crash-loop with `bind: permission denied` unless pointed at a high port. Deliberate posture (kept over Render parity); the operator diagnoses the crash loop and stamps the actionable cause — listen on `$PORT`, no ports < 1024 — onto the failed deploy's `failureReason` (w9/011, [ADR004-deployment.md](ADR004-deployment.md)).
+
 ## Datastore pod labels
 
 - **CNPG Postgres**: The `DatabaseReconciler` reads `db.Labels["app.bex.co/workspace"]` (stamped by bex-api's postgres service on create) and sets it in the CNPG Cluster's `spec.inheritedMetadata.labels`, causing CNPG to propagate the label to all postgres pods. Same-workspace pods can then reach the database service via the egress allow rule.

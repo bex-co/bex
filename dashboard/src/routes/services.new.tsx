@@ -864,6 +864,9 @@ export function NewServicePage() {
                           placeholder={t("services.createImagePlaceholder")}
                           autoComplete="off"
                         />
+                        <p className="text-xs text-muted-foreground">
+                          {t("services.createImagePortHint")}
+                        </p>
                       </div>
                       <RegistryCredentialSelect
                         id="svc-registry-credential-image"

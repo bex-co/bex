@@ -55,6 +55,10 @@ var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// when no pre-deploy step ran. Distinguishes a migration failure from a
 		// health-check failure (both status=update_failed).
 		"preDeployStatus": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.PreDeployStatus })},
+		// Actionable cause of a failed deploy (w9/011): the operator's diagnosis
+		// (crash loop with the $PORT hint, image-pull failure, build error) or a
+		// health-gate-timeout line. Empty unless the deploy failed.
+		"failureReason": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.FailureReason })},
 	},
 })
 

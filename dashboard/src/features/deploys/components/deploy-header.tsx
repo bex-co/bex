@@ -85,6 +85,13 @@ export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
           {actions}
         </div>
 
+        {/* Actionable cause of a failed deploy (w9/011) — the operator's
+            diagnosis (crash loop with the $PORT hint, image-pull failure,
+            build error) or a health-gate-timeout line. */}
+        {deploy.failureReason && (
+          <p className="text-xs text-destructive">{deploy.failureReason}</p>
+        )}
+
         {preDeploy && (
           <p
             className={`text-xs ${

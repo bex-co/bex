@@ -78,6 +78,11 @@ type renderDeploy struct {
 	// Distinguishes a migration failure from a health-check failure (both
 	// status=update_failed). Logs: GET /v1/logs?service=<id>&type=predeploy.
 	PreDeployStatus string `json:"preDeployStatus,omitempty"`
+	// FailureReason is the actionable cause of a failed deploy (bex extra,
+	// w9/011): the operator's diagnosis (crash loop with the $PORT hint,
+	// image-pull failure, build error) or a health-gate-timeout line. Omitted
+	// unless the deploy failed.
+	FailureReason string `json:"failureReason,omitempty"`
 }
 
 func formatTime(t time.Time) string {
@@ -109,6 +114,7 @@ func toRenderDeploy(d DeployView) renderDeploy {
 		StartedAt:       formatTimePtr(d.StartedAt),
 		FinishedAt:      formatTimePtr(d.FinishedAt),
 		PreDeployStatus: d.PreDeployStatus,
+		FailureReason:   d.FailureReason,
 	}
 	if d.Image != "" {
 		out.Image = &renderDeployImage{Ref: d.Image}

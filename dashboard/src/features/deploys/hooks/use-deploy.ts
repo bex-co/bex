@@ -22,6 +22,8 @@ export interface DeployView {
   startedAt: string | null;
   finishedAt: string | null;
   preDeployStatus: string;
+  /** Actionable cause of a failed deploy (w9/011); "" unless it failed. */
+  failureReason: string;
 }
 
 export interface UseDeployResult {
@@ -89,5 +91,6 @@ function toDeployView(
     startedAt: d.startedAt ?? null,
     finishedAt: d.finishedAt ?? null,
     preDeployStatus: d.preDeployStatus ?? "",
+    failureReason: d.failureReason ?? "",
   };
 }

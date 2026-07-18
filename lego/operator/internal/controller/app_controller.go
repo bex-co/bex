@@ -217,6 +217,7 @@ type AppReconciler struct {
 // Role, not this ClusterRole, because the kustomize namePrefix transform would
 // rewrite the namespace field to bex-system).
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
@@ -295,6 +296,19 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if image == "" && app.Status.Image != "" &&
 		(app.Spec.Suspended || app.Status.ObservedGeneration == app.Generation) {
 		image = app.Status.Image
+	}
+	// Direct static publish (w9/010): a repo-backed static_site with no
+	// Dockerfile path, no build command, and no native runtime has nothing to
+	// build — Render publishes the repo's publish directory as-is. Skip the
+	// build plane entirely; reconcileStaticSite dispatches a clone-mode publish
+	// Job (image stays ""). An explicit dockerfilePath/buildCommand/runtime/
+	// builder keeps the build path (the built image's publishPath holds the
+	// site).
+	if directStaticPublish(&app) {
+		if r.Mode == ModeKubernetes {
+			return r.reconcileKubernetes(ctx, &app, "", port)
+		}
+		return r.fail(ctx, &app, "BadSpec", fmt.Errorf("static_site requires the kubernetes runtime"))
 	}
 	if image == "" {
 		if app.Spec.Repo == "" {
@@ -388,13 +402,76 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		if err != nil {
 			return r.fail(ctx, &app, "BuildFailed", err)
 		}
-		image = res.Image
+		image = r.pinBuiltImage(ctx, &app, res.Image)
 	}
 
 	if r.Mode == ModeKubernetes {
 		return r.reconcileKubernetes(ctx, &app, image, port)
 	}
 	return r.reconcileOpenSandbox(ctx, &app, image, port)
+}
+
+// pinBuiltImage rewrites a freshly built mutable-tag reference to its immutable
+// `<repo>:<tag>@<digest>` form (w9/013). The per-generation `gen-N` tag RESETS
+// on delete+recreate of the same App name, so a node that cached the previous
+// incarnation's `gen-1` could silently run stale code; pinning to the digest
+// the registry serves right after this build's push makes every downstream
+// consumer (Deployment, CronJob, static-site publish Job, rollback's
+// resolvedImage) pull exactly the built bytes. Resolution failure falls back
+// to the tag with a logged warning — behavior then matches the pre-w9/013
+// state (dev clusters where the registry is unreachable from the operator).
+func (r *AppReconciler) pinBuiltImage(ctx context.Context, app *appv1alpha1.App, image string) string {
+	if strings.Contains(image, "@") {
+		return image // kpack builds already return a digest-pinned reference
+	}
+	prefix := r.Registry + "/"
+	if !strings.HasPrefix(image, prefix) {
+		return image
+	}
+	repo, tag, ok := strings.Cut(strings.TrimPrefix(image, prefix), ":")
+	if !ok {
+		return image
+	}
+	digest, err := r.resolveBuiltDigest(ctx, app, repo, tag)
+	if err != nil {
+		logf.FromContext(ctx).Error(err, "resolving built image digest; using the mutable tag",
+			"app", app.Name, "image", image)
+		return image
+	}
+	return image + "@" + digest
+}
+
+// resolveBuiltDigest picks the credential the operator itself can use against
+// the registry: the App's own per-App credential when per-App registry auth is
+// on (the identity EnsureActive just proved accepted), else the shared pull
+// secret's basic-auth pair, else anonymous (the dev default).
+func (r *AppReconciler) resolveBuiltDigest(ctx context.Context, app *appv1alpha1.App, repo, tag string) (string, error) {
+	if r.PerAppRegistry != nil {
+		return r.PerAppRegistry.ResolveBuiltDigest(ctx, app.Name, app.Namespace, tag)
+	}
+	username, password := "", ""
+	if r.RegistryPullSecret != "" {
+		var sec corev1.Secret
+		if err := r.buildPlaneClient().Get(ctx,
+			client.ObjectKey{Namespace: app.Namespace, Name: r.RegistryPullSecret}, &sec); err == nil {
+			username, password, _ = registry.BasicAuthFromDockerConfig(sec.Data[corev1.DockerConfigJsonKey], r.Registry)
+		}
+	}
+	return registry.ResolveDigest(ctx, nil, r.Registry, repo, tag, username, password)
+}
+
+// directStaticPublish reports whether the App takes the no-build static publish
+// path (w9/010): a repo-backed static_site whose spec declares no build input
+// at all — no prebuilt image, no Dockerfile path, no build command, no native
+// runtime, no explicit builder. Its publish Job clones the repo and uploads
+// rootDir/publishPath as-is (Render's no-build static site); any declared
+// build input keeps the build-then-extract path.
+func directStaticPublish(app *appv1alpha1.App) bool {
+	return app.Spec.Type == appv1alpha1.TypeStaticSite &&
+		app.Spec.Image == "" && app.Spec.Repo != "" &&
+		app.Spec.DockerfilePath == "" && app.Spec.BuildCommand == "" &&
+		app.Spec.Runtime == "" &&
+		(app.Spec.Builder == "" || app.Spec.Builder == build.BuilderAuto)
 }
 
 // effectiveBuilder keeps the App CR itself Render-compatible: direct CR users
@@ -504,6 +581,63 @@ func (r *AppReconciler) imagePullSecrets(app *appv1alpha1.App, image string) []c
 		out = append(out, corev1.LocalObjectReference{Name: app.Spec.ExternalRegistryPullSecret})
 	}
 	return out
+}
+
+// predeployPullSecrets returns the imagePullSecrets for the pre-deploy Job,
+// which runs in the BUILD namespace — where the App-namespace tenant pull
+// secrets imagePullSecrets() names are unreachable when BEX_BUILD_NAMESPACE
+// differs (the w9/012 publish-Job defect's sibling). Same namespace ⇒ exactly
+// imagePullSecrets() (byte-identical). Different namespace: a platform-registry
+// image uses the build-namespace credential (buildJobPullSecret), and a foreign
+// image's ExternalRegistryPullSecret — minted by bex-api in the App namespace —
+// is relocated beside the Job first (the clone-secret relocation seam).
+func (r *AppReconciler) predeployPullSecrets(ctx context.Context, app *appv1alpha1.App, image string) ([]corev1.LocalObjectReference, error) {
+	ns := r.buildNamespace(app.Namespace)
+	if ns == app.Namespace {
+		return r.imagePullSecrets(app, image), nil
+	}
+	var out []corev1.LocalObjectReference
+	if r.registryHosted(image) {
+		if s := r.RegistryBuildPullSecret; s != "" {
+			out = append(out, corev1.LocalObjectReference{Name: s})
+		}
+	}
+	if app.Spec.ExternalRegistryPullSecret != "" {
+		if err := r.copyCloneSecret(ctx, app.Namespace, ns, app.Spec.ExternalRegistryPullSecret); err != nil {
+			return nil, fmt.Errorf("relocating external registry pull secret to %s: %w", ns, err)
+		}
+		out = append(out, corev1.LocalObjectReference{Name: app.Spec.ExternalRegistryPullSecret})
+	}
+	return out, nil
+}
+
+// mirrorPreDeploySecrets copies every App-namespace Secret the pre-deploy pod
+// references — the env Secrets a migration reads (spec.envFromSecret[s]) and
+// any secret-file projections (spec.filesFromSecrets) — into the build
+// namespace the Job runs in (w9/012: those refs are namespace-local, so
+// without the copy the pod either stalls on its required env Secret or
+// silently runs the migration without its optional env). No-op when the build
+// namespace IS the App namespace. A Secret absent from the App namespace is
+// skipped: the pod then behaves exactly as it would in-namespace (optional
+// refs tolerate it, the required one fails the pod the same way).
+func (r *AppReconciler) mirrorPreDeploySecrets(ctx context.Context, app *appv1alpha1.App, ns string) error {
+	if ns == app.Namespace {
+		return nil
+	}
+	names := append([]string{}, app.Spec.EnvFromSecrets...)
+	names = append(names, app.Spec.FilesFromSecrets...)
+	if app.Spec.EnvFromSecret != "" {
+		names = append(names, app.Spec.EnvFromSecret)
+	}
+	for _, name := range names {
+		if name == "" {
+			continue
+		}
+		if err := r.copyCloneSecret(ctx, app.Namespace, ns, name); err != nil && !apierrors.IsNotFound(err) {
+			return fmt.Errorf("relocating secret %s to %s: %w", name, ns, err)
+		}
+	}
+	return nil
 }
 
 // buildJobPullSecret returns the single imagePullSecret name a build-plane Job
@@ -1000,6 +1134,16 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	if dep.Status.ReadyReplicas < replicas {
 		app.Status.Phase = appv1alpha1.PhaseDeploying
 		app.Status.Image = image
+		// Surface why the rollout is stuck when a pod is crash-looping or cannot
+		// pull its image: the deploy would otherwise time out as an opaque
+		// update_failed with the cause visible only in pod state no tenant
+		// surface shows (w9/011).
+		if reason, msg := r.stuckPodMessage(ctx, dep, port); msg != "" {
+			meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+				Type: "Ready", Status: metav1.ConditionFalse, Reason: reason,
+				Message: msg, ObservedGeneration: app.Generation,
+			})
+		}
 		_ = r.Status().Update(ctx, app)
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
@@ -1094,6 +1238,14 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
 	if dep.Status.ReadyReplicas < replicas {
 		app.Status.Phase = appv1alpha1.PhaseDeploying
+		// Same stuck-rollout surfacing as the web path; port 0 — a worker has no
+		// HTTP endpoint, so the $PORT hint is omitted (w9/011).
+		if reason, msg := r.stuckPodMessage(ctx, dep, 0); msg != "" {
+			meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+				Type: "Ready", Status: metav1.ConditionFalse, Reason: reason,
+				Message: msg, ObservedGeneration: app.Generation,
+			})
+		}
 		_ = r.Status().Update(ctx, app)
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
@@ -1428,7 +1580,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	// revision, so a retry adopts it rather than re-uploading).
 	if app.Status.ActiveRevision != rev {
 		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Publishing", "Publishing static output to object store")
-		if err := publish.Publish(ctx, publish.Options{
+		opts := publish.Options{
 			Image:       image,
 			PublishPath: app.Spec.PublishPath,
 			AppID:       app.Name,
@@ -1442,7 +1594,30 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 			// failed on prod pulling with the apps-ns secret; docs/ADR029).
 			PullSecret: r.buildJobPullSecret(app),
 			Client:     r.Client,
-		}); err != nil {
+		}
+		if image == "" {
+			// Direct publish (w9/010): no build ran — the publish Job clones the
+			// repo and uploads rootDir/publishPath as-is. Same ref selection as
+			// the build path (branch, with a one-shot commit override).
+			ref := app.Spec.Branch
+			if app.Spec.BuildCommit != "" {
+				ref = app.Spec.BuildCommit
+			}
+			opts.Repo = app.Spec.Repo
+			opts.Ref = ref
+			opts.RootDir = app.Spec.RootDir
+			opts.CloneSecret = app.Spec.CloneSecret
+			opts.PullSecret = "" // clone mode pulls only public platform images
+			// A private repo's clone Secret lives in the App namespace; relocate
+			// it beside the publish Job when the build namespace differs (the
+			// same seam the build plane uses).
+			if app.Spec.CloneSecret != "" && opts.Namespace != app.Namespace {
+				if err := r.copyCloneSecret(ctx, app.Namespace, opts.Namespace, app.Spec.CloneSecret); err != nil {
+					return r.fail(ctx, app, "PublishFailed", fmt.Errorf("relocating clone secret to %s: %w", opts.Namespace, err))
+				}
+			}
+		}
+		if err := publish.Publish(ctx, opts); err != nil {
 			return r.fail(ctx, app, "PublishFailed", err)
 		}
 	}
@@ -2121,6 +2296,47 @@ func tenantSecCtx() *corev1.SecurityContext {
 // composite literal or constant — e.g. &false is a compile error.
 func ptr[T any](v T) *T { return &v }
 
+// stuckPodMessage inspects the pods behind a not-yet-ready tenant Deployment
+// for a terminal-looking container state and returns an actionable Ready
+// condition (reason, message). Empty when the rollout is merely progressing.
+// Listed with the uncached client: pods are not in the manager cache and a
+// cached List would establish a cluster-wide informer for them.
+func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deployment, port int) (string, string) {
+	if dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 {
+		return "", ""
+	}
+	var pods corev1.PodList
+	if err := r.buildPlaneClient().List(ctx, &pods, client.InNamespace(dep.Namespace),
+		client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
+		return "", ""
+	}
+	for _, p := range pods.Items {
+		for _, cs := range p.Status.ContainerStatuses {
+			w := cs.State.Waiting
+			if w == nil {
+				continue
+			}
+			switch w.Reason {
+			case "CrashLoopBackOff":
+				exit := ""
+				if t := cs.LastTerminationState.Terminated; t != nil {
+					exit = fmt.Sprintf(" (last exit code %d)", t.ExitCode)
+				}
+				msg := fmt.Sprintf(
+					"container exited shortly after start and is restarting repeatedly%s — check the service logs for the crash output.", exit)
+				if port > 0 {
+					msg += fmt.Sprintf(
+						" If the crash is a port bind: the process must listen on $PORT (%d), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).", port)
+				}
+				return "CrashLoopBackOff", msg
+			case "ImagePullBackOff", "ErrImagePull":
+				return "ImagePullBackOff", "image pull is failing: " + w.Message
+			}
+		}
+	}
+	return "", ""
+}
+
 func (r *AppReconciler) setPhase(ctx context.Context, app *appv1alpha1.App, p appv1alpha1.AppPhase, reason, msg string) {
 	app.Status.Phase = p
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
@@ -2205,6 +2421,16 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		vols = []corev1.Volume{*vol}
 		mounts = []corev1.VolumeMount{*mount}
 	}
+	pullSecrets, err := r.predeployPullSecrets(ctx, app, image)
+	if err == nil {
+		err = r.mirrorPreDeploySecrets(ctx, app, ns)
+	}
+	if err != nil {
+		return r.failPreDeploy(ctx, app, &appv1alpha1.PreDeployStatus{
+			Job: jobName, Generation: gen, Status: appv1alpha1.PreDeployFailed,
+			StartedAt: started, FinishedAt: time.Now().UTC().Format(time.RFC3339), Message: err.Error(),
+		}, fmt.Errorf("pre-deploy: %w", err))
+	}
 	job, err := predeploy.Ensure(ctx, predeploy.Options{
 		Name:             app.Name,
 		Namespace:        ns,
@@ -2215,7 +2441,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		Generation:       gen,
 		Env:              appEnv(app, port),
 		EnvFrom:          envFromSources(app),
-		ImagePullSecrets: r.imagePullSecrets(app, image),
+		ImagePullSecrets: pullSecrets,
 		SecurityContext:  tenantSecCtx(),
 		Resources:        resourcesForTier(app.Spec.Tier),
 		Volumes:          vols,

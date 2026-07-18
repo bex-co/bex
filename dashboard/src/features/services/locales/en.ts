@@ -2315,6 +2315,12 @@ const enServices: Record<string, TranslationEntry> = {
     message: "docker.io/library/nginx:latest",
     description: "Create-wizard Existing Image tab input placeholder",
   },
+  "services.createImagePortHint": {
+    message:
+      "The container must listen on $PORT (default 3000) and cannot bind ports below 1024.",
+    description:
+      "Create-wizard Existing Image tab hint about bex's routed port and the no-privileged-ports hardening (w9/011)",
+  },
   "services.createRegistryCredentialLabel": {
     message: "Registry credential",
     description: "Create-wizard private-image registry credential label",

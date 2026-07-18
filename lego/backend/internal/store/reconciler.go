@@ -296,7 +296,17 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	if status == DeployLive {
 		resolvedImage = cur.Status.Image
 	}
-	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, resolvedImage)
+	// w9/011: a failing close carries its actionable cause — the generation's
+	// Ready-condition message when the operator surfaced a concrete defect
+	// (crash loop with the $PORT hint, image-pull failure, build error), else a
+	// synthesized health-gate-timeout line — so update_failed stops being an
+	// opaque terminal state.
+	failureReason := ""
+	switch status {
+	case DeployBuildFailed, DeployPreDeployFailed, DeployUpdateFailed:
+		failureReason = failureReasonFor(cur)
+	}
+	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, resolvedImage, failureReason)
 	if err != nil {
 		log.Printf("controlplane: transition deploy %s to %s: %v", open.ID, status, err)
 		return
@@ -413,6 +423,29 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 	default:
 		return DeployUpdateFailed
 	}
+}
+
+// failureReasonFor picks what to stamp as a failing deploy's failure_reason
+// (w9/011): the current generation's Ready-condition message when the operator
+// diagnosed a concrete defect (crash loop, image pull, build or pre-deploy
+// failure — their messages are written to be user-actionable), the raw
+// condition message for any other PhaseFailed, and a synthesized timeout line
+// when the condition proves nothing (a pure health-gate-timeout close).
+func failureReasonFor(app *appv1alpha1.App) string {
+	for i := range app.Status.Conditions {
+		c := &app.Status.Conditions[i]
+		if c.Type != "Ready" || c.ObservedGeneration != app.Generation {
+			continue
+		}
+		switch c.Reason {
+		case "CrashLoopBackOff", "ImagePullBackOff", "BuildFailed", "PreDeployFailed":
+			return c.Message
+		}
+		if app.Status.Phase == appv1alpha1.PhaseFailed && c.Message != "" {
+			return c.Message
+		}
+	}
+	return "the deploy did not become healthy within the health-gate window; check the service logs"
 }
 
 func readyReasonForGeneration(app *appv1alpha1.App) (string, bool) {
