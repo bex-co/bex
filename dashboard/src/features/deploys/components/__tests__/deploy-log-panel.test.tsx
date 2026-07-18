@@ -134,6 +134,63 @@ describe("DeployLogPanel", () => {
     expect(screen.getByText("running migration")).toBeInTheDocument();
   });
 
+  it("shows a short clickable instance and exposes its removable exact filter", async () => {
+    const selectedInstance = "eden-cms-v2-6f7d8f9c4b-bv612";
+    logState.lines = [
+      {
+        key: "selected",
+        timestamp: "2026-07-17T20:16:14Z",
+        time: "20:16:14",
+        instance: selectedInstance,
+        message: "selected instance",
+        type: "app",
+        level: "",
+        method: "",
+        statusCode: "",
+      },
+      {
+        key: "other",
+        timestamp: "2026-07-17T20:16:15Z",
+        time: "20:16:15",
+        instance: "eden-cms-v2-6f7d8f9c4b-r9x2p",
+        message: "other instance",
+        type: "app",
+        level: "",
+        method: "",
+        statusCode: "",
+      },
+    ];
+
+    render(
+      <DeployLogPanel
+        resource="eden-cms-v2"
+        startTime="2026-07-14T00:00:00Z"
+        endTime={undefined}
+        hasPreDeploy={false}
+        followBuild={false}
+      />,
+    );
+    const user = userEvent.setup();
+
+    const instance = screen.getByRole("button", {
+      name: `Filter logs by instance ${selectedInstance}`,
+    });
+    expect(instance).toHaveTextContent("[bv612]");
+    expect(instance).toHaveAttribute("title", selectedInstance);
+
+    await user.click(instance);
+    expect(screen.getByText("selected instance")).toBeInTheDocument();
+    expect(screen.queryByText("other instance")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(`Instance: ${selectedInstance}`),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Remove Instance filter" }),
+    );
+    expect(screen.getByText("other instance")).toBeInTheDocument();
+  });
+
   it("reports a refused live build stream instead of leaving an empty pane unexplained", () => {
     logState.buildLiveStatus = "error";
 
