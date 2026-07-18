@@ -8,5 +8,12 @@ metadata:
   namespace: default
 spec:
   image: traefik/whoami # prebuilt image (skips the build plane); use spec.repo to build from git
-  port: 80
+  # Tenant pods drop ALL Linux capabilities (incl. NET_BIND_SERVICE) as a hardening
+  # default, so a container cannot bind a privileged port (<1024) even as root —
+  # bind a high port. traefik/whoami ignores the injected $PORT and reads its own
+  # WHOAMI_PORT_NUMBER, so point both at the same high port.
+  port: 8080
+  env:
+    - name: WHOAMI_PORT_NUMBER
+      value: "8080"
   replicas: 2

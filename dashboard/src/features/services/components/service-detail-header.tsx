@@ -59,8 +59,9 @@ export interface ServiceDetailHeaderProps {
  * where the identity facts live: it also carries the bex-native ones the retired
  * Overview panel showed — instances, revision, age.
  *
- * Lifecycle verbs: restart lives in the Manual Deploy dropdown (w2/m30),
- * suspend/resume on the Settings page — the header carries no "•••" menu.
+ * The action controls are Connect (SSH) and Manual Deploy (deploy/restart); the
+ * header carries no "•••" lifecycle menu — restart lives in the Manual Deploy
+ * dropdown (w2/m30) and Suspend/Resume moved to the Settings page.
  */
 export function ServiceDetailHeader({
   service,
