@@ -153,19 +153,25 @@ function renderList() {
 
 function renderDetail(groupId = "eg1") {
   const rootRoute = createRootRoute();
+  const homeRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => <div>services home</div>,
+  });
   const route = createRoute({
     getParentRoute: () => rootRoute,
     path: "/env-groups/$groupId",
     component: EnvGroupDetailPage,
   });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([route]),
+    routeTree: rootRoute.addChildren([homeRoute, route]),
     history: createMemoryHistory({
       initialEntries: [`/env-groups/${groupId}`],
     }),
     context: { client: {} as never, session: null },
   });
-  return render(<RouterProvider router={router} />);
+  render(<RouterProvider router={router} />);
+  return router;
 }
 
 beforeEach(() => {
@@ -360,15 +366,29 @@ describe("EnvGroupDetailPage", () => {
     expect(screen.getByText("web")).toBeInTheDocument();
   });
 
-  it("shows a not-found state instead of a generic crash", async () => {
+  it("redirects a dead group id home instead of a generic crash (w9/m55)", async () => {
     detailState.error = new Error("environment group not found");
-    renderDetail("missing");
+    const router = renderDetail("missing");
 
-    expect(
-      await screen.findByText("Environment group not found"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("No environment group exists with id missing."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("services home")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/");
+  });
+
+  it("redirects home when the row is null without any error (w9/m55)", async () => {
+    detailState.group = null;
+    detailState.error = undefined;
+    const router = renderDetail("missing");
+
+    expect(await screen.findByText("services home")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/");
+  });
+
+  it("stays put on the inline error state when the query fails (w9/m55)", async () => {
+    detailState.group = null;
+    detailState.error = new Error("forbidden");
+    const router = renderDetail("missing");
+
+    expect(await screen.findByText("Not authorized")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/env-groups/missing");
   });
 });

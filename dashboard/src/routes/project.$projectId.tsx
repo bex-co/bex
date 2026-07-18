@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import {
   loadRouteResource,
   routeResourceTitle,
@@ -37,6 +38,10 @@ export const Route = createFileRoute("/project/$projectId")({
  * own header content and content padding.
  */
 function RouteComponent() {
+  // A dead project id redirects home for every child page (w9/m55); a query
+  // error passes through so the children keep their inline error states.
+  const projectResult = Route.useLoaderData();
+  useNotFoundRedirect(projectResult.state === "not-found");
   return (
     <DashboardLayout>
       <Outlet />

@@ -7,6 +7,7 @@ import {
 import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Button } from "@/common/components/ui/button";
 import { Skeleton } from "@/common/components/ui/skeleton";
@@ -88,6 +89,11 @@ export function EnvGroupDetailPage() {
   const errorKind = classifyEnvGroupError(error);
   const notFound = isEnvGroupNotFound(error);
 
+  // A dead id — a not-found-shaped error, or a null row with no error at all —
+  // redirects home (w9/m55); any other failed query stays put on the inline
+  // error state so an outage never masquerades as a deleted group.
+  useNotFoundRedirect(!loading && !group && (notFound || !errorKind));
+
   return (
     <DashboardLayout>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6">
@@ -119,18 +125,11 @@ export function EnvGroupDetailPage() {
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto w-full max-w-5xl space-y-6">
-          {loading && !group ? (
+          {(loading || notFound || !errorKind) && !group ? (
             <>
               <Skeleton className="h-64" />
               <Skeleton className="h-64" />
             </>
-          ) : notFound && !group ? (
-            <div className="py-12 text-center">
-              <p className="font-medium">{t("envGroups.notFoundTitle")}</p>
-              <p className="text-sm text-muted-foreground">
-                {t("envGroups.notFoundBody", { id: groupId })}
-              </p>
-            </div>
           ) : errorKind && !group ? (
             <div className="flex flex-col items-center gap-2 py-12 text-center">
               <AlertTriangle className="size-8 text-destructive" />
@@ -139,14 +138,7 @@ export function EnvGroupDetailPage() {
                 {t(`envGroups.${errorKind}Body`)}
               </p>
             </div>
-          ) : !group ? (
-            <div className="py-12 text-center">
-              <p className="font-medium">{t("envGroups.notFoundTitle")}</p>
-              <p className="text-sm text-muted-foreground">
-                {t("envGroups.notFoundBody", { id: groupId })}
-              </p>
-            </div>
-          ) : (
+          ) : !group ? null : (
             <>
               <Card>
                 <CardHeader>

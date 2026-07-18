@@ -498,19 +498,6 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "过去 48 小时未采集到数据",
     description: "Scaling page: recent-metrics empty state",
   },
-  "services.notFoundTitle": {
-    message: "未找到服务",
-    description: "Overview page state when server(id) returns nothing",
-  },
-  "services.notFoundBody": {
-    message: "不存在名为 {name} 的服务，或你没有访问权限。",
-    description: "Overview page not-found body",
-  },
-  "services.notFoundBackToList": {
-    message: "返回服务列表",
-    description:
-      "Link on the service-detail not-found state back to the services list",
-  },
   "services.navEnvironment": {
     message: "环境变量",
     description: "Service-detail nav item (environment variables tab)",

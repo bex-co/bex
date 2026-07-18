@@ -5,6 +5,8 @@ import {
 } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { ResourceLoadError } from "@/common/components/resource-load-error";
+import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { MetadataList } from "@/common/components/metadata-list";
 import { Skeleton } from "@/common/components/ui/skeleton";
@@ -68,10 +70,13 @@ export function DatabaseDetailPage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const router = useRouter();
-  const { database, loading, refetch } = useDatabase(databaseId);
+  const { database, loading, error, refetch } = useDatabase(databaseId);
   const lifecycle = useDatabaseLifecycle({ refetch });
 
-  const showNotFound = !loading && !database;
+  // A dead id redirects home (w9/m55); a failed query stays put on the inline
+  // error state so an outage never masquerades as a deleted database.
+  useNotFoundRedirect(!loading && !database && !error);
+  const showError = !loading && !database && !!error;
 
   return (
     <DashboardLayout>
@@ -128,13 +133,8 @@ export function DatabaseDetailPage() {
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto w-full max-w-4xl space-y-6">
-          {showNotFound ? (
-            <div className="py-10 text-center">
-              <p className="font-medium">{t("databases.notFoundTitle")}</p>
-              <p className="text-sm text-muted-foreground">
-                {t("databases.notFoundBody", { name: databaseId })}
-              </p>
-            </div>
+          {showError ? (
+            <ResourceLoadError onRetry={() => void refetch()} />
           ) : database && tab === "logs" ? (
             <PostgresLogViewer resource={database.id} />
           ) : database ? (

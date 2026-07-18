@@ -112,6 +112,11 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
 // below cover that it's the tab the shell points at.
 function renderAt(initialPath: string) {
   const rootRoute = createRootRoute();
+  const homeRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => <div>services home</div>,
+  });
   const layoutRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/services/$serviceId",
@@ -123,11 +128,15 @@ function renderAt(initialPath: string) {
     component: () => <ServiceLogsPage serviceId="app" />,
   });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([layoutRoute.addChildren([logsRoute])]),
+    routeTree: rootRoute.addChildren([
+      homeRoute,
+      layoutRoute.addChildren([logsRoute]),
+    ]),
     history: createMemoryHistory({ initialEntries: [initialPath] }),
     context: { client: {} as never, session: null },
   });
-  return render(<RouterProvider router={router} />);
+  render(<RouterProvider router={router} />);
+  return router;
 }
 
 beforeEach(() => {
@@ -193,16 +202,15 @@ describe("service-detail layout routing", () => {
     );
   });
 
-  it("shows a not-found state (no service chrome) for an unknown service id", async () => {
+  it("redirects an unknown service id home from any tab (w9/m55)", async () => {
     serverState.service = null;
     serverState.loading = false;
-    renderAt("/services/app/logs");
+    const router = renderAt("/services/app/logs");
 
-    // the shell renders not-found above every tab — no header/nav/outlet
-    expect(await screen.findByText("Service not found")).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Back to services" }),
-    ).toHaveAttribute("href", "/");
+    // the shell redirects above every tab — no service chrome, no outlet, and
+    // never a child tab borrowing another service's data en route
+    expect(await screen.findByText("services home")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/");
     expect(
       screen.queryByRole("link", { name: "Events" }),
     ).not.toBeInTheDocument();

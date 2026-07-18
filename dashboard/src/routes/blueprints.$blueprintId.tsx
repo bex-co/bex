@@ -2,6 +2,8 @@ import { useState } from "react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { ResourceLoadError } from "@/common/components/resource-load-error";
+import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   Card,
@@ -67,14 +69,17 @@ export function BlueprintDetailPage() {
   const { blueprintId } = Route.useParams();
   const { t } = useTranslations();
   const router = useRouter();
-  const { blueprint, loading } = useBlueprint(blueprintId);
+  const { blueprint, loading, error, refetch } = useBlueprint(blueprintId);
   const { sync, busy } = useSyncBlueprint();
   const [confirming, setConfirming] = useState(false);
   const [protectedConfirmation, setProtectedConfirmation] = useState<
     string | null
   >(null);
 
-  const showNotFound = !loading && !blueprint;
+  // A dead id redirects home (w9/m55); a failed query stays put on the inline
+  // error state so an outage never masquerades as a deleted blueprint.
+  useNotFoundRedirect(!loading && !blueprint && !error);
+  const showError = !loading && !blueprint && !!error;
 
   async function handleSync(confirmation?: string) {
     setConfirming(false);
@@ -109,13 +114,8 @@ export function BlueprintDetailPage() {
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto w-full max-w-4xl space-y-6">
-          {showNotFound ? (
-            <div className="py-10 text-center">
-              <p className="font-medium">{t("blueprints.notFoundTitle")}</p>
-              <p className="text-sm text-muted-foreground">
-                {t("blueprints.notFoundBody", { id: blueprintId })}
-              </p>
-            </div>
+          {showError ? (
+            <ResourceLoadError onRetry={refetch} />
           ) : blueprint ? (
             <>
               <Card>

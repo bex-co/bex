@@ -180,7 +180,8 @@ const enWebhooks: Record<string, TranslationEntry> = {
     description: "Delivery-history empty-state title",
   },
   "webhooks.historyEmptyBody": {
-    message: "Trigger a subscribed event — a deploy, for example — to see it here.",
+    message:
+      "Trigger a subscribed event — a deploy, for example — to see it here.",
     description: "Delivery-history empty-state body",
   },
   "webhooks.historyErrorTitle": {
@@ -242,7 +243,8 @@ const enWebhooks: Record<string, TranslationEntry> = {
   },
   "webhooks.searchNoMatches": {
     message: "No events match your search",
-    description: "Event-picker empty state while a search filters everything out",
+    description:
+      "Event-picker empty state while a search filters everything out",
   },
   "webhooks.allEvents": {
     message: "All events",
@@ -444,14 +446,6 @@ const enWebhooks: Record<string, TranslationEntry> = {
   "webhooks.filterFailed": {
     message: "Failed",
     description: "Activity delivery filter tab — failed only",
-  },
-  "webhooks.notFoundTitle": {
-    message: "Webhook not found",
-    description: "Detail page state for an unknown/foreign id",
-  },
-  "webhooks.notFoundBody": {
-    message: "No webhook with id {id} in this workspace.",
-    description: "Detail page not-found body",
   },
   "webhooks.enabledBadge": {
     message: "Enabled",

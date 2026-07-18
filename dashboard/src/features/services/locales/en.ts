@@ -506,19 +506,6 @@ const enServices: Record<string, TranslationEntry> = {
     message: "No data captured in the past 48 hours",
     description: "Scaling page: recent-metrics empty state",
   },
-  "services.notFoundTitle": {
-    message: "Service not found",
-    description: "Overview page state when server(id) returns nothing",
-  },
-  "services.notFoundBody": {
-    message: "No service named {name} exists, or you don't have access to it.",
-    description: "Overview page not-found body",
-  },
-  "services.notFoundBackToList": {
-    message: "Back to services",
-    description:
-      "Link on the service-detail not-found state back to the services list",
-  },
   "services.navEnvironment": {
     message: "Environment",
     description: "Service-detail nav item (environment variables tab)",

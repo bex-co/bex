@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { DeployDetailPage } from "../deploy-detail-page";
 
@@ -82,13 +89,35 @@ describe("DeployDetailPage", () => {
     );
   });
 
-  it("shows a not-found state for an unknown deploy id", () => {
+  it("redirects a dead deploy id to the service's Deploys tab (w9/m55)", async () => {
     deployState.deploy = null as never;
     deployState.notFound = true;
 
-    render(<DeployDetailPage serviceId="web" deployId="dep-missing" />);
+    const rootRoute = createRootRoute();
+    const deploysRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/services/$serviceId/deploys",
+      component: () => <div>deploys tab</div>,
+    });
+    const detailRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/services/$serviceId/deploys/$deployId",
+      component: () => (
+        <DeployDetailPage serviceId="web" deployId="dep-missing" />
+      ),
+    });
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([deploysRoute, detailRoute]),
+      history: createMemoryHistory({
+        initialEntries: ["/services/web/deploys/dep-missing"],
+      }),
+      context: { client: {} as never, session: null },
+    });
+    render(<RouterProvider router={router} />);
 
-    expect(screen.getByText("Deploy not found")).toBeInTheDocument();
+    // to the nearest live parent — the service exists, only the deploy is dead
+    expect(await screen.findByText("deploys tab")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/services/web/deploys");
   });
 
   it("shows a request error instead of leaving a permanent skeleton", () => {

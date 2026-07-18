@@ -6,8 +6,8 @@ import {
   splatParts,
 } from "@/common/lib/render-alias";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
-import NotFoundPage from "@/common/root-route/not-found-page";
 
 /**
  * Render's workspace-scoped URL scheme (w1/m45, live capture 2026-07-16 —
@@ -19,8 +19,8 @@ import NotFoundPage from "@/common/root-route/not-found-page";
  * whenever the switcher points elsewhere, the confused-deputy shape the
  * backend's resolver refuses. The selection is membership-checked against the
  * switcher's own list (which only ever contains memberships): a foreign or
- * unknown id renders the not-found page, never a silent fallback to the
- * caller's own workspace.
+ * unknown id redirects home with a not-found toast (w9/m55), never a silent
+ * fallback to the caller's own workspace.
  */
 export const Route = createFileRoute("/w/$")({
   beforeLoad: (args) => {
@@ -58,6 +58,10 @@ function WorkspaceAliasPage() {
   const [teaId, sub] = splatParts(_splat);
   const isMember = workspaces.some((w) => w.id === teaId);
 
+  // A foreign or unknown workspace id redirects home with a toast (w9/m55) —
+  // still never a silent fallback to the caller's own workspace.
+  useNotFoundRedirect(!loading && !isMember);
+
   useEffect(() => {
     if (loading || !isMember) return;
     if (teaId !== currentWorkspaceId) setCurrentWorkspaceId(teaId);
@@ -72,13 +76,11 @@ function WorkspaceAliasPage() {
     navigate,
   ]);
 
-  // Still resolving the membership list — don't judge the id yet.
-  if (loading || isMember) {
-    return (
-      <div className="p-6">
-        <Skeleton className="h-32 w-full" />
-      </div>
-    );
-  }
-  return <NotFoundPage />;
+  // Skeleton throughout: while the membership list resolves, while a member
+  // selection lands, and while the unknown-id redirect home is in flight.
+  return (
+    <div className="p-6">
+      <Skeleton className="h-32 w-full" />
+    </div>
+  );
 }

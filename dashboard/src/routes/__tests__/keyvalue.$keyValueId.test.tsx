@@ -13,8 +13,9 @@ import type { KeyValueView } from "@/features/keyvalue/types";
 const keyValueState: {
   keyValue: KeyValueView | null;
   loading: boolean;
+  error: Error | undefined;
   refetch: () => Promise<unknown>;
-} = { keyValue: null, loading: false, refetch: vi.fn() };
+} = { keyValue: null, loading: false, error: undefined, refetch: vi.fn() };
 vi.mock("@/features/keyvalue/hooks/use-key-value", () => ({
   useKeyValue: () => keyValueState,
 }));
@@ -98,24 +99,31 @@ function kv(overrides: Partial<KeyValueView> = {}): KeyValueView {
 
 function renderPage() {
   const rootRoute = createRootRoute();
+  const homeRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => <div>services home</div>,
+  });
   const detailRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/keyvalue/$keyValueId",
     component: KeyValueDetailPage,
   });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([detailRoute]),
+    routeTree: rootRoute.addChildren([homeRoute, detailRoute]),
     history: createMemoryHistory({
       initialEntries: ["/keyvalue/sessions-cache"],
     }),
     context: { client: {} as never, session: null },
   });
-  return render(<RouterProvider router={router} />);
+  render(<RouterProvider router={router} />);
+  return router;
 }
 
 beforeEach(() => {
   keyValueState.keyValue = null;
   keyValueState.loading = false;
+  keyValueState.error = undefined;
   lifecycleRun.mockReset();
   reveal.mockReset();
 });
@@ -165,14 +173,23 @@ describe("KeyValueDetailPage", () => {
     expect(screen.queryByText(/redis:\/\//)).not.toBeInTheDocument();
   });
 
-  it("shows the not-found state when the store doesn't exist", async () => {
+  it("redirects a dead store id home (w9/m55)", async () => {
     keyValueState.keyValue = null;
     keyValueState.loading = false;
-    renderPage();
+    const router = renderPage();
 
-    expect(
-      await screen.findByText("Key Value store not found"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("services home")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/");
+  });
+
+  it("stays put on the inline error state when the query fails (w9/m55)", async () => {
+    keyValueState.keyValue = null;
+    keyValueState.loading = false;
+    keyValueState.error = new Error("bex-api unreachable");
+    const router = renderPage();
+
+    expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/keyvalue/sessions-cache");
   });
 
   it("renders the Region row when region is configured (w9/m42/t004)", async () => {

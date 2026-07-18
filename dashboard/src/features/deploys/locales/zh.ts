@@ -104,14 +104,6 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy header: trigger label for a rollback deploy, naming the restored deploy",
   },
-  "deploys.notFoundTitle": {
-    message: "未找到部署",
-    description: "Deploy detail page: not-found state title",
-  },
-  "deploys.notFoundBody": {
-    message: "此服务不存在部署 {deployId}。",
-    description: "Deploy detail page: not-found state body",
-  },
   "deploys.logSearchPlaceholder": {
     message: "搜索日志…",
     description: "Deploy detail page: log search input placeholder",

@@ -150,6 +150,16 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "出错了。",
     description: "Fallback error message when none is provided",
   },
+  "common.resourceNotFoundToast": {
+    message: "该资源不存在或已被删除。",
+    description:
+      "Toast shown after a dead resource URL redirects to the home page (w9/m55)",
+  },
+  "common.resourceErrorBody": {
+    message: "无法加载该资源。请检查 API 后重试。",
+    description:
+      "Body text of a detail page's inline error state when the resource query failed",
+  },
 };
 
 export default zhCommon;

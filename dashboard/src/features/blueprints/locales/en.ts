@@ -89,14 +89,6 @@ const enBlueprints: Record<string, TranslationEntry> = {
     message: "bex.yml manifest",
     description: "Blueprint detail section heading for the stored manifest",
   },
-  "blueprints.notFoundTitle": {
-    message: "Blueprint not found",
-    description: "Blueprint detail not-found state heading",
-  },
-  "blueprints.notFoundBody": {
-    message: 'No blueprint with id "{id}" exists in this workspace.',
-    description: "Blueprint detail not-found state body",
-  },
   // --- Sync action ---
   "blueprints.syncButton": {
     message: "Sync",
