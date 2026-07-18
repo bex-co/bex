@@ -35,6 +35,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // --- Cancel ------------------------------------------------------------------
@@ -180,6 +181,9 @@ func TestRollbackRestoresPreviousLiveImage(t *testing.T) {
 	}
 	if got.Spec.RestartedAt == "" {
 		t.Error("Rollback must bump spec.restartedAt so the CR converges immediately")
+	}
+	if annotation := got.Annotations[appv1alpha1.AnnotationReleaseGeneration]; annotation != "2" {
+		t.Errorf("release-generation annotation = %q, want 2", annotation)
 	}
 
 	list, err := svc.List(context.Background(), "web", ListFilter{})

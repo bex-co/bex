@@ -471,7 +471,11 @@ func TestMCP_SuspendDelegatesToCore(t *testing.T) {
 }
 
 func TestMCP_ScaleDelegatesToCore(t *testing.T) {
-	cl := fakeClient(sampleApp("web"), podFor("web", "web-1")) // sampleApp starts at 2
+	app := sampleApp("web") // starts at 2
+	app.Spec.Image = ""
+	app.Spec.Repo = "https://github.com/bex-co/private.git"
+	app.Spec.CloneSecret = "deliberately-unusable-clone-secret"
+	cl := fakeClient(app, podFor("web", "web-1"))
 	srv := NewServer(&core.Base{Client: cl, Namespace: "default"}, Deps{})
 	cs := mcpSession(t, srv)
 

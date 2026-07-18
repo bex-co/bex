@@ -287,16 +287,14 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		port = 3000
 	}
 
-	// --- resolve the image: prebuilt, or build from git ---
-	// Reuse the cached Status.Image (never rebuild) when the spec generation is
-	// unchanged — this reconcile only re-applies desired state (e.g. an operator
-	// config change), not a new revision — or when the App is suspended. Only a
-	// genuine spec/revision bump (generation changed, not suspended) rebuilds.
-	image := app.Spec.Image
-	if image == "" && app.Status.Image != "" &&
-		(app.Spec.Suspended || app.Status.ObservedGeneration == app.Generation) {
-		image = app.Status.Image
-	}
+	// Classify the desired spec before resolving an image. Kubernetes generation
+	// acknowledges every spec mutation; release identity records only mutations
+	// that actually need a build/pre-deploy/rollout. Operational mutations such as
+	// manual scale therefore keep using the active artifact and release.
+	releaseDecision := prepareAppReleaseDecision(&app)
+
+	// --- resolve the image: prebuilt, cached artifact, or build from git ---
+	image, artifactResolved := reusableArtifactImage(&app, releaseDecision)
 	// Direct static publish (w9/010): a repo-backed static_site with no
 	// Dockerfile path, no build command, and no native runtime has nothing to
 	// build — Render publishes the repo's publish directory as-is. Skip the
@@ -305,6 +303,11 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	// builder keeps the build path (the built image's publishPath holds the
 	// site).
 	if directStaticPublish(&app) {
+		// Direct static publishing has no OCI image, but ActiveRevision remains the
+		// success gate. Recording its source identity here is safe: a failed publish
+		// keeps the old ActiveRevision and is retried on the next reconcile.
+		app.Status.ArtifactFingerprint = releaseDecision.desired.artifact
+		app.Status.ArtifactImage = ""
 		if r.Mode == ModeKubernetes {
 			return r.reconcileKubernetes(ctx, &app, "", port)
 		}
@@ -325,8 +328,11 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		if app.Spec.BuildCommit != "" {
 			ref = app.Spec.BuildCommit
 		}
-		// Tag by generation: a spec/revision bump (including a webhook redeploy that
-		// stamps spec.restartedAt) yields a new tag, so the built image is fresh and
+		// Tag by release generation: a deploy trigger (including a webhook redeploy
+		// that stamps spec.restartedAt) yields a new tag, while an operational spec
+		// generation retains the current tag/artifact.
+		//
+		// A fresh tag makes the built image fresh and
 		// the Deployment re-pulls it. An in-cluster BuildKit Job does the work — no
 		// docker daemon on the node.
 		buildNs := r.buildNamespace(app.Namespace)
@@ -389,7 +395,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			StartCommand:     app.Spec.StartCommand,
 			BuildEnv:         buildEnv(builder, app.Spec.Env),
 			RuntimeEnvSecret: runtimeSecret,
-			Revision:         fmt.Sprintf("gen-%d", app.Generation),
+			Revision:         releaseBuildRevision(&app),
 			Namespace:        buildNs,
 			AppNamespace:     app.Namespace,
 			Workspace:        app.Labels[labelWorkspace],
@@ -404,6 +410,11 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			return r.fail(ctx, &app, "BuildFailed", err)
 		}
 		image = r.pinBuiltImage(ctx, &app, res.Image)
+		artifactResolved = true
+	}
+	if artifactResolved {
+		app.Status.ArtifactFingerprint = releaseDecision.desired.artifact
+		app.Status.ArtifactImage = image
 	}
 
 	if r.Mode == ModeKubernetes {
@@ -413,7 +424,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 }
 
 // pinBuiltImage rewrites a freshly built mutable-tag reference to its immutable
-// `<repo>:<tag>@<digest>` form (w9/013). The per-generation `gen-N` tag RESETS
+// `<repo>:<tag>@<digest>` form (w9/013). The per-release `gen-N` tag RESETS
 // on delete+recreate of the same App name, so a node that cached the previous
 // incarnation's `gen-1` could silently run stale code; pinning to the digest
 // the registry serves right after this build's push makes every downstream
@@ -935,7 +946,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	podLabels := map[string]string{
 		labelApp:      app.Name,
 		labelAppID:    appID,
-		labelRevision: fmt.Sprintf("rev-%d", app.Generation),
+		labelRevision: releaseRevision(app),
 	}
 	if ws := app.Labels[labelWorkspace]; ws != "" {
 		podLabels[labelWorkspace] = ws
@@ -1161,7 +1172,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		app.Status.URL = fmt.Sprintf("http://%s.%s.svc:%d", app.Name, app.Namespace, port)
 		app.Status.URLs = nil
 	}
-	app.Status.ActiveRevision = fmt.Sprintf("rev-%d", app.Generation)
+	app.Status.ActiveRevision = releaseRevision(app)
 	app.Status.ObservedGeneration = app.Generation
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 		Type: "Ready", Status: metav1.ConditionTrue, Reason: "Deployed",
@@ -1252,7 +1263,7 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 	}
 
 	app.Status.Phase = appv1alpha1.PhaseRunning
-	app.Status.ActiveRevision = fmt.Sprintf("rev-%d", app.Generation)
+	app.Status.ActiveRevision = releaseRevision(app)
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 		Type: "Ready", Status: metav1.ConditionTrue, Reason: "Deployed",
 		Message:            fmt.Sprintf("%d/%d replicas ready", dep.Status.ReadyReplicas, replicas),
@@ -1574,7 +1585,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 		}
 	}
 
-	rev := fmt.Sprintf("rev-%d", app.Generation)
+	rev := releaseRevision(app)
 
 	// Publish this revision's built output to the object store, unless it is
 	// already the active revision (idempotent: the publish Job is named per
@@ -1811,7 +1822,7 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	app.Status.URL = "" // a cron_job has no serving URL
 	app.Status.URLs = nil
 	app.Status.Runs = runs
-	app.Status.ActiveRevision = fmt.Sprintf("rev-%d", app.Generation)
+	app.Status.ActiveRevision = releaseRevision(app)
 	app.Status.ObservedGeneration = app.Generation
 	if suspended {
 		app.Status.Phase = appv1alpha1.PhaseHibernated
@@ -2099,7 +2110,7 @@ func (r *AppReconciler) reconcileOpenSandbox(ctx context.Context, app *appv1alph
 	app.Status.SandboxID = id
 	app.Status.Endpoint = fmt.Sprintf("%s:%d%s", target.Host, target.Port, target.Prefix)
 	app.Status.URL = target.URL()
-	app.Status.ActiveRevision = fmt.Sprintf("rev-%d", app.Generation)
+	app.Status.ActiveRevision = releaseRevision(app)
 	app.Status.ObservedGeneration = app.Generation
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 		Type: "Ready", Status: metav1.ConditionTrue, Reason: "Deployed",
@@ -2395,19 +2406,19 @@ func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason s
 // (requeue). halt=false lets the rollout proceed — the step is unset or already
 // succeeded for this revision.
 //
-// The step is gated per generation (bex treats every spec change as a new
-// revision — a repo-backed App already rebuilds per generation), so it runs once
-// per rollout, exactly like Render's Pre-Deploy Command, and never re-runs a
-// migration that already passed or failed for the same revision. That terminal
-// bookkeeping also guards against re-creating the Job after its TTL reap.
+// The step is gated per release generation, so operational generations (scale,
+// routing, suspension, autoscaling) never re-run it. It runs once per rollout,
+// exactly like Render's Pre-Deploy Command, and never re-runs a migration that
+// already passed or failed for the same revision. That terminal bookkeeping also
+// guards against re-creating the Job after its TTL reap.
 func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, bool, error) {
 	if app.Spec.PreDeployCommand == "" {
 		return ctrl.Result{}, false, nil
 	}
-	gen := app.Generation
+	gen := releaseGeneration(app)
 
 	// firstForGen is the first reconcile that runs this revision's step; started
-	// is preserved across the requeues that follow. Terminal per generation: a
+	// is preserved across the requeues that follow. Terminal per release: a
 	// completed step for this revision is decisive, so we never touch the Job
 	// again (no re-run, no re-create after TTL reap).
 	firstForGen := true
@@ -2508,7 +2519,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		}
 		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 			Type: "Ready", Status: metav1.ConditionFalse, Reason: "PreDeploy",
-			Message: "running pre-deploy command", ObservedGeneration: gen,
+			Message: "running pre-deploy command", ObservedGeneration: app.Generation,
 		})
 		_ = r.Status().Update(ctx, app)
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, true, nil

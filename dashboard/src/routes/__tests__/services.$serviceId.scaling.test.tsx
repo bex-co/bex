@@ -159,6 +159,20 @@ describe("ServiceScalingPage (w7/m43)", () => {
     await waitFor(() => expect(scaleService).toHaveBeenCalledWith("app", 5));
   });
 
+  it("preserves a rejected manual count so it can be retried", async () => {
+    scaleService.mockResolvedValueOnce(false);
+    renderScaling();
+    await screen.findByText("Manual Scaling");
+
+    const input = screen.getByRole("spinbutton");
+    fireEvent.change(input, { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    await waitFor(() => expect(scaleService).toHaveBeenCalledWith("app", 5));
+    expect(input).toHaveValue(5);
+    expect(screen.getByRole("button", { name: "Save Changes" })).toBeEnabled();
+  });
+
   it("clamps the manual instance input to 1–100", async () => {
     renderScaling();
     await screen.findByText("Manual Scaling");

@@ -47,10 +47,11 @@ export function ManualScalingSection({
 
   async function handleSave() {
     if (draft == null) return;
-    await scaleService(serviceId, draft);
-    // Success updates the cached replicas via the mutation's {id, replicas}
-    // selection; either way the draft clears back to server truth.
-    setDraft(null);
+    const accepted = await scaleService(serviceId, draft);
+    // Mutation success means the desired count was accepted; Apollo updates the
+    // cached spec.replicas selection, while operator/Deployment convergence is
+    // still asynchronous. Preserve a rejected draft so the user can retry.
+    if (accepted) setDraft(null);
   }
 
   return (

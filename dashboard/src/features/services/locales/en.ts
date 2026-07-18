@@ -2564,8 +2564,9 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Toast shown after createService fails",
   },
   "services.scaleSuccess": {
-    message: "Scaled to {count} instance(s).",
-    description: "Toast shown after scaleService succeeds",
+    message: "Scaling to {count} instance(s)…",
+    description:
+      "Toast acknowledging that scaleService accepted the desired count; convergence is still asynchronous",
   },
   "services.scaleError": {
     message: "Failed to update instance count.",

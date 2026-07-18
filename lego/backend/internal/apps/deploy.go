@@ -1546,6 +1546,10 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 	deploySpecChanged := specChanged && !maintenanceOnly
 	base := client.MergeFrom(existing.DeepCopy())
 	if deploySpecChanged {
+		if existing.Annotations == nil {
+			existing.Annotations = map[string]string{}
+		}
+		existing.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(existing.Generation+1, 10)
 		applyCreateToSpec(&existing.Spec, desired)
 		if maintenanceChanged {
 			existing.Spec.MaintenanceMode = currentMaintenance
@@ -1588,7 +1592,7 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 	if deploySpecChanged && s.Store != nil {
 		if id := managedAppID(existing); id != "" {
 			commit := s.resolveDeployCommit(ctx, s.deployWorkspace(ctx, existing), existing.Spec.Repo, existing.Spec.Branch)
-			if _, err := s.Store.CreateDeploy(ctx, id, "blueprint", existing.Spec.Image, existing.Generation, commit); err != nil {
+			if _, err := s.Store.CreateDeploy(ctx, id, "blueprint", existing.Spec.Image, existing.Generation+1, commit); err != nil {
 				return AppView{}, fmt.Errorf("recording redeploy: %w", err)
 			}
 		}

@@ -351,6 +351,12 @@ func TestListGetTriggerLifecycle(t *testing.T) {
 	if app.Spec.RestartedAt == "" {
 		t.Error("Trigger must bump spec.restartedAt (a re-pull/restart now)")
 	}
+	if got := app.Annotations[appv1alpha1.AnnotationReleaseGeneration]; got != "2" {
+		t.Errorf("release-generation annotation = %q, want 2", got)
+	}
+	if got := ds.byApp["srv-1"][0].Generation; got != 2 {
+		t.Errorf("deploy generation = %d, want annotated release generation 2", got)
+	}
 
 	list, err = svc.List(context.Background(), "web", ListFilter{})
 	if err != nil || len(list) != 2 || list[0].ID != triggered.ID {

@@ -2518,8 +2518,9 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Toast shown after createService fails",
   },
   "services.scaleSuccess": {
-    message: "已缩放至 {count} 个实例。",
-    description: "Toast shown after scaleService succeeds",
+    message: "正在缩放至 {count} 个实例…",
+    description:
+      "Toast acknowledging that scaleService accepted the desired count; convergence is still asynchronous",
   },
   "services.scaleError": {
     message: "更新实例数量失败。",

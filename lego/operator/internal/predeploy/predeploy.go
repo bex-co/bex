@@ -97,7 +97,7 @@ type Options struct {
 	Image      string // the new revision's image (same ref the Deployment will run)
 	Command    string // App.spec.preDeployCommand, run as `sh -c <Command>`
 	Revision   string // deterministic per-revision tag, e.g. "gen-7" (names the Job)
-	Generation int64  // spec generation this step gates (stamped on the pod for traceability)
+	Generation int64  // release generation this step gates (stamped on the pod for traceability)
 
 	Env              []corev1.EnvVar
 	EnvFrom          []corev1.EnvFromSource
