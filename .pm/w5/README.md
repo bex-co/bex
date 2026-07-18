@@ -61,11 +61,16 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 _(`021.md` implemented 2026-07-17 — compact clickable instance slugs on service
 log rows; completed as sub-hour work and moved to `done/`.)_
 
+- `022.md` — Fix metrics lookup for opaque `srv-…` service IDs: use the
+  resolved Kubernetes App name for pod/Prometheus selectors while preserving
+  the public resource identity; add typed-ID regression coverage ← production
+  diagnosis 2026-07-17
+
 _(`015.md`–`020.md` absorbed into **m36** 2026-07-15; notes moved to `done/`)_
 
 _(`014.md` folded into **m31** (t005) 2026-07-15; note moved to `done/`)_
 
-- `013.md` — ADR018 stale-marker sweep (cron Build Command, header-rules UI ◐, email-recovery ◐) — sub-hour doc sweep; coordinate with `w4/m20/t003` on the email-recovery row ← from `/pm-brainstorm` round 4, 2026-07-14
+_(`013.md` absorbed into completed `w10/m4` 2026-07-15; note moved to `done/`)_
 
 _(`012.md` applied 2026-07-13 — flipped the 5 stale UI cells in `docs/ADR018-render-parity.md` [Service events, Trigger a deploy, List/get deploy objects, Cancel deploy, Rollback] from `✖` to `✅` pointing at `w5/m21`, plus the two gap-backlog rows [`Deploy cancel + rollback`, `Service events feed`]; also closed two additionally-stale gap-backlog rows found in the same pass [`Health-check path → readiness probe`, `Env groups + secret files`, both already shipped], moved to `done/012.md`)_
 

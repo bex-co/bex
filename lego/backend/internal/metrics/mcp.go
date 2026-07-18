@@ -27,7 +27,7 @@ import (
 // required `resource` array of service ids and `metricTypes` (bex metric ids),
 // plus the optional time window and options.
 type getMetricsArgs struct {
-	Resource          []string `json:"resource" jsonschema:"service ids (bex App names) to read metrics for"`
+	Resource          []string `json:"resource" jsonschema:"service ids (srv-...) or names to read metrics for"`
 	MetricTypes       []string `json:"metricTypes" jsonschema:"metric ids: cpu|memory|instance_count|http_requests|http_latency|bandwidth|cpu_target|memory_target (cpu_target/memory_target are bex extensions: the App's configured autoscale-target utilization, w1/m20 — omitted when autoscaling is disabled)"`
 	StartTime         string   `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window (request metrics)"`
 	EndTime           string   `json:"endTime,omitempty" jsonschema:"RFC3339 end of the window (request metrics)"`
