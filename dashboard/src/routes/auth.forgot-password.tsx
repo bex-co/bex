@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { translatedTitleHead } from "@/common/lib/document-head";
 import ForgotPasswordPage from "@/features/auth/pages/forgot-password-page";
 
 export const Route = createFileRoute("/auth/forgot-password")({
@@ -6,7 +7,5 @@ export const Route = createFileRoute("/auth/forgot-password")({
   validateSearch: (search: Record<string, unknown>) => ({
     flow: typeof search.flow === "string" ? search.flow : undefined,
   }),
-  head: () => ({
-    meta: [{ title: "Forgot password — bex" }],
-  }),
+  head: ({ match }) => translatedTitleHead("auth.forgotPasswordTitle", match),
 });

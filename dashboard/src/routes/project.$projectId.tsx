@@ -1,10 +1,32 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import {
+  loadRouteResource,
+  routeResourceTitle,
+  titleHead,
+} from "@/common/lib/document-head";
+import { ProjectDocument } from "@/features/projects/api/operations";
 
 export const Route = createFileRoute("/project/$projectId")({
   component: RouteComponent,
   beforeLoad: requireAuth(),
+  loader: ({ context, params }) =>
+    loadRouteResource(
+      () =>
+        context.client.query({
+          query: ProjectDocument,
+          variables: { id: params.projectId },
+          fetchPolicy: "network-only",
+          errorPolicy: "all",
+        }),
+      (data) => (data?.project?.name?.trim() ? data.project : null),
+    ),
+  head: ({ loaderData, match }) =>
+    titleHead(
+      routeResourceTitle(loaderData, (project) => [project.name]),
+      match,
+    ),
 });
 
 /**

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { translatedTitleHead } from "@/common/lib/document-head";
 import LoginPage from "@/features/auth/pages/login-page";
 
 export const Route = createFileRoute("/auth/login")({
@@ -18,7 +19,5 @@ export const Route = createFileRoute("/auth/login")({
     // param, so nothing else from the URL is passed on.
     aal: search.aal === "aal2" ? ("aal2" as const) : undefined,
   }),
-  head: () => ({
-    meta: [{ title: "Sign in — bex" }],
-  }),
+  head: ({ match }) => translatedTitleHead("auth.loginSubtitle", match),
 });

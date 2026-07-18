@@ -26,7 +26,7 @@ export interface UseServerResult {
 export function useServer(id: string): UseServerResult {
   const { data, loading, error, refetch } = useQuery(ServerDocument, {
     variables: { id },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
     errorPolicy: "all",
   });
 

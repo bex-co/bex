@@ -9,6 +9,16 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "bex",
     description: "Product name shown in the dashboard chrome",
   },
+  "common.headDescription": {
+    message:
+      "Deploy and operate applications on infrastructure you control with bex, the open-source, AI-native Render alternative.",
+    description:
+      "Generic dashboard description used in description, Open Graph, and Twitter metadata",
+  },
+  "common.headImageAlt": {
+    message: "bex Dashboard logo",
+    description: "Alternative text for the dashboard's generic social image",
+  },
   "common.loading": {
     message: "Loading…",
     description: "Generic loading state label",
@@ -20,15 +30,18 @@ const enCommon: Record<string, TranslationEntry> = {
   },
   "common.navIntegrationsGroup": {
     message: "Integrations",
-    description: "Sidebar nav section label (webhooks, notifications) — Render's grouping",
+    description:
+      "Sidebar nav section label (webhooks, notifications) — Render's grouping",
   },
   "common.navWorkspaceGroup": {
     message: "Workspace",
-    description: "Sidebar nav section label (usage, settings) — Render's grouping",
+    description:
+      "Sidebar nav section label (usage, settings) — Render's grouping",
   },
   "common.navMonitorGroup": {
     message: "Monitor",
-    description: "Service sidebar section label (logs, metrics) — Render's grouping",
+    description:
+      "Service sidebar section label (logs, metrics) — Render's grouping",
   },
   "common.navWebhooks": {
     message: "Webhooks",

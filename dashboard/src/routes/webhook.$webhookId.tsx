@@ -7,13 +7,44 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { WebhookDetailContext } from "@/features/webhooks/components/webhook-detail-context";
 import { WebhookDetailHeader } from "@/features/webhooks/components/webhook-detail-header";
 import { useWebhook } from "@/features/webhooks/hooks/use-webhook";
+import { WebhookEndpointDocument } from "@/graphql/definitions";
+import {
+  loadRouteResource,
+  routeResourceTitle,
+  titleHead,
+  translatedText,
+} from "@/common/lib/document-head";
 
 export const Route = createFileRoute("/webhook/$webhookId")({
   component: WebhookDetailShell,
   beforeLoad: requireAuth(),
-  head: ({ params }) => ({
-    meta: [{ title: `${params.webhookId} · Webhook · bex dashboard` }],
-  }),
+  loader: ({ context, params }) =>
+    loadRouteResource(
+      () =>
+        context.client.query({
+          query: WebhookEndpointDocument,
+          variables: {
+            id: params.webhookId,
+            ownerId: context.workspaceId,
+          },
+          fetchPolicy: "network-only",
+          errorPolicy: "all",
+        }),
+      (data) => {
+        const endpoint = data?.webhookEndpoint;
+        return endpoint && (endpoint.name?.trim() || endpoint.url?.trim())
+          ? endpoint
+          : null;
+      },
+    ),
+  head: ({ loaderData, match }) =>
+    titleHead(
+      routeResourceTitle(loaderData, (endpoint) => [
+        endpoint.name?.trim() || endpoint.url,
+        translatedText("webhooks.detailKicker"),
+      ]),
+      match,
+    ),
 });
 
 /**

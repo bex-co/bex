@@ -1,4 +1,8 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -16,15 +20,38 @@ import { KeyValueNameSection } from "@/features/keyvalue/components/key-value-na
 import { KeyValueLogViewer } from "@/features/keyvalue/components/key-value-log-viewer";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import type { KeyValueView } from "@/features/keyvalue/types";
+import { KeyValueDocument } from "@/graphql/definitions";
+import {
+  loadRouteResource,
+  routeResourceTitle,
+  titleHead,
+  translatedText,
+} from "@/common/lib/document-head";
 
 export const Route = createFileRoute("/keyvalue/$keyValueId")({
   component: KeyValueDetailPage,
   beforeLoad: requireAuth(),
   validateSearch: (search: Record<string, unknown>): { tab?: "logs" } =>
     search.tab === "logs" ? { tab: "logs" } : {},
-  head: ({ params }) => ({
-    meta: [{ title: `${params.keyValueId} · Key Value · bex dashboard` }],
-  }),
+  loader: ({ context, params }) =>
+    loadRouteResource(
+      () =>
+        context.client.query({
+          query: KeyValueDocument,
+          variables: { id: params.keyValueId },
+          fetchPolicy: "network-only",
+          errorPolicy: "all",
+        }),
+      (data) => (data?.keyValue?.name?.trim() ? data.keyValue : null),
+    ),
+  head: ({ loaderData, match }) =>
+    titleHead(
+      routeResourceTitle(loaderData, (keyValue) => [
+        keyValue.name,
+        translatedText("keyvalue.resourceType"),
+      ]),
+      match,
+    ),
 });
 
 export function KeyValueDetailPage() {
@@ -32,6 +59,7 @@ export function KeyValueDetailPage() {
   const { tab } = Route.useSearch();
   const { t } = useTranslations();
   const navigate = useNavigate();
+  const router = useRouter();
   const { keyValue, loading, refetch } = useKeyValue(keyValueId);
 
   const showNotFound = !loading && !keyValue;
@@ -99,7 +127,7 @@ export function KeyValueDetailPage() {
               <KeyValueNameSection
                 key={`name-${keyValue.name}`}
                 keyValue={keyValue}
-                onChanged={() => void refetch()}
+                onChanged={() => void router.invalidate()}
               />
               <ConnectionInfoPanel id={keyValue.id} />
               <KeyValueNetworkingPanel

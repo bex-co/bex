@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { translatedTitleHead } from "@/common/lib/document-head";
 import { Plus } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
@@ -48,15 +49,26 @@ export const Route = createFileRoute("/")({
     search.new === "database" || search.new === "project"
       ? { new: search.new }
       : {},
-  head: () => ({
-    meta: [{ title: "Overview · bex dashboard" }],
-  }),
+  head: ({ match }) => {
+    if (match.search.new === "database") {
+      return translatedTitleHead("databases.createTitle", match);
+    }
+    if (match.search.new === "project") {
+      return translatedTitleHead("projects.createTitle", match);
+    }
+    return translatedTitleHead("projects.overviewTitle", match);
+  },
 });
 
 export function HomePage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
-  const { services, loading: servicesLoading, error: servicesError, refetch: refetchServices } = useServices();
+  const {
+    services,
+    loading: servicesLoading,
+    error: servicesError,
+    refetch: refetchServices,
+  } = useServices();
   const {
     databases,
     loading: databasesLoading,
@@ -73,7 +85,11 @@ export function HomePage() {
     startPolling: startKeyValuePolling,
     stopPolling: stopKeyValuePolling,
   } = useKeyValues();
-  const { projects, loading: projectsLoading, refetch: refetchProjects } = useProjects();
+  const {
+    projects,
+    loading: projectsLoading,
+    refetch: refetchProjects,
+  } = useProjects();
   const { pending, run } = useServiceLifecycle({ refetch: refetchServices });
   // The URL owns which create dialog is open (`?new=…`), so Render's New-menu
   // aliases land directly in the dialog; `replace` keeps open/close out of the
@@ -88,11 +104,18 @@ export function HomePage() {
       replace: true,
     });
   }
-  const setNewDatabaseOpen = (open: boolean) => setCreateDialog("database", open);
+  const setNewDatabaseOpen = (open: boolean) =>
+    setCreateDialog("database", open);
   const setNewProjectOpen = (open: boolean) => setCreateDialog("project", open);
 
-  const databaseStats = useMemo(() => computeDatabaseStats(databases), [databases]);
-  const keyValueStats = useMemo(() => computeKeyValueStats(keyValues), [keyValues]);
+  const databaseStats = useMemo(
+    () => computeDatabaseStats(databases),
+    [databases],
+  );
+  const keyValueStats = useMemo(
+    () => computeKeyValueStats(keyValues),
+    [keyValues],
+  );
 
   // Poll while a just-created database/key-value is still provisioning, so it
   // converges to Available on its own.
@@ -114,7 +137,8 @@ export function HomePage() {
     keyValues,
   });
 
-  const loading = servicesLoading || databasesLoading || keyValuesLoading || projectsLoading;
+  const loading =
+    servicesLoading || databasesLoading || keyValuesLoading || projectsLoading;
   const error = servicesError || databasesError || keyValuesError;
   const totalResources = services.length + databases.length + keyValues.length;
 
@@ -122,7 +146,8 @@ export function HomePage() {
   // a transient poll error or background refetch must not blank an existing list.
   const showSkeleton = loading && totalResources === 0;
   const showError = !loading && error && totalResources === 0;
-  const showEmpty = !loading && !error && totalResources === 0 && projects.length === 0;
+  const showEmpty =
+    !loading && !error && totalResources === 0 && projects.length === 0;
 
   function refetchAll() {
     void refetchServices();
@@ -184,7 +209,12 @@ export function HomePage() {
                 </h2>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {groups.map((g) => (
-                    <ProjectCard key={g.id} id={g.id} name={g.name} rows={g.rows} />
+                    <ProjectCard
+                      key={g.id}
+                      id={g.id}
+                      name={g.name}
+                      rows={g.rows}
+                    />
                   ))}
                   <NewProjectCard onClick={() => setNewProjectOpen(true)} />
                 </div>
@@ -222,7 +252,10 @@ export function HomePage() {
         onOpenChange={setNewProjectOpen}
         onCreated={(id) => {
           void refetchProjects();
-          void navigate({ to: "/project/$projectId", params: { projectId: id } });
+          void navigate({
+            to: "/project/$projectId",
+            params: { projectId: id },
+          });
         }}
       />
     </DashboardLayout>

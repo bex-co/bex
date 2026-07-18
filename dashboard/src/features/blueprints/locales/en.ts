@@ -1,6 +1,10 @@
 import type { TranslationEntry } from "@/i18n";
 
 const enBlueprints: Record<string, TranslationEntry> = {
+  "blueprints.resourceType": {
+    message: "Blueprint",
+    description: "Blueprint resource type used in document titles",
+  },
   // --- List page ---
   "blueprints.pageTitle": {
     message: "Blueprints",
@@ -12,7 +16,8 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.colName": {
     message: "Name",
-    description: "Blueprints table column header — blueprint name (derived from repo)",
+    description:
+      "Blueprints table column header — blueprint name (derived from repo)",
   },
   "blueprints.colRepo": {
     message: "Repository",
@@ -38,7 +43,8 @@ const enBlueprints: Record<string, TranslationEntry> = {
   "blueprints.emptyBody": {
     message:
       "Blueprints auto-register whenever you deploy a repo-backed bex.yml. Once deployed, your stack appears here and you can sync or validate it.",
-    description: "Blueprints list empty-state body explaining auto-registration",
+    description:
+      "Blueprints list empty-state body explaining auto-registration",
   },
   // --- Loading / error ---
   "blueprints.loadingBody": {
@@ -88,7 +94,7 @@ const enBlueprints: Record<string, TranslationEntry> = {
     description: "Blueprint detail not-found state heading",
   },
   "blueprints.notFoundBody": {
-    message: "No blueprint with id \"{id}\" exists in this workspace.",
+    message: 'No blueprint with id "{id}" exists in this workspace.',
     description: "Blueprint detail not-found state body",
   },
   // --- Sync action ---
@@ -136,7 +142,8 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.validateInvalid": {
     message: "Manifest has errors:",
-    description: "Validate result: manifest has parse errors — followed by the error list",
+    description:
+      "Validate result: manifest has parse errors — followed by the error list",
   },
   "blueprints.validateNoResult": {
     message: "No result yet.",

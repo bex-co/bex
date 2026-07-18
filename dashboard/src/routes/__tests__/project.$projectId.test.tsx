@@ -126,10 +126,24 @@ function renderProjectPage(projectId = "prj-1") {
   const projectRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/project/$projectId",
+    loader: ({ params }) => {
+      const project = projectsState.projects.find(
+        (candidate) => candidate.id === params.projectId,
+      );
+      return project
+        ? ({ state: "ready", resource: project } as const)
+        : ({ state: "not-found" } as const);
+    },
+  });
+  const projectIndexRoute = createRoute({
+    getParentRoute: () => projectRoute,
+    path: "/",
     component: ProjectPage,
   });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([projectRoute]),
+    routeTree: rootRoute.addChildren([
+      projectRoute.addChildren([projectIndexRoute]),
+    ]),
     history: createMemoryHistory({ initialEntries: [`/project/${projectId}`] }),
     context: { client: {} as never, session: null },
   });

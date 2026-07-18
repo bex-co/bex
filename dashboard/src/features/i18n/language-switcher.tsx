@@ -23,8 +23,8 @@ export function LanguageSwitcher() {
   const current = i18n.language as SupportedLanguage;
 
   const handleSelect = (lang: SupportedLanguage) => {
-    void i18n.changeLanguage(lang);
     persistLanguage(lang);
+    void i18n.changeLanguage(lang);
   };
 
   return (

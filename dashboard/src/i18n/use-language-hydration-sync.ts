@@ -24,8 +24,8 @@ export function useLanguageHydrationSync(): void {
 
     const storedLang = asSupportedLanguage(localStorage.getItem("i18nextLng"));
     if (storedLang && storedLang !== i18n.language) {
-      void i18n.changeLanguage(storedLang);
       persistLanguage(storedLang);
+      void i18n.changeLanguage(storedLang);
     }
   }, []);
 }

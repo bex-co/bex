@@ -19,6 +19,7 @@ import { EventPicker } from "@/features/webhooks/components/event-picker";
 import { useCreateWebhook } from "@/features/webhooks/hooks/use-create-webhook";
 import { useWebhookEventTypes } from "@/features/webhooks/hooks/use-webhook-event-types";
 import type { CreatedWebhookEndpoint } from "@/features/webhooks/types";
+import { translatedTitleHead } from "@/common/lib/document-head";
 
 // The trailing underscore deliberately escapes the /webhooks list route's
 // component hierarchy while keeping the public URL `/webhooks/new` — the list
@@ -27,9 +28,7 @@ import type { CreatedWebhookEndpoint } from "@/features/webhooks/types";
 export const Route = createFileRoute("/webhooks_/new")({
   component: NewWebhookPage,
   beforeLoad: requireAuth(),
-  head: () => ({
-    meta: [{ title: "New Webhook · bex dashboard" }],
-  }),
+  head: ({ match }) => translatedTitleHead("webhooks.newTitle", match),
 });
 
 /**
@@ -73,10 +72,14 @@ export function NewWebhookPage() {
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto w-full max-w-2xl space-y-6">
           {created ? (
-            <SecretStep created={created} onView={() => void navigate({
-              to: "/webhook/$webhookId",
-              params: { webhookId: created.id },
-            })}
+            <SecretStep
+              created={created}
+              onView={() =>
+                void navigate({
+                  to: "/webhook/$webhookId",
+                  params: { webhookId: created.id },
+                })
+              }
             />
           ) : (
             <Card>
@@ -88,7 +91,9 @@ export function NewWebhookPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="webhook-name">{t("webhooks.fieldName")}</Label>
+                  <Label htmlFor="webhook-name">
+                    {t("webhooks.fieldName")}
+                  </Label>
                   <p className="text-muted-foreground text-sm">
                     {t("webhooks.fieldNameHelp")}
                   </p>

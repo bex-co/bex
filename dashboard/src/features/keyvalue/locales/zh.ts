@@ -1,6 +1,10 @@
 import type { TranslationEntry } from "@/i18n";
 
 const zhKeyValue: Record<string, TranslationEntry> = {
+  "keyvalue.resourceType": {
+    message: "键值存储",
+    description: "Key Value resource type used in document titles",
+  },
   // --- List page stat tiles ---
   "keyvalue.statTotal": {
     message: "键值存储总数",
@@ -127,7 +131,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Button that navigates to the create-Key-Value page",
   },
   "keyvalue.createTitle": {
-    message: "创建键值存储",
+    message: "新建键值存储",
     description: "Create-Key-Value page title",
   },
   "keyvalue.createDescription": {

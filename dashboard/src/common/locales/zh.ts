@@ -9,6 +9,16 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "bex",
     description: "Product name shown in the dashboard chrome",
   },
+  "common.headDescription": {
+    message:
+      "使用开源、AI 原生的 Render 替代方案 bex，在你掌控的基础设施上部署和运维应用。",
+    description:
+      "Generic dashboard description used in description, Open Graph, and Twitter metadata",
+  },
+  "common.headImageAlt": {
+    message: "bex 仪表盘标志",
+    description: "Alternative text for the dashboard's generic social image",
+  },
   "common.loading": {
     message: "加载中…",
     description: "Generic loading state label",
@@ -20,15 +30,18 @@ const zhCommon: Record<string, TranslationEntry> = {
   },
   "common.navIntegrationsGroup": {
     message: "集成",
-    description: "Sidebar nav section label (webhooks, notifications) — Render's grouping",
+    description:
+      "Sidebar nav section label (webhooks, notifications) — Render's grouping",
   },
   "common.navWorkspaceGroup": {
     message: "工作区",
-    description: "Sidebar nav section label (usage, settings) — Render's grouping",
+    description:
+      "Sidebar nav section label (usage, settings) — Render's grouping",
   },
   "common.navMonitorGroup": {
     message: "监控",
-    description: "Service sidebar section label (logs, metrics) — Render's grouping",
+    description:
+      "Service sidebar section label (logs, metrics) — Render's grouping",
   },
   "common.navWebhooks": {
     message: "Webhooks",

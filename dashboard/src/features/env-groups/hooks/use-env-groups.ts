@@ -104,7 +104,7 @@ export interface UseEnvGroupResult {
 export function useEnvGroup(id: string): UseEnvGroupResult {
   const { data, loading, error, refetch } = useQuery(EnvGroupDocument, {
     variables: { id },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
     errorPolicy: "all",
   });
 
@@ -144,7 +144,7 @@ export interface UseEnvGroupMutationsResult {
 /** Group lifecycle and service-link mutations shared by both dashboard surfaces. */
 export function useEnvGroupMutations(
   refetch?: Refetch,
-  options: { skipDeleteRefetch?: boolean } = {},
+  options: { skipDeleteRefetch?: boolean; skipRenameRefetch?: boolean } = {},
 ): UseEnvGroupMutationsResult {
   const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
@@ -196,7 +196,9 @@ export function useEnvGroupMutations(
       setBusy(true);
       try {
         await renameEnvGroup({ variables: { id, name } });
-        await bestEffortRefetch(refetch);
+        if (!options.skipRenameRefetch) {
+          await bestEffortRefetch(refetch);
+        }
         toast.success(t("envGroups.renameSuccess", { name }));
         return true;
       } catch {
@@ -206,7 +208,7 @@ export function useEnvGroupMutations(
         setBusy(false);
       }
     },
-    [refetch, renameEnvGroup, t],
+    [options.skipRenameRefetch, refetch, renameEnvGroup, t],
   );
 
   const deleteGroup = useCallback(

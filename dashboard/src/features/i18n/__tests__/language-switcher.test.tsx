@@ -51,5 +51,8 @@ describe("LanguageSwitcher", () => {
 
     expect(changeLanguageSpy).toHaveBeenCalledWith("zh");
     expect(persistLanguage).toHaveBeenCalledWith("zh");
+    expect(vi.mocked(persistLanguage).mock.invocationCallOrder[0]).toBeLessThan(
+      changeLanguageSpy.mock.invocationCallOrder[0],
+    );
   });
 });

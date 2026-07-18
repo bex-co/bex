@@ -15,7 +15,7 @@ export function useBlueprint(id: string): UseBlueprintResult {
   const { currentWorkspaceId } = useWorkspace();
   const { data, loading, error, refetch } = useQuery(BlueprintDocument, {
     variables: { id, ownerId: currentWorkspaceId },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
     errorPolicy: "all",
   });
 

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
+import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { NotificationSettingsPanel } from "@/features/notifications/components/notification-settings-panel";
 
@@ -11,9 +12,7 @@ import { NotificationSettingsPanel } from "@/features/notifications/components/n
 export const Route = createFileRoute("/notifications")({
   component: NotificationsPage,
   beforeLoad: requireAuth(),
-  head: () => ({
-    meta: [{ title: "Notifications · bex dashboard" }],
-  }),
+  head: ({ match }) => translatedTitleHead("notifications.title", match),
 });
 
 function NotificationsPage() {

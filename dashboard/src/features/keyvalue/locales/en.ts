@@ -1,6 +1,10 @@
 import type { TranslationEntry } from "@/i18n";
 
 const enKeyValue: Record<string, TranslationEntry> = {
+  "keyvalue.resourceType": {
+    message: "Key Value",
+    description: "Key Value resource type used in document titles",
+  },
   // --- List page stat tiles ---
   "keyvalue.statTotal": {
     message: "Total Key Value stores",
@@ -129,7 +133,7 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description: "Button that navigates to the create-Key-Value page",
   },
   "keyvalue.createTitle": {
-    message: "Create a Key Value store",
+    message: "New Key Value",
     description: "Create-Key-Value page title",
   },
   "keyvalue.createDescription": {

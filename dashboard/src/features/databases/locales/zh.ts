@@ -1,6 +1,10 @@
 import type { TranslationEntry } from "@/i18n";
 
 const zhDatabases: Record<string, TranslationEntry> = {
+  "databases.resourceType": {
+    message: "数据库",
+    description: "Managed Postgres resource type used in document titles",
+  },
   // --- List page stat tiles ---
   "databases.statTotal": {
     message: "数据库总数",
@@ -134,7 +138,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Button that opens the create-database dialog",
   },
   "databases.createTitle": {
-    message: "创建 Postgres 数据库",
+    message: "新建 Postgres 数据库",
     description: "Create-database dialog title",
   },
   "databases.createDescription": {

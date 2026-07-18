@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
+import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -22,9 +23,8 @@ export const Route = createFileRoute("/workspace/settings")({
   // mandatory on every navigation to this route (the switcher's included).
   validateSearch: (search: Record<string, unknown>): { plan?: "change" } =>
     search.plan === "change" ? { plan: "change" } : {},
-  head: () => ({
-    meta: [{ title: "Workspace Settings · bex dashboard" }],
-  }),
+  head: ({ match }) =>
+    translatedTitleHead("workspaces.switcherSettings", match),
 });
 
 /**

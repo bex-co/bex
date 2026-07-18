@@ -44,7 +44,10 @@ export function useWebhook(id: string): UseWebhookResult {
   const { data, loading, error, refetch } = useQuery(WebhookEndpointDocument, {
     variables: { id, ownerId: currentWorkspaceId },
     skip: !resolved,
-    fetchPolicy: "cache-and-network",
+    // The parent route's network-only loader fills this exact query for the
+    // SSR title and shell. Consume that normalized result instead of issuing a
+    // second request solely because both the head and page need the endpoint.
+    fetchPolicy: "cache-first",
     errorPolicy: "all",
   });
 

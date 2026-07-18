@@ -7,28 +7,62 @@ import { RootComponent } from "@/common/root-route/root-component";
 import { fetchSession } from "@/common/server-fn/session";
 import { detectLanguage } from "@/i18n/detect-language";
 import i18n from "@/i18n/init";
+import { getDashboardOrigin, globalMetadata } from "@/common/lib/document-head";
+import { getPersistedWorkspaceId } from "@/features/workspaces/lib/selection";
 
 import appCss from "../style.css?inline";
 import oryElementsCss from "@ory/elements-react/theme/styles.css?inline";
 
 export const Route = createRootRouteWithContext<RouterContext>()({
-  head: () => ({
-    meta: [
-      {
-        charSet: "utf-8",
-      },
-      {
-        name: "viewport",
-        content: "width=device-width, initial-scale=1",
-      },
-      {
-        title: "bex dashboard",
-      },
-    ],
+  notFoundComponent: NotFoundPage,
+  errorComponent: ErrorPage,
+  shellComponent: ShellComponent,
+  component: RootComponent,
+  beforeLoad: async () => {
+    const language = detectLanguage();
+    const sessionPromise = fetchSession();
+    const dashboardOrigin = getDashboardOrigin();
+    const workspaceId = getPersistedWorkspaceId();
+    // Applied before this route's component renders (both on the server and
+    // on the client's initial hydration pass) so the first render on each
+    // side uses the same language — no hydration mismatch. Skipped when
+    // unchanged (the common case past the first navigation) to avoid paying
+    // i18next's resource-swap/subscriber-notify cost on every route change;
+    // run alongside the (independent) session fetch rather than after it.
+    if (i18n.language !== language) await i18n.changeLanguage(language);
+    // `aal2Required` rides along with the session: it is the same whoami call's
+    // other answer (a live session that owes a second factor), and `requireAuth`
+    // needs it to redirect to the step-up (w4/m17).
+    const { session, aal2Required } = await sessionPromise;
+    return {
+      session,
+      aal2Required,
+      language,
+      dashboardOrigin,
+      workspaceId,
+    };
+  },
+  loader: ({ context }) => {
+    return {
+      session: context.session,
+      language: context.language,
+      dashboardOrigin: context.dashboardOrigin,
+      workspaceId: context.workspaceId,
+    };
+  },
+  head: ({ loaderData }) => ({
+    ...globalMetadata(
+      loaderData?.dashboardOrigin,
+      loaderData?.language ?? "en",
+    ),
     links: [
       {
         rel: "icon",
         href: "/favicon.ico",
+      },
+      {
+        rel: "apple-touch-icon",
+        href: "/logo.png",
       },
     ],
     styles: [
@@ -46,34 +80,4 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       },
     ],
   }),
-  notFoundComponent: NotFoundPage,
-  errorComponent: ErrorPage,
-  shellComponent: ShellComponent,
-  component: RootComponent,
-  beforeLoad: async () => {
-    const language = detectLanguage();
-    const sessionPromise = fetchSession();
-    // Applied before this route's component renders (both on the server and
-    // on the client's initial hydration pass) so the first render on each
-    // side uses the same language — no hydration mismatch. Skipped when
-    // unchanged (the common case past the first navigation) to avoid paying
-    // i18next's resource-swap/subscriber-notify cost on every route change;
-    // run alongside the (independent) session fetch rather than after it.
-    if (i18n.language !== language) await i18n.changeLanguage(language);
-    // `aal2Required` rides along with the session: it is the same whoami call's
-    // other answer (a live session that owes a second factor), and `requireAuth`
-    // needs it to redirect to the step-up (w4/m17).
-    const { session, aal2Required } = await sessionPromise;
-    return {
-      session,
-      aal2Required,
-      language,
-    };
-  },
-  loader: ({ context }) => {
-    return {
-      session: context.session,
-      language: context.language,
-    };
-  },
 });

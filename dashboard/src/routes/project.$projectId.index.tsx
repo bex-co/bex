@@ -1,5 +1,9 @@
-import { useState, useEffect } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import {
+  createFileRoute,
+  getRouteApi,
+  useRouter,
+} from "@tanstack/react-router";
 import { Loader2, Pencil } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Button } from "@/common/components/ui/button.tsx";
@@ -15,7 +19,6 @@ import { useServices } from "@/features/services/hooks/use-services";
 import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
 import { useDatabases } from "@/features/databases/hooks/use-databases";
 import { useKeyValues } from "@/features/keyvalue/hooks/use-key-values";
-import { useProjects } from "@/features/projects/hooks/use-projects";
 import { useGroupedResources } from "@/features/projects/hooks/use-grouped-resources";
 import { useRenameProject } from "@/features/projects/hooks/use-rename-project";
 import { EnvironmentsPanel } from "@/features/environments/components/environments-panel";
@@ -27,10 +30,9 @@ import {
 export const Route = createFileRoute("/project/$projectId/")({
   component: ProjectPage,
   validateSearch: parseProjectResourceSearch,
-  head: () => ({
-    meta: [{ title: "Project · bex dashboard" }],
-  }),
 });
+
+const projectRoute = getRouteApi("/project/$projectId");
 
 /**
  * A single project's own page (Render parity: dashboard.render.com/project/{id})
@@ -44,6 +46,7 @@ export function ProjectPage() {
   const { projectId } = Route.useParams();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
+  const router = useRouter();
   const { t } = useTranslations();
   const resourceFilter: ProjectResourceFilterState = {
     environmentId: search.env ?? null,
@@ -65,23 +68,18 @@ export function ProjectPage() {
   const { services, refetch: refetchServices } = useServices();
   const { databases, refetch: refetchDatabases } = useDatabases();
   const { keyValues, refetch: refetchKeyValues } = useKeyValues();
-  const { projects, loading, refetch: refetchProjects } = useProjects();
   const { pending, run } = useServiceLifecycle({ refetch: refetchServices });
+  const projectResult = projectRoute.useLoaderData();
+  const project =
+    projectResult.state === "ready" ? projectResult.resource : undefined;
 
   const { groups } = useGroupedResources({
-    projects,
+    projects: project ? [project] : [],
     services,
     databases,
     keyValues,
   });
-  const project = projects.find((p) => p.id === projectId);
   const group = groups.find((g) => g.id === projectId);
-
-  useEffect(() => {
-    if (project?.name) {
-      document.title = `${project.name} · bex dashboard`;
-    }
-  }, [project?.name]);
 
   const { rename, busy: renaming } = useRenameProject();
   const [renameOpen, setRenameOpen] = useState(false);
@@ -91,7 +89,7 @@ export function ProjectPage() {
     void refetchServices();
     void refetchDatabases();
     void refetchKeyValues();
-    void refetchProjects();
+    void router.invalidate();
   }
 
   function openRename() {
@@ -112,13 +110,18 @@ export function ProjectPage() {
     }
   }
 
-  const showNotFound = !loading && !project;
+  const showNotFound = projectResult.state === "not-found";
+  const showError = projectResult.state === "error";
 
   return (
     <>
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="w-full space-y-6">
-          {showNotFound ? (
+          {showError ? (
+            <p className="text-sm text-destructive">
+              {t("projects.errorTitle")}
+            </p>
+          ) : showNotFound ? (
             <p className="text-sm text-muted-foreground">
               {t("projects.notFound")}
             </p>

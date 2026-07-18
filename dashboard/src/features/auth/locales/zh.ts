@@ -66,6 +66,10 @@ const zhAuth: Record<string, TranslationEntry> = {
     message: "正在跳转到登录页…",
     description: "Logout page subtext once logout has completed",
   },
+  "auth.logoutTitle": {
+    message: "退出登录",
+    description: "Logout page document title",
+  },
   "auth.featureSecureTitle": {
     message: "默认安全",
     description: "Auth hero feature bullet title",
@@ -151,6 +155,10 @@ const zhAuth: Record<string, TranslationEntry> = {
   "auth.deviceSuccessTitle": {
     message: "Render CLI 已连接",
     description: "Device authorization success page title",
+  },
+  "auth.deviceTitle": {
+    message: "连接 Render CLI",
+    description: "Render CLI device verification route document title",
   },
   "auth.deviceSuccessSubtitle": {
     message: "浏览器授权已完成。",

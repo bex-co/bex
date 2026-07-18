@@ -50,11 +50,24 @@ function OryToaster() {
 // so a provider mounted inside DashboardLayout can never reach them. Mounting
 // it here, above every route's `<Outlet/>`, makes it available regardless of
 // where in a page's body a workspace-scoped hook is called.
-export const RootProvider = ({ children }: { children: React.ReactNode }) => {
+export const RootProvider = ({
+  children,
+  initialWorkspaceId = null,
+  onWorkspaceChange,
+}: {
+  children: React.ReactNode;
+  initialWorkspaceId?: string | null;
+  onWorkspaceChange?: () => void;
+}) => {
   return (
     <I18nextProvider i18n={i18n}>
       <ThemeProvider>
-        <WorkspaceProvider>{children}</WorkspaceProvider>
+        <WorkspaceProvider
+          initialWorkspaceId={initialWorkspaceId}
+          onWorkspaceChange={onWorkspaceChange}
+        >
+          {children}
+        </WorkspaceProvider>
         <VisualViewportHeight />
         <OryToaster />
       </ThemeProvider>

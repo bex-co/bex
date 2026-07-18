@@ -9,7 +9,10 @@ import {
 } from "@tanstack/react-router";
 import { HomePage } from "../index";
 import type { ServiceView } from "@/features/services/types";
-import type { DatabaseView, DatabaseInstanceTypeView } from "@/features/databases/types";
+import type {
+  DatabaseView,
+  DatabaseInstanceTypeView,
+} from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
 import type { ProjectView } from "@/features/projects/hooks/use-projects";
 
@@ -22,7 +25,12 @@ const servicesState: {
   loading: boolean;
   error: Error | undefined;
   refetch: () => Promise<ServiceView[]>;
-} = { services: [], loading: false, error: undefined, refetch: vi.fn(async () => []) };
+} = {
+  services: [],
+  loading: false,
+  error: undefined,
+  refetch: vi.fn(async () => []),
+};
 vi.mock("@/features/services/hooks/use-services", () => ({
   useServices: () => servicesState,
 }));
@@ -75,7 +83,12 @@ const projectsState: {
   loading: boolean;
   error: Error | undefined;
   refetch: () => Promise<unknown>;
-} = { projects: [], loading: false, error: undefined, refetch: vi.fn(async () => undefined) };
+} = {
+  projects: [],
+  loading: false,
+  error: undefined,
+  refetch: vi.fn(async () => undefined),
+};
 vi.mock("@/features/projects/hooks/use-projects", () => ({
   useProjects: () => projectsState,
 }));
@@ -87,7 +100,11 @@ const instanceTypes: DatabaseInstanceTypeView[] = [
   { id: "free", name: "Free", cpu: "100m", memory: "256Mi", storageGB: 1 },
 ];
 vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
-  useDatabaseInstanceTypes: () => ({ instanceTypes, loading: false, error: undefined }),
+  useDatabaseInstanceTypes: () => ({
+    instanceTypes,
+    loading: false,
+    error: undefined,
+  }),
 }));
 vi.mock("@/features/databases/hooks/use-create-database", () => ({
   useCreateDatabase: () => ({ create: vi.fn(), busy: false }),
@@ -199,7 +216,9 @@ describe("HomePage", () => {
   it("renders ungrouped resources together with a Type column", async () => {
     servicesState.services = [svc({ id: "hello-go", name: "hello-go" })];
     databasesState.databases = [db({ id: "shop-db", name: "shop-db" })];
-    keyValuesState.keyValues = [kv({ id: "sessions-cache", name: "sessions-cache" })];
+    keyValuesState.keyValues = [
+      kv({ id: "sessions-cache", name: "sessions-cache" }),
+    ];
 
     renderHomePage();
 
@@ -235,7 +254,9 @@ describe("HomePage", () => {
 
   it("renders a project card linking to the project's own page", async () => {
     servicesState.services = [svc({ id: "grouped-svc", name: "grouped-svc" })];
-    databasesState.databases = [db({ id: "ungrouped-db", name: "ungrouped-db" })];
+    databasesState.databases = [
+      db({ id: "ungrouped-db", name: "ungrouped-db" }),
+    ];
     projectsState.projects = [
       {
         id: "prj-1",
@@ -252,7 +273,9 @@ describe("HomePage", () => {
     const card = (await screen.findByText("storefront")).closest("a");
     expect(card).toHaveAttribute("href", "/project/prj-1");
     // healthy (Running) service in the project -> the green status line
-    expect(within(card!).getByText("All resources running")).toBeInTheDocument();
+    expect(
+      within(card!).getByText("All resources running"),
+    ).toBeInTheDocument();
 
     // the ungrouped database still shows in the ungrouped table, not the card
     expect(screen.getByText("ungrouped-db")).toBeInTheDocument();
@@ -275,7 +298,9 @@ describe("HomePage", () => {
     renderHomePage();
 
     const card = (await screen.findByText("storefront")).closest("a");
-    expect(within(card!).getByText("1 resource(s) need attention")).toBeInTheDocument();
+    expect(
+      within(card!).getByText("1 resource(s) need attention"),
+    ).toBeInTheDocument();
   });
 
   it("shows skeleton placeholders while loading with no data", async () => {
@@ -315,9 +340,7 @@ describe("HomePage", () => {
 describe("URL-owned create dialogs (w1/m45)", () => {
   it("?new=database opens the database create dialog", async () => {
     renderHomePage("/?new=database");
-    expect(
-      await screen.findByText("Create a Postgres database"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("New Postgres")).toBeInTheDocument();
   });
 
   it("?new=project opens the project create dialog", async () => {
@@ -327,7 +350,7 @@ describe("URL-owned create dialogs (w1/m45)", () => {
 
   it("plain / opens no dialog", () => {
     renderHomePage("/");
-    expect(screen.queryByText("Create a Postgres database")).not.toBeInTheDocument();
+    expect(screen.queryByText("New Postgres")).not.toBeInTheDocument();
     expect(screen.queryByText("New Project")).not.toBeInTheDocument();
   });
 });

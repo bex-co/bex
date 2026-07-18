@@ -1,5 +1,10 @@
-import { useState, useEffect } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import {
+  createFileRoute,
+  getRouteApi,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router";
 import { Check, Loader2, Pencil, X } from "lucide-react";
 import {
   Card,
@@ -21,16 +26,28 @@ import {
   AlertDialogTitle,
 } from "@/common/components/ui/alert-dialog.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useProjects } from "@/features/projects/hooks/use-projects";
 import { useRenameProject } from "@/features/projects/hooks/use-rename-project";
 import { useDeleteProject } from "@/features/projects/hooks/use-delete-project";
+import {
+  routeResourceTitle,
+  titleHead,
+  translatedText,
+} from "@/common/lib/document-head";
 
 export const Route = createFileRoute("/project/$projectId/settings")({
   component: ProjectSettingsPage,
-  head: () => ({
-    meta: [{ title: "Project Settings · bex dashboard" }],
-  }),
+  loader: async ({ parentMatchPromise }) =>
+    (await parentMatchPromise).loaderData,
+  head: ({ loaderData, match }) =>
+    titleHead(
+      routeResourceTitle(loaderData, (project) => [
+        `${project.name} / ${translatedText("common.navSettings")}`,
+      ]),
+      match,
+    ),
 });
+
+const projectRoute = getRouteApi("/project/$projectId");
 
 /**
  * Render parity: a project's Settings sub-page, reached from the contextual
@@ -41,15 +58,11 @@ export const Route = createFileRoute("/project/$projectId/settings")({
 export function ProjectSettingsPage() {
   const { projectId } = Route.useParams();
   const navigate = useNavigate();
+  const router = useRouter();
   const { t } = useTranslations();
-  const { projects, loading, refetch } = useProjects();
-  const project = projects.find((p) => p.id === projectId);
-
-  useEffect(() => {
-    if (project?.name) {
-      document.title = `Settings · ${project.name} · bex dashboard`;
-    }
-  }, [project?.name]);
+  const projectResult = projectRoute.useLoaderData();
+  const project =
+    projectResult.state === "ready" ? projectResult.resource : undefined;
 
   const { rename, busy: renaming } = useRenameProject();
   const [editing, setEditing] = useState(false);
@@ -74,7 +87,7 @@ export function ProjectSettingsPage() {
     const ok = await rename(projectId, trimmed);
     if (ok) {
       setEditing(false);
-      void refetch();
+      void router.invalidate();
     }
   }
 
@@ -87,10 +100,14 @@ export function ProjectSettingsPage() {
     }
   }
 
-  if (!loading && !project) {
+  if (!project) {
     return (
       <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <p className="text-sm text-muted-foreground">{t("projects.notFound")}</p>
+        <p className="text-sm text-muted-foreground">
+          {projectResult.state === "error"
+            ? t("projects.errorTitle")
+            : t("projects.notFound")}
+        </p>
       </div>
     );
   }
@@ -103,7 +120,9 @@ export function ProjectSettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle>{t("projects.nameCardTitle")}</CardTitle>
-            <CardDescription>{t("projects.nameCardDescription")}</CardDescription>
+            <CardDescription>
+              {t("projects.nameCardDescription")}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {editing ? (
@@ -143,7 +162,12 @@ export function ProjectSettingsPage() {
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <Input value={project?.name ?? ""} disabled readOnly className="flex-1" />
+                <Input
+                  value={project?.name ?? ""}
+                  disabled
+                  readOnly
+                  className="flex-1"
+                />
                 <Button variant="outline" size="sm" onClick={startEdit}>
                   <Pencil />
                   {t("projects.editNameButton")}
@@ -158,7 +182,9 @@ export function ProjectSettingsPage() {
             <CardTitle className="text-destructive">
               {t("projects.deleteCardTitle")}
             </CardTitle>
-            <CardDescription>{t("projects.deleteCardDescription")}</CardDescription>
+            <CardDescription>
+              {t("projects.deleteCardDescription")}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Button variant="destructive" onClick={() => setDeleteOpen(true)}>

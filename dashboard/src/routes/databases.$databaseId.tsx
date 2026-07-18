@@ -1,4 +1,8 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -24,15 +28,38 @@ import { SQLConsole } from "@/features/databases/components/sql-console";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import { PostgresLogViewer } from "@/features/databases/components/postgres-log-viewer";
 import type { DatabaseDetailView } from "@/features/databases/types";
+import { DatabaseDocument } from "@/graphql/definitions";
+import {
+  loadRouteResource,
+  routeResourceTitle,
+  titleHead,
+  translatedText,
+} from "@/common/lib/document-head";
 
 export const Route = createFileRoute("/databases/$databaseId")({
   component: DatabaseDetailPage,
   beforeLoad: requireAuth(),
   validateSearch: (search: Record<string, unknown>): { tab?: "logs" } =>
     search.tab === "logs" ? { tab: "logs" } : {},
-  head: ({ params }) => ({
-    meta: [{ title: `${params.databaseId} · Databases · bex dashboard` }],
-  }),
+  loader: ({ context, params }) =>
+    loadRouteResource(
+      () =>
+        context.client.query({
+          query: DatabaseDocument,
+          variables: { id: params.databaseId },
+          fetchPolicy: "network-only",
+          errorPolicy: "all",
+        }),
+      (data) => (data?.database?.name?.trim() ? data.database : null),
+    ),
+  head: ({ loaderData, match }) =>
+    titleHead(
+      routeResourceTitle(loaderData, (database) => [
+        database.name,
+        translatedText("databases.resourceType"),
+      ]),
+      match,
+    ),
 });
 
 export function DatabaseDetailPage() {
@@ -40,6 +67,7 @@ export function DatabaseDetailPage() {
   const { tab } = Route.useSearch();
   const { t } = useTranslations();
   const navigate = useNavigate();
+  const router = useRouter();
   const { database, loading, refetch } = useDatabase(databaseId);
   const lifecycle = useDatabaseLifecycle({ refetch });
 
@@ -118,7 +146,7 @@ export function DatabaseDetailPage() {
               <DatabaseNameSection
                 key={`name-${database.name}`}
                 database={database}
-                onChanged={() => void refetch()}
+                onChanged={() => void router.invalidate()}
               />
               <ConnectionInfoPanel id={database.id} />
               <SQLConsole key={`sql-${database.id}`} id={database.id} />

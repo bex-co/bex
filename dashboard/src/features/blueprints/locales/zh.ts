@@ -1,6 +1,10 @@
 import type { TranslationEntry } from "@/i18n";
 
 const zhBlueprints: Record<string, TranslationEntry> = {
+  "blueprints.resourceType": {
+    message: "蓝图",
+    description: "Blueprint resource type used in document titles",
+  },
   // --- List page ---
   "blueprints.pageTitle": {
     message: "蓝图",
@@ -12,7 +16,8 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.colName": {
     message: "名称",
-    description: "Blueprints table column header — blueprint name (derived from repo)",
+    description:
+      "Blueprints table column header — blueprint name (derived from repo)",
   },
   "blueprints.colRepo": {
     message: "仓库",
@@ -38,7 +43,8 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   "blueprints.emptyBody": {
     message:
       "每次部署含仓库来源的 bex.yml 时，蓝图将自动注册。部署完成后，您的堆栈将显示在此处，您可以对其进行同步或验证。",
-    description: "Blueprints list empty-state body explaining auto-registration",
+    description:
+      "Blueprints list empty-state body explaining auto-registration",
   },
   // --- Loading / error ---
   "blueprints.loadingBody": {
@@ -88,7 +94,7 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description: "Blueprint detail not-found state heading",
   },
   "blueprints.notFoundBody": {
-    message: "此工作空间中不存在 id 为 \"{id}\" 的蓝图。",
+    message: '此工作空间中不存在 id 为 "{id}" 的蓝图。',
     description: "Blueprint detail not-found state body",
   },
   // --- Sync action ---
@@ -136,7 +142,8 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.validateInvalid": {
     message: "清单存在错误：",
-    description: "Validate result: manifest has parse errors — followed by the error list",
+    description:
+      "Validate result: manifest has parse errors — followed by the error list",
   },
   "blueprints.validateNoResult": {
     message: "尚无结果。",
