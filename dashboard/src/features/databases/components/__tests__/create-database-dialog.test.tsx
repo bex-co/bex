@@ -105,6 +105,8 @@ describe("CreateDatabaseDialog", () => {
     // an empty disk field becomes 0 (operator applies the plan floor).
     expect(create).toHaveBeenCalledWith({
       name: "shop-db",
+      databaseName: "",
+      databaseUser: "",
       plan: "free",
       version: "",
       diskSizeGB: 0,
@@ -112,6 +114,42 @@ describe("CreateDatabaseDialog", () => {
       environmentId: undefined,
     });
     expect(onCreated).toHaveBeenCalledWith("shop-db");
+  });
+
+  it("validates and submits optional physical PostgreSQL names", async () => {
+    const user = userEvent.setup();
+    render(<CreateDatabaseDialog onCreated={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "New Database" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "shop-db");
+    await user.type(
+      within(dialog).getByLabelText("Database name"),
+      "Orders-Data",
+    );
+    expect(
+      within(dialog).getByRole("button", { name: "Create database" }),
+    ).toBeDisabled();
+
+    await user.clear(within(dialog).getByLabelText("Database name"));
+    await user.type(
+      within(dialog).getByLabelText("Database name"),
+      "orders_data",
+    );
+    await user.type(
+      within(dialog).getByLabelText("Database user"),
+      "orders_owner",
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Create database" }),
+    );
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        databaseName: "orders_data",
+        databaseUser: "orders_owner",
+      }),
+    );
   });
 
   it("submits the selected environment so the backend auto-joins its project", async () => {

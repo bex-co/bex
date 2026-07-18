@@ -164,7 +164,8 @@ Render's create-service JSON and Blueprint YAML are different contracts. `secret
 | `fromService.envVarKey` | ✅ | → copies a sibling service's declared var by value (w1/m35, same-file resolution) |
 | keyvalue `fromService`, generated-value copy across services | ✖ | rejected — a keyvalue `fromService` connection and copying a not-yet-minted `generateValue`/reference across services need cross-service secret plumbing (documented omission) |
 | `maxShutdownDelaySeconds` | ✅ | (w10/m2) → `App.spec.maxShutdownDelaySeconds`, same 1–300 validation as REST/GraphQL/MCP (w6/m25); closes the Blueprint parser omission this row previously recorded |
-| `region`, `databaseName`, `user`, `disk`, `scaling`, `previews`, `renderSubdomainPolicy`, `initialDeployHook`, `registryCredential`, `buildCommand`, `startCommand` | — | ignored (bex has no equivalent; not honored, not faked). Blueprint `initialDeployHook` is Render's one-time post-first-deploy **shell command**, not the secret Deploy Hook URL described below. |
+| Postgres `databaseName`, `user` | ✅ | create-time physical database/owner identity; validated with the same contract as REST/GraphQL/MCP and immutable after creation |
+| `region`, `disk`, `scaling`, `previews`, `renderSubdomainPolicy`, `initialDeployHook`, `registryCredential`, `buildCommand`, `startCommand` | — | ignored (bex has no equivalent; not honored, not faked). Blueprint `initialDeployHook` is Render's one-time post-first-deploy **shell command**, not the secret Deploy Hook URL described below. |
 | sync-delete of removed entries | ✖ | documented divergence — bex v1 does not delete resources absent from the file |
 | direct service `environmentId`, `secretFiles` | ✖ | rejected: these belong to Render's create-service body, not its Blueprint service schema; use `projects[].environments[]` for membership |
 | `previews` (PR preview environments) | ✖ | non-goal (explicitly rejected, [DO_NOT_DO](../.pm/DO_NOT_DO.md)) |
@@ -264,7 +265,7 @@ CRUD + connection-info for the `Database` CR, shaped to Render's Postgres API (s
 | method + path | effect | status |
 | --- | --- | --- |
 | `GET /v1/postgres` | list managed Postgres | 200 |
-| `POST /v1/postgres` | create (body: name, plan, version, diskSizeGB, public, ipAllowList, pooler) | 201 |
+| `POST /v1/postgres` | create (body includes name, plan, version, diskSizeGB, databaseName, databaseUser, public, ipAllowList, pooler) | 201 |
 | `GET /v1/postgres/{name}` | one instance (Render `postgres` shape) | 200 |
 | `PATCH /v1/postgres/{id}` | partial update, including mutable display-name rename | 200 |
 | `DELETE /v1/postgres/{id}` | delete (cascades CNPG Cluster + PVC + route) | 204 |
@@ -281,6 +282,8 @@ CRUD + connection-info for the `Database` CR, shaped to Render's Postgres API (s
 `connection-info` is the key endpoint — it's how a frontend gets the connection string without cluster access. It's the **only** place the DB password is surfaced (read from CNPG's `<id>-app` Secret at request time, authed), matching Render's `postgresConnectionInfo` (`password`, `internalConnectionString`, `externalConnectionString`, `psqlCommand`); when a PgBouncer `Pooler` is on it also returns `internalConnectionPoolString` / `externalConnectionPoolString`.
 
 **Noun split, mirroring Render** (verified: REST spec + dashboard GraphQL captured via Playwright): Render's REST uses `postgres` (`/v1/postgres`) but its **dashboard GraphQL uses `database`** (`database(id)`, `databaseStatusQuery`, `databaseCredentialList`). bex matches both — REST `/v1/postgres` (+ `/v1/databases` alias), GraphQL `databases` / `database(id)` / `databaseConnectionInfo(id)` queries and `createDatabase` / `renameDatabase` / `deleteDatabase` mutations (which also matches bex's own `Database` CRD). New resources use an immutable `dpg-…` id and mutable `spec.name`; legacy metadata-name ids remain valid.
+
+**Create-time SQL identity (w6/m38):** optional `databaseName` and `databaseUser` are accepted by REST, GraphQL `createDatabase`, MCP `create_postgres`, Blueprint Postgres entries (`databaseName`/`user`), and the dashboard. Both are validated by one PostgreSQL-identifier contract and stored on the CR as immutable intent; each omission defaults independently from the immutable `dpg-…` id. Recovery preserves the source's effective pair. Render's Datadog fields are a deliberate non-goal: supplying either API key or site on create or update returns a named 400 before any write, rather than silently succeeding.
 
 **Datastore list pagination (w8/m13):** `GET /v1/postgres` and `GET /v1/key-value` return Render's bare arrays of `{postgres|keyValue, cursor}` items. Supplying either `cursor` or `limit` enables stable id-ordered, exclusive-cursor pages (`limit` defaults to 20 and is clamped to 1–100); an unknown or final cursor returns an empty page. Omitting both parameters preserves bex's pre-pagination full-list body and order. The bex top-level GraphQL lists `databases(cursor, limit)` and `keyValues(cursor, limit)` use the same page boundaries but deliberately keep their existing `[Database]` / `[KeyValue]` result types: Render's dashboard has no equivalent top-level paged list, and changing the result envelope would break the first-party dashboard's existing selections. Omitted GraphQL args likewise return the complete list. Render's official MCP `list_postgres_instances` and `list_key_value` tools accept no arguments and hide REST pagination by returning all instances; bex matches those signatures and behavior. `list_key_value_instances` remains a deprecated bex compatibility alias for clients configured before Render's current tool-name capture (`render-oss/render-mcp-server` commit `9fb5c708`, 2026-07-14).
 
@@ -373,7 +376,7 @@ The third adapter (`mcp.go`) speaks the Model Context Protocol, so an agent oper
 | `get_metrics` | `{resource: [id, ...], metricTypes: [...], startTime?, endTime?, resolutionSeconds?, quantile?, percentage?}` | `Metrics` | `{series: [{labels, unit, points}, ...]}` |
 | `list_postgres_instances` | — | `ListPostgres` | `{postgres: [postgres, ...]}` |
 | `get_postgres` | `{postgresId}` | `GetPostgres` | `postgres` |
-| `create_postgres` | `{name, plan?, version?, diskSizeGB?, public?, enableHighAvailability?}` | `CreatePostgres` | created `postgres` |
+| `create_postgres` | `{name, plan?, version?, diskSizeGB?, databaseName?, databaseUser?, public?, enableHighAvailability?}` | `CreatePostgres` | created `postgres` |
 | `query_render_postgres` | `{postgresId, sql}` | `Query` | `{columns, rows}` |
 | `update_postgres_plan` | `{postgresId, plan}` | `SetPlan` | updated `postgres` |
 | `update_postgres_version` | `{postgresId, version}` | `SetVersion` | updated `postgres` |

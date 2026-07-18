@@ -9,6 +9,10 @@ import { graphQLErrorMessage } from "@/common/lib/graphql-error";
 /** The create form's collected values (Render's create-form subset bex serves). */
 export interface CreateDatabaseInput {
   name: string;
+  /** Optional create-time physical PostgreSQL database. */
+  databaseName: string;
+  /** Optional create-time physical PostgreSQL owner role. */
+  databaseUser: string;
   plan: string;
   /** PostgreSQL major version, or "" to let the operator pick its default. */
   version: string;
@@ -58,6 +62,8 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
         const res = await mutate({
           variables: {
             name: input.name,
+            databaseName: input.databaseName || undefined,
+            databaseUser: input.databaseUser || undefined,
             ownerId: currentWorkspaceId,
             environmentId: input.environmentId,
             plan: input.plan || undefined,

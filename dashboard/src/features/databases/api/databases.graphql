@@ -226,6 +226,8 @@ query DatabaseInstanceTypes {
 # (oldest) workspace; a workspace the caller isn't a member of => forbidden.
 mutation CreateDatabase(
   $name: String!
+  $databaseName: String
+  $databaseUser: String
   $ownerId: String
   $environmentId: String
   $plan: String
@@ -235,6 +237,8 @@ mutation CreateDatabase(
 ) {
   createDatabase(
     name: $name
+    databaseName: $databaseName
+    databaseUser: $databaseUser
     ownerId: $ownerId
     environmentId: $environmentId
     plan: $plan
@@ -244,6 +248,8 @@ mutation CreateDatabase(
   ) {
     id
     name
+    databaseName
+    databaseUser
     plan
     status
     projectId

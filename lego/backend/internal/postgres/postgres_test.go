@@ -75,7 +75,7 @@ func seedDatabase(t *testing.T, cl client.Client, name string) {
 			SecretName: name + "-app", ExternalHost: name + ".db.bex.co",
 		},
 	}
-	dbn := pgIdent(name)
+	dbn := appv1alpha1.DefaultPostgresDatabaseName(name)
 	sec := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: name + "-app", Namespace: "default"},
 		Data: map[string][]byte{
@@ -109,7 +109,7 @@ func TestRESTPostgresCRUD(t *testing.T) {
 	}
 	var pg PostgresView
 	_ = json.Unmarshal(w.Body.Bytes(), &pg)
-	if !strings.HasPrefix(pg.ID, "dpg-") || pg.Name != "pg-test" || pg.DatabaseName != pgIdent(pg.ID) || pg.DatabaseUser != pgIdent(pg.ID)+"_user" || pg.Plan != "free" || !pg.Public || pg.ProjectID != "prj-platform" || pg.EnvironmentID != "env-staging" {
+	if !strings.HasPrefix(pg.ID, "dpg-") || pg.Name != "pg-test" || pg.DatabaseName != appv1alpha1.DefaultPostgresDatabaseName(pg.ID) || pg.DatabaseUser != appv1alpha1.DefaultPostgresDatabaseName(pg.ID)+"_user" || pg.Plan != "free" || !pg.Public || pg.ProjectID != "prj-platform" || pg.EnvironmentID != "env-staging" {
 		t.Fatalf("normalized names/spec wrong: %+v", pg)
 	}
 	var got appv1alpha1.Database
@@ -270,6 +270,130 @@ func TestRESTCreatePostgresIPAllowListWireShape(t *testing.T) {
 		`{"name":"pg-ipal-bad","plan":"free","ipAllowList":[{"cidrBlock":"nonsense"}]}`)
 	if w.Code != 400 {
 		t.Errorf("create with a bad CIDR => 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestCreatePostgresPhysicalIdentifierAdapterParity(t *testing.T) {
+	const databaseName = "orders_data"
+	const databaseUser = "orders_owner"
+
+	restService, restClient := newService()
+	rest := serveREST(restService, http.MethodPost, "/v1/postgres",
+		`{"name":"orders-rest","databaseName":"orders_data","databaseUser":"orders_owner"}`)
+	if rest.Code != http.StatusCreated {
+		t.Fatalf("REST create = %d: %s", rest.Code, rest.Body.String())
+	}
+	var restView PostgresView
+	if err := json.Unmarshal(rest.Body.Bytes(), &restView); err != nil {
+		t.Fatal(err)
+	}
+	var restDB appv1alpha1.Database
+	if err := restClient.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: restView.ID}, &restDB); err != nil {
+		t.Fatal(err)
+	}
+
+	gqlService, gqlClient := newService()
+	gqlSchema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: gqlService.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: gqlService.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	gqlResult := graphql.Do(graphql.Params{Schema: gqlSchema, Context: context.Background(), RequestString: `
+		mutation { createDatabase(name:"orders-gql", databaseName:"orders_data", databaseUser:"orders_owner") {
+			id databaseName databaseUser
+		} }`})
+	if len(gqlResult.Errors) != 0 {
+		t.Fatalf("GraphQL create: %v", gqlResult.Errors)
+	}
+	gqlView := gqlResult.Data.(map[string]any)["createDatabase"].(map[string]any)
+	var gqlDB appv1alpha1.Database
+	if err := gqlClient.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: gqlView["id"].(string)}, &gqlDB); err != nil {
+		t.Fatal(err)
+	}
+
+	mcpService, mcpKubeClient := newService()
+	mcpCall, cleanup := pgMCPClient(t, mcpService)
+	defer cleanup()
+	mcpView := mcpCall("create_postgres", map[string]any{
+		"name": "orders-mcp", "databaseName": databaseName, "databaseUser": databaseUser,
+	})
+	var mcpDB appv1alpha1.Database
+	if err := mcpKubeClient.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: mcpView["id"].(string)}, &mcpDB); err != nil {
+		t.Fatal(err)
+	}
+
+	if restView.DatabaseName != databaseName || restView.DatabaseUser != databaseUser ||
+		gqlView["databaseName"] != databaseName || gqlView["databaseUser"] != databaseUser ||
+		mcpView["databaseName"] != databaseName || mcpView["databaseUser"] != databaseUser {
+		t.Fatalf("adapter readback drift: REST=%+v GraphQL=%v MCP=%v", restView, gqlView, mcpView)
+	}
+	for surface, db := range map[string]appv1alpha1.Database{"REST": restDB, "GraphQL": gqlDB, "MCP": mcpDB} {
+		if db.Spec.DatabaseName != databaseName || db.Spec.DatabaseUser != databaseUser {
+			t.Errorf("%s CR physical identifiers = %q/%q", surface, db.Spec.DatabaseName, db.Spec.DatabaseUser)
+		}
+	}
+}
+
+func TestCreatePostgresPhysicalIdentifierDefaultsAreIndependent(t *testing.T) {
+	svc, _ := newService()
+	onlyDB, err := svc.CreatePostgres(context.Background(), CreatePostgresRequest{Name: "only-db", DatabaseName: "orders"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if onlyDB.DatabaseName != "orders" || onlyDB.DatabaseUser != appv1alpha1.DefaultPostgresDatabaseName(onlyDB.ID)+"_user" {
+		t.Fatalf("database-only defaults = %q/%q", onlyDB.DatabaseName, onlyDB.DatabaseUser)
+	}
+
+	onlyUser, err := svc.CreatePostgres(context.Background(), CreatePostgresRequest{Name: "only-user", DatabaseUser: "reporter"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if onlyUser.DatabaseName != appv1alpha1.DefaultPostgresDatabaseName(onlyUser.ID) || onlyUser.DatabaseUser != "reporter" {
+		t.Fatalf("user-only defaults = %q/%q", onlyUser.DatabaseName, onlyUser.DatabaseUser)
+	}
+
+	bad := serveREST(svc, http.MethodPost, "/v1/postgres", `{"name":"bad-ident","databaseName":"Bad-Name"}`)
+	if bad.Code != http.StatusBadRequest || !strings.Contains(bad.Body.String(), "POSTGRES_IDENTIFIER_INVALID") {
+		t.Fatalf("invalid physical identifier = %d: %s", bad.Code, bad.Body.String())
+	}
+}
+
+func TestPostgresDatadogFieldsFailClosedWithoutLeakingCredential(t *testing.T) {
+	svc, cl := newService()
+	const secret = "super-secret-datadog-key"
+
+	created := serveREST(svc, http.MethodPost, "/v1/postgres",
+		`{"name":"datadog-create","datadogAPIKey":"`+secret+`","datadogSite":"US1"}`)
+	if created.Code != http.StatusBadRequest || !strings.Contains(created.Body.String(), "POSTGRES_DATADOG_UNSUPPORTED") {
+		t.Fatalf("Datadog create = %d: %s", created.Code, created.Body.String())
+	}
+	if strings.Contains(created.Body.String(), secret) {
+		t.Fatal("Datadog create error leaked the API key")
+	}
+	var list appv1alpha1.DatabaseList
+	if err := cl.List(context.Background(), &list); err != nil || len(list.Items) != 0 {
+		t.Fatalf("Datadog create had side effects: err=%v databases=%d", err, len(list.Items))
+	}
+
+	seedDatabase(t, cl, "datadog-update")
+	before := getDatabase(t, cl, "datadog-update")
+	updated := serveREST(svc, http.MethodPatch, "/v1/postgres/datadog-update", `{"datadogAPIKey":"`+secret+`"}`)
+	if updated.Code != http.StatusBadRequest || !strings.Contains(updated.Body.String(), "POSTGRES_DATADOG_UNSUPPORTED") {
+		t.Fatalf("Datadog update = %d: %s", updated.Code, updated.Body.String())
+	}
+	if strings.Contains(updated.Body.String(), secret) {
+		t.Fatal("Datadog update error leaked the API key")
+	}
+	after := getDatabase(t, cl, "datadog-update")
+	if !reflect.DeepEqual(before.Spec, after.Spec) || before.ResourceVersion != after.ResourceVersion {
+		t.Fatalf("Datadog rejection mutated Database: before=%+v after=%+v", before.Spec, after.Spec)
+	}
+
+	emptySite := serveREST(svc, http.MethodPatch, "/v1/postgres/datadog-update", `{"datadogSite":""}`)
+	if emptySite.Code != http.StatusBadRequest || !strings.Contains(emptySite.Body.String(), "POSTGRES_DATADOG_UNSUPPORTED") {
+		t.Fatalf("empty Datadog site update = %d: %s", emptySite.Code, emptySite.Body.String())
 	}
 }
 

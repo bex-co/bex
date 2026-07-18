@@ -55,6 +55,24 @@ spec:
               the same namespace; the plan sets resources/storage. See
               docs/ADR009-postgresql-management.md.
             properties:
+              databaseName:
+                description: |-
+                  DatabaseName is the optional create-time physical PostgreSQL database.
+                  Empty preserves the stable legacy/default derived from metadata.name.
+                  Once present it is immutable: changing it after CNPG initdb would only
+                  change control-plane intent, not the already-created SQL database.
+                maxLength: 63
+                pattern: ^[a-z_][a-z0-9_]{0,62}$
+                type: string
+              databaseUser:
+                description: |-
+                  DatabaseUser is the optional create-time physical PostgreSQL owner role.
+                  Empty independently preserves the stable legacy/default role derived from
+                  metadata.name. Once present it is immutable for the same reason as
+                  DatabaseName.
+                maxLength: 63
+                pattern: ^[a-z_][a-z0-9_]{0,62}$
+                type: string
               diskAutoscaling:
                 description: |-
                   DiskAutoscaling enables automatic grow-only storage increases when the
@@ -267,9 +285,10 @@ spec:
               users:
                 description: |-
                   Users are additional managed PostgreSQL login roles, projected to the CNPG
-                  cluster's spec.managed.roles. The owner role (<db>_user) is provisioned by
-                  CNPG's bootstrap and is not listed here. Each user's password lives in the
-                  referenced Secret's "password" key (created by bex-api, never in status).
+                  cluster's spec.managed.roles. The effective create-time owner role is
+                  provisioned by CNPG's bootstrap and is not listed here. Each user's
+                  password lives in the referenced Secret's "password" key (created by
+                  bex-api, never in status).
                 items:
                   description: DatabaseUser is an additional managed PostgreSQL login
                     role on a Database.
@@ -304,6 +323,13 @@ spec:
                 - "18"
                 type: string
             type: object
+            x-kubernetes-validations:
+            - message: databaseName is immutable
+              rule: '!has(oldSelf.databaseName) ? !has(self.databaseName) : has(self.databaseName)
+                && self.databaseName == oldSelf.databaseName'
+            - message: databaseUser is immutable
+              rule: '!has(oldSelf.databaseUser) ? !has(self.databaseUser) : has(self.databaseUser)
+                && self.databaseUser == oldSelf.databaseUser'
           status:
             description: DatabaseStatus is the observed state of a Database.
             properties:

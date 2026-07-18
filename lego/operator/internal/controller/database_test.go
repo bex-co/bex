@@ -36,14 +36,17 @@ import (
 
 // TestDatabaseDisplayNameDoesNotAffectDataPlaneIdentity is the rename safety
 // invariant. spec.name is API/display metadata only; every CNPG object,
-// credential, route, backup path, database/user identifier, and connection host
-// remains derived from immutable metadata.name. Reconcile therefore updates no
-// data-plane identity when only spec.name changes.
+// credential, route, backup path, and connection host remains derived from
+// immutable metadata.name, while the database/user pair comes from immutable
+// create-time fields (or their metadata-name defaults). Reconcile therefore
+// updates no data-plane identity when only spec.name changes.
 func TestDatabaseDisplayNameDoesNotAffectDataPlaneIdentity(t *testing.T) {
 	before := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "dpg-c185th5c2rvvnhbfiltg", Namespace: "tenant-a"},
 		Spec: appv1alpha1.DatabaseSpec{
 			Name:             "orders-old",
+			DatabaseName:     "orders_data",
+			DatabaseUser:     "orders_owner",
 			Plan:             "basic-1gb",
 			Public:           true,
 			Pooler:           true,
@@ -55,12 +58,13 @@ func TestDatabaseDisplayNameDoesNotAffectDataPlaneIdentity(t *testing.T) {
 
 	identity := func(db *appv1alpha1.Database) map[string]any {
 		plan, storageGB := resolvePlan(db.Spec)
-		dbname := normalizeIdent(db.Name)
+		dbname := db.Spec.EffectiveDatabaseName(db.Name)
+		owner := db.Spec.EffectiveDatabaseUser(db.Name)
 		return map[string]any{
 			"cluster":         db.Name,
-			"clusterSpec":     cnpgClusterSpec(clusterParams{plan: plan, storageGB: storageGB, dbname: dbname, owner: dbname + "_user", highAvailability: db.Spec.HighAvailability}),
+			"clusterSpec":     cnpgClusterSpec(clusterParams{plan: plan, storageGB: storageGB, dbname: dbname, owner: owner, highAvailability: db.Spec.HighAvailability}),
 			"database":        dbname,
-			"owner":           dbname + "_user",
+			"owner":           owner,
 			"host":            db.Name + "-rw." + db.Namespace + ".svc",
 			"secret":          db.Name + "-app",
 			"scheduledBackup": db.Name + "-backup",
@@ -80,19 +84,6 @@ var testStore = BackupStore{
 	DestinationPath: "s3://bex-tfstate/postgres",
 	EndpointURL:     "https://s3.eu-central-2.wasabisys.com",
 	S3Secret:        "pg-backup-s3",
-}
-
-func TestNormalizeIdent(t *testing.T) {
-	cases := map[string]string{
-		"bex-mvp-smoketest": "bex_mvp_smoketest", // hyphens -> underscores (valid unquoted identifier)
-		"MyDB":              "mydb",              // lowercased
-		"plain":             "plain",
-	}
-	for in, want := range cases {
-		if got := normalizeIdent(in); got != want {
-			t.Errorf("normalizeIdent(%q) = %q, want %q", in, got, want)
-		}
-	}
 }
 
 func TestResolvePlan(t *testing.T) {

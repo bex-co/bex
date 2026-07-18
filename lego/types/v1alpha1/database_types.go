@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"strings"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
@@ -28,10 +30,56 @@ func ValidDatabaseName(name string) bool {
 	return len(name) <= 30 && len(validation.IsDNS1123Label(name)) == 0
 }
 
+const postgresIdentifierMaxBytes = 63
+
+// ValidPostgresIdentifier reports whether name is a safe, unquoted PostgreSQL
+// identifier. bex deliberately keeps the create-time database/owner contract
+// to lowercase ASCII + underscores: it avoids quoting ambiguities in psql,
+// connection URLs, CNPG bootstrap, and Blueprint fromDatabase projections.
+func ValidPostgresIdentifier(name string) bool {
+	if len(name) == 0 || len(name) > postgresIdentifierMaxBytes {
+		return false
+	}
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		if (c >= 'a' && c <= 'z') || c == '_' || (i > 0 && c >= '0' && c <= '9') {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+// DefaultPostgresDatabaseName is the stable legacy/default physical database
+// identity derived from the immutable Database metadata.name.
+func DefaultPostgresDatabaseName(resourceID string) string {
+	return strings.ToLower(strings.ReplaceAll(resourceID, "-", "_"))
+}
+
+// EffectiveDatabaseName returns the requested create-time physical database,
+// falling back to the stable legacy/default identity when omitted.
+func (s DatabaseSpec) EffectiveDatabaseName(resourceID string) string {
+	if s.DatabaseName != "" {
+		return s.DatabaseName
+	}
+	return DefaultPostgresDatabaseName(resourceID)
+}
+
+// EffectiveDatabaseUser returns the requested create-time owner role,
+// independently falling back to the legacy/default role when omitted.
+func (s DatabaseSpec) EffectiveDatabaseUser(resourceID string) string {
+	if s.DatabaseUser != "" {
+		return s.DatabaseUser
+	}
+	return DefaultPostgresDatabaseName(resourceID) + "_user"
+}
+
 // DatabaseSpec is the desired state of a managed PostgreSQL — the Render-style
 // "add a Postgres" unit. The operator projects it to a CloudNativePG Cluster in
 // the same namespace; the plan sets resources/storage. See
 // docs/ADR009-postgresql-management.md.
+// +kubebuilder:validation:XValidation:rule="!has(oldSelf.databaseName) ? !has(self.databaseName) : has(self.databaseName) && self.databaseName == oldSelf.databaseName",message="databaseName is immutable"
+// +kubebuilder:validation:XValidation:rule="!has(oldSelf.databaseUser) ? !has(self.databaseUser) : has(self.databaseUser) && self.databaseUser == oldSelf.databaseUser",message="databaseUser is immutable"
 type DatabaseSpec struct {
 	// Name is the mutable, user-facing database name. metadata.name is the
 	// immutable dpg-... resource id and the data-plane identity used for every
@@ -42,6 +90,24 @@ type DatabaseSpec struct {
 	// +kubebuilder:validation:MaxLength=30
 	// +kubebuilder:validation:Pattern=`^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$`
 	Name string `json:"name,omitempty"`
+
+	// DatabaseName is the optional create-time physical PostgreSQL database.
+	// Empty preserves the stable legacy/default derived from metadata.name.
+	// Once present it is immutable: changing it after CNPG initdb would only
+	// change control-plane intent, not the already-created SQL database.
+	// +optional
+	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=`^[a-z_][a-z0-9_]{0,62}$`
+	DatabaseName string `json:"databaseName,omitempty"`
+
+	// DatabaseUser is the optional create-time physical PostgreSQL owner role.
+	// Empty independently preserves the stable legacy/default role derived from
+	// metadata.name. Once present it is immutable for the same reason as
+	// DatabaseName.
+	// +optional
+	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=`^[a-z_][a-z0-9_]{0,62}$`
+	DatabaseUser string `json:"databaseUser,omitempty"`
 
 	// Plan selects the resource allocation (compute + storage + availability).
 	// MVP plans are single-instance and fit one node.
@@ -117,9 +183,10 @@ type DatabaseSpec struct {
 	Pooler bool `json:"pooler,omitempty"`
 
 	// Users are additional managed PostgreSQL login roles, projected to the CNPG
-	// cluster's spec.managed.roles. The owner role (<db>_user) is provisioned by
-	// CNPG's bootstrap and is not listed here. Each user's password lives in the
-	// referenced Secret's "password" key (created by bex-api, never in status).
+	// cluster's spec.managed.roles. The effective create-time owner role is
+	// provisioned by CNPG's bootstrap and is not listed here. Each user's
+	// password lives in the referenced Secret's "password" key (created by
+	// bex-api, never in status).
 	// +optional
 	// +listType=map
 	// +listMapKey=name

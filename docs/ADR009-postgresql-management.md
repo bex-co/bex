@@ -86,8 +86,8 @@ The kustomization applies this object with the rest of the operator; it is not a
 Render's URL is engineered for three constraints at once; bex should satisfy the same:
 
 - **Identity and display name are separate.** New resources mint `Database.metadata.name = dpg-<xid>` through `internal/id`; this immutable value is the REST/GraphQL/MCP id and the root of every physical object name. `Database.spec.name` is the mutable, user-facing DNS-label name. Legacy CRs with no `spec.name` expose `metadata.name` as a fallback and retain that value as their grandfathered stable id.
-- **Normalized db/role name** — Postgres unquoted identifiers allow only `[a-z0-9_]`, lowercased. The physical database and owner role are derived from the immutable id (`dpg-…` → `dpg_…`), not the mutable display name, so a rename cannot change credentials or SQL identifiers.
-- **`<id>_user` role** — one owner role per DB, distinct from the database identifier, greppable and predictable.
+- **Explicit or defaulted physical identity** — create may set optional `spec.databaseName` and `spec.databaseUser`, matching Render's `databaseName` / `databaseUser` contract. Each is validated independently as a lowercase PostgreSQL unquoted identifier (`[a-z_][a-z0-9_]{0,62}`) and is immutable after creation. Omission independently defaults the database to the immutable id with hyphens replaced by underscores (`dpg-…` → `dpg_…`) and the owner to `<default-database>_user`; supplying only one field does not change the other's default.
+- **Rename-safe** — the operator, connection-info view, CNPG bootstrap, and recovery flow all consume that effective physical identity. Changing mutable `spec.name` therefore cannot change credentials or SQL identifiers, and recovery copies the source's effective database/user pair into the new CR so the restored archive opens under the same SQL identity.
 - **Typed opaque ID in the SNI hostname** — the immutable ID (not the mutable name) lives in `<id>.db.bex.co`, so a **rename never breaks a connection string**, the ID is unique/non-guessable, and one wildcard endpoint routes by SNI to the right backend. (Render: `dpg-<id>-a` where `-a` is the primary-instance address.)
 - **Brand domain** — external endpoint on `db.bex.co` (the brand), not the app-hosting `onbex.co` — same rule as `api.bex.co` vs `onrender.com`.
 
@@ -108,8 +108,8 @@ Every Render Postgres feature (per-tenant version, daily backup, PITR, HA, pooli
 
 ### 6. Lifecycle (create → URLs → connect → delete)
 
-1. **Create** `Database{metadata.name: dpg-<xid>, spec: {name, plan, version, storage}}`.
-2. **Provision** → CNPG `Cluster` in the tenant namespace from the plan catalog; CNPG generates the `<id>_user` role + password into a namespace Secret.
+1. **Create** `Database{metadata.name: dpg-<xid>, spec: {name, plan, version, storage, databaseName?, databaseUser?}}`; the API validates explicit physical identifiers and the CRD makes them immutable.
+2. **Provision** → CNPG `Cluster` in the tenant namespace from the plan catalog; CNPG creates the effective database/owner pair and stores the generated password in a namespace Secret.
 3. **Surface connection info** → the control plane assembles both URLs + host/port/db/user/password/psql-command from the Secret and the `-rw` Service (the Connections panel).
 4. **Delete** → deleting the `Database` deletes the Cluster + Service + Secret + PVC and drops the external SNI route. (Optionally a final backup first.)
 
@@ -125,6 +125,12 @@ Rollout is deliberately expand-then-adopt:
 4. Repeat for `dev-1` through `dev-10`, then production through the normal authorized ship/deploy workflow. Scripts use the active kubeconfig but never print it or Secret data. The 2026-07-15 rollout completed this sequence on production digest `ba32bf76ab6e`: one legacy CR was backfilled idempotently with all 11 recorded object UIDs unchanged, and the pinned official CLI renamed a fresh `dpg-…` resource without changing its Database, CNPG Cluster, PVC, credential Secret, or connection Service identity.
 
 Rollback does not remove `spec.name`, revert the CRD, or rename metadata. The old API/operator can ignore the additive field while the compatible release is restored; leaving the backfill in place is safe and idempotent.
+
+### Create-time physical identity proof (w6/m38)
+
+REST, GraphQL `createDatabase`, MCP `create_postgres`, Blueprint `databaseName`/`user`, and the dashboard create dialog all reach the same core create contract. Invalid or overlength identifiers return a named 400 before any CR is written. Unsupported Render Datadog create/update fields also return a named 400; bex never stores the API key or pretends monitoring was configured.
+
+[`scripts/postgres-create-cli-smoke.sh`](../scripts/postgres-create-cli-smoke.sh) is the live acceptance verifier. On 2026-07-18 it drove the unmodified Render CLI v2.21.0 against isolated dev-6, created both-custom, database-only, and user-only cases, waited for real CNPG readiness, and asserted the CR, generated Secret, `current_database()`, and `current_user` without printing credentials. It then proved both Datadog create and update fail closed and removed every disposable resource.
 
 ### 7. Security floor (not optional, even in MVP)
 
@@ -192,7 +198,7 @@ Mirrors the compute and KeyValue lifecycle verbs, writing intent to the `Databas
 - **IP allowlist** (`spec.ipAllowList`) gates the **external** SNI endpoint only: every metered proxy replica watches the Database CR and checks the connection's source address before dialing a backend. The environment-projected allowlist is an additional AND layer. Empty layers ⇒ open to all source IPs; the internal `-rw` path is never gated. Entries are `{cidr, description}` pairs (w4/m24): the description is operator-facing metadata that persists on the CR and never affects enforcement; pre-m24 CRs serialized bare CIDR strings — normalized fleet-wide to `{cidr}` objects and rejected at admission since w4/m29 (`scripts/ipallowlist-normalize.sh`; the REST wire still accepts bare strings via `core.IPAllowListEntry`, unchanged).
 - **Create-time allowlist parity (w8/m16).** REST `ipAllowList`, GraphQL `ipAllowList`/`ipAllowListEntries`, and MCP `ipAllowList`/`ipAllowListEntries` all feed the same `CreatePostgresRequest.IPAllowList` validation and persistence path. The object-form argument wins when both are present, preserving descriptions; invalid CIDRs fail before any Database is created.
 - **PgBouncer pooler** (`spec.pooler`) projects a CNPG `Pooler` (transaction mode) whose `<id>-pooler` Service backs the pooled connection strings `connection-info` now returns (internal always; external when `public`, resolved by the proxy from `<id>-pool.<domain>`). This fills the previously-stubbed `internalConnectionPoolString`/`externalConnectionPoolString`.
-- **Postgres users** (`spec.users`) are additional managed PostgreSQL login roles projected to CNPG `spec.managed.roles`; bex-api generates each role's password into a per-user basic-auth Secret (`<id>-user-<role>`, referenced by CNPG's `passwordSecret`) and reveals it once on creation — never logged. The owner role (`<id>_user`, with hyphens normalized to underscores) stays CNPG-managed.
+- **Postgres users** (`spec.users`) are additional managed PostgreSQL login roles projected to CNPG `spec.managed.roles`; bex-api generates each role's password into a per-user basic-auth Secret (`<id>-user-<role>`, referenced by CNPG's `passwordSecret`) and reveals it once on creation — never logged. The immutable effective owner role (`spec.databaseUser` or the stable-id-derived default) stays CNPG bootstrap-managed.
 
 ### Legacy query-insights convergence (w8/m16)
 

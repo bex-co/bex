@@ -306,10 +306,12 @@ func (i *bexImage) UnmarshalJSON(data []byte) error {
 
 // bexDatabase is one entry in databases:. Field names follow render.yaml; bex
 // honors plan/diskSizeGB/postgresMajorVersion/ipAllowList/readReplicas/
-// highAvailability and documents the rest (databaseName, user, region,
-// storageAutoscalingEnabled) as omissions.
+// highAvailability plus the create-time physical databaseName/user. region and
+// storageAutoscalingEnabled remain documented omissions.
 type bexDatabase struct {
 	Name                 string                            `json:"name"`
+	DatabaseName         string                            `json:"databaseName"`
+	User                 string                            `json:"user"`
 	Plan                 string                            `json:"plan"`
 	DiskSizeGB           int32                             `json:"diskSizeGB"`
 	PostgresMajorVersion string                            `json:"postgresMajorVersion"`
@@ -1187,6 +1189,12 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 	if d.EnvironmentID != "" {
 		return parsedDatabase{}, fmt.Errorf("%w: database %q uses environmentId, which is a create-API field, not a Render Blueprint field; nest the database under projects[].environments[].databases instead", core.ErrBadRequest, d.Name)
 	}
+	if d.DatabaseName != "" && !appv1alpha1.ValidPostgresIdentifier(d.DatabaseName) {
+		return parsedDatabase{}, fmt.Errorf("%w: database %q databaseName must start with a lowercase letter or underscore, contain only lowercase letters, digits, and underscores, and be at most 63 bytes", core.ErrBadRequest, d.Name)
+	}
+	if d.User != "" && !appv1alpha1.ValidPostgresIdentifier(d.User) {
+		return parsedDatabase{}, fmt.Errorf("%w: database %q user must start with a lowercase letter or underscore, contain only lowercase letters, digits, and underscores, and be at most 63 bytes", core.ErrBadRequest, d.Name)
+	}
 	plan := d.Plan
 	if plan != "" {
 		if _, ok := tiers.Postgres.ByID(plan); !ok {
@@ -1211,6 +1219,8 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 	ha := d.HighAvailability != nil && d.HighAvailability.Enabled
 	spec := appv1alpha1.DatabaseSpec{
 		Name:             d.Name,
+		DatabaseName:     d.DatabaseName,
+		DatabaseUser:     d.User,
 		Plan:             plan,
 		Version:          d.PostgresMajorVersion,
 		StorageGB:        d.DiskSizeGB,
@@ -1692,6 +1702,12 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 		existing = candidate
 	}
 	if existing != nil {
+		if db.spec.DatabaseName != "" && db.spec.DatabaseName != existing.Spec.EffectiveDatabaseName(existing.Name) {
+			return StackDatabaseView{}, fmt.Errorf("%w: database %q databaseName is immutable after creation", core.ErrBadRequest, db.name)
+		}
+		if db.spec.DatabaseUser != "" && db.spec.DatabaseUser != existing.Spec.EffectiveDatabaseUser(existing.Name) {
+			return StackDatabaseView{}, fmt.Errorf("%w: database %q user is immutable after creation", core.ErrBadRequest, db.name)
+		}
 		specChanged := databaseOwnedSpecChanged(existing.Spec, db.spec)
 		groupingSpecified := db.grouping != "" || db.ungrouped
 		groupingChanged := groupingSpecified && (existing.Labels[core.LabelEnvironment] != assignment.ID || existing.Labels[core.LabelProject] != assignment.ProjectID)

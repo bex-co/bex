@@ -214,9 +214,11 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	newDB := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.Postgres), Namespace: s.Namespace},
 		Spec: appv1alpha1.DatabaseSpec{
-			Name:    req.Name,
-			Plan:    plan,
-			Version: version,
+			Name:         req.Name,
+			DatabaseName: src.Spec.EffectiveDatabaseName(src.Name),
+			DatabaseUser: src.Spec.EffectiveDatabaseUser(src.Name),
+			Plan:         plan,
+			Version:      version,
 			Recovery: &appv1alpha1.DatabaseRecovery{
 				SourceDatabase:         src.Name,
 				SourceBackupServerName: sourceBackupServerName,
