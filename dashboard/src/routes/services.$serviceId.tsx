@@ -1,10 +1,4 @@
-import { useEffect } from "react";
-import {
-  createFileRoute,
-  Outlet,
-  Link,
-  useRouterState,
-} from "@tanstack/react-router";
+import { createFileRoute, Outlet, Link } from "@tanstack/react-router";
 import { SearchX, TriangleAlert } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
@@ -22,6 +16,13 @@ import {
   ServiceDetailHeader,
   ServiceDetailHeaderSkeleton,
 } from "@/features/services/components/service-detail-header";
+import { ServerDocument } from "@/graphql/definitions";
+import {
+  loadRouteResource,
+  routeResourceTitle,
+  titleHead,
+  translatedText,
+} from "@/common/lib/document-head";
 
 export const Route = createFileRoute("/services/$serviceId")({
   component: RouteComponent,
@@ -29,13 +30,31 @@ export const Route = createFileRoute("/services/$serviceId")({
   // literal "$serviceId" pattern), so a login bounce returns to the actual
   // service URL — id- or name-shaped.
   beforeLoad: requireAuth(),
-  // The SSR/first-paint fallback for every service tab — the layout's title
-  // effect below completes it to Render's `<name> · <type> · <brand>` shape
-  // once the service resolves (head() only knows the URL param; the name and
-  // type arrive with the Apollo query).
-  head: ({ params }) => ({
-    meta: [{ title: `${params.serviceId} · bex dashboard` }],
-  }),
+  loader: ({ context, params }) =>
+    loadRouteResource(
+      () =>
+        context.client.query({
+          query: ServerDocument,
+          variables: { id: params.serviceId },
+          fetchPolicy: "network-only",
+          errorPolicy: "all",
+        }),
+      (data) =>
+        data?.server &&
+        (data.server.displayName?.trim() || data.server.name?.trim())
+          ? data.server
+          : null,
+    ),
+  head: ({ loaderData, match }) =>
+    titleHead(
+      routeResourceTitle(loaderData, (service) => [
+        service.displayName?.trim() || service.name,
+        translatedText(
+          SERVICE_TYPE_LABEL[deriveServiceType(service.type ?? "")],
+        ),
+      ]),
+      match,
+    ),
 });
 
 function RouteComponent() {
@@ -46,28 +65,16 @@ function RouteComponent() {
 /**
  * Shared chrome for every per-service page (Render's service-detail shape): the
  * overview header with lifecycle actions, the Overview/Logs nav, and an
- * `<Outlet/>` for the active tab. `server(id)` is read here for the header and
- * again in each child; Apollo's cache-and-network dedupes the two into one
- * request, so each route stays self-contained.
+ * `<Outlet/>` for the active tab. The parent route's network-only loader fills
+ * Apollo's normalized cache for the title; this layout's cache-first
+ * `useServer` read consumes that same result for the header without a second
+ * title-only request.
  */
 export function ServiceDetailLayout({ serviceId }: { serviceId: string }) {
   const { service, loading, error, refetch } = useServer(serviceId);
   const { deploy: latestDeploy } = useLatestDeploy(serviceId);
   const { pending } = useServiceLifecycle({ refetch });
   const { t } = useTranslations();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-
-  // The layout's head() templates the URL param into the fallback title —
-  // post-m46 that param is the opaque srv- id, but Render titles every tab of
-  // a service identically by name + type ("backend-v2 ・ Web Service ・ …",
-  // captured live, w5/m42). Once the service resolves, write the full shape;
-  // the param-based fallback covers SSR/first paint. pathname is a dep so tab
-  // navigation (which re-mints the fallback) gets re-fixed.
-  useEffect(() => {
-    if (!service) return;
-    const typeLabel = t(SERVICE_TYPE_LABEL[deriveServiceType(service.type)]);
-    document.title = `${service.name} · ${typeLabel} · bex dashboard`;
-  }, [service, serviceId, pathname, t]);
 
   // A failed `server(id)` query is not evidence that the service is absent.
   // Keep it distinct from not-found so schema skew, auth failures, and backend

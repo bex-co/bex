@@ -87,8 +87,8 @@ export function UserNav() {
 
   const currentLanguage = i18n.language as SupportedLanguage;
   const handleLanguage = (lang: SupportedLanguage) => {
-    void i18n.changeLanguage(lang);
     persistLanguage(lang);
+    void i18n.changeLanguage(lang);
   };
 
   const identity = session?.identity;
@@ -102,7 +102,8 @@ export function UserNav() {
     void navigate({ to: "/settings" });
   };
 
-  const userInitial = (traits?.name || traits?.email)?.[0]?.toUpperCase() || "U";
+  const userInitial =
+    (traits?.name || traits?.email)?.[0]?.toUpperCase() || "U";
 
   // On mobile, show a simple button that navigates to settings
   if (isMobile) {

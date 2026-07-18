@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { translatedTitleHead } from "@/common/lib/document-head";
 import { requireAuth } from "@/common/lib/auth/auth";
 import SettingsPage from "@/features/auth/pages/settings-page";
 
@@ -11,7 +12,5 @@ import SettingsPage from "@/features/auth/pages/settings-page";
 export const Route = createFileRoute("/auth/reset-password")({
   component: SettingsPage,
   beforeLoad: requireAuth(),
-  head: () => ({
-    meta: [{ title: "Reset password — bex" }],
-  }),
+  head: ({ match }) => translatedTitleHead("auth.forgotPasswordTitle", match),
 });

@@ -16,7 +16,12 @@ const projectsState: {
   loading: boolean;
   error: Error | undefined;
   refetch: () => Promise<unknown>;
-} = { projects: [], loading: false, error: undefined, refetch: vi.fn(async () => undefined) };
+} = {
+  projects: [],
+  loading: false,
+  error: undefined,
+  refetch: vi.fn(async () => undefined),
+};
 vi.mock("@/features/projects/hooks/use-projects", () => ({
   useProjects: () => projectsState,
 }));
@@ -33,14 +38,30 @@ vi.mock("@/features/projects/hooks/use-delete-project", () => ({
 
 function renderSettingsPage(projectId = "prj-1") {
   const rootRoute = createRootRoute();
-  const settingsRoute = createRoute({
+  const projectRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "/project/$projectId/settings",
+    path: "/project/$projectId",
+    loader: ({ params }) => {
+      const project = projectsState.projects.find(
+        (candidate) => candidate.id === params.projectId,
+      );
+      return project
+        ? ({ state: "ready", resource: project } as const)
+        : ({ state: "not-found" } as const);
+    },
+  });
+  const settingsRoute = createRoute({
+    getParentRoute: () => projectRoute,
+    path: "settings",
     component: ProjectSettingsPage,
   });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([settingsRoute]),
-    history: createMemoryHistory({ initialEntries: [`/project/${projectId}/settings`] }),
+    routeTree: rootRoute.addChildren([
+      projectRoute.addChildren([settingsRoute]),
+    ]),
+    history: createMemoryHistory({
+      initialEntries: [`/project/${projectId}/settings`],
+    }),
     context: { client: {} as never, session: null },
   });
   return render(<RouterProvider router={router} />);
@@ -69,7 +90,9 @@ describe("ProjectSettingsPage", () => {
 
     renderSettingsPage();
 
-    expect(await screen.findByRole("heading", { name: "Project settings" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Project settings" }),
+    ).toBeInTheDocument();
     expect(screen.getByDisplayValue("storefront")).toBeInTheDocument();
   });
 
@@ -126,7 +149,9 @@ describe("ProjectSettingsPage", () => {
     await user.click(screen.getByRole("button", { name: "Delete Project" }));
 
     const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getByRole("button", { name: "Delete Project" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Delete Project" }),
+    );
 
     expect(remove).toHaveBeenCalledWith("prj-1", "storefront");
   });

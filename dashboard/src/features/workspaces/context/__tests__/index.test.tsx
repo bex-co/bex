@@ -10,8 +10,20 @@ import { WorkspaceProvider } from "@/features/workspaces/context";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 const WORKSPACES = [
-  { id: "tea-1", name: "acme-hq", plan: "hobby", role: "admin", createdAt: null },
-  { id: "tea-2", name: "acme-staging", plan: "pro", role: "admin", createdAt: null },
+  {
+    id: "tea-1",
+    name: "acme-hq",
+    plan: "hobby",
+    role: "admin",
+    createdAt: null,
+  },
+  {
+    id: "tea-2",
+    name: "acme-staging",
+    plan: "pro",
+    role: "admin",
+    createdAt: null,
+  },
 ];
 
 beforeEach(() => {
@@ -34,7 +46,9 @@ describe("WorkspaceProvider", () => {
       wrapper: WorkspaceProvider,
     });
 
-    await waitFor(() => expect(result.current.currentWorkspaceId).toBe("tea-1"));
+    await waitFor(() =>
+      expect(result.current.currentWorkspaceId).toBe("tea-1"),
+    );
     expect(result.current.currentWorkspace?.name).toBe("acme-hq");
   });
 
@@ -51,7 +65,31 @@ describe("WorkspaceProvider", () => {
       wrapper: WorkspaceProvider,
     });
 
-    await waitFor(() => expect(result.current.currentWorkspaceId).toBe("tea-2"));
+    await waitFor(() =>
+      expect(result.current.currentWorkspaceId).toBe("tea-2"),
+    );
+  });
+
+  it("keeps the server-selected workspace stable through hydration", async () => {
+    mockUseWorkspaces.mockReturnValue({
+      workspaces: WORKSPACES,
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+    vi.mocked(localStorage.getItem).mockReturnValue("tea-2");
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <WorkspaceProvider initialWorkspaceId="tea-1">
+        {children}
+      </WorkspaceProvider>
+    );
+    const { result } = renderHook(() => useWorkspace(), { wrapper });
+
+    await waitFor(() =>
+      expect(result.current.currentWorkspaceId).toBe("tea-1"),
+    );
+    expect(result.current.currentWorkspace?.name).toBe("acme-hq");
   });
 
   it("falls back to the first workspace when the persisted selection was deleted", async () => {
@@ -67,7 +105,9 @@ describe("WorkspaceProvider", () => {
       wrapper: WorkspaceProvider,
     });
 
-    await waitFor(() => expect(result.current.currentWorkspaceId).toBe("tea-1"));
+    await waitFor(() =>
+      expect(result.current.currentWorkspaceId).toBe("tea-1"),
+    );
   });
 
   it("setCurrentWorkspaceId persists the selection and updates every consumer", async () => {
@@ -82,11 +122,18 @@ describe("WorkspaceProvider", () => {
     const { result } = renderHook(() => useWorkspace(), {
       wrapper: WorkspaceProvider,
     });
-    await waitFor(() => expect(result.current.currentWorkspaceId).toBe("tea-1"));
+    await waitFor(() =>
+      expect(result.current.currentWorkspaceId).toBe("tea-1"),
+    );
 
     act(() => result.current.setCurrentWorkspaceId("tea-2"));
 
-    await waitFor(() => expect(result.current.currentWorkspaceId).toBe("tea-2"));
-    expect(localStorage.setItem).toHaveBeenCalledWith("bex.selectedWorkspaceId", "tea-2");
+    await waitFor(() =>
+      expect(result.current.currentWorkspaceId).toBe("tea-2"),
+    );
+    expect(localStorage.setItem).toHaveBeenCalledWith(
+      "bex.selectedWorkspaceId",
+      "tea-2",
+    );
   });
 });

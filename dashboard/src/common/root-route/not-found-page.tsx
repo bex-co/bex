@@ -2,6 +2,10 @@ import { Link } from "@tanstack/react-router";
 import { Home, ArrowLeft } from "lucide-react";
 import { Button } from "@/common/components/ui/button.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
+import {
+  DashboardDocumentTitle,
+  translatedTitle,
+} from "@/common/lib/document-head";
 
 /**
  * 404 Not Found page component
@@ -15,40 +19,48 @@ export default function NotFoundPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-2xl text-center space-y-8">
-        {/* Content Section */}
-        <div className="space-y-4">
-          <h1 className="text-8xl font-bold tracking-tight text-foreground">
-            404
-          </h1>
-          <h2 className="text-3xl font-semibold text-foreground">
-            {t("common.notFoundTitle")}
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-md mx-auto">
-            {t("common.notFoundDescription")}
-          </p>
-        </div>
+    <>
+      <DashboardDocumentTitle title={translatedTitle("common.notFoundTitle")} />
+      <div className="min-h-screen flex items-center justify-center bg-background px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-2xl text-center space-y-8">
+          {/* Content Section */}
+          <div className="space-y-4">
+            <h1 className="text-8xl font-bold tracking-tight text-foreground">
+              404
+            </h1>
+            <h2 className="text-3xl font-semibold text-foreground">
+              {t("common.notFoundTitle")}
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-md mx-auto">
+              {t("common.notFoundDescription")}
+            </p>
+          </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-          <Button asChild variant="default" size="lg" className="min-w-[140px]">
-            <Link to="/">
-              <Home className="mr-2 h-4 w-4" />
-              {t("common.goHome")}
-            </Link>
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={handleGoBack}
-            className="min-w-[140px]"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            {t("common.goBack")}
-          </Button>
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+            <Button
+              asChild
+              variant="default"
+              size="lg"
+              className="min-w-[140px]"
+            >
+              <Link to="/">
+                <Home className="mr-2 h-4 w-4" />
+                {t("common.goHome")}
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handleGoBack}
+              className="min-w-[140px]"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              {t("common.goBack")}
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

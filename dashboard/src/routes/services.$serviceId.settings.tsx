@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import {
   Card,
   CardHeader,
@@ -48,6 +48,7 @@ export const Route = createFileRoute("/services/$serviceId/settings")({
 export function ServiceSettingsPage() {
   const { serviceId } = Route.useParams();
   const { service, loading, refetch } = useServer(serviceId);
+  const router = useRouter();
   const { pending, run } = useServiceLifecycle({ refetch });
   const { t } = useTranslations();
   const cron = service ? isCron(service) : false;
@@ -75,7 +76,7 @@ export function ServiceSettingsPage() {
               <DisplayNameRow
                 serviceId={serviceId}
                 displayName={service?.displayName}
-                onChanged={() => void refetch()}
+                onChanged={() => void router.invalidate()}
               />
               <InstanceTypeRow
                 serviceId={serviceId}

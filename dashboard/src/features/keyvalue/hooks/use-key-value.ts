@@ -22,7 +22,7 @@ export interface UseKeyValueResult {
 export function useKeyValue(id: string): UseKeyValueResult {
   const { data, loading, error, refetch, startPolling, stopPolling } = useQuery(
     KeyValueDocument,
-    { variables: { id }, fetchPolicy: "cache-and-network", errorPolicy: "all" },
+    { variables: { id }, fetchPolicy: "cache-first", errorPolicy: "all" },
   );
 
   const keyValue = useMemo(

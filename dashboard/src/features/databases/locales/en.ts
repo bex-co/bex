@@ -1,6 +1,10 @@
 import type { TranslationEntry } from "@/i18n";
 
 const enDatabases: Record<string, TranslationEntry> = {
+  "databases.resourceType": {
+    message: "Database",
+    description: "Managed Postgres resource type used in document titles",
+  },
   // --- List page stat tiles ---
   "databases.statTotal": {
     message: "Total databases",
@@ -135,7 +139,7 @@ const enDatabases: Record<string, TranslationEntry> = {
     description: "Button that opens the create-database dialog",
   },
   "databases.createTitle": {
-    message: "Create a Postgres database",
+    message: "New Postgres",
     description: "Create-database dialog title",
   },
   "databases.createDescription": {

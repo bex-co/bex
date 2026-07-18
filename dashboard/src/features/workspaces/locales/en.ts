@@ -17,6 +17,10 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     message: "+ New Workspace",
     description: "Switcher menu item linking to /new/workspace",
   },
+  "workspaces.newTitle": {
+    message: "New Workspace",
+    description: "New-workspace page document title",
+  },
   "workspaces.planPickerLabel": {
     message: "Plan",
     description: "Accessible label for the plan-card radiogroup",
@@ -182,14 +186,16 @@ const enWorkspaces: Record<string, TranslationEntry> = {
   },
   "workspaces.changePlanTrigger": {
     message: "Change plan",
-    description: "Workspace settings plan-badge link opening the change-plan dialog",
+    description:
+      "Workspace settings plan-badge link opening the change-plan dialog",
   },
   "workspaces.changePlanTitle": {
     message: "Change plan",
     description: "Change-plan dialog title",
   },
   "workspaces.changePlanDescription": {
-    message: "Pick a new plan for this workspace. No payment step — the plan changes immediately.",
+    message:
+      "Pick a new plan for this workspace. No payment step — the plan changes immediately.",
     description: "Change-plan dialog description",
   },
   "workspaces.changePlanCancel": {

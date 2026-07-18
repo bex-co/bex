@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { translatedTitleHead } from "@/common/lib/document-head";
 
 // Hydra's urls.device.verification points here. All work is server-side: the
 // route bridges the user_code/device_challenge into Hydra, whose returned
@@ -8,11 +9,12 @@ export const Route = createFileRoute("/auth/device")({
     handlers: ({ createHandlers }) =>
       createHandlers({
         GET: async ({ request }) => {
-          const { handleDeviceVerification } =
-            await import("@/common/server-fn/hydra-device");
+          const { handleDeviceVerification } = await import(
+            "@/common/server-fn/hydra-device"
+          );
           return handleDeviceVerification(request);
         },
       }),
   },
-  head: () => ({ meta: [{ title: "Connect Render CLI — bex" }] }),
+  head: ({ match }) => translatedTitleHead("auth.deviceTitle", match),
 });

@@ -7,6 +7,7 @@ import {
   Server,
 } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
+import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Skeleton } from "@/common/components/ui/skeleton";
@@ -29,9 +30,7 @@ import { useServices } from "@/features/services/hooks/use-services";
 export const Route = createFileRoute("/env-groups")({
   component: EnvGroupsPage,
   beforeLoad: requireAuth(),
-  head: () => ({
-    meta: [{ title: "Environment Groups · bex dashboard" }],
-  }),
+  head: ({ match }) => translatedTitleHead("envGroups.pageTitle", match),
 });
 
 export function EnvGroupsPage() {

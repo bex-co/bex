@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
+import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
@@ -115,9 +116,7 @@ export const Route = createFileRoute("/services/new")({
   component: NewServicePage,
   beforeLoad: requireAuth(),
   validateSearch: parseNewServiceSearch,
-  head: () => ({
-    meta: [{ title: "New Service · bex dashboard" }],
-  }),
+  head: ({ match }) => translatedTitleHead("services.createTitle", match),
 });
 
 function isValidGitUrl(url: string): boolean {

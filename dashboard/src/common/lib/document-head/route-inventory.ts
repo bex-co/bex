@@ -1,0 +1,89 @@
+export const ROUTE_HEAD_CATEGORIES = [
+  "content",
+  "inherited-layout",
+  "redirect-only",
+  "non-html",
+  "fallback",
+] as const;
+
+export type RouteHeadCategory = (typeof ROUTE_HEAD_CATEGORIES)[number];
+
+/**
+ * Exhaustive classification of dashboard/src/routes. The adjacent test compares
+ * this manifest to the filesystem so a new route must declare whether it owns,
+ * inherits, redirects, omits, or supplies fallback document metadata.
+ */
+export const ROUTE_HEAD_INVENTORY: Record<
+  RouteHeadCategory,
+  readonly string[]
+> = {
+  content: [
+    "auth.consent.tsx",
+    "auth.device.success.tsx",
+    "auth.device.tsx",
+    "auth.forgot-password.tsx",
+    "auth.login.tsx",
+    "auth.logout.tsx",
+    "auth.reset-password.tsx",
+    "auth.sign-up.tsx",
+    "auth.verification.tsx",
+    "blueprints.$blueprintId.tsx",
+    "blueprints.tsx",
+    "databases.$databaseId.tsx",
+    "env-groups.tsx",
+    "env-groups_.$groupId.tsx",
+    "index.tsx",
+    "keyvalue.$keyValueId.tsx",
+    "keyvalue.new.tsx",
+    "new.workspace.tsx",
+    "notifications.tsx",
+    "project.$projectId.settings.tsx",
+    "project.$projectId.tsx",
+    "services.$serviceId.tsx",
+    "services.new.tsx",
+    "settings.tsx",
+    "usage.tsx",
+    "webhook.$webhookId.tsx",
+    "webhooks.tsx",
+    "webhooks_.new.tsx",
+    "workspace.settings.tsx",
+  ],
+  "inherited-layout": [
+    "project.$projectId.index.tsx",
+    "services.$serviceId.deploys.$deployId.tsx",
+    "services.$serviceId.deploys.index.tsx",
+    "services.$serviceId.env.tsx",
+    "services.$serviceId.events.tsx",
+    "services.$serviceId.index.tsx",
+    "services.$serviceId.logs.tsx",
+    "services.$serviceId.metrics.tsx",
+    "services.$serviceId.plan.tsx",
+    "services.$serviceId.scaling.tsx",
+    "services.$serviceId.settings.tsx",
+    "services.$serviceId.shell.tsx",
+    "webhook.$webhookId.index.tsx",
+    "webhook.$webhookId.settings.tsx",
+  ],
+  "redirect-only": [
+    "billing.$.tsx",
+    "cron.$.tsx",
+    "d.$.tsx",
+    "login.tsx",
+    "new.database.tsx",
+    "new.project.tsx",
+    "new.redis.tsx",
+    "pserv.$.tsx",
+    "r.$.tsx",
+    "register.tsx",
+    "static.$.tsx",
+    "u.$.tsx",
+    "w.$.tsx",
+    "web.$.tsx",
+    "worker.$.tsx",
+  ],
+  "non-html": ["api.connected-agents.tsx", "api.sessions.tsx"],
+  fallback: ["$.tsx", "__root.tsx"],
+};
+
+export const CLASSIFIED_ROUTE_FILES =
+  Object.values(ROUTE_HEAD_INVENTORY).flat();

@@ -26,7 +26,7 @@ export interface UseDatabaseResult {
 export function useDatabase(id: string): UseDatabaseResult {
   const { data, loading, error, startPolling, stopPolling, refetch } = useQuery(
     DatabaseDocument,
-    { variables: { id }, fetchPolicy: "cache-and-network", errorPolicy: "all" },
+    { variables: { id }, fetchPolicy: "cache-first", errorPolicy: "all" },
   );
 
   const database = useMemo(

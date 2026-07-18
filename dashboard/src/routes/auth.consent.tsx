@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { translatedTitleHead } from "@/common/lib/document-head";
 import type { ConsentView } from "@/common/server-fn/hydra-consent";
 import ConsentPage from "@/features/auth/pages/consent-page";
 
@@ -15,16 +16,18 @@ export const Route = createFileRoute("/auth/consent")({
     handlers: ({ createHandlers }) =>
       createHandlers({
         GET: async ({ request, next }) => {
-          const { handleConsent } =
-            await import("@/common/server-fn/hydra-consent");
+          const { handleConsent } = await import(
+            "@/common/server-fn/hydra-consent"
+          );
           const result = await handleConsent(request);
           return result instanceof Response
             ? result
             : next({ context: { consent: result } });
         },
         POST: async ({ request }) => {
-          const { handleConsentDecision } =
-            await import("@/common/server-fn/hydra-consent");
+          const { handleConsentDecision } = await import(
+            "@/common/server-fn/hydra-consent"
+          );
           return handleConsentDecision(request);
         },
       }),
@@ -44,5 +47,5 @@ export const Route = createFileRoute("/auth/consent")({
       (serverContext as { consent?: ConsentView } | undefined)?.consent ?? null,
   }),
   component: ConsentPage,
-  head: () => ({ meta: [{ title: "Authorize — bex" }] }),
+  head: ({ match }) => translatedTitleHead("auth.consentTitle", match),
 });

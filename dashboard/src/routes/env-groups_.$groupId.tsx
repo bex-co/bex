@@ -1,4 +1,9 @@
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
+  Link,
+  createFileRoute,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
@@ -22,6 +27,14 @@ import {
   useEnvGroupMutations,
 } from "@/features/env-groups/hooks/use-env-groups";
 import { useServices } from "@/features/services/hooks/use-services";
+import { EnvGroupDocument } from "@/graphql/definitions";
+import {
+  isNotFoundError,
+  loadRouteResource,
+  routeResourceTitle,
+  titleHead,
+  translatedText,
+} from "@/common/lib/document-head";
 
 // The trailing underscore in this file route deliberately escapes the
 // /env-groups list route's component hierarchy while preserving the public URL.
@@ -30,15 +43,33 @@ import { useServices } from "@/features/services/hooks/use-services";
 export const Route = createFileRoute("/env-groups_/$groupId")({
   component: EnvGroupDetailPage,
   beforeLoad: requireAuth(),
-  head: ({ params }) => ({
-    meta: [{ title: `${params.groupId} · Environment Groups · bex dashboard` }],
-  }),
+  loader: ({ context, params }) =>
+    loadRouteResource(
+      () =>
+        context.client.query({
+          query: EnvGroupDocument,
+          variables: { id: params.groupId },
+          fetchPolicy: "network-only",
+          errorPolicy: "all",
+        }),
+      (data) => (data?.envGroup?.name?.trim() ? data.envGroup : null),
+      isNotFoundError,
+    ),
+  head: ({ loaderData, match }) =>
+    titleHead(
+      routeResourceTitle(loaderData, (group) => [
+        group.name,
+        translatedText("envGroups.resourceType"),
+      ]),
+      match,
+    ),
 });
 
 export function EnvGroupDetailPage() {
   const { groupId } = Route.useParams();
   const { t } = useTranslations();
   const navigate = useNavigate();
+  const router = useRouter();
   const { group, loading, error, refetch } = useEnvGroup(groupId);
   const {
     services,
@@ -47,7 +78,13 @@ export function EnvGroupDetailPage() {
   } = useServices();
   const mutations = useEnvGroupMutations(refetch, {
     skipDeleteRefetch: true,
+    skipRenameRefetch: true,
   });
+  const renameGroup = async (id: string, name: string) => {
+    const renamed = await mutations.renameGroup(id, name);
+    if (renamed) void router.invalidate();
+    return renamed;
+  };
   const errorKind = classifyEnvGroupError(error);
   const notFound = isEnvGroupNotFound(error);
 
@@ -72,7 +109,7 @@ export function EnvGroupDetailPage() {
         {group ? (
           <EnvGroupActions
             group={group}
-            renameGroup={mutations.renameGroup}
+            renameGroup={renameGroup}
             deleteGroup={mutations.deleteGroup}
             busy={mutations.busy}
             onDeleted={() => void navigate({ to: "/env-groups" })}

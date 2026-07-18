@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -28,19 +28,46 @@ import { useSyncBlueprint } from "@/features/blueprints/hooks/use-sync-blueprint
 import { formatRelativeAge } from "@/features/services/lib/format";
 import { ProtectedConfirmationDialog } from "@/features/services/components/protected-confirmation-dialog";
 import { protectedServiceName } from "@/features/services/lib/protected-confirmation";
+import { BlueprintDocument } from "@/features/blueprints/api/operations";
+import {
+  loadRouteResource,
+  routeResourceTitle,
+  titleHead,
+  translatedText,
+} from "@/common/lib/document-head";
 
 export const Route = createFileRoute("/blueprints/$blueprintId")({
   component: BlueprintDetailPage,
   beforeLoad: requireAuth(),
-  head: ({ params }) => ({
-    meta: [{ title: `${params.blueprintId} · Blueprints · bex dashboard` }],
-  }),
+  loader: ({ context, params }) =>
+    loadRouteResource(
+      () =>
+        context.client.query({
+          query: BlueprintDocument,
+          variables: {
+            id: params.blueprintId,
+            ownerId: context.workspaceId,
+          },
+          fetchPolicy: "network-only",
+          errorPolicy: "all",
+        }),
+      (data) => (data?.blueprint?.name?.trim() ? data.blueprint : null),
+    ),
+  head: ({ loaderData, match }) =>
+    titleHead(
+      routeResourceTitle(loaderData, (blueprint) => [
+        blueprint.name,
+        translatedText("blueprints.resourceType"),
+      ]),
+      match,
+    ),
 });
 
 export function BlueprintDetailPage() {
   const { blueprintId } = Route.useParams();
   const { t } = useTranslations();
-  const { blueprint, loading, refetch } = useBlueprint(blueprintId);
+  const router = useRouter();
+  const { blueprint, loading } = useBlueprint(blueprintId);
   const { sync, busy } = useSyncBlueprint();
   const [confirming, setConfirming] = useState(false);
   const [protectedConfirmation, setProtectedConfirmation] = useState<
@@ -58,7 +85,7 @@ export function BlueprintDetailPage() {
     }
     if (result.status === "success") {
       setProtectedConfirmation(null);
-      refetch();
+      void router.invalidate();
     }
   }
 

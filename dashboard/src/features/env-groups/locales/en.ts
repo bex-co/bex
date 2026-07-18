@@ -1,6 +1,10 @@
 import type { TranslationEntry } from "@/i18n";
 
 const enEnvGroups: Record<string, TranslationEntry> = {
+  "envGroups.resourceType": {
+    message: "Environment Group",
+    description: "Environment Group resource type used in document titles",
+  },
   "envGroups.pageTitle": {
     message: "Environment Groups",
     description: "Workspace env-groups page title",

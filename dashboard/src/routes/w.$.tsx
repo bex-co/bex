@@ -35,16 +35,15 @@ export const Route = createFileRoute("/w/$")({
     }
   },
   component: WorkspaceAliasPage,
-  head: () => ({
-    meta: [{ title: "Workspace · bex dashboard" }],
-  }),
 });
 
 /** The bex landing for each Render workspace sub-page. Billing lands on Usage
  *  (bex's deliberate usage-not-billing counterpart, ADR023); the bare
  *  workspace root is the overview; unknown sub-pages fall back to settings —
  *  the workspace-scoped page that exists. */
-function landingFor(sub: string | undefined): "/" | "/usage" | "/workspace/settings" {
+function landingFor(
+  sub: string | undefined,
+): "/" | "/usage" | "/workspace/settings" {
   if (sub === undefined) return "/";
   if (sub === "billing") return "/usage";
   return "/workspace/settings";
@@ -63,7 +62,15 @@ function WorkspaceAliasPage() {
     if (loading || !isMember) return;
     if (teaId !== currentWorkspaceId) setCurrentWorkspaceId(teaId);
     void navigate({ to: landingFor(sub), replace: true });
-  }, [loading, isMember, teaId, sub, currentWorkspaceId, setCurrentWorkspaceId, navigate]);
+  }, [
+    loading,
+    isMember,
+    teaId,
+    sub,
+    currentWorkspaceId,
+    setCurrentWorkspaceId,
+    navigate,
+  ]);
 
   // Still resolving the membership list — don't judge the id yet.
   if (loading || isMember) {

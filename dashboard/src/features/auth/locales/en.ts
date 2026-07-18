@@ -66,6 +66,10 @@ const enAuth: Record<string, TranslationEntry> = {
     message: "Redirecting to login…",
     description: "Logout page subtext once logout has completed",
   },
+  "auth.logoutTitle": {
+    message: "Sign out",
+    description: "Logout page document title",
+  },
   "auth.featureSecureTitle": {
     message: "Secure by default",
     description: "Auth hero feature bullet title",
@@ -153,6 +157,10 @@ const enAuth: Record<string, TranslationEntry> = {
   "auth.deviceSuccessTitle": {
     message: "Render CLI connected",
     description: "Device authorization success page title",
+  },
+  "auth.deviceTitle": {
+    message: "Connect Render CLI",
+    description: "Render CLI device verification route document title",
   },
   "auth.deviceSuccessSubtitle": {
     message: "Your browser authorization is complete.",

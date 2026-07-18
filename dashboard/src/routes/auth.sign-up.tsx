@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { translatedTitleHead } from "@/common/lib/document-head";
 import RegisterPage from "@/features/auth/pages/register-page";
 
 export const Route = createFileRoute("/auth/sign-up")({
@@ -12,7 +13,5 @@ export const Route = createFileRoute("/auth/sign-up")({
         ? search.login_challenge
         : undefined,
   }),
-  head: () => ({
-    meta: [{ title: "Create your account — bex" }],
-  }),
+  head: ({ match }) => translatedTitleHead("auth.registerTitle", match),
 });

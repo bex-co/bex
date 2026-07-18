@@ -150,7 +150,9 @@ describe("ServiceScalingPage (w7/m43)", () => {
     const save = screen.getByRole("button", { name: "Save Changes" });
     expect(save).toBeDisabled();
 
-    fireEvent.change(screen.getByRole("spinbutton"), { target: { value: "5" } });
+    fireEvent.change(screen.getByRole("spinbutton"), {
+      target: { value: "5" },
+    });
     expect(save).toBeEnabled();
 
     fireEvent.click(save);
@@ -176,9 +178,7 @@ describe("ServiceScalingPage (w7/m43)", () => {
       await screen.findByRole("switch", { name: "Autoscaling on" }),
     );
     // Render's disable dialog: the fixed Manual Scaling count takes over.
-    expect(
-      await screen.findByText("Disable autoscaling?"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Disable autoscaling?")).toBeInTheDocument();
     expect(autoscalingState.disable).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Disable" }));

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
+import { translatedTitleHead } from "@/common/lib/document-head";
 import SettingsPage from "@/features/auth/pages/settings-page";
 
 export const Route = createFileRoute("/settings")({
@@ -18,7 +19,5 @@ export const Route = createFileRoute("/settings")({
     }
     return validated;
   },
-  head: () => ({
-    meta: [{ title: "Settings · bex dashboard" }],
-  }),
+  head: ({ match }) => translatedTitleHead("auth.settingsTitle", match),
 });

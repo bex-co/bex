@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowUpRight, Loader2 } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
+import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
@@ -72,9 +73,7 @@ const FREE_PLAN = "free";
 export const Route = createFileRoute("/keyvalue/new")({
   component: NewKeyValuePage,
   beforeLoad: requireAuth(),
-  head: () => ({
-    meta: [{ title: "New Key Value · bex dashboard" }],
-  }),
+  head: ({ match }) => translatedTitleHead("keyvalue.createTitle", match),
 });
 
 /**

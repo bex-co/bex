@@ -169,7 +169,7 @@ describe("BlueprintDetailPage", () => {
     expect(await screen.findByText("Blueprint not found")).toBeInTheDocument();
   });
 
-  it("calls sync and refetch when the confirm dialog is accepted", async () => {
+  it("calls sync when the confirm dialog is accepted", async () => {
     blueprintDetailState.blueprint = bp();
     renderDetailPage();
 
@@ -177,7 +177,7 @@ describe("BlueprintDetailPage", () => {
     await userEvent.click(screen.getByRole("button", { name: /^sync$/i }));
 
     expect(sync).toHaveBeenCalledWith("blp-abc123", undefined);
-    expect(blueprintDetailState.refetch).toHaveBeenCalled();
+    expect(blueprintDetailState.refetch).not.toHaveBeenCalled();
   });
 
   it("does not call sync when the confirm dialog is cancelled", async () => {
@@ -223,6 +223,6 @@ describe("BlueprintDetailPage", () => {
       "blp-abc123",
       "sudo deploy service api",
     );
-    expect(blueprintDetailState.refetch).toHaveBeenCalledOnce();
+    expect(blueprintDetailState.refetch).not.toHaveBeenCalled();
   });
 });

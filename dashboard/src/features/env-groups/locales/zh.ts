@@ -1,6 +1,10 @@
 import type { TranslationEntry } from "@/i18n";
 
 const zhEnvGroups: Record<string, TranslationEntry> = {
+  "envGroups.resourceType": {
+    message: "环境变量组",
+    description: "Environment Group resource type used in document titles",
+  },
   "envGroups.pageTitle": {
     message: "环境变量组",
     description: "Workspace env-groups page title",

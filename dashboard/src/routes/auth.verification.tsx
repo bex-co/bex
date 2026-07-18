@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { translatedTitleHead } from "@/common/lib/document-head";
 import VerificationPage from "@/features/auth/pages/verification-page";
 
 export const Route = createFileRoute("/auth/verification")({
@@ -6,7 +7,5 @@ export const Route = createFileRoute("/auth/verification")({
   validateSearch: (search: Record<string, unknown>) => ({
     flow: typeof search.flow === "string" ? search.flow : undefined,
   }),
-  head: () => ({
-    meta: [{ title: "Verify email — bex" }],
-  }),
+  head: ({ match }) => translatedTitleHead("auth.verificationTitle", match),
 });

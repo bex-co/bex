@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
+import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { WebhooksPanel } from "@/features/webhooks/components/webhooks-panel";
 
@@ -12,9 +13,7 @@ import { WebhooksPanel } from "@/features/webhooks/components/webhooks-panel";
 export const Route = createFileRoute("/webhooks")({
   component: WebhooksPage,
   beforeLoad: requireAuth(),
-  head: () => ({
-    meta: [{ title: "Webhooks · bex dashboard" }],
-  }),
+  head: ({ match }) => translatedTitleHead("webhooks.title", match),
 });
 
 function WebhooksPage() {

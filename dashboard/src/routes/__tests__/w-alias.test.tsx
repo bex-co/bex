@@ -76,9 +76,7 @@ describe("/w/{tea-id} alias (w1/m45)", () => {
 
   it("lands billing on Usage (bex's deliberate counterpart)", async () => {
     const router = renderAt("/w/tea-mine/billing");
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe("/usage"),
-    );
+    await waitFor(() => expect(router.state.location.pathname).toBe("/usage"));
   });
 
   it("lands the bare workspace root on the overview", async () => {

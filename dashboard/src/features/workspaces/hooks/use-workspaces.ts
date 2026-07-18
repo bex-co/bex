@@ -1,6 +1,9 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
-import { WorkspacesDocument, type WorkspacesQuery } from "@/graphql/definitions";
+import {
+  WorkspacesDocument,
+  type WorkspacesQuery,
+} from "@/graphql/definitions";
 import { useIsAuthenticated } from "@/common/hooks/use-is-authenticated";
 import type { WorkspaceView } from "@/features/workspaces/types";
 
@@ -41,7 +44,7 @@ export function useWorkspaces(): UseWorkspacesResult {
   const authenticated = useIsAuthenticated();
   const { data, loading, error, refetch } = useQuery(WorkspacesDocument, {
     skip: !authenticated,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
     errorPolicy: "all",
   });
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
+import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import {
   Card,
@@ -31,9 +32,7 @@ import {
 export const Route = createFileRoute("/new/workspace")({
   component: NewWorkspacePage,
   beforeLoad: requireAuth(),
-  head: () => ({
-    meta: [{ title: "New Workspace · bex dashboard" }],
-  }),
+  head: ({ match }) => translatedTitleHead("workspaces.newTitle", match),
 });
 
 /**

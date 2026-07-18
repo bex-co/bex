@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import {
   RouterProvider,
   createRouter,
@@ -164,29 +164,15 @@ describe("service-detail layout routing", () => {
     );
   });
 
-  it("writes Render's `<name> · <type> · <brand>` title once the service resolves (w5/m42)", async () => {
-    // Post-m46 the URL param is the opaque srv- id; the layout head templates
-    // it into the fallback title, and the shell completes the Render shape by
-    // name + type ("backend-v2 ・ Web Service ・ Render Dashboard", captured
-    // live). The harness's param is "app" — give the service a different name
-    // to prove the swap.
+  it("leaves document-title ownership with the parent route head", async () => {
     serverState.service = svc({ id: "app", name: "friendly" });
-    document.title = "app · bex dashboard";
+    document.title = "route-owned title";
     renderAt("/services/app/logs");
 
-    await waitFor(() =>
-      expect(document.title).toBe("friendly · Web Service · bex dashboard"),
-    );
-  });
-
-  it("titles a cron job by its own type label, not Web Service (w5/m42)", async () => {
-    serverState.service = svc({ id: "app", name: "nightly", type: "cron_job" });
-    document.title = "app · bex dashboard";
-    renderAt("/services/app/logs");
-
-    await waitFor(() =>
-      expect(document.title).toBe("nightly · Cron Job · bex dashboard"),
-    );
+    expect(
+      await screen.findByRole("heading", { name: "friendly" }),
+    ).toBeInTheDocument();
+    expect(document.title).toBe("route-owned title");
   });
 
   it("keeps Events directly reachable in the Render tab set, with no Overview tab", async () => {

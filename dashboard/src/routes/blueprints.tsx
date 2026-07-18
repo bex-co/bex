@@ -5,6 +5,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
+import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
@@ -29,9 +30,7 @@ import { formatRelativeAge } from "@/features/services/lib/format";
 export const Route = createFileRoute("/blueprints")({
   component: BlueprintsPage,
   beforeLoad: requireAuth(),
-  head: () => ({
-    meta: [{ title: "Blueprints · bex dashboard" }],
-  }),
+  head: ({ match }) => translatedTitleHead("blueprints.pageTitle", match),
 });
 
 export function BlueprintsPage() {

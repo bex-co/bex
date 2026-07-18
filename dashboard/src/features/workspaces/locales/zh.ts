@@ -17,6 +17,10 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     message: "+ 新建工作区",
     description: "Switcher menu item linking to /new/workspace",
   },
+  "workspaces.newTitle": {
+    message: "新建工作区",
+    description: "New-workspace page document title",
+  },
   "workspaces.planPickerLabel": {
     message: "套餐",
     description: "Accessible label for the plan-card radiogroup",
@@ -181,7 +185,8 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
   },
   "workspaces.changePlanTrigger": {
     message: "更改套餐",
-    description: "Workspace settings plan-badge link opening the change-plan dialog",
+    description:
+      "Workspace settings plan-badge link opening the change-plan dialog",
   },
   "workspaces.changePlanTitle": {
     message: "更改套餐",
