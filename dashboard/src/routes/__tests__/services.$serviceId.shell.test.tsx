@@ -21,6 +21,15 @@ vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: () => serverState,
 }));
 
+// The real panel queries instances and opens a gateway WebSocket via Apollo;
+// those paths have their own tests. Here we only assert the page composes the
+// Web Shell alongside the SSH command.
+vi.mock("@/features/services/components/web-shell-panel", () => ({
+  WebShellPanel: ({ serviceId }: { serviceId: string }) => (
+    <div data-testid="web-shell-terminal">{serviceId}</div>
+  ),
+}));
+
 function renderPage() {
   const rootRoute = createRootRoute({
     component: () => <ServiceShellPage serviceId="srv-example" />,
@@ -44,22 +53,24 @@ beforeEach(() => {
 });
 
 describe("service Shell page", () => {
-  it("presents bex running-instance SSH without a browser terminal", async () => {
+  it("hosts the browser terminal alongside the copy-ready SSH command", async () => {
     renderPage();
 
     expect(
       await screen.findByRole("heading", { name: "Shell" }),
     ).toBeInTheDocument();
+    // The in-browser Web Shell terminal (w2/m55).
+    expect(screen.getByTestId("web-shell-terminal")).toHaveTextContent(
+      "srv-example",
+    );
+    // Render shows both: the terminal and the copy-ready ssh command.
     expect(screen.getByText("ssh srv-example@ssh.bex.co")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Manage SSH public keys" }),
     ).toHaveAttribute("href", "/settings#ssh-public-keys");
-    expect(
-      screen.getByText(/connects to an existing ready instance/i),
-    ).toBeInTheDocument();
   });
 
-  it("explains why Shell is unavailable without inventing an address", async () => {
+  it("explains why Shell is unavailable without inventing an address or terminal", async () => {
     serverState.service = {
       ...serverState.service!,
       sshAddress: null,
@@ -69,6 +80,8 @@ describe("service Shell page", () => {
     expect(
       await screen.findByText("Shell access isn't available"),
     ).toBeInTheDocument();
+    // No address => no browser terminal and no fabricated ssh command.
+    expect(screen.queryByTestId("web-shell-terminal")).not.toBeInTheDocument();
     expect(screen.queryByText(/^ssh /)).not.toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Manage SSH public keys" }),

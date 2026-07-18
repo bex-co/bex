@@ -62,6 +62,12 @@ type Server struct {
 	Signer   ssh.Signer
 	Metrics  *Metrics
 
+	// TicketSecret enables the Browser Web Shell WebSocket path (websocket.go,
+	// docs/ADR035-ssh.md § Browser Web Shell). It must equal bex-api's
+	// BEX_SHELL_TICKET_SECRET so the gateway can verify the exec tickets bex-api
+	// mints. Empty => the WebSocket listener is not started (native SSH only).
+	TicketSecret []byte
+
 	HandshakeTimeout time.Duration
 	SessionTimeout   time.Duration
 	MaxSessions      int
@@ -70,6 +76,12 @@ type Server struct {
 	mu          sync.Mutex
 	global      int
 	perIdentity map[string]int
+
+	// usedNonces enforces best-effort single-use of exec tickets on this replica:
+	// a ticket's nonce is recorded until the ticket's own expiry, so a replay
+	// within the short TTL is refused. Cross-replica reuse is bounded by the TTL.
+	usedMu     sync.Mutex
+	usedNonces map[string]time.Time
 }
 
 func (s *Server) defaults() {

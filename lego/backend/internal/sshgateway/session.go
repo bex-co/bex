@@ -143,12 +143,7 @@ func runExec(ctx context.Context, channel ssh.Channel, requests <-chan *ssh.Requ
 			code = 126
 		}
 	}
-	if code < 0 {
-		code = 255
-	}
-	if code > 255 {
-		code = 255
-	}
+	code = clampExit(code)
 	_, sendErr := channel.SendRequest("exit-status", false, ssh.Marshal(struct{ Status uint32 }{Status: uint32(code)}))
 	if sendErr != nil {
 		return fmt.Errorf("send exit status: %w", sendErr)

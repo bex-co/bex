@@ -673,6 +673,18 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, instances)
 	}
+	// shellTicket mints a Browser Web Shell exec ticket (docs/ADR035-ssh.md
+	// § Browser Web Shell). bex extension over Render's REST — the dashboard
+	// terminal opens the gateway WebSocket with it. Optional ?instance=<id>
+	// pins one Ready replica; omitted selects a random one, matching SSH.
+	shellTicket := func(w http.ResponseWriter, r *http.Request) {
+		view, err := s.CreateShellSession(r.Context(), r.PathValue("id"), r.URL.Query().Get("instance"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusCreated, view)
+	}
 	// verb maps a Service action to a handler with a Render-accurate status
 	// code. ?confirm=<phrase> rides the context on every verb (withConfirm) —
 	// a no-op for most of them, but it's what arms Suspend's protected-
@@ -1346,6 +1358,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// package's established rule that every service subresource is also
 		// reachable under bex's native noun.
 		mux.HandleFunc("GET "+base+"/{id}/instances", listInstances)
+		mux.HandleFunc("POST "+base+"/{id}/shell-ticket", shellTicket)
 		mux.HandleFunc("PATCH "+base+"/{id}", patch)
 		mux.HandleFunc("DELETE "+base+"/{id}", deleteSvc) // Render: delete => 204
 		mux.HandleFunc("POST "+base+"/{id}/suspend", verb(http.StatusAccepted, s.Suspend))

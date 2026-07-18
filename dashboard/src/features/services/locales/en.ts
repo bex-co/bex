@@ -83,6 +83,63 @@ const enServices: Record<string, TranslationEntry> = {
       "Shell access requires a running paid web, private, or background service and an active SSH gateway.",
     description: "Unavailable SSH connection card explanation",
   },
+  "services.shellWebTitle": {
+    message: "Web Shell",
+    description: "In-browser terminal card title",
+  },
+  "services.shellWebDescription": {
+    message: "Run commands inside a running instance from your browser.",
+    description: "In-browser terminal card description",
+  },
+  "services.shellConnecting": {
+    message: "Connecting to a running instance…",
+    description: "Web shell status while the terminal is connecting",
+  },
+  "services.shellConnected": {
+    message: "Connected",
+    description: "Web shell status when the terminal stream is live",
+  },
+  "services.shellClosed": {
+    message: "Session closed",
+    description: "Web shell status when the terminal stream has ended",
+  },
+  "services.shellErrorStatus": {
+    message: "Connection error",
+    description: "Web shell status when the session failed to connect or errored",
+  },
+  "services.shellReconnect": {
+    message: "Reconnect",
+    description: "Button that re-opens a closed web shell session",
+  },
+  "services.shellConnect": {
+    message: "Start shell",
+    description: "Button that opens a web shell session",
+  },
+  "services.shellErrorGeneric": {
+    message: "Couldn't start a shell session.",
+    description: "Web shell generic connection error",
+  },
+  "services.shellErrorUnavailable": {
+    message:
+      "The in-browser shell isn't enabled on this platform. Use the SSH command below instead.",
+    description: "Web shell error when the browser transport is unconfigured (503)",
+  },
+  "services.shellInstanceLabel": {
+    message: "Instance",
+    description: "Label for the web shell instance picker",
+  },
+  "services.shellInstanceAny": {
+    message: "Any ready instance",
+    description: "Web shell instance picker option that selects a random ready replica",
+  },
+  "services.shellInstanceSelect": {
+    message: "Select an instance",
+    description: "Placeholder for the web shell instance picker",
+  },
+  "services.shellSshFallback": {
+    message: "Prefer your own terminal? Use the SSH command below.",
+    description: "Hint pointing web shell users to the copy-ready SSH command",
+  },
   "services.actions": {
     message: "Actions",
     description: "Accessible heading for service configuration row actions",

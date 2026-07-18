@@ -180,7 +180,15 @@ type Deps struct {
 	// SSHHost is the public gateway hostname advertised through Render's
 	// serviceDetails.sshAddress field. Empty disables SSH address advertising.
 	SSHHost string
-	Store   apps.IntentStore
+	// ShellTicketSecret and ShellWSURL wire the Browser Web Shell
+	// (docs/ADR035-ssh.md § Browser Web Shell): the HMAC key shared only with the
+	// isolated gateway (BEX_SHELL_TICKET_SECRET) and the browser-reachable gateway
+	// WebSocket origin (BEX_SHELL_WS_URL) handed to the terminal. Either empty =>
+	// the ticket verb returns 503; native `ssh` is unaffected. bex-api never gains
+	// pods/exec.
+	ShellTicketSecret []byte
+	ShellWSURL        string
+	Store             apps.IntentStore
 	// Secrets is the shared OpenBao-backed store both the env-vars/secret-files
 	// feature and the env-groups feature read/write through (docs/ADR013-secrets.md). One
 	// instance, wired into both services below. nil => those verbs 503.
@@ -515,7 +523,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		sshHost = d.SSHHost
 	}
 	srv := &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), SSHHost: sshHost, Selections: selections, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore, BlueprintGroups: blueprintGroups, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, SecretFileSeeder: secretFileSeeder, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
+		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, Selections: selections, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore, BlueprintGroups: blueprintGroups, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, SecretFileSeeder: secretFileSeeder, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
 		Logs: logSvc,
 		Metrics: &metrics.Service{
 			Base:                       base,

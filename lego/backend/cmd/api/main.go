@@ -387,6 +387,14 @@ func main() {
 	deps.DashboardURL = os.Getenv("BEX_DASHBOARD_URL")
 	deps.DeployHookBaseURL = os.Getenv("BEX_API_PUBLIC_URL")
 	deps.SSHHost = os.Getenv("BEX_SSH_HOST")
+	// Browser Web Shell (docs/ADR035-ssh.md § Browser Web Shell): the HMAC key
+	// shared only with the isolated gateway and the browser-reachable gateway
+	// WebSocket origin. Either unset => the ticket verb returns 503 and native
+	// `ssh` is unaffected.
+	if secret := os.Getenv("BEX_SHELL_TICKET_SECRET"); secret != "" {
+		deps.ShellTicketSecret = []byte(secret)
+	}
+	deps.ShellWSURL = os.Getenv("BEX_SHELL_WS_URL")
 
 	// Per-workspace resource caps (w7/m9): 0 (unset) = unlimited, byte-identical.
 	// Render-Hobby defaults: BEX_MAX_SERVICES=25, BEX_MAX_POSTGRES=1, BEX_MAX_KEYVALUES=1.

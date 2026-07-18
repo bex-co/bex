@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/graphql-go/graphql"
 
@@ -458,6 +459,29 @@ var instanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// serviceInstanceGQLType backs serviceInstances — Render's per-service instance
+// list ({id, createdAt}), the source for the Web Shell instance picker (w2/m55)
+// and Render's own instance-selection UX. Mirrors REST GET /v1/services/{id}/instances.
+var serviceInstanceGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "ServiceInstance",
+	Fields: graphql.Fields{
+		"id":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ServiceInstanceView) any { return v.ID })},
+		"createdAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ServiceInstanceView) any { return v.CreatedAt.UTC().Format(time.RFC3339) })},
+	},
+})
+
+// shellSessionGQLType backs createShellSession — the Browser Web Shell exec
+// ticket the dashboard terminal opens the gateway WebSocket with
+// (docs/ADR035-ssh.md § Browser Web Shell). bex extension over Render's GraphQL.
+var shellSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "ShellSession",
+	Fields: graphql.Fields{
+		"ticket":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ShellSessionView) any { return v.Ticket })},
+		"url":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ShellSessionView) any { return v.URL })},
+		"expiresAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ShellSessionView) any { return v.ExpiresAt })},
+	},
+})
+
 // nameAvailabilityGQLType backs serviceNameAvailable — the create form's
 // debounced availability check (w4/m19), a bex extension (Render has no
 // public availability API, docs/render-artifacts/duplicate-service-names.md).
@@ -751,6 +775,16 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"instanceTypes": &graphql.Field{ // bex extension backing the plan picker (see InstanceType)
 			Type:    graphql.NewList(instanceTypeGQLType),
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.InstanceTypes(p.Context) },
+		},
+		// serviceInstances: Render's per-service instance list ({id, createdAt}) —
+		// the source for the Web Shell instance picker (w2/m55). Mirrors REST
+		// GET /v1/services/{id}/instances via the same ListInstances verb.
+		"serviceInstances": &graphql.Field{
+			Type: graphql.NewList(serviceInstanceGQLType),
+			Args: gqlutil.IDArg(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.ListInstances(p.Context, p.Args["id"].(string))
+			},
 		},
 		// serviceNameAvailable: the create form's debounced availability check
 		// (w4/m19), a bex extension backing the "Name is already in use" +
@@ -1096,6 +1130,22 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Scale(p.Context, p.Args["id"].(string), int32(p.Args["numInstances"].(int)))
+			},
+		},
+		// createShellSession: mints a Browser Web Shell exec ticket the dashboard
+		// terminal opens the gateway WebSocket with (docs/ADR035-ssh.md § Browser
+		// Web Shell). bex extension over Render's GraphQL. Optional instanceId pins
+		// one Ready replica; omitted selects a random one, matching native SSH.
+		// 503 (ErrShellUnavailable) when the browser transport is unconfigured.
+		"createShellSession": &graphql.Field{
+			Type: shellSessionGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":         &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"instanceId": &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				instanceID, _ := p.Args["instanceId"].(string)
+				return s.CreateShellSession(p.Context, p.Args["id"].(string), instanceID)
 			},
 		},
 		// setIdleTimeout: bex extension (no Render counterpart) — sets the free-tier
