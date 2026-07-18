@@ -55,6 +55,12 @@ const WORKSPACES = [
   },
 ];
 
+// API keys are empty by default but create/revoke are interactive so the
+// account-settings mint-once flow can be browser-verified offline. The stored
+// rows intentionally exclude the secret; only CreateApiKey's immediate
+// response carries it, matching bex-api and Render's one-time display rule.
+const API_KEYS = [];
+
 // Render allows five free Hobby workspaces per user (w6/RESEARCH-workspaces.md
 // finding 3) — mirrored here so the create flow's inline limit error
 // (w6/m3 DoD) is reachable offline without a real control-plane store.
@@ -128,6 +134,7 @@ const SERVICE = {
   suspended: null,
   dashboardUrl: "http://localhost:5173/services/eden-cms-v2",
   url: "https://eden-cms-v2.onbex.co",
+  sshAddress: null,
   createdAt: "2026-06-01T09:00:00Z",
   updatedAt: "2026-07-16T18:30:00Z",
   phase: "Running",
@@ -143,6 +150,7 @@ const SERVICE = {
   maxShutdownDelaySeconds: 30,
   preDeployCommand: null,
   idleTTLSeconds: 0,
+  maintenanceMode: null,
   lastSuccessfulRunAt: null,
   renderSubdomainPolicy: null,
   repo: "https://github.com/acme-corp/eden-cms-v2",
@@ -152,12 +160,15 @@ const SERVICE = {
   runtime: "docker",
   region: "fsn1",
   builder: "dockerfile",
+  buildCommand: null,
   startCommand: "node server.js",
   dockerfilePath: "Dockerfile",
+  registryCredentialId: null,
   autoDeploy: true,
   publishPath: null,
   routes: [],
   headers: [],
+  ipAllowList: [],
   ownerId: WORKSPACE_DEFAULT,
 };
 
@@ -561,7 +572,9 @@ const DEPLOYS_BY_SERVICE = {
       commitId: "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
       commitMessage:
         "feat(cms): lazy-load the asset picker\n\nCuts editor TTI by ~400ms.",
+      commitCreatedAt: null,
       createdAt: "2026-07-11T14:30:00Z",
+      updatedAt: "2026-07-11T14:31:40Z",
       startedAt: "2026-07-11T14:30:05Z",
       finishedAt: "2026-07-11T14:31:40Z",
       preDeployStatus: "succeeded",
@@ -575,7 +588,9 @@ const DEPLOYS_BY_SERVICE = {
       rollbackOf: "",
       commitId: "9f8e7d6c5b4a30291827364554637281909aebcd",
       commitMessage: "chore: bump image base",
+      commitCreatedAt: null,
       createdAt: "2026-07-11T13:00:00Z",
+      updatedAt: "2026-07-11T13:01:12Z",
       startedAt: "2026-07-11T13:00:04Z",
       finishedAt: "2026-07-11T13:01:12Z",
       preDeployStatus: "failed",
@@ -686,6 +701,8 @@ function makeDeploy({
     preDeployStatus,
     commitId,
     commitMessage,
+    commitCreatedAt: null,
+    updatedAt: createdAt,
   };
 }
 
@@ -768,6 +785,7 @@ function makeDomain(serviceId, name, over = {}) {
     domainType: domainTypeFor(name),
     verificationStatus: "pending",
     serverStatus: "pending",
+    redirectForName: null,
     dnsRecord: dnsRecordFor(name, platformHostFor(serviceId)),
     ...over,
   };
@@ -851,6 +869,9 @@ function makeDatabase(over = {}) {
     poolerEnabled: false,
     backupsEnabled: false,
     ipAllowList: [],
+    ipAllowListEntries: [],
+    projectId: null,
+    environmentId: null,
     ownerId: WORKSPACE_DEFAULT,
     ...over,
   };
@@ -907,6 +928,9 @@ function makeKeyValue(over = {}) {
     region: "fsn1",
     externalHost: "sessions-cache.kv.bex.co",
     public: true,
+    ipAllowListEntries: [],
+    projectId: null,
+    environmentId: null,
     ...over,
   };
 }
@@ -1020,6 +1044,7 @@ function auditEvent(ownerId, n, over = {}) {
     action: "update",
     status: "success",
     resource: "",
+    targetName: null,
     ownerId,
     ...over,
   };
@@ -1911,7 +1936,36 @@ function resolveGraphQL({ operationName, variables = {} }) {
     case "WorkspaceInvites":
       return { workspaceInvites: [] };
     case "ApiKeys":
-      return { apiKeys: [] };
+      return { apiKeys: byOwner(API_KEYS, variables.ownerId) };
+    case "SSHKeys":
+      return { sshKeys: [] };
+    case "CreateApiKey": {
+      const created = {
+        __typename: "ApiKey",
+        id: `key-local${Date.now().toString(36)}`,
+        name: variables.name,
+        ownerId: variables.ownerId ?? WORKSPACE_DEFAULT,
+        createdAt: new Date().toISOString(),
+        createdBy: "owner@acme-hq.example",
+        lastUsedAt: null,
+      };
+      API_KEYS.push(created);
+      return {
+        createApiKey: {
+          ...created,
+          secret: `bex_local_${Date.now().toString(36)}_shown_once`,
+        },
+      };
+    }
+    case "RevokeApiKey": {
+      const index = API_KEYS.findIndex(
+        (key) =>
+          key.id === variables.id &&
+          key.ownerId === (variables.ownerId ?? WORKSPACE_DEFAULT),
+      );
+      if (index >= 0) API_KEYS.splice(index, 1);
+      return { revokeApiKey: index >= 0 };
+    }
     case "RegistryCredentials":
       return { registryCredentials: [] };
     case "NotificationSettings":
@@ -1964,6 +2018,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
     }
     case "CreateDatabase": {
       const created = makeDatabase({
+        id: `dpg-local${Date.now().toString(36)}`,
         name: variables.name,
         plan: variables.plan ?? "free",
         version: variables.version ?? "",
@@ -1998,8 +2053,18 @@ function resolveGraphQL({ operationName, variables = {} }) {
       return { databaseRecoveryInfo: null };
     case "DatabaseUsers":
       return { databaseUsers: [] };
-    case "DatabaseIpAllowList":
-      return { databaseIpAllowList: [] };
+    case "DatabaseIpAllowList": {
+      const database = DATABASES.find((entry) => entry.id === variables.id);
+      return {
+        database: database
+          ? {
+              __typename: "Database",
+              id: database.id,
+              ipAllowListEntries: database.ipAllowListEntries ?? [],
+            }
+          : null,
+      };
+    }
     case "DatabaseProcesses":
       return { databaseProcesses: [] };
     case "DatabaseTopQueries":
@@ -2051,8 +2116,18 @@ function resolveGraphQL({ operationName, variables = {} }) {
       };
     case "KeyValueInstanceTypes":
       return { keyValueInstanceTypes: KV_INSTANCE_TYPES };
-    case "KeyValueIpAllowList":
-      return { keyValueIpAllowList: [] };
+    case "KeyValueIpAllowList": {
+      const keyValue = KEY_VALUES.find((entry) => entry.id === variables.id);
+      return {
+        keyValue: keyValue
+          ? {
+              __typename: "KeyValue",
+              id: keyValue.id,
+              ipAllowListEntries: keyValue.ipAllowListEntries ?? [],
+            }
+          : null,
+      };
+    }
     case "KeyValueConnectionInfo": {
       const k = KEY_VALUES.find((kv) => kv.id === variables.id);
       if (!k) return { keyValueConnectionInfo: null };
@@ -2074,6 +2149,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
     }
     case "CreateKeyValue": {
       const created = makeKeyValue({
+        id: `red-local${Date.now().toString(36)}`,
         name: variables.name,
         plan: variables.plan ?? "free",
         version: variables.version ?? "",

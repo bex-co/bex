@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Loader2, DatabaseBackup, Download } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   Card,
   CardContent,
@@ -35,6 +36,7 @@ import {
  */
 export function RecoveryPanel({ id }: { id: string }) {
   const { t } = useTranslations();
+  const navigate = useNavigate();
   const {
     info,
     exports,
@@ -52,11 +54,18 @@ export function RecoveryPanel({ id }: { id: string }) {
   async function handleRestore() {
     // datetime-local yields "YYYY-MM-DDTHH:mm"; send RFC3339 (append seconds+Z).
     const iso = targetTime ? `${targetTime}:00Z` : undefined;
-    const ok = await recover({ name: newName.trim(), targetTime: iso });
-    if (ok) {
+    const recoveredDatabaseId = await recover({
+      name: newName.trim(),
+      targetTime: iso,
+    });
+    if (recoveredDatabaseId) {
       setRestoreOpen(false);
       setNewName("");
       setTargetTime("");
+      void navigate({
+        to: "/databases/$databaseId",
+        params: { databaseId: recoveredDatabaseId },
+      });
     }
   }
 

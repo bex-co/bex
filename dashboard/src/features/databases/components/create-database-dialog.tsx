@@ -47,7 +47,7 @@ const VERSION_DEFAULT = "default";
 
 export interface CreateDatabaseDialogProps {
   /** Called with the new database id once creation is accepted. */
-  onCreated: (id: string) => void;
+  onCreated: (id: string) => void | Promise<void>;
   /**
    * Controlled variant: when both are provided, the dialog's open state is
    * driven externally (e.g. the unified Projects page's shared "+ New" menu,
@@ -56,7 +56,7 @@ export interface CreateDatabaseDialogProps {
    * original self-contained usage.
    */
   open?: boolean;
-  onOpenChange?: (open: boolean) => void;
+  onOpenChange?: (open: boolean) => void | Promise<void>;
 }
 
 /**
@@ -110,8 +110,8 @@ export function CreateDatabaseDialog({
     setEnvironmentId(null);
   }
 
-  function handleOpenChange(next: boolean) {
-    if (controlled) onOpenChangeProp?.(next);
+  async function handleOpenChange(next: boolean) {
+    if (controlled) await onOpenChangeProp?.(next);
     else setOpenState(next);
     if (!next) reset();
   }
@@ -127,13 +127,24 @@ export function CreateDatabaseDialog({
       environmentId: environmentId ?? undefined,
     });
     if (id) {
-      handleOpenChange(false);
-      onCreated(id);
+      // A controlled close can itself be a route navigation (the overview's
+      // URL-owned `?new=database` dialog). Finish that replace before the
+      // detail navigation so the close cannot race and overwrite the landing.
+      await handleOpenChange(false);
+      await onCreated(id);
     }
   }
 
+  async function handleUpgrade() {
+    await handleOpenChange(false);
+    await navigate({
+      to: "/workspace/settings",
+      search: { plan: "change" },
+    });
+  }
+
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={(next) => void handleOpenChange(next)}>
       {controlled ? null : (
         <DialogTrigger asChild>
           <Button>
@@ -253,13 +264,7 @@ export function CreateDatabaseDialog({
                 variant="outline"
                 size="sm"
                 className="self-start"
-                onClick={() => {
-                  handleOpenChange(false);
-                  void navigate({
-                    to: "/workspace/settings",
-                    search: { plan: "change" },
-                  });
-                }}
+                onClick={() => void handleUpgrade()}
               >
                 <ArrowUpRight className="size-3.5" />
                 {t("databases.capLimitUpgrade")}
@@ -271,7 +276,7 @@ export function CreateDatabaseDialog({
         <DialogFooter>
           <Button
             variant="outline"
-            onClick={() => handleOpenChange(false)}
+            onClick={() => void handleOpenChange(false)}
             disabled={busy}
           >
             {t("databases.createCancel")}

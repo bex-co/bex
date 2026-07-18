@@ -69,7 +69,8 @@ export function useCreateKeyValue(): UseCreateKeyValueResult {
             persistenceMode: input.persistenceMode || undefined,
           },
         });
-        const id = res.data?.createKeyValue?.id ?? input.name;
+        const id = res.data?.createKeyValue?.id;
+        if (!id) throw new Error("createKeyValue returned no id");
         toast.success(t("keyvalue.createSuccess", { name: input.name }));
         return id;
       } catch (err) {

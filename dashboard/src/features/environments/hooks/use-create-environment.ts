@@ -33,7 +33,8 @@ export function useCreateEnvironment(
       setBusy(true);
       try {
         const res = await mutate({ variables: { name, projectId } });
-        const id = res.data?.createEnvironment?.id ?? null;
+        const id = res.data?.createEnvironment?.id;
+        if (!id) throw new Error("createEnvironment returned no id");
         toast.success(t("environments.createSuccess", { name }));
         return id;
       } catch {

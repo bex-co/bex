@@ -66,7 +66,8 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
             public: input.public,
           },
         });
-        const id = res.data?.createDatabase?.id ?? input.name;
+        const id = res.data?.createDatabase?.id;
+        if (!id) throw new Error("createDatabase returned no id");
         toast.success(t("databases.createSuccess", { name: input.name }));
         return id;
       } catch (err) {

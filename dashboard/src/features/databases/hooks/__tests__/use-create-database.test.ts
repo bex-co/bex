@@ -117,4 +117,23 @@ describe("useCreateDatabase", () => {
       "Couldn't create db. Please try again.",
     );
   });
+
+  it("does not invent a name-based id when the create response omits its id", async () => {
+    const mutate = vi
+      .fn()
+      .mockResolvedValue({ data: { createDatabase: { id: null } } });
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useCreateDatabase());
+    let id: string | null | undefined;
+    await act(async () => {
+      id = await result.current.create(input);
+    });
+
+    expect(id).toBeNull();
+    expect(toastSuccess).not.toHaveBeenCalled();
+    expect(toastError).toHaveBeenCalledWith(
+      "Couldn't create db. Please try again.",
+    );
+  });
 });

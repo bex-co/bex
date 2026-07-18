@@ -90,6 +90,26 @@ describe("DeployActions", () => {
     });
   });
 
+  it("does not navigate when rollback omits the new deploy id", async () => {
+    rollbackService.mockResolvedValue({
+      data: { rollbackService: { id: null, status: "update_in_progress" } },
+    });
+    const user = userEvent.setup();
+    const router = renderActions("live");
+
+    await user.click(
+      await screen.findByRole("button", { name: "Roll Back to This Deploy" }),
+    );
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Proceed",
+      }),
+    );
+
+    await vi.waitFor(() => expect(rollbackService).toHaveBeenCalled());
+    expect(router.state.location.pathname).toBe("/services/web/deploys/dep-1");
+  });
+
   it("offers rollback for a deactivated deploy that previously went live", async () => {
     renderActions("deactivated");
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -69,21 +69,26 @@ function renderPage() {
   const rootRoute = createRootRoute();
   const newRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "/",
+    path: "/keyvalue/new",
     component: NewKeyValuePage,
   });
+  const detailRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/keyvalue/$keyValueId",
+    component: () => <p>Key Value destination</p>,
+  });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([newRoute]),
-    history: createMemoryHistory({ initialEntries: ["/"] }),
+    routeTree: rootRoute.addChildren([newRoute, detailRoute]),
+    history: createMemoryHistory({ initialEntries: ["/keyvalue/new"] }),
     context: { client: {} as never, session: null },
   });
-  return render(<RouterProvider router={router} />);
+  return { ...render(<RouterProvider router={router} />), router };
 }
 
 beforeEach(() => {
   instanceTypesState.instanceTypes = [FREE, STARTER];
   create.mockReset();
-  create.mockResolvedValue("cache-1");
+  create.mockResolvedValue("red-returned-id");
 });
 
 describe("NewKeyValuePage", () => {
@@ -171,5 +176,34 @@ describe("NewKeyValuePage", () => {
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({ plan: "free", persistenceMode: "off" }),
     );
+  });
+
+  it("lands on the immutable id returned by a successful create", async () => {
+    const user = userEvent.setup();
+    const { router } = renderPage();
+
+    await user.type(await screen.findByLabelText("Name"), "friendly-cache");
+    await user.click(
+      screen.getByRole("button", { name: "Create Key Value Instance" }),
+    );
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/keyvalue/red-returned-id"),
+    );
+  });
+
+  it("does not navigate when create fails", async () => {
+    create.mockResolvedValueOnce(null);
+    const user = userEvent.setup();
+    const { router } = renderPage();
+
+    await user.type(await screen.findByLabelText("Name"), "friendly-cache");
+    await user.click(
+      screen.getByRole("button", { name: "Create Key Value Instance" }),
+    );
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(router.state.location.pathname).toBe("/keyvalue/new");
+    expect(screen.getByLabelText("Name")).toHaveValue("friendly-cache");
   });
 });

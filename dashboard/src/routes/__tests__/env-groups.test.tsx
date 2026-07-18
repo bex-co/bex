@@ -148,7 +148,7 @@ function renderList() {
     history: createMemoryHistory({ initialEntries: ["/env-groups"] }),
     context: { client: {} as never, session: null },
   });
-  return render(<RouterProvider router={router} />);
+  return { ...render(<RouterProvider router={router} />), router };
 }
 
 function renderDetail(groupId = "eg1") {
@@ -238,7 +238,7 @@ describe("EnvGroupsPage", () => {
 
   it("creates a group and navigates to its detail route", async () => {
     const user = userEvent.setup();
-    renderList();
+    const { router } = renderList();
 
     await user.click(
       await screen.findByRole("button", { name: "New Environment Group" }),
@@ -257,6 +257,27 @@ describe("EnvGroupsPage", () => {
     expect(
       await screen.findByText("Environment group destination"),
     ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/env-groups/eg-new");
+  });
+
+  it("keeps the create dialog and list route in place when create fails", async () => {
+    createGroup.mockResolvedValueOnce(null);
+    const user = userEvent.setup();
+    const { router } = renderList();
+
+    await user.click(
+      await screen.findByRole("button", { name: "New Environment Group" }),
+    );
+    await user.type(screen.getByLabelText("Group name"), "Shared production");
+    await user.click(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    );
+
+    await waitFor(() => expect(createGroup).toHaveBeenCalled());
+    expect(router.state.location.pathname).toBe("/env-groups");
+    expect(screen.getByLabelText("Group name")).toHaveValue(
+      "Shared production",
+    );
   });
 });
 

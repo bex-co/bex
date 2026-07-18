@@ -17,7 +17,7 @@ import { useCreateProject } from "@/features/projects/hooks/use-create-project";
 
 export interface NewProjectDialogProps {
   /** Called once the project has been created (refetch the projects list). */
-  onCreated: (id: string) => void;
+  onCreated: (id: string) => void | Promise<void>;
   /**
    * Controlled variant: when both are provided, the dialog's open state is
    * driven externally (the unified Projects page's single segmented "+ New"
@@ -25,7 +25,7 @@ export interface NewProjectDialogProps {
    * it manages its own state behind its default trigger button.
    */
   open?: boolean;
-  onOpenChange?: (open: boolean) => void;
+  onOpenChange?: (open: boolean) => void | Promise<void>;
 }
 
 /**
@@ -50,8 +50,8 @@ export function NewProjectDialog({
 
   const canSubmit = name.trim().length > 0 && !busy;
 
-  function handleOpenChange(next: boolean) {
-    if (controlled) onOpenChangeProp?.(next);
+  async function handleOpenChange(next: boolean) {
+    if (controlled) await onOpenChangeProp?.(next);
     else setOpenState(next);
     if (!next) setName("");
   }
@@ -60,13 +60,16 @@ export function NewProjectDialog({
     if (!canSubmit) return;
     const id = await create(name.trim());
     if (id) {
-      handleOpenChange(false);
-      onCreated(id);
+      // The controlled overview dialog closes by replacing its URL search.
+      // Await that replace before the project-detail navigation to prevent the
+      // close from winning the race and returning the user to the overview.
+      await handleOpenChange(false);
+      await onCreated(id);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={(next) => void handleOpenChange(next)}>
       {controlled ? null : (
         <DialogTrigger asChild>
           <Button variant="outline">
@@ -78,7 +81,9 @@ export function NewProjectDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t("projects.createTitle")}</DialogTitle>
-          <DialogDescription>{t("projects.createDescription")}</DialogDescription>
+          <DialogDescription>
+            {t("projects.createDescription")}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2">
@@ -98,7 +103,7 @@ export function NewProjectDialog({
         <DialogFooter>
           <Button
             variant="outline"
-            onClick={() => handleOpenChange(false)}
+            onClick={() => void handleOpenChange(false)}
             disabled={busy}
           >
             {t("projects.createCancel")}
