@@ -64,6 +64,11 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Unavailable",
     description: "Database status badge (provisioning failed)",
   },
+  "databases.statusSuspended": {
+    message: "Suspended",
+    description:
+      "Database status badge (hibernated; suspension wins over the status enum)",
+  },
   "databases.statusUnknown": {
     message: "Unknown",
     description: "Database status badge for an unrecognized status",

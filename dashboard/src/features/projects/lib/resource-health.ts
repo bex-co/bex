@@ -18,16 +18,12 @@ export function isRowHealthy(row: ResourceRow): boolean {
     return key === "running" || key === "suspended" || key === "sleeping";
   }
   if (row.kind === "database" && row.database) {
-    return (
-      deriveDatabaseStatus(row.database).key === "available" &&
-      row.database.suspended !== "suspended"
-    );
+    // deriveStatus resolves a suspended database to "suspended", not
+    // "available", so the suspension check is built into the key.
+    return deriveDatabaseStatus(row.database).key === "available";
   }
   if (row.kind === "keyvalue" && row.keyValue) {
-    return (
-      deriveKeyValueStatus(row.keyValue).key === "available" &&
-      !row.keyValue.suspended
-    );
+    return deriveKeyValueStatus(row.keyValue).key === "available";
   }
   return true;
 }

@@ -56,6 +56,11 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Unavailable",
     description: "Key Value status badge (provisioning failed)",
   },
+  "keyvalue.statusSuspended": {
+    message: "Suspended",
+    description:
+      "Key Value status badge (hibernated; suspension wins over the status enum)",
+  },
   "keyvalue.statusUnknown": {
     message: "Unknown",
     description: "Key Value status badge for an unrecognized status",
@@ -484,7 +489,8 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description: "Toast when a Key Value rename fails unexpectedly",
   },
   "keyvalue.nameConflict": {
-    message: "A Key Value store with that name already exists in this workspace.",
+    message:
+      "A Key Value store with that name already exists in this workspace.",
     description: "Toast when a Key Value rename collides with another name",
   },
   "keyvalue.nameInvalid": {
@@ -565,8 +571,7 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description: "Empty state title when the caller lacks can_view_logs",
   },
   "keyvalue.logsUnauthorizedBody": {
-    message:
-      "You don't have permission to view logs for this Key Value store.",
+    message: "You don't have permission to view logs for this Key Value store.",
     description: "Empty state body for a 403 on the logs query",
   },
   "keyvalue.logsErrorTitle": {

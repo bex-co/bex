@@ -90,6 +90,7 @@ export type DatabaseStatusKey =
   | "creating"
   | "upgrading"
   | "unavailable"
+  | "suspended"
   | "unknown";
 
 export type DatabaseBadgeVariant =

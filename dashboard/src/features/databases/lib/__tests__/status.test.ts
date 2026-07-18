@@ -122,22 +122,39 @@ describe("toDatabaseDetailView", () => {
 
 describe("deriveStatus", () => {
   it("maps Render's status enum to a badge key + variant, case-insensitively", () => {
-    expect(deriveStatus({ status: "available" })).toEqual({
+    expect(
+      deriveStatus({ status: "available", suspended: "not_suspended" }),
+    ).toEqual({
       key: "available",
       variant: "default",
     });
-    expect(deriveStatus({ status: "Creating" })).toEqual({
+    expect(
+      deriveStatus({ status: "Creating", suspended: "not_suspended" }),
+    ).toEqual({
       key: "creating",
       variant: "outline",
     });
-    expect(deriveStatus({ status: "unavailable" })).toEqual({
+    expect(
+      deriveStatus({ status: "unavailable", suspended: "not_suspended" }),
+    ).toEqual({
       key: "unavailable",
       variant: "destructive",
     });
   });
 
+  it("lets suspension win over the status enum — a suspended database still reports status available", () => {
+    expect(
+      deriveStatus({ status: "available", suspended: "suspended" }),
+    ).toEqual({
+      key: "suspended",
+      variant: "secondary",
+    });
+  });
+
   it("falls back to unknown for an unrecognized status", () => {
-    expect(deriveStatus({ status: "weird" })).toEqual({
+    expect(
+      deriveStatus({ status: "weird", suspended: "not_suspended" }),
+    ).toEqual({
       key: "unknown",
       variant: "outline",
     });
@@ -153,13 +170,14 @@ describe("isConverging", () => {
 });
 
 describe("computeStats", () => {
-  it("counts total / available / creating", () => {
+  it("counts total / available / creating, excluding suspended from available", () => {
     const stats = computeStats([
-      { status: "available" },
-      { status: "available" },
-      { status: "creating" },
-      { status: "unavailable" },
+      { status: "available", suspended: "not_suspended" },
+      { status: "available", suspended: "not_suspended" },
+      { status: "available", suspended: "suspended" },
+      { status: "creating", suspended: "not_suspended" },
+      { status: "unavailable", suspended: "not_suspended" },
     ] as unknown as Parameters<typeof computeStats>[0]);
-    expect(stats).toEqual({ total: 4, available: 2, creating: 1 });
+    expect(stats).toEqual({ total: 5, available: 2, creating: 1 });
   });
 });

@@ -49,7 +49,7 @@ export function KeyValueDetailPage() {
           >
             {keyValue?.name ?? keyValueId}
           </h1>
-          {keyValue ? <KeyValueStatusBadge status={keyValue.status} /> : null}
+          {keyValue ? <KeyValueStatusBadge keyValue={keyValue} /> : null}
         </div>
         {keyValue ? (
           <KeyValueRowActions

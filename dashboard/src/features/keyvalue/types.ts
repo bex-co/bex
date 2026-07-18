@@ -54,6 +54,7 @@ export type KeyValueStatusKey =
   | "available"
   | "creating"
   | "unavailable"
+  | "suspended"
   | "unknown";
 
 export type KeyValueBadgeVariant =

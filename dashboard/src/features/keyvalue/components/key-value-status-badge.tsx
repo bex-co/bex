@@ -4,13 +4,22 @@ import { deriveStatus } from "@/features/keyvalue/lib/status";
 import { STATUS_LABEL } from "@/features/keyvalue/lib/labels";
 
 /**
- * A Key Value store's status as a labeled badge: derive the status key from
- * Render's keyValueStatus enum, look up its i18n label, render the matching
- * variant. One component for every place a status shows (list rows + detail
- * header) so they can't drift — mirrors databases' DatabaseStatusBadge.
+ * A Key Value store's status as a labeled badge: derive the status key
+ * (suspension wins over Render's keyValueStatus enum — a suspended store still
+ * reports status "available"), look up its i18n label, render the matching
+ * variant. Takes the whole view, not just `status`, so a call site can't drop
+ * the suspended field and show a hibernated store as available. One component
+ * for every place a status shows (list rows + detail header) so they can't
+ * drift — mirrors databases' DatabaseStatusBadge.
  */
-export function KeyValueStatusBadge({ status }: { status: string }) {
+export function KeyValueStatusBadge({
+  keyValue,
+}: {
+  keyValue: { status: string; suspended: boolean };
+}) {
   const { t } = useTranslations();
-  const derived = deriveStatus({ status });
-  return <Badge variant={derived.variant}>{t(STATUS_LABEL[derived.key])}</Badge>;
+  const derived = deriveStatus(keyValue);
+  return (
+    <Badge variant={derived.variant}>{t(STATUS_LABEL[derived.key])}</Badge>
+  );
 }

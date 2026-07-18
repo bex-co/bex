@@ -57,7 +57,7 @@ export function DatabaseDetailPage() {
           >
             {database?.name ?? databaseId}
           </h1>
-          {database ? <DatabaseStatusBadge status={database.status} /> : null}
+          {database ? <DatabaseStatusBadge database={database} /> : null}
         </div>
         {database ? (
           <DatabaseRowActions
