@@ -67,6 +67,34 @@ spec:
           port: 8000
 
 ---
+# The dashboard's SSR fetches bex-api in-cluster (VITE_SSR_API_URL =
+# bex-api.bex-system.svc:8090, docs/ADR012-auth.md + dashboard/CLAUDE.md) and
+# the m52 readiness latch probes the same origin before a fresh pod takes
+# traffic. deny-tenant-ingress above only admits bex-system/traefik/monitoring,
+# which silently forced every prod SSR data fetch onto the error path until
+# w1/m52's closeout surfaced it. Scoped to the bex-api pods on their HTTP
+# container port — the dashboard gets no path to anything else in bex-system.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dashboard-ssr-to-bex-api
+  namespace: bex-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: bex-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: dashboard
+      ports:
+        - protocol: TCP
+          port: 8090
+
+---
 # bex-registry: zot OCI registry on :5000
 # Allowed: bex-system (operator triggers builds, not push; nodes pull directly),
 #   build pods in the apps namespace (push after in-cluster BuildKit build),
