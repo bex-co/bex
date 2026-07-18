@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { useApolloClient, useMutation } from "@apollo/client/react";
+import { useRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
   ProjectsDocument,
@@ -8,7 +9,10 @@ import {
   SetProjectKeyValuesDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useProjects, type ProjectView } from "@/features/projects/hooks/use-projects";
+import {
+  useProjects,
+  type ProjectView,
+} from "@/features/projects/hooks/use-projects";
 
 export type ProjectResourceKind = "service" | "database" | "keyvalue";
 
@@ -52,6 +56,7 @@ export function useMoveToProject(
 ): UseMoveToProjectResult {
   const { t } = useTranslations();
   const client = useApolloClient();
+  const router = useRouter();
   const { projects } = useProjects();
   const [setServices] = useMutation(SetProjectServicesDocument);
   const [setDatabases] = useMutation(SetProjectDatabasesDocument);
@@ -81,18 +86,32 @@ export function useMoveToProject(
 
   // Post-move refresh. Selecting a menu item closes the dropdown, which
   // unmounts the menu (and this hook) and aborts any query the unmounted
-  // instance still had in flight — so the refresh goes through the client
-  // (lifecycle-independent, updates the overview page's own watcher) and is
-  // fire-and-forget: the mutations already succeeded and updated the cache,
-  // so a refresh failure must never be reported as a failed move.
+  // instance still had in flight — so the refresh goes through the client and
+  // router singletons (both lifecycle-independent), not a component-scoped
+  // refetch, and is fire-and-forget: the mutations already succeeded and
+  // updated the cache, so a refresh failure must never be reported as a failed
+  // move. Two surfaces render these row actions, each fed differently:
+  //   - the overview page reads the live `Projects` watcher (useProjects), so
+  //     client.refetchQueries({ Projects }) updates it; but
+  //   - the project-detail page's membership table is derived from its route
+  //     loader's snapshot of the *singular* `Project` query (network-only),
+  //     which refetching `Projects` neither refreshes nor re-runs — so we also
+  //     router.invalidate() to re-run that loader (matching the same page's own
+  //     refetchAll on database/key-value deletion). Without it a removed
+  //     resource lingers in the detail table until a manual reload.
   const refreshProjects = useCallback(() => {
     client
       .refetchQueries({ include: [ProjectsDocument] })
       .catch(() => undefined);
-  }, [client]);
+    router.invalidate().catch(() => undefined);
+  }, [client, router]);
 
   const moveTo = useCallback(
-    async (resourceId: string, resourceName: string, targetProjectId: string) => {
+    async (
+      resourceId: string,
+      resourceName: string,
+      targetProjectId: string,
+    ) => {
       const from = projects.find((p) => idsOf(kind, p).includes(resourceId));
       const to = projects.find((p) => p.id === targetProjectId);
       if (!to || from?.id === to.id) return false;
