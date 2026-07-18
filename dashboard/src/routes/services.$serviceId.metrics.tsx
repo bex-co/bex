@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { ApplicationMetricsCard } from "@/features/metrics/components/application-metrics-card";
 import { NetworkMetricsCard } from "@/features/metrics/components/network-metrics-card";
@@ -8,8 +8,10 @@ import {
   DEFAULT_RANGE_PRESET,
   type RangePreset,
 } from "@/features/metrics/lib/range";
+import { toChartEventMarkers } from "@/features/metrics/lib/chart-events";
 import { EventTimeline } from "@/features/events/components/event-timeline";
 import type { EventTimelineFilter } from "@/features/events/lib/timeline";
+import { useServiceEvents } from "@/features/events/hooks/use-service-events";
 
 export const Route = createFileRoute("/services/$serviceId/metrics")({
   component: ServiceMetricsPage,
@@ -33,6 +35,15 @@ function ServiceMetricsPage() {
   // just be a second, redundant schedule.
   const window = { ...useLiveRange(range), pollIntervalMs: 0 };
 
+  // Chart event markers (Render parity): the same event feed the timeline
+  // shows, mapped onto every chart as a vertical line + icon badge. Apollo
+  // dedupes this against EventTimeline's identical query — one request.
+  const { events } = useServiceEvents(serviceId, 100);
+  const markers = useMemo(
+    () => toChartEventMarkers(events, window.startTime, window.endTime),
+    [events, window.startTime, window.endTime],
+  );
+
   return (
     <>
       <MetricsFilters
@@ -53,8 +64,16 @@ function ServiceMetricsPage() {
         />
       )}
 
-      <ApplicationMetricsCard resource={serviceId} window={window} />
-      <NetworkMetricsCard resource={serviceId} window={window} />
+      <ApplicationMetricsCard
+        resource={serviceId}
+        window={window}
+        markers={markers}
+      />
+      <NetworkMetricsCard
+        resource={serviceId}
+        window={window}
+        markers={markers}
+      />
     </>
   );
 }

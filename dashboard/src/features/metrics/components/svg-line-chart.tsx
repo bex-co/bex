@@ -9,6 +9,14 @@ import {
   type SeriesInput,
   type ChartFrame,
 } from "@/features/metrics/components/chart-layout";
+import {
+  ChartEventLines,
+  ChartEventStrip,
+} from "@/features/metrics/components/chart-event-markers";
+import {
+  clusterMarkers,
+  type ChartEventMarker,
+} from "@/features/metrics/lib/chart-events";
 
 /** One line of a (possibly multi-series) chart — e.g. one App instance. */
 export type LineSeriesInput = SeriesInput;
@@ -19,6 +27,10 @@ interface SvgLineChartProps {
   series: LineSeriesInput[];
   /** Dashed horizontal reference (e.g. a resource limit), drawn when within ~2x the data max. */
   referenceValue?: number;
+  /** Service events to mark on the chart (vertical line + badge strip). */
+  markers?: ChartEventMarker[];
+  /** The service the markers' badges link into; required to render markers. */
+  markersServiceId?: string;
 }
 
 /**
@@ -33,6 +45,8 @@ export function SvgLineChart({
   unit,
   series,
   referenceValue,
+  markers,
+  markersServiceId,
 }: SvgLineChartProps) {
   const [activeFrame, setActiveFrame] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -40,6 +54,14 @@ export function SvgLineChart({
   const geo = useMemo(
     () => buildGeometry(series, referenceValue),
     [series, referenceValue],
+  );
+
+  const eventClusters = useMemo(
+    () =>
+      geo && markers?.length && markersServiceId
+        ? clusterMarkers(markers, geo.xForT, PAD.left, WIDTH - PAD.right)
+        : [],
+    [geo, markers, markersServiceId],
   );
 
   if (!geo) {
@@ -69,6 +91,12 @@ export function SvgLineChart({
 
   return (
     <div className="relative">
+      {markersServiceId && (
+        <ChartEventStrip
+          clusters={eventClusters}
+          serviceId={markersServiceId}
+        />
+      )}
       <svg
         ref={svgRef}
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
@@ -124,6 +152,11 @@ export function SvgLineChart({
             strokeWidth={1}
             strokeDasharray="4 3"
           />
+        )}
+
+        {/* Event markers' vertical lines, under the data like the reference. */}
+        {eventClusters.length > 0 && (
+          <ChartEventLines clusters={eventClusters} />
         )}
 
         {/* Area wash (~10% opacity, single series only) then the 2px lines. */}

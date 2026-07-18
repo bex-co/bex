@@ -32,11 +32,14 @@ import { useMetricsFilterValues } from "@/features/metrics/hooks/use-metrics-fil
 import { useMonthToDateBandwidth } from "@/features/metrics/hooks/use-month-to-date-bandwidth";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatMegabytes } from "@/features/metrics/lib/format";
+import type { ChartEventMarker } from "@/features/metrics/lib/chart-events";
 
 interface NetworkMetricsCardProps {
   resource: string;
   /** The page's resolved live window (route-owned, shared with the app card). */
   window: UseMetricsOptions;
+  /** Service events in the window, marked on every chart (route-derived). */
+  markers?: ChartEventMarker[];
 }
 
 type GroupBy = "status" | "method" | undefined;
@@ -74,6 +77,7 @@ const STATUS_CODE_CLASSES = ["2xx", "4xx", "5xx"];
 export function NetworkMetricsCard({
   resource,
   window,
+  markers,
 }: NetworkMetricsCardProps) {
   const { t } = useTranslations();
   // Render puts Group by on the Total Requests chart itself (not the page
@@ -214,6 +218,8 @@ export function NetworkMetricsCard({
           <SvgBarChart
             unit={requests.series[0]?.unit ?? "count"}
             series={requestSeries}
+            markers={markers}
+            markersServiceId={resource}
           />
           <ChartLegend entries={requestSeries} />
         </MetricSection>
@@ -248,6 +254,8 @@ export function NetworkMetricsCard({
           <SvgLineChart
             unit={latency.series[0]?.unit ?? "seconds"}
             series={latencySeries}
+            markers={markers}
+            markersServiceId={resource}
           />
         </MetricSection>
         <MetricSection
@@ -257,6 +265,8 @@ export function NetworkMetricsCard({
           <SvgLineChart
             unit={bandwidth.series[0]?.unit ?? "bytes"}
             series={bandwidthSeries}
+            markers={markers}
+            markersServiceId={resource}
           />
         </MetricSection>
         {monthToDate.egressBandwidthMB != null && (

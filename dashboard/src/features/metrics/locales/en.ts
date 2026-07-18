@@ -46,6 +46,69 @@ const enMetrics: Record<string, TranslationEntry> = {
     message: "Service changed",
     description: "Fallback event timeline label",
   },
+  "metrics.eventMarkersLabel": {
+    message: "Service events",
+    description: "Accessible label for the event-marker strip above a chart",
+  },
+  "metrics.eventMarkerCluster": {
+    message: "{count} events",
+    description:
+      "Accessible label for a clustered chart event marker (count badge)",
+  },
+  "metrics.eventMarkerHint": {
+    message: "Click to view details",
+    description: "Footer line of the chart event-marker hover tooltip",
+  },
+  "metrics.eventDeployStarted": {
+    message: "Deploy started",
+    description: "Chart event-marker label: a deploy began",
+  },
+  "metrics.eventDeployLiveFor": {
+    message: "Deploy live for {commit}",
+    description:
+      "Chart event-marker label: a deploy went live, with its commit short id",
+  },
+  "metrics.eventDeployLive": {
+    message: "Deploy live",
+    description: "Chart event-marker label: a deploy went live (no commit id)",
+  },
+  "metrics.eventDeployFailed": {
+    message: "Deploy failed",
+    description: "Chart event-marker label: a deploy failed",
+  },
+  "metrics.eventDeployCanceled": {
+    message: "Deploy canceled",
+    description: "Chart event-marker label: a deploy was canceled",
+  },
+  "metrics.eventDeployEnded": {
+    message: "Deploy ended",
+    description:
+      "Chart event-marker label: a deploy finished with an unrecognized status",
+  },
+  "metrics.eventServerRestarted": {
+    message: "Server restarted",
+    description: "Chart event-marker label: the service was restarted",
+  },
+  "metrics.eventSuspended": {
+    message: "Service suspended",
+    description: "Chart event-marker label: the service was suspended",
+  },
+  "metrics.eventResumed": {
+    message: "Service resumed",
+    description: "Chart event-marker label: the service was resumed",
+  },
+  "metrics.eventInstanceCountChanged": {
+    message: "Instance count changed",
+    description: "Chart event-marker label: manual scaling changed the count",
+  },
+  "metrics.eventAutoscalingChanged": {
+    message: "Autoscaling config changed",
+    description: "Chart event-marker label: autoscaling settings changed",
+  },
+  "metrics.eventPlanChanged": {
+    message: "Instance type changed",
+    description: "Chart event-marker label: the service's plan changed",
+  },
   "metrics.networkTitle": {
     message: "Network Metrics",
     description: "Network metrics card title",
