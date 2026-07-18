@@ -298,6 +298,8 @@ var _ = Describe("KeyValue Controller", func() {
 		pvc := sts.Spec.VolumeClaimTemplates[0]
 		Expect(pvc.Spec.Resources.Requests.Storage().String()).To(Equal("5Gi"), "standard storage floor")
 		Expect(*pvc.Spec.StorageClassName).To(Equal(kvStorageClass))
+		Expect(sts.Spec.Template.Annotations).To(HaveKeyWithValue("cluster-autoscaler.kubernetes.io/safe-to-evict", "false"),
+			"singleton stateful pod must not be bin-packed away by the autoscaler")
 
 		By("creating a headless Service giving the internal DNS name")
 		svc := &corev1.Service{}
