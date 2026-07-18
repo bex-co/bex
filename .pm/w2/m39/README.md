@@ -15,7 +15,8 @@
 | t007 | Bridge SSH shell/exec channels to Kubernetes exec — **DONE** | 60m | t006 |
 | t008 | Production wiring: host key · port 22 · DNS · least-privilege RBAC | 60m | t007 |
 | t009 | Live acceptance with OpenSSH and the official Render CLI | 45m | t005, t008 |
-| t010 | Render parity | 30m | t009 |
+| t014 | Shell navigation for running-instance SSH — **DONE** | 30m | t005 |
+| t010 | Render parity | 30m | t009, t014 |
 | t011 | Simplify | 30m | t010 |
 | t012 | Test coverage | 60m | t010 |
 | t013 | Closeout | 15m | t012 |
@@ -47,6 +48,8 @@ Activation is now guarded by a CI-covered, read-only `scripts/ssh-activate.sh --
 Production wiring advanced on 2026-07-15: the deployed gateway reached 2/2 Ready after the stable host key was installed, public IPv4 TCP/22 presented fingerprint `SHA256:cwBcvu8ou7s53NcHrFMxqd3955BuoJRhDx9mMMGFpNE`, and live authorization checks proved the intended namespace-scoped exec grant plus Secret/platform/bex-api denials. A disposable unprivileged two-replica service then passed unknown/deleted-key denial, registered-key runtime access, exact-instance selection, and exit-37 propagation through the LoadBalancer IPv4 address. The activation guard was corrected to exclude Hetzner's reported private `10.10.0.7` ingress from the public-DNS set. The smoke also corrected the verifier's root-oriented nginx fixture and a direct-CR/store-row classification bug discovered during cleanup. Sanitized details are in [`evidence/2026-07-15-production-preflight.md`](evidence/2026-07-15-production-preflight.md). This is still not t009: `ssh.bex.co` remains Cloudflare-proxied, the activation ConfigMap remains absent, and hostname/OpenSSH/official-CLI acceptance has not run.
 
 Therefore t008's public DNS/TCP/22 acceptance, t009's live matrix, parity promotion (t010), and closeout (t013) are deliberately not marked done. Do not set `BEX_SSH_HOST` or move this milestone to `done/` until the stable host-key Secret is installed, the image/manifests are deployed to the production app cluster, direct DNS is published, `scripts/ssh-activate.sh` succeeds, and the sanitized t009 evidence is recorded.
+
+On 2026-07-17, t014 completed the dashboard information-architecture follow-up requested against Render's live `/shell` route: the service sidebar now includes Manage → Shell, and `/services/{id}/shell` presents the existing copy-ready running-instance SSH command, lifecycle guidance, unavailable state, and a deep link to SSH public-key settings. Render's page embeds a browser terminal and can select a replica; bex's page intentionally keeps private keys and terminal streams out of the browser and adds no new exec path. Dashboard typecheck, lint, all 224 test files / 1371 tests, and focused Shell/sidebar tests passed. The production activation and public hostname acceptance gates remain t008/t009 and are unaffected.
 
 ## Source + Goal linkage
 

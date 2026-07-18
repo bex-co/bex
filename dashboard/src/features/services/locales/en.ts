@@ -43,6 +43,45 @@ const enServices: Record<string, TranslationEntry> = {
       "SSH requires a running paid web, private, or background service and an active gateway.",
     description: "Explanation for a service without an SSH address",
   },
+  "services.shellTitle": {
+    message: "Shell",
+    description: "Running-instance SSH connection page title",
+  },
+  "services.shellDescription": {
+    message: "Open a shell on a running service instance from your terminal.",
+    description: "Running-instance SSH connection page description",
+  },
+  "services.shellConnectionTitle": {
+    message: "Connect with SSH",
+    description: "SSH connection card title",
+  },
+  "services.shellConnectionDescription": {
+    message:
+      "bex connects to an existing ready instance. It does not create a separate shell instance.",
+    description: "SSH running-instance behavior explanation",
+  },
+  "services.shellCommand": {
+    message: "SSH command",
+    description: "Label for a copy-ready service SSH command",
+  },
+  "services.shellManageKeys": {
+    message: "Manage SSH public keys",
+    description: "Link from a service shell page to account SSH key settings",
+  },
+  "services.shellSessionLifecycle": {
+    message:
+      "The command selects a ready instance. Restarting, redeploying, or suspending the service closes the session.",
+    description: "SSH session selection and lifecycle guidance",
+  },
+  "services.shellUnavailableTitle": {
+    message: "Shell access isn't available",
+    description: "Unavailable SSH connection card title",
+  },
+  "services.shellUnavailableBody": {
+    message:
+      "Shell access requires a running paid web, private, or background service and an active SSH gateway.",
+    description: "Unavailable SSH connection card explanation",
+  },
   "services.actions": {
     message: "Actions",
     description: "Accessible heading for service configuration row actions",
@@ -1627,7 +1666,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.buildCommandLabel": {
     message: "Build Command",
-    description: "Build & Deploy: build-command field label (static_site settings)",
+    description:
+      "Build & Deploy: build-command field label (static_site settings)",
   },
   "services.buildCommandHint": {
     message:
@@ -1640,7 +1680,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.buildCommandConfirmEmpty": {
     message: "Runtime default",
-    description: "Build & Deploy: empty build-command phrase in confirmation title",
+    description:
+      "Build & Deploy: empty build-command phrase in confirmation title",
   },
   "services.buildCommandPlaceholder": {
     message: "npm run build",
@@ -2137,7 +2178,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.resumeCardTitle": {
     message: "Resume Service",
-    description: "Settings tab resume section title (shown when service is suspended)",
+    description:
+      "Settings tab resume section title (shown when service is suspended)",
   },
   "services.resumeCardDescription": {
     message:
@@ -2651,6 +2693,10 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Deploys",
     description:
       "Service-detail nav item (dedicated deploy-history tab, w9/002)",
+  },
+  "services.navShell": {
+    message: "Shell",
+    description: "Service-detail nav item (running-instance SSH page)",
   },
   "services.eventsTitle": {
     message: "Activity",

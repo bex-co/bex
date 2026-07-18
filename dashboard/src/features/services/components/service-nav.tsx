@@ -7,6 +7,7 @@ import {
   Scaling,
   ScrollText,
   Settings,
+  SquareTerminal,
 } from "lucide-react";
 
 // bex's subset of Render's service-page navigation, grouped the way Render's
@@ -16,8 +17,10 @@ import {
 // Scaling, Plan). Differences, both deliberate: Render has NO Deploys entry
 // (its service root IS the deploy history — bex's unified Events page shows
 // both deploys and audit events, matching Render's behavior; w1/m47). Plan is
-// bex-only (Render folds instance type into scaling/settings). Render's Shell,
-// Previews, Disk, and One-Off Jobs entries are DO_NOT_DO non-goals.
+// bex-only (Render folds instance type into scaling/settings). Shell leads to
+// bex's running-instance SSH instructions; it does not embed Render's
+// browser-hosted terminal. Previews, Disk, and One-Off Jobs remain DO_NOT_DO
+// non-goals.
 //
 // One source of truth: the service sidebar
 // (common/components/dashboard-layout/service-sidebar.tsx) renders these
@@ -59,6 +62,11 @@ export const SERVICE_NAV_GROUPS: SidebarNavGroup[] = [
         labelKey: "services.navEnvironment",
         to: "/services/$serviceId/env",
         icon: Braces,
+      },
+      {
+        labelKey: "services.navShell",
+        to: "/services/$serviceId/shell",
+        icon: SquareTerminal,
       },
       {
         labelKey: "services.navScaling",

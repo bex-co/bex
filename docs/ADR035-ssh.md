@@ -34,7 +34,7 @@ Keys are identity-scoped. One person can use the same key in every workspace whe
 - MCP: `list_ssh_keys`, `add_ssh_key`, `delete_ssh_key`
 - Dashboard: Account Settings → SSH Public Keys
 
-Eligible service pages expose the command through a Connect → SSH menu, matching Render's documented dashboard flow; unavailable services explain the missing address without inventing one.
+Eligible service pages expose the command through a Connect → SSH menu and a left-nav Shell page, matching Render's information architecture while keeping private keys and terminal streams out of the browser. The Shell page is a copy-ready running-instance SSH guide, not Render's browser-hosted terminal; unavailable services explain the missing address without inventing one.
 
 The store contains typed `ssk-…` id, subject, display name, canonical public key, SHA-256 fingerprint, and creation time. It never accepts or stores private material. Supported key types match Render's documented set: Ed25519, RSA (minimum 2048 bits, authenticated only with SHA-2 signatures), ECDSA P-256/P-384/P-521, and OpenSSH security-key Ed25519/ECDSA. Comments are discarded. Multiple records, `authorized_keys` options, trailing payloads, oversized input, malformed text, and duplicate key material are rejected. Options are rejected rather than silently stripped because a user might otherwise believe an option such as `command=` still restricts the registered account key.
 
