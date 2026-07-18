@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Reconcile the public, DNS-only A/AAAA records for the running-instance SSH
-# gateway with the public addresses on Traefik's LoadBalancer.
+# Reconcile public, DNS-only A/AAAA records with the public addresses on
+# Traefik's LoadBalancer. The BEX_SSH_* interface remains the SSH entrypoint;
+# BEX_EDGE_DNS_* lets other raw-TCP edges reuse the same safety gates.
 #
 # Usage:
 #   BEX_SSH_HOST=ssh.bex.co CLOUDFLARE_API_TOKEN=... \
@@ -21,24 +22,29 @@ if [[ -n "$mode" && "$mode" != "--check" ]]; then
   exit 2
 fi
 
-: "${BEX_SSH_HOST:?set the public gateway hostname}"
 : "${CLOUDFLARE_API_TOKEN:?set a zone-scoped Cloudflare API token}"
 
 for command in curl jq; do
   command -v "$command" >/dev/null || { echo "missing required command: $command" >&2; exit 1; }
 done
 
-hostname="$(printf '%s' "$BEX_SSH_HOST" | tr '[:upper:]' '[:lower:]')"
-zone_name="$(printf '%s' "${BEX_SSH_DNS_ZONE:-${hostname#*.}}" | tr '[:upper:]' '[:lower:]')"
+edge_label="${BEX_EDGE_DNS_LABEL:-SSH}"
+hostname="$(printf '%s' "${BEX_EDGE_DNS_HOST:-${BEX_SSH_HOST:-}}" | tr '[:upper:]' '[:lower:]')"
+[[ -n "$hostname" ]] || { echo "set BEX_SSH_HOST or BEX_EDGE_DNS_HOST" >&2; exit 1; }
+validation_host="$hostname"
+if [[ "$hostname" == \*.* ]]; then
+  validation_host="${hostname:2}"
+fi
+zone_name="$(printf '%s' "${BEX_EDGE_DNS_ZONE:-${BEX_SSH_DNS_ZONE:-${validation_host#*.}}}" | tr '[:upper:]' '[:lower:]')"
 zone_id="${CLOUDFLARE_ZONE_ID:-${CF_ZONE_ID:-}}"
 
 hostname_pattern='^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]*[a-z0-9])?$'
-if [[ ! "$hostname" =~ $hostname_pattern || ! "$zone_name" =~ $hostname_pattern ]]; then
-  echo "BEX_SSH_HOST and BEX_SSH_DNS_ZONE must be DNS hostnames" >&2
+if [[ ! "$validation_host" =~ $hostname_pattern || ! "$zone_name" =~ $hostname_pattern ]]; then
+  echo "edge host and DNS zone must be DNS hostnames (an initial *. wildcard is allowed)" >&2
   exit 1
 fi
-if [[ "$hostname" != "$zone_name" && "$hostname" != *".$zone_name" ]]; then
-  echo "BEX_SSH_HOST must belong to BEX_SSH_DNS_ZONE" >&2
+if [[ "$validation_host" != "$zone_name" && "$validation_host" != *".$zone_name" ]]; then
+  echo "edge host must belong to its DNS zone" >&2
   exit 1
 fi
 
@@ -150,7 +156,7 @@ if [[ "$mode" == "--check" ]]; then
     print_mismatch
     exit 1
   fi
-  echo "PASS Cloudflare SSH DNS host=$hostname addresses=$addresses"
+  echo "PASS Cloudflare $edge_label DNS host=$hostname addresses=$addresses"
   exit 0
 fi
 
@@ -177,11 +183,13 @@ while IFS=$'\t' read -r type content; do
   done <"$records"
 
   record_id="${exact_id:-$fallback_id}"
+  comment_label="$(printf '%s' "$edge_label" | tr '[:upper:]' '[:lower:]')"
   payload="$(jq -cn \
     --arg type "$type" \
     --arg name "$hostname" \
     --arg content "$content" \
-    '{type: $type, name: $name, content: $content, ttl: 300, proxied: false, comment: "bex running-instance SSH edge"}')"
+    --arg comment "bex $comment_label raw TCP edge" \
+    '{type: $type, name: $name, content: $content, ttl: 300, proxied: false, comment: $comment}')"
 
   if [[ -n "$record_id" ]]; then
     if [[ ! "$record_id" =~ ^[A-Za-z0-9_-]+$ ]]; then
@@ -213,4 +221,4 @@ if ! records_match; then
   print_mismatch
   exit 1
 fi
-echo "reconciled Cloudflare SSH DNS host=$hostname addresses=$addresses"
+echo "reconciled Cloudflare $edge_label DNS host=$hostname addresses=$addresses"

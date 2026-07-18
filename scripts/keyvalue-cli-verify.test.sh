@@ -1,0 +1,176 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+verify="$repo_root/scripts/keyvalue-cli-verify.sh"
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+fake_bin="$tmp/bin"
+mkdir -p "$fake_bin" "$tmp/config"
+
+write_fakes() {
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'echo "render v2.21.0"' >"$fake_bin/render"
+
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'exit 0' >"$fake_bin/redis-cli"
+
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'echo 192.0.2.10' >"$fake_bin/dig"
+
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'exit 0' >"$fake_bin/nc"
+
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'set -euo pipefail' \
+    'if [[ "${1:-}" == "version" && "${2:-}" == "-m" ]]; then' \
+    '  if [[ "${KV_VERIFY_BAD_MODULE:-0}" == "1" ]]; then printf "\tpath\texample.invalid/modified-cli\n"; else printf "\tpath\tgithub.com/render-oss/cli\n"; fi' \
+    '  exit 0' \
+    'fi' \
+    'printf "go id=%s name=%s\n" "$BEX_TEST_KV_CLI_ID" "$BEX_TEST_KV_CLI_NAME" >>"$KV_VERIFY_CALLS"' \
+    'if [[ "${KV_VERIFY_GO_FAIL:-0}" == "1" ]]; then' \
+    '  echo "safe simulated probe failure" >&2' \
+    '  exit 1' \
+    'fi' >"$fake_bin/go"
+
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'set -euo pipefail' \
+    'method=GET' \
+    'write_code=0' \
+    'data=""' \
+    'url=""' \
+    'while (($#)); do' \
+    '  case "$1" in' \
+    '    -X) method="$2"; shift 2 ;;' \
+    '    -w) write_code=1; shift 2 ;;' \
+    '    -d) data="$2"; shift 2 ;;' \
+    '    -H|--connect-timeout|--max-time|-o) shift 2 ;;' \
+    '    http*) url="$1"; shift ;;' \
+    '    *) shift ;;' \
+    '  esac' \
+    'done' \
+    'path="${url#https://api.example.test/v1}"' \
+    'printf "%s %s\n" "$method" "$path" >>"$KV_VERIFY_CALLS"' \
+    'case "$method $path" in' \
+    '  "GET /key-value") echo "[]" ;;' \
+    '  "POST /key-value") name="$(jq -r .name <<<"$data")"; echo "{\"id\":\"red-fixture\",\"name\":\"$name\"}" ;;' \
+    '  "GET /key-value/red-fixture")' \
+    '    if [[ -f "$KV_VERIFY_DELETED" ]]; then' \
+    '      [[ "$write_code" == "1" ]] && printf 404' \
+    '    else' \
+    '      echo "{\"status\":\"available\",\"externalHost\":\"kv.example.test\"}"' \
+    '    fi ;;' \
+    '  "GET /key-value/red-fixture/connection-info") echo "{\"externalConnectionString\":\"rediss://default:synthetic@kv.example.test:6379\"}" ;;' \
+    '  "DELETE /key-value/red-fixture") touch "$KV_VERIFY_DELETED" ;;' \
+    '  *) echo "unexpected fake curl call: $method $path" >&2; exit 90 ;;' \
+    'esac' >"$fake_bin/curl"
+
+  chmod +x "$fake_bin/render" "$fake_bin/redis-cli" "$fake_bin/dig" "$fake_bin/nc" "$fake_bin/go" "$fake_bin/curl"
+}
+
+write_fakes
+export PATH="$fake_bin:$PATH"
+export RENDER_HOST="https://api.example.test/v1/"
+export RENDER_API_KEY="synthetic-token"
+export RENDER_WORKSPACE="tea-synthetic"
+export RENDER_CLI_CONFIG_PATH="$tmp/config/cli.yaml"
+export RENDER_BIN="$fake_bin/render"
+export BEX_KV_VERIFY_READY_TIMEOUT_SECONDS=2
+export BEX_KV_VERIFY_CLEANUP_TIMEOUT_SECONDS=2
+export KV_VERIFY_CALLS="$tmp/calls"
+export KV_VERIFY_DELETED="$tmp/deleted"
+
+# Required live inputs are checked before even the read-only API preflight.
+: >"$KV_VERIFY_CALLS"
+set +e
+preflight_output="$(env -u BEX_KV_VERIFY_ALLOW_CIDR bash "$verify" 2>&1)"
+preflight_status=$?
+set -e
+[[ "$preflight_status" != 0 && "$preflight_output" == *"BEX_KV_VERIFY_ALLOW_CIDR"* ]] || {
+  echo "missing-CIDR preflight did not fail precisely: $preflight_output" >&2
+  exit 1
+}
+[[ ! -s "$KV_VERIFY_CALLS" ]] || {
+  echo "preflight touched the API before validating inputs" >&2
+  exit 1
+}
+
+# A binary that reports the right version but is not built from the upstream
+# module must fail before the API preflight or fixture mutation.
+: >"$KV_VERIFY_CALLS"
+set +e
+module_output="$(BEX_KV_VERIFY_ALLOW_CIDR=192.0.2.10/32 KV_VERIFY_BAD_MODULE=1 bash "$verify" 2>&1)"
+module_status=$?
+set -e
+[[ "$module_status" != 0 && "$module_output" == *"official upstream module"* && ! -s "$KV_VERIFY_CALLS" ]] || {
+  echo "modified-module preflight did not fail before API access: $module_output" >&2
+  exit 1
+}
+
+run_probe_failure() {
+  rm -f "$KV_VERIFY_DELETED"
+  : >"$KV_VERIFY_CALLS"
+  export BEX_KV_VERIFY_ALLOW_CIDR="192.0.2.10/32"
+  export KV_VERIFY_GO_FAIL=1
+  set +e
+  failure_output="$(bash "$verify" 2>&1)"
+  failure_status=$?
+  set -e
+  [[ "$failure_status" != 0 && "$failure_output" == *"safe simulated probe failure"* ]] || {
+    echo "probe failure did not propagate safely: $failure_output" >&2
+    exit 1
+  }
+  [[ "$failure_output" == *"PASS disposable Key Value cleanup"* ]] || {
+    echo "probe failure did not report cleanup: $failure_output" >&2
+    exit 1
+  }
+  grep -Fxq 'DELETE /key-value/red-fixture' "$KV_VERIFY_CALLS" || {
+    echo "probe failure skipped exact-id cleanup" >&2
+    exit 1
+  }
+  [[ "$(grep -c '^DELETE /key-value/' "$KV_VERIFY_CALLS")" == "1" ]] || {
+    echo "probe failure deleted an unexpected number of targets" >&2
+    exit 1
+  }
+  grep -Eq '^go id=red-fixture name=kvcli-m57-[0-9]+-[0-9]+$' "$KV_VERIFY_CALLS" || {
+    echo "probe did not receive both id and display-name targets" >&2
+    exit 1
+  }
+  grep -Fxq 'GET /key-value/red-fixture/connection-info' "$KV_VERIFY_CALLS" || {
+    echo "probe skipped public connection-info readiness" >&2
+    exit 1
+  }
+}
+
+run_probe_failure
+
+rm -f "$KV_VERIFY_DELETED"
+: >"$KV_VERIFY_CALLS"
+unset KV_VERIFY_GO_FAIL
+success_output="$(bash "$verify" 2>&1)"
+for label in \
+  'PASS source-restricted public Key Value created' \
+  'PASS public rediss endpoint ready' \
+  'PASS official kv-cli by opaque id: PING and SET' \
+  'PASS official kv-cli by display name: GET and DEL' \
+  'PASS no attached human terminal required' \
+  'PASS disposable Key Value cleanup'; do
+  [[ "$success_output" == *"$label"* ]] || {
+    echo "successful verifier omitted label: $label" >&2
+    exit 1
+  }
+done
+for forbidden in synthetic-token 'default:synthetic' 'rediss://'; do
+  [[ "$success_output" != *"$forbidden"* ]] || {
+    echo "successful verifier leaked synthetic sensitive output" >&2
+    exit 1
+  }
+done
+grep -Fxq 'DELETE /key-value/red-fixture' "$KV_VERIFY_CALLS"
+echo "PASS Key Value CLI verifier preflight and exact cleanup"

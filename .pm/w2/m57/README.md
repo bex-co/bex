@@ -1,0 +1,40 @@
+# w2 · m57 — Official `kv-cli`: automated PTY + live Valkey acceptance
+
+**Worker:** worker2 **Goal:** Prove the unmodified official Render CLI's `kv-cli [id|name]` command works end to end against bex by automating its interactive TUI under a pseudo-terminal and completing real authenticated Valkey operations over bex's public TLS/SNI edge. **Status:** todo (t001–t003 done; t008 production DNS apply pending)
+
+## Tasks (in order)
+
+| id   | title                                                                | est | depends_on |
+| ---- | -------------------------------------------------------------------- | --- | ---------- |
+| t001 | Add a redacting PTY probe for the unmodified official CLI — **DONE** | 45m | —          |
+| t002 | Build the disposable public-Key-Value live verifier — **DONE**       | 45m | t001       |
+| t003 | Wire the opt-in verifier into the CLI compatibility workflow — **DONE** | 30m | t002    |
+| t008 | Reconcile datastore wildcard DNS directly to the raw TCP edge         | 45m | t003       |
+| t004 | Run live id/name acceptance and close the checklist row              | 30m | t008       |
+| t009 | Audit Render parity after the datastore DNS repair                   | 15m | t004       |
+| t005 | Simplify the PTY and verifier implementation                         | 20m | t009       |
+| t006 | Add meaningful timeout, redaction, failure, and cleanup coverage     | 30m | t009       |
+| t007 | Closeout — DoD met → move milestone to `done/`                       | 15m | t005, t006 |
+
+## Definition of done
+
+With the official `render-oss/cli` v2.21.0 binary at commit `c398207` left byte-for-byte unmodified, one documented command provisions a disposable public bex Key Value, runs `render kv-cli --output interactive <red-id> -- ...` and the same command by display name under an automated pseudo-terminal, and proves `PING`, unique-key `SET`, exact-value `GET`, and cleanup through the real `rediss://` endpoint. The run uses bex-api authentication and the CLI's own `/v1/key-value` resolution plus `connection-info` path; it does not execute a copied connection string directly. It requires no human keystrokes or attached terminal, has bounded timeouts, cleans the fixture after success or failure, and never prints bearer tokens, passwords, credential-bearing URIs, or kubeconfig contents. Sanitized dated evidence from a full external-edge environment updates `docs/cli-compatibility-checklist.md`'s `kv-cli [id|name]` row to `[x]`, with a reproducible rerun entrypoint.
+
+## Research findings
+
+- The checklist's current blocker is harness-only: the CLI auto-selects text output when all streams are not TTYs, and `ParseCommandInteractiveOnly` rejects the command before it constructs a client. An explicit `--output interactive` overrides that auto-selection; the TUI can then be driven under a pseudo-terminal.
+- Arguments after `--` are appended to the spawned `redis-cli`/`valkey-cli` process. One-shot commands such as `PING`, `SET`, and `GET` therefore terminate without a person exiting an interactive REPL; a successful child exit makes the CLI's one-item TUI stack exit too.
+- The ID path first calls `GET /v1/key-value/{id}/connection-info`. The name path lists with `?name=...`, requires exactly one match, then calls connection-info with the resolved `red-` id. Both paths must be exercised; proving only one does not close the row.
+- bex already returns `redis-cli -u <uri>` and chooses the external `rediss://` URI when the Key Value is public. Unit and gated live tests cover that assembly, but no test currently launches the official CLI or reaches the public proxy with it.
+- A local pseudo-terminal probe with v2.21.0 reached bex's Key Value REST path instead of firing the interactive-only guard, disproving "not verifiable headlessly." The remaining proof requires a real public endpoint.
+- dev-9 cannot supply that proof: its documented omissions include `BEX_KV_DOMAIN`, cert-manager, and external datastore connectivity. The live leg needs production or an equivalent full-stack environment with the `:6379` edge, DNS, certificate, SNI proxy, and an explicitly allowed source CIDR.
+- The official CLI's Render `KeyValuePOSTInput` has no bex-only `public` field. The verifier may create its disposable fixture through authenticated REST with `public:true` (or accept an explicitly named existing disposable public fixture), then must use the official CLI for both connection attempts. This is fixture setup, not permission to patch/fork the CLI or broaden the milestone into create/update semantics.
+- The first production verifier run on 2026-07-18 reached connection-info and launched `redis-cli`, but bounded every command at 45 seconds. A follow-up TCP preflight proved the available fixture's public `:6379` endpoint unreachable. Hetzner reported the load balancer's 6379 service healthy, while `*.kv.bex.co` resolved through the same Cloudflare-proxied address set as `api.bex.co` instead of the load balancer. ADR021 already requires DNS-only records because ordinary Cloudflare proxying cannot carry raw Valkey TCP; t008 repairs and gates that deployed contract before t004 reruns acceptance.
+
+## Source + Goal linkage
+
+- **Source:** user request 2026-07-18 to research and arrange w2 work for [`docs/cli-compatibility-checklist.md`](../../../docs/cli-compatibility-checklist.md)'s open `kv-cli [id|name]` row; source inspection of `render-oss/cli` v2.21.0 (`c398207`) `cmd/kvcli.go`, `pkg/command/outputresolver.go`, and `pkg/tui/views/rediscli.go`; existing bex contracts in [`docs/ADR021-keyvalue-management.md`](../../../docs/ADR021-keyvalue-management.md), `lego/backend/internal/keyvalue/service.go`, and `scripts/cli-compat.sh`.
+- **Goal linkage:** ADR008 pillar 1 and the AI-native thesis's Render-tooling compatibility: Render's official CLI is bex's fifth compatibility surface, and this closes the last unverified Key Value session command without building a first-party CLI.
+- **Expected outcome:** `kv-cli` is a reproducibly verified `[x]` by opaque id and display name, including real authentication, TLS/SNI routing, password use, and Valkey data operations; future regressions fail a maintained opt-in verifier rather than returning the row to manual guesswork.
+- **Why now:** w9's 2026-07-18 sweep left this row open solely because dev-9 had no TTY or public Key Value edge. The upstream code exposes a bounded automation seam, bex's production `:6379` edge already exists, and w2 owns the shipped Key Value API plus interactive-access verification patterns.
+- **Render parity closing task:** t009 was added after the production run exposed the datastore raw-TCP DNS defect. The repair remains infrastructure-only, so the audit must confirm REST/GraphQL/MCP connection-info semantics and dashboard behavior remain unchanged while the official Render CLI gains the already-promised public reachability.

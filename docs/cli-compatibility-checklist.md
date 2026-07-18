@@ -26,6 +26,8 @@ Legend: `[x]` verified working · `[~]` works with a documented limitation · `[
 
 > Regenerate the command tree with `render <subcommand> --help`. Re-run the graded baseline with `scripts/cli-compat.sh verify`. Grouping mirrors the CLI's own `render --help` sections.
 
+The interactive-only Key Value client has a separate, opt-in full-edge verifier: set the production-equivalent `BEX_API_URL`, `HYDRA_PUBLIC_URL`, `CLI_KEY_ENV`, and the runner's explicit `BEX_KV_VERIFY_ALLOW_CIDR`, then run `scripts/cli-compat.sh kv-cli-verify`. It provisions and always deletes one source-restricted public Key Value. The verifier launches the unmodified v2.21.0 CLI under an automated pseudo-terminal with explicit `--output interactive`; one-shot Redis arguments after `--` let the child and TUI exit without human input. This is deliberately excluded from the dev-9 baseline because it requires public Key Value DNS, TLS, and the SNI proxy. The first production run reached the CLI's spawned `redis-cli` but exposed a deployed DNS defect: `*.kv.bex.co` was Cloudflare-proxied even though raw TCP requires DNS-only records. [`scripts/datastore-dns-cloudflare.sh`](../scripts/datastore-dns-cloudflare.sh) now reconciles and checks that prerequisite. The row remains open until the DNS repair is applied and the full external-edge run passes.
+
 ## Core
 
 - [x] **`deploys`** — list, create, and cancel deploys
@@ -197,7 +199,7 @@ Legend: `[x]` verified working · `[~]` works with a documented limitation · `[
 
 ## Session
 
-- [ ] **`kv-cli [id|name]`** — interactive-only client guard fires before any bex call; not verifiable headlessly
+- [ ] **`kv-cli [id|name]`** — automated PTY harness reaches the interactive CLI without a human TTY; full public `rediss://` id/name acceptance is pending (`scripts/cli-compat.sh kv-cli-verify`)
 - [ ] **`pgcli [id|name]`** — interactive-only client guard; not verifiable headlessly
 - [~] **`psql [id|name]`** — reaches bex, resolves the target by id **and** name, then stops at the Render-parity IP-allow-list gate (no `BEX_DB_DOMAIN`/allow-list in dev-9 — the same block Render imposes)
   - [~] `-c, --command <SQL>` — flag parses, required in non-TTY, drives the full path to the same gate

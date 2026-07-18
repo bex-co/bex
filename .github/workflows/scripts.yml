@@ -14,6 +14,9 @@ on:
       - "scripts/postgres-name-migrate.test.sh"
       - "scripts/keyvalue-name-migrate.sh"
       - "scripts/keyvalue-name-migrate.test.sh"
+      - "scripts/keyvalue-cli-verify.sh"
+      - "scripts/keyvalue-cli-verify.test.sh"
+      - "scripts/cli-compat.sh"
       - "scripts/keyvalue-rename-verify.sh"
       - "scripts/postgres-rename-verify.sh"
       - "scripts/rename-verify.test.sh"
@@ -32,6 +35,9 @@ on:
       - "scripts/postgres-name-migrate.test.sh"
       - "scripts/keyvalue-name-migrate.sh"
       - "scripts/keyvalue-name-migrate.test.sh"
+      - "scripts/keyvalue-cli-verify.sh"
+      - "scripts/keyvalue-cli-verify.test.sh"
+      - "scripts/cli-compat.sh"
       - "scripts/keyvalue-rename-verify.sh"
       - "scripts/postgres-rename-verify.sh"
       - "scripts/rename-verify.test.sh"
@@ -57,5 +63,7 @@ jobs:
         run: bash scripts/postgres-name-migrate.test.sh
       - name: Key-value name-migration unit tests
         run: bash scripts/keyvalue-name-migrate.test.sh
+      - name: Official Key Value CLI verifier safety tests
+        run: bash scripts/keyvalue-cli-verify.test.sh
       - name: Rename-verify snapshot error-handling unit tests
         run: bash scripts/rename-verify.test.sh
