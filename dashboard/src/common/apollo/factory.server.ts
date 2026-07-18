@@ -7,8 +7,13 @@ import {
 } from "@apollo/client";
 import { config } from "@/config/config";
 import { apolloCacheConfig } from "./cache";
+import { createRetryLink } from "./retry-link";
 
 import { getRequestHeader } from "@tanstack/react-start/server";
+
+// Stateless and shared across the per-request SSR clients — one instance, not
+// one per render.
+const retryLink = createRetryLink();
 
 const loggingLink = new ApolloLink((operation, forward) => {
   const start = Date.now();
@@ -47,11 +52,14 @@ export function createApolloSsrClient() {
     fetch,
     headers: cookieHeader ? { Cookie: cookieHeader } : {},
   });
+  // Retry transient read failures (w1/m52 t003) on the SSR side too, so a
+  // page rendered mid-roll dehydrates data instead of a stranded error state.
+  const links = [retryLink, httpLink];
   return new ApolloClient({
     ssrMode: true,
-    link: import.meta.env.DEV
-      ? ApolloLink.from([loggingLink, httpLink])
-      : httpLink,
+    link: ApolloLink.from(
+      import.meta.env.DEV ? [loggingLink, ...links] : links,
+    ),
     cache: new InMemoryCache(apolloCacheConfig),
   });
 }

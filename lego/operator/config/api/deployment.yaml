@@ -8,6 +8,18 @@ metadata:
     app.kubernetes.io/component: control-plane-api
 spec:
   replicas: 1
+  # w1/m52: explicit surge-then-kill so a roll never kills an old pod before
+  # its ready replacement exists (the 2026-07-18 06:54 incident had an old pod
+  # deleted while its replacement was still FailedScheduling). With prod's
+  # 2 replicas + required anti-affinity across 3 platform nodes, maxSurge: 1
+  # always has a schedulable free node. minReadySeconds holds the handover
+  # until a new pod has been Ready long enough to be trusted.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  minReadySeconds: 5
   selector:
     matchLabels:
       app.kubernetes.io/name: bex-api
@@ -214,12 +226,20 @@ spec:
               port: http
             initialDelaySeconds: 5
             periodSeconds: 20
+          # w1/m52: readiness split off /healthz onto /readyz, which flips to
+          # 503 on SIGTERM while the pod keeps serving through its in-process
+          # drain window (internal/serve) — liveness must NOT flip with it or
+          # the kubelet would restart a pod that is merely draining. Fast
+          # cadence + failureThreshold 1: /readyz is deterministic (only 503s
+          # when draining), so one failure means "stop routing here" and the
+          # endpoint drops well inside the 15s drain window.
           readinessProbe:
             httpGet:
-              path: /healthz
+              path: /readyz
               port: http
             initialDelaySeconds: 3
-            periodSeconds: 10
+            periodSeconds: 5
+            failureThreshold: 1
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

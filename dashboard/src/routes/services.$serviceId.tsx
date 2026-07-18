@@ -4,6 +4,7 @@ import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { Button } from "@/common/components/ui/button";
 import { Card, CardContent } from "@/common/components/ui/card";
+import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
 import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServer } from "@/features/services/hooks/use-server";
@@ -60,6 +61,10 @@ export const Route = createFileRoute("/services/$serviceId")({
 
 function RouteComponent() {
   const { serviceId } = Route.useParams();
+  // A roll-window loader failure dehydrates `state: "error"` — re-run it once
+  // (w1/m52) so the title/head recover with the data; the layout's Apollo
+  // reads below heal on their own.
+  useLoaderErrorRetry(Route.useLoaderData(), serviceId);
   return <ServiceDetailLayout serviceId={serviceId} />;
 }
 
