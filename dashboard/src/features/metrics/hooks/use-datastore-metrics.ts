@@ -68,5 +68,10 @@ export function useDatastoreMetrics(
     loading,
     unavailable,
     error: unavailable ? undefined : error,
+    // Datastore metrics never carry the bandwidth degraded_sources label.
+    degradedSources: EMPTY_DEGRADED,
   };
 }
+
+// Stable identity so poll-tick re-renders don't churn consumers' memos.
+const EMPTY_DEGRADED: string[] = [];

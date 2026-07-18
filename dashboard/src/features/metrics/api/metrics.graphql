@@ -31,6 +31,9 @@ query MonthToDateBandwidth($resourceId: String!) {
     natEgressBandwidthMB
     privateLinkEgressBandwidthMB
     websocketEgressBandwidthMB
+    # bex extension (w1/m50): sources whose health product failed inside the
+    # month window — the MB figures still include what they recorded.
+    degradedSources
   }
 }
 

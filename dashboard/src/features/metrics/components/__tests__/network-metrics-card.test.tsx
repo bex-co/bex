@@ -40,7 +40,13 @@ const WINDOW = {
 };
 
 function emptyResult() {
-  return { series: [], loading: false, unavailable: false, error: undefined };
+  return {
+    series: [],
+    loading: false,
+    unavailable: false,
+    error: undefined,
+    degradedSources: [],
+  };
 }
 
 // The Status Code + Percentile controls live on the card itself now (w5/m42),
@@ -57,6 +63,7 @@ describe("NetworkMetricsCard", () => {
     mockUseMonthToDateBandwidth.mockReset();
     mockUseMonthToDateBandwidth.mockReturnValue({
       egressBandwidthMB: null,
+      degradedSources: [],
       loading: false,
       error: undefined,
     });
@@ -150,6 +157,7 @@ describe("NetworkMetricsCard", () => {
           ],
           loading: false,
           unavailable: false,
+          degradedSources: [],
           error: undefined,
         };
       }
@@ -179,6 +187,7 @@ describe("NetworkMetricsCard", () => {
           ],
           loading: false,
           unavailable: false,
+          degradedSources: [],
           error: undefined,
         };
       }
@@ -217,6 +226,7 @@ describe("NetworkMetricsCard", () => {
           ],
           loading: false,
           unavailable: false,
+          degradedSources: [],
           error: undefined,
         };
       }
@@ -259,6 +269,7 @@ describe("NetworkMetricsCard", () => {
     mockUseMetrics.mockReturnValue(emptyResult());
     mockUseMonthToDateBandwidth.mockReturnValue({
       egressBandwidthMB: 512,
+      degradedSources: [],
       loading: false,
       error: undefined,
     });
@@ -266,5 +277,73 @@ describe("NetworkMetricsCard", () => {
     renderCard();
 
     expect(screen.getByText(/used this month/)).toBeInTheDocument();
+  });
+
+  // The w1/m50 three-state contract: data with a degradation annotation,
+  // a real query error, and (elsewhere above) the healthy empty window —
+  // never a gate failure masquerading as "No data in range".
+  it("annotates the bandwidth chart when a source is degraded, still rendering data", () => {
+    mockUseMetrics.mockImplementation((_resource, metric) => {
+      if (metric === "bandwidth") {
+        return {
+          series: [
+            {
+              unit: "bytes",
+              labels: { degraded_sources: "direct" },
+              points: [{ timestamp: "2026-07-18T00:00:00Z", value: 42 }],
+            },
+          ],
+          loading: false,
+          unavailable: false,
+          degradedSources: ["direct"],
+          error: undefined,
+        };
+      }
+      return emptyResult();
+    });
+
+    renderCard();
+
+    const badge = screen.getByText("Partial data");
+    expect(badge).toBeInTheDocument();
+    expect(badge.closest("[title]")?.getAttribute("title")).toContain(
+      "direct",
+    );
+    // The chart renders (no bandwidth error state, no unavailable state).
+    expect(screen.queryByText(/Couldn't load bandwidth/)).not.toBeInTheDocument();
+  });
+
+  it("renders a distinct error state for a failed bandwidth query — not 'No data in range'", () => {
+    mockUseMetrics.mockImplementation((_resource, metric) => {
+      if (metric === "bandwidth") {
+        return {
+          ...emptyResult(),
+          error: new Error("boom"),
+        };
+      }
+      return emptyResult();
+    });
+
+    renderCard();
+
+    expect(screen.getByText(/Couldn't load bandwidth/)).toBeInTheDocument();
+    // Only the two healthy empty charts (requests handles empties itself) say so.
+    expect(screen.queryAllByText("No data in range").length).toBeLessThan(3);
+  });
+
+  it("marks the month-to-date figure when its window was degraded", () => {
+    mockUseMetrics.mockReturnValue(emptyResult());
+    mockUseMonthToDateBandwidth.mockReturnValue({
+      egressBandwidthMB: 512,
+      degradedSources: ["http"],
+      loading: false,
+      error: undefined,
+    });
+
+    renderCard();
+
+    const footer = screen.getByText(/used this month/);
+    expect(footer.textContent).toContain("*");
+    expect(footer.getAttribute("title")).toContain("http");
   });
 });
