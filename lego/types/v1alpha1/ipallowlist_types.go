@@ -26,11 +26,10 @@ package v1alpha1
 // core.IPAllowListEntry keeps its own wire-side union decoder — that surface
 // contract is unchanged.
 
-// IPAllowEntry is one ipAllowList item on a Database/KeyValue spec: the CIDR
-// the operator enforces plus an optional human-facing description that rides
-// along untouched (Render's {cidrBlock, description} pairs, stored
-// product-neutrally as {cidr, description}). Enforcement reads CIDR only
-// (the operator's ipAllowListMiddlewareSpec).
+// IPAllowEntry is one ipAllowList item on an App/Database/KeyValue spec: the
+// CIDR the operator enforces plus an optional human-facing description that
+// rides along untouched (Render's {cidrBlock, description} pairs, stored
+// product-neutrally as {cidr, description}). Enforcement reads CIDR only.
 type IPAllowEntry struct {
 	// CIDR is the source range this entry allows (e.g. "10.0.0.0/8").
 	CIDR string `json:"cidr"`
@@ -39,4 +38,48 @@ type IPAllowEntry struct {
 	// Never read by enforcement.
 	// +optional
 	Description string `json:"description,omitempty"`
+}
+
+// EffectiveIPAllowListEntries returns the service allowlist in its structured
+// form. New writes use IPAllowListEntries; legacy Apps created before w9/m56
+// carry only IPAllowList and are lifted with empty descriptions. The returned
+// slice never aliases the spec.
+func (s AppSpec) EffectiveIPAllowListEntries() []IPAllowEntry {
+	if len(s.IPAllowListEntries) > 0 {
+		return append([]IPAllowEntry(nil), s.IPAllowListEntries...)
+	}
+	if len(s.IPAllowList) == 0 {
+		return nil
+	}
+	out := make([]IPAllowEntry, len(s.IPAllowList))
+	for i, cidr := range s.IPAllowList {
+		out[i] = IPAllowEntry{CIDR: cidr}
+	}
+	return out
+}
+
+// EffectiveIPAllowListCIDRs projects the service allowlist down to the values
+// enforced by Traefik. Descriptions are metadata and never reach middleware.
+func (s AppSpec) EffectiveIPAllowListCIDRs() []string {
+	entries := s.EffectiveIPAllowListEntries()
+	if len(entries) == 0 {
+		return nil
+	}
+	out := make([]string, len(entries))
+	for i, entry := range entries {
+		out[i] = entry.CIDR
+	}
+	return out
+}
+
+// SetIPAllowListEntries replaces a service allowlist using the structured
+// shape. It always clears the legacy flat field, including on an empty write,
+// so clearing a migrated App cannot resurrect stale legacy CIDRs.
+func (s *AppSpec) SetIPAllowListEntries(entries []IPAllowEntry) {
+	s.IPAllowList = nil
+	if len(entries) == 0 {
+		s.IPAllowListEntries = nil
+		return
+	}
+	s.IPAllowListEntries = append([]IPAllowEntry(nil), entries...)
 }

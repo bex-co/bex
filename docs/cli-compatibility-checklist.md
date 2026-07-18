@@ -8,9 +8,10 @@ Legend: `[x]` verified working · `[~]` works with a documented limitation · `[
 
 - **CLI:** `render-oss/cli` v2.21.0, built unmodified from `./cli`, driven only through [`scripts/cli-compat.sh`](../scripts/cli-compat.sh) (Hydra `client_credentials` token exchange per call, `RENDER_HOST` → local bex-api). Production was never touched.
 - **Target:** the isolated local **dev-9** environment (`.pm/w9/dev-9`, bex-api at `:54090`), current `lego/backend` HEAD, on **2026-07-18**.
-- **Method:** the maintained regression suite `scripts/cli-compat.sh verify` (whole-shape `checkFields` assertions over the core families) **plus** a six-agent parallel sweep of the entire flag matrix and every command `verify` doesn't cover. Each item was graded on the unmodified CLI's exit status and the wire shape read back via `-o json` and raw REST `GET`.
+- **Method:** the maintained regression suite `scripts/cli-compat.sh verify` (whole-shape `checkFields` assertions over the core families), the cleanup-safe `services-parity-verify` baseline/configured legs, and a full sweep of the remaining command tree. Each item was graded on the unmodified CLI's exit status and the wire shape read back via `-o json` and raw REST `GET`. The exact service flag contract and redacted POST/PATCH captures are in [`cli-services-create-update.md`](render-artifacts/cli-services-create-update.md).
+- **Configured service pass:** a disposable local OpenBao plus auth-enabled persistent Zot augmented dev-9 for the second service run. It proved CLI env vars, secret files, create/update registry-credential binding, a genuinely private kubelet pull, and native cron commands.
 - **Postgres create supplement (w6/m38):** [`scripts/postgres-create-cli-smoke.sh`](../scripts/postgres-create-cli-smoke.sh) drove the same unmodified CLI against isolated **dev-6** and a real local CNPG cluster on **2026-07-18**. It proved both custom names, database-only and user-only independent defaults, the CR intent, generated Secret metadata, and `current_database()`/`current_user` inside PostgreSQL. It also proved that unsupported Datadog create/update flags fail with a named 400 and leave no resource behind.
-- **dev-9 does not run** (so paths needing them are marked accordingly, distinguishing a real bex gap from an environment limit): build infra (kpack/zot), OpenBao (env-vars/secret-file store), the registry-credential store, Loki (durable log store), Prometheus, cert-manager, OpenFGA (authz is allow-all here), `BEX_DB_DOMAIN`/`BEX_KV_DOMAIN` (external datastore connect), and the SSH gateway.
+- **Base dev-9 does not run** (so paths needing them are marked accordingly, distinguishing a real bex gap from an environment limit): build infra (kpack/zot), OpenBao (env-vars/secret-file store), the registry-credential store, Loki (durable log store), Prometheus, cert-manager, OpenFGA (authz is allow-all here), `BEX_DB_DOMAIN`/`BEX_KV_DOMAIN` (external datastore connect), and the SSH gateway.
 
 ### Real gaps found this pass (bex-side, worth filing)
 
@@ -22,7 +23,7 @@ Legend: `[x]` verified working · `[~]` works with a documented limitation · `[
 - `--region` is accepted but **platform-stamped** (`local-capd`); the value submitted is not persisted. This is what makes a bare `services create --from` clone fail — the CLI re-validates the source's `local-capd` region against its own enum — so clones need an explicit `--region`.
 - `--previews` is rejected platform-wide (`400 "not supported by this platform"`).
 - Postgres Datadog forwarding is not implemented. Supplying `--datadog-api-key` or `--datadog-site` on create or update returns a named 400; bex never accepts or persists the credential.
-- `services update --runtime` is rejected via the CLI by design ("cannot switch runtimes via the CLI"); `services --ip-allow-list` keeps the CIDR but drops per-entry descriptions (Postgres/Key Value do persist them).
+- `services update --runtime` is rejected inside the unmodified CLI by design (`cannot switch runtimes via the CLI`) before any bex request.
 
 > Regenerate the command tree with `render <subcommand> --help`. Re-run the graded baseline with `scripts/cli-compat.sh verify`. Grouping mirrors the CLI's own `render --help` sections.
 
@@ -141,10 +142,10 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [-] `--previews` — `400 "not supported by this platform"` (deliberate non-goal)
     - [x] `--publish-directory` — on `static_site`
     - [x] `--root-directory` — on repo services
-    - [~] `--env-var KEY=VALUE` — accepted; round-trip needs OpenBao (`503` in dev-9)
-    - [~] `--secret-file NAME:PATH` — needs OpenBao (`503` in dev-9)
-    - [~] `--registry-credential <cred>` — bex resolves it (workspace-scoped "no credential found"); cred store not configured in dev-9
-    - [x] `--ip-allow-list cidr=…,description=…` — CIDR round-trips; description dropped (Postgres/KV keep it)
+    - [x] `--env-var KEY=VALUE` — exact configured App readback
+    - [x] `--secret-file NAME:PATH` — exact configured OpenBao readback; content never logged
+    - [x] `--registry-credential <cred>` — exact credential metadata plus authenticated private-image pull to `Running`
+    - [x] `--ip-allow-list cidr=…,description=…` — ordered CIDR **and description** round-trip
     - [x] `--build-filter-path <path>`
     - [x] `--build-filter-ignored-path <path>`
     - [x] `--maintenance-mode` — requires a paid plan (`400` on free)
@@ -155,22 +156,22 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
   - [x] `services update <service>`
     - [x] `--name` — rename
     - [x] `--plan`
-    - [ ] `--runtime` — bex rejects runtime switch via CLI by design ("use the API directly")
+    - [~] `--runtime` — upstream CLI guard; exits before any request (`cannot switch runtimes via the CLI`)
     - [x] `--repo`
     - [x] `--branch`
     - [x] `--image`
     - [x] `--build-command`
     - [x] `--start-command`
     - [x] `--pre-deploy-command`
-    - [ ] `--cron-command` — native-runtime only; not buildable in dev-9 (image cron rejected)
+    - [x] `--cron-command` — exact configured native-cron replacement
     - [x] `--cron-schedule`
     - [x] `--health-check-path`
     - [x] `--auto-deploy`
     - [-] `--previews` — `400 "not supported by this platform"`
     - [x] `--publish-directory` — on `static_site`
     - [x] `--root-directory` — on repo services (image services correctly `400`)
-    - [~] `--registry-credential` — reaches bex; `503` cred store not configured in dev-9
-    - [x] `--ip-allow-list cidr=…,description=…` — CIDR round-trips
+    - [x] `--registry-credential` — distinct credential A→B replacement plus authenticated rollout
+    - [x] `--ip-allow-list cidr=…,description=…` — ordered CIDR **and description** replacement
     - [x] `--build-filter-path <path>`
     - [x] `--build-filter-ignored-path <path>`
     - [x] `--maintenance-mode`

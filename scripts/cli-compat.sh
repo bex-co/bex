@@ -24,6 +24,8 @@
 #   scripts/cli-compat.sh <render-cli-args...>
 #   scripts/cli-compat.sh verify        # re-run the ✅ rows, exit non-zero on regression (t006)
 #   scripts/cli-compat.sh pgcli-verify  # headless PTY + disposable live Postgres acceptance
+#   scripts/cli-compat.sh services-parity-verify [configured]
+#   scripts/cli-compat.sh services-parity-self-test
 #   scripts/cli-compat.sh registry-credential-verify
 #   BEX_KV_VERIFY_ALLOW_CIDR=203.0.113.4/32 scripts/cli-compat.sh kv-cli-verify
 #
@@ -47,6 +49,10 @@ BEX_API_URL="${BEX_API_URL:-http://localhost:54090}"
 HYDRA_PUBLIC_URL="${HYDRA_PUBLIC_URL:-http://localhost:59090}"
 CLI_KEY_ENV="${CLI_KEY_ENV:-.pm/w9/dev-9/.cli-key.env}"
 export RENDER_BIN="${RENDER_BIN:-.pm/w9/dev-9/bin/render}"
+
+if [ "${1:-}" = "services-parity-self-test" ]; then
+  exec bash scripts/cli-services-parity-verify.sh self-test
+fi
 
 [ -f "$CLI_KEY_ENV" ] || { echo "error: $CLI_KEY_ENV missing — run: bash .pm/w9/dev-9/bootstrap-key.sh" >&2; exit 1; }
 [ -x "$RENDER_BIN" ] || { echo "error: $RENDER_BIN missing — run: (cd cli && go build -o ../$RENDER_BIN .)" >&2; exit 1; }
@@ -73,7 +79,8 @@ fi
 export RENDER_CLI_CONFIG_PATH="${RENDER_CLI_CONFIG_PATH:-$(mktemp -d)/cli.yaml}"
 
 if [ "${1:-}" = "verify" ]; then
-  exec bash .pm/w9/done/m2/verify.sh   # cwd is already repo root (see the cd above)
+  bash .pm/w9/done/m2/verify.sh # cwd is already repo root (see the cd above)
+  exec bash scripts/cli-services-parity-verify.sh baseline
 fi
 
 if [ "${1:-}" = "mutation-check" ]; then
@@ -88,6 +95,11 @@ fi
 
 if [ "${1:-}" = "kv-cli-verify" ]; then
   exec bash scripts/keyvalue-cli-verify.sh
+fi
+
+if [ "${1:-}" = "services-parity-verify" ]; then
+  shift
+  exec bash scripts/cli-services-parity-verify.sh "$@"
 fi
 
 exec "$RENDER_BIN" "$@"

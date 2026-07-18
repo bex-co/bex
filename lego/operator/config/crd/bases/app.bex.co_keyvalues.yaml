@@ -78,11 +78,10 @@ spec:
                   entry is rejected at admission).
                 items:
                   description: |-
-                    IPAllowEntry is one ipAllowList item on a Database/KeyValue spec: the CIDR
-                    the operator enforces plus an optional human-facing description that rides
-                    along untouched (Render's {cidrBlock, description} pairs, stored
-                    product-neutrally as {cidr, description}). Enforcement reads CIDR only
-                    (the operator's ipAllowListMiddlewareSpec).
+                    IPAllowEntry is one ipAllowList item on an App/Database/KeyValue spec: the
+                    CIDR the operator enforces plus an optional human-facing description that
+                    rides along untouched (Render's {cidrBlock, description} pairs, stored
+                    product-neutrally as {cidr, description}). Enforcement reads CIDR only.
                   properties:
                     cidr:
                       description: CIDR is the source range this entry allows (e.g.

@@ -84,6 +84,7 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 	if err != nil {
 		return EnvironmentPatchResult{}, err
 	}
+	service = storeServiceName(a, service)
 	if s.Store == nil {
 		return EnvironmentPatchResult{}, core.ErrSecretsUnavailable
 	}

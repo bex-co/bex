@@ -456,6 +456,18 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Remove {cidr}",
     description: "Accessible label to remove a CIDR chip",
   },
+  "keyvalue.networkingMoveUp": {
+    message: "Move {cidr} up",
+    description: "Accessible label to move an allowlist entry earlier",
+  },
+  "keyvalue.networkingMoveDown": {
+    message: "Move {cidr} down",
+    description: "Accessible label to move an allowlist entry later",
+  },
+  "keyvalue.networkingInvalid": {
+    message: "Enter unique, valid IPv4 or IPv6 CIDR blocks.",
+    description: "Validation error for Key Value allowlist entries",
+  },
   "keyvalue.networkingSave": {
     message: "Save allowlist",
     description: "Networking button to persist the allowlist",

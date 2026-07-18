@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Prove the unmodified render-oss/cli threads --registry-credential through
-# POST /v1/services and that bex binds it to the resulting App. Invoke through
+# service create and update and that bex binds it to the resulting App. Invoke through
 # scripts/cli-compat.sh so RENDER_HOST/API_KEY/WORKSPACE and RENDER_BIN are set.
 #
 # Required registry inputs are deliberately external: the verifier never
@@ -28,7 +28,10 @@ set -euo pipefail
 API="${RENDER_HOST%/}"
 NAME="verify-rc-$$"
 ANON_PROBE="$NAME-anon"
-CREDENTIAL_ID=""
+CREDENTIAL_IDS=""
+CREATE_CREDENTIAL_ID=""
+UPDATE_CREDENTIAL_ID=""
+CREATED_CREDENTIAL_ID=""
 SERVICE_ID=""
 
 cleanup() {
@@ -37,10 +40,10 @@ cleanup() {
   if [ -n "$SERVICE_ID" ]; then
     "$RENDER_BIN" services delete "$SERVICE_ID" --confirm -o json >/dev/null 2>&1 || true
   fi
-  if [ -n "$CREDENTIAL_ID" ]; then
+  for credential_id in $CREDENTIAL_IDS; do
     curl -sf -X DELETE -H "Authorization: Bearer $RENDER_API_KEY" \
-      "$API/registry-credentials/$CREDENTIAL_ID" >/dev/null 2>&1 || true
-  fi
+      "$API/registry-credentials/$credential_id" >/dev/null 2>&1 || true
+  done
 }
 trap cleanup EXIT
 trap 'rc=$?; echo "FAIL: registry credential verifier stopped at line $LINENO (exit $rc)" >&2' ERR
@@ -81,32 +84,54 @@ case "$anonymous_reason" in
 esac
 kubectl delete pod "$ANON_PROBE" -n "$BEX_VERIFY_APPS_NAMESPACE" --wait=true >/dev/null
 
-credential_payload="$(jq -nc \
-  --arg ownerId "$RENDER_WORKSPACE" \
-  --arg name "$NAME" \
-  --arg host "$REGISTRY_VERIFY_HOST" \
-  --arg username "$REGISTRY_VERIFY_USERNAME" \
-  --arg authToken "$REGISTRY_VERIFY_TOKEN" \
-  '{$ownerId,$name,$host,$username,$authToken}')"
-credential_response="$(curl -sf -X POST \
-  -H "Authorization: Bearer $RENDER_API_KEY" \
-  -H 'Content-Type: application/json' \
-  --data-binary "$credential_payload" "$API/registry-credentials")"
-CREDENTIAL_ID="$(jq -er '.id' <<<"$credential_response")"
+create_credential() {
+  local credential_name="$1" payload response credential_id
+  payload="$(jq -nc \
+    --arg ownerId "$RENDER_WORKSPACE" \
+    --arg name "$credential_name" \
+    --arg host "$REGISTRY_VERIFY_HOST" \
+    --arg username "$REGISTRY_VERIFY_USERNAME" \
+    --arg authToken "$REGISTRY_VERIFY_TOKEN" \
+    '{$ownerId,$name,$host,$username,$authToken}')"
+  response="$(curl -sf -X POST \
+    -H "Authorization: Bearer $RENDER_API_KEY" \
+    -H 'Content-Type: application/json' \
+    --data-binary "$payload" "$API/registry-credentials")"
+  credential_id="$(jq -er '.id' <<<"$response")"
+  CREDENTIAL_IDS="$CREDENTIAL_IDS $credential_id"
+  CREATED_CREDENTIAL_ID="$credential_id"
+}
+
+create_credential "$NAME-create"
+CREATE_CREDENTIAL_ID="$CREATED_CREDENTIAL_ID"
+create_credential "$NAME-update"
+UPDATE_CREDENTIAL_ID="$CREATED_CREDENTIAL_ID"
 
 create_response="$(
   # A background worker has no HTTP readiness probe, so the verifier tests the
   # registry pull itself without assuming anything about the container port.
   "$RENDER_BIN" services create --name "$NAME" --type background_worker \
-    --image "$REGISTRY_VERIFY_IMAGE" --registry-credential "$CREDENTIAL_ID" \
+    --image "$REGISTRY_VERIFY_IMAGE" --registry-credential "$CREATE_CREDENTIAL_ID" \
     --plan free --num-instances 1 --confirm -o json
 )"
 SERVICE_ID="$(jq -er '(.data // .).id' <<<"$create_response")"
 
 service_response="$(curl -sf -H "Authorization: Bearer $RENDER_API_KEY" "$API/services/$SERVICE_ID")"
-jq -e --arg credential "$CREDENTIAL_ID" '.registryCredentialId == $credential' \
+jq -e --arg credential "$CREATE_CREDENTIAL_ID" '.registryCredentialId == $credential' \
   <<<"$service_response" >/dev/null
-jq -e --arg credential "$CREDENTIAL_ID" --arg name "$NAME" \
+jq -e --arg credential "$CREATE_CREDENTIAL_ID" --arg name "$NAME-create" \
+  '.registryCredential == {id: $credential, name: $name}' \
+  <<<"$service_response" >/dev/null
+
+# A distinct id makes this an independent update assertion: if PATCH silently
+# drops the flag, the create-time id remains and the checks below fail.
+"$RENDER_BIN" services update "$SERVICE_ID" \
+  --image "$REGISTRY_VERIFY_IMAGE" --registry-credential "$UPDATE_CREDENTIAL_ID" \
+  --confirm -o json >/dev/null
+service_response="$(curl -sf -H "Authorization: Bearer $RENDER_API_KEY" "$API/services/$SERVICE_ID")"
+jq -e --arg credential "$UPDATE_CREDENTIAL_ID" '.registryCredentialId == $credential' \
+  <<<"$service_response" >/dev/null
+jq -e --arg credential "$UPDATE_CREDENTIAL_ID" --arg name "$NAME-update" \
   '.registryCredential == {id: $credential, name: $name}' \
   <<<"$service_response" >/dev/null
 
@@ -123,16 +148,16 @@ while [ "$SECONDS" -lt "$deadline" ]; do
     PULL_SECRET="$(kubectl get app.app.bex.co "$APP_NAME" -n "$BEX_VERIFY_APPS_NAMESPACE" \
       -o jsonpath='{.spec.externalRegistryPullSecret}' 2>/dev/null || true)"
   fi
-  [ "$bound_credential" = "$CREDENTIAL_ID" ] && [ -n "$PULL_SECRET" ] && break
+  [ "$bound_credential" = "$UPDATE_CREDENTIAL_ID" ] && [ -n "$PULL_SECRET" ] && break
   sleep 1
 done
 [ -n "$APP_NAME" ]
-[ "$bound_credential" = "$CREDENTIAL_ID" ]
+[ "$bound_credential" = "$UPDATE_CREDENTIAL_ID" ]
 [ -n "$PULL_SECRET" ]
 [ "$(kubectl get secret "$PULL_SECRET" -n "$BEX_VERIFY_APPS_NAMESPACE" \
   -o jsonpath='{.type}')" = "kubernetes.io/dockerconfigjson" ]
 
-deadline=$((SECONDS + 180))
+deadline=$((SECONDS + 300))
 phase=""
 while [ "$SECONDS" -lt "$deadline" ]; do
   phase="$(kubectl get app.app.bex.co "$APP_NAME" -n "$BEX_VERIFY_APPS_NAMESPACE" \
@@ -159,4 +184,4 @@ jq -e --arg pod "$POD_NAME" \
   'any(.items[]; .involvedObject.kind == "Pod" and .involvedObject.name == $pod and .reason == "Pulled")' \
   < <(kubectl get events -n "$BEX_VERIFY_APPS_NAMESPACE" -o json) >/dev/null
 
-echo "PASS: anonymous pull was rejected; official CLI created $SERVICE_ID with the explicit credential; kubelet pulled the private image and the App reached Running"
+echo "PASS: anonymous pull was rejected; official CLI created $SERVICE_ID with one credential, replaced it with another, and kubelet pulled the private image to Running"

@@ -405,11 +405,10 @@ type AppView struct {
 	// Headers are a static_site's custom response-header rules (spec.headers,
 	// Render's /headers). Empty for every other type.
 	Headers []StaticHeaderView `json:"headers,omitempty"`
-	// IPAllowList is Render's inbound IP allowlist (spec.ipAllowList): the flat
-	// list of CIDR strings stored in the CR. Empty means open to all source IPs.
-	// Only meaningful for web_service and static_site. The REST wire format
-	// expands each entry to {cidrBlock, description}; here it is the raw list.
-	IPAllowList []string `json:"ipAllowList,omitempty"`
+	// IPAllowList is Render's inbound IP allowlist for web_service and
+	// static_site. Both CIDR and description persist; enforcement projects only
+	// CIDRs. Empty means open to all source IPs.
+	IPAllowList []core.IPAllowListEntry `json:"ipAllowList,omitempty"`
 	// MaintenanceMode is Render's maintenanceMode object (spec.maintenanceMode):
 	// {enabled, uri}. web_service only — every other type reports the zero
 	// value. The Settings → Maintenance Mode section reads it and writes it via
@@ -733,7 +732,7 @@ func view(a *appv1alpha1.App) AppView {
 		PublishPath:       a.Spec.PublishPath,
 		Routes:            staticRouteViews(a.Spec.Routes),
 		Headers:           staticHeaderViews(a.Spec.Headers),
-		IPAllowList:       a.Spec.IPAllowList,
+		IPAllowList:       core.AllowListFromSpec(a.Spec.EffectiveIPAllowListEntries()),
 		MaintenanceMode:   maintenanceModeView(a.Spec.MaintenanceMode),
 	}
 }
@@ -1283,10 +1282,11 @@ type CreateRequest struct {
 	// SetRoutes/SetHeaders.
 	Routes  []StaticRouteView
 	Headers []StaticHeaderView
-	// IPAllowList is Render's inbound IP allowlist (spec.ipAllowList): the flat
-	// list of CIDR strings to set on the App CR. Empty means open to all source
-	// IPs (Render's default). Only meaningful for web_service and static_site.
-	IPAllowList []string
+	// IPAllowList is Render's inbound IP allowlist. Both CIDR and description
+	// persist on the App CR; enforcement consumes CIDRs only. Empty means open
+	// to all source IPs (Render's default). Only meaningful for web_service and
+	// static_site.
+	IPAllowList []core.IPAllowListEntry
 	// MaintenanceMode is Render's maintenanceMode object at create time
 	// (spec.maintenanceMode): {enabled, uri}. nil means unset (disabled).
 	// web_service only — a non-nil value for any other type is core.ErrBadRequest.
@@ -1941,7 +1941,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if subdomainPolicy == appv1alpha1.SubdomainPolicyDisabled && len(req.Hosts) == 0 {
 		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: renderSubdomainPolicy cannot be disabled without at least one custom domain", core.ErrBadRequest)
 	}
-	if err := core.ValidateCIDRs(req.IPAllowList); err != nil {
+	if err := core.ValidateAllowList(req.IPAllowList); err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
 	registryCredentialID := cloneStringPtr(req.RegistryCredentialID)
@@ -1974,13 +1974,13 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		NotifyOnFail:     notifyOnFail,
 		SubdomainPolicy:  subdomainPolicy,
 		PreDeployCommand: strings.TrimSpace(req.PreDeployCommand),
-		IPAllowList:      req.IPAllowList,
 		// A web service and a static site are public: expose them at
 		// <name>.<BEX_BASE_DOMAIN> so the caller gets a live URL with no custom
 		// domain. Every other type opts out (private has no platform host;
 		// worker/cron have no HTTP endpoint at all).
 		Expose: svcType == appv1alpha1.TypeWebService || svcType == appv1alpha1.TypeStaticSite,
 	}
+	spec.SetIPAllowListEntries(core.AllowListToSpec(req.IPAllowList))
 	if svcType == appv1alpha1.TypeCronJob {
 		spec.Schedule = strings.TrimSpace(req.Schedule)
 		spec.Command = strings.TrimSpace(req.Command)
@@ -2145,7 +2145,7 @@ func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	if want.MaintenanceMode != nil {
 		dst.MaintenanceMode = want.MaintenanceMode.DeepCopy()
 	}
-	dst.IPAllowList = want.IPAllowList
+	dst.SetIPAllowListEntries(want.EffectiveIPAllowListEntries())
 	dst.Expose = want.Expose
 	dst.Host = want.Host
 	dst.Hosts = want.Hosts
@@ -2862,18 +2862,16 @@ func (s *Service) SetSubdomainPolicy(ctx context.Context, name, policy string) (
 	})
 }
 
-// SetIPAllowList replaces the App's inbound CIDR allowlist (spec.ipAllowList):
-// each CIDR must be a valid IPv4 or IPv6 network in CIDR notation. An empty
-// slice clears the allowlist (Render's default — open to all source IPs). Only
-// meaningful for web_service and static_site (types with a public Ingress);
-// calling it on any other type is accepted without error (the operator ignores
-// the field for those types). Each CIDR is validated via core.ValidateCIDRs.
-func (s *Service) SetIPAllowList(ctx context.Context, name string, cidrs []string) (AppView, error) {
-	if err := core.ValidateCIDRs(cidrs); err != nil {
-		return AppView{}, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
+// SetIPAllowList replaces the App's inbound allowlist. CIDRs are validated;
+// descriptions persist as metadata and never influence enforcement. An empty
+// slice clears both the structured and legacy fields (Render's default — open
+// to all source IPs). Only meaningful for web_service and static_site.
+func (s *Service) SetIPAllowList(ctx context.Context, name string, entries []core.IPAllowListEntry) (AppView, error) {
+	if err := core.ValidateAllowList(entries); err != nil {
+		return AppView{}, err
 	}
 	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
-		a.Spec.IPAllowList = cidrs
+		a.Spec.SetIPAllowListEntries(core.AllowListToSpec(entries))
 	})
 }
 

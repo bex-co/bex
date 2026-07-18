@@ -3026,6 +3026,14 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "添加",
     description: "Button to add a CIDR to the draft list (w7/m32)",
   },
+  "services.networkingEntryDescription": {
+    message: "描述（可选）",
+    description: "Placeholder for a service allowlist entry description",
+  },
+  "services.networkingInvalid": {
+    message: "请输入有效的 IPv4 或 IPv6 CIDR。",
+    description: "Validation error for an invalid service allowlist CIDR",
+  },
   "services.networkingSave": {
     message: "保存",
     description: "Button to persist the CIDR list (w7/m32)",
@@ -3034,6 +3042,14 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "移除 {cidr}",
     description:
       "Accessible label on the trash icon next to a CIDR tag (w7/m32)",
+  },
+  "services.networkingMoveUp": {
+    message: "上移 {cidr}",
+    description: "Accessible label to move an allowlist entry earlier",
+  },
+  "services.networkingMoveDown": {
+    message: "下移 {cidr}",
+    description: "Accessible label to move an allowlist entry later",
   },
   "services.networkingSaved": {
     message: "IP 允许列表已更新",

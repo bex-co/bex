@@ -674,6 +674,18 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "移除 {cidr}",
     description: "Accessible label to remove a CIDR chip",
   },
+  "databases.accessAllowListMoveUp": {
+    message: "上移 {cidr}",
+    description: "Accessible label to move an allowlist entry earlier",
+  },
+  "databases.accessAllowListMoveDown": {
+    message: "下移 {cidr}",
+    description: "Accessible label to move an allowlist entry later",
+  },
+  "databases.accessAllowListInvalid": {
+    message: "请输入唯一且有效的 IPv4 或 IPv6 CIDR。",
+    description: "Validation error for database allowlist entries",
+  },
   "databases.accessAllowListSave": {
     message: "保存允许列表",
     description: "Access panel button to persist the allowlist",

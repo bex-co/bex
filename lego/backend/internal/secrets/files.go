@@ -57,9 +57,11 @@ func filesSecretName(service string) string { return service + "-files" }
 // ListSecretFiles returns a service's secret-file names, sorted (Render's GET
 // .../secret-files). Names only — contents are fetched per file. Sensitive read.
 func (s *Service) ListSecretFiles(ctx context.Context, service string) ([]SecretFileView, error) {
-	if _, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, service); err != nil {
+	a, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, service)
+	if err != nil {
 		return nil, err
 	}
+	service = storeServiceName(a, service)
 	if s.Store == nil {
 		return nil, core.ErrSecretsUnavailable
 	}
@@ -105,9 +107,11 @@ func (s *Service) ListSecretFilesPage(ctx context.Context, service, after string
 // GetSecretFile returns one file's name + content (Render's GET
 // .../secret-files/{name}). Unknown service or file => core.ErrNotFound. Sensitive.
 func (s *Service) GetSecretFile(ctx context.Context, service, name string) (SecretFileView, error) {
-	if _, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, service); err != nil {
+	a, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, service)
+	if err != nil {
 		return SecretFileView{}, err
 	}
+	service = storeServiceName(a, service)
 	if s.Store == nil {
 		return SecretFileView{}, core.ErrSecretsUnavailable
 	}
@@ -162,6 +166,7 @@ func (s *Service) SeedSecretFiles(ctx context.Context, service string, initial [
 	if err != nil {
 		return err
 	}
+	service = storeServiceName(a, service)
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}
@@ -200,6 +205,7 @@ func (s *Service) prepareSecretFiles(ctx context.Context, service string, a *app
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}
+	service = storeServiceName(a, service)
 	files := make(map[string]string, len(initial))
 	for _, f := range initial {
 		name := strings.TrimSpace(f.Name)
@@ -257,6 +263,7 @@ func (s *Service) abortSecretFiles(ctx context.Context, service string, a *appv1
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}
+	service = storeServiceName(a, service)
 	return errors.Join(
 		s.deleteSecret(ctx, filesSecretName(a.Name)),
 		s.Store.Delete(ctx, filesPath(service)),
@@ -299,6 +306,7 @@ func (s *Service) DeleteSecretFile(ctx context.Context, service, name string) er
 	if err != nil {
 		return err
 	}
+	service = storeServiceName(a, service)
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}

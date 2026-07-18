@@ -458,13 +458,21 @@ type AppSpec struct {
 	// +kubebuilder:validation:Enum=enabled;disabled
 	SubdomainPolicy string `json:"subdomainPolicy,omitempty"`
 
-	// IPAllowList restricts the HTTP(S) Ingress to these CIDRs via a Traefik
-	// Middleware on the App's Ingress. Empty means the Ingress is open to all
-	// source IPs (Render's default). Only meaningful for web_service and
-	// static_site (the types that have a public Ingress); ignored for
-	// private_service, background_worker, and cron_job.
+	// IPAllowList is the legacy flat-CIDR service allowlist written before
+	// w9/m56. It remains readable so existing Apps keep enforcing identically;
+	// all new writes use IPAllowListEntries and clear this field. When structured
+	// entries are present they take precedence. Empty means the Ingress is open
+	// to all source IPs (Render's default).
 	// +optional
 	IPAllowList []string `json:"ipAllowList,omitempty"`
+
+	// IPAllowListEntries restricts the HTTP(S) Ingress to these CIDRs via a
+	// Traefik Middleware while preserving each entry's optional human-facing
+	// description. Only meaningful for web_service and static_site (the types
+	// with a public Ingress); ignored for private_service, background_worker,
+	// and cron_job. Enforcement reads CIDR only.
+	// +optional
+	IPAllowListEntries []IPAllowEntry `json:"ipAllowListEntries,omitempty"`
 
 	// EnvironmentIPAllowList is the environment-layer inbound-IP rule set
 	// (w4/m28) — written only by the environment fan-out (never by the

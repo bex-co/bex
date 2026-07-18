@@ -12,6 +12,8 @@ import { Input } from "@/common/components/ui/input";
 import { Alert, AlertDescription } from "@/common/components/ui/alert";
 import { CopyButton } from "@/common/components/copy-button";
 import { ConnectionField } from "@/common/components/connection-field";
+import { IPAllowListEditor } from "@/common/components/ip-allow-list-editor";
+import { ipAllowListEntryKey } from "@/common/lib/ip-allow-list";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAccessControl } from "@/features/databases/hooks/use-access-control";
 
@@ -34,7 +36,10 @@ export function AccessControlPanel({ id }: { id: string }) {
       <CardContent className="space-y-6">
         {/* key remounts the editable draft from the server list whenever it
             changes (e.g. after a save), avoiding an effect-based state sync. */}
-        <AllowListSection key={entryKey(access.allowList)} access={access} />
+        <AllowListSection
+          key={ipAllowListEntryKey(access.allowList)}
+          access={access}
+        />
         <UsersSection access={access} />
         <PoolerSection access={access} />
       </CardContent>
@@ -44,102 +49,27 @@ export function AccessControlPanel({ id }: { id: string }) {
 
 type Access = ReturnType<typeof useAccessControl>;
 
-// One canonical serialization of an entry list — used both as the section's
-// remount key and for the dirty check, so the two can't disagree.
-function entryKey(list: { cidrBlock: string; description: string }[]) {
-  return list.map((e) => `${e.cidrBlock}=${e.description}`).join(",");
-}
-
 function AllowListSection({ access }: { access: Access }) {
   const { t } = useTranslations();
-  // Local editable copy, seeded from the server list; dirty until saved.
-  // Entries carry {cidrBlock, description} — the description persists end to
-  // end (w4/m24), so the label a human gives an entry survives the round-trip.
-  const [draft, setDraft] = useState(access.allowList);
-  const [entry, setEntry] = useState("");
-  const [description, setDescription] = useState("");
-
-  const dirty = entryKey(draft) !== entryKey(access.allowList);
-
-  function add() {
-    const c = entry.trim();
-    if (c && !draft.some((e) => e.cidrBlock === c)) {
-      setDraft([...draft, { cidrBlock: c, description: description.trim() }]);
-    }
-    setEntry("");
-    setDescription("");
-  }
-
   return (
     <section className="space-y-2">
       <h4 className="text-sm font-medium">{t("databases.accessAllowList")}</h4>
-      <p className="text-xs text-muted-foreground">
-        {t("databases.accessAllowListHint")}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {draft.length === 0 ? (
-          <span className="text-sm text-muted-foreground">
-            {t("databases.accessAllowListOpen")}
-          </span>
-        ) : (
-          draft.map((e) => (
-            <span
-              key={e.cidrBlock}
-              className="inline-flex items-center gap-1 rounded-md border bg-muted px-2 py-1 text-xs"
-            >
-              <code className="font-mono">{e.cidrBlock}</code>
-              {e.description ? (
-                <span className="text-muted-foreground">{e.description}</span>
-              ) : null}
-              <button
-                type="button"
-                aria-label={t("databases.accessAllowListRemove", {
-                  cidr: e.cidrBlock,
-                })}
-                onClick={() =>
-                  setDraft(draft.filter((x) => x.cidrBlock !== e.cidrBlock))
-                }
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <Trash2 className="size-3" />
-              </button>
-            </span>
-          ))
-        )}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Input
-          value={entry}
-          onChange={(e) => setEntry(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
-          placeholder="203.0.113.0/24"
-          className="max-w-xs"
-        />
-        <Input
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
-          placeholder={t("databases.accessAllowListDescription")}
-          className="max-w-xs"
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={add}
-          disabled={!entry.trim()}
-        >
-          <Plus />
-          {t("databases.accessAllowListAdd")}
-        </Button>
-        <Button
-          size="sm"
-          onClick={() => void access.saveAllowList(draft)}
-          disabled={!dirty || access.savingAllowList}
-        >
-          {access.savingAllowList ? <Loader2 className="animate-spin" /> : null}
-          {t("databases.accessAllowListSave")}
-        </Button>
-      </div>
+      <IPAllowListEditor
+        entries={access.allowList}
+        saving={access.savingAllowList}
+        onSave={access.saveAllowList}
+        labels={{
+          hint: t("databases.accessAllowListHint"),
+          open: t("databases.accessAllowListOpen"),
+          descriptionPlaceholder: t("databases.accessAllowListDescription"),
+          add: t("databases.accessAllowListAdd"),
+          save: t("databases.accessAllowListSave"),
+          invalid: t("databases.accessAllowListInvalid"),
+          remove: (cidr) => t("databases.accessAllowListRemove", { cidr }),
+          moveUp: (cidr) => t("databases.accessAllowListMoveUp", { cidr }),
+          moveDown: (cidr) => t("databases.accessAllowListMoveDown", { cidr }),
+        }}
+      />
     </section>
   );
 }

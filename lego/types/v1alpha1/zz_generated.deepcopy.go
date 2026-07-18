@@ -156,6 +156,11 @@ func (in *AppSpec) DeepCopyInto(out *AppSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.IPAllowListEntries != nil {
+		in, out := &in.IPAllowListEntries, &out.IPAllowListEntries
+		*out = make([]IPAllowEntry, len(*in))
+		copy(*out, *in)
+	}
 	if in.EnvironmentIPAllowList != nil {
 		in, out := &in.EnvironmentIPAllowList, &out.EnvironmentIPAllowList
 		*out = make([]string, len(*in))

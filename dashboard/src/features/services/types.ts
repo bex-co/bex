@@ -162,6 +162,11 @@ export interface ServiceView {
    * query fetches it for the Networking section.
    */
   ipAllowList: Array<string | null> | null;
+  /** Description-preserving form used by the Settings Networking editor. */
+  ipAllowListEntries: Array<{
+    cidrBlock: string;
+    description: string | null;
+  } | null> | null;
   /**
    * Render's maintenanceMode object (`spec.maintenanceMode`, w1/m37): takes a
    * web_service offline behind an interstitial page without suspending it.

@@ -432,6 +432,27 @@ func TestREST_EnvVars(t *testing.T) {
 	}
 }
 
+func TestRESTSecretPathsResolveTypedServiceIDToPublicName(t *testing.T) {
+	store := newFakeSecretStore()
+	app := sampleApp("tea-example-web")
+	app.Labels = map[string]string{
+		core.LabelAppID:       "srv-example",
+		core.LabelServiceName: "web",
+	}
+	store.m[envPath("web")] = map[string]string{"FOO": "bar"}
+	store.m[filesPath("web")] = map[string]string{"config.txt": "contents"}
+	svc := newService(store, app)
+
+	env := serveREST(svc, "GET", "/v1/services/srv-example/env-vars/FOO", "")
+	if env.Code != http.StatusOK || !strings.Contains(env.Body.String(), `"value":"bar"`) {
+		t.Fatalf("typed-id env read = %d: %s", env.Code, env.Body.String())
+	}
+	file := serveREST(svc, "GET", "/v1/services/srv-example/secret-files/config.txt", "")
+	if file.Code != http.StatusOK || !strings.Contains(file.Body.String(), `"content":"contents"`) {
+		t.Fatalf("typed-id secret-file read = %d: %s", file.Code, file.Body.String())
+	}
+}
+
 func TestREST_UnconfiguredIs503(t *testing.T) {
 	svc := newService(nil, sampleApp("web"))
 	if serveREST(svc, "GET", "/v1/services/web/env-vars", "").Code != 503 {

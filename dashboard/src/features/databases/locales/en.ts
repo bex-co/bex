@@ -685,6 +685,18 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Remove {cidr}",
     description: "Accessible label to remove a CIDR chip",
   },
+  "databases.accessAllowListMoveUp": {
+    message: "Move {cidr} up",
+    description: "Accessible label to move an allowlist entry earlier",
+  },
+  "databases.accessAllowListMoveDown": {
+    message: "Move {cidr} down",
+    description: "Accessible label to move an allowlist entry later",
+  },
+  "databases.accessAllowListInvalid": {
+    message: "Enter unique, valid IPv4 or IPv6 CIDR blocks.",
+    description: "Validation error for database allowlist entries",
+  },
   "databases.accessAllowListSave": {
     message: "Save allowlist",
     description: "Access panel button to persist the allowlist",
