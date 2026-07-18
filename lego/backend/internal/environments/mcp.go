@@ -53,7 +53,7 @@ type renameEnvironmentArgs struct {
 
 type setEnvironmentServicesArgs struct {
 	ID         string   `json:"id" jsonschema:"the environment id (env-…)"`
-	ServiceIDs []string `json:"serviceIds" jsonschema:"App CR names (same as the id field on a service) to assign to the environment — replaces the full list; also joins these services to the environment's project"`
+	ServiceIDs []string `json:"serviceIds" jsonschema:"public service ids (normally srv-...; the id field returned by list_services) to assign to the environment — replaces the full list; also joins these services to the environment's project"`
 }
 
 type setEnvironmentDatabasesArgs struct {
@@ -162,7 +162,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_environment_services",
-		Description: "Assign services to an environment (replaces the full list); also joins them to the environment's project. Pass serviceIds as App CR names — the same id shown by list_services. bex extension.",
+		Description: "Assign services to an environment (replaces the full list); also joins them to the environment's project. Pass the public serviceIds shown by list_services. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvironmentServicesArgs) (*mcp.CallToolResult, EnvironmentView, error) {
 		if in.ServiceIDs == nil {
 			in.ServiceIDs = []string{}

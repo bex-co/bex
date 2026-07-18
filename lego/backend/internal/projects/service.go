@@ -288,12 +288,14 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 }
 
 // SetServices replaces the full list of services in a project.
-// serviceNames are App CR names (e.g. "whoami"), not store UUIDs. A service
+// serviceIDs are the public ids returned by list_services (normally srv-...).
+// Legacy public names remain accepted by the store during the stable-id
+// transition. A service
 // leaving the project that also carried a stale environment membership has
 // its App CR's environment-projected layer cleared too (w4/m32) — the store
 // already NULLs apps.environment_id for it, but only a k8s Patch can clear
 // the CR spec fields that projection stamped.
-func (s *Service) SetServices(ctx context.Context, id string, serviceNames []string) (ProjectView, error) {
+func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []string) (ProjectView, error) {
 	if s.Store == nil {
 		return ProjectView{}, ErrProjectsUnavailable
 	}
@@ -304,7 +306,7 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceNames []str
 	if err := s.AuthorizeOn(ctx, core.RelCanCreate, core.WorkspaceObject(p.TenantID)); err != nil {
 		return ProjectView{}, err
 	}
-	departedWithEnv, err := s.Store.SetProjectServices(ctx, id, p.TenantID, serviceNames)
+	departedWithEnv, err := s.Store.SetProjectServices(ctx, id, p.TenantID, serviceIDs)
 	if err != nil {
 		return ProjectView{}, err
 	}

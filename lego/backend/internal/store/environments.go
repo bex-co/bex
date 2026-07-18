@@ -214,13 +214,15 @@ func (s *PGStore) DeleteEnvironment(ctx context.Context, id string) error {
 
 // SetEnvironmentServices replaces the full list of services in an environment
 // (within tenantID): clears any apps currently assigned to it, then assigns
-// only the named apps — mirroring SetProjectServices exactly. It ALSO stamps
+// only the identified apps — mirroring SetProjectServices exactly. Public
+// srv- ids are canonical; names remain accepted for backward compatibility
+// with clients from before stable service ids shipped. It ALSO stamps
 // project_id to projectID on the assigned apps: Render's model treats "in an
 // environment" as "in that project," so assigning to an environment is
 // sufficient to join its project too (a caller doesn't need two calls).
-// Service names not found in tenantID are silently skipped (the UPDATE
+// Service ids/names not found in tenantID are silently skipped (the UPDATE
 // affects 0 rows for them, the same convention SetProjectServices uses).
-func (s *PGStore) SetEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceNames []string) error {
+func (s *PGStore) SetEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceIDs []string) error {
 	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx,
 			`UPDATE apps SET environment_id = NULL, updated_at = now()
@@ -228,18 +230,18 @@ func (s *PGStore) SetEnvironmentServices(ctx context.Context, environmentID, pro
 			environmentID, tenantID); err != nil {
 			return err
 		}
-		if len(serviceNames) == 0 {
+		if len(serviceIDs) == 0 {
 			return nil
 		}
 		_, err := tx.Exec(ctx,
 			`UPDATE apps SET environment_id = $1, project_id = $2, updated_at = now()
-			 WHERE name = ANY($3) AND tenant_id = $4`,
-			environmentID, projectID, serviceNames, tenantID)
+			 WHERE (id = ANY($3) OR name = ANY($3)) AND tenant_id = $4`,
+			environmentID, projectID, serviceIDs, tenantID)
 		return err
 	})
 }
 
-// ListEnvironmentServices returns the names of all services currently in the
+// ListEnvironmentServices returns the public ids of all services currently in the
 // environment. Filters on project_id too (not just environment_id): a
 // service's project_id can drift out from under it via the independent
 // setProjectServices verb (which knows nothing about environments), so this
@@ -247,7 +249,7 @@ func (s *PGStore) SetEnvironmentServices(ctx context.Context, environmentID, pro
 // environment's own project.
 func (s *PGStore) ListEnvironmentServices(ctx context.Context, environmentID, projectID string) ([]string, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT name FROM apps WHERE environment_id = $1 AND project_id = $2 ORDER BY name`, environmentID, projectID)
+		`SELECT id FROM apps WHERE environment_id = $1 AND project_id = $2 ORDER BY name`, environmentID, projectID)
 	if err != nil {
 		return nil, err
 	}

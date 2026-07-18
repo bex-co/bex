@@ -686,14 +686,15 @@ func (s *Service) clearEnvironmentMembers(ctx context.Context, e store.Environme
 }
 
 // SetServices replaces the full list of services in an environment.
-// serviceNames are App CR names (e.g. "whoami"), the same id shown by
-// list_services — matching internal/projects.Service.SetServices exactly. The
+// serviceIDs are the public ids shown by list_services (normally srv-...),
+// matching internal/projects.Service.SetServices exactly. Legacy service names
+// remain accepted by the store during the stable-id transition. The
 // assigned services also join the environment's project (see
 // store.SetEnvironmentServices). core.LabelNetworkIsolation is synced on
 // every affected App CR: cleared on services leaving, set (if the
 // environment's networkIsolationEnabled) on services now in it — the
 // operator's signal for environment-scoped NetworkPolicy (t004).
-func (s *Service) SetServices(ctx context.Context, id string, serviceNames []string) (EnvironmentView, error) {
+func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []string) (EnvironmentView, error) {
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return EnvironmentView{}, err
 	}
@@ -705,7 +706,7 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceNames []str
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	if err := s.Store.SetEnvironmentServices(ctx, e.ID, e.ProjectID, e.TenantID, serviceNames); err != nil {
+	if err := s.Store.SetEnvironmentServices(ctx, e.ID, e.ProjectID, e.TenantID, serviceIDs); err != nil {
 		return EnvironmentView{}, mapStoreErr(err)
 	}
 	sids, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)

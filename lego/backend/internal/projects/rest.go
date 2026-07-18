@@ -181,8 +181,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 
 	// PUT /v1/projects/{id}/service-links replaces the full list of services in a
-	// project. Body: {"serviceIds": ["name1", "name2"]} where serviceIds are App
-	// CR names (same as the GraphQL / REST service id field).
+	// project. Body: {"serviceIds": ["srv-...", "srv-..."]}; legacy service
+	// names remain accepted during the stable-id transition.
 	mux.HandleFunc("PUT /v1/projects/{id}/service-links", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			ServiceIDs []string `json:"serviceIds"`

@@ -102,7 +102,9 @@ func (s *PGStore) DeleteProject(ctx context.Context, id string) error {
 
 // SetProjectServices replaces the full list of services in a project
 // (within tenantID): clears any apps currently assigned to it, then assigns
-// only the named apps. Also NULLs environment_id on departing rows in the
+// only the identified apps. Public srv- ids are canonical; names remain
+// accepted for backward compatibility with clients from before stable service
+// ids shipped. Also NULLs environment_id on departing rows in the
 // same transaction (w4/m32) — a service leaving its project must not keep a
 // stale apps.environment_id (and the App CR's frozen spec.environmentIPAllowList
 // that implies): ListEnvironmentServices already filters on project_id too,
@@ -110,9 +112,9 @@ func (s *PGStore) DeleteProject(ctx context.Context, id string) error {
 // its k8s-projected rules stay stuck. Returns the departing names that
 // carried a non-null environment_id — the store layer's cue for the service
 // layer's k8s-side clear, since a raw SQL UPDATE can't itself patch a CR.
-// Service names not found in tenantID are silently skipped (the UPDATE
+// Service ids/names not found in tenantID are silently skipped (the UPDATE
 // affects 0 rows for them).
-func (s *PGStore) SetProjectServices(ctx context.Context, projectID, tenantID string, serviceNames []string) ([]string, error) {
+func (s *PGStore) SetProjectServices(ctx context.Context, projectID, tenantID string, serviceIDs []string) ([]string, error) {
 	var departedWithEnv []string
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		rows, err := tx.Query(ctx,
@@ -138,22 +140,22 @@ func (s *PGStore) SetProjectServices(ctx context.Context, projectID, tenantID st
 			projectID, tenantID); err != nil {
 			return err
 		}
-		if len(serviceNames) == 0 {
+		if len(serviceIDs) == 0 {
 			return nil
 		}
 		_, err = tx.Exec(ctx,
 			`UPDATE apps SET project_id = $1, updated_at = now()
-			 WHERE name = ANY($2) AND tenant_id = $3`,
-			projectID, serviceNames, tenantID)
+			 WHERE (id = ANY($2) OR name = ANY($2)) AND tenant_id = $3`,
+			projectID, serviceIDs, tenantID)
 		return err
 	})
 	return departedWithEnv, err
 }
 
-// ListProjectServices returns the names of all services currently in the project.
+// ListProjectServices returns the public ids of all services in the project.
 func (s *PGStore) ListProjectServices(ctx context.Context, projectID string) ([]string, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT name FROM apps WHERE project_id = $1 ORDER BY name`, projectID)
+		`SELECT id FROM apps WHERE project_id = $1 ORDER BY name`, projectID)
 	if err != nil {
 		return nil, err
 	}
