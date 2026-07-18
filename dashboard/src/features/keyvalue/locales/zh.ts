@@ -451,6 +451,18 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "移除 {cidr}",
     description: "Accessible label to remove a CIDR chip",
   },
+  "keyvalue.networkingMoveUp": {
+    message: "上移 {cidr}",
+    description: "Accessible label to move an allowlist entry earlier",
+  },
+  "keyvalue.networkingMoveDown": {
+    message: "下移 {cidr}",
+    description: "Accessible label to move an allowlist entry later",
+  },
+  "keyvalue.networkingInvalid": {
+    message: "请输入唯一且有效的 IPv4 或 IPv6 CIDR。",
+    description: "Validation error for Key Value allowlist entries",
+  },
   "keyvalue.networkingSave": {
     message: "保存允许列表",
     description: "Networking button to persist the allowlist",

@@ -331,36 +331,23 @@ func oneRegistryCredentialID(first, second json.RawMessage) (*string, error) {
 	return b, nil
 }
 
-// ipAllowEntry is components.schemas.cidrBlockAndDescription — Render's wire
-// shape for an ipAllowList entry. bex stores only the CIDR (no description) in
-// the CRD; description is accepted on input and discarded (like PG/KV).
-type ipAllowEntry struct {
-	CidrBlock   string `json:"cidrBlock"`
-	Description string `json:"description"`
-}
+// ipAllowEntry is Render's components.schemas.cidrBlockAndDescription. Alias
+// the shared Core entry so services, Postgres, KeyValue, GraphQL, and MCP use
+// one description-preserving shape.
+type ipAllowEntry = core.IPAllowListEntry
 
-// toIPAllowListEntries converts flat CIDRs to the Render wire shape.
-func toIPAllowListEntries(cidrs []string) []ipAllowEntry {
-	if len(cidrs) == 0 {
-		return nil
-	}
-	out := make([]ipAllowEntry, len(cidrs))
-	for i, c := range cidrs {
-		out[i] = ipAllowEntry{CidrBlock: c}
-	}
-	return out
-}
-
-// fromIPAllowListEntries extracts the CIDR strings from the Render wire shape.
-func fromIPAllowListEntries(entries []ipAllowEntry) []string {
+func toIPAllowListEntries(entries []core.IPAllowListEntry) []ipAllowEntry {
 	if len(entries) == 0 {
 		return nil
 	}
-	out := make([]string, len(entries))
-	for i, e := range entries {
-		out[i] = e.CidrBlock
+	return append([]ipAllowEntry(nil), entries...)
+}
+
+func fromIPAllowListEntries(entries []ipAllowEntry) []core.IPAllowListEntry {
+	if len(entries) == 0 {
+		return nil
 	}
-	return out
+	return append([]core.IPAllowListEntry(nil), entries...)
 }
 
 // toCreateRequest folds the Render-nested and bex top-level fields into the
@@ -440,12 +427,13 @@ func (r createServiceRequest) toCreateRequest() (CreateRequest, error) {
 	for _, f := range r.SecretFiles {
 		secretFiles = append(secretFiles, core.SecretFile{Name: f.Name, Content: f.Content})
 	}
-	var ipAllowList []string
+	var ipAllowList []core.IPAllowListEntry
 	if r.ServiceDetails != nil && len(r.ServiceDetails.IPAllowList) > 0 && string(r.ServiceDetails.IPAllowList) != "null" {
 		var entries []ipAllowEntry
-		if json.Unmarshal(r.ServiceDetails.IPAllowList, &entries) == nil {
-			ipAllowList = fromIPAllowListEntries(entries)
+		if err := json.Unmarshal(r.ServiceDetails.IPAllowList, &entries); err != nil {
+			return CreateRequest{}, fmt.Errorf("%w: ipAllowList: %v", core.ErrBadRequest, err)
 		}
+		ipAllowList = fromIPAllowListEntries(entries)
 	}
 	return CreateRequest{
 		OwnerID:                 r.OwnerID,
@@ -724,7 +712,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var maxShutdownDelay optionalInt32
 		var healthCheckPath, preDeployCommand, schedule, publishPath, buildCommand, startCommand, dockerfilePath *string
 		var nestedRegistryCredentialID json.RawMessage
-		var patchIPAllowList *[]string // nil = not provided (leave unchanged); non-nil = replace
+		var patchIPAllowList *[]core.IPAllowListEntry // nil = not provided (leave unchanged); non-nil = replace
 		if req.ServiceDetails != nil {
 			plan, idleTTL = req.ServiceDetails.Plan, req.ServiceDetails.IdleTTLSeconds
 			maxShutdownDelay = req.ServiceDetails.MaxShutdownDelaySeconds
@@ -739,8 +727,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 					core.WriteErr(w, fmt.Errorf("%w: ipAllowList: %v", core.ErrBadRequest, err))
 					return
 				}
-				cidrs := fromIPAllowListEntries(entries)
-				patchIPAllowList = &cidrs
+				allowList := fromIPAllowListEntries(entries)
+				patchIPAllowList = &allowList
 			}
 			if len(req.ServiceDetails.EnvSpecific) > 0 && string(req.ServiceDetails.EnvSpecific) != "null" {
 				var envSpecific struct {

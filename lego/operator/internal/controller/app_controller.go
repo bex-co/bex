@@ -1289,7 +1289,7 @@ func (r *AppReconciler) reconcileIPAllowListMiddleware(ctx context.Context, app 
 		suffix string
 		cidrs  []string
 	}{
-		{"-ip-allow", app.Spec.IPAllowList},
+		{"-ip-allow", app.Spec.EffectiveIPAllowListCIDRs()},
 		{"-env-ip-allow", app.Spec.EnvironmentIPAllowList},
 	} {
 		mwName := app.Name + layer.suffix

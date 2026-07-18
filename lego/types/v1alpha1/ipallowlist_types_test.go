@@ -72,3 +72,53 @@ func TestIPAllowEntryRoundTrip(t *testing.T) {
 		t.Fatalf("round trip changed the list: %+v -> %+v", in, out)
 	}
 }
+
+func TestAppSpecEffectiveIPAllowListEntries(t *testing.T) {
+	t.Run("structured entries preserve descriptions and win", func(t *testing.T) {
+		spec := AppSpec{
+			IPAllowList:        []string{"192.0.2.0/24"},
+			IPAllowListEntries: []IPAllowEntry{{CIDR: "203.0.113.0/24", Description: "office"}},
+		}
+		got := spec.EffectiveIPAllowListEntries()
+		want := []IPAllowEntry{{CIDR: "203.0.113.0/24", Description: "office"}}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("effective entries = %+v, want %+v", got, want)
+		}
+		got[0].Description = "changed"
+		if spec.IPAllowListEntries[0].Description != "office" {
+			t.Fatal("effective entries aliases the spec")
+		}
+	})
+
+	t.Run("legacy CIDRs lift with empty descriptions", func(t *testing.T) {
+		spec := AppSpec{IPAllowList: []string{"203.0.113.0/24", "10.0.0.0/8"}}
+		wantEntries := []IPAllowEntry{{CIDR: "203.0.113.0/24"}, {CIDR: "10.0.0.0/8"}}
+		if got := spec.EffectiveIPAllowListEntries(); !reflect.DeepEqual(got, wantEntries) {
+			t.Fatalf("effective entries = %+v, want %+v", got, wantEntries)
+		}
+		if got := spec.EffectiveIPAllowListCIDRs(); !reflect.DeepEqual(got, spec.IPAllowList) {
+			t.Fatalf("effective CIDRs = %v, want %v", got, spec.IPAllowList)
+		}
+	})
+}
+
+func TestAppSpecSetIPAllowListEntriesClearsLegacy(t *testing.T) {
+	spec := AppSpec{IPAllowList: []string{"192.0.2.0/24"}}
+	entries := []IPAllowEntry{{CIDR: "203.0.113.0/24", Description: "office"}}
+	spec.SetIPAllowListEntries(entries)
+	if spec.IPAllowList != nil {
+		t.Fatalf("legacy field = %v, want nil", spec.IPAllowList)
+	}
+	if !reflect.DeepEqual(spec.IPAllowListEntries, entries) {
+		t.Fatalf("structured field = %+v, want %+v", spec.IPAllowListEntries, entries)
+	}
+	entries[0].Description = "changed"
+	if spec.IPAllowListEntries[0].Description != "office" {
+		t.Fatal("SetIPAllowListEntries retained caller slice")
+	}
+
+	spec.SetIPAllowListEntries(nil)
+	if spec.IPAllowList != nil || spec.IPAllowListEntries != nil {
+		t.Fatalf("clear left legacy=%v structured=%v", spec.IPAllowList, spec.IPAllowListEntries)
+	}
+}

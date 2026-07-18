@@ -43,13 +43,17 @@ import (
 // appWithAllowList builds a minimal web_service App CR for a fake-client
 // middleware test.
 func appWithAllowList(name string, cidrs []string, typ string) *appv1alpha1.App {
+	entries := make([]appv1alpha1.IPAllowEntry, len(cidrs))
+	for i, cidr := range cidrs {
+		entries[i] = appv1alpha1.IPAllowEntry{CIDR: cidr, Description: "entry description"}
+	}
 	return &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
 		Spec: appv1alpha1.AppSpec{
-			Type:        typ,
-			Image:       "nginx:v1",
-			Expose:      typ == appv1alpha1.TypeWebService || typ == appv1alpha1.TypeStaticSite,
-			IPAllowList: cidrs,
+			Type:               typ,
+			Image:              "nginx:v1",
+			Expose:             typ == appv1alpha1.TypeWebService || typ == appv1alpha1.TypeStaticSite,
+			IPAllowListEntries: entries,
 		},
 	}
 }
@@ -140,7 +144,7 @@ func TestWebServiceIPAllowListMiddlewareProjection(t *testing.T) {
 	if err := cl.Get(ctx, nn, app); err != nil {
 		t.Fatalf("get app: %v", err)
 	}
-	app.Spec.IPAllowList = nil
+	app.Spec.SetIPAllowListEntries(nil)
 	if err := cl.Update(ctx, app); err != nil {
 		t.Fatalf("clear allowlist: %v", err)
 	}
@@ -202,7 +206,7 @@ func TestStaticSiteIPAllowListMiddlewareProjection(t *testing.T) {
 	}
 
 	// Phase 2: clear → middleware removed and no names remain.
-	app.Spec.IPAllowList = nil
+	app.Spec.SetIPAllowListEntries(nil)
 	mwNames, err = r.reconcileIPAllowListMiddleware(ctx, app)
 	if err != nil {
 		t.Fatalf("reconcileIPAllowListMiddleware(clear): %v", err)
@@ -212,6 +216,34 @@ func TestStaticSiteIPAllowListMiddlewareProjection(t *testing.T) {
 	}
 	if _, err := getMW(); !apierrors.IsNotFound(err) {
 		t.Fatalf("Middleware must be deleted when allowlist is empty for static_site, got %v", err)
+	}
+}
+
+// TestLegacyFlatServiceIPAllowListStillProjects proves a pre-w9/m56 App that
+// has only spec.ipAllowList continues to enforce exactly the stored CIDRs.
+func TestLegacyFlatServiceIPAllowListStillProjects(t *testing.T) {
+	scheme := newIPAllowListScheme()
+	app := appWithAllowList("legacy-acl", nil, appv1alpha1.TypeWebService)
+	app.Spec.IPAllowList = []string{"192.0.2.0/24"}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
+		WithStatusSubresource(&appv1alpha1.App{}).Build()
+	r := &AppReconciler{Client: cl, Scheme: scheme, Mode: ModeKubernetes}
+
+	names, err := r.reconcileIPAllowListMiddleware(context.Background(), app)
+	if err != nil {
+		t.Fatalf("reconcile legacy allowlist: %v", err)
+	}
+	if len(names) != 1 || names[0] != "legacy-acl-ip-allow" {
+		t.Fatalf("middleware names = %v, want [legacy-acl-ip-allow]", names)
+	}
+	o := &unstructured.Unstructured{}
+	o.SetGroupVersionKind(traefikHTTPMiddlewareGVK)
+	if err := cl.Get(context.Background(), types.NamespacedName{Name: names[0], Namespace: "default"}, o); err != nil {
+		t.Fatalf("get legacy middleware: %v", err)
+	}
+	ranges, _, _ := unstructured.NestedSlice(o.Object, "spec", "ipAllowList", "sourceRange")
+	if len(ranges) != 1 || ranges[0] != "192.0.2.0/24" {
+		t.Fatalf("legacy middleware ranges = %v, want [192.0.2.0/24]", ranges)
 	}
 }
 

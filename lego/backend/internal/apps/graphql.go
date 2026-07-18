@@ -413,6 +413,10 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// setServiceIpAllowList.
 		"ipAllowList": &graphql.Field{
 			Type:    graphql.NewList(graphql.String),
+			Resolve: gqlutil.Field(func(a AppView) any { return core.AllowListCIDRs(a.IPAllowList) }),
+		},
+		"ipAllowListEntries": &graphql.Field{
+			Type:    graphql.NewList(gqlutil.IPAllowEntryType),
 			Resolve: gqlutil.Field(func(a AppView) any { return a.IPAllowList }),
 		},
 		// maintenanceMode is Render's maintenanceMode object (web_service only;
@@ -977,12 +981,25 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// maintenanceMode is Render's maintenanceMode object at create time
 				// (w1/m37); web_service only. Omitted => disabled.
 				"maintenanceMode": &graphql.ArgumentConfig{Type: maintenanceModeInputType},
+				// Description-aware service allowlist plus the legacy CIDR list.
+				// Conflicting simultaneous values are rejected by Core.
+				"ipAllowList":        &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
+				"ipAllowListEntries": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))},
 				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
 				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				dryRun, _ := p.Args["dryRun"].(bool)
 				env, err := gqlEnvVarInputs(p.Args, "envVars")
+				if err != nil {
+					return nil, err
+				}
+				_, entriesSet := p.Args["ipAllowListEntries"]
+				_, cidrsSet := p.Args["ipAllowList"]
+				allowList, err := core.ResolveAllowListInputs(
+					gqlutil.AllowList(p.Args["ipAllowListEntries"]), entriesSet,
+					gqlutil.StringList(p.Args["ipAllowList"]), cidrsSet,
+				)
 				if err != nil {
 					return nil, err
 				}
@@ -1018,6 +1035,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					MaxShutdownDelaySeconds: gqlInt32Ptr(p.Args, "maxShutdownDelaySeconds"),
 					PreDeployCommand:        gqlutil.Str(p.Args, "preDeployCommand"),
 					MaintenanceMode:         gqlMaintenanceModeInput(p.Args, "maintenanceMode"),
+					IPAllowList:             allowList,
 					DryRun:                  dryRun,
 				})
 			},
@@ -1337,25 +1355,27 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return s.SetSubdomainPolicy(p.Context, p.Args["id"].(string), p.Args["policy"].(string))
 			},
 		},
-		// setServiceIpAllowList replaces the inbound CIDR allowlist for a
-		// web_service or static_site. An empty or null cidrs arg clears the
-		// allowlist (open to all source IPs, Render's default). Each element
-		// must be a valid IPv4 or IPv6 CIDR — an invalid CIDR is 400.
+		// setServiceIpAllowList replaces the inbound allowlist for a web_service
+		// or static_site. entries preserves descriptions; cidrs is the legacy
+		// compatibility input. Empty clears the list.
 		"setServiceIpAllowList": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"cidrs": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
+				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"cidrs":   &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
+				"entries": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				rawCIDRs, _ := p.Args["cidrs"].([]any)
-				cidrs := make([]string, 0, len(rawCIDRs))
-				for _, c := range rawCIDRs {
-					if s, ok := c.(string); ok {
-						cidrs = append(cidrs, s)
-					}
+				_, entriesSet := p.Args["entries"]
+				_, cidrsSet := p.Args["cidrs"]
+				entries, err := core.ResolveAllowListInputs(
+					gqlutil.AllowList(p.Args["entries"]), entriesSet,
+					gqlutil.StringList(p.Args["cidrs"]), cidrsSet,
+				)
+				if err != nil {
+					return nil, err
 				}
-				return s.SetIPAllowList(p.Context, p.Args["id"].(string), cidrs)
+				return s.SetIPAllowList(p.Context, p.Args["id"].(string), entries)
 			},
 		},
 		// Static-site edge-rule mutations: replace the whole routes/headers list

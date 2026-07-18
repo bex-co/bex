@@ -214,8 +214,9 @@ type subdomainPolicyArgs struct {
 
 // serviceIPAllowListArgs is set_service_ip_allow_list's input.
 type serviceIPAllowListArgs struct {
-	ServiceID string   `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	CIDRs     []string `json:"cidrs,omitempty" jsonschema:"CIDR blocks to allow (e.g. '1.2.3.4/32'); empty or null clears the allowlist (open to all source IPs)"`
+	ServiceID string                  `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
+	CIDRs     []string                `json:"cidrs,omitempty" jsonschema:"legacy CIDR blocks to allow; use entries to preserve descriptions"`
+	Entries   []core.IPAllowListEntry `json:"entries,omitempty" jsonschema:"description-preserving allowlist entries as {cidrBlock, description}; empty clears the allowlist"`
 }
 
 // createWebServiceArgs is create_web_service's input — Render's MCP tool name.
@@ -225,34 +226,35 @@ type serviceIPAllowListArgs struct {
 // contract; builder and image are bex extensions. Region remains a one-region
 // platform concern and is intentionally absent.
 type createWebServiceArgs struct {
-	OwnerID                 string              `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
-	EnvironmentID           string              `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
-	Name                    string              `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
-	Type                    string              `json:"type,omitempty" jsonschema:"service type: web_service (default), private_service, or background_worker. Use create_cron_job for a cron_job"`
-	Repo                    string              `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
-	Image                   string              `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
-	RegistryCredentialID    *string             `json:"registryCredentialId,omitempty" jsonschema:"stored registry credential id for a private prebuilt image or Dockerfile FROM; omit for automatic image-host matching, empty to explicitly use none"`
-	Branch                  string              `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
-	RootDir                 string              `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
-	BuildFilter             *buildFilterArg     `json:"buildFilter,omitempty" jsonschema:"Render's Build Filters: glob patterns (paths/ignoredPaths) gating git-push auto-deploys; omit for no filter"`
-	Runtime                 string              `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, or docker"`
-	BuildCommand            string              `json:"buildCommand" jsonschema:"command used to build a native-runtime service; ignored for docker"`
-	StartCommand            string              `json:"startCommand" jsonschema:"command used to start a native-runtime service; ignored for docker"`
-	DockerfilePath          string              `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
-	Builder                 string              `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
-	Plan                    string              `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
-	EnvVars                 []envVarArg         `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
-	SecretFiles             []secretFileArg     `json:"secretFiles,omitempty" jsonschema:"secret files mounted under /etc/secrets from first boot"`
-	AutoDeploy              string              `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
-	NotifyOnFail            string              `json:"notifyOnFail,omitempty" jsonschema:"deploy-failure notification override: default (defer to each member's own preference), notify (always email every member), or ignore (never email anyone for this service); default if omitted"`
-	HealthCheckPath         string              `json:"healthCheckPath,omitempty" jsonschema:"HTTP path the platform GETs to gate pod readiness (spec.healthCheckPath); must start with / or be empty to use the platform default /"`
-	MaxShutdownDelaySeconds *int32              `json:"maxShutdownDelaySeconds,omitempty" jsonschema:"maximum seconds to wait after SIGTERM before SIGKILL (1-300; default 30)"`
-	PreDeployCommand        string              `json:"preDeployCommand,omitempty" jsonschema:"a command run to completion against the new image before it serves traffic (Render's Pre-Deploy Command, e.g. a DB migration); a non-zero exit fails the deploy"`
-	MaintenanceMode         *maintenanceModeArg `json:"maintenanceMode,omitempty" jsonschema:"Render's maintenanceMode object at create time; web_service only, omit for disabled"`
-	Port                    int32               `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000; ignored for a background_worker)"`
-	Replicas                int32               `json:"replicas,omitempty" jsonschema:"desired running instances (default 1)"`
-	DryRun                  bool                `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
-	IPAllowList             []string            `json:"ipAllowList,omitempty" jsonschema:"CIDR blocks to restrict inbound HTTP to (e.g. '203.0.113.0/24'); empty = open to all source IPs (Render default). Only applies to web_service and static_site."`
+	OwnerID                 string                  `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
+	EnvironmentID           string                  `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
+	Name                    string                  `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
+	Type                    string                  `json:"type,omitempty" jsonschema:"service type: web_service (default), private_service, or background_worker. Use create_cron_job for a cron_job"`
+	Repo                    string                  `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
+	Image                   string                  `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
+	RegistryCredentialID    *string                 `json:"registryCredentialId,omitempty" jsonschema:"stored registry credential id for a private prebuilt image or Dockerfile FROM; omit for automatic image-host matching, empty to explicitly use none"`
+	Branch                  string                  `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	RootDir                 string                  `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
+	BuildFilter             *buildFilterArg         `json:"buildFilter,omitempty" jsonschema:"Render's Build Filters: glob patterns (paths/ignoredPaths) gating git-push auto-deploys; omit for no filter"`
+	Runtime                 string                  `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, or docker"`
+	BuildCommand            string                  `json:"buildCommand" jsonschema:"command used to build a native-runtime service; ignored for docker"`
+	StartCommand            string                  `json:"startCommand" jsonschema:"command used to start a native-runtime service; ignored for docker"`
+	DockerfilePath          string                  `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
+	Builder                 string                  `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
+	Plan                    string                  `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
+	EnvVars                 []envVarArg             `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
+	SecretFiles             []secretFileArg         `json:"secretFiles,omitempty" jsonschema:"secret files mounted under /etc/secrets from first boot"`
+	AutoDeploy              string                  `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
+	NotifyOnFail            string                  `json:"notifyOnFail,omitempty" jsonschema:"deploy-failure notification override: default (defer to each member's own preference), notify (always email every member), or ignore (never email anyone for this service); default if omitted"`
+	HealthCheckPath         string                  `json:"healthCheckPath,omitempty" jsonschema:"HTTP path the platform GETs to gate pod readiness (spec.healthCheckPath); must start with / or be empty to use the platform default /"`
+	MaxShutdownDelaySeconds *int32                  `json:"maxShutdownDelaySeconds,omitempty" jsonschema:"maximum seconds to wait after SIGTERM before SIGKILL (1-300; default 30)"`
+	PreDeployCommand        string                  `json:"preDeployCommand,omitempty" jsonschema:"a command run to completion against the new image before it serves traffic (Render's Pre-Deploy Command, e.g. a DB migration); a non-zero exit fails the deploy"`
+	MaintenanceMode         *maintenanceModeArg     `json:"maintenanceMode,omitempty" jsonschema:"Render's maintenanceMode object at create time; web_service only, omit for disabled"`
+	Port                    int32                   `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000; ignored for a background_worker)"`
+	Replicas                int32                   `json:"replicas,omitempty" jsonschema:"desired running instances (default 1)"`
+	DryRun                  bool                    `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
+	IPAllowList             []string                `json:"ipAllowList,omitempty" jsonschema:"CIDR blocks to restrict inbound HTTP to (e.g. '203.0.113.0/24'); empty = open to all source IPs (Render default). Only applies to web_service and static_site."`
+	IPAllowListEntries      []core.IPAllowListEntry `json:"ipAllowListEntries,omitempty" jsonschema:"description-preserving allowlist entries as {cidrBlock, description}; use instead of ipAllowList"`
 }
 
 // envVarArg is Render's {key, value} env-var shape, shared by the create tool.
@@ -311,7 +313,7 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 		Port:                    a.Port,
 		Replicas:                a.Replicas,
 		DryRun:                  a.DryRun,
-		IPAllowList:             a.IPAllowList,
+		IPAllowList:             core.AllowListFromCIDRs(a.IPAllowList),
 	}
 }
 
@@ -490,20 +492,22 @@ type staticHeaderArg struct {
 // object-store origin (no running container). publishPath is required; routes and
 // headers are the optional edge rules.
 type createStaticSiteArgs struct {
-	OwnerID       string            `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
-	EnvironmentID string            `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
-	Name          string            `json:"name" jsonschema:"the static site name (a DNS label, 1-30 chars)"`
-	Repo          string            `json:"repo,omitempty" jsonschema:"git repository URL to build from; omit if using image"`
-	Image         string            `json:"image,omitempty" jsonschema:"a prebuilt OCI image whose publishPath holds the built site; omit if using repo"`
-	Branch        string            `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
-	RootDir       string            `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
-	PublishPath   string            `json:"publishPath" jsonschema:"the built output directory to serve as the site root, e.g. dist, build, or public"`
-	EnvVars       []envVarArg       `json:"envVars,omitempty" jsonschema:"literal (non-secret) build-time environment variables"`
-	SecretFiles   []secretFileArg   `json:"secretFiles,omitempty" jsonschema:"secret files available to the static-site build from first boot"`
-	Domains       []string          `json:"domains,omitempty" jsonschema:"custom domains to serve the site at, in addition to the platform hostname"`
-	Routes        []staticRouteArg  `json:"routes,omitempty" jsonschema:"ordered redirect/rewrite rules (first match wins), e.g. an SPA fallback rewrite of /* to /index.html"`
-	Headers       []staticHeaderArg `json:"headers,omitempty" jsonschema:"custom response-header rules scoped by request path"`
-	DryRun        bool              `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
+	OwnerID            string                  `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
+	EnvironmentID      string                  `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
+	Name               string                  `json:"name" jsonschema:"the static site name (a DNS label, 1-30 chars)"`
+	Repo               string                  `json:"repo,omitempty" jsonschema:"git repository URL to build from; omit if using image"`
+	Image              string                  `json:"image,omitempty" jsonschema:"a prebuilt OCI image whose publishPath holds the built site; omit if using repo"`
+	Branch             string                  `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	RootDir            string                  `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
+	PublishPath        string                  `json:"publishPath" jsonschema:"the built output directory to serve as the site root, e.g. dist, build, or public"`
+	EnvVars            []envVarArg             `json:"envVars,omitempty" jsonschema:"literal (non-secret) build-time environment variables"`
+	SecretFiles        []secretFileArg         `json:"secretFiles,omitempty" jsonschema:"secret files available to the static-site build from first boot"`
+	Domains            []string                `json:"domains,omitempty" jsonschema:"custom domains to serve the site at, in addition to the platform hostname"`
+	Routes             []staticRouteArg        `json:"routes,omitempty" jsonschema:"ordered redirect/rewrite rules (first match wins), e.g. an SPA fallback rewrite of /* to /index.html"`
+	Headers            []staticHeaderArg       `json:"headers,omitempty" jsonschema:"custom response-header rules scoped by request path"`
+	IPAllowList        []string                `json:"ipAllowList,omitempty" jsonschema:"legacy CIDR allowlist; use ipAllowListEntries to preserve descriptions"`
+	IPAllowListEntries []core.IPAllowListEntry `json:"ipAllowListEntries,omitempty" jsonschema:"description-preserving allowlist entries as {cidrBlock, description}"`
+	DryRun             bool                    `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
 func (a createStaticSiteArgs) toCreateRequest() CreateRequest {
@@ -522,6 +526,7 @@ func (a createStaticSiteArgs) toCreateRequest() CreateRequest {
 		Hosts:         a.Domains,
 		Routes:        routeArgViews(a.Routes),
 		Headers:       headerArgViews(a.Headers),
+		IPAllowList:   core.AllowListFromCIDRs(a.IPAllowList),
 		DryRun:        a.DryRun,
 	}
 }
@@ -619,7 +624,13 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Create a web service from a repo or a prebuilt image and get back the service to poll until its url is live. A name already used in the target workspace is rejected (name already in use) rather than redeployed — use restart_service to redeploy an existing one. Tracks Render's MCP tool.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createWebServiceArgs) (*mcp.CallToolResult, renderService, error) {
 		in.OwnerID = core.SelectedWorkspace(s.Selections, req, in.OwnerID)
-		app, err := s.Create(ctx, in.toCreateRequest())
+		allowList, err := core.ResolveAllowListInputs(in.IPAllowListEntries, in.IPAllowListEntries != nil, in.IPAllowList, in.IPAllowList != nil)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		createReq := in.toCreateRequest()
+		createReq.IPAllowList = allowList
+		app, err := s.Create(ctx, createReq)
 		if err != nil {
 			return nil, renderService{}, err
 		}
@@ -643,7 +654,13 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Create a static site: build a repo and serve its publishPath output from the object-store origin (no running container). Redirects/rewrites (routes) and custom response headers apply at the edge. A name already used in the target workspace is rejected (name already in use) rather than republished — use restart_service to republish an existing one. Tracks Render's MCP tool.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createStaticSiteArgs) (*mcp.CallToolResult, renderService, error) {
 		in.OwnerID = core.SelectedWorkspace(s.Selections, req, in.OwnerID)
-		app, err := s.Create(ctx, in.toCreateRequest())
+		allowList, err := core.ResolveAllowListInputs(in.IPAllowListEntries, in.IPAllowListEntries != nil, in.IPAllowList, in.IPAllowList != nil)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		createReq := in.toCreateRequest()
+		createReq.IPAllowList = allowList
+		app, err := s.Create(ctx, createReq)
 		if err != nil {
 			return nil, renderService{}, err
 		}
@@ -991,9 +1008,13 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_service_ip_allow_list",
-		Description: "Set the inbound IP allowlist for a web service or static site. Each entry is a CIDR in IPv4 or IPv6 notation (e.g. '1.2.3.4/32', '::/0'). An empty or null cidrs list clears the allowlist — opens the service to all source IPs (Render's default). Tracks Render's ipAllowList on webServiceDetails / staticSiteDetails.",
+		Description: "Set the inbound IP allowlist for a web service or static site. Use entries to preserve each CIDR's optional description; cidrs is the legacy flat form. Empty entries clears the allowlist. Conflicting simultaneous forms are rejected.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceIPAllowListArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetIPAllowList(ctx, in.ServiceID, in.CIDRs)
+		entries, err := core.ResolveAllowListInputs(in.Entries, in.Entries != nil, in.CIDRs, in.CIDRs != nil)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		app, err := s.SetIPAllowList(ctx, in.ServiceID, entries)
 		if err != nil {
 			return nil, renderService{}, err
 		}

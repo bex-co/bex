@@ -96,10 +96,13 @@ query Server($id: String!) {
       name
       value
     }
-    # ipAllowList is Render's inbound CIDR allowlist for web_service and
-    # static_site (w7/m32): each element is a CIDR string; empty/null means
-    # open to all source IPs (Render's default).
+    # Description-preserving Render allowlist entries. The legacy flat
+    # ipAllowList remains in the schema for older clients.
     ipAllowList
+    ipAllowListEntries {
+      cidrBlock
+      description
+    }
     # maintenanceMode is Render's maintenanceMode object (w1/m37): takes a
     # web_service offline behind an interstitial page without suspending it.
     # Always present (never null), even when never configured.

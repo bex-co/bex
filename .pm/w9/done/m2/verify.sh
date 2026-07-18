@@ -18,6 +18,7 @@ INSTANCE_NAME=""
 PG_NAME=""
 PG_ID=""
 KV_NAME=""
+KV_ID=""
 PROJECT_ID=""
 ENV_ID=""
 LOGOUT_CFG=""
@@ -262,7 +263,7 @@ else
     failx "services create returned no service id" "got: $instance_create"
   else
     pass "services create returns the RC9 {service,deployId} record"
-    raw_meta_check services "$INSTANCE_ID" services \
+    raw_meta_check services "$INSTANCE_ID" web \
       "service raw REST metadata has real owner/region/dashboard/timestamps"
 
     service_updated_before=$(raw_updated_at services "$INSTANCE_ID" 2>/dev/null || true)
@@ -380,7 +381,7 @@ else
   checkFields "postgres create: id/name/ipAllowList wire shape all correct (RC12, w4/m24 description)" \
     echo "$pg_create"
 
-  raw_meta_check postgres "$PG_ID" databases \
+  raw_meta_check postgres "$PG_ID" d \
     "postgres raw REST metadata has real owner/region/dashboard/timestamps"
 
   # list + get-by-name (RC3 envelope + RC7 ?name= filter) with whole-shape asserts.
@@ -397,7 +398,7 @@ else
     "Region:[[:space:]]*$EXPECTED_REGION" \
     "$RENDER_BIN" postgres get "$PG_NAME" -o text
   check "postgres text renders dashboard route" \
-    "Dashboard:[[:space:]]*$EXPECTED_DASHBOARD_URL/databases/$PG_ID" \
+    "Dashboard:[[:space:]]*$EXPECTED_DASHBOARD_URL/d/$PG_ID" \
     "$RENDER_BIN" postgres get "$PG_NAME" -o text
 
   # update --plan (RC3): the response reflects the new plan.
@@ -481,14 +482,21 @@ KV_NAME="verify-kv-$$"
 # behind one passing field, per checkFields' doc comment above. The trailing
 # description assertion is w4/m24: an --ip-allow-list description must come
 # BACK, not merely be accepted.
-WANT_FIELDS='"id":[[:space:]]*"'"$KV_NAME"'" "name":[[:space:]]*"'"$KV_NAME"'" "ownerId":[[:space:]]*"tea-[a-z0-9]+" "maxmemoryPolicy":[[:space:]]*"allkeys_lru" "persistenceMode":[[:space:]]*"journal_snapshot" "cidrBlock":[[:space:]]*"10\.0\.0\.0/8" "description":[[:space:]]*"verify"'
-
-checkFields "keyvalues create: owner/options nested + underscore maxmemoryPolicy (RC4) + ipAllowList shape all correct" \
+kv_create=$(
   "$RENDER_BIN" keyvalues create --name "$KV_NAME" \
-    --ip-allow-list "cidr=10.0.0.0/8,description=verify" --confirm -o json
+    --ip-allow-list "cidr=10.0.0.0/8,description=verify" --confirm -o json 2>&1
+)
+if [ $? != 0 ]; then
+  failx "keyvalues create (RC3/RC4)" "got: $kv_create"
+else
+  KV_ID=$(json_field '["id"]' <<<"$kv_create" 2>/dev/null || true)
+  WANT_FIELDS='"id":[[:space:]]*"red-[a-z0-9]+" "name":[[:space:]]*"'"$KV_NAME"'" "ownerId":[[:space:]]*"tea-[a-z0-9]+" "maxmemoryPolicy":[[:space:]]*"allkeys_lru" "persistenceMode":[[:space:]]*"journal_snapshot" "cidrBlock":[[:space:]]*"10\.0\.0\.0/8" "description":[[:space:]]*"verify"'
+  checkFields "keyvalues create: typed id + owner/options + ipAllowList shape all correct" \
+    echo "$kv_create"
 
-raw_meta_check key-value "$KV_NAME" keyvalue \
-  "key-value raw REST metadata has real owner/region/dashboard/timestamps"
+  raw_meta_check key-value "$KV_ID" r \
+    "key-value raw REST metadata has real owner/region/dashboard/timestamps"
+fi
 
 check "keyvalues text renders Workspace" \
   "Workspace:[[:space:]]+.*$RENDER_WORKSPACE" \
@@ -496,8 +504,9 @@ check "keyvalues text renders Workspace" \
 check "keyvalues text renders configured Region" \
   "Region:[[:space:]]*$EXPECTED_REGION" \
   "$RENDER_BIN" keyvalues get "$KV_NAME" -o text
-kv_updated_before=$(raw_updated_at key-value "$KV_NAME" 2>/dev/null || true)
+kv_updated_before=$(raw_updated_at key-value "$KV_ID" 2>/dev/null || true)
 
+WANT_FIELDS='"id":[[:space:]]*"'"$KV_ID"'" "name":[[:space:]]*"'"$KV_NAME"'" "ownerId":[[:space:]]*"tea-[a-z0-9]+" "maxmemoryPolicy":[[:space:]]*"allkeys_lru" "persistenceMode":[[:space:]]*"journal_snapshot" "cidrBlock":[[:space:]]*"10\.0\.0\.0/8" "description":[[:space:]]*"verify"'
 checkFields "keyvalues list: same fields survive the cursor envelope (RC3)" \
   "$RENDER_BIN" keyvalues list -o json
 
@@ -508,14 +517,14 @@ check "keyvalues suspend resolves and applies" \
   "\"suspended\":[[:space:]]*true" \
   "$RENDER_BIN" keyvalues suspend "$KV_NAME" --confirm -o json
 
-updatedat_advances key-value "$KV_NAME" "$kv_updated_before" \
+updatedat_advances key-value "$KV_ID" "$kv_updated_before" \
   "key-value updatedAt advances after suspend"
 
 # resume's downstream `status` field is async (K8s reconciliation may still say
 # "unavailable" moments after the call returns) — only exit 0 + the right id
 # is asserted, not the transient status, to avoid a flaky false failure.
 check "keyvalues resume resolves and applies" \
-  "\"id\":[[:space:]]*\"$KV_NAME\"" \
+  "\"id\":[[:space:]]*\"$KV_ID\"" \
   "$RENDER_BIN" keyvalues resume "$KV_NAME" --confirm -o json
 
 check "keyvalues delete resolves and applies" \

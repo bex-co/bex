@@ -77,13 +77,26 @@ type Service struct {
 // minus the mount/tenant prefix the store prepends).
 func envPath(service string) string { return "services/" + service + "/env" }
 
+// storeServiceName keeps OpenBao paths on the public service name even when a
+// Render client addresses the resource by its stable srv- id. Store-managed
+// Apps use a tenant-prefixed Kubernetes name, so neither the request token nor
+// metadata.name is the correct key for data seeded during create.
+func storeServiceName(a *appv1alpha1.App, fallback string) string {
+	if name := a.Labels[core.LabelServiceName]; name != "" {
+		return name
+	}
+	return fallback
+}
+
 // ListEnvVars returns a service's environment variables, sorted by key for a
 // stable response (Render's GET /v1/services/{id}/env-vars). Reading secret
 // values is sensitive, gated like connection strings (RelCanViewSensitive).
 func (s *Service) ListEnvVars(ctx context.Context, service string) ([]EnvVarView, error) {
-	if _, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, service); err != nil {
+	a, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, service)
+	if err != nil {
 		return nil, err // ErrNotFound for unknown services, exactly like Get
 	}
+	service = storeServiceName(a, service)
 	if s.Store == nil {
 		return nil, core.ErrSecretsUnavailable
 	}
@@ -122,9 +135,11 @@ func (s *Service) ListEnvVarsPage(ctx context.Context, service, after string, li
 // GetEnvVar returns a single variable (Render's GET .../env-vars/{key}), the bare
 // {key,value}. Unknown service or key => core.ErrNotFound. Sensitive read.
 func (s *Service) GetEnvVar(ctx context.Context, service, key string) (EnvVarView, error) {
-	if _, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, service); err != nil {
+	a, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, service)
+	if err != nil {
 		return EnvVarView{}, err
 	}
+	service = storeServiceName(a, service)
 	if s.Store == nil {
 		return EnvVarView{}, core.ErrSecretsUnavailable
 	}
@@ -148,6 +163,7 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	if err != nil {
 		return nil, err
 	}
+	service = storeServiceName(a, service)
 	if s.Store == nil {
 		return nil, core.ErrSecretsUnavailable
 	}
@@ -195,6 +211,7 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 	if err != nil {
 		return EnvVarView{}, err
 	}
+	service = storeServiceName(a, service)
 	if s.Store == nil {
 		return EnvVarView{}, core.ErrSecretsUnavailable
 	}
@@ -227,6 +244,7 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 	if err != nil {
 		return err
 	}
+	service = storeServiceName(a, service)
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}
@@ -234,6 +252,7 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 	if err != nil {
 		return err
 	}
+	service = storeServiceName(a, service)
 	if _, ok := env[key]; !ok {
 		return core.ErrNotFound
 	}

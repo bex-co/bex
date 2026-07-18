@@ -1,5 +1,3 @@
-import { useState } from "react";
-import { Loader2, Plus, Trash2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -7,8 +5,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card";
-import { Button } from "@/common/components/ui/button";
-import { Input } from "@/common/components/ui/input";
+import { IPAllowListEditor } from "@/common/components/ip-allow-list-editor";
+import { ipAllowListEntryKey } from "@/common/lib/ip-allow-list";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useKeyValueNetworking } from "@/features/keyvalue/hooks/use-key-value-networking";
 
@@ -43,114 +41,24 @@ export function KeyValueNetworkingPanel({
         )}
         {/* key remounts the editable draft from the server list whenever it
             changes (e.g. after a save), avoiding an effect-based state sync. */}
-        <AllowListEditor
-          key={entryKey(networking.allowList)}
-          networking={networking}
+        <IPAllowListEditor
+          key={ipAllowListEntryKey(networking.allowList)}
+          entries={networking.allowList}
+          saving={networking.savingAllowList}
+          onSave={networking.saveAllowList}
+          labels={{
+            hint: t("keyvalue.networkingHint"),
+            open: t("keyvalue.networkingOpen"),
+            descriptionPlaceholder: t("keyvalue.networkingEntryDescription"),
+            add: t("keyvalue.networkingAdd"),
+            save: t("keyvalue.networkingSave"),
+            invalid: t("keyvalue.networkingInvalid"),
+            remove: (cidr) => t("keyvalue.networkingRemove", { cidr }),
+            moveUp: (cidr) => t("keyvalue.networkingMoveUp", { cidr }),
+            moveDown: (cidr) => t("keyvalue.networkingMoveDown", { cidr }),
+          }}
         />
       </CardContent>
     </Card>
-  );
-}
-
-type Networking = ReturnType<typeof useKeyValueNetworking>;
-
-// One canonical serialization of an entry list — used both as the editor's
-// remount key and for the dirty check, so the two can't disagree.
-function entryKey(list: { cidrBlock: string; description: string }[]) {
-  return list.map((e) => `${e.cidrBlock}=${e.description}`).join(",");
-}
-
-function AllowListEditor({ networking }: { networking: Networking }) {
-  const { t } = useTranslations();
-  // Local editable copy, seeded from the server list; dirty until saved.
-  // Entries carry {cidrBlock, description} — the description persists end to
-  // end (w4/m24), so the label a human gives an entry survives the round-trip.
-  const [draft, setDraft] = useState(networking.allowList);
-  const [entry, setEntry] = useState("");
-  const [description, setDescription] = useState("");
-
-  const dirty = entryKey(draft) !== entryKey(networking.allowList);
-
-  function add() {
-    const c = entry.trim();
-    if (c && !draft.some((e) => e.cidrBlock === c)) {
-      setDraft([...draft, { cidrBlock: c, description: description.trim() }]);
-    }
-    setEntry("");
-    setDescription("");
-  }
-
-  return (
-    <section className="space-y-2">
-      <p className="text-xs text-muted-foreground">
-        {t("keyvalue.networkingHint")}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {draft.length === 0 ? (
-          <span className="text-sm text-muted-foreground">
-            {t("keyvalue.networkingOpen")}
-          </span>
-        ) : (
-          draft.map((e) => (
-            <span
-              key={e.cidrBlock}
-              className="inline-flex items-center gap-1 rounded-md border bg-muted px-2 py-1 text-xs"
-            >
-              <code className="font-mono">{e.cidrBlock}</code>
-              {e.description ? (
-                <span className="text-muted-foreground">{e.description}</span>
-              ) : null}
-              <button
-                type="button"
-                aria-label={t("keyvalue.networkingRemove", {
-                  cidr: e.cidrBlock,
-                })}
-                onClick={() =>
-                  setDraft(draft.filter((x) => x.cidrBlock !== e.cidrBlock))
-                }
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <Trash2 className="size-3" />
-              </button>
-            </span>
-          ))
-        )}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Input
-          value={entry}
-          onChange={(e) => setEntry(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
-          placeholder="203.0.113.0/24"
-          className="max-w-xs"
-        />
-        <Input
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
-          placeholder={t("keyvalue.networkingEntryDescription")}
-          className="max-w-xs"
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={add}
-          disabled={!entry.trim()}
-        >
-          <Plus />
-          {t("keyvalue.networkingAdd")}
-        </Button>
-        <Button
-          size="sm"
-          onClick={() => void networking.saveAllowList(draft)}
-          disabled={!dirty || networking.savingAllowList}
-        >
-          {networking.savingAllowList ? (
-            <Loader2 className="animate-spin" />
-          ) : null}
-          {t("keyvalue.networkingSave")}
-        </Button>
-      </div>
-    </section>
   );
 }

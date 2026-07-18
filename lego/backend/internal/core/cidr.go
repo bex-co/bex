@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"slices"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -136,6 +137,24 @@ func AllowListOrCIDRs(entries []IPAllowListEntry, cidrs []string) []IPAllowListE
 		return entries
 	}
 	return AllowListFromCIDRs(cidrs)
+}
+
+// ResolveAllowListInputs resolves adapters that expose both the structured
+// and legacy flat forms. One provided form is used directly; equivalent dual
+// inputs are accepted; conflicting dual inputs are a bad request rather than
+// silently dropping descriptions or CIDRs.
+func ResolveAllowListInputs(entries []IPAllowListEntry, entriesSet bool, cidrs []string, cidrsSet bool) ([]IPAllowListEntry, error) {
+	if !entriesSet {
+		return AllowListFromCIDRs(cidrs), nil
+	}
+	if !cidrsSet {
+		return entries, nil
+	}
+	legacy := AllowListFromCIDRs(cidrs)
+	if !slices.Equal(entries, legacy) {
+		return nil, fmt.Errorf("%w: ipAllowList and ipAllowListEntries are set to conflicting values", ErrBadRequest)
+	}
+	return entries, nil
 }
 
 // DenyAllCIDR is the unmatchable placeholder the environment fan-out projects

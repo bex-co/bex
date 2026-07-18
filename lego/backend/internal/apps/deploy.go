@@ -1130,6 +1130,16 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, e
 	if len(se.seedLiterals) == 0 {
 		se.seedLiterals = nil
 	}
+	allowList := make([]core.IPAllowListEntry, 0, len(a.IPAllowList))
+	for _, entry := range a.IPAllowList {
+		if strings.TrimSpace(entry.Source) == "" {
+			return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q has an ipAllowList entry without a source", core.ErrBadRequest, a.Name)
+		}
+		allowList = append(allowList, core.IPAllowListEntry{CIDRBlock: entry.Source, Description: entry.Description})
+	}
+	if err := core.ValidateAllowList(allowList); err != nil {
+		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q ipAllowList: %v", core.ErrBadRequest, a.Name, err)
+	}
 
 	return CreateRequest{
 		Name:                    a.Name,
@@ -1158,6 +1168,7 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, e
 		PublishPath:             publish,
 		MaxShutdownDelaySeconds: a.MaxShutdownDelaySeconds,
 		Autoscaling:             scalingToAutoscalingRequest(a.Scaling),
+		IPAllowList:             allowList,
 	}, se, nil
 }
 

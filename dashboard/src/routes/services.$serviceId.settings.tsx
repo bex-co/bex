@@ -203,7 +203,7 @@ export function ServiceSettingsPage() {
               static_site only (both have a public Ingress). */}
           <ServiceNetworkingPanel
             serviceId={serviceId}
-            currentAllowList={service?.ipAllowList}
+            currentAllowList={service?.ipAllowListEntries}
             onSaved={refetch}
           />
           {/* Maintenance Mode (w1/m37): web_service only, matching the

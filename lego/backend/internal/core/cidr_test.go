@@ -89,3 +89,30 @@ func TestValidateAllowListNamesTheBadEntry(t *testing.T) {
 		t.Fatalf("valid CIDR with free-text description must pass, got %v", err)
 	}
 }
+
+func TestResolveAllowListInputs(t *testing.T) {
+	entries := []IPAllowListEntry{{CIDRBlock: "203.0.113.0/24", Description: "office"}}
+	got, err := ResolveAllowListInputs(entries, true, nil, false)
+	if err != nil || !reflect.DeepEqual(got, entries) {
+		t.Fatalf("structured only = %+v, %v", got, err)
+	}
+	got, err = ResolveAllowListInputs(nil, false, []string{"192.0.2.0/24"}, true)
+	if err != nil || !reflect.DeepEqual(got, []IPAllowListEntry{{CIDRBlock: "192.0.2.0/24"}}) {
+		t.Fatalf("legacy only = %+v, %v", got, err)
+	}
+	got, err = ResolveAllowListInputs(
+		[]IPAllowListEntry{{CIDRBlock: "192.0.2.0/24"}}, true,
+		[]string{"192.0.2.0/24"}, true,
+	)
+	if err != nil || len(got) != 1 {
+		t.Fatalf("equivalent dual inputs = %+v, %v", got, err)
+	}
+	_, err = ResolveAllowListInputs(entries, true, []string{"203.0.113.0/24"}, true)
+	if !errors.Is(err, ErrBadRequest) {
+		t.Fatalf("description-dropping dual input must conflict, got %v", err)
+	}
+	got, err = ResolveAllowListInputs([]IPAllowListEntry{}, true, nil, false)
+	if err != nil || got == nil || len(got) != 0 {
+		t.Fatalf("explicit structured clear = %#v, %v", got, err)
+	}
+}

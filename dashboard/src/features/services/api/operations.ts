@@ -9,23 +9,37 @@
 import gql from "graphql-tag";
 import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
 
+export interface IpAllowListEntry {
+  cidrBlock: string;
+  description: string;
+}
+
 interface SetServiceIpAllowListVars {
   id: string;
-  cidrs: string[] | null;
+  entries: IpAllowListEntry[];
 }
 
 export interface SetServiceIpAllowListMutation {
   setServiceIpAllowList: {
     id: string | null;
-    ipAllowList: Array<string | null> | null;
+    ipAllowListEntries: Array<{
+      cidrBlock: string;
+      description: string | null;
+    } | null> | null;
   } | null;
 }
 
 export const SetServiceIpAllowListDocument = gql`
-  mutation SetServiceIpAllowList($id: String!, $cidrs: [String]) {
-    setServiceIpAllowList(id: $id, cidrs: $cidrs) {
+  mutation SetServiceIpAllowList(
+    $id: String!
+    $entries: [IPAllowListEntryInput!]
+  ) {
+    setServiceIpAllowList(id: $id, entries: $entries) {
       id
-      ipAllowList
+      ipAllowListEntries {
+        cidrBlock
+        description
+      }
     }
   }
 ` as unknown as TypedDocumentNode<

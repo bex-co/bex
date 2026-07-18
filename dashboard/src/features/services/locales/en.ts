@@ -3080,6 +3080,14 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Add",
     description: "Button to add a CIDR to the draft list (w7/m32)",
   },
+  "services.networkingEntryDescription": {
+    message: "Description (optional)",
+    description: "Placeholder for a service allowlist entry description",
+  },
+  "services.networkingInvalid": {
+    message: "Enter a valid IPv4 or IPv6 CIDR block.",
+    description: "Validation error for an invalid service allowlist CIDR",
+  },
   "services.networkingSave": {
     message: "Save",
     description: "Button to persist the CIDR list (w7/m32)",
@@ -3088,6 +3096,14 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Remove {cidr}",
     description:
       "Accessible label on the trash icon next to a CIDR tag (w7/m32)",
+  },
+  "services.networkingMoveUp": {
+    message: "Move {cidr} up",
+    description: "Accessible label to move an allowlist entry earlier",
+  },
+  "services.networkingMoveDown": {
+    message: "Move {cidr} down",
+    description: "Accessible label to move an allowlist entry later",
   },
   "services.networkingSaved": {
     message: "IP allowlist updated",

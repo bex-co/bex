@@ -62,6 +62,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     dockerfilePath: null,
     registryCredentialId: null,
     ipAllowList: null,
+    ipAllowListEntries: null,
     ...overrides,
   };
 }
@@ -122,6 +123,7 @@ describe("toServiceView", () => {
       routes: [],
       headers: [],
       ipAllowList: null,
+      ipAllowListEntries: null,
       maintenanceMode: null,
     });
   });

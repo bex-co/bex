@@ -93,6 +93,7 @@ var appSpecIdentityClasses = map[string]appSpecIdentityClass{
 	"HostRedirects":              identityOperational,
 	"SubdomainPolicy":            identityOperational,
 	"IPAllowList":                identityOperational,
+	"IPAllowListEntries":         identityOperational,
 	"EnvironmentIPAllowList":     identityOperational,
 	"MaintenanceMode":            identityOperational,
 }
