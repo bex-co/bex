@@ -29,7 +29,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -63,6 +62,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
+	"github.com/bex-co/bex/lego/backend/internal/serve"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
 	"github.com/bex-co/bex/lego/backend/internal/webhooks"
@@ -76,6 +76,14 @@ func envOr(k, def string) string {
 	}
 	return def
 }
+
+// drainWindow is how long a SIGTERM'd bex-api keeps serving NEW requests while
+// /readyz reports draining (w1/m52): long enough for the readiness probe
+// (periodSeconds 5, failureThreshold 1) plus endpoint/ingress propagation to
+// stop routing here, and — with serve's 10s in-flight shutdown budget — inside
+// the default 30s terminationGracePeriodSeconds. A second signal force-exits
+// immediately (ctrl.SetupSignalHandler), so local Ctrl-C isn't held hostage.
+const drainWindow = 15 * time.Second
 
 func main() {
 	ctx := ctrl.SetupSignalHandler()
@@ -97,6 +105,12 @@ func main() {
 	}
 
 	base := &core.Base{Client: cl, Namespace: envOr("BEX_API_NAMESPACE", "default")}
+
+	// One readiness flag for the whole pod (w1/m52): the public server's
+	// /readyz answers 200 until SIGTERM, then 503 while both servers keep
+	// serving through the drain window. The readiness probe points here;
+	// liveness stays on /healthz, which never flips.
+	ready := &serve.Readiness{}
 
 	deps := api.Deps{
 		// BEX_BASE_DOMAIN names custom-domain DNS targets `<app>.<base>` (docs/ADR005-custom-domain.md);
@@ -363,10 +377,13 @@ func main() {
 		go func() {
 			// Same serve-then-graceful-shutdown pattern as the public server
 			// below: on SIGTERM (ctx cancelled) the internal API drains instead
-			// of being cut mid-request. Its drain is best-effort — main returns
-			// once the public server finishes draining, so a slower CP drain is
-			// cut short at process exit; acceptable for an internal-only API.
-			if err := serveUntilShutdown(ctx, cpSrv); err != nil {
+			// of being cut mid-request. It shares the pod's drain window — the
+			// readiness flip removes BOTH ports from the Service endpoints, so
+			// :8091 keeps serving late-routed internal calls through the same
+			// window. Its drain is best-effort — main returns once the public
+			// server finishes draining, so a slower CP drain is cut short at
+			// process exit; acceptable for an internal-only API.
+			if err := serve.UntilShutdown(ctx, cpSrv, serve.Options{Readiness: ready, DrainWindow: drainWindow}); err != nil {
 				log.Fatalf("bex-api control plane: %v", err)
 			}
 		}()
@@ -530,10 +547,18 @@ func main() {
 		log.Fatalf("bex-api: %v", err)
 	}
 
+	// /readyz mounts OUTSIDE the product handler (w1/m52): it is a deployment
+	// lifecycle endpoint for the readiness probe, not part of the Render-shaped
+	// API surface, so internal/api stays untouched and parity-clean. Everything
+	// else falls through to the product handler unchanged.
+	root := http.NewServeMux()
+	root.Handle("GET /readyz", ready.Handler())
+	root.Handle("/", handler)
+
 	addr := envOr("BEX_API_ADDR", ":8090")
 	httpSrv := &http.Server{
 		Addr:              addr,
-		Handler:           handler,
+		Handler:           root,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      30 * time.Second,
@@ -543,34 +568,10 @@ func main() {
 	// ctrl.SetupSignalHandler above) so the process shuts the server down
 	// gracefully instead of serving for the whole termination grace period with
 	// every background loop's context already cancelled (w1/m30, .pm/w1/019.md).
-	if err := serveUntilShutdown(ctx, httpSrv); err != nil {
+	// On SIGTERM: /readyz flips to 503, the server keeps serving new requests
+	// through drainWindow, then the in-flight drain runs (w1/m52).
+	if err := serve.UntilShutdown(ctx, httpSrv, serve.Options{Readiness: ready, DrainWindow: drainWindow}); err != nil {
 		log.Fatalf("bex-api: %v", err)
-	}
-}
-
-// serveUntilShutdown runs srv.ListenAndServe in a goroutine and blocks until
-// either the server stops on its own (a bind/startup error, returned as-is) or
-// ctx is cancelled — on cancel it gracefully shuts the server down within a
-// bounded timeout and returns Shutdown's result (nil on a clean drain). This is
-// the shared serve/shutdown lifecycle used by both the public API server and the
-// internal control-plane server so a SIGTERM'd bex-api exits promptly.
-func serveUntilShutdown(ctx context.Context, srv *http.Server) error {
-	serveErr := make(chan error, 1)
-	go func() { serveErr <- srv.ListenAndServe() }()
-	select {
-	case err := <-serveErr:
-		// The server stopped before any signal — e.g. the port was already
-		// bound. ErrServerClosed only arises from the Shutdown in the ctx.Done
-		// path below, so here it means a clean stop; anything else is a real
-		// startup error the caller should fail fast on.
-		if errors.Is(err, http.ErrServerClosed) {
-			return nil
-		}
-		return err
-	case <-ctx.Done():
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		return srv.Shutdown(shutdownCtx)
 	}
 }
 

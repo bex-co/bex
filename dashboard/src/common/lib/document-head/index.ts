@@ -4,9 +4,9 @@ import type { SupportedLanguage } from "@/i18n";
 
 export { DashboardDocumentTitle } from "./document-title";
 export { getDashboardOrigin } from "./origin";
+export { DASHBOARD_NAME, TITLE_SEPARATOR } from "./constants";
 
-export const DASHBOARD_NAME = "bex Dashboard";
-export const TITLE_SEPARATOR = " ・ ";
+import { DASHBOARD_NAME, TITLE_SEPARATOR } from "./constants";
 
 type MetaTag =
   | { title: string }

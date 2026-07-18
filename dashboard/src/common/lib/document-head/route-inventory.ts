@@ -81,7 +81,7 @@ export const ROUTE_HEAD_INVENTORY: Record<
     "web.$.tsx",
     "worker.$.tsx",
   ],
-  "non-html": ["api.connected-agents.tsx", "api.sessions.tsx"],
+  "non-html": ["api.connected-agents.tsx", "api.sessions.tsx", "healthz.tsx"],
   fallback: ["$.tsx", "__root.tsx"],
 };
 

@@ -7,6 +7,7 @@ import {
 import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
 import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Button } from "@/common/components/ui/button";
@@ -91,8 +92,10 @@ export function EnvGroupDetailPage() {
 
   // A dead id — a not-found-shaped error, or a null row with no error at all —
   // redirects home (w9/m55); any other failed query stays put on the inline
-  // error state so an outage never masquerades as a deleted group.
+  // error state so an outage never masquerades as a deleted group. A
+  // roll-window loader failure re-runs once (w1/m52) so the title recovers.
   useNotFoundRedirect(!loading && !group && (notFound || !errorKind));
+  useLoaderErrorRetry(Route.useLoaderData(), groupId);
 
   return (
     <DashboardLayout>

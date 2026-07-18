@@ -3,6 +3,7 @@ import { AlertTriangle } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
 import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { WebhookDetailContext } from "@/features/webhooks/components/webhook-detail-context";
@@ -64,8 +65,10 @@ function WebhookDetailShell() {
 
   // `notFound` also settles true when the query itself failed (errorPolicy
   // "all" leaves data empty), so exclude `error`: a dead id redirects home
-  // (w9/m55), a failed query stays put on the inline error state below.
+  // (w9/m55), a failed query stays put on the inline error state below. A
+  // roll-window loader failure re-runs once (w1/m52) so the title recovers.
   useNotFoundRedirect(notFound && !error);
+  useLoaderErrorRetry(Route.useLoaderData(), webhookId);
 
   return (
     <DashboardLayout>

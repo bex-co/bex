@@ -3,6 +3,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { ResourceLoadError } from "@/common/components/resource-load-error";
+import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
 import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
@@ -77,8 +78,10 @@ export function BlueprintDetailPage() {
   >(null);
 
   // A dead id redirects home (w9/m55); a failed query stays put on the inline
-  // error state so an outage never masquerades as a deleted blueprint.
+  // error state so an outage never masquerades as a deleted blueprint. A
+  // roll-window loader failure re-runs once (w1/m52) so the title recovers.
   useNotFoundRedirect(!loading && !blueprint && !error);
+  useLoaderErrorRetry(Route.useLoaderData(), blueprintId);
   const showError = !loading && !blueprint && !!error;
 
   async function handleSync(confirmation?: string) {

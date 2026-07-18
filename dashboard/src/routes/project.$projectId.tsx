@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
 import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import {
   loadRouteResource,
@@ -39,9 +40,13 @@ export const Route = createFileRoute("/project/$projectId")({
  */
 function RouteComponent() {
   // A dead project id redirects home for every child page (w9/m55); a query
-  // error passes through so the children keep their inline error states.
+  // error passes through so the children keep their inline error states —
+  // and re-runs the loader once (w1/m52), so a roll-window failure self-heals
+  // instead of stranding "Couldn't load resources" until a manual reload.
+  const { projectId } = Route.useParams();
   const projectResult = Route.useLoaderData();
   useNotFoundRedirect(projectResult.state === "not-found");
+  useLoaderErrorRetry(projectResult, projectId);
   return (
     <DashboardLayout>
       <Outlet />
