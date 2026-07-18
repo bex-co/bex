@@ -16,11 +16,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/common/components/ui/dialog";
-import { Input } from "@/common/components/ui/input";
-import { Label } from "@/common/components/ui/label";
 import { Button } from "@/common/components/ui/button";
+import { SudoCommandField } from "@/common/components/sudo-command-field";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useDeleteService } from "@/features/services/hooks/use-delete-service";
+import {
+  serviceSudoPhrase,
+  sudoServiceTypeWords,
+} from "@/features/services/lib/service-type";
 import type { ServiceView } from "@/features/services/types";
 
 export interface DeleteServiceCardProps {
@@ -29,10 +32,11 @@ export interface DeleteServiceCardProps {
 
 /**
  * The Settings-tab danger zone (w5/m14): a destructive-bordered card whose
- * "Delete service" button opens a type-to-confirm dialog. Typing the service's
- * immutable id arms the confirm button — a mutable display label can be shared,
- * so it is not a safe destructive identity. On success the deleted App is
- * evicted from the cache (see useDeleteService) and the user lands back on the
+ * "Delete service" button opens a type-to-confirm dialog. Typing Render's
+ * exact "sudo delete <type words> <name>" phrase arms the confirm button
+ * (live capture: docs/render-artifacts/protected-environments.md) — a typo is
+ * a no-op, not a destroyed service. On success the deleted App is evicted
+ * from the cache (see useDeleteService) and the user lands back on the
  * services list, where the deleted row is already gone.
  */
 export function DeleteServiceCard({ service }: DeleteServiceCardProps) {
@@ -44,7 +48,8 @@ export function DeleteServiceCard({ service }: DeleteServiceCardProps) {
   const [requiredConfirmation, setRequiredConfirmation] = useState<
     string | null
   >(null);
-  const expectedConfirmation = requiredConfirmation ?? service.id;
+  const expectedConfirmation =
+    requiredConfirmation ?? serviceSudoPhrase("delete", service);
   const matches = confirmation === expectedConfirmation;
 
   async function handleDelete() {
@@ -97,25 +102,22 @@ export function DeleteServiceCard({ service }: DeleteServiceCardProps) {
                 ? t("services.protectedConfirmationBody", {
                     name: service.name,
                   })
-                : t("services.deleteConfirmBody")}
+                : t("services.deleteConfirmBody", {
+                    type: sudoServiceTypeWords(service),
+                  })}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="service-delete-confirm">
-              {requiredConfirmation
-                ? t("services.protectedConfirmationPrompt", {
-                    confirmation: requiredConfirmation,
-                  })
-                : t("services.deleteConfirmPrompt", { name: service.id })}
-            </Label>
-            <Input
-              id="service-delete-confirm"
-              value={confirmation}
-              onChange={(e) => setConfirmation(e.target.value)}
-              autoComplete="off"
-              placeholder={expectedConfirmation}
-            />
-          </div>
+          <SudoCommandField
+            id="service-delete-confirm"
+            promptKey={
+              requiredConfirmation
+                ? "services.protectedConfirmationPrompt"
+                : "services.deleteConfirmPrompt"
+            }
+            phrase={expectedConfirmation}
+            value={confirmation}
+            onValueChange={setConfirmation}
+          />
           <DialogFooter>
             <Button
               variant="outline"

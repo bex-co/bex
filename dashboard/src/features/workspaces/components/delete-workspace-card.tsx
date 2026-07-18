@@ -8,9 +8,8 @@ import {
   CardDescription,
   CardContent,
 } from "@/common/components/ui/card";
-import { Input } from "@/common/components/ui/input";
-import { Label } from "@/common/components/ui/label";
 import { Button } from "@/common/components/ui/button";
+import { SudoCommandField } from "@/common/components/sudo-command-field";
 import {
   Alert,
   AlertTitle,
@@ -72,19 +71,14 @@ export function DeleteWorkspaceCard({ workspace }: DeleteWorkspaceCardProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="delete-workspace-confirm">
-            {t("workspaces.deleteConfirmLabel", { phrase: confirmPhrase })}
-          </Label>
-          <Input
-            id="delete-workspace-confirm"
-            value={confirmation}
-            onChange={(e) => setConfirmation(e.target.value)}
-            placeholder={confirmPhrase}
-            autoComplete="off"
-            className="max-w-sm"
-          />
-        </div>
+        <SudoCommandField
+          id="delete-workspace-confirm"
+          promptKey="workspaces.deleteConfirmLabel"
+          phrase={confirmPhrase}
+          value={confirmation}
+          onValueChange={setConfirmation}
+          inputClassName="max-w-sm"
+        />
 
         {error ? (
           <Alert variant="destructive">

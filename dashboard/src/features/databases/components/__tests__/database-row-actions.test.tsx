@@ -40,7 +40,7 @@ beforeEach(() => {
 });
 
 describe("DatabaseRowActions", () => {
-  it("gates delete behind a typed-name confirmation", async () => {
+  it("gates delete behind the sudo type-to-confirm phrase", async () => {
     const onDeleted = vi.fn();
     const user = userEvent.setup();
     render(<DatabaseRowActions database={DB} onDeleted={onDeleted} />);
@@ -59,7 +59,7 @@ describe("DatabaseRowActions", () => {
     expect(confirm).toBeDisabled();
 
     await user.clear(input);
-    await user.type(input, "shop-db");
+    await user.type(input, "sudo delete postgres shop-db");
     expect(confirm).toBeEnabled();
 
     await user.click(confirm);

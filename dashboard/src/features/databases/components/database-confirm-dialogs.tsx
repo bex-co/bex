@@ -9,8 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/common/components/ui/dialog";
-import { Input } from "@/common/components/ui/input";
-import { Label } from "@/common/components/ui/label";
+import { SudoCommandField } from "@/common/components/sudo-command-field";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { DatabaseLifecycleAction } from "@/features/databases/hooks/use-database-lifecycle";
 import type { DatabaseView } from "@/features/databases/types";
@@ -24,8 +23,9 @@ export interface DeleteDatabaseDialogProps {
 }
 
 /**
- * Delete: typed-name confirm (destructive, irreversible — it cascades the CNPG
- * cluster + PVC). Owns the typed-name state so every caller gets the same gate.
+ * Delete: Render-style sudo type-to-confirm gate (destructive, irreversible —
+ * it cascades the CNPG cluster + PVC). Owns the typed state so every caller
+ * gets the same gate.
  */
 export function DeleteDatabaseDialog({
   database,
@@ -36,7 +36,8 @@ export function DeleteDatabaseDialog({
 }: DeleteDatabaseDialogProps) {
   const { t } = useTranslations();
   const [typed, setTyped] = useState("");
-  const canDelete = typed === database.name && !busy;
+  const confirmPhrase = `sudo delete postgres ${database.name}`;
+  const canDelete = typed === confirmPhrase && !busy;
 
   function handleOpenChange(next: boolean) {
     onOpenChange(next);
@@ -54,18 +55,13 @@ export function DeleteDatabaseDialog({
             {t("databases.deleteConfirmBody")}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2">
-          <Label htmlFor="db-delete-confirm">
-            {t("databases.deleteConfirmPrompt", { name: database.name })}
-          </Label>
-          <Input
-            id="db-delete-confirm"
-            value={typed}
-            onChange={(e) => setTyped(e.target.value)}
-            autoComplete="off"
-            placeholder={database.name}
-          />
-        </div>
+        <SudoCommandField
+          id="db-delete-confirm"
+          promptKey="databases.deleteConfirmPrompt"
+          phrase={confirmPhrase}
+          value={typed}
+          onValueChange={setTyped}
+        />
         <DialogFooter>
           <Button
             variant="outline"

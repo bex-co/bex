@@ -160,9 +160,9 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     description: "Workspace settings delete section description",
   },
   "workspaces.deleteConfirmLabel": {
-    message: "Type {phrase} below to confirm",
+    message: "Type {phrase} below to confirm.",
     description:
-      "Delete-guard input label naming the exact 'sudo delete workspace <name>' phrase to type",
+      "Body prompt naming the exact 'sudo delete workspace <name>' phrase (rendered bold by SudoCommandField)",
   },
   "workspaces.deleteErrorTitle": {
     message: "Couldn't delete workspace",

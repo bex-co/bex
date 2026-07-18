@@ -205,9 +205,11 @@ describe("BlueprintDetailPage", () => {
     await user.click(screen.getByRole("button", { name: /^sync$/i }));
 
     const protectedDialog = await screen.findByRole("dialog");
-    const input = within(protectedDialog).getByLabelText(
-      /sudo deploy service api/,
-    );
+    // The backend's phrase is body copy; the input is labeled "Sudo Command".
+    expect(
+      within(protectedDialog).getByText("sudo deploy service api"),
+    ).toBeInTheDocument();
+    const input = within(protectedDialog).getByLabelText("Sudo Command");
     const retry = within(protectedDialog).getByRole("button", {
       name: /^sync$/i,
     });

@@ -60,6 +60,12 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+_(`024.md` implemented 2026-07-17 — all destructive type-to-confirm gates
+unified on Render's sudo-command dialog pattern (shared `SudoCommandField`,
+bold phrase as body copy, "Sudo Command" input label; service delete now
+`sudo delete <type words> <name>`); completed as bounded single-session work
+and recorded directly in `done/`.)_
+
 _(`023.md` implemented 2026-07-17 — compact clickable instance slugs and an
 exact, removable instance filter on deploy-detail log rows; completed as
 sub-hour work and moved to `done/`.)_

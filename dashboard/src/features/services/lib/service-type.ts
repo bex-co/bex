@@ -41,6 +41,29 @@ export const SERVICE_TYPE_ICON: Record<ServiceTypeKey, LucideIcon> = {
   unknown: Box,
 };
 
+// Render's destructive sudo confirmations name the type in lowercase words —
+// "sudo delete web service <name>", "sudo suspend static site <name>" (live
+// captures: docs/render-artifacts/protected-environments.md). These are part
+// of the exact phrase the user must type, so they are never translated.
+const SUDO_TYPE_WORDS: Record<ServiceTypeKey, string> = {
+  web: "web service",
+  private: "private service",
+  worker: "background worker",
+  cron: "cron job",
+  static: "static site",
+  unknown: "service",
+};
+
+/** Lowercase type words used inside a service's sudo confirmation phrase. */
+export function sudoServiceTypeWords(s: ServiceView): string {
+  return SUDO_TYPE_WORDS[deriveServiceType(s.type)];
+}
+
+/** Render's exact sudo confirmation phrase for a destructive service verb. */
+export function serviceSudoPhrase(verb: "delete", s: ServiceView): string {
+  return `sudo ${verb} ${sudoServiceTypeWords(s)} ${s.name}`;
+}
+
 /** True for a cron_job — the type whose detail shows a schedule + run history. */
 export function isCron(s: ServiceView): boolean {
   return s.type === "cron_job";

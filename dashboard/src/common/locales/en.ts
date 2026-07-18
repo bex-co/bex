@@ -13,6 +13,11 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "Loading…",
     description: "Generic loading state label",
   },
+  "common.sudoCommandLabel": {
+    message: "Sudo Command",
+    description:
+      "Input label on Render-style destructive type-to-confirm gates (live capture: docs/render-artifacts/workspace-lifecycle.md)",
+  },
   "common.navIntegrationsGroup": {
     message: "Integrations",
     description: "Sidebar nav section label (webhooks, notifications) — Render's grouping",

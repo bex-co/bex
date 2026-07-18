@@ -104,13 +104,13 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Delete-confirmation dialog title",
   },
   "databases.deleteConfirmBody": {
-    message:
-      "这将永久删除该数据库及其所有数据——Postgres 集群、存储卷及连接凭据。此操作无法撤销。",
-    description: "Delete-confirmation dialog body",
+    message: "此操作无法撤销。确定要删除此 Postgres 实例吗？",
+    description: "Delete-confirmation dialog body (Render-style copy)",
   },
   "databases.deleteConfirmPrompt": {
-    message: "输入 {name} 以确认。",
-    description: "Delete-confirmation typed-name prompt label",
+    message: "在下方输入 {phrase} 以确认。",
+    description:
+      "Body prompt naming the exact 'sudo delete postgres <name>' phrase (rendered bold by SudoCommandField)",
   },
   "databases.deleteCancel": {
     message: "取消",

@@ -11,6 +11,7 @@ import {
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
+import { SudoCommandField } from "@/common/components/sudo-command-field";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { isValidEnvGroupName } from "@/features/env-groups/lib/validation";
 import type { EnvGroupView } from "@/features/env-groups/types";
@@ -33,6 +34,7 @@ export function EnvGroupActions({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [name, setName] = useState(group.name);
   const [confirmation, setConfirmation] = useState("");
+  const deletePhrase = `sudo delete env group ${group.name}`;
 
   async function handleRename() {
     if (!isValidEnvGroupName(name) || busy) return;
@@ -40,7 +42,7 @@ export function EnvGroupActions({
   }
 
   async function handleDelete() {
-    if (confirmation !== group.id || busy) return;
+    if (confirmation !== deletePhrase || busy) return;
     if (await deleteGroup(group.id)) {
       setDeleteOpen(false);
       onDeleted();
@@ -124,18 +126,13 @@ export function EnvGroupActions({
               {t("envGroups.deleteDescription")}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="env-group-delete-confirm">
-              {t("envGroups.deletePrompt", { id: group.id })}
-            </Label>
-            <Input
-              id="env-group-delete-confirm"
-              value={confirmation}
-              onChange={(event) => setConfirmation(event.target.value)}
-              placeholder={group.id}
-              autoComplete="off"
-            />
-          </div>
+          <SudoCommandField
+            id="env-group-delete-confirm"
+            promptKey="envGroups.deletePrompt"
+            phrase={deletePhrase}
+            value={confirmation}
+            onValueChange={setConfirmation}
+          />
           <DialogFooter>
             <Button
               variant="outline"
@@ -147,7 +144,7 @@ export function EnvGroupActions({
             <Button
               variant="destructive"
               onClick={() => void handleDelete()}
-              disabled={confirmation !== group.id || busy}
+              disabled={confirmation !== deletePhrase || busy}
             >
               {busy ? <Loader2 className="animate-spin" /> : null}
               {t("envGroups.deleteConfirm")}

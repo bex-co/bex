@@ -37,14 +37,19 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   };
 }
 
+// Render's live guard: the full "sudo delete <type words> <name>" phrase
+// (docs/render-artifacts/protected-environments.md), typed into an input
+// labeled "Sudo Command" — the prompt itself is body copy, not the label.
+const PHRASE = "sudo delete web service web";
+
 beforeEach(() => {
   mockNavigate.mockReset();
   remove.mockReset();
   remove.mockResolvedValue({ status: "success" });
 });
 
-describe("DeleteServiceCard — type-to-confirm danger zone (w5/m14)", () => {
-  it("opens the confirm dialog and keeps confirm disabled until the name matches", async () => {
+describe("DeleteServiceCard — sudo type-to-confirm danger zone (w5/m14)", () => {
+  it("opens the confirm dialog and keeps confirm disabled until the sudo phrase matches", async () => {
     const user = userEvent.setup();
     render(<DeleteServiceCard service={svc()} />);
 
@@ -56,12 +61,15 @@ describe("DeleteServiceCard — type-to-confirm danger zone (w5/m14)", () => {
     });
     expect(confirm).toBeDisabled(); // nothing typed yet
 
-    const input = within(dialog).getByLabelText(/Type web to confirm/);
-    await user.type(input, "we");
+    // The exact phrase is shown as body copy, not as the input's label.
+    expect(within(dialog).getByText(PHRASE)).toBeInTheDocument();
+
+    const input = within(dialog).getByLabelText("Sudo Command");
+    await user.type(input, PHRASE.slice(0, -1));
     expect(confirm).toBeDisabled();
     expect(remove).not.toHaveBeenCalled();
 
-    await user.type(input, "b");
+    await user.type(input, PHRASE.slice(-1));
     expect(confirm).toBeEnabled();
   });
 
@@ -72,8 +80,8 @@ describe("DeleteServiceCard — type-to-confirm danger zone (w5/m14)", () => {
     await user.click(screen.getByRole("button", { name: "Delete Service" }));
     const dialog = await screen.findByRole("dialog");
     await user.type(
-      within(dialog).getByLabelText(/Type web to confirm/),
-      "web ",
+      within(dialog).getByLabelText("Sudo Command"),
+      `${PHRASE} `,
     );
 
     const confirm = within(dialog).getByRole("button", {
@@ -90,10 +98,7 @@ describe("DeleteServiceCard — type-to-confirm danger zone (w5/m14)", () => {
 
     await user.click(screen.getByRole("button", { name: "Delete Service" }));
     const dialog = await screen.findByRole("dialog");
-    await user.type(
-      within(dialog).getByLabelText(/Type web to confirm/),
-      "web",
-    );
+    await user.type(within(dialog).getByLabelText("Sudo Command"), PHRASE);
     await user.click(
       within(dialog).getByRole("button", { name: "Delete Service" }),
     );
@@ -102,7 +107,7 @@ describe("DeleteServiceCard — type-to-confirm danger zone (w5/m14)", () => {
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
   });
 
-  it("requires the immutable id when the human display name differs", async () => {
+  it("builds the phrase from Render's type words and the service name (bare name is not enough)", async () => {
     const user = userEvent.setup();
     render(
       <DeleteServiceCard
@@ -112,17 +117,32 @@ describe("DeleteServiceCard — type-to-confirm danger zone (w5/m14)", () => {
 
     await user.click(screen.getByRole("button", { name: "Delete Service" }));
     const dialog = await screen.findByRole("dialog");
-    const input = within(dialog).getByLabelText(/Type stable-id to confirm/);
+    const input = within(dialog).getByLabelText("Sudo Command");
     const confirm = within(dialog).getByRole("button", {
       name: "Delete Service",
     });
     await user.type(input, "Customer API");
     expect(confirm).toBeDisabled();
     await user.clear(input);
-    await user.type(input, "stable-id");
+    await user.type(input, "sudo delete web service Customer API");
     await user.click(confirm);
 
     expect(remove).toHaveBeenCalledWith("stable-id", "Customer API", undefined);
+  });
+
+  it("names non-web types with their own Render type words", async () => {
+    const user = userEvent.setup();
+    render(
+      <DeleteServiceCard
+        service={svc({ id: "rep", name: "reporter", type: "cron_job" })}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Delete Service" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText("sudo delete cron job reporter"),
+    ).toBeInTheDocument();
   });
 
   it("stays put when the delete fails (no redirect)", async () => {
@@ -132,10 +152,7 @@ describe("DeleteServiceCard — type-to-confirm danger zone (w5/m14)", () => {
 
     await user.click(screen.getByRole("button", { name: "Delete Service" }));
     const dialog = await screen.findByRole("dialog");
-    await user.type(
-      within(dialog).getByLabelText(/Type web to confirm/),
-      "web",
-    );
+    await user.type(within(dialog).getByLabelText("Sudo Command"), PHRASE);
     await user.click(
       within(dialog).getByRole("button", { name: "Delete Service" }),
     );
@@ -156,8 +173,7 @@ describe("DeleteServiceCard — type-to-confirm danger zone (w5/m14)", () => {
 
     await user.click(screen.getByRole("button", { name: "Delete Service" }));
     const dialog = await screen.findByRole("dialog");
-    const input = within(dialog).getByLabelText(/Type web to confirm/);
-    await user.type(input, "web");
+    await user.type(within(dialog).getByLabelText("Sudo Command"), PHRASE);
     await user.click(
       within(dialog).getByRole("button", { name: "Delete Service" }),
     );
@@ -165,9 +181,11 @@ describe("DeleteServiceCard — type-to-confirm danger zone (w5/m14)", () => {
     expect(remove).toHaveBeenNthCalledWith(1, "web", "web", undefined);
     expect(mockNavigate).not.toHaveBeenCalled();
 
-    const protectedInput = within(dialog).getByLabelText(
-      /sudo delete service web/,
-    );
+    // The dialog now shows the backend's authoritative phrase as body copy.
+    expect(
+      within(dialog).getByText("sudo delete service web"),
+    ).toBeInTheDocument();
+    const protectedInput = within(dialog).getByLabelText("Sudo Command");
     const confirm = within(dialog).getByRole("button", {
       name: "Delete Service",
     });
