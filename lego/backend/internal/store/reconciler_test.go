@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -463,6 +464,14 @@ func TestPreDeployStatusForIgnoresStaleGeneration(t *testing.T) {
 	if got := preDeployStatusFor(app); got != PreDeploySucceeded {
 		t.Errorf("current-generation pre-deploy = %q, want succeeded", got)
 	}
+
+	// An operational spec update can advance metadata generation while the same
+	// release's pre-deploy remains authoritative.
+	app.Generation = 6
+	app.Status.ReleaseGeneration = 5
+	if got := preDeployStatusFor(app); got != PreDeploySucceeded {
+		t.Errorf("release-generation pre-deploy = %q, want succeeded", got)
+	}
 }
 
 func TestObservedDeployStatusUsesCurrentGenerationEvidence(t *testing.T) {
@@ -546,6 +555,20 @@ func TestObservedDeployStatusUsesCurrentGenerationEvidence(t *testing.T) {
 	newer.Generation = gen + 1
 	if got := observedDeployStatus(Deploy{Generation: gen, Status: DeployCreated}, newer, false); got != "" {
 		t.Errorf("different App generation emitted %q, want no transition", got)
+	}
+
+	operational := app(appv1alpha1.PhaseBuilding, "Building")
+	operational.Generation = gen + 1
+	operational.Status.Conditions[0].ObservedGeneration = gen + 1
+	operational.Status.ReleaseGeneration = gen
+	if got := observedDeployStatus(Deploy{Generation: gen, Status: DeployQueued}, operational, false); got != DeployBuildInProgress {
+		t.Errorf("operational generation during build emitted %q, want %q", got, DeployBuildInProgress)
+	}
+	operational.Status.Phase = appv1alpha1.PhaseRunning
+	operational.Status.ObservedGeneration = gen + 1
+	operational.Status.ActiveRevision = fmt.Sprintf("rev-%d", gen)
+	if got := observedDeployStatus(Deploy{Generation: gen, Status: DeployUpdateInProgress}, operational, false); got != DeployLive {
+		t.Errorf("operational generation after rollout emitted %q, want %q", got, DeployLive)
 	}
 }
 

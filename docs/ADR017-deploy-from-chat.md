@@ -29,7 +29,7 @@ The `bex.yml` → spec field mapping is the **same one [`scripts/app-apply.sh`](
 
 ### 3. Redeploy reuses `spec.restartedAt` — no new contract word
 
-Redeploy needs the operator to roll a fresh revision. The operator already keys that on `metadata.generation` changing, and [ADR007-restart-suspend-and-resume.md](ADR007-restart-suspend-and-resume.md) already added `spec.restartedAt` as the verb-as-timestamp that bumps generation. For a **repo-backed** App a generation bump invalidates the cached `Status.Image` and re-runs build-from-git (a new revision); for an **image-backed** App it is a rolling restart of the same image. So redeploy = stamp `spec.restartedAt` — no `spec.deployID`/revision field invented, the same field the upsert and the webhook both write.
+Redeploy needs the operator to roll a fresh revision. [ADR007-restart-suspend-and-resume.md](ADR007-restart-suspend-and-resume.md) added `spec.restartedAt` as the verb-as-timestamp for that intent; it changes the explicit artifact/release fingerprints even though ordinary operational generations do not. For a **repo-backed** App this re-runs build-from-git; for an **image-backed** App it is a rolling restart of the same image. So redeploy = stamp `spec.restartedAt` — no `spec.deployID`/revision field invented, the same field the upsert and the webhook both write.
 
 ### 4. Create writes the App CR directly (the hand-applied path)
 

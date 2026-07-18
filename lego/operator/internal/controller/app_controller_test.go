@@ -317,8 +317,8 @@ var _ = Describe("App Controller", func() {
 			}
 			Expect(k8sClient.Create(ctx, app)).To(Succeed())
 
-			By("simulating the finished in-cluster build: a Complete Job named per generation")
-			// The image tag is the App's generation (1 at create); the operator's
+			By("simulating the finished in-cluster build: a Complete Job named per release")
+			// The image tag is the App's release generation (1 at create); the operator's
 			// Build() adopts this already-Complete Job instead of starting a build,
 			// so the reconcile proceeds straight to running the built image.
 			image := "zot.test:5000/" + name + ":gen-1"

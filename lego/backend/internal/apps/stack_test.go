@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -489,6 +490,12 @@ func TestDeployStackChangedServiceRedeploys(t *testing.T) {
 	}
 	if len(rec.deployCalls) != 1 || rec.deployCalls[0].Trigger != "blueprint" {
 		t.Errorf("changed re-apply => 1 blueprint deploy record, got %+v", rec.deployCalls)
+	}
+	if got := rec.deployCalls[0].Generation; got != existing.Generation+1 {
+		t.Errorf("blueprint deploy generation = %d, want %d", got, existing.Generation+1)
+	}
+	if got := a.Annotations[appv1alpha1.AnnotationReleaseGeneration]; got != strconv.FormatInt(existing.Generation+1, 10) {
+		t.Errorf("release-generation annotation = %q, want %d", got, existing.Generation+1)
 	}
 }
 

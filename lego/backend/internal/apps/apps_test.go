@@ -867,7 +867,11 @@ func TestScaleOutOfRangeIsBadRequestAndNoOp(t *testing.T) {
 
 func TestScaleManagedAppWritesRowThenCR(t *testing.T) {
 	rec := &recordingStore{}
-	svc, cl := newService(rec, managedApp("web", "srv-1"))
+	app := managedApp("web", "srv-1")
+	app.Spec.Image = ""
+	app.Spec.Repo = "https://github.com/bex-co/private.git"
+	app.Spec.CloneSecret = "deliberately-unusable-clone-secret"
+	svc, cl := newService(rec, app)
 
 	if _, err := svc.Scale(context.Background(), "web", 4); err != nil {
 		t.Fatalf("Scale: %v", err)
@@ -877,6 +881,12 @@ func TestScaleManagedAppWritesRowThenCR(t *testing.T) {
 	}
 	if got := getApp(t, cl, "web").Spec.Replicas; got != 4 {
 		t.Errorf("CR spec.replicas = %d, want 4", got)
+	}
+	if len(rec.deployCalls) != 0 {
+		t.Fatalf("manual scale must not open a deploy row, got %v", rec.deployCalls)
+	}
+	if got := getApp(t, cl, "web").Spec.CloneSecret; got != "deliberately-unusable-clone-secret" {
+		t.Errorf("manual scale touched clone credential reference: %q", got)
 	}
 }
 
@@ -1272,7 +1282,11 @@ func TestRESTPatchServicePlan(t *testing.T) {
 }
 
 func TestRESTScaleService(t *testing.T) {
-	svc, cl := newService(nil, sampleApp("web"))
+	app := sampleApp("web")
+	app.Spec.Image = ""
+	app.Spec.Repo = "https://github.com/bex-co/private.git"
+	app.Spec.CloneSecret = "deliberately-unusable-clone-secret"
+	svc, cl := newService(nil, app)
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
@@ -1360,7 +1374,11 @@ func TestGraphQLDeleteService(t *testing.T) {
 }
 
 func TestGraphQLScaleService(t *testing.T) {
-	svc, cl := newService(nil, sampleApp("web"))
+	app := sampleApp("web")
+	app.Spec.Image = ""
+	app.Spec.Repo = "https://github.com/bex-co/private.git"
+	app.Spec.CloneSecret = "deliberately-unusable-clone-secret"
+	svc, cl := newService(nil, app)
 	schema, err := graphql.NewSchema(graphql.SchemaConfig{
 		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
 		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),

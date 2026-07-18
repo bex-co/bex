@@ -702,7 +702,20 @@ spec:
             description: status defines the observed state of App
             properties:
               activeRevision:
-                description: ActiveRevision currently serving traffic (e.g. "rev_5").
+                description: ActiveRevision currently serving traffic (e.g. "rev-5").
+                type: string
+              artifactFingerprint:
+                description: |-
+                  ArtifactFingerprint is the operator-computed, versioned identity of the
+                  source/build inputs that produced ArtifactImage (or selected a prebuilt
+                  image). It lets operational spec updates reuse the resolved artifact without
+                  source access. It contains a one-way digest only, never Secret contents.
+                type: string
+              artifactImage:
+                description: |-
+                  ArtifactImage is the resolved OCI image for ArtifactFingerprint. It is
+                  separate from Image, which remains the image of ActiveRevision while a new
+                  artifact waits on pre-deploy or rollout health gates.
                 type: string
               conditions:
                 description: Conditions represent the current state (Ready / Progressing
@@ -823,6 +836,20 @@ spec:
                 - job
                 - status
                 type: object
+              releaseFingerprint:
+                description: |-
+                  ReleaseFingerprint is the operator-computed, versioned identity of the
+                  artifact plus rollout inputs for the current release attempt. Operational
+                  fields such as replicas, suspension, autoscaling, and routing are excluded.
+                type: string
+              releaseGeneration:
+                description: |-
+                  ReleaseGeneration is the App metadata generation that initiated the current
+                  release attempt. Later operational generations retain this value, keeping
+                  build/pre-deploy Jobs, pod revision labels, and deploy history attached to
+                  the release that caused them.
+                format: int64
+                type: integer
               runs:
                 description: |-
                   Runs is the recent run history of a cron_job (newest first), populated from

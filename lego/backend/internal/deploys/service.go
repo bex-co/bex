@@ -173,7 +173,7 @@ type Service struct {
 	// CloneSecrets refreshes a repo-backed App's private-clone credential at
 	// trigger time (apps.Service's reconciler bridge, wired in the composition
 	// root). GitHub App installation tokens live ONE HOUR — a manual trigger or
-	// deploy hook that only bumps the generation makes the operator rebuild
+	// deploy hook changes the release identity and makes the operator rebuild
 	// with the PREVIOUS deploy's token, which git surfaces as the misleading
 	// "could not read Username" (its 401-then-prompt fallback). Found live on
 	// prod 2026-07-17 (agentmarketcap-1: every trigger=api build failed at
@@ -368,8 +368,8 @@ type TriggerParams struct {
 	CommitID string
 	// DeployMode selects the deploy strategy. "deploy_only" skips the build
 	// step — valid for image-backed services (nothing to build anyway), but
-	// returns ErrBadRequest for repo-backed ones (bex has no cached build
-	// artifact; any spec change unconditionally rebuilds from source). Empty
+	// returns ErrBadRequest for repo-backed ones (the public trigger does not
+	// expose cached-artifact deployment; use build_and_deploy). Empty
 	// or "build_and_deploy" is the normal full-rebuild path.
 	DeployMode string
 	// ImageURL overrides the image for this deploy (Render's imageUrl). Only
@@ -383,17 +383,17 @@ type TriggerParams struct {
 }
 
 // Trigger starts a fresh deploy (Render's POST .../deploys): bumps
-// spec.RestartedAt to create a new generation — triggering the operator to
-// rebuild/restart — then opens a dep-… row (trigger "api") stamped with the
-// App's bumped generation so Cancel can later find the right build Job.
+// spec.RestartedAt to create a new release identity/generation — triggering the
+// operator to rebuild/restart — then opens a dep-… row (trigger "api") stamped
+// with that generation so Cancel can later find the right build Job.
 //
 // p.CommitID, if non-empty, sets spec.BuildCommit so the operator checks out
 // that ref instead of Branch HEAD; the field is explicitly reset to "" on
 // every trigger without a commitId so Branch HEAD is always the default.
 //
 // p.DeployMode "deploy_only" is an explicit request NOT to rebuild:
-//   - repo-backed service: rejected with ErrBadRequest (bex rebuilds on every
-//     generation bump; there is no cached artifact to skip the build with).
+//   - repo-backed service: rejected with ErrBadRequest (this public trigger does
+//     not expose cached-artifact deployment; use build_and_deploy).
 //   - image-backed service: accepted (nothing to build regardless of mode).
 //
 // Suspended services refuse the trigger: there is nothing to roll.
@@ -420,11 +420,12 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	if appID == "" {
 		return DeployView{}, fmt.Errorf("%w: service %q is not store-managed", core.ErrBadRequest, service)
 	}
-	// deploy_only for a repo-backed service is rejected: bex has no cached build
-	// artifact — every generation bump unconditionally rebuilds from source.
+	// deploy_only for a repo-backed service is rejected: this public trigger does
+	// not expose cached-artifact deployment. Operational spec changes reuse the
+	// active artifact, but a deploy trigger deliberately rebuilds from source.
 	if p.DeployMode == "deploy_only" && a.Spec.Repo != "" {
 		return DeployView{}, fmt.Errorf("%w: deployMode \"deploy_only\" is not supported for repo-backed services — "+
-			"bex has no cached build artifact; use \"build_and_deploy\" (or omit deployMode) to rebuild from source", core.ErrBadRequest)
+			"use \"build_and_deploy\" (or omit deployMode) to rebuild from source", core.ErrBadRequest)
 	}
 	// imageUrl is rejected for repo-backed services: bex rebuilds from source on
 	// every trigger; swapping the image would silently divorce the running
@@ -459,7 +460,9 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	// opens either way, so a GitHub hiccup can never block a deploy.
 	commit := s.resolveCommit(ctx, a, p.CommitID)
 	previousGeneration := a.Generation
+	releaseGeneration := previousGeneration + 1
 	if err := s.patchApp(ctx, a, func(a *appv1alpha1.App) {
+		stampReleaseGeneration(a, releaseGeneration)
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339Nano)
 		// A freshly minted clone credential rides the same patch as the bump;
 		// "" (public/unconnected repo, or GitHub off) leaves the field alone.
@@ -478,7 +481,8 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	}); err != nil {
 		return DeployView{}, err
 	}
-	d, err := s.Store.CreateDeploy(ctx, appID, trigger, a.Spec.Image, patchedGeneration(previousGeneration, a.Generation), commit)
+	releaseGeneration = patchedGeneration(previousGeneration, a.Generation)
+	d, err := s.Store.CreateDeploy(ctx, appID, trigger, a.Spec.Image, releaseGeneration, commit)
 	if err != nil {
 		return DeployView{}, err
 	}
@@ -494,6 +498,13 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 // and off-cluster adapters aligned with Kubernetes semantics.
 func patchedGeneration(before, after int64) int64 {
 	return max(after, before+1)
+}
+
+func stampReleaseGeneration(a *appv1alpha1.App, generation int64) {
+	if a.Annotations == nil {
+		a.Annotations = map[string]string{}
+	}
+	a.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(generation, 10)
 }
 
 // notifyDeployStarted detaches delivery from the request hot path, matching the
@@ -659,13 +670,16 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string) (Deplo
 		return DeployView{}, fmt.Errorf("update source of truth: %w", err)
 	}
 	previousGeneration := a.Generation
+	releaseGeneration := previousGeneration + 1
 	if err := s.patchApp(ctx, a, func(a *appv1alpha1.App) {
+		stampReleaseGeneration(a, releaseGeneration)
 		a.Spec.Image = target.ResolvedImage
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339Nano)
 	}); err != nil {
 		return DeployView{}, err
 	}
-	d, err := s.Store.CreateRollbackDeploy(ctx, appID, target.ResolvedImage, target.ID, patchedGeneration(previousGeneration, a.Generation),
+	releaseGeneration = patchedGeneration(previousGeneration, a.Generation)
+	d, err := s.Store.CreateRollbackDeploy(ctx, appID, target.ResolvedImage, target.ID, releaseGeneration,
 		store.CommitInfo{Hash: target.Commit, Message: target.CommitMessage})
 	if err != nil {
 		return DeployView{}, err

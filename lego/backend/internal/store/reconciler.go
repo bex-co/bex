@@ -356,13 +356,13 @@ func (r *Reconciler) deployTimedOut(d DesiredApp, open Deploy) bool {
 	return time.Since(phaseStarted) > timeout
 }
 
-// observedDeployStatus maps only current-generation evidence to a Render
-// lifecycle state. Empty means the sample proves no new state. The Ready
-// condition is generation-scoped by the operator's setPhase/fail helpers; that
-// guard prevents a freshly opened row from inheriting the prior revision's
-// Building/Deploying/Failed status before the operator has touched it.
+// observedDeployStatus maps only evidence for the open row's release generation
+// to a Render lifecycle state. Kubernetes metadata generation can advance for
+// an operational update (for example manual scale) while the same release is
+// building or rolling; status.releaseGeneration keeps that harmless churn from
+// orphaning the deploy row. Legacy operators fall back to metadata generation.
 func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) string {
-	if app.Generation != 0 && open.Generation != 0 && app.Generation != open.Generation {
+	if generation := appReleaseGeneration(app); generation != 0 && open.Generation != 0 && generation != open.Generation {
 		return ""
 	}
 	pds := preDeployStatusFor(app)
@@ -396,7 +396,7 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 			return DeployUpdateInProgress
 		}
 	case appv1alpha1.PhaseRunning:
-		if app.Status.ObservedGeneration == app.Generation {
+		if releaseIsActive(open, app) {
 			return DeployLive
 		}
 	case appv1alpha1.PhaseFailed:
@@ -423,6 +423,21 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 	default:
 		return DeployUpdateFailed
 	}
+}
+
+func appReleaseGeneration(app *appv1alpha1.App) int64 {
+	if app.Status.ReleaseGeneration > 0 {
+		return app.Status.ReleaseGeneration
+	}
+	return app.Generation
+}
+
+func releaseIsActive(open Deploy, app *appv1alpha1.App) bool {
+	if app.Status.ReleaseGeneration > 0 {
+		return app.Status.ReleaseGeneration == open.Generation &&
+			app.Status.ActiveRevision == fmt.Sprintf("rev-%d", open.Generation)
+	}
+	return app.Status.ObservedGeneration == app.Generation
 }
 
 // failureReasonFor picks what to stamp as a failing deploy's failure_reason
@@ -460,12 +475,12 @@ func readyReasonForGeneration(app *appv1alpha1.App) (string, bool) {
 
 // preDeployStatusFor maps the App CR's pre-deploy step status (status.preDeploy,
 // set by the operator) to the deploy row's lowercase pre_deploy_status
-// vocabulary, but only for the CR's CURRENT generation — a status left over from
-// a superseded revision must not be projected onto the open deploy. Empty means
-// no pre-deploy step applies to this rollout.
+// vocabulary, but only for the current release generation — a status left over
+// from a superseded release must not be projected onto the open deploy. Empty
+// means no pre-deploy step applies to this rollout.
 func preDeployStatusFor(app *appv1alpha1.App) string {
 	pd := app.Status.PreDeploy
-	if pd == nil || pd.Generation != app.Generation {
+	if pd == nil || pd.Generation != appReleaseGeneration(app) {
 		return ""
 	}
 	switch pd.Status {

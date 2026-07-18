@@ -29,6 +29,13 @@ const (
 	PendingFilesSecretAnnotation = "app.bex.co/pending-files-secret"
 )
 
+// AnnotationReleaseGeneration pins a backend-opened deploy to the App
+// generation whose release work it represents. Metadata-only and operational
+// spec changes may arrive before the operator first observes that deploy; the
+// annotation keeps its build, pre-deploy Job, revision, and history row on one
+// stable identity.
+const AnnotationReleaseGeneration = "app.bex.co/release-generation"
+
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
@@ -784,13 +791,39 @@ type AppStatus struct {
 	// +optional
 	URLs []string `json:"urls,omitempty"`
 
-	// ActiveRevision currently serving traffic (e.g. "rev_5").
+	// ActiveRevision currently serving traffic (e.g. "rev-5").
 	// +optional
 	ActiveRevision string `json:"activeRevision,omitempty"`
 
 	// Image is the OCI image of the active revision.
 	// +optional
 	Image string `json:"image,omitempty"`
+
+	// ArtifactFingerprint is the operator-computed, versioned identity of the
+	// source/build inputs that produced ArtifactImage (or selected a prebuilt
+	// image). It lets operational spec updates reuse the resolved artifact without
+	// source access. It contains a one-way digest only, never Secret contents.
+	// +optional
+	ArtifactFingerprint string `json:"artifactFingerprint,omitempty"`
+
+	// ArtifactImage is the resolved OCI image for ArtifactFingerprint. It is
+	// separate from Image, which remains the image of ActiveRevision while a new
+	// artifact waits on pre-deploy or rollout health gates.
+	// +optional
+	ArtifactImage string `json:"artifactImage,omitempty"`
+
+	// ReleaseFingerprint is the operator-computed, versioned identity of the
+	// artifact plus rollout inputs for the current release attempt. Operational
+	// fields such as replicas, suspension, autoscaling, and routing are excluded.
+	// +optional
+	ReleaseFingerprint string `json:"releaseFingerprint,omitempty"`
+
+	// ReleaseGeneration is the App metadata generation that initiated the current
+	// release attempt. Later operational generations retain this value, keeping
+	// build/pre-deploy Jobs, pod revision labels, and deploy history attached to
+	// the release that caused them.
+	// +optional
+	ReleaseGeneration int64 `json:"releaseGeneration,omitempty"`
 
 	// SandboxID is the runtime handle of the active revision (OpenSandbox sandbox id).
 	// +optional

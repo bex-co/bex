@@ -2171,8 +2171,8 @@ func normalizeTierOrPlan(v string) (string, error) {
 }
 
 // redeploy bumps spec.restartedAt to force the operator to roll a new revision
-// — for a repo-backed App this re-runs the build-from-git (the generation bump
-// invalidates the cached Status.Image). Unauthorized on purpose: its only
+// — for a repo-backed App this changes artifact/release identity and re-runs the
+// build-from-git. Unauthorized on purpose: its only
 // caller is the HMAC-verified git webhook, whose signature check is the
 // authorization (there is no OpenFGA identity on a git-host callback).
 func (s *Service) redeploy(ctx context.Context, name string) (AppView, error) {
@@ -3160,8 +3160,8 @@ func (s *Service) SetHeaders(ctx context.Context, name string, headers []StaticH
 }
 
 // SetPublishPath changes the built output directory a static_site serves
-// (spec.publishPath) and bumps spec.restartedAt so the change republishes (a new
-// generation invalidates the cached revision, re-running the publish plane).
+// (spec.publishPath) and bumps spec.restartedAt so the release identity changes
+// and the publish plane runs again.
 // Rejected for a non-static_site or an empty path.
 func (s *Service) SetPublishPath(ctx context.Context, name, publishPath string) (AppView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
