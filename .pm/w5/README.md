@@ -73,10 +73,11 @@ sub-hour work and moved to `done/`.)_
 _(`021.md` implemented 2026-07-17 — compact clickable instance slugs on service
 log rows; completed as sub-hour work and moved to `done/`.)_
 
-- `022.md` — Fix metrics lookup for opaque `srv-…` service IDs: use the
-  resolved Kubernetes App name for pod/Prometheus selectors while preserving
-  the public resource identity; add typed-ID regression coverage ← production
-  diagnosis 2026-07-17
+_(`022.md` implemented 2026-07-17 — typed `srv-…` metrics requests now use the
+resolved Kubernetes App name for pod, cAdvisor, and Traefik lookups while
+preserving the requested public identity; regression coverage spans CPU,
+memory, limits, instances, request metrics, filters, REST/GraphQL/MCP, and
+legacy label-less Apps; moved to `done/`.)_
 
 _(`015.md`–`020.md` absorbed into **m36** 2026-07-15; notes moved to `done/`)_
 
