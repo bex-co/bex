@@ -10,6 +10,16 @@ vi.mock("@apollo/client/react", () => ({
   }),
 }));
 
+// The project-detail page's membership table is fed by its route loader's
+// snapshot of the singular `Project` query, which only a router.invalidate()
+// re-runs — so the hook invalidates the router alongside refetching `Projects`.
+const mockInvalidate = vi.fn();
+vi.mock("@tanstack/react-router", () => ({
+  useRouter: () => ({
+    invalidate: (...args: unknown[]) => mockInvalidate(...args),
+  }),
+}));
+
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
 vi.mock("sonner", () => ({
@@ -58,6 +68,7 @@ beforeEach(() => {
   setDatabases.mockReset().mockResolvedValue({ data: {} });
   setKeyValues.mockReset().mockResolvedValue({ data: {} });
   mockRefetchQueries.mockResolvedValue([]);
+  mockInvalidate.mockReset().mockResolvedValue(undefined);
   mockUseMutation.mockImplementation((doc: unknown) => {
     if (doc === SetProjectServicesDocument) return [setServices];
     if (doc === SetProjectDatabasesDocument) return [setDatabases];
@@ -89,6 +100,7 @@ describe("useMoveToProject", () => {
     expect(mockRefetchQueries).toHaveBeenCalledWith({
       include: [ProjectsDocument],
     });
+    expect(mockInvalidate).toHaveBeenCalledTimes(1);
   });
 
   it("moves a service between projects with two full-replace writes", async () => {
@@ -125,6 +137,7 @@ describe("useMoveToProject", () => {
     // handling fails this test.
     const aborted = new Error("The operation was aborted");
     mockRefetchQueries.mockRejectedValue(aborted);
+    mockInvalidate.mockRejectedValue(aborted);
     mockUseProjects.mockReturnValue({
       projects: [project("prj-a", "Alpha")],
       refetch: vi.fn().mockRejectedValue(aborted),
@@ -158,6 +171,7 @@ describe("useMoveToProject", () => {
     expect(toastError).toHaveBeenCalledWith('Failed to move "web".');
     expect(toastSuccess).not.toHaveBeenCalled();
     expect(mockRefetchQueries).not.toHaveBeenCalled();
+    expect(mockInvalidate).not.toHaveBeenCalled();
   });
 
   it("is a no-op when the target already holds the resource", async () => {
@@ -200,11 +214,15 @@ describe("useMoveToProject", () => {
     expect(mockRefetchQueries).toHaveBeenCalledWith({
       include: [ProjectsDocument],
     });
+    // Re-runs the project-detail route loader so its snapshot table drops the
+    // removed service instead of leaving it stale until a manual reload.
+    expect(mockInvalidate).toHaveBeenCalledTimes(1);
   });
 
   it("reports removal success even when the refresh fails", async () => {
     const aborted = new Error("The operation was aborted");
     mockRefetchQueries.mockRejectedValue(aborted);
+    mockInvalidate.mockRejectedValue(aborted);
     mockUseProjects.mockReturnValue({
       projects: [project("prj-a", "Alpha", ["srv-1"])],
       refetch: vi.fn().mockRejectedValue(aborted),
