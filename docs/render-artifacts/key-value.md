@@ -31,7 +31,7 @@ Render's KV detail is a single "Info" page (plus separate Logs/Metrics tabs, out
   - The **Connect** dropdown (header button) duplicates the same internal/external strings in a tabbed popover (Internal/External tabs) rather than the inline section — a redundant presentation of the same two fields. bex's t005 only needs one Connect-panel, not both a dropdown and inline section; the m8 Databases detail's single reveal panel is the right scope.
 - **Networking**: instance-level IP allowlist management — bex equivalent shipped w7/m5 (detail-page Networking section over `keyValueIpAllowList`/`setKeyValueIpAllowList`; `[]string` CIDRs, no per-entry description).
 - **Log Stream**: third-party log-stream forwarding config — unrelated to this milestone, omit.
-- **Danger zone** (bottom, unlabeled buttons resolved via DOM `data-test-id`): **"Delete Key Value Instance"** (destructive, red) and **"Suspend Key Value Instance"** (secondary). Delete opens a **type-to-confirm** dialog: "Type `sudo delete key value <name>` below to confirm," a single text input, and a Delete button that's disabled until the typed string matches exactly. bex's existing Databases delete pattern already does typed-name confirm (per t005's note "Render's type-to-confirm pattern if captured") — mirror that, not Render's literal `sudo delete key value <name>` string (bex has no "sudo" concept); a simple type-the-name-to-confirm is the right level of parity.
+- **Danger zone** (bottom, unlabeled buttons resolved via DOM `data-test-id`): **"Delete Key Value Instance"** (destructive, red) and **"Suspend Key Value Instance"** (critical ghost). Delete opens a **type-to-confirm** dialog: "Type `sudo delete key value <name>` below to confirm," a single text input, and a Delete button that's disabled until the typed string matches exactly. Suspend uses the parallel `sudo suspend key value <name>` confirmation; Resume replaces it while suspended and runs immediately. The live bundle was reverified on 2026-07-17, and bex now mirrors these exact phrases and the shared bottom-row placement. Here `sudo` is confirmation copy, not a local privilege boundary.
 
 ## No live "list" page — unified Services table
 
@@ -55,4 +55,4 @@ This is a real change from what informed bex's own Databases page (w5/m8), which
 
 ## Delete confirmation copy
 
-Render: `Type sudo delete key value <name> below to confirm.` Bex should keep its own existing typed-name-confirm wording from the Databases feature (no "sudo" affordance) for consistency within bex's own product voice.
+Render: `Type sudo delete key value <name> below to confirm.` Bex mirrors the exact phrase so the destructive flow and button labels match the reference page; the command-like text is only a confirmation token.

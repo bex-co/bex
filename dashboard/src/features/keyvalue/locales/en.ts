@@ -93,7 +93,7 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description: "Row action: permanently delete the Key Value store",
   },
   "keyvalue.deleteConfirmTitle": {
-    message: "Delete {name}?",
+    message: "Delete Key Value Instance",
     description: "Delete-confirmation dialog title",
   },
   "keyvalue.deleteConfirmBody": {
@@ -102,15 +102,15 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description: "Delete-confirmation dialog body",
   },
   "keyvalue.deleteConfirmPrompt": {
-    message: "Type {name} to confirm.",
-    description: "Delete-confirmation typed-name prompt label",
+    message: "Type {phrase} below to confirm",
+    description: "Render-style exact sudo delete confirmation prompt",
   },
   "keyvalue.deleteCancel": {
     message: "Cancel",
     description: "Delete-confirmation dialog cancel button",
   },
   "keyvalue.deleteConfirm": {
-    message: "Delete Key Value store",
+    message: "Delete Key Value Instance",
     description: "Delete-confirmation dialog confirm button",
   },
   "keyvalue.deleteSuccess": {
@@ -338,13 +338,9 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description: "Toast when clipboard copy fails",
   },
   // --- Suspend / resume ---
-  "keyvalue.lifecycleTitle": {
-    message: "Lifecycle",
-    description: "Suspend/resume card title",
-  },
-  "keyvalue.lifecycleDescription": {
-    message: "Suspend this store to scale it to zero, or resume it.",
-    description: "Suspend/resume card description",
+  "keyvalue.dangerDelete": {
+    message: "Delete Key Value Instance",
+    description: "Discoverable delete action at the bottom of Key Value Info",
   },
   "keyvalue.actionSuspend": {
     message: "Suspend Key Value Instance",
@@ -355,13 +351,17 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description: "Resume action button label",
   },
   "keyvalue.confirmSuspendTitle": {
-    message: "Suspend {name}?",
+    message: "Suspend Key Value Instance",
     description: "Suspend-confirmation dialog title",
   },
   "keyvalue.confirmSuspendBody": {
+    message: "Are you sure you want to suspend this Key Value instance?",
+    description: "Suspend-confirmation dialog description",
+  },
+  "keyvalue.confirmSuspendDetail": {
     message:
-      "This scales the store to zero and drops all active connections. Data is preserved; resume it any time.",
-    description: "Suspend-confirmation dialog body",
+      "Please confirm you would like to suspend {name}. Active connections will be dropped; data is preserved and you can resume it at any time.",
+    description: "Suspend-confirmation consequences and named instance",
   },
   "keyvalue.confirmSuspendPrompt": {
     message: "Type {phrase} below to confirm",

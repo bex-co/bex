@@ -8,8 +8,7 @@ import { cn } from "@/common/lib/utils/utils.ts";
 import { formatRelativeAge } from "@/features/services/lib/format";
 import { useKeyValue } from "@/features/keyvalue/hooks/use-key-value";
 import { KeyValueStatusBadge } from "@/features/keyvalue/components/key-value-status-badge";
-import { KeyValueRowActions } from "@/features/keyvalue/components/key-value-row-actions";
-import { KeyValueLifecycleActions } from "@/features/keyvalue/components/key-value-lifecycle-actions";
+import { KeyValueDangerActions } from "@/features/keyvalue/components/key-value-danger-actions";
 import { ConnectionInfoPanel } from "@/features/keyvalue/components/connection-info-panel";
 import { KeyValueNetworkingPanel } from "@/features/keyvalue/components/key-value-networking-panel";
 import { KeyValuePlanSection } from "@/features/keyvalue/components/key-value-plan-section";
@@ -39,7 +38,7 @@ export function KeyValueDetailPage() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6">
+      <div className="flex flex-wrap items-center gap-3 border-b px-4 py-4 sm:px-6">
         <div className="flex items-center gap-2">
           <h1
             className={cn(
@@ -51,12 +50,6 @@ export function KeyValueDetailPage() {
           </h1>
           {keyValue ? <KeyValueStatusBadge keyValue={keyValue} /> : null}
         </div>
-        {keyValue ? (
-          <KeyValueRowActions
-            keyValue={keyValue}
-            onDeleted={() => void navigate({ to: "/" })}
-          />
-        ) : null}
       </div>
 
       <nav
@@ -118,8 +111,9 @@ export function KeyValueDetailPage() {
                 onChanged={() => void refetch()}
               />
               <DatastoreMetricsPanel kind="keyvalue" resource={keyValue.name} />
-              <KeyValueLifecycleActions
+              <KeyValueDangerActions
                 keyValue={keyValue}
+                onDeleted={() => void navigate({ to: "/" })}
                 onChanged={() => void refetch()}
               />
             </>
