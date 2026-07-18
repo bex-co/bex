@@ -744,38 +744,58 @@ func (s *Service) queryDatastoreEgressBytes(ctx context.Context, ds datastoreEnt
 	return s.queryEgressSources(ctx, ds.ID, egressquery.Datastore(ds.ID, ds.Kind, ds.Public), start, end)
 }
 
+// queryEgressSources sums the hour's egress across sources with PER-SOURCE
+// health gating (w1/m51, ADR023 § Observability reads vs billing reads): a
+// source failing its health product is SKIPPED for this hour (undercount,
+// never invent — its increase() could be reset-inflated), while the healthy
+// sources still record. Only a transport failure defers the hour: a past
+// hour's samples never improve, so deferring on a health term was equivalent
+// to never recording (prod evidence: zero egress_bytes rows for all of July
+// 2026 under the old any-source-defers rule, w1/034). All sources skipped
+// still records a successful zero — the gap-free cursor advances.
 func (s *Service) queryEgressSources(ctx context.Context, resourceID string, specs []egressquery.Spec, start, end time.Time) (int64, bool) {
 	if len(specs) == 0 {
 		return 0, true
 	}
 	seconds := int64(end.Sub(start) / time.Second)
 	type result struct {
-		value float64
-		err   error
+		source  egressquery.Source
+		value   float64
+		skipped bool
+		err     error
 	}
 	results := make(chan result, len(specs))
 	for _, spec := range specs {
 		go func() {
 			health, err := egressquery.Instant(ctx, s.promHTTP, s.PromBase, egressquery.Health(spec, seconds), end)
-			if err != nil || health < 1 {
-				if err == nil {
-					err = fmt.Errorf("source %s unhealthy", spec.Source)
-				}
-				results <- result{err: err}
+			if err != nil {
+				results <- result{source: spec.Source, err: err}
+				return
+			}
+			if health < 1 {
+				results <- result{source: spec.Source, skipped: true}
 				return
 			}
 			value, err := egressquery.Instant(ctx, s.promHTTP, s.PromBase, egressquery.Increase(spec, seconds), end)
-			results <- result{value: value, err: err}
+			results <- result{source: spec.Source, value: value, err: err}
 		}()
 	}
 	var total float64
+	deferred := false
 	for range specs {
 		result := <-results
-		if result.err != nil {
-			log.Printf("usage: egress_bytes source for %s: %v", resourceID, result.err)
-			return 0, false
+		switch {
+		case result.err != nil:
+			log.Printf("usage: egress_bytes source %s for %s: %v (hour deferred)", result.source, resourceID, result.err)
+			deferred = true
+		case result.skipped:
+			log.Printf("usage: egress_bytes source %s for %s unhealthy in [%s, %s): skipped this hour", result.source, resourceID, start.Format(time.RFC3339), end.Format(time.RFC3339))
+		default:
+			total += result.value
 		}
-		total += result.value
+	}
+	if deferred {
+		return 0, false
 	}
 	return int64(math.Round(total)), true
 }

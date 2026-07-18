@@ -337,11 +337,24 @@ func TestQueryEgressBytesEmptyVectorIsSuccessfulZero(t *testing.T) {
 	}
 }
 
-func TestQueryEgressBytesRejectsPartialSourceHealth(t *testing.T) {
+// The w1/m51 per-source hour gate: an unhealthy source is skipped (its
+// possibly reset-inflated increase() never enters billing) while the healthy
+// sources still record the hour — the old any-source-unhealthy-defers rule
+// recorded nothing at all on prod (zero egress_bytes rows for July 2026,
+// w1/034). Reverting to all-or-nothing deferral fails this test by name.
+func TestQueryEgressBytesRecordsHealthySourcesAndSkipsUnhealthyOnes(t *testing.T) {
 	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query().Get("query")
 		value := "1"
-		if strings.Contains(r.URL.Query().Get("query"), "bex_websocket_meter_healthy") {
-			value = "0"
+		switch {
+		case strings.Contains(query, "bex_websocket_meter_healthy"):
+			value = "0" // the websocket source's health product fails this hour
+		case strings.Contains(query, "increase(traefik_router_responses_bytes_total"):
+			value = "1000"
+		case strings.Contains(query, "increase(bex_websocket_egress_bytes_total"):
+			value = "70000" // must NOT be billed — its source is unhealthy
+		case strings.Contains(query, "increase(bex_app_direct_egress_bytes_total"):
+			value = "500"
 		}
 		_, _ = fmt.Fprintf(w, `{"status":"success","data":{"resultType":"vector","result":[{"value":[0,%q]}]}}`, value)
 	}))
@@ -350,8 +363,52 @@ func TestQueryEgressBytesRejectsPartialSourceHealth(t *testing.T) {
 	cl := publicAppMeterClient(t, app, "tea-one-partial", "tea-one-partial", "partial.onbex.co")
 	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, nil, prom.URL, prom.Client())
 
+	quantity, ok := svc.queryEgressBytes(context.Background(), app, time.Now().Add(-time.Hour), time.Now())
+	if !ok {
+		t.Fatalf("partial source health must record the healthy remainder, not defer the hour")
+	}
+	if quantity != 1500 {
+		t.Fatalf("healthy-source sum: got %d, want 1500 (http 1000 + direct 500, websocket skipped)", quantity)
+	}
+}
+
+// A transport failure is the retryable condition — the hour still defers.
+func TestQueryEgressBytesDefersTheHourOnTransportErrors(t *testing.T) {
+	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "prometheus is down", http.StatusBadGateway)
+	}))
+	defer prom.Close()
+	app := store.App{ID: "srv-transport", TenantID: "tea-one", Name: "transport"}
+	cl := publicAppMeterClient(t, app, "tea-one-transport", "tea-one-transport", "transport.onbex.co")
+	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, nil, prom.URL, prom.Client())
+
 	if quantity, ok := svc.queryEgressBytes(context.Background(), app, time.Now().Add(-time.Hour), time.Now()); ok || quantity != 0 {
-		t.Fatalf("partial source health produced a successful sum: quantity=%d ok=%v", quantity, ok)
+		t.Fatalf("transport failure must defer the hour: quantity=%d ok=%v", quantity, ok)
+	}
+}
+
+// Every source unhealthy records a successful zero — the gap-free cursor
+// advances; the hour is final, never retried (its samples cannot improve).
+func TestQueryEgressBytesAllSourcesUnhealthyRecordsSuccessfulZero(t *testing.T) {
+	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query().Get("query")
+		value := "1"
+		if strings.Contains(query, "min_over_time(up{") {
+			value = "0" // every source's up-term fails
+		}
+		if strings.Contains(query, "increase(") {
+			value = "9999" // must not leak into the sum
+		}
+		_, _ = fmt.Fprintf(w, `{"status":"success","data":{"resultType":"vector","result":[{"value":[0,%q]}]}}`, value)
+	}))
+	defer prom.Close()
+	app := store.App{ID: "srv-dark", TenantID: "tea-one", Name: "dark"}
+	cl := publicAppMeterClient(t, app, "tea-one-dark", "tea-one-dark", "dark.onbex.co")
+	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, nil, prom.URL, prom.Client())
+
+	quantity, ok := svc.queryEgressBytes(context.Background(), app, time.Now().Add(-time.Hour), time.Now())
+	if !ok || quantity != 0 {
+		t.Fatalf("all-unhealthy hour must record a successful zero: quantity=%d ok=%v", quantity, ok)
 	}
 }
 
@@ -534,20 +591,25 @@ func TestAppMeterCatchUpStartsAtAppCreationHour(t *testing.T) {
 	}
 }
 
-func TestEgressCatchUpEstablishesFirstMeasurableOriginThenPreservesGaps(t *testing.T) {
+func TestEgressCatchUpRecordsUnhealthyHoursAsZerosButRetriesTransportGaps(t *testing.T) {
 	created := time.Date(2026, 7, 16, 8, 0, 0, 0, time.UTC)
 	app := store.App{
 		ID: "srv-origin", TenantID: "tea-origin", Name: "origin", Tier: "starter", CreatedAt: created,
 	}
 	st := newMemUsageStore(app)
-	// Only the 10:00 and 12:00 windows are measurable (their instant-query
-	// timestamps are the following hour). Pre-instrumentation 08:00/09:00 must
-	// be probed past while the cursor is empty. After 10:00 establishes the
-	// origin, unavailable 11:00 must stop the cursor before otherwise-healthy
-	// 12:00, preserving the normal no-gap retry contract.
+	// The w1/m51 trichotomy along the cursor: health-failed hours (08:00,
+	// 09:00 — every source's health product is 0) are FINAL and record
+	// successful zeros (a past hour's samples never improve, w1/034);
+	// measurable 10:00 records; a TRANSPORT-failed 11:00 (Prometheus 502) is
+	// the retryable class and must stop the cursor before otherwise-healthy
+	// 12:00 — the no-gap retry contract now applies to transport only.
 	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		at, _ := strconv.ParseInt(r.URL.Query().Get("time"), 10, 64)
 		queryAt := time.Unix(at, 0).UTC()
+		if queryAt.Equal(created.Add(4 * time.Hour)) { // the 11:00 window queries at 12:00
+			http.Error(w, "prometheus is down", http.StatusBadGateway)
+			return
+		}
 		healthy := queryAt.Equal(created.Add(3*time.Hour)) || queryAt.Equal(created.Add(5*time.Hour))
 		value := "0"
 		if strings.Contains(r.URL.Query().Get("query"), "healthy") || strings.Contains(r.URL.Query().Get("query"), `up{job=`) {
@@ -565,19 +627,27 @@ func TestEgressCatchUpEstablishesFirstMeasurableOriginThenPreservesGaps(t *testi
 	svc.catchUpAppMeterThrough(context.Background(), app, store.UsageKindEgressBytes, created.Add(2*time.Hour))
 	latest, err := st.LatestUsageWindow(context.Background(), store.ResourceKindService, app.ID, store.UsageKindEgressBytes)
 	if err != nil || !latest.Equal(created.Add(2*time.Hour)) {
-		t.Fatalf("initial egress origin: want 10:00, got %v (err=%v)", latest, err)
+		t.Fatalf("cursor after first pass: want 10:00, got %v (err=%v)", latest, err)
+	}
+	for hour := 0; hour <= 2; hour++ {
+		st.mu.Lock()
+		row, present := st.rows[usageKey{store.ResourceKindService, app.ID, store.UsageKindEgressBytes, "", created.Add(time.Duration(hour) * time.Hour)}]
+		st.mu.Unlock()
+		if !present || row.Quantity != 0 {
+			t.Fatalf("hour +%dh: want a recorded zero row, got present=%v row=%+v", hour, present, row)
+		}
 	}
 
 	svc.catchUpAppMeterThrough(context.Background(), app, store.UsageKindEgressBytes, created.Add(4*time.Hour))
 	latest, err = st.LatestUsageWindow(context.Background(), store.ResourceKindService, app.ID, store.UsageKindEgressBytes)
 	if err != nil || !latest.Equal(created.Add(2*time.Hour)) {
-		t.Fatalf("post-origin gap advanced cursor: want 10:00, got %v (err=%v)", latest, err)
+		t.Fatalf("transport gap advanced cursor: want 10:00, got %v (err=%v)", latest, err)
 	}
 	st.mu.Lock()
 	_, skippedGap := st.rows[usageKey{store.ResourceKindService, app.ID, store.UsageKindEgressBytes, "", created.Add(4 * time.Hour)}]
 	st.mu.Unlock()
 	if skippedGap {
-		t.Fatal("12:00 egress row was written across unavailable 11:00 window")
+		t.Fatal("12:00 egress row was written across the transport-failed 11:00 window")
 	}
 }
 

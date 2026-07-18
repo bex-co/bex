@@ -69,6 +69,84 @@ func TestTraefikRouterNamesUseIngressIdentityNotBackendService(t *testing.T) {
 	}
 }
 
+// The operator always writes spec.tls for its Ingresses, and Traefik v3 mints
+// a `websecure-` TLS sibling router per TLS-covered host — the router that
+// carries the real HTTPS bytes (w1/m51/t001 ground truth; missing it was
+// w1/035's everything-undercounts bug).
+func TestTraefikRouterNamesIncludeTheWebsecureTLSSibling(t *testing.T) {
+	ingress := traefikTestIngress("tea-one-static", "shared-static-server", "site.onbex.co", "www.example.com")
+	ingress.Spec.TLS = []networkingv1.IngressTLS{
+		{Hosts: []string{"site.onbex.co"}},
+		{Hosts: []string{"www.example.com"}},
+	}
+	names, err := TraefikRouterNamesForIngress(ingress)
+	if err != nil {
+		t.Fatalf("TraefikRouterNamesForIngress: %v", err)
+	}
+	want := []string{
+		"default-tea-one-static-site-onbex-co@kubernetes",
+		"default-tea-one-static-www-example-com@kubernetes",
+		"websecure-default-tea-one-static-site-onbex-co@kubernetes",
+		"websecure-default-tea-one-static-www-example-com@kubernetes",
+	}
+	if len(names) != len(want) {
+		t.Fatalf("router names: got %v, want %v", names, want)
+	}
+	for i := range want {
+		if names[i] != want[i] {
+			t.Fatalf("router names: got %v, want %v", names, want)
+		}
+	}
+}
+
+// A host outside spec.tls has no TLS sibling — Traefik only splits routers it
+// gives TLS config to.
+func TestTraefikRouterNamesSiblingOnlyForTLSCoveredHosts(t *testing.T) {
+	ingress := traefikTestIngress("web", "web", "secure.onbex.co", "plain.onbex.co")
+	ingress.Spec.TLS = []networkingv1.IngressTLS{{Hosts: []string{"secure.onbex.co"}}}
+	names, err := TraefikRouterNamesForIngress(ingress)
+	if err != nil {
+		t.Fatalf("TraefikRouterNamesForIngress: %v", err)
+	}
+	want := []string{
+		"default-web-plain-onbex-co@kubernetes",
+		"default-web-secure-onbex-co@kubernetes",
+		"websecure-default-web-secure-onbex-co@kubernetes",
+	}
+	if len(names) != len(want) {
+		t.Fatalf("router names: got %v, want %v", names, want)
+	}
+	for i := range want {
+		if names[i] != want[i] {
+			t.Fatalf("router names: got %v, want %v", names, want)
+		}
+	}
+}
+
+// The sibling derives from the FINAL key — collision hash included.
+func TestTraefikRouterNamesSiblingDerivesFromCollisionHashedKey(t *testing.T) {
+	ingress := traefikTestIngress("web", "web", "foo.bar", "foo-bar")
+	ingress.Spec.TLS = []networkingv1.IngressTLS{{Hosts: []string{"foo.bar", "foo-bar"}}}
+	names, err := TraefikRouterNamesForIngress(ingress)
+	if err != nil {
+		t.Fatalf("TraefikRouterNamesForIngress: %v", err)
+	}
+	want := []string{
+		"default-web-foo-bar-beb37b712c8473ef7afa@kubernetes",
+		"default-web-foo-bar-ef6c149f61f9c8903f31@kubernetes",
+		"websecure-default-web-foo-bar-beb37b712c8473ef7afa@kubernetes",
+		"websecure-default-web-foo-bar-ef6c149f61f9c8903f31@kubernetes",
+	}
+	if len(names) != len(want) {
+		t.Fatalf("collision siblings: got %v, want %v", names, want)
+	}
+	for i := range want {
+		if names[i] != want[i] {
+			t.Fatalf("collision siblings: got %v, want %v", names, want)
+		}
+	}
+}
+
 func TestTraefikRouterNamesPinNormalizedCollisionHashes(t *testing.T) {
 	ingress := traefikTestIngress("web", "web", "foo.bar", "foo-bar")
 	names, err := TraefikRouterNamesForIngress(ingress)

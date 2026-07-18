@@ -34,6 +34,12 @@ import (
 
 const traefikIngressClass = "traefik"
 
+// traefikTLSEntrypoint is the HTTPS entrypoint name in the deployed Traefik
+// (deploy/gitops/base/values/traefik.values.yaml `ports.websecure`) — the
+// prefix Traefik v3 puts on the TLS sibling router it mints for every
+// TLS-covered Ingress host (w1/m51/t001 ground truth, Traefik v3.7.5).
+const traefikTLSEntrypoint = "websecure"
+
 // TraefikRouterNames resolves the exact metric-label identities Traefik 3.7.5
 // emits for an App's operator-owned Ingress. A private App with no Ingress has
 // no public HTTP egress and returns an empty slice. An App that declares public
@@ -108,9 +114,26 @@ func TraefikRouterNamesForIngress(ingress *networkingv1.Ingress) ([]string, erro
 		return nil, fmt.Errorf("resolve Traefik routers: Ingress %s/%s is not class %q", ingress.Namespace, ingress.Name, traefikIngressClass)
 	}
 
+	// TLS-covered hosts get a second router: Traefik v3's Kubernetes Ingress
+	// provider (v3.7.5 on prod, chart 41.0.0) creates the base router
+	// `<ns>-<name>-<host>-<path>@kubernetes` on the non-TLS entrypoints and,
+	// for every host in spec.tls, a TLS sibling named `websecure-<same>` on
+	// the HTTPS entrypoint — and that sibling is where essentially all real
+	// bytes flow (w1/m51; prod router-label inventory 2026-07-18 shows exactly
+	// these two shapes, no others). Operator-owned Ingresses always carry TLS,
+	// so omitting the sibling undercounted every bandwidth/egress consumer to
+	// the 80→443 redirect traffic (w1/035).
+	tlsHosts := map[string]bool{}
+	for i := range ingress.Spec.TLS {
+		for _, host := range ingress.Spec.TLS[i].Hosts {
+			tlsHosts[host] = true
+		}
+	}
+
 	type candidate struct {
 		key  string
 		rule string
+		tls  bool
 	}
 	candidates := make([]candidate, 0, len(ingress.Spec.Rules))
 	counts := map[string]int{}
@@ -126,7 +149,7 @@ func TraefikRouterNamesForIngress(ingress *networkingv1.Ingress) ([]string, erro
 
 		key := strings.TrimPrefix(traefikNormalize(ingress.Namespace+"-"+ingress.Name+"-"+ingressRule.Host+path.Path), "-")
 		rule := fmt.Sprintf(`Host(%q) && PathPrefix("/")`, ingressRule.Host)
-		candidates = append(candidates, candidate{key: key, rule: rule})
+		candidates = append(candidates, candidate{key: key, rule: rule, tls: tlsHosts[ingressRule.Host]})
 		counts[key]++
 	}
 	if len(candidates) == 0 {
@@ -134,19 +157,26 @@ func TraefikRouterNamesForIngress(ingress *networkingv1.Ingress) ([]string, erro
 	}
 
 	seen := map[string]struct{}{}
-	names := make([]string, 0, len(candidates))
+	names := make([]string, 0, 2*len(candidates))
 	for _, candidate := range candidates {
 		key := candidate.key
 		if counts[key] > 1 {
 			hash := sha256.Sum256([]byte(candidate.rule))
 			key = fmt.Sprintf("%s-%.10x", key, hash[:])
 		}
-		name := key + "@kubernetes"
-		if _, exists := seen[name]; exists {
-			continue
+		// The sibling derives from the FINAL key (post collision-hash): Traefik
+		// prefixes the router it built, hash and all.
+		variants := []string{key + "@kubernetes"}
+		if candidate.tls {
+			variants = append(variants, traefikTLSEntrypoint+"-"+key+"@kubernetes")
 		}
-		seen[name] = struct{}{}
-		names = append(names, name)
+		for _, name := range variants {
+			if _, exists := seen[name]; exists {
+				continue
+			}
+			seen[name] = struct{}{}
+			names = append(names, name)
+		}
 	}
 	sort.Strings(names)
 	return names, nil
