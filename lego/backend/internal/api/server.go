@@ -398,8 +398,13 @@ func NewServer(base *core.Base, d Deps) *Server {
 			return out, nil
 		}
 	}
+	var protectionStore core.EnvironmentProtectionStore
+	if candidate, ok := d.Store.(core.EnvironmentProtectionStore); ok {
+		protectionStore = candidate
+	}
 	pg := &postgres.Service{
 		Base:         base,
+		Protection:   protectionStore,
 		ExportSigner: exportSigner,
 		Selections:   selections,
 		MaxPostgres:  d.MaxPostgres,
@@ -430,7 +435,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		}
 		return out, nil
 	}
-	kv := &keyvalue.Service{Base: base, Selections: selections, MaxKeyValues: d.MaxKeyValues, Owners: workspaceSvc, Metadata: resourceMetadata}
+	kv := &keyvalue.Service{Base: base, Protection: protectionStore, Selections: selections, MaxKeyValues: d.MaxKeyValues, Owners: workspaceSvc, Metadata: resourceMetadata}
 	kv.PodLogs = d.PodLogs
 	kv.KeyValueLogs = func(ctx context.Context, name string, q keyvalue.KeyValueLogQuery) ([]keyvalue.KeyValueLogEntry, error) {
 		entries, err := logSvc.QueryLogs(ctx, logs.LogQuery{

@@ -28,9 +28,9 @@ const KEY_VALUE: KeyValueView = {
 
 beforeEach(() => {
   remove.mockReset();
-  remove.mockResolvedValue(true);
+  remove.mockResolvedValue({ status: "success" });
   run.mockReset();
-  run.mockResolvedValue(true);
+  run.mockResolvedValue({ status: "success" });
 });
 
 describe("KeyValueDangerActions — Render-parity bottom action row", () => {
@@ -157,6 +157,61 @@ describe("KeyValueDangerActions — Render-parity bottom action row", () => {
       "resume",
       "red-sessions",
       "sessions-cache",
+    );
+    expect(onChanged).toHaveBeenCalledOnce();
+  });
+
+  it("prompts with the server-issued phrase when a protected suspend is blocked", async () => {
+    run
+      .mockResolvedValueOnce({
+        status: "confirmation_required",
+        confirmation: "sudo suspend key value sessions-cache",
+      })
+      .mockResolvedValueOnce({ status: "success" });
+    const onChanged = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <KeyValueDangerActions
+        keyValue={KEY_VALUE}
+        onDeleted={vi.fn()}
+        onChanged={onChanged}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Suspend Key Value Instance" }),
+    );
+    const localDialog = await screen.findByRole("alertdialog");
+    await user.type(
+      within(localDialog).getByLabelText("Sudo Command"),
+      "sudo suspend key value sessions-cache",
+    );
+    await user.click(
+      within(localDialog).getByRole("button", {
+        name: "Suspend Key Value Instance",
+      }),
+    );
+
+    const protectedDialog = await screen.findByRole("dialog");
+    expect(
+      within(protectedDialog).getByText(
+        "sudo suspend key value sessions-cache",
+      ),
+    ).toBeInTheDocument();
+    await user.type(
+      within(protectedDialog).getByRole("textbox"),
+      "sudo suspend key value sessions-cache",
+    );
+    await user.click(
+      within(protectedDialog).getByRole("button", {
+        name: "Suspend Key Value Instance",
+      }),
+    );
+    expect(run).toHaveBeenLastCalledWith(
+      "suspend",
+      "red-sessions",
+      "sessions-cache",
+      "sudo suspend key value sessions-cache",
     );
     expect(onChanged).toHaveBeenCalledOnce();
   });

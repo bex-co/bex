@@ -189,21 +189,21 @@ type CommitInfo struct {
 // stored value rather than the App's current generation, which a later,
 // unrelated spec write could have already moved past.
 type Deploy struct {
-	ID            string     `json:"id"`
-	AppID         string     `json:"appId"`
-	Trigger       string     `json:"trigger"`
-	Image         string     `json:"image,omitempty"`
-	ResolvedImage string     `json:"-"`
-	RollbackOf    string     `json:"rollbackOf,omitempty"`
-	Generation    int64      `json:"-"`
-	Commit          string     `json:"commit,omitempty"`
-	CommitMessage   string     `json:"commitMessage,omitempty"`
-	CommitAuthorAt  *time.Time `json:"commitAuthorAt,omitempty"`
-	Status          string     `json:"status"`
-	CreatedAt     time.Time  `json:"createdAt"`
-	UpdatedAt     time.Time  `json:"updatedAt"`
-	StartedAt     *time.Time `json:"startedAt,omitempty"`
-	FinishedAt    *time.Time `json:"finishedAt,omitempty"`
+	ID             string     `json:"id"`
+	AppID          string     `json:"appId"`
+	Trigger        string     `json:"trigger"`
+	Image          string     `json:"image,omitempty"`
+	ResolvedImage  string     `json:"-"`
+	RollbackOf     string     `json:"rollbackOf,omitempty"`
+	Generation     int64      `json:"-"`
+	Commit         string     `json:"commit,omitempty"`
+	CommitMessage  string     `json:"commitMessage,omitempty"`
+	CommitAuthorAt *time.Time `json:"commitAuthorAt,omitempty"`
+	Status         string     `json:"status"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	UpdatedAt      time.Time  `json:"updatedAt"`
+	StartedAt      *time.Time `json:"startedAt,omitempty"`
+	FinishedAt     *time.Time `json:"finishedAt,omitempty"`
 	// PreDeployStatus is the pre-deploy command's outcome for this deploy
 	// (w1/m33): '' (no step) | 'running' | 'succeeded' | 'failed'. The reconciler
 	// projects it from the App CR's status.preDeploy so a migration failure is
@@ -331,6 +331,10 @@ type Store interface {
 	// rollback's restored image on store-managed Apps (the projector owns
 	// spec.image), same row-first rationale as SetAppReplicas (w2/m10).
 	SetAppImage(ctx context.Context, id string, image string) error
+	// GetEnvironmentProtectedStatus resolves an Environment's destructive-verb
+	// protection state for Database/KeyValue members whose membership is stored
+	// as a CR label rather than in a control-plane resource row.
+	GetEnvironmentProtectedStatus(ctx context.Context, environmentID string) (string, error)
 
 	// UpsertUsageHourly writes one window row idempotently (ON CONFLICT DO
 	// UPDATE) — the write path for the metering loop (w8/m1). Re-processing
@@ -686,6 +690,27 @@ func (s *PGStore) GetAppProtectedStatus(ctx context.Context, appID string) (stri
 		return "", classify("app", err)
 	}
 	if protectedStatus == nil {
+		return "unprotected", nil
+	}
+	return *protectedStatus, nil
+}
+
+// GetEnvironmentProtectedStatus returns an Environment's protectedStatus.
+// Missing, NULL, and empty values are all unprotected: protection is opt-in,
+// and a resource may race with deletion of its Environment row.
+func (s *PGStore) GetEnvironmentProtectedStatus(ctx context.Context, environmentID string) (string, error) {
+	var protectedStatus *string
+	err := s.Pool.QueryRow(ctx,
+		`SELECT protected_status FROM environments WHERE id = $1`,
+		environmentID,
+	).Scan(&protectedStatus)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "unprotected", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	if protectedStatus == nil || *protectedStatus == "" {
 		return "unprotected", nil
 	}
 	return *protectedStatus, nil

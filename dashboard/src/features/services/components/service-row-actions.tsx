@@ -22,7 +22,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import type { en } from "@/i18n";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
 import type { ProtectedActionResult } from "@/features/services/lib/protected-confirmation";
-import { ProtectedConfirmationDialog } from "@/features/services/components/protected-confirmation-dialog";
+import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 
 const ACTION_LABEL: Record<LifecycleAction, keyof typeof en> = {
   suspend: "services.actionSuspend",
@@ -188,7 +188,7 @@ export function ServiceRowActions({
           protectedConfirm ? `open:${protectedConfirm.confirmation}` : "closed"
         }
         open={protectedConfirm !== null}
-        serviceName={service.name}
+        resourceName={service.name}
         requiredConfirmation={protectedConfirm?.confirmation ?? ""}
         actionLabel={
           protectedConfirm ? t(ACTION_LABEL[protectedConfirm.action]) : ""

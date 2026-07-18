@@ -127,8 +127,8 @@ mutation FailoverDatabase($id: String!) {
   failoverDatabase(id: $id)
 }
 
-mutation SuspendDatabase($id: String!) {
-  suspendDatabase(id: $id) {
+mutation SuspendDatabase($id: String!, $confirm: String) {
+  suspendDatabase(id: $id, confirm: $confirm) {
     id
     suspended
     status
@@ -286,8 +286,8 @@ mutation RenameDatabase($id: String!, $name: String!) {
   }
 }
 
-mutation DeleteDatabase($id: String!) {
-  deleteDatabase(id: $id)
+mutation DeleteDatabase($id: String!, $confirm: String) {
+  deleteDatabase(id: $id, confirm: $confirm)
 }
 
 # --- Postgres observability (w2/m25) ---

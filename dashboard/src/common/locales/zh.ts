@@ -1,6 +1,26 @@
 import type { TranslationEntry } from "@/i18n";
 
 const zhCommon: Record<string, TranslationEntry> = {
+  "common.protectedConfirmationTitle": {
+    message: "需要受保护环境确认",
+    description:
+      "Title for the retry dialog shown after a protected environment blocks a destructive action",
+  },
+  "common.protectedConfirmationBody": {
+    message: "{name} 属于受保护环境。请输入下方的完整命令以继续。",
+    description:
+      "Resource-neutral explanation for a protected environment confirmation gate",
+  },
+  "common.protectedConfirmationPrompt": {
+    message: "在下方输入 {phrase} 以确认。",
+    description:
+      "Prompt naming the server-issued protected environment confirmation phrase",
+  },
+  "common.protectedConfirmationCancel": {
+    message: "取消",
+    description:
+      "Cancel button in the protected environment confirmation dialog",
+  },
   "common.navEnvGroups": {
     message: "环境变量组",
     description: "Workspace sidebar link to environment groups",

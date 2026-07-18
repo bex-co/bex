@@ -49,8 +49,9 @@ import (
 // Service exposes managed key-value stores as Render's "key-value" shape.
 type Service struct {
 	*core.Base
-	Owners   resourcemeta.OwnerResolver
-	Metadata resourcemeta.Config
+	Protection core.EnvironmentProtectionStore
+	Owners     resourcemeta.OwnerResolver
+	Metadata   resourcemeta.Config
 	// Environments is the shared create-time assignment resolver used by all
 	// three resource kinds.
 	Environments core.EnvironmentResolver
@@ -435,6 +436,9 @@ func (s *Service) DeleteKeyValue(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
+	if err := s.requireUnprotected(ctx, kv, "delete"); err != nil {
+		return err
+	}
 	return s.Client.Delete(ctx, kv)
 }
 
@@ -456,6 +460,11 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 	kv, err := s.fetchKeyValue(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return KeyValueView{}, err
+	}
+	if suspended {
+		if err := s.requireUnprotected(ctx, kv, "suspend"); err != nil {
+			return KeyValueView{}, err
+		}
 	}
 	if kv.Spec.Suspended != suspended {
 		kv.Spec.Suspended = suspended

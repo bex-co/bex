@@ -272,7 +272,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 	mux.HandleFunc("PATCH "+base+"/{id}", s.handleUpdateKeyValue)
 	mux.HandleFunc("DELETE "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
-		if err := s.DeleteKeyValue(r.Context(), r.PathValue("id")); err != nil {
+		ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
+		if err := s.DeleteKeyValue(ctx, r.PathValue("id")); err != nil {
 			core.WriteErr(w, err)
 			return
 		}
@@ -291,7 +292,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// converges asynchronously) — matching the App suspend/resume surface.
 	lifecycle := func(path string, verb func(context.Context, string) (KeyValueView, error)) {
 		mux.HandleFunc("POST "+base+"/{id}"+path, func(w http.ResponseWriter, r *http.Request) {
-			kv, err := verb(r.Context(), r.PathValue("id"))
+			ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
+			kv, err := verb(ctx, r.PathValue("id"))
 			if err != nil {
 				core.WriteErr(w, err)
 				return

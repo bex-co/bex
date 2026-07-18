@@ -59,8 +59,9 @@ func supportedPostgresVersionText() string {
 // Service exposes managed Postgres as Render's "postgres" shape.
 type Service struct {
 	*core.Base
-	Owners   resourcemeta.OwnerResolver
-	Metadata resourcemeta.Config
+	Protection core.EnvironmentProtectionStore
+	Owners     resourcemeta.OwnerResolver
+	Metadata   resourcemeta.Config
 	// Environments is the shared create-time assignment resolver used by all
 	// three resource kinds.
 	Environments core.EnvironmentResolver
@@ -499,6 +500,9 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 func (s *Service) DeletePostgres(ctx context.Context, name string) error {
 	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {
+		return err
+	}
+	if err := s.requireUnprotected(ctx, d, "delete"); err != nil {
 		return err
 	}
 	return s.Client.Delete(ctx, d)

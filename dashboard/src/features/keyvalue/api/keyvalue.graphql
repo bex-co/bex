@@ -147,12 +147,12 @@ mutation RenameKeyValue($id: String!, $name: String!) {
   }
 }
 
-mutation DeleteKeyValue($id: String!) {
-  deleteKeyValue(id: $id)
+mutation DeleteKeyValue($id: String!, $confirm: String) {
+  deleteKeyValue(id: $id, confirm: $confirm)
 }
 
-mutation SuspendKeyValue($id: String!) {
-  suspendKeyValue(id: $id) {
+mutation SuspendKeyValue($id: String!, $confirm: String) {
+  suspendKeyValue(id: $id, confirm: $confirm) {
     id
     suspended
   }

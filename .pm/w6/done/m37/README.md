@@ -1,22 +1,22 @@
 # w6 · m37 — Protected-environment guard for Postgres/KeyValue delete + suspend
 
-**Worker:** worker6 **Goal:** a Postgres database or Key Value instance that belongs to a `protectedStatus=protected` Environment can no longer be deleted or suspended without the same typed confirm-phrase gate Apps already enforce. **Status:** todo
+**Worker:** worker6 **Goal:** a Postgres database or Key Value instance that belongs to a `protectedStatus=protected` Environment can no longer be deleted or suspended without the same typed confirm-phrase gate Apps already enforce. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                                       | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Store: `GetEnvironmentProtectedStatus(ctx, environmentID)` + label-based protected-status resolution for Database/KeyValue CRs | 45m | —          |
-| t002 | `postgres` package: `protection.go` (`requireUnprotected`/`ProtectedConfirmation`) wired into `Delete` + suspend | 1h  | t001       |
-| t003 | `keyvalue` package: same guard wired into `Delete` + suspend                                                   | 1h  | t001       |
-| t004 | REST: thread `?confirm=` through Postgres/KeyValue delete + suspend routes (incl. `/v1/databases` alias)       | 45m | t002, t003 |
-| t005 | GraphQL: `confirm` arg on `deleteDatabase`/`suspendDatabase`/`deleteKeyValue`/`suspendKeyValue`                | 30m | t002, t003 |
-| t006 | MCP: `Confirm` field on `suspend_postgres`/`suspend_keyvalue` (no MCP delete tool exists for either — deliberate, matches Render's own MCP server; do not add one) | 30m | t002, t003 |
-| t007 | Dashboard: generalize `ProtectedConfirmationDialog` and wire it into the Database/KeyValue row-actions delete + suspend flows, catching the protected-environment 400 and prompting the server-issued phrase | 1h  | t004, t005 |
-| t008 | Render parity: verify confirm-phrase semantics consistent across REST/GraphQL/MCP/UI vs. the existing Apps guard | 30m | t006, t007 |
-| t009 | Simplify                                                                                                        | 30m | t008       |
-| t010 | Test coverage                                                                                                   | 1h  | t008       |
-| t011 | Closeout                                                                                                        | 15m | t009, t010 |
+| t001 | Store: `GetEnvironmentProtectedStatus(ctx, environmentID)` + label-based protected-status resolution for Database/KeyValue CRs — **DONE** | 45m | —          |
+| t002 | `postgres` package: `protection.go` (`requireUnprotected`/`ProtectedConfirmation`) wired into `Delete` + suspend — **DONE** | 1h  | t001       |
+| t003 | `keyvalue` package: same guard wired into `Delete` + suspend — **DONE**                                                   | 1h  | t001       |
+| t004 | REST: thread `?confirm=` through Postgres/KeyValue delete + suspend routes (incl. `/v1/databases` alias) — **DONE**       | 45m | t002, t003 |
+| t005 | GraphQL: `confirm` arg on `deleteDatabase`/`suspendDatabase`/`deleteKeyValue`/`suspendKeyValue` — **DONE**                | 30m | t002, t003 |
+| t006 | MCP: `Confirm` field on `suspend_postgres`/`suspend_keyvalue` (no MCP delete tool exists for either — deliberate, matches Render's own MCP server; do not add one) — **DONE** | 30m | t002, t003 |
+| t007 | Dashboard: generalize `ProtectedConfirmationDialog` and wire it into the Database/KeyValue row-actions delete + suspend flows, catching the protected-environment 400 and prompting the server-issued phrase — **DONE** | 1h  | t004, t005 |
+| t008 | Render parity: verify confirm-phrase semantics consistent across REST/GraphQL/MCP/UI vs. the existing Apps guard — **DONE** | 30m | t006, t007 |
+| t009 | Simplify — **DONE**                                                                                                        | 30m | t008       |
+| t010 | Test coverage — **DONE**                                                                                                   | 1h  | t008       |
+| t011 | Closeout — **DONE**                                                                                                        | 15m | t009, t010 |
 
 ## Definition of done
 

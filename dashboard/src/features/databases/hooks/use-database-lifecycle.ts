@@ -8,6 +8,10 @@ import {
 } from "@/features/databases/api/operations";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { DatabaseView } from "@/features/databases/types";
+import {
+  protectedConfirmationFromError,
+  type ProtectedActionResult,
+} from "@/features/services/lib/protected-confirmation";
 
 /** The managed-Postgres lifecycle verbs (mirrors the compute lifecycle). */
 export type DatabaseLifecycleAction = "suspend" | "resume" | "restart";
@@ -28,7 +32,8 @@ export interface UseDatabaseLifecycleResult {
   run: (
     action: DatabaseLifecycleAction,
     database: DatabaseView,
-  ) => Promise<void>;
+    confirmation?: string,
+  ) => Promise<ProtectedActionResult>;
 }
 
 const SUCCESS_KEY: Record<DatabaseLifecycleAction, string> = {
@@ -56,24 +61,38 @@ export function useDatabaseLifecycle(
   const [restart] = useMutation(RestartDatabaseDocument);
   const mutate: Record<
     DatabaseLifecycleAction,
-    (id: string) => Promise<unknown>
+    (id: string, confirmation?: string) => Promise<unknown>
   > = {
-    suspend: (id) => suspend({ variables: { id } }),
+    suspend: (id, confirmation) =>
+      suspend({ variables: { id, confirm: confirmation } }),
     resume: (id) => resume({ variables: { id } }),
     restart: (id) => restart({ variables: { id } }),
   };
 
   const run = useCallback(
-    async (action: DatabaseLifecycleAction, database: DatabaseView) => {
+    async (
+      action: DatabaseLifecycleAction,
+      database: DatabaseView,
+      confirmation?: string,
+    ) => {
       setPending({ id: database.id, action });
       try {
-        await mutate[action](database.id);
+        await mutate[action](database.id, confirmation);
         toast.success(t(SUCCESS_KEY[action], { name: database.name }));
         refetch();
-      } catch {
+        return { status: "success" } as const;
+      } catch (err) {
+        const requiredConfirmation = protectedConfirmationFromError(err);
+        if (requiredConfirmation) {
+          return {
+            status: "confirmation_required",
+            confirmation: requiredConfirmation,
+          } as const;
+        }
         toast.error(
           t("databases.toastLifecycleError", { name: database.name }),
         );
+        return { status: "error" } as const;
       } finally {
         setPending(null);
       }

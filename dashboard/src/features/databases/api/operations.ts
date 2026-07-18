@@ -40,6 +40,10 @@ interface IdVars {
   id: string;
 }
 
+interface ConfirmVars extends IdVars {
+  confirm?: string;
+}
+
 export interface UpdateDatabaseDiskAutoscalingVars extends IdVars {
   enabled: boolean;
 }
@@ -178,14 +182,14 @@ export interface SuspendDatabaseMutation {
   suspendDatabase: LifecycleResult | null;
 }
 export const SuspendDatabaseDocument = gql`
-  mutation SuspendDatabase($id: String!) {
-    suspendDatabase(id: $id) {
+  mutation SuspendDatabase($id: String!, $confirm: String) {
+    suspendDatabase(id: $id, confirm: $confirm) {
       id
       suspended
       status
     }
   }
-` as unknown as TypedDocumentNode<SuspendDatabaseMutation, IdVars>;
+` as unknown as TypedDocumentNode<SuspendDatabaseMutation, ConfirmVars>;
 
 export interface ResumeDatabaseMutation {
   resumeDatabase: LifecycleResult | null;

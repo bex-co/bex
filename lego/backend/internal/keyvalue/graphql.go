@@ -256,9 +256,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 		"deleteKeyValue": &graphql.Field{
 			Type: graphql.Boolean,
-			Args: gqlutil.IDArg(),
+			Args: graphql.FieldConfigArgument{
+				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"confirm": &graphql.ArgumentConfig{Type: graphql.String},
+			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				err := s.DeleteKeyValue(p.Context, p.Args["id"].(string))
+				err := s.DeleteKeyValue(core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm")), p.Args["id"].(string))
 				return err == nil, err
 			},
 		},
@@ -297,9 +300,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 		"suspendKeyValue": &graphql.Field{
 			Type: keyValueGQLType,
-			Args: gqlutil.IDArg(),
+			Args: graphql.FieldConfigArgument{
+				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"confirm": &graphql.ArgumentConfig{Type: graphql.String},
+			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Suspend(p.Context, p.Args["id"].(string))
+				return s.Suspend(core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm")), p.Args["id"].(string))
 			},
 		},
 		"resumeKeyValue": &graphql.Field{

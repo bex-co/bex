@@ -243,6 +243,10 @@ func (m *memStore) GetApp(_ context.Context, id string) (App, error) {
 	return a, nil
 }
 
+func (m *memStore) GetEnvironmentProtectedStatus(context.Context, string) (string, error) {
+	return "unprotected", nil
+}
+
 func (m *memStore) ListApps(context.Context) ([]App, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

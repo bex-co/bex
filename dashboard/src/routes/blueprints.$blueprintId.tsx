@@ -28,7 +28,7 @@ import { ValidatePanel } from "@/features/blueprints/components/validate-panel";
 import { useBlueprint } from "@/features/blueprints/hooks/use-blueprint";
 import { useSyncBlueprint } from "@/features/blueprints/hooks/use-sync-blueprint";
 import { formatRelativeAge } from "@/features/services/lib/format";
-import { ProtectedConfirmationDialog } from "@/features/services/components/protected-confirmation-dialog";
+import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 import { protectedServiceName } from "@/features/services/lib/protected-confirmation";
 import { BlueprintDocument } from "@/features/blueprints/api/operations";
 import {
@@ -203,7 +203,7 @@ export function BlueprintDetailPage() {
       <ProtectedConfirmationDialog
         key={protectedConfirmation ? `open:${protectedConfirmation}` : "closed"}
         open={protectedConfirmation !== null}
-        serviceName={
+        resourceName={
           protectedConfirmation
             ? protectedServiceName(protectedConfirmation)
             : (blueprint?.name ?? blueprintId)
