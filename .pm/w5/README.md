@@ -59,6 +59,10 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+_(`023.md` implemented 2026-07-17 — compact clickable instance slugs and an
+exact, removable instance filter on deploy-detail log rows; completed as
+sub-hour work and moved to `done/`.)_
+
 _(`021.md` implemented 2026-07-17 — compact clickable instance slugs on service
 log rows; completed as sub-hour work and moved to `done/`.)_
 

@@ -6,12 +6,14 @@ import {
   Minimize2,
   Settings2,
   WifiOff,
+  X,
 } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useDebounce } from "@/common/hooks/use-debounce";
 import { EmptyState } from "@/common/components/empty-state";
 import { Input } from "@/common/components/ui/input";
 import { Button } from "@/common/components/ui/button";
+import { Badge } from "@/common/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -96,6 +98,7 @@ export function DeployLogPanel({
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [typeChoice, setTypeChoice] = useState<LogTypeChoice>("all");
+  const [instanceFilter, setInstanceFilter] = useState("");
   const [wrap, setWrap] = useState(true);
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [maximized, setMaximized] = useState(false);
@@ -120,10 +123,14 @@ export function DeployLogPanel({
         l.message.toLowerCase().includes(debouncedSearch.toLowerCase()),
       );
     }
+    if (instanceFilter) {
+      out = out.filter((l) => l.instance === instanceFilter);
+    }
     return out;
-  }, [lines, debouncedSearch, typeChoice]);
+  }, [lines, debouncedSearch, typeChoice, instanceFilter]);
 
-  const narrowed = !!debouncedSearch || typeChoice !== "all";
+  const narrowed =
+    !!debouncedSearch || typeChoice !== "all" || !!instanceFilter;
 
   let body;
   if (error) {
@@ -169,6 +176,7 @@ export function DeployLogPanel({
     body = (
       <LogLineList
         lines={filtered}
+        onInstanceFilter={setInstanceFilter}
         wrap={wrap}
         showTimestamps={showTimestamps}
         fill={maximized}
@@ -294,6 +302,23 @@ export function DeployLogPanel({
           </Button>
         </div>
       </div>
+      {instanceFilter ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge variant="secondary" className="gap-1 pr-1">
+            {t("logs.instanceLabel")}: {instanceFilter}
+            <button
+              type="button"
+              aria-label={t("logs.chipRemove", {
+                label: t("logs.instanceLabel"),
+              })}
+              onClick={() => setInstanceFilter("")}
+              className="rounded-full p-0.5 hover:bg-muted-foreground/20"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        </div>
+      ) : null}
       {buildStoreUnavailable && lines.length > 0 ? (
         <div
           role="status"
