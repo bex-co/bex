@@ -23,6 +23,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -105,6 +107,74 @@ var _ = Describe("reconciling a static_site App", func() {
 		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
 		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
 		Expect(app.Status.URL).To(Equal("https://" + name + ".onbex.co"))
+	})
+
+	It("direct-publishes a no-build static_site by cloning the repo (w9/010)", func() {
+		const name = "site-direct"
+		nn := types.NamespacedName{Name: name, Namespace: ns}
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+			Spec: appv1alpha1.AppSpec{
+				Type:        appv1alpha1.TypeStaticSite,
+				Repo:        "https://github.com/bex-co/bex",
+				RootDir:     "examples/static-site",
+				PublishPath: ".",
+				Expose:      true,
+			},
+		}
+		Expect(k8sClient.Create(ctx, app)).To(Succeed())
+
+		// The reconcile blocks inside publish.Publish waiting for the Job, so
+		// drive it from a goroutine and complete the Job by hand (envtest has no
+		// kubelet to run it).
+		done := make(chan struct{})
+		go func() {
+			defer GinkgoRecover()
+			defer close(done)
+			r := staticReconciler()
+			for range 3 {
+				_, _ = r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+			}
+		}()
+
+		By("dispatching a clone-mode publish Job and no build Job")
+		var job batchv1.Job
+		jobNN := types.NamespacedName{Name: "pub-" + name + "-rev-1", Namespace: ns}
+		Eventually(func() error { return k8sClient.Get(ctx, jobNN, &job) }, "30s", "250ms").Should(Succeed())
+		Expect(job.Spec.Template.Spec.InitContainers).To(HaveLen(1))
+		clone := job.Spec.Template.Spec.InitContainers[0]
+		Expect(clone.Name).To(Equal("clone"))
+		Expect(clone.Image).To(Equal(publish.DefaultGitImage))
+		env := map[string]string{}
+		for _, e := range clone.Env {
+			env[e.Name] = e.Value
+		}
+		Expect(env["REPO"]).To(Equal("https://github.com/bex-co/bex"))
+		Expect(env["SRC_DIR"]).To(Equal("examples/static-site"))
+		var bld batchv1.Job
+		Expect(apierrors.IsNotFound(
+			k8sClient.Get(ctx, types.NamespacedName{Name: "bld-" + name + "-gen-1", Namespace: ns}, &bld),
+		)).To(BeTrue())
+
+		By("completing the publish Job by hand and letting the reconcile finish")
+		now := metav1.Now()
+		job.Status.StartTime = &now
+		job.Status.CompletionTime = &now
+		job.Status.Conditions = append(job.Status.Conditions,
+			batchv1.JobCondition{Type: batchv1.JobSuccessCriteriaMet, Status: corev1.ConditionTrue},
+			batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
+		)
+		Expect(k8sClient.Status().Update(ctx, &job)).To(Succeed())
+		Eventually(done, "30s").Should(BeClosed())
+
+		By("serving from the static-server with no image recorded")
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+		Expect(app.Status.ActiveRevision).To(Equal("rev-1"))
+		Expect(app.Status.Image).To(BeEmpty())
+		var ing networkingv1.Ingress
+		Expect(k8sClient.Get(ctx, nn, &ing)).To(Succeed())
+		Expect(ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name).To(Equal("bex-static-server"))
 	})
 
 	It("fails a static_site with no publishPath", func() {

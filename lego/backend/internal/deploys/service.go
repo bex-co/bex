@@ -116,6 +116,11 @@ type DeployView struct {
 	// client tells the two apart. Its logs are retrievable via the logs surface
 	// (`type=predeploy`).
 	PreDeployStatus string
+	// FailureReason is the actionable cause of a failed deploy (w9/011) — the
+	// operator's diagnosis (crash loop with the $PORT hint, image-pull failure,
+	// build error) or a health-gate-timeout line. Empty unless Status is a
+	// failure. A bex extra beyond Render's deploy shape, like RollbackOf.
+	FailureReason string
 }
 
 func view(d store.Deploy) DeployView {
@@ -134,6 +139,7 @@ func view(d store.Deploy) DeployView {
 		StartedAt:       d.StartedAt,
 		FinishedAt:      d.FinishedAt,
 		PreDeployStatus: d.PreDeployStatus,
+		FailureReason:   d.FailureReason,
 	}
 }
 

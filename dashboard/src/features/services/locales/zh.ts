@@ -2272,6 +2272,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "docker.io/library/nginx:latest",
     description: "Create-wizard Existing Image tab input placeholder",
   },
+  "services.createImagePortHint": {
+    message: "容器必须监听 $PORT（默认 3000），且无法绑定 1024 以下的端口。",
+    description:
+      "Create-wizard Existing Image tab hint about bex's routed port and the no-privileged-ports hardening (w9/011)",
+  },
   "services.createRegistryCredentialLabel": {
     message: "镜像仓库凭据",
     description: "Create-wizard private-image registry credential label",

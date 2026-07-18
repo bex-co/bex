@@ -209,6 +209,13 @@ type Deploy struct {
 	// projects it from the App CR's status.preDeploy so a migration failure is
 	// distinguishable from a health-check failure (both close as update_failed).
 	PreDeployStatus string `json:"preDeployStatus,omitempty"`
+	// FailureReason is the human-actionable cause stamped when the reconciler
+	// closes this deploy failed (w9/011) — the App CR's Ready-condition message
+	// (crash loop with the $PORT hint, image-pull failure, build error) or a
+	// synthesized health-gate-timeout line. Empty on non-failed deploys. A bex
+	// extension beyond Render's deploy shape, like RollbackOf and
+	// PreDeployStatus.
+	FailureReason string `json:"failureReason,omitempty"`
 }
 
 // Domain is a row of `domains` — a BYOD custom domain attached to an app.
@@ -377,8 +384,10 @@ type Store interface {
 	// updated_at only when the status actually changes, stamps started_at on
 	// the first executing phase and finished_at on terminal transitions, and
 	// atomically deactivates a prior live deploy when this one reaches live.
-	// A stale/repeated/invalid transition returns false without changing data.
-	TransitionDeploy(ctx context.Context, id, status, resolvedImage string) (bool, error)
+	// failureReason (w9/011) is stored with the same transition when non-empty
+	// — pass it only alongside a failure status. A stale/repeated/invalid
+	// transition returns false without changing data.
+	TransitionDeploy(ctx context.Context, id, status, resolvedImage, failureReason string) (bool, error)
 	// CloseDeploy is the terminal-transition compatibility seam used by the
 	// deploy service's Cancel path. It delegates to TransitionDeploy.
 	CloseDeploy(ctx context.Context, id, status, resolvedImage string) (bool, error)
@@ -1116,11 +1125,11 @@ func pageKeyset(query string, args []any, table, sortCol, cursor string, limit i
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, commit_author_at, status, created_at, updated_at, started_at, finished_at, pre_deploy_status`
+const deployColumns = `id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, commit_author_at, status, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason`
 
 func scanDeploy(row pgx.Row) (Deploy, error) {
 	var d Deploy
-	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.Status, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus)
+	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.Status, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason)
 	return d, err
 }
 
@@ -1199,7 +1208,7 @@ func (s *PGStore) ListOpenDeploys(ctx context.Context) ([]Deploy, error) {
 	return out, rows.Err()
 }
 
-func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImage string) (bool, error) {
+func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImage, failureReason string) (bool, error) {
 	transitioned := false
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		var appID, current string
@@ -1221,11 +1230,12 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImag
 			`UPDATE deploys
 			 SET status = $2,
 			     resolved_image = COALESCE(NULLIF($3, ''), resolved_image),
+			     failure_reason = COALESCE(NULLIF($6, ''), failure_reason),
 			     started_at = CASE WHEN $4 THEN COALESCE(started_at, clock_timestamp()) ELSE started_at END,
 			     finished_at = CASE WHEN $5 THEN COALESCE(finished_at, clock_timestamp()) ELSE finished_at END,
 			     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
 			 WHERE id = $1`,
-			id, status, resolvedImage, starts, terminal); err != nil {
+			id, status, resolvedImage, starts, terminal, failureReason); err != nil {
 			return err
 		}
 		if status == DeployLive {
@@ -1248,7 +1258,7 @@ func (s *PGStore) CloseDeploy(ctx context.Context, id, status, resolvedImage str
 	if !IsTerminalDeployStatus(status) || status == DeployDeactivated {
 		return false, nil
 	}
-	return s.TransitionDeploy(ctx, id, status, resolvedImage)
+	return s.TransitionDeploy(ctx, id, status, resolvedImage, "")
 }
 
 // SetDeployPreDeployStatus records the pre-deploy step's outcome on a deploy
