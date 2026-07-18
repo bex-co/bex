@@ -202,11 +202,12 @@ pty_probe_output=""
 echo "PASS interactive PTY and resize"
 
 # The official CLI is intentionally interactive. Current render-oss/cli accepts
-# a service name for any-instance SSH and a complete instance id for an exact
-# replica. Both instance-menu callbacks currently drop the selected id, so this
-# verifier does not mistake that upstream defect for bex evidence:
-# it exercises the two working public arguments directly and records only the
-# destination the unmodified CLI gave OpenSSH.
+# a service name for any-instance SSH, a service id followed by an instance
+# picker, and a complete instance id for an exact replica. Both picker callbacks
+# currently drop the selected id and pass the service id instead. That upstream
+# defect still makes the picker's default "Any instance" option usable, but not
+# its exact-instance options. Exercise all three working public arguments and
+# record only the destination the unmodified CLI gave OpenSSH.
 if [[ "${BEX_RENDER_CLI_VERIFY:-0}" == "1" ]]; then
   command -v ssh-agent >/dev/null || fail "missing ssh-agent"
   command -v ssh-add >/dev/null || fail "missing ssh-add"
@@ -236,11 +237,19 @@ if [[ "${BEX_RENDER_CLI_VERIFY:-0}" == "1" ]]; then
     "RENDER_WORKSPACE=$workspace_id"
   )
 
-  echo 'CLI CHECK: resize the terminal, run `test "$BEX_SSH_SMOKE_VALUE" = "w2-m39-runtime" && exit`, and require a zero exit'
-  env "${cli_env[@]}" "$render_cli" ssh --output interactive "$service_name"
+  env "${cli_env[@]}" "$render_cli" ssh --output interactive "$service_name" -- \
+    'test "$BEX_SSH_SMOKE_VALUE" = "w2-m39-runtime"'
   [[ -f "$cli_target_log" ]] || fail "Render CLI service-name path did not invoke OpenSSH"
   [[ "$(<"$cli_target_log")" == "$ssh_address" ]] || fail "Render CLI service-name path selected an unexpected destination"
-  echo "PASS official Render CLI by service name"
+  echo "PASS official Render CLI by service name and runtime environment"
+
+  rm -f "$cli_target_log"
+  echo 'CLI CHECK: keep "Any instance" selected and press Enter; after the command returns to the picker, press q'
+  env "${cli_env[@]}" "$render_cli" ssh --output interactive "$service_id" -- \
+    'test "$BEX_SSH_SMOKE_VALUE" = "w2-m39-runtime"'
+  [[ -f "$cli_target_log" ]] || fail "Render CLI service-id path did not invoke OpenSSH"
+  [[ "$(<"$cli_target_log")" == "$ssh_address" ]] || fail "Render CLI service-id path selected an unexpected destination"
+  echo "PASS official Render CLI by service id (Any instance) and runtime environment"
 
   rm -f "$cli_target_log"
   env "${cli_env[@]}" "$render_cli" ssh --output interactive "$instance_id" -- 'test "$BEX_SSH_SMOKE_VALUE" = "w2-m39-runtime"'
