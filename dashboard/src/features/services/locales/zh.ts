@@ -42,6 +42,43 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "SSH 需要正在运行的付费 Web、私有或后台服务，以及已启用的网关。",
     description: "服务没有 SSH 地址时的说明",
   },
+  "services.shellTitle": {
+    message: "Shell",
+    description: "Running-instance SSH connection page title",
+  },
+  "services.shellDescription": {
+    message: "从本地终端打开正在运行的服务实例 Shell。",
+    description: "Running-instance SSH connection page description",
+  },
+  "services.shellConnectionTitle": {
+    message: "通过 SSH 连接",
+    description: "SSH connection card title",
+  },
+  "services.shellConnectionDescription": {
+    message: "bex 会连接到现有的就绪实例，不会创建单独的 Shell 实例。",
+    description: "SSH running-instance behavior explanation",
+  },
+  "services.shellCommand": {
+    message: "SSH 命令",
+    description: "Label for a copy-ready service SSH command",
+  },
+  "services.shellManageKeys": {
+    message: "管理 SSH 公钥",
+    description: "Link from a service shell page to account SSH key settings",
+  },
+  "services.shellSessionLifecycle": {
+    message: "该命令会选择一个就绪实例。重启、重新部署或暂停服务会关闭会话。",
+    description: "SSH session selection and lifecycle guidance",
+  },
+  "services.shellUnavailableTitle": {
+    message: "Shell 访问不可用",
+    description: "Unavailable SSH connection card title",
+  },
+  "services.shellUnavailableBody": {
+    message:
+      "Shell 访问需要正在运行的付费 Web、私有或后台服务，以及已启用的 SSH 网关。",
+    description: "Unavailable SSH connection card explanation",
+  },
   "services.actions": {
     message: "操作",
     description: "Accessible heading for service configuration row actions",
@@ -1598,7 +1635,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.buildCommandLabel": {
     message: "构建命令",
-    description: "Build & Deploy: build-command field label (static_site settings)",
+    description:
+      "Build & Deploy: build-command field label (static_site settings)",
   },
   "services.buildCommandHint": {
     message:
@@ -1611,7 +1649,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.buildCommandConfirmEmpty": {
     message: "运行时默认值",
-    description: "Build & Deploy: empty build-command phrase in confirmation title",
+    description:
+      "Build & Deploy: empty build-command phrase in confirmation title",
   },
   "services.buildCommandPlaceholder": {
     message: "npm run build",
@@ -1626,8 +1665,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Build & Deploy: build-command change confirmation title",
   },
   "services.buildCommandConfirmBody": {
-    message:
-      "服务将使用新的构建命令重新部署。现有请求完成后才会替换旧实例。",
+    message: "服务将使用新的构建命令重新部署。现有请求完成后才会替换旧实例。",
     description: "Build & Deploy: build-command change confirmation body",
   },
   "services.buildCommandSuccess": {
@@ -2101,7 +2139,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.resumeCardTitle": {
     message: "恢复服务",
-    description: "Settings tab resume section title (shown when service is suspended)",
+    description:
+      "Settings tab resume section title (shown when service is suspended)",
   },
   "services.resumeCardDescription": {
     message: "恢复服务将使其重新上线并开始处理流量。",
@@ -2606,6 +2645,10 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "部署",
     description:
       "Service-detail nav item (dedicated deploy-history tab, w9/002)",
+  },
+  "services.navShell": {
+    message: "Shell",
+    description: "Service-detail nav item (running-instance SSH page)",
   },
   "services.eventsTitle": {
     message: "活动",

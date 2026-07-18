@@ -70,7 +70,7 @@ export function SSHKeysPanel() {
   }
 
   return (
-    <Card>
+    <Card id="ssh-public-keys" className="scroll-mt-4">
       <CardHeader>
         <CardTitle>{t("sshKeys.title")}</CardTitle>
         <CardDescription>{t("sshKeys.description")}</CardDescription>
