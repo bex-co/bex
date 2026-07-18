@@ -121,7 +121,7 @@ beforeEach(() => {
 });
 
 describe("KeyValueDetailPage", () => {
-  it("renders an available store's metadata and a Suspend action", async () => {
+  it("renders an available store's metadata and Render's bottom danger actions", async () => {
     keyValueState.keyValue = kv({ status: "available", suspended: false });
     renderPage();
 
@@ -130,6 +130,12 @@ describe("KeyValueDetailPage", () => {
     expect(
       screen.getByRole("button", { name: "Suspend Key Value Instance" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Delete Key Value Instance" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Open actions menu" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Reveal connection info" }),
     ).toBeInTheDocument();

@@ -41,7 +41,7 @@ beforeEach(() => {
 });
 
 describe("KeyValueRowActions", () => {
-  it("gates delete behind a typed-name confirmation", async () => {
+  it("gates delete behind Render's exact sudo confirmation", async () => {
     const onDeleted = vi.fn();
     const user = userEvent.setup();
     render(<KeyValueRowActions keyValue={KV} onDeleted={onDeleted} />);
@@ -51,7 +51,7 @@ describe("KeyValueRowActions", () => {
 
     const dialog = await screen.findByRole("dialog");
     const confirm = within(dialog).getByRole("button", {
-      name: "Delete Key Value store",
+      name: "Delete Key Value Instance",
     });
     expect(confirm).toBeDisabled(); // nothing typed yet
 
@@ -60,7 +60,7 @@ describe("KeyValueRowActions", () => {
     expect(confirm).toBeDisabled();
 
     await user.clear(input);
-    await user.type(input, "sessions-cache");
+    await user.type(input, "sudo delete key value sessions-cache");
     expect(confirm).toBeEnabled();
 
     await user.click(confirm);

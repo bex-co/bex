@@ -92,7 +92,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Row action: permanently delete the Key Value store",
   },
   "keyvalue.deleteConfirmTitle": {
-    message: "删除 {name}？",
+    message: "删除键值存储实例",
     description: "Delete-confirmation dialog title",
   },
   "keyvalue.deleteConfirmBody": {
@@ -101,15 +101,15 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Delete-confirmation dialog body",
   },
   "keyvalue.deleteConfirmPrompt": {
-    message: "输入 {name} 以确认。",
-    description: "Delete-confirmation typed-name prompt label",
+    message: "输入 {phrase} 以确认",
+    description: "Render-style exact sudo delete confirmation prompt",
   },
   "keyvalue.deleteCancel": {
     message: "取消",
     description: "Delete-confirmation dialog cancel button",
   },
   "keyvalue.deleteConfirm": {
-    message: "删除键值存储",
+    message: "删除键值存储实例",
     description: "Delete-confirmation dialog confirm button",
   },
   "keyvalue.deleteSuccess": {
@@ -334,13 +334,9 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Toast when clipboard copy fails",
   },
   // --- Suspend / resume ---
-  "keyvalue.lifecycleTitle": {
-    message: "生命周期",
-    description: "Suspend/resume card title",
-  },
-  "keyvalue.lifecycleDescription": {
-    message: "暂停该存储以缩容至零，或将其恢复。",
-    description: "Suspend/resume card description",
+  "keyvalue.dangerDelete": {
+    message: "删除键值存储实例",
+    description: "Discoverable delete action at the bottom of Key Value Info",
   },
   "keyvalue.actionSuspend": {
     message: "暂停键值存储实例",
@@ -351,13 +347,17 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Resume action button label",
   },
   "keyvalue.confirmSuspendTitle": {
-    message: "暂停 {name}？",
+    message: "暂停键值存储实例",
     description: "Suspend-confirmation dialog title",
   },
   "keyvalue.confirmSuspendBody": {
+    message: "确定要暂停此键值存储实例吗？",
+    description: "Suspend-confirmation dialog description",
+  },
+  "keyvalue.confirmSuspendDetail": {
     message:
-      "这会将存储缩容至零并断开所有活动连接。数据会被保留，随时可以恢复。",
-    description: "Suspend-confirmation dialog body",
+      "请确认你要暂停 {name}。所有活动连接都将断开；数据会被保留，你可以随时恢复。",
+    description: "Suspend-confirmation consequences and named instance",
   },
   "keyvalue.confirmSuspendPrompt": {
     message: "输入 {phrase} 以确认",
