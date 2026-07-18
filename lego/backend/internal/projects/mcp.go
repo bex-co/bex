@@ -49,7 +49,7 @@ type renameProjectArgs struct {
 
 type setProjectServicesArgs struct {
 	ID         string   `json:"id" jsonschema:"the project id (prj-…)"`
-	ServiceIDs []string `json:"serviceIds" jsonschema:"App CR names (same as the id field on a service) to assign to the project — replaces the full list"`
+	ServiceIDs []string `json:"serviceIds" jsonschema:"public service ids (normally srv-...; the id field returned by list_services) to assign to the project — replaces the full list"`
 }
 
 type setProjectDatabasesArgs struct {
@@ -130,7 +130,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_project_services",
-		Description: "Assign services to a project (replaces the full list). Pass serviceIds as App CR names — the same id shown by list_services. bex extension.",
+		Description: "Assign services to a project (replaces the full list). Pass the public serviceIds shown by list_services. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setProjectServicesArgs) (*mcp.CallToolResult, ProjectView, error) {
 		if in.ServiceIDs == nil {
 			in.ServiceIDs = []string{}

@@ -330,8 +330,8 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 		t.Fatalf("ListEnvironments = %+v (err %v), want 2", list, err)
 	}
 
-	// Assigning to an environment also joins the service to its project.
-	if err := s.SetEnvironmentServices(ctx, env.ID, proj.ID, ten.ID, []string{app.Name}); err != nil {
+	// Assigning by the public stable id also joins the service to its project.
+	if err := s.SetEnvironmentServices(ctx, env.ID, proj.ID, ten.ID, []string{app.ID}); err != nil {
 		t.Fatalf("set environment services: %v", err)
 	}
 	var gotProjectID *string
@@ -341,19 +341,22 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 	if gotProjectID == nil || *gotProjectID != proj.ID {
 		t.Errorf("assigning to an environment should also set apps.project_id = %q, got %v", proj.ID, gotProjectID)
 	}
-	if ids, err := s.ListEnvironmentServices(ctx, env.ID, proj.ID); err != nil || len(ids) != 1 || ids[0] != app.Name {
-		t.Fatalf("ListEnvironmentServices(staging) = %+v (err %v), want [%s]", ids, err, app.Name)
+	if ids, err := s.ListEnvironmentServices(ctx, env.ID, proj.ID); err != nil || len(ids) != 1 || ids[0] != app.ID {
+		t.Fatalf("ListEnvironmentServices(staging) = %+v (err %v), want public id [%s]", ids, err, app.ID)
+	}
+	if ids, err := s.ListProjectServices(ctx, proj.ID); err != nil || len(ids) != 1 || ids[0] != app.ID {
+		t.Fatalf("ListProjectServices = %+v (err %v), want public id [%s]", ids, err, app.ID)
 	}
 
-	// Reassignment (a service belongs to at most one environment at a time).
+	// Legacy name input remains accepted during the stable-id transition.
 	if err := s.SetEnvironmentServices(ctx, prod.ID, proj.ID, ten.ID, []string{app.Name}); err != nil {
 		t.Fatalf("reassign: %v", err)
 	}
 	if ids, err := s.ListEnvironmentServices(ctx, env.ID, proj.ID); err != nil || len(ids) != 0 {
 		t.Fatalf("ListEnvironmentServices(staging) after reassign = %+v (err %v), want empty", ids, err)
 	}
-	if ids, err := s.ListEnvironmentServices(ctx, prod.ID, proj.ID); err != nil || len(ids) != 1 || ids[0] != app.Name {
-		t.Fatalf("ListEnvironmentServices(production) = %+v (err %v), want [%s]", ids, err, app.Name)
+	if ids, err := s.ListEnvironmentServices(ctx, prod.ID, proj.ID); err != nil || len(ids) != 1 || ids[0] != app.ID {
+		t.Fatalf("ListEnvironmentServices(production) = %+v (err %v), want public id [%s]", ids, err, app.ID)
 	}
 
 	if err := s.RenameEnvironment(ctx, env.ID, "staging-v2"); err != nil {
@@ -406,7 +409,7 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 	}
 	// Rejoin so the DeleteEnvironment/DeleteProject assertions below (which
 	// assume app is a prod member) still hold.
-	if err := s.SetEnvironmentServices(ctx, prod.ID, proj.ID, ten.ID, []string{app.Name}); err != nil {
+	if err := s.SetEnvironmentServices(ctx, prod.ID, proj.ID, ten.ID, []string{app.ID}); err != nil {
 		t.Fatalf("rejoin prod: %v", err)
 	}
 
