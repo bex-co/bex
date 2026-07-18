@@ -19,6 +19,7 @@ describe("toKeyValueViews", () => {
         status: "available",
         suspended: "not_suspended",
         createdAt: "2026-07-01T00:00:00Z",
+        updatedAt: "2026-07-02T00:00:00Z",
         externalHost: "sessions-cache.kv.bex.co",
         public: true,
       },
@@ -33,6 +34,7 @@ describe("toKeyValueViews", () => {
       plan: "starter",
       version: "8",
       createdAt: "2026-07-01T00:00:00Z",
+      updatedAt: "2026-07-02T00:00:00Z",
       externalHost: "sessions-cache.kv.bex.co",
       public: true,
       suspended: false,
@@ -54,6 +56,7 @@ describe("toKeyValueViews", () => {
       status: null,
       suspended: "suspended",
       createdAt: null,
+      updatedAt: null,
       externalHost: null,
       public: null,
     });
@@ -62,6 +65,7 @@ describe("toKeyValueViews", () => {
     expect(v.plan).toBeNull();
     expect(v.public).toBe(false);
     expect(v.suspended).toBe(true);
+    expect(v.updatedAt).toBeNull();
   });
 });
 

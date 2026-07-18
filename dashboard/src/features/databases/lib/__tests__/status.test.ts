@@ -21,6 +21,8 @@ describe("toDatabaseViews", () => {
         diskSizeGB: 5,
         suspended: "not_suspended",
         createdAt: "2026-07-01T00:00:00Z",
+        updatedAt: "2026-07-02T00:00:00Z",
+        region: "fsn1",
         public: true,
       },
       null,
@@ -35,6 +37,8 @@ describe("toDatabaseViews", () => {
       version: "16",
       diskSizeGB: 5,
       createdAt: "2026-07-01T00:00:00Z",
+      updatedAt: "2026-07-02T00:00:00Z",
+      region: "fsn1",
       public: true,
       suspended: "not_suspended",
     });
@@ -55,12 +59,16 @@ describe("toDatabaseViews", () => {
       diskSizeGB: null,
       suspended: null,
       createdAt: null,
+      updatedAt: null,
+      region: "",
       public: null,
     });
     expect(v.name).toBe("db1");
     expect(v.status).toBe("");
     expect(v.plan).toBeNull();
     expect(v.public).toBe(false);
+    expect(v.updatedAt).toBeNull();
+    expect(v.region).toBeNull();
   });
 });
 

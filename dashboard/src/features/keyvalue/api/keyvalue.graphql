@@ -21,6 +21,8 @@ query KeyValues($ownerId: String) {
     status
     suspended
     createdAt
+    updatedAt
+    region
     externalHost
     public
   }
@@ -35,6 +37,7 @@ query KeyValue($id: String!) {
     status
     suspended
     createdAt
+    updatedAt
     externalHost
     public
     region
@@ -115,7 +118,10 @@ mutation CreateKeyValue(
   }
 }
 
-mutation SetKeyValueIpAllowList($id: String!, $entries: [IPAllowListEntryInput!]) {
+mutation SetKeyValueIpAllowList(
+  $id: String!
+  $entries: [IPAllowListEntryInput!]
+) {
   setKeyValueIpAllowList(id: $id, entries: $entries) {
     id
     ipAllowListEntries {

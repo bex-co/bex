@@ -73,6 +73,7 @@ import { generateEnvValue } from "@/features/services/lib/generate-env-value";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 import { RegistryCredentialSelect } from "@/features/services/components/registry-credential-select";
 import { PathList } from "@/features/services/components/build-deploy-section";
+import { parseNewServiceSearch } from "@/features/services/lib/create-context";
 
 // A C-locale env-var name — kept in sync with backend/internal/secrets validEnvKey.
 const VALID_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -113,6 +114,7 @@ const RUNTIME_COMMANDS: Record<
 export const Route = createFileRoute("/services/new")({
   component: NewServicePage,
   beforeLoad: requireAuth(),
+  validateSearch: parseNewServiceSearch,
   head: () => ({
     meta: [{ title: "New Service · bex dashboard" }],
   }),
@@ -441,6 +443,7 @@ function SecretFileEditor({
 export function NewServicePage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const { instanceTypes } = useInstanceTypes();
   const { create, busy, capLimit, nameConflict, clearNameConflict } =
     useCreateService();
@@ -471,8 +474,12 @@ export function NewServicePage() {
   const [buildFilterIgnored, setBuildFilterIgnored] = useState<string[]>([]);
   const [envVars, setEnvVars] = useState<EnvVarEntry[]>([]);
   const [secretFiles, setSecretFiles] = useState<SecretFileEntry[]>([]);
-  const [projectId, setProjectId] = useState<string | null>(null);
-  const [environmentId, setEnvironmentId] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(
+    search.projectId ?? null,
+  );
+  const [environmentId, setEnvironmentId] = useState<string | null>(
+    search.environmentId ?? null,
+  );
 
   const isCronType = serviceType === "cron_job";
   const isStaticType = serviceType === "static_site";
@@ -637,7 +644,8 @@ export function NewServicePage() {
           ? dockerfilePath.trim() || undefined
           : undefined,
       buildFilter:
-        isGitSource && isStaticType &&
+        isGitSource &&
+        isStaticType &&
         (buildFilterPaths.some((p) => p.trim()) ||
           buildFilterIgnored.some((p) => p.trim()))
           ? {
@@ -1145,9 +1153,7 @@ export function NewServicePage() {
                       <Input
                         id="svc-static-build-command"
                         value={staticBuildCommand}
-                        onChange={(e) =>
-                          setStaticBuildCommand(e.target.value)
-                        }
+                        onChange={(e) => setStaticBuildCommand(e.target.value)}
                         placeholder={t("services.buildCommandPlaceholder")}
                         autoComplete="off"
                       />

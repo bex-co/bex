@@ -9,6 +9,7 @@ import {
   createMemoryHistory,
 } from "@tanstack/react-router";
 import { NewServicePage } from "../services.new";
+import { parseNewServiceSearch } from "@/features/services/lib/create-context";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { RegistryCredentialView } from "@/features/registry-credentials/types";
@@ -179,12 +180,13 @@ const REPO: RepoView = {
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-function renderPage() {
+function renderPage(initialEntry = "/") {
   const rootRoute = createRootRoute();
   const newRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
     component: NewServicePage,
+    validateSearch: parseNewServiceSearch,
   });
   const serviceRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -198,7 +200,7 @@ function renderPage() {
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([newRoute, serviceRoute, deployRoute]),
-    history: createMemoryHistory({ initialEntries: ["/"] }),
+    history: createMemoryHistory({ initialEntries: [initialEntry] }),
     context: { client: {} as never, session: null },
   });
   return render(<RouterProvider router={router} />);
@@ -228,6 +230,31 @@ beforeEach(() => {
   nameAvailabilityState.checking = false;
   registryCredentialsState.credentials = [PRIVATE_REGISTRY_CREDENTIAL];
   registryCredentialsState.loading = false;
+  projectsState.projects = [
+    {
+      id: "prj-platform",
+      name: "Platform",
+      ownerId: "tea-1",
+      serviceIds: [],
+      databaseIds: [],
+      keyValueIds: [],
+    },
+  ];
+  environmentsState.environments = [
+    {
+      id: "env-production",
+      projectId: "prj-platform",
+      name: "Production",
+      ownerId: "tea-1",
+      createdAt: null,
+      serviceIds: [],
+      databaseIds: [],
+      keyValueIds: [],
+      protectedStatus: "unprotected",
+      networkIsolationEnabled: false,
+      ipAllowList: [],
+    },
+  ];
 });
 
 // ── tests ─────────────────────────────────────────────────────────────────────
@@ -415,6 +442,36 @@ describe("NewServicePage", () => {
   });
 
   describe("create flow", () => {
+    it("preselects Project and Environment from validated URL context", async () => {
+      const user = userEvent.setup();
+      renderPage("/?projectId=prj-platform&environmentId=env-production");
+
+      expect(
+        await screen.findByRole("combobox", { name: "Project" }),
+      ).toHaveTextContent("Platform");
+      expect(
+        screen.getByRole("combobox", { name: "Environment" }),
+      ).toHaveTextContent("Production");
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({ environmentId: "env-production" }),
+      );
+    });
+
+    it("clears stale Project and Environment URL context", async () => {
+      renderPage("/?projectId=prj-stale&environmentId=env-production");
+
+      expect(
+        await screen.findByRole("combobox", { name: "Project" }),
+      ).toHaveTextContent("No project");
+      expect(
+        screen.getByRole("combobox", { name: "Environment" }),
+      ).toBeDisabled();
+    });
+
     it("calls create with repo and selected plan, then resolves", async () => {
       const user = userEvent.setup();
       renderPage();

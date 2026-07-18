@@ -1,10 +1,19 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EnvironmentCard } from "@/features/environments/components/environment-card";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 
 const rename = vi.fn();
+
+beforeAll(() => {
+  if (!Element.prototype.hasPointerCapture) {
+    Element.prototype.hasPointerCapture = () => false;
+  }
+  if (!Element.prototype.releasePointerCapture) {
+    Element.prototype.releasePointerCapture = () => {};
+  }
+});
 vi.mock("@/features/environments/hooks/use-rename-environment", () => ({
   useRenameEnvironment: () => ({ rename, busy: false }),
 }));
@@ -19,15 +28,63 @@ vi.mock("@/features/environments/hooks/use-set-environment-acl", () => ({
   useSetEnvironmentACL: () => ({ saveACL, saving: false }),
 }));
 
+const setServices = vi.fn();
+const setDatabases = vi.fn();
+const setKeyValues = vi.fn();
+const setEnvGroups = vi.fn();
+vi.mock("@/features/environments/hooks/use-set-environment-services", () => ({
+  useSetEnvironmentServices: () => ({ setServices, busyId: null }),
+}));
+vi.mock("@/features/environments/hooks/use-set-environment-databases", () => ({
+  useSetEnvironmentDatabases: () => ({ setDatabases, busyId: null }),
+}));
+vi.mock("@/features/environments/hooks/use-set-environment-keyvalues", () => ({
+  useSetEnvironmentKeyValues: () => ({ setKeyValues, busyId: null }),
+}));
+vi.mock("@/features/environments/hooks/use-set-environment-env-groups", () => ({
+  useSetEnvironmentEnvGroups: () => ({ setEnvGroups, busyId: null }),
+}));
+
 // The manage-resources dialog reaches Apollo when opened; the card never opens
 // it in these tests, but stub it so mounting the (closed) dialog stays inert.
 vi.mock("@/features/environments/components/manage-resources-dialog", () => ({
   ManageResourcesDialog: () => null,
 }));
 vi.mock("@/features/projects/components/resource-table", () => ({
-  ResourceTable: ({ rows }: { rows: Array<{ id: string; name: string }> }) => (
+  resourceSelectionKey: (row: { kind: string; id: string }) =>
+    `${row.kind}:${row.id}`,
+  ResourceTable: ({
+    rows,
+    selectedKeys,
+    onSelectedKeysChange,
+  }: {
+    rows: Array<{ kind: string; id: string; name: string }>;
+    selectedKeys?: ReadonlySet<string>;
+    onSelectedKeysChange?: (keys: Set<string>) => void;
+  }) => (
     <div data-testid="resource-table">
       {rows.map((row) => row.name).join(",")}
+      {onSelectedKeysChange && rows[0] ? (
+        <>
+          <button
+            onClick={() =>
+              onSelectedKeysChange(new Set([`${rows[0].kind}:${rows[0].id}`]))
+            }
+          >
+            select first row
+          </button>
+          <button
+            onClick={() =>
+              onSelectedKeysChange(
+                new Set(rows.map((row) => `${row.kind}:${row.id}`)),
+              )
+            }
+          >
+            select all rows
+          </button>
+        </>
+      ) : null}
+      <span>{selectedKeys?.size ?? 0}</span>
     </div>
   ),
 }));
@@ -74,6 +131,15 @@ beforeEach(() => {
   remove.mockResolvedValue(true);
   saveACL.mockReset();
   saveACL.mockResolvedValue(true);
+  for (const mutate of [
+    setServices,
+    setDatabases,
+    setKeyValues,
+    setEnvGroups,
+  ]) {
+    mutate.mockReset();
+    mutate.mockResolvedValue(true);
+  }
 });
 
 describe("EnvironmentCard", () => {
@@ -120,7 +186,7 @@ describe("EnvironmentCard", () => {
       kind: "all",
     });
 
-    await user.click(screen.getByRole("button", { name: "Env Groups" }));
+    await user.click(screen.getByRole("button", { name: "Env Groups (0)" }));
     expect(onResourceFilterChange).toHaveBeenLastCalledWith({
       environmentId: "env-1",
       query: "",
@@ -153,6 +219,106 @@ describe("EnvironmentCard", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "No matching resources",
     );
+  });
+
+  it("bulk-moves selected rows while preserving unrelated target members", async () => {
+    const user = userEvent.setup();
+    const production: EnvironmentView = {
+      ...env,
+      id: "env-2",
+      name: "production",
+      serviceIds: ["srv-existing"],
+    };
+    renderCard({
+      services: [
+        {
+          id: "srv-api",
+          name: "Public API",
+          suspended: false,
+          phase: "Running",
+          url: "",
+          createdAt: null,
+          replicas: 1,
+          revision: "r1",
+        },
+      ],
+      environment: { ...env, serviceIds: ["srv-api"] },
+      allEnvironments: [{ ...env, serviceIds: ["srv-api"] }, production],
+    });
+
+    await user.click(screen.getByRole("button", { name: "select first row" }));
+    await user.click(
+      screen.getByRole("combobox", {
+        name: "Move selected resources to environment",
+      }),
+    );
+    await user.click(screen.getByRole("option", { name: "production" }));
+    await user.click(screen.getByRole("button", { name: "Move" }));
+
+    expect(setServices).toHaveBeenCalledWith("env-2", "production", [
+      "srv-existing",
+      "srv-api",
+    ]);
+    expect(screen.getByText("Selected: 0")).toBeInTheDocument();
+  });
+
+  it("retains only failed kinds after a truthful partial bulk Move", async () => {
+    setDatabases.mockResolvedValue(false);
+    const user = userEvent.setup();
+    const production: EnvironmentView = {
+      ...env,
+      id: "env-2",
+      name: "production",
+    };
+    renderCard({
+      services: [
+        {
+          id: "srv-api",
+          name: "Public API",
+          suspended: false,
+          phase: "Running",
+          url: "",
+          createdAt: null,
+          replicas: 1,
+          revision: "r1",
+        },
+      ],
+      databases: [
+        {
+          id: "dpg-main",
+          name: "Main DB",
+          status: "available",
+          plan: null,
+          version: "16",
+          diskSizeGB: 1,
+          createdAt: null,
+          public: false,
+          suspended: "not_suspended",
+        },
+      ],
+      environment: {
+        ...env,
+        serviceIds: ["srv-api"],
+        databaseIds: ["dpg-main"],
+      },
+      allEnvironments: [
+        { ...env, serviceIds: ["srv-api"], databaseIds: ["dpg-main"] },
+        production,
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: "select all rows" }));
+    await user.click(
+      screen.getByRole("combobox", {
+        name: "Move selected resources to environment",
+      }),
+    );
+    await user.click(screen.getByRole("option", { name: "production" }));
+    await user.click(screen.getByRole("button", { name: "Move" }));
+
+    expect(setServices).toHaveBeenCalled();
+    expect(setDatabases).toHaveBeenCalled();
+    expect(screen.getByText("Selected: 1")).toBeInTheDocument();
   });
 
   it("renames via the overflow menu", async () => {

@@ -30,6 +30,8 @@ export function toDatabaseView(d: DatabaseNode): DatabaseView {
     version: d.version ?? null,
     diskSizeGB: d.diskSizeGB ?? null,
     createdAt: d.createdAt ?? null,
+    updatedAt: "updatedAt" in d ? (d.updatedAt ?? null) : null,
+    region: "region" in d ? d.region || null : null,
     public: d.public ?? false,
     suspended: d.suspended ?? "",
   };
@@ -77,7 +79,6 @@ export function toDatabaseDetailView(
       })),
     externalHost: d.externalHost ?? null,
     backupsEnabled: d.backupsEnabled ?? false,
-    region: d.region ?? null,
   };
 }
 

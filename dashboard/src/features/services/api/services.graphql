@@ -20,6 +20,9 @@ query Services($ownerId: String) {
     dashboardUrl
     url
     createdAt
+    updatedAt
+    runtime
+    region
     phase
     replicas
     revision

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   Select,
   SelectContent,
@@ -28,8 +29,47 @@ export function ProjectEnvironmentSelector({
   onEnvironmentChange,
 }: ProjectEnvironmentSelectorProps) {
   const { t } = useTranslations();
-  const { projects } = useProjects();
-  const { environments } = useEnvironments(projectId);
+  const { projects, loading: projectsLoading } = useProjects();
+  const { environments, loading: environmentsLoading } =
+    useEnvironments(projectId);
+
+  // URL preselection is only a convenience: clear stale or foreign ids before
+  // the form can submit them, then leave the ordinary selectors editable.
+  useEffect(() => {
+    if (environmentId && !projectId) {
+      onEnvironmentChange(null);
+      return;
+    }
+    if (
+      !projectsLoading &&
+      projectId &&
+      !projects.some((p) => p.id === projectId)
+    ) {
+      onProjectChange(null);
+      onEnvironmentChange(null);
+      return;
+    }
+    if (
+      !environmentsLoading &&
+      environmentId &&
+      !environments.some(
+        (environment) =>
+          environment.id === environmentId &&
+          environment.projectId === projectId,
+      )
+    ) {
+      onEnvironmentChange(null);
+    }
+  }, [
+    environmentId,
+    environments,
+    environmentsLoading,
+    onEnvironmentChange,
+    onProjectChange,
+    projectId,
+    projects,
+    projectsLoading,
+  ]);
 
   return (
     <div className="space-y-2">

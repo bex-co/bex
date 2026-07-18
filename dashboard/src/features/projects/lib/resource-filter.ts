@@ -1,4 +1,3 @@
-import type { EnvGroupView } from "@/features/env-groups/types";
 import type { ResourceRow } from "@/features/projects/types";
 
 export const PROJECT_RESOURCE_KINDS = [
@@ -46,9 +45,8 @@ export function parseProjectResourceSearch(
 /** Composes name/id search with the selected kind over one environment's members. */
 export function filterProjectResources(
   rows: ResourceRow[],
-  envGroups: EnvGroupView[],
   filter: Pick<ProjectResourceFilterState, "query" | "kind">,
-): { rows: ResourceRow[]; envGroups: EnvGroupView[] } {
+): ResourceRow[] {
   const query = filter.query.trim().toLocaleLowerCase();
   const matches = (name: string, id: string) =>
     !query ||
@@ -58,13 +56,36 @@ export function filterProjectResources(
     if (filter.kind === "services") return row.kind === "service";
     if (filter.kind === "databases") return row.kind === "database";
     if (filter.kind === "keyvalues") return row.kind === "keyvalue";
+    if (filter.kind === "envgroups") return row.kind === "envgroup";
     return filter.kind === "all";
   });
-  return {
-    rows: rowsForKind.filter((row) => matches(row.name, row.id)),
-    envGroups:
-      filter.kind === "all" || filter.kind === "envgroups"
-        ? envGroups.filter((group) => matches(group.name, group.id))
-        : [],
+  return rowsForKind.filter((row) => matches(row.name, row.id));
+}
+
+export interface ProjectResourceCounts {
+  all: number;
+  services: number;
+  databases: number;
+  keyvalues: number;
+  envgroups: number;
+}
+
+/** Counts are scoped to the selected Environment and intentionally pre-search. */
+export function countProjectResources(
+  rows: ResourceRow[],
+): ProjectResourceCounts {
+  const counts: ProjectResourceCounts = {
+    all: rows.length,
+    services: 0,
+    databases: 0,
+    keyvalues: 0,
+    envgroups: 0,
   };
+  for (const row of rows) {
+    if (row.kind === "service") counts.services += 1;
+    if (row.kind === "database") counts.databases += 1;
+    if (row.kind === "keyvalue") counts.keyvalues += 1;
+    if (row.kind === "envgroup") counts.envgroups += 1;
+  }
+  return counts;
 }

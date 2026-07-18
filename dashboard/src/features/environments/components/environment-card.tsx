@@ -45,10 +45,14 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { ResourceTable } from "@/features/projects/components/resource-table";
 import {
   toDatabaseRow,
+  toEnvGroupRow,
   toKeyValueRow,
   toServiceRow,
 } from "@/features/projects/hooks/use-grouped-resources";
-import type { ResourceRow } from "@/features/projects/types";
+import {
+  resourceSelectionKey,
+  type ResourceRow,
+} from "@/features/projects/types";
 import { useRenameEnvironment } from "@/features/environments/hooks/use-rename-environment";
 import { useDeleteEnvironment } from "@/features/environments/hooks/use-delete-environment";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
@@ -62,12 +66,23 @@ import type {
 import type { DatabaseView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
 import type { EnvGroupView } from "@/features/env-groups/types";
-import { Link } from "@tanstack/react-router";
 import { ProjectResourceFilters } from "@/features/projects/components/project-resource-filters";
 import {
+  countProjectResources,
   filterProjectResources,
   type ProjectResourceFilterState,
 } from "@/features/projects/lib/resource-filter";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/common/components/ui/select";
+import { useSetEnvironmentServices } from "@/features/environments/hooks/use-set-environment-services";
+import { useSetEnvironmentDatabases } from "@/features/environments/hooks/use-set-environment-databases";
+import { useSetEnvironmentKeyValues } from "@/features/environments/hooks/use-set-environment-keyvalues";
+import { useSetEnvironmentEnvGroups } from "@/features/environments/hooks/use-set-environment-env-groups";
 
 export interface EnvironmentCardProps {
   environment: EnvironmentView;
@@ -82,6 +97,7 @@ export interface EnvironmentCardProps {
   onDatabaseDeleted: (id: string) => void;
   onKeyValueDeleted: (id: string) => void;
   envGroups?: EnvGroupView[];
+  allEnvironments?: EnvironmentView[];
   resourceFilter?: ProjectResourceFilterState;
   onResourceFilterChange?: (filter: ProjectResourceFilterState) => void;
 }
@@ -89,9 +105,9 @@ export interface EnvironmentCardProps {
 /**
  * One environment rendered as a card: its name with rename/delete affordances
  * and a "Manage resources" action, over a reused `ResourceTable` of the
- * services, databases, and key-value instances assigned to it (w6/m20
- * extension — an environment groups all three resource types, matching what
- * Projects already did; see docs/ADR032-environments.md).
+ * services, databases, key-value instances, and Env Groups assigned to it.
+ * The Environment's full management dialogs remain here alongside the selected
+ * operating view (docs/ADR032-environments.md).
  */
 export function EnvironmentCard({
   environment,
@@ -103,6 +119,7 @@ export function EnvironmentCard({
   onDatabaseDeleted,
   onKeyValueDeleted,
   envGroups = [],
+  allEnvironments = [environment],
   resourceFilter = {
     environmentId: environment.id,
     query: "",
@@ -121,6 +138,17 @@ export function EnvironmentCard({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [moveTargetId, setMoveTargetId] = useState("");
+  const { setServices, busyId: servicesBusyId } = useSetEnvironmentServices();
+  const { setDatabases, busyId: databasesBusyId } =
+    useSetEnvironmentDatabases();
+  const { setKeyValues, busyId: keyValuesBusyId } =
+    useSetEnvironmentKeyValues();
+  const { setEnvGroups, busyId: envGroupsBusyId } =
+    useSetEnvironmentEnvGroups();
 
   const rows = useMemo((): ResourceRow[] => {
     const serviceById = new Map(services.map((s) => [s.id, s]));
@@ -138,7 +166,12 @@ export function EnvironmentCard({
       .map((id) => keyValueById.get(id))
       .filter((k): k is KeyValueView => k != null)
       .map(toKeyValueRow);
-    return [...serviceRows, ...databaseRows, ...keyValueRows];
+    const envGroupById = new Map(envGroups.map((group) => [group.id, group]));
+    const envGroupRows = environment.envGroupIds
+      .map((id) => envGroupById.get(id))
+      .filter((group): group is EnvGroupView => group != null)
+      .map(toEnvGroupRow);
+    return [...serviceRows, ...databaseRows, ...keyValueRows, ...envGroupRows];
   }, [
     environment.serviceIds,
     environment.databaseIds,
@@ -146,12 +179,20 @@ export function EnvironmentCard({
     services,
     databases,
     keyValues,
+    environment.envGroupIds,
+    envGroups,
   ]);
-  const linkedEnvGroups = envGroups.filter((group) =>
-    environment.envGroupIds.includes(group.id),
+  const visibleRows = filterProjectResources(rows, resourceFilter);
+  const counts = countProjectResources(rows);
+  const moveTargets = allEnvironments.filter(
+    (candidate) => candidate.id !== environment.id,
   );
-  const visible = filterProjectResources(rows, linkedEnvGroups, resourceFilter);
-  const hasMembers = rows.length > 0 || linkedEnvGroups.length > 0;
+  const moving = [
+    servicesBusyId,
+    databasesBusyId,
+    keyValuesBusyId,
+    envGroupsBusyId,
+  ].some((id) => id === moveTargetId);
 
   function openRename() {
     setRenameValue(environment.name);
@@ -174,6 +215,94 @@ export function EnvironmentCard({
     if (ok) setDeleteOpen(false);
   }
 
+  async function handleMove() {
+    const target = moveTargets.find(
+      (candidate) => candidate.id === moveTargetId,
+    );
+    if (!target || selectedKeys.size === 0) return;
+
+    const selectedRows = rows.filter((row) =>
+      selectedKeys.has(resourceSelectionKey(row)),
+    );
+    const byKind = {
+      service: selectedRows.filter((row) => row.kind === "service"),
+      database: selectedRows.filter((row) => row.kind === "database"),
+      keyvalue: selectedRows.filter((row) => row.kind === "keyvalue"),
+      envgroup: selectedRows.filter((row) => row.kind === "envgroup"),
+    };
+    const operations: Array<{
+      keys: string[];
+      run: Promise<boolean>;
+    }> = [];
+    if (byKind.service.length > 0) {
+      operations.push({
+        keys: byKind.service.map(resourceSelectionKey),
+        run: setServices(
+          target.id,
+          target.name,
+          mergeIds(
+            target.serviceIds,
+            byKind.service.map((row) => row.id),
+          ),
+        ),
+      });
+    }
+    if (byKind.database.length > 0) {
+      operations.push({
+        keys: byKind.database.map(resourceSelectionKey),
+        run: setDatabases(
+          target.id,
+          target.name,
+          mergeIds(
+            target.databaseIds,
+            byKind.database.map((row) => row.id),
+          ),
+        ),
+      });
+    }
+    if (byKind.keyvalue.length > 0) {
+      operations.push({
+        keys: byKind.keyvalue.map(resourceSelectionKey),
+        run: setKeyValues(
+          target.id,
+          target.name,
+          mergeIds(
+            target.keyValueIds,
+            byKind.keyvalue.map((row) => row.id),
+          ),
+        ),
+      });
+    }
+    if (byKind.envgroup.length > 0) {
+      operations.push({
+        keys: byKind.envgroup.map(resourceSelectionKey),
+        run: setEnvGroups(
+          target.id,
+          target.name,
+          mergeIds(
+            target.envGroupIds,
+            byKind.envgroup.map((row) => row.id),
+          ),
+        ),
+      });
+    }
+
+    const results = await Promise.all(
+      operations.map(async (operation) => ({
+        keys: operation.keys,
+        succeeded: await operation.run,
+      })),
+    );
+    const succeeded = new Set(
+      results
+        .filter((result) => result.succeeded)
+        .flatMap((result) => result.keys),
+    );
+    setSelectedKeys(
+      new Set([...selectedKeys].filter((key) => !succeeded.has(key))),
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -187,7 +316,7 @@ export function EnvironmentCard({
           ) : null}
           <span className="text-xs font-normal text-muted-foreground">
             {t("environments.resourceCount", {
-              count: rows.length + linkedEnvGroups.length,
+              count: rows.length,
             })}
           </span>
         </CardTitle>
@@ -234,15 +363,16 @@ export function EnvironmentCard({
         <ProjectResourceFilters
           environmentName={environment.name}
           filter={resourceFilter}
+          counts={counts}
           onChange={(next) =>
             onResourceFilterChange({ ...next, environmentId: environment.id })
           }
         />
-        {!hasMembers ? (
+        {rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {t("environments.cardEmpty")}
           </p>
-        ) : visible.rows.length === 0 && visible.envGroups.length === 0 ? (
+        ) : visibleRows.length === 0 ? (
           <div className="py-6 text-center" role="status">
             <p className="font-medium">{t("projects.noMatchesTitle")}</p>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -250,38 +380,53 @@ export function EnvironmentCard({
             </p>
           </div>
         ) : (
-          <>
-            {visible.rows.length > 0 ? (
-              <ResourceTable
-                rows={visible.rows}
-                servicePending={servicePending}
-                onRunServiceAction={onRunServiceAction}
-                onDatabaseDeleted={onDatabaseDeleted}
-                onKeyValueDeleted={onKeyValueDeleted}
-              />
-            ) : null}
-            {visible.envGroups.length > 0 ? (
-              <ul
-                className="divide-y rounded-md border"
-                aria-label={t("projects.filterEnvGroups")}
+          <div className="space-y-3">
+            <div
+              className="flex flex-wrap items-center gap-2"
+              aria-live="polite"
+            >
+              <span className="text-sm text-muted-foreground">
+                {t("projects.selectedCount", { count: selectedKeys.size })}
+              </span>
+              <Select value={moveTargetId} onValueChange={setMoveTargetId}>
+                <SelectTrigger
+                  className="w-48"
+                  aria-label={t("projects.moveTargetLabel")}
+                  disabled={moveTargets.length === 0 || moving}
+                >
+                  <SelectValue
+                    placeholder={t("projects.moveTargetPlaceholder")}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {moveTargets.map((target) => (
+                    <SelectItem key={target.id} value={target.id}>
+                      {target.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={selectedKeys.size === 0 || !moveTargetId || moving}
+                onClick={() => void handleMove()}
               >
-                {visible.envGroups.map((group) => (
-                  <li key={group.id}>
-                    <Link
-                      to="/env-groups/$groupId"
-                      params={{ groupId: group.id }}
-                      className="flex items-center justify-between px-4 py-3 text-sm hover:bg-muted/30"
-                    >
-                      <span className="font-medium">{group.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {t("projects.filterEnvGroups")}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </>
+                {moving ? <Loader2 className="animate-spin" /> : null}
+                {t("projects.moveSelected")}
+              </Button>
+            </div>
+            <ResourceTable
+              rows={visibleRows}
+              servicePending={servicePending}
+              onRunServiceAction={onRunServiceAction}
+              onDatabaseDeleted={onDatabaseDeleted}
+              onKeyValueDeleted={onKeyValueDeleted}
+              projectMetadata
+              selectedKeys={selectedKeys}
+              onSelectedKeysChange={setSelectedKeys}
+            />
+          </div>
         )}
       </CardContent>
 
@@ -360,4 +505,8 @@ export function EnvironmentCard({
       />
     </Card>
   );
+}
+
+function mergeIds(existing: string[], additions: string[]): string[] {
+  return [...new Set([...existing, ...additions])];
 }

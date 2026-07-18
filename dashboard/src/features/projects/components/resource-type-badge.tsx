@@ -6,6 +6,7 @@ const LABEL_KEY: Record<ResourceKind, string> = {
   service: "projects.typeService",
   database: "projects.typeDatabase",
   keyvalue: "projects.typeKeyValue",
+  envgroup: "projects.typeEnvGroup",
 };
 
 /**

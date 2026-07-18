@@ -21,6 +21,8 @@ query Databases($ownerId: String) {
     diskAutoscalingEnabled
     suspended
     createdAt
+    updatedAt
+    region
     public
   }
 }
@@ -46,6 +48,7 @@ query Database($id: String!) {
     }
     suspended
     createdAt
+    updatedAt
     externalHost
     public
     poolerEnabled
@@ -182,7 +185,10 @@ mutation CreateDatabaseExport($id: String!) {
   }
 }
 
-mutation SetDatabaseIpAllowList($id: String!, $entries: [IPAllowListEntryInput!]) {
+mutation SetDatabaseIpAllowList(
+  $id: String!
+  $entries: [IPAllowListEntryInput!]
+) {
   setDatabaseIpAllowList(id: $id, entries: $entries) {
     id
     ipAllowListEntries {

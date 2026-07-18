@@ -30,6 +30,10 @@ export interface ServiceView {
   /** Live URL, or null when the App has none yet. */
   url: string | null;
   createdAt: string | null;
+  /** Authoritative last resource mutation time; absent on legacy list fixtures. */
+  updatedAt?: string | null;
+  /** Explicit installation placement (`BEX_REGION`), never browser-inferred. */
+  region?: string | null;
   /** Copy-ready Render-compatible raw OpenSSH target, or null when unavailable. */
   sshAddress: string | null;
   replicas: number | null;

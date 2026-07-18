@@ -5,6 +5,15 @@ const enEnvironments: Record<string, TranslationEntry> = {
     message: "Environments",
     description: "Section heading above a project page's environments list",
   },
+  "environments.selectorLabel": {
+    message: "Selected environment",
+    description:
+      "Accessible label for the Project overview Environment selector",
+  },
+  "environments.unassignedOption": {
+    message: "Unassigned",
+    description: "Project resources that belong to no Environment",
+  },
   "environments.newButton": {
     message: "New Environment",
     description: "Button that opens the new-environment dialog",
