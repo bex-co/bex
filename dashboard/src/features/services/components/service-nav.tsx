@@ -1,4 +1,13 @@
 import type { SidebarNavGroup } from "@/common/components/dashboard-layout/sidebar-nav-groups";
+import {
+  Activity,
+  Braces,
+  ChartNoAxesCombined,
+  CreditCard,
+  Scaling,
+  ScrollText,
+  Settings,
+} from "lucide-react";
 
 // bex's subset of Render's service-page navigation, grouped the way Render's
 // resource-scoped sidebar groups it (live capture 2026-07-16,
@@ -16,23 +25,51 @@ import type { SidebarNavGroup } from "@/common/components/dashboard-layout/sideb
 export const SERVICE_NAV_GROUPS: SidebarNavGroup[] = [
   {
     items: [
-      { labelKey: "services.navEvents", to: "/services/$serviceId/events" },
-      { labelKey: "services.navSettings", to: "/services/$serviceId/settings" },
+      {
+        labelKey: "services.navEvents",
+        to: "/services/$serviceId/events",
+        icon: Activity,
+      },
+      {
+        labelKey: "services.navSettings",
+        to: "/services/$serviceId/settings",
+        icon: Settings,
+      },
     ],
   },
   {
     labelKey: "common.navMonitorGroup",
     items: [
-      { labelKey: "services.navLogs", to: "/services/$serviceId/logs" },
-      { labelKey: "services.navMetrics", to: "/services/$serviceId/metrics" },
+      {
+        labelKey: "services.navLogs",
+        to: "/services/$serviceId/logs",
+        icon: ScrollText,
+      },
+      {
+        labelKey: "services.navMetrics",
+        to: "/services/$serviceId/metrics",
+        icon: ChartNoAxesCombined,
+      },
     ],
   },
   {
     labelKey: "common.navManageGroup",
     items: [
-      { labelKey: "services.navEnvironment", to: "/services/$serviceId/env" },
-      { labelKey: "services.navScaling", to: "/services/$serviceId/scaling" },
-      { labelKey: "services.navPlan", to: "/services/$serviceId/plan" },
+      {
+        labelKey: "services.navEnvironment",
+        to: "/services/$serviceId/env",
+        icon: Braces,
+      },
+      {
+        labelKey: "services.navScaling",
+        to: "/services/$serviceId/scaling",
+        icon: Scaling,
+      },
+      {
+        labelKey: "services.navPlan",
+        to: "/services/$serviceId/plan",
+        icon: CreditCard,
+      },
     ],
   },
 ];
