@@ -33,6 +33,7 @@ chmod +x "$mock_ssh"
 export TEST_SSH_ARGS="$tmp/ssh.args"
 export BEX_SSH_VERIFY_REAL_SSH="$mock_ssh"
 export BEX_SSH_VERIFY_CLI_KNOWN_HOSTS="$tmp/known_hosts"
+export BEX_SSH_VERIFY_PRIVATE_KEY_FILE="$tmp/client-key"
 export BEX_SSH_VERIFY_CLI_TARGET_LOG="$tmp/target"
 
 touch "$BEX_SSH_VERIFY_CLI_KNOWN_HOSTS"
@@ -46,6 +47,8 @@ for expected in \
   'StrictHostKeyChecking=yes' \
   "UserKnownHostsFile=$BEX_SSH_VERIFY_CLI_KNOWN_HOSTS" \
   'IdentitiesOnly=yes' \
+  '-i' \
+  "$BEX_SSH_VERIFY_PRIVATE_KEY_FILE" \
   'srv-test-instance@ssh.example.test' \
   'exit 37'; do
   grep -Fxq -- "$expected" "$TEST_SSH_ARGS" || {

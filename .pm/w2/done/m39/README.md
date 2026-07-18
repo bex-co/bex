@@ -1,6 +1,6 @@
 # w2 · m39 — SSH into running service instances
 
-**Worker:** worker2 **Goal:** A workspace member can register an SSH public key and use standard `ssh` or the official Render CLI to open an authorized terminal in an eligible running bex service instance. **Status:** in progress — implementation and static validation complete 2026-07-14; production activation/live acceptance remain open
+**Worker:** worker2 **Goal:** A workspace member can register an SSH public key and use standard `ssh` or the official Render CLI to open an authorized terminal in an eligible running bex service instance. **Status:** done (2026-07-17)
 
 ## Tasks (in order)
 
@@ -13,13 +13,13 @@
 | t005 | Dashboard SSH keys + copy-ready Connect surface — **DONE** | 45m | t003, t004 |
 | t006 | Isolated SSH gateway: public-key auth + service authorization — **DONE** | 60m | t002, t004 |
 | t007 | Bridge SSH shell/exec channels to Kubernetes exec — **DONE** | 60m | t006 |
-| t008 | Production wiring: host key · port 22 · DNS · least-privilege RBAC | 60m | t007 |
-| t009 | Live acceptance with OpenSSH and the official Render CLI | 45m | t005, t008 |
+| t008 | Production wiring: host key · port 22 · DNS · least-privilege RBAC — **DONE** | 60m | t007 |
+| t009 | Live acceptance with OpenSSH and the official Render CLI — **DONE** | 45m | t005, t008 |
 | t014 | Shell navigation for running-instance SSH — **DONE** | 30m | t005 |
-| t010 | Render parity | 30m | t009, t014 |
-| t011 | Simplify | 30m | t010 |
-| t012 | Test coverage | 60m | t010 |
-| t013 | Closeout | 15m | t012 |
+| t010 | Render parity — **DONE** | 30m | t009, t014 |
+| t011 | Simplify — **DONE** | 30m | t010 |
+| t012 | Test coverage — **DONE** | 60m | t010 |
+| t013 | Closeout — **DONE** | 15m | t012 |
 
 ## Definition of done
 
@@ -50,6 +50,16 @@ Production wiring advanced on 2026-07-15: the deployed gateway reached 2/2 Ready
 Therefore t008's public DNS/TCP/22 acceptance, t009's live matrix, parity promotion (t010), and closeout (t013) are deliberately not marked done. Do not set `BEX_SSH_HOST` or move this milestone to `done/` until the stable host-key Secret is installed, the image/manifests are deployed to the production app cluster, direct DNS is published, `scripts/ssh-activate.sh` succeeds, and the sanitized t009 evidence is recorded.
 
 On 2026-07-17, t014 completed the dashboard information-architecture follow-up requested against Render's live `/shell` route: the service sidebar now includes Manage → Shell, and `/services/{id}/shell` presents the existing copy-ready running-instance SSH command, lifecycle guidance, unavailable state, and a deep link to SSH public-key settings. Render's page embeds a browser terminal and can select a replica; bex's page intentionally keeps private keys and terminal streams out of the browser and adds no new exec path. Dashboard typecheck, lint, all 224 test files / 1371 tests, and focused Shell/sidebar tests passed. The production activation and public hostname acceptance gates remain t008/t009 and are unaffected.
+
+## Production closeout (2026-07-17)
+
+The DNS-only `ssh.bex.co` A/AAAA records now point directly at the Hetzner edge, public TCP/22 presents the published stable Ed25519 fingerprint, the gateway and bex-api are 2/2 Ready, and the activation ConfigMap advertises the host. The production RBAC audit reconfirmed tenant-namespace App/pod read plus `pods/exec create` only for the gateway; Secret access, platform-namespace exec, and bex-api exec remain denied. The dashboard Shell route is deployed behind authentication and the API health endpoint remains healthy.
+
+One uninterrupted full-matrix run passed raw OpenSSH and the unmodified official Render CLI v2.21.0 by service name and complete instance id, PTY resize, exit status, runtime environment, restart/redeploy closure, stale/suspended/free/shell-less/unknown/deleted-key denial, and viewer/foreign/static/cron rejection. The runner deleted all disposable resources; the final audit found zero m39 App fixtures and zero m39 OAuth clients. Sanitized evidence is in [`evidence/2026-07-17-production-acceptance.md`](evidence/2026-07-17-production-acceptance.md).
+
+The closeout parity audit rechecked Render's current SSH docs, public OpenAPI, dashboard flow, and v2.21.0 CLI source. Running-instance REST/CLI parity is promoted with evidence; the browser terminal, ephemeral/cron shells, SFTP/SCP, agent forwarding, and TCP/Unix-socket forwarding remain explicit divergences. The simplification pass retained one owner for key normalization (`sshkeys`), service/instance eligibility (`apps.ResolveSSHSession`), protocol/stream bridging (`sshgateway`), sidebar navigation, and namespaced exec RBAC; no abstraction weakened those trust boundaries.
+
+Final verification passed on the rebased tree: backend `go test ./...`; operator `make test` (generation, format, vet, envtest); `make lint` with zero issues across operator/backend; dashboard typecheck, lint, and 232 test files / 1,470 tests; focused SSH race tests; shell syntax/shim tests; full GitOps rendering and SSH RBAC/network-policy guards; and the production public-edge matrix above. `promtool` was unavailable, so the GitOps validator emitted its documented optional alert-rule warning while every required validation passed.
 
 ## Source + Goal linkage
 

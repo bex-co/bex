@@ -95,21 +95,29 @@ assert_rejected() {
 wait_ready() {
   local require_new="${1:-}" deadline=$((SECONDS + ${BEX_SSH_VERIFY_READY_TIMEOUT_SECONDS:-300}))
   while ((SECONDS < deadline)); do
-    service_json="$(api_json GET "/v1/services/$service_id")"
-    instances="$(api_json GET "/v1/services/$service_id/instances")"
+    if ! service_json="$(api_json GET "/v1/services/$service_id")" ||
+      ! instances="$(api_json GET "/v1/services/$service_id/instances")" ||
+      ! deploys="$(api_json GET "/v1/services/$service_id/deploys?limit=20")"; then
+      sleep 3
+      continue
+    fi
     ssh_address="$(jq -r '.serviceDetails.sshAddress // empty' <<<"$service_json")"
     instance_id="$(jq -r '.[0].id // empty' <<<"$instances")"
+    live_deploy=0
+    if jq -e 'any(.[]; (.deploy.status // .status // "") == "live")' <<<"$deploys" >/dev/null; then
+      live_deploy=1
+    fi
     old_gone=1
     if [[ -n "$require_new" ]] && ! jq -e --arg old "$require_new" 'all(.[]; .id != $old)' <<<"$instances" >/dev/null; then
       old_gone=0
     fi
-    if [[ "$(jq -r '.phase // empty' <<<"$service_json")" == "Running" && -n "$ssh_address" && \
+    if [[ "$(jq -r '.phase // empty' <<<"$service_json")" == "Running" && "$live_deploy" == "1" && -n "$ssh_address" && \
       "$(jq 'length' <<<"$instances")" -ge 2 && -n "$instance_id" && "$old_gone" == "1" ]]; then
       return 0
     fi
     sleep 3
   done
-  fail "service did not reach Running with two Ready current-image instances"
+  fail "service did not reach Running with a live deploy and two Ready current-image instances"
 }
 
 if [[ -n "${BEX_SSH_VERIFY_SERVICE:-}" ]]; then
@@ -120,9 +128,15 @@ if [[ -n "${BEX_SSH_VERIFY_SERVICE:-}" ]]; then
 else
   service_name="ssh-verify-$(date +%s)-$$"
   create_payload="$(jq -n --arg name "$service_name" '{
-    type:"web_service", name:$name, image:{imagePath:"nginxinc/nginx-unprivileged:1.27-alpine"}, port:8080,
-    serviceDetails:{plan:"starter",numInstances:2,healthCheckPath:"/"},
-    envVars:[{key:"BEX_SSH_SMOKE_VALUE",value:"w2-m39-runtime"}]
+    type:"web_service", name:$name, image:{imagePath:"busybox:1.36.1"}, port:8080,
+    serviceDetails:{
+      plan:"starter",numInstances:2,healthCheckPath:"/",runtime:"image",
+      envSpecificDetails:{startCommand:"mkdir -p /tmp/site && printf ok >/tmp/site/index.html && exec httpd -f -p 8080 -h /tmp/site"}
+    },
+    envVars:[
+      {key:"BEX_SSH_SMOKE_VALUE",value:"w2-m39-runtime"},
+      {key:"WHOAMI_PORT_NUMBER",value:"8080"}
+    ]
   }')"
   created_service="$(api_json POST /v1/services "$create_payload")"
   service_id="$(jq -er '.service.id' <<<"$created_service")"
@@ -132,6 +146,7 @@ fi
 
 wait_ready
 original_image="$(jq -er '.imagePath' <<<"$service_json")"
+original_start_command="$(jq -r '.serviceDetails.envSpecificDetails.startCommand // empty' <<<"$service_json")"
 original_plan="$(jq -er '.serviceDetails.plan' <<<"$service_json")"
 workspace_id="$(jq -er '.ownerId' <<<"$service_json")"
 host="${ssh_address#*@}"
@@ -169,15 +184,21 @@ set -e
 [[ "$specific_rc" == "23" ]] || fail "specific-instance exit status (got $specific_rc)"
 echo "PASS specific-instance and exit status"
 
-# The opt-in Go probe keeps terminal bytes in memory and prints no content.
-(
-  cd "$repo_root/lego/backend"
-  BEX_TEST_SSH_PUBLIC_ADDR="$host:22" \
-    BEX_TEST_SSH_PUBLIC_USER="$instance_id" \
-    BEX_TEST_SSH_PRIVATE_KEY_FILE="$private_key" \
-    BEX_TEST_SSH_HOST_FINGERPRINT="$observed_host_fingerprint" \
-    go test ./internal/sshgateway -run '^TestPublicGatewayPTYResize$' -count=1 >/dev/null
-) || fail "public PTY/resize/runtime probe"
+# The opt-in Go probe keeps terminal bytes in memory and prints no content. Its
+# own failure messages are therefore safe to surface when a live edge flakes;
+# suppressing them made PTY failures indistinguishable from build/tool errors.
+if ! pty_probe_output="$(
+  cd "$repo_root/lego/backend" &&
+    BEX_TEST_SSH_PUBLIC_ADDR="$host:22" \
+      BEX_TEST_SSH_PUBLIC_USER="$instance_id" \
+      BEX_TEST_SSH_PRIVATE_KEY_FILE="$private_key" \
+      BEX_TEST_SSH_HOST_FINGERPRINT="$observed_host_fingerprint" \
+      go test ./internal/sshgateway -run '^TestPublicGatewayPTYResize$' -count=1 2>&1
+)"; then
+  printf '%s\n' "$pty_probe_output" >&2
+  fail "public PTY/resize/runtime probe"
+fi
+pty_probe_output=""
 echo "PASS interactive PTY and resize"
 
 # The official CLI is intentionally interactive. Current render-oss/cli accepts
@@ -190,7 +211,9 @@ if [[ "${BEX_RENDER_CLI_VERIFY:-0}" == "1" ]]; then
   command -v ssh-agent >/dev/null || fail "missing ssh-agent"
   command -v ssh-add >/dev/null || fail "missing ssh-add"
   [[ -t 0 ]] || fail "official CLI verification requires a TTY"
-  cli_version="$("$render_cli" --version 2>&1 | head -n 1)"
+  cli_version_output="$("$render_cli" --version 2>&1)" || fail "official Render CLI did not report its version"
+  cli_version="${cli_version_output%%$'\n'*}"
+  cli_version_output=""
   [[ -n "$cli_version" ]] || fail "official Render CLI did not report its version"
   echo "official Render CLI $cli_version"
   ssh-agent -a "$tmp/agent.sock" >"$tmp/agent.env"
@@ -205,18 +228,23 @@ if [[ "${BEX_RENDER_CLI_VERIFY:-0}" == "1" ]]; then
     "PATH=$tmp/cli-bin:$PATH"
     "BEX_SSH_VERIFY_REAL_SSH=$real_ssh"
     "BEX_SSH_VERIFY_CLI_KNOWN_HOSTS=$tmp/known_hosts"
+    "BEX_SSH_VERIFY_PRIVATE_KEY_FILE=$private_key"
     "BEX_SSH_VERIFY_CLI_TARGET_LOG=$cli_target_log"
+    "RENDER_CLI_CONFIG_PATH=$tmp/render-cli.yaml"
     "RENDER_HOST=$api/v1/"
     "RENDER_API_KEY=$BEX_API_TOKEN"
     "RENDER_WORKSPACE=$workspace_id"
   )
 
   echo 'CLI CHECK: resize the terminal, run `test "$BEX_SSH_SMOKE_VALUE" = "w2-m39-runtime" && exit`, and require a zero exit'
-  env "${cli_env[@]}" "$render_cli" ssh "$service_name"
+  env "${cli_env[@]}" "$render_cli" ssh --output interactive "$service_name"
+  [[ -f "$cli_target_log" ]] || fail "Render CLI service-name path did not invoke OpenSSH"
   [[ "$(<"$cli_target_log")" == "$ssh_address" ]] || fail "Render CLI service-name path selected an unexpected destination"
   echo "PASS official Render CLI by service name"
 
-  env "${cli_env[@]}" "$render_cli" ssh "$instance_id" -- 'test "$BEX_SSH_SMOKE_VALUE" = "w2-m39-runtime"' >/dev/null
+  rm -f "$cli_target_log"
+  env "${cli_env[@]}" "$render_cli" ssh --output interactive "$instance_id" -- 'test "$BEX_SSH_SMOKE_VALUE" = "w2-m39-runtime"'
+  [[ -f "$cli_target_log" ]] || fail "Render CLI instance-id path did not invoke OpenSSH"
   [[ "$(<"$cli_target_log")" == "$specific_address" ]] || fail "Render CLI instance-id path selected an unexpected destination"
   echo "PASS official Render CLI exact instance and runtime environment"
 else
@@ -269,7 +297,8 @@ ssh "${ssh_opts[@]}" -i "$private_key" "$pre_shellless_address" 'while :; do sle
 session_pid=$!
 sleep 2
 kill -0 "$session_pid" >/dev/null 2>&1 || fail "redeploy probe SSH session did not stay open"
-api_json PATCH "/v1/services/$service_id" '{"image":{"imagePath":"traefik/whoami:v1.11.0"}}' >/dev/null
+api_json PATCH "/v1/services/$service_id" \
+  '{"image":{"imagePath":"traefik/whoami:v1.11.0"},"serviceDetails":{"envSpecificDetails":{"startCommand":""}}}' >/dev/null
 redeploy_deadline=$((SECONDS + ${BEX_SSH_VERIFY_REDEPLOY_TIMEOUT_SECONDS:-180}))
 while kill -0 "$session_pid" >/dev/null 2>&1 && ((SECONDS < redeploy_deadline)); do sleep 2; done
 if kill -0 "$session_pid" >/dev/null 2>&1; then fail "redeploy did not close attached SSH session"; fi
@@ -287,7 +316,8 @@ set -e
 shellless_output=""
 echo "PASS shell-less image bounded exit 126"
 shellless_instance="$instance_id"
-api_json PATCH "/v1/services/$service_id" "$(jq -n --arg image "$original_image" '{image:{imagePath:$image}}')" >/dev/null
+api_json PATCH "/v1/services/$service_id" "$(jq -n --arg image "$original_image" --arg command "$original_start_command" \
+  '{image:{imagePath:$image},serviceDetails:{envSpecificDetails:{startCommand:$command}}}')" >/dev/null
 wait_ready "$shellless_instance"
 
 # A syntactically valid but absent service id exercises the same generic denial
