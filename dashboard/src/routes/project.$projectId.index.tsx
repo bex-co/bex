@@ -18,7 +18,6 @@ import { useKeyValues } from "@/features/keyvalue/hooks/use-key-values";
 import { useProjects } from "@/features/projects/hooks/use-projects";
 import { useGroupedResources } from "@/features/projects/hooks/use-grouped-resources";
 import { useRenameProject } from "@/features/projects/hooks/use-rename-project";
-import { ResourceTable } from "@/features/projects/components/resource-table";
 import { EnvironmentsPanel } from "@/features/environments/components/environments-panel";
 import {
   parseProjectResourceSearch,
@@ -149,6 +148,7 @@ export function ProjectPage() {
                 services={services}
                 databases={databases}
                 keyValues={keyValues}
+                projectRows={group?.rows ?? []}
                 servicePending={pending}
                 onRunServiceAction={run}
                 onDatabaseDeleted={refetchAll}
@@ -156,26 +156,6 @@ export function ProjectPage() {
                 resourceFilter={resourceFilter}
                 onResourceFilterChange={setResourceFilter}
               />
-
-              <section className="space-y-4">
-                <h2 className="text-lg font-semibold">
-                  {t("projects.allResourcesHeading")}
-                </h2>
-                {group && group.rows.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    {t("projects.emptyBody")}
-                  </p>
-                ) : (
-                  <ResourceTable
-                    rows={group?.rows ?? []}
-                    loading={loading}
-                    servicePending={pending}
-                    onRunServiceAction={run}
-                    onDatabaseDeleted={refetchAll}
-                    onKeyValueDeleted={refetchAll}
-                  />
-                )}
-              </section>
             </>
           )}
         </div>

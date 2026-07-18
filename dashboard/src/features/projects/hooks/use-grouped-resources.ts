@@ -4,6 +4,7 @@ import type { DatabaseView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
 import type { ProjectView } from "@/features/projects/hooks/use-projects";
 import type { ResourceGroup, ResourceRow } from "@/features/projects/types";
+import type { EnvGroupView } from "@/features/env-groups/types";
 
 export interface UseGroupedResourcesArgs {
   projects: ProjectView[];
@@ -19,17 +20,76 @@ export interface UseGroupedResourcesResult {
 
 /** Normalize a service into a merged-table `ResourceRow` (shared with the environments feature). */
 export function toServiceRow(s: ServiceView): ResourceRow {
-  return { kind: "service", id: s.id, name: s.name, createdAt: s.createdAt, service: s };
+  return {
+    kind: "service",
+    id: s.id,
+    name: s.name,
+    createdAt: s.createdAt,
+    updatedAt: s.updatedAt ?? null,
+    runtime: formatRuntime(s.runtime),
+    region: s.region ?? null,
+    service: s,
+  };
 }
 
 /** Normalize a database into a merged-table `ResourceRow` (shared with the environments feature). */
 export function toDatabaseRow(d: DatabaseView): ResourceRow {
-  return { kind: "database", id: d.id, name: d.name, createdAt: d.createdAt, database: d };
+  return {
+    kind: "database",
+    id: d.id,
+    name: d.name,
+    createdAt: d.createdAt,
+    updatedAt: d.updatedAt ?? null,
+    runtime: d.version ? `PostgreSQL ${d.version}` : "PostgreSQL",
+    region: d.region ?? null,
+    database: d,
+  };
 }
 
 /** Normalize a key-value instance into a merged-table `ResourceRow` (shared with the environments feature). */
 export function toKeyValueRow(k: KeyValueView): ResourceRow {
-  return { kind: "keyvalue", id: k.id, name: k.name, createdAt: k.createdAt, keyValue: k };
+  return {
+    kind: "keyvalue",
+    id: k.id,
+    name: k.name,
+    createdAt: k.createdAt,
+    updatedAt: k.updatedAt ?? null,
+    runtime: k.version ? `Valkey ${k.version}` : "Valkey",
+    region: k.region ?? null,
+    keyValue: k,
+  };
+}
+
+/** Normalize an environment group into the same table without inventing placement. */
+export function toEnvGroupRow(group: EnvGroupView): ResourceRow {
+  return {
+    kind: "envgroup",
+    id: group.id,
+    name: group.name,
+    createdAt: group.createdAt,
+    updatedAt: group.updatedAt,
+    runtime: null,
+    region: null,
+    envGroup: group,
+  };
+}
+
+const RUNTIME_LABELS: Record<string, string> = {
+  docker: "Docker",
+  elixir: "Elixir",
+  go: "Go",
+  image: "Image",
+  node: "Node",
+  python: "Python",
+  ruby: "Ruby",
+  rust: "Rust",
+  static: "Static",
+};
+
+/** Preserve unknown server runtimes verbatim instead of guessing a product label. */
+function formatRuntime(runtime: string | null): string | null {
+  if (!runtime) return null;
+  return RUNTIME_LABELS[runtime.toLocaleLowerCase()] ?? runtime;
 }
 
 /**
@@ -81,9 +141,15 @@ export function useGroupedResources({
     });
 
     const ungrouped: ResourceRow[] = [
-      ...services.filter((s) => !assignedServiceIds.has(s.id)).map(toServiceRow),
-      ...databases.filter((d) => !assignedDatabaseIds.has(d.id)).map(toDatabaseRow),
-      ...keyValues.filter((k) => !assignedKeyValueIds.has(k.id)).map(toKeyValueRow),
+      ...services
+        .filter((s) => !assignedServiceIds.has(s.id))
+        .map(toServiceRow),
+      ...databases
+        .filter((d) => !assignedDatabaseIds.has(d.id))
+        .map(toDatabaseRow),
+      ...keyValues
+        .filter((k) => !assignedKeyValueIds.has(k.id))
+        .map(toKeyValueRow),
     ];
 
     return { groups, ungrouped };

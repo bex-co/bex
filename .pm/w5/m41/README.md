@@ -1,17 +1,17 @@
 # w5 · m41 — Populated project overview parity
 
-**Worker:** worker5 **Goal:** A populated bex Project has the same fast operating surface as Render: one selected Environment, contextual creation, truthful Runtime/Region/Updated facts, and bulk Move. **Status:** todo
+**Worker:** worker5 **Goal:** A populated bex Project has the same fast operating surface as Render: one selected Environment, contextual creation, truthful Runtime/Region/Updated facts, and bulk Move. **Status:** in progress (t001–t006 done; deployed live verification pending)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Pin the populated-project contract and exact bulk-Move semantics | 30m | — |
-| t002 | Project list data: runtime, region, and updatedAt across all resource kinds | 45m | t001 |
-| t003 | Selected-Environment project layout without stacked/duplicate resource tables | 45m | t001 |
-| t004 | Contextual New Service with Project/Environment preselection | 40m | t003 |
-| t005 | Render-shaped resource metadata columns with honest missing-value states | 45m | t002, t003 |
-| t006 | Row selection and bulk Move for the selected Environment | 60m | t001, t003 |
+| t001 | Pin the populated-project contract and exact bulk-Move semantics — **DONE** | 30m | — |
+| t002 | Project list data: runtime, region, and updatedAt across all resource kinds — **DONE** | 45m | t001 |
+| t003 | Selected-Environment project layout without stacked/duplicate resource tables — **DONE** | 45m | t001 |
+| t004 | Contextual New Service with Project/Environment preselection — **DONE** | 40m | t003 |
+| t005 | Render-shaped resource metadata columns with honest missing-value states — **DONE** | 45m | t002, t003 |
+| t006 | Row selection and bulk Move for the selected Environment — **DONE** | 60m | t001, t003 |
 | t007 | Render parity: live populated-project re-walk and ledger/evidence refresh | 30m | t004-t006 |
 | t008 | Simplify: behavior-preserving pass over the project resource flow | 20m | t007 |
 | t009 | Test coverage: selection, URL state, metadata, create context, and bulk Move | 45m | t007 |

@@ -129,6 +129,7 @@ const SERVICE = {
   dashboardUrl: "http://localhost:5173/services/eden-cms-v2",
   url: "https://eden-cms-v2.onbex.co",
   createdAt: "2026-06-01T09:00:00Z",
+  updatedAt: "2026-07-16T18:30:00Z",
   phase: "Running",
   replicas: 2,
   revision: "a1b2c3d",
@@ -149,6 +150,7 @@ const SERVICE = {
   rootDir: "",
   buildFilter: null,
   runtime: "docker",
+  region: "fsn1",
   builder: "dockerfile",
   startCommand: "node server.js",
   dockerfilePath: "Dockerfile",
@@ -173,6 +175,7 @@ const WORKER = {
   dashboardUrl: "http://localhost:5173/services/email-worker",
   url: null,
   createdAt: "2026-06-05T11:30:00Z",
+  updatedAt: "2026-07-15T12:15:00Z",
   phase: "Running",
   replicas: 1,
   revision: "9f8e7d6",
@@ -191,7 +194,8 @@ const WORKER = {
   repo: null,
   branch: null,
   rootDir: null,
-  runtime: null,
+  runtime: "node",
+  region: "fsn1",
   builder: null,
   startCommand: null,
   dockerfilePath: null,
@@ -214,6 +218,7 @@ const CRON = {
   dashboardUrl: "http://localhost:5173/services/nightly-report",
   url: null,
   createdAt: "2026-06-10T08:00:00Z",
+  updatedAt: null,
   phase: "Running",
   replicas: null,
   revision: "3c2b1a0",
@@ -255,6 +260,7 @@ const CRON = {
   branch: null,
   rootDir: null,
   runtime: null,
+  region: null,
   builder: null,
   startCommand: null,
   dockerfilePath: null,
@@ -645,6 +651,8 @@ function makeDatabase(over = {}) {
     readReplicas: [],
     suspended: "not_suspended",
     createdAt: "2026-06-20T10:00:00Z",
+    updatedAt: "2026-07-14T20:00:00Z",
+    region: "fsn1",
     externalHost: "orders-db.db.bex.co",
     public: true,
     poolerEnabled: false,
@@ -702,6 +710,8 @@ function makeKeyValue(over = {}) {
     status: "available",
     suspended: "not_suspended",
     createdAt: "2026-06-22T14:00:00Z",
+    updatedAt: "2026-07-13T16:45:00Z",
+    region: "fsn1",
     externalHost: "sessions-cache.kv.bex.co",
     public: true,
     ...over,
@@ -717,14 +727,18 @@ const KEY_VALUES = [
     externalHost: "",
     public: false,
     createdAt: "2026-07-09T21:00:00Z",
+    updatedAt: null,
+    region: null,
   }),
 ];
 
 // Projects (w1/m31, bex extension — an interactive in-memory store, mirroring
 // Databases/KeyValues above). One seeded project spanning all three resource
 // kinds (a service + a database) so the unified dashboard Projects page's
-// merged grouping is visibly exercised offline; "rate-limiter" and the
-// worker/cron services are left ungrouped for the "No Project" section.
+// merged grouping is visibly exercised offline. The resources span two
+// Environments below, while "nightly-report" and "rate-limiter" remain in the
+// Project but unassigned so the selected-Environment and Unassigned views can
+// both be exercised in a real browser.
 const PROJECTS = [
   {
     __typename: "Project",
@@ -732,19 +746,66 @@ const PROJECTS = [
     name: "storefront",
     ownerId: WORKSPACE_DEFAULT,
     createdAt: "2026-06-25T09:00:00Z",
-    serviceIds: ["eden-cms-v2"],
-    databaseIds: ["orders-db"],
-    keyValueIds: ["sessions-cache"],
+    serviceIds: ["eden-cms-v2", "email-worker", "nightly-report"],
+    databaseIds: ["dpg-c185th5c2rvvnhbfiltg"],
+    keyValueIds: ["sessions-cache", "rate-limiter"],
   },
 ];
 
 // Environments (w1/m32, bex extension — docs/ADR032-environments.md): named
-// subsets of a project's services. Seeded empty so the project page shows the
-// "no environments yet" state first; Create/Rename/Delete/SetServices mutate
-// ENVIRONMENTS in place. SetEnvironmentServices auto-joins the assigned
-// services to the parent project and (single-column membership) evicts them
-// from any other environment — the same side effects the real store applies.
-const ENVIRONMENTS = [];
+// subsets of all supported Project resources. Two populated rows make the
+// selected-Environment table, metadata, contextual creation, and mixed-kind
+// bulk Move flow browser-verifiable offline. The SetEnvironment* mutations
+// auto-join assigned resources to the parent Project and evict them from every
+// other Environment, matching the real store's single-column membership.
+const ENVIRONMENTS = [
+  {
+    __typename: "Environment",
+    id: "env-localproduction",
+    projectId: "prj-local0001",
+    name: "Production",
+    ownerId: WORKSPACE_DEFAULT,
+    createdAt: "2026-06-25T10:00:00Z",
+    serviceIds: ["eden-cms-v2"],
+    databaseIds: ["dpg-c185th5c2rvvnhbfiltg"],
+    keyValueIds: ["sessions-cache"],
+    envGroupIds: ["evg-localproduction"],
+    protectedStatus: "protected",
+    networkIsolationEnabled: true,
+    ipAllowList: [],
+    ipAllowListEntries: [],
+  },
+  {
+    __typename: "Environment",
+    id: "env-localstaging",
+    projectId: "prj-local0001",
+    name: "Staging",
+    ownerId: WORKSPACE_DEFAULT,
+    createdAt: "2026-06-25T10:05:00Z",
+    serviceIds: ["email-worker"],
+    databaseIds: [],
+    keyValueIds: [],
+    envGroupIds: [],
+    protectedStatus: "unprotected",
+    networkIsolationEnabled: false,
+    ipAllowList: [],
+    ipAllowListEntries: [],
+  },
+];
+
+const ENV_GROUPS = [
+  {
+    __typename: "EnvGroup",
+    id: "evg-localproduction",
+    name: "production-shared",
+    ownerId: WORKSPACE_DEFAULT,
+    createdAt: "2026-06-25T10:10:00Z",
+    updatedAt: "2026-07-12T09:30:00Z",
+    serviceLinks: ["eden-cms-v2"],
+    envVars: [{ __typename: "EnvVar", key: "APP_MODE" }],
+    secretFiles: [],
+  },
+];
 
 // Workspace audit trail (w4/m10 surface, w6/m14 workspace scoping) — the shape
 // of internal/audit/graphql.go's AuditLog type. Every event is tagged with the
@@ -916,6 +977,39 @@ function byOwner(list, ownerId) {
   return list.filter((x) => x.ownerId === (ownerId || WORKSPACE_DEFAULT));
 }
 
+/**
+ * Apply the real Environment store's full-replace, single-membership contract
+ * to one resource kind. Assigning ids to the target removes them from every
+ * sibling Environment. Project-owned kinds are also auto-joined to the parent.
+ */
+function setEnvironmentMembers({
+  environmentId,
+  environmentField,
+  projectField,
+  ids,
+}) {
+  const environment = ENVIRONMENTS.find((e) => e.id === environmentId);
+  if (!environment) return null;
+
+  const wanted = [...new Set(ids ?? [])];
+  environment[environmentField] = wanted;
+  for (const sibling of ENVIRONMENTS) {
+    if (sibling.id !== environment.id) {
+      sibling[environmentField] = (sibling[environmentField] ?? []).filter(
+        (id) => !wanted.includes(id),
+      );
+    }
+  }
+
+  const project = PROJECTS.find((p) => p.id === environment.projectId);
+  if (project && projectField) {
+    project[projectField] = [
+      ...new Set([...(project[projectField] ?? []), ...wanted]),
+    ];
+  }
+  return environment;
+}
+
 // GitHub App connection stub (w5/m15 create wizard): a pre-connected account
 // so the repo picker renders populated. Set connected: false to test the
 // connect-prompt empty state (see the GitConnection query, internal/github/graphql.go).
@@ -996,6 +1090,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
       GIT_CONNECTION.connected = true;
       return { connectGit: GIT_CONNECTION };
     case "CreateService": {
+      const createdAt = new Date().toISOString();
       const svc = {
         __typename: "Service",
         id: variables.name,
@@ -1006,7 +1101,8 @@ function resolveGraphQL({ operationName, variables = {} }) {
         suspended: null,
         dashboardUrl: `http://localhost:5173/services/${variables.name}`,
         url: `https://${variables.name}.onbex.co`,
-        createdAt: new Date().toISOString(),
+        createdAt,
+        updatedAt: createdAt,
         phase: "Pending",
         replicas: 1,
         revision: null,
@@ -1027,6 +1123,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
         branch: variables.branch ?? null,
         rootDir: variables.rootDir ?? null,
         runtime: variables.runtime ?? null,
+        region: "fsn1",
         builder: variables.runtime === "docker" ? "dockerfile" : "native",
         buildCommand: variables.buildCommand ?? null,
         startCommand: variables.startCommand ?? null,
@@ -1039,6 +1136,22 @@ function resolveGraphQL({ operationName, variables = {} }) {
         image: variables.image ?? null,
       };
       SERVICES.push(svc);
+      if (variables.environmentId) {
+        const current = ENVIRONMENTS.find(
+          (environment) => environment.id === variables.environmentId,
+        );
+        const environment = setEnvironmentMembers({
+          environmentId: variables.environmentId,
+          environmentField: "serviceIds",
+          projectField: "serviceIds",
+          ids: [...(current?.serviceIds ?? []), svc.id],
+        });
+        svc.environmentId = environment?.id ?? null;
+        svc.projectId = environment?.projectId ?? null;
+      } else {
+        svc.environmentId = null;
+        svc.projectId = null;
+      }
       DEPLOY_HOOKS.set(
         svc.id,
         `http://localhost:${PORT}/v1/deploy-hooks/dhk-local-${svc.id}-1`,
@@ -1051,6 +1164,18 @@ function resolveGraphQL({ operationName, variables = {} }) {
         svc.phase = "Running";
       }, 6000);
       return { createService: svc };
+    }
+    case "ServiceNameAvailable": {
+      const available = !SERVICES.some(
+        (service) => service.name === variables.name,
+      );
+      return {
+        serviceNameAvailable: {
+          __typename: "NameAvailability",
+          available,
+          suggestion: available ? null : `${variables.name}-1`,
+        },
+      };
     }
     case "Server":
       // null for an unknown id — never borrow another service's object.
@@ -1395,7 +1520,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
         },
       };
     case "EnvGroups":
-      return { envGroups: [] };
+      return { envGroups: byOwner(ENV_GROUPS, variables.ownerId) };
     // Workspace lifecycle (w6/m1 verbs, w6/m3 dashboard UX) — an interactive
     // in-memory store so the switcher/create/rename/delete flow is exercisable
     // offline, including the Hobby-plan-cap inline error.
@@ -1725,6 +1850,13 @@ function resolveGraphQL({ operationName, variables = {} }) {
         ownerId: project?.ownerId ?? WORKSPACE_DEFAULT,
         createdAt: new Date().toISOString(),
         serviceIds: [],
+        databaseIds: [],
+        keyValueIds: [],
+        envGroupIds: [],
+        protectedStatus: "unprotected",
+        networkIsolationEnabled: false,
+        ipAllowList: [],
+        ipAllowListEntries: [],
       };
       ENVIRONMENTS.push(created);
       return { createEnvironment: created };
@@ -1740,29 +1872,42 @@ function resolveGraphQL({ operationName, variables = {} }) {
       if (i >= 0) ENVIRONMENTS.splice(i, 1);
       return { deleteEnvironment: variables.id };
     }
-    case "SetEnvironmentServices": {
-      const e = ENVIRONMENTS.find((env) => env.id === variables.id);
-      if (!e) return { setEnvironmentServices: null };
-      const wanted = variables.serviceIds ?? [];
-      e.serviceIds = wanted;
-      // Single-column membership: a service is in at most one environment, so
-      // assigning it here evicts it from every other environment.
-      for (const other of ENVIRONMENTS) {
-        if (other.id !== e.id) {
-          other.serviceIds = other.serviceIds.filter(
-            (s) => !wanted.includes(s),
-          );
-        }
-      }
-      // Auto-join the parent project (docs/ADR032): a service "in an
-      // environment" is implicitly "in that project".
-      const project = PROJECTS.find((p) => p.id === e.projectId);
-      if (project) {
-        const merged = new Set([...(project.serviceIds ?? []), ...wanted]);
-        project.serviceIds = [...merged];
-      }
-      return { setEnvironmentServices: e };
-    }
+    case "SetEnvironmentServices":
+      return {
+        setEnvironmentServices: setEnvironmentMembers({
+          environmentId: variables.id,
+          environmentField: "serviceIds",
+          projectField: "serviceIds",
+          ids: variables.serviceIds,
+        }),
+      };
+    case "SetEnvironmentDatabases":
+      return {
+        setEnvironmentDatabases: setEnvironmentMembers({
+          environmentId: variables.id,
+          environmentField: "databaseIds",
+          projectField: "databaseIds",
+          ids: variables.databaseIds,
+        }),
+      };
+    case "SetEnvironmentKeyValues":
+      return {
+        setEnvironmentKeyValues: setEnvironmentMembers({
+          environmentId: variables.id,
+          environmentField: "keyValueIds",
+          projectField: "keyValueIds",
+          ids: variables.keyValueIds,
+        }),
+      };
+    case "SetEnvironmentEnvGroups":
+      return {
+        setEnvironmentEnvGroups: setEnvironmentMembers({
+          environmentId: variables.id,
+          environmentField: "envGroupIds",
+          projectField: null,
+          ids: variables.envGroupIds,
+        }),
+      };
     case "CustomDomains":
       return { customDomains: domainsFor(variables.id) };
     case "AddCustomDomain": {

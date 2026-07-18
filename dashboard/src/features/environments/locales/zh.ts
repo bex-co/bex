@@ -5,6 +5,15 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     message: "环境",
     description: "Section heading above a project page's environments list",
   },
+  "environments.selectorLabel": {
+    message: "所选环境",
+    description:
+      "Accessible label for the Project overview Environment selector",
+  },
+  "environments.unassignedOption": {
+    message: "未分配",
+    description: "Project resources that belong to no Environment",
+  },
   "environments.newButton": {
     message: "新建环境",
     description: "Button that opens the new-environment dialog",

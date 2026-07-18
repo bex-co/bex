@@ -18,14 +18,16 @@ export interface KeyValueView {
   /** Valkey version, or null when the operator default was used. */
   version: string | null;
   createdAt: string | null;
+  /** Authoritative last resource mutation time; absent on legacy fixtures. */
+  updatedAt?: string | null;
   /** SNI host for the external endpoint, or null when private. */
   externalHost: string | null;
   /** Whether the external (public) endpoint is enabled. */
   public: boolean;
   /** Derived from Render's string `suspended` enum (services/lib/status's isSuspended), not a raw boolean field. */
   suspended: boolean;
-  /** Platform placement name (e.g. "fsn1"); null when BEX_REGION is unset. */
-  region: string | null;
+  /** Explicit installation placement (`BEX_REGION`), never browser-inferred. */
+  region?: string | null;
 }
 
 /** The connection strings, fetched on demand (never in the list). The

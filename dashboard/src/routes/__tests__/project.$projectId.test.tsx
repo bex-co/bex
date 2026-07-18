@@ -22,7 +22,12 @@ const servicesState: {
   loading: boolean;
   error: Error | undefined;
   refetch: () => Promise<ServiceView[]>;
-} = { services: [], loading: false, error: undefined, refetch: vi.fn(async () => []) };
+} = {
+  services: [],
+  loading: false,
+  error: undefined,
+  refetch: vi.fn(async () => []),
+};
 vi.mock("@/features/services/hooks/use-services", () => ({
   useServices: () => servicesState,
 }));
@@ -36,7 +41,12 @@ const databasesState: {
   loading: boolean;
   error: Error | undefined;
   refetch: () => Promise<DatabaseView[]>;
-} = { databases: [], loading: false, error: undefined, refetch: vi.fn(async () => []) };
+} = {
+  databases: [],
+  loading: false,
+  error: undefined,
+  refetch: vi.fn(async () => []),
+};
 vi.mock("@/features/databases/hooks/use-databases", () => ({
   useDatabases: () => databasesState,
 }));
@@ -49,7 +59,12 @@ const keyValuesState: {
   loading: boolean;
   error: Error | undefined;
   refetch: () => Promise<KeyValueView[]>;
-} = { keyValues: [], loading: false, error: undefined, refetch: vi.fn(async () => []) };
+} = {
+  keyValues: [],
+  loading: false,
+  error: undefined,
+  refetch: vi.fn(async () => []),
+};
 vi.mock("@/features/keyvalue/hooks/use-key-values", () => ({
   useKeyValues: () => keyValuesState,
 }));
@@ -62,7 +77,12 @@ const projectsState: {
   loading: boolean;
   error: Error | undefined;
   refetch: () => Promise<unknown>;
-} = { projects: [], loading: false, error: undefined, refetch: vi.fn(async () => undefined) };
+} = {
+  projects: [],
+  loading: false,
+  error: undefined,
+  refetch: vi.fn(async () => undefined),
+};
 vi.mock("@/features/projects/hooks/use-projects", () => ({
   useProjects: () => projectsState,
 }));
@@ -76,7 +96,15 @@ vi.mock("@/features/projects/hooks/use-rename-project", () => ({
 // tests); stub it here so this route test stays focused on the project page's
 // resource table + rename, without needing an ApolloProvider.
 vi.mock("@/features/environments/components/environments-panel", () => ({
-  EnvironmentsPanel: () => null,
+  EnvironmentsPanel: ({
+    projectRows,
+  }: {
+    projectRows: Array<{ name: string }>;
+  }) => (
+    <div data-testid="environments-panel">
+      {projectRows.map((row) => row.name).join(",")}
+    </div>
+  ),
 }));
 
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
@@ -140,9 +168,12 @@ describe("ProjectPage", () => {
 
     renderProjectPage();
 
-    expect(await screen.findByRole("heading", { name: "storefront" })).toBeInTheDocument();
-    const table = screen.getByRole("table");
-    expect(within(table).getByText("eden-cms-v2")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "storefront" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("environments-panel")).toHaveTextContent(
+      "eden-cms-v2",
+    );
   });
 
   it("shows a not-found state for an unknown project id", async () => {

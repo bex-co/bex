@@ -11,7 +11,8 @@ const enProjects: Record<string, TranslationEntry> = {
   },
   "projects.ungroupedHeading": {
     message: "Ungrouped Resources",
-    description: "Section heading above the Overview page's ungrouped resource table",
+    description:
+      "Section heading above the Overview page's ungrouped resource table",
   },
   "projects.allResourcesHeading": {
     message: "All resources",
@@ -72,15 +73,18 @@ const enProjects: Record<string, TranslationEntry> = {
   },
   "projects.cardUnhealthy": {
     message: "{count} resource(s) need attention",
-    description: "Project card status line when one or more resources are unhealthy",
+    description:
+      "Project card status line when one or more resources are unhealthy",
   },
   "projects.newProjectCard": {
     message: "Create new project",
-    description: "The dashed \"+ create project\" tile at the end of the project grid",
+    description:
+      'The dashed "+ create project" tile at the end of the project grid',
   },
   "projects.notFound": {
     message: "Project not found.",
-    description: "Shown on a project page when the id doesn't match any project",
+    description:
+      "Shown on a project page when the id doesn't match any project",
   },
   "projects.errorTitle": {
     message: "Couldn't load resources",
@@ -130,6 +134,21 @@ const enProjects: Record<string, TranslationEntry> = {
     message: "Created",
     description: "Merged resource table column header",
   },
+  "projects.colRuntime": {
+    message: "Runtime",
+    description:
+      "Authoritative runtime/product column in a Project resource table",
+  },
+  "projects.colRegion": {
+    message: "Region",
+    description:
+      "Explicit installation placement column in a Project resource table",
+  },
+  "projects.colUpdated": {
+    message: "Updated",
+    description:
+      "Authoritative resource update-time column in a Project resource table",
+  },
   "projects.colActions": {
     message: "Actions",
     description: "Merged resource table column header (screen-reader only)",
@@ -146,6 +165,40 @@ const enProjects: Record<string, TranslationEntry> = {
     message: "Key Value",
     description: "Type badge for a key value row in the merged resource table",
   },
+  "projects.typeEnvGroup": {
+    message: "Env Group",
+    description: "Type badge for an environment-group row",
+  },
+  "projects.metadataUnavailable": {
+    message: "Not available",
+    description:
+      "Accessible label for an unavailable runtime, region, status, or timestamp",
+  },
+  "projects.selectAllVisible": {
+    message: "Select all visible resources",
+    description: "Accessible label for the Project table header checkbox",
+  },
+  "projects.selectResource": {
+    message: "Select {name}",
+    description: "Accessible label for one Project resource row checkbox",
+  },
+  "projects.selectedCount": {
+    message: "Selected: {count}",
+    description: "Bulk action toolbar selection count",
+  },
+  "projects.moveTargetLabel": {
+    message: "Move selected resources to environment",
+    description: "Accessible label for the bulk Move target selector",
+  },
+  "projects.moveTargetPlaceholder": {
+    message: "Choose environment",
+    description: "Placeholder for the bulk Move target selector",
+  },
+  "projects.moveSelected": {
+    message: "Move",
+    description:
+      "Bulk action that moves selected resources to another Environment",
+  },
   "projects.newProjectButton": {
     message: "New Project",
     description: "Button that opens the new-project dialog",
@@ -155,7 +208,8 @@ const enProjects: Record<string, TranslationEntry> = {
     description: "New-project dialog title",
   },
   "projects.createDescription": {
-    message: "Group existing services, databases, and key value stores together.",
+    message:
+      "Group existing services, databases, and key value stores together.",
     description: "New-project dialog description",
   },
   "projects.fieldName": {
@@ -248,11 +302,13 @@ const enProjects: Record<string, TranslationEntry> = {
   },
   "projects.moveToProject": {
     message: "Move to project",
-    description: "Row-actions submenu label for assigning a resource to a project",
+    description:
+      "Row-actions submenu label for assigning a resource to a project",
   },
   "projects.removeFromProject": {
     message: "Remove from project",
-    description: "Row-actions submenu item that unassigns a resource from its project",
+    description:
+      "Row-actions submenu item that unassigns a resource from its project",
   },
   "projects.moveSuccess": {
     message: '"{name}" moved to "{project}".',

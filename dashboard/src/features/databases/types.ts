@@ -17,6 +17,10 @@ export interface DatabaseView {
   /** Provisioned disk size in GB, or null. */
   diskSizeGB: number | null;
   createdAt: string | null;
+  /** Authoritative last resource mutation time; absent on legacy fixtures. */
+  updatedAt?: string | null;
+  /** Explicit installation placement (`BEX_REGION`), never browser-inferred. */
+  region?: string | null;
   /** Whether the external (public) endpoint is enabled. */
   public: boolean;
   /** Render's string suspended enum ("suspended" / "not_suspended"). */
@@ -50,8 +54,6 @@ export interface DatabaseDetailView extends DatabaseView {
   externalHost: string | null;
   /** Whether the operator has configured continuous physical backups. */
   backupsEnabled: boolean;
-  /** Platform placement name (e.g. "fsn1"); null when BEX_REGION is unset. */
-  region: string | null;
 }
 
 /** Full connection strings (with password) for one named read replica. */

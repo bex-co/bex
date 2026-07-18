@@ -14,12 +14,16 @@ export const CREATING = "creating";
 export const UNAVAILABLE = "unavailable";
 
 /** A single item as it comes off the `keyValues` query (fields nullable). */
-type KeyValueNode = NonNullable<NonNullable<KeyValuesQuery["keyValues"]>[number]>;
+type KeyValueNode = NonNullable<
+  NonNullable<KeyValuesQuery["keyValues"]>[number]
+>;
 type KeyValueDetailNode = NonNullable<KeyValueQuery["keyValue"]>;
 
 /** Map a wire `KeyValue` node onto the normalized KeyValueView. Shared by the
  * list and detail queries — there's no separate detail-only field set. */
-export function toKeyValueView(d: KeyValueNode | KeyValueDetailNode): KeyValueView {
+export function toKeyValueView(
+  d: KeyValueNode | KeyValueDetailNode,
+): KeyValueView {
   return {
     id: d.id ?? "",
     name: d.name ?? d.id ?? "",
@@ -27,10 +31,11 @@ export function toKeyValueView(d: KeyValueNode | KeyValueDetailNode): KeyValueVi
     plan: d.plan ?? null,
     version: d.version ?? null,
     createdAt: d.createdAt ?? null,
+    updatedAt: "updatedAt" in d ? (d.updatedAt ?? null) : null,
     externalHost: d.externalHost ?? null,
     public: d.public ?? false,
     suspended: isSuspended(d.suspended ?? null),
-    region: "region" in d ? (d.region ?? null) : null,
+    region: "region" in d ? d.region || null : null,
   };
 }
 

@@ -3,6 +3,7 @@ import { Input } from "@/common/components/ui/input";
 import { Button } from "@/common/components/ui/button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type {
+  ProjectResourceCounts,
   ProjectResourceFilterState,
   ProjectResourceKind,
 } from "@/features/projects/lib/resource-filter";
@@ -26,10 +27,12 @@ const KIND_KEYS: Array<{
 export function ProjectResourceFilters({
   environmentName,
   filter,
+  counts,
   onChange,
 }: {
   environmentName: string;
   filter: ProjectResourceFilterState;
+  counts: ProjectResourceCounts;
   onChange: (filter: ProjectResourceFilterState) => void;
 }) {
   const { t } = useTranslations();
@@ -46,7 +49,7 @@ export function ProjectResourceFilters({
             variant={filter.kind === kind ? "default" : "outline"}
             onClick={() => onChange({ ...filter, kind })}
           >
-            {t(key)}
+            {t(key)} ({counts[kind]})
           </Button>
         ))}
       </div>

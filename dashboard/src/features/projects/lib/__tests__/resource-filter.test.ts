@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  countProjectResources,
   filterProjectResources,
   parseProjectResourceKind,
   parseProjectResourceSearch,
@@ -14,6 +15,13 @@ const rows = [
 const envGroups = [
   { id: "eg-shared", name: "Shared config" },
 ] as EnvGroupView[];
+const envGroupRows = [
+  {
+    kind: "envgroup",
+    id: envGroups[0].id,
+    name: envGroups[0].name,
+  },
+] as ResourceRow[];
 
 describe("project resource filters", () => {
   it("parses only URL-supported kinds", () => {
@@ -36,16 +44,26 @@ describe("project resource filters", () => {
 
   it("composes search and kind without escaping the supplied environment members", () => {
     expect(
-      filterProjectResources(rows, envGroups, {
+      filterProjectResources([...rows, ...envGroupRows], {
         query: "api",
         kind: "services",
       }),
-    ).toEqual({ rows: [rows[0]], envGroups: [] });
+    ).toEqual([rows[0]]);
     expect(
-      filterProjectResources(rows, envGroups, {
+      filterProjectResources([...rows, ...envGroupRows], {
         query: "shared",
         kind: "envgroups",
       }),
-    ).toEqual({ rows: [], envGroups });
+    ).toEqual(envGroupRows);
+  });
+
+  it("counts every selected-environment category before search", () => {
+    expect(countProjectResources([...rows, ...envGroupRows])).toEqual({
+      all: 3,
+      services: 1,
+      databases: 1,
+      keyvalues: 0,
+      envgroups: 1,
+    });
   });
 });

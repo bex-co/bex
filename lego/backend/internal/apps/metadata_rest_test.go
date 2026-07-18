@@ -24,6 +24,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/graphql-go/graphql"
+
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 )
 
@@ -271,4 +273,56 @@ func TestRESTServiceMetadataParity_OmittedWhenUnresolved(t *testing.T) {
 		t.Fatalf("resume => %d: %s", resumeRec.Code, resumeRec.Body.String())
 	}
 	check("resume", decodeMap(t, resumeRec.Body.Bytes()))
+}
+
+// TestGraphQLServiceListMetadata exposes the same authoritative placement and
+// update-time facts the REST Service shape carries. Region is nullable when the
+// installation does not configure BEX_REGION; updatedAt and runtime remain
+// independent server facts rather than dashboard derivations.
+func TestGraphQLServiceListMetadata(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		region     string
+		wantRegion any
+	}{
+		{name: "configured", region: "fsn1", wantRegion: "fsn1"},
+		{name: "unconfigured", wantRegion: ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := danaService()
+			svc.Metadata = resourcemeta.Config{Region: tc.region}
+
+			mux := http.NewServeMux()
+			svc.RegisterREST(mux)
+			createRec := httptest.NewRecorder()
+			createReq := httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(
+				`{"name":"web-meta","repo":"https://github.com/acme/web","serviceDetails":{"runtime":"node","envSpecificDetails":{"buildCommand":"npm install","startCommand":"npm start"}}}`))
+			mux.ServeHTTP(createRec, createReq.WithContext(ctxAs("dana")))
+			if createRec.Code != http.StatusCreated {
+				t.Fatalf("create => %d: %s", createRec.Code, createRec.Body.String())
+			}
+
+			res := graphql.Do(graphql.Params{
+				Schema:        mustSchema(t, svc),
+				Context:       ctxAs("dana"),
+				RequestString: `{ services { runtime region createdAt updatedAt } }`,
+			})
+			if len(res.Errors) > 0 {
+				t.Fatalf("graphql errors: %v", res.Errors)
+			}
+			data := res.Data.(map[string]any)
+			rows := data["services"].([]any)
+			if len(rows) != 1 {
+				t.Fatalf("services = %d rows, want 1", len(rows))
+			}
+			row := rows[0].(map[string]any)
+			if row["runtime"] != "node" || row["region"] != tc.wantRegion {
+				t.Fatalf("metadata = runtime:%v region:%v, want node/%v", row["runtime"], row["region"], tc.wantRegion)
+			}
+			updated, _ := row["updatedAt"].(string)
+			if updated == "" {
+				t.Fatalf("updatedAt = %q, want authoritative mutation timestamp", updated)
+			}
+		})
+	}
 }

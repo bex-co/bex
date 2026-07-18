@@ -23,6 +23,9 @@ function node(overrides: Partial<ServiceNode> = {}): ServiceNode {
     dashboardUrl: "https://app.onbex.co",
     url: "https://app.onbex.co",
     createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: null,
+    runtime: null,
+    region: null,
     phase: "Running",
     replicas: 1,
     revision: "abc123",
@@ -87,6 +90,8 @@ describe("toServiceView", () => {
       phase: "Hibernated",
       url: "https://app.onbex.co",
       createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: null,
+      region: null,
       sshAddress: null,
       replicas: 1,
       revision: "abc123",
@@ -123,6 +128,20 @@ describe("toServiceView", () => {
 
   it("carries the plan through when the wire Service has one", () => {
     expect(toServiceView(node({ plan: "pro_plus" })).plan).toBe("pro_plus");
+  });
+
+  it("keeps server runtime/region/update facts and normalizes an omitted region", () => {
+    const populated = toServiceView(
+      node({
+        runtime: "node",
+        region: "fsn1",
+        updatedAt: "2026-07-02T00:00:00Z",
+      }),
+    );
+    expect(populated.runtime).toBe("node");
+    expect(populated.region).toBe("fsn1");
+    expect(populated.updatedAt).toBe("2026-07-02T00:00:00Z");
+    expect(toServiceView(node({ region: "" })).region).toBeNull();
   });
 
   it("carries a copy-ready SSH address only when the detail query selected it", () => {

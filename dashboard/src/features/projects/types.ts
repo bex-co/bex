@@ -1,9 +1,10 @@
 import type { ServiceView } from "@/features/services/types";
 import type { DatabaseView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
+import type { EnvGroupView } from "@/features/env-groups/types";
 
-/** The three resource kinds a project can group (w1/m31 extension). */
-export type ResourceKind = "service" | "database" | "keyvalue";
+/** Every resource kind rendered in an Environment's unified operating table. */
+export type ResourceKind = "service" | "database" | "keyvalue" | "envgroup";
 
 /**
  * One row in the unified Projects page's merged table — a service, database,
@@ -17,9 +18,23 @@ export interface ResourceRow {
   id: string;
   name: string;
   createdAt: string | null;
+  /** Authoritative resource mutation time. Never substituted with createdAt. */
+  updatedAt: string | null;
+  /** Server-backed runtime/product label; null means the fact is unavailable. */
+  runtime: string | null;
+  /** Explicit installation placement; null means the fact is unavailable. */
+  region: string | null;
   service?: ServiceView;
   database?: DatabaseView;
   keyValue?: KeyValueView;
+  envGroup?: EnvGroupView;
+}
+
+/** Stable selection identity across filters and resource kinds. */
+export function resourceSelectionKey(
+  row: Pick<ResourceRow, "kind" | "id">,
+): string {
+  return `${row.kind}:${row.id}`;
 }
 
 export interface ResourceGroup {

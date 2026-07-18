@@ -11,7 +11,8 @@ const zhProjects: Record<string, TranslationEntry> = {
   },
   "projects.ungroupedHeading": {
     message: "未分组资源",
-    description: "Section heading above the Overview page's ungrouped resource table",
+    description:
+      "Section heading above the Overview page's ungrouped resource table",
   },
   "projects.allResourcesHeading": {
     message: "所有资源",
@@ -72,15 +73,18 @@ const zhProjects: Record<string, TranslationEntry> = {
   },
   "projects.cardUnhealthy": {
     message: "{count} 项资源需要处理",
-    description: "Project card status line when one or more resources are unhealthy",
+    description:
+      "Project card status line when one or more resources are unhealthy",
   },
   "projects.newProjectCard": {
     message: "创建新项目",
-    description: "The dashed \"+ create project\" tile at the end of the project grid",
+    description:
+      'The dashed "+ create project" tile at the end of the project grid',
   },
   "projects.notFound": {
     message: "未找到项目。",
-    description: "Shown on a project page when the id doesn't match any project",
+    description:
+      "Shown on a project page when the id doesn't match any project",
   },
   "projects.errorTitle": {
     message: "资源加载失败",
@@ -130,6 +134,21 @@ const zhProjects: Record<string, TranslationEntry> = {
     message: "创建时间",
     description: "Merged resource table column header",
   },
+  "projects.colRuntime": {
+    message: "运行时",
+    description:
+      "Authoritative runtime/product column in a Project resource table",
+  },
+  "projects.colRegion": {
+    message: "区域",
+    description:
+      "Explicit installation placement column in a Project resource table",
+  },
+  "projects.colUpdated": {
+    message: "更新时间",
+    description:
+      "Authoritative resource update-time column in a Project resource table",
+  },
   "projects.colActions": {
     message: "操作",
     description: "Merged resource table column header (screen-reader only)",
@@ -145,6 +164,40 @@ const zhProjects: Record<string, TranslationEntry> = {
   "projects.typeKeyValue": {
     message: "键值存储",
     description: "Type badge for a key value row in the merged resource table",
+  },
+  "projects.typeEnvGroup": {
+    message: "环境变量组",
+    description: "Type badge for an environment-group row",
+  },
+  "projects.metadataUnavailable": {
+    message: "不可用",
+    description:
+      "Accessible label for an unavailable runtime, region, status, or timestamp",
+  },
+  "projects.selectAllVisible": {
+    message: "选择所有可见资源",
+    description: "Accessible label for the Project table header checkbox",
+  },
+  "projects.selectResource": {
+    message: "选择 {name}",
+    description: "Accessible label for one Project resource row checkbox",
+  },
+  "projects.selectedCount": {
+    message: "已选择：{count}",
+    description: "Bulk action toolbar selection count",
+  },
+  "projects.moveTargetLabel": {
+    message: "将所选资源移动到环境",
+    description: "Accessible label for the bulk Move target selector",
+  },
+  "projects.moveTargetPlaceholder": {
+    message: "选择环境",
+    description: "Placeholder for the bulk Move target selector",
+  },
+  "projects.moveSelected": {
+    message: "移动",
+    description:
+      "Bulk action that moves selected resources to another Environment",
   },
   "projects.newProjectButton": {
     message: "新建项目",
@@ -247,11 +300,13 @@ const zhProjects: Record<string, TranslationEntry> = {
   },
   "projects.moveToProject": {
     message: "移动到项目",
-    description: "Row-actions submenu label for assigning a resource to a project",
+    description:
+      "Row-actions submenu label for assigning a resource to a project",
   },
   "projects.removeFromProject": {
     message: "从项目中移除",
-    description: "Row-actions submenu item that unassigns a resource from its project",
+    description:
+      "Row-actions submenu item that unassigns a resource from its project",
   },
   "projects.moveSuccess": {
     message: "「{name}」已移动到「{project}」。",

@@ -43,6 +43,8 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     phase: s.phase ?? "",
     url: s.url ?? null,
     createdAt: s.createdAt ?? null,
+    updatedAt: "updatedAt" in s ? (s.updatedAt ?? null) : null,
+    region: "region" in s ? s.region || null : null,
     sshAddress: "sshAddress" in s ? (s.sshAddress ?? null) : null,
     replicas: s.replicas ?? null,
     revision: s.revision ?? null,
