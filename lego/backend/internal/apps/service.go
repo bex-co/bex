@@ -29,6 +29,7 @@ import (
 	"net"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -2204,7 +2205,18 @@ func normalizeTierOrPlan(v string) (string, error) {
 // build-from-git. Unauthorized on purpose: its only
 // caller is the HMAC-verified git webhook, whose signature check is the
 // authorization (there is no OpenFGA identity on a git-host callback).
-func (s *Service) redeploy(ctx context.Context, name string) (AppView, error) {
+//
+// A store-managed App also gets a deploy row (trigger "new_commit"), stamped
+// with the release generation this bump requests — the same discipline as
+// deploys.Trigger. That both puts push-to-deploy in the deploy history and lets
+// CreateDeploy's newest-wins cancel close any still-open row from an earlier
+// trigger this push supersedes. Without the row, that open deploy stranded in
+// build_in_progress forever: the reconciler refuses to project status onto a
+// row whose release generation the operator has moved past
+// (store/reconciler.go, observedDeployStatus). commit is the pushed head
+// commit from the webhook payload; empty falls back to the GitHub resolver.
+// A CR-only App (no store id) keeps the plain bump.
+func (s *Service) redeploy(ctx context.Context, name string, commit store.CommitInfo) (AppView, error) {
 	a, err := s.GetApp(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
@@ -2219,7 +2231,12 @@ func (s *Service) redeploy(ctx context.Context, name string) (AppView, error) {
 	if err != nil {
 		return AppView{}, err
 	}
+	previousGeneration := a.Generation
 	v, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		if a.Annotations == nil {
+			a.Annotations = map[string]string{}
+		}
+		a.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(previousGeneration+1, 10)
 		if secretName != "" {
 			a.Spec.CloneSecret = secretName
 		}
@@ -2228,6 +2245,25 @@ func (s *Service) redeploy(ctx context.Context, name string) (AppView, error) {
 	})
 	if err != nil {
 		return AppView{}, err
+	}
+	if s.Store != nil {
+		if appID := managedAppID(a); appID != "" {
+			if commit.Hash == "" {
+				commit = s.resolveDeployCommit(ctx, s.deployWorkspace(ctx, a), a.Spec.Repo, a.Spec.Branch)
+			}
+			// max(after, before+1): a real API server has already incremented
+			// metadata.generation on the patch; the fake client has not
+			// (deploys.patchedGeneration, the same monotonic fallback).
+			releaseGeneration := max(a.Generation, previousGeneration+1)
+			// Row failure is logged, not returned: the CR bump above already
+			// succeeded (the rebuild is rolling), and propagating a 5xx would
+			// make the git host redeliver the push, re-bumping every matched App.
+			// The reconciler's superseded-row cancel is the backstop for the
+			// open row this row would have replaced.
+			if _, err := s.Store.CreateDeploy(ctx, appID, store.TriggerNewCommit, a.Spec.Image, releaseGeneration, commit); err != nil {
+				log.Printf("webhook: recording redeploy of %s: %v", name, err)
+			}
+		}
 	}
 	s.notifyDeployStarted(ctx, a, name)
 	return v, nil

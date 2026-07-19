@@ -27,6 +27,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -77,9 +78,10 @@ func (h *GitWebhook) verify(sig string, body []byte) bool {
 
 // pushEvent is the slice of a GitHub/Gitea push payload the webhook needs: which
 // ref moved, which repository it belongs to (matched against App.spec.repo),
-// and which files each pushed commit touched (matched against App.spec.rootDir
+// which files each pushed commit touched (matched against App.spec.rootDir
 // and App.spec.buildFilter, monorepo support) — GitHub and Gitea both carry
-// added/removed/modified paths per commit in this shape.
+// added/removed/modified paths per commit in this shape — and the head commit,
+// which becomes the deploy row's provenance without a round trip to the git host.
 type pushEvent struct {
 	Ref         string `json:"ref"` // e.g. refs/heads/main
 	After       string `json:"after"`
@@ -91,15 +93,31 @@ type pushEvent struct {
 		URL      string `json:"url"`
 	} `json:"repository"`
 	HeadCommit struct {
-		ID      string `json:"id"`
-		URL     string `json:"url"`
-		Message string `json:"message"`
+		ID        string `json:"id"`
+		URL       string `json:"url"`
+		Message   string `json:"message"`
+		Timestamp string `json:"timestamp"` // ISO 8601, both hosts
 	} `json:"head_commit"`
 	Commits []struct {
 		Added    []string `json:"added"`
 		Removed  []string `json:"removed"`
 		Modified []string `json:"modified"`
 	} `json:"commits"`
+}
+
+// commitInfo lifts the payload's head commit into the deploy row's provenance
+// shape. Best-effort like every CommitInfo source: an absent head_commit (or an
+// unparseable timestamp) degrades field-by-field, never fails the redeploy.
+func (ev pushEvent) commitInfo() store.CommitInfo {
+	if ev.HeadCommit.ID == "" {
+		return store.CommitInfo{}
+	}
+	info := store.CommitInfo{Hash: ev.HeadCommit.ID, Message: ev.HeadCommit.Message}
+	if at, err := time.Parse(time.RFC3339, ev.HeadCommit.Timestamp); err == nil {
+		utc := at.UTC()
+		info.AuthorAt = &utc
+	}
+	return info
 }
 
 // changedPaths flattens the added/removed/modified paths across every commit
@@ -191,7 +209,7 @@ func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch 
 			h.recordCommitIgnored(ctx, a, ev, store.EventReasonBuildFilter)
 			continue
 		}
-		if _, err := h.Svc.redeploy(ctx, a.Name); err != nil {
+		if _, err := h.Svc.redeploy(ctx, a.Name, ev.commitInfo()); err != nil {
 			// Log but do not propagate: a 5xx response causes the git host to
 			// retry the delivery, re-triggering redeploy on apps that were already
 			// bumped (each retry stamps a new spec.restartedAt, incrementing the

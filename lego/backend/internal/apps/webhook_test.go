@@ -469,3 +469,119 @@ func contains(ss []string, want string) bool {
 	}
 	return false
 }
+
+// --- push-to-deploy opens a deploy row (trigger "new_commit") ---
+
+// TestWebhookPushOpensDeployRow proves a push on a store-managed App opens a
+// deploys row through the real wire shape (raw JSON with head_commit, HMAC
+// signature, ServeHTTP end to end): trigger "new_commit", the requested
+// release generation, and the pushed head commit as provenance — plus the
+// release-generation annotation on the CR, the same stamp deploys.Trigger
+// writes. The row is what puts push-to-deploy in the deploy history and what
+// cancels (via CreateDeploy's newest-wins) any still-open deploy the push
+// supersedes; without it that open row stranded in build_in_progress forever.
+func TestWebhookPushOpensDeployRow(t *testing.T) {
+	const secret, repo = "s3cr3t", "https://github.com/x/app"
+	app := autoDeployApp("api", repo)
+	app.Generation = 4
+	// Both labels: the app-id alone names a public id; only managed-by proves it
+	// is a Postgres source row (managedAppID's own gate).
+	app.Labels = map[string]string{
+		core.LabelAppID:      "srv-x1",
+		store.LabelManagedBy: store.ManagedByValue,
+	}
+	st := &recordingStore{}
+	svc, cl := newService(st, app)
+	h := &GitWebhook{Svc: svc, Secret: secret}
+
+	body, err := json.Marshal(map[string]any{
+		"ref":        "refs/heads/main",
+		"repository": map[string]string{"clone_url": repo},
+		"commits":    []map[string]any{{"modified": []string{"main.go"}}},
+		"head_commit": map[string]string{
+			"id":        "3597548b2424b9dee1ce4b07820b0f8cb007f747",
+			"message":   "fix(open-ledger): isolate registry from client bundle",
+			"timestamp": "2026-07-19T06:58:44Z",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec := postPush(t, h, secret, "push", body); rec.Code != http.StatusOK {
+		t.Fatalf("push => %d: %s", rec.Code, rec.Body)
+	}
+
+	if len(st.deployCalls) != 1 {
+		t.Fatalf("deploy rows opened = %d, want exactly 1: %+v", len(st.deployCalls), st.deployCalls)
+	}
+	d := st.deployCalls[0]
+	if d.AppID != "srv-x1" || d.Trigger != store.TriggerNewCommit {
+		t.Errorf("deploy row = {AppID:%s Trigger:%s}, want {srv-x1 new_commit}", d.AppID, d.Trigger)
+	}
+	if d.Generation != 5 {
+		t.Errorf("deploy row generation = %d, want previous generation + 1 = 5", d.Generation)
+	}
+	if d.Commit != "3597548b2424b9dee1ce4b07820b0f8cb007f747" || d.CommitMessage != "fix(open-ledger): isolate registry from client bundle" {
+		t.Errorf("deploy row commit = {%s %q}, want the pushed head commit", d.Commit, d.CommitMessage)
+	}
+	a := getApp(t, cl, "api")
+	if got := a.Annotations[appv1alpha1.AnnotationReleaseGeneration]; got != "5" {
+		t.Errorf("release-generation annotation = %q, want 5", got)
+	}
+	if a.Spec.RestartedAt == "" {
+		t.Error("push must still bump restartedAt")
+	}
+}
+
+// TestWebhookPushCROnlyAppSkipsDeployRow: a hand-applied App (no bex.co/app-id
+// label) keeps the plain restartedAt bump — redeployed, no row, no error.
+func TestWebhookPushCROnlyAppSkipsDeployRow(t *testing.T) {
+	const repo = "https://github.com/x/app"
+	st := &recordingStore{}
+	svc, cl := newService(st, autoDeployApp("api", repo))
+	h := &GitWebhook{Svc: svc, Secret: "shh"}
+
+	redeployed, err := h.redeployMatching(context.Background(), newPush(repo, []string{"main.go"}), "main")
+	if err != nil {
+		t.Fatalf("redeployMatching: %v", err)
+	}
+	if !contains(redeployed, "api") {
+		t.Fatalf("CR-only app must still redeploy: %v", redeployed)
+	}
+	if len(st.deployCalls) != 0 {
+		t.Errorf("CR-only app must open no deploy row: %+v", st.deployCalls)
+	}
+	if getApp(t, cl, "api").Spec.RestartedAt == "" {
+		t.Error("CR-only app must still bump restartedAt")
+	}
+}
+
+// TestPushEventCommitInfo pins the wire→provenance lift: head_commit becomes
+// the deploy row's CommitInfo, degrading field-by-field — absent head_commit
+// is the zero value (the resolver fallback kicks in), a bad timestamp keeps
+// hash+message and just drops authorAt. Offsets normalize to UTC.
+func TestPushEventCommitInfo(t *testing.T) {
+	var ev pushEvent
+	payload := `{"ref":"refs/heads/main","head_commit":{"id":"abc123","message":"automated blog post","timestamp":"2026-07-19T08:58:44+02:00"}}`
+	if err := json.Unmarshal([]byte(payload), &ev); err != nil {
+		t.Fatal(err)
+	}
+	info := ev.commitInfo()
+	if info.Hash != "abc123" || info.Message != "automated blog post" {
+		t.Errorf("commitInfo = {%s %q}, want the head commit", info.Hash, info.Message)
+	}
+	want := time.Date(2026, 7, 19, 6, 58, 44, 0, time.UTC)
+	if info.AuthorAt == nil || !info.AuthorAt.Equal(want) {
+		t.Errorf("authorAt = %v, want %v", info.AuthorAt, want)
+	}
+
+	if got := (pushEvent{}).commitInfo(); got.Hash != "" || got.Message != "" || got.AuthorAt != nil {
+		t.Errorf("absent head_commit => zero CommitInfo, got %+v", got)
+	}
+
+	ev.HeadCommit.Timestamp = "not-a-time"
+	info = ev.commitInfo()
+	if info.Hash != "abc123" || info.AuthorAt != nil {
+		t.Errorf("bad timestamp must keep hash and drop authorAt, got %+v", info)
+	}
+}

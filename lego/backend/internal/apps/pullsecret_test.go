@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -189,7 +190,7 @@ func TestRedeployReResolvesExternalRegistryPullSecret(t *testing.T) {
 	rc := &fakePullSecrets{ok: false} // credential since deleted
 	svc, _ := rcService(rc, existing)
 
-	if _, err := svc.redeploy(context.Background(), "web"); err != nil {
+	if _, err := svc.redeploy(context.Background(), "web", store.CommitInfo{}); err != nil {
 		t.Fatal(err)
 	}
 	if rc.calls != 1 {
