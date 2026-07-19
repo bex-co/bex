@@ -23,6 +23,33 @@ const serverState: UseServerResult = {
 vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: () => serverState,
 }));
+// The shared topbar's service switcher reads sibling services and project /
+// environment context. This routing test has no ApolloProvider, so keep those
+// navigation hooks aligned with the mocked service state above.
+vi.mock("@/features/services/hooks/use-services", () => ({
+  useServices: () => ({
+    services: serverState.service ? [serverState.service] : [],
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(async () => []),
+  }),
+}));
+vi.mock("@/features/projects/hooks/use-projects", () => ({
+  useProjects: () => ({
+    projects: [],
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(async () => undefined),
+  }),
+}));
+vi.mock("@/features/environments/hooks/use-environments", () => ({
+  useEnvironments: () => ({
+    environments: [],
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(async () => undefined),
+  }),
+}));
 vi.mock("@/features/deploys/hooks/use-latest-deploy", () => ({
   useLatestDeploy: () => ({
     deploy: null,

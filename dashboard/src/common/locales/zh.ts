@@ -43,6 +43,82 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "加载中…",
     description: "Generic loading state label",
   },
+  "common.topbarBreadcrumbs": {
+    message: "面包屑导航",
+    description: "Accessible label for the dashboard topbar hierarchy",
+  },
+  "common.topbarSearch": {
+    message: "搜索",
+    description: "Open the workspace-wide topbar search",
+  },
+  "common.topbarSearchPlaceholder": {
+    message: "搜索页面和资源…",
+    description: "Placeholder in the workspace-wide topbar command search",
+  },
+  "common.topbarSearchDescription": {
+    message: "搜索控制台页面和工作区资源。",
+    description: "Accessible description for the topbar command search",
+  },
+  "common.topbarSearchEmpty": {
+    message: "没有匹配的页面或资源。",
+    description: "Empty state in the workspace-wide topbar command search",
+  },
+  "common.topbarNavigation": {
+    message: "导航",
+    description: "Page-links group in the workspace-wide topbar search",
+  },
+  "common.topbarResources": {
+    message: "资源",
+    description: "Workspace-resources group in the topbar search",
+  },
+  "common.topbarNew": {
+    message: "新建",
+    description: "Persistent topbar menu for creating a resource",
+  },
+  "common.topbarCreate": {
+    message: "创建资源",
+    description: "Heading in the persistent topbar create menu",
+  },
+  "common.topbarHelp": {
+    message: "帮助与资源",
+    description: "Accessible label for the topbar help menu",
+  },
+  "common.topbarDocumentation": {
+    message: "文档",
+    description: "Topbar help-menu link to bex documentation",
+  },
+  "common.topbarRepository": {
+    message: "GitHub 仓库",
+    description: "Topbar help-menu link to the bex source repository",
+  },
+  "common.topbarWorkspaceSettings": {
+    message: "工作区设置",
+    description: "Workspace-settings label in topbar navigation and search",
+  },
+  "common.topbarSwitchProject": {
+    message: "切换项目",
+    description: "Heading in a project breadcrumb dropdown",
+  },
+  "common.topbarSwitchEnvironment": {
+    message: "切换环境",
+    description: "Heading in an environment breadcrumb dropdown",
+  },
+  "common.topbarSwitchService": {
+    message: "切换服务",
+    description: "Heading in a service breadcrumb dropdown",
+  },
+  "common.topbarAllResources": {
+    message: "所有资源",
+    description: "Service breadcrumb menu link back to workspace resources",
+  },
+  "common.topbarProjectResource": {
+    message: "项目",
+    description: "Project kind label in workspace-wide search results",
+  },
+  "common.topbarServiceResource": {
+    message: "服务",
+    description: "Service kind label in workspace-wide search results",
+  },
   "common.sudoCommandLabel": {
     message: "Sudo 命令",
     description:

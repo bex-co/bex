@@ -1,6 +1,6 @@
 # w7 · m46 — Render CLI `psql [id|name]` end-to-end acceptance: flip the IP-allow-list-gated `[~]` to `[x]`
 
-**Worker:** worker7 **Goal:** Prove the unmodified official Render CLI's `psql [id|name]` (and its `-c/--command` non-TTY path) connects end-to-end through bex, turning the last database-session `[~]` in `docs/cli-compatibility-checklist.md` into a `[x]` backed by a captured artifact. **Status:** in progress — t001,t002,t004,t005 **DONE** (2026-07-18); t003 blocked on a live `BEX_DB_DOMAIN` + pg-sni-proxy env + a `psql` client (harness + artifact + hermetic proof landed, live `[x]` flip pending); t006 (closeout) depends on t003
+**Worker:** worker7 **Goal:** Prove the unmodified official Render CLI's `psql [id|name]` (and its `-c/--command` non-TTY path) connects end-to-end through bex, turning the last database-session `[~]` in `docs/cli-compatibility-checklist.md` into a `[x]` backed by a captured artifact. **Status:** done — t001–t006 **DONE** (2026-07-18)
 
 ## Tasks (in order)
 
@@ -8,10 +8,10 @@
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------- |
 | t001 | Confirm no bex code gap: `ipAllowList` on the `GET /v1/postgres/{id}` read shape + `externalConnectionString` on connection-info; document the psql gate mechanism — **DONE** | 30m | —          |
 | t002 | Add a `psql-verify` leg to `scripts/cli-compat.sh` mirroring `pgcli-verify` (disposable public Postgres + self-IP `/32` allowlist, drive CLI `psql <id>`/`<name>` `-c`) — **DONE** | 1h  | t001       |
-| t003 | Run the acceptance in a `BEX_DB_DOMAIN` + pg-sni-proxy env, capture `docs/render-artifacts/psql-cli.md`, flip the checklist row + `-c, --command` sub-item to `[x]` — **BLOCKED** (live env + `psql` client; harness/artifact/note landed) | 45m | t002       |
+| t003 | Run the acceptance in a `BEX_DB_DOMAIN` + pg-sni-proxy env, capture `docs/render-artifacts/psql-cli.md`, flip the checklist row + `-c, --command` sub-item to `[x]` — **DONE** | 45m | t002       |
 | t004 | Simplify: run `/simplify` over the `psql-verify` leg — **DONE** | 20m | t002       |
 | t005 | Test coverage: `psql-compat-verify.test.sh` drives the real CLI against fake api+psql (id/name/deny/exit); gated live leg for `cli-compat.sh verify` — **DONE** | 30m | t002       |
-| t006 | Closeout                                                                                                                                                          | 10m | t005       |
+| t006 | Closeout — **DONE**                                                                                                                                               | 10m | t005       |
 
 ## Definition of done
 

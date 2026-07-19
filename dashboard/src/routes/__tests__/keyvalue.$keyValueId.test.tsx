@@ -133,7 +133,9 @@ describe("KeyValueDetailPage", () => {
     keyValueState.keyValue = kv({ status: "available", suspended: false });
     renderPage();
 
-    expect(await screen.findByText("sessions-cache")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "sessions-cache" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Available")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Suspend Key Value Instance" }),
@@ -204,7 +206,7 @@ describe("KeyValueDetailPage", () => {
     keyValueState.keyValue = kv({ region: null });
     renderPage();
 
-    await screen.findByText("sessions-cache");
+    await screen.findByRole("heading", { name: "sessions-cache" });
     expect(screen.queryByText("Region")).not.toBeInTheDocument();
   });
 });

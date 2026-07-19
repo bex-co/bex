@@ -44,6 +44,82 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "Loading…",
     description: "Generic loading state label",
   },
+  "common.topbarBreadcrumbs": {
+    message: "Breadcrumbs",
+    description: "Accessible label for the dashboard topbar hierarchy",
+  },
+  "common.topbarSearch": {
+    message: "Search",
+    description: "Open the workspace-wide topbar search",
+  },
+  "common.topbarSearchPlaceholder": {
+    message: "Search pages and resources…",
+    description: "Placeholder in the workspace-wide topbar command search",
+  },
+  "common.topbarSearchDescription": {
+    message: "Search dashboard pages and workspace resources.",
+    description: "Accessible description for the topbar command search",
+  },
+  "common.topbarSearchEmpty": {
+    message: "No matching pages or resources.",
+    description: "Empty state in the workspace-wide topbar command search",
+  },
+  "common.topbarNavigation": {
+    message: "Navigation",
+    description: "Page-links group in the workspace-wide topbar search",
+  },
+  "common.topbarResources": {
+    message: "Resources",
+    description: "Workspace-resources group in the topbar search",
+  },
+  "common.topbarNew": {
+    message: "New",
+    description: "Persistent topbar menu for creating a resource",
+  },
+  "common.topbarCreate": {
+    message: "Create a resource",
+    description: "Heading in the persistent topbar create menu",
+  },
+  "common.topbarHelp": {
+    message: "Help and resources",
+    description: "Accessible label for the topbar help menu",
+  },
+  "common.topbarDocumentation": {
+    message: "Documentation",
+    description: "Topbar help-menu link to bex documentation",
+  },
+  "common.topbarRepository": {
+    message: "GitHub repository",
+    description: "Topbar help-menu link to the bex source repository",
+  },
+  "common.topbarWorkspaceSettings": {
+    message: "Workspace Settings",
+    description: "Workspace-settings label in topbar navigation and search",
+  },
+  "common.topbarSwitchProject": {
+    message: "Switch project",
+    description: "Heading in a project breadcrumb dropdown",
+  },
+  "common.topbarSwitchEnvironment": {
+    message: "Switch environment",
+    description: "Heading in an environment breadcrumb dropdown",
+  },
+  "common.topbarSwitchService": {
+    message: "Switch service",
+    description: "Heading in a service breadcrumb dropdown",
+  },
+  "common.topbarAllResources": {
+    message: "All resources",
+    description: "Service breadcrumb menu link back to workspace resources",
+  },
+  "common.topbarProjectResource": {
+    message: "Project",
+    description: "Project kind label in workspace-wide search results",
+  },
+  "common.topbarServiceResource": {
+    message: "Service",
+    description: "Service kind label in workspace-wide search results",
+  },
   "common.sudoCommandLabel": {
     message: "Sudo Command",
     description:
