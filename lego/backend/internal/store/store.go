@@ -391,7 +391,7 @@ type Store interface {
 	// failureReason (w9/011) is stored with the same transition when non-empty
 	// — pass it only alongside a failure status. A stale/repeated/invalid
 	// transition returns false without changing data.
-	TransitionDeploy(ctx context.Context, id, status, resolvedImage, failureReason string) (bool, error)
+	TransitionDeploy(ctx context.Context, id, status, resolvedImage, failureReason, failureCode string) (bool, error)
 	// CloseDeploy is the terminal-transition compatibility seam used by the
 	// deploy service's Cancel path. It delegates to TransitionDeploy.
 	CloseDeploy(ctx context.Context, id, status, resolvedImage string) (bool, error)
@@ -400,6 +400,10 @@ type Store interface {
 	// the App CR's status.preDeploy by the reconciler. No-op when unchanged;
 	// returns whether a row was updated.
 	SetDeployPreDeployStatus(ctx context.Context, id, status string) (bool, error)
+	// RecordObservedServiceState persists level-triggered App status edges through
+	// a typed checkpoint; repeated reconciler observations are no-ops.
+	RecordObservedServiceState(ctx context.Context, obs ObservedServiceState) ([]ServiceEventFact, error)
+	InsertServiceEventFact(ctx context.Context, fact ServiceEventFact) (bool, error)
 }
 
 // PGStore is the Postgres-backed Store over a pgx pool. It holds no business
@@ -1233,7 +1237,7 @@ func (s *PGStore) ListOpenDeploys(ctx context.Context) ([]Deploy, error) {
 	return out, rows.Err()
 }
 
-func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImage, failureReason string) (bool, error) {
+func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImage, failureReason, failureCode string) (bool, error) {
 	transitioned := false
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		var appID, current string
@@ -1273,6 +1277,19 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImag
 				return err
 			}
 		}
+		if failureCode == EventReasonImagePullBackoff {
+			if _, err := tx.Exec(ctx,
+				`INSERT INTO service_event_facts (
+				     source_key, app_id, fact_type, at, deploy_id, image, reason_code
+				 )
+				 SELECT 'deploy:' || id || ':image_pull_failed', app_id, $2,
+				        COALESCE(finished_at, clock_timestamp()), id, image, $3
+				 FROM deploys WHERE id = $1
+				 ON CONFLICT (source_key) DO NOTHING`,
+				id, EventFactImagePullFailed, EventReasonImagePullBackoff); err != nil {
+				return err
+			}
+		}
 		transitioned = true
 		return nil
 	})
@@ -1283,7 +1300,7 @@ func (s *PGStore) CloseDeploy(ctx context.Context, id, status, resolvedImage str
 	if !IsTerminalDeployStatus(status) || status == DeployDeactivated {
 		return false, nil
 	}
-	return s.TransitionDeploy(ctx, id, status, resolvedImage, "")
+	return s.TransitionDeploy(ctx, id, status, resolvedImage, "", "")
 }
 
 // SetDeployPreDeployStatus records the pre-deploy step's outcome on a deploy

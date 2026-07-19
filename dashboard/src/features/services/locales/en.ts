@@ -105,7 +105,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.shellErrorStatus": {
     message: "Connection error",
-    description: "Web shell status when the session failed to connect or errored",
+    description:
+      "Web shell status when the session failed to connect or errored",
   },
   "services.shellReconnect": {
     message: "Reconnect",
@@ -122,7 +123,8 @@ const enServices: Record<string, TranslationEntry> = {
   "services.shellErrorUnavailable": {
     message:
       "The in-browser shell isn't enabled on this platform. Use the SSH command below instead.",
-    description: "Web shell error when the browser transport is unconfigured (503)",
+    description:
+      "Web shell error when the browser transport is unconfigured (503)",
   },
   "services.shellInstanceLabel": {
     message: "Instance",
@@ -130,7 +132,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.shellInstanceAny": {
     message: "Any ready instance",
-    description: "Web shell instance picker option that selects a random ready replica",
+    description:
+      "Web shell instance picker option that selects a random ready replica",
   },
   "services.shellInstanceSelect": {
     message: "Select an instance",
@@ -2825,6 +2828,66 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Try again",
     description: "Events tab query-error retry button",
   },
+  "services.eventsLoadOlder": {
+    message: "Load older events",
+    description: "Button that loads the next page or earlier event window",
+  },
+  "services.eventsLoadingOlder": {
+    message: "Loading older events…",
+    description: "Busy label while an older service-event page is loading",
+  },
+  "services.eventsHistoryEnd": {
+    message: "You've reached the beginning of this service's history.",
+    description: "Terminal label after all retained service events are loaded",
+  },
+  "services.eventsFilter": {
+    message: "Filter events",
+    description: "Button opening the service event-type filter",
+  },
+  "services.eventsFilterSelected": {
+    message: "Filter events ({count})",
+    description: "Event filter button with selected-type count",
+  },
+  "services.eventsFilterSearch": {
+    message: "Search events",
+    description: "Search input for service event types",
+  },
+  "services.eventsFilterAll": {
+    message: "All events",
+    description: "Master service event filter option",
+  },
+  "services.eventsFilterNoMatches": {
+    message: "No event types match your search.",
+    description: "Empty search result in the event filter",
+  },
+  "services.eventsFilterEmptyTitle": {
+    message: "No matching events",
+    description: "Title when loaded history has no selected event types",
+  },
+  "services.eventsFilterEmpty": {
+    message: "Choose more event types or load older history.",
+    description: "Body when loaded history has no selected event types",
+  },
+  "services.eventsFilterGroup.deploy": {
+    message: "Deploy",
+    description: "Deploy event filter group",
+  },
+  "services.eventsFilterGroup.serviceStatus": {
+    message: "Service Status",
+    description: "Service-status event filter group",
+  },
+  "services.eventsFilterGroup.scaling": {
+    message: "Scaling",
+    description: "Scaling event filter group",
+  },
+  "services.eventsFilterGroup.maintenanceMode": {
+    message: "Maintenance Mode",
+    description: "Maintenance-mode event filter group",
+  },
+  "services.eventsFilterGroup.configuration": {
+    message: "Configuration",
+    description: "bex configuration event filter group",
+  },
   "services.eventsActor": {
     message: "by {actor}",
     description: "Actor attribution shown on a service event",
@@ -2862,20 +2925,40 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Service activity type: deploy started",
   },
   "services.eventsTypeDeployFinished": {
-    message: "Deploy finished",
+    message: "Deploy ended",
     description: "Service activity type: deploy finished",
   },
+  "services.eventsTypeImagePullFailed": {
+    message: "Image pull failed",
+    description: "Service activity type: image pull failed",
+  },
   "services.eventsTypeSuspended": {
-    message: "Service suspended",
+    message: "Suspended",
     description: "Service activity type: service suspended",
   },
   "services.eventsTypeResumed": {
-    message: "Service resumed",
+    message: "Resumed",
     description: "Service activity type: service resumed",
   },
   "services.eventsTypeRestarted": {
-    message: "Service restarted",
+    message: "Server restarted",
     description: "Service activity type: service restarted",
+  },
+  "services.eventsTypeInstanceFailed": {
+    message: "Instance failed",
+    description: "Service activity type: running instance became unhealthy",
+  },
+  "services.eventsTypeServiceSuspended": {
+    message: "Service suspended",
+    description: "Service activity type: suspension converged",
+  },
+  "services.eventsTypeServiceResumed": {
+    message: "Service resumed",
+    description: "Service activity type: resume converged",
+  },
+  "services.eventsTypeServiceRecovered": {
+    message: "Service recovered",
+    description: "Service activity type: unhealthy service recovered",
   },
   "services.eventsTypePlanChanged": {
     message: "Instance type changed",
@@ -2886,8 +2969,72 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Service activity type: manual scale",
   },
   "services.eventsTypeAutoscalingChanged": {
-    message: "Autoscaling updated",
+    message: "Autoscaling config changed",
     description: "Service activity type: autoscaling configuration changed",
+  },
+  "services.eventsTypeAutoscalingStarted": {
+    message: "Autoscaling started",
+    description: "Service activity type: autoscaler began a replica change",
+  },
+  "services.eventsTypeAutoscalingEnded": {
+    message: "Autoscaling ended",
+    description: "Service activity type: autoscaler replica change converged",
+  },
+  "services.eventsTypeBranchChanged": {
+    message: "Branch changed",
+    description: "Service activity type: tracked Git branch changed",
+  },
+  "services.eventsTypeCommitIgnored": {
+    message: "Commit ignored",
+    description: "Service activity type: matching Git push did not deploy",
+  },
+  "services.eventsTypeJobStarted": {
+    message: "Job started",
+    description: "Service activity type: one-off job started",
+  },
+  "services.eventsTypeJobCanceled": {
+    message: "Job canceled",
+    description: "Service activity type: one-off job canceled",
+  },
+  "services.eventsTypeMaintenanceModeChanged": {
+    message: "Maintenance mode config changed",
+    description: "Service activity type: maintenance mode setting changed",
+  },
+  "services.eventsTypeMaintenanceModeUriUpdated": {
+    message: "Maintenance mode URI updated",
+    description: "Service activity type: maintenance mode URI changed",
+  },
+  "services.eventsInstanceReference": {
+    message: "Instance {id}",
+    description: "Instance identifier shown on a service event",
+  },
+  "services.eventsReplicaChange": {
+    message: "Instances {from} → {to}",
+    description: "Autoscaling from/to replica summary",
+  },
+  "services.eventsBranchChange": {
+    message: "Branch {from} → {to}",
+    description: "Tracked branch from/to summary",
+  },
+  "services.eventsReason.image_pull_backoff": {
+    message: "The runtime could not pull the configured image.",
+    description: "Bounded public image-pull failure reason",
+  },
+  "services.eventsReason.readiness_failed": {
+    message: "A running instance stopped passing readiness checks.",
+    description: "Bounded public readiness failure reason",
+  },
+  "services.eventsReason.root_directory": {
+    message: "No changed file matched the service's root directory.",
+    description: "Commit ignored because of root-directory scoping",
+  },
+  "services.eventsReason.build_filter": {
+    message: "The changed files did not pass the service's build filters.",
+    description: "Commit ignored because of build filters",
+  },
+  "services.eventsReason.skip_phrase": {
+    message: "The commit message requested that this deploy be skipped.",
+    description: "Commit ignored because of a Render skip phrase",
   },
   "services.eventsTypeCronRunStarted": {
     message: "Cron run started",

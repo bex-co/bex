@@ -1,0 +1,139 @@
+export interface ServiceEventGroup {
+  key: string;
+  types: string[];
+}
+
+// Render-shaped presentation order for every service-event type bex can emit.
+// The first four groups mirror Render's Events filter; bex-only configuration
+// facts remain available under Configuration instead of becoming unfilterable.
+export const SERVICE_EVENT_GROUPS: ServiceEventGroup[] = [
+  {
+    key: "deploy",
+    types: [
+      "deploy_started",
+      "deploy_ended",
+      "image_pull_failed",
+      "cron_job_run_started",
+      "cron_job_run_ended",
+      "job_started",
+      "job_canceled",
+    ],
+  },
+  {
+    key: "serviceStatus",
+    types: [
+      "suspender_removed",
+      "suspender_added",
+      "server_failed",
+      "server_restarted",
+      "service_resumed",
+      "service_suspended",
+      "server_available",
+    ],
+  },
+  {
+    key: "scaling",
+    types: [
+      "autoscaling_started",
+      "autoscaling_ended",
+      "autoscaling_config_changed",
+      "instance_count_changed",
+      "branch_changed",
+      "commit_ignored",
+      "plan_changed",
+    ],
+  },
+  {
+    key: "maintenanceMode",
+    types: ["maintenance_mode_enabled", "maintenance_mode_uri_updated"],
+  },
+  {
+    key: "configuration",
+    types: [
+      "env_vars_changed",
+      "service_environment_changed",
+      "env_group_linked",
+      "env_group_unlinked",
+      "auto_deploy_enabled",
+      "auto_deploy_disabled",
+      "auto_deploy_changed",
+      "idle_timeout_changed",
+      "root_directory_changed",
+      "dockerfile_path_changed",
+      "build_filter_changed",
+      "commands_changed",
+      "source_changed",
+      "display_name_changed",
+      "pre_deploy_command_changed",
+      "max_shutdown_delay_changed",
+      "publish_path_changed",
+      "routes_changed",
+      "headers_changed",
+      "custom_domain_added",
+      "custom_domain_removed",
+      "deploy_hook_regenerated",
+      "notify_on_fail_changed",
+      "subdomain_policy_changed",
+      "ip_allow_list_changed",
+    ],
+  },
+];
+
+export const SERVICE_EVENT_TYPES = [
+  ...new Set(SERVICE_EVENT_GROUPS.flatMap((group) => group.types)),
+];
+
+const LABEL_KEYS: Record<string, string> = {
+  deploy_started: "services.eventsTypeDeployStarted",
+  deploy_ended: "services.eventsTypeDeployFinished",
+  image_pull_failed: "services.eventsTypeImagePullFailed",
+  cron_job_run_started: "services.eventsTypeCronRunStarted",
+  cron_job_run_ended: "services.eventsTypeCronRunFinished",
+  job_started: "services.eventsTypeJobStarted",
+  job_canceled: "services.eventsTypeJobCanceled",
+  suspender_added: "services.eventsTypeSuspended",
+  suspender_removed: "services.eventsTypeResumed",
+  server_failed: "services.eventsTypeInstanceFailed",
+  server_restarted: "services.eventsTypeRestarted",
+  service_suspended: "services.eventsTypeServiceSuspended",
+  service_resumed: "services.eventsTypeServiceResumed",
+  server_available: "services.eventsTypeServiceRecovered",
+  autoscaling_started: "services.eventsTypeAutoscalingStarted",
+  autoscaling_ended: "services.eventsTypeAutoscalingEnded",
+  autoscaling_config_changed: "services.eventsTypeAutoscalingChanged",
+  instance_count_changed: "services.eventsTypeInstanceCountChanged",
+  branch_changed: "services.eventsTypeBranchChanged",
+  commit_ignored: "services.eventsTypeCommitIgnored",
+  plan_changed: "services.eventsTypePlanChanged",
+  maintenance_mode_enabled: "services.eventsTypeMaintenanceModeChanged",
+  maintenance_mode_uri_updated: "services.eventsTypeMaintenanceModeUriUpdated",
+  env_vars_changed: "services.eventsTypeEnvVarsChanged",
+  service_environment_changed: "services.eventsTypeEnvironmentChanged",
+  env_group_linked: "services.eventsTypeEnvGroupLinked",
+  env_group_unlinked: "services.eventsTypeEnvGroupUnlinked",
+  auto_deploy_enabled: "services.eventsTypeAutoDeployChanged",
+  auto_deploy_disabled: "services.eventsTypeAutoDeployChanged",
+  auto_deploy_changed: "services.eventsTypeAutoDeployChanged",
+  idle_timeout_changed: "services.eventsTypeIdleTimeoutChanged",
+  display_name_changed: "services.eventsTypeDisplayNameChanged",
+  custom_domain_added: "services.eventsTypeCustomDomainAdded",
+  custom_domain_removed: "services.eventsTypeCustomDomainRemoved",
+  notify_on_fail_changed: "services.eventsTypeNotificationsChanged",
+  subdomain_policy_changed: "services.eventsTypeSubdomainPolicyChanged",
+  publish_path_changed: "services.eventsTypeStaticSiteChanged",
+  routes_changed: "services.eventsTypeStaticSiteChanged",
+  headers_changed: "services.eventsTypeStaticSiteChanged",
+  root_directory_changed: "services.eventsTypeBuildSettingsChanged",
+  dockerfile_path_changed: "services.eventsTypeBuildSettingsChanged",
+  build_filter_changed: "services.eventsTypeBuildSettingsChanged",
+  commands_changed: "services.eventsTypeBuildSettingsChanged",
+  source_changed: "services.eventsTypeBuildSettingsChanged",
+  pre_deploy_command_changed: "services.eventsTypeBuildSettingsChanged",
+  max_shutdown_delay_changed: "services.eventsTypeBuildSettingsChanged",
+  deploy_hook_regenerated: "services.eventsTypeBuildSettingsChanged",
+  ip_allow_list_changed: "services.eventsTypeServiceChanged",
+};
+
+export function serviceEventLabelKey(type: string): string {
+  return LABEL_KEYS[type] ?? "services.eventsTypeServiceChanged";
+}

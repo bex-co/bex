@@ -2,8 +2,20 @@
 # each event carries its OWN cursor (backend/internal/events/graphql.go).
 # Deploy links/actions use details.deployId: ServiceEvent.id is an evt-… id and
 # must never be treated as a deploy id.
-query ServiceEvents($serviceId: String!, $cursor: String, $limit: Int) {
-  serviceEvents(serviceId: $serviceId, cursor: $cursor, limit: $limit) {
+query ServiceEvents(
+  $serviceId: String!
+  $startTime: String!
+  $endTime: String!
+  $cursor: String
+  $limit: Int
+) {
+  serviceEvents(
+    serviceId: $serviceId
+    startTime: $startTime
+    endTime: $endTime
+    cursor: $cursor
+    limit: $limit
+  ) {
     id
     type
     timestamp
@@ -22,6 +34,13 @@ query ServiceEvents($serviceId: String!, $cursor: String, $limit: Int) {
       commitMessage
       startedAt
       finishedAt
+      reasonCode
+      instanceId
+      fromCount
+      toCount
+      branchFrom
+      branchTo
+      commitUrl
       trigger {
         firstBuild
         envUpdated
@@ -34,8 +53,16 @@ query ServiceEvents($serviceId: String!, $cursor: String, $limit: Int) {
   }
 }
 
-mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String) {
-  triggerDeploy(serviceId: $serviceId, commitId: $commitId, deployMode: $deployMode) {
+mutation TriggerDeploy(
+  $serviceId: String!
+  $commitId: String
+  $deployMode: String
+) {
+  triggerDeploy(
+    serviceId: $serviceId
+    commitId: $commitId
+    deployMode: $deployMode
+  ) {
     id
     status
     createdAt

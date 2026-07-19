@@ -102,7 +102,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.shellErrorStatus": {
     message: "连接错误",
-    description: "Web shell status when the session failed to connect or errored",
+    description:
+      "Web shell status when the session failed to connect or errored",
   },
   "services.shellReconnect": {
     message: "重新连接",
@@ -118,7 +119,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.shellErrorUnavailable": {
     message: "此平台未启用浏览器内 Shell。请改用下方的 SSH 命令。",
-    description: "Web shell error when the browser transport is unconfigured (503)",
+    description:
+      "Web shell error when the browser transport is unconfigured (503)",
   },
   "services.shellInstanceLabel": {
     message: "实例",
@@ -126,7 +128,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.shellInstanceAny": {
     message: "任意就绪实例",
-    description: "Web shell instance picker option that selects a random ready replica",
+    description:
+      "Web shell instance picker option that selects a random ready replica",
   },
   "services.shellInstanceSelect": {
     message: "选择实例",
@@ -2775,6 +2778,66 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "重试",
     description: "Events tab query-error retry button",
   },
+  "services.eventsLoadOlder": {
+    message: "加载更早的事件",
+    description: "加载下一页或更早事件时间段的按钮",
+  },
+  "services.eventsLoadingOlder": {
+    message: "正在加载更早的事件…",
+    description: "加载更早服务事件页面时的忙碌标签",
+  },
+  "services.eventsHistoryEnd": {
+    message: "已到达此服务历史记录的起点。",
+    description: "加载所有保留的服务事件后的终止标签",
+  },
+  "services.eventsFilter": {
+    message: "筛选事件",
+    description: "打开服务事件类型筛选器的按钮",
+  },
+  "services.eventsFilterSelected": {
+    message: "筛选事件（{count}）",
+    description: "带所选类型数量的事件筛选按钮",
+  },
+  "services.eventsFilterSearch": {
+    message: "搜索事件",
+    description: "服务事件类型搜索输入框",
+  },
+  "services.eventsFilterAll": {
+    message: "所有事件",
+    description: "服务事件主筛选选项",
+  },
+  "services.eventsFilterNoMatches": {
+    message: "没有匹配搜索的事件类型。",
+    description: "事件筛选器中的空搜索结果",
+  },
+  "services.eventsFilterEmptyTitle": {
+    message: "没有匹配的事件",
+    description: "已加载历史中没有所选事件类型时的标题",
+  },
+  "services.eventsFilterEmpty": {
+    message: "请选择更多事件类型或加载更早的历史记录。",
+    description: "已加载历史中没有所选事件类型时的说明",
+  },
+  "services.eventsFilterGroup.deploy": {
+    message: "部署",
+    description: "部署事件筛选组",
+  },
+  "services.eventsFilterGroup.serviceStatus": {
+    message: "服务状态",
+    description: "服务状态事件筛选组",
+  },
+  "services.eventsFilterGroup.scaling": {
+    message: "伸缩",
+    description: "伸缩事件筛选组",
+  },
+  "services.eventsFilterGroup.maintenanceMode": {
+    message: "维护模式",
+    description: "维护模式事件筛选组",
+  },
+  "services.eventsFilterGroup.configuration": {
+    message: "配置",
+    description: "bex 配置事件筛选组",
+  },
   "services.eventsActor": {
     message: "由 {actor} 操作",
     description: "Actor attribution shown on a service event",
@@ -2815,6 +2878,10 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "部署已完成",
     description: "Service activity type: deploy finished",
   },
+  "services.eventsTypeImagePullFailed": {
+    message: "镜像拉取失败",
+    description: "Service activity type: image pull failed",
+  },
   "services.eventsTypeSuspended": {
     message: "服务已暂停",
     description: "Service activity type: service suspended",
@@ -2827,6 +2894,22 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "服务已重启",
     description: "Service activity type: service restarted",
   },
+  "services.eventsTypeInstanceFailed": {
+    message: "实例失败",
+    description: "Service activity type: running instance became unhealthy",
+  },
+  "services.eventsTypeServiceSuspended": {
+    message: "服务已暂停",
+    description: "Service activity type: suspension converged",
+  },
+  "services.eventsTypeServiceResumed": {
+    message: "服务已恢复运行",
+    description: "Service activity type: resume converged",
+  },
+  "services.eventsTypeServiceRecovered": {
+    message: "服务已恢复健康",
+    description: "Service activity type: unhealthy service recovered",
+  },
   "services.eventsTypePlanChanged": {
     message: "实例类型已更改",
     description: "Service activity type: plan changed",
@@ -2838,6 +2921,70 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.eventsTypeAutoscalingChanged": {
     message: "自动伸缩已更新",
     description: "Service activity type: autoscaling configuration changed",
+  },
+  "services.eventsTypeAutoscalingStarted": {
+    message: "自动伸缩已开始",
+    description: "Service activity type: autoscaler began a replica change",
+  },
+  "services.eventsTypeAutoscalingEnded": {
+    message: "自动伸缩已结束",
+    description: "Service activity type: autoscaler replica change converged",
+  },
+  "services.eventsTypeBranchChanged": {
+    message: "分支已更改",
+    description: "Service activity type: tracked Git branch changed",
+  },
+  "services.eventsTypeCommitIgnored": {
+    message: "提交已忽略",
+    description: "Service activity type: matching Git push did not deploy",
+  },
+  "services.eventsTypeJobStarted": {
+    message: "任务已开始",
+    description: "Service activity type: one-off job started",
+  },
+  "services.eventsTypeJobCanceled": {
+    message: "任务已取消",
+    description: "Service activity type: one-off job canceled",
+  },
+  "services.eventsTypeMaintenanceModeChanged": {
+    message: "维护模式配置已更改",
+    description: "Service activity type: maintenance mode setting changed",
+  },
+  "services.eventsTypeMaintenanceModeUriUpdated": {
+    message: "维护模式 URI 已更新",
+    description: "Service activity type: maintenance mode URI changed",
+  },
+  "services.eventsInstanceReference": {
+    message: "实例 {id}",
+    description: "服务事件中显示的实例标识符",
+  },
+  "services.eventsReplicaChange": {
+    message: "实例数 {from} → {to}",
+    description: "自动伸缩副本数变化摘要",
+  },
+  "services.eventsBranchChange": {
+    message: "分支 {from} → {to}",
+    description: "跟踪分支变化摘要",
+  },
+  "services.eventsReason.image_pull_backoff": {
+    message: "运行时无法拉取配置的镜像。",
+    description: "有限的公开镜像拉取失败原因",
+  },
+  "services.eventsReason.readiness_failed": {
+    message: "运行中的实例未能通过就绪检查。",
+    description: "有限的公开就绪失败原因",
+  },
+  "services.eventsReason.root_directory": {
+    message: "没有变更文件匹配服务的根目录。",
+    description: "因根目录范围而忽略提交",
+  },
+  "services.eventsReason.build_filter": {
+    message: "变更文件未通过服务的构建筛选器。",
+    description: "因构建筛选器而忽略提交",
+  },
+  "services.eventsReason.skip_phrase": {
+    message: "提交消息要求跳过此次部署。",
+    description: "因 Render 跳过短语而忽略提交",
   },
   "services.eventsTypeCronRunStarted": {
     message: "定时任务已开始",

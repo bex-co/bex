@@ -9,7 +9,25 @@
 /** i18n suffixes: group `webhooks.group.<key>`, event `webhooks.event.<type>`. */
 const GROUPS: Record<string, string[]> = {
   cronJobRun: ["cron_job_run_started", "cron_job_run_ended"],
-  deploy: ["deploy_started", "deploy_ended"],
+  deploy: [
+    "deploy_started",
+    "deploy_ended",
+    "image_pull_failed",
+    "commit_ignored",
+  ],
+  serviceAvailability: [
+    "server_failed",
+    "server_available",
+    "server_restarted",
+  ],
+  scaling: [
+    "autoscaling_started",
+    "autoscaling_ended",
+    "autoscaling_config_changed",
+    "instance_count_changed",
+    "plan_changed",
+    "branch_changed",
+  ],
   maintenanceMode: ["maintenance_mode_enabled", "maintenance_mode_uri_updated"],
   postgres: [
     "postgres_created",
@@ -22,12 +40,7 @@ const GROUPS: Record<string, string[]> = {
 };
 
 /** Keys Render lists as bare rows (no group); anything else unknown → "other". */
-const SINGLES = new Set([
-  "autoscaling_config_changed",
-  "instance_count_changed",
-  "plan_changed",
-  "server_restarted",
-]);
+const SINGLES = new Set<string>();
 
 const EVENT_GROUP: ReadonlyMap<string, string> = new Map(
   Object.entries(GROUPS).flatMap(([group, events]) =>

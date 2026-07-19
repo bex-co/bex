@@ -255,6 +255,14 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "部署",
     description: "Event-picker group — deploy lifecycle events",
   },
+  "webhooks.group.serviceAvailability": {
+    message: "服务可用性",
+    description: "Event-picker group — observed service availability events",
+  },
+  "webhooks.group.scaling": {
+    message: "伸缩",
+    description: "Event-picker group — service scaling events",
+  },
   "webhooks.group.cronJobRun": {
     message: "定时任务运行",
     description: "Event-picker group — cron job run events",
@@ -283,6 +291,34 @@ const zhWebhooks: Record<string, TranslationEntry> = {
   "webhooks.event.deploy_ended": {
     message: "部署结束",
     description: "Event label — deploy_ended",
+  },
+  "webhooks.event.image_pull_failed": {
+    message: "镜像拉取失败",
+    description: "Event label — image_pull_failed",
+  },
+  "webhooks.event.commit_ignored": {
+    message: "提交已忽略",
+    description: "Event label — commit_ignored",
+  },
+  "webhooks.event.server_failed": {
+    message: "服务不可用",
+    description: "Event label — server_failed",
+  },
+  "webhooks.event.server_available": {
+    message: "服务恢复可用",
+    description: "Event label — server_available",
+  },
+  "webhooks.event.autoscaling_started": {
+    message: "自动伸缩已开始",
+    description: "Event label — autoscaling_started",
+  },
+  "webhooks.event.autoscaling_ended": {
+    message: "自动伸缩已结束",
+    description: "Event label — autoscaling_ended",
+  },
+  "webhooks.event.branch_changed": {
+    message: "分支已更改",
+    description: "Event label — branch_changed bex extension",
   },
   "webhooks.event.cron_job_run_started": {
     message: "定时任务开始",

@@ -38,8 +38,8 @@ import (
 
 // worker.go is the delivery side (w3/m11/t002+t003), two phases per tick:
 //
-//   - dispatch: tail the composed event feed (deploys + audit_events — the
-//     same rows the w3/m7 events feed derives from) through a durable
+//   - dispatch: tail the composed event feed (deploys + audit_events + typed
+//     service_event_facts — the same rows the service feed derives from) through a durable
 //     watermark, fan each event out to the workspace's subscribed endpoints
 //     as webhook_deliveries rows. Insert + watermark advance are one
 //     transaction, so a crash re-reads rather than drops.
@@ -341,11 +341,11 @@ func (w *Worker) dispatch(ctx context.Context, endpoints []store.WebhookEndpoint
 			}
 		}
 		last := rows[len(rows)-1]
-		if err := w.Store.EnqueueWebhookDeliveries(ctx, batch, last.At, last.Key); err != nil {
+		if err := w.Store.EnqueueWebhookDeliveries(ctx, batch, last.CursorAt, last.Key); err != nil {
 			return err
 		}
-		w.wmAt, w.wmKey = last.At, last.Key
-		floorAt, floorKey = last.At, last.Key
+		w.wmAt, w.wmKey = last.CursorAt, last.Key
+		floorAt, floorKey = last.CursorAt, last.Key
 		if len(rows) < dispatchBatch {
 			return nil
 		}
@@ -372,6 +372,9 @@ func project(r store.WebhookEventRow) (string, payloadData, bool) {
 		return TypeDeployEnded, data, true
 	case store.EventSourceAudit:
 		t, ok := verbEvents[r.Verb]
+		return t, data, ok
+	case store.EventSourceFact:
+		t, ok := factEvents[r.FactType]
 		return t, data, ok
 	}
 	return "", payloadData{}, false

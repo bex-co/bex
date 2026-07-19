@@ -46,7 +46,12 @@ export function ServiceMetricsPage({ serviceId }: { serviceId: string }) {
   // Chart event markers (Render parity): the same event feed the timeline
   // shows, mapped onto every chart as a vertical line + icon badge. Apollo
   // dedupes this against EventTimeline's identical query — one request.
-  const { events } = useServiceEvents(serviceId, 100);
+  const { events } = useServiceEvents(serviceId, {
+    limit: 100,
+    startTime: window.startTime,
+    endTime: window.endTime,
+    autoPaginate: true,
+  });
   const markers = useMemo(
     () => toChartEventMarkers(events, window.startTime, window.endTime),
     [events, window.startTime, window.endTime],

@@ -324,6 +324,12 @@ func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.A
 	if as == nil || !as.Enabled {
 		return current, false
 	}
+	// Hold one from/to edge stable until the Deployment reaches its recorded
+	// target. This prevents a metrics wobble from overwriting a Started status
+	// before the backend can persist its matching Ended fact.
+	if transition := app.Status.Autoscaling; transition != nil && transition.State == appv1alpha1.AutoscalingTransitionStarted {
+		return transition.ToReplicas, true
+	}
 
 	usage, err := r.MetricsReader(ctx, app.Namespace, app.Name)
 	if err != nil {
@@ -384,6 +390,27 @@ func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.A
 			return current, true
 		}
 	}
+	if want != current {
+		app.Status.Autoscaling = &appv1alpha1.AutoscalingStatus{
+			TransitionID: fmt.Sprintf("%s-%d-%d", now.Format(time.RFC3339Nano), current, want),
+			FromReplicas: current,
+			ToReplicas:   want,
+			State:        appv1alpha1.AutoscalingTransitionStarted,
+			StartedAt:    now.Format(time.RFC3339Nano),
+		}
+	}
 
 	return want, true // always requeue while autoscaling is on
+}
+
+func completeAutoscalingTransition(app *appv1alpha1.App, replicas, ready int32, now time.Time) {
+	transition := app.Status.Autoscaling
+	if transition == nil || transition.State != appv1alpha1.AutoscalingTransitionStarted {
+		return
+	}
+	if replicas != transition.ToReplicas || ready < transition.ToReplicas {
+		return
+	}
+	transition.State = appv1alpha1.AutoscalingTransitionEnded
+	transition.FinishedAt = now.UTC().Format(time.RFC3339Nano)
 }

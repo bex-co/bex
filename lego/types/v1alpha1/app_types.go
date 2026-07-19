@@ -802,6 +802,33 @@ type PreDeployStatus struct {
 	Message string `json:"message,omitempty"`
 }
 
+const (
+	AutoscalingTransitionStarted = "Started"
+	AutoscalingTransitionEnded   = "Ended"
+)
+
+// AutoscalingStatus is the typed, mechanism-only handoff for one autoscaler
+// replica transition. The backend observes it through the App status
+// subresource and persists activity; the operator remains database-free.
+type AutoscalingStatus struct {
+	// TransitionID is stable for the lifetime of this from/to edge.
+	// +required
+	TransitionID string `json:"transitionId"`
+	// +required
+	FromReplicas int32 `json:"fromReplicas"`
+	// +required
+	ToReplicas int32 `json:"toReplicas"`
+	// State is Started while the Deployment converges and Ended once the target
+	// replica count is ready.
+	// +kubebuilder:validation:Enum=Started;Ended
+	// +required
+	State string `json:"state"`
+	// +required
+	StartedAt string `json:"startedAt"`
+	// +optional
+	FinishedAt string `json:"finishedAt,omitempty"`
+}
+
 // AppStatus is the observed state of a App.
 type AppStatus struct {
 	// Phase is the high-level lifecycle state.
@@ -813,6 +840,11 @@ type AppStatus struct {
 	// configured or none has run yet). See spec.preDeployCommand.
 	// +optional
 	PreDeploy *PreDeployStatus `json:"preDeploy,omitempty"`
+
+	// Autoscaling is the latest autoscaler-driven replica transition. Manual
+	// Scale changes never populate it.
+	// +optional
+	Autoscaling *AutoscalingStatus `json:"autoscaling,omitempty"`
 
 	// Runs is the recent run history of a cron_job (newest first), populated from
 	// the Jobs the CronJob schedule and one-off RunAt triggers create. Empty for

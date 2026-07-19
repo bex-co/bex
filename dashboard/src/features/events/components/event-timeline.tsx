@@ -29,7 +29,12 @@ export function EventTimeline({
   filter?: EventTimelineFilter;
 }) {
   const { t } = useTranslations();
-  const { events, loading, error } = useServiceEvents(serviceId, 100);
+  const { events, loading, error } = useServiceEvents(serviceId, {
+    limit: 100,
+    startTime,
+    endTime,
+    autoPaginate: true,
+  });
   const visible = filterTimelineEvents(events, startTime, endTime, filter);
 
   return (

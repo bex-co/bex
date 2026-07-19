@@ -76,13 +76,18 @@ type renderDetails struct {
 	PreDeployStatus string         `json:"preDeployStatus,omitempty"` // bex extra (w1/m33): the deploy's pre-deploy step outcome
 	Trigger         *renderTrigger `json:"trigger,omitempty"`
 	// Deploy enrichment for dashboard (w1/m47)
-	Image         string `json:"image,omitempty"`
-	CommitID      string `json:"commitId,omitempty"`
-	CommitMessage string `json:"commitMessage,omitempty"`
-	StartedAt     string `json:"startedAt,omitempty"`   // RFC3339; nil → omitted
-	FinishedAt    string `json:"finishedAt,omitempty"`  // RFC3339; nil → omitted
-	Actor           string         `json:"actor,omitempty"`
-	TriggeredByUser string         `json:"triggeredByUser,omitempty"`
+	Image           string `json:"image,omitempty"`
+	CommitID        string `json:"commitId,omitempty"`
+	CommitMessage   string `json:"commitMessage,omitempty"`
+	StartedAt       string `json:"startedAt,omitempty"`  // RFC3339; nil → omitted
+	FinishedAt      string `json:"finishedAt,omitempty"` // RFC3339; nil → omitted
+	Actor           string `json:"actor,omitempty"`
+	TriggeredByUser string `json:"triggeredByUser,omitempty"`
+	ReasonCode      string `json:"reasonCode,omitempty"`
+	InstanceID      string `json:"instanceId,omitempty"`
+	CommitURL       string `json:"commitUrl,omitempty"`
+	FromInstances   *int32 `json:"fromInstances,omitempty"`
+	ToInstances     *int32 `json:"toInstances,omitempty"`
 	// plan_changed and instance_count_changed both use "from"/"to" — the value
 	// type (string vs int pointer) differs, so `any` is required for a flat struct.
 	From any `json:"from,omitempty"`
@@ -123,6 +128,9 @@ func toRenderEvent(e Event) renderEvent {
 		FinishedAt:      formatTime(e.Details.FinishedAt),
 		Actor:           e.Details.Actor,
 		TriggeredByUser: e.Details.TriggeredByUser,
+		ReasonCode:      e.Details.ReasonCode,
+		InstanceID:      e.Details.InstanceID,
+		CommitURL:       e.Details.CommitURL,
 	}
 	if t := e.Details.Trigger; t != nil {
 		d.Trigger = &renderTrigger{
@@ -152,6 +160,14 @@ func toRenderEvent(e Event) renderEvent {
 		} else {
 			d.Current = &autoscalingState{Enabled: false}
 		}
+	case TypeBranchChanged:
+		d.From = e.Details.BranchFrom
+		d.To = e.Details.BranchTo
+	case TypeAutoscalingStarted, TypeAutoscalingEnded:
+		// Render's event-detail contract calls these fromInstances/toInstances,
+		// unlike manual scaling's generic from/to pair.
+		d.FromInstances = e.Details.FromCount
+		d.ToInstances = e.Details.ToCount
 	}
 	return renderEvent{
 		ID:        e.ID,

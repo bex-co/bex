@@ -592,6 +592,43 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 	if got, err := s.ListDeploys(ctx, app.ID, DeployFilter{FinishedAfter: second.CreatedAt}); err != nil || len(got) != 1 || got[0].ID != second.ID {
 		t.Fatalf("finishedAfter = %+v (err %v), want only the second deploy", got, err)
 	}
+
+	// Image-pull failure is journaled in the SAME transaction as the terminal
+	// deploy edge. Exercise it on an isolated App so the service-feed assertions
+	// below retain their original two-deploy fixture.
+	failureApp, err := s.CreateApp(ctx, App{
+		TenantID: app.TenantID, Name: "image-pull-failure", Image: "registry.example/missing:v1",
+		Branch: "main", Port: 8080, Replicas: 1, Tier: "starter",
+	})
+	if err != nil {
+		t.Fatalf("create image-pull fixture: %v", err)
+	}
+	defer func() {
+		if err := s.DeleteApp(ctx, failureApp.ID); err != nil {
+			t.Errorf("delete image-pull fixture: %v", err)
+		}
+	}()
+	failureDeploys, err := s.ListDeploys(ctx, failureApp.ID, DeployFilter{})
+	if err != nil || len(failureDeploys) != 1 {
+		t.Fatalf("image-pull deploy fixture = %+v (err %v)", failureDeploys, err)
+	}
+	failedDeploy := failureDeploys[0]
+	if won, err := s.TransitionDeploy(ctx, failedDeploy.ID, DeployUpdateFailed, "", "bounded operator diagnosis", EventReasonImagePullBackoff); err != nil || !won {
+		t.Fatalf("image-pull transition = (%v, %v)", won, err)
+	}
+	failureEvents, err := s.ListServiceEvents(ctx, failureApp.ID, core.ServiceTarget(failureApp.Name), failureApp.TenantID, ServiceEventFilter{
+		FactTypes: []string{string(EventFactImagePullFailed)},
+	})
+	if err != nil || len(failureEvents) != 1 {
+		t.Fatalf("image-pull facts = %+v (err %v), want exactly one", failureEvents, err)
+	}
+	failureFact := failureEvents[0]
+	if failureFact.DeployID != failedDeploy.ID || failureFact.Image != failureApp.Image || failureFact.ReasonCode != EventReasonImagePullBackoff {
+		t.Fatalf("image-pull fact = %+v, want deploy/image/bounded reason", failureFact)
+	}
+	if won, err := s.TransitionDeploy(ctx, failedDeploy.ID, DeployUpdateFailed, "", "retry", EventReasonImagePullBackoff); err != nil || won {
+		t.Fatalf("image-pull retry = (%v, %v), want terminal no-op", won, err)
+	}
 }
 
 // assertAuditEvents exercises w4/m10's audit_events store methods against real
@@ -738,13 +775,28 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 	record(base.Add(2*time.Second), "apps.Suspend", ten.ID, target, core.AuditDenied)
 	record(base.Add(3*time.Second), "apps.Suspend", "tea-stranger00000000", target, core.AuditAllowed)
 	record(base.Add(4*time.Second), "apps.Create", ten.ID, target, core.AuditAllowed)
+	legacyTarget := core.ServiceTarget("shared-public-name")
+	record(base.Add(5*time.Second), "apps.Suspend", core.DefaultTenant, legacyTarget, core.AuditAllowed)
+	record(base.Add(6*time.Second), "apps.Suspend", ten.ID, legacyTarget, core.AuditAllowed)
+	fact := ServiceEventFact{
+		SourceKey: "git:delivery-1:" + app.ID + ":ignored", AppID: app.ID,
+		Type: EventFactCommitIgnored, At: base.Add(500 * time.Millisecond),
+		ReasonCode: EventReasonBuildFilter, CommitID: "abc123",
+	}
+	if inserted, err := s.InsertServiceEventFact(ctx, fact); err != nil || !inserted {
+		t.Fatalf("insert event fact: %v", err)
+	}
+	if inserted, err := s.InsertServiceEventFact(ctx, fact); err != nil || inserted {
+		t.Fatalf("retry event fact = (%v, %v), want idempotent no-op", inserted, err)
+	}
+	factTypes := []string{string(EventFactCommitIgnored)}
 
-	all, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{Verbs: verbs, Phases: phases})
+	all, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{Verbs: verbs, Phases: phases, FactTypes: factTypes})
 	if err != nil {
 		t.Fatalf("list service events: %v", err)
 	}
-	if len(all) != 6 {
-		t.Fatalf("feed = %d events, want 6 (4 deploy + 2 audit; denied/cross-tenant/unmapped excluded)\n%+v", len(all), all)
+	if len(all) != 7 {
+		t.Fatalf("feed = %d events, want 7 (4 deploy + 2 audit + 1 fact; denied/cross-tenant/unmapped excluded)\n%+v", len(all), all)
 	}
 	// Newest first, and the order is TOTAL: every adjacent pair is strictly
 	// ordered by (at, key), never merely equal — which is what makes the cursor
@@ -755,8 +807,8 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 			t.Fatalf("feed not in strict (at DESC, key DESC) order at %d: %+v then %+v", i, prev, cur)
 		}
 	}
-	if all[0].Verb != "apps.Scale" || all[1].Verb != "apps.Suspend" {
-		t.Errorf("two newest = %q, %q; want the audit rows apps.Scale then apps.Suspend", all[0].Verb, all[1].Verb)
+	if all[0].Verb != "apps.Scale" || all[1].FactType != string(EventFactCommitIgnored) || all[2].Verb != "apps.Suspend" {
+		t.Errorf("three newest = %+v, %+v, %+v; want scale, commit fact, suspend", all[0], all[1], all[2])
 	}
 	if all[0].Source != EventSourceAudit || all[0].Caller != "user-x" {
 		t.Errorf("audit event = %+v, want source=audit caller=user-x", all[0])
@@ -772,11 +824,17 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 	if seenPhases[EventPhaseStarted] != 2 || seenPhases[EventPhaseEnded] != 2 {
 		t.Errorf("deploy phases = %v, want 2 started + 2 ended (deactivated and live)", seenPhases)
 	}
+	legacyOnly, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{
+		Since: base.Add(5 * time.Second), Verbs: []string{"apps.Suspend"}, LegacyTarget: legacyTarget,
+	})
+	if err != nil || len(legacyOnly) != 1 || legacyOnly[0].At != base.Add(6*time.Second) {
+		t.Fatalf("legacy target scope = %+v (err %v), want only the owner-workspace row", legacyOnly, err)
+	}
 
 	// Keyset paging: walk the feed 2 at a time and reassemble it exactly. Between
 	// page 1 and page 2 a NEWER event lands — the page-2 cursor must not notice
 	// (an OFFSET would have shifted and re-served a row here).
-	page1, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{Verbs: verbs, Phases: phases, Limit: 2})
+	page1, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{Verbs: verbs, Phases: phases, FactTypes: factTypes, Limit: 2})
 	if err != nil || len(page1) != 2 {
 		t.Fatalf("page 1 = %+v (err %v), want 2", page1, err)
 	}
@@ -787,7 +845,7 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 	walked = append(walked, page1...)
 	for {
 		page, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{
-			Verbs: verbs, Phases: phases, Limit: 2, AfterAt: after.At, AfterKey: after.Key,
+			Verbs: verbs, Phases: phases, FactTypes: factTypes, Limit: 2, AfterAt: after.At, AfterKey: after.Key,
 		})
 		if err != nil {
 			t.Fatalf("page after %s: %v", after.Key, err)
@@ -812,12 +870,12 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 		}
 	}
 
-	// The window bounds `at` inclusively — the two audit events only.
+	// The window bounds `at` inclusively — two audit events plus the interleaved fact.
 	windowed, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{
-		Verbs: verbs, Phases: phases, Since: base, Until: base.Add(time.Second),
+		Verbs: verbs, Phases: phases, FactTypes: factTypes, Since: base, Until: base.Add(time.Second),
 	})
-	if err != nil || len(windowed) != 2 {
-		t.Fatalf("windowed feed = %+v (err %v), want the 2 audit events", windowed, err)
+	if err != nil || len(windowed) != 3 {
+		t.Fatalf("windowed feed = %+v (err %v), want 2 audit events + 1 fact", windowed, err)
 	}
 
 	// The type filter is a PUSH-DOWN: narrowing to one kind of event must bound the
@@ -841,10 +899,14 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 	if err != nil || len(auditOnly) != 1 || auditOnly[0].Verb != "apps.Scale" {
 		t.Fatalf("verb-filtered feed = %+v (err %v), want just the scale", auditOnly, err)
 	}
+	factsOnly, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{FactTypes: factTypes, Limit: 1})
+	if err != nil || len(factsOnly) != 1 || factsOnly[0].FactType != string(EventFactCommitIgnored) {
+		t.Fatalf("fact-filtered feed = %+v (err %v), want just commit_ignored", factsOnly, err)
+	}
 
 	// A hand-applied app (no control-plane row) and a service nobody targeted:
 	// an empty feed, never another service's rows.
-	empty, err := s.ListServiceEvents(ctx, "srv-doesnotexist0000", core.ServiceTarget("nope"), ten.ID, ServiceEventFilter{Verbs: verbs, Phases: phases})
+	empty, err := s.ListServiceEvents(ctx, "srv-doesnotexist0000", core.ServiceTarget("nope"), ten.ID, ServiceEventFilter{Verbs: verbs, Phases: phases, FactTypes: factTypes})
 	if err != nil || len(empty) != 0 {
 		t.Fatalf("feed of an unknown service = %+v (err %v), want empty", empty, err)
 	}
@@ -1349,6 +1411,13 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	recordAudit(at.Add(3*time.Second), "apps.Restart", "tea-stranger00000000", fullTarget, "", core.AuditAllowed) // cross-tenant: excluded
 	recordAudit(at.Add(4*time.Second), "apps.SetRoutes", ten.ID, fullTarget, "", core.AuditAllowed)               // verb not pushed down: excluded
 	recordAudit(at.Add(5*time.Second), core.AuditVerbPostgresCreated, ten.ID, core.DatabaseTarget("dpg-orders"), "orders", core.AuditAllowed)
+	lateOccurrence := at.Add(-time.Hour)
+	if inserted, err := s.InsertServiceEventFact(ctx, ServiceEventFact{
+		SourceKey: "observed:late-recovery", AppID: app.ID,
+		Type: EventFactServerAvailable, At: lateOccurrence,
+	}); err != nil || !inserted {
+		t.Fatalf("insert late-observed fact = (%v, %v)", inserted, err)
+	}
 
 	rows, err := s.ListWebhookEvents(ctx, at.Add(-time.Second), "", time.Now().UTC().Add(time.Hour), []string{"apps.Restart", core.AuditVerbPostgresCreated}, []string{ten.ID}, 100)
 	if err != nil {
@@ -1356,7 +1425,17 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	}
 	var restarts int
 	var postgresCreates int
+	var recoveries int
 	for _, r := range rows {
+		if r.Source == EventSourceFact {
+			if r.FactType == string(EventFactServerAvailable) {
+				if !r.At.Equal(lateOccurrence) || !r.CursorAt.After(r.At) {
+					t.Errorf("late-observed fact = %+v", r)
+				}
+				recoveries++
+			}
+			continue
+		}
 		if r.Source != EventSourceAudit {
 			continue
 		}
@@ -1381,12 +1460,17 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	if postgresCreates != 1 {
 		t.Errorf("feed carried %d postgres.CreatePostgres events, want exactly 1\n%+v", postgresCreates, rows)
 	}
+	if recoveries != 1 {
+		t.Errorf("feed carried %d late recovery facts, want 1\n%+v", recoveries, rows)
+	}
 	// Ascending keyset: rows must come back oldest-first and resume exactly.
 	if len(rows) >= 2 {
-		if rows[0].At.After(rows[1].At) {
-			t.Errorf("feed not ascending: %v then %v", rows[0].At, rows[1].At)
+		for i := 1; i < len(rows); i++ {
+			if rows[i-1].CursorAt.After(rows[i].CursorAt) {
+				t.Errorf("feed not ascending by dispatch cursor: %v then %v", rows[i-1].CursorAt, rows[i].CursorAt)
+			}
 		}
-		resumed, err := s.ListWebhookEvents(ctx, rows[0].At, rows[0].Key, time.Now().UTC().Add(time.Hour), []string{"apps.Restart", core.AuditVerbPostgresCreated}, []string{ten.ID}, 100)
+		resumed, err := s.ListWebhookEvents(ctx, rows[0].CursorAt, rows[0].Key, time.Now().UTC().Add(time.Hour), []string{"apps.Restart", core.AuditVerbPostgresCreated}, []string{ten.ID}, 100)
 		if err != nil || len(resumed) != len(rows)-1 {
 			t.Errorf("keyset resume = %d rows (err %v), want %d", len(resumed), err, len(rows)-1)
 		}

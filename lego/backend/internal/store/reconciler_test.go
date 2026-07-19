@@ -48,6 +48,54 @@ func newTestReconciler(t *testing.T) (*Reconciler, *memStore, client.Client) {
 	return NewReconciler(cl, store, "default"), store, cl
 }
 
+func TestObservedImagePullFailureIsImmediateAndGenerationScoped(t *testing.T) {
+	at := metav1.NewTime(time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC))
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Generation: 7},
+		Spec:       appv1alpha1.AppSpec{Image: "registry.invalid/missing:never"},
+		Status: appv1alpha1.AppStatus{
+			ReleaseGeneration: 7,
+			Conditions: []metav1.Condition{{
+				Type: "Ready", Status: metav1.ConditionFalse, Reason: "ImagePullBackOff",
+				ObservedGeneration: 7, LastTransitionTime: at,
+			}},
+		},
+	}
+	open := Deploy{ID: "dep-image", AppID: "srv-image", Image: app.Spec.Image, Generation: 7}
+	fact, ok := observedImagePullFailure(open, app)
+	if !ok || fact.SourceKey != "deploy:dep-image:image_pull_failed" || fact.Type != EventFactImagePullFailed ||
+		fact.DeployID != open.ID || fact.Image != open.Image || fact.ReasonCode != EventReasonImagePullBackoff || !fact.At.Equal(at.Time) {
+		t.Fatalf("image-pull fact = %+v, %v", fact, ok)
+	}
+	open.Generation = 6
+	if _, ok := observedImagePullFailure(open, app); ok {
+		t.Fatal("stale release generation emitted an image-pull fact")
+	}
+}
+
+func TestObservedServiceStateTreatsConcreteOpenDeployFailureAsInstanceFailure(t *testing.T) {
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Generation: 4},
+		Status: appv1alpha1.AppStatus{
+			Phase:          appv1alpha1.PhaseDeploying,
+			ActiveRevision: "rev-3",
+			Conditions: []metav1.Condition{{
+				Type: "Ready", Status: metav1.ConditionFalse, Reason: "ImagePullBackOff",
+				ObservedGeneration: 4,
+			}},
+		},
+	}
+	obs := observedServiceStateFor("srv-image", app, true)
+	if !obs.AvailabilityObserved || obs.Availability != "unhealthy" || obs.ReasonCode != EventReasonReadinessFailed {
+		t.Fatalf("image-pull observation = %+v, want unhealthy instance", obs)
+	}
+	app.Status.Conditions[0].Reason = "Deploying"
+	obs = observedServiceStateFor("srv-image", app, true)
+	if obs.AvailabilityObserved {
+		t.Fatalf("ordinary rollout progress = %+v, must not be an instance failure", obs)
+	}
+}
+
 // getApp fetches the one CR every test projects: tenant "acme" + app "web".
 func getApp(t *testing.T, cl client.Client) *appv1alpha1.App {
 	t.Helper()
@@ -656,20 +704,20 @@ func TestFailureReasonFor(t *testing.T) {
 		return app
 	}
 	crash := "container exited shortly after start and is restarting repeatedly (last exit code 1) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (3000), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped)."
-	if got := failureReasonFor(mk(appv1alpha1.PhaseDeploying, "CrashLoopBackOff", crash)); got != crash {
+	if got, _ := failureReasonFor(mk(appv1alpha1.PhaseDeploying, "CrashLoopBackOff", crash)); got != crash {
 		t.Errorf("CrashLoopBackOff reason = %q, want the condition message", got)
 	}
-	if got := failureReasonFor(mk(appv1alpha1.PhaseDeploying, "ImagePullBackOff", "image pull is failing: 401")); got != "image pull is failing: 401" {
+	if got, code := failureReasonFor(mk(appv1alpha1.PhaseDeploying, "ImagePullBackOff", "image pull is failing: 401")); got != "image pull is failing: 401" || code != EventReasonImagePullBackoff {
 		t.Errorf("ImagePullBackOff reason = %q, want the condition message", got)
 	}
 	// A bland in-progress condition proves nothing — synthesize the timeout line.
-	if got := failureReasonFor(mk(appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for img")); got == "" || got == "Reconciling Deployment for img" {
+	if got, _ := failureReasonFor(mk(appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for img")); got == "" || got == "Reconciling Deployment for img" {
 		t.Errorf("bland Deploying condition reason = %q, want the synthesized timeout line", got)
 	}
 	// A stale-generation condition proves nothing either.
 	stale := mk(appv1alpha1.PhaseDeploying, "CrashLoopBackOff", crash)
 	stale.Status.Conditions[0].ObservedGeneration = 2
-	if got := failureReasonFor(stale); got == crash {
+	if got, _ := failureReasonFor(stale); got == crash {
 		t.Error("stale-generation condition message must not be stamped")
 	}
 }

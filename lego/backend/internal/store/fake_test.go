@@ -40,11 +40,13 @@ type memStore struct {
 	// covers both Kratos identity ids and Hydra client ids, so one map serves
 	// TenantForIdentity/AddMember/BindClient/UnbindClient alike; ownerOf maps an
 	// identity to the tenant it auto-minted (the race-safety gate).
-	members map[memberKey]string // (tenant, subject) -> role
-	ownerOf map[string]string    // identityID -> tenantID
-	usage   map[usageKey]HourlyRow
-	monthly map[monthKey]monthlyRow
-	deploys map[string]Deploy
+	members          map[memberKey]string // (tenant, subject) -> role
+	ownerOf          map[string]string    // identityID -> tenantID
+	usage            map[usageKey]HourlyRow
+	monthly          map[monthKey]monthlyRow
+	deploys          map[string]Deploy
+	eventFacts       map[string]ServiceEventFact
+	eventCheckpoints map[string]ObservedServiceState
 }
 
 // memberKey is the composite key of a tenant_members row.
@@ -52,14 +54,16 @@ type memberKey struct{ tenant, subject string }
 
 func newMemStore() *memStore {
 	return &memStore{
-		tenants: map[string]Tenant{},
-		apps:    map[string]App{},
-		domains: map[string]Domain{},
-		members: map[memberKey]string{},
-		ownerOf: map[string]string{},
-		usage:   map[usageKey]HourlyRow{},
-		monthly: map[monthKey]monthlyRow{},
-		deploys: map[string]Deploy{},
+		tenants:          map[string]Tenant{},
+		apps:             map[string]App{},
+		domains:          map[string]Domain{},
+		members:          map[memberKey]string{},
+		ownerOf:          map[string]string{},
+		usage:            map[usageKey]HourlyRow{},
+		monthly:          map[monthKey]monthlyRow{},
+		deploys:          map[string]Deploy{},
+		eventFacts:       map[string]ServiceEventFact{},
+		eventCheckpoints: map[string]ObservedServiceState{},
 	}
 }
 
@@ -671,7 +675,7 @@ func (m *memStore) ListOpenDeploys(_ context.Context) ([]Deploy, error) {
 	return out, nil
 }
 
-func (m *memStore) TransitionDeploy(_ context.Context, id, status, resolvedImage, failureReason string) (bool, error) {
+func (m *memStore) TransitionDeploy(_ context.Context, id, status, resolvedImage, failureReason, _ string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	d, ok := m.deploys[id]
@@ -711,7 +715,7 @@ func (m *memStore) CloseDeploy(ctx context.Context, id, status, resolvedImage st
 	if !IsTerminalDeployStatus(status) || status == DeployDeactivated {
 		return false, nil
 	}
-	return m.TransitionDeploy(ctx, id, status, resolvedImage, "")
+	return m.TransitionDeploy(ctx, id, status, resolvedImage, "", "")
 }
 
 func (m *memStore) SetDeployPreDeployStatus(_ context.Context, id, status string) (bool, error) {
@@ -724,5 +728,35 @@ func (m *memStore) SetDeployPreDeployStatus(_ context.Context, id, status string
 	d.PreDeployStatus = status
 	d.UpdatedAt = time.Now()
 	m.deploys[id] = d
+	return true, nil
+}
+
+func (m *memStore) RecordObservedServiceState(_ context.Context, obs ObservedServiceState) ([]ServiceEventFact, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	previous, ok := m.eventCheckpoints[obs.AppID]
+	if !ok {
+		m.eventCheckpoints[obs.AppID] = obs
+		return nil, nil
+	}
+	if !obs.AvailabilityObserved {
+		obs.Availability = previous.Availability
+	}
+	facts := observedStateFacts(obs, previous.ServicePhase, previous.Availability)
+	for _, fact := range facts {
+		m.eventFacts[fact.SourceKey] = fact
+	}
+	obs.ServicePhase = checkpointServicePhase(previous.ServicePhase, obs.ServicePhase)
+	m.eventCheckpoints[obs.AppID] = obs
+	return facts, nil
+}
+
+func (m *memStore) InsertServiceEventFact(_ context.Context, fact ServiceEventFact) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.eventFacts[fact.SourceKey]; ok {
+		return false, nil
+	}
+	m.eventFacts[fact.SourceKey] = fact
 	return true, nil
 }
