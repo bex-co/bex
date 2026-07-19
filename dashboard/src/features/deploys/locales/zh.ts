@@ -82,6 +82,11 @@ const zhDeploys: Record<string, TranslationEntry> = {
     message: "计时中",
     description: "Deploy row: elapsed time is still running",
   },
+  "deploys.durationActive": {
+    message: "进行中",
+    description:
+      "Deploys tab Duration column: bare running-elapsed marker (the column header supplies the label)",
+  },
   "deploys.deployedAt": {
     message: "部署于 {timestamp}",
     description: "Deploy row: created/deployed timestamp",
@@ -103,6 +108,14 @@ const zhDeploys: Record<string, TranslationEntry> = {
     message: "回滚至 {deployId}",
     description:
       "Deploy header: trigger label for a rollback deploy, naming the restored deploy",
+  },
+  "deploys.triggerDeployHook": {
+    message: "部署钩子",
+    description: "Deploy row: trigger=deploy_hook label (secret-URL trigger)",
+  },
+  "deploys.triggerBlueprint": {
+    message: "蓝图同步",
+    description: "Deploy row: trigger=blueprint label (Blueprint sync deploy)",
   },
   "deploys.logSearchPlaceholder": {
     message: "搜索日志…",
@@ -176,6 +189,25 @@ const zhDeploys: Record<string, TranslationEntry> = {
   "deploys.listTitle": {
     message: "部署",
     description: "Deploys tab: card title over the deploy-history list",
+  },
+  "deploys.columnDeploy": {
+    message: "部署",
+    description:
+      "Deploys tab table: first column header (status, id, commit, timestamp)",
+  },
+  "deploys.columnTrigger": {
+    message: "触发方式",
+    description: "Deploys tab table: column header for what triggered a deploy",
+  },
+  "deploys.columnDuration": {
+    message: "耗时",
+    description:
+      "Deploys tab table: column header for elapsed build/deploy time",
+  },
+  "deploys.columnActions": {
+    message: "操作",
+    description:
+      "Deploys tab table: accessible-only header over the Cancel/Rollback action column",
   },
   "deploys.listEmpty": {
     message: "暂无部署。",

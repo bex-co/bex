@@ -92,6 +92,26 @@ beforeEach(() => {
 });
 
 describe("DeploysListPage", () => {
+  it("renders the Deploy/Trigger/Duration/action column headers", async () => {
+    state.deploys = [row()];
+
+    renderPage();
+
+    expect(
+      await screen.findByRole("columnheader", { name: "Deploy" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Trigger" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Duration" }),
+    ).toBeInTheDocument();
+    // The action column header is present for assistive tech but visually hidden.
+    expect(
+      screen.getByRole("columnheader", { name: "Actions" }),
+    ).toBeInTheDocument();
+  });
+
   it("renders rich metadata, honest count, and rollback only for successful history", async () => {
     state.deploys = [
       row(),
@@ -116,10 +136,16 @@ describe("DeploysListPage", () => {
     renderPage();
 
     expect(await screen.findByText("3 deploys loaded")).toBeInTheDocument();
-    expect(screen.getAllByText("Duration 1m 30s")).toHaveLength(2);
+    // Terminal durations render as the bare value under the Duration column (the
+    // header supplies the label). Each finished deploy shows it in the desktop
+    // cell and the mobile fold, so both settled 1m 30s deploys appear >= 2 times.
+    expect(screen.getAllByText("1m 30s").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("9s").length).toBeGreaterThanOrEqual(1);
     expect(
       screen.getByText(/Ship searchable deploy history/),
     ).toBeInTheDocument();
+    // Rollback is offered on a historical deactivated row, never the current
+    // live row or a failed row (the list's hasListAction gate, not the button).
     expect(
       screen.getByRole("button", { name: "Rollback dep-live" }),
     ).toBeInTheDocument();
@@ -129,6 +155,65 @@ describe("DeploysListPage", () => {
     expect(
       screen.queryByRole("button", { name: "Rollback dep-current" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("humanizes every stored trigger, and names the restored deploy for a rollback", async () => {
+    state.deploys = [
+      row({ id: "dep-a", trigger: "create" }),
+      row({ id: "dep-b", trigger: "api" }),
+      row({ id: "dep-c", trigger: "deploy_hook" }),
+      row({ id: "dep-d", trigger: "blueprint" }),
+      row({ id: "dep-e", trigger: "rollback", rollbackOf: "dep-a" }),
+    ];
+
+    renderPage();
+
+    expect((await screen.findAllByText("first deploy")).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getAllByText("manual deploy").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("deploy hook").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("blueprint sync").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("rollback to dep-a").length).toBeGreaterThan(0);
+  });
+
+  it("shows a running-elapsed marker for an active deploy and an em-dash before it starts", async () => {
+    state.deploys = [
+      row({
+        id: "dep-running",
+        status: "build_in_progress",
+        finishedAt: null,
+        preDeployStatus: "",
+      }),
+      row({
+        id: "dep-created",
+        status: "created",
+        startedAt: null,
+        finishedAt: null,
+        preDeployStatus: "",
+      }),
+    ];
+
+    renderPage();
+
+    expect((await screen.findAllByText("In progress")).length).toBeGreaterThan(
+      0,
+    );
+    // The created deploy never started, so its Duration reads as an em-dash.
+    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+  });
+
+  it("keeps the row action button outside the deploy-detail link (action-click isolation)", async () => {
+    state.deploys = [row()];
+
+    renderPage();
+
+    const link = await screen.findByRole("link");
+    expect(link).toHaveAttribute("href", "/services/web/deploys/dep-live");
+    const rollback = screen.getByRole("button", { name: "Rollback dep-live" });
+    // Navigation and the sibling action are separate targets: clicking Rollback
+    // must not trigger the row's link.
+    expect(link).not.toContainElement(rollback);
   });
 
   it("searches loaded ids, full commit SHAs, and messages case-insensitively", async () => {

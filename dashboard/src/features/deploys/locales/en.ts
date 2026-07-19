@@ -82,6 +82,11 @@ const enDeploys: Record<string, TranslationEntry> = {
     message: "Duration in progress",
     description: "Deploy row: elapsed time is still running",
   },
+  "deploys.durationActive": {
+    message: "In progress",
+    description:
+      "Deploys tab Duration column: bare running-elapsed marker (the column header supplies the label)",
+  },
   "deploys.deployedAt": {
     message: "Deployed {timestamp}",
     description: "Deploy row: created/deployed timestamp",
@@ -103,6 +108,14 @@ const enDeploys: Record<string, TranslationEntry> = {
     message: "rollback to {deployId}",
     description:
       "Deploy header: trigger label for a rollback deploy, naming the restored deploy",
+  },
+  "deploys.triggerDeployHook": {
+    message: "deploy hook",
+    description: "Deploy row: trigger=deploy_hook label (secret-URL trigger)",
+  },
+  "deploys.triggerBlueprint": {
+    message: "blueprint sync",
+    description: "Deploy row: trigger=blueprint label (Blueprint sync deploy)",
   },
   "deploys.logSearchPlaceholder": {
     message: "Search logs…",
@@ -177,6 +190,25 @@ const enDeploys: Record<string, TranslationEntry> = {
   "deploys.listTitle": {
     message: "Deploys",
     description: "Deploys tab: card title over the deploy-history list",
+  },
+  "deploys.columnDeploy": {
+    message: "Deploy",
+    description:
+      "Deploys tab table: first column header (status, id, commit, timestamp)",
+  },
+  "deploys.columnTrigger": {
+    message: "Trigger",
+    description: "Deploys tab table: column header for what triggered a deploy",
+  },
+  "deploys.columnDuration": {
+    message: "Duration",
+    description:
+      "Deploys tab table: column header for elapsed build/deploy time",
+  },
+  "deploys.columnActions": {
+    message: "Actions",
+    description:
+      "Deploys tab table: accessible-only header over the Cancel/Rollback action column",
   },
   "deploys.listEmpty": {
     message: "No deploys yet.",
