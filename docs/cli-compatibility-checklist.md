@@ -10,6 +10,7 @@ Legend: `[x]` verified working · `[~]` works with a documented limitation · `[
 - **Target:** the isolated local **dev-9** environment (`.pm/w9/dev-9`, bex-api at `:54090`), current `lego/backend` HEAD, on **2026-07-18**.
 - **Method:** the maintained regression suite `scripts/cli-compat.sh verify` (whole-shape `checkFields` assertions over the core families), the cleanup-safe `services-parity-verify` baseline/configured legs, and a full sweep of the remaining command tree. Each item was graded on the unmodified CLI's exit status and the wire shape read back via `-o json` and raw REST `GET`. The exact service flag contract and redacted POST/PATCH captures are in [`cli-services-create-update.md`](render-artifacts/cli-services-create-update.md).
 - **Operator-correctness schema supplement (w2/m60):** the installed, unmodified v2.21.0 CLI's `services update --help` and `postgres update --help` were re-read on **2026-07-19**. Service update has no `--type`; Postgres update has both `--plan` and `--disk-size-gb`. Focused backend regression sends the CLI's exact `PATCH {"diskSizeGB":…}` wire shape: growth persists, a lower value returns the named 400 envelope, and the resource remains at its accepted size. Operator/envtest separately proves a plan downgrade preserves that size. This is a command-schema plus API regression supplement, not a new live dev-9/production CLI run; the previously graded create/update/delete baseline remains the live-client evidence.
+- **Durable-delete and Key Value credential supplement (w2/m61):** the unmodified v2.21.0 CLI delete commands remain plain service/Postgres/Key Value id-or-name operations with no bex-only flag or cleanup handshake. Focused REST/GraphQL/MCP regressions preserve their existing acknowledgement shapes while subsequent reads show `deleting` until the finalizer has proved required cleanup absent, then NotFound. Key Value connection-info returns conflict rather than a split credential during rollout. This is an operator/backend regression supplement, not a new live production CLI run; the previously graded unmodified-CLI delete rows remain the live-client evidence.
 - **Configured service pass:** a disposable local OpenBao plus auth-enabled persistent Zot augmented dev-9 for the second service run. It proved CLI env vars, secret files, create/update registry-credential binding, a genuinely private kubelet pull, and native cron commands.
 - **Postgres create supplement (w6/m38):** [`scripts/postgres-create-cli-smoke.sh`](../scripts/postgres-create-cli-smoke.sh) drove the same unmodified CLI against isolated **dev-6** and a real local CNPG cluster on **2026-07-18**. It proved both custom names, database-only and user-only independent defaults, the CR intent, generated Secret metadata, and `current_database()`/`current_user` inside PostgreSQL. It also proved that unsupported Datadog create/update flags fail with a named 400 and leave no resource behind.
 - **Postgres psql supplement (w7/m46):** [`scripts/psql-compat-verify.sh`](../scripts/psql-compat-verify.sh) drove Render's checksum-verified, unmodified v2.21.0 release against isolated **dev-7**, real CNPG, a configured `BEX_DB_DOMAIN`, and pg-sni-proxy on **2026-07-18**. Both opaque id and exact name executed `SELECT 1 AS bex_psql_probe;` through real `psql` 18.4 over the external TLS/SNI route; the caller's public `/32` passed the CLI's own allow-list gate, the absent-IP negative case was refused before connect, and the disposable database and local credential state were removed. Redacted markers and release hashes are in [the psql CLI artifact](render-artifacts/psql-cli.md).
@@ -71,7 +72,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--clear-ip-allow-list` — empties the allow-list (fixed w7/m45)
   - [x] `keyvalues suspend <id|name>`
   - [x] `keyvalues resume <id|name>`
-  - [x] `keyvalues delete <id|name>`
+  - [x] `keyvalues delete <id|name>` — unchanged CLI contract; durable cleanup remains internal (w2/m61)
 - [x] **`logs`** — view logs for services and datastores (single command)
   - [x] query mode — resolves a service by name; empty windows return stable cursors (no parse crash)
   - [x] `--tail` — streams live pod-log JSON
@@ -123,7 +124,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [~] `--environment <id|name>` — flag parsed; needs an existing environment
   - [x] `postgres suspend <id|name>`
   - [x] `postgres resume <id|name>`
-  - [x] `postgres delete <id|name>`
+  - [x] `postgres delete <id|name>` — unchanged CLI contract; backup purge is terminally observed (w2/m61)
 - [x] **`restart <resourceID>`** — restarts by typed id (`restart <resourceID>` is the CLI's only documented form)
 - [x] **`services`** — list services and datastores; bare `services` lists them
   - [x] `-e, --environment-ids <ids>` — filter list by environment IDs
@@ -185,7 +186,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--maintenance-mode-uri <string>`
     - [x] `--max-shutdown-delay <int>`
   - [x] `services instances <serviceID>` — decodes live pod ids; suspended service returns `[]`; unknown id fails not-found
-  - [x] `services delete <serviceID>` — returns the deleted record
+  - [x] `services delete <serviceID>` — returns the deleted record; cleanup then converges through the durable finalizer without a CLI workaround (w2/m61)
 - [-] **`workflows`** — Render Workflows (deliberate bex non-goal; `GET /v1/workflows` is a `200 []` stub, everything else `404`/`405`/TTY-blocked)
   - [-] `workflows list` — returns empty from the stub (exit 0)
   - [-] `workflows create` — `405 Method Not Allowed`

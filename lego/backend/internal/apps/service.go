@@ -691,13 +691,17 @@ func view(a *appv1alpha1.App) AppView {
 	// normalizeSubdomainPolicy's error is unreachable: the CRD enum guarantees
 	// a.Spec.SubdomainPolicy is "", "enabled", or "disabled".
 	subdomainPolicy, _ := normalizeSubdomainPolicy(a.Spec.SubdomainPolicy)
+	phase := string(a.Status.Phase)
+	if !a.DeletionTimestamp.IsZero() {
+		phase = "Deleting"
+	}
 	return AppView{
 		ID:                    appID,
 		Name:                  name,
 		Slug:                  a.Spec.PlatformSubdomain(a.Name),
 		DisplayName:           a.Spec.DisplayName,
 		Type:                  svcType,
-		Phase:                 string(a.Status.Phase),
+		Phase:                 phase,
 		URL:                   a.Status.URL,
 		URLs:                  a.Status.URLs,
 		Image:                 a.Status.Image,

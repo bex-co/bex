@@ -112,6 +112,8 @@ type Options struct {
 	RootDir        string // subdirectory of Repo to build from (App.spec.rootDir); empty = repo root
 	DockerfilePath string // Dockerfile path relative to RootDir; empty = Dockerfile
 	Name           string // image repo name (the service name)
+	AppUID         string // immutable App UID; prevents same-name recreation from adopting stale artifacts
+	AppCreatedAt   time.Time
 	Registry       string // in-cluster registry host, e.g. zot.bex-registry.svc:5000
 	// KpackRegistry is an optional alias for Registry used only by kpack. Kpack's
 	// upstream registry client deliberately treats *.local names as plain HTTP,
@@ -228,6 +230,7 @@ func Build(ctx context.Context, o Options) (Result, error) {
 	image := o.ImageRef()
 	job := BuildJob(o, image)
 	key := client.ObjectKeyFromObject(job)
+	identity := execution.ArtifactIdentity{Name: o.Name, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace, CreatedAt: o.AppCreatedAt}
 
 	// Create the Job if it doesn't already exist (idempotent per revision).
 	if err := o.Client.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
@@ -241,6 +244,9 @@ func Build(ctx context.Context, o Options) (Result, error) {
 		var cur batchv1.Job
 		if err := o.Client.Get(wctx, key, &cur); err != nil {
 			return Result{}, fmt.Errorf("build: get job %s: %w", key.Name, err)
+		}
+		if err := identity.Adopt(wctx, o.Client, &cur, job.Labels); err != nil {
+			return Result{}, fmt.Errorf("build: adopt job %s: %w", key.Name, err)
 		}
 		switch {
 		case jobCondition(&cur, batchv1.JobComplete):
@@ -488,9 +494,9 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	if o.AppNamespace != "" && o.AppNamespace != o.Namespace {
 		appNamespace = o.AppNamespace
 	}
-	labels := execution.PodLabels(o.Name, "build", o.Workspace, appNamespace, false)
+	labels := execution.PodLabels(o.Name, o.AppUID, "build", o.Workspace, appNamespace, false)
 	labels["app.bex.co/build"] = o.Name
-	podLabels := execution.PodLabels(o.Name, "build", o.Workspace, appNamespace, false)
+	podLabels := execution.PodLabels(o.Name, o.AppUID, "build", o.Workspace, appNamespace, false)
 	podLabels["app.bex.co/build"] = o.Name
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -632,68 +638,6 @@ func CancelActiveBuilds(ctx context.Context, name, namespace string, cl client.C
 	}
 	if err := cancelActiveKpackImages(ctx, name, namespace, cl); err != nil {
 		return err
-	}
-	return nil
-}
-
-// DeleteAppArtifacts deletes ALL build Jobs, their Pods, predeploy Jobs and
-// their Pods, and kpack Images for the named app in namespace — called by the
-// App finalizer to clean up cross-namespace artifacts that ownerRefs can't
-// cascade (build/predeploy run in the build namespace, a different namespace
-// from the App CR). Pods are deleted explicitly as a safety net: an orphan
-// propagation policy or a failed garbage-collection pass can otherwise leave a
-// completed build Pod behind after its Job disappears.
-func DeleteAppArtifacts(ctx context.Context, name, namespace string, cl client.Client) error {
-	// Build Jobs (labeled app.bex.co/build: <name>)
-	var buildJobs batchv1.JobList
-	if err := cl.List(ctx, &buildJobs, client.InNamespace(namespace),
-		client.MatchingLabels{"app.bex.co/build": name}); err != nil {
-		return fmt.Errorf("list build jobs for %s: %w", name, err)
-	}
-	for i := range buildJobs.Items {
-		if err := cl.Delete(ctx, &buildJobs.Items[i], client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !apierrors.IsNotFound(err) {
-			return fmt.Errorf("delete build job %s: %w", buildJobs.Items[i].Name, err)
-		}
-	}
-	// Predeploy Jobs (labeled app.bex.co/predeploy: <name>)
-	var preJobs batchv1.JobList
-	if err := cl.List(ctx, &preJobs, client.InNamespace(namespace),
-		client.MatchingLabels{"app.bex.co/predeploy": name}); err != nil {
-		return fmt.Errorf("list predeploy jobs for %s: %w", name, err)
-	}
-	for i := range preJobs.Items {
-		if err := cl.Delete(ctx, &preJobs.Items[i], client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !apierrors.IsNotFound(err) {
-			return fmt.Errorf("delete predeploy job %s: %w", preJobs.Items[i].Name, err)
-		}
-	}
-	for label, description := range map[string]string{
-		"app.bex.co/build":     "build",
-		"app.bex.co/predeploy": "predeploy",
-	} {
-		var pods corev1.PodList
-		if err := cl.List(ctx, &pods, client.InNamespace(namespace),
-			client.MatchingLabels{label: name}); err != nil {
-			return fmt.Errorf("list %s pods for %s: %w", description, name, err)
-		}
-		for i := range pods.Items {
-			if err := cl.Delete(ctx, &pods.Items[i]); err != nil && !apierrors.IsNotFound(err) {
-				return fmt.Errorf("delete %s pod %s: %w", description, pods.Items[i].Name, err)
-			}
-		}
-	}
-	// kpack Images (if kpack is installed; tolerate "no matches for kind")
-	images := newKpackImageList()
-	if err := cl.List(ctx, images, client.InNamespace(namespace),
-		client.MatchingLabels{"app.bex.co/build": name}); err != nil {
-		if !apierrors.IsNotFound(err) && !strings.Contains(err.Error(), "no matches for kind") {
-			return fmt.Errorf("list kpack images for %s: %w", name, err)
-		}
-	} else {
-		for i := range images.Items {
-			if err := cl.Delete(ctx, &images.Items[i]); err != nil && !apierrors.IsNotFound(err) {
-				return fmt.Errorf("delete kpack image %s: %w", images.Items[i].GetName(), err)
-			}
-		}
 	}
 	return nil
 }

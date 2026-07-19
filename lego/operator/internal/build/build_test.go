@@ -575,14 +575,16 @@ func TestKpackCredentialAdaptation(t *testing.T) {
 	}
 
 	var registry corev1.Secret
-	if err := o.Client.Get(context.Background(), client.ObjectKey{Namespace: o.Namespace, Name: "bex-registry-push-kpack"}, &registry); err != nil {
+	registryName := JobName(o.Name, "kpack-registry")
+	if err := o.Client.Get(context.Background(), client.ObjectKey{Namespace: o.Namespace, Name: registryName}, &registry); err != nil {
 		t.Fatal(err)
 	}
 	if registry.Type != corev1.SecretTypeDockerConfigJson || !strings.Contains(string(registry.Data[corev1.DockerConfigJsonKey]), "zot.local:5000") {
 		t.Errorf("adapted registry secret = type %s data %s", registry.Type, registry.Data[corev1.DockerConfigJsonKey])
 	}
 	var git corev1.Secret
-	if err := o.Client.Get(context.Background(), client.ObjectKey{Namespace: o.Namespace, Name: "hello-clone-kpack"}, &git); err != nil {
+	gitName := JobName(o.Name, "kpack-git")
+	if err := o.Client.Get(context.Background(), client.ObjectKey{Namespace: o.Namespace, Name: gitName}, &git); err != nil {
 		t.Fatal(err)
 	}
 	if git.Type != corev1.SecretTypeBasicAuth || git.Annotations["kpack.io/git"] != "https://github.com" || string(git.Data[corev1.BasicAuthPasswordKey]) != "redacted-token" {
@@ -596,7 +598,7 @@ func TestKpackCredentialAdaptation(t *testing.T) {
 	for i := range sa.Secrets {
 		gotSecrets[i] = sa.Secrets[i].Name
 	}
-	if got := strings.Join(gotSecrets, ","); got != "bex-registry-push-kpack,hello-clone-kpack,cosign-key" {
+	if got := strings.Join(gotSecrets, ","); got != registryName+","+gitName+",cosign-key" {
 		t.Errorf("service account secrets = %s", got)
 	}
 	if sa.AutomountServiceAccountToken == nil || *sa.AutomountServiceAccountToken {

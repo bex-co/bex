@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	boundedhttp "github.com/bex-co/bex/lego/operator/internal/httpclient"
 )
 
 // Tag→digest resolution (w9/013). The build plane tags tenant images with the
@@ -47,6 +49,9 @@ const manifestAccept = "application/vnd.oci.image.manifest.v1+json, " +
 // Callers invoke this immediately after a successful build push, so the answer
 // is the digest of exactly that push.
 func ResolveDigest(ctx context.Context, httpClient *http.Client, registryHost, repo, tag, username, password string) (string, error) {
+	requestCtx, cancel := boundedhttp.WithTimeout(ctx)
+	defer cancel()
+	ctx = requestCtx
 	if httpClient == nil {
 		httpClient = defaultHTTPClient
 	}

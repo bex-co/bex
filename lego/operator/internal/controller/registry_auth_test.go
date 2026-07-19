@@ -210,7 +210,8 @@ func TestCopyBuildRegistryCredentialAddsSkopeoFilename(t *testing.T) {
 	}
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(src).Build()
 	r := &AppReconciler{Client: cl, BuildClient: cl}
-	if err := r.copyBuildRegistryCredential(context.Background(), "apps", "bex-build", "web", src.Name); err != nil {
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "apps", UID: "uid-web"}}
+	if err := r.copyBuildRegistryCredential(context.Background(), app, "apps", "bex-build", src.Name); err != nil {
 		t.Fatal(err)
 	}
 	var got corev1.Secret

@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -62,11 +63,7 @@ func (r *AppReconciler) prepareBuildRegistrySecret(ctx context.Context, app *app
 			buildRegistryConfigKey:    externalConfig,
 			buildkitRegistryConfigKey: []byte(buildkitRegistryConfig(r.Registry)),
 		}
-		if secret.Labels == nil {
-			secret.Labels = map[string]string{}
-		}
-		secret.Labels[labelApp] = app.Name
-		secret.Labels["app.bex.co/component"] = buildRegistryComponent
+		secret.Labels = artifactLabels(app, buildRegistryComponent)
 		return nil
 	}); err != nil {
 		return "", fmt.Errorf("write merged build registry credential: %w", err)
@@ -87,16 +84,11 @@ func buildkitRegistryConfig(registry string) string {
 	return fmt.Sprintf("[registry.%q]\n  http = true\n", registry)
 }
 
-func (r *AppReconciler) deleteBuildRegistrySecret(ctx context.Context, appName, buildNS string) error {
-	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: build.JobName(appName, "registry-auth"), Namespace: buildNS}}
-	return client.IgnoreNotFound(r.buildPlaneClient().Delete(ctx, secret))
-}
-
 // copyBuildRegistryCredential mirrors a per-App dockerconfigjson Secret into
 // the execution namespace and adds the config.json filename consumed by
 // skopeo/cosign. The original .dockerconfigjson key and Secret type remain
 // intact for kubelet imagePullSecret use by publish/pre-deploy Jobs.
-func (r *AppReconciler) copyBuildRegistryCredential(ctx context.Context, srcNS, dstNS, appName, name string) error {
+func (r *AppReconciler) copyBuildRegistryCredential(ctx context.Context, app *appv1alpha1.App, srcNS, dstNS, name string) error {
 	cl := r.buildPlaneClient()
 	var src corev1.Secret
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: srcNS, Name: name}, &src); err != nil {
@@ -111,14 +103,15 @@ func (r *AppReconciler) copyBuildRegistryCredential(ctx context.Context, srcNS, 
 		dst.Type = src.Type
 		dst.Data = maps.Clone(src.Data)
 		dst.Data[buildRegistryConfigKey] = config
-		if dst.Labels == nil {
-			dst.Labels = map[string]string{}
-		}
-		dst.Labels[labelApp] = appName
-		dst.Labels["app.bex.co/component"] = buildRegistryComponent
+		dst.Labels = artifactLabels(app, buildRegistryComponent)
 		return nil
 	})
 	return err
+}
+
+func artifactLabels(app *appv1alpha1.App, component string) map[string]string {
+	return execution.PodLabels(app.Name, string(app.UID), component,
+		app.Labels[labelWorkspace], app.Namespace, false)
 }
 
 func dockerConfigData(secret *corev1.Secret) ([]byte, error) {

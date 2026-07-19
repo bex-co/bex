@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# delete-audit.sh — w7/m12 acceptance audit: zero leftovers after deletion.
+# delete-audit.sh — w7/m12 + w2/m61 acceptance audit: zero leftovers after deletion.
 #
 # Verifies that deleting a service (APP), a static site (STATIC), a managed
 # Postgres (DB), and/or a managed Key Value (KV) leaves no tenant artifacts
@@ -7,9 +7,11 @@
 #
 # Checks per resource type:
 #   APP / STATIC:
-#     - no build Jobs labeled app.bex.co/build=<name> in BEX_BUILD_NAMESPACE
-#     - no predeploy Jobs labeled app.bex.co/predeploy=<name> in BEX_BUILD_NAMESPACE
-#     - no kpack Images labeled app.bex.co/build=<name> in BEX_BUILD_NAMESPACE
+#     - App CR is absent
+#     - no UID-owned Jobs, Pods, Secrets, ServiceAccounts, or NetworkPolicies
+#       labeled app.bex.co/app=<name> in BEX_BUILD_NAMESPACE
+#     - no kpack Images or Builds labeled app.bex.co/app=<name>
+#     - no static purge Job/Pod and no historical TLS Certificate/Secret
 #     - no manifests in Zot registry under repo <name>
 #     - no OpenBao env-var path services/<name>/env
 #     - no OpenBao secret-file path services/<name>/files
@@ -20,9 +22,9 @@
 #     - no TLS Secrets for <name>'s listed hosts in the apps namespace
 #   DB:
 #     - no CNPG Cluster CR named <name> in the apps namespace
-#     - purge-db-<name> Job exists (dispatched) in BEX_BUILD_NAMESPACE
+#     - no backup-purge Job/Pod remains after its durable terminal result
 #   KV:
-#     - no PVCs with label app.bex.co/name=<name> in the apps namespace
+#     - KeyValue CR, StatefulSet, PVC, and both immutable Secrets are absent
 #
 # Usage:
 #   bash scripts/delete-audit.sh [--app NAME] [--static NAME] [--db NAME] [--kv NAME]
@@ -53,6 +55,10 @@ REGISTRY="${BEX_REGISTRY:-}"
 BAO_URL="${BEX_OPENBAO_URL:-}"
 STATIC_BUCKET="${BEX_STATIC_S3_BUCKET:-}"
 STATIC_ENDPOINT="${BEX_STATIC_S3_ENDPOINT:-}"
+REGISTRY_URL="$REGISTRY"
+if [ -n "$REGISTRY_URL" ] && [[ "$REGISTRY_URL" != http://* ]] && [[ "$REGISTRY_URL" != https://* ]]; then
+  REGISTRY_URL="http://$REGISTRY_URL"
+fi
 
 APP=""
 STATIC=""
@@ -96,6 +102,7 @@ bao_secret_exists() {
   local path="$1"
   local status
   status=$(curl -sf -o /dev/null -w '%{http_code}' \
+    --connect-timeout 2 --max-time 5 \
     -H "X-Vault-Token: ${BAO_TOKEN:-}" \
     "$BAO_URL/v1/secret/data/$path" 2>/dev/null || echo "000")
   [ "$status" = "200" ]
@@ -106,11 +113,12 @@ registry_tag_count() {
   local repo="$1"
   local status
   status=$(curl -sf -o /dev/null -w '%{http_code}' \
-    "http://$REGISTRY/v2/$repo/tags/list" 2>/dev/null || echo "000")
+    --connect-timeout 2 --max-time 5 \
+    "$REGISTRY_URL/v2/$repo/tags/list" 2>/dev/null || echo "000")
   if [ "$status" = "404" ]; then
     echo 0
   elif [ "$status" = "200" ]; then
-    curl -sf "http://$REGISTRY/v2/$repo/tags/list" 2>/dev/null | \
+    curl -sf --connect-timeout 2 --max-time 5 "$REGISTRY_URL/v2/$repo/tags/list" 2>/dev/null | \
       python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('tags') or []))" 2>/dev/null || echo 0
   else
     echo "unknown (HTTP $status)"
@@ -123,30 +131,48 @@ audit_app() {
   echo ""
   echo "── App: $name ──"
 
-  # Build Jobs
   local cnt
-  cnt=$(k8s_count "$BUILD_NS" jobs "app.bex.co/build=$name")
-  if [ "$cnt" = "0" ]; then
-    ok "no build Jobs for $name in $BUILD_NS"
-  else
-    fail "$cnt build Job(s) still exist for $name in $BUILD_NS"
-  fi
-
-  # Predeploy Jobs
-  cnt=$(k8s_count "$BUILD_NS" jobs "app.bex.co/predeploy=$name")
-  if [ "$cnt" = "0" ]; then
-    ok "no predeploy Jobs for $name in $BUILD_NS"
-  else
-    fail "$cnt predeploy Job(s) still exist for $name in $BUILD_NS"
-  fi
-
-  # kpack Images
-  cnt=$(kubectl get images.kpack.io -n "$BUILD_NS" -l "app.bex.co/build=$name" \
+  cnt=$(kubectl get apps.app.bex.co -n "$APPS_NS" "$name" \
     --ignore-not-found -o name 2>/dev/null | wc -l | tr -d ' ')
   if [ "$cnt" = "0" ]; then
-    ok "no kpack Images for $name in $BUILD_NS"
+    ok "App $name is absent from $APPS_NS"
   else
-    fail "$cnt kpack Image(s) still exist for $name in $BUILD_NS"
+    fail "App $name still exists in $APPS_NS (finalization incomplete)"
+  fi
+
+  local kind
+  for kind in jobs pods secrets serviceaccounts networkpolicies; do
+    cnt=$(k8s_count "$BUILD_NS" "$kind" "app.bex.co/app=$name")
+    if [ "$cnt" = "0" ]; then
+      ok "no App-owned $kind for $name in $BUILD_NS"
+    else
+      fail "$cnt App-owned $kind still exist for $name in $BUILD_NS"
+    fi
+  done
+
+  for kind in images.kpack.io builds.kpack.io; do
+    cnt=$(kubectl get "$kind" -n "$BUILD_NS" -l "app.bex.co/app=$name" \
+      --ignore-not-found -o name 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$cnt" = "0" ]; then
+      ok "no $kind for $name in $BUILD_NS"
+    else
+      fail "$cnt $kind object(s) still exist for $name in $BUILD_NS"
+    fi
+  done
+
+  cnt=$(kubectl get certificate -n "$APPS_NS" -o name 2>/dev/null | \
+    awk -v prefix="certificate.cert-manager.io/$name-tls" 'index($0, prefix) == 1 {n++} END {print n+0}')
+  if [ "$cnt" = "0" ]; then
+    ok "no TLS Certificates reserved for $name in $APPS_NS"
+  else
+    fail "$cnt TLS Certificate(s) still exist for $name in $APPS_NS"
+  fi
+  cnt=$(kubectl get secret -n "$APPS_NS" -o name 2>/dev/null | \
+    awk -v prefix="secret/$name-tls" 'index($0, prefix) == 1 {n++} END {print n+0}')
+  if [ "$cnt" = "0" ]; then
+    ok "no TLS Secrets/private keys reserved for $name in $APPS_NS"
+  else
+    fail "$cnt TLS Secret(s) still exist for $name in $APPS_NS"
   fi
 
   # Zot registry
@@ -212,6 +238,15 @@ audit_db() {
   echo ""
   echo "── Postgres: $name ──"
 
+  local cnt
+  cnt=$(kubectl get databases.app.bex.co -n "$APPS_NS" "$name" \
+    --ignore-not-found -o name 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$cnt" = "0" ]; then
+    ok "Database $name is absent from $APPS_NS"
+  else
+    fail "Database $name still exists in $APPS_NS (finalization incomplete)"
+  fi
+
   # CNPG Cluster should be gone (cascaded by ownerRef)
   cnt=$(kubectl get cluster.postgresql.cnpg.io -n "$APPS_NS" "$name" \
     --ignore-not-found -o name 2>/dev/null | wc -l | tr -d ' ')
@@ -221,27 +256,14 @@ audit_db() {
     fail "CNPG Cluster $name still exists in $APPS_NS (deletion in progress?)"
   fi
 
-  # Purge Job dispatched (fire-and-forget; we only check it was created)
-  local job_name="purge-db-$name"
-  if [ ${#job_name} -gt 63 ]; then
-    job_name="${job_name:0:63}"
-  fi
-  cnt=$(kubectl get job -n "$BUILD_NS" "$job_name" \
-    --ignore-not-found -o name 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$cnt" = "1" ]; then
-    ok "S3 backup-purge Job $job_name dispatched in $BUILD_NS"
-  else
-    # Might have already TTL-reaped (1h); check status via events instead
-    local events
-    events=$(kubectl get events -n "$BUILD_NS" \
-      --field-selector "involvedObject.name=$job_name" \
-      --ignore-not-found -o name 2>/dev/null | wc -l | tr -d ' ')
-    if [ "$events" -gt 0 ]; then
-      ok "S3 backup-purge Job $job_name dispatched (TTL-reaped, events present)"
+  for kind in jobs pods; do
+    cnt=$(k8s_count "$APPS_NS" "$kind" "app.bex.co/database=$name,app.bex.co/component=database-backup-purge")
+    if [ "$cnt" = "0" ]; then
+      ok "no durable backup-purge $kind remains for $name"
     else
-      skip "S3 backup-purge Job $job_name not found (may have TTL-reaped or backups were disabled)"
+      fail "$cnt backup-purge $kind remain for $name"
     fi
-  fi
+  done
 }
 
 # ---- Key Value (KV) checks ----
@@ -250,9 +272,17 @@ audit_kv() {
   echo ""
   echo "── Key Value: $name ──"
 
+  local cnt
+  cnt=$(kubectl get keyvalues.app.bex.co -n "$APPS_NS" "$name" \
+    --ignore-not-found -o name 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$cnt" = "0" ]; then
+    ok "KeyValue $name is absent from $APPS_NS"
+  else
+    fail "KeyValue $name still exists in $APPS_NS"
+  fi
+
   # PVCs — the StatefulSetPersistentVolumeClaimRetentionPolicy (WhenDeleted=Delete)
   # should have removed them with the StatefulSet.
-  local cnt
   cnt=$(kubectl get pvc -n "$APPS_NS" -l "app.bex.co/name=$name" \
     --ignore-not-found -o name 2>/dev/null | wc -l | tr -d ' ')
   if [ "$cnt" = "0" ]; then
@@ -269,6 +299,17 @@ audit_kv() {
   else
     fail "StatefulSet $name still exists in $APPS_NS (deletion in progress?)"
   fi
+
+  local secret_name
+  for secret_name in "$name" "${name}-auth"; do
+    cnt=$(kubectl get secret -n "$APPS_NS" "$secret_name" \
+      --ignore-not-found -o name 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$cnt" = "0" ]; then
+      ok "KeyValue Secret $secret_name is absent"
+    else
+      fail "KeyValue Secret $secret_name still exists in $APPS_NS"
+    fi
+  done
 }
 
 # ---- main ----

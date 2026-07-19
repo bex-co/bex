@@ -31,7 +31,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -225,12 +228,16 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 	if !kv.CreationTimestamp.IsZero() {
 		created = kv.CreationTimestamp.UTC().Format(time.RFC3339)
 	}
+	status := kvStatus(kv.Status.Phase)
+	if !kv.DeletionTimestamp.IsZero() {
+		status = "deleting"
+	}
 	return KeyValueView{
 		ID:              kv.Name,
 		Name:            kv.DisplayName(),
 		Plan:            kv.Spec.Plan,
 		Version:         kv.Spec.Version,
-		Status:          kvStatus(kv.Status.Phase),
+		Status:          status,
 		Suspended:       core.SuspendedEnum(kv.Spec.Suspended),
 		CreatedAt:       created,
 		UpdatedAt:       resourcemeta.UpdatedAt(kv),
@@ -272,7 +279,10 @@ func (s *Service) loadSecret(ctx context.Context, relation, name string) (*appv1
 	if err != nil {
 		return nil, nil, err
 	}
-	secretName := kv.Status.SecretName
+	secretName := kv.Status.CredentialSecretName
+	if secretName == "" {
+		secretName = kv.Status.SecretName
+	}
 	if secretName == "" {
 		secretName = kv.Name // the operator names the Secret after the KeyValue
 	}
@@ -755,8 +765,26 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 	if err != nil {
 		return KeyValueConnectionInfo{}, err
 	}
-	internal := string(sec.Data["uri"])         // redis://default:<password>@<host>:6379
-	external := string(sec.Data["externalUri"]) // rediss://default:<password>@<host>:6379 (public only)
+	internal := string(sec.Data["uri"])         // legacy connection Secret
+	external := string(sec.Data["externalUri"]) // legacy connection Secret (public only)
+	if kv.Status.CredentialSecretName != "" {
+		password := sec.Data["password"]
+		if kv.Status.Phase != appv1alpha1.KVPhaseReady || kv.Status.CredentialRevision == "" ||
+			kv.Status.CredentialRevision != appv1alpha1.KeyValueCredentialRevision(password) {
+			return KeyValueConnectionInfo{}, fmt.Errorf("%w: key value credentials are still converging", core.ErrConflict)
+		}
+		port := kv.Status.Port
+		if port == 0 {
+			port = 6379
+		}
+		if errs := validation.IsDNS1123Subdomain(kv.Status.Host); len(errs) != 0 {
+			return KeyValueConnectionInfo{}, errors.New("key value internal host is missing or invalid")
+		}
+		internal = keyValueURI("redis", string(password), kv.Status.Host, port)
+		if kv.Status.ExternalHost != "" {
+			external = keyValueURI("rediss", string(password), kv.Status.ExternalHost, port)
+		}
+	}
 
 	// Render's cliCommand connects over the reachable endpoint — the external
 	// (TLS) one when public, otherwise the internal one. redis-cli reads the URI
@@ -779,4 +807,12 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 		ExternalConnectionString: external,
 		CLICommand:               cliCommand,
 	}, nil
+}
+
+func keyValueURI(scheme, password, host string, port int32) string {
+	return (&url.URL{
+		Scheme: scheme,
+		User:   url.UserPassword("default", password),
+		Host:   net.JoinHostPort(host, strconv.Itoa(int(port))),
+	}).String()
 }

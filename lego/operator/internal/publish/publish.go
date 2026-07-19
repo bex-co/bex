@@ -27,6 +27,7 @@ package publish
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"path"
 	"strings"
@@ -109,12 +110,14 @@ type Options struct {
 	// build.Options.CloneSecret; empty = public clone.
 	CloneSecret string
 	// GitImage overrides the clone image (tests / air-gapped).
-	GitImage  string
-	AppID     string        // the service name — the first object-key segment
-	Revision  string        // e.g. "rev-7" — the second key segment (immutable per revision)
-	Store     Store         // object-store target (bucket/endpoint/secret)
-	Namespace string        // namespace the publish Job runs in
-	Client    client.Client // cluster client used to create + watch the Job
+	GitImage     string
+	AppID        string // the service name — the first object-key segment
+	AppUID       string // immutable App UID; prevents same-name recreation from adopting stale artifacts
+	AppCreatedAt time.Time
+	Revision     string        // e.g. "rev-7" — the second key segment (immutable per revision)
+	Store        Store         // object-store target (bucket/endpoint/secret)
+	Namespace    string        // namespace the publish Job runs in
+	Client       client.Client // cluster client used to create + watch the Job
 	// Workspace/AppNamespace carry the tenant identity into the shared execution
 	// namespace for logs, network policy, and admission selection.
 	Workspace    string
@@ -189,6 +192,7 @@ func Publish(ctx context.Context, o Options) error {
 
 	job := PublishJob(o)
 	key := client.ObjectKeyFromObject(job)
+	identity := execution.ArtifactIdentity{Name: o.AppID, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace, CreatedAt: o.AppCreatedAt}
 
 	if err := o.Client.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
 		return fmt.Errorf("publish: create job %s: %w", key.Name, err)
@@ -200,6 +204,9 @@ func Publish(ctx context.Context, o Options) error {
 		var cur batchv1.Job
 		if err := o.Client.Get(wctx, key, &cur); err != nil {
 			return fmt.Errorf("publish: get job %s: %w", key.Name, err)
+		}
+		if err := identity.Adopt(wctx, o.Client, &cur, job.Labels); err != nil {
+			return fmt.Errorf("publish: adopt job %s: %w", key.Name, err)
 		}
 		switch {
 		case jobCondition(&cur, batchv1.JobComplete):
@@ -259,9 +266,9 @@ func PublishJob(o Options) *batchv1.Job {
 		appNamespace = o.AppNamespace
 	}
 	verifyImage := o.VerifyImage && o.Image != ""
-	labels := execution.PodLabels(o.AppID, "publish", o.Workspace, appNamespace, verifyImage)
+	labels := execution.PodLabels(o.AppID, o.AppUID, "publish", o.Workspace, appNamespace, verifyImage)
 	labels["app.bex.co/publish"] = o.AppID
-	podLabels := execution.PodLabels(o.AppID, "publish", o.Workspace, appNamespace, verifyImage)
+	podLabels := execution.PodLabels(o.AppID, o.AppUID, "publish", o.Workspace, appNamespace, verifyImage)
 	podLabels["app.bex.co/publish"] = o.AppID
 	podSpec := corev1.PodSpec{
 		RestartPolicy:    corev1.RestartPolicyNever,
@@ -428,44 +435,40 @@ func jobCondition(j *batchv1.Job, t batchv1.JobConditionType) bool {
 	return false
 }
 
-// PurgeApp dispatches a fire-and-forget in-cluster Job that recursively deletes
-// all of the named app's published content from the object store
-// (s3://<bucket>/<appName>/). Returns as soon as the Job is created — it runs
-// asynchronously and is reaped by its TTL. Called from the App finalizer so the
-// finalizer doesn't block on slow S3 operations. Best-effort: if the Job
-// already exists (a previous finalizer attempt) it is tolerated as a no-op.
-func PurgeApp(ctx context.Context, appName string, store Store, namespace string, cl client.Client, pullSecret, awsCLIImage string) error {
-	if !store.Configured() {
-		return nil
-	}
+// PurgeJob constructs the durable terminal cleanup Job for one exact App
+// lifetime. The App finalizer creates, observes, and deletes this Job; success
+// is persisted on the App before the Job is removed, so a manager restart can
+// never acknowledge cleanup that has not completed.
+func PurgeJob(appName, appUID, workspace, appNamespace string, store Store, namespace, pullSecret, awsCLIImage string) *batchv1.Job {
 	if awsCLIImage == "" {
 		awsCLIImage = DefaultAWSCLIImage
 	}
 	prefix := "s3://" + store.Bucket + "/" + appName + "/"
-	ttl := int32(3600)
+	deadline := int64((15 * time.Minute) / time.Second)
+	backoff := int32(3)
 	var env []corev1.EnvVar
 	if store.Region != "" {
 		env = append(env, corev1.EnvVar{Name: "AWS_DEFAULT_REGION", Value: store.Region})
 	}
-	// Clamp job name to 63 chars (DNS label limit)
-	jobName := "purge-" + appName
+	sum := sha256.Sum256([]byte(appUID))
+	jobName := fmt.Sprintf("purge-%s-%x", appName, sum[:4])
 	if len(jobName) > 63 {
-		jobName = jobName[:63]
+		jobName = fmt.Sprintf("purge-%.45s-%x", appName, sum[:6])
 	}
+	labels := execution.PodLabels(appName, appUID, "static-purge", workspace, appNamespace, false)
+	labels["app.bex.co/purge"] = appName
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName,
 			Namespace: namespace,
-			Labels: map[string]string{
-				"app.bex.co/purge":     appName,
-				"app.bex.co/component": "purge",
-			},
+			Labels:    labels,
 		},
 		Spec: batchv1.JobSpec{
-			TTLSecondsAfterFinished: &ttl,
+			BackoffLimit:          &backoff,
+			ActiveDeadlineSeconds: &deadline,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{"app.bex.co/purge": appName},
+					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
 					RestartPolicy:    corev1.RestartPolicyNever,
@@ -495,10 +498,7 @@ func PurgeApp(ctx context.Context, appName string, store Store, namespace string
 			},
 		},
 	}
-	if err := cl.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
-		return fmt.Errorf("purge: create job: %w", err)
-	}
-	return nil
+	return job
 }
 
 // jobFailureMessage extracts the JobFailed condition's reason/message for the

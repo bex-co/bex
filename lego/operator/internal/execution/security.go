@@ -22,6 +22,7 @@ import corev1 "k8s.io/api/core/v1"
 
 const (
 	LabelApp           = "app.bex.co/app"
+	LabelAppUID        = "app.bex.co/app-uid"
 	LabelComponent     = "app.bex.co/component"
 	LabelWorkspace     = "app.bex.co/workspace"
 	LabelAppNamespace  = "app.bex.co/app-namespace"
@@ -34,10 +35,13 @@ const (
 // PodLabels returns the common labels that let logging, admission, and network
 // policy select every execution variant consistently. Extra mechanism-specific
 // labels can be added by the caller.
-func PodLabels(app, component, workspace, appNamespace string, verifyImage bool) map[string]string {
+func PodLabels(app, appUID, component, workspace, appNamespace string, verifyImage bool) map[string]string {
 	labels := map[string]string{
 		LabelApp:       app,
 		LabelComponent: component,
+	}
+	if appUID != "" {
+		labels[LabelAppUID] = appUID
 	}
 	if workspace != "" {
 		labels[LabelWorkspace] = workspace

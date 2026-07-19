@@ -1004,6 +1004,15 @@ func TestViewOmitsPlanForEmptyOrUnknownTier(t *testing.T) {
 	}
 }
 
+func TestViewReportsDeletingWhileFinalizerHoldsApp(t *testing.T) {
+	app := sampleApp("deleting-app")
+	now := metav1.Now()
+	app.DeletionTimestamp = &now
+	if got := view(app).Phase; got != "Deleting" {
+		t.Fatalf("deleting App phase = %q, want Deleting", got)
+	}
+}
+
 // --- Delete (store-managed row-first vs hand-applied CR delete) ---
 
 // gone asserts the App CR named name no longer exists.

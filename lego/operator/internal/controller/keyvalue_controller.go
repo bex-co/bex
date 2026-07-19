@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/base64"
@@ -164,6 +165,34 @@ func generatePassword() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
+func keyValueConnectionSecretData(password, internalHost string, public bool, name, domain string) map[string][]byte {
+	data := map[string][]byte{
+		"username": []byte("default"),
+		"password": []byte(password),
+		"host":     []byte(internalHost),
+		"port":     []byte(strconv.Itoa(kvPort)),
+		// Explicit default user is required by valkey-cli URI authentication.
+		"uri": fmt.Appendf(nil, "redis://default:%s@%s:%d", password, internalHost, kvPort),
+	}
+	if public {
+		external := fmt.Sprintf("%s.%s", name, domain)
+		data["externalUri"] = fmt.Appendf(nil, "rediss://default:%s@%s:%d", password, external, kvPort)
+	}
+	return data
+}
+
+func secretDataEqual(left, right map[string][]byte) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for key, value := range left {
+		if !bytes.Equal(value, right[key]) {
+			return false
+		}
+	}
+	return true
+}
+
 // KeyValueReconciler projects a KeyValue into a single-instance Valkey
 // StatefulSet plus a headless Service (internal DNS) plus a credentials Secret,
 // and optionally a cert-manager certificate for the metered SNI front door. It
@@ -243,6 +272,69 @@ func (r *KeyValueReconciler) reconcileKeyValueTLS(
 	return "CertificateFailed", upsertOwned(ctx, r.Client, r.Scheme, kv, certManagerCertificateGVK, certificateName, spec)
 }
 
+func (r *KeyValueReconciler) reconcileKeyValueCredentials(
+	ctx context.Context,
+	kv *appv1alpha1.KeyValue,
+	internalHost string,
+) (*corev1.Secret, ctrl.Result, bool, error) {
+	// The auth Secret is the only password authority and is immutable. Seed it
+	// from the legacy connection Secret during migration so an upgrade never
+	// rotates an existing store.
+	connection := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace}}
+	if err := r.Get(ctx, client.ObjectKeyFromObject(connection), connection); err != nil && !apierrors.IsNotFound(err) {
+		result, failErr := r.kvFail(ctx, kv, "SecretFailed", err)
+		return nil, result, true, failErr
+	}
+	seedPassword := connection.Data["password"]
+	auth := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: kv.Name + "-auth", Namespace: kv.Namespace}}
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, auth, func() error {
+		if auth.Data == nil {
+			auth.Data = map[string][]byte{}
+		}
+		if len(auth.Data["password"]) == 0 {
+			if len(seedPassword) > 0 {
+				auth.Data["password"] = bytes.Clone(seedPassword)
+			} else {
+				password, err := generatePassword()
+				if err != nil {
+					return err
+				}
+				auth.Data["password"] = []byte(password)
+			}
+		}
+		auth.Data["username"] = []byte("default")
+		auth.Immutable = ptr(true)
+		return controllerutil.SetControllerReference(kv, auth, r.Scheme)
+	}); err != nil {
+		result, failErr := r.kvFail(ctx, kv, "CredentialSecretFailed", err)
+		return nil, result, true, failErr
+	}
+	desiredData := keyValueConnectionSecretData(string(auth.Data["password"]), internalHost,
+		kv.Spec.Public && r.KvDomain != "", kv.Name, r.KvDomain)
+	if connection.Immutable != nil && *connection.Immutable && !secretDataEqual(connection.Data, desiredData) {
+		if err := r.Delete(ctx, connection); err != nil && !apierrors.IsNotFound(err) {
+			result, failErr := r.kvFail(ctx, kv, "SecretRecreateFailed", err)
+			return nil, result, true, failErr
+		}
+		kv.Status.Phase = appv1alpha1.KVPhaseProvisioning
+		meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{Type: "Ready", Status: metav1.ConditionFalse,
+			Reason: "ConnectionSecretRebuilding", Message: "rebuilding immutable connection information", ObservedGeneration: kv.Generation})
+		if err := r.Status().Update(ctx, kv); err != nil {
+			return nil, ctrl.Result{}, true, err
+		}
+		return nil, ctrl.Result{RequeueAfter: time.Second}, true, nil
+	}
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, connection, func() error {
+		connection.Data = desiredData
+		connection.Immutable = ptr(true)
+		return controllerutil.SetControllerReference(kv, connection, r.Scheme)
+	}); err != nil {
+		result, failErr := r.kvFail(ctx, kv, "SecretFailed", err)
+		return nil, result, true, failErr
+	}
+	return auth, ctrl.Result{}, false, nil
+}
+
 func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var kv appv1alpha1.KeyValue
 	if err := r.Get(ctx, req.NamespacedName, &kv); err != nil {
@@ -282,44 +374,12 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		podLabels[labelWorkspace] = ws
 	}
 
-	// --- credentials Secret (created first so the StatefulSet's env ref resolves) ---
-	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace}}
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, sec, func() error {
-		if sec.Data == nil {
-			sec.Data = map[string][]byte{}
-		}
-		// Reuse an existing password; only generate on first creation.
-		if _, ok := sec.Data["password"]; !ok {
-			pw, err := generatePassword()
-			if err != nil {
-				return err
-			}
-			sec.Data["password"] = []byte(pw)
-		}
-		password := string(sec.Data["password"])
-		sec.Data["username"] = []byte("default")
-		sec.Data["host"] = []byte(internalHost)
-		sec.Data["port"] = []byte(strconv.Itoa(kvPort))
-		// Explicit "default" user, not the empty-username redis://:<password>@
-		// shorthand: verified live against valkey-cli 8.1.8 (the tool the
-		// dashboard's own CLI-command helper recommends) — the empty-username
-		// form fails AUTH ("NOAUTH"/"WRONGPASS") against a --requirepass server
-		// (which sets the ACL default user's password), while an explicit
-		// default:<password> URI authenticates correctly. -a/plain AUTH
-		// (single-arg) is unaffected; this is specifically a URI-parsing gap.
-		uri := fmt.Sprintf("redis://default:%s@%s:%d", password, internalHost, kvPort)
-		sec.Data["uri"] = []byte(uri)
-		if kv.Spec.Public && r.KvDomain != "" {
-			external := fmt.Sprintf("%s.%s", kv.Name, r.KvDomain)
-			externalURI := fmt.Sprintf("rediss://default:%s@%s:%d", password, external, kvPort)
-			sec.Data["externalUri"] = []byte(externalURI)
-		} else {
-			delete(sec.Data, "externalUri")
-		}
-		return controllerutil.SetControllerReference(&kv, sec, r.Scheme)
-	}); err != nil {
-		return r.kvFail(ctx, &kv, "SecretFailed", err)
+	// --- credentials Secrets (created first so the StatefulSet's env ref resolves) ---
+	auth, result, done, err := r.reconcileKeyValueCredentials(ctx, &kv, internalHost)
+	if done || err != nil {
+		return result, err
 	}
+	authSecretName := auth.Name
 
 	// --- headless Service: gives the internal DNS "<name>.<ns>.svc" and is the
 	// StatefulSet's serviceName (stable pod identity). ---
@@ -374,13 +434,14 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		// the StatefulSet reschedules it elsewhere.
 		sts.Spec.Template.Annotations = map[string]string{
 			"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
+			"app.bex.co/credential-revision":                 appv1alpha1.KeyValueCredentialRevision(auth.Data["password"]),
 		}
 		// The Valkey password, shared by the server (arg expansion) and the metrics
 		// exporter (authenticated INFO scrape).
 		passwordEnv := corev1.EnvVar{
 			Name: "VALKEY_PASSWORD",
 			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{Name: kv.Name},
+				LocalObjectReference: corev1.LocalObjectReference{Name: authSecretName},
 				Key:                  "password",
 			}},
 		}
@@ -450,6 +511,7 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	kv.Status.Host = internalHost
 	kv.Status.Port = kvPort
 	kv.Status.SecretName = kv.Name
+	kv.Status.CredentialSecretName = authSecretName
 	kv.Status.ObservedGeneration = kv.Generation
 
 	storageState, err := r.reconcileKeyValueStorage(ctx, &kv, sts, storageGB)
@@ -460,7 +522,7 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return result, err
 	}
 
-	return r.updateKeyValueReadiness(ctx, &kv, sts, replicas)
+	return r.updateKeyValueReadiness(ctx, &kv, sts, replicas, appv1alpha1.KeyValueCredentialRevision(auth.Data["password"]))
 }
 
 type keyValueStorageState struct {
@@ -502,11 +564,13 @@ func (r *KeyValueReconciler) updateKeyValueReadiness(
 	kv *appv1alpha1.KeyValue,
 	sts *appsv1.StatefulSet,
 	replicas int32,
+	credentialRevision string,
 ) (ctrl.Result, error) {
 	_ = r.Get(ctx, client.ObjectKeyFromObject(sts), sts)
 	rolloutReady := statefulSetRolloutReady(sts, replicas)
 	podsReady := r.keyValuePodsReady(ctx, kv, sts, replicas)
 	if kv.Spec.Suspended || (rolloutReady && podsReady) {
+		kv.Status.CredentialRevision = credentialRevision
 		reason, message := "Provisioned", "valkey ready"
 		if kv.Spec.Suspended {
 			reason, message = "Suspended", "valkey suspended (scaled to zero)"

@@ -241,6 +241,7 @@ func fetchCustomPage(ctx context.Context, app *appv1alpha1.App, rawURI string) (
 	transport := &http.Transport{
 		ForceAttemptHTTP2:     true,
 		ResponseHeaderTimeout: customPageTimeout,
+		TLSHandshakeTimeout:   customPageTimeout,
 		DialContext:           netutil.SafeDialContext(customPageTimeout),
 	}
 	defer transport.CloseIdleConnections()

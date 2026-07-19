@@ -26,6 +26,8 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 func TestCopyCloneSecretAcrossNamespaces(t *testing.T) {
@@ -39,9 +41,10 @@ func TestCopyCloneSecretAcrossNamespaces(t *testing.T) {
 	cachedClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 	buildClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(src).Build()
 	r := &AppReconciler{Client: cachedClient, BuildClient: buildClient}
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", UID: "uid-web"}}
 
 	// Copy default/web-clone -> bex-system/web-clone (the build namespace).
-	if err := r.copyCloneSecret(context.Background(), "default", "bex-system", "web-clone"); err != nil {
+	if err := r.copyCloneSecret(context.Background(), app, "default", "bex-system", "web-clone"); err != nil {
 		t.Fatalf("copy: %v", err)
 	}
 	var dst corev1.Secret
@@ -60,7 +63,7 @@ func TestCopyCloneSecretAcrossNamespaces(t *testing.T) {
 	if err := buildClient.Update(context.Background(), src); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.copyCloneSecret(context.Background(), "default", "bex-system", "web-clone"); err != nil {
+	if err := r.copyCloneSecret(context.Background(), app, "default", "bex-system", "web-clone"); err != nil {
 		t.Fatal(err)
 	}
 	_ = buildClient.Get(context.Background(), client.ObjectKey{Namespace: "bex-system", Name: "web-clone"}, &dst)

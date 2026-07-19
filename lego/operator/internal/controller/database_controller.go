@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"strings"
 	"time"
@@ -92,7 +93,8 @@ const (
 	// Decision: delete S3 backups on Database deletion (30d retention via CNPG's own
 	// policy would not run once the Cluster is gone; explicit purge avoids unbounded
 	// storage accumulation and prevents inadvertent restore from a deleted tenant's data).
-	dbFinalizer = "app.bex.co/db-finalizer"
+	dbFinalizer                = "app.bex.co/db-finalizer"
+	annotDBBackupPurgeComplete = "app.bex.co/backup-purge-complete"
 )
 
 // BackupStore is the object-store target CNPG's barmanObjectStore writes to
@@ -949,11 +951,18 @@ func (r *DatabaseReconciler) handleDBDeletion(ctx context.Context, req ctrl.Requ
 		} else if !apierrors.IsNotFound(err) {
 			return ctrl.Result{}, err
 		}
-		// Cluster is gone: purge barman S3 backups (best-effort, don't block).
+		// Cluster is gone: run and observe the persisted barman S3 purge Job.
 		if db.Status.BackupsEnabled && r.Backup.configured() {
-			if err := r.purgeDBBackups(ctx, db); err != nil {
-				logf.FromContext(ctx).Error(err, "dispatch DB backup purge job", "db", db.Name)
+			job := r.dbBackupPurgeJob(db)
+			done, err := reconcileCleanupJob(ctx, r.Client, db, job, annotDBBackupPurgeComplete)
+			if err != nil {
+				return ctrl.Result{}, err
 			}
+			if !done {
+				return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+			}
+		} else if db.Status.BackupsEnabled {
+			return ctrl.Result{}, fmt.Errorf("database backup purge configuration is unavailable")
 		}
 		controllerutil.RemoveFinalizer(db, dbFinalizer)
 		if err := r.Update(ctx, db); err != nil {
@@ -963,30 +972,34 @@ func (r *DatabaseReconciler) handleDBDeletion(ctx context.Context, req ctrl.Requ
 	return ctrl.Result{}, nil
 }
 
-// purgeDBBackups dispatches a fire-and-forget in-cluster Job to recursively
-// delete the database's legacy and per-major barman object-store prefixes. The
-// Job TTLs out after 1 hour.
-func (r *DatabaseReconciler) purgeDBBackups(ctx context.Context, db *appv1alpha1.Database) error {
-	ttl := int32(3600)
+// dbBackupPurgeJob constructs the durable terminal Job that recursively deletes
+// the database's legacy and per-major barman object-store prefixes.
+func (r *DatabaseReconciler) dbBackupPurgeJob(db *appv1alpha1.Database) *batchv1.Job {
+	deadline := int64((15 * time.Minute) / time.Second)
+	backoff := int32(3)
 	base := strings.TrimRight(r.Backup.DestinationPath, "/")
-	jobName := "purge-db-" + db.Name
+	sum := sha256.Sum256([]byte(db.UID))
+	jobName := fmt.Sprintf("purge-db-%s-%x", db.Name, sum[:4])
 	if len(jobName) > 63 {
-		jobName = jobName[:63]
+		jobName = fmt.Sprintf("purge-db-%.42s-%x", db.Name, sum[:6])
+	}
+	labels := map[string]string{
+		"app.bex.co/database":     db.Name,
+		"app.bex.co/database-uid": string(db.UID),
+		"app.bex.co/component":    "database-backup-purge",
 	}
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName,
 			Namespace: db.Namespace,
-			Labels: map[string]string{
-				"app.bex.co/purge-db":  db.Name,
-				"app.bex.co/component": "purge",
-			},
+			Labels:    labels,
 		},
 		Spec: batchv1.JobSpec{
-			TTLSecondsAfterFinished: &ttl,
+			BackoffLimit:          &backoff,
+			ActiveDeadlineSeconds: &deadline,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{"app.bex.co/purge-db": db.Name},
+					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
@@ -1014,8 +1027,5 @@ done`,
 			},
 		},
 	}
-	if err := r.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
-		return fmt.Errorf("create backup purge job: %w", err)
-	}
-	return nil
+	return job
 }

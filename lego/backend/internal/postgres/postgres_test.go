@@ -50,6 +50,17 @@ func newService(objs ...client.Object) (*Service, client.Client) {
 	return &Service{Base: &core.Base{Client: cl, Namespace: "default"}}, cl
 }
 
+func TestPostgresViewReportsDeletingWhileFinalizerHoldsResource(t *testing.T) {
+	now := metav1.Now()
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-delete", DeletionTimestamp: &now},
+		Status:     appv1alpha1.DatabaseStatus{Phase: appv1alpha1.DBPhaseReady},
+	}
+	if got := pgView(db).Status; got != "deleting" {
+		t.Fatalf("deleting Postgres status = %q, want deleting", got)
+	}
+}
+
 func serveREST(svc *Service, method, path, body string) *httptest.ResponseRecorder {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)

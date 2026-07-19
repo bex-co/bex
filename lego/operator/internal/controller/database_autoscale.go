@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	boundedhttp "github.com/bex-co/bex/lego/operator/internal/httpclient"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -71,7 +72,7 @@ type DatabaseDiskUsageReader func(ctx context.Context, namespace, database strin
 // existing kubelet PVC series. No new scrape or Kubernetes RBAC is required.
 func NewPrometheusDatabaseDiskUsageReader(base string, hc *http.Client) DatabaseDiskUsageReader {
 	if hc == nil {
-		hc = http.DefaultClient
+		hc = boundedhttp.Shared
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, namespace, database string) (DatabaseDiskUsage, error) {
