@@ -184,8 +184,23 @@ func TestPublicProxyPreservesEndToEndTLSAndMetersOnlyBackendWrites(t *testing.T)
 	if _, err := io.ReadFull(client, response); err != nil {
 		t.Fatal(err)
 	}
-	after := gatheredCounter(t, registry, "bex_kv_proxy_egress_bytes_total")
-	if delta := after - before; delta <= 0 || delta >= float64(len(request)) {
+	// The proxy meters backend→client bytes from its copy goroutine, which has
+	// no happens-before with the client's application read: the "+PONG" can
+	// surface to the client a hair before the meter increment lands, so a single
+	// immediate sample races to 0 (flaky in CI, passes locally). Poll for the
+	// metered response bytes — they are already delivered, so the increment lands
+	// within microseconds — then assert they are the small TLS response, never
+	// the 32 KiB request (the upper bound still catches request-byte metering).
+	var delta float64
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		delta = gatheredCounter(t, registry, "bex_kv_proxy_egress_bytes_total") - before
+		if delta > 0 || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+	if delta <= 0 || delta >= float64(len(request)) {
 		t.Fatalf("meter delta = %v; want backend TLS response bytes only, never %d request bytes", delta, len(request))
 	}
 	_ = client.Close()
