@@ -620,6 +620,89 @@ func TestObservedDeployStatusUsesCurrentGenerationEvidence(t *testing.T) {
 	}
 }
 
+// TestObservedDeployStatusCancelsSupersededRow guards the stranded-row fix: a
+// git-push redeploy, env-var change, or restart can mint a newer release
+// identity without adopting the open row, after which the operator reports
+// releaseGeneration past the row's. Generations are monotonic, so that row can
+// never advance again — it closes canceled (the CR-side mirror of
+// CreateDeploy's newest-wins cancel) instead of stranding open forever. An
+// operator merely lagging BEHIND the row keeps waiting, and a legacy operator
+// (no status.releaseGeneration) keeps today's conservative wait: its metadata
+// generation also moves for operational churn, which must never cancel.
+func TestObservedDeployStatusCancelsSupersededRow(t *testing.T) {
+	gen := int64(184)
+	superseded := &appv1alpha1.App{}
+	superseded.Generation = gen + 2
+	superseded.Status.Phase = appv1alpha1.PhaseBuilding
+	superseded.Status.ReleaseGeneration = gen + 2
+
+	if got := observedDeployStatus(Deploy{Generation: gen, Status: DeployBuildInProgress}, superseded, false); got != DeployCanceled {
+		t.Errorf("superseded release => %q, want %q", got, DeployCanceled)
+	}
+	// Timed out or not: superseded is canceled, never repainted as a failure.
+	if got := observedDeployStatus(Deploy{Generation: gen, Status: DeployBuildInProgress}, superseded, true); got != DeployCanceled {
+		t.Errorf("superseded release (timed out) => %q, want %q", got, DeployCanceled)
+	}
+
+	// Fresh trigger, operator's first reconcile still pending: releaseGeneration
+	// is BEHIND the row — nothing is superseded, keep waiting.
+	lagging := &appv1alpha1.App{}
+	lagging.Generation = gen
+	lagging.Status.Phase = appv1alpha1.PhaseRunning
+	lagging.Status.ReleaseGeneration = gen - 1
+	if got := observedDeployStatus(Deploy{Generation: gen, Status: DeployCreated}, lagging, false); got != "" {
+		t.Errorf("lagging operator => %q, want no transition", got)
+	}
+
+	// Legacy operator: metadata generation ahead, no releaseGeneration — the
+	// pre-fix behavior (wait, don't guess) is preserved.
+	legacy := &appv1alpha1.App{}
+	legacy.Generation = gen + 2
+	legacy.Status.Phase = appv1alpha1.PhaseBuilding
+	if got := observedDeployStatus(Deploy{Generation: gen, Status: DeployBuildInProgress}, legacy, false); got != "" {
+		t.Errorf("legacy generation churn => %q, want no transition", got)
+	}
+}
+
+// TestRecordDeployCancelsSupersededRow runs the same scenario through the full
+// Reconciler pass: an open create-row (generation 1) whose App the operator
+// reports at releaseGeneration 3 closes canceled — finished, no failure
+// reason, no failure notification semantics (canceled is exempt).
+func TestRecordDeployCancelsSupersededRow(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t)
+	ten, _ := store.CreateTenant(ctx, "acme", "free")
+	row, _ := store.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	app := getApp(t, cl)
+	app.Status.Phase = appv1alpha1.PhaseBuilding
+	app.Status.ReleaseGeneration = 3
+	app.Status.Conditions = []metav1.Condition{{
+		Type: "Ready", Status: metav1.ConditionFalse, Reason: "Building",
+		ObservedGeneration: 3,
+	}}
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	deploys, err := store.ListDeploys(ctx, row.ID, DeployFilter{})
+	if err != nil || len(deploys) != 1 {
+		t.Fatalf("deploys = %+v (err %v), want exactly one", deploys, err)
+	}
+	if deploys[0].Status != DeployCanceled || deploys[0].FinishedAt == nil {
+		t.Errorf("deploy = {Status:%s FinishedAt:%v}, want canceled with finished_at set", deploys[0].Status, deploys[0].FinishedAt)
+	}
+	if deploys[0].FailureReason != "" {
+		t.Errorf("failure_reason = %q, want empty — canceled is not a failure", deploys[0].FailureReason)
+	}
+}
+
 // TestRecordDeployClosesFailedOnCRFailed mirrors the above for the CR's own
 // Failed phase (a build error, say) — closes update_failed immediately, no
 // need to wait out the gate window.

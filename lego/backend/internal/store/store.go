@@ -158,6 +158,7 @@ const (
 	TriggerAPI        = "api"         // an authenticated POST .../deploys
 	TriggerDeployHook = "deploy_hook" // the App's unauthenticated secret-URL trigger
 	TriggerRollback   = "rollback"    // a deploy created by Rollback (w2/m10), restoring an earlier image
+	TriggerNewCommit  = "new_commit"  // a git-push redeploy via the HMAC webhook (Render's spelling)
 )
 
 // CommitInfo is the git commit a build-from-git deploy runs — the resolved
@@ -174,8 +175,9 @@ type CommitInfo struct {
 // Deploy is a row of `deploys` — one rollout attempt of an app, Render's
 // deploy history (list_deploys/get_deploy). Trigger is "create" (the app's
 // first deploy, opened by CreateApp), "api" (an explicit POST .../deploys),
-// "deploy_hook" (the service's secret URL), or "rollback" (w2/m10: a deploy
-// created by Rollback, RollbackOf naming the source deploy it restores).
+// "deploy_hook" (the service's secret URL), "new_commit" (a git-push redeploy
+// via the HMAC webhook), or "rollback" (w2/m10: a deploy created by Rollback,
+// RollbackOf naming the source deploy it restores).
 // Commit/CommitMessage (w9/001) are the resolved commit a build-from-git
 // deploy ran, captured once at open time via the workspace's GitHub App
 // connection — "" when unresolvable (omitted by the views, not faked).

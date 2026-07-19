@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -120,7 +121,7 @@ func TestRedeployRefreshesCloneSecret(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := svc.redeploy(context.Background(), "web"); err != nil {
+	if _, err := svc.redeploy(context.Background(), "web", store.CommitInfo{}); err != nil {
 		t.Fatal(err)
 	}
 	if gh.calls != 1 {
@@ -161,7 +162,7 @@ func TestRedeployResolvesWorkspaceFromAppTenantLabel(t *testing.T) {
 	gh := &fakeCloneTokens{token: "ghs_fresh", ok: true}
 	svc, _ := ghService(gh, app)
 
-	if _, err := svc.redeploy(context.Background(), "web"); err != nil {
+	if _, err := svc.redeploy(context.Background(), "web", store.CommitInfo{}); err != nil {
 		t.Fatal(err)
 	}
 	if gh.lastWorkspace != "tea-xyz" {

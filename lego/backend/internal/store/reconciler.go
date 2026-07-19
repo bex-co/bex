@@ -408,6 +408,17 @@ func (r *Reconciler) deployTimedOut(d DesiredApp, open Deploy) bool {
 // building or rolling; status.releaseGeneration keeps that harmless churn from
 // orphaning the deploy row. Legacy operators fall back to metadata generation.
 func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) string {
+	// A reported release generation PAST the open row's means this row's release
+	// was superseded before it could finish — a git-push redeploy, env-var
+	// change, or restart minted a newer release identity without adopting the
+	// row. Generations are monotonic, so the row can never advance again; close
+	// it canceled, the CR-side mirror of CreateDeploy's newest-wins cancel.
+	// Only status.releaseGeneration is trusted here: the legacy metadata-
+	// generation fallback below also moves for operational churn (manual
+	// scale), which must keep waiting, not cancel a live rollout's row.
+	if app.Status.ReleaseGeneration > 0 && open.Generation != 0 && app.Status.ReleaseGeneration > open.Generation {
+		return DeployCanceled
+	}
 	if generation := appReleaseGeneration(app); generation != 0 && open.Generation != 0 && generation != open.Generation {
 		return ""
 	}
