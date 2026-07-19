@@ -128,6 +128,32 @@ func resolvePlan(spec appv1alpha1.DatabaseSpec) (tiers.PostgresTier, int32) {
 	return plan, growOnlyStorage(spec.StorageGB, plan.StorageGB)
 }
 
+func cnpgStorageGB(cluster *unstructured.Unstructured) int32 {
+	size, found, err := unstructured.NestedString(cluster.Object, "spec", "storage", "size")
+	if err != nil || !found {
+		return 0
+	}
+	return storageQuantityGB(size)
+}
+
+func (r *DatabaseReconciler) databaseStorageIntent(
+	ctx context.Context,
+	db *appv1alpha1.Database,
+	cluster *unstructured.Unstructured,
+	desiredGB int32,
+) (int32, ctrl.Result, bool, error) {
+	if err := r.Get(ctx, client.ObjectKeyFromObject(cluster), cluster); err != nil && !apierrors.IsNotFound(err) {
+		result, failErr := r.dbFail(ctx, db, "ClusterReadFailed", err)
+		return 0, result, true, failErr
+	}
+	currentGB := max(db.Status.AllocatedStorageGB, cnpgStorageGB(cluster))
+	intentChanged := db.Status.AllocatedStorageGB > 0 && db.Status.ObservedStorageGB != db.Spec.StorageGB
+	if intentChanged && db.Spec.StorageGB > 0 && currentGB > db.Spec.StorageGB {
+		return 0, ctrl.Result{}, true, r.rejectDatabaseStorageShrink(ctx, db, currentGB, db.Spec.StorageGB)
+	}
+	return max(desiredGB, currentGB), ctrl.Result{}, false, nil
+}
+
 // clusterParams bundles the inputs the CNPG Cluster projection needs beyond the
 // plan — kept as a struct so the growing set (backup, recovery, users, HA) stays
 // readable and the projection remains a pure, unit-testable function.
@@ -473,6 +499,10 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	cluster.SetGroupVersionKind(cnpgClusterGVK)
 	cluster.SetName(db.Name)
 	cluster.SetNamespace(db.Namespace)
+	storageGB, result, done, err := r.databaseStorageIntent(ctx, &db, cluster, storageGB)
+	if done || err != nil {
+		return result, err
+	}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, cluster, func() error {
 		spec := cnpgClusterSpec(clusterParams{
 			plan: plan, storageGB: storageGB, version: db.Spec.Version,
@@ -502,6 +532,8 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	db.Status.Host = fmt.Sprintf("%s-rw.%s.svc", db.Name, db.Namespace)
 	db.Status.Port = pgPort
 	db.Status.SecretName = db.Name + "-app"
+	db.Status.AllocatedStorageGB = storageGB
+	db.Status.ObservedStorageGB = db.Spec.StorageGB
 	db.Status.ObservedGeneration = db.Generation
 	db.Status.BackupsEnabled = backupEnabled
 	if backupEnabled && db.Status.BackupServerName == "" {
@@ -863,13 +895,24 @@ func (r *DatabaseReconciler) dbFail(ctx context.Context, db *appv1alpha1.Databas
 	return ctrl.Result{}, err
 }
 
+func (r *DatabaseReconciler) rejectDatabaseStorageShrink(ctx context.Context, db *appv1alpha1.Database, current, requested int32) error {
+	db.Status.Phase = appv1alpha1.DBPhaseFailed
+	db.Status.AllocatedStorageGB = current
+	meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
+		Type: "Ready", Status: metav1.ConditionFalse, Reason: "StorageShrinkRejected",
+		Message:            fmt.Sprintf("Postgres storage is grow-only: requested %d GB is below the allocated %d GB", requested, current),
+		ObservedGeneration: db.Generation,
+	})
+	return r.Status().Update(ctx, db)
+}
+
 // SetupWithManager wires the controller. It owns the CNPG Cluster (unstructured)
 // so deletes cascade and Cluster changes re-trigger reconcile.
 func (r *DatabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	owned := &unstructured.Unstructured{}
 	owned.SetGroupVersionKind(cnpgClusterGVK)
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appv1alpha1.Database{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&appv1alpha1.Database{}, builder.WithPredicates(generationDeletionOrFinalizerPredicate{})).
 		// CNPG reports readiness and major-upgrade progress through Cluster status
 		// updates, which do not advance metadata.generation. Watch resourceVersion
 		// so Database.status promptly reflects Upgrading, Failed, and Ready.

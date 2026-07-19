@@ -135,6 +135,8 @@ apps:
 
 Like render.yaml, **the service `type` decides exposure** — a `web` service is public by definition and its platform hostname is mandatory (there is no opt-out flag); `private` services are reachable only in-cluster at `<name>.<namespace>.svc:<port>`.
 
+The workload type is immutable after creation. Render's [Blueprint specification](https://render.com/docs/blueprint-spec) says an existing resource's `type` cannot be modified, and the public [Update service API](https://api-docs.render.com/reference/update-service) has no type field. bex enforces that contract twice: CRD CEL admission compares the effective old/new `App.spec.type`, and Blueprint sync returns the same named bad request before it mutates an existing App. The legacy empty type is semantically `web_service`, so empty ↔ explicit web normalization remains valid. Changing between web, private, worker, cron, or static requires deleting and recreating the service; this prevents an old Deployment/Service/Ingress or CronJob from surviving beside a different workload kind.
+
 Apply it from the bex repo — this renders each `.apps[]` entry into an App CR and `kubectl apply`s it (respects `$KUBECONFIG`; `DRY_RUN=1` prints the CRs instead):
 
 ```sh

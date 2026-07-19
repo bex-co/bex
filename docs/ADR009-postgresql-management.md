@@ -184,6 +184,14 @@ Mirrors the compute and KeyValue lifecycle verbs, writing intent to the `Databas
 - The dashboard's version row opens a target selector with only newer catalog versions, an explicit offline/downtime warning, and inline guard errors. The detail query polls through `upgrading` until the operator reports the new current version.
 - Render comparison and the live CNPG 16→17/data-intact proof are captured in [render-artifacts/postgres-version-upgrade.md](render-artifacts/postgres-version-upgrade.md).
 
+### Grow-only storage across plan changes (w2/m60)
+
+Storage capacity is independent from compute-plan selection and is monotonic. On every reconcile, the operator projects the maximum of the selected plan floor, `spec.storageGB`, `status.allocatedStorageGB`, and the live CNPG Cluster storage request. `status.observedStorageGB` records which explicit intent produced the accepted high-water mark, so an unchanged legacy zero/below-plan value remains valid while a newly submitted lower value is rejected. A plan downgrade can reduce CPU/memory but can never render a smaller CNPG PVC request.
+
+The Render-compatible REST update path, including the official CLI's `postgres update --disk-size-gb`, rejects a nonpositive or smaller explicit size with a named 400 before mutating the Database. Blueprint sync applies the same high-water rule. Reads return the effective accepted size from one shared `PostgresView`, so REST, GraphQL, MCP, the CLI, and dashboard do not show a stale plan floor while expansion is converging. Render documents the same separation: changing compute does not change storage, and storage [can be increased but not reduced](https://render.com/docs/postgresql-refresh); its PostgreSQL guide exposes the same [`diskSizeGB` increase-only field](https://render.com/docs/postgresql-creating-connecting).
+
+This is deliberately separate from automatic growth below. Manual and plan-driven growth establish the same persisted high-water mark that disk autoscaling consumes; neither path can erase the other. Controller tests prove `5 GiB + plan downgrade -> 5 GiB`, explicit `10 GiB` growth, and a later shrink rejection that leaves the live CNPG request untouched.
+
 ### Disk autoscaling (w8/m14)
 
 - `Database.spec.diskAutoscaling` is desired intent. When enabled, the operator samples the existing Prometheus `kubelet_volume_stats_{used,capacity}_bytes` series once a minute and uses the fullest CNPG instance PVC. It is independent of the optional control-plane database (`BEX_CP_DB_URI`); unset `BEX_PROM_URL` disables the loop without changing API round-trip behavior.

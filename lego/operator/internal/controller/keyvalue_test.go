@@ -26,13 +26,16 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -254,6 +257,144 @@ func TestKeyValuePlanChangeReconcile(t *testing.T) {
 	}
 }
 
+func TestStatefulSetRolloutReadyRejectsOldRevision(t *testing.T) {
+	sts := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Generation: 2},
+		Status: appsv1.StatefulSetStatus{
+			ObservedGeneration: 2, CurrentRevision: "rev-old", UpdateRevision: "rev-new",
+			CurrentReplicas: 1, UpdatedReplicas: 0, ReadyReplicas: 1, AvailableReplicas: 1,
+		},
+	}
+	if statefulSetRolloutReady(sts, 1) {
+		t.Fatal("old ready revision reported as the current StatefulSet rollout")
+	}
+	sts.Status.CurrentRevision = "rev-new"
+	sts.Status.UpdatedReplicas = 1
+	if !statefulSetRolloutReady(sts, 1) {
+		t.Fatal("converged StatefulSet revision did not report ready")
+	}
+}
+
+func TestKeyValuePVCExpansionAndStorageClassFailure(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		expandable bool
+		wantFailed bool
+		wantGB     int32
+	}{
+		{name: "expandable", expandable: true, wantGB: 5},
+		{name: "not-expandable", expandable: false, wantFailed: true, wantGB: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			scheme := runtime.NewScheme()
+			_ = clientgoscheme.AddToScheme(scheme)
+			_ = appv1alpha1.AddToScheme(scheme)
+			kv := &appv1alpha1.KeyValue{
+				ObjectMeta: metav1.ObjectMeta{Name: "resize-kv", Namespace: "default", Generation: 2},
+				Spec:       appv1alpha1.KeyValueSpec{Plan: "standard"},
+				Status:     appv1alpha1.KeyValueStatus{AllocatedStorageGB: 1},
+			}
+			sts := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace}}
+			pvc := &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{Name: keyValuePVCName(kv.Name), Namespace: kv.Namespace},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					StorageClassName: ptr(kvStorageClass),
+					Resources: corev1.VolumeResourceRequirements{Requests: corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse("1Gi"),
+					}},
+				},
+				Status: corev1.PersistentVolumeClaimStatus{
+					Phase:    corev1.ClaimBound,
+					Capacity: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
+				},
+			}
+			sc := &storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{Name: kvStorageClass}, AllowVolumeExpansion: &tc.expandable}
+			cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv, pvc, sc).Build()
+			r := &KeyValueReconciler{Client: cl, Scheme: scheme}
+			state, err := r.reconcileKeyValueStorage(context.Background(), kv, sts, 5)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if state.failed != tc.wantFailed {
+				t.Fatalf("state.failed = %t, want %t (state=%+v)", state.failed, tc.wantFailed, state)
+			}
+			got := &corev1.PersistentVolumeClaim{}
+			if err := cl.Get(context.Background(), client.ObjectKeyFromObject(pvc), got); err != nil {
+				t.Fatal(err)
+			}
+			if size := pvcRequestedStorageGB(got); size != tc.wantGB {
+				t.Fatalf("PVC request = %d GB, want %d GB", size, tc.wantGB)
+			}
+			if tc.wantFailed && state.reason != "StorageClassNotExpandable" {
+				t.Fatalf("failure reason = %q", state.reason)
+			}
+		})
+	}
+}
+
+func TestKeyValueStorageShrinkIsRejectedBeforePVCMutation(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "shrink-kv", Namespace: "default", Generation: 2},
+		Spec:       appv1alpha1.KeyValueSpec{Plan: "free", StorageGB: 1},
+		Status: appv1alpha1.KeyValueStatus{
+			AllocatedStorageGB: 5, ObservedStorageGB: 5, StorageCapacityGB: 5,
+		},
+	}
+	sts := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace},
+		Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{{
+			Spec: corev1.PersistentVolumeClaimSpec{Resources: corev1.VolumeResourceRequirements{Requests: corev1.ResourceList{
+				corev1.ResourceStorage: resource.MustParse("5Gi"),
+			}}},
+		}}},
+	}
+	pvc := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{Name: keyValuePVCName(kv.Name), Namespace: kv.Namespace},
+		Spec: corev1.PersistentVolumeClaimSpec{Resources: corev1.VolumeResourceRequirements{Requests: corev1.ResourceList{
+			corev1.ResourceStorage: resource.MustParse("5Gi"),
+		}}},
+		Status: corev1.PersistentVolumeClaimStatus{Capacity: corev1.ResourceList{
+			corev1.ResourceStorage: resource.MustParse("5Gi"),
+		}},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv, sts, pvc).
+		WithStatusSubresource(&appv1alpha1.KeyValue{}).Build()
+	r := &KeyValueReconciler{Client: cl, Scheme: scheme}
+	nn := types.NamespacedName{Name: kv.Name, Namespace: kv.Namespace}
+
+	result, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: nn})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.RequeueAfter != 0 {
+		t.Fatalf("rejected shrink requeued immediately: %+v", result)
+	}
+	gotPVC := &corev1.PersistentVolumeClaim{}
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(pvc), gotPVC); err != nil {
+		t.Fatal(err)
+	}
+	if got := pvcRequestedStorageGB(gotPVC); got != 5 {
+		t.Fatalf("rejected shrink mutated PVC request to %d GB, want 5", got)
+	}
+	gotKV := &appv1alpha1.KeyValue{}
+	if err := cl.Get(context.Background(), nn, gotKV); err != nil {
+		t.Fatal(err)
+	}
+	ready := meta.FindStatusCondition(gotKV.Status.Conditions, "Ready")
+	storage := meta.FindStatusCondition(gotKV.Status.Conditions, "StorageReady")
+	if gotKV.Status.Phase != appv1alpha1.KVPhaseFailed || ready == nil || storage == nil ||
+		ready.Reason != "StorageShrinkRejected" || storage.Reason != "StorageShrinkRejected" {
+		t.Fatalf("shrink status = phase %q ready %+v storage %+v", gotKV.Status.Phase, ready, storage)
+	}
+}
+
 var _ = Describe("KeyValue Controller", func() {
 	const name = "smoke-kv"
 	ctx := context.Background()
@@ -377,6 +518,73 @@ var _ = Describe("KeyValue Controller", func() {
 		Expect(*sts.Spec.Replicas).To(Equal(int32(1)), "resumed => one replica")
 		Expect(k8sClient.Get(ctx, nn, sec)).To(Succeed())
 		Expect(string(sec.Data["password"])).To(Equal(pw), "password preserved across resume")
+	})
+
+	It("expands the live PVC and waits for capacity plus the current StatefulSet revision", func() {
+		expand := true
+		sc := &storagev1.StorageClass{
+			ObjectMeta:  metav1.ObjectMeta{Name: kvStorageClass},
+			Provisioner: "example.test/noop", AllowVolumeExpansion: &expand,
+		}
+		Expect(k8sClient.Create(ctx, sc)).To(Succeed())
+		DeferCleanup(func() { _ = k8sClient.Delete(context.Background(), sc) })
+
+		kv := &appv1alpha1.KeyValue{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+			Spec:       appv1alpha1.KeyValueSpec{Plan: "free"},
+		}
+		Expect(k8sClient.Create(ctx, kv)).To(Succeed())
+		reconcileN()
+
+		pvc := &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{Name: keyValuePVCName(name), Namespace: "default", Labels: map[string]string{labelKeyValue: name}},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+				StorageClassName: &sc.Name,
+				VolumeName:       "pv-smoke-kv",
+				Resources: corev1.VolumeResourceRequirements{Requests: corev1.ResourceList{
+					corev1.ResourceStorage: resource.MustParse("1Gi"),
+				}},
+			},
+		}
+		Expect(k8sClient.Create(ctx, pvc)).To(Succeed())
+		DeferCleanup(func() { _ = k8sClient.Delete(context.Background(), pvc) })
+		Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(pvc), pvc)).To(Succeed())
+		pvc.Status.Phase = corev1.ClaimBound
+		pvc.Status.Capacity = corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")}
+		Expect(k8sClient.Status().Update(ctx, pvc)).To(Succeed())
+
+		Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
+		kv.Spec.Plan = "standard"
+		Expect(k8sClient.Update(ctx, kv)).To(Succeed())
+		_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(pvc), pvc)).To(Succeed())
+		Expect(pvc.Spec.Resources.Requests.Storage().String()).To(Equal("5Gi"))
+		Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
+		Expect(kv.Status.Phase).To(Equal(appv1alpha1.KVPhaseProvisioning))
+		Expect(meta.FindStatusCondition(kv.Status.Conditions, "StorageReady").Reason).To(Equal("PVCResizePending"))
+
+		pvc.Status.Capacity = corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("5Gi")}
+		Expect(k8sClient.Status().Update(ctx, pvc)).To(Succeed())
+		sts := &appsv1.StatefulSet{}
+		Expect(k8sClient.Get(ctx, nn, sts)).To(Succeed())
+		sts.Status.ObservedGeneration = sts.Generation
+		sts.Status.CurrentRevision = "rev-2"
+		sts.Status.UpdateRevision = "rev-2"
+		sts.Status.Replicas = 1
+		sts.Status.CurrentReplicas = 1
+		sts.Status.UpdatedReplicas = 1
+		sts.Status.ReadyReplicas = 1
+		sts.Status.AvailableReplicas = 1
+		Expect(k8sClient.Status().Update(ctx, sts)).To(Succeed())
+		_, err = r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
+		Expect(kv.Status.Phase).To(Equal(appv1alpha1.KVPhaseReady))
+		Expect(meta.IsStatusConditionTrue(kv.Status.Conditions, "StorageReady")).To(BeTrue())
+		Expect(kv.Status.AllocatedStorageGB).To(Equal(int32(5)))
+		Expect(kv.Status.StorageCapacityGB).To(Equal(int32(5)))
 	})
 
 	It("treats a reconciled-then-deleted KeyValue as a clean no-op", func() {

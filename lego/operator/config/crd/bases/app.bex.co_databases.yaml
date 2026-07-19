@@ -332,6 +332,14 @@ spec:
           status:
             description: DatabaseStatus is the observed state of a Database.
             properties:
+              allocatedStorageGB:
+                description: |-
+                  AllocatedStorageGB is the grow-only storage high-water mark accepted by
+                  the operator. It is intentionally status-only: API adapters use it to
+                  reject an explicit shrink before persisting intent, while the operator
+                  still verifies the live CNPG Cluster before every projection.
+                format: int32
+                type: integer
               backupEndpointURL:
                 description: |-
                   BackupEndpointURL and BackupS3SecretName are the non-secret coordinates
@@ -542,6 +550,13 @@ spec:
                 description: ObservedGeneration is the .metadata.generation the controller
                   last reconciled.
                 format: int64
+                type: integer
+              observedStorageGB:
+                description: |-
+                  ObservedStorageGB is the spec.storageGB value associated with the accepted
+                  high-water mark. It lets the controller distinguish a new explicit shrink
+                  request from an unchanged below-plan legacy value during plan changes.
+                format: int32
                 type: integer
               phase:
                 description: Phase is the high-level lifecycle state.

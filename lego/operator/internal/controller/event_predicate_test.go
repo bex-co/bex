@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"slices"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -69,4 +70,24 @@ func TestGenerationOrDeletionPredicate(t *testing.T) {
 			t.Fatal("unrelated annotation update was admitted")
 		}
 	})
+}
+
+func TestGenerationDeletionOrFinalizerPredicate(t *testing.T) {
+	p := generationDeletionOrFinalizerPredicate{}
+	old := &appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Generation: 4, Finalizers: []string{"existing"}}}
+
+	updated := old.DeepCopy()
+	updated.Finalizers = append(updated.Finalizers, dbFinalizer)
+	if !p.Update(event.UpdateEvent{ObjectOld: old, ObjectNew: updated}) {
+		t.Fatal("finalizer-only update was filtered")
+	}
+	if slices.Equal(old.Finalizers, updated.Finalizers) {
+		t.Fatal("test did not change finalizers")
+	}
+
+	statusOnly := old.DeepCopy()
+	statusOnly.Status.Phase = appv1alpha1.DBPhaseReady
+	if p.Update(event.UpdateEvent{ObjectOld: old, ObjectNew: statusOnly}) {
+		t.Fatal("status-only update was admitted")
+	}
 }

@@ -15,10 +15,21 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - persistentvolumeclaims
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - pods
   verbs:
   - get
   - list
+  - watch
 - apiGroups:
   - ""
   resources:
@@ -153,6 +164,14 @@ rules:
   - clusters/status
   verbs:
   - patch
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - storageclasses
+  verbs:
+  - get
+  - list
+  - watch
 - apiGroups:
   - traefik.io
   resources:

@@ -817,6 +817,17 @@ func TestRESTUpdatePostgresPartial(t *testing.T) {
 		t.Fatalf("PATCH without parameterOverrides changed them: status=%d params=%v", w.Code, got.Spec.Parameters)
 	}
 
+	// Storage is grow-only across every REST/CLI call: a smaller explicit disk
+	// request is a named 400 and leaves the accepted intent untouched.
+	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"diskSizeGB":20}`)
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "storage is grow-only") {
+		t.Fatalf("disk shrink => named 400, got %d: %s", w.Code, w.Body.String())
+	}
+	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "upd-db"}, &got)
+	if got.Spec.StorageGB != 21 {
+		t.Fatalf("rejected shrink changed spec.storageGB to %d", got.Spec.StorageGB)
+	}
+
 	// ip-allow-list alone, Render's {cidrBlock,description} wire shape, no
 	// plan — must succeed and round-trip through the same shape on read.
 	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db",

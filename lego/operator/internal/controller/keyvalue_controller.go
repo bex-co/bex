@@ -22,10 +22,13 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,8 +40,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -65,7 +70,9 @@ const (
 	kvExporterImage = "oliver006/redis_exporter:alpine"
 	// labelKeyValue marks the workload/Service a KeyValue creates, and is the
 	// StatefulSet selector + Service selector so the two stay coupled.
-	labelKeyValue = "app.bex.co/keyvalue"
+	labelKeyValue           = "app.bex.co/keyvalue"
+	kvStorageRequeue        = 10 * time.Second
+	kvStorageFailureRequeue = 5 * time.Minute
 )
 
 var certManagerCertificateGVK = schema.GroupVersionKind{Group: "cert-manager.io", Version: "v1", Kind: "Certificate"}
@@ -176,14 +183,67 @@ type KeyValueReconciler struct {
 // +kubebuilder:rbac:groups=app.bex.co,resources=keyvalues/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=app.bex.co,resources=keyvalues/finalizers,verbs=update
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=storage.k8s.io,resources=storageclasses,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=traefik.io,resources=ingressroutetcps;middlewaretcps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=cert-manager.io,resources=certificates,verbs=get;list;watch;create;update;patch;delete
 // Secrets access is namespace-scoped to the apps namespace via deploy/gitops/base/operator-apps-rbac.yaml.
 
-func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := logf.FromContext(ctx)
+func (r *KeyValueReconciler) keyValueStorageIntent(
+	ctx context.Context,
+	kv *appv1alpha1.KeyValue,
+	desiredGB int32,
+) (*appsv1.StatefulSet, int32, ctrl.Result, bool, error) {
+	sts := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace}}
+	if err := r.Get(ctx, client.ObjectKeyFromObject(sts), sts); err != nil && !apierrors.IsNotFound(err) {
+		result, failErr := r.kvFail(ctx, kv, "StatefulSetReadFailed", err)
+		return nil, 0, result, true, failErr
+	}
+	pvc := &corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{
+		Name: keyValuePVCName(kv.Name), Namespace: kv.Namespace,
+	}}
+	if err := r.Get(ctx, client.ObjectKeyFromObject(pvc), pvc); err != nil && !apierrors.IsNotFound(err) {
+		result, failErr := r.kvFail(ctx, kv, "PVCReadFailed", err)
+		return nil, 0, result, true, failErr
+	}
+	currentGB := max(kv.Status.AllocatedStorageGB, statefulSetStorageGB(sts), pvcRequestedStorageGB(pvc), pvcCapacityStorageGB(pvc))
+	intentChanged := kv.Status.AllocatedStorageGB > 0 && kv.Status.ObservedStorageGB != kv.Spec.StorageGB
+	if intentChanged && kv.Spec.StorageGB > 0 && currentGB > kv.Spec.StorageGB {
+		return nil, 0, ctrl.Result{}, true, r.rejectKeyValueStorageShrink(ctx, kv, currentGB, kv.Spec.StorageGB)
+	}
+	return sts, max(desiredGB, currentGB), ctrl.Result{}, false, nil
+}
 
+func (r *KeyValueReconciler) reconcileKeyValueTLS(
+	ctx context.Context,
+	kv *appv1alpha1.KeyValue,
+	public bool,
+	certificateName string,
+	tlsSecretName string,
+) (string, error) {
+	if err := cleanupLegacyKeyValueRoutes(ctx, r.Client, kv); err != nil {
+		return "RouteCleanupFailed", err
+	}
+	if public && r.ClusterIssuer == "" {
+		kv.Status.ExternalHost = ""
+		return "TLSIssuerMissing", fmt.Errorf("BEX_CLUSTER_ISSUER is required for a public Key Value endpoint")
+	}
+	if !public {
+		return "CertificateCleanupFailed", deleteOwned(ctx, r.Client, kv, certManagerCertificateGVK, certificateName)
+	}
+	host := fmt.Sprintf("%s.%s", kv.Name, r.KvDomain)
+	spec := map[string]any{
+		"secretName": tlsSecretName,
+		"dnsNames":   []any{host},
+		"issuerRef": map[string]any{
+			"name": r.ClusterIssuer, "kind": "ClusterIssuer",
+		},
+	}
+	return "CertificateFailed", upsertOwned(ctx, r.Client, r.Scheme, kv, certManagerCertificateGVK, certificateName, spec)
+}
+
+func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var kv appv1alpha1.KeyValue
 	if err := r.Get(ctx, req.NamespacedName, &kv); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -194,34 +254,19 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, nil
 	}
 
-	plan, storageGB := resolveKVPlan(kv.Spec)
+	plan, requestedStorageGB := resolveKVPlan(kv.Spec)
+	sts, storageGB, result, done, err := r.keyValueStorageIntent(ctx, &kv, requestedStorageGB)
+	if done || err != nil {
+		return result, err
+	}
 	internalHost := fmt.Sprintf("%s.%s.svc", kv.Name, kv.Namespace)
 	public := kv.Spec.Public && r.KvDomain != ""
 	tlsSecretName := kv.Name + "-kv-tls"
 	certificateName := tlsSecretName
 	// Remove the old unmetered path before validating or creating the new one.
 	// A missing TLS issuer must fail closed, not leave a legacy route serving.
-	if err := cleanupLegacyKeyValueRoutes(ctx, r.Client, &kv); err != nil {
-		return r.kvFail(ctx, &kv, "RouteCleanupFailed", err)
-	}
-	if public && r.ClusterIssuer == "" {
-		kv.Status.ExternalHost = ""
-		return r.kvFail(ctx, &kv, "TLSIssuerMissing", fmt.Errorf("BEX_CLUSTER_ISSUER is required for a public Key Value endpoint"))
-	}
-	if public {
-		host := fmt.Sprintf("%s.%s", kv.Name, r.KvDomain)
-		certificateSpec := map[string]any{
-			"secretName": tlsSecretName,
-			"dnsNames":   []any{host},
-			"issuerRef": map[string]any{
-				"name": r.ClusterIssuer, "kind": "ClusterIssuer",
-			},
-		}
-		if err := upsertOwned(ctx, r.Client, r.Scheme, &kv, certManagerCertificateGVK, certificateName, certificateSpec); err != nil {
-			return r.kvFail(ctx, &kv, "CertificateFailed", err)
-		}
-	} else if err := deleteOwned(ctx, r.Client, &kv, certManagerCertificateGVK, certificateName); err != nil {
-		return r.kvFail(ctx, &kv, "CertificateCleanupFailed", err)
+	if reason, err := r.reconcileKeyValueTLS(ctx, &kv, public, certificateName, tlsSecretName); err != nil {
+		return r.kvFail(ctx, &kv, reason, err)
 	}
 	// Suspended => scale to zero (the PVC, Secret, Service and route are kept, so
 	// resume restores the same data, password and endpoint). Render's KV suspend.
@@ -293,7 +338,6 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	// --- single-instance Valkey StatefulSet, sized to the tier ---
 	storageClass := kvStorageClass
-	sts := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, sts, func() error {
 		// selector / serviceName / volumeClaimTemplates are immutable on a
 		// StatefulSet — set them once, at create. The pod template (resources,
@@ -302,7 +346,7 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			sts.Spec.Selector = &metav1.LabelSelector{MatchLabels: labels}
 			sts.Spec.ServiceName = kv.Name
 			sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{{
-				ObjectMeta: metav1.ObjectMeta{Name: "data"},
+				ObjectMeta: metav1.ObjectMeta{Name: "data", Labels: labels},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 					Resources: corev1.VolumeResourceRequirements{
@@ -408,12 +452,61 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	kv.Status.SecretName = kv.Name
 	kv.Status.ObservedGeneration = kv.Generation
 
-	// Ready when the StatefulSet reports its desired replica count available. A
-	// suspended store desires zero replicas, so it settles Ready immediately (the
-	// separate spec.suspended is the client-facing suspend signal — the API
-	// surfaces it via the Render "suspended" enum, distinct from this health phase).
+	storageState, err := r.reconcileKeyValueStorage(ctx, &kv, sts, storageGB)
+	if err != nil {
+		return r.kvFail(ctx, &kv, "PVCResizeFailed", err)
+	}
+	if result, done, err := r.applyKeyValueStorageState(ctx, &kv, storageState); done || err != nil {
+		return result, err
+	}
+
+	return r.updateKeyValueReadiness(ctx, &kv, sts, replicas)
+}
+
+type keyValueStorageState struct {
+	ready   bool
+	failed  bool
+	reason  string
+	message string
+	requeue time.Duration
+}
+
+func (r *KeyValueReconciler) applyKeyValueStorageState(
+	ctx context.Context,
+	kv *appv1alpha1.KeyValue,
+	state keyValueStorageState,
+) (ctrl.Result, bool, error) {
+	if state.ready || kv.Spec.Suspended {
+		return ctrl.Result{}, false, nil
+	}
+	kv.Status.Phase = appv1alpha1.KVPhaseProvisioning
+	if state.failed {
+		kv.Status.Phase = appv1alpha1.KVPhaseFailed
+	}
+	meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
+		Type: "Ready", Status: metav1.ConditionFalse, Reason: state.reason,
+		Message: state.message, ObservedGeneration: kv.Generation,
+	})
+	if err := r.Status().Update(ctx, kv); err != nil {
+		return ctrl.Result{}, true, err
+	}
+	return ctrl.Result{RequeueAfter: state.requeue}, true, nil
+}
+
+// updateKeyValueReadiness keeps storage convergence and workload rollout as
+// separate gates. A suspended store desires zero replicas and is healthy by
+// that contract; a running store must converge on the current StatefulSet
+// revision and current-revision Pod readiness.
+func (r *KeyValueReconciler) updateKeyValueReadiness(
+	ctx context.Context,
+	kv *appv1alpha1.KeyValue,
+	sts *appsv1.StatefulSet,
+	replicas int32,
+) (ctrl.Result, error) {
 	_ = r.Get(ctx, client.ObjectKeyFromObject(sts), sts)
-	if sts.Status.AvailableReplicas >= replicas {
+	rolloutReady := statefulSetRolloutReady(sts, replicas)
+	podsReady := r.keyValuePodsReady(ctx, kv, sts, replicas)
+	if kv.Spec.Suspended || (rolloutReady && podsReady) {
 		reason, message := "Provisioned", "valkey ready"
 		if kv.Spec.Suspended {
 			reason, message = "Suspended", "valkey suspended (scaled to zero)"
@@ -423,22 +516,189 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			Type: "Ready", Status: metav1.ConditionTrue, Reason: reason,
 			Message: message, ObservedGeneration: kv.Generation,
 		})
-		if err := r.Status().Update(ctx, &kv); err != nil {
+		if err := r.Status().Update(ctx, kv); err != nil {
 			return ctrl.Result{}, err
 		}
-		log.Info("keyvalue reconciled", "name", kv.Name, "host", kv.Status.Host, "suspended", kv.Spec.Suspended)
-		return ctrl.Result{}, nil
+		logf.FromContext(ctx).Info("keyvalue reconciled", "name", kv.Name, "host", kv.Status.Host, "suspended", kv.Spec.Suspended)
+		return ctrl.Result{RequeueAfter: childHealthRequeue}, nil
 	}
 
 	kv.Status.Phase = appv1alpha1.KVPhaseProvisioning
+	reason, message := "Provisioning", "waiting for the current Valkey StatefulSet revision"
+	if rolloutReady && !podsReady {
+		reason, message = "PodUnready", "a current Valkey pod is not Ready"
+	}
 	meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
-		Type: "Ready", Status: metav1.ConditionFalse, Reason: "Provisioning",
-		Message: "waiting for valkey", ObservedGeneration: kv.Generation,
+		Type: "Ready", Status: metav1.ConditionFalse, Reason: reason,
+		Message: message, ObservedGeneration: kv.Generation,
 	})
-	if err := r.Status().Update(ctx, &kv); err != nil {
+	if err := r.Status().Update(ctx, kv); err != nil {
 		return ctrl.Result{}, err
 	}
-	return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	return ctrl.Result{RequeueAfter: kvStorageRequeue}, nil
+}
+
+func keyValuePVCName(name string) string {
+	return "data-" + name + "-0"
+}
+
+func statefulSetStorageGB(sts *appsv1.StatefulSet) int32 {
+	if sts == nil || len(sts.Spec.VolumeClaimTemplates) == 0 {
+		return 0
+	}
+	return quantityGiCeil(sts.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage])
+}
+
+func pvcRequestedStorageGB(pvc *corev1.PersistentVolumeClaim) int32 {
+	if pvc == nil {
+		return 0
+	}
+	return quantityGiCeil(pvc.Spec.Resources.Requests[corev1.ResourceStorage])
+}
+
+func pvcCapacityStorageGB(pvc *corev1.PersistentVolumeClaim) int32 {
+	if pvc == nil {
+		return 0
+	}
+	return quantityGiCeil(pvc.Status.Capacity[corev1.ResourceStorage])
+}
+
+func statefulSetRolloutReady(sts *appsv1.StatefulSet, replicas int32) bool {
+	return sts.Status.ObservedGeneration >= sts.Generation &&
+		sts.Status.CurrentRevision != "" &&
+		sts.Status.CurrentRevision == sts.Status.UpdateRevision &&
+		sts.Status.CurrentReplicas == replicas &&
+		sts.Status.UpdatedReplicas == replicas &&
+		sts.Status.ReadyReplicas >= replicas &&
+		sts.Status.AvailableReplicas >= replicas
+}
+
+func (r *KeyValueReconciler) keyValuePodsReady(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet, replicas int32) bool {
+	if replicas == 0 {
+		return true
+	}
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods, client.InNamespace(kv.Namespace), client.MatchingLabels{labelKeyValue: kv.Name}); err != nil {
+		return true
+	}
+	var current, ready int32
+	for i := range pods.Items {
+		pod := &pods.Items[i]
+		if !pod.DeletionTimestamp.IsZero() ||
+			(sts.Status.UpdateRevision != "" && pod.Labels[appsv1.StatefulSetRevisionLabel] != sts.Status.UpdateRevision) {
+			continue
+		}
+		current++
+		for _, condition := range pod.Status.Conditions {
+			if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
+				ready++
+				break
+			}
+		}
+	}
+	return current == 0 || ready >= replicas
+}
+
+func (r *KeyValueReconciler) rejectKeyValueStorageShrink(ctx context.Context, kv *appv1alpha1.KeyValue, current, requested int32) error {
+	kv.Status.Phase = appv1alpha1.KVPhaseFailed
+	kv.Status.AllocatedStorageGB = current
+	message := fmt.Sprintf("Valkey storage is grow-only: requested %d GB is below the allocated %d GB", requested, current)
+	meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
+		Type: "StorageReady", Status: metav1.ConditionFalse, Reason: "StorageShrinkRejected",
+		Message: message, ObservedGeneration: kv.Generation,
+	})
+	meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
+		Type: "Ready", Status: metav1.ConditionFalse, Reason: "StorageShrinkRejected",
+		Message: message, ObservedGeneration: kv.Generation,
+	})
+	return r.Status().Update(ctx, kv)
+}
+
+func (r *KeyValueReconciler) reconcileKeyValueStorage(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet, desiredGB int32) (keyValueStorageState, error) {
+	pvc := &corev1.PersistentVolumeClaim{}
+	key := client.ObjectKey{Namespace: kv.Namespace, Name: keyValuePVCName(kv.Name)}
+	if err := r.Get(ctx, key, pvc); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return keyValueStorageState{}, err
+		}
+		kv.Status.AllocatedStorageGB = max(desiredGB, statefulSetStorageGB(sts))
+		kv.Status.ObservedStorageGB = kv.Spec.StorageGB
+		kv.Status.StorageCapacityGB = 0
+		state := keyValueStorageState{reason: "WaitingForPVC", message: "waiting for the Valkey PVC to be created", requeue: kvStorageRequeue}
+		setKeyValueStorageCondition(kv, state)
+		return state, nil
+	}
+
+	requestedGB := pvcRequestedStorageGB(pvc)
+	capacityGB := pvcCapacityStorageGB(pvc)
+	desiredGB = max(desiredGB, requestedGB, capacityGB)
+	if desiredGB > requestedGB {
+		if pvc.Status.Phase != corev1.ClaimBound {
+			state := keyValueStorageState{reason: "WaitingForPVCBinding", message: "waiting for the Valkey PVC to bind before requesting expansion", requeue: kvStorageRequeue}
+			setKeyValueStorageCondition(kv, state)
+			return state, nil
+		}
+		if pvc.Spec.StorageClassName == nil || *pvc.Spec.StorageClassName == "" {
+			state := keyValueStorageState{failed: true, reason: "StorageClassMissing", message: "Valkey PVC has no StorageClass; online expansion is unavailable", requeue: kvStorageFailureRequeue}
+			setKeyValueStorageCondition(kv, state)
+			return state, nil
+		}
+		var storageClass storagev1.StorageClass
+		if err := r.Get(ctx, client.ObjectKey{Name: *pvc.Spec.StorageClassName}, &storageClass); err != nil {
+			if apierrors.IsNotFound(err) {
+				state := keyValueStorageState{failed: true, reason: "StorageClassNotFound", message: fmt.Sprintf("StorageClass %q was not found; cannot expand Valkey PVC", *pvc.Spec.StorageClassName), requeue: kvStorageFailureRequeue}
+				setKeyValueStorageCondition(kv, state)
+				return state, nil
+			}
+			return keyValueStorageState{}, err
+		}
+		if storageClass.AllowVolumeExpansion == nil || !*storageClass.AllowVolumeExpansion {
+			state := keyValueStorageState{failed: true, reason: "StorageClassNotExpandable", message: fmt.Sprintf("StorageClass %q does not allow volume expansion", storageClass.Name), requeue: kvStorageFailureRequeue}
+			setKeyValueStorageCondition(kv, state)
+			return state, nil
+		}
+		before := pvc.DeepCopy()
+		if pvc.Spec.Resources.Requests == nil {
+			pvc.Spec.Resources.Requests = corev1.ResourceList{}
+		}
+		pvc.Spec.Resources.Requests[corev1.ResourceStorage] = resource.MustParse(fmt.Sprintf("%dGi", desiredGB))
+		if err := r.Patch(ctx, pvc, client.MergeFrom(before)); err != nil {
+			return keyValueStorageState{}, err
+		}
+		requestedGB = desiredGB
+	}
+
+	kv.Status.AllocatedStorageGB = max(desiredGB, requestedGB)
+	kv.Status.ObservedStorageGB = kv.Spec.StorageGB
+	kv.Status.StorageCapacityGB = capacityGB
+	if capacityGB < desiredGB {
+		reason := "PVCResizePending"
+		message := fmt.Sprintf("Valkey PVC expansion is pending: requested %d GB, observed capacity %d GB", desiredGB, capacityGB)
+		for _, condition := range pvc.Status.Conditions {
+			if condition.Type == corev1.PersistentVolumeClaimFileSystemResizePending && condition.Status == corev1.ConditionTrue {
+				reason = "FileSystemResizePending"
+				message = fmt.Sprintf("Valkey filesystem resize is pending: requested %d GB, observed capacity %d GB", desiredGB, capacityGB)
+				break
+			}
+		}
+		state := keyValueStorageState{reason: reason, message: message, requeue: kvStorageRequeue}
+		setKeyValueStorageCondition(kv, state)
+		return state, nil
+	}
+	state := keyValueStorageState{ready: true, reason: "StorageProvisioned", message: fmt.Sprintf("Valkey PVC capacity is %d GB", capacityGB)}
+	setKeyValueStorageCondition(kv, state)
+	return state, nil
+}
+
+func setKeyValueStorageCondition(kv *appv1alpha1.KeyValue, state keyValueStorageState) {
+	status := metav1.ConditionFalse
+	if state.ready {
+		status = metav1.ConditionTrue
+	}
+	meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
+		Type: "StorageReady", Status: status, Reason: state.reason,
+		Message: state.message, ObservedGeneration: kv.Generation,
+	})
 }
 
 func cleanupLegacyKeyValueRoutes(ctx context.Context, c client.Client, kv *appv1alpha1.KeyValue) error {
@@ -473,7 +733,11 @@ func (r *KeyValueReconciler) kvFail(ctx context.Context, kv *appv1alpha1.KeyValu
 func (r *KeyValueReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appv1alpha1.KeyValue{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
-		Owns(&appsv1.StatefulSet{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Owns(&appsv1.StatefulSet{}, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
+		Watches(&corev1.PersistentVolumeClaim{}, handler.EnqueueRequestsFromMapFunc(keyValuePVCRequests),
+			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
+		Watches(&corev1.Pod{}, handler.EnqueueRequestsFromMapFunc(keyValuePodRequests),
+			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		Owns(&corev1.Service{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		// Secret data updates do not increment metadata.generation. ResourceVersion
 		// keeps credential drift self-healing while the manager cache scopes this
@@ -481,4 +745,26 @@ func (r *KeyValueReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Secret{}, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		Named("keyvalue").
 		Complete(r)
+}
+
+func keyValuePVCRequests(_ context.Context, object client.Object) []reconcile.Request {
+	name := object.GetLabels()[labelKeyValue]
+	if name == "" {
+		pvcName := object.GetName()
+		if strings.HasPrefix(pvcName, "data-") && strings.HasSuffix(pvcName, "-0") {
+			name = strings.TrimSuffix(strings.TrimPrefix(pvcName, "data-"), "-0")
+		}
+	}
+	if name == "" {
+		return nil
+	}
+	return []reconcile.Request{{NamespacedName: client.ObjectKey{Namespace: object.GetNamespace(), Name: name}}}
+}
+
+func keyValuePodRequests(_ context.Context, object client.Object) []reconcile.Request {
+	name := object.GetLabels()[labelKeyValue]
+	if name == "" {
+		return nil
+	}
+	return []reconcile.Request{{NamespacedName: client.ObjectKey{Namespace: object.GetNamespace(), Name: name}}}
 }
