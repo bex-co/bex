@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { formatDateISO, formatNumber } from "../";
+import {
+  formatDateISO,
+  formatDateTime,
+  formatDateLong,
+  formatNumber,
+} from "../";
 
 describe("Format Utility", () => {
   describe("formatDateISO", () => {
@@ -53,6 +58,43 @@ describe("Format Utility", () => {
       const result1 = formatDateISO("2024-06-15");
       const result2 = formatDateISO("2024-06-15");
       expect(result1).toBe(result2);
+    });
+  });
+
+  // Zone-less inputs parse as local time, so the expected strings hold in any
+  // test-runner timezone.
+  describe("formatDateTime", () => {
+    it("formats the dashboard's standard date + time", () => {
+      expect(formatDateTime("2026-07-16T00:57:00")).toBe(
+        "July 16, 2026 at 12:57 AM",
+      );
+      expect(formatDateTime("2026-07-16T15:05:00")).toBe(
+        "July 16, 2026 at 3:05 PM",
+      );
+      expect(formatDateTime("2026-12-01T12:00:00")).toBe(
+        "December 1, 2026 at 12:00 PM",
+      );
+    });
+
+    it("returns null for missing or invalid input", () => {
+      expect(formatDateTime(null)).toBeNull();
+      expect(formatDateTime(undefined)).toBeNull();
+      expect(formatDateTime("")).toBeNull();
+      expect(formatDateTime("invalid-date")).toBeNull();
+    });
+  });
+
+  describe("formatDateLong", () => {
+    it("formats the date-only counterpart", () => {
+      expect(formatDateLong("2026-07-16T00:57:00")).toBe("July 16, 2026");
+      expect(formatDateLong("2026-02-03")).toBe("February 3, 2026");
+    });
+
+    it("returns null for missing or invalid input", () => {
+      expect(formatDateLong(null)).toBeNull();
+      expect(formatDateLong(undefined)).toBeNull();
+      expect(formatDateLong("")).toBeNull();
+      expect(formatDateLong("not-a-date")).toBeNull();
     });
   });
 

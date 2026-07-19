@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
+import { formatDateTime } from "@/common/lib/format";
 import type { EnvGroupView } from "@/features/env-groups/types";
 import type { ServiceView } from "@/features/services/types";
 
@@ -217,8 +218,15 @@ describe("EnvGroupsPage", () => {
     expect(screen.getByText("1 secret file(s)")).toBeInTheDocument();
     expect(screen.getByText("3 linked service(s)")).toBeInTheDocument();
     expect(screen.getByText("tea-1")).toBeInTheDocument();
-    expect(screen.getByText("2026-07-15T12:00:00Z")).toBeInTheDocument();
-    expect(screen.getByText("2026-07-15T13:00:00Z")).toBeInTheDocument();
+    // Timestamps render through the shared formatter ("July 15, 2026 at …"),
+    // not as raw ISO — computed via the helper so the assertion holds in any
+    // test-runner timezone.
+    expect(
+      screen.getByText(formatDateTime("2026-07-15T12:00:00Z")!),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(formatDateTime("2026-07-15T13:00:00Z")!),
+    ).toBeInTheDocument();
   });
 
   it("renders distinct empty and error states", async () => {
@@ -294,8 +302,15 @@ describe("EnvGroupDetailPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Group Metadata")).toBeInTheDocument();
     expect(screen.getByText("tea-1")).toBeInTheDocument();
-    expect(screen.getByText("2026-07-15T12:00:00Z")).toBeInTheDocument();
-    expect(screen.getByText("2026-07-15T13:00:00Z")).toBeInTheDocument();
+    // Timestamps render through the shared formatter ("July 15, 2026 at …"),
+    // not as raw ISO — computed via the helper so the assertion holds in any
+    // test-runner timezone.
+    expect(
+      screen.getByText(formatDateTime("2026-07-15T12:00:00Z")!),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(formatDateTime("2026-07-15T13:00:00Z")!),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Add variable" }));
     await user.type(screen.getByLabelText("Key"), "API_TOKEN");

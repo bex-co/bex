@@ -17,6 +17,7 @@ import {
   AlertDescription,
 } from "@/common/components/ui/alert";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { formatDateLong } from "@/common/lib/format";
 import { useRenameWorkspace } from "@/features/workspaces/hooks/use-rename-workspace";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { ChangePlanDialog } from "@/features/workspaces/components/change-plan-dialog";
@@ -144,11 +145,7 @@ export function WorkspaceDetailsCard({
             <dt className="text-muted-foreground">
               {t("workspaces.fieldCreatedAt")}
             </dt>
-            <dd>
-              {workspace.createdAt
-                ? new Date(workspace.createdAt).toLocaleDateString()
-                : "—"}
-            </dd>
+            <dd>{formatDateLong(workspace.createdAt) ?? "—"}</dd>
           </div>
         </dl>
       </CardContent>

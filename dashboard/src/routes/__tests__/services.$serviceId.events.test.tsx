@@ -10,6 +10,7 @@ import {
   type AnyRouter,
 } from "@tanstack/react-router";
 import { ServiceEventsPage } from "../services.$serviceId.events";
+import { formatDateTime } from "@/common/lib/format";
 import type { UseServerResult } from "@/features/services/hooks/use-server";
 
 // The Events tab reads server(id) for the cron-runs section; a null service
@@ -132,6 +133,12 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
 
     expect(await screen.findByText("In Progress")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    // The row's <time> hover carries the exact stamp via the shared formatter
+    // ("July 14, 2026 at …") — computed through the helper so this holds in
+    // any runner timezone.
+    expect(
+      screen.getByTitle(formatDateTime("2026-07-14T14:30:00Z")!),
+    ).toBeInTheDocument();
   });
 
   it("does not offer cancel on a started event whose deploy already finished", async () => {

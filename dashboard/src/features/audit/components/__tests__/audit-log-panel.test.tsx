@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { AuditLogPanel } from "@/features/audit/components/audit-log-panel";
+import { formatDateTime } from "@/common/lib/format";
 import type { UseAuditLogResult } from "@/features/audit/hooks/use-audit-log";
 
 // The panel is presentational (w4/m15): its owner (SecurityComplianceSection)
@@ -104,6 +105,9 @@ describe("AuditLogPanel", () => {
     expect(rows[0]).toHaveTextContent("workspace:tea-1");
     expect(rows[1]).not.toHaveTextContent("my-api");
     expect(rows[1]).toHaveTextContent("service:srv-1");
+    // Timestamps render via the shared formatter ("July 11, 2026 at …") —
+    // computed through the helper so this holds in any runner timezone.
+    expect(rows[0]).toHaveTextContent(formatDateTime("2026-07-11T00:00:00Z")!);
 
     const loadMoreButton = screen.getByRole("button", { name: "Load more" });
     expect(loadMoreButton).toBeInTheDocument();

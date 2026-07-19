@@ -1,17 +1,8 @@
 import { TableRow, TableCell } from "@/common/components/ui/table";
 import { Badge } from "@/common/components/ui/badge";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { formatDateTime } from "@/common/lib/format";
 import type { AuditEvent } from "@/features/audit/types";
-
-// Full date + time (an audit trail spans days, unlike the logs viewer's
-// time-only clock, features/logs/lib/format.ts's formatLogTimestamp) — local
-// time, blank rather than "Invalid Date" for an unparseable/missing stamp.
-function formatAuditTimestamp(iso: string): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString();
-}
 
 export interface AuditEventRowProps {
   event: AuditEvent;
@@ -25,8 +16,11 @@ export function AuditEventRow({ event }: AuditEventRowProps) {
 
   return (
     <TableRow>
+      {/* Full date + time (an audit trail spans days, unlike the logs
+          viewer's time-only clock) — null renders blank, never "Invalid
+          Date". */}
       <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-        {formatAuditTimestamp(event.timestamp)}
+        {formatDateTime(event.timestamp)}
       </TableCell>
       <TableCell className="max-w-[16rem] truncate font-mono text-sm">
         {event.actor || t("audit.actorUnknown")}

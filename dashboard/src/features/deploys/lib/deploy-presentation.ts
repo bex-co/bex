@@ -4,11 +4,10 @@
  * surfaces from disagreeing when a timestamp is absent or malformed.
  */
 
+import { formatDateTime } from "@/common/lib/format";
+
 export function formatDeployTimestamp(iso: string | null): string | null {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleString();
+  return formatDateTime(iso);
 }
 
 export function formatDeployDuration(

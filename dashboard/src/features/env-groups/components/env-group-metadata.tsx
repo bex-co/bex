@@ -1,5 +1,6 @@
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { formatDateTime } from "@/common/lib/format";
 import type { EnvGroupView } from "@/features/env-groups/types";
 
 export function EnvGroupMetadata({
@@ -41,7 +42,7 @@ function MetadataItem({
       <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
       <dd className="truncate font-mono text-xs" title={value ?? undefined}>
         {timestamp && value ? (
-          <time dateTime={value}>{value}</time>
+          <time dateTime={value}>{formatDateTime(value) ?? value}</time>
         ) : (
           (value ?? "—")
         )}

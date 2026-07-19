@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RecoveryPanel } from "@/features/databases/components/recovery-panel";
+import { formatDateTime } from "@/common/lib/format";
 import type { ExportItem } from "@/features/databases/hooks/use-recovery";
 
 const navigate = vi.fn();
@@ -40,6 +41,19 @@ beforeEach(() => {
   createExport.mockReset();
   recover.mockReset();
   navigate.mockReset();
+});
+
+describe("RecoveryPanel restore window", () => {
+  it("shows exact restore-point boundaries, with a fallback before the first backup", () => {
+    render(<RecoveryPanel id="db" />);
+
+    expect(screen.getByText("No backup yet")).toBeInTheDocument();
+    // The latest boundary renders as an exact timestamp, not a relative age —
+    // computed via the shared formatter so this holds in any runner timezone.
+    expect(
+      screen.getByText(formatDateTime("2026-07-14T12:00:00Z")!),
+    ).toBeInTheDocument();
+  });
 });
 
 describe("RecoveryPanel logical exports", () => {

@@ -15,6 +15,7 @@ import {
 } from "@/common/components/ui/alert-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatRelativeAge } from "@/features/services/lib/format";
+import { formatDateLong } from "@/common/lib/format";
 import type { RegistryCredentialView } from "@/features/registry-credentials/types";
 
 export interface RegistryCredentialRowProps {
@@ -112,9 +113,7 @@ function StatusBadge({
   }
   if (status === "expiring_soon") {
     return (
-      <Badge variant="secondary">
-        {t("registryCredentials.expiringSoon")}
-      </Badge>
+      <Badge variant="secondary">{t("registryCredentials.expiringSoon")}</Badge>
     );
   }
   if (expiresAt) {
@@ -123,7 +122,7 @@ function StatusBadge({
     return (
       <span className="text-muted-foreground">
         {t("registryCredentials.expiresOn", {
-          date: new Date(expiresAt).toLocaleDateString(),
+          date: formatDateLong(expiresAt) ?? expiresAt,
         })}
       </span>
     );
