@@ -249,9 +249,14 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 		// List observed — Update above only patches spec (status is a separate
 		// subresource) — so it's the right snapshot to decide the app's open
 		// deploy, if any, is done.
-		if open, ok := openByApp[d.ID]; ok {
+		open, hasOpenDeploy := openByApp[d.ID]
+		if hasOpenDeploy {
 			r.recordDeploy(ctx, d, open, cur)
 		}
+		if _, err := r.Store.RecordObservedServiceState(ctx, observedServiceStateFor(d.ID, cur, hasOpenDeploy)); err != nil {
+			log.Printf("controlplane: record observed service state %s: %v", d.ID, err)
+		}
+		r.recordAutoscalingFacts(ctx, d.ID, cur.Status.Autoscaling)
 	}
 	// Rows deleted from Postgres → delete their projected CR.
 	for id, cur := range byID {
@@ -282,6 +287,11 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 			log.Printf("controlplane: set pre-deploy status %s: %v", open.ID, err)
 		}
 	}
+	if fact, ok := observedImagePullFailure(open, cur); ok {
+		if _, err := r.Store.InsertServiceEventFact(ctx, fact); err != nil {
+			log.Printf("controlplane: record image-pull failure %s: %v", open.ID, err)
+		}
+	}
 
 	status := observedDeployStatus(open, cur, r.deployTimedOut(d, open))
 	if status == "" {
@@ -302,11 +312,12 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	// synthesized health-gate-timeout line — so update_failed stops being an
 	// opaque terminal state.
 	failureReason := ""
+	failureCode := ""
 	switch status {
 	case DeployBuildFailed, DeployPreDeployFailed, DeployUpdateFailed:
-		failureReason = failureReasonFor(cur)
+		failureReason, failureCode = failureReasonFor(cur)
 	}
-	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, resolvedImage, failureReason)
+	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, resolvedImage, failureReason, failureCode)
 	if err != nil {
 		log.Printf("controlplane: transition deploy %s to %s: %v", open.ID, status, err)
 		return
@@ -330,6 +341,41 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 			NotificationsToSend: cur.Spec.NotificationsToSend,
 		})
 	}
+}
+
+// observedImagePullFailure turns the operator's current-generation diagnosis
+// into an event immediately. The deploy itself keeps its existing retry and
+// health-gate timeout policy; making the event wait for that timeout would hide
+// a known pull failure for minutes. The source key is shared with the terminal
+// transition path, so a later close remains idempotent.
+func observedImagePullFailure(open Deploy, app *appv1alpha1.App) (ServiceEventFact, bool) {
+	if generation := appReleaseGeneration(app); generation != 0 && open.Generation != 0 && generation != open.Generation {
+		return ServiceEventFact{}, false
+	}
+	for i := range app.Status.Conditions {
+		condition := &app.Status.Conditions[i]
+		if condition.Type != "Ready" || condition.ObservedGeneration != app.Generation || condition.Reason != "ImagePullBackOff" {
+			continue
+		}
+		at := condition.LastTransitionTime.Time
+		if at.IsZero() {
+			at = time.Now().UTC()
+		}
+		image := open.Image
+		if image == "" {
+			image = app.Spec.Image
+		}
+		return ServiceEventFact{
+			SourceKey:  "deploy:" + open.ID + ":image_pull_failed",
+			AppID:      open.AppID,
+			Type:       EventFactImagePullFailed,
+			At:         at,
+			DeployID:   open.ID,
+			Image:      image,
+			ReasonCode: EventReasonImagePullBackoff,
+		}, true
+	}
+	return ServiceEventFact{}, false
 }
 
 // deployTimedOut applies the budget for the deploy row's last observed phase.
@@ -446,21 +492,23 @@ func releaseIsActive(open Deploy, app *appv1alpha1.App) bool {
 // failure — their messages are written to be user-actionable), the raw
 // condition message for any other PhaseFailed, and a synthesized timeout line
 // when the condition proves nothing (a pure health-gate-timeout close).
-func failureReasonFor(app *appv1alpha1.App) string {
+func failureReasonFor(app *appv1alpha1.App) (string, string) {
 	for i := range app.Status.Conditions {
 		c := &app.Status.Conditions[i]
 		if c.Type != "Ready" || c.ObservedGeneration != app.Generation {
 			continue
 		}
 		switch c.Reason {
-		case "CrashLoopBackOff", "ImagePullBackOff", "BuildFailed", "PreDeployFailed":
-			return c.Message
+		case "ImagePullBackOff":
+			return c.Message, EventReasonImagePullBackoff
+		case "CrashLoopBackOff", "BuildFailed", "PreDeployFailed":
+			return c.Message, ""
 		}
 		if app.Status.Phase == appv1alpha1.PhaseFailed && c.Message != "" {
-			return c.Message
+			return c.Message, ""
 		}
 	}
-	return "the deploy did not become healthy within the health-gate window; check the service logs"
+	return "the deploy did not become healthy within the health-gate window; check the service logs", ""
 }
 
 func readyReasonForGeneration(app *appv1alpha1.App) (string, bool) {
@@ -471,6 +519,75 @@ func readyReasonForGeneration(app *appv1alpha1.App) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy bool) ObservedServiceState {
+	obs := ObservedServiceState{
+		AppID:        appID,
+		At:           time.Now().UTC(),
+		ServicePhase: string(app.Status.Phase),
+	}
+	if app.Status.Phase == appv1alpha1.PhaseHibernated {
+		obs.AvailabilityObserved = true
+		return obs
+	}
+	for i := range app.Status.Conditions {
+		condition := &app.Status.Conditions[i]
+		if condition.Type != "Ready" {
+			continue
+		}
+		switch condition.Status {
+		case metav1.ConditionTrue:
+			if app.Status.Phase == appv1alpha1.PhaseRunning {
+				obs.Availability = "healthy"
+				obs.AvailabilityObserved = true
+			}
+		case metav1.ConditionFalse:
+			// Ordinary rollout progress is not a service failure. A concrete
+			// current-revision container failure is still a truthful failed
+			// instance observation even while its deploy remains open/retrying.
+			if hasOpenDeploy && condition.Reason != "ImagePullBackOff" && condition.Reason != "CrashLoopBackOff" {
+				break
+			}
+			if app.Status.ActiveRevision != "" && condition.Reason != "Suspended" && condition.Reason != "AutoHibernated" {
+				obs.Availability = "unhealthy"
+				obs.AvailabilityObserved = true
+				obs.ReasonCode = EventReasonReadinessFailed
+			}
+		}
+		break
+	}
+	return obs
+}
+
+func (r *Reconciler) recordAutoscalingFacts(ctx context.Context, appID string, transition *appv1alpha1.AutoscalingStatus) {
+	if transition == nil || transition.TransitionID == "" {
+		return
+	}
+	startedAt, err := time.Parse(time.RFC3339Nano, transition.StartedAt)
+	if err != nil {
+		return
+	}
+	from, to := transition.FromReplicas, transition.ToReplicas
+	facts := []ServiceEventFact{{
+		SourceKey: fmt.Sprintf("autoscaling:%s:%s:started", appID, transition.TransitionID),
+		AppID:     appID, Type: EventFactAutoscalingStarted, At: startedAt,
+		FromCount: &from, ToCount: &to,
+	}}
+	if transition.State == appv1alpha1.AutoscalingTransitionEnded {
+		if finishedAt, parseErr := time.Parse(time.RFC3339Nano, transition.FinishedAt); parseErr == nil {
+			facts = append(facts, ServiceEventFact{
+				SourceKey: fmt.Sprintf("autoscaling:%s:%s:ended", appID, transition.TransitionID),
+				AppID:     appID, Type: EventFactAutoscalingEnded, At: finishedAt,
+				FromCount: &from, ToCount: &to,
+			})
+		}
+	}
+	for _, fact := range facts {
+		if _, err := r.Store.InsertServiceEventFact(ctx, fact); err != nil {
+			log.Printf("controlplane: record autoscaling fact %s: %v", fact.SourceKey, err)
+		}
+	}
 }
 
 // preDeployStatusFor maps the App CR's pre-deploy step status (status.preDeploy,

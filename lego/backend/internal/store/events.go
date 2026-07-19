@@ -26,17 +26,19 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// events.go is the read view behind the per-service events feed (w3/m7,
-// internal/events). It composes two tables bex already writes and adds no third:
+// events.go is the read view behind the per-service events feed. It composes
+// three durable sources:
 //
 //   - deploys      — one row per rollout; its created_at and finished_at are two
 //     transitions, so one row projects into up to TWO events.
 //   - audit_events — one row per authorized write verb, since w3/m7 carrying the
 //     TARGET it acted on (core.ServiceTarget), which is what makes it
 //     attributable to a service at all.
+//   - service_event_facts — closed, typed observations and signed-Git decisions
+//     that are neither deploy-row timestamps nor authorized API writes.
 //
 // The merge is done in SQL (one UNION ALL, one ORDER BY, one LIMIT), not in Go:
-// paging a two-source feed from Go would mean over-fetching both sides on every
+// paging a multi-source feed from Go would mean over-fetching every side on every
 // page and re-merging, and the keyset below is exactly what Postgres is good at.
 // The event VOCABULARY (which verb is which event type) stays in Go — this layer
 // never interprets a verb, it only filters on the sets the caller passes in.
@@ -45,6 +47,7 @@ import (
 const (
 	EventSourceDeploy = "deploy"
 	EventSourceAudit  = "audit"
+	EventSourceFact   = "fact"
 )
 
 // Deploy-event phases: one deploys row yields a started event at created_at and,
@@ -68,7 +71,7 @@ type ServiceEventRow struct {
 	// at most once. internal/events hashes it into the public evt-… id.
 	Key string
 	At  time.Time
-	// Source is EventSourceDeploy or EventSourceAudit.
+	// Source is EventSourceDeploy, EventSourceAudit, or EventSourceFact.
 	Source string
 	// Phase is EventPhaseStarted/EventPhaseEnded for a deploy row; empty for audit.
 	Phase string
@@ -104,6 +107,18 @@ type ServiceEventRow struct {
 	AutoscalingMinTo   *int32
 	AutoscalingMaxTo   *int32
 	AutoDeployEnabled  *bool
+
+	// Typed service_event_facts columns. FactType is the closed discriminator;
+	// all remaining values are bounded scalars used only by the types that own
+	// them. Image and CommitID reuse the deploy columns above.
+	FactType   string
+	ReasonCode string
+	InstanceID string
+	FromCount  *int32
+	ToCount    *int32
+	BranchFrom string
+	BranchTo   string
+	CommitURL  string
 }
 
 // AutoDeployFilter constrains the auto_deploy_enabled column on the audit arm.
@@ -148,6 +163,12 @@ type ServiceEventFilter struct {
 	// Phases are the deploy transitions the caller asked for (EventPhaseStarted
 	// and/or EventPhaseEnded).
 	Phases []string
+	// FactTypes are the closed service_event_facts kinds requested by the caller.
+	FactTypes []string
+	// LegacyTarget is the old workspace-unique service:<public-name> audit key.
+	// It is matched only inside ownerWorkspace, never workspace:default; current
+	// writes use the namespace-unique CR-name target passed to ListServiceEvents.
+	LegacyTarget string
 	// AutoDeploy pushes down the auto-deploy boolean discrimination into SQL when
 	// the Verbs set includes apps.SetAutoDeploy. AutoDeployFilterNone (zero value)
 	// means no additional constraint on auto_deploy_enabled.
@@ -156,8 +177,9 @@ type ServiceEventFilter struct {
 	Limit int
 }
 
-// serviceEventsQuery is the composed view: two projections of `deploys` and one
-// of `audit_events`, ordered by the feed's total order and paged by keyset.
+// serviceEventsQuery is the composed view: two projections of `deploys`, one of
+// `audit_events`, and one of `service_event_facts`, ordered by the feed's total
+// order and paged by keyset.
 //
 // Two predicates on the audit arm are NOT caller-supplied, because they are what
 // make the feed truthful rather than merely filtered:
@@ -200,7 +222,15 @@ WITH feed AS (
            d.commit                            AS commit_id,
            d.commit_message                    AS commit_message,
            d.started_at                        AS started_at,
-           d.finished_at                       AS finished_at
+           d.finished_at                       AS finished_at,
+           ''::text                            AS fact_type,
+           ''::text                            AS reason_code,
+           ''::text                            AS instance_id,
+           NULL::integer                       AS fact_from_count,
+           NULL::integer                       AS fact_to_count,
+           ''::text                            AS branch_from,
+           ''::text                            AS branch_to,
+           ''::text                            AS commit_url
     FROM deploys d
     WHERE d.app_id = $1 AND '` + EventPhaseStarted + `' = ANY($5)
   UNION ALL
@@ -227,7 +257,15 @@ WITH feed AS (
            d.commit,
            d.commit_message,
            d.started_at,
-           d.finished_at
+           d.finished_at,
+           ''::text,
+           ''::text,
+           ''::text,
+           NULL::integer,
+           NULL::integer,
+           ''::text,
+           ''::text,
+           ''::text
     FROM deploys d
     WHERE d.app_id = $1 AND d.finished_at IS NOT NULL AND '` + EventPhaseEnded + `' = ANY($5)
   UNION ALL
@@ -254,21 +292,66 @@ WITH feed AS (
            ''::text,
            ''::text,
            NULL::timestamptz,
-           NULL::timestamptz
+           NULL::timestamptz,
+           ''::text,
+           ''::text,
+           ''::text,
+           NULL::integer,
+           NULL::integer,
+           ''::text,
+           ''::text,
+           ''::text
     FROM audit_events a
-    WHERE a.target = $2
+    WHERE ((a.target = $2 AND a.workspace_id = ANY($3))
+           OR ($13::text <> '' AND a.target = $13 AND a.workspace_id = $14))
       AND a.outcome = 'allowed'
-      AND a.workspace_id = ANY($3)
       AND a.verb = ANY($4)
       AND ($11::smallint IS NULL
            OR ($11 = 1 AND a.auto_deploy_enabled = true)
            OR ($11 = 2 AND a.auto_deploy_enabled = false)
            OR ($11 = 3 AND a.auto_deploy_enabled IS NULL))
+  UNION ALL
+    SELECT 'fact:' || f.source_key,
+           f.at,
+           '` + EventSourceFact + `'::text,
+           ''::text,
+           f.deploy_id,
+           ''::text,
+           ''::text,
+           ''::text,
+           ''::text,
+           ''::text,
+           NULL::text,
+           NULL::text,
+           NULL::integer,
+           NULL::integer,
+           NULL::integer,
+           NULL::integer,
+           NULL::integer,
+           NULL::integer,
+           NULL::boolean,
+           f.image,
+           f.commit_id,
+           ''::text,
+           NULL::timestamptz,
+           NULL::timestamptz,
+           f.fact_type,
+           f.reason_code,
+           f.instance_id,
+           f.from_count,
+           f.to_count,
+           f.branch_from,
+           f.branch_to,
+           f.commit_url
+    FROM service_event_facts f
+    WHERE f.app_id = $1 AND f.fact_type = ANY($12)
 )
 SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, verb, caller,
        plan_from, plan_to, instance_count_from, instance_count_to,
        autoscaling_min_from, autoscaling_max_from, autoscaling_min_to, autoscaling_max_to,
-       auto_deploy_enabled, image, commit_id, commit_message, started_at, finished_at
+       auto_deploy_enabled, image, commit_id, commit_message, started_at, finished_at,
+       fact_type, reason_code, instance_id, fact_from_count, fact_to_count,
+       branch_from, branch_to, commit_url
 FROM feed
 WHERE ($6::timestamptz IS NULL OR at >= $6)
   AND ($7::timestamptz IS NULL OR at <= $7)
@@ -300,7 +383,7 @@ func (s *PGStore) ListServiceEvents(ctx context.Context, appID, target, ownerWor
 	rows, err := s.Pool.Query(ctx, serviceEventsQuery,
 		appID, target, workspaces, f.Verbs, f.Phases,
 		nullTime(f.Since), nullTime(f.Until), nullTime(f.AfterAt), f.AfterKey,
-		limit, nullAutoDeployFilter(f.AutoDeploy))
+		limit, nullAutoDeployFilter(f.AutoDeploy), f.FactTypes, f.LegacyTarget, ownerWorkspace)
 	if err != nil {
 		return nil, fmt.Errorf("list service events: %w", err)
 	}
@@ -341,6 +424,8 @@ func scanServiceEventRow(row pgx.Row) (ServiceEventRow, error) {
 	err := row.Scan(&r.Key, &r.At, &r.Source, &r.Phase, &r.DeployID, &r.Trigger, &r.Status, &r.PreDeployStatus, &r.Verb, &r.Caller,
 		&r.PlanFrom, &r.PlanTo, &r.InstanceCountFrom, &r.InstanceCountTo,
 		&r.AutoscalingMinFrom, &r.AutoscalingMaxFrom, &r.AutoscalingMinTo, &r.AutoscalingMaxTo,
-		&r.AutoDeployEnabled, &r.Image, &r.CommitID, &r.CommitMessage, &r.StartedAt, &r.FinishedAt)
+		&r.AutoDeployEnabled, &r.Image, &r.CommitID, &r.CommitMessage, &r.StartedAt, &r.FinishedAt,
+		&r.FactType, &r.ReasonCode, &r.InstanceID, &r.FromCount, &r.ToCount,
+		&r.BranchFrom, &r.BranchTo, &r.CommitURL)
 	return r, err
 }

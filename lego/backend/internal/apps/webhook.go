@@ -22,6 +22,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -31,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -79,13 +81,20 @@ func (h *GitWebhook) verify(sig string, body []byte) bool {
 // and App.spec.buildFilter, monorepo support) — GitHub and Gitea both carry
 // added/removed/modified paths per commit in this shape.
 type pushEvent struct {
-	Ref        string `json:"ref"` // e.g. refs/heads/main
-	Repository struct {
+	Ref         string `json:"ref"` // e.g. refs/heads/main
+	After       string `json:"after"`
+	DeliveryKey string `json:"-"`
+	Repository  struct {
 		CloneURL string `json:"clone_url"`
 		SSHURL   string `json:"ssh_url"`
 		HTMLURL  string `json:"html_url"`
 		URL      string `json:"url"`
 	} `json:"repository"`
+	HeadCommit struct {
+		ID      string `json:"id"`
+		URL     string `json:"url"`
+		Message string `json:"message"`
+	} `json:"head_commit"`
 	Commits []struct {
 		Added    []string `json:"added"`
 		Removed  []string `json:"removed"`
@@ -135,6 +144,11 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		core.WriteErrStatus(w, http.StatusBadRequest, "malformed push payload")
 		return
 	}
+	ev.DeliveryKey = r.Header.Get("X-GitHub-Delivery")
+	if ev.DeliveryKey == "" {
+		digest := sha256.Sum256(body)
+		ev.DeliveryKey = hex.EncodeToString(digest[:])
+	}
 	branch := strings.TrimPrefix(ev.Ref, "refs/heads/")
 	redeployed, err := h.redeployMatching(r.Context(), ev, branch)
 	if err != nil {
@@ -165,10 +179,16 @@ func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch 
 		if a.Spec.Repo == "" || !repoMatches(a.Spec.Repo, ev) || !branchMatches(a.Spec.Branch, branch) {
 			continue
 		}
+		if commitHasSkipPhrase(ev.HeadCommit.Message) {
+			h.recordCommitIgnored(ctx, a, ev, store.EventReasonSkipPhrase)
+			continue
+		}
 		if !rootDirMatches(a.Spec.RootDir, paths) {
+			h.recordCommitIgnored(ctx, a, ev, store.EventReasonRootDirectory)
 			continue
 		}
 		if !buildFilterMatches(a.Spec.BuildFilter, paths) {
+			h.recordCommitIgnored(ctx, a, ev, store.EventReasonBuildFilter)
 			continue
 		}
 		if _, err := h.Svc.redeploy(ctx, a.Name); err != nil {
@@ -184,6 +204,42 @@ func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch 
 		redeployed = append(redeployed, a.Name)
 	}
 	return redeployed, nil
+}
+
+func commitHasSkipPhrase(message string) bool {
+	message = strings.ToLower(message)
+	for _, phrase := range []string{"[skip render]", "[render skip]"} {
+		if strings.Contains(message, phrase) {
+			return true
+		}
+	}
+	return false
+}
+
+func (h *GitWebhook) recordCommitIgnored(ctx context.Context, app *appv1alpha1.App, ev pushEvent, reason string) {
+	if h.Svc.EventFacts == nil {
+		return
+	}
+	appID := managedAppID(app)
+	if appID == "" {
+		return
+	}
+	commitID := ev.HeadCommit.ID
+	if commitID == "" {
+		commitID = ev.After
+	}
+	commitURL := ev.HeadCommit.URL
+	if commitURL != "" && !core.ValidAbsoluteHTTPURL(commitURL) {
+		commitURL = ""
+	}
+	fact := store.ServiceEventFact{
+		SourceKey: fmt.Sprintf("git:%s:%s:ignored", ev.DeliveryKey, appID),
+		AppID:     appID, Type: store.EventFactCommitIgnored, At: h.Svc.Now().UTC(),
+		ReasonCode: reason, CommitID: commitID, CommitURL: commitURL,
+	}
+	if _, err := h.Svc.EventFacts.InsertServiceEventFact(ctx, fact); err != nil {
+		log.Printf("events: record ignored commit for %s: %v", appID, err)
+	}
 }
 
 // repoMatches reports whether an App's spec.repo names the pushed repository,

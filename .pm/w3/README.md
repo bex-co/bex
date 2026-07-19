@@ -38,6 +38,7 @@ Develop against `.pm/w3/dev-3/`, this worker's own isolated stack on the shared 
 - [x] **m28** — Managed Postgres logs across API and dashboard (8 tasks) — **DONE** 2026-07-15 ([done/m28](done/m28/README.md)): the dedicated Postgres compatibility endpoints and Render's generic `resource=dpg-…` logs contract share one Database-authorized production query; Alloy ships only operator-marked tenant CNPG `postgres` streams under immutable database labels, with an exact CNPG pod fallback; the directly linked dashboard Logs tab has range/search/instance controls and honest empty/403/503/error states. ← from the 2026-07-15 live dashboard parity walk (`w5/m32`)
 - [x] **m29** — Events `type` filter: push the auto-deploy discrimination into SQL (6 tasks) — **DONE** 2026-07-15 ([done/m29](done/m29/README.md)): `AutoDeployFilter` type + `$11` SQL predicate in `store/events.go`; `pushDown` split into three auto-deploy cases each returning the right filter; `TestAutoDeployTypeFilterIsPushedDown` proves all 3. ← from `/pm-brainstorm` round 18, 2026-07-15
 - [x] **m30** — Datastore logs completion: Key Value coverage + Postgres-logs surface consistency (10 tasks) — **done 2026-07-16** ([done/m30](done/m30/README.md)): Alloy `keyvalue_pods` pipeline ships Valkey logs to Loki under `type=keyvalue`/`keyvalue=<red-id>`; backend dispatches `red-` ids through `AuthorizeKeyValue(can_view_logs)` in `queryKeyValueLogs`; REST `GET /v1/key-value/{id}/logs`, GraphQL `keyValueLogs`, MCP `get_key_value_logs`; dashboard `/keyvalue/$id?tab=logs` with range/instance/search and distinct empty/403/503 states; `databaseLogs` GraphQL now exposes `instance`/`type`; `get_postgres_logs` description fixed. 8 new backend tests lock authorization, dispatch, instance/text filters, cross-workspace isolation, and the GQL field shape. ← from `/pm-brainstorm` round 21, 2026-07-15
+- [x] **m19** — Service activity timeline: durable history + observed event fidelity (12 tasks) — **DONE** 2026-07-18 ([done/m19](done/m19/README.md)) ← from user report 2026-07-18 (`srv-d9bj8s3eg85c7390eb9g/events` always empty) + authenticated Render comparison
 
 ## Inbox
 
@@ -45,8 +46,7 @@ Develop against `.pm/w3/dev-3/`, this worker's own isolated stack on the shared 
 
 > `005.md` ("deploy started" notification toggle) done 2026-07-15 — `deployStarted` now persists and ships across REST/GraphQL/MCP/dashboard, with best-effort request-time hooks on API/deploy-hook and signed git-push deploys; moved to `done/005.md`.
 
-> `003.md` closed 2026-07-13 — conflicts with `.pm/DO_NOT_DO.md`'s "external log/metric drains — non-goal" entry; not built, moved to `done/003.md`.
-> `004.md` promoted to **m13** 2026-07-13; note moved to `done/`.
+> `003.md` closed 2026-07-13 — conflicts with `.pm/DO_NOT_DO.md`'s "external log/metric drains — non-goal" entry; not built, moved to `done/003.md`. `004.md` promoted to **m13** 2026-07-13; note moved to `done/`.
 
 > `002.md` (request logs + structured filters) promoted to **m8** 2026-07-12; note moved to `done/`.
 

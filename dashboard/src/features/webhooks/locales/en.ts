@@ -258,6 +258,14 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Deploy",
     description: "Event-picker group — deploy lifecycle events",
   },
+  "webhooks.group.serviceAvailability": {
+    message: "Service Availability",
+    description: "Event-picker group — observed service availability events",
+  },
+  "webhooks.group.scaling": {
+    message: "Scaling",
+    description: "Event-picker group — service scaling events",
+  },
   "webhooks.group.cronJobRun": {
     message: "Cron Job Run",
     description: "Event-picker group — cron job run events",
@@ -286,6 +294,34 @@ const enWebhooks: Record<string, TranslationEntry> = {
   "webhooks.event.deploy_ended": {
     message: "Deploy Ended",
     description: "Event label — deploy_ended",
+  },
+  "webhooks.event.image_pull_failed": {
+    message: "Image Pull Failed",
+    description: "Event label — image_pull_failed",
+  },
+  "webhooks.event.commit_ignored": {
+    message: "Commit Ignored",
+    description: "Event label — commit_ignored",
+  },
+  "webhooks.event.server_failed": {
+    message: "Server Failed",
+    description: "Event label — server_failed",
+  },
+  "webhooks.event.server_available": {
+    message: "Server Available",
+    description: "Event label — server_available",
+  },
+  "webhooks.event.autoscaling_started": {
+    message: "Autoscaling Started",
+    description: "Event label — autoscaling_started",
+  },
+  "webhooks.event.autoscaling_ended": {
+    message: "Autoscaling Ended",
+    description: "Event label — autoscaling_ended",
+  },
+  "webhooks.event.branch_changed": {
+    message: "Branch Changed",
+    description: "Event label — branch_changed bex extension",
   },
   "webhooks.event.cron_job_run_started": {
     message: "Cron Job Run Started",

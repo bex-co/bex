@@ -63,6 +63,7 @@ var _ = Describe("Release identity operational reconciliation", func() {
 	}
 	markReady := func(replicas int32) {
 		dep := getDeployment()
+		dep.Status.ObservedGeneration = dep.Generation
 		dep.Status.Replicas = replicas
 		dep.Status.UpdatedReplicas = replicas
 		dep.Status.ReadyReplicas = replicas

@@ -120,3 +120,24 @@ func TestStuckPodMessage(t *testing.T) {
 		})
 	}
 }
+
+func TestDeploymentRolloutReadyRejectsReadyOldReplicaSet(t *testing.T) {
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Generation: 2},
+		Status: appsv1.DeploymentStatus{
+			ObservedGeneration: 2,
+			Replicas:           3,
+			UpdatedReplicas:    1,
+			ReadyReplicas:      2,
+			AvailableReplicas:  2,
+		},
+	}
+	if deploymentRolloutReady(dep, 2) {
+		t.Fatal("rollout with two ready old replicas and one failing new replica reported complete")
+	}
+	dep.Status.Replicas = 2
+	dep.Status.UpdatedReplicas = 2
+	if !deploymentRolloutReady(dep, 2) {
+		t.Fatal("fully updated and available rollout did not report complete")
+	}
+}

@@ -744,6 +744,40 @@ spec:
                   separate from Image, which remains the image of ActiveRevision while a new
                   artifact waits on pre-deploy or rollout health gates.
                 type: string
+              autoscaling:
+                description: |-
+                  Autoscaling is the latest autoscaler-driven replica transition. Manual
+                  Scale changes never populate it.
+                properties:
+                  finishedAt:
+                    type: string
+                  fromReplicas:
+                    format: int32
+                    type: integer
+                  startedAt:
+                    type: string
+                  state:
+                    description: |-
+                      State is Started while the Deployment converges and Ended once the target
+                      replica count is ready.
+                    enum:
+                    - Started
+                    - Ended
+                    type: string
+                  toReplicas:
+                    format: int32
+                    type: integer
+                  transitionId:
+                    description: TransitionID is stable for the lifetime of this from/to
+                      edge.
+                    type: string
+                required:
+                - fromReplicas
+                - startedAt
+                - state
+                - toReplicas
+                - transitionId
+                type: object
               conditions:
                 description: Conditions represent the current state (Ready / Progressing
                   / Degraded).

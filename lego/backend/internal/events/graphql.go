@@ -64,10 +64,17 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"commitMessage": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.CommitMessage })},
 		"startedAt":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return formatTime(d.StartedAt) })},
 		"finishedAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return formatTime(d.FinishedAt) })},
-		"actor":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.Actor })},
+		"actor":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.Actor })},
 		"triggeredByUser": &graphql.Field{
 			Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.TriggeredByUser }),
 		},
+		"reasonCode": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.ReasonCode })},
+		"instanceId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.InstanceID })},
+		"commitUrl":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.CommitURL })},
+		"fromCount":  &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(d Details) any { return d.FromCount })},
+		"toCount":    &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(d Details) any { return d.ToCount })},
+		"branchFrom": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.BranchFrom })},
+		"branchTo":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.BranchTo })},
 		"trigger": &graphql.Field{Type: triggerGQLType, Resolve: gqlutil.Field(func(d Details) any {
 			if d.Trigger == nil {
 				return nil

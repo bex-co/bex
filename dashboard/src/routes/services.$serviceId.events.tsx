@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Activity,
   AlertCircle,
   CheckCircle2,
   CircleDot,
+  ListFilter,
   PauseCircle,
   PlayCircle,
   RefreshCcw,
@@ -35,6 +37,11 @@ import {
 } from "@/features/deploys/lib/deploy-status";
 import { DeployActions } from "@/features/deploys/components/deploy-actions";
 import { useServiceEvents } from "@/features/events/hooks/use-service-events";
+import { ServiceEventFilter } from "@/features/events/components/service-event-filter";
+import {
+  SERVICE_EVENT_TYPES,
+  serviceEventLabelKey,
+} from "@/features/events/service-event-catalog";
 
 export const Route = createFileRoute("/services/$serviceId/events")({
   component: ServiceEventsPage,
@@ -63,71 +70,13 @@ function triggerKey(trigger: TriggerFlags): string | null {
   return null;
 }
 
-function eventTitleKey(type: string): string {
-  switch (type) {
-    case "deploy_started":
-      return "services.eventsTypeDeployStarted";
-    case "deploy_ended":
-      return "services.eventsTypeDeployFinished";
-    case "suspender_added":
-      return "services.eventsTypeSuspended";
-    case "suspender_removed":
-      return "services.eventsTypeResumed";
-    case "server_restarted":
-      return "services.eventsTypeRestarted";
-    case "plan_changed":
-      return "services.eventsTypePlanChanged";
-    case "instance_count_changed":
-      return "services.eventsTypeInstanceCountChanged";
-    case "autoscaling_config_changed":
-      return "services.eventsTypeAutoscalingChanged";
-    case "cron_job_run_started":
-      return "services.eventsTypeCronRunStarted";
-    case "cron_job_run_ended":
-      return "services.eventsTypeCronRunFinished";
-    case "env_vars_changed":
-      return "services.eventsTypeEnvVarsChanged";
-    case "service_environment_changed":
-      return "services.eventsTypeEnvironmentChanged";
-    case "env_group_linked":
-      return "services.eventsTypeEnvGroupLinked";
-    case "env_group_unlinked":
-      return "services.eventsTypeEnvGroupUnlinked";
-    case "auto_deploy_changed":
-      return "services.eventsTypeAutoDeployChanged";
-    case "idle_timeout_changed":
-      return "services.eventsTypeIdleTimeoutChanged";
-    case "display_name_changed":
-      return "services.eventsTypeDisplayNameChanged";
-    case "custom_domain_added":
-      return "services.eventsTypeCustomDomainAdded";
-    case "custom_domain_removed":
-      return "services.eventsTypeCustomDomainRemoved";
-    case "notify_on_fail_changed":
-      return "services.eventsTypeNotificationsChanged";
-    case "subdomain_policy_changed":
-      return "services.eventsTypeSubdomainPolicyChanged";
-    case "publish_path_changed":
-    case "routes_changed":
-    case "headers_changed":
-      return "services.eventsTypeStaticSiteChanged";
-    case "root_directory_changed":
-    case "dockerfile_path_changed":
-    case "build_filter_changed":
-    case "commands_changed":
-    case "source_changed":
-    case "pre_deploy_command_changed":
-    case "max_shutdown_delay_changed":
-      return "services.eventsTypeBuildSettingsChanged";
-    default:
-      return "services.eventsTypeServiceChanged";
-  }
-}
-
 function EventIcon({ type, status }: { type: string; status: string }) {
   const iconProps = { className: "size-4", "aria-hidden": true } as const;
 
   if (type === "deploy_started") return <Rocket {...iconProps} />;
+  if (type === "image_pull_failed" || type === "server_failed") {
+    return <XCircle {...iconProps} />;
+  }
   if (type === "deploy_ended") {
     return status === "update_failed" ? (
       <XCircle {...iconProps} />
@@ -135,12 +84,22 @@ function EventIcon({ type, status }: { type: string; status: string }) {
       <CheckCircle2 {...iconProps} />
     );
   }
-  if (type === "suspender_added") return <PauseCircle {...iconProps} />;
-  if (type === "suspender_removed") return <PlayCircle {...iconProps} />;
+  if (type === "suspender_added" || type === "service_suspended") {
+    return <PauseCircle {...iconProps} />;
+  }
+  if (
+    type === "suspender_removed" ||
+    type === "service_resumed" ||
+    type === "server_available"
+  ) {
+    return <PlayCircle {...iconProps} />;
+  }
   if (type === "server_restarted") return <RefreshCcw {...iconProps} />;
   if (
     type === "instance_count_changed" ||
-    type === "autoscaling_config_changed"
+    type === "autoscaling_config_changed" ||
+    type === "autoscaling_started" ||
+    type === "autoscaling_ended"
   ) {
     return <Scale {...iconProps} />;
   }
@@ -148,7 +107,11 @@ function EventIcon({ type, status }: { type: string; status: string }) {
 }
 
 function eventIconClass(type: string, status: string): string {
-  if (status === "update_failed") {
+  if (
+    status === "update_failed" ||
+    type === "image_pull_failed" ||
+    type === "server_failed"
+  ) {
     return "bg-destructive/10 text-destructive";
   }
   if (type === "deploy_ended" && status === "live") {
@@ -163,10 +126,25 @@ function eventIconClass(type: string, status: string): string {
 export function ServiceEventsPage() {
   const { serviceId } = Route.useParams();
   const { t } = useTranslations();
-  const { events, loading, error, refetch } = useServiceEvents(serviceId, 20);
-
   // A cron_job's first-class run history hangs off the same landing tab.
   const { service } = useServer(serviceId);
+  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(
+    () => new Set(SERVICE_EVENT_TYPES),
+  );
+  const [historyWindow] = useState(() => {
+    const end = Date.now();
+    return {
+      startTime: new Date(end - 720 * 60 * 60 * 1000).toISOString(),
+      endTime: new Date(end).toISOString(),
+    };
+  });
+  const { events, loading, loadingMore, hasMore, error, refetch, loadMore } =
+    useServiceEvents(serviceId, {
+      limit: 20,
+      ...historyWindow,
+      historyStartTime: service?.createdAt ?? undefined,
+      windowHours: 720,
+    });
 
   const finishedDeployIds = new Set(
     events
@@ -174,33 +152,42 @@ export function ServiceEventsPage() {
       .map((event) => event.details?.deployId)
       .filter((id): id is string => !!id),
   );
+  const visibleEvents = events.filter((event) =>
+    selectedTypes.has(event.type ?? ""),
+  );
 
   return (
     <div className="space-y-6">
       <Card className="gap-0 overflow-hidden py-0">
         <CardHeader className="border-b py-5">
-          <div className="flex items-start gap-3">
-            <div className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
-              <Activity className="size-4" aria-hidden="true" />
-            </div>
-            <div className="min-w-0 space-y-1">
-              <div className="flex items-center gap-2">
-                <CardTitle>{t("services.eventsTitle")}</CardTitle>
-                {!loading && !error && events.length > 0 ? (
-                  <Badge
-                    variant="secondary"
-                    aria-label={t("services.eventsCount", {
-                      count: events.length,
-                    })}
-                  >
-                    {events.length}
-                  </Badge>
-                ) : null}
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+            <div className="flex items-start gap-3">
+              <div className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
+                <Activity className="size-4" aria-hidden="true" />
               </div>
-              <CardDescription>
-                {t("services.eventsDescription")}
-              </CardDescription>
+              <div className="min-w-0 space-y-1">
+                <div className="flex items-center gap-2">
+                  <CardTitle>{t("services.eventsTitle")}</CardTitle>
+                  {!loading && !error && visibleEvents.length > 0 ? (
+                    <Badge
+                      variant="secondary"
+                      aria-label={t("services.eventsCount", {
+                        count: visibleEvents.length,
+                      })}
+                    >
+                      {visibleEvents.length}
+                    </Badge>
+                  ) : null}
+                </div>
+                <CardDescription>
+                  {t("services.eventsDescription")}
+                </CardDescription>
+              </div>
             </div>
+            <ServiceEventFilter
+              value={selectedTypes}
+              onChange={setSelectedTypes}
+            />
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -246,9 +233,21 @@ export function ServiceEventsPage() {
                 {t("services.eventsEmpty")}
               </p>
             </div>
+          ) : visibleEvents.length === 0 ? (
+            <div className="flex flex-col items-center px-6 py-14 text-center">
+              <div className="bg-muted text-muted-foreground mb-4 flex size-10 items-center justify-center rounded-full">
+                <ListFilter className="size-5" aria-hidden="true" />
+              </div>
+              <p className="font-medium">
+                {t("services.eventsFilterEmptyTitle")}
+              </p>
+              <p className="text-muted-foreground mt-1 max-w-sm text-sm">
+                {t("services.eventsFilterEmpty")}
+              </p>
+            </div>
           ) : (
             <div className="divide-y">
-              {events.map((event) => {
+              {visibleEvents.map((event) => {
                 const details = event.details;
                 const deployId = details?.deployId ?? "";
                 // Render's deploy_started event intentionally has no terminal
@@ -282,6 +281,13 @@ export function ServiceEventsPage() {
                     commitMessage={details?.commitMessage || null}
                     startedAt={details?.startedAt || null}
                     finishedAt={details?.finishedAt || null}
+                    reasonCode={details?.reasonCode || null}
+                    instanceId={details?.instanceId || null}
+                    fromCount={details?.fromCount ?? null}
+                    toCount={details?.toCount ?? null}
+                    branchFrom={details?.branchFrom || null}
+                    branchTo={details?.branchTo || null}
+                    commitUrl={details?.commitUrl || null}
                   />
                 );
                 const hasAction =
@@ -317,6 +323,28 @@ export function ServiceEventsPage() {
                   </div>
                 );
               })}
+              {hasMore ? (
+                <div className="flex justify-center px-5 py-4 sm:px-6">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={loadingMore}
+                    onClick={() => void loadMore()}
+                  >
+                    <RefreshCcw
+                      className={`size-3.5 ${loadingMore ? "animate-spin" : ""}`}
+                      aria-hidden="true"
+                    />
+                    {loadingMore
+                      ? t("services.eventsLoadingOlder")
+                      : t("services.eventsLoadOlder")}
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-muted-foreground px-5 py-4 text-center text-xs sm:px-6">
+                  {t("services.eventsHistoryEnd")}
+                </p>
+              )}
             </div>
           )}
         </CardContent>
@@ -343,6 +371,13 @@ function EventSummary({
   commitMessage,
   startedAt,
   finishedAt,
+  reasonCode,
+  instanceId,
+  fromCount,
+  toCount,
+  branchFrom,
+  branchTo,
+  commitUrl,
 }: {
   type: string;
   status: string;
@@ -357,6 +392,13 @@ function EventSummary({
   commitMessage?: string | null;
   startedAt?: string | null;
   finishedAt?: string | null;
+  reasonCode?: string | null;
+  instanceId?: string | null;
+  fromCount?: number | null;
+  toCount?: number | null;
+  branchFrom?: string | null;
+  branchTo?: string | null;
+  commitUrl?: string | null;
 }) {
   const { t } = useTranslations();
   const isDeploy = type === "deploy_started" || type === "deploy_ended";
@@ -380,7 +422,7 @@ function EventSummary({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-medium group-hover:text-primary">
-            {t(eventTitleKey(type) as Parameters<typeof t>[0])}
+            {t(serviceEventLabelKey(type) as Parameters<typeof t>[0])}
           </p>
           {isDeploy && status ? (
             <Badge variant={statusVariant(status)}>
@@ -428,6 +470,46 @@ function EventSummary({
             }`}
           >
             {t(preDeploy as Parameters<typeof t>[0])}
+          </p>
+        ) : null}
+        {reasonCode ? (
+          <p className="text-muted-foreground mt-2 text-xs">
+            {t(`services.eventsReason.${reasonCode}`)}
+            {instanceId
+              ? ` · ${t("services.eventsInstanceReference", { id: instanceId })}`
+              : ""}
+          </p>
+        ) : null}
+        {fromCount != null && toCount != null ? (
+          <p className="text-muted-foreground mt-2 text-xs">
+            {t("services.eventsReplicaChange", {
+              from: fromCount,
+              to: toCount,
+            })}
+          </p>
+        ) : null}
+        {branchFrom && branchTo ? (
+          <p className="text-muted-foreground mt-2 text-xs">
+            {t("services.eventsBranchChange", {
+              from: branchFrom,
+              to: branchTo,
+            })}
+          </p>
+        ) : null}
+        {type === "commit_ignored" && commitId ? (
+          <p className="text-muted-foreground mt-2 text-xs">
+            {commitUrl ? (
+              <a
+                href={commitUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono underline underline-offset-2"
+              >
+                {commitId.slice(0, 8)}
+              </a>
+            ) : (
+              <span className="font-mono">{commitId.slice(0, 8)}</span>
+            )}
           </p>
         ) : null}
       </div>

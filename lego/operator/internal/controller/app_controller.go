@@ -1141,9 +1141,11 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		return ctrl.Result{}, nil
 	}
 
-	// Readiness: requeue until the Deployment has its replicas ready.
+	// Readiness: requeue until this Deployment revision, rather than retained
+	// ready replicas from the previous ReplicaSet, has completed its rollout.
 	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
-	if dep.Status.ReadyReplicas < replicas {
+	completeAutoscalingTransition(app, dep.Status.Replicas, dep.Status.ReadyReplicas, time.Now())
+	if !deploymentRolloutReady(dep, replicas) {
 		app.Status.Phase = appv1alpha1.PhaseDeploying
 		app.Status.Image = image
 		// Surface why the rollout is stuck when a pod is crash-looping or cannot
@@ -1248,7 +1250,7 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 	}
 
 	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
-	if dep.Status.ReadyReplicas < replicas {
+	if !deploymentRolloutReady(dep, replicas) {
 		app.Status.Phase = appv1alpha1.PhaseDeploying
 		// Same stuck-rollout surfacing as the web path; port 0 — a worker has no
 		// HTTP endpoint, so the $PORT hint is omitted (w9/011).
@@ -1274,6 +1276,17 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 	}
 	logf.FromContext(ctx).Info("worker running (kubernetes)", "name", app.Name, "image", image, "replicas", replicas)
 	return ctrl.Result{}, nil
+}
+
+// deploymentRolloutReady follows the Deployment controller's rollout-complete
+// shape. ReadyReplicas alone is insufficient: during a failed rolling update,
+// the old ReplicaSet can keep the desired number ready while every pod in the
+// new revision is stuck in ErrImagePull.
+func deploymentRolloutReady(dep *appsv1.Deployment, replicas int32) bool {
+	return dep.Status.ObservedGeneration >= dep.Generation &&
+		dep.Status.UpdatedReplicas == replicas &&
+		dep.Status.Replicas == replicas &&
+		dep.Status.AvailableReplicas >= replicas
 }
 
 // reconcileIPAllowListMiddleware creates or removes the Traefik HTTP

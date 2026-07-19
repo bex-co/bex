@@ -252,7 +252,8 @@ func main() {
 		// Job's identity — must match the operator's own BEX_BUILD_NAMESPACE.
 		deps.DeployBuildNamespace = os.Getenv("BEX_BUILD_NAMESPACE")
 		deps.GitHubStore = st        // git connections (w2/m8): connect/disconnect/list read+write git_connections
-		deps.EventStore = st         // service events (w3/m7): the feed composes deploys + audit_events, writing neither
+		deps.EventStore = st         // service events: deploy + audit + typed observed/Git facts
+		deps.EventFacts = st         // typed observed/Git event facts (w3/m19), written outside the operator
 		deps.NotificationsStore = st // deploy notifications (w3/m9): settings read/write + the reconciler's recipient fan-out
 		deps.ProjectsStore = st      // project groupings (w1/m31): project CRUD + service-assignment
 		deps.EnvironmentsStore = st  // environment groupings (layered on w1/m31): environment CRUD + service-assignment
@@ -467,7 +468,7 @@ func main() {
 		go rec.Run(ctx)
 	}
 	// Outbound event webhooks (w3/m11): the delivery worker tails the composed
-	// event feed (deploys + audit_events — the same rows the events feed reads)
+	// event feed (deploys + audit_events + service_event_facts — the same rows the events feed reads)
 	// through a durable watermark and POSTs signed notifications to subscribed
 	// endpoints, with retry/auto-disable. Store off => no worker (the CRUD verbs
 	// already 503 via deps.WebhookStore above). Failure notices reuse the SMTP

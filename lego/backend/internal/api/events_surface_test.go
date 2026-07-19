@@ -43,7 +43,7 @@ import (
 // whose value this asserts can never surface.
 const plantedSecret = "s3cr3t-postgres-password"
 
-// fakeEventStore returns canned composed rows — the two sources' shapes.
+// fakeEventStore returns canned composed rows — all three sources' shapes.
 type fakeEventStore struct {
 	rows   []store.ServiceEventRow
 	gotFil store.ServiceEventFilter
@@ -61,12 +61,14 @@ func (f *fakeEventStore) ListServiceEvents(_ context.Context, appID, target, _ s
 }
 
 func eventFixture(at time.Time) *fakeEventStore {
+	from, to := int32(1), int32(3)
 	return &fakeEventStore{rows: []store.ServiceEventRow{
 		// An env-var write — the redaction case. The caller is a subject, never a value.
 		{Key: "aud-3:", At: at, Source: store.EventSourceAudit, Verb: "secrets.SetEnvVar", Caller: "user-x"},
 		{Key: "aud-2:", At: at.Add(-time.Minute), Source: store.EventSourceAudit, Verb: "apps.Suspend", Caller: "user-x"},
 		{Key: "dep-1:ended", At: at.Add(-2 * time.Minute), Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-1", Trigger: store.TriggerAPI, Status: store.DeployLive},
 		{Key: "dep-1:started", At: at.Add(-3 * time.Minute), Source: store.EventSourceDeploy, Phase: store.EventPhaseStarted, DeployID: "dep-1", Trigger: store.TriggerAPI},
+		{Key: "fact:autoscaling-1", At: at.Add(-4 * time.Minute), Source: store.EventSourceFact, FactType: string(store.EventFactAutoscalingStarted), FromCount: &from, ToCount: &to},
 	}}
 }
 
@@ -107,12 +109,12 @@ func TestEventSurfaceParity(t *testing.T) {
 	if err := json.Unmarshal([]byte(raw), &rest); err != nil {
 		t.Fatalf("decode REST (want a BARE ARRAY, Render's envelope for this endpoint): %v — %s", err, raw)
 	}
-	if len(rest) != 4 {
-		t.Fatalf("REST events = %d, want 4", len(rest))
+	if len(rest) != 5 {
+		t.Fatalf("REST events = %d, want 5", len(rest))
 	}
 
 	// Composition: each source row became the right event type, newest first.
-	wantTypes := []string{events.TypeEnvVarsChanged, events.TypeSuspenderAdded, events.TypeDeployEnded, events.TypeDeployStarted}
+	wantTypes := []string{events.TypeEnvVarsChanged, events.TypeSuspenderAdded, events.TypeDeployEnded, events.TypeDeployStarted, events.TypeAutoscalingStarted}
 	for i, want := range wantTypes {
 		if rest[i].Event.Type != want {
 			t.Errorf("event %d type = %q, want %q", i, rest[i].Event.Type, want)
@@ -157,12 +159,22 @@ func TestEventSurfaceParity(t *testing.T) {
 	if len(rest[0].Event.Details) != 0 {
 		t.Errorf("env_vars_changed details = %v, want {} (no key, no value)", rest[0].Event.Details)
 	}
+	if rest[4].Event.Details["fromInstances"] != float64(1) || rest[4].Event.Details["toInstances"] != float64(3) {
+		t.Errorf("autoscaling details = %v, want fromInstances=1 toInstances=3", rest[4].Event.Details)
+	}
+	if _, wrong := rest[4].Event.Details["from"]; wrong {
+		t.Errorf("autoscaling details used manual-scale field names: %v", rest[4].Event.Details)
+	}
 
 	// --- GraphQL: the same events -------------------------------------------
-	gqlData := gql(t, h, `{ serviceEvents(serviceId: "web", startTime: "2026-07-01T00:00:00Z") { id type serviceId timestamp cursor details { deployId deployStatus actor trigger { manual firstBuild } } } }`)
+	gqlData := gql(t, h, `{ serviceEvents(serviceId: "web", startTime: "2026-07-01T00:00:00Z") { id type serviceId timestamp cursor details { deployId deployStatus actor fromCount toCount trigger { manual firstBuild } } } }`)
 	gqlList, ok := gqlData["serviceEvents"].([]any)
-	if !ok || len(gqlList) != 4 {
-		t.Fatalf("GraphQL serviceEvents = %v, want 4 events", gqlData["serviceEvents"])
+	if !ok || len(gqlList) != 5 {
+		t.Fatalf("GraphQL serviceEvents = %v, want 5 events", gqlData["serviceEvents"])
+	}
+	gqlAutoscaling := gqlList[4].(map[string]any)["details"].(map[string]any)
+	if gqlAutoscaling["fromCount"] != float64(1) || gqlAutoscaling["toCount"] != float64(3) {
+		t.Errorf("GraphQL autoscaling details = %v", gqlAutoscaling)
 	}
 	for i, r := range rest {
 		g := gqlList[i].(map[string]any)
@@ -174,8 +186,8 @@ func TestEventSurfaceParity(t *testing.T) {
 
 	// --- MCP: the same events ------------------------------------------------
 	mcpEvents := callListServiceEvents(t, srv, map[string]any{"serviceId": "web", "startTime": "2026-07-01T00:00:00Z"})
-	if len(mcpEvents) != 4 {
-		t.Fatalf("MCP list_service_events = %d events, want 4", len(mcpEvents))
+	if len(mcpEvents) != 5 {
+		t.Fatalf("MCP list_service_events = %d events, want 5", len(mcpEvents))
 	}
 	for i, r := range rest {
 		if m := mcpEvents[i]; r.Event.ID != m.Event.ID || r.Event.Type != m.Event.Type ||

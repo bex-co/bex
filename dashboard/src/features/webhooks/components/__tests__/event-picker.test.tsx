@@ -11,6 +11,8 @@ const VOCAB = [
   "cron_job_run_started",
   "deploy_ended",
   "deploy_started",
+  "image_pull_failed",
+  "commit_ignored",
   "instance_count_changed",
   "maintenance_mode_enabled",
   "maintenance_mode_uri_updated",
@@ -21,6 +23,11 @@ const VOCAB = [
   "postgres_credentials_deleted",
   "postgres_restarted",
   "server_restarted",
+  "server_failed",
+  "server_available",
+  "autoscaling_started",
+  "autoscaling_ended",
+  "branch_changed",
   "service_resumed",
   "service_suspended",
 ];
@@ -33,7 +40,9 @@ function Harness({
   initial?: string[];
 }) {
   const [value, setValue] = useState<Set<string>>(() => new Set(initial));
-  return <EventPicker eventTypes={eventTypes} value={value} onChange={setValue} />;
+  return (
+    <EventPicker eventTypes={eventTypes} value={value} onChange={setValue} />
+  );
 }
 
 describe("catalogEntries (w1/m49/t002)", () => {
@@ -81,7 +90,9 @@ describe("EventPicker", () => {
     ).toBeChecked();
 
     // Unchecking one child sends the group checkbox to mixed, not unchecked.
-    await user.click(screen.getByRole("checkbox", { name: "Postgres Created" }));
+    await user.click(
+      screen.getByRole("checkbox", { name: "Postgres Created" }),
+    );
     expect(screen.getByTestId("event-count")).toHaveTextContent(
       "4 events selected",
     );

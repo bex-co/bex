@@ -159,6 +159,37 @@ func TestViewMapsEverySource(t *testing.T) {
 		name:     "env-var write carries neither key nor value",
 		row:      store.ServiceEventRow{Key: "aud-7:", Source: store.EventSourceAudit, Verb: "secrets.SetEnvVar", Caller: "user-x"},
 		wantType: TypeEnvVarsChanged,
+	}, {
+		name: "image pull fact carries only bounded failure details",
+		row: store.ServiceEventRow{
+			Key: "fact:image", Source: store.EventSourceFact, FactType: TypeImagePullFailed,
+			DeployID: "dep-9", Image: "registry.example/web:bad", ReasonCode: store.EventReasonImagePullBackoff,
+		},
+		wantType: TypeImagePullFailed,
+		wantDetails: Details{
+			DeployID: "dep-9", Image: "registry.example/web:bad", ReasonCode: store.EventReasonImagePullBackoff,
+		},
+	}, {
+		name: "autoscaling fact carries typed counts",
+		row: func() store.ServiceEventRow {
+			from, to := int32(1), int32(3)
+			return store.ServiceEventRow{Key: "fact:scale", Source: store.EventSourceFact, FactType: TypeAutoscalingStarted, FromCount: &from, ToCount: &to}
+		}(),
+		wantType: TypeAutoscalingStarted,
+		wantDetails: func() Details {
+			from, to := int32(1), int32(3)
+			return Details{FromCount: &from, ToCount: &to}
+		}(),
+	}, {
+		name: "ignored commit fact carries no commit message",
+		row: store.ServiceEventRow{
+			Key: "fact:commit", Source: store.EventSourceFact, FactType: TypeCommitIgnored,
+			CommitID: "abc123", CommitURL: "https://github.com/acme/web/commit/abc123", ReasonCode: store.EventReasonBuildFilter,
+		},
+		wantType: TypeCommitIgnored,
+		wantDetails: Details{
+			CommitID: "abc123", CommitURL: "https://github.com/acme/web/commit/abc123", ReasonCode: store.EventReasonBuildFilter,
+		},
 	}}
 
 	for _, tc := range cases {
@@ -180,7 +211,13 @@ func TestViewMapsEverySource(t *testing.T) {
 				got.Details.DeployStatus != tc.wantDetails.DeployStatus ||
 				got.Details.PreDeployStatus != tc.wantDetails.PreDeployStatus ||
 				got.Details.Actor != tc.wantDetails.Actor ||
-				got.Details.TriggeredByUser != tc.wantDetails.TriggeredByUser {
+				got.Details.TriggeredByUser != tc.wantDetails.TriggeredByUser ||
+				got.Details.Image != tc.wantDetails.Image ||
+				got.Details.CommitID != tc.wantDetails.CommitID ||
+				got.Details.CommitURL != tc.wantDetails.CommitURL ||
+				got.Details.ReasonCode != tc.wantDetails.ReasonCode ||
+				!equalInt32(got.Details.FromCount, tc.wantDetails.FromCount) ||
+				!equalInt32(got.Details.ToCount, tc.wantDetails.ToCount) {
 				t.Errorf("details = %+v, want %+v", got.Details, tc.wantDetails)
 			}
 			switch {
@@ -193,6 +230,10 @@ func TestViewMapsEverySource(t *testing.T) {
 			}
 		})
 	}
+}
+
+func equalInt32(a, b *int32) bool {
+	return (a == nil && b == nil) || (a != nil && b != nil && *a == *b)
 }
 
 // TestEventIDsAreDerivedNotMinted is the property the cursor and every client's

@@ -12,8 +12,8 @@ const eventsState: {
 const useEventsSpy = vi.fn();
 
 vi.mock("../../hooks/use-service-events", () => ({
-  useServiceEvents: (serviceId: string, limit: number) => {
-    useEventsSpy(serviceId, limit);
+  useServiceEvents: (serviceId: string, options: Record<string, unknown>) => {
+    useEventsSpy(serviceId, options);
     return { ...eventsState, refetch: vi.fn() };
   },
 }));
@@ -74,7 +74,12 @@ describe("EventTimeline", () => {
       />,
     );
 
-    expect(useEventsSpy).toHaveBeenCalledWith("srv-web", 100);
+    expect(useEventsSpy).toHaveBeenCalledWith("srv-web", {
+      limit: 100,
+      startTime: "2026-07-15T09:00:00Z",
+      endTime: "2026-07-15T10:00:00Z",
+      autoPaginate: true,
+    });
     expect(screen.getByRole("status")).toHaveTextContent("No events");
   });
 

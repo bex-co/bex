@@ -110,7 +110,7 @@ func TestAuthorizeAppResolvesTypedPublicID(t *testing.T) {
 	}
 }
 
-func TestAuthorizeAppTypedIDAuditsCanonicalPublicName(t *testing.T) {
+func TestAuthorizeAppTypedIDAuditsCanonicalCRName(t *testing.T) {
 	a := sampleApp("tea-a-web", "tea-a")
 	a.Labels[LabelServiceName] = "Customer API"
 	a.Labels[LabelAppID] = "srv-d9example"
@@ -124,8 +124,8 @@ func TestAuthorizeAppTypedIDAuditsCanonicalPublicName(t *testing.T) {
 	if _, err := b.AuthorizeApp(ctx, RelCanOperate, "srv-d9example"); err != nil {
 		t.Fatal(err)
 	}
-	if len(sink.events) != 1 || sink.events[0].Target != ServiceTarget("Customer API") {
-		t.Fatalf("audit events = %#v, want canonical public-name target", sink.events)
+	if len(sink.events) != 1 || sink.events[0].Target != ServiceTarget("tea-a-web") {
+		t.Fatalf("audit events = %#v, want namespace-unique CR-name target", sink.events)
 	}
 }
 

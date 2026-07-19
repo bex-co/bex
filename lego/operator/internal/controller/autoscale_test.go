@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -314,5 +315,34 @@ func TestApplyAutoscalingWritesAnnotationNotSpec(t *testing.T) {
 	}
 	if v := stored.Annotations[annotAutoscaleReplicas]; v != "2" {
 		t.Errorf("stored annotation %s = %q, want \"2\"", annotAutoscaleReplicas, v)
+	}
+	if transition := app.Status.Autoscaling; transition == nil ||
+		transition.State != appv1alpha1.AutoscalingTransitionStarted ||
+		transition.FromReplicas != 1 || transition.ToReplicas != 2 {
+		t.Fatalf("autoscaling status = %+v, want Started 1→2", transition)
+	}
+}
+
+func TestCompleteAutoscalingTransitionEndsOnlyAtReadyTarget(t *testing.T) {
+	app := &appv1alpha1.App{Status: appv1alpha1.AppStatus{
+		Autoscaling: &appv1alpha1.AutoscalingStatus{
+			TransitionID: "scale-1", FromReplicas: 1, ToReplicas: 3,
+			State:     appv1alpha1.AutoscalingTransitionStarted,
+			StartedAt: "2026-07-18T12:00:00Z",
+		},
+	}}
+	now := time.Date(2026, 7, 18, 12, 1, 0, 0, time.UTC)
+	completeAutoscalingTransition(app, 3, 2, now)
+	if app.Status.Autoscaling.State != appv1alpha1.AutoscalingTransitionStarted {
+		t.Fatal("transition ended before every target replica was ready")
+	}
+	completeAutoscalingTransition(app, 3, 3, now)
+	if app.Status.Autoscaling.State != appv1alpha1.AutoscalingTransitionEnded || app.Status.Autoscaling.FinishedAt == "" {
+		t.Fatalf("completed transition = %+v, want Ended with finishedAt", app.Status.Autoscaling)
+	}
+	finished := app.Status.Autoscaling.FinishedAt
+	completeAutoscalingTransition(app, 3, 3, now.Add(time.Minute))
+	if app.Status.Autoscaling.FinishedAt != finished {
+		t.Fatal("reconcile retry changed an already-ended transition")
 	}
 }

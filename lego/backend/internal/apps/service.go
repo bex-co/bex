@@ -24,6 +24,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand/v2"
 	"net"
 	"net/url"
@@ -86,6 +87,9 @@ type Service struct {
 	// originate — then patch the CR as the fast-converge path. Nil (tests, DB-less
 	// mode) falls back to CR-only patches, safe only for hand-applied Apps.
 	Store IntentStore
+	// EventFacts persists closed, non-secret service activity that cannot be
+	// represented by an ordinary authorization audit row. nil in store-less mode.
+	EventFacts store.EventFactWriter
 	// Selections is the shared MCP per-session workspace selection (w6/m2/t005):
 	// list_services falls back to the caller's selected workspace when its
 	// ownerId argument is omitted. Read-only (apps never selects a workspace,
@@ -2666,7 +2670,8 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 	if err != nil {
 		return AppView{}, err
 	}
-	nextRepo, nextImage, nextBranch := a.Spec.Repo, a.Spec.Image, a.Spec.Branch
+	previousBranch := a.Spec.Branch
+	nextRepo, nextImage, nextBranch := a.Spec.Repo, a.Spec.Image, previousBranch
 	if repo != nil {
 		nextRepo = strings.TrimSpace(*repo)
 		if nextRepo == "" || !store.ValidRepo(nextRepo) {
@@ -2733,6 +2738,24 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 	if oldPullSecret != "" && pullSecretName == "" {
 		if err := s.deleteExternalRegistryPullSecret(ctx, a.Namespace, a.Name); err != nil {
 			return AppView{}, fmt.Errorf("delete cleared registry pull secret: %w", err)
+		}
+	}
+	if previousBranch != "" && previousBranch != nextBranch && s.EventFacts != nil {
+		if appID := managedAppID(a); appID != "" {
+			at := s.Now().UTC()
+			if updated.UpdatedAt != "" {
+				if parsed, parseErr := time.Parse(time.RFC3339Nano, updated.UpdatedAt); parseErr == nil {
+					at = parsed
+				}
+			}
+			fact := store.ServiceEventFact{
+				SourceKey: fmt.Sprintf("branch:%s:%d", appID, at.UnixNano()),
+				AppID:     appID, Type: store.EventFactBranchChanged, At: at,
+				BranchFrom: previousBranch, BranchTo: nextBranch,
+			}
+			if _, factErr := s.EventFacts.InsertServiceEventFact(ctx, fact); factErr != nil {
+				log.Printf("events: record branch change for %s: %v", appID, factErr)
+			}
 		}
 	}
 	return updated, nil

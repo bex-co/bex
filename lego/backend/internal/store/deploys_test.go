@@ -119,7 +119,7 @@ func TestTransitionDeployAdvancesTimestampsOnlyOnRealStateChanges(t *testing.T) 
 		t.Fatalf("new deploy = %+v, want created with updated_at=created_at", d)
 	}
 
-	if changed, err := s.TransitionDeploy(ctx, d.ID, DeployUpdateInProgress, "", ""); err != nil || !changed {
+	if changed, err := s.TransitionDeploy(ctx, d.ID, DeployUpdateInProgress, "", "", ""); err != nil || !changed {
 		t.Fatalf("transition to update_in_progress: changed=%v err=%v", changed, err)
 	}
 	progress, _ := s.GetDeploy(ctx, app.ID, d.ID)
@@ -127,14 +127,14 @@ func TestTransitionDeployAdvancesTimestampsOnlyOnRealStateChanges(t *testing.T) 
 		t.Fatalf("in-progress deploy = %+v, want started/updated and unfinished", progress)
 	}
 
-	if changed, err := s.TransitionDeploy(ctx, d.ID, DeployUpdateInProgress, "", ""); err != nil || changed {
+	if changed, err := s.TransitionDeploy(ctx, d.ID, DeployUpdateInProgress, "", "", ""); err != nil || changed {
 		t.Fatalf("repeated transition: changed=%v err=%v, want no-op", changed, err)
 	}
 	repeated, _ := s.GetDeploy(ctx, app.ID, d.ID)
 	if !repeated.UpdatedAt.Equal(progress.UpdatedAt) {
 		t.Errorf("no-op changed updated_at: %s -> %s", progress.UpdatedAt, repeated.UpdatedAt)
 	}
-	if changed, err := s.TransitionDeploy(ctx, d.ID, DeployBuildInProgress, "", ""); err != nil || changed {
+	if changed, err := s.TransitionDeploy(ctx, d.ID, DeployBuildInProgress, "", "", ""); err != nil || changed {
 		t.Fatalf("regression: changed=%v err=%v, want rejected", changed, err)
 	}
 	regressed, _ := s.GetDeploy(ctx, app.ID, d.ID)
@@ -180,7 +180,7 @@ func TestCreateDeployCancelsOlderOpenDeployNewestWins(t *testing.T) {
 	ten, _ := s.CreateTenant(ctx, "acme", "free")
 	app, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Repo: "https://example.com/repo.git", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
 	first, _, _ := openDeployFor(ctx, s, app.ID)
-	if changed, err := s.TransitionDeploy(ctx, first.ID, DeployBuildInProgress, "", ""); err != nil || !changed {
+	if changed, err := s.TransitionDeploy(ctx, first.ID, DeployBuildInProgress, "", "", ""); err != nil || !changed {
 		t.Fatalf("start first build: changed=%v err=%v", changed, err)
 	}
 	second, err := s.CreateDeploy(ctx, app.ID, TriggerAPI, "", 2, CommitInfo{})

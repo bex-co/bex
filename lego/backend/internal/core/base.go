@@ -601,14 +601,11 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 
 // canonicalAppTarget keeps one service activity stream regardless of whether
 // a client addressed the App by mutable public name, internal CR name, or its
-// stable srv-… id. Store-managed Apps always carry LabelServiceName; legacy
-// and hand-applied Apps fall back to metadata.name.
+// stable srv-… id. The CR name is namespace-unique; LabelServiceName is only
+// workspace-unique, so using it here would merge every tenant's "web" audit
+// rows whenever an unbound platform caller writes from workspace:default.
 func canonicalAppTarget(a *appv1alpha1.App) string {
-	name := a.Labels[LabelServiceName]
-	if name == "" {
-		name = a.Name
-	}
-	return ServiceTarget(name)
+	return ServiceTarget(a.Name)
 }
 
 // AuthorizeDatabase is AuthorizeApp for a managed Postgres Database — same

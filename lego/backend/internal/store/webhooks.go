@@ -285,16 +285,21 @@ func (s *PGStore) EnsureWebhookWatermark(ctx context.Context, at time.Time) (tim
 // GET /v1/services/{id} accepts — so a webhook receiver can turn a payload
 // straight into an API call; ServiceName is the human app name.
 type WebhookEventRow struct {
+	// CursorAt is when the source row became dispatch-visible. It normally equals
+	// At; late-persisted observed facts use service_event_facts.recorded_at so an
+	// older occurrence timestamp cannot fall behind the durable watermark.
+	CursorAt    time.Time
 	Key         string
 	At          time.Time
 	TenantID    string
 	ServiceID   string
 	ServiceName string
-	Source      string // EventSourceDeploy | EventSourceAudit
+	Source      string // EventSourceDeploy | EventSourceAudit | EventSourceFact
 	Phase       string // deploy rows: EventPhaseStarted | EventPhaseEnded
 	DeployID    string
 	Status      string // the deploy's terminal status; the ended phase only
 	Verb        string // audit rows: e.g. "apps.Suspend"
+	FactType    string // fact rows: closed service_event_facts.fact_type
 }
 
 // webhookEventsQuery is serviceEventsQuery's workspace-wide, ascending twin
@@ -326,7 +331,8 @@ type WebhookEventRow struct {
 //     tenants' transitions never leave Postgres at all.
 const webhookEventsQuery = `
 WITH feed AS (
-    SELECT d.id || ':` + EventPhaseStarted + `' AS key,
+    SELECT d.created_at                        AS cursor_at,
+           d.id || ':` + EventPhaseStarted + `' AS key,
            d.created_at                        AS at,
            a.tenant_id                         AS tenant_id,
            t.name || '-' || a.name             AS service_id,
@@ -335,13 +341,15 @@ WITH feed AS (
            '` + EventPhaseStarted + `'::text   AS phase,
            d.id                                AS deploy_id,
            ''::text                            AS status,
-           ''::text                            AS verb
+           ''::text                            AS verb,
+           ''::text                            AS fact_type
     FROM deploys d
     JOIN apps a ON a.id = d.app_id
     JOIN tenants t ON t.id = a.tenant_id
     WHERE a.tenant_id = ANY($5)
   UNION ALL
-    SELECT d.id || ':` + EventPhaseEnded + `',
+    SELECT d.finished_at,
+           d.id || ':` + EventPhaseEnded + `',
            d.finished_at,
            a.tenant_id,
            t.name || '-' || a.name,
@@ -350,13 +358,15 @@ WITH feed AS (
            '` + EventPhaseEnded + `'::text,
            d.id,
            d.status,
+           ''::text,
            ''::text
     FROM deploys d
     JOIN apps a ON a.id = d.app_id
     JOIN tenants t ON t.id = a.tenant_id
     WHERE d.finished_at IS NOT NULL AND a.tenant_id = ANY($5)
   UNION ALL
-    SELECT e.id || ':',
+    SELECT e.at,
+           e.id || ':',
            e.at,
            a.tenant_id,
            t.name || '-' || a.name,
@@ -365,7 +375,8 @@ WITH feed AS (
            ''::text,
            ''::text,
            ''::text,
-           e.verb
+           e.verb,
+           ''::text
     FROM audit_events e
     JOIN apps a ON a.tenant_id = ANY($5)
      AND (e.workspace_id = a.tenant_id OR e.workspace_id = '` + core.DefaultTenant + `')
@@ -373,7 +384,8 @@ WITH feed AS (
      AND e.target IN ('service:' || t.name || '-' || a.name, 'service:' || a.name)
     WHERE e.outcome = 'allowed' AND e.verb = ANY($4)
   UNION ALL
-    SELECT e.id || ':',
+    SELECT e.at,
+           e.id || ':',
            e.at,
            e.workspace_id,
            split_part(e.target, ':', 2),
@@ -382,17 +394,35 @@ WITH feed AS (
            ''::text,
            ''::text,
            ''::text,
-           e.verb
+		   e.verb,
+		   ''::text
     FROM audit_events e
 	WHERE e.workspace_id = ANY($5)
 	  AND e.outcome = 'allowed'
 	  AND e.verb = ANY($4)
 	  AND (e.target LIKE 'database:%' OR e.target LIKE 'keyvalue:%')
+  UNION ALL
+    SELECT f.recorded_at,
+           'fact:' || f.source_key,
+           f.at,
+           a.tenant_id,
+           t.name || '-' || a.name,
+           a.name,
+           '` + EventSourceFact + `'::text,
+           ''::text,
+           f.deploy_id,
+           ''::text,
+           ''::text,
+           f.fact_type
+    FROM service_event_facts f
+    JOIN apps a ON a.id = f.app_id
+    JOIN tenants t ON t.id = a.tenant_id
+    WHERE a.tenant_id = ANY($5)
 )
-SELECT key, at, tenant_id, service_id, service_name, source, phase, deploy_id, status, verb
+SELECT cursor_at, key, at, tenant_id, service_id, service_name, source, phase, deploy_id, status, verb, fact_type
 FROM feed
-WHERE (at, key) > ($1, $2) AND at <= $3
-ORDER BY at, key
+WHERE (cursor_at, key) > ($1, $2) AND cursor_at <= $3
+ORDER BY cursor_at, key
 LIMIT $6`
 
 // ListWebhookEvents returns the composed feed strictly after the watermark
@@ -409,7 +439,7 @@ func (s *PGStore) ListWebhookEvents(ctx context.Context, afterAt time.Time, afte
 	var out []WebhookEventRow
 	for rows.Next() {
 		var r WebhookEventRow
-		if err := rows.Scan(&r.Key, &r.At, &r.TenantID, &r.ServiceID, &r.ServiceName, &r.Source, &r.Phase, &r.DeployID, &r.Status, &r.Verb); err != nil {
+		if err := rows.Scan(&r.CursorAt, &r.Key, &r.At, &r.TenantID, &r.ServiceID, &r.ServiceName, &r.Source, &r.Phase, &r.DeployID, &r.Status, &r.Verb, &r.FactType); err != nil {
 			return nil, err
 		}
 		out = append(out, r)

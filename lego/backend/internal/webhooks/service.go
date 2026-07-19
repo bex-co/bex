@@ -24,11 +24,11 @@ limitations under the License.
 // # One instrumentation pass (w3/m11/t002)
 //
 // bex does not add a webhook write path. The event SOURCE is the same
-// two-table composition the per-service events feed derives from (w3/m7,
-// internal/events: deploys + audit_events) — the Worker's dispatcher tails it
+// three-source composition the per-service events feed derives from (deploys +
+// audit_events + typed service_event_facts) — the Worker's dispatcher tails it
 // workspace-wide through a durable watermark (store.ListWebhookEvents) instead
 // of paging it per-service. The write paths were instrumented exactly once
-// (w2/m5's deploys rows, w3/m7's audit target column); a webhook therefore
+// (deploy rows, audit targets, or a typed fact producer); a webhook therefore
 // fires for a transition no matter which path performed it (an API verb, a
 // git-push redeploy, the reconciler closing a deploy), and emission can never
 // block or fail a verb — there IS no emission, only rows the verb already
@@ -37,11 +37,9 @@ limitations under the License.
 // # Vocabulary
 //
 // Render's webhook event names (verified live, render.com/docs/webhooks
-// 2026-07-12), scoped to the transitions bex's two sources actually record:
-// deploy_started/deploy_ended from deploys rows; the rest mapped from audited
-// verbs. Render types with no bex source (build_started/build_ended,
-// server_failed/server_available, autoscaling_started/autoscaling_ended,
-// cron_job_run_ended) are omitted, not faked — the events feed's own policy.
+// 2026-07-18), scoped to transitions bex can record truthfully: deploy rows,
+// audited API intent, and typed observed/Git facts. Unsupported provider,
+// billing, workflow, preview, disk, and edge-cache events are omitted, not faked.
 //
 // # Delivery semantics (w3/m11/t003, matching Render's documented behavior)
 //
@@ -79,9 +77,10 @@ import (
 )
 
 // Render's webhook event types (the subset bex can emit truthfully), spelled
-// exactly as render.com/docs/webhooks spells them. Note the webhook vocabulary
-// is Render's own and differs from its list-events enum where the two overlap
-// (webhooks say service_suspended; the events feed says suspender_added).
+// exactly as render.com/docs/webhooks spells them, except branch_changed, an
+// explicit bex extension for the dashboard label Render exposes without an
+// equivalent public enum. Intent suspender_* and observed service_* remain
+// distinct in the service feed; outbound notifications use observed service_*.
 const (
 	TypeDeployStarted              = "deploy_started"
 	TypeDeployEnded                = "deploy_ended"
@@ -100,6 +99,13 @@ const (
 	TypePostgresCredentialsCreated = "postgres_credentials_created"
 	TypePostgresCredentialsDeleted = "postgres_credentials_deleted"
 	TypePostgresBackupStarted      = "postgres_backup_started"
+	TypeImagePullFailed            = "image_pull_failed"
+	TypeServerFailed               = "server_failed"
+	TypeServerAvailable            = "server_available"
+	TypeBranchChanged              = "branch_changed"
+	TypeCommitIgnored              = "commit_ignored"
+	TypeAutoscalingStarted         = "autoscaling_started"
+	TypeAutoscalingEnded           = "autoscaling_ended"
 )
 
 // verbEvents maps an audited verb ("<package>.<Method>", the same key
@@ -110,8 +116,6 @@ const (
 // eventTypeOf).
 var verbEvents = map[string]string{
 	"apps.Restart":                           TypeServerRestarted,
-	"apps.Suspend":                           TypeServiceSuspended,
-	"apps.Resume":                            TypeServiceResumed,
 	"apps.Scale":                             TypeInstanceCountChanged,
 	"apps.SetAutoscaling":                    TypeAutoscalingConfigChanged,
 	"apps.DeleteAutoscaling":                 TypeAutoscalingConfigChanged,
@@ -130,6 +134,18 @@ var verbEvents = map[string]string{
 	core.AuditVerbKeyValuePlanChanged:        TypePlanChanged,
 }
 
+var factEvents = map[string]string{
+	string(store.EventFactImagePullFailed):    TypeImagePullFailed,
+	string(store.EventFactServiceSuspended):   TypeServiceSuspended,
+	string(store.EventFactServiceResumed):     TypeServiceResumed,
+	string(store.EventFactServerFailed):       TypeServerFailed,
+	string(store.EventFactServerAvailable):    TypeServerAvailable,
+	string(store.EventFactBranchChanged):      TypeBranchChanged,
+	string(store.EventFactCommitIgnored):      TypeCommitIgnored,
+	string(store.EventFactAutoscalingStarted): TypeAutoscalingStarted,
+	string(store.EventFactAutoscalingEnded):   TypeAutoscalingEnded,
+}
+
 // auditVerbs is verbEvents' key set — the dispatcher's push-down filter,
 // computed once.
 var auditVerbs = slices.Sorted(maps.Keys(verbEvents))
@@ -139,6 +155,9 @@ var auditVerbs = slices.Sorted(maps.Keys(verbEvents))
 var EventTypes = func() []string {
 	set := map[string]bool{TypeDeployStarted: true, TypeDeployEnded: true}
 	for _, t := range verbEvents {
+		set[t] = true
+	}
+	for _, t := range factEvents {
 		set[t] = true
 	}
 	return slices.Sorted(maps.Keys(set))

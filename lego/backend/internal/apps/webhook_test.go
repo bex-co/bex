@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -155,6 +156,65 @@ func TestPushEventChangedPaths(t *testing.T) {
 		if got[i] != want[i] {
 			t.Errorf("changedPaths()[%d] = %q, want %q", i, got[i], want[i])
 		}
+	}
+}
+
+type recordingFactWriter struct {
+	facts map[string]store.ServiceEventFact
+}
+
+func (w *recordingFactWriter) InsertServiceEventFact(_ context.Context, fact store.ServiceEventFact) (bool, error) {
+	if w.facts == nil {
+		w.facts = map[string]store.ServiceEventFact{}
+	}
+	if _, exists := w.facts[fact.SourceKey]; exists {
+		return false, nil
+	}
+	w.facts[fact.SourceKey] = fact
+	return true, nil
+}
+
+func TestIgnoredCommitFactIsTypedAndDeliveryIdempotent(t *testing.T) {
+	const repo = "https://github.com/x/mono"
+	app := autoDeployApp("api", repo)
+	app.Spec.RootDir = "services/api"
+	app.Labels = map[string]string{
+		store.LabelManagedBy: store.ManagedByValue,
+		store.LabelAppID:     "srv-api",
+	}
+	svc, _ := newService(nil, app)
+	writer := &recordingFactWriter{}
+	svc.EventFacts = writer
+	h := &GitWebhook{Svc: svc, Secret: "shh"}
+	ev := newPush(repo, []string{"services/web/index.js"})
+	ev.DeliveryKey = "delivery-1"
+	ev.After = "abc123"
+	ev.HeadCommit.ID = "abc123"
+	ev.HeadCommit.URL = "https://github.com/x/mono/commit/abc123"
+
+	for range 2 {
+		if redeployed, err := h.redeployMatching(context.Background(), ev, "main"); err != nil || len(redeployed) != 0 {
+			t.Fatalf("redeploy = %v, err = %v, want ignored", redeployed, err)
+		}
+	}
+	if len(writer.facts) != 1 {
+		t.Fatalf("fact count = %d, want one across delivery retry", len(writer.facts))
+	}
+	for _, fact := range writer.facts {
+		if fact.Type != store.EventFactCommitIgnored || fact.ReasonCode != store.EventReasonRootDirectory || fact.CommitID != "abc123" {
+			t.Fatalf("ignored fact = %+v", fact)
+		}
+	}
+}
+
+func TestCommitSkipPhrases(t *testing.T) {
+	for _, message := range []string{"release [skip render]", "[RENDER SKIP] docs"} {
+		if !commitHasSkipPhrase(message) {
+			t.Errorf("%q did not match", message)
+		}
+	}
+	if commitHasSkipPhrase("ordinary release") {
+		t.Error("ordinary commit message matched a skip phrase")
 	}
 }
 

@@ -65,8 +65,13 @@ func (f *fakeWorkerStore) ListWebhookEvents(_ context.Context, afterAt time.Time
 	defer f.mu.Unlock()
 	var out []store.WebhookEventRow
 	for _, r := range f.events {
-		afterWM := r.At.After(afterAt) || (r.At.Equal(afterAt) && r.Key > afterKey)
-		if !afterWM || r.At.After(until) || !slices.Contains(tenants, r.TenantID) {
+		cursorAt := r.CursorAt
+		if cursorAt.IsZero() {
+			cursorAt = r.At
+			r.CursorAt = cursorAt
+		}
+		afterWM := cursorAt.After(afterAt) || (cursorAt.Equal(afterAt) && r.Key > afterKey)
+		if !afterWM || cursorAt.After(until) || !slices.Contains(tenants, r.TenantID) {
 			continue
 		}
 		if r.Source == store.EventSourceAudit && !slices.Contains(verbs, r.Verb) {
@@ -246,8 +251,8 @@ func TestDispatchFansOutOnlyToSubscribedEndpointsOfTheEventsWorkspace(t *testing
 	st.wmSeeded, st.wmAt = true, eventAt.Add(-time.Hour)
 	st.events = []store.WebhookEventRow{
 		{Key: "dep-1:started", At: eventAt, TenantID: "tea-a", ServiceID: "acme-api", ServiceName: "api", Source: store.EventSourceDeploy, Phase: store.EventPhaseStarted, DeployID: "dep-1"},
-		{Key: "aud-1:", At: eventAt.Add(time.Second), TenantID: "tea-a", ServiceID: "acme-api", ServiceName: "api", Source: store.EventSourceAudit, Verb: "apps.Suspend"},
-		{Key: "aud-2:", At: eventAt.Add(2 * time.Second), TenantID: "tea-b", ServiceID: "beta-worker", ServiceName: "worker", Source: store.EventSourceAudit, Verb: "apps.Suspend"},
+		{Key: "fact:suspend-1", At: eventAt.Add(time.Second), TenantID: "tea-a", ServiceID: "acme-api", ServiceName: "api", Source: store.EventSourceFact, FactType: string(store.EventFactServiceSuspended)},
+		{Key: "fact:suspend-2", At: eventAt.Add(2 * time.Second), TenantID: "tea-b", ServiceID: "beta-worker", ServiceName: "worker", Source: store.EventSourceFact, FactType: string(store.EventFactServiceSuspended)},
 	}
 	st.endpoints = []store.WebhookEndpoint{
 		endpoint("whk-deploys", "tea-a", "https://a.example/hook", "whsec_x", TypeDeployStarted),
@@ -274,7 +279,7 @@ func TestDispatchFansOutOnlyToSubscribedEndpointsOfTheEventsWorkspace(t *testing
 	if got := byEndpoint["whk-other-tenant"]; !slices.Equal(got, []string{TypeServiceSuspended}) {
 		t.Errorf("whk-other-tenant got %v, want [service_suspended]", got)
 	}
-	if st.wmKey != "aud-2:" {
+	if st.wmKey != "fact:suspend-2" {
 		t.Errorf("watermark key = %q, want the last processed row", st.wmKey)
 	}
 	for _, d := range st.queue {
@@ -335,6 +340,38 @@ func TestDispatchSkipsEventsInsideTheSafetyLag(t *testing.T) {
 	}
 	if len(st.queue) != 1 {
 		t.Fatalf("event should dispatch after the lag, queued %d", len(st.queue))
+	}
+}
+
+func TestDispatchUsesFactRecordingTimeWithoutRewritingOccurrenceTime(t *testing.T) {
+	st := newFakeWorkerStore()
+	now := time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)
+	st.wmSeeded, st.wmAt = true, now.Add(-time.Minute)
+	st.events = []store.WebhookEventRow{{
+		CursorAt: now.Add(-10 * time.Second),
+		Key:      "fact:late-observation", At: now.Add(-time.Hour), TenantID: "tea-a",
+		ServiceID: "acme-api", ServiceName: "api", Source: store.EventSourceFact,
+		FactType: string(store.EventFactServerAvailable),
+	}}
+	st.endpoints = []store.WebhookEndpoint{
+		endpoint("whk-1", "tea-a", "https://a.example/hook", "whsec_x", TypeServerAvailable),
+	}
+	w := &Worker{Store: st, Clock: func() time.Time { return now }}
+
+	if err := w.dispatch(context.Background(), st.endpoints); err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	if len(st.queue) != 1 {
+		t.Fatalf("late-recorded fact deliveries = %d, want 1", len(st.queue))
+	}
+	for _, delivery := range st.queue {
+		var got payload
+		if err := json.Unmarshal([]byte(delivery.Payload), &got); err != nil {
+			t.Fatal(err)
+		}
+		if got.Timestamp != now.Add(-time.Hour).Format(time.RFC3339) {
+			t.Fatalf("payload timestamp = %q, want original occurrence time", got.Timestamp)
+		}
 	}
 }
 

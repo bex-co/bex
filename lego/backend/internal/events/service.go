@@ -15,22 +15,24 @@ limitations under the License.
 */
 
 // Package events is the per-service activity feed (w3/m7): Render's
-// GET /services/{id}/events, composed — not recorded a second time — from two
-// tables bex already writes.
+// GET /services/{id}/events, composed from the durable control-plane facts bex
+// already needs for deploy history, audit, and observed transitions.
 //
 // # Sources
 //
-// Every event is DERIVED. bex added no event table and no event write path; it
-// added one COLUMN (audit_events.target, w3/m7) so the rows it was already
-// writing could say WHICH service they acted on:
+// Public events are derived from three closed sources. There is no generic
+// event payload or adapter-side emitter:
 //
 //	deploys       → deploy_started (created_at) and deploy_ended (finished_at)
 //	audit_events  → every other type, one row per authorized write verb, keyed by
 //	                target = core.ServiceTarget(app) and mapped through eventTypes
+//	service_event_facts
+//	              → typed operator-observed and signed-Git decisions which are
+//	                neither a deploy timestamp nor an authorized API write
 //
 // # Vocabulary (Render's names where its OpenAPI defines one, bex-named otherwise)
 //
-// Render's list-events enum has 39 types; bex emits the subset its two sources
+// Render's list-events enum has 39 types; bex emits the subset its three sources
 // can support truthfully, under Render's exact names:
 //
 //	deploy_started              deploys row opened
@@ -83,23 +85,15 @@ limitations under the License.
 //
 // # Omissions (honest, not faked)
 //
-//   - Auto-sleep / wake and autoscaler-driven replica changes — the operator
-//     drives them and is DB-free by architecture (docs/ADR003-control-plane.md:
-//     mechanism never writes the control plane), and it records no Kubernetes
-//     Events either, so these transitions have NO durable source. Recording them
-//     would mean giving the operator a control-plane write path — a layering
-//     inversion, not a light write. Omitted until an operator→API event channel
-//     exists; manual scale (apps.Scale → instance_count_changed) IS covered.
-//   - Push-triggered redeploys open no deploys row today (w2/m5's scope), so they
-//     produce no deploy_started; when they do, this feed shows them with no
-//     change here.
-//   - build_started/build_ended, server_failed, disk_* — no bex source at all.
+//   - build_started/build_ended, provider hardware/maintenance, billing,
+//     workflow, preview-environment, persistent-disk, and mutable edge-cache
+//     events have no accepted bex mechanism or durable source.
 //     (maintenance_* now has a source — see the maintenance-mode types above —
 //     but only for the tenant-facing toggle this feed's apps.SetMaintenanceMode
 //     records; Render's platform-scheduled infra-maintenance concept, if its
 //     enum names one, still has none.)
 //
-// Requires the control-plane store (BEX_CP_DB_URI): both sources live there, so
+// Requires the control-plane store (BEX_CP_DB_URI): all sources live there, so
 // with it unwired the verb reports core.ErrEventsUnavailable (503) — omitted, not
 // faked, the deploy-history precedent.
 package events
@@ -135,6 +129,15 @@ const (
 	TypeAutoscalingConfigChanged = "autoscaling_config_changed"
 	TypeCronJobRunStarted        = "cron_job_run_started"
 	TypeCronJobRunEnded          = "cron_job_run_ended"
+	TypeImagePullFailed          = "image_pull_failed"
+	TypeServiceSuspended         = "service_suspended"
+	TypeServiceResumed           = "service_resumed"
+	TypeServerFailed             = "server_failed"
+	TypeServerAvailable          = "server_available"
+	TypeBranchChanged            = "branch_changed"
+	TypeCommitIgnored            = "commit_ignored"
+	TypeAutoscalingStarted       = "autoscaling_started"
+	TypeAutoscalingEnded         = "autoscaling_ended"
 )
 
 // bex-named types — real writes Render's vocabulary has no name for. Named in
@@ -239,8 +242,19 @@ var eventTypes = map[string]string{
 // allVerbs is eventTypes' key set and allPhases the two deploy transitions —
 // the unfiltered query's push-down sets, computed once (they are constants).
 var (
-	allVerbs  = slices.Sorted(maps.Keys(eventTypes))
-	allPhases = []string{store.EventPhaseStarted, store.EventPhaseEnded}
+	allVerbs     = slices.Sorted(maps.Keys(eventTypes))
+	allPhases    = []string{store.EventPhaseStarted, store.EventPhaseEnded}
+	allFactTypes = []string{
+		TypeImagePullFailed,
+		TypeServiceSuspended,
+		TypeServiceResumed,
+		TypeServerFailed,
+		TypeServerAvailable,
+		TypeBranchChanged,
+		TypeCommitIgnored,
+		TypeAutoscalingStarted,
+		TypeAutoscalingEnded,
+	}
 )
 
 // pushDown translates a caller's event-TYPE filter into the sets the store
@@ -254,27 +268,31 @@ var (
 // An empty type asks for everything. An unknown type matches nothing (empty
 // sets), which is an empty feed — not, as a Go-side filter would give, a page
 // of zero items that a client cannot distinguish from the end.
-func pushDown(eventType string) (verbs, phases []string, autoDeploy store.AutoDeployFilter) {
+func pushDown(eventType string) (verbs, phases, factTypes []string, autoDeploy store.AutoDeployFilter) {
 	switch eventType {
 	case "":
-		return allVerbs, allPhases, store.AutoDeployFilterNone
+		return allVerbs, allPhases, allFactTypes, store.AutoDeployFilterNone
 	case TypeDeployStarted:
-		return nil, []string{store.EventPhaseStarted}, store.AutoDeployFilterNone
+		return nil, []string{store.EventPhaseStarted}, nil, store.AutoDeployFilterNone
 	case TypeDeployEnded:
-		return nil, []string{store.EventPhaseEnded}, store.AutoDeployFilterNone
+		return nil, []string{store.EventPhaseEnded}, nil, store.AutoDeployFilterNone
 	case TypeAutoDeployEnabled:
-		return []string{core.AuditVerbSetAutoDeploy}, nil, store.AutoDeployFilterEnabled
+		return []string{core.AuditVerbSetAutoDeploy}, nil, nil, store.AutoDeployFilterEnabled
 	case TypeAutoDeployDisabled:
-		return []string{core.AuditVerbSetAutoDeploy}, nil, store.AutoDeployFilterDisabled
+		return []string{core.AuditVerbSetAutoDeploy}, nil, nil, store.AutoDeployFilterDisabled
 	case TypeAutoDeployChanged:
-		return []string{core.AuditVerbSetAutoDeploy}, nil, store.AutoDeployFilterChanged
+		return []string{core.AuditVerbSetAutoDeploy}, nil, nil, store.AutoDeployFilterChanged
+	case TypeImagePullFailed, TypeServiceSuspended, TypeServiceResumed,
+		TypeServerFailed, TypeServerAvailable, TypeBranchChanged,
+		TypeCommitIgnored, TypeAutoscalingStarted, TypeAutoscalingEnded:
+		return nil, nil, []string{eventType}, store.AutoDeployFilterNone
 	}
 	for _, verb := range allVerbs {
 		if eventTypes[verb] == eventType {
 			verbs = append(verbs, verb)
 		}
 	}
-	return verbs, nil, store.AutoDeployFilterNone
+	return verbs, nil, nil, store.AutoDeployFilterNone
 }
 
 // DefaultWindow is how far back an events query reaches when the caller names no
@@ -331,6 +349,15 @@ type Details struct {
 	AutoscalingMaxFrom *int32
 	AutoscalingMinTo   *int32
 	AutoscalingMaxTo   *int32
+	// Durable fact details. ReasonCode is a closed public code, never a raw
+	// Kubernetes or Git message.
+	ReasonCode string
+	InstanceID string
+	FromCount  *int32
+	ToCount    *int32
+	BranchFrom string
+	BranchTo   string
+	CommitURL  string
 }
 
 // Event is the neutral projection every adapter renders. Cursor is the opaque
@@ -385,7 +412,7 @@ func pageLimit(limit int) int {
 }
 
 // Service is the events feature. Store nil (BEX_CP_DB_URI unset) ⇒ every read
-// reports core.ErrEventsUnavailable: the feed's BOTH sources are control-plane
+// reports core.ErrEventsUnavailable: the feed's sources are control-plane
 // tables, so there is nothing to degrade to.
 type Service struct {
 	*core.Base
@@ -425,20 +452,22 @@ func (s *Service) List(ctx context.Context, service string, filter Filter) ([]Ev
 	if appID == "" {
 		return []Event{}, nil
 	}
-	targetName := a.Labels[core.LabelServiceName]
-	if targetName == "" {
-		targetName = a.Name
+	legacyTarget := ""
+	if publicName := a.Labels[core.LabelServiceName]; publicName != "" && publicName != a.Name {
+		legacyTarget = core.ServiceTarget(publicName)
 	}
-	verbs, phases, autoDeploy := pushDown(filter.Type)
-	rows, err := s.Store.ListServiceEvents(ctx, appID, core.ServiceTarget(targetName), a.Labels[core.LabelTenant], store.ServiceEventFilter{
-		Since:      since,
-		Until:      until,
-		AfterAt:    after.At,
-		AfterKey:   after.Key,
-		Verbs:      verbs,
-		Phases:     phases,
-		AutoDeploy: autoDeploy,
-		Limit:      filter.Limit,
+	verbs, phases, factTypes, autoDeploy := pushDown(filter.Type)
+	rows, err := s.Store.ListServiceEvents(ctx, appID, core.ServiceTarget(a.Name), a.Labels[core.LabelTenant], store.ServiceEventFilter{
+		Since:        since,
+		Until:        until,
+		AfterAt:      after.At,
+		AfterKey:     after.Key,
+		Verbs:        verbs,
+		Phases:       phases,
+		FactTypes:    factTypes,
+		AutoDeploy:   autoDeploy,
+		LegacyTarget: legacyTarget,
+		Limit:        filter.Limit,
 	})
 	if err != nil {
 		return nil, err
@@ -526,6 +555,18 @@ func view(r store.ServiceEventRow, service string) Event {
 				}
 			}
 		}
+	case store.EventSourceFact:
+		ev.Type = r.FactType
+		ev.Details.DeployID = r.DeployID
+		ev.Details.Image = r.Image
+		ev.Details.CommitID = r.CommitID
+		ev.Details.ReasonCode = r.ReasonCode
+		ev.Details.InstanceID = r.InstanceID
+		ev.Details.FromCount = r.FromCount
+		ev.Details.ToCount = r.ToCount
+		ev.Details.BranchFrom = r.BranchFrom
+		ev.Details.BranchTo = r.BranchTo
+		ev.Details.CommitURL = r.CommitURL
 	}
 	return ev
 }
