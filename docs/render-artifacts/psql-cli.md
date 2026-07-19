@@ -1,8 +1,56 @@
 # Official Render CLI `psql` verification
 
-**Harness authored + hermetically verified:** 2026-07-18 PDT **Client:** unmodified Render CLI (`render-oss/cli`, checkout `v2.21.0-8-gc23438e`, live acceptance pins the checksum-verified `v2.21.0` release) **Status:** bex-side wire contract proven CLI-compatible; live end-to-end run in a `BEX_DB_DOMAIN` + pg-sni-proxy environment is the remaining step to earn ✅ in [the CLI compatibility checklist](../cli-compatibility-checklist.md).
+**Verified:** 2026-07-18 PDT **Target:** local CAPD app cluster, `dev-7` (non-production) **Clients:** checksum-verified, unmodified Render CLI v2.21.0 and PostgreSQL `psql` 18.4
 
-## Why this row was `[~]`
+## Result
+
+The official CLI's non-interactive `psql` command passed end to end against one disposable public bex Postgres by both immutable `dpg-…` id and exact display name. Both paths executed `SELECT 1 AS bex_psql_probe;` through the real local `psql` process and returned the probe column and value `1` through the external TLS/SNI route. The verifier also proved the CLI's client-side source-IP denial and deleted the Database and credential-bearing local state.
+
+| gate | result | durable evidence |
+| --- | --- | --- |
+| Official release provenance | PASS | Render's published `cli_2.21.0_darwin_arm64.zip` SHA-256 was `3d721f8e5f26e8d920eec899c28b200e74901529ad5d964b180c5d09c7ad3546`; the manifest matched, and the extracted executable used by the run had SHA-256 `b936020f083a83f170b1eeae1b7e739ee533812f794c463e4cbae18ba8b550a8` and reported `render v2.21.0`. |
+| Source-IP allow list | PASS | The create request contained `{cidrBlock:"[redacted IPv4]/32",description:"psql compatibility verifier"}` for the address returned by `api.ipify.org`. Loopback `/32` and `/128` entries separately admitted the local Kubernetes port-forward transport; they cannot satisfy the CLI's public-IP comparison. |
+| External connection | PASS | The resolved host was `dpg-….db.localtest.me`, the database was the matching `dpg_…`, and the credential-bearing URI required `sslmode=require`; username, password, bearer, and full URI were never emitted. |
+| Opaque-id probe | PASS | `render psql <dpg-…> -c 'SELECT 1 AS bex_psql_probe;' -o text` crossed the public-IP gate and returned the asserted probe through real `psql` 18.4. One bounded retry covered the expected interval between CNPG health and the service accepting connections. |
+| Exact-name probe | PASS | The same command using the fixture's exact display name resolved the same immutable database and returned the asserted probe on its first attempt. |
+| Unknown name | PASS | A unique missing name failed with `No Postgres instance found` before connection. |
+| Absent caller IP | PASS | Replacing the allow list with `192.0.2.0/24` made the unmodified CLI exit nonzero with `not in allow list` before spawning `psql`. |
+| Cleanup | PASS | The verifier-created Database returned not-found after DELETE; its temporary CLI configs, pinned-client shim directory, and other local artifacts were removed. |
+
+## Redacted live capture
+
+The completion run used the ignored dev-7 API-key file and release binary; no credential was present in the command or output capture:
+
+```sh
+BEX_API_URL=http://localhost:54070 \
+  HYDRA_PUBLIC_URL=http://localhost:58070 \
+  CLI_KEY_ENV=.pm/w7/dev-7/.cli-key.env \
+  RENDER_BIN=.pm/w7/dev-7/bin/render \
+  BEX_PSQL_TARGET_CLASS='local CAPD dev-7 via pg-sni-proxy' \
+  BEX_PSQL_NON_PRODUCTION=1 \
+  BEX_PSQL_REAL_BIN=/opt/homebrew/Cellar/libpq/18.4/bin/psql \
+  BEX_PSQL_ADDITIONAL_ALLOW_CIDRS='127.0.0.1/32,::1/128' \
+  bash scripts/cli-compat.sh psql-verify
+```
+
+The verifier emitted only these safe result markers for the successful fixture:
+
+```text
+INFO psql target=local CAPD dev-7 via pg-sni-proxy
+INFO official-cli=render v2.21.0
+PASS psql disposable-database-created id=dpg-…
+PASS psql external-connection-precondition host=dpg-….db.localtest.me database=dpg_… tls=require
+INFO psql probe-id ready-after-attempt=2
+PASS psql probe-id
+PASS psql probe-name
+PASS psql unknown-name rejected
+PASS psql allow-list-deny rejected-before-connect
+PASS psql compatibility verification complete
+PASS psql cleanup disposable-database
+PASS psql cleanup local-artifacts
+```
+
+## Why this row had been `[~]`
 
 `render psql [id|name]` (source: `cmd/psql.go` → `pkg/tui/views/psql.go`) does three things before it ever connects:
 
@@ -40,7 +88,7 @@ So the allow-list gate is enforced by the **CLI itself** on data bex already sur
 | Credential safety | PASS | A planted password never reached any durable output, request log, or temporary artifact. |
 | Cleanup | PASS | The verifier-created fixture returned not-found after DELETE; local artifacts removed. |
 
-## Reproduction contract (live run — earns ✅)
+## Reproduction contract
 
 [`scripts/cli-compat.sh`](../../scripts/cli-compat.sh) exposes the maintained entry point:
 
@@ -58,5 +106,7 @@ The harness supplies the pinned `RENDER_BIN`, exchanges its ignored local API-ke
 - CNPG provisioning that reaches `available` before the bounded deadline;
 - a verifier source CIDR admitted by the disposable database's IP allow list (the default discovers this host's public `/32` via `api.ipify.org` — the same address the CLI's client-side check reads);
 - a real `psql` executable (`postgresql-client`).
+
+When a local port-forward gives the proxy a transport source address different from the CLI's public address, `BEX_PSQL_ADDITIONAL_ALLOW_CIDRS` accepts a comma-separated list of those transport CIDRs. The public `/32` remains the first allow-list entry and is still what the CLI checks. The verifier retries the real endpoint for a bounded convergence window after control-plane status becomes available.
 
 The default mode creates a uniquely named public Free database and unconditionally deletes it on success, failure, timeout, interruption, or child error. `BEX_PSQL_DATABASE_ID` plus `BEX_PSQL_EXISTING_DISPOSABLE=1` targets an explicitly disposable fixture without deleting it. Production API origins are refused. The interactive TTY session is proven for the sibling [`pgcli` row](pgcli-cli.md) and cross-referenced rather than re-driven here; `psql`'s `-o text` non-interactive path is what Render's own CLI uses for scripted access.

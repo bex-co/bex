@@ -18,6 +18,9 @@ set -euo pipefail
 #   BEX_PSQL_ALLOW_CIDR              explicit allow CIDR (default: this host's
 #                                      public /32 from api.ipify.org — the same
 #                                      address the CLI's client-side check reads)
+#   BEX_PSQL_ADDITIONAL_ALLOW_CIDRS  optional comma-separated transport CIDRs
+#                                      (for example loopback when a local
+#                                      port-forward fronts pg-sni-proxy)
 #   BEX_PSQL_DATABASE_ID             reuse an EXISTING disposable target (dpg-…)
 #                                      instead of creating one; requires
 #                                      BEX_PSQL_EXISTING_DISPOSABLE=1
@@ -26,6 +29,8 @@ set -euo pipefail
 #   BEX_PSQL_SKIP_DENY=1             skip the allow-list-deny negative leg
 #   BEX_PSQL_READY_TIMEOUT_SECONDS   fixture-ready deadline (default 600)
 #   BEX_PSQL_COMMAND_TIMEOUT_SECONDS per-CLI-invocation deadline (default 60)
+#   BEX_PSQL_PROBE_ATTEMPTS          endpoint-convergence attempts (default 15)
+#   BEX_PSQL_PROBE_RETRY_SECONDS     delay between attempts (default 2)
 #   BEX_PSQL_CLEANUP_TIMEOUT_SECONDS delete-confirm deadline (default 90)
 #   BEX_PSQL_TARGET_CLASS            name of the non-production target class
 #   BEX_PSQL_NON_PRODUCTION=1        required acknowledgement (non-production)
@@ -214,15 +219,24 @@ else
       "${verifier_ip}/$( [[ "$verifier_ip" == *:* ]] && echo 128 || echo 32 )")" || fail "source-IP CIDR"
     verifier_ip=""
   fi
-  if ! allow_list="$(python3 - "$allow_cidr" <<'PY'
+  if ! allow_list="$(python3 - "$allow_cidr" "${BEX_PSQL_ADDITIONAL_ALLOW_CIDRS:-}" <<'PY'
 import ipaddress
 import json
 import sys
 
-print(json.dumps([{
-    "cidrBlock": str(ipaddress.ip_network(sys.argv[1], strict=False)),
-    "description": "psql compatibility verifier",
-}], separators=(",", ":")))
+cidrs = [sys.argv[1]]
+cidrs.extend(value.strip() for value in sys.argv[2].split(",") if value.strip())
+entries = []
+for index, cidr in enumerate(cidrs):
+    entries.append({
+        "cidrBlock": str(ipaddress.ip_network(cidr, strict=False)),
+        "description": (
+            "psql compatibility verifier"
+            if index == 0
+            else "psql compatibility local transport"
+        ),
+    })
+print(json.dumps(entries, separators=(",", ":")))
 PY
 )"; then
     fail "invalid verifier allow-list CIDR"
@@ -300,16 +314,29 @@ echo "PASS psql external-connection-precondition host=$expected_host database=$e
 # `-o text`), and that neither the URI nor the password reach durable output.
 probe_sql='SELECT 1 AS bex_psql_probe;'
 run_probe() {
-  local label="$1" selector="$2" out rc
-  set +e
-  out="$(RENDER_CLI_CONFIG_PATH="$tmp/$label-cli.yaml" run_bounded "${BEX_PSQL_COMMAND_TIMEOUT_SECONDS:-60}" \
-    "$RENDER_BIN" psql "$selector" -c "$probe_sql" -o text 2>&1)"
-  rc=$?
-  set -e
-  [[ "$rc" != "124" ]] || fail "psql probe-$label did not complete boundedly"
+  local label="$1" selector="$2" out rc attempt
+  local attempts="${BEX_PSQL_PROBE_ATTEMPTS:-15}"
+  [[ "$attempts" =~ ^[1-9][0-9]*$ ]] || fail "BEX_PSQL_PROBE_ATTEMPTS must be a positive integer"
+  for ((attempt = 1; attempt <= attempts; attempt++)); do
+    set +e
+    out="$(RENDER_CLI_CONFIG_PATH="$tmp/$label-cli.yaml" run_bounded "${BEX_PSQL_COMMAND_TIMEOUT_SECONDS:-60}" \
+      "$RENDER_BIN" psql "$selector" -c "$probe_sql" -o text 2>&1)"
+    rc=$?
+    set -e
+    [[ "$rc" != "124" ]] || fail "psql probe-$label did not complete boundedly"
+    if [[ "$rc" == "0" ]]; then
+      break
+    fi
+    if ((attempt < attempts)); then
+      sleep "${BEX_PSQL_PROBE_RETRY_SECONDS:-2}"
+    fi
+  done
   [[ "$rc" == "0" ]] || { printf '%s\n' "$out" | sed 's/:[^@/]*@/:[redacted]@/g' >&2; fail "psql probe-$label exited $rc"; }
   grep -Fq 'bex_psql_probe' <<<"$out" || fail "psql probe-$label lost the probe column"
   grep -Fq '1' <<<"$out" || fail "psql probe-$label lost the probe value"
+  if ((attempt > 1)); then
+    echo "INFO psql probe-$label ready-after-attempt=$attempt"
+  fi
   echo "PASS psql probe-$label"
 }
 

@@ -63,6 +63,8 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- `026.md` — review and ship the completed, uncommitted Render-style global topbar: contextual breadcrumbs/switchers, lazy `Cmd/Ctrl+K` resource search, persistent create/help/account actions, responsive verification, and green dashboard gates
+
 _(`025.md` promoted to **m45** 2026-07-17 after the scope expanded from the Postgres redirect defect to an exhaustive post-create landing contract; note moved to `done/`.)_
 
 _(`024.md` implemented 2026-07-17 — all destructive type-to-confirm gates unified on Render's sudo-command dialog pattern (shared `SudoCommandField`, bold phrase as body copy, "Sudo Command" input label; service delete now `sudo delete <type words> <name>`); completed as bounded single-session work and recorded directly in `done/`.)_

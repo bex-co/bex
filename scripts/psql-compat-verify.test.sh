@@ -40,6 +40,10 @@ if [[ -z "$render_bin" ]] && command -v render >/dev/null; then
   render_bin="$(command -v render)"
 fi
 [[ -n "$render_bin" && -x "$render_bin" ]] || fail "set RENDER_BIN to the pinned official CLI"
+render_version_output="$("$render_bin" --version 2>/dev/null)"
+render_version="${render_version_output%%$'\n'*}"
+render_version_output=""
+[[ "$render_version" =~ ^render\ v[[:alnum:].+-]+$ ]] || fail "RENDER_BIN did not report a safe Render CLI version"
 
 # Fake bex-api. The credential-bearing URI is assembled from an environment
 # variable and never written to the request log. The allow list is stateful so
@@ -213,11 +217,13 @@ common_env=(
   "RENDER_WORKSPACE=tea-0123456789abcdefghij"
   "BEX_PSQL_TARGET_CLASS=deterministic non-production fake API"
   "BEX_PSQL_NON_PRODUCTION=1"
-  "BEX_PSQL_CLI_VERSION=render vdev"
+  "BEX_PSQL_CLI_VERSION=$render_version"
   "BEX_PSQL_ALLOW_CIDR=0.0.0.0/0"
+  "BEX_PSQL_ADDITIONAL_ALLOW_CIDRS=127.0.0.1/32,::1/128"
   "BEX_PSQL_REAL_BIN=$tmp/fake-psql"
   "BEX_PSQL_READY_TIMEOUT_SECONDS=5"
   "BEX_PSQL_COMMAND_TIMEOUT_SECONDS=20"
+  "BEX_PSQL_PROBE_ATTEMPTS=1"
   "BEX_PSQL_CLEANUP_TIMEOUT_SECONDS=5"
   "BEX_FAKE_PSQL_RECORD=$tmp/fake-psql-record"
 )
