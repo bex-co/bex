@@ -1,18 +1,18 @@
 # w5 · m47 — Cron (and per-type) create discoverability: deep-linkable wizard + first-class New entries
 
-**Worker:** worker5 **Goal:** Render's per-type create URLs (especially `/cron/new`) preselect the right service type, and each service type is a first-class "New" entry — so a user looking for cron finds it instead of landing on a Web-Service-defaulted wizard. **Status:** todo
+**Worker:** worker5 **Goal:** Render's per-type create URLs (especially `/cron/new`) preselect the right service type, and each service type is a first-class "New" entry — so a user looking for cron finds it instead of landing on a Web-Service-defaulted wizard. **Status:** DONE 2026-07-18 — the create wizard preselects its type from `?type=`, `render-alias` maps every `/{web,worker,pserv,static,cron}/new` to `/services/new?type=…`, and both "New" menus surface a per-type service submenu (Cron Job included) — so `/cron/new` now lands on a cron-preselected form. Verified by typecheck + lint + the full 1591-test dashboard suite (new prefill/alias/create-context assertions); live browser proof was blocked by a pre-existing bex-api squatting the `local-bex` :8099 stub port, so automated coverage stands in.
 
 ## Tasks (in order)
 
-| id   | title                                                       | est | depends_on         |
-| ---- | ----------------------------------------------------------- | --- | ------------------ |
-| t001 | Wizard accepts + prefills `?type=` (deep-link to a type)    | 30m | —                  |
-| t002 | render-alias carries the service type on each create URL    | 20m | —                  |
-| t003 | First-class per-type "New" entries (at least Cron Job)      | 40m | t001, t002         |
-| t004 | Render parity check — create-entry information architecture | 20m | t001, t002, t003   |
-| t005 | Simplify the changed create-entry code                      | 20m | t004               |
-| t006 | Test coverage — `?type=` prefill + alias mapping            | 30m | t004               |
-| t007 | Closeout                                                    | 10m | t006               |
+| id   | title                                                                | est | depends_on       |
+| ---- | -------------------------------------------------------------------- | --- | ---------------- |
+| t001 | Wizard accepts + prefills `?type=` (deep-link to a type) — **DONE**  | 30m | —                |
+| t002 | render-alias carries the service type on each create URL — **DONE**  | 20m | —                |
+| t003 | First-class per-type "New" entries (at least Cron Job) — **DONE**    | 40m | t001, t002       |
+| t004 | Render parity check — create-entry information architecture — **DONE** | 20m | t001, t002, t003 |
+| t005 | Simplify the changed create-entry code — **DONE**                    | 20m | t004             |
+| t006 | Test coverage — `?type=` prefill + alias mapping — **DONE**          | 30m | t004             |
+| t007 | Closeout — **DONE**                                                  | 10m | t006             |
 
 ## Definition of done
 

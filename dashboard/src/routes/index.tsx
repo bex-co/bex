@@ -18,6 +18,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/common/components/ui/alert.tsx";
+import { NewServiceMenuItems } from "@/features/services/components/new-service-menu-items";
 import { useServices } from "@/features/services/hooks/use-services";
 import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
 import { useDatabases } from "@/features/databases/hooks/use-databases";
@@ -172,9 +173,7 @@ export function HomePage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <Link to="/services/new">{t("projects.newService")}</Link>
-                </DropdownMenuItem>
+                <NewServiceMenuItems triggerLabelKey="projects.newService" />
                 <DropdownMenuItem onSelect={() => setNewDatabaseOpen(true)}>
                   {t("projects.newDatabase")}
                 </DropdownMenuItem>
