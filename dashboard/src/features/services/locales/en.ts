@@ -2973,7 +2973,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Cancel deploy confirm dialog body",
   },
   "services.eventsRollback": {
-    message: "Roll Back to This Deploy",
+    message: "Rollback",
     description: "Button to roll back to a specific deploy",
   },
   "services.eventsRollbackConfirmTitle": {

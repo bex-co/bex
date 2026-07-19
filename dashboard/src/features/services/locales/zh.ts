@@ -2919,7 +2919,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Cancel deploy confirm dialog body",
   },
   "services.eventsRollback": {
-    message: "回滚到此次部署",
+    message: "回滚",
     description: "Button to roll back to a specific deploy",
   },
   "services.eventsRollbackConfirmTitle": {

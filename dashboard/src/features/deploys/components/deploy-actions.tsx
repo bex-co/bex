@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { useNavigate } from "@tanstack/react-router";
+import { RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import {
   CancelDeployDocument,
@@ -112,10 +113,12 @@ export function DeployActions({
         {canRollback ? (
           <Button
             size="sm"
-            variant="outline"
+            variant="link"
             disabled={busy}
             onClick={() => setConfirm("rollback")}
+            className="h-8 gap-1.5 px-0 text-muted-foreground hover:text-foreground"
           >
+            <RotateCcw />
             {t("services.eventsRollback")}
           </Button>
         ) : null}
