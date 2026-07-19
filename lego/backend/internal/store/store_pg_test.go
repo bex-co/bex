@@ -1395,7 +1395,10 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	// app name (the LabelServiceName fallback) — the feed must match both.
 	fullTarget := core.ServiceTarget(core.CRName(ten.Name, app.Name))
 	bareTarget := core.ServiceTarget(app.Name)
-	at := time.Now().UTC().Add(-time.Minute)
+	// PostgreSQL stores timestamptz at microsecond precision. Keep occurrence
+	// fixtures on that boundary so equality assertions test persisted values,
+	// not Go-only nanoseconds discarded by the database.
+	at := time.Now().UTC().Truncate(time.Microsecond).Add(-time.Minute)
 	recordAudit := func(atRow time.Time, verb, workspace, target, targetName string, outcome core.AuditOutcome) {
 		t.Helper()
 		if err := s.Record(ctx, core.AuditEvent{
