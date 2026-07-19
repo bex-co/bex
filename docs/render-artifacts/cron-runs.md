@@ -1,5 +1,7 @@
 # Render cron-job runs contract
 
+> bex's cron-job design (the `cron_job` type, CronJob mechanism, run history, and this contract) is consolidated in [ADR038-cron-jobs.md](../ADR038-cron-jobs.md). This file is the pinned Render-side capture it references.
+
 Verified against Render's live public OpenAPI on 2026-07-14:
 
 - OpenAPI: <https://api-docs.render.com/openapi/render-public-api-1.json>
