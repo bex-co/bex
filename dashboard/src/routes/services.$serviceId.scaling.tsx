@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { NonStaticRoute } from "@/features/services/components/non-static-route";
 import { AutoscalingSection } from "@/features/services/components/autoscaling-section";
 import { ManualScalingSection } from "@/features/services/components/manual-scaling-section";
 import { ScalingRecentMetrics } from "@/features/services/components/scaling-recent-metrics";
@@ -12,7 +13,11 @@ export const Route = createFileRoute("/services/$serviceId/scaling")({
 
 function RouteComponent() {
   const { serviceId } = Route.useParams();
-  return <ServiceScalingPage serviceId={serviceId} />;
+  return (
+    <NonStaticRoute serviceId={serviceId}>
+      <ServiceScalingPage serviceId={serviceId} />
+    </NonStaticRoute>
+  );
 }
 
 /**

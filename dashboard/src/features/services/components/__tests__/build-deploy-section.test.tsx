@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { BuildDeploySection } from "@/features/services/components/build-deploy-section";
 
 const setRootDir = vi.fn(async () => true);
+const setBranch = vi.fn(async () => true);
 const setAutoDeploy = vi.fn(async () => true);
 const setPreDeployCommand = vi.fn(async () => true);
 const setBuildFilter = vi.fn(async () => true);
@@ -13,6 +14,10 @@ const setDockerfilePath = vi.fn(async () => true);
 
 vi.mock("@/features/services/hooks/use-root-dir", () => ({
   useRootDir: () => ({ setRootDir, busy: false }),
+}));
+
+vi.mock("@/features/services/hooks/use-branch", () => ({
+  useBranch: () => ({ setBranch, busy: false }),
 }));
 
 vi.mock("@/features/services/hooks/use-build-filter", () => ({
@@ -52,6 +57,8 @@ vi.mock("@/features/git/hooks/use-git-connection", () => ({
 beforeEach(() => {
   setRootDir.mockClear();
   setRootDir.mockResolvedValue(true);
+  setBranch.mockClear();
+  setBranch.mockResolvedValue(true);
   setAutoDeploy.mockClear();
   setAutoDeploy.mockResolvedValue(true);
   setPreDeployCommand.mockClear();
@@ -68,7 +75,7 @@ beforeEach(() => {
 });
 
 describe("BuildDeploySection", () => {
-  it("shows the repo and branch read-only", () => {
+  it("shows the repo read-only and the current branch", () => {
     render(
       <BuildDeploySection
         serviceId="app"
@@ -82,6 +89,34 @@ describe("BuildDeploySection", () => {
     );
     expect(screen.getByText("https://github.com/x/mono")).toBeInTheDocument();
     expect(screen.getByText("main")).toBeInTheDocument();
+  });
+
+  it("edits the branch through the confirm dialog via setBranch (w5/m48)", async () => {
+    const user = userEvent.setup();
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Edit branch" }));
+    const input = screen.getByPlaceholderText("main");
+    await user.clear(input);
+    await user.type(input, "release");
+    // The pencil flow confirms before saving (a branch change redeploys).
+    const saves = screen.getAllByRole("button", { name: "Save" });
+    await user.click(saves[0]);
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Save",
+      }),
+    );
+    expect(setBranch).toHaveBeenCalledWith("app", "release");
   });
 
   it("shows an honest 'repository root' state when rootDir is unset", () => {

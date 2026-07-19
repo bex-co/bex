@@ -15,7 +15,27 @@ beforeEach(() => {
 });
 
 describe("DisplayNameRow", () => {
-  it("falls back to the immutable id when no display name is set", () => {
+  it("falls back to the service name, never the id, when no display name is set (w5/m48)", () => {
+    render(
+      <DisplayNameRow
+        serviceId="srv-stable-id"
+        displayName={null}
+        name="docs-site"
+      />,
+    );
+
+    // Render prefills its Name field with the service name; the opaque id
+    // stays in the hint only.
+    expect(screen.getByText("docs-site")).toBeInTheDocument();
+    expect(screen.queryByText("srv-stable-id")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "The service ID remains srv-stable-id; URLs and infrastructure do not change.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("falls back to the immutable id only while the name is unknown", () => {
     render(<DisplayNameRow serviceId="stable-id" displayName={null} />);
 
     expect(screen.getByText("stable-id")).toBeInTheDocument();

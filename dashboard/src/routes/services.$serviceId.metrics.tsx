@@ -12,19 +12,27 @@ import { toChartEventMarkers } from "@/features/metrics/lib/chart-events";
 import { EventTimeline } from "@/features/events/components/event-timeline";
 import type { EventTimelineFilter } from "@/features/events/lib/timeline";
 import { useServiceEvents } from "@/features/events/hooks/use-service-events";
+import { useServer } from "@/features/services/hooks/use-server";
+import { isStaticSite } from "@/features/services/lib/service-type";
 
 export const Route = createFileRoute("/services/$serviceId/metrics")({
-  component: ServiceMetricsPage,
+  component: RouteComponent,
 });
+
+function RouteComponent() {
+  const { serviceId } = Route.useParams();
+  return <ServiceMetricsPage serviceId={serviceId} />;
+}
 
 // The metrics tab. The service chrome (DashboardLayout + header + nav) and the
 // content container come from the `services.$serviceId` layout route; this
 // renders only the tab's own toolbar + charts into the shared `<Outlet/>`.
 // Render's scoping (captured live 2026-07-17, w5/m42): the page level owns
 // only time + the event-timeline controls; Percentage/Total, Status Code, and
-// Percentile live on the cards they alter.
-function ServiceMetricsPage() {
-  const { serviceId } = Route.useParams();
+// Percentile live on the cards they alter. Exported taking `serviceId` as a
+// prop (the ServiceScalingPage pattern) so a routing test can mount it without
+// the file Route's param context.
+export function ServiceMetricsPage({ serviceId }: { serviceId: string }) {
   const [range, setRange] = useState<RangePreset>(DEFAULT_RANGE_PRESET);
   // Render hides the timeline until its toolbar toggle reveals it.
   const [timelineShown, setTimelineShown] = useState(false);
@@ -43,6 +51,16 @@ function ServiceMetricsPage() {
     () => toChartEventMarkers(events, window.startTime, window.endTime),
     [events, window.startTime, window.endTime],
   );
+
+  // A static_site has no pods — it serves from the object store via the shared
+  // static-server (docs/ADR029-static-sites.md) — so the Application card's
+  // CPU/memory/instance-count charts would render empty forever. Render's
+  // static Metrics page is request/bandwidth-oriented; keep only the Network
+  // card (its Traefik series attribute per-App: the operator names the static
+  // site's Ingress after the App, w5/m48/t006). Gated on the loaded service so
+  // a static site never fires the pod-metrics queries.
+  const { service } = useServer(serviceId);
+  const showApplicationCard = service != null && !isStaticSite(service);
 
   return (
     <>
@@ -64,11 +82,13 @@ function ServiceMetricsPage() {
         />
       )}
 
-      <ApplicationMetricsCard
-        resource={serviceId}
-        window={window}
-        markers={markers}
-      />
+      {showApplicationCard && (
+        <ApplicationMetricsCard
+          resource={serviceId}
+          window={window}
+          markers={markers}
+        />
+      )}
       <NetworkMetricsCard
         resource={serviceId}
         window={window}

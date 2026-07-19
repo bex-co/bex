@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/common/components/ui/alert-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useBranch } from "@/features/services/hooks/use-branch";
 import { useRootDir } from "@/features/services/hooks/use-root-dir";
 import { useStartCommand } from "@/features/services/hooks/use-start-command";
 import { useBuildCommand } from "@/features/services/hooks/use-build-command";
@@ -30,6 +31,7 @@ import { usePreDeployCommand } from "@/features/services/hooks/use-pre-deploy-co
 import { useAutoDeploy } from "@/features/services/hooks/use-auto-deploy";
 import { useBuildFilter } from "@/features/services/hooks/use-build-filter";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
+import { rootDirPrefix } from "@/features/services/lib/format";
 import type { BuildFilterView } from "@/features/services/types";
 
 export interface BuildDeploySectionProps {
@@ -103,6 +105,7 @@ export function BuildDeploySection({
 }: BuildDeploySectionProps) {
   const { t } = useTranslations();
   const { setRootDir, busy } = useRootDir();
+  const { setBranch, busy: branchBusy } = useBranch();
   const { setStartCommand, busy: startCommandBusy } = useStartCommand();
   const { setBuildCommand, busy: buildCommandBusy } = useBuildCommand();
   const { setDockerfilePath, busy: dockerfilePathBusy } = useDockerfilePath();
@@ -162,12 +165,28 @@ export function BuildDeploySection({
           </div>
           <div className="mt-1 font-mono text-sm break-all">{repo}</div>
         </div>
-        <div>
-          <div className="text-sm text-muted-foreground">
-            {t("services.buildDeployBranchLabel")}
-          </div>
-          <div className="mt-1 font-mono text-sm">{branch || "—"}</div>
-        </div>
+        {/* Branch is editable (w5/m48/t005, Render parity — Render offers a
+            searchable branch picker; bex edits it inline like Root Directory).
+            A change persists spec.branch: the next deploy builds the new
+            branch and push-to-deploy matches pushes against it. */}
+        <InlineEditSetting
+          label={t("services.buildDeployBranchLabel")}
+          hint={t("services.buildDeployBranchHint")}
+          currentValue={branch ?? ""}
+          emptyValue={t("services.buildDeployBranchEmpty")}
+          confirmEmptyValue={t("services.buildDeployBranchEmpty")}
+          placeholder={t("services.buildDeployBranchPlaceholder")}
+          editLabel={t("services.buildDeployBranchEdit")}
+          confirmTitle={(value) =>
+            t("services.buildDeployBranchConfirmTitle", { value })
+          }
+          confirmBody={t("services.buildDeployBranchConfirmBody")}
+          busy={branchBusy}
+          // An emptied input restores the backend default (the shared verb
+          // treats explicit empty as "back to main"); the confirm dialog
+          // names it via confirmEmptyValue.
+          onSave={(value) => setBranch(serviceId, value)}
+        />
         <InlineEditSetting
           label={t("services.buildDeployRootDirLabel")}
           hint={t("services.buildDeployRootDirHint")}
@@ -189,6 +208,11 @@ export function BuildDeploySection({
           <InlineEditSetting
             label={t("services.buildCommandLabel")}
             hint={t("services.buildCommandHint")}
+            // Render's root-directory affordance (w5/m48/t004): the command
+            // runs from rootDir, so the input carries an "<rootDir>/ $" prompt.
+            valuePrefix={
+              rootDirPrefix(rootDir) ? rootDirPrefix(rootDir) + " $" : undefined
+            }
             currentValue={buildCommand ?? ""}
             emptyValue={t("services.buildCommandEmpty")}
             confirmEmptyValue={t("services.buildCommandConfirmEmpty")}
@@ -371,6 +395,9 @@ interface InlineEditSettingProps {
   confirmBody: string;
   optional?: boolean;
   busy: boolean;
+  /** Display-only prefix shown before the value (Render's root-directory
+   *  affordance, e.g. "app/ $" — w5/m48/t004). Never part of the saved value. */
+  valuePrefix?: string;
   onSave: (value: string) => Promise<boolean>;
 }
 
@@ -387,6 +414,7 @@ function InlineEditSetting({
   confirmBody,
   optional = false,
   busy,
+  valuePrefix,
   onSave,
 }: InlineEditSettingProps) {
   const { t } = useTranslations();
@@ -417,6 +445,11 @@ function InlineEditSetting({
       <div className="mt-1 text-sm text-muted-foreground">{hint}</div>
       {mode !== "view" ? (
         <div className="mt-2 flex items-center gap-2">
+          {valuePrefix ? (
+            <code className="text-muted-foreground shrink-0 font-mono text-sm">
+              {valuePrefix}
+            </code>
+          ) : null}
           <Input
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
@@ -454,7 +487,12 @@ function InlineEditSetting({
       ) : (
         <div className="mt-2 flex items-center gap-2">
           {currentValue ? (
-            <span className="font-mono text-sm break-all">{currentValue}</span>
+            <span className="font-mono text-sm break-all">
+              {valuePrefix ? (
+                <span className="text-muted-foreground">{valuePrefix} </span>
+              ) : null}
+              {currentValue}
+            </span>
           ) : (
             <span className="text-sm text-muted-foreground italic">
               {emptyValue}

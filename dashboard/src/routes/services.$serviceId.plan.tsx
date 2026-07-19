@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { InstanceTypePicker } from "@/features/services/components/instance-type-picker";
+import { NonStaticRoute } from "@/features/services/components/non-static-route";
 import { useServer } from "@/features/services/hooks/use-server";
 
 export const Route = createFileRoute("/services/$serviceId/plan")({
@@ -26,9 +27,11 @@ export function ServicePlanPage() {
   }
 
   return (
-    <InstanceTypePicker
-      serviceId={serviceId}
-      currentPlan={service?.plan ?? null}
-    />
+    <NonStaticRoute serviceId={serviceId}>
+      <InstanceTypePicker
+        serviceId={serviceId}
+        currentPlan={service?.plan ?? null}
+      />
+    </NonStaticRoute>
   );
 }

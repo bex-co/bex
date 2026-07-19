@@ -123,5 +123,44 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
     expect(
       await screen.findByRole("link", { name: "Events" }),
     ).toBeInTheDocument();
+    // Type-specific entries wait for the type: a static site must never flash
+    // Shell/Scaling/Plan (w5/m48/t001).
+    expect(
+      screen.queryByRole("link", { name: "Shell" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("type-gates a static site: no Logs/Shell/Scaling/Plan, adds Redirects + Headers (w5/m48)", async () => {
+    serverState.service = {
+      id: "srv-1",
+      name: "docs-site",
+      type: "static_site",
+    } as ServiceView;
+    renderAt("/services/srv-1/settings");
+
+    expect(
+      await screen.findByRole("link", { name: "Redirects/Rewrites" }),
+    ).toHaveAttribute("href", "/services/srv-1/redirects");
+    expect(screen.getByRole("link", { name: "Headers" })).toHaveAttribute(
+      "href",
+      "/services/srv-1/headers",
+    );
+
+    // Render's static sidebar has none of the runtime-instance tabs.
+    expect(
+      screen
+        .getAllByRole("link")
+        .map((link) => link.textContent)
+        .filter(Boolean),
+    ).toEqual([
+      "Dashboard",
+      "Deploys",
+      "Settings",
+      "Events",
+      "Metrics",
+      "Environment",
+      "Redirects/Rewrites",
+      "Headers",
+    ]);
   });
 });

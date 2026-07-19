@@ -355,6 +355,16 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "指标",
     description: "Service-detail nav item (metrics tab)",
   },
+  "services.navRedirects": {
+    message: "重定向/重写",
+    description:
+      "Service-detail nav item (static-site route rules page, Render's label)",
+  },
+  "services.navHeaders": {
+    message: "响应头",
+    description:
+      "Service-detail nav item (static-site response headers page, Render's label)",
+  },
   "services.navScaling": {
     message: "弹性伸缩",
     description: "Service-detail nav item (autoscaling tab)",
@@ -1559,7 +1569,33 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.buildDeployBranchLabel": {
     message: "分支",
-    description: "Build & Deploy: branch field label (read-only)",
+    description: "Build & Deploy: branch field label",
+  },
+  "services.buildDeployBranchHint": {
+    message: "构建和部署所用的 Git 分支。",
+    description: "Build & Deploy: branch field hint (Render's copy)",
+  },
+  "services.buildDeployBranchEmpty": {
+    message: "main",
+    description:
+      "Build & Deploy: branch value shown when unset (the backend default)",
+  },
+  "services.buildDeployBranchPlaceholder": {
+    message: "main",
+    description: "Build & Deploy: branch input placeholder",
+  },
+  "services.buildDeployBranchEdit": {
+    message: "编辑分支",
+    description: "Build & Deploy: branch edit-button aria label",
+  },
+  "services.buildDeployBranchConfirmTitle": {
+    message: '将分支改为“{value}”？',
+    description: "Build & Deploy: branch confirm-dialog title",
+  },
+  "services.buildDeployBranchConfirmBody": {
+    message:
+      "下次部署将构建该分支，推送到该分支会触发自动部署；推送到旧分支将不再部署。",
+    description: "Build & Deploy: branch confirm-dialog body",
   },
   "services.buildDeployRootDirLabel": {
     message: "根目录",
@@ -1981,6 +2017,11 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.staticDescription": {
     message: "发布的输出目录，以及提供服务时应用的边缘规则。",
     description: "Static Site settings section description",
+  },
+  "services.staticEdgeRulesHint": {
+    message: "重定向/重写和响应头有各自的专属页面：",
+    description:
+      "Settings hint pointing at the dedicated Redirects/Rewrites + Headers pages",
   },
   "services.staticEdit": {
     message: "编辑",

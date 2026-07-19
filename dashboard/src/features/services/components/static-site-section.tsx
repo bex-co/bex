@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Plus, Trash2, Pencil, ArrowRightLeft, Tags } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -26,6 +27,7 @@ import {
 } from "@/common/components/ui/select";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useStaticSiteMutations } from "@/features/services/hooks/use-static-site";
+import { rootDirPrefix } from "@/features/services/lib/format";
 import type {
   ServiceView,
   StaticRouteView,
@@ -34,9 +36,10 @@ import type {
 
 /**
  * The Static Site section of the service Settings tab (w1/m21): the published
- * output directory (publishPath) plus the two edge-rule editors — redirects/
- * rewrites (routes) and custom response headers — over bex-api's static-site
- * GraphQL (docs/static-sites.md). Routes/headers apply without a rebuild; a
+ * output directory (publishPath), over bex-api's static-site GraphQL
+ * (docs/ADR029-static-sites.md). The two edge-rule editors — redirects/rewrites
+ * (routes) and custom response headers — moved to their own Manage pages
+ * (w5/m48/t002, Render's sidebar placement); this card links to them. A
  * publishPath change republishes. Rendered only when the service is a static_site.
  */
 export function StaticSiteSection({
@@ -49,8 +52,7 @@ export function StaticSiteSection({
   refetch: () => Promise<ServiceView[]>;
 }) {
   const { t } = useTranslations();
-  const { setRoutes, setHeaders, setPublishPath, busy } =
-    useStaticSiteMutations(serviceId, refetch);
+  const { setPublishPath, busy } = useStaticSiteMutations(serviceId, refetch);
 
   return (
     <Card>
@@ -61,34 +63,53 @@ export function StaticSiteSection({
       <CardContent className="space-y-8">
         <PublishPathRow
           publishPath={service.publishPath}
+          rootDir={service.rootDir}
           onSave={setPublishPath}
           busy={busy}
         />
-        <RoutesEditor routes={service.routes} onSave={setRoutes} busy={busy} />
-        <HeadersEditor
-          headers={service.headers}
-          onSave={setHeaders}
-          busy={busy}
-        />
+        <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          <span>{t("services.staticEdgeRulesHint")}</span>
+          <Link
+            to="/services/$serviceId/redirects"
+            params={{ serviceId }}
+            className="text-foreground inline-flex items-center gap-1 hover:underline"
+          >
+            <ArrowRightLeft className="size-3.5" />
+            {t("services.navRedirects")}
+          </Link>
+          <Link
+            to="/services/$serviceId/headers"
+            params={{ serviceId }}
+            className="text-foreground inline-flex items-center gap-1 hover:underline"
+          >
+            <Tags className="size-3.5" />
+            {t("services.navHeaders")}
+          </Link>
+        </div>
       </CardContent>
     </Card>
   );
 }
 
 /** The publish-directory row: shows the current value, with an inline edit that
- *  republishes on save (mirrors BuildDeploySection's Root Directory row). */
+ *  republishes on save (mirrors BuildDeploySection's Root Directory row). When a
+ *  Root Directory is set, the value carries Render's `<rootDir>/` prefix
+ *  affordance (w5/m48/t004) — the path is resolved from there, not the repo root. */
 function PublishPathRow({
   publishPath,
+  rootDir,
   onSave,
   busy,
 }: {
   publishPath: string | null;
+  rootDir?: string | null;
   onSave: (v: string) => Promise<boolean>;
   busy: boolean;
 }) {
   const { t } = useTranslations();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(publishPath ?? "");
+  const prefix = rootDirPrefix(rootDir);
 
   async function save() {
     if (draft.trim() === "") return;
@@ -116,6 +137,11 @@ function PublishPathRow({
       </div>
       {editing ? (
         <div className="flex items-center gap-2">
+          {prefix && (
+            <code className="text-muted-foreground shrink-0 font-mono text-xs">
+              {prefix}
+            </code>
+          )}
           <Input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -131,7 +157,18 @@ function PublishPathRow({
         </div>
       ) : (
         <div className="bg-background overflow-x-auto rounded-md border px-3 py-2">
-          <code className="font-mono text-xs">{publishPath || "—"}</code>
+          <code className="font-mono text-xs">
+            {publishPath ? (
+              <>
+                {prefix && (
+                  <span className="text-muted-foreground">{prefix}</span>
+                )}
+                {publishPath}
+              </>
+            ) : (
+              "—"
+            )}
+          </code>
         </div>
       )}
       <p className="text-muted-foreground text-xs">
@@ -142,8 +179,9 @@ function PublishPathRow({
 }
 
 /** The redirects/rewrites editor: an editable list of {type, source, destination}
- *  rows with add/remove, saved as a bulk replace (Render's /routes). */
-function RoutesEditor({
+ *  rows with add/remove, saved as a bulk replace (Render's /routes). Rendered by
+ *  the dedicated Redirects/Rewrites page (w5/m48/t002). */
+export function RoutesEditor({
   routes,
   onSave,
   busy,
@@ -256,8 +294,9 @@ function RoutesEditor({
 }
 
 /** The custom-headers editor: an editable list of {path, name, value} rows with
- *  add/remove, saved as a bulk replace (Render's /headers). */
-function HeadersEditor({
+ *  add/remove, saved as a bulk replace (Render's /headers). Rendered by the
+ *  dedicated Headers page (w5/m48/t002). */
+export function HeadersEditor({
   headers,
   onSave,
   busy,

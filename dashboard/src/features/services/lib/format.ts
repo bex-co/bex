@@ -1,3 +1,12 @@
+// Render's root-directory affordance (w5/m48/t004): the "<rootDir>/" prefix
+// shown before Build Command and Publish directory values, so both fields agree
+// on the same trim/strip-trailing-slash rule. Empty when no root dir is set;
+// callers append their own suffix (the Build Command prompt adds " $").
+export function rootDirPrefix(rootDir: string | null | undefined): string {
+  const dir = rootDir?.trim().replace(/\/+$/, "");
+  return dir ? dir + "/" : "";
+}
+
 // Compact relative age in Render's dashboard style ("2mo", "5d", "3h", "4m",
 // "now"). Render's services list shows this in its "Updated" column; bex only
 // tracks a creation timestamp today (a true last-deploy time is a known gap), so
