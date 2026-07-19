@@ -48,6 +48,8 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 )
 
 // Pod/Job labels. The predeploy label carries the service name (like build's
@@ -91,13 +93,15 @@ const (
 // volume) are supplied by the controller so a migration runs with exactly the
 // app pod's configuration.
 type Options struct {
-	Name       string // service name (image repo name / label value)
-	Namespace  string // namespace the pre-deploy Job runs in
-	Workspace  string // owning tenant id (app.bex.co/workspace label); empty = omitted
-	Image      string // the new revision's image (same ref the Deployment will run)
-	Command    string // App.spec.preDeployCommand, run as `sh -c <Command>`
-	Revision   string // deterministic per-revision tag, e.g. "gen-7" (names the Job)
-	Generation int64  // release generation this step gates (stamped on the pod for traceability)
+	Name         string // service name (image repo name / label value)
+	Namespace    string // namespace the pre-deploy Job runs in
+	Workspace    string // owning tenant id (app.bex.co/workspace label); empty = omitted
+	AppNamespace string // namespace the App CR lives in; used for log attribution
+	VerifyImage  bool   // select the Pod for signature admission when signing is enabled
+	Image        string // the new revision's image (same ref the Deployment will run)
+	Command      string // App.spec.preDeployCommand, run as `sh -c <Command>`
+	Revision     string // deterministic per-revision tag, e.g. "gen-7" (names the Job)
+	Generation   int64  // release generation this step gates (stamped on the pod for traceability)
 
 	Env              []corev1.EnvVar
 	EnvFrom          []corev1.EnvFromSource
@@ -148,13 +152,21 @@ func Job(o Options) *batchv1.Job {
 		VolumeMounts:    o.VolumeMounts,
 	}
 
-	labels := map[string]string{
-		LabelService:   o.Name,
-		LabelComponent: ComponentValue,
+	appNamespace := ""
+	if o.AppNamespace != "" && o.AppNamespace != o.Namespace {
+		appNamespace = o.AppNamespace
 	}
-	if o.Workspace != "" {
-		labels[labelWorkspace] = o.Workspace
+	labels := execution.PodLabels(o.Name, ComponentValue, o.Workspace, appNamespace, o.VerifyImage)
+	labels[LabelService] = o.Name
+	podLabels := execution.PodLabels(o.Name, ComponentValue, o.Workspace, appNamespace, o.VerifyImage)
+	podLabels[LabelService] = o.Name
+	podSpec := corev1.PodSpec{
+		RestartPolicy:    corev1.RestartPolicyNever,
+		Containers:       []corev1.Container{container},
+		ImagePullSecrets: o.ImagePullSecrets,
+		Volumes:          o.Volumes,
 	}
+	execution.HardenPod(&podSpec)
 
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -170,18 +182,12 @@ func Job(o Options) *batchv1.Job {
 				ObjectMeta: metav1.ObjectMeta{
 					// The pod carries the service label so the backend can read the
 					// step's logs by selector, plus the generation for traceability.
-					Labels: map[string]string{LabelService: o.Name},
+					Labels: podLabels,
 					Annotations: map[string]string{
 						"app.bex.co/generation": fmt.Sprintf("%d", o.Generation),
 					},
 				},
-				Spec: corev1.PodSpec{
-					RestartPolicy:                corev1.RestartPolicyNever,
-					Containers:                   []corev1.Container{container},
-					ImagePullSecrets:             o.ImagePullSecrets,
-					Volumes:                      o.Volumes,
-					AutomountServiceAccountToken: ptr(false),
-				},
+				Spec: podSpec,
 			},
 		},
 	}

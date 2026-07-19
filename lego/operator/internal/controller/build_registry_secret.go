@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"maps"
 	"strings"
@@ -35,16 +34,16 @@ import (
 const (
 	buildRegistryConfigKey    = "config.json"
 	buildkitRegistryConfigKey = "buildkitd.toml"
+	buildRegistryComponent    = "build-registry-secret"
 )
 
-// prepareBuildRegistrySecret merges a Dockerfile build's explicit private-base
-// credential with the platform push credential. The result is a deterministic
-// Secret in the build namespace; BuildJob mounts only that Secret into the
-// buildkitd/cosign container filesystem. No external binding returns the
-// existing push Secret verbatim, preserving the historical Job byte-for-byte.
+// prepareBuildRegistrySecret copies only a Dockerfile build's explicit private-
+// base pull credential into a deterministic Secret in the execution namespace.
+// Platform push auth deliberately stays in RegistryPushSecret and is mounted
+// only by the post-build push/sign phases.
 func (r *AppReconciler) prepareBuildRegistrySecret(ctx context.Context, app *appv1alpha1.App, buildNS, builder string) (string, error) {
 	if !usesBuildRegistryConfig(app, builder) {
-		return r.RegistryPushSecret, nil
+		return "", nil
 	}
 	cl := r.buildPlaneClient()
 	var external corev1.Secret
@@ -55,35 +54,19 @@ func (r *AppReconciler) prepareBuildRegistrySecret(ctx context.Context, app *app
 	if err != nil {
 		return "", err
 	}
-	configs := [][]byte{externalConfig}
-	if r.RegistryPushSecret != "" {
-		var push corev1.Secret
-		if err := cl.Get(ctx, client.ObjectKey{Namespace: buildNS, Name: r.RegistryPushSecret}, &push); err != nil {
-			return "", fmt.Errorf("get registry push credential: %w", err)
-		}
-		pushConfig, err := dockerConfigData(&push)
-		if err != nil {
-			return "", err
-		}
-		configs = append(configs, pushConfig) // push auth wins a same-host collision
-	}
-	merged, err := mergeDockerConfigs(configs...)
-	if err != nil {
-		return "", err
-	}
 	name := build.JobName(app.Name, "registry-auth")
 	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: buildNS}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, cl, secret, func() error {
 		secret.Type = corev1.SecretTypeOpaque
 		secret.Data = map[string][]byte{
-			buildRegistryConfigKey:    merged,
+			buildRegistryConfigKey:    externalConfig,
 			buildkitRegistryConfigKey: []byte(buildkitRegistryConfig(r.Registry)),
 		}
 		if secret.Labels == nil {
 			secret.Labels = map[string]string{}
 		}
 		secret.Labels[labelApp] = app.Name
-		secret.Labels["app.bex.co/component"] = "build-registry-secret"
+		secret.Labels["app.bex.co/component"] = buildRegistryComponent
 		return nil
 	}); err != nil {
 		return "", fmt.Errorf("write merged build registry credential: %w", err)
@@ -109,6 +92,35 @@ func (r *AppReconciler) deleteBuildRegistrySecret(ctx context.Context, appName, 
 	return client.IgnoreNotFound(r.buildPlaneClient().Delete(ctx, secret))
 }
 
+// copyBuildRegistryCredential mirrors a per-App dockerconfigjson Secret into
+// the execution namespace and adds the config.json filename consumed by
+// skopeo/cosign. The original .dockerconfigjson key and Secret type remain
+// intact for kubelet imagePullSecret use by publish/pre-deploy Jobs.
+func (r *AppReconciler) copyBuildRegistryCredential(ctx context.Context, srcNS, dstNS, appName, name string) error {
+	cl := r.buildPlaneClient()
+	var src corev1.Secret
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: srcNS, Name: name}, &src); err != nil {
+		return err
+	}
+	config, err := dockerConfigData(&src)
+	if err != nil {
+		return err
+	}
+	dst := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: dstNS}}
+	_, err = controllerutil.CreateOrUpdate(ctx, cl, dst, func() error {
+		dst.Type = src.Type
+		dst.Data = maps.Clone(src.Data)
+		dst.Data[buildRegistryConfigKey] = config
+		if dst.Labels == nil {
+			dst.Labels = map[string]string{}
+		}
+		dst.Labels[labelApp] = appName
+		dst.Labels["app.bex.co/component"] = buildRegistryComponent
+		return nil
+	})
+	return err
+}
+
 func dockerConfigData(secret *corev1.Secret) ([]byte, error) {
 	if data := secret.Data[buildRegistryConfigKey]; len(data) > 0 {
 		return data, nil
@@ -117,41 +129,4 @@ func dockerConfigData(secret *corev1.Secret) ([]byte, error) {
 		return data, nil
 	}
 	return nil, fmt.Errorf("registry credential Secret %s/%s has neither %s nor %s", secret.Namespace, secret.Name, buildRegistryConfigKey, corev1.DockerConfigJsonKey)
-}
-
-// mergeDockerConfigs unions Docker config auths in order. Later configs win a
-// same-host collision, so the platform push credential cannot be shadowed by a
-// tenant credential for the output registry. Non-auth top-level fields are
-// preserved with the same last-writer rule.
-func mergeDockerConfigs(configs ...[]byte) ([]byte, error) {
-	doc := map[string]json.RawMessage{}
-	auths := map[string]json.RawMessage{}
-	for _, raw := range configs {
-		var next map[string]json.RawMessage
-		if err := json.Unmarshal(raw, &next); err != nil {
-			return nil, fmt.Errorf("decode registry docker config: %w", err)
-		}
-		for key, value := range next {
-			if key != "auths" {
-				doc[key] = value
-			}
-		}
-		if rawAuths := next["auths"]; len(rawAuths) > 0 {
-			var nextAuths map[string]json.RawMessage
-			if err := json.Unmarshal(rawAuths, &nextAuths); err != nil {
-				return nil, fmt.Errorf("decode registry docker config auths: %w", err)
-			}
-			maps.Copy(auths, nextAuths)
-		}
-	}
-	rawAuths, err := json.Marshal(auths)
-	if err != nil {
-		return nil, fmt.Errorf("encode registry docker config auths: %w", err)
-	}
-	doc["auths"] = rawAuths
-	merged, err := json.Marshal(doc)
-	if err != nil {
-		return nil, fmt.Errorf("encode registry docker config: %w", err)
-	}
-	return merged, nil
 }

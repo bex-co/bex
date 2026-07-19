@@ -56,10 +56,10 @@ func TestNativeDockerfilePreservesRenderCommands(t *testing.T) {
 func TestNativeBuildJobPreparesDockerfileAndSecretEnv(t *testing.T) {
 	o := nativeOptions()
 	job := BuildJob(o, o.ImageRef())
-	if len(job.Spec.Template.Spec.InitContainers) != 1 {
-		t.Fatalf("initContainers = %d, want preparer", len(job.Spec.Template.Spec.InitContainers))
+	if len(job.Spec.Template.Spec.InitContainers) != 3 {
+		t.Fatalf("initContainers = %d, want clone, preparer, buildkit", len(job.Spec.Template.Spec.InitContainers))
 	}
-	prep := job.Spec.Template.Spec.InitContainers[0]
+	prep := job.Spec.Template.Spec.InitContainers[1]
 	if prep.Name != "prepare-native-build" {
 		t.Fatalf("preparer name = %q", prep.Name)
 	}
@@ -76,7 +76,7 @@ func TestNativeBuildJobPreparesDockerfileAndSecretEnv(t *testing.T) {
 	if !hasVolume(job.Spec.Template.Spec.Volumes, "runtime-env") {
 		t.Fatal("OpenBao-backed runtime env Secret not mounted for native build")
 	}
-	buildkit := job.Spec.Template.Spec.Containers[0]
+	buildkit := containerByName(job.Spec.Template.Spec.InitContainers, "buildkit")
 	if !containsPair(buildkit.Args, "--secret", "id=render-env,src=/native/render-env") {
 		t.Fatalf("buildkit args missing render env secret: %v", buildkit.Args)
 	}

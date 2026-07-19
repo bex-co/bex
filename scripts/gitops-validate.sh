@@ -594,4 +594,77 @@ if [ -f "$EGRESS" ]; then
     || { echo "FAIL: deny-tenant-node-and-metadata-egress must exclude cnpg.io/cluster pods (DoesNotExist matchExpression) — CNPG init pods need k8s API reachability (w7/m33)" >&2; fail=1; }
 fi
 
+# Untrusted-execution boundary (w2/m59, ADR039 O-01/O-02). These assertions are
+# intentionally source-level as well as covered by kustomize rendering above:
+# they fail if an environment value, selector, or deny rule silently drifts.
+echo "==> m59 dedicated untrusted-execution boundary"
+BUILD_BOUNDARY="deploy/gitops/base/build-boundary.yaml"
+build_ns_shape="$(yq -N 'select(.kind == "Namespace" and .metadata.name == "bex-build") | [.metadata.labels."app.bex.co/execution-boundary", .metadata.labels."pod-security.kubernetes.io/enforce", .metadata.labels."pod-security.kubernetes.io/audit", .metadata.labels."pod-security.kubernetes.io/warn"] | join(":")' "$BUILD_BOUNDARY")"
+if [ "$build_ns_shape" != "untrusted:privileged:restricted:restricted" ]; then
+  echo "FAIL: bex-build namespace boundary/PSS labels drifted: '$build_ns_shape'" >&2
+  fail=1
+fi
+
+for manifest in lego/operator/config/manager/manager.yaml lego/operator/config/api/deployment.yaml; do
+  build_ns_env="$(yq -N 'select(.kind == "Deployment") | .spec.template.spec.containers[].env[]? | select(.name == "BEX_BUILD_NAMESPACE") | .value' "$manifest")"
+  if [ "$build_ns_env" != "bex-build" ]; then
+    echo "FAIL: $manifest has BEX_BUILD_NAMESPACE='$build_ns_env', want bex-build" >&2
+    fail=1
+  fi
+done
+
+deny_types="$(yq -N 'select(.kind == "NetworkPolicy" and .metadata.name == "default-deny" and .metadata.namespace == "bex-build") | .spec.policyTypes | sort | join(",")' "$BUILD_BOUNDARY")"
+if [ "$deny_types" != "Egress,Ingress" ]; then
+  echo "FAIL: bex-build default-deny must select both ingress and egress" >&2
+  fail=1
+fi
+required_ports="$(yq -N 'select(.kind == "NetworkPolicy" and .metadata.name == "allow-required-egress") | [.spec.egress[].ports[]? | .port] | sort | join(",")' "$BUILD_BOUNDARY" | tr -d '\n')"
+if [ "$required_ports" != "22,53,53,80,443,5000" ]; then
+  echo "FAIL: bex-build required egress ports are '$required_ports', want 22,53,53,80,443,5000" >&2
+  fail=1
+fi
+for blocked_cidr in 10.0.0.0/8 100.64.0.0/10 169.254.0.0/16 172.16.0.0/12 192.168.0.0/16; do
+  yq -e 'select(.kind == "NetworkPolicy" and .metadata.name == "allow-required-egress") | .spec.egress[].to[].ipBlock.except[]? == "'"$blocked_cidr"'"' "$BUILD_BOUNDARY" >/dev/null || {
+    echo "FAIL: bex-build public egress no longer excludes $blocked_cidr" >&2
+    fail=1
+  }
+done
+cilium_denies="$(yq -N 'select(.kind == "CiliumNetworkPolicy" and .metadata.name == "deny-build-node-and-metadata-egress") | [(.spec.egressDeny[].toEntities[]? // ""), (.spec.egressDeny[].toCIDR[]? // "")] | sort | join(",")' "$BUILD_BOUNDARY")"
+for required in host remote-node 169.254.0.0/16; do
+  grep -q "\(^\|,\)$required\(,\|$\)" <<<"$cilium_denies" || {
+    echo "FAIL: bex-build Cilium deny lost '$required': $cilium_denies" >&2
+    fail=1
+  }
+done
+
+echo "==> m59 webhook selects tenant images and fails closed"
+WEBHOOK="lego/operator/config/webhook/manifests.yaml"
+webhook_shape="$(yq -N 'select(.kind == "ValidatingWebhookConfiguration") | .webhooks[] | select(.name == "vpod.kb.io") | [.failurePolicy, .objectSelector.matchLabels."app.bex.co/verify-image", (.namespaceSelector // "none")] | join(":")' "$WEBHOOK" | tr -d '\n')"
+if [ "$webhook_shape" != "Fail:enabled:none" ]; then
+  echo "FAIL: tenant-image webhook shape is '$webhook_shape', want Fail:enabled:none" >&2
+  fail=1
+fi
+manager_rollout="$(yq -N 'select(.kind == "Deployment") | [.spec.strategy.type, .spec.strategy.rollingUpdate.maxUnavailable, .spec.strategy.rollingUpdate.maxSurge] | join(":")' lego/operator/config/manager/manager.yaml | tr -d '\n')"
+if [ "$manager_rollout" != "RollingUpdate:0:1" ]; then
+  echo "FAIL: webhook manager rollout must preserve one Ready endpoint; got '$manager_rollout'" >&2
+  fail=1
+fi
+
+echo "==> m59 execution placement and production user namespaces"
+prewarm_shape="$(yq -N '[.spec.template.spec.nodeSelector."bex.co/pool", .spec.template.spec.containers[0].image] | join(":")' deploy/gitops/base/build-image-prewarm.yaml)"
+if [ "$prewarm_shape" != "tenant:moby/buildkit:v0.30.0" ]; then
+  echo "FAIL: BuildKit prewarm must target tenant nodes with the supported rootful image; got '$prewarm_shape'" >&2
+  fail=1
+fi
+userns_gates="$(grep -c 'UserNamespacesSupport=true' infra/clusterapi/overlays/hetzner-caph/cluster.yaml || true)"
+if [ "$userns_gates" -lt 5 ]; then
+  echo "FAIL: production control-plane/worker templates expose only $userns_gates UserNamespacesSupport gates, want at least 5" >&2
+  fail=1
+fi
+if ! grep -q 'export CONTAINERD=2.3.3' infra/clusterapi/overlays/hetzner-caph/cluster.yaml ||
+  ! grep -q 'export RUNC=1.5.1' infra/clusterapi/overlays/hetzner-caph/cluster.yaml; then
+  echo "FAIL: production worker bootstrap must pin containerd 2.3.3 + runc 1.5.1 for Pod user namespaces" >&2
+  fail=1
+fi
+
 [ "$fail" -eq 0 ] && echo "PASS: gitops tree renders" || { echo "FAIL: see errors above" >&2; exit 1; }

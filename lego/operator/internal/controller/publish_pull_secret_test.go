@@ -42,7 +42,8 @@ func TestBuildJobPullSecret(t *testing.T) {
 	}{
 		{
 			// The prod case (BEX_BUILD_NAMESPACE=bex-system, per-App creds): the
-			// apps-ns reg-pull-myapp is unreachable, so use the build-ns credential.
+			// apps-ns reg-pull-myapp is mirrored into the build namespace, so the
+			// publisher keeps its own-repository scope instead of a shared credential.
 			name: "separate build namespace uses the build-ns credential (the fix)",
 			r: &AppReconciler{
 				BuildNamespace:          "bex-system",
@@ -50,7 +51,7 @@ func TestBuildJobPullSecret(t *testing.T) {
 				PerAppRegistry:          &registry.Creds{},
 				RegistryPullSecret:      "must-not-be-used-apps-ns",
 			},
-			want: "bex-registry-pull",
+			want: "reg-pull-myapp",
 		},
 		{
 			name: "separate build namespace, no build credential => anonymous (dev)",

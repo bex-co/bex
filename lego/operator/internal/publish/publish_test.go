@@ -107,7 +107,7 @@ func TestPublishJobShape(t *testing.T) {
 	upload := pod.Containers[0]
 	wantArgs := []string{
 		"s3", "sync", "/out", "s3://bex-static/mysite/rev-3/",
-		"--endpoint-url", "https://s3.eu-central-2.wasabisys.com", "--delete",
+		"--endpoint-url", "https://s3.eu-central-2.wasabisys.com", "--no-follow-symlinks", "--delete",
 	}
 	if !slices.Equal(upload.Args, wantArgs) {
 		t.Errorf("upload args = %v, want %v", upload.Args, wantArgs)
@@ -124,6 +124,40 @@ func TestPublishJobShape(t *testing.T) {
 	}
 	if pod.RestartPolicy != "Never" {
 		t.Errorf("restart policy = %q, want Never", pod.RestartPolicy)
+	}
+	if pod.AutomountServiceAccountToken == nil || *pod.AutomountServiceAccountToken {
+		t.Error("publish pod must disable the Kubernetes API token")
+	}
+	if pod.HostUsers == nil || *pod.HostUsers {
+		t.Error("publish pod must use a Pod user namespace")
+	}
+	if pod.NodeSelector["bex.co/pool"] != "tenant" {
+		t.Errorf("publish node selector = %v", pod.NodeSelector)
+	}
+}
+
+func TestPublishJobIdentityAndVerificationLabels(t *testing.T) {
+	o := testOptions()
+	o.Namespace = "bex-build"
+	o.AppNamespace = "default"
+	o.Workspace = "tea-1"
+	o.VerifyImage = true
+	labels := PublishJob(o).Spec.Template.Labels
+	for key, want := range map[string]string{
+		"app.bex.co/app":           "mysite",
+		"app.bex.co/component":     "publish",
+		"app.bex.co/workspace":     "tea-1",
+		"app.bex.co/app-namespace": "default",
+		"app.bex.co/verify-image":  "enabled",
+	} {
+		if labels[key] != want {
+			t.Errorf("label %s = %q, want %q", key, labels[key], want)
+		}
+	}
+	o.Image = ""
+	o.Repo = "https://github.com/bex-co/bex"
+	if _, ok := PublishJob(o).Spec.Template.Labels["app.bex.co/verify-image"]; ok {
+		t.Error("direct-clone publish must not select the tenant-image webhook")
 	}
 }
 

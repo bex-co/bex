@@ -72,8 +72,8 @@ func TestPredeployPullSecrets(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(got) != 1 || got[0].Name != "bex-registry-pull" {
-			t.Errorf("separate-ns secrets = %v, want [bex-registry-pull]", names(got))
+		if len(got) != 1 || got[0].Name != "reg-pull-myapp" {
+			t.Errorf("separate-ns secrets = %v, want [reg-pull-myapp]", names(got))
 		}
 	})
 

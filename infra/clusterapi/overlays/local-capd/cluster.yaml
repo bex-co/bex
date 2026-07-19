@@ -254,6 +254,33 @@ spec:
           apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
           kind: DockerMachineTemplate
           name: quick-start-default-worker-machinetemplate
+    - bootstrap:
+        templateRef:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+          kind: KubeadmConfigTemplate
+          name: quick-start-tenant-worker-bootstraptemplate
+      class: tenant-worker
+      healthCheck:
+        checks:
+          unhealthyMachineConditions:
+          - status: Unknown
+            timeoutSeconds: 300
+            type: NodeReady
+          - status: "False"
+            timeoutSeconds: 300
+            type: NodeReady
+          unhealthyNodeConditions:
+          - status: Unknown
+            timeoutSeconds: 300
+            type: Ready
+          - status: "False"
+            timeoutSeconds: 300
+            type: Ready
+      infrastructure:
+        templateRef:
+          apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+          kind: DockerMachineTemplate
+          name: quick-start-default-worker-machinetemplate
     machinePools:
     - bootstrap:
         templateRef:
@@ -430,6 +457,28 @@ spec:
           - name: node-labels
             value: bex.co/pool=platform
 ---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: KubeadmConfigTemplate
+metadata:
+  name: quick-start-tenant-worker-bootstraptemplate
+  namespace: default
+spec:
+  template:
+    spec:
+      preKubeadmCommands:
+      - mkdir -p /etc/containerd/certs.d/zot.bex-registry.svc:5000 /etc/containerd/certs.d/zot.local:5000
+      - printf 'server = "http://127.0.0.1:30500"\n[host."http://127.0.0.1:30500"]\n  skip_verify = true\n  capabilities = ["pull", "resolve"]\n' > /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml
+      - cp /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml /etc/containerd/certs.d/zot.local:5000/hosts.toml
+      - sed -i 's|config_path = ""|config_path = "/etc/containerd/certs.d"|' /etc/containerd/config.toml
+      - systemctl restart containerd
+      joinConfiguration:
+        nodeRegistration:
+          kubeletExtraArgs:
+          - name: eviction-hard
+            value: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
+          - name: node-labels
+            value: bex.co/pool=tenant
+---
 apiVersion: cluster.x-k8s.io/v1beta2
 kind: Cluster
 metadata:
@@ -471,6 +520,12 @@ spec:
         # within [min,max] below (w1/m3). `mock-cluster.sh scale N` re-sets
         # replicas — a manual override the topology controller then enforces,
         # fighting the autoscaler; use it only with the autoscaler uninstalled.
+        metadata:
+          annotations:
+            cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "1"
+            cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "1"
+      - class: tenant-worker
+        name: tenant-0
         metadata:
           annotations:
             cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "1"

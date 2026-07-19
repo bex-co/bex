@@ -76,10 +76,10 @@ func (p *PodAdmitter) Handle(ctx context.Context, req admission.Request) admissi
 // against the in-cluster Zot registry), and registers the PodAdmitter webhook
 // at /validate-v1-pod on the manager's webhook server.
 //
-// If the signing secret does not contain a "cosign.pub" key, Setup logs a
-// warning and returns nil (no webhook registered, byte-identical to unset).
-// This allows existing deployments that only have cosign.key+cosign.password to
-// upgrade safely; add cosign.pub to the Secret to activate verification.
+// Signing is an explicit activation gate: when secretName is configured the
+// public key must exist and the verifier must be ready before the manager can
+// become available. Disabled mode does not call this function and its Pods omit
+// the webhook's object-selector label.
 func SetupWithManager(
 	mgr manager.Manager,
 	secretName, namespace, registry, pushSecretName string,
@@ -99,11 +99,8 @@ func SetupWithManager(
 	}
 
 	pubKey, ok := sigSecret.Data["cosign.pub"]
-	if !ok {
-		logger.Info("cosign.pub not found in signing secret — admission-time signature "+
-			"verification disabled; add cosign.pub to activate it",
-			"secret", secretName, "namespace", namespace)
-		return nil // not an error — existing secrets only have cosign.key+cosign.password
+	if !ok || len(pubKey) == 0 {
+		return fmt.Errorf("webhook: signing secret %s/%s has no cosign.pub", namespace, secretName)
 	}
 
 	// Resolve registry auth from the push Secret (same namespace as signing key).

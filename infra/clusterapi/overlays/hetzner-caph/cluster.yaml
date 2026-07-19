@@ -94,8 +94,13 @@ spec:
             authorization-mode: Webhook
             cloud-provider: external
             event-qps: "5"
+            feature-gates: UserNamespacesSupport=true
             kubeconfig: /etc/kubernetes/kubelet.conf
             max-pods: "220"
+            # Tenant Apps and every tenant-controlled execution Job are pinned
+            # here; the separately tainted bex.co/pool=platform pool is never
+            # eligible for them.
+            node-labels: bex.co/pool=tenant
             read-only-port: "0"
             resolv-conf: /etc/kubernetes/resolv.conf
             rotate-server-certificates: "true"
@@ -269,6 +274,7 @@ spec:
           etcd-cafile: /etc/kubernetes/pki/etcd/ca.crt
           etcd-certfile: /etc/kubernetes/pki/etcd/server.crt
           etcd-keyfile: /etc/kubernetes/pki/etcd/server.key
+          feature-gates: UserNamespacesSupport=true
           kubelet-client-certificate: /etc/kubernetes/pki/apiserver-kubelet-client.crt
           kubelet-client-key: /etc/kubernetes/pki/apiserver-kubelet-client.key
           # InternalIP first (w1/m19 t006): apiserver→kubelet (logs/exec/metrics)
@@ -455,6 +461,7 @@ spec:
           authorization-mode: Webhook
           cloud-provider: external
           event-qps: "5"
+          feature-gates: UserNamespacesSupport=true
           kubeconfig: /etc/kubernetes/kubelet.conf
           max-pods: "120"
           read-only-port: "0"
@@ -474,6 +481,7 @@ spec:
           authorization-mode: Webhook
           cloud-provider: external
           event-qps: "5"
+          feature-gates: UserNamespacesSupport=true
           kubeconfig: /etc/kubernetes/kubelet.conf
           max-pods: "120"
           read-only-port: "0"
@@ -482,8 +490,8 @@ spec:
           tls-cipher-suites: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256
     preKubeadmCommands:
       - set -x
-      - export CONTAINERD=1.7.26
-      - export RUNC=1.2.5
+      - export CONTAINERD=2.3.3
+      - export RUNC=1.5.1
       - export KUBERNETES_VERSION=$(echo v1.31.0 | sed 's/^v//')
       - export TRIMMED_KUBERNETES_VERSION=$(echo v1.31.0 | sed 's/^v//' | awk -F . '{print $1 "." $2}')
       - ARCH="$(dpkg --print-architecture)"
@@ -743,6 +751,7 @@ spec:
             authorization-mode: Webhook
             cloud-provider: external
             event-qps: "5"
+            feature-gates: UserNamespacesSupport=true
             kubeconfig: /etc/kubernetes/kubelet.conf
             max-pods: "220"
             read-only-port: "0"

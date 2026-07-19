@@ -14,8 +14,10 @@
 #
 # Zot denies anonymous catalog/pull/push (accessControl defaultPolicy []). The
 # htpasswd holds only bcrypt HASHES (safe); the matching plaintext rides:
-#   bex-builder  push Secret     — build Jobs authenticate via bex-registry-push
-#   app-<name>   per-App Secret  — tenant pods' "reg-pull-<name>" (operator-minted)
+#   bex-builder  bootstrap Secret — registry seeding, webhook reads, and the
+#                                   legacy shared-auth fallback only
+#   app-<name>   per-App Secret   — post-build push/sign plus kubelet pulls,
+#                                   scoped by Zot to that App's repository
 #
 # Reads the repo-local .env (gitignored — never commit or print it). Required keys
 # (names only; values are never echoed):
@@ -28,7 +30,7 @@
 #   BEX_KPACK_REGISTRY       kpack alias of the same registry; *.local selects
 #                             plain HTTP in upstream kpack (default zot.local:5000)
 #   BEX_BUILD_NAMESPACE      ns the build Job runs in → where the push Secret lives
-#                             (default bex-system; manager.yaml BEX_BUILD_NAMESPACE)
+#                             (default bex-build; manager.yaml BEX_BUILD_NAMESPACE)
 #
 # Secrets created (idempotent — re-run to rotate):
 #   bex-registry/zot-htpasswd        key htpasswd   (bcrypt, bex-builder only; per-App added by operator)
@@ -65,7 +67,7 @@ require BEX_REGISTRY_BUILDER_PASSWORD 12
 
 REGISTRY="${BEX_REGISTRY:-zot.bex-registry.svc:5000}"
 KPACK_REGISTRY="${BEX_KPACK_REGISTRY:-zot.local:5000}"
-BUILD_NS="${BEX_BUILD_NAMESPACE:-bex-system}"
+BUILD_NS="${BEX_BUILD_NAMESPACE:-bex-build}"
 
 command -v kubectl >/dev/null || { echo "error: kubectl not found" >&2; exit 1; }
 command -v jq >/dev/null || { echo "error: jq not found" >&2; exit 1; }
@@ -93,9 +95,11 @@ registry_config() {
     --arg kpackRegistry "$KPACK_REGISTRY" \
     --arg username "$username" \
     --arg password "$password" \
-    '{auths: {($registry): {username: $username, password: $password}}}
+    '{auths: {($registry): {username: $username, password: $password,
+                            auth: (($username + ":" + $password) | @base64)}}}
      | if $kpackRegistry == $registry then .
-       else .auths[$kpackRegistry] = {username: $username, password: $password}
+       else .auths[$kpackRegistry] = {username: $username, password: $password,
+                                      auth: (($username + ":" + $password) | @base64)}
        end'
 }
 

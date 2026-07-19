@@ -93,7 +93,7 @@ func TestImagePullSecretsIncludesExternalRegistryCredential(t *testing.T) {
 	}
 }
 
-func TestPrepareBuildRegistrySecretMergesPullAndPushAuth(t *testing.T) {
+func TestPrepareBuildRegistrySecretSeparatesPullAndPushAuth(t *testing.T) {
 	const (
 		appNS    = "apps"
 		buildNS  = "builds"
@@ -129,8 +129,8 @@ func TestPrepareBuildRegistrySecretMergesPullAndPushAuth(t *testing.T) {
 	if name != build.JobName(app.Name, "registry-auth") {
 		t.Fatalf("merged Secret name = %q", name)
 	}
-	var merged corev1.Secret
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: buildNS, Name: name}, &merged); err != nil {
+	var pull corev1.Secret
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: buildNS, Name: name}, &pull); err != nil {
 		t.Fatal(err)
 	}
 	var config struct {
@@ -138,43 +138,45 @@ func TestPrepareBuildRegistrySecretMergesPullAndPushAuth(t *testing.T) {
 			Auth string `json:"auth"`
 		} `json:"auths"`
 	}
-	if err := json.Unmarshal(merged.Data[buildRegistryConfigKey], &config); err != nil {
+	if err := json.Unmarshal(pull.Data[buildRegistryConfigKey], &config); err != nil {
 		t.Fatal(err)
 	}
-	if config.Auths["private.example"].Auth != "external" || config.Auths["zot.example"].Auth != "push" {
-		t.Fatalf("merged auths = %+v", config.Auths)
+	if config.Auths["private.example"].Auth != "external" || config.Auths["zot.example"].Auth != "wrong" {
+		t.Fatalf("pull-only auths = %+v", config.Auths)
 	}
-	if got := string(merged.Data[buildkitRegistryConfigKey]); got != "[registry.\"zot.example\"]\n  http = true\n" {
+	if got := string(pull.Data[buildkitRegistryConfigKey]); got != "[registry.\"zot.example\"]\n  http = true\n" {
 		t.Fatalf("buildkit registry config = %q", got)
 	}
 
-	// The derived Secret is the Job's only registry credential. It is mounted
-	// into buildkitd's container filesystem, never declared as a Dockerfile
-	// build arg/BuildKit secret or mounted into another container.
+	// The derived pull Secret enters BuildKit; the platform push Secret enters
+	// only the serial pusher. Neither phase gets the other's credential.
 	o := build.Options{
 		Repo: "https://github.com/octo/app", Name: app.Name, Registry: "zot.example",
-		Revision: "gen-1", Namespace: buildNS, Builder: build.BuilderDockerfile, PushSecret: name, RegistryConfig: true,
+		Revision: "gen-1", Namespace: buildNS, Builder: build.BuilderDockerfile,
+		PullSecret: name, PushSecret: push, RegistryConfig: true,
 	}
 	spec := build.BuildJob(o, o.ImageRef()).Spec.Template.Spec
-	if len(spec.Volumes) != 1 || spec.Volumes[0].Secret == nil || spec.Volumes[0].Secret.SecretName != name {
-		t.Fatalf("Job registry volumes = %+v", spec.Volumes)
+	bk := findContainer(spec.InitContainers, "buildkit")
+	pusher := findContainer(spec.Containers, "push")
+	if bk == nil || pusher == nil {
+		t.Fatalf("Job phases = init %+v main %+v", spec.InitContainers, spec.Containers)
 	}
-	if len(spec.Containers) != 1 || spec.Containers[0].Name != "buildkit" || len(spec.Containers[0].VolumeMounts) != 1 {
-		t.Fatalf("Job containers = %+v", spec.Containers)
-	}
-	for _, arg := range spec.Containers[0].Args {
+	for _, arg := range bk.Args {
 		if strings.Contains(arg, name) || strings.Contains(arg, "config.json") || strings.Contains(arg, "build-arg") || strings.Contains(arg, "registry-auth") || strings.Contains(arg, "--secret") {
 			t.Fatalf("registry credential leaked into buildctl arg %q", arg)
 		}
 	}
-	if got := envValue(spec.Containers[0].Env, "BUILDKITD_FLAGS"); !strings.Contains(got, "/docker-config/buildkitd.toml") {
+	if got := envValue(bk.Env, "BUILDKITD_FLAGS"); !strings.Contains(got, "/docker-config/buildkitd.toml") {
 		t.Fatalf("BUILDKITD_FLAGS = %q; want derived registry config", got)
 	}
-	for _, container := range spec.InitContainers {
-		for _, mount := range container.VolumeMounts {
-			if mount.Name == "registry-cred" {
-				t.Fatalf("registry credential mounted into non-buildkit container %q", container.Name)
-			}
+	for _, mount := range bk.VolumeMounts {
+		if mount.Name == "push-registry-cred" {
+			t.Fatal("push credential leaked into BuildKit")
+		}
+	}
+	for _, mount := range pusher.VolumeMounts {
+		if mount.Name == "pull-registry-cred" {
+			t.Fatal("private-base pull credential leaked into pusher")
 		}
 	}
 }
@@ -187,7 +189,7 @@ func TestPrepareBuildRegistrySecretUnsetIsNoOp(t *testing.T) {
 	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "apps"}}
 
 	name, err := r.prepareBuildRegistrySecret(context.Background(), app, "builds", build.BuilderDockerfile)
-	if err != nil || name != r.RegistryPushSecret {
+	if err != nil || name != "" {
 		t.Fatalf("unset binding = name %q err %v", name, err)
 	}
 	var derived corev1.Secret
@@ -195,4 +197,39 @@ func TestPrepareBuildRegistrySecretUnsetIsNoOp(t *testing.T) {
 	if !apierrors.IsNotFound(err) {
 		t.Fatalf("unset binding created derived Secret: %v", err)
 	}
+}
+
+func TestCopyBuildRegistryCredentialAddsSkopeoFilename(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	const config = `{"auths":{"zot.example":{"username":"app-web","password":"redacted"}}}`
+	src := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "reg-pull-web", Namespace: "apps"},
+		Type:       corev1.SecretTypeDockerConfigJson,
+		Data:       map[string][]byte{corev1.DockerConfigJsonKey: []byte(config)},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(src).Build()
+	r := &AppReconciler{Client: cl, BuildClient: cl}
+	if err := r.copyBuildRegistryCredential(context.Background(), "apps", "bex-build", "web", src.Name); err != nil {
+		t.Fatal(err)
+	}
+	var got corev1.Secret
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "bex-build", Name: src.Name}, &got); err != nil {
+		t.Fatal(err)
+	}
+	if string(got.Data[corev1.DockerConfigJsonKey]) != config || string(got.Data[buildRegistryConfigKey]) != config {
+		t.Fatal("mirror must retain .dockerconfigjson and add byte-identical config.json")
+	}
+	if got.Type != corev1.SecretTypeDockerConfigJson || got.Labels[labelApp] != "web" || got.Labels["app.bex.co/component"] != buildRegistryComponent {
+		t.Fatalf("mirrored metadata = type %s labels %v", got.Type, got.Labels)
+	}
+}
+
+func findContainer(containers []corev1.Container, name string) *corev1.Container {
+	for i := range containers {
+		if containers[i].Name == name {
+			return &containers[i]
+		}
+	}
+	return nil
 }

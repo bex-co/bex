@@ -378,14 +378,12 @@ var (
 	// full hostnames, never bare labels).
 	hostRE = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$`)
 	// repoRE: an https://, http://, ssh://, or git@ SCP-form git URL with no
-	// whitespace or control characters — the only shapes BuildKit's git context
+	// whitespace or control characters—the only shapes the source-clone phase
 	// should ever receive. file:// and bare local paths are refused (w6/m6 t003)
 	// so a request can never point a build at the build pod's own filesystem.
-	// '#' is excluded too: the operator's gitContext concatenates repo+"#"+ref
-	// (lego/operator/internal/build/build.go) and BuildKit splits the context at
-	// the FIRST '#', so a '#' embedded in repo would let an attacker's trailing
-	// text become the ref/subdir and demote the validated branch/rootDir —
-	// reopening leading-dash ref injection and ".." rootDir traversal.
+	// '#' is excluded too: repo, ref, and rootDir are three separately validated
+	// intent fields, so accepting URL-fragment ref/subdir syntax would make their
+	// precedence ambiguous and could bypass the validated ref/rootDir values.
 	// Length is bounded separately in ValidRepo (RE2 caps repetition at 1000).
 	repoRE = regexp.MustCompile(`^(https?://|ssh://|git@)[^\x00-\x20\x7f#]+$`)
 	// refRE: a git branch/tag/ref/SHA — alphanumerics and . _ / @ + -, starting

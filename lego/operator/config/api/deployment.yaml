@@ -146,7 +146,7 @@ spec:
             # Job's identity to delete it — must match manager.yaml's
             # BEX_BUILD_NAMESPACE so the Job's namespace resolves the same way.
             - name: BEX_BUILD_NAMESPACE
-              value: bex-system
+              value: bex-build
             # GitHub App integration (docs/ADR026-github-integration.md): private-repo
             # deploys + zero-config push-to-deploy. Created out-of-band by
             # scripts/github-app-secret.sh (reads .env). optional:true so bex-api

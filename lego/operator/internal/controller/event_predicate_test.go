@@ -53,4 +53,20 @@ func TestGenerationOrDeletionPredicate(t *testing.T) {
 			t.Fatal("deletion update was filtered")
 		}
 	})
+
+	t.Run("admits registry credential rotation annotation edge", func(t *testing.T) {
+		updated := old.DeepCopy()
+		updated.Annotations = map[string]string{annotRotateRegistryCreds: "true"}
+		if !p.Update(event.UpdateEvent{ObjectOld: old, ObjectNew: updated}) {
+			t.Fatal("registry credential rotation request was filtered")
+		}
+	})
+
+	t.Run("filters unrelated annotation updates", func(t *testing.T) {
+		updated := old.DeepCopy()
+		updated.Annotations = map[string]string{"example.com/noise": "changed"}
+		if p.Update(event.UpdateEvent{ObjectOld: old, ObjectNew: updated}) {
+			t.Fatal("unrelated annotation update was admitted")
+		}
+	})
 }
