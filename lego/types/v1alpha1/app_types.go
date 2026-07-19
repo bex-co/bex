@@ -73,6 +73,7 @@ const (
 
 // AppSpec is the desired state of a deploy-from-git App — the Render-like
 // unit from strategy 211.09. Mirrors the Node MVP's service spec (src/api.js).
+// +kubebuilder:validation:XValidation:rule="(has(self.type) ? self.type : 'web_service') == (has(oldSelf.type) ? oldSelf.type : 'web_service')",message="spec.type is immutable; delete and recreate the service to change type"
 type AppSpec struct {
 	// DisplayName is the free-form, human-facing label for this App. It is
 	// intentionally distinct from the App object's immutable, DNS-safe Name:

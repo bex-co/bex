@@ -372,6 +372,19 @@ type DatabaseStatus struct {
 	// +optional
 	Phase DatabasePhase `json:"phase,omitempty"`
 
+	// AllocatedStorageGB is the grow-only storage high-water mark accepted by
+	// the operator. It is intentionally status-only: API adapters use it to
+	// reject an explicit shrink before persisting intent, while the operator
+	// still verifies the live CNPG Cluster before every projection.
+	// +optional
+	AllocatedStorageGB int32 `json:"allocatedStorageGB,omitempty"`
+
+	// ObservedStorageGB is the spec.storageGB value associated with the accepted
+	// high-water mark. It lets the controller distinguish a new explicit shrink
+	// request from an unchanged below-plan legacy value during plan changes.
+	// +optional
+	ObservedStorageGB int32 `json:"observedStorageGB,omitempty"`
+
 	// CurrentVersion is the PostgreSQL major version reported by CNPG for the
 	// active PGDATA image. During a major upgrade this remains the source version
 	// until pg_upgrade succeeds, while spec.version already holds the target.

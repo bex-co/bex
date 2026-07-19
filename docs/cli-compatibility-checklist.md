@@ -9,6 +9,7 @@ Legend: `[x]` verified working · `[~]` works with a documented limitation · `[
 - **CLI:** `render-oss/cli` v2.21.0, built unmodified from `./cli`, driven only through [`scripts/cli-compat.sh`](../scripts/cli-compat.sh) (Hydra `client_credentials` token exchange per call, `RENDER_HOST` → local bex-api). That dev-9 baseline never touched production; the named supplements below are separately scoped.
 - **Target:** the isolated local **dev-9** environment (`.pm/w9/dev-9`, bex-api at `:54090`), current `lego/backend` HEAD, on **2026-07-18**.
 - **Method:** the maintained regression suite `scripts/cli-compat.sh verify` (whole-shape `checkFields` assertions over the core families), the cleanup-safe `services-parity-verify` baseline/configured legs, and a full sweep of the remaining command tree. Each item was graded on the unmodified CLI's exit status and the wire shape read back via `-o json` and raw REST `GET`. The exact service flag contract and redacted POST/PATCH captures are in [`cli-services-create-update.md`](render-artifacts/cli-services-create-update.md).
+- **Operator-correctness schema supplement (w2/m60):** the installed, unmodified v2.21.0 CLI's `services update --help` and `postgres update --help` were re-read on **2026-07-19**. Service update has no `--type`; Postgres update has both `--plan` and `--disk-size-gb`. Focused backend regression sends the CLI's exact `PATCH {"diskSizeGB":…}` wire shape: growth persists, a lower value returns the named 400 envelope, and the resource remains at its accepted size. Operator/envtest separately proves a plan downgrade preserves that size. This is a command-schema plus API regression supplement, not a new live dev-9/production CLI run; the previously graded create/update/delete baseline remains the live-client evidence.
 - **Configured service pass:** a disposable local OpenBao plus auth-enabled persistent Zot augmented dev-9 for the second service run. It proved CLI env vars, secret files, create/update registry-credential binding, a genuinely private kubelet pull, and native cron commands.
 - **Postgres create supplement (w6/m38):** [`scripts/postgres-create-cli-smoke.sh`](../scripts/postgres-create-cli-smoke.sh) drove the same unmodified CLI against isolated **dev-6** and a real local CNPG cluster on **2026-07-18**. It proved both custom names, database-only and user-only independent defaults, the CR intent, generated Secret metadata, and `current_database()`/`current_user` inside PostgreSQL. It also proved that unsupported Datadog create/update flags fail with a named 400 and leave no resource behind.
 - **Postgres psql supplement (w7/m46):** [`scripts/psql-compat-verify.sh`](../scripts/psql-compat-verify.sh) drove Render's checksum-verified, unmodified v2.21.0 release against isolated **dev-7**, real CNPG, a configured `BEX_DB_DOMAIN`, and pg-sni-proxy on **2026-07-18**. Both opaque id and exact name executed `SELECT 1 AS bex_psql_probe;` through real `psql` 18.4 over the external TLS/SNI route; the caller's public `/32` passed the CLI's own allow-list gate, the absent-IP negative case was refused before connect, and the disposable database and local credential state were removed. Redacted markers and release hashes are in [the psql CLI artifact](render-artifacts/psql-cli.md).
@@ -110,8 +111,8 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
   - [x] `postgres get <id|name>` — resolves by name; every field intact; `-o text` renders Workspace/Region
   - [x] `postgres update <id|name>`
     - [x] `--name` — rename; opaque `dpg-` id stays stable
-    - [x] `--plan`
-    - [x] `--disk-size-gb`
+    - [x] `--plan` — compute changes independently; an operator regression proves downgrade cannot reduce the accepted disk high-water mark
+    - [x] `--disk-size-gb` — grow succeeds; shrink returns a named 400 and leaves intent/state unchanged (w2/m60 exact PATCH regression)
     - [x] `--disk-autoscaling` — flips true↔false
     - [x] `--high-availability`
     - [x] `--ip-allow-list cidr=…,description=…` — replaces list; description returns
@@ -159,6 +160,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--environment-id <id>`
     - [~] `--from <serviceID>` — clones fine, but needs an explicit `--region` (CLI re-validates the source's `local-capd`)
   - [x] `services update <service>`
+    - [x] workload type is intentionally not an update flag — current CLI schema matches Render's immutable-type contract; bex Blueprint and CRD admission reject the same transition
     - [x] `--name` — rename
     - [x] `--plan`
     - [~] `--runtime` — upstream CLI guard; exits before any request (`cannot switch runtimes via the CLI`)

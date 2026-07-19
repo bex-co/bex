@@ -18,6 +18,8 @@ package controller
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -27,7 +29,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -92,5 +97,56 @@ func TestDatabaseDeletionDeletesClusterAndReleasesFinalizer(t *testing.T) {
 	var left appv1alpha1.Database
 	if err := cl.Get(ctx, nn, &left); !apierrors.IsNotFound(err) {
 		t.Fatalf("database should be fully deleted once the finalizer is released, got err=%v (finalizers=%v)", err, left.Finalizers)
+	}
+}
+
+func TestDatabaseDeletionRetainsFinalizerAndRetriesCleanupError(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	scheme.AddKnownTypeWithName(cnpgClusterGVK, &unstructured.Unstructured{})
+
+	now := metav1.Now()
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "retry-delete-db", Namespace: "default", Finalizers: []string{dbFinalizer}, DeletionTimestamp: &now,
+		},
+	}
+	cluster := &unstructured.Unstructured{}
+	cluster.SetGroupVersionKind(cnpgClusterGVK)
+	cluster.SetName(db.Name)
+	cluster.SetNamespace(db.Namespace)
+	failOnce := true
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(db, cluster).
+		WithStatusSubresource(&appv1alpha1.Database{}).
+		WithInterceptorFuncs(interceptor.Funcs{Delete: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
+			if failOnce && obj.GetObjectKind().GroupVersionKind() == cnpgClusterGVK {
+				failOnce = false
+				return errors.New("transient cluster delete failure")
+			}
+			return c.Delete(ctx, obj, opts...)
+		}}).Build()
+	r := &DatabaseReconciler{Client: cl, Scheme: scheme}
+	nn := types.NamespacedName{Name: db.Name, Namespace: db.Namespace}
+	req := reconcile.Request{NamespacedName: nn}
+
+	if _, err := r.Reconcile(context.Background(), req); err == nil || !strings.Contains(err.Error(), "transient") {
+		t.Fatalf("first cleanup error = %v", err)
+	}
+	current := &appv1alpha1.Database{}
+	if err := cl.Get(context.Background(), nn, current); err != nil {
+		t.Fatal(err)
+	}
+	if !controllerutil.ContainsFinalizer(current, dbFinalizer) {
+		t.Fatal("cleanup error released the Database finalizer")
+	}
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatalf("cleanup retry: %v", err)
+	}
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatalf("release finalizer: %v", err)
+	}
+	if err := cl.Get(context.Background(), nn, current); !apierrors.IsNotFound(err) {
+		t.Fatalf("database remained after successful retry: %v", err)
 	}
 }

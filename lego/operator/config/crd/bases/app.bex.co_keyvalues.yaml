@@ -180,6 +180,12 @@ spec:
           status:
             description: KeyValueStatus is the observed state of a KeyValue.
             properties:
+              allocatedStorageGB:
+                description: |-
+                  AllocatedStorageGB is the grow-only PVC request accepted by the operator.
+                  It remains status-only and is not a separate public API surface.
+                format: int32
+                type: integer
               conditions:
                 description: Conditions represent the current state (Ready).
                 items:
@@ -255,6 +261,13 @@ spec:
                   last reconciled.
                 format: int64
                 type: integer
+              observedStorageGB:
+                description: |-
+                  ObservedStorageGB is the spec.storageGB value last accepted by the
+                  grow-only reconciler, distinguishing a new shrink from an unchanged legacy
+                  value that was already raised to its plan floor.
+                format: int32
+                type: integer
               phase:
                 description: Phase is the high-level lifecycle state.
                 enum:
@@ -274,6 +287,13 @@ spec:
                   host, port, uri, and externalUri when public). The operator never copies the
                   password into status.
                 type: string
+              storageCapacityGB:
+                description: |-
+                  StorageCapacityGB is the capacity most recently observed on the Valkey
+                  PVC. While it trails AllocatedStorageGB, Ready remains false and the
+                  StorageReady condition explains the in-progress filesystem resize.
+                format: int32
+                type: integer
             type: object
         required:
         - spec

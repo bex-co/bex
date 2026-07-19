@@ -15,7 +15,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 ## Milestones
 
 - [x] **m59** — P0 operator isolation: contain untrusted build, publish, and pre-deploy execution (9 tasks) ← from `docs/ADR039-operator-audit-and-platform-reuse.md` O-01/O-02; security release blocker before real multi-tenant source builds
-- [ ] **m60** — P1 operator correctness: deletion, grow-only storage, immutable type, and live child health (9 tasks) ← from ADR039 O-03–O-06; sequenced after m59 so security blockers close first
+- [x] **m60** — P1 operator correctness: deletion, grow-only storage, immutable type, and live child health (9 tasks; DONE 2026-07-19 — metadata-only Database finalization/retry, monotonic Postgres and real Valkey PVC growth, immutable type admission/Core guard, current-child health watches, parity docs, full tests/lint/race/GitOps green) ← from ADR039 O-03–O-06; sequenced after m59 so security blockers close first
 - [ ] **m61** — P2 operator cleanup and resilience: artifact reclamation, durable finalization, credential consistency, and HTTP deadlines (9 tasks) ← from ADR039 O-07–O-10; follows m60's lifecycle model
 - [x] **m1** — MCP server over bex-api verbs (4 tasks) ← pillar 3
 - [x] **m2** — Deploy-from-chat + HMAC git webhook (4 tasks; DONE — t001–t003 2026-07-08, t004 live acceptance PASSED 2026-07-09) ← pillar 4, needs w2/m4 + w1/m2 + w1/m5 (t001 amended 2026-07-08 to ride m4's `Core.Create`)

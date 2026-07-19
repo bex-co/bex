@@ -136,6 +136,23 @@ type KeyValueStatus struct {
 	// +optional
 	Phase KeyValuePhase `json:"phase,omitempty"`
 
+	// AllocatedStorageGB is the grow-only PVC request accepted by the operator.
+	// It remains status-only and is not a separate public API surface.
+	// +optional
+	AllocatedStorageGB int32 `json:"allocatedStorageGB,omitempty"`
+
+	// ObservedStorageGB is the spec.storageGB value last accepted by the
+	// grow-only reconciler, distinguishing a new shrink from an unchanged legacy
+	// value that was already raised to its plan floor.
+	// +optional
+	ObservedStorageGB int32 `json:"observedStorageGB,omitempty"`
+
+	// StorageCapacityGB is the capacity most recently observed on the Valkey
+	// PVC. While it trails AllocatedStorageGB, Ready remains false and the
+	// StorageReady condition explains the in-progress filesystem resize.
+	// +optional
+	StorageCapacityGB int32 `json:"storageCapacityGB,omitempty"`
+
 	// Host is the in-cluster hostname (the "<name>" ClusterIP Service).
 	// +optional
 	Host string `json:"host,omitempty"`

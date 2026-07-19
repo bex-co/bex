@@ -328,7 +328,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		Status:                  dbStatus(d.Status.Phase),
 		DatabaseName:            dbn,
 		DatabaseUser:            dbUser,
-		DiskSizeGB:              d.Spec.StorageGB,
+		DiskSizeGB:              databaseStorageHighWater(d),
 		DiskAutoscalingEnabled:  d.Spec.DiskAutoscaling,
 		HighAvailabilityEnabled: d.Status.HighAvailabilityEnabled,
 		ReadReplicas:            replicas,
@@ -695,10 +695,32 @@ func (patch PostgresPatch) validate() error {
 	if patch.Version != nil && !postgresVersionKnown(*patch.Version) {
 		return unknownPostgresVersionError(*patch.Version)
 	}
+	if patch.DiskSizeGB != nil && *patch.DiskSizeGB <= 0 {
+		return fmt.Errorf("%w: diskSizeGB must be greater than zero", core.ErrBadRequest)
+	}
 	if patch.IPAllowList != nil {
 		if err := core.ValidateAllowList(*patch.IPAllowList); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func databaseStorageHighWater(d *appv1alpha1.Database) int32 {
+	plan, ok := tiers.Postgres.ByID(d.Spec.Plan)
+	if !ok {
+		plan = tiers.Postgres.Default()
+	}
+	return max(plan.StorageGB, d.Spec.StorageGB, d.Status.AllocatedStorageGB)
+}
+
+func validateDatabaseStorageResize(d *appv1alpha1.Database, requested *int32) error {
+	if requested == nil {
+		return nil
+	}
+	current := databaseStorageHighWater(d)
+	if *requested < current {
+		return fmt.Errorf("%w: Postgres storage is grow-only: requested %d GB is below the allocated %d GB", core.ErrBadRequest, *requested, current)
 	}
 	return nil
 }
@@ -761,6 +783,9 @@ func (s *Service) UpdatePostgres(ctx context.Context, name string, patch Postgre
 	if err := patch.validate(); err != nil {
 		return PostgresView{}, err
 	}
+	if err := validateDatabaseStorageResize(d, patch.DiskSizeGB); err != nil {
+		return PostgresView{}, err
+	}
 	if patch.Name != nil {
 		if err := s.ensureDatabaseNameAvailable(ctx, d.Labels[core.LabelTenant], *patch.Name, d.Name); err != nil {
 			return PostgresView{}, err
@@ -792,6 +817,9 @@ func (s *Service) PreviewUpdatePostgres(ctx context.Context, name string, patch 
 		return PostgresView{}, err
 	}
 	if err := patch.validate(); err != nil {
+		return PostgresView{}, err
+	}
+	if err := validateDatabaseStorageResize(d, patch.DiskSizeGB); err != nil {
 		return PostgresView{}, err
 	}
 	if patch.Name != nil {

@@ -44,13 +44,16 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
+	crbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	crcontroller "sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
 	"github.com/bex-co/bex/lego/operator/internal/execution"
@@ -65,22 +68,20 @@ import (
 const (
 	finalizer                    = "app.bex.co/finalizer"
 	registryCredentialRotateTrue = "true"
+	childHealthRequeue           = 30 * time.Second
 )
 
-// generationOrDeletionPredicate keeps the normal generation-only reconcile
-// filter while admitting the metadata-only update Kubernetes emits when an App
-// is deleted. DeletionTimestamp does not bump generation; filtering that event
-// strands the App's finalizer and every owned workload indefinitely.
+// generationOrDeletionPredicate adds App's explicit registry-credential
+// rotation edge to the lifecycle-aware primary predicate shared with Database.
 type generationOrDeletionPredicate struct {
-	predicate.GenerationChangedPredicate
+	generationDeletionOrFinalizerPredicate
 }
 
 func (p generationOrDeletionPredicate) Update(e event.UpdateEvent) bool {
 	rotationRequested := e.ObjectNew != nil &&
 		e.ObjectNew.GetAnnotations()[annotRotateRegistryCreds] == registryCredentialRotateTrue &&
 		(e.ObjectOld == nil || e.ObjectOld.GetAnnotations()[annotRotateRegistryCreds] != registryCredentialRotateTrue)
-	return p.GenerationChangedPredicate.Update(e) ||
-		(e.ObjectNew != nil && !e.ObjectNew.GetDeletionTimestamp().IsZero()) ||
+	return p.generationDeletionOrFinalizerPredicate.Update(e) ||
 		rotationRequested
 }
 
@@ -226,7 +227,7 @@ type AppReconciler struct {
 // Role, not this ClusterRole, because the kustomize namePrefix transform would
 // rewrite the namespace field to bex-system).
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
@@ -1192,9 +1193,13 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// ready replicas from the previous ReplicaSet, has completed its rollout.
 	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
 	completeAutoscalingTransition(app, dep.Status.Replicas, dep.Status.ReadyReplicas, time.Now())
-	if !deploymentRolloutReady(dep, replicas) {
+	if !deploymentRolloutReady(dep, replicas) || !r.deploymentPodsReady(ctx, dep, replicas) {
 		app.Status.Phase = appv1alpha1.PhaseDeploying
 		app.Status.Image = image
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type: "Ready", Status: metav1.ConditionFalse, Reason: "RolloutProgressing",
+			Message: "waiting for the current Deployment revision and pods to become ready", ObservedGeneration: app.Generation,
+		})
 		// Surface why the rollout is stuck when a pod is crash-looping or cannot
 		// pull its image: the deploy would otherwise time out as an opaque
 		// update_failed with the cause visible only in pod state no tenant
@@ -1253,7 +1258,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	if autoscaleRequeue {
 		return ctrl.Result{RequeueAfter: autoscaleInterval}, nil
 	}
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: childHealthRequeue}, nil
 }
 
 func terminationGracePeriodSeconds(seconds *int32) *int64 {
@@ -1297,8 +1302,12 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 	}
 
 	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
-	if !deploymentRolloutReady(dep, replicas) {
+	if !deploymentRolloutReady(dep, replicas) || !r.deploymentPodsReady(ctx, dep, replicas) {
 		app.Status.Phase = appv1alpha1.PhaseDeploying
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type: "Ready", Status: metav1.ConditionFalse, Reason: "RolloutProgressing",
+			Message: "waiting for the current worker Deployment revision and pods to become ready", ObservedGeneration: app.Generation,
+		})
 		// Same stuck-rollout surfacing as the web path; port 0 — a worker has no
 		// HTTP endpoint, so the $PORT hint is omitted (w9/011).
 		if reason, msg := r.stuckPodMessage(ctx, dep, 0); msg != "" {
@@ -1322,7 +1331,7 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 		return ctrl.Result{}, err
 	}
 	logf.FromContext(ctx).Info("worker running (kubernetes)", "name", app.Name, "image", image, "replicas", replicas)
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: childHealthRequeue}, nil
 }
 
 // deploymentRolloutReady follows the Deployment controller's rollout-complete
@@ -1334,6 +1343,37 @@ func deploymentRolloutReady(dep *appsv1.Deployment, replicas int32) bool {
 		dep.Status.UpdatedReplicas == replicas &&
 		dep.Status.Replicas == replicas &&
 		dep.Status.AvailableReplicas >= replicas
+}
+
+// deploymentPodsReady closes the window where a Pod has already crashed but
+// the Deployment controller has not yet lowered availableReplicas. A missing
+// pod list is treated as inconclusive so startup/fake clients still rely on the
+// authoritative Deployment status; once current-revision pods are visible,
+// every desired replica must have PodReady=true.
+func (r *AppReconciler) deploymentPodsReady(ctx context.Context, dep *appsv1.Deployment, replicas int32) bool {
+	if replicas == 0 || dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 {
+		return true
+	}
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace), client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
+		return true
+	}
+	revision := dep.Spec.Template.Labels[labelRevision]
+	var current, ready int32
+	for i := range pods.Items {
+		pod := &pods.Items[i]
+		if !pod.DeletionTimestamp.IsZero() || (revision != "" && pod.Labels[labelRevision] != revision) {
+			continue
+		}
+		current++
+		for _, condition := range pod.Status.Conditions {
+			if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
+				ready++
+				break
+			}
+		}
+	}
+	return current == 0 || ready >= replicas
 }
 
 // reconcileIPAllowListMiddleware creates or removes the Traefik HTTP
@@ -2765,15 +2805,28 @@ func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 	workers := max(r.MaxConcurrentReconciles, 1)
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appv1alpha1.App{}).
-		Owns(&appsv1.Deployment{}).
-		Owns(&networkingv1.Ingress{}).
-		Owns(&networkingv1.NetworkPolicy{}).
-		Owns(&batchv1.CronJob{}).
-		WithEventFilter(generationOrDeletionPredicate{}).
+		For(&appv1alpha1.App{}, crbuilder.WithPredicates(generationOrDeletionPredicate{})).
+		// Deployment readiness and rollout revisions live entirely in status, so
+		// child resourceVersion updates must not inherit the App's generation-only
+		// primary filter. Pod events close the shorter crash-loop window before the
+		// Deployment controller has recomputed availableReplicas.
+		Owns(&appsv1.Deployment{}, crbuilder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
+		Watches(&corev1.Pod{}, handler.EnqueueRequestsFromMapFunc(appPodRequests),
+			crbuilder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
+		Owns(&networkingv1.Ingress{}, crbuilder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Owns(&networkingv1.NetworkPolicy{}, crbuilder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Owns(&batchv1.CronJob{}, crbuilder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		WithOptions(crcontroller.Options{MaxConcurrentReconciles: workers}).
 		Named("app").
 		Complete(r)
+}
+
+func appPodRequests(_ context.Context, object client.Object) []reconcile.Request {
+	name := object.GetLabels()[labelApp]
+	if name == "" {
+		return nil
+	}
+	return []reconcile.Request{{NamespacedName: client.ObjectKey{Namespace: object.GetNamespace(), Name: name}}}
 }
 
 // deleteTLSSecrets removes the cert-manager TLS Secrets for every host the App

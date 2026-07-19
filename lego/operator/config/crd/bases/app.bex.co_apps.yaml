@@ -725,6 +725,11 @@ spec:
                 - static_site
                 type: string
             type: object
+            x-kubernetes-validations:
+            - message: spec.type is immutable; delete and recreate the service to
+                change type
+              rule: '(has(self.type) ? self.type : ''web_service'') == (has(oldSelf.type)
+                ? oldSelf.type : ''web_service'')'
           status:
             description: status defines the observed state of App
             properties:

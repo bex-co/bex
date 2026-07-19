@@ -1501,6 +1501,9 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 		}
 		return s.createNewApp(ctx, req, desired)
 	}
+	if effectiveType(existing.Spec.Type) != effectiveType(desired.Type) {
+		return AppView{}, fmt.Errorf("%w: spec.type is immutable; delete and recreate the service to change type", core.ErrBadRequest)
+	}
 	// initialDeployHook ran-once gate (w2/m45): decide whether to use the hook
 	// or the regular preDeployCommand for this sync based on the ran-once annotation
 	// and the current pre-deploy status.
@@ -1718,6 +1721,16 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 		}
 		if db.spec.DatabaseUser != "" && db.spec.DatabaseUser != existing.Spec.EffectiveDatabaseUser(existing.Name) {
 			return StackDatabaseView{}, fmt.Errorf("%w: database %q user is immutable after creation", core.ErrBadRequest, db.name)
+		}
+		if db.spec.StorageGB > 0 {
+			plan, ok := tiers.Postgres.ByID(existing.Spec.Plan)
+			if !ok {
+				plan = tiers.Postgres.Default()
+			}
+			allocated := max(plan.StorageGB, existing.Spec.StorageGB, existing.Status.AllocatedStorageGB)
+			if db.spec.StorageGB < allocated {
+				return StackDatabaseView{}, fmt.Errorf("%w: database %q storage is grow-only: requested %d GB is below the allocated %d GB", core.ErrBadRequest, db.name, db.spec.StorageGB, allocated)
+			}
 		}
 		specChanged := databaseOwnedSpecChanged(existing.Spec, db.spec)
 		groupingSpecified := db.grouping != "" || db.ungrouped

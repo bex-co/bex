@@ -181,6 +181,7 @@ func (r *DatabaseReconciler) applyDiskAutoscaling(ctx context.Context, db *appv1
 	}
 
 	_, currentGB := resolvePlan(db.Spec)
+	currentGB = max(currentGB, db.Status.AllocatedStorageGB)
 	now := r.databaseNow()
 	lastResize, _ := time.Parse(time.RFC3339, db.Annotations[annotDiskAutoscaleAt])
 	nextGB, grow := databaseDiskAutoscaleDecision(currentGB, usage, lastResize, now)

@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -313,6 +314,43 @@ func TestDashboardURLUsesRenderTypeSegments(t *testing.T) {
 		want := "https://dashboard.bex.co/" + segment + "/srv-seg"
 		if r.DashboardURL != want {
 			t.Errorf("type %q dashboardUrl = %q, want %q", serviceType, r.DashboardURL, want)
+		}
+	}
+}
+
+func TestBlueprintRejectsEveryExistingServiceTypeTransition(t *testing.T) {
+	types := []string{
+		appv1alpha1.TypeWebService,
+		appv1alpha1.TypePrivateService,
+		appv1alpha1.TypeBackgroundWorker,
+		appv1alpha1.TypeCronJob,
+		appv1alpha1.TypeStaticSite,
+	}
+	for sourceIndex, source := range types {
+		for targetIndex, target := range types {
+			if source == target {
+				continue
+			}
+			name := fmt.Sprintf("immutable-%d-%d", sourceIndex, targetIndex)
+			existing := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+				Spec:       appv1alpha1.AppSpec{Type: source, Image: "nginx:1"},
+			}
+			svc, _ := newService(nil, existing)
+			req := CreateRequest{Name: name, Type: target, Image: "nginx:2"}
+			if target == appv1alpha1.TypeCronJob {
+				req.Schedule = "0 * * * *"
+			}
+			if target == appv1alpha1.TypeStaticSite {
+				req.PublishPath = "dist"
+			}
+			_, err := svc.applyCreate(context.Background(), req)
+			if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "spec.type is immutable") {
+				t.Fatalf("Blueprint %s -> %s error = %v", source, target, err)
+			}
+			if got := getApp(t, svc.Client, name).Spec.Type; got != source {
+				t.Fatalf("rejected Blueprint changed type %s -> %s", source, got)
+			}
 		}
 	}
 }
