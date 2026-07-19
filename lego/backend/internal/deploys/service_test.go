@@ -468,6 +468,28 @@ func TestTriggerResetsCommitIDWhenOmitted(t *testing.T) {
 	}
 }
 
+func TestTriggerAfterRepoRollbackClearsImageOverride(t *testing.T) {
+	ds := newFakeStore()
+	app := sampleApp("web", "srv-1")
+	app.Spec.Repo = "https://github.com/bex-co/web.git"
+	app.Spec.Image = "zot.test/web:gen-4" // exact-image override left by Rollback
+	svc, cl := newService(ds, app)
+
+	deploy, err := svc.Trigger(context.Background(), "web", TriggerParams{})
+	if err != nil {
+		t.Fatalf("Trigger after rollback: %v", err)
+	}
+	if got := ds.setImage["srv-1"]; got != "" {
+		t.Errorf("stored image override = %q, want cleared", got)
+	}
+	if got := getApp(t, cl, "web").Spec.Image; got != "" {
+		t.Errorf("spec.image after source trigger = %q, want cleared", got)
+	}
+	if deploy.Image != "" {
+		t.Errorf("source deploy row image = %q, want empty until the build resolves", deploy.Image)
+	}
+}
+
 func TestTriggerRejectsCommitIDForCronJob(t *testing.T) {
 	ds := newFakeStore()
 	app := sampleApp("cron", "srv-2")

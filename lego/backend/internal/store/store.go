@@ -994,7 +994,7 @@ func (s *PGStore) SetAppEnvironment(ctx context.Context, id, projectID, environm
 // a row as its single writer of truth follows.
 func (s *PGStore) SetAppImage(ctx context.Context, id string, image string) error {
 	tag, err := s.Pool.Exec(ctx,
-		`UPDATE apps SET image = $2, updated_at = now() WHERE id = $1`,
+		`UPDATE apps SET image = NULLIF($2, ''), updated_at = now() WHERE id = $1`,
 		id, image)
 	if err != nil {
 		return classify("app", err)

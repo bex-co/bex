@@ -219,6 +219,9 @@ type IntentStore interface {
 	// SetAppSource updates the projector-owned repo/image/branch tuple in one
 	// row write so a source PATCH cannot be reverted on the next resync.
 	SetAppSource(ctx context.Context, id, repo, image, branch string, registryCredentialID *string) error
+	// SetAppImage updates the projector-owned image field. Source redeploys use
+	// it to clear the exact-image override a prior rollback installed.
+	SetAppImage(ctx context.Context, id string, image string) error
 	// AddDomain appends or updates a custom-domain row. redirectForName is empty
 	// for a directly-served host and names the canonical host for an auto-paired
 	// redirect. The projector carries both into the App spec on the next resync.
@@ -2221,6 +2224,17 @@ func (s *Service) redeploy(ctx context.Context, name string, commit store.Commit
 	if err != nil {
 		return AppView{}, err
 	}
+	appID := managedAppID(a)
+	// A rollback of a repo-backed App installs the selected deploy's resolved
+	// image as a temporary override. Push-to-deploy is a source build, so clear
+	// that override in the projector's row before patching the CR. Leaving it in
+	// place makes the operator prefer an old (eventually retained-away) tag over
+	// every newly built artifact.
+	if s.Store != nil && appID != "" && a.Spec.Repo != "" {
+		if err := s.Store.SetAppImage(ctx, appID, ""); err != nil {
+			return AppView{}, fmt.Errorf("clear rollback image override: %w", err)
+		}
+	}
 	// Refresh the clone token so the push-triggered rebuild clones the private
 	// repo with a token minted seconds ago.
 	secretName, err := s.ensureCloneSecret(ctx, a)
@@ -2241,13 +2255,16 @@ func (s *Service) redeploy(ctx context.Context, name string, commit store.Commit
 			a.Spec.CloneSecret = secretName
 		}
 		a.Spec.ExternalRegistryPullSecret = pullSecretName
+		if a.Spec.Repo != "" {
+			a.Spec.Image = ""
+		}
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})
 	if err != nil {
 		return AppView{}, err
 	}
 	if s.Store != nil {
-		if appID := managedAppID(a); appID != "" {
+		if appID != "" {
 			if commit.Hash == "" {
 				commit = s.resolveDeployCommit(ctx, s.deployWorkspace(ctx, a), a.Spec.Repo, a.Spec.Branch)
 			}

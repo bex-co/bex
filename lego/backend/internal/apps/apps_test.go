@@ -540,6 +540,7 @@ type recordingStore struct {
 	deleteCalls []string
 	appCreates  []store.App
 	deployCalls []store.Deploy
+	imageCalls  []struct{ id, image string }
 	// notFoundOnDelete makes DeleteApp report the row is already gone, so a test
 	// can assert the verb still deletes the CR (idempotent end state).
 	notFoundOnDelete bool
@@ -647,6 +648,14 @@ func (r *recordingStore) SetAppIdleTTL(_ context.Context, id string, seconds int
 
 func (r *recordingStore) SetAppSource(_ context.Context, id, repo, image, branch string, registryCredentialID *string) error {
 	return r.err
+}
+
+func (r *recordingStore) SetAppImage(_ context.Context, id string, image string) error {
+	if r.err != nil {
+		return r.err
+	}
+	r.imageCalls = append(r.imageCalls, struct{ id, image string }{id, image})
+	return nil
 }
 
 func (r *recordingStore) AddDomain(_ context.Context, id, host, redirectForName string) error {

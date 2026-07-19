@@ -459,11 +459,25 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	// starts the rollout (w9/001) — best-effort provenance: the deploy row
 	// opens either way, so a GitHub hiccup can never block a deploy.
 	commit := s.resolveCommit(ctx, a, p.CommitID)
+	// Rollback temporarily points a repo-backed service at the selected deploy's
+	// resolved image so that exact artifact can run without rebuilding it. A
+	// subsequent source deploy must leave that override behind; otherwise
+	// spec.image wins over the freshly built artifact forever and, once registry
+	// retention removes the old tag, every later deploy fails ErrImagePull.
+	// Clear the row first because the control-plane projector owns spec.image.
+	if a.Spec.Repo != "" {
+		if err := s.Store.SetAppImage(ctx, appID, ""); err != nil {
+			return DeployView{}, fmt.Errorf("clear rollback image override: %w", err)
+		}
+	}
 	previousGeneration := a.Generation
 	releaseGeneration := previousGeneration + 1
 	if err := s.patchApp(ctx, a, func(a *appv1alpha1.App) {
 		stampReleaseGeneration(a, releaseGeneration)
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339Nano)
+		if a.Spec.Repo != "" {
+			a.Spec.Image = ""
+		}
 		// A freshly minted clone credential rides the same patch as the bump;
 		// "" (public/unconnected repo, or GitHub off) leaves the field alone.
 		if cloneSecret != "" {
