@@ -8,9 +8,8 @@
 # Mechanism: a DaemonSet whose one container IS the BuildKit image, idling. The
 # kubelet pulls it the moment any node joins (autoscaled nodes included), and
 # the running container pins the image against kubelet image GC. Build Jobs
-# (lego/operator/internal/build/build.go) set no nodeSelector, so every worker
-# is a potential build host; control-plane nodes are tainted and excluded (no
-# toleration here). On a node minted BY a pending build, the DaemonSet's pull
+# (lego/operator/internal/build/build.go) are pinned to bex.co/pool=tenant, so
+# this DaemonSet warms only the same untrusted tenant pool. On a node minted BY a pending build, the DaemonSet's pull
 # and the Job's pull are the same image — kubelet coalesces them, so this never
 # adds work to the hot path.
 #
@@ -34,10 +33,12 @@ spec:
       labels:
         app: build-image-prewarm
     spec:
+      nodeSelector:
+        bex.co/pool: tenant
       containers:
         - name: buildkit
           # = lego/operator/internal/build/build.go defaultBuildkitImage
-          image: moby/buildkit:v0.13.2-rootless
+          image: moby/buildkit:v0.30.0
           command: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
           imagePullPolicy: IfNotPresent
           resources:

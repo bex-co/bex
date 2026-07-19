@@ -1,0 +1,38 @@
+# w2 · m59 — P0 operator isolation: contain untrusted execution
+
+**Worker:** worker2 **Goal:** Make build, static-publish, and pre-deploy execution a proven untrusted boundary, and make tenant-image verification select the workloads it is meant to protect. **Status:** done (2026-07-19)
+
+## Tasks (in order)
+
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Pin the adversarial isolation contract — **DONE** | 45m | — |
+| t002 | Move untrusted execution out of `bex-system` — **DONE** | 60m | t001 |
+| t003 | Disable workload API tokens and scope identities — **DONE** | 30m | t002 |
+| t004 | Enforce build-boundary network and placement policy — **DONE** | 60m | t002 |
+| t005 | Remove the BuildKit process/credential co-tenancy gap — **DONE** | 60m | t003, t004 |
+| t006 | Make tenant-image admission select and fail closed — **DONE** | 45m | t001 |
+| t007 | Simplify the isolation implementation — **DONE** | 30m | t005, t006 |
+| t008 | Complete adversarial and regression coverage — **DONE** | 60m | t007 |
+| t009 | Close out m59 — **DONE** | 15m | t008 |
+
+## Outcome and verification (2026-07-19)
+
+- Every tenant-controlled build, kpack, static-publish, and pre-deploy workload now runs in the dedicated `bex-build` boundary with no mounted ServiceAccount token, a Pod user namespace, tenant-pool placement, and App/workspace identity labels. Manager and bex-api RBAC in that namespace is explicitly scoped; workload identities receive no API permissions.
+- The Dockerfile path is serial `clone → BuildKit OCI export → Skopeo push → optional Cosign`. Clone, private-base, per-App output-repository, and signing credentials have disjoint container custody. BuildKit runs rootful inside a Pod user namespace with its default process sandbox and cannot receive output write auth or the signing key.
+- Namespace-wide ingress/egress default deny permits DNS, Zot, public source/object-store destinations, and generated same-workspace datastore access only. Cilium deny rules cover metadata, host, and remote-node destinations. Production enables `UserNamespacesSupport`, pins containerd 2.3.3/runc 1.5.1, and separates tenant/platform placement.
+- Tenant image verification now selects explicitly labeled workload Pods with `failurePolicy: Fail`; startup requires the public key, rollout keeps availability, and signing-disabled behavior stays unselected. Per-App Zot credentials use standard Docker auth data, are mirrored safely across namespaces, and rotation annotations now reconcile on their metadata-only edge.
+- The live CAPD matrix in `scripts/verify-build-isolation.sh` passed 38/38 with authenticated private Git, a private base image, an adversarial Dockerfile, real Zot ACLs, a signed image that reached `Running`, positive controls for every allow, denials for metadata/kubelet/API/platform/cross-workspace/cross-repository access, and signed-allow/unsigned-deny/tamper-deny/platform-non-selection admission controls. All proof-only cluster resources and host data were removed after the run.
+- Repository gates passed on the final tree: operator `make test` (including envtest), backend `go test ./...`, `make lint` (operator and backend, zero issues), targeted `go test -race` across controller/build/predeploy/publish/registry/webhook, `scripts/gitops-validate.sh`, `scripts/clusterapi-validate.sh`, shell syntax checks, and `packer validate` with a non-secret validation placeholder.
+- ADR039 closes O-01/O-02 and accepts direct repair for the current architecture. OpenChoreo remains the first future candidate and Korifi the second, but both are explicitly uncommitted future evaluations—not a PoC, adapter, migration, or current PM milestone.
+
+## Definition of done
+
+Rendered production manifests and a live adversarial test prove that build, publish, and pre-deploy Pods have no Kubernetes API token; cannot reach metadata, kubelet, platform services, other tenant services, or other registry repositories; cannot extract registry/signing credentials from a malicious Dockerfile; and can reach only the explicitly required build destinations. When tenant signing is enabled, an unsigned tenant image is denied by a ready, fail-closed webhook that actually selects tenant Pods.
+
+## Source + Goal linkage
+
+- **Source:** `docs/ADR039-operator-audit-and-platform-reuse.md` O-01 and O-02, which supersede the absolute credential-isolation claim in ADR022/ADR034. This explicitly reopens the affected parts of completed `w7/m8`, `w7/m11`, and `w1/m5` with new code/manifests evidence rather than duplicating their original scope.
+- **Goal linkage:** ADR008's secure multi-tenant Render alternative and `GOAL.md` #5/#7 (multi-tenancy and security review).
+- **Expected outcome:** Tenant-controlled build steps and images execute inside a narrow, test-proven boundary; enabling image verification cannot silently bypass every workload.
+- **Why now:** O-01 is Critical and O-02 is a latent High activation failure. Both block real multi-tenant source builds. Render parity closing is omitted because this milestone changes only operator/GitOps security mechanisms and intentionally preserves every REST/GraphQL/MCP/UI contract.

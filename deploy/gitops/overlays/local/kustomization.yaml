@@ -20,6 +20,13 @@ patches:
         name: deny-tenant-node-and-metadata-egress
         namespace: default
       $patch: delete
+  - patch: |-
+      apiVersion: cilium.io/v2
+      kind: CiliumNetworkPolicy
+      metadata:
+        name: deny-build-node-and-metadata-egress
+        namespace: bex-build
+      $patch: delete
   # No etcd backups locally: the CAPD cluster is disposable and has no
   # object-storage creds.
   - patch: |-

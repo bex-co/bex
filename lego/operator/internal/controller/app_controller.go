@@ -53,6 +53,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/predeploy"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
 	"github.com/bex-co/bex/lego/operator/internal/registry"
@@ -61,7 +62,10 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-const finalizer = "app.bex.co/finalizer"
+const (
+	finalizer                    = "app.bex.co/finalizer"
+	registryCredentialRotateTrue = "true"
+)
 
 // generationOrDeletionPredicate keeps the normal generation-only reconcile
 // filter while admitting the metadata-only update Kubernetes emits when an App
@@ -72,8 +76,12 @@ type generationOrDeletionPredicate struct {
 }
 
 func (p generationOrDeletionPredicate) Update(e event.UpdateEvent) bool {
+	rotationRequested := e.ObjectNew != nil &&
+		e.ObjectNew.GetAnnotations()[annotRotateRegistryCreds] == registryCredentialRotateTrue &&
+		(e.ObjectOld == nil || e.ObjectOld.GetAnnotations()[annotRotateRegistryCreds] != registryCredentialRotateTrue)
 	return p.GenerationChangedPredicate.Update(e) ||
-		(e.ObjectNew != nil && !e.ObjectNew.GetDeletionTimestamp().IsZero())
+		(e.ObjectNew != nil && !e.ObjectNew.GetDeletionTimestamp().IsZero()) ||
+		rotationRequested
 }
 
 // labelApp marks the workloads bex creates for an App.
@@ -169,9 +177,10 @@ type AppReconciler struct {
 	TenantSignKeySecret string
 	// TenantSignImage overrides the cosign image used by the signing container.
 	TenantSignImage string
-	// RegistryPushSecret names a docker-config Secret (in the build namespace,
-	// key "config.json") the build Job mounts to authenticate its push against an
-	// auth-enabled registry (w7/m8). Empty => unauthenticated push (dev default).
+	// RegistryPushSecret names the bootstrap/shared-fallback docker-config Secret
+	// in the build namespace. PerAppRegistry supersedes it for tenant build
+	// push/sign phases; the webhook may still use it to verify every tenant repo.
+	// Empty => unauthenticated registry (dev default).
 	RegistryPushSecret string
 	// RegistryPullSecret names a docker-config Secret (in the apps namespace) the
 	// operator attaches as an imagePullSecret to tenant Deployments/CronJobs so
@@ -267,6 +276,9 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			if errors.Is(err, registry.ErrConflictRequeue) {
 				return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 			}
+			return r.fail(ctx, &app, "PerAppRegistryCredsFailed", err)
+		}
+		if err := r.mirrorPerAppRegistryCredential(ctx, &app); err != nil {
 			return r.fail(ctx, &app, "PerAppRegistryCredsFailed", err)
 		}
 		if err := r.backfillWorkloadPullSecrets(ctx, &app); err != nil {
@@ -381,7 +393,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 				return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("relocating native build env to %s: %w", buildNs, err))
 			}
 		}
-		buildRegistrySecret, err := r.prepareBuildRegistrySecret(ctx, &app, buildNs, builder)
+		buildRegistryPullSecret, err := r.prepareBuildRegistrySecret(ctx, &app, buildNs, builder)
 		if err != nil {
 			return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("preparing Docker-build registry credential: %w", err))
 		}
@@ -402,7 +414,8 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			CloneSecret:      app.Spec.CloneSecret,
 			SignKeySecret:    r.TenantSignKeySecret,
 			SignImage:        r.TenantSignImage,
-			PushSecret:       buildRegistrySecret,
+			PushSecret:       r.buildJobPushSecret(&app),
+			PullSecret:       buildRegistryPullSecret,
 			RegistryConfig:   usesBuildRegistryConfig(&app, builder),
 			Client:           buildClient,
 		})
@@ -610,7 +623,7 @@ func (r *AppReconciler) predeployPullSecrets(ctx context.Context, app *appv1alph
 	}
 	var out []corev1.LocalObjectReference
 	if r.registryHosted(image) {
-		if s := r.RegistryBuildPullSecret; s != "" {
+		if s := r.buildJobPullSecret(app); s != "" {
 			out = append(out, corev1.LocalObjectReference{Name: s})
 		}
 	}
@@ -663,12 +676,22 @@ func (r *AppReconciler) mirrorPreDeploySecrets(ctx context.Context, app *appv1al
 // counterpart to the build Job's own build-namespace RegistryPushSecret.
 func (r *AppReconciler) buildJobPullSecret(app *appv1alpha1.App) string {
 	if r.buildNamespace(app.Namespace) != app.Namespace {
+		if r.PerAppRegistry != nil {
+			return registry.PullSecretName(app.Name)
+		}
 		return r.RegistryBuildPullSecret
 	}
 	if r.PerAppRegistry != nil {
 		return registry.PullSecretName(app.Name)
 	}
 	return r.RegistryPullSecret
+}
+
+func (r *AppReconciler) buildJobPushSecret(app *appv1alpha1.App) string {
+	if r.PerAppRegistry != nil {
+		return registry.PullSecretName(app.Name)
+	}
+	return r.RegistryPushSecret
 }
 
 // backfillWorkloadPullSecrets converges existing long-running pod templates
@@ -743,7 +766,7 @@ func (r *AppReconciler) ensurePerAppRegistryCreds(ctx context.Context, app *appv
 	}
 
 	// Rotation: if the annotation is set, re-issue credentials first, then clear it.
-	if app.Annotations[annotRotateRegistryCreds] == "true" {
+	if app.Annotations[annotRotateRegistryCreds] == registryCredentialRotateTrue {
 		if err := r.PerAppRegistry.RotateCreds(ctx, app.Name, app.Namespace); err != nil {
 			return fmt.Errorf("rotate registry creds: %w", err)
 		}
@@ -758,6 +781,27 @@ func (r *AppReconciler) ensurePerAppRegistryCreds(ctx context.Context, app *appv
 	}
 
 	return r.PerAppRegistry.EnsureCreds(ctx, app.Name, app.Namespace)
+}
+
+// mirrorPerAppRegistryCredential copies the per-App, repository-scoped Zot
+// credential beside build/publish/pre-deploy workloads. This removes the shared
+// bex-builder credential from every tenant-execution Pod while preserving the
+// kubelet imagePullSecret in the App namespace.
+func (r *AppReconciler) mirrorPerAppRegistryCredential(ctx context.Context, app *appv1alpha1.App) error {
+	if r.PerAppRegistry == nil || r.Registry == "" || r.buildNamespace(app.Namespace) == app.Namespace {
+		return nil
+	}
+	needsCred := app.Spec.Repo != "" ||
+		strings.HasPrefix(app.Spec.Image, r.Registry+"/") ||
+		strings.HasPrefix(app.Status.Image, r.Registry+"/")
+	if !needsCred {
+		return nil
+	}
+	name := registry.PullSecretName(app.Name)
+	if err := r.copyBuildRegistryCredential(ctx, app.Namespace, r.buildNamespace(app.Namespace), app.Name, name); err != nil {
+		return fmt.Errorf("relocating per-App registry credential to %s: %w", r.buildNamespace(app.Namespace), err)
+	}
+	return nil
 }
 
 func localObjectReferencesEqual(a, b []corev1.LocalObjectReference) bool {
@@ -950,6 +994,9 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	}
 	if ws := app.Labels[labelWorkspace]; ws != "" {
 		podLabels[labelWorkspace] = ws
+	}
+	if r.TenantSignKeySecret != "" {
+		podLabels[execution.LabelVerifyImage] = execution.VerifyImageEnabled
 	}
 	// Same mutability rationale as labelWorkspace above: labelNetworkIsolation
 	// is only present on the App when its Environment has
@@ -1606,12 +1653,15 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	if app.Status.ActiveRevision != rev {
 		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Publishing", "Publishing static output to object store")
 		opts := publish.Options{
-			Image:       image,
-			PublishPath: app.Spec.PublishPath,
-			AppID:       app.Name,
-			Revision:    rev,
-			Store:       r.StaticStore,
-			Namespace:   r.buildNamespace(app.Namespace),
+			Image:        image,
+			PublishPath:  app.Spec.PublishPath,
+			AppID:        app.Name,
+			Revision:     rev,
+			Store:        r.StaticStore,
+			Namespace:    r.buildNamespace(app.Namespace),
+			Workspace:    app.Labels[labelWorkspace],
+			AppNamespace: app.Namespace,
+			VerifyImage:  r.TenantSignKeySecret != "",
 			// The extract initContainer pulls the built image from authed Zot. Use
 			// the BUILD-namespace pull credential: the per-App/shared tenant pull
 			// secret lives in the App namespace, unreachable when the publish Job
@@ -1793,6 +1843,9 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 		labels[labelAppID] = appID
 	} else {
 		labels[labelAppID] = app.Name
+	}
+	if r.TenantSignKeySecret != "" {
+		labels[execution.LabelVerifyImage] = execution.VerifyImageEnabled
 	}
 	suspended := app.Spec.Suspended
 
@@ -2474,10 +2527,18 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 			StartedAt: started, FinishedAt: time.Now().UTC().Format(time.RFC3339), Message: err.Error(),
 		}, fmt.Errorf("pre-deploy: %w", err))
 	}
+	if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
+		return r.failPreDeploy(ctx, app, &appv1alpha1.PreDeployStatus{
+			Job: jobName, Generation: gen, Status: appv1alpha1.PreDeployFailed,
+			StartedAt: started, FinishedAt: time.Now().UTC().Format(time.RFC3339), Message: err.Error(),
+		}, fmt.Errorf("pre-deploy network policy: %w", err))
+	}
 	job, err := predeploy.Ensure(ctx, predeploy.Options{
 		Name:             app.Name,
 		Namespace:        ns,
 		Workspace:        app.Labels[labelWorkspace],
+		AppNamespace:     app.Namespace,
+		VerifyImage:      r.TenantSignKeySecret != "",
 		Image:            image,
 		Command:          app.Spec.PreDeployCommand,
 		Revision:         rev,
@@ -2641,6 +2702,45 @@ func (r *AppReconciler) reconcileNetworkPolicy(ctx context.Context, app *appv1al
 	return err
 }
 
+// reconcileExecutionNetworkPolicy adds the one dynamic egress edge a static
+// namespace policy cannot express: a pre-deploy Pod may reach only workloads in
+// its own workspace (or protected environment) in the App namespace. DNS,
+// source hosts, the registry, and public object storage are handled by the
+// namespace-wide policy in deploy/gitops/base/build-boundary.yaml.
+func (r *AppReconciler) reconcileExecutionNetworkPolicy(ctx context.Context, app *appv1alpha1.App) error {
+	buildNS := r.buildNamespace(app.Namespace)
+	if buildNS == app.Namespace {
+		return nil
+	}
+	name := build.JobName(app.Name, "execution-egress")
+	np := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: buildNS}}
+	ws := app.Labels[labelWorkspace]
+	if ws == "" {
+		return client.IgnoreNotFound(r.buildPlaneClient().Delete(ctx, np))
+	}
+	scopeSelector := map[string]string{labelWorkspace: ws}
+	if env := app.Labels[labelNetworkIsolation]; env != "" {
+		scopeSelector = map[string]string{labelNetworkIsolation: env}
+	}
+	_, err := controllerutil.CreateOrUpdate(ctx, r.buildPlaneClient(), np, func() error {
+		np.Labels = map[string]string{labelApp: app.Name, labelWorkspace: ws}
+		np.Spec = networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{labelApp: app.Name}},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
+			Egress: []networkingv1.NetworkPolicyEgressRule{{
+				To: []networkingv1.NetworkPolicyPeer{{
+					NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{
+						"kubernetes.io/metadata.name": app.Namespace,
+					}},
+					PodSelector: &metav1.LabelSelector{MatchLabels: scopeSelector},
+				}},
+			}},
+		}
+		return nil // cross-namespace ownerReferences are invalid; finalizer deletes it
+	})
+	return err
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// Config propagation on restart: operator-level settings (cluster issuer, base
@@ -2703,6 +2803,12 @@ func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.
 		if err := r.deleteBuildRegistrySecret(ctx, app.Name, ns); err != nil {
 			log.Error(err, "delete merged build registry credential", "app", app.Name)
 		}
+		execPolicy := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{
+			Name: build.JobName(app.Name, "execution-egress"), Namespace: ns,
+		}}
+		if err := cl.Delete(ctx, execPolicy); err != nil && !apierrors.IsNotFound(err) {
+			log.Error(err, "delete execution network policy", "app", app.Name)
+		}
 		// cert-manager TLS Secrets
 		r.deleteTLSSecrets(ctx, app)
 		// Static-site S3 prefix
@@ -2735,6 +2841,12 @@ func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.
 			pullSec.Namespace = app.Namespace
 			if err := r.Delete(ctx, pullSec); err != nil && !apierrors.IsNotFound(err) {
 				log.Error(err, "delete per-app pull secret", "app", app.Name)
+			}
+			if ns != app.Namespace {
+				buildPullSec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: pullSec.Name, Namespace: ns}}
+				if err := cl.Delete(ctx, buildPullSec); err != nil && !apierrors.IsNotFound(err) {
+					log.Error(err, "delete build-namespace per-app registry secret", "app", app.Name)
+				}
 			}
 		}
 		controllerutil.RemoveFinalizer(app, finalizer)

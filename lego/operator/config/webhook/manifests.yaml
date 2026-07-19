@@ -14,13 +14,10 @@ spec:
   selector:
     control-plane: controller-manager
 ---
-# ValidatingWebhookConfiguration that intercepts Pod CREATE/UPDATE in tenant
-# namespaces (those labeled bex.co/workspace) and calls the operator's
-# /validate-v1-pod endpoint.
-#
-# failurePolicy: Ignore — pods are admitted if the webhook is unavailable
-# (e.g. during operator rolling upgrade). For stricter enforcement once the
-# operator is stable, change to Fail.
+# ValidatingWebhookConfiguration that intercepts only Pods explicitly labeled
+# for tenant-image verification by the operator. The label is absent when
+# signing is disabled, so disabled mode never calls the webhook. When enabled,
+# failurePolicy Fail makes verifier/certificate/service outages deny admission.
 #
 # The caBundle field is injected by cert-manager's CA injector once
 # config/certmanager/ resources are deployed. See config/default/kustomization.yaml
@@ -40,11 +37,11 @@ webhooks:
   - name: vpod.kb.io
     admissionReviewVersions: ["v1"]
     sideEffects: None
-    failurePolicy: Ignore
-    namespaceSelector:
-      matchExpressions:
-        - key: bex.co/workspace
-          operator: Exists
+    failurePolicy: Fail
+    objectSelector:
+      matchLabels:
+        app.bex.co/verify-image: enabled
+    timeoutSeconds: 10
     rules:
       - apiGroups: [""]
         apiVersions: ["v1"]

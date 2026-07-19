@@ -44,6 +44,7 @@ func TestJobName(t *testing.T) {
 func TestJobShape(t *testing.T) {
 	j := Job(Options{
 		Name: "api", Namespace: "builds", Workspace: "tea-1",
+		AppNamespace: "default", VerifyImage: true,
 		Image: "zot/api:gen-3", Command: "npm run migrate", Revision: "gen-3", Generation: 3,
 		Env:              []corev1.EnvVar{{Name: "FOO", Value: "bar"}},
 		EnvFrom:          []corev1.EnvFromSource{{SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "api-env"}}}},
@@ -70,11 +71,14 @@ func TestJobShape(t *testing.T) {
 	if j.Spec.Template.Labels[LabelService] != "api" {
 		t.Error("pod must carry the predeploy service label for log selection")
 	}
+	if j.Spec.Template.Labels["app.bex.co/workspace"] != "tea-1" ||
+		j.Spec.Template.Labels["app.bex.co/app-namespace"] != "default" ||
+		j.Spec.Template.Labels["app.bex.co/verify-image"] != "enabled" {
+		t.Errorf("pod identity labels = %v", j.Spec.Template.Labels)
+	}
 
 	pod := j.Spec.Template.Spec
-	if pod.RestartPolicy != corev1.RestartPolicyNever {
-		t.Error("restartPolicy must be Never")
-	}
+	assertExecutionPodDefaults(t, pod)
 	if len(pod.Containers) != 1 {
 		t.Fatalf("want 1 container, got %d", len(pod.Containers))
 	}
@@ -101,6 +105,22 @@ func TestJobShape(t *testing.T) {
 	}
 	if len(pod.Volumes) != 1 || len(c.VolumeMounts) != 1 {
 		t.Error("secret-file volume/mount not threaded")
+	}
+}
+
+func assertExecutionPodDefaults(t *testing.T, pod corev1.PodSpec) {
+	t.Helper()
+	if pod.RestartPolicy != corev1.RestartPolicyNever {
+		t.Error("restartPolicy must be Never")
+	}
+	if pod.AutomountServiceAccountToken == nil || *pod.AutomountServiceAccountToken {
+		t.Error("pre-deploy pod must disable the Kubernetes API token")
+	}
+	if pod.HostUsers == nil || *pod.HostUsers {
+		t.Error("pre-deploy pod must use a Pod user namespace")
+	}
+	if pod.NodeSelector["bex.co/pool"] != "tenant" {
+		t.Errorf("pre-deploy node selector = %v", pod.NodeSelector)
 	}
 }
 

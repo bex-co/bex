@@ -48,12 +48,12 @@ variable "kubernetes_version" {
 
 variable "containerd_version" {
   type    = string
-  default = "1.7.26"
+  default = "2.3.3"
 }
 
 variable "runc_version" {
   type    = string
-  default = "1.2.5"
+  default = "1.5.1"
 }
 
 # The base Hetzner system image the snapshot is built from — the same image the

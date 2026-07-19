@@ -177,33 +177,34 @@ The network layer (above) puts a build-labeled pod inside Zot's allow-list, beca
 - **Cross-tenant pull (source disclosure)** — `GET /v2/<repo>/manifests/…` + blobs: reconstructs another tenant's image.
 - **Tag-overwrite poisoning** — `PUT` over an existing tag: a fresh autoscaled node then pulls the poisoned layer on its first deploy.
 
-All three are unauthenticated today (`deploy/gitops/base/zot.yaml` ships the chart's auth-off defaults).
+All three existed before w7/m8; the current Zot configuration denies anonymous access.
 
-### Credential scheme (decision)
+### Credential and process scheme (decision, closed by w2/m59)
 
-Zot's `htpasswd` + `accessControl` is **static-file** config — per-App credentials would mean regenerating the htpasswd (bcrypt) on every App create/delete, and would only add protection against a buildkitd compromise (not the threat model above, which is tenant `RUN` code with no credential at all). The cost is not worth it pre-real-tenants, so we ship **two shared credentials** minted out-of-band (`scripts/registry-secrets.sh`, the `auth-secrets.sh` pattern — no secret material in git):
+`accessControl.repositories["**"].defaultPolicy: []` denies anonymous catalog, list, pull, and push. `bex-builder` remains an out-of-band bootstrap/admin identity for registry seeding, legacy shared-auth fallback, and the manager's cross-repository admission verifier. Normal tenant builds use a generated `app-<name>` identity whose Zot rule grants `read, create, update, delete` on exactly `<name>` and nothing else. The legacy Secret name `reg-pull-<name>` is retained, but the same repository-scoped credential now serves two non-overlapping custody paths: Skopeo/Cosign receives it as a mounted build-phase credential, while a runtime Pod names it only as an `imagePullSecret` consumed by kubelet.
 
-| User | Zot actions | Held by | Custody |
-| --- | --- | --- | --- |
-| `bex-builder` | `read, create, update, delete` | the build Job's buildkitd + cosign containers (pod filesystem only) | `bex-registry-push` docker-config Secret, build namespace |
-| `bex-puller` | `read` | tenant runtime pods, via `imagePullSecrets` (read by kubelet) | `bex-registry-pull` docker-config Secret, apps namespace |
+The Dockerfile pipeline is deliberately serial:
 
-`accessControl.repositories["**"].defaultPolicy: []` — **anonymous is denied everything** (catalog, list, pull, push all `401`). The builder is also listed in `accessControl.adminPolicy`, because Zot applies only the longest matching repository rule: an exact per-App pull rule shadows the `**` repository policy. Everyone else gets nothing.
+```text
+private Git token       private-base credential       App-repo credential      signing key
+       |                         |                            |                      |
+clone init container -> BuildKit init container -> Skopeo push init container -> Cosign container
+       |                   OCI archive only              pushed image            signature
+       +------------------------- no shared PID lifetime ----------------------------+
+```
 
-### Intended docker-config boundary and open runtime gap
+- `clone` alone receives `GIT_AUTH_TOKEN`; it exits before tenant build code starts.
+- BuildKit alone receives an optional external-registry credential for a private `FROM`. It never receives the platform/App output credential or signing key and exports an OCI archive instead of pushing.
+- Skopeo alone receives the per-App output credential and the archive after BuildKit exits.
+- Cosign alone receives the same per-App output credential plus the signing key, after Skopeo exits. Private-key signing uses `--tlog-upload=false`, so private image metadata is not published to Rekor.
 
-The intended boundary is that BuildKit runs a build's `RUN` steps with a rootfs containing the build context, image layers, and explicitly declared BuildKit secrets — not the `buildkitd` container's filesystem. A docker-config credential mounted into the buildkitd container (at `/docker-config`, `$DOCKER_CONFIG`) is therefore not declaratively passed to the Dockerfile:
+BuildKit runs as root inside a Kubernetes Pod user namespace (`hostUsers: false`) with the Kubernetes 1.31 `UserNamespacesSupport` gate and containerd 2.3/runc 1.5 production prerequisites. Namespaced capabilities let the OCI worker mount snapshots without host privilege. Its default OCI process sandbox is enabled; `--oci-worker-no-process-sandbox` is forbidden by tests. Dockerfile `RUN` processes therefore cannot see or ptrace the BuildKit daemon PID. An unconfined seccomp/AppArmor profile remains limited to the BuildKit container inside that Pod user namespace; clone, push, sign, publish, and pre-deploy containers retain restricted contexts.
 
-- ✅ as a volume mount on the buildkitd container (and cosign, when signing is enabled — w6/006);
-- ❌ never as a `--build-arg`;
-- ❌ never as a declared BuildKit `--secret` (the `GIT_AUTH_TOKEN` precedent is opt-in, so a malicious Dockerfile _could_ declare a mount — we therefore do **not** pass the registry cred that way);
-- ❌ never in the build step's container env.
+Every direct execution Pod also disables service-account-token automount, carries App/workspace labels, selects `bex.co/pool=tenant`, and runs in `bex-build` behind ingress/egress default-deny. Static publish and pre-deploy use the same common hardening source. kpack's generated build identity disables token automount and carries the same labels/tenant placement through its supported pod-template fields.
 
-A unit test (`lego/operator/internal/build/build_test.go`) asserts the credential name never appears in `buildctl` args or the build container's env. That test proves non-injection, not runtime confidentiality.
+Repository-backed Docker services may bind a workspace credential for a private `FROM` (w6/m34). The operator copies only that docker config plus the BuildKit HTTP-registry resolver config into a deterministic build Secret; it is no longer merged with the output credential. Native, buildpack, and direct static-site sources reject this field. The App finalizer deletes the derived Secret.
 
-**Security correction (2026-07-19):** the current rootless BuildKit Job uses `--oci-worker-no-process-sandbox`. [Upstream BuildKit warns](https://github.com/moby/buildkit/blob/6dd06999d5d369a217c3f3259a420f507e2db2c7/docs/rootless.md#L98-L104) that this mode lets build containers kill and potentially ptrace arbitrary processes in the BuildKit container. Because the push credential is mounted in that container, the absolute claim that a malicious tenant `RUN` process cannot extract it is not established. [ADR039](ADR039-operator-audit-and-platform-reuse.md) records this and the broader build-namespace/network boundary as O-01. Until O-01 closes with a process sandbox or a design that removes the credential from the reachable process boundary plus an adversarial live test, treat registry-push credential secrecy as an intended invariant, not a verified guarantee.
-
-Repository-backed Docker services may also bind a workspace registry credential for a private `FROM` (w6/m34). The operator merges that explicit docker config with the platform push config into one deterministic Secret in the build namespace; the platform push entry wins a same-host collision. Buildkitd and optional cosign mount the derived config, while tenant Dockerfile steps receive no build arg, BuildKit secret, environment value, or declared mount. The runtime caveat above applies to this credential too. Native, buildpack, and static-site repository sources reject the field. The App finalizer deletes the derived Secret. On the HTTP-only development Zot path, the derived Secret also carries buildkitd's resolver config for the already-insecure platform registry; production external base registries continue to use their normal TLS resolution.
+Closure evidence on 2026-07-19 used a private authenticated Git source, a private Zot base image, and an adversarial Dockerfile that checked credential paths, environment/token absence, and `/proc` visibility before producing a signed, authenticated image that reached `App.status.phase=Running`. [`verify-build-isolation.sh`](../scripts/verify-build-isolation.sh) then passed 38/38 live assertions: named positive controls plus denial of metadata, kubelet, the Kubernetes API, real `bex-api`, cross-workspace traffic, and another Zot repository; own-repository push/read; and signed allow, unsigned deny, post-signature tamper deny, and platform non-selection. Cluster-less counterparts live in `scripts/gitops-validate.sh` and generated-object unit tests. This closes [ADR039](ADR039-operator-audit-and-platform-reuse.md) O-01/O-02; the upstream rootless no-process-sandbox warning remains the reason that mode must not return.
 
 ### Read policy (decision)
 
@@ -211,13 +212,13 @@ Repository-backed Docker services may also bind a workspace registry credential 
 
 #### Per-App pull credentials (w7/m36)
 
-Each App that builds and pushes an image to Zot receives its own Zot user `app-<name>` and a per-repo ACL entry that restricts that user to reading only `<name>/**`. The operator manages:
+Each App that builds and pushes an image to Zot receives its own Zot user `app-<name>` and a per-repo ACL entry that restricts that user to `read, create, update, delete` on only `<name>`. The operator manages:
 
 - **`zot-htpasswd`** Secret (in `bex-registry`): bcrypt entry `app-<name>:hash` added on App reconcile, removed on App delete. `bex-puller` is no longer present. Because the running zot never re-reads the file (see Credential activation below), removal alone does not deactivate the entry — `RevokeCreds` ends with a best-effort rate-limited zot bounce, so a revoked credential stops authenticating at the next bounce or zot restart, not instantly.
-- **`zot-config`** Secret (in `bex-registry`): full Zot `config.json` managed by the operator; per-App entry `"<name>": {"policies": [{"users": ["app-<name>"], "actions": ["read"]}]}` added on App reconcile, removed on App delete. The global `adminPolicy` grants `bex-builder` push access even when an exact repository rule matches; no shared read user is in the global ACL.
-- **`reg-pull-<name>`** Secret (in the App namespace): `kubernetes.io/dockerconfigjson` with plaintext `app-<name>:password` credential, referenced as `imagePullSecret` on all tenant workloads. Deleted by the operator finalizer on App delete.
+- **`zot-config`** Secret (in `bex-registry`): full Zot `config.json` managed by the operator; per-App entry `"<name>": {"policies": [{"users": ["app-<name>"], "actions": ["read", "create", "update", "delete"]}]}` added on App reconcile, removed on App delete. The global `adminPolicy` grants `bex-builder` bootstrap/verifier access even when an exact repository rule matches; no shared tenant read user is in the global ACL.
+- **`reg-pull-<name>`** Secret: `kubernetes.io/dockerconfigjson` with the standard `auth` field plus explicit username/password. In the App namespace kubelet consumes it as an `imagePullSecret`; the operator mirrors it into `bex-build` with an additional `config.json` filename for the App's Skopeo/Cosign phases. Tenant runtime containers never mount the Secret. Both copies are deleted by finalization.
 
-**Closed residual (was ADR022:204):** a compromised tenant runtime pod holding `app-foo`'s pull credential can only pull from the `foo` repository. It cannot read `bar`'s images because `app-foo` is absent from `bar`'s per-repo ACL and the `**` wildcard `defaultPolicy: []` provides no fallback. Live proof: `scripts/verify-per-app-registry-isolation.sh`.
+**Closed residual (was ADR022:204):** `app-foo` can only act on the `foo` repository. It cannot read or overwrite `bar` because it is absent from `bar`'s exact rule and the `**` wildcard `defaultPolicy: []` provides no fallback. A compromised runtime container still cannot read the credential because kubelet, not the container, consumes `imagePullSecrets`. Live proof: `scripts/verify-per-app-registry-isolation.sh` and the own-repository/cross-repository controls in `scripts/verify-build-isolation.sh`.
 
 **Credential activation (w9/m43):** Zot loads `/secret/htpasswd` and the `accessControl` config **once at process start** — it has no working hot reload under Kubernetes Secret mounts (verified against v2.1.18: a kubelet-style atomic symlink swap of both mounts activates nothing, and SIGHUP shuts the server down instead of reloading). Writing the Secrets alone therefore leaves a brand-new App's credential unusable — every kubelet pull answers `401` until the zot pod restarts (the 2026-07-17 prod incident: first deploy of any new App failed `ImagePullBackOff` until a manual `rollout restart statefulset/zot`). The operator closes the gap itself: before rolling any workload to a registry-hosted image, `registry.EnsureActive` probes zot with the App's own credential against the App's own repository (`GET /v2/<name>/tags/list` basic-auth — exercising both the htpasswd user and the per-repo ACL); while rejected it requeues without touching the workload, and past a 30s grace (anchored to the htpasswd write when known) it deletes the zot pod (rate-limited to one bounce per 2m across all Apps — the StatefulSet restarts it and the restart loads the new htpasswd + ACL entries). An accepted credential is memoized until rotation/revocation, so the steady state adds no I/O. Rotation deterministically re-enters this window (zot holds the old hash until bounced); revocation triggers the same rate-limited bounce best-effort. The needed `pods: get/list/delete` grant is scoped to `bex-registry` only (`deploy/gitops/base/operator-registry-rbac.yaml`), so the operator gains no pod-delete on tenant or platform namespaces.
 
@@ -230,6 +231,7 @@ Each App that builds and pushes an image to Zot receives its own Zot user `app-<
 - **Live (auth)** — `scripts/verify-registry-auth.sh` asserts anonymous `GET /v2/_catalog` and push are both refused (`401`), and that a credentialed build-from-git App round-trips.
 - **Live (per-App isolation)** — `scripts/verify-per-app-registry-isolation.sh` asserts App A's credential cannot pull App B's image (expected `401`), proves App A can pull its own image, and verifies credential revocation on App delete (htpasswd + config entries removed).
 - **Live (private Docker base)** — the w6/m34 CAPD run built and deployed a repository Docker service from an authenticated private `FROM`, then observed `401 Unauthorized` with an intentionally wrong bound credential; all fixture resources were removed.
+- **Live (m59 execution boundary)** — `scripts/verify-build-isolation.sh` proves the private-source/private-base build and its adversarial process checks, per-repository auth, explicit network allows/denies, placement/token defaults, and signed/unsigned/tampered admission controls without printing credentials.
 - **CI** — `scripts/gitops-validate.sh` asserts `deploy/gitops/base/zot.yaml` carries the auth stanza (`auth.htpasswd`, `accessControl` with `defaultPolicy: []`) and a pinned chart; a regression that removes auth fails CI before Argo applies it.
 
 ## Rejected options

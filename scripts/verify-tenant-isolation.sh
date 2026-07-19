@@ -262,7 +262,7 @@ probe_allow "internet-egress" probe-a "https://example.com"
 echo ""
 echo "=== m2 hardening checks (PSS · securityContext · SA token · quotas) ==="
 
-BUILD_NS="${BUILD_NS:-bex-system}"
+BUILD_NS="${BUILD_NS:-bex-build}"
 
 # PSS baseline must reject a privileged pod spec.
 log "testing PSS baseline admission rejection..."
@@ -330,7 +330,7 @@ else
   log "SKIP pod hardening checks (App A pod not found in $NS)"
 fi
 
-# Build Job resource limits (jobs run in BEX_BUILD_NAMESPACE = bex-system by default).
+# Build Job resource limits (jobs run in the dedicated BEX_BUILD_NAMESPACE).
 BUILD_JOB=$(kubectl get jobs -n "$BUILD_NS" -l "app.bex.co/component=build" \
   -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
 if [ -n "$BUILD_JOB" ]; then

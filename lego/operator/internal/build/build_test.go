@@ -73,32 +73,53 @@ func TestBuildJobShape(t *testing.T) {
 	if pod.RestartPolicy != corev1.RestartPolicyNever {
 		t.Error("restartPolicy must be Never")
 	}
-	c := pod.Containers[0]
-	joined := strings.Join(c.Args, " ")
-	// The git context (repo.git#ref — the .git suffix forces a git clone, not an
-	// HTTP fetch) and a pushing, insecure image output must be present.
-	if !strings.Contains(joined, "context=https://github.com/bex-co/hello.git#main") {
-		t.Errorf("missing git context arg: %q", joined)
+	if pod.AutomountServiceAccountToken == nil || *pod.AutomountServiceAccountToken {
+		t.Error("build pod must disable the Kubernetes API token")
 	}
-	if !strings.Contains(joined, "type=image,name=zot.bex-registry.svc:5000/hello:gen-7,push=true,registry.insecure=true") {
-		t.Errorf("missing pushing image output: %q", joined)
+	if pod.HostUsers == nil || *pod.HostUsers {
+		t.Error("build pod must run in a Kubernetes user namespace")
 	}
-	if c.Command[0] != "buildctl-daemonless.sh" {
-		t.Errorf("command = %v, want buildctl-daemonless.sh", c.Command)
+	if pod.NodeSelector["bex.co/pool"] != "tenant" {
+		t.Errorf("node selector = %v, want tenant pool", pod.NodeSelector)
 	}
-	// Rootless: unconfined seccomp, no privileged escalation.
-	if c.SecurityContext == nil || c.SecurityContext.SeccompProfile.Type != corev1.SeccompProfileTypeUnconfined {
-		t.Error("rootless buildkit needs an unconfined seccomp profile")
+	if got := contNames(pod.InitContainers); strings.Join(got, ",") != "clone,buildkit" {
+		t.Fatalf("init containers = %v, want clone,buildkit", got)
 	}
-	if c.SecurityContext.Privileged != nil && *c.SecurityContext.Privileged {
+	if got := contNames(pod.Containers); strings.Join(got, ",") != "push" {
+		t.Fatalf("containers = %v, want push", got)
+	}
+	bk := containerByName(pod.InitContainers, "buildkit")
+	joined := strings.Join(bk.Args, " ")
+	if !strings.Contains(joined, "context=/source") || !strings.Contains(joined, "type=oci,dest=/output/image.tar") {
+		t.Errorf("buildkit must use local source and OCI output: %q", joined)
+	}
+	if strings.Contains(joined, o.Repo) || strings.Contains(joined, "push=true") {
+		t.Errorf("buildkit must neither clone nor push: %q", joined)
+	}
+	push := pod.Containers[0]
+	if !strings.Contains(strings.Join(push.Args, " "), "docker://"+o.ImageRef()) {
+		t.Errorf("push args = %v", push.Args)
+	}
+	if bk.Command[0] != "buildctl-daemonless.sh" {
+		t.Errorf("command = %v, want buildctl-daemonless.sh", bk.Command)
+	}
+	// BuildKit gets only Pod-user-namespace capabilities and keeps its default
+	// OCI process sandbox. It must never become a host-privileged container.
+	if bk.SecurityContext == nil || bk.SecurityContext.SeccompProfile.Type != corev1.SeccompProfileTypeUnconfined {
+		t.Error("BuildKit needs an unconfined container seccomp profile")
+	}
+	if bk.SecurityContext.Privileged != nil && *bk.SecurityContext.Privileged {
 		t.Error("build container must not be privileged")
+	}
+	if flags := envValue(bk.Env, "BUILDKITD_FLAGS"); strings.Contains(flags, "no-process-sandbox") {
+		t.Errorf("BuildKit process sandbox disabled: %q", flags)
 	}
 }
 
 func TestBuildJobCustomDockerfilePath(t *testing.T) {
 	o := opts()
 	o.DockerfilePath = "docker/Dockerfile.prod"
-	args := BuildJob(o, o.ImageRef()).Spec.Template.Spec.Containers[0].Args
+	args := containerByName(BuildJob(o, o.ImageRef()).Spec.Template.Spec.InitContainers, "buildkit").Args
 	if !containsPair(args, "--opt", "filename=docker/Dockerfile.prod") {
 		t.Fatalf("buildkit args missing Dockerfile path: %v", args)
 	}
@@ -108,43 +129,43 @@ func TestBuildJobCustomDockerfilePath(t *testing.T) {
 // image-signing path: with a signing key Secret set, build+push becomes an
 // initContainer and a cosign container signs the pushed image as the main
 // container (k8s runs init → containers sequentially, so signing only fires on a
-// successful push). Unset (the default) stays a single buildkit container.
+// successful push).
 func TestBuildJobSigningMovesBuildToInitAndSignsAfterPush(t *testing.T) {
 	image := opts().ImageRef()
 
-	// Default (no signing): one buildkit container, no init/volumes — unchanged.
+	// Default: clone + build init containers, then the credential-isolated push.
 	def := BuildJob(opts(), image).Spec.Template.Spec
-	if len(def.Containers) != 1 || def.Containers[0].Name != "buildkit" || len(def.InitContainers) != 0 {
-		t.Fatalf("unsigned job = %d containers (%v) + %d init; want single buildkit, no init",
-			len(def.Containers), contNames(def.Containers), len(def.InitContainers))
+	if strings.Join(contNames(def.InitContainers), ",") != "clone,buildkit" || strings.Join(contNames(def.Containers), ",") != "push" {
+		t.Fatalf("unsigned phases = init %v main %v", contNames(def.InitContainers), contNames(def.Containers))
 	}
 
-	// Signing enabled: buildkit is an initContainer, cosign is the main container.
+	// Signing enabled: push also becomes an initContainer, then cosign runs.
 	o := opts()
 	o.SignKeySecret = "bex-tenant-cosign"
 	signed := BuildJob(o, image).Spec.Template.Spec
-	if len(signed.InitContainers) != 1 || signed.InitContainers[0].Name != "buildkit" {
-		t.Fatalf("signed job init = %v; want [buildkit]", contNames(signed.InitContainers))
+	if strings.Join(contNames(signed.InitContainers), ",") != "clone,buildkit,push" {
+		t.Fatalf("signed job init = %v; want [clone buildkit push]", contNames(signed.InitContainers))
 	}
 	if len(signed.Containers) != 1 || signed.Containers[0].Name != "sign" {
 		t.Fatalf("signed job containers = %v; want [sign]", contNames(signed.Containers))
 	}
 	sign := signed.Containers[0]
 	// Signs the exact pushed ref, keyless-disabled (key from the mounted Secret),
-	// insecure-registry for the in-cluster Zot over HTTP.
+	// without publishing private image metadata to Rekor. allow-http-registry is
+	// required for the in-cluster Zot over HTTP.
 	joined := strings.Join(sign.Args, " ")
-	if !strings.Contains(joined, "sign --yes --allow-insecure-registry --key /keys/cosign.key "+image) {
+	if !strings.Contains(joined, "sign --yes --tlog-upload=false --allow-http-registry --key /keys/cosign.key "+image) {
 		t.Fatalf("sign args = %q; want cosign sign of %s", joined, image)
 	}
 	if sign.Image != defaultSignImage {
 		t.Errorf("sign image = %s, want default %s", sign.Image, defaultSignImage)
 	}
 	// Key Secret mounted read-only at /keys + COSIGN_PASSWORD from the same Secret.
-	if len(sign.VolumeMounts) != 1 || sign.VolumeMounts[0].MountPath != "/keys" || !sign.VolumeMounts[0].ReadOnly {
+	if mount := mountByName(sign.VolumeMounts, "cosign-key"); mount == nil || mount.MountPath != "/keys" || !mount.ReadOnly {
 		t.Errorf("sign volumeMounts = %+v; want /keys ro", sign.VolumeMounts)
 	}
-	if len(signed.Volumes) != 1 || signed.Volumes[0].Secret == nil ||
-		signed.Volumes[0].Secret.SecretName != "bex-tenant-cosign" {
+	if volume := volByName(signed.Volumes, "cosign-key"); volume == nil || volume.Secret == nil ||
+		volume.Secret.SecretName != "bex-tenant-cosign" {
 		t.Errorf("volumes = %+v; want the cosign-key Secret", signed.Volumes)
 	}
 	gotPW := false
@@ -168,25 +189,20 @@ func contNames(cs []corev1.Container) []string {
 }
 
 func TestBuildJobCloneSecret(t *testing.T) {
-	// Unset: no GIT_AUTH_TOKEN env, no --secret arg — byte-identical to a public clone.
-	c := BuildJob(opts(), opts().ImageRef()).Spec.Template.Spec.Containers[0]
-	if strings.Contains(strings.Join(c.Args, " "), "GIT_AUTH_TOKEN") {
-		t.Error("no clone secret => no GIT_AUTH_TOKEN build secret")
-	}
+	// Unset: no GIT_AUTH_TOKEN env on the clone container.
+	pod := BuildJob(opts(), opts().ImageRef()).Spec.Template.Spec
+	c := containerByName(pod.InitContainers, "clone")
 	for _, e := range c.Env {
 		if e.Name == "GIT_AUTH_TOKEN" {
 			t.Error("no clone secret => no GIT_AUTH_TOKEN env")
 		}
 	}
 
-	// Set: BuildKit gets the token as its GIT_AUTH_TOKEN secret sourced from the
-	// named Secret's "token" key.
+	// Set: only the completed-before-build clone init container gets the token.
 	o := opts()
 	o.CloneSecret = "hello-clone"
-	c = BuildJob(o, o.ImageRef()).Spec.Template.Spec.Containers[0]
-	if !strings.Contains(strings.Join(c.Args, " "), "id=GIT_AUTH_TOKEN,env=GIT_AUTH_TOKEN") {
-		t.Errorf("missing --secret GIT_AUTH_TOKEN arg: %v", c.Args)
-	}
+	pod = BuildJob(o, o.ImageRef()).Spec.Template.Spec
+	c = containerByName(pod.InitContainers, "clone")
 	var found *corev1.EnvVar
 	for i := range c.Env {
 		if c.Env[i].Name == "GIT_AUTH_TOKEN" {
@@ -199,21 +215,11 @@ func TestBuildJobCloneSecret(t *testing.T) {
 	if found.ValueFrom.SecretKeyRef.Name != "hello-clone" || found.ValueFrom.SecretKeyRef.Key != "token" {
 		t.Errorf("secret ref = %+v, want hello-clone/token", found.ValueFrom.SecretKeyRef)
 	}
-}
-
-func TestGitContext(t *testing.T) {
-	cases := map[[3]string]string{
-		{"https://github.com/x/y", "main", ""}:             "https://github.com/x/y.git#main",              // .git appended, ref added
-		{"https://github.com/x/y.git", "main", ""}:         "https://github.com/x/y.git#main",              // already .git, not doubled
-		{"https://github.com/x/y", "", ""}:                 "https://github.com/x/y.git",                   // no trailing # when ref and rootDir empty
-		{"git@github.com:x/y.git", "dev", ""}:              "git@github.com:x/y.git#dev",                   // ssh scheme untouched
-		{"https://github.com/x/y", "main", "services/api"}: "https://github.com/x/y.git#main:services/api", // rootDir suffix after ref
-		{"https://github.com/x/y", "", "services/api"}:     "https://github.com/x/y.git#:services/api",     // rootDir with default (empty) ref: bare "#" still introduces it
-		{"git@github.com:x/y.git", "dev", "apps/web"}:      "git@github.com:x/y.git#dev:apps/web",          // ssh scheme + rootDir
-	}
-	for in, want := range cases {
-		if got := gitContext(in[0], in[1], in[2]); got != want {
-			t.Errorf("gitContext(%q,%q,%q) = %q, want %q", in[0], in[1], in[2], got, want)
+	for _, other := range append(pod.InitContainers[1:], pod.Containers...) {
+		for _, env := range other.Env {
+			if env.Name == "GIT_AUTH_TOKEN" {
+				t.Errorf("clone token leaked into %s", other.Name)
+			}
 		}
 	}
 }
@@ -289,49 +295,41 @@ func TestBuildCreatesJobWhenAbsent(t *testing.T) {
 	}
 }
 
-// TestBuildJobPushSecret pins w7/m8: with a push Secret set, the buildkit
-// container mounts the docker-config at /docker-config (DOCKER_CONFIG pointing
-// there) so buildkitd authenticates the push — and the credential is reachable
-// ONLY through that mount: the Secret name and any credential material never
-// appear in buildctl args or the build container's env (a tenant Dockerfile RUN
-// step could read those). Unset ⇒ no mount, no DOCKER_CONFIG env (byte-identical
-// dev default).
+// TestBuildJobPushSecret proves the platform push credential is absent from the
+// clone and BuildKit phases and mounted only after tenant code exits.
 func TestBuildJobPushSecret(t *testing.T) {
 	const secret = "bex-registry-push"
 
-	// Unset: byte-identical — no registry-cred volume, no DOCKER_CONFIG env.
+	// Unset: no push credential volume or env.
 	def := BuildJob(opts(), opts().ImageRef()).Spec.Template.Spec
-	if volByName(def.Volumes, "registry-cred") != nil {
-		t.Error("no push secret => no registry-cred volume")
+	if volByName(def.Volumes, "push-registry-cred") != nil {
+		t.Error("no push secret => no push-registry-cred volume")
 	}
 	if dockerConfigValue(def.Containers[0].Env) != "" {
 		t.Error("no push secret => no DOCKER_CONFIG env on buildkit")
 	}
 
-	// Set: buildkit gets the mount + DOCKER_CONFIG; the volume references the Secret.
+	// Set: only the pusher gets the mount + DOCKER_CONFIG.
 	o := opts()
 	o.PushSecret = secret
 	set := BuildJob(o, o.ImageRef()).Spec.Template.Spec
-	bk := containerByName(set.Containers, "buildkit")
-	if bk == nil {
-		t.Fatal("buildkit container missing")
+	bk := containerByName(set.InitContainers, "buildkit")
+	push := containerByName(set.Containers, "push")
+	if bk == nil || push == nil {
+		t.Fatalf("phases missing: init=%v main=%v", contNames(set.InitContainers), contNames(set.Containers))
 	}
-	if vm := mountByName(bk.VolumeMounts, "registry-cred"); vm == nil || vm.MountPath != dockerConfigMount || !vm.ReadOnly {
-		t.Errorf("buildkit registry-cred mount = %+v; want ro %s", vm, dockerConfigMount)
+	if mountByName(bk.VolumeMounts, "push-registry-cred") != nil || dockerConfigValue(bk.Env) != "" {
+		t.Fatal("BuildKit must not receive platform push credentials")
 	}
-	if dockerConfigValue(bk.Env) != dockerConfigMount {
-		t.Errorf("buildkit DOCKER_CONFIG = %q; want %q", dockerConfigValue(bk.Env), dockerConfigMount)
+	if vm := mountByName(push.VolumeMounts, "push-registry-cred"); vm == nil || vm.MountPath != dockerConfigMount || !vm.ReadOnly {
+		t.Errorf("pusher credential mount = %+v; want ro %s", vm, dockerConfigMount)
 	}
-	vol := volByName(set.Volumes, "registry-cred")
+	vol := volByName(set.Volumes, "push-registry-cred")
 	if vol == nil || vol.Secret == nil || vol.Secret.SecretName != secret {
 		t.Errorf("registry-cred volume = %+v; want Secret %s", vol, secret)
 	}
 
-	// NEGATIVE SPACE — the load-bearing security invariant: the credential never
-	// appears anywhere a tenant RUN step can read it. BuildKit RUN steps can see
-	// buildctl args (no) and declared --secret mounts (none here), but NOT the
-	// container's own volume mounts — still, assert the Secret name leaks nowhere
-	// in args or env, so a future refactor can't accidentally inline it.
+	// The credential never appears in arguments or values visible to BuildKit.
 	for _, a := range bk.Args {
 		if strings.Contains(a, secret) || strings.Contains(a, "config.json") {
 			t.Errorf("credential leaked into buildctl args: %q", a)
@@ -344,9 +342,8 @@ func TestBuildJobPushSecret(t *testing.T) {
 	}
 }
 
-// TestBuildJobPushSecretWithSigning asserts the w7/m8 mount lands on BOTH the
-// buildkit initContainer and the cosign container when push + signing are both
-// enabled (cosign pushes a signature artifact, so it authenticates too).
+// TestBuildJobPushSecretWithSigning asserts the credential lands on the serial
+// push/sign phases, never BuildKit.
 func TestBuildJobPushSecretWithSigning(t *testing.T) {
 	o := opts()
 	o.PushSecret = "bex-registry-push"
@@ -354,22 +351,44 @@ func TestBuildJobPushSecretWithSigning(t *testing.T) {
 	spec := BuildJob(o, o.ImageRef()).Spec.Template.Spec
 
 	bk := containerByName(spec.InitContainers, "buildkit")
+	push := containerByName(spec.InitContainers, "push")
 	sign := containerByName(spec.Containers, "sign")
-	if bk == nil || sign == nil {
-		t.Fatalf("want buildkit init + sign containers; got init=%v containers=%v",
+	if bk == nil || push == nil || sign == nil {
+		t.Fatalf("want buildkit/push init + sign containers; got init=%v containers=%v",
 			contNames(spec.InitContainers), contNames(spec.Containers))
 	}
-	for _, c := range []*corev1.Container{bk, sign} {
-		if mountByName(c.VolumeMounts, "registry-cred") == nil {
-			t.Errorf("%s container missing the registry-cred mount", c.Name)
+	if mountByName(bk.VolumeMounts, "push-registry-cred") != nil || dockerConfigValue(bk.Env) != "" {
+		t.Fatal("BuildKit received push credential")
+	}
+	for _, c := range []*corev1.Container{push, sign} {
+		if mountByName(c.VolumeMounts, "push-registry-cred") == nil {
+			t.Errorf("%s container missing the push-registry-cred mount", c.Name)
 		}
 		if dockerConfigValue(c.Env) != dockerConfigMount {
 			t.Errorf("%s container DOCKER_CONFIG = %q; want %q", c.Name, dockerConfigValue(c.Env), dockerConfigMount)
 		}
 	}
-	// Both volumes present (registry-cred + cosign-key).
-	if volByName(spec.Volumes, "registry-cred") == nil || volByName(spec.Volumes, "cosign-key") == nil {
-		t.Errorf("want both registry-cred + cosign-key volumes; got %+v", spec.Volumes)
+	if volByName(spec.Volumes, "push-registry-cred") == nil || volByName(spec.Volumes, "cosign-key") == nil {
+		t.Errorf("want both push-registry-cred + cosign-key volumes; got %+v", spec.Volumes)
+	}
+}
+
+func TestBuildJobPrivateBasePullCredentialIsReadOnlyAndSeparate(t *testing.T) {
+	o := opts()
+	o.PushSecret = "app-output"
+	o.PullSecret = "private-base"
+	o.RegistryConfig = true
+	spec := BuildJob(o, o.ImageRef()).Spec.Template.Spec
+	bk := containerByName(spec.InitContainers, "buildkit")
+	push := containerByName(spec.Containers, "push")
+	if mountByName(bk.VolumeMounts, "pull-registry-cred") == nil || mountByName(bk.VolumeMounts, "push-registry-cred") != nil {
+		t.Errorf("BuildKit mounts = %+v", bk.VolumeMounts)
+	}
+	if mountByName(push.VolumeMounts, "push-registry-cred") == nil || mountByName(push.VolumeMounts, "pull-registry-cred") != nil {
+		t.Errorf("pusher mounts = %+v", push.VolumeMounts)
+	}
+	if flags := envValue(bk.Env, "BUILDKITD_FLAGS"); !strings.Contains(flags, "/docker-config/buildkitd.toml") {
+		t.Errorf("BUILDKITD_FLAGS = %q", flags)
 	}
 }
 
@@ -401,8 +420,12 @@ func volByName(vols []corev1.Volume, name string) *corev1.Volume {
 }
 
 func dockerConfigValue(envs []corev1.EnvVar) string {
+	return envValue(envs, "DOCKER_CONFIG")
+}
+
+func envValue(envs []corev1.EnvVar, name string) string {
 	for _, e := range envs {
-		if e.Name == "DOCKER_CONFIG" {
+		if e.Name == name {
 			return e.Value
 		}
 	}
@@ -410,7 +433,7 @@ func dockerConfigValue(envs []corev1.EnvVar) string {
 }
 
 func TestBuildJobResourceLimits(t *testing.T) {
-	c := BuildJob(opts(), opts().ImageRef()).Spec.Template.Spec.Containers[0]
+	c := containerByName(BuildJob(opts(), opts().ImageRef()).Spec.Template.Spec.InitContainers, "buildkit")
 	r, l := c.Resources.Requests, c.Resources.Limits
 	if got := r.Cpu().String(); got != buildCPURequest {
 		t.Errorf("build Job cpu request = %s, want %s", got, buildCPURequest)
@@ -463,6 +486,10 @@ func TestBuildpackImageShapeAndSuccess(t *testing.T) {
 	if limits["cpu"] != buildCPULimit || limits["memory"] != buildMemoryLimit {
 		t.Errorf("kpack build limits = %#v", limits)
 	}
+	nodes, _, _ := unstructured.NestedStringMap(image.Object, "spec", "build", "nodeSelector")
+	if nodes["bex.co/pool"] != "tenant" {
+		t.Errorf("kpack node selector = %#v", nodes)
+	}
 
 	ready := kpackImageWithCondition(o, corev1.ConditionTrue, "BuildSuccess", "", "zot.local:5000/hello@sha256:abc")
 	o.Client = fakeClient(ready)
@@ -480,6 +507,9 @@ func TestBuildpackImageShapeAndSuccess(t *testing.T) {
 	var sa corev1.ServiceAccount
 	if err := o.Client.Get(context.Background(), client.ObjectKey{Namespace: o.Namespace, Name: kpackServiceAccountName(o.Name)}, &sa); err != nil {
 		t.Fatalf("kpack service account: %v", err)
+	}
+	if sa.AutomountServiceAccountToken == nil || *sa.AutomountServiceAccountToken {
+		t.Error("kpack ServiceAccount must disable token automount")
 	}
 }
 
@@ -569,6 +599,9 @@ func TestKpackCredentialAdaptation(t *testing.T) {
 	if got := strings.Join(gotSecrets, ","); got != "bex-registry-push-kpack,hello-clone-kpack,cosign-key" {
 		t.Errorf("service account secrets = %s", got)
 	}
+	if sa.AutomountServiceAccountToken == nil || *sa.AutomountServiceAccountToken {
+		t.Error("kpack ServiceAccount must disable token automount")
+	}
 }
 
 func TestBuildNilClient(t *testing.T) {
@@ -594,6 +627,10 @@ func TestBuildJobWorkspaceLabel(t *testing.T) {
 	j = BuildJob(o, o.ImageRef())
 	if j.Labels["app.bex.co/workspace"] != "tea-abc" {
 		t.Errorf("job workspace label = %q, want tea-abc", j.Labels["app.bex.co/workspace"])
+	}
+	if j.Spec.Template.Labels["app.bex.co/workspace"] != "tea-abc" ||
+		j.Spec.Template.Labels["app.bex.co/app"] != o.Name {
+		t.Errorf("pod identity labels = %v", j.Spec.Template.Labels)
 	}
 }
 

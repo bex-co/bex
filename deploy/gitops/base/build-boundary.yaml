@@ -1,0 +1,149 @@
+# Dedicated boundary for every short-lived workload that executes tenant source
+# or images: BuildKit/kpack builds, static publish, and pre-deploy commands.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bex-build
+  labels:
+    app.bex.co/execution-boundary: untrusted
+    # BuildKit needs namespaced mount capabilities plus an unconfined container
+    # seccomp/AppArmor profile. Every direct execution Pod sets hostUsers=false,
+    # so those powers are confined to a Pod user namespace; the namespace still
+    # needs privileged admission while explicit pod hardening, network
+    # default-deny, credential separation, and tenant-node placement provide
+    # the boundary.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+# The operator may materialize only the namespaced identity objects and Secrets
+# its build adapters need. Workload ServiceAccounts receive no RBAC binding.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: bex-build-credentials
+  namespace: bex-build
+rules:
+  - apiGroups: [""]
+    resources: ["secrets", "serviceaccounts"]
+    verbs: ["get", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bex-build-credentials
+  namespace: bex-build
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: bex-build-credentials
+subjects:
+  - kind: ServiceAccount
+    name: bex-controller-manager
+    namespace: bex-system
+---
+# bex-api can cancel build intent and read build/pre-deploy logs, but cannot
+# create workloads or read any execution Secret.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: bex-api-execution-observer
+  namespace: bex-build
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  - apiGroups: ["kpack.io"]
+    resources: ["images"]
+    verbs: ["get", "list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bex-api-execution-observer
+  namespace: bex-build
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: bex-api-execution-observer
+subjects:
+  - kind: ServiceAccount
+    name: bex-api
+    namespace: bex-system
+---
+# Namespace-wide zero-trust baseline. Additive policies below expose only DNS,
+# Zot, and public source/object-store endpoints. Same-workspace datastore access
+# for pre-deploy is generated per App by the operator.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: bex-build
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-required-egress
+  namespace: bex-build
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    # Cluster DNS only.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    # The in-cluster OCI registry. Zot authentication still scopes each build
+    # credential to the App's own repository.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: bex-registry
+      ports:
+        - { protocol: TCP, port: 5000 }
+    # Public Git/registry/object-store endpoints only. Private, carrier-grade
+    # NAT, and link-local ranges include the API Service, platform Services,
+    # tenant Services, nodes, kubelet, and cloud metadata.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 100.64.0.0/10
+              - 169.254.0.0/16
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - { protocol: TCP, port: 22 }
+        - { protocol: TCP, port: 80 }
+        - { protocol: TCP, port: 443 }
+---
+# Cilium deny rules override any additive allow and cover public node IPs that
+# cannot be represented portably by an ipBlock exception.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: deny-build-node-and-metadata-egress
+  namespace: bex-build
+spec:
+  endpointSelector: {}
+  egressDeny:
+    - toEntities: [host, remote-node]
+    - toCIDR:
+        - 169.254.0.0/16

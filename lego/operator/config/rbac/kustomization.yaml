@@ -9,9 +9,6 @@ resources:
 - role_binding.yaml
 - leader_election_role.yaml
 - leader_election_role_binding.yaml
-# Namespace-scoped secrets read for the admission webhook (w7/m11).
-- webhook_secret_role.yaml
-- build_credentials_role.yaml
 # w6/m6 RBAC least-privilege audit: removed the kubebuilder-scaffolded
 # metrics + service helper roles. The metrics_auth_role / metrics_reader_role
 # granted tokenreview/subjectaccessreview (auth delegation) and /metrics read

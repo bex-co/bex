@@ -9,9 +9,7 @@
 # enumerated per namespace; the tenant apps namespace (default / BEX_CP_APPS_NAMESPACE)
 # is implicitly blocked because it is not in any allow list.
 #
-# Build pods (app.bex.co/component: build) run in the apps namespace too.
-# They are explicitly allowed to reach bex-registry (push) — their label
-# distinguishes them from tenant app pods.
+# Tenant execution runs only in the dedicated bex-build namespace.
 
 ---
 # bex-system: operator + bex-api
@@ -96,14 +94,15 @@ spec:
 
 ---
 # bex-registry: zot OCI registry on :5000
-# Allowed: bex-system (operator triggers builds, not push; nodes pull directly),
-#   build pods in the apps namespace (push after in-cluster BuildKit build),
+# Allowed: bex-system (operator registry administration), bex-build (scoped
+#   build/publish/pre-deploy registry access),
 #   and the NODES themselves via the CiliumNetworkPolicy below.
 # Blocked: tenant app pods in the apps namespace (they must not push/pull directly).
-# Auth complements this (w7/m8): even a build pod — inside this allow-list, running
-# tenant Dockerfile RUN steps — must now present the bex-builder credential to push
-# and bex-puller to pull; anonymous catalog/pull/push are 401. docs/ADR022-tenant-isolation.md
-# § Registry access control.
+# Auth complements this: anonymous catalog/pull/push are denied; the bootstrap
+# bex-builder credential manages registry state, while each App receives a
+# repository-scoped credential for the post-BuildKit Skopeo push/Cosign and
+# runtime pull. Dockerfile RUN steps receive neither credential. See
+# docs/ADR022-tenant-isolation.md § Registry access control.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -119,17 +118,15 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: bex-system
     # kpack's controller imports buildpacks and composes the ClusterBuilder in
-    # Zot; per-App build pods themselves run in bex-system (or match the build
-    # label rule below).
+    # Zot; per-App build pods run in bex-build.
     - from:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kpack
     - from:
-        - namespaceSelector: {}
-          podSelector:
+        - namespaceSelector:
             matchLabels:
-              app.bex.co/component: build
+              kubernetes.io/metadata.name: bex-build
 
 ---
 # Kubelet image pulls reach zot FROM THE NODE (host/remote-node identity, not a

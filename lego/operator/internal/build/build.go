@@ -17,8 +17,9 @@ limitations under the License.
 // Package build is the bex build plane: turn a git repo @ ref into an OCI image
 // pushed to the in-cluster registry (Zot), built ENTIRELY IN-CLUSTER by a
 // Kubernetes workload — no docker daemon and no host tools, so it works on
-// containerd app nodes (w1/m5, w6/m22). Dockerfile builds use a rootless
-// BuildKit Job; Cloud Native Buildpack builds use a kpack Image CR. In both
+// containerd app nodes (w1/m5, w6/m22). Dockerfile builds use a BuildKit Job
+// confined by a Kubernetes Pod user namespace; Cloud Native Buildpack builds
+// use a kpack Image CR. In both
 // cases the operator only dispatches the workload and observes it while the
 // heavy lifting stays inside the cluster. See docs/ADR004-deployment.md.
 package build
@@ -26,6 +27,7 @@ package build
 import (
 	"context"
 	"fmt"
+	"path"
 	"strings"
 	"time"
 
@@ -35,6 +37,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 )
 
 // Builder strategies (mirror App.spec.builder).
@@ -46,10 +50,16 @@ const (
 	defaultRevision   = "latest"
 )
 
-// defaultBuildkitImage is the rootless BuildKit image the build Job runs. Rootless
-// so the Job needs no privileged container — only seccomp/AppArmor unconfined
-// (set on the pod below), which containerd nodes allow.
-const defaultBuildkitImage = "moby/buildkit:v0.13.2-rootless"
+// Platform-plane images are pinned and bumped deliberately. BuildKit runs as
+// root inside a Kubernetes Pod user namespace: it has the namespaced
+// capabilities needed for its OCI worker while remaining unprivileged on the
+// node, and its default process sandbox keeps Dockerfile RUN processes out of
+// the daemon's PID namespace.
+const (
+	defaultBuildkitImage = "moby/buildkit:v0.30.0"
+	defaultGitImage      = "alpine/git:v2.43.0"
+	defaultPushImage     = "quay.io/skopeo/stable@sha256:c7d3c512612f52805023cd38351081dad7e2729fc13d14b701e47c7c8bdd6615" // v1.22.2 multi-arch manifest
+)
 
 // defaultSignImage is the cosign image the signing container runs when tenant
 // image signing is enabled (w6/006). Pinned; bump deliberately.
@@ -75,30 +85,29 @@ const (
 // pollInterval is how often Build re-reads the Job while waiting for it.
 const pollInterval = 3 * time.Second
 
-// dockerConfigMount is where the registry push credential (a docker-config
-// Secret named by Options.PushSecret, key "config.json") is mounted so buildkitd
-// (and cosign, when signing) authenticate the push against the auth-enabled Zot.
-// DOCKER_CONFIG points here. It lives in the container's own filesystem — outside
-// BuildKit's build-execution namespace — so tenant Dockerfile RUN steps cannot
-// read it (w7/m8, docs/ADR022-tenant-isolation.md § Registry access control).
-const dockerConfigMount = "/docker-config"
+const (
+	dockerConfigMount = "/docker-config"
+	sourceMount       = "/source"
+	outputMount       = "/output"
+)
 
 // mountRegistryCred attaches the docker-config volume (read-only) + DOCKER_CONFIG
-// env to c so buildkitd/cosign authenticate against the in-cluster registry. It
-// is a no-op when secret is empty, keeping the unset path byte-identical.
-func mountRegistryCred(c *corev1.Container, secret string) {
+// env to one explicitly selected phase. BuildKit receives only an optional
+// private-base pull credential; skopeo/cosign receive only the output-repository
+// credential. It is a no-op when secret is empty.
+func mountRegistryCred(c *corev1.Container, volumeName, secret string) {
 	if secret == "" {
 		return
 	}
 	c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
-		Name: "registry-cred", ReadOnly: true, MountPath: dockerConfigMount,
+		Name: volumeName, ReadOnly: true, MountPath: dockerConfigMount,
 	})
 	c.Env = append(c.Env, corev1.EnvVar{Name: "DOCKER_CONFIG", Value: dockerConfigMount})
 }
 
 // Options configures a single in-cluster build.
 type Options struct {
-	Repo           string // git URL to clone (BuildKit fetches it)
+	Repo           string // git URL fetched by the credential-isolated clone phase
 	Ref            string // branch or commit; defaults to the repo's default branch
 	RootDir        string // subdirectory of Repo to build from (App.spec.rootDir); empty = repo root
 	DockerfilePath string // Dockerfile path relative to RootDir; empty = Dockerfile
@@ -134,11 +143,12 @@ type Options struct {
 	AppNamespace string
 	Client       client.Client // cluster client used to create + watch the Job
 	// CloneSecret names a Secret (in Namespace, key "token") whose value is
-	// passed to BuildKit as the GIT_AUTH_TOKEN build secret so a private Repo's
-	// https git context authenticates (App.spec.cloneSecret). Empty = public
-	// clone (unchanged). The operator only mounts it; bex-api mints the token.
+	// exposed only to the short-lived clone init container. It never enters the
+	// BuildKit process boundary. Empty = public clone.
 	CloneSecret string
-	// BuildkitImage overrides the rootless BuildKit image (tests / air-gapped).
+	// GitImage overrides the source-clone image (tests / air-gapped).
+	GitImage string
+	// BuildkitImage overrides the user-namespace-confined BuildKit image (tests / air-gapped).
 	BuildkitImage string
 	// SignKeySecret names a Secret (in Namespace, keys "cosign.key",
 	// "cosign.password", and "cosign.pub") whose cosign key signs the pushed
@@ -152,20 +162,17 @@ type Options struct {
 	SignKeySecret string
 	// SignImage overrides the cosign image used by the signing container.
 	SignImage string
-	// PushSecret names a Secret (in Namespace, key "config.json") whose docker
-	// config authenticates the push against an auth-enabled registry (w7/m8). It
-	// is mounted into the buildkit container's own filesystem at dockerConfigMount
-	// with DOCKER_CONFIG pointing there — used by buildkitd to authenticate the
-	// push, but OUTSIDE BuildKit's build-execution namespace, so a tenant
-	// Dockerfile RUN step (or a declared --mount=type=secret) cannot read it
-	// (docs/ADR022-tenant-isolation.md § Registry access control). When signing is
-	// also enabled, cosign gets the same mount so its signature push authenticates.
-	// Empty = unauthenticated push (the dev default; byte-identical).
+	// PushImage overrides the skopeo image used by the credential-isolated push
+	// phase (tests / air-gapped).
+	PushImage string
+	// PushSecret authenticates only the post-build skopeo/cosign phases. BuildKit
+	// exports an OCI archive and never receives this credential.
 	PushSecret string
-	// RegistryConfig makes buildkitd consume buildkitd.toml from PushSecret.
-	// The operator sets it only for the derived Docker-build credential Secret,
-	// where the config marks the platform's cluster-local output registry as
-	// plain HTTP for private base-image resolution too.
+	// PullSecret is the optional, per-App read-only credential for private
+	// Dockerfile base images. Unlike PushSecret, it may be mounted only in the
+	// BuildKit phase. It never grants access to the platform output repository.
+	PullSecret string
+	// RegistryConfig makes buildkitd consume buildkitd.toml from PullSecret.
 	RegistryConfig bool
 }
 
@@ -249,30 +256,40 @@ func Build(ctx context.Context, o Options) (Result, error) {
 	}
 }
 
-// BuildJob constructs the rootless-BuildKit build Job for o, targeting image. It
-// is a pure function (no cluster access) so the Job shape is unit-testable.
-//
-// BuildKit's dockerfile frontend fetches the git context itself
-// (context=<repo>#<ref>) and pushes the built image; registry.insecure=true lets
-// it push to the in-cluster Zot over plain HTTP (local/dev). The container runs
-// rootless — only seccomp/AppArmor unconfined are needed, no privileged.
+// BuildJob constructs the credential-separated source build Job for o. Its
+// phases are strictly serial: clone -> build OCI archive -> push -> optional
+// sign. Kubernetes gives each container a separate root filesystem and PID
+// namespace, so tenant Dockerfile processes never coexist with clone, platform
+// push, or signing credentials. Only an explicitly configured private-base
+// pull credential enters BuildKit, and it grants no platform-repository write.
 func BuildJob(o Options, image string) *batchv1.Job {
-	ctxArg := gitContext(o.Repo, o.Ref, o.RootDir)
 	buildkitImage := o.BuildkitImage
 	if buildkitImage == "" {
 		buildkitImage = defaultBuildkitImage
+	}
+	gitImage := o.GitImage
+	if gitImage == "" {
+		gitImage = defaultGitImage
+	}
+	pushImage := o.PushImage
+	if pushImage == "" {
+		pushImage = defaultPushImage
 	}
 	signImage := o.SignImage
 	if signImage == "" {
 		signImage = defaultSignImage
 	}
 
-	// buildctl-daemonless.sh starts an ephemeral buildkitd and runs the build.
+	contextDir := sourceMount
+	if root := strings.TrimPrefix(path.Clean("/"+o.RootDir), "/"); root != "." && root != "" {
+		contextDir = path.Join(sourceMount, root)
+	}
+	dockerfileDir := contextDir
 	args := []string{
 		"build",
 		"--frontend", "dockerfile.v0",
-		"--opt", "context=" + ctxArg,
-		"--output", "type=image,name=" + image + ",push=true,registry.insecure=true",
+		"--local", "context=" + contextDir,
+		"--output", "type=oci,dest=" + outputMount + "/image.tar",
 	}
 	if o.Builder == BuilderNative {
 		args = append(args,
@@ -280,47 +297,43 @@ func BuildJob(o Options, image string) *batchv1.Job {
 			"--opt", "filename=Dockerfile",
 			"--secret", "id=render-env,src=/native/render-env",
 		)
-	} else if o.DockerfilePath != "" {
-		args = append(args, "--opt", "filename="+o.DockerfilePath)
+	} else {
+		args = append(args, "--local", "dockerfile="+dockerfileDir)
+		if o.DockerfilePath != "" {
+			args = append(args, "--opt", "filename="+o.DockerfilePath)
+		}
 	}
 
-	// Rootless buildkitd needs a writable state dir under the unprivileged
-	// user's home.
-	buildkitdFlags := "--oci-worker-no-process-sandbox"
+	// Private-base credentials may be present in this phase. Keep BuildKit's
+	// default OCI process sandbox enabled; the Pod user namespace supplies the
+	// namespaced capabilities it needs without exposing host-root capabilities.
+	buildkitdFlags := ""
 	if o.RegistryConfig {
-		buildkitdFlags += " --config " + dockerConfigMount + "/buildkitd.toml"
+		buildkitdFlags = "--config " + dockerConfigMount + "/buildkitd.toml"
 	}
-	env := []corev1.EnvVar{{Name: "BUILDKITD_FLAGS", Value: buildkitdFlags}}
-
-	// Private-repo clone: hand BuildKit the token from the App's clone Secret as
-	// its standard GIT_AUTH_TOKEN build secret (from env, so no volume). BuildKit's
-	// git source uses it as x-access-token basic auth for the https git context.
-	if o.CloneSecret != "" {
-		args = append(args, "--secret", "id=GIT_AUTH_TOKEN,env=GIT_AUTH_TOKEN")
-		env = append(env, corev1.EnvVar{
-			Name: "GIT_AUTH_TOKEN",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: o.CloneSecret},
-					Key:                  "token",
-				},
-			},
-		})
+	var env []corev1.EnvVar
+	if buildkitdFlags != "" {
+		env = []corev1.EnvVar{{Name: "BUILDKITD_FLAGS", Value: buildkitdFlags}}
 	}
 
 	deadline := int64(buildTimeout / time.Second)
 	backoff := int32(1) // one build attempt; a failed build is a user error, not a flake to retry
 	ttl := int32(3600)  // reap the finished Job after an hour
 
-	// Registry push credential (w7/m8): when PushSecret is set, mount the
-	// docker-config into the buildkit (and cosign) container's own filesystem so
-	// buildkitd authenticates the push. Tenant RUN steps cannot read it — see
-	// mountRegistryCred / docs/ADR022-tenant-isolation.md § Registry access control.
-	var volumes []corev1.Volume
+	volumes := []corev1.Volume{
+		{Name: "source", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+		{Name: "output", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+	}
 	if o.PushSecret != "" {
 		volumes = append(volumes, corev1.Volume{
-			Name:         "registry-cred",
+			Name:         "push-registry-cred",
 			VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: o.PushSecret}},
+		})
+	}
+	if o.PullSecret != "" {
+		volumes = append(volumes, corev1.Volume{
+			Name:         "pull-registry-cred",
+			VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: o.PullSecret}},
 		})
 	}
 	if o.Builder == BuilderNative {
@@ -336,20 +349,34 @@ func BuildJob(o Options, image string) *batchv1.Job {
 		}
 	}
 
-	// buildkit container (rootless BuildKit builds + pushes the image).
+	clone := buildCloneContainer(o, gitImage)
+
+	// BuildKit receives the checked-out tree and writes an OCI archive. It has no
+	// clone, platform push, or signing credential.
 	buildkit := corev1.Container{
 		Name:    "buildkit",
 		Image:   buildkitImage,
 		Command: []string{"buildctl-daemonless.sh"},
 		Args:    args,
 		Env:     env,
-		// Rootless BuildKit runs as UID 1000; unconfined seccomp is required
-		// (privileged seccomp would block some syscalls the userspace overlay FS
-		// needs). Resources are bounded so a long-running or runaway build can't
-		// starve the node (w7/m2/t003).
+		VolumeMounts: []corev1.VolumeMount{
+			{Name: "source", MountPath: sourceMount, ReadOnly: true},
+			{Name: "output", MountPath: outputMount},
+		},
+		// These capabilities are confined to the Pod user namespace
+		// (spec.hostUsers=false), so BuildKit can mount snapshots and create nested
+		// namespaces without acquiring the corresponding powers on the node.
+		// Unconfined seccomp/AppArmor remains scoped to this one container; the
+		// default OCI worker process sandbox still isolates Dockerfile RUN PIDs.
 		SecurityContext: &corev1.SecurityContext{
-			RunAsUser:  ptr(int64(1000)),
-			RunAsGroup: ptr(int64(1000)),
+			RunAsUser:                ptr(int64(0)),
+			RunAsGroup:               ptr(int64(0)),
+			AllowPrivilegeEscalation: ptr(true),
+			Capabilities: &corev1.Capabilities{Add: []corev1.Capability{
+				"AUDIT_WRITE", "CHOWN", "DAC_OVERRIDE", "FOWNER", "FSETID",
+				"KILL", "MKNOD", "NET_ADMIN", "NET_BIND_SERVICE", "NET_RAW",
+				"SETFCAP", "SETGID", "SETPCAP", "SETUID", "SYS_ADMIN", "SYS_CHROOT",
+			}},
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: corev1.SeccompProfileTypeUnconfined,
 			},
@@ -368,16 +395,48 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	if o.Builder == BuilderNative {
 		buildkit.VolumeMounts = append(buildkit.VolumeMounts, corev1.VolumeMount{Name: "native-build", MountPath: "/native"})
 	}
-	mountRegistryCred(&buildkit, o.PushSecret) // w7/m8: docker-config for the push
+	mountRegistryCred(&buildkit, "pull-registry-cred", o.PullSecret)
+
+	pushArgs := []string{"copy", "--dest-tls-verify=false"}
+	if o.PushSecret != "" {
+		pushArgs = append(pushArgs, "--authfile", dockerConfigMount+"/config.json")
+	}
+	pushArgs = append(pushArgs, "oci-archive:"+outputMount+"/image.tar", "docker://"+image)
+	pusher := corev1.Container{
+		Name:    "push",
+		Image:   pushImage,
+		Command: []string{"skopeo"},
+		Args:    pushArgs,
+		VolumeMounts: []corev1.VolumeMount{
+			{Name: "output", MountPath: outputMount, ReadOnly: true},
+		},
+		SecurityContext: restrictedContainerSecurityContext(),
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("100m"),
+				corev1.ResourceMemory: resource.MustParse("128Mi"),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("1"),
+				corev1.ResourceMemory: resource.MustParse("512Mi"),
+			},
+		},
+	}
+	mountRegistryCred(&pusher, "push-registry-cred", o.PushSecret)
 
 	podSpec := corev1.PodSpec{
 		RestartPolicy: corev1.RestartPolicyNever,
-		Containers:    []corev1.Container{buildkit},
+		InitContainers: []corev1.Container{
+			clone,
+		},
+		Containers: []corev1.Container{pusher},
 	}
 	if o.Builder == BuilderNative {
-		podSpec.InitContainers = []corev1.Container{nativeBuildPreparer(o)}
-		podSpec.SecurityContext = &corev1.PodSecurityContext{FSGroup: ptr(int64(65532))}
+		podSpec.InitContainers = append(podSpec.InitContainers, nativeBuildPreparer(o))
 	}
+	podSpec.InitContainers = append(podSpec.InitContainers, buildkit)
+	execution.HardenPod(&podSpec)
+	podSpec.SecurityContext.FSGroup = ptr(int64(0))
 	annotations := map[string]string{
 		"container.apparmor.security.beta.kubernetes.io/buildkit": "unconfined",
 	}
@@ -391,7 +450,10 @@ func BuildJob(o Options, image string) *batchv1.Job {
 			Name:    "sign",
 			Image:   signImage,
 			Command: []string{"cosign"},
-			Args:    []string{"sign", "--yes", "--allow-insecure-registry", "--key", "/keys/cosign.key", image},
+			Args: []string{
+				"sign", "--yes", "--tlog-upload=false", "--allow-http-registry",
+				"--key", "/keys/cosign.key", image,
+			},
 			Env: []corev1.EnvVar{{
 				Name: "COSIGN_PASSWORD",
 				ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
@@ -399,12 +461,8 @@ func BuildJob(o Options, image string) *batchv1.Job {
 					Key:                  "cosign.password",
 				}},
 			}},
-			VolumeMounts: []corev1.VolumeMount{{Name: "cosign-key", ReadOnly: true, MountPath: "/keys"}},
-			SecurityContext: &corev1.SecurityContext{
-				RunAsNonRoot:             ptr(true),
-				AllowPrivilegeEscalation: ptr(false),
-				Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-			},
+			VolumeMounts:    []corev1.VolumeMount{{Name: "cosign-key", ReadOnly: true, MountPath: "/keys"}},
+			SecurityContext: restrictedContainerSecurityContext(),
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("100m"),
@@ -416,34 +474,24 @@ func BuildJob(o Options, image string) *batchv1.Job {
 				},
 			},
 		}
-		mountRegistryCred(&sign, o.PushSecret) // w7/m8: cosign's signature push authenticates too
-		podSpec.InitContainers = append(podSpec.InitContainers, buildkit)
+		mountRegistryCred(&sign, "push-registry-cred", o.PushSecret)
+		podSpec.InitContainers = append(podSpec.InitContainers, pusher)
 		podSpec.Containers = []corev1.Container{sign}
 		volumes = append(volumes, corev1.Volume{
 			Name:         "cosign-key",
 			VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: o.SignKeySecret}},
 		})
-		annotations["container.apparmor.security.beta.kubernetes.io/sign"] = "unconfined"
 	}
-	podSpec.Volumes = volumes // single assign (registry-cred, plus cosign-key when signing)
+	podSpec.Volumes = volumes
 
-	labels := map[string]string{
-		"app.bex.co/build":     o.Name,
-		"app.bex.co/component": "build",
-	}
-	if o.Workspace != "" {
-		labels["app.bex.co/workspace"] = o.Workspace
-	}
-	// Pod labels: carry build + component so the log-shipper can select and
-	// attribute build pods. app-namespace overrides the shipper's namespace label
-	// only when the build namespace differs from the App's namespace (w7/m28).
-	podLabels := map[string]string{
-		"app.bex.co/build":     o.Name,
-		"app.bex.co/component": "build",
-	}
+	appNamespace := ""
 	if o.AppNamespace != "" && o.AppNamespace != o.Namespace {
-		podLabels["app.bex.co/app-namespace"] = o.AppNamespace
+		appNamespace = o.AppNamespace
 	}
+	labels := execution.PodLabels(o.Name, "build", o.Workspace, appNamespace, false)
+	labels["app.bex.co/build"] = o.Name
+	podLabels := execution.PodLabels(o.Name, "build", o.Workspace, appNamespace, false)
+	podLabels["app.bex.co/build"] = o.Name
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      JobName(o.Name, o.Revision),
@@ -465,31 +513,61 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	}
 }
 
-// gitContext builds BuildKit's context= argument, forcing it to be recognized
-// as a GIT context rather than an HTTP one. BuildKit fetches a plain http(s) URL
-// as a single file/tarball; only a git-remote-looking URL (a .git suffix, or an
-// ssh/git scheme) triggers a real clone. Without this, an https GitHub URL is
-// downloaded as an HTML page and parsed as the Dockerfile ("<!DOCTYPE …") — so
-// we ensure the .git suffix for http(s) repos (github/gitlab/gitea/bitbucket all
-// accept it); ssh/git-scheme and local paths are left untouched.
-//
-// rootDir (App.spec.rootDir, monorepo support) appends BuildKit's ":<subdir>"
-// git-context suffix, scoping the build to that subdirectory's Dockerfile. It
-// follows the ref after a "#", e.g. "repo.git#main:services/api"; if ref is
-// empty but rootDir is set, "#" alone still introduces the ":<subdir>" so
-// BuildKit resolves the default branch scoped to that subdirectory.
-func gitContext(repo, ref, rootDir string) string {
-	ctx := repo
-	if (strings.HasPrefix(ctx, "https://") || strings.HasPrefix(ctx, "http://")) && !strings.HasSuffix(ctx, ".git") {
-		ctx += ".git"
+func buildCloneContainer(o Options, image string) corev1.Container {
+	ref := o.Ref
+	if ref == "" {
+		ref = "HEAD"
 	}
-	if ref != "" || rootDir != "" {
-		ctx += "#" + ref
+	env := []corev1.EnvVar{
+		{Name: "REPO", Value: o.Repo},
+		{Name: "REF", Value: ref},
+		{Name: "GIT_TERMINAL_PROMPT", Value: "0"},
 	}
-	if rootDir != "" {
-		ctx += ":" + rootDir
+	if o.CloneSecret != "" {
+		env = append(env, corev1.EnvVar{
+			Name: "GIT_AUTH_TOKEN",
+			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: o.CloneSecret},
+				Key:                  "token",
+			}},
+		})
 	}
-	return ctx
+	return corev1.Container{
+		Name:    "clone",
+		Image:   image,
+		Command: []string{"sh", "-eu", "-c"},
+		Args: []string{`cd /source
+git init -q .
+git remote add origin "$REPO"
+if [ -n "${GIT_AUTH_TOKEN:-}" ]; then
+  git -c credential.helper='!f() { echo "username=x-access-token"; echo "password=$GIT_AUTH_TOKEN"; }; f' fetch -q --depth 1 origin "$REF"
+else
+  git fetch -q --depth 1 origin "$REF"
+fi
+git checkout -q FETCH_HEAD
+rm -rf .git`},
+		Env:             env,
+		VolumeMounts:    []corev1.VolumeMount{{Name: "source", MountPath: sourceMount}},
+		SecurityContext: restrictedContainerSecurityContext(),
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("50m"),
+				corev1.ResourceMemory: resource.MustParse("64Mi"),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("500m"),
+				corev1.ResourceMemory: resource.MustParse("256Mi"),
+			},
+		},
+	}
+}
+
+func restrictedContainerSecurityContext() *corev1.SecurityContext {
+	return &corev1.SecurityContext{
+		AllowPrivilegeEscalation: ptr(false),
+		Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+		SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+	}
 }
 
 // JobName is the deterministic per-revision Job name (DNS-1123, ≤63 chars):

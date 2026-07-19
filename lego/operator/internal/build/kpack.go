@@ -31,6 +31,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 )
 
 const (
@@ -62,6 +64,7 @@ func KpackImage(o Options) *unstructured.Unstructured {
 
 	build := map[string]any{
 		"buildTimeout": int64(buildTimeout / time.Second),
+		"nodeSelector": map[string]any{execution.NodePoolLabel: execution.UntrustedNodePool},
 		"resources": map[string]any{
 			"requests": map[string]any{"cpu": buildCPURequest, "memory": buildMemoryRequest},
 			"limits":   map[string]any{"cpu": buildCPULimit, "memory": buildMemoryLimit},
@@ -98,13 +101,16 @@ func KpackImage(o Options) *unstructured.Unstructured {
 		spec["cosign"] = map[string]any{}
 	}
 
-	labels := map[string]any{
-		"app.bex.co/build":     o.Name,
-		"app.bex.co/component": "build",
+	appNamespace := ""
+	if o.AppNamespace != "" && o.AppNamespace != o.Namespace {
+		appNamespace = o.AppNamespace
 	}
-	if o.Workspace != "" {
-		labels["app.bex.co/workspace"] = o.Workspace
+	commonLabels := execution.PodLabels(o.Name, "build", o.Workspace, appNamespace, false)
+	labels := make(map[string]any, len(commonLabels)+1)
+	for key, value := range commonLabels {
+		labels[key] = value
 	}
+	labels["app.bex.co/build"] = o.Name
 
 	return &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": kpackAPIVersion,
@@ -294,6 +300,7 @@ func ensureKpackCredentials(ctx context.Context, o Options) error {
 		sa.Labels = buildLabels(o)
 		sa.Secrets = secretRefs
 		sa.ImagePullSecrets = imagePullSecrets
+		sa.AutomountServiceAccountToken = ptr(false)
 		return nil
 	})
 	return err
@@ -381,13 +388,12 @@ func gitHTTPOrigin(repo string) (string, error) {
 }
 
 func buildLabels(o Options) map[string]string {
-	labels := map[string]string{
-		"app.bex.co/build":     o.Name,
-		"app.bex.co/component": "build",
+	appNamespace := ""
+	if o.AppNamespace != "" && o.AppNamespace != o.Namespace {
+		appNamespace = o.AppNamespace
 	}
-	if o.Workspace != "" {
-		labels["app.bex.co/workspace"] = o.Workspace
-	}
+	labels := execution.PodLabels(o.Name, "build", o.Workspace, appNamespace, false)
+	labels["app.bex.co/build"] = o.Name
 	return labels
 }
 

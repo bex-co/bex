@@ -13,16 +13,16 @@ MGMT=kind-bex-mgmt
 WL_KUBECONFIG=infra/local/bex.kubeconfig
 
 # The cluster-autoscaler (w1/m3) owns the worker count, so `scale N` raises the
-# pool's min-size floor to N (and max if N exceeds it) instead of setting
+# tenant pool's min-size floor to N (and max if N exceeds it) instead of setting
 # replicas — a replicas write would be a manual override the topology controller
 # enforces against the autoscaler. The array patch also clears any stale
 # replicas field, handing ownership back to the autoscaler.
 scale() {
   local n=$1 max=5; [ "$n" -gt 5 ] && max=$n
   kubectl --context "$MGMT" patch cluster bex --type merge \
-    -p "{\"spec\":{\"topology\":{\"workers\":{\"machineDeployments\":[{\"name\":\"worker-0\",\"class\":\"default-worker\",\"metadata\":{\"annotations\":{\"cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size\":\"$n\",\"cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size\":\"$max\"}}}]}}}}"
-  echo "worker floor -> $n machine(s) (min-size $n / max-size $max; the autoscaler converges the count)"
-  echo "watch: docker ps --format '{{.Names}}' | grep bex-worker-0"
+    -p "{\"spec\":{\"topology\":{\"workers\":{\"machineDeployments\":[{\"name\":\"worker-0\",\"class\":\"default-worker\",\"metadata\":{\"annotations\":{\"cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size\":\"1\",\"cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size\":\"1\"}}},{\"name\":\"tenant-0\",\"class\":\"tenant-worker\",\"metadata\":{\"annotations\":{\"cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size\":\"$n\",\"cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size\":\"$max\"}}}]}}}}"
+  echo "tenant worker floor -> $n machine(s) (min-size $n / max-size $max; platform stays at 1)"
+  echo "watch: docker ps --format '{{.Names}}' | grep bex-tenant-0"
 }
 if [ "${1:-}" = scale ]; then scale "${2:?usage: scale N}"; exit 0; fi
 
@@ -55,11 +55,9 @@ sed -i '' "s#server: https://[0-9.]*:6443#server: https://127.0.0.1:$LBPORT#" "$
 KUBECONFIG="$WL_KUBECONFIG" kubectl apply -f \
   https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml >/dev/null
 KUBECONFIG="$WL_KUBECONFIG" kubectl wait --for=condition=Ready node --all --timeout=300s || true
-# Worker nodes join carrying bex.co/pool=platform (set via kubelet --node-labels
-# in the CAPD worker template, infra/clusterapi/overlays/local-capd/cluster.yaml)
-# so the platform GitOps stack — nodeSelector-pinned to that label — schedules on
-# the mock instead of going Pending. No script-side labeling step needed: the
-# label rides node join, so `scale N` workers carry it too.
+# The fixed platform worker joins with bex.co/pool=platform; the scalable tenant
+# pool joins with bex.co/pool=tenant. The split mirrors production and lets live
+# isolation checks prove tenant execution cannot land on the platform pool.
 # Keep cluster DNS on the control-plane node: worker-node pods can't reach the
 # apiserver / cross-node services under OrbStack+Calico (docs/ADR004-deployment.md), so
 # coredns scheduled onto a worker silently kills DNS for the whole cluster.

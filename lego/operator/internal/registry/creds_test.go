@@ -17,6 +17,7 @@ limitations under the License.
 package registry
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -135,8 +136,8 @@ func TestZotConfigACLRoundTrip(t *testing.T) {
 		t.Errorf("unexpected users %v, want [app-myapp]", users)
 	}
 	actions, _ := pol["actions"].([]any)
-	if len(actions) != 1 || actions[0] != "read" {
-		t.Errorf("unexpected actions %v, want [read]", actions)
+	if len(actions) != 4 || actions[0] != "read" || actions[1] != "create" || actions[2] != "update" || actions[3] != "delete" {
+		t.Errorf("unexpected actions %v, want repository-scoped read/create/update/delete", actions)
 	}
 
 	// Remove entry; ** must remain.
@@ -260,6 +261,18 @@ func TestDockerConfigRoundTrip(t *testing.T) {
 	}
 	if pass != "supersecret" {
 		t.Errorf("got %q; want %q", pass, "supersecret")
+	}
+	var parsed struct {
+		Auths map[string]struct {
+			Auth string `json:"auth"`
+		} `json:"auths"`
+	}
+	if err := json.Unmarshal(cfg, &parsed); err != nil {
+		t.Fatal(err)
+	}
+	wantAuth := base64.StdEncoding.EncodeToString([]byte("app-foo:supersecret"))
+	if parsed.Auths[reg].Auth != wantAuth {
+		t.Error("docker config must include the standard auth field consumed by skopeo/containers-image")
 	}
 }
 

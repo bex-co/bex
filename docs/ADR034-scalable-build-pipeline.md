@@ -2,11 +2,11 @@
 
 **Status:** Accepted · 2026-07-15
 
-> **Security correction (2026-07-19):** [ADR039 O-01](ADR039-operator-audit-and-platform-reuse.md#o-01-the-build-boundary-is-not-currently-defensible) found that the production build namespace/network boundary and BuildKit's `--oci-worker-no-process-sandbox` mode do not support this ADR's earlier absolute credential-isolation claim. Treat "no credential widening" below as a required invariant, not a verified property, until O-01 is closed.
+> **Security closure (2026-07-19):** w2/m59 closed [ADR039 O-01/O-02](ADR039-operator-audit-and-platform-reuse.md): source clone, BuildKit, Skopeo push, and Cosign run as serial phases in `bex-build`; BuildKit keeps its process sandbox inside a Pod user namespace and never receives the output/signing credentials; service-account tokens, private/platform egress, and platform-node placement are denied. `scripts/verify-build-isolation.sh` passed the 38-control live matrix described in ADR022.
 
 ## Context
 
-bex builds git-backed services inside the app cluster. Dockerfile and Render-native runtime builds use rootless [BuildKit](https://github.com/moby/buildkit) Jobs; the explicit `builder: buildpack` extension uses kpack. Each build pushes an immutable generation image to Zot before the operator rolls out the workload. This matches Render's publicly documented use of [BuildKit for Dockerfile deploys](https://render.com/docs/docker) without assuming that Render's undisclosed native-runtime implementation has the same internal shape.
+bex builds git-backed services inside the app cluster. Dockerfile and Render-native runtime builds use [BuildKit](https://github.com/moby/buildkit) Jobs confined by Kubernetes Pod user namespaces; the explicit `builder: buildpack` extension uses kpack. Each pipeline pushes an immutable generation image to Zot before the operator rolls out the workload. This matches Render's publicly documented use of [BuildKit for Dockerfile deploys](https://render.com/docs/docker) without assuming that Render's undisclosed native-runtime implementation has the same internal shape.
 
 The first implementation called `build.Build` synchronously from an App reconcile. The function creates or adopts the deterministic build Job, then polls it until success, failure, or the 20-minute deadline. With controller-runtime's default single App worker, one long build therefore occupied the only reconcile worker. A second App could remain waiting even when Kubernetes had enough CPU and memory to run another build.
 
@@ -26,7 +26,7 @@ There is no persistent `builder worker` Deployment in the current design. One ad
 
 Each admitted source build runs as an isolated Kubernetes workload:
 
-- Dockerfile and native-runtime builds run an ephemeral rootless BuildKit Job.
+- Dockerfile and native-runtime builds run an ephemeral BuildKit Job. A clone init container stages source, BuildKit exports an OCI archive under its default process sandbox, Skopeo pushes with the App-scoped registry credential, and optional Cosign signing runs last.
 - The buildpack extension remains a kpack Image/Build.
 - A successful builder pushes an immutable generation image to Zot; workloads pull by the resolved image reference.
 - Build names are deterministic per App generation, so a manager restart adopts the existing work instead of starting a duplicate.
@@ -65,7 +65,7 @@ The BuildKit and kpack builders request `500m` CPU and 4 GiB memory and are limi
 
 This sizing was corrected after a production incident on 2026-07-16/17: two builders admitted under the former 1 GiB-request/8 GiB-limit shape consumed about 4.07 GB and 1.87 GB while total container working set on the tenant node reached about 7.15 GB. The kernel reported `SystemOOM`, the node became unreachable, and MachineHealthCheck replaced it. The recovered builds completed, but recovery is not admission control; the 4 GiB request prevents the same co-location pattern, and the tenant pool's one-to-three autoscaling range can supply a separate node for each of the two admitted builds.
 
-Production build Pods contain untrusted tenant code. They currently have no build-specific node selector or toleration; platform nodes are tainted, so builds land on the untainted tenant pool. They must never be made eligible for the platform pool merely to gain capacity.
+Production build Pods contain untrusted tenant code. Every direct execution Pod explicitly selects `bex.co/pool=tenant`; platform taints are defense in depth rather than the only placement boundary. They must never be made eligible for the platform pool merely to gain capacity.
 
 The scaling sequence is:
 
@@ -85,7 +85,7 @@ The pipeline keeps these invariants at every scale:
 - **Bounded execution.** Build Jobs have a deadline and bounded retry behavior; completed Jobs are reaped after the log-collection window.
 - **Idempotent recovery.** Deterministic names let reconciliation adopt Jobs after operator restart.
 - **Immutable handoff.** Deploy and pre-deploy steps consume the image produced for that exact generation.
-- **No intentional credential widening.** Increasing concurrency must not broaden private-git, registry-push, or signing credential placement. The runtime confidentiality and namespace/network gaps recorded by ADR039 O-01 must be closed independently.
+- **No credential widening.** Increasing concurrency must not broaden private-git, private-base, App-repository, or signing credential placement. The serial phase topology and live adversarial assertions that closed ADR039 O-01 are regression requirements.
 
 The current per-workspace gate counts active Jobs and kpack Images before creating the next build. It is a best-effort fairness guard, not an atomic semaphore: two reconcile workers can both observe an open slot before either creates its Job. With the baseline global worker count and workspace cap both set to two, the global worker ceiling prevents an overshoot above two; a smaller workspace cap can transiently overshoot at the list/create boundary. Strict plan enforcement, more workers, or dispatch sharded across managers or clusters requires durable, atomic admission.
 

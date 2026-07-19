@@ -46,10 +46,8 @@ func TestValidRepo(t *testing.T) {
 		{"crlf-injected", "https://github.com/x/y\r\nX", false},
 		{"space-injected", "https://github.com/x/y evil", false},
 		{"control-char", "https://github.com/x/\x00y", false},
-		// A '#' in the repo URL is how BuildKit's git context separates repo from
-		// ref/subdir (operator gitContext: repo+"#"+ref). An embedded '#' would let
-		// the trailing attacker text become the ref/subdir, demoting the validated
-		// branch/rootDir — reopening leading-dash and ".." injection.
+		// Repo, ref, and rootDir are separately validated intent. A URL-fragment
+		// ref/subdir would create a second, ambiguous source for the latter two.
 		{"fragment-bypass-rejected", "https://github.com/x/y.git#--evil-ref:../../escape", false},
 	}
 	for _, tc := range cases {

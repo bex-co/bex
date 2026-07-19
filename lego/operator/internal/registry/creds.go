@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package registry manages per-App Zot pull credentials (w7/m36,
+// Package registry manages per-App Zot repository credentials (w7/m36,
 // docs/ADR022-tenant-isolation.md). Each App that builds and pushes an image
 // to the in-cluster Zot registry receives its own htpasswd user ("app-<name>")
-// and a per-repo Zot ACL entry that restricts that user to pulling only its own
-// image repository. A shared kubernetes.io/dockerconfigjson Secret
+// and a per-repo Zot ACL entry that restricts that user to its own image
+// repository. A kubernetes.io/dockerconfigjson Secret
 // ("reg-pull-<name>") is created in the App namespace and referenced as an
 // imagePullSecret on all tenant workloads.
 //
@@ -37,6 +37,7 @@ package registry
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -97,12 +98,12 @@ func PullSecretName(appName string) string { return "reg-pull-" + appName }
 // ZotUsername returns the Zot htpasswd username for an App.
 func ZotUsername(appName string) string { return "app-" + appName }
 
-// EnsureCreds idempotently creates the per-App pull credential:
+// EnsureCreds idempotently creates the per-App repository credential:
 //  1. Creates (or reads) a kubernetes.io/dockerconfigjson Secret "reg-pull-<appName>"
 //     in appNS with credentials for the per-App Zot user "app-<appName>".
 //  2. Adds "app-<appName>:bcrypt(password)" to the zot-htpasswd Secret.
 //  3. Adds a per-repo ACL entry for "<appName>" in the zot-config Secret so
-//     that "app-<appName>" can only pull from the "<appName>" repository.
+//     that "app-<appName>" can read/write only the "<appName>" repository.
 func (c *Creds) EnsureCreds(ctx context.Context, appName, appNS string) error {
 	log := logf.FromContext(ctx)
 	zotUser := ZotUsername(appName)
@@ -378,7 +379,7 @@ func (c *Creds) ensureZotConfigEntry(ctx context.Context, appName, zotUser strin
 		}
 
 		existing := sec.Data["config.json"]
-		if zotConfigHasRepo(existing, appName) && zotConfigHasBuilderAdminPolicy(existing) {
+		if zotConfigHasRepoWritePolicy(existing, appName, zotUser) && zotConfigHasBuilderAdminPolicy(existing) {
 			return nil
 		}
 
@@ -386,11 +387,9 @@ func (c *Creds) ensureZotConfigEntry(ctx context.Context, appName, zotUser strin
 		if err != nil {
 			return err
 		}
-		if !zotConfigHasRepo(updated, appName) {
-			updated, err = addZotACLEntry(updated, appName, zotUser)
-			if err != nil {
-				return err
-			}
+		updated, err = addZotACLEntry(updated, appName, zotUser)
+		if err != nil {
+			return err
 		}
 		patch := sec.DeepCopy()
 		patch.Data["config.json"] = updated
@@ -455,12 +454,14 @@ func buildDockerConfig(username, password, registry, kpackRegistry string) []byt
 	type authEntry struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
+		Auth     string `json:"auth"`
 	}
+	encoded := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
 	auths := map[string]authEntry{
-		registry: {Username: username, Password: password},
+		registry: {Username: username, Password: password, Auth: encoded},
 	}
 	if kpackRegistry != "" && kpackRegistry != registry {
-		auths[kpackRegistry] = authEntry{Username: username, Password: password}
+		auths[kpackRegistry] = authEntry{Username: username, Password: password, Auth: encoded}
 	}
 	data, _ := json.Marshal(map[string]any{"auths": auths})
 	return data
@@ -546,6 +547,29 @@ func zotConfigHasRepo(configJSON []byte, repo string) bool {
 	return ok
 }
 
+func zotConfigHasRepoWritePolicy(configJSON []byte, repo, user string) bool {
+	raw, ok := zotRepos(configJSON)[repo].(map[string]any)
+	if !ok {
+		return false
+	}
+	policies, _ := raw["policies"].([]any)
+	if len(policies) != 1 {
+		return false
+	}
+	policy, _ := policies[0].(map[string]any)
+	users, _ := policy["users"].([]any)
+	actions, _ := policy["actions"].([]any)
+	if len(users) != 1 || users[0] != user {
+		return false
+	}
+	for _, action := range []string{"read", "create", "update", "delete"} {
+		if !containsString(actions, action) {
+			return false
+		}
+	}
+	return true
+}
+
 // zotConfigHasBuilderAdminPolicy reports whether bex-builder has the global
 // actions required by buildkitd and cosign. A ** repository policy is not
 // sufficient because Zot gives a longer exact per-repository rule precedence.
@@ -619,7 +643,7 @@ func addZotACLEntry(configJSON []byte, repo, zotUser string) ([]byte, error) {
 		"policies": []any{
 			map[string]any{
 				"users":   []any{zotUser},
-				"actions": []any{"read"},
+				"actions": []any{"read", "create", "update", "delete"},
 			},
 		},
 	}

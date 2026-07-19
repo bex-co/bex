@@ -38,6 +38,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 )
 
 // DefaultAWSCLIImage is the S3 uploader image. Pinned < 2.23 because newer AWS
@@ -113,6 +115,14 @@ type Options struct {
 	Store     Store         // object-store target (bucket/endpoint/secret)
 	Namespace string        // namespace the publish Job runs in
 	Client    client.Client // cluster client used to create + watch the Job
+	// Workspace/AppNamespace carry the tenant identity into the shared execution
+	// namespace for logs, network policy, and admission selection.
+	Workspace    string
+	AppNamespace string
+	// VerifyImage selects image-extract Pods for fail-closed signature admission.
+	// It is set only when tenant signing is enabled; direct-clone publish does not
+	// execute a tenant image and leaves it false.
+	VerifyImage bool
 	// AWSCLIImage overrides the uploader image (tests / air-gapped).
 	AWSCLIImage string
 	// PullSecret names an imagePullSecret (in Namespace) that authenticates the
@@ -244,14 +254,53 @@ func PublishJob(o Options) *batchv1.Job {
 		pullSecrets = imagePullSecrets(o.PullSecret)
 	}
 
+	appNamespace := ""
+	if o.AppNamespace != "" && o.AppNamespace != o.Namespace {
+		appNamespace = o.AppNamespace
+	}
+	verifyImage := o.VerifyImage && o.Image != ""
+	labels := execution.PodLabels(o.AppID, "publish", o.Workspace, appNamespace, verifyImage)
+	labels["app.bex.co/publish"] = o.AppID
+	podLabels := execution.PodLabels(o.AppID, "publish", o.Workspace, appNamespace, verifyImage)
+	podLabels["app.bex.co/publish"] = o.AppID
+	podSpec := corev1.PodSpec{
+		RestartPolicy:    corev1.RestartPolicyNever,
+		ImagePullSecrets: pullSecrets,
+		Volumes: []corev1.Volume{{
+			Name:         outVolume,
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+		}},
+		InitContainers: []corev1.Container{stage},
+		Containers: []corev1.Container{{
+			Name:  "upload",
+			Image: awsImage,
+			// --no-follow-symlinks prevents tenant-controlled output from
+			// turning /proc or another uploader-local path into an S3 object.
+			Args: []string{
+				"s3", "sync", outMount, o.destURI(),
+				"--endpoint-url", o.Store.Endpoint,
+				"--no-follow-symlinks",
+				"--delete",
+			},
+			Env: uploadEnv,
+			EnvFrom: []corev1.EnvFromSource{{
+				SecretRef: &corev1.SecretEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: o.Store.Secret},
+				},
+			}},
+			VolumeMounts: []corev1.VolumeMount{
+				{Name: outVolume, MountPath: outMount, ReadOnly: true},
+			},
+			Resources: modestResources(),
+		}},
+	}
+	execution.HardenPod(&podSpec)
+
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      JobName(o.AppID, o.Revision),
 			Namespace: o.Namespace,
-			Labels: map[string]string{
-				"app.bex.co/publish":   o.AppID,
-				"app.bex.co/component": "publish",
-			},
+			Labels:    labels,
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            &backoff,
@@ -259,37 +308,9 @@ func PublishJob(o Options) *batchv1.Job {
 			TTLSecondsAfterFinished: &ttl,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{"app.bex.co/publish": o.AppID},
+					Labels: podLabels,
 				},
-				Spec: corev1.PodSpec{
-					RestartPolicy:    corev1.RestartPolicyNever,
-					ImagePullSecrets: pullSecrets,
-					Volumes: []corev1.Volume{{
-						Name:         outVolume,
-						VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-					}},
-					InitContainers: []corev1.Container{stage},
-					Containers: []corev1.Container{{
-						Name:  "upload",
-						Image: awsImage,
-						// amazon/aws-cli's entrypoint is `aws`, so Args start at the verb.
-						Args: []string{
-							"s3", "sync", outMount, o.destURI(),
-							"--endpoint-url", o.Store.Endpoint,
-							"--delete",
-						},
-						Env: uploadEnv,
-						EnvFrom: []corev1.EnvFromSource{{
-							SecretRef: &corev1.SecretEnvSource{
-								LocalObjectReference: corev1.LocalObjectReference{Name: o.Store.Secret},
-							},
-						}},
-						VolumeMounts: []corev1.VolumeMount{
-							{Name: outVolume, MountPath: outMount, ReadOnly: true},
-						},
-						Resources: modestResources(),
-					}},
-				},
+				Spec: podSpec,
 			},
 		},
 	}
