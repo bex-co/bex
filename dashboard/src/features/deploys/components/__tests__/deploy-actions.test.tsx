@@ -75,7 +75,7 @@ describe("DeployActions", () => {
     const router = renderActions("live");
 
     await user.click(
-      await screen.findByRole("button", { name: "Roll Back to This Deploy" }),
+      await screen.findByRole("button", { name: "Rollback" }),
     );
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
@@ -98,7 +98,7 @@ describe("DeployActions", () => {
     const router = renderActions("live");
 
     await user.click(
-      await screen.findByRole("button", { name: "Roll Back to This Deploy" }),
+      await screen.findByRole("button", { name: "Rollback" }),
     );
     await user.click(
       within(await screen.findByRole("alertdialog")).getByRole("button", {
@@ -114,7 +114,7 @@ describe("DeployActions", () => {
     renderActions("deactivated");
 
     expect(
-      await screen.findByRole("button", { name: "Roll Back to This Deploy" }),
+      await screen.findByRole("button", { name: "Rollback" }),
     ).toBeInTheDocument();
   });
 
@@ -122,7 +122,7 @@ describe("DeployActions", () => {
     renderActions("build_failed");
 
     expect(
-      screen.queryByRole("button", { name: "Roll Back to This Deploy" }),
+      screen.queryByRole("button", { name: "Rollback" }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Cancel" }),
