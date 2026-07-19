@@ -44,7 +44,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Get month-to-date usage (instance-seconds by tier, egress bytes, build seconds, and managed-datastore storage GB-seconds) for the caller's workspace, plus an estimated cost in USD (estimate only — not an invoice; 30% below Render on compute/Postgres/KeyValue/build/Postgres storage, 90% below on bandwidth). Returns the same quantities and cost estimate as GET /v1/usage.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in getUsageArgs) (*mcp.CallToolResult, usageResponse, error) {
 		now := resolvePeriodEnd(in.Period, s.Now().UTC())
-		summary, err := s.monthToDateAt(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID), now)
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, usageResponse{}, err
+		}
+		summary, err := s.monthToDateAt(ctx, ownerID, now)
 		if err != nil {
 			return nil, usageResponse{}, err
 		}

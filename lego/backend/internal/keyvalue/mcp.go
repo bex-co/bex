@@ -112,7 +112,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	registerList := func(name, description string) {
 		mcp.AddTool(srv, &mcp.Tool{Name: name, Description: description},
 			func(ctx context.Context, req *mcp.CallToolRequest, _ listKeyValueArgs) (*mcp.CallToolResult, listKeyValueResult, error) {
-				list, err := s.ListKeyValues(ctx, core.SelectedWorkspace(s.Selections, req, ""))
+				ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, "")
+				if err != nil {
+					return nil, listKeyValueResult{}, err
+				}
+				list, err := s.ListKeyValues(ctx, ownerID)
 				if err != nil {
 					return nil, listKeyValueResult{}, err
 				}
@@ -138,8 +142,12 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Create a managed key-value (Valkey/Redis) store. name is required; plan, version, storageGB, public, ipAllowList, maxmemoryPolicy and persistenceMode are optional. Pass dryRun:true to preview the resolved spec without any writes.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
 		allowList := core.AllowListOrCIDRs(in.IPAllowListEntries, in.IPAllowList)
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, KeyValueView{}, err
+		}
 		v, err := s.CreateKeyValue(ctx, CreateKeyValueRequest{
-			OwnerID:         core.SelectedWorkspace(s.Selections, req, in.OwnerID),
+			OwnerID:         ownerID,
 			EnvironmentID:   in.EnvironmentID,
 			Name:            in.Name,
 			Plan:            in.Plan,

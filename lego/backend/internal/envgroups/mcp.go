@@ -101,7 +101,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "list_env_groups",
 		Description: "List one workspace's environment groups with cursor paging (names, linked services, and env-var keys / secret-file names — no values); Render's name, environment, and timestamp filters are REST-only.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in listEnvGroupsArgs) (*mcp.CallToolResult, listEnvGroupsResult, error) {
-		groups, err := s.ListEnvGroups(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, listEnvGroupsResult{}, err
+		}
+		groups, err := s.ListEnvGroups(ctx, ownerID)
 		if err == nil {
 			groups = pageEnvGroups(groups, in.Cursor, in.Limit, in.Cursor != "" || in.Limit != 0)
 		}
@@ -120,8 +124,12 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "create_env_group",
 		Description: "Create an environment group, optionally with initial variables, secret files, and service links in one atomic operation.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createEnvGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, EnvGroupView{}, err
+		}
 		g, err := s.CreateEnvGroup(ctx, CreateEnvGroupRequest{
-			Name: in.Name, OwnerID: core.SelectedWorkspace(s.Selections, req, in.OwnerID),
+			Name: in.Name, OwnerID: ownerID,
 			EnvironmentID: in.EnvironmentID, EnvVars: in.EnvVars,
 			SecretFiles: in.SecretFiles, ServiceIDs: in.ServiceIDs,
 		})

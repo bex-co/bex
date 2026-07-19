@@ -1,6 +1,6 @@
 # w2 · m55 — Browser-hosted Web Shell
 
-**Worker:** worker2 **Goal:** A workspace member with `can_operate` opens `/services/{id}/shell` in the dashboard and gets an interactive TTY attached to a selected Ready running instance — an in-browser xterm.js terminal matching Render's Web Shell — **without** giving bex-api `pods/exec` and while preserving ADR035's isolation (terminal streams flow only through the isolated ssh-gateway). **Status:** implementation complete (t001–t009 done, all suites green); live acceptance (t010) pending a dev-N cluster with the gateway deployed + `BEX_SHELL_*` configured — prod gated on m39 gateway activation.
+**Worker:** worker2 **Goal:** A workspace member with `can_operate` opens `/services/{id}/shell` in the dashboard and gets an interactive TTY attached to a selected Ready running instance — an in-browser xterm.js terminal matching Render's Web Shell — **without** giving bex-api `pods/exec` and while preserving ADR035's isolation (terminal streams flow only through the isolated ssh-gateway). **Status:** done (2026-07-19).
 
 ## Tasks (in order)
 
@@ -15,7 +15,7 @@
 | t007 | Render parity — **DONE**                                                      | 30m | t004, t005, t006 |
 | t008 | Simplify — **DONE**                                                           | 30m | t007             |
 | t009 | Test coverage — **DONE**                                                      | 60m | t007             |
-| t010 | Closeout (live acceptance)                                                    | 30m | t009             |
+| t010 | Closeout (live acceptance) — **DONE**                                         | 30m | t009             |
 
 ## Definition of done
 
@@ -31,7 +31,11 @@ t001–t009 are implemented and all automated suites are green: backend `go test
 - **Dashboard** — `web-shell-terminal.tsx` (xterm.js, dynamic client-only import; mint→WS→stream, binary stdin, resize, status/reconnect, unavailable/error states), `web-shell-panel.tsx` (Render's "Select an instance" picker, reconnect-on-change, stale-selection fallback), wired into `service-shell-page.tsx` alongside the copy-ready SSH command. `serviceInstances` GraphQL query + hooks. Component + panel + route tests.
 - **Docs** — ADR035 § Browser Web Shell (transport, Kratos-session→ticket auth, re-drawn boundary; "browser terminals" removed from non-goals); `.pm/DO_NOT_DO.md` carveout; ADR018 SSH row + non-goals; CLAUDE.md + `.env.example`/`.env.template` env vars.
 
-**t010 (live acceptance) is deliberately open.** The DoD's dev-stack live evidence needs a running dev-N cluster with the operator, bex-api, and the ssh-gateway deployed and `BEX_SHELL_TICKET_SECRET`/`BEX_SHELL_WS_URL`/`BEX_SHELL_WS_ADDR` configured (plus a running paid service). Production is additionally gated on **m39's gateway production activation** (m39 t008/t009 — public DNS/TCP-22 + the gateway WebSocket edge), which is still open. Do not move this milestone to `done/` or check its box in `w2/README.md` until the sanitized live-acceptance evidence is recorded under `w2/m55/evidence/`.
+## Live acceptance closeout (2026-07-19)
+
+t010 completed on dev-2 with the deployed gateway, a real paid service pod, and an authenticated Chrome session. The page selected a specific Ready instance, reached Connected, displayed the fixed terminal marker, propagated exit closure, and kept the copy-ready SSH command beside the terminal. Direct live tests also proved resize/stdin/stdout/exit, ticket replay rejection, the session deadline, and target-pod replacement closure. The unauthorized, foreign-workspace, free, suspended, and non-Ready cases failed closed; bex-api remained unable to create `pods/exec`; and `ssh_sessions` retained metadata only. The live pass found and fixed the dashboard CSP's missing WebSocket schemes. Sanitized evidence is in [`evidence/2026-07-19-dev-2-live-acceptance.md`](evidence/2026-07-19-dev-2-live-acceptance.md).
+
+m39's underlying public SSH gateway is production-activated. This closeout does not falsely claim a fresh production Browser Web Shell run: production still requires the deployed shell-ticket Secret, browser-reachable WebSocket URL, and gateway WebSocket edge described by the checked-in manifests.
 
 ## Source + Goal linkage
 

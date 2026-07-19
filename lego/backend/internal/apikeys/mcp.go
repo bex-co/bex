@@ -58,7 +58,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "create_api_key",
 		Description: "Create a machine credential (OAuth2 client) for the platform API. The secret is returned once — store it. bex extension over Render's MCP.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createAPIKeyArgs) (*mcp.CallToolResult, APIKey, error) {
-		key, err := s.CreateAPIKey(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID), in.Name)
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, APIKey{}, err
+		}
+		key, err := s.CreateAPIKey(ctx, ownerID, in.Name)
 		return nil, key, err
 	})
 
@@ -66,7 +70,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "list_api_keys",
 		Description: "List the platform API's machine credentials (secrets never included). bex extension over Render's MCP.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in listAPIKeysArgs) (*mcp.CallToolResult, listAPIKeysResult, error) {
-		keys, err := s.ListAPIKeys(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, listAPIKeysResult{}, err
+		}
+		keys, err := s.ListAPIKeys(ctx, ownerID)
 		return nil, listAPIKeysResult{APIKeys: keys}, err
 	})
 
@@ -74,7 +82,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "revoke_api_key",
 		Description: "Revoke a machine credential by keyId; its tokens stop working. bex extension over Render's MCP.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in revokeAPIKeyArgs) (*mcp.CallToolResult, revokeAPIKeyResult, error) {
-		err := s.RevokeAPIKey(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID), in.KeyID)
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, revokeAPIKeyResult{}, err
+		}
+		err = s.RevokeAPIKey(ctx, ownerID, in.KeyID)
 		return nil, revokeAPIKeyResult{Revoked: err == nil}, err
 	})
 }

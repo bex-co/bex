@@ -73,7 +73,10 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "list_projects",
 		Description: "List projects in a workspace. Optional cursor/limit select stable id-ordered pages; omitting both returns the complete list for compatibility. bex extension.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in listProjectsArgs) (*mcp.CallToolResult, projectsResult, error) {
-		ownerID := core.SelectedWorkspace(s.Selections, req, in.OwnerID)
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, projectsResult{}, err
+		}
 		ps, err := s.List(ctx, ownerID)
 		if err != nil {
 			return nil, projectsResult{}, err
@@ -103,7 +106,10 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "create_project",
 		Description: "Create a named project in a workspace to group services. bex extension.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createProjectArgs) (*mcp.CallToolResult, ProjectView, error) {
-		ownerID := core.SelectedWorkspace(s.Selections, req, in.OwnerID)
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, ProjectView{}, err
+		}
 		p, err := s.Create(ctx, ownerID, in.Name)
 		return nil, p, err
 	})

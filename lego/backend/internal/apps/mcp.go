@@ -612,7 +612,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "list_services",
 		Description: "List all services (bex Apps) in the workspace with their status. Scoped to ownerId if given, else to the session's selected workspace (select_workspace), else unscoped.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in listServicesArgs) (*mcp.CallToolResult, listServicesResult, error) {
-		apps, err := s.List(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, listServicesResult{}, err
+		}
+		apps, err := s.List(ctx, ownerID)
 		if err != nil {
 			return nil, listServicesResult{}, err
 		}
@@ -628,7 +632,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "create_web_service",
 		Description: "Create a web service from a repo or a prebuilt image and get back the service to poll until its url is live. A name already used in the target workspace is rejected (name already in use) rather than redeployed — use restart_service to redeploy an existing one. Tracks Render's MCP tool.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createWebServiceArgs) (*mcp.CallToolResult, renderService, error) {
-		in.OwnerID = core.SelectedWorkspace(s.Selections, req, in.OwnerID)
+		var err error
+		in.OwnerID, err = core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, renderService{}, err
+		}
 		allowList, err := core.ResolveAllowListInputs(in.IPAllowListEntries, in.IPAllowListEntries != nil, in.IPAllowList, in.IPAllowList != nil)
 		if err != nil {
 			return nil, renderService{}, err
@@ -646,7 +654,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "create_cron_job",
 		Description: "Create a cron job that runs a repo/image's command on a schedule, and get back the service. A name already used in the target workspace is rejected (name already in use) rather than redeployed — use restart_service to redeploy an existing one. Tracks Render's MCP tool.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createCronJobArgs) (*mcp.CallToolResult, renderService, error) {
-		in.OwnerID = core.SelectedWorkspace(s.Selections, req, in.OwnerID)
+		var err error
+		in.OwnerID, err = core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, renderService{}, err
+		}
 		app, err := s.Create(ctx, in.toCreateRequest())
 		if err != nil {
 			return nil, renderService{}, err
@@ -658,7 +670,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "create_static_site",
 		Description: "Create a static site: build a repo and serve its publishPath output from the object-store origin (no running container). Redirects/rewrites (routes) and custom response headers apply at the edge. A name already used in the target workspace is rejected (name already in use) rather than republished — use restart_service to republish an existing one. Tracks Render's MCP tool.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createStaticSiteArgs) (*mcp.CallToolResult, renderService, error) {
-		in.OwnerID = core.SelectedWorkspace(s.Selections, req, in.OwnerID)
+		var err error
+		in.OwnerID, err = core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, renderService{}, err
+		}
 		allowList, err := core.ResolveAllowListInputs(in.IPAllowListEntries, in.IPAllowListEntries != nil, in.IPAllowList, in.IPAllowList != nil)
 		if err != nil {
 			return nil, renderService{}, err
@@ -1199,7 +1215,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "validate_bex_yml",
 		Description: "Dry-run parse a bex.yml (render.yaml Blueprint) and return structured per-entry errors plus a resource plan without applying anything — the safe pre-flight check before a deploy call. Returns {valid, errors: [{error, line?, column?, path?}], plan?}. Requires no store; always available. bex extension (pillar 4 agent safety).",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in validateBlueprintArgs) (*mcp.CallToolResult, BlueprintValidation, error) {
-		v, err := s.ValidateBlueprint(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID), in.BexYAML)
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, BlueprintValidation{}, err
+		}
+		v, err := s.ValidateBlueprint(ctx, ownerID, in.BexYAML)
 		return nil, v, err
 	})
 
@@ -1207,7 +1227,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "list_blueprints",
 		Description: "List known bex.yml stack sources (blueprints) for a workspace. Blueprints are auto-registered on the first deploy call that includes a repo+bexYaml. Returns {blueprints: [{id, name, repo, branch, status, createdAt, updatedAt}]}. bex extension.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in listBlueprintsArgs) (*mcp.CallToolResult, listBlueprintsResult, error) {
-		views, err := s.ListBlueprints(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, listBlueprintsResult{}, err
+		}
+		views, err := s.ListBlueprints(ctx, ownerID)
 		return nil, listBlueprintsResult{Blueprints: views}, err
 	})
 
@@ -1215,7 +1239,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "get_blueprint",
 		Description: "Get a single blueprint by its id. Returns {id, name, repo, branch, status, createdAt, updatedAt}. bex extension.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in getBlueprintArgs) (*mcp.CallToolResult, BlueprintView, error) {
-		view, err := s.GetBlueprintByID(ctx, in.ID, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, BlueprintView{}, err
+		}
+		view, err := s.GetBlueprintByID(ctx, in.ID, ownerID)
 		return nil, view, err
 	})
 
@@ -1223,7 +1251,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "sync_blueprint",
 		Description: "Re-apply a stored blueprint idempotently — same all-or-nothing semantics as deploy, but sourced from the stored manifest. If bex_yaml is provided, the stored manifest is replaced before re-apply. Returns {blueprint, stack: {services, databases}}. Use validate_bex_yml first to catch errors with no side effects. bex extension (pillar 4, validate-then-deploy flow).",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in syncBlueprintArgs) (*mcp.CallToolResult, SyncBlueprintResult, error) {
-		res, err := s.SyncBlueprint(ctx, in.ID, core.SelectedWorkspace(s.Selections, req, in.OwnerID), in.BexYAML, in.Confirm)
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, SyncBlueprintResult{}, err
+		}
+		res, err := s.SyncBlueprint(ctx, in.ID, ownerID, in.BexYAML, in.Confirm)
 		return nil, res, err
 	})
 }

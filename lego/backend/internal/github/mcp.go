@@ -48,7 +48,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			"Use this to answer \"which of my repos can you deploy?\" before creating a service from a repo. " +
 			"If it returns an empty list or a 503, GitHub is not connected — call get_git_connection for the install URL to give the human.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in ownerIDArgs) (*mcp.CallToolResult, listReposResult, error) {
-		repos, err := s.ListRepos(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, listReposResult{}, err
+		}
+		repos, err := s.ListRepos(ctx, ownerID)
 		return nil, listReposResult{Repos: repos}, err
 	})
 
@@ -58,7 +62,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			"When connected is false, give the human the returned installUrl to install the bex GitHub App and grant repos; " +
 			"a 503 means the GitHub App is not configured on this bex deployment.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in ownerIDArgs) (*mcp.CallToolResult, Connection, error) {
-		conn, err := s.GetConnection(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, Connection{}, err
+		}
+		conn, err := s.GetConnection(ctx, ownerID)
 		return nil, conn, err
 	})
 }
