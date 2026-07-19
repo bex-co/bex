@@ -189,6 +189,10 @@ type Deps struct {
 	ShellTicketSecret []byte
 	ShellWSURL        string
 	Store             apps.IntentStore
+	// MCPWorkspaceSelections shares select_workspace state across bex-api
+	// replicas. nil keeps the process-local fallback used by storeless and stdio
+	// operation.
+	MCPWorkspaceSelections core.MCPWorkspaceSelectionStore
 	// Secrets is the shared OpenBao-backed store both the env-vars/secret-files
 	// feature and the env-groups feature read/write through (docs/ADR013-secrets.md). One
 	// instance, wired into both services below. nil => those verbs 503.
@@ -330,7 +334,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// One selection store shared by the workspace-select tools (write) and the
 	// apps/postgres list tools (read) — w6/m2/t005. Always wired: with no MCP
 	// transport in use, it simply never gets a Get/Set call.
-	selections := core.NewWorkspaceSelections()
+	selections := core.NewWorkspaceSelections(d.MCPWorkspaceSelections)
 	workspaceSvc := &workspaces.Service{
 		Base:       base,
 		Store:      d.WorkspaceStore,
@@ -916,7 +920,10 @@ func (s *Server) MCPServer() *mcp.Server {
 // the same auth gate as REST/GraphQL).
 func (s *Server) mcpHTTPHandler() http.Handler {
 	srv := s.MCPServer()
-	return mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return srv }, nil)
+	return mcp.NewStreamableHTTPHandler(
+		func(*http.Request) *mcp.Server { return srv },
+		&mcp.StreamableHTTPOptions{Stateless: true},
+	)
 }
 
 // RunStdio serves the MCP adapter over stdio — the transport a local agent

@@ -93,7 +93,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		}
 		res := listWorkspacesResult{Workspaces: out}
 		if len(ws) == 1 && req.Session != nil {
-			s.Selections.Set(req.Session.ID(), ws[0].ID)
+			if err := s.Selections.Set(ctx, req.Session.ID(), ws[0].ID); err != nil {
+				return nil, listWorkspacesResult{}, err
+			}
 			sel := toMCPWorkspace(ws[0])
 			res.Selected = &sel
 			res.Note = "Only one workspace found, automatically selected it"
@@ -114,7 +116,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			return nil, selectedWorkspaceResult{}, err
 		}
 		if req.Session != nil {
-			s.Selections.Set(req.Session.ID(), w.ID)
+			if err := s.Selections.Set(ctx, req.Session.ID(), w.ID); err != nil {
+				return nil, selectedWorkspaceResult{}, err
+			}
 		}
 		sel := toMCPWorkspace(w)
 		return nil, selectedWorkspaceResult{Selected: &sel}, nil
@@ -125,7 +129,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Get the currently selected workspace for this session.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, selectedWorkspaceResult, error) {
 		if req.Session != nil {
-			if id, ok := s.Selections.Get(req.Session.ID()); ok {
+			id, ok, err := s.Selections.Get(ctx, req.Session.ID())
+			if err != nil {
+				return nil, selectedWorkspaceResult{}, err
+			}
+			if ok {
 				w, err := s.GetWorkspace(ctx, id)
 				if err != nil {
 					return nil, selectedWorkspaceResult{}, err

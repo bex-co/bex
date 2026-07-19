@@ -73,7 +73,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "list_webhook_endpoints",
 		Description: "List the workspace's outbound webhook endpoints (URL, subscribed event types, enabled state — never the signing secret) plus the subscribable event-type vocabulary. bex extension — Render's own MCP server has no webhook tools.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in listEndpointsArgs) (*mcp.CallToolResult, listEndpointsResult, error) {
-		views, err := s.List(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, listEndpointsResult{}, err
+		}
+		views, err := s.List(ctx, ownerID)
 		if err != nil {
 			return nil, listEndpointsResult{}, err
 		}
@@ -84,8 +88,12 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "create_webhook_endpoint",
 		Description: "Register an outbound webhook: bex will POST a signed, thin JSON payload ({type, timestamp, data}) to the URL whenever a subscribed event happens (deploys, service lifecycle, scaling, cron runs, and sourceable Postgres/Key Value changes). The response includes the Standard-Webhooks signing secret exactly once — store it; it is not retrievable afterwards.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createEndpointArgs) (*mcp.CallToolResult, endpointWire, error) {
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, endpointWire{}, err
+		}
 		v, err := s.Create(ctx, CreateRequest{
-			OwnerID: core.SelectedWorkspace(s.Selections, req, in.OwnerID),
+			OwnerID: ownerID,
 			Name:    in.Name, URL: in.URL, EventTypes: in.EventTypes,
 		})
 		if err != nil {
@@ -98,7 +106,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "update_webhook_endpoint",
 		Description: "Update an outbound webhook endpoint's name, destination URL, event subscription, or enabled state. Supply only the fields to change; omitted fields keep their current values.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in updateEndpointArgs) (*mcp.CallToolResult, endpointWire, error) {
-		v, err := s.Update(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID), in.ID, UpdateRequest{
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, endpointWire{}, err
+		}
+		v, err := s.Update(ctx, ownerID, in.ID, UpdateRequest{
 			Name:       in.Name,
 			URL:        in.URL,
 			EventTypes: in.EventTypes,
@@ -114,7 +126,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "delete_webhook_endpoint",
 		Description: "Delete an outbound webhook endpoint and its delivery history. No further events are sent to it.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in deleteEndpointArgs) (*mcp.CallToolResult, deletedResult, error) {
-		err := s.Delete(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID), in.ID)
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, deletedResult{}, err
+		}
+		err = s.Delete(ctx, ownerID, in.ID)
 		return nil, deletedResult{Deleted: err == nil}, err
 	})
 }

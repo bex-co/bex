@@ -131,6 +131,7 @@ func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims she
 	target, err := s.Apps.ResolveSSHSession(resolveCtx, claims.Username())
 	cancelResolve()
 	if err != nil {
+		log.Printf("web shell target resolution failed: %v", err)
 		s.Metrics.authentication("rejected_target")
 		ws.fail("this service has no instance available for a shell right now")
 		return

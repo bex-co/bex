@@ -292,8 +292,8 @@ function buildSecurityHeaders(
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     // TanStack Start SSR injects inline hydration scripts; inline styles come from
-    // Tailwind and shadcn/Radix. connect-src https: covers the API and auth
-    // origins (api.bex.co, auth.bex.co) without hard-coding their values here.
+    // Tailwind and shadcn/Radix. connect-src https:/wss: covers the API, auth,
+    // and Browser Web Shell origins without hard-coding their values here.
     // Outside production, also allow plain-http localhost: `yarn dev:local`
     // (dashboard/CLAUDE.md's fast frontend loop) points VITE_API_URL straight at
     // local-bex.mjs's wide-open-CORS stub on a different port (:8099) rather than
@@ -306,8 +306,8 @@ function buildSecurityHeaders(
       "img-src 'self' data:",
       "font-src 'self'",
       process.env.NODE_ENV === "production"
-        ? "connect-src 'self' https:"
-        : "connect-src 'self' https: http://localhost:*",
+        ? "connect-src 'self' https: wss:"
+        : "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*",
       "frame-ancestors 'none'",
     ].join("; "),
   };

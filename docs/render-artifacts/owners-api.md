@@ -171,7 +171,7 @@ From `github.com/render-oss/render-mcp-server` `pkg/owner/tools.go` (the officia
 
 Tool-result rendering (render-mcp-server): `mcp.NewToolResultText(string)` — the workspace list is JSON-marshaled as text; `select_workspace` returns the text `"Workspace selected"`; `get_selected_workspace` returns `"The currently selected workspace is: <id>"`. bex's go-sdk adapter instead returns typed structured-result objects (MCP requires object, not array, output) — `{workspaces: […]}` / a selection-confirmation object — the same wrapper-object pattern `apps/mcp.go` uses (`{services: […]}`).
 
-### Selection persistence — per-session, in-memory
+### Selection persistence — Render in-memory; bex shared for HTTP
 
 Verbatim from `pkg/session/{session,inmemory}.go`:
 
@@ -200,9 +200,9 @@ func (h *InMemorySession) GetWorkspace(_ context.Context) (string, error) {
 }
 ```
 
-So: selection is **per-session** (keyed by MCP session ID), held **in-memory** (not persisted to config/disk — research open question 3, resolved), threaded into every tool handler via context. An unselected session returns `ErrNoWorkspace`; bex's behavior (matching pre-`m1`): fall back to the caller's default workspace rather than erroring. `pkg/validate/workspace.go`'s `WorkspaceMatches` enforces that subsequent resource tools operate only within the selected workspace.
+So: Render's selection is **per-session** (keyed by MCP session ID), held **in-memory** (not persisted to config/disk — research open question 3, resolved), threaded into every tool handler via context. An unselected session returns `ErrNoWorkspace`; bex's behavior (matching pre-`m1`): fall back to the caller's default workspace rather than erroring. `pkg/validate/workspace.go`'s `WorkspaceMatches` enforces that subsequent resource tools operate only within the selected workspace.
 
-bex mirrors this with an in-memory `SelectionStore` keyed by the MCP session ID (`Mcp-Session-Id` header in the streamable-HTTP transport; `""` for stdio = one session), threaded through the tool-handler context; `select_workspace` writes it, `get_selected_workspace` reads it, and the `list_services`/`list_postgres_instances` tools read it as their default `ownerId` filter (the `w6/m2/t004` scoping param).
+bex preserves the same per-session behavior but uses two backends. Streamable HTTP stores the selection in control-plane Postgres, keyed by the `Mcp-Session-Id` header **and authenticated subject**, so a follow-up request may reach any bex-api replica without losing or borrowing a selection. Store errors fail the tool call closed. Storeless and stdio operation retain the concurrency-safe in-memory fallback (`""` for stdio = one session). `select_workspace` writes it, `get_selected_workspace` reads it, and workspace-scoped tools such as `list_services` and `list_postgres_instances` use it as their default `ownerId` filter (the `w6/m2/t004` scoping param).
 
 ## Parity check (t006)
 

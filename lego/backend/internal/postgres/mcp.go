@@ -135,7 +135,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "list_postgres_instances",
 		Description: "List all managed Postgres databases in the selected workspace with their status. Use select_workspace first to change workspace.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in listPostgresArgs) (*mcp.CallToolResult, listPostgresResult, error) {
-		list, err := s.ListPostgres(ctx, core.SelectedWorkspace(s.Selections, req, ""))
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, "")
+		if err != nil {
+			return nil, listPostgresResult{}, err
+		}
+		list, err := s.ListPostgres(ctx, ownerID)
 		if err != nil {
 			return nil, listPostgresResult{}, err
 		}
@@ -157,8 +161,12 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "create_postgres",
 		Description: "Create a managed Postgres database. name is required; databaseName, databaseUser, plan, version, diskSizeGB, public, ipAllowList/ipAllowListEntries and enableHighAvailability are optional. Pass dryRun:true to preview the resolved spec without any writes.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
+		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
+		if err != nil {
+			return nil, PostgresView{}, err
+		}
 		v, err := s.CreatePostgres(ctx, CreatePostgresRequest{
-			OwnerID:                core.SelectedWorkspace(s.Selections, req, in.OwnerID),
+			OwnerID:                ownerID,
 			EnvironmentID:          in.EnvironmentID,
 			Name:                   in.Name,
 			DatabaseName:           in.DatabaseName,
