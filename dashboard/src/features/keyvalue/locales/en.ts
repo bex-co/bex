@@ -420,6 +420,40 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Couldn't update the plan. Please try again.",
     description: "Toast when a plan update fails",
   },
+  // --- Maxmemory (eviction) policy section (w7/007) ---
+  "keyvalue.maxmemoryTitle": {
+    message: "Maxmemory Policy",
+    description: "Key Value detail eviction-policy card title",
+  },
+  "keyvalue.maxmemoryDescription": {
+    message:
+      "Change how keys are evicted once the store reaches its memory limit. The operator applies the new policy on the next reconcile.",
+    description: "Key Value detail eviction-policy card description",
+  },
+  "keyvalue.maxmemoryLabel": {
+    message: "Maxmemory policy",
+    description: "Accessible label for the eviction-policy select",
+  },
+  "keyvalue.maxmemoryPlaceholder": {
+    message: "Select a policy",
+    description: "Placeholder shown when no eviction policy is set yet",
+  },
+  "keyvalue.maxmemorySave": {
+    message: "Save",
+    description: "Key Value eviction-policy save button",
+  },
+  "keyvalue.maxmemoryCancel": {
+    message: "Cancel",
+    description: "Key Value eviction-policy cancel / reset button",
+  },
+  "keyvalue.maxmemorySuccess": {
+    message: "Updating maxmemory policy to {policy}…",
+    description: "Toast after an eviction-policy update is accepted",
+  },
+  "keyvalue.maxmemoryError": {
+    message: "Couldn't update the maxmemory policy. Please try again.",
+    description: "Toast when an eviction-policy update fails",
+  },
   // --- Networking (external-endpoint IP allowlist) ---
   "keyvalue.networkingTitle": {
     message: "Networking",

@@ -53,6 +53,10 @@ _(`001.md` — fresh tenant nodes could not pull authenticated Zot images — pr
 
 > `004.md` promoted to **m33** 2026-07-15; note moved to `done/`.
 
+> `007.md` (dashboard Key Value eviction-policy editor, the m45 follow-up) implemented 2026-07-19 — a Maxmemory Policy section on the KV detail page over the existing `setKeyValueMaxmemoryPolicy` mutation (`use-set-key-value-maxmemory-policy` hook + component test); note moved to `done/`.
+
+> `006.md` (the unrecoverable `default/biliblilitest` Postgres): **retired 2026-07-19** — user authorized retire; executed against the prod app cluster (`kubectl delete database biliblilitest`, operator finalizer tore down the CNPG Cluster + owned PVC/Secret/Services in ~5s), verified zero leftovers cluster-wide, no data lost (never left `Provisioning`). Note in `done/006.md`. **Inbox now clear.**
+
 ## Not in w7 (deliberate)
 
 - **microVM runtime tier** (Kata/gVisor `RuntimeClass`) — the isolation ladder's next rung; parked in [`.pm/FUTURE-MAYBE.md`](../FUTURE-MAYBE.md) with a public-GA trigger.

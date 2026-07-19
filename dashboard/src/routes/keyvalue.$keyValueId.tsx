@@ -19,6 +19,7 @@ import { KeyValueDangerActions } from "@/features/keyvalue/components/key-value-
 import { ConnectionInfoPanel } from "@/features/keyvalue/components/connection-info-panel";
 import { KeyValueNetworkingPanel } from "@/features/keyvalue/components/key-value-networking-panel";
 import { KeyValuePlanSection } from "@/features/keyvalue/components/key-value-plan-section";
+import { KeyValueMaxmemoryPolicySection } from "@/features/keyvalue/components/key-value-maxmemory-policy-section";
 import { KeyValueNameSection } from "@/features/keyvalue/components/key-value-name-section";
 import { KeyValueLogViewer } from "@/features/keyvalue/components/key-value-log-viewer";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
@@ -141,6 +142,7 @@ export function KeyValueDetailPage() {
                 keyValue={keyValue}
                 onChanged={() => void refetch()}
               />
+              <KeyValueMaxmemoryPolicySection id={keyValue.id} />
               <DatastoreMetricsPanel kind="keyvalue" resource={keyValue.name} />
               <KeyValueDangerActions
                 keyValue={keyValue}
