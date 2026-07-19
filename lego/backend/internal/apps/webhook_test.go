@@ -533,6 +533,33 @@ func TestWebhookPushOpensDeployRow(t *testing.T) {
 	}
 }
 
+func TestWebhookPushAfterRepoRollbackClearsImageOverride(t *testing.T) {
+	const secret, repo = "s3cr3t", "https://github.com/x/app"
+	app := autoDeployApp("api", repo)
+	app.Spec.Image = "zot.test/api:gen-4" // exact-image override left by Rollback
+	app.Labels = map[string]string{
+		core.LabelAppID:      "srv-x1",
+		store.LabelManagedBy: store.ManagedByValue,
+	}
+	st := &recordingStore{}
+	svc, cl := newService(st, app)
+	h := &GitWebhook{Svc: svc, Secret: secret}
+
+	body := pushBody(t, repo, "refs/heads/main")
+	if rec := postPush(t, h, secret, "push", body); rec.Code != http.StatusOK {
+		t.Fatalf("push => %d: %s", rec.Code, rec.Body)
+	}
+	if len(st.imageCalls) != 1 || st.imageCalls[0].id != "srv-x1" || st.imageCalls[0].image != "" {
+		t.Fatalf("stored image clears = %+v, want one empty-image write for srv-x1", st.imageCalls)
+	}
+	if got := getApp(t, cl, "api").Spec.Image; got != "" {
+		t.Errorf("spec.image after push = %q, want cleared", got)
+	}
+	if len(st.deployCalls) != 1 || st.deployCalls[0].Image != "" {
+		t.Fatalf("source deploy rows = %+v, want one row with empty image", st.deployCalls)
+	}
+}
+
 // TestWebhookPushCROnlyAppSkipsDeployRow: a hand-applied App (no bex.co/app-id
 // label) keeps the plain restartedAt bump — redeployed, no row, no error.
 func TestWebhookPushCROnlyAppSkipsDeployRow(t *testing.T) {
