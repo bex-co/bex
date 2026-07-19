@@ -32,6 +32,10 @@ import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
 import type { en } from "@/i18n";
 import { useKeyValueInstanceTypes } from "@/features/keyvalue/hooks/use-key-value-instance-types";
 import { useCreateKeyValue } from "@/features/keyvalue/hooks/use-create-key-value";
+import {
+  MAXMEMORY_POLICIES,
+  RECOMMENDED_MAXMEMORY_POLICY,
+} from "@/features/keyvalue/lib/labels";
 import { KeyValuePlanPicker } from "@/features/keyvalue/components/key-value-plan-picker";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 
@@ -43,22 +47,13 @@ import { ProjectEnvironmentSelector } from "@/features/environments/components/p
 const VERSION_DEFAULT = "default";
 const VERSIONS = ["8", "7"] as const;
 
-// Maxmemory (eviction) policies + persistence modes, matching the KeyValue CRD's
-// enums (lego/types/v1alpha1/keyvalue_types.go) and Render's Key Value create
-// form (docs/render-artifacts/key-value.md). Policy identifiers are technical
-// tokens (shown as-is, like the metrics quantiles); persistence modes get i18n
-// labels. `allkeys-lru` leads — Render's cache-oriented default. The Free plan
-// has no persistence, so both are locked (persistence forced Off) when selected.
-const MAXMEMORY_POLICIES = [
-  "allkeys-lru",
-  "allkeys-lfu",
-  "volatile-lru",
-  "volatile-lfu",
-  "allkeys-random",
-  "volatile-random",
-  "volatile-ttl",
-  "noeviction",
-] as const;
+// Persistence modes, matching the KeyValue CRD's enum
+// (lego/types/v1alpha1/keyvalue_types.go) and Render's Key Value create form
+// (docs/render-artifacts/key-value.md). Persistence modes get i18n labels; the
+// maxmemory (eviction) policy tokens live in the feature's shared lib
+// (MAXMEMORY_POLICIES) so the create wizard and the detail-page editor agree.
+// The Free plan has no persistence, so both are locked (persistence forced Off)
+// when selected.
 const PERSISTENCE_MODES = ["journal-snapshot", "snapshot", "off"] as const;
 const PERSISTENCE_LABEL_KEYS: Record<
   (typeof PERSISTENCE_MODES)[number],
@@ -209,7 +204,7 @@ export function NewKeyValuePage() {
                     {MAXMEMORY_POLICIES.map((p) => (
                       <SelectItem key={p} value={p}>
                         {p}
-                        {p === "allkeys-lru"
+                        {p === RECOMMENDED_MAXMEMORY_POLICY
                           ? ` ${t("keyvalue.fieldMaxmemoryRecommended")}`
                           : ""}
                       </SelectItem>

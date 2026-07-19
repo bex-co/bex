@@ -23,9 +23,15 @@ if (typeof window !== "undefined") {
     disconnect() {}
   };
 
-  // Mock scrollIntoView
+  // Mock scrollIntoView + the Pointer Capture API. jsdom implements neither;
+  // Radix primitives (e.g. the Select trigger) call hasPointerCapture during a
+  // userEvent click and throw without these, so any test that drives a shadcn
+  // Select needs them.
   if (typeof Element !== "undefined") {
     Element.prototype.scrollIntoView = vi.fn();
+    Element.prototype.hasPointerCapture = vi.fn(() => false);
+    Element.prototype.setPointerCapture = vi.fn();
+    Element.prototype.releasePointerCapture = vi.fn();
   }
 
   // Mock matchMedia (jsdom doesn't implement it) — used by useIsMobile and

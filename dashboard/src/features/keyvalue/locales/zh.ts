@@ -416,6 +416,40 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "无法更新规格，请重试。",
     description: "Toast when a plan update fails",
   },
+  // --- Maxmemory (eviction) policy section (w7/007) ---
+  "keyvalue.maxmemoryTitle": {
+    message: "内存淘汰策略",
+    description: "Key Value detail eviction-policy card title",
+  },
+  "keyvalue.maxmemoryDescription": {
+    message:
+      "更改存储达到内存上限后如何淘汰键。操作员将在下次协调时应用新策略。",
+    description: "Key Value detail eviction-policy card description",
+  },
+  "keyvalue.maxmemoryLabel": {
+    message: "内存淘汰策略",
+    description: "Accessible label for the eviction-policy select",
+  },
+  "keyvalue.maxmemoryPlaceholder": {
+    message: "选择策略",
+    description: "Placeholder shown when no eviction policy is set yet",
+  },
+  "keyvalue.maxmemorySave": {
+    message: "保存",
+    description: "Key Value eviction-policy save button",
+  },
+  "keyvalue.maxmemoryCancel": {
+    message: "取消",
+    description: "Key Value eviction-policy cancel / reset button",
+  },
+  "keyvalue.maxmemorySuccess": {
+    message: "正在将内存淘汰策略更新为 {policy}……",
+    description: "Toast after an eviction-policy update is accepted",
+  },
+  "keyvalue.maxmemoryError": {
+    message: "无法更新内存淘汰策略，请重试。",
+    description: "Toast when an eviction-policy update fails",
+  },
   // --- Networking (external-endpoint IP allowlist) ---
   "keyvalue.networkingTitle": {
     message: "网络",

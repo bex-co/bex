@@ -100,6 +100,45 @@ export const UpdateKeyValuePlanDocument = gql`
   UpdateKeyValuePlanVars
 >;
 
+// --- maxmemory (eviction) policy: read + set (w7/007, backend from w7/m45) ---
+
+export interface KeyValueMaxmemoryPolicyQuery {
+  keyValue: {
+    id: string | null;
+    maxmemoryPolicy: string | null;
+  } | null;
+}
+export const KeyValueMaxmemoryPolicyDocument = gql`
+  query KeyValueMaxmemoryPolicy($id: String!) {
+    keyValue(id: $id) {
+      id
+      maxmemoryPolicy
+    }
+  }
+` as unknown as TypedDocumentNode<KeyValueMaxmemoryPolicyQuery, IdVars>;
+
+export interface SetKeyValueMaxmemoryPolicyVars {
+  id: string;
+  maxmemoryPolicy: string;
+}
+export interface SetKeyValueMaxmemoryPolicyMutation {
+  setKeyValueMaxmemoryPolicy: {
+    id: string | null;
+    maxmemoryPolicy: string | null;
+  } | null;
+}
+export const SetKeyValueMaxmemoryPolicyDocument = gql`
+  mutation SetKeyValueMaxmemoryPolicy($id: String!, $maxmemoryPolicy: String!) {
+    setKeyValueMaxmemoryPolicy(id: $id, maxmemoryPolicy: $maxmemoryPolicy) {
+      id
+      maxmemoryPolicy
+    }
+  }
+` as unknown as TypedDocumentNode<
+  SetKeyValueMaxmemoryPolicyMutation,
+  SetKeyValueMaxmemoryPolicyVars
+>;
+
 // --- display-name update (mirrors databases' RenameDatabase) ---
 
 export interface RenameKeyValueVars {
