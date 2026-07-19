@@ -26,4 +26,3 @@
 ## Remaining acceptance
 
 Apply the reconciler with an ephemeral zone-scoped Cloudflare DNS/Edit token, require `--check` and TCP/6379 readiness to pass, then rerun the same official-CLI entrypoint. The checklist row remains open until PING/SET by opaque id, exact GET/DEL by display name, and cleanup all pass through the real public TLS/SNI path.
-

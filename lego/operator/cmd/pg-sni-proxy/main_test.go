@@ -17,9 +17,12 @@ limitations under the License.
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
+	"net"
 	"net/netip"
+	"strings"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -182,6 +185,33 @@ func TestRouterResolve(t *testing.T) {
 	r.delete(db.Name)
 	if !r.healthy() {
 		t.Error("deleting the invalid Database did not restore source health")
+	}
+}
+
+func TestTrustedProxySourceRoutesDatabaseAllowlist(t *testing.T) {
+	router := newRouter("db.bex.co")
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "mydb", Namespace: "tenant-ns"},
+		Spec: appv1alpha1.DatabaseSpec{
+			Public:                 true,
+			IPAllowList:            []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.9/32"}},
+			EnvironmentIPAllowList: []string{"203.0.113.0/24"},
+		},
+	}
+	if err := router.set(db); err != nil {
+		t.Fatal(err)
+	}
+	reader := bufio.NewReader(strings.NewReader("PROXY TCP4 203.0.113.9 49.12.20.236 49152 5432\r\n"))
+	source, err := sniproxy.ReadProxySource(
+		reader,
+		&net.TCPAddr{IP: net.ParseIP("10.10.0.7"), Port: 32123},
+		[]netip.Prefix{netip.MustParsePrefix("10.10.0.7/32")},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := router.resolve("mydb.db.bex.co", source); !ok {
+		t.Fatalf("trusted original source %s did not pass both allowlist layers", source)
 	}
 }
 

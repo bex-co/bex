@@ -1,20 +1,22 @@
 # w2 · m57 — Official `kv-cli`: automated PTY + live Valkey acceptance
 
-**Worker:** worker2 **Goal:** Prove the unmodified official Render CLI's `kv-cli [id|name]` command works end to end against bex by automating its interactive TUI under a pseudo-terminal and completing real authenticated Valkey operations over bex's public TLS/SNI edge. **Status:** todo (t001–t003 done; t008 production DNS apply pending)
+**Worker:** worker2 **Goal:** Prove the unmodified official Render CLI's `kv-cli [id|name]` command works end to end against bex by automating its interactive TUI under a pseudo-terminal and completing real authenticated Valkey operations over bex's public TLS/SNI edge. **Status:** done (official CLI production acceptance passed; datastore wildcard A/AAAA records reconciled; all tasks and validation complete)
 
 ## Tasks (in order)
 
-| id   | title                                                                | est | depends_on |
-| ---- | -------------------------------------------------------------------- | --- | ---------- |
-| t001 | Add a redacting PTY probe for the unmodified official CLI — **DONE** | 45m | —          |
-| t002 | Build the disposable public-Key-Value live verifier — **DONE**       | 45m | t001       |
-| t003 | Wire the opt-in verifier into the CLI compatibility workflow — **DONE** | 30m | t002    |
-| t008 | Reconcile datastore wildcard DNS directly to the raw TCP edge         | 45m | t003       |
-| t004 | Run live id/name acceptance and close the checklist row              | 30m | t008       |
-| t009 | Audit Render parity after the datastore DNS repair                   | 15m | t004       |
-| t005 | Simplify the PTY and verifier implementation                         | 20m | t009       |
-| t006 | Add meaningful timeout, redaction, failure, and cleanup coverage     | 30m | t009       |
-| t007 | Closeout — DoD met → move milestone to `done/`                       | 15m | t005, t006 |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Add a redacting PTY probe for the unmodified official CLI — **DONE** | 45m | — |
+| t002 | Build the disposable public-Key-Value live verifier — **DONE** | 45m | t001 |
+| t003 | Wire the opt-in verifier into the CLI compatibility workflow — **DONE** | 30m | t002 |
+| t008 | Reconcile datastore wildcard DNS directly to the raw TCP edge — **DONE** | 45m | t003 |
+| t010 | Preserve datastore client IP through the Hetzner TCP edge — **DONE** | 45m | t008 |
+| t011 | Emit an SNI-capable public Valkey CLI command — **DONE** | 30m | t010 |
+| t004 | Run live id/name acceptance and close the checklist row — **DONE** | 30m | t011 |
+| t009 | Audit Render parity after the datastore DNS repair — **DONE** | 15m | t004 |
+| t005 | Simplify the PTY and verifier implementation — **DONE** | 20m | t009 |
+| t006 | Add meaningful timeout, redaction, failure, and cleanup coverage — **DONE** | 30m | t009 |
+| t007 | Closeout — DoD met → move milestone to `done/` — **DONE** | 15m | t005, t006, t008 |
 
 ## Definition of done
 
@@ -22,14 +24,17 @@ With the official `render-oss/cli` v2.21.0 binary at commit `c398207` left byte-
 
 ## Research findings
 
-- The checklist's current blocker is harness-only: the CLI auto-selects text output when all streams are not TTYs, and `ParseCommandInteractiveOnly` rejects the command before it constructs a client. An explicit `--output interactive` overrides that auto-selection; the TUI can then be driven under a pseudo-terminal.
+- The checklist's original blocker was harness-only: the CLI auto-selects text output when all streams are not TTYs, and `ParseCommandInteractiveOnly` rejects the command before it constructs a client. An explicit `--output interactive` overrides that auto-selection; the TUI can then be driven under a pseudo-terminal.
 - Arguments after `--` are appended to the spawned `redis-cli`/`valkey-cli` process. One-shot commands such as `PING`, `SET`, and `GET` therefore terminate without a person exiting an interactive REPL; a successful child exit makes the CLI's one-item TUI stack exit too.
 - The ID path first calls `GET /v1/key-value/{id}/connection-info`. The name path lists with `?name=...`, requires exactly one match, then calls connection-info with the resolved `red-` id. Both paths must be exercised; proving only one does not close the row.
-- bex already returns `redis-cli -u <uri>` and chooses the external `rediss://` URI when the Key Value is public. Unit and gated live tests cover that assembly, but no test currently launches the official CLI or reaches the public proxy with it.
-- A local pseudo-terminal probe with v2.21.0 reached bex's Key Value REST path instead of firing the interactive-only guard, disproving "not verifiable headlessly." The remaining proof requires a real public endpoint.
-- dev-9 cannot supply that proof: its documented omissions include `BEX_KV_DOMAIN`, cert-manager, and external datastore connectivity. The live leg needs production or an equivalent full-stack environment with the `:6379` edge, DNS, certificate, SNI proxy, and an explicitly allowed source CIDR.
+- bex chooses the external `rediss://` URI when the Key Value is public. After t011, public connection-info returns `redis-cli --sni <externalHost> -u <uri>` because `redis-cli` does not infer a TLS server name from the URI; private connection-info retains `redis-cli -u <uri>`.
+- A local pseudo-terminal probe with v2.21.0 reached bex's Key Value REST path instead of firing the interactive-only guard, disproving "not verifiable headlessly." The later production run completed the real public-endpoint proof.
+- dev-9 cannot supply that proof: its documented omissions include `BEX_KV_DOMAIN`, cert-manager, and external datastore connectivity. Production supplied the complete `:6379` edge, DNS, certificate, SNI proxy, and explicitly allowed source CIDR.
 - The official CLI's Render `KeyValuePOSTInput` has no bex-only `public` field. The verifier may create its disposable fixture through authenticated REST with `public:true` (or accept an explicitly named existing disposable public fixture), then must use the official CLI for both connection attempts. This is fixture setup, not permission to patch/fork the CLI or broaden the milestone into create/update semantics.
 - The first production verifier run on 2026-07-18 reached connection-info and launched `redis-cli`, but bounded every command at 45 seconds. A follow-up TCP preflight proved the available fixture's public `:6379` endpoint unreachable. Hetzner reported the load balancer's 6379 service healthy, while `*.kv.bex.co` resolved through the same Cloudflare-proxied address set as `api.bex.co` instead of the load balancer. ADR021 already requires DNS-only records because ordinary Cloudflare proxying cannot carry raw Valkey TCP; t008 repairs and gates that deployed contract before t004 reruns acceptance.
+- After the DNS repair, a second production run reached the Valkey SNI proxy but every exact-source request was rejected before backend dial. The Terraform TCP listener had PROXY protocol disabled, so the proxy saw the Hetzner load balancer address instead of the client address despite `externalTrafficPolicy: Local`; t010 restores the original-source trust chain for both datastore allowlists before acceptance reruns.
+- After the source-IP repair, a third production run passed both allowlist layers but the SNI proxy rejected the official CLI's TLS ClientHello because it had no server name. `redis-cli` 8.0.3 does not infer SNI from `rediss://`; t011 adds its supported explicit `--sni <externalHost>` argument to the public connection-info command while leaving private commands unchanged.
+- The final 2026-07-18 production run passed opaque-id `PING`/`SET`, display-name `GET`/`DEL`, and every cleanup assertion with the official v2.21.0 CLI unmodified. Sanitized evidence is in [`evidence/2026-07-18-kv-cli-acceptance.md`](evidence/2026-07-18-kv-cli-acceptance.md).
 
 ## Source + Goal linkage
 

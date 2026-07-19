@@ -231,7 +231,7 @@ resource "hcloud_load_balancer_service" "postgres" {
   protocol         = "tcp"
   listen_port      = 5432
   destination_port = 31056
-  proxyprotocol    = false
+  proxyprotocol    = true
 
   health_check {
     protocol = "tcp"
@@ -249,7 +249,7 @@ resource "hcloud_load_balancer_service" "valkey" {
   protocol         = "tcp"
   listen_port      = 6379
   destination_port = 31892
-  proxyprotocol    = false
+  proxyprotocol    = true
 
   health_check {
     protocol = "tcp"

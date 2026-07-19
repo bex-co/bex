@@ -33,10 +33,28 @@ import (
 )
 
 func TestRenderKVCLIArgs(t *testing.T) {
-	want := []string{"kv-cli", "--output", "interactive", "red-example", "--", "--raw", "SET", "key", "value"}
-	got := renderKVCLIArgs("red-example", []string{"SET", "key", "value"})
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("arguments = %#v, want %#v", got, want)
+	for _, target := range []string{"red-example", "display-name"} {
+		for _, family := range []string{"-4", "-6"} {
+			t.Run(target+family, func(t *testing.T) {
+				want := []string{"kv-cli", "--output", "interactive", target, "--", family, "--raw", "SET", "key", "value"}
+				got := renderKVCLIArgs(target, family, []string{"SET", "key", "value"})
+				if !reflect.DeepEqual(got, want) {
+					t.Fatalf("arguments = %#v, want %#v", got, want)
+				}
+			})
+		}
+	}
+}
+
+func TestCappedTranscript(t *testing.T) {
+	var transcript cappedTranscript
+	input := make([]byte, maxKVCLITranscriptBytes+1)
+	written, err := transcript.Write(input)
+	if err != nil || written != len(input) {
+		t.Fatalf("Write() = %d, %v; want %d, nil", written, err, len(input))
+	}
+	if transcript.buf.Len() != maxKVCLITranscriptBytes || !transcript.truncated {
+		t.Fatalf("buffer length = %d, truncated = %t", transcript.buf.Len(), transcript.truncated)
 	}
 }
 
@@ -86,23 +104,36 @@ func TestRunPTYCommand(t *testing.T) {
 }
 
 func TestValidateKVCLIOutcome(t *testing.T) {
-	if err := validateKVCLIOutcome(ptyTranscript{bytes: []byte("\x1b[2JPONG\r\n")}, nil, "PONG", nil); err != nil {
-		t.Fatalf("valid outcome: %v", err)
-	}
-	err := validateKVCLIOutcome(ptyTranscript{bytes: []byte("WRONG\r\n")}, nil, "PONG", nil)
-	if err == nil || !strings.Contains(err.Error(), "result mismatch") {
-		t.Fatalf("mismatch error = %v", err)
-	}
-	err = validateKVCLIOutcome(ptyTranscript{truncated: true, bytes: []byte("PONG\r\n")}, nil, "PONG", nil)
-	if err == nil || !strings.Contains(err.Error(), "bounded") {
-		t.Fatalf("truncation error = %v", err)
+	t.Run("exact line succeeds", func(t *testing.T) {
+		if err := validateKVCLIOutcome(ptyTranscript{bytes: []byte("\x1b[2JPONG\r\n")}, nil, "PONG", nil); err != nil {
+			t.Fatalf("valid outcome: %v", err)
+		}
+	})
+
+	for _, test := range []struct {
+		name       string
+		transcript ptyTranscript
+		runErr     error
+		want       string
+	}{
+		{name: "wrong result", transcript: ptyTranscript{bytes: []byte("WRONG\r\n")}, want: "result mismatch"},
+		{name: "premature EOF", transcript: ptyTranscript{}, want: "no safe terminal output"},
+		{name: "nonzero exit", transcript: ptyTranscript{bytes: []byte("safe failure\r\n")}, runErr: errors.New("exit status 23"), want: "process failed"},
+		{name: "bounded transcript", transcript: ptyTranscript{truncated: true, bytes: []byte("PONG\r\n")}, want: "bounded"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			err := validateKVCLIOutcome(test.transcript, test.runErr, "PONG", nil)
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("error = %v, want substring %q", err, test.want)
+			}
+		})
 	}
 }
 
 func TestSanitizeKVCLIDiagnostic(t *testing.T) {
 	const token = "secret-bearer-value"
 	raw := []byte("\x1b[2JAuthorization: Bearer abc.def\r\n" +
-		"redis-cli -u rediss://default:password@red.example.test:6379\r\n" +
+		"redis-cli --sni red.example.test -u rediss://default:password@red.example.test:6379\r\n" +
 		"RENDER_API_KEY=" + token + "\r\n")
 	got := sanitizeKVCLIDiagnostic(raw, []string{token})
 	for _, forbidden := range []string{"abc.def", "default:password", token, "\x1b"} {

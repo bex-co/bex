@@ -21,6 +21,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
+  actions: read
   contents: read
   pull-requests: write
 
@@ -154,15 +155,67 @@ jobs:
           valkey 6379
           SERVICES
 
-      # PRs, schedule (drift), manual: plan only — never mutate from a PR.
+      # Save one reviewed plan for every event. Push applies this exact plan
+      # after the compatibility gate below; PRs, schedules, and manual runs
+      # remain read-only.
       - name: plan
-        if: github.event_name != 'push'
-        run: terraform plan -no-color
+        run: terraform plan -no-color -out=tfplan
+
+      # PROXY protocol is wire-incompatible with the old datastore proxies:
+      # enabling it first would make the old binaries parse "PROXY ..." as a
+      # PostgreSQL/TLS preamble. The deploy workflow for this same source SHA
+      # waits until both proxy DaemonSets run the freshly built digest. Only a
+      # plan that changes either datastore listener from false to true needs
+      # the cross-workflow handoff; every other Terraform apply proceeds
+      # normally. A missing/failed deploy fails closed and leaves the LB alone.
+      - name: wait for PROXY-compatible datastore proxy rollout
+        if: github.event_name == 'push'
+        timeout-minutes: 45
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          needs_rollout="$(terraform show -json tfplan | jq -r '
+            any(.resource_changes[]?;
+              .type == "hcloud_load_balancer_service" and
+              (.name == "postgres" or .name == "valkey") and
+              .change.after.proxyprotocol == true and
+              .change.before.proxyprotocol != true)
+          ')"
+          if [ "${needs_rollout}" != true ]; then
+            echo "plan does not enable datastore PROXY protocol"
+            exit 0
+          fi
+
+          echo "waiting for deploy.yml at ${GITHUB_SHA} before enabling datastore PROXY protocol"
+          for _ in $(seq 1 160); do
+            response="$(curl --fail --silent --show-error \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H 'Accept: application/vnd.github+json' \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/deploy.yml/runs?head_sha=${GITHUB_SHA}&per_page=20")"
+            read -r status conclusion < <(jq -r '
+              [.workflow_runs[] | select(.event == "push")] |
+              sort_by(.created_at) | reverse | .[0] // {} |
+              [.status // "missing", .conclusion // "pending"] | @tsv
+            ' <<<"${response}")
+            case "${status}:${conclusion}" in
+              completed:success)
+                echo "deploy workflow completed; datastore proxies are digest-ready"
+                exit 0
+                ;;
+              completed:*)
+                echo "deploy workflow concluded ${conclusion}; refusing to enable datastore PROXY protocol" >&2
+                exit 1
+                ;;
+            esac
+            sleep 15
+          done
+          echo "timed out waiting for deploy workflow; refusing to enable datastore PROXY protocol" >&2
+          exit 1
 
       # Merge to main: converge. Idempotent — a no-op when nothing changed.
       - name: apply
         if: github.event_name == 'push'
-        run: terraform apply -auto-approve -no-color
+        run: terraform apply -auto-approve -no-color tfplan
 
       # The former CCM owner registered one target per current worker. Terraform
       # first creates the equivalent autoscaling-safe label selector, then this

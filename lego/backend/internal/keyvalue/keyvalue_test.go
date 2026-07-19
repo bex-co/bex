@@ -538,13 +538,37 @@ func TestRESTKeyValueConnectionInfo(t *testing.T) {
 		t.Errorf("external = %q", ci.ExternalConnectionString)
 	}
 	// cliCommand connects over the external (TLS) endpoint when public.
-	if ci.CLICommand != "redis-cli -u rediss://default:s3cret@conn-kv.kv.bex.co:6379" {
+	if ci.CLICommand != "redis-cli --sni conn-kv.kv.bex.co -u rediss://default:s3cret@conn-kv.kv.bex.co:6379" {
 		t.Errorf("cliCommand = %q", ci.CLICommand)
 	}
 	// Render's keyValueConnectionInfo has no standalone password field — the
 	// password lives inside the strings only.
 	if strings.Contains(string(body), `"password"`) {
 		t.Errorf("connection-info must not expose a standalone password field: %s", body)
+	}
+}
+
+func TestKeyValueConnectionInfoRejectsInvalidPublicHostWithoutLeakingSecret(t *testing.T) {
+	svc, cl := newService()
+	seedKeyValue(t, cl, "bad-host-kv")
+
+	var kv appv1alpha1.KeyValue
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "bad-host-kv"}, &kv); err != nil {
+		t.Fatalf("get KeyValue: %v", err)
+	}
+	kv.Status.ExternalHost = ""
+	if err := cl.Update(context.Background(), &kv); err != nil {
+		t.Fatalf("clear external host: %v", err)
+	}
+
+	_, err := svc.KeyValueConnectionInfo(context.Background(), "bad-host-kv")
+	if err == nil {
+		t.Fatal("expected invalid public host error")
+	}
+	for _, forbidden := range []string{"s3cret", "rediss://", "bad-host-kv.kv.bex.co"} {
+		if strings.Contains(err.Error(), forbidden) {
+			t.Fatalf("error leaked %q: %v", forbidden, err)
+		}
 	}
 }
 

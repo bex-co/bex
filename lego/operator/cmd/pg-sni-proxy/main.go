@@ -26,6 +26,7 @@ limitations under the License.
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/binary"
 	"fmt"
@@ -236,6 +237,11 @@ func main() {
 	if domain == "" {
 		log.Info("BEX_DB_DOMAIN is unset — proxy will refuse all connections (no routing table)")
 	}
+	trustedProxyCIDRs, err := sniproxy.ParseTrustedProxyCIDRs(os.Getenv("BEX_PROXY_PROTOCOL_TRUSTED_CIDRS"))
+	if err != nil {
+		log.Error(err, "invalid BEX_PROXY_PROTOCOL_TRUSTED_CIDRS")
+		os.Exit(1)
+	}
 
 	router := newRouter(domain)
 	registry := prometheus.NewRegistry()
@@ -320,7 +326,7 @@ func main() {
 				continue
 			}
 		}
-		go handleConn(conn, router, meter, log)
+		go handleConn(conn, router, meter, trustedProxyCIDRs, log)
 	}
 }
 
@@ -330,15 +336,27 @@ func main() {
 //  3. Dials the matching CNPG backend.
 //  4. Re-negotiates SSL with the backend (for preamble-mode clients).
 //  5. Splices the connection bidirectionally.
-func handleConn(conn net.Conn, router *dbRouter, meter *sniproxy.ByteMeter, log interface {
-	Info(msg string, keysAndValues ...any)
-	Error(err error, msg string, keysAndValues ...any)
-}) {
+func handleConn(
+	conn net.Conn,
+	router *dbRouter,
+	meter *sniproxy.ByteMeter,
+	trustedProxyCIDRs []netip.Prefix,
+	log interface {
+		Info(msg string, keysAndValues ...any)
+		Error(err error, msg string, keysAndValues ...any)
+	},
+) {
 	defer func() { _ = conn.Close() }()
+	reader := bufio.NewReader(conn)
+	source, err := sniproxy.ReadProxySource(reader, conn.RemoteAddr(), trustedProxyCIDRs)
+	if err != nil {
+		log.Info("invalid PROXY protocol header", "err", err)
+		return
+	}
 
 	// Peek at the first 8 bytes to distinguish SSLRequest from direct TLS.
 	var peek [8]byte
-	if _, err := io.ReadFull(conn, peek[:]); err != nil {
+	if _, err := io.ReadFull(reader, peek[:]); err != nil {
 		return
 	}
 
@@ -365,7 +383,7 @@ func handleConn(conn net.Conn, router *dbRouter, meter *sniproxy.ByteMeter, log 
 		initial = peek[:] // first 8 bytes are the start of the TLS record
 	}
 
-	clientHello, err := sniproxy.ReadTLSRecord(conn, initial)
+	clientHello, err := sniproxy.ReadTLSRecord(reader, initial)
 	if err != nil {
 		log.Info("failed to read TLS ClientHello", "err", err)
 		return
@@ -377,10 +395,6 @@ func handleConn(conn net.Conn, router *dbRouter, meter *sniproxy.ByteMeter, log 
 		return
 	}
 
-	source, err := sniproxy.RemoteIP(conn.RemoteAddr())
-	if err != nil {
-		return
-	}
 	route, ok := router.resolve(sni, source)
 	if !ok {
 		log.Info("no route for SNI", "sni", sni)
