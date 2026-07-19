@@ -41,6 +41,10 @@ spec:
               value: db.bex.co
             - name: BEX_PROXY_METRICS_ADDR
               value: ":9092"
+            # The Terraform-owned Hetzner LB has this fixed private address.
+            # Only it may assert the original public client via PROXY protocol.
+            - name: BEX_PROXY_PROTOCOL_TRUSTED_CIDRS
+              value: "10.10.0.7/32"
           readinessProbe:
             httpGet:
               path: /metrics

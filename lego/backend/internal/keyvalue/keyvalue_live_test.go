@@ -133,7 +133,7 @@ func TestKeyValueLiveIntegration(t *testing.T) {
 	if !strings.HasPrefix(ci.ExternalConnectionString, "rediss://default:") {
 		t.Errorf("external string (public store) = %q", redact(ci.ExternalConnectionString))
 	}
-	if !strings.HasPrefix(ci.CLICommand, "redis-cli -u rediss://") {
+	if !strings.HasPrefix(ci.CLICommand, "redis-cli --sni ") || !strings.Contains(ci.CLICommand, " -u rediss://") {
 		t.Errorf("cliCommand should use the external TLS endpoint, got %q", redact(ci.CLICommand))
 	}
 	t.Logf("connection-info ok: internal=%s external=%s", redact(ci.InternalConnectionString), redact(ci.ExternalConnectionString))

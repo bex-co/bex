@@ -117,19 +117,19 @@ func finishPTYRead(ptmx *os.File, readDone <-chan ptyTranscript) ptyTranscript {
 	}
 }
 
-func renderKVCLIArgs(target string, redisArgs []string) []string {
-	args := []string{"kv-cli", "--output", "interactive", target, "--", "--raw"}
+func renderKVCLIArgs(target, addressFamily string, redisArgs []string) []string {
+	args := []string{"kv-cli", "--output", "interactive", target, "--", addressFamily, "--raw"}
 	return append(args, redisArgs...)
 }
 
 func runOfficialKVCLICommand(
 	ctx context.Context,
-	binary, target string,
+	binary, target, addressFamily string,
 	redisArgs []string,
 	wantLine string,
 	env, secrets []string,
 ) error {
-	transcript, runErr := runPTYCommand(ctx, binary, renderKVCLIArgs(target, redisArgs), env)
+	transcript, runErr := runPTYCommand(ctx, binary, renderKVCLIArgs(target, addressFamily, redisArgs), env)
 	return validateKVCLIOutcome(transcript, runErr, wantLine, secrets)
 }
 
@@ -208,6 +208,7 @@ func TestOfficialCLIKeyValueAcceptance(t *testing.T) {
 		"BEX_TEST_KV_CLI_NAME":   os.Getenv("BEX_TEST_KV_CLI_NAME"),
 		"BEX_TEST_KV_CLI_KEY":    os.Getenv("BEX_TEST_KV_CLI_KEY"),
 		"BEX_TEST_KV_CLI_VALUE":  os.Getenv("BEX_TEST_KV_CLI_VALUE"),
+		"BEX_TEST_KV_CLI_FAMILY": os.Getenv("BEX_TEST_KV_CLI_FAMILY"),
 		"RENDER_HOST":            os.Getenv("RENDER_HOST"),
 		"RENDER_API_KEY":         os.Getenv("RENDER_API_KEY"),
 		"RENDER_WORKSPACE":       os.Getenv("RENDER_WORKSPACE"),
@@ -232,6 +233,10 @@ func TestOfficialCLIKeyValueAcceptance(t *testing.T) {
 	name := required["BEX_TEST_KV_CLI_NAME"]
 	key := required["BEX_TEST_KV_CLI_KEY"]
 	value := required["BEX_TEST_KV_CLI_VALUE"]
+	addressFamily := required["BEX_TEST_KV_CLI_FAMILY"]
+	if addressFamily != "-4" && addressFamily != "-6" {
+		t.Fatalf("BEX_TEST_KV_CLI_FAMILY must be -4 or -6")
+	}
 	secrets := []string{
 		required["RENDER_API_KEY"],
 		required["RENDER_WORKSPACE"],
@@ -256,7 +261,7 @@ func TestOfficialCLIKeyValueAcceptance(t *testing.T) {
 		t.Run(check.label, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), timeout)
 			defer cancel()
-			if err := runOfficialKVCLICommand(ctx, binary, check.target, check.redisArgs, check.want, os.Environ(), secrets); err != nil {
+			if err := runOfficialKVCLICommand(ctx, binary, check.target, addressFamily, check.redisArgs, check.want, os.Environ(), secrets); err != nil {
 				t.Fatal(err)
 			}
 			t.Log("PASS official kv-cli " + check.label)

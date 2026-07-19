@@ -25,6 +25,10 @@ done
 [[ "$RENDER_HOST" == https://*/v1/ ]] || fail "RENDER_HOST must be a public HTTPS /v1/ origin"
 [[ "$BEX_KV_VERIFY_ALLOW_CIDR" =~ ^[^,[:space:]]+/[0-9]+$ ]] ||
   fail "BEX_KV_VERIFY_ALLOW_CIDR must be one explicit CIDR"
+address_family=-4
+if [[ "$BEX_KV_VERIFY_ALLOW_CIDR" == *:* ]]; then
+  address_family=-6
+fi
 [[ -x "$RENDER_BIN" ]] || fail "official Render CLI is not executable"
 [[ -d "$(dirname "$RENDER_CLI_CONFIG_PATH")" && -w "$(dirname "$RENDER_CLI_CONFIG_PATH")" ]] ||
   fail "RENDER_CLI_CONFIG_PATH parent must be writable"
@@ -143,6 +147,7 @@ if ! probe_output="$({
     BEX_TEST_KV_CLI_NAME="$fixture_name" \
     BEX_TEST_KV_CLI_KEY="$probe_key" \
     BEX_TEST_KV_CLI_VALUE="$probe_value" \
+    BEX_TEST_KV_CLI_FAMILY="$address_family" \
     go test ./internal/keyvalue -run '^TestOfficialCLIKeyValueAcceptance$' -count=1 -v
 } 2>&1)"; then
   printf '%s\n' "$probe_output" >&2

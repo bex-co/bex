@@ -32,7 +32,7 @@ write_fakes() {
     '  if [[ "${KV_VERIFY_BAD_MODULE:-0}" == "1" ]]; then printf "\tpath\texample.invalid/modified-cli\n"; else printf "\tpath\tgithub.com/render-oss/cli\n"; fi' \
     '  exit 0' \
     'fi' \
-    'printf "go id=%s name=%s\n" "$BEX_TEST_KV_CLI_ID" "$BEX_TEST_KV_CLI_NAME" >>"$KV_VERIFY_CALLS"' \
+    'printf "go id=%s name=%s family=%s\n" "$BEX_TEST_KV_CLI_ID" "$BEX_TEST_KV_CLI_NAME" "$BEX_TEST_KV_CLI_FAMILY" >>"$KV_VERIFY_CALLS"' \
     'if [[ "${KV_VERIFY_GO_FAIL:-0}" == "1" ]]; then' \
     '  echo "safe simulated probe failure" >&2' \
     '  exit 1' \
@@ -58,11 +58,13 @@ write_fakes() {
     'path="${url#https://api.example.test/v1}"' \
     'printf "%s %s\n" "$method" "$path" >>"$KV_VERIFY_CALLS"' \
     'case "$method $path" in' \
-    '  "GET /key-value") echo "[]" ;;' \
+    '  "GET /key-value") [[ "${KV_VERIFY_API_PREFLIGHT_FAIL:-0}" != "1" ]] || exit 22; echo "[]" ;;' \
     '  "POST /key-value") name="$(jq -r .name <<<"$data")"; echo "{\"id\":\"red-fixture\",\"name\":\"$name\"}" ;;' \
     '  "GET /key-value/red-fixture")' \
     '    if [[ -f "$KV_VERIFY_DELETED" ]]; then' \
     '      [[ "$write_code" == "1" ]] && printf 404' \
+    '    elif [[ "${KV_VERIFY_RESOURCE_PENDING:-0}" == "1" ]]; then' \
+    '      echo "{\"status\":\"creating\"}"' \
     '    else' \
     '      echo "{\"status\":\"available\",\"externalHost\":\"kv.example.test\"}"' \
     '    fi ;;' \
@@ -101,6 +103,21 @@ set -e
   exit 1
 }
 
+# A failed API/workspace read must stop before fixture creation.
+: >"$KV_VERIFY_CALLS"
+set +e
+api_output="$(BEX_KV_VERIFY_ALLOW_CIDR=192.0.2.10/32 KV_VERIFY_API_PREFLIGHT_FAIL=1 bash "$verify" 2>&1)"
+api_status=$?
+set -e
+[[ "$api_status" != 0 && "$api_output" == *"API/workspace preflight failed"* ]] || {
+  echo "API/workspace preflight did not fail precisely: $api_output" >&2
+  exit 1
+}
+if grep -q '^POST /key-value$' "$KV_VERIFY_CALLS"; then
+  echo "API/workspace preflight failure created a fixture" >&2
+  exit 1
+fi
+
 # A binary that reports the right version but is not built from the upstream
 # module must fail before the API preflight or fixture mutation.
 : >"$KV_VERIFY_CALLS"
@@ -138,8 +155,8 @@ run_probe_failure() {
     echo "probe failure deleted an unexpected number of targets" >&2
     exit 1
   }
-  grep -Eq '^go id=red-fixture name=kvcli-m57-[0-9]+-[0-9]+$' "$KV_VERIFY_CALLS" || {
-    echo "probe did not receive both id and display-name targets" >&2
+  grep -Eq '^go id=red-fixture name=kvcli-m57-[0-9]+-[0-9]+ family=-4$' "$KV_VERIFY_CALLS" || {
+    echo "probe did not receive both targets and the CIDR-matched address family" >&2
     exit 1
   }
   grep -Fxq 'GET /key-value/red-fixture/connection-info' "$KV_VERIFY_CALLS" || {
@@ -149,6 +166,46 @@ run_probe_failure() {
 }
 
 run_probe_failure
+
+# An interrupt after creation must take the same exact-id cleanup path.
+rm -f "$KV_VERIFY_DELETED"
+: >"$KV_VERIFY_CALLS"
+export KV_VERIFY_RESOURCE_PENDING=1
+bash "$verify" >"$tmp/interrupt.out" 2>&1 &
+verify_pid=$!
+fixture_observed=0
+for _ in {1..50}; do
+  if grep -Fxq 'GET /key-value/red-fixture' "$KV_VERIFY_CALLS"; then
+    fixture_observed=1
+    break
+  fi
+  sleep 0.05
+done
+[[ "$fixture_observed" == "1" ]] || {
+  kill -TERM "$verify_pid" >/dev/null 2>&1 || true
+  wait "$verify_pid" >/dev/null 2>&1 || true
+  echo 'interrupt test did not observe the created fixture' >&2
+  exit 1
+}
+kill -TERM "$verify_pid"
+set +e
+wait "$verify_pid"
+interrupt_status=$?
+set -e
+unset KV_VERIFY_RESOURCE_PENDING
+[[ "$interrupt_status" == "143" ]] || {
+  echo "interrupt verifier status = $interrupt_status, want 143" >&2
+  exit 1
+}
+assert_interrupt_cleanup="$(<"$tmp/interrupt.out")"
+[[ "$assert_interrupt_cleanup" == *'PASS disposable Key Value cleanup'* ]] || {
+  echo 'interrupt did not report disposable Key Value cleanup' >&2
+  exit 1
+}
+[[ "$(grep -c '^DELETE /key-value/red-fixture$' "$KV_VERIFY_CALLS")" == "1" ]] || {
+  echo 'interrupt did not delete the exact fixture once' >&2
+  exit 1
+}
 
 rm -f "$KV_VERIFY_DELETED"
 : >"$KV_VERIFY_CALLS"

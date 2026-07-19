@@ -29,6 +29,7 @@ package keyvalue
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -37,6 +38,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -749,7 +751,7 @@ func (s *Service) PreviewUpdateKeyValue(ctx context.Context, name string, patch 
 // from the operator-generated Secret (the only place the connection strings, and
 // so the password, are surfaced — to an authenticated caller).
 func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyValueConnectionInfo, error) {
-	_, sec, err := s.loadSecret(ctx, core.RelCanViewSensitive, name)
+	kv, sec, err := s.loadSecret(ctx, core.RelCanViewSensitive, name)
 	if err != nil {
 		return KeyValueConnectionInfo{}, err
 	}
@@ -758,14 +760,23 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 
 	// Render's cliCommand connects over the reachable endpoint — the external
 	// (TLS) one when public, otherwise the internal one. redis-cli reads the URI
-	// (rediss:// auto-negotiates TLS).
+	// (rediss:// auto-negotiates TLS), but does not derive a TLS server name from
+	// it, so the public SNI router requires the explicit operator-owned host.
 	conn := internal
+	cliCommand := fmt.Sprintf("redis-cli -u %s", conn)
 	if external != "" {
 		conn = external
+		externalHost := kv.Status.ExternalHost
+		if errs := validation.IsDNS1123Subdomain(externalHost); len(errs) != 0 {
+			// Keep the credential-bearing URI out of this error. A public Secret
+			// without matching operator status is an internal contract failure.
+			return KeyValueConnectionInfo{}, errors.New("key value external host is missing or invalid")
+		}
+		cliCommand = fmt.Sprintf("redis-cli --sni %s -u %s", externalHost, conn)
 	}
 	return KeyValueConnectionInfo{
 		InternalConnectionString: internal,
 		ExternalConnectionString: external,
-		CLICommand:               fmt.Sprintf("redis-cli -u %s", conn),
+		CLICommand:               cliCommand,
 	}, nil
 }

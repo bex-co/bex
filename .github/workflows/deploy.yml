@@ -414,6 +414,33 @@ jobs:
           kubectl -n bex-system rollout status deploy/bex-controller-manager --timeout=300s
           kubectl -n bex-system rollout status deploy/bex-api --timeout=300s
 
+      # The infra workflow may be waiting to enable PROXY protocol on the two
+      # raw datastore listeners. Do not report this deploy successful until
+      # Argo has put the freshly built, header-capable digest on every proxy
+      # pod. Merely calling `rollout status` is insufficient: an old, already-
+      # Ready DaemonSet would return immediately before Argo observes the digest
+      # write-back above.
+      - name: wait for PROXY-compatible datastore proxies
+        if: ${{ always() && steps.build_operator.outputs.digest != '' }}
+        timeout-minutes: 12
+        env:
+          BEX_EXPECTED_PROXY_IMAGE: ${{ env.IMAGE }}@${{ steps.build_operator.outputs.digest }}
+        run: |
+          for daemonset in bex-pg-sni-proxy bex-kv-sni-proxy; do
+            deadline=$((SECONDS + 600))
+            actual=""
+            while ((SECONDS < deadline)); do
+              actual="$(kubectl -n bex-system get daemonset "${daemonset}" -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)"
+              [ "${actual}" = "${BEX_EXPECTED_PROXY_IMAGE}" ] && break
+              sleep 5
+            done
+            if [ "${actual}" != "${BEX_EXPECTED_PROXY_IMAGE}" ]; then
+              echo "${daemonset} image is ${actual:-missing}, want ${BEX_EXPECTED_PROXY_IMAGE}" >&2
+              exit 1
+            fi
+            kubectl -n bex-system rollout status "daemonset/${daemonset}" --timeout=300s
+          done
+
       # --- 6. roll the dashboard onto the freshly-pushed image ---
       # Same mutable-:latest caveat as step 5 (deploy/gitops/base/dashboard.yaml).
       - name: roll dashboard onto the freshly-pushed image

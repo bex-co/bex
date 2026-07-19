@@ -52,7 +52,10 @@ curl() {
       jq -cn '{success: true, result: [{id: "zone-test", name: "example.test", status: "active"}], errors: []}'
       ;;
     "GET /zones/zone-test/dns_records?"*)
-      jq -cn --slurpfile records "$TEST_CF_STATE" '{success: true, result: $records[0], errors: []}'
+      local exact_name="${path#*name.exact=}"
+      exact_name="${exact_name%%&*}"
+      jq -cn --arg name "$exact_name" --slurpfile records "$TEST_CF_STATE" \
+        '{success: true, result: [$records[0][] | select(.name == $name)], errors: []}'
       ;;
     "PATCH /zones/zone-test/dns_records/"*)
       local record_id="${path##*/}"
@@ -109,6 +112,20 @@ assert_reconciled_state() {
   ' "$TEST_CF_STATE" >/dev/null
 }
 
+assert_check_fails() {
+  local label="$1" state="$2"
+  write_state "$state"
+  if bash "$reconcile" --check >"$tmp/$label.out" 2>&1; then
+    echo "expected $label Cloudflare records to fail check mode" >&2
+    exit 1
+  fi
+  assert_contains 'do not match the Terraform edge Load Balancer addresses' "$tmp/$label.out"
+  if grep -Eq '^(PATCH|POST|DELETE) ' "$TEST_CF_TRACE"; then
+    echo "$label Cloudflare DNS check performed a mutation" >&2
+    exit 1
+  fi
+}
+
 write_state '[
   {"id":"a-good","type":"A","name":"ssh.example.test","content":"192.0.2.10","ttl":300,"proxied":false},
   {"id":"aaaa-good","type":"AAAA","name":"ssh.example.test","content":"2001:db8::10","ttl":300,"proxied":false}
@@ -124,15 +141,22 @@ if [[ "$output" == *"$CLOUDFLARE_API_TOKEN"* ]] || grep -Fq "$CLOUDFLARE_API_TOK
   exit 1
 fi
 
-write_state '[
+assert_check_fails proxied '[
   {"id":"a-proxied","type":"A","name":"ssh.example.test","content":"192.0.2.10","ttl":1,"proxied":true},
-  {"id":"aaaa-stale","type":"AAAA","name":"ssh.example.test","content":"2001:db8::99","ttl":300,"proxied":false}
+  {"id":"aaaa-good","type":"AAAA","name":"ssh.example.test","content":"2001:db8::10","ttl":300,"proxied":false}
 ]'
-if bash "$reconcile" --check >"$tmp/mismatch.out" 2>&1; then
-  echo 'expected proxied or stale Cloudflare records to fail check mode' >&2
-  exit 1
-fi
-assert_contains 'do not match the Terraform edge Load Balancer addresses' "$tmp/mismatch.out"
+assert_check_fails missing '[
+  {"id":"a-good","type":"A","name":"ssh.example.test","content":"192.0.2.10","ttl":300,"proxied":false}
+]'
+assert_check_fails stale '[
+  {"id":"a-stale","type":"A","name":"ssh.example.test","content":"198.51.100.8","ttl":300,"proxied":false},
+  {"id":"aaaa-good","type":"AAAA","name":"ssh.example.test","content":"2001:db8::10","ttl":300,"proxied":false}
+]'
+assert_check_fails duplicate '[
+  {"id":"a-good","type":"A","name":"ssh.example.test","content":"192.0.2.10","ttl":300,"proxied":false},
+  {"id":"a-duplicate","type":"A","name":"ssh.example.test","content":"198.51.100.8","ttl":300,"proxied":false},
+  {"id":"aaaa-good","type":"AAAA","name":"ssh.example.test","content":"2001:db8::10","ttl":300,"proxied":false}
+]'
 
 write_state '[
   {"id":"a-primary","type":"A","name":"ssh.example.test","content":"192.0.2.10","ttl":1,"proxied":true},
@@ -160,11 +184,59 @@ export BEX_EDGE_DNS_ZONE=example.test
 export BEX_EDGE_DNS_LABEL='Key Value datastore'
 write_state '[
   {"id":"kv-a","type":"A","name":"*.kv.example.test","content":"192.0.2.10","ttl":1,"proxied":true},
-  {"id":"kv-aaaa","type":"AAAA","name":"*.kv.example.test","content":"2001:db8::10","ttl":1,"proxied":true}
+  {"id":"kv-aaaa","type":"AAAA","name":"*.kv.example.test","content":"2001:db8::10","ttl":1,"proxied":true},
+  {"id":"api-a","type":"A","name":"api.example.test","content":"198.51.100.50","ttl":300,"proxied":true}
 ]'
 output="$(bash "$reconcile")"
 [[ "$output" == "reconciled Cloudflare Key Value datastore DNS host=*.kv.example.test addresses=192.0.2.10,2001:db8::10" ]]
-jq -e 'all(.[]; .name == "*.kv.example.test" and .proxied == false and .comment == "bex key value datastore raw TCP edge")' "$TEST_CF_STATE" >/dev/null
+jq -e '
+  ([.[] | select(.name == "*.kv.example.test")] | length == 2) and
+  all(.[] | select(.name == "*.kv.example.test");
+    .proxied == false and .comment == "bex key value datastore raw TCP edge") and
+  any(.[]; .id == "api-a" and .name == "api.example.test" and
+    .content == "198.51.100.50" and .proxied == true)
+' "$TEST_CF_STATE" >/dev/null
+assert_contains 'GET /zones/zone-test/dns_records?name.exact=*.kv.example.test&per_page=100' "$TEST_CF_TRACE"
+if grep -Eq '/dns_records/api-a$' "$TEST_CF_TRACE"; then
+  echo 'wildcard reconciliation mutated a different DNS host' >&2
+  exit 1
+fi
+
+# The exact wildcard check is read-only once reconciled.
+: >"$TEST_CF_TRACE"
+output="$(bash "$reconcile" --check)"
+[[ "$output" == "PASS Cloudflare Key Value datastore DNS host=*.kv.example.test addresses=192.0.2.10,2001:db8::10" ]]
+if grep -Eq '^(PATCH|POST|DELETE) ' "$TEST_CF_TRACE"; then
+  echo 'wildcard DNS check mode performed a mutation' >&2
+  exit 1
+fi
+
+# An exact-name CNAME/NS collision must fail before any mutation.
+write_state '[
+  {"id":"kv-cname","type":"CNAME","name":"*.kv.example.test","content":"other.example.test","ttl":300,"proxied":false}
+]'
+if bash "$reconcile" >"$tmp/collision.out" 2>&1; then
+  echo 'expected wildcard CNAME collision to fail closed' >&2
+  exit 1
+fi
+assert_contains 'refusing to replace a CNAME or NS record at *.kv.example.test' "$tmp/collision.out"
+if grep -Eq '^(PATCH|POST|DELETE) ' "$TEST_CF_TRACE"; then
+  echo 'wildcard CNAME collision performed a mutation' >&2
+  exit 1
+fi
+
+# Only one leading wildcard label is accepted, and validation precedes API use.
+export BEX_EDGE_DNS_HOST='*.*.kv.example.test'
+: >"$TEST_CF_TRACE"
+if bash "$reconcile" >"$tmp/invalid-wildcard.out" 2>&1; then
+  echo 'expected malformed wildcard hostname to fail validation' >&2
+  exit 1
+fi
+assert_contains 'edge host and DNS zone must be DNS hostnames' "$tmp/invalid-wildcard.out"
+[[ ! -s "$TEST_CF_TRACE" ]] || {
+  echo 'malformed wildcard reached an external API' >&2
+  exit 1
+}
 unset BEX_EDGE_DNS_HOST BEX_EDGE_DNS_ZONE BEX_EDGE_DNS_LABEL
 
 echo 'PASS Cloudflare SSH DNS reconciliation safety gates'

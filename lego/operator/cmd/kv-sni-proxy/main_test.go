@@ -139,7 +139,12 @@ func TestPublicProxyPreservesEndToEndTLSAndMetersOnlyBackendWrites(t *testing.T)
 	registry := prometheus.NewRegistry()
 	meter := sniproxy.NewByteMeter(registry, "kv_proxy", "key_value")
 	router := newRouter("kv.bex.co")
-	router.table["kv-one"] = kvRoute{ResourceID: "kv-one", Backend: backendListener.Addr().String()}
+	router.table["kv-one"] = kvRoute{
+		ResourceID: "kv-one",
+		Backend:    backendListener.Addr().String(),
+		Allow:      []netip.Prefix{netip.MustParsePrefix("203.0.113.9/32")},
+		EnvAllow:   []netip.Prefix{netip.MustParsePrefix("203.0.113.0/24")},
+	}
 	proxyListener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -149,15 +154,22 @@ func TestPublicProxyPreservesEndToEndTLSAndMetersOnlyBackendWrites(t *testing.T)
 	go func() {
 		conn, acceptErr := proxyListener.Accept()
 		if acceptErr == nil {
-			handleConn(conn, router, meter, discardLogger{})
+			handleConn(conn, router, meter, []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")}, discardLogger{})
 		}
 		close(proxyDone)
 	}()
 
-	client, err := tls.Dial("tcp", proxyListener.Addr().String(), &tls.Config{
+	rawClient, err := net.Dial("tcp", proxyListener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := rawClient.Write([]byte("PROXY TCP4 203.0.113.9 49.12.20.236 49152 6379\r\n")); err != nil {
+		t.Fatal(err)
+	}
+	client := tls.Client(rawClient, &tls.Config{
 		RootCAs: roots, ServerName: host, MinVersion: tls.VersionTLS12,
 	})
-	if err != nil {
+	if err := client.Handshake(); err != nil {
 		t.Fatalf("TLS through pass-through proxy: %v", err)
 	}
 	if got := client.ConnectionState().PeerCertificates[0].DNSNames; len(got) != 1 || got[0] != host {

@@ -39,6 +39,10 @@ spec:
               value: ":9093"
             - name: BEX_KV_DOMAIN
               value: kv.bex.co
+            # Keep in sync with infra/terraform's traefik_private_ip. Direct
+            # NodePort clients cannot forge an allowlisted PROXY source.
+            - name: BEX_PROXY_PROTOCOL_TRUSTED_CIDRS
+              value: "10.10.0.7/32"
           readinessProbe:
             httpGet: { path: /metrics, port: metrics }
             initialDelaySeconds: 2

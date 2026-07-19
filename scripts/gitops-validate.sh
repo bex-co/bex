@@ -73,6 +73,39 @@ for edge in ssh:22:32207 http:80:31218 https:443:31976 postgres:5432:31056 valke
     echo "FAIL: Terraform edge listener $name must map :$listen to NodePort $destination with the same health-check port" >&2
     fail=1
   fi
+  expected_proxyprotocol=false
+  case "$name" in
+    postgres | valkey) expected_proxyprotocol=true ;;
+  esac
+  if ! grep -Eq "^[[:space:]]*proxyprotocol[[:space:]]*=[[:space:]]*${expected_proxyprotocol}[[:space:]]*$" <<<"$block"; then
+    echo "FAIL: Terraform edge listener $name must set proxyprotocol=$expected_proxyprotocol" >&2
+    fail=1
+  fi
+done
+
+# Enabling PROXY protocol before header-capable proxy pods are Ready breaks both
+# datastore front doors. Terraform must apply a saved plan only after the same
+# commit's deploy workflow succeeds, and that workflow must wait for the exact
+# freshly built digest on both proxy DaemonSets.
+echo "==> datastore PROXY protocol rollout ordering"
+for required in \
+  'terraform plan -no-color -out=tfplan' \
+  'terraform show -json tfplan' \
+  'actions/workflows/deploy.yml/runs?head_sha=${GITHUB_SHA}' \
+  'terraform apply -auto-approve -no-color tfplan'; do
+  grep -qF "$required" .github/workflows/infra.yml || {
+    echo "FAIL: infra workflow lost datastore PROXY rollout gate: $required" >&2
+    fail=1
+  }
+done
+for required in \
+  'BEX_EXPECTED_PROXY_IMAGE: ${{ env.IMAGE }}@${{ steps.build_operator.outputs.digest }}' \
+  'bex-pg-sni-proxy bex-kv-sni-proxy' \
+  'rollout status "daemonset/${daemonset}"'; do
+  grep -qF "$required" .github/workflows/deploy.yml || {
+    echo "FAIL: deploy workflow lost datastore proxy digest gate: $required" >&2
+    fail=1
+  }
 done
 
 echo "==> SSH activation safety gates"
@@ -376,7 +409,7 @@ check_fixed_edge_nodeport() {
   fi
 }
 
-echo "==> production edge Services expose fixed source-preserving NodePorts"
+echo "==> production edge Services expose fixed local-policy NodePorts"
 check_fixed_edge_nodeport Traefik-SSH "$tmp/traefik-prod.yaml" traefik ssh 32207
 check_fixed_edge_nodeport Traefik-HTTP "$tmp/traefik-prod.yaml" traefik web 31218
 check_fixed_edge_nodeport Traefik-HTTPS "$tmp/traefik-prod.yaml" traefik websecure 31976
@@ -388,6 +421,14 @@ for proxy in pg-sni-proxy kv-sni-proxy; do
   selected="$(yq -N "select(.kind == \"NetworkPolicy\" and .metadata.name == \"allow-production-edge-proxies\") | .spec.podSelector.matchExpressions[] | select(.key == \"app.bex.co/component\" and .operator == \"In\") | .values[] | select(. == \"$proxy\")" "$tmp/bex-operator-prod.yaml" | tr -d '\n')"
   if [ "$selected" != "$proxy" ]; then
     echo "FAIL: production edge NetworkPolicy does not select $proxy" >&2
+    fail=1
+  fi
+done
+echo "==> datastore proxies trust only the fixed Terraform load balancer address"
+for proxy in pg-sni-proxy kv-sni-proxy; do
+  trusted_proxy_cidrs="$(yq -N "select(.kind == \"DaemonSet\" and .metadata.name == \"bex-$proxy\") | .spec.template.spec.containers[] | select(.name == \"$proxy\") | .env[] | select(.name == \"BEX_PROXY_PROTOCOL_TRUSTED_CIDRS\") | .value" "$tmp/bex-operator-prod.yaml" | tr -d '\n')"
+  if [ "$trusted_proxy_cidrs" != 10.10.0.7/32 ]; then
+    echo "FAIL: $proxy trusts '$trusted_proxy_cidrs' for PROXY protocol, want only 10.10.0.7/32" >&2
     fail=1
   fi
 done

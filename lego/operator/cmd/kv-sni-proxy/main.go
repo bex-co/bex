@@ -20,6 +20,7 @@ limitations under the License.
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -190,6 +191,11 @@ func main() {
 	if domain == "" {
 		logger.Info("BEX_KV_DOMAIN is unset; proxy has no public routes")
 	}
+	trustedProxyCIDRs, err := sniproxy.ParseTrustedProxyCIDRs(os.Getenv("BEX_PROXY_PROTOCOL_TRUSTED_CIDRS"))
+	if err != nil {
+		logger.Error(err, "invalid BEX_PROXY_PROTOCOL_TRUSTED_CIDRS")
+		os.Exit(1)
+	}
 	registry := prometheus.NewRegistry()
 	meter := sniproxy.NewByteMeter(registry, "kv_proxy", "key_value")
 	router := newRouter(domain)
@@ -253,17 +259,29 @@ func main() {
 			logger.Error(err, "accept")
 			continue
 		}
-		go handleConn(conn, router, meter, logger)
+		go handleConn(conn, router, meter, trustedProxyCIDRs, logger)
 	}
 }
 
-func handleConn(conn net.Conn, router *kvRouter, meter *sniproxy.ByteMeter, logger interface {
-	Info(msg string, keysAndValues ...any)
-	Error(err error, msg string, keysAndValues ...any)
-}) {
+func handleConn(
+	conn net.Conn,
+	router *kvRouter,
+	meter *sniproxy.ByteMeter,
+	trustedProxyCIDRs []netip.Prefix,
+	logger interface {
+		Info(msg string, keysAndValues ...any)
+		Error(err error, msg string, keysAndValues ...any)
+	},
+) {
 	defer func() { _ = conn.Close() }()
 	_ = conn.SetReadDeadline(time.Now().Add(handshakeTimeout))
-	record, err := sniproxy.ReadTLSRecord(conn, nil)
+	reader := bufio.NewReader(conn)
+	source, err := sniproxy.ReadProxySource(reader, conn.RemoteAddr(), trustedProxyCIDRs)
+	if err != nil {
+		logger.Info("invalid PROXY protocol header", "err", err)
+		return
+	}
+	record, err := sniproxy.ReadTLSRecord(reader, nil)
 	if err != nil {
 		logger.Info("TLS ClientHello read failed", "err", err)
 		return
@@ -274,10 +292,6 @@ func handleConn(conn net.Conn, router *kvRouter, meter *sniproxy.ByteMeter, logg
 		return
 	}
 	_ = conn.SetReadDeadline(time.Time{})
-	source, err := sniproxy.RemoteIP(conn.RemoteAddr())
-	if err != nil {
-		return
-	}
 	route, ok := router.resolve(sni, source)
 	if !ok {
 		logger.Info("no allowed route", "sni", sni)
