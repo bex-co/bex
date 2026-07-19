@@ -6,7 +6,8 @@ import {
   SidebarContent,
   SidebarHeader,
 } from "@/common/components/ui/sidebar.tsx";
-import { SERVICE_NAV_GROUPS } from "@/features/services/components/service-nav";
+import { serviceNavGroups } from "@/features/services/components/service-nav";
+import { deriveServiceType } from "@/features/services/lib/service-type";
 import { useServer } from "@/features/services/hooks/use-server";
 import { isNavItemActive } from "./nav-active";
 import { SidebarBrand } from "./sidebar-brand";
@@ -59,7 +60,9 @@ export function ServiceSidebar({ serviceId }: ServiceSidebarProps) {
         </div>
         {showNav ? (
           <SidebarNavGroups
-            groups={SERVICE_NAV_GROUPS}
+            groups={serviceNavGroups(
+              service ? deriveServiceType(service.type) : null,
+            )}
             linkParams={{ serviceId }}
             isItemActive={(to) =>
               isNavItemActive(pathname, to.replace("$serviceId", serviceId))

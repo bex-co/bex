@@ -342,6 +342,7 @@ The third adapter (`mcp.go`) speaks the Model Context Protocol, so an agent oper
 | `scale_service` | `{serviceId, numInstances}` | `Scale` | updated `service` |
 | `update_idle_timeout` | `{serviceId, idleTTLSeconds}` | `SetIdleTTL` | updated `service` |
 | `set_root_directory` | `{serviceId, rootDir}` | `SetRootDir` | updated `service` |
+| `set_branch` (bex extension, w5/m48) | `{serviceId, branch}` | `SetSourceAndRegistryCredential` | updated `service` |
 | `set_start_command` (bex extension) | `{serviceId, startCommand}` | `SetCommands` | updated `service` |
 | `set_dockerfile_path` (bex extension) | `{serviceId, dockerfilePath}` | `SetDockerfilePath` | updated `service` |
 | `set_build_filter` (bex extension) | `{serviceId, buildFilter: {paths?, ignoredPaths?}}` | `SetBuildFilter` | updated `service` |

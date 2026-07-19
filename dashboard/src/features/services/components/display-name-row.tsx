@@ -7,25 +7,31 @@ import { useDisplayName } from "@/features/services/hooks/use-display-name";
 
 export interface DisplayNameRowProps {
   serviceId: string;
-  /** Raw spec.displayName; empty means the immutable serviceId is displayed. */
+  /** Raw spec.displayName; empty means the immutable service name is displayed. */
   displayName: string | null | undefined;
+  /** The immutable App name — the fallback value when no displayName is set
+   *  (Render prefills its Name field with the service name, never the id;
+   *  w5/m48/t004). Undefined while the service is still loading. */
+  name?: string | null;
   onChanged?: () => void;
 }
 
 /**
- * Settings row for a service's mutable human label. The immutable service id is
- * shown as the fallback and never edited, so a rename cannot change routing or
- * any Kubernetes identity derived from the id.
+ * Settings row for a service's mutable human label. The immutable service name
+ * is shown as the fallback (the id only when even the name is unknown) and
+ * never edited, so a rename cannot change routing or any Kubernetes identity
+ * derived from the id.
  */
 export function DisplayNameRow({
   serviceId,
   displayName,
+  name,
   onChanged,
 }: DisplayNameRowProps) {
   const { t } = useTranslations();
   const { setDisplayName, busy } = useDisplayName();
   const current = displayName?.trim() ?? "";
-  const visible = current || serviceId;
+  const visible = current || name?.trim() || serviceId;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(visible);
   const normalizedDraft = draft.trim();

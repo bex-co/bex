@@ -509,6 +509,35 @@ func (s AppSpec) PlatformSubdomain(name string) string {
 	return name
 }
 
+// EffectiveHosts returns the ordered, deduplicated public hosts the platform
+// serves this App at: spec.host first, then the platform hostname
+// `<PlatformSubdomain>.<baseDomain>` when the App is exposed and the subdomain
+// policy allows it, then spec.hosts. This is the single host-precedence rule
+// every reader — the operator's Ingress/status derivation, the static-server
+// resolver, and bex-api's pending-URL projection (w5/m48) — must apply
+// identically, so it lives here once instead of being hand-copied at each call
+// site (the same contract-level rationale as PlatformSubdomain above). name is
+// the App CR's Name (the PlatformSubdomain fallback); an empty baseDomain
+// yields no platform host.
+func (s AppSpec) EffectiveHosts(name, baseDomain string) []string {
+	var hosts []string
+	seen := map[string]bool{}
+	add := func(h string) {
+		if h != "" && !seen[h] {
+			seen[h] = true
+			hosts = append(hosts, h)
+		}
+	}
+	add(s.Host)
+	if s.Expose && baseDomain != "" && s.SubdomainPolicy != SubdomainPolicyDisabled {
+		add(s.PlatformSubdomain(name) + "." + baseDomain)
+	}
+	for _, h := range s.Hosts {
+		add(h)
+	}
+	return hosts
+}
+
 // AutoscalingSpec declares the autoscaling policy for a service. When enabled,
 // the operator adjusts spec.replicas within [minReplicas, maxReplicas] based on
 // live CPU/memory utilization vs the declared targets. Mirrors Render's Scaling

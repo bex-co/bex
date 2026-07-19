@@ -750,6 +750,9 @@ func suspenders(suspended bool) []string {
 
 func (s *Service) view(a *appv1alpha1.App) AppView {
 	v := view(a)
+	if v.URL == "" {
+		v.URL = s.pendingPublicURL(a)
+	}
 	v.DashboardURL = s.Metadata.DashboardURL(resourcemeta.ServiceDashboardRoute(v.Type), v.ID)
 	v.Region = s.Metadata.PlatformRegion()
 	host := strings.ToLower(strings.TrimSpace(s.SSHHost))
@@ -759,6 +762,28 @@ func (s *Service) view(a *appv1alpha1.App) AppView {
 		}
 	}
 	return v
+}
+
+// pendingPublicURL derives the URL the operator will serve a public service at
+// before the first successful deploy has materialized status.url — Render shows
+// a service's URL from the moment it's created (w5/m48/t003), so the API's url
+// field must not wait for a publish. The layer decision is deliberate: the CR's
+// status stays the operator's observed truth (what is actually served), while
+// the API projects the deterministic intent — the same host the operator's
+// status derivation will pick, via the one precedence rule on the CRD contract
+// (types.AppSpec.EffectiveHosts). Only web_service and static_site carry a
+// public URL. Returns "" when no public host is derivable (e.g. the platform
+// subdomain is disabled and no custom host is set, or BEX_BASE_DOMAIN is unset).
+func (s *Service) pendingPublicURL(a *appv1alpha1.App) string {
+	switch effectiveType(a.Spec.Type) {
+	case appv1alpha1.TypeWebService, appv1alpha1.TypeStaticSite:
+	default:
+		return ""
+	}
+	if hosts := a.Spec.EffectiveHosts(a.Name, s.BaseDomain); len(hosts) > 0 {
+		return "https://" + hosts[0]
+	}
+	return ""
 }
 
 func publicID(a *appv1alpha1.App) string {
@@ -2658,7 +2683,10 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 	}
 	if branch != nil {
 		nextBranch = strings.TrimSpace(*branch)
-		if !store.ValidGitRef(nextBranch) {
+		// An explicit empty means "back to the default" — the setter family's
+		// convention (empty clears to the default, cf. SetCommands); the
+		// fallback below applies it. Only a non-empty ref is validated.
+		if nextBranch != "" && !store.ValidGitRef(nextBranch) {
 			return AppView{}, fmt.Errorf("%w: invalid branch", core.ErrBadRequest)
 		}
 	}

@@ -76,12 +76,18 @@ export function ServiceSettingsPage() {
               <DisplayNameRow
                 serviceId={serviceId}
                 displayName={service?.displayName}
+                name={service?.name}
                 onChanged={() => void router.invalidate()}
               />
-              <InstanceTypeRow
-                serviceId={serviceId}
-                plan={service?.plan ?? null}
-              />
+              {/* A static_site has no instance type — it serves from the object
+                  store, not a sized pod (Render shows no Instance Type for
+                  static sites; w5/m48/t004). The Plan tab is gated the same way. */}
+              {!staticSite && (
+                <InstanceTypeRow
+                  serviceId={serviceId}
+                  plan={service?.plan ?? null}
+                />
+              )}
               {/* Idle timeout only applies to running-container services — a
                   cron_job has no idle traffic to sleep on, and a static_site
                   serves from the object store with no pod to hibernate

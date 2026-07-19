@@ -360,6 +360,16 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Metrics",
     description: "Service-detail nav item (metrics tab)",
   },
+  "services.navRedirects": {
+    message: "Redirects/Rewrites",
+    description:
+      "Service-detail nav item (static-site route rules page, Render's label)",
+  },
+  "services.navHeaders": {
+    message: "Headers",
+    description:
+      "Service-detail nav item (static-site response headers page, Render's label)",
+  },
   "services.navScaling": {
     message: "Scaling",
     description: "Service-detail nav item (autoscaling tab)",
@@ -1589,7 +1599,33 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.buildDeployBranchLabel": {
     message: "Branch",
-    description: "Build & Deploy: branch field label (read-only)",
+    description: "Build & Deploy: branch field label",
+  },
+  "services.buildDeployBranchHint": {
+    message: "The Git branch to build and deploy.",
+    description: "Build & Deploy: branch field hint (Render's copy)",
+  },
+  "services.buildDeployBranchEmpty": {
+    message: "main",
+    description:
+      "Build & Deploy: branch value shown when unset (the backend default)",
+  },
+  "services.buildDeployBranchPlaceholder": {
+    message: "main",
+    description: "Build & Deploy: branch input placeholder",
+  },
+  "services.buildDeployBranchEdit": {
+    message: "Edit branch",
+    description: "Build & Deploy: branch edit-button aria label",
+  },
+  "services.buildDeployBranchConfirmTitle": {
+    message: 'Change branch to "{value}"?',
+    description: "Build & Deploy: branch confirm-dialog title",
+  },
+  "services.buildDeployBranchConfirmBody": {
+    message:
+      "The next deploy builds this branch, and pushes to it trigger auto-deploys. Pushes to the old branch stop deploying.",
+    description: "Build & Deploy: branch confirm-dialog body",
   },
   "services.buildDeployRootDirLabel": {
     message: "Root Directory",
@@ -2021,6 +2057,11 @@ const enServices: Record<string, TranslationEntry> = {
     message:
       "The published output directory and the edge rules applied when serving it.",
     description: "Static Site settings section description",
+  },
+  "services.staticEdgeRulesHint": {
+    message: "Redirects/rewrites and response headers have their own pages:",
+    description:
+      "Settings hint pointing at the dedicated Redirects/Rewrites + Headers pages",
   },
   "services.staticEdit": {
     message: "Edit",

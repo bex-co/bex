@@ -30,6 +30,7 @@ import { formatRepoLabel, repoBrowseUrl } from "@/features/services/lib/repo";
 import {
   deriveServiceType,
   isCron,
+  isStaticSite,
   SERVICE_TYPE_ICON,
   SERVICE_TYPE_LABEL,
 } from "@/features/services/lib/service-type";
@@ -132,7 +133,9 @@ export function ServiceDetailHeader({
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <ServiceConnectButton service={service} />
+          {/* A static_site has no running instance to SSH into — Render's
+              static header carries only Manual Deploy (w5/m48/t001). */}
+          {!isStaticSite(service) && <ServiceConnectButton service={service} />}
           <ManualDeployButton service={service} pending={pending !== null} />
         </div>
       </div>
@@ -294,17 +297,23 @@ function ServiceConnectButton({ service }: { service: ServiceView }) {
  * The bex-native facts the retired Overview tab used to list — instances, active
  * revision, age — as one muted, dot-separated line under Render's metadata
  * stack. Phase and suspension aren't repeated: the status badge beside the name
- * already encodes both.
+ * already encodes both. A static_site has no runtime instances (it serves from
+ * the object store, docs/ADR029-static-sites.md), so its line omits Instances
+ * (w5/m48/t001 — Render shows no instance concept for static sites).
  */
 function HeaderFacts({ service }: { service: ServiceView }) {
   const { t } = useTranslations();
 
   const facts: { label: string; value: string }[] = [
     { label: t("services.colSlug"), value: service.slug || "—" },
-    {
-      label: t("services.colInstances"),
-      value: service.replicas != null ? String(service.replicas) : "—",
-    },
+    ...(isStaticSite(service)
+      ? []
+      : [
+          {
+            label: t("services.colInstances"),
+            value: service.replicas != null ? String(service.replicas) : "—",
+          },
+        ]),
     { label: t("services.colRevision"), value: service.revision || "—" },
     {
       label: t("services.colCreated"),

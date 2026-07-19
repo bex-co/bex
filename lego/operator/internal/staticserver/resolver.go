@@ -125,20 +125,7 @@ func (c *CachedResolver) Run(ctx context.Context, interval time.Duration, onErr 
 // when unset (pre-migration or hand-applied Apps), same as
 // controller.effectiveHosts.
 func effectiveHosts(app *appv1alpha1.App, baseDomain string) []string {
-	var hosts []string
-	seen := map[string]bool{}
-	add := func(h string) {
-		if h != "" && !seen[h] {
-			seen[h] = true
-			hosts = append(hosts, h)
-		}
-	}
-	add(app.Spec.Host)
-	if app.Spec.Expose && baseDomain != "" && app.Spec.SubdomainPolicy != appv1alpha1.SubdomainPolicyDisabled {
-		add(fmt.Sprintf("%s.%s", app.Spec.PlatformSubdomain(app.Name), baseDomain))
-	}
-	for _, h := range app.Spec.Hosts {
-		add(h)
-	}
-	return hosts
+	// Delegates to the CRD contract (types.AppSpec.EffectiveHosts, w5/m48) —
+	// the one precedence rule this comment used to promise by hand.
+	return app.Spec.EffectiveHosts(app.Name, baseDomain)
 }

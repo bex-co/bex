@@ -81,6 +81,11 @@ type rootDirArgs struct {
 	RootDir   string `json:"rootDir" jsonschema:"subdirectory of the repo to build from; empty builds from the repo root"`
 }
 
+type branchArgs struct {
+	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
+	Branch    string `json:"branch" jsonschema:"the Git branch to build and deploy; empty restores the default main"`
+}
+
 // buildCommandArgs, startCommandArgs and dockerfilePathArgs expose Build &
 // Deploy command/path settings through the same scalar-setter grammar as
 // set_root_directory. Render's official MCP has no update tools for any of them.
@@ -810,6 +815,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Set a build-from-git service's Root Directory: the subdirectory of its repo to build from (monorepo support). Triggers a fresh build scoped to that subdirectory. Tracks Render's Root Directory setting.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in rootDirArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.SetRootDir(ctx, in.ServiceID, in.RootDir)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_branch",
+		Description: "Change the Git branch a repo-backed service builds and deploys from (Render's editable Branch field). The next deploy builds the new branch and push-to-deploy matches pushes against it. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in branchArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetSourceAndRegistryCredential(ctx, in.ServiceID, nil, nil, &in.Branch, nil)
 		if err != nil {
 			return nil, renderService{}, err
 		}

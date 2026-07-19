@@ -2140,22 +2140,10 @@ func (r *AppReconciler) reconcileOpenSandbox(ctx context.Context, app *appv1alph
 // falling back to app.Name keeps those byte-identical to before this field
 // existed.
 func effectiveHosts(app *appv1alpha1.App, baseDomain string) []string {
-	var hosts []string
-	seen := map[string]bool{}
-	add := func(h string) {
-		if h != "" && !seen[h] {
-			seen[h] = true
-			hosts = append(hosts, h)
-		}
-	}
-	add(app.Spec.Host)
-	if app.Spec.Expose && baseDomain != "" && app.Spec.SubdomainPolicy != appv1alpha1.SubdomainPolicyDisabled {
-		add(fmt.Sprintf("%s.%s", app.Spec.PlatformSubdomain(app.Name), baseDomain))
-	}
-	for _, h := range app.Spec.Hosts {
-		add(h)
-	}
-	return hosts
+	// The precedence rule lives on the CRD contract (types.AppSpec.EffectiveHosts,
+	// w5/m48) so the static-server resolver and bex-api's pending-URL projection
+	// cannot drift from the Ingress/status derivation.
+	return app.Spec.EffectiveHosts(app.Name, baseDomain)
 }
 
 // portEnvName is the operator-owned environment variable carrying the injected

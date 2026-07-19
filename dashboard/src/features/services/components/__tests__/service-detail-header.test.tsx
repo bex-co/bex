@@ -206,6 +206,15 @@ describe("ServiceDetailHeader", () => {
     expect(screen.getByText("r1")).toBeInTheDocument();
   });
 
+  it("omits the Instances fact for a static site (no runtime instances, w5/m48)", async () => {
+    renderHeader(svc({ type: "static_site" }));
+
+    // The rest of the facts line stays; only the meaningless instance count goes.
+    expect(await screen.findByText("Slug")).toBeInTheDocument();
+    expect(screen.getByText("Revision")).toBeInTheDocument();
+    expect(screen.queryByText("Instances")).not.toBeInTheDocument();
+  });
+
   it("shows a bound image credential by name and links to its settings panel", async () => {
     renderHeader(
       svc({ repo: null, branch: null, registryCredentialId: "rgc-private" }),

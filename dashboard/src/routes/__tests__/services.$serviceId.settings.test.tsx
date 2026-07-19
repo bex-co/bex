@@ -213,6 +213,9 @@ vi.mock("@/features/services/hooks/use-cron-job", () => ({
 vi.mock("@/features/services/hooks/use-root-dir", () => ({
   useRootDir: () => ({ setRootDir: vi.fn(async () => true), busy: false }),
 }));
+vi.mock("@/features/services/hooks/use-branch", () => ({
+  useBranch: () => ({ setBranch: vi.fn(async () => true), busy: false }),
+}));
 vi.mock("@/features/services/hooks/use-build-command", () => ({
   useBuildCommand: () => ({
     setBuildCommand: vi.fn(async () => true),
@@ -408,6 +411,51 @@ describe("ServiceSettingsPage", () => {
     expect(await screen.findByText("Build & Deploy")).toBeInTheDocument();
     expect(screen.queryByText("Docker Command")).not.toBeInTheDocument();
     expect(screen.queryByText("Dockerfile Path")).not.toBeInTheDocument();
+  });
+
+  it("hides the Instance Type row for a static site (no sized pod, w5/m48)", async () => {
+    serverState.service = svc({
+      type: "static_site",
+      repo: "https://github.com/acme/docs",
+      branch: "main",
+      publishPath: "dist",
+      routes: [],
+      headers: [],
+    });
+    renderSettings();
+
+    expect(await screen.findByText("Static Site")).toBeInTheDocument();
+    expect(screen.queryByText("Instance Type")).not.toBeInTheDocument();
+  });
+
+  it("keeps the Instance Type row for a web service (guard against over-gating)", async () => {
+    serverState.service = svc();
+    renderSettings();
+
+    expect(await screen.findByText("Instance Type")).toBeInTheDocument();
+  });
+
+  it("links the static edge-rule editors' dedicated pages from Settings (w5/m48)", async () => {
+    serverState.service = svc({
+      type: "static_site",
+      repo: "https://github.com/acme/docs",
+      branch: "main",
+      publishPath: "dist",
+      routes: [],
+      headers: [],
+    });
+    renderSettings();
+
+    expect(
+      await screen.findByRole("link", { name: "Redirects/Rewrites" }),
+    ).toHaveAttribute("href", "/services/app/redirects");
+    expect(screen.getByRole("link", { name: "Headers" })).toHaveAttribute(
+      "href",
+      "/services/app/headers",
+    );
+    // The editors themselves moved off Settings.
+    expect(screen.queryByText("Add rule")).not.toBeInTheDocument();
+    expect(screen.queryByText("Add header")).not.toBeInTheDocument();
   });
 
   it("hides Build & Deploy for an image-backed cron job (nothing to build)", async () => {

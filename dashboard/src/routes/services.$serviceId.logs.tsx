@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LogViewer } from "@/features/logs/components/log-viewer";
+import { NonStaticRoute } from "@/features/services/components/non-static-route";
 import type { RangePreset } from "@/features/metrics/lib/range";
 import {
   CLEARED_LOG_SEARCH,
@@ -47,16 +48,20 @@ function RouteComponent() {
     });
   };
   return (
-    <ServiceLogsPage
-      serviceId={serviceId}
-      range={logRangeFromSearch(search)}
-      onRangeChange={(preset) => write({ ...search, range: preset.id })}
-      initialFilters={logFiltersFromSearch(search)}
-      initialLive={search.live !== 0}
-      onFiltersChange={(filters, live) =>
-        write({ range: search.range, ...logFiltersToSearch(filters, live) })
-      }
-    />
+    // holdWhileLoading: the viewer fires its history query + SSE tail on
+    // mount — don't spend them while the type could still be static_site.
+    <NonStaticRoute serviceId={serviceId} holdWhileLoading>
+      <ServiceLogsPage
+        serviceId={serviceId}
+        range={logRangeFromSearch(search)}
+        onRangeChange={(preset) => write({ ...search, range: preset.id })}
+        initialFilters={logFiltersFromSearch(search)}
+        initialLive={search.live !== 0}
+        onFiltersChange={(filters, live) =>
+          write({ range: search.range, ...logFiltersToSearch(filters, live) })
+        }
+      />
+    </NonStaticRoute>
   );
 }
 

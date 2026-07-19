@@ -1193,6 +1193,22 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return s.SetRootDir(p.Context, p.Args["id"].(string), p.Args["rootDir"].(string))
 			},
 		},
+		// setBranch changes the Git branch a repo-backed service builds and
+		// deploys from (Render's editable Branch field, w5/m48/t005). Delegates
+		// to the shared source verb — the same path Render's REST PATCH `branch`
+		// field takes — so validation and push-to-deploy semantics cannot drift
+		// between surfaces. Empty restores the default "main".
+		"setBranch": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"branch": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				branch := p.Args["branch"].(string)
+				return s.SetSourceAndRegistryCredential(p.Context, p.Args["id"].(string), nil, nil, &branch, nil)
+			},
+		},
 		// setBuildCommand changes the build command for a repo-backed service.
 		// Applies to static_site (the primary user) and native-runtime services.
 		// The shared SetCommands verb also backs Render's REST PATCH shape; this
