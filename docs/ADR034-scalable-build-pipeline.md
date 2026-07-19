@@ -2,6 +2,8 @@
 
 **Status:** Accepted · 2026-07-15
 
+> **Security correction (2026-07-19):** [ADR039 O-01](ADR039-operator-audit-and-platform-reuse.md#o-01-the-build-boundary-is-not-currently-defensible) found that the production build namespace/network boundary and BuildKit's `--oci-worker-no-process-sandbox` mode do not support this ADR's earlier absolute credential-isolation claim. Treat "no credential widening" below as a required invariant, not a verified property, until O-01 is closed.
+
 ## Context
 
 bex builds git-backed services inside the app cluster. Dockerfile and Render-native runtime builds use rootless [BuildKit](https://github.com/moby/buildkit) Jobs; the explicit `builder: buildpack` extension uses kpack. Each build pushes an immutable generation image to Zot before the operator rolls out the workload. This matches Render's publicly documented use of [BuildKit for Dockerfile deploys](https://render.com/docs/docker) without assuming that Render's undisclosed native-runtime implementation has the same internal shape.
@@ -83,7 +85,7 @@ The pipeline keeps these invariants at every scale:
 - **Bounded execution.** Build Jobs have a deadline and bounded retry behavior; completed Jobs are reaped after the log-collection window.
 - **Idempotent recovery.** Deterministic names let reconciliation adopt Jobs after operator restart.
 - **Immutable handoff.** Deploy and pre-deploy steps consume the image produced for that exact generation.
-- **No credential widening.** Private-git, registry-push, and signing credentials retain the isolation described in ADR022 and ADR026 when build concurrency increases.
+- **No intentional credential widening.** Increasing concurrency must not broaden private-git, registry-push, or signing credential placement. The runtime confidentiality and namespace/network gaps recorded by ADR039 O-01 must be closed independently.
 
 The current per-workspace gate counts active Jobs and kpack Images before creating the next build. It is a best-effort fairness guard, not an atomic semaphore: two reconcile workers can both observe an open slot before either creates its Job. With the baseline global worker count and workspace cap both set to two, the global worker ceiling prevents an overshoot above two; a smaller workspace cap can transiently overshoot at the list/create boundary. Strict plan enforcement, more workers, or dispatch sharded across managers or clusters requires durable, atomic admission.
 
