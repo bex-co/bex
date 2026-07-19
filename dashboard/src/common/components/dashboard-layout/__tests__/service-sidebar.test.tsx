@@ -62,18 +62,14 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
     ).toHaveAttribute("href", "/");
     expect(screen.getByText("storefront-api")).toBeInTheDocument();
 
-    // navigation): top items {Events, Settings}, Monitor {Logs, Metrics},
-    // Manage {Environment, Shell, Scaling, Plan}. No Deploys entry — bex's unified
-    // Events page IS the deploy history (w1/m47, service-nav.tsx), matching
-    // Render's own root-is-deploy-history behavior.
+    // Navigation: top items {Deploys, Settings}, Monitor {Events, Logs,
+    // Metrics}, Manage {Environment, Shell, Scaling, Plan}.
     expect(screen.getByText("Monitor")).toBeInTheDocument();
     expect(screen.getByText("Manage")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Deploys" }),
-    ).not.toBeInTheDocument();
     for (const [name, href, iconClass] of [
-      ["Events", "/services/srv-1/events", "lucide-activity"],
+      ["Deploys", "/services/srv-1/deploys", "lucide-rocket"],
       ["Settings", "/services/srv-1/settings", "lucide-settings"],
+      ["Events", "/services/srv-1/events", "lucide-activity"],
       ["Logs", "/services/srv-1/logs", "lucide-scroll-text"],
       ["Metrics", "/services/srv-1/metrics", "lucide-chart-no-axes-combined"],
       ["Environment", "/services/srv-1/env", "lucide-braces"],
@@ -85,6 +81,24 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
       expect(link).toHaveAttribute("href", href);
       expect(link.querySelector("svg")).toHaveClass(iconClass);
     }
+
+    expect(
+      screen
+        .getAllByRole("link")
+        .map((link) => link.textContent)
+        .filter(Boolean),
+    ).toEqual([
+      "Dashboard",
+      "Deploys",
+      "Settings",
+      "Events",
+      "Logs",
+      "Metrics",
+      "Environment",
+      "Shell",
+      "Scaling",
+      "Plan",
+    ]);
   });
 
   it("hides the service nav (not the back link) for a service the caller can't see", async () => {
