@@ -10,20 +10,31 @@ const state: {
   error: Error | undefined;
 } = { credentials: [], loading: false, error: undefined };
 const refetch = vi.fn();
-vi.mock("@/features/registry-credentials/hooks/use-registry-credentials", () => ({
-  useRegistryCredentials: () => ({ ...state, refetch }),
-}));
+vi.mock(
+  "@/features/registry-credentials/hooks/use-registry-credentials",
+  () => ({
+    useRegistryCredentials: () => ({ ...state, refetch }),
+  }),
+);
 
 const remove = vi.fn();
-vi.mock("@/features/registry-credentials/hooks/use-delete-registry-credential", () => ({
-  useDeleteRegistryCredential: () => ({ remove, deleting: null }),
-}));
+vi.mock(
+  "@/features/registry-credentials/hooks/use-delete-registry-credential",
+  () => ({
+    useDeleteRegistryCredential: () => ({ remove, deleting: null }),
+  }),
+);
 
-vi.mock("@/features/registry-credentials/components/create-registry-credential-dialog", () => ({
-  CreateRegistryCredentialDialog: () => null,
-}));
+vi.mock(
+  "@/features/registry-credentials/components/create-registry-credential-dialog",
+  () => ({
+    CreateRegistryCredentialDialog: () => null,
+  }),
+);
 
-function cred(overrides: Partial<RegistryCredentialView> = {}): RegistryCredentialView {
+function cred(
+  overrides: Partial<RegistryCredentialView> = {},
+): RegistryCredentialView {
   return {
     id: "rgc-1",
     name: "GHCR prod",
@@ -78,12 +89,25 @@ describe("RegistryCredentialsPanel", () => {
 
   it("shows an Expired badge for an expired credential and Never expires for one with none", () => {
     state.credentials = [
-      cred({ id: "rgc-1", status: "expired", expiresAt: "2020-01-01T00:00:00Z" }),
+      cred({
+        id: "rgc-1",
+        status: "expired",
+        expiresAt: "2020-01-01T00:00:00Z",
+      }),
       cred({ id: "rgc-2", status: "active", expiresAt: null }),
+      // Zone-less input parses as local time, so the long-form date holds in
+      // any runner TZ.
+      cred({
+        id: "rgc-3",
+        name: "Quay staging",
+        status: "active",
+        expiresAt: "2027-07-16T12:00:00",
+      }),
     ];
     render(<RegistryCredentialsPanel />);
     expect(screen.getByText("Expired")).toBeInTheDocument();
     expect(screen.getByText("Never expires")).toBeInTheDocument();
+    expect(screen.getByText("Expires July 16, 2027")).toBeInTheDocument();
   });
 
   it("a failed delete does not refetch — the credential stays listed", async () => {

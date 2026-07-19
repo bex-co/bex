@@ -26,6 +26,7 @@ import { useServer } from "@/features/services/hooks/use-server";
 import { CronRunsSection } from "@/features/services/components/cron-runs-section";
 import { isCron } from "@/features/services/lib/service-type";
 import { formatRelativeAge } from "@/features/services/lib/format";
+import { formatDateTime } from "@/common/lib/format";
 import {
   deployStatusVariant as statusVariant,
   deployStatusKey as statusKey,
@@ -359,9 +360,7 @@ function EventSummary({
 }) {
   const { t } = useTranslations();
   const isDeploy = type === "deploy_started" || type === "deploy_ended";
-  const exactTimestamp = timestamp
-    ? new Date(timestamp).toLocaleString()
-    : null;
+  const exactTimestamp = formatDateTime(timestamp);
   // Compute deploy duration (w1/m47): startedAt → finishedAt
   const deployDuration =
     startedAt && finishedAt

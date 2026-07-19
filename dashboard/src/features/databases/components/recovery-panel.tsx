@@ -22,6 +22,7 @@ import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatRelativeAge } from "@/features/services/lib/format";
+import { formatDateTime } from "@/common/lib/format";
 import {
   useRecovery,
   type BackupItem,
@@ -87,21 +88,18 @@ export function RecoveryPanel({ id }: { id: string }) {
         ) : (
           <>
             <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+              {/* Exact restore-point boundaries, not relative ages — the
+                  user picks a point-in-time against these. */}
               <Field
                 label={t("databases.recoveryEarliest")}
                 value={
-                  info.earliestRecoveryTime
-                    ? formatRelativeAge(info.earliestRecoveryTime)
-                    : t("databases.recoveryNoBackupYet")
+                  formatDateTime(info.earliestRecoveryTime) ??
+                  t("databases.recoveryNoBackupYet")
                 }
               />
               <Field
                 label={t("databases.recoveryLatest")}
-                value={
-                  info.latestRecoveryTime
-                    ? formatRelativeAge(info.latestRecoveryTime)
-                    : "—"
-                }
+                value={formatDateTime(info.latestRecoveryTime) ?? "—"}
               />
             </dl>
 

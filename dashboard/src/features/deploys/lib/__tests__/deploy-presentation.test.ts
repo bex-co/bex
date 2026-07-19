@@ -23,6 +23,13 @@ describe("deploy presentation", () => {
     expect(formatDeployTimestamp("bad")).toBeNull();
   });
 
+  it("formats a timestamp in the dashboard's standard style", () => {
+    // Zone-less input parses as local time, so this holds in any runner TZ.
+    expect(formatDeployTimestamp("2026-07-16T00:57:00")).toBe(
+      "July 16, 2026 at 12:57 AM",
+    );
+  });
+
   it("does not describe a positive sub-second deploy as zero seconds", () => {
     expect(
       formatDeployDuration(

@@ -5,14 +5,14 @@ import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { formatDateLong } from "@/common/lib/format";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
 
 /**
  * The /webhook/$webhookId header, Render's shape
  * (docs/render-artifacts/webhooks-ui.md): kicker, name + enabled badge, id +
  * copy, URL + copy, subscribed-event chips with a show-more expander, and the
- * provenance line (createdBy comes from the API; the date formats via the
- * viewer's locale).
+ * provenance line (createdBy comes from the API).
  */
 export function WebhookDetailHeader({
   endpoint,
@@ -20,13 +20,7 @@ export function WebhookDetailHeader({
   endpoint: WebhookEndpointView;
 }) {
   const { t } = useTranslations();
-  const createdDate = endpoint.createdAt
-    ? new Date(endpoint.createdAt).toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
-    : null;
+  const createdDate = formatDateLong(endpoint.createdAt);
 
   return (
     <div className="space-y-3 border-b px-4 py-4 sm:px-6">
