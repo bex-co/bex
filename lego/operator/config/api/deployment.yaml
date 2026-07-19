@@ -65,6 +65,13 @@ spec:
                   optional: true
             - name: BEX_DASHBOARD_URL # trusted browser origin for callbacks, invites, and resource links
               value: https://dashboard.bex.co
+            # Platform wildcard domain, same value as the manager's (manager.yaml).
+            # Names custom-domain DNS targets AND lets the API derive a public
+            # service's URL from creation, before the first successful deploy
+            # (w5/m48 — Render shows the URL immediately; unset would leave
+            # serviceDetails.url empty until the operator writes status.url).
+            - name: BEX_BASE_DOMAIN
+              value: onbex.co
             - name: BEX_REGION # explicit platform placement for Render resource metadata
               value: fsn1
             - name: BEX_API_NAMESPACE # Apps live in the default namespace
