@@ -190,18 +190,20 @@ Zot's `htpasswd` + `accessControl` is **static-file** config — per-App credent
 
 `accessControl.repositories["**"].defaultPolicy: []` — **anonymous is denied everything** (catalog, list, pull, push all `401`). The builder is also listed in `accessControl.adminPolicy`, because Zot applies only the longest matching repository rule: an exact per-App pull rule shadows the `**` repository policy. Everyone else gets nothing.
 
-### Why a docker-config mount is safe from tenant `RUN` steps
+### Intended docker-config boundary and open runtime gap
 
-This is the load-bearing invariant. BuildKit runs a build's `RUN` steps in a **separate execution namespace** (runc/rootlesskit) whose rootfs is the build context + image layers + explicitly-declared BuildKit secrets — it does **not** include the `buildkitd` container's own filesystem. So a docker-config credential mounted into the buildkitd container (at `/docker-config`, `$DOCKER_CONFIG`) is used by `buildkitd` to authenticate the push, but a `RUN cat /docker-config/config.json` (or a `--mount=type=secret`) in a tenant Dockerfile **cannot read it**. The credential therefore appears:
+The intended boundary is that BuildKit runs a build's `RUN` steps with a rootfs containing the build context, image layers, and explicitly declared BuildKit secrets — not the `buildkitd` container's filesystem. A docker-config credential mounted into the buildkitd container (at `/docker-config`, `$DOCKER_CONFIG`) is therefore not declaratively passed to the Dockerfile:
 
 - ✅ as a volume mount on the buildkitd container (and cosign, when signing is enabled — w6/006);
 - ❌ never as a `--build-arg`;
 - ❌ never as a declared BuildKit `--secret` (the `GIT_AUTH_TOKEN` precedent is opt-in, so a malicious Dockerfile _could_ declare a mount — we therefore do **not** pass the registry cred that way);
 - ❌ never in the build step's container env.
 
-A unit test (`lego/operator/internal/build/build_test.go`) asserts the credential name never appears in `buildctl` args or the build container's env.
+A unit test (`lego/operator/internal/build/build_test.go`) asserts the credential name never appears in `buildctl` args or the build container's env. That test proves non-injection, not runtime confidentiality.
 
-Repository-backed Docker services may also bind a workspace registry credential for a private `FROM` (w6/m34). The operator merges that explicit docker config with the platform push config into one deterministic Secret in the build namespace; the platform push entry wins a same-host collision. The same boundary above applies: buildkitd and optional cosign mount the derived config, while tenant Dockerfile steps receive no build arg, BuildKit secret, environment value, or mount. Native, buildpack, and static-site repository sources reject the field. The App finalizer deletes the derived Secret. On the HTTP-only development Zot path, the derived Secret also carries buildkitd's resolver config for the already-insecure platform registry; production external base registries continue to use their normal TLS resolution.
+**Security correction (2026-07-19):** the current rootless BuildKit Job uses `--oci-worker-no-process-sandbox`. [Upstream BuildKit warns](https://github.com/moby/buildkit/blob/6dd06999d5d369a217c3f3259a420f507e2db2c7/docs/rootless.md#L98-L104) that this mode lets build containers kill and potentially ptrace arbitrary processes in the BuildKit container. Because the push credential is mounted in that container, the absolute claim that a malicious tenant `RUN` process cannot extract it is not established. [ADR039](ADR039-operator-audit-and-platform-reuse.md) records this and the broader build-namespace/network boundary as O-01. Until O-01 closes with a process sandbox or a design that removes the credential from the reachable process boundary plus an adversarial live test, treat registry-push credential secrecy as an intended invariant, not a verified guarantee.
+
+Repository-backed Docker services may also bind a workspace registry credential for a private `FROM` (w6/m34). The operator merges that explicit docker config with the platform push config into one deterministic Secret in the build namespace; the platform push entry wins a same-host collision. Buildkitd and optional cosign mount the derived config, while tenant Dockerfile steps receive no build arg, BuildKit secret, environment value, or declared mount. The runtime caveat above applies to this credential too. Native, buildpack, and static-site repository sources reject the field. The App finalizer deletes the derived Secret. On the HTTP-only development Zot path, the derived Secret also carries buildkitd's resolver config for the already-insecure platform registry; production external base registries continue to use their normal TLS resolution.
 
 ### Read policy (decision)
 
