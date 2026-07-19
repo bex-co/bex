@@ -74,7 +74,10 @@ import { generateEnvValue } from "@/features/services/lib/generate-env-value";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 import { RegistryCredentialSelect } from "@/features/services/components/registry-credential-select";
 import { PathList } from "@/features/services/components/build-deploy-section";
-import { parseNewServiceSearch } from "@/features/services/lib/create-context";
+import {
+  parseNewServiceSearch,
+  type ServiceType,
+} from "@/features/services/lib/create-context";
 
 // A C-locale env-var name — kept in sync with backend/internal/secrets validEnvKey.
 const VALID_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -87,12 +90,6 @@ function isValidSecretFileName(name: string): boolean {
 type SourceTab = "github" | "git" | "image";
 type NativeRuntime = "elixir" | "go" | "node" | "python" | "ruby" | "rust";
 type GitRuntime = NativeRuntime | "docker";
-type ServiceType =
-  | "web_service"
-  | "private_service"
-  | "background_worker"
-  | "cron_job"
-  | "static_site";
 
 const RUNTIME_COMMANDS: Record<
   NativeRuntime,
@@ -448,7 +445,9 @@ export function NewServicePage() {
     useCreateService();
   const { repos, loading: reposLoading } = useRepos();
   const { connection, loading: connectionLoading } = useGitConnection();
-  const [serviceType, setServiceType] = useState<ServiceType>("web_service");
+  const [serviceType, setServiceType] = useState<ServiceType>(
+    search.type ?? "web_service",
+  );
   const [tab, setTab] = useState<SourceTab>("github");
   const [selectedRepo, setSelectedRepo] = useState<RepoView | null>(null);
   const [repoSearch, setRepoSearch] = useState("");

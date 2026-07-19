@@ -739,6 +739,31 @@ describe("NewServicePage", () => {
         screen.getByRole("radio", { name: /Web Service/i }),
       ).toHaveAttribute("aria-checked", "true");
     });
+
+    it("preselects the type from ?type= (Render /cron/new deep link)", async () => {
+      renderPage("/?type=cron_job");
+      await screen.findAllByRole("radiogroup");
+      expect(screen.getByRole("radio", { name: /Cron Job/i })).toHaveAttribute(
+        "aria-checked",
+        "true",
+      );
+      // the cron-only Schedule field is shown with no click needed
+      expect(screen.getByLabelText("Schedule")).toBeInTheDocument();
+    });
+
+    it("preselects static site from ?type=static_site", async () => {
+      renderPage("/?type=static_site");
+      await screen.findAllByRole("radiogroup");
+      expect(
+        screen.getByRole("radio", { name: /Static Site/i }),
+      ).toHaveAttribute("aria-checked", "true");
+    });
+
+    // The unknown-?type= fallback to web_service is enforced by the route's
+    // validateSearch (parseNewServiceSearch drops it → undefined → default);
+    // that drop is unit-tested in create-context.test.ts. The test harness
+    // mounts this component under a stand-in route, so its Route.useSearch()
+    // reads raw (unvalidated) search and can't faithfully model the drop here.
   });
 
   describe("per-type conditional fields", () => {

@@ -74,11 +74,20 @@ describe("redirectRenderAlias", () => {
 
   // Render's New menu puts creates under the segment (`/web/new`, `/d/new` —
   // live capture 2026-07-16, w1/m45). `/d/new` used to fall through the
-  // generic join onto the nonexistent `/databases/new`.
-  it("sends each segment's /new to its create landing", () => {
+  // generic join onto the nonexistent `/databases/new`. Service segments now
+  // carry `?type=` so the wizard preselects the type (w5/m47) — otherwise
+  // `/cron/new` dropped the caller onto the Web-Service default.
+  it("sends each service segment's /new to a type-preselected wizard", () => {
+    const expected: Record<string, string> = {
+      web: "/services/new?type=web_service",
+      worker: "/services/new?type=background_worker",
+      pserv: "/services/new?type=private_service",
+      static: "/services/new?type=static_site",
+      cron: "/services/new?type=cron_job",
+    };
     for (const segment of ["web", "worker", "pserv", "static", "cron"] as const) {
       expect(hrefOf(segment, "new", locationOf(`/${segment}/new`))).toBe(
-        "/services/new",
+        expected[segment],
       );
     }
     expect(hrefOf("d", "new", locationOf("/d/new"))).toBe("/?new=database");
@@ -89,6 +98,11 @@ describe("redirectRenderAlias", () => {
     expect(hrefOf("d", "new", locationOf("/d/new", "?from=cli"))).toBe(
       "/?new=database&from=cli",
     );
+    // A service create deep link with its own contextual query folds onto the
+    // `?type=` landing: `/cron/new?projectId=x` → `…?type=cron_job&projectId=x`.
+    expect(
+      hrefOf("cron", "new", locationOf("/cron/new", "?projectId=prj-1")),
+    ).toBe("/services/new?type=cron_job&projectId=prj-1");
   });
 
   it("replaces history instead of stacking the alias entry", () => {

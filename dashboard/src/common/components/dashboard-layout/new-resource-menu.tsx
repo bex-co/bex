@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { NewServiceMenuItems } from "@/features/services/components/new-service-menu-items";
 
 /** The global counterpart to Render's persistent “+ New” topbar menu. */
 export function NewResourceMenu() {
@@ -25,9 +26,7 @@ export function NewResourceMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>{t("common.topbarCreate")}</DropdownMenuLabel>
-        <DropdownMenuItem asChild>
-          <Link to="/services/new">{t("services.createTitle")}</Link>
-        </DropdownMenuItem>
+        <NewServiceMenuItems triggerLabelKey="services.createTitle" />
         <DropdownMenuItem asChild>
           <Link to="/" search={{ new: "database" }}>
             {t("databases.createTitle")}
