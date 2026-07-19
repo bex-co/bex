@@ -20,6 +20,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/common/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/common/components/ui/table";
 import { useDeploys, type DeployRow } from "../hooks/use-deploys";
 import {
   deployStatusVariant,
@@ -66,6 +74,19 @@ function triggerLabel(d: DeployRow, t: Translate): string {
     return t("deploys.triggerRollback", { deployId: d.rollbackOf });
   const key = deployTriggerKey(d.trigger);
   return key ? t(key as Parameters<Translate>[0]) : d.trigger;
+}
+
+// The Duration column value: the settled elapsed time once a deploy finishes,
+// a running-elapsed marker while an active deploy is still building/deploying,
+// and an em-dash for a deploy that never started (created/queued). The column
+// header supplies the "Duration" label, so the cell shows the bare value —
+// unlike the detail header's `deploys.durationValue` ("Duration {duration}").
+function durationLabel(d: DeployRow, t: Translate): string {
+  const duration = formatDeployDuration(d.startedAt, d.finishedAt);
+  if (duration) return duration;
+  if (d.startedAt && !isTerminalDeployStatus(d.status))
+    return t("deploys.durationActive");
+  return t("deploys.notYet");
 }
 
 /**
@@ -126,88 +147,110 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
     );
   } else {
     body = (
-      <div className="divide-y">
-        {visibleDeploys.map((d) => {
-          const preDeploy = preDeployStatusKey(d.preDeployStatus);
-          const createdAt = formatDeployTimestamp(d.createdAt);
-          const duration = formatDeployDuration(d.startedAt, d.finishedAt);
-          const durationText = duration
-            ? t("deploys.durationValue", { duration })
-            : d.startedAt && !isTerminalDeployStatus(d.status)
-              ? t("deploys.durationInProgress")
-              : null;
-          const hasListAction =
-            isCancelableDeployStatus(d.status) || d.status === "deactivated";
-          return (
-            <div
-              key={d.id}
-              className="hover:bg-muted/30 flex flex-col gap-3 py-4 transition-colors sm:flex-row sm:items-center"
-            >
-              <Link
-                to="/services/$serviceId/deploys/$deployId"
-                params={{ serviceId, deployId: d.id }}
-                className="group min-w-0 flex-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <Badge variant={deployStatusVariant(d.status)}>
-                    {t(deployStatusKey(d.status) as Parameters<typeof t>[0])}
-                  </Badge>
-                  <span className="text-xs capitalize text-muted-foreground">
-                    {triggerLabel(d, t)}
-                  </span>
-                  <span
-                    className="truncate font-mono text-xs text-muted-foreground"
-                    title={d.id}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t("deploys.columnDeploy")}</TableHead>
+            <TableHead className="hidden sm:table-cell">
+              {t("deploys.columnTrigger")}
+            </TableHead>
+            <TableHead className="hidden sm:table-cell">
+              {t("deploys.columnDuration")}
+            </TableHead>
+            <TableHead className="w-0 text-right">
+              <span className="sr-only">{t("deploys.columnActions")}</span>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {visibleDeploys.map((d) => {
+            const preDeploy = preDeployStatusKey(d.preDeployStatus);
+            const createdAt = formatDeployTimestamp(d.createdAt);
+            const hasListAction =
+              isCancelableDeployStatus(d.status) || d.status === "deactivated";
+            return (
+              <TableRow key={d.id}>
+                <TableCell className="min-w-0 align-top">
+                  <Link
+                    to="/services/$serviceId/deploys/$deployId"
+                    params={{ serviceId, deployId: d.id }}
+                    className="group block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    {d.id}
-                  </span>
-                </div>
-                {d.commitId ? (
-                  <p className="mt-1 truncate text-sm text-foreground">
-                    <span
-                      className="font-mono text-xs text-muted-foreground"
-                      title={d.commitId}
-                    >
-                      {d.commitId.slice(0, 7)}
-                    </span>
-                    {d.commitMessage ? (
-                      <> {d.commitMessage.split("\n")[0]}</>
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <Badge variant={deployStatusVariant(d.status)}>
+                        {t(
+                          deployStatusKey(d.status) as Parameters<typeof t>[0],
+                        )}
+                      </Badge>
+                      <span
+                        className="max-w-[12rem] truncate font-mono text-xs text-muted-foreground"
+                        title={d.id}
+                      >
+                        {d.id}
+                      </span>
+                    </div>
+                    {d.commitId ? (
+                      <p className="mt-1 max-w-[16rem] truncate text-sm text-foreground sm:max-w-md lg:max-w-lg">
+                        <span
+                          className="font-mono text-xs text-muted-foreground"
+                          title={d.commitId}
+                        >
+                          {d.commitId.slice(0, 7)}
+                        </span>
+                        {d.commitMessage ? (
+                          <> {d.commitMessage.split("\n")[0]}</>
+                        ) : null}
+                      </p>
                     ) : null}
-                  </p>
-                ) : null}
-                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                  {createdAt ? (
-                    <span>
-                      {t("deploys.deployedAt", { timestamp: createdAt })}
-                    </span>
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      {createdAt ? (
+                        <span>
+                          {t("deploys.deployedAt", { timestamp: createdAt })}
+                        </span>
+                      ) : null}
+                      {preDeploy ? (
+                        <span
+                          className={
+                            d.preDeployStatus === "failed"
+                              ? "text-destructive"
+                              : undefined
+                          }
+                        >
+                          {t(preDeploy as Parameters<typeof t>[0])}
+                        </span>
+                      ) : null}
+                    </div>
+                  </Link>
+                  {/* On mobile the Trigger/Duration columns are hidden, so fold
+                      their values under the deploy identity instead. */}
+                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground sm:hidden">
+                    <span className="capitalize">{triggerLabel(d, t)}</span>
+                    <span aria-hidden="true">·</span>
+                    <span className="tabular-nums">{durationLabel(d, t)}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="hidden align-top text-sm capitalize text-muted-foreground sm:table-cell">
+                  {triggerLabel(d, t)}
+                </TableCell>
+                <TableCell className="hidden align-top tabular-nums text-sm text-muted-foreground sm:table-cell">
+                  {durationLabel(d, t)}
+                </TableCell>
+                <TableCell className="align-top text-right">
+                  {hasListAction ? (
+                    <div className="flex justify-end">
+                      <DeployActions
+                        serviceId={serviceId}
+                        deployId={d.id}
+                        status={d.status}
+                      />
+                    </div>
                   ) : null}
-                  {durationText ? <span>{durationText}</span> : null}
-                  {preDeploy ? (
-                    <span
-                      className={
-                        d.preDeployStatus === "failed"
-                          ? "text-destructive"
-                          : undefined
-                      }
-                    >
-                      {t(preDeploy as Parameters<typeof t>[0])}
-                    </span>
-                  ) : null}
-                </div>
-              </Link>
-              {hasListAction ? (
-                <div className="shrink-0 self-end sm:self-center">
-                  <DeployActions
-                    serviceId={serviceId}
-                    deployId={d.id}
-                    status={d.status}
-                  />
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
     );
   }
 

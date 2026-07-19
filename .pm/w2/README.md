@@ -65,9 +65,10 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 ## Inbox
 
 - `015.md` — make stateful MCP sessions reliable across multiple bex-api replicas; production retries proved requests lose affinity to the replica that owns the session ← production verification 2026-07-17
-- `016.md` — reshape the Deploys history into Render's explicit Deploy / Trigger / Duration / action columns, with human trigger labels and rollback only when available; backend fields and mutations already exist ← user-directed Render comparison 2026-07-17
 
 _(`012.md` promoted to **m44** 2026-07-16; moved to `done/`. `013.md` promoted to **m45** 2026-07-16; moved to `done/`. `011.md` promoted to **m42** 2026-07-15; moved to `done/`. `010.md` promoted to **m40** 2026-07-15; moved to `done/`)_
+
+> `016.md` implemented 2026-07-18 (deploys-history Render-parity table columns) — `deploys-list-page.tsx` rebuilt on the shared `Table` primitive with `Deploy`/`Trigger`/`Duration`/action columns, `deploy_hook`+`blueprint` trigger humanization, en/zh column labels, and 9 component tests; full dashboard suite + lint green; moved to `done/`. Live browser walk against `srv-d9bj8s3eg85c7390eb9g` vs Render `srv-d5mk47ogjchc738phl00` still pending a cluster.
 
 > 006.md promoted to done 2026-07-12: `triggerDeploy` GraphQL mutation shipped in `internal/deploys/graphql.go`.
 
