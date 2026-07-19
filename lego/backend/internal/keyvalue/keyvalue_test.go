@@ -56,6 +56,17 @@ func mintedKVID(id string) bool {
 	return strings.HasPrefix(id, "red-") && len(id) == len("red-")+20
 }
 
+func TestKeyValueViewReportsDeletingWhileFinalizerHoldsResource(t *testing.T) {
+	now := metav1.Now()
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "red-delete", DeletionTimestamp: &now},
+		Status:     appv1alpha1.KeyValueStatus{Phase: appv1alpha1.KVPhaseReady},
+	}
+	if got := kvView(kv).Status; got != "deleting" {
+		t.Fatalf("deleting KeyValue status = %q, want deleting", got)
+	}
+}
+
 func serveREST(svc *Service, method, path, body string) *httptest.ResponseRecorder {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
@@ -545,6 +556,45 @@ func TestRESTKeyValueConnectionInfo(t *testing.T) {
 	// password lives inside the strings only.
 	if strings.Contains(string(body), `"password"`) {
 		t.Errorf("connection-info must not expose a standalone password field: %s", body)
+	}
+}
+
+func TestConnectionInfoGatesImmutableCredentialRevision(t *testing.T) {
+	svc, cl := newService()
+	password := []byte("controller-owned-secret")
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "revision-kv", Namespace: "default"},
+		Status: appv1alpha1.KeyValueStatus{
+			Phase: appv1alpha1.KVPhaseReady, Host: "revision-kv.default.svc", Port: 6379,
+			CredentialSecretName: "revision-kv-auth",
+			CredentialRevision:   appv1alpha1.KeyValueCredentialRevision(password),
+			ExternalHost:         "revision-kv.kv.bex.co",
+		},
+	}
+	immutable := true
+	auth := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "revision-kv-auth", Namespace: "default"},
+		Immutable: &immutable, Data: map[string][]byte{"username": []byte("default"), "password": password}}
+	if err := cl.Create(context.Background(), kv); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Create(context.Background(), auth); err != nil {
+		t.Fatal(err)
+	}
+
+	info, err := svc.KeyValueConnectionInfo(context.Background(), kv.Name)
+	if err != nil || !strings.Contains(info.InternalConnectionString, "controller-owned-secret") {
+		t.Fatalf("converged connection info = %+v, %v", info, err)
+	}
+	kv.Status.CredentialRevision = appv1alpha1.KeyValueCredentialRevision([]byte("different"))
+	if err := cl.Update(context.Background(), kv); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.KeyValueConnectionInfo(context.Background(), kv.Name); !errors.Is(err, core.ErrConflict) || strings.Contains(err.Error(), string(password)) {
+		t.Fatalf("split revision = %v, want non-leaking ErrConflict", err)
+	}
+	rec := serveREST(svc, http.MethodGet, "/v1/key-value/revision-kv/connection-info", "")
+	if rec.Code != http.StatusConflict || strings.Contains(rec.Body.String(), string(password)) {
+		t.Fatalf("REST split revision = %d %s", rec.Code, rec.Body.String())
 	}
 }
 

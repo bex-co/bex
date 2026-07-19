@@ -34,6 +34,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	boundedhttp "github.com/bex-co/bex/lego/operator/internal/httpclient"
 )
 
 // cosignSigAnnotation is the manifest-layer annotation that holds the
@@ -70,7 +72,7 @@ func NewVerifier(pemPublicKey []byte, scheme, auth string) (*Verifier, error) {
 	if scheme == "" {
 		scheme = "https"
 	}
-	return &Verifier{pub: ecPub, client: &http.Client{}, scheme: scheme, auth: auth}, nil
+	return &Verifier{pub: ecPub, client: boundedhttp.Shared, scheme: scheme, auth: auth}, nil
 }
 
 // Verify returns nil if imageRef has at least one valid cosign signature under
@@ -270,7 +272,7 @@ func (v *Verifier) fetchSigLayers(ctx context.Context, host, repo, sigTag string
 		return nil, fmt.Errorf("registry %s returned HTTP %d for sig manifest %s/%s:%s",
 			host, resp.StatusCode, host, repo, sigTag)
 	}
-	body, err := io.ReadAll(resp.Body)
+	body, err := boundedhttp.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +311,7 @@ func (v *Verifier) fetchBlob(ctx context.Context, host, repo, digest string) ([]
 		io.Copy(io.Discard, resp.Body) //nolint:errcheck
 		return nil, fmt.Errorf("registry %s returned HTTP %d for blob %s", host, resp.StatusCode, digest)
 	}
-	return io.ReadAll(resp.Body)
+	return boundedhttp.ReadAll(resp.Body)
 }
 
 // verifyECDSA checks that sig is a valid DER-encoded ECDSA signature over the

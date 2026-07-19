@@ -455,6 +455,20 @@ var _ = Describe("KeyValue Controller", func() {
 		Expect(firstPw).NotTo(BeEmpty())
 		Expect(string(sec.Data["uri"])).To(ContainSubstring("redis://default:"), "internal URI form")
 		Expect(string(sec.Data["host"])).To(Equal("smoke-kv.default.svc"))
+		Expect(sec.Immutable).NotTo(BeNil())
+		Expect(*sec.Immutable).To(BeTrue(), "client-facing connection Secret is immutable")
+		auth := &corev1.Secret{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name + "-auth", Namespace: "default"}, auth)).To(Succeed())
+		Expect(auth.Immutable).NotTo(BeNil())
+		Expect(*auth.Immutable).To(BeTrue(), "Valkey password authority is immutable")
+		Expect(string(auth.Data["password"])).To(Equal(firstPw))
+		Expect(c.Env[0].ValueFrom.SecretKeyRef.Name).To(Equal(name + "-auth"))
+		Expect(sts.Spec.Template.Annotations).To(HaveKeyWithValue("app.bex.co/credential-revision",
+			appv1alpha1.KeyValueCredentialRevision(auth.Data["password"])))
+
+		By("rejecting unsupported direct password mutation at the Kubernetes API")
+		auth.Data["password"] = []byte("unsupported-direct-mutation")
+		Expect(k8sClient.Update(ctx, auth)).NotTo(Succeed())
 		// a second reconcile must not rotate the password
 		reconcileN()
 		Expect(k8sClient.Get(ctx, nn, sec)).To(Succeed())
@@ -464,6 +478,7 @@ var _ = Describe("KeyValue Controller", func() {
 		Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
 		Expect(kv.Status.Host).To(Equal("smoke-kv.default.svc"))
 		Expect(kv.Status.SecretName).To(Equal(name))
+		Expect(kv.Status.CredentialSecretName).To(Equal(name + "-auth"))
 		Expect(kv.Status.Port).To(Equal(int32(kvPort)))
 
 		// Delete cascade: envtest runs no garbage-collector controller, so it
@@ -473,7 +488,7 @@ var _ = Describe("KeyValue Controller", func() {
 		// half of "deleting the KeyValue removes the owned objects."
 		By("owner-referencing every owned object to the KeyValue (drives delete cascade)")
 		Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
-		for _, obj := range []metav1.Object{sts, svc, sec} {
+		for _, obj := range []metav1.Object{sts, svc, sec, auth} {
 			Expect(metav1.IsControlledBy(obj, kv)).To(BeTrue())
 		}
 	})

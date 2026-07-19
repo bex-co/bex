@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"regexp"
 	"slices"
@@ -57,6 +56,7 @@ import (
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+	boundedhttp "github.com/bex-co/bex/lego/operator/internal/httpclient"
 	"github.com/bex-co/bex/lego/operator/internal/predeploy"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
 	"github.com/bex-co/bex/lego/operator/internal/registry"
@@ -130,6 +130,13 @@ const labelNetworkIsolation = "app.bex.co/network-isolation"
 // idleTTLSeconds past this timestamp.
 const annotLastActive = "app.bex.co/last-active"
 
+// annotTLSSecretHistory persists every cert-manager Secret name ever selected
+// for an App. spec.hosts is mutable, so deletion cannot reconstruct removed
+// custom-domain names from the final spec alone.
+const annotTLSSecretHistory = "app.bex.co/tls-secret-history"
+
+const annotStaticPurgeComplete = "app.bex.co/static-purge-complete"
+
 // Runtime modes.
 const (
 	ModeOpenSandbox = "opensandbox" // run revisions as OpenSandbox sandboxes (host)
@@ -202,6 +209,9 @@ type AppReconciler struct {
 	// "app-<name>" htpasswd user scoped to its image repository, replacing the
 	// shared bex-puller credential. Nil => shared RegistryPullSecret path (w7/m8).
 	PerAppRegistry *registry.Creds
+	// HTTPClient is the bounded shared client used for registry finalization.
+	// Tests may inject a deterministic transport.
+	HTTPClient *http.Client
 	// MetricsReader reads live CPU/memory utilization from the metrics-server API.
 	// When nil, spec.autoscaling is accepted in the CR but the autoscaling loop
 	// is skipped (no replica adjustment). Tests inject a fake reader.
@@ -234,7 +244,7 @@ type AppReconciler struct {
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kpack.io,resources=images,verbs=get;list;watch;create;delete
-// +kubebuilder:rbac:groups=kpack.io,resources=builds,verbs=get;list;watch
+// +kubebuilder:rbac:groups=kpack.io,resources=builds,verbs=get;list;watch;delete
 // +kubebuilder:rbac:groups=traefik.io,resources=middlewares,verbs=get;list;watch;create;update;patch;delete
 
 // traefikHTTPMiddlewareGVK is Traefik's HTTP middleware CRD (v3). Used to
@@ -263,6 +273,9 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{Requeue: true}, nil // finalizer update doesn't bump generation
+	}
+	if err := r.recordTLSSecretHistory(ctx, &app); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	// Registry auth is operator-level configuration, so converge it before a
@@ -384,13 +397,13 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		// ("secret not found"). Mechanism-only: the operator just copies an opaque
 		// Secret across namespaces; it never mints or inspects the token.
 		if app.Spec.CloneSecret != "" && buildNs != app.Namespace {
-			if err := r.copyCloneSecret(ctx, app.Namespace, buildNs, app.Spec.CloneSecret); err != nil {
+			if err := r.copyCloneSecret(ctx, &app, app.Namespace, buildNs, app.Spec.CloneSecret); err != nil {
 				return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("relocating clone secret to %s: %w", buildNs, err))
 			}
 		}
 		runtimeSecret := runtimeEnvSecret(&app)
 		if builder == build.BuilderNative && runtimeSecret != "" && buildNs != app.Namespace {
-			if err := r.copyCloneSecret(ctx, app.Namespace, buildNs, runtimeSecret); err != nil {
+			if err := r.copyCloneSecret(ctx, &app, app.Namespace, buildNs, runtimeSecret); err != nil {
 				return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("relocating native build env to %s: %w", buildNs, err))
 			}
 		}
@@ -400,7 +413,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		}
 		res, err := build.Build(ctx, build.Options{
 			Repo: app.Spec.Repo, Ref: ref, RootDir: app.Spec.RootDir,
-			DockerfilePath: app.Spec.DockerfilePath, Name: app.Name,
+			DockerfilePath: app.Spec.DockerfilePath, Name: app.Name, AppUID: string(app.UID), AppCreatedAt: app.CreationTimestamp.Time,
 			Registry: r.Registry, KpackRegistry: r.KpackRegistry,
 			Builder:          builder,
 			Runtime:          app.Spec.Runtime,
@@ -629,7 +642,7 @@ func (r *AppReconciler) predeployPullSecrets(ctx context.Context, app *appv1alph
 		}
 	}
 	if app.Spec.ExternalRegistryPullSecret != "" {
-		if err := r.copyCloneSecret(ctx, app.Namespace, ns, app.Spec.ExternalRegistryPullSecret); err != nil {
+		if err := r.copyCloneSecret(ctx, app, app.Namespace, ns, app.Spec.ExternalRegistryPullSecret); err != nil {
 			return nil, fmt.Errorf("relocating external registry pull secret to %s: %w", ns, err)
 		}
 		out = append(out, corev1.LocalObjectReference{Name: app.Spec.ExternalRegistryPullSecret})
@@ -659,7 +672,7 @@ func (r *AppReconciler) mirrorPreDeploySecrets(ctx context.Context, app *appv1al
 		if name == "" {
 			continue
 		}
-		if err := r.copyCloneSecret(ctx, app.Namespace, ns, name); err != nil && !apierrors.IsNotFound(err) {
+		if err := r.copyCloneSecret(ctx, app, app.Namespace, ns, name); err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("relocating secret %s to %s: %w", name, ns, err)
 		}
 	}
@@ -799,7 +812,7 @@ func (r *AppReconciler) mirrorPerAppRegistryCredential(ctx context.Context, app 
 		return nil
 	}
 	name := registry.PullSecretName(app.Name)
-	if err := r.copyBuildRegistryCredential(ctx, app.Namespace, r.buildNamespace(app.Namespace), app.Name, name); err != nil {
+	if err := r.copyBuildRegistryCredential(ctx, app, app.Namespace, r.buildNamespace(app.Namespace), name); err != nil {
 		return fmt.Errorf("relocating per-App registry credential to %s: %w", r.buildNamespace(app.Namespace), err)
 	}
 	return nil
@@ -822,7 +835,7 @@ func localObjectReferencesEqual(a, b []corev1.LocalObjectReference) bool {
 // Secret is created by bex-api in the App's namespace). Idempotent: overwritten
 // on every build, so the token stays fresh. Mechanism-only — the operator never
 // reads the token, only copies the bytes.
-func (r *AppReconciler) copyCloneSecret(ctx context.Context, srcNS, dstNS, name string) error {
+func (r *AppReconciler) copyCloneSecret(ctx context.Context, app *appv1alpha1.App, srcNS, dstNS, name string) error {
 	buildClient := r.buildPlaneClient()
 	var src corev1.Secret
 	if err := buildClient.Get(ctx, client.ObjectKey{Namespace: srcNS, Name: name}, &src); err != nil {
@@ -832,11 +845,7 @@ func (r *AppReconciler) copyCloneSecret(ctx context.Context, srcNS, dstNS, name 
 	_, err := controllerutil.CreateOrUpdate(ctx, buildClient, dst, func() error {
 		dst.Type = src.Type
 		dst.Data = src.Data
-		if dst.Labels == nil {
-			dst.Labels = map[string]string{}
-		}
-		dst.Labels[labelApp] = name
-		dst.Labels["app.bex.co/component"] = "clone-secret"
+		dst.Labels = artifactLabels(app, "copied-secret")
 		return nil
 	})
 	return err
@@ -1696,6 +1705,8 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 			Image:        image,
 			PublishPath:  app.Spec.PublishPath,
 			AppID:        app.Name,
+			AppUID:       string(app.UID),
+			AppCreatedAt: app.CreationTimestamp.Time,
 			Revision:     rev,
 			Store:        r.StaticStore,
 			Namespace:    r.buildNamespace(app.Namespace),
@@ -1727,7 +1738,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 			// it beside the publish Job when the build namespace differs (the
 			// same seam the build plane uses).
 			if app.Spec.CloneSecret != "" && opts.Namespace != app.Namespace {
-				if err := r.copyCloneSecret(ctx, app.Namespace, opts.Namespace, app.Spec.CloneSecret); err != nil {
+				if err := r.copyCloneSecret(ctx, app, app.Namespace, opts.Namespace, app.Spec.CloneSecret); err != nil {
 					return r.fail(ctx, app, "PublishFailed", fmt.Errorf("relocating clone secret to %s: %w", opts.Namespace, err))
 				}
 			}
@@ -2575,6 +2586,8 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	}
 	job, err := predeploy.Ensure(ctx, predeploy.Options{
 		Name:             app.Name,
+		AppUID:           string(app.UID),
+		AppCreatedAt:     app.CreationTimestamp.Time,
 		Namespace:        ns,
 		Workspace:        app.Labels[labelWorkspace],
 		AppNamespace:     app.Namespace,
@@ -2763,7 +2776,7 @@ func (r *AppReconciler) reconcileExecutionNetworkPolicy(ctx context.Context, app
 		scopeSelector = map[string]string{labelNetworkIsolation: env}
 	}
 	_, err := controllerutil.CreateOrUpdate(ctx, r.buildPlaneClient(), np, func() error {
-		np.Labels = map[string]string{labelApp: app.Name, labelWorkspace: ws}
+		np.Labels = artifactLabels(app, "execution-network-policy")
 		np.Spec = networkingv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{labelApp: app.Name}},
 			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
@@ -2829,16 +2842,18 @@ func appPodRequests(_ context.Context, object client.Object) []reconcile.Request
 	return []reconcile.Request{{NamespacedName: client.ObjectKey{Namespace: object.GetNamespace(), Name: name}}}
 }
 
-// deleteTLSSecrets removes the cert-manager TLS Secrets for every host the App
 // handleAppDeletion runs the finalizer teardown for an App being deleted:
 // cleans up build artifacts, cert-manager TLS Secrets, static-site S3 content,
 // and Zot registry images that ownerRefs can't cascade to. Extracted from
 // Reconcile to keep its cyclomatic complexity in check.
 func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.App) (ctrl.Result, error) {
 	if controllerutil.ContainsFinalizer(app, finalizer) {
-		log := logf.FromContext(ctx)
-		if app.Status.SandboxID != "" {
-			_ = r.Runtime.Delete(ctx, app.Status.SandboxID)
+		var errs []error
+		pending := false
+		if app.Status.SandboxID != "" && r.Runtime != nil {
+			if err := r.Runtime.Delete(ctx, app.Status.SandboxID); err != nil {
+				errs = append(errs, fmt.Errorf("delete sandbox: %w", err))
+			}
 		}
 		// Cross-namespace build/predeploy Jobs and kpack Images in the build
 		// namespace — ownerRefs are invalid across namespaces so nothing cascades.
@@ -2850,57 +2865,20 @@ func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.
 		if r.BuildClient != nil {
 			cl = r.BuildClient
 		}
-		if err := build.DeleteAppArtifacts(ctx, app.Name, ns, cl); err != nil {
-			log.Error(err, "delete build artifacts", "app", app.Name)
+		executionPending, err := r.reclaimAppExecution(ctx, app, ns, cl)
+		pending = pending || executionPending
+		errs = append(errs, err)
+		externalPending, err := r.reclaimAppExternalArtifacts(ctx, app, ns, cl)
+		pending = pending || externalPending
+		errs = append(errs, err)
+		credentialsPending, err := r.revokeAppRegistryCredentials(ctx, app, ns, cl)
+		pending = pending || credentialsPending
+		errs = append(errs, err)
+		if err := errors.Join(errs...); err != nil {
+			return ctrl.Result{}, err
 		}
-		if err := r.deleteBuildRegistrySecret(ctx, app.Name, ns); err != nil {
-			log.Error(err, "delete merged build registry credential", "app", app.Name)
-		}
-		execPolicy := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{
-			Name: build.JobName(app.Name, "execution-egress"), Namespace: ns,
-		}}
-		if err := cl.Delete(ctx, execPolicy); err != nil && !apierrors.IsNotFound(err) {
-			log.Error(err, "delete execution network policy", "app", app.Name)
-		}
-		// cert-manager TLS Secrets
-		r.deleteTLSSecrets(ctx, app)
-		// Static-site S3 prefix
-		if app.Spec.Type == appv1alpha1.TypeStaticSite && r.StaticStore.Configured() {
-			if err := publish.PurgeApp(ctx, app.Name, r.StaticStore, ns, cl,
-				r.RegistryPullSecret, ""); err != nil {
-				log.Error(err, "dispatch static purge job", "app", app.Name)
-			}
-		}
-		// Registry images
-		if r.Registry != "" && app.Status.Image != "" &&
-			strings.HasPrefix(app.Status.Image, r.Registry+"/") {
-			if err := r.deleteRegistryRepo(ctx, app); err != nil {
-				log.Error(err, "delete registry images", "app", app.Name)
-			}
-		}
-		// Per-App pull credential revocation (w7/m36): remove "app-<name>" from
-		// zot-htpasswd and the per-repo ACL, then delete the pull Secret.
-		if r.PerAppRegistry != nil {
-			if err := r.PerAppRegistry.RevokeCreds(ctx, app.Name); err != nil {
-				if errors.Is(err, registry.ErrConflictRequeue) {
-					// Write conflict: defer cleanup to next reconcile. The finalizer
-					// remains, so the App will be requeued automatically.
-					return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
-				}
-				log.Error(err, "revoke per-app registry credentials", "app", app.Name)
-			}
-			pullSec := &corev1.Secret{}
-			pullSec.Name = registry.PullSecretName(app.Name)
-			pullSec.Namespace = app.Namespace
-			if err := r.Delete(ctx, pullSec); err != nil && !apierrors.IsNotFound(err) {
-				log.Error(err, "delete per-app pull secret", "app", app.Name)
-			}
-			if ns != app.Namespace {
-				buildPullSec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: pullSec.Name, Namespace: ns}}
-				if err := cl.Delete(ctx, buildPullSec); err != nil && !apierrors.IsNotFound(err) {
-					log.Error(err, "delete build-namespace per-app registry secret", "app", app.Name)
-				}
-			}
+		if pending {
+			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 		}
 		controllerutil.RemoveFinalizer(app, finalizer)
 		if err := r.Update(ctx, app); err != nil {
@@ -2910,27 +2888,198 @@ func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.
 	return ctrl.Result{}, nil
 }
 
-// served. cert-manager does not garbage-collect the Secret when the Certificate
-// or Ingress is removed, so they would otherwise persist indefinitely. The
-// Ingress is already cascaded via ownerRef; this cleans up the Secret it left.
-func (r *AppReconciler) deleteTLSSecrets(ctx context.Context, app *appv1alpha1.App) {
-	log := logf.FromContext(ctx)
-	for i, h := range effectiveHosts(app, r.BaseDomain) {
-		name := tlsSecretName(app.Name, i, h)
-		sec := &corev1.Secret{}
-		sec.Name = name
-		sec.Namespace = app.Namespace
-		if err := r.Delete(ctx, sec); err != nil && !apierrors.IsNotFound(err) {
-			log.Error(err, "delete TLS secret", "secret", name)
+func (r *AppReconciler) reclaimAppExecution(ctx context.Context, app *appv1alpha1.App, namespace string, cl client.Client) (bool, error) {
+	var errs []error
+	pending := false
+	identity := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
+		Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace, CreatedAt: app.CreationTimestamp.Time}
+	done, _, err := build.ReclaimAppArtifacts(ctx, identity, namespace, cl)
+	pending = pending || !done
+	if err != nil {
+		errs = append(errs, fmt.Errorf("reclaim build artifacts: %w", err))
+	}
+	if namespace != app.Namespace {
+		for _, name := range r.knownBuildSecretNames(app) {
+			done, deleteErr := deleteAndWait(ctx, cl, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}})
+			pending = pending || !done
+			if deleteErr != nil {
+				errs = append(errs, fmt.Errorf("delete copied build Secret %s: %w", name, deleteErr))
+			}
 		}
 	}
+	execPolicy := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{
+		Name: build.JobName(app.Name, "execution-egress"), Namespace: namespace,
+	}}
+	if done, deleteErr := deleteAndWait(ctx, cl, execPolicy); deleteErr != nil {
+		errs = append(errs, fmt.Errorf("delete execution NetworkPolicy: %w", deleteErr))
+	} else {
+		pending = pending || !done
+	}
+	return pending, errors.Join(errs...)
+}
+
+func (r *AppReconciler) reclaimAppExternalArtifacts(ctx context.Context, app *appv1alpha1.App, namespace string, cl client.Client) (bool, error) {
+	var errs []error
+	pending := false
+	tlsDone, err := r.deleteTLSSecrets(ctx, app)
+	pending = pending || !tlsDone
+	errs = append(errs, err)
+	if app.Spec.Type == appv1alpha1.TypeStaticSite {
+		if !r.StaticStore.Configured() {
+			errs = append(errs, fmt.Errorf("static purge configuration is unavailable"))
+		} else {
+			purgeJob := publish.PurgeJob(app.Name, string(app.UID), app.Labels[labelWorkspace],
+				app.Namespace, r.StaticStore, namespace, r.RegistryBuildPullSecret, "")
+			done, purgeErr := reconcileCleanupJob(ctx, cl, app, purgeJob, annotStaticPurgeComplete)
+			pending = pending || !done
+			if purgeErr != nil {
+				errs = append(errs, fmt.Errorf("purge static content: %w", purgeErr))
+			}
+		}
+	}
+	registryOwned := strings.HasPrefix(app.Status.Image, r.Registry+"/") ||
+		strings.HasPrefix(app.Status.ArtifactImage, r.Registry+"/") || app.Spec.Repo != ""
+	if r.Registry != "" && registryOwned {
+		done, registryErr := r.deleteRegistryRepo(ctx, app)
+		pending = pending || !done
+		if registryErr != nil {
+			errs = append(errs, fmt.Errorf("delete registry images: %w", registryErr))
+		}
+	}
+	return pending, errors.Join(errs...)
+}
+
+func (r *AppReconciler) revokeAppRegistryCredentials(ctx context.Context, app *appv1alpha1.App, namespace string, cl client.Client) (bool, error) {
+	if r.PerAppRegistry == nil {
+		return false, nil
+	}
+	var errs []error
+	pending := false
+	if err := r.PerAppRegistry.RevokeCreds(ctx, app.Name); err != nil {
+		errs = append(errs, fmt.Errorf("revoke per-app registry credentials: %w", err))
+	}
+	pullSec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: registry.PullSecretName(app.Name), Namespace: app.Namespace}}
+	if done, deleteErr := deleteAndWait(ctx, r.Client, pullSec); deleteErr != nil {
+		errs = append(errs, fmt.Errorf("delete per-app pull Secret: %w", deleteErr))
+	} else {
+		pending = pending || !done
+	}
+	if namespace != app.Namespace {
+		buildPullSec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: pullSec.Name, Namespace: namespace}}
+		if done, deleteErr := deleteAndWait(ctx, cl, buildPullSec); deleteErr != nil {
+			errs = append(errs, fmt.Errorf("delete build-namespace registry Secret: %w", deleteErr))
+		} else {
+			pending = pending || !done
+		}
+	}
+	return pending, errors.Join(errs...)
+}
+
+func (r *AppReconciler) knownBuildSecretNames(app *appv1alpha1.App) []string {
+	names := []string{build.JobName(app.Name, "registry-auth")}
+	for _, name := range []string{
+		app.Spec.CloneSecret,
+		runtimeEnvSecret(app),
+		app.Spec.ExternalRegistryPullSecret,
+		registry.PullSecretName(app.Name),
+	} {
+		if name != "" {
+			names = append(names, name)
+		}
+	}
+	names = append(names, app.Spec.EnvFromSecrets...)
+	names = append(names, app.Spec.FilesFromSecrets...)
+	if app.Spec.EnvFromSecret != "" {
+		names = append(names, app.Spec.EnvFromSecret)
+	}
+	sort.Strings(names)
+	return slices.Compact(names)
+}
+
+// recordTLSSecretHistory remembers every cert-manager TLS Secret ever selected
+// for this App. cert-manager does not garbage-collect the Secret when the Certificate
+// or Ingress is removed, so they would otherwise persist indefinitely. The
+// Ingress is already cascaded via ownerRef; this cleans up the Secret it left.
+func (r *AppReconciler) recordTLSSecretHistory(ctx context.Context, app *appv1alpha1.App) error {
+	names := tlsSecretHistory(app)
+	seen := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		seen[name] = struct{}{}
+	}
+	changed := false
+	for idx, host := range effectiveHosts(app, r.BaseDomain) {
+		name := tlsSecretName(app.Name, idx, host)
+		if _, ok := seen[name]; !ok {
+			names = append(names, name)
+			seen[name] = struct{}{}
+			changed = true
+		}
+	}
+	if !changed {
+		return nil
+	}
+	sort.Strings(names)
+	raw, err := json.Marshal(names)
+	if err != nil {
+		return err
+	}
+	before := client.MergeFrom(app.DeepCopy())
+	if app.Annotations == nil {
+		app.Annotations = map[string]string{}
+	}
+	app.Annotations[annotTLSSecretHistory] = string(raw)
+	return r.Patch(ctx, app, before)
+}
+
+func tlsSecretHistory(app *appv1alpha1.App) []string {
+	var names []string
+	if raw := app.Annotations[annotTLSSecretHistory]; raw != "" {
+		_ = json.Unmarshal([]byte(raw), &names)
+	}
+	return names
+}
+
+func (r *AppReconciler) deleteTLSSecrets(ctx context.Context, app *appv1alpha1.App) (bool, error) {
+	names := make(map[string]struct{})
+	for _, name := range tlsSecretHistory(app) {
+		names[name] = struct{}{}
+	}
+	for idx, host := range effectiveHosts(app, r.BaseDomain) {
+		names[tlsSecretName(app.Name, idx, host)] = struct{}{}
+	}
+	// Migration safety for Apps whose custom host was removed before m61 wrote
+	// the history annotation. These names are operator-reserved for this App.
+	var secrets corev1.SecretList
+	if err := r.List(ctx, &secrets, client.InNamespace(app.Namespace)); err != nil {
+		return false, fmt.Errorf("list TLS Secrets: %w", err)
+	}
+	for idx := range secrets.Items {
+		name := secrets.Items[idx].Name
+		if name == app.Name+"-tls" || strings.HasPrefix(name, app.Name+"-tls-") {
+			names[name] = struct{}{}
+		}
+	}
+	var errs []error
+	pending := false
+	for name := range names {
+		sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
+		done, err := deleteAndWait(ctx, r.Client, sec)
+		pending = pending || !done
+		if err != nil {
+			errs = append(errs, fmt.Errorf("delete TLS Secret %s: %w", name, err))
+		}
+	}
+	return !pending, errors.Join(errs...)
 }
 
 // deleteRegistryRepo removes all manifests for the app's image repository from
-// the in-cluster OCI registry via the OCI Distribution Spec v2 HTTP API. Best-
-// effort: errors are logged and do not block finalizer removal. After all
-// manifests are deleted, Zot's periodic GC reclaims the unreferenced blobs.
-func (r *AppReconciler) deleteRegistryRepo(ctx context.Context, app *appv1alpha1.App) error {
+// the in-cluster OCI registry via the OCI Distribution Spec v2 HTTP API. Any
+// error retains the finalizer; after manifest deletion a later list must prove
+// the repository empty. Zot's periodic GC reclaims the unreferenced blobs.
+func (r *AppReconciler) deleteRegistryRepo(ctx context.Context, app *appv1alpha1.App) (bool, error) {
+	requestCtx, cancel := boundedhttp.WithTimeout(ctx)
+	defer cancel()
+	ctx = requestCtx
 	registryHost := r.Registry
 	base := "http://" + registryHost
 	if strings.HasPrefix(registryHost, "http://") || strings.HasPrefix(registryHost, "https://") {
@@ -2940,7 +3089,7 @@ func (r *AppReconciler) deleteRegistryRepo(ctx context.Context, app *appv1alpha1
 
 	authHdr, err := r.registryAuthHeader(ctx, app.Namespace)
 	if err != nil {
-		return fmt.Errorf("registry auth: %w", err)
+		return false, fmt.Errorf("registry auth: %w", err)
 	}
 
 	do := func(method, url string) (*http.Response, error) {
@@ -2953,54 +3102,67 @@ func (r *AppReconciler) deleteRegistryRepo(ctx context.Context, app *appv1alpha1
 		if authHdr != "" {
 			req.Header.Set("Authorization", authHdr)
 		}
-		return http.DefaultClient.Do(req)
+		httpClient := r.HTTPClient
+		if httpClient == nil {
+			httpClient = boundedhttp.Shared
+		}
+		return httpClient.Do(req)
 	}
 
 	resp, err := do(http.MethodGet, fmt.Sprintf("%s/v2/%s/tags/list", base, repo))
 	if err != nil {
-		return fmt.Errorf("list tags: %w", err)
+		return false, fmt.Errorf("list tags: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode == http.StatusNotFound {
-		return nil
+		return true, nil
 	}
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("list tags: status %d: %s", resp.StatusCode, body)
+		body, _ := boundedhttp.ReadAll(resp.Body)
+		return false, fmt.Errorf("list tags: status %d: %s", resp.StatusCode, body)
 	}
 	var tagList struct {
 		Tags []string `json:"tags"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&tagList); err != nil {
-		return fmt.Errorf("decode tags: %w", err)
+	if err := boundedhttp.DecodeJSON(resp.Body, &tagList); err != nil {
+		return false, fmt.Errorf("decode tags: %w", err)
+	}
+	if len(tagList.Tags) == 0 {
+		return true, nil
 	}
 
 	seen := map[string]bool{}
 	for _, tag := range tagList.Tags {
 		r2, err := do(http.MethodHead, fmt.Sprintf("%s/v2/%s/manifests/%s", base, repo, tag))
 		if err != nil {
-			return fmt.Errorf("head manifest %s: %w", tag, err)
+			return false, fmt.Errorf("head manifest %s: %w", tag, err)
 		}
 		_ = r2.Body.Close()
 		if r2.StatusCode == http.StatusNotFound {
 			continue
 		}
+		if r2.StatusCode != http.StatusOK {
+			return false, fmt.Errorf("head manifest %s: status %d", tag, r2.StatusCode)
+		}
 		digest := r2.Header.Get("Docker-Content-Digest")
-		if digest == "" || seen[digest] {
+		if digest == "" {
+			return false, fmt.Errorf("head manifest %s: missing Docker-Content-Digest", tag)
+		}
+		if seen[digest] {
 			continue
 		}
 		seen[digest] = true
 		r3, err := do(http.MethodDelete, fmt.Sprintf("%s/v2/%s/manifests/%s", base, repo, digest))
 		if err != nil {
-			return fmt.Errorf("delete manifest %s: %w", digest, err)
+			return false, fmt.Errorf("delete manifest %s: %w", digest, err)
 		}
-		body, _ := io.ReadAll(r3.Body)
+		body, _ := boundedhttp.ReadAll(r3.Body)
 		_ = r3.Body.Close()
 		if r3.StatusCode != http.StatusAccepted && r3.StatusCode != http.StatusOK {
-			return fmt.Errorf("delete manifest %s: status %d: %s", digest, r3.StatusCode, body)
+			return false, fmt.Errorf("delete manifest %s: status %d: %s", digest, r3.StatusCode, body)
 		}
 	}
-	return nil
+	return false, nil
 }
 
 // registryAuthHeader reads the docker config push Secret and returns an HTTP

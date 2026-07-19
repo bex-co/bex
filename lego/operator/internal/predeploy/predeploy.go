@@ -94,6 +94,8 @@ const (
 // app pod's configuration.
 type Options struct {
 	Name         string // service name (image repo name / label value)
+	AppUID       string // immutable App UID; prevents same-name recreation from adopting stale artifacts
+	AppCreatedAt time.Time
 	Namespace    string // namespace the pre-deploy Job runs in
 	Workspace    string // owning tenant id (app.bex.co/workspace label); empty = omitted
 	AppNamespace string // namespace the App CR lives in; used for log attribution
@@ -156,9 +158,9 @@ func Job(o Options) *batchv1.Job {
 	if o.AppNamespace != "" && o.AppNamespace != o.Namespace {
 		appNamespace = o.AppNamespace
 	}
-	labels := execution.PodLabels(o.Name, ComponentValue, o.Workspace, appNamespace, o.VerifyImage)
+	labels := execution.PodLabels(o.Name, o.AppUID, ComponentValue, o.Workspace, appNamespace, o.VerifyImage)
 	labels[LabelService] = o.Name
-	podLabels := execution.PodLabels(o.Name, ComponentValue, o.Workspace, appNamespace, o.VerifyImage)
+	podLabels := execution.PodLabels(o.Name, o.AppUID, ComponentValue, o.Workspace, appNamespace, o.VerifyImage)
 	podLabels[LabelService] = o.Name
 	podSpec := corev1.PodSpec{
 		RestartPolicy:    corev1.RestartPolicyNever,
@@ -205,6 +207,10 @@ func Ensure(ctx context.Context, o Options) (*batchv1.Job, error) {
 	key := client.ObjectKey{Namespace: o.Namespace, Name: JobName(o.Name, o.Revision)}
 	if err := o.Client.Get(ctx, key, &cur); err != nil {
 		return nil, fmt.Errorf("predeploy: get job %s: %w", key.Name, err)
+	}
+	identity := execution.ArtifactIdentity{Name: o.Name, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace, CreatedAt: o.AppCreatedAt}
+	if err := identity.Adopt(ctx, o.Client, &cur, job.Labels); err != nil {
+		return nil, fmt.Errorf("predeploy: adopt job %s: %w", key.Name, err)
 	}
 	return &cur, nil
 }

@@ -19,6 +19,9 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -30,6 +33,22 @@ import (
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
+
+func TestPrometheusQueryHonorsCancellationDuringResponseBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.(http.Flusher).Flush()
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 80*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+	_, err := promInstantQuery(ctx, server.Client(), server.URL, "up")
+	if err == nil || !errors.Is(err, context.DeadlineExceeded) || time.Since(started) > time.Second {
+		t.Fatalf("stalled Prometheus body err=%v elapsed=%s", err, time.Since(started))
+	}
+}
 
 func ptr32(v int32) *int32 { return &v }
 

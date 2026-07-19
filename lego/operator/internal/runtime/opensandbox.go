@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	boundedhttp "github.com/bex-co/bex/lego/operator/internal/httpclient"
 )
 
 // Target is how the edge reaches a sandbox: host:port plus a path prefix
@@ -44,7 +46,7 @@ func New(baseURL string) *OpenSandbox {
 		CPU:        "1",
 		Memory:     "512Mi",
 		TimeoutSec: 86400,
-		HTTP:       &http.Client{Timeout: 30 * time.Second},
+		HTTP:       boundedhttp.New(30 * time.Second),
 	}
 }
 
@@ -80,7 +82,10 @@ func (o *OpenSandbox) do(ctx context.Context, method, path string, body any) ([]
 		return nil, 0, err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	data, _ := io.ReadAll(resp.Body)
+	data, err := boundedhttp.ReadAll(resp.Body)
+	if err != nil {
+		return nil, resp.StatusCode, fmt.Errorf("read OpenSandbox response: %w", err)
+	}
 	return data, resp.StatusCode, nil
 }
 

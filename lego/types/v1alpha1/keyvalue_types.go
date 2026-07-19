@@ -17,6 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
@@ -168,6 +171,17 @@ type KeyValueStatus struct {
 	// +optional
 	SecretName string `json:"secretName,omitempty"`
 
+	// CredentialSecretName is the controller-owned immutable Secret whose
+	// password is authoritative for both Valkey and connection-info. SecretName
+	// remains the immutable compatibility projection with ready-made URIs.
+	// +optional
+	CredentialSecretName string `json:"credentialSecretName,omitempty"`
+
+	// CredentialRevision is the one-way revision of the password running in the
+	// Ready StatefulSet. It never contains credential material.
+	// +optional
+	CredentialRevision string `json:"credentialRevision,omitempty"`
+
 	// ExternalHost is the public SNI hostname when Public is set (empty otherwise).
 	// The external URL is rediss://:<password>@<ExternalHost>:6379 (credentials
 	// from SecretName). DNS for the host must point at the edge.
@@ -183,6 +197,13 @@ type KeyValueStatus struct {
 	// +listMapKey=type
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+// KeyValueCredentialRevision returns the stable, non-secret revision shared by
+// the operator rollout gate and the backend connection-info gate.
+func KeyValueCredentialRevision(password []byte) string {
+	sum := sha256.Sum256(password)
+	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
 // +kubebuilder:object:root=true

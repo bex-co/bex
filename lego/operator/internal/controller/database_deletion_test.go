@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -37,6 +39,51 @@ import (
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
+
+func TestDatabaseDeletionWaitsForBackupPurgeCompletionAndJobAbsence(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	scheme.AddKnownTypeWithName(cnpgClusterGVK, &unstructured.Unstructured{})
+	now := metav1.Now()
+	db := &appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{
+		Name: "backed-up-db", Namespace: "default", UID: "uid-backed-up-db",
+		Finalizers: []string{dbFinalizer}, DeletionTimestamp: &now,
+	}, Status: appv1alpha1.DatabaseStatus{BackupsEnabled: true}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(db).
+		WithStatusSubresource(&appv1alpha1.Database{}, &batchv1.Job{}).Build()
+	r := &DatabaseReconciler{Client: cl, Scheme: scheme, Backup: BackupStore{
+		DestinationPath: "s3://backups/postgres", EndpointURL: "https://s3.example", S3Secret: "backup-creds",
+	}}
+	nn := types.NamespacedName{Name: db.Name, Namespace: db.Namespace}
+	req := reconcile.Request{NamespacedName: nn}
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	desired := r.dbBackupPurgeJob(db)
+	var job batchv1.Job
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(desired), &job); err != nil {
+		t.Fatalf("purge Job not persisted: %v", err)
+	}
+	if err := cl.Get(context.Background(), nn, &appv1alpha1.Database{}); err != nil {
+		t.Fatal("Database disappeared before purge completed")
+	}
+	job.Status.Conditions = []batchv1.JobCondition{{Type: batchv1.JobComplete, Status: corev1.ConditionTrue}}
+	if err := cl.Status().Update(context.Background(), &job); err != nil {
+		t.Fatal(err)
+	}
+	for range 3 {
+		if _, err := r.Reconcile(context.Background(), req); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := cl.Get(context.Background(), nn, &appv1alpha1.Database{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("Database survived proven purge completion: %v", err)
+	}
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(desired), &batchv1.Job{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("purge Job survived finalization: %v", err)
+	}
+}
 
 // TestDatabaseDeletionDeletesClusterAndReleasesFinalizer pins the w7/m12
 // finalizer against its deadlock: owner-ref garbage collection only removes the

@@ -246,6 +246,17 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
+              credentialRevision:
+                description: |-
+                  CredentialRevision is the one-way revision of the password running in the
+                  Ready StatefulSet. It never contains credential material.
+                type: string
+              credentialSecretName:
+                description: |-
+                  CredentialSecretName is the controller-owned immutable Secret whose
+                  password is authoritative for both Valkey and connection-info. SecretName
+                  remains the immutable compatibility projection with ready-made URIs.
+                type: string
               externalHost:
                 description: |-
                   ExternalHost is the public SNI hostname when Public is set (empty otherwise).

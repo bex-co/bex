@@ -117,6 +117,7 @@ rules:
   resources:
   - builds
   verbs:
+  - delete
   - get
   - list
   - watch

@@ -320,12 +320,16 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 	if version == "" {
 		version = d.Spec.Version
 	}
+	status := dbStatus(d.Status.Phase)
+	if !d.DeletionTimestamp.IsZero() {
+		status = "deleting"
+	}
 	return PostgresView{
 		ID:                      d.Name,
 		Name:                    d.DisplayName(),
 		Plan:                    d.Spec.Plan,
 		Version:                 version,
-		Status:                  dbStatus(d.Status.Phase),
+		Status:                  status,
 		DatabaseName:            dbn,
 		DatabaseUser:            dbUser,
 		DiskSizeGB:              databaseStorageHighWater(d),

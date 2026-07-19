@@ -26,6 +26,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	boundedhttp "github.com/bex-co/bex/lego/operator/internal/httpclient"
 )
 
 // Credential activation (w9/m43). Zot loads /secret/htpasswd and the
@@ -40,7 +42,6 @@ import (
 // when it stays rejected past the write grace, bounce the zot pod
 // (rate-limited) so the restart loads the new htpasswd user + ACL entry.
 const (
-	defaultProbeTimeout    = 5 * time.Second
 	defaultActivationGrace = 30 * time.Second
 	defaultBounceCooldown  = 2 * time.Minute
 )
@@ -54,7 +55,7 @@ const (
 )
 
 // defaultHTTPClient is shared by every probe when Creds.HTTPClient is nil.
-var defaultHTTPClient = &http.Client{Timeout: defaultProbeTimeout}
+var defaultHTTPClient = boundedhttp.Shared
 
 // EnsureActive reports whether the running Zot accepts the App's per-App pull
 // credential. It returns (false, nil) while activation is pending — the caller
@@ -197,6 +198,9 @@ func (c *Creds) clearActivation(appName string) {
 // avoid existence leaks, so 404 is not a perfect ACL proof but 401/403 are
 // definitive rejections) count as accepted.
 func (c *Creds) probe(ctx context.Context, repo, username, password string) (bool, error) {
+	requestCtx, cancel := boundedhttp.WithTimeout(ctx)
+	defer cancel()
+	ctx = requestCtx
 	httpClient := c.HTTPClient
 	if httpClient == nil {
 		httpClient = defaultHTTPClient

@@ -300,7 +300,10 @@ var _ = Describe("App Controller", func() {
 		AfterEach(func() {
 			if app := (&appv1alpha1.App{}); k8sClient.Get(ctx, nn, app) == nil {
 				Expect(k8sClient.Delete(ctx, app)).To(Succeed())
+				savedRegistry := r.Registry
+				r.Registry = "" // this unit suite has no registry server; deletion semantics have focused tests
 				reconcileN()
+				r.Registry = savedRegistry
 			}
 			_ = k8sClient.Delete(ctx, &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
 				Name: build.JobName(name, "gen-1"), Namespace: "default"}})

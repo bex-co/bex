@@ -31,6 +31,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	boundedhttp "github.com/bex-co/bex/lego/operator/internal/httpclient"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -91,7 +92,7 @@ func NewMetricsServerReader(cs kubernetes.Interface) MetricsReader {
 // metrics-server is unavailable (e.g. BEX_PROM_URL is set but metrics-server is not).
 func NewPrometheusMetricsReader(promURL string, hc *http.Client) MetricsReader {
 	if hc == nil {
-		hc = http.DefaultClient
+		hc = boundedhttp.Shared
 	}
 	return func(ctx context.Context, namespace, app string) ([]PodUsage, error) {
 		// instant query: current per-pod CPU rate + memory
@@ -185,7 +186,9 @@ type promInstantSample struct {
 // promInstantQuery fires an instant query against Prometheus and returns the
 // result vector as (labels, float64) pairs.
 func promInstantQuery(ctx context.Context, hc *http.Client, base, query string) ([]promInstantSample, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
+	requestCtx, cancel := boundedhttp.WithTimeout(ctx)
+	defer cancel()
+	req, err := http.NewRequestWithContext(requestCtx, http.MethodGet,
 		fmt.Sprintf("%s/api/v1/query?query=%s", base, url.QueryEscape(query)), nil)
 	if err != nil {
 		return nil, err
@@ -206,7 +209,7 @@ func promInstantQuery(ctx context.Context, hc *http.Client, base, query string) 
 			} `json:"result"`
 		} `json:"data"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&pr); err != nil {
+	if err := boundedhttp.DecodeJSON(resp.Body, &pr); err != nil {
 		return nil, err
 	}
 	out := make([]promInstantSample, 0, len(pr.Data.Result))

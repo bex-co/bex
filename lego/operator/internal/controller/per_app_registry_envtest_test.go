@@ -104,7 +104,7 @@ var _ = Describe("Per-App registry pull credentials (w7/m36)", func() {
 			Expect(k8sClient.Delete(ctx, app)).To(Succeed())
 			saved := r.Registry
 			r.Registry = "" // skip registry calls during teardown
-			reconcileN(r, nn, 1)
+			reconcileN(r, nn, 3)
 			r.Registry = saved
 		}
 		_ = k8sClient.Delete(ctx, &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}})
@@ -234,7 +234,10 @@ var _ = Describe("Per-App registry pull credentials (w7/m36)", func() {
 		app := &appv1alpha1.App{}
 		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
 		Expect(k8sClient.Delete(ctx, app)).To(Succeed())
-		reconcileN(r, nn, 1)
+		savedRegistry := r.Registry
+		r.Registry = "" // registry manifest cleanup is covered by its own bounded finalizer tests
+		reconcileN(r, nn, 2)
+		r.Registry = savedRegistry
 
 		// per-App pull Secret must be deleted.
 		Expect(k8sClient.Get(ctx, types.NamespacedName{

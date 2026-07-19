@@ -105,7 +105,7 @@ func KpackImage(o Options) *unstructured.Unstructured {
 	if o.AppNamespace != "" && o.AppNamespace != o.Namespace {
 		appNamespace = o.AppNamespace
 	}
-	commonLabels := execution.PodLabels(o.Name, "build", o.Workspace, appNamespace, false)
+	commonLabels := execution.PodLabels(o.Name, o.AppUID, "build", o.Workspace, appNamespace, false)
 	labels := make(map[string]any, len(commonLabels)+1)
 	for key, value := range commonLabels {
 		labels[key] = value
@@ -130,6 +130,7 @@ func buildpack(ctx context.Context, o Options) (Result, error) {
 	}
 	image := KpackImage(o)
 	key := client.ObjectKeyFromObject(image)
+	identity := execution.ArtifactIdentity{Name: o.Name, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace, CreatedAt: o.AppCreatedAt}
 	if err := o.Client.Create(ctx, image); err != nil && !apierrors.IsAlreadyExists(err) {
 		return Result{}, fmt.Errorf("build: create kpack image %s: %w", key.Name, err)
 	}
@@ -145,6 +146,9 @@ func buildpack(ctx context.Context, o Options) (Result, error) {
 				return Result{}, fmt.Errorf("build: kpack image %s did not finish within %s", key.Name, buildTimeout)
 			}
 			return Result{}, fmt.Errorf("build: get kpack image %s: %w", key.Name, err)
+		}
+		if err := identity.Adopt(wctx, o.Client, cur, image.GetLabels()); err != nil {
+			return Result{}, fmt.Errorf("build: adopt kpack image %s: %w", key.Name, err)
 		}
 		condition, found := kpackCondition(cur, kpackReadyCondition)
 		if found {
@@ -257,16 +261,14 @@ func newKpackImageList() *unstructured.UnstructuredList {
 	return u
 }
 
-func kpackServiceAccountName(app string) string {
-	name := kpackServiceAccountPrefix + app
-	if len(name) > 63 {
-		name = name[:63]
-	}
-	return strings.ToLower(name)
+func newKpackBuildList() *unstructured.UnstructuredList {
+	u := &unstructured.UnstructuredList{}
+	u.SetGroupVersionKind(kpackBuildGVK.GroupVersion().WithKind("BuildList"))
+	return u
 }
 
-func kpackSecretName(name string) string {
-	name += "-kpack"
+func kpackServiceAccountName(app string) string {
+	name := kpackServiceAccountPrefix + app
 	if len(name) > 63 {
 		name = name[:63]
 	}
@@ -340,7 +342,7 @@ func ensureKpackRegistrySecret(ctx context.Context, o Options) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	name := kpackSecretName(o.PushSecret)
+	name := JobName(o.Name, "kpack-registry")
 	dst := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: o.Namespace}}
 	_, err = controllerutil.CreateOrUpdate(ctx, o.Client, dst, func() error {
 		dst.Labels = buildLabels(o)
@@ -364,7 +366,7 @@ func ensureKpackGitSecret(ctx context.Context, o Options) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	name := kpackSecretName(o.CloneSecret)
+	name := JobName(o.Name, "kpack-git")
 	dst := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: o.Namespace}}
 	_, err = controllerutil.CreateOrUpdate(ctx, o.Client, dst, func() error {
 		dst.Labels = buildLabels(o)
@@ -392,7 +394,7 @@ func buildLabels(o Options) map[string]string {
 	if o.AppNamespace != "" && o.AppNamespace != o.Namespace {
 		appNamespace = o.AppNamespace
 	}
-	labels := execution.PodLabels(o.Name, "build", o.Workspace, appNamespace, false)
+	labels := execution.PodLabels(o.Name, o.AppUID, "build", o.Workspace, appNamespace, false)
 	labels["app.bex.co/build"] = o.Name
 	return labels
 }
