@@ -46,10 +46,9 @@ graph TD
 
 [`.env`](../.env.example) is the local, gitignored file that holds every bootstrap credential above (same custody rule as `*.kubeconfig` — **never committed, never printed**). It exists precisely because these secrets must be available _before_ the in-cluster secret stores (OpenBao, sealed-secrets) are running, so they cannot themselves live in-cluster.
 
-Two mirrors track it, value-less, and are kept in sync by rule (see [CLAUDE.md](../CLAUDE.md) rules):
+One mirror tracks it, value-less, and is kept in sync by rule (see [CLAUDE.md](../CLAUDE.md) rules):
 
-- [`.env.example`](../.env.example) — the local runtime mirror (`cp .env.example .env`).
-- `.env.template` — the CI-secrets mirror.
+- [`.env.example`](../.env.example) — the single checked-in mirror (`cp .env.example .env`), serving both the local runtime env and the CI-secrets source (`scripts/gh-secrets.sh` pushes the filled `.env` into GitHub Actions).
 
 **CI custody:** GitHub Actions holds its own copy of the same secrets as repository/environment secrets (`BEX_SSH_PRIVATE_KEY`, `HCLOUD_TOKEN`, `TF_STATE_*`, …). So the credential set exists in **three places**: the operator's `.env`, GitHub Actions secrets, and (for the derived ones) the clusters themselves. Rotating a credential means rotating all copies.
 

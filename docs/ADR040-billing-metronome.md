@@ -96,7 +96,7 @@ Volume is modest — one event per (resource × meter × hour). At 1000 resource
 | `BEX_METRONOME_SEAL_HOURS` | Rewrite horizon before a row is exported (default `48`). | `48` |
 | `BEX_METRONOME_EPOCH` | RFC3339 "billing starts here" floor — the emitter never ships a row whose `window_start` predates it (§7). | unset ⇒ effective floor is `now − backfill horizon` at first enable |
 
-With `BEX_METRONOME_TOKEN` unset the emitter never starts; bex behaves exactly as it does under ADR030 (estimate-only). `.env.example`/`.env.template` are updated in lockstep per the repo rule.
+With `BEX_METRONOME_TOKEN` unset the emitter never starts; bex behaves exactly as it does under ADR030 (estimate-only). `.env.example` is updated per the repo rule.
 
 ### 7. Enable/disable & lifecycle
 

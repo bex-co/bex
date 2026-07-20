@@ -21,7 +21,6 @@ on:
       - "scripts/postgres-rename-verify.sh"
       - "scripts/rename-verify.test.sh"
       - ".env.example"
-      - ".env.template"
       - ".github/workflows/scripts.yml"
   push:
     branches: [main]
@@ -42,7 +41,6 @@ on:
       - "scripts/postgres-rename-verify.sh"
       - "scripts/rename-verify.test.sh"
       - ".env.example"
-      - ".env.template"
       - ".github/workflows/scripts.yml"
 
 permissions:

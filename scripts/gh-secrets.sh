@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Push bex CI secrets from .env into THIS repo's GitHub Actions secrets.
-#   1. cp .env.template .env     2. fill .env (gitignored)     3. bash scripts/gh-secrets.sh
+#   1. cp .env.example .env     2. fill .env (gitignored)     3. bash scripts/gh-secrets.sh
 # Requires the gh CLI, authed (`gh auth login`). Repo is inferred from the origin remote.
 # Secrets go in via stdin/file — never as command-line args (which would leak in ps).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-[ -f .env ] || { echo "ERROR: .env not found — run: cp .env.template .env  (then fill it)"; exit 1; }
+[ -f .env ] || { echo "ERROR: .env not found — run: cp .env.example .env  (then fill it)"; exit 1; }
 command -v gh >/dev/null || { echo "ERROR: gh CLI not found — brew install gh && gh auth login"; exit 1; }
 
 set -a; . ./.env; set +a

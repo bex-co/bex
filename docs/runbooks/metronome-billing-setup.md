@@ -17,7 +17,7 @@ Do it once per Metronome org (production + any sandbox). Re-run it against a fre
 ## 1. API token → `BEX_METRONOME_TOKEN` (out-of-band secret)
 
 1. Metronome **Settings → API Tokens → Create**. Scope it to ingest + customer + read (contracts/usage). Copy the bearer token.
-2. Hand it to ops as the out-of-band secret `BEX_METRONOME_TOKEN` ([ADR019](../ADR019-infra-credentials.md) custody pattern). **Never commit it**; it is not in `.env.example`/`.env.template` (value-less mirrors only).
+2. Hand it to ops as the out-of-band secret `BEX_METRONOME_TOKEN` ([ADR019](../ADR019-infra-credentials.md) custody pattern). **Never commit it**; it is not in `.env.example` (a value-less mirror only).
 3. Setting it (with `BEX_CP_DB_URI` present) turns on the emitter. Leave it unset everywhere until the metrics/rate card below exist, or the first sealed rows will ingest against an org that cannot rate them.
 
 ## 2. Billable metrics (one per meter kind)
