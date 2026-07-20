@@ -35,12 +35,20 @@ type Identity struct {
 	// `sub` (distinct from client_id) from a client_credentials machine token. It
 	// lets onboarding and revocation use explicit human semantics.
 	Human bool
-	// Email is the caller's verified email, populated for session (human)
-	// callers from their Kratos identity traits; empty for machine (API-key)
-	// callers, which have no email. It is the key a pending workspace invite is
-	// redeemed against on first login (internal/api/tenancy.go), not an
-	// authorization input — the subject remains the tenant-scoping hook.
+	// Email is the caller's email, populated for session (human) callers from
+	// their Kratos identity traits; empty for machine (API-key) callers, which
+	// have no email. It is the key a pending workspace invite is redeemed against
+	// on first login (internal/api/tenancy.go), not an authorization input — the
+	// subject remains the tenant-scoping hook. NOTE: this is the raw trait, which
+	// Kratos does not require to be verified before a session exists — consult
+	// EmailVerified before trusting it as proof of email ownership (w1/m53).
 	Email string
+	// EmailVerified reports whether Kratos has verified the trait Email for this
+	// identity (a matching verifiable_addresses entry with verified=true). False
+	// for machine callers and for session callers whose email is not yet verified.
+	// Invite redemption can be gated on this so an attacker who registers with a
+	// victim's not-yet-signed-up invited address can't claim the invite (w1/m53).
+	EmailVerified bool
 	// Name is the caller's display name (the optional Kratos `name` trait,
 	// w4/m25), populated for session callers alongside Email; empty for machine
 	// callers and for identities that never set the trait. Presentation only —

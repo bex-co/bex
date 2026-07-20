@@ -432,10 +432,19 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	// container from the committed code. Image-backed services can deploy any
 	// valid image ref the caller supplies (origin-safety rule: gate on service
 	// kind, not registry domain — the caller is authenticated and chooses the
-	// image; that is the point of the verb).
+	// image; that is the point of the verb). NOTE: for an image-backed service the
+	// deploy-hook URL (an unguessable token, minted behind RelCanViewSensitive) is
+	// therefore effectively an arbitrary-image deploy credential — treat it like a
+	// secret (docs/ADR006-bex-api.md § Deploy hooks).
 	if p.ImageURL != "" && a.Spec.Repo != "" {
 		return DeployView{}, fmt.Errorf("%w: imageUrl is not supported for repo-backed services — "+
 			"bex rebuilds from source on every trigger; use commitId to pin a ref instead", core.ErrBadRequest)
+	}
+	// Validate the supplied image ref at the boundary (w1/m53): reject whitespace/
+	// control/shell-meta characters so a malformed reference can't reach the App
+	// CR spec (where the CRD schema would reject it with a less legible error).
+	if p.ImageURL != "" && !store.ValidImage(p.ImageURL) {
+		return DeployView{}, fmt.Errorf("%w: imageUrl must be an OCI reference (no whitespace or shell metacharacters)", core.ErrBadRequest)
 	}
 	// commitId is meaningless for a cron_job: a cron runs on a schedule, not
 	// per-commit. Reject early rather than silently ignoring the field.

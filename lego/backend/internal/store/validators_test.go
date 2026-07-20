@@ -59,6 +59,37 @@ func TestValidRepo(t *testing.T) {
 	}
 }
 
+func TestValidImage(t *testing.T) {
+	cases := []struct {
+		name  string
+		image string
+		want  bool
+	}{
+		{"registry-tag", "zot.bex-registry.svc:5000/myapp:rev-abc", true},
+		{"public-tag", "docker.io/library/nginx:1.25", true},
+		{"digest", "ghcr.io/org/repo@sha256:deadbeefcafebabe", true},
+		{"short", "nginx", true},
+		{"empty-rejected", "", false},
+		// w1/m53: the SSRF-adjacent shapes — whitespace/control/shell-meta chars —
+		// must be refused so the operator never gets a weaponizable image string.
+		{"space-rejected", "nginx latest", false},
+		{"newline-rejected", "nginx\nevil", false},
+		{"control-char-rejected", "nginx\x00", false},
+		{"backtick-rejected", "nginx`whoami`", false},
+		{"substitution-rejected", "nginx$(whoami)", false},
+		{"leading-slash-rejected", "/etc/passwd", false},
+		{"leading-dash-rejected", "-flag", false},
+		{"too-long-rejected", strings.Repeat("a", 513), false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := ValidImage(tc.image); got != tc.want {
+				t.Errorf("ValidImage(%q) = %v, want %v", tc.image, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestValidGitRef(t *testing.T) {
 	cases := []struct {
 		name string

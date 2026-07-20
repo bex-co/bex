@@ -29,6 +29,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -76,6 +77,22 @@ func envOr(k, def string) string {
 		return v
 	}
 	return def
+}
+
+// requireCPAuth fails closed for the internal control-plane API (:8091): it
+// grants workspace-admin and cross-tenant writes, so an empty BEX_CP_TOKEN
+// (no bearer gate) must abort startup rather than silently serve open. The
+// BEX_CP_INSECURE=1 escape hatch keeps local dev working and logs loudly; prod
+// never sets it. Extracted so the guard is unit-testable without booting main.
+func requireCPAuth(token, insecure string) error {
+	if token != "" {
+		return nil
+	}
+	if insecure == "1" {
+		log.Printf("WARNING: BEX_CP_TOKEN is empty and BEX_CP_INSECURE=1 — the control-plane API (:8091) serves UNAUTHENTICATED. Never do this outside local dev.")
+		return nil
+	}
+	return errors.New("BEX_CP_TOKEN is required when the control plane is enabled (BEX_CP_DB_URI set): the internal API grants workspace-admin and cross-tenant writes; refusing to serve it unauthenticated. Set BEX_CP_TOKEN, or set BEX_CP_INSECURE=1 to override in local dev only")
 }
 
 // drainWindow is how long a SIGTERM'd bex-api keeps serving NEW requests while
@@ -200,6 +217,14 @@ func main() {
 	if fga := os.Getenv("BEX_OPENFGA_URL"); fga != "" && !mcpStdio() {
 		authzChecker = authz.NewOpenFGAChecker(fga, os.Getenv("BEX_OPENFGA_TOKEN"))
 		base.Authz = authzChecker
+	}
+	// w1/m53: with the store on but OpenFGA off, every relation check passes
+	// (fail-open). Cross-tenant isolation still holds via membership filtering,
+	// but WITHIN a workspace roles aren't enforced — a viewer can delete services,
+	// read secrets, invite members. Safe only for single-member workspaces; warn
+	// loudly so this mode can't silently ship role-less for a real team.
+	if base.Authz == nil && os.Getenv("BEX_CP_DB_URI") != "" && !mcpStdio() {
+		log.Printf("WARNING: BEX_OPENFGA_URL is unset while the control-plane store is on — authorization is FAIL-OPEN: every workspace member has admin-equivalent rights within their workspace. Cross-tenant isolation still holds. Set BEX_OPENFGA_URL before onboarding multi-member workspaces (docs/ADR012-auth.md).")
 	}
 
 	// Control plane (source of truth, w1/m2): opt-in via BEX_CP_DB_URI. When set,
@@ -332,6 +357,11 @@ func main() {
 		// Login-time invite redemptions record members.AcceptInvite audit rows
 		// through the same store the feature verbs' sink writes (w1/m33).
 		tenantSvc.Audit = st
+		// w1/m53: gate login-time invite redemption on a Kratos-verified email so
+		// an attacker can't register with a victim's not-yet-signed-up invited
+		// address and claim the invite. Default off keeps deployments whose
+		// email-verification UX isn't complete working (docs/ADR024-members.md).
+		tenantSvc.RequireVerifiedInviteEmail = os.Getenv("BEX_REQUIRE_VERIFIED_INVITE_EMAIL") == "1"
 		base.Workspace = tenantSvc
 		deps.Onboard = tenantSvc
 		deps.KeyBinder = tenantSvc
@@ -395,7 +425,16 @@ func main() {
 		deps.Audit = auditSvc
 		go auditSvc.Run(ctx)
 
-		internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: os.Getenv("BEX_CP_TOKEN"), Grant: granter}
+		// The internal control-plane API (:8091) grants workspace-admin and
+		// cross-tenant writes, so it must never serve unauthenticated. Fail
+		// closed at startup when BEX_CP_TOKEN is empty (w1/m53: the token was
+		// set nowhere in prod, so the API had been serving open behind the
+		// NetworkPolicy alone). BEX_CP_INSECURE=1 is a loud local-dev override.
+		cpToken := os.Getenv("BEX_CP_TOKEN")
+		if err := requireCPAuth(cpToken, os.Getenv("BEX_CP_INSECURE")); err != nil {
+			log.Fatalf("control plane: %v", err)
+		}
+		internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: cpToken, Grant: granter}
 		cpAddr := envOr("BEX_CP_ADDR", ":8091")
 		cpSrv := &http.Server{
 			Addr:              cpAddr,

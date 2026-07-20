@@ -43,8 +43,10 @@ type API struct {
 	Kick func()
 	// Health reports readiness (the DB ping) for /healthz.
 	Health func(context.Context) error
-	// Token, when set, gates /v1/ behind a bearer check. Empty = open —
-	// acceptable only because the Service is cluster-internal (no Ingress).
+	// Token gates /v1/ behind a constant-time bearer check. Empty leaves the
+	// API open, so cmd/api refuses to start the :8091 listener with an empty
+	// token unless BEX_CP_INSECURE=1 (w1/m53 requireCPAuth) — this field is
+	// only ever empty in that explicit local-dev override.
 	Token string
 	// Grant, when set, writes the new tenant's OpenFGA workspace membership so
 	// its owner can authorize resources (replacing the model's workspace:default
@@ -128,6 +130,10 @@ func (a *API) createTenant(w http.ResponseWriter, r *http.Request) {
 	plan, err := NormalizePlan(req.Plan)
 	if err != nil {
 		writeErr(w, err)
+		return
+	}
+	if req.Admin != "" && !subjectRE.MatchString(req.Admin) {
+		writeErr(w, fmt.Errorf("%w: admin must be a bare identity id (no whitespace or ':'/'#'/'@')", ErrInvalid))
 		return
 	}
 	t, err := a.Store.CreateTenant(r.Context(), req.Name, plan)
@@ -267,6 +273,9 @@ func appFromRequest(req CreateAppRequest) (App, error) {
 	if req.Branch != "" && !ValidGitRef(req.Branch) {
 		return App{}, fmt.Errorf("%w: branch must be a git ref (no shell metacharacters)", ErrInvalid)
 	}
+	if req.Image != "" && !ValidImage(req.Image) {
+		return App{}, fmt.Errorf("%w: image must be an OCI reference (no whitespace or shell metacharacters)", ErrInvalid)
+	}
 	tier, err := normalizeTier("tier", req.Tier)
 	if err != nil {
 		return App{}, err
@@ -391,6 +400,8 @@ func (a *API) kick() {
 }
 
 // bearer gates h behind the configured token; a no-op when Token is empty.
+// An empty Token only reaches here under the BEX_CP_INSECURE=1 dev override —
+// cmd/api's requireCPAuth aborts startup otherwise (w1/m53).
 func (a *API) bearer(h http.Handler) http.Handler {
 	if a.Token == "" {
 		return h
@@ -429,6 +440,19 @@ var (
 	// flag, no leading "." or "/"). Rejects all control/whitespace/shell-meta
 	// characters (w6/m6 t003).
 	refRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/@+-]{0,254}$`)
+	// subjectRE: an owner identity (Kratos identity id / Hydra client id) safe to
+	// splice into the OpenFGA object string "user:<id>" — no whitespace, control,
+	// or the ':'/'#'/'@' characters that carry meaning in a tuple (w1/m53). Kratos
+	// UUIDs and Hydra client ids fit; anything exotic is refused rather than
+	// silently minting a malformed or ambiguous membership tuple.
+	subjectRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,253}$`)
+	// imageRE: a prebuilt OCI image reference — host[:port]/repo[:tag][@digest] —
+	// restricted to the characters a real reference uses, starting with an
+	// alphanumeric, no whitespace/control/shell-meta characters (w1/m53). This is
+	// input hygiene bounding what a tenant can store as spec.Image; the SSRF class
+	// (an image host masquerading as the registry) is closed at the operator's
+	// admission prefix boundary, not here. Length is bounded by ValidImage.
+	imageRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/:@-]{0,511}$`)
 )
 
 func validateName(field, v string) error {
@@ -453,6 +477,12 @@ func ValidRepo(v string) bool { return len(v) <= 2048 && repoRE.MatchString(v) }
 // build-from-git App (no shell metacharacters, no leading dash). Single-source
 // for both create paths (w6/m6 t003).
 func ValidGitRef(v string) bool { return refRE.MatchString(v) }
+
+// ValidImage reports whether v is an acceptable prebuilt OCI image reference
+// (host[:port]/repo[:tag][@digest], no whitespace/control/shell-meta characters,
+// ≤512 bytes). Exported so bex-api and the internal create API enforce one rule
+// (w1/m53). Empty is handled by the caller (repo-or-image required).
+func ValidImage(v string) bool { return len(v) <= 512 && imageRE.MatchString(v) }
 
 // ValidRootDir reports whether v is a safe build root directory: a relative path
 // with no traversal ("..") or absolute components and no control characters, ≤512

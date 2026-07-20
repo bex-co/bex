@@ -63,8 +63,8 @@ func TestSafeDialContextBlocksPrivateAddresses(t *testing.T) {
 			t.Errorf("SafeDialContext(%s): expected block, got nil error", addr)
 			continue
 		}
-		if !strings.Contains(err.Error(), "private address") {
-			t.Errorf("SafeDialContext(%s): error %q; want to contain \"private address\"", addr, err.Error())
+		if !strings.Contains(err.Error(), "blocked address") {
+			t.Errorf("SafeDialContext(%s): error %q; want to contain \"blocked address\"", addr, err.Error())
 		}
 	}
 }
@@ -79,7 +79,41 @@ func TestSafeDialContextDNSRebindBlocked(t *testing.T) {
 	if err == nil {
 		t.Fatal("SafeDialContext(localhost): expected SSRF block, got nil error")
 	}
-	if !strings.Contains(err.Error(), "private address") {
-		t.Errorf("SafeDialContext(localhost): error %q; want \"private address\"", err.Error())
+	if !strings.Contains(err.Error(), "blocked address") {
+		t.Errorf("SafeDialContext(localhost): error %q; want \"blocked address\"", err.Error())
+	}
+}
+
+// TestUnsafeMetadataIP: the operator's shared-transport guard blocks the metadata
+// endpoint / loopback / link-local but deliberately PERMITS private ClusterIP
+// ranges, which it must still reach (Zot registry, Prometheus) — w1/m53.
+func TestUnsafeMetadataIP(t *testing.T) {
+	// The cloud-metadata endpoint (link-local) plus multicast/unspecified are
+	// blocked; loopback, private ClusterIP ranges, and public are all allowed —
+	// the operator's shared client must still reach Zot/Prometheus (private) and
+	// httptest servers (loopback).
+	blocked := []string{"169.254.169.254", "169.254.1.1", "fe80::1", "0.0.0.0"}
+	for _, raw := range blocked {
+		if ip := net.ParseIP(raw); ip == nil || !netutil.UnsafeMetadataIP(ip) {
+			t.Errorf("UnsafeMetadataIP(%s) = false; want true (must be blocked)", raw)
+		}
+	}
+	allowed := []string{"127.0.0.1", "::1", "10.0.0.1", "172.16.0.1", "192.168.1.1", "fc00::1", "8.8.8.8"}
+	for _, raw := range allowed {
+		if ip := net.ParseIP(raw); ip == nil || netutil.UnsafeMetadataIP(ip) {
+			t.Errorf("UnsafeMetadataIP(%s) = true; want false (loopback/private/public must be allowed)", raw)
+		}
+	}
+}
+
+// TestSafeDialContextFuncMetadataGuard: a dial through the metadata guard blocks
+// the cloud-metadata endpoint.
+func TestSafeDialContextFuncMetadataGuard(t *testing.T) {
+	dial := netutil.SafeDialContextFunc(2*time.Second, netutil.UnsafeMetadataIP)
+	for _, addr := range []string{"169.254.169.254:80", "[fe80::1]:80"} {
+		if _, err := dial(context.Background(), "tcp", addr); err == nil ||
+			!strings.Contains(err.Error(), "blocked address") {
+			t.Errorf("metadata guard dial(%s): err=%v; want blocked", addr, err)
+		}
 	}
 }

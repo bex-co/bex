@@ -151,7 +151,12 @@ type AppSpec struct {
 	Repo string `json:"repo,omitempty"`
 
 	// Image is a prebuilt OCI image to run directly, skipping the build plane.
+	// Constrained at the CRD schema (w1/m53) so a hand-applied CR can't carry an
+	// image reference with whitespace or shell/SSRF-meta characters that bex-api's
+	// ValidImage would reject — host[:port]/repo[:tag][@digest] only.
 	// +optional
+	// +kubebuilder:validation:Pattern=`^[A-Za-z0-9][A-Za-z0-9._/:@-]*$`
+	// +kubebuilder:validation:MaxLength=512
 	Image string `json:"image,omitempty"`
 
 	// RootDir scopes build-from-git to a subdirectory of Repo (Render's Root

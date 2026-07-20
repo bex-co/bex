@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // rest.go is the projects REST fragment (bex extension matching Render's project
@@ -65,10 +64,6 @@ type renderProjectWithCursor struct {
 	Cursor  string        `json:"cursor"`
 }
 
-type projectEnvironmentLister interface {
-	ListEnvironments(ctx context.Context, projectID string) ([]store.Environment, error)
-}
-
 func toRenderProject(p ProjectView, environmentIDs []string) renderProject {
 	if environmentIDs == nil {
 		environmentIDs = []string{}
@@ -84,16 +79,9 @@ func toRenderProject(p ProjectView, environmentIDs []string) renderProject {
 }
 
 func (s *Service) renderProject(ctx context.Context, p ProjectView) (renderProject, error) {
-	var ids []string
-	if lister, ok := s.Store.(projectEnvironmentLister); ok {
-		environments, err := lister.ListEnvironments(ctx, p.ID)
-		if err != nil {
-			return renderProject{}, err
-		}
-		ids = make([]string, len(environments))
-		for i := range environments {
-			ids[i] = environments[i].ID
-		}
+	ids, err := s.environmentIDs(ctx, p.ID)
+	if err != nil {
+		return renderProject{}, err
 	}
 	return toRenderProject(p, ids), nil
 }

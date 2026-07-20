@@ -1864,6 +1864,9 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if req.Branch != "" && !store.ValidGitRef(req.Branch) {
 		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: branch must be a git ref (no shell metacharacters)", core.ErrBadRequest)
 	}
+	if req.Image != "" && !store.ValidImage(req.Image) {
+		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: image must be an OCI reference (no whitespace or shell metacharacters)", core.ErrBadRequest)
+	}
 	if req.RootDir != "" && !store.ValidRootDir(req.RootDir) {
 		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: rootDirectory must be a relative path with no '..' components", core.ErrBadRequest)
 	}
@@ -2740,6 +2743,9 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 		nextImage = strings.TrimSpace(*image)
 		if nextImage == "" {
 			return AppView{}, fmt.Errorf("%w: image path is required", core.ErrBadRequest)
+		}
+		if !store.ValidImage(nextImage) {
+			return AppView{}, fmt.Errorf("%w: image must be an OCI reference (no whitespace or shell metacharacters)", core.ErrBadRequest)
 		}
 		nextRepo = ""
 	}

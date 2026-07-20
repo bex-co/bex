@@ -24,9 +24,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"time"
+
+	"github.com/bex-co/bex/lego/types/netutil"
 )
 
 const (
@@ -42,10 +43,12 @@ func New(totalTimeout time.Duration) *http.Client {
 	return &http.Client{
 		Transport: &http.Transport{
 			Proxy: http.ProxyFromEnvironment,
-			DialContext: (&net.Dialer{
-				Timeout:   2 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).DialContext,
+			// SSRF guard (w1/m53): block the cloud-metadata endpoint / link-local
+			// while still permitting the private ClusterIP services this client
+			// legitimately reaches (Zot registry, Prometheus) and loopback — so a
+			// tenant-influenced image host can never steer an operator dial at
+			// 169.254.169.254.
+			DialContext:           netutil.SafeDialContextFunc(2*time.Second, netutil.UnsafeMetadataIP),
 			ForceAttemptHTTP2:     true,
 			MaxIdleConns:          100,
 			MaxIdleConnsPerHost:   10,
