@@ -71,6 +71,11 @@ const zhProjects: Record<string, TranslationEntry> = {
     message: "所有资源运行正常",
     description: "Project card status line when every resource is healthy",
   },
+  "projects.cardInProgress": {
+    message: "{count} 项资源正在进行中",
+    description:
+      "Project card status line when resources are provisioning or deploying without a failure",
+  },
   "projects.cardUnhealthy": {
     message: "{count} 项资源需要处理",
     description:

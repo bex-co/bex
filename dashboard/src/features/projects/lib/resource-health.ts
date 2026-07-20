@@ -3,27 +3,41 @@ import { deriveStatus as deriveDatabaseStatus } from "@/features/databases/lib/s
 import { deriveStatus as deriveKeyValueStatus } from "@/features/keyvalue/lib/status";
 import type { ResourceRow } from "@/features/projects/types";
 
+export type ResourceHealth = "healthy" | "converging" | "attention";
+
 /**
- * Whether a resource row is in a healthy, unremarkable state — the "is this
- * project card green or not" signal for the Overview page's project grid
- * (Render parity: the workspace homepage's project cards show a rolled-up
- * "All services are up and running" pill). A service counts as healthy while
- * suspended (an intentional, not a broken, state); a database/key-value
- * counts as healthy only while available and not suspended, mirroring what
- * their own status badges render as a non-alarming color.
+ * Classify a resource for the Overview project's rolled-up status. Provisioning
+ * is deliberately separate from failure: a Building service or Creating
+ * database is normal work in progress and must not produce the red "needs
+ * attention" message while its detail row shows a neutral progress badge.
  */
-export function isRowHealthy(row: ResourceRow): boolean {
+export function classifyResourceHealth(row: ResourceRow): ResourceHealth {
   if (row.kind === "service" && row.service) {
     const key = deriveServiceStatus(row.service).key;
-    return key === "running" || key === "suspended" || key === "sleeping";
+    if (key === "running" || key === "suspended" || key === "sleeping") {
+      return "healthy";
+    }
+    if (key === "building" || key === "deploying" || key === "pending") {
+      return "converging";
+    }
+    return "attention";
   }
   if (row.kind === "database" && row.database) {
-    // deriveStatus resolves a suspended database to "suspended", not
-    // "available", so the suspension check is built into the key.
-    return deriveDatabaseStatus(row.database).key === "available";
+    const key = deriveDatabaseStatus(row.database).key;
+    if (key === "available") return "healthy";
+    if (key === "creating" || key === "upgrading") return "converging";
+    return "attention";
   }
   if (row.kind === "keyvalue" && row.keyValue) {
-    return deriveKeyValueStatus(row.keyValue).key === "available";
+    const key = deriveKeyValueStatus(row.keyValue).key;
+    if (key === "available") return "healthy";
+    if (key === "creating") return "converging";
+    return "attention";
   }
-  return true;
+  return "healthy";
+}
+
+/** Backward-compatible predicate for callers that only need the green state. */
+export function isRowHealthy(row: ResourceRow): boolean {
+  return classifyResourceHealth(row) === "healthy";
 }

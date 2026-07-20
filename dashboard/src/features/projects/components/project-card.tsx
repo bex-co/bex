@@ -1,8 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { CheckCircle2, XCircle } from "lucide-react";
-import { cn } from "@/common/lib/utils/utils.ts";
+import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { isRowHealthy } from "@/features/projects/lib/resource-health";
+import { classifyResourceHealth } from "@/features/projects/lib/resource-health";
 import type { ResourceRow } from "@/features/projects/types";
 
 export interface ProjectCardProps {
@@ -19,7 +18,9 @@ export interface ProjectCardProps {
  */
 export function ProjectCard({ id, name, rows }: ProjectCardProps) {
   const { t } = useTranslations();
-  const unhealthy = rows.filter((r) => !isRowHealthy(r)).length;
+  const health = rows.map(classifyResourceHealth);
+  const attention = health.filter((status) => status === "attention").length;
+  const converging = health.filter((status) => status === "converging").length;
 
   return (
     <Link
@@ -32,19 +33,20 @@ export function ProjectCard({ id, name, rows }: ProjectCardProps) {
         <span className="text-sm text-muted-foreground">
           {t("projects.cardEmpty")}
         </span>
-      ) : unhealthy === 0 ? (
+      ) : attention > 0 ? (
+        <span className="flex items-center gap-1.5 text-sm text-destructive">
+          <XCircle className="size-4" />
+          {t("projects.cardUnhealthy", { count: attention })}
+        </span>
+      ) : converging > 0 ? (
+        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" />
+          {t("projects.cardInProgress", { count: converging })}
+        </span>
+      ) : (
         <span className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400">
           <CheckCircle2 className="size-4" />
           {t("projects.cardHealthy")}
-        </span>
-      ) : (
-        <span
-          className={cn(
-            "flex items-center gap-1.5 text-sm text-destructive",
-          )}
-        >
-          <XCircle className="size-4" />
-          {t("projects.cardUnhealthy", { count: unhealthy })}
         </span>
       )}
     </Link>

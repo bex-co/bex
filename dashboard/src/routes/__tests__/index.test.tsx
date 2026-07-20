@@ -319,6 +319,30 @@ describe("HomePage", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows an in-progress count instead of an attention warning while a resource is building", async () => {
+    projectsState.projects = [
+      {
+        id: "prj-1",
+        name: "storefront",
+        ownerId: "tea-1",
+        serviceIds: ["building-svc"],
+        databaseIds: [],
+        keyValueIds: [],
+      },
+    ];
+    servicesState.services = [svc({ id: "building-svc", phase: "Building" })];
+
+    renderHomePage();
+
+    const card = (await screen.findByText("storefront")).closest("a");
+    expect(
+      within(card!).getByText("1 resource(s) in progress"),
+    ).toBeInTheDocument();
+    expect(
+      within(card!).queryByText("1 resource(s) need attention"),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows skeleton placeholders while loading with no data", async () => {
     servicesState.loading = true;
     renderHomePage();
