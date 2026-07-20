@@ -763,7 +763,11 @@ func (s *Server) Handler() (http.Handler, error) {
 	// gate itself recognizes github's one exact signed-state callback exception;
 	// keeping the mount here ensures every other /v1 route stays covered.
 	rl := s.rateLimitMiddleware()
-	mux.Handle("/v1/", auth(rl(s.restHandler(cliAuth))))
+	rest, err := newRenderRequestValidator(s.restHandler(cliAuth))
+	if err != nil {
+		return nil, err
+	}
+	mux.Handle("/v1/", auth(rl(rest)))
 	mux.Handle("/graphql", auth(rl(s.graphqlHandler())))
 	mux.Handle("/mcp", auth(rl(s.mcpHTTPHandler())))
 
@@ -828,7 +832,7 @@ func (s *Server) resourceMetadataURL() string {
 // extra carries registrars constructed inside Handler() itself (cliauth's
 // authenticated revoke route needs the auth gate's cache hook), so even those
 // stay inside the one router rather than becoming parallel root mounts.
-func (s *Server) restHandler(extra ...restRegistrar) http.Handler {
+func (s *Server) restHandler(extra ...restRegistrar) *http.ServeMux {
 	mux := http.NewServeMux()
 	for _, f := range s.features() {
 		if r, ok := f.(restRegistrar); ok {
@@ -879,7 +883,7 @@ func (s *Server) graphqlHandler() http.Handler {
 			OperationName string         `json:"operationName"`
 			Variables     map[string]any `json:"variables"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := core.DecodeJSON(r, &body); err != nil {
 			core.WriteErrStatus(w, http.StatusBadRequest, "bad request")
 			return
 		}

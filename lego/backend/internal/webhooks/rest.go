@@ -17,7 +17,6 @@ limitations under the License.
 package webhooks
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -164,7 +163,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}
 	createHandler := func(w http.ResponseWriter, r *http.Request) {
 		var req createEndpointRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -211,7 +210,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/webhooks/{id}", getHandler)
 	mux.HandleFunc("PATCH /v1/webhooks/{id}", func(w http.ResponseWriter, r *http.Request) {
 		var req updateEndpointRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -245,7 +244,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 	mux.HandleFunc("PATCH /v1/webhooks/endpoints/{id}", func(w http.ResponseWriter, r *http.Request) {
 		var req patchEndpointRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Enabled == nil {
+		if err := core.DecodeJSON(r, &req); err != nil || req.Enabled == nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}

@@ -17,7 +17,6 @@ limitations under the License.
 package secrets
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -71,7 +70,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// env-var and secret-file routes below retain their immediate-roll behavior.
 		mux.HandleFunc("PATCH "+base+"/{id}/environment", func(w http.ResponseWriter, r *http.Request) {
 			var in EnvironmentPatch
-			if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			if err := core.DecodeJSON(r, &in); err != nil {
 				core.WriteErr(w, core.ErrBadRequest)
 				return
 			}
@@ -103,7 +102,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		})
 		mux.HandleFunc("PUT "+base+"/{id}/env-vars", func(w http.ResponseWriter, r *http.Request) {
 			var in []EnvVarView
-			if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			if err := core.DecodeJSON(r, &in); err != nil {
 				core.WriteErr(w, core.ErrBadRequest)
 				return
 			}
@@ -127,7 +126,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				Value         string `json:"value"`
 				GenerateValue bool   `json:"generateValue"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			if err := core.DecodeJSON(r, &req); err != nil {
 				core.WriteErr(w, core.ErrBadRequest)
 				return
 			}
@@ -178,7 +177,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			var req struct {
 				Content string `json:"content"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			if err := core.DecodeJSON(r, &req); err != nil {
 				core.WriteErr(w, core.ErrBadRequest)
 				return
 			}

@@ -21,11 +21,185 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"reflect"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 )
+
+type strictJSONDecodingKey struct{}
+
+// WithStrictJSONDecoding marks a request whose JSON body must reject unknown
+// fields and trailing values. The Render OpenAPI gate sets it only for the
+// bex∩Render route intersection, leaving bex-native aliases byte-compatible.
+func WithStrictJSONDecoding(ctx context.Context) context.Context {
+	return context.WithValue(ctx, strictJSONDecodingKey{}, true)
+}
+
+func strictJSONDecoding(ctx context.Context) bool {
+	strict, _ := ctx.Value(strictJSONDecodingKey{}).(bool)
+	return strict
+}
+
+var safeJSONField = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,80}$`)
+
+// DecodeJSON preserves encoding/json's historical one-value behavior for
+// ordinary requests. A request marked by WithStrictJSONDecoding additionally
+// rejects unknown struct fields and any second JSON value.
+func DecodeJSON(r *http.Request, dst any) error {
+	return decodeJSON(r.Context(), r.Body, dst)
+}
+
+func decodeJSON(ctx context.Context, reader io.Reader, dst any) error {
+	if !strictJSONDecoding(ctx) {
+		return json.NewDecoder(reader).Decode(dst)
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return errors.New("invalid JSON request body")
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err = decoder.Decode(dst); err != nil {
+		return safeJSONDecodeError(err)
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+		return errors.New("request body must contain exactly one JSON value")
+	}
+	// A type with UnmarshalJSON controls its own nested decode, so the outer
+	// decoder's DisallowUnknownFields cannot see unknown keys inside it. Walk the
+	// already-validated JSON shape against the Go destination as a second guard;
+	// maps and RawMessage remain deliberately open, and known RawMessage fields
+	// are decoded again by their owning handler.
+	var value any
+	if err := json.Unmarshal(data, &value); err != nil {
+		return errors.New("invalid JSON request body")
+	}
+	return rejectUnknownJSONFields(value, reflect.TypeOf(dst))
+}
+
+func rejectUnknownJSONFields(value any, target reflect.Type) error {
+	for target != nil && target.Kind() == reflect.Pointer {
+		target = target.Elem()
+	}
+	if target == nil {
+		return nil
+	}
+	switch target.Kind() {
+	case reflect.Struct:
+		object, ok := value.(map[string]any)
+		if !ok {
+			return nil
+		}
+		fields := jsonFieldTypes(target)
+		for name, child := range object {
+			fieldType, ok := fields[name]
+			if !ok {
+				for candidate, candidateType := range fields {
+					if strings.EqualFold(candidate, name) {
+						fieldType, ok = candidateType, true
+						break
+					}
+				}
+			}
+			if !ok {
+				if safeJSONField.MatchString(name) {
+					return fmt.Errorf("request body contains unknown field %q", name)
+				}
+				return errors.New("request body contains an unknown field")
+			}
+			if err := rejectUnknownJSONFields(child, fieldType); err != nil {
+				return err
+			}
+		}
+	case reflect.Slice, reflect.Array:
+		array, ok := value.([]any)
+		if !ok {
+			return nil
+		}
+		for _, child := range array {
+			if err := rejectUnknownJSONFields(child, target.Elem()); err != nil {
+				return err
+			}
+		}
+	case reflect.Map:
+		object, ok := value.(map[string]any)
+		if !ok {
+			return nil
+		}
+		for _, child := range object {
+			if err := rejectUnknownJSONFields(child, target.Elem()); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func jsonFieldTypes(target reflect.Type) map[string]reflect.Type {
+	fields := make(map[string]reflect.Type)
+	for i := 0; i < target.NumField(); i++ {
+		field := target.Field(i)
+		if field.PkgPath != "" && !field.Anonymous {
+			continue
+		}
+		tag := strings.Split(field.Tag.Get("json"), ",")[0]
+		if tag == "-" {
+			continue
+		}
+		if tag == "" && field.Anonymous {
+			embedded := field.Type
+			for embedded.Kind() == reflect.Pointer {
+				embedded = embedded.Elem()
+			}
+			if embedded.Kind() == reflect.Struct {
+				for name, fieldType := range jsonFieldTypes(embedded) {
+					fields[name] = fieldType
+				}
+				continue
+			}
+		}
+		if tag == "" {
+			tag = field.Name
+		}
+		fields[tag] = field.Type
+	}
+	return fields
+}
+
+// UnmarshalJSON applies the same context-selected strictness to nested raw JSON
+// fragments decoded after the top-level request body.
+func UnmarshalJSON(ctx context.Context, data []byte, dst any) error {
+	if !strictJSONDecoding(ctx) {
+		return json.Unmarshal(data, dst)
+	}
+	return decodeJSON(ctx, bytes.NewReader(data), dst)
+}
+
+func safeJSONDecodeError(err error) error {
+	if errors.Is(err, io.EOF) {
+		return io.EOF
+	}
+	const unknownPrefix = "json: unknown field \""
+	message := err.Error()
+	if strings.HasPrefix(message, unknownPrefix) && strings.HasSuffix(message, "\"") {
+		field := strings.TrimSuffix(strings.TrimPrefix(message, unknownPrefix), "\"")
+		if safeJSONField.MatchString(field) {
+			return fmt.Errorf("request body contains unknown field %q", field)
+		}
+		return errors.New("request body contains an unknown field")
+	}
+	var typeError *json.UnmarshalTypeError
+	if errors.As(err, &typeError) && safeJSONField.MatchString(typeError.Field) {
+		return fmt.Errorf("request body contains an invalid value for field %q", typeError.Field)
+	}
+	return errors.New("invalid JSON request body")
+}
 
 // WriteJSON writes body as a JSON response with the given status.
 func WriteJSON(w http.ResponseWriter, status int, body any) {

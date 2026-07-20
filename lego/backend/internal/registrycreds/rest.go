@@ -17,7 +17,6 @@ limitations under the License.
 package registrycreds
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -119,7 +118,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 
 	mux.HandleFunc("POST /v1/registry-credentials", func(w http.ResponseWriter, r *http.Request) {
 		var req createCredentialRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -150,7 +149,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 
 	mux.HandleFunc("PATCH /v1/registry-credentials/{id}", func(w http.ResponseWriter, r *http.Request) {
 		var req patchCredentialRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}

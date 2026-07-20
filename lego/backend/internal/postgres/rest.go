@@ -18,7 +18,6 @@ package postgres
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"slices"
@@ -202,7 +201,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		})
 		mux.HandleFunc("POST "+base, func(w http.ResponseWriter, r *http.Request) {
 			var req CreatePostgresRequest
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			if err := core.DecodeJSON(r, &req); err != nil {
 				core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
 				return
 			}
@@ -250,7 +249,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				SQL         string `json:"sql"`
 				AllowWrites bool   `json:"allowWrites"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			if err := core.DecodeJSON(r, &req); err != nil {
 				core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
 				return
 			}
@@ -288,7 +287,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		mux.HandleFunc("POST "+base+"/{id}/recovery-info", recoveryInfo) // Render uses POST; bex accepts both
 		mux.HandleFunc("POST "+base+"/{id}/recover", func(w http.ResponseWriter, r *http.Request) {
 			var req RecoverRequest
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			if err := core.DecodeJSON(r, &req); err != nil {
 				core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
 				return
 			}
@@ -349,7 +348,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			var req struct {
 				CIDRs []core.IPAllowListEntry `json:"cidrs"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			if err := core.DecodeJSON(r, &req); err != nil {
 				core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
 				return
 			}
@@ -372,7 +371,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			var req struct {
 				Name string `json:"name"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			if err := core.DecodeJSON(r, &req); err != nil {
 				core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
 				return
 			}
@@ -460,7 +459,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			var req struct {
 				Parameters map[string]string `json:"parameters"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			if err := core.DecodeJSON(r, &req); err != nil {
 				core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
 				return
 			}
@@ -515,7 +514,7 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 		ParameterOverrides     *map[string]string       `json:"parameterOverrides,omitempty"`
 		DryRun                 bool                     `json:"dryRun,omitempty"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := core.DecodeJSON(r, &req); err != nil {
 		core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
 		return
 	}

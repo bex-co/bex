@@ -17,22 +17,17 @@ limitations under the License.
 package api
 
 // conformance_test.go — TestRenderConformance validates bex's live REST
-// responses against the pinned Render OpenAPI schemas in
-// testdata/render-openapi.json.
+// responses against the complete embedded Render OpenAPI document shared with
+// the production request gate.
 //
 // Validation errors that match a conformanceAllowlist entry (allowlist.go) are
 // suppressed with an ADR018 citation; everything else fails the build. A new
 // divergence without an allowlist entry turns the CI job red at PR time.
 //
-// Pin-update workflow:
-//  1. Replace testdata/render-openapi.json with a fresh copy from
-//     render-public-api-1.json (full spec or the response-schema subset for the
-//     operationIds below).
-//  2. Run: cd lego/backend && go test ./internal/api/... -run TestRenderConformance -v
-//  3. For each new failure, decide keep-or-fix:
-//     - Keep (bex intentionally diverges): add an entry to conformanceAllowlist
-//       citing its ADR018 row.
-//     - Fix: update bex's response to match Render's schema, remove the entry.
+// The deliberate pin-refresh workflow, provenance checks, and compatibility
+// review are documented in docs/render-artifacts/openapi-request-validation.md.
+// For each new response failure, either fix bex or add a narrow ADR018-cited
+// conformanceAllowlist entry; the stale-entry test prevents permanent excuses.
 
 import (
 	"context"
@@ -259,7 +254,7 @@ func TestRenderConformance(t *testing.T) {
 	t.Run("postgres/list", func(t *testing.T) {
 		// bex returns a flat []PostgresView; Render expects [{postgres:{},cursor}].
 		// The mismatch is in the allowlist (ADR018 §Postgres REST).
-		check(t, "/v1/postgres", "list-postgres-databases")
+		check(t, "/v1/postgres", "list-postgres")
 	})
 
 	t.Run("postgres/get", func(t *testing.T) {
@@ -277,7 +272,7 @@ func TestRenderConformance(t *testing.T) {
 	})
 
 	t.Run("env-vars/list", func(t *testing.T) {
-		check(t, "/v1/services/"+appName+"/env-vars", "retrieve-env-vars-for-service")
+		check(t, "/v1/services/"+appName+"/env-vars", "get-env-vars-for-service")
 	})
 
 	t.Run("secret-files/list", func(t *testing.T) {
@@ -314,7 +309,8 @@ func TestConformanceAllowlistEntries(t *testing.T) {
 	)
 
 	secretStore := &fakeAuditKV{m: map[string]map[string]string{
-		"services/" + appName + "/env": {"K": "V"},
+		"services/" + appName + "/env":   {"K": "V"},
+		"services/" + appName + "/files": {"ca.pem": "cert"},
 	}}
 	deployStore := &conformDeployStore{byApp: map[string][]store.Deploy{
 		"srv-web": {conformDeploy("dep-1", "srv-web")},
@@ -325,7 +321,12 @@ func TestConformanceAllowlistEntries(t *testing.T) {
 
 	h, _ := serverWith(t,
 		&core.Base{
-			Client:    fakeClient(conformApp(appName, "srv-web"), conformDatabase(dbName), conformKeyValue(kvName)),
+			Client: fakeClient(
+				conformApp(appName, "srv-web"),
+				conformAppWithDomains("web-cd", "api.example.com"),
+				conformDatabase(dbName),
+				conformKeyValue(kvName),
+			),
 			Namespace: "default",
 			Clock:     func() time.Time { return conformEpoch },
 		},
@@ -340,8 +341,15 @@ func TestConformanceAllowlistEntries(t *testing.T) {
 
 	// operationPath maps an operationId to the bex REST path under test.
 	operationPath := map[string]string{
-		"list-postgres-databases": "/v1/postgres",
-		"list-redis":              "/v1/key-value",
+		"list-services":                 "/v1/services",
+		"retrieve-service":              "/v1/services/" + appName,
+		"list-postgres":                 "/v1/postgres",
+		"retrieve-postgres":             "/v1/postgres/" + dbName,
+		"retrieve-redis":                "/v1/key-value/" + kvName,
+		"list-secret-files-for-service": "/v1/services/" + appName + "/secret-files",
+		"list-custom-domains":           "/v1/services/web-cd/custom-domains",
+		"list-events":                   "/v1/services/" + appName + "/events",
+		"list-redis":                    "/v1/key-value",
 	}
 
 	for opID, divergences := range conformanceAllowlist {

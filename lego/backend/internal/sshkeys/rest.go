@@ -17,7 +17,6 @@ limitations under the License.
 package sshkeys
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -37,7 +36,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			Name      string `json:"name"`
 			PublicKey string `json:"publicKey"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}

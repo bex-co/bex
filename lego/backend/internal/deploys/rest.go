@@ -17,7 +17,6 @@ limitations under the License.
 package deploys
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -238,7 +237,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				DeployMode string `json:"deployMode"`
 				ImageURL   string `json:"imageUrl"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil && !errors.Is(err, io.EOF) {
+			if err := core.DecodeJSON(r, &body); err != nil && !errors.Is(err, io.EOF) {
 				core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
 				return
 			}
@@ -274,7 +273,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			var body struct {
 				DeployID string `json:"deployId"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			if err := core.DecodeJSON(r, &body); err != nil {
 				core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
 				return
 			}

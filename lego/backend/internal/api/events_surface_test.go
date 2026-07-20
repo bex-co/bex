@@ -19,6 +19,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -270,7 +271,8 @@ func TestEventsAuthMatrix(t *testing.T) {
 }
 
 // TestEventsWindowAndPaging pins the two params a Render client's behavior
-// depends on: the default window (now-1h, Render's own) and the limit clamp.
+// depends on: the default window (now-1h, Render's own) and the OpenAPI limit
+// range enforced before the event store runs.
 func TestEventsWindowAndPaging(t *testing.T) {
 	at := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
 	now := func() time.Time { return at }
@@ -292,10 +294,14 @@ func TestEventsWindowAndPaging(t *testing.T) {
 		t.Errorf("store keyed on appID=%q target=%q", fake.gotApp, fake.gotTgt)
 	}
 
-	// limit is clamped to Render's maximum, never passed through.
-	do(t, h, "GET", "/v1/services/web/events?limit=9999", testToken, "")
-	if fake.gotFil.Limit != core.MaxPageLimit {
-		t.Errorf("limit=9999 clamped to %d, want %d", fake.gotFil.Limit, core.MaxPageLimit)
+	// An out-of-contract limit is rejected before the handler/store rather than
+	// silently normalized to Render's maximum.
+	badLimit := do(t, h, "GET", "/v1/services/web/events?limit=9999", testToken, "")
+	if badLimit.Code != http.StatusBadRequest {
+		t.Fatalf("limit=9999 = %d, want 400", badLimit.Code)
+	}
+	if fake.gotFil.Limit != core.DefaultPageLimit {
+		t.Errorf("rejected limit reached the store: got %d, want prior %d", fake.gotFil.Limit, core.DefaultPageLimit)
 	}
 
 	// A page's last cursor round-trips into the next page's resume position.

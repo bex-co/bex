@@ -17,7 +17,6 @@ limitations under the License.
 package jobs
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -132,7 +131,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				StartCommand string `json:"startCommand"`
 				PlanID       string `json:"planId"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			if err := core.DecodeJSON(r, &body); err != nil {
 				core.WriteErr(w, core.ErrBadRequest)
 				return
 			}

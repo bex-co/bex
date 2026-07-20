@@ -18,7 +18,6 @@ package keyvalue
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"slices"
@@ -244,7 +243,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// description} objects directly (and tolerates bare CIDR strings, the
 		// pre-m24 lenient shape) — no wire wrapper needed since w4/m24.
 		var req CreateKeyValueRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			writeBadRequestBody(w, err)
 			return
 		}
@@ -328,7 +327,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var req struct {
 			CIDRs []core.IPAllowListEntry `json:"cidrs"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			writeBadRequestBody(w, err)
 			return
 		}
@@ -381,7 +380,7 @@ func (s *Service) handleUpdateKeyValue(w http.ResponseWriter, r *http.Request) {
 		IPAllowList     *[]core.IPAllowListEntry `json:"ipAllowList,omitempty"`
 		DryRun          bool                     `json:"dryRun,omitempty"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := core.DecodeJSON(r, &req); err != nil {
 		writeBadRequestBody(w, err)
 		return
 	}
