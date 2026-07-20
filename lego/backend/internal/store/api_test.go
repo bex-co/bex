@@ -112,6 +112,47 @@ func TestCreateTenantAndApp(t *testing.T) {
 	}
 }
 
+func TestSetBillingExcludedRoute(t *testing.T) {
+	api, mem, _ := newTestAPI(t)
+	h := api.Handler()
+	ten, _ := mem.CreateTenant(t.Context(), "acme", PlanHobby)
+
+	rr := do(t, h, "PATCH", "/v1/tenants/"+ten.ID+"/billing-excluded", `{"excluded":true,"actor":"admin@bex.co"}`)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("exclude: %d %s", rr.Code, rr.Body)
+	}
+	var resp struct {
+		TenantID        string `json:"tenantId"`
+		BillingExcluded bool   `json:"billingExcluded"`
+		Changed         bool   `json:"changed"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.TenantID != ten.ID || !resp.BillingExcluded || !resp.Changed {
+		t.Fatalf("response = %+v, want {tenantId=%s excluded=true changed=true}", resp, ten.ID)
+	}
+	if !mem.billingExcluded[ten.ID] {
+		t.Fatal("flag not set in store")
+	}
+
+	// A no-op toggle reports changed=false.
+	rr = do(t, h, "PATCH", "/v1/tenants/"+ten.ID+"/billing-excluded", `{"excluded":true}`)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("re-exclude: %d %s", rr.Code, rr.Body)
+	}
+	_ = json.Unmarshal(rr.Body.Bytes(), &resp)
+	if resp.Changed {
+		t.Error("no-op toggle reported changed=true")
+	}
+
+	// Unknown workspace → 404.
+	rr = do(t, h, "PATCH", "/v1/tenants/tea-nope/billing-excluded", `{"excluded":true}`)
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("unknown tenant = %d, want 404", rr.Code)
+	}
+}
+
 func TestValidationAndErrorCodes(t *testing.T) {
 	api, store, _ := newTestAPI(t)
 	h := api.Handler()

@@ -50,6 +50,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/authz"
+	"github.com/bex-co/bex/lego/backend/internal/billing"
 	"github.com/bex-co/bex/lego/backend/internal/cliauth"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
@@ -350,6 +351,34 @@ func main() {
 		}
 		deps.Usage = usageSvc
 		go usageSvc.Run(ctx)
+
+		// Billing export (w7/m47, docs/ADR040-billing-metronome.md): the
+		// seal-then-emit sidecar ships each sealed usage_hourly row to Metronome
+		// exactly once, so Metronome does the rating/invoicing. Gated by
+		// BEX_METRONOME_TOKEN — billing.New returns nil when it is unset, so the
+		// emitter is never constructed and bex-api is byte-identical to today.
+		if mc := billing.New(billing.Config{
+			Token:   os.Getenv("BEX_METRONOME_TOKEN"),
+			BaseURL: os.Getenv("BEX_METRONOME_URL"),
+		}); mc != nil {
+			emitter := billing.NewEmitter(st, mc) // SealHours/Interval/BatchLimit default inside
+			if v := os.Getenv("BEX_METRONOME_SEAL_HOURS"); v != "" {
+				if n, err := strconv.Atoi(v); err == nil && n >= 1 {
+					emitter.SealHours = time.Duration(n) * time.Hour
+				} else {
+					log.Printf("BEX_METRONOME_SEAL_HOURS=%q invalid (want integer ≥ 1); using default %s", v, billing.DefaultSealHours)
+				}
+			}
+			if v := os.Getenv("BEX_METRONOME_EPOCH"); v != "" {
+				if epoch, err := time.Parse(time.RFC3339, v); err == nil {
+					emitter.Epoch = epoch.UTC()
+				} else {
+					log.Fatalf("bex-api: bad BEX_METRONOME_EPOCH %q (want RFC3339, e.g. 2026-07-01T00:00:00Z): %v", v, err)
+				}
+			}
+			log.Printf("bex-api billing export to Metronome enabled (seal horizon %s)", emitter.SealHours)
+			go emitter.Run(ctx)
+		}
 
 		// Audit log retention (w4/m10 + w2/m39): purges audit_events and SSH
 		// session metadata older than BEX_AUDIT_RETENTION_DAYS daily, same

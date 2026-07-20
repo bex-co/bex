@@ -75,6 +75,11 @@ type AuditEvent struct {
 	// never free-form.
 	RoleFrom *string
 	RoleTo   *string
+	// BillingExcludedTo is the value a billing-exclusion toggle was set TO
+	// (docs/ADR040-billing-metronome.md §7): true = comped/exempt out of
+	// Metronome, false = billable again. Nil for every other verb. Admin-only,
+	// set through the control-plane internal API.
+	BillingExcludedTo *bool
 }
 
 type auditMaintenanceModeToKey struct{}
@@ -122,6 +127,11 @@ const (
 	AuditVerbMemberInvited     = "members.Invite"
 	AuditVerbMemberRoleChanged = "members.ChangeRole"
 	AuditVerbInviteAccepted    = "members.AcceptInvite"
+	// AuditVerbBillingExclusionChanged records an admin toggling a workspace's
+	// Metronome billing exclusion (docs/ADR040-billing-metronome.md §7). It is
+	// written directly by the control-plane internal API (not via a Base
+	// authorize), so it carries no target — it is workspace-wide.
+	AuditVerbBillingExclusionChanged = "billing.SetExclusion"
 )
 
 // DatabaseAuditEffect is the closed set of successful Database mutations that

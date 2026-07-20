@@ -1,6 +1,6 @@
 # ADR040 — Billing via Metronome (usage export → rating → invoicing)
 
-**Status:** Proposed · 2026-07-19 **Author:** (billing workstream)
+**Status:** Proposed · 2026-07-19 (Phase 1 shadow export implemented w7/m47; Phases 2–3 proposed) **Author:** (billing workstream)
 
 ---
 
@@ -139,12 +139,56 @@ Both switches decide _whether money is owed_, so they are **privileged: admin-on
 
 | Phase | Scope | Changes bex behavior? |
 | --- | --- | --- |
-| **0 · Metronome config** | Create billable metrics, products, rate cards mirroring `pricing.yaml` (dashboard/API; no bex code). | no |
+| **0 · Metronome config** | Create billable metrics, products, rate cards mirroring `pricing.yaml` (dashboard/API; no bex code) — runbook: [`docs/runbooks/metronome-billing-setup.md`](runbooks/metronome-billing-setup.md). | no |
 | **1 · Shadow export** | Emitter + `emitted_at` migration + customer provisioning, `BEX_METRONOME_TOKEN`-gated. Reconcile Metronome's computed usage against `usage_hourly`. | no (pure sidecar) |
 | **2 · Billing surface** | Per-customer contracts; read real invoices/costs from Metronome; surface alongside/replacing `estimatedCost`. | display layer |
-| **3 · Collection** | Metronome → Stripe (or a Metronome payment connector) for actual charging + dunning. | new |
+| **3 · Collection** | Metronome → Stripe (or a Metronome payment connector) for actual charging + dunning, plus bex's **non-payment enforcement** (§9): dunning → grace → suspend → terminate. | new |
 
 Phase 1 is the MVP and can ship independently: it produces real billing data in Metronome without altering any tenant-visible behavior, letting us validate the mapping before anything is charged.
+
+### 9. Non-payment enforcement — dunning → grace → suspend → terminate
+
+Phase 3 turns computed invoices into collected revenue, which means bex finally needs an answer to _"an invoice was issued and never paid — then what?"_ This section designs that policy. **It is Phase-3 design, not yet implemented**, and it inherits ADR040's invariants rather than inventing new ones.
+
+**Four principles the policy must not violate:**
+
+1. **Metering is never gated (§7).** A delinquent — even suspended — workspace keeps metering whatever still runs; the debt is never silently forgiven. Enforcement pauses _resources_, never the _meter_.
+2. **Metronome is the source of truth for payment status.** bex never computes "did they pay." It reacts to Metronome/Stripe invoice + payment events and owns only the _reaction_ (what to pause, when). Charging, retries, and proration stay in Metronome+Stripe — bex does not reimplement a dunning engine.
+3. **Reversible until termination.** Every step short of deletion is undone by payment. Suspension preserves data, config, URLs, and certs (ADR007), so paying reinstates the workspace intact and instantly.
+4. **Enforcement can never touch a non-billable workspace.** A `billing_excluded` (§7 Mode A) or comped-to-$0 (Mode B) workspace owes nothing, so it can never be delinquent — the state machine below structurally never selects it.
+
+**The per-workspace delinquency state machine.** A new `tenants.billing_status` is driven by Metronome invoice/payment events: `active → past_due → suspended → terminated`, with recovery edges back to `active` on payment.
+
+| State | Entered when (from Metronome/Stripe) | bex action | Metering | Reversible? |
+| --- | --- | --- | --- | --- |
+| **active** | no open past-due balance | none | on | — |
+| **past_due** | a finalized invoice is unpaid past its due date while Stripe's dunning retries run | notify owner + admins (email + dashboard banner) with a billing-portal deep link; **services keep running** (grace) | on | auto, on payment |
+| **suspended** | the grace window elapses with the balance still open | suspend the workspace: `spec.suspended=true` on every App (compute → 0), then hibernate managed Postgres/Key Value after a further window; data + config + certs kept (ADR007) | on (whatever still runs) | resume on payment |
+| **terminated** | the long-delinquency window elapses | teardown via the existing audited delete path (w7/m12) after a final data-export offer | stops (resources gone) | no — re-onboard only |
+
+**Timeline (defaults; all env-tunable, all measured from first `past_due`):**
+
+- **Day 0** — invoice finalized and auto-charged (Metronome → Stripe). Paid ⇒ stays `active`.
+- **Charge fails** ⇒ `past_due`. Stripe smart-retries over its own dunning window (~1–3 weeks); bex emails on entry and warns before each escalation. Nothing is paused yet — this is the grace period.
+- **`BEX_BILLING_GRACE_DAYS`** (default 14) still unpaid ⇒ `suspended`: every App scales to 0. Owners are warned 72h and 24h ahead. Compute cost (`instance_seconds`) stops immediately; the workspace is instantly recoverable.
+- **`BEX_BILLING_HIBERNATE_DAYS`** (default 30) ⇒ also hibernate managed Postgres/Key Value (stop their compute; the PVC/backup snapshot is retained) to stop datastore compute accrual while data stays recoverable.
+- **`BEX_BILLING_TERMINATE_DAYS`** (default 60; must exceed the 34-day dedup horizon and the hibernate window) ⇒ `terminated`: the w7/m12 teardown runs after emailing a final export link.
+- **Any payment before termination** ⇒ immediate `active`: resume Apps (`suspended=false` restores the saved replica count, readiness-gated per ADR007) and un-hibernate datastores. Idempotent.
+
+**Where the code lives — backend only, never the operator.** Consistent with §1 (money never reaches the mechanism layer): the operator only ever sees `spec.suspended`, which it already honors (ADR007), and never learns _why_ a workspace is parked. A backend enforcement reconcile loop (beside the m47 emitter) maps Metronome invoice status → `tenants.billing_status` → the existing row-first suspend path (`SetAppSuspended` and the `Database`/`KeyValue` `Suspended` field) across every resource the tenant owns. Every transition is written to `audit_events` under a fixed verb (`billing.EnforcementTransition`, from→to), exactly the audited-privileged-write shape m47 established for `billing.SetExclusion`.
+
+**Trigger: webhook first, poll as backstop.** bex adds an HMAC-verified `POST /v1/webhooks/metronome` (the git-webhook pattern) that maps `invoice.finalized` / `invoice.payment_failed` / `invoice.paid` to state transitions. A slow reconcile poll of open invoices is the belt-and-suspenders backstop for a missed webhook — the same outbox-style durability the emitter uses.
+
+**Escape hatches — privileged, admin-only, audited (same custody as `billing_excluded`):**
+
+- **`tenants.enforcement_hold`** (bool): pauses _automatic_ enforcement for one workspace — an enterprise account a human handles, a billing dispute, or a Stripe/Metronome outage. The workspace may sit `past_due` but is never auto-suspended while held. Set through the control-plane internal API, written to `audit_events`, never tenant-editable.
+- **`BEX_BILLING_ENFORCEMENT`** global gate: unset/`off` ⇒ enforcement never acts. States are still tracked and surfaced (observe-only), but nothing is suspended — so Phase 3 can ship "watch the delinquency signal" before it ever parks a workspace, exactly as m47 shadow-exported before a cent was charged. **Default off ⇒ byte-identical to Phase 2.**
+
+**Why suspend before delete.** Suspension is the reversible, data-preserving lever (ADR007): it stops the compute bleed (`instance_seconds` → 0) the moment a workspace is delinquent, while giving the customer a clean, instant recovery on payment. Deletion is irreversible and strictly last-resort, after a long well-notified window, and reuses the audited w7/m12 teardown rather than a bespoke destroy path — no new way to lose tenant data is introduced.
+
+**Interactions:** billing-suspend and free-tier auto-sleep both scale to 0 but are different intents; billing-suspend **wins** and blocks wake (a delinquent free-tier workspace stays parked). Maintenance mode (ADR007) is orthogonal public-routing intent, not a payment state. Notifications reuse the existing email seam (deploy-failure/invite mailer, `BEX_DASHBOARD_URL` deep links).
+
+**Deferred to Metronome/Stripe, not bex code:** retry cadence (Stripe dunning config), partial payments and proration (Metronome), and per-plan grace differences (enterprise longer) via contract metadata rather than bex branching.
 
 ---
 
@@ -155,6 +199,7 @@ Phase 1 is the MVP and can ship independently: it produces real billing data in 
 - **Pricing:** `internal/pricing` stays as the dashboard's fast estimate. If Phase 2 surfaces Metronome's real cost, `estimatedCost` and the invoiced amount coexist (estimate for the current in-flight window, invoice for closed periods).
 - **Operator:** unchanged. No dependency on billing, consistent with ADR030 §1.
 - **Ops:** a new out-of-band secret (`BEX_METRONOME_TOKEN`) enters the credential inventory ([ADR019](ADR019-infra-credentials.md)); Metronome rate-card config becomes a runbook step. Metronome outages degrade gracefully — the outbox backs up and drains, and invoicing is monthly. Enable/disable is a three-layer model (§7): metering is always on, emission is the global env gate, and per-workspace charging is a Metronome contract — never a per-tenant emission gate.
+- **Enforcement (Phase 3, §9):** non-payment drives an audited, reversible ladder — `past_due` (grace) → `suspended` (compute→0 via ADR007, data kept) → `terminated` (w7/m12 teardown) — that reuses existing mechanisms and never adds a new way to lose tenant data. It touches no non-billable workspace, keeps metering on throughout, and is globally gated (`BEX_BILLING_ENFORCEMENT` off ⇒ observe-only), so it can ship watching-before-acting. Adds one control-plane store column (`tenants.billing_status`), one admin escape hatch (`tenants.enforcement_hold`), and a Metronome webhook receiver.
 - **Render parity:** none affected — Render exposes no usage/billing API; this is a bex-only extension already marked "bex ahead" in [ADR018](ADR018-render-parity.md).
 
 ---

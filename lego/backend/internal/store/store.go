@@ -261,6 +261,11 @@ type Store interface {
 	// path enforces (w6/m1): a Hobby workspace is capped at 25 apps.
 	GetTenant(ctx context.Context, id string) (Tenant, error)
 	CountAppsForTenant(ctx context.Context, tenantID string) (int, error)
+	// SetTenantBillingExcluded flips a workspace's Metronome billing-exclusion
+	// flag (docs/ADR040-billing-metronome.md §7), auditing the change. Admin-only
+	// — the control-plane internal API is its sole caller. Returns whether the
+	// value changed; ErrNotFound for an unknown workspace.
+	SetTenantBillingExcluded(ctx context.Context, tenantID string, excluded bool, actor string, at time.Time) (bool, error)
 	// TenantForIdentity returns the subject's DEFAULT workspace (w6/m14): the
 	// tenant of its OLDEST membership in tenant_members, or ErrNotFound. One
 	// lookup serves both human (Kratos identity id) and machine (Hydra client
