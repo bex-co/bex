@@ -47,6 +47,7 @@ type memStore struct {
 	deploys          map[string]Deploy
 	eventFacts       map[string]ServiceEventFact
 	eventCheckpoints map[string]ObservedServiceState
+	billingExcluded  map[string]bool // tenantID -> excluded (ADR040 §7)
 }
 
 // memberKey is the composite key of a tenant_members row.
@@ -64,6 +65,7 @@ func newMemStore() *memStore {
 		deploys:          map[string]Deploy{},
 		eventFacts:       map[string]ServiceEventFact{},
 		eventCheckpoints: map[string]ObservedServiceState{},
+		billingExcluded:  map[string]bool{},
 	}
 }
 
@@ -98,6 +100,19 @@ func (m *memStore) GetTenant(_ context.Context, id string) (Tenant, error) {
 		return Tenant{}, fmt.Errorf("workspace: %w", ErrNotFound)
 	}
 	return t, nil
+}
+
+func (m *memStore) SetTenantBillingExcluded(_ context.Context, tenantID string, excluded bool, _ string, _ time.Time) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.tenants[tenantID]; !ok {
+		return false, fmt.Errorf("tenant: %w", ErrNotFound)
+	}
+	if m.billingExcluded[tenantID] == excluded {
+		return false, nil
+	}
+	m.billingExcluded[tenantID] = excluded
+	return true, nil
 }
 
 func (m *memStore) CountAppsForTenant(_ context.Context, tenantID string) (int, error) {

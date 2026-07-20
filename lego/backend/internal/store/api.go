@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
 
@@ -92,6 +93,7 @@ func (a *API) Handler() http.Handler {
 	v1 := http.NewServeMux()
 	v1.HandleFunc("POST /v1/tenants", a.createTenant)
 	v1.HandleFunc("GET /v1/tenants", a.listTenants)
+	v1.HandleFunc("PATCH /v1/tenants/{id}/billing-excluded", a.setBillingExcluded)
 	v1.HandleFunc("POST /v1/apps", a.createApp)
 	v1.HandleFunc("GET /v1/apps", a.listApps)
 	v1.HandleFunc("GET /v1/apps/{id}", a.getApp)
@@ -166,6 +168,42 @@ func (a *API) listTenants(w http.ResponseWriter, r *http.Request) {
 		ts = []Tenant{}
 	}
 	writeJSON(w, http.StatusOK, ts)
+}
+
+// SetBillingExcludedRequest is the PATCH /v1/tenants/{id}/billing-excluded body.
+// Actor attributes the audit row (defaults to "control-plane").
+type SetBillingExcludedRequest struct {
+	Excluded bool   `json:"excluded"`
+	Actor    string `json:"actor,omitempty"`
+}
+
+// setBillingExcluded is the admin-only verb to comp/exempt a workspace out of
+// Metronome or restore it (docs/ADR040-billing-metronome.md §7, Mode A). An
+// excluded workspace never gets a Metronome customer or events, yet still sees
+// estimatedCost. The flag decides whether money is owed, so this route is
+// bearer-gated like every /v1 endpoint and has no tenant-facing counterpart;
+// the change is written to audit_events.
+func (a *API) setBillingExcluded(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		writeErr(w, fmt.Errorf("%w: tenant id is required", ErrInvalid))
+		return
+	}
+	var req SetBillingExcludedRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, fmt.Errorf("%w: bad request body", ErrInvalid))
+		return
+	}
+	changed, err := a.Store.SetTenantBillingExcluded(r.Context(), id, req.Excluded, req.Actor, time.Now().UTC())
+	if err != nil {
+		writeErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"tenantId":        id,
+		"billingExcluded": req.Excluded,
+		"changed":         changed,
+	})
 }
 
 // CreateAppRequest is the POST /v1/apps body. One of repo/image is required;
