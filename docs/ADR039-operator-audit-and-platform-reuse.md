@@ -11,7 +11,7 @@ bex has two different products hidden behind the phrase "Render parity":
 
 The first is bex's differentiating compatibility contract. Much of the second is commodity platform engineering that existing controllers may already implement more safely. This ADR records a code-level audit of the current operator, researches existing operators and Kubernetes PaaS projects, and defines the boundary at which bex should reuse rather than rewrite.
 
-This ADR supplements [ADR003](ADR003-control-plane.md), [ADR018](ADR018-render-parity.md), [ADR022](ADR022-tenant-isolation.md), [ADR028](ADR028-security-review.md), and [ADR034](ADR034-scalable-build-pipeline.md). O-01 and O-02 were closed by w2/m59 on 2026-07-19; ADR022 records the resulting verified build/admission boundary. O-03 through O-06 were closed by w2/m60 on the same date. O-07 through O-10 were closed by w2/m61 on the same date. The direct operator is therefore the recommended current implementation; OpenChoreo and Korifi remain future evaluation options, not scheduled replacements.
+This ADR supplements [ADR003](ADR003-control-plane.md), [ADR018](ADR018-render-parity.md), [ADR022](ADR022-tenant-isolation.md), [ADR028](ADR028-security-review.md), and [ADR034](ADR034-scalable-build-pipeline.md). O-01 and O-02 were closed by w2/m59 on 2026-07-19; ADR022 records the resulting verified build/admission boundary. O-03 through O-06 were closed by w2/m60 on the same date. O-07 through O-10 were closed by w2/m61 on the same date. The direct operator is therefore the recommended current implementation. [ADR040](ADR040-openchoreo-evaluation.md) subsequently evaluated OpenChoreo v1.1.2 and rejected current adoption; OpenChoreo is watch-only and Korifi remains a future evaluation option, not a scheduled replacement.
 
 ## Audit scope and method
 
@@ -117,9 +117,9 @@ The bex API remains the source of product semantics. A selected engine may own b
 
 Research used official documentation and source as of 2026-07-19. Repository activity is evidence of maintenance, not a security or production-readiness guarantee.
 
-| Candidate | What the code already provides | Material gaps or adoption cost | Disposition |
+| Candidate | What the code already provides | Material gaps and steady-state cost | Disposition |
 | --- | --- | --- | --- |
-| **OpenChoreo** | Apache-2.0 Go controllers; separate control, workflow, data, observability, and experience planes; OpenAPI and MCP; component types that render Deployment/StatefulSet/CronJob/Job; immutable releases and bindings; Argo-based build workflows; ResourceTypes with outputs, secret references, readiness, garbage collection, and retention. The inspected tree at `f2fadb0` contained 576 Go test files under `internal` and reported version `1.2.0-rc.1`. | CNCF **Sandbox**, young project, public CRDs remain `v1alpha1`, and adoption introduces a second control plane plus a substantial topology/operations migration. It has no Render wire compatibility or bex-specific lifecycle. Production database examples deliberately require an external provisioner. | **Uncommitted future PoC candidate**, not current roadmap work or an immediate replacement. If explicitly reopened, preserve bex API/auth/id/audit and test `App -> Component/ComponentRelease/ReleaseBinding` plus managed resources via ResourceType targeting CNPG/Valkey. |
+| **OpenChoreo** | Apache-2.0 Go controllers; separate control, workflow, data, observability, and experience planes; OpenAPI and MCP; component types that render Deployment/StatefulSet/CronJob/Job; immutable releases and bindings; Argo-based build workflows; ResourceTypes with outputs, secret references, readiness, garbage collection, and retention. The original source review covered `1.2.0-rc.1`; [ADR040](ADR040-openchoreo-evaluation.md) pinned and ran stable `v1.1.2`. | CNCF **Sandbox**, young project, public CRDs remain `v1alpha1`, and the target state adds a four-plane topology plus a compatibility/ownership adapter. The live stable build path regressed O-01, registry deletion left residue, storage readiness was too weak, and no production Valkey authority or Render compatibility existed. | **Reject current adoption; watch only.** ADR040 records 2 pass, 2 partial, and 5 failed gates plus the conditions for a future stable reevaluation. |
 | **Cloud Foundry Korifi** | Apache-2.0 Go implementation of a compatible PaaS API backed by CRDs. Its `BuildWorkload`, `AppWorkload`, and `TaskWorkload` are explicit extension points; default controllers use kpack, StatefulSet, Job, and Gateway API. It also maps env, routes, services/bindings, logs, metrics, orgs, and spaces. Release `0.18.0` was published 2026-03-05; the inspected `273b857` tree had 309 test files in the relevant packages. | Implements a subset of **Cloud Foundry V3**, not Render. Default source flow is `cf push`, not bex's GitHub integration. Cron, static sites, managed-resource plans/backups, usage, SSH, and Render deploy semantics remain bex work. Full adoption duplicates the bex control-plane model and adds CF vocabulary/namespaces. | **Uncommitted future reference and possible second comparison.** If explicitly reopened after an OpenChoreo result, evaluate its pluggable workload contracts or a narrow backend, not its CF API as another public surface. |
 | **Kubero Operator** | Heroku-like feature overlap: Git/image deploys, Dockerfile/Nixpacks/Buildpacks, web/worker, CronJob, HPA, ingress/TLS, sleep, add-ons, metrics, and push-to-deploy. | The operator at `ea8327a` is a GPL-3.0 Helm Operator: `watches.yaml` renders charts, the `KuberoApp` CRD preserves unknown `spec` fields, and no Go controller test suite exists in that repository. Its build templates explicitly set `automountServiceAccountToken: true`. The operator source last changed 2025-09-17, and its public GitHub release page lags the source version. GPL also prevents casually copying code into Apache-2.0 bex. No Render-compatible API. | **Reject as the core substrate.** It is useful as a product-feature checklist and perhaps an isolated black-box comparison, not as the quality/security answer to the current findings. |
 | **Knative Serving** | Mature HTTP workload lifecycle with immutable revisions, routes, traffic splitting, request buffering, and scale-to-zero. | Stateless HTTP serving only; it does not supply Git builds, workers, cron history, static publishing, databases, Render APIs, or bex auth. Its networking and queue-proxy model would replace rather than merely wrap current Traefik/activator behavior. | **Focused evaluation** for web/private-service revisions and scale-to-zero after O-01–O-06. Do not force worker, cron, or stateful workloads through it. |
@@ -139,19 +139,19 @@ Primary sources:
 
 ### 1. Keep the Render-compatible bex control plane
 
-Do not replace `lego/backend`, `lego/types`, or the Render-facing contracts with the public API of OpenChoreo, Korifi, Kubero, or another PaaS. A translation layer would still be required, and removing the bex layer would discard the compatibility work recorded in ADR018 and the CLI checklist.
+Keep the Render-facing contracts and one authoritative bex product model; do not expose the public API of OpenChoreo, Korifi, Kubero, or another PaaS as a semantic replacement. `lego/backend`, `lego/types`, and their internals remain replaceable. A translation layer is acceptable if it preserves ADR018 and official-CLI behavior and proves a better target state; existing compatibility code is sunk cost, not a reason to reject it.
 
 ### 2. Keep the direct reconciler and preserve only a future migration seam
 
-Keep `App`, `Database`, and `KeyValue` as the stable mechanism contract. The direct controller remains the only committed implementation. If a future substrate evaluation is explicitly approved, define the smallest internal data-plane engine boundary needed to compile the same intent into candidate workload CRDs; do not build that abstraction speculatively. Any such boundary must expose observed generation, conditions, immutable release identity, cleanup completion, and artifact/log references without leaking engine-specific ids.
+Keep `App`, `Database`, and `KeyValue` as the stable mechanism contract. The direct controller remains the only committed implementation because it currently passes the stronger safety/lifecycle evidence, not because it already exists. If a future substrate evaluation is explicitly approved, define the smallest internal data-plane engine boundary needed to compile the same intent into candidate workload CRDs; do not build that abstraction speculatively. Any such boundary must expose observed generation, conditions, immutable release identity, cleanup completion, and artifact/log references without leaking engine-specific ids.
 
 This is not permission to run two controllers against the same child resources. If a future engine is approved, exactly one engine must own a given App, selected by explicit platform configuration or migration state.
 
-### 3. Future only: preserve an OpenChoreo-first, Korifi-second evaluation option
+### 3. OpenChoreo evaluated and rejected; preserve Korifi as a separate future option
 
-Neither candidate has a PM milestone or current implementation commitment. Completing O-01 through O-10 creates reusable evidence but does not automatically start a PoC. Evaluation begins only after an explicit future user decision and a fresh review of the candidates' then-current versions, APIs, maintenance, security posture, licensing, and operational footprint.
+OpenChoreo's explicitly approved v1.1.2 evaluation is complete in [ADR040](ADR040-openchoreo-evaluation.md), which rejects current adoption and defines hard reopening gates. It has no adapter or migration commitment. Korifi still has no PM milestone or current implementation commitment; evaluating it requires a separate explicit user decision and a fresh review of its then-current version, API, maintenance, security posture, licensing, and operational footprint.
 
-If reopened, an OpenChoreo-first spike must demonstrate:
+Any future stable OpenChoreo reevaluation must again demonstrate:
 
 1. prebuilt-image and Git-built web service deployment;
 2. worker and cron workloads, including manual cron run/cancel/history owned by bex;
@@ -163,9 +163,9 @@ If reopened, an OpenChoreo-first spike must demonstrate:
 8. namespace/network/service-account isolation at least as strict as O-01's closure criteria; and
 9. unchanged Render REST/GraphQL/MCP/CLI acceptance tests against bex-api.
 
-Korifi would be evaluated against the same representative workload only after the OpenChoreo result and a second explicit go/no-go, with special attention to whether its pluggable `BuildWorkload`/`AppWorkload`/`TaskWorkload` contracts can be reused without adopting the CF API and tenancy model.
+Korifi would be evaluated against the same representative workload only after a second explicit go/no-go, with special attention to whether its pluggable `BuildWorkload`/`AppWorkload`/`TaskWorkload` contracts can be reused without adopting the CF API and tenancy model.
 
-Adopt a substrate only if a future approved spike removes a meaningful majority of bex's direct mechanism code, does not create two competing sources of truth, meets the isolation tests, and reduces total operational complexity. Feature count alone is not an acceptance criterion.
+Adopt a substrate only if a future approved spike preserves one source of truth, passes the product-contract and isolation tests, and demonstrates a better steady state in reliability, required strategic capability, or multi-year engineering/operational cost after counting its adapters and plane operations. Existing bex code is sunk cost; source-line removal is supporting evidence, not an acceptance threshold. Migration and rollback cost must be reported separately as execution risk. Feature count alone is not an acceptance criterion.
 
 ### 4. Reuse focused operators regardless of the full-platform result
 
@@ -220,6 +220,6 @@ The following options are preserved for a possible future reopening. They are no
 
 | Gate | Possible future work | Exit evidence if reopened |
 | --- | --- | --- |
-| Future A — uncommitted | OpenChoreo engine adapter | All nine spike scenarios pass through unchanged bex compatibility tests with one source of truth. |
+| Future A — **evaluated 2026-07-19; rejected** | OpenChoreo engine adapter | [ADR040](ADR040-openchoreo-evaluation.md): stable v1.1.2 scored 2 pass, 2 partial, 5 fail; no adapter or migration is authorized. |
 | Future B — uncommitted | Korifi workload-contract comparison | Written result quantifies mechanism removed, translation retained, operational dependencies, and failed parity cases. |
-| Future decision — uncommitted | Accept or reject substrate migration | Follow-up ADR with measured code/operations delta, migration/rollback plan, CRD version risk, and ownership map. |
+| Future decision | Accept or reject substrate migration | OpenChoreo is **Reject** for current adoption in ADR040. Any Korifi result or future OpenChoreo reopening requires its own measured code/operations delta, migration/rollback plan, CRD version risk, and ownership map. |
