@@ -61,3 +61,22 @@ func (s *PGStore) PurgeSSHSessions(ctx context.Context, before time.Time) (int64
 	}
 	return tag.RowsAffected(), nil
 }
+
+// ClaimShellNonce atomically claims a web-shell exec-ticket nonce across ALL
+// gateway replicas (w1/042 L7): INSERT … ON CONFLICT DO NOTHING lets exactly
+// one claimant win; a second redemption of the same ticket — on any replica —
+// finds the row present and is refused. Expired rows are pruned here rather
+// than by a janitor: shells are human-driven and rare, so the piggybacked
+// DELETE keeps the table at "tickets minted in the last ~90s" for free.
+func (s *PGStore) ClaimShellNonce(ctx context.Context, nonce string, expiresAt time.Time) (bool, error) {
+	if _, err := s.Pool.Exec(ctx, `DELETE FROM shell_ticket_nonces WHERE expires_at < now()`); err != nil {
+		return false, err
+	}
+	tag, err := s.Pool.Exec(ctx, `
+		INSERT INTO shell_ticket_nonces (nonce, expires_at)
+		VALUES ($1, $2) ON CONFLICT (nonce) DO NOTHING`, nonce, expiresAt)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
+}

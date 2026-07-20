@@ -163,10 +163,11 @@ kratos:
           required_aal: highest_available
         verification:
           # Enabled (w4/m7): registration now triggers a verification email
-          # (docs/ADR012-auth.md §11). NOTE: the dashboard has no auth.verification route
-          # yet, so the emailed link dead-ends on the catch-all — verification is
-          # proven via the API flow (scripts/auth-mail-e2e.sh); the Ory Elements
-          # page is a tracked follow-up. Keep the ui_url so it's ready when it lands.
+          # (docs/ADR012-auth.md §11). The dashboard's /auth/verification page
+          # (w4/008, Ory Elements) completes the loop — a user submits the
+          # emailed code there and reaches verified state, which bex-api's
+          # BEX_REQUIRE_VERIFIED_INVITE_EMAIL invite gate relies on (w1/040,
+          # docs/ADR024-members.md § Email verification).
           enabled: true
           use: code
           ui_url: https://dashboard.bex.co/auth/verification

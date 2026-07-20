@@ -100,12 +100,13 @@ func TestSeatUsageIsViewerVisible(t *testing.T) {
 	}
 }
 
-func TestResendInviteRefreshesExpiryKeepsTokenAndMails(t *testing.T) {
+func TestResendInviteRefreshesExpiryRotatesTokenAndMails(t *testing.T) {
 	st := newFakeStore(store.PlanPro)
 	st.seedMember("admin-1", "admin")
 	m := &fakeMailer{}
 	s := svc(st, newFakeGranter(), m, nil)
 	s.InviteTTL = 7 * 24 * time.Hour
+	s.InviteBaseURL = "https://dash.example"
 
 	orig, err := s.Invite(ctxWith("admin-1"), "tea-1", "late@example.com", "developer")
 	if err != nil {
@@ -124,14 +125,20 @@ func TestResendInviteRefreshesExpiryKeepsTokenAndMails(t *testing.T) {
 	if resent.ID != orig.ID {
 		t.Errorf("resend churned the invite id: %s -> %s", orig.ID, resent.ID)
 	}
-	if st.invites[orig.ID].Token != token {
-		t.Error("resend changed the token — the original email's link must stay redeemable")
+	// w1/041: only sha256(token) is at rest, so resend cannot reproduce the old
+	// plaintext — it mints a fresh token and the resent mail's link supersedes
+	// the original.
+	if rotated := st.invites[orig.ID].Token; rotated == token || rotated == "" {
+		t.Errorf("resend token = %q (orig %q), want a freshly minted one", rotated, token)
 	}
 	if !st.invites[orig.ID].ExpiresAt.After(time.Now()) {
 		t.Error("resend did not refresh the expiry")
 	}
 	if m.calls != 2 || m.to != "late@example.com" {
 		t.Errorf("mail: calls=%d to=%q, want a second delivery", m.calls, m.to)
+	}
+	if !strings.Contains(m.body, st.invites[orig.ID].Token) {
+		t.Error("resent mail does not carry the fresh token's link")
 	}
 }
 

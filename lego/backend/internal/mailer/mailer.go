@@ -25,6 +25,7 @@ package mailer
 import (
 	"context"
 	"fmt"
+	"net/mail"
 	"net/smtp"
 	"strings"
 )
@@ -33,12 +34,17 @@ import (
 // Zero value is not usable — construct with New.
 type SMTP struct {
 	addr     string // host:port
-	from     string // envelope + header From
+	from     string // header From (may carry a display name)
+	envelope string // bare address for MAIL FROM
 	auth     smtp.Auth
 	sendMail func(addr string, a smtp.Auth, from string, to []string, msg []byte) error
 }
 
 // New returns an SMTP mailer for the relay at addr (host:port) sending as from.
+// from may carry a display name (`bex <no-reply@bex.co>`, the prod
+// BEX_SMTP_FROM shape): the full form goes in the message's From: header, but
+// the SMTP envelope MAIL FROM takes only the bare address — relays reject the
+// display form there with a 501 (found live against Mailpit, w1/040 walk).
 // username/password enable PLAIN auth (host derived from addr); leave username
 // empty for an unauthenticated relay (Mailpit). Returns nil when addr or from is
 // empty — the "no SMTP configured" case, which leaves the members feature
@@ -55,7 +61,11 @@ func New(addr, from, username, password string) *SMTP {
 		}
 		auth = smtp.PlainAuth("", username, password, host)
 	}
-	return &SMTP{addr: addr, from: from, auth: auth, sendMail: smtp.SendMail}
+	envelope := from
+	if a, err := mail.ParseAddress(from); err == nil {
+		envelope = a.Address
+	}
+	return &SMTP{addr: addr, from: from, envelope: envelope, auth: auth, sendMail: smtp.SendMail}
 }
 
 // Send delivers a plain-text message. The context bounds nothing today
@@ -63,7 +73,7 @@ func New(addr, from, username, password string) *SMTP {
 // context-aware transport is a drop-in.
 func (s *SMTP) Send(_ context.Context, to, subject, body string) error {
 	msg := buildMessage(s.from, to, subject, body)
-	if err := s.sendMail(s.addr, s.auth, s.from, []string{to}, msg); err != nil {
+	if err := s.sendMail(s.addr, s.auth, s.envelope, []string{to}, msg); err != nil {
 		return fmt.Errorf("mailer: send to %s: %w", to, err)
 	}
 	return nil

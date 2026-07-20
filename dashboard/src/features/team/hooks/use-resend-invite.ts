@@ -5,8 +5,8 @@ import { ResendWorkspaceInviteDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 
 export interface UseResendInviteResult {
-  /** Re-sends a pending invite's email (fresh expiry, same id/token);
-   *  resolves true on success. */
+  /** Re-sends a pending invite's email (fresh expiry + freshly minted link,
+   *  same id); resolves true on success. */
   resendInvite: (inviteId: string) => Promise<boolean>;
   /** The invite currently being resent, or null. */
   resending: string | null;
@@ -15,7 +15,8 @@ export interface UseResendInviteResult {
 /**
  * Wires the resend action (w1/m33) to bex-api's `resendWorkspaceInvite`: the
  * recipient gets a fresh email and the invite's expiry moves forward — no
- * revoke + re-invite churn, the original link stays redeemable.
+ * revoke + re-invite churn. The new mail's link supersedes the original,
+ * which stops redeeming (tokens are hashed at rest, w1/041).
  */
 export function useResendInvite(workspaceId: string): UseResendInviteResult {
   const { t } = useTranslations();

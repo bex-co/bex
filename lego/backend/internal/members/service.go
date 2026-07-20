@@ -103,9 +103,11 @@ type MembersStore interface {
 	ListInvites(ctx context.Context, tenantID string) ([]store.Invite, error)
 	GetInvite(ctx context.Context, tenantID, id string) (store.Invite, error)
 	DeleteInvite(ctx context.Context, tenantID, id string) error
-	// RefreshInvite pushes an unaccepted invite's expiry forward (the resend
-	// verb, w1/m33); token unchanged, accepted/unknown is ErrNotFound.
-	RefreshInvite(ctx context.Context, tenantID, id string, expiresAt time.Time) (store.Invite, error)
+	// RefreshInvite pushes an unaccepted invite's expiry forward and installs a
+	// freshly minted token (the resend verb, w1/m33; token rotates since w1/041 —
+	// only its hash is at rest, so the old plaintext cannot be re-emailed);
+	// accepted/unknown is ErrNotFound.
+	RefreshInvite(ctx context.Context, tenantID, id, token string, expiresAt time.Time) (store.Invite, error)
 	// AcceptInviteByToken redeems one invite by its emailed token for subject —
 	// the direct-accept path (w1/m33); plan/seat guards run at redemption
 	// exactly like the login-time email match.
@@ -393,8 +395,10 @@ func (s *Service) Invite(ctx context.Context, workspaceID, email, role string) (
 // ResendInvite re-delivers a pending invite's email and pushes its expiry
 // forward — how an admin recovers a lost or lapsed invite without revoke +
 // re-invite (which would churn the invite id). Admin-only. The token is
-// unchanged, so the original email's link stays redeemable. An accepted or
-// unknown invite is a 404 on every surface.
+// re-minted (w1/041: only its hash is at rest, so the original plaintext
+// cannot be reproduced for the new mail) — the freshly emailed link
+// supersedes the original, which stops redeeming. An accepted or unknown
+// invite is a 404 on every surface.
 func (s *Service) ResendInvite(ctx context.Context, workspaceID, inviteID string) (InviteView, error) {
 	if err := s.AuthorizeOnTarget(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID), core.InviteTarget(inviteID)); err != nil {
 		return InviteView{}, err
@@ -404,7 +408,7 @@ func (s *Service) ResendInvite(ctx context.Context, workspaceID, inviteID string
 	}
 	// Refresh first: the tenant row is only needed for the email body, so a 404
 	// invite (accepted/unknown/cross-workspace) doesn't pay a wasted read.
-	inv, err := s.Store.RefreshInvite(ctx, workspaceID, inviteID, s.Now().Add(s.inviteTTL()))
+	inv, err := s.Store.RefreshInvite(ctx, workspaceID, inviteID, newToken(), s.Now().Add(s.inviteTTL()))
 	if err != nil {
 		return InviteView{}, mapStoreErr(err)
 	}

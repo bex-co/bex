@@ -18,6 +18,8 @@ package store
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -38,15 +40,27 @@ import (
 // authenticated login (AcceptInvitesForEmail) into a tenant_members row + the
 // matching workspace:<id> tuple.
 type Invite struct {
-	ID         string     `json:"id"`
-	TenantID   string     `json:"tenantId"`
-	Email      string     `json:"email"`
-	Role       string     `json:"role"`
+	ID       string `json:"id"`
+	TenantID string `json:"tenantId"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
+	// Token is the plaintext capability IN FLIGHT only: set by CreateInvite and
+	// RefreshInvite (the two mints) so the caller can email the link, never
+	// persisted — the row stores sha256(token) (w1/041), so reads return "".
 	Token      string     `json:"token"`
 	InvitedBy  string     `json:"invitedBy,omitempty"`
 	CreatedAt  time.Time  `json:"createdAt"`
 	ExpiresAt  time.Time  `json:"expiresAt"`
 	AcceptedAt *time.Time `json:"acceptedAt,omitempty"`
+}
+
+// hashInviteToken is the at-rest form of an invite token (w1/041): the store
+// writes and looks up sha256 hex, so a DB read yields no redeemable links. The
+// token's 128-bit crypto/rand entropy makes the unsalted hash preimage- and
+// table-resistant.
+func hashInviteToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
 }
 
 // GetTenantMember reads one membership row (ErrNotFound when the subject is not
@@ -121,17 +135,18 @@ func (s *PGStore) CountInvites(ctx context.Context, tenantID string) (int, error
 
 // CreateInvite records a pending invite (ErrConflict when an outstanding invite
 // already targets the same (tenant, email) — the partial unique index). The id
-// and token are minted here; expiresAt is computed by the caller so the TTL is
-// one policy in the service layer.
+// is minted here; expiresAt is computed by the caller so the TTL is one policy
+// in the service layer. Only sha256(token) is stored (w1/041); the returned
+// Invite carries the plaintext so the caller can email the link.
 func (s *PGStore) CreateInvite(ctx context.Context, tenantID, email, role, token, invitedBy string, expiresAt time.Time) (Invite, error) {
 	inv := Invite{
 		ID: ids.New(ids.Invite), TenantID: tenantID, Email: email, Role: role,
 		Token: token, InvitedBy: invitedBy, ExpiresAt: expiresAt,
 	}
 	err := s.Pool.QueryRow(ctx,
-		`INSERT INTO tenant_invites (id, tenant_id, email, role, token, invited_by, expires_at)
+		`INSERT INTO tenant_invites (id, tenant_id, email, role, token_hash, invited_by, expires_at)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING created_at`,
-		inv.ID, tenantID, email, role, token, invitedBy, expiresAt,
+		inv.ID, tenantID, email, role, hashInviteToken(token), invitedBy, expiresAt,
 	).Scan(&inv.CreatedAt)
 	if err != nil {
 		return Invite{}, classify("invite", err)
@@ -139,11 +154,11 @@ func (s *PGStore) CreateInvite(ctx context.Context, tenantID, email, role, token
 	return inv, nil
 }
 
-const inviteColumns = `id, tenant_id, email, role, token, invited_by, created_at, expires_at, accepted_at`
+const inviteColumns = `id, tenant_id, email, role, invited_by, created_at, expires_at, accepted_at`
 
 func scanInvite(row pgx.Row) (Invite, error) {
 	var inv Invite
-	err := row.Scan(&inv.ID, &inv.TenantID, &inv.Email, &inv.Role, &inv.Token,
+	err := row.Scan(&inv.ID, &inv.TenantID, &inv.Email, &inv.Role,
 		&inv.InvitedBy, &inv.CreatedAt, &inv.ExpiresAt, &inv.AcceptedAt)
 	return inv, err
 }
@@ -183,20 +198,24 @@ func (s *PGStore) GetInvite(ctx context.Context, tenantID, id string) (Invite, e
 	return inv, nil
 }
 
-// RefreshInvite pushes an unaccepted invite's expiry forward — the resend
-// verb's write half (w1/m33). The token is deliberately untouched: the link in
-// the original email must stay redeemable. An expired-but-unaccepted invite is
-// revived (resend is how an admin recovers a lapsed invite without churning
-// the id); an accepted or unknown invite is ErrNotFound — accepted rows are
-// audit history, not pending work.
-func (s *PGStore) RefreshInvite(ctx context.Context, tenantID, id string, expiresAt time.Time) (Invite, error) {
+// RefreshInvite pushes an unaccepted invite's expiry forward and replaces its
+// token — the resend verb's write half (w1/m33). The token rotates (w1/041):
+// with only sha256(token) at rest the old plaintext cannot be re-emailed, so
+// resend mints a fresh capability and the freshly emailed link supersedes the
+// original, which stops redeeming. An expired-but-unaccepted invite is revived
+// (resend is how an admin recovers a lapsed invite without churning the id);
+// an accepted or unknown invite is ErrNotFound — accepted rows are audit
+// history, not pending work. The returned Invite carries the plaintext token
+// for the resent mail.
+func (s *PGStore) RefreshInvite(ctx context.Context, tenantID, id, token string, expiresAt time.Time) (Invite, error) {
 	inv, err := scanInvite(s.Pool.QueryRow(ctx,
-		`UPDATE tenant_invites SET expires_at = $3
+		`UPDATE tenant_invites SET expires_at = $3, token_hash = $4
 		 WHERE tenant_id = $1 AND id = $2 AND accepted_at IS NULL
-		 RETURNING `+inviteColumns, tenantID, id, expiresAt))
+		 RETURNING `+inviteColumns, tenantID, id, expiresAt, hashInviteToken(token)))
 	if err != nil {
 		return Invite{}, classify("invite", err)
 	}
+	inv.Token = token
 	return inv, nil
 }
 
@@ -304,6 +323,7 @@ func redeemInvite(ctx context.Context, tx pgx.Tx, inv Invite, subject string) er
 // recipient may have signed up under a DIFFERENT email than the one invited,
 // which the login-time email match (AcceptInvitesForEmail) can never redeem.
 // The token is the capability; possession of the link is the authorization.
+// The lookup is by sha256(token) — only the hash is at rest (w1/041).
 // Named refusals rather than a silent no-op: unknown token is ErrNotFound,
 // an already-accepted or expired invite is ErrConflict (the caller can say
 // WHY the link failed), and a workspace whose current plan cannot seat the
@@ -313,7 +333,8 @@ func (s *PGStore) AcceptInviteByToken(ctx context.Context, token, subject string
 	var accepted Invite
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		inv, err := scanInvite(tx.QueryRow(ctx,
-			`SELECT `+inviteColumns+` FROM tenant_invites WHERE token = $1 FOR UPDATE`, token))
+			`SELECT `+inviteColumns+` FROM tenant_invites WHERE token_hash = $1 FOR UPDATE`,
+			hashInviteToken(token)))
 		if err != nil {
 			return err // pgx.ErrNoRows → classify's ErrNotFound below
 		}

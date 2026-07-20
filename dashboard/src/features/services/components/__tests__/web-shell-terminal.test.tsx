@@ -58,14 +58,21 @@ class FakeWebSocket {
   static OPEN = 1;
   static instances: FakeWebSocket[] = [];
   url: string;
+  protocols: string[];
   readyState = 0;
   sent: unknown[] = [];
   onopen: (() => void) | null = null;
   onmessage: ((e: { data: unknown }) => void) | null = null;
   onclose: (() => void) | null = null;
   onerror: (() => void) | null = null;
-  constructor(url: string) {
+  constructor(url: string, protocols?: string | string[]) {
     this.url = url;
+    this.protocols =
+      protocols === undefined
+        ? []
+        : Array.isArray(protocols)
+          ? protocols
+          : [protocols];
     FakeWebSocket.instances.push(this);
   }
   send(data: unknown) {
@@ -100,11 +107,14 @@ async function openSocket() {
 }
 
 describe("WebShellTerminal", () => {
-  it("mints a ticket and opens the gateway WebSocket carrying it", async () => {
+  it("mints a ticket and opens the gateway WebSocket carrying it in a subprotocol, never the URL", async () => {
     render(<WebShellTerminal serviceId="srv-x" />);
     const ws = await openSocket();
     expect(createShellSession).toHaveBeenCalledWith("srv-x", undefined);
-    expect(ws.url).toBe("wss://ssh.bex.co/shell?ticket=tkt-123");
+    // w1/042 L8: the URL lands in the edge proxy's access log, so the ticket
+    // must ride the Sec-WebSocket-Protocol offer instead.
+    expect(ws.url).toBe("wss://ssh.bex.co/shell");
+    expect(ws.protocols).toEqual(["bex.shell", "bex.ticket.tkt-123"]);
     // On open it sends an initial resize control frame.
     expect(
       ws.sent.some((m) => typeof m === "string" && m.includes('"type":"resize"')),

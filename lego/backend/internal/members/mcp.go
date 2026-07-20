@@ -128,7 +128,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "resend_workspace_invite",
-		Description: "Re-send a pending workspace invite's email and refresh its expiry; the invite id and token are unchanged. bex extension over Render's MCP.",
+		Description: "Re-send a pending workspace invite's email and refresh its expiry; the invite id is unchanged but the emailed link is freshly minted and supersedes the original. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in revokeInviteArgs) (*mcp.CallToolResult, InviteView, error) {
 		inv, err := s.ResendInvite(ctx, in.WorkspaceID, in.InviteID)
 		return nil, inv, err

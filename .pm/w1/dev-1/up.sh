@@ -113,6 +113,9 @@ forward kratos kratos-public "$KRATOS_PUBLIC_PORT:80"
 forward kratos-admin kratos-admin "$KRATOS_ADMIN_PORT:80"
 forward hydra hydra-admin "$HYDRA_ADMIN_PORT:4445"
 forward mailpit mailpit "$MAILPIT_HTTP_PORT:8025"
+# SMTP side of the same Mailpit — bex-api's own invite mailer (BEX_SMTP_ADDR
+# below); Kratos reaches Mailpit in-cluster and doesn't need this.
+forward mailpit-smtp mailpit "58010:1025"
 forward bex-db bex-db-rw "$BEX_DB_PORT:5432"
 sleep 3
 
@@ -138,7 +141,10 @@ for attempt in $(seq 1 5); do
     BEX_API_ADDR=":$BEX_API_PORT" \
     BEX_CP_ADDR=":$BEX_CP_PORT" \
     BEX_CP_INSECURE="1" \
-
+    BEX_REQUIRE_VERIFIED_INVITE_EMAIL="1" \
+    BEX_SMTP_ADDR="localhost:58010" \
+    BEX_SMTP_FROM="bex dev-1 <no-reply@dev-1.local>" \
+    BEX_DASHBOARD_URL="http://localhost:$DASHBOARD_PORT" \
     BEX_API_NAMESPACE="$DEV_NS" \
     BEX_API_CORS_ORIGIN="http://localhost:$DASHBOARD_PORT" \
     BEX_KRATOS_URL="http://localhost:$KRATOS_PUBLIC_PORT" \

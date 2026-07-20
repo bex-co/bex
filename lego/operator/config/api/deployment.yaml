@@ -235,6 +235,16 @@ spec:
                   optional: true
             - name: BEX_SHELL_WS_URL
               value: wss://ssh.bex.co/shell
+            # Login-time invite redemption requires a Kratos-VERIFIED email
+            # (w1/040, closing w1/m53's V1 window: an attacker who registered
+            # with a victim's not-yet-signed-up invited address could otherwise
+            # claim their invite on first login). Safe to enforce now that the
+            # dashboard's /auth/verification page completes the verification
+            # loop (w4/008); the token link path is unaffected — its capability
+            # is the unguessable token, not an email claim
+            # (docs/ADR024-members.md § Email verification).
+            - name: BEX_REQUIRE_VERIFIED_INVITE_EMAIL
+              value: "1"
           ports:
             - name: http
               containerPort: 8090

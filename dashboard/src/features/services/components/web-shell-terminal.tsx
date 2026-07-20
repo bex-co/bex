@@ -86,8 +86,11 @@ export function WebShellTerminal({
       }
       if (cancelled) return;
 
-      const target = `${session.url}${session.url.includes("?") ? "&" : "?"}ticket=${encodeURIComponent(session.ticket)}`;
-      ws = new WebSocket(target);
+      // The ticket rides a Sec-WebSocket-Protocol entry, never the URL — the
+      // request line lands in the edge proxy's access log, headers don't
+      // (w1/042 L8). The gateway selects the bare "bex.shell" marker, so the
+      // credential isn't echoed in the handshake response either.
+      ws = new WebSocket(session.url, ["bex.shell", `bex.ticket.${session.ticket}`]);
       ws.binaryType = "arraybuffer";
 
       const sendResize = () => {

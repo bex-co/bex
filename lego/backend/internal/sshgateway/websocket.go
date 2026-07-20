@@ -23,6 +23,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -50,13 +51,42 @@ const (
 	wsPongWait   = 60 * time.Second
 	wsPingPeriod = 50 * time.Second
 	wsReadLimit  = 1 << 20 // bound a single inbound frame (paste), not the session
+
+	// wsShellSubprotocol is the marker protocol the dashboard offers alongside
+	// its ticket-bearing sibling and the only one the gateway ever selects — so
+	// the credential never appears in the handshake RESPONSE either.
+	wsShellSubprotocol = "bex.shell"
+	// wsTicketPrefix carries the exec ticket inside the client's
+	// Sec-WebSocket-Protocol offer (w1/042 L8): a header, unlike the request
+	// line, never reaches Traefik's access log (headers are dropped there; the
+	// old ?ticket=… query rode RequestPath, which is kept). The ticket's
+	// base64url alphabet is entirely HTTP-token-safe.
+	wsTicketPrefix = "bex.ticket."
 )
 
 // wsUpgrader upgrades the shell connection. Origin is not checked: the exec
 // ticket (an unforgeable, short-lived HMAC token that only an authenticated
 // bex-api caller can obtain) is the credential, not the browser origin.
+// Subprotocols makes the upgrade select bex.shell out of the client's offer —
+// never the ticket-bearing entry (browsers require the server to pick one of
+// the offered protocols, so the dashboard always offers both).
 var wsUpgrader = websocket.Upgrader{
-	CheckOrigin: func(*http.Request) bool { return true },
+	CheckOrigin:  func(*http.Request) bool { return true },
+	Subprotocols: []string{wsShellSubprotocol},
+}
+
+// wsTicket extracts the exec ticket from the request: the subprotocol carrier
+// first (w1/042 L8), falling back to the legacy ?ticket= query parameter for
+// pre-roll dashboard tabs whose JS still builds the old URL — that fallback
+// (and only it) keeps the ticket in Traefik's RequestPath, decaying to unused
+// as those tabs reload; remove it after a release.
+func wsTicket(r *http.Request) string {
+	for _, proto := range websocket.Subprotocols(r) {
+		if t, ok := strings.CutPrefix(proto, wsTicketPrefix); ok {
+			return t
+		}
+	}
+	return r.URL.Query().Get("ticket")
 }
 
 // clientControl is a client→server text frame. Only terminal resize is honored;
@@ -96,7 +126,7 @@ func (s *Server) serveWebSocket(w http.ResponseWriter, r *http.Request) {
 	// after a valid ticket — target resolution, session caps, the stream itself
 	// — happens after the upgrade so its outcome reaches the terminal as a
 	// readable control frame rather than an unreadable failed handshake.
-	token := r.URL.Query().Get("ticket")
+	token := wsTicket(r)
 	if token == "" {
 		s.Metrics.authentication("rejected_key")
 		http.Error(w, "missing ticket", http.StatusUnauthorized)
@@ -108,7 +138,7 @@ func (s *Server) serveWebSocket(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid ticket", http.StatusUnauthorized)
 		return
 	}
-	if !s.consumeTicket(claims, time.Now()) {
+	if !s.consumeTicket(r.Context(), claims, time.Now()) {
 		s.Metrics.authentication("rejected_key")
 		http.Error(w, "ticket already used", http.StatusUnauthorized)
 		return
@@ -268,11 +298,16 @@ func clampExit(code int) int {
 	return code
 }
 
-// consumeTicket records a ticket nonce so the same ticket cannot open a second
-// stream on this replica, and opportunistically drops expired nonces.
-func (s *Server) consumeTicket(claims shellticket.Claims, now time.Time) bool {
+// consumeTicket enforces single-use of an exec ticket ACROSS gateway replicas
+// (w1/042 L7): the per-process map is the cheap first line (a same-replica
+// replay never reaches the database, and expired nonces are pruned in
+// passing), then Store.ClaimShellNonce is the authoritative atomic claim —
+// INSERT … ON CONFLICT, so of N replicas presented the same ticket exactly
+// one wins. A store error refuses the ticket (fail closed): the session-audit
+// write moments later requires the same database, so a DB outage already
+// means no web shells — this adds no new availability dependency.
+func (s *Server) consumeTicket(ctx context.Context, claims shellticket.Claims, now time.Time) bool {
 	s.usedMu.Lock()
-	defer s.usedMu.Unlock()
 	if s.usedNonces == nil {
 		s.usedNonces = map[string]time.Time{}
 	}
@@ -282,10 +317,20 @@ func (s *Server) consumeTicket(claims shellticket.Claims, now time.Time) bool {
 		}
 	}
 	if _, seen := s.usedNonces[claims.Nonce]; seen {
+		s.usedMu.Unlock()
 		return false
 	}
 	s.usedNonces[claims.Nonce] = time.Unix(claims.ExpiresAt, 0)
-	return true
+	s.usedMu.Unlock()
+
+	claimCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	claimed, err := s.Store.ClaimShellNonce(claimCtx, claims.Nonce, time.Unix(claims.ExpiresAt, 0))
+	if err != nil {
+		log.Printf("web shell nonce claim failed: %v", err)
+		return false
+	}
+	return claimed
 }
 
 // wsConn serializes all writes to one gorilla connection (stdout frames, control
