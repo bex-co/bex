@@ -89,6 +89,59 @@ describe("useUsage", () => {
         },
       ],
       estimatedCost: null,
+      // billing absent from the response ⇒ null (estimate-only, m48).
+      billing: null,
+    });
+  });
+
+  it("maps real billing (current cost + finalized invoices) when present (m48)", () => {
+    mockUseQuery.mockReturnValue(
+      createSuccessQueryResult({
+        usage: {
+          workspaceId: "ws-abc123",
+          services: [],
+          billing: {
+            currentCost: {
+              amountUsd: "12.34",
+              currency: "USD",
+              periodStart: "2026-07-01T00:00:00Z",
+              periodEnd: "2026-07-20T00:00:00Z",
+            },
+            invoices: [
+              {
+                id: "inv_1",
+                status: "FINALIZED",
+                amountUsd: "40.00",
+                currency: "USD",
+                periodStart: "2026-06-01T00:00:00Z",
+                periodEnd: "2026-07-01T00:00:00Z",
+              },
+              null, // a null invoice is filtered out
+            ],
+          },
+        },
+      }),
+    );
+
+    const { result } = renderHook(() => useUsage());
+
+    expect(result.current.summary?.billing).toEqual({
+      currentCost: {
+        amountUsd: "12.34",
+        currency: "USD",
+        periodStart: "2026-07-01T00:00:00Z",
+        periodEnd: "2026-07-20T00:00:00Z",
+      },
+      invoices: [
+        {
+          id: "inv_1",
+          status: "FINALIZED",
+          amountUsd: "40.00",
+          currency: "USD",
+          periodStart: "2026-06-01T00:00:00Z",
+          periodEnd: "2026-07-01T00:00:00Z",
+        },
+      ],
     });
   });
 

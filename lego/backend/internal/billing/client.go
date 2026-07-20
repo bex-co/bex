@@ -69,10 +69,11 @@ type Event struct {
 }
 
 // Ingester is the slice of the client the emitter depends on: ensure a
-// workspace's customer exists, then ship its sealed rows. A fake implements it
-// in tests without any HTTP.
+// workspace's customer and (when a rate card is configured) its contract exist,
+// then ship its sealed rows. A fake implements it in tests without any HTTP.
 type Ingester interface {
 	EnsureCustomer(ctx context.Context, tenantID string) error
+	EnsureContract(ctx context.Context, tenantID string) error
 	IngestBatch(ctx context.Context, events []Event) error
 }
 
@@ -81,6 +82,13 @@ type Ingester interface {
 type Config struct {
 	Token   string // BEX_METRONOME_TOKEN — empty ⇒ disabled
 	BaseURL string // BEX_METRONOME_URL — empty ⇒ DefaultBaseURL
+	// RateCardID (BEX_METRONOME_RATE_CARD_ID) is the rate card contracts bind to
+	// (m48). Empty ⇒ shadow-export only: usage lands in Metronome but is rated by
+	// nothing and no contracts are created (m47 behavior, byte-identical).
+	RateCardID string
+	// USDCreditTypeID (BEX_METRONOME_USD_CREDIT_TYPE_ID) is the credit type a
+	// Mode B comp grants against. Only needed to comp a customer.
+	USDCreditTypeID string
 	// HTTPClient overrides the SDK's transport. Production leaves it nil; tests
 	// inject a stub RoundTripper to exercise batching + retry classification
 	// without a network.
@@ -96,8 +104,15 @@ type Client struct {
 	// sleep waits d honoring ctx; overridable in tests to skip real waits.
 	sleep func(ctx context.Context, d time.Duration) error
 
-	ensuredMu sync.Mutex
-	ensured   map[string]struct{} // tenants whose customer this process has provisioned
+	// RateCardID / USDCreditTypeID mirror Config; ContractStart is the contract
+	// starting_at (the billing epoch), set by main.go alongside the emitter.
+	RateCardID      string
+	USDCreditTypeID string
+	ContractStart   time.Time
+
+	ensuredMu  sync.Mutex
+	ensured    map[string]struct{} // tenants whose customer this process has provisioned
+	contracted map[string]struct{} // tenants whose contract this process has provisioned
 }
 
 // New builds a Client, or returns nil when Token is unset — the byte-identical
@@ -119,10 +134,13 @@ func New(cfg Config) *Client {
 		opts = append(opts, option.WithHTTPClient(cfg.HTTPClient))
 	}
 	return &Client{
-		mc:      metronome.NewClient(opts...),
-		backoff: defaultBackoff,
-		sleep:   sleepCtx,
-		ensured: map[string]struct{}{},
+		mc:              metronome.NewClient(opts...),
+		backoff:         defaultBackoff,
+		sleep:           sleepCtx,
+		RateCardID:      cfg.RateCardID,
+		USDCreditTypeID: cfg.USDCreditTypeID,
+		ensured:         map[string]struct{}{},
+		contracted:      map[string]struct{}{},
 	}
 }
 
@@ -132,10 +150,7 @@ func New(cfg Config) *Client {
 // skips the second call, and a 409 from a customer that already exists (e.g.
 // after a restart) is treated as success.
 func (c *Client) EnsureCustomer(ctx context.Context, tenantID string) error {
-	c.ensuredMu.Lock()
-	_, done := c.ensured[tenantID]
-	c.ensuredMu.Unlock()
-	if done {
+	if c.cached(c.ensured, tenantID) {
 		return nil
 	}
 	_, err := c.mc.V1.Customers.New(ctx, metronome.V1CustomerNewParams{
@@ -145,18 +160,28 @@ func (c *Client) EnsureCustomer(ctx context.Context, tenantID string) error {
 	if err != nil {
 		var apiErr *metronome.Error
 		if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusConflict {
-			c.markEnsured(tenantID) // already exists — the alias is what we need
+			c.mark(c.ensured, tenantID) // already exists — the alias is what we need
 			return nil
 		}
 		return fmt.Errorf("metronome: ensure customer %s: %w", tenantID, err)
 	}
-	c.markEnsured(tenantID)
+	c.mark(c.ensured, tenantID)
 	return nil
 }
 
-func (c *Client) markEnsured(tenantID string) {
+// cached / mark are the process-local provisioning memo shared by EnsureCustomer
+// (c.ensured) and EnsureContract (c.contracted): two independent sets guarded by
+// one mutex, so each per-workspace setup is attempted at most once per process.
+func (c *Client) cached(set map[string]struct{}, id string) bool {
 	c.ensuredMu.Lock()
-	c.ensured[tenantID] = struct{}{}
+	defer c.ensuredMu.Unlock()
+	_, ok := set[id]
+	return ok
+}
+
+func (c *Client) mark(set map[string]struct{}, id string) {
+	c.ensuredMu.Lock()
+	set[id] = struct{}{}
 	c.ensuredMu.Unlock()
 }
 

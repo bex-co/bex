@@ -46,11 +46,13 @@ import {
 import { SvgLineChart } from "@/features/metrics/components/svg-line-chart";
 import { seriesColor } from "@/features/metrics/components/chart-layout";
 import { periodFor, periodLabel } from "@/features/usage/lib/period";
+import { Badge } from "@/common/components/ui/badge.tsx";
 import {
   useUsage,
   type ServiceUsage,
   type UsageRow,
   type EstimatedCost,
+  type Billing,
 } from "../hooks/use-usage";
 import { useUsageTrend, type TrendPoint } from "../hooks/use-usage-trend";
 import { WorkspaceResourceCaps } from "./resource-caps";
@@ -466,6 +468,72 @@ function EstimatedCostSection({
   );
 }
 
+// --- current spend section (real Metronome billing, m48) ---
+
+// CurrentSpendSection shows the workspace's REAL billing — the current-period
+// cost Metronome has computed plus its finalized invoices — visually distinct
+// from the advisory estimate above (an "Invoice" badge, not "estimate only").
+// It renders nothing when there is no real billing (no contract, comped/
+// excluded, billing off, or a degraded read): the estimate card stands alone,
+// so an estimate-only workspace never sees a broken or empty billing card.
+function CurrentSpendSection({ billing }: { billing: Billing | null }) {
+  const { t } = useTranslations();
+  if (!billing || (!billing.currentCost && billing.invoices.length === 0)) {
+    return null;
+  }
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <CardTitle>{t("usage.currentSpendTitle")}</CardTitle>
+          <Badge variant="default">{t("usage.currentSpendBadge")}</Badge>
+        </div>
+        <CardDescription>{t("usage.currentSpendDescription")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {billing.currentCost && (
+          <div className="mb-4 flex items-baseline gap-2">
+            <span className="text-2xl font-semibold tabular-nums">
+              ${billing.currentCost.amountUsd}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {t("usage.currentSpendNote")}
+            </span>
+          </div>
+        )}
+        {billing.invoices.length > 0 && (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("usage.colInvoicePeriod")}</TableHead>
+                <TableHead>{t("usage.colInvoiceStatus")}</TableHead>
+                <TableHead className="text-right tabular-nums">
+                  {t("usage.colInvoiceAmount")}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {billing.invoices.map((inv) => (
+                <TableRow key={inv.id}>
+                  <TableCell className="font-medium tabular-nums">
+                    {inv.periodStart ? inv.periodStart.slice(0, 10) : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{inv.status}</Badge>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    ${inv.amountUsd}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // --- trend section ---
 
 function scaledSeries(
@@ -658,6 +726,7 @@ export function UsagePage() {
             estimatedCost={summary?.estimatedCost ?? null}
             loading={loading}
           />
+          <CurrentSpendSection billing={summary?.billing ?? null} />
           <TrendSection points={trendPoints} loading={trendLoading} />
         </div>
       </div>

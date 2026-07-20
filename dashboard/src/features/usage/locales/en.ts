@@ -155,6 +155,37 @@ const enUsage: Record<string, TranslationEntry> = {
     description:
       "Empty-state message when there is no billable usage to estimate",
   },
+  "usage.currentSpendTitle": {
+    message: "Current Spend",
+    description:
+      "Heading for the real billing section (actual Metronome cost + invoices)",
+  },
+  "usage.currentSpendBadge": {
+    message: "Invoice",
+    description:
+      "Badge distinguishing the real billing card from the estimate-only card",
+  },
+  "usage.currentSpendDescription": {
+    message:
+      "Your actual billed cost and finalized invoices — not an estimate.",
+    description: "Description clarifying this card shows real charges",
+  },
+  "usage.currentSpendNote": {
+    message: "Current billing period, so far",
+    description: "Short note beside the current-period real cost total",
+  },
+  "usage.colInvoicePeriod": {
+    message: "Period",
+    description: "Table column header for an invoice's billing period start",
+  },
+  "usage.colInvoiceStatus": {
+    message: "Status",
+    description: "Table column header for an invoice's status",
+  },
+  "usage.colInvoiceAmount": {
+    message: "Amount",
+    description: "Table column header for an invoice's amount",
+  },
 };
 
 export default enUsage;

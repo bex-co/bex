@@ -380,18 +380,31 @@ func main() {
 			}
 		}
 		deps.Usage = usageSvc
-		go usageSvc.Run(ctx)
 
-		// Billing export (w7/m47, docs/ADR040-billing-metronome.md): the
-		// seal-then-emit sidecar ships each sealed usage_hourly row to Metronome
-		// exactly once, so Metronome does the rating/invoicing. Gated by
-		// BEX_METRONOME_TOKEN — billing.New returns nil when it is unset, so the
-		// emitter is never constructed and bex-api is byte-identical to today.
+		// Billing (w7/m47 export + m48 surface, docs/ADR040-billing-metronome.md):
+		// one Metronome client drives both the seal-then-emit export sidecar and the
+		// usage surface's real cost/invoice read-back. Gated by BEX_METRONOME_TOKEN —
+		// billing.New returns nil when it is unset, so neither the emitter nor the
+		// read is wired and bex-api is byte-identical to ADR030 (estimate-only).
+		var billingEpoch time.Time
+		if v := os.Getenv("BEX_METRONOME_EPOCH"); v != "" {
+			epoch, err := time.Parse(time.RFC3339, v)
+			if err != nil {
+				log.Fatalf("bex-api: bad BEX_METRONOME_EPOCH %q (want RFC3339, e.g. 2026-07-01T00:00:00Z): %v", v, err)
+			}
+			billingEpoch = epoch.UTC()
+		}
 		if mc := billing.New(billing.Config{
-			Token:   os.Getenv("BEX_METRONOME_TOKEN"),
-			BaseURL: os.Getenv("BEX_METRONOME_URL"),
+			Token:           os.Getenv("BEX_METRONOME_TOKEN"),
+			BaseURL:         os.Getenv("BEX_METRONOME_URL"),
+			RateCardID:      os.Getenv("BEX_METRONOME_RATE_CARD_ID"),
+			USDCreditTypeID: os.Getenv("BEX_METRONOME_USD_CREDIT_TYPE_ID"),
 		}); mc != nil {
+			mc.ContractStart = billingEpoch // usage before the billing epoch is not rated
+			usageSvc.Billing = mc           // m48: surface real cost/invoices beside the estimate
+
 			emitter := billing.NewEmitter(st, mc) // SealHours/Interval/BatchLimit default inside
+			emitter.Epoch = billingEpoch
 			if v := os.Getenv("BEX_METRONOME_SEAL_HOURS"); v != "" {
 				if n, err := strconv.Atoi(v); err == nil && n >= 1 {
 					emitter.SealHours = time.Duration(n) * time.Hour
@@ -399,16 +412,11 @@ func main() {
 					log.Printf("BEX_METRONOME_SEAL_HOURS=%q invalid (want integer ≥ 1); using default %s", v, billing.DefaultSealHours)
 				}
 			}
-			if v := os.Getenv("BEX_METRONOME_EPOCH"); v != "" {
-				if epoch, err := time.Parse(time.RFC3339, v); err == nil {
-					emitter.Epoch = epoch.UTC()
-				} else {
-					log.Fatalf("bex-api: bad BEX_METRONOME_EPOCH %q (want RFC3339, e.g. 2026-07-01T00:00:00Z): %v", v, err)
-				}
-			}
-			log.Printf("bex-api billing export to Metronome enabled (seal horizon %s)", emitter.SealHours)
+			log.Printf("bex-api billing to Metronome enabled (seal horizon %s, rate card %t)", emitter.SealHours, mc.RateCardID != "")
 			go emitter.Run(ctx)
 		}
+
+		go usageSvc.Run(ctx)
 
 		// Audit log retention (w4/m10 + w2/m39): purges audit_events and SSH
 		// session metadata older than BEX_AUDIT_RETENTION_DAYS daily, same
