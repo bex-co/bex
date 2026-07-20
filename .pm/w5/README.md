@@ -65,7 +65,7 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `026.md` — review and ship the completed, uncommitted Render-style global topbar: contextual breadcrumbs/switchers, lazy `Cmd/Ctrl+K` resource search, persistent create/help/account actions, responsive verification, and green dashboard gates
+_(`026.md` implemented 2026-07-18 in `f415ac81` — the shared authenticated layout now has contextual Project / Environment / Service breadcrumbs and switchers, lazy `Cmd/Ctrl+K` resource search, and persistent create/help/account actions; reviewed and reverified on the rebased tree 2026-07-19 with lint, 261 test files / 1,613 tests, and the production build green; moved to `done/`.)_
 
 _(`025.md` promoted to **m45** 2026-07-17 after the scope expanded from the Postgres redirect defect to an exhaustive post-create landing contract; note moved to `done/`.)_
 
