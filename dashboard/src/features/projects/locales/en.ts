@@ -71,6 +71,11 @@ const enProjects: Record<string, TranslationEntry> = {
     message: "All resources running",
     description: "Project card status line when every resource is healthy",
   },
+  "projects.cardInProgress": {
+    message: "{count} resource(s) in progress",
+    description:
+      "Project card status line when resources are provisioning or deploying without a failure",
+  },
   "projects.cardUnhealthy": {
     message: "{count} resource(s) need attention",
     description:
