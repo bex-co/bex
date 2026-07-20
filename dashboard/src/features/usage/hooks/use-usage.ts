@@ -43,11 +43,40 @@ export interface EstimatedCost {
   meters: MeterEstimate[];
 }
 
+/** A normalized Metronome amount over a period (m48). */
+export interface BillingAmount {
+  amountUsd: string;
+  currency: string;
+  periodStart: string; // RFC3339
+  periodEnd: string; // RFC3339
+}
+
+/** One finalized Metronome invoice (m48). */
+export interface BillingInvoice {
+  id: string;
+  status: string;
+  amountUsd: string;
+  currency: string;
+  periodStart: string;
+  periodEnd: string;
+}
+
+/**
+ * Real Metronome-computed billing (m48). Distinct from the advisory
+ * estimatedCost: this is what the workspace is actually charged. null when
+ * estimate-only (no contract, comped/excluded, billing off, or degraded).
+ */
+export interface Billing {
+  currentCost: BillingAmount | null;
+  invoices: BillingInvoice[];
+}
+
 export interface UsageSummary {
   workspaceId: string;
   period: string; // "YYYY-MM"
   services: ServiceUsage[];
   estimatedCost: EstimatedCost | null;
+  billing: Billing | null;
 }
 
 export interface UseUsageResult {
@@ -65,7 +94,9 @@ export function useUsage(period?: string): UseUsageResult {
     // share a cache slot. Skipped until the switcher's selection resolves, so
     // this never fires with a null ownerId (which the backend would silently
     // route to the caller's default workspace, w6/m18) then refetch once it does.
-    variables: period ? { period, ownerId: currentWorkspaceId } : { ownerId: currentWorkspaceId },
+    variables: period
+      ? { period, ownerId: currentWorkspaceId }
+      : { ownerId: currentWorkspaceId },
     skip: !resolved,
     pollInterval: 60_000,
     fetchPolicy: "cache-and-network",
@@ -99,6 +130,28 @@ export function useUsage(period?: string): UseUsageResult {
                       tier: m!.tier ?? "",
                       resourceKind: m!.resourceKind ?? "",
                       costUsd: m!.costUsd ?? "0.00",
+                    })),
+                }
+              : null,
+            billing: raw.billing
+              ? {
+                  currentCost: raw.billing.currentCost
+                    ? {
+                        amountUsd: raw.billing.currentCost.amountUsd ?? "0.00",
+                        currency: raw.billing.currentCost.currency ?? "USD",
+                        periodStart: raw.billing.currentCost.periodStart ?? "",
+                        periodEnd: raw.billing.currentCost.periodEnd ?? "",
+                      }
+                    : null,
+                  invoices: (raw.billing.invoices ?? [])
+                    .filter(Boolean)
+                    .map((i) => ({
+                      id: i!.id ?? "",
+                      status: i!.status ?? "",
+                      amountUsd: i!.amountUsd ?? "0.00",
+                      currency: i!.currency ?? "USD",
+                      periodStart: i!.periodStart ?? "",
+                      periodEnd: i!.periodEnd ?? "",
                     })),
                 }
               : null,

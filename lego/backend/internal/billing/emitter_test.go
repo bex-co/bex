@@ -72,15 +72,21 @@ func (f *fakeEmitterStore) stampedCount() int {
 }
 
 type fakeIngester struct {
-	ensured   []string
-	ensureErr map[string]error
-	batches   [][]Event
-	ingestErr error
+	ensured    []string
+	contracted []string
+	ensureErr  map[string]error
+	batches    [][]Event
+	ingestErr  error
 }
 
 func (f *fakeIngester) EnsureCustomer(_ context.Context, id string) error {
 	f.ensured = append(f.ensured, id)
 	return f.ensureErr[id]
+}
+
+func (f *fakeIngester) EnsureContract(_ context.Context, id string) error {
+	f.contracted = append(f.contracted, id)
+	return nil
 }
 
 func (f *fakeIngester) IngestBatch(_ context.Context, events []Event) error {

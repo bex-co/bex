@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/billing"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 )
@@ -52,6 +53,9 @@ type usageResponse struct {
 	Period        string                `json:"period"` // "YYYY-MM"
 	Services      []usageServiceEntry   `json:"services"`
 	EstimatedCost pricing.EstimatedCost `json:"estimatedCost"`
+	// Billing is the real Metronome cost + invoices (m48); omitted (null) when
+	// estimate-only — no contract, comped/excluded, billing off, or degraded.
+	Billing *billing.Billing `json:"billing,omitempty"`
 }
 
 // RegisterREST mounts the usage REST endpoint on the shared mux. ownerId
@@ -87,6 +91,7 @@ func toUsageResponse(sum Summary) usageResponse {
 		Period:        period,
 		Services:      svcs,
 		EstimatedCost: sum.EstimatedCost,
+		Billing:       sum.Billing,
 	}
 }
 

@@ -39,6 +39,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/billing"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/egressquery"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
@@ -74,7 +75,26 @@ type Service struct {
 	// (explicit arg > the session's select_workspace > the caller's default).
 	// nil (e.g. no MCP transport wired) degrades to explicit-arg-or-default.
 	Selections core.WorkspaceSelectionReader
-	promHTTP   *http.Client
+	// Billing reads real Metronome cost/invoices to surface beside the advisory
+	// estimate (m48, ADR040 Phase 2). nil ⇒ billing surface off: every summary is
+	// estimate-only, byte-identical to ADR030. A read failure degrades to
+	// estimate-only too (logged, never a 500).
+	Billing BillingReader
+	// billingCache memoizes the two Metronome reads BillingFor makes, keyed by
+	// (tenant, period), for a short TTL: /v1/usage is polled (dashboard every 60s)
+	// across three surfaces, but the billing figure only moves ~hourly, so this
+	// keeps that hot path off Metronome. Positive results only — errors are never
+	// cached, preserving the poll-as-retry graceful-degradation contract.
+	billingCache *core.TTLCache[*billing.Billing]
+	promHTTP     *http.Client
+}
+
+// BillingReader reads a workspace's real Metronome cost + finalized invoices
+// for [periodStart, periodEnd). Returns (nil, nil) when there is nothing real
+// to show (no contract / comped Mode A / excluded) so the caller falls back to
+// estimate-only. Implemented by *billing.Client.
+type BillingReader interface {
+	BillingFor(ctx context.Context, customerID string, periodStart, periodEnd time.Time) (*billing.Billing, error)
 }
 
 // NewService constructs a Service, normalising PromBase (strips trailing slash
@@ -86,10 +106,11 @@ func NewService(base *core.Base, st UsageStore, promBase string, hc *http.Client
 		hc = http.DefaultClient
 	}
 	return &Service{
-		Base:     base,
-		Store:    st,
-		PromBase: strings.TrimRight(promBase, "/"),
-		promHTTP: hc,
+		Base:         base,
+		Store:        st,
+		PromBase:     strings.TrimRight(promBase, "/"),
+		billingCache: core.NewTTLCache[*billing.Billing](),
+		promHTTP:     hc,
 	}
 }
 
@@ -103,6 +124,10 @@ type Summary struct {
 	Period        string // "YYYY-MM" — the calendar month this summary covers
 	Services      []ServiceUsage
 	EstimatedCost pricing.EstimatedCost
+	// Billing is the real Metronome-computed cost + finalized invoices (m48).
+	// nil ⇒ estimate-only: no contract, comped/excluded, billing off, or a
+	// degraded Metronome read — clients show EstimatedCost alone.
+	Billing *billing.Billing
 }
 
 // ServiceUsage is one service's contribution to the workspace's month-to-date
@@ -148,7 +173,35 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 	s.resolveServiceNames(ctx, sum.Services)
 	sum.Period = now.Format("2006-01")
 	sum.EstimatedCost = pricing.Default.Estimate(rows)
+	sum.Billing = s.readBilling(ctx, tenantID, now)
 	return sum, nil
+}
+
+// readBilling fetches the workspace's real Metronome cost for the month
+// containing now. Any failure (Metronome off/unreachable, no contract) yields
+// nil — the summary stays estimate-only and never 500s (ADR040 graceful
+// degradation). The estimate always remains for the in-flight window.
+func (s *Service) readBilling(ctx context.Context, tenantID string, now time.Time) *billing.Billing {
+	if s.Billing == nil {
+		return nil
+	}
+	key := tenantID + "|" + now.Format("2006-01")
+	if s.billingCache != nil {
+		if b, ok := s.billingCache.Get(key); ok {
+			return b
+		}
+	}
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	b, err := s.Billing.BillingFor(ctx, tenantID, monthStart, now)
+	if err != nil {
+		log.Printf("usage: billing read for %s: %v (estimate-only)", tenantID, err)
+		return nil // never cache an error — the next poll retries
+	}
+	if s.billingCache != nil {
+		// Real wall-clock expiry (the cache's own clock), independent of s.Now().
+		s.billingCache.Put(key, b, time.Now().Add(core.PositiveTTL))
+	}
+	return b
 }
 
 // resolveServiceNames fills each ServiceUsage's display name from the store

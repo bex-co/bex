@@ -154,6 +154,36 @@ const zhUsage: Record<string, TranslationEntry> = {
     description:
       "Empty-state message when there is no billable usage to estimate",
   },
+  "usage.currentSpendTitle": {
+    message: "当前消费",
+    description:
+      "Heading for the real billing section (actual Metronome cost + invoices)",
+  },
+  "usage.currentSpendBadge": {
+    message: "账单",
+    description:
+      "Badge distinguishing the real billing card from the estimate-only card",
+  },
+  "usage.currentSpendDescription": {
+    message: "您的实际计费金额与已出具的账单——并非估算。",
+    description: "Description clarifying this card shows real charges",
+  },
+  "usage.currentSpendNote": {
+    message: "当前计费周期，截至目前",
+    description: "Short note beside the current-period real cost total",
+  },
+  "usage.colInvoicePeriod": {
+    message: "周期",
+    description: "Table column header for an invoice's billing period start",
+  },
+  "usage.colInvoiceStatus": {
+    message: "状态",
+    description: "Table column header for an invoice's status",
+  },
+  "usage.colInvoiceAmount": {
+    message: "金额",
+    description: "Table column header for an invoice's amount",
+  },
 };
 
 export default zhUsage;

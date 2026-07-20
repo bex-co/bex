@@ -168,11 +168,11 @@ func (e *Emitter) emitRows(ctx context.Context, rows []store.HourlyRow, now time
 	for _, r := range rows {
 		ready, seen := customerReady[r.WorkspaceID]
 		if !seen {
-			err := e.Client.EnsureCustomer(ctx, r.WorkspaceID)
+			err := e.ensureBillingSetup(ctx, r.WorkspaceID)
 			ready = err == nil
 			customerReady[r.WorkspaceID] = ready
 			if !ready {
-				log.Printf("billing: ensure customer %s failed, skipping its rows this cycle: %v", r.WorkspaceID, err)
+				log.Printf("billing: provision %s failed, skipping its rows this cycle: %v", r.WorkspaceID, err)
 			}
 		}
 		if !ready {
@@ -195,6 +195,18 @@ func (e *Emitter) emitRows(ctx context.Context, rows []store.HourlyRow, now time
 		return 0
 	}
 	return len(okRows)
+}
+
+// ensureBillingSetup provisions a workspace's Metronome billing before its
+// usage ships: the customer (keyed by ingest alias) and, when a rate card is
+// configured (m48), the contract that rates it. EnsureContract is a no-op when
+// no rate card is set, so this is byte-identical to m47's customer-only path in
+// shadow-export mode.
+func (e *Emitter) ensureBillingSetup(ctx context.Context, workspaceID string) error {
+	if err := e.Client.EnsureCustomer(ctx, workspaceID); err != nil {
+		return err
+	}
+	return e.Client.EnsureContract(ctx, workspaceID)
 }
 
 // toEvent maps one sealed usage row onto a Metronome event. The transaction_id

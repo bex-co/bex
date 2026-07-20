@@ -318,6 +318,51 @@ describe("UsagePage", () => {
     expect(screen.getByText("instance_seconds")).toBeInTheDocument();
   });
 
+  it("renders the real Current Spend card (invoice, not estimate) when billing is present (m48)", () => {
+    mockUseUsage.mockReturnValue({
+      ...dataState(),
+      summary: {
+        ...dataState().summary!,
+        billing: {
+          currentCost: {
+            amountUsd: "12.34",
+            currency: "USD",
+            periodStart: "2026-07-01T00:00:00Z",
+            periodEnd: "2026-07-20T00:00:00Z",
+          },
+          invoices: [
+            {
+              id: "inv_1",
+              status: "FINALIZED",
+              amountUsd: "40.00",
+              currency: "USD",
+              periodStart: "2026-06-01T00:00:00Z",
+              periodEnd: "2026-07-01T00:00:00Z",
+            },
+          ],
+        },
+      },
+    });
+
+    render(<UsagePage />);
+
+    expect(screen.getByText("Current Spend")).toBeInTheDocument();
+    expect(screen.getByText("$12.34")).toBeInTheDocument();
+    expect(screen.getByText("$40.00")).toBeInTheDocument();
+    expect(screen.getByText("FINALIZED")).toBeInTheDocument();
+    // Distinguished as a real invoice, not an estimate.
+    expect(screen.getByText("Invoice")).toBeInTheDocument();
+  });
+
+  it("omits the Current Spend card for an estimate-only workspace (no contract)", () => {
+    // dataState() has no billing field → estimate-only; the card renders nothing.
+    mockUseUsage.mockReturnValue(dataState());
+
+    render(<UsagePage />);
+
+    expect(screen.queryByText("Current Spend")).not.toBeInTheDocument();
+  });
+
   it("shows an error alert when the query fails and no summary is available", () => {
     mockUseUsage.mockReturnValue({
       summary: null,

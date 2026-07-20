@@ -19,6 +19,7 @@ package usage
 import (
 	"github.com/graphql-go/graphql"
 
+	"github.com/bex-co/bex/lego/backend/internal/billing"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -69,6 +70,45 @@ var estimatedCostGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// billingAmountGQLType and invoiceGQLType mirror billing.Amount / billing.Invoice
+// (the same fields the REST/MCP JSON carries) so the three surfaces stay
+// identical (ADR006 one-core/thin-adapters).
+var billingAmountGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BillingAmount",
+	Fields: graphql.Fields{
+		"amountUsd":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a billing.Amount) any { return a.AmountUSD })},
+		"currency":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a billing.Amount) any { return a.Currency })},
+		"periodStart": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a billing.Amount) any { return a.PeriodStart })},
+		"periodEnd":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a billing.Amount) any { return a.PeriodEnd })},
+	},
+})
+
+var billingInvoiceGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BillingInvoice",
+	Fields: graphql.Fields{
+		"id":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(i billing.Invoice) any { return i.ID })},
+		"status":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(i billing.Invoice) any { return i.Status })},
+		"amountUsd":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(i billing.Invoice) any { return i.AmountUSD })},
+		"currency":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(i billing.Invoice) any { return i.Currency })},
+		"periodStart": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(i billing.Invoice) any { return i.PeriodStart })},
+		"periodEnd":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(i billing.Invoice) any { return i.PeriodEnd })},
+	},
+})
+
+// billingGQLType is the real Metronome billing object; null when estimate-only.
+var billingGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "Billing",
+	Fields: graphql.Fields{
+		"currentCost": &graphql.Field{Type: billingAmountGQLType, Resolve: gqlutil.Field(func(b billing.Billing) any {
+			if b.CurrentCost == nil {
+				return nil
+			}
+			return *b.CurrentCost
+		})},
+		"invoices": &graphql.Field{Type: graphql.NewList(billingInvoiceGQLType), Resolve: gqlutil.Field(func(b billing.Billing) any { return b.Invoices })},
+	},
+})
+
 var usageSummaryGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "UsageSummary",
 	Fields: graphql.Fields{
@@ -76,6 +116,13 @@ var usageSummaryGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"period":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Summary) any { return s.Period })},
 		"services":      &graphql.Field{Type: graphql.NewList(serviceUsageGQLType), Resolve: gqlutil.Field(func(s Summary) any { return s.Services })},
 		"estimatedCost": &graphql.Field{Type: estimatedCostGQLType, Resolve: gqlutil.Field(func(s Summary) any { return s.EstimatedCost })},
+		// billing is the real Metronome cost/invoices (m48); null ⇒ estimate-only.
+		"billing": &graphql.Field{Type: billingGQLType, Resolve: gqlutil.Field(func(s Summary) any {
+			if s.Billing == nil {
+				return nil
+			}
+			return *s.Billing
+		})},
 	},
 })
 

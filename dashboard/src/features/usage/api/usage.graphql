@@ -31,6 +31,24 @@ query Usage($period: String, $ownerId: String) {
         costUsd
       }
     }
+    # billing: real Metronome-computed cost + finalized invoices (m48). null when
+    # estimate-only — no contract, comped/excluded, billing off, or degraded.
+    billing {
+      currentCost {
+        amountUsd
+        currency
+        periodStart
+        periodEnd
+      }
+      invoices {
+        id
+        status
+        amountUsd
+        currency
+        periodStart
+        periodEnd
+      }
+    }
   }
 }
 
