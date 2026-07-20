@@ -184,8 +184,8 @@ func TestAuditDirectionSurface(t *testing.T) {
 	if bad.Code != 400 {
 		t.Fatalf("REST direction=sideways: %d, want 400 — an accepted param must never be ignored", bad.Code)
 	}
-	if !strings.Contains(bad.Body.String(), "sideways") {
-		t.Errorf("400 body %q should name the offending value", bad.Body.String())
+	if !strings.Contains(bad.Body.String(), "direction") || strings.Contains(bad.Body.String(), "sideways") {
+		t.Errorf("400 body %q should name the parameter without echoing its value", bad.Body.String())
 	}
 
 	// GraphQL: same verb, same behavior on both sides of the enum.

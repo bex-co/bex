@@ -249,7 +249,7 @@ type serviceDetailsReq struct {
 // decodeMaintenanceMode preserves Render's required-key semantics: when the
 // object is supplied, both enabled and uri must be present (including explicit
 // false and the empty string).
-func decodeMaintenanceMode(raw json.RawMessage) (*MaintenanceModeView, error) {
+func decodeMaintenanceMode(ctx context.Context, raw json.RawMessage) (*MaintenanceModeView, error) {
 	if len(raw) == 0 {
 		return nil, nil
 	}
@@ -257,7 +257,7 @@ func decodeMaintenanceMode(raw json.RawMessage) (*MaintenanceModeView, error) {
 		Enabled *bool   `json:"enabled"`
 		URI     *string `json:"uri"`
 	}
-	if string(raw) == "null" || json.Unmarshal(raw, &wire) != nil || wire.Enabled == nil || wire.URI == nil {
+	if string(raw) == "null" || core.UnmarshalJSON(ctx, raw, &wire) != nil || wire.Enabled == nil || wire.URI == nil {
 		return nil, fmt.Errorf("%w: serviceDetails.maintenanceMode requires enabled and uri", core.ErrBadRequest)
 	}
 	return &MaintenanceModeView{Enabled: *wire.Enabled, URI: *wire.URI}, nil
@@ -354,7 +354,7 @@ func fromIPAllowListEntries(entries []ipAllowEntry) []core.IPAllowListEntry {
 // neutral CreateRequest. serviceDetails is Render's canonical location for
 // plan/numInstances/healthCheckPath; the top-level plan is a bex convenience
 // fallback. type:private_service maps to the in-cluster-only flag.
-func (r createServiceRequest) toCreateRequest() (CreateRequest, error) {
+func (r createServiceRequest) toCreateRequest(ctx context.Context) (CreateRequest, error) {
 	plan, health, schedule, command, publishPath := r.Plan, "", r.Schedule, r.Command, r.PublishPath
 	rootDir := r.RootDir
 	var runtime, buildCommand, startCommand, dockerfilePath string
@@ -364,7 +364,7 @@ func (r createServiceRequest) toCreateRequest() (CreateRequest, error) {
 	var maxShutdownDelaySeconds *int32
 	var maintenanceMode *MaintenanceModeView
 	if r.ServiceDetails != nil {
-		maintenanceMode, _ = decodeMaintenanceMode(r.ServiceDetails.MaintenanceMode)
+		maintenanceMode, _ = decodeMaintenanceMode(ctx, r.ServiceDetails.MaintenanceMode)
 		if r.ServiceDetails.Plan != "" {
 			plan = r.ServiceDetails.Plan
 		}
@@ -430,7 +430,7 @@ func (r createServiceRequest) toCreateRequest() (CreateRequest, error) {
 	var ipAllowList []core.IPAllowListEntry
 	if r.ServiceDetails != nil && len(r.ServiceDetails.IPAllowList) > 0 && string(r.ServiceDetails.IPAllowList) != "null" {
 		var entries []ipAllowEntry
-		if err := json.Unmarshal(r.ServiceDetails.IPAllowList, &entries); err != nil {
+		if err := core.UnmarshalJSON(ctx, r.ServiceDetails.IPAllowList, &entries); err != nil {
 			return CreateRequest{}, fmt.Errorf("%w: ipAllowList: %v", core.ErrBadRequest, err)
 		}
 		ipAllowList = fromIPAllowListEntries(entries)
@@ -697,7 +697,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// change without writing; returns 200 with the resolved spec (w2/m29).
 	patch := func(w http.ResponseWriter, r *http.Request) {
 		var req patchServiceRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
 			return
 		}
@@ -723,7 +723,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			buildCommand = req.ServiceDetails.BuildCommand
 			if len(req.ServiceDetails.IPAllowList) > 0 && string(req.ServiceDetails.IPAllowList) != "null" {
 				var entries []ipAllowEntry
-				if err := json.Unmarshal(req.ServiceDetails.IPAllowList, &entries); err != nil {
+				if err := core.UnmarshalJSON(r.Context(), req.ServiceDetails.IPAllowList, &entries); err != nil {
 					core.WriteErr(w, fmt.Errorf("%w: ipAllowList: %v", core.ErrBadRequest, err))
 					return
 				}
@@ -738,7 +738,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 					DockerfilePath       *string         `json:"dockerfilePath"`
 					RegistryCredentialID json.RawMessage `json:"registryCredentialId"`
 				}
-				if err := json.Unmarshal(req.ServiceDetails.EnvSpecific, &envSpecific); err != nil {
+				if err := core.UnmarshalJSON(r.Context(), req.ServiceDetails.EnvSpecific, &envSpecific); err != nil {
 					core.WriteErr(w, core.ErrBadRequest)
 					return
 				}
@@ -786,7 +786,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var maintenanceMode *MaintenanceModeView
 		if req.ServiceDetails != nil {
 			var maintenanceErr error
-			maintenanceMode, maintenanceErr = decodeMaintenanceMode(req.ServiceDetails.MaintenanceMode)
+			maintenanceMode, maintenanceErr = decodeMaintenanceMode(r.Context(), req.ServiceDetails.MaintenanceMode)
 			if maintenanceErr != nil {
 				core.WriteErr(w, maintenanceErr)
 				return
@@ -945,7 +945,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// count (numInstances); out-of-range is core.ErrBadRequest => 400.
 	scale := func(w http.ResponseWriter, r *http.Request) {
 		var req scaleRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -966,7 +966,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// the resolved spec without any writes; response is 200 (not 201) (w2/m29).
 	create := func(w http.ResponseWriter, r *http.Request) {
 		var req createServiceRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
 			return
 		}
@@ -975,7 +975,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		if req.ServiceDetails != nil {
-			if _, err := decodeMaintenanceMode(req.ServiceDetails.MaintenanceMode); err != nil {
+			if _, err := decodeMaintenanceMode(r.Context(), req.ServiceDetails.MaintenanceMode); err != nil {
 				core.WriteErr(w, err)
 				return
 			}
@@ -983,7 +983,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if !req.DryRun && r.URL.Query().Get("dryRun") == "true" {
 			req.DryRun = true
 		}
-		createReq, err := req.toCreateRequest()
+		createReq, err := req.toCreateRequest(r.Context())
 		if err != nil {
 			core.WriteErr(w, err)
 			return
@@ -1125,7 +1125,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var req struct {
 			Name string `json:"name"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
+		if err := core.DecodeJSON(r, &req); err != nil || req.Name == "" {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -1176,7 +1176,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}
 	putAutoscaling := func(w http.ResponseWriter, r *http.Request) {
 		var req SetAutoscalingRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -1207,7 +1207,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}
 	putRoutes := func(w http.ResponseWriter, r *http.Request) {
 		var body []renderRoute
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := core.DecodeJSON(r, &body); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -1228,7 +1228,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}
 	putHeaders := func(w http.ResponseWriter, r *http.Request) {
 		var body []renderHeader
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := core.DecodeJSON(r, &body); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -1280,7 +1280,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			OwnerID string `json:"ownerId"`
 			Confirm string `json:"confirm"`
 		}
-		_ = json.NewDecoder(r.Body).Decode(&body)
+		_ = core.DecodeJSON(r, &body)
 		res, err := s.SyncBlueprint(r.Context(), r.PathValue("id"), body.OwnerID, body.BexYAML, body.Confirm)
 		if err != nil {
 			core.WriteErr(w, err)
@@ -1312,7 +1312,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			NotificationsToSend         *string `json:"notificationsToSend"`
 			PreviewNotificationsEnabled *string `json:"previewNotificationsEnabled"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := core.DecodeJSON(r, &body); err != nil {
 			core.WriteErr(w, fmt.Errorf("%w: invalid notification override body", core.ErrBadRequest))
 			return
 		}
@@ -1395,7 +1395,7 @@ func decodeBlueprintValidationRequest(w http.ResponseWriter, r *http.Request) (o
 			BexYAML string `json:"bexYaml"`
 			OwnerID string `json:"ownerId"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.BexYAML == "" {
+		if err := core.DecodeJSON(r, &body); err != nil || body.BexYAML == "" {
 			return "", "", core.ErrBadRequest
 		}
 		return body.OwnerID, body.BexYAML, nil

@@ -21,7 +21,6 @@ package cliauth
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -222,7 +221,7 @@ func (s *Service) refreshToken(w http.ResponseWriter, r *http.Request) {
 }
 
 func decodeRenderJSON(w http.ResponseWriter, r *http.Request, out any) bool {
-	if err := json.NewDecoder(r.Body).Decode(out); err != nil {
+	if err := core.DecodeJSON(r, out); err != nil {
 		writeOAuthError(w, http.StatusBadRequest, "invalid_request")
 		return false
 	}

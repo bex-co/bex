@@ -17,7 +17,6 @@ limitations under the License.
 package environments
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -178,7 +177,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// bex-native /acl route uses.
 	mux.HandleFunc("POST /v1/environments", func(w http.ResponseWriter, r *http.Request) {
 		var req CreateEnvironmentRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -214,7 +213,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			NetworkIsolationEnabled *bool                    `json:"networkIsolationEnabled"`
 			IPAllowList             *[]core.IPAllowListEntry `json:"ipAllowList"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -246,7 +245,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var req struct {
 			ServiceIDs []string `json:"serviceIds"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -269,7 +268,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var req struct {
 			DatabaseIDs []string `json:"databaseIds"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -290,7 +289,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var req struct {
 			KeyValueIDs []string `json:"keyValueIds"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -312,7 +311,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var req struct {
 			EnvGroupIDs []string `json:"envGroupIds"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -341,7 +340,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			NetworkIsolationEnabled bool                    `json:"networkIsolationEnabled"`
 			IPAllowList             []core.IPAllowListEntry `json:"ipAllowList"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}

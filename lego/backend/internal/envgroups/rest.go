@@ -17,7 +17,6 @@ limitations under the License.
 package envgroups
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/url"
 
@@ -86,7 +85,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 	mux.HandleFunc("POST /v1/env-groups", func(w http.ResponseWriter, r *http.Request) {
 		var req CreateEnvGroupRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -109,7 +108,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var req struct {
 			Name string `json:"name"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -131,7 +130,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// Group env vars: replace-all plus Render's per-key reveal/upsert/delete.
 	mux.HandleFunc("PUT /v1/env-groups/{id}/env-vars", func(w http.ResponseWriter, r *http.Request) {
 		var in []EnvVarView
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		if err := core.DecodeJSON(r, &in); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -154,7 +153,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var req struct {
 			Value string `json:"value"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -178,7 +177,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var req struct {
 			Content string `json:"content"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}

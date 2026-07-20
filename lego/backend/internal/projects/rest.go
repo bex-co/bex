@@ -18,7 +18,6 @@ package projects
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -118,7 +117,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			Name    string `json:"name"`
 			OwnerID string `json:"ownerId"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Name) == "" || req.OwnerID == "" {
+		if err := core.DecodeJSON(r, &req); err != nil || strings.TrimSpace(req.Name) == "" || req.OwnerID == "" {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -148,7 +147,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var req struct {
 			Name string `json:"name"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Name) == "" {
+		if err := core.DecodeJSON(r, &req); err != nil || strings.TrimSpace(req.Name) == "" {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -175,7 +174,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var req struct {
 			ServiceIDs []string `json:"serviceIds"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -197,7 +196,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var req struct {
 			DatabaseIDs []string `json:"databaseIds"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
@@ -218,7 +217,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var req struct {
 			KeyValueIDs []string `json:"keyValueIds"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
