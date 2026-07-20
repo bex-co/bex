@@ -612,8 +612,8 @@ func TestDefaultClientSSRFGuard(t *testing.T) {
 			t.Errorf("dial %s: expected SSRF block, got nil error", addr)
 			continue
 		}
-		if !strings.Contains(err.Error(), "private address") {
-			t.Errorf("dial %s: error %q; want to contain \"private address\"", addr, err.Error())
+		if !strings.Contains(err.Error(), "blocked address") {
+			t.Errorf("dial %s: error %q; want to contain \"blocked address\"", addr, err.Error())
 		}
 	}
 }

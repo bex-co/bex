@@ -463,16 +463,21 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 				Secret: &corev1.SecretVolumeSource{SecretName: tlsSecretName},
 			}}}
 		}
+		// Harden the managed Valkey pod the same way tenant Deployments are (w1/m53):
+		// drop ALL caps, no privilege escalation, RuntimeDefault seccomp, and no
+		// ServiceAccount token mounted (Valkey never talks to the apiserver).
+		sts.Spec.Template.Spec.AutomountServiceAccountToken = ptr(false)
 		sts.Spec.Template.Spec.Containers = []corev1.Container{{
 			Name:  "valkey",
 			Image: valkeyImage(kv.Spec.Version),
 			// VALKEY_PASSWORD (env, below) expands in args — k8s substitutes
 			// $(VAR) from the container env list. appendonly persists to the PVC.
-			Args:         serverArgs,
-			Ports:        serverPorts,
-			Env:          []corev1.EnvVar{passwordEnv},
-			Resources:    kvResources(plan),
-			VolumeMounts: append([]corev1.VolumeMount{{Name: "data", MountPath: kvDataPath}}, serverMounts...),
+			Args:            serverArgs,
+			Ports:           serverPorts,
+			Env:             []corev1.EnvVar{passwordEnv},
+			Resources:       kvResources(plan),
+			SecurityContext: tenantSecCtx(),
+			VolumeMounts:    append([]corev1.VolumeMount{{Name: "data", MountPath: kvDataPath}}, serverMounts...),
 			ReadinessProbe: &corev1.Probe{ProbeHandler: corev1.ProbeHandler{
 				TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt(kvPort)},
 			}},
@@ -488,8 +493,9 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 				// The exporter reuses REDIS_PASSWORD; alias the shared secret key.
 				{Name: "REDIS_PASSWORD", ValueFrom: passwordEnv.ValueFrom},
 			},
-			Ports:     []corev1.ContainerPort{{ContainerPort: kvExporterPort, Name: "metrics"}},
-			Resources: kvExporterResources(),
+			Ports:           []corev1.ContainerPort{{ContainerPort: kvExporterPort, Name: "metrics"}},
+			Resources:       kvExporterResources(),
+			SecurityContext: tenantSecCtx(),
 		}}
 		return controllerutil.SetControllerReference(&kv, sts, r.Scheme)
 	}); err != nil {

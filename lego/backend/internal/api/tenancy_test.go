@@ -202,14 +202,14 @@ func TestEnsureTenantMintsOnceAndCaches(t *testing.T) {
 	ts := NewTenantService(st, nil)
 	ctx := context.Background()
 
-	first, err := ts.EnsureTenant(ctx, "identity-a", "")
+	first, err := ts.EnsureTenant(ctx, "identity-a", "", false)
 	if err != nil || first == "" {
 		t.Fatalf("first mint: %v %q", err, first)
 	}
 	if len(st.tenants) != 1 {
 		t.Fatalf("tenants after first mint = %d, want 1", len(st.tenants))
 	}
-	second, err := ts.EnsureTenant(ctx, "identity-a", "")
+	second, err := ts.EnsureTenant(ctx, "identity-a", "", false)
 	if err != nil || second != first {
 		t.Fatalf("second call: %v %q, want %q", err, second, first)
 	}
@@ -230,7 +230,7 @@ func TestEnsureTenantConcurrentFirstLoginsConverge(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			tid, err := ts.EnsureTenant(ctx, "identity-racer", "")
+			tid, err := ts.EnsureTenant(ctx, "identity-racer", "", false)
 			if err != nil {
 				t.Errorf("concurrent EnsureTenant %d: %v", i, err)
 				return
@@ -255,7 +255,7 @@ func TestEnsureTenantGrantsAdminOnFreshMintOnly(t *testing.T) {
 	ts := NewTenantService(st, granter)
 	ctx := context.Background()
 
-	tid, err := ts.EnsureTenant(ctx, "identity-a", "")
+	tid, err := ts.EnsureTenant(ctx, "identity-a", "", false)
 	if err != nil {
 		t.Fatalf("mint: %v", err)
 	}
@@ -263,7 +263,7 @@ func TestEnsureTenantGrantsAdminOnFreshMintOnly(t *testing.T) {
 	if len(granter.granted) != 1 || granter.granted[0] != want[0] {
 		t.Fatalf("granted = %v, want %v", granter.granted, want)
 	}
-	if _, err := ts.EnsureTenant(ctx, "identity-a", ""); err != nil {
+	if _, err := ts.EnsureTenant(ctx, "identity-a", "", false); err != nil {
 		t.Fatalf("second call: %v", err)
 	}
 	if len(granter.granted) != 1 {
@@ -277,12 +277,12 @@ func TestEnsureTenantGrantFailureFailsClosedNotHalfMinted(t *testing.T) {
 	ts := NewTenantService(st, granter)
 	ctx := context.Background()
 
-	if _, err := ts.EnsureTenant(ctx, "identity-a", ""); err == nil {
+	if _, err := ts.EnsureTenant(ctx, "identity-a", "", false); err == nil {
 		t.Fatal("grant failure must surface as an error, not silently succeed")
 	}
 	// The mint itself is idempotent (ON CONFLICT), so retrying must succeed and
 	// grant exactly once — no leftover half-onboarded state blocks the retry.
-	tid, err := ts.EnsureTenant(ctx, "identity-a", "")
+	tid, err := ts.EnsureTenant(ctx, "identity-a", "", false)
 	if err != nil || tid == "" {
 		t.Fatalf("retry after grant failure: %v %q", err, tid)
 	}
@@ -304,7 +304,7 @@ func TestEnsureTenantRedeemsInvitesAndGrantsCorrectWorkspace(t *testing.T) {
 	ctx := context.Background()
 	st.invite("bob@example.com", "tea-invited", "viewer")
 
-	personal, err := ts.EnsureTenant(ctx, "identity-bob", "bob@example.com")
+	personal, err := ts.EnsureTenant(ctx, "identity-bob", "bob@example.com", true)
 	if err != nil || personal == "" {
 		t.Fatalf("ensure: %v %q", err, personal)
 	}
@@ -322,6 +322,54 @@ func TestEnsureTenantRedeemsInvitesAndGrantsCorrectWorkspace(t *testing.T) {
 	if granter.tuples["admin:tea-invited:user:identity-bob"] {
 		t.Error("invited viewer was wrongly granted admin on the invited workspace")
 	}
+}
+
+// TestEnsureTenantVerifiedEmailGate is the w1/m53 fix: when
+// RequireVerifiedInviteEmail is set, a login whose email is NOT Kratos-verified
+// must not redeem a pending invite (so an attacker who registers with a victim's
+// not-yet-signed-up invited address can't claim it); a verified email still does.
+func TestEnsureTenantVerifiedEmailGate(t *testing.T) {
+	t.Run("unverified email is refused when the gate is on", func(t *testing.T) {
+		st := newFakeTenantStore()
+		granter := newFakeGranter()
+		ts := NewTenantService(st, granter)
+		ts.RequireVerifiedInviteEmail = true
+		st.invite("bob@example.com", "tea-invited", "viewer")
+
+		if _, err := ts.EnsureTenant(context.Background(), "identity-attacker", "bob@example.com", false); err != nil {
+			t.Fatalf("ensure: %v", err)
+		}
+		if granter.tuples["viewer:tea-invited:user:identity-attacker"] {
+			t.Fatal("unverified email redeemed the invite despite the gate being on")
+		}
+	})
+	t.Run("verified email still redeems when the gate is on", func(t *testing.T) {
+		st := newFakeTenantStore()
+		granter := newFakeGranter()
+		ts := NewTenantService(st, granter)
+		ts.RequireVerifiedInviteEmail = true
+		st.invite("bob@example.com", "tea-invited", "viewer")
+
+		if _, err := ts.EnsureTenant(context.Background(), "identity-bob", "bob@example.com", true); err != nil {
+			t.Fatalf("ensure: %v", err)
+		}
+		if !granter.tuples["viewer:tea-invited:user:identity-bob"] {
+			t.Fatalf("verified email failed to redeem; granted=%v", granter.granted)
+		}
+	})
+	t.Run("default off preserves redemption for any email", func(t *testing.T) {
+		st := newFakeTenantStore()
+		granter := newFakeGranter()
+		ts := NewTenantService(st, granter) // RequireVerifiedInviteEmail defaults false
+		st.invite("bob@example.com", "tea-invited", "viewer")
+
+		if _, err := ts.EnsureTenant(context.Background(), "identity-bob", "bob@example.com", false); err != nil {
+			t.Fatalf("ensure: %v", err)
+		}
+		if !granter.tuples["viewer:tea-invited:user:identity-bob"] {
+			t.Fatal("default-off gate wrongly blocked redemption of an unverified email")
+		}
+	})
 }
 
 // --- Key binding: bind, unbind, and the FGA-failure rollback (t002/t006) ---

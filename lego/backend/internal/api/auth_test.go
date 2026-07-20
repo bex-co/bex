@@ -596,13 +596,14 @@ func TestInvalidateEvictsOnlyTheRevokedOAuthCredential(t *testing.T) {
 }
 
 type recordingOnboard struct {
-	subject string
-	email   string
-	calls   int
+	subject       string
+	email         string
+	emailVerified bool
+	calls         int
 }
 
-func (o *recordingOnboard) EnsureTenant(_ context.Context, subject, email string) (string, error) {
-	o.subject, o.email = subject, email
+func (o *recordingOnboard) EnsureTenant(_ context.Context, subject, email string, emailVerified bool) (string, error) {
+	o.subject, o.email, o.emailVerified = subject, email, emailVerified
 	o.calls++
 	return "tea-human", nil
 }

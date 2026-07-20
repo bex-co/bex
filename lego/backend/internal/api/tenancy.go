@@ -61,7 +61,7 @@ type TenantStore interface {
 // for session callers only — machine (API-key) callers never mint (they resolve
 // via their key's tenant binding instead) and carry no email to redeem against.
 type Onboarding interface {
-	EnsureTenant(ctx context.Context, identityID, email string) (tenantID string, err error)
+	EnsureTenant(ctx context.Context, identityID, email string, emailVerified bool) (tenantID string, err error)
 }
 
 // tenantService implements both core.WorkspaceResolver (the read path
@@ -86,6 +86,12 @@ type tenantService struct {
 	// feature verb's authorize interception. Nil => unrecorded (store-off /
 	// ssh-gateway), the same degrade as core.Base's own sink.
 	Audit core.AuditSink
+	// RequireVerifiedInviteEmail gates login-time invite redemption on the caller's
+	// email being Kratos-verified (BEX_REQUIRE_VERIFIED_INVITE_EMAIL, w1/m53).
+	// Default false = redeem on the raw trait email (current behavior); set true
+	// once the email-verification UX is complete so an unverified address can't
+	// claim another user's invite.
+	RequireVerifiedInviteEmail bool
 }
 
 // NewTenantService wires the store-backed resolver + onboarding mint. granter
@@ -132,7 +138,7 @@ const (
 // resolution keeps the admin grant pinned to the workspace the caller actually
 // owns. A returning caller costs one owner-keyed SELECT (TenantForOwner); only a
 // first login falls to the idempotent CreateTenantWithMember upsert.
-func (t *tenantService) EnsureTenant(ctx context.Context, identityID, email string) (string, error) {
+func (t *tenantService) EnsureTenant(ctx context.Context, identityID, email string, emailVerified bool) (string, error) {
 	key := cacheKey(methodSession, identityID)
 	if tid, ok := t.cache.Get(key); ok {
 		return tid, nil
@@ -141,7 +147,7 @@ func (t *tenantService) EnsureTenant(ctx context.Context, identityID, email stri
 	// miss, so a new teammate lands in the workspace immediately; a returning
 	// caller redeems within the cache TTL). Done before the personal-tenant
 	// resolution so the two are independent; acceptInvites no-ops without an email.
-	t.acceptInvites(ctx, identityID, email)
+	t.acceptInvites(ctx, identityID, email, emailVerified)
 
 	tenant, err := t.store.TenantForOwner(ctx, identityID)
 	switch {
@@ -172,8 +178,18 @@ func (t *tenantService) EnsureTenant(ctx context.Context, identityID, email stri
 // consistent with the rest of the system's row-is-truth/tuple-best-effort model.
 // No email (a machine caller, or an identity without the trait) means nothing to
 // redeem.
-func (t *tenantService) acceptInvites(ctx context.Context, identityID, email string) {
+func (t *tenantService) acceptInvites(ctx context.Context, identityID, email string, emailVerified bool) {
 	if email == "" {
+		return
+	}
+	// w1/m53: an invite addresses an email, and Kratos issues a session before the
+	// address is verified — so an attacker who registers with a victim's
+	// not-yet-signed-up invited address would otherwise redeem their invite on
+	// first login. When RequireVerifiedInviteEmail is set, refuse redemption for an
+	// unverified email. Default off preserves the current behavior on deployments
+	// whose email-verification UX isn't complete yet (docs/ADR024-members.md).
+	if t.RequireVerifiedInviteEmail && !emailVerified {
+		log.Printf("tenancy: skipping invite redemption for %s: email %s not verified", identityID, email)
 		return
 	}
 	accepted, err := t.store.AcceptInvitesForEmail(ctx, email, identityID)

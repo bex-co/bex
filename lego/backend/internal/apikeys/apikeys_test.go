@@ -312,6 +312,34 @@ func TestRevokeAPIKeyRefusesCrossWorkspaceTarget(t *testing.T) {
 	}
 }
 
+func TestRevokeAPIKeyRefusesUnboundKey(t *testing.T) {
+	// w1/m53: an unbound key (present in the store but with no tenant binding)
+	// must not be deletable by a workspace-scoped caller. The old code fell
+	// through to Delete, letting a can_manage_keys caller in any workspace remove
+	// an orphaned credential that belongs to nobody.
+	store := newFakeKeyStore()
+	binder := newFakeBinder()
+	svc := &Service{
+		Base:    &core.Base{Namespace: "default", Workspace: multiWorkspace{"identity-a": {"tea-a", "tea-b"}}},
+		APIKeys: store,
+		Binding: binder,
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+
+	keyA, err := svc.CreateAPIKey(ctx, "", "agent-a") // bound to tea-a
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	_ = binder.UnbindKey(ctx, keyA.ID) // orphan it: binding gone, key remains
+
+	if err := svc.RevokeAPIKey(ctx, "tea-a", keyA.ID); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("revoke unbound key: want ErrNotFound, got %v", err)
+	}
+	if _, ok := store.keys[keyA.ID]; !ok {
+		t.Error("refused revoke must not delete the orphaned key")
+	}
+}
+
 func TestCreateAPIKeyNilBindingMintsUnbound(t *testing.T) {
 	// Store off (Binding nil): keys mint unbound, byte-identical to before
 	// tenant onboarding existed — no tenant lookup, no refusal.

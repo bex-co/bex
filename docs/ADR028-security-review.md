@@ -133,6 +133,26 @@ All seven findings filed during this review were **implemented 2026-07-12** as t
 
 **Found 2026-07-15 (w1/m37, discovered while live-verifying on the mock cluster), fixed same day (w10/m1, `fa49fbbd`) — ✅.** The manager's controller-runtime cache never finished syncing on a clean start, so no controller (App/Database/KeyValue) ever began reconciling — confirmed live: after `make deploy` + a pod restart, the log showed every `Starting EventSource` line (including `KeyValue`'s `*v1.Secret` source) but never reached `Starting Controller`/`Starting workers`, while `controller-runtime.cache.UnhandledError` repeated forever: `failed to list *v1.Secret: secrets is forbidden ... at the cluster scope`. Root cause: the KeyValue controller's `Owns(&corev1.Secret{})` registered a cluster-wide Secret watch, but `manager-role`'s ClusterRole deliberately excludes `secrets` (the w6/002 hardening above) in favor of a namespace-scoped `Role` (`deploy/gitops/base/operator-apps-rbac.yaml`) that a cluster-wide watch could never satisfy, since the manager's cache had no `ByObject` restriction scoping the watch to match. Not new damage from m37 — the gap existed since the KeyValue controller shipped (ADR021) — m37 was just the first time anyone restarted a manager against today's RBAC + code in a way that surfaced it. Fixed by `internal/controller/secret_cache.go`'s `NamespacedSecretCacheOptions`, wired into the manager's `Cache` option in `cmd/manager/main.go`, restricting the Secret watch to the apps namespace so the existing namespace-scoped Role becomes sufficient — verified live by `secret_cache_test.go` ("starts App and KeyValue watches without cluster-wide Secret permission").
 
+## Follow-up review — 2026-07-19/20 (w1/m53)
+
+A second evidence-backed pass (six focused audits) covered the surface added since the 2026-07-11 audit above — the SSH gateway + Browser Web Shell, static sites, cron jobs, members/invites, device flow, and the GitHub App — plus the control-plane internal API and the authz boundary. No CRITICAL/HIGH tenant-reachable vulnerability was found; the main `:8090` REST/GraphQL/MCP surface remains robustly authorized. The findings and their w1/m53 resolutions:
+
+| Finding | Severity | Resolution |
+| --- | --- | --- |
+| Internal control-plane API (`:8091`) fails open — `bearer()` no-ops on empty `BEX_CP_TOKEN`, which was set nowhere in prod | MEDIUM | **fixed** — `cmd/api` `requireCPAuth` aborts startup on an empty token (`BEX_CP_INSECURE=1` dev override); `BEX_CP_TOKEN` added to the deployment + env templates + `scripts/cp-token-secret.sh` |
+| Blind SSRF via the image-signature admission webhook (registry prefix match missing the `/` boundary + operator `httpclient` lacked an SSRF dial guard + unvalidated `Image`) | MEDIUM | **fixed** — `pod_admit.go` matches `registry+"/"`; operator `httpclient` dials through `netutil.SafeDialContextFunc(…, UnsafeMetadataIP)` (blocks metadata/link-local, permits cluster-private); `store.ValidImage` + CRD `pattern`/`maxLength` on `Image` |
+| `TestAuthzGuardsEveryVerb` sweep omitted 5 of 22 wired services (keyvalue/usage/events/notifications/webhooks) | MEDIUM | **fixed** — the 5 added to `sweepableServices`; `TestSweepCoversEveryWiredService` reflection guard prevents future drift |
+| Login-time invite redemption trusts the Kratos trait email without a verified check (unverified-email invite-hijack) | verify → MEDIUM | **fixed (gated)** — `Identity.EmailVerified` from `verifiable_addresses`; `BEX_REQUIRE_VERIFIED_INVITE_EMAIL` gate (off by default until the dashboard verification UX ships — `w1/040`) |
+| Fail-open authz mode (store on, OpenFGA off) is role-less within a workspace | LOW | **fixed** — startup WARNING when store-on + OpenFGA-off |
+| `RevokeAPIKey` skipped the ownership check for unbound keys | LOW | **fixed** — unbound key ⇒ `ErrNotFound` in scoped mode |
+| Managed Valkey pods unhardened + mounted the default SA token | LOW | **fixed** — `tenantSecCtx()` + `AutomountServiceAccountToken:false` |
+| Tenant metadata-egress deny hinged on the workspace label (label-less Apps reached `169.254.169.254`) | LOW | **fixed (metadata)** — label-independent `deny-metadata-egress-all-pods` CiliumNetworkPolicy for all apps-namespace pods |
+| projects REST adapter reached into the store directly | LOW | **fixed** — moved to a `Service` helper |
+| deploy-hook `imgURL` = arbitrary-image deploy credential | LOW | **fixed** — `ValidImage` at the boundary + documented as a credential |
+| Invite tokens stored plaintext at rest | LOW | **deferred** (well-mitigated; conflicts with resend semantics) — `w1/041` |
+| Signature admission is opt-in objectSelector, not namespace-fail-closed | LOW | **deferred** (needs live admission testing) — `w1/042` |
+| Web-shell ticket single-use is per-replica; ticket rides the URL query string | LOW | **deferred** (bounded by the 90s single-use TTL) — `w1/042` |
+
 ## Out of scope
 
 - Dependabot triage (36 findings) is owned by `w1/m23/t002` — excluded here.

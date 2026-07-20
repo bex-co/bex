@@ -47,18 +47,22 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/deploys"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/environments"
+	"github.com/bex-co/bex/lego/backend/internal/events"
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/jobs"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
+	"github.com/bex-co/bex/lego/backend/internal/notifications"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/projects"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/sshkeys"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/usage"
+	"github.com/bex-co/bex/lego/backend/internal/webhooks"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -761,6 +765,65 @@ func sweepableServices(base *core.Base) []any {
 			KeyValues: sweepProjectResources{},
 		},
 		&jobs.Service{Base: base},
+		// w1/m53: these five were wired into features() but omitted from the
+		// sweep, so TestAuthzGuardsEveryVerb silently skipped them. Added; the
+		// TestSweepCoversEveryWiredService guard below now fails if the list ever
+		// diverges from features() again.
+		&keyvalue.Service{Base: base},
+		&usage.Service{Base: base},
+		&events.Service{Base: base},
+		&notifications.Service{Base: base},
+		&webhooks.Service{Base: base},
+	}
+}
+
+// TestSweepCoversEveryWiredService is the w1/m53 anti-drift guard: it fails when
+// a feature service wired into the live surface (Server.features()) is absent
+// from sweepableServices — the hand-maintained inventory the authz/audit/relation
+// sweeps walk. Without it, five wired services (keyvalue/usage/events/
+// notifications/webhooks) had silently escaped TestAuthzGuardsEveryVerb. It
+// discovers the wired set by reflection (every *core.Base-embedding pointer field
+// of Server), so no second list can drift.
+func TestSweepCoversEveryWiredService(t *testing.T) {
+	baseType := reflect.TypeOf(&core.Base{})
+	embedsBase := func(structType reflect.Type) bool {
+		for i := 0; i < structType.NumField(); i++ {
+			f := structType.Field(i)
+			if f.Anonymous && f.Type == baseType {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Populate every feature-service field of Server so features() surfaces all
+	// of them; the inner *core.Base staying nil is fine (features() only nil-checks
+	// the pointer).
+	srv := &Server{}
+	v := reflect.ValueOf(srv).Elem()
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		if f.Kind() != reflect.Ptr || f.Type().Elem().Kind() != reflect.Struct || !f.CanSet() {
+			continue
+		}
+		if embedsBase(f.Type().Elem()) {
+			f.Set(reflect.New(f.Type().Elem()))
+		}
+	}
+
+	wired := srv.features()
+	if len(wired) == 0 {
+		t.Fatal("no feature services discovered via reflection — the guard would be vacuous")
+	}
+	covered := map[reflect.Type]bool{}
+	for _, s := range sweepableServices(&core.Base{}) {
+		covered[reflect.TypeOf(s)] = true
+	}
+	for _, s := range wired {
+		if !covered[reflect.TypeOf(s)] {
+			t.Errorf("%T is wired by Server.features() but missing from sweepableServices — "+
+				"TestAuthzGuardsEveryVerb will not check its verbs; add it to sweepableServices", s)
+		}
 	}
 }
 

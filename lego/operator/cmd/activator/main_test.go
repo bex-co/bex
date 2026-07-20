@@ -300,7 +300,7 @@ func TestMaintenanceURLSafety(t *testing.T) {
 	}
 	dial := netutil.SafeDialContext(customPageTimeout)
 	_, err := dial(context.Background(), "tcp", "127.0.0.1:80")
-	if err == nil || !strings.Contains(err.Error(), "private address") {
+	if err == nil || !strings.Contains(err.Error(), "blocked address") {
 		t.Fatalf("netutil.SafeDialContext(loopback) error = %v", err)
 	}
 }

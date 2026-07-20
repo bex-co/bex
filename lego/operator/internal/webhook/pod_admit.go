@@ -45,6 +45,16 @@ type PodAdmitter struct {
 	registry string // prefix, e.g. "zot.bex-registry.svc:5000"
 }
 
+// matches reports whether image is served by the tenant registry and so must be
+// signature-verified. It requires the registry host followed by "/" (w1/m53): a
+// bare prefix let "zot.bex-registry.svc:5000.attacker.tld/x" masquerade as a
+// tenant image, so imagecheck would then fetch from the attacker host. The "/"
+// boundary pins the host to exactly p.registry, matching registryHosted and
+// every other registry match in the operator.
+func (p *PodAdmitter) matches(image string) bool {
+	return strings.HasPrefix(image, p.registry+"/")
+}
+
 // Handle implements admission.Handler.
 func (p *PodAdmitter) Handle(ctx context.Context, req admission.Request) admission.Response {
 	logger := log.FromContext(ctx).WithValues("pod", req.Name, "namespace", req.Namespace)
@@ -57,7 +67,7 @@ func (p *PodAdmitter) Handle(ctx context.Context, req admission.Request) admissi
 
 	all := append(pod.Spec.InitContainers, pod.Spec.Containers...)
 	for _, c := range all {
-		if !strings.HasPrefix(c.Image, p.registry) {
+		if !p.matches(c.Image) {
 			continue // non-tenant image — pass through
 		}
 		if err := p.verifier.Verify(ctx, c.Image); err != nil {

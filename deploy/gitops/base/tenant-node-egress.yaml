@@ -54,3 +54,24 @@ spec:
     # Cloud instance-metadata / link-local range.
     - toCIDR:
         - 169.254.0.0/16
+---
+# Label-independent metadata guard (w1/m53). The policy above selects only
+# workspace-labeled pods, so a hand-applied App CR with no workspace label (which
+# the operator's reconcileNetworkPolicy leaves un-isolated) could still reach the
+# cloud-metadata endpoint. This denies the link-local/metadata range for EVERY
+# pod in the apps namespace, so metadata isolation no longer depends on the label.
+# It denies ONLY 169.254.0.0/16 (which no legitimate pod needs) and is a Cilium
+# egressDeny, so it does NOT flip any pod into default-deny — all other egress
+# (DNS, API server 10.96.0.1, same-workspace, internet) is untouched. The
+# node/remote-node deny stays scoped to labeled tenants above, since platform
+# pods may legitimately talk to node IPs.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: deny-metadata-egress-all-pods
+  namespace: default
+spec:
+  endpointSelector: {}
+  egressDeny:
+    - toCIDR:
+        - 169.254.0.0/16

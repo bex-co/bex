@@ -142,6 +142,20 @@ spec:
                   key: uri
             - name: BEX_CP_APPS_NAMESPACE # namespace the projector writes App CRs into
               value: default
+            # REQUIRED once BEX_CP_DB_URI is set: the internal tenant API (:8091)
+            # grants workspace-admin and cross-tenant writes, so bex-api refuses
+            # to start with an empty BEX_CP_TOKEN (w1/m53 requireCPAuth — the token
+            # was previously set nowhere, leaving the API open behind the
+            # NetworkPolicy alone). Create the Secret out of band BEFORE deploying
+            # this change (scripts/cp-token-secret.sh) or the pod crash-loops with
+            # a clear fatal log. optional:true keeps the manifest applyable; the
+            # in-process guard is the real fail-closed control.
+            - name: BEX_CP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: bex-control-plane
+                  key: token
+                  optional: true
             # Cancel (w2/m10) computes a repo-backed App's in-flight build
             # Job's identity to delete it — must match manager.yaml's
             # BEX_BUILD_NAMESPACE so the Job's namespace resolves the same way.

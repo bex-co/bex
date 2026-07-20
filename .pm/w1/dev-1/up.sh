@@ -137,6 +137,8 @@ for attempt in $(seq 1 5); do
     KUBECONFIG="$PWD/$KUBECONFIG_FILE" \
     BEX_API_ADDR=":$BEX_API_PORT" \
     BEX_CP_ADDR=":$BEX_CP_PORT" \
+    BEX_CP_INSECURE="1" \
+
     BEX_API_NAMESPACE="$DEV_NS" \
     BEX_API_CORS_ORIGIN="http://localhost:$DASHBOARD_PORT" \
     BEX_KRATOS_URL="http://localhost:$KRATOS_PUBLIC_PORT" \

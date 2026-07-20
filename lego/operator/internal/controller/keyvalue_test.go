@@ -237,6 +237,26 @@ func TestKeyValuePlanChangeReconcile(t *testing.T) {
 		t.Errorf("free plan memory = %s, want 128Mi", freeMem)
 	}
 
+	// w1/m53: the managed Valkey pod is hardened like tenant Deployments.
+	if amt := sts.Spec.Template.Spec.AutomountServiceAccountToken; amt == nil || *amt {
+		t.Error("Valkey pod must not automount the ServiceAccount token")
+	}
+	for _, c := range sts.Spec.Template.Spec.Containers {
+		sc := c.SecurityContext
+		if sc == nil {
+			t.Fatalf("container %q has no SecurityContext", c.Name)
+		}
+		if sc.AllowPrivilegeEscalation == nil || *sc.AllowPrivilegeEscalation {
+			t.Errorf("container %q: AllowPrivilegeEscalation must be false", c.Name)
+		}
+		if sc.Capabilities == nil || len(sc.Capabilities.Drop) == 0 || sc.Capabilities.Drop[0] != "ALL" {
+			t.Errorf("container %q: must drop ALL capabilities", c.Name)
+		}
+		if sc.SeccompProfile == nil || sc.SeccompProfile.Type != corev1.SeccompProfileTypeRuntimeDefault {
+			t.Errorf("container %q: seccomp must be RuntimeDefault", c.Name)
+		}
+	}
+
 	// Patch spec.plan to "standard" and reconcile again.
 	if err := cl.Get(ctx, nn, kv); err != nil {
 		t.Fatalf("get kv: %v", err)

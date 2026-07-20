@@ -206,7 +206,7 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 			// broken store fails closed (503), like a broken Ory: a
 			// request that can't be tenanted must not be served un-tenanted.
 			if a.onboard != nil && id.Human {
-				if _, err := a.onboard.EnsureTenant(r.Context(), id.Subject, id.Email); err != nil {
+				if _, err := a.onboard.EnsureTenant(r.Context(), id.Subject, id.Email, id.EmailVerified); err != nil {
 					core.WriteErrStatus(w, http.StatusServiceUnavailable, "tenant onboarding unavailable")
 					return
 				}
@@ -378,6 +378,13 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
 				Email string `json:"email"`
 				Name  string `json:"name"`
 			} `json:"traits"`
+			// verifiable_addresses carries Kratos's own verified-state for each
+			// address, so bex can tell a not-yet-verified trait email apart from a
+			// proven one (w1/m53) rather than trusting the raw trait.
+			VerifiableAddresses []struct {
+				Value    string `json:"value"`
+				Verified bool   `json:"verified"`
+			} `json:"verifiable_addresses"`
 		} `json:"identity"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
@@ -389,12 +396,21 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
 	// traits.email is the standard Kratos identity schema's email field — the key
 	// a pending workspace invite is redeemed against on this caller's first login.
 	// traits.name is bex's optional display-name trait (w4/m25); "" when unset.
+	email := strings.ToLower(out.Identity.Traits.Email)
+	emailVerified := false
+	for _, a := range out.Identity.VerifiableAddresses {
+		if a.Verified && strings.EqualFold(a.Value, email) {
+			emailVerified = true
+			break
+		}
+	}
 	return core.Identity{
-		Subject: out.Identity.ID,
-		Method:  "session",
-		Human:   true,
-		Email:   strings.ToLower(out.Identity.Traits.Email),
-		Name:    out.Identity.Traits.Name,
+		Subject:       out.Identity.ID,
+		Method:        "session",
+		Human:         true,
+		Email:         email,
+		EmailVerified: emailVerified,
+		Name:          out.Identity.Traits.Name,
 	}, nil
 }
 

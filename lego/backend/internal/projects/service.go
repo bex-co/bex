@@ -106,6 +106,34 @@ type Service struct {
 // (BEX_CP_DB_URI unset). Projects have no CR-only equivalent.
 var ErrProjectsUnavailable = errors.New("projects store not configured")
 
+// projectEnvironmentLister is the optional store capability for reading a
+// project's environments; *store.PGStore satisfies it. Kept out of the narrow
+// ProjectStore contract so a store without environments still works.
+type projectEnvironmentLister interface {
+	ListEnvironments(ctx context.Context, projectID string) ([]store.Environment, error)
+}
+
+// environmentIDs returns the environment ids belonging to a project (or nil when
+// the store does not implement environment listing). It is a read-enrichment
+// helper over an ALREADY-authorized project (List/Get gate the caller), not a
+// standalone verb — kept in the service (w1/m53) so the store access lives in the
+// domain layer instead of a REST fragment and any surface can reuse it.
+func (s *Service) environmentIDs(ctx context.Context, projectID string) ([]string, error) {
+	lister, ok := s.Store.(projectEnvironmentLister)
+	if !ok {
+		return nil, nil
+	}
+	environments, err := lister.ListEnvironments(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(environments))
+	for i := range environments {
+		ids[i] = environments[i].ID
+	}
+	return ids, nil
+}
+
 // ProjectView is the API shape for a project — all three surfaces return this.
 type ProjectView struct {
 	ID          string    `json:"id"`

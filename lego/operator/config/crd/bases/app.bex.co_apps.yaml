@@ -415,8 +415,13 @@ spec:
                 format: int32
                 type: integer
               image:
-                description: Image is a prebuilt OCI image to run directly, skipping
-                  the build plane.
+                description: |-
+                  Image is a prebuilt OCI image to run directly, skipping the build plane.
+                  Constrained at the CRD schema (w1/m53) so a hand-applied CR can't carry an
+                  image reference with whitespace or shell/SSRF-meta characters that bex-api's
+                  ValidImage would reject — host[:port]/repo[:tag][@digest] only.
+                maxLength: 512
+                pattern: ^[A-Za-z0-9][A-Za-z0-9._/:@-]*$
                 type: string
               ipAllowList:
                 description: |-

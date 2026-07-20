@@ -249,10 +249,16 @@ func (s *Service) RevokeAPIKey(ctx context.Context, ownerID, id string) error {
 		if tenantID == "" {
 			return core.ErrForbidden
 		}
-		if owner, boundOK := s.Binding.TenantForKey(ctx, id); boundOK && owner != tenantID {
+		owner, boundOK := s.Binding.TenantForKey(ctx, id)
+		if !boundOK {
+			// An unbound/unknown key belongs to no workspace (w1/m53): the old
+			// fall-through let a can_manage_keys caller in ANY workspace delete an
+			// orphaned key. It isn't in the caller's workspace, so report not-found.
+			return core.ErrNotFound
+		}
+		if owner != tenantID {
 			return core.ErrForbidden
 		}
-		// !boundOK: unbound/unknown key — fall through, Delete reports ErrNotFound.
 	}
 	if err := s.APIKeys.Delete(ctx, id); err != nil {
 		return err
