@@ -50,7 +50,7 @@ main() {
 
   # Load .env for the unseal keys + root token, but only when they aren't
   # already supplied via the environment — otherwise blank template lines
-  # (BAO_UNSEAL_KEY_1=, as `cp .env.template .env` leaves) would clobber real
+  # (BAO_UNSEAL_KEY_1=, as `cp .env.example .env` leaves) would clobber real
   # values the caller exported. Mirrors bao-k8s-auth.sh's guarded load.
   if [ -z "${BAO_ROOT_TOKEN:-}" ] && [ -f .env ]; then
     set -a

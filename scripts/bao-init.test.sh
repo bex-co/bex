@@ -59,10 +59,9 @@ assert "updating the short key changed only it" "grep -q '^BAO_UNSEAL_KEY_1=upda
 
 cd - >/dev/null
 
-echo "==> BAO keys mirrored in env templates + pushed by gh-secrets.sh"
+echo "==> BAO keys declared in .env.example + pushed by gh-secrets.sh"
 for k in BAO_UNSEAL_KEY_1 BAO_UNSEAL_KEY_2 BAO_UNSEAL_KEY_3 BAO_ROOT_TOKEN; do
   assert ".env.example declares $k" "grep -q '^$k=' .env.example"
-  assert ".env.template declares $k" "grep -q '^$k=' .env.template"
   assert "gh-secrets.sh pushes $k" "grep -q '\\b$k\\b' scripts/gh-secrets.sh"
 done
 
