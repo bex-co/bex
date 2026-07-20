@@ -44,11 +44,15 @@ const (
 )
 
 // Store is the gateway's deliberately small database authority: authenticate
-// a fingerprint and write content-free session audit facts.
+// a fingerprint, write content-free session audit facts, and claim web-shell
+// ticket nonces so single-use holds across replicas (w1/042 L7).
 type Store interface {
 	SSHKeyByFingerprint(context.Context, string) (store.SSHKey, error)
 	StartSSHSession(context.Context, store.SSHSessionAudit) error
 	EndSSHSession(context.Context, string, string, time.Time) error
+	// ClaimShellNonce atomically claims an exec-ticket nonce in the shared
+	// store — true exactly once per nonce, across every gateway replica.
+	ClaimShellNonce(context.Context, string, time.Time) (bool, error)
 }
 
 type TargetResolver interface {
@@ -77,9 +81,10 @@ type Server struct {
 	global      int
 	perIdentity map[string]int
 
-	// usedNonces enforces best-effort single-use of exec tickets on this replica:
-	// a ticket's nonce is recorded until the ticket's own expiry, so a replay
-	// within the short TTL is refused. Cross-replica reuse is bounded by the TTL.
+	// usedNonces is the per-process first line of the exec-ticket single-use
+	// guard: a ticket's nonce is recorded until the ticket's own expiry, so a
+	// same-replica replay never reaches the database. The authoritative,
+	// cross-replica claim is Store.ClaimShellNonce (w1/042 L7).
 	usedMu     sync.Mutex
 	usedNonces map[string]time.Time
 }

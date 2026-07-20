@@ -46,7 +46,11 @@ export const oryConfig: OryClientConfiguration = {
     recovery_enabled: true,
     settings_ui_url: "/settings",
     verification_ui_url: "/auth/verification",
-    verification_enabled: false,
+    // Matches Kratos (`verification.enabled: true`, kratos.values.yaml) so Ory
+    // Elements follows registration's continue_with into the verification step
+    // (w1/040; false was a w5/m1 scaffold leftover from before verification
+    // existed server-side).
+    verification_enabled: true,
   },
 };
 

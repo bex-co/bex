@@ -1690,10 +1690,12 @@ func TestMembersAndInvites(t *testing.T) {
 }
 
 // TestInviteResendAndTokenAcceptance exercises the w1/m33 additions against a
-// real database: RefreshInvite (expiry pushed, token stable, revives a lapsed
-// invite, 404 on accepted) and AcceptInviteByToken (cross-email join, named
+// real database: RefreshInvite (expiry pushed, token ROTATED since w1/041 —
+// the old link dies, the fresh one redeems; revives a lapsed invite, 404 on
+// accepted) and AcceptInviteByToken (cross-email join, named
 // already-accepted/expired refusals, plan-seat refusal on a full Hobby
-// workspace).
+// workspace) — plus the w1/041 at-rest contract: only sha256(token) is stored,
+// and reads never surface it.
 func TestInviteResendAndTokenAcceptance(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
@@ -1718,34 +1720,56 @@ func TestInviteResendAndTokenAcceptance(t *testing.T) {
 		t.Fatalf("create workspace: %v", err)
 	}
 
-	// RefreshInvite: expiry moves, id + token do not; a LAPSED (expired,
-	// unaccepted) invite is revived.
+	// w1/041 at-rest contract: the row holds sha256("tok-late"), never the
+	// plaintext (the plaintext column is gone), and reads don't surface it.
 	lapsed := time.Now().Add(-time.Hour)
 	inv, err := s.CreateInvite(ctx, ten.ID, "late@example.com", "developer", "tok-late", "admin-1", lapsed)
 	if err != nil {
 		t.Fatalf("create invite: %v", err)
 	}
+	if inv.Token != "tok-late" {
+		t.Errorf("create must hand back the plaintext for the mail, got %q", inv.Token)
+	}
+	var atRest string
+	wantHash := hashInviteToken("tok-late")
+	if err := pool.QueryRow(ctx, `SELECT token_hash FROM tenant_invites WHERE id = $1`, inv.ID).Scan(&atRest); err != nil {
+		t.Fatalf("read token_hash: %v", err)
+	}
+	if atRest != wantHash {
+		t.Errorf("token_hash at rest = %q, want sha256 hex %q", atRest, wantHash)
+	}
+	if got, err := s.GetInvite(ctx, ten.ID, inv.ID); err != nil || got.Token != "" {
+		t.Errorf("GetInvite token = %q (%v), want empty — reads never surface the capability", got.Token, err)
+	}
+
+	// RefreshInvite: expiry moves and the token ROTATES (w1/041 — the hash at
+	// rest can't reproduce the old plaintext for the resent mail); the id is
+	// stable and a LAPSED (expired, unaccepted) invite is revived.
 	if pending, _ := s.ListInvites(ctx, ten.ID); len(pending) != 0 {
 		t.Fatalf("expired invite still pending: %d", len(pending))
 	}
 	fresh := time.Now().Add(48 * time.Hour)
-	resent, err := s.RefreshInvite(ctx, ten.ID, inv.ID, fresh)
+	resent, err := s.RefreshInvite(ctx, ten.ID, inv.ID, "tok-rotated", fresh)
 	if err != nil {
 		t.Fatalf("refresh: %v", err)
 	}
-	if resent.ID != inv.ID || resent.Token != "tok-late" {
-		t.Errorf("refresh churned identity: %+v", resent)
+	if resent.ID != inv.ID || resent.Token != "tok-rotated" {
+		t.Errorf("refresh churned identity or dropped the fresh token: %+v", resent)
 	}
 	if pending, _ := s.ListInvites(ctx, ten.ID); len(pending) != 1 {
 		t.Errorf("revived invite not pending: %d", len(pending))
 	}
-	if _, err := s.RefreshInvite(ctx, "tea-other", inv.ID, fresh); !errors.Is(err, ErrNotFound) {
+	if _, err := s.RefreshInvite(ctx, "tea-other", inv.ID, "tok-x", fresh); !errors.Is(err, ErrNotFound) {
 		t.Errorf("cross-workspace refresh: want ErrNotFound, got %v", err)
+	}
+	// The superseded link is dead: only the freshly minted token redeems.
+	if _, err := s.AcceptInviteByToken(ctx, "tok-late", "identity-newcomer"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("superseded token: want ErrNotFound, got %v", err)
 	}
 
 	// AcceptInviteByToken: the recipient signed up under a different email —
 	// the token is the capability; the membership lands at the invited role.
-	acc, err := s.AcceptInviteByToken(ctx, "tok-late", "identity-newcomer")
+	acc, err := s.AcceptInviteByToken(ctx, "tok-rotated", "identity-newcomer")
 	if err != nil {
 		t.Fatalf("accept by token: %v", err)
 	}
@@ -1757,10 +1781,10 @@ func TestInviteResendAndTokenAcceptance(t *testing.T) {
 	}
 	// Named refusals: second redemption, refresh of an accepted invite, unknown
 	// and expired tokens.
-	if _, err := s.AcceptInviteByToken(ctx, "tok-late", "identity-other"); !errors.Is(err, ErrConflict) {
+	if _, err := s.AcceptInviteByToken(ctx, "tok-rotated", "identity-other"); !errors.Is(err, ErrConflict) {
 		t.Errorf("second redemption: want ErrConflict, got %v", err)
 	}
-	if _, err := s.RefreshInvite(ctx, ten.ID, inv.ID, fresh); !errors.Is(err, ErrNotFound) {
+	if _, err := s.RefreshInvite(ctx, ten.ID, inv.ID, "tok-y", fresh); !errors.Is(err, ErrNotFound) {
 		t.Errorf("refresh accepted invite: want ErrNotFound, got %v", err)
 	}
 	if _, err := s.AcceptInviteByToken(ctx, "tok-ghost", "identity-x"); !errors.Is(err, ErrNotFound) {
@@ -1784,6 +1808,55 @@ func TestInviteResendAndTokenAcceptance(t *testing.T) {
 	}
 	if _, err := s.AcceptInviteByToken(ctx, "tok-full", "identity-second"); !errors.Is(err, ErrConflict) {
 		t.Errorf("full hobby workspace: want ErrConflict, got %v", err)
+	}
+}
+
+// TestClaimShellNonce verifies the cross-replica web-shell single-use claim
+// (w1/042 L7) against a real database: first claim wins, a second claim of the
+// same nonce loses (any replica — it's one table), and expired rows are pruned
+// by the next claim rather than accreting.
+func TestClaimShellNonce(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if _, err := pool.Exec(ctx, `TRUNCATE shell_ticket_nonces`); err != nil {
+		t.Fatal(err)
+	}
+	s := NewPGStore(pool)
+
+	exp := time.Now().Add(90 * time.Second)
+	if ok, err := s.ClaimShellNonce(ctx, "nonce-1", exp); err != nil || !ok {
+		t.Fatalf("first claim = (%v, %v), want (true, nil)", ok, err)
+	}
+	if ok, err := s.ClaimShellNonce(ctx, "nonce-1", exp); err != nil || ok {
+		t.Fatalf("second claim = (%v, %v), want (false, nil)", ok, err)
+	}
+
+	// An expired nonce is pruned by the next claim, freeing its row (the ticket
+	// itself is already unredeemable — shellticket.Verify enforces expiry).
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO shell_ticket_nonces (nonce, expires_at) VALUES ('nonce-old', now() - interval '1 minute')`); err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := s.ClaimShellNonce(ctx, "nonce-2", exp); err != nil || !ok {
+		t.Fatalf("claim after prune = (%v, %v), want (true, nil)", ok, err)
+	}
+	var stale int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM shell_ticket_nonces WHERE nonce = 'nonce-old'`).Scan(&stale); err != nil {
+		t.Fatal(err)
+	}
+	if stale != 0 {
+		t.Errorf("expired nonce not pruned")
 	}
 }
 

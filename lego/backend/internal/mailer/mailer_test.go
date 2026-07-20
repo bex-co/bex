@@ -47,14 +47,18 @@ func TestSendBuildsRFC5322AndTargetsRecipient(t *testing.T) {
 	if err := m.Send(context.Background(), "invitee@example.com", "You're invited", "line one\nline two"); err != nil {
 		t.Fatalf("send: %v", err)
 	}
-	if gotAddr != "mailpit:1025" || gotFrom != "bex <noreply@bex.co>" {
-		t.Errorf("envelope: addr=%q from=%q", gotAddr, gotFrom)
+	// MAIL FROM takes the BARE address — a display-name form there is a
+	// syntax error the relay 501s (found live against Mailpit, w1/040);
+	// the message's From: header keeps the display form.
+	if gotAddr != "mailpit:1025" || gotFrom != "noreply@bex.co" {
+		t.Errorf("envelope: addr=%q from=%q, want the bare address", gotAddr, gotFrom)
 	}
 	if len(gotTo) != 1 || gotTo[0] != "invitee@example.com" {
 		t.Errorf("recipients = %v", gotTo)
 	}
 	msg := string(gotMsg)
 	for _, want := range []string{
+		"From: bex <noreply@bex.co>\r\n",
 		"To: invitee@example.com\r\n",
 		"Subject: You're invited\r\n",
 		"line one\r\nline two", // body newlines normalized to CRLF

@@ -178,11 +178,12 @@ func (f *fakeStore) DeleteInvite(_ context.Context, _, id string) error {
 	return nil
 }
 
-func (f *fakeStore) RefreshInvite(_ context.Context, _, id string, expiresAt time.Time) (store.Invite, error) {
+func (f *fakeStore) RefreshInvite(_ context.Context, _, id, token string, expiresAt time.Time) (store.Invite, error) {
 	inv, ok := f.invites[id]
 	if !ok || inv.AcceptedAt != nil {
 		return store.Invite{}, fmt.Errorf("invite: %w", store.ErrNotFound)
 	}
+	inv.Token = token
 	inv.ExpiresAt = expiresAt
 	f.invites[id] = inv
 	return inv, nil

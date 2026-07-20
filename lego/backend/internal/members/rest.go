@@ -99,8 +99,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, u)
 	})
-	// Resend a pending invite (w1/m33): fresh email, refreshed expiry, same id
-	// and token.
+	// Resend a pending invite (w1/m33): fresh email, refreshed expiry, same id;
+	// the token rotates (w1/041) so the new mail's link supersedes the original.
 	mux.HandleFunc("POST /v1/workspaces/{workspaceId}/invites/{inviteId}/resend", func(w http.ResponseWriter, r *http.Request) {
 		inv, err := s.ResendInvite(r.Context(), r.PathValue("workspaceId"), r.PathValue("inviteId"))
 		if err != nil {

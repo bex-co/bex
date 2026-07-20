@@ -42,6 +42,10 @@ type fakeGatewayStore struct {
 	mu      sync.Mutex
 	started []store.SSHSessionAudit
 	ended   []string
+	// nonces mirrors the shared shell_ticket_nonces claim (w1/042 L7); share
+	// ONE fakeGatewayStore between two Servers to model two gateway replicas.
+	nonces   map[string]bool
+	claimErr error
 }
 
 type fakeConnMetadata struct {
@@ -77,6 +81,21 @@ func (f *fakeGatewayStore) EndSSHSession(_ context.Context, id, result string, _
 	defer f.mu.Unlock()
 	f.ended = append(f.ended, id+":"+result)
 	return nil
+}
+func (f *fakeGatewayStore) ClaimShellNonce(_ context.Context, nonce string, _ time.Time) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.claimErr != nil {
+		return false, f.claimErr
+	}
+	if f.nonces == nil {
+		f.nonces = map[string]bool{}
+	}
+	if f.nonces[nonce] {
+		return false, nil
+	}
+	f.nonces[nonce] = true
+	return true, nil
 }
 
 type fakeResolver struct {

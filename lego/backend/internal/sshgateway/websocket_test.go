@@ -192,6 +192,87 @@ func TestWebSocketRejectsReplayedTicket(t *testing.T) {
 	}
 }
 
+// Two Servers sharing one store model two gateway replicas behind the LB
+// (w1/042 L7): a ticket redeemed on replica A must be refused on replica B —
+// the per-process map can't see across, the shared nonce claim can.
+func TestWebSocketRejectsReplayAcrossReplicas(t *testing.T) {
+	shared := &fakeGatewayStore{}
+	srvA := httptest.NewServer(newWSGateway(t, shared, &fakeResolver{}, &fakeExecutor{}).WebSocketHandler())
+	defer srvA.Close()
+	srvB := httptest.NewServer(newWSGateway(t, shared, &fakeResolver{}, &fakeExecutor{}).WebSocketHandler())
+	defer srvB.Close()
+	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
+
+	first, _, err := websocket.DefaultDialer.Dial(wsURL(t, srvA, token), nil)
+	if err != nil {
+		t.Fatalf("dial replica A: %v", err)
+	}
+	_ = first.WriteMessage(websocket.TextMessage, []byte(`{"type":"resize","cols":80,"rows":24}`))
+	for {
+		if _, _, err := first.ReadMessage(); err != nil {
+			break
+		}
+	}
+	first.Close()
+
+	_, resp, err := websocket.DefaultDialer.Dial(wsURL(t, srvB, token), nil)
+	if err == nil || resp == nil || resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("cross-replica replay: status = %v, err = %v, want 401", resp, err)
+	}
+}
+
+// A store outage refuses tickets (fail closed) rather than quietly degrading
+// to per-replica single-use — the audit write requires the same DB anyway.
+func TestWebSocketNonceStoreErrorFailsClosed(t *testing.T) {
+	st := &fakeGatewayStore{claimErr: errors.New("db down")}
+	srv := httptest.NewServer(newWSGateway(t, st, &fakeResolver{}, &fakeExecutor{}).WebSocketHandler())
+	defer srv.Close()
+	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
+	_, resp, err := websocket.DefaultDialer.Dial(wsURL(t, srv, token), nil)
+	if err == nil || resp == nil || resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("claim error: status = %v, err = %v, want 401", resp, err)
+	}
+}
+
+// The dashboard carries the ticket in a Sec-WebSocket-Protocol entry, not the
+// URL (w1/042 L8) — the gateway extracts it from the offer, selects only the
+// bex.shell marker in the response (the credential is never echoed), and the
+// legacy ?ticket= query keeps working for pre-roll dashboard tabs.
+func TestWebSocketTicketViaSubprotocol(t *testing.T) {
+	st := &fakeGatewayStore{}
+	srv := httptest.NewServer(newWSGateway(t, st, &fakeResolver{}, &fakeExecutor{}).WebSocketHandler())
+	defer srv.Close()
+	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
+
+	dialer := websocket.Dialer{Subprotocols: []string{wsShellSubprotocol, wsTicketPrefix + token}}
+	conn, resp, err := dialer.Dial(wsURL(t, srv, ""), nil)
+	if err != nil {
+		t.Fatalf("subprotocol dial: %v", err)
+	}
+	if got := conn.Subprotocol(); got != wsShellSubprotocol {
+		t.Errorf("negotiated subprotocol = %q, want %q — the ticket entry must never be selected", got, wsShellSubprotocol)
+	}
+	if echoed := resp.Header.Get("Sec-WebSocket-Protocol"); strings.Contains(echoed, token) {
+		t.Errorf("handshake response echoes the ticket: %q", echoed)
+	}
+	_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"resize","cols":80,"rows":24}`))
+	for {
+		if _, _, err := conn.ReadMessage(); err != nil {
+			break
+		}
+	}
+	conn.Close()
+	if len(st.started) != 1 {
+		t.Errorf("audit rows started = %d, want 1", len(st.started))
+	}
+
+	// The same ticket via the legacy query parameter is a replay now — the
+	// shared claim covers both carriers.
+	if _, resp, err := websocket.DefaultDialer.Dial(wsURL(t, srv, token), nil); err == nil || resp == nil || resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("query replay after subprotocol redemption: status = %v, err = %v, want 401", resp, err)
+	}
+}
+
 func TestWebSocketDisabledWithoutSecret(t *testing.T) {
 	gw := &Server{Store: &fakeGatewayStore{}, Apps: &fakeResolver{}, Executor: &fakeExecutor{}, Metrics: NewMetrics(prometheus.NewRegistry())}
 	if gw.WebSocketEnabled() {
