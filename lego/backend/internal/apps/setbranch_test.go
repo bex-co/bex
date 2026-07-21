@@ -81,7 +81,7 @@ func TestMCPSetBranch(t *testing.T) {
 
 	// The set_branch tool delegates to the shared source verb.
 	branch := "release"
-	v, err := svc.SetSourceAndRegistryCredential(context.Background(), "web", nil, nil, &branch, nil)
+	v, err := svc.SetSourceAndRegistryCredential(context.Background(), "web", nil, nil, &branch, nil, nil)
 	if err != nil {
 		t.Fatalf("SetSourceAndRegistryCredential: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestMCPSetBranch(t *testing.T) {
 	// An explicit empty branch restores the default — the setter family's
 	// "empty clears to the default" convention (cf. set_build_command).
 	empty := ""
-	if _, err := svc.SetSourceAndRegistryCredential(context.Background(), "web", nil, nil, &empty, nil); err != nil {
+	if _, err := svc.SetSourceAndRegistryCredential(context.Background(), "web", nil, nil, &empty, nil, nil); err != nil {
 		t.Fatalf("clear branch: %v", err)
 	}
 	if got := getApp(t, cl, "web").Spec.Branch; got != "main" {

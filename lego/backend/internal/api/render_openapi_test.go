@@ -17,6 +17,7 @@ limitations under the License.
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -31,6 +32,7 @@ import (
 	"github.com/getkin/kin-openapi/routers"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 func TestRenderOpenAPIPinGuards(t *testing.T) {
@@ -424,5 +426,66 @@ func TestRenderValidationRunsAfterAndConsumesRateLimit(t *testing.T) {
 	}
 	if w := do(t, h, http.MethodGet, "/v1/services", testToken, ""); w.Code != http.StatusTooManyRequests {
 		t.Fatalf("validation failure did not consume rate budget: status=%d body=%s", w.Code, w.Body.String())
+	}
+}
+
+// TestRenderCLIImageOwnerContractThroughComposedServer exercises the exact
+// generated Render CLI payload through auth, the pinned OpenAPI validator, and
+// the real services adapter. The CLI's Image.OwnerId field has no omitempty,
+// so both create and update serialize image.ownerId:"".
+func TestRenderCLIImageOwnerContractThroughComposedServer(t *testing.T) {
+	cl := fakeClient()
+	base := &core.Base{
+		Client:    cl,
+		Namespace: "default",
+		Workspace: fakeWorkspace{"client-1": "tea-cli"},
+	}
+	h, _ := serverWith(t, base, Deps{APIKeys: newFakeKeyStore()})
+
+	createBody := `{"name":"cli-image","ownerId":"tea-cli","type":"web_service","image":{"imagePath":"nginx:alpine","ownerId":""},"serviceDetails":{"plan":"starter","runtime":"image"}}`
+	w := do(t, h, http.MethodPost, "/v1/services", testToken, createBody)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("exact CLI image create = %d: %s", w.Code, w.Body.String())
+	}
+	var created struct {
+		Service struct {
+			ID string `json:"id"`
+		} `json:"service"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil || created.Service.ID == "" {
+		t.Fatalf("decode create response: id=%q err=%v body=%s", created.Service.ID, err, w.Body.String())
+	}
+
+	patchBody := `{"image":{"imagePath":"nginx:stable","ownerId":""}}`
+	w = do(t, h, http.MethodPatch, "/v1/services/"+created.Service.ID, testToken, patchBody)
+	if w.Code != http.StatusOK {
+		t.Fatalf("exact CLI image update = %d: %s", w.Code, w.Body.String())
+	}
+	var apps appv1alpha1.AppList
+	if err := cl.List(context.Background(), &apps); err != nil || len(apps.Items) != 1 {
+		t.Fatalf("created Apps = %d, err=%v", len(apps.Items), err)
+	}
+	if got := apps.Items[0].Spec.Image; got != "nginx:stable" {
+		t.Fatalf("updated image = %q, want nginx:stable", got)
+	}
+
+	w = do(t, h, http.MethodPatch, "/v1/services/"+created.Service.ID, testToken,
+		`{"image":{"imagePath":"nginx:rejected","ownerId":"tea-other"}}`)
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "image.ownerId") {
+		t.Fatalf("conflicting image owner = %d, want named 400: %s", w.Code, w.Body.String())
+	}
+	apps = appv1alpha1.AppList{}
+	if err := cl.List(context.Background(), &apps); err != nil || len(apps.Items) != 1 || apps.Items[0].Spec.Image != "nginx:stable" {
+		t.Fatalf("rejected conflict mutated App: apps=%#v err=%v", apps.Items, err)
+	}
+
+	w = do(t, h, http.MethodPatch, "/v1/services/"+created.Service.ID, testToken,
+		`{"image":{"imagePath":"nginx:rejected","ownerId":"","mystery":true}}`)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("unknown nested image field = %d, want 400: %s", w.Code, w.Body.String())
+	}
+	apps = appv1alpha1.AppList{}
+	if err := cl.List(context.Background(), &apps); err != nil || len(apps.Items) != 1 || apps.Items[0].Spec.Image != "nginx:stable" {
+		t.Fatalf("unknown field mutated App: apps=%#v err=%v", apps.Items, err)
 	}
 }

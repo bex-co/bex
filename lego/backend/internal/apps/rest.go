@@ -209,10 +209,14 @@ type secretFileInput struct {
 }
 
 // imageRef is Render's prebuilt-image object: the image path lives under
-// `image.imagePath`, not a bare top-level string. registryCredentialId is a
-// RawMessage so omission remains distinct from an explicit empty-string clear.
+// `image.imagePath`, not a bare top-level string. The official CLI always
+// serializes ownerId because its generated Image.OwnerId field is required;
+// create/update currently send the empty string and rely on the top-level or
+// existing service owner. registryCredentialId is a RawMessage so omission
+// remains distinct from an explicit empty-string clear.
 type imageRef struct {
 	ImagePath            string          `json:"imagePath"`
+	OwnerID              string          `json:"ownerId"`
 	RegistryCredentialID json.RawMessage `json:"registryCredentialId"`
 }
 
@@ -331,6 +335,30 @@ func oneRegistryCredentialID(first, second json.RawMessage) (*string, error) {
 	return b, nil
 }
 
+// effectiveImageOwnerID reconciles the two owner spellings in Render's create
+// payload. The generated CLI sends image.ownerId:"" while setting the actual
+// workspace in the top-level ownerId field, so blank nested ownership inherits
+// the top-level/default value. A non-blank nested value is validation only: it
+// must match that effective owner and never becomes a second workspace selector.
+func effectiveImageOwnerID(ownerID, defaultOwnerID string, image *imageRef) (string, error) {
+	ownerID = strings.TrimSpace(ownerID)
+	effectiveOwnerID := ownerID
+	if effectiveOwnerID == "" {
+		effectiveOwnerID = strings.TrimSpace(defaultOwnerID)
+	}
+	if image == nil {
+		return effectiveOwnerID, nil
+	}
+	imageOwnerID := strings.TrimSpace(image.OwnerID)
+	if imageOwnerID == "" {
+		return effectiveOwnerID, nil
+	}
+	if effectiveOwnerID == "" || effectiveOwnerID != imageOwnerID {
+		return "", fmt.Errorf("%w: image.ownerId conflicts with ownerId", core.ErrBadRequest)
+	}
+	return effectiveOwnerID, nil
+}
+
 // ipAllowEntry is Render's components.schemas.cidrBlockAndDescription. Alias
 // the shared Core entry so services, Postgres, KeyValue, GraphQL, and MCP use
 // one description-preserving shape.
@@ -354,7 +382,7 @@ func fromIPAllowListEntries(entries []ipAllowEntry) []core.IPAllowListEntry {
 // neutral CreateRequest. serviceDetails is Render's canonical location for
 // plan/numInstances/healthCheckPath; the top-level plan is a bex convenience
 // fallback. type:private_service maps to the in-cluster-only flag.
-func (r createServiceRequest) toCreateRequest(ctx context.Context) (CreateRequest, error) {
+func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerID string) (CreateRequest, error) {
 	plan, health, schedule, command, publishPath := r.Plan, "", r.Schedule, r.Command, r.PublishPath
 	rootDir := r.RootDir
 	var runtime, buildCommand, startCommand, dockerfilePath string
@@ -419,6 +447,10 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context) (CreateReques
 	if err != nil {
 		return CreateRequest{}, err
 	}
+	ownerID, err := effectiveImageOwnerID(r.OwnerID, defaultOwnerID, r.Image)
+	if err != nil {
+		return CreateRequest{}, err
+	}
 	var env []appv1alpha1.EnvVar
 	for _, e := range r.EnvVars {
 		env = append(env, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
@@ -436,7 +468,7 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context) (CreateReques
 		ipAllowList = fromIPAllowListEntries(entries)
 	}
 	return CreateRequest{
-		OwnerID:                 r.OwnerID,
+		OwnerID:                 ownerID,
 		EnvironmentID:           r.EnvironmentID,
 		Name:                    r.Name,
 		Type:                    r.Type,
@@ -810,8 +842,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if req.Image != nil {
 			image = &req.Image.ImagePath
 		}
+		var imageOwnerID *string
+		if req.Image != nil {
+			imageOwnerID = &req.Image.OwnerID
+		}
 		if req.Repo != nil || image != nil || req.Branch != nil || registryCredentialID != nil {
-			if app, err = s.SetSourceAndRegistryCredential(r.Context(), id, req.Repo, image, req.Branch, registryCredentialID); err != nil {
+			if app, err = s.SetSourceAndRegistryCredential(r.Context(), id, req.Repo, image, req.Branch, registryCredentialID, imageOwnerID); err != nil {
 				core.WriteErr(w, err)
 				return
 			}
@@ -983,7 +1019,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if !req.DryRun && r.URL.Query().Get("dryRun") == "true" {
 			req.DryRun = true
 		}
-		createReq, err := req.toCreateRequest(r.Context())
+		defaultOwnerID, _ := s.Tenant(r.Context())
+		createReq, err := req.toCreateRequest(r.Context(), defaultOwnerID)
 		if err != nil {
 			core.WriteErr(w, err)
 			return

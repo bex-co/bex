@@ -217,6 +217,72 @@ func TestREST_CreateHonorsOwnerIDInTheBody(t *testing.T) {
 	}
 }
 
+func TestREST_CreateAcceptsOfficialCLIImageOwnerID(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		body       string
+		wantStatus int
+		wantOwner  string
+	}{
+		{
+			name:       "blank nested owner inherits top-level owner",
+			body:       `{"name":"web","ownerId":"tea-2","type":"web_service","image":{"imagePath":"nginx:alpine","ownerId":""}}`,
+			wantStatus: http.StatusCreated,
+			wantOwner:  "tea-2",
+		},
+		{
+			name:       "nested owner can confirm the default owner",
+			body:       `{"name":"web","type":"web_service","image":{"imagePath":"nginx:alpine","ownerId":"tea-1"}}`,
+			wantStatus: http.StatusCreated,
+			wantOwner:  "tea-1",
+		},
+		{
+			name:       "nested owner cannot select another workspace",
+			body:       `{"name":"web","type":"web_service","image":{"imagePath":"nginx:alpine","ownerId":"tea-2"}}`,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "conflicting owner fields are rejected",
+			body:       `{"name":"web","ownerId":"tea-1","type":"web_service","image":{"imagePath":"nginx:alpine","ownerId":"tea-2"}}`,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "nested non-member owner is forbidden",
+			body:       `{"name":"web","ownerId":"tea-stranger","type":"web_service","image":{"imagePath":"nginx:alpine","ownerId":"tea-stranger"}}`,
+			wantStatus: http.StatusForbidden,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := danaService()
+			mux := http.NewServeMux()
+			svc.RegisterREST(mux)
+
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(tc.body))
+			mux.ServeHTTP(rec, req.WithContext(ctxAs("dana")))
+			if rec.Code != tc.wantStatus {
+				t.Fatalf("POST = %d, want %d: %s", rec.Code, tc.wantStatus, rec.Body.String())
+			}
+			var list appv1alpha1.AppList
+			if err := svc.Client.List(context.Background(), &list); err != nil {
+				t.Fatal(err)
+			}
+			if tc.wantStatus != http.StatusCreated {
+				if len(list.Items) != 0 {
+					t.Fatalf("rejected request wrote %d App(s)", len(list.Items))
+				}
+				if tc.wantStatus == http.StatusBadRequest && !strings.Contains(rec.Body.String(), "image.ownerId") {
+					t.Fatalf("conflict response does not name image.ownerId: %s", rec.Body.String())
+				}
+				return
+			}
+			if len(list.Items) != 1 || list.Items[0].Labels[core.LabelTenant] != tc.wantOwner {
+				t.Fatalf("created Apps = %#v, want one owned by %s", list.Items, tc.wantOwner)
+			}
+		})
+	}
+}
+
 func TestREST_CreateWithANonMemberOwnerIDIs403(t *testing.T) {
 	svc := danaService()
 	mux := http.NewServeMux()

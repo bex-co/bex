@@ -605,6 +605,16 @@ if [ "$build_ns_shape" != "untrusted:privileged:restricted:restricted" ]; then
   fail=1
 fi
 
+# Cross-namespace finalization inventories every operator-owned build artifact
+# before releasing the App finalizer. Keep the extra list/delete authority
+# namespaced to bex-build and pin the exact resource/verb set so it cannot drift
+# into a broader Secret, ServiceAccount, or Pod grant.
+build_credential_rbac="$(yq -N 'select(.kind == "Role" and .metadata.name == "bex-build-credentials" and .metadata.namespace == "bex-build") | .rules[] | [(.resources | sort | join(",")), (.verbs | sort | join(","))] | join(":")' "$BUILD_BOUNDARY" | sed '/^[[:space:]]*$/d' | sort)"
+if [ "$build_credential_rbac" != $'pods:delete,get,list\nsecrets,serviceaccounts:create,delete,get,list,patch,update' ]; then
+  echo "FAIL: bex-build-credentials must remain exactly scoped to Pod inventory/delete and Secret/ServiceAccount lifecycle; got '$build_credential_rbac'" >&2
+  fail=1
+fi
+
 for manifest in lego/operator/config/manager/manager.yaml lego/operator/config/api/deployment.yaml; do
   build_ns_env="$(yq -N 'select(.kind == "Deployment") | .spec.template.spec.containers[].env[]? | select(.name == "BEX_BUILD_NAMESPACE") | .value' "$manifest")"
   if [ "$build_ns_env" != "bex-build" ]; then

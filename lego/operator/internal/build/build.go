@@ -26,6 +26,7 @@ package build
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path"
 	"strings"
@@ -39,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // Builder strategies (mirror App.spec.builder).
@@ -84,6 +86,13 @@ const (
 
 // pollInterval is how often Build re-reads the Job while waiting for it.
 const pollInterval = 3 * time.Second
+
+// ErrAppDeleting terminates a synchronous build wait when its owning App has
+// entered deletion (or is already gone). The build artifact is intentionally
+// left behind: the App finalizer inventories and removes it with the immutable
+// App UID, while the controller is freed to observe deletion immediately
+// instead of holding the reconcile worker for the full build timeout.
+var ErrAppDeleting = errors.New("build: owning App is deleting")
 
 const (
 	dockerConfigMount = "/docker-config"
@@ -236,11 +245,21 @@ func Build(ctx context.Context, o Options) (Result, error) {
 	if err := o.Client.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
 		return Result{}, fmt.Errorf("build: create job %s: %w", key.Name, err)
 	}
+	if deleting, err := appDeleting(ctx, o); err != nil {
+		return Result{}, err
+	} else if deleting {
+		return Result{}, ErrAppDeleting
+	}
 
 	// Wait for the Job to finish, bounded by buildTimeout.
 	wctx, cancel := context.WithTimeout(ctx, buildTimeout)
 	defer cancel()
 	for {
+		if deleting, err := appDeleting(wctx, o); err != nil {
+			return Result{}, err
+		} else if deleting {
+			return Result{}, ErrAppDeleting
+		}
 		var cur batchv1.Job
 		if err := o.Client.Get(wctx, key, &cur); err != nil {
 			return Result{}, fmt.Errorf("build: get job %s: %w", key.Name, err)
@@ -260,6 +279,24 @@ func Build(ctx context.Context, o Options) (Result, error) {
 		case <-time.After(pollInterval):
 		}
 	}
+}
+
+// appDeleting reads the uncached client supplied to the build plane so a
+// deletion update can interrupt the synchronous polling loop even while the
+// controller-runtime reconcile that dispatched the build is still running.
+// Empty AppNamespace preserves the package's standalone/test behavior.
+func appDeleting(ctx context.Context, o Options) (bool, error) {
+	if o.AppNamespace == "" {
+		return false, nil
+	}
+	var app appv1alpha1.App
+	if err := o.Client.Get(ctx, client.ObjectKey{Namespace: o.AppNamespace, Name: o.Name}, &app); err != nil {
+		if apierrors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, fmt.Errorf("build: check owning App deletion: %w", err)
+	}
+	return !app.DeletionTimestamp.IsZero(), nil
 }
 
 // BuildJob constructs the credential-separated source build Job for o. Its

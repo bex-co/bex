@@ -18,6 +18,7 @@ package build
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -31,6 +32,8 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 func opts() Options {
@@ -227,6 +230,7 @@ func TestBuildJobCloneSecret(t *testing.T) {
 func fakeClient(objs ...client.Object) client.Client {
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
 	return fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
 }
 
@@ -292,6 +296,27 @@ func TestBuildCreatesJobWhenAbsent(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("Build did not create the build Job")
+	}
+}
+
+func TestBuildStopsWaitingWhenOwningAppIsDeleting(t *testing.T) {
+	o := opts()
+	o.AppNamespace = "apps"
+	now := metav1.Now()
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
+		Name: o.Name, Namespace: o.AppNamespace, UID: "uid-current",
+		Finalizers: []string{"app.bex.co/finalizer"}, DeletionTimestamp: &now,
+	}}
+	o.AppUID = string(app.UID)
+	o.Client = fakeClient(app)
+
+	if _, err := Build(context.Background(), o); !errors.Is(err, ErrAppDeleting) {
+		t.Fatalf("Build error = %v, want ErrAppDeleting", err)
+	}
+	var job batchv1.Job
+	key := client.ObjectKey{Namespace: o.Namespace, Name: JobName(o.Name, o.Revision)}
+	if err := o.Client.Get(context.Background(), key, &job); err != nil {
+		t.Fatalf("build artifact must remain for finalizer inventory: %v", err)
 	}
 }
 
@@ -558,6 +583,28 @@ func TestBuildpackCreatesImageWhenAbsent(t *testing.T) {
 	}
 	cancel()
 	<-done
+}
+
+func TestBuildpackStopsWaitingWhenOwningAppIsDeleting(t *testing.T) {
+	o := opts()
+	o.Builder = BuilderBuildpack
+	o.AppNamespace = "apps"
+	now := metav1.Now()
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
+		Name: o.Name, Namespace: o.AppNamespace, UID: "uid-current",
+		Finalizers: []string{"app.bex.co/finalizer"}, DeletionTimestamp: &now,
+	}}
+	o.AppUID = string(app.UID)
+	o.Client = fakeClient(app)
+
+	if _, err := Build(context.Background(), o); !errors.Is(err, ErrAppDeleting) {
+		t.Fatalf("Build error = %v, want ErrAppDeleting", err)
+	}
+	image := newKpackImage()
+	key := client.ObjectKey{Namespace: o.Namespace, Name: JobName(o.Name, o.Revision)}
+	if err := o.Client.Get(context.Background(), key, image); err != nil {
+		t.Fatalf("kpack artifact must remain for finalizer inventory: %v", err)
+	}
 }
 
 func TestKpackCredentialAdaptation(t *testing.T) {

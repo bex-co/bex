@@ -1206,7 +1206,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				branch := p.Args["branch"].(string)
-				return s.SetSourceAndRegistryCredential(p.Context, p.Args["id"].(string), nil, nil, &branch, nil)
+				return s.SetSourceAndRegistryCredential(p.Context, p.Args["id"].(string), nil, nil, &branch, nil, nil)
 			},
 		},
 		// setBuildCommand changes the build command for a repo-backed service.

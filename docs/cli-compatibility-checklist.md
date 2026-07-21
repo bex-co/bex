@@ -12,6 +12,7 @@ Legend: `[x]` verified working · `[~]` works with a documented limitation · `[
 - **Operator-correctness schema supplement (w2/m60):** the installed, unmodified v2.21.0 CLI's `services update --help` and `postgres update --help` were re-read on **2026-07-19**. Service update has no `--type`; Postgres update has both `--plan` and `--disk-size-gb`. Focused backend regression sends the CLI's exact `PATCH {"diskSizeGB":…}` wire shape: growth persists, a lower value returns the named 400 envelope, and the resource remains at its accepted size. Operator/envtest separately proves a plan downgrade preserves that size. This is a command-schema plus API regression supplement, not a new live dev-9/production CLI run; the previously graded create/update/delete baseline remains the live-client evidence.
 - **Durable-delete and Key Value credential supplement (w2/m61):** the unmodified v2.21.0 CLI delete commands remain plain service/Postgres/Key Value id-or-name operations with no bex-only flag or cleanup handshake. Focused REST/GraphQL/MCP regressions preserve their existing acknowledgement shapes while subsequent reads show `deleting` until the finalizer has proved required cleanup absent, then NotFound. Key Value connection-info returns conflict rather than a split credential during rollout. This is an operator/backend regression supplement, not a new live production CLI run; the previously graded unmodified-CLI delete rows remain the live-client evidence.
 - **OpenAPI request-boundary supplement (w7/m49):** the existing unmodified-v2.21.0 request fixtures across services, deploys, Postgres, Key Value, environment groups, projects, custom domains, jobs, registry credentials, and logs run through the authenticated 119-operation Render-contract intersection. Focused boundary tests also replay the accepted CLI-shaped bodies, compatibility defaults, and bex `dryRun`/`confirm` extensions while proving invalid input has no side effect. This is repository regression evidence, not a new live CLI run; the live grades below are unchanged. Bex deliberately rejects undeclared query/body input more strictly than Render's open schemas, as documented in [the OpenAPI boundary contract](render-artifacts/openapi-request-validation.md).
+- **Nested-image/delete-convergence correction (w5/m49, deployment pending):** production on 2026-07-20 proved that v2.21.0 serializes `image.ownerId:""` on both image create and image update. The OpenAPI gate accepted it, but the strict REST adapter rejected it; the same run found a repo service whose DELETE acknowledgement did not converge because a synchronous first-build wait, build-namespace RBAC gaps, and premature registry-credential revocation blocked finalization. Exact full-server and operator regressions plus the strengthened verifier now cover both failures locally. The three affected rows remain `~` until the fixed build is deployed, the original fixture is absent with zero residue, and fresh production GET-404/list-absence acceptance passes.
 - **Configured service pass:** a disposable local OpenBao plus auth-enabled persistent Zot augmented dev-9 for the second service run. It proved CLI env vars, secret files, create/update registry-credential binding, a genuinely private kubelet pull, and native cron commands.
 - **Postgres create supplement (w6/m38):** [`scripts/postgres-create-cli-smoke.sh`](../scripts/postgres-create-cli-smoke.sh) drove the same unmodified CLI against isolated **dev-6** and a real local CNPG cluster on **2026-07-18**. It proved both custom names, database-only and user-only independent defaults, the CR intent, generated Secret metadata, and `current_database()`/`current_user` inside PostgreSQL. It also proved that unsupported Datadog create/update flags fail with a named 400 and leave no resource behind.
 - **Postgres psql supplement (w7/m46):** [`scripts/psql-compat-verify.sh`](../scripts/psql-compat-verify.sh) drove Render's checksum-verified, unmodified v2.21.0 release against isolated **dev-7**, real CNPG, a configured `BEX_DB_DOMAIN`, and pg-sni-proxy on **2026-07-18**. Both opaque id and exact name executed `SELECT 1 AS bex_psql_probe;` through real `psql` 18.4 over the external TLS/SNI route; the caller's public `/32` passed the CLI's own allow-list gate, the absent-IP negative case was refused before connect, and the disposable database and local credential state were removed. Redacted markers and release hashes are in [the psql CLI artifact](render-artifacts/psql-cli.md).
@@ -136,7 +137,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--runtime` — round-trips (build not exercised in dev-9)
     - [x] `--repo` — round-trips (build not exercised)
     - [x] `--branch`
-    - [x] `--image`
+    - [~] `--image` — exact generated `image.ownerId:""` passes the composed local server; production re-acceptance pending w5/m49 rollout
     - [x] `--plan`
     - [~] `--region` — accepted; bex overwrites to `local-capd` (CLI enum rejects `local-capd` itself)
     - [x] `--num-instances`
@@ -168,7 +169,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [~] `--runtime` — upstream CLI guard; exits before any request (`cannot switch runtimes via the CLI`)
     - [x] `--repo`
     - [x] `--branch`
-    - [x] `--image`
+    - [~] `--image` — exact generated `image.ownerId:""` PATCH passes locally; production re-acceptance pending w5/m49 rollout
     - [x] `--build-command`
     - [x] `--start-command`
     - [x] `--pre-deploy-command`
@@ -187,7 +188,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--maintenance-mode-uri <string>`
     - [x] `--max-shutdown-delay <int>`
   - [x] `services instances <serviceID>` — decodes live pod ids; suspended service returns `[]`; unknown id fails not-found
-  - [x] `services delete <serviceID>` — returns the deleted record; cleanup then converges through the durable finalizer without a CLI workaround (w2/m61)
+  - [~] `services delete <serviceID>` — acknowledgement shape is unchanged; deterministic first-build deletion converges, but production re-acceptance and cleanup of the original stuck fixture remain pending w5/m49 rollout
 - [-] **`workflows`** — Render Workflows (deliberate bex non-goal; `GET /v1/workflows` is a `200 []` stub, everything else `404`/`405`/TTY-blocked)
   - [-] `workflows list` — returns empty from the stub (exit 0)
   - [-] `workflows create` — `405 Method Not Allowed`

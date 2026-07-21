@@ -253,13 +253,14 @@ func TestRESTRejectsUnsupportedOfficialCLIFieldsInsteadOfSilentlyDroppingThem(t 
 
 func TestRESTPatchAcceptsOfficialCLISourceFields(t *testing.T) {
 	app := sampleApp("web")
+	app.Labels = map[string]string{core.LabelTenant: "tea-cli"}
 	app.Spec.Branch = "main"
 	svc, cl := newService(nil, app)
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(`{"image":{"imagePath":"nginx:stable"},"branch":"release"}`)))
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(`{"image":{"imagePath":"nginx:stable","ownerId":""},"branch":"release"}`)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH image/branch = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -276,6 +277,42 @@ func TestRESTPatchAcceptsOfficialCLISourceFields(t *testing.T) {
 	got = getApp(t, cl, "web")
 	if got.Spec.Repo != "https://github.com/acme/api" || got.Spec.Image != "" || got.Spec.Branch != "next" {
 		t.Fatalf("repo source update = %+v", got.Spec)
+	}
+}
+
+func TestRESTPatchRejectsConflictingOrUnknownCLIImageFieldsWithoutMutation(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		body string
+	}{
+		{
+			name: "conflicting image owner",
+			body: `{"image":{"imagePath":"nginx:stable","ownerId":"tea-other"}}`,
+		},
+		{
+			name: "unknown nested image field",
+			body: `{"image":{"imagePath":"nginx:stable","ownerId":"","mystery":true}}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := sampleApp("web")
+			app.Labels = map[string]string{core.LabelTenant: "tea-cli"}
+			app.Spec.Image = "nginx:old"
+			svc, cl := newService(nil, app)
+			mux := http.NewServeMux()
+			svc.RegisterREST(mux)
+
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(tc.body))
+			req = req.WithContext(core.WithStrictJSONDecoding(req.Context()))
+			mux.ServeHTTP(rec, req)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("PATCH = %d, want 400: %s", rec.Code, rec.Body.String())
+			}
+			if got := getApp(t, cl, "web").Spec.Image; got != "nginx:old" {
+				t.Fatalf("rejected PATCH changed image to %q", got)
+			}
+		})
 	}
 }
 
