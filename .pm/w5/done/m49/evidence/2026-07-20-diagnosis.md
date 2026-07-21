@@ -1,6 +1,6 @@
 # m49 diagnosis and local regression evidence — 2026-07-20
 
-Status: local implementation and deterministic verification complete for the diagnosed paths; production deployment, original-fixture recovery, and final CLI acceptance remain pending.
+Status: complete. Deterministic regressions, production rollout, original-fixture recovery, unmodified-CLI acceptance, and cluster/Zot residue audits all passed.
 
 ## Official CLI wire contract
 
@@ -64,6 +64,41 @@ Passing deterministic checks at this evidence revision:
 
 The isolated dev-9 live verifier was not run: its local API and Hydra ports were offline, and its disposable CLI key/binary files were absent. This is recorded as unavailable rather than credited as acceptance.
 
-## Remaining production gate
+## Production rollout and two follow-up corrections
 
-Do not strip the original finalizer manually. After an authorized ship/deploy, the new controller must restore its per-App auth, prove build and Zot residue absent, revoke the credential, and remove the finalizer. Closeout additionally requires raw service GET 404, absence from `render services`, a fresh disposable image CRUD pass, an immediate first-build deletion pass within five minutes, and zero UID-scoped artifact inventory.
+The normal ship path produced four relevant fixes:
+
+- `dba95845` — nested official-CLI image ownership plus durable first-build cleanup/RBAC/registry retry changes.
+- `79ebf77e` — removed unused package-manager tooling from the dashboard runtime image after the deployment's CRITICAL CVE gate found the bundled npm `tar`; the rebuilt image passed the same gate and deployment run `29799796965` completed.
+- `927218c4` — accepted the official CLI's declared create-time `serviceDetails.region` in the strict decoder while continuing to normalize placement to the one configured platform region. Deployment run `29801075357` completed.
+- `857e49b9` — quiesced the App Ingress and cert-manager Certificate before deleting TLS Secrets, and corrected verifier classification of the official CLI's `{service: ...}` list wrapper. Deployment run `29802277256` completed.
+
+The last fix came from a production-only interaction found during the first post-rollout acceptance. Image create and update passed, but deletion reached the verifier's 300-second bound with `executionPending=false externalPending=true`. The App-owned Ingress and ingress-shim Certificate were still present while the finalizer deleted their TLS Secret, so cert-manager recreated the Secret on later passes. Kubernetes cannot garbage-collect those owner-referenced producers while the App finalizer remains. Finalization now observes an ordered Ingress → Certificate → Secret shutdown; the deterministic deletion test retains the finalizer until each previous stage is absent.
+
+The final production image was `ghcr.io/bex-co/bex-operator@sha256:03db349ef81942dad2904827185bf17912bd9658783d67c9b7b42ea878c96987`. `bex-controller-manager` was 1/1 Ready, `bex-api` was 2/2 Ready, and `https://api.bex.co/healthz` returned 200. Production's truthful configured region is `fsn1`; the official CLI may submit `frankfurt`, but bex never persists that caller hint as placement.
+
+## Original fixture recovery
+
+The original `srv-d9f9oalju7gs73fvngqg` / `cli-oapi-r-220737-u` fixture converged through the repaired finalizer without forced removal. Raw service GET returned 404, the raw list and unmodified CLI list omitted it, and its App CR was absent. Exact UID/name inventory was zero across App, Deployment, Service, Ingress, Pod, Secret, ServiceAccount, NetworkPolicy, CronJob, Job, PVC, kpack Image, and kpack Build resources in both the App and build namespaces. Its per-App pull Secrets, Zot htpasswd user, Zot repository ACL/user strings, and authenticated registry repository/tag read were also absent. No unrelated production resource was mutated.
+
+## Final unmodified-CLI acceptance
+
+The pinned, unmodified `render-oss/cli` v2.21.0 ran the complete baseline against `https://api.bex.co/v1/` with the explicit disposable-production gate. The final run used the sanitized prefix `cp-051218-12572` and passed all required legs:
+
+- image create/read, image update/read, and delete to raw GET 404 plus official-CLI list absence;
+- repo-backed native service creation followed immediately by delete during its first build, also converging inside the 300-second deadline;
+- full web, native cron, and static-site create/update readback;
+- explicit-region clone, honest bare-clone closed-enum rejection for `fsn1`, upstream runtime-update rejection, and bex preview-create/update rejection;
+- EXIT cleanup of every remaining fixture to GET 404 plus official-CLI list absence.
+
+The harness now supplies the official CLI's required native build/start commands on the immediate-delete fixture and recognizes both flat list items and the CLI's `{service: ...}` wrapper. One earlier run caught a transient immediate web read; the unchanged strict assertion passed on the complete repeat, and no retry was added that could mask wire drift.
+
+A second, independent production audit found zero matching objects across 19 App/workload/build/TLS/credential resource classes. The Zot htpasswd, repository ACL, and all config strings had zero prefix matches; a builder-authenticated `/v2/_catalog` returned zero repositories with the acceptance prefix. Tokens, passwords, kubeconfig data, full authenticated response bodies, and secret contents were never printed or retained.
+
+## Final gates
+
+- Backend: `go test ./...`, focused OpenAPI/Apps composition tests, lint, and race tests passed.
+- Operator: `make test`, `make lint`, `go test -race ./internal/build ./internal/controller`, focused deletion tests, and the CI operator workflow passed.
+- Verifier: Bash syntax, `services-parity-verify self-test`, required-leg census, wrapper classification, timeout/leak/redaction controls, and the production baseline passed.
+- Supply chain/deploy: secret scan, image signing/SBOM, operator and dashboard CRITICAL CVE gates, GitOps write-back, and production rollout passed in run `29802277256`.
+- Formatting: Prettier 3.4.2 and `git diff --check` pass at closeout.

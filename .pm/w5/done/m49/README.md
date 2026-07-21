@@ -1,6 +1,6 @@
 # w5 · m49 — Official Render CLI service CRUD: nested image ownership + deletion convergence
 
-**Worker:** worker5 **Goal:** Make the unmodified official Render CLI's image-backed service create/update path conform to Render's OpenAPI contract, and restore residue-free, observably bounded service deletion when a repo-backed service is deleted during its first build. **Status:** todo (t001–t002 done)
+**Worker:** worker5 **Goal:** Make the unmodified official Render CLI's image-backed service create/update path conform to Render's OpenAPI contract, and restore residue-free, observably bounded service deletion when a repo-backed service is deleted during its first build. **Status:** done (2026-07-21 UTC — unmodified CLI v2.21.0 passed production image CRUD and immediate first-build deletion; original and acceptance fixtures were API/list absent with zero cluster/Zot residue)
 
 ## Tasks (in order)
 
@@ -8,13 +8,13 @@
 | --- | --- | --- | --- |
 | t001 | Pin the official CLI's exact image create/update wire contract and reproduce the adapter drift — **DONE** | 30m | — |
 | t002 | Accept and authorize nested `image.ownerId` on service create and patch — **DONE** | 45m | t001 |
-| t003 | Diagnose the production deletion stall and safely retire its exact fixture | 45m | t002 |
-| t004 | Restore finalizer convergence for delete-during-first-build | 60m | t003 |
-| t005 | Extend the service CRUD verifier and pass production CLI acceptance | 60m | t004 |
-| t006 | Render parity: reconcile image and deletion semantics across REST/GraphQL/MCP/UI | 30m | t005 |
-| t007 | Simplify the REST image model, cleanup state machine, and verifier | 30m | t006 |
-| t008 | Complete exact-payload, finalizer-failure, and verifier regression coverage | 45m | t006 |
-| t009 | Closeout | 15m | t007, t008 |
+| t003 | Diagnose the production deletion stall and safely retire its exact fixture — **DONE** | 45m | t002 |
+| t004 | Restore finalizer convergence for delete-during-first-build — **DONE** | 60m | t003 |
+| t005 | Extend the service CRUD verifier and pass production CLI acceptance — **DONE** | 60m | t004 |
+| t006 | Render parity: reconcile image and deletion semantics across REST/GraphQL/MCP/UI — **DONE** | 30m | t005 |
+| t007 | Simplify the REST image model, cleanup state machine, and verifier — **DONE** | 30m | t006 |
+| t008 | Complete exact-payload, finalizer-failure, and verifier regression coverage — **DONE** | 45m | t006 |
+| t009 | Closeout — **DONE** | 15m | t007, t008 |
 
 ## Definition of done
 
@@ -26,6 +26,14 @@ Against the deployed production API, the unmodified official Render CLI v2.21.0 
 - A short repo-backed fixture successfully completed CLI create, update, readback, and DELETE acknowledgement. After DELETE, deploy and instance reads were empty, but direct GET and eight repeated list reads still returned the App in phase `Deleting` several minutes later. This is not a replica-cache observation.
 - Production diagnosis localized the stall to three compounding mechanisms: the first reconcile synchronously polled its build Job for the full 20-minute timeout and could not observe the deletion update; the `bex-build-credentials` Role could delete but not list Secrets/ServiceAccounts and could not delete Pods; and registry cleanup fell back to anonymous because the configured shared push Secret was absent. The old finalizer then revoked the per-App Zot credential despite those failures, removing the least-privilege authority needed to retry. Local m49 changes interrupt the build wait, close only the namespaced RBAC gaps, restore/activate per-App cleanup auth, persist the registry-absence stage, and sequence revocation last. Production recovery remains pending the normal ship/deploy path.
 - The deletion result conflicts with completed `w2/m61`'s residue-free finalizer acceptance. This milestone is a focused post-m61 production regression investigation, not a duplicate of the earlier operator audit.
+
+## Completion record
+
+- **Exact CLI contract:** the REST-only model accepts Render's required nested `image.ownerId`, resolves it to the same authorized workspace, retains strict unknown-field rejection, and leaves GraphQL/MCP/UI on the one shared core owner. Production image create and update passed through the unmodified CLI.
+- **Deletion convergence:** first-build polling is deletion-aware; build inventory RBAC is scoped and sufficient; registry authority is repaired, retained until repository absence, and revoked last; Ingress and cert-manager Certificate producers are observed absent before TLS Secret cleanup. The finalizer still retains on pending/error stages.
+- **Production recovery:** the original `srv-d9f9oalju7gs73fvngqg` fixture converged without forced finalizer removal. Its API/list, UID-scoped Kubernetes/build/TLS/credential inventory, Zot identity/ACL, and registry repository were absent.
+- **Acceptance:** deployment run `29802277256` shipped digest `sha256:03db349ef81942dad2904827185bf17912bd9658783d67c9b7b42ea878c96987`. The full v2.21.0 baseline passed image CRUD, immediate repo-build delete, web/cron/static create+update, clone/region guards, runtime/preview guards, and trap cleanup. The final prefix had zero matches across 19 cluster resource classes and the authenticated Zot catalog.
+- **Quality:** backend/operator full tests, lint, focused race suites, shell verifier/self-tests, CI supply-chain gates, production rollout, Prettier 3.4.2, and `git diff --check` passed. Sanitized detail is in [`evidence/2026-07-20-diagnosis.md`](evidence/2026-07-20-diagnosis.md).
 
 ## Source + Goal linkage
 
