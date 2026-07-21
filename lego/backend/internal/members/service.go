@@ -151,10 +151,11 @@ type RoleRevoker interface {
 	RevokeWorkspaceMember(ctx context.Context, tenantID, subject, relation string) error
 }
 
-// Mailer delivers a plain-text email — the seam over SMTP so this feature stays
-// transport-free and testable. Injected by the composition root.
+// Mailer delivers an email with a plain-text body and an optional HTML
+// alternative — the seam over SMTP so this feature stays transport-free and
+// testable. Injected by the composition root; mailer.SMTP satisfies it.
 type Mailer interface {
-	Send(ctx context.Context, to, subject, body string) error
+	Send(ctx context.Context, to, subject, text, html string) error
 }
 
 // MemberView is the neutral projection of an accepted member. Subject is the

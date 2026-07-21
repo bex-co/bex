@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/email"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -174,16 +175,19 @@ func (f *fakeWorkerStore) DisableWebhookEndpoint(_ context.Context, id, reason s
 	return nil
 }
 
-// fakeMailer records sends.
+// fakeMailer records sends, keeping the last text body for content assertions.
 type fakeMailer struct {
-	mu    sync.Mutex
-	sends []string // "to: subject"
+	mu       sync.Mutex
+	sends    []string // "to: subject"
+	lastText string
+	lastHTML string
 }
 
-func (f *fakeMailer) Send(_ context.Context, to, subject, _ string) error {
+func (f *fakeMailer) Send(_ context.Context, to, subject, text, html string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.sends = append(f.sends, to+": "+subject)
+	f.lastText, f.lastHTML = text, html
 	return nil
 }
 
@@ -475,6 +479,17 @@ func TestFailingEndpointRetriesOnScheduleThenDisablesAndEmails(t *testing.T) {
 	if d.AttemptCount != 3 || mailer.count() != 1 {
 		t.Fatalf("after attempt 3: %+v, emails %d (want the 3rd-failure notice)", d, mailer.count())
 	}
+	// The failing notice carries the same sentences as before, with "Last error:"
+	// as its own paragraph, and a branded HTML alternative.
+	if !strings.Contains(mailer.lastText, "times in a row.") {
+		t.Errorf("failing notice text missing the failure-count sentence:\n%s", mailer.lastText)
+	}
+	if !strings.Contains(mailer.lastText, "\n\nLast error: ") {
+		t.Errorf("failing notice text should carry Last error on its own paragraph:\n%s", mailer.lastText)
+	}
+	if !strings.Contains(mailer.lastHTML, "Last error:") || !strings.Contains(mailer.lastHTML, email.BrandPrimary) {
+		t.Errorf("failing notice HTML should be branded and carry Last error:\n%s", mailer.lastHTML)
+	}
 
 	// Attempt 4 (= initial + 3 retries) exhausts the schedule: the delivery
 	// fails terminally, the endpoint is disabled, and the disable notice goes
@@ -491,6 +506,13 @@ func TestFailingEndpointRetriesOnScheduleThenDisablesAndEmails(t *testing.T) {
 	}
 	if mailer.count() != 2 {
 		t.Errorf("emails = %d, want 2 (3rd-failure notice + disable notice)", mailer.count())
+	}
+	// The disable notice's sentences are intact across both bodies.
+	if !strings.Contains(mailer.lastText, "the endpoint has been disabled.") {
+		t.Errorf("disable notice text missing the disabled sentence:\n%s", mailer.lastText)
+	}
+	if !strings.Contains(mailer.lastHTML, "No further events will be sent") {
+		t.Errorf("disable notice HTML missing the re-enable guidance:\n%s", mailer.lastHTML)
 	}
 
 	// Disabled endpoint: nothing further is attempted.

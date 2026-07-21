@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>{{.Title}}</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:@background@;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:@background@;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+            <tr>
+              <td style="background-color:@card@;border:1px solid @border@;border-radius:@radius@px;padding:32px;text-align:left;">
+                <p style="margin:0;font-family:@font@;font-size:22px;font-weight:700;color:@primary@;">bex.co</p>
+                {{if .Title}}<p style="margin:24px 0 0;font-family:@font@;font-size:18px;font-weight:600;color:@foreground@;">{{.Title}}</p>{{end}}
+                {{range .Paragraphs}}<p style="margin:16px 0 0;font-family:@font@;font-size:14px;line-height:22px;color:@foreground@;">{{range $i, $line := .}}{{if $i}}<br />{{end}}{{$line}}{{end}}</p>{{end}}
+                {{with .Reference}}
+                <p style="margin:16px 0 0;font-family:@font@;font-size:14px;line-height:22px;color:@foreground@;">{{.Label}}{{if .Token}} {{if .URL}}<a href="{{.URL}}" style="color:@primary@;font-weight:600;text-decoration:none;">{{.Token}}</a>{{else}}{{.Token}}{{end}}{{end}}</p>
+                {{if .Desc}}<p style="margin:4px 0 0;font-family:@font@;font-size:14px;line-height:22px;color:@mutedfg@;">{{range $i, $line := .Desc}}{{if $i}}<br />{{end}}{{$line}}{{end}}</p>{{end}}
+                {{end}}
+                {{with .CTA}}
+                <p style="margin:16px 0 0;font-family:@font@;font-size:14px;line-height:22px;color:@foreground@;">{{.Lead}}:</p>
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0 0;">
+                  <tr>
+                    <td style="background-color:@primary@;border-radius:@radius@px;">
+                      <a href="{{.URL}}" style="display:inline-block;padding:10px 20px;font-family:@font@;font-size:14px;font-weight:600;color:@primaryfg@;text-decoration:none;">{{.Label}}</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:12px 0 0;font-family:@font@;font-size:12px;line-height:18px;color:@mutedfg@;word-break:break-all;">Or open this link: <a href="{{.URL}}" style="color:@primary@;">{{.URL}}</a></p>
+                {{end}}
+                {{if .Footer}}
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0 0;border-top:1px solid @border@;">
+                  <tr>
+                    <td style="padding-top:16px;">
+                      {{range .Footer}}<p style="margin:0 0 4px;font-family:@font@;font-size:12px;line-height:18px;color:@mutedfg@;">{{range $i, $line := .}}{{if $i}}<br />{{end}}{{$line}}{{end}}</p>{{end}}
+                    </td>
+                  </tr>
+                </table>
+                {{end}}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 8px 0;text-align:center;">
+                <p style="margin:0;font-family:@font@;font-size:12px;color:@mutedfg@;">Sent by bex.co</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

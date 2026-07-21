@@ -1,0 +1,176 @@
+// generate-email-brand.mjs — projects the dashboard palette (src/style.css
+// :root, light theme) into lego/backend/internal/email/brand_gen.go, the brand
+// constants bex-api's email layout inlines.
+//
+// Email clients support neither CSS custom properties nor oklch(), so the
+// tokens are converted here: oklch() -> sRGB hex (Björn Ottosson's OKLab
+// transform, the same math the browser applies), --radius rem -> px at the
+// root 16px em size. The Go file is generated-and-committed because lego/ is
+// a self-contained build context (its Docker build never sees dashboard/).
+//
+// Usage:
+//   yarn generate:email-brand          # rewrite brand_gen.go from style.css
+//   node scripts/generate-email-brand.mjs --check   # exit 1 on drift (CI)
+//
+// scripts/__tests__/generate-email-brand.test.mjs runs the --check comparison
+// under vitest, so dashboard CI fails when style.css changes without a regen.
+
+import { readFileSync, writeFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+
+export const STYLE_CSS = new URL("../src/style.css", import.meta.url);
+export const BRAND_GO = new URL(
+  "../../lego/backend/internal/email/brand_gen.go",
+  import.meta.url,
+);
+
+// CSS custom property (first match in style.css = the light :root block; the
+// file's later blocks only reference these via var()) -> Go constant name.
+export const COLOR_TOKENS = [
+  ["background", "BrandBackground"],
+  ["card", "BrandCard"],
+  ["foreground", "BrandForeground"],
+  ["muted", "BrandMuted"],
+  ["muted-foreground", "BrandMutedForeground"],
+  ["primary", "BrandPrimary"],
+  ["primary-foreground", "BrandPrimaryForeground"],
+  ["border", "BrandBorder"],
+  ["destructive", "BrandDestructive"],
+];
+
+// oklchToHex converts an oklch(L C H) triple to a #rrggbb sRGB hex string:
+// OKLCh -> OKLab -> LMS -> linear sRGB (Ottosson's matrices) -> gamma-encoded
+// sRGB, clamped to gamut.
+export function oklchToHex(l, c, h) {
+  const hr = (h * Math.PI) / 180;
+  const a = c * Math.cos(hr);
+  const b = c * Math.sin(hr);
+  const l_ = l + 0.3963377774 * a + 0.2158037573 * b;
+  const m_ = l - 0.1055613458 * a - 0.0638541728 * b;
+  const s_ = l - 0.0894841775 * a - 1.291485548 * b;
+  const L = l_ ** 3;
+  const M = m_ ** 3;
+  const S = s_ ** 3;
+  const linear = [
+    4.0767416621 * L - 3.3077115913 * M + 0.2309699292 * S,
+    -1.2684380046 * L + 2.6097574011 * M - 0.3413193965 * S,
+    -0.0041960863 * L - 0.7034186147 * M + 1.707614701 * S,
+  ];
+  const channels = linear.map((v) => {
+    const encoded =
+      v <= 0.0031308 ? 12.92 * v : 1.055 * Math.max(v, 0) ** (1 / 2.4) - 0.055;
+    const clamped = Math.min(1, Math.max(0, encoded));
+    return Math.round(clamped * 255)
+      .toString(16)
+      .padStart(2, "0");
+  });
+  return "#" + channels.join("");
+}
+
+// parseTokens extracts the email-relevant tokens from style.css source.
+export function parseTokens(css) {
+  const colors = COLOR_TOKENS.map(([cssVar, goName]) => {
+    const m = css.match(new RegExp(`--${cssVar}:\\s*oklch\\(([^)]+)\\)`));
+    if (!m) throw new Error(`style.css: no oklch value for --${cssVar}`);
+    const [l, c, h = 0] = m[1].trim().split(/\s+/).map(Number);
+    if ([l, c, h].some(Number.isNaN))
+      throw new Error(`style.css: unparsable --${cssVar}: oklch(${m[1]})`);
+    return {
+      cssVar,
+      goName,
+      raw: `oklch(${m[1].trim()})`,
+      hex: oklchToHex(l, c, h),
+    };
+  });
+
+  const radius = css.match(/--radius:\s*([0-9.]+)rem/);
+  if (!radius) throw new Error("style.css: no --radius rem value");
+  const radiusPx = Math.round(Number(radius[1]) * 16);
+
+  const font = css.match(/font-family:\s*([^;]+);/);
+  if (!font) throw new Error("style.css: no font-family declaration");
+  const fontFamily = font[1].trim();
+
+  return { colors, radiusPx, fontFamily, radiusRem: radius[1] };
+}
+
+// renderGo emits the generated Go source. The output must be gofmt-clean as
+// emitted — dashboard CI has no Go toolchain to reformat it (values are
+// column-aligned the way gofmt aligns adjacent const specs).
+export function renderGo({ colors, radiusPx, fontFamily, radiusRem }) {
+  const width = Math.max(...colors.map((c) => c.goName.length));
+  const lines = colors
+    .map(
+      (c) =>
+        `\t${c.goName.padEnd(width)} = "${c.hex}" // --${c.cssVar}: ${c.raw}`,
+    )
+    .join("\n");
+  return `/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+// Code generated by dashboard/scripts/generate-email-brand.mjs from dashboard/src/style.css. DO NOT EDIT.
+
+package email
+
+// The dashboard palette (dashboard/src/style.css :root, light theme — which
+// itself mirrors eden-cms-v2) converted to email-safe values: email clients
+// support neither CSS custom properties nor oklch(), so each token is baked
+// to sRGB hex. Regenerate with \`yarn generate:email-brand\` from dashboard/;
+// the dashboard test suite fails when this file drifts from style.css.
+const (
+${lines}
+)
+
+const (
+	// BrandFontFamily is the dashboard's font stack — already an email-safe
+	// set (system-ui with universal fallbacks).
+	BrandFontFamily = "${fontFamily}"
+	// BrandRadiusPx is --radius (${radiusRem}rem) at the root 16px em size.
+	BrandRadiusPx = ${radiusPx}
+)
+`;
+}
+
+export function generate(css) {
+  return renderGo(parseTokens(css));
+}
+
+function main() {
+  const css = readFileSync(STYLE_CSS, "utf8");
+  const want = generate(css);
+  if (process.argv.includes("--check")) {
+    let got = "";
+    try {
+      got = readFileSync(BRAND_GO, "utf8");
+    } catch {
+      // missing file is drift
+    }
+    if (got !== want) {
+      console.error(
+        "brand_gen.go is out of date with src/style.css — run `yarn generate:email-brand`",
+      );
+      process.exit(1);
+    }
+    console.log("brand_gen.go is in sync with src/style.css");
+    return;
+  }
+  writeFileSync(BRAND_GO, want);
+  console.log(`wrote ${BRAND_GO.pathname}`);
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}
