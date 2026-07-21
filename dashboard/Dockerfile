@@ -40,6 +40,14 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
+# The server only needs the Node runtime. Drop npm/corepack from the final
+# image so their unused dependency trees do not add executable attack surface
+# (npm bundled a vulnerable node-tar even though the app lockfile was fixed).
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+      /opt/yarn-v1.22.22 && \
+    rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+      /usr/local/bin/yarn /usr/local/bin/yarnpkg /usr/local/bin/pnpm /usr/local/bin/pnpx
+
 # Copy built output — owned by the non-root `node` user node:22-alpine ships
 # (readOnlyRootFilesystem: false in dashboard/deploy lets it write its cache).
 COPY --from=builder --chown=node:node /app/.output ./.output
