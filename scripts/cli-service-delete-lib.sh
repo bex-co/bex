@@ -31,7 +31,7 @@ classify_service_list_response() {
   local response_file="$1" id="$2"
   if ! jq -e '. == null or type == "array"' "$response_file" >/dev/null 2>&1; then
     SERVICE_LIST_STATE="error"
-  elif jq -e --arg id "$id" '(. // []) | any(.id == $id)' "$response_file" >/dev/null 2>&1; then
+  elif jq -e --arg id "$id" '(. // []) | any((.service // .).id == $id)' "$response_file" >/dev/null 2>&1; then
     SERVICE_LIST_STATE="present"
   else
     SERVICE_LIST_STATE="absent"

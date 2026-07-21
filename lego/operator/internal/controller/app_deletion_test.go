@@ -23,8 +23,10 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -57,6 +59,7 @@ func deletionScheme(t *testing.T) *runtime.Scheme {
 	if err := appv1alpha1.AddToScheme(scheme); err != nil {
 		t.Fatal(err)
 	}
+	scheme.AddKnownTypeWithName(certManagerCertificateGVK, &unstructured.Unstructured{})
 	return scheme
 }
 
@@ -161,6 +164,66 @@ func TestAppDeletionRemovesHistoricalTLSSecretBeforeFinalizer(t *testing.T) {
 	}
 	if err := cl.Get(context.Background(), nn, &appv1alpha1.App{}); !apierrors.IsNotFound(err) {
 		t.Fatalf("App remained after TLS absence was proven: %v", err)
+	}
+}
+
+func TestAppDeletionQuiescesIngressAndCertificateBeforeTLSSecret(t *testing.T) {
+	app := deletionApp("tls-live")
+	app.Annotations = map[string]string{annotTLSSecretHistory: `["tls-live-tls"]`}
+	ingress := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
+	certificate := &unstructured.Unstructured{}
+	certificate.SetGroupVersionKind(certManagerCertificateGVK)
+	certificate.SetName("tls-live-tls")
+	certificate.SetNamespace(app.Namespace)
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "tls-live-tls", Namespace: app.Namespace}}
+	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(app, ingress, certificate, secret).
+		WithStatusSubresource(&appv1alpha1.App{}).Build()
+	r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes, ClusterIssuer: "letsencrypt-prod"}
+	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+	req := reconcile.Request{NamespacedName: nn}
+
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(ingress), &networkingv1.Ingress{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("Ingress survived first cleanup stage: %v", err)
+	}
+	firstCertificateProbe := &unstructured.Unstructured{}
+	firstCertificateProbe.SetGroupVersionKind(certManagerCertificateGVK)
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(certificate), firstCertificateProbe); err != nil {
+		t.Fatalf("Certificate removed before Ingress absence was observed: %v", err)
+	}
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(secret), &corev1.Secret{}); err != nil {
+		t.Fatalf("TLS Secret removed while its producer was live: %v", err)
+	}
+
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	probeCertificate := &unstructured.Unstructured{}
+	probeCertificate.SetGroupVersionKind(certManagerCertificateGVK)
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(certificate), probeCertificate); !apierrors.IsNotFound(err) {
+		t.Fatalf("Certificate survived second cleanup stage: %v", err)
+	}
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(secret), &corev1.Secret{}); err != nil {
+		t.Fatalf("TLS Secret removed before Certificate absence was observed: %v", err)
+	}
+
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(secret), &corev1.Secret{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("TLS Secret survived producer shutdown: %v", err)
+	}
+	if err := cl.Get(context.Background(), nn, &appv1alpha1.App{}); err != nil {
+		t.Fatal("finalizer released before TLS Secret absence was observed")
+	}
+
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(context.Background(), nn, &appv1alpha1.App{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("App survived ordered TLS teardown: %v", err)
 	}
 }
 
