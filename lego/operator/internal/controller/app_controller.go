@@ -2941,9 +2941,17 @@ func (r *AppReconciler) reclaimAppExecution(ctx context.Context, app *appv1alpha
 func (r *AppReconciler) reclaimAppExternalArtifacts(ctx context.Context, app *appv1alpha1.App, namespace string, cl client.Client) (bool, error) {
 	var errs []error
 	pending := false
-	tlsDone, err := r.deleteTLSSecrets(ctx, app)
-	pending = pending || !tlsDone
+	// Stop the Ingress/cert-manager producers before deleting their TLS Secret.
+	// Otherwise ingress-shim can recreate the Secret on every finalizer pass and
+	// make an otherwise residue-free image service wait indefinitely.
+	tlsProducersDone, err := r.quiesceTLSProducers(ctx, app)
+	pending = pending || !tlsProducersDone
 	errs = append(errs, err)
+	if tlsProducersDone {
+		tlsDone, tlsErr := r.deleteTLSSecrets(ctx, app)
+		pending = pending || !tlsDone
+		errs = append(errs, tlsErr)
+	}
 	if app.Spec.Type == appv1alpha1.TypeStaticSite {
 		if !r.StaticStore.Configured() {
 			errs = append(errs, fmt.Errorf("static purge configuration is unavailable"))
@@ -3066,6 +3074,48 @@ func tlsSecretHistory(app *appv1alpha1.App) []string {
 		_ = json.Unmarshal([]byte(raw), &names)
 	}
 	return names
+}
+
+// quiesceTLSProducers removes the current Ingress and its ingress-shim
+// Certificates before TLS Secret cleanup. Kubernetes does not garbage-collect
+// App-owned children while the App's finalizer is still present, so relying on
+// owner references here creates a cycle: the finalizer waits for the Secret,
+// while the live Certificate keeps recreating it. Each stage is observed absent
+// on a later pass before the next one starts.
+func (r *AppReconciler) quiesceTLSProducers(ctx context.Context, app *appv1alpha1.App) (bool, error) {
+	ingress := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
+	ingressDone, err := deleteAndWait(ctx, r.Client, ingress)
+	if err != nil {
+		return false, fmt.Errorf("delete TLS Ingress: %w", err)
+	}
+	if !ingressDone {
+		return false, nil
+	}
+	if r.ClusterIssuer == "" {
+		return true, nil
+	}
+
+	var errs []error
+	pending := false
+	names := make(map[string]struct{})
+	for _, name := range tlsSecretHistory(app) {
+		names[name] = struct{}{}
+	}
+	for idx, host := range effectiveHosts(app, r.BaseDomain) {
+		names[tlsSecretName(app.Name, idx, host)] = struct{}{}
+	}
+	for name := range names {
+		certificate := &unstructured.Unstructured{}
+		certificate.SetGroupVersionKind(certManagerCertificateGVK)
+		certificate.SetName(name)
+		certificate.SetNamespace(app.Namespace)
+		done, deleteErr := deleteAndWait(ctx, r.Client, certificate)
+		pending = pending || !done
+		if deleteErr != nil {
+			errs = append(errs, fmt.Errorf("delete TLS Certificate %s: %w", name, deleteErr))
+		}
+	}
+	return !pending, errors.Join(errs...)
 }
 
 func (r *AppReconciler) deleteTLSSecrets(ctx context.Context, app *appv1alpha1.App) (bool, error) {

@@ -36,6 +36,9 @@ classify_service_list_response "$LIST_FIXTURE" srv-test
 printf '%s' '[{"id":"srv-test"}]' >"$LIST_FIXTURE"
 classify_service_list_response "$LIST_FIXTURE" srv-test
 [ "$SERVICE_LIST_STATE" = present ] || { echo "FAIL: CLI list fixture did not detect the service" >&2; exit 1; }
+printf '%s' '[{"service":{"id":"srv-test"}}]' >"$LIST_FIXTURE"
+classify_service_list_response "$LIST_FIXTURE" srv-test
+[ "$SERVICE_LIST_STATE" = present ] || { echo "FAIL: wrapped official-CLI list fixture did not detect the service" >&2; exit 1; }
 printf '%s' '[]' >"$LIST_FIXTURE"
 classify_service_list_response "$LIST_FIXTURE" srv-test
 [ "$SERVICE_LIST_STATE" = absent ] || { echo "FAIL: empty CLI list was not treated as absence" >&2; exit 1; }
