@@ -203,7 +203,8 @@ complete_leg image-delete
 
 DELETE_BUILD_ID="$("$RENDER_BIN" services create --name "$DELETE_BUILD_NAME" --type web_service \
   --repo https://github.com/render-examples/go-gin.git --branch main --runtime go \
-  --region frankfurt --plan starter --confirm -o json | service_id)"
+  --region frankfurt --plan starter --build-command "go build ./..." \
+  --start-command ./server --confirm -o json | service_id)"
 remember "$DELETE_BUILD_ID" "$DELETE_BUILD_NAME"
 "$RENDER_BIN" services delete "$DELETE_BUILD_ID" --confirm -o json >/dev/null
 wait_service_gone "$DELETE_BUILD_ID" "$DELETE_BUILD_NAME"
