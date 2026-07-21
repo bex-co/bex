@@ -245,17 +245,49 @@ func (g *fakeGranter) Check(_ context.Context, subject, relation, object string)
 	return g.tuples[key(relation, tenantID, subject)], nil
 }
 
-// fakeMailer records the last message.
+// fakeMailer records the last message. body holds the plain-text part (the
+// resend test asserts the fresh token appears in it).
 type fakeMailer struct {
-	to, subject, body string
-	calls             int
-	err               error
+	to, subject, body, html string
+	calls                   int
+	err                     error
 }
 
-func (m *fakeMailer) Send(_ context.Context, to, subject, body string) error {
+func (m *fakeMailer) Send(_ context.Context, to, subject, text, html string) error {
 	m.calls++
-	m.to, m.subject, m.body = to, subject, body
+	m.to, m.subject, m.body, m.html = to, subject, text, html
 	return m.err
+}
+
+// TestInviteMessageTextByteParity pins the plain-text invite to the exact bytes
+// the pre-w1/m54 inviteBody produced, so the move to email.Message changed
+// nothing text-only clients see. It also checks the HTML alternative carries the
+// redeemable link.
+func TestInviteMessageTextByteParity(t *testing.T) {
+	exp := time.Date(2026, 1, 2, 15, 4, 0, 0, time.UTC)
+	inv := store.Invite{Email: "new@example.com", Role: "DEVELOPER", Token: "tok123", ExpiresAt: exp}
+	tenant := store.Tenant{Name: "Acme"}
+
+	linked := &Service{InviteBaseURL: "https://dash.example/"}
+	wantLinked := "You've been invited to join the \"Acme\" workspace on bex as a developer.\n\n" +
+		"Sign up or log in with new@example.com to accept:\n" +
+		"https://dash.example/auth/sign-up?invite=tok123\n\n" +
+		"This invitation expires on 2026-01-02 15:04 UTC.\n"
+	if got := linked.inviteMessage(inv, tenant).Text(); got != wantLinked {
+		t.Errorf("linked invite text drift:\n got %q\nwant %q", got, wantLinked)
+	}
+
+	linkless := &Service{}
+	wantLinkless := "You've been invited to join the \"Acme\" workspace on bex as a developer.\n\n" +
+		"Sign up or log in with new@example.com to accept the invitation.\n\n" +
+		"This invitation expires on 2026-01-02 15:04 UTC.\n"
+	if got := linkless.inviteMessage(inv, tenant).Text(); got != wantLinkless {
+		t.Errorf("linkless invite text drift:\n got %q\nwant %q", got, wantLinkless)
+	}
+
+	if html := linked.inviteMessage(inv, tenant).HTML(); !strings.Contains(html, "https://dash.example/auth/sign-up?invite=tok123") {
+		t.Error("HTML invite missing the redeemable link")
+	}
 }
 
 // denyChecker refuses every check — the non-admin caller.

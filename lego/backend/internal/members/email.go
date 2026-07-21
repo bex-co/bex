@@ -22,6 +22,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/bex-co/bex/lego/backend/internal/email"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -36,26 +37,40 @@ func (s *Service) sendInvite(ctx context.Context, inv store.Invite, tenant store
 		return
 	}
 	subject := fmt.Sprintf("You've been invited to the %q workspace on bex", tenant.Name)
-	if err := s.Mailer.Send(ctx, inv.Email, subject, s.inviteBody(inv, tenant)); err != nil {
+	msg := s.inviteMessage(inv, tenant)
+	if err := s.Mailer.Send(ctx, inv.Email, subject, msg.Text(), msg.HTML()); err != nil {
 		log.Printf("members: sending invite %s to %s: %v", inv.ID, inv.Email, err)
 	}
 }
 
-// inviteBody is the plain-text invite. It names the workspace and role, and —
-// when an InviteBaseURL is configured — links to the dashboard to sign up / log
-// in. The token in the link is redeemable directly (AcceptInvite, w1/m33), so
-// the invite works even when the recipient signs up under a different email;
-// email-match acceptance on login remains the linkless fallback.
-func (s *Service) inviteBody(inv store.Invite, tenant store.Tenant) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "You've been invited to join the %q workspace on bex as a %s.\n\n",
-		tenant.Name, strings.ToLower(inv.Role))
-	if base := strings.TrimSuffix(s.InviteBaseURL, "/"); base != "" {
-		fmt.Fprintf(&b, "Sign up or log in with %s to accept:\n%s/auth/sign-up?invite=%s\n\n",
-			inv.Email, base, inv.Token)
-	} else {
-		fmt.Fprintf(&b, "Sign up or log in with %s to accept the invitation.\n\n", inv.Email)
+// inviteMessage composes the invite as an email.Message. It names the workspace
+// and role, and — when an InviteBaseURL is configured — offers a dashboard
+// sign-up/log-in call to action. The token in the link is redeemable directly
+// (AcceptInvite, w1/m33), so the invite works even when the recipient signs up
+// under a different email; email-match acceptance on login remains the linkless
+// fallback. Message.Text() reproduces the exact bytes of the pre-w1/m54
+// plain-text body (pinned by TestInviteMessageTextByteParity).
+func (s *Service) inviteMessage(inv store.Invite, tenant store.Tenant) email.Message {
+	m := email.Message{
+		Title: "Workspace invitation",
+		Paragraphs: []string{
+			fmt.Sprintf("You've been invited to join the %q workspace on bex as a %s.",
+				tenant.Name, strings.ToLower(inv.Role)),
+		},
+		Footer: []string{
+			fmt.Sprintf("This invitation expires on %s.",
+				inv.ExpiresAt.UTC().Format("2006-01-02 15:04 UTC")),
+		},
 	}
-	fmt.Fprintf(&b, "This invitation expires on %s.\n", inv.ExpiresAt.UTC().Format("2006-01-02 15:04 UTC"))
-	return b.String()
+	if base := strings.TrimSuffix(s.InviteBaseURL, "/"); base != "" {
+		m.CTA = &email.CTA{
+			Lead:  fmt.Sprintf("Sign up or log in with %s to accept", inv.Email),
+			Label: "Accept invitation",
+			URL:   fmt.Sprintf("%s/auth/sign-up?invite=%s", base, inv.Token),
+		}
+	} else {
+		m.Paragraphs = append(m.Paragraphs,
+			fmt.Sprintf("Sign up or log in with %s to accept the invitation.", inv.Email))
+	}
+	return m
 }

@@ -17,6 +17,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "codegen": "graphql-codegen --config codegen.ts",
+    "generate:email-brand": "node scripts/generate-email-brand.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

@@ -31,6 +31,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/email"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/netutil"
@@ -121,11 +122,11 @@ type WorkerStore interface {
 	DisableWebhookEndpoint(ctx context.Context, id, reason string) error
 }
 
-// Mailer sends the failure-notice email — the notifications feature's seam
-// shape. nil => notices are logged, not mailed (BEX_SMTP_* unset; the w4/m7
-// graceful-skip pattern).
+// Mailer sends the failure-notice email (text + optional HTML alternative) —
+// the notifications feature's seam shape. nil => notices are logged, not mailed
+// (BEX_SMTP_* unset; the w4/m7 graceful-skip pattern).
 type Mailer interface {
-	Send(ctx context.Context, to, subject, body string) error
+	Send(ctx context.Context, to, subject, text, html string) error
 }
 
 // EmailLookup resolves a caller subject to a verified email address. nil (or
@@ -474,14 +475,23 @@ func (w *Worker) notifyFailure(ctx context.Context, d store.DueWebhookDelivery, 
 		return
 	}
 	subject := fmt.Sprintf("[bex] webhook %q is failing to deliver", d.EndpointName)
-	body := fmt.Sprintf(
-		"Deliveries to your webhook %q (%s) have failed %d times in a row.\n\nLast error: %s\n\nbex will keep retrying on an exponential backoff.",
-		d.EndpointName, d.URL, emailAfterFailures, d.LastError)
+	msg := email.Message{
+		Title: "Webhook delivery failing",
+		Paragraphs: []string{
+			fmt.Sprintf("Deliveries to your webhook %q (%s) have failed %d times in a row.", d.EndpointName, d.URL, emailAfterFailures),
+			fmt.Sprintf("Last error: %s", d.LastError),
+			"bex will keep retrying on an exponential backoff.",
+		},
+	}
 	if final {
 		subject = fmt.Sprintf("[bex] webhook %q was disabled after repeated failures", d.EndpointName)
-		body = fmt.Sprintf(
-			"Deliveries to your webhook %q (%s) kept failing after every retry, and the endpoint has been disabled.\n\nNo further events will be sent until you re-enable it from the dashboard or API.",
-			d.EndpointName, d.URL)
+		msg = email.Message{
+			Title: "Webhook disabled",
+			Paragraphs: []string{
+				fmt.Sprintf("Deliveries to your webhook %q (%s) kept failing after every retry, and the endpoint has been disabled.", d.EndpointName, d.URL),
+				"No further events will be sent until you re-enable it from the dashboard or API.",
+			},
+		}
 	}
 	if w.Mailer == nil || w.Emails == nil {
 		log.Printf("webhooks: %s (no SMTP relay configured; notice not emailed)", subject)
@@ -492,7 +502,7 @@ func (w *Worker) notifyFailure(ctx context.Context, d store.DueWebhookDelivery, 
 		log.Printf("webhooks: %s (no email address for %s; notice not emailed)", subject, d.CreatedBy)
 		return
 	}
-	if err := w.Mailer.Send(ctx, to, subject, body); err != nil {
+	if err := w.Mailer.Send(ctx, to, subject, msg.Text(), msg.HTML()); err != nil {
 		log.Printf("webhooks: email %s: %v", to, err)
 	}
 }

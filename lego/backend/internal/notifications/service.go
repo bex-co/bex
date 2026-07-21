@@ -32,11 +32,13 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
 	"path"
 	"strings"
 	"sync"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/email"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -50,11 +52,12 @@ type NotificationsStore interface {
 	ListNotifyRecipients(ctx context.Context, tenantID string) ([]store.NotifyRecipient, error)
 }
 
-// Mailer delivers a plain-text email — the same seam members.Service uses,
-// kept as this package's own interface (rather than importing members') so
-// feature packages stay independent; mailer.SMTP satisfies both structurally.
+// Mailer delivers an email with a plain-text body and an optional HTML
+// alternative — the same seam members.Service uses, kept as this package's own
+// interface (rather than importing members') so feature packages stay
+// independent; mailer.SMTP satisfies both structurally.
 type Mailer interface {
-	Send(ctx context.Context, to, subject, body string) error
+	Send(ctx context.Context, to, subject, text, html string) error
 }
 
 // EmailLookup resolves a subject's email from the identity provider — the
@@ -209,15 +212,20 @@ func (s *Service) NotifyDeploy(ctx context.Context, n store.DeployNotification) 
 	s.notifyDeploy(ctx, n.TenantID, n.AppName, kind, policy, deployDetails{
 		deployID:      n.DeployID,
 		commitMessage: n.CommitMessage,
+		commitSHA:     n.CommitSHA,
+		repoURL:       n.RepoURL,
 	})
 }
 
 // deployDetails carries the optional per-deploy facts the email renders when
-// they are available (w7/m44): the deploy id (for the "View Logs" link) and the
-// commit message. Both empty for the started path / image-backed deploys.
+// they are available (w7/m44): the deploy id (for the "View Logs" link), the
+// commit message, and the commit SHA + repo URL (for the "View commit" link).
+// All empty for the started path / image-backed deploys.
 type deployDetails struct {
 	deployID      string
 	commitMessage string
+	commitSHA     string
+	repoURL       string
 }
 
 // notifyDeploy performs the common preference lookup and bounded email fan-out
@@ -236,9 +244,10 @@ func (s *Service) notifyDeploy(ctx context.Context, tenantID, appName string, ki
 	}
 	// The email is identical for every recipient — compose it once, before the
 	// fan-out, rather than rebuilding the same URL + body inside each goroutine
-	// (w7/m44 simplify).
+	// (w7/m44 simplify). Render both bodies here too, not per-recipient.
 	logsURL := s.deployLogsURL(appName, details.deployID)
-	emailSubject, body := deployEmail(appName, kind, details, logsURL)
+	emailSubject, msg := deployEmail(appName, kind, details, logsURL)
+	text, html := msg.Text(), msg.HTML()
 	// Each recipient costs two blocking network round-trips (an identity
 	// lookup, then an SMTP send) — run them concurrently, capped, so a large
 	// workspace's fan-out costs roughly one round-trip's latency instead of
@@ -272,7 +281,7 @@ func (s *Service) notifyDeploy(ctx context.Context, tenantID, appName string, ki
 		go func(subject string) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			s.notifyOne(ctx, subject, appName, kind, emailSubject, body)
+			s.notifyOne(ctx, subject, appName, kind, emailSubject, text, html)
 		}(r.Subject)
 	}
 	wg.Wait()
@@ -284,15 +293,15 @@ func (s *Service) notifyDeploy(ctx context.Context, tenantID, appName string, ki
 const notifyConcurrency = 8
 
 // notifyOne resolves one recipient's address and sends the pre-composed deploy
-// email, logging (never propagating) any failure — see NotifyDeploy's doc.
-// appName/kind are carried only to label that log line.
-func (s *Service) notifyOne(ctx context.Context, recipient, appName string, kind deployMailKind, emailSubject, body string) {
-	email, ok := s.Identities.LookupEmail(ctx, recipient)
+// email (text + HTML), logging (never propagating) any failure — see
+// NotifyDeploy's doc. appName/kind are carried only to label that log line.
+func (s *Service) notifyOne(ctx context.Context, recipient, appName string, kind deployMailKind, emailSubject, text, html string) {
+	addr, ok := s.Identities.LookupEmail(ctx, recipient)
 	if !ok {
 		return // no known address — nothing to send to (honest omit)
 	}
-	if err := s.Mailer.Send(ctx, email, emailSubject, body); err != nil {
-		log.Printf("notifications: sending deploy %s email for %s to %s: %v", kind, appName, email, err)
+	if err := s.Mailer.Send(ctx, addr, emailSubject, text, html); err != nil {
+		log.Printf("notifications: sending deploy %s email for %s to %s: %v", kind, appName, addr, err)
 	}
 }
 
@@ -308,31 +317,86 @@ func (s *Service) deployLogsURL(appName, deployID string) string {
 	return cfg.DashboardURL(path.Join("services", appName, "deploys"), deployID)
 }
 
-// deployEmail composes the plain-text deploy notification (w7/m44): impact
-// framing that matches Render's register, then the commit message and a "View
-// Logs" link when each is available — image-backed deploys carry no commit, and
-// the link is omitted when the dashboard URL is unset.
-func deployEmail(appName string, kind deployMailKind, details deployDetails, logsURL string) (subject, body string) {
-	var b strings.Builder
+// deployEmail composes the deploy notification (w7/m44): impact framing that
+// matches Render's register, then the commit message, a "View logs" button, and
+// a "View commit" link to the repo's web commit page — each rendered only when
+// its data is available (an image-backed deploy carries no commit; the logs link
+// needs the dashboard URL; the commit link needs the repo URL + resolved SHA).
+// Message.HTML() renders it branded; Message.Text() carries the same content.
+func deployEmail(appName string, kind deployMailKind, details deployDetails, logsURL string) (subject string, msg email.Message) {
+	var lead string
 	switch kind {
 	case deployMailStarted:
 		subject = fmt.Sprintf("Deploy started: %s", appName)
-		fmt.Fprintf(&b, "A deploy of %q has started. We'll email you when it finishes.\n", appName)
+		lead = fmt.Sprintf("A deploy of %q has started. We'll email you when it finishes.", appName)
 	case deployMailSucceeded:
 		subject = fmt.Sprintf("Deploy succeeded: %s", appName)
-		fmt.Fprintf(&b, "A new deploy of %q is live. Your latest changes are now serving.\n", appName)
+		lead = fmt.Sprintf("A new deploy of %q is live. Your latest changes are now serving.", appName)
 	default:
 		subject = fmt.Sprintf("Deploy failed: %s", appName)
-		fmt.Fprintf(&b, "We encountered an error during the deploy process for %q. "+
-			"This means your deploy didn't complete successfully and your latest changes may not be live.\n", appName)
+		lead = fmt.Sprintf("We encountered an error during the deploy process for %q. "+
+			"This means your deploy didn't complete successfully and your latest changes may not be live.", appName)
 	}
-	if msg := strings.TrimSpace(details.commitMessage); msg != "" {
-		fmt.Fprintf(&b, "\nCommit:\n%s\n", msg)
+	msg = email.Message{Title: subject, Paragraphs: []string{lead}}
+	// The commit renders as one "Commit <sha>" block: a linked short SHA (when
+	// the repo URL resolves to a web commit page) above the message. With no
+	// resolvable link it stays the plain "Commit:\n<message>" paragraph — no
+	// separate "View commit" line duplicating the same reference.
+	cm := strings.TrimSpace(details.commitMessage)
+	if cu := commitURL(details.repoURL, details.commitSHA); cu != "" {
+		msg.Reference = &email.Reference{Label: "Commit", Token: shortSHA(details.commitSHA), URL: cu, Desc: cm}
+	} else if cm != "" {
+		msg.Paragraphs = append(msg.Paragraphs, "Commit:\n"+cm)
 	}
 	if logsURL != "" {
-		fmt.Fprintf(&b, "\nView logs:\n%s\n", logsURL)
+		msg.CTA = &email.CTA{Lead: "View logs", Label: "View logs", URL: logsURL}
 	}
-	return subject, b.String()
+	return subject, msg
+}
+
+// commitURL builds the repo's web commit page URL from an App's spec.repo and a
+// commit SHA — the deploy email's "View commit" link. It normalizes the common
+// clone-URL shapes (https, scp-like SSH `git@host:owner/repo`, ssh://, a
+// trailing .git) to an https web URL and picks the host's commit path segment
+// (GitHub/Gitea `/commit/`, GitLab `/-/commit/`, Bitbucket `/commits/`).
+// Returns "" when either input is empty or the repo URL can't be parsed to a
+// host — an image-backed deploy (no repo) then simply carries no commit link.
+func commitURL(repo, sha string) string {
+	repo, sha = strings.TrimSpace(repo), strings.TrimSpace(sha)
+	if repo == "" || sha == "" {
+		return ""
+	}
+	// scp-like SSH (git@github.com:owner/repo) → URL form the parser accepts.
+	if strings.HasPrefix(repo, "git@") {
+		if i := strings.Index(repo, ":"); i > len("git@") {
+			repo = "https://" + repo[len("git@"):i] + "/" + repo[i+1:]
+		}
+	}
+	repo = strings.TrimSuffix(repo, ".git")
+	u, err := url.Parse(repo)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	// The web link is always https, without any embedded credentials.
+	u.Scheme, u.User = "https", nil
+	seg := "/commit/"
+	switch {
+	case strings.Contains(u.Host, "gitlab"):
+		seg = "/-/commit/"
+	case strings.Contains(u.Host, "bitbucket"):
+		seg = "/commits/"
+	}
+	u.Path = strings.TrimSuffix(u.Path, "/") + seg + sha
+	return u.String()
+}
+
+// shortSHA abbreviates a commit SHA to its first 7 characters (the git default),
+// leaving anything already shorter untouched.
+func shortSHA(sha string) string {
+	if len(sha) > 7 {
+		return sha[:7]
+	}
+	return sha
 }
 
 func (k deployMailKind) String() string {

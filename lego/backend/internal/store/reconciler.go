@@ -100,6 +100,11 @@ type DeployNotification struct {
 	// was deploying. Both empty-friendly — an image-backed deploy has no commit.
 	DeployID      string
 	CommitMessage string
+	// CommitSHA and RepoURL build the deploy email's "View commit" link (the
+	// repo's web commit URL). Both empty-friendly — an image-backed deploy has
+	// no repo, and a repo build without a resolved SHA has no target.
+	CommitSHA string
+	RepoURL   string
 	// NotifyOnFail is the legacy failure-only override. NotificationsToSend is
 	// the authoritative Render policy when non-empty.
 	NotifyOnFail        string
@@ -337,6 +342,8 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 			Status:              status,
 			DeployID:            open.ID,
 			CommitMessage:       open.CommitMessage,
+			CommitSHA:           open.Commit,
+			RepoURL:             cur.Spec.Repo,
 			NotifyOnFail:        cur.Spec.NotifyOnFail,
 			NotificationsToSend: cur.Spec.NotificationsToSend,
 		})

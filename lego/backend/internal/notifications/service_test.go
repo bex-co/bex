@@ -71,20 +71,21 @@ func (f *fakeStore) ListNotifyRecipients(_ context.Context, tenantID string) ([]
 	return f.recipients[tenantID], nil
 }
 
-// fakeMailer records every send.
+// fakeMailer records every send. body holds the plain-text part (the existing
+// assertions pin it); html holds the branded alternative.
 type fakeMailer struct {
 	mu   sync.Mutex
-	sent []struct{ to, subject, body string }
+	sent []struct{ to, subject, body, html string }
 	err  error
 }
 
-func (f *fakeMailer) Send(_ context.Context, to, subject, body string) error {
+func (f *fakeMailer) Send(_ context.Context, to, subject, text, html string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.err != nil {
 		return f.err
 	}
-	f.sent = append(f.sent, struct{ to, subject, body string }{to, subject, body})
+	f.sent = append(f.sent, struct{ to, subject, body, html string }{to, subject, text, html})
 	return nil
 }
 
@@ -361,25 +362,28 @@ func TestDeployEmailContent(t *testing.T) {
 	const commit = "fix(backend): correct typo computeUnitePerDay to computeUnitPerDay\n\n- rename across all files"
 	const logsURL = "https://dashboard.bex.co/services/web/deploys/dep-123"
 
-	t.Run("failure carries framing, commit, and logs link", func(t *testing.T) {
-		subject, body := deployEmail("web", deployMailFailed, deployDetails{commitMessage: commit}, logsURL)
+	t.Run("failure carries framing, commit, and logs link — exact text parity", func(t *testing.T) {
+		subject, msg := deployEmail("web", deployMailFailed, deployDetails{commitMessage: commit}, logsURL)
 		if subject != "Deploy failed: web" {
 			t.Errorf("subject = %q", subject)
 		}
-		for _, want := range []string{
-			"We encountered an error during the deploy process for \"web\"",
-			"may not be live",
-			"Commit:\n" + commit,
-			"View logs:\n" + logsURL,
-		} {
-			if !strings.Contains(body, want) {
-				t.Errorf("failure body missing %q:\n%s", want, body)
-			}
+		// Byte-identical to the pre-w1/m54 plain-text body.
+		want := "We encountered an error during the deploy process for \"web\". " +
+			"This means your deploy didn't complete successfully and your latest changes may not be live.\n\n" +
+			"Commit:\n" + commit + "\n\n" +
+			"View logs:\n" + logsURL + "\n"
+		if got := msg.Text(); got != want {
+			t.Errorf("failure text drift:\n got %q\nwant %q", got, want)
+		}
+		// The HTML alternative renders the logs URL as a button href.
+		if html := msg.HTML(); !strings.Contains(html, `href="`+logsURL+`"`) {
+			t.Errorf("HTML missing the View logs button href:\n%s", html)
 		}
 	})
 
 	t.Run("image-backed deploy (no commit) omits the commit block", func(t *testing.T) {
-		_, body := deployEmail("web", deployMailFailed, deployDetails{}, logsURL)
+		_, msg := deployEmail("web", deployMailFailed, deployDetails{}, logsURL)
+		body := msg.Text()
 		if strings.Contains(body, "Commit:") {
 			t.Errorf("body should omit the empty commit block:\n%s", body)
 		}
@@ -388,23 +392,89 @@ func TestDeployEmailContent(t *testing.T) {
 		}
 	})
 
-	t.Run("no dashboard URL omits the View Logs line", func(t *testing.T) {
-		_, body := deployEmail("web", deployMailFailed, deployDetails{commitMessage: commit}, "")
-		if strings.Contains(body, "View logs") {
+	t.Run("no dashboard URL omits the View Logs line and CTA button", func(t *testing.T) {
+		_, msg := deployEmail("web", deployMailFailed, deployDetails{commitMessage: commit}, "")
+		if body := msg.Text(); strings.Contains(body, "View logs") {
 			t.Errorf("body should omit the logs line when no URL is available:\n%s", body)
+		}
+		if html := msg.HTML(); strings.Contains(html, "Or open this link") {
+			t.Errorf("HTML should render no CTA button when no logs URL is available:\n%s", html)
 		}
 	})
 
-	t.Run("succeeded and started frame their own outcome", func(t *testing.T) {
+	t.Run("succeeded and started frame their own outcome — exact text parity", func(t *testing.T) {
 		_, ok := deployEmail("web", deployMailSucceeded, deployDetails{}, "")
-		if !strings.Contains(ok, "live") {
-			t.Errorf("succeeded body = %q", ok)
+		if got, want := ok.Text(), "A new deploy of \"web\" is live. Your latest changes are now serving.\n"; got != want {
+			t.Errorf("succeeded text = %q, want %q", got, want)
 		}
 		_, started := deployEmail("web", deployMailStarted, deployDetails{}, "")
-		if !strings.Contains(started, "has started") {
-			t.Errorf("started body = %q", started)
+		if got, want := started.Text(), "A deploy of \"web\" has started. We'll email you when it finishes.\n"; got != want {
+			t.Errorf("started text = %q, want %q", got, want)
 		}
 	})
+
+	t.Run("commit SHA + repo URL render the commit as one linked block (no duplicate)", func(t *testing.T) {
+		_, msg := deployEmail("web", deployMailFailed, deployDetails{
+			commitMessage: commit,
+			commitSHA:     "abc1234def5678",
+			repoURL:       "https://github.com/acme/web",
+		}, logsURL)
+		// The commit is a single "Commit <sha>" block (message + URL), before
+		// the View logs CTA — not a paragraph plus a separate trailing link.
+		want := "We encountered an error during the deploy process for \"web\". " +
+			"This means your deploy didn't complete successfully and your latest changes may not be live.\n\n" +
+			"Commit abc1234\n" + commit + "\n" +
+			"https://github.com/acme/web/commit/abc1234def5678\n\n" +
+			"View logs:\n" + logsURL + "\n"
+		if got := msg.Text(); got != want {
+			t.Errorf("text with commit reference drift:\n got %q\nwant %q", got, want)
+		}
+		html := msg.HTML()
+		if !strings.Contains(html, `href="https://github.com/acme/web/commit/abc1234def5678"`) || !strings.Contains(html, ">abc1234</a>") {
+			t.Errorf("HTML commit SHA not linked:\n%s", html)
+		}
+		// The reference is not duplicated as a "View commit" line.
+		if strings.Contains(html, "View commit") {
+			t.Errorf("commit link duplicated as a separate line:\n%s", html)
+		}
+	})
+
+	t.Run("no repo (image-backed) keeps the plain commit paragraph", func(t *testing.T) {
+		_, msg := deployEmail("web", deployMailFailed, deployDetails{commitMessage: commit, repoURL: ""}, logsURL)
+		body := msg.Text()
+		if !strings.Contains(body, "Commit:\n"+commit) {
+			t.Errorf("no repo URL should keep the plain commit paragraph:\n%s", body)
+		}
+		if strings.Contains(msg.HTML(), "<a href=\"https://github.com") {
+			t.Errorf("no repo URL must render no commit link:\n%s", msg.HTML())
+		}
+	})
+}
+
+// TestCommitURL covers the clone-URL → web-commit-URL normalization across the
+// shapes App.spec.repo actually takes, and the honest-omit inputs.
+func TestCommitURL(t *testing.T) {
+	const sha = "abc1234def"
+	cases := []struct {
+		name, repo, sha, want string
+	}{
+		{"github https", "https://github.com/acme/web", sha, "https://github.com/acme/web/commit/" + sha},
+		{"github https .git", "https://github.com/acme/web.git", sha, "https://github.com/acme/web/commit/" + sha},
+		{"github scp ssh", "git@github.com:acme/web.git", sha, "https://github.com/acme/web/commit/" + sha},
+		{"github ssh url", "ssh://git@github.com/acme/web.git", sha, "https://github.com/acme/web/commit/" + sha},
+		{"credentials stripped", "https://x-token:secret@github.com/acme/web.git", sha, "https://github.com/acme/web/commit/" + sha},
+		{"gitlab path segment", "https://gitlab.com/acme/web", sha, "https://gitlab.com/acme/web/-/commit/" + sha},
+		{"bitbucket path segment", "https://bitbucket.org/acme/web", sha, "https://bitbucket.org/acme/web/commits/" + sha},
+		{"empty repo", "", sha, ""},
+		{"empty sha", "https://github.com/acme/web", "", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := commitURL(tc.repo, tc.sha); got != tc.want {
+				t.Errorf("commitURL(%q, %q) = %q, want %q", tc.repo, tc.sha, got, tc.want)
+			}
+		})
+	}
 }
 
 // TestDeployLogsURL covers the "View Logs" deep-link builder: the deploy-detail
