@@ -224,7 +224,11 @@ type imageRef struct {
 // on create — the same location PATCH and GET report them. schedule is Render's
 // cronJobDetails.schedule (accepted here or at the top level, top level wins).
 type serviceDetailsReq struct {
-	Plan                    string        `json:"plan"`
+	Plan string `json:"plan"`
+	// Region is emitted by the official CLI on service creation. bex is a
+	// single-region platform, so the pinned Render schema validates the value
+	// and the adapter intentionally normalizes it to the configured placement.
+	Region                  string        `json:"region"`
 	NumInstances            int32         `json:"numInstances"`
 	HealthCheckPath         string        `json:"healthCheckPath"`
 	MaxShutdownDelaySeconds optionalInt32 `json:"maxShutdownDelaySeconds"`

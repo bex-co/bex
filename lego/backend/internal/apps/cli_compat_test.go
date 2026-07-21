@@ -200,6 +200,24 @@ func TestRESTCreateSeedsOfficialCLISecretFiles(t *testing.T) {
 	}
 }
 
+func TestRESTCreateAcceptsOfficialCLIRegionAsSingleRegionHint(t *testing.T) {
+	svc, cl := newService(nil)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	body := `{"name":"web","type":"web_service","image":{"imagePath":"nginx:alpine","ownerId":""},"serviceDetails":{"plan":"starter","region":"frankfurt","runtime":"image"}}`
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body))
+	req = req.WithContext(core.WithStrictJSONDecoding(req.Context()))
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("POST with official CLI region = %d: %s", rec.Code, rec.Body.String())
+	}
+	if got := getApp(t, cl, "web"); got.Spec.Image != "nginx:alpine" {
+		t.Fatalf("created image = %q, want nginx:alpine", got.Spec.Image)
+	}
+}
+
 func TestRESTCreateRejectsSecretFilesBeforeWriteWhenUnavailable(t *testing.T) {
 	svc, cl := newService(nil)
 	mux := http.NewServeMux()

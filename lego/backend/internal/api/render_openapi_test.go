@@ -432,7 +432,9 @@ func TestRenderValidationRunsAfterAndConsumesRateLimit(t *testing.T) {
 // TestRenderCLIImageOwnerContractThroughComposedServer exercises the exact
 // generated Render CLI payload through auth, the pinned OpenAPI validator, and
 // the real services adapter. The CLI's Image.OwnerId field has no omitempty,
-// so both create and update serialize image.ownerId:"".
+// so both create and update serialize image.ownerId:"". Create also emits the
+// selected region inside serviceDetails; bex validates and normalizes it to its
+// configured single-region placement.
 func TestRenderCLIImageOwnerContractThroughComposedServer(t *testing.T) {
 	cl := fakeClient()
 	base := &core.Base{
@@ -442,7 +444,7 @@ func TestRenderCLIImageOwnerContractThroughComposedServer(t *testing.T) {
 	}
 	h, _ := serverWith(t, base, Deps{APIKeys: newFakeKeyStore()})
 
-	createBody := `{"name":"cli-image","ownerId":"tea-cli","type":"web_service","image":{"imagePath":"nginx:alpine","ownerId":""},"serviceDetails":{"plan":"starter","runtime":"image"}}`
+	createBody := `{"name":"cli-image","ownerId":"tea-cli","type":"web_service","image":{"imagePath":"nginx:alpine","ownerId":""},"serviceDetails":{"plan":"starter","region":"frankfurt","runtime":"image"}}`
 	w := do(t, h, http.MethodPost, "/v1/services", testToken, createBody)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("exact CLI image create = %d: %s", w.Code, w.Body.String())
