@@ -34,6 +34,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/bex-co/bex/lego/operator/internal/build"
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -87,6 +89,53 @@ func TestAppDeletionRetainsFinalizerAcrossTransientInventoryFailure(t *testing.T
 	}
 	if err := cl.Get(context.Background(), nn, &current); !apierrors.IsNotFound(err) {
 		t.Fatalf("successful retry did not finish deletion: %v", err)
+	}
+}
+
+func TestAppDeletionDuringFirstBuildConvergesAcrossManagerRestart(t *testing.T) {
+	app := deletionApp("first-build")
+	app.Namespace = "apps"
+	app.Spec.Repo = "https://github.com/acme/first-build"
+	app.Labels = map[string]string{labelWorkspace: "tea-test"}
+	o := build.Options{
+		Repo: app.Spec.Repo, Ref: "main", Name: app.Name, AppUID: string(app.UID),
+		Registry: "zot.example", Revision: "gen-1", Namespace: "builds",
+		AppNamespace: app.Namespace, Workspace: app.Labels[labelWorkspace],
+	}
+	job := build.BuildJob(o, o.ImageRef())
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+		Name: "first-build-pod", Namespace: "builds",
+		Labels: execution.PodLabels(app.Name, string(app.UID), "build", app.Labels[labelWorkspace], app.Namespace, false),
+	}}
+	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(app, job, pod).
+		WithStatusSubresource(&appv1alpha1.App{}).Build()
+	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+	req := reconcile.Request{NamespacedName: nn}
+	r := &AppReconciler{Client: cl, BuildClient: cl, BuildNamespace: "builds", Scheme: cl.Scheme(), Mode: ModeKubernetes}
+	if result, err := r.Reconcile(context.Background(), req); err != nil || result.RequeueAfter == 0 {
+		t.Fatalf("first cleanup pass = result %+v err %v, want pending requeue", result, err)
+	}
+	if err := cl.Get(context.Background(), nn, &appv1alpha1.App{}); err != nil {
+		t.Fatalf("finalizer released before fresh absence inventory: %v", err)
+	}
+	for _, obj := range []client.Object{
+		&batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: job.Name, Namespace: job.Namespace}},
+		&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: pod.Name, Namespace: pod.Namespace}},
+	} {
+		if err := cl.Get(context.Background(), client.ObjectKeyFromObject(obj), obj); !apierrors.IsNotFound(err) {
+			t.Fatalf("first-build artifact %T survived delete pass: %v", obj, err)
+		}
+	}
+
+	// A fresh reconciler models manager restart: no in-memory cleanup state is
+	// required; it inventories the build namespace again and releases only after
+	// observing the old UID's artifacts absent.
+	restarted := &AppReconciler{Client: cl, BuildClient: cl, BuildNamespace: "builds", Scheme: cl.Scheme(), Mode: ModeKubernetes}
+	if _, err := restarted.Reconcile(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(context.Background(), nn, &appv1alpha1.App{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("App survived fresh absence proof after manager restart: %v", err)
 	}
 }
 

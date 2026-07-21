@@ -841,7 +841,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "set_branch",
 		Description: "Change the Git branch a repo-backed service builds and deploys from (Render's editable Branch field). The next deploy builds the new branch and push-to-deploy matches pushes against it. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in branchArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetSourceAndRegistryCredential(ctx, in.ServiceID, nil, nil, &in.Branch, nil)
+		app, err := s.SetSourceAndRegistryCredential(ctx, in.ServiceID, nil, nil, &in.Branch, nil, nil)
 		if err != nil {
 			return nil, renderService{}, err
 		}

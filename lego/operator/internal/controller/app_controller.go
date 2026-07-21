@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -136,6 +137,7 @@ const annotLastActive = "app.bex.co/last-active"
 const annotTLSSecretHistory = "app.bex.co/tls-secret-history"
 
 const annotStaticPurgeComplete = "app.bex.co/static-purge-complete"
+const annotRegistryPurgeComplete = "app.bex.co/registry-purge-complete"
 
 // Runtime modes.
 const (
@@ -434,6 +436,10 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			Client:           buildClient,
 		})
 		if err != nil {
+			if errors.Is(err, build.ErrAppDeleting) {
+				logf.FromContext(ctx).Info("build wait interrupted because App is deleting", "app", app.Name)
+				return ctrl.Result{Requeue: true}, nil
+			}
 			return r.fail(ctx, &app, "BuildFailed", err)
 		}
 		image = r.pinBuiltImage(ctx, &app, res.Image)
@@ -2848,8 +2854,8 @@ func appPodRequests(_ context.Context, object client.Object) []reconcile.Request
 // Reconcile to keep its cyclomatic complexity in check.
 func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.App) (ctrl.Result, error) {
 	if controllerutil.ContainsFinalizer(app, finalizer) {
+		log := logf.FromContext(ctx)
 		var errs []error
-		pending := false
 		if app.Status.SandboxID != "" && r.Runtime != nil {
 			if err := r.Runtime.Delete(ctx, app.Status.SandboxID); err != nil {
 				errs = append(errs, fmt.Errorf("delete sandbox: %w", err))
@@ -2866,18 +2872,32 @@ func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.
 			cl = r.BuildClient
 		}
 		executionPending, err := r.reclaimAppExecution(ctx, app, ns, cl)
-		pending = pending || executionPending
 		errs = append(errs, err)
 		externalPending, err := r.reclaimAppExternalArtifacts(ctx, app, ns, cl)
-		pending = pending || externalPending
 		errs = append(errs, err)
+		cleanupErr := errors.Join(errs...)
+		if cleanupErr != nil {
+			log.Error(cleanupErr, "App finalization cleanup blocked; preserving registry credentials",
+				"app", app.Name, "executionPending", executionPending, "externalPending", externalPending)
+			return ctrl.Result{}, cleanupErr
+		}
+		if executionPending || externalPending {
+			log.Info("App finalization cleanup pending; preserving registry credentials",
+				"app", app.Name, "executionPending", executionPending, "externalPending", externalPending)
+			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+		}
+
+		// Per-App registry credentials are the least-privilege authority used to
+		// delete and then prove the repository absent. Revoke them only after all
+		// execution and external artifacts have converged; otherwise a transient
+		// registry/RBAC failure destroys the only credential that can retry safely.
 		credentialsPending, err := r.revokeAppRegistryCredentials(ctx, app, ns, cl)
-		pending = pending || credentialsPending
-		errs = append(errs, err)
-		if err := errors.Join(errs...); err != nil {
+		if err != nil {
+			log.Error(err, "App finalization credential revocation blocked", "app", app.Name)
 			return ctrl.Result{}, err
 		}
-		if pending {
+		if credentialsPending {
+			log.Info("App finalization credential revocation pending", "app", app.Name)
 			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 		}
 		controllerutil.RemoveFinalizer(app, finalizer)
@@ -2939,11 +2959,20 @@ func (r *AppReconciler) reclaimAppExternalArtifacts(ctx context.Context, app *ap
 	}
 	registryOwned := strings.HasPrefix(app.Status.Image, r.Registry+"/") ||
 		strings.HasPrefix(app.Status.ArtifactImage, r.Registry+"/") || app.Spec.Repo != ""
-	if r.Registry != "" && registryOwned {
+	if r.Registry != "" && registryOwned && app.Annotations[annotRegistryPurgeComplete] != "true" {
 		done, registryErr := r.deleteRegistryRepo(ctx, app)
 		pending = pending || !done
 		if registryErr != nil {
 			errs = append(errs, fmt.Errorf("delete registry images: %w", registryErr))
+		} else if done {
+			before := client.MergeFrom(app.DeepCopy())
+			if app.Annotations == nil {
+				app.Annotations = map[string]string{}
+			}
+			app.Annotations[annotRegistryPurgeComplete] = "true"
+			if patchErr := r.Patch(ctx, app, before); patchErr != nil {
+				errs = append(errs, fmt.Errorf("record registry purge completion: %w", patchErr))
+			}
 		}
 	}
 	return pending, errors.Join(errs...)
@@ -3087,9 +3116,12 @@ func (r *AppReconciler) deleteRegistryRepo(ctx context.Context, app *appv1alpha1
 	}
 	repo := app.Name
 
-	authHdr, err := r.registryAuthHeader(ctx, app.Namespace)
+	authHdr, ready, err := r.registryAuthHeader(ctx, app)
 	if err != nil {
 		return false, fmt.Errorf("registry auth: %w", err)
+	}
+	if !ready {
+		return false, nil
 	}
 
 	do := func(method, url string) (*http.Response, error) {
@@ -3165,15 +3197,43 @@ func (r *AppReconciler) deleteRegistryRepo(ctx context.Context, app *appv1alpha1
 	return false, nil
 }
 
-// registryAuthHeader reads the docker config push Secret and returns an HTTP
-// Basic Authorization header for the registry, or "" when no auth is configured.
-func (r *AppReconciler) registryAuthHeader(ctx context.Context, fallbackNS string) (string, error) {
+// registryAuthHeader returns the least-privilege credential used to delete the
+// App's own repository and a ready flag. In per-App mode it repairs credentials
+// revoked by older finalizer code, then waits for Zot to activate them before
+// cleanup proceeds. Shared-secret mode is retained as a fallback; a configured
+// but missing/malformed Secret is an explicit retryable error, never an
+// anonymous request that degrades into an opaque 401.
+func (r *AppReconciler) registryAuthHeader(ctx context.Context, app *appv1alpha1.App) (string, bool, error) {
+	if r.PerAppRegistry != nil {
+		if err := r.PerAppRegistry.EnsureCreds(ctx, app.Name, app.Namespace); err != nil {
+			return "", false, fmt.Errorf("restore per-app credential: %w", err)
+		}
+		active, err := r.PerAppRegistry.EnsureActive(ctx, app.Name, app.Namespace)
+		if err != nil {
+			return "", false, fmt.Errorf("activate per-app credential: %w", err)
+		}
+		if !active {
+			return "", false, nil
+		}
+		var sec corev1.Secret
+		if err := r.PerAppRegistry.Client.Get(ctx, client.ObjectKey{
+			Namespace: app.Namespace, Name: registry.PullSecretName(app.Name),
+		}, &sec); err != nil {
+			return "", false, fmt.Errorf("read per-app pull Secret: %w", err)
+		}
+		header, err := dockerConfigAuthHeader(sec.Data, r.Registry)
+		if err != nil {
+			return "", false, fmt.Errorf("per-app pull Secret: %w", err)
+		}
+		return header, true, nil
+	}
+
 	if r.RegistryPushSecret == "" {
-		return "", nil
+		return "", true, nil
 	}
 	ns := r.BuildNamespace
 	if ns == "" {
-		ns = fallbackNS
+		ns = app.Namespace
 	}
 	cl := r.Client
 	if r.BuildClient != nil {
@@ -3181,23 +3241,43 @@ func (r *AppReconciler) registryAuthHeader(ctx context.Context, fallbackNS strin
 	}
 	var sec corev1.Secret
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: ns, Name: r.RegistryPushSecret}, &sec); err != nil {
-		if apierrors.IsNotFound(err) {
-			return "", nil
-		}
-		return "", err
+		return "", false, fmt.Errorf("read configured push Secret %s/%s: %w", ns, r.RegistryPushSecret, err)
 	}
-	data, ok := sec.Data["config.json"]
-	if !ok {
-		return "", nil
+	header, err := dockerConfigAuthHeader(sec.Data, r.Registry)
+	if err != nil {
+		return "", false, fmt.Errorf("push Secret %s/%s: %w", ns, r.RegistryPushSecret, err)
+	}
+	return header, true, nil
+}
+
+func dockerConfigAuthHeader(secretData map[string][]byte, registryHost string) (string, error) {
+	data := secretData[corev1.DockerConfigJsonKey]
+	if len(data) == 0 {
+		data = secretData["config.json"]
+	}
+	if len(data) == 0 {
+		return "", fmt.Errorf("has neither %s nor config.json", corev1.DockerConfigJsonKey)
 	}
 	var cfg struct {
-		Auths map[string]struct{ Auth string } `json:"auths"`
+		Auths map[string]struct {
+			Auth     string `json:"auth"`
+			Username string `json:"username"`
+			Password string `json:"password"`
+		} `json:"auths"`
 	}
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return "", nil // malformed docker config; skip auth
+		return "", fmt.Errorf("parse docker config: %w", err)
 	}
-	if e, ok := cfg.Auths[r.Registry]; ok && e.Auth != "" {
-		return "Basic " + e.Auth, nil
+	entry, ok := cfg.Auths[registryHost]
+	if !ok {
+		return "", fmt.Errorf("docker config has no auth entry for %s", registryHost)
 	}
-	return "", nil
+	auth := strings.TrimSpace(entry.Auth)
+	if auth == "" && (entry.Username != "" || entry.Password != "") {
+		auth = base64.StdEncoding.EncodeToString([]byte(entry.Username + ":" + entry.Password))
+	}
+	if auth == "" {
+		return "", fmt.Errorf("docker config auth entry for %s is empty", registryHost)
+	}
+	return "Basic " + auth, nil
 }

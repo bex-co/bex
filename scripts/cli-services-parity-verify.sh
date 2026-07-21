@@ -16,6 +16,7 @@ case "$MODE" in
 esac
 
 BASELINE_LEGS=(
+  image-create image-update image-delete repo-delete-during-build
   web-create web-update cron-create cron-update static-create static-update
   clone region-guard runtime-guard preview-update preview-create
 )
@@ -63,7 +64,7 @@ if [ "$MODE" = self-test ]; then
   COMPLETED_LEGS=("${all_legs[@]}")
   assert_leg_census
   echo "PASS: verifier leg census rejects every single omitted create/update leg"
-  exit 0
+  exec bash scripts/cli-services-parity-self-test.sh
 fi
 
 : "${RENDER_HOST:?invoke through scripts/cli-compat.sh}"
@@ -86,24 +87,44 @@ for dependency in curl jq mktemp; do
 done
 
 API="${RENDER_HOST%/}"
-RUN_ID="$(date -u +%H%M%S)-$$"
+RUN_ID="$(date -u +%H%M%S)-$(( $$ % 100000 ))"
 PREFIX="cp-${RUN_ID}"
+IMAGE_NAME="${PREFIX}-image"
+DELETE_BUILD_NAME="${PREFIX}-del"
 WEB_NAME="${PREFIX}-web"
 CRON_NAME="${PREFIX}-cron"
 STATIC_NAME="${PREFIX}-static"
 CLONE_NAME="${PREFIX}-clone"
 BARE_CLONE_NAME="${PREFIX}-bare"
 PREVIEW_NAME="${PREFIX}-preview"
-CREATED_IDS=""
+CREATED_IDS=()
+CREATED_NAMES=()
 TMP_DIR="$(mktemp -d)"
 
+# shellcheck source=cli-service-delete-lib.sh
+source scripts/cli-service-delete-lib.sh
+
+assert_service_fixture_names \
+  "$IMAGE_NAME" "$DELETE_BUILD_NAME" "$WEB_NAME" "${WEB_NAME}-updated" \
+  "$CRON_NAME" "$STATIC_NAME" "$CLONE_NAME" "$BARE_CLONE_NAME" "$PREVIEW_NAME"
+
 cleanup() {
-  for id in $CREATED_IDS; do
-    "$RENDER_BIN" services delete "$id" --confirm -o json >/dev/null 2>&1 || true
+  local rc=$? cleanup_failed=0 path
+  trap - EXIT INT TERM ERR
+  set +e
+  cleanup_created_services || cleanup_failed=1
+  for path in "$TMP_DIR"/*; do
+    [ ! -f "$path" ] || unlink "$path"
   done
-  rm -rf "$TMP_DIR"
+  rmdir "$TMP_DIR" 2>/dev/null || cleanup_failed=1
+  if [ "$rc" -eq 0 ] && [ "$cleanup_failed" -ne 0 ]; then
+    rc=1
+  fi
+  exit "$rc"
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 trap 'rc=$?; echo "FAIL: service parity verifier stopped at line $LINENO (exit $rc)" >&2' ERR
 
 api() {
@@ -115,7 +136,21 @@ service_id() {
 }
 
 remember() {
-  CREATED_IDS="$CREATED_IDS $1"
+  CREATED_IDS+=("$1")
+  CREATED_NAMES+=("$2")
+}
+
+forget() {
+  local id="$1" index
+  local next_ids=() next_names=()
+  for index in "${!CREATED_IDS[@]}"; do
+    if [ "${CREATED_IDS[$index]}" != "$id" ]; then
+      next_ids+=("${CREATED_IDS[$index]}")
+      next_names+=("${CREATED_NAMES[$index]}")
+    fi
+  done
+  CREATED_IDS=("${next_ids[@]}")
+  CREATED_NAMES=("${next_names[@]}")
 }
 
 assert_service() {
@@ -148,6 +183,33 @@ umask 077
 printf 'cli-secret-%s' "$RUN_ID" > "$SECRET_PATH"
 ENV_VALUE="cli-env-${RUN_ID}"
 
+IMAGE_ID="$("$RENDER_BIN" services create --name "$IMAGE_NAME" --type web_service \
+  --image traefik/whoami:v1.10.3 --region frankfurt --plan starter \
+  --env-var WHOAMI_PORT_NUMBER=8080 --confirm -o json | service_id)"
+remember "$IMAGE_ID" "$IMAGE_NAME"
+assert_service "$IMAGE_ID" '.name == $name and .imagePath == "traefik/whoami:v1.10.3" and .ownerId == $owner' \
+  "image create accepts the official CLI nested owner contract" --arg name "$IMAGE_NAME" --arg owner "$RENDER_WORKSPACE"
+complete_leg image-create
+
+"$RENDER_BIN" services update "$IMAGE_ID" --image traefik/whoami:latest --confirm -o json >/dev/null
+assert_service "$IMAGE_ID" '.imagePath == "traefik/whoami:latest" and .ownerId == $owner' \
+  "image update accepts the official CLI nested owner contract" --arg owner "$RENDER_WORKSPACE"
+complete_leg image-update
+
+"$RENDER_BIN" services delete "$IMAGE_ID" --confirm -o json >/dev/null
+wait_service_gone "$IMAGE_ID" "$IMAGE_NAME"
+forget "$IMAGE_ID"
+complete_leg image-delete
+
+DELETE_BUILD_ID="$("$RENDER_BIN" services create --name "$DELETE_BUILD_NAME" --type web_service \
+  --repo https://github.com/render-examples/go-gin.git --branch main --runtime go \
+  --region frankfurt --plan starter --confirm -o json | service_id)"
+remember "$DELETE_BUILD_ID" "$DELETE_BUILD_NAME"
+"$RENDER_BIN" services delete "$DELETE_BUILD_ID" --confirm -o json >/dev/null
+wait_service_gone "$DELETE_BUILD_ID" "$DELETE_BUILD_NAME"
+forget "$DELETE_BUILD_ID"
+complete_leg repo-delete-during-build
+
 web_args=(
   services create --name "$WEB_NAME" --type web_service
   --repo https://github.com/render-examples/go-gin.git --branch main
@@ -165,7 +227,7 @@ if [ "$MODE" = configured ]; then
 fi
 
 WEB_ID="$("$RENDER_BIN" "${web_args[@]}" | service_id)"
-remember "$WEB_ID"
+remember "$WEB_ID" "$WEB_NAME"
 assert_service "$WEB_ID" '
   .name == $name and .type == "web_service" and
   .repo == "https://github.com/render-examples/go-gin.git" and .branch == "main" and
@@ -224,7 +286,7 @@ CRON_ID="$("$RENDER_BIN" services create --name "$CRON_NAME" --type cron_job \
   --region frankfurt --plan starter --root-directory jobs --build-command "go build ./..." \
   --cron-command "./job create" --cron-schedule '*/15 * * * *' --auto-deploy=false \
   --build-filter-path 'jobs/**' --build-filter-ignored-path 'docs/**' --confirm -o json | service_id)"
-remember "$CRON_ID"
+remember "$CRON_ID" "$CRON_NAME"
 assert_service "$CRON_ID" '
   .type == "cron_job" and .repo == "https://github.com/render-examples/go-cron.git" and
   .branch == "main" and .rootDir == "jobs" and .autoDeploy == "no" and
@@ -256,7 +318,7 @@ STATIC_ID="$("$RENDER_BIN" services create --name "$STATIC_NAME" --type static_s
   --root-directory site --build-command "npm run build" --publish-directory dist \
   --auto-deploy=false --build-filter-path 'site/**' --build-filter-ignored-path 'docs/**' \
   --ip-allow-list 'cidr=192.0.2.0/24,description=static-create' --confirm -o json | service_id)"
-remember "$STATIC_ID"
+remember "$STATIC_ID" "$STATIC_NAME"
 assert_service "$STATIC_ID" '
   .type == "static_site" and .repo == "https://github.com/render-examples/static-site.git" and
   .branch == "main" and .rootDir == "site" and .autoDeploy == "no" and
@@ -282,7 +344,7 @@ complete_leg static-update
 
 CLONE_ID="$("$RENDER_BIN" services create --from "$WEB_ID" --name "$CLONE_NAME" \
   --region frankfurt --confirm -o json | service_id)"
-remember "$CLONE_ID"
+remember "$CLONE_ID" "$CLONE_NAME"
 assert_service "$CLONE_ID" '.name == $name and .type == "web_service"' \
   "clone works with an explicit official-CLI region" --arg name "$CLONE_NAME"
 complete_leg clone
@@ -291,7 +353,7 @@ SOURCE_REGION="$(api "/services/$WEB_ID" | jq -r '.serviceDetails.region // ""')
 case "$SOURCE_REGION" in
   frankfurt | ohio | oregon | singapore | virginia)
     BARE_CLONE_ID="$("$RENDER_BIN" services create --from "$WEB_ID" --name "$BARE_CLONE_NAME" --confirm -o json | service_id)"
-    remember "$BARE_CLONE_ID"
+    remember "$BARE_CLONE_ID" "$BARE_CLONE_NAME"
     echo "PASS: bare clone works because the configured platform region is in the CLI enum"
     complete_leg region-guard
     ;;

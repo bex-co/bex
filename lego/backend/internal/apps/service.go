@@ -2706,7 +2706,7 @@ func (s *Service) SetCommands(ctx context.Context, name string, buildCommand, st
 // the other. Store-managed Apps write the row first because the projector owns
 // these fields.
 func (s *Service) SetSource(ctx context.Context, name string, repo, image, branch *string) (AppView, error) {
-	return s.SetSourceAndRegistryCredential(ctx, name, repo, image, branch, nil)
+	return s.SetSourceAndRegistryCredential(ctx, name, repo, image, branch, nil, nil)
 }
 
 // SetRegistryCredential sets, changes, or clears an image-backed service's or
@@ -2715,7 +2715,7 @@ func (s *Service) SetSource(ctx context.Context, name string, repo, image, branc
 // All adapters call this same verb so membership, host validation, Secret
 // materialization, and error classification cannot drift.
 func (s *Service) SetRegistryCredential(ctx context.Context, name, credentialID string) (AppView, error) {
-	return s.SetSourceAndRegistryCredential(ctx, name, nil, nil, nil, &credentialID)
+	return s.SetSourceAndRegistryCredential(ctx, name, nil, nil, nil, &credentialID, nil)
 }
 
 // SetSourceAndRegistryCredential applies Render's PATCH source object and its
@@ -2725,10 +2725,16 @@ func (s *Service) SetRegistryCredential(ctx context.Context, name, credentialID 
 // A nil credential pointer preserves the current binding; pointer-to-empty
 // clears it. Switching to a repo clears an old image credential unless the
 // request explicitly supplies one for a Dockerfile build.
-func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name string, repo, image, branch, registryCredentialID *string) (AppView, error) {
+func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name string, repo, image, branch, registryCredentialID, imageOwnerID *string) (AppView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
+	}
+	if imageOwnerID != nil {
+		ownerID := strings.TrimSpace(*imageOwnerID)
+		if ownerID != "" && ownerID != a.Labels[core.LabelTenant] {
+			return AppView{}, fmt.Errorf("%w: image.ownerId does not match the service owner", core.ErrBadRequest)
+		}
 	}
 	previousBranch := a.Spec.Branch
 	nextRepo, nextImage, nextBranch := a.Spec.Repo, a.Spec.Image, previousBranch

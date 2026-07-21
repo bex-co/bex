@@ -12,6 +12,29 @@ This artifact freezes the `render-oss/cli` v2.21.0 contract exercised by `script
 
 The configured run ended with these independent facts: all baseline assertions passed; CLI env-var and secret-file values round-tripped; create and update allowlist descriptions survived exactly; the explicit clone region worked; the bare-clone and runtime guards failed before a mutation; previews failed explicitly at bex; anonymous private-image pull failed; both create-time and update-time registry credential IDs read back exactly; and the credentialed App reached `Running`. The verifier's cleanup trap was also observed after success and deliberate assertion failures.
 
+### 2026-07-20 nested-image and deletion correction (deployment pending)
+
+The production OpenAPI rollout exposed two assumptions the 2026-07-18 pass did not retain as exact-wire/deletion-convergence gates:
+
+- The generated v2.21.0 `client.Image` model has required `imagePath` and `ownerId` fields. `BuildCreateRequest` and `BuildUpdateRequest` populate `imagePath` but not the nested owner, so the unmodified CLI serializes these redacted fragments exactly:
+
+  ```json
+  {
+    "ownerId": "<workspace-id>",
+    "image": { "imagePath": "<image-ref>", "ownerId": "" }
+  }
+  ```
+
+  ```json
+  { "image": { "imagePath": "<replacement-image-ref>", "ownerId": "" } }
+  ```
+
+  The pinned Render OpenAPI accepted both. The later strict Go adapter rejected the nested key because its REST-only `imageRef` omitted `ownerId`. The adapter now treats a blank nested owner as inheritance, rejects conflicting non-blank owners by the field name `image.ownerId`, preserves membership-based 403 behavior, and keeps unknown sibling keys strict. A composition regression sends both fragments through authentication, the pinned OpenAPI middleware, and the real service handler.
+
+- A production repo-backed service deleted three seconds after create remained visible in `Deleting`. The operator held its reconcile worker in a synchronous first-build poll for 20 minutes, then finalization hit missing build-namespace `list`/`delete` RBAC and attempted anonymous Zot cleanup because the configured shared push Secret was absent. The old finalizer also revoked the per-App credential before registry absence was proven, destroying its own retry authority. The local correction interrupts build polling on App deletion, grants only the missing namespaced inventory verbs, repairs/activates the least-privilege per-App credential, persists registry-absence proof, and revokes credentials only after execution/external stages are done.
+
+`scripts/cli-services-parity-verify.sh` now adds image create/update/delete and immediate repo-delete legs. Every explicit delete and EXIT/INT/TERM cleanup waits up to five minutes for both raw GET 404 and absence from `render services`; DELETE acknowledgement alone cannot pass. Its self-test plants stuck-GET, stuck-list, failed-probe, overlong-name, redaction, and interrupted-cleanup failures. These are deterministic repository results only. The image rows and durable service-delete production grade remain partial until the normal ship/deploy path retires the original fixture and a fresh production verifier run passes.
+
 ## Create flag contract
 
 `POST /v1/services` uses Render's create envelope. “Exact” below means the official CLI exited zero and a subsequent raw `GET /v1/services/{id}` matched the complete asserted value, not merely the command exit status.
@@ -23,7 +46,7 @@ The configured run ended with these independent facts: all baseline assertions p
 | `--runtime` | `serviceDetails.runtime` | Exact for native web and cron services. |
 | `--repo` | top-level `repo` | Exact. |
 | `--branch` | top-level `branch` | Exact. |
-| `--image` | `image.imagePath` | Exact for the private-image worker. |
+| `--image` | `image.imagePath` plus generated `image.ownerId:""` | Exact in deterministic full-server regression; production re-acceptance pending the m49 rollout. |
 | `--plan` | `serviceDetails.plan` | Exact. |
 | `--region` | `serviceDetails.region` | **Limited:** accepted input, but readback is the installation's truthful `BEX_REGION`; bex does not pretend an arbitrary platform region is a Render enum member. |
 | `--num-instances` | `serviceDetails.numInstances` | Exact; service readback reports the requested replica count. |
@@ -61,7 +84,7 @@ The configured run ended with these independent facts: all baseline assertions p
 | `--runtime` | no request | **Upstream CLI guard:** v2.21.0 exits with `cannot switch runtimes via the CLI`; bex is not contacted. |
 | `--repo` | top-level `repo` | Exact replacement. |
 | `--branch` | top-level `branch` | Exact replacement. |
-| `--image` | image source update | Accepted when paired with `--registry-credential`, as required by the official client; exact private image remains on readback. |
+| `--image` | image source update plus generated `image.ownerId:""` | Exact in deterministic full-server regression, including a credential-less public-image replacement; production re-acceptance pending the m49 rollout. |
 | `--build-command` | native/static build command | Exact replacement for web, cron, and static. |
 | `--start-command` | native start command | Exact replacement. |
 | `--pre-deploy-command` | `serviceDetails.preDeployCommand` | Exact replacement. |

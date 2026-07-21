@@ -134,12 +134,22 @@ func buildpack(ctx context.Context, o Options) (Result, error) {
 	if err := o.Client.Create(ctx, image); err != nil && !apierrors.IsAlreadyExists(err) {
 		return Result{}, fmt.Errorf("build: create kpack image %s: %w", key.Name, err)
 	}
+	if deleting, err := appDeleting(ctx, o); err != nil {
+		return Result{}, err
+	} else if deleting {
+		return Result{}, ErrAppDeleting
+	}
 
 	wctx, cancel := context.WithTimeout(ctx, buildTimeout)
 	defer cancel()
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
 	for {
+		if deleting, err := appDeleting(wctx, o); err != nil {
+			return Result{}, err
+		} else if deleting {
+			return Result{}, ErrAppDeleting
+		}
 		cur := newKpackImage()
 		if err := o.Client.Get(wctx, key, cur); err != nil {
 			if wctx.Err() != nil {
