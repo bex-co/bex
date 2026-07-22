@@ -174,10 +174,19 @@ func TestReferenceWithoutURLRendersPlainToken(t *testing.T) {
 	}
 }
 
-func TestHTMLCarriesBexCoWordmark(t *testing.T) {
+func TestHTMLWordmarkSplitsColorAndResistsAutolink(t *testing.T) {
 	html := Message{Paragraphs: []string{"hi"}}.HTML()
-	if !strings.Contains(html, ">bex.co</p>") {
-		t.Errorf("expected the bex.co wordmark in the layout:\n%s", html)
+	// Only ".co" carries the brand color; "bex" stays neutral (foreground).
+	if !strings.Contains(html, `>bex<span style="color:`+BrandPrimary+`;">`) {
+		t.Errorf("expected neutral 'bex' + a brand-colored '.co' span:\n%s", html)
+	}
+	// A zero-width space breaks the "bex.co" domain token so mail clients don't
+	// auto-linkify the wordmark; the contiguous plain form must not appear.
+	if !strings.Contains(html, "&#8203;.co</span>") {
+		t.Errorf("expected a zero-width space before .co to defeat auto-linking:\n%s", html)
+	}
+	if strings.Contains(html, ">bex.co<") {
+		t.Error("wordmark renders as contiguous 'bex.co' — clients will auto-link it")
 	}
 }
 
