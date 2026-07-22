@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
+    <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
     <title>{{.Title}}</title>
   </head>
   <body style="margin:0;padding:0;background-color:@background@;">
@@ -13,7 +14,7 @@
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
             <tr>
               <td style="background-color:@card@;border:1px solid @border@;border-radius:@radius@px;padding:32px;text-align:left;">
-                <p style="margin:0;font-family:@font@;font-size:22px;font-weight:700;color:@primary@;">bex.co</p>
+                <p style="margin:0;font-family:@font@;font-size:22px;font-weight:700;color:@foreground@;">bex<span style="color:@primary@;">&#8203;.co</span></p>
                 {{if .Title}}<p style="margin:24px 0 0;font-family:@font@;font-size:18px;font-weight:600;color:@foreground@;">{{.Title}}</p>{{end}}
                 {{range .Paragraphs}}<p style="margin:16px 0 0;font-family:@font@;font-size:14px;line-height:22px;color:@foreground@;">{{range $i, $line := .}}{{if $i}}<br />{{end}}{{$line}}{{end}}</p>{{end}}
                 {{with .Reference}}
@@ -44,7 +45,7 @@
             </tr>
             <tr>
               <td style="padding:16px 8px 0;text-align:center;">
-                <p style="margin:0;font-family:@font@;font-size:12px;color:@mutedfg@;">Sent by bex.co</p>
+                <p style="margin:0;font-family:@font@;font-size:12px;color:@mutedfg@;">Sent by bex&#8203;.co</p>
               </td>
             </tr>
           </table>
