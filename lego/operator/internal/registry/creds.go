@@ -257,7 +257,13 @@ func (c *Creds) ensureHTPasswdEntry(ctx context.Context, username, password stri
 
 		existing := sec.Data["htpasswd"]
 		if htpasswdHasUser(existing, username) {
-			return false, nil
+			// Verify the existing hash still matches the current password. If the
+			// pull Secret was deleted and recreated, a new password was generated
+			// but the htpasswd still has the old hash — detect and re-sync it.
+			if bcrypt.CompareHashAndPassword(htpasswdUserHash(existing, username), []byte(password)) == nil {
+				return false, nil
+			}
+			// Hash mismatch: fall through to replace the entry.
 		}
 
 		updated, err := addHTPasswdLine(existing, username, password)
@@ -497,6 +503,17 @@ func htpasswdHasUser(htpasswd []byte, username string) bool {
 		}
 	}
 	return false
+}
+
+// htpasswdUserHash returns the bcrypt hash stored for username, or nil if not found.
+func htpasswdUserHash(htpasswd []byte, username string) []byte {
+	prefix := username + ":"
+	for line := range strings.SplitSeq(string(htpasswd), "\n") {
+		if strings.HasPrefix(line, prefix) {
+			return []byte(strings.TrimPrefix(line, prefix))
+		}
+	}
+	return nil
 }
 
 // addHTPasswdLine appends "username:bcrypt(password)" to htpasswd content.
