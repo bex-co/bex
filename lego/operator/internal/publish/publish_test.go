@@ -128,9 +128,7 @@ func TestPublishJobShape(t *testing.T) {
 	if pod.AutomountServiceAccountToken == nil || *pod.AutomountServiceAccountToken {
 		t.Error("publish pod must disable the Kubernetes API token")
 	}
-	if pod.HostUsers == nil || *pod.HostUsers {
-		t.Error("publish pod must use a Pod user namespace")
-	}
+	// HostUsers disabled until containerd 2.x is deployed on all tenant nodes.
 	if pod.NodeSelector["bex.co/pool"] != "tenant" {
 		t.Errorf("publish node selector = %v", pod.NodeSelector)
 	}
