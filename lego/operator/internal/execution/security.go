@@ -60,8 +60,7 @@ func PodLabels(app, appUID, component, workspace, appNamespace string, verifyIma
 // restore the ambient Kubernetes API token or broaden node placement.
 func HardenPod(spec *corev1.PodSpec) {
 	spec.AutomountServiceAccountToken = ptr(false)
-	// HostUsers (user namespace isolation) requires containerd 2.x + UserNamespacesSupport
-	// feature gate; re-enable once containerd is upgraded on all tenant nodes.
+	spec.HostUsers = ptr(false) // pod user namespace; requires containerd 2.x + UserNamespacesSupport
 	spec.NodeSelector = map[string]string{NodePoolLabel: UntrustedNodePool}
 	if spec.SecurityContext == nil {
 		spec.SecurityContext = &corev1.PodSecurityContext{}
