@@ -79,7 +79,9 @@ func TestBuildJobShape(t *testing.T) {
 	if pod.AutomountServiceAccountToken == nil || *pod.AutomountServiceAccountToken {
 		t.Error("build pod must disable the Kubernetes API token")
 	}
-	// HostUsers disabled until containerd 2.x is deployed on all tenant nodes.
+	if pod.HostUsers == nil || *pod.HostUsers {
+		t.Error("build pod must run in a Kubernetes user namespace (spec.hostUsers=false)")
+	}
 	if pod.NodeSelector["bex.co/pool"] != "tenant" {
 		t.Errorf("node selector = %v, want tenant pool", pod.NodeSelector)
 	}
@@ -112,9 +114,8 @@ func TestBuildJobShape(t *testing.T) {
 	if bk.SecurityContext.Privileged != nil && *bk.SecurityContext.Privileged {
 		t.Error("build container must not be privileged")
 	}
-	// --oci-worker-no-process-sandbox required until containerd 2.x enables hostUsers.
-	if flags := envValue(bk.Env, "BUILDKITD_FLAGS"); !strings.Contains(flags, "no-process-sandbox") {
-		t.Errorf("BUILDKITD_FLAGS missing --oci-worker-no-process-sandbox: %q", flags)
+	if flags := envValue(bk.Env, "BUILDKITD_FLAGS"); strings.Contains(flags, "no-process-sandbox") {
+		t.Errorf("BuildKit process sandbox must be enabled (pod user namespace is active): %q", flags)
 	}
 }
 
