@@ -112,8 +112,9 @@ func TestBuildJobShape(t *testing.T) {
 	if bk.SecurityContext.Privileged != nil && *bk.SecurityContext.Privileged {
 		t.Error("build container must not be privileged")
 	}
-	if flags := envValue(bk.Env, "BUILDKITD_FLAGS"); strings.Contains(flags, "no-process-sandbox") {
-		t.Errorf("BuildKit process sandbox disabled: %q", flags)
+	// --oci-worker-no-process-sandbox required until containerd 2.x enables hostUsers.
+	if flags := envValue(bk.Env, "BUILDKITD_FLAGS"); !strings.Contains(flags, "no-process-sandbox") {
+		t.Errorf("BUILDKITD_FLAGS missing --oci-worker-no-process-sandbox: %q", flags)
 	}
 }
 
