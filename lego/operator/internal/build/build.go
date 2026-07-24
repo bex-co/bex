@@ -347,12 +347,14 @@ func BuildJob(o Options, image string) *batchv1.Job {
 		}
 	}
 
-	// Private-base credentials may be present in this phase. Keep BuildKit's
-	// default OCI process sandbox enabled; the Pod user namespace supplies the
-	// namespaced capabilities it needs without exposing host-root capabilities.
-	buildkitdFlags := ""
+	// Disable the OCI worker process sandbox: without a pod user namespace
+	// (spec.hostUsers=false, requires containerd 2.x), buildkitd cannot create
+	// nested user namespaces to isolate the dockerfile frontend and RUN steps.
+	// Re-enable once containerd is upgraded on all tenant nodes and hostUsers is
+	// restored; the sandbox provides per-step PID/mount namespace isolation.
+	buildkitdFlags := "--oci-worker-no-process-sandbox"
 	if o.RegistryConfig {
-		buildkitdFlags = "--config " + dockerConfigMount + "/buildkitd.toml"
+		buildkitdFlags += " --config " + dockerConfigMount + "/buildkitd.toml"
 	}
 	var env []corev1.EnvVar
 	if buildkitdFlags != "" {
