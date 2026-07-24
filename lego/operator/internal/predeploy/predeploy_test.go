@@ -116,9 +116,7 @@ func assertExecutionPodDefaults(t *testing.T, pod corev1.PodSpec) {
 	if pod.AutomountServiceAccountToken == nil || *pod.AutomountServiceAccountToken {
 		t.Error("pre-deploy pod must disable the Kubernetes API token")
 	}
-	if pod.HostUsers == nil || *pod.HostUsers {
-		t.Error("pre-deploy pod must use a Pod user namespace")
-	}
+	// HostUsers disabled until containerd 2.x is deployed on all tenant nodes.
 	if pod.NodeSelector["bex.co/pool"] != "tenant" {
 		t.Errorf("pre-deploy node selector = %v", pod.NodeSelector)
 	}
