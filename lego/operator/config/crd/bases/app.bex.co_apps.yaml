@@ -542,7 +542,7 @@ spec:
                   revision live and serving. Empty means no pre-deploy step (today's behavior,
                   unchanged). Applies to web_service/private_service/background_worker; ignored
                   for cron_job (its own Command already runs the image) and static_site (no
-                  running container). See docs/ADR004-deployment.md.
+                  running container). See docs/ADR004-app-deployment.md.
                 maxLength: 4096
                 type: string
               publishPath:

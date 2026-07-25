@@ -21,7 +21,7 @@ limitations under the License.
 // confined by a Kubernetes Pod user namespace; Cloud Native Buildpack builds
 // use a kpack Image CR. In both
 // cases the operator only dispatches the workload and observes it while the
-// heavy lifting stays inside the cluster. See docs/ADR004-deployment.md.
+// heavy lifting stays inside the cluster. See docs/ADR004-app-deployment.md.
 package build
 
 import (

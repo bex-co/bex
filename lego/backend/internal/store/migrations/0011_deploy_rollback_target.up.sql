@@ -5,7 +5,7 @@
 -- reaches live (store.CloseDeploy), so it is the only field trustworthy
 -- enough for Rollback to restore blind: repointing spec.image at an
 -- already-pushed tag Zot still holds bypasses the build pipeline entirely
--- (docs/ADR004-deployment.md). Only a deploy that itself went live ever gets
+-- (docs/ADR004-app-deployment.md). Only a deploy that itself went live ever gets
 -- one, so an in-progress/failed/canceled deploy is correctly never a valid
 -- rollback target.
 --

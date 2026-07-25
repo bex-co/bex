@@ -31,7 +31,7 @@ for n in $(kubectl get nodes -o name | sed 's|node/||'); do
   docker cp /tmp/bex-op.tar "$n":/op.tar && docker exec "$n" ctr -n k8s.io images import /op.tar
 done
 ( cd lego/operator && make deploy IMG=bex-operator:dev )   # ns bex-system, BEX_RUNTIME=kubernetes
-# local CAPD only: pin the operator to the control-plane node (see docs/ADR004-deployment.md)
+# local CAPD only: pin the operator to the control-plane node (see docs/ADR004-app-deployment.md)
 kubectl -n bex-system patch deploy bex-controller-manager --type merge -p \
  '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},
   "tolerations":[{"key":"node-role.kubernetes.io/control-plane","effect":"NoSchedule"}]}}}}'

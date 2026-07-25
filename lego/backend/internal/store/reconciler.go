@@ -65,7 +65,7 @@ const (
 	// The shorter rollout budget is needed because a bad image
 	// (ImagePullBackOff) never makes the App CR's own phase machine reach PhaseFailed — it polls PhaseDeploying
 	// forever (lego/operator/internal/controller/app_controller.go) — so
-	// health gating (docs/ADR004-deployment.md) needs its own timeout, not just the
+	// health gating (docs/ADR004-app-deployment.md) needs its own timeout, not just the
 	// CR's phase, to ever report a deploy as failed.
 	defaultBuildGateTimeout     = 25 * time.Minute
 	defaultPreDeployGateTimeout = 12 * time.Minute

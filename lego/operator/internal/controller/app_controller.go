@@ -2510,7 +2510,7 @@ func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason s
 }
 
 // reconcilePreDeploy runs spec.preDeployCommand to completion against image
-// before the caller rolls the Deployment to it (w1/m33, docs/ADR004-deployment.md).
+// before the caller rolls the Deployment to it (w1/m33, docs/ADR004-app-deployment.md).
 // It returns halt=true when the caller must stop this reconcile and return
 // (res, err): either the step failed (err set — the previous revision keeps
 // serving because the Deployment update below never runs) or it is still running
