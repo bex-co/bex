@@ -372,7 +372,7 @@ type AppSpec struct {
 	// revision live and serving. Empty means no pre-deploy step (today's behavior,
 	// unchanged). Applies to web_service/private_service/background_worker; ignored
 	// for cron_job (its own Command already runs the image) and static_site (no
-	// running container). See docs/ADR004-deployment.md.
+	// running container). See docs/ADR004-app-deployment.md.
 	// +optional
 	// +kubebuilder:validation:MaxLength=4096
 	PreDeployCommand string `json:"preDeployCommand,omitempty"`
@@ -779,7 +779,7 @@ const (
 // deploy record show that step's progress — and tell a pre-deploy failure apart
 // from a health-check failure — without a client having to list Jobs. Mirrors
 // the CronRun precedent (a Job's outcome recorded in status). See
-// docs/ADR004-deployment.md.
+// docs/ADR004-app-deployment.md.
 type PreDeployStatus struct {
 	// Job is the Kubernetes Job name backing this pre-deploy run
 	// ("pre-<name>-gen-<generation>"); the API reads its pod logs from it.

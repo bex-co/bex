@@ -32,6 +32,28 @@ Each admitted source build runs as an isolated Kubernetes workload:
 - Build names are deterministic per App generation, so a manager restart adopts the existing work instead of starting a duplicate.
 - Superseded builds are newest-wins per App: a newer revision cancels the older active build before starting.
 
+#### Current synchronous build-to-deploy handoff
+
+```mermaid
+flowchart TD
+  %% A --> B means A depends on or writes to B.
+  git["Git repository (external service)"]
+  operator["bex operator (long-running controller)"]
+  build["build Job and Pod (ephemeral, one per revision)<br/>clone → source emptyDir → BuildKit → OCI archive → Skopeo/Cosign"]
+  zot[(Zot registry)]
+  deployment["Deployment (Kubernetes object, updated after build)"]
+  app["App Pod (long-running)"]
+
+  operator -->|"create; poll status every 3s"| build
+  build -->|"fetch source"| git
+  build -->|"push image"| zot
+  operator -->|"after Job Complete: pin digest and update image"| deployment
+  app -->|"managed by"| deployment
+  app -->|"pull digest-pinned image"| zot
+```
+
+Zot sends no deploy notification. The same App reconcile worker that created the build Job polls its status every three seconds; after `Job Complete`, it resolves the pushed digest and updates the Deployment image, and Kubernetes rolls out the new App Pods.
+
 We will not introduce a shared, long-lived BuildKit daemon as the default worker pool. Ephemeral builders preserve failure isolation, make Kubernetes resource accounting and cancellation natural, and avoid making a daemon filesystem or local cache a cross-tenant trust boundary.
 
 ### 2. Treat dispatch concurrency, tenant admission, and machine capacity as separate controls

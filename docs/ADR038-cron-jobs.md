@@ -87,7 +87,7 @@ The `crr-…` id hides the Kubernetes Job name while staying stable across reads
 - **Terminal per-run cancel is 409, not a silent no-op.** Render's cancel-current OpenAPI documents only 204; a conflict is more honest than a successful no-op on an already-finished run.
 - **Actor fields are omitted, not fabricated.** `triggeredBy`/`canceledBy` have no durable source (Jobs drop caller identity), so they are honestly absent.
 - **12-hour cap and persistent disks.** Render stops a run after 12h and disallows disks on crons. bex inherits Kubernetes' Job semantics; a hard `activeDeadlineSeconds` cap and disk rejection are the natural follow-ups if strict parity is wanted.
-- **Not the same as one-off jobs.** Render's `/services/{id}/jobs` (run an arbitrary command in the service context) is an execution surface deliberately off-roadmap (`DO_NOT_DO` §pillar 5) — separate from scheduled cron jobs. Likewise **pre-deploy commands** are one-shot `batch/v1.Job`s gating a rollout ([ADR004-deployment.md](ADR004-deployment.md)), a different mechanism from a CronJob.
+- **Not the same as one-off jobs.** Render's `/services/{id}/jobs` (run an arbitrary command in the service context) is an execution surface deliberately off-roadmap (`DO_NOT_DO` §pillar 5) — separate from scheduled cron jobs. Likewise **pre-deploy commands** are one-shot `batch/v1.Job`s gating a rollout ([ADR004-app-deployment.md](ADR004-app-deployment.md)), a different mechanism from a CronJob.
 
 ## Evidence
 

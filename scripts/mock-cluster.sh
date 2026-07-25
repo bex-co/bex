@@ -59,7 +59,7 @@ KUBECONFIG="$WL_KUBECONFIG" kubectl wait --for=condition=Ready node --all --time
 # pool joins with bex.co/pool=tenant. The split mirrors production and lets live
 # isolation checks prove tenant execution cannot land on the platform pool.
 # Keep cluster DNS on the control-plane node: worker-node pods can't reach the
-# apiserver / cross-node services under OrbStack+Calico (docs/ADR004-deployment.md), so
+# apiserver / cross-node services under OrbStack+Calico (docs/ADR004-app-deployment.md), so
 # coredns scheduled onto a worker silently kills DNS for the whole cluster.
 KUBECONFIG="$WL_KUBECONFIG" kubectl -n kube-system patch deploy coredns --type merge -p \
   '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},

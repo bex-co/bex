@@ -87,14 +87,31 @@ Business/product logic belongs in the **control plane**; the operator stays a th
 - Nuance: the Cluster API/autoscaler **controllers** are deployed (`deploy/`), but the **desired node pools** they consume (`Cluster`/`MachineDeployment`) are declared in `infra/`. Engine = deploy, desired-infra = infra.
 - A third thing is **neither**: bex deploying a _user's_ repo into a sandbox — that's the **product runtime**, not GitOps and not infra.
 
+These three run on **different lifecycles** — one-time provisioning, continuous reconcile, and a per-push runtime event — so they are drawn **apart**, not as one chain. Stringing them into a single flow would falsely imply GitOps _triggers_ a user's push; it does not. The only real link across them: **the bex operator is installed by GitOps (②), then services user pushes on its own loop (③).**
+
+**① day-0 · infra provisioning** — terraform / clusterctl, run **once from outside**, makes the cluster + machines exist:
+
 ```mermaid
 flowchart TB
   ci@{ shape: tri, label: "you / CI · from outside" }
-  ci -->|"terraform · clusterctl"| infra["day-0 · infra/ → clusters and machines exist"]
-  infra -->|"Argo CD installed in-cluster"| gitops["day-1+ · Argo reconciles deploy/gitops/<br/>Zot · OpenSandbox · CAPI · bex operator"]
-  gitops --> push["user git push"]
-  push -->|"bex's own loop · not GitOps"| op["product runtime · bex operator"]
-  op -->|"build CNB/Dockerfile → Zot → run a revision"| rev["k8s → Deployment+pods · or · opensandbox → sandbox"]
+  ci -->|"terraform · clusterctl (run once)"| infra["day-0 · infra/ — clusters + machines exist"]
+```
+
+**② day-1+ · platform GitOps** — Argo CD **continuously reconciles** `deploy/gitops/` into the existing cluster; the **bex operator is itself one of the platform components installed here**:
+
+```mermaid
+flowchart TB
+  argo["Argo CD · in-cluster (continuous reconcile)"]
+  argo -->|"reconciles deploy/gitops/"| plat["platform infra: Zot · OpenSandbox · CAPI · bex operator"]
+```
+
+**③ product runtime · user app deploy** — **bex's own control loop, not GitOps**; a user git push is a runtime event the operator builds and rolls out:
+
+```mermaid
+flowchart TB
+  push["user git push (runtime event)"]
+  push -->|"webhook"| op["bex operator"]
+  op -->|"build CNB/Dockerfile → Zot → run a revision · NOT GitOps"| rev["k8s Deployment+pods · or · opensandbox sandbox"]
 ```
 
 ## Local CAPD mock → Hetzner CAPH (the portability bet)

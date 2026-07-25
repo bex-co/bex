@@ -29,7 +29,7 @@ limitations under the License.
 //   - The operator observes it non-blocking (a single Get per reconcile, then
 //     requeue), so the App CR can report the step Running/Succeeded/Failed while it
 //     runs — which is what lets the deploy record surface the step's progress
-//     (docs/ADR004-deployment.md, docs/ADR006-bex-api.md § deploy record).
+//     (docs/ADR004-app-deployment.md, docs/ADR006-bex-api.md § deploy record).
 //
 // This package owns only the Job/pod scaffolding and observation; the controller
 // supplies the container's image, command, and the same env/secrets the app pod
@@ -65,7 +65,7 @@ const (
 // predeployTimeout bounds a single pre-deploy Job's wall-clock (its Job
 // activeDeadlineSeconds). A hung migration is reaped as failed rather than
 // blocking the rollout forever, matching the build Job's bounded-deadline
-// pattern (docs/ADR004-deployment.md, w1/m33/t002).
+// pattern (docs/ADR004-app-deployment.md, w1/m33/t002).
 const predeployTimeout = 10 * time.Minute
 
 // jobTTL reaps a finished pre-deploy Job (and its pod's logs) after an hour,
