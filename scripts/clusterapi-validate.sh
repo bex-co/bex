@@ -26,6 +26,9 @@ OVERLAY="infra/clusterapi/overlays/hetzner-caph/cluster.yaml"
 PACKER="infra/packer/bex-worker.pkr.hcl"
 fail=0
 
+pk_var() { grep -A4 "variable \"$1\"" "$PACKER" | grep -m1 -oE 'default[[:space:]]*=[[:space:]]*"[^"]+"' | grep -oE '"[^"]+"' | tr -d '"'; }
+pk_k8s="$(pk_var kubernetes_version)"; pk_containerd="$(pk_var containerd_version)"; pk_runc="$(pk_var runc_version)"
+
 # Trimmed packages (w1/m36 t003) — shared by the overlay + packer apt checks.
 TRIMMED_PKGS='(\bat\b|\bjq\b|\bunzip\b|\bmtr\b|apt-transport-https)'
 # A baked pool must never carry any of these again.
@@ -48,6 +51,9 @@ while read -r md infra cfg; do
         echo "FAIL: baked pool $md (KubeadmConfigTemplate $cfg) still has a download/pull/trimmed-apt line — the snapshot already carries the runtime:" >&2
         echo "$prek" | grep -nE "$FORBIDDEN" | sed 's/^/    /' >&2; fail=1
       fi
+      if ! echo "$prek" | grep -Fq "/usr/local/bin/containerd --version | grep -q ' v$pk_containerd '"; then
+        echo "FAIL: baked pool $md does not fail closed when its snapshot containerd differs from v$pk_containerd" >&2; fail=1
+      fi
       ;;
     ubuntu-24.04)
       if ! echo "$prek" | grep -qE "$BUILDS_RUNTIME"; then
@@ -60,15 +66,14 @@ while read -r md infra cfg; do
   esac
 done < <(yq -N 'select(.kind=="MachineDeployment") | .metadata.name + " " + .spec.template.spec.infrastructureRef.name + " " + .spec.template.spec.bootstrap.configRef.name' "$OVERLAY")
 
-# containerd 2.x renders the registry config_path with single quotes while 1.x
-# used double quotes. Match the setting itself, assert it is unique, and verify
-# the replacement; a quote-specific substitution silently leaves kubelet trying
-# to resolve zot.bex-registry.svc through the host DNS.
+# containerd 1.x and 2.x use different CRI plugin section names and quote styles,
+# and both also emit an unrelated transfer config_path. The bootstrap must scope
+# its replacement and verification to the CRI registry section only.
 tenant_prek="$(yq -N 'select(.kind=="KubeadmConfigTemplate" and .metadata.name=="bex-tenant-0") | .spec.template.spec.preKubeadmCommands[]' "$OVERLAY")"
-if ! echo "$tenant_prek" | grep -Fq "grep -c '^[[:space:]]*config_path ='" \
-  || ! echo "$tenant_prek" | grep -Fq "sed -i '/^[[:space:]]*config_path =/c\\      config_path = \"/etc/containerd/certs.d\"'" \
-  || ! echo "$tenant_prek" | grep -Fq "grep -q '^[[:space:]]*config_path = \"/etc/containerd/certs.d\"$'"; then
-  echo "FAIL: bex-tenant-0 must configure containerd registry config_path independent of single/double quoting and verify the result" >&2
+if ! echo "$tenant_prek" | grep -Fq '\[plugins\..*cri.*\.registry\]' \
+  || ! echo "$tenant_prek" | grep -Fq 's#^([[:space:]]*)config_path =.*#\1config_path = "/etc/containerd/certs.d"#' \
+  || ! echo "$tenant_prek" | grep -Fq 'config_path = "/etc/containerd/certs.d"'; then
+  echo "FAIL: bex-tenant-0 must configure and verify only containerd's CRI registry config_path" >&2
   fail=1
 fi
 
@@ -119,8 +124,6 @@ fi
 # 4. The bake pins and the overlay must not drift.
 echo "==> $PACKER version pins match the overlay"
 if [ -f "$PACKER" ]; then
-  pk_var() { grep -A4 "variable \"$1\"" "$PACKER" | grep -m1 -oE 'default[[:space:]]*=[[:space:]]*"[^"]+"' | grep -oE '"[^"]+"' | tr -d '"'; }
-  pk_k8s="$(pk_var kubernetes_version)"; pk_containerd="$(pk_var containerd_version)"; pk_runc="$(pk_var runc_version)"
   ov_k8s="$(yq -N 'select(.kind=="KubeadmControlPlane") | .spec.version' "$OVERLAY" | sed 's/^v//')"
   ov_containerd="$(grep -oE 'CONTAINERD=[0-9][0-9.]*' "$OVERLAY" | head -1 | cut -d= -f2)"
   ov_runc="$(grep -oE 'RUNC=[0-9][0-9.]*' "$OVERLAY" | head -1 | cut -d= -f2)"
