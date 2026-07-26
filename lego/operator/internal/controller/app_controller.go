@@ -944,6 +944,15 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		}
 	}
 
+	// The slug-named Service converges bidirectionally for every type BEFORE the
+	// per-type dispatch: an addressable App (web/private) gets the alias, a
+	// non-addressable type (cron/static/worker — including one hand-edited away
+	// from web/private) gets it removed. One seam owns both halves, so no type
+	// path can forget the delete (docs/ADR041-service-addresses.md D2).
+	if err := r.reconcileSlugService(ctx, app, port); err != nil {
+		return r.fail(ctx, app, "ServiceFailed", err)
+	}
+
 	// A cron_job diverges entirely: a batch/v1 CronJob, no Deployment/Service/Ingress.
 	if app.Spec.Type == appv1alpha1.TypeCronJob {
 		return r.reconcileCronJob(ctx, app, image, port)
@@ -1111,12 +1120,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	}
 
 	// the k8s core Service (ClusterIP) that fronts the App's pods
-	ksvc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, ksvc, func() error {
-		ksvc.Spec.Selector = labels
-		ksvc.Spec.Ports = []corev1.ServicePort{{Port: int32(port), TargetPort: intstr.FromInt(port)}}
-		return controllerutil.SetControllerReference(app, ksvc, r.Scheme)
-	}); err != nil {
+	if err := r.applyClusterIPService(ctx, app, app.Name, port); err != nil {
 		return r.fail(ctx, app, "ServiceFailed", err)
 	}
 
@@ -1238,7 +1242,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 			app.Status.URLs = append(app.Status.URLs, "https://"+h)
 		}
 	} else {
-		app.Status.URL = fmt.Sprintf("http://%s.%s.svc:%d", app.Name, app.Namespace, port)
+		app.Status.URL = internalURL(app, port)
 		app.Status.URLs = nil
 	}
 	app.Status.ActiveRevision = releaseRevision(app)
@@ -1282,6 +1286,81 @@ func terminationGracePeriodSeconds(seconds *int32) *int64 {
 	}
 	value := int64(*seconds)
 	return &value
+}
+
+// applyClusterIPService creates/updates one ClusterIP Service named name over
+// the App's pods (the stable labelApp selector) on the App's port. Shared by
+// the primary CR-named Service and the slug alias so the two cannot drift.
+// Protocol is set explicitly so the mutate matches the server-defaulted object
+// and steady-state reconciles stay read-only (no perpetual no-op PUT).
+func (r *AppReconciler) applyClusterIPService(ctx context.Context, app *appv1alpha1.App, name string, port int) error {
+	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, svc, func() error {
+		svc.Spec.Selector = map[string]string{labelApp: app.Name}
+		svc.Spec.Ports = []corev1.ServicePort{{
+			Port: int32(port), TargetPort: intstr.FromInt(port), Protocol: corev1.ProtocolTCP,
+		}}
+		return controllerutil.SetControllerReference(app, svc, r.Scheme)
+	})
+	return err
+}
+
+// reconcileSlugService converges the slug-named ClusterIP Service that gives an
+// addressable App (web/private) its Render-shaped internal address
+// `<slug>:<port>` (docs/ADR041-service-addresses.md D2): present exactly when
+// the App is addressable and its slug differs from the CR name, absent
+// otherwise — including after a hand-edit to a non-addressable type, so the
+// delete half cannot be forgotten by a type path. The CR-named Service stays
+// the primary object; this one only adds the slug DNS identity over the same
+// pods. If the slug name is squatted by an object owned by someone else (a
+// hand-applied CR whose *name* equals this App's slug — the store cannot see
+// such CRs when minting slugs), the alias is skipped with a log rather than
+// failing the deploy; deletion likewise touches only an object this App
+// controls.
+func (r *AppReconciler) reconcileSlugService(ctx context.Context, app *appv1alpha1.App, port int) error {
+	slug := app.Spec.PlatformSubdomain(app.Name)
+	if slug == app.Name {
+		return nil // the CR-named Service already answers this hostname
+	}
+	addressable := app.Spec.Type == "" || app.Spec.Type == appv1alpha1.TypeWebService ||
+		app.Spec.Type == appv1alpha1.TypePrivateService
+	if !addressable {
+		svc := &corev1.Service{}
+		if err := r.Get(ctx, client.ObjectKey{Name: slug, Namespace: app.Namespace}, svc); err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+		if !metav1.IsControlledBy(svc, app) {
+			return nil
+		}
+		return r.Delete(ctx, svc)
+	}
+	err := r.applyClusterIPService(ctx, app, slug, port)
+	var owned *controllerutil.AlreadyOwnedError
+	if errors.As(err, &owned) {
+		logf.FromContext(ctx).Info("slug Service name already owned by another object; skipping the alias",
+			"app", app.Name, "slug", slug)
+		return nil
+	}
+	return err
+}
+
+// internalURL is the address surfaced when an App has no public host (private
+// services). An App whose slug differs from its CR name (store-minted, w4/m19)
+// gets the Render-shaped `http://<slug>:<port>` — resolvable via the slug
+// Service; otherwise (legacy and adopted Apps, where the slug falls back to or
+// equals the CR name) the fully-qualified in-namespace form is kept,
+// byte-identical to prior behavior (docs/ADR041-service-addresses.md D1). The
+// predicate is deliberately the same `slug != app.Name` its sibling
+// reconcileSlugService uses, so the surfaced URL flips to the slug form only
+// when the slug Service actually exists.
+func internalURL(app *appv1alpha1.App, port int) string {
+	if slug := app.Spec.PlatformSubdomain(app.Name); slug != app.Name {
+		return fmt.Sprintf("http://%s:%d", slug, port)
+	}
+	return fmt.Sprintf("http://%s.%s.svc:%d", app.Name, app.Namespace, port)
 }
 
 // reconcileWorkerStatus finishes the background_worker reconcile: a worker's
@@ -1691,6 +1770,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	}
 
 	// Type-change cleanup: a static_site has no Deployment/Service of its own.
+	// (The slug alias is converged by reconcileSlugService before dispatch.)
 	for _, obj := range []client.Object{
 		&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}},
 		&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}},
