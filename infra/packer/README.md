@@ -10,7 +10,7 @@ What stays in cloud-init (the `KubeadmConfigTemplate` `files:` + `preKubeadmComm
 
 ## How CAPH picks the image
 
-CAPH resolves `HCloudMachineTemplate.spec.template.spec.imageName` against a snapshot **label** `caph-image-name`, newest match wins — not the description. The bake stamps `caph-image-name = bex-worker`, and `cluster.yaml` sets `imageName: bex-worker`. Snapshot descriptions include the Kubernetes/containerd/runc version tuple so a runtime-only upgrade does not collide with an older bake; every version still reuses the stable label, and new machines pick the newest `bex-worker` snapshot automatically. The version-specific labels (`bex.co/k8s`, `bex.co/containerd`, and `bex.co/runc`) make the selected artifact auditable.
+CAPH resolves `HCloudMachineTemplate.spec.template.spec.imageName` against a snapshot **label** `caph-image-name`, not the description, and requires that selector to match exactly one image. The bake initially stamps `caph-image-name = bex-worker`, and `snapshot.yml` immediately changes every older match to `bex-worker-retired`; `cluster.yaml` keeps using the stable active label. Snapshot descriptions include the Kubernetes/containerd/runc version tuple so a runtime-only upgrade does not collide with an older bake. The version-specific labels (`bex.co/k8s`, `bex.co/containerd`, and `bex.co/runc`) make the selected artifact auditable, while retired snapshots remain available for an explicit rollback.
 
 ## Baking (CI, not a laptop)
 
