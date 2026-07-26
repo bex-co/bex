@@ -4,6 +4,7 @@ import {
   ChevronDown,
   Github,
   KeyRound,
+  Network,
   Terminal,
 } from "lucide-react";
 import { Badge } from "@/common/components/ui/badge.tsx";
@@ -30,6 +31,7 @@ import { formatRepoLabel, repoBrowseUrl } from "@/features/services/lib/repo";
 import {
   deriveServiceType,
   isCron,
+  isPrivateService,
   isStaticSite,
   SERVICE_TYPE_ICON,
   SERVICE_TYPE_LABEL,
@@ -190,6 +192,25 @@ export function ServiceDetailHeader({
               {service.schedule || "—"}
             </span>
           </div>
+        ) : isPrivateService(service) && service.internalAddress ? (
+          // A private service has no public URL — Render's header shows its
+          // Service Address (the private-network `<slug>:<port>`) as copyable
+          // text, never a link (the old cluster-internal href was dead from a
+          // browser). ADR041 D4, w9/m58.
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="text-muted-foreground">
+              {t("services.headerServiceAddress")}
+            </span>
+            <span className="text-foreground truncate font-mono text-xs">
+              {service.internalAddress}
+            </span>
+            <CopyButton
+              value={service.internalAddress}
+              label={t("services.internalCopy")}
+              successText={t("services.internalCopied")}
+              errorText={t("services.internalCopyError")}
+            />
+          </div>
         ) : service.url ? (
           <div className="flex min-w-0 items-center gap-1.5">
             <a
@@ -264,22 +285,34 @@ function ServiceConnectButton({ service }: { service: ServiceView }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 p-3">
+        {service.internalAddress ? (
+          // Render's Connect → Internal tab: the private-network
+          // `<slug>:<port>` sibling services dial (ADR041 D4, w9/m58).
+          <>
+            <DropdownMenuLabel className="flex items-center gap-2 px-0 pt-0">
+              <Network className="size-4" />
+              {t("services.connectInternal")}
+            </DropdownMenuLabel>
+            <ConnectCodeRow
+              className="mb-2"
+              value={service.internalAddress}
+              copyLabel={t("services.internalCopy")}
+              copiedText={t("services.internalCopied")}
+              errorText={t("services.internalCopyError")}
+            />
+          </>
+        ) : null}
         <DropdownMenuLabel className="flex items-center gap-2 px-0 pt-0">
           <Terminal className="size-4" />
           {t("services.connectSSH")}
         </DropdownMenuLabel>
         {command ? (
-          <div className="bg-muted flex min-w-0 items-center gap-1 rounded-md py-1 pr-1 pl-2">
-            <code className="min-w-0 flex-1 truncate text-xs" title={command}>
-              {command}
-            </code>
-            <CopyButton
-              value={command}
-              label={t("services.sshCopy")}
-              successText={t("services.sshCopied")}
-              errorText={t("services.sshCopyError")}
-            />
-          </div>
+          <ConnectCodeRow
+            value={command}
+            copyLabel={t("services.sshCopy")}
+            copiedText={t("services.sshCopied")}
+            errorText={t("services.sshCopyError")}
+          />
         ) : (
           <p
             className="text-muted-foreground text-xs"
@@ -290,6 +323,37 @@ function ServiceConnectButton({ service }: { service: ServiceView }) {
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** One copyable code row in the Connect menu — shared by Internal and SSH. */
+function ConnectCodeRow({
+  value,
+  copyLabel,
+  copiedText,
+  errorText,
+  className,
+}: {
+  value: string;
+  copyLabel: string;
+  copiedText: string;
+  errorText: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`bg-muted flex min-w-0 items-center gap-1 rounded-md py-1 pr-1 pl-2 ${className ?? ""}`}
+    >
+      <code className="min-w-0 flex-1 truncate text-xs" title={value}>
+        {value}
+      </code>
+      <CopyButton
+        value={value}
+        label={copyLabel}
+        successText={copiedText}
+        errorText={errorText}
+      />
+    </div>
   );
 }
 

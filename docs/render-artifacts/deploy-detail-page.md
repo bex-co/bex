@@ -39,7 +39,7 @@ The browser and code audit classify the remaining visual differences as follows:
 | --- | --- | --- |
 | Environment/data | The image-backed dev-5 live fixture has no Git commit metadata; the storeless stack has no retained build history. | Omit unavailable commit fields and identify the unavailable durable log store. Do not synthesize either fact. |
 | Existing owner | Render exposes running-instance shell access. | Running-instance SSH remains owned by `w2/m39`; this UI pass does not duplicate it. |
-| Deliberate scope | Render's header shows an internal address, while the current bex dashboard/API contract does not supply one. | Preserve the real public URL and revision; do not manufacture an internal hostname in a presentation-only milestone. |
+| Deliberate scope — **superseded (w9/m58, 2026-07-26)** | Render's header shows an internal address; at capture time the bex dashboard/API contract did not supply one. | Closed by ADR041 D4: bex-api now supplies `internalAddress` (`<slug>:<port>`, w9/m57 made it resolvable) and the service-detail header — the same chrome the deploy-detail page renders under — shows it in the Connect → Internal menu (a private service also shows it as its Service Address). |
 | Deliberate compatibility | An omitted REST/GraphQL limit returns full history for older bex clients, while Render defaults to 20; bex MCP exposes additional status/time filters. | Preserve the documented compatibility behavior and AI-native filter superset. |
 | Hard non-goal | Render navigation includes browser Shell, persistent disks, one-off jobs, PR previews, and external log-drain upsells. | Keep excluded by `.pm/DO_NOT_DO.md`; no parity follow-up was created. |
 

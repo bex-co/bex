@@ -23,6 +23,28 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "SSH",
     description: "SSH section label in the service connection menu",
   },
+  "services.connectInternal": {
+    message: "内部地址",
+    description:
+      "Internal-address section label in the service connection menu (Render's Connect → Internal tab)",
+  },
+  "services.headerServiceAddress": {
+    message: "服务地址",
+    description:
+      "Label before a private service's internal address in the detail header (Render's private-service wording)",
+  },
+  "services.internalCopy": {
+    message: "复制内部地址",
+    description: "Copy service internal address button",
+  },
+  "services.internalCopied": {
+    message: "已复制内部地址",
+    description: "Successful internal address copy",
+  },
+  "services.internalCopyError": {
+    message: "复制内部地址失败",
+    description: "Failed internal address copy",
+  },
   "services.sshCopy": {
     message: "复制 SSH 命令",
     description: "Copy service SSH command button",

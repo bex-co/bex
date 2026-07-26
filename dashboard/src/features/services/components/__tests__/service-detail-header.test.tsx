@@ -165,6 +165,51 @@ describe("ServiceDetailHeader", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows the internal address in the Connect menu's Internal section (ADR041 D4)", async () => {
+    const user = userEvent.setup();
+    renderHeader(svc({ internalAddress: "app-x1y2:8080" }));
+
+    await user.click(await screen.findByRole("button", { name: "Connect" }));
+
+    expect(screen.getByText("Internal")).toBeInTheDocument();
+    expect(screen.getByText("app-x1y2:8080")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Copy internal address" }),
+    ).toBeInTheDocument();
+  });
+
+  it("omits the Internal section for a non-addressable service", async () => {
+    const user = userEvent.setup();
+    renderHeader(svc({ type: "background_worker", internalAddress: null }));
+
+    await user.click(await screen.findByRole("button", { name: "Connect" }));
+
+    expect(screen.queryByText("Internal")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Copy internal address" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a private service's Service Address as copyable text, never a link", async () => {
+    renderHeader(
+      svc({
+        type: "private_service",
+        url: "http://app-x1y2:8080", // the wire still carries it; the header must not link it
+        internalAddress: "app-x1y2:8080",
+      }),
+    );
+
+    expect(await screen.findByText("Service Address")).toBeInTheDocument();
+    expect(screen.getByText("app-x1y2:8080")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Copy internal address" }),
+    ).toBeInTheDocument();
+    // the old dead cluster-internal link is gone
+    expect(
+      screen.queryByRole("link", { name: /app-x1y2/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it("explains unavailable SSH in the Connect menu without inventing a command", async () => {
     const user = userEvent.setup();
     renderHeader(svc({ sshAddress: null }));

@@ -23,6 +23,28 @@ const enServices: Record<string, TranslationEntry> = {
     message: "SSH",
     description: "SSH section label in the service connection menu",
   },
+  "services.connectInternal": {
+    message: "Internal",
+    description:
+      "Internal-address section label in the service connection menu (Render's Connect → Internal tab)",
+  },
+  "services.headerServiceAddress": {
+    message: "Service Address",
+    description:
+      "Label before a private service's internal address in the detail header (Render's private-service wording)",
+  },
+  "services.internalCopy": {
+    message: "Copy internal address",
+    description: "Copy service internal address button",
+  },
+  "services.internalCopied": {
+    message: "Internal address copied",
+    description: "Successful internal address copy",
+  },
+  "services.internalCopyError": {
+    message: "Couldn't copy internal address",
+    description: "Failed internal address copy",
+  },
   "services.sshCopy": {
     message: "Copy SSH command",
     description: "Copy service SSH command button",

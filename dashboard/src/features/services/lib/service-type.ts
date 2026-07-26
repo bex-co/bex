@@ -88,6 +88,15 @@ export function isWebService(s: ServiceView): boolean {
   return s.type === "web_service";
 }
 
+/**
+ * True for a private_service — reachable only on the private network, so its
+ * header shows a copyable Service Address (internalAddress) instead of a
+ * public-URL link (ADR041 D4, w9/m58).
+ */
+export function isPrivateService(s: ServiceView): boolean {
+  return s.type === "private_service";
+}
+
 /** True when the service owns a long-running pod with a SIGTERM grace window. */
 export function supportsMaxShutdownDelay(s: ServiceView): boolean {
   return (

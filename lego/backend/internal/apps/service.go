@@ -325,6 +325,14 @@ type AppView struct {
 	// SSHAddress is Render's raw OpenSSH target (`srv-…@host`). It is populated
 	// only by Service projections because it depends on the configured gateway.
 	SSHAddress string `json:"sshAddress,omitempty"`
+	// InternalAddress is the private-network address sibling services connect
+	// to: "<slug>:<port>", scheme-less — the exact string Render's Connect →
+	// Internal tab shows (docs/ADR041-service-addresses.md D4). Addressable
+	// types only (web/private); empty otherwise. A documented bex extension:
+	// Render's REST has no internal-address field (consumers derive it from
+	// slug + port), so surfacing it is additive on the Render-compatible
+	// surfaces.
+	InternalAddress string `json:"internalAddress,omitempty"`
 	CreatedAt  string `json:"createdAt"`
 	UpdatedAt  string `json:"updatedAt,omitempty"`
 	// DashboardURL is the control-plane detail route, in Render's
@@ -702,7 +710,11 @@ func view(a *appv1alpha1.App) AppView {
 		DisplayName:           a.Spec.DisplayName,
 		Type:                  svcType,
 		Phase:                 phase,
-		URL:                   a.Status.URL,
+		URL: a.Status.URL,
+		// The contract-level derivation (types/v1alpha1) the operator's slug
+		// Service answers — surfaced string and resolvable hostname cannot
+		// drift (ADR041 D2/D4).
+		InternalAddress:       a.Spec.InternalAddress(a.Name),
 		URLs:                  a.Status.URLs,
 		Image:                 a.Status.Image,
 		SourceImage:           a.Spec.Image,
@@ -1917,7 +1929,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	}
 	port := req.Port
 	if port == 0 {
-		port = 3000
+		port = appv1alpha1.DefaultPort
 	}
 	replicas := req.Replicas
 	if replicas == 0 {

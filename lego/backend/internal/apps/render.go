@@ -32,6 +32,11 @@ import (
 // explicit spec.type set (view() already defaults empty => web_service).
 const renderWebService = "web_service"
 
+// renderPrivateService is Render's serviceType for a private-network-only
+// service — the one type whose serviceDetails omits `url` (captured
+// docs/render-artifacts/service-addresses.md §3).
+const renderPrivateService = "private_service"
+
 // renderService mirrors components.schemas.service (the fields bex has a real
 // equivalent for) plus bex-native extras.
 type renderService struct {
@@ -185,8 +190,18 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		}
 		details[k] = v
 	}
-	if a.URL != "" {
+	// Render's serviceDetails carries url for web_service/static_site but
+	// OMITS it for private_service (captured 2026-07-26,
+	// docs/render-artifacts/service-addresses.md §3) — bex used to leak the
+	// cluster-internal URL there; the address now travels in internalAddress.
+	if a.URL != "" && svcType != renderPrivateService {
 		set("url", a.URL) // Render web_service exposes the live URL here
+	}
+	// internalAddress is a documented bex extension (ADR041 D4): Render's REST
+	// has no internal-address field — its consumers derive `<slug>:<port>` from
+	// slug + port — but agents and scripts benefit from the explicit, additive key.
+	if a.InternalAddress != "" {
+		set("internalAddress", a.InternalAddress)
 	}
 	if a.Plan != "" {
 		set("plan", a.Plan) // webServiceDetails.plan (render-public-api-1.json)
