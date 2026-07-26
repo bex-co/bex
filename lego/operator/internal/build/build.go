@@ -72,16 +72,17 @@ const defaultSignImage = "gcr.io/projectsigstore/cosign:v2.4.1"
 // reaped rather than lingering).
 const buildTimeout = 30 * time.Minute
 
-// Build execution resources match the usable capacity of the baseline 8 GB
-// tenant nodes. Requesting the full 7 GiB limit makes a builder effectively
-// node-exclusive (while leaving allocatable headroom for kubelet and DaemonSets)
-// and lets Cluster Autoscaler add a node instead of co-locating a memory-hungry
-// build with serving workloads.
+// Build execution resources match Render's Starter pipeline tier (2 CPU, 8 GB
+// RAM) while remaining schedulable on the baseline 8 GB tenant nodes. The 7 GiB
+// memory request leaves allocatable headroom for kubelet and DaemonSets but still
+// makes a builder effectively node-exclusive, so Cluster Autoscaler adds a node
+// instead of co-locating a memory-hungry build with serving workloads. Use the
+// decimal 8G limit because the advertised tier is 8 GB, not 8 GiB.
 const (
-	buildCPURequest    = "500m"
+	buildCPURequest    = "2"
 	buildMemoryRequest = "7Gi"
 	buildCPULimit      = "2"
-	buildMemoryLimit   = "7Gi"
+	buildMemoryLimit   = "8G"
 )
 
 // pollInterval is how often Build re-reads the Job while waiting for it.
