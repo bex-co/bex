@@ -60,6 +60,24 @@ while read -r md infra cfg; do
   esac
 done < <(yq -N 'select(.kind=="MachineDeployment") | .metadata.name + " " + .spec.template.spec.infrastructureRef.name + " " + .spec.template.spec.bootstrap.configRef.name' "$OVERLAY")
 
+# containerd.io's package post-install is allowed to start the service before
+# cloud-init generates the final CRI config. Every kubeadm bootstrap must use
+# restart (not start, which is a no-op for an already-active service) before
+# kubeadm validates the CRI RuntimeService.
+echo "==> $OVERLAY kubeadm bootstraps restart containerd after config generation"
+while read -r kind name; do
+  [ -n "$kind" ] || continue
+  prek="$(yq -N "select(.kind==\"$kind\" and .metadata.name==\"$name\") | (.spec.kubeadmConfigSpec.preKubeadmCommands // .spec.template.spec.preKubeadmCommands)[]" "$OVERLAY")"
+  if ! echo "$prek" | grep -q 'systemctl restart containerd'; then
+    echo "FAIL: $kind/$name must restart containerd after writing config.toml so kubeadm sees the CRI plugin" >&2
+    fail=1
+  fi
+  if echo "$prek" | grep -q 'systemctl start containerd'; then
+    echo "FAIL: $kind/$name uses 'systemctl start containerd'; an already-active package service would retain its stale non-CRI config" >&2
+    fail=1
+  fi
+done < <(yq -N 'select(.kind=="KubeadmControlPlane" or .kind=="KubeadmConfigTemplate") | .kind + " " + .metadata.name' "$OVERLAY")
+
 # 2. The platform autoscaler must preserve one node per OpenBao Raft member.
 echo "==> $OVERLAY platform autoscaler floor"
 platform_min="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-platform") | .metadata.annotations."cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size"' "$OVERLAY")"

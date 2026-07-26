@@ -136,7 +136,10 @@ spec:
         - cp /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml /etc/containerd/certs.d/zot.local:5000/hosts.toml
         # Enable per-registry config so the hosts.toml above takes effect.
         - sed -i 's|config_path = ""|config_path = "/etc/containerd/certs.d"|' /etc/containerd/config.toml
-        - systemctl daemon-reload && systemctl enable containerd && systemctl start containerd
+        # containerd.io's package post-install may already have started the
+        # service against its old config. Restart so the generated CRI config
+        # above is loaded before kubeadm checks RuntimeService.
+        - systemctl daemon-reload && systemctl enable containerd && systemctl restart containerd
         - systemctl enable kubelet
         - echo 'source <(kubectl completion bash)' >>/root/.bashrc
         - echo 'export KUBECONFIG=/etc/kubernetes/admin.conf' >>/root/.bashrc
@@ -515,7 +518,10 @@ spec:
       - mkdir -p /etc/containerd
       - containerd config default > /etc/containerd/config.toml
       - sed -i  "s/SystemdCgroup = false/SystemdCgroup = true/" /etc/containerd/config.toml
-      - systemctl daemon-reload && systemctl enable containerd && systemctl start containerd
+      # containerd.io's package post-install may already have started the
+      # service against its old config. Restart so the generated CRI config
+      # above is loaded before kubeadm checks RuntimeService.
+      - systemctl daemon-reload && systemctl enable containerd && systemctl restart containerd
       - mkdir -p /etc/apt/keyrings/
       - curl -fsSL https://pkgs.k8s.io/core:/stable:/v$TRIMMED_KUBERNETES_VERSION/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
       - echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v$TRIMMED_KUBERNETES_VERSION/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
@@ -772,7 +778,10 @@ spec:
         - mkdir -p /etc/containerd
         - containerd config default > /etc/containerd/config.toml
         - sed -i  "s/SystemdCgroup = false/SystemdCgroup = true/" /etc/containerd/config.toml
-        - systemctl daemon-reload && systemctl enable containerd && systemctl start containerd
+        # containerd.io's package post-install may already have started the
+        # service against its old config. Restart so the generated CRI config
+        # above is loaded before kubeadm checks RuntimeService.
+        - systemctl daemon-reload && systemctl enable containerd && systemctl restart containerd
         - systemctl enable kubelet
         - echo 'source <(kubectl completion bash)' >>/root/.bashrc
         - echo 'export KUBECONFIG=/etc/kubernetes/admin.conf' >>/root/.bashrc
