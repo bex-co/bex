@@ -1016,7 +1016,7 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 		if req.Type == appv1alpha1.TypeWebService || req.Type == appv1alpha1.TypePrivateService {
 			port := req.Port
 			if port <= 0 {
-				port = 3000
+				port = appv1alpha1.DefaultPort
 			}
 			servicePorts[req.Name] = port
 		}

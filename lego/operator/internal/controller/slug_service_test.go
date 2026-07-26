@@ -219,16 +219,17 @@ var _ = Describe("Slug-named Service (ADR041 D2)", func() {
 func TestInternalURL(t *testing.T) {
 	storeManaged := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: "tea-x1-api", Namespace: "default"},
-		Spec:       appv1alpha1.AppSpec{Subdomain: "api-x1y2"},
+		Spec:       appv1alpha1.AppSpec{Subdomain: "api-x1y2", Port: 8080},
 	}
-	if got, want := internalURL(storeManaged, 8080), "http://api-x1y2:8080"; got != want {
+	if got, want := internalURL(storeManaged), "http://api-x1y2:8080"; got != want {
 		t.Errorf("store-managed internalURL = %q, want %q", got, want)
 	}
 
+	// Port unset ⇒ the contract-level DefaultPort (types/v1alpha1).
 	legacy := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: "legacy-api", Namespace: "default"},
 	}
-	if got, want := internalURL(legacy, 3000), "http://legacy-api.default.svc:3000"; got != want {
+	if got, want := internalURL(legacy), "http://legacy-api.default.svc:3000"; got != want {
 		t.Errorf("legacy internalURL = %q, want %q", got, want)
 	}
 
@@ -239,7 +240,7 @@ func TestInternalURL(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "eden-cms-v2", Namespace: "default"},
 		Spec:       appv1alpha1.AppSpec{Subdomain: "eden-cms-v2"},
 	}
-	if got, want := internalURL(adopted, 3000), "http://eden-cms-v2.default.svc:3000"; got != want {
+	if got, want := internalURL(adopted), "http://eden-cms-v2.default.svc:3000"; got != want {
 		t.Errorf("adopted internalURL = %q, want %q", got, want)
 	}
 }

@@ -29,6 +29,14 @@ export interface ServiceView {
   phase: string;
   /** Live URL, or null when the App has none yet. */
   url: string | null;
+  /**
+   * Private-network address sibling services connect to — "<slug>:<port>",
+   * scheme-less (Render's Connect → Internal string; ADR041 D4, w9/m58).
+   * Web and private services only; null otherwise or when not selected
+   * (only the detail `server` query fetches it). A private service's header
+   * shows it as its Service Address instead of a public-URL link.
+   */
+  internalAddress: string | null;
   createdAt: string | null;
   /** Authoritative last resource mutation time; absent on legacy list fixtures. */
   updatedAt?: string | null;

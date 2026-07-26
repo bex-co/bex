@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -500,6 +502,47 @@ type AppSpec struct {
 	// {enabled: false}. See docs/render-artifacts/maintenance-mode.md.
 	// +optional
 	MaintenanceMode *MaintenanceModeSpec `json:"maintenanceMode,omitempty"`
+}
+
+// DefaultPort is the platform port default applied when spec.port is unset —
+// the same value the CRD marker on AppSpec.Port declares. Pre-spec call sites
+// (request builders that haven't materialized an AppSpec yet) use this const;
+// spec readers use EffectivePort.
+const DefaultPort = 3000
+
+// EffectivePort returns the port the App's container listens on: spec.port,
+// or DefaultPort when unset. The single defaulting rule the operator's
+// Deployment/Service derivation and bex-api's address/blueprint projections
+// must apply identically, so it lives here once (the PlatformSubdomain
+// rationale below).
+func (s AppSpec) EffectivePort() int32 {
+	if s.Port <= 0 {
+		return DefaultPort
+	}
+	return s.Port
+}
+
+// InternallyAddressable reports whether this service type owns a
+// private-network address: web_service (including the empty-type default) and
+// private_service. Workers, cron jobs, and static sites can dial out but are
+// not addressable (Render's own rule — docs/ADR041-service-addresses.md).
+func (s AppSpec) InternallyAddressable() bool {
+	return s.Type == "" || s.Type == TypeWebService || s.Type == TypePrivateService
+}
+
+// InternalAddress returns the Render-shaped private-network address sibling
+// services connect to — "<slug>:<port>", scheme-less — or "" when the type is
+// not addressable. This is the D2 resolvability contract in one place
+// (docs/ADR041-service-addresses.md): the operator's slug-named Service (or
+// the CR-named Service when the slug coincides with the CR name) answers
+// exactly this hostname, and bex-api surfaces exactly this string — both
+// modules call here so the promise cannot drift. name is the App CR's Name
+// (the PlatformSubdomain fallback).
+func (s AppSpec) InternalAddress(name string) string {
+	if !s.InternallyAddressable() {
+		return ""
+	}
+	return fmt.Sprintf("%s:%d", s.PlatformSubdomain(name), s.EffectivePort())
 }
 
 // PlatformSubdomain returns the slug the platform hostname is built from:

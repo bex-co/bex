@@ -42,6 +42,8 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     suspended: isSuspended(s.suspended),
     phase: s.phase ?? "",
     url: s.url ?? null,
+    internalAddress:
+      "internalAddress" in s ? s.internalAddress || null : null,
     createdAt: s.createdAt ?? null,
     updatedAt: "updatedAt" in s ? (s.updatedAt ?? null) : null,
     region: "region" in s ? s.region || null : null,

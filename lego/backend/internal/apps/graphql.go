@@ -271,7 +271,11 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"suspenders":   &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(a AppView) any { return suspenders(a.Suspended) })},
 		"dashboardUrl": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.DashboardURL })},
 		"url":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.URL })},
-		"createdAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.CreatedAt })},
+		// internalAddress is the private-network "<slug>:<port>" for web/private
+		// services (empty otherwise) — the dashboard's Service Address / Connect
+		// data source; a bex extension (docs/ADR041-service-addresses.md D4).
+		"internalAddress": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.InternalAddress })},
+		"createdAt":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.CreatedAt })},
 		"updatedAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.UpdatedAt })},
 		"region":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Region })},
 		"sshAddress":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.SSHAddress })},

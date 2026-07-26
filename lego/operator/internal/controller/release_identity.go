@@ -182,10 +182,7 @@ func desiredAppReleaseIdentity(spec appv1alpha1.AppSpec) appReleaseIdentity {
 	if serviceType == "" {
 		serviceType = appv1alpha1.TypeWebService
 	}
-	port := spec.Port
-	if port == 0 {
-		port = 3000
-	}
+	port := spec.EffectivePort()
 	healthCheckPath := spec.HealthCheckPath
 	if healthCheckPath == "" {
 		healthCheckPath = "/"

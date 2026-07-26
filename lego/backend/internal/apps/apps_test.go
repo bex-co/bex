@@ -116,6 +116,97 @@ func TestServiceListGetVerbs(t *testing.T) {
 	}
 }
 
+// TestInternalAddressOnAllThreeSurfaces is w9/m58's adapter-parity check
+// (docs/ADR041-service-addresses.md D4): the Render-shaped private-network
+// address "<slug>:<port>" reads back identically over REST, GraphQL and MCP
+// for the addressable types, is absent for a worker, and — the one structural
+// REST fix the capture forced — a private service's serviceDetails carries NO
+// url (Render omits the field; bex used to leak the cluster-internal URL).
+func TestInternalAddressOnAllThreeSurfaces(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		svcType     string
+		wantAddr    string // "" = internalAddress absent everywhere
+		wantRESTURL bool
+	}{
+		{name: "web-service", svcType: appv1alpha1.TypeWebService, wantAddr: "web-a1b2:8080", wantRESTURL: true},
+		{name: "private-service", svcType: appv1alpha1.TypePrivateService, wantAddr: "web-a1b2:8080", wantRESTURL: false},
+		{name: "background-worker", svcType: appv1alpha1.TypeBackgroundWorker, wantAddr: "", wantRESTURL: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := sampleApp("web")
+			app.Spec.Type = tc.svcType
+			app.Spec.Subdomain = "web-a1b2"
+			app.Spec.Port = 8080
+			if tc.svcType == appv1alpha1.TypeBackgroundWorker {
+				app.Status.URL = "" // a worker has no URL at all
+			}
+			svc, _ := newService(nil, app)
+			ctx := context.Background()
+
+			// REST
+			mux := http.NewServeMux()
+			svc.RegisterREST(mux)
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/apps/web", nil))
+			if rec.Code != http.StatusOK {
+				t.Fatalf("REST GET: %d %s", rec.Code, rec.Body)
+			}
+			var restBody struct {
+				ServiceDetails map[string]any `json:"serviceDetails"`
+			}
+			if err := json.Unmarshal(rec.Body.Bytes(), &restBody); err != nil {
+				t.Fatalf("decode REST body: %v", err)
+			}
+			gotAddr, addrPresent := restBody.ServiceDetails["internalAddress"]
+			if tc.wantAddr == "" && addrPresent {
+				t.Errorf("REST internalAddress present for %s, want absent", tc.svcType)
+			}
+			if tc.wantAddr != "" && gotAddr != tc.wantAddr {
+				t.Errorf("REST internalAddress = %v, want %q", gotAddr, tc.wantAddr)
+			}
+			_, urlPresent := restBody.ServiceDetails["url"]
+			if urlPresent != tc.wantRESTURL {
+				t.Errorf("REST serviceDetails.url present = %v, want %v (Render omits url for pserv/worker)", urlPresent, tc.wantRESTURL)
+			}
+
+			// GraphQL
+			schema, err := graphql.NewSchema(graphql.SchemaConfig{
+				Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+			})
+			if err != nil {
+				t.Fatalf("schema: %v", err)
+			}
+			res := graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+				RequestString: `{ service(id: "web") { internalAddress } }`})
+			if len(res.Errors) > 0 {
+				t.Fatalf("gql: %v", res.Errors)
+			}
+			gqlAddr := res.Data.(map[string]any)["service"].(map[string]any)["internalAddress"]
+			if tc.wantAddr == "" && gqlAddr != "" {
+				t.Errorf("GraphQL internalAddress = %v, want empty", gqlAddr)
+			}
+			if tc.wantAddr != "" && gqlAddr != tc.wantAddr {
+				t.Errorf("GraphQL internalAddress = %v, want %q", gqlAddr, tc.wantAddr)
+			}
+
+			// MCP (get_service's handler, the same toRenderService REST's GET uses)
+			handler := svc.serviceTool(svc.Get)
+			_, mcpService, err := handler(ctx, nil, serviceArgs{ServiceID: "web"})
+			if err != nil {
+				t.Fatalf("MCP get_service: %v", err)
+			}
+			mcpAddr, mcpPresent := mcpService.ServiceDetails["internalAddress"]
+			if tc.wantAddr == "" && mcpPresent {
+				t.Errorf("MCP internalAddress present, want absent")
+			}
+			if tc.wantAddr != "" && mcpAddr != tc.wantAddr {
+				t.Errorf("MCP internalAddress = %v, want %q", mcpAddr, tc.wantAddr)
+			}
+		})
+	}
+}
+
 // TestSlugPresentOnAllThreeSurfaces is w4/m20/t002's adapter-parity check:
 // the globally-unique platform-host slug (spec.subdomain, minted w4/m19,
 // falling back to the CR name when unset) reads back identically over

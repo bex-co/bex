@@ -1,6 +1,6 @@
 # ADR041 — Service addresses: internal and public, for web and private services
 
-**Status:** D1–D3 implemented (w9/m57, 2026-07-26 — slug Service, fromService slug resolution, private-service `status.URL`); D4 (Connect-style surface) proposed, owned by w9/m58
+**Status:** Accepted — implemented (w9/m57 + w9/m58, 2026-07-26): D1–D3 slug Service + fromService slug resolution + private-service `status.URL`; D4 `internalAddress` on REST/MCP/GraphQL + dashboard Connect Internal / Service Address, with the contract methods (`EffectivePort`/`InternallyAddressable`/`InternalAddress`) hoisted to `types/v1alpha1` so the operator and bex-api derive one address
 
 The single reference for what a service's **public address** (the HTTPS origin the edge serves) and **internal address** (the private hostname sibling services connect to) look like on bex, what they look like on Render, and the decisions that close the gap. Datastore addresses (Postgres `dpg-…`, Key Value) have their own ADRs ([ADR009](ADR009-postgresql-management.md), [ADR021](ADR021-keyvalue-management.md)) and are out of scope here except where noted.
 
@@ -64,7 +64,17 @@ Isolation is unaffected: NetworkPolicies select **pods** by label ([ADR022](ADR0
 
 ### D4 — Surface the internal address on all surfaces
 
-Following the `sshAddress` precedent ([ADR035](ADR035-ssh.md)): REST/GraphQL/MCP expose an internal-address field for web + private services, and the dashboard grows a Connect-style affordance (Internal tab; a private service shows it as its Service Address; deploy-detail header). **Gated on a live capture** of Render's exact REST field names for `pserv` and `web` serviceDetails (gap 4) — bex matches the captured shape rather than inventing one; until then `serviceDetails.url` keeps its current value to avoid churning twice.
+**Field contract (decided from the [service-addresses.md](render-artifacts/service-addresses.md) capture, w9/m58 t001):** Render's REST has **no** internal-address field (consumers derive `<slug>:<port>` from `slug` + port; the dashboard materializes the string in Connect → Internal). bex surfaces it explicitly as a **documented bex extension** — additive, so Render-compatible clients are unaffected — while fixing the one structural REST divergence the capture exposed:
+
+| Surface | Field | web_service | private_service | worker / cron / static | Capture basis |
+| --- | --- | --- | --- | --- | --- |
+| REST + MCP (`renderService`) | `serviceDetails.internalAddress` — **bex extension** (sibling of `url`/`sshAddress`) | `<slug>:<port>` | `<slug>:<port>` | absent | Render has no REST field (§3); scheme-less string matches Connect → Internal (`elasticsearch-2j3e:9200`) |
+| REST + MCP | `serviceDetails.url` | public URL (unchanged) | **omitted** (was the internal URL — Render omits the field entirely, §3) | absent (unchanged) | service-fields table |
+| GraphQL | `internalAddress: String` — bex extension | same value | same value | null | dashboard's data source |
+| GraphQL | `url` | unchanged | unchanged (kept for compat; the dashboard's pserv display migrates to `internalAddress`) | unchanged | — |
+| Dashboard | web keeps its public-URL link; a **private service** shows **Service Address** (`internalAddress`, copyable, never an `<a>` — the old link was a dead cluster-internal href); the deploy-detail header shows the internal address |  |  |  | §2 + [deploy-detail-page.md](render-artifacts/deploy-detail-page.md) |
+
+The value is `PlatformSubdomain(name) + ":" + port` for addressable types — the slug Service answers it when the slug differs from the CR name, the CR-named Service when they coincide (legacy/adopted), so the surfaced string is always resolvable (D2). The `sshAddress` precedent ([ADR035](ADR035-ssh.md)) covers the serviceDetails placement; `get_usage`/`suspend_keyvalue` cover the documented-extension pattern.
 
 ### D5 — Conscious divergences (kept)
 

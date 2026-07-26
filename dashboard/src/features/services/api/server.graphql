@@ -19,6 +19,11 @@ query Server($id: String!) {
     suspended
     dashboardUrl
     url
+    # internalAddress is the private-network "<slug>:<port>" sibling services
+    # connect to (web/private only, empty otherwise) — Render's Connect →
+    # Internal string; a private service's header shows it as its Service
+    # Address instead of a dead cluster-internal url link (ADR041 D4, w9/m58).
+    internalAddress
     createdAt
     # Copy-ready raw OpenSSH target, null for unsupported/free/unconfigured services.
     sshAddress

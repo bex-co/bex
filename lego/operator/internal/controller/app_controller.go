@@ -310,10 +310,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	// early-return here reintroduces the config-drift bug. The expensive build path is
 	// gated separately (Status.Image reuse below), so a no-op pass never rebuilds.
 
-	port := int(app.Spec.Port)
-	if port == 0 {
-		port = 3000
-	}
+	port := int(app.Spec.EffectivePort())
 
 	// Classify the desired spec before resolving an image. Kubernetes generation
 	// acknowledges every spec mutation; release identity records only mutations
@@ -1242,7 +1239,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 			app.Status.URLs = append(app.Status.URLs, "https://"+h)
 		}
 	} else {
-		app.Status.URL = internalURL(app, port)
+		app.Status.URL = internalURL(app)
 		app.Status.URLs = nil
 	}
 	app.Status.ActiveRevision = releaseRevision(app)
@@ -1322,9 +1319,7 @@ func (r *AppReconciler) reconcileSlugService(ctx context.Context, app *appv1alph
 	if slug == app.Name {
 		return nil // the CR-named Service already answers this hostname
 	}
-	addressable := app.Spec.Type == "" || app.Spec.Type == appv1alpha1.TypeWebService ||
-		app.Spec.Type == appv1alpha1.TypePrivateService
-	if !addressable {
+	if !app.Spec.InternallyAddressable() {
 		svc := &corev1.Service{}
 		if err := r.Get(ctx, client.ObjectKey{Name: slug, Namespace: app.Namespace}, svc); err != nil {
 			if apierrors.IsNotFound(err) {
@@ -1349,18 +1344,19 @@ func (r *AppReconciler) reconcileSlugService(ctx context.Context, app *appv1alph
 
 // internalURL is the address surfaced when an App has no public host (private
 // services). An App whose slug differs from its CR name (store-minted, w4/m19)
-// gets the Render-shaped `http://<slug>:<port>` — resolvable via the slug
-// Service; otherwise (legacy and adopted Apps, where the slug falls back to or
-// equals the CR name) the fully-qualified in-namespace form is kept,
-// byte-identical to prior behavior (docs/ADR041-service-addresses.md D1). The
-// predicate is deliberately the same `slug != app.Name` its sibling
+// gets the Render-shaped `http://` + spec.InternalAddress (the contract-level
+// `<slug>:<port>` in types/v1alpha1, shared with bex-api's surfaced field) —
+// resolvable via the slug Service; otherwise (legacy and adopted Apps, where
+// the slug falls back to or equals the CR name) the fully-qualified
+// in-namespace form is kept, byte-identical to prior behavior (ADR041 D1).
+// The predicate is deliberately the same `slug != app.Name` its sibling
 // reconcileSlugService uses, so the surfaced URL flips to the slug form only
 // when the slug Service actually exists.
-func internalURL(app *appv1alpha1.App, port int) string {
+func internalURL(app *appv1alpha1.App) string {
 	if slug := app.Spec.PlatformSubdomain(app.Name); slug != app.Name {
-		return fmt.Sprintf("http://%s:%d", slug, port)
+		return "http://" + app.Spec.InternalAddress(app.Name)
 	}
-	return fmt.Sprintf("http://%s.%s.svc:%d", app.Name, app.Namespace, port)
+	return fmt.Sprintf("http://%s.%s.svc:%d", app.Name, app.Namespace, app.Spec.EffectivePort())
 }
 
 // reconcileWorkerStatus finishes the background_worker reconcile: a worker's
