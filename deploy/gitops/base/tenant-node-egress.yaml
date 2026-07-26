@@ -14,12 +14,12 @@
 #
 # Mechanism: a Cilium-native CiliumNetworkPolicy `egressDeny`. Deny rules take
 # precedence over any allow (including the per-App policy's 0.0.0.0/0 egress)
-# and — unlike an egress *allow* rule — do NOT flip the endpoint into
-# default-deny, so a selected tenant pod keeps all its other egress (DNS,
-# same-workspace, genuine internet). The per-App policies stay portable vanilla
-# networking.k8s.io/v1 (envtest can validate them); only this cluster-wide
-# node/metadata guard is Cilium-native, which is acceptable because Cilium is
-# the CNI on every bex cluster (docs/ADR022-tenant-isolation.md §policy-dialect).
+# and select the endpoint into egress default-deny. The operator-managed per-App
+# policy supplies each tenant's ordinary DNS, same-workspace, and genuine-
+# internet allows. Those policies stay portable vanilla networking.k8s.io/v1
+# (envtest can validate them); only this cluster-wide node/metadata guard is
+# Cilium-native, which is acceptable because Cilium is the CNI on every bex
+# cluster (docs/ADR022-tenant-isolation.md §policy-dialect).
 #
 # Scope: every workspace-labeled tenant pod (app.bex.co/workspace present), in
 # whatever namespace tenant Apps project into. Platform pods carry no workspace
@@ -60,9 +60,10 @@ spec:
 # the operator's reconcileNetworkPolicy leaves un-isolated) could still reach the
 # cloud-metadata endpoint. This denies the link-local/metadata range for EVERY
 # pod in the apps namespace, so metadata isolation no longer depends on the label.
-# It denies ONLY 169.254.0.0/16 (which no legitimate pod needs) and is a Cilium
-# egressDeny, so it does NOT flip any pod into default-deny — all other egress
-# (DNS, API server 10.96.0.1, same-workspace, internet) is untouched. The
+# It denies ONLY 169.254.0.0/16 (which no legitimate pod needs), but selecting
+# every endpoint also enables Cilium egress policy enforcement. Tenant Apps get
+# their ordinary allows from the per-App policy; platform identities in this
+# namespace need a narrow explicit allow such as the autoscaler rule below. The
 # node/remote-node deny stays scoped to labeled tenants above, since platform
 # pods may legitimately talk to node IPs.
 apiVersion: cilium.io/v2
@@ -75,3 +76,23 @@ spec:
   egressDeny:
     - toCIDR:
         - 169.254.0.0/16
+---
+# The namespace-wide metadata deny above enables egress policy enforcement on
+# every selected Cilium endpoint. Tenant Apps get their ordinary allow-list from
+# the operator-managed Kubernetes NetworkPolicy, but the platform autoscaler in
+# this namespace has no App policy. Give only that identity the one destination
+# it needs: the Kubernetes API used to observe Pending Pods and resize CAPI
+# MachineDeployments. `kube-apiserver` follows the API endpoints without opening
+# node, metadata, DNS, or public-network egress.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-cluster-autoscaler-kube-apiserver
+  namespace: default
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: cluster-autoscaler
+  egress:
+    - toEntities:
+        - kube-apiserver
