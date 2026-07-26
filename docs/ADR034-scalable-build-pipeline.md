@@ -64,7 +64,7 @@ The baseline production configuration is two parallel builds:
 | --- | --- | --- | --- |
 | App dispatch/observation | `BEX_APP_RECONCILE_WORKERS` | `2` | Maximum concurrent App reconcile loops in the active operator manager |
 | Tenant admission | `BEX_MAX_CONCURRENT_BUILDS` | `2` | Maximum active build Jobs for one labeled workspace; `0` means unlimited |
-| Physical capacity | schedulable node CPU/memory | One schedulable 4 GiB slot per admitted build | Cluster-wide scheduler and node-pool constraint |
+| Physical capacity | schedulable node CPU/memory | One schedulable 7 GiB slot per admitted build | Cluster-wide scheduler and node-pool constraint |
 
 With the current synchronous reconciler, the practical global build concurrency is bounded by the App worker count. For a particular workspace it is also bounded by its workspace cap. In simplified form:
 
@@ -83,9 +83,9 @@ Values must be raised deliberately and together with a capacity check. A high re
 
 Adding build Pods can improve throughput without adding machines only while existing nodes have spare allocatable CPU, memory, ephemeral storage, and network bandwidth. Once that headroom is exhausted, extra Pods either contend on the same node or remain Pending; they do not manufacture compute.
 
-The BuildKit and kpack builders request `500m` CPU and 4 GiB memory and are limited to 4 CPU and 6 GiB. Kubernetes schedules from requests, not likely peak usage. On the baseline 8 GB tenant nodes, two build requests therefore cannot fit together: Pending builders make the real capacity shortage visible to Cluster Autoscaler instead of silently competing on one host. The 6 GiB limit leaves memory for kubelet and node daemons; advertising an 8 GiB container limit on an 8 GB machine offered protection only on paper.
+The BuildKit and kpack builders request `500m` CPU and 7 GiB memory and are limited to 2 CPU and 7 GiB. Kubernetes schedules from requests, not likely peak usage. A cx33 tenant node exposes about 7.47 GiB allocatable memory, so the equal 7 GiB request and limit leaves enough room for kubelet and the required DaemonSets while making a builder effectively node-exclusive. A Pending builder therefore makes the real capacity shortage visible to Cluster Autoscaler instead of silently competing with serving workloads. Advertising an 8 GiB container request or limit on an 8 GB machine offers protection only on paper because it exceeds allocatable capacity.
 
-This sizing was corrected after a production incident on 2026-07-16/17: two builders admitted under the former 1 GiB-request/8 GiB-limit shape consumed about 4.07 GB and 1.87 GB while total container working set on the tenant node reached about 7.15 GB. The kernel reported `SystemOOM`, the node became unreachable, and MachineHealthCheck replaced it. The recovered builds completed, but recovery is not admission control; the 4 GiB request prevents the same co-location pattern, and the tenant pool's one-to-three autoscaling range can supply a separate node for each of the two admitted builds.
+This sizing was corrected after two production incidents. On 2026-07-16/17, two builders admitted under the former 1 GiB-request/8 GiB-limit shape consumed about 4.07 GB and 1.87 GB while total container working set on the tenant node reached about 7.15 GB; the kernel reported `SystemOOM`, the node became unreachable, and MachineHealthCheck replaced it. On 2026-07-25/26, the intermediate 4 GiB-request/6 GiB-limit shape repeatedly co-located a frontend build with a 2 GiB serving Pod on the same cx33 node, and every BuildKit attempt ended `OOMKilled`. Recovery is not admission control; the equal 7 GiB request and limit makes one baseline node the schedulable unit for one admitted build, and the tenant pool's one-to-three autoscaling range supplies that node when existing nodes are occupied.
 
 Production build Pods contain untrusted tenant code. Every direct execution Pod explicitly selects `bex.co/pool=tenant`; platform taints are defense in depth rather than the only placement boundary. They must never be made eligible for the platform pool merely to gain capacity.
 
