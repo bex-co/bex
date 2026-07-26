@@ -69,7 +69,7 @@ func TestBuildJobShape(t *testing.T) {
 	if j.Spec.BackoffLimit == nil || *j.Spec.BackoffLimit != 1 {
 		t.Error("build must not retry (backoffLimit 1)")
 	}
-	if j.Spec.ActiveDeadlineSeconds == nil || j.Spec.TTLSecondsAfterFinished == nil {
+	if j.Spec.ActiveDeadlineSeconds == nil || *j.Spec.ActiveDeadlineSeconds != 30*60 || j.Spec.TTLSecondsAfterFinished == nil {
 		t.Error("deadline + TTL must be set")
 	}
 	pod := j.Spec.Template.Spec

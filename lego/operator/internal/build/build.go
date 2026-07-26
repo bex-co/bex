@@ -70,7 +70,7 @@ const defaultSignImage = "gcr.io/projectsigstore/cosign:v2.4.1"
 // buildTimeout bounds a single build Job's wall-clock before Build gives up
 // waiting (the Job's own activeDeadlineSeconds matches, so a stuck build is
 // reaped rather than lingering).
-const buildTimeout = 20 * time.Minute
+const buildTimeout = 30 * time.Minute
 
 // Build execution resources match the usable capacity of the baseline 8 GB
 // tenant nodes. Requesting the full 7 GiB limit makes a builder effectively

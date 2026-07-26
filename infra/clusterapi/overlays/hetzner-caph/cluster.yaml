@@ -135,7 +135,11 @@ spec:
         - printf 'server = "http://127.0.0.1:30500"\n[host."http://127.0.0.1:30500"]\n  skip_verify = true\n  capabilities = ["pull", "resolve"]\n' > /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml
         - cp /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml /etc/containerd/certs.d/zot.local:5000/hosts.toml
         # Enable per-registry config so the hosts.toml above takes effect.
-        - sed -i 's|config_path = ""|config_path = "/etc/containerd/certs.d"|' /etc/containerd/config.toml
+        # containerd 1.x emits config_path = "" while 2.x emits
+        # config_path = ''; replace the sole setting independent of quoting.
+        - test "$(grep -c '^[[:space:]]*config_path =' /etc/containerd/config.toml)" -eq 1
+        - sed -i '/^[[:space:]]*config_path =/c\      config_path = "/etc/containerd/certs.d"' /etc/containerd/config.toml
+        - grep -q '^[[:space:]]*config_path = "/etc/containerd/certs.d"$' /etc/containerd/config.toml
         # containerd.io's package post-install may already have started the
         # service against its old config. Restart so the generated CRI config
         # above is loaded before kubeadm checks RuntimeService.

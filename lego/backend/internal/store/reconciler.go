@@ -59,7 +59,7 @@ const (
 	defaultResyncPeriod = 30 * time.Second
 	// Phase-specific gate timeouts bound how long a deploy may sit open before
 	// recordDeploy gives up on it and calls it failed. BuildKit Jobs have a
-	// 20-minute active deadline and pre-deploy Jobs have a 10-minute deadline,
+	// 30-minute active deadline and pre-deploy Jobs have a 10-minute deadline,
 	// so their control-plane budgets must be longer than the mechanism they
 	// observe. Each budget starts from the deploy row's last phase transition.
 	// The shorter rollout budget is needed because a bad image
@@ -67,7 +67,7 @@ const (
 	// forever (lego/operator/internal/controller/app_controller.go) — so
 	// health gating (docs/ADR004-app-deployment.md) needs its own timeout, not just the
 	// CR's phase, to ever report a deploy as failed.
-	defaultBuildGateTimeout     = 25 * time.Minute
+	defaultBuildGateTimeout     = 35 * time.Minute
 	defaultPreDeployGateTimeout = 12 * time.Minute
 	defaultDeployGateTimeout    = 3 * time.Minute
 )
