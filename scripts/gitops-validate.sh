@@ -579,19 +579,36 @@ if [ -f "$DAYTODAY_RBAC" ]; then
   fi
 fi
 
-# CNPG bootstrap vs tenant egress deny guard (w7/m33): the deny policy must
+# Tenant-node egress policy guards. The deny policy must
 # carve out CNPG-managed pods (cnpg.io/cluster label) so CNPG init/instance
 # pods can reach the Kubernetes API (10.96.0.1:443). The workspace label stays
 # on CNPG pods (same-workspace isolation needs it), so the fix is a
 # DoesNotExist clause in the deny's matchExpressions, not a label removal.
 # Deny-overrides-allow means silently removing this exclusion breaks managed
 # Postgres on any fresh tenant node — this guard catches that regression in CI.
+#
+# Cilium also puts every endpoint selected by egressDeny into default-deny. The
+# namespace-wide metadata policy therefore needs a narrowly scoped API-server
+# allow for cluster-autoscaler; without it Pending build Pods cannot trigger a
+# CAPI scale-up. Pin the selector and the sole egress destination exactly.
 EGRESS="deploy/gitops/base/tenant-node-egress.yaml"
 if [ -f "$EGRESS" ]; then
   echo "==> $EGRESS CNPG exclusion from node/metadata deny"
   cnpg_excl="$(yq '.spec.endpointSelector.matchExpressions[] | select(.key == "cnpg.io/cluster") | .operator' "$EGRESS")"
   [ "$cnpg_excl" = "DoesNotExist" ] \
     || { echo "FAIL: deny-tenant-node-and-metadata-egress must exclude cnpg.io/cluster pods (DoesNotExist matchExpression) — CNPG init pods need k8s API reachability (w7/m33)" >&2; fail=1; }
+
+  echo "==> $EGRESS cluster-autoscaler Kubernetes API allow"
+  autoscaler_api_allow="$(yq -N \
+    'select(.kind == "CiliumNetworkPolicy" and .metadata.name == "allow-cluster-autoscaler-kube-apiserver") |
+      [.metadata.namespace,
+       .spec.endpointSelector.matchLabels."app.kubernetes.io/instance",
+       (.spec.egress | length | tostring),
+       (.spec.egress[0].toEntities | join(",")),
+       ((.spec.egressDeny // []) | length | tostring)] | join(":")' \
+    "$EGRESS" | tr -d '\n')"
+  [ "$autoscaler_api_allow" = "default:cluster-autoscaler:1:kube-apiserver:0" ] \
+    || { echo "FAIL: allow-cluster-autoscaler-kube-apiserver must select only the cluster-autoscaler identity and allow exactly one kube-apiserver egress rule; got '$autoscaler_api_allow'" >&2; fail=1; }
 fi
 
 # Untrusted-execution boundary (w2/m59, ADR039 O-01/O-02). These assertions are
