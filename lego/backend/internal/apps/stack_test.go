@@ -235,13 +235,25 @@ func TestParseStackDefersFromDatabaseUntilStableIDIsKnown(t *testing.T) {
 	}
 }
 
-func TestParseStackResolvesFromServiceAsLiteral(t *testing.T) {
+func TestParseStackDefersFromServiceHostUntilSlugIsKnown(t *testing.T) {
+	// host defers to apply — the injected hostname is the sibling's slug,
+	// minted at create (ADR041 D3; the same deferral shape as fromDatabase
+	// above). port still resolves at parse (declared in the same file).
 	st, _ := parseStack(DeployRequest{Manifest: stackManifest})
-	web := findSvc(t, st, "web").req
-	if h := findEnv(t, web.Env, "API_HOST"); h.Value != "api" {
-		t.Errorf("fromService host = %q, want api", h.Value)
+	web := findSvc(t, st, "web")
+	if len(web.hostRefs) != 1 {
+		t.Fatalf("hostRefs = %+v, want the one deferred api host ref", web.hostRefs)
 	}
-	if p := findEnv(t, web.Env, "API_PORT"); p.Value != "8080" {
+	// The port half resolves at parse; only the slug hostname waits for apply.
+	if ref := web.hostRefs[0]; ref.target != "api" || ref.key != "API_HOST" || ref.port != 8080 || ref.hostport {
+		t.Errorf("hostRef = %+v, want {key API_HOST, target api, port 8080, host-only}", ref)
+	}
+	for _, env := range web.req.Env {
+		if env.Name == "API_HOST" {
+			t.Errorf("API_HOST was resolved before the sibling's slug was known")
+		}
+	}
+	if p := findEnv(t, web.req.Env, "API_PORT"); p.Value != "8080" {
 		t.Errorf("fromService port = %q, want 8080 (api's declared port)", p.Value)
 	}
 }
@@ -373,6 +385,60 @@ func TestDeployStackAppliesDatabasesFirstThenServices(t *testing.T) {
 	wantSecret := res.Databases[0].ID + "-app"
 	if du.ValueFrom == nil || du.ValueFrom.SecretKeyRef == nil || du.ValueFrom.SecretKeyRef.Name != wantSecret {
 		t.Errorf("web DATABASE_URL not a %s secretRef: %+v", wantSecret, du)
+	}
+	// Legacy (no tenant store): the CR/Service name IS the bare name, so the
+	// fromService host literal stays byte-identical to the pre-m57 behavior.
+	if h := findEnv(t, getApp(t, cl, "web").Spec.Env, "API_HOST"); h.Value != "api" {
+		t.Errorf("legacy fromService host = %q, want the bare name api", h.Value)
+	}
+}
+
+func TestDeployStackFromServiceHostResolvesToTheSlug(t *testing.T) {
+	// Store-managed path (w4/m19 CR names `<tenant>-<name>`): the injected
+	// hostname must be the sibling's resolvable slug — never the bare bex.yml
+	// name, which matches no Service (ADR041 gap 1 / D3). `web` references
+	// `api` declared AFTER it, so this also exercises the forward-reference
+	// second pass (api's slug exists only after its create).
+	svc, cl := newTenantService(fakeWorkspace{"identity-a": "tea-a"})
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+	res, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Manifest: stackManifest})
+	if err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	var apiSlug string
+	for _, v := range res.Services {
+		if v.Name == "api" {
+			apiSlug = v.Slug
+		}
+	}
+	if apiSlug == "" || apiSlug == "api" {
+		t.Fatalf("api slug = %q, want a store-managed slug distinct from the bare name", apiSlug)
+	}
+	web := getApp(t, cl, "tea-a-web")
+	if h := findEnv(t, web.Spec.Env, "API_HOST"); h.Value != apiSlug {
+		t.Errorf("fromService host = %q, want the sibling's slug %q", h.Value, apiSlug)
+	}
+	if p := findEnv(t, web.Spec.Env, "API_PORT"); p.Value != "8080" {
+		t.Errorf("fromService port = %q, want 8080", p.Value)
+	}
+
+	// Idempotence: a re-apply resolves every ref up front (all siblings exist)
+	// and converges to the same env — no churn, no duplicate vars.
+	if _, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Manifest: stackManifest}); err != nil {
+		t.Fatalf("second DeployStack: %v", err)
+	}
+	web = getApp(t, cl, "tea-a-web")
+	seen := 0
+	for _, env := range web.Spec.Env {
+		if env.Name == "API_HOST" {
+			seen++
+			if env.Value != apiSlug {
+				t.Errorf("re-apply fromService host = %q, want %q", env.Value, apiSlug)
+			}
+		}
+	}
+	if seen != 1 {
+		t.Errorf("API_HOST appears %d times after re-apply, want exactly 1", seen)
 	}
 }
 

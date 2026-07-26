@@ -1,6 +1,6 @@
 # ADR041 — Service addresses: internal and public, for web and private services
 
-**Status:** Proposed (2026-07-25)
+**Status:** D1–D3 implemented (w9/m57, 2026-07-26 — slug Service, fromService slug resolution, private-service `status.URL`); D4 (Connect-style surface) proposed, owned by w9/m58
 
 The single reference for what a service's **public address** (the HTTPS origin the edge serves) and **internal address** (the private hostname sibling services connect to) look like on bex, what they look like on Render, and the decisions that close the gap. Datastore addresses (Postgres `dpg-…`, Key Value) have their own ADRs ([ADR009](ADR009-postgresql-management.md), [ADR021](ADR021-keyvalue-management.md)) and are out of scope here except where noted.
 
@@ -15,6 +15,8 @@ The single reference for what a service's **public address** (the HTTPS origin t
 | Discovery | Dashboard **Connect → Internal** tab per service; the deploy-detail header also shows the internal address | same + [deploy-detail-page.md](render-artifacts/deploy-detail-page.md) (line "Render's header shows an internal address, while the current bex dashboard/API contract does not supply one") |
 | Blueprint | `fromService: {property: host \| port \| hostport}` env vars resolve to the internal hostname/port | render.yaml docs |
 | Default web port | `PORT` is injected; Render's default is `10000` (visible in the doc example `elastic-qeqj:10000`) | private-network doc |
+| REST fields | `serviceDetails.url` present for web_service, **absent for private_service/background_worker**; `slug` present on **all** types; **no** internal-address REST field exists — consumers derive `<slug>:<port>` | [service-addresses.md](render-artifacts/service-addresses.md) §3 (captured 2026-07-26) |
+| Multi-instance discovery | `[INTERNAL_HOSTNAME]-discovery` hostname resolves to all instance IPs; injected as `RENDER_DISCOVERY_SERVICE` | [service-addresses.md](render-artifacts/service-addresses.md) §5 |
 
 ## bex today
 
@@ -31,10 +33,10 @@ All tenant Apps share one namespace (`BEX_CP_APPS_NAMESPACE`, default `default`)
 
 ## Gaps
 
-1. **`fromService` host literals appear broken for store-managed stacks.** The injected hostname is the bare bex.yml name, but since w4/m19 the Service object is named `<tenant>-<name>` — the bare name has nothing to resolve to. ([ADR006](ADR006-bex-api.md) §Blueprint still claims "bare `<name>` resolves because every bex Service is named after its App" — true only for legacy/hand-applied CRs whose CR name _is_ the bare name.) Needs a live repro, then a fix.
+1. **`fromService` host literals were broken for store-managed stacks.** The injected hostname was the bare bex.yml name, but since w4/m19 the Service object is named `<tenant>-<name>` — the bare name has nothing to resolve to. (ADR006 §Blueprint claimed "bare `<name>` resolves because every bex Service is named after its App" — true only for legacy/hand-applied CRs whose CR name _is_ the bare name; corrected in w9/m57.) **Repro'd live 2026-07-26** (fresh CAPD mock cluster, host operator, projector-shaped store-managed pair `tea-m57a-web`/`tea-m57a-api` with minted-slug subdomains): from the web pod, `wget http://api:8080/` → `wget: bad address 'api'` (the old injected value — DNS has nothing under the bare name), while `http://tea-m57a-api:8080/` (CR-named Service) and `http://api-x9z2:8080/` (slug Service, post-fix) both answer. Fixed by D2+D3 the same day: the slug Service resolves, the resolver injects the slug (`stack_test.go` `TestDeployStackFromServiceHostResolvesToTheSlug` covers the forward-reference and idempotent re-apply paths; `store_pg_test.go` `assertSlugMinting` covers real-Postgres slug minting). Cross-workspace counter-probe from a `tea-other` pod to `api-x9z2:8080` **timed out (denied)** — the slug Service adds a DNS name, not a policy hole, and the same-workspace control stayed green.
 2. **The internal hostname is not Render-shaped.** Render: `<slug>:<port>`. bex: `<tenant>-<name>.default.svc:<port>` (tenant-prefixed CR name, k8s FQDN when surfaced).
 3. **No internal-address surface.** Render shows Connect → Internal / Service Address / deploy-header internal address; bex's dashboard and API supply none (recorded in [deploy-detail-page.md](render-artifacts/deploy-detail-page.md) as deliberate scope at the time).
-4. **A private service's `serviceDetails.url` leaks a k8s implementation detail** (`http://….svc:3000`) where Render's shape is unverified — capture what Render actually returns for a `pserv` before matching it.
+4. **A private service's `serviceDetails.url` leaks a k8s implementation detail** (`http://….svc:3000`) where Render **omits the field entirely** (captured 2026-07-26, [service-addresses.md](render-artifacts/service-addresses.md) §3) — a structural divergence, not just a value one. The operator-side value fix is w9/m57 t005; whether bex's REST omits-vs-extends the field is w9/m58 t001's shape decision.
 5. **Default port differs** (3000 vs Render's 10000) — cosmetic; `PORT`-reading apps are unaffected.
 
 ## Decisions
@@ -84,4 +86,4 @@ Following the `sshAddress` precedent ([ADR035](ADR035-ssh.md)): REST/GraphQL/MCP
 - **Rename the workload Service to the slug in place** — breaks every existing consumer of the CR-named Service and churns `status.URL` for all Apps at once; the dual-Service shape is strictly safer and the old name can be retired later if ever.
 - **Bare user-name Service** (`web`) — collides across workspaces in the shared namespace; this is exactly why w4/m19 prefixed CR names. The slug solves the same problem with a Render-shaped answer.
 - **Namespace-per-workspace DNS scoping** (so bare names resolve per-tenant) — re-litigates ADR022's Option A; rejected there for projector churn and blast radius, unchanged here.
-- **Per-instance DNS records** (Render resolves an internal hostname to individual instance IPs) — would need a headless Service and per-pod addressing semantics; deferred until something needs instance-level dialing (the SSH gateway already covers instance targeting).
+- **Per-instance DNS records** (Render's `[INTERNAL_HOSTNAME]-discovery` hostname resolving to all instance IPs, injected as `RENDER_DISCOVERY_SERVICE` — [service-addresses.md](render-artifacts/service-addresses.md) §5) — would need a headless `<slug>-discovery` Service and per-pod addressing semantics; deferred until something needs instance-level dialing (the SSH gateway already covers instance targeting).
