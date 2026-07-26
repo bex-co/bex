@@ -831,7 +831,7 @@ func TestDeployTimedOutUsesPhaseSpecificBudgets(t *testing.T) {
 		},
 		{
 			name: "build eventually times out",
-			open: Deploy{Status: DeployBuildInProgress, UpdatedAt: now.Add(-26 * time.Minute)},
+			open: Deploy{Status: DeployBuildInProgress, UpdatedAt: now.Add(-defaultBuildGateTimeout - time.Minute)},
 			want: true,
 		},
 		{

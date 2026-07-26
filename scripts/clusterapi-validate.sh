@@ -60,6 +60,18 @@ while read -r md infra cfg; do
   esac
 done < <(yq -N 'select(.kind=="MachineDeployment") | .metadata.name + " " + .spec.template.spec.infrastructureRef.name + " " + .spec.template.spec.bootstrap.configRef.name' "$OVERLAY")
 
+# containerd 2.x renders the registry config_path with single quotes while 1.x
+# used double quotes. Match the setting itself, assert it is unique, and verify
+# the replacement; a quote-specific substitution silently leaves kubelet trying
+# to resolve zot.bex-registry.svc through the host DNS.
+tenant_prek="$(yq -N 'select(.kind=="KubeadmConfigTemplate" and .metadata.name=="bex-tenant-0") | .spec.template.spec.preKubeadmCommands[]' "$OVERLAY")"
+if ! echo "$tenant_prek" | grep -Fq "grep -c '^[[:space:]]*config_path ='" \
+  || ! echo "$tenant_prek" | grep -Fq "sed -i '/^[[:space:]]*config_path =/c\\      config_path = \"/etc/containerd/certs.d\"'" \
+  || ! echo "$tenant_prek" | grep -Fq "grep -q '^[[:space:]]*config_path = \"/etc/containerd/certs.d\"$'"; then
+  echo "FAIL: bex-tenant-0 must configure containerd registry config_path independent of single/double quoting and verify the result" >&2
+  fail=1
+fi
+
 # containerd.io's package post-install is allowed to start the service before
 # cloud-init generates the final CRI config. Every kubeadm bootstrap must use
 # restart (not start, which is a no-op for an already-active service) before

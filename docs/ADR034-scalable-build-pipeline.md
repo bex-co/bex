@@ -8,7 +8,7 @@
 
 bex builds git-backed services inside the app cluster. Dockerfile and Render-native runtime builds use [BuildKit](https://github.com/moby/buildkit) Jobs confined by Kubernetes Pod user namespaces; the explicit `builder: buildpack` extension uses kpack. Each pipeline pushes an immutable generation image to Zot before the operator rolls out the workload. This matches Render's publicly documented use of [BuildKit for Dockerfile deploys](https://render.com/docs/docker) without assuming that Render's undisclosed native-runtime implementation has the same internal shape.
 
-The first implementation called `build.Build` synchronously from an App reconcile. The function creates or adopts the deterministic build Job, then polls it until success, failure, or the 20-minute deadline. With controller-runtime's default single App worker, one long build therefore occupied the only reconcile worker. A second App could remain waiting even when Kubernetes had enough CPU and memory to run another build.
+The first implementation called `build.Build` synchronously from an App reconcile. The function creates or adopts the deterministic build Job, then polls it until success, failure, or the 30-minute deadline. With controller-runtime's default single App worker, one long build therefore occupied the only reconcile worker. A second App could remain waiting even when Kubernetes had enough CPU and memory to run another build.
 
 This exposed two different scaling problems that must not be conflated:
 
@@ -121,7 +121,7 @@ Two synchronous workers are the accepted near-term baseline, not the final queue
 4. reconcile again from owned-resource events or a bounded requeue;
 5. on terminal build status, resolve the image and continue the rollout.
 
-After this change, `BEX_APP_RECONCILE_WORKERS` controls control-plane responsiveness only. Build parallelism will be controlled by explicit admission and Kubernetes capacity, so a 20-minute build no longer leases a reconcile goroutine for 20 minutes.
+After this change, `BEX_APP_RECONCILE_WORKERS` controls control-plane responsiveness only. Build parallelism will be controlled by explicit admission and Kubernetes capacity, so a long build no longer leases a reconcile goroutine for its full 30-minute deadline.
 
 The Kubernetes Job remains the execution contract. A queueing layer such as Kueue can later be inserted for resource-aware regional quotas, priorities, or fair sharing without replacing BuildKit or changing the image handoff. We will not add that dependency for the two-build baseline. Before multi-manager or multi-cluster dispatch, the follow-up design must select and document one atomic admission authority rather than extending the current list-then-create check.
 
