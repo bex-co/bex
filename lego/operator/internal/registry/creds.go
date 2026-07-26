@@ -509,8 +509,8 @@ func htpasswdHasUser(htpasswd []byte, username string) bool {
 func htpasswdUserHash(htpasswd []byte, username string) []byte {
 	prefix := username + ":"
 	for line := range strings.SplitSeq(string(htpasswd), "\n") {
-		if strings.HasPrefix(line, prefix) {
-			return []byte(strings.TrimPrefix(line, prefix))
+		if hash, ok := strings.CutPrefix(line, prefix); ok {
+			return []byte(hash)
 		}
 	}
 	return nil

@@ -72,16 +72,16 @@ const defaultSignImage = "gcr.io/projectsigstore/cosign:v2.4.1"
 // reaped rather than lingering).
 const buildTimeout = 20 * time.Minute
 
-// Build execution resources are shared by BuildKit and kpack. The memory
-// request deliberately prevents two builders from co-locating on the baseline
-// 8 GB tenant nodes; Cluster Autoscaler can then add one node per admitted
-// build. The limit leaves headroom for kubelet and node daemons instead of
-// offering a container more memory than those nodes can safely supply.
+// Build execution resources match the usable capacity of the baseline 8 GB
+// tenant nodes. Requesting the full 7 GiB limit makes a builder effectively
+// node-exclusive (while leaving allocatable headroom for kubelet and DaemonSets)
+// and lets Cluster Autoscaler add a node instead of co-locating a memory-hungry
+// build with serving workloads.
 const (
 	buildCPURequest    = "500m"
-	buildMemoryRequest = "4Gi"
-	buildCPULimit      = "4"
-	buildMemoryLimit   = "6Gi"
+	buildMemoryRequest = "7Gi"
+	buildCPULimit      = "2"
+	buildMemoryLimit   = "7Gi"
 )
 
 // pollInterval is how often Build re-reads the Job while waiting for it.
