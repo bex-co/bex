@@ -11,6 +11,7 @@ on:
     paths:
       - "infra/clusterapi/overlays/hetzner-caph/**"
       - "infra/packer/**"
+      - ".github/workflows/snapshot.yml"
       - "scripts/clusterapi-validate.sh"
       - ".github/workflows/clusterapi-validate.yml"
   push:
@@ -18,6 +19,7 @@ on:
     paths:
       - "infra/clusterapi/overlays/hetzner-caph/**"
       - "infra/packer/**"
+      - ".github/workflows/snapshot.yml"
       - "scripts/clusterapi-validate.sh"
       - ".github/workflows/clusterapi-validate.yml"
 

@@ -80,8 +80,9 @@ variable "location" {
 }
 
 # CAPH resolves HCloudMachineTemplate.imageName against this label
-# (`caph-image-name`), NOT the snapshot description — so cluster.yaml's
-# `imageName: bex-worker` matches any snapshot carrying this label, newest wins.
+# (`caph-image-name`), NOT the snapshot description. The selector must match
+# exactly one snapshot; snapshot.yml retires the label on every older artifact
+# immediately after a successful bake.
 variable "image_name" {
   type    = string
   default = "bex-worker"

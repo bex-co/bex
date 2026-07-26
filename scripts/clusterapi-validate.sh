@@ -24,6 +24,7 @@ cd "$(dirname "$0")/.."
 
 OVERLAY="infra/clusterapi/overlays/hetzner-caph/cluster.yaml"
 PACKER="infra/packer/bex-worker.pkr.hcl"
+SNAPSHOT_WORKFLOW=".github/workflows/snapshot.yml"
 fail=0
 
 pk_var() { grep -A4 "variable \"$1\"" "$PACKER" | grep -m1 -oE 'default[[:space:]]*=[[:space:]]*"[^"]+"' | grep -oE '"[^"]+"' | tr -d '"'; }
@@ -119,6 +120,16 @@ if [ -f "$PACKER" ]; then
   fi
 else
   echo "FAIL: $PACKER missing — the baked-image recipe must stay in the repo (w1/m36 t001)" >&2; fail=1
+fi
+
+# 3b. CAPH requires imageName to resolve to exactly one snapshot. A bake must
+# preserve old snapshots for rollback while retiring their active selector.
+echo "==> $SNAPSHOT_WORKFLOW retires prior active worker snapshots"
+if ! grep -Fq 'caph-image-name%3Dbex-worker' "$SNAPSHOT_WORKFLOW" \
+  || ! grep -Fq '"caph-image-name":"bex-worker-retired"' "$SNAPSHOT_WORKFLOW" \
+  || ! grep -Fq 'test "$active" -eq 1' "$SNAPSHOT_WORKFLOW"; then
+  echo "FAIL: snapshot workflow must retire older bex-worker labels and verify exactly one active image" >&2
+  fail=1
 fi
 
 # 4. The bake pins and the overlay must not drift.

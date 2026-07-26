@@ -51,6 +51,27 @@ jobs:
         working-directory: infra/packer
         run: packer build -var "kubernetes_version=${{ inputs.kubernetes_version }}" .
 
+      # CAPH treats two images with the same caph-image-name as an ambiguity; it
+      # does not choose the newest. Keep old snapshots for rollback but remove
+      # them from the active selector immediately after a successful bake.
+      - name: retire prior bex-worker snapshots
+        run: |
+          set -euo pipefail
+          api='https://api.hetzner.cloud/v1/images'
+          auth="Authorization: Bearer $HCLOUD_TOKEN"
+          images=$(curl -fsS -H "$auth" "$api?type=snapshot&label_selector=caph-image-name%3Dbex-worker&sort=created:desc")
+          newest=$(jq -r '.images | max_by(.created) | .id' <<<"$images")
+          test -n "$newest" && test "$newest" != null
+          while read -r id; do
+            [ "$id" = "$newest" ] && continue
+            image=$(curl -fsS -H "$auth" "$api/$id")
+            labels=$(jq '.image.labels + {"caph-image-name":"bex-worker-retired"}' <<<"$image")
+            payload=$(jq -cn --argjson labels "$labels" '{labels:$labels}')
+            curl -fsS -X PUT -H "$auth" -H 'Content-Type: application/json' --data "$payload" "$api/$id" >/dev/null
+          done < <(jq -r '.images[].id' <<<"$images")
+          active=$(curl -fsS -H "$auth" "$api?type=snapshot&label_selector=caph-image-name%3Dbex-worker" | jq '.images | length')
+          test "$active" -eq 1
+
       - name: summary
         run: |
           echo "Baked the bex-worker snapshot (k8s ${{ inputs.kubernetes_version }})."
