@@ -120,6 +120,9 @@ spec:
       preKubeadmCommands:
         - set -x
         - grep VERSION= /etc/os-release; uname -a
+        # Fail closed if the labelled snapshot is stale: hostUsers=false build
+        # Pods require containerd 2.x user-namespace support.
+        - /usr/local/bin/containerd --version | grep -q ' v2.3.3 '
         - sed -i '/swap/d' /etc/fstab
         - swapoff -a
         - modprobe overlay && modprobe br_netfilter && sysctl --system
@@ -135,11 +138,12 @@ spec:
         - printf 'server = "http://127.0.0.1:30500"\n[host."http://127.0.0.1:30500"]\n  skip_verify = true\n  capabilities = ["pull", "resolve"]\n' > /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml
         - cp /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml /etc/containerd/certs.d/zot.local:5000/hosts.toml
         # Enable per-registry config so the hosts.toml above takes effect.
-        # containerd 1.x emits config_path = "" while 2.x emits
-        # config_path = ''; replace the sole setting independent of quoting.
-        - test "$(grep -c '^[[:space:]]*config_path =' /etc/containerd/config.toml)" -eq 1
-        - sed -i '/^[[:space:]]*config_path =/c\      config_path = "/etc/containerd/certs.d"' /etc/containerd/config.toml
-        - grep -q '^[[:space:]]*config_path = "/etc/containerd/certs.d"$' /etc/containerd/config.toml
+        # containerd 1.x and 2.x use different CRI plugin section names and
+        # quote styles. Both also have an unrelated transfer config_path, so
+        # update and verify only the CRI registry section.
+        - sed -i -E '/^[[:space:]]*\[plugins\..*cri.*\.registry\]$/,/^[[:space:]]*\[/ s#^([[:space:]]*)config_path =.*#\1config_path = "/etc/containerd/certs.d"#' /etc/containerd/config.toml
+        - test "$(sed -n '/^[[:space:]]*\[plugins\..*cri.*\.registry\]$/,/^[[:space:]]*\[/ { /^[[:space:]]*config_path = "/p; }' /etc/containerd/config.toml | wc -l)" -eq 1
+        - sed -n '/^[[:space:]]*\[plugins\..*cri.*\.registry\]$/,/^[[:space:]]*\[/ { /^[[:space:]]*config_path = "/p; }' /etc/containerd/config.toml | grep -q 'config_path = "/etc/containerd/certs.d"'
         # containerd.io's package post-install may already have started the
         # service against its old config. Restart so the generated CRI config
         # above is loaded before kubeadm checks RuntimeService.
@@ -776,6 +780,8 @@ spec:
       preKubeadmCommands:
         - set -x
         - grep VERSION= /etc/os-release; uname -a
+        # Same stale-snapshot guard as the tenant pool.
+        - /usr/local/bin/containerd --version | grep -q ' v2.3.3 '
         - sed -i '/swap/d' /etc/fstab
         - swapoff -a
         - modprobe overlay && modprobe br_netfilter && sysctl --system

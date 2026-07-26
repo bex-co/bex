@@ -88,16 +88,20 @@ variable "image_name" {
 }
 
 source "hcloud" "worker" {
-  token         = var.hcloud_token
-  image         = var.base_image
-  location      = var.location
-  server_type   = var.server_type
-  ssh_username  = "root"
-  snapshot_name = "${var.image_name}-k8s-${var.kubernetes_version}"
+  token        = var.hcloud_token
+  image        = var.base_image
+  location     = var.location
+  server_type  = var.server_type
+  ssh_username = "root"
+  # Snapshot descriptions are unique in Hetzner. Include the full runtime tuple
+  # so a containerd/runc-only upgrade does not collide with the previous bake.
+  snapshot_name = "${var.image_name}-k8s-${var.kubernetes_version}-containerd-${var.containerd_version}-runc-${var.runc_version}"
   snapshot_labels = {
-    caph-image-name = var.image_name
-    "bex.co/role"   = "worker"
-    "bex.co/k8s"    = var.kubernetes_version
+    caph-image-name     = var.image_name
+    "bex.co/role"       = "worker"
+    "bex.co/k8s"        = var.kubernetes_version
+    "bex.co/containerd" = var.containerd_version
+    "bex.co/runc"       = var.runc_version
   }
 }
 
