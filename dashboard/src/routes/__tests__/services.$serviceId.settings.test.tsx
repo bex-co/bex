@@ -207,6 +207,14 @@ vi.mock("@/features/services/hooks/use-repo-branches", () => ({
   useRepoBranches: () => ({ branches: [], loading: false }),
 }));
 
+// The Source combobox (w5/m54) reads useRepos + writes useSetRepo (Apollo).
+vi.mock("@/features/services/hooks/use-repos", () => ({
+  useRepos: () => ({ repos: [], loading: false, error: undefined }),
+}));
+vi.mock("@/features/services/hooks/use-set-repo", () => ({
+  useSetRepo: () => ({ setRepo: vi.fn(async () => true), busy: false }),
+}));
+
 // CronDeploySection (w5/m18) calls useCronJob which hits Apollo; mock it.
 vi.mock("@/features/services/hooks/use-cron-job", () => ({
   useCronJob: () => ({ updateCronJob: vi.fn(async () => true), busy: false }),
@@ -440,9 +448,9 @@ describe("ServiceSettingsPage", () => {
     expect(await screen.findByText("Deploy")).toBeInTheDocument();
     expect(screen.getByText("Build")).toBeInTheDocument();
     expect(screen.getByText("Auto-Deploy")).toBeInTheDocument();
-    expect(
-      screen.getByText("https://github.com/acme/reports"),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Source" })).toHaveValue(
+      "https://github.com/acme/reports",
+    );
     expect(screen.queryByText("Docker Command")).not.toBeInTheDocument();
     expect(screen.queryByText("Dockerfile Path")).not.toBeInTheDocument();
   });

@@ -22,6 +22,8 @@ import { usePreDeployCommand } from "@/features/services/hooks/use-pre-deploy-co
 import { useAutoDeploy } from "@/features/services/hooks/use-auto-deploy";
 import { useBuildFilter } from "@/features/services/hooks/use-build-filter";
 import { useRepoBranches } from "@/features/services/hooks/use-repo-branches";
+import { useSetRepo } from "@/features/services/hooks/use-set-repo";
+import { useRepos } from "@/features/services/hooks/use-repos";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
 import { commandPromptPrefix } from "@/features/services/lib/format";
 import type { BuildFilterView } from "@/features/services/types";
@@ -130,6 +132,15 @@ export function BuildDeploySection({
     [branches],
   );
 
+  // Source combobox options: the connected account's repositories (w5/m54).
+  // Empty without a connection — then Source is free-text (allowCustom).
+  const { setRepo, busy: repoBusy } = useSetRepo();
+  const { repos } = useRepos();
+  const repoOptions = useMemo(
+    () => repos.map((r) => ({ value: r.htmlUrl, label: r.fullName })),
+    [repos],
+  );
+
   // Render presents Auto-Deploy as a select ("On Commit" | "Off"), not a switch
   // (w5/m53). bex has only two states — its boolean spec.autoDeploy maps to
   // Render's autoDeployTrigger "commit"/"off"; "checksPass" is unsupported.
@@ -180,12 +191,25 @@ export function BuildDeploySection({
           <CardDescription>{t("services.buildDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div>
-            <div className="text-sm text-muted-foreground">
-              {t("services.buildDeploySourceLabel")}
-            </div>
-            <div className="mt-1 font-mono text-sm break-all">{repo}</div>
-          </div>
+          {/* Source is editable (w5/m54, Render parity): switch the connected
+              repository via the account's repo list (free-text for a pasted
+              URL). A switch rebuilds, so it confirms first. */}
+          <EditableFieldRow
+            label={t("services.buildDeploySourceLabel")}
+            hint={t("services.buildDeploySourceHint")}
+            value={repo}
+            placeholder={t("services.buildDeploySourcePlaceholder")}
+            editLabel={t("services.buildDeploySourceEdit")}
+            mono
+            busy={repoBusy}
+            comboboxOptions={repoOptions}
+            confirm={{
+              title: (value) =>
+                t("services.buildDeploySourceConfirmTitle", { value }),
+              body: t("services.buildDeploySourceConfirmBody"),
+            }}
+            onSave={(value) => setRepo(serviceId, value)}
+          />
           {/* Branch is editable (w5/m48/t005, Render parity — Render offers a
               searchable branch picker; bex edits it inline like Root Directory).
               An emptied input restores the backend default ("back to main"); the

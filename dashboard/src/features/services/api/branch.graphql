@@ -11,3 +11,15 @@ mutation SetBranch($id: String!, $branch: String!) {
     phase
   }
 }
+
+# setRepo switches the Git repository a service builds from (Render's editable
+# Source field, w5/m54). Shares the backend's source verb with setBranch, so a
+# repo switch validates and triggers the documented rebuild path.
+mutation SetRepo($id: String!, $repo: String!) {
+  setRepo(id: $id, repo: $repo) {
+    id
+    repo
+    branch
+    phase
+  }
+}

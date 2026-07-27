@@ -67,7 +67,7 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 - [x] **m51** — Build Command for all native-runtime services + root-dir command prefix (6 tasks) ← same 2026-07-26 walk ("the build command is missing"); pure-UI gap — backend `setBuildCommand` already full-surface (w7/m41); sequence after m50/t001 — done 2026-07-27, moved to `done/m51/`
 - [x] **m52** — Settings IA alignment with Render's section layout (8 tasks) ← same walk (Render heading order captured via DOM query); General rename + read-only Region row + Build/Deploy split + subdomain fold-in + bottom Suspend/Delete; sequence after m50–m51 — done 2026-07-27, moved to `done/m52/`
 - [x] **m53** — Auto-Deploy trigger parity: `autoDeployTrigger` select across REST/GraphQL/MCP/UI (8 tasks) ← same walk (Render renders a disabled "On Commit" select, API carries `off|commit|checksPass`); mapped onto existing `spec.autoDeploy` boolean, `checksPass` a documented divergence; UI half consumes m50/t001's select variant — done 2026-07-27, moved to `done/m53/`
-- [ ] **m54** — Source + Branch pickers (GitHub-App-backed) (7 tasks) ← same walk, lower priority; retires the w5/m48 branch free-text + read-only Source conscious divergences via the existing GitHub App/repo-picker infrastructure
+- [x] **m54** — Source + Branch pickers (GitHub-App-backed) (7 tasks) ← same walk, lower priority; retires the w5/m48 branch free-text + read-only Source conscious divergences via the existing GitHub App/repo-picker infrastructure — done 2026-07-27, moved to `done/m54/`
 
 ## Inbox
 

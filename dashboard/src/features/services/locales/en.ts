@@ -1629,7 +1629,29 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.buildDeploySourceLabel": {
     message: "Source",
-    description: "Build & Deploy: repo field label (read-only)",
+    description: "Build & Deploy: repo field label",
+  },
+  "services.buildDeploySourceHint": {
+    message:
+      "The Git repository this service builds from. Pick one of your connected repositories or paste a repository URL.",
+    description: "Build & Deploy: Source (repo) field help text (w5/m54)",
+  },
+  "services.buildDeploySourcePlaceholder": {
+    message: "https://github.com/owner/repo",
+    description: "Build & Deploy: Source combobox input placeholder",
+  },
+  "services.buildDeploySourceEdit": {
+    message: "Edit Source",
+    description: "Accessible label for the Source edit-pencil button",
+  },
+  "services.buildDeploySourceConfirmTitle": {
+    message: "Switch source to {value}?",
+    description: "Build & Deploy: Source-change confirm dialog title",
+  },
+  "services.buildDeploySourceConfirmBody": {
+    message:
+      "The next deploy builds from the new repository. Make sure its branch and build settings still apply.",
+    description: "Build & Deploy: Source-change confirm dialog body",
   },
   "services.buildDeployBranchLabel": {
     message: "Branch",
@@ -1950,7 +1972,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.autoDeployEdit": {
     message: "Edit Auto-Deploy",
-    description: "Accessible label for the Auto-Deploy select's edit-pencil button",
+    description:
+      "Accessible label for the Auto-Deploy select's edit-pencil button",
   },
   "services.autoDeployViaGitHub": {
     message:
