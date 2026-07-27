@@ -7,6 +7,14 @@ export function rootDirPrefix(rootDir: string | null | undefined): string {
   return dir ? dir + "/" : "";
 }
 
+// Render's command-input prompt (w5/m51): the "<rootDir>/ $" prefix shown inside
+// the Build / Pre-Deploy / Start Command inputs so a command reads as relative to
+// the root directory. Falls back to a bare "$" prompt when no root dir is set.
+export function commandPromptPrefix(rootDir: string | null | undefined): string {
+  const prefix = rootDirPrefix(rootDir);
+  return prefix ? `${prefix} $` : "$";
+}
+
 // Compact relative age in Render's dashboard style ("2mo", "5d", "3h", "4m",
 // "now"). Render's services list shows this in its "Updated" column; bex only
 // tracks a creation timestamp today (a true last-deploy time is a known gap), so

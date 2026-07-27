@@ -54,12 +54,14 @@ export function ServiceSettingsPage() {
   const cron = service ? isCron(service) : false;
   const staticSite = service ? isStaticSite(service) : false;
   const worker = service ? isWorker(service) : false;
+  // A Dockerfile build (docker runtime, or the legacy dockerfile builder) builds
+  // from a Dockerfile, not a Build Command — Render shows Dockerfile Path there
+  // instead. Every other repo-backed build is native and carries a Build Command.
+  const dockerBuild =
+    service?.runtime === "docker" ||
+    (!service?.runtime && service?.builder === "dockerfile");
   const registryCredentialEligible =
-    service != null &&
-    !staticSite &&
-    (!service.repo ||
-      service.runtime === "docker" ||
-      (!service.runtime && service.builder === "dockerfile"));
+    service != null && !staticSite && (!service.repo || dockerBuild);
 
   return (
     <div className="space-y-6">
@@ -167,7 +169,10 @@ export function ServiceSettingsPage() {
               // Pre-Deploy Command applies to web/private/worker; a static_site
               // has no running container, so hide the field for it (w1/m33).
               showPreDeployCommand={!staticSite}
-              showBuildCommand={staticSite}
+              // Build Command shows for every native build — static sites (w7/m41)
+              // and native-runtime web/private/worker services (w5/m51). A
+              // Dockerfile build shows Dockerfile Path instead.
+              showBuildCommand={!dockerBuild}
               showStartCommand={!staticSite}
               showDockerfilePath={!staticSite}
             />
