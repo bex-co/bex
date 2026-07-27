@@ -391,12 +391,17 @@ func main() {
 		}
 		if stripeEnabled {
 			stripeClient := billing.NewStripe(billing.StripeConfig{
-				SecretKey:    stripeSecretKey,
-				BaseURL:      os.Getenv("BEX_STRIPE_API_URL"),
-				BillingEpoch: billingEpoch,
-				CompCouponID: os.Getenv("BEX_STRIPE_COMP_COUPON_ID"),
+				SecretKey:             stripeSecretKey,
+				BaseURL:               os.Getenv("BEX_STRIPE_API_URL"),
+				BillingEpoch:          billingEpoch,
+				CompCouponID:          os.Getenv("BEX_STRIPE_COMP_COUPON_ID"),
+				DashboardURL:          os.Getenv("BEX_DASHBOARD_URL"),
+				PortalConfigurationID: os.Getenv("BEX_STRIPE_PORTAL_CONFIGURATION_ID"),
+				TaxCode:               os.Getenv("BEX_STRIPE_TAX_CODE"),
+				TaxBehavior:           os.Getenv("BEX_STRIPE_TAX_BEHAVIOR"),
 			})
 			usageSvc.Billing = stripeClient
+			deps.Billing = stripeClient
 
 			emitter := billing.NewEmitter(st, stripeClient)
 			emitter.Epoch = billingEpoch
@@ -408,7 +413,7 @@ func main() {
 				}
 			}
 			if secret := os.Getenv("BEX_STRIPE_WEBHOOK_SECRET"); secret != "" {
-				deps.StripeWebhook = &billing.StripeWebhook{Secret: secret}
+				deps.StripeWebhook = &billing.StripeWebhook{Secret: secret, OnCheckoutCompleted: stripeClient.CompleteCheckoutSession}
 			}
 			log.Printf("bex-api Stripe Billing enabled (seal horizon %s, epoch %s, webhook %t)", emitter.SealHours, billingEpoch.Format(time.RFC3339), deps.StripeWebhook != nil)
 			go emitter.Run(ctx)

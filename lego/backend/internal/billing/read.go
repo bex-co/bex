@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	stripe "github.com/stripe/stripe-go/v82"
+	stripe "github.com/stripe/stripe-go/v86"
 )
 
 // Billing is Stripe's real rated cost surfaced beside pricing.yaml's advisory

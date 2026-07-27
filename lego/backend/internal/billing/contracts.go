@@ -22,7 +22,7 @@ import (
 	"slices"
 	"time"
 
-	stripe "github.com/stripe/stripe-go/v82"
+	stripe "github.com/stripe/stripe-go/v86"
 
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 )
@@ -117,34 +117,14 @@ func (c *StripeClient) CompCustomer(ctx context.Context, tenantID string) error 
 // without creating it. Multiple matches are rejected instead of silently
 // choosing one and risking double-rated usage.
 func (c *StripeClient) findSubscription(ctx context.Context, tenantID, customerID string) (string, bool, error) {
-	params := &stripe.SubscriptionListParams{
-		ListParams: stripe.ListParams{Limit: stripe.Int64(100)},
-		Customer:   stripe.String(customerID),
-		Status:     stripe.String("all"),
+	subscription, err := c.findSubscriptionObject(ctx, tenantID, customerID)
+	if err != nil {
+		return "", false, err
 	}
-	params.Context = ctx
-	iter := c.sc.Subscriptions.List(params)
-	var found []string
-	for iter.Next() {
-		sub := iter.Subscription()
-		if sub.Metadata[workspaceMetadataKey] != tenantID || sub.Metadata[subscriptionMetadataKey] != "true" {
-			continue
-		}
-		if sub.Status == stripe.SubscriptionStatusCanceled || sub.Status == stripe.SubscriptionStatusIncompleteExpired {
-			continue
-		}
-		found = append(found, sub.ID)
-	}
-	if err := iter.Err(); err != nil {
-		return "", false, fmt.Errorf("stripe: list subscriptions for %s: %w", tenantID, err)
-	}
-	if len(found) > 1 {
-		return "", false, fmt.Errorf("stripe: workspace %s has %d live bex subscriptions: %v", tenantID, len(found), found)
-	}
-	if len(found) == 0 {
+	if subscription == nil {
 		return "", false, nil
 	}
-	return found[0], true, nil
+	return subscription.ID, true, nil
 }
 
 // resolvePriceIDs validates the full active Stripe price catalog once per
@@ -174,6 +154,9 @@ func (c *StripeClient) resolvePriceIDs(ctx context.Context) ([]string, error) {
 			LookupKeys: keys,
 		}
 		params.Context = ctx
+		if c.taxCode != "" {
+			params.AddExpand("data.product")
+		}
 		iter := c.sc.Prices.List(params)
 		for iter.Next() {
 			price := iter.Price()
@@ -182,6 +165,14 @@ func (c *StripeClient) resolvePriceIDs(ctx context.Context) ([]string, error) {
 			}
 			if price.Recurring == nil || price.Recurring.UsageType != stripe.PriceRecurringUsageTypeMetered || price.Recurring.Meter == "" || price.Currency != stripe.CurrencyUSD {
 				return nil, fmt.Errorf("stripe: price %s (%s) is not a USD metered recurring price with a meter", price.ID, price.LookupKey)
+			}
+			if c.taxCode != "" {
+				if string(price.TaxBehavior) != c.taxBehavior {
+					return nil, fmt.Errorf("stripe: price %s (%s) tax_behavior=%q, want %q", price.ID, price.LookupKey, price.TaxBehavior, c.taxBehavior)
+				}
+				if price.Product == nil || price.Product.TaxCode == nil || price.Product.TaxCode.ID != c.taxCode {
+					return nil, fmt.Errorf("stripe: price %s (%s) product is not expanded with tax_code %s", price.ID, price.LookupKey, c.taxCode)
+				}
 			}
 			found[price.LookupKey] = price.ID
 		}

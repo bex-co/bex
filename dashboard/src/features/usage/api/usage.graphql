@@ -71,3 +71,48 @@ query WorkspaceLimits($ownerId: String!) {
     }
   }
 }
+
+# Workspace-admin customer billing onboarding. Stripe-hosted URLs are created
+# server-side; no Stripe server credential or payment detail reaches this app.
+query BillingReadiness($workspaceId: String!) {
+  workspaceBillingReadiness(workspaceId: $workspaceId) {
+    workspaceId
+    mode
+    customerReady
+    subscriptionReady
+    paymentMethodReady
+    tax {
+      configured
+      enabled
+      reason
+      productTaxCode
+      taxBehavior
+      registrationCount
+    }
+  }
+}
+
+mutation CreateBillingCheckoutSession(
+  $workspaceId: String!
+  $successUrl: String!
+  $cancelUrl: String!
+) {
+  createBillingCheckoutSession(
+    workspaceId: $workspaceId
+    successUrl: $successUrl
+    cancelUrl: $cancelUrl
+  ) {
+    url
+    expiresAt
+  }
+}
+
+mutation CreateBillingPortalSession(
+  $workspaceId: String!
+  $returnUrl: String!
+) {
+  createBillingPortalSession(workspaceId: $workspaceId, returnUrl: $returnUrl) {
+    url
+    expiresAt
+  }
+}

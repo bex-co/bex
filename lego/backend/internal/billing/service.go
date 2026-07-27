@@ -1,0 +1,156 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package billing
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
+)
+
+// Readiness is the provider-neutral customer-billing state returned unchanged
+// by REST, GraphQL, MCP, and the dashboard. Stripe object ids stay server-side:
+// callers need state and hosted URLs, never provider credentials or topology.
+type Readiness struct {
+	WorkspaceID        string       `json:"workspaceId"`
+	Mode               string       `json:"mode"`
+	CustomerReady      bool         `json:"customerReady"`
+	SubscriptionReady  bool         `json:"subscriptionReady"`
+	PaymentMethodReady bool         `json:"paymentMethodReady"`
+	Tax                TaxReadiness `json:"tax"`
+}
+
+// TaxReadiness separates operator configuration from per-subscription
+// activation. Configured is true only after the canonical product code,
+// explicit price behavior, and an active registration are verified.
+type TaxReadiness struct {
+	Configured        bool   `json:"configured"`
+	Enabled           bool   `json:"enabled"`
+	Reason            string `json:"reason,omitempty"`
+	ProductTaxCode    string `json:"productTaxCode,omitempty"`
+	TaxBehavior       string `json:"taxBehavior,omitempty"`
+	RegistrationCount int    `json:"registrationCount"`
+}
+
+// HostedSession is the only data bex returns for Stripe-hosted interactions.
+// URL is short-lived and contains no bex or Stripe server credential.
+type HostedSession struct {
+	URL       string `json:"url"`
+	ExpiresAt string `json:"expiresAt,omitempty"`
+}
+
+// CheckoutRequest and PortalRequest carry only redirect destinations. The
+// provider validates them against its configured first-party dashboard origin.
+type CheckoutRequest struct {
+	SuccessURL string `json:"successUrl"`
+	CancelURL  string `json:"cancelUrl"`
+}
+
+type PortalRequest struct {
+	ReturnURL string `json:"returnUrl"`
+}
+
+// HostedProvider is the narrow Stripe seam used by the authorized core. It is
+// intentionally not a generic payments abstraction: bex already owns exactly
+// one metered Subscription and setup-mode Checkout augments that contract.
+type HostedProvider interface {
+	Readiness(ctx context.Context, workspaceID string) (Readiness, error)
+	CreateCheckoutSession(ctx context.Context, workspaceID string, req CheckoutRequest) (HostedSession, error)
+	CreatePortalSession(ctx context.Context, workspaceID string, req PortalRequest) (HostedSession, error)
+}
+
+// Service owns customer-billing authorization and workspace selection. Every
+// adapter calls these three verbs so session ownership and error semantics
+// cannot drift between surfaces.
+type Service struct {
+	*core.Base
+	Provider   HostedProvider
+	Selections core.WorkspaceSelectionReader
+}
+
+func (s *Service) Status(ctx context.Context, workspaceID string) (Readiness, error) {
+	ctx, tenantID, err := s.authorize(ctx, workspaceID)
+	if err != nil {
+		return Readiness{}, err
+	}
+	status, err := s.Provider.Readiness(ctx, tenantID)
+	if err != nil {
+		return Readiness{}, fmt.Errorf("%w: %v", core.ErrBillingUnavailable, err)
+	}
+	status.WorkspaceID = tenantID
+	return status, nil
+}
+
+func (s *Service) Checkout(ctx context.Context, workspaceID string, req CheckoutRequest) (HostedSession, error) {
+	ctx, tenantID, err := s.authorize(ctx, workspaceID)
+	if err != nil {
+		return HostedSession{}, err
+	}
+	session, err := s.Provider.CreateCheckoutSession(ctx, tenantID, req)
+	if err != nil {
+		return HostedSession{}, classifyProviderError(err)
+	}
+	return session, nil
+}
+
+func (s *Service) Portal(ctx context.Context, workspaceID string, req PortalRequest) (HostedSession, error) {
+	ctx, tenantID, err := s.authorize(ctx, workspaceID)
+	if err != nil {
+		return HostedSession{}, err
+	}
+	session, err := s.Provider.CreatePortalSession(ctx, tenantID, req)
+	if err != nil {
+		return HostedSession{}, classifyProviderError(err)
+	}
+	return session, nil
+}
+
+func (s *Service) authorize(ctx context.Context, workspaceID string) (context.Context, string, error) {
+	if s == nil || s.Base == nil {
+		return ctx, "", core.ErrBillingUnavailable
+	}
+	if workspaceID != "" {
+		ctx = core.WithWorkspace(ctx, workspaceID)
+	}
+	// Billing setup and hosted-session links expose organization-level financial
+	// controls, so m51 intentionally requires the workspace-admin relation.
+	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
+		return ctx, "", err
+	}
+	if s.Provider == nil {
+		return ctx, "", core.ErrBillingUnavailable
+	}
+	tenantID, ok := s.Tenant(ctx)
+	if !ok || tenantID == "" || tenantID == core.DefaultTenant {
+		return ctx, "", core.ErrBillingUnavailable
+	}
+	return ctx, tenantID, nil
+}
+
+func classifyProviderError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if isInputError(err) {
+		return fmt.Errorf("%w: %v", core.ErrBadRequest, err)
+	}
+	if isStateError(err) {
+		return fmt.Errorf("%w: %v", core.ErrConflict, err)
+	}
+	return fmt.Errorf("%w: %v", core.ErrBillingUnavailable, err)
+}

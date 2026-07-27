@@ -186,6 +186,81 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Amount",
     description: "Table column header for an invoice's amount",
   },
+  "usage.billingSetupTitle": {
+    message: "Billing setup",
+    description: "Customer billing onboarding card title",
+  },
+  "usage.billingSetupDescription": {
+    message: "Payment collection and tax readiness for this workspace",
+    description: "Customer billing onboarding card description",
+  },
+  "usage.billingTestMode": {
+    message: "Stripe Test Mode",
+    description: "Badge making the non-live Stripe environment explicit",
+  },
+  "usage.billingMode": {
+    message: "Stripe Billing",
+    description: "Fallback badge for the Stripe billing environment",
+  },
+  "usage.billingReady": {
+    message: "Ready",
+    description: "Billing onboarding status is ready",
+  },
+  "usage.billingActionNeeded": {
+    message: "Action needed",
+    description: "Billing onboarding status needs action",
+  },
+  "usage.billingCustomerStatus": {
+    message: "Customer",
+    description: "Stripe Customer readiness row",
+  },
+  "usage.billingSubscriptionStatus": {
+    message: "Metered subscription",
+    description: "Stripe Subscription readiness row",
+  },
+  "usage.billingPaymentStatus": {
+    message: "Payment method",
+    description: "Default payment method readiness row",
+  },
+  "usage.billingTaxStatus": {
+    message: "Automatic tax",
+    description: "Stripe Tax activation row",
+  },
+  "usage.billingTaxUnconfigured": {
+    message:
+      "Tax is not configured. Collection stays off until an operator confirms a canonical product tax code and an active test registration.",
+    description: "Fail-closed tax setup explanation",
+  },
+  "usage.billingAddPayment": {
+    message: "Add test payment method",
+    description: "Button opening setup-mode Stripe Checkout",
+  },
+  "usage.billingUpdatePayment": {
+    message: "Update test payment method",
+    description: "Button reopening setup-mode Stripe Checkout",
+  },
+  "usage.billingOpenPortal": {
+    message: "Open billing portal",
+    description: "Button opening Stripe Customer Portal",
+  },
+  "usage.billingHostedNote": {
+    message:
+      "Payment details are entered only on Stripe-hosted pages. bex never sends a Stripe server key to your browser.",
+    description: "Hosted billing security note",
+  },
+  "usage.billingUnavailable": {
+    message:
+      "Billing onboarding is unavailable or you do not have workspace-admin access.",
+    description: "Degraded or unauthorized billing onboarding state",
+  },
+  "usage.billingCheckoutError": {
+    message: "Could not open Stripe Checkout. Try again.",
+    description: "Toast after Checkout session creation fails",
+  },
+  "usage.billingPortalError": {
+    message: "Could not open the Stripe billing portal. Try again.",
+    description: "Toast after Portal session creation fails",
+  },
 };
 
 export default enUsage;

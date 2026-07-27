@@ -28,18 +28,19 @@ import (
 	"testing"
 	"time"
 
-	stripe "github.com/stripe/stripe-go/v82"
-	"github.com/stripe/stripe-go/v82/webhook"
+	stripe "github.com/stripe/stripe-go/v86"
+	"github.com/stripe/stripe-go/v86/webhook"
 
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 )
 
 // stripeStub is a path-routed http.RoundTripper returning canned Stripe JSON.
 type stripeStub struct {
-	mu     sync.Mutex
-	hits   []string // request paths, in order
-	bodies []string // POST bodies, in order
-	route  func(method, path string) (status int, body string)
+	mu      sync.Mutex
+	hits    []string // request paths, in order
+	bodies  []string // POST bodies, in order
+	headers []http.Header
+	route   func(method, path string) (status int, body string)
 }
 
 func (s *stripeStub) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -52,11 +53,33 @@ func (s *stripeStub) RoundTrip(req *http.Request) (*http.Response, error) {
 	s.mu.Lock()
 	s.hits = append(s.hits, req.URL.Path)
 	s.bodies = append(s.bodies, body)
+	s.headers = append(s.headers, req.Header.Clone())
 	s.mu.Unlock()
 	status, respBody := s.route(req.Method, req.URL.Path)
 	h := make(http.Header)
 	h.Set("Content-Type", "application/json")
 	return &http.Response{StatusCode: status, Status: http.StatusText(status), Header: h, Body: io.NopCloser(strings.NewReader(respBody)), Request: req}, nil
+}
+
+func (s *stripeStub) requests(path string) []struct {
+	body   string
+	header http.Header
+} {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]struct {
+		body   string
+		header http.Header
+	}, 0)
+	for i, hit := range s.hits {
+		if hit == path {
+			out = append(out, struct {
+				body   string
+				header http.Header
+			}{body: s.bodies[i], header: s.headers[i]})
+		}
+	}
+	return out
 }
 
 func (s *stripeStub) count(substr string) int {
@@ -412,6 +435,220 @@ func TestStripeWebhookVerifiesSignatureAndDispatchesPaymentFailure(t *testing.T)
 	h.ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("bad signature status=%d, want 400", w.Code)
+	}
+}
+
+func TestStripeCreateCheckoutSessionUsesExistingContractAndDynamicPaymentMethods(t *testing.T) {
+	c, stub := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && path == "/v1/subscriptions":
+			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
+		case method == http.MethodPost && path == "/v1/checkout/sessions":
+			return 200, `{"id":"cs_test_1","object":"checkout.session","mode":"setup","livemode":false,"expires_at":1785200000,"url":"https://checkout.stripe.com/c/pay/cs_test_1"}`
+		default:
+			return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+		}
+	})
+	c.dashboardURL = "https://dashboard.bex.co"
+	c.storeCustomer("tea-a", "cus_1")
+
+	session, err := c.CreateCheckoutSession(context.Background(), "tea-a", CheckoutRequest{
+		SuccessURL: "https://dashboard.bex.co/usage?billing=success",
+		CancelURL:  "https://dashboard.bex.co/usage?billing=cancelled",
+	})
+	if err != nil {
+		t.Fatalf("CreateCheckoutSession: %v", err)
+	}
+	if session.URL == "" || session.ExpiresAt == "" {
+		t.Fatalf("hosted session = %+v", session)
+	}
+	requests := stub.requests("/v1/checkout/sessions")
+	if len(requests) != 1 {
+		t.Fatalf("Checkout create calls = %d, want 1", len(requests))
+	}
+	body := requests[0].body
+	for _, want := range []string{"mode=setup", "currency=usd", "customer=cus_1", "client_reference_id=tea-a", "metadata[bex_workspace]=tea-a", "metadata[bex_subscription]=sub_1", "setup_intent_data[metadata][bex_workspace]=tea-a"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("Checkout body missing %q: %s", want, body)
+		}
+	}
+	for _, forbidden := range []string{"payment_method_types", "line_items", "subscription_data"} {
+		if strings.Contains(body, forbidden) {
+			t.Errorf("Checkout body unexpectedly contains %q: %s", forbidden, body)
+		}
+	}
+	if got := requests[0].header.Get("Idempotency-Key"); !strings.HasPrefix(got, "bex-checkout-tea-a-") {
+		t.Errorf("Idempotency-Key = %q", got)
+	}
+	if !strings.Contains(body, "integration_identifier=bex_billing_") {
+		t.Errorf("Checkout body missing randomized integration_identifier: %s", body)
+	}
+	// EnsureContract and the postcondition read only listed the one existing
+	// Subscription; setup mode never created a second contract.
+	for _, req := range stub.requests("/v1/subscriptions") {
+		if req.body != "" {
+			t.Fatalf("unexpected Subscription mutation: %s", req.body)
+		}
+	}
+}
+
+func TestStripeCreateCheckoutSessionRejectsUntrustedReturnOrigin(t *testing.T) {
+	c, stub := newStripeTest(t, func(_, _ string) (int, string) {
+		return 500, `{"error":{"type":"api_error","message":"must not call Stripe"}}`
+	})
+	c.dashboardURL = "https://dashboard.bex.co"
+	_, err := c.CreateCheckoutSession(context.Background(), "tea-a", CheckoutRequest{
+		SuccessURL: "https://evil.example/steal",
+		CancelURL:  "https://dashboard.bex.co/usage",
+	})
+	if err == nil || !isInputError(err) {
+		t.Fatalf("untrusted Checkout success URL error = %v, want inputError", err)
+	}
+	if len(stub.hits) != 0 {
+		t.Fatalf("Stripe calls after invalid redirect = %v", stub.hits)
+	}
+}
+
+func TestStripeCreatePortalSessionIsCustomerScoped(t *testing.T) {
+	c, stub := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && path == "/v1/subscriptions":
+			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
+		case method == http.MethodPost && path == "/v1/billing_portal/sessions":
+			return 200, `{"id":"bps_1","object":"billing_portal.session","livemode":false,"url":"https://billing.stripe.com/p/session/test"}`
+		default:
+			return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+		}
+	})
+	c.dashboardURL = "https://dashboard.bex.co"
+	c.portalConfigurationID = "bpc_test"
+	c.storeCustomer("tea-a", "cus_1")
+	out, err := c.CreatePortalSession(context.Background(), "tea-a", PortalRequest{ReturnURL: "https://dashboard.bex.co/usage"})
+	if err != nil {
+		t.Fatalf("CreatePortalSession: %v", err)
+	}
+	if out.URL == "" {
+		t.Fatal("Portal URL is empty")
+	}
+	requests := stub.requests("/v1/billing_portal/sessions")
+	if len(requests) != 1 || !strings.Contains(requests[0].body, "customer=cus_1") || !strings.Contains(requests[0].body, "configuration=bpc_test") {
+		t.Fatalf("Portal request = %+v", requests)
+	}
+}
+
+func TestStripeCompleteCheckoutSessionBindsDefaultsIdempotently(t *testing.T) {
+	c, stub := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && path == "/v1/checkout/sessions/cs_test_1":
+			return 200, `{"id":"cs_test_1","object":"checkout.session","mode":"setup","livemode":false,"customer":"cus_1","setup_intent":"seti_1","metadata":{"bex_workspace":"tea-a","bex_subscription":"sub_1"}}`
+		case method == http.MethodGet && path == "/v1/subscriptions":
+			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
+		case method == http.MethodGet && path == "/v1/setup_intents/seti_1":
+			return 200, `{"id":"seti_1","object":"setup_intent","status":"succeeded","customer":"cus_1","payment_method":"pm_1","metadata":{"bex_workspace":"tea-a","bex_subscription":"sub_1"}}`
+		case method == http.MethodGet && path == "/v1/payment_methods/pm_1":
+			return 200, `{"id":"pm_1","object":"payment_method","customer":"cus_1","livemode":false,"type":"card"}`
+		case method == http.MethodGet && path == "/v1/tax/registrations":
+			return 200, `{"object":"list","data":[{"id":"taxreg_test","object":"tax.registration","livemode":false,"status":"active","country":"US"}],"has_more":false,"url":"/v1/tax/registrations"}`
+		case method == http.MethodPost && path == "/v1/customers/cus_1":
+			return 200, `{"id":"cus_1","object":"customer","invoice_settings":{"default_payment_method":"pm_1"}}`
+		case method == http.MethodPost && path == "/v1/subscriptions/sub_1":
+			return 200, `{"id":"sub_1","object":"subscription","status":"active","default_payment_method":"pm_1"}`
+		default:
+			return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+		}
+	})
+	c.storeCustomer("tea-a", "cus_1")
+	c.taxCode = "txcd_confirmed"
+	c.taxBehavior = "exclusive"
+	c.priceIDs = []string{"price_tax_ready"}
+	for i := 0; i < 2; i++ {
+		if err := c.CompleteCheckoutSession(context.Background(), &stripe.CheckoutSession{ID: "cs_test_1"}); err != nil {
+			t.Fatalf("CompleteCheckoutSession #%d: %v", i+1, err)
+		}
+	}
+	customerUpdates := stub.requests("/v1/customers/cus_1")
+	subscriptionUpdates := stub.requests("/v1/subscriptions/sub_1")
+	if len(customerUpdates) != 2 || len(subscriptionUpdates) != 2 {
+		t.Fatalf("updates customer=%d subscription=%d", len(customerUpdates), len(subscriptionUpdates))
+	}
+	for _, req := range customerUpdates {
+		if !strings.Contains(req.body, "invoice_settings[default_payment_method]=pm_1") || req.header.Get("Idempotency-Key") != "bex-payment-customer-cs_test_1" {
+			t.Errorf("Customer update = body:%s idempotency:%s", req.body, req.header.Get("Idempotency-Key"))
+		}
+	}
+	for _, req := range subscriptionUpdates {
+		if !strings.Contains(req.body, "default_payment_method=pm_1") || !strings.Contains(req.body, "automatic_tax[enabled]=true") || req.header.Get("Idempotency-Key") != "bex-payment-subscription-cs_test_1" {
+			t.Errorf("Subscription update = body:%s idempotency:%s", req.body, req.header.Get("Idempotency-Key"))
+		}
+	}
+}
+
+func TestStripeTaxGateFailsClosedWithoutActiveTestRegistration(t *testing.T) {
+	c, _ := newStripeTest(t, func(method, path string) (int, string) {
+		if method == http.MethodGet && path == "/v1/tax/registrations" {
+			return 200, `{"object":"list","data":[{"id":"taxreg_live","object":"tax.registration","livemode":true,"status":"active","country":"US"}],"has_more":false,"url":"/v1/tax/registrations"}`
+		}
+		return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+	})
+	c.taxCode = "txcd_operator_confirmed"
+	c.taxBehavior = "exclusive"
+	c.priceIDs = []string{"price_tax_ready"}
+	tax := c.taxReadiness(context.Background(), &stripe.Subscription{AutomaticTax: &stripe.SubscriptionAutomaticTax{Enabled: true}})
+	if tax.Configured || tax.Enabled || tax.Reason != "active_registration_missing" || tax.RegistrationCount != 0 {
+		t.Fatalf("tax readiness with only live registration = %+v", tax)
+	}
+}
+
+func TestStripeTaxGateReportsConfiguredOnlyAfterCatalogAndRegistration(t *testing.T) {
+	c, _ := newStripeTest(t, func(method, path string) (int, string) {
+		if method == http.MethodGet && path == "/v1/tax/registrations" {
+			return 200, `{"object":"list","data":[{"id":"taxreg_test","object":"tax.registration","livemode":false,"status":"active","country":"US"}],"has_more":false,"url":"/v1/tax/registrations"}`
+		}
+		return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+	})
+	c.taxCode = "txcd_operator_confirmed"
+	c.taxBehavior = "exclusive"
+	c.priceIDs = []string{"price_tax_ready"}
+	tax := c.taxReadiness(context.Background(), &stripe.Subscription{AutomaticTax: &stripe.SubscriptionAutomaticTax{Enabled: true}})
+	if !tax.Configured || !tax.Enabled || tax.Reason != "" || tax.RegistrationCount != 1 || tax.ProductTaxCode != c.taxCode || tax.TaxBehavior != "exclusive" {
+		t.Fatalf("tax readiness = %+v", tax)
+	}
+}
+
+func TestStripeCompleteCheckoutSessionRejectsCrossWorkspaceBinding(t *testing.T) {
+	c, stub := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && path == "/v1/checkout/sessions/cs_test_bad":
+			return 200, `{"id":"cs_test_bad","object":"checkout.session","mode":"setup","livemode":false,"customer":"cus_other","setup_intent":"seti_1","metadata":{"bex_workspace":"tea-a","bex_subscription":"sub_other"}}`
+		default:
+			return 500, `{"error":{"type":"api_error","message":"must not mutate"}}`
+		}
+	})
+	c.storeCustomer("tea-a", "cus_1")
+	err := c.CompleteCheckoutSession(context.Background(), &stripe.CheckoutSession{ID: "cs_test_bad"})
+	if err == nil || !isInputError(err) || !strings.Contains(err.Error(), "does not belong") {
+		t.Fatalf("cross-workspace completion error = %v", err)
+	}
+	if stub.count("/customers/cus_1") != 0 || stub.count("/subscriptions/sub_other") != 0 {
+		t.Fatalf("cross-workspace completion mutated Stripe: %v", stub.hits)
+	}
+}
+
+func TestStripeWebhookDispatchesCheckoutCompletion(t *testing.T) {
+	secret := "whsec_test"
+	payload := []byte(fmt.Sprintf(`{"id":"evt_checkout","object":"event","api_version":%q,"type":"checkout.session.completed","data":{"object":{"id":"cs_test_1","object":"checkout.session","livemode":false}}}`, stripe.APIVersion))
+	signed := webhook.GenerateTestSignedPayload(&webhook.UnsignedPayload{Payload: payload, Secret: secret, Timestamp: time.Now()})
+	var got string
+	h := &StripeWebhook{Secret: secret, OnCheckoutCompleted: func(_ context.Context, session *stripe.CheckoutSession) error {
+		got = session.ID
+		return nil
+	}}
+	req := httptest.NewRequest(http.MethodPost, "/v1/webhooks/stripe", strings.NewReader(string(payload)))
+	req.Header.Set("Stripe-Signature", signed.Header)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusNoContent || got != "cs_test_1" {
+		t.Fatalf("webhook status=%d session=%q body=%s", w.Code, got, w.Body.String())
 	}
 }
 

@@ -20,7 +20,8 @@ Confirm the Stripe account and mode before changing anything. Do not paste API k
 The script defaults to Stripe **test mode**:
 
 ```bash
-python3 scripts/stripe-billing-setup.py
+python3 scripts/stripe-billing-setup.py \
+  --dashboard-url https://dashboard.example.com
 ```
 
 It reads `pricing.yaml` and creates or validates:
@@ -28,7 +29,8 @@ It reads `pricing.yaml` and creates or validates:
 - 13 active usage meters and 13 monthly metered Prices;
 - a Product for each newly created Price;
 - the perpetual 100%-off coupon `bex-comp-100`;
-- deactivation of superseded kind-level shadow meters.
+- deactivation of superseded kind-level shadow meters;
+- one metadata-tagged Customer Portal configuration with payment-method update, billing-information update, and invoice history enabled, and Subscription cancellation/plan changes disabled.
 
 Run it a second time. Every active object and the coupon must report `exists`; the script must not create duplicates. If an active Price with a required lookup key has the wrong meter, currency, cadence, or amount, the script stops. Correct/deactivate the stale Stripe object deliberately, then rerun—never work around a catalog mismatch in bex code.
 
@@ -41,6 +43,19 @@ The lookup/event names are:
 
 Free tiers have no paid meter. Bytes are rebased to GiB and storage GB-seconds to GB-hours so the decimal Price fits Stripe's supported precision.
 
+### Optional Stripe Tax gate
+
+Do not guess a Product tax code or create a registration as a software-deployment step. An accountable operator must first choose the canonical `txcd_*` classification, inclusive/exclusive behavior, and jurisdictions with tax counsel as needed, then create the collecting **test-mode** registration in Stripe. Only after those decisions run:
+
+```bash
+python3 scripts/stripe-billing-setup.py \
+  --dashboard-url https://dashboard.example.com \
+  --tax-code txcd_OPERATOR_CONFIRMED \
+  --tax-behavior exclusive
+```
+
+The script refuses a partial choice, malformed code, missing active same-mode registration, incompatible existing Price behavior, or mismatched Product code. Omitting both Tax arguments is a safe supported state: catalog provisioning succeeds, the API/dashboard report `product_tax_not_configured`, and automatic tax stays off.
+
 ## 2. Create the restricted runtime key
 
 Use a separate setup/admin credential for the script. For bex-api, create a Stripe **restricted API key** with only:
@@ -48,24 +63,32 @@ Use a separate setup/admin credential for the script. For bex-api, create a Stri
 | Stripe resource | Runtime access | Why |
 | --- | --- | --- |
 | Customers | Write | search, create, and recover `bex_workspace=tea-…` Customers |
-| Subscriptions | Write | list/create the complete metered contract and apply the comp coupon |
+| Subscriptions | Write | list/create the complete metered contract, bind its default payment method, enable gated automatic tax, and apply the comp coupon |
 | Prices | Read | validate/resolve all active lookup keys before subscription creation |
+| Products | Read | verify the operator-confirmed Product tax code when the Tax gate is configured |
 | Billing meter events | Write | export sealed usage |
 | Invoices | Read | current invoice preview and finalized invoice history |
+| Checkout Sessions | Write | create setup-mode hosted sessions and retrieve completed sessions |
+| Payment Intents | Read | allow Checkout to resolve account-enabled dynamic payment methods for setup mode |
+| Setup Intents | Read | verify the succeeded setup and owned payment method after the webhook |
+| Payment Methods | Read | verify Customer ownership before binding defaults |
+| Customer Portal | Write | create a short-lived session for the resolved Customer |
+| Tax registrations | Read | verify an active same-mode registration when the Tax gate is configured |
 
-No runtime write access is needed for Products, Prices, meters, Coupons, payment methods, payouts, balances, disputes, or account settings. If Stripe's permission UI groups a read operation with a broader Billing category, choose the narrowest category that makes the documented calls succeed and record that exception in the credential inventory.
+No runtime write access is needed for Products, Prices, meters, Coupons, Setup Intents, payment methods, Tax registrations, payouts, balances, disputes, or account settings. Portal **configuration** is setup/admin work; runtime only creates sessions against its `bpc_*` id. If Stripe's permission UI groups a read operation with a broader Billing category, choose the narrowest category that makes the documented calls succeed and record that exception in the credential inventory.
 
 Store the value out of band as `BEX_STRIPE_SECRET_KEY` using the same custody pattern as [ADR019](../ADR019-infra-credentials.md). Never commit or log it. Rotate by adding a new restricted key, deploying it, verifying successful calls, then revoking the old key.
 
 ## 3. Create and custody the webhook
 
-The receiver uses stripe-go v82's API version `2025-08-27.basil`. Create the endpoint in test mode with that version and only the event m50 accepts:
+The receiver uses stripe-go v86.1.1's API version `2026-06-24.dahlia`. Create the endpoint in test mode with exactly the two events the m51 handler accepts:
 
 ```bash
 stripe webhook_endpoints create \
   --url https://api.example.com/v1/webhooks/stripe \
-  --api-version 2025-08-27.basil \
-  -d 'enabled_events[0]=invoice.payment_failed'
+  --api-version 2026-06-24.dahlia \
+  -d 'enabled_events[0]=checkout.session.completed' \
+  -d 'enabled_events[1]=invoice.payment_failed'
 ```
 
 Capture the returned signing `secret` once and store it out of band as `BEX_STRIPE_WEBHOOK_SECRET`. It is a distinct credential from the restricted API key. Do not paste it into git, `.env.example`, logs, or a ticket.
@@ -74,11 +97,11 @@ For local signature verification, use Stripe CLI forwarding and its temporary si
 
 ```bash
 stripe listen \
-  --events invoice.payment_failed \
+  --events checkout.session.completed,invoice.payment_failed \
   --forward-to localhost:8090/v1/webhooks/stripe
 ```
 
-An invalid/missing `Stripe-Signature` must return 400. A compatible, correctly signed event returns 204. With `BEX_STRIPE_WEBHOOK_SECRET` unset, the public route is not mounted. The handler only verifies and records payment failure today; it does not suspend resources.
+An invalid/missing `Stripe-Signature` must return 400. A compatible, correctly signed event returns 204. With `BEX_STRIPE_WEBHOOK_SECRET` unset, the public route is not mounted. `checkout.session.completed` retrieves and verifies authoritative objects before binding defaults; `invoice.payment_failed` remains trusted intake only until m52.
 
 ## 4. Verify test-mode behavior
 
@@ -90,6 +113,10 @@ BEX_STRIPE_EPOCH=2026-07-26T00:00:00Z
 BEX_STRIPE_SEAL_HOURS=48
 BEX_STRIPE_WEBHOOK_SECRET=<out-of-band test endpoint secret>
 BEX_STRIPE_COMP_COUPON_ID=bex-comp-100
+BEX_STRIPE_PORTAL_CONFIGURATION_ID=<non-secret bpc_* id from setup>
+# Set these only after the optional Tax gate above passes:
+# BEX_STRIPE_TAX_CODE=<operator-confirmed txcd_*>
+# BEX_STRIPE_TAX_BEHAVIOR=exclusive
 ```
 
 Leave `BEX_STRIPE_API_URL` unset outside stub tests.
@@ -111,8 +138,12 @@ Verify all of the following before live activation:
 4. The usage REST, GraphQL, MCP, and dashboard surfaces retain the same fields and show a Stripe invoice preview; a simulated Stripe read failure falls back to `estimatedCost`.
 5. A Mode-A excluded workspace creates no Customer or Subscription.
 6. Applying Mode B produces a Subscription discount using `bex-comp-100` and a net-zero preview.
-7. Replaying a signed `invoice.payment_failed` event returns 204 and logs trusted intake without enforcing suspension.
-8. Removing `BEX_STRIPE_SECRET_KEY` and restarting produces no Stripe network traffic and returns estimate-only usage.
+7. REST, GraphQL, and MCP return identical workspace-admin billing readiness. A non-admin is denied before any Stripe call, and every hosted return URL outside `BEX_DASHBOARD_URL` is rejected.
+8. Setup-mode Checkout uses the existing Customer, USD currency, dynamic payment methods (no `payment_method_types`), no line items, and no Subscription creation. Completing it with a Stripe test payment method makes both Customer and existing Subscription defaults match; replaying the signed completion is harmless.
+9. If the optional Tax gate is absent, readiness and invoice preview expose the explicit unconfigured reason and automatic tax stays off. If configured, the catalog and active test registration match and the resulting Subscription/invoice exposes Stripe's tax result.
+10. The scoped Portal opens for the same Customer, permits payment/billing-information updates and invoice history, returns only to the trusted dashboard origin, and cannot cancel or change the metered Subscription.
+11. Replaying a signed `invoice.payment_failed` event returns 204 and logs trusted intake without enforcing suspension.
+12. Removing `BEX_STRIPE_SECRET_KEY` and restarting produces no Stripe network traffic and returns estimate-only usage.
 
 ## 5. Activate live mode
 
@@ -123,15 +154,15 @@ python3 scripts/stripe-billing-setup.py --live
 python3 scripts/stripe-billing-setup.py --live
 ```
 
-The second run must reuse every object. Then create a **live** restricted key and webhook endpoint with the same permissions/version/event, and store their live secrets separately from test secrets.
+The second run must reuse every object. Then create a **live** restricted key and webhook endpoint with the same permissions/version/events, and store their live secrets separately from test secrets. Tax still requires a separately confirmed live registration and the same explicit code/behavior gate; test registration does not authorize live collection.
 
 Before deploying:
 
 1. Compare all 13 live lookup keys and rates with `pricing.yaml`.
 2. Confirm `bex-comp-100` is valid, perpetual, and exactly 100% off.
-3. Confirm the webhook URL, API version, and enabled event.
+3. Confirm the webhook URL, API version, and both enabled events.
 4. Confirm Stripe's account-level invoice, retry/dunning, and email settings.
-5. Confirm customers expected to pay have an approved payment-method onboarding path. m50 does not build that UX.
+5. Confirm Checkout setup and the scoped Customer Portal round trip in test mode, including replay-safe completion and trusted returns.
 6. Set an explicit `BEX_STRIPE_EPOCH`; understand that sealed rows after that instant and within the 34-day safety window can be backfilled and charged.
 
 Deploy the live secrets during a staffed window. Watch provisioning errors, event rejects, outbox backlog/stamp failures, invoice-read degradation, duplicate Customer/Subscription alarms, and webhook signature failures.

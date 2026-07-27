@@ -42,6 +42,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/audit"
+	"github.com/bex-co/bex/lego/backend/internal/billing"
 	"github.com/bex-co/bex/lego/backend/internal/cliauth"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/deploys"
@@ -777,6 +778,7 @@ func sweepableServices(base *core.Base) []any {
 		&envgroups.Service{Base: base},
 		&workspaces.Service{Base: base},
 		&members.Service{Base: base},
+		&billing.Service{Base: base},
 		&deploys.Service{Base: base},
 		&audit.Service{Base: base},
 		&github.Service{Base: base},

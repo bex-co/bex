@@ -1,6 +1,6 @@
 # ADR040 — Direct Stripe usage billing
 
-**Status:** Accepted · **Owner:** backend/control plane · **Originally accepted:** 2026-07-17 · **Revised:** 2026-07-26 (w7/m50)
+**Status:** Accepted · **Owner:** backend/control plane · **Originally accepted:** 2026-07-17 · **Revised:** 2026-07-27 (w7/m51)
 
 > The filename is retained for stable links. The original decision used Metronome as an intermediate rating service. w7/m50 replaces that sink with Stripe Billing; Metronome is no longer a runtime dependency.
 
@@ -40,6 +40,10 @@ Each Customer gets one bex Subscription containing every active catalog Price. S
 
 The billing epoch is also the optional Subscription backdate start. This aligns accepted backfill with the first billed service period.
 
+Payment onboarding augments that existing contract; it never creates another Subscription. A workspace admin asks the shared billing core for a setup-mode Checkout Session scoped to the metadata-keyed Customer and complete bex Subscription. Setup mode creates a SetupIntent and saves a future-use payment method without an initial charge. The server supplies `currency=usd` but deliberately omits `payment_method_types`, leaving Stripe's dynamic payment-method selection active. Success/cancel URLs must use the configured dashboard origin, and each request gets a bounded idempotency key plus a randomized eight-letter `integration_identifier` suffix.
+
+The signed `checkout.session.completed` webhook is the source of truth, not the browser redirect. Its handler retrieves the Checkout Session, SetupIntent, PaymentMethod, Customer, and unique Subscription from Stripe; verifies test/live mode and both workspace/Subscription relationships; then idempotently sets the Customer and Subscription default payment method. Replayed delivery converges on the same defaults. A Customer Portal session is likewise created only after workspace-admin authorization and unique Customer/Subscription resolution, using an operator-owned configuration that enables payment-method and invoice management but not Subscription cancellation or plan changes.
+
 ### 3. Seal, emit, then stamp
 
 The m47 outbox remains:
@@ -75,13 +79,30 @@ REST `GET /v1/usage`, GraphQL `usage`, MCP `get_usage`, and the dashboard contin
 
 Both controls are admin-only and audited. Tenants cannot edit their own billing status.
 
-### 6. Webhook intake, not enforcement
+### 6. Stripe Tax is an explicit activation gate
 
-When both Stripe runtime and webhook secrets are configured, `POST /v1/webhooks/stripe` is mounted outside OAuth because `Stripe-Signature` is its credential. The handler reads a bounded body, verifies the signature and compatible Stripe API version, and accepts `invoice.payment_failed`. m50 records the trusted event for operators but does not suspend or delete anything.
+Tax collection stays off unless all of these are true in the same Stripe mode:
 
-The dunning enforcement ladder remains deferred: payment failure → grace → reversible suspension → eventual audited termination. Stripe owns invoice state and payment retries; bex will own only the later resource reaction. A polling backstop, notifications, billing portal, and enforcement state are separate work.
+1. an operator supplies a canonical Stripe Product tax code (`txcd_*`) and explicitly chooses inclusive or exclusive Price behavior;
+2. every catalog Product and Price matches those choices;
+3. Stripe reports at least one active Tax registration; and
+4. payment setup completes for the Subscription.
 
-### 7. Runtime configuration
+No code path guesses the legal/product classification or creates a registration. Before the gate passes, REST, GraphQL, MCP, and the dashboard return an explicit unconfigured reason and never claim tax is collected. Once it passes, Checkout collects billing address and tax-ID inputs on Stripe's hosted page, and the completion handler enables `automatic_tax` on the existing Subscription. This is configuration enforcement, not legal advice, registration, filing, or remittance.
+
+### 7. Webhook intake and payment setup, not dunning enforcement
+
+When both Stripe runtime and webhook secrets are configured, `POST /v1/webhooks/stripe` is mounted outside OAuth because `Stripe-Signature` is its credential. The handler reads a bounded body, verifies the signature and stripe-go v86 API version `2026-06-24.dahlia`, and accepts exactly `checkout.session.completed` and `invoice.payment_failed`. Checkout completion performs the ownership-checked default-payment-method binding above. Payment failure is trusted intake only at m51 and does not suspend or delete anything.
+
+The dunning enforcement ladder remains deferred: payment failure → grace → reversible suspension → eventual audited termination. Stripe owns invoice state and payment retries; bex will own only the later resource reaction. A polling backstop, notifications, and enforcement state are separate work.
+
+### 8. Customer-billing API contract
+
+One workspace-admin service owns readiness and hosted-session authorization. REST exposes `GET /v1/workspaces/{workspaceId}/billing` plus Checkout/Portal session POSTs; GraphQL exposes `workspaceBillingReadiness`, `createBillingCheckoutSession`, and `createBillingPortalSession`; MCP exposes the equivalent `get_billing_readiness` and `create_billing_*_session` tools. All return the same provider-neutral readiness fields or a short-lived hosted URL. Stripe object IDs, server credentials, SetupIntent secrets, and payment details never enter the public result.
+
+The dashboard consumes the GraphQL contract with its existing Kratos HttpOnly session, labels Stripe Test Mode explicitly, and re-reads authoritative readiness after hosted-page returns. A query parameter is presentation state only and cannot mark setup complete.
+
+### 9. Runtime configuration
 
 | Variable | Meaning |
 | --- | --- |
@@ -91,6 +112,10 @@ The dunning enforcement ladder remains deferred: payment failure → grace → r
 | `BEX_STRIPE_EPOCH` | RFC3339 billing-start floor/backdate; unset while enabled defaults to `now − 34d`. Malformed while enabled fails startup. |
 | `BEX_STRIPE_WEBHOOK_SECRET` | Endpoint signing secret. Unset means no public Stripe webhook route. |
 | `BEX_STRIPE_COMP_COUPON_ID` | Optional coupon override; default `bex-comp-100`. |
+| `BEX_STRIPE_PORTAL_CONFIGURATION_ID` | Optional operator-owned `bpc_*` configuration used for every Portal session. |
+| `BEX_STRIPE_TAX_CODE` | Operator-confirmed canonical Product tax code. Requires `BEX_STRIPE_TAX_BEHAVIOR` and an active same-mode registration; otherwise Tax stays unconfigured. |
+| `BEX_STRIPE_TAX_BEHAVIOR` | Explicit `exclusive` or `inclusive` Price behavior. Requires `BEX_STRIPE_TAX_CODE`. |
+| `BEX_DASHBOARD_URL` | Trusted first-party dashboard origin for Checkout success/cancel and Portal return URLs. Missing/invalid configuration makes hosted-session creation fail closed. |
 
 `BEX_METRONOME_*` variables are retired and ignored. The Metronome SDK, client, setup runbook, and reconciliation script are removed.
 
@@ -102,7 +127,7 @@ Rollback is non-destructive: remove `BEX_STRIPE_SECRET_KEY` and `BEX_STRIPE_WEBH
 
 ## Security and operations
 
-- Setup and runtime credentials are separate. Runtime uses a restricted key with only the Customer, Subscription, Price-read, meter-event-write, and Invoice-read permissions listed in the runbook.
+- Setup and runtime credentials are separate. Runtime uses a restricted key with only the Customer/Subscription/session writes and catalog, SetupIntent, PaymentMethod, Tax-registration, and Invoice reads listed in the runbook.
 - API keys and webhook secrets stay out of git, logs, command history, audit payloads, and tenant-visible state.
 - Test and live Stripe objects are independent. The setup script defaults to test mode and requires explicit `--live` for live mutation.
 - Customer/subscription ambiguity and catalog mismatch fail closed.
@@ -110,15 +135,15 @@ Rollback is non-destructive: remove `BEX_STRIPE_SECRET_KEY` and `BEX_STRIPE_WEBH
 
 ## Consequences
 
-- `internal/billing` has one Stripe client for customer/subscription reconciliation, event emission, invoice reads, comps, and verified webhook intake.
+- `internal/billing` has one Stripe client for customer/subscription reconciliation, hosted payment setup, Portal sessions, tax gating, event emission, invoice reads, comps, and verified webhook intake.
 - The m47 `emitted_at` migration and store API remain provider-neutral and unchanged.
 - `pricing.yaml` now has two deliberate consumers: advisory estimates and Stripe catalog setup. Stripe invoices remain authoritative.
 - The operator and CRD contract remain unchanged.
-- Native Stripe collection removes the planned Metronome→Stripe bridge, but payment-method onboarding, tax, customer portal, and non-payment enforcement remain product work.
+- Payment-method onboarding and Customer Portal access are Stripe-hosted and API-operable across all bex surfaces. Tax remains deliberately unconfigured until the operator supplies the legal/business inputs and same-mode registration. Non-payment enforcement remains product work.
 
 ## Render parity
 
-Render exposes billing in its dashboard but no public REST/GraphQL/MCP billing API. bex's raw usage quantities and normalized `billing` object remain a deliberate bex-ahead extension. The Stripe pivot changes the source of those values, not their adapter shapes or the parity verdict; see [ADR018](ADR018-render-parity.md).
+Render exposes payment-method updates, accrued charges, and invoice history in its dashboard but no public REST/GraphQL/MCP billing API. bex's raw usage quantities, normalized `billing` object, readiness state, and hosted-session verbs remain deliberate bex-ahead extensions. bex currently limits these financial actions to workspace admins; Render additionally has a dedicated Billing role. See [the dated comparison](render-artifacts/billing-onboarding.md) and [ADR018](ADR018-render-parity.md).
 
 ## Alternatives considered
 

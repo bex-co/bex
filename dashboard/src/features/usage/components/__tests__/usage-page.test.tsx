@@ -16,6 +16,10 @@ vi.mock("@/features/usage/components/resource-caps", () => ({
   WorkspaceResourceCaps: () => <div data-testid="resource-caps" />,
 }));
 
+vi.mock("@/features/usage/components/billing-onboarding", () => ({
+  BillingOnboardingCard: () => <div data-testid="billing-onboarding" />,
+}));
+
 vi.mock("@/features/usage/lib/period", () => ({
   periodFor: vi.fn((n: number) => {
     const d = new Date(2026, 6, 15); // fixed: July 2026
