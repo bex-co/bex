@@ -20,15 +20,15 @@ import {
 import { LogFilterBar } from "./log-filter-bar";
 import { LogLineList } from "./log-line-list";
 import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
-import { type RangePreset } from "@/features/metrics/lib/range";
+import { type RangeSelection } from "@/features/metrics/lib/range";
 import { DEFAULT_LOG_RANGE } from "../lib/log-search";
 
 interface LogViewerProps {
   resource: string;
   /** Injectable SSE factory — threaded through for tests. */
   createEventSource?: EventSourceFactory;
-  range?: RangePreset;
-  onRangeChange?: (range: RangePreset) => void;
+  range?: RangeSelection;
+  onRangeChange?: (range: RangeSelection) => void;
   /**
    * Initial filter state (from the URL, w7/m42); read ONCE at mount — a later
    * search-only navigation to an already-mounted viewer is ignored (URL→state

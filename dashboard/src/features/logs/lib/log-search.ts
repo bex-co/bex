@@ -1,7 +1,9 @@
 import {
+  parseCustomRange,
   parseRangePreset,
   type RangePreset,
   type RangePresetID,
+  type RangeSelection,
 } from "@/features/metrics/lib/range";
 import {
   EMPTY_LOG_FILTERS,
@@ -16,7 +18,10 @@ import {
 // reload-stable. Default/empty values are omitted so an unfiltered view keeps a
 // clean URL (no `?type=all` noise).
 export interface LogSearch {
-  range?: RangePresetID;
+  range?: RangePresetID | "custom";
+  /** ISO start/end, present only for `range: "custom"` (w5/m56). */
+  rangeStart?: string;
+  rangeEnd?: string;
   type?: typeof LOG_TYPE_APP | typeof LOG_TYPE_REQUEST;
   level?: string;
   method?: string;
@@ -39,7 +44,14 @@ export interface LogSearch {
 // The string-valued filter keys = the structured fields + free-text search.
 const TEXT_KEYS = [...STRUCTURED_FILTER_KEYS, "text"] as const;
 // Every canonical key, for the equality guard below.
-const SEARCH_KEYS = ["range", "type", ...TEXT_KEYS, "live"] as const;
+const SEARCH_KEYS = [
+  "range",
+  "rangeStart",
+  "rangeEnd",
+  "type",
+  ...TEXT_KEYS,
+  "live",
+] as const;
 
 // Render's `r` tokens without an exact bex preset (Render's grammar is
 // 15m|1h|6h|24h|7d — the captured deploy-page contract, see
@@ -85,8 +97,20 @@ export function parseLogSearch(search: Record<string, unknown>): LogSearch {
   // alias-normalization pattern).
   if ("t" in search) out.t = undefined;
   if ("r" in search) out.r = undefined;
-  const range = parseRangePreset(search.range) ?? parseRangeAlias(search.r);
-  if (range) out.range = range.id;
+  // A custom absolute range (w5/m56) carries its own start/end; only accept it
+  // when both parse into a valid window, else fall through to the preset path.
+  if (search.range === "custom") {
+    const start = str(search.rangeStart);
+    const end = str(search.rangeEnd);
+    if (start && end && parseCustomRange(start, end)) {
+      out.range = "custom";
+      out.rangeStart = start;
+      out.rangeEnd = end;
+    }
+  } else {
+    const range = parseRangePreset(search.range) ?? parseRangeAlias(search.r);
+    if (range) out.range = range.id;
+  }
   const type = parseType(search.type) ?? parseType(search.t);
   if (type) out.type = type;
   for (const key of TEXT_KEYS) {
@@ -109,8 +133,13 @@ export function parseLogSearch(search: Record<string, unknown>): LogSearch {
 // (w5/m42), so the two tabs deliberately no longer share one default.
 export const DEFAULT_LOG_RANGE = parseRangePreset("1h")!;
 
-/** Restores the URL range, falling back to the documented one-hour default. */
-export function logRangeFromSearch(search: LogSearch): RangePreset {
+/** Restores the URL range (preset or custom absolute window), falling back to
+ *  the documented one-hour default. */
+export function logRangeFromSearch(search: LogSearch): RangeSelection {
+  if (search.range === "custom" && search.rangeStart && search.rangeEnd) {
+    const custom = parseCustomRange(search.rangeStart, search.rangeEnd);
+    if (custom) return custom;
+  }
   return parseRangePreset(search.range) ?? DEFAULT_LOG_RANGE;
 }
 
@@ -130,8 +159,8 @@ export function logFiltersFromSearch(search: LogSearch): LogFilters {
 export function logFiltersToSearch(
   filters: LogFilters,
   live: boolean,
-): Omit<LogSearch, "range"> {
-  const out: Omit<LogSearch, "range"> = {};
+): Omit<LogSearch, "range" | "rangeStart" | "rangeEnd"> {
+  const out: Omit<LogSearch, "range" | "rangeStart" | "rangeEnd"> = {};
   if (filters.type === LOG_TYPE_APP || filters.type === LOG_TYPE_REQUEST) {
     out.type = filters.type;
   }

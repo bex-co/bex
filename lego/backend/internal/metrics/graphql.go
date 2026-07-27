@@ -283,23 +283,19 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if err != nil {
 					return nil, err
 				}
-				var all []MetricSeries
+				var out []metricSeriesResult
 				for _, res := range resources {
 					q.App = res
-					series, err := s.Metrics(p.Context, q)
+					// MetricsWithQuantiles echoes the (single or per-quantile)
+					// percentile per series, driving the "parameters" field for
+					// HTTP_LATENCY's percentile "All" overlay (w5/m56).
+					qs, err := s.MetricsWithQuantiles(p.Context, q)
 					if err != nil {
 						return nil, err
 					}
-					all = append(all, series...)
-				}
-				quantile := q.Quantile
-				if quantile <= 0 {
-					quantile = defaultQuantile
-				}
-				hasQuantile := q.Metric == MetricHTTPLatency
-				out := make([]metricSeriesResult, 0, len(all))
-				for _, ser := range all {
-					out = append(out, metricSeriesResult{MetricSeries: ser, Quantile: quantile, HasQuantile: hasQuantile})
+					for _, r := range qs {
+						out = append(out, metricSeriesResult{MetricSeries: r.MetricSeries, Quantile: r.Quantile, HasQuantile: r.HasQuantile})
+					}
 				}
 				return out, nil
 			},
@@ -423,11 +419,14 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 	if n, ok := input["resolution"].(int); ok {
 		q.Resolution = time.Duration(n) * time.Second
 	}
+	// Render's `parameters` is a list; each entry names a quantile. A single entry
+	// is the ordinary percentile pick, several entries are the percentile "All"
+	// overlay (w5/m56) — collect them all and let MetricsWithQuantiles fan out.
 	if params, ok := input["parameters"].([]any); ok {
 		for _, pr := range params {
 			if m, ok := pr.(map[string]any); ok {
 				if ql, ok := m["quantile"].(float64); ok {
-					q.Quantile = ql
+					q.Quantiles = append(q.Quantiles, ql)
 				}
 			}
 		}

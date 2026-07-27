@@ -129,6 +129,11 @@ const enMetrics: Record<string, TranslationEntry> = {
     message: "Percentile",
     description: "Response Times section control label",
   },
+  "metrics.percentileAll": {
+    message: "All",
+    description:
+      "Percentile dropdown option that overlays p50/p90/p99 on one chart",
+  },
   "metrics.requestsCount": {
     message: "{count} requests",
     description:
@@ -305,6 +310,46 @@ const enMetrics: Record<string, TranslationEntry> = {
   "metrics.rangeLast14Days": {
     message: "Last 14 days",
     description: "Metrics time-range filter option",
+  },
+  "metrics.rangeLast30Days": {
+    message: "Last 30 days",
+    description: "Metrics time-range filter option (w5/m56; Render plan-gates it)",
+  },
+  "metrics.rangeCustom": {
+    message: "Custom…",
+    description: "Time-range dropdown option that opens the start/end picker",
+  },
+  "metrics.rangeCustomTitle": {
+    message: "Custom range",
+    description: "Custom time-range picker dialog title",
+  },
+  "metrics.rangeCustomDescription": {
+    message: "Choose an absolute start and end. Windows over 30 days aren't available.",
+    description: "Custom time-range picker dialog description",
+  },
+  "metrics.rangeCustomStart": {
+    message: "Start",
+    description: "Custom range start datetime field label",
+  },
+  "metrics.rangeCustomEnd": {
+    message: "End",
+    description: "Custom range end datetime field label",
+  },
+  "metrics.rangeCustomApply": {
+    message: "Apply",
+    description: "Custom range apply button",
+  },
+  "metrics.rangeCustomCancel": {
+    message: "Cancel",
+    description: "Custom range cancel button",
+  },
+  "metrics.rangeCustomErrorOrder": {
+    message: "The end must be after the start.",
+    description: "Custom range validation: end not after start",
+  },
+  "metrics.rangeCustomErrorTooLong": {
+    message: "Choose a window of 30 days or less.",
+    description: "Custom range validation: window exceeds the max query window",
   },
   "metrics.rangeLabel": {
     message: "Time range",

@@ -25,7 +25,7 @@ Authenticated side-by-side capture, 2026-07-17: Render `dashboard.render.com/web
 | Toolbar | Six inline range buttons (default 1 h) + Percentage/Total tabs + quantile combobox (p95) + Status Code — all page-level | `[event filter] [range ▾] … [timeline toggle]`; Render's eight presets, default **Last 12 hours** |
 | Event timeline | Always-open card with its own filter combobox | Hidden by default; toolbar toggle reveals it; filter lives in the toolbar |
 | Application card | Subtitle; no plan/scaling links; tabs on the page | Tabs in the card header; `Limit <value>` → Instance Type tab on Memory/CPU; `Manage scaling` → Scaling tab |
-| Network card | Status Code + quantile page-level; "Response Times (0.95)" | Status Code in the card header; `Percentile` (p50/p75/p90/p99, default p90) on Response Times; aggregate request count |
+| Network card | Status Code + quantile page-level; "Response Times (0.95)" | Status Code in the card header; `Percentile` (All / p50/p75/p90/p99, default p90) on Response Times, "All" overlaying p50/p90/p99 (w5/m56); aggregate request count |
 | Logs tab (shared) | Same six preset buttons | Same shared dropdown component; Logs keeps its own 1 h default (bex-api's default span) |
 
 ## Accepted drift (recorded, not built)
@@ -33,14 +33,21 @@ Authenticated side-by-side capture, 2026-07-17: Render `dashboard.render.com/web
 | Render capability | Why bex diverges |
 | --- | --- |
 | Host / Path network filters | bex's metrics API rejects HOST/PATH filters (w3/m12) — Traefik's service-level series carry no such labels; discovery (`metricsFilters`) offers no values, so the dropdowns would be dead controls |
-| Percentile "All" overlay | The `metrics` GraphQL query carries a single `quantile` parameter; a four-series overlay would need multi-quantile queries bex-api doesn't serve |
-| "Last 30 days" range | Plan-gated (disabled) even on Render's own UI; bex's Prometheus retention makes it the retained-window anyway |
-| "Custom" range | Deferred — bex offers the eight relative presets only |
 | Observability-integrations banner | External metric drains are an explicit non-goal (`.pm/DO_NOT_DO.md`; same class as log/metric drains) |
 | Group-by option set | bex groups by status/method (Traefik labels); Render's set differs — bex's is the honest label set its meter actually has |
 | Bandwidth "Usage this month" value | bex composes real HTTP + NAT (direct-public L3) + WebSocket egress (w8/m15); only `privateLink` reports 0 (no such product surface) — an honest subset, never a fabricated total |
 | Render logs `?r=` grammar | `15m`/`6h` alias to the nearest preset (`30m`/`4h`); `1h`/`24h`/`7d` now parse natively; retired bex ids (`3h`/`6h`/`1d`) degrade to the default range |
 
+## Closed by w5/m56 (2026-07-27)
+
+The three recorded drifts on the percentile + range controls were closed after a fresh live Render walk (`cuckoo-backend` metrics page, authenticated): Render's Percentile control does offer "All" over p50/p90/p99, its range dropdown offers "Last 30 days" (disabled, plan-gated) and a "Custom" absolute start/end picker with a plan-window note.
+
+| Was drift | Now |
+| --- | --- |
+| Percentile "All" overlay | ✅ The metrics read returns several quantiles in one call — REST repeats `?quantile=`, GraphQL sends several `parameters[].quantile`, MCP takes `quantiles[]`; each series is tagged with its `quantile` label (GraphQL also echoes `parameters { quantile }`). The card's "All" option overlays p50/p90/p99 with a p50/p90/p99 legend. Single-quantile reads are byte-identical. |
+| "Last 30 days" range | ✅ Added as a relative preset on the shared range dropdown, **ungated** (Render plan-gates it). 30 days = `BEX_MAX_QUERY_HOURS`' default, the effective ceiling. |
+| "Custom" range | ✅ A "Custom…" dropdown option opens an absolute start/end picker (Metrics + Logs, via the shared control), bounded client-side by `MAX_CUSTOM_RANGE_HOURS` (30 days) and honestly by the backend's over-window 400 beyond it. Custom windows are URL-backed on the Logs tab. |
+
 ## Cross-surface note
 
-w5/m42 changed only `dashboard/` — REST (`GET /v1/metrics/*`), GraphQL (`metrics`, `metricsFilters`, `monthToDateBandwidth`), and MCP metrics verbs in `lego/backend/internal/metrics` are untouched, so the three API surfaces remain in lock-step; the p90 default and 12 h window are client-side choices (bex-api's own defaults — quantile 0.95, 1 h span — still apply to direct API callers, matching Render's API/UI split: Render's UI defaults also differ from its API defaults).
+w5/m42 changed only `dashboard/`; **w5/m56 extended the metrics _read_ itself** — REST (`GET /v1/metrics/*` repeated `quantile`), GraphQL (`metrics` `parameters[]`), and MCP (`get_metrics` `quantiles[]`) now all serve multiple quantiles in one call through one `MetricsWithQuantiles` core, so the three API surfaces stay in lock-step. The p90 default and 12 h window remain client-side choices (bex-api's own defaults — quantile 0.95, 1 h span — still apply to direct API callers, matching Render's API/UI split: Render's UI defaults also differ from its API defaults). The percentile "All" and the "Last 30 days"/"Custom" ranges are ungated (Render plan-gates the latter two).

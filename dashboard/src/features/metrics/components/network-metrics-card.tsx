@@ -48,9 +48,9 @@ type GroupBy = "status" | "method" | undefined;
 const GROUP_BY_ALL = "all";
 
 // Render's Percentile options on Response Times (captured live 2026-07-17,
-// w5/m42; its "All" overlay needs multi-quantile queries bex-api doesn't
-// serve — accepted drift). p50/p90/p99 are quantile notation, not English
-// words — no translation needed.
+// w5/m42), plus its "All" overlay (w5/m56): bex-api now serves multi-quantile
+// reads, so "All" fetches p50/p90/p99 in one query and overlays them. p50/p90/
+// p99 are quantile notation, not English words — no translation needed.
 const PERCENTILES = [
   { value: "0.5", label: "p50" },
   { value: "0.75", label: "p75" },
@@ -58,6 +58,9 @@ const PERCENTILES = [
   { value: "0.99", label: "p99" },
 ];
 const DEFAULT_QUANTILE = 0.9; // Render defaults to p90
+// The percentile "All" overlay reads these three at once (Render's p50/p90/p99).
+const PERCENTILE_ALL = "all";
+const ALL_QUANTILES = [0.5, 0.9, 0.99];
 
 // Render's Status Code dropdown offers the class presets plus the codes the
 // App has actually returned (discovered via metricsFilters). "all" is the
@@ -85,7 +88,9 @@ export function NetworkMetricsCard({
   // Render puts Group by on the Total Requests chart itself (not the page
   // toolbar), so its state lives here with the chart.
   const [groupBy, setGroupBy] = useState<GroupBy>(undefined);
-  const [quantile, setQuantile] = useState(DEFAULT_QUANTILE);
+  // Percentile pick as a string so the "All" overlay sentinel shares the state.
+  const [percentile, setPercentile] = useState<string>(String(DEFAULT_QUANTILE));
+  const isAllPercentiles = percentile === PERCENTILE_ALL;
   const [statusCode, setStatusCode] = useState(""); // "" = all
   const discoveredStatusCodes = useMetricsFilterValues(resource, "STATUS_CODE");
   const queryOpts = { ...window, statusCode: statusCode || undefined };
@@ -95,7 +100,9 @@ export function NetworkMetricsCard({
   });
   const latency = useMetrics(resource, "http_latency", {
     ...queryOpts,
-    quantile,
+    ...(isAllPercentiles
+      ? { quantiles: ALL_QUANTILES }
+      : { quantile: Number(percentile) }),
   });
   const bandwidth = useMetrics(resource, "bandwidth", window);
   const monthToDate = useMonthToDateBandwidth(resource);
@@ -127,12 +134,19 @@ export function NetworkMetricsCard({
       ),
     [requests.series],
   );
-  const latencySeries = useMemo<LineSeriesInput[]>(
-    () => [
+  const latencySeries = useMemo<LineSeriesInput[]>(() => {
+    // "All": one line per quantile, named by its `quantile` label (p50/p90/p99).
+    if (isAllPercentiles) {
+      return latency.series.map((s, i) => ({
+        points: s.points,
+        color: seriesColor(i),
+        label: percentileLabel(s.labels["quantile"]),
+      }));
+    }
+    return [
       { points: latency.series[0]?.points ?? [], color: "var(--chart-5)" },
-    ],
-    [latency.series],
-  );
+    ];
+  }, [latency.series, isAllPercentiles]);
   const bandwidthSeries = useMemo<LineSeriesInput[]>(
     () => [
       { points: bandwidth.series[0]?.points ?? [], color: "var(--chart-1)" },
@@ -229,10 +243,7 @@ export function NetworkMetricsCard({
           title={t("metrics.responseTimes")}
           result={latency}
           headerExtra={
-            <Select
-              value={String(quantile)}
-              onValueChange={(v) => setQuantile(Number(v))}
-            >
+            <Select value={percentile} onValueChange={setPercentile}>
               <SelectTrigger
                 size="sm"
                 className="h-7 w-36"
@@ -249,6 +260,9 @@ export function NetworkMetricsCard({
                     {q.label}
                   </SelectItem>
                 ))}
+                <SelectItem value={PERCENTILE_ALL}>
+                  {t("metrics.percentileAll")}
+                </SelectItem>
               </SelectContent>
             </Select>
           }
@@ -259,6 +273,7 @@ export function NetworkMetricsCard({
             markers={markers}
             markersServiceId={resource}
           />
+          <ChartLegend entries={latencySeries} />
         </MetricSection>
         <MetricSection
           title={t("metrics.outboundBandwidth")}
@@ -307,6 +322,12 @@ export function NetworkMetricsCard({
 /** The grouped series' display name: its status code or method label. */
 function groupLabel(labels: Record<string, string>): string {
   return labels["code"] ?? labels["method"] ?? "";
+}
+
+/** "0.9" → "p90": the overlaid latency line's legend name (percentile "All"). */
+function percentileLabel(quantile: string | undefined): string {
+  const n = Number(quantile);
+  return n > 0 ? `p${Math.round(n * 100)}` : "";
 }
 
 /**

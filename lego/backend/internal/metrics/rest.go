@@ -87,12 +87,14 @@ func (s *Service) metricQuery(w http.ResponseWriter, r *http.Request, metric str
 	var all []MetricSeries
 	for _, res := range resources {
 		q.App = res
-		series, err := s.Metrics(r.Context(), q)
+		series, err := s.MetricsWithQuantiles(r.Context(), q)
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
-		all = append(all, series...)
+		for _, ser := range series {
+			all = append(all, ser.MetricSeries)
+		}
 	}
 	core.WriteJSON(w, http.StatusOK, toRenderMetrics(all))
 }
@@ -211,12 +213,22 @@ func parseMetricParams(r *http.Request) ([]string, MetricQuery, error) {
 	}
 	q.Start, q.End, q.Resolution = start, end, resolution
 
-	if ql := v.Get("quantile"); ql != "" {
+	// `quantile` may repeat: one value is the ordinary percentile pick, several
+	// are the percentile "All" overlay (w5/m56) — returned as one series per
+	// quantile, each carrying a `quantile` label. A lone value keeps the
+	// single-quantile path byte-identical.
+	for _, ql := range v["quantile"] {
+		if ql == "" {
+			continue
+		}
 		f, err := strconv.ParseFloat(ql, 64)
 		if err != nil {
 			return nil, MetricQuery{}, fmt.Errorf("quantile: %w", err)
 		}
-		q.Quantile = f
+		q.Quantiles = append(q.Quantiles, f)
+	}
+	if len(q.Quantiles) == 1 {
+		q.Quantile = q.Quantiles[0]
 	}
 
 	return resources, q, nil

@@ -27,13 +27,14 @@ import (
 // required `resource` array of service ids and `metricTypes` (bex metric ids),
 // plus the optional time window and options.
 type getMetricsArgs struct {
-	Resource          []string `json:"resource" jsonschema:"service ids (srv-...) or names to read metrics for"`
-	MetricTypes       []string `json:"metricTypes" jsonschema:"metric ids: cpu|memory|instance_count|http_requests|http_latency|bandwidth|cpu_target|memory_target (cpu_target/memory_target are bex extensions: the App's configured autoscale-target utilization, w1/m20 — omitted when autoscaling is disabled)"`
-	StartTime         string   `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window (request metrics)"`
-	EndTime           string   `json:"endTime,omitempty" jsonschema:"RFC3339 end of the window (request metrics)"`
-	ResolutionSeconds int64    `json:"resolutionSeconds,omitempty" jsonschema:"request-metric step in seconds"`
-	Quantile          float64  `json:"quantile,omitempty" jsonschema:"http_latency percentile 0..1 (default .95)"`
-	Percentage        bool     `json:"percentage,omitempty" jsonschema:"report cpu/memory as a percentage of the pod limit"`
+	Resource          []string  `json:"resource" jsonschema:"service ids (srv-...) or names to read metrics for"`
+	MetricTypes       []string  `json:"metricTypes" jsonschema:"metric ids: cpu|memory|instance_count|http_requests|http_latency|bandwidth|cpu_target|memory_target (cpu_target/memory_target are bex extensions: the App's configured autoscale-target utilization, w1/m20 — omitted when autoscaling is disabled)"`
+	StartTime         string    `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window (request metrics)"`
+	EndTime           string    `json:"endTime,omitempty" jsonschema:"RFC3339 end of the window (request metrics)"`
+	ResolutionSeconds int64     `json:"resolutionSeconds,omitempty" jsonschema:"request-metric step in seconds"`
+	Quantile          float64   `json:"quantile,omitempty" jsonschema:"http_latency percentile 0..1 (default .95)"`
+	Quantiles         []float64 `json:"quantiles,omitempty" jsonschema:"http_latency percentiles 0..1 to read together — the percentile 'All' overlay (e.g. [0.5,0.9,0.99]); each returned series carries a quantile label so the overlaid percentiles stay distinct"`
+	Percentage        bool      `json:"percentage,omitempty" jsonschema:"report cpu/memory as a percentage of the pod limit"`
 }
 
 type getMetricsResult struct {
@@ -48,6 +49,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getMetricsArgs) (*mcp.CallToolResult, getMetricsResult, error) {
 		q := MetricQuery{
 			Quantile:   in.Quantile,
+			Quantiles:  in.Quantiles,
 			Percentage: in.Percentage,
 			Resolution: time.Duration(in.ResolutionSeconds) * time.Second,
 		}
@@ -65,18 +67,21 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		for _, id := range in.Resource {
 			for _, metric := range in.MetricTypes {
 				q.App, q.Metric = id, metric
-				series, err := s.Metrics(ctx, q)
+				// MetricsWithQuantiles fans http_latency out over q.Quantiles (the
+				// percentile "All" overlay), tagging each series with its quantile.
+				series, err := s.MetricsWithQuantiles(ctx, q)
 				if err != nil {
 					return nil, getMetricsResult{}, err
 				}
 				// Tag each series with its metric so multi-metric results stay distinct.
 				for i := range series {
-					if series[i].Labels == nil {
-						series[i].Labels = map[string]string{}
+					ser := series[i].MetricSeries
+					if ser.Labels == nil {
+						ser.Labels = map[string]string{}
 					}
-					series[i].Labels["metric"] = metric
+					ser.Labels["metric"] = metric
+					all = append(all, ser)
 				}
-				all = append(all, series...)
 			}
 		}
 		return nil, getMetricsResult{Series: all}, nil
