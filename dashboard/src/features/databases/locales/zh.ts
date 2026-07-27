@@ -875,18 +875,14 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "无法更新规格，请重试。",
     description: "Toast when a plan update fails",
   },
-  // --- Name section (w9/m3) ---
-  "databases.nameTitle": {
-    message: "数据库名称",
-    description: "Database detail rename card title",
+  // --- Name row (w9/m3; edit-in-place w5/m55) ---
+  "databases.nameEdit": {
+    message: "编辑数据库名称",
+    description: "Accessible label for the database-name edit-in-place pencil",
   },
   "databases.nameDescription": {
     message: "更改显示名称。数据库 ID 和所有连接信息保持不变。",
-    description: "Database detail rename card description",
-  },
-  "databases.nameSave": {
-    message: "保存名称",
-    description: "Database rename save button",
+    description: "Database detail rename row description",
   },
   "databases.nameSuccess": {
     message: "数据库已重命名为 {name}。",

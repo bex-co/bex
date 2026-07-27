@@ -434,17 +434,9 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Maxmemory policy",
     description: "Accessible label for the eviction-policy select",
   },
-  "keyvalue.maxmemoryPlaceholder": {
-    message: "Select a policy",
-    description: "Placeholder shown when no eviction policy is set yet",
-  },
-  "keyvalue.maxmemorySave": {
-    message: "Save",
-    description: "Key Value eviction-policy save button",
-  },
-  "keyvalue.maxmemoryCancel": {
-    message: "Cancel",
-    description: "Key Value eviction-policy cancel / reset button",
+  "keyvalue.maxmemoryEdit": {
+    message: "Edit maxmemory policy",
+    description: "Accessible label for the maxmemory-policy edit-in-place pencil",
   },
   "keyvalue.maxmemorySuccess": {
     message: "Updating maxmemory policy to {policy}…",
@@ -514,19 +506,15 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Couldn't save the allowlist: {error}",
     description: "Toast when saving the allowlist fails",
   },
-  // --- Name section (rename control) ---
-  "keyvalue.nameTitle": {
-    message: "Key Value name",
-    description: "Key Value detail rename card title",
+  // --- Name row (rename control; edit-in-place w5/m55) ---
+  "keyvalue.nameEdit": {
+    message: "Edit Key Value name",
+    description: "Accessible label for the Key Value name edit-in-place pencil",
   },
   "keyvalue.nameDescription": {
     message:
       "Change the display name. The Key Value ID and all connection details stay the same.",
-    description: "Key Value detail rename card description",
-  },
-  "keyvalue.nameSave": {
-    message: "Save name",
-    description: "Key Value rename save button",
+    description: "Key Value detail rename row description",
   },
   "keyvalue.nameSuccess": {
     message: "Renamed Key Value store to {name}.",

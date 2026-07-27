@@ -890,19 +890,15 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Couldn't update the plan. Please try again.",
     description: "Toast when a plan update fails",
   },
-  // --- Name section (w9/m3) ---
-  "databases.nameTitle": {
-    message: "Database name",
-    description: "Database detail rename card title",
+  // --- Name row (w9/m3; edit-in-place w5/m55) ---
+  "databases.nameEdit": {
+    message: "Edit database name",
+    description: "Accessible label for the database-name edit-in-place pencil",
   },
   "databases.nameDescription": {
     message:
       "Change the display name. The database ID and all connection details stay the same.",
-    description: "Database detail rename card description",
-  },
-  "databases.nameSave": {
-    message: "Save name",
-    description: "Database rename save button",
+    description: "Database detail rename row description",
   },
   "databases.nameSuccess": {
     message: "Renamed database to {name}.",

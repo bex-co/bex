@@ -430,17 +430,9 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "内存淘汰策略",
     description: "Accessible label for the eviction-policy select",
   },
-  "keyvalue.maxmemoryPlaceholder": {
-    message: "选择策略",
-    description: "Placeholder shown when no eviction policy is set yet",
-  },
-  "keyvalue.maxmemorySave": {
-    message: "保存",
-    description: "Key Value eviction-policy save button",
-  },
-  "keyvalue.maxmemoryCancel": {
-    message: "取消",
-    description: "Key Value eviction-policy cancel / reset button",
+  "keyvalue.maxmemoryEdit": {
+    message: "编辑内存淘汰策略",
+    description: "Accessible label for the maxmemory-policy edit-in-place pencil",
   },
   "keyvalue.maxmemorySuccess": {
     message: "正在将内存淘汰策略更新为 {policy}……",
@@ -509,18 +501,14 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "无法保存允许列表：{error}",
     description: "Toast when saving the allowlist fails",
   },
-  // --- Name section (rename control) ---
-  "keyvalue.nameTitle": {
-    message: "Key Value 名称",
-    description: "Key Value detail rename card title",
+  // --- Name row (rename control; edit-in-place w5/m55) ---
+  "keyvalue.nameEdit": {
+    message: "编辑 Key Value 名称",
+    description: "Accessible label for the Key Value name edit-in-place pencil",
   },
   "keyvalue.nameDescription": {
     message: "更改显示名称。Key Value ID 和所有连接信息保持不变。",
-    description: "Key Value detail rename card description",
-  },
-  "keyvalue.nameSave": {
-    message: "保存名称",
-    description: "Key Value rename save button",
+    description: "Key Value detail rename row description",
   },
   "keyvalue.nameSuccess": {
     message: "Key Value 存储已重命名为 {name}。",

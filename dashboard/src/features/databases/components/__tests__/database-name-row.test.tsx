@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DatabaseNameSection } from "@/features/databases/components/database-name-section";
+import { DatabaseNameRow } from "@/features/databases/components/database-name-row";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
 const rename = vi.fn();
@@ -32,31 +32,39 @@ beforeEach(() => {
   rename.mockResolvedValue(true);
 });
 
-describe("DatabaseNameSection", () => {
-  it("keeps the stable id while submitting a new display name", async () => {
+describe("DatabaseNameRow", () => {
+  it("renders read-only until the pencil, then renames without touching the id", async () => {
     const user = userEvent.setup();
-    const onChanged = vi.fn();
-    render(<DatabaseNameSection database={database} onChanged={onChanged} />);
+    const onRenamed = vi.fn();
+    render(<DatabaseNameRow database={database} onRenamed={onRenamed} />);
 
+    // Edit-in-place: the value lives in a visibly disabled input; no Save yet.
     const input = screen.getByLabelText("Name");
+    expect(input).toHaveValue("old-name");
+    expect(input).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Edit database name" }));
+    expect(input).toBeEnabled();
     await user.clear(input);
     await user.type(input, "new-name");
-    await user.click(screen.getByRole("button", { name: "Save name" }));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect(rename).toHaveBeenCalledWith("dpg-stable", "new-name");
-    expect(onChanged).toHaveBeenCalledOnce();
+    expect(onRenamed).toHaveBeenCalledOnce();
   });
 
   it("blocks an invalid name before it reaches the API", async () => {
     const user = userEvent.setup();
-    render(<DatabaseNameSection database={database} onChanged={vi.fn()} />);
+    render(<DatabaseNameRow database={database} onRenamed={vi.fn()} />);
 
+    await user.click(screen.getByRole("button", { name: "Edit database name" }));
     const input = screen.getByLabelText("Name");
     await user.clear(input);
     await user.type(input, "Bad Name");
 
     expect(screen.getByText(/lowercase letters/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Save name" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
     expect(rename).not.toHaveBeenCalled();
   });
 });
