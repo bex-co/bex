@@ -16,7 +16,7 @@ limitations under the License.
 
 // Package store is the bex control plane: the Postgres-backed source of
 // truth for the product's business entities (tenants, apps, domains + their
-// mappings to Ory and Metronome) and the minimal API over them. It projects `apps` rows into App CRs
+// mappings to Ory and Stripe) and the minimal API over them. It projects `apps` rows into App CRs
 // (app.bex.co/v1alpha1) for the operator to execute — policy/intent lives
 // here, mechanism stays in the operator (docs/ADR003-control-plane.md).
 package store

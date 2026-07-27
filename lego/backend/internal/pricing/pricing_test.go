@@ -42,6 +42,28 @@ func TestDefaultSheetLoadsWithoutPanic(t *testing.T) {
 	}
 }
 
+func TestBillableMeterNamesMatchesStripeCatalog(t *testing.T) {
+	want := []string{
+		"build_seconds",
+		"egress_gib",
+		"instance_seconds.key_value.standard",
+		"instance_seconds.key_value.starter",
+		"instance_seconds.postgres.basic-1gb",
+		"instance_seconds.postgres.basic-256mb",
+		"instance_seconds.service.pro",
+		"instance_seconds.service.pro-max",
+		"instance_seconds.service.pro-plus",
+		"instance_seconds.service.pro-ultra",
+		"instance_seconds.service.standard",
+		"instance_seconds.service.starter",
+		"storage_gb_hours",
+	}
+	got := Default.BillableMeterNames()
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("BillableMeterNames = %v, want %v", got, want)
+	}
+}
+
 func TestParseSheetRejectsEmptyVersion(t *testing.T) {
 	if _, err := parseSheet([]byte(`{}`)); err == nil {
 		t.Error("expected error for missing version field")

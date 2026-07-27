@@ -24,10 +24,12 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	stripe "github.com/stripe/stripe-go/v82"
 	"github.com/stripe/stripe-go/v82/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -43,15 +45,34 @@ const (
 
 // workspaceMetadataKey tags each Stripe customer with its bex workspace id, so a
 // customer is looked up by `metadata['bex_workspace']:'tea-…'` — the Stripe
-// equivalent of Metronome's ingest alias (m50; supersedes ADR040 §2). bex never
+// stable external-billing identity (m50; supersedes ADR040's old alias). bex never
 // has to persist Stripe's own `cus_…` id: it is resolved (and process-cached)
 // from the workspace tag.
 const workspaceMetadataKey = "bex_workspace"
+
+const (
+	subscriptionMetadataKey = "bex_billing_contract"
+	defaultCompCouponID     = "bex-comp-100"
+)
+
+var billableMeterNames = func() map[string]struct{} {
+	out := make(map[string]struct{})
+	for _, name := range pricing.Default.BillableMeterNames() {
+		out[name] = struct{}{}
+	}
+	return out
+}()
 
 // StripeConfig configures NewStripe. SecretKey is the only required field; empty
 // ⇒ the billing sink is disabled (NewStripe returns nil), byte-identical.
 type StripeConfig struct {
 	SecretKey string // BEX_STRIPE_SECRET_KEY (restricted key) — empty ⇒ disabled
+	// BillingEpoch is both the emitter floor and the earliest subscription
+	// backdate. It keeps pre-billing usage outside Stripe rating.
+	BillingEpoch time.Time
+	// CompCouponID is the perpetual 100%-off coupon provisioned by the setup
+	// script. Empty uses the stable default "bex-comp-100".
+	CompCouponID string
 	// HTTPClient / BaseURL override the SDK transport for tests (a stub backend);
 	// production leaves both zero (Stripe's default api.stripe.com).
 	HTTPClient *http.Client
@@ -73,12 +94,17 @@ type StripeClient struct {
 	sc *client.API
 
 	mu        sync.Mutex
-	customers map[string]string // workspace id (tea-…) → Stripe customer id (cus-…)
+	customers map[string]string // workspace id (tea-…) → Stripe customer id (cus_…)
+	priceIDs  []string          // complete active catalog, resolved once
+
+	billingEpoch time.Time
+	compCouponID string
 }
 
 // NewStripe builds a StripeClient, or returns nil when SecretKey is unset — the
-// byte-identical "billing off" path. Network retries are handled by the SDK; the
-// deterministic meter-event identifier makes every retry a safe dedup.
+// byte-identical "billing off" path. Network retries are handled by the SDK;
+// deterministic meter-event identifiers deduplicate within Stripe's documented
+// rolling uniqueness window.
 func NewStripe(cfg StripeConfig) *StripeClient {
 	if cfg.SecretKey == "" {
 		return nil
@@ -94,7 +120,16 @@ func NewStripe(cfg StripeConfig) *StripeClient {
 	})
 	sc := &client.API{}
 	sc.Init(cfg.SecretKey, &stripe.Backends{API: apiBackend})
-	return &StripeClient{sc: sc, customers: map[string]string{}}
+	compCouponID := cfg.CompCouponID
+	if compCouponID == "" {
+		compCouponID = defaultCompCouponID
+	}
+	return &StripeClient{
+		sc:           sc,
+		customers:    map[string]string{},
+		billingEpoch: cfg.BillingEpoch.UTC(),
+		compCouponID: compCouponID,
+	}
 }
 
 func stripeURL(base string) *string {
@@ -110,22 +145,13 @@ func stripeURL(base string) *string {
 // create. The customer id is cached so IngestBatch can stamp meter events with
 // it.
 func (c *StripeClient) EnsureCustomer(ctx context.Context, tenantID string) error {
-	if _, ok := c.lookup(tenantID); ok {
+	if _, found, err := c.findCustomer(ctx, tenantID); err != nil {
+		return err
+	} else if found {
 		return nil
 	}
-	// Recover an existing customer by its workspace tag (durable idempotency).
-	sp := &stripe.CustomerSearchParams{}
-	sp.Context = ctx
-	sp.Query = fmt.Sprintf("metadata['%s']:'%s'", workspaceMetadataKey, tenantID)
-	iter := c.sc.Customers.Search(sp)
-	if iter.Next() {
-		c.store(tenantID, iter.Customer().ID)
-		return nil
-	}
-	if err := iter.Err(); err != nil {
-		return fmt.Errorf("stripe: search customer %s: %w", tenantID, err)
-	}
-	// None exists — create one tagged with the workspace id.
+	// None exists — create one tagged with the workspace id. The idempotency
+	// key closes concurrent create races while Customer Search catches restarts.
 	cp := &stripe.CustomerParams{
 		Name:     stripe.String(tenantID),
 		Metadata: map[string]string{workspaceMetadataKey: tenantID},
@@ -136,19 +162,42 @@ func (c *StripeClient) EnsureCustomer(ctx context.Context, tenantID string) erro
 	if err != nil {
 		return fmt.Errorf("stripe: create customer %s: %w", tenantID, err)
 	}
-	c.store(tenantID, cust.ID)
+	c.storeCustomer(tenantID, cust.ID)
 	return nil
 }
 
-// EnsureContract is a no-op for the Stripe sink's shadow phase: usage lands as
-// meter events regardless, and the Subscription that rates them (the Metronome
-// "contract" equivalent) is provisioned separately (m50/t005). Kept to satisfy
-// the Ingester seam.
-func (c *StripeClient) EnsureContract(context.Context, string) error { return nil }
+// findCustomer resolves a workspace without creating it. Billing reads use
+// this path so a billing_excluded workspace can never gain a Stripe Customer
+// merely because somebody opened its usage page.
+func (c *StripeClient) findCustomer(ctx context.Context, tenantID string) (string, bool, error) {
+	if id, ok := c.lookupCustomer(tenantID); ok {
+		return id, true, nil
+	}
+	sp := &stripe.CustomerSearchParams{}
+	sp.Context = ctx
+	sp.Limit = stripe.Int64(100)
+	sp.Query = fmt.Sprintf("metadata['%s']:'%s'", workspaceMetadataKey, tenantID)
+	iter := c.sc.Customers.Search(sp)
+	var found []string
+	for iter.Next() {
+		found = append(found, iter.Customer().ID)
+	}
+	if err := iter.Err(); err != nil {
+		return "", false, fmt.Errorf("stripe: search customer %s: %w", tenantID, err)
+	}
+	if len(found) > 1 {
+		return "", false, fmt.Errorf("stripe: workspace %s has %d Customers with metadata %s: %v", tenantID, len(found), workspaceMetadataKey, found)
+	}
+	if len(found) == 0 {
+		return "", false, nil
+	}
+	c.storeCustomer(tenantID, found[0])
+	return found[0], true, nil
+}
 
 // IngestBatch ships each event to Stripe as a meter event (the /v1/ingest
-// equivalent). Stripe dedups by the deterministic Identifier, so retries and
-// re-scans are safe. A permanent client error (4xx) on one event is
+// equivalent). Stripe deduplicates the deterministic Identifier within its
+// documented rolling uniqueness window. A permanent client error (4xx) is
 // dead-lettered — logged and skipped — so one bad event never blocks the batch;
 // a transient/other error is returned so the emitter leaves the rows un-stamped
 // and retries next cycle.
@@ -158,7 +207,7 @@ func (c *StripeClient) IngestBatch(ctx context.Context, events []Event) error {
 		if skip {
 			continue // free tier (no meter/price) — nothing owed, nothing to send
 		}
-		custID, ok := c.lookup(e.CustomerID)
+		custID, ok := c.lookupCustomer(e.CustomerID)
 		if !ok {
 			// The emitter ensures the customer before ingesting; a miss means a
 			// transient ensure gap — surface it so the batch retries.
@@ -199,7 +248,11 @@ func stripeMeterEvent(e Event) (eventName, value string, skip bool) {
 			return "", "", true
 		}
 		rk := store.NormalizeResourceKind(e.Properties["resource_kind"])
-		return fmt.Sprintf("instance_seconds.%s.%s", rk, tier), e.Properties["value"], false
+		name := fmt.Sprintf("instance_seconds.%s.%s", rk, tier)
+		if _, ok := billableMeterNames[name]; !ok {
+			return "", "", true // unknown/zero-rate tier: same policy as pricing estimate
+		}
+		return name, e.Properties["value"], false
 	case store.UsageKindEgressBytes:
 		return "egress_gib", scaleDown(e.Properties["value"], bytesPerGiB), false
 	case store.UsageKindStorageGBSeconds:
@@ -232,14 +285,14 @@ func permanentStripeError(err error) bool {
 	return s >= 400 && s < 500 && s != http.StatusTooManyRequests
 }
 
-func (c *StripeClient) lookup(tenantID string) (string, bool) {
+func (c *StripeClient) lookupCustomer(tenantID string) (string, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	id, ok := c.customers[tenantID]
 	return id, ok
 }
 
-func (c *StripeClient) store(tenantID, customerID string) {
+func (c *StripeClient) storeCustomer(tenantID, customerID string) {
 	c.mu.Lock()
 	c.customers[tenantID] = customerID
 	c.mu.Unlock()

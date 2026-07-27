@@ -75,21 +75,21 @@ type Service struct {
 	// (explicit arg > the session's select_workspace > the caller's default).
 	// nil (e.g. no MCP transport wired) degrades to explicit-arg-or-default.
 	Selections core.WorkspaceSelectionReader
-	// Billing reads real Metronome cost/invoices to surface beside the advisory
+	// Billing reads real Stripe cost/invoices to surface beside the advisory
 	// estimate (m48, ADR040 Phase 2). nil ⇒ billing surface off: every summary is
 	// estimate-only, byte-identical to ADR030. A read failure degrades to
 	// estimate-only too (logged, never a 500).
 	Billing BillingReader
-	// billingCache memoizes the two Metronome reads BillingFor makes, keyed by
+	// billingCache memoizes the Stripe reads BillingFor makes, keyed by
 	// (tenant, period), for a short TTL: /v1/usage is polled (dashboard every 60s)
 	// across three surfaces, but the billing figure only moves ~hourly, so this
-	// keeps that hot path off Metronome. Positive results only — errors are never
+	// keeps that hot path off Stripe. Positive results only — errors are never
 	// cached, preserving the poll-as-retry graceful-degradation contract.
 	billingCache *core.TTLCache[*billing.Billing]
 	promHTTP     *http.Client
 }
 
-// BillingReader reads a workspace's real Metronome cost + finalized invoices
+// BillingReader reads a workspace's real Stripe cost + finalized invoices
 // for [periodStart, periodEnd). Returns (nil, nil) when there is nothing real
 // to show (no contract / comped Mode A / excluded) so the caller falls back to
 // estimate-only. Implemented by *billing.Client.
@@ -124,9 +124,9 @@ type Summary struct {
 	Period        string // "YYYY-MM" — the calendar month this summary covers
 	Services      []ServiceUsage
 	EstimatedCost pricing.EstimatedCost
-	// Billing is the real Metronome-computed cost + finalized invoices (m48).
+	// Billing is the real Stripe-computed cost + finalized invoices (m48/m50).
 	// nil ⇒ estimate-only: no contract, comped/excluded, billing off, or a
-	// degraded Metronome read — clients show EstimatedCost alone.
+	// degraded Stripe read — clients show EstimatedCost alone.
 	Billing *billing.Billing
 }
 
@@ -177,8 +177,8 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 	return sum, nil
 }
 
-// readBilling fetches the workspace's real Metronome cost for the month
-// containing now. Any failure (Metronome off/unreachable, no contract) yields
+// readBilling fetches the workspace's real Stripe cost for the month containing
+// now. Any failure (Stripe off/unreachable, no subscription) yields
 // nil — the summary stays estimate-only and never 500s (ADR040 graceful
 // degradation). The estimate always remains for the in-flight window.
 func (s *Service) readBilling(ctx context.Context, tenantID string, now time.Time) *billing.Billing {

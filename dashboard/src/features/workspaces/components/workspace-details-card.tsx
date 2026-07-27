@@ -49,7 +49,7 @@ export interface WorkspaceDetailsCardProps {
 /**
  * Workspace settings' primary card (w6/m3/t003, plan section w6/m12/t005):
  * rename, the plan as a badge with a change-plan dialog (upgrade/downgrade —
- * no payment step, bex has no billing system yet, .pm/w6/README.md "Not in
+ * no payment step; Stripe payment-method onboarding remains deferred, .pm/w6/README.md "Not in
  * w6"), and the id/created-at metadata Render's own settings page shows
  * alongside the name.
  */

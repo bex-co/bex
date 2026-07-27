@@ -1,219 +1,131 @@
-# ADR040 — Billing via Metronome (usage export → rating → invoicing)
+# ADR040 — Direct Stripe usage billing
 
-**Status:** **Sink superseded** · 2026-07-19 (Phase 1 shadow export w7/m47, Phase 2 surface w7/m48, both on Metronome) → **pivoting to Stripe Billing direct (w7/m50)** **Author:** (billing workstream)
+**Status:** Accepted · **Owner:** backend/control plane · **Originally accepted:** 2026-07-17 · **Revised:** 2026-07-26 (w7/m50)
 
-> **Update (2026-07-20) — the sink changed.** **Stripe acquired Metronome** in Dec 2025 (~$1B, completed) to own usage-based billing for the AI era, and **Stripe Billing** now natively provides everything this ADR used Metronome for: `billing/meter` + `meter_events` (v2 stream for high volume), tiered/graduated pricing on the attached `Price`, and — natively — **collection** (subscription → invoice → charge + Smart Retries dunning). So `bex → Metronome → Stripe` collapses to **`bex → Stripe`**: one vendor, Phase-3 collection nearly free, and the Stripe CLI as the config surface. **w7/m50 re-targets the pipeline from Metronome to Stripe Billing.** What this **supersedes**: Decision §1 (Metronome as the billing source of truth) and §2 (Metronome customer keyed by ingest alias) — the sink becomes Stripe (customer keyed by `metadata.bex_workspace`, usage as meter events). What **stands unchanged**: the metering pipeline (ADR023), the seal-then-emit outbox + deterministic id (§3–4), the event→meter mapping intent (§5), the env-gated byte-identical-when-off contract (§6), the three-layer enable/disable model (§7), and the non-payment enforcement ladder (§9). The design below reads as the Metronome-specific implementation of a sink-agnostic architecture; m50 swaps the sink. Sources: [Stripe completes Metronome acquisition](https://stripe.com/newsroom/news/stripe-completes-metronome-acquisition), [Stripe API — Meter Events](https://docs.stripe.com/api/billing/meter-event).
-
----
+> The filename is retained for stable links. The original decision used Metronome as an intermediate rating service. w7/m50 replaces that sink with Stripe Billing; Metronome is no longer a runtime dependency.
 
 ## Context
 
-[ADR023](ADR023-usage-metering.md) shipped the hard half of billing — **metering**. Four meters (`instance_seconds`, `egress_bytes`, `build_seconds`, `storage_gb_seconds`) roll up hourly from Prometheus/kubelet/k8s into the control-plane Postgres (`usage_hourly`, compacted into `usage_monthly`), surfaced over REST/GraphQL/MCP. [ADR030](ADR030-pricing.md) added a **static price sheet** (`internal/pricing/pricing.yaml`) that turns those quantities into an advisory `estimatedCost` — explicitly "estimate only", **no payment collection, no invoicing, no dunning**.
+[ADR023](ADR023-usage-metering.md) makes `usage_hourly` the durable operational usage record. [ADR030](ADR030-pricing.md) adds an advisory estimate from [`internal/pricing/pricing.yaml`](../lego/backend/internal/pricing/pricing.yaml). m47/m48 then introduced a sealed-row outbox and a real billing object on the REST, GraphQL, MCP, and dashboard usage surfaces.
 
-Both ADRs left a forward pointer to the deferred other half — **rating + invoicing + collection**. `lego/types/tiers/tiers.yaml` carries the comment `# prices are Metronome's (billing integration future work)`; `.pm/FUTURE-MAYBE.md` names the trigger ("a hosted bex offering becomes roadmap-worthy") and points at [Metronome](https://metronome.com) as the candidate.
+The intermediate Metronome path duplicated customer, catalog, contract, credential, and collection concerns. Stripe Billing provides usage meters, metered Prices, Subscriptions, invoice previews/history, collection, discounts, and dunning in the same system. The control plane therefore sends sealed usage directly to Stripe.
 
-This ADR designs that integration. The guiding constraint: **bex should not build a billing system.** Metronome is a usage-based billing platform that ingests usage events, aggregates them into billable metrics, rates them against per-customer contracts, and emits invoices. bex already produces the events; the integration is an **export seam**, not a new subsystem.
+The architecture keeps three responsibilities separate:
 
-### What Metronome provides
-
-Metronome separates _metering_ (measurement) from _rating_ (pricing). Its object model, in setup order:
-
-| Object | Role | API |
-| --- | --- | --- |
-| **Customer** | Invoice recipient. One per bex workspace (`tenant`). | `POST /v1/customers` (with `ingest_aliases[]`) |
-| **Billable metric** | Aggregates raw events (sum/count/max/unique) into a charge. | `POST /v1/billable-metrics/create` |
-| **Product** | A line item on an invoice. | `POST /v1/contract-pricing/products/create` |
-| **Rate card** | Centralized per-metric pricing. | `.../rate-cards/create` + `.../rate-cards/addRates` |
-| **Contract** | Binds a customer to a rate card + billing period. | `POST /v1/contracts/create` |
-| **Usage event** | One raw usage record. | `POST /v1/ingest` (batches ≤ 100) |
-| **Invoice** | Auto-generated per period (Draft → Finalized → Sent). | read via API |
-
-Three mechanics drive the design below:
-
-1. **`transaction_id` is an idempotency key with a 34-day dedup window.** Re-sending the same `transaction_id` within 34 days is ignored — retries are always safe. Metronome recommends deriving it deterministically from business logic, not randomly.
-2. **`ingest_aliases`** map _our_ identifiers onto a Metronome customer. Sending usage keyed on an alias auto-associates it — so bex uses `tenant.id` (`tea-…`) directly as the customer key and never has to store Metronome's own UUID on the hot path.
-3. **Billable metrics are not retroactive, and an accepted event cannot be overwritten by re-sending its `transaction_id`.** This is the one real friction point — see Decision §3.
-
-An official Go SDK exists: `github.com/Metronome-Industries/metronome-go/v3` (`client.V1.Usage.Ingest(...)`, Go 1.22+), which fits the backend module.
-
----
+1. **Metering:** bex owns quantities in `usage_hourly`/`usage_monthly` whether billing is enabled or not.
+2. **Advisory estimate:** `pricing.yaml` produces the fast `estimatedCost` shown to every workspace.
+3. **Authoritative money:** Stripe rates metered Subscription items, produces invoices, and collects payment. The operator never imports billing code.
 
 ## Decision
 
-### 1. Metronome is the billing source of truth; `usage_hourly` is the export ledger
+### 1. One catalog, provisioned into Stripe
 
-bex keeps `usage_hourly`/`usage_monthly` as the **operational** record (dashboards, the ADR030 estimate, retention). A new emitter ships each sealed hourly row to Metronome's `/v1/ingest`. Metronome computes billable metrics, rates them, and issues invoices. **`pricing.yaml` is demoted** from "billing truth" to "fast real-time estimate for the dashboard"; the invoice truth moves to Metronome's rate cards.
+`pricing.yaml` remains the checked-in rate source. [`scripts/stripe-billing-setup.py`](../scripts/stripe-billing-setup.py) reads it and idempotently provisions the active Stripe catalog:
 
-The emitter lives in the **backend** module (bex-api process, which already runs `usage.Service` when `BEX_CP_DB_URI` is set). The operator never touches it — money must not reach a mechanism layer, exactly as ADR030 kept prices out of `tiers.yaml`.
+- ten paid `instance_seconds.<resource_kind>.<tier>` dimensions;
+- `egress_gib`, rebased from bytes;
+- `build_seconds`;
+- `storage_gb_hours`, rebased from GB-seconds;
+- a stable perpetual 100%-off coupon, `bex-comp-100`.
 
-### 2. One workspace = one Metronome customer, keyed by ingest alias
+Free and unknown tiers produce no paid meter event. The setup script validates existing meter mappings and Price currency, cadence, meter, and amount before reusing them; catalog drift fails closed. Runtime subscription provisioning independently resolves the complete set of active Price lookup keys and refuses to create a partial contract.
 
-Each `tenant` (`tea-…`) maps 1:1 to a Metronome customer. On first export (or on tenant creation), bex calls `POST /v1/customers` with `ingest_aliases: ["tea-…"]`. Usage events then carry `customer_id: "tea-…"` and Metronome resolves the alias. bex optionally stores the returned Metronome customer UUID on `tenants` for admin/audit, but the ingest path depends only on the alias.
+Stripe owns authoritative rating. `pricing.yaml` remains visible because it also powers the low-latency estimate; an invoice may legitimately differ because of billing periods, discounts, taxes, credits, or provider rounding.
 
-### 3. Seal-then-emit — export only rows past the rewrite horizon
+### 2. Workspace identity and Subscriptions
 
-**The problem.** bex's rollup rewrites an hour's `quantity` after the fact (catch-up gap-fill, deferred Prometheus windows). ADR023's compaction already clamps to **48 hours ago** precisely because windows younger than that may still change. But Metronome dedups by `transaction_id` for 34 days and metrics are not retroactive — so if bex emitted at the hour boundary and the value later changed, re-emitting the corrected value under the same `transaction_id` would be **silently dropped**.
+Each billable workspace maps to one Stripe Customer carrying metadata `bex_workspace=tea-…`. The client searches that metadata after a restart, caches the result, and creates with a deterministic idempotency key only when absent. Multiple matching Customers are an error rather than an arbitrary choice.
 
-**The decision.** Export only rows whose `window_start < now − BEX_METRONOME_SEAL_HOURS` (default **48h**, aligned with the compaction horizon). Past that point a row is final, so it is emitted **exactly once** with a deterministic `transaction_id`. Because Metronome invoices monthly, a ≤48h export latency is immaterial. This avoids all delta/correction complexity — no versioned transaction ids, no restatement events.
+Each Customer gets one bex Subscription containing every active catalog Price. Subscription metadata carries both `bex_workspace` and `bex_billing_contract=true`; list-before-create plus a deterministic idempotency key makes reconciliation restart-safe. Multiple live bex Subscriptions are rejected to prevent double rating. The Subscription uses `charge_automatically`, so invoicing, payment attempts, and Stripe's configured retry policy are native Stripe behavior.
 
-```
-transaction_id = sha256("<resource_kind>|<service_id>|<kind>|<tier>|<window_start RFC3339>")
-```
+The billing epoch is also the optional Subscription backdate start. This aligns accepted backfill with the first billed service period.
 
-Deterministic ids make crash-recovery, retries, and accidental re-scans safe by construction.
+### 3. Seal, emit, then stamp
 
-### 4. Outbox via an `emitted_at` column
+The m47 outbox remains:
 
-A migration adds a nullable `emitted_at timestamptz` to `usage_hourly`. The emitter loop selects `WHERE window_start < seal_horizon AND emitted_at IS NULL`, batches ≤ 100 rows, POSTs to `/v1/ingest`, then stamps `emitted_at`. This is a transactional outbox: it decouples ingest reliability from the metering loop, survives Metronome downtime, and — combined with the deterministic `transaction_id` — makes delivery safely at-least-once. Retry policy follows Metronome's guidance: exponential backoff on `429`, retry `5xx`, route non-429 `4xx` to a dead-letter log rather than blocking the loop.
+1. roll usage into `usage_hourly`;
+2. wait for the rewrite horizon (`BEX_STRIPE_SEAL_HOURS`, default 48 hours);
+3. select non-excluded, unstamped rows at or after `max(BEX_STRIPE_EPOCH, now − 34 days)`;
+4. ensure the Customer and Subscription;
+5. send one Stripe meter event per paid row;
+6. stamp `emitted_at` only after the batch succeeds.
 
-### 5. Event and metric mapping
+The 34-day cap stays inside Stripe's 35-calendar-day past-timestamp limit and prevents first enable from billing unbounded history. A future timestamp is never manufactured.
 
-One `event_type` per meter kind; the numeric quantity and all dimensions travel as string `properties`:
+The meter-event `identifier` is the SHA-256 hash of normalized resource kind, service id, meter kind, tier, and UTC hour. Stripe guarantees identifier uniqueness for a rolling window of at least 24 hours. Because the emitter retries hourly, an ordinary crash between event acceptance and the local stamp is deduplicated. This is a bounded provider guarantee, not mathematically strict exactly-once delivery: if the local stamp remains broken longer than Stripe's identifier window, a later retry could be counted twice. Operators must alert on stamp failures/backlog and reconcile before retrying an ambiguity older than that window. Stripe exposes no permanent receipt lookup that can close this two-system commit gap.
 
-```json
-{
-  "transaction_id": "…",
-  "customer_id": "tea-abc123",
-  "timestamp": "2026-07-19T01:00:00Z",
-  "event_type": "instance_seconds",
-  "properties": {
-    "tier": "starter",
-    "resource_kind": "service",
-    "service_id": "srv-xyz",
-    "value": "3600"
-  }
-}
-```
+A retryable network/5xx/429 failure leaves rows unstamped for the next cycle. A permanent non-429 4xx is logged as a dead-letter and consumed so one malformed event cannot hot-loop the entire outbox; operators reconcile and correct it in Stripe if necessary.
 
-In Metronome (dashboard config, not bex code), each billable metric is `sum(properties.value)` filtered by `event_type`, grouped by `tier` / `resource_kind`. `pricing.yaml`'s tiers seed the rate card: every `usdPerSecond` / `usdPerByte` becomes a rate on the matching metric, preserving ADR030's discount policy (30% off Render; bandwidth 90% off).
+### 4. Invoice reads preserve the m48 public contract
 
-Volume is modest — one event per (resource × meter × hour). At 1000 resources × ~3 meters × 24h ≈ 72k events/day ≈ 720 batched requests/day.
+The existing public `billing` shape does not change:
 
-### 6. Env-gated, byte-identical when off
+- `currentCost` comes from Stripe's current Subscription invoice preview;
+- `invoices` comes from non-draft invoices for that Customer and Subscription;
+- Stripe minor-unit USD totals are normalized to the existing major-unit strings;
+- failures degrade to estimate-only rather than turning the usage endpoint into a 500.
 
-| Variable | Meaning | Unset ⇒ |
-| --- | --- | --- |
-| `BEX_METRONOME_TOKEN` | Bearer token (out-of-band secret) for the ingest/customer API. | **export disabled — byte-identical to today** |
-| `BEX_METRONOME_URL` | API base (default `https://api.metronome.com`). | default |
-| `BEX_METRONOME_SEAL_HOURS` | Rewrite horizon before a row is exported (default `48`). | `48` |
-| `BEX_METRONOME_EPOCH` | RFC3339 "billing starts here" floor — the emitter never ships a row whose `window_start` predates it (§7). | unset ⇒ effective floor is `now − backfill horizon` at first enable |
+REST `GET /v1/usage`, GraphQL `usage`, MCP `get_usage`, and the dashboard continue to share the same service result. The requested calendar usage period still controls the quantities and estimate; Stripe's own invoice period is returned inside each billing amount.
 
-With `BEX_METRONOME_TOKEN` unset the emitter never starts; bex behaves exactly as it does under ADR030 (estimate-only). `.env.example` is updated per the repo rule.
+### 5. Exclusions and comps
 
-### 7. Enable/disable & lifecycle
+- **Mode A — structural exclusion:** `tenants.billing_excluded=true` removes a workspace from the outbox selection. Usage reads never create a Customer, so the workspace has no Stripe Customer, Subscription, events, or collection risk. It still sees `estimatedCost`.
+- **Mode B — rated but free:** `CompCustomer` ensures the Customer/Subscription and applies `bex-comp-100` with no proration. Stripe still produces rated line items and invoice history, while the perpetual discount makes the net charge zero.
 
-Disabling a _billing_ system naively causes real damage — lost revenue, double charges, silent gaps. bex avoids this by never using one switch. There are three, at three layers, and they must stay independent.
+Both controls are admin-only and audited. Tenants cannot edit their own billing status.
 
-**The invariant that makes disable safe: metering is never gated by billing.** `usage_hourly` keeps filling regardless of Metronome's state. Billing only ever toggles _export_ and _rating_ — never _collection_. Gating the rollup on billing would lose usage permanently and make the period unbillable forever.
+### 6. Webhook intake, not enforcement
 
-| Layer | Controls | Switch | Off ⇒ |
-| --- | --- | --- | --- |
-| **Metering** | Collecting `usage_hourly` | _none — always on_ | (never disabled) |
-| **Emission** (global) | Whether bex exports at all | `BEX_METRONOME_TOKEN` (env, deploy-level) | byte-identical; no traffic; no customers created |
-| **Rating** (per-workspace) | Whether a workspace is _charged_ | Metronome **contracts** (billing API, _not_ bex env) | usage lands in Metronome but rates to nothing |
+When both Stripe runtime and webhook secrets are configured, `POST /v1/webhooks/stripe` is mounted outside OAuth because `Stripe-Signature` is its credential. The handler reads a bounded body, verifies the signature and compatible Stripe API version, and accepts `invoice.payment_failed`. m50 records the trusted event for operators but does not suspend or delete anything.
 
-Per-workspace billing is controlled in **Metronome (contracts + rate cards), not by gating emission per tenant in bex**: emit every real workspace uniformly and let the rating engine decide the price (a free/grandfathered/internal workspace = no contract or a $0 rate card ⇒ $0 invoice, but its usage stays complete for later). The one bex-side exception is a `tenants.billing_excluded` marker so genuinely internal/test workspaces never even create a Metronome customer.
+The dunning enforcement ladder remains deferred: payment failure → grace → reversible suspension → eventual audited termination. Stripe owns invoice state and payment retries; bex will own only the later resource reaction. A polling backstop, notifications, billing portal, and enforcement state are separate work.
 
-**Operations:**
+### 7. Runtime configuration
 
-- **Enable the feature:** run Phase-0 rate-card setup → set `BEX_METRONOME_TOKEN` + `BEX_METRONOME_EPOCH` → deploy. The emitter backfills sealed rows _from the epoch forward_.
-- **Pause (reversible):** unset `BEX_METRONOME_TOKEN`, redeploy. Metering continues, `emitted_at` stays NULL, zero charges; re-enable drains the outbox — within the horizon below.
-- **Onboard one workspace:** its customer auto-creates on first emit; create a contract with `start = billing start`.
-- **Offboard one workspace:** end its contract (Metronome finalizes a correct partial invoice); keep emitting for continuity, or set `billing_excluded` to also stop event creation.
-- **Emergency kill:** unset the token — export stops on the next reconcile, Metronome retains what it has and finalizes on schedule. No half-charged state.
+| Variable | Meaning |
+| --- | --- |
+| `BEX_STRIPE_SECRET_KEY` | Restricted runtime API key. Unset disables all Stripe behavior and network access. Requires `BEX_CP_DB_URI`. |
+| `BEX_STRIPE_API_URL` | Test/stub endpoint override; production leaves it unset. |
+| `BEX_STRIPE_SEAL_HOURS` | Finality horizon in hours; default 48, minimum 1. Parsed only when Stripe is enabled. |
+| `BEX_STRIPE_EPOCH` | RFC3339 billing-start floor/backdate; unset while enabled defaults to `now − 34d`. Malformed while enabled fails startup. |
+| `BEX_STRIPE_WEBHOOK_SECRET` | Endpoint signing secret. Unset means no public Stripe webhook route. |
+| `BEX_STRIPE_COMP_COUPON_ID` | Optional coupon override; default `bex-comp-100`. |
 
-**Why it is correct:** (1) _decoupled_ — usage is never lost when billing is off; (2) _idempotent_ — deterministic `transaction_id` + the `emitted_at` outbox mean toggling off↔on can never double-bill (34-day dedup + the stamp) and never skips a sealed row (outbox re-scan); (3) _reversible within a horizon_; (4) _default-off & byte-identical_.
+`BEX_METRONOME_*` variables are retired and ignored. The Metronome SDK, client, setup runbook, and reconciliation script are removed.
 
-**Caveats that must be handled (not optional):**
+## Activation and rollback
 
-- **The epoch guard is essential.** Without a floor, the _first_ enable would try to ship every sealed row ever — months of history, most older than the dedup window (⇒ `4xx` flood) and billing users for pre-billing usage. The emitter skips `window_start < max(BEX_METRONOME_EPOCH, now − backfill_horizon)` and logs a one-time gap warning. The epoch _is_ the platform's "billing starts here" line.
-- **Long pause = permanent gap.** A disable lasting **> ~34 days** cannot be back-ingested — the off-period is a hole in the invoice. Decide the policy (accept + document, or manual reconciliation) before pausing that long.
-- **Pause ≠ terminate.** Pausing global emission mid-month _undercounts_ the current invoice (missing tail); terminating a contract _finalizes_ it correctly. Use the operation that matches intent.
+Follow [`docs/runbooks/stripe-billing-setup.md`](runbooks/stripe-billing-setup.md). Test mode is mandatory before live mode. Provision and validate the complete catalog and coupon, create a restricted runtime key, create the version-pinned webhook endpoint, choose an explicit epoch, then deploy the secrets.
 
-**Comped / exempt tenants (see spend, pay nothing).** Internal, superadmin, or comped workspaces must never be charged yet must still see their cost. This needs no special code path, because _seeing spend_ (the rating/estimate layer) and _paying_ (the collection layer) are already independent: `estimatedCost` (`pricing.yaml`, ADR030) is a **metering-layer read computed for every workspace regardless of Metronome state**, so cost visibility never depends on being billed. Two exemption modes:
+Rollback is non-destructive: remove `BEX_STRIPE_SECRET_KEY` and `BEX_STRIPE_WEBHOOK_SECRET` and restart bex-api. Metering and advisory estimates continue; Stripe calls stop. Do not delete Customers, Subscriptions, Prices, meters, or the coupon during rollback. Decide separately whether to pause/cancel live Subscriptions, because disabling emission alone leaves collection policy in Stripe.
 
-- **Mode A — `billing_excluded` + estimate (recommended for superadmin/internal).** Set `tenants.billing_excluded=true` ⇒ the workspace never enters Metronome (no customer, no events, no contract, no invoice). Collection is therefore _structurally impossible_, not merely configured off — the strongest guarantee, and it survives Phase 3 automatically. The workspace still sees `estimatedCost` ("what this usage would cost at list price") like any other. This is the canonical use of the `billing_excluded` marker from §6/m18.
-- **Mode B — comped contract, net $0 (for partners you want in the billing system).** Provision the customer + contract so Metronome _rates_ the usage (real line items), then apply a **100% discount** or a recurring **credit ≥ balance** ⇒ net invoice `$0`, and mark the customer **non-collectible / no payment method** as belt-and-suspenders so Phase 3 still charges nothing. The workspace sees a real invoice showing gross cost minus the comp = `$0` due.
+## Security and operations
 
-Both switches decide _whether money is owed_, so they are **privileged: admin-only, set through the control-plane internal API (never tenant-editable), and written to `audit_events`.** (Distinct concern: a platform superadmin viewing _other_ tenants' spend is an authz/reporting question, not a billing-exemption one.)
-
-### 8. Phased rollout
-
-| Phase | Scope | Changes bex behavior? |
-| --- | --- | --- |
-| **0 · Metronome config** | Create billable metrics, products, rate cards mirroring `pricing.yaml` (dashboard/API; no bex code) — runbook: [`docs/runbooks/metronome-billing-setup.md`](runbooks/metronome-billing-setup.md). | no |
-| **1 · Shadow export** | Emitter + `emitted_at` migration + customer provisioning, `BEX_METRONOME_TOKEN`-gated. Reconcile Metronome's computed usage against `usage_hourly`. | no (pure sidecar) |
-| **2 · Billing surface** | Per-customer contracts; read real invoices/costs from Metronome; surface alongside/replacing `estimatedCost`. | display layer |
-| **3 · Collection** | Metronome → Stripe (or a Metronome payment connector) for actual charging + dunning, plus bex's **non-payment enforcement** (§9): dunning → grace → suspend → terminate. | new |
-
-Phase 1 is the MVP and can ship independently: it produces real billing data in Metronome without altering any tenant-visible behavior, letting us validate the mapping before anything is charged.
-
-### 9. Non-payment enforcement — dunning → grace → suspend → terminate
-
-Phase 3 turns computed invoices into collected revenue, which means bex finally needs an answer to _"an invoice was issued and never paid — then what?"_ This section designs that policy. **It is Phase-3 design, not yet implemented**, and it inherits ADR040's invariants rather than inventing new ones.
-
-**Four principles the policy must not violate:**
-
-1. **Metering is never gated (§7).** A delinquent — even suspended — workspace keeps metering whatever still runs; the debt is never silently forgiven. Enforcement pauses _resources_, never the _meter_.
-2. **Metronome is the source of truth for payment status.** bex never computes "did they pay." It reacts to Metronome/Stripe invoice + payment events and owns only the _reaction_ (what to pause, when). Charging, retries, and proration stay in Metronome+Stripe — bex does not reimplement a dunning engine.
-3. **Reversible until termination.** Every step short of deletion is undone by payment. Suspension preserves data, config, URLs, and certs (ADR007), so paying reinstates the workspace intact and instantly.
-4. **Enforcement can never touch a non-billable workspace.** A `billing_excluded` (§7 Mode A) or comped-to-$0 (Mode B) workspace owes nothing, so it can never be delinquent — the state machine below structurally never selects it.
-
-**The per-workspace delinquency state machine.** A new `tenants.billing_status` is driven by Metronome invoice/payment events: `active → past_due → suspended → terminated`, with recovery edges back to `active` on payment.
-
-| State | Entered when (from Metronome/Stripe) | bex action | Metering | Reversible? |
-| --- | --- | --- | --- | --- |
-| **active** | no open past-due balance | none | on | — |
-| **past_due** | a finalized invoice is unpaid past its due date while Stripe's dunning retries run | notify owner + admins (email + dashboard banner) with a billing-portal deep link; **services keep running** (grace) | on | auto, on payment |
-| **suspended** | the grace window elapses with the balance still open | suspend the workspace: `spec.suspended=true` on every App (compute → 0), then hibernate managed Postgres/Key Value after a further window; data + config + certs kept (ADR007) | on (whatever still runs) | resume on payment |
-| **terminated** | the long-delinquency window elapses | teardown via the existing audited delete path (w7/m12) after a final data-export offer | stops (resources gone) | no — re-onboard only |
-
-**Timeline (defaults; all env-tunable, all measured from first `past_due`):**
-
-- **Day 0** — invoice finalized and auto-charged (Metronome → Stripe). Paid ⇒ stays `active`.
-- **Charge fails** ⇒ `past_due`. Stripe smart-retries over its own dunning window (~1–3 weeks); bex emails on entry and warns before each escalation. Nothing is paused yet — this is the grace period.
-- **`BEX_BILLING_GRACE_DAYS`** (default 14) still unpaid ⇒ `suspended`: every App scales to 0. Owners are warned 72h and 24h ahead. Compute cost (`instance_seconds`) stops immediately; the workspace is instantly recoverable.
-- **`BEX_BILLING_HIBERNATE_DAYS`** (default 30) ⇒ also hibernate managed Postgres/Key Value (stop their compute; the PVC/backup snapshot is retained) to stop datastore compute accrual while data stays recoverable.
-- **`BEX_BILLING_TERMINATE_DAYS`** (default 60; must exceed the 34-day dedup horizon and the hibernate window) ⇒ `terminated`: the w7/m12 teardown runs after emailing a final export link.
-- **Any payment before termination** ⇒ immediate `active`: resume Apps (`suspended=false` restores the saved replica count, readiness-gated per ADR007) and un-hibernate datastores. Idempotent.
-
-**Where the code lives — backend only, never the operator.** Consistent with §1 (money never reaches the mechanism layer): the operator only ever sees `spec.suspended`, which it already honors (ADR007), and never learns _why_ a workspace is parked. A backend enforcement reconcile loop (beside the m47 emitter) maps Metronome invoice status → `tenants.billing_status` → the existing row-first suspend path (`SetAppSuspended` and the `Database`/`KeyValue` `Suspended` field) across every resource the tenant owns. Every transition is written to `audit_events` under a fixed verb (`billing.EnforcementTransition`, from→to), exactly the audited-privileged-write shape m47 established for `billing.SetExclusion`.
-
-**Trigger: webhook first, poll as backstop.** bex adds an HMAC-verified `POST /v1/webhooks/metronome` (the git-webhook pattern) that maps `invoice.finalized` / `invoice.payment_failed` / `invoice.paid` to state transitions. A slow reconcile poll of open invoices is the belt-and-suspenders backstop for a missed webhook — the same outbox-style durability the emitter uses.
-
-**Escape hatches — privileged, admin-only, audited (same custody as `billing_excluded`):**
-
-- **`tenants.enforcement_hold`** (bool): pauses _automatic_ enforcement for one workspace — an enterprise account a human handles, a billing dispute, or a Stripe/Metronome outage. The workspace may sit `past_due` but is never auto-suspended while held. Set through the control-plane internal API, written to `audit_events`, never tenant-editable.
-- **`BEX_BILLING_ENFORCEMENT`** global gate: unset/`off` ⇒ enforcement never acts. States are still tracked and surfaced (observe-only), but nothing is suspended — so Phase 3 can ship "watch the delinquency signal" before it ever parks a workspace, exactly as m47 shadow-exported before a cent was charged. **Default off ⇒ byte-identical to Phase 2.**
-
-**Why suspend before delete.** Suspension is the reversible, data-preserving lever (ADR007): it stops the compute bleed (`instance_seconds` → 0) the moment a workspace is delinquent, while giving the customer a clean, instant recovery on payment. Deletion is irreversible and strictly last-resort, after a long well-notified window, and reuses the audited w7/m12 teardown rather than a bespoke destroy path — no new way to lose tenant data is introduced.
-
-**Interactions:** billing-suspend and free-tier auto-sleep both scale to 0 but are different intents; billing-suspend **wins** and blocks wake (a delinquent free-tier workspace stays parked). Maintenance mode (ADR007) is orthogonal public-routing intent, not a payment state. Notifications reuse the existing email seam (deploy-failure/invite mailer, `BEX_DASHBOARD_URL` deep links).
-
-**Deferred to Metronome/Stripe, not bex code:** retry cadence (Stripe dunning config), partial payments and proration (Metronome), and per-plan grace differences (enterprise longer) via contract metadata rather than bex branching.
-
----
+- Setup and runtime credentials are separate. Runtime uses a restricted key with only the Customer, Subscription, Price-read, meter-event-write, and Invoice-read permissions listed in the runbook.
+- API keys and webhook secrets stay out of git, logs, command history, audit payloads, and tenant-visible state.
+- Test and live Stripe objects are independent. The setup script defaults to test mode and requires explicit `--live` for live mutation.
+- Customer/subscription ambiguity and catalog mismatch fail closed.
+- Alert on billing emitter backlog, provisioning failures, permanent event rejects, invoice-read degradation, and signature failures.
 
 ## Consequences
 
-- **Backend:** a new `internal/billing` (or `usage/metronome.go`) emitter runs inside bex-api, reading `usage_hourly`. `internal/usage` gains a migration for `emitted_at`. The Metronome Go SDK is added to the backend go.mod.
-- **Store:** `usage_hourly` grows one nullable column; no change to the primary key or read paths. `usage_monthly` and the ADR023 retention/compaction loop are untouched.
-- **Pricing:** `internal/pricing` stays as the dashboard's fast estimate. If Phase 2 surfaces Metronome's real cost, `estimatedCost` and the invoiced amount coexist (estimate for the current in-flight window, invoice for closed periods).
-- **Operator:** unchanged. No dependency on billing, consistent with ADR030 §1.
-- **Ops:** a new out-of-band secret (`BEX_METRONOME_TOKEN`) enters the credential inventory ([ADR019](ADR019-infra-credentials.md)); Metronome rate-card config becomes a runbook step. Metronome outages degrade gracefully — the outbox backs up and drains, and invoicing is monthly. Enable/disable is a three-layer model (§7): metering is always on, emission is the global env gate, and per-workspace charging is a Metronome contract — never a per-tenant emission gate.
-- **Enforcement (Phase 3, §9):** non-payment drives an audited, reversible ladder — `past_due` (grace) → `suspended` (compute→0 via ADR007, data kept) → `terminated` (w7/m12 teardown) — that reuses existing mechanisms and never adds a new way to lose tenant data. It touches no non-billable workspace, keeps metering on throughout, and is globally gated (`BEX_BILLING_ENFORCEMENT` off ⇒ observe-only), so it can ship watching-before-acting. Adds one control-plane store column (`tenants.billing_status`), one admin escape hatch (`tenants.enforcement_hold`), and a Metronome webhook receiver.
-- **Render parity:** none affected — Render exposes no usage/billing API; this is a bex-only extension already marked "bex ahead" in [ADR018](ADR018-render-parity.md).
+- `internal/billing` has one Stripe client for customer/subscription reconciliation, event emission, invoice reads, comps, and verified webhook intake.
+- The m47 `emitted_at` migration and store API remain provider-neutral and unchanged.
+- `pricing.yaml` now has two deliberate consumers: advisory estimates and Stripe catalog setup. Stripe invoices remain authoritative.
+- The operator and CRD contract remain unchanged.
+- Native Stripe collection removes the planned Metronome→Stripe bridge, but payment-method onboarding, tax, customer portal, and non-payment enforcement remain product work.
 
----
+## Render parity
+
+Render exposes billing in its dashboard but no public REST/GraphQL/MCP billing API. bex's raw usage quantities and normalized `billing` object remain a deliberate bex-ahead extension. The Stripe pivot changes the source of those values, not their adapter shapes or the parity verdict; see [ADR018](ADR018-render-parity.md).
 
 ## Alternatives considered
 
-**Emit at the hour boundary + send correction deltas.** Rejected for the MVP. It gives sub-hour billing latency but forces versioned transaction ids, per-window last-emitted-value tracking, and signed delta events to work around Metronome's 34-day dedup. Monthly invoicing makes the ≤48h seal latency free, so the complexity buys nothing now. Revisit only if real-time (intra-day) billing analytics become a product requirement.
+**Keep Metronome between bex and Stripe.** Rejected: it duplicates catalog, customers, contracts, credentials, and operational failure modes while Stripe already performs rating and collection.
 
-**Push events straight from the rollup loop (no outbox).** Rejected — couples metering correctness to an external API's availability. A Metronome 5xx or network blip would either stall the rollup or silently drop billing data. The `emitted_at` outbox isolates the two.
+**Send usage directly from the rollup loop.** Rejected: provider availability must not affect usage correctness. The outbox isolates operational metering from external billing.
 
-**Send raw per-request events instead of pre-aggregated hourly rows.** Rejected — bex has no per-request usage stream; the hourly rollup _is_ the source. Metronome explicitly supports pre-aggregated `sum` events, and hourly granularity keeps event volume trivial.
+**Build invoices and payments in bex.** Rejected: rating periods, collection, discounts, retries, tax, and payment reconciliation belong to a billing provider, not the Kubernetes operator or control plane.
 
-**Build invoicing/payments in-house.** Rejected — the whole point. bex would be rebuilding rating engines, tax, dunning, and payment reconciliation that Metronome (+ Stripe) already provide. `tiers.yaml`'s "prices are Metronome's" pointer commits to this direction.
-
-**Keep `pricing.yaml` as billing truth and skip Metronome.** Rejected — `estimatedCost` is advisory by construction (ADR030 §4): no invoices, no collection, no audit trail, no contract/period model. A hosted offering needs real invoices, which is exactly Metronome's job.
+**Claim strict exactly-once delivery.** Rejected as an unverifiable promise across the Postgres/Stripe commit boundary. Deterministic identifiers provide bounded deduplication; backlog monitoring and reconciliation cover ambiguity outside Stripe's documented uniqueness window.

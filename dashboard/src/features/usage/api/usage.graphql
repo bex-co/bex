@@ -31,8 +31,8 @@ query Usage($period: String, $ownerId: String) {
         costUsd
       }
     }
-    # billing: real Metronome-computed cost + finalized invoices (m48). null when
-    # estimate-only — no contract, comped/excluded, billing off, or degraded.
+    # billing: real Stripe invoice preview + finalized invoices (m48/m50). null
+    # when no subscription exists, Mode-A excluded, billing off, or degraded.
     billing {
       currentCost {
         amountUsd

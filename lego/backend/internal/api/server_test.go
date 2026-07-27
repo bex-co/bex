@@ -373,6 +373,30 @@ func TestGitWebhookBypassesAuthGate(t *testing.T) {
 	}
 }
 
+// TestStripeWebhookBypassesAuthGate proves the Stripe-Signature-verified route
+// is mounted before OAuth. Signature behavior itself is covered in billing;
+// this test protects the composition-root trust boundary.
+func TestStripeWebhookBypassesAuthGate(t *testing.T) {
+	called := false
+	srv := NewServer(&core.Base{Client: fakeClient(), Namespace: "default"}, Deps{
+		StripeWebhook: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			called = true
+			w.WriteHeader(http.StatusNoContent)
+		}),
+	})
+	srv.HydraAdminURL = fakeHydraURL(t)
+	h, err := srv.Handler()
+	if err != nil {
+		t.Fatalf("Handler: %v", err)
+	}
+	if code := do(t, h, http.MethodPost, "/v1/webhooks/stripe", "", "{}").Code; code != http.StatusNoContent {
+		t.Fatalf("Stripe webhook without OAuth = %d, want 204", code)
+	}
+	if !called {
+		t.Fatal("Stripe webhook handler was not reached")
+	}
+}
+
 // TestDeployHookBypassesAuthGate proves the hook's secret URL is its complete
 // credential at the composed server boundary. It must reach the deploy handler
 // without OAuth while ordinary /v1 routes remain protected by Hydra.

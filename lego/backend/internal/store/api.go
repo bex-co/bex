@@ -184,8 +184,8 @@ type SetBillingExcludedRequest struct {
 }
 
 // setBillingExcluded is the admin-only verb to comp/exempt a workspace out of
-// Metronome or restore it (docs/ADR040-billing-metronome.md §7, Mode A). An
-// excluded workspace never gets a Metronome customer or events, yet still sees
+// Stripe or restore it (docs/ADR040-billing-metronome.md §7, Mode A). An
+// excluded workspace never gets a Stripe customer or events, yet still sees
 // estimatedCost. The flag decides whether money is owed, so this route is
 // bearer-gated like every /v1 endpoint and has no tenant-facing counterpart;
 // the change is written to audit_events.
@@ -530,7 +530,7 @@ func ValidGlob(v string) bool {
 
 // normalizeTier validates a tier/plan string against lego/types/tiers'
 // compute family, the one shared ladder (also consumed by the operator for
-// pod resources). Prices are Metronome's, not this validity gate's concern.
+// pod resources). Prices are Stripe Billing's, not this validity gate's concern.
 // Empty => the catalog's default tier (today "free"), matching the prior
 // behavior.
 func normalizeTier(field, v string) (string, error) {

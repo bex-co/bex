@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 # stripe-billing-setup.py — create/refresh the bex Stripe Billing config
-# (meters + products + prices) from lego/backend/internal/pricing/pricing.yaml,
-# so pricing.yaml stays the single source of truth (m50, docs/ADR040-billing-metronome.md).
+# (meters + products + prices + the Mode-B comp coupon) from
+# lego/backend/internal/pricing/pricing.yaml, so pricing.yaml stays the single
+# source of truth (m50, docs/ADR040-billing-metronome.md).
 #
 # Idempotent: skips a meter whose event_name already exists (reactivates a
-# deactivated one), skips a price whose lookup_key already exists, and
-# deactivates the superseded kind-level meters. Uses the `stripe` CLI's
-# configured key — TEST MODE unless the CLI is paired to a live account.
+# deactivated one), validates and skips a price whose lookup_key already
+# exists, validates/creates the stable comp coupon, and deactivates the
+# superseded kind-level meters. Uses the `stripe` CLI's configured key — TEST
+# MODE unless --live is passed explicitly to the CLI configuration/run.
 #
 # Model (why these event_names / units):
 #   instance_seconds → per-(resource_kind, tier) meter  event=instance_seconds.<rk>.<tier>
@@ -20,6 +22,7 @@
 #
 # The billing client (internal/billing/stripe.go) composes the identical
 # event_names + re-bases the same way — the two must agree.
+import argparse
 import json
 import subprocess
 import sys
@@ -31,6 +34,8 @@ BYTES_PER_GIB = Decimal(1073741824)
 SECONDS_PER_HOUR = Decimal(3600)
 # Kind-level meters from the shadow phase that per-tier / re-based meters replace.
 SUPERSEDED = ["instance_seconds", "egress_bytes", "storage_gb_seconds"]
+COMP_COUPON_ID = "bex-comp-100"
+STRIPE_GLOBAL_ARGS = []
 
 
 def dec(s):
@@ -89,17 +94,34 @@ def parse_pricing():
 
 
 def stripe(*args):
-    out = subprocess.run(["stripe", *args], capture_output=True, text=True)
+    out = subprocess.run(["stripe", *args, *STRIPE_GLOBAL_ARGS], capture_output=True, text=True)
     if out.returncode != 0 or (out.stdout.strip().startswith("{") is False and out.stdout.strip().startswith("[") is False):
         # stripe CLI prints errors to stdout as text; surface them
         raise RuntimeError(f"stripe {' '.join(args)}\n{out.stdout}{out.stderr}")
     return json.loads(out.stdout)
 
 
+def list_all(*resource):
+    """List every object for a Stripe CLI resource, following id cursors."""
+    items = []
+    starting_after = None
+    while True:
+        args = [*resource, "list", "--limit", "100"]
+        if starting_after:
+            args.extend(["-d", f"starting_after={starting_after}"])
+        page = stripe(*args)
+        data = page["data"]
+        items.extend(data)
+        if not page.get("has_more"):
+            return items
+        if not data:
+            raise RuntimeError(f"Stripe {' '.join(resource)} list returned has_more with no data")
+        starting_after = data[-1]["id"]
+
+
 def existing_meters():
     m = {}
-    data = stripe("billing", "meters", "list", "--limit", "100")["data"]
-    for it in data:
+    for it in list_all("billing", "meters"):
         m[it["event_name"]] = it
     return m
 
@@ -107,8 +129,19 @@ def existing_meters():
 def ensure_meter(event_name, display, meters):
     if event_name in meters:
         it = meters[event_name]
+        aggregation = it.get("default_aggregation", {}).get("formula")
+        customer_mapping = it.get("customer_mapping", {})
+        value_settings = it.get("value_settings", {})
+        if (aggregation not in (None, "sum")
+                or customer_mapping.get("type") not in (None, "by_id")
+                or customer_mapping.get("event_payload_key") not in (None, "stripe_customer_id")
+                or value_settings.get("event_payload_key") not in (None, "value")):
+            raise RuntimeError(
+                f"meter {event_name} exists with incompatible aggregation/mapping; "
+                "repair it in Stripe before enabling billing")
         if it["status"] != "active":
             stripe("billing", "meters", "reactivate", it["id"])
+            it["status"] = "active"
         return it["id"], "exists"
     it = stripe("billing", "meters", "create",
                 "-d", f"display_name={display}",
@@ -121,13 +154,29 @@ def ensure_meter(event_name, display, meters):
     return it["id"], "created"
 
 
-def price_exists(lookup_key):
-    data = stripe("prices", "list", "-d", f"lookup_keys[0]={lookup_key}", "--limit", "1")["data"]
-    return len(data) > 0
+def existing_price(lookup_key):
+    data = stripe("prices", "list",
+                  "-d", f"lookup_keys[0]={lookup_key}",
+                  "-d", "active=true", "--limit", "2")["data"]
+    if len(data) > 1:
+        raise RuntimeError(f"multiple active Stripe prices use lookup_key {lookup_key}")
+    return data[0] if data else None
 
 
 def ensure_price(event_name, display, cents, meter_id):
-    if price_exists(event_name):
+    existing = existing_price(event_name)
+    if existing:
+        recurring = existing.get("recurring") or {}
+        actual_cents = Decimal(str(existing.get("unit_amount_decimal")))
+        if (existing.get("currency") != "usd"
+                or existing.get("type") != "recurring"
+                or recurring.get("interval") != "month"
+                or recurring.get("usage_type") != "metered"
+                or recurring.get("meter") != meter_id
+                or actual_cents != cents):
+            raise RuntimeError(
+                f"active price {existing.get('id')} for {event_name} does not match "
+                f"pricing.yaml/meter {meter_id}; deactivate or repair it before enabling billing")
         return "exists"
     stripe("prices", "create",
            "-d", "currency=usd",
@@ -140,9 +189,36 @@ def ensure_price(event_name, display, cents, meter_id):
     return "created"
 
 
-def main():
+def existing_coupons():
+    return {it["id"]: it for it in list_all("coupons")}
+
+
+def ensure_comp_coupon(coupons):
+    existing = coupons.get(COMP_COUPON_ID)
+    if existing:
+        percent_off = existing.get("percent_off")
+        if (not existing.get("valid", True)
+                or percent_off is None
+                or Decimal(str(percent_off)) != Decimal(100)
+                or existing.get("duration") != "forever"):
+            raise RuntimeError(
+                f"coupon {COMP_COUPON_ID} exists but is not a valid perpetual 100%-off coupon")
+        return "exists"
+    coupon = stripe("coupons", "create",
+                    "-d", f"id={COMP_COUPON_ID}",
+                    "-d", "percent_off=100",
+                    "-d", "duration=forever",
+                    "-d", "name=bex comp — 100% off")
+    coupons[COMP_COUPON_ID] = coupon
+    return "created"
+
+
+def main(live=False):
+    global STRIPE_GLOBAL_ARGS
+    STRIPE_GLOBAL_ARGS = ["--live"] if live else []
     dims = parse_pricing()
     meters = existing_meters()
+    coupons = existing_coupons()
     print(f"== bex Stripe Billing setup — {len(dims)} priced dimensions from pricing.yaml ==\n")
     print(f"{'event_name':<38} {'unit_amount_decimal (¢)':<24} meter        price")
     for event_name, display, cents in dims:
@@ -158,12 +234,24 @@ def main():
             print(f"  deactivated {name} ({it['id']})")
         else:
             print(f"  {name}: already gone/inactive")
+
+    print("\n== Mode-B comp coupon ==")
+    print(f"  {COMP_COUPON_ID}: {ensure_comp_coupon(coupons)}")
     print("\nDone.")
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Provision the bex Stripe Billing catalog (test mode by default)."
+    )
+    parser.add_argument(
+        "--live",
+        action="store_true",
+        help="modify live-mode Stripe objects (default: test mode)",
+    )
+    args = parser.parse_args()
     try:
-        main()
+        main(live=args.live)
     except RuntimeError as e:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)

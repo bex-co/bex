@@ -31,7 +31,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// fakeBillingReader is a stub usage.BillingReader — no Metronome needed.
+// fakeBillingReader is a stub usage.BillingReader — no Stripe call needed.
 type fakeBillingReader struct {
 	result *billing.Billing
 	err    error
@@ -75,7 +75,7 @@ func TestBillingAttachedToSummary(t *testing.T) {
 
 func TestBillingDegradedFallsBackToEstimateOnly(t *testing.T) {
 	svc := svcWithTenant(seedStore(), "tea-001")
-	svc.Billing = &fakeBillingReader{err: errors.New("metronome down")}
+	svc.Billing = &fakeBillingReader{err: errors.New("stripe down")}
 
 	// A degraded read must not error the usage verb — it drops to estimate-only.
 	sum, err := svc.MonthToDate(withIdentity(context.Background()), "")
@@ -103,7 +103,7 @@ func TestBillingCachedWithinTTL(t *testing.T) {
 		}
 	}
 	// Three usage reads (as the three surfaces / repeated polls would do) hit
-	// Metronome once — the rest are served from the TTL cache.
+	// Stripe once — the rest are served from the TTL cache.
 	if len(reader.calls) != 1 {
 		t.Fatalf("BillingFor called %d times, want 1 (cached within TTL)", len(reader.calls))
 	}
@@ -112,7 +112,7 @@ func TestBillingCachedWithinTTL(t *testing.T) {
 func TestBillingErrorNotCached(t *testing.T) {
 	svc := svcWithTenant(seedStore(), "tea-001")
 	svc.billingCache = core.NewTTLCache[*billing.Billing]()
-	reader := &fakeBillingReader{err: errors.New("metronome down")}
+	reader := &fakeBillingReader{err: errors.New("stripe down")}
 	svc.Billing = reader
 
 	ctx := withIdentity(context.Background())

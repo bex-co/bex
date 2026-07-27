@@ -24,7 +24,7 @@ import (
 )
 
 // SelectUnemittedUsage returns up to limit sealed usage_hourly rows that have
-// not yet shipped to Metronome — the billing outbox read
+// not yet shipped to Stripe — the billing outbox read
 // (docs/ADR040-billing-metronome.md §4). A row qualifies when its window is
 // final (window_start < sealBefore, i.e. past the rewrite horizon), not below
 // the billing floor (window_start >= floor), still un-emitted, and its

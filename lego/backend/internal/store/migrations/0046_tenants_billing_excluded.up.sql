@@ -1,5 +1,5 @@
 -- Billing exclusion (docs/ADR040-billing-metronome.md §7, Mode A). A genuinely
--- internal / superadmin / test workspace must never enter Metronome — no
+-- internal / superadmin / test workspace must never enter external billing — no
 -- customer, no events, no contract, no invoice — so collection is structurally
 -- impossible, not merely configured off. It still sees estimatedCost (a
 -- metering-layer read, independent of billing state). Default false ⇒ every

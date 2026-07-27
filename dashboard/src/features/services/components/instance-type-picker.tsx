@@ -40,7 +40,7 @@ export interface InstanceTypePickerProps {
  * Render's "Pick an Instance Type" page (captured live): a card per tier —
  * Free visually separated from the paid ladder — the current plan
  * pre-selected, Save disabled until the selection changes. bex cards omit
- * price (Metronome's, not this catalog's concern) and the custom-instance
+ * price (billing is separate from this resource catalog) and the custom-instance
  * contact link (no bex equivalent).
  */
 export function InstanceTypePicker({

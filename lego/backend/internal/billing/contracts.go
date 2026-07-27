@@ -18,117 +18,191 @@ package billing
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net/http"
+	"slices"
 	"time"
 
-	metronome "github.com/Metronome-Industries/metronome-go/v3"
-	"github.com/Metronome-Industries/metronome-go/v3/option"
+	stripe "github.com/stripe/stripe-go/v82"
+
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 )
 
-// compCreditAmount is the credit granted to a comped (Mode B) customer: large
-// enough to zero out any realistic invoice, so the net always nets to $0
-// (ADR040 §7 Mode B). It is in the org's USD credit type unit (cents if the
-// credit type is "USD (cents)").
-const compCreditAmount = 1_000_000_000 // $10M in cents — effectively unbounded comp
+const stripeLookupKeyLimit = 10
 
-// EnsureContract binds a customer to the rate card so Metronome actually rates
-// their exported usage into invoices (ADR040 §2, §7: per-workspace charging is
-// a contract). It is a no-op when no rate card is configured (RateCardID unset
-// ⇒ m47 shadow-export behavior, byte-identical) and idempotent otherwise: a
-// process-local cache and a list-before-create both prevent a second contract.
-// billing_excluded customers never reach here — the emitter filters them at the
-// source — so they get no contract.
-func (c *Client) EnsureContract(ctx context.Context, customerID string) error {
-	if c.RateCardID == "" {
-		return nil // shadow-export only: usage lands in Metronome, rated by nothing
-	}
-	if c.cached(c.contracted, customerID) {
-		return nil
-	}
-	list, err := c.mc.V1.Contracts.List(ctx, metronome.V1ContractListParams{CustomerID: customerID}, readOpts)
-	if err != nil {
-		return fmt.Errorf("metronome: list contracts %s: %w", customerID, err)
-	}
-	if len(list.Data) > 0 {
-		c.mark(c.contracted, customerID) // already contracted
-		return nil
-	}
-	if _, err := c.mc.V1.Contracts.New(ctx, metronome.V1ContractNewParams{
-		CustomerID: customerID,
-		StartingAt: c.contractStart(),
-		RateCardID: metronome.String(c.RateCardID),
-	}, option.WithMaxRetries(3)); err != nil {
-		return fmt.Errorf("metronome: create contract %s: %w", customerID, err)
-	}
-	c.mark(c.contracted, customerID)
-	return nil
-}
-
-// CompCustomer applies ADR040 §7 Mode B: the customer keeps a real contract
-// (so Metronome rates their usage into real line items) but a credit ≥ any
-// balance nets every invoice to $0. It is the comp *mechanism* — meant to be
-// driven by a deliberate admin action, never automatically — and is idempotent
-// via the credit grant's uniqueness key, so re-invoking it is safe. Wiring an
-// audited control-plane comp verb (mirroring m47's billing-excluded verb) is a
-// follow-up; today CompCustomer is invoked out-of-band. Non-collectible marking
-// is a Phase-3 (collection) belt-and-suspenders; with no collection layer yet,
-// the ≥balance credit alone guarantees $0 due.
-func (c *Client) CompCustomer(ctx context.Context, customerID string) error {
-	if c.RateCardID == "" {
-		return errors.New("billing: comp requires a configured rate card (BEX_METRONOME_RATE_CARD_ID)")
-	}
-	if c.USDCreditTypeID == "" {
-		return errors.New("billing: comp requires a configured USD credit type (BEX_METRONOME_USD_CREDIT_TYPE_ID)")
-	}
-	if err := c.EnsureContract(ctx, customerID); err != nil {
+// EnsureContract attaches every priced meter to one Stripe Subscription for a
+// billable workspace. The emitter's store query excludes Mode A workspaces
+// before this method is reached, so excluded tenants get neither Customer nor
+// Subscription. List-before-create plus Stripe's idempotency key closes process
+// restarts and concurrent reconciles.
+func (c *StripeClient) EnsureContract(ctx context.Context, tenantID string) error {
+	if err := c.EnsureCustomer(ctx, tenantID); err != nil {
 		return err
 	}
-	_, err := c.mc.V1.CreditGrants.New(ctx, metronome.V1CreditGrantNewParams{
-		CustomerID: customerID,
-		Name:       "bex comp " + customerID,
-		ExpiresAt:  c.contractStart().AddDate(100, 0, 0),
-		Priority:   1,
-		GrantAmount: metronome.V1CreditGrantNewParamsGrantAmount{
-			Amount:       compCreditAmount,
-			CreditTypeID: c.USDCreditTypeID,
-		},
-		PaidAmount: metronome.V1CreditGrantNewParamsPaidAmount{
-			Amount:       0, // comped: the customer paid nothing for the credit
-			CreditTypeID: c.USDCreditTypeID,
-		},
-		Reason:        metronome.String("bex comp (ADR040 §7 Mode B)"),
-		UniquenessKey: metronome.String("bex-comp-" + customerID), // idempotent
-	}, option.WithMaxRetries(3))
+	customerID, ok := c.lookupCustomer(tenantID)
+	if !ok {
+		return fmt.Errorf("stripe: customer cache missing after ensure for workspace %s", tenantID)
+	}
+	if _, found, err := c.findSubscription(ctx, tenantID, customerID); err != nil {
+		return err
+	} else if found {
+		return nil
+	}
+
+	priceIDs, err := c.resolvePriceIDs(ctx)
 	if err != nil {
-		var apiErr *metronome.Error
-		if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusConflict {
-			return nil // the uniqueness key already applied this comp
-		}
-		return fmt.Errorf("metronome: comp credit for %s: %w", customerID, err)
+		return err
+	}
+	items := make([]*stripe.SubscriptionItemsParams, 0, len(priceIDs))
+	for _, priceID := range priceIDs {
+		items = append(items, &stripe.SubscriptionItemsParams{Price: stripe.String(priceID)})
+	}
+	params := &stripe.SubscriptionParams{
+		Customer:         stripe.String(customerID),
+		CollectionMethod: stripe.String(string(stripe.SubscriptionCollectionMethodChargeAutomatically)),
+		Items:            items,
+		Metadata: map[string]string{
+			workspaceMetadataKey:    tenantID,
+			subscriptionMetadataKey: "true",
+		},
+	}
+	params.Context = ctx
+	params.SetIdempotencyKey("bex-subscription-" + tenantID)
+	if !c.billingEpoch.IsZero() && c.billingEpoch.Before(time.Now()) {
+		params.BackdateStartDate = stripe.Int64(c.billingEpoch.Unix())
+	}
+	sub, err := c.sc.Subscriptions.New(params)
+	if err != nil {
+		return fmt.Errorf("stripe: create subscription for %s: %w", tenantID, err)
+	}
+	if sub.ID == "" {
+		return fmt.Errorf("stripe: create subscription for %s returned an empty id", tenantID)
 	}
 	return nil
 }
 
-// contractStart is the contract's starting_at: the billing epoch (usage before
-// it is not rated) when configured, else now.
-func (c *Client) contractStart() time.Time {
-	if !c.ContractStart.IsZero() {
-		return c.ContractStart.UTC()
+// CompCustomer applies Mode B: keep rated line items and invoice history, but
+// apply the setup script's perpetual 100%-off coupon to the workspace's
+// subscription. Updating with a deterministic idempotency key makes repeated
+// operator invocations safe.
+func (c *StripeClient) CompCustomer(ctx context.Context, tenantID string) error {
+	if err := c.EnsureContract(ctx, tenantID); err != nil {
+		return err
 	}
-	return time.Now().UTC()
+	customerID, ok := c.lookupCustomer(tenantID)
+	if !ok {
+		return fmt.Errorf("stripe: customer cache missing after ensure for workspace %s", tenantID)
+	}
+	subscriptionID, found, err := c.findSubscription(ctx, tenantID, customerID)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return fmt.Errorf("stripe: subscription missing after ensure for workspace %s", tenantID)
+	}
+	params := &stripe.SubscriptionParams{
+		Discounts: []*stripe.SubscriptionDiscountParams{{Coupon: stripe.String(c.compCouponID)}},
+		// A comp changes collection policy, not the underlying service period;
+		// never manufacture a proration invoice while applying it.
+		ProrationBehavior: stripe.String("none"),
+	}
+	params.Context = ctx
+	params.SetIdempotencyKey("bex-comp-" + tenantID)
+	if _, err := c.sc.Subscriptions.Update(subscriptionID, params); err != nil {
+		return fmt.Errorf("stripe: apply comp coupon %s to %s: %w", c.compCouponID, tenantID, err)
+	}
+	return nil
 }
 
-func (c *Client) contractCached(customerID string) bool {
-	c.ensuredMu.Lock()
-	defer c.ensuredMu.Unlock()
-	_, ok := c.contracted[customerID]
-	return ok
+// findSubscription resolves the one live bex billing contract for a workspace
+// without creating it. Multiple matches are rejected instead of silently
+// choosing one and risking double-rated usage.
+func (c *StripeClient) findSubscription(ctx context.Context, tenantID, customerID string) (string, bool, error) {
+	params := &stripe.SubscriptionListParams{
+		ListParams: stripe.ListParams{Limit: stripe.Int64(100)},
+		Customer:   stripe.String(customerID),
+		Status:     stripe.String("all"),
+	}
+	params.Context = ctx
+	iter := c.sc.Subscriptions.List(params)
+	var found []string
+	for iter.Next() {
+		sub := iter.Subscription()
+		if sub.Metadata[workspaceMetadataKey] != tenantID || sub.Metadata[subscriptionMetadataKey] != "true" {
+			continue
+		}
+		if sub.Status == stripe.SubscriptionStatusCanceled || sub.Status == stripe.SubscriptionStatusIncompleteExpired {
+			continue
+		}
+		found = append(found, sub.ID)
+	}
+	if err := iter.Err(); err != nil {
+		return "", false, fmt.Errorf("stripe: list subscriptions for %s: %w", tenantID, err)
+	}
+	if len(found) > 1 {
+		return "", false, fmt.Errorf("stripe: workspace %s has %d live bex subscriptions: %v", tenantID, len(found), found)
+	}
+	if len(found) == 0 {
+		return "", false, nil
+	}
+	return found[0], true, nil
 }
 
-func (c *Client) markContract(customerID string) {
-	c.ensuredMu.Lock()
-	c.contracted[customerID] = struct{}{}
-	c.ensuredMu.Unlock()
+// resolvePriceIDs validates the full active Stripe price catalog once per
+// process. Stripe accepts at most 10 lookup_keys per list request, so the 13
+// current dimensions are fetched in bounded chunks. No subscription is created
+// until every expected key has exactly one metered monthly USD price.
+func (c *StripeClient) resolvePriceIDs(ctx context.Context) ([]string, error) {
+	c.mu.Lock()
+	if len(c.priceIDs) > 0 {
+		out := slices.Clone(c.priceIDs)
+		c.mu.Unlock()
+		return out, nil
+	}
+	c.mu.Unlock()
+
+	lookupKeys := pricing.Default.BillableMeterNames()
+	found := make(map[string]string, len(lookupKeys))
+	for start := 0; start < len(lookupKeys); start += stripeLookupKeyLimit {
+		end := min(start+stripeLookupKeyLimit, len(lookupKeys))
+		keys := make([]*string, 0, end-start)
+		for _, key := range lookupKeys[start:end] {
+			keys = append(keys, stripe.String(key))
+		}
+		params := &stripe.PriceListParams{
+			ListParams: stripe.ListParams{Limit: stripe.Int64(100)},
+			Active:     stripe.Bool(true),
+			LookupKeys: keys,
+		}
+		params.Context = ctx
+		iter := c.sc.Prices.List(params)
+		for iter.Next() {
+			price := iter.Price()
+			if prior, exists := found[price.LookupKey]; exists && prior != price.ID {
+				return nil, fmt.Errorf("stripe: duplicate active price lookup key %s (%s, %s)", price.LookupKey, prior, price.ID)
+			}
+			if price.Recurring == nil || price.Recurring.UsageType != stripe.PriceRecurringUsageTypeMetered || price.Recurring.Meter == "" || price.Currency != stripe.CurrencyUSD {
+				return nil, fmt.Errorf("stripe: price %s (%s) is not a USD metered recurring price with a meter", price.ID, price.LookupKey)
+			}
+			found[price.LookupKey] = price.ID
+		}
+		if err := iter.Err(); err != nil {
+			return nil, fmt.Errorf("stripe: list prices: %w", err)
+		}
+	}
+
+	priceIDs := make([]string, 0, len(lookupKeys))
+	for _, key := range lookupKeys {
+		id, ok := found[key]
+		if !ok {
+			return nil, fmt.Errorf("stripe: active price with lookup key %s is missing; rerun scripts/stripe-billing-setup.py", key)
+		}
+		priceIDs = append(priceIDs, id)
+	}
+	c.mu.Lock()
+	if len(c.priceIDs) == 0 {
+		c.priceIDs = slices.Clone(priceIDs)
+	}
+	out := slices.Clone(c.priceIDs)
+	c.mu.Unlock()
+	return out, nil
 }

@@ -22,9 +22,9 @@ limitations under the License.
 // docs that could only drift apart.
 //
 // It mirrors Render's published ladders (render.com/docs/compute-plans and
-// their Postgres instance types) and carries no pricing — prices are
-// Metronome's; this is a resource catalog only, so the operator (which
-// imports this package) never has money to depend on even by accident.
+// their Postgres instance types) and carries no pricing. Backend-only
+// internal/pricing owns estimates and the Stripe catalog; this resource
+// package keeps money out of the operator by construction.
 package tiers
 
 import (

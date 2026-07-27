@@ -19,10 +19,10 @@
 #             storage, using Render's Key Value vocabulary (free / starter /
 #             standard / …, shared with the web-service ladder).
 #
-# No pricing here — prices are Metronome's (see lego/backend/internal/store/
-# api.go's normalizeTier comment); this file is a resource catalog, not a
-# price list. Runtime behavior (mechanism) must never depend on money, and
-# this catalog is imported by the operator, so it carries none to depend on.
+# No pricing here — backend-only internal/pricing/pricing.yaml drives advisory
+# estimates and the Stripe Billing catalog (ADR030/ADR040). This file is a
+# resource catalog imported by the operator, so mechanism never has money to
+# depend on.
 compute:
   # The tier a plan-less App/tenant defaults to (mirrors the store's prior
   # normalizeTier("") => "free" default).

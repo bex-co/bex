@@ -43,7 +43,7 @@ export interface EstimatedCost {
   meters: MeterEstimate[];
 }
 
-/** A normalized Metronome amount over a period (m48). */
+/** A normalized Stripe invoice amount over a period (m48/m50). */
 export interface BillingAmount {
   amountUsd: string;
   currency: string;
@@ -51,7 +51,7 @@ export interface BillingAmount {
   periodEnd: string; // RFC3339
 }
 
-/** One finalized Metronome invoice (m48). */
+/** One finalized Stripe invoice (m48/m50). */
 export interface BillingInvoice {
   id: string;
   status: string;
@@ -62,9 +62,9 @@ export interface BillingInvoice {
 }
 
 /**
- * Real Metronome-computed billing (m48). Distinct from the advisory
- * estimatedCost: this is what the workspace is actually charged. null when
- * estimate-only (no contract, comped/excluded, billing off, or degraded).
+ * Real Stripe billing (m48/m50). Distinct from the advisory estimatedCost:
+ * this is what the workspace is actually charged. null when there is no bex
+ * Subscription, Mode A excludes billing, Stripe is off, or the read degrades.
  */
 export interface Billing {
   currentCost: BillingAmount | null;

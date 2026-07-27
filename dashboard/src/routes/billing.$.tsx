@@ -5,7 +5,7 @@ import {
 } from "@/common/lib/render-alias";
 
 /**
- * Render's billing URLs (w1/m45). Billing proper is a bex non-goal
+ * Render's billing URLs (w1/m45). Collection-management UI remains deferred
  * (docs/ADR023-usage-metering.md — Usage is the deliberate counterpart), but
  * the two shapes Render mints sitewide still deserve a landing:
  * `/billing/update-plan` (every upgrade CTA) opens the change-plan dialog;
