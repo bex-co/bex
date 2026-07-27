@@ -42,6 +42,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -351,7 +352,9 @@ func (c *Creds) removeHTPasswdEntry(ctx context.Context, username string) error 
 // -- Zot config helpers -------------------------------------------------------
 
 // ensureZotConfigEntry adds a per-repo ACL entry for the App to the zot-config
-// Secret and ensures the global builder admin policy is present. The admin
+// Secret and ensures the canonical storage + global builder policies are
+// present. The storage migration lets operational settings such as GC cadence
+// reach existing registries without replacing their per-App ACLs. The admin
 // policy migration is required for configs created before per-App ACLs: Zot
 // applies only the longest repository match, so an exact per-App rule shadows
 // the builder's ** rule. Creates the Secret with the base config if it does not
@@ -385,17 +388,27 @@ func (c *Creds) ensureZotConfigEntry(ctx context.Context, appName, zotUser strin
 		}
 
 		existing := sec.Data["config.json"]
-		if zotConfigHasRepoWritePolicy(existing, appName, zotUser) && zotConfigHasBuilderAdminPolicy(existing) {
+		updated, storageChanged, err := ensureZotStorageConfig(existing, c.baseZotConfig())
+		if err != nil {
+			return err
+		}
+		repoReady := zotConfigHasRepoWritePolicy(existing, appName, zotUser)
+		builderReady := zotConfigHasBuilderAdminPolicy(existing)
+		if !storageChanged && repoReady && builderReady {
 			return nil
 		}
 
-		updated, err := ensureZotBuilderAdminPolicy(existing)
-		if err != nil {
-			return err
+		if !builderReady {
+			updated, err = ensureZotBuilderAdminPolicy(updated)
+			if err != nil {
+				return err
+			}
 		}
-		updated, err = addZotACLEntry(updated, appName, zotUser)
-		if err != nil {
-			return err
+		if !repoReady {
+			updated, err = addZotACLEntry(updated, appName, zotUser)
+			if err != nil {
+				return err
+			}
 		}
 		patch := sec.DeepCopy()
 		patch.Data["config.json"] = updated
@@ -638,6 +651,33 @@ func ensureZotBuilderAdminPolicy(configJSON []byte) ([]byte, error) {
 		"actions": []any{"read", "create", "update", "delete"},
 	}
 	return json.Marshal(data)
+}
+
+// ensureZotStorageConfig replaces only the operator-owned storage block with
+// the current canonical policy. Existing auth, per-App ACLs, and extensions are
+// preserved. The changed result prevents no-op Secret writes and lets the
+// caller distinguish a migration from an already-current config.
+func ensureZotStorageConfig(configJSON, canonicalJSON []byte) ([]byte, bool, error) {
+	var data, canonical map[string]any
+	if err := json.Unmarshal(configJSON, &data); err != nil {
+		return nil, false, err
+	}
+	if err := json.Unmarshal(canonicalJSON, &canonical); err != nil {
+		return nil, false, err
+	}
+	desired, ok := canonical["storage"].(map[string]any)
+	if !ok {
+		return nil, false, fmt.Errorf("canonical zot config has no storage block")
+	}
+	if current, _ := data["storage"].(map[string]any); reflect.DeepEqual(current, desired) {
+		return configJSON, false, nil
+	}
+	data["storage"] = desired
+	updated, err := json.Marshal(data)
+	if err != nil {
+		return nil, false, err
+	}
+	return updated, true, nil
 }
 
 func containsString(values []any, want string) bool {
