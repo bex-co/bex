@@ -23,7 +23,7 @@ Use Stripe Tax for any subscription, invoice, or Checkout Session where the user
 1. Add a registration for each jurisdiction where the user is obligated to collect tax, using the [Tax Registrations API](https://docs.stripe.com/api/tax/registrations.md) or the [Dashboard](https://docs.stripe.com/tax/registering.md).
 2. Pass `automatic_tax: { enabled: true }` on the [Subscription](https://docs.stripe.com/api/subscriptions.md), [Invoice](https://docs.stripe.com/api/invoices.md), or [Checkout Session](https://docs.stripe.com/api/checkout/sessions.md) object.
 
-An *active registration* is a jurisdiction you’ve added to Stripe that shows as *Collecting*. It’s per-jurisdiction, and not the same as having a Stripe account.
+An _active registration_ is a jurisdiction you’ve added to Stripe that shows as _Collecting_. It’s per-jurisdiction, and not the same as having a Stripe account.
 
 Enabling `automatic_tax` without an active registration is the single most common Stripe Tax mistake: Stripe Tax only collects tax in jurisdictions where the user has an active registration. Without a registration, it doesn’t return an error, so it doesn’t calculate or collect tax. The user thinks tax is on while collecting nothing. Never enable `automatic_tax` and assume the user is set up. Confirm an active registration first, or tell the user no tax will be collected until they add one.
 
@@ -74,14 +74,14 @@ Once the liable entity is known:
 
 ## Threshold and nexus monitoring
 
-Stripe’s [threshold monitoring](https://docs.stripe.com/tax/monitoring.md) highlights *potential* registration obligations (no public API yet). Present it as information and route the decision to the user’s tax advisor. It’s up to the user to confirm whether registration is required; don’t tell them they must register.
+Stripe’s [threshold monitoring](https://docs.stripe.com/tax/monitoring.md) highlights _potential_ registration obligations (no public API yet). Present it as information and route the decision to the user’s tax advisor. It’s up to the user to confirm whether registration is required; don’t tell them they must register.
 
 ## Registration safety
 
 Guide, don’t advise. Never tell a user where they must register or whether they’re legally obligated. Recommend they consult their tax advisor to determine their obligations.
 
 - The [Tax Registrations API](https://docs.stripe.com/api/tax/registrations.md) can list, create, update, and expire registrations (set `expires_at` to expire; there’s no delete). A scheduled expiry can be changed, but an expiration that has taken effect is permanent (to collect again, the user adds a new registration), and there’s no pause. A head office address is required before adding a registration.
-- Adding a registration in Stripe records where the user is *already* registered. It doesn’t register them with the tax authority.
+- Adding a registration in Stripe records where the user is _already_ registered. It doesn’t register them with the tax authority.
 - Creating or expiring a registration changes whether Stripe collects tax in that jurisdiction, but it doesn’t register or deregister the user with the tax authority. The user must do that separately. Prepare the change and have the user confirm it; never create or expire a registration automatically.
 
 **How to register.** Present the paths that fit the user and let them (with their tax advisor) choose. Don’t pick for them.
