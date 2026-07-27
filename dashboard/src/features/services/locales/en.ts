@@ -1938,6 +1938,20 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Auto-Deploy",
     description: "Build & Deploy: label for the auto-deploy toggle",
   },
+  "services.autoDeployOnCommit": {
+    message: "On Commit",
+    description:
+      "Auto-Deploy select option: redeploy on every matching git push (Render's autoDeployTrigger 'commit', w5/m53)",
+  },
+  "services.autoDeployOff": {
+    message: "Off",
+    description:
+      "Auto-Deploy select option: never redeploy on push (Render's autoDeployTrigger 'off')",
+  },
+  "services.autoDeployEdit": {
+    message: "Edit Auto-Deploy",
+    description: "Accessible label for the Auto-Deploy select's edit-pencil button",
+  },
   "services.autoDeployViaGitHub": {
     message:
       "A push to the tracked branch redeploys automatically via the GitHub app.",

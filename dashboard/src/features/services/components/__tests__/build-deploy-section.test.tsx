@@ -420,7 +420,7 @@ describe("BuildDeploySection", () => {
     expect(screen.getByDisplayValue("docker/Dockerfile.prod")).toBeVisible();
   });
 
-  it("flipping Auto-Deploy on calls setAutoDeploy(id, true)", async () => {
+  it("Auto-Deploy is a disabled select; editing to 'On Commit' calls setAutoDeploy(id, true)", async () => {
     const user = userEvent.setup();
     render(
       <BuildDeploySection
@@ -434,11 +434,20 @@ describe("BuildDeploySection", () => {
       />,
     );
 
-    await user.click(screen.getByRole("switch", { name: "Auto-Deploy" }));
+    // Render's disabled select, not a switch (w5/m53).
+    const select = screen.getByRole("combobox", { name: "Auto-Deploy" });
+    expect(select).toBeDisabled();
+    expect(select).toHaveTextContent("Off");
+
+    await user.click(screen.getByRole("button", { name: "Edit Auto-Deploy" }));
+    await user.click(screen.getByRole("combobox", { name: "Auto-Deploy" }));
+    await user.click(screen.getByRole("option", { name: "On Commit" }));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
     expect(setAutoDeploy).toHaveBeenCalledWith("app", true);
   });
 
-  it("reverts the optimistic switch when setAutoDeploy fails", async () => {
+  it("reverts the optimistic Auto-Deploy selection when setAutoDeploy fails", async () => {
     setAutoDeploy.mockResolvedValue(false);
     const user = userEvent.setup();
     render(
@@ -453,11 +462,24 @@ describe("BuildDeploySection", () => {
       />,
     );
 
-    const toggle = screen.getByRole("switch", { name: "Auto-Deploy" });
-    expect(toggle).toBeChecked();
-    await user.click(toggle);
+    const select = screen.getByRole("combobox", { name: "Auto-Deploy" });
+    expect(select).toHaveTextContent("On Commit");
+
+    await user.click(screen.getByRole("button", { name: "Edit Auto-Deploy" }));
+    await user.click(screen.getByRole("combobox", { name: "Auto-Deploy" }));
+    await user.click(screen.getByRole("option", { name: "Off" }));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
     expect(setAutoDeploy).toHaveBeenCalledWith("app", false);
-    expect(toggle).toBeChecked();
+    // A failed save keeps the row in edit mode (like the other rows); the
+    // optimistic revert restores "On Commit" when the edit is cancelled.
+    expect(
+      screen.getByRole("button", { name: "Save changes" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(
+      screen.getByRole("combobox", { name: "Auto-Deploy" }),
+    ).toHaveTextContent("On Commit");
   });
 
   it("names the GitHub app as the push source when the repo is on the connected account", () => {
