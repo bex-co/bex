@@ -82,6 +82,11 @@ type patchServiceRequest struct {
 	// (spec.autoDeploy). "" => absent (leave unchanged); parseYesNo maps the rest
 	// to a tri-state so the Settings → Build & Deploy toggle can flip it (w2/m9).
 	AutoDeploy string `json:"autoDeploy"`
+	// AutoDeployTrigger is Render's newer autoDeployTrigger enum for the same
+	// toggle (off|commit|checksPass, w5/m53). It takes precedence over autoDeploy
+	// when both are sent (Render's precedence); "checksPass" is rejected — bex has
+	// no CI-gated deploy (documented divergence); "" => absent.
+	AutoDeployTrigger string `json:"autoDeployTrigger"`
 	// NotifyOnFail is Render's exact per-service notifyOnFail enum (default |
 	// notify | ignore, docs/render-artifacts/notify-on-fail.md). A pointer so
 	// "absent" (leave unchanged) is distinct from an explicit value; an
@@ -158,6 +163,9 @@ type createServiceRequest struct {
 	Branch        string    `json:"branch"`
 	EnvironmentID string    `json:"environmentId"`
 	AutoDeploy    string    `json:"autoDeploy"` // Render's "yes"|"no"; "" => default
+	// AutoDeployTrigger is Render's off|commit|checksPass enum (w5/m53); takes
+	// precedence over autoDeploy when both sent; "checksPass" rejected; "" => default.
+	AutoDeployTrigger string `json:"autoDeployTrigger"`
 	// NotifyOnFail is Render's exact per-service notifyOnFail enum (default |
 	// notify | ignore); "" => default (docs/render-artifacts/notify-on-fail.md).
 	NotifyOnFail   string             `json:"notifyOnFail"`
@@ -471,6 +479,12 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 		}
 		ipAllowList = fromIPAllowListEntries(entries)
 	}
+	// Auto-Deploy: autoDeployTrigger (off|commit) wins over the legacy autoDeploy
+	// enum when both are sent; checksPass is rejected (w5/m53).
+	autoDeploy, err := parseAutoDeploy(r.AutoDeploy, r.AutoDeployTrigger)
+	if err != nil {
+		return CreateRequest{}, err
+	}
 	return CreateRequest{
 		OwnerID:                 ownerID,
 		EnvironmentID:           r.EnvironmentID,
@@ -498,7 +512,7 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 		Env:                     env,
 		SecretFiles:             secretFiles,
 		Hosts:                   r.Domains,
-		AutoDeploy:              parseYesNo(r.AutoDeploy),
+		AutoDeploy:              autoDeploy,
 		NotifyOnFail:            r.NotifyOnFail,
 		SubdomainPolicy:         r.RenderSubdomainPolicy,
 		PreDeployCommand:        preDeploy,
@@ -547,6 +561,42 @@ func parseYesNo(s string) *bool {
 	default:
 		return nil
 	}
+}
+
+// parseTrigger maps Render's autoDeployTrigger enum ("off"|"commit") to a
+// tri-state *bool. "checksPass" is rejected — bex deploys on every matching push
+// or not at all, with no CI-checks-gated trigger (a documented divergence,
+// docs/ADR018-render-parity.md); any other non-empty value is a bad request too.
+// "" => nil (not provided).
+func parseTrigger(s string) (*bool, error) {
+	switch s {
+	case "":
+		return nil, nil
+	case "commit":
+		t := true
+		return &t, nil
+	case "off":
+		f := false
+		return &f, nil
+	case "checksPass":
+		return nil, fmt.Errorf("%w: autoDeployTrigger %q is not supported — bex deploys on every matching push (%q) or not at all (%q); it has no CI-checks-gated deploy trigger", core.ErrBadRequest, s, "commit", "off")
+	default:
+		return nil, fmt.Errorf("%w: autoDeployTrigger must be %q or %q", core.ErrBadRequest, "off", "commit")
+	}
+}
+
+// parseAutoDeploy resolves Render's two Auto-Deploy fields into one tri-state
+// *bool: autoDeployTrigger takes precedence over the legacy autoDeploy enum when
+// both are present (Render's documented precedence), validating the trigger.
+func parseAutoDeploy(autoDeploy, trigger string) (*bool, error) {
+	t, err := parseTrigger(trigger)
+	if err != nil {
+		return nil, err
+	}
+	if t != nil {
+		return t, nil
+	}
+	return parseYesNo(autoDeploy), nil
 }
 
 // renderListParam expands Render's form-style array encoding. The generated
@@ -798,7 +848,13 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, registryErr)
 			return
 		}
-		autoDeploy := parseYesNo(req.AutoDeploy) // nil => not provided (don't change)
+		// Auto-Deploy: autoDeployTrigger (off|commit) wins over the legacy
+		// autoDeploy enum when both are sent; checksPass is rejected (w5/m53).
+		autoDeploy, autoDeployErr := parseAutoDeploy(req.AutoDeploy, req.AutoDeployTrigger)
+		if autoDeployErr != nil {
+			core.WriteErr(w, autoDeployErr)
+			return
+		}
 
 		// Dry-run: preview plan change only; no writes at all (w2/m29).
 		if dryRun {

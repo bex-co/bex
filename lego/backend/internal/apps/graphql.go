@@ -367,6 +367,11 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}),
 		},
 		"autoDeploy": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(a AppView) any { return a.AutoDeploy })},
+		// autoDeployTrigger is Render's newer enum for the same toggle
+		// ("commit"|"off", w5/m53) mapped from bex's boolean spec.autoDeploy —
+		// the dashboard's Auto-Deploy select reads it. bex never emits
+		// "checksPass" (documented divergence).
+		"autoDeployTrigger": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return triggerEnum(a.AutoDeploy) })},
 		// notifyOnFail is Render's per-service deploy-failure notification
 		// override (default | notify | ignore, docs/render-artifacts/
 		// notify-on-fail.md); the Settings → Notifications section reads it and

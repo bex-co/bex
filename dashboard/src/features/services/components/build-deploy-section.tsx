@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import {
   Card,
@@ -10,7 +10,6 @@ import {
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
-import { Switch } from "@/common/components/ui/switch";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { DeployHookRows } from "@/features/services/components/deploy-hook-section";
@@ -121,11 +120,16 @@ export function BuildDeploySection({
   // (The backend does the precise repo-grant match; this is the UI hint.)
   const viaGitHub = !!connection?.connected && /github\.com[/:]/i.test(repo);
 
-  async function handleAutoDeployChange(next: boolean) {
-    setAutoDeployOn(next);
-    const ok = await setAutoDeploy(serviceId, next);
-    if (!ok) setAutoDeployOn(!next); // revert
-  }
+  // Render presents Auto-Deploy as a select ("On Commit" | "Off"), not a switch
+  // (w5/m53). bex has only two states — its boolean spec.autoDeploy maps to
+  // Render's autoDeployTrigger "commit"/"off"; "checksPass" is unsupported.
+  const autoDeployOptions = useMemo(
+    () => [
+      { value: "commit", label: t("services.autoDeployOnCommit") },
+      { value: "off", label: t("services.autoDeployOff") },
+    ],
+    [t],
+  );
 
   const dockerfileBuild =
     showDockerfilePath &&
@@ -133,27 +137,29 @@ export function BuildDeploySection({
   const dockerCommand =
     runtime === "docker" || (!runtime && builder === "dockerfile");
 
-  // Auto-Deploy toggle — lives in the Deploy card (web/static) or, for a cron_job
-  // with no Deploy card, folds into the bottom of the Build card.
-  const autoDeploySwitch = (
-    <div className="flex items-start justify-between gap-4">
-      <div className="space-y-1">
-        <div className="text-sm text-muted-foreground">
-          {t("services.autoDeployLabel")}
-        </div>
-        <div className="text-sm text-muted-foreground">
-          {viaGitHub
-            ? t("services.autoDeployViaGitHub")
-            : t("services.autoDeployViaWebhook")}
-        </div>
-      </div>
-      <Switch
-        checked={autoDeployOn}
-        disabled={autoDeployBusy}
-        onCheckedChange={handleAutoDeployChange}
-        aria-label={t("services.autoDeployLabel")}
-      />
-    </div>
+  // Auto-Deploy select (Render's disabled-select-with-pencil, w5/m53) — lives in
+  // the Deploy card (web/static) or, for a cron_job with no Deploy card, folds
+  // into the bottom of the Build card.
+  const autoDeployRow = (
+    <EditableFieldRow
+      label={t("services.autoDeployLabel")}
+      hint={
+        viaGitHub
+          ? t("services.autoDeployViaGitHub")
+          : t("services.autoDeployViaWebhook")
+      }
+      value={autoDeployOn ? "commit" : "off"}
+      editLabel={t("services.autoDeployEdit")}
+      busy={autoDeployBusy}
+      options={autoDeployOptions}
+      onSave={async (value) => {
+        const next = value === "commit";
+        setAutoDeployOn(next); // optimistic
+        const ok = await setAutoDeploy(serviceId, next);
+        if (!ok) setAutoDeployOn(!next); // revert
+        return ok;
+      }}
+    />
   );
 
   return (
@@ -259,7 +265,7 @@ export function BuildDeploySection({
 
           {/* A cron_job has no Deploy card (its Deploy section holds the
               schedule), so Auto-Deploy folds into the bottom of Build. */}
-          {!showDeployCard && autoDeploySwitch}
+          {!showDeployCard && autoDeployRow}
         </CardContent>
       </Card>
 
@@ -335,7 +341,7 @@ export function BuildDeploySection({
               />
             )}
 
-            {autoDeploySwitch}
+            {autoDeployRow}
 
             {/* Deploy Hook, moved into the Deploy section (Render parity, w5/m52). */}
             <div className="space-y-4">

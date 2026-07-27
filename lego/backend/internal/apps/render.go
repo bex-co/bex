@@ -100,6 +100,12 @@ type renderService struct {
 	// JSON boolean — a client generated from Render's OpenAPI spec (e.g. the
 	// official CLI) fails to unmarshal a bool here.
 	AutoDeploy string `json:"autoDeploy"`
+	// AutoDeployTrigger is Render's newer representation of the same Auto-Deploy
+	// toggle (components.schemas.autoDeployTrigger): "off"|"commit"|"checksPass".
+	// bex maps its boolean spec.autoDeploy onto "commit"/"off" and never emits
+	// "checksPass" (a documented divergence — bex has no CI-gated deploy). Emitted
+	// alongside the legacy string enum so both Render API generations read it.
+	AutoDeployTrigger string `json:"autoDeployTrigger"`
 	// NotifyOnFail is Render's per-service deploy-failure notification override
 	// (spec.notifyOnFail): default | notify | ignore. Required on Render's
 	// service object (never omitted) — docs/render-artifacts/notify-on-fail.md.
@@ -171,6 +177,16 @@ func yesNoEnum(autoDeploy bool) string {
 		return "yes"
 	}
 	return "no"
+}
+
+// triggerEnum renders Render's autoDeployTrigger for bex's boolean autoDeploy:
+// "commit" (a push redeploys) or "off". bex never emits "checksPass" — it has no
+// CI-gated deploy trigger (documented divergence, docs/ADR018-render-parity.md).
+func triggerEnum(autoDeploy bool) string {
+	if autoDeploy {
+		return "commit"
+	}
+	return "off"
 }
 
 func toRenderService(a AppView) renderService {
@@ -337,6 +353,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		Branch:                a.Branch,
 		Autoscaling:           ras,
 		AutoDeploy:            yesNoEnum(a.AutoDeploy),
+		AutoDeployTrigger:     triggerEnum(a.AutoDeploy),
 		NotifyOnFail:          a.NotifyOnFail,
 		NotificationsToSend:   a.NotificationsToSend,
 		RenderSubdomainPolicy: a.RenderSubdomainPolicy,

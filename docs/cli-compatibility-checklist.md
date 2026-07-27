@@ -33,6 +33,7 @@ Legend: `[x]` verified working · `[~]` works with a documented limitation · `[
 - `--previews` is rejected platform-wide (`400 "not supported by this platform"`).
 - Postgres Datadog forwarding is not implemented. Supplying `--datadog-api-key` or `--datadog-site` on create or update returns a named 400; bex never accepts or persists the credential.
 - `services update --runtime` is rejected inside the unmodified CLI by design (`cannot switch runtimes via the CLI`) before any bex request.
+- `autoDeployTrigger: checksPass` (deploy only after CI checks pass) is rejected with a named 400 (w5/m53). bex maps its boolean `spec.autoDeploy` onto Render's `autoDeployTrigger` `commit`/`off` (and the legacy `autoDeploy` `yes`/`no`), accepting either on create/update with `autoDeployTrigger` taking precedence; it has no GitHub-checks integration, so the checks-gated trigger is a documented non-goal, not a silent no-op.
 
 > Regenerate the command tree with `render <subcommand> --help`. Re-run the graded baseline with `scripts/cli-compat.sh verify`. Grouping mirrors the CLI's own `render --help` sections.
 

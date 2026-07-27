@@ -1900,6 +1900,20 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "自动部署",
     description: "Build & Deploy: label for the auto-deploy toggle",
   },
+  "services.autoDeployOnCommit": {
+    message: "提交时",
+    description:
+      "Auto-Deploy select option: redeploy on every matching git push (Render's autoDeployTrigger 'commit', w5/m53)",
+  },
+  "services.autoDeployOff": {
+    message: "关闭",
+    description:
+      "Auto-Deploy select option: never redeploy on push (Render's autoDeployTrigger 'off')",
+  },
+  "services.autoDeployEdit": {
+    message: "编辑自动部署",
+    description: "Accessible label for the Auto-Deploy select's edit-pencil button",
+  },
   "services.autoDeployViaGitHub": {
     message: "向跟踪分支推送将通过 GitHub 应用自动重新部署。",
     description:
