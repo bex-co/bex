@@ -24,3 +24,7 @@ projects-to-deploy
 .playwright-mcp
 
 cli
+
+# Python bytecode caches
+__pycache__/
+*.py[cod]
