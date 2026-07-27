@@ -25,7 +25,7 @@ import { HAPanel } from "@/features/databases/components/ha-panel";
 import { InsightsPanel } from "@/features/databases/components/insights-panel";
 import { DatabasePlanSection } from "@/features/databases/components/database-plan-section";
 import { DatabaseVersionControl } from "@/features/databases/components/database-version-control";
-import { DatabaseNameSection } from "@/features/databases/components/database-name-section";
+import { DatabaseNameRow } from "@/features/databases/components/database-name-row";
 import { DatabaseDiskAutoscalingControl } from "@/features/databases/components/database-disk-autoscaling-control";
 import { SQLConsole } from "@/features/databases/components/sql-console";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
@@ -144,12 +144,8 @@ export function DatabaseDetailPage() {
             <>
               <MetadataCard
                 database={database}
-                onChanged={() => void refetch()}
-              />
-              <DatabaseNameSection
-                key={`name-${database.name}`}
-                database={database}
-                onChanged={() => void router.invalidate()}
+                onVersionChanged={() => void refetch()}
+                onRenamed={() => void router.invalidate()}
               />
               <ConnectionInfoPanel id={database.id} />
               <SQLConsole key={`sql-${database.id}`} id={database.id} />
@@ -189,22 +185,28 @@ export function DatabaseDetailPage() {
 
 function MetadataCard({
   database,
-  onChanged,
+  onVersionChanged,
+  onRenamed,
 }: {
   database: DatabaseDetailView;
-  onChanged: () => void;
+  onVersionChanged: () => void;
+  onRenamed: () => void;
 }) {
   const { t } = useTranslations();
   return (
     <MetadataList
       title={t("databases.metaTitle")}
+      lead={<DatabaseNameRow database={database} onRenamed={onRenamed} />}
       rows={[
         { label: t("databases.metaStatus"), value: database.status || "—" },
         { label: t("databases.metaPlan"), value: database.plan ?? "—" },
         {
           label: t("databases.metaVersion"),
           value: (
-            <DatabaseVersionControl database={database} onChanged={onChanged} />
+            <DatabaseVersionControl
+              database={database}
+              onChanged={onVersionChanged}
+            />
           ),
         },
         {

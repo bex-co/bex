@@ -20,7 +20,7 @@ import { ConnectionInfoPanel } from "@/features/keyvalue/components/connection-i
 import { KeyValueNetworkingPanel } from "@/features/keyvalue/components/key-value-networking-panel";
 import { KeyValuePlanSection } from "@/features/keyvalue/components/key-value-plan-section";
 import { KeyValueMaxmemoryPolicySection } from "@/features/keyvalue/components/key-value-maxmemory-policy-section";
-import { KeyValueNameSection } from "@/features/keyvalue/components/key-value-name-section";
+import { KeyValueNameRow } from "@/features/keyvalue/components/key-value-name-row";
 import { KeyValueLogViewer } from "@/features/keyvalue/components/key-value-log-viewer";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import type { KeyValueView } from "@/features/keyvalue/types";
@@ -127,11 +127,9 @@ export function KeyValueDetailPage() {
             <KeyValueLogViewer resource={keyValue.id} />
           ) : keyValue ? (
             <>
-              <MetadataCard keyValue={keyValue} />
-              <KeyValueNameSection
-                key={`name-${keyValue.name}`}
+              <MetadataCard
                 keyValue={keyValue}
-                onChanged={() => void router.invalidate()}
+                onRenamed={() => void router.invalidate()}
               />
               <ConnectionInfoPanel id={keyValue.id} />
               <KeyValueNetworkingPanel
@@ -159,11 +157,18 @@ export function KeyValueDetailPage() {
   );
 }
 
-function MetadataCard({ keyValue }: { keyValue: KeyValueView }) {
+function MetadataCard({
+  keyValue,
+  onRenamed,
+}: {
+  keyValue: KeyValueView;
+  onRenamed: () => void;
+}) {
   const { t } = useTranslations();
   return (
     <MetadataList
       title={t("keyvalue.metaTitle")}
+      lead={<KeyValueNameRow keyValue={keyValue} onRenamed={onRenamed} />}
       rows={[
         {
           label: t("keyvalue.metaId"),
