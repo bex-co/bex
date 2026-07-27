@@ -1,21 +1,25 @@
 # w5 · m51 — Build Command for all native-runtime services + root-dir command prefix
 
-**Worker:** worker5 **Goal:** The settings page shows an editable Build Command row for every repo-backed native-runtime service (today it exists only for static sites), and every command input carries Render's root-dir-aware prompt prefix (`<rootDir>/ $`) so commands read as relative to the root directory. **Status:** todo
+**Worker:** worker5 **Goal:** The settings page shows an editable Build Command row for every repo-backed native-runtime service (today it exists only for static sites), and every command input carries Render's root-dir-aware prompt prefix (`<rootDir>/ $`) so commands read as relative to the root directory. **Status:** done (2026-07-27)
 
 ## Tasks (in order)
 
 | id   | title                                                                        | est | depends_on |
 | ---- | ----------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Un-gate the Build Command row for all native-runtime repo-backed services     | 30m | —          |
-| t002 | Root-dir prompt prefix inside Build/Pre-Deploy/Start Command inputs           | 30m | t001       |
-| t003 | Render parity — cross-surface consistency check                               | 30m | t002       |
-| t004 | Simplify — run `/simplify` over the changed code                              | 20m | t003       |
-| t005 | Test coverage — gating + prefix behavior tests                                | 30m | t003       |
-| t006 | Closeout — verify DoD, mark done, move milestone                              | 15m | t005       |
+| t001 | Un-gate the Build Command row for all native-runtime repo-backed services — **DONE** | 30m | —          |
+| t002 | Root-dir prompt prefix inside Build/Pre-Deploy/Start Command inputs — **DONE** | 30m | t001       |
+| t003 | Render parity — cross-surface consistency check — **DONE** | 30m | t002       |
+| t004 | Simplify — run `/simplify` over the changed code — **DONE** | 20m | t003       |
+| t005 | Test coverage — gating + prefix behavior tests — **DONE** | 30m | t003       |
+| t006 | Closeout — verify DoD, mark done, move milestone — **DONE** | 15m | t005       |
 
 ## Definition of done
 
 On dev-5: a repo-backed **node web service** shows a Build Command row in Build & Deploy, edits save through the existing `setBuildCommand` mutation, and the change triggers the documented rebuild path; a docker-runtime service shows Dockerfile Path instead (no Build Command row); with `rootDir` set to `backend`, the Build, Pre-Deploy, and Start Command inputs each render a `backend/ $` prefix (plain `$` when rootDir is unset), matching Render's live rendering. Dashboard suite green.
+
+## t003 parity walk (2026-07-27)
+
+Live local walk (`yarn local-bex` + `yarn dev:local`). **Native** static site `docs-site` (runtime `node`, `rootDir: site`): Build & Deploy shows a **Build Command** row with a `site/ $` prompt prefix + pencil — confirming t001 (native repo services show Build Command) and t002 (the `<rootDir>/ $` prefix). **Docker** web service `eden-cms-v2` (runtime `docker`, no root dir): shows **Docker Command** (no prompt prefix — it's a container CMD) + **Dockerfile Path**, and **no Build Command** row; its Pre-Deploy input shows a bare `$` prompt (root dir unset). Matches Render's runtime-based gating. **Outcome: clean.** The native-web Start/Pre-Deploy prefix (the dev stub has no native repo-backed *web* service) is covered by the component tests; a static site is itself a native build, so the core gating + prefix are verified live. Snapshots: `.playwright-mcp/m51-static.md`, `m51-docker.md`.
 
 ## Source + Goal linkage
 

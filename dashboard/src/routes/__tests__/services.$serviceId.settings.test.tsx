@@ -520,4 +520,35 @@ describe("ServiceSettingsPage", () => {
       screen.queryByText("Image registry credential"),
     ).not.toBeInTheDocument();
   });
+
+  it("shows the Build Command row for a native-runtime repo service (w5/m51)", async () => {
+    serverState.service = svc({
+      repo: "https://github.com/acme/native",
+      runtime: "node",
+      builder: "native",
+      buildCommand: "yarn build",
+    });
+    renderSettings();
+
+    await screen.findByText("Build & Deploy");
+    expect(screen.getByRole("textbox", { name: "Build Command" })).toHaveValue(
+      "yarn build",
+    );
+  });
+
+  it("hides Build Command for a Docker-runtime repo service, showing Dockerfile Path instead (w5/m51)", async () => {
+    serverState.service = svc({
+      repo: "https://github.com/acme/dockerized",
+      runtime: "docker",
+      builder: "dockerfile",
+      dockerfilePath: "Dockerfile",
+    });
+    renderSettings();
+
+    await screen.findByText("Build & Deploy");
+    expect(
+      screen.queryByRole("textbox", { name: "Build Command" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Dockerfile Path")).toBeInTheDocument();
+  });
 });

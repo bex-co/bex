@@ -1,5 +1,23 @@
 import { describe, it, expect } from "vitest";
-import { formatRelativeAge } from "@/features/services/lib/format";
+import {
+  formatRelativeAge,
+  commandPromptPrefix,
+} from "@/features/services/lib/format";
+
+describe("commandPromptPrefix", () => {
+  it("renders '<rootDir>/ $' when a root dir is set", () => {
+    expect(commandPromptPrefix("backend")).toBe("backend/ $");
+    // Trailing slashes are normalized (shared with rootDirPrefix).
+    expect(commandPromptPrefix("apps/web/")).toBe("apps/web/ $");
+  });
+
+  it("falls back to a bare '$' prompt when no root dir is set", () => {
+    expect(commandPromptPrefix(null)).toBe("$");
+    expect(commandPromptPrefix(undefined)).toBe("$");
+    expect(commandPromptPrefix("")).toBe("$");
+    expect(commandPromptPrefix("   ")).toBe("$");
+  });
+});
 
 describe("formatRelativeAge", () => {
   const now = Date.parse("2026-07-06T00:00:00Z");

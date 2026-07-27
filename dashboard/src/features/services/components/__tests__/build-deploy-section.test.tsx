@@ -696,4 +696,64 @@ describe("BuildDeploySection", () => {
 
     expect(setBuildCommand).toHaveBeenCalledWith("app", "yarn build");
   });
+
+  // Root-dir command prompt prefix (w5/m51).
+  it("renders a '<rootDir>/ $' prompt on Build, Start, and Pre-Deploy inputs", () => {
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir="backend"
+        runtime="node"
+        buildCommand="yarn build"
+        startCommand="npm start"
+        preDeployCommand="npm run migrate"
+        autoDeploy={false}
+        showPreDeployCommand={true}
+        showStartCommand
+        showBuildCommand
+      />,
+    );
+    // Build, Start, and Pre-Deploy each carry the same root-relative prompt.
+    expect(screen.getAllByText("backend/ $")).toHaveLength(3);
+  });
+
+  it("falls back to a bare '$' prompt when no root dir is set", () => {
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        runtime="node"
+        buildCommand="yarn build"
+        startCommand="npm start"
+        autoDeploy={false}
+        showPreDeployCommand={false}
+        showStartCommand
+        showBuildCommand
+      />,
+    );
+    // Build + Start both show the bare prompt; none show a rootDir prefix.
+    expect(screen.getAllByText("$")).toHaveLength(2);
+  });
+
+  it("shows no prompt on the Docker Command (a container CMD, not a rootDir shell command)", () => {
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir="backend"
+        runtime="docker"
+        startCommand="bin/run"
+        autoDeploy={false}
+        showPreDeployCommand={false}
+        showStartCommand
+      />,
+    );
+    expect(screen.getByText("Docker Command")).toBeInTheDocument();
+    expect(screen.queryByText("backend/ $")).not.toBeInTheDocument();
+  });
 });

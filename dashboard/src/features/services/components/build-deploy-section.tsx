@@ -22,7 +22,7 @@ import { usePreDeployCommand } from "@/features/services/hooks/use-pre-deploy-co
 import { useAutoDeploy } from "@/features/services/hooks/use-auto-deploy";
 import { useBuildFilter } from "@/features/services/hooks/use-build-filter";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
-import { rootDirPrefix } from "@/features/services/lib/format";
+import { commandPromptPrefix } from "@/features/services/lib/format";
 import type { BuildFilterView } from "@/features/services/types";
 
 export interface BuildDeploySectionProps {
@@ -181,11 +181,10 @@ export function BuildDeploySection({
           <EditableFieldRow
             label={t("services.buildCommandLabel")}
             hint={t("services.buildCommandHint")}
-            // Render's root-directory affordance (w5/m48/t004): the command
-            // runs from rootDir, so the input carries an "<rootDir>/ $" prompt.
-            valuePrefix={
-              rootDirPrefix(rootDir) ? rootDirPrefix(rootDir) + " $" : undefined
-            }
+            // Render's root-directory affordance (w5/m48/t004, w5/m51): the
+            // command runs from rootDir, so the input carries an "<rootDir>/ $"
+            // prompt (bare "$" when no root dir is set).
+            valuePrefix={commandPromptPrefix(rootDir)}
             value={buildCommand ?? ""}
             placeholder={t("services.buildCommandPlaceholder")}
             editLabel={t("services.buildCommandEdit")}
@@ -215,6 +214,12 @@ export function BuildDeploySection({
                 : "services.startCommandHint",
             )}
             value={startCommand ?? ""}
+            // A native Start Command runs from rootDir (Render's "<rootDir>/ $"
+            // prompt); a Docker Command overrides the container's CMD and isn't a
+            // rootDir shell command, so it carries no prompt (w5/m51).
+            valuePrefix={
+              dockerCommand ? undefined : commandPromptPrefix(rootDir)
+            }
             placeholder={t(
               dockerCommand
                 ? "services.dockerCommandPlaceholder"
@@ -273,6 +278,8 @@ export function BuildDeploySection({
             label={t("services.preDeployLabel")}
             hint={t("services.preDeployHint")}
             value={preDeployCommand ?? ""}
+            // Pre-deploy runs from rootDir too — same "<rootDir>/ $" prompt (w5/m51).
+            valuePrefix={commandPromptPrefix(rootDir)}
             placeholder={t("services.preDeployPlaceholder")}
             editLabel={t("services.preDeployEdit")}
             optional
