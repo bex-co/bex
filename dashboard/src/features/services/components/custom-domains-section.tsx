@@ -65,6 +65,7 @@ import {
   type AddedDomain,
 } from "@/features/services/hooks/use-custom-domains";
 import { CenteredState } from "@/features/services/components/centered-state";
+import { PlatformSubdomainRow } from "@/features/services/components/platform-subdomain-section";
 import {
   pairedSibling,
   type CustomDomainView,
@@ -87,7 +88,19 @@ const COLUMN_COUNT = 4;
  * host) with copy buttons and a "Re-check" action. All over bex-api's custom-domains
  * GraphQL (docs/ADR006-bex-api.md), a veneer over App.spec.hosts[].
  */
-export function CustomDomainsSection({ serviceId }: { serviceId: string }) {
+export function CustomDomainsSection({
+  serviceId,
+  subdomain,
+}: {
+  serviceId: string;
+  /** When set, the platform-subdomain toggle nests at the bottom of this card
+   *  (Render folds "Render Subdomain" into Custom Domains, w5/m52). Omitted for
+   *  service types without a public platform subdomain. */
+  subdomain?: {
+    url: string | null;
+    renderSubdomainPolicy: string | null | undefined;
+  };
+}) {
   const { t } = useTranslations();
   const { domains, loading, error, refetch } = useCustomDomains(serviceId);
   const { addDomain, deleteDomain, verifyDomain, busy } =
@@ -104,7 +117,7 @@ export function CustomDomainsSection({ serviceId }: { serviceId: string }) {
           <AddDomainButton addDomain={addDomain} disabled={busy} />
         </CardAction>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-6">
         {error ? (
           <CenteredState
             icon={<AlertTriangle />}
@@ -144,6 +157,16 @@ export function CustomDomainsSection({ serviceId }: { serviceId: string }) {
               ))}
             </TableBody>
           </Table>
+        )}
+        {subdomain && (
+          <>
+            <Separator />
+            <PlatformSubdomainRow
+              serviceId={serviceId}
+              url={subdomain.url}
+              renderSubdomainPolicy={subdomain.renderSubdomainPolicy}
+            />
+          </>
         )}
       </CardContent>
     </Card>
@@ -194,11 +217,12 @@ function CustomDomainRow({
               })}
             </p>
           )}
-          {!domain.redirectForName && sibling?.redirectForName === domain.name && (
-            <p className="text-muted-foreground text-xs font-normal">
-              {t("services.domainRedirectsHere", { sibling: sibling.name })}
-            </p>
-          )}
+          {!domain.redirectForName &&
+            sibling?.redirectForName === domain.name && (
+              <p className="text-muted-foreground text-xs font-normal">
+                {t("services.domainRedirectsHere", { sibling: sibling.name })}
+              </p>
+            )}
         </TableCell>
         <TableCell>
           <StatusBadge

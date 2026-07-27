@@ -914,14 +914,25 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Settings",
     description: "Service-detail nav item (settings tab)",
   },
-  "services.settingsTitle": {
-    message: "Settings",
-    description: "Settings tab card title",
-  },
   "services.settingsDescription": {
     message:
       "Configure this service's name, instance size, and other settings.",
     description: "Settings tab card description",
+  },
+  "services.generalTitle": {
+    message: "General",
+    description:
+      "Settings tab: first card heading, Render's 'General' section (w5/m52)",
+  },
+  "services.regionLabel": {
+    message: "Region",
+    description:
+      "Settings General card: read-only platform placement row label",
+  },
+  "services.regionHint": {
+    message:
+      "The region where your service runs. Services in the same region can communicate over the private network.",
+    description: "Settings General card: Region row explanatory copy",
   },
   "services.editRowSave": {
     message: "Save changes",
@@ -1598,14 +1609,23 @@ const enServices: Record<string, TranslationEntry> = {
       "Overrides the image's default entry point. Leave blank to run the image's own command.",
     description: "Cron job Deploy section: command field help text",
   },
-  "services.buildDeployTitle": {
-    message: "Build & Deploy",
+  "services.buildTitle": {
+    message: "Build",
     description:
-      "Settings tab: Build & Deploy section title (w5/m13, Render parity)",
+      "Settings tab: Build card title, Render's split Build section (w5/m52)",
   },
-  "services.buildDeployDescription": {
-    message: "Where this service builds and deploys from.",
-    description: "Settings tab: Build & Deploy section description",
+  "services.buildDescription": {
+    message: "Configure how bex builds your service from your repository.",
+    description: "Settings tab: Build card description",
+  },
+  "services.deploySectionTitle": {
+    message: "Deploy",
+    description:
+      "Settings tab: Deploy card title, Render's split Deploy section (w5/m52)",
+  },
+  "services.deploySectionDescription": {
+    message: "Configure how bex deploys and runs your service.",
+    description: "Settings tab: Deploy card description",
   },
   "services.buildDeploySourceLabel": {
     message: "Source",

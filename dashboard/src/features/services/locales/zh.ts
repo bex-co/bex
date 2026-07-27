@@ -900,13 +900,23 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "设置",
     description: "Service-detail nav item (settings tab)",
   },
-  "services.settingsTitle": {
-    message: "设置",
-    description: "Settings tab card title",
-  },
   "services.settingsDescription": {
     message: "配置该服务的名称、实例规格及其他设置。",
     description: "Settings tab card description",
+  },
+  "services.generalTitle": {
+    message: "常规",
+    description:
+      "Settings tab: first card heading, Render's 'General' section (w5/m52)",
+  },
+  "services.regionLabel": {
+    message: "区域",
+    description:
+      "Settings General card: read-only platform placement row label",
+  },
+  "services.regionHint": {
+    message: "服务运行所在的区域。同一区域内的服务可通过专用网络互相通信。",
+    description: "Settings General card: Region row explanatory copy",
   },
   "services.editRowSave": {
     message: "保存更改",
@@ -1568,14 +1578,23 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "覆盖镜像的默认入口命令。留空则使用镜像自身的命令。",
     description: "Cron job Deploy section: command field help text",
   },
-  "services.buildDeployTitle": {
-    message: "构建与部署",
+  "services.buildTitle": {
+    message: "构建",
     description:
-      "Settings tab: Build & Deploy section title (w5/m13, Render parity)",
+      "Settings tab: Build card title, Render's split Build section (w5/m52)",
   },
-  "services.buildDeployDescription": {
-    message: "此服务的构建与部署来源。",
-    description: "Settings tab: Build & Deploy section description",
+  "services.buildDescription": {
+    message: "配置 bex 如何从你的代码仓库构建此服务。",
+    description: "Settings tab: Build card description",
+  },
+  "services.deploySectionTitle": {
+    message: "部署",
+    description:
+      "Settings tab: Deploy card title, Render's split Deploy section (w5/m52)",
+  },
+  "services.deploySectionDescription": {
+    message: "配置 bex 如何部署和运行此服务。",
+    description: "Settings tab: Deploy card description",
   },
   "services.buildDeploySourceLabel": {
     message: "源代码",
@@ -1603,7 +1622,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Build & Deploy: branch edit-button aria label",
   },
   "services.buildDeployBranchConfirmTitle": {
-    message: '将分支改为“{value}”？',
+    message: "将分支改为“{value}”？",
     description: "Build & Deploy: branch confirm-dialog title",
   },
   "services.buildDeployBranchConfirmBody": {

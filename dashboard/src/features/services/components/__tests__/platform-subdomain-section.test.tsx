@@ -1,24 +1,21 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { PlatformSubdomainSection } from "@/features/services/components/platform-subdomain-section";
+import { PlatformSubdomainRow } from "@/features/services/components/platform-subdomain-section";
 
 // Stub the mutation hook so tests don't need an Apollo context.
 const mockSetSubdomainPolicy = vi.fn().mockResolvedValue(true);
-vi.mock(
-  "@/features/services/hooks/use-subdomain-policy",
-  () => ({
-    useSubdomainPolicy: () => ({
-      setSubdomainPolicy: mockSetSubdomainPolicy,
-      busy: false,
-    }),
+vi.mock("@/features/services/hooks/use-subdomain-policy", () => ({
+  useSubdomainPolicy: () => ({
+    setSubdomainPolicy: mockSetSubdomainPolicy,
+    busy: false,
   }),
-);
+}));
 
-describe("PlatformSubdomainSection", () => {
+describe("PlatformSubdomainRow", () => {
   it("shows the service URL as a link when policy is enabled", () => {
     render(
-      <PlatformSubdomainSection
+      <PlatformSubdomainRow
         serviceId="my-svc"
         url="https://web.onbex.co"
         renderSubdomainPolicy="enabled"
@@ -33,7 +30,7 @@ describe("PlatformSubdomainSection", () => {
 
   it("shows a pending note when enabled but service has no URL yet", () => {
     render(
-      <PlatformSubdomainSection
+      <PlatformSubdomainRow
         serviceId="my-svc"
         url={null}
         renderSubdomainPolicy="enabled"
@@ -48,7 +45,7 @@ describe("PlatformSubdomainSection", () => {
 
   it("shows disabled note when policy is disabled", () => {
     render(
-      <PlatformSubdomainSection
+      <PlatformSubdomainRow
         serviceId="my-svc"
         url="https://web.onbex.co"
         renderSubdomainPolicy="disabled"
@@ -64,7 +61,7 @@ describe("PlatformSubdomainSection", () => {
 
   it("defaults to enabled when policy is null", () => {
     render(
-      <PlatformSubdomainSection
+      <PlatformSubdomainRow
         serviceId="my-svc"
         url="https://web.onbex.co"
         renderSubdomainPolicy={null}
@@ -78,7 +75,7 @@ describe("PlatformSubdomainSection", () => {
   it("calls setSubdomainPolicy when the switch is toggled", async () => {
     const user = userEvent.setup();
     render(
-      <PlatformSubdomainSection
+      <PlatformSubdomainRow
         serviceId="my-svc"
         url="https://web.onbex.co"
         renderSubdomainPolicy="enabled"
