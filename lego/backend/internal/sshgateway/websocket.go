@@ -58,9 +58,8 @@ const (
 	wsShellSubprotocol = "bex.shell"
 	// wsTicketPrefix carries the exec ticket inside the client's
 	// Sec-WebSocket-Protocol offer (w1/042 L8): a header, unlike the request
-	// line, never reaches Traefik's access log (headers are dropped there; the
-	// old ?ticket=… query rode RequestPath, which is kept). The ticket's
-	// base64url alphabet is entirely HTTP-token-safe.
+	// line, never reaches Traefik's access log (headers are dropped there). The
+	// ticket's base64url alphabet is entirely HTTP-token-safe.
 	wsTicketPrefix = "bex.ticket."
 )
 
@@ -75,18 +74,16 @@ var wsUpgrader = websocket.Upgrader{
 	Subprotocols: []string{wsShellSubprotocol},
 }
 
-// wsTicket extracts the exec ticket from the request: the subprotocol carrier
-// first (w1/042 L8), falling back to the legacy ?ticket= query parameter for
-// pre-roll dashboard tabs whose JS still builds the old URL — that fallback
-// (and only it) keeps the ticket in Traefik's RequestPath, decaying to unused
-// as those tabs reload; remove it after a release.
+// wsTicket extracts the exec ticket exclusively from the subprotocol carrier
+// (w1/042 L8). Query-string credentials are deliberately not accepted: request
+// paths are retained in ordinary edge access logs.
 func wsTicket(r *http.Request) string {
 	for _, proto := range websocket.Subprotocols(r) {
 		if t, ok := strings.CutPrefix(proto, wsTicketPrefix); ok {
 			return t
 		}
 	}
-	return r.URL.Query().Get("ticket")
+	return ""
 }
 
 // clientControl is a client→server text frame. Only terminal resize is honored;

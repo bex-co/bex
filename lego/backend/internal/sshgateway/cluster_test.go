@@ -36,6 +36,13 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
+func dialLiveWebSocket(baseURL, ticket string) (*websocket.Conn, *http.Response, error) {
+	dialer := websocket.Dialer{
+		Subprotocols: []string{wsShellSubprotocol, wsTicketPrefix + ticket},
+	}
+	return dialer.Dial(baseURL, nil)
+}
+
 // TestGatewayRealKubernetesWebShell is the opt-in live counterpart to the
 // in-process WebSocket tests. It redeems a real bex-api ticket through the
 // deployed gateway, drives a TTY inside a Ready tenant pod, observes resize,
@@ -48,8 +55,7 @@ func TestGatewayRealKubernetesWebShell(t *testing.T) {
 		t.Skip("set BEX_TEST_SHELL_WS_URL and BEX_TEST_SHELL_TICKET for the real-cluster web-shell smoke")
 	}
 
-	url := baseURL + "?ticket=" + ticket
-	conn, resp, err := websocket.DefaultDialer.Dial(url, nil)
+	conn, resp, err := dialLiveWebSocket(baseURL, ticket)
 	if err != nil {
 		status := 0
 		if resp != nil {
@@ -95,7 +101,7 @@ func TestGatewayRealKubernetesWebShell(t *testing.T) {
 		t.Fatalf("terminal exit code = %d, want 23", exitCode)
 	}
 
-	_, replayResp, replayErr := websocket.DefaultDialer.Dial(url, nil)
+	_, replayResp, replayErr := dialLiveWebSocket(baseURL, ticket)
 	if replayErr == nil {
 		t.Fatal("replayed ticket unexpectedly opened a second shell")
 	}
@@ -115,7 +121,7 @@ func TestGatewayRealKubernetesWebShellTimeout(t *testing.T) {
 		t.Skip("set the live Web Shell inputs and BEX_TEST_SHELL_EXPECT_TIMEOUT=1")
 	}
 
-	conn, resp, err := websocket.DefaultDialer.Dial(baseURL+"?ticket="+ticket, nil)
+	conn, resp, err := dialLiveWebSocket(baseURL, ticket)
 	if err != nil {
 		status := 0
 		if resp != nil {
@@ -172,7 +178,7 @@ func TestGatewayRealKubernetesWebShellPodDeletion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	conn, resp, err := websocket.DefaultDialer.Dial(baseURL+"?ticket="+ticket, nil)
+	conn, resp, err := dialLiveWebSocket(baseURL, ticket)
 	if err != nil {
 		status := 0
 		if resp != nil {

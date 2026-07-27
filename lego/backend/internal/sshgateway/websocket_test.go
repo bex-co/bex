@@ -21,6 +21,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -42,13 +43,19 @@ func newWSGateway(t *testing.T, st Store, resolver TargetResolver, exec Executor
 	}
 }
 
-func wsURL(t *testing.T, srv *httptest.Server, token string) string {
+func wsURL(t *testing.T, srv *httptest.Server) string {
 	t.Helper()
-	u := "ws" + strings.TrimPrefix(srv.URL, "http") + "/shell"
+	return "ws" + strings.TrimPrefix(srv.URL, "http") + "/shell"
+}
+
+func dialWS(t *testing.T, srv *httptest.Server, token string) (*websocket.Conn, *http.Response, error) {
+	t.Helper()
+	protocols := []string{wsShellSubprotocol}
 	if token != "" {
-		u += "?ticket=" + token
+		protocols = append(protocols, wsTicketPrefix+token)
 	}
-	return u
+	dialer := websocket.Dialer{Subprotocols: protocols}
+	return dialer.Dial(wsURL(t, srv), nil)
 }
 
 func mintWS(t *testing.T, claims shellticket.Claims) string {
@@ -71,7 +78,7 @@ func TestWebSocketShellHappyPath(t *testing.T) {
 	defer srv.Close()
 
 	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL(t, srv, token), nil)
+	conn, _, err := dialWS(t, srv, token)
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
@@ -126,7 +133,7 @@ func TestWebSocketPinnedInstanceUsername(t *testing.T) {
 	srv := httptest.NewServer(newWSGateway(t, &fakeGatewayStore{}, resolver, &fakeExecutor{}).WebSocketHandler())
 	defer srv.Close()
 	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde", InstanceID: "srv-abcdeabcdeabcdeabcde-pod01"})
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL(t, srv, token), nil)
+	conn, _, err := dialWS(t, srv, token)
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
@@ -158,7 +165,7 @@ func TestWebSocketRejectsBadTickets(t *testing.T) {
 		}(),
 	}
 	for name, token := range cases {
-		_, resp, err := websocket.DefaultDialer.Dial(wsURL(t, srv, token), nil)
+		_, resp, err := dialWS(t, srv, token)
 		if err == nil {
 			t.Errorf("%s: dial succeeded, want rejection", name)
 			continue
@@ -174,7 +181,7 @@ func TestWebSocketRejectsReplayedTicket(t *testing.T) {
 	defer srv.Close()
 	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
 
-	first, _, err := websocket.DefaultDialer.Dial(wsURL(t, srv, token), nil)
+	first, _, err := dialWS(t, srv, token)
 	if err != nil {
 		t.Fatalf("first dial: %v", err)
 	}
@@ -186,7 +193,7 @@ func TestWebSocketRejectsReplayedTicket(t *testing.T) {
 	}
 	first.Close()
 
-	_, resp, err := websocket.DefaultDialer.Dial(wsURL(t, srv, token), nil)
+	_, resp, err := dialWS(t, srv, token)
 	if err == nil || resp == nil || resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("replayed ticket: status = %v, err = %v, want 401", resp, err)
 	}
@@ -203,7 +210,7 @@ func TestWebSocketRejectsReplayAcrossReplicas(t *testing.T) {
 	defer srvB.Close()
 	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
 
-	first, _, err := websocket.DefaultDialer.Dial(wsURL(t, srvA, token), nil)
+	first, _, err := dialWS(t, srvA, token)
 	if err != nil {
 		t.Fatalf("dial replica A: %v", err)
 	}
@@ -215,7 +222,7 @@ func TestWebSocketRejectsReplayAcrossReplicas(t *testing.T) {
 	}
 	first.Close()
 
-	_, resp, err := websocket.DefaultDialer.Dial(wsURL(t, srvB, token), nil)
+	_, resp, err := dialWS(t, srvB, token)
 	if err == nil || resp == nil || resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("cross-replica replay: status = %v, err = %v, want 401", resp, err)
 	}
@@ -228,16 +235,15 @@ func TestWebSocketNonceStoreErrorFailsClosed(t *testing.T) {
 	srv := httptest.NewServer(newWSGateway(t, st, &fakeResolver{}, &fakeExecutor{}).WebSocketHandler())
 	defer srv.Close()
 	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
-	_, resp, err := websocket.DefaultDialer.Dial(wsURL(t, srv, token), nil)
+	_, resp, err := dialWS(t, srv, token)
 	if err == nil || resp == nil || resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("claim error: status = %v, err = %v, want 401", resp, err)
 	}
 }
 
 // The dashboard carries the ticket in a Sec-WebSocket-Protocol entry, not the
-// URL (w1/042 L8) — the gateway extracts it from the offer, selects only the
-// bex.shell marker in the response (the credential is never echoed), and the
-// legacy ?ticket= query keeps working for pre-roll dashboard tabs.
+// URL (w1/042 L8) — the gateway extracts it from the offer and selects only the
+// bex.shell marker in the response, so the credential is never echoed.
 func TestWebSocketTicketViaSubprotocol(t *testing.T) {
 	st := &fakeGatewayStore{}
 	srv := httptest.NewServer(newWSGateway(t, st, &fakeResolver{}, &fakeExecutor{}).WebSocketHandler())
@@ -245,7 +251,7 @@ func TestWebSocketTicketViaSubprotocol(t *testing.T) {
 	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
 
 	dialer := websocket.Dialer{Subprotocols: []string{wsShellSubprotocol, wsTicketPrefix + token}}
-	conn, resp, err := dialer.Dial(wsURL(t, srv, ""), nil)
+	conn, resp, err := dialer.Dial(wsURL(t, srv), nil)
 	if err != nil {
 		t.Fatalf("subprotocol dial: %v", err)
 	}
@@ -265,11 +271,25 @@ func TestWebSocketTicketViaSubprotocol(t *testing.T) {
 	if len(st.started) != 1 {
 		t.Errorf("audit rows started = %d, want 1", len(st.started))
 	}
+}
 
-	// The same ticket via the legacy query parameter is a replay now — the
-	// shared claim covers both carriers.
-	if _, resp, err := websocket.DefaultDialer.Dial(wsURL(t, srv, token), nil); err == nil || resp == nil || resp.StatusCode != http.StatusUnauthorized {
-		t.Errorf("query replay after subprotocol redemption: status = %v, err = %v, want 401", resp, err)
+// Query-string credentials are rejected even when the ticket itself is valid;
+// accepting them would put a reusable capability in the edge's logged path.
+func TestWebSocketRejectsQueryTicket(t *testing.T) {
+	srv := httptest.NewServer(newWSGateway(t, &fakeGatewayStore{}, &fakeResolver{}, &fakeExecutor{}).WebSocketHandler())
+	defer srv.Close()
+	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
+
+	queryURL, err := url.Parse(wsURL(t, srv))
+	if err != nil {
+		t.Fatal(err)
+	}
+	values := queryURL.Query()
+	values.Set("ticket", token)
+	queryURL.RawQuery = values.Encode()
+	_, resp, err := websocket.DefaultDialer.Dial(queryURL.String(), nil)
+	if err == nil || resp == nil || resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("query ticket: status = %v, err = %v, want 401", resp, err)
 	}
 }
 
@@ -280,7 +300,7 @@ func TestWebSocketDisabledWithoutSecret(t *testing.T) {
 	}
 	srv := httptest.NewServer(gw.WebSocketHandler())
 	defer srv.Close()
-	_, resp, err := websocket.DefaultDialer.Dial(wsURL(t, srv, "anything"), nil)
+	_, resp, err := dialWS(t, srv, "anything")
 	if err == nil || resp == nil || resp.StatusCode != http.StatusServiceUnavailable {
 		t.Errorf("disabled gateway: status = %v, err = %v, want 503", resp, err)
 	}
@@ -294,8 +314,8 @@ func TestWebSocketPerIdentityCap(t *testing.T) {
 	defer srv.Close()
 
 	// Session 1 holds the only per-identity slot: its exec blocks until closed.
-	conn1, _, err := websocket.DefaultDialer.Dial(
-		wsURL(t, srv, mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})), nil)
+	conn1, _, err := dialWS(t, srv,
+		mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"}))
 	if err != nil {
 		t.Fatalf("dial 1: %v", err)
 	}
@@ -315,8 +335,8 @@ func TestWebSocketPerIdentityCap(t *testing.T) {
 
 	// Session 2 (same subject, fresh ticket) must be refused by the cap with an
 	// error control frame, not a second exec stream.
-	conn2, _, err := websocket.DefaultDialer.Dial(
-		wsURL(t, srv, mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})), nil)
+	conn2, _, err := dialWS(t, srv,
+		mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"}))
 	if err != nil {
 		t.Fatalf("dial 2: %v", err)
 	}
@@ -346,7 +366,7 @@ func TestWebSocketResolveFailureSendsErrorFrame(t *testing.T) {
 	defer srv.Close()
 
 	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL(t, srv, token), nil)
+	conn, _, err := dialWS(t, srv, token)
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}

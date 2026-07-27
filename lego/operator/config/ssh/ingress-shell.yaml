@@ -1,9 +1,10 @@
 # Browser Web Shell edge route (w2/m55, docs/ADR035-ssh.md § Browser Web Shell).
-# The dashboard terminal opens wss://ssh.bex.co/shell?ticket=…; Traefik terminates
-# TLS on :443 and forwards the (transparently upgraded) WebSocket to the isolated
-# gateway's plain-HTTP shell listener (Service port 8080 → BEX_SHELL_WS_ADDR). This
-# is HTTP host-based routing and is independent of native SSH, which rides the
-# separate `ssh` TCP entrypoint (:2222 → public :22) on the same hostname.
+# The dashboard terminal opens wss://ssh.bex.co/shell and carries its short-lived
+# ticket in Sec-WebSocket-Protocol, never the request URL. Traefik terminates TLS
+# on :443 and forwards the (transparently upgraded) WebSocket to the isolated
+# gateway's plain-HTTP shell listener (Service port 8080 → BEX_SHELL_WS_ADDR).
+# This is HTTP host-based routing and is independent of native SSH, which rides
+# the separate `ssh` TCP entrypoint (:2222 → public :22) on the same hostname.
 #
 # The route + cert can exist ahead of activation: the feature stays disabled (the
 # ticket verb 503s and the gateway's listener does not start) until the shared
