@@ -160,6 +160,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 - [docs/ADR035-ssh.md](docs/ADR035-ssh.md) — running-instance SSH: identity keys, Render-compatible instance targeting, isolated gateway, Kubernetes exec bridge, and production activation gates.
 - [docs/ADR036-ca-rotation-runbook.md](docs/ADR036-ca-rotation-runbook.md) — Kubernetes CA rotation and admin-cert renewal: annual cert renewal (non-disruptive) and full CA rotation (emergency, disruptive); AdminCertExpiringSoon alert response.
 - [docs/ADR037-openbao-rekey-runbook.md](docs/ADR037-openbao-rekey-runbook.md) — OpenBao root-token rotation (`bao operator generate-root`) and Shamir re-key (`bao operator rekey`): when to use each, exact commands, `.env` + GitHub Actions update.
+- [docs/ADR041-sandbox-runtime-comparison.md](docs/ADR041-sandbox-runtime-comparison.md) — survey: AgentENV (Firecracker microVMs, overlaybd/ublk memory snapshots, Rust node + prototype control plane) vs. OpenSandbox (containers, k8s-native CRDs, full SDK/CLI/MCP surface) — convergences, the three dominant differences (memory snapshots, isolation substrate, platform completeness), and why bex stays on OpenSandbox per ADR014.
 
 ## Rules
 
