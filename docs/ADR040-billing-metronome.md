@@ -1,6 +1,8 @@
 # ADR040 — Billing via Metronome (usage export → rating → invoicing)
 
-**Status:** Proposed · 2026-07-19 (Phase 1 shadow export implemented w7/m47; Phases 2–3 proposed) **Author:** (billing workstream)
+**Status:** **Sink superseded** · 2026-07-19 (Phase 1 shadow export w7/m47, Phase 2 surface w7/m48, both on Metronome) → **pivoting to Stripe Billing direct (w7/m50)** **Author:** (billing workstream)
+
+> **Update (2026-07-20) — the sink changed.** **Stripe acquired Metronome** in Dec 2025 (~$1B, completed) to own usage-based billing for the AI era, and **Stripe Billing** now natively provides everything this ADR used Metronome for: `billing/meter` + `meter_events` (v2 stream for high volume), tiered/graduated pricing on the attached `Price`, and — natively — **collection** (subscription → invoice → charge + Smart Retries dunning). So `bex → Metronome → Stripe` collapses to **`bex → Stripe`**: one vendor, Phase-3 collection nearly free, and the Stripe CLI as the config surface. **w7/m50 re-targets the pipeline from Metronome to Stripe Billing.** What this **supersedes**: Decision §1 (Metronome as the billing source of truth) and §2 (Metronome customer keyed by ingest alias) — the sink becomes Stripe (customer keyed by `metadata.bex_workspace`, usage as meter events). What **stands unchanged**: the metering pipeline (ADR023), the seal-then-emit outbox + deterministic id (§3–4), the event→meter mapping intent (§5), the env-gated byte-identical-when-off contract (§6), the three-layer enable/disable model (§7), and the non-payment enforcement ladder (§9). The design below reads as the Metronome-specific implementation of a sink-agnostic architecture; m50 swaps the sink. Sources: [Stripe completes Metronome acquisition](https://stripe.com/newsroom/news/stripe-completes-metronome-acquisition), [Stripe API — Meter Events](https://docs.stripe.com/api/billing/meter-event).
 
 ---
 
