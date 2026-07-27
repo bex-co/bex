@@ -1,13 +1,13 @@
 # w5 · m54 — Source + Branch pickers (GitHub-App-backed)
 
-**Worker:** worker5 **Goal:** The Build card's Source row becomes editable (switch the connected repo through the existing repo-picker flow) and Branch becomes Render's searchable combobox fed by the repository's real branches via the GitHub App — with free-text fallback whenever the App isn't connected. Lower priority than m50–m53. **Status:** todo
+**Worker:** worker5 **Goal:** The Build card's Source row becomes editable (switch the connected repo through the existing repo-picker flow) and Branch becomes Render's searchable combobox fed by the repository's real branches via the GitHub App — with free-text fallback whenever the App isn't connected. Lower priority than m50–m53. **Status:** in progress (t001+t002 done 2026-07-27 — branch-picker half shipped; t003 Source edit + t004–t007 remaining)
 
 ## Tasks (in order)
 
 | id   | title                                                                    | est | depends_on |
 | ---- | ------------------------------------------------------------------------ | --- | ---------- |
-| t001 | bex-api: branch-list read for a connected repo (GraphQL, GitHub App)     | 45m | —          |
-| t002 | Dashboard: searchable Branch combobox with free-text fallback            | 45m | t001       |
+| t001 | bex-api: branch-list read for a connected repo (GraphQL, GitHub App) — **DONE** | 45m | —          |
+| t002 | Dashboard: searchable Branch combobox with free-text fallback — **DONE** | 45m | t001       |
 | t003 | Dashboard: Source row edit affordance (change connected repo)            | 45m | t001       |
 | t004 | Render parity — cross-surface consistency check                          | 30m | t002, t003 |
 | t005 | Simplify — run `/simplify` over the changed code                         | 20m | t004       |

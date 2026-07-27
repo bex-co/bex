@@ -202,6 +202,11 @@ vi.mock("@/features/services/hooks/use-deploy-hook", () => ({
   }),
 }));
 
+// The Branch combobox (w5/m54) reads useRepoBranches (Apollo); mock it empty.
+vi.mock("@/features/services/hooks/use-repo-branches", () => ({
+  useRepoBranches: () => ({ branches: [], loading: false }),
+}));
+
 // CronDeploySection (w5/m18) calls useCronJob which hits Apollo; mock it.
 vi.mock("@/features/services/hooks/use-cron-job", () => ({
   useCronJob: () => ({ updateCronJob: vi.fn(async () => true), busy: false }),

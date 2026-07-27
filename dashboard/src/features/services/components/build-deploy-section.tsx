@@ -21,6 +21,7 @@ import { useDockerfilePath } from "@/features/services/hooks/use-dockerfile-path
 import { usePreDeployCommand } from "@/features/services/hooks/use-pre-deploy-command";
 import { useAutoDeploy } from "@/features/services/hooks/use-auto-deploy";
 import { useBuildFilter } from "@/features/services/hooks/use-build-filter";
+import { useRepoBranches } from "@/features/services/hooks/use-repo-branches";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
 import { commandPromptPrefix } from "@/features/services/lib/format";
 import type { BuildFilterView } from "@/features/services/types";
@@ -120,6 +121,15 @@ export function BuildDeploySection({
   // (The backend does the precise repo-grant match; this is the UI hint.)
   const viaGitHub = !!connection?.connected && /github\.com[/:]/i.test(repo);
 
+  // Branch combobox options: the connected GitHub repo's real branches (w5/m54),
+  // empty for a non-GitHub repo / no App connection — then the combobox is just
+  // free-text entry (allowCustom), matching today's behavior.
+  const { branches } = useRepoBranches(repo);
+  const branchOptions = useMemo(
+    () => branches.map((b) => ({ value: b, label: b })),
+    [branches],
+  );
+
   // Render presents Auto-Deploy as a select ("On Commit" | "Off"), not a switch
   // (w5/m53). bex has only two states — its boolean spec.autoDeploy maps to
   // Render's autoDeployTrigger "commit"/"off"; "checksPass" is unsupported.
@@ -188,6 +198,9 @@ export function BuildDeploySection({
             editLabel={t("services.buildDeployBranchEdit")}
             mono
             busy={branchBusy}
+            // Render's searchable branch picker (w5/m54) when the repo's branches
+            // are known; free-text otherwise (allowCustom).
+            comboboxOptions={branchOptions}
             confirm={{
               title: (value) =>
                 t("services.buildDeployBranchConfirmTitle", { value }),

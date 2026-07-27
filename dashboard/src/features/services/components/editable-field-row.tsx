@@ -20,6 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/common/components/ui/alert-dialog";
+import { Combobox, type ComboboxOption } from "@/common/components/ui/combobox";
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
 
@@ -63,6 +64,12 @@ export interface EditableFieldRowProps {
   step?: number;
   /** Present ⇒ render a disabled Select instead of an Input (the select variant). */
   options?: readonly EditableFieldSelectOption[];
+  /**
+   * Present ⇒ render a searchable Combobox (typeahead over these options, with
+   * free-text fallback) instead of an Input — the combobox variant used by the
+   * Branch row (w5/m54). An empty list degrades to plain free-text entry.
+   */
+  comboboxOptions?: readonly ComboboxOption[];
   /** Display-only prefix shown before the value (e.g. "app/ $"); never saved. */
   valuePrefix?: string;
   /**
@@ -91,9 +98,9 @@ export interface EditableFieldRowProps {
  * Escape) restores the value and the disabled state. Rebuild-affecting fields
  * pass a `confirm` dialog that runs — and can be dismissed — before onSave fires.
  *
- * One component, two variants: pass `options` for the select variant (consumed
- * by the Notifications row here and the Auto-Deploy row in w5/m53), otherwise a
- * text/number input.
+ * One component, three variants: pass `options` for the select variant (the
+ * Notifications and Auto-Deploy rows), `comboboxOptions` for the searchable
+ * combobox variant (the Branch row, w5/m54), otherwise a text/number input.
  */
 export function EditableFieldRow({
   label,
@@ -110,6 +117,7 @@ export function EditableFieldRow({
   max,
   step,
   options,
+  comboboxOptions,
   valuePrefix,
   trim = true,
   dirty,
@@ -190,7 +198,20 @@ export function EditableFieldRow({
             {valuePrefix}
           </code>
         )}
-        {options ? (
+        {comboboxOptions ? (
+          <div className="flex-1">
+            <Combobox
+              options={[...comboboxOptions]}
+              value={shown}
+              onValueChange={setDraft}
+              disabled={disabled || !editing || busy}
+              allowCustom
+              ariaLabel={label}
+              placeholder={placeholder}
+              className={mono ? "font-mono text-sm" : undefined}
+            />
+          </div>
+        ) : options ? (
           <Select
             value={shown}
             disabled={disabled || !editing || busy}
@@ -239,19 +260,10 @@ export function EditableFieldRow({
 
         {editing ? (
           <>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={busy}
-              onClick={cancel}
-            >
+            <Button variant="ghost" size="sm" disabled={busy} onClick={cancel}>
               {t("services.editRowCancel")}
             </Button>
-            <Button
-              size="sm"
-              disabled={busy || !canSave}
-              onClick={requestSave}
-            >
+            <Button size="sm" disabled={busy || !canSave} onClick={requestSave}>
               {busy && <Loader2 className="animate-spin" />}
               {t("services.editRowSave")}
             </Button>

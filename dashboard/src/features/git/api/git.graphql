@@ -19,6 +19,13 @@ query Repos {
   }
 }
 
+# The actual branches of a connected GitHub repo — feeds the Settings Branch
+# combobox (w5/m54). Empty for a non-GitHub repo or no connection, so the UI
+# degrades to free-text branch entry.
+query RepoBranches($repo: String!) {
+  repoBranches(repo: $repo)
+}
+
 query GitConnection {
   gitConnection {
     connected

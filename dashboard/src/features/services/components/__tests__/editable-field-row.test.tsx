@@ -80,7 +80,9 @@ describe("EditableFieldRow", () => {
     expect(
       screen.getByRole("button", { name: "Edit service name" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Service Name" })).toBeDisabled();
+    expect(
+      screen.getByRole("textbox", { name: "Service Name" }),
+    ).toBeDisabled();
   });
 
   it("Cancel restores the original value and disabled state without saving", async () => {
@@ -149,7 +151,9 @@ describe("EditableFieldRow", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Edit Root Directory" }));
+    await user.click(
+      screen.getByRole("button", { name: "Edit Root Directory" }),
+    );
     const input = screen.getByRole("textbox", { name: "Root Directory" });
     await user.clear(input);
     await user.type(input, "web");
@@ -215,6 +219,35 @@ describe("EditableFieldRow", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("combobox variant: disabled combobox, then edit → free-text → save (w5/m54)", async () => {
+    const user = userEvent.setup();
+    const onSave = ok();
+    render(
+      <EditableFieldRow
+        label="Branch"
+        value="main"
+        editLabel="Edit branch"
+        comboboxOptions={[
+          { value: "main", label: "main" },
+          { value: "dev", label: "dev" },
+        ]}
+        onSave={onSave}
+      />,
+    );
+
+    const combo = screen.getByRole("combobox", { name: "Branch" });
+    expect(combo).toBeDisabled();
+    expect(combo).toHaveValue("main");
+
+    await user.click(screen.getByRole("button", { name: "Edit branch" }));
+    // allowCustom: a typed value that isn't in the option list still saves.
+    await user.clear(combo);
+    await user.type(combo, "feature-x");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(onSave).toHaveBeenCalledWith("feature-x");
+  });
+
   it("select variant: disabled select, then edit → pick → save", async () => {
     const user = userEvent.setup();
     const onSave = ok();
@@ -235,7 +268,9 @@ describe("EditableFieldRow", () => {
     expect(trigger).toBeDisabled();
     expect(trigger).toHaveTextContent("Use workspace default");
 
-    await user.click(screen.getByRole("button", { name: "Edit notifications" }));
+    await user.click(
+      screen.getByRole("button", { name: "Edit notifications" }),
+    );
     await user.click(screen.getByRole("combobox", { name: "Notifications" }));
     await user.click(screen.getByRole("option", { name: "No notifications" }));
     await user.click(screen.getByRole("button", { name: "Save changes" }));

@@ -43,6 +43,7 @@ type APIClient interface {
 	InstallURL() string
 	GetInstallation(ctx context.Context, installationID int64) (Installation, error)
 	ListRepos(ctx context.Context, installationID int64) ([]Repo, error)
+	ListBranches(ctx context.Context, installationID int64, owner, repo string) ([]string, error)
 	MintInstallationToken(ctx context.Context, installationID int64) (InstallationToken, error)
 	RepoAccessible(ctx context.Context, token, owner, repo string) (bool, error)
 	GetCommit(ctx context.Context, token, owner, repo, ref string) (Commit, error)
@@ -235,6 +236,57 @@ func (s *Service) ListRepos(ctx context.Context, ownerID string) ([]Repo, error)
 		repos = []Repo{}
 	}
 	return repos, nil
+}
+
+// ListBranches returns the branch names of repoURL for ownerID's connected
+// installation ("" => the caller's default workspace). It degrades to an empty
+// list — never an error — for a non-github.com repo, no connection, or a repo
+// the installation can't see, so the dashboard falls back to free-text branch
+// entry (w5/m54). Member read.
+func (s *Service) ListBranches(ctx context.Context, ownerID, repoURL string) ([]string, error) {
+	ctx = core.WithWorkspace(ctx, ownerID)
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return nil, err
+	}
+	if !s.configured() {
+		return nil, core.ErrGitHubUnavailable
+	}
+	owner, repo, ok := githubOwnerRepo(repoURL)
+	if !ok {
+		return []string{}, nil // non-GitHub repo => free-text fallback
+	}
+	row, err := s.Store.GetGitConnection(ctx, s.workspaceID(ctx))
+	if errors.Is(err, store.ErrNotFound) {
+		return []string{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	branches, err := s.GitHub.ListBranches(ctx, row.InstallationID, owner, repo)
+	if err != nil {
+		return nil, mapGitHubErr(err)
+	}
+	if branches == nil {
+		branches = []string{}
+	}
+	return branches, nil
+}
+
+// githubOwnerRepo extracts owner + repo from a github.com URL via the shared
+// CanonicalRepo normalizer ("host/owner/repo"); ok=false for a non-github.com
+// host or a path that isn't exactly owner/repo — the caller then degrades to
+// free-text branch entry.
+func githubOwnerRepo(repoURL string) (owner, repo string, ok bool) {
+	const prefix = "github.com/"
+	canon := core.CanonicalRepo(repoURL)
+	if !strings.HasPrefix(canon, prefix) {
+		return "", "", false
+	}
+	parts := strings.Split(strings.TrimPrefix(canon, prefix), "/")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return "", "", false
+	}
+	return parts[0], parts[1], true
 }
 
 // tokenSource adapts the Service to apps' CloneTokenSource seam. It exists as a

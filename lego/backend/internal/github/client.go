@@ -350,6 +350,51 @@ func (c *Client) ListRepos(ctx context.Context, installationID int64) ([]Repo, e
 	return repos, nil
 }
 
+// ghBranch is one entry of GitHub's list-branches response.
+type ghBranch struct {
+	Name string `json:"name"`
+}
+
+// ListBranches returns every branch name of owner/repo the installation can
+// access, following pagination (per_page=100, `Link` rel="next"). It mints a
+// fresh installation token first. (w5/m54 — feeds the dashboard's searchable
+// Branch combobox.)
+func (c *Client) ListBranches(ctx context.Context, installationID int64, owner, repo string) ([]string, error) {
+	tok, err := c.MintInstallationToken(ctx, installationID)
+	if err != nil {
+		return nil, err
+	}
+	url := c.baseURL + "/repos/" + owner + "/" + repo + "/branches?per_page=100"
+	var branches []string
+	for url != "" {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "token "+tok.Token)
+		req.Header.Set("Accept", acceptHeader)
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("github: list branches: %w", err)
+		}
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+		nextURL := nextLink(resp.Header.Get("Link"))
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return nil, &APIError{Status: resp.StatusCode, Body: string(body)}
+		}
+		var page []ghBranch
+		if err := json.Unmarshal(body, &page); err != nil {
+			return nil, fmt.Errorf("github: decode branches response: %w", err)
+		}
+		for _, b := range page {
+			branches = append(branches, b.Name)
+		}
+		url = nextURL
+	}
+	return branches, nil
+}
+
 // nextLink extracts the rel="next" URL from a GitHub `Link` header, or "".
 func nextLink(header string) string {
 	if header == "" {
