@@ -13,7 +13,6 @@ import { InstanceTypeRow } from "@/features/services/components/instance-type-ro
 import { IdleTimeoutRow } from "@/features/services/components/idle-timeout-row";
 import { BuildDeploySection } from "@/features/services/components/build-deploy-section";
 import { CustomDomainsSection } from "@/features/services/components/custom-domains-section";
-import { PlatformSubdomainSection } from "@/features/services/components/platform-subdomain-section";
 import { CronDeploySection } from "@/features/services/components/cron-deploy-section";
 import { DeleteServiceCard } from "@/features/services/components/delete-service-card";
 import { SuspendServiceCard } from "@/features/services/components/suspend-service-card";
@@ -22,6 +21,7 @@ import { StaticSiteSection } from "@/features/services/components/static-site-se
 import { HealthCheckPathRow } from "@/features/services/components/health-check-path-row";
 import { ServiceNotificationsRow } from "@/features/services/components/service-notifications-row";
 import { DisplayNameRow } from "@/features/services/components/display-name-row";
+import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { DeployHookSection } from "@/features/services/components/deploy-hook-section";
 import { MaxShutdownDelayRow } from "@/features/services/components/max-shutdown-delay-row";
 import { ServiceNetworkingPanel } from "@/features/services/components/service-networking-panel";
@@ -67,7 +67,7 @@ export function ServiceSettingsPage() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>{t("services.settingsTitle")}</CardTitle>
+          <CardTitle>{t("services.generalTitle")}</CardTitle>
           <CardDescription>{t("services.settingsDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -81,6 +81,20 @@ export function ServiceSettingsPage() {
                 name={service?.name}
                 onChanged={() => void router.invalidate()}
               />
+              {/* Region: read-only platform placement (Render's General row),
+                  projected from BEX_REGION (w1/m53). Hidden when the install
+                  sets no region — never inferred. Permanently disabled (no
+                  pencil): region is installation-stamped, not tenant-editable. */}
+              {service?.region && (
+                <EditableFieldRow
+                  label={t("services.regionLabel")}
+                  hint={t("services.regionHint")}
+                  value={service.region}
+                  editLabel={t("services.regionLabel")}
+                  disabled
+                  onSave={async () => false}
+                />
+              )}
               {/* A static_site has no instance type — it serves from the object
                   store, not a sized pod (Render shows no Instance Type for
                   static sites; w5/m48/t004). The Plan tab is gated the same way. */}
@@ -147,6 +161,10 @@ export function ServiceSettingsPage() {
               showPreDeployCommand={false}
               showStartCommand={false}
               showDockerfilePath={false}
+              // Cron's deploy concerns live in its own Deploy (Schedule/Command)
+              // section, so no separate Deploy card — Auto-Deploy folds into
+              // Build and the Deploy Hook stays a standalone card below (w5/m52).
+              showDeployCard={false}
             />
           )}
         </>
@@ -184,31 +202,14 @@ export function ServiceSettingsPage() {
               refetch={refetch}
             />
           )}
-          {/* Health Checks: own section (Render parity — Render places this
-              under a dedicated "Health Checks" heading in Settings, separate
-              from the General card). Only web_service/private_service receive
-              HTTP traffic and can have a ReadinessProbe path. */}
-          {!worker && !staticSite && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("services.settingsHealthChecksTitle")}</CardTitle>
-                <CardDescription>
-                  {t("services.settingsHealthChecksDescription")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <HealthCheckPathRow
-                  serviceId={serviceId}
-                  healthCheckPath={service?.healthCheckPath}
-                />
-              </CardContent>
-            </Card>
-          )}
-          <CustomDomainsSection serviceId={serviceId} />
-          <PlatformSubdomainSection
+          {/* Custom Domains, with the platform-subdomain toggle folded in at the
+              bottom of the card (Render parity, w5/m52). */}
+          <CustomDomainsSection
             serviceId={serviceId}
-            url={service?.url ?? null}
-            renderSubdomainPolicy={service?.renderSubdomainPolicy}
+            subdomain={{
+              url: service?.url ?? null,
+              renderSubdomainPolicy: service?.renderSubdomainPolicy,
+            }}
           />
           {/* Networking (w7/m32): inbound IP allowlist — web_service and
               static_site only (both have a public Ingress). */}
@@ -217,16 +218,6 @@ export function ServiceSettingsPage() {
             currentAllowList={service?.ipAllowListEntries}
             onSaved={refetch}
           />
-          {/* Maintenance Mode (w1/m37): web_service only, matching the
-              backend's requireWebService guard. */}
-          {service && isWebService(service) && (
-            <MaintenanceModeSection
-              serviceId={serviceId}
-              serviceName={service.name}
-              plan={service.plan}
-              maintenanceMode={service.maintenanceMode}
-            />
-          )}
         </>
       )}
 
@@ -257,7 +248,41 @@ export function ServiceSettingsPage() {
         </CardContent>
       </Card>
 
-      <DeployHookSection serviceId={serviceId} />
+      {/* Health Checks (Render places this section after Notifications, w5/m52):
+          the HTTP path bex polls before routing traffic. web_service /
+          private_service only — never cron/worker/static (no HTTP readiness). */}
+      {!cron && !worker && !staticSite && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("services.settingsHealthChecksTitle")}</CardTitle>
+            <CardDescription>
+              {t("services.settingsHealthChecksDescription")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <HealthCheckPathRow
+              serviceId={serviceId}
+              healthCheckPath={service?.healthCheckPath}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Maintenance Mode (w1/m37): web_service only, matching the backend's
+          requireWebService guard. */}
+      {service && isWebService(service) && (
+        <MaintenanceModeSection
+          serviceId={serviceId}
+          serviceName={service.name}
+          plan={service.plan}
+          maintenanceMode={service.maintenanceMode}
+        />
+      )}
+
+      {/* Deploy Hook: embedded inside the Deploy card for a repo-backed
+          non-cron service (w5/m52). It stays a standalone card only when there's
+          no Deploy card to hold it — a cron_job or an image-backed service. */}
+      {(cron || !service?.repo) && <DeployHookSection serviceId={serviceId} />}
 
       {/* Suspend / Resume: mirrors Render's bottom-of-settings placement.
           Only once the service has loaded so we know its suspended state. */}

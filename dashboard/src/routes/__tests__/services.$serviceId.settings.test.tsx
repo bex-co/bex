@@ -341,6 +341,49 @@ describe("ServiceSettingsPage", () => {
     expect(screen.queryByText("Deploy")).not.toBeInTheDocument();
   });
 
+  // Settings IA alignment with Render's section layout (w5/m52).
+  it("titles the first card 'General' with a read-only Region row when set", async () => {
+    serverState.service = svc({ region: "fsn1" });
+    renderSettings();
+
+    expect(await screen.findByText("General")).toBeInTheDocument();
+    const region = screen.getByRole("textbox", { name: "Region" });
+    expect(region).toHaveValue("fsn1");
+    expect(region).toBeDisabled();
+  });
+
+  it("hides the Region row when no region is configured", async () => {
+    serverState.service = svc({ region: null });
+    renderSettings();
+
+    await screen.findByText("General");
+    expect(
+      screen.queryByRole("textbox", { name: "Region" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("splits Build and Deploy into separate cards for a repo-backed service", async () => {
+    serverState.service = svc({
+      repo: "https://github.com/acme/app",
+      runtime: "node",
+      builder: "native",
+    });
+    renderSettings();
+
+    expect(await screen.findByText("Build")).toBeInTheDocument();
+    expect(screen.getByText("Deploy")).toBeInTheDocument();
+    // Deploy Hook is embedded in the Deploy card (not a standalone card).
+    expect(screen.getByText("Deploy Hook")).toBeInTheDocument();
+  });
+
+  it("folds the Platform Subdomain toggle into the Custom Domains card", async () => {
+    serverState.service = svc({ type: "web_service" });
+    renderSettings();
+
+    expect(await screen.findByText("Custom Domains")).toBeInTheDocument();
+    expect(screen.getByText("Platform Subdomain")).toBeInTheDocument();
+  });
+
   it("shows Idle timeout + Max shutdown delay for a background_worker, without the moved instance stepper", async () => {
     serverState.service = svc({ type: "background_worker" });
     renderSettings();
@@ -390,7 +433,7 @@ describe("ServiceSettingsPage", () => {
 
     // Both the cron Deploy section (schedule/command) and Build & Deploy render.
     expect(await screen.findByText("Deploy")).toBeInTheDocument();
-    expect(screen.getByText("Build & Deploy")).toBeInTheDocument();
+    expect(screen.getByText("Build")).toBeInTheDocument();
     expect(screen.getByText("Auto-Deploy")).toBeInTheDocument();
     expect(
       screen.getByText("https://github.com/acme/reports"),
@@ -414,7 +457,7 @@ describe("ServiceSettingsPage", () => {
     });
     renderSettings();
 
-    expect(await screen.findByText("Build & Deploy")).toBeInTheDocument();
+    expect(await screen.findByText("Build")).toBeInTheDocument();
     expect(screen.queryByText("Docker Command")).not.toBeInTheDocument();
     expect(screen.queryByText("Dockerfile Path")).not.toBeInTheDocument();
   });
@@ -475,7 +518,7 @@ describe("ServiceSettingsPage", () => {
     renderSettings();
 
     expect(await screen.findByText("Deploy")).toBeInTheDocument();
-    expect(screen.queryByText("Build & Deploy")).not.toBeInTheDocument();
+    expect(screen.queryByText("Build")).not.toBeInTheDocument();
     expect(screen.queryByText("Auto-Deploy")).not.toBeInTheDocument();
   });
 
@@ -515,7 +558,7 @@ describe("ServiceSettingsPage", () => {
     });
     renderSettings();
 
-    await screen.findByText("Build & Deploy");
+    await screen.findByText("Build");
     expect(
       screen.queryByText("Image registry credential"),
     ).not.toBeInTheDocument();
@@ -530,7 +573,7 @@ describe("ServiceSettingsPage", () => {
     });
     renderSettings();
 
-    await screen.findByText("Build & Deploy");
+    await screen.findByText("Build");
     expect(screen.getByRole("textbox", { name: "Build Command" })).toHaveValue(
       "yarn build",
     );
@@ -545,7 +588,7 @@ describe("ServiceSettingsPage", () => {
     });
     renderSettings();
 
-    await screen.findByText("Build & Deploy");
+    await screen.findByText("Build");
     expect(
       screen.queryByRole("textbox", { name: "Build Command" }),
     ).not.toBeInTheDocument();

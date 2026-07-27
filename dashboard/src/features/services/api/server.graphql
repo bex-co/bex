@@ -18,6 +18,9 @@ query Server($id: String!) {
     type
     suspended
     dashboardUrl
+    # region is the platform placement projected from BEX_REGION (w1/m53); shown
+    # read-only in the Settings → General card, hidden when the install sets none.
+    region
     url
     # internalAddress is the private-network "<slug>:<port>" sibling services
     # connect to (web/private only, empty otherwise) — Render's Connect →

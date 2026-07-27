@@ -34,8 +34,27 @@ const MASKED_DEPLOY_HOOK = "•••••••••••••••••�
 /**
  * Settings control for the service's secret Deploy Hook URL (w2/m33): masked by
  * default, reveal/copy on demand, and destructive rotation behind a warning.
+ * Standalone card used for image-backed services; repo-backed services render
+ * {@link DeployHookRows} inside the Build & Deploy "Deploy" card (w5/m52).
  */
 export function DeployHookSection({ serviceId }: DeployHookSectionProps) {
+  const { t } = useTranslations();
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("services.deployHookTitle")}</CardTitle>
+        <CardDescription>{t("services.deployHookDescription")}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <DeployHookRows serviceId={serviceId} />
+      </CardContent>
+    </Card>
+  );
+}
+
+/** The Deploy Hook control's inner rows (URL + reveal/copy + rotate), without a
+ *  Card wrapper — embedded in the Deploy card for repo-backed services (w5/m52). */
+export function DeployHookRows({ serviceId }: DeployHookSectionProps) {
   const { t } = useTranslations();
   const { url, loading, error, regenerate, regenerating } =
     useDeployHook(serviceId);
@@ -46,94 +65,88 @@ export function DeployHookSection({ serviceId }: DeployHookSectionProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("services.deployHookTitle")}</CardTitle>
-        <CardDescription>{t("services.deployHookDescription")}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {loading && !url ? (
-          <Skeleton className="h-9 w-full" />
-        ) : error && !url ? (
-          <p className="text-sm text-destructive">
-            {t("services.deployHookLoadError")}
-          </p>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Input
-              aria-label={t("services.deployHookURLLabel")}
-              value={revealed ? (url ?? "") : MASKED_DEPLOY_HOOK}
-              readOnly
-              className="font-mono text-xs"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              disabled={!url}
-              aria-label={
-                revealed
-                  ? t("services.deployHookHide")
-                  : t("services.deployHookReveal")
-              }
-              onClick={() => setRevealed((shown) => !shown)}
-            >
-              {revealed ? <EyeOff /> : <Eye />}
-            </Button>
-            {url ? (
-              <CopyButton
-                value={url}
-                label={t("services.deployHookCopy")}
-                successText={t("services.deployHookCopied")}
-                errorText={t("services.deployHookCopyError")}
-              />
-            ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                disabled
-                aria-label={t("services.deployHookCopy")}
-              />
-            )}
-          </div>
-        )}
-
-        <p className="text-sm text-muted-foreground">
-          {t("services.deployHookSecretHint")}
+    <>
+      {loading && !url ? (
+        <Skeleton className="h-9 w-full" />
+      ) : error && !url ? (
+        <p className="text-sm text-destructive">
+          {t("services.deployHookLoadError")}
         </p>
-
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Input
+            aria-label={t("services.deployHookURLLabel")}
+            value={revealed ? (url ?? "") : MASKED_DEPLOY_HOOK}
+            readOnly
+            className="font-mono text-xs"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            disabled={!url}
+            aria-label={
+              revealed
+                ? t("services.deployHookHide")
+                : t("services.deployHookReveal")
+            }
+            onClick={() => setRevealed((shown) => !shown)}
+          >
+            {revealed ? <EyeOff /> : <Eye />}
+          </Button>
+          {url ? (
+            <CopyButton
+              value={url}
+              label={t("services.deployHookCopy")}
+              successText={t("services.deployHookCopied")}
+              errorText={t("services.deployHookCopyError")}
+            />
+          ) : (
             <Button
               type="button"
-              variant="outline"
-              disabled={!url || regenerating}
-            >
-              <RotateCw />
-              {t("services.deployHookRegenerate")}
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t("services.deployHookRegenerateTitle")}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {t("services.deployHookRegenerateWarning")}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>
-                {t("services.deployHookCancel")}
-              </AlertDialogCancel>
-              <AlertDialogAction onClick={() => void handleRegenerate()}>
-                {t("services.deployHookRegenerateConfirm")}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </CardContent>
-    </Card>
+              variant="ghost"
+              size="icon-sm"
+              disabled
+              aria-label={t("services.deployHookCopy")}
+            />
+          )}
+        </div>
+      )}
+
+      <p className="text-sm text-muted-foreground">
+        {t("services.deployHookSecretHint")}
+      </p>
+
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!url || regenerating}
+          >
+            <RotateCw />
+            {t("services.deployHookRegenerate")}
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("services.deployHookRegenerateTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("services.deployHookRegenerateWarning")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {t("services.deployHookCancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => void handleRegenerate()}>
+              {t("services.deployHookRegenerateConfirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

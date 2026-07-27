@@ -44,6 +44,17 @@ vi.mock("@/features/services/hooks/use-auto-deploy", () => ({
   useAutoDeploy: () => ({ setAutoDeploy, busy: false }),
 }));
 
+// The Deploy card embeds the Deploy Hook rows (w5/m52), which read useDeployHook.
+vi.mock("@/features/services/hooks/use-deploy-hook", () => ({
+  useDeployHook: () => ({
+    url: "https://api.bex.co/v1/deploy-hooks/dhk-test",
+    loading: false,
+    error: undefined,
+    regenerate: vi.fn(async () => true),
+    regenerating: false,
+  }),
+}));
+
 const connectionState: {
   connection:
     | { connected: boolean; accountLogin: string; installUrl: string }

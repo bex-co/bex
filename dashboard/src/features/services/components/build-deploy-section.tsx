@@ -13,6 +13,7 @@ import { Input } from "@/common/components/ui/input";
 import { Switch } from "@/common/components/ui/switch";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
+import { DeployHookRows } from "@/features/services/components/deploy-hook-section";
 import { useBranch } from "@/features/services/hooks/use-branch";
 import { useRootDir } from "@/features/services/hooks/use-root-dir";
 import { useStartCommand } from "@/features/services/hooks/use-start-command";
@@ -65,6 +66,14 @@ export interface BuildDeploySectionProps {
   buildCommand?: string | null;
   /** True for static_site — shows the Build Command editor (w7/m41). */
   showBuildCommand?: boolean;
+  /**
+   * Whether to render a separate "Deploy" card (Pre-Deploy, Start/Docker
+   * Command, Auto-Deploy, Deploy Hook) after the "Build" card (Render's split,
+   * w5/m52). False for a cron_job, whose deploy concerns live in its own Deploy
+   * (Schedule/Command) section — there Auto-Deploy folds into the Build card and
+   * the Deploy Hook stays a standalone card.
+   */
+  showDeployCard?: boolean;
 }
 
 /**
@@ -93,6 +102,7 @@ export function BuildDeploySection({
   showDockerfilePath = true,
   buildCommand = null,
   showBuildCommand = false,
+  showDeployCard = true,
 }: BuildDeploySectionProps) {
   const { t } = useTranslations();
   const { setRootDir, busy } = useRootDir();
@@ -123,192 +133,226 @@ export function BuildDeploySection({
   const dockerCommand =
     runtime === "docker" || (!runtime && builder === "dockerfile");
 
+  // Auto-Deploy toggle — lives in the Deploy card (web/static) or, for a cron_job
+  // with no Deploy card, folds into the bottom of the Build card.
+  const autoDeploySwitch = (
+    <div className="flex items-start justify-between gap-4">
+      <div className="space-y-1">
+        <div className="text-sm text-muted-foreground">
+          {t("services.autoDeployLabel")}
+        </div>
+        <div className="text-sm text-muted-foreground">
+          {viaGitHub
+            ? t("services.autoDeployViaGitHub")
+            : t("services.autoDeployViaWebhook")}
+        </div>
+      </div>
+      <Switch
+        checked={autoDeployOn}
+        disabled={autoDeployBusy}
+        onCheckedChange={handleAutoDeployChange}
+        aria-label={t("services.autoDeployLabel")}
+      />
+    </div>
+  );
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("services.buildDeployTitle")}</CardTitle>
-        <CardDescription>
-          {t("services.buildDeployDescription")}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div>
-          <div className="text-sm text-muted-foreground">
-            {t("services.buildDeploySourceLabel")}
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("services.buildTitle")}</CardTitle>
+          <CardDescription>{t("services.buildDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div>
+            <div className="text-sm text-muted-foreground">
+              {t("services.buildDeploySourceLabel")}
+            </div>
+            <div className="mt-1 font-mono text-sm break-all">{repo}</div>
           </div>
-          <div className="mt-1 font-mono text-sm break-all">{repo}</div>
-        </div>
-        {/* Branch is editable (w5/m48/t005, Render parity — Render offers a
-            searchable branch picker; bex edits it inline like Root Directory).
-            A change persists spec.branch: the next deploy builds the new
-            branch and push-to-deploy matches pushes against it. An emptied
-            input restores the backend default ("back to main"); the confirm
-            dialog names it via the empty stand-in. */}
-        <EditableFieldRow
-          label={t("services.buildDeployBranchLabel")}
-          hint={t("services.buildDeployBranchHint")}
-          value={branch ?? ""}
-          placeholder={t("services.buildDeployBranchPlaceholder")}
-          editLabel={t("services.buildDeployBranchEdit")}
-          mono
-          busy={branchBusy}
-          confirm={{
-            title: (value) =>
-              t("services.buildDeployBranchConfirmTitle", { value }),
-            body: t("services.buildDeployBranchConfirmBody"),
-            emptyValue: t("services.buildDeployBranchEmpty"),
-          }}
-          onSave={(value) => setBranch(serviceId, value)}
-        />
-        <EditableFieldRow
-          label={t("services.buildDeployRootDirLabel")}
-          hint={t("services.buildDeployRootDirHint")}
-          value={rootDir ?? ""}
-          placeholder={t("services.buildDeployRootDirPlaceholder")}
-          editLabel={t("services.buildDeployEdit")}
-          optional
-          mono
-          busy={busy}
-          confirm={{
-            title: (value) => t("services.buildDeployConfirmTitle", { value }),
-            body: t("services.buildDeployConfirmBody"),
-            emptyValue: t("services.buildDeployConfirmRoot"),
-          }}
-          onSave={(value) => setRootDir(serviceId, value)}
-        />
-
-        {showBuildCommand && (
+          {/* Branch is editable (w5/m48/t005, Render parity — Render offers a
+              searchable branch picker; bex edits it inline like Root Directory).
+              An emptied input restores the backend default ("back to main"); the
+              confirm dialog names it via the empty stand-in. */}
           <EditableFieldRow
-            label={t("services.buildCommandLabel")}
-            hint={t("services.buildCommandHint")}
-            // Render's root-directory affordance (w5/m48/t004, w5/m51): the
-            // command runs from rootDir, so the input carries an "<rootDir>/ $"
-            // prompt (bare "$" when no root dir is set).
-            valuePrefix={commandPromptPrefix(rootDir)}
-            value={buildCommand ?? ""}
-            placeholder={t("services.buildCommandPlaceholder")}
-            editLabel={t("services.buildCommandEdit")}
+            label={t("services.buildDeployBranchLabel")}
+            hint={t("services.buildDeployBranchHint")}
+            value={branch ?? ""}
+            placeholder={t("services.buildDeployBranchPlaceholder")}
+            editLabel={t("services.buildDeployBranchEdit")}
+            mono
+            busy={branchBusy}
+            confirm={{
+              title: (value) =>
+                t("services.buildDeployBranchConfirmTitle", { value }),
+              body: t("services.buildDeployBranchConfirmBody"),
+              emptyValue: t("services.buildDeployBranchEmpty"),
+            }}
+            onSave={(value) => setBranch(serviceId, value)}
+          />
+          <EditableFieldRow
+            label={t("services.buildDeployRootDirLabel")}
+            hint={t("services.buildDeployRootDirHint")}
+            value={rootDir ?? ""}
+            placeholder={t("services.buildDeployRootDirPlaceholder")}
+            editLabel={t("services.buildDeployEdit")}
             optional
             mono
-            busy={buildCommandBusy}
+            busy={busy}
             confirm={{
               title: (value) =>
-                t("services.buildCommandConfirmTitle", { value }),
-              body: t("services.buildCommandConfirmBody"),
-              emptyValue: t("services.buildCommandConfirmEmpty"),
+                t("services.buildDeployConfirmTitle", { value }),
+              body: t("services.buildDeployConfirmBody"),
+              emptyValue: t("services.buildDeployConfirmRoot"),
             }}
-            onSave={(value) => setBuildCommand(serviceId, value)}
+            onSave={(value) => setRootDir(serviceId, value)}
           />
-        )}
 
-        {showStartCommand && (
-          <EditableFieldRow
-            label={t(
-              dockerCommand
-                ? "services.dockerCommandLabel"
-                : "services.startCommandLabel",
+          {showBuildCommand && (
+            <EditableFieldRow
+              label={t("services.buildCommandLabel")}
+              hint={t("services.buildCommandHint")}
+              // Render's root-directory affordance (w5/m48/t004, w5/m51): the
+              // command runs from rootDir, so the input carries an "<rootDir>/ $"
+              // prompt (bare "$" when no root dir is set).
+              valuePrefix={commandPromptPrefix(rootDir)}
+              value={buildCommand ?? ""}
+              placeholder={t("services.buildCommandPlaceholder")}
+              editLabel={t("services.buildCommandEdit")}
+              optional
+              mono
+              busy={buildCommandBusy}
+              confirm={{
+                title: (value) =>
+                  t("services.buildCommandConfirmTitle", { value }),
+                body: t("services.buildCommandConfirmBody"),
+                emptyValue: t("services.buildCommandConfirmEmpty"),
+              }}
+              onSave={(value) => setBuildCommand(serviceId, value)}
+            />
+          )}
+
+          {dockerfileBuild && (
+            <EditableFieldRow
+              label={t("services.dockerfilePathLabel")}
+              hint={t("services.dockerfilePathHint")}
+              value={dockerfilePath ?? ""}
+              placeholder={t("services.dockerfilePathPlaceholder")}
+              editLabel={t("services.dockerfilePathEdit")}
+              optional
+              mono
+              busy={dockerfilePathBusy}
+              confirm={{
+                title: (value) =>
+                  t("services.dockerfilePathConfirmTitle", { value }),
+                body: t("services.dockerfilePathConfirmBody"),
+                emptyValue: t("services.dockerfilePathConfirmEmpty"),
+              }}
+              onSave={(value) => setDockerfilePath(serviceId, value)}
+            />
+          )}
+
+          <BuildFilterEditor
+            serviceId={serviceId}
+            buildFilter={buildFilter ?? null}
+          />
+
+          {/* A cron_job has no Deploy card (its Deploy section holds the
+              schedule), so Auto-Deploy folds into the bottom of Build. */}
+          {!showDeployCard && autoDeploySwitch}
+        </CardContent>
+      </Card>
+
+      {showDeployCard && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("services.deploySectionTitle")}</CardTitle>
+            <CardDescription>
+              {t("services.deploySectionDescription")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {showPreDeployCommand && (
+              <EditableFieldRow
+                label={t("services.preDeployLabel")}
+                hint={t("services.preDeployHint")}
+                value={preDeployCommand ?? ""}
+                // Pre-deploy runs from rootDir too — same "<rootDir>/ $" prompt (w5/m51).
+                valuePrefix={commandPromptPrefix(rootDir)}
+                placeholder={t("services.preDeployPlaceholder")}
+                editLabel={t("services.preDeployEdit")}
+                optional
+                mono
+                busy={preDeployBusy}
+                onSave={(value) => setPreDeployCommand(serviceId, value)}
+              />
             )}
-            hint={t(
-              dockerCommand
-                ? "services.dockerCommandHint"
-                : "services.startCommandHint",
-            )}
-            value={startCommand ?? ""}
-            // A native Start Command runs from rootDir (Render's "<rootDir>/ $"
-            // prompt); a Docker Command overrides the container's CMD and isn't a
-            // rootDir shell command, so it carries no prompt (w5/m51).
-            valuePrefix={
-              dockerCommand ? undefined : commandPromptPrefix(rootDir)
-            }
-            placeholder={t(
-              dockerCommand
-                ? "services.dockerCommandPlaceholder"
-                : "services.startCommandPlaceholder",
-            )}
-            editLabel={t(
-              dockerCommand
-                ? "services.dockerCommandEdit"
-                : "services.startCommandEdit",
-            )}
-            optional={dockerCommand}
-            mono
-            busy={startCommandBusy}
-            confirm={{
-              title: (value) =>
-                t(
+
+            {showStartCommand && (
+              <EditableFieldRow
+                label={t(
                   dockerCommand
-                    ? "services.dockerCommandConfirmTitle"
-                    : "services.startCommandConfirmTitle",
-                  { value },
-                ),
-              body: t("services.startCommandConfirmBody"),
-              emptyValue: t("services.startCommandConfirmEmpty"),
-            }}
-            onSave={(value) => setStartCommand(serviceId, value)}
-          />
-        )}
+                    ? "services.dockerCommandLabel"
+                    : "services.startCommandLabel",
+                )}
+                hint={t(
+                  dockerCommand
+                    ? "services.dockerCommandHint"
+                    : "services.startCommandHint",
+                )}
+                value={startCommand ?? ""}
+                // A native Start Command runs from rootDir (Render's "<rootDir>/ $"
+                // prompt); a Docker Command overrides the container's CMD and isn't
+                // a rootDir shell command, so it carries no prompt (w5/m51).
+                valuePrefix={
+                  dockerCommand ? undefined : commandPromptPrefix(rootDir)
+                }
+                placeholder={t(
+                  dockerCommand
+                    ? "services.dockerCommandPlaceholder"
+                    : "services.startCommandPlaceholder",
+                )}
+                editLabel={t(
+                  dockerCommand
+                    ? "services.dockerCommandEdit"
+                    : "services.startCommandEdit",
+                )}
+                optional={dockerCommand}
+                mono
+                busy={startCommandBusy}
+                confirm={{
+                  title: (value) =>
+                    t(
+                      dockerCommand
+                        ? "services.dockerCommandConfirmTitle"
+                        : "services.startCommandConfirmTitle",
+                      { value },
+                    ),
+                  body: t("services.startCommandConfirmBody"),
+                  emptyValue: t("services.startCommandConfirmEmpty"),
+                }}
+                onSave={(value) => setStartCommand(serviceId, value)}
+              />
+            )}
 
-        {dockerfileBuild && (
-          <EditableFieldRow
-            label={t("services.dockerfilePathLabel")}
-            hint={t("services.dockerfilePathHint")}
-            value={dockerfilePath ?? ""}
-            placeholder={t("services.dockerfilePathPlaceholder")}
-            editLabel={t("services.dockerfilePathEdit")}
-            optional
-            mono
-            busy={dockerfilePathBusy}
-            confirm={{
-              title: (value) =>
-                t("services.dockerfilePathConfirmTitle", { value }),
-              body: t("services.dockerfilePathConfirmBody"),
-              emptyValue: t("services.dockerfilePathConfirmEmpty"),
-            }}
-            onSave={(value) => setDockerfilePath(serviceId, value)}
-          />
-        )}
+            {autoDeploySwitch}
 
-        <BuildFilterEditor
-          serviceId={serviceId}
-          buildFilter={buildFilter ?? null}
-        />
-
-        {showPreDeployCommand && (
-          <EditableFieldRow
-            label={t("services.preDeployLabel")}
-            hint={t("services.preDeployHint")}
-            value={preDeployCommand ?? ""}
-            // Pre-deploy runs from rootDir too — same "<rootDir>/ $" prompt (w5/m51).
-            valuePrefix={commandPromptPrefix(rootDir)}
-            placeholder={t("services.preDeployPlaceholder")}
-            editLabel={t("services.preDeployEdit")}
-            optional
-            mono
-            busy={preDeployBusy}
-            onSave={(value) => setPreDeployCommand(serviceId, value)}
-          />
-        )}
-
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1">
-            <div className="text-sm text-muted-foreground">
-              {t("services.autoDeployLabel")}
+            {/* Deploy Hook, moved into the Deploy section (Render parity, w5/m52). */}
+            <div className="space-y-4">
+              <div>
+                <div className="text-sm font-medium">
+                  {t("services.deployHookTitle")}
+                </div>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  {t("services.deployHookDescription")}
+                </p>
+              </div>
+              <DeployHookRows serviceId={serviceId} />
             </div>
-            <div className="text-sm text-muted-foreground">
-              {viaGitHub
-                ? t("services.autoDeployViaGitHub")
-                : t("services.autoDeployViaWebhook")}
-            </div>
-          </div>
-          <Switch
-            checked={autoDeployOn}
-            disabled={autoDeployBusy}
-            onCheckedChange={handleAutoDeployChange}
-            aria-label={t("services.autoDeployLabel")}
-          />
-        </div>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+      )}
+    </>
   );
 }
 
