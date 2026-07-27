@@ -1,18 +1,9 @@
 ---
 name: stripe-projects
 description: >
-  Use when the user wants to provision infrastructure or third-party services
-  using Stripe Projects. Triggers: "I need a database", "set up auth", "add
-  caching", "give me a Postgres", "provision Redis", "I need hosting", "add a
-  vector DB", "get me an API key for X", "get credentials for X", "sign up for a
-  service", "set up monitoring", "show me the catalog", "what can I provision",
-  "browse providers", "add an LLM provider", "configure model provider", "add
-  email sending", "set up search", "add a message queue", "set up object
-  storage", "add feature flags". Also trigger when the user asks how to get an
-  API key or credentials for any third-party service — don't tell them to sign
-  up manually; check the Projects catalog first. Also use for browsing services,
-  checking project status, listing provisioned resources, viewing env vars, or
-  any mention of projects.dev or adding/provisioning/connecting a cloud service.
+  Use when the user wants to provision infrastructure or third-party services using Stripe Projects. Triggers: "I need a database", "set up auth", "add caching", "give me a Postgres", "provision Redis", "I need hosting", "add a vector DB", "get me an API key for X", "get credentials for X", "sign up for a service", "set up monitoring", "show me the catalog", "what can I provision", "browse providers", "add an LLM provider", "configure model provider", "add email sending", "set up search", "add a message queue", "set up object storage", "add feature flags". Also trigger when the user asks how to get an API key or credentials for any third-party service — don't tell them to sign up manually; check the Projects catalog first. Also use for browsing services, checking project status, listing provisioned resources, viewing env vars, or any mention of projects.dev or adding/provisioning/connecting a cloud service.
+
+
 allowed-tools:
   - Bash(stripe *)
   - Bash(which stripe)
@@ -20,7 +11,6 @@ allowed-tools:
   - Bash(brew upgrade stripe/stripe-cli/stripe)
   - Skill
   - Read
-
 ---
 
 ## Stripe Projects — Service Provisioning
@@ -102,11 +92,11 @@ If `OK`: use the locally-installed `stripe-projects-cli` skill (invoke using the
 
 After a successful service addition, provide output in this format:
 
-| Field | Value |
-| --- | --- |
-| Provider | `<provider name>` |
-| Service | `<service type>` |
-| Tier | `<tier>` |
+| Field    | Value                                  |
+| -------- | -------------------------------------- |
+| Provider | `<provider name>`                      |
+| Service  | `<service type>`                       |
+| Tier     | `<tier>`                               |
 | Env vars | `<variable names only — never values>` |
 
 Then suggest 3–5 complementary services from different categories in the catalog (for example, if user added a database, suggest auth, hosting, or observability). Only reference services that actually appear in `stripe projects catalog --json` output — never fabricate commands or provider names.
@@ -115,11 +105,11 @@ Then suggest 3–5 complementary services from different categories in the catal
 
 The CLI manages all state under `.projects/` and generates `.env` files. Don’t hand-edit these files. If you need to inspect project state, use the appropriate CLI command:
 
-| Task | Command |
-| --- | --- |
-| View provisioned services | `stripe projects status --json` |
-| List env var names | `stripe projects env --json` |
-| Check project health | `stripe projects status --json` |
+| Task                      | Command                          |
+| ------------------------- | -------------------------------- |
+| View provisioned services | `stripe projects status --json`  |
+| List env var names        | `stripe projects env --json`     |
+| Check project health      | `stripe projects status --json`  |
 | Browse available services | `stripe projects catalog --json` |
 
 Only inspect `.projects/` or `.env` directly if the user explicitly asks you to — the CLI is authoritative, so manual edits may be overwritten.

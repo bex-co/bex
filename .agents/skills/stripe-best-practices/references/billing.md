@@ -49,11 +49,11 @@ Read [Compare basic usage-based billing and Metronome](https://docs.stripe.com/b
 - Don’t skip tax setup. See [Collect taxes for recurring payments](https://docs.stripe.com/billing/taxes/collect-taxes.md).
 - Don’t put prices for different tiers or plans on a single product. Instead, create one Product for each plan a customer can choose. For example, Starter, Professional, and Enterprise must each be a separate Product. Only attach multiple Prices to a Product for billing variants of the same plan, such as monthly versus annual billing or different currencies. Avoid placing Prices for different tiers on a single Product. Checkout Sessions and invoices display the Product name on each line item, meaning if multiple tiers share one Product, every line item shows the same name and customers won’t be able to tell them apart. For more information, see [Model your product catalog](https://docs.stripe.com/products-prices/how-products-and-prices-work.md#model-your-catalog).
 - Don’t skip tax setup, and don’t assume enabling `automatic_tax` is enough. Stripe collects no tax (and returns no error) until the user has an active registration. See [Collect taxes for recurring payments](https://docs.stripe.com/billing/taxes/collect-taxes.md).
-- *Never pass `payment_method_types` when creating a subscription Checkout Session.* Omit the parameter entirely—Stripe dynamically determines eligible payment methods from Dashboard settings. Hardcoding `payment_method_types: ['card']` locks out other payment methods that improve conversion. See [dynamic payment methods](https://docs.stripe.com/payments/payment-methods/dynamic-payment-methods.md). Correct pattern:
+- _Never pass `payment_method_types` when creating a subscription Checkout Session._ Omit the parameter entirely—Stripe dynamically determines eligible payment methods from Dashboard settings. Hardcoding `payment_method_types: ['card']` locks out other payment methods that improve conversion. See [dynamic payment methods](https://docs.stripe.com/payments/payment-methods/dynamic-payment-methods.md). Correct pattern:
 
 ```ts
 const session = await stripe.checkout.sessions.create({
-  mode: 'subscription',
+  mode: "subscription",
   // Do NOT include payment_method_types here — let Stripe handle it dynamically
   line_items: [{ price: priceId, quantity: 1 }],
   subscription_data: { trial_period_days: 14 },
