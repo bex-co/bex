@@ -55,16 +55,19 @@ func (f *fakeStore) DeleteGitConnection(_ context.Context, workspaceID string) e
 }
 
 type fakeClient struct {
-	installErr error
-	login      string
-	repos      []Repo
-	reposErr   error
-	token      string
-	tokenErr   error
-	repoOK     bool // RepoAccessible result
-	repoErr    error
-	commit     Commit // GetCommit result (w9/001)
-	commitErr  error
+	installErr    error
+	login         string
+	repos         []Repo
+	reposErr      error
+	branches      []string
+	branchesErr   error
+	gotBranchRepo []string // (owner, repo) ListBranches was called with
+	token         string
+	tokenErr      error
+	repoOK        bool // RepoAccessible result
+	repoErr       error
+	commit        Commit // GetCommit result (w9/001)
+	commitErr     error
 	// gotCommitRef records the (token, owner, repo, ref) GetCommit was called
 	// with, for assertions.
 	gotCommitRef []string
@@ -81,6 +84,11 @@ func (c *fakeClient) GetInstallation(_ context.Context, id int64) (Installation,
 
 func (c *fakeClient) ListRepos(_ context.Context, _ int64) ([]Repo, error) {
 	return c.repos, c.reposErr
+}
+
+func (c *fakeClient) ListBranches(_ context.Context, _ int64, owner, repo string) ([]string, error) {
+	c.gotBranchRepo = []string{owner, repo}
+	return c.branches, c.branchesErr
 }
 
 func (c *fakeClient) MintInstallationToken(_ context.Context, _ int64) (InstallationToken, error) {
@@ -224,6 +232,65 @@ func TestListReposGitHubErrorSurfacesClean(t *testing.T) {
 	svc.GitHub = &fakeClient{reposErr: &APIError{Status: 403, Body: "forbidden"}}
 	if _, err := svc.ListRepos(context.Background(), ""); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("4xx GitHub error = %v, want ErrBadRequest", err)
+	}
+}
+
+// TestGithubOwnerRepo covers the repo-URL parser feeding ListBranches (w5/m54):
+// github.com URLs split into owner/repo (https, .git, and scp forms), and
+// anything else (other host, missing repo) degrades to ok=false.
+func TestGithubOwnerRepo(t *testing.T) {
+	for _, c := range []struct {
+		url, owner, repo string
+		ok               bool
+	}{
+		{"https://github.com/acme/app", "acme", "app", true},
+		{"https://github.com/acme/app.git", "acme", "app", true},
+		{"git@github.com:acme/app.git", "acme", "app", true},
+		{"https://gitlab.com/acme/app", "", "", false},
+		{"https://github.com/acme", "", "", false},
+		{"", "", "", false},
+	} {
+		owner, repo, ok := githubOwnerRepo(c.url)
+		if ok != c.ok || owner != c.owner || repo != c.repo {
+			t.Errorf("githubOwnerRepo(%q) = %q,%q,%v; want %q,%q,%v", c.url, owner, repo, ok, c.owner, c.repo, c.ok)
+		}
+	}
+}
+
+// TestListBranches: a connected GitHub repo returns its real branches (parsed to
+// owner/repo); a non-GitHub repo or a missing connection degrades to an empty
+// list without touching the client — the dashboard then uses free-text (w5/m54).
+func TestListBranches(t *testing.T) {
+	st := newFakeStore()
+	st.conns["default"] = store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"}
+	fc := &fakeClient{branches: []string{"main", "dev", "release/1.0"}}
+	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: fc, Store: st}
+	ctx := context.Background()
+
+	got, err := svc.ListBranches(ctx, "", "https://github.com/octo/app")
+	if err != nil {
+		t.Fatalf("list branches: %v", err)
+	}
+	if len(got) != 3 || got[0] != "main" {
+		t.Fatalf("branches = %v", got)
+	}
+	if len(fc.gotBranchRepo) != 2 || fc.gotBranchRepo[0] != "octo" || fc.gotBranchRepo[1] != "app" {
+		t.Errorf("ListBranches called with %v, want [octo app]", fc.gotBranchRepo)
+	}
+
+	// A non-GitHub repo degrades to empty without calling the client.
+	fc.gotBranchRepo = nil
+	if got, err := svc.ListBranches(ctx, "", "https://gitlab.com/octo/app"); err != nil || len(got) != 0 {
+		t.Fatalf("non-github = %v err=%v; want empty", got, err)
+	}
+	if fc.gotBranchRepo != nil {
+		t.Error("a non-GitHub repo must not call the GitHub client")
+	}
+
+	// No connection => empty, not an error.
+	svc.Store = newFakeStore()
+	if got, err := svc.ListBranches(ctx, "", "https://github.com/octo/app"); err != nil || len(got) != 0 {
+		t.Fatalf("no connection = %v err=%v; want empty", got, err)
 	}
 }
 

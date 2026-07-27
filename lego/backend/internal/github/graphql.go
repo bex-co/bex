@@ -80,6 +80,23 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return repos, nil
 			},
 		},
+		// repoBranches feeds the dashboard's searchable Branch combobox (w5/m54):
+		// the actual branches of a connected GitHub repo. Empty (never an error)
+		// for a non-GitHub repo or no connection, so the UI degrades to free text.
+		"repoBranches": &graphql.Field{
+			Type: graphql.NewList(graphql.String),
+			Args: graphql.FieldConfigArgument{
+				"repo":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				branches, err := s.ListBranches(p.Context, gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "repo"))
+				if err != nil {
+					return nil, err
+				}
+				return branches, nil
+			},
+		},
 	}
 }
 

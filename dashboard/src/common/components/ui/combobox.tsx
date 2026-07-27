@@ -30,6 +30,7 @@ interface ComboboxProps {
   className?: string;
   disabled?: boolean;
   triggerOn?: "change" | "blur"; // When to trigger onValueChange for custom values
+  ariaLabel?: string; // Accessible name for the combobox input (a11y + tests)
 }
 
 export function Combobox({
@@ -42,6 +43,7 @@ export function Combobox({
   className,
   disabled = false,
   triggerOn = "change",
+  ariaLabel,
 }: ComboboxProps) {
   const defaultPlaceholder = placeholder || "Select an option";
   const defaultEmptyText = emptyText || "No results found";
@@ -207,6 +209,7 @@ export function Combobox({
               className={cn("pr-8", className)}
               autoComplete="off"
               role="combobox"
+              aria-label={ariaLabel}
               aria-expanded={open}
               aria-autocomplete="list"
             />

@@ -55,6 +55,12 @@ vi.mock("@/features/services/hooks/use-deploy-hook", () => ({
   }),
 }));
 
+// The Branch combobox reads the repo's branches (w5/m54); empty => free-text.
+const repoBranches = { branches: [] as string[], loading: false };
+vi.mock("@/features/services/hooks/use-repo-branches", () => ({
+  useRepoBranches: () => repoBranches,
+}));
+
 const connectionState: {
   connection:
     | { connected: boolean; accountLogin: string; installUrl: string }
@@ -109,7 +115,7 @@ describe("BuildDeploySection", () => {
       />,
     );
     expect(screen.getByText("https://github.com/x/mono")).toBeInTheDocument();
-    const branch = screen.getByRole("textbox", { name: "Branch" });
+    const branch = screen.getByRole("combobox", { name: "Branch" });
     expect(branch).toHaveValue("main");
     expect(branch).toBeDisabled();
   });
@@ -128,7 +134,7 @@ describe("BuildDeploySection", () => {
       />,
     );
     await user.click(screen.getByRole("button", { name: "Edit branch" }));
-    const input = screen.getByRole("textbox", { name: "Branch" });
+    const input = screen.getByRole("combobox", { name: "Branch" });
     await user.clear(input);
     await user.type(input, "release");
     // The pencil flow confirms before saving (a branch change redeploys).
