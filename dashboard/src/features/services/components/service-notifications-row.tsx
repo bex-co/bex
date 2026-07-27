@@ -1,12 +1,7 @@
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/common/components/ui/select";
+import { useMemo } from "react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServiceNotifications } from "@/features/services/hooks/use-service-notifications";
+import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 
 const OPTIONS = [
   { value: "default", labelKey: "services.notificationsOptionDefault" },
@@ -20,6 +15,8 @@ export interface ServiceNotificationsRowProps {
   notificationsToSend: string | null | undefined;
 }
 
+/** The per-service deploy-notification override — the select variant of the
+ *  shared edit-in-place row (Render's disabled `notificationsToSend` select). */
 export function ServiceNotificationsRow({
   serviceId,
   notificationsToSend,
@@ -27,34 +24,21 @@ export function ServiceNotificationsRow({
   const { t } = useTranslations();
   const { setNotificationsToSend, busy } = useServiceNotifications();
   const current = notificationsToSend || "default";
+  // Stable identity so the row's focus effect doesn't re-run on every render.
+  const options = useMemo(
+    () => OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) })),
+    [t],
+  );
+
   return (
-    <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
-      <div className="max-w-xl">
-        <div className="text-sm font-medium">
-          {t("services.notificationsLabel")}
-        </div>
-        <div className="mt-1 text-sm text-muted-foreground">
-          {t("services.notificationsHint")}
-        </div>
-      </div>
-      <Select
-        value={current}
-        disabled={busy}
-        onValueChange={(next) => {
-          if (next !== current) void setNotificationsToSend(serviceId, next);
-        }}
-      >
-        <SelectTrigger size="sm" className="w-full sm:w-80">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {OPTIONS.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {t(option.labelKey)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <EditableFieldRow
+      label={t("services.notificationsLabel")}
+      hint={t("services.notificationsHint")}
+      value={current}
+      editLabel={t("services.notificationsEdit")}
+      busy={busy}
+      options={options}
+      onSave={(value) => setNotificationsToSend(serviceId, value)}
+    />
   );
 }

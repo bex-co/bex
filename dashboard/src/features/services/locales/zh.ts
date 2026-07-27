@@ -908,6 +908,20 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "配置该服务的名称、实例规格及其他设置。",
     description: "Settings tab card description",
   },
+  "services.editRowSave": {
+    message: "保存更改",
+    description:
+      "Shared editable-field row: save button shown while editing (Render parity)",
+  },
+  "services.editRowCancel": {
+    message: "取消",
+    description: "Shared editable-field row: cancel button shown while editing",
+  },
+  "services.editRowOptional": {
+    message: "可选",
+    description:
+      "Shared editable-field row: badge next to a label for an optional field",
+  },
   "services.displayNameLabel": {
     message: "服务名称",
     description:
@@ -921,14 +935,6 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.displayNameEdit": {
     message: "编辑服务名称",
     description: "Accessible label for the service-name edit button",
-  },
-  "services.displayNameSave": {
-    message: "保存服务名称",
-    description: "Accessible label for the service-name save button",
-  },
-  "services.displayNameCancel": {
-    message: "取消编辑服务名称",
-    description: "Accessible label for the service-name cancel button",
   },
   "services.displayNameSuccess": {
     message: "服务已重命名为「{name}」。",
@@ -999,21 +1005,9 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "收到 SIGTERM 后等待 1–300 秒再强制停止进程（默认 30 秒）。",
     description: "Settings row help for the shutdown-delay range",
   },
-  "services.maxShutdownDelaySeconds": {
-    message: "{seconds} 秒",
-    description: "Current graceful-shutdown delay in seconds",
-  },
   "services.maxShutdownDelayEdit": {
     message: "编辑最大关闭延迟",
     description: "Accessible label for the shutdown-delay edit button",
-  },
-  "services.maxShutdownDelaySave": {
-    message: "保存最大关闭延迟",
-    description: "Accessible label for the shutdown-delay save button",
-  },
-  "services.maxShutdownDelayCancel": {
-    message: "取消编辑最大关闭延迟",
-    description: "Accessible label for the shutdown-delay cancel button",
   },
   "services.maxShutdownDelaySuccess": {
     message: "最大关闭延迟已更新。",
@@ -1071,6 +1065,10 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.notificationsHint": {
     message: "覆盖此服务的工作区默认设置。工作区默认仅发送失败通知。",
     description: "Settings tab: service notification policy explanation",
+  },
+  "services.notificationsEdit": {
+    message: "编辑服务通知",
+    description: "Accessible label for the service-notifications edit button",
   },
   "services.notificationsOptionDefault": {
     message: "使用工作区默认设置（仅失败通知）",
@@ -1470,9 +1468,10 @@ const zhServices: Record<string, TranslationEntry> = {
       "将被获取并代替默认页面提供。留空以使用 bex 的默认维护页面。不能指向此服务自身的 URL。",
     description: "Hint text under the maintenance-mode custom-page URL field",
   },
-  "services.maintenanceModeSaveUri": {
-    message: "保存",
-    description: "Save button for the maintenance-mode custom-page URL field",
+  "services.maintenanceModeUriEdit": {
+    message: "编辑维护页面 URL",
+    description:
+      "Accessible label for the maintenance-page URL edit-pencil button",
   },
   "services.maintenanceModeEnableAction": {
     message: "启用维护模式",
@@ -1516,19 +1515,6 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "此定时任务的运行方式。",
     description: "Cron job Settings tab: Deploy section description",
   },
-  "services.deployEdit": {
-    message: "编辑定时任务设置",
-    description:
-      "Cron job Deploy section: accessible label for the edit-pencil button",
-  },
-  "services.deploySave": {
-    message: "保存",
-    description: "Cron job Deploy section: save button",
-  },
-  "services.deployCancel": {
-    message: "取消",
-    description: "Cron job Deploy section: cancel edit button",
-  },
   "services.deploySuccess": {
     message: "定时任务设置已保存。",
     description: "Toast after updateCronJob succeeds",
@@ -1554,6 +1540,14 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "0 * * * *",
     description: "Cron job Deploy section: schedule input placeholder",
   },
+  "services.deployScheduleEdit": {
+    message: "编辑计划",
+    description: "Accessible label for the cron schedule edit button",
+  },
+  "services.deployCommandEdit": {
+    message: "编辑命令",
+    description: "Accessible label for the cron command edit button",
+  },
   "services.deployScheduleError": {
     message: "请输入有效的 5 段 cron 表达式，例如 0 * * * *。",
     description: "Cron job Deploy section: schedule validation error",
@@ -1573,11 +1567,6 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.deployCommandHint": {
     message: "覆盖镜像的默认入口命令。留空则使用镜像自身的命令。",
     description: "Cron job Deploy section: command field help text",
-  },
-  "services.deployCommandEmpty": {
-    message: "使用镜像自身的默认命令。",
-    description:
-      "Cron job Settings tab: shown when spec.command is unset (no override)",
   },
   "services.buildDeployTitle": {
     message: "构建与部署",
@@ -1636,10 +1625,6 @@ const zhServices: Record<string, TranslationEntry> = {
       "如果设置，构建将从此子目录而非仓库根目录运行。此目录之外的代码更改不会触发自动部署。常用于 monorepo。",
     description: "Build & Deploy: root-directory field help text",
   },
-  "services.buildDeployRootDirEmpty": {
-    message: "仓库根目录",
-    description: "Build & Deploy: shown when spec.rootDir is unset",
-  },
   "services.buildDeployConfirmRoot": {
     message: "仓库根目录",
     description:
@@ -1652,10 +1637,6 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.buildDeployEdit": {
     message: "编辑根目录",
     description: "Build & Deploy: accessible label for the edit-pencil button",
-  },
-  "services.buildDeploySave": {
-    message: "保存",
-    description: "Build & Deploy: root-directory inline-edit save button",
   },
   "services.buildDeployCancel": {
     message: "取消",
@@ -1693,10 +1674,6 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.dockerCommandHint": {
     message: "覆盖 Dockerfile 中的 CMD。留空则使用镜像的默认命令。",
     description: "Build & Deploy: Docker Command help text",
-  },
-  "services.startCommandEmpty": {
-    message: "使用运行时或镜像的默认命令",
-    description: "Build & Deploy: empty start/Docker Command state",
   },
   "services.startCommandConfirmEmpty": {
     message: "默认命令",
@@ -1748,10 +1725,6 @@ const zhServices: Record<string, TranslationEntry> = {
       "生成静态输出的命令（例如 npm run build）。留空则使用运行时默认值。",
     description: "Build & Deploy: build-command help text",
   },
-  "services.buildCommandEmpty": {
-    message: "使用运行时默认值",
-    description: "Build & Deploy: empty build-command state label",
-  },
   "services.buildCommandConfirmEmpty": {
     message: "运行时默认值",
     description:
@@ -1788,10 +1761,6 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.dockerfilePathHint": {
     message: "相对于根目录的 Dockerfile 路径。留空则使用 Dockerfile。",
     description: "Build & Deploy: Dockerfile-path help text",
-  },
-  "services.dockerfilePathEmpty": {
-    message: "Dockerfile",
-    description: "Build & Deploy: default Dockerfile-path state",
   },
   "services.dockerfilePathConfirmEmpty": {
     message: "默认 Dockerfile",
@@ -1894,10 +1863,6 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.preDeployPlaceholder": {
     message: "例如 npm run migrate",
     description: "Build & Deploy: placeholder for the pre-deploy command input",
-  },
-  "services.preDeployEmpty": {
-    message: "无预部署命令",
-    description: "Build & Deploy: empty state for the pre-deploy command field",
   },
   "services.preDeployEdit": {
     message: "编辑预部署命令",
@@ -2048,14 +2013,6 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Settings hint pointing at the dedicated Redirects/Rewrites + Headers pages",
   },
-  "services.staticEdit": {
-    message: "编辑",
-    description: "Edit an inline field",
-  },
-  "services.staticSave": {
-    message: "保存",
-    description: "Save an inline field",
-  },
   "services.staticCancel": {
     message: "取消",
     description: "Cancel an inline edit",
@@ -2067,6 +2024,11 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.publishPathPlaceholder": {
     message: "dist",
     description: "Placeholder for the publish directory input",
+  },
+  "services.publishPathEdit": {
+    message: "编辑发布目录",
+    description:
+      "Accessible label for the publish-directory edit-pencil button",
   },
   "services.publishPathHint": {
     message:

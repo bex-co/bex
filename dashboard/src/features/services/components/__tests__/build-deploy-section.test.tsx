@@ -74,8 +74,18 @@ beforeEach(() => {
   connectionState.connection = undefined;
 });
 
+/** Confirm a rebuild-affecting save through the row's AlertDialog. */
+async function confirmSave(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: "Save changes" }));
+  await user.click(
+    within(screen.getByRole("alertdialog")).getByRole("button", {
+      name: "Save changes",
+    }),
+  );
+}
+
 describe("BuildDeploySection", () => {
-  it("shows the repo read-only and the current branch", () => {
+  it("shows the repo read-only and the current branch inside a disabled input", () => {
     render(
       <BuildDeploySection
         serviceId="app"
@@ -88,7 +98,9 @@ describe("BuildDeploySection", () => {
       />,
     );
     expect(screen.getByText("https://github.com/x/mono")).toBeInTheDocument();
-    expect(screen.getByText("main")).toBeInTheDocument();
+    const branch = screen.getByRole("textbox", { name: "Branch" });
+    expect(branch).toHaveValue("main");
+    expect(branch).toBeDisabled();
   });
 
   it("edits the branch through the confirm dialog via setBranch (w5/m48)", async () => {
@@ -105,21 +117,15 @@ describe("BuildDeploySection", () => {
       />,
     );
     await user.click(screen.getByRole("button", { name: "Edit branch" }));
-    const input = screen.getByPlaceholderText("main");
+    const input = screen.getByRole("textbox", { name: "Branch" });
     await user.clear(input);
     await user.type(input, "release");
     // The pencil flow confirms before saving (a branch change redeploys).
-    const saves = screen.getAllByRole("button", { name: "Save" });
-    await user.click(saves[0]);
-    await user.click(
-      within(screen.getByRole("alertdialog")).getByRole("button", {
-        name: "Save",
-      }),
-    );
+    await confirmSave(user);
     expect(setBranch).toHaveBeenCalledWith("app", "release");
   });
 
-  it("shows an honest 'repository root' state when rootDir is unset", () => {
+  it("shows an empty Root Directory input when rootDir is unset", () => {
     render(
       <BuildDeploySection
         serviceId="app"
@@ -131,7 +137,9 @@ describe("BuildDeploySection", () => {
         showPreDeployCommand={false}
       />,
     );
-    expect(screen.getByText("Repository root")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Root Directory" })).toHaveValue(
+      "",
+    );
   });
 
   it("shows the current rootDir when set", () => {
@@ -146,7 +154,9 @@ describe("BuildDeploySection", () => {
         showPreDeployCommand={false}
       />,
     );
-    expect(screen.getByText("backend")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Root Directory" })).toHaveValue(
+      "backend",
+    );
   });
 
   it("edit -> confirm -> setRootDir with the new value", async () => {
@@ -166,15 +176,16 @@ describe("BuildDeploySection", () => {
     await user.click(
       screen.getByRole("button", { name: "Edit Root Directory" }),
     );
-    const input = screen.getByPlaceholderText("e.g. backend");
-    await user.type(input, "backend");
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.type(screen.getByPlaceholderText("e.g. backend"), "backend");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     const dialog = await screen.findByRole("alertdialog");
     expect(
       within(dialog).getByText("Change Root Directory to backend?"),
     ).toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Save changes" }),
+    );
 
     expect(setRootDir).toHaveBeenCalledWith("app", "backend");
   });
@@ -196,9 +207,8 @@ describe("BuildDeploySection", () => {
     await user.click(
       screen.getByRole("button", { name: "Edit Root Directory" }),
     );
-    const input = screen.getByDisplayValue("backend");
-    await user.clear(input);
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.clear(screen.getByDisplayValue("backend"));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     const dialog = await screen.findByRole("alertdialog");
     expect(
@@ -223,7 +233,7 @@ describe("BuildDeploySection", () => {
     await user.click(
       screen.getByRole("button", { name: "Edit Root Directory" }),
     );
-    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
   });
 
   it("cancel discards the draft without calling setRootDir", async () => {
@@ -247,7 +257,9 @@ describe("BuildDeploySection", () => {
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(setRootDir).not.toHaveBeenCalled();
-    expect(screen.getByText("Repository root")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Root Directory" })).toHaveValue(
+      "",
+    );
   });
 
   it("edits and confirms the native Start Command", async () => {
@@ -274,9 +286,7 @@ describe("BuildDeploySection", () => {
     const input = screen.getByDisplayValue("npm start");
     await user.clear(input);
     await user.type(input, "node server.js");
-    await user.click(screen.getByRole("button", { name: "Save" }));
-    const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await confirmSave(user);
 
     expect(setStartCommand).toHaveBeenCalledWith("app", "node server.js");
   });
@@ -302,9 +312,7 @@ describe("BuildDeploySection", () => {
       screen.getByRole("button", { name: "Edit Start Command" }),
     );
     await user.clear(screen.getByDisplayValue("npm start"));
-    await user.click(screen.getByRole("button", { name: "Save" }));
-    const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await confirmSave(user);
 
     expect(setStartCommand).toHaveBeenCalledWith("app", "");
   });
@@ -365,9 +373,7 @@ describe("BuildDeploySection", () => {
     const input = screen.getByDisplayValue("Dockerfile");
     await user.clear(input);
     await user.type(input, "docker/Dockerfile.prod");
-    await user.click(screen.getByRole("button", { name: "Save" }));
-    const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await confirmSave(user);
 
     expect(setDockerfilePath).toHaveBeenCalledWith(
       "app",
@@ -398,12 +404,7 @@ describe("BuildDeploySection", () => {
     const input = screen.getByDisplayValue("Dockerfile");
     await user.clear(input);
     await user.type(input, "docker/Dockerfile.prod");
-    await user.click(screen.getByRole("button", { name: "Save" }));
-    await user.click(
-      within(await screen.findByRole("alertdialog")).getByRole("button", {
-        name: "Save",
-      }),
-    );
+    await confirmSave(user);
 
     expect(screen.getByDisplayValue("docker/Dockerfile.prod")).toBeVisible();
   });
@@ -499,10 +500,12 @@ describe("BuildDeploySection", () => {
       />,
     );
     expect(screen.queryByText("Pre-Deploy Command")).not.toBeInTheDocument();
-    expect(screen.queryByText("npm run migrate")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("textbox", { name: "Pre-Deploy Command" }),
+    ).not.toBeInTheDocument();
   });
 
-  it("shows the current pre-deploy command, or an empty state when unset", () => {
+  it("shows the current pre-deploy command, or an empty input when unset", () => {
     const { unmount } = render(
       <BuildDeploySection
         serviceId="app"
@@ -515,7 +518,9 @@ describe("BuildDeploySection", () => {
       />,
     );
     expect(screen.getByText("Pre-Deploy Command")).toBeInTheDocument();
-    expect(screen.getByText("npm run migrate")).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Pre-Deploy Command" }),
+    ).toHaveValue("npm run migrate");
     unmount();
 
     render(
@@ -529,7 +534,9 @@ describe("BuildDeploySection", () => {
         showPreDeployCommand={true}
       />,
     );
-    expect(screen.getByText("No pre-deploy command")).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Pre-Deploy Command" }),
+    ).toHaveValue("");
   });
 
   it("edits and saves the pre-deploy command via setPreDeployCommand (no confirm)", async () => {
@@ -551,7 +558,7 @@ describe("BuildDeploySection", () => {
     );
     const input = screen.getByPlaceholderText("e.g. npm run migrate");
     await user.type(input, "  npm run migrate  ");
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     // Trimmed before the mutation; no confirm dialog for this field.
     expect(setPreDeployCommand).toHaveBeenCalledWith("app", "npm run migrate");
@@ -675,7 +682,9 @@ describe("BuildDeploySection", () => {
       />,
     );
     expect(screen.getByText("Build Command")).toBeInTheDocument();
-    expect(screen.getByText("npm run build")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Build Command" })).toHaveValue(
+      "npm run build",
+    );
 
     await user.click(
       screen.getByRole("button", { name: "Edit build command" }),
@@ -683,9 +692,7 @@ describe("BuildDeploySection", () => {
     const input = screen.getByDisplayValue("npm run build");
     await user.clear(input);
     await user.type(input, "yarn build");
-    await user.click(screen.getByRole("button", { name: "Save" }));
-    const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await confirmSave(user);
 
     expect(setBuildCommand).toHaveBeenCalledWith("app", "yarn build");
   });

@@ -15,7 +15,7 @@ beforeEach(() => {
 });
 
 describe("CronDeploySection", () => {
-  it("shows the current schedule and command in view mode", () => {
+  it("shows the current schedule and command in disabled inputs", () => {
     render(
       <CronDeploySection
         serviceId="nightly"
@@ -23,20 +23,21 @@ describe("CronDeploySection", () => {
         command="node daily.js"
       />,
     );
-    expect(screen.getByText("0 6 * * *")).toBeInTheDocument();
-    expect(screen.getByText("node daily.js")).toBeInTheDocument();
+    const sched = screen.getByRole("textbox", { name: "Schedule" });
+    const cmd = screen.getByRole("textbox", { name: "Command" });
+    expect(sched).toHaveValue("0 6 * * *");
+    expect(sched).toBeDisabled();
+    expect(cmd).toHaveValue("node daily.js");
   });
 
-  it("shows a placeholder when command is not set", () => {
+  it("shows an empty command input when command is not set", () => {
     render(
       <CronDeploySection serviceId="nightly" schedule="0 6 * * *" command={null} />,
     );
-    expect(
-      screen.getByText("Uses the image's own default command."),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Command" })).toHaveValue("");
   });
 
-  it("edit → save calls updateCronJob with the new schedule and command", async () => {
+  it("edits the schedule and saves both fields via updateCronJob", async () => {
     const user = userEvent.setup();
     render(
       <CronDeploySection
@@ -46,13 +47,40 @@ describe("CronDeploySection", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /edit/i }));
-    const schedInput = screen.getByDisplayValue("0 6 * * *");
+    await user.click(screen.getByRole("button", { name: "Edit schedule" }));
+    const schedInput = screen.getByRole("textbox", { name: "Schedule" });
     await user.clear(schedInput);
     await user.type(schedInput, "0 8 * * 1");
-    await user.click(screen.getByRole("button", { name: /save/i }));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
 
-    expect(updateCronJob).toHaveBeenCalledWith("nightly", "0 8 * * 1", "node old.js");
+    expect(updateCronJob).toHaveBeenCalledWith(
+      "nightly",
+      "0 8 * * 1",
+      "node old.js",
+    );
+  });
+
+  it("edits the command and carries the persisted schedule", async () => {
+    const user = userEvent.setup();
+    render(
+      <CronDeploySection
+        serviceId="nightly"
+        schedule="0 6 * * *"
+        command="node old.js"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit command" }));
+    const cmdInput = screen.getByRole("textbox", { name: "Command" });
+    await user.clear(cmdInput);
+    await user.type(cmdInput, "node new.js");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(updateCronJob).toHaveBeenCalledWith(
+      "nightly",
+      "0 6 * * *",
+      "node new.js",
+    );
   });
 
   it("blocks save and shows an error for an invalid cron expression", async () => {
@@ -61,14 +89,14 @@ describe("CronDeploySection", () => {
       <CronDeploySection serviceId="nightly" schedule="0 6 * * *" command={null} />,
     );
 
-    await user.click(screen.getByRole("button", { name: /edit/i }));
-    const schedInput = screen.getByDisplayValue("0 6 * * *");
+    await user.click(screen.getByRole("button", { name: "Edit schedule" }));
+    const schedInput = screen.getByRole("textbox", { name: "Schedule" });
     await user.clear(schedInput);
     await user.type(schedInput, "not valid");
-    await user.click(screen.getByRole("button", { name: /save/i }));
 
-    expect(updateCronJob).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
     expect(screen.getByText(/valid.*5-field/i)).toBeInTheDocument();
+    expect(updateCronJob).not.toHaveBeenCalled();
   });
 
   it("blocks save and shows a required error for an empty schedule", async () => {
@@ -77,29 +105,30 @@ describe("CronDeploySection", () => {
       <CronDeploySection serviceId="nightly" schedule="0 6 * * *" command={null} />,
     );
 
-    await user.click(screen.getByRole("button", { name: /edit/i }));
-    await user.clear(screen.getByDisplayValue("0 6 * * *"));
-    await user.click(screen.getByRole("button", { name: /save/i }));
+    await user.click(screen.getByRole("button", { name: "Edit schedule" }));
+    await user.clear(screen.getByRole("textbox", { name: "Schedule" }));
 
-    expect(updateCronJob).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
     expect(screen.getByText(/required/i)).toBeInTheDocument();
+    expect(updateCronJob).not.toHaveBeenCalled();
   });
 
-  it("cancel discards the draft without calling updateCronJob", async () => {
+  it("cancel discards the schedule draft without calling updateCronJob", async () => {
     const user = userEvent.setup();
     render(
       <CronDeploySection serviceId="nightly" schedule="0 6 * * *" command={null} />,
     );
 
-    await user.click(screen.getByRole("button", { name: /edit/i }));
-    const schedInput = screen.getByDisplayValue("0 6 * * *");
+    await user.click(screen.getByRole("button", { name: "Edit schedule" }));
+    const schedInput = screen.getByRole("textbox", { name: "Schedule" });
     await user.clear(schedInput);
     await user.type(schedInput, "0 0 * * *");
-    await user.click(screen.getByRole("button", { name: /cancel/i }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(updateCronJob).not.toHaveBeenCalled();
-    // Returns to view mode showing the original schedule.
-    expect(screen.getByText("0 6 * * *")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Schedule" })).toHaveValue(
+      "0 6 * * *",
+    );
   });
 
   it("remains in edit mode when updateCronJob resolves false (server error)", async () => {
@@ -109,10 +138,15 @@ describe("CronDeploySection", () => {
       <CronDeploySection serviceId="nightly" schedule="0 6 * * *" command={null} />,
     );
 
-    await user.click(screen.getByRole("button", { name: /edit/i }));
-    await user.click(screen.getByRole("button", { name: /save/i }));
+    await user.click(screen.getByRole("button", { name: "Edit schedule" }));
+    const schedInput = screen.getByRole("textbox", { name: "Schedule" });
+    await user.clear(schedInput);
+    await user.type(schedInput, "0 7 * * *");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
 
-    // The Save button should still be visible (still in editing state).
-    expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument();
+    // Still editing — the Save button remains visible after the failed save.
+    expect(
+      screen.getByRole("button", { name: "Save changes" }),
+    ).toBeInTheDocument();
   });
 });

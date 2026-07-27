@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ServiceNotificationsRow } from "../service-notifications-row";
 
@@ -7,57 +7,46 @@ const setNotificationsToSend = vi.fn(async () => true);
 vi.mock("@/features/services/hooks/use-service-notifications", () => ({
   useServiceNotifications: () => ({ setNotificationsToSend, busy: false }),
 }));
-vi.mock("@/common/hooks/use-translations", () => ({
-  useTranslations: () => ({ t: (key: string) => key }),
-}));
-vi.mock("@/common/components/ui/select", () => ({
-  Select: ({
-    value,
-    onValueChange,
-    children,
-  }: {
-    value: string;
-    onValueChange: (value: string) => void;
-    children: ReactNode;
-  }) => (
-    <select
-      aria-label="policy"
-      value={value}
-      onChange={(event) => onValueChange(event.target.value)}
-    >
-      {children}
-    </select>
-  ),
-  SelectContent: ({ children }: { children: ReactNode }) => <>{children}</>,
-  SelectItem: ({ value, children }: { value: string; children: ReactNode }) => (
-    <option value={value}>{children}</option>
-  ),
-  SelectTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
-  SelectValue: () => null,
-}));
+
+beforeEach(() => setNotificationsToSend.mockClear());
 
 describe("ServiceNotificationsRow", () => {
-  beforeEach(() => setNotificationsToSend.mockClear());
-  it("defaults to the workspace policy and exposes all choices", () => {
+  it("renders the current policy in a disabled select with a pencil", () => {
     render(
       <ServiceNotificationsRow serviceId="srv-1" notificationsToSend={null} />,
     );
-    expect(screen.getByLabelText("policy")).toHaveValue("default");
-    for (const key of ["Default", "All", "Failure", "None"])
-      expect(
-        screen.getByText(`services.notificationsOption${key}`),
-      ).toBeInTheDocument();
+    const trigger = screen.getByRole("combobox", {
+      name: "Service Notifications",
+    });
+    expect(trigger).toBeDisabled();
+    expect(trigger).toHaveTextContent(
+      "Use workspace default (Only failure notifications)",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Save changes" }),
+    ).not.toBeInTheDocument();
   });
-  it("persists an explicit override", () => {
+
+  it("edits and persists an explicit override via the select variant", async () => {
+    const user = userEvent.setup();
     render(
       <ServiceNotificationsRow
         serviceId="srv-1"
         notificationsToSend="default"
       />,
     );
-    fireEvent.change(screen.getByLabelText("policy"), {
-      target: { value: "failure" },
-    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Edit service notifications" }),
+    );
+    await user.click(
+      screen.getByRole("combobox", { name: "Service Notifications" }),
+    );
+    await user.click(
+      screen.getByRole("option", { name: "Only failure notifications" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
     expect(setNotificationsToSend).toHaveBeenCalledWith("srv-1", "failure");
   });
 });
