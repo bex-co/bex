@@ -230,7 +230,7 @@ func TestEmitOnceGapWarningLoggedOnce(t *testing.T) {
 	e := newEmitter(&fakeEmitterStore{}, &fakeIngester{}, now)
 	e.emitOnce(context.Background())
 	e.emitOnce(context.Background())
-	if n := strings.Count(buf.String(), "Metronome export active"); n != 1 {
+	if n := strings.Count(buf.String(), "Stripe export active"); n != 1 {
 		t.Fatalf("gap warning logged %d times, want exactly 1", n)
 	}
 }
@@ -241,7 +241,7 @@ func TestEmitOnceLeavesRowsUnstampedOnIngestFailure(t *testing.T) {
 	st := &fakeEmitterStore{queue: [][]store.HourlyRow{{
 		row("tea-a", "srv-1", "instance_seconds", "starter", "service", 3600, w),
 	}}}
-	ing := &fakeIngester{ingestErr: errors.New("metronome down")}
+	ing := &fakeIngester{ingestErr: errors.New("stripe down")}
 	newEmitter(st, ing, now).emitOnce(context.Background())
 
 	if st.stampedCount() != 0 {

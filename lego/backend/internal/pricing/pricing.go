@@ -17,9 +17,10 @@ limitations under the License.
 // Package pricing is bex's price sheet: per-unit USD rates derived from
 // Render's captured public pricing (docs/render-artifacts/pricing.md) at a
 // fixed discount — 30% off compute/Postgres/KeyValue/build-minute/Postgres
-// storage lines, 90% off bandwidth. It is backend-only (the operator never imports it) and
-// produces cost estimates only; bex has no billing or payment system
-// (docs/ADR030-pricing.md § no-payment boundary).
+// storage lines, 90% off bandwidth. It is backend-only (the operator never
+// imports it) and produces the advisory estimate shown beside Stripe's real
+// invoice data. The same sheet also names the Stripe catalog dimensions; Stripe
+// owns authoritative rating, invoicing, and collection (ADR040).
 //
 // Usage: call Default.Estimate(rows) with the UsageSummaryRows from the store
 // to get an EstimatedCost. An unknown tier contributes $0 (not an error).
@@ -29,6 +30,7 @@ import (
 	_ "embed"
 	"fmt"
 	"math"
+	"sort"
 
 	"k8s.io/apimachinery/pkg/util/yaml"
 
@@ -53,6 +55,35 @@ type Sheet struct {
 	bandwidth float64            // $/byte for egress_bytes
 	build     float64            // $/second for build_seconds
 	storage   float64            // $/GB-second for storage_gb_seconds
+}
+
+// BillableMeterNames returns the Stripe lookup/event names represented by this
+// price sheet. Free/zero-rate instance tiers are omitted because no charge is
+// due and therefore no Stripe meter or subscription item exists. The stable
+// lexical order makes catalog validation and tests deterministic.
+func (s *Sheet) BillableMeterNames() []string {
+	names := make([]string, 0, len(s.compute)+len(s.postgres)+len(s.keyvalue)+3)
+	appendTiers := func(resourceKind string, tiers map[string]float64) {
+		for tier, rate := range tiers {
+			if rate > 0 {
+				names = append(names, "instance_seconds."+resourceKind+"."+tier)
+			}
+		}
+	}
+	appendTiers(store.ResourceKindService, s.compute)
+	appendTiers(store.ResourceKindPostgres, s.postgres)
+	appendTiers(store.ResourceKindKeyValue, s.keyvalue)
+	if s.bandwidth > 0 {
+		names = append(names, "egress_gib")
+	}
+	if s.build > 0 {
+		names = append(names, "build_seconds")
+	}
+	if s.storage > 0 {
+		names = append(names, "storage_gb_hours")
+	}
+	sort.Strings(names)
+	return names
 }
 
 // EstimatedCost is the workspace-level cost estimate for a period.

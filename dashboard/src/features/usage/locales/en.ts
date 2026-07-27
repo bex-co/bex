@@ -158,7 +158,7 @@ const enUsage: Record<string, TranslationEntry> = {
   "usage.currentSpendTitle": {
     message: "Current Spend",
     description:
-      "Heading for the real billing section (actual Metronome cost + invoices)",
+      "Heading for the real billing section (actual Stripe cost + invoices)",
   },
   "usage.currentSpendBadge": {
     message: "Invoice",

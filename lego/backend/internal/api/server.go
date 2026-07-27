@@ -96,6 +96,9 @@ type Server struct {
 	RegistryCreds *registrycreds.Service
 	Webhooks      *webhooks.Service
 	Jobs          *jobs.Service
+	// StripeWebhook is the signature-verifying public billing callback. It is
+	// nil unless BEX_STRIPE_WEBHOOK_SECRET is configured.
+	StripeWebhook http.Handler
 	// DeviceRateLimiter guards the official Render CLI's three
 	// credential-less device-flow routes (w4/m31/t002) — nil disables
 	// limiting. Set by the composition root once BEX_DEVICE_RATE_LIMIT is
@@ -258,6 +261,9 @@ type Deps struct {
 	// retention loop started in cmd/api/main.go, same as Usage. nil => the
 	// verb reports core.ErrAuditUnavailable (503).
 	Audit *audit.Service
+	// StripeWebhook mounts outside OAuth because Stripe authenticates with its
+	// webhook signature. The handler itself must fail closed on a bad signature.
+	StripeWebhook http.Handler
 	// GitHub App integration (docs/ADR026-github-integration.md). GitHubClient is the
 	// GitHub REST client (nil when BEX_GITHUB_APP_* unset); GitHubStore is the
 	// git_connections store (nil when BEX_CP_DB_URI unset). Either nil => the
@@ -588,6 +594,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Onboard:       d.Onboard,
 		Usage:         d.Usage,
 		Audit:         d.Audit,
+		StripeWebhook: d.StripeWebhook,
 	}
 	// Request-time deploy-start notifications use the same feature service as
 	// the reconciler's close-time success/failure fan-out, but are wired at the
@@ -748,6 +755,12 @@ func (s *Server) Handler() (http.Handler, error) {
 	// wins in net/http's mux). A git host can't present a bearer token.
 	if s.Apps != nil {
 		mux.Handle("POST /v1/webhooks/git", &apps.GitWebhook{Svc: s.Apps, Secret: s.WebhookSecret, GitHubSecret: s.GitHubWebhookSecret})
+	}
+	// Stripe cannot present a bex bearer token; its timestamped HMAC signature
+	// is the route's authentication. The injected handler verifies it before
+	// decoding or acting on any event.
+	if s.StripeWebhook != nil {
+		mux.Handle("POST /v1/webhooks/stripe", s.StripeWebhook)
 	}
 	// Deploy hooks authenticate with the unguessable URL token itself. Mount the
 	// whole prefix outside OAuth so malformed credentials containing an extra

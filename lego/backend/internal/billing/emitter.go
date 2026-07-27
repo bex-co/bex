@@ -30,17 +30,17 @@ import (
 
 const (
 	// DefaultSealHours is the rewrite horizon before a usage_hourly row is
-	// exported (docs/ADR040-billing-metronome.md §3), aligned with ADR023's
+	// exported (ADR040 §3), aligned with ADR023's
 	// 48h compaction clamp: past this point an hour's quantity is final, so it
-	// can be shipped exactly once. Overridable via BEX_METRONOME_SEAL_HOURS.
+	// can be shipped after its quantity is final. Overridable via
+	// BEX_STRIPE_SEAL_HOURS.
 	DefaultSealHours = 48 * time.Hour
 
 	// BackfillHorizon bounds how far back the emitter ever ships when
-	// BEX_METRONOME_EPOCH is unset (§7): the effective floor is
-	// max(epoch, now−BackfillHorizon). It matches Metronome's 34-day
-	// transaction_id dedup window, so a first enable without an epoch cannot
-	// flood the API with rows too old to dedup (⇒ 4xx) or bill pre-billing
-	// history. Production sets an explicit epoch; this is the safety net.
+	// BEX_STRIPE_EPOCH is unset (§7): the effective floor is
+	// max(epoch, now−BackfillHorizon). Stripe rejects meter-event timestamps
+	// older than 35 calendar days; 34 days leaves a timezone/API-latency margin
+	// and prevents a first enable from billing unbounded history.
 	BackfillHorizon = 34 * 24 * time.Hour
 
 	// DefaultInterval is how often the emitter drains the outbox. Newly sealed
@@ -60,11 +60,10 @@ type EmitterStore interface {
 	MarkUsageEmitted(ctx context.Context, rows []store.HourlyRow, at time.Time) error
 }
 
-// Emitter is the seal-then-emit loop (docs/ADR040-billing-metronome.md §3–5):
-// it ships each sealed, above-floor, non-excluded usage_hourly row to Metronome
-// exactly once with a deterministic transaction_id, then stamps emitted_at.
-// Built only when the Metronome client is enabled (BEX_METRONOME_TOKEN set), so
-// with the token unset it never exists and bex-api is byte-identical.
+// Emitter is the seal-then-emit loop (ADR040 §3–5): it ships each sealed,
+// above-floor, non-excluded usage_hourly row to Stripe with a deterministic
+// meter-event identifier, then stamps emitted_at. Built only when the Stripe
+// client is enabled, so with the key unset it never exists.
 type Emitter struct {
 	Store  EmitterStore
 	Client Ingester
@@ -121,14 +120,14 @@ func (e *Emitter) floor(now time.Time) time.Time {
 }
 
 // emitOnce exports every currently sealed, above-floor, non-excluded un-emitted
-// row, draining in batches. It is safe to call repeatedly: the deterministic
-// transaction_id dedups any row re-sent after a crash between ingest and stamp.
+// row, draining in batches. The deterministic identifier deduplicates a row
+// re-sent after a crash within Stripe's documented rolling uniqueness window.
 func (e *Emitter) emitOnce(ctx context.Context) {
 	now := e.now().UTC()
 	sealBefore := now.Add(-e.SealHours)
 	floor := e.floor(now)
 	e.gapOnce.Do(func() {
-		log.Printf("billing: Metronome export active — floor %s (windows before it are never emitted), seal horizon %s",
+		log.Printf("billing: Stripe export active — floor %s (windows before it are never emitted), seal horizon %s",
 			floor.Format(time.RFC3339), e.SealHours)
 	})
 	// With the floor at or after the seal horizon, no row is both sealed and
@@ -158,7 +157,7 @@ func (e *Emitter) emitOnce(ctx context.Context) {
 	}
 }
 
-// emitRows ensures each distinct workspace's Metronome customer exists, maps the
+// emitRows ensures each distinct workspace's Stripe customer exists, maps the
 // rows whose customer is ready into events, ingests them, and stamps emitted_at
 // only on a fully successful ingest. Returns how many rows were durably emitted.
 func (e *Emitter) emitRows(ctx context.Context, rows []store.HourlyRow, now time.Time) int {
@@ -190,18 +189,19 @@ func (e *Emitter) emitRows(ctx context.Context, rows []store.HourlyRow, now time
 	}
 	if err := e.Store.MarkUsageEmitted(ctx, okRows, now); err != nil {
 		// Ingest succeeded but the stamp did not: the rows stay un-emitted and
-		// re-ship next cycle, which the transaction_id dedups — no double bill.
+		// re-ship next cycle. The deterministic identifier deduplicates an
+		// ordinary retry within Stripe's documented rolling uniqueness window;
+		// operators must reconcile ambiguity older than that window (ADR040).
 		log.Printf("billing: stamp emitted_at for %d rows failed: %v", len(okRows), err)
 		return 0
 	}
 	return len(okRows)
 }
 
-// ensureBillingSetup provisions a workspace's Metronome billing before its
-// usage ships: the customer (keyed by ingest alias) and, when a rate card is
-// configured (m48), the contract that rates it. EnsureContract is a no-op when
-// no rate card is set, so this is byte-identical to m47's customer-only path in
-// shadow-export mode.
+// ensureBillingSetup provisions a workspace's Stripe billing before its usage
+// ships: the metadata-keyed Customer and the multi-item Subscription that rates
+// every configured meter. Mode A exclusions are filtered by the store query
+// before this point.
 func (e *Emitter) ensureBillingSetup(ctx context.Context, workspaceID string) error {
 	if err := e.Client.EnsureCustomer(ctx, workspaceID); err != nil {
 		return err
@@ -209,9 +209,9 @@ func (e *Emitter) ensureBillingSetup(ctx context.Context, workspaceID string) er
 	return e.Client.EnsureContract(ctx, workspaceID)
 }
 
-// toEvent maps one sealed usage row onto a Metronome event. The transaction_id
-// is a deterministic hash of the row's identity so retries and re-scans dedup;
-// the numeric quantity and its dimensions travel as string properties (§5).
+// toEvent maps one sealed usage row onto a Stripe meter event. The identifier is
+// a deterministic hash of the row identity so retries inside Stripe's rolling
+// uniqueness window deduplicate; quantity and dimensions remain strings.
 func toEvent(r store.HourlyRow) Event {
 	rk := store.NormalizeResourceKind(r.ResourceKind)
 	return Event{
@@ -230,7 +230,8 @@ func toEvent(r store.HourlyRow) Event {
 
 // transactionID is sha256("<resource_kind>|<service_id>|<kind>|<tier>|<window_start RFC3339>")
 // — deterministic, so the same sealed row always maps to the same idempotency
-// key (docs/ADR040-billing-metronome.md §3).
+// key (ADR040 §3). Its 64 hexadecimal characters fit Stripe's 100-character
+// identifier limit.
 func transactionID(resourceKind, serviceID, kind, tier string, windowStart time.Time) string {
 	sum := sha256.Sum256([]byte(resourceKind + "|" + serviceID + "|" + kind + "|" + tier + "|" + windowStart.UTC().Format(time.RFC3339)))
 	return hex.EncodeToString(sum[:])

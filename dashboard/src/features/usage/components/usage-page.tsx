@@ -468,13 +468,13 @@ function EstimatedCostSection({
   );
 }
 
-// --- current spend section (real Metronome billing, m48) ---
+// --- current spend section (real Stripe billing, m48/m50) ---
 
 // CurrentSpendSection shows the workspace's REAL billing — the current-period
-// cost Metronome has computed plus its finalized invoices — visually distinct
+// Stripe invoice preview plus finalized invoices — visually distinct
 // from the advisory estimate above (an "Invoice" badge, not "estimate only").
-// It renders nothing when there is no real billing (no contract, comped/
-// excluded, billing off, or a degraded read): the estimate card stands alone,
+// It renders nothing when there is no real billing (no Subscription, Mode-A
+// exclusion, billing off, or a degraded read): the estimate card stands alone,
 // so an estimate-only workspace never sees a broken or empty billing card.
 function CurrentSpendSection({ billing }: { billing: Billing | null }) {
   const { t } = useTranslations();

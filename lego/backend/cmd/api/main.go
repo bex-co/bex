@@ -381,38 +381,36 @@ func main() {
 		}
 		deps.Usage = usageSvc
 
-		// Billing (w7/m47 export + m48 surface, docs/ADR040-billing-metronome.md):
-		// one Metronome client drives both the seal-then-emit export sidecar and the
-		// usage surface's real cost/invoice read-back. Gated by BEX_METRONOME_TOKEN —
-		// billing.New returns nil when it is unset, so neither the emitter nor the
-		// read is wired and bex-api is byte-identical to ADR030 (estimate-only).
-		var billingEpoch time.Time
-		if v := os.Getenv("BEX_METRONOME_EPOCH"); v != "" {
-			epoch, err := time.Parse(time.RFC3339, v)
-			if err != nil {
-				log.Fatalf("bex-api: bad BEX_METRONOME_EPOCH %q (want RFC3339, e.g. 2026-07-01T00:00:00Z): %v", v, err)
-			}
-			billingEpoch = epoch.UTC()
+		// Billing (w7/m47–m50, ADR040): one Stripe client drives both the
+		// seal-then-emit meter-event sidecar and the usage surface's invoice
+		// read-back. BEX_STRIPE_SECRET_KEY unset means no client, emitter, reader,
+		// or public Stripe webhook: estimate-only behavior stays unchanged.
+		stripeSecretKey, billingEpoch, stripeEnabled, err := stripeBillingGate(os.Getenv, time.Now())
+		if err != nil {
+			log.Fatalf("bex-api: %v", err)
 		}
-		if mc := billing.New(billing.Config{
-			Token:           os.Getenv("BEX_METRONOME_TOKEN"),
-			BaseURL:         os.Getenv("BEX_METRONOME_URL"),
-			RateCardID:      os.Getenv("BEX_METRONOME_RATE_CARD_ID"),
-			USDCreditTypeID: os.Getenv("BEX_METRONOME_USD_CREDIT_TYPE_ID"),
-		}); mc != nil {
-			mc.ContractStart = billingEpoch // usage before the billing epoch is not rated
-			usageSvc.Billing = mc           // m48: surface real cost/invoices beside the estimate
+		if stripeEnabled {
+			stripeClient := billing.NewStripe(billing.StripeConfig{
+				SecretKey:    stripeSecretKey,
+				BaseURL:      os.Getenv("BEX_STRIPE_API_URL"),
+				BillingEpoch: billingEpoch,
+				CompCouponID: os.Getenv("BEX_STRIPE_COMP_COUPON_ID"),
+			})
+			usageSvc.Billing = stripeClient
 
-			emitter := billing.NewEmitter(st, mc) // SealHours/Interval/BatchLimit default inside
+			emitter := billing.NewEmitter(st, stripeClient)
 			emitter.Epoch = billingEpoch
-			if v := os.Getenv("BEX_METRONOME_SEAL_HOURS"); v != "" {
+			if v := os.Getenv("BEX_STRIPE_SEAL_HOURS"); v != "" {
 				if n, err := strconv.Atoi(v); err == nil && n >= 1 {
 					emitter.SealHours = time.Duration(n) * time.Hour
 				} else {
-					log.Printf("BEX_METRONOME_SEAL_HOURS=%q invalid (want integer ≥ 1); using default %s", v, billing.DefaultSealHours)
+					log.Printf("BEX_STRIPE_SEAL_HOURS=%q invalid (want integer ≥ 1); using default %s", v, billing.DefaultSealHours)
 				}
 			}
-			log.Printf("bex-api billing to Metronome enabled (seal horizon %s, rate card %t)", emitter.SealHours, mc.RateCardID != "")
+			if secret := os.Getenv("BEX_STRIPE_WEBHOOK_SECRET"); secret != "" {
+				deps.StripeWebhook = &billing.StripeWebhook{Secret: secret}
+			}
+			log.Printf("bex-api Stripe Billing enabled (seal horizon %s, epoch %s, webhook %t)", emitter.SealHours, billingEpoch.Format(time.RFC3339), deps.StripeWebhook != nil)
 			go emitter.Run(ctx)
 		}
 

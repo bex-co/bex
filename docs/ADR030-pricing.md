@@ -1,6 +1,6 @@
 # ADR030 — Price sheet + estimated spend
 
-**Status:** Accepted · 2026-07-13 **Author:** w8/m7
+**Status:** Accepted · 2026-07-13 · revised 2026-07-26 by w7/m50 **Author:** w8/m7
 
 ---
 
@@ -10,7 +10,7 @@ w8/m1–m6 ships a full metering pipeline: hourly Prometheus/k8s rollups of inst
 
 Render, bex's primary baseline, charges for these exact three meters. A 30% price advantage over Render is a pillar of bex's value proposition — but it was unquantifiable before this ADR.
 
-The pricing/estimate trigger in `FUTURE-MAYBE.md` was fired 2026-07-13 (user request). The companion _subscription/invoices/payments_ half remains deferred (trigger: hosted bex offering becomes roadmap-worthy).
+The pricing/estimate trigger in `FUTURE-MAYBE.md` was fired 2026-07-13 (user request). The companion _subscription/invoices/payments_ trigger fired later: [ADR040](ADR040-billing-metronome.md), revised by w7/m50, now sends sealed usage directly to Stripe Billing. This ADR still governs the advisory estimate, not authoritative invoices.
 
 ---
 
@@ -51,15 +51,15 @@ Every usage surface (REST, GraphQL, MCP, dashboard) is extended with a workspace
 
 The field is always present (never null); an empty or all-free workspace returns `totalUsd: "0.00"` and an empty meters array.
 
-### 4. "Estimate only" boundary — no payment collection
+### 4. `estimatedCost` remains advisory beside real billing
 
-`estimatedCost` is advisory. bex has no billing system, no payment processor, no invoicing, and no dunning. The estimates are:
+`estimatedCost` is advisory even when Stripe Billing is enabled. The estimates are:
 
 - Surfaced in the API alongside metered quantities.
 - Labeled "estimate only" in the dashboard UI.
 - Derived from a snapshot of Render's prices that may change.
 
-The subscription/invoices/payments half of the `FUTURE-MAYBE.md` entry remains deferred. If/when bex adds a hosted offering, that work will use `lego/types/tiers/tiers.yaml`'s forward pointer ("prices are Metronome's") as the starting point and introduce a real billing surface — not this file.
+ADR040 owns the real Stripe invoice preview/history and collection boundary. Stripe's amount is authoritative; it may differ because its billing period, discounts, credits, taxes, and rounding are not reproduced here. With Stripe disabled or degraded, this estimate remains available and the public `billing` object is absent.
 
 ### 5. Unknown tiers contribute $0
 
@@ -77,7 +77,7 @@ A tier ID not in `pricing.yaml` is priced at $0 (not an error). This means:
 - **GraphQL:** `usage.estimatedCost { totalUsd meters { ... } }` is a new selection on `UsageSummary`.
 - **MCP:** `get_usage` returns the same `estimatedCost` field; its description is updated to mention the estimate.
 - **Dashboard:** an "Estimated Cost" card is added to the Usage page with a "(estimate only — not an invoice)" label.
-- **Price updates:** edit `pricing.yaml` and re-deploy. No schema or migration change needed.
+- **Price updates:** edit `pricing.yaml`, rerun the Stripe catalog setup when billing is enabled, and redeploy. No schema migration is needed.
 - **No Render parity conflict:** Render has no usage/billing API. The `estimatedCost` extension is bex-only; `docs/ADR018-render-parity.md` already marks the usage surface as "bex ahead of Render."
 
 ---

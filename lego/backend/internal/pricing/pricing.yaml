@@ -13,8 +13,9 @@
 #   bex_monthly = render_monthly × discount
 #   usdPerSecond = bex_monthly / (730 h/mo × 3600 s/h)   [2,628,000 s/mo]
 #
-# "estimate only" policy: these numbers are purely informational cost estimates;
-# bex has no billing system (docs/ADR030-pricing.md § no-payment boundary).
+# These numbers drive both the advisory estimate and the Stripe Billing catalog
+# provisioned by scripts/stripe-billing-setup.py. Stripe's invoice remains the
+# authoritative charge; the estimate is informational (ADR030, ADR040).
 
 version: "3"
 

@@ -95,7 +95,7 @@ var billingInvoiceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// billingGQLType is the real Metronome billing object; null when estimate-only.
+// billingGQLType is the real Stripe billing object; null when estimate-only.
 var billingGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Billing",
 	Fields: graphql.Fields{
@@ -116,7 +116,7 @@ var usageSummaryGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"period":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Summary) any { return s.Period })},
 		"services":      &graphql.Field{Type: graphql.NewList(serviceUsageGQLType), Resolve: gqlutil.Field(func(s Summary) any { return s.Services })},
 		"estimatedCost": &graphql.Field{Type: estimatedCostGQLType, Resolve: gqlutil.Field(func(s Summary) any { return s.EstimatedCost })},
-		// billing is the real Metronome cost/invoices (m48); null ⇒ estimate-only.
+		// billing is the real Stripe cost/invoices (m48/m50); null ⇒ estimate-only.
 		"billing": &graphql.Field{Type: billingGQLType, Resolve: gqlutil.Field(func(s Summary) any {
 			if s.Billing == nil {
 				return nil

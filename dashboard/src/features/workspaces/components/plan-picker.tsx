@@ -14,7 +14,7 @@ export interface PlanPickerProps {
  * Render's `/new/workspace` plan cards (captured live, w6/RESEARCH-workspaces.md
  * finding 1): the post-2026-04-23 flat-rate lineup — Hobby free and capped,
  * Pro/Scale flat monthly, Enterprise custom. No payment step (Hobby needs no
- * card; bex has no billing system yet — .pm/w6/README.md "Not in w6").
+ * card; Stripe payment-method onboarding remains deferred — .pm/w6/README.md "Not in w6").
  */
 export function PlanPicker({ selected, onSelect }: PlanPickerProps) {
   const { t } = useTranslations();

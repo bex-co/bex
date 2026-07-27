@@ -157,7 +157,7 @@ const zhUsage: Record<string, TranslationEntry> = {
   "usage.currentSpendTitle": {
     message: "当前消费",
     description:
-      "Heading for the real billing section (actual Metronome cost + invoices)",
+      "Heading for the real billing section (actual Stripe cost + invoices)",
   },
   "usage.currentSpendBadge": {
     message: "账单",

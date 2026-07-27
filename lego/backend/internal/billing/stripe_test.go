@@ -18,14 +18,20 @@ package billing
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	stripe "github.com/stripe/stripe-go/v82"
+	"github.com/stripe/stripe-go/v82/webhook"
+
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 )
 
 // stripeStub is a path-routed http.RoundTripper returning canned Stripe JSON.
@@ -101,7 +107,7 @@ func TestStripeEnsureCustomerCreatesAndCaches(t *testing.T) {
 	if err := c.EnsureCustomer(ctx, "tea-abc"); err != nil {
 		t.Fatalf("EnsureCustomer: %v", err)
 	}
-	if id, ok := c.lookup("tea-abc"); !ok || id != "cus_123" {
+	if id, ok := c.lookupCustomer("tea-abc"); !ok || id != "cus_123" {
 		t.Fatalf("cached customer = %q,%v, want cus_123", id, ok)
 	}
 	// Second call served from cache — no more search/create.
@@ -123,11 +129,24 @@ func TestStripeEnsureCustomerRecoversViaSearch(t *testing.T) {
 	if err := c.EnsureCustomer(context.Background(), "tea-abc"); err != nil {
 		t.Fatalf("EnsureCustomer: %v", err)
 	}
-	if id, _ := c.lookup("tea-abc"); id != "cus_existing" {
+	if id, _ := c.lookupCustomer("tea-abc"); id != "cus_existing" {
 		t.Fatalf("recovered customer = %q, want cus_existing (no create)", id)
 	}
 	if stub.count("/customers/search") != 1 {
 		t.Fatalf("search calls = %d, want 1", stub.count("/customers/search"))
+	}
+}
+
+func TestStripeEnsureCustomerRejectsDuplicateMetadataMatches(t *testing.T) {
+	c, _ := newStripeTest(t, func(_ string, path string) (int, string) {
+		if strings.Contains(path, "/customers/search") {
+			return 200, `{"object":"search_result","data":[{"id":"cus_one","object":"customer"},{"id":"cus_two","object":"customer"}],"has_more":false,"url":"/v1/customers/search"}`
+		}
+		return 500, `{"error":{"type":"api_error","message":"must not create"}}`
+	})
+	err := c.EnsureCustomer(context.Background(), "tea-abc")
+	if err == nil || !strings.Contains(err.Error(), "has 2 Customers") {
+		t.Fatalf("EnsureCustomer duplicate metadata matches = %v, want explicit ambiguity error", err)
 	}
 }
 
@@ -202,7 +221,7 @@ func TestStripeIngestBatchDeadLettersPermanent4xx(t *testing.T) {
 		}
 		return 200, `{"id":"cus_1","object":"customer"}`
 	})
-	c.store("tea-a", "cus_1") // pre-seed the customer cache
+	c.storeCustomer("tea-a", "cus_1") // pre-seed the customer cache
 	// A permanent 400 is dead-lettered (logged, dropped) — IngestBatch returns nil.
 	err := c.IngestBatch(context.Background(), []Event{
 		{TransactionID: "tx1", CustomerID: "tea-a", EventType: "instance_seconds", Timestamp: time.Now(), Properties: map[string]string{"tier": "starter", "resource_kind": "service", "value": "1"}},
@@ -219,11 +238,204 @@ func TestStripeIngestBatchReturnsErrorOnTransient(t *testing.T) {
 		}
 		return 200, `{"id":"cus_1","object":"customer"}`
 	})
-	c.store("tea-a", "cus_1")
+	c.storeCustomer("tea-a", "cus_1")
 	err := c.IngestBatch(context.Background(), []Event{
 		{TransactionID: "tx1", CustomerID: "tea-a", EventType: "instance_seconds", Timestamp: time.Now(), Properties: map[string]string{"tier": "starter", "resource_kind": "service", "value": "1"}},
 	})
 	if err == nil {
 		t.Fatal("IngestBatch on 5xx = nil, want an error (transient → retry next cycle)")
 	}
+}
+
+func TestStripeEnsureContractCreatesCompleteSubscription(t *testing.T) {
+	catalog := stripePriceCatalogJSON(t, pricing.Default.BillableMeterNames())
+	c, stub := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && strings.Contains(path, "/subscriptions"):
+			return 200, `{"object":"list","data":[],"has_more":false,"url":"/v1/subscriptions"}`
+		case method == http.MethodGet && strings.Contains(path, "/prices"):
+			return 200, catalog
+		case method == http.MethodPost && strings.Contains(path, "/subscriptions"):
+			return 200, `{"id":"sub_123","object":"subscription","status":"active"}`
+		default:
+			return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+		}
+	})
+	c.storeCustomer("tea-a", "cus_1")
+	if err := c.EnsureContract(context.Background(), "tea-a"); err != nil {
+		t.Fatalf("EnsureContract: %v", err)
+	}
+	stub.mu.Lock()
+	bodies := strings.Join(stub.bodies, "\n")
+	stub.mu.Unlock()
+	for _, want := range []string{"customer=cus_1", "metadata[bex_workspace]=tea-a", "metadata[bex_billing_contract]=true"} {
+		if !strings.Contains(bodies, want) {
+			t.Fatalf("subscription body missing %q: %s", want, bodies)
+		}
+	}
+	if got := strings.Count(bodies, "items["); got != len(pricing.Default.BillableMeterNames()) {
+		t.Fatalf("subscription item fields = %d, want %d: %s", got, len(pricing.Default.BillableMeterNames()), bodies)
+	}
+}
+
+func TestStripeEnsureContractReusesExistingAfterRestart(t *testing.T) {
+	c, stub := newStripeTest(t, func(method, path string) (int, string) {
+		if method == http.MethodGet && strings.Contains(path, "/subscriptions") {
+			return 200, `{"object":"list","data":[{"id":"sub_existing","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
+		}
+		return 500, `{"error":{"type":"api_error","message":"should not create or list prices"}}`
+	})
+	c.storeCustomer("tea-a", "cus_1")
+	if err := c.EnsureContract(context.Background(), "tea-a"); err != nil {
+		t.Fatalf("EnsureContract: %v", err)
+	}
+	if got := stub.count("/prices"); got != 0 {
+		t.Fatalf("price calls = %d, want 0 for existing subscription", got)
+	}
+	if got := stub.count("/subscriptions"); got != 1 {
+		t.Fatalf("subscription calls = %d, want list only", got)
+	}
+}
+
+func TestStripeEnsureContractRejectsIncompleteCatalog(t *testing.T) {
+	names := pricing.Default.BillableMeterNames()
+	catalog := stripePriceCatalogJSON(t, names[:len(names)-1])
+	c, stub := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && strings.Contains(path, "/subscriptions"):
+			return 200, `{"object":"list","data":[],"has_more":false,"url":"/v1/subscriptions"}`
+		case method == http.MethodGet && strings.Contains(path, "/prices"):
+			return 200, catalog
+		default:
+			return 500, `{"error":{"type":"api_error","message":"subscription must not be created"}}`
+		}
+	})
+	c.storeCustomer("tea-a", "cus_1")
+	if err := c.EnsureContract(context.Background(), "tea-a"); err == nil || !strings.Contains(err.Error(), "is missing") {
+		t.Fatalf("EnsureContract incomplete catalog = %v, want missing-price error", err)
+	}
+	stub.mu.Lock()
+	defer stub.mu.Unlock()
+	for i, path := range stub.hits {
+		if strings.Contains(path, "/subscriptions") && i < len(stub.bodies) && stub.bodies[i] != "" {
+			t.Fatalf("unexpected subscription create body: %s", stub.bodies[i])
+		}
+	}
+}
+
+func TestStripeCompCustomerAppliesCouponIdempotently(t *testing.T) {
+	c, stub := newStripeTest(t, func(method, path string) (int, string) {
+		if method == http.MethodGet && path == "/v1/subscriptions" {
+			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
+		}
+		if method == http.MethodPost && path == "/v1/subscriptions/sub_1" {
+			return 200, `{"id":"sub_1","object":"subscription","status":"active"}`
+		}
+		return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+	})
+	c.storeCustomer("tea-a", "cus_1")
+	if err := c.CompCustomer(context.Background(), "tea-a"); err != nil {
+		t.Fatalf("CompCustomer: %v", err)
+	}
+	stub.mu.Lock()
+	bodies := strings.Join(stub.bodies, "\n")
+	stub.mu.Unlock()
+	for _, want := range []string{"discounts[0][coupon]=bex-comp-100", "proration_behavior=none"} {
+		if !strings.Contains(bodies, want) {
+			t.Fatalf("comp body missing %q: %s", want, bodies)
+		}
+	}
+}
+
+func TestStripeBillingForReadsPreviewAndFinalizedInvoices(t *testing.T) {
+	c, _ := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && path == "/v1/subscriptions":
+			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
+		case method == http.MethodPost && path == "/v1/invoices/create_preview":
+			return 200, `{"id":"upcoming_in_1","object":"invoice","currency":"usd","total":1234,"period_start":1782864000,"period_end":1785542400,"status":"draft"}`
+		case method == http.MethodGet && path == "/v1/invoices":
+			return 200, `{"object":"list","data":[{"id":"in_draft","object":"invoice","currency":"usd","total":999,"period_start":1780272000,"period_end":1782864000,"status":"draft"},{"id":"in_paid","object":"invoice","currency":"usd","total":4000,"period_start":1780272000,"period_end":1782864000,"status":"paid"}],"has_more":false,"url":"/v1/invoices"}`
+		default:
+			return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+		}
+	})
+	c.storeCustomer("tea-a", "cus_1")
+	b, err := c.BillingFor(context.Background(), "tea-a", time.Time{}, time.Time{})
+	if err != nil {
+		t.Fatalf("BillingFor: %v", err)
+	}
+	if b == nil || b.CurrentCost == nil || b.CurrentCost.AmountUSD != "12.34" || b.CurrentCost.Currency != "USD" {
+		t.Fatalf("current billing = %+v", b)
+	}
+	if len(b.Invoices) != 1 || b.Invoices[0].ID != "in_paid" || b.Invoices[0].Status != "PAID" || b.Invoices[0].AmountUSD != "40.00" {
+		t.Fatalf("invoices = %+v", b.Invoices)
+	}
+}
+
+func TestStripeBillingForMissingCustomerDoesNotCreate(t *testing.T) {
+	c, stub := newStripeTest(t, func(method, path string) (int, string) {
+		if method == http.MethodGet && strings.Contains(path, "/customers/search") {
+			return 200, `{"object":"search_result","data":[],"has_more":false,"url":"/v1/customers/search"}`
+		}
+		return 500, `{"error":{"type":"api_error","message":"must not create"}}`
+	})
+	b, err := c.BillingFor(context.Background(), "tea-excluded", time.Time{}, time.Time{})
+	if err != nil || b != nil {
+		t.Fatalf("BillingFor missing customer = %+v,%v, want nil,nil", b, err)
+	}
+	if got := stub.count("/customers"); got != 1 {
+		t.Fatalf("customer calls = %d, want search only", got)
+	}
+}
+
+func TestStripeWebhookVerifiesSignatureAndDispatchesPaymentFailure(t *testing.T) {
+	secret := "whsec_test"
+	payload := []byte(fmt.Sprintf(`{"id":"evt_1","object":"event","api_version":%q,"type":"invoice.payment_failed","data":{"object":{"id":"in_1","object":"invoice","customer":"cus_1"}}}`, stripe.APIVersion))
+	signed := webhook.GenerateTestSignedPayload(&webhook.UnsignedPayload{Payload: payload, Secret: secret, Timestamp: time.Now()})
+	var got string
+	h := &StripeWebhook{Secret: secret, OnInvoicePaymentFailed: func(inv *stripe.Invoice) error {
+		got = inv.ID
+		return nil
+	}}
+	req := httptest.NewRequest(http.MethodPost, "/v1/webhooks/stripe", strings.NewReader(string(payload)))
+	req.Header.Set("Stripe-Signature", signed.Header)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusNoContent || got != "in_1" {
+		t.Fatalf("webhook status=%d invoice=%q body=%s", w.Code, got, w.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/v1/webhooks/stripe", strings.NewReader(string(payload)))
+	req.Header.Set("Stripe-Signature", "bad")
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("bad signature status=%d, want 400", w.Code)
+	}
+}
+
+func stripePriceCatalogJSON(t *testing.T, names []string) string {
+	t.Helper()
+	data := make([]map[string]any, 0, len(names))
+	for i, name := range names {
+		data = append(data, map[string]any{
+			"id":         fmt.Sprintf("price_%02d", i),
+			"object":     "price",
+			"active":     true,
+			"currency":   "usd",
+			"lookup_key": name,
+			"recurring": map[string]any{
+				"interval":       "month",
+				"interval_count": 1,
+				"meter":          fmt.Sprintf("mtr_%02d", i),
+				"usage_type":     "metered",
+			},
+		})
+	}
+	b, err := json.Marshal(map[string]any{"object": "list", "data": data, "has_more": false, "url": "/v1/prices"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
 }

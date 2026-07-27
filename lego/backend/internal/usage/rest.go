@@ -53,7 +53,7 @@ type usageResponse struct {
 	Period        string                `json:"period"` // "YYYY-MM"
 	Services      []usageServiceEntry   `json:"services"`
 	EstimatedCost pricing.EstimatedCost `json:"estimatedCost"`
-	// Billing is the real Metronome cost + invoices (m48); omitted (null) when
+	// Billing is the real Stripe cost + invoices (m48/m50); omitted (null) when
 	// estimate-only — no contract, comped/excluded, billing off, or degraded.
 	Billing *billing.Billing `json:"billing,omitempty"`
 }
