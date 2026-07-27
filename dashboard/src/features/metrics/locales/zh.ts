@@ -129,6 +129,11 @@ const zhMetrics: Record<string, TranslationEntry> = {
     message: "百分位",
     description: "Response Times section control label",
   },
+  "metrics.percentileAll": {
+    message: "全部",
+    description:
+      "Percentile dropdown option that overlays p50/p90/p99 on one chart",
+  },
   "metrics.requestsCount": {
     message: "{count} 个请求",
     description:
@@ -303,6 +308,46 @@ const zhMetrics: Record<string, TranslationEntry> = {
   "metrics.rangeLast14Days": {
     message: "过去 14 天",
     description: "Metrics time-range filter option",
+  },
+  "metrics.rangeLast30Days": {
+    message: "过去 30 天",
+    description: "Metrics time-range filter option (w5/m56; Render plan-gates it)",
+  },
+  "metrics.rangeCustom": {
+    message: "自定义…",
+    description: "Time-range dropdown option that opens the start/end picker",
+  },
+  "metrics.rangeCustomTitle": {
+    message: "自定义范围",
+    description: "Custom time-range picker dialog title",
+  },
+  "metrics.rangeCustomDescription": {
+    message: "选择绝对的开始和结束时间。不支持超过 30 天的时间窗口。",
+    description: "Custom time-range picker dialog description",
+  },
+  "metrics.rangeCustomStart": {
+    message: "开始",
+    description: "Custom range start datetime field label",
+  },
+  "metrics.rangeCustomEnd": {
+    message: "结束",
+    description: "Custom range end datetime field label",
+  },
+  "metrics.rangeCustomApply": {
+    message: "应用",
+    description: "Custom range apply button",
+  },
+  "metrics.rangeCustomCancel": {
+    message: "取消",
+    description: "Custom range cancel button",
+  },
+  "metrics.rangeCustomErrorOrder": {
+    message: "结束时间必须晚于开始时间。",
+    description: "Custom range validation: end not after start",
+  },
+  "metrics.rangeCustomErrorTooLong": {
+    message: "请选择 30 天以内的时间窗口。",
+    description: "Custom range validation: window exceeds the max query window",
   },
   "metrics.rangeLabel": {
     message: "时间范围",

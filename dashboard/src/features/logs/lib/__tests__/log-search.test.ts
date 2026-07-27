@@ -20,6 +20,40 @@ describe("log range URL state", () => {
     expect(restored).toEqual({});
     expect(logRangeFromSearch(restored).id).toBe("1h");
   });
+
+  it("round-trips a custom absolute range (w5/m56)", () => {
+    const restored = parseLogSearch({
+      range: "custom",
+      rangeStart: "2026-07-01T00:00:00.000Z",
+      rangeEnd: "2026-07-01T06:00:00.000Z",
+    });
+    expect(restored).toEqual({
+      range: "custom",
+      rangeStart: "2026-07-01T00:00:00.000Z",
+      rangeEnd: "2026-07-01T06:00:00.000Z",
+    });
+    const range = logRangeFromSearch(restored);
+    expect(range.id).toBe("custom");
+    expect(range).toMatchObject({
+      startTime: "2026-07-01T00:00:00.000Z",
+      endTime: "2026-07-01T06:00:00.000Z",
+    });
+  });
+
+  it("ignores a custom range whose bounds are missing or reversed", () => {
+    // reversed bounds don't validate → falls back to the default
+    expect(
+      logRangeFromSearch(
+        parseLogSearch({
+          range: "custom",
+          rangeStart: "2026-07-02T00:00:00Z",
+          rangeEnd: "2026-07-01T00:00:00Z",
+        }),
+      ).id,
+    ).toBe("1h");
+    // range=custom with no bounds is dropped entirely
+    expect(parseLogSearch({ range: "custom" })).toEqual({});
+  });
 });
 
 describe("log filter URL state (w7/m42)", () => {

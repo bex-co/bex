@@ -8,13 +8,13 @@ import {
 } from "@/common/components/ui/select.tsx";
 import { Button } from "@/common/components/ui/button.tsx";
 import { RangeSelect } from "@/features/metrics/components/range-select";
-import type { RangePreset } from "@/features/metrics/lib/range";
+import type { RangeSelection } from "@/features/metrics/lib/range";
 import type { EventTimelineFilter } from "@/features/events/lib/timeline";
 import { useTranslations } from "@/common/hooks/use-translations";
 
 interface MetricsFiltersProps {
-  range: RangePreset;
-  onRangeChange: (preset: RangePreset) => void;
+  range: RangeSelection;
+  onRangeChange: (range: RangeSelection) => void;
   eventFilter: EventTimelineFilter;
   onEventFilterChange: (filter: EventTimelineFilter) => void;
   timelineShown: boolean;

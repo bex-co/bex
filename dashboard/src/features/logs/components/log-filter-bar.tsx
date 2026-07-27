@@ -20,7 +20,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import type { en } from "@/i18n";
 import { Button } from "@/common/components/ui/button";
 import { RangeSelect } from "@/features/metrics/components/range-select";
-import { type RangePreset } from "@/features/metrics/lib/range";
+import { type RangeSelection } from "@/features/metrics/lib/range";
 import { DEFAULT_LOG_RANGE } from "../lib/log-search";
 import { useLogLabelValues } from "../hooks/use-log-label-values";
 import {
@@ -101,8 +101,8 @@ interface LogFilterBarProps {
    * so the toggle is disabled with a hint (docs/ADR010-observability.md).
    */
   liveSupported: boolean;
-  range?: RangePreset;
-  onRangeChange?: (range: RangePreset) => void;
+  range?: RangeSelection;
+  onRangeChange?: (range: RangeSelection) => void;
 }
 
 export function LogFilterBar({

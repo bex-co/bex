@@ -106,6 +106,54 @@ describe("NetworkMetricsCard", () => {
     );
   });
 
+  it("reads all quantiles at once when the Percentile 'All' option is picked (w5/m56)", async () => {
+    const user = userEvent.setup();
+    mockUseMetrics.mockReturnValue(emptyResult());
+
+    renderCard();
+    await user.click(screen.getByLabelText("Percentile"));
+    await user.click(screen.getByRole("option", { name: "All" }));
+
+    expect(mockUseMetrics).toHaveBeenCalledWith(
+      "beancount-cms",
+      "http_latency",
+      expect.objectContaining({ quantiles: [0.5, 0.9, 0.99] }),
+    );
+    // In All mode the single-quantile arg is not sent (the overlay path).
+    const latest = mockUseMetrics.mock.calls
+      .filter(([, metric]) => metric === "http_latency")
+      .at(-1);
+    expect(latest?.[2]).not.toHaveProperty("quantile");
+  });
+
+  it("labels each overlaid latency line p50/p90/p99 in 'All' mode (w5/m56)", async () => {
+    const user = userEvent.setup();
+    mockUseMetrics.mockImplementation((_resource, metric) => {
+      if (metric === "http_latency") {
+        return {
+          series: [0.5, 0.9, 0.99].map((q) => ({
+            unit: "seconds",
+            labels: { quantile: String(q) },
+            points: [{ timestamp: "2026-07-06T09:00:00Z", value: q }],
+          })),
+          loading: false,
+          unavailable: false,
+          degradedSources: [],
+          error: undefined,
+        };
+      }
+      return emptyResult();
+    });
+
+    renderCard();
+    await user.click(screen.getByLabelText("Percentile"));
+    await user.click(screen.getByRole("option", { name: "All" }));
+
+    for (const label of ["p50", "p90", "p99"]) {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
+  });
+
   it("applies its header Status Code filter to requests and latency but never bandwidth (no code label on the bytes counter)", async () => {
     const user = userEvent.setup();
     mockUseMetrics.mockReturnValue(emptyResult());

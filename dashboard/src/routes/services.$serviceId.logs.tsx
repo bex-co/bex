@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LogViewer } from "@/features/logs/components/log-viewer";
 import { NonStaticRoute } from "@/features/services/components/non-static-route";
-import type { RangePreset } from "@/features/metrics/lib/range";
+import { isCustomRange, type RangeSelection } from "@/features/metrics/lib/range";
 import {
   CLEARED_LOG_SEARCH,
   logFiltersFromSearch,
@@ -54,11 +54,25 @@ function RouteComponent() {
       <ServiceLogsPage
         serviceId={serviceId}
         range={logRangeFromSearch(search)}
-        onRangeChange={(preset) => write({ ...search, range: preset.id })}
+        onRangeChange={(range) =>
+          write({
+            ...search,
+            range: range.id,
+            rangeStart: isCustomRange(range) ? range.startTime : undefined,
+            rangeEnd: isCustomRange(range) ? range.endTime : undefined,
+          })
+        }
         initialFilters={logFiltersFromSearch(search)}
         initialLive={search.live !== 0}
         onFiltersChange={(filters, live) =>
-          write({ range: search.range, ...logFiltersToSearch(filters, live) })
+          write({
+            // A filter change preserves whatever range is active — preset id or
+            // the custom window's start/end (w5/m56).
+            range: search.range,
+            rangeStart: search.rangeStart,
+            rangeEnd: search.rangeEnd,
+            ...logFiltersToSearch(filters, live),
+          })
         }
       />
     </NonStaticRoute>
@@ -81,8 +95,8 @@ export function ServiceLogsPage({
   onFiltersChange,
 }: {
   serviceId: string;
-  range?: RangePreset;
-  onRangeChange?: (range: RangePreset) => void;
+  range?: RangeSelection;
+  onRangeChange?: (range: RangeSelection) => void;
   initialFilters?: LogFilters;
   initialLive?: boolean;
   onFiltersChange?: (filters: LogFilters, live: boolean) => void;

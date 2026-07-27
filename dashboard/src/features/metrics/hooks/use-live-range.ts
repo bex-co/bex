@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { resolveRange, type RangeWindow } from "@/features/metrics/lib/range";
+import {
+  resolveRange,
+  type CustomRange,
+  type RangeWindow,
+} from "@/features/metrics/lib/range";
 
 /**
  * Slides a range window's start/end forward with wall-clock time, so a live
@@ -9,17 +13,29 @@ import { resolveRange, type RangeWindow } from "@/features/metrics/lib/range";
  * show anything new more often than that, so there's no point refetching faster.
  * Takes only the two fields it reads, so a fixed non-preset window (the Scaling
  * page's 48h Recent Metrics) needs no fake preset id.
+ *
+ * A custom absolute range (w5/m56) is fixed, not relative: its start/end pass
+ * straight through and the timer never arms, so the window stays put.
  */
-export function useLiveRange(preset: RangeWindow) {
+export function useLiveRange(range: RangeWindow | CustomRange) {
+  const custom = "startTime" in range;
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
+    if (custom) return; // absolute window — nothing to slide
     const id = setInterval(
       () => setNow(new Date()),
-      preset.resolutionSeconds * 1000,
+      range.resolutionSeconds * 1000,
     );
     return () => clearInterval(id);
-  }, [preset.resolutionSeconds]);
+  }, [custom, range.resolutionSeconds]);
 
-  return resolveRange(preset, now);
+  if (custom) {
+    return {
+      startTime: range.startTime,
+      endTime: range.endTime,
+      resolutionSeconds: range.resolutionSeconds,
+    };
+  }
+  return resolveRange(range, now);
 }

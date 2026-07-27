@@ -22,6 +22,13 @@ export interface UseMetricsOptions {
   resolutionSeconds?: number;
   quantile?: number;
   /**
+   * Several http_latency percentiles to read together — the percentile "All"
+   * overlay (w5/m56). When non-empty, takes precedence over `quantile`: bex-api
+   * returns one series per quantile, each tagged with a `quantile` label so the
+   * chart can name the overlaid p50/p90/p99 lines.
+   */
+  quantiles?: number[];
+  /**
    * aggregateAllMethod: MAX — collapses a per-instance series (cpu_limit/
    * memory_limit) into one series holding the max across instances. Render's
    * dashboard sends this for the Limit query it fetches alongside the raw
@@ -82,6 +89,7 @@ export function useMetrics(
     endTime,
     resolutionSeconds,
     quantile,
+    quantiles,
     aggregateMax,
     statusCode,
     groupBy,
@@ -100,7 +108,14 @@ export function useMetrics(
         start: startTime,
         end: endTime,
         resolution: resolutionSeconds,
-        parameters: quantile != null ? [{ quantile }] : undefined,
+        // Several quantiles => the percentile "All" overlay (one series each);
+        // otherwise the single picked percentile. Render's `parameters` is a list.
+        parameters:
+          quantiles && quantiles.length > 0
+            ? quantiles.map((q) => ({ quantile: q }))
+            : quantile != null
+              ? [{ quantile }]
+              : undefined,
         aggregateBy:
           groupBy === "status"
             ? ["STATUS_CODE"]

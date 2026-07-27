@@ -6,7 +6,7 @@ import { MetricsFilters } from "@/features/metrics/components/metrics-filters";
 import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
 import {
   DEFAULT_RANGE_PRESET,
-  type RangePreset,
+  type RangeSelection,
 } from "@/features/metrics/lib/range";
 import { toChartEventMarkers } from "@/features/metrics/lib/chart-events";
 import { EventTimeline } from "@/features/events/components/event-timeline";
@@ -33,7 +33,7 @@ function RouteComponent() {
 // prop (the ServiceScalingPage pattern) so a routing test can mount it without
 // the file Route's param context.
 export function ServiceMetricsPage({ serviceId }: { serviceId: string }) {
-  const [range, setRange] = useState<RangePreset>(DEFAULT_RANGE_PRESET);
+  const [range, setRange] = useState<RangeSelection>(DEFAULT_RANGE_PRESET);
   // Render hides the timeline until its toolbar toggle reveals it.
   const [timelineShown, setTimelineShown] = useState(false);
   const [eventFilter, setEventFilter] = useState<EventTimelineFilter>("all");

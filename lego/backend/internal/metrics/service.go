@@ -28,6 +28,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -96,8 +97,13 @@ type MetricQuery struct {
 	Start, End time.Time     // request-metric time range (zero => End=now, Start=End-1h)
 	Resolution time.Duration // request-metric step (<=0 => 1m)
 	Quantile   float64       // http_latency percentile 0..1 (<=0 => .95)
-	Percentage bool          // cpu/memory as a fraction of the pod limit instead of absolute
-	StatusCode string        // request filter: "2xx" | "5xx" | "500" | ""
+	// Quantiles, when non-empty, requests several http_latency percentiles in one
+	// read (the dashboard's percentile "All" overlay, w5/m56) — the multi-quantile
+	// sibling of Quantile. Only MetricsWithQuantiles consults it; the single-quantile
+	// Metrics verb ignores it, so every existing caller is byte-identical.
+	Quantiles  []float64
+	Percentage bool   // cpu/memory as a fraction of the pod limit instead of absolute
+	StatusCode string // request filter: "2xx" | "5xx" | "500" | ""
 	// Host/Path carry Render's host/path request filters only so Metrics can
 	// refuse them with ErrBadRequest: Traefik's Prometheus counters (service-
 	// and router-level) intentionally carry no host or path labels — adding
@@ -278,6 +284,103 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 		series = aggregateMaxSeries(q.App, series)
 	}
 	return series, nil
+}
+
+// QuantileSeries is a MetricSeries paired with the http_latency percentile that
+// produced it — MetricsWithQuantiles' unit so an adapter can echo the quantile
+// per series (GraphQL's `parameters { quantile }`, or the `quantile` label the
+// REST/MCP surfaces already carry alongside `resource`/`metric`). HasQuantile is
+// false for every non-latency metric (quantile carries no meaning there).
+type QuantileSeries struct {
+	MetricSeries
+	Quantile    float64
+	HasQuantile bool
+}
+
+// MetricsWithQuantiles is Metrics plus http_latency multi-quantile fan-out: when
+// q.Metric is http_latency and q.Quantiles names several percentiles, it reads
+// each quantile in one pass and returns every series tagged (labels + the paired
+// Quantile) with the percentile that produced it — feeding the dashboard's
+// percentile "All" overlay (w5/m56). For every other metric, and for a single
+// quantile, it is Metrics with the resolved quantile echoed on latency and the
+// series left byte-identical (no added label). All of Metrics' auth / normalize /
+// store-less / over-window behavior is preserved (it delegates per quantile).
+func (s *Service) MetricsWithQuantiles(ctx context.Context, q MetricQuery) ([]QuantileSeries, error) {
+	isLatency := q.Metric == MetricHTTPLatency
+	// Non-latency, or latency with at most one requested quantile: one pass, no
+	// added label — identical to calling Metrics directly.
+	quants := normalizeQuantiles(q.Quantiles)
+	if !isLatency || len(quants) <= 1 {
+		single := q.Quantile
+		if len(quants) == 1 {
+			single = quants[0]
+		}
+		qq := q
+		qq.Quantiles = nil
+		qq.Quantile = single
+		series, err := s.Metrics(ctx, qq)
+		if err != nil {
+			return nil, err
+		}
+		echoed := 0.0
+		if isLatency {
+			echoed = single
+			if echoed <= 0 {
+				echoed = defaultQuantile
+			}
+		}
+		out := make([]QuantileSeries, 0, len(series))
+		for _, ser := range series {
+			out = append(out, QuantileSeries{MetricSeries: ser, Quantile: echoed, HasQuantile: isLatency})
+		}
+		return out, nil
+	}
+	// Latency, several quantiles: one Metrics read per percentile, each series
+	// tagged so the overlaid p50/p90/p99 stay distinguishable on every surface.
+	var out []QuantileSeries
+	for _, quant := range quants {
+		qq := q
+		qq.Quantiles = nil
+		qq.Quantile = quant
+		series, err := s.Metrics(ctx, qq)
+		if err != nil {
+			return nil, err
+		}
+		for _, ser := range series {
+			out = append(out, QuantileSeries{MetricSeries: tagQuantile(ser, quant), Quantile: quant, HasQuantile: true})
+		}
+	}
+	return out, nil
+}
+
+// normalizeQuantiles keeps only valid histogram percentiles (0 < q < 1), drops
+// duplicates, and sorts ascending — so "All" always reads p50/p90/p99 in a
+// stable order regardless of how the caller listed them.
+func normalizeQuantiles(qs []float64) []float64 {
+	seen := make(map[float64]bool, len(qs))
+	out := make([]float64, 0, len(qs))
+	for _, q := range qs {
+		if q <= 0 || q >= 1 || seen[q] {
+			continue
+		}
+		seen[q] = true
+		out = append(out, q)
+	}
+	sort.Float64s(out)
+	return out
+}
+
+// tagQuantile returns a shallow copy of the series with a `quantile` label added
+// (the REST/MCP per-series echo, alongside the existing `resource`/`metric`
+// labels) — copying the map so the source series is never mutated.
+func tagQuantile(ser MetricSeries, quant float64) MetricSeries {
+	labels := make(map[string]string, len(ser.Labels)+1)
+	for k, v := range ser.Labels {
+		labels[k] = v
+	}
+	labels["quantile"] = strconv.FormatFloat(quant, 'g', -1, 64)
+	ser.Labels = labels
+	return ser
 }
 
 // aggregateMaxSeries collapses a per-instance series list to a single series
