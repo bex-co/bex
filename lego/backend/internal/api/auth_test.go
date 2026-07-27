@@ -151,6 +151,10 @@ func (callbackGitHubClient) ListRepos(context.Context, int64) ([]github.Repo, er
 	return nil, nil
 }
 
+func (callbackGitHubClient) ListBranches(context.Context, int64, string, string) ([]string, error) {
+	return nil, nil
+}
+
 func (callbackGitHubClient) MintInstallationToken(context.Context, int64) (github.InstallationToken, error) {
 	return github.InstallationToken{}, nil
 }
