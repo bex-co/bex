@@ -61,6 +61,15 @@ vi.mock("@/features/services/hooks/use-repo-branches", () => ({
   useRepoBranches: () => repoBranches,
 }));
 
+// The Source combobox (w5/m54) reads useRepos and writes useSetRepo.
+const setRepo = vi.fn(async () => true);
+vi.mock("@/features/services/hooks/use-set-repo", () => ({
+  useSetRepo: () => ({ setRepo, busy: false }),
+}));
+vi.mock("@/features/services/hooks/use-repos", () => ({
+  useRepos: () => ({ repos: [], loading: false, error: undefined }),
+}));
+
 const connectionState: {
   connection:
     | { connected: boolean; accountLogin: string; installUrl: string }
@@ -87,6 +96,8 @@ beforeEach(() => {
   setStartCommand.mockClear();
   setStartCommand.mockResolvedValue(true);
   setDockerfilePath.mockClear();
+  setRepo.mockClear();
+  setRepo.mockResolvedValue(true);
   setDockerfilePath.mockResolvedValue(true);
   connectionState.connection = undefined;
 });
@@ -114,10 +125,41 @@ describe("BuildDeploySection", () => {
         showPreDeployCommand={false}
       />,
     );
-    expect(screen.getByText("https://github.com/x/mono")).toBeInTheDocument();
+    const source = screen.getByRole("combobox", { name: "Source" });
+    expect(source).toHaveValue("https://github.com/x/mono");
+    expect(source).toBeDisabled();
     const branch = screen.getByRole("combobox", { name: "Branch" });
     expect(branch).toHaveValue("main");
     expect(branch).toBeDisabled();
+  });
+
+  it("edits the Source repo through the confirm dialog via setRepo (w5/m54)", async () => {
+    const user = userEvent.setup();
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit Source" }));
+    const source = screen.getByRole("combobox", { name: "Source" });
+    await user.clear(source);
+    await user.type(source, "https://github.com/x/next");
+    // Switching the repo rebuilds, so it confirms first.
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Save changes",
+      }),
+    );
+
+    expect(setRepo).toHaveBeenCalledWith("app", "https://github.com/x/next");
   });
 
   it("edits the branch through the confirm dialog via setBranch (w5/m48)", async () => {

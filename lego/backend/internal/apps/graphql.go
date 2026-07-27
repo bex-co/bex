@@ -276,9 +276,9 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// data source; a bex extension (docs/ADR041-service-addresses.md D4).
 		"internalAddress": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.InternalAddress })},
 		"createdAt":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.CreatedAt })},
-		"updatedAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.UpdatedAt })},
-		"region":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Region })},
-		"sshAddress":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.SSHAddress })},
+		"updatedAt":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.UpdatedAt })},
+		"region":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Region })},
+		"sshAddress":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.SSHAddress })},
 		// bex-native extras.
 		"phase":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Phase })},
 		"replicas": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AppView) any { return a.Replicas })},
@@ -1216,6 +1216,21 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				branch := p.Args["branch"].(string)
 				return s.SetSourceAndRegistryCredential(p.Context, p.Args["id"].(string), nil, nil, &branch, nil, nil)
+			},
+		},
+		// setRepo switches the Git repository a service builds from (Render's
+		// editable Source field, w5/m54). Delegates to the same shared source
+		// verb as setBranch/REST PATCH `repo`, so validation (ValidRepo) and the
+		// explicit-switch rebuild semantics stay identical across surfaces.
+		"setRepo": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"repo": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				repo := p.Args["repo"].(string)
+				return s.SetSourceAndRegistryCredential(p.Context, p.Args["id"].(string), &repo, nil, nil, nil, nil)
 			},
 		},
 		// setBuildCommand changes the build command for a repo-backed service.

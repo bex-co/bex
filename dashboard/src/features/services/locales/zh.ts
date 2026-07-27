@@ -1598,7 +1598,28 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.buildDeploySourceLabel": {
     message: "源代码",
-    description: "Build & Deploy: repo field label (read-only)",
+    description: "Build & Deploy: repo field label",
+  },
+  "services.buildDeploySourceHint": {
+    message:
+      "此服务构建所用的 Git 仓库。选择一个已连接的仓库，或粘贴仓库 URL。",
+    description: "Build & Deploy: Source (repo) field help text (w5/m54)",
+  },
+  "services.buildDeploySourcePlaceholder": {
+    message: "https://github.com/owner/repo",
+    description: "Build & Deploy: Source combobox input placeholder",
+  },
+  "services.buildDeploySourceEdit": {
+    message: "编辑源代码",
+    description: "Accessible label for the Source edit-pencil button",
+  },
+  "services.buildDeploySourceConfirmTitle": {
+    message: "将源代码切换为 {value}？",
+    description: "Build & Deploy: Source-change confirm dialog title",
+  },
+  "services.buildDeploySourceConfirmBody": {
+    message: "下次部署将从新仓库构建。请确认其分支和构建设置仍然适用。",
+    description: "Build & Deploy: Source-change confirm dialog body",
   },
   "services.buildDeployBranchLabel": {
     message: "分支",
@@ -1912,7 +1933,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.autoDeployEdit": {
     message: "编辑自动部署",
-    description: "Accessible label for the Auto-Deploy select's edit-pencil button",
+    description:
+      "Accessible label for the Auto-Deploy select's edit-pencil button",
   },
   "services.autoDeployViaGitHub": {
     message: "向跟踪分支推送将通过 GitHub 应用自动重新部署。",
