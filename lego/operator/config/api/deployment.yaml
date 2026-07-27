@@ -142,6 +142,44 @@ spec:
                   key: uri
             - name: BEX_CP_APPS_NAMESPACE # namespace the projector writes App CRs into
               value: default
+            # Direct Stripe Billing (w7/m50, docs/ADR040-billing-metronome.md):
+            # all values arrive together in the out-of-band bex-stripe Secret
+            # installed by scripts/stripe-billing-secret.sh. Every reference is
+            # optional so a cluster with no Secret remains byte-identical:
+            # estimate-only usage, no Stripe client/network, and no public Stripe
+            # webhook route. The installer requires an explicit epoch and a
+            # restricted rk_test_/rk_live_ runtime key before it will create the
+            # Secret; BEX_STRIPE_API_URL is intentionally never set in a cluster.
+            - name: BEX_STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bex-stripe
+                  key: BEX_STRIPE_SECRET_KEY
+                  optional: true
+            - name: BEX_STRIPE_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bex-stripe
+                  key: BEX_STRIPE_WEBHOOK_SECRET
+                  optional: true
+            - name: BEX_STRIPE_EPOCH
+              valueFrom:
+                secretKeyRef:
+                  name: bex-stripe
+                  key: BEX_STRIPE_EPOCH
+                  optional: true
+            - name: BEX_STRIPE_SEAL_HOURS
+              valueFrom:
+                secretKeyRef:
+                  name: bex-stripe
+                  key: BEX_STRIPE_SEAL_HOURS
+                  optional: true
+            - name: BEX_STRIPE_COMP_COUPON_ID
+              valueFrom:
+                secretKeyRef:
+                  name: bex-stripe
+                  key: BEX_STRIPE_COMP_COUPON_ID
+                  optional: true
             # REQUIRED once BEX_CP_DB_URI is set: the internal tenant API (:8091)
             # grants workspace-admin and cross-tenant writes, so bex-api refuses
             # to start with an empty BEX_CP_TOKEN (w1/m53 requireCPAuth — the token

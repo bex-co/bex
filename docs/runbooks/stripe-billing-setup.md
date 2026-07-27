@@ -82,7 +82,7 @@ An invalid/missing `Stripe-Signature` must return 400. A compatible, correctly s
 
 ## 4. Verify test-mode behavior
 
-Deploy bex-api with the test restricted key, test webhook secret, and an explicit recent test epoch:
+Create a dedicated test restricted key in Stripe Workbench, then put the test key, test webhook secret, and an explicit recent test epoch in the gitignored `.env`:
 
 ```text
 BEX_STRIPE_SECRET_KEY=<out-of-band restricted test key>
@@ -93,6 +93,15 @@ BEX_STRIPE_COMP_COUPON_ID=bex-comp-100
 ```
 
 Leave `BEX_STRIPE_API_URL` unset outside stub tests.
+
+Install the values into the cluster selected by `KUBECONFIG`/the current kubectl context. The installer rejects unrestricted `sk_*` keys, malformed webhook secrets, a missing/naive epoch, and a zero seal horizon; it never prints secret bytes:
+
+```bash
+DRY_RUN=1 scripts/stripe-billing-secret.sh
+scripts/stripe-billing-secret.sh
+```
+
+This creates or updates `bex-system/bex-stripe` and rolls bex-api when its Deployment exists. The Deployment references every Secret key as optional, so deleting/omitting the Secret preserves estimate-only behavior. Do not use the Stripe CLI login key as the durable runtime credential: create the dedicated restricted key from §2 even for a long-lived test environment. On macOS, the installer may read a missing test `BEX_STRIPE_WEBHOOK_SECRET` from the login keychain item `bex-stripe-test-webhook`; this fallback is never used with an `rk_live_*` runtime key.
 
 Verify all of the following before live activation:
 
