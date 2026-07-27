@@ -67,6 +67,9 @@ function ServiceBreadcrumbs({ serviceId }: { serviceId: string }) {
   const project = projects.find((item) =>
     item.serviceIds.includes(resolvedServiceId),
   );
+  const projectServices = project
+    ? services.filter((item) => project.serviceIds.includes(item.id))
+    : services;
   const { environments } = useEnvironments(project?.id ?? null);
   const environment = environments.find((item) =>
     item.serviceIds.includes(resolvedServiceId),
@@ -120,7 +123,7 @@ function ServiceBreadcrumbs({ serviceId }: { serviceId: string }) {
           <DropdownMenuLabel>
             {t("common.topbarSwitchService")}
           </DropdownMenuLabel>
-          {services.map((item) => (
+          {projectServices.map((item) => (
             <DropdownMenuItem key={item.id} asChild>
               <Link
                 to="/services/$serviceId"

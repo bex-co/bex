@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   services: [
     { id: "srv-api", name: "storefront-api", type: "web_service" },
     { id: "srv-worker", name: "queue-worker", type: "background_worker" },
+    { id: "srv-billing", name: "billing-api", type: "web_service" },
   ],
   projects: [
     {
@@ -29,6 +30,14 @@ const mocks = vi.hoisted(() => ({
       name: "Storefront",
       ownerId: "tea-one",
       serviceIds: ["srv-api", "srv-worker"],
+      databaseIds: [],
+      keyValueIds: [],
+    },
+    {
+      id: "prj-billing",
+      name: "Billing",
+      ownerId: "tea-one",
+      serviceIds: ["srv-billing"],
       databaseIds: [],
       keyValueIds: [],
     },
@@ -185,6 +194,9 @@ describe("dashboard topbar navigation", () => {
     expect(
       await screen.findByRole("menuitem", { name: /queue-worker/ }),
     ).toHaveAttribute("href", "/services/srv-worker");
+    expect(
+      screen.queryByRole("menuitem", { name: /billing-api/ }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("menuitem", { name: "All resources" }),
     ).toHaveAttribute("href", "/");
