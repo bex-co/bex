@@ -282,7 +282,33 @@ tests:
               persistentvolumeclaim: zot-data
             exp_annotations:
               summary: "Zot registry PVC zot-data is 72% full"
-              description: "The Zot OCI registry PVC is >70% full — a runaway rebuild loop can fill it and silently 500 on pushes. Retention policy keeps 5 generations per repo; check for stale repos or resize. Debug: kubectl -n bex-registry get pvc zot-data; kubectl -n bex-registry exec deploy/zot -- du -sh /var/lib/registry/*"
+              description: "The Zot OCI registry PVC is >70% full — a runaway rebuild loop can fill it and silently 500 on pushes. Retention policy keeps 5 generations per repo; check kubelet_volume_stats_available_bytes, stale repos, and Zot logs, then resize if needed."
+
+  # ZotRegistryAlmostFull: pages on either >85% occupancy or <10 GiB free,
+  # and respects the shorter 5m critical for-duration.
+  - name: ZotRegistryAlmostFull percentage and absolute headroom
+    interval: 1m
+    input_series:
+      - series: 'kubelet_volume_stats_used_bytes{namespace="bex-registry", persistentvolumeclaim="zot-critical"}'
+        values: "92000000000x15"
+      - series: 'kubelet_volume_stats_capacity_bytes{namespace="bex-registry", persistentvolumeclaim="zot-critical"}'
+        values: "100000000000x15"
+      - series: 'kubelet_volume_stats_available_bytes{namespace="bex-registry", persistentvolumeclaim="zot-critical"}'
+        values: "8000000000x15"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: ZotRegistryAlmostFull
+        exp_alerts: []
+      - eval_time: 7m
+        alertname: ZotRegistryAlmostFull
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              namespace: bex-registry
+              persistentvolumeclaim: zot-critical
+            exp_annotations:
+              summary: "Zot registry PVC zot-critical is almost full"
+              description: "The Zot OCI registry PVC is >85% full or has <10 GiB available; new image pushes can fail with HTTP 500. Grow the PVC immediately and verify retention/GC is reclaiming old layers."
 
   # AdminCertExpiringSoon: fires when (creation + 1yr - now) < 30d.
   # Uses the bex-kubeconfig Secret creation timestamp as a proxy for cert issue time.

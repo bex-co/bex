@@ -550,7 +550,29 @@ spec:
                       severity: warning
                     annotations:
                       summary: "Zot registry PVC {{ $labels.persistentvolumeclaim }} is {{ $value | humanizePercentage }} full"
-                      description: "The Zot OCI registry PVC is >70% full — a runaway rebuild loop can fill it and silently 500 on pushes. Retention policy keeps 5 generations per repo; check for stale repos or resize. Debug: kubectl -n bex-registry get pvc {{ $labels.persistentvolumeclaim }}; kubectl -n bex-registry exec deploy/zot -- du -sh /var/lib/registry/*"
+                      description: "The Zot OCI registry PVC is >70% full — a runaway rebuild loop can fill it and silently 500 on pushes. Retention policy keeps 5 generations per repo; check kubelet_volume_stats_available_bytes, stale repos, and Zot logs, then resize if needed."
+
+                  # Page before a large layer can exhaust the remaining bytes.
+                  # The absolute 10 GiB floor complements the percentage guard:
+                  # a registry with large images can fail a push well before 100%.
+                  - alert: ZotRegistryAlmostFull
+                    expr: |
+                      (
+                        kubelet_volume_stats_used_bytes{namespace="bex-registry"}
+                        / kubelet_volume_stats_capacity_bytes{namespace="bex-registry"}
+                        > 0.85
+                      )
+                      or
+                      (
+                        kubelet_volume_stats_available_bytes{namespace="bex-registry"}
+                        < 10 * 1024 * 1024 * 1024
+                      )
+                    for: 5m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Zot registry PVC {{ $labels.persistentvolumeclaim }} is almost full"
+                      description: "The Zot OCI registry PVC is >85% full or has <10 GiB available; new image pushes can fail with HTTP 500. Grow the PVC immediately and verify retention/GC is reclaiming old layers."
 
                   - alert: CertificateNotReady
                     expr: certmanager_certificate_ready_status{condition="True"} == 0

@@ -736,6 +736,7 @@ func (c *Creds) baseZotConfig() []byte {
 	}
 	type storage struct {
 		RootDirectory string    `json:"rootDirectory"`
+		Dedupe        bool      `json:"dedupe"`
 		GC            bool      `json:"gc"`
 		GCDelay       string    `json:"gcDelay"`
 		GCInterval    string    `json:"gcInterval"`
@@ -783,9 +784,10 @@ func (c *Creds) baseZotConfig() []byte {
 		DistSpecVersion: "1.1.0",
 		Storage: storage{
 			RootDirectory: "/var/lib/registry",
+			Dedupe:        true,
 			GC:            true,
 			GCDelay:       "1h",
-			GCInterval:    "24h",
+			GCInterval:    "1h",
 			Retention: retention{
 				DryRun: false,
 				Policies: []retentionPolicy{

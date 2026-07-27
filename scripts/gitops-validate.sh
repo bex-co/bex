@@ -327,6 +327,14 @@ if [ -f "$ZOT" ]; then
     || { echo "FAIL: zot externalSecrets must reference zot-config Secret (operator-managed config, w7/m36)" >&2; fail=1; }
   echo "$vals" | grep -q 'zot-htpasswd' \
     || { echo "FAIL: zot externalSecrets must reference zot-htpasswd Secret" >&2; fail=1; }
+  # Production sizing contract: enough disk for concurrent large uploads and
+  # explicit compute requests so the registry is not admitted as BestEffort.
+  echo "$vals" | yq -e '.pvc.storage == "100Gi"' >/dev/null \
+    || { echo "FAIL: zot PVC must be 100Gi" >&2; fail=1; }
+  echo "$vals" | yq -e '.resources.requests.cpu == "500m" and .resources.requests.memory == "1Gi"' >/dev/null \
+    || { echo "FAIL: zot resource requests must be cpu=500m memory=1Gi" >&2; fail=1; }
+  echo "$vals" | yq -e '.resources.limits.cpu == "2" and .resources.limits.memory == "4Gi"' >/dev/null \
+    || { echo "FAIL: zot resource limits must be cpu=2 memory=4Gi" >&2; fail=1; }
   # The bex-puller shared credential must NOT appear in the Zot chart values —
   # it is absent from the operator-managed per-App scheme (ADR022:204 closed).
   if echo "$vals" | grep -q 'bex-puller'; then

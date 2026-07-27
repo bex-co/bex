@@ -355,6 +355,18 @@ func TestBaseZotConfigContractValues(t *testing.T) {
 
 	// Default retention count must be 5.
 	storage, _ := data["storage"].(map[string]any)
+	if dedupe, _ := storage["dedupe"].(bool); !dedupe {
+		t.Error("storage.dedupe must be true")
+	}
+	if gc, _ := storage["gc"].(bool); !gc {
+		t.Error("storage.gc must be true")
+	}
+	if delay, _ := storage["gcDelay"].(string); delay != "1h" {
+		t.Errorf("storage.gcDelay = %q; want 1h", delay)
+	}
+	if interval, _ := storage["gcInterval"].(string); interval != "1h" {
+		t.Errorf("storage.gcInterval = %q; want 1h", interval)
+	}
 	retention, _ := storage["retention"].(map[string]any)
 	policies, _ := retention["policies"].([]any)
 	if len(policies) == 0 {
