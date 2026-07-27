@@ -40,10 +40,22 @@ spec:
         mountConfig: false
         persistence: true
         # The registry must absorb concurrent large image pushes between Zot's
-        # daily retention/GC passes. Hetzner's 10 GiB minimum filled during two
-        # overlapping Beancount builds and turned uploads into opaque 500s.
+        # hourly retention/GC passes. The former 40 GiB volume filled under
+        # frequent large Beancount builds and turned uploads into opaque 500s;
+        # 100 GiB keeps normal occupancy below the 60-65% operating target while
+        # leaving room for concurrent in-flight layers between collections.
         pvc:
-          storage: 40Gi
+          storage: 100Gi
+        # Zot streams image layers to the PVC, so storage is the primary sizing
+        # axis. These requests keep the registry out of BestEffort QoS while the
+        # limits leave headroom for concurrent push/pull and retention/GC work.
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: "2"
+            memory: 4Gi
         # kpack publishes its generated builder as Docker schema 2; Zot's
         # docker2s2 compatibility mode accepts that manifest format.
         mountSecret: false
