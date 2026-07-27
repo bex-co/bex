@@ -77,6 +77,11 @@ var (
 	// ErrUsageUnavailable is returned by the usage verb when the store isn't
 	// wired (BEX_CP_DB_URI unset); adapters surface it as 503.
 	ErrUsageUnavailable = errors.New("usage unavailable")
+	// ErrBillingUnavailable is returned by the customer-billing onboarding
+	// verbs when Stripe is disabled or cannot be reached. It is deliberately
+	// distinct from ErrUsageUnavailable: advisory usage remains available while
+	// hosted Checkout, Portal, and payment readiness fail closed.
+	ErrBillingUnavailable = errors.New("billing integration unavailable")
 	// ErrAuditUnavailable is returned by the audit-log read verb when the
 	// control-plane store isn't wired (BEX_CP_DB_URI unset); adapters surface it
 	// as 503 — omitted, not faked (the deploy-history/env-vars precedent).

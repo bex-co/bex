@@ -14,6 +14,12 @@ SPEC.loader.exec_module(SETUP)
 
 
 class StripeBillingSetupTest(unittest.TestCase):
+    def test_stripe_rejects_api_error_json_even_when_cli_exits_zero(self):
+        result = mock.Mock(returncode=0, stdout='{"error":{"message":"denied"}}', stderr="")
+        with mock.patch.object(SETUP.subprocess, "run", return_value=result):
+            with self.assertRaisesRegex(RuntimeError, "denied"):
+                SETUP.stripe("post", "/anything")
+
     def test_list_all_follows_cursor(self):
         with mock.patch.object(
             SETUP,
@@ -109,6 +115,69 @@ class StripeBillingSetupTest(unittest.TestCase):
             self.assertEqual("created", SETUP.ensure_comp_coupon(coupons))
             self.assertIn(SETUP.COMP_COUPON_ID, coupons)
             stripe.assert_called_once()
+
+    def test_tax_gate_requires_both_inputs_and_a_matching_test_registration(self):
+        with self.assertRaisesRegex(RuntimeError, "supplied together"):
+            SETUP.validate_tax_gate("txcd_10000000", None, False)
+
+        with mock.patch.object(
+            SETUP,
+            "stripe",
+            return_value={"data": [{"id": "taxreg_live", "livemode": True}]},
+        ):
+            with self.assertRaisesRegex(RuntimeError, "no active test-mode"):
+                SETUP.validate_tax_gate("txcd_10000000", "exclusive", False)
+
+        with mock.patch.object(
+            SETUP,
+            "stripe",
+            return_value={"data": [{"id": "taxreg_test", "livemode": False}]},
+        ):
+            self.assertEqual(
+                1,
+                SETUP.validate_tax_gate("txcd_10000000", "exclusive", False),
+            )
+
+    def test_portal_configuration_is_scoped_and_idempotent(self):
+        with mock.patch.object(SETUP, "list_all", return_value=[]), mock.patch.object(
+            SETUP,
+            "stripe",
+            return_value={"id": "bpc_test"},
+        ) as stripe:
+            self.assertEqual(
+                ("bpc_test", "created"),
+                SETUP.ensure_portal_configuration("https://dashboard.bex.co/"),
+            )
+            args = stripe.call_args.args
+            self.assertEqual(("billing_portal", "configurations", "create"), args[:3])
+            self.assertIn("default_return_url=https://dashboard.bex.co/usage", args)
+            self.assertIn("features[payment_method_update][enabled]=true", args)
+            self.assertIn("features[subscription_cancel][enabled]=false", args)
+
+        existing = {"id": "bpc_test", "metadata": {SETUP.PORTAL_METADATA_KEY: "true"}}
+        with mock.patch.object(SETUP, "list_all", return_value=[existing]), mock.patch.object(
+            SETUP,
+            "stripe",
+            return_value={"id": "bpc_test"},
+        ) as stripe:
+            self.assertEqual(
+                ("bpc_test", "exists"),
+                SETUP.ensure_portal_configuration("https://dashboard.bex.co"),
+            )
+            self.assertEqual(
+                ("billing_portal", "configurations", "update", "bpc_test"),
+                stripe.call_args.args[:4],
+            )
+
+    def test_portal_configuration_rejects_non_origin_urls(self):
+        for url in (
+            "http://dashboard.bex.co",
+            "https://dashboard.bex.co/usage",
+            "https://user@dashboard.bex.co",
+            "https://dashboard.bex.co?next=elsewhere",
+        ):
+            with self.subTest(url=url), self.assertRaisesRegex(RuntimeError, "HTTPS origin"):
+                SETUP.ensure_portal_configuration(url)
 
 
 if __name__ == "__main__":

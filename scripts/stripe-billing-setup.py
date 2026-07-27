@@ -28,6 +28,7 @@ import subprocess
 import sys
 from decimal import Decimal
 from pathlib import Path
+from urllib.parse import urlsplit
 
 PRICING = Path(__file__).resolve().parents[1] / "lego/backend/internal/pricing/pricing.yaml"
 BYTES_PER_GIB = Decimal(1073741824)
@@ -36,6 +37,7 @@ SECONDS_PER_HOUR = Decimal(3600)
 SUPERSEDED = ["instance_seconds", "egress_bytes", "storage_gb_seconds"]
 COMP_COUPON_ID = "bex-comp-100"
 STRIPE_GLOBAL_ARGS = []
+PORTAL_METADATA_KEY = "bex_billing_portal"
 
 
 def dec(s):
@@ -98,7 +100,12 @@ def stripe(*args):
     if out.returncode != 0 or (out.stdout.strip().startswith("{") is False and out.stdout.strip().startswith("[") is False):
         # stripe CLI prints errors to stdout as text; surface them
         raise RuntimeError(f"stripe {' '.join(args)}\n{out.stdout}{out.stderr}")
-    return json.loads(out.stdout)
+    payload = json.loads(out.stdout)
+    if isinstance(payload, dict) and payload.get("error"):
+        error = payload["error"]
+        message = error.get("message", "Stripe returned an error") if isinstance(error, dict) else str(error)
+        raise RuntimeError(f"stripe {' '.join(args)}\n{message}")
+    return payload
 
 
 def list_all(*resource):
@@ -163,7 +170,15 @@ def existing_price(lookup_key):
     return data[0] if data else None
 
 
-def ensure_price(event_name, display, cents, meter_id):
+def ensure_product_tax(product_id, tax_code):
+    product = stripe("products", "retrieve", product_id)
+    current = product.get("tax_code")
+    current_id = current.get("id") if isinstance(current, dict) else current
+    if current_id != tax_code:
+        stripe("products", "update", product_id, "-d", f"tax_code={tax_code}")
+
+
+def ensure_price(event_name, display, cents, meter_id, tax_code=None, tax_behavior=None):
     existing = existing_price(event_name)
     if existing:
         recurring = existing.get("recurring") or {}
@@ -177,15 +192,36 @@ def ensure_price(event_name, display, cents, meter_id):
             raise RuntimeError(
                 f"active price {existing.get('id')} for {event_name} does not match "
                 f"pricing.yaml/meter {meter_id}; deactivate or repair it before enabling billing")
+        if tax_behavior:
+            current_behavior = existing.get("tax_behavior", "unspecified")
+            if current_behavior == "unspecified":
+                stripe("prices", "update", existing["id"],
+                       "-d", f"tax_behavior={tax_behavior}")
+            elif current_behavior != tax_behavior:
+                raise RuntimeError(
+                    f"active price {existing.get('id')} for {event_name} has "
+                    f"tax_behavior={current_behavior}, want {tax_behavior}; tax behavior "
+                    "cannot be changed after it is fixed")
+            product = existing.get("product")
+            product_id = product.get("id") if isinstance(product, dict) else product
+            if not product_id:
+                raise RuntimeError(f"price {existing.get('id')} has no Product")
+            ensure_product_tax(product_id, tax_code)
         return "exists"
-    stripe("prices", "create",
-           "-d", "currency=usd",
-           "-d", f"unit_amount_decimal={plain(cents)}",
-           "-d", "recurring[interval]=month",
-           "-d", "recurring[usage_type]=metered",
-           "-d", f"recurring[meter]={meter_id}",
-           "-d", f"lookup_key={event_name}",
-           "-d", f"product_data[name]={display}")
+    args = [
+        "prices", "create",
+        "-d", "currency=usd",
+        "-d", f"unit_amount_decimal={plain(cents)}",
+        "-d", "recurring[interval]=month",
+        "-d", "recurring[usage_type]=metered",
+        "-d", f"recurring[meter]={meter_id}",
+        "-d", f"lookup_key={event_name}",
+        "-d", f"product_data[name]={display}",
+    ]
+    if tax_behavior:
+        args.extend(["-d", f"tax_behavior={tax_behavior}",
+                     "-d", f"product_data[tax_code]={tax_code}"])
+    stripe(*args)
     return "created"
 
 
@@ -213,17 +249,70 @@ def ensure_comp_coupon(coupons):
     return "created"
 
 
-def main(live=False):
+def validate_tax_gate(tax_code, tax_behavior, live):
+    if bool(tax_code) != bool(tax_behavior):
+        raise RuntimeError("--tax-code and --tax-behavior must be supplied together")
+    if not tax_code:
+        return 0
+    if not tax_code.startswith("txcd_"):
+        raise RuntimeError("--tax-code must be an operator-confirmed canonical Stripe txcd_* value")
+    registrations = stripe("tax", "registrations", "list",
+                           "-d", "status=active", "--limit", "100")["data"]
+    matching_mode = [r for r in registrations if bool(r.get("livemode")) == live]
+    if not matching_mode:
+        mode = "live" if live else "test"
+        raise RuntimeError(
+            f"no active {mode}-mode Stripe Tax registration; refusing to mark the catalog tax-ready")
+    return len(matching_mode)
+
+
+def ensure_portal_configuration(dashboard_url):
+    if not dashboard_url:
+        return None, "skipped"
+    parsed = urlsplit(dashboard_url)
+    if (parsed.scheme != "https" or not parsed.hostname or parsed.username
+            or parsed.password or parsed.path not in ("", "/")
+            or parsed.query or parsed.fragment):
+        raise RuntimeError("--dashboard-url must be an absolute HTTPS origin")
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    return_url = origin + "/usage"
+    configs = list_all("billing_portal", "configurations")
+    tagged = [c for c in configs if (c.get("metadata") or {}).get(PORTAL_METADATA_KEY) == "true"]
+    if len(tagged) > 1:
+        raise RuntimeError(f"multiple portal configurations carry {PORTAL_METADATA_KEY}=true")
+    common = [
+        "-d", f"default_return_url={return_url}",
+        "-d", "features[payment_method_update][enabled]=true",
+        "-d", "features[invoice_history][enabled]=true",
+        "-d", "features[customer_update][enabled]=true",
+        "-d", "features[customer_update][allowed_updates][0]=address",
+        "-d", "features[customer_update][allowed_updates][1]=email",
+        "-d", "features[customer_update][allowed_updates][2]=name",
+        "-d", "features[customer_update][allowed_updates][3]=tax_id",
+        "-d", "features[subscription_cancel][enabled]=false",
+        "-d", "features[subscription_update][enabled]=false",
+        "-d", f"metadata[{PORTAL_METADATA_KEY}]=true",
+    ]
+    if tagged:
+        config = stripe("billing_portal", "configurations", "update", tagged[0]["id"], *common)
+        return config["id"], "exists"
+    config = stripe("billing_portal", "configurations", "create",
+                    "-d", "name=bex billing portal", *common)
+    return config["id"], "created"
+
+
+def main(live=False, tax_code=None, tax_behavior=None, dashboard_url=None):
     global STRIPE_GLOBAL_ARGS
     STRIPE_GLOBAL_ARGS = ["--live"] if live else []
     dims = parse_pricing()
     meters = existing_meters()
     coupons = existing_coupons()
+    registration_count = validate_tax_gate(tax_code, tax_behavior, live)
     print(f"== bex Stripe Billing setup — {len(dims)} priced dimensions from pricing.yaml ==\n")
     print(f"{'event_name':<38} {'unit_amount_decimal (¢)':<24} meter        price")
     for event_name, display, cents in dims:
         mid, mstat = ensure_meter(event_name, display, meters)
-        pstat = ensure_price(event_name, display, cents, mid)
+        pstat = ensure_price(event_name, display, cents, mid, tax_code, tax_behavior)
         print(f"{event_name:<38} {plain(cents):<24} {mstat:<12} {pstat}")
 
     print("\n== deactivating superseded kind-level meters ==")
@@ -237,6 +326,21 @@ def main(live=False):
 
     print("\n== Mode-B comp coupon ==")
     print(f"  {COMP_COUPON_ID}: {ensure_comp_coupon(coupons)}")
+
+    print("\n== Customer Portal ==")
+    portal_id, portal_status = ensure_portal_configuration(dashboard_url)
+    if portal_id:
+        print(f"  configuration: {portal_status} ({portal_id})")
+        print(f"  set BEX_STRIPE_PORTAL_CONFIGURATION_ID={portal_id} in the runtime Secret")
+    else:
+        print("  skipped (pass --dashboard-url to provision the scoped portal)")
+
+    print("\n== Stripe Tax gate ==")
+    if tax_code:
+        print(f"  ready: code={tax_code} behavior={tax_behavior} active_registrations={registration_count}")
+        print("  set BEX_STRIPE_TAX_CODE and BEX_STRIPE_TAX_BEHAVIOR in the runtime Secret")
+    else:
+        print("  unconfigured (safe): no tax code was guessed and automatic tax stays off")
     print("\nDone.")
 
 
@@ -249,9 +353,23 @@ if __name__ == "__main__":
         action="store_true",
         help="modify live-mode Stripe objects (default: test mode)",
     )
+    parser.add_argument(
+        "--tax-code",
+        help="operator-confirmed canonical Stripe product tax code (txcd_*); requires --tax-behavior and an active registration",
+    )
+    parser.add_argument(
+        "--tax-behavior",
+        choices=("exclusive", "inclusive"),
+        help="whether catalog prices exclude or include tax; requires --tax-code",
+    )
+    parser.add_argument(
+        "--dashboard-url",
+        help="trusted HTTPS dashboard origin; provisions a scoped Customer Portal configuration",
+    )
     args = parser.parse_args()
     try:
-        main(live=args.live)
+        main(live=args.live, tax_code=args.tax_code, tax_behavior=args.tax_behavior,
+             dashboard_url=args.dashboard_url)
     except RuntimeError as e:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)

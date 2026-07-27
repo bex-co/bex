@@ -56,6 +56,7 @@ import {
 } from "../hooks/use-usage";
 import { useUsageTrend, type TrendPoint } from "../hooks/use-usage-trend";
 import { WorkspaceResourceCaps } from "./resource-caps";
+import { BillingOnboardingCard } from "./billing-onboarding";
 
 // --- unit conversion helpers ---
 
@@ -717,6 +718,8 @@ export function UsagePage() {
           )}
 
           <WorkspaceResourceCaps />
+
+          <BillingOnboardingCard />
 
           <ComputeSection rows={computeRows} loading={loading} />
           <BandwidthSection rows={bandwidthRows} loading={loading} />

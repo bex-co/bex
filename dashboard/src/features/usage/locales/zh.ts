@@ -184,6 +184,80 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "金额",
     description: "Table column header for an invoice's amount",
   },
+  "usage.billingSetupTitle": {
+    message: "账单设置",
+    description: "Customer billing onboarding card title",
+  },
+  "usage.billingSetupDescription": {
+    message: "此工作区的付款收取与税务就绪状态",
+    description: "Customer billing onboarding card description",
+  },
+  "usage.billingTestMode": {
+    message: "Stripe 测试模式",
+    description: "Badge making the non-live Stripe environment explicit",
+  },
+  "usage.billingMode": {
+    message: "Stripe Billing",
+    description: "Fallback badge for the Stripe billing environment",
+  },
+  "usage.billingReady": {
+    message: "已就绪",
+    description: "Billing onboarding status is ready",
+  },
+  "usage.billingActionNeeded": {
+    message: "需要操作",
+    description: "Billing onboarding status needs action",
+  },
+  "usage.billingCustomerStatus": {
+    message: "客户",
+    description: "Stripe Customer readiness row",
+  },
+  "usage.billingSubscriptionStatus": {
+    message: "计量订阅",
+    description: "Stripe Subscription readiness row",
+  },
+  "usage.billingPaymentStatus": {
+    message: "付款方式",
+    description: "Default payment method readiness row",
+  },
+  "usage.billingTaxStatus": {
+    message: "自动计税",
+    description: "Stripe Tax activation row",
+  },
+  "usage.billingTaxUnconfigured": {
+    message:
+      "税务尚未配置。在运营人员确认规范的产品税码和有效的测试注册前，税费收取会保持关闭。",
+    description: "Fail-closed tax setup explanation",
+  },
+  "usage.billingAddPayment": {
+    message: "添加测试付款方式",
+    description: "Button opening setup-mode Stripe Checkout",
+  },
+  "usage.billingUpdatePayment": {
+    message: "更新测试付款方式",
+    description: "Button reopening setup-mode Stripe Checkout",
+  },
+  "usage.billingOpenPortal": {
+    message: "打开账单门户",
+    description: "Button opening Stripe Customer Portal",
+  },
+  "usage.billingHostedNote": {
+    message:
+      "付款信息只会在 Stripe 托管页面中输入；bex 不会向浏览器发送 Stripe 服务端密钥。",
+    description: "Hosted billing security note",
+  },
+  "usage.billingUnavailable": {
+    message: "账单设置暂不可用，或您没有工作区管理员权限。",
+    description: "Degraded or unauthorized billing onboarding state",
+  },
+  "usage.billingCheckoutError": {
+    message: "无法打开 Stripe Checkout，请重试。",
+    description: "Toast after Checkout session creation fails",
+  },
+  "usage.billingPortalError": {
+    message: "无法打开 Stripe 账单门户，请重试。",
+    description: "Toast after Portal session creation fails",
+  },
 };
 
 export default zhUsage;

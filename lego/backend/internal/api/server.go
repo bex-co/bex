@@ -38,6 +38,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/audit"
+	"github.com/bex-co/bex/lego/backend/internal/billing"
 	"github.com/bex-co/bex/lego/backend/internal/cliauth"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/deploys"
@@ -85,6 +86,7 @@ type Server struct {
 	EnvGroups     *envgroups.Service
 	Workspaces    *workspaces.Service
 	Members       *members.Service
+	Billing       *billing.Service
 	Usage         *usage.Service
 	Deploys       *deploys.Service
 	Events        *events.Service
@@ -252,6 +254,10 @@ type Deps struct {
 	// Usage, when set (store + Prom wired), provides the month-to-date usage
 	// verb (w8/m2). nil => the verb reports ErrUsageUnavailable (503).
 	Usage *usage.Service
+	// Billing is the Stripe-hosted customer-onboarding provider. nil preserves a
+	// stable REST/GraphQL/MCP contract whose verbs fail with 503 while Stripe is
+	// disabled, instead of making the schema depend on process environment.
+	Billing billing.HostedProvider
 	// Identities resolves owner/member email + MFA for the owners/members read
 	// API (w6/m2) — Kratos' admin API (BEX_KRATOS_ADMIN_URL). Nil omits those
 	// fields (honest subset) rather than failing the request.
@@ -494,6 +500,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	if d.Usage != nil {
 		d.Usage.Selections = selections
 	}
+	billingSvc := &billing.Service{Base: base, Provider: d.Billing, Selections: selections}
 	var environmentEnvGroups environments.EnvGroupIndex
 	if d.Secrets != nil {
 		environmentEnvGroups = envGroupsSvc
@@ -577,6 +584,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			InviteBaseURL: d.InviteBaseURL,
 			Identities:    identityEmailLookup{d.Identities},
 		},
+		Billing:       billingSvc,
 		Notifications: notificationsSvc,
 		Projects: &projects.Service{
 			Base:         base,
@@ -679,6 +687,9 @@ func (s *Server) features() []any {
 	}
 	if s.Members != nil {
 		out = append(out, s.Members)
+	}
+	if s.Billing != nil {
+		out = append(out, s.Billing)
 	}
 	if s.Usage != nil {
 		out = append(out, s.Usage)

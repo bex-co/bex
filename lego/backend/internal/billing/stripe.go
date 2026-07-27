@@ -23,11 +23,12 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
-	stripe "github.com/stripe/stripe-go/v82"
-	"github.com/stripe/stripe-go/v82/client"
+	stripe "github.com/stripe/stripe-go/v86"
+	"github.com/stripe/stripe-go/v86/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -73,6 +74,18 @@ type StripeConfig struct {
 	// CompCouponID is the perpetual 100%-off coupon provisioned by the setup
 	// script. Empty uses the stable default "bex-comp-100".
 	CompCouponID string
+	// DashboardURL is the only origin Checkout and Portal may return to. An
+	// empty value leaves hosted sessions unavailable while meter export and
+	// invoice reads continue unchanged.
+	DashboardURL string
+	// PortalConfigurationID optionally pins sessions to the operator-owned test
+	// portal configuration. Empty uses Stripe's default configuration.
+	PortalConfigurationID string
+	// TaxCode and TaxBehavior are an operator-confirmed pair. Tax remains
+	// explicitly unconfigured unless both are present and the account has an
+	// active registration; the runtime never guesses either value.
+	TaxCode     string
+	TaxBehavior string
 	// HTTPClient / BaseURL override the SDK transport for tests (a stub backend);
 	// production leaves both zero (Stripe's default api.stripe.com).
 	HTTPClient *http.Client
@@ -97,8 +110,13 @@ type StripeClient struct {
 	customers map[string]string // workspace id (tea-…) → Stripe customer id (cus_…)
 	priceIDs  []string          // complete active catalog, resolved once
 
-	billingEpoch time.Time
-	compCouponID string
+	billingEpoch          time.Time
+	compCouponID          string
+	dashboardURL          string
+	portalConfigurationID string
+	taxCode               string
+	taxBehavior           string
+	testMode              bool
 }
 
 // NewStripe builds a StripeClient, or returns nil when SecretKey is unset — the
@@ -125,10 +143,15 @@ func NewStripe(cfg StripeConfig) *StripeClient {
 		compCouponID = defaultCompCouponID
 	}
 	return &StripeClient{
-		sc:           sc,
-		customers:    map[string]string{},
-		billingEpoch: cfg.BillingEpoch.UTC(),
-		compCouponID: compCouponID,
+		sc:                    sc,
+		customers:             map[string]string{},
+		billingEpoch:          cfg.BillingEpoch.UTC(),
+		compCouponID:          compCouponID,
+		dashboardURL:          strings.TrimRight(cfg.DashboardURL, "/"),
+		portalConfigurationID: cfg.PortalConfigurationID,
+		taxCode:               cfg.TaxCode,
+		taxBehavior:           cfg.TaxBehavior,
+		testMode:              strings.Contains(cfg.SecretKey, "_test_"),
 	}
 }
 

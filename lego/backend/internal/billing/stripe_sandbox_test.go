@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	stripe "github.com/stripe/stripe-go/v82"
+	stripe "github.com/stripe/stripe-go/v86"
 
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -32,8 +32,9 @@ import (
 // and a disposable Postgres database. It proves the real outbox boundary:
 // sealed usage provisions one metadata-keyed Customer and one complete metered
 // Subscription, emits the Stripe meter event, stamps emitted_at, reads the
-// invoice preview, and applies the Mode-B comp coupon. The Customer is deleted
-// at cleanup, which also cancels its test Subscription.
+// invoice preview, creates scoped Checkout/Portal sessions, and applies the
+// Mode-B comp coupon. The Customer is deleted at cleanup, which also cancels
+// its test Subscription. The Checkout Session expires automatically.
 //
 // It is deliberately skipped in ordinary unit/CI runs. Invoke it only with a
 // test-mode server key and a throwaway database. A dedicated rk_test_ key is
@@ -86,7 +87,12 @@ func TestStripeSandboxEndToEnd(t *testing.T) {
 		t.Fatalf("insert sealed sandbox usage: %v", err)
 	}
 
-	client := NewStripe(StripeConfig{SecretKey: stripeKey})
+	portalConfigurationID := os.Getenv("BEX_TEST_STRIPE_PORTAL_CONFIGURATION_ID")
+	client := NewStripe(StripeConfig{
+		SecretKey:             stripeKey,
+		DashboardURL:          "https://dashboard.bex.co",
+		PortalConfigurationID: portalConfigurationID,
+	})
 	if client == nil {
 		t.Fatal("Stripe client unexpectedly disabled")
 	}
@@ -115,6 +121,36 @@ func TestStripeSandboxEndToEnd(t *testing.T) {
 	if !found || subscriptionID == "" {
 		t.Fatal("sandbox workspace did not provision a Stripe Subscription")
 	}
+	readiness, err := client.Readiness(ctx, tenant.ID)
+	if err != nil {
+		t.Fatalf("read sandbox payment readiness: %v", err)
+	}
+	if readiness.Mode != "test" || !readiness.CustomerReady || !readiness.SubscriptionReady {
+		t.Fatalf("sandbox readiness is not a test-mode contract: %+v", readiness)
+	}
+	checkoutVerified := false
+	checkout, err := client.CreateCheckoutSession(ctx, tenant.ID, CheckoutRequest{
+		SuccessURL: "https://dashboard.bex.co/usage?billing=success",
+		CancelURL:  "https://dashboard.bex.co/usage?billing=cancelled",
+	})
+	if err != nil {
+		t.Errorf("create sandbox Checkout Session: %v", err)
+	} else if checkout.URL == "" || checkout.ExpiresAt == "" {
+		t.Errorf("sandbox Checkout Session is incomplete: %+v", checkout)
+	} else {
+		checkoutVerified = true
+	}
+	portalVerified := false
+	if portalConfigurationID != "" {
+		portal, err := client.CreatePortalSession(ctx, tenant.ID, PortalRequest{ReturnURL: "https://dashboard.bex.co/usage"})
+		if err != nil {
+			t.Fatalf("create sandbox Portal Session: %v", err)
+		}
+		if portal.URL == "" {
+			t.Fatal("sandbox Portal Session URL is empty")
+		}
+		portalVerified = true
+	}
 
 	remaining, err := st.SelectUnemittedUsage(ctx, emitter.floor(now), now.Add(-emitter.SealHours), 10)
 	if err != nil {
@@ -135,5 +171,5 @@ func TestStripeSandboxEndToEnd(t *testing.T) {
 		t.Fatalf("apply sandbox Mode-B comp: %v", err)
 	}
 
-	t.Logf("Stripe sandbox verified: workspace=%s customer=%s subscription=%s preview=%s %s", tenant.ID, customerID, subscriptionID, bill.CurrentCost.AmountUSD, bill.CurrentCost.Currency)
+	t.Logf("Stripe sandbox verified: workspace=%s customer=%s subscription=%s preview=%s %s checkout=%t portal=%t", tenant.ID, customerID, subscriptionID, bill.CurrentCost.AmountUSD, bill.CurrentCost.Currency, checkoutVerified, portalVerified)
 }

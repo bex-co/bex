@@ -73,6 +73,12 @@ export type BillingAmount = {
   periodStart: Maybe<Scalars['String']['output']>;
 };
 
+export type BillingHostedSession = {
+  __typename: 'BillingHostedSession';
+  expiresAt: Maybe<Scalars['String']['output']>;
+  url: Maybe<Scalars['String']['output']>;
+};
+
 export type BillingInvoice = {
   __typename: 'BillingInvoice';
   amountUsd: Maybe<Scalars['String']['output']>;
@@ -81,6 +87,16 @@ export type BillingInvoice = {
   periodEnd: Maybe<Scalars['String']['output']>;
   periodStart: Maybe<Scalars['String']['output']>;
   status: Maybe<Scalars['String']['output']>;
+};
+
+export type BillingTaxReadiness = {
+  __typename: 'BillingTaxReadiness';
+  configured: Maybe<Scalars['Boolean']['output']>;
+  enabled: Maybe<Scalars['Boolean']['output']>;
+  productTaxCode: Maybe<Scalars['String']['output']>;
+  reason: Maybe<Scalars['String']['output']>;
+  registrationCount: Maybe<Scalars['Int']['output']>;
+  taxBehavior: Maybe<Scalars['String']['output']>;
 };
 
 export type Blueprint = {
@@ -676,6 +692,8 @@ export type Mutation = {
   changeWorkspacePlan: Maybe<Workspace>;
   connectGit: Maybe<GitConnection>;
   createApiKey: Maybe<ApiKey>;
+  createBillingCheckoutSession: Maybe<BillingHostedSession>;
+  createBillingPortalSession: Maybe<BillingHostedSession>;
   createDatabase: Maybe<Database>;
   createDatabaseExport: Maybe<DatabaseExport>;
   createDatabaseUser: Maybe<DatabaseUserWithPassword>;
@@ -766,6 +784,7 @@ export type Mutation = {
   setProjectServices: Maybe<Project>;
   setPublishPath: Maybe<Service>;
   setRegistryCredential: Maybe<Service>;
+  setRepo: Maybe<Service>;
   setRootDir: Maybe<Service>;
   setSecretFile: Maybe<Scalars['Boolean']['output']>;
   setServiceIpAllowList: Maybe<Service>;
@@ -844,6 +863,19 @@ export type MutationConnectGitArgs = {
 export type MutationCreateApiKeyArgs = {
   name: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationCreateBillingCheckoutSessionArgs = {
+  cancelUrl: Scalars['String']['input'];
+  successUrl: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
+};
+
+
+export type MutationCreateBillingPortalSessionArgs = {
+  returnUrl: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
 };
 
 
@@ -1461,6 +1493,12 @@ export type MutationSetRegistryCredentialArgs = {
 };
 
 
+export type MutationSetRepoArgs = {
+  id: Scalars['String']['input'];
+  repo: Scalars['String']['input'];
+};
+
+
 export type MutationSetRootDirArgs = {
   id: Scalars['String']['input'];
   rootDir: Scalars['String']['input'];
@@ -1731,6 +1769,7 @@ export type Query = {
   projects: Maybe<Array<Maybe<Project>>>;
   registryCredential: Maybe<RegistryCredential>;
   registryCredentials: Maybe<Array<Maybe<RegistryCredential>>>;
+  repoBranches: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   repos: Maybe<Array<Maybe<Repo>>>;
   secretFiles: Maybe<Array<Maybe<SecretFileWithCursor>>>;
   server: Maybe<Service>;
@@ -1746,6 +1785,7 @@ export type Query = {
   webhookEndpoint: Maybe<WebhookEndpoint>;
   webhookEndpoints: Maybe<Array<Maybe<WebhookEndpoint>>>;
   webhookEventTypes: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+  workspaceBillingReadiness: Maybe<WorkspaceBillingReadiness>;
   workspaceInvites: Maybe<Array<Maybe<WorkspaceInvite>>>;
   workspaceLimits: Maybe<ResourceLimits>;
   workspaceMembers: Maybe<Array<Maybe<WorkspaceMember>>>;
@@ -2086,6 +2126,12 @@ export type QueryRegistryCredentialsArgs = {
 };
 
 
+export type QueryRepoBranchesArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  repo: Scalars['String']['input'];
+};
+
+
 export type QueryReposArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
@@ -2163,6 +2209,11 @@ export type QueryWebhookEndpointArgs = {
 
 export type QueryWebhookEndpointsArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryWorkspaceBillingReadinessArgs = {
+  workspaceId: Scalars['String']['input'];
 };
 
 
@@ -2276,6 +2327,7 @@ export type SecretFileWithCursor = {
 export type Service = {
   __typename: 'Service';
   autoDeploy: Maybe<Scalars['Boolean']['output']>;
+  autoDeployTrigger: Maybe<Scalars['String']['output']>;
   autoscaling: Maybe<Autoscaling>;
   branch: Maybe<Scalars['String']['output']>;
   buildCommand: Maybe<Scalars['String']['output']>;
@@ -2499,6 +2551,16 @@ export type Workspace = {
   name: Maybe<Scalars['String']['output']>;
   plan: Maybe<Scalars['String']['output']>;
   role: Maybe<Scalars['String']['output']>;
+};
+
+export type WorkspaceBillingReadiness = {
+  __typename: 'WorkspaceBillingReadiness';
+  customerReady: Maybe<Scalars['Boolean']['output']>;
+  mode: Maybe<Scalars['String']['output']>;
+  paymentMethodReady: Maybe<Scalars['Boolean']['output']>;
+  subscriptionReady: Maybe<Scalars['Boolean']['output']>;
+  tax: Maybe<BillingTaxReadiness>;
+  workspaceId: Maybe<Scalars['String']['output']>;
 };
 
 export type WorkspaceInvite = {
@@ -3896,6 +3958,30 @@ export type WorkspaceLimitsQueryVariables = Exact<{
 
 export type WorkspaceLimitsQuery = { workspaceLimits: { __typename: 'ResourceLimits', services: { __typename: 'ResourceCap', used: number | null, limit: number | null } | null, postgres: { __typename: 'ResourceCap', used: number | null, limit: number | null } | null, keyValues: { __typename: 'ResourceCap', used: number | null, limit: number | null } | null } | null };
 
+export type BillingReadinessQueryVariables = Exact<{
+  workspaceId: Scalars['String']['input'];
+}>;
+
+
+export type BillingReadinessQuery = { workspaceBillingReadiness: { __typename: 'WorkspaceBillingReadiness', workspaceId: string | null, mode: string | null, customerReady: boolean | null, subscriptionReady: boolean | null, paymentMethodReady: boolean | null, tax: { __typename: 'BillingTaxReadiness', configured: boolean | null, enabled: boolean | null, reason: string | null, productTaxCode: string | null, taxBehavior: string | null, registrationCount: number | null } | null } | null };
+
+export type CreateBillingCheckoutSessionMutationVariables = Exact<{
+  workspaceId: Scalars['String']['input'];
+  successUrl: Scalars['String']['input'];
+  cancelUrl: Scalars['String']['input'];
+}>;
+
+
+export type CreateBillingCheckoutSessionMutation = { createBillingCheckoutSession: { __typename: 'BillingHostedSession', url: string | null, expiresAt: string | null } | null };
+
+export type CreateBillingPortalSessionMutationVariables = Exact<{
+  workspaceId: Scalars['String']['input'];
+  returnUrl: Scalars['String']['input'];
+}>;
+
+
+export type CreateBillingPortalSessionMutation = { createBillingPortalSession: { __typename: 'BillingHostedSession', url: string | null, expiresAt: string | null } | null };
+
 export type WebhookEndpointsQueryVariables = Exact<{
   ownerId?: InputMaybe<Scalars['String']['input']>;
 }>;
@@ -4174,6 +4260,9 @@ export const ResendWorkspaceInviteDocument = {"kind":"Document","definitions":[{
 export const AcceptWorkspaceInviteDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AcceptWorkspaceInvite"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"token"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"acceptWorkspaceInvite"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"token"},"value":{"kind":"Variable","name":{"kind":"Name","value":"token"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceName"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}}]}}]} as unknown as DocumentNode<AcceptWorkspaceInviteMutation, AcceptWorkspaceInviteMutationVariables>;
 export const UsageDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Usage"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"period"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"usage"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"period"},"value":{"kind":"Variable","name":{"kind":"Name","value":"period"}}},{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"period"}},{"kind":"Field","name":{"kind":"Name","value":"services"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"serviceId"}},{"kind":"Field","name":{"kind":"Name","value":"serviceName"}},{"kind":"Field","name":{"kind":"Name","value":"resourceKind"}},{"kind":"Field","name":{"kind":"Name","value":"rows"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"tier"}},{"kind":"Field","name":{"kind":"Name","value":"total"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"estimatedCost"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalUsd"}},{"kind":"Field","name":{"kind":"Name","value":"meters"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"tier"}},{"kind":"Field","name":{"kind":"Name","value":"resourceKind"}},{"kind":"Field","name":{"kind":"Name","value":"costUsd"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"billing"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"currentCost"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amountUsd"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"periodStart"}},{"kind":"Field","name":{"kind":"Name","value":"periodEnd"}}]}},{"kind":"Field","name":{"kind":"Name","value":"invoices"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"amountUsd"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"periodStart"}},{"kind":"Field","name":{"kind":"Name","value":"periodEnd"}}]}}]}}]}}]}}]} as unknown as DocumentNode<UsageQuery, UsageQueryVariables>;
 export const WorkspaceLimitsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"WorkspaceLimits"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"workspaceLimits"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"services"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"used"}},{"kind":"Field","name":{"kind":"Name","value":"limit"}}]}},{"kind":"Field","name":{"kind":"Name","value":"postgres"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"used"}},{"kind":"Field","name":{"kind":"Name","value":"limit"}}]}},{"kind":"Field","name":{"kind":"Name","value":"keyValues"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"used"}},{"kind":"Field","name":{"kind":"Name","value":"limit"}}]}}]}}]}}]} as unknown as DocumentNode<WorkspaceLimitsQuery, WorkspaceLimitsQueryVariables>;
+export const BillingReadinessDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"BillingReadiness"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"workspaceBillingReadiness"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"workspaceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"mode"}},{"kind":"Field","name":{"kind":"Name","value":"customerReady"}},{"kind":"Field","name":{"kind":"Name","value":"subscriptionReady"}},{"kind":"Field","name":{"kind":"Name","value":"paymentMethodReady"}},{"kind":"Field","name":{"kind":"Name","value":"tax"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"configured"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"productTaxCode"}},{"kind":"Field","name":{"kind":"Name","value":"taxBehavior"}},{"kind":"Field","name":{"kind":"Name","value":"registrationCount"}}]}}]}}]}}]} as unknown as DocumentNode<BillingReadinessQuery, BillingReadinessQueryVariables>;
+export const CreateBillingCheckoutSessionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateBillingCheckoutSession"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"successUrl"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"cancelUrl"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createBillingCheckoutSession"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"workspaceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"successUrl"},"value":{"kind":"Variable","name":{"kind":"Name","value":"successUrl"}}},{"kind":"Argument","name":{"kind":"Name","value":"cancelUrl"},"value":{"kind":"Variable","name":{"kind":"Name","value":"cancelUrl"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"expiresAt"}}]}}]}}]} as unknown as DocumentNode<CreateBillingCheckoutSessionMutation, CreateBillingCheckoutSessionMutationVariables>;
+export const CreateBillingPortalSessionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateBillingPortalSession"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"returnUrl"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createBillingPortalSession"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"workspaceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"returnUrl"},"value":{"kind":"Variable","name":{"kind":"Name","value":"returnUrl"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"expiresAt"}}]}}]}}]} as unknown as DocumentNode<CreateBillingPortalSessionMutation, CreateBillingPortalSessionMutationVariables>;
 export const WebhookEndpointsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"WebhookEndpoints"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"webhookEndpoints"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"eventTypes"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"disabledReason"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<WebhookEndpointsQuery, WebhookEndpointsQueryVariables>;
 export const WebhookEndpointDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"WebhookEndpoint"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"webhookEndpoint"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"eventTypes"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"disabledReason"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"createdBy"}}]}}]}}]} as unknown as DocumentNode<WebhookEndpointQuery, WebhookEndpointQueryVariables>;
 export const WebhookEventTypesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"WebhookEventTypes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"webhookEventTypes"}}]}}]} as unknown as DocumentNode<WebhookEventTypesQuery, WebhookEventTypesQueryVariables>;

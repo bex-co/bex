@@ -9,6 +9,9 @@
 #   BEX_STRIPE_EPOCH           explicit RFC3339 billing-start floor (required)
 #   BEX_STRIPE_SEAL_HOURS      rewrite horizon (default 48)
 #   BEX_STRIPE_COMP_COUPON_ID  Mode-B coupon (default bex-comp-100)
+#   BEX_STRIPE_PORTAL_CONFIGURATION_ID  operator-owned bpc_* portal (optional)
+#   BEX_STRIPE_TAX_CODE        confirmed canonical txcd_* (optional pair)
+#   BEX_STRIPE_TAX_BEHAVIOR    exclusive|inclusive (optional pair)
 #
 # Usage:
 #   scripts/stripe-billing-secret.sh
@@ -65,6 +68,26 @@ case "$BEX_STRIPE_SEAL_HOURS" in
   *[!0-9]*|0|'') echo "error: BEX_STRIPE_SEAL_HOURS must be an integer >= 1" >&2; exit 1 ;;
 esac
 
+if [ -n "${BEX_STRIPE_PORTAL_CONFIGURATION_ID:-}" ]; then
+  case "$BEX_STRIPE_PORTAL_CONFIGURATION_ID" in
+    bpc_*) ;;
+    *) echo "error: BEX_STRIPE_PORTAL_CONFIGURATION_ID must start with bpc_" >&2; exit 1 ;;
+  esac
+fi
+
+if [ -n "${BEX_STRIPE_TAX_CODE:-}" ] || [ -n "${BEX_STRIPE_TAX_BEHAVIOR:-}" ]; then
+  require BEX_STRIPE_TAX_CODE
+  require BEX_STRIPE_TAX_BEHAVIOR
+  case "$BEX_STRIPE_TAX_CODE" in
+    txcd_*) ;;
+    *) echo "error: BEX_STRIPE_TAX_CODE must be an operator-confirmed canonical txcd_* value" >&2; exit 1 ;;
+  esac
+  case "$BEX_STRIPE_TAX_BEHAVIOR" in
+    exclusive|inclusive) ;;
+    *) echo "error: BEX_STRIPE_TAX_BEHAVIOR must be exclusive or inclusive" >&2; exit 1 ;;
+  esac
+fi
+
 python3 - "$BEX_STRIPE_EPOCH" <<'PY'
 import datetime
 import sys
@@ -79,8 +102,11 @@ if parsed.tzinfo is None:
 PY
 
 if [ "${DRY_RUN:-0}" = "1" ]; then
-  echo "would apply Secret $namespace/$secret_name (keys: BEX_STRIPE_SECRET_KEY BEX_STRIPE_WEBHOOK_SECRET BEX_STRIPE_EPOCH BEX_STRIPE_SEAL_HOURS BEX_STRIPE_COMP_COUPON_ID)"
-  echo "mode=$stripe_mode epoch=$BEX_STRIPE_EPOCH seal_hours=$BEX_STRIPE_SEAL_HOURS coupon=$BEX_STRIPE_COMP_COUPON_ID"
+  optional_keys=""
+  [ -n "${BEX_STRIPE_PORTAL_CONFIGURATION_ID:-}" ] && optional_keys="$optional_keys BEX_STRIPE_PORTAL_CONFIGURATION_ID"
+  [ -n "${BEX_STRIPE_TAX_CODE:-}" ] && optional_keys="$optional_keys BEX_STRIPE_TAX_CODE BEX_STRIPE_TAX_BEHAVIOR"
+  echo "would apply Secret $namespace/$secret_name (keys: BEX_STRIPE_SECRET_KEY BEX_STRIPE_WEBHOOK_SECRET BEX_STRIPE_EPOCH BEX_STRIPE_SEAL_HOURS BEX_STRIPE_COMP_COUPON_ID$optional_keys)"
+  echo "mode=$stripe_mode epoch=$BEX_STRIPE_EPOCH seal_hours=$BEX_STRIPE_SEAL_HOURS coupon=$BEX_STRIPE_COMP_COUPON_ID tax_configured=$([ -n "${BEX_STRIPE_TAX_CODE:-}" ] && echo true || echo false)"
   exit 0
 fi
 
@@ -101,6 +127,9 @@ trap cleanup EXIT
   printf 'BEX_STRIPE_EPOCH=%s\n' "$BEX_STRIPE_EPOCH"
   printf 'BEX_STRIPE_SEAL_HOURS=%s\n' "$BEX_STRIPE_SEAL_HOURS"
   printf 'BEX_STRIPE_COMP_COUPON_ID=%s\n' "$BEX_STRIPE_COMP_COUPON_ID"
+  [ -z "${BEX_STRIPE_PORTAL_CONFIGURATION_ID:-}" ] || printf 'BEX_STRIPE_PORTAL_CONFIGURATION_ID=%s\n' "$BEX_STRIPE_PORTAL_CONFIGURATION_ID"
+  [ -z "${BEX_STRIPE_TAX_CODE:-}" ] || printf 'BEX_STRIPE_TAX_CODE=%s\n' "$BEX_STRIPE_TAX_CODE"
+  [ -z "${BEX_STRIPE_TAX_BEHAVIOR:-}" ] || printf 'BEX_STRIPE_TAX_BEHAVIOR=%s\n' "$BEX_STRIPE_TAX_BEHAVIOR"
 } >"$secret_env"
 
 kubectl get namespace "$namespace" >/dev/null 2>&1 || kubectl create namespace "$namespace" >/dev/null
