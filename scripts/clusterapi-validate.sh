@@ -96,7 +96,8 @@ while read -r kind name; do
   fi
 done < <(yq -N 'select(.kind=="KubeadmControlPlane" or .kind=="KubeadmConfigTemplate") | .kind + " " + .metadata.name' "$OVERLAY")
 
-# 2. The platform autoscaler must preserve one node per OpenBao Raft member.
+# 2. Autoscaler pool bounds must preserve platform quorum and route tenant
+# scale-out through a server type that fsn1 can still create.
 echo "==> $OVERLAY platform autoscaler floor"
 platform_min="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-platform") | .metadata.annotations."cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size"' "$OVERLAY")"
 platform_max="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-platform") | .metadata.annotations."cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size"' "$OVERLAY")"
@@ -106,6 +107,31 @@ if [ "$platform_min" != "3" ]; then
 fi
 if ! [[ "$platform_max" =~ ^[0-9]+$ ]] || (( platform_max < 3 )); then
   echo "FAIL: bex-platform autoscaler max-size is '$platform_max' (want >=3)" >&2
+  fail=1
+fi
+
+echo "==> $OVERLAY tenant baseline + burst autoscaler split"
+tenant_min="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-tenant-0") | .metadata.annotations."cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size"' "$OVERLAY")"
+tenant_max="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-tenant-0") | .metadata.annotations."cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size"' "$OVERLAY")"
+burst_min="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-tenant-burst") | .metadata.annotations."cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size"' "$OVERLAY")"
+burst_max="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-tenant-burst") | .metadata.annotations."cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size"' "$OVERLAY")"
+burst_labels="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-tenant-burst") | .metadata.annotations."capacity.cluster-autoscaler.kubernetes.io/labels"' "$OVERLAY")"
+burst_infra="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-tenant-burst") | .spec.template.spec.infrastructureRef.name' "$OVERLAY")"
+burst_type="$(yq -N "select(.kind==\"HCloudMachineTemplate\" and .metadata.name==\"$burst_infra\") | .spec.template.spec.type" "$OVERLAY")"
+if [ "$tenant_min" != "1" ] || [ "$tenant_max" != "1" ]; then
+  echo "FAIL: bex-tenant-0 must remain the non-scaling cx33 baseline (want min=1 max=1, got min=$tenant_min max=$tenant_max)" >&2
+  fail=1
+fi
+if [ "$burst_min" != "0" ] || [ "$burst_max" != "2" ]; then
+  echo "FAIL: bex-tenant-burst must preserve cold scale-out (want min=0 max=2, got min=$burst_min max=$burst_max)" >&2
+  fail=1
+fi
+if [ "$burst_type" != "cpx32" ]; then
+  echo "FAIL: bex-tenant-burst uses '$burst_type' (want x86 cpx32; cx33 creation is blocked in fsn1)" >&2
+  fail=1
+fi
+if [ "$burst_labels" != "bex.co/pool=tenant" ]; then
+  echo "FAIL: bex-tenant-burst scale-from-zero labels are '$burst_labels' (want bex.co/pool=tenant)" >&2
   fail=1
 fi
 
