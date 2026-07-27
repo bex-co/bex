@@ -190,6 +190,65 @@ func TestZotConfigBuilderAdminPolicyMigration(t *testing.T) {
 	}
 }
 
+// TestZotConfigStorageMigration verifies that an existing production config
+// receives new GC/storage policy without losing tenant ACLs or other extensions.
+func TestZotConfigStorageMigration(t *testing.T) {
+	c := &Creds{}
+	canonical := c.baseZotConfig()
+	existing, err := addZotACLEntry(canonical, "myapp", "app-myapp")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var historical map[string]any
+	if err := json.Unmarshal(existing, &historical); err != nil {
+		t.Fatal(err)
+	}
+	storage, _ := historical["storage"].(map[string]any)
+	storage["gcInterval"] = "24h"
+	delete(storage, "dedupe")
+	historical["extensions"] = map[string]any{"sentinel": true}
+	existing, err = json.Marshal(historical)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	migrated, changed, err := ensureZotStorageConfig(existing, canonical)
+	if err != nil {
+		t.Fatalf("ensureZotStorageConfig: %v", err)
+	}
+	if !changed {
+		t.Fatal("historical storage policy was not migrated")
+	}
+	if !zotConfigHasRepoWritePolicy(migrated, "myapp", "app-myapp") {
+		t.Fatal("storage migration removed the existing per-App ACL")
+	}
+	if !zotConfigHasBuilderAdminPolicy(migrated) {
+		t.Fatal("storage migration removed the builder admin policy")
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(migrated, &got); err != nil {
+		t.Fatal(err)
+	}
+	gotStorage, _ := got["storage"].(map[string]any)
+	if gotStorage["gcInterval"] != "1h" || gotStorage["dedupe"] != true {
+		t.Errorf("migrated storage = %v; want hourly GC with dedupe", gotStorage)
+	}
+	extensions, _ := got["extensions"].(map[string]any)
+	if extensions["sentinel"] != true {
+		t.Fatal("storage migration removed an unrelated extension")
+	}
+
+	again, changed, err := ensureZotStorageConfig(migrated, canonical)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changed || string(again) != string(migrated) {
+		t.Fatal("canonical storage migration must be idempotent")
+	}
+}
+
 // TestZotConfigIsolation verifies that per-App users are only added to their
 // own repo — not to the global ** wildcard.
 func TestZotConfigIsolation(t *testing.T) {
