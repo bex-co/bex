@@ -20,7 +20,9 @@ describe("MaxShutdownDelayRow", () => {
       <MaxShutdownDelayRow serviceId="web" maxShutdownDelaySeconds={null} />,
     );
 
-    expect(screen.getByText("30 sec")).toBeInTheDocument();
+    const input = screen.getByRole("spinbutton", { name: "Max shutdown delay" });
+    expect(input).toHaveValue(30);
+    expect(input).toBeDisabled();
     expect(screen.getByText(/1–300 seconds/)).toBeInTheDocument();
   });
 
@@ -43,9 +45,7 @@ describe("MaxShutdownDelayRow", () => {
     });
     await user.clear(input);
     await user.type(input, "120");
-    await user.click(
-      screen.getByRole("button", { name: "Save max shutdown delay" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect(setMaxShutdownDelay).toHaveBeenCalledWith("worker", 120);
     expect(onChanged).toHaveBeenCalledOnce();
@@ -62,9 +62,7 @@ describe("MaxShutdownDelayRow", () => {
     const input = screen.getByRole("spinbutton", {
       name: "Max shutdown delay",
     });
-    const save = screen.getByRole("button", {
-      name: "Save max shutdown delay",
-    });
+    const save = screen.getByRole("button", { name: "Save changes" });
 
     for (const value of ["0", "301", "1.5"]) {
       await user.clear(input);

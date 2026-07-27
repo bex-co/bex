@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Plus, Trash2, Pencil, ArrowRightLeft, Tags } from "lucide-react";
+import { Plus, Trash2, ArrowRightLeft, Tags } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/common/components/ui/select";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { useStaticSiteMutations } from "@/features/services/hooks/use-static-site";
 import { rootDirPrefix } from "@/features/services/lib/format";
 import type {
@@ -107,74 +108,23 @@ function PublishPathRow({
   busy: boolean;
 }) {
   const { t } = useTranslations();
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(publishPath ?? "");
+  const current = publishPath ?? "";
   const prefix = rootDirPrefix(rootDir);
 
-  async function save() {
-    if (draft.trim() === "") return;
-    if (await onSave(draft.trim())) setEditing(false);
-  }
-
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium">
-          {t("services.publishPathLabel")}
-        </span>
-        {!editing && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setDraft(publishPath ?? "");
-              setEditing(true);
-            }}
-          >
-            <Pencil /> {t("services.staticEdit")}
-          </Button>
-        )}
-      </div>
-      {editing ? (
-        <div className="flex items-center gap-2">
-          {prefix && (
-            <code className="text-muted-foreground shrink-0 font-mono text-xs">
-              {prefix}
-            </code>
-          )}
-          <Input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder={t("services.publishPathPlaceholder")}
-            autoFocus
-          />
-          <Button disabled={busy} onClick={() => void save()}>
-            {t("services.staticSave")}
-          </Button>
-          <Button variant="ghost" onClick={() => setEditing(false)}>
-            {t("services.staticCancel")}
-          </Button>
-        </div>
-      ) : (
-        <div className="bg-background overflow-x-auto rounded-md border px-3 py-2">
-          <code className="font-mono text-xs">
-            {publishPath ? (
-              <>
-                {prefix && (
-                  <span className="text-muted-foreground">{prefix}</span>
-                )}
-                {publishPath}
-              </>
-            ) : (
-              "—"
-            )}
-          </code>
-        </div>
-      )}
-      <p className="text-muted-foreground text-xs">
-        {t("services.publishPathHint")}
-      </p>
-    </div>
+    <EditableFieldRow
+      label={t("services.publishPathLabel")}
+      hint={t("services.publishPathHint")}
+      value={current}
+      placeholder={t("services.publishPathPlaceholder")}
+      editLabel={t("services.publishPathEdit")}
+      valuePrefix={prefix || undefined}
+      mono
+      busy={busy}
+      // A publish directory is required, so an empty value is never savable.
+      dirty={(value) => value !== "" && value !== current}
+      onSave={onSave}
+    />
   );
 }
 

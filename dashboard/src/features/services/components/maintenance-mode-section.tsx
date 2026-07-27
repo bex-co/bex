@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Card,
   CardHeader,
@@ -8,8 +8,6 @@ import {
 } from "@/common/components/ui/card";
 import { Switch } from "@/common/components/ui/switch";
 import { Label } from "@/common/components/ui/label";
-import { Input } from "@/common/components/ui/input";
-import { Button } from "@/common/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +20,7 @@ import {
 } from "@/common/components/ui/alert-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useMaintenanceMode } from "@/features/services/hooks/use-maintenance-mode";
+import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import type { MaintenanceModeView } from "@/features/services/types";
 
 export interface MaintenanceModeSectionProps {
@@ -52,17 +51,7 @@ export function MaintenanceModeSection({
   const enabled = maintenanceMode?.enabled ?? false;
   const eligible = plan !== "free";
   const current = maintenanceMode?.uri ?? "";
-  const [draft, setDraft] = useState(current);
   const [confirmEnable, setConfirmEnable] = useState(false);
-
-  // Sync the draft once the detail query resolves (it's null on first render)
-  // and whenever the live value changes elsewhere; a user-initiated save makes
-  // this a no-op since draft already equals the newly-saved value.
-  useEffect(() => {
-    setDraft(current);
-  }, [current]);
-
-  const uriChanged = draft !== current;
 
   return (
     <Card>
@@ -101,32 +90,21 @@ export function MaintenanceModeSection({
           />
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="maintenance-mode-uri" className="text-sm">
-            {t("services.maintenanceModeUriLabel")}
-          </Label>
-          <div className="flex items-center gap-2">
-            <Input
-              id="maintenance-mode-uri"
-              value={draft}
-              disabled={!eligible || busy}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder={t("services.maintenanceModeUriPlaceholder")}
-              className="font-mono text-sm"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={busy || !eligible || !uriChanged}
-              onClick={() => void setMaintenanceMode(serviceId, enabled, draft)}
-            >
-              {t("services.maintenanceModeSaveUri")}
-            </Button>
-          </div>
-          <p className="text-muted-foreground text-sm">
-            {t("services.maintenanceModeUriHint")}
-          </p>
-        </div>
+        <EditableFieldRow
+          label={t("services.maintenanceModeUriLabel")}
+          hint={t("services.maintenanceModeUriHint")}
+          value={current}
+          editLabel={t("services.maintenanceModeUriEdit")}
+          placeholder={t("services.maintenanceModeUriPlaceholder")}
+          mono
+          busy={busy}
+          // The switch's own hint already explains the paid-plan requirement,
+          // so the disabled URL field needs no duplicate reason.
+          disabled={!eligible}
+          // Changing the URL re-applies with the current on/off state; the URL
+          // edit never itself flips maintenance mode.
+          onSave={(value) => setMaintenanceMode(serviceId, enabled, value)}
+        />
       </CardContent>
 
       <AlertDialog open={confirmEnable} onOpenChange={setConfirmEnable}>
@@ -147,7 +125,7 @@ export function MaintenanceModeSection({
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                void setMaintenanceMode(serviceId, true, draft);
+                void setMaintenanceMode(serviceId, true, current);
                 setConfirmEnable(false);
               }}
             >

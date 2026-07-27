@@ -923,6 +923,20 @@ const enServices: Record<string, TranslationEntry> = {
       "Configure this service's name, instance size, and other settings.",
     description: "Settings tab card description",
   },
+  "services.editRowSave": {
+    message: "Save changes",
+    description:
+      "Shared editable-field row: save button shown while editing (Render parity)",
+  },
+  "services.editRowCancel": {
+    message: "Cancel",
+    description: "Shared editable-field row: cancel button shown while editing",
+  },
+  "services.editRowOptional": {
+    message: "Optional",
+    description:
+      "Shared editable-field row: badge next to a label for an optional field",
+  },
   "services.displayNameLabel": {
     message: "Service Name",
     description:
@@ -937,14 +951,6 @@ const enServices: Record<string, TranslationEntry> = {
   "services.displayNameEdit": {
     message: "Edit service name",
     description: "Accessible label for the service-name edit button",
-  },
-  "services.displayNameSave": {
-    message: "Save service name",
-    description: "Accessible label for the service-name save button",
-  },
-  "services.displayNameCancel": {
-    message: "Cancel service name edit",
-    description: "Accessible label for the service-name cancel button",
   },
   "services.displayNameSuccess": {
     message: 'Service renamed to "{name}".',
@@ -1017,21 +1023,9 @@ const enServices: Record<string, TranslationEntry> = {
       "Wait 1–300 seconds after SIGTERM before force-stopping the process (default 30).",
     description: "Settings row help for the shutdown-delay range",
   },
-  "services.maxShutdownDelaySeconds": {
-    message: "{seconds} sec",
-    description: "Current graceful-shutdown delay in seconds",
-  },
   "services.maxShutdownDelayEdit": {
     message: "Edit max shutdown delay",
     description: "Accessible label for the shutdown-delay edit button",
-  },
-  "services.maxShutdownDelaySave": {
-    message: "Save max shutdown delay",
-    description: "Accessible label for the shutdown-delay save button",
-  },
-  "services.maxShutdownDelayCancel": {
-    message: "Cancel max shutdown delay edit",
-    description: "Accessible label for the shutdown-delay cancel button",
   },
   "services.maxShutdownDelaySuccess": {
     message: "Max shutdown delay updated.",
@@ -1092,6 +1086,10 @@ const enServices: Record<string, TranslationEntry> = {
     message:
       "Override the workspace default for this service. The workspace default sends only failure notifications.",
     description: "Settings tab: service notification policy explanation",
+  },
+  "services.notificationsEdit": {
+    message: "Edit service notifications",
+    description: "Accessible label for the service-notifications edit button",
   },
   "services.notificationsOptionDefault": {
     message: "Use workspace default (Only failure notifications)",
@@ -1498,9 +1496,10 @@ const enServices: Record<string, TranslationEntry> = {
       "Fetched and served in place of the default page. Leave empty to use bex's default maintenance page. Must not point at this service's own URL.",
     description: "Hint text under the maintenance-mode custom-page URL field",
   },
-  "services.maintenanceModeSaveUri": {
-    message: "Save",
-    description: "Save button for the maintenance-mode custom-page URL field",
+  "services.maintenanceModeUriEdit": {
+    message: "Edit maintenance page URL",
+    description:
+      "Accessible label for the maintenance-page URL edit-pencil button",
   },
   "services.maintenanceModeEnableAction": {
     message: "Enable maintenance mode",
@@ -1544,19 +1543,6 @@ const enServices: Record<string, TranslationEntry> = {
     message: "How this cron job runs.",
     description: "Cron job Settings tab: Deploy section description",
   },
-  "services.deployEdit": {
-    message: "Edit cron settings",
-    description:
-      "Cron job Deploy section: accessible label for the edit-pencil button",
-  },
-  "services.deploySave": {
-    message: "Save",
-    description: "Cron job Deploy section: save button",
-  },
-  "services.deployCancel": {
-    message: "Cancel",
-    description: "Cron job Deploy section: cancel edit button",
-  },
   "services.deploySuccess": {
     message: "Cron job settings saved.",
     description: "Toast after updateCronJob succeeds",
@@ -1583,6 +1569,14 @@ const enServices: Record<string, TranslationEntry> = {
     message: "0 * * * *",
     description: "Cron job Deploy section: schedule input placeholder",
   },
+  "services.deployScheduleEdit": {
+    message: "Edit schedule",
+    description: "Accessible label for the cron schedule edit button",
+  },
+  "services.deployCommandEdit": {
+    message: "Edit command",
+    description: "Accessible label for the cron command edit button",
+  },
   "services.deployScheduleError": {
     message: "Enter a valid 5-field cron expression, e.g. 0 * * * *.",
     description: "Cron job Deploy section: schedule validation error",
@@ -1603,11 +1597,6 @@ const enServices: Record<string, TranslationEntry> = {
     message:
       "Overrides the image's default entry point. Leave blank to run the image's own command.",
     description: "Cron job Deploy section: command field help text",
-  },
-  "services.deployCommandEmpty": {
-    message: "Uses the image's own default command.",
-    description:
-      "Cron job Settings tab: shown when spec.command is unset (no override)",
   },
   "services.buildDeployTitle": {
     message: "Build & Deploy",
@@ -1666,10 +1655,6 @@ const enServices: Record<string, TranslationEntry> = {
       "If set, builds run from this subdirectory instead of the repository root. Code changes outside of it don't trigger an auto-deploy. Most commonly used with a monorepo.",
     description: "Build & Deploy: root-directory field help text",
   },
-  "services.buildDeployRootDirEmpty": {
-    message: "Repository root",
-    description: "Build & Deploy: shown when spec.rootDir is unset",
-  },
   "services.buildDeployConfirmRoot": {
     message: "the repository root",
     description:
@@ -1682,10 +1667,6 @@ const enServices: Record<string, TranslationEntry> = {
   "services.buildDeployEdit": {
     message: "Edit Root Directory",
     description: "Build & Deploy: accessible label for the edit-pencil button",
-  },
-  "services.buildDeploySave": {
-    message: "Save",
-    description: "Build & Deploy: root-directory inline-edit save button",
   },
   "services.buildDeployCancel": {
     message: "Cancel",
@@ -1724,10 +1705,6 @@ const enServices: Record<string, TranslationEntry> = {
     message:
       "Overrides the CMD in the Dockerfile. Leave blank to use the image's default command.",
     description: "Build & Deploy: Docker Command help text",
-  },
-  "services.startCommandEmpty": {
-    message: "Uses the runtime or image default command",
-    description: "Build & Deploy: empty start/Docker Command state",
   },
   "services.startCommandConfirmEmpty": {
     message: "the default command",
@@ -1780,10 +1757,6 @@ const enServices: Record<string, TranslationEntry> = {
       "The command that builds your site's static output (e.g., npm run build). Leave blank to use the runtime default.",
     description: "Build & Deploy: build-command help text",
   },
-  "services.buildCommandEmpty": {
-    message: "Uses the runtime default",
-    description: "Build & Deploy: empty build-command state label",
-  },
   "services.buildCommandConfirmEmpty": {
     message: "Runtime default",
     description:
@@ -1822,10 +1795,6 @@ const enServices: Record<string, TranslationEntry> = {
     message:
       "Path to the Dockerfile, relative to the Root Directory. Leave blank to use Dockerfile.",
     description: "Build & Deploy: Dockerfile-path help text",
-  },
-  "services.dockerfilePathEmpty": {
-    message: "Dockerfile",
-    description: "Build & Deploy: default Dockerfile-path state",
   },
   "services.dockerfilePathConfirmEmpty": {
     message: "the default Dockerfile",
@@ -1931,10 +1900,6 @@ const enServices: Record<string, TranslationEntry> = {
   "services.preDeployPlaceholder": {
     message: "e.g. npm run migrate",
     description: "Build & Deploy: placeholder for the pre-deploy command input",
-  },
-  "services.preDeployEmpty": {
-    message: "No pre-deploy command",
-    description: "Build & Deploy: empty state for the pre-deploy command field",
   },
   "services.preDeployEdit": {
     message: "Edit Pre-Deploy Command",
@@ -2088,14 +2053,6 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Settings hint pointing at the dedicated Redirects/Rewrites + Headers pages",
   },
-  "services.staticEdit": {
-    message: "Edit",
-    description: "Edit an inline field",
-  },
-  "services.staticSave": {
-    message: "Save",
-    description: "Save an inline field",
-  },
   "services.staticCancel": {
     message: "Cancel",
     description: "Cancel an inline edit",
@@ -2107,6 +2064,11 @@ const enServices: Record<string, TranslationEntry> = {
   "services.publishPathPlaceholder": {
     message: "dist",
     description: "Placeholder for the publish directory input",
+  },
+  "services.publishPathEdit": {
+    message: "Edit publish directory",
+    description:
+      "Accessible label for the publish-directory edit-pencil button",
   },
   "services.publishPathHint": {
     message:

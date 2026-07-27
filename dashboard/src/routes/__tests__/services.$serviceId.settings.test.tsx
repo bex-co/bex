@@ -316,7 +316,9 @@ describe("ServiceSettingsPage", () => {
     renderSettings("stable-service-id");
 
     expect(await screen.findByText("Service Name")).toBeInTheDocument();
-    expect(screen.getByText("Customer API")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Service Name" })).toHaveValue(
+      "Customer API",
+    );
     expect(
       screen.getByText(
         "The service ID remains stable-service-id; URLs and infrastructure do not change.",
@@ -359,8 +361,12 @@ describe("ServiceSettingsPage", () => {
     renderSettings();
 
     expect(await screen.findByText("Deploy")).toBeInTheDocument();
-    expect(screen.getByText("*/15 * * * *")).toBeInTheDocument();
-    expect(screen.getByText("npm run send-nightly-report")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Schedule" })).toHaveValue(
+      "*/15 * * * *",
+    );
+    expect(screen.getByRole("textbox", { name: "Command" })).toHaveValue(
+      "npm run send-nightly-report",
+    );
     expect(screen.queryByText("Custom Domains")).not.toBeInTheDocument();
     expect(screen.queryByText("Idle timeout")).not.toBeInTheDocument();
     expect(screen.queryByText("Instance count")).not.toBeInTheDocument();

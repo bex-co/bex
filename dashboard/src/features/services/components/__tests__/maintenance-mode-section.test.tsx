@@ -95,7 +95,7 @@ describe("MaintenanceModeSection", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("Save is disabled until the uri draft changes, then saves with the current enabled state", async () => {
+  it("URL field is disabled until Edit, Save gates on a dirty draft, and saves with the current enabled state", async () => {
     const user = userEvent.setup();
     render(
       <MaintenanceModeSection
@@ -105,11 +105,18 @@ describe("MaintenanceModeSection", () => {
       />,
     );
 
-    const save = screen.getByRole("button", { name: "Save" });
-    expect(save).toBeDisabled();
-
     const input = screen.getByLabelText(/Custom maintenance page URL/);
+    expect(input).toBeDisabled();
+
+    await user.click(
+      screen.getByRole("button", { name: "Edit maintenance page URL" }),
+    );
+    expect(input).toBeEnabled();
+    // Save is disabled until the draft differs from the persisted URL.
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+
     await user.type(input, "https://status.example.com/m");
+    const save = screen.getByRole("button", { name: "Save changes" });
     expect(save).toBeEnabled();
 
     await user.click(save);
@@ -118,5 +125,21 @@ describe("MaintenanceModeSection", () => {
       true,
       "https://status.example.com/m",
     );
+  });
+
+  it("does not offer a URL edit affordance on the free plan", () => {
+    render(
+      <MaintenanceModeSection
+        serviceId="web"
+        serviceName="web"
+        plan="free"
+        maintenanceMode={{ enabled: false, uri: "" }}
+      />,
+    );
+
+    expect(screen.getByLabelText(/Custom maintenance page URL/)).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Edit maintenance page URL" }),
+    ).not.toBeInTheDocument();
   });
 });

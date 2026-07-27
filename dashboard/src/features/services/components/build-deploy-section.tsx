@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, Check, X, Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -11,17 +11,8 @@ import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Switch } from "@/common/components/ui/switch";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { useBranch } from "@/features/services/hooks/use-branch";
 import { useRootDir } from "@/features/services/hooks/use-root-dir";
 import { useStartCommand } from "@/features/services/hooks/use-start-command";
@@ -114,11 +105,6 @@ export function BuildDeploySection({
   const { connection } = useGitConnection();
   // Optimistic switch state — reverted on a failed mutation.
   const [autoDeployOn, setAutoDeployOn] = useState(autoDeploy);
-  // Pre-deploy command inline edit (w1/m33): a plain pencil→input→save flow, no
-  // confirm dialog — Render edits this field inline with a Save button, and it
-  // has its own state so it can't collide with the Root Directory edit above.
-  const [preMode, setPreMode] = useState<"view" | "editing">("view");
-  const [preDraft, setPreDraft] = useState("");
 
   // A repo hosted on the connected GitHub account auto-deploys hands-free via
   // the app's app-wide webhook; otherwise a push needs the manual HMAC webhook.
@@ -129,19 +115,6 @@ export function BuildDeploySection({
     setAutoDeployOn(next);
     const ok = await setAutoDeploy(serviceId, next);
     if (!ok) setAutoDeployOn(!next); // revert
-  }
-
-  const preCurrent = preDeployCommand ?? "";
-  const preCanSave = preDraft.trim() !== preCurrent;
-
-  function startPreEdit() {
-    setPreDraft(preCurrent);
-    setPreMode("editing");
-  }
-
-  async function handlePreSave() {
-    const ok = await setPreDeployCommand(serviceId, preDraft.trim());
-    if (ok) setPreMode("view");
   }
 
   const dockerfileBuild =
@@ -168,44 +141,44 @@ export function BuildDeploySection({
         {/* Branch is editable (w5/m48/t005, Render parity — Render offers a
             searchable branch picker; bex edits it inline like Root Directory).
             A change persists spec.branch: the next deploy builds the new
-            branch and push-to-deploy matches pushes against it. */}
-        <InlineEditSetting
+            branch and push-to-deploy matches pushes against it. An emptied
+            input restores the backend default ("back to main"); the confirm
+            dialog names it via the empty stand-in. */}
+        <EditableFieldRow
           label={t("services.buildDeployBranchLabel")}
           hint={t("services.buildDeployBranchHint")}
-          currentValue={branch ?? ""}
-          emptyValue={t("services.buildDeployBranchEmpty")}
-          confirmEmptyValue={t("services.buildDeployBranchEmpty")}
+          value={branch ?? ""}
           placeholder={t("services.buildDeployBranchPlaceholder")}
           editLabel={t("services.buildDeployBranchEdit")}
-          confirmTitle={(value) =>
-            t("services.buildDeployBranchConfirmTitle", { value })
-          }
-          confirmBody={t("services.buildDeployBranchConfirmBody")}
+          mono
           busy={branchBusy}
-          // An emptied input restores the backend default (the shared verb
-          // treats explicit empty as "back to main"); the confirm dialog
-          // names it via confirmEmptyValue.
+          confirm={{
+            title: (value) =>
+              t("services.buildDeployBranchConfirmTitle", { value }),
+            body: t("services.buildDeployBranchConfirmBody"),
+            emptyValue: t("services.buildDeployBranchEmpty"),
+          }}
           onSave={(value) => setBranch(serviceId, value)}
         />
-        <InlineEditSetting
+        <EditableFieldRow
           label={t("services.buildDeployRootDirLabel")}
           hint={t("services.buildDeployRootDirHint")}
-          currentValue={rootDir ?? ""}
-          emptyValue={t("services.buildDeployRootDirEmpty")}
-          confirmEmptyValue={t("services.buildDeployConfirmRoot")}
+          value={rootDir ?? ""}
           placeholder={t("services.buildDeployRootDirPlaceholder")}
           editLabel={t("services.buildDeployEdit")}
-          confirmTitle={(value) =>
-            t("services.buildDeployConfirmTitle", { value })
-          }
-          confirmBody={t("services.buildDeployConfirmBody")}
           optional
+          mono
           busy={busy}
+          confirm={{
+            title: (value) => t("services.buildDeployConfirmTitle", { value }),
+            body: t("services.buildDeployConfirmBody"),
+            emptyValue: t("services.buildDeployConfirmRoot"),
+          }}
           onSave={(value) => setRootDir(serviceId, value)}
         />
 
         {showBuildCommand && (
-          <InlineEditSetting
+          <EditableFieldRow
             label={t("services.buildCommandLabel")}
             hint={t("services.buildCommandHint")}
             // Render's root-directory affordance (w5/m48/t004): the command
@@ -213,23 +186,24 @@ export function BuildDeploySection({
             valuePrefix={
               rootDirPrefix(rootDir) ? rootDirPrefix(rootDir) + " $" : undefined
             }
-            currentValue={buildCommand ?? ""}
-            emptyValue={t("services.buildCommandEmpty")}
-            confirmEmptyValue={t("services.buildCommandConfirmEmpty")}
+            value={buildCommand ?? ""}
             placeholder={t("services.buildCommandPlaceholder")}
             editLabel={t("services.buildCommandEdit")}
-            confirmTitle={(value) =>
-              t("services.buildCommandConfirmTitle", { value })
-            }
-            confirmBody={t("services.buildCommandConfirmBody")}
             optional
+            mono
             busy={buildCommandBusy}
+            confirm={{
+              title: (value) =>
+                t("services.buildCommandConfirmTitle", { value }),
+              body: t("services.buildCommandConfirmBody"),
+              emptyValue: t("services.buildCommandConfirmEmpty"),
+            }}
             onSave={(value) => setBuildCommand(serviceId, value)}
           />
         )}
 
         {showStartCommand && (
-          <InlineEditSetting
+          <EditableFieldRow
             label={t(
               dockerCommand
                 ? "services.dockerCommandLabel"
@@ -240,9 +214,7 @@ export function BuildDeploySection({
                 ? "services.dockerCommandHint"
                 : "services.startCommandHint",
             )}
-            currentValue={startCommand ?? ""}
-            emptyValue={t("services.startCommandEmpty")}
-            confirmEmptyValue={t("services.startCommandConfirmEmpty")}
+            value={startCommand ?? ""}
             placeholder={t(
               dockerCommand
                 ? "services.dockerCommandPlaceholder"
@@ -253,36 +225,40 @@ export function BuildDeploySection({
                 ? "services.dockerCommandEdit"
                 : "services.startCommandEdit",
             )}
-            confirmTitle={(value) =>
-              t(
-                dockerCommand
-                  ? "services.dockerCommandConfirmTitle"
-                  : "services.startCommandConfirmTitle",
-                { value },
-              )
-            }
-            confirmBody={t("services.startCommandConfirmBody")}
             optional={dockerCommand}
+            mono
             busy={startCommandBusy}
+            confirm={{
+              title: (value) =>
+                t(
+                  dockerCommand
+                    ? "services.dockerCommandConfirmTitle"
+                    : "services.startCommandConfirmTitle",
+                  { value },
+                ),
+              body: t("services.startCommandConfirmBody"),
+              emptyValue: t("services.startCommandConfirmEmpty"),
+            }}
             onSave={(value) => setStartCommand(serviceId, value)}
           />
         )}
 
         {dockerfileBuild && (
-          <InlineEditSetting
+          <EditableFieldRow
             label={t("services.dockerfilePathLabel")}
             hint={t("services.dockerfilePathHint")}
-            currentValue={dockerfilePath ?? ""}
-            emptyValue={t("services.dockerfilePathEmpty")}
-            confirmEmptyValue={t("services.dockerfilePathConfirmEmpty")}
+            value={dockerfilePath ?? ""}
             placeholder={t("services.dockerfilePathPlaceholder")}
             editLabel={t("services.dockerfilePathEdit")}
-            confirmTitle={(value) =>
-              t("services.dockerfilePathConfirmTitle", { value })
-            }
-            confirmBody={t("services.dockerfilePathConfirmBody")}
             optional
+            mono
             busy={dockerfilePathBusy}
+            confirm={{
+              title: (value) =>
+                t("services.dockerfilePathConfirmTitle", { value }),
+              body: t("services.dockerfilePathConfirmBody"),
+              emptyValue: t("services.dockerfilePathConfirmEmpty"),
+            }}
             onSave={(value) => setDockerfilePath(serviceId, value)}
           />
         )}
@@ -293,71 +269,17 @@ export function BuildDeploySection({
         />
 
         {showPreDeployCommand && (
-          <div>
-            <div className="text-sm text-muted-foreground">
-              {t("services.preDeployLabel")}
-            </div>
-            <div className="mt-1 text-sm text-muted-foreground">
-              {t("services.preDeployHint")}
-            </div>
-            {preMode === "editing" ? (
-              <div className="mt-2 flex items-center gap-2">
-                <Input
-                  value={preDraft}
-                  onChange={(e) => setPreDraft(e.target.value)}
-                  placeholder={t("services.preDeployPlaceholder")}
-                  autoFocus
-                  className="font-mono text-sm"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && preCanSave) void handlePreSave();
-                    if (e.key === "Escape") setPreMode("view");
-                  }}
-                />
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t("services.buildDeploySave")}
-                  disabled={preDeployBusy || !preCanSave}
-                  onClick={() => void handlePreSave()}
-                >
-                  {preDeployBusy ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Check className="text-emerald-600" />
-                  )}
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t("services.buildDeployCancel")}
-                  disabled={preDeployBusy}
-                  onClick={() => setPreMode("view")}
-                >
-                  <X />
-                </Button>
-              </div>
-            ) : (
-              <div className="mt-2 flex items-center gap-2">
-                {preCurrent ? (
-                  <span className="font-mono text-sm break-all">
-                    {preCurrent}
-                  </span>
-                ) : (
-                  <span className="text-sm text-muted-foreground italic">
-                    {t("services.preDeployEmpty")}
-                  </span>
-                )}
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t("services.preDeployEdit")}
-                  onClick={startPreEdit}
-                >
-                  <Pencil />
-                </Button>
-              </div>
-            )}
-          </div>
+          <EditableFieldRow
+            label={t("services.preDeployLabel")}
+            hint={t("services.preDeployHint")}
+            value={preDeployCommand ?? ""}
+            placeholder={t("services.preDeployPlaceholder")}
+            editLabel={t("services.preDeployEdit")}
+            optional
+            mono
+            busy={preDeployBusy}
+            onSave={(value) => setPreDeployCommand(serviceId, value)}
+          />
         )}
 
         <div className="flex items-start justify-between gap-4">
@@ -380,157 +302,6 @@ export function BuildDeploySection({
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-interface InlineEditSettingProps {
-  label: string;
-  hint: string;
-  currentValue: string;
-  emptyValue: string;
-  confirmEmptyValue: string;
-  placeholder: string;
-  editLabel: string;
-  confirmTitle: (value: string) => string;
-  confirmBody: string;
-  optional?: boolean;
-  busy: boolean;
-  /** Display-only prefix shown before the value (Render's root-directory
-   *  affordance, e.g. "app/ $" — w5/m48/t004). Never part of the saved value. */
-  valuePrefix?: string;
-  onSave: (value: string) => Promise<boolean>;
-}
-
-/** Shared pencil → input → confirmation flow for rebuild-affecting settings. */
-function InlineEditSetting({
-  label,
-  hint,
-  currentValue,
-  emptyValue,
-  confirmEmptyValue,
-  placeholder,
-  editLabel,
-  confirmTitle,
-  confirmBody,
-  optional = false,
-  busy,
-  valuePrefix,
-  onSave,
-}: InlineEditSettingProps) {
-  const { t } = useTranslations();
-  const [mode, setMode] = useState<"view" | "editing" | "confirming">("view");
-  const [draft, setDraft] = useState("");
-  const canSave = draft.trim() !== currentValue;
-
-  function startEdit() {
-    setDraft(currentValue);
-    setMode("editing");
-  }
-
-  async function handleConfirm() {
-    setMode("editing");
-    if (await onSave(draft.trim())) setMode("view");
-  }
-
-  return (
-    <div>
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        {label}
-        {optional && (
-          <Badge variant="outline" className="text-xs font-normal">
-            {t("services.buildDeployRootDirOptional")}
-          </Badge>
-        )}
-      </div>
-      <div className="mt-1 text-sm text-muted-foreground">{hint}</div>
-      {mode !== "view" ? (
-        <div className="mt-2 flex items-center gap-2">
-          {valuePrefix ? (
-            <code className="text-muted-foreground shrink-0 font-mono text-sm">
-              {valuePrefix}
-            </code>
-          ) : null}
-          <Input
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder={placeholder}
-            autoFocus
-            className="font-mono text-sm"
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && canSave) setMode("confirming");
-              if (event.key === "Escape") setMode("view");
-            }}
-          />
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label={t("services.buildDeploySave")}
-            disabled={busy || !canSave}
-            onClick={() => setMode("confirming")}
-          >
-            {busy ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <Check className="text-emerald-600" />
-            )}
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label={t("services.buildDeployCancel")}
-            disabled={busy}
-            onClick={() => setMode("view")}
-          >
-            <X />
-          </Button>
-        </div>
-      ) : (
-        <div className="mt-2 flex items-center gap-2">
-          {currentValue ? (
-            <span className="font-mono text-sm break-all">
-              {valuePrefix ? (
-                <span className="text-muted-foreground">{valuePrefix} </span>
-              ) : null}
-              {currentValue}
-            </span>
-          ) : (
-            <span className="text-sm text-muted-foreground italic">
-              {emptyValue}
-            </span>
-          )}
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label={editLabel}
-            onClick={startEdit}
-          >
-            <Pencil />
-          </Button>
-        </div>
-      )}
-
-      <AlertDialog
-        open={mode === "confirming"}
-        onOpenChange={(open) => setMode(open ? "confirming" : "editing")}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirmTitle(draft.trim() || confirmEmptyValue)}
-            </AlertDialogTitle>
-            <AlertDialogDescription>{confirmBody}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>
-              {t("services.buildDeployCancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={() => void handleConfirm()}>
-              {t("services.buildDeploySave")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
   );
 }
 

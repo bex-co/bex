@@ -1,9 +1,6 @@
-import { useState } from "react";
-import { Check, Loader2, Pencil, X } from "lucide-react";
-import { Button } from "@/common/components/ui/button";
-import { Input } from "@/common/components/ui/input";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useMaxShutdownDelay } from "@/features/services/hooks/use-max-shutdown-delay";
+import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 
 export interface MaxShutdownDelayRowProps {
   serviceId: string;
@@ -12,7 +9,7 @@ export interface MaxShutdownDelayRowProps {
   onChanged?: () => void;
 }
 
-/** Render-style pencil → numeric input → confirm row for graceful shutdown. */
+/** Render-style edit-in-place row for the graceful-shutdown window (1–300s). */
 export function MaxShutdownDelayRow({
   serviceId,
   maxShutdownDelaySeconds,
@@ -21,91 +18,34 @@ export function MaxShutdownDelayRow({
   const { t } = useTranslations();
   const { setMaxShutdownDelay, busy } = useMaxShutdownDelay();
   const current = maxShutdownDelaySeconds ?? 30;
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(current));
-  const parsed = Number(draft);
-  const valid = Number.isInteger(parsed) && parsed >= 1 && parsed <= 300;
-  const canSave = valid && parsed !== current;
-
-  function startEdit() {
-    setDraft(String(current));
-    setEditing(true);
-  }
-
-  async function handleSave() {
-    if (!canSave) return;
-    const ok = await setMaxShutdownDelay(serviceId, parsed);
-    if (ok) {
-      setEditing(false);
-      onChanged?.();
-    }
-  }
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-      <div className="min-w-0">
-        <div className="text-sm text-muted-foreground">
-          {t("services.settingsMaxShutdownDelay")}
-        </div>
-        <div className="mt-1 text-sm text-muted-foreground">
-          {t("services.settingsMaxShutdownDelayHint")}
-        </div>
-      </div>
-      {editing ? (
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <Input
-            type="number"
-            min={1}
-            max={300}
-            step={1}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            aria-label={t("services.settingsMaxShutdownDelay")}
-            autoFocus
-            className="w-28 font-mono text-sm"
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && canSave) void handleSave();
-              if (event.key === "Escape") setEditing(false);
-            }}
-          />
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label={t("services.maxShutdownDelaySave")}
-            disabled={busy || !canSave}
-            onClick={() => void handleSave()}
-          >
-            {busy ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <Check className="text-emerald-600" />
-            )}
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label={t("services.maxShutdownDelayCancel")}
-            disabled={busy}
-            onClick={() => setEditing(false)}
-          >
-            <X />
-          </Button>
-        </div>
-      ) : (
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <span className="font-mono text-sm">
-            {t("services.maxShutdownDelaySeconds", { seconds: current })}
-          </span>
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label={t("services.maxShutdownDelayEdit")}
-            onClick={startEdit}
-          >
-            <Pencil />
-          </Button>
-        </div>
-      )}
-    </div>
+    <EditableFieldRow
+      label={t("services.settingsMaxShutdownDelay")}
+      hint={t("services.settingsMaxShutdownDelayHint")}
+      value={String(current)}
+      editLabel={t("services.maxShutdownDelayEdit")}
+      type="number"
+      min={1}
+      max={300}
+      step={1}
+      mono
+      busy={busy}
+      // Only an in-range integer other than the current value is savable.
+      dirty={(value) => {
+        const parsed = Number(value);
+        return (
+          Number.isInteger(parsed) &&
+          parsed >= 1 &&
+          parsed <= 300 &&
+          parsed !== current
+        );
+      }}
+      onSave={async (value) => {
+        const ok = await setMaxShutdownDelay(serviceId, Number(value));
+        if (ok) onChanged?.();
+        return ok;
+      }}
+    />
   );
 }
