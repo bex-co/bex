@@ -27,9 +27,11 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/bex-co/bex/lego/operator/internal/registry"
@@ -331,6 +333,41 @@ var _ = Describe("Per-App registry pull credentials (w7/m36)", func() {
 		status.Store(http.StatusOK)
 		reconcileN(r, nn, 1)
 		Expect(k8sClient.Get(ctx, nn, &appsv1.Deployment{})).To(Succeed())
+
+		cleanupApp(r, name)
+	})
+
+	It("gates a source build before creating its Job when the push credential is stale", func() {
+		const name = "per-app-build-cred-gate"
+		status := &atomic.Int32{}
+		status.Store(http.StatusUnauthorized)
+		r := newReconcilerAt(status)
+		r.PerAppRegistry.ActivationGrace = time.Hour
+
+		nn := types.NamespacedName{Name: name, Namespace: namespace}
+		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+			Spec: appv1alpha1.AppSpec{
+				Repo: "https://github.com/bex-co/example", Branch: "main",
+				Builder: "dockerfile", Port: 3000,
+			},
+		})).To(Succeed())
+
+		// First pass adds the finalizer; the second mints/mirrors the credential
+		// and must stop at activation instead of starting a doomed push-capable Job.
+		reconcileN(r, nn, 2)
+		app := &appv1alpha1.App{}
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseBuilding))
+		Expect(app.Status.Conditions).NotTo(BeEmpty())
+		Expect(app.Status.Conditions[0].Reason).To(Equal("RegistryCredsPending"))
+
+		jobs := &batchv1.JobList{}
+		Expect(k8sClient.List(ctx, jobs, client.InNamespace(namespace))).To(Succeed())
+		for i := range jobs.Items {
+			Expect(jobs.Items[i].Name).NotTo(ContainSubstring(name),
+				"no build Job may start before Zot accepts its push credential")
+		}
 
 		cleanupApp(r, name)
 	})
