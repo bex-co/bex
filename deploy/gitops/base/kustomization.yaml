@@ -43,3 +43,4 @@ resources:
   - operator-registry-rbac.yaml  # operator's bex-registry-namespace secrets grants for per-App pull creds (w7/m36)
   - operator-daytoday-rbac.yaml  # scoped (non-system:masters) operator SA + ClusterRole for day-to-day ops (w7/m37, docs/ADR019-infra-credentials.md)
   - tenant-namespace-clusterroles.yaml  # per-tenant-namespace ClusterRoles bound per-<ws> by the NamespaceReconciler (w3/m31 t003, ADR043); inert until BEX_TENANT_NAMESPACES on
+  - bex-api-namespace-rbac.yaml  # cluster authority for bex-api's NamespaceReconciler to create/prune <ws> namespaces + quota/policy/rolebinding (w3/m31 t001-t003); namespace mgmt only, no secrets; inert until BEX_TENANT_NAMESPACES on
