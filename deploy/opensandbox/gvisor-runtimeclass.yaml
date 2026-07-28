@@ -1,0 +1,32 @@
+# gVisor (runsc) RuntimeClass for untrusted sandbox workloads (ADR042 D3 as
+# amended / w3/m32 t004). Sandbox pods set `runtimeClassName: gvisor` so
+# agent-generated code runs behind gVisor's user-space kernel — strong
+# syscall-level isolation for untrusted code.
+#
+# WHY gVisor, not Kata (2026-07-28, verified on prod): Kata needs hardware
+# virtualization (/dev/kvm), and the cluster's Hetzner Cloud `cpx32` nodes do
+# NOT expose it (no nested virt, no vmx/svm) — Kata is impossible on this infra.
+# gVisor's `systrap` platform needs no KVM and was validated running on a live
+# cpx32 node (`runsc --platform=systrap do echo` OK; a pod reached Running under
+# runtimeClassName gvisor). gVisor is the ADR042 isolation-ladder's non-KVM
+# option (namespace → microVM: Kata/Firecracker/gVisor). Kata stays the choice
+# if/when KVM-capable nodes (Hetzner dedicated/bare-metal) join the pool.
+#
+# The `runsc` handler + containerd runtime are installed at node bootstrap on the
+# dedicated `bex-sandbox` pool (infra CAPH preKubeadmCommands) — NOT by an
+# in-place containerd restart on a live node (that breaks the Cilium datapath;
+# learned 2026-07-28). This RuntimeClass is applied by gitops once that pool
+# exists; unwired until then so the tree never advertises a runtime no node has.
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: gvisor
+handler: runsc
+scheduling:
+  nodeSelector:
+    bex.co/pool: sandbox
+  tolerations:
+    - key: bex.co/sandbox
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
