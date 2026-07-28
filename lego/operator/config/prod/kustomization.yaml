@@ -7,6 +7,31 @@ resources:
   - kv-sni-proxy-lb.yaml
   - edge-proxy-network-policy.yaml
 patches:
+  # Tenant Postgres physical backups resolve through the namespaced Barman
+  # Cloud ObjectStore, while logical exports and finalizer purge Jobs consume
+  # the same non-secret coordinates directly. Keep this prod-only: the local
+  # overlay intentionally excludes credential-backed ObjectStores.
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: controller-manager
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_DB_BACKUP_DESTINATION
+          value: s3://bex-tfstate/postgres
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_DB_BACKUP_ENDPOINT
+          value: https://s3.eu-central-2.wasabisys.com
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_DB_BACKUP_S3_SECRET
+          value: bex-db-backup-s3
   - target:
       group: apps
       version: v1

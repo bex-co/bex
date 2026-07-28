@@ -246,6 +246,35 @@ if kubectl kustomize deploy/gitops/overlays/local | yq -e \
   fail=1
 fi
 
+# Physical tenant backups and the operator's logical-export/purge jobs must
+# address the same transport. The values are non-secret; credential bytes remain
+# exclusively in the referenced out-of-band Secret. Local must stay disabled
+# because its overlay deliberately omits the credential-backed ObjectStores.
+prod_operator_render="$(kubectl kustomize lego/operator/config/prod)"
+tenant_backup_env="$(yq -N '
+  select(.kind == "Deployment" and .metadata.name == "bex-controller-manager") |
+  .spec.template.spec.containers[] | select(.name == "manager") |
+  [.env[] |
+    select(.name == "BEX_DB_BACKUP_DESTINATION" or
+           .name == "BEX_DB_BACKUP_ENDPOINT" or
+           .name == "BEX_DB_BACKUP_S3_SECRET") |
+    .name + "=" + .value] | sort | join("|")' \
+  - <<<"$prod_operator_render" | tr -d '\n')"
+expected_tenant_backup_env='BEX_DB_BACKUP_DESTINATION=s3://bex-tfstate/postgres|BEX_DB_BACKUP_ENDPOINT=https://s3.eu-central-2.wasabisys.com|BEX_DB_BACKUP_S3_SECRET=bex-db-backup-s3'
+if [ "$tenant_backup_env" != "$expected_tenant_backup_env" ]; then
+  echo "FAIL: prod tenant backup env contract is '$tenant_backup_env' (want '$expected_tenant_backup_env')" >&2
+  fail=1
+fi
+if kubectl kustomize lego/operator/config/default | yq -e '
+  select(.kind == "Deployment" and .metadata.name == "bex-controller-manager") |
+  .spec.template.spec.containers[] | select(.name == "manager") |
+  .env[] | select(.name == "BEX_DB_BACKUP_DESTINATION" or
+                  .name == "BEX_DB_BACKUP_ENDPOINT" or
+                  .name == "BEX_DB_BACKUP_S3_SECRET")' - >/dev/null 2>&1; then
+  echo "FAIL: default/local operator config must leave tenant backups disabled without ObjectStores" >&2
+  fail=1
+fi
+
 # The production kernel requires CAP_SYS_ADMIN to create the meter's private
 # pin directory on Cilium's bpffs mount. Keep the complete set explicit: the
 # container drops ALL first and remains non-privileged, but omitting any one of
