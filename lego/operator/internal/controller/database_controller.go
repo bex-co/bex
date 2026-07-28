@@ -572,10 +572,8 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		db.Status.PoolerHost = ""
 	}
 
-	// --- external SNI endpoints (rw + pooler) + IP-allowlist middleware ---
-	if err := r.reconcileExternalRoutes(ctx, &db); err != nil {
-		return r.dbFail(ctx, &db, "RouteFailed", err)
-	}
+	// --- external SNI endpoint status (rw + pooler + read replicas) ---
+	r.updateExternalAddressStatus(&db)
 
 	// Suspended (hibernated) settles immediately — CNPG stops compute, so waiting
 	// on readyInstances would never converge (mirrors the KeyValue suspend path).
@@ -818,11 +816,11 @@ func (r *DatabaseReconciler) triggerCNPGSwitchover(ctx context.Context, cluster 
 	}
 }
 
-// reconcileExternalRoutes publishes status hostnames for the metered Postgres
+// updateExternalAddressStatus publishes status hostnames for the metered Postgres
 // SNI proxy. The proxy watches the same Database CR and owns exact
 // endpoint/allowlist routing; internal CNPG Services are never gated.
 // InternalHost for replicas is always set.
-func (r *DatabaseReconciler) reconcileExternalRoutes(ctx context.Context, db *appv1alpha1.Database) error {
+func (r *DatabaseReconciler) updateExternalAddressStatus(db *appv1alpha1.Database) {
 	public := db.Spec.Public && r.DBDomain != ""
 
 	roInternal := fmt.Sprintf("%s-ro.%s.svc", db.Name, db.Namespace)
@@ -836,7 +834,7 @@ func (r *DatabaseReconciler) reconcileExternalRoutes(ctx context.Context, db *ap
 			})
 		}
 		db.Status.ReadReplicaStatuses = newStatuses
-		return nil
+		return
 	}
 
 	rwHost := fmt.Sprintf("%s.%s", db.Name, r.DBDomain)
@@ -855,7 +853,6 @@ func (r *DatabaseReconciler) reconcileExternalRoutes(ctx context.Context, db *ap
 		})
 	}
 	db.Status.ReadReplicaStatuses = newStatuses
-	return nil
 }
 
 func (r *DatabaseReconciler) dbFail(ctx context.Context, db *appv1alpha1.Database, reason string, err error) (ctrl.Result, error) {
