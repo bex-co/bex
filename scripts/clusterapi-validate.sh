@@ -25,6 +25,8 @@ cd "$(dirname "$0")/.."
 OVERLAY="infra/clusterapi/overlays/hetzner-caph/cluster.yaml"
 PACKER="infra/packer/bex-worker.pkr.hcl"
 SNAPSHOT_WORKFLOW=".github/workflows/snapshot.yml"
+AUTOSCALER_VALUES="infra/clusterapi/autoscaler-values.yaml"
+AUTOSCALER_APP="deploy/gitops/base/autoscaler.yaml"
 fail=0
 
 pk_var() { grep -A4 "variable \"$1\"" "$PACKER" | grep -m1 -oE 'default[[:space:]]*=[[:space:]]*"[^"]+"' | grep -oE '"[^"]+"' | tr -d '"'; }
@@ -151,6 +153,24 @@ if [ "$burst_type" != "cpx32" ]; then
 fi
 if [ "$burst_labels" != "bex.co/pool=tenant" ]; then
   echo "FAIL: bex-tenant-burst scale-from-zero labels are '$burst_labels' (want bex.co/pool=tenant)" >&2
+  fail=1
+fi
+
+# A Cilium node starts with agent-not-ready:NoSchedule and loses it only after
+# the agent converges. Without this startup-taint declaration, CA copies the
+# transient taint into its zero-sized node template and concludes that no
+# Pending build Pod could fit, permanently defeating cold scale-out.
+echo "==> autoscaler version + Cilium startup-taint contract"
+autoscaler_startup_taint="$(yq -N '.extraArgs.startup-taint' "$AUTOSCALER_VALUES")"
+autoscaler_tag="$(yq -N '.spec.sources[0].helm.parameters[] | select(.name == "image.tag") | .value' "$AUTOSCALER_APP")"
+overlay_minor="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-tenant-burst") | .spec.template.spec.version' "$OVERLAY" | sed -E 's/^(v[0-9]+\.[0-9]+).*/\1/')"
+autoscaler_minor="$(printf '%s' "$autoscaler_tag" | sed -E 's/^(v[0-9]+\.[0-9]+).*/\1/')"
+if [ "$autoscaler_startup_taint" != "node.cilium.io/agent-not-ready" ]; then
+  echo "FAIL: autoscaler startup-taint is '$autoscaler_startup_taint' (want node.cilium.io/agent-not-ready for cold Cilium nodes)" >&2
+  fail=1
+fi
+if [ -z "$autoscaler_tag" ] || [ "$autoscaler_minor" != "$overlay_minor" ]; then
+  echo "FAIL: autoscaler image '$autoscaler_tag' must match workload Kubernetes minor '$overlay_minor'" >&2
   fail=1
 fi
 
