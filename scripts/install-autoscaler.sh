@@ -6,7 +6,7 @@
 # Why it installs on the MANAGEMENT cluster, not via Argo: see the header of
 # infra/clusterapi/autoscaler-values.yaml (the decision record).
 #
-# Usage: [CA_TAG=v1.31.5] scripts/install-autoscaler.sh [kube-context]
+# Usage: [CA_TAG=v1.34.5] scripts/install-autoscaler.sh [kube-context]
 #
 # CA_TAG pins the autoscaler IMAGE to the workload cluster's k8s minor (the
 # chart default tracks the latest minor). This matters below the chart level:

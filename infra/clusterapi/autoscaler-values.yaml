@@ -45,6 +45,11 @@ rbac:
         - watch
 
 extraArgs:
+  # Cilium deliberately registers each new node with this NoSchedule taint and
+  # removes it once the agent is healthy. Tell CA it is a startup-only taint so
+  # a scale-from-zero node template does not reject the very Pending pod that
+  # should create the node (observed on prod after the Kubernetes 1.34 roll).
+  startup-taint: node.cilium.io/agent-not-ready
   # Release emptied nodes faster than the 10m upstream defaults — density is the
   # economics here (bin-pack + free-tier sleep) — while staying well clear of
   # thrash. A drained node stops billing ~5m after its last pod leaves.

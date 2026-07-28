@@ -29,7 +29,7 @@ spec:
           - name: clusterAPIMode
             value: incluster-incluster
           - name: image.tag
-            value: v1.31.5 # match the workload k8s minor (overlay `version:`)
+            value: v1.34.5 # match the workload k8s minor (overlay `version:`)
         # w1/m19 t003: platform pool. Set here, NOT in the shared values file —
         # the bootstrap-phase install (scripts/install-autoscaler.sh) targets the
         # mgmt cluster, whose nodes have no bex.co labels. The autoscaler must
