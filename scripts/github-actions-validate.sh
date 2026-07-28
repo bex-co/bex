@@ -16,7 +16,6 @@ azure/setup-kubectl@v5
 docker/build-push-action@v7
 docker/login-action@v4
 docker/setup-buildx-action@v4
-gitleaks/gitleaks-action@v3
 hashicorp/setup-packer@v3
 hashicorp/setup-terraform@v4
 sigstore/cosign-installer@v3'
