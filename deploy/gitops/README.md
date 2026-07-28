@@ -35,7 +35,7 @@ deploy/gitops/
 ## Status
 
 - ✅ opensandbox-controller chart **vendored** (`charts/opensandbox-controller`, 0.2.0); renders with pinned values (image `v0.2.0` + snapshot flags).
-- ✅ kpack `v0.17.2` release manifest **vendored with its SHA-256 recorded**; `charts/kpack` adds the Paketo store/stack/cluster-builder and the local Zot registry alias.
+- ✅ kpack `v0.18.0` release manifest **vendored with its SHA-256 recorded**; `charts/kpack` adds the Paketo store/stack/cluster-builder and the local Zot registry alias.
 - ✅ Argo CD installed in the cluster; Application manifests validate (`--dry-run=server`).
 - ⬜ Push to a git remote, set `repoURL` in `bootstrap/local.yaml` (+ components), then `kubectl apply -f bootstrap/local.yaml`.
 - ⬜ Containerize the Go control plane → fill in `base/bex.yaml`.

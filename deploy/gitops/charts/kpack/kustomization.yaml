@@ -1,16 +1,12 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  # Exact upstream v0.17.2 release manifest. Its SHA-256 is recorded in README.
-  - upstream/release-0.17.2.yaml
+  # Exact upstream v0.18.0 release manifest. Its SHA-256 is recorded in README.
+  - upstream/release-0.18.0.yaml
   - platform.yaml
 patches:
   # Control-plane components belong on the platform pool. Build pods themselves
   # intentionally remain schedulable on ordinary app workers.
-  # KUBERNETES_MIN_VERSION: upstream kpack 0.17.x hard-fails on startup below
-  # k8s 1.32 ("Version check failed"); the app cluster runs 1.31. This is the
-  # knative-sanctioned override named in that fatal error — remove once the
-  # cluster is on >= 1.32.
   - target:
       group: apps
       version: v1
@@ -24,9 +20,6 @@ patches:
         path: /spec/template/spec/tolerations
         value:
           - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
-      - op: add
-        path: /spec/template/spec/containers/0/env/-
-        value: { name: KUBERNETES_MIN_VERSION, value: "1.31.0" }
   - target:
       group: apps
       version: v1
@@ -40,9 +33,6 @@ patches:
         path: /spec/template/spec/tolerations
         value:
           - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
-      - op: add
-        path: /spec/template/spec/containers/0/env/-
-        value: { name: KUBERNETES_MIN_VERSION, value: "1.31.0" }
 replacements:
   - source:
       kind: ConfigMap

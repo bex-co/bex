@@ -400,7 +400,7 @@ metadata:
   name: build-init-image
   namespace: kpack
 data:
-  image: ghcr.io/buildpacks-community/kpack/build-init@sha256:59341874617002bc73f57298301adef4914299c8729c376cea271277684f5b68
+  image: ghcr.io/buildpacks-community/kpack/build-init@sha256:759d5a326c77a83066ca718826f102449c6dac7b7a8ec19a8ae116058a111cab
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -408,7 +408,7 @@ metadata:
   name: build-waiter-image
   namespace: kpack
 data:
-  image: ghcr.io/buildpacks-community/kpack/build-waiter@sha256:2936904814f0b015d9111e64058d3b7e5141f63d3a9090584926dd2861044099
+  image: ghcr.io/buildpacks-community/kpack/build-waiter@sha256:a3220465f0a7b523073e9d96738fc9b1114d842d1846b5a38e1f1a245cb8bc85
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -416,7 +416,7 @@ metadata:
   name: rebase-image
   namespace: kpack
 data:
-  image: ghcr.io/buildpacks-community/kpack/rebase@sha256:325a3419a580fb56a979967bb68c4ed4b88de3214356e6d47181f1676387e6d2
+  image: ghcr.io/buildpacks-community/kpack/rebase@sha256:3b455a140c8e4698470517af16f5740e5975c419fd162910bad129b5474181b1
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -424,7 +424,7 @@ metadata:
   name: completion-image
   namespace: kpack
 data:
-  image: ghcr.io/buildpacks-community/kpack/completion@sha256:021f65505e6819614d1ee7f6b5af8013239527ecc72686ecc12cc6b066af6ea5
+  image: ghcr.io/buildpacks-community/kpack/completion@sha256:544722e901cc6fb81b3293909d4ac058f48bcc90314bf2bebd1d24d426519fd6
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -440,7 +440,7 @@ spec:
     metadata:
       labels:
         app: kpack-controller
-        version: 0.17.2
+        version: 0.18.0
     spec:
       securityContext:
         runAsNonRoot: true
@@ -461,7 +461,7 @@ spec:
           capabilities:
             drop:
             - ALL
-        image: ghcr.io/buildpacks-community/kpack/controller@sha256:9e79a75cdd70419b9ccdce1a4fe09cae7e580d8ab7ca08c094bae4c6f19cf648
+        image: ghcr.io/buildpacks-community/kpack/controller@sha256:e569159f863d563449fe6456f35f27677776d6bba5674eaa62ce39e2bfec70bb
         env:
         - name: ENABLE_PRIORITY_CLASSES
           value: "false"
@@ -665,7 +665,7 @@ kind: ClusterLifecycle
 metadata:
   name: default-lifecycle
 spec:
-  image: ghcr.io/buildpacks-community/kpack/lifecycle@sha256:7a5947a67ab3c01814fe146297cb8aae98c282449202cbf3db19be21fd568284
+  image: ghcr.io/buildpacks-community/kpack/lifecycle@sha256:cbb03f9ef71e9b80416445cfee8b6869805e98924090c49ee03404daa73bab3a
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -874,7 +874,7 @@ spec:
       labels:
         app: kpack-webhook
         role: webhook
-        version: 0.17.2
+        version: 0.18.0
     spec:
       securityContext:
         runAsNonRoot: true
@@ -895,7 +895,7 @@ spec:
           capabilities:
             drop:
             - ALL
-        image: ghcr.io/buildpacks-community/kpack/webhook@sha256:b337b38353d215eaeec69f0c56fdd8cb717745316847d2e38e29012a58efc835
+        image: ghcr.io/buildpacks-community/kpack/webhook@sha256:ff74b79509481474fbc90bb13eeba0163e042038df154eb1c439ef2194f4a029
         ports:
         - name: https-webhook
           containerPort: 8443

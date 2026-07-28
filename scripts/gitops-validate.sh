@@ -126,6 +126,38 @@ for dir in deploy/gitops/base deploy/gitops/overlays/*/ deploy/gitops/charts/*/;
   kubectl kustomize "$dir" >/dev/null || { echo "FAIL: $dir does not render" >&2; fail=1; }
 done
 
+# kpack is vendored rather than fetched during reconciliation. Pin both the
+# official asset bytes and the rendered compatibility contract: the v1.34 fleet
+# must never regain the old KUBERNETES_MIN_VERSION=1.31 workaround, while the
+# controller/webhook placement patches must survive an upstream manifest swap.
+echo "==> vendored kpack v0.18.0 integrity + compatibility shape"
+KPACK_ASSET="deploy/gitops/charts/kpack/upstream/release-0.18.0.yaml"
+KPACK_SHA="cde8b7df8d31d6a5758ec4880eec45009f17811baf3df5a29b76a144fe200e69"
+actual_kpack_sha="$(sha256sum "$KPACK_ASSET" | awk '{print $1}')"
+if [ "$actual_kpack_sha" != "$KPACK_SHA" ]; then
+  echo "FAIL: $KPACK_ASSET SHA-256 is $actual_kpack_sha (want $KPACK_SHA)" >&2
+  fail=1
+fi
+kpack_render="$(kubectl kustomize deploy/gitops/charts/kpack)"
+if grep -q 'KUBERNETES_MIN_VERSION' <<<"$kpack_render"; then
+  echo "FAIL: rendered kpack still carries the retired KUBERNETES_MIN_VERSION override" >&2
+  fail=1
+fi
+for component in kpack-controller kpack-webhook; do
+  placement="$(yq -N \
+    "select(.kind == \"Deployment\" and .metadata.name == \"$component\") |
+      [.spec.template.spec.nodeSelector.\"bex.co/pool\",
+       (.spec.template.spec.tolerations | length | tostring),
+       .spec.template.spec.tolerations[0].key,
+       .spec.template.spec.tolerations[0].value,
+       .spec.template.spec.tolerations[0].effect] | join(\":\")" \
+    - <<<"$kpack_render" | tr -d '\n')"
+  if [ "$placement" != "platform:1:bex.co/platform:true:NoSchedule" ]; then
+    echo "FAIL: $component placement is '$placement' (want platform:1:bex.co/platform:true:NoSchedule)" >&2
+    fail=1
+  fi
+done
+
 # The production kernel requires CAP_SYS_ADMIN to create the meter's private
 # pin directory on Cilium's bpffs mount. Keep the complete set explicit: the
 # container drops ALL first and remains non-privileged, but omitting any one of
