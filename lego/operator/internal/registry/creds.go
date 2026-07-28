@@ -90,6 +90,10 @@ var ErrConflictRequeue = fmt.Errorf("persistent write conflict: requeue required
 const (
 	zotHTPasswdPath = "/secret/htpasswd"
 	zotHTTPPort     = "5000"
+	// platformBuilderRepository is the shared kpack ClusterBuilder image. Every
+	// authenticated App build must be able to pull it, but only bex-builder may
+	// create, update, or delete it (through the global adminPolicy).
+	platformBuilderRepository = "bex-cnb-builder"
 )
 
 // PullSecretName returns the deterministic name of the per-App pull-credential
@@ -352,7 +356,7 @@ func (c *Creds) removeHTPasswdEntry(ctx context.Context, username string) error 
 // -- Zot config helpers -------------------------------------------------------
 
 // ensureZotConfigEntry adds a per-repo ACL entry for the App to the zot-config
-// Secret and ensures the canonical storage + global builder policies are
+// Secret and ensures the canonical storage + platform builder policies are
 // present. The storage migration lets operational settings such as GC cadence
 // reach existing registries without replacing their per-App ACLs. The admin
 // policy migration is required for configs created before per-App ACLs: Zot
@@ -394,12 +398,19 @@ func (c *Creds) ensureZotConfigEntry(ctx context.Context, appName, zotUser strin
 		}
 		repoReady := zotConfigHasRepoWritePolicy(existing, appName, zotUser)
 		builderReady := zotConfigHasBuilderAdminPolicy(existing)
-		if !storageChanged && repoReady && builderReady {
+		platformBuilderReady := zotConfigHasPlatformBuilderReadPolicy(existing)
+		if !storageChanged && repoReady && builderReady && platformBuilderReady {
 			return nil
 		}
 
 		if !builderReady {
 			updated, err = ensureZotBuilderAdminPolicy(updated)
+			if err != nil {
+				return err
+			}
+		}
+		if !platformBuilderReady {
+			updated, err = ensureZotPlatformBuilderReadPolicy(updated)
 			if err != nil {
 				return err
 			}
@@ -625,6 +636,19 @@ func zotConfigHasBuilderAdminPolicy(configJSON []byte) bool {
 	return true
 }
 
+// zotConfigHasPlatformBuilderReadPolicy reports whether authenticated users
+// can pull the shared kpack builder without gaining any write action. App
+// builds authenticate as app-<name>; their repository-scoped credential must
+// therefore cover this one platform input as well as their own output repo.
+func zotConfigHasPlatformBuilderReadPolicy(configJSON []byte) bool {
+	raw, ok := zotRepos(configJSON)[platformBuilderRepository].(map[string]any)
+	if !ok {
+		return false
+	}
+	actions, _ := raw["defaultPolicy"].([]any)
+	return len(actions) == 1 && actions[0] == "read"
+}
+
 // ensureZotBuilderAdminPolicy migrates an existing Zot config to the global
 // builder policy. zot-config is operator-managed, so this policy is canonical.
 func ensureZotBuilderAdminPolicy(configJSON []byte) ([]byte, error) {
@@ -649,6 +673,25 @@ func ensureZotBuilderAdminPolicy(configJSON []byte) ([]byte, error) {
 	accessControl["adminPolicy"] = map[string]any{
 		"users":   []any{"bex-builder"},
 		"actions": []any{"read", "create", "update", "delete"},
+	}
+	return json.Marshal(data)
+}
+
+// ensureZotPlatformBuilderReadPolicy installs the exact, read-only policy for
+// the shared kpack builder repository. The global bex-builder adminPolicy still
+// overrides this exact match for platform publishing; no tenant identity can
+// create, update, or delete the builder image.
+func ensureZotPlatformBuilderReadPolicy(configJSON []byte) ([]byte, error) {
+	if zotConfigHasPlatformBuilderReadPolicy(configJSON) {
+		return configJSON, nil
+	}
+	var data map[string]any
+	if err := json.Unmarshal(configJSON, &data); err != nil {
+		return nil, err
+	}
+	repos := zotReposMap(data)
+	repos[platformBuilderRepository] = map[string]any{
+		"defaultPolicy": []any{"read"},
 	}
 	return json.Marshal(data)
 }
@@ -696,6 +739,11 @@ func addZotACLEntry(configJSON []byte, repo, zotUser string) ([]byte, error) {
 		return nil, err
 	}
 	repos := zotReposMap(data)
+	if repo == platformBuilderRepository {
+		// This repository is platform-owned. Never let an App with a colliding
+		// public name replace its read-only rule with tenant write permission.
+		return ensureZotPlatformBuilderReadPolicy(configJSON)
+	}
 	repos[repo] = map[string]any{
 		"policies": []any{
 			map[string]any{
@@ -714,6 +762,9 @@ func removeZotACLEntry(configJSON []byte, repo string) ([]byte, error) {
 		return nil, err
 	}
 	repos := zotReposMap(data)
+	if repo == platformBuilderRepository {
+		return ensureZotPlatformBuilderReadPolicy(configJSON)
+	}
 	delete(repos, repo)
 	return json.Marshal(data)
 }
@@ -863,6 +914,9 @@ func (c *Creds) baseZotConfig() []byte {
 							},
 						},
 						DefaultPolicy: []string{},
+					},
+					platformBuilderRepository: {
+						DefaultPolicy: []string{"read"},
 					},
 				},
 				AdminPolicy: policy{
