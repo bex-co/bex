@@ -80,7 +80,7 @@ var _ = Describe("Release identity operational reconciliation", func() {
 		}
 	})
 
-	It("repairs the production failed-scale shape without source access, build, pre-deploy, or rollout", func() {
+	It("reconciles a normalized scale change without source access, build, pre-deploy, or rollout", func() {
 		app := &appv1alpha1.App{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
 			Spec: appv1alpha1.AppSpec{
@@ -117,15 +117,13 @@ var _ = Describe("Release identity operational reconciliation", func() {
 		Expect(err).NotTo(HaveOccurred())
 		beforeTemplate := getDeployment().Spec.Template.DeepCopy()
 
-		// Reproduce production: replicas advances metadata generation to 2, a
-		// generation-2 build has already failed, while generation 1 still serves.
+		// Replicas advances metadata generation to 2 while the canonical release
+		// fingerprints still identify generation 1. A stale failed generation-2
+		// build must not turn this operational edit into a release.
 		app = getApp()
 		app.Spec.Replicas = 2
 		Expect(k8sClient.Update(ctx, app)).To(Succeed())
 		app = getApp()
-		app.Status.ArtifactFingerprint = ""
-		app.Status.ReleaseFingerprint = ""
-		app.Status.ReleaseGeneration = 0
 		app.Status.Phase = appv1alpha1.PhaseFailed
 		app.Status.ObservedGeneration = 1
 		app.Status.Conditions = []metav1.Condition{{
@@ -136,7 +134,7 @@ var _ = Describe("Release identity operational reconciliation", func() {
 		Expect(k8sClient.Status().Update(ctx, app)).To(Succeed())
 
 		failedBuild := build.BuildJob(build.Options{
-			Name: name, Revision: "gen-2", Registry: "zot.test:5000", Namespace: "default",
+			Name: name, AppUID: string(app.UID), Revision: "gen-2", Registry: "zot.test:5000", Namespace: "default",
 			Repo: app.Spec.Repo, Ref: "main", Builder: build.BuilderNative,
 		}, "zot.test:5000/"+name+":gen-2")
 		Expect(k8sClient.Create(ctx, failedBuild)).To(Succeed())

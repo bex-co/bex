@@ -57,6 +57,9 @@ func TestCopyCloneSecretAcrossNamespaces(t *testing.T) {
 	if dst.Type != corev1.SecretTypeOpaque {
 		t.Errorf("copied type = %v", dst.Type)
 	}
+	if dst.Labels["app.bex.co/app-uid"] != "uid-web" || dst.Labels["app.bex.co/component"] != "copied-secret" {
+		t.Fatalf("copied Secret missing canonical artifact labels: %v", dst.Labels)
+	}
 
 	// Idempotent + refreshes: change the source, copy again, dst updates.
 	src.Data["token"] = []byte("ghs_fresh")

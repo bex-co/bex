@@ -221,7 +221,7 @@ func TestCopyBuildRegistryCredentialAddsSkopeoFilename(t *testing.T) {
 	if string(got.Data[corev1.DockerConfigJsonKey]) != config || string(got.Data[buildRegistryConfigKey]) != config {
 		t.Fatal("mirror must retain .dockerconfigjson and add byte-identical config.json")
 	}
-	if got.Type != corev1.SecretTypeDockerConfigJson || got.Labels[labelApp] != "web" || got.Labels["app.bex.co/component"] != buildRegistryComponent {
+	if got.Type != corev1.SecretTypeDockerConfigJson || got.Labels[labelApp] != "web" || got.Labels["app.bex.co/component"] != buildRegistryComponent || got.Labels["app.bex.co/app-uid"] != "uid-web" {
 		t.Fatalf("mirrored metadata = type %s labels %v", got.Type, got.Labels)
 	}
 }

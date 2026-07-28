@@ -154,7 +154,7 @@ Changing `domains[0]` and re-applying is how an App moves to a real domain: the 
 
 The classification is exhaustive and test-guarded: adding an `AppSpec` field without assigning deploy semantics fails the operator suite. Build inputs such as repo/ref/runtime/build command change the artifact and release; runtime inputs such as port, health check, tier resources, and pre-deploy command change the release (native builder inputs also change its artifact). `spec.restartedAt` deliberately changes both for a repo-backed manual deploy/restart. Secret _contents_ never enter either fingerprint.
 
-Existing Apps have no fingerprints on first reconcile after upgrade. When an active revision exists, the operator adopts its current image/revision and backfills the identities without rebuilding or replacing pods. This also repairs the w2/m56 production incident shape—an operational generation with a stale `BuildFailed` condition—by reconciling the requested replicas against the last active release.
+Every retained App was normalized to carry artifact and release fingerprints during the w1/m56 fleet migration. A missing fingerprint is now treated like any other missing desired-state identity and enters normal artifact/release reconciliation; the operator no longer infers an identity from an active revision. Operational edits such as replica changes remain no-op releases because their stored canonical fingerprints continue to match.
 
 ## In-cluster builds (BuildKit/kpack → Zot)
 

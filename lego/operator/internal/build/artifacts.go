@@ -62,6 +62,9 @@ type artifactObjects struct {
 // for identity. done is true only when a fresh inventory observes none. API
 // errors are joined so one broken kind cannot hide cleanup progress in others.
 func ReclaimAppArtifacts(ctx context.Context, identity execution.ArtifactIdentity, namespace string, cl client.Client) (done bool, inventory ArtifactInventory, err error) {
+	if identity.UID == "" {
+		return false, inventory, fmt.Errorf("reclaim build artifacts: empty App UID")
+	}
 	objects, kpackImages, kpackBuilds, inspectErr := inspectAppArtifacts(ctx, identity, namespace, cl)
 	inventory = objects.inventory
 	inventory.KpackImages = len(kpackImages)
@@ -106,13 +109,6 @@ func ReclaimAppArtifacts(ctx context.Context, identity execution.ArtifactIdentit
 	return false, inventory, errors.Join(errs...)
 }
 
-// DeleteAppArtifacts keeps the pre-m61 package API for callers/tests that do
-// not have a Kubernetes UID. New finalizer code uses ReclaimAppArtifacts.
-func DeleteAppArtifacts(ctx context.Context, name, namespace string, cl client.Client) error {
-	_, _, err := ReclaimAppArtifacts(ctx, execution.ArtifactIdentity{Name: name}, namespace, cl)
-	return err
-}
-
 func inspectAppArtifacts(ctx context.Context, identity execution.ArtifactIdentity, namespace string, cl client.Client) (artifactObjects, []client.Object, []client.Object, error) {
 	owned := func(obj client.Object) bool { return appArtifactOwned(identity, obj) }
 	out, errs := inspectNamespacedArtifacts(ctx, namespace, cl, owned)
@@ -122,9 +118,6 @@ func inspectAppArtifacts(ctx context.Context, identity execution.ArtifactIdentit
 }
 
 func appArtifactOwned(identity execution.ArtifactIdentity, obj client.Object) bool {
-	if legacyAppArtifactOwned(identity, obj) {
-		return true
-	}
 	if !identity.Owns(obj) {
 		return false
 	}
@@ -134,21 +127,6 @@ func appArtifactOwned(identity execution.ArtifactIdentity, obj client.Object) bo
 	default:
 		return false
 	}
-}
-
-func legacyAppArtifactOwned(identity execution.ArtifactIdentity, obj client.Object) bool {
-	labels := obj.GetLabels()
-	mechanismMatch := labels["app.bex.co/build"] == identity.Name ||
-		labels["app.bex.co/predeploy"] == identity.Name ||
-		labels["app.bex.co/publish"] == identity.Name
-	if !mechanismMatch {
-		return false
-	}
-	if identity.UID == "" {
-		return true
-	}
-	created := obj.GetCreationTimestamp().Time
-	return !identity.CreatedAt.IsZero() && !created.IsZero() && !created.Before(identity.CreatedAt)
 }
 
 func inspectNamespacedArtifacts(ctx context.Context, namespace string, cl client.Client, owned func(client.Object) bool) (artifactObjects, []error) {

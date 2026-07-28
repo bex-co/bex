@@ -19,7 +19,6 @@ package build
 import (
 	"context"
 	"testing"
-	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -71,33 +70,44 @@ func TestReclaimAppArtifactsInventoriesEveryKindAndIsolatesRecreation(t *testing
 	}
 }
 
-func TestReclaimAppArtifactsMigratesOnlyCurrentLifetimeLegacyLabels(t *testing.T) {
-	appCreated := time.Now().UTC()
-	identity := execution.ArtifactIdentity{Name: "hello", UID: "uid-current", CreatedAt: appCreated}
-	legacyLabels := map[string]string{"app.bex.co/build": "hello"}
-	current := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
-		Name: "legacy-current", Namespace: "build", Labels: legacyLabels,
-		CreationTimestamp: metav1.NewTime(appCreated.Add(time.Minute)),
+func TestReclaimAppArtifactsRequiresAppUID(t *testing.T) {
+	done, inventory, err := ReclaimAppArtifacts(context.Background(), execution.ArtifactIdentity{Name: "hello"}, "build", fakeClient())
+	if err == nil || done || !inventory.Empty() {
+		t.Fatalf("empty UID reclaim = inventory %+v done=%v err=%v", inventory, done, err)
+	}
+}
+
+func TestReclaimAppArtifactsRequiresCanonicalLifetimeLabels(t *testing.T) {
+	identity := execution.ArtifactIdentity{Name: "hello", UID: "uid-current"}
+	canonical := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
+		Name: "canonical", Namespace: "build", Labels: identity.Labels("build"),
 	}}
-	old := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
-		Name: "legacy-old", Namespace: "build", Labels: legacyLabels,
-		CreationTimestamp: metav1.NewTime(appCreated.Add(-time.Minute)),
+	mechanismOnly := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
+		Name: "mechanism-only", Namespace: "build", Labels: map[string]string{"app.bex.co/build": "hello"},
 	}}
-	cl := fakeClient(current, old)
+	missingUID := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
+		Name: "missing-uid", Namespace: "build", Labels: map[string]string{
+			execution.LabelApp: "hello", execution.LabelComponent: "build",
+		},
+	}}
+	otherLifetime := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
+		Name: "other-lifetime", Namespace: "build", Labels: execution.ArtifactIdentity{Name: "hello", UID: "uid-old"}.Labels("build"),
+	}}
+	cl := fakeClient(canonical, mechanismOnly, missingUID, otherLifetime)
 
 	done, inventory, err := ReclaimAppArtifacts(context.Background(), identity, "build", cl)
 	if err != nil || done || inventory.Jobs != 1 {
-		t.Fatalf("legacy inventory = %+v done=%v err=%v", inventory, done, err)
+		t.Fatalf("canonical inventory = %+v done=%v err=%v", inventory, done, err)
 	}
 	done, inventory, err = ReclaimAppArtifacts(context.Background(), identity, "build", cl)
 	if err != nil || !done || !inventory.Empty() {
-		t.Fatalf("verified legacy absence = %+v done=%v err=%v", inventory, done, err)
+		t.Fatalf("verified canonical absence = %+v done=%v err=%v", inventory, done, err)
 	}
 	var jobs batchv1.JobList
 	if err := cl.List(context.Background(), &jobs, client.InNamespace("build")); err != nil {
 		t.Fatal(err)
 	}
-	if len(jobs.Items) != 1 || jobs.Items[0].Name != old.Name {
-		t.Fatalf("old same-name legacy artifact was touched: %+v", jobs.Items)
+	if len(jobs.Items) != 3 {
+		t.Fatalf("non-canonical artifacts were touched: %+v", jobs.Items)
 	}
 }

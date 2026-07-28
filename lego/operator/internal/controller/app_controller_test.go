@@ -309,7 +309,7 @@ var _ = Describe("App Controller", func() {
 				Name: build.JobName(name, "gen-1"), Namespace: "default"}})
 		})
 
-		It("adopts the completed BuildKit Job and deploys its built image", func() {
+		It("reuses the exact-lifetime completed BuildKit Job and deploys its image", func() {
 			By("creating a repo-backed App (no prebuilt image)")
 			app := &appv1alpha1.App{
 				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
@@ -321,12 +321,12 @@ var _ = Describe("App Controller", func() {
 			Expect(k8sClient.Create(ctx, app)).To(Succeed())
 
 			By("simulating the finished in-cluster build: a Complete Job named per release")
-			// The image tag is the App's release generation (1 at create); the operator's
-			// Build() adopts this already-Complete Job instead of starting a build,
-			// so the reconcile proceeds straight to running the built image.
+			// The image tag is the App's release generation (1 at create); Build()
+			// validates this already-Complete Job's App UID instead of starting another
+			// build, so reconciliation proceeds straight to the built image.
 			image := "zot.test:5000/" + name + ":gen-1"
 			job := build.BuildJob(build.Options{
-				Name: name, Revision: "gen-1", Registry: "zot.test:5000",
+				Name: name, AppUID: string(app.UID), Revision: "gen-1", Registry: "zot.test:5000",
 				Namespace: "default", Repo: app.Spec.Repo, Ref: "main",
 			}, image)
 			Expect(k8sClient.Create(ctx, job)).To(Succeed())

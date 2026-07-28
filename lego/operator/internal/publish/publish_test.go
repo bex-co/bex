@@ -30,6 +30,7 @@ func testOptions() Options {
 		Image:       "zot.bex-registry.svc:5000/mysite:gen-3",
 		PublishPath: "dist",
 		AppID:       "mysite",
+		AppUID:      "uid-mysite",
 		Revision:    "rev-3",
 		Store: Store{
 			Bucket:   "bex-static",
@@ -77,6 +78,9 @@ func TestPublishJobShape(t *testing.T) {
 	}
 	if job.Namespace != "bex-system" {
 		t.Errorf("namespace = %q, want bex-system", job.Namespace)
+	}
+	if job.Labels["app.bex.co/app-uid"] != "uid-mysite" || job.Spec.Template.Labels["app.bex.co/app-uid"] != "uid-mysite" {
+		t.Fatalf("publish artifact missing App UID labels: job=%v pod=%v", job.Labels, job.Spec.Template.Labels)
 	}
 
 	pod := job.Spec.Template.Spec
@@ -145,6 +149,7 @@ func TestPublishJobIdentityAndVerificationLabels(t *testing.T) {
 	labels := PublishJob(o).Spec.Template.Labels
 	for key, want := range map[string]string{
 		"app.bex.co/app":           "mysite",
+		"app.bex.co/app-uid":       "uid-mysite",
 		"app.bex.co/component":     "publish",
 		"app.bex.co/workspace":     "tea-1",
 		"app.bex.co/app-namespace": "default",
@@ -297,5 +302,14 @@ func TestPublishSourceValidation(t *testing.T) {
 	escape.Client = fake.NewClientBuilder().Build()
 	if err := Publish(ctx, escape); err == nil || !strings.Contains(err.Error(), "escapes") {
 		t.Errorf("escaping path => %v, want the escape error", err)
+	}
+}
+
+func TestPublishRequiresAppUID(t *testing.T) {
+	o := testOptions()
+	o.AppUID = ""
+	o.Client = fake.NewClientBuilder().Build()
+	if err := Publish(context.Background(), o); err == nil || !strings.Contains(err.Error(), "empty App UID") {
+		t.Fatalf("Publish error = %v, want missing-identity rejection", err)
 	}
 }

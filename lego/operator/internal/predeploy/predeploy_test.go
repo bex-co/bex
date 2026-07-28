@@ -43,7 +43,7 @@ func TestJobName(t *testing.T) {
 
 func TestJobShape(t *testing.T) {
 	j := Job(Options{
-		Name: "api", Namespace: "builds", Workspace: "tea-1",
+		Name: "api", AppUID: "uid-api", Namespace: "builds", Workspace: "tea-1",
 		AppNamespace: "default", VerifyImage: true,
 		Image: "zot/api:gen-3", Command: "npm run migrate", Revision: "gen-3", Generation: 3,
 		Env:              []corev1.EnvVar{{Name: "FOO", Value: "bar"}},
@@ -67,6 +67,9 @@ func TestJobShape(t *testing.T) {
 	// Labels: service + component (for the backend's log selector) + workspace.
 	if j.Labels[LabelService] != "api" || j.Labels[LabelComponent] != ComponentValue || j.Labels[labelWorkspace] != "tea-1" {
 		t.Errorf("job labels = %v", j.Labels)
+	}
+	if j.Labels["app.bex.co/app-uid"] != "uid-api" || j.Spec.Template.Labels["app.bex.co/app-uid"] != "uid-api" {
+		t.Fatalf("pre-deploy artifact missing App UID labels: job=%v pod=%v", j.Labels, j.Spec.Template.Labels)
 	}
 	if j.Spec.Template.Labels[LabelService] != "api" {
 		t.Error("pod must carry the predeploy service label for log selection")
@@ -160,6 +163,37 @@ func fakeClient(objs ...client.Object) client.Client {
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
 	return fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
+}
+
+func TestEnsureRejectsExistingJobWithoutAppUID(t *testing.T) {
+	o := Options{
+		Name: "api", AppUID: "uid-api", Namespace: "builds",
+		Image: "zot/api:gen-3", Command: "echo migrate", Revision: "gen-3", Client: nil,
+	}
+	job := Job(o)
+	delete(job.Labels, "app.bex.co/app-uid")
+	o.Client = fakeClient(job)
+
+	if _, err := Ensure(context.Background(), o); err == nil || !strings.Contains(err.Error(), "different App lifetime") {
+		t.Fatalf("Ensure error = %v, want strict lifetime ownership rejection", err)
+	}
+	var got batchv1.Job
+	if err := o.Client.Get(context.Background(), client.ObjectKeyFromObject(job), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Labels["app.bex.co/app-uid"] != "" {
+		t.Fatalf("existing pre-deploy Job was adopted: labels=%v", got.Labels)
+	}
+}
+
+func TestEnsureRequiresAppUID(t *testing.T) {
+	o := Options{
+		Name: "api", Namespace: "builds", Image: "zot/api:gen-3",
+		Command: "echo migrate", Revision: "gen-3", Client: fakeClient(),
+	}
+	if _, err := Ensure(context.Background(), o); err == nil || !strings.Contains(err.Error(), "empty App UID") {
+		t.Fatalf("Ensure error = %v, want missing-identity rejection", err)
+	}
 }
 
 func activeJob(name string) *batchv1.Job {

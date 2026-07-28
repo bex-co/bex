@@ -110,14 +110,13 @@ type Options struct {
 	// build.Options.CloneSecret; empty = public clone.
 	CloneSecret string
 	// GitImage overrides the clone image (tests / air-gapped).
-	GitImage     string
-	AppID        string // the service name — the first object-key segment
-	AppUID       string // immutable App UID; prevents same-name recreation from adopting stale artifacts
-	AppCreatedAt time.Time
-	Revision     string        // e.g. "rev-7" — the second key segment (immutable per revision)
-	Store        Store         // object-store target (bucket/endpoint/secret)
-	Namespace    string        // namespace the publish Job runs in
-	Client       client.Client // cluster client used to create + watch the Job
+	GitImage  string
+	AppID     string        // the service name — the first object-key segment
+	AppUID    string        // immutable App UID; prevents same-name recreation from reusing stale artifacts
+	Revision  string        // e.g. "rev-7" — the second key segment (immutable per revision)
+	Store     Store         // object-store target (bucket/endpoint/secret)
+	Namespace string        // namespace the publish Job runs in
+	Client    client.Client // cluster client used to create + watch the Job
 	// Workspace/AppNamespace carry the tenant identity into the shared execution
 	// namespace for logs, network policy, and admission selection.
 	Workspace    string
@@ -168,10 +167,13 @@ func imagePullSecrets(pullSecret string) []corev1.LocalObjectReference {
 // Publish dispatches an in-cluster Job that extracts o.PublishPath from o.Image
 // and uploads it to the object-store origin under o.Prefix(); it blocks until
 // the Job succeeds or fails. Re-invocation for the same revision is idempotent:
-// the Job is named per revision, so a retry adopts the existing Job.
+// the Job is named per revision, so a retry reuses it after exact UID validation.
 func Publish(ctx context.Context, o Options) error {
 	if o.Client == nil {
 		return fmt.Errorf("publish: nil client (in-cluster publish requires a cluster client)")
+	}
+	if o.AppUID == "" {
+		return fmt.Errorf("publish: empty App UID")
 	}
 	if o.PublishPath == "" {
 		return fmt.Errorf("publish: empty publishPath")
@@ -192,7 +194,7 @@ func Publish(ctx context.Context, o Options) error {
 
 	job := PublishJob(o)
 	key := client.ObjectKeyFromObject(job)
-	identity := execution.ArtifactIdentity{Name: o.AppID, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace, CreatedAt: o.AppCreatedAt}
+	identity := execution.ArtifactIdentity{Name: o.AppID, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace}
 
 	if err := o.Client.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
 		return fmt.Errorf("publish: create job %s: %w", key.Name, err)
@@ -205,8 +207,8 @@ func Publish(ctx context.Context, o Options) error {
 		if err := o.Client.Get(wctx, key, &cur); err != nil {
 			return fmt.Errorf("publish: get job %s: %w", key.Name, err)
 		}
-		if err := identity.Adopt(wctx, o.Client, &cur, job.Labels); err != nil {
-			return fmt.Errorf("publish: adopt job %s: %w", key.Name, err)
+		if err := identity.CheckOwner(&cur); err != nil {
+			return fmt.Errorf("publish: check job owner %s: %w", key.Name, err)
 		}
 		switch {
 		case jobCondition(&cur, batchv1.JobComplete):
@@ -411,8 +413,8 @@ func modestResources() corev1.ResourceRequirements {
 }
 
 // JobName is the deterministic per-revision publish Job name (DNS-1123, ≤63):
-// re-reconciling the same revision adopts the existing Job; a new revision gets a
-// fresh publish. Distinct "pub-" prefix so it never collides with the build Job.
+// re-reconciling the same revision reuses the exact-lifetime Job; a new revision
+// gets a fresh publish. Distinct "pub-" prefix avoids build-Job collisions.
 func JobName(appID, revision string) string {
 	rev := revision
 	if rev == "" {
