@@ -145,6 +145,18 @@ Verify all of the following before live activation:
 11. Replaying a signed `invoice.payment_failed` event returns 204 and logs trusted intake without enforcing suspension.
 12. Removing `BEX_STRIPE_SECRET_KEY` and restarting produces no Stripe network traffic and returns estimate-only usage.
 
+For a disposable production-hosted test workspace, the cross-surface and hosted-session portion is reproducible without placing a Stripe credential in the verifier:
+
+```bash
+verify_dir="$(mktemp -d)"
+BEX_VERIFY_SESSION_TOKEN=<out-of-band disposable admin session> \
+BEX_VERIFY_WORKSPACE_ID=tea-... \
+BEX_VERIFY_HOSTED_URL_FILE="$verify_dir/hosted.json" \
+  scripts/stripe-billing-verify.sh
+```
+
+The script refuses a non-`tea-*` target, requires readiness `mode=test` with one Customer and one complete Subscription, compares normalized REST/GraphQL/MCP results, and validates only the returned Stripe HTTPS hosts. It never prints the Kratos session token or hosted-session URLs. When `BEX_VERIFY_HOSTED_URL_FILE` is set, the script exclusively creates that previously nonexistent file with mode `0600`; use its `checkoutUrl` in a private browser, complete Checkout with a documented Stripe test payment method, then `unlink "$verify_dir/hosted.json" && rmdir "$verify_dir"`. Re-run without the output-file variable and with `BEX_VERIFY_REQUIRE_PAYMENT_READY=1` to prove webhook completion bound the default payment method, then clean up the disposable workspace, Customer, and Subscription.
+
 ## 5. Activate live mode
 
 Live catalog mutation is explicit and irreversible enough to require a second operator:
