@@ -453,7 +453,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		}
 		res, err := build.Build(ctx, build.Options{
 			Repo: app.Spec.Repo, Ref: ref, RootDir: app.Spec.RootDir,
-			DockerfilePath: app.Spec.DockerfilePath, Name: app.Name, AppUID: string(app.UID), AppCreatedAt: app.CreationTimestamp.Time,
+			DockerfilePath: app.Spec.DockerfilePath, Name: app.Name, AppUID: string(app.UID),
 			Registry: r.Registry, KpackRegistry: r.KpackRegistry,
 			Builder:          builder,
 			Runtime:          app.Spec.Runtime,
@@ -1821,7 +1821,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 
 	// Publish this revision's built output to the object store, unless it is
 	// already the active revision (idempotent: the publish Job is named per
-	// revision, so a retry adopts it rather than re-uploading).
+	// revision, so a retry reuses the exact-lifetime Job rather than re-uploading).
 	if app.Status.ActiveRevision != rev {
 		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Publishing", "Publishing static output to object store")
 		opts := publish.Options{
@@ -1829,7 +1829,6 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 			PublishPath:  app.Spec.PublishPath,
 			AppID:        app.Name,
 			AppUID:       string(app.UID),
-			AppCreatedAt: app.CreationTimestamp.Time,
 			Revision:     rev,
 			Store:        r.StaticStore,
 			Namespace:    r.buildNamespace(app.Namespace),
@@ -2710,7 +2709,6 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	job, err := predeploy.Ensure(ctx, predeploy.Options{
 		Name:             app.Name,
 		AppUID:           string(app.UID),
-		AppCreatedAt:     app.CreationTimestamp.Time,
 		Namespace:        ns,
 		Workspace:        app.Labels[labelWorkspace],
 		AppNamespace:     app.Namespace,
@@ -3029,7 +3027,7 @@ func (r *AppReconciler) reclaimAppExecution(ctx context.Context, app *appv1alpha
 	var errs []error
 	pending := false
 	identity := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
-		Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace, CreatedAt: app.CreationTimestamp.Time}
+		Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
 	done, _, err := build.ReclaimAppArtifacts(ctx, identity, namespace, cl)
 	pending = pending || !done
 	if err != nil {

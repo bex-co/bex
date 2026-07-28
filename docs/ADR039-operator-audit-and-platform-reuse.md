@@ -75,7 +75,7 @@ The ValidatingWebhookConfiguration now uses `objectSelector.matchLabels[app.bex.
 
 ### O-07 through O-10: deletion, credential, and dependency correctness — closed
 
-Cross-namespace ownership now uses one `ArtifactIdentity`: App name selects the logical resource, App UID distinguishes its exact lifetime, and workspace/source-namespace/component labels retain audit context. A legacy artifact without the UID is adopted only when its creation timestamp proves it belongs to the current App; a same-name recreated App cannot consume older residue.
+Cross-namespace ownership uses one `ArtifactIdentity`: App name selects the logical resource, App UID distinguishes its exact lifetime, and workspace/source-namespace/component labels retain audit context. Both the identity and artifact must carry the same non-empty UID; name-only or timestamp-inferred ownership is rejected, so a same-name recreated App cannot consume older residue.
 
 | Artifact boundary | Generated identities | Cleanup owner and completion proof |
 | --- | --- | --- |

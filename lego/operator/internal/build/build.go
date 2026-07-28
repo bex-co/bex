@@ -122,8 +122,7 @@ type Options struct {
 	RootDir        string // subdirectory of Repo to build from (App.spec.rootDir); empty = repo root
 	DockerfilePath string // Dockerfile path relative to RootDir; empty = Dockerfile
 	Name           string // image repo name (the service name)
-	AppUID         string // immutable App UID; prevents same-name recreation from adopting stale artifacts
-	AppCreatedAt   time.Time
+	AppUID         string // immutable App UID; prevents same-name recreation from reusing stale artifacts
 	Registry       string // in-cluster registry host, e.g. zot.bex-registry.svc:5000
 	// KpackRegistry is an optional alias for Registry used only by kpack. Kpack's
 	// upstream registry client deliberately treats *.local names as plain HTTP,
@@ -223,10 +222,13 @@ func (o Options) KpackImageRef() string {
 // Build dispatches the selected in-cluster builder and blocks until it returns
 // an immutable image reference or a useful failure. Re-invocation for one App
 // generation is idempotent because both mechanisms use the same deterministic
-// build name and adopt an existing Job/Image.
+// build name and reuse an existing Job/Image only after exact UID validation.
 func Build(ctx context.Context, o Options) (Result, error) {
 	if o.Client == nil {
 		return Result{}, fmt.Errorf("build: nil client (in-cluster builds require a cluster client)")
+	}
+	if o.AppUID == "" {
+		return Result{}, fmt.Errorf("build: empty App UID")
 	}
 	if o.Builder == BuilderBuildpack {
 		return buildpack(ctx, o)
@@ -240,7 +242,7 @@ func Build(ctx context.Context, o Options) (Result, error) {
 	image := o.ImageRef()
 	job := BuildJob(o, image)
 	key := client.ObjectKeyFromObject(job)
-	identity := execution.ArtifactIdentity{Name: o.Name, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace, CreatedAt: o.AppCreatedAt}
+	identity := execution.ArtifactIdentity{Name: o.Name, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace}
 
 	// Create the Job if it doesn't already exist (idempotent per revision).
 	if err := o.Client.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
@@ -265,8 +267,8 @@ func Build(ctx context.Context, o Options) (Result, error) {
 		if err := o.Client.Get(wctx, key, &cur); err != nil {
 			return Result{}, fmt.Errorf("build: get job %s: %w", key.Name, err)
 		}
-		if err := identity.Adopt(wctx, o.Client, &cur, job.Labels); err != nil {
-			return Result{}, fmt.Errorf("build: adopt job %s: %w", key.Name, err)
+		if err := identity.CheckOwner(&cur); err != nil {
+			return Result{}, fmt.Errorf("build: check job owner %s: %w", key.Name, err)
 		}
 		switch {
 		case jobCondition(&cur, batchv1.JobComplete):
@@ -615,8 +617,8 @@ func restrictedContainerSecurityContext() *corev1.SecurityContext {
 }
 
 // JobName is the deterministic per-revision Job name (DNS-1123, ≤63 chars):
-// service name (≤30) + revision, so re-reconciling the same revision adopts the
-// existing Job and a new revision gets a fresh build.
+// service name (≤30) + revision, so re-reconciling the same revision reuses the
+// exact-lifetime Job and a new revision gets a fresh build.
 func JobName(name, revision string) string {
 	rev := revision
 	if rev == "" {

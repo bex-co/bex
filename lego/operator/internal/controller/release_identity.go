@@ -222,14 +222,12 @@ type appReleaseDecision struct {
 	desired         appReleaseIdentity
 	artifactChanged bool
 	releaseChanged  bool
-	legacyBackfill  bool
 	canceled        bool
 }
 
-// prepareAppReleaseDecision mutates only operator-owned status. A legacy App
-// with an active revision is adopted as-is: this is what lets an upgrade repair
-// the production scale incident (generation advanced, old image still serving)
-// without treating the upgrade/current operational generation as a deploy.
+// prepareAppReleaseDecision mutates only operator-owned status. Missing or
+// changed fingerprints always request normal artifact/release reconciliation;
+// every retained App has been normalized to the canonical status shape.
 func prepareAppReleaseDecision(app *appv1alpha1.App) appReleaseDecision {
 	desired := desiredAppReleaseIdentity(app.Spec)
 	if generation, ok := canceledReleaseGeneration(app); ok && generation == requestedReleaseGeneration(app) {
@@ -239,15 +237,6 @@ func prepareAppReleaseDecision(app *appv1alpha1.App) appReleaseDecision {
 		app.Status.ReleaseGeneration = successfulReleaseGeneration(app)
 		return appReleaseDecision{desired: desired, canceled: true}
 	}
-	legacy := app.Status.ReleaseFingerprint == "" && app.Status.ActiveRevision != ""
-	if legacy {
-		app.Status.ArtifactFingerprint = desired.artifact
-		app.Status.ArtifactImage = app.Status.Image
-		app.Status.ReleaseFingerprint = desired.release
-		app.Status.ReleaseGeneration = activeRevisionGeneration(app)
-		return appReleaseDecision{desired: desired, legacyBackfill: true}
-	}
-
 	artifactChanged := app.Status.ArtifactFingerprint != desired.artifact
 	releaseChanged := app.Status.ReleaseFingerprint != desired.release
 	if releaseChanged {

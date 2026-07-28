@@ -39,7 +39,7 @@ import (
 func opts() Options {
 	return Options{
 		Repo: "https://github.com/bex-co/hello", Ref: "main", Name: "hello",
-		Registry: "zot.bex-registry.svc:5000", Revision: "gen-7", Namespace: "default",
+		AppUID: "uid-hello", Registry: "zot.bex-registry.svc:5000", Revision: "gen-7", Namespace: "default",
 	}
 }
 
@@ -64,6 +64,9 @@ func TestBuildJobShape(t *testing.T) {
 
 	if j.Namespace != "default" || j.Name != "bld-hello-gen-7" {
 		t.Fatalf("job meta = %s/%s", j.Namespace, j.Name)
+	}
+	if j.Labels["app.bex.co/app-uid"] != o.AppUID || j.Spec.Template.Labels["app.bex.co/app-uid"] != o.AppUID {
+		t.Fatalf("build artifact missing App UID labels: job=%v pod=%v", j.Labels, j.Spec.Template.Labels)
 	}
 	// One-shot build, deadline set, TTL reaps it.
 	if j.Spec.BackoffLimit == nil || *j.Spec.BackoffLimit != 1 {
@@ -254,7 +257,7 @@ func completedJob(o Options, cond batchv1.JobConditionType) *batchv1.Job {
 	return j
 }
 
-func TestBuildAdoptsCompletedJobAndReturnsImage(t *testing.T) {
+func TestBuildReusesOwnedCompletedJobAndReturnsImage(t *testing.T) {
 	o := opts()
 	o.Client = fakeClient(completedJob(o, batchv1.JobComplete)) // pre-seeded, already Complete
 	res, err := Build(context.Background(), o)
@@ -263,6 +266,33 @@ func TestBuildAdoptsCompletedJobAndReturnsImage(t *testing.T) {
 	}
 	if res.Image != "zot.bex-registry.svc:5000/hello:gen-7" {
 		t.Errorf("image = %q", res.Image)
+	}
+}
+
+func TestBuildRequiresAppUID(t *testing.T) {
+	o := opts()
+	o.AppUID = ""
+	o.Client = fakeClient()
+	if _, err := Build(context.Background(), o); err == nil || !strings.Contains(err.Error(), "empty App UID") {
+		t.Fatalf("Build error = %v, want missing-identity rejection", err)
+	}
+}
+
+func TestBuildRejectsExistingJobWithoutAppUID(t *testing.T) {
+	o := opts()
+	job := completedJob(o, batchv1.JobComplete)
+	delete(job.Labels, "app.bex.co/app-uid")
+	o.Client = fakeClient(job)
+
+	if _, err := Build(context.Background(), o); err == nil || !strings.Contains(err.Error(), "different App lifetime") {
+		t.Fatalf("Build error = %v, want strict lifetime ownership rejection", err)
+	}
+	var got batchv1.Job
+	if err := o.Client.Get(context.Background(), client.ObjectKeyFromObject(job), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Labels["app.bex.co/app-uid"] != "" {
+		t.Fatalf("existing Job was adopted: labels=%v", got.Labels)
 	}
 }
 
@@ -500,7 +530,7 @@ func TestBuildpackImageShapeAndSuccess(t *testing.T) {
 	if len(env) != 1 || env[0].(map[string]any)["name"] != "BP_GO_TARGETS" {
 		t.Fatalf("build env = %#v", env)
 	}
-	if image.GetName() != "bld-hello-gen-7" || image.GetLabels()["app.bex.co/component"] != "build" {
+	if image.GetName() != "bld-hello-gen-7" || image.GetLabels()["app.bex.co/component"] != "build" || image.GetLabels()["app.bex.co/app-uid"] != o.AppUID {
 		t.Errorf("image metadata = %s %#v", image.GetName(), image.GetLabels())
 	}
 	requests, _, _ := unstructured.NestedStringMap(image.Object, "spec", "build", "resources", "requests")
@@ -746,129 +776,5 @@ func TestActiveWorkspaceBuilds(t *testing.T) {
 	n, err = ActiveWorkspaceBuilds(ctx, "", "default", cl)
 	if err != nil || n != 0 {
 		t.Errorf("empty workspace: got (%d, %v), want (0, nil)", n, err)
-	}
-}
-
-// ---- DeleteAppArtifacts tests (w7/m12) ----
-
-func buildJob(name, appName string) *batchv1.Job {
-	return &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: "build",
-			Labels:    map[string]string{"app.bex.co/build": appName},
-		},
-	}
-}
-
-func predeployJob(name, appName, ns string) *batchv1.Job {
-	return &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ns,
-			Labels:    map[string]string{"app.bex.co/predeploy": appName},
-		},
-	}
-}
-
-func artifactPod(name, label, appName, ns string) *corev1.Pod {
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ns,
-			Labels:    map[string]string{label: appName},
-		},
-	}
-}
-
-func TestDeleteAppArtifacts_DeletesBuildAndPredeployJobs(t *testing.T) {
-	ctx := context.Background()
-	cl := fakeClient(
-		buildJob("bld-hello-gen-1", "hello"),
-		buildJob("bld-hello-gen-2", "hello"),
-		predeployJob("pred-hello-gen-1", "hello", "build"),
-		artifactPod("bld-hello-gen-1-pod", "app.bex.co/build", "hello", "build"),
-		artifactPod("pred-hello-gen-1-pod", "app.bex.co/predeploy", "hello", "build"),
-		// another app's jobs — must NOT be deleted
-		buildJob("bld-other-gen-1", "other"),
-		artifactPod("bld-other-gen-1-pod", "app.bex.co/build", "other", "build"),
-	)
-
-	if err := DeleteAppArtifacts(ctx, "hello", "build", cl); err != nil {
-		t.Fatalf("DeleteAppArtifacts: %v", err)
-	}
-
-	// hello's build Jobs must be gone.
-	var jobs batchv1.JobList
-	if err := cl.List(ctx, &jobs, client.InNamespace("build"),
-		client.MatchingLabels{"app.bex.co/build": "hello"}); err != nil {
-		t.Fatalf("list: %v", err)
-	}
-	if len(jobs.Items) != 0 {
-		t.Errorf("build Jobs for 'hello' still present: %d", len(jobs.Items))
-	}
-
-	// hello's predeploy Jobs must be gone.
-	if err := cl.List(ctx, &jobs, client.InNamespace("build"),
-		client.MatchingLabels{"app.bex.co/predeploy": "hello"}); err != nil {
-		t.Fatalf("list predeploy: %v", err)
-	}
-	if len(jobs.Items) != 0 {
-		t.Errorf("predeploy Jobs for 'hello' still present: %d", len(jobs.Items))
-	}
-
-	// The Job controller normally cascades these Pods, but the finalizer also
-	// removes them explicitly so an orphaned completed Pod cannot survive.
-	var pods corev1.PodList
-	if err := cl.List(ctx, &pods, client.InNamespace("build"),
-		client.MatchingLabels{"app.bex.co/build": "hello"}); err != nil {
-		t.Fatalf("list build pods: %v", err)
-	}
-	if len(pods.Items) != 0 {
-		t.Errorf("build Pods for 'hello' still present: %d", len(pods.Items))
-	}
-	if err := cl.List(ctx, &pods, client.InNamespace("build"),
-		client.MatchingLabels{"app.bex.co/predeploy": "hello"}); err != nil {
-		t.Fatalf("list predeploy pods: %v", err)
-	}
-	if len(pods.Items) != 0 {
-		t.Errorf("predeploy Pods for 'hello' still present: %d", len(pods.Items))
-	}
-
-	// other's build Job must still be there.
-	if err := cl.List(ctx, &jobs, client.InNamespace("build"),
-		client.MatchingLabels{"app.bex.co/build": "other"}); err != nil {
-		t.Fatalf("list other: %v", err)
-	}
-	if len(jobs.Items) != 1 {
-		t.Errorf("other app's build Job was incorrectly deleted; want 1, got %d", len(jobs.Items))
-	}
-	if err := cl.List(ctx, &pods, client.InNamespace("build"),
-		client.MatchingLabels{"app.bex.co/build": "other"}); err != nil {
-		t.Fatalf("list other pods: %v", err)
-	}
-	if len(pods.Items) != 1 {
-		t.Errorf("other app's build Pod was incorrectly deleted; want 1, got %d", len(pods.Items))
-	}
-}
-
-func TestDeleteAppArtifacts_EmptyNamespaceReturnsNil(t *testing.T) {
-	// No pre-existing objects — should be a no-op, not an error.
-	cl := fakeClient()
-	if err := DeleteAppArtifacts(context.Background(), "hello", "build", cl); err != nil {
-		t.Fatalf("DeleteAppArtifacts on empty namespace: %v", err)
-	}
-}
-
-func TestDeleteAppArtifacts_MissingKpackIsNotAnError(t *testing.T) {
-	// kpack CRD is not installed; the fake client returns "no matches for kind".
-	// DeleteAppArtifacts should tolerate that and return nil.
-	ctx := context.Background()
-	cl := fakeClient(buildJob("bld-hello-gen-1", "hello"))
-
-	// Even without kpack registered in the scheme the function should succeed
-	// (the build Job is deleted, the kpack list error is tolerated).
-	if err := DeleteAppArtifacts(ctx, "hello", "build", cl); err != nil {
-		t.Fatalf("DeleteAppArtifacts without kpack in scheme: %v", err)
 	}
 }

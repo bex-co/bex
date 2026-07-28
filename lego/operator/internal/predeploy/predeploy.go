@@ -94,8 +94,7 @@ const (
 // app pod's configuration.
 type Options struct {
 	Name         string // service name (image repo name / label value)
-	AppUID       string // immutable App UID; prevents same-name recreation from adopting stale artifacts
-	AppCreatedAt time.Time
+	AppUID       string // immutable App UID; prevents same-name recreation from reusing stale artifacts
 	Namespace    string // namespace the pre-deploy Job runs in
 	Workspace    string // owning tenant id (app.bex.co/workspace label); empty = omitted
 	AppNamespace string // namespace the App CR lives in; used for log attribution
@@ -120,8 +119,8 @@ type Options struct {
 
 // JobName is the deterministic per-revision pre-deploy Job name (DNS-1123,
 // ≤63 chars): "predeploy-<name>-<revision>", so re-reconciling the same
-// revision adopts the existing Job (idempotent — never re-runs a completed
-// migration) and a new revision gets a fresh run.
+// revision reuses the exact-lifetime Job (idempotent — never re-runs a
+// completed migration) and a new revision gets a fresh run.
 func JobName(name, revision string) string {
 	rev := revision
 	if rev == "" {
@@ -197,8 +196,11 @@ func Job(o Options) *batchv1.Job {
 
 // Ensure creates the pre-deploy Job if it does not already exist, returning the
 // current Job either way. Idempotent per revision: a second call for the same
-// revision adopts the existing Job rather than starting a second migration.
+// revision reuses the exact-lifetime Job rather than starting another migration.
 func Ensure(ctx context.Context, o Options) (*batchv1.Job, error) {
+	if o.AppUID == "" {
+		return nil, fmt.Errorf("predeploy: empty App UID")
+	}
 	job := Job(o)
 	if err := o.Client.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
 		return nil, fmt.Errorf("predeploy: create job %s: %w", job.Name, err)
@@ -208,9 +210,9 @@ func Ensure(ctx context.Context, o Options) (*batchv1.Job, error) {
 	if err := o.Client.Get(ctx, key, &cur); err != nil {
 		return nil, fmt.Errorf("predeploy: get job %s: %w", key.Name, err)
 	}
-	identity := execution.ArtifactIdentity{Name: o.Name, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace, CreatedAt: o.AppCreatedAt}
-	if err := identity.Adopt(ctx, o.Client, &cur, job.Labels); err != nil {
-		return nil, fmt.Errorf("predeploy: adopt job %s: %w", key.Name, err)
+	identity := execution.ArtifactIdentity{Name: o.Name, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace}
+	if err := identity.CheckOwner(&cur); err != nil {
+		return nil, fmt.Errorf("predeploy: check job owner %s: %w", key.Name, err)
 	}
 	return &cur, nil
 }

@@ -92,7 +92,7 @@ func TestEveryAppSpecFieldMatchesItsIdentityClass(t *testing.T) {
 	}
 }
 
-func TestLegacyReleaseIdentityAdoptsActiveRevision(t *testing.T) {
+func TestMissingReleaseIdentityForcesCanonicalRelease(t *testing.T) {
 	app := &appv1alpha1.App{
 		Spec: appv1alpha1.AppSpec{
 			Repo: "https://github.com/bex-co/bex.git", Runtime: "go",
@@ -105,17 +105,17 @@ func TestLegacyReleaseIdentityAdoptsActiveRevision(t *testing.T) {
 	app.Status.ObservedGeneration = 1
 
 	decision := prepareAppReleaseDecision(app)
-	if !decision.legacyBackfill || decision.artifactChanged || decision.releaseChanged {
-		t.Fatalf("decision = %+v, want legacy adoption with no build/release", decision)
+	if !decision.artifactChanged || !decision.releaseChanged {
+		t.Fatalf("decision = %+v, want normal artifact and release reconciliation", decision)
 	}
-	if app.Status.ReleaseGeneration != 1 {
-		t.Fatalf("releaseGeneration = %d, want 1", app.Status.ReleaseGeneration)
+	if app.Status.ReleaseGeneration != 2 {
+		t.Fatalf("releaseGeneration = %d, want current generation 2", app.Status.ReleaseGeneration)
 	}
-	if app.Status.ArtifactFingerprint == "" || app.Status.ReleaseFingerprint == "" {
-		t.Fatal("legacy adoption must persist both identities")
+	if app.Status.ArtifactFingerprint != "" || app.Status.ReleaseFingerprint == "" {
+		t.Fatal("decision must not backfill a missing artifact identity without producing it")
 	}
-	if app.Status.ArtifactImage != app.Status.Image {
-		t.Fatalf("artifactImage = %q, want active image %q", app.Status.ArtifactImage, app.Status.Image)
+	if app.Status.ArtifactImage != "" {
+		t.Fatalf("artifactImage = %q, want a fresh artifact", app.Status.ArtifactImage)
 	}
 }
 

@@ -130,7 +130,7 @@ func buildpack(ctx context.Context, o Options) (Result, error) {
 	}
 	image := KpackImage(o)
 	key := client.ObjectKeyFromObject(image)
-	identity := execution.ArtifactIdentity{Name: o.Name, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace, CreatedAt: o.AppCreatedAt}
+	identity := execution.ArtifactIdentity{Name: o.Name, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace}
 	if err := o.Client.Create(ctx, image); err != nil && !apierrors.IsAlreadyExists(err) {
 		return Result{}, fmt.Errorf("build: create kpack image %s: %w", key.Name, err)
 	}
@@ -157,8 +157,8 @@ func buildpack(ctx context.Context, o Options) (Result, error) {
 			}
 			return Result{}, fmt.Errorf("build: get kpack image %s: %w", key.Name, err)
 		}
-		if err := identity.Adopt(wctx, o.Client, cur, image.GetLabels()); err != nil {
-			return Result{}, fmt.Errorf("build: adopt kpack image %s: %w", key.Name, err)
+		if err := identity.CheckOwner(cur); err != nil {
+			return Result{}, fmt.Errorf("build: check kpack image owner %s: %w", key.Name, err)
 		}
 		condition, found := kpackCondition(cur, kpackReadyCondition)
 		if found {
