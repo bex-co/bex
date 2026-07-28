@@ -1,23 +1,23 @@
 # w7 · m53 — Production Stripe test-mode billing acceptance + operations handoff
 
-**Worker:** worker7 **Goal:** prove and operationalize the complete bex billing lifecycle against Stripe test mode from the production deployment, with reconciliation, alerts, incident drills, evidence, and no live-mode side effects **Status:** todo
+**Worker:** worker7 **Goal:** prove and operationalize the complete bex billing lifecycle against Stripe test mode from the production deployment, with reconciliation, alerts, incident drills, evidence, and no live-mode side effects **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Reconcile usage outbox, Stripe meter summaries, and invoice lines | 1h | — |
-| t002 | Add secret-safe billing metrics and structured operator diagnostics | 1h | t001 |
-| t003 | Alert on backlog, rejects, ambiguity, duplicates, and webhook drift | 1h | t002 |
-| t004 | Build dead-letter and old-ambiguity repair workflows | 1h | t001, t002, t003 |
-| t005 | Harden test credential rotation, access policy, and custody | 45m | t002 |
-| t006 | Provision the paid · excluded · comp production test workspace set | 45m | t001, t005 |
-| t007 | Run the full production Stripe test-clock billing lifecycle | 2h | t003, t004, t006 |
-| t008 | Drill billing disable, rollback, credential rotation, and recovery | 1h | t005, t007 |
-| t009 | Publish the operator acceptance evidence and recurring test runbook | 45m | t007, t008 |
-| t010 | Simplify | 30m | t009 |
-| t011 | Test coverage | 45m | t010 |
-| t012 | Closeout | 10m | t011 |
+| t001 | Reconcile usage outbox, Stripe meter summaries, and invoice lines — **DONE** | 1h | — |
+| t002 | Add secret-safe billing metrics and structured operator diagnostics — **DONE** | 1h | t001 |
+| t003 | Alert on backlog, rejects, ambiguity, duplicates, and webhook drift — **DONE** | 1h | t002 |
+| t004 | Build dead-letter and old-ambiguity repair workflows — **DONE** | 1h | t001, t002, t003 |
+| t005 | Harden test credential rotation, access policy, and custody — **DONE** | 45m | t002 |
+| t006 | Provision the paid · excluded · comp production test workspace set — **DONE** | 45m | t001, t005 |
+| t007 | Run the full production Stripe test-clock billing lifecycle — **DONE** | 2h | t003, t004, t006 |
+| t008 | Drill billing disable, rollback, credential rotation, and recovery — **DONE** | 1h | t005, t007 |
+| t009 | Publish the operator acceptance evidence and recurring test runbook — **DONE** | 45m | t007, t008 |
+| t010 | Simplify — **DONE** | 30m | t009 |
+| t011 | Test coverage — **DONE** | 45m | t010 |
+| t012 | Closeout — **DONE** | 10m | t011 |
 
 ## Definition of done
 
