@@ -363,6 +363,26 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		buildNs := r.buildNamespace(app.Namespace)
 		builder := effectiveBuilder(app.Spec)
 
+		// The build's serial push phase uses this App's repository-scoped Zot
+		// credential. Zot reads htpasswd and ACL Secrets only at startup, so a new
+		// App's freshly minted credential may not be active yet. The workload gate
+		// in reconcileKubernetes is necessarily too late for this path: the image
+		// must be pushed before there is an image to roll out. Prove activation
+		// before creating the build Job so a healthy build cannot fail at its final
+		// push with a misleading BuildFailed/authentication-required error.
+		if r.PerAppRegistry != nil && r.Registry != "" {
+			active, err := r.PerAppRegistry.EnsureActive(ctx, app.Name, app.Namespace)
+			if err != nil {
+				logf.FromContext(ctx).Error(err, "registry credential probe failed before build; requeueing", "app", app.Name)
+				return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
+			}
+			if !active {
+				r.setPhase(ctx, &app, appv1alpha1.PhaseBuilding, "RegistryCredsPending",
+					"Waiting for the registry to accept this app's build credential")
+				return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+			}
+		}
+
 		// Newest-wins per App (w7/m9): cancel any active build Job for this service
 		// so a push-spam burst never runs more than one build at a time per App,
 		// matching Render's "Render cancels any in-progress build for the same service".
