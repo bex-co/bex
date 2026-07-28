@@ -43,7 +43,7 @@ variable "hcloud_token" {
 # the CONTAINERD/RUNC the KubeadmConfigTemplates used before the bake.
 variable "kubernetes_version" {
   type    = string
-  default = "1.33.13"
+  default = "1.34.9"
 }
 
 variable "containerd_version" {
@@ -64,10 +64,9 @@ variable "base_image" {
 }
 
 # Cheap x86 server just for baking. The snapshot is tagged by ARCHITECTURE (x86),
-# not CPU vendor, so an AMD `cpx` bake runs fine on prod's Intel `cx33` workers.
+# not CPU vendor, so the same snapshot runs on every compatible x86 worker.
 # `cpx22` (2 vCPU / 4 GB) is used because the older `cx` line (cx23/cx33, Intel)
-# is create-blocked in fsn1 — existing prod cx33 nodes keep running, but you can
-# no longer spin up a NEW one there (verified via the Hetzner API, 2026-07-15).
+# is create-blocked in fsn1 (verified via the Hetzner API, 2026-07-15).
 # fsn1 keeps the snapshot in the prod region.
 variable "server_type" {
   type    = string
@@ -85,7 +84,7 @@ variable "location" {
 # immediately after a successful bake.
 variable "image_name" {
   type    = string
-  default = "bex-worker-k8s-1-33"
+  default = "bex-worker-k8s-1-34"
 }
 
 source "hcloud" "worker" {
