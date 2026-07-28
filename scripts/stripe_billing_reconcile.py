@@ -10,12 +10,13 @@ import os
 import subprocess
 import sys
 from collections import Counter, defaultdict
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_DOWN, ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
 
 
 BYTES_PER_GIB = Decimal(1073741824)
 SECONDS_PER_HOUR = Decimal(3600)
+STRIPE_METER_PRECISION = Decimal("1e-12")
 
 
 def decimal(value: object) -> Decimal:
@@ -28,9 +29,9 @@ def decimal(value: object) -> Decimal:
 def normalized_value(row: dict) -> Decimal:
     value = decimal(row["quantity"])
     if row["kind"] == "egress_bytes":
-        return value / BYTES_PER_GIB
+        return (value / BYTES_PER_GIB).quantize(STRIPE_METER_PRECISION, rounding=ROUND_HALF_UP)
     if row["kind"] == "storage_gb_seconds":
-        return value / SECONDS_PER_HOUR
+        return (value / SECONDS_PER_HOUR).quantize(STRIPE_METER_PRECISION, rounding=ROUND_HALF_UP)
     return value
 
 
@@ -121,7 +122,8 @@ def compare(local: dict, summaries: dict[str, object], invoice_lines: list[dict]
             )
             continue
         quantity = line.get("quantity")
-        if quantity is None or decimal(quantity) != local_value:
+        expected_quantity = local_value.to_integral_value(rounding=ROUND_DOWN)
+        if quantity is None or decimal(quantity) != expected_quantity:
             problems.append(
                 {
                     "type": "invoice_quantity_mismatch",
@@ -130,10 +132,23 @@ def compare(local: dict, summaries: dict[str, object], invoice_lines: list[dict]
                     "errorCode": "",
                 }
             )
-        if line.get("amount") is None or not line.get("currency"):
+        amount = line.get("amount")
+        unit_amount = line.get("unitAmountDecimal")
+        if amount is None or unit_amount is None or not line.get("currency"):
             problems.append(
                 {
                     "type": "invoice_amount_missing",
+                    "transactionId": "",
+                    "eventName": event_name,
+                    "errorCode": "",
+                }
+            )
+        elif decimal(amount) != (local_value * decimal(unit_amount)).quantize(
+            Decimal("1"), rounding=ROUND_HALF_UP
+        ):
+            problems.append(
+                {
+                    "type": "invoice_amount_mismatch",
                     "transactionId": "",
                     "eventName": event_name,
                     "errorCode": "",
@@ -184,6 +199,52 @@ def unix_seconds(value: str) -> int:
     return int(parsed.timestamp())
 
 
+def invoice_preview_lines(customer: str, subscription: str) -> list[dict]:
+    preview = stripe_json(
+        [
+            "post",
+            "/v1/invoices/create_preview",
+            "-d",
+            f"customer={customer}",
+            "-d",
+            f"subscription={subscription}",
+            "-e",
+            "lines.data.pricing.price_details.price",
+        ]
+    )
+    embedded = preview.get("lines") or {}
+    line_url = embedded.get("url", "")
+    if not line_url:
+        return embedded.get("data", [])
+    if not line_url.startswith("/v1/invoices/") or not line_url.endswith("/lines"):
+        raise RuntimeError("Stripe invoice preview returned an unexpected lines URL")
+
+    lines: list[dict] = []
+    cursor = ""
+    seen_cursors: set[str] = set()
+    while True:
+        request = [
+            "get",
+            line_url,
+            "--limit",
+            "100",
+            "-e",
+            "data.pricing.price_details.price",
+        ]
+        if cursor:
+            request.extend(["-d", f"starting_after={cursor}"])
+        page = stripe_json(request)
+        data = page.get("data", [])
+        lines.extend(data)
+        if not page.get("has_more"):
+            return lines
+        next_cursor = str((data[-1] if data else {}).get("id", ""))
+        if not next_cursor or next_cursor in seen_cursors:
+            raise RuntimeError("Stripe invoice-line pagination did not advance")
+        seen_cursors.add(next_cursor)
+        cursor = next_cursor
+
+
 def provider_evidence(local: dict, start: str, end: str) -> tuple[dict[str, Decimal], list[dict]]:
     if local.get("livemode") is True:
         raise RuntimeError("local provider mapping is live mode; refusing")
@@ -231,19 +292,7 @@ def provider_evidence(local: dict, start: str, end: str) -> tuple[dict[str, Deci
 
     invoice_lines: list[dict] = []
     if subscription:
-        preview = stripe_json(
-            [
-                "post",
-                "/v1/invoices/create_preview",
-                "-d",
-                f"customer={customer}",
-                "-d",
-                f"subscription={subscription}",
-                "-e",
-                "lines.data.pricing.price_details.price",
-            ]
-        )
-        for line in (preview.get("lines") or {}).get("data", []):
+        for line in invoice_preview_lines(customer, subscription):
             pricing = ((line.get("pricing") or {}).get("price_details") or {}).get("price") or {}
             invoice_lines.append(
                 {
@@ -252,6 +301,7 @@ def provider_evidence(local: dict, start: str, end: str) -> tuple[dict[str, Deci
                     "quantity": line.get("quantity"),
                     "amount": line.get("amount"),
                     "currency": line.get("currency", ""),
+                    "unitAmountDecimal": (line.get("pricing") or {}).get("unit_amount_decimal"),
                 }
             )
     return summaries, invoice_lines

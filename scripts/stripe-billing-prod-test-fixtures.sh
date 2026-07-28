@@ -17,19 +17,69 @@ cp_url="${BEX_CP_URL:-http://127.0.0.1:8091}"
 state_file="${BEX_BILLING_FIXTURE_STATE:-infra/local/stripe-billing-m53-fixtures.json}"
 actor="${BEX_BILLING_FIXTURE_ACTOR:-stripe-m53-test-operator}"
 
+if [ "$action" = plan ]; then
+  echo "DRY RUN: would create three m53-* workspaces, exclude one before export, comp one, seed four bounded sealed dimensions per workspace, and record non-secret ids in $state_file"
+  exit 0
+fi
+
 tmp_dir="$(mktemp -d)"
 auth_config="$tmp_dir/curl-auth"
 pg_service="$tmp_dir/pg_service.conf"
+pg_pass="$tmp_dir/pgpass"
 cleanup_tmp() {
-  unlink "$auth_config" "$pg_service" 2>/dev/null || true
+  unlink "$auth_config" 2>/dev/null || true
+  unlink "$pg_service" 2>/dev/null || true
+  unlink "$pg_pass" 2>/dev/null || true
   find "$tmp_dir" -type f -delete
   rmdir "$tmp_dir" 2>/dev/null || true
 }
 trap cleanup_tmp EXIT
 umask 077
 printf 'header = "Authorization: Bearer %s"\n' "$BEX_CP_TOKEN" >"$auth_config"
-printf '[bex_fixture]\nconninfo=%s\n' "$BEX_BILLING_FIXTURE_DB_URI" >"$pg_service"
-export PGSERVICEFILE="$pg_service" STRIPE_API_KEY="$BEX_STRIPE_SECRET_KEY"
+python3 - "$BEX_BILLING_FIXTURE_DB_URI" "$pg_service" "$pg_pass" <<'PY'
+import os
+import sys
+import urllib.parse
+
+uri, service_path, pass_path = sys.argv[1:]
+parsed = urllib.parse.urlsplit(uri)
+if parsed.scheme not in {"postgres", "postgresql"}:
+    raise SystemExit("error: BEX_BILLING_FIXTURE_DB_URI must be a PostgreSQL URI")
+user = urllib.parse.unquote(parsed.username or "")
+password = urllib.parse.unquote(parsed.password or "")
+host = parsed.hostname or ""
+port = parsed.port or 5432
+database = urllib.parse.unquote(parsed.path.lstrip("/"))
+for name, value in {"user": user, "password": password, "host": host, "database": database}.items():
+    if not value or any(char in value for char in "\r\n"):
+        raise SystemExit(f"error: PostgreSQL URI has an invalid {name}")
+for name, value in {"user": user, "host": host, "database": database}.items():
+    if any(char in value for char in " ='\\"):
+        raise SystemExit(f"error: PostgreSQL URI {name} is not service-file safe")
+
+options = dict(urllib.parse.parse_qsl(parsed.query, keep_blank_values=True))
+unknown = set(options) - {"connect_timeout", "sslmode"}
+if unknown:
+    raise SystemExit("error: unsupported PostgreSQL URI option: " + ",".join(sorted(unknown)))
+if "sslmode" in options and options["sslmode"] not in {"disable", "allow", "prefer", "require", "verify-ca", "verify-full"}:
+    raise SystemExit("error: invalid PostgreSQL sslmode")
+if "connect_timeout" in options and not options["connect_timeout"].isdigit():
+    raise SystemExit("error: invalid PostgreSQL connect_timeout")
+
+service = ["[bex_fixture]", f"host={host}", f"port={port}", f"user={user}", f"dbname={database}"]
+service.extend(f"{key}={value}" for key, value in sorted(options.items()))
+with open(service_path, "w", encoding="utf-8") as handle:
+    handle.write("\n".join(service) + "\n")
+
+def pgpass(value: str) -> str:
+    return value.replace("\\", "\\\\").replace(":", "\\:")
+
+with open(pass_path, "w", encoding="utf-8") as handle:
+    handle.write(":".join(pgpass(str(value)) for value in (host, port, database, user, password)) + "\n")
+os.chmod(service_path, 0o600)
+os.chmod(pass_path, 0o600)
+PY
+export PGSERVICEFILE="$pg_service" PGPASSFILE="$pg_pass" STRIPE_API_KEY="$BEX_STRIPE_SECRET_KEY"
 unset BEX_CP_TOKEN BEX_BILLING_FIXTURE_DB_URI BEX_STRIPE_SECRET_KEY
 
 cp_curl() { curl -fsS --config "$auth_config" "$@"; }
@@ -40,11 +90,6 @@ stripe_json() {
   [ "$(printf '%s' "$output" | jq -r 'has("error")')" = false ] || { echo "error: Stripe test-mode request returned an error" >&2; return 1; }
   printf '%s' "$output"
 }
-
-if [ "$action" = plan ]; then
-  echo "DRY RUN: would create three m53-* workspaces, exclude one before export, comp one, seed four bounded sealed dimensions per workspace, and record non-secret ids in $state_file"
-  exit 0
-fi
 
 command -v psql >/dev/null || { echo "error: psql is required" >&2; exit 2; }
 command -v stripe >/dev/null || { echo "error: stripe CLI is required" >&2; exit 2; }
@@ -128,7 +173,10 @@ PY
     cp_curl -H 'Content-Type: application/json' -X POST --data-binary @- "$cp_url/v1/tenants/$comp/billing-override" >/dev/null
 
   for id in "$paid" "$comp"; do
-    mapping="$(psql service=bex_fixture -v ON_ERROR_STOP=1 -At -F '|' -v id="$id" -c "SELECT customer_id, subscription_id FROM billing_provider_mappings WHERE workspace_id=:'id'")"
+    mapping="$(psql service=bex_fixture -v ON_ERROR_STOP=1 -At -F '|' -v id="$id" <<'SQL'
+SELECT customer_id, subscription_id FROM billing_provider_mappings WHERE workspace_id=:'id';
+SQL
+)"
     customer="${mapping%%|*}"
     subscription="${mapping#*|}"
     [ -n "$customer" ] && [ -n "$subscription" ] || { echo "error: fixture provider mapping is incomplete" >&2; exit 1; }
@@ -167,7 +215,9 @@ import datetime, sys
 value = datetime.datetime.fromisoformat(sys.argv[1].replace('Z', '+00:00'))
 print((value + datetime.timedelta(hours=1)).isoformat().replace('+00:00', 'Z'))
 PY
-)"
+  )"
+  paid_subscription=""
+  comp_subscription=""
   for mode in paid excluded comp; do
     id="$(jq -r --arg mode "$mode" '.workspaces[$mode]' "$state_file")"
     report="$(cp_curl --get --data-urlencode "start=$window" --data-urlencode "end=$end" "$cp_url/v1/tenants/$id/billing-export")"
@@ -177,8 +227,19 @@ PY
     else
       [ "$(printf '%s' "$report" | jq -r .livemode)" = false ] || { echo "FAIL: $mode mapping is not test mode" >&2; exit 1; }
       [ "$(printf '%s' "$report" | jq '[.rows[] | select(.state == "emitted")] | length')" = 4 ] || { echo "FAIL: $mode does not have four emitted dimensions" >&2; exit 1; }
+      if [ "$mode" = paid ]; then
+        paid_subscription="$(printf '%s' "$report" | jq -r '.subscriptionId // empty')"
+      else
+        comp_subscription="$(printf '%s' "$report" | jq -r '.subscriptionId // empty')"
+      fi
     fi
   done
+  case "$paid_subscription" in sub_*) ;; *) echo "FAIL: paid fixture has no Subscription" >&2; exit 1 ;; esac
+  case "$comp_subscription" in sub_*) ;; *) echo "FAIL: comp fixture has no Subscription" >&2; exit 1 ;; esac
+  paid_object="$(stripe_json get "/v1/subscriptions/$paid_subscription" -e 'discounts.source.coupon')"
+  [ "$(printf '%s' "$paid_object" | jq '[.discounts[]? | select(.coupon.id == "bex-comp-100")] | length')" = 0 ] || { echo "FAIL: paid fixture has the comp coupon" >&2; exit 1; }
+  comp_object="$(stripe_json get "/v1/subscriptions/$comp_subscription" -e 'discounts.source.coupon')"
+  [ "$(printf '%s' "$comp_object" | jq '[.discounts[]?.coupon | select(.id == "bex-comp-100" and .percent_off == 100 and .duration == "forever" and .valid == true and .livemode == false)] | length')" = 1 ] || { echo "FAIL: comp fixture lacks the valid perpetual 100%-off test coupon" >&2; exit 1; }
   echo "PASS: paid/excluded/comp fixture isolation and four-dimension export state"
   exit 0
 fi
@@ -188,17 +249,27 @@ fi
 # are intentionally preserved.
 for id in "$paid" "$comp"; do
   case "$id" in tea-*) ;; *) continue ;; esac
-  customer="$(psql service=bex_fixture -v ON_ERROR_STOP=1 -At -v id="$id" -c "SELECT customer_id FROM billing_provider_mappings WHERE workspace_id=:'id'")"
+  customer="$(psql service=bex_fixture -v ON_ERROR_STOP=1 -At -v id="$id" <<'SQL'
+SELECT customer_id FROM billing_provider_mappings WHERE workspace_id=:'id';
+SQL
+)"
   if [ -n "$customer" ]; then
     object="$(stripe_json get "/v1/customers/$customer")"
-    [ "$(printf '%s' "$object" | jq -r .livemode)" = false ] || { echo "error: refusing to delete live customer" >&2; exit 1; }
-    stripe_json delete "/v1/customers/$customer" --confirm >/dev/null
+    if [ "$(printf '%s' "$object" | jq -r '.deleted // false')" != true ]; then
+      [ "$(printf '%s' "$object" | jq -r .livemode)" = false ] || { echo "error: refusing to delete live customer" >&2; exit 1; }
+      stripe_json delete "/v1/customers/$customer" --confirm >/dev/null
+    fi
   fi
 done
 for id in "$paid" "$excluded" "$comp"; do
   case "$id" in tea-*) ;; *) continue ;; esac
-  psql service=bex_fixture -v ON_ERROR_STOP=1 -v id="$id" -c "DELETE FROM tenants WHERE id=:'id'" >/dev/null
-  remaining="$(psql service=bex_fixture -v ON_ERROR_STOP=1 -At -v id="$id" -c "SELECT count(*) FROM tenants WHERE id=:'id'")"
+  psql service=bex_fixture -v ON_ERROR_STOP=1 -v id="$id" >/dev/null <<'SQL'
+DELETE FROM tenants WHERE id=:'id';
+SQL
+  remaining="$(psql service=bex_fixture -v ON_ERROR_STOP=1 -At -v id="$id" <<'SQL'
+SELECT count(*) FROM tenants WHERE id=:'id';
+SQL
+)"
   [ "$remaining" = 0 ] || { echo "FAIL: fixture tenant remains: $id" >&2; exit 1; }
 done
 unlink "$state_file"
