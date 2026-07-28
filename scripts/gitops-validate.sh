@@ -157,6 +157,15 @@ for component in kpack-controller kpack-webhook; do
     fail=1
   fi
 done
+kpack_sa_namespace="$(yq -N \
+  'select(.kind == "ServiceAccount" and .metadata.name == "bex-kpack-builder") | .metadata.namespace' \
+  deploy/gitops/charts/kpack/platform.yaml | tr -d '\n')"
+if [ "$kpack_sa_namespace" != "bex-system" ] \
+  || ! grep -Fq 'KPACK_NS="${BEX_KPACK_NAMESPACE:-bex-system}"' scripts/registry-secrets.sh \
+  || ! grep -Fq 'kubectl create secret generic bex-registry-push-kpack -n "$KPACK_NS"' scripts/registry-secrets.sh; then
+  echo "FAIL: kpack ClusterBuilder ServiceAccount and out-of-band push credential must share namespace bex-system" >&2
+  fail=1
+fi
 
 # The production kernel requires CAP_SYS_ADMIN to create the meter's private
 # pin directory on Cilium's bpffs mount. Keep the complete set explicit: the

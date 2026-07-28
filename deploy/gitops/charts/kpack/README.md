@@ -11,3 +11,5 @@ v0.18.0 adds arm64/multi-architecture component images and resolves registry ima
 `platform.yaml` imports the complete image named by `BEX_CNB_BUILDER` into a `ClusterStore`. Because current kpack builds a `ClusterBuilder` from a store and stack rather than referencing a prebuilt builder directly, its order mirrors the top-level order embedded in the default Paketo builder.
 
 The `zot.local:5000` tag is a DNS alias of `zot.bex-registry.svc:5000`. go-containerregistry recognizes `*.local` as an HTTP development registry, so kpack can use the same internal Zot endpoint without a global insecure-registry switch. Production TLS registries can set `BEX_KPACK_REGISTRY` equal to `BEX_REGISTRY` and patch the two config values here.
+
+`scripts/registry-secrets.sh` writes `bex-registry-push-kpack` both to the tenant build namespace and to `bex-system`, where this chart's `bex-kpack-builder` ServiceAccount lives. Secret references are namespace-local; the control-plane copy is what authorizes ClusterBuilder publication, while per-App build credentials remain isolated in `bex-build`.
