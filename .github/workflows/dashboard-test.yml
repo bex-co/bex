@@ -21,8 +21,8 @@ jobs:
   dashboard:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
       # Enable corepack BEFORE any `yarn` runs: package.json pins
@@ -33,7 +33,7 @@ jobs:
       - name: enable corepack (yarn 4.17.0 per packageManager)
         run: corepack enable
       - name: cache yarn
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: dashboard/.yarn/cache
           key: yarn-${{ runner.os }}-${{ hashFiles('dashboard/yarn.lock') }}
