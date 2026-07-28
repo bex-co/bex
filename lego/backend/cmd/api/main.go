@@ -581,7 +581,6 @@ func main() {
 		// same wiring shape as CloneSecrets, deferred until here so it's set
 		// before the first reconcile pass.
 		rec.DeployNotifier = srv.Notifications
-		go rec.Run(ctx)
 
 		// Per-tenant namespace isolation (ADR043, w3/m31). Gated behind
 		// BEX_TENANT_NAMESPACES so production stays byte-identical until a cluster
@@ -590,12 +589,19 @@ func main() {
 		// with base ResourceQuota/LimitRange/default-deny NetworkPolicy, and prunes
 		// them for deleted workspaces. Unset => no NamespaceReconciler runs and the
 		// workspace lifecycle is unchanged.
+		//
+		// rec.TenantNamespaces MUST be set BEFORE go rec.Run below: the projector
+		// goroutine reads it on every pass, and setting it after Run started is a
+		// data race the goroutine may never observe (it left projection on the
+		// shared namespace on a live cluster — the unit test set it pre-Run and so
+		// missed this).
+		var nsRec *store.NamespaceReconciler
 		if os.Getenv("BEX_TENANT_NAMESPACES") != "" {
 			// Project newly created App CRs into their workspace's `<ws>`
 			// namespace (t002). Existing CRs in the shared namespace are updated
 			// in place, never moved — migration is a separate step (t006).
 			rec.TenantNamespaces = true
-			nsRec := store.NewNamespaceReconciler(cl, st)
+			nsRec = store.NewNamespaceReconciler(cl, st)
 			nsRec.Sandboxes = os.Getenv("BEX_TENANT_SANDBOX_NAMESPACES") != ""
 			// Kick BOTH reconcilers on workspace create/delete for the same
 			// low-latency reason the projector is kicked on app writes: the
@@ -605,6 +611,9 @@ func main() {
 				rec.Kick()
 				nsRec.Kick()
 			}
+		}
+		go rec.Run(ctx)
+		if nsRec != nil {
 			go nsRec.Run(ctx)
 		}
 	}
