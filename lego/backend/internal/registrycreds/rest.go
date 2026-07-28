@@ -18,7 +18,6 @@ package registrycreds
 
 import (
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -68,7 +67,7 @@ func toWireList(views []CredentialView) []credentialWire {
 	return out
 }
 
-// createCredentialRequest is POST /v1/registry-credentials' body.
+// createCredentialRequest is POST /v1/registrycredentials' body.
 type createCredentialRequest struct {
 	OwnerID   string `json:"ownerId"`
 	Name      string `json:"name"`
@@ -79,7 +78,7 @@ type createCredentialRequest struct {
 	ExpiresAt string `json:"expiresAt"`
 }
 
-// patchCredentialRequest is PATCH /v1/registry-credentials/{id}'s body.
+// patchCredentialRequest is PATCH /v1/registrycredentials/{id}'s body.
 // Pointer fields follow the codebase's nil-means-unchanged PATCH convention
 // (mirrors apps' patchServiceRequest). ExpiresAt is a pointer to a string so
 // "absent" (nil, leave unchanged) is distinct from an explicit "" (clear the
@@ -103,11 +102,9 @@ func parseExpiresAt(s string) (*time.Time, error) {
 	return &t, nil
 }
 
-// RegisterREST mounts the registry-credentials CRUD surface. The canonical
-// Render spelling is /registrycredentials; the hyphenated route predates the
-// official-CLI harness and remains as a bex alias.
+// RegisterREST mounts Render's canonical registrycredentials CRUD surface.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
-	mux.HandleFunc("GET /v1/registry-credentials", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /v1/registrycredentials", func(w http.ResponseWriter, r *http.Request) {
 		views, err := s.List(r.Context(), r.URL.Query().Get("ownerId"))
 		if err != nil {
 			core.WriteErr(w, err)
@@ -116,7 +113,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, toWireList(views))
 	})
 
-	mux.HandleFunc("POST /v1/registry-credentials", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /v1/registrycredentials", func(w http.ResponseWriter, r *http.Request) {
 		var req createCredentialRequest
 		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
@@ -138,7 +135,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusCreated, toWire(v))
 	})
 
-	mux.HandleFunc("GET /v1/registry-credentials/{id}", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /v1/registrycredentials/{id}", func(w http.ResponseWriter, r *http.Request) {
 		v, err := s.Get(r.Context(), r.PathValue("id"))
 		if err != nil {
 			core.WriteErr(w, err)
@@ -147,7 +144,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, toWire(v))
 	})
 
-	mux.HandleFunc("PATCH /v1/registry-credentials/{id}", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("PATCH /v1/registrycredentials/{id}", func(w http.ResponseWriter, r *http.Request) {
 		var req patchCredentialRequest
 		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
@@ -171,22 +168,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, toWire(v))
 	})
 
-	mux.HandleFunc("DELETE /v1/registry-credentials/{id}", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("DELETE /v1/registrycredentials/{id}", func(w http.ResponseWriter, r *http.Request) {
 		if err := s.Delete(r.Context(), r.PathValue("id")); err != nil {
 			core.WriteErr(w, err)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
-
-	// The official CLI resolves --registry-credential through the canonical
-	// Render path before it sends the service mutation. Forwarding through this
-	// same mux means both spellings use byte-identical handlers and policies.
-	canonical := func(w http.ResponseWriter, r *http.Request) {
-		clone := r.Clone(r.Context())
-		clone.URL.Path = strings.Replace(r.URL.Path, "/v1/registrycredentials", "/v1/registry-credentials", 1)
-		mux.ServeHTTP(w, clone)
-	}
-	mux.HandleFunc("/v1/registrycredentials", canonical)
-	mux.HandleFunc("/v1/registrycredentials/", canonical)
 }

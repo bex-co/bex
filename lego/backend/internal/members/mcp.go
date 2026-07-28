@@ -20,35 +20,30 @@ import (
 	"context"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // mcp.go is the members MCP fragment (bex extension over Render's MCP, which
 // manages members outside its tools). An agent can seat and manage teammates the
 // same way a human does — the AI-native pillar applied to team management.
 
-type workspaceArg struct {
-	WorkspaceID string `json:"workspaceId" jsonschema:"the workspace (team) id, tea-…"`
-}
-
 type listMembersResult struct {
 	Members []MemberView `json:"members"`
 }
 
 type inviteMemberArgs struct {
-	WorkspaceID string `json:"workspaceId" jsonschema:"the workspace (team) id, tea-…"`
-	Email       string `json:"email" jsonschema:"the invitee's email address"`
-	Role        string `json:"role" jsonschema:"the role: VIEWER, CONTRIBUTOR, DEVELOPER, ADMIN, or BILLING"`
+	Email string `json:"email" jsonschema:"the invitee's email address"`
+	Role  string `json:"role" jsonschema:"the role: VIEWER, CONTRIBUTOR, DEVELOPER, ADMIN, or BILLING"`
 }
 
 type changeRoleArgs struct {
-	WorkspaceID string `json:"workspaceId" jsonschema:"the workspace (team) id, tea-…"`
-	Subject     string `json:"subject" jsonschema:"the member's subject (identity id)"`
-	Role        string `json:"role" jsonschema:"the new role: VIEWER, CONTRIBUTOR, DEVELOPER, ADMIN, or BILLING"`
+	Subject string `json:"subject" jsonschema:"the member's subject (identity id)"`
+	Role    string `json:"role" jsonschema:"the new role: VIEWER, CONTRIBUTOR, DEVELOPER, ADMIN, or BILLING"`
 }
 
 type removeMemberArgs struct {
-	WorkspaceID string `json:"workspaceId" jsonschema:"the workspace (team) id, tea-…"`
-	Subject     string `json:"subject" jsonschema:"the member's subject (identity id)"`
+	Subject string `json:"subject" jsonschema:"the member's subject (identity id)"`
 }
 
 type listInvitesResult struct {
@@ -56,8 +51,7 @@ type listInvitesResult struct {
 }
 
 type revokeInviteArgs struct {
-	WorkspaceID string `json:"workspaceId" jsonschema:"the workspace (team) id, tea-…"`
-	InviteID    string `json:"inviteId" jsonschema:"the pending invite id, inv-…"`
+	InviteID string `json:"inviteId" jsonschema:"the pending invite id, inv-…"`
 }
 
 type acceptInviteArgs struct {
@@ -73,8 +67,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_workspace_members",
 		Description: "List a workspace's members, their roles, opaque userId (own-…), and email (when the identity provider is configured). bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in workspaceArg) (*mcp.CallToolResult, listMembersResult, error) {
-		ms, err := s.List(ctx, in.WorkspaceID)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listMembersResult, error) {
+		ms, err := s.List(ctx, core.NamedWorkspace(ctx))
 		return nil, listMembersResult{Members: ms}, err
 	})
 
@@ -82,7 +76,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "invite_workspace_member",
 		Description: "Invite a teammate to a workspace by email at a role; they join on first login. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in inviteMemberArgs) (*mcp.CallToolResult, InviteView, error) {
-		inv, err := s.Invite(ctx, in.WorkspaceID, in.Email, in.Role)
+		inv, err := s.Invite(ctx, core.NamedWorkspace(ctx), in.Email, in.Role)
 		return nil, inv, err
 	})
 
@@ -90,7 +84,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "change_workspace_member_role",
 		Description: "Change a member's role in a workspace. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in changeRoleArgs) (*mcp.CallToolResult, MemberView, error) {
-		m, err := s.ChangeRole(ctx, in.WorkspaceID, in.Subject, in.Role)
+		m, err := s.ChangeRole(ctx, core.NamedWorkspace(ctx), in.Subject, in.Role)
 		return nil, m, err
 	})
 
@@ -98,15 +92,15 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "remove_workspace_member",
 		Description: "Remove a member from a workspace; their access is revoked. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in removeMemberArgs) (*mcp.CallToolResult, okResult, error) {
-		err := s.Remove(ctx, in.WorkspaceID, in.Subject)
+		err := s.Remove(ctx, core.NamedWorkspace(ctx), in.Subject)
 		return nil, okResult{OK: err == nil}, err
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_workspace_invites",
 		Description: "List a workspace's outstanding (pending) member invites. bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in workspaceArg) (*mcp.CallToolResult, listInvitesResult, error) {
-		invs, err := s.ListInvites(ctx, in.WorkspaceID)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listInvitesResult, error) {
+		invs, err := s.ListInvites(ctx, core.NamedWorkspace(ctx))
 		return nil, listInvitesResult{Invites: invs}, err
 	})
 
@@ -114,15 +108,15 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "revoke_workspace_invite",
 		Description: "Revoke a pending workspace invite before it's accepted. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in revokeInviteArgs) (*mcp.CallToolResult, okResult, error) {
-		err := s.RevokeInvite(ctx, in.WorkspaceID, in.InviteID)
+		err := s.RevokeInvite(ctx, core.NamedWorkspace(ctx), in.InviteID)
 		return nil, okResult{OK: err == nil}, err
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_workspace_seat_usage",
 		Description: "A workspace's member-seat usage: used counts accepted members plus outstanding invites; limit 0 means unlimited (paid plans). bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in workspaceArg) (*mcp.CallToolResult, SeatUsageView, error) {
-		u, err := s.SeatUsage(ctx, in.WorkspaceID)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, SeatUsageView, error) {
+		u, err := s.SeatUsage(ctx, core.NamedWorkspace(ctx))
 		return nil, u, err
 	})
 
@@ -130,7 +124,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "resend_workspace_invite",
 		Description: "Re-send a pending workspace invite's email and refresh its expiry; the invite id is unchanged but the emailed link is freshly minted and supersedes the original. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in revokeInviteArgs) (*mcp.CallToolResult, InviteView, error) {
-		inv, err := s.ResendInvite(ctx, in.WorkspaceID, in.InviteID)
+		inv, err := s.ResendInvite(ctx, core.NamedWorkspace(ctx), in.InviteID)
 		return nil, inv, err
 	})
 

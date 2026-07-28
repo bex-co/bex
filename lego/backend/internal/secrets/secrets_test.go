@@ -400,15 +400,15 @@ func TestREST_EnvVars(t *testing.T) {
 		t.Fatalf("single PUT should merge: %+v store=%+v", one, store.m[envPath("web")])
 	}
 
-	// DELETE one => 204; unknown key => 404; /v1/apps alias works.
+	// DELETE one => 204; unknown key => 404.
 	if serveREST(svc, "DELETE", "/v1/services/web/env-vars/NEW", "").Code != 204 {
 		t.Error("delete => 204")
 	}
 	if serveREST(svc, "DELETE", "/v1/services/web/env-vars/NOPE", "").Code != 404 {
 		t.Error("delete unknown key => 404")
 	}
-	if serveREST(svc, "GET", "/v1/apps/web/env-vars", "").Code != 200 {
-		t.Error("/v1/apps alias should work")
+	if serveREST(svc, "GET", "/v1/services/web/env-vars", "").Code != 200 {
+		t.Error("canonical service route should work")
 	}
 	if serveREST(svc, "GET", "/v1/services/ghost/env-vars", "").Code != 404 {
 		t.Error("unknown service => 404")

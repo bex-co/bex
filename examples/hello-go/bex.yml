@@ -3,13 +3,13 @@
 # tool (or POST it to /v1/services). The operator builds from git (Dockerfile
 # here), runs it, and returns a live https URL. A signed git push then
 # redeploys (POST /v1/webhooks/git). See docs/ADR006-bex-api.md.
-apps:
+services:
   - name: hello-go
+    type: web
+    runtime: docker
     repo: https://github.com/bex-co/bex # replace with your fork/checkout
     branch: main
-    builder: auto # Dockerfile present ⇒ docker build
-    port: 3000
-    tier: free
+    plan: free
     healthCheckPath: /
     envVars:
       - key: MESSAGE

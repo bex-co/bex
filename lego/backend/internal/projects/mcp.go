@@ -28,9 +28,8 @@ import (
 // services into projects the same way a human does via the dashboard.
 
 type listProjectsArgs struct {
-	OwnerID string `json:"ownerId,omitempty" jsonschema:"the workspace id (tea-…); omit to use the session's selected workspace, if any"`
-	Cursor  string `json:"cursor,omitempty" jsonschema:"resume after the id of the last project from the previous page"`
-	Limit   int    `json:"limit,omitempty" jsonschema:"page size, 1-100; omit cursor and limit together to preserve the complete-list compatibility response"`
+	Cursor string `json:"cursor,omitempty" jsonschema:"resume after the id of the last project from the previous page"`
+	Limit  int    `json:"limit,omitempty" jsonschema:"page size, 1-100; omit cursor and limit together to preserve the complete-list compatibility response"`
 }
 
 type projectIDArgs struct {
@@ -38,8 +37,7 @@ type projectIDArgs struct {
 }
 
 type createProjectArgs struct {
-	Name    string `json:"name" jsonschema:"the project name (unique within the workspace)"`
-	OwnerID string `json:"ownerId,omitempty" jsonschema:"the workspace id (tea-…); omit to use the session's selected workspace, if any"`
+	Name string `json:"name" jsonschema:"the project name (unique within the workspace)"`
 }
 
 type renameProjectArgs struct {
@@ -72,12 +70,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_projects",
 		Description: "List projects in a workspace. Optional cursor/limit select stable id-ordered pages; omitting both returns the complete list for compatibility. bex extension.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in listProjectsArgs) (*mcp.CallToolResult, projectsResult, error) {
-		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
-		if err != nil {
-			return nil, projectsResult{}, err
-		}
-		ps, err := s.List(ctx, ownerID)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listProjectsArgs) (*mcp.CallToolResult, projectsResult, error) {
+		ps, err := s.List(ctx, core.NamedWorkspace(ctx))
 		if err != nil {
 			return nil, projectsResult{}, err
 		}
@@ -105,12 +99,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_project",
 		Description: "Create a named project in a workspace to group services. bex extension.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in createProjectArgs) (*mcp.CallToolResult, ProjectView, error) {
-		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
-		if err != nil {
-			return nil, ProjectView{}, err
-		}
-		p, err := s.Create(ctx, ownerID, in.Name)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createProjectArgs) (*mcp.CallToolResult, ProjectView, error) {
+		p, err := s.Create(ctx, core.NamedWorkspace(ctx), in.Name)
 		return nil, p, err
 	})
 

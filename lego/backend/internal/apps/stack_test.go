@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"strings"
 	"testing"
@@ -41,10 +42,10 @@ const stackManifest = `
 services:
   - name: web
     type: web
+    runtime: docker
     repo: https://github.com/bex/stack
     plan: starter
     numInstances: 2
-    port: 3000
     healthCheckPath: /healthz
     domains: [web.example.com]
     envVars:
@@ -59,11 +60,12 @@ services:
       - key: API_PORT
         fromService: {name: api, property: port}
   - name: api
-    type: private
+    type: pserv
+    runtime: image
     image: {url: api:latest}
-    port: 8080
   - name: worker
     type: worker
+    runtime: docker
     repo: https://github.com/bex/stack
     rootDir: worker
 databases:
@@ -199,18 +201,16 @@ services:
 	}
 }
 
-func TestParseStackLegacyAppsUnchanged(t *testing.T) {
-	// A legacy single-service `apps:` file must parse into exactly one service,
-	// byte-identical to the pre-m24 behavior (deploy_test's sampleManifest).
+func TestParseStackCanonicalServices(t *testing.T) {
 	st, err := parseStack(DeployRequest{Manifest: sampleManifest})
 	if err != nil {
-		t.Fatalf("parseStack legacy: %v", err)
+		t.Fatalf("parseStack: %v", err)
 	}
 	if len(st.services) != 1 || st.services[0].req.Name != "hello" {
-		t.Fatalf("legacy parse = %+v", st.services)
+		t.Fatalf("canonical parse = %+v", st.services)
 	}
 	if len(st.databases) != 0 {
-		t.Errorf("legacy file must declare no databases, got %d", len(st.databases))
+		t.Errorf("file must declare no databases, got %d", len(st.databases))
 	}
 }
 
@@ -238,23 +238,23 @@ func TestParseStackDefersFromDatabaseUntilStableIDIsKnown(t *testing.T) {
 func TestParseStackDefersFromServiceHostUntilSlugIsKnown(t *testing.T) {
 	// host defers to apply — the injected hostname is the sibling's slug,
 	// minted at create (ADR041 D3; the same deferral shape as fromDatabase
-	// above). port still resolves at parse (declared in the same file).
+	// above). port still resolves at parse from the platform default.
 	st, _ := parseStack(DeployRequest{Manifest: stackManifest})
 	web := findSvc(t, st, "web")
 	if len(web.hostRefs) != 1 {
 		t.Fatalf("hostRefs = %+v, want the one deferred api host ref", web.hostRefs)
 	}
 	// The port half resolves at parse; only the slug hostname waits for apply.
-	if ref := web.hostRefs[0]; ref.target != "api" || ref.key != "API_HOST" || ref.port != 8080 || ref.hostport {
-		t.Errorf("hostRef = %+v, want {key API_HOST, target api, port 8080, host-only}", ref)
+	if ref := web.hostRefs[0]; ref.target != "api" || ref.key != "API_HOST" || ref.port != 3000 || ref.hostport {
+		t.Errorf("hostRef = %+v, want {key API_HOST, target api, port 3000, host-only}", ref)
 	}
 	for _, env := range web.req.Env {
 		if env.Name == "API_HOST" {
 			t.Errorf("API_HOST was resolved before the sibling's slug was known")
 		}
 	}
-	if p := findEnv(t, web.req.Env, "API_PORT"); p.Value != "8080" {
-		t.Errorf("fromService port = %q, want 8080 (api's declared port)", p.Value)
+	if p := findEnv(t, web.req.Env, "API_PORT"); p.Value != "3000" {
+		t.Errorf("fromService port = %q, want the platform default 3000", p.Value)
 	}
 }
 
@@ -263,8 +263,8 @@ func TestParseStackDefersFromServiceHostUntilSlugIsKnown(t *testing.T) {
 func TestParseStackRejectsDuplicateNames(t *testing.T) {
 	dup := `
 services:
-  - {name: web, image: a}
-  - {name: web, image: b}
+  - {name: web, image: {url: a}}
+  - {name: web, image: {url: b}}
 `
 	_, err := parseStack(DeployRequest{Manifest: dup})
 	if err == nil || !strings.Contains(err.Error(), `duplicate name "web"`) {
@@ -276,7 +276,7 @@ func TestParseStackRejectsUnknownFromDatabase(t *testing.T) {
 	bad := `
 services:
   - name: web
-    image: x
+    image: {url: x}
     envVars:
       - key: DATABASE_URL
         fromDatabase: {name: ghost, property: connectionString}
@@ -291,7 +291,7 @@ func TestParseStackRejectsUnknownFromService(t *testing.T) {
 	bad := `
 services:
   - name: web
-    image: x
+    image: {url: x}
     envVars:
       - key: H
         fromService: {name: ghost, property: host}
@@ -307,13 +307,13 @@ func TestParseStackRejectsBadEnvForms(t *testing.T) {
 	// fromService.envVarKey) now WORK; these are the genuinely-malformed shapes
 	// that must still reject per-entry (all-or-nothing).
 	cases := map[string]string{
-		"fromGroup with a key":  "services:\n  - {name: web, image: x, envVars: [{key: S, fromGroup: g}]}\n",
-		"value + generateValue": "services:\n  - {name: web, image: x, envVars: [{key: S, value: v, generateValue: true}]}\n",
-		"dangling envVarKey":    "services:\n  - {name: web, image: x, envVars: [{key: S, fromService: {name: web, envVarKey: NOPE}}]}\n",
-		"envVarKey + property":  "services:\n  - {name: web, image: x, envVars: [{key: S, fromService: {name: web, envVarKey: X, property: host}}]}\n",
-		"bad db property":       "services:\n  - {name: web, image: x, envVars: [{key: S, fromDatabase: {name: db, property: url}}]}\ndatabases:\n  - {name: db}\n",
-		"group var referencing": "envVarGroups:\n  - name: g\n    envVars: [{key: S, fromService: {name: web, property: host}}]\nservices:\n  - {name: web, image: x}\n",
-		"group var sync false":  "envVarGroups:\n  - name: g\n    envVars: [{key: S, value: v, sync: false}]\nservices:\n  - {name: web, image: x}\n",
+		"fromGroup with a key":  "services:\n  - {name: web, image: {url: x}, envVars: [{key: S, fromGroup: g}]}\n",
+		"value + generateValue": "services:\n  - {name: web, image: {url: x}, envVars: [{key: S, value: v, generateValue: true}]}\n",
+		"dangling envVarKey":    "services:\n  - {name: web, image: {url: x}, envVars: [{key: S, fromService: {name: web, envVarKey: NOPE}}]}\n",
+		"envVarKey + property":  "services:\n  - {name: web, image: {url: x}, envVars: [{key: S, fromService: {name: web, envVarKey: X, property: host}}]}\n",
+		"bad db property":       "services:\n  - {name: web, image: {url: x}, envVars: [{key: S, fromDatabase: {name: db, property: url}}]}\ndatabases:\n  - {name: db}\n",
+		"group var referencing": "envVarGroups:\n  - name: g\n    envVars: [{key: S, fromService: {name: web, property: host}}]\nservices:\n  - {name: web, image: {url: x}}\n",
+		"group var sync false":  "envVarGroups:\n  - name: g\n    envVars: [{key: S, value: v, sync: false}]\nservices:\n  - {name: web, image: {url: x}}\n",
 	}
 	for name, manifest := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -324,13 +324,23 @@ func TestParseStackRejectsBadEnvForms(t *testing.T) {
 	}
 }
 
-func TestParseStackRejectsBothAppsAndServices(t *testing.T) {
-	both := `
-services: [{name: a, image: x}]
-apps: [{name: b, image: y}]
-`
-	if _, err := parseStack(DeployRequest{Manifest: both}); err == nil {
-		t.Error("apps: + services: together must be rejected")
+func TestParseStackRejectsRetiredBlueprintDialect(t *testing.T) {
+	cases := map[string]string{
+		"apps":        "apps: [{name: web, image: {url: x}}]",
+		"tier":        "services: [{name: web, tier: free}]",
+		"replicas":    "services: [{name: web, replicas: 2}]",
+		"port":        "services: [{name: web, port: 8080}]",
+		"imagePath":   "services: [{name: web, imagePath: nginx:1}]",
+		"publishPath": "services: [{name: web, publishPath: dist}]",
+		"bare image":  "services: [{name: web, image: nginx:1}]",
+	}
+	for name, manifest := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, err := parseStack(DeployRequest{Manifest: manifest})
+			if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), name) {
+				t.Fatalf("retired %s => actionable ErrBadRequest, got %v", name, err)
+			}
+		})
 	}
 }
 
@@ -340,10 +350,10 @@ func TestParseStackRejectsFromServiceToPortlessService(t *testing.T) {
 	bad := `
 services:
   - name: web
-    image: x
+    image: {url: x}
     envVars:
       - {key: H, fromService: {name: w, property: host}}
-  - {name: w, type: worker, image: "w:1"}
+  - {name: w, type: worker, image: {url: "w:1"}}
 `
 	_, err := parseStack(DeployRequest{Manifest: bad})
 	if err == nil || !strings.Contains(err.Error(), "no network address") {
@@ -418,8 +428,8 @@ func TestDeployStackFromServiceHostResolvesToTheSlug(t *testing.T) {
 	if h := findEnv(t, web.Spec.Env, "API_HOST"); h.Value != apiSlug {
 		t.Errorf("fromService host = %q, want the sibling's slug %q", h.Value, apiSlug)
 	}
-	if p := findEnv(t, web.Spec.Env, "API_PORT"); p.Value != "8080" {
-		t.Errorf("fromService port = %q, want 8080", p.Value)
+	if p := findEnv(t, web.Spec.Env, "API_PORT"); p.Value != "3000" {
+		t.Errorf("fromService port = %q, want the platform default 3000", p.Value)
 	}
 
 	// Idempotence: a re-apply resolves every ref up front (all siblings exist)
@@ -447,10 +457,10 @@ func TestDeployStackAllOrNothingCreatesNothing(t *testing.T) {
 	// before any resource is written — nothing partially created.
 	bad := `
 services:
-  - {name: a, image: x}
-  - {name: b, image: y}
+  - {name: a, image: {url: x}}
+  - {name: b, image: {url: y}}
   - name: c
-    image: z
+    image: {url: z}
     envVars:
       - {key: U, fromDatabase: {name: nope, property: connectionString}}
 databases:
@@ -600,7 +610,7 @@ func TestDeployStackChangedServiceRedeploys(t *testing.T) {
 	existing.Spec.Image = "old:1"
 	svc, cl := newService(rec, existing)
 
-	changed := "services:\n  - {name: web, image: new:1}\n"
+	changed := "services:\n  - {name: web, image: {url: new:1}}\n"
 	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: changed}); err != nil {
 		t.Fatalf("DeployStack: %v", err)
 	}
@@ -628,7 +638,7 @@ func TestDeployStackPreservesNonOwnedFieldsOnReapply(t *testing.T) {
 	existing := sampleApp("web")
 	existing.Spec.EnvFromSecret = "web-env"
 	svc, cl := newService(nil, existing)
-	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: "services:\n  - {name: web, image: x}"}); err != nil {
+	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: "services:\n  - {name: web, image: {url: x}}"}); err != nil {
 		t.Fatalf("DeployStack: %v", err)
 	}
 	if got := getApp(t, cl, "web").Spec.EnvFromSecret; got != "web-env" {
@@ -646,7 +656,7 @@ services:
     type: redis
     plan: free
   - name: web
-    image: nginx
+    image: {url: nginx}
     envVars:
       - key: REDIS_URL
         fromService: {name: cache, type: redis, property: connectionString}
@@ -718,7 +728,7 @@ func TestDeployStackFromServiceKeyValueUnknownTarget(t *testing.T) {
 	manifest := `
 services:
   - name: web
-    image: nginx
+    image: {url: nginx}
     envVars:
       - key: REDIS_URL
         fromService: {name: missing, type: redis, property: connectionString}
@@ -733,9 +743,9 @@ services:
 func TestDeployStackFromServiceKeyValueInvalidProperty(t *testing.T) {
 	bad := []string{
 		// no property
-		"services:\n  - name: cache\n    type: redis\n    plan: free\n  - name: web\n    image: x\n    envVars:\n      - {key: K, fromService: {name: cache, type: redis}}\n",
+		"services:\n  - name: cache\n    type: redis\n    plan: free\n  - name: web\n    image: {url: x}\n    envVars:\n      - {key: K, fromService: {name: cache, type: redis}}\n",
 		// unsupported property
-		"services:\n  - name: cache\n    type: redis\n    plan: free\n  - name: web\n    image: x\n    envVars:\n      - {key: K, fromService: {name: cache, type: redis, property: user}}\n",
+		"services:\n  - name: cache\n    type: redis\n    plan: free\n  - name: web\n    image: {url: x}\n    envVars:\n      - {key: K, fromService: {name: cache, type: redis, property: user}}\n",
 	}
 	for _, m := range bad {
 		svc, _ := newService(nil)
@@ -750,7 +760,7 @@ func TestDeployStackFromServiceKeyValueInvalidProperty(t *testing.T) {
 const hookManifest = `
 services:
   - name: web
-    image: nginx:1.26
+    image: {url: nginx:1.26}
     initialDeployHook: npm run db:setup
     preDeployCommand: npm run db:migrate
 `
@@ -845,15 +855,6 @@ func TestDeployStackInitialHookSkippedWhenAlreadyRan(t *testing.T) {
 	got := getApp(t, cl, "web")
 	if got.Spec.PreDeployCommand != "npm run db:migrate" {
 		t.Errorf("preDeployCommand = %q, want npm run db:migrate (hook must not rerun)", got.Spec.PreDeployCommand)
-	}
-}
-
-func TestDeployRejectsStackViaSingleServiceDeploy(t *testing.T) {
-	// Deploy is the single-service convenience; a multi-resource manifest must
-	// point at the stack form rather than silently returning the first service.
-	svc, _ := newService(nil)
-	if _, err := svc.Deploy(context.Background(), DeployRequest{Manifest: stackManifest}); err == nil {
-		t.Error("Deploy on a stack manifest must error (use DeployStack)")
 	}
 }
 

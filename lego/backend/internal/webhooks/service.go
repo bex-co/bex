@@ -183,8 +183,6 @@ type EndpointStore interface {
 type Service struct {
 	*core.Base
 	Store EndpointStore
-	// Selections is the shared MCP session-workspace reader (core.SelectedWorkspace).
-	Selections core.WorkspaceSelectionReader
 }
 
 // EndpointView is the neutral shape every adapter renders. Secret is
@@ -439,9 +437,8 @@ func (s *Service) ListDeliveries(ctx context.Context, ownerID, endpointID, curso
 }
 
 // UpdateRequest is Update's input — Render's full-body PATCH (w3/m27):
-// any zero-value field means "keep the current value". EventTypes may carry
-// the `eventFilter` alias from Render-shaped clients (the caller normalizes
-// before calling Update).
+// any zero-value field means "keep the current value". Each adapter maps its
+// surface-native subscription field onto EventTypes before calling Update.
 type UpdateRequest struct {
 	Name       string
 	URL        string

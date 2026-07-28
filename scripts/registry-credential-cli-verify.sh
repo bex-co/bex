@@ -42,7 +42,7 @@ cleanup() {
   fi
   for credential_id in $CREDENTIAL_IDS; do
     curl -sf -X DELETE -H "Authorization: Bearer $RENDER_API_KEY" \
-      "$API/registry-credentials/$credential_id" >/dev/null 2>&1 || true
+      "$API/registrycredentials/$credential_id" >/dev/null 2>&1 || true
   done
 }
 trap cleanup EXIT
@@ -96,7 +96,7 @@ create_credential() {
   response="$(curl -sf -X POST \
     -H "Authorization: Bearer $RENDER_API_KEY" \
     -H 'Content-Type: application/json' \
-    --data-binary "$payload" "$API/registry-credentials")"
+    --data-binary "$payload" "$API/registrycredentials")"
   credential_id="$(jq -er '.id' <<<"$response")"
   CREDENTIAL_IDS="$CREDENTIAL_IDS $credential_id"
   CREATED_CREDENTIAL_ID="$credential_id"

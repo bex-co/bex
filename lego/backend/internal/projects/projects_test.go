@@ -350,10 +350,11 @@ func TestProjectListPaginationAcrossExtensionSurfaces(t *testing.T) {
 	})
 
 	t.Run("MCP", func(t *testing.T) {
-		client := newMCPClient(t, ctx, svc)
+		mcpCtx := core.WithWorkspace(ctx, "tea-1")
+		client := newMCPClient(t, mcpCtx, svc)
 		call := func(args map[string]any) projectsResult {
 			t.Helper()
-			result, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "list_projects", Arguments: args})
+			result, err := client.CallTool(mcpCtx, &mcp.CallToolParams{Name: "list_projects", Arguments: args})
 			if err != nil || result.IsError {
 				t.Fatalf("list_projects(%v): err=%v isError=%v", args, err, result.IsError)
 			}
@@ -364,15 +365,15 @@ func TestProjectListPaginationAcrossExtensionSurfaces(t *testing.T) {
 			}
 			return out
 		}
-		first := call(map[string]any{"ownerId": "tea-1", "limit": 2})
+		first := call(map[string]any{"limit": 2})
 		if len(first.Projects) != 2 || first.Projects[0].ID != "prj-01" || first.Cursor != "prj-02" {
 			t.Fatalf("first MCP page = %+v", first)
 		}
-		second := call(map[string]any{"ownerId": "tea-1", "limit": 2, "cursor": first.Cursor})
+		second := call(map[string]any{"limit": 2, "cursor": first.Cursor})
 		if len(second.Projects) != 2 || second.Projects[0].ID != "prj-03" || second.Cursor != "prj-04" {
 			t.Fatalf("second MCP page = %+v", second)
 		}
-		if all := call(map[string]any{"ownerId": "tea-1"}); len(all.Projects) != len(seeded) || all.Cursor != "" {
+		if all := call(nil); len(all.Projects) != len(seeded) || all.Cursor != "" {
 			t.Fatalf("unpaged MCP list = %d with cursor %q, want %d with no cursor", len(all.Projects), all.Cursor, len(seeded))
 		}
 	})

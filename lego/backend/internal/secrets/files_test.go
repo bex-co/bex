@@ -361,9 +361,9 @@ func TestREST_SecretFiles(t *testing.T) {
 		t.Fatalf("unpaged list = %+v, want the complete two-item set", unpaged)
 	}
 
-	// DELETE => 204; /v1/apps alias works.
-	if serveREST(svc, "DELETE", "/v1/apps/web/secret-files/ca.pem", "").Code != 204 {
-		t.Error("delete via /v1/apps alias => 204")
+	// DELETE => 204 on the canonical service route.
+	if serveREST(svc, "DELETE", "/v1/services/web/secret-files/ca.pem", "").Code != 204 {
+		t.Error("delete via canonical service route => 204")
 	}
 }
 

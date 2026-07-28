@@ -395,10 +395,7 @@ func TestRESTRecoveryAndAccessShapes(t *testing.T) {
 	svc, cl := newServiceCNPG()
 	seedDatabaseSpec(t, cl, "shape-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb", Public: true}, true)
 
-	// recovery-info (GET + POST both 200)
-	if serveREST(svc, "GET", "/v1/postgres/shape-db/recovery-info", "").Code != 200 {
-		t.Error("GET recovery-info => want 200")
-	}
+	// recovery-info uses Render's canonical POST.
 	var info RecoveryInfoView
 	_ = json.Unmarshal(serveREST(svc, "POST", "/v1/postgres/shape-db/recovery-info", "").Body.Bytes(), &info)
 	if !info.Enabled {
@@ -408,11 +405,11 @@ func TestRESTRecoveryAndAccessShapes(t *testing.T) {
 	if serveREST(svc, "POST", "/v1/postgres/shape-db/recover", `{"name":"shape-restored"}`).Code != 201 {
 		t.Error("recover => want 201")
 	}
-	// exports create => 201, list => 200
-	if serveREST(svc, "POST", "/v1/postgres/shape-db/exports", "").Code != 201 {
-		t.Error("create export => want 201")
+	// export create => Render's 202, list => 200
+	if serveREST(svc, "POST", "/v1/postgres/shape-db/export", "").Code != 202 {
+		t.Error("create export => want 202")
 	}
-	if serveREST(svc, "GET", "/v1/postgres/shape-db/exports", "").Code != 200 {
+	if serveREST(svc, "GET", "/v1/postgres/shape-db/export", "").Code != 200 {
 		t.Error("list exports => want 200")
 	}
 	// ip-allow-list PUT => 200

@@ -31,10 +31,6 @@ import (
 // returned by create_webhook_endpoint once and never by any other tool — the
 // same mint-once rule REST/GraphQL hold.
 
-type listEndpointsArgs struct {
-	OwnerID string `json:"ownerId,omitempty" jsonschema:"restrict the list to this workspace id (tea-…); omit to use the session's selected workspace, if any"`
-}
-
 type listEndpointsResult struct {
 	Endpoints []endpointWire `json:"endpoints"`
 	// EventTypes is the subscribable vocabulary, so an agent needn't guess
@@ -43,7 +39,6 @@ type listEndpointsResult struct {
 }
 
 type createEndpointArgs struct {
-	OwnerID    string   `json:"ownerId,omitempty" jsonschema:"the workspace id (tea-…) to create the endpoint in; omit to use the session's selected workspace, if any"`
 	Name       string   `json:"name,omitempty" jsonschema:"a human display label; defaults to the URL when omitted"`
 	URL        string   `json:"url" jsonschema:"the absolute http(s) destination bex POSTs signed event notifications to"`
 	EventTypes []string `json:"eventTypes" jsonschema:"the event types to subscribe to, e.g. deploy_started, deploy_ended, service_suspended — list_webhook_endpoints returns the full vocabulary"`
@@ -51,7 +46,6 @@ type createEndpointArgs struct {
 
 type updateEndpointArgs struct {
 	ID         string   `json:"id" jsonschema:"the webhook endpoint id (whk-…), as returned by list_webhook_endpoints"`
-	OwnerID    string   `json:"ownerId,omitempty" jsonschema:"the workspace id (tea-…) the endpoint belongs to; omit to use the session's selected workspace, if any"`
 	Name       string   `json:"name,omitempty" jsonschema:"new display label; omit to keep the current value"`
 	URL        string   `json:"url,omitempty" jsonschema:"new destination URL (must be absolute https or http); omit to keep the current value"`
 	EventTypes []string `json:"eventTypes,omitempty" jsonschema:"new subscription list (replaces current); omit to keep the current value"`
@@ -59,8 +53,7 @@ type updateEndpointArgs struct {
 }
 
 type deleteEndpointArgs struct {
-	ID      string `json:"id" jsonschema:"the webhook endpoint id (whk-…), as returned by list_webhook_endpoints"`
-	OwnerID string `json:"ownerId,omitempty" jsonschema:"the workspace id (tea-…) the endpoint belongs to; omit to use the session's selected workspace, if any"`
+	ID string `json:"id" jsonschema:"the webhook endpoint id (whk-…), as returned by list_webhook_endpoints"`
 }
 
 type deletedResult struct {
@@ -72,12 +65,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_webhook_endpoints",
 		Description: "List the workspace's outbound webhook endpoints (URL, subscribed event types, enabled state — never the signing secret) plus the subscribable event-type vocabulary. bex extension — Render's own MCP server has no webhook tools.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in listEndpointsArgs) (*mcp.CallToolResult, listEndpointsResult, error) {
-		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
-		if err != nil {
-			return nil, listEndpointsResult{}, err
-		}
-		views, err := s.List(ctx, ownerID)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listEndpointsResult, error) {
+		views, err := s.List(ctx, core.NamedWorkspace(ctx))
 		if err != nil {
 			return nil, listEndpointsResult{}, err
 		}
@@ -87,13 +76,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_webhook_endpoint",
 		Description: "Register an outbound webhook: bex will POST a signed, thin JSON payload ({type, timestamp, data}) to the URL whenever a subscribed event happens (deploys, service lifecycle, scaling, cron runs, and sourceable Postgres/Key Value changes). The response includes the Standard-Webhooks signing secret exactly once — store it; it is not retrievable afterwards.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in createEndpointArgs) (*mcp.CallToolResult, endpointWire, error) {
-		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
-		if err != nil {
-			return nil, endpointWire{}, err
-		}
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createEndpointArgs) (*mcp.CallToolResult, endpointWire, error) {
 		v, err := s.Create(ctx, CreateRequest{
-			OwnerID: ownerID,
+			OwnerID: core.NamedWorkspace(ctx),
 			Name:    in.Name, URL: in.URL, EventTypes: in.EventTypes,
 		})
 		if err != nil {
@@ -105,12 +90,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "update_webhook_endpoint",
 		Description: "Update an outbound webhook endpoint's name, destination URL, event subscription, or enabled state. Supply only the fields to change; omitted fields keep their current values.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in updateEndpointArgs) (*mcp.CallToolResult, endpointWire, error) {
-		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
-		if err != nil {
-			return nil, endpointWire{}, err
-		}
-		v, err := s.Update(ctx, ownerID, in.ID, UpdateRequest{
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateEndpointArgs) (*mcp.CallToolResult, endpointWire, error) {
+		v, err := s.Update(ctx, core.NamedWorkspace(ctx), in.ID, UpdateRequest{
 			Name:       in.Name,
 			URL:        in.URL,
 			EventTypes: in.EventTypes,
@@ -125,12 +106,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "delete_webhook_endpoint",
 		Description: "Delete an outbound webhook endpoint and its delivery history. No further events are sent to it.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in deleteEndpointArgs) (*mcp.CallToolResult, deletedResult, error) {
-		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
-		if err != nil {
-			return nil, deletedResult{}, err
-		}
-		err = s.Delete(ctx, ownerID, in.ID)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in deleteEndpointArgs) (*mcp.CallToolResult, deletedResult, error) {
+		err := s.Delete(ctx, core.NamedWorkspace(ctx), in.ID)
 		return nil, deletedResult{Deleted: err == nil}, err
 	})
 }

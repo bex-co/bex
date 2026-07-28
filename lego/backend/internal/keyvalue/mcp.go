@@ -29,7 +29,6 @@ import (
 // mcp.go is the MCP fragment for managed key-value. Tool names track Render's
 // official MCP server (render-oss/render-mcp-server): list_key_value /
 // get_key_value / create_key_value, keyed on Render's `keyValueId`. The former
-// list_key_value_instances spelling remains as a deprecated compatibility alias.
 // Render's MCP server exposes no delete/suspend/resume KV tools. bex keeps
 // delete absent, but exposes suspend_keyvalue as a deliberate lifecycle
 // extension so agents can use the same protected-environment safety gate as
@@ -39,7 +38,7 @@ import (
 
 // keyValueArgs is the shared single-instance argument. Render's tools key on
 // `keyValueId`; for bex that id is the KeyValue name (opaque, round-tripped from
-// list_key_value; the former list_key_value_instances alias returns the same).
+// list_key_value.
 type keyValueArgs struct {
 	KeyValueID string `json:"keyValueId" jsonschema:"the key-value id (bex KeyValue name), as returned by list_key_value"`
 }
@@ -61,7 +60,6 @@ type updateKeyValuePlanArgs struct {
 // createKeyValueArgs mirrors the create body the REST/GraphQL surfaces accept
 // (bex's Render subset). name is required; the rest default.
 type createKeyValueArgs struct {
-	OwnerID       string   `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
 	EnvironmentID string   `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
 	Name          string   `json:"name" jsonschema:"the key-value store name"`
 	Plan          string   `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, starter, standard"`
@@ -102,29 +100,22 @@ type listKeyValueResult struct {
 	KeyValues []KeyValueView `json:"keyValues"`
 }
 
-// listKeyValueArgs is deliberately empty: Render's official list_key_value
-// tool accepts no arguments. bex selects the workspace through
-// select_workspace/session state.
+// listKeyValueArgs contains only feature arguments; the composition root adds
+// Render's shared optional workspaceId parameter.
 type listKeyValueArgs struct{}
 
 // RegisterMCP adds the managed key-value tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	registerList := func(name, description string) {
-		mcp.AddTool(srv, &mcp.Tool{Name: name, Description: description},
-			func(ctx context.Context, req *mcp.CallToolRequest, _ listKeyValueArgs) (*mcp.CallToolResult, listKeyValueResult, error) {
-				ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, "")
-				if err != nil {
-					return nil, listKeyValueResult{}, err
-				}
-				list, err := s.ListKeyValues(ctx, ownerID)
-				if err != nil {
-					return nil, listKeyValueResult{}, err
-				}
-				return nil, listKeyValueResult{KeyValues: list}, nil
-			})
-	}
-	registerList("list_key_value", "List all managed key-value (Valkey/Redis) stores in the selected workspace with their status. Use select_workspace first to change workspace.")
-	registerList("list_key_value_instances", "Deprecated alias for list_key_value; returns all managed key-value stores in the selected workspace.")
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "list_key_value",
+		Description: "List all managed key-value (Valkey/Redis) stores in a workspace with their status.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listKeyValueArgs) (*mcp.CallToolResult, listKeyValueResult, error) {
+		list, err := s.ListKeyValues(ctx, core.NamedWorkspace(ctx))
+		if err != nil {
+			return nil, listKeyValueResult{}, err
+		}
+		return nil, listKeyValueResult{KeyValues: list}, nil
+	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_key_value",
@@ -140,14 +131,10 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_key_value",
 		Description: "Create a managed key-value (Valkey/Redis) store. name is required; plan, version, storageGB, public, ipAllowList, maxmemoryPolicy and persistenceMode are optional. Pass dryRun:true to preview the resolved spec without any writes.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in createKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
 		allowList := core.AllowListOrCIDRs(in.IPAllowListEntries, in.IPAllowList)
-		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
-		if err != nil {
-			return nil, KeyValueView{}, err
-		}
 		v, err := s.CreateKeyValue(ctx, CreateKeyValueRequest{
-			OwnerID:         ownerID,
+			OwnerID:         core.NamedWorkspace(ctx),
 			EnvironmentID:   in.EnvironmentID,
 			Name:            in.Name,
 			Plan:            in.Plan,

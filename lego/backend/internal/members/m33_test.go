@@ -450,18 +450,16 @@ func TestThreeSurfaceParity_SeatUsageAndMFA(t *testing.T) {
 	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
 	s.RegisterMCP(srv)
 	serverT, clientT := mcp.NewInMemoryTransports()
-	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+	mcpCtx := core.WithWorkspace(ctx, "tea-1")
+	if _, err := srv.Connect(mcpCtx, serverT, nil); err != nil {
 		t.Fatalf("server connect: %v", err)
 	}
-	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "0"}, nil).Connect(mcpCtx, clientT, nil)
 	if err != nil {
 		t.Fatalf("client connect: %v", err)
 	}
 	defer cs.Close()
-	res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{
-		Name:      "get_workspace_seat_usage",
-		Arguments: map[string]any{"workspaceId": "tea-1"},
-	})
+	res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "get_workspace_seat_usage"})
 	if err != nil || res.IsError {
 		t.Fatalf("seat-usage tool: err=%v res=%+v", err, res)
 	}
@@ -470,10 +468,7 @@ func TestThreeSurfaceParity_SeatUsageAndMFA(t *testing.T) {
 	if err := json.Unmarshal(mb, &mcpSeats); err != nil {
 		t.Fatalf("mcp decode: %v (%s)", err, mb)
 	}
-	res, err = cs.CallTool(context.Background(), &mcp.CallToolParams{
-		Name:      "list_workspace_members",
-		Arguments: map[string]any{"workspaceId": "tea-1"},
-	})
+	res, err = cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "list_workspace_members"})
 	if err != nil || res.IsError {
 		t.Fatalf("members tool: err=%v res=%+v", err, res)
 	}

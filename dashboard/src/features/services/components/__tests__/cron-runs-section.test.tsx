@@ -41,21 +41,18 @@ describe("CronRunsSection", () => {
     runs = [
       {
         id: "crr-running",
-        name: "crr-running",
         startedAt: "2026-07-09T10:00:00Z",
         finishedAt: null,
         status: "pending",
       },
       {
         id: "crr-success",
-        name: "crr-success",
         startedAt: "2026-07-09T10:05:00Z",
         finishedAt: "2026-07-09T10:05:05Z",
         status: "successful",
       },
       {
         id: "crr-canceled",
-        name: "crr-canceled",
         startedAt: "2026-07-09T10:10:00Z",
         finishedAt: "2026-07-09T10:10:01Z",
         status: "canceled",
@@ -74,7 +71,6 @@ describe("CronRunsSection", () => {
     runs = [
       {
         id: "crr-running",
-        name: "crr-running",
         startedAt: "2026-07-09T10:00:00Z",
         finishedAt: null,
         status: "pending",

@@ -74,13 +74,12 @@ type HostedProvider interface {
 	CreatePortalSession(ctx context.Context, workspaceID string, req PortalRequest) (HostedSession, error)
 }
 
-// Service owns customer-billing authorization and workspace selection. Every
+// Service owns customer-billing authorization and workspace resolution. Every
 // adapter calls these three verbs so session ownership and error semantics
 // cannot drift between surfaces.
 type Service struct {
 	*core.Base
-	Provider   HostedProvider
-	Selections core.WorkspaceSelectionReader
+	Provider HostedProvider
 }
 
 func (s *Service) Status(ctx context.Context, workspaceID string) (Readiness, error) {

@@ -175,10 +175,6 @@ func TestPostgresListPaginationAcrossRESTAndGraphQL(t *testing.T) {
 	if !bytes.Equal(omitted.Body.Bytes(), wantBody) {
 		t.Fatalf("omitted params changed full-list body\ngot:  %s\nwant: %s", omitted.Body.Bytes(), wantBody)
 	}
-	if alias := serveREST(svc, http.MethodGet, "/v1/databases", ""); !bytes.Equal(alias.Body.Bytes(), omitted.Body.Bytes()) {
-		t.Fatalf("/v1/databases alias drifted from /v1/postgres\npostgres: %s\nalias:    %s", omitted.Body.Bytes(), alias.Body.Bytes())
-	}
-
 	var walked []string
 	cursor := ""
 	var firstREST []string
@@ -755,11 +751,6 @@ func TestRESTSetPostgresPlan(t *testing.T) {
 	// unknown instance => 404.
 	if w := serveREST(svc, "PATCH", "/v1/postgres/missing", `{"plan":"free"}`); w.Code != 404 {
 		t.Errorf("missing db => 404, got %d", w.Code)
-	}
-	// /v1/databases alias works too.
-	w = serveREST(svc, "PATCH", "/v1/databases/plan-db", `{"plan":"basic-256mb"}`)
-	if w.Code != 200 {
-		t.Errorf("/v1/databases alias => 200, got %d", w.Code)
 	}
 }
 

@@ -617,7 +617,7 @@ func renderListParam(values []string) []string {
 // RegisterREST mounts the App-lifecycle routes — Render-public-API compatible.
 // Paths, the {service, cursor} list envelope, the string suspended enum, and the
 // verb status codes (suspend/resume 202, restart 200) all match Render's OpenAPI
-// spec. Served at both /v1/services (Render's noun) and /v1/apps (bex's noun);
+// spec. Served at Render's canonical /v1/services route;
 // it holds no logic beyond routing + Render serialization.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	list := func(w http.ResponseWriter, r *http.Request) {
@@ -1158,8 +1158,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}
-	// Render's canonical noun. bex also accepts these under /services and /apps
-	// (registered in the base loop below) for its historical noun aliases.
+	// Render's canonical cron-job noun. The service subresource form is also
+	// registered below; the retired public /v1/apps family is not.
 	mux.HandleFunc("GET /v1/cron-jobs/{id}/runs", listCronRuns)
 	mux.HandleFunc("POST /v1/cron-jobs/{id}/runs", runCron)
 	mux.HandleFunc("DELETE /v1/cron-jobs/{id}/runs", cancelCurrentCronRun)
@@ -1434,40 +1434,36 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		writeNotificationOverride(w, app)
 	})
 
-	// Register the same handlers under Render's /v1/services and bex's /v1/apps.
-	for _, base := range []string{"/v1/services", "/v1/apps"} {
-		mux.HandleFunc("GET "+base, list)
-		mux.HandleFunc("POST "+base, create) // Render: create => 201
-		mux.HandleFunc("GET "+base+"/{id}", get)
-		// Render's official CLI uses /services. The /apps alias follows this
-		// package's established rule that every service subresource is also
-		// reachable under bex's native noun.
-		mux.HandleFunc("GET "+base+"/{id}/instances", listInstances)
-		mux.HandleFunc("POST "+base+"/{id}/shell-ticket", shellTicket)
-		mux.HandleFunc("PATCH "+base+"/{id}", patch)
-		mux.HandleFunc("DELETE "+base+"/{id}", deleteSvc) // Render: delete => 204
-		mux.HandleFunc("POST "+base+"/{id}/suspend", verb(http.StatusAccepted, s.Suspend))
-		mux.HandleFunc("POST "+base+"/{id}/resume", verb(http.StatusAccepted, s.Resume))
-		mux.HandleFunc("POST "+base+"/{id}/restart", verb(http.StatusOK, s.Restart)) // Render: restart => 200
-		mux.HandleFunc("POST "+base+"/{id}/scale", scale)                            // Render: scale => 202
-		mux.HandleFunc("GET "+base+"/{id}/runs", listCronRuns)
-		mux.HandleFunc("POST "+base+"/{id}/runs", runCron)
-		mux.HandleFunc("DELETE "+base+"/{id}/runs", cancelCurrentCronRun)
-		mux.HandleFunc("GET "+base+"/{id}/runs/{runId}", getCronRun)
-		mux.HandleFunc("POST "+base+"/{id}/runs/{runId}/cancel", cancelCronRun)
-		mux.HandleFunc("GET "+base+"/{id}/autoscaling", getAutoscaling)
-		mux.HandleFunc("PUT "+base+"/{id}/autoscaling", putAutoscaling)
-		mux.HandleFunc("DELETE "+base+"/{id}/autoscaling", deleteAutoscaling)
-		mux.HandleFunc("GET "+base+"/{id}/custom-domains", listDomains)
-		mux.HandleFunc("POST "+base+"/{id}/custom-domains", addDomain)
-		mux.HandleFunc("GET "+base+"/{id}/custom-domains/{name}", getDomain)
-		mux.HandleFunc("DELETE "+base+"/{id}/custom-domains/{name}", deleteDomain)
-		mux.HandleFunc("POST "+base+"/{id}/custom-domains/{name}/verify", verifyDomain)
-		mux.HandleFunc("GET "+base+"/{id}/routes", listRoutes)
-		mux.HandleFunc("PUT "+base+"/{id}/routes", putRoutes)
-		mux.HandleFunc("GET "+base+"/{id}/headers", listHeaders)
-		mux.HandleFunc("PUT "+base+"/{id}/headers", putHeaders)
-	}
+	const base = "/v1/services"
+	mux.HandleFunc("GET "+base, list)
+	mux.HandleFunc("POST "+base, create) // Render: create => 201
+	mux.HandleFunc("GET "+base+"/{id}", get)
+	// Render's official CLI uses /services.
+	mux.HandleFunc("GET "+base+"/{id}/instances", listInstances)
+	mux.HandleFunc("POST "+base+"/{id}/shell-ticket", shellTicket)
+	mux.HandleFunc("PATCH "+base+"/{id}", patch)
+	mux.HandleFunc("DELETE "+base+"/{id}", deleteSvc) // Render: delete => 204
+	mux.HandleFunc("POST "+base+"/{id}/suspend", verb(http.StatusAccepted, s.Suspend))
+	mux.HandleFunc("POST "+base+"/{id}/resume", verb(http.StatusAccepted, s.Resume))
+	mux.HandleFunc("POST "+base+"/{id}/restart", verb(http.StatusOK, s.Restart)) // Render: restart => 200
+	mux.HandleFunc("POST "+base+"/{id}/scale", scale)                            // Render: scale => 202
+	mux.HandleFunc("GET "+base+"/{id}/runs", listCronRuns)
+	mux.HandleFunc("POST "+base+"/{id}/runs", runCron)
+	mux.HandleFunc("DELETE "+base+"/{id}/runs", cancelCurrentCronRun)
+	mux.HandleFunc("GET "+base+"/{id}/runs/{runId}", getCronRun)
+	mux.HandleFunc("POST "+base+"/{id}/runs/{runId}/cancel", cancelCronRun)
+	mux.HandleFunc("GET "+base+"/{id}/autoscaling", getAutoscaling)
+	mux.HandleFunc("PUT "+base+"/{id}/autoscaling", putAutoscaling)
+	mux.HandleFunc("DELETE "+base+"/{id}/autoscaling", deleteAutoscaling)
+	mux.HandleFunc("GET "+base+"/{id}/custom-domains", listDomains)
+	mux.HandleFunc("POST "+base+"/{id}/custom-domains", addDomain)
+	mux.HandleFunc("GET "+base+"/{id}/custom-domains/{name}", getDomain)
+	mux.HandleFunc("DELETE "+base+"/{id}/custom-domains/{name}", deleteDomain)
+	mux.HandleFunc("POST "+base+"/{id}/custom-domains/{name}/verify", verifyDomain)
+	mux.HandleFunc("GET "+base+"/{id}/routes", listRoutes)
+	mux.HandleFunc("PUT "+base+"/{id}/routes", putRoutes)
+	mux.HandleFunc("GET "+base+"/{id}/headers", listHeaders)
+	mux.HandleFunc("PUT "+base+"/{id}/headers", putHeaders)
 }
 
 const maxBlueprintValidationBodyBytes = 2 << 20

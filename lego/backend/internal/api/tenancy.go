@@ -262,7 +262,7 @@ func (t *tenantService) Tenant(ctx context.Context, id core.Identity) (string, b
 
 // IsMember reports whether the caller belongs to a NAMED workspace — the gate
 // core.Base runs before honoring an explicit workspace (REST/GraphQL ownerId, an
-// MCP session's select_workspace) or reaching an App that lives in another of
+// MCP's per-call workspaceId) or reaching an App that lives in another of
 // the caller's workspaces (w6/m14). It answers from tenant_members, the source
 // of truth, NOT from the resolver cache: the cache holds the caller's ONE
 // default workspace, which says nothing about the others they belong to.

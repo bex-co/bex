@@ -4,10 +4,10 @@
 services:
   - name: cron-demo
     type: cron
+    runtime: docker
     repo: https://github.com/bex-co/bex # replace with your fork/checkout
     rootDir: examples/cron-demo
     branch: main
-    builder: auto # Dockerfile present ⇒ docker build
     schedule: "*/5 * * * *" # every 5 minutes
     plan: free
     envVars:

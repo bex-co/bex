@@ -64,7 +64,7 @@ var _ = Describe("Namespace-scoped Secret cache", func() {
 			ObjectMeta: metav1.ObjectMeta{Name: clusterRoleName},
 			Rules: []rbacv1.PolicyRule{
 				{
-					APIGroups: []string{appv1alpha1.GroupVersion.Group},
+					APIGroups: []string{appv1alpha1.SchemeGroupVersion.Group},
 					Resources: []string{"apps", "apps/status", "apps/finalizers", "keyvalues"},
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
@@ -174,7 +174,7 @@ var _ = Describe("Namespace-scoped Secret cache", func() {
 				Name:      kvName,
 				Namespace: "default",
 				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(kv, schema.GroupVersionKind{
-					Group: appv1alpha1.GroupVersion.Group, Version: appv1alpha1.GroupVersion.Version, Kind: "KeyValue",
+					Group: appv1alpha1.SchemeGroupVersion.Group, Version: appv1alpha1.SchemeGroupVersion.Version, Kind: "KeyValue",
 				})},
 			},
 		}

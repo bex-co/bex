@@ -111,20 +111,16 @@ spec:
           - name: BEX_CNB_BUILDER
             value: paketobuildpacks/builder-jammy-base
           # Registry auth (w7/m8, docs/ADR022-tenant-isolation.md § Registry access
-          # control): Zot denies anonymous catalog/pull/push. These name docker-config
-          # Secrets (minted out-of-band by scripts/registry-secrets.sh) — the build Job
-          # mounts PUSH_SECRET to authenticate its push; PULL_SECRET is attached to
-          # tenant Deployments, CronJobs, and tenant-image Jobs as an imagePullSecret
-          # so kubelet pulls authenticate.
-          # Both live in the build/apps namespace; unset => unauthenticated (dev only).
+          # control): Zot denies anonymous catalog/pull/push. The build Job mounts
+          # this build-namespace Secret to authenticate its push. Per-App pull
+          # credentials below authenticate tenant workloads; the distinct static-site
+          # build pull credential defaults from this setting.
           - name: BEX_REGISTRY_PUSH_SECRET
             value: bex-registry-push
-          - name: BEX_REGISTRY_PULL_SECRET
-            value: bex-registry-pull
           # Per-App pull credentials (w7/m36, docs/ADR022-tenant-isolation.md
           # § Per-App pull credentials): the operator manages the Zot config
           # (zot-config Secret) + htpasswd entries + per-App reg-pull-<name>
-          # Secrets in this namespace, superseding the shared PULL_SECRET above.
+          # Secrets in this namespace.
           # The Zot chart (deploy/gitops/base/zot.yaml) mounts zot-config with
           # mountConfig=false and depends on the operator minting it — leaving
           # this unset strands the Zot pod on a missing-Secret mount.

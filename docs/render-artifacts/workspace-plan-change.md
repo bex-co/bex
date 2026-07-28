@@ -8,7 +8,7 @@ Captured **2026-07-12** live from `dashboard.render.com` against a real authenti
 
 - **GraphQL only**, mirroring `renameWorkspace`'s exact shape: `changeWorkspacePlan(id: String!, plan: String!): Workspace!`, `can_manage`-scoped (`AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(id))`), delegating to a new `Service.ChangePlan(ctx, id, plan string) (WorkspaceView, error)` in `internal/workspaces/service.go`.
 - **REST stays absent** — Render's REST `owners` surface has no plan-change endpoint (RESEARCH-workspaces.md finding 9: no POST/PATCH on `/owners` at all); bex's REST owners surface is deliberately read-only. Matching absence, not a gap.
-- **MCP stays read-only** — Render's official MCP ships only `list_workspaces`/`select_workspace`/`get_selected_workspace`, no plan mutation; bex's workspace MCP tools gain nothing here.
+- **MCP stays read-only** — neither Render nor bex exposes a plan mutation. bex exposes `list_workspaces` for discovery and uses per-call `workspaceId` on resource tools; deprecated session-selection tools were removed in w1/m55.
 - **No payment step** — Render inserts a "Payment Method" section (card-on-file, required for any paid plan) between plan selection and submit; bex ships no billing system yet ("Not in w6"), so the plan flips immediately on `changeWorkspacePlan`, exactly like `createWorkspace` already does.
 - **Guard copy** follows the existing `core.ErrBadRequest`-wrapped, `%w: <specific reason>` convention `Create`'s per-user-cap check already uses (`internal/workspaces/service.go`), extended to three downgrade reasons:
   - member-count guard: `"%w: workspace has %d members, exceeds %s plan's limit of %d"`

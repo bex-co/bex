@@ -96,38 +96,10 @@ func TestPGStore(t *testing.T) {
 	assertAuditEvents(ctx, t, s, ten)
 	assertServiceEvents(ctx, t, s, ten, app)
 	assertWorkspaceLifecycle(ctx, t, s, pool)
-	assertMCPWorkspaceSelections(ctx, t, s, ten)
 	assertRegistryCredentials(ctx, t, s, ten)
 	assertProjectsAndEnvironments(ctx, t, s, pool, ten, app)
 	assertWebhooks(ctx, t, s, pool, ten, app)
 	assertDeleteCascades(ctx, t, s, pool, app)
-}
-
-func assertMCPWorkspaceSelections(ctx context.Context, t *testing.T, s *PGStore, tenant Tenant) {
-	t.Helper()
-	if err := s.SetMCPWorkspaceSelection(ctx, "mcp-session", "subject-a", tenant.ID); err != nil {
-		t.Fatalf("set MCP workspace selection: %v", err)
-	}
-	if got, ok, err := s.GetMCPWorkspaceSelection(ctx, "mcp-session", "subject-a"); err != nil || !ok || got != tenant.ID {
-		t.Fatalf("get MCP workspace selection = %q, %v, %v", got, ok, err)
-	}
-	if got, ok, err := s.GetMCPWorkspaceSelection(ctx, "mcp-session", "subject-b"); err != nil || ok || got != "" {
-		t.Fatalf("cross-subject MCP workspace selection = %q, %v, %v; want absent", got, ok, err)
-	}
-
-	disposable, err := s.CreateTenant(ctx, "mcp-selection-cascade", PlanHobby)
-	if err != nil {
-		t.Fatalf("create disposable MCP selection tenant: %v", err)
-	}
-	if err := s.SetMCPWorkspaceSelection(ctx, "mcp-session", "subject-a", disposable.ID); err != nil {
-		t.Fatalf("upsert MCP workspace selection: %v", err)
-	}
-	if err := s.DeleteTenant(ctx, disposable.ID); err != nil {
-		t.Fatalf("delete disposable MCP selection tenant: %v", err)
-	}
-	if got, ok, err := s.GetMCPWorkspaceSelection(ctx, "mcp-session", "subject-a"); err != nil || ok || got != "" {
-		t.Fatalf("MCP workspace selection after tenant cascade = %q, %v, %v; want absent", got, ok, err)
-	}
 }
 
 // assertConcurrentDeployTriggers proves the App-row lock and partial unique

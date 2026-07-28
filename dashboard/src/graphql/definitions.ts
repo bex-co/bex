@@ -1658,7 +1658,6 @@ export type MutationUpdateServicePlanArgs = {
 
 export type MutationUpdateWebhookEndpointArgs = {
   enabled?: InputMaybe<Scalars['Boolean']['input']>;
-  eventFilter?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   eventTypes?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id: Scalars['String']['input'];
   name?: InputMaybe<Scalars['String']['input']>;

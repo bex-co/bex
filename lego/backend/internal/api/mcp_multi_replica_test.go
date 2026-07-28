@@ -20,7 +20,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -29,36 +28,16 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-type sharedMCPSelections struct {
-	mu    sync.Mutex
-	byKey map[string]string
-}
-
-func (s *sharedMCPSelections) GetMCPWorkspaceSelection(_ context.Context, sessionID, subject string) (string, bool, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	id, ok := s.byKey[sessionID+"\x00"+subject]
-	return id, ok, nil
-}
-
-func (s *sharedMCPSelections) SetMCPWorkspaceSelection(_ context.Context, sessionID, subject, workspaceID string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.byKey[sessionID+"\x00"+subject] = workspaceID
-	return nil
-}
-
 func TestMCPStreamableHTTPAlternatesReplicas(t *testing.T) {
 	workspaceStore := newFakeWSStore()
 	first := mustCreate(t, workspaceStore, "first", "hobby", "client-1")
 	second := mustCreate(t, workspaceStore, "second", "hobby", "client-1")
-	shared := &sharedMCPSelections{byKey: map[string]string{}}
 	base := &core.Base{Client: fakeClient(
 		appWithOwnerLabel("first-web", first.ID),
 		appWithOwnerLabel("second-web", second.ID),
-	), Namespace: "default"}
+	), Namespace: "default", Workspace: &apiFakeResolver{store: workspaceStore}}
 
-	deps := Deps{WorkspaceStore: workspaceStore, MCPWorkspaceSelections: shared}
+	deps := Deps{WorkspaceStore: workspaceStore}
 	replicas := [2]http.Handler{
 		NewServer(base, deps).mcpHTTPHandler(),
 		NewServer(base, deps).mcpHTTPHandler(),
@@ -84,21 +63,7 @@ func TestMCPStreamableHTTPAlternatesReplicas(t *testing.T) {
 	}
 	defer cs.Close()
 
-	selected := callTool[struct {
-		Selected struct{ ID string }
-	}](t, cs, "select_workspace", map[string]any{"ownerID": second.ID})
-	if selected.Selected.ID != second.ID {
-		t.Fatalf("select_workspace = %+v, want %s", selected, second.ID)
-	}
-
-	got := callTool[struct {
-		Selected struct{ ID string }
-	}](t, cs, "get_selected_workspace", nil)
-	if got.Selected.ID != second.ID {
-		t.Fatalf("get_selected_workspace = %+v, want %s", got, second.ID)
-	}
-
-	services := callTool[struct{ Services []struct{ Name string } }](t, cs, "list_services", nil)
+	services := callTool[struct{ Services []struct{ Name string } }](t, cs, "list_services", map[string]any{"workspaceId": second.ID})
 	if len(services.Services) != 1 || services.Services[0].Name != "second-web" {
 		t.Fatalf("scoped list_services = %+v, want only second-web", services)
 	}

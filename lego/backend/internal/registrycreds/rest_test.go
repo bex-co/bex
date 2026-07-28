@@ -37,7 +37,7 @@ func TestRESTCreateReturnsNoSecretAndReadsBack(t *testing.T) {
 
 	body := `{"host":"ghcr.io","username":"alice","authToken":"hunter2","name":"GHCR prod"}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registry-credentials", strings.NewReader(body)))
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registrycredentials", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create => 201, got %d: %s", rec.Code, rec.Body)
 	}
@@ -53,7 +53,7 @@ func TestRESTCreateReturnsNoSecretAndReadsBack(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/registry-credentials/"+created.ID, nil))
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/registrycredentials/"+created.ID, nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("get => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -62,10 +62,10 @@ func TestRESTCreateReturnsNoSecretAndReadsBack(t *testing.T) {
 	}
 }
 
-func TestRESTCanonicalRenderAliasGetsCredential(t *testing.T) {
+func TestRESTCanonicalRenderRouteGetsCredential(t *testing.T) {
 	_, mux := testMux()
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registry-credentials", strings.NewReader(`{"host":"ghcr.io","username":"alice","authToken":"hunter2"}`)))
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registrycredentials", strings.NewReader(`{"host":"ghcr.io","username":"alice","authToken":"hunter2"}`)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create => %d: %s", rec.Code, rec.Body)
 	}
@@ -91,7 +91,7 @@ func TestRESTCanonicalRenderAliasGetsCredential(t *testing.T) {
 func TestRESTCreateMissingFieldsIsBadRequest(t *testing.T) {
 	_, mux := testMux()
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registry-credentials", strings.NewReader(`{"host":"ghcr.io"}`)))
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registrycredentials", strings.NewReader(`{"host":"ghcr.io"}`)))
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("create with no username/secret => 400, got %d: %s", rec.Code, rec.Body)
 	}
@@ -104,14 +104,14 @@ func TestRESTListNeverIncludesSecrets(t *testing.T) {
 		`{"host":"docker.io","username":"bob","authToken":"hunter3"}`,
 	} {
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registry-credentials", strings.NewReader(body)))
+		mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registrycredentials", strings.NewReader(body)))
 		if rec.Code != http.StatusCreated {
 			t.Fatalf("create: %d %s", rec.Code, rec.Body)
 		}
 	}
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/registry-credentials", nil))
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/registrycredentials", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("list => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -128,12 +128,12 @@ func TestRESTListNeverIncludesSecrets(t *testing.T) {
 func TestRESTPatchUpdatesFieldsAndRotatesSecret(t *testing.T) {
 	s, mux := testMux()
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registry-credentials", strings.NewReader(`{"host":"ghcr.io","username":"alice","authToken":"hunter2"}`)))
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registrycredentials", strings.NewReader(`{"host":"ghcr.io","username":"alice","authToken":"hunter2"}`)))
 	var created credentialWire
 	_ = json.Unmarshal(rec.Body.Bytes(), &created)
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/registry-credentials/"+created.ID, strings.NewReader(`{"username":"alice2","authToken":"hunter3"}`)))
+	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/registrycredentials/"+created.ID, strings.NewReader(`{"username":"alice2","authToken":"hunter3"}`)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("patch => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -152,7 +152,7 @@ func TestRESTPatchUpdatesFieldsAndRotatesSecret(t *testing.T) {
 func TestRESTPatchExpiresAtThreeState(t *testing.T) {
 	_, mux := testMux()
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registry-credentials", strings.NewReader(`{"host":"ghcr.io","username":"alice","authToken":"hunter2","expiresAt":"2027-01-01T00:00:00Z"}`)))
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registrycredentials", strings.NewReader(`{"host":"ghcr.io","username":"alice","authToken":"hunter2","expiresAt":"2027-01-01T00:00:00Z"}`)))
 	var created credentialWire
 	_ = json.Unmarshal(rec.Body.Bytes(), &created)
 	if created.ExpiresAt == "" {
@@ -161,7 +161,7 @@ func TestRESTPatchExpiresAtThreeState(t *testing.T) {
 
 	// Absent expiresAt in the PATCH body leaves it unchanged.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/registry-credentials/"+created.ID, strings.NewReader(`{"username":"alice2"}`)))
+	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/registrycredentials/"+created.ID, strings.NewReader(`{"username":"alice2"}`)))
 	var untouched credentialWire
 	_ = json.Unmarshal(rec.Body.Bytes(), &untouched)
 	if untouched.ExpiresAt != created.ExpiresAt {
@@ -170,7 +170,7 @@ func TestRESTPatchExpiresAtThreeState(t *testing.T) {
 
 	// Explicit "" clears it.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/registry-credentials/"+created.ID, strings.NewReader(`{"expiresAt":""}`)))
+	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/registrycredentials/"+created.ID, strings.NewReader(`{"expiresAt":""}`)))
 	var cleared credentialWire
 	_ = json.Unmarshal(rec.Body.Bytes(), &cleared)
 	if cleared.ExpiresAt != "" || cleared.Status != "active" {
@@ -181,18 +181,18 @@ func TestRESTPatchExpiresAtThreeState(t *testing.T) {
 func TestRESTDeleteRemovesCredential(t *testing.T) {
 	_, mux := testMux()
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registry-credentials", strings.NewReader(`{"host":"ghcr.io","username":"alice","authToken":"hunter2"}`)))
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registrycredentials", strings.NewReader(`{"host":"ghcr.io","username":"alice","authToken":"hunter2"}`)))
 	var created credentialWire
 	_ = json.Unmarshal(rec.Body.Bytes(), &created)
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/registry-credentials/"+created.ID, nil))
+	mux.ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/registrycredentials/"+created.ID, nil))
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("delete => 204, got %d: %s", rec.Code, rec.Body)
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/registry-credentials/"+created.ID, nil))
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/registrycredentials/"+created.ID, nil))
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("get after delete => 404, got %d: %s", rec.Code, rec.Body)
 	}
@@ -208,7 +208,7 @@ func TestRESTReportsExpiredStatus(t *testing.T) {
 	_, mux := testMux()
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registry-credentials",
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registrycredentials",
 		strings.NewReader(`{"host":"registry.gitlab.com","username":"bob","authToken":"s3cr3t","expiresAt":"2020-01-01T00:00:00Z"}`)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create => 201, got %d: %s", rec.Code, rec.Body)
@@ -220,7 +220,7 @@ func TestRESTReportsExpiredStatus(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/registry-credentials/"+created.ID, nil))
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/registrycredentials/"+created.ID, nil))
 	var got credentialWire
 	_ = json.Unmarshal(rec.Body.Bytes(), &got)
 	if got.Status != "expired" {

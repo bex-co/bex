@@ -130,27 +130,24 @@ func TestProtectedDatabaseDeleteAndSuspend(t *testing.T) {
 }
 
 func TestProtectedDatabaseConfirmationAcrossAdapters(t *testing.T) {
-	t.Run("REST postgres and databases aliases", func(t *testing.T) {
-		for _, base := range []string{"/v1/postgres", "/v1/databases"} {
-			t.Run(base, func(t *testing.T) {
-				db := databaseForProtection("dpg-rest", "rest-db", true)
-				toDelete := databaseForProtection("dpg-rest-delete", "rest-delete", true)
-				svc, _, _ := protectedPostgresService(db, toDelete)
-				if got := serveREST(svc, http.MethodPost, base+"/dpg-rest/suspend", ""); got.Code != http.StatusBadRequest {
-					t.Fatalf("unconfirmed suspend status = %d: %s", got.Code, got.Body.String())
-				}
-				confirm := url.QueryEscape(ProtectedConfirmation("suspend", "rest-db"))
-				if got := serveREST(svc, http.MethodPost, base+"/dpg-rest/suspend?confirm="+confirm, ""); got.Code != http.StatusAccepted {
-					t.Fatalf("confirmed suspend status = %d: %s", got.Code, got.Body.String())
-				}
-				if got := serveREST(svc, http.MethodDelete, base+"/dpg-rest-delete", ""); got.Code != http.StatusBadRequest {
-					t.Fatalf("unconfirmed delete status = %d: %s", got.Code, got.Body.String())
-				}
-				deleteConfirm := url.QueryEscape(ProtectedConfirmation("delete", "rest-delete"))
-				if got := serveREST(svc, http.MethodDelete, base+"/dpg-rest-delete?confirm="+deleteConfirm, ""); got.Code != http.StatusNoContent {
-					t.Fatalf("confirmed delete status = %d: %s", got.Code, got.Body.String())
-				}
-			})
+	t.Run("REST postgres", func(t *testing.T) {
+		const base = "/v1/postgres"
+		db := databaseForProtection("dpg-rest", "rest-db", true)
+		toDelete := databaseForProtection("dpg-rest-delete", "rest-delete", true)
+		svc, _, _ := protectedPostgresService(db, toDelete)
+		if got := serveREST(svc, http.MethodPost, base+"/dpg-rest/suspend", ""); got.Code != http.StatusBadRequest {
+			t.Fatalf("unconfirmed suspend status = %d: %s", got.Code, got.Body.String())
+		}
+		confirm := url.QueryEscape(ProtectedConfirmation("suspend", "rest-db"))
+		if got := serveREST(svc, http.MethodPost, base+"/dpg-rest/suspend?confirm="+confirm, ""); got.Code != http.StatusAccepted {
+			t.Fatalf("confirmed suspend status = %d: %s", got.Code, got.Body.String())
+		}
+		if got := serveREST(svc, http.MethodDelete, base+"/dpg-rest-delete", ""); got.Code != http.StatusBadRequest {
+			t.Fatalf("unconfirmed delete status = %d: %s", got.Code, got.Body.String())
+		}
+		deleteConfirm := url.QueryEscape(ProtectedConfirmation("delete", "rest-delete"))
+		if got := serveREST(svc, http.MethodDelete, base+"/dpg-rest-delete?confirm="+deleteConfirm, ""); got.Code != http.StatusNoContent {
+			t.Fatalf("confirmed delete status = %d: %s", got.Code, got.Body.String())
 		}
 	})
 

@@ -304,7 +304,7 @@ func TestREST_ServiceShapesAndVerbs(t *testing.T) {
 	h, _ := serverWith(t, &core.Base{Client: fakeClient(sampleApp("web"), sampleApp("api")), Namespace: "default",
 		Clock: func() time.Time { return time.Unix(1_000_000, 0).UTC() }}, Deps{})
 
-	// list is the {service, cursor} envelope; /v1/apps aliases it.
+	// list is the {service, cursor} envelope.
 	var list []struct {
 		Service struct{ ID, Type, Suspended string } `json:"service"`
 		Cursor  string                               `json:"cursor"`
@@ -315,8 +315,8 @@ func TestREST_ServiceShapesAndVerbs(t *testing.T) {
 	if list[0].Service.ID == "" || list[0].Cursor == "" || list[0].Service.Type != "web_service" {
 		t.Fatalf("render envelope wrong: %+v", list[0])
 	}
-	if do(t, h, "GET", "/v1/apps", testToken, "").Code != 200 {
-		t.Error("/v1/apps alias should work")
+	if do(t, h, "GET", "/v1/apps", testToken, "").Code != http.StatusNotFound {
+		t.Error("retired public /v1/apps alias should return 404")
 	}
 	// verbs: suspend/resume 202, restart 200; unknown 404.
 	if do(t, h, "POST", "/v1/services/web/suspend", testToken, "").Code != 202 {
@@ -327,6 +327,30 @@ func TestREST_ServiceShapesAndVerbs(t *testing.T) {
 	}
 	if do(t, h, "POST", "/v1/services/nope/restart", testToken, "").Code != 404 {
 		t.Error("verb on unknown => 404")
+	}
+}
+
+func TestRetiredPublicRESTAliasesAreAbsent(t *testing.T) {
+	h, _ := serverWith(t, &core.Base{Client: fakeClient(), Namespace: "default"}, Deps{})
+	for _, tc := range []struct {
+		method string
+		path   string
+	}{
+		{http.MethodGet, "/v1/apps"},
+		{http.MethodGet, "/v1/databases"},
+		{http.MethodGet, "/v1/registry-credentials"},
+		{http.MethodGet, "/v1/webhooks/endpoints"},
+		{http.MethodGet, "/v1/postgres/dpg-old/exports"},
+		{http.MethodGet, "/v1/postgres/dpg-old/recovery-info"},
+	} {
+		if got := do(t, h, tc.method, tc.path, testToken, "").Code; got != http.StatusNotFound {
+			t.Errorf("%s %s = %d, want 404", tc.method, tc.path, got)
+		}
+	}
+
+	legacyPayload := `{"name":"legacy","url":"https://example.com/hook","eventTypes":["deploy_started"]}`
+	if got := do(t, h, http.MethodPost, "/v1/webhooks", testToken, legacyPayload).Code; got != http.StatusBadRequest {
+		t.Errorf("POST /v1/webhooks with eventTypes = %d, want 400", got)
 	}
 }
 
@@ -344,6 +368,28 @@ func TestGraphQL_RenderOperations(t *testing.T) {
 	_ = cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web"}, &a)
 	if !a.Spec.Suspended {
 		t.Error("graphql suspendService must suspend")
+	}
+}
+
+func TestGraphQLWebhookUpdateRejectsRetiredEventFilterAlias(t *testing.T) {
+	h, _ := serverWith(t, &core.Base{Client: fakeClient(), Namespace: "default"}, Deps{})
+	body, _ := json.Marshal(map[string]string{
+		"query": `mutation { updateWebhookEndpoint(id:"whk-old", eventFilter:["deploy_started"]) { id } }`,
+	})
+	w := do(t, h, http.MethodPost, "/graphql", testToken, string(body))
+	if w.Code != http.StatusOK {
+		t.Fatalf("graphql http %d: %s", w.Code, w.Body.String())
+	}
+	var out struct {
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
+		t.Fatalf("decode GraphQL response: %v", err)
+	}
+	if len(out.Errors) != 1 || !strings.Contains(out.Errors[0].Message, `Unknown argument "eventFilter"`) {
+		t.Fatalf("GraphQL eventFilter alias was not rejected: %s", w.Body.String())
 	}
 }
 
@@ -1153,7 +1199,7 @@ func TestSurfaceParityAndWiring(t *testing.T) {
 	for _, tl := range tools.Tools {
 		have[tl.Name] = true
 	}
-	for _, name := range []string{"list_services", "list_cron_job_runs", "get_cron_job_run", "cancel_cron_job_run", "list_logs", "list_log_label_values", "get_metrics", "create_api_key", "list_workspaces", "select_workspace", "get_selected_workspace", "list_env_groups", "rename_env_group", "get_env_group_var", "set_env_group_var", "delete_env_group_var", "get_env_group_secret_file", "list_secret_files", "list_deploys", "get_deploy", "list_workspace_members", "invite_workspace_member"} {
+	for _, name := range []string{"list_services", "list_cron_job_runs", "get_cron_job_run", "cancel_cron_job_run", "list_logs", "list_log_label_values", "get_metrics", "create_api_key", "list_workspaces", "list_env_groups", "rename_env_group", "get_env_group_var", "set_env_group_var", "delete_env_group_var", "get_env_group_secret_file", "list_secret_files", "list_deploys", "get_deploy", "list_workspace_members", "invite_workspace_member"} {
 		if !have[name] {
 			t.Errorf("MCP tool %q not registered into the single registry", name)
 		}

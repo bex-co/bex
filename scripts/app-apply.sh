@@ -5,12 +5,10 @@
 # Requires: yq v4, kubectl (respects $KUBECONFIG).
 #
 # A bex.yml declares a stack — the render.yaml Blueprint shape:
-#   services:   web/worker/cron/private/static services (render.yaml field names:
-#               type/plan/numInstances/domains/healthCheckPath/envVars/…; the bex
-#               aliases tier/replicas/port/image are accepted too).
+#   services:   web/pserv/worker/cron/keyvalue services (Render field names;
+#               a static site is type:web + runtime:static):
+#               type/runtime/plan/numInstances/domains/healthCheckPath/envVars/…).
 #   databases:  managed Postgres instances (name/plan/diskSizeGB/…).
-# The legacy single-service top-level `apps:` list is an alias for `services:`,
-# so pre-existing bex.yml files apply unchanged.
 #
 # Databases apply first, then services, so a service's fromDatabase env reference
 # (resolved to a secretRef into the CNPG "<stable-id>-app" connection Secret) waits on
@@ -18,9 +16,9 @@
 # upsert (kubectl apply). bex v1 does NOT sync-delete resources absent from the
 # file — a documented divergence from Render Blueprints' optional sync.
 #
-# Manifest semantics: `type: web` (the default) is public — <name>.<base-domain>
-# is auto-assigned, `domains:` adds custom domains. `type: private|worker|cron`
-# have no ingress. `expose` is CR-level mechanism, not a manifest key.
+# Manifest semantics: `type: web` is public — <name>.<base-domain> is
+# auto-assigned, `domains:` adds custom domains. `type: pserv|worker|cron` have
+# no ingress. `expose` is CR-level mechanism, not a manifest key.
 #
 # CR generation is deliberately split: bash reads each field (simple yq lookups)
 # and resolves env into a JSON array; a final yq --null-input call only assembles
@@ -32,19 +30,23 @@ manifest="${1:?usage: app-apply.sh <bex.yml | project-dir>}"
 [ -d "$manifest" ] && manifest="$manifest/bex.yml"
 [ -f "$manifest" ] || { echo "error: $manifest not found" >&2; exit 1; }
 
-# `services:` is the Blueprint key; `apps:` is the legacy single-service alias
-# (mutually exclusive). Exactly one, unless the file is databases-only.
+# `services:` is the Render Blueprint key. A database-only file is also valid.
 have_services=$(yq '.services | length' "$manifest" 2>/dev/null || echo 0)
-have_apps=$(yq '.apps | length' "$manifest" 2>/dev/null || echo 0)
-if [ "$have_services" -gt 0 ] 2>/dev/null && [ "$have_apps" -gt 0 ] 2>/dev/null; then
-  echo "error: $manifest uses both services: and apps: — use only one (services: preferred)" >&2; exit 1
+if [ "$(yq 'has("apps")' "$manifest")" = "true" ]; then
+  echo "error: top-level apps is retired; rename it to services" >&2; exit 1
 fi
 if [ "$have_services" -gt 0 ] 2>/dev/null; then svc_key="services"
-elif [ "$have_apps" -gt 0 ] 2>/dev/null; then svc_key="apps"
 else
   ndb=$(yq '.databases | length' "$manifest" 2>/dev/null || echo 0)
-  [ "$ndb" -gt 0 ] 2>/dev/null || { echo "error: no services:/apps:/databases: entries in $manifest" >&2; exit 1; }
+  [ "$ndb" -gt 0 ] 2>/dev/null || { echo "error: no services:/databases: entries in $manifest" >&2; exit 1; }
   svc_key=""
+fi
+
+if yq -e '.services[]? | has("tier") or has("replicas") or has("port") or has("imagePath") or has("publishPath")' "$manifest" >/dev/null 2>&1; then
+  echo "error: a service uses a retired Blueprint field; use plan, numInstances, image.url, or staticPublishPath and omit port" >&2; exit 1
+fi
+if yq -e '.services[]? | select(has("image")) | .image | tag == "!!str"' "$manifest" >/dev/null 2>&1; then
+  echo "error: a service uses a bare image string; use image: {url: ...}" >&2; exit 1
 fi
 
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
@@ -122,8 +124,7 @@ db_secret_key() { # $1 = property
 # service snapshot ($tmp/svc.yml). Literal {key,value} stays literal; fromDatabase
 # {name,property} -> secretRef into the CNPG "<stable-id>-app" Secret (never a plaintext
 # copy); fromService {name,property} host/port/hostport -> literal (bare <name>
-# resolves in-cluster; port from the referenced service's declared port — that one
-# read queries the full services list, default 3000). Written to a file (not
+# resolves in-cluster; the platform service port defaults to 3000). Written to a file (not
 # echoed) because the JSON contains '"' — yq load consumes it.
 build_env() { # $1 = output file
   local out=$1 nev i key fdn fdp fsn fsp refport val database_id
@@ -146,7 +147,7 @@ build_env() { # $1 = output file
         case "$fsp" in
           host) val="$fsn" ;;
           port|hostport)
-            refport=$(yq ".[] | select(.name == \"$fsn\") | .port // 3000" "$tmp/services.yml")
+            refport=3000
             [ "$fsp" = "port" ] && val="$refport" || val="$fsn:$refport" ;;
           *) echo "error: fromService property '$fsp' unsupported (want host/port/hostport)" >&2; exit 1 ;;
         esac
@@ -185,16 +186,14 @@ num() { local v; v=$(sf "$1"); [ "$v" = "null" ] || [ -z "$v" ] && echo 0 || ech
 render_app() { # $1 = name (snapshot already set by the caller)
   local name=$1 kind crtype
   kind=$(service_kind); crtype=$(crtype_of "$kind")
-  local repo image branch builder rootdir port replicas tier hcp publish schedule host expose
-  repo=$(sf repo); branch=$(sf branch)
-  builder=$(sf builder); rootdir=$(sf rootDir); publish=$(sf 'staticPublishPath // .publishPath')
-  port=$(num port); replicas=$(num 'numInstances // .replicas'); tier=$(sf 'plan // .tier')
-  hcp=$(sf healthCheckPath); schedule=$(sf schedule)
-  # image is render.yaml {url:…} (map) OR a bare string OR absent — .image.url // .image
-  # misbehaves when image is absent (returns {url:null}), so read .image raw and pick.
-  local rawimg
-  rawimg=$(sf image)
-  case "$rawimg" in null|"") image="" ;; url:*) image=$(sf 'image.url') ;; *) image="$rawimg" ;; esac
+  local repo image branch builder runtime rootdir port replicas tier hcp publish schedule host expose
+  repo=$(sf 'repo // ""'); branch=$(sf 'branch // ""')
+  builder=$(sf 'builder // ""'); runtime=$(sf 'runtime // ""')
+  [ "$runtime" = "static" ] && runtime=""
+  rootdir=$(sf 'rootDir // ""'); publish=$(sf 'staticPublishPath // ""')
+  port=0; replicas=$(num numInstances); tier=$(sf 'plan // ""')
+  hcp=$(sf 'healthCheckPath // ""'); schedule=$(sf 'schedule // ""')
+  image=$(sf 'image.url // ""')
   host=$(yq '.domains[0] // ""' "$tmp/svc.yml")
   yq -o=json '(.domains // []) | .[1:]' "$tmp/svc.yml" > "$tmp/hosts.json"
   build_env "$tmp/env.json"
@@ -203,7 +202,7 @@ render_app() { # $1 = name (snapshot already set by the caller)
   # Array values (hosts/env) load from temp JSON files (they contain '"', which
   # would break shell VAR="$val" quoting); scalars ride strenv.
   NAME="$name" CRTYPE="$crtype" REPO="$repo" IMAGE="$image" BRANCH="$branch" \
-  BUILDER="$builder" ROOTDIR="$rootdir" PORT="$port" REPLICAS="$replicas" TIER="$tier" \
+  BUILDER="$builder" RUNTIME="$runtime" ROOTDIR="$rootdir" PORT="$port" REPLICAS="$replicas" TIER="$tier" \
   HCP="$hcp" PUBLISH="$publish" SCHEDULE="$schedule" HOST="$host" EXPOSE="$expose" \
   HOSTS="$tmp/hosts.json" ENV="$tmp/env.json" \
   yq --null-input -o=yaml '
@@ -214,7 +213,7 @@ render_app() { # $1 = name (snapshot already set by the caller)
         "type": strenv(CRTYPE),
         "schedule": strenv(SCHEDULE),
         "repo": strenv(REPO), "image": strenv(IMAGE), "branch": strenv(BRANCH),
-        "builder": strenv(BUILDER), "rootDir": strenv(ROOTDIR),
+        "builder": strenv(BUILDER), "runtime": strenv(RUNTIME), "rootDir": strenv(ROOTDIR),
         "port": (strenv(PORT) | to_number),
         "replicas": (strenv(REPLICAS) | to_number),
         "tier": strenv(TIER), "healthCheckPath": strenv(HCP),

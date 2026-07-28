@@ -119,9 +119,9 @@ func TestMCPCreateWebServiceThreadsPreDeployCommand(t *testing.T) {
 
 func TestDeployManifestThreadsPreDeployCommand(t *testing.T) {
 	svc, cl := newService(nil)
-	manifest := "apps:\n  - name: hello\n    repo: https://github.com/x/mono\n    preDeployCommand: npm run migrate\n"
-	if _, err := svc.Deploy(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
-		t.Fatalf("Deploy: %v", err)
+	manifest := "services:\n  - name: hello\n    repo: https://github.com/x/mono\n    preDeployCommand: npm run migrate\n"
+	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("DeployStack: %v", err)
 	}
 	if got := getApp(t, cl, "hello").Spec.PreDeployCommand; got != "npm run migrate" {
 		t.Errorf("bex.yml preDeployCommand not threaded: spec.preDeployCommand = %q", got)

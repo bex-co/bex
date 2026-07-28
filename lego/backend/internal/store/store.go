@@ -279,7 +279,7 @@ type Store interface {
 	// longest, which for a human is the personal tenant minted on first login,
 	// matching Render ("passing a user id returns that user's default
 	// workspace"). A caller that wants another of its workspaces names it
-	// explicitly (REST ownerId / GraphQL ownerId / MCP select_workspace →
+	// explicitly (REST ownerId / GraphQL ownerId / MCP workspaceId →
 	// core.WithWorkspace), which is membership-checked at core.Base.
 	TenantForIdentity(ctx context.Context, subject string) (Tenant, error)
 	// IsMember reports whether a subject belongs to a workspace — the check

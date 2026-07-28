@@ -42,8 +42,7 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     suspended: isSuspended(s.suspended),
     phase: s.phase ?? "",
     url: s.url ?? null,
-    internalAddress:
-      "internalAddress" in s ? s.internalAddress || null : null,
+    internalAddress: "internalAddress" in s ? s.internalAddress || null : null,
     createdAt: s.createdAt ?? null,
     updatedAt: "updatedAt" in s ? (s.updatedAt ?? null) : null,
     region: "region" in s ? s.region || null : null,
@@ -148,7 +147,6 @@ function toCronRuns(runs: ServerNode["runs"]): CronRunView[] {
     .filter((r): r is NonNullable<typeof r> => r != null)
     .map((r) => ({
       id: r.id ?? r.name ?? "",
-      name: r.name ?? "",
       startedAt: r.startedAt ?? null,
       finishedAt: r.finishedAt ?? null,
       status: r.status ?? "",

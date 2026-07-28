@@ -60,11 +60,6 @@ type Service struct {
 	// Environments is the shared create-time assignment resolver used by all
 	// three resource kinds.
 	Environments core.EnvironmentResolver
-	// Selections is the shared MCP per-session workspace selection
-	// (w6/m2/t005): list_key_value falls back to the caller's
-	// selected workspace when its ownerId argument is omitted. Read-only
-	// (key-value never selects a workspace). Nil => no fallback.
-	Selections core.WorkspaceSelectionReader
 	// MaxKeyValues, when positive, caps how many key-value instances a workspace
 	// may own. 0 = unlimited (the default; byte-identical to before). Only
 	// enforced when the caller's tenant is resolvable (w7/m9).

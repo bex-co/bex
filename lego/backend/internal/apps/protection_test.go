@@ -138,7 +138,7 @@ func TestDeployStack_DirectOverrideBlockedWhenProtected(t *testing.T) {
 	existing.Spec.Image = "old:1"
 	svc, cl := newService(rec, existing)
 
-	changed := "services:\n  - {name: web, image: new:1}\n"
+	changed := "services:\n  - {name: web, image: {url: new:1}}\n"
 	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: changed}); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("DeployStack override on a protected member: got %v, want ErrBadRequest", err)
 	}
@@ -153,7 +153,7 @@ func TestDeployStack_DirectOverrideSucceedsWithConfirm(t *testing.T) {
 	existing.Spec.Image = "old:1"
 	svc, cl := newService(rec, existing)
 
-	changed := "services:\n  - {name: web, image: new:1}\n"
+	changed := "services:\n  - {name: web, image: {url: new:1}}\n"
 	confirm := ProtectedConfirmation("deploy", "web")
 	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: changed, Confirm: confirm}); err != nil {
 		t.Fatalf("DeployStack override with correct confirm: %v", err)
@@ -170,7 +170,7 @@ func TestSyncBlueprint_ProtectedOverrideSucceedsWithConfirm(t *testing.T) {
 	svc, cl := newService(rec, existing)
 	svc.Blueprints = newFakeBlueprintStore(store.Blueprint{
 		ID:       "blp-1",
-		Manifest: "services:\n  - {name: web, image: new:1}\n",
+		Manifest: "services:\n  - {name: web, image: {url: new:1}}\n",
 		Status:   "active",
 	})
 
@@ -197,7 +197,7 @@ func TestDeployStack_NewServiceNeverBlocked(t *testing.T) {
 	rec := &recordingStore{}
 	svc, cl := newService(rec)
 
-	manifest := "services:\n  - {name: web, image: new:1}\n"
+	manifest := "services:\n  - {name: web, image: {url: new:1}}\n"
 	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
 		t.Fatalf("DeployStack for a brand-new service: %v", err)
 	}

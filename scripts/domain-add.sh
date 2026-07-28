@@ -13,16 +13,16 @@
 # (Apex domains can't CNAME — they need ALIAS/flattening at their DNS provider,
 # or a registrar redirect to www.)
 #
-# Usage:   CLOUDFLARE_API_TOKEN=... CF_ZONE_ID=... scripts/domain-add.sh www.example.com
+# Usage:   CLOUDFLARE_API_TOKEN=... CLOUDFLARE_ZONE_ID=... scripts/domain-add.sh www.example.com
 # Status:  same env vars, scripts/domain-add.sh www.example.com --status
 # Token scope: Zone -> SSL and Certificates -> Edit (for the base-domain zone).
 set -euo pipefail
 
 domain="${1:?usage: domain-add.sh <customer-domain> [--status]}"
 : "${CLOUDFLARE_API_TOKEN:?set CLOUDFLARE_API_TOKEN}"
-: "${CF_ZONE_ID:?set CF_ZONE_ID (zone id of the base domain)}"
+: "${CLOUDFLARE_ZONE_ID:?set CLOUDFLARE_ZONE_ID (zone id of the base domain)}"
 
-api="https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/custom_hostnames"
+api="https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID/custom_hostnames"
 auth=(-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json")
 
 if [ "${2:-}" = "--status" ]; then

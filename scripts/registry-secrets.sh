@@ -22,8 +22,6 @@
 # Reads the repo-local .env (gitignored — never commit or print it). Required keys
 # (names only; values are never echoed):
 #   BEX_REGISTRY_BUILDER_PASSWORD  push credential         (>= 12 chars; hex/alnum is safest)
-# No longer required (per-App credentials are minted by the operator):
-#   BEX_REGISTRY_PULLER_PASSWORD   (removed; kept only for backward-compat check)
 # Optional (defaults match deploy/gitops/base + lego/operator/config/manager):
 #   BEX_REGISTRY             registry host the docker-config `auths` key targets
 #                             (default zot.bex-registry.svc:5000)

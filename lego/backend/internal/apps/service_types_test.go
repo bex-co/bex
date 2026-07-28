@@ -237,9 +237,9 @@ func TestMCPCreateWebServiceThreadsType(t *testing.T) {
 
 func TestDeployManifestCronType(t *testing.T) {
 	svc, cl := newService(nil)
-	manifest := "apps:\n  - name: nightly\n    image: job:v1\n    type: cron\n    schedule: \"0 3 * * *\"\n"
-	if _, err := svc.Deploy(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
-		t.Fatalf("Deploy cron: %v", err)
+	manifest := "services:\n  - name: nightly\n    image: {url: job:v1}\n    type: cron\n    runtime: image\n    schedule: \"0 3 * * *\"\n"
+	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("DeployStack cron: %v", err)
 	}
 	a := getApp(t, cl, "nightly")
 	if a.Spec.Type != appv1alpha1.TypeCronJob || a.Spec.Schedule != "0 3 * * *" {

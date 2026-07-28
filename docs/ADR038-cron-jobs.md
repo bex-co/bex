@@ -59,7 +59,7 @@ The mechanism-facing status vocabulary is `Running` / `Succeeded` / `Failed` / `
 | `GET /v1/cron-jobs/{id}/runs/{runId}` | fetch one stable `crr-…` run | bex extension |
 | `POST /v1/cron-jobs/{id}/runs/{runId}/cancel` | cancel one pending run; terminal ⇒ 409 | bex extension |
 
-The same handlers remain available under bex's `/v1/services` and `/v1/apps` historical aliases.
+The run handlers also remain available as `/v1/services/{id}/runs` subresources. The retired public `/v1/apps` family is not registered.
 
 **GraphQL**: `updateCronJob`, `runCronJob`, `cancelCronJobRun`, and queries `cronJobRuns(serviceId,cursor,limit)` / `cronJobRun(serviceId,runId)`, all returning `CronRun { id status startedAt finishedAt }`; `Service.lastSuccessfulRunAt` mirrors the REST cron detail.
 

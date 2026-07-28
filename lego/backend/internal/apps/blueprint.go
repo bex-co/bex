@@ -171,20 +171,15 @@ func blueprintErrorPath(manifest, message string) string {
 		return ""
 	}
 	services := parsed.Services
-	root := "services"
-	if len(parsed.Apps) > 0 && len(parsed.Services) == 0 {
-		services = parsed.Apps
-		root = "apps"
-	}
 	for i, svc := range services {
 		if svc.Name == "" {
 			if strings.Contains(message, "service entry is missing its name") {
-				return fmt.Sprintf("%s[%d].name", root, i)
+				return fmt.Sprintf("services[%d].name", i)
 			}
 			continue
 		}
 		if strings.Contains(message, fmt.Sprintf("%q", svc.Name)) || strings.Contains(message, svc.Name+" ") {
-			return fmt.Sprintf("%s[%d]%s", root, i, blueprintErrorField(message))
+			return fmt.Sprintf("services[%d]%s", i, blueprintErrorField(message))
 		}
 	}
 	for i, db := range parsed.Databases {

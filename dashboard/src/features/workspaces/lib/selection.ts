@@ -16,7 +16,4 @@ export function persistWorkspaceId(id: string): void {
     sameSite: "lax",
     path: "/",
   });
-  if (typeof localStorage !== "undefined") {
-    localStorage.setItem(WORKSPACE_SELECTION_KEY, id);
-  }
 }

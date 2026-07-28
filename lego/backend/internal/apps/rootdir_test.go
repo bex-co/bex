@@ -109,9 +109,9 @@ func TestMCPCreateCronJobThreadsRootDir(t *testing.T) {
 
 func TestDeployManifestThreadsRootDir(t *testing.T) {
 	svc, cl := newService(nil)
-	manifest := "apps:\n  - name: hello\n    repo: https://github.com/x/mono\n    rootDir: services/hello\n"
-	if _, err := svc.Deploy(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
-		t.Fatalf("Deploy: %v", err)
+	manifest := "services:\n  - name: hello\n    repo: https://github.com/x/mono\n    rootDir: services/hello\n"
+	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("DeployStack: %v", err)
 	}
 	if got := getApp(t, cl, "hello").Spec.RootDir; got != "services/hello" {
 		t.Errorf("bex.yml rootDir not threaded: spec.rootDir = %q", got)

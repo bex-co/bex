@@ -70,11 +70,6 @@ type Service struct {
 	// into usage_monthly (BEX_USAGE_RETENTION_MONTHS). Values < 1 mean
 	// DefaultRetentionMonths.
 	RetentionMonths int
-	// Selections is the shared MCP per-session workspace selection
-	// (w6/m2/t005, core.WorkspaceSelections): get_usage's ownerId precedence
-	// (explicit arg > the session's select_workspace > the caller's default).
-	// nil (e.g. no MCP transport wired) degrades to explicit-arg-or-default.
-	Selections core.WorkspaceSelectionReader
 	// Billing reads real Stripe cost/invoices to surface beside the advisory
 	// estimate (m48, ADR040 Phase 2). nil ⇒ billing surface off: every summary is
 	// estimate-only, byte-identical to ADR030. A read failure degrades to

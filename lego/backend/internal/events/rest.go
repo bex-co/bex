@@ -47,7 +47,7 @@ import (
 //     deployStatus, its replacement, is.
 //   - Rejecting a malformed cursor with 400 (Render's behavior here is unspecified).
 //
-// Mounted under both /v1/services and /v1/apps, like every other apps-adjacent
+// Mounted under /v1/services, like every other apps-adjacent
 // route.
 
 // renderEvent is Render's event object.
@@ -201,17 +201,16 @@ func filterFromQuery(q url.Values) Filter {
 	return FilterOf(q.Get("type"), q.Get("startTime"), q.Get("endTime"), cursor, limit)
 }
 
-// RegisterREST mounts GET /v1/{services,apps}/{id}/events. Store unwired ⇒ the
+// RegisterREST mounts GET /v1/services/{id}/events. Store unwired ⇒ the
 // Service returns core.ErrEventsUnavailable ⇒ 503 on these routes only.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
-	for _, base := range []string{"/v1/services", "/v1/apps"} {
-		mux.HandleFunc("GET "+base+"/{id}/events", func(w http.ResponseWriter, r *http.Request) {
-			events, err := s.List(r.Context(), r.PathValue("id"), filterFromQuery(r.URL.Query()))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, toEventList(events))
-		})
-	}
+	const base = "/v1/services"
+	mux.HandleFunc("GET "+base+"/{id}/events", func(w http.ResponseWriter, r *http.Request) {
+		events, err := s.List(r.Context(), r.PathValue("id"), filterFromQuery(r.URL.Query()))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toEventList(events))
+	})
 }

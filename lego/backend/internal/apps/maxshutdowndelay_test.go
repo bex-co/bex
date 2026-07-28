@@ -258,7 +258,7 @@ func TestBlueprintMaxShutdownDelayRoundTripsAndValidates(t *testing.T) {
 	stack, err := parseStack(DeployRequest{Manifest: `services:
   - type: web
     name: web
-    image: nginx:1
+    image: {url: nginx:1}
     maxShutdownDelaySeconds: 75
 `})
 	if err != nil {
@@ -273,7 +273,7 @@ func TestBlueprintMaxShutdownDelayRoundTripsAndValidates(t *testing.T) {
 	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: `services:
   - type: web
     name: web
-    image: nginx:1
+    image: {url: nginx:1}
     maxShutdownDelaySeconds: 75
 `}); err != nil {
 		t.Fatalf("deploy: %v", err)
@@ -287,7 +287,7 @@ func TestBlueprintMaxShutdownDelayRoundTripsAndValidates(t *testing.T) {
 	_, err = svc.DeployStack(context.Background(), DeployRequest{Manifest: `services:
   - type: web
     name: web2
-    image: nginx:1
+    image: {url: nginx:1}
     maxShutdownDelaySeconds: 301
 `})
 	if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "maxShutdownDelaySeconds") {

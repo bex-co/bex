@@ -76,12 +76,6 @@ type Service struct {
 	// email/name through the same Identities lookup. Nil => machine callers keep
 	// the earliest-admin-email fallback alone.
 	KeyOwners KeyOwnerReader
-	// Selections is the shared MCP per-session workspace selection (w6/m2/t005):
-	// select_workspace writes it, get_selected_workspace reads it, and the apps/
-	// postgres list tools read it as their default ownerId filter. Nil (should
-	// not happen in practice — the composition root always wires one) leaves the
-	// MCP workspace tools unregistered rather than panicking; see RegisterMCP.
-	Selections *core.WorkspaceSelections
 	// MaxServices, MaxPostgres, MaxKeyValues, when positive, are the effective
 	// per-workspace resource caps injected from the composition root (w7/m9):
 	// the same values apps.Service/postgres.Service/keyvalue.Service enforce at

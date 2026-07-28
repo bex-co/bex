@@ -159,54 +159,23 @@ Used by every error response (`401Unauthorized`, `404NotFound`, `406NotAcceptabl
 
 **The user-ID prefix is `own-`, not `usr-`.** Primary source: the `retrieve-owner.md` spec note quoted above ("a user ID (starts with `own-`)"). The `usr-…` mention in [`team-members.graphql`](team-members.graphql) line 8 is a stale comment from an older dashboard capture (2026-07-06) and is corrected here. bex's workspace ids are `tea-` (already, via `internal/id`); user/identity ids are `own-` at the API boundary.
 
-## MCP workspace tools
+## MCP workspace tools — current contract
 
-From `github.com/render-oss/render-mcp-server` `pkg/owner/tools.go` (the official server's `Tools()` returns exactly these three under `### Workspaces`):
+Render's [request-scoped workspace change](https://github.com/render-oss/render-mcp-server/commit/48a35785c99c) adds optional `workspaceId` to every resource tool so a confirmed target survives reconnects and transport-session changes. The upstream repository temporarily retains session selection for existing clients, but marks it deprecated.
 
-| tool | params | behavior |
-| --- | --- | --- |
-| `list_workspaces` | — (none) | Lists the workspaces the caller has access to. **If exactly one workspace exists, auto-selects it** (`session.SetWorkspace`) and notes "Only one workspace found, automatically selected it". |
-| `select_workspace` | `ownerID` (string, **required**) | "Select a workspace to use for all actions." Validates + stores the selection for the session. Foreign/unknown id ⇒ tool error, selection unchanged. |
-| `get_selected_workspace` | — (none) | "Get the currently selected workspace" — echoes the session's selection. |
+bex completed that transition in w1/m55:
 
-Tool-result rendering (render-mcp-server): `mcp.NewToolResultText(string)` — the workspace list is JSON-marshaled as text; `select_workspace` returns the text `"Workspace selected"`; `get_selected_workspace` returns `"The currently selected workspace is: <id>"`. bex's go-sdk adapter instead returns typed structured-result objects (MCP requires object, not array, output) — `{workspaces: […]}` / a selection-confirmation object — the same wrapper-object pattern `apps/mcp.go` uses (`{services: […]}`).
+- `list_workspaces` is the only workspace discovery tool and returns `{workspaces: […]}` without selecting one.
+- Every workspace-resource tool exposes optional `workspaceId`. The API middleware strips it before feature-specific schema decoding, binds it to the request context, validates membership, and verifies that any resource id belongs to that workspace.
+- `select_workspace` and `get_selected_workspace` are absent. There is no in-memory or Postgres selection backend; migration `0050_drop_mcp_workspace_selections` removes the old table.
+- Omitted `workspaceId` resolves the caller's deterministic default workspace. Unknown, inaccessible, or resource-mismatched ids fail closed.
+- MCP transport sessions continue to exist for the protocol, but carry no bex-owned workspace state. Two HTTP replicas therefore need no sticky routing or shared selection store.
 
-### Selection persistence — Render in-memory; bex shared for HTTP
-
-Verbatim from `pkg/session/{session,inmemory}.go`:
-
-```go
-type Store interface {
-    Get(ctx context.Context, sessionID string) (Session, error)
-}
-type Session interface {
-    GetWorkspace(context.Context) (string, error)
-    SetWorkspace(context.Context, string) error
-}
-// FromContext pulls the per-session Session out of the tool-handler context.
-func FromContext(ctx context.Context) Session { return ctx.Value(sessionCtxKey).(Session) }
-```
-
-```go
-type inMemoryStore struct{ sessions map[string]*InMemorySession }
-func (i *inMemoryStore) Get(_ context.Context, sessionID string) (Session, error) {
-    if _, ok := i.sessions[sessionID]; !ok { i.sessions[sessionID] = &InMemorySession{} }
-    return i.sessions[sessionID], nil
-}
-type InMemorySession struct{ selectedWorkspaceID string }
-func (h *InMemorySession) GetWorkspace(_ context.Context) (string, error) {
-    if h.selectedWorkspaceID == "" { return "", config.ErrNoWorkspace }
-    return h.selectedWorkspaceID, nil
-}
-```
-
-So: Render's selection is **per-session** (keyed by MCP session ID), held **in-memory** (not persisted to config/disk — research open question 3, resolved), threaded into every tool handler via context. An unselected session returns `ErrNoWorkspace`; bex's behavior (matching pre-`m1`): fall back to the caller's default workspace rather than erroring. `pkg/validate/workspace.go`'s `WorkspaceMatches` enforces that subsequent resource tools operate only within the selected workspace.
-
-bex preserves the same per-session behavior but uses two backends. Streamable HTTP stores the selection in control-plane Postgres, keyed by the `Mcp-Session-Id` header **and authenticated subject**, so a follow-up request may reach any bex-api replica without losing or borrowing a selection. Store errors fail the tool call closed. Storeless and stdio operation retain the concurrency-safe in-memory fallback (`""` for stdio = one session). `select_workspace` writes it, `get_selected_workspace` reads it, and workspace-scoped tools such as `list_services` and `list_postgres_instances` use it as their default `ownerId` filter (the `w6/m2/t004` scoping param).
+The older session-selection capture is historical evidence only; it is superseded by [the removal record](deprecated-surface-removal-2026-07-27.md).
 
 ## Parity check (t006)
 
-Implemented against this pinned contract (`lego/backend/internal/workspaces/{render,rest,mcp}.go`): field names, the bare-array list/members envelopes, the `own-` retrieve quirk, the uppercase `teamMemberRole` enum, and the three MCP tool names/params all match verbatim. No POST/PATCH/DELETE exists under `/v1/owners` (`rest.go` registers `GET` only). **Cursor pagination** (`cursor`/`limit`, default 20, max 100) is honored on `GET /v1/owners` via the shared `core.Page`/`core.PageParams` helper (also applied to `GET /v1/services` for a consistent list surface). The `ownerId` filter on `/v1/postgres` is **no longer** a no-op — Database CRs carry `core.LabelTenant` (`w6/m4`).
+Implemented against the current contract (`lego/backend/internal/workspaces/{render,rest,mcp}.go`): field names, the bare-array list/members envelopes, the `own-` retrieve quirk, the uppercase `teamMemberRole` enum, and MCP `list_workspaces` discovery match. No POST/PATCH/DELETE exists under `/v1/owners` (`rest.go` registers `GET` only). **Cursor pagination** (`cursor`/`limit`, default 20, max 100) is honored on `GET /v1/owners` via the shared `core.Page`/`core.PageParams` helper (also applied to `GET /v1/services` for a consistent list surface). The `ownerId` filter on `/v1/postgres` is **no longer** a no-op — Database CRs carry `core.LabelTenant` (`w6/m4`).
 
 **Member `userId` is an opaque `own-` id (`w6/m7`), not the raw Kratos subject.** bex now mints a stable `own-<xid>` per identity (`id.Owner`, persisted subject⇄own-id in the `owner_ids` table) and reports it as the members `userId`. Two adjacent Render behaviors are **deliberate non-goals**, source-documented so they don't get silently re-attempted:
 
