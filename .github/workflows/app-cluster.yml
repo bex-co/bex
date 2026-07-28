@@ -123,20 +123,11 @@ jobs:
       # --- apply the overlay -> the cluster reconciles its own machines ---
       - name: apply CAPH overlay
         run: kubectl apply -f infra/clusterapi/overlays/hetzner-caph/cluster.yaml
-      # NOTE: `kubectl wait --for=condition=ControlPlaneInitialized` is unreliable on
-      # CAPI v1beta2 clusters (the condition reads True via jsonpath but `wait`'s
-      # matcher times out). Poll the jsonpath directly instead — bulletproof.
-      - name: wait for app cluster control plane
-        run: |
-          for i in $(seq 1 120); do
-            s=$(kubectl get cluster "${CLUSTER_NAME}" -o jsonpath='{.status.conditions[?(@.type=="ControlPlaneInitialized")].status}' 2>/dev/null || true)
-            [ "$s" = "True" ] && break
-            echo "  [$i/120] ControlPlaneInitialized=${s:-<none>}; retrying in 10s"; sleep 10
-          done
-          if [ "$s" != "True" ]; then
-            echo "control plane not initialized in time"; kubectl get cluster,kcp,machines -A -o wide; exit 1
-          fi
-          kubectl get cluster,machines -A -o wide
+      # A version bump is not complete when the desired object merely applies.
+      # Wait for KCP and every MachineDeployment to finish their own staged
+      # rollout and for every replacement Node's kubelet to report that version.
+      - name: wait for app cluster fleet rollout
+        run: bash scripts/wait-capi-rollout.sh
 
       # cluster-autoscaler is Argo-managed post-pivot (deploy/gitops/base/autoscaler.yaml).
 
