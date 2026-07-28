@@ -49,20 +49,34 @@ func NewClient(baseURL string) *Client {
 }
 
 // osSandbox is the OpenSandbox server's sandbox representation (a subset).
+// The server's status carries `state` (Running/Suspended/…), validated on prod.
 type osSandbox struct {
 	ID     string `json:"id"`
 	Status struct {
-		Phase string `json:"phase"`
+		State string `json:"state"`
 	} `json:"status"`
 }
 
-// createRequest is the OpenSandbox create body. bex resolves image+port from a
-// template (never an arbitrary caller image), so this is server-facing only.
+// createRequest is the OpenSandbox server's create body (validated against the
+// live API, 2026-07-28): image is an object with a `uri`, `entrypoint` is
+// required when an image is given, and `resourceLimits` is required when no
+// pool is referenced. bex resolves all of these from a template (never an
+// arbitrary caller image), so this is server-facing only.
 type createRequest struct {
-	Image string            `json:"image"`
-	Port  int               `json:"port,omitempty"`
-	Env   map[string]string `json:"env,omitempty"`
-	Name  string            `json:"name,omitempty"`
+	Image          osImageSpec       `json:"image"`
+	Entrypoint     []string          `json:"entrypoint"`
+	ResourceLimits osResourceLimits  `json:"resourceLimits"`
+	Env            map[string]string `json:"env,omitempty"`
+	Metadata       map[string]string `json:"metadata,omitempty"`
+}
+
+type osImageSpec struct {
+	URI string `json:"uri"`
+}
+
+type osResourceLimits struct {
+	CPU    string `json:"cpu"`
+	Memory string `json:"memory"`
 }
 
 // do issues a JSON request to the OpenSandbox server, attaching the workspace's
@@ -100,19 +114,24 @@ func (c *Client) do(ctx context.Context, method, path, tenantKey string, body an
 
 // Create starts a sandbox from a resolved template image and returns its id and
 // mapped status. tenantKey scopes it to the caller's `<ws>-sandbox` namespace.
-func (c *Client) Create(ctx context.Context, tenantKey, image string, port int, env map[string]string, name string) (string, Status, error) {
-	data, code, err := c.do(ctx, http.MethodPost, "/sandboxes", tenantKey, createRequest{Image: image, Port: port, Env: env, Name: name})
+func (c *Client) Create(ctx context.Context, tenantKey, image string, entrypoint []string, cpu, memory string, env map[string]string) (string, Status, error) {
+	data, code, err := c.do(ctx, http.MethodPost, "/sandboxes", tenantKey, createRequest{
+		Image:          osImageSpec{URI: image},
+		Entrypoint:     entrypoint,
+		ResourceLimits: osResourceLimits{CPU: cpu, Memory: memory},
+		Env:            env,
+	})
 	if err != nil {
 		return "", "", err
 	}
-	if code != http.StatusOK && code != http.StatusCreated {
+	if code != http.StatusOK && code != http.StatusCreated && code != http.StatusAccepted {
 		return "", "", fmt.Errorf("opensandbox create: status %d: %s", code, truncate(data))
 	}
 	var s osSandbox
 	if err := json.Unmarshal(data, &s); err != nil || s.ID == "" {
 		return "", "", fmt.Errorf("opensandbox create: bad response: %s", truncate(data))
 	}
-	return s.ID, mapOpenSandboxStatus(s.Status.Phase), nil
+	return s.ID, mapOpenSandboxStatus(s.Status.State), nil
 }
 
 // Get returns a sandbox's mapped status.
@@ -131,7 +150,7 @@ func (c *Client) Get(ctx context.Context, tenantKey, id string) (Status, error) 
 	if err := json.Unmarshal(data, &s); err != nil {
 		return "", fmt.Errorf("opensandbox get: bad response")
 	}
-	return mapOpenSandboxStatus(s.Status.Phase), nil
+	return mapOpenSandboxStatus(s.Status.State), nil
 }
 
 // List returns every sandbox visible to the tenant key (the server scopes to

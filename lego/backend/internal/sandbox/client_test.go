@@ -30,12 +30,12 @@ func TestClientCreateSendsTenantKeyAndMapsStatus(t *testing.T) {
 		gotPath = r.URL.Path
 		gotMethod = r.Method
 		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(`{"id":"os-abc","status":{"phase":"Creating"}}`))
+		_, _ = w.Write([]byte(`{"id":"os-abc","status":{"state":"Creating"}}`))
 	}))
 	defer srv.Close()
 
 	c := NewClient(srv.URL)
-	id, status, err := c.Create(context.Background(), "wskey-123", "img:1", 8080, map[string]string{"A": "b"}, "acme")
+	id, status, err := c.Create(context.Background(), "wskey-123", "img:1", []string{"sh"}, "500m", "512Mi", map[string]string{"A": "b"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestClientGetMapsRunningAndNotFound(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		_, _ = w.Write([]byte(`{"id":"os-abc","status":{"phase":"Running"}}`))
+		_, _ = w.Write([]byte(`{"id":"os-abc","status":{"state":"Running"}}`))
 	}))
 	defer srv.Close()
 	c := NewClient(srv.URL)
@@ -77,7 +77,7 @@ func TestClientGetMapsRunningAndNotFound(t *testing.T) {
 }
 
 func TestClientListHandlesArrayAndWrapped(t *testing.T) {
-	bodies := []string{`[{"id":"a","status":{"phase":"Running"}}]`, `{"items":[{"id":"b","status":{"phase":"Paused"}}]}`}
+	bodies := []string{`[{"id":"a","status":{"state":"Running"}}]`, `{"items":[{"id":"b","status":{"state":"Paused"}}]}`}
 	idx := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(bodies[idx]))
@@ -131,7 +131,7 @@ func TestClientCreateErrorsOnBadStatus(t *testing.T) {
 	}))
 	defer srv.Close()
 	c := NewClient(srv.URL)
-	if _, _, err := c.Create(context.Background(), "k", "img", 0, nil, ""); err == nil {
+	if _, _, err := c.Create(context.Background(), "k", "img", []string{"sh"}, "500m", "512Mi", nil); err == nil {
 		t.Fatal("expected error on 500")
 	}
 }

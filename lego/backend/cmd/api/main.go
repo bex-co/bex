@@ -534,7 +534,7 @@ func main() {
 	if osURL := os.Getenv("BEX_OPENSANDBOX_URL"); osURL != "" {
 		deps.SandboxClient = sandbox.NewClient(osURL)
 		deps.SandboxTemplates = map[string]sandbox.Template{
-			"base": {Image: envOr("BEX_SANDBOX_IMAGE", "opensandbox/base:latest")},
+			"base": {Image: envOr("BEX_SANDBOX_IMAGE", "docker.io/library/alpine:3"), Entrypoint: []string{"sleep", "infinity"}, CPU: "500m", Memory: "512Mi"},
 		}
 		deps.SandboxDefaultPlan = sandbox.PlanStarter
 	}

@@ -49,7 +49,7 @@ func stubServer(t *testing.T, handler http.HandlerFunc) *Service {
 	return &Service{
 		Base:      &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
 		Client:    NewClient(srv.URL),
-		Templates: map[string]Template{"node": {Image: "node:20", Port: 8080}},
+		Templates: map[string]Template{"node": {Image: "node:20", Entrypoint: []string{"sh"}, CPU: "500m", Memory: "512Mi"}},
 	}
 }
 
@@ -64,7 +64,7 @@ func TestCreateUsesTemplateImageAndEchoesPlan(t *testing.T) {
 		_, _ = r.Body.Read(buf)
 		gotBody = string(buf)
 		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(`{"id":"os-1","status":{"phase":"Creating"}}`))
+		_, _ = w.Write([]byte(`{"id":"os-1","status":{"state":"Creating"}}`))
 	})
 	sb, err := svc.Create(callerCtx(), CreateRequest{Template: "node", Plan: PlanStandard})
 	if err != nil {
@@ -116,7 +116,7 @@ func TestAuthzRefusalBlocksBeforeServerCall(t *testing.T) {
 	svc := &Service{
 		Base:      &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}, Authz: denyChecker{}},
 		Client:    NewClient(srv.URL),
-		Templates: map[string]Template{"node": {Image: "node:20"}},
+		Templates: map[string]Template{"node": {Image: "node:20", Entrypoint: []string{"sh"}, CPU: "500m", Memory: "512Mi"}},
 	}
 	if _, err := svc.Create(callerCtx(), CreateRequest{Template: "node"}); err == nil {
 		t.Fatal("expected authz refusal")
@@ -127,7 +127,7 @@ func TestListAndLifecycleScopedByWorkspaceKey(t *testing.T) {
 	var keys []string
 	svc := stubServer(t, func(w http.ResponseWriter, r *http.Request) {
 		keys = append(keys, r.Header.Get(tenantKeyHeader))
-		_, _ = w.Write([]byte(`[{"id":"os-1","status":{"phase":"Running"}}]`))
+		_, _ = w.Write([]byte(`[{"id":"os-1","status":{"state":"Running"}}]`))
 	})
 	svc.Keys = staticKey("ws-key-tea-a")
 	got, err := svc.List(callerCtx())
