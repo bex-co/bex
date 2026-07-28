@@ -76,6 +76,13 @@ spec:
               value: fsn1
             - name: BEX_API_NAMESPACE # Apps live in the default namespace
               value: default
+            # Per-tenant namespace isolation (ADR043, w3/m31): runs the
+            # NamespaceReconciler (provisions a <ws> namespace per workspace with
+            # base quota/limitrange/NetworkPolicy + RoleBindings) and projects
+            # NEW App CRs into <ws>. Existing default-namespace apps are updated
+            # in place, never moved (migration is scripts/migrate-tenant-namespaces.sh).
+            - name: BEX_TENANT_NAMESPACES
+              value: "1"
             # Auth (docs/ADR012-auth.md): OAuth2 API keys introspected at Hydra's
             # admin API; Kratos sessions for humans. No shared static token —
             # the bootstrap client is seeded by scripts/auth-bootstrap-client.sh.
