@@ -20,6 +20,10 @@ on:
         description: "Kubernetes version to bake (must match cluster.yaml `version:`)"
         required: false
         default: "1.31.0"
+      image_name:
+        description: "CAPH image label; use a version-specific name for staged upgrades"
+        required: false
+        default: "bex-worker"
 
 permissions:
   contents: read
@@ -33,6 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+      IMAGE_NAME: ${{ inputs.image_name }}
     steps:
       - uses: actions/checkout@v4
 
@@ -45,11 +50,16 @@ jobs:
         working-directory: infra/packer
         run: |
           packer init .
-          packer validate -var "kubernetes_version=${{ inputs.kubernetes_version }}" .
+          packer validate \
+            -var "kubernetes_version=${{ inputs.kubernetes_version }}" \
+            -var "image_name=${IMAGE_NAME}" .
 
       - name: packer build (creates the bex-worker snapshot)
         working-directory: infra/packer
-        run: packer build -var "kubernetes_version=${{ inputs.kubernetes_version }}" .
+        run: |
+          packer build \
+            -var "kubernetes_version=${{ inputs.kubernetes_version }}" \
+            -var "image_name=${IMAGE_NAME}" .
 
       # CAPH treats two images with the same caph-image-name as an ambiguity; it
       # does not choose the newest. Keep old snapshots for rollback but remove
@@ -59,21 +69,22 @@ jobs:
           set -euo pipefail
           api='https://api.hetzner.cloud/v1/images'
           auth="Authorization: Bearer $HCLOUD_TOKEN"
-          images=$(curl -fsS -H "$auth" "$api?type=snapshot&label_selector=caph-image-name%3Dbex-worker&sort=created:desc")
+          selector=$(jq -rn --arg value "caph-image-name=$IMAGE_NAME" '$value | @uri')
+          images=$(curl -fsS -H "$auth" "$api?type=snapshot&label_selector=$selector&sort=created:desc")
           newest=$(jq -r '.images | max_by(.created) | .id' <<<"$images")
           test -n "$newest" && test "$newest" != null
           while read -r id; do
             [ "$id" = "$newest" ] && continue
             image=$(curl -fsS -H "$auth" "$api/$id")
-            labels=$(jq '.image.labels + {"caph-image-name":"bex-worker-retired"}' <<<"$image")
+            labels=$(jq --arg retired "${IMAGE_NAME}-retired" '.image.labels + {"caph-image-name":$retired}' <<<"$image")
             payload=$(jq -cn --argjson labels "$labels" '{labels:$labels}')
             curl -fsS -X PUT -H "$auth" -H 'Content-Type: application/json' --data "$payload" "$api/$id" >/dev/null
           done < <(jq -r '.images[].id' <<<"$images")
-          active=$(curl -fsS -H "$auth" "$api?type=snapshot&label_selector=caph-image-name%3Dbex-worker" | jq '.images | length')
+          active=$(curl -fsS -H "$auth" "$api?type=snapshot&label_selector=$selector" | jq '.images | length')
           test "$active" -eq 1
 
       - name: summary
         run: |
-          echo "Baked the bex-worker snapshot (k8s ${{ inputs.kubernetes_version }})."
+          echo "Baked the ${IMAGE_NAME} snapshot (k8s ${{ inputs.kubernetes_version }})."
           echo "Next: verify it provisions ONE worker (infra/packer/README.md runbook),"
           echo "then apply the CAPH overlay to roll the pools onto imageName: bex-worker."

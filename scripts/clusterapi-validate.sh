@@ -151,10 +151,10 @@ fi
 # 3b. CAPH requires imageName to resolve to exactly one snapshot. A bake must
 # preserve old snapshots for rollback while retiring their active selector.
 echo "==> $SNAPSHOT_WORKFLOW retires prior active worker snapshots"
-if ! grep -Fq 'caph-image-name%3Dbex-worker' "$SNAPSHOT_WORKFLOW" \
-  || ! grep -Fq '"caph-image-name":"bex-worker-retired"' "$SNAPSHOT_WORKFLOW" \
+if ! grep -Fq '"caph-image-name=$IMAGE_NAME"' "$SNAPSHOT_WORKFLOW" \
+  || ! grep -Fq '"caph-image-name":$retired' "$SNAPSHOT_WORKFLOW" \
   || ! grep -Fq 'test "$active" -eq 1' "$SNAPSHOT_WORKFLOW"; then
-  echo "FAIL: snapshot workflow must retire older bex-worker labels and verify exactly one active image" >&2
+  echo "FAIL: snapshot workflow must retire older snapshots for the requested image label and verify exactly one active image" >&2
   fail=1
 fi
 
