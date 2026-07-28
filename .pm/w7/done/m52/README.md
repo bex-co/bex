@@ -1,26 +1,26 @@
 # w7 · m52 — Stripe dunning lifecycle: trusted events → grace → reversible enforcement → recovery
 
-**Worker:** worker7 **Goal:** turn Stripe's test-mode invoice lifecycle into a durable, idempotent bex billing state machine with notifications, a bounded grace period, reversible enforcement, and automatic recovery without deleting tenant data **Status:** todo
+**Worker:** worker7 **Goal:** turn Stripe's test-mode invoice lifecycle into a durable, idempotent bex billing state machine with notifications, a bounded grace period, reversible enforcement, and automatic recovery without deleting tenant data **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Decide and record the reversible workspace enforcement policy | 45m | — |
-| t002 | Persist Stripe event and workspace billing lifecycle state | 1h | t001 |
-| t003 | Process invoice and subscription webhooks idempotently | 1h | t002 |
-| t004 | Add Stripe polling reconciliation as the webhook-loss backstop | 1h | t002, t003 |
-| t005 | Implement configurable grace deadlines and transition scheduling | 1h | t002, t003 |
-| t006 | Notify owners on failure, grace, enforcement, and recovery | 1h | t005 |
-| t007 | Enforce the approved reversible policy without deleting tenant data | 1h | t001, t005 |
-| t008 | Recover only resources changed by billing enforcement | 1h | t003, t004, t007 |
-| t009 | Add audited admin override, exclusion, and comp recovery controls | 45m | t002, t007, t008 |
-| t010 | Expose billing state and deadlines across REST · GraphQL · MCP · UI | 1h | t005, t006, t007, t008, t009 |
-| t011 | Verify failure → grace → enforcement → payment → recovery in test mode | 1h | t010 |
-| t012 | Render parity | 30m | t011 |
-| t013 | Simplify | 30m | t012 |
-| t014 | Test coverage | 45m | t013 |
-| t015 | Closeout | 10m | t014 |
+| t001 | Decide and record the reversible workspace enforcement policy — **DONE** | 45m | — |
+| t002 | Persist Stripe event and workspace billing lifecycle state — **DONE** | 1h | t001 |
+| t003 | Process invoice and subscription webhooks idempotently — **DONE** | 1h | t002 |
+| t004 | Add Stripe polling reconciliation as the webhook-loss backstop — **DONE** | 1h | t002, t003 |
+| t005 | Implement configurable grace deadlines and transition scheduling — **DONE** | 1h | t002, t003 |
+| t006 | Notify owners on failure, grace, enforcement, and recovery — **DONE** | 1h | t005 |
+| t007 | Enforce the approved reversible policy without deleting tenant data — **DONE** | 1h | t001, t005 |
+| t008 | Recover only resources changed by billing enforcement — **DONE** | 1h | t003, t004, t007 |
+| t009 | Add audited admin override, exclusion, and comp recovery controls — **DONE** | 45m | t002, t007, t008 |
+| t010 | Expose billing state and deadlines across REST · GraphQL · MCP · UI — **DONE** | 1h | t005, t006, t007, t008, t009 |
+| t011 | Verify failure → grace → enforcement → payment → recovery in test mode — **DONE** | 1h | t010 |
+| t012 | Render parity — **DONE** | 30m | t011 |
+| t013 | Simplify — **DONE** | 30m | t012 |
+| t014 | Test coverage — **DONE** | 45m | t013 |
+| t015 | Closeout — **DONE** | 10m | t014 |
 
 ## Definition of done
 
