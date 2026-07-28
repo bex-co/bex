@@ -9,8 +9,10 @@
 #  - Runs on the control-plane node (nodeSelector + toleration) with hostNetwork
 #    so etcd is reachable on https://127.0.0.1:2379, and a read-only hostPath for
 #    the etcd client certs in /etc/kubernetes/pki/etcd.
-#  - The etcd image matches the kubeadm etcd already on the node (k8s v1.31.0 →
-#    etcd 3.5.15-0), so the initContainer costs no extra pull.
+#  - The client image stays on etcd 3.6 because that line contains both
+#    `etcdctl` (snapshot) and `etcdutl` (restore). The wire-level snapshot path
+#    is exercised after every Kubernetes minor hop; do not downgrade it to the
+#    stacked-etcd image when kubeadm still selects an older 3.5 patch.
 #  - Credentials come from the `etcd-backup-s3` Secret (NOT in git), created
 #    once per cluster from .env — exact command in the runbook.
 #  - aws-cli pinned <2.23: newer CLIs send CRC64 checksums many S3-compatibles
