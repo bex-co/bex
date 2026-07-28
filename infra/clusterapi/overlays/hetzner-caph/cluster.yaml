@@ -259,8 +259,8 @@ spec:
       infrastructureRef:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: HCloudMachineTemplate
-        name: bex-tenant-burst-k132
-      version: v1.32.13
+        name: bex-tenant-burst-k133
+      version: v1.33.13
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineHealthCheck

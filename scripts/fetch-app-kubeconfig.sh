@@ -25,14 +25,33 @@ if [ -n "${BEX_SSH_KNOWN_HOSTS_FILE:-}" ]; then
   SSH_KNOWN_HOSTS_ARGS=(-o "UserKnownHostsFile=$BEX_SSH_KNOWN_HOSTS_FILE")
 fi
 
-CP_IP=$(curl -sf -H "Authorization: Bearer $HCLOUD_TOKEN" \
+CP_IPS=$(curl -sf -H "Authorization: Bearer $HCLOUD_TOKEN" \
   "https://api.hetzner.cloud/v1/servers?label_selector=caph-cluster-${CLUSTER}" \
-  | jq -r --arg p "${CLUSTER}-control-plane" \
-      '[.servers[] | select(.name | startswith($p))][0].public_net.ipv4.ip')
-test -n "$CP_IP" && test "$CP_IP" != "null"
+  | jq -r --arg p "${CLUSTER}-control-plane" '
+      [.servers[]
+        | select(.status == "running")
+        | select(.name | startswith($p))]
+      | sort_by(.created) | reverse[]
+      | .public_net.ipv4.ip // empty')
+[ -n "$CP_IPS" ] || { echo "no running control-plane servers found for $CLUSTER" >&2; exit 1; }
 
-ssh -o StrictHostKeyChecking=accept-new "${SSH_KNOWN_HOSTS_ARGS[@]}" -i "$KEY" "root@${CP_IP}" \
-  'cat /etc/kubernetes/admin.conf' > "$OUT"
-chmod 600 "$OUT"
-kubectl --kubeconfig "$OUT" cluster-info >/dev/null
-echo "app kubeconfig -> $OUT (via CP ${CP_IP})"
+TMP=$(mktemp "${OUT}.tmp.XXXXXX")
+cleanup() { [ -z "${TMP:-}" ] || rm -f -- "$TMP"; }
+trap cleanup EXIT
+
+while IFS= read -r CP_IP; do
+  if ssh -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new \
+      "${SSH_KNOWN_HOSTS_ARGS[@]}" -i "$KEY" "root@${CP_IP}" \
+      'cat /etc/kubernetes/admin.conf' > "$TMP" \
+    && kubectl --kubeconfig "$TMP" --request-timeout=10s cluster-info >/dev/null; then
+    chmod 600 "$TMP"
+    mv "$TMP" "$OUT"
+    TMP=""
+    echo "app kubeconfig -> $OUT (via CP $CP_IP)"
+    exit 0
+  fi
+  echo "control-plane $CP_IP unavailable; trying the next candidate" >&2
+done <<< "$CP_IPS"
+
+echo "no reachable, healthy control-plane server found for $CLUSTER" >&2
+exit 1
