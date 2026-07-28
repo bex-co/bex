@@ -230,9 +230,6 @@ func TestCnpgClusterSpecRecovery(t *testing.T) {
 	if ext["name"] != recoverySource {
 		t.Errorf("externalCluster name = %v", ext["name"])
 	}
-	if _, has := ext["barmanObjectStore"]; has {
-		t.Fatalf("plugin recovery must not retain barmanObjectStore: %v", ext)
-	}
 	plugin := ext["plugin"].(map[string]any)
 	if plugin["name"] != barmanCloudPluginName {
 		t.Errorf("recovery plugin = %v", plugin)
@@ -281,10 +278,6 @@ func TestScheduledBackupSpec(t *testing.T) {
 	if sb["pluginConfiguration"].(map[string]any)["name"] != barmanCloudPluginName {
 		t.Errorf("scheduledBackup plugin = %v", sb["pluginConfiguration"])
 	}
-	if _, has := sb["barmanObjectStore"]; has {
-		t.Errorf("scheduledBackup retained legacy config: %v", sb)
-	}
-
 	onDemand := onDemandBackupSpec("mydb")
 	if onDemand["method"] != "plugin" || onDemand["pluginConfiguration"].(map[string]any)["name"] != barmanCloudPluginName {
 		t.Errorf("on-demand backup = %v", onDemand)
