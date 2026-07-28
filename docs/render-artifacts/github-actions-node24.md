@@ -4,7 +4,7 @@
 
 **Scope:** every external `uses:` reference under `.github/workflows/`, including nested actions used by composite security steps. Reusable local workflows are not third-party actions.
 
-GitHub moved hosted runners to Node 24 by default on 2026-06-16 and plans to remove Node 20 in fall 2026. The repository used 37 direct invocations across 15 distinct external action refs; 11 distinct refs declared `runs.using: node20` at their old pins.
+GitHub moved hosted runners to Node 24 by default on 2026-06-16 and plans to remove Node 20 in fall 2026. The repository now uses 36 direct invocations across 14 distinct external action refs; 11 distinct refs declared `runs.using: node20` at their old pins.
 
 ## Upgrades
 
@@ -20,7 +20,7 @@ GitHub moved hosted runners to Node 24 by default on 2026-06-16 and plans to rem
 | `hashicorp/setup-terraform` | v3, Node 20 | v4, Node 24 | v4's published breaking change is the runtime move to Node 24. The pinned `terraform_version` input and wrapper behavior are unchanged. |
 | `azure/setup-helm` | v4, Node 20 | v5, Node 24 | The pinned Helm `version` input is unchanged. |
 | `azure/setup-kubectl` | v4, Node 20 | v5, Node 24 | The pinned kubectl `version` input is unchanged; v5 also resolves major/minor requests to a patch, which is irrelevant to the repository's full version pin. |
-| `gitleaks/gitleaks-action` | v2, Node 20 | v3, Node 24 | The v3 release explicitly reports no input, output, or behavior changes. The existing secret-scan permissions and environment remain unchanged. |
+| `gitleaks/gitleaks-action` | v2, Node 20 | removed; official Gitleaks CLI v8.30.1 | The maintained action requires a separate license for organization repositories and the repository had none, so its successful warn-first job only emitted a setup annotation and did not scan. The deploy workflow now checksum-verifies the official CLI archive and scans the pushed commit range directly; warn-first policy and workflow permissions are unchanged. |
 
 The docs-format job's explicitly installed Node runtime also moved from 20 to 24. Dashboard tests intentionally retain Node 22 because that is application-toolchain selection, not an action implementation runtime, and Node 22 remains supported.
 
@@ -38,6 +38,7 @@ The docs-format job's explicitly installed Node runtime also moved from 20 to 24
 - [GitHub's Node 20 deprecation notice](https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/)
 - [Checkout releases](https://github.com/actions/checkout/releases), [setup-go releases](https://github.com/actions/setup-go/releases), [setup-node releases](https://github.com/actions/setup-node/releases), and [cache releases](https://github.com/actions/cache/releases)
 - [Docker setup-buildx v4](https://github.com/docker/setup-buildx-action/releases/tag/v4.0.0), [login v4](https://github.com/docker/login-action/releases/tag/v4.0.0), and [build-push v7](https://github.com/docker/build-push-action/releases/tag/v7.0.0)
-- [HashiCorp setup-terraform v4](https://github.com/hashicorp/setup-terraform/releases/tag/v4.0.0), [Azure setup-helm v5](https://github.com/Azure/setup-helm/releases/tag/v5.0.0), [Azure setup-kubectl v5](https://github.com/Azure/setup-kubectl/releases/tag/v5.0.0), and [Gitleaks Action v3](https://github.com/gitleaks/gitleaks-action/releases/tag/v3.0.0)
+- [HashiCorp setup-terraform v4](https://github.com/hashicorp/setup-terraform/releases/tag/v4.0.0), [Azure setup-helm v5](https://github.com/Azure/setup-helm/releases/tag/v5.0.0), and [Azure setup-kubectl v5](https://github.com/Azure/setup-kubectl/releases/tag/v5.0.0)
+- [Gitleaks v8.30.1](https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1) and the [Gitleaks Action organization-license requirement](https://github.com/gitleaks/gitleaks-action#readme)
 
 `scripts/github-actions-validate.sh` freezes this reviewed set. Any new action or major now fails the scripts workflow until its runtime, release notes, inputs, permissions, and nested composite actions are reviewed and the inventory is deliberately updated.
