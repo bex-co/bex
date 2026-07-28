@@ -39,7 +39,7 @@ jobs:
       HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
       IMAGE_NAME: ${{ inputs.image_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: install packer
         uses: hashicorp/setup-packer@v3

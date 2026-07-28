@@ -40,7 +40,7 @@ jobs:
   bootstrap-app-cluster:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # --- fetch the cluster's own kubeconfig via a CP node (self-managed, w1/m19.1) ---
       - name: fetch app cluster kubeconfig (via a CP node)
@@ -55,7 +55,7 @@ jobs:
       # Cache the ~65MB clusterctl binary keyed on its version (w1/m36 t004): a
       # warm cache skips the download; bumping CLUSTERCTL_VERSION busts the key.
       - name: cache clusterctl
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /tmp/clusterctl
           key: clusterctl-${{ env.CLUSTERCTL_VERSION }}-linux-amd64

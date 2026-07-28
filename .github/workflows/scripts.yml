@@ -16,8 +16,9 @@ on:
       - "scripts/keyvalue-rename-verify.sh"
       - "scripts/postgres-rename-verify.sh"
       - "scripts/rename-verify.test.sh"
+      - "scripts/github-actions-validate.sh"
       - ".env.example"
-      - ".github/workflows/scripts.yml"
+      - ".github/workflows/**"
   push:
     branches: [main]
     paths:
@@ -32,8 +33,9 @@ on:
       - "scripts/keyvalue-rename-verify.sh"
       - "scripts/postgres-rename-verify.sh"
       - "scripts/rename-verify.test.sh"
+      - "scripts/github-actions-validate.sh"
       - ".env.example"
-      - ".github/workflows/scripts.yml"
+      - ".github/workflows/**"
 
 permissions:
   contents: read
@@ -46,7 +48,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+      - name: GitHub Actions Node 24 inventory
+        run: bash scripts/github-actions-validate.sh
       - name: bao-init unit tests
         run: bash scripts/bao-init.test.sh
       - name: Official Key Value CLI verifier safety tests
