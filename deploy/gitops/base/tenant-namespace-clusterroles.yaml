@@ -55,3 +55,24 @@ rules:
   - apiGroups: [""]
     resources: ["pods/exec"]
     verbs: ["create"]
+---
+# The OpenSandbox lifecycle server (m32 t002, opensandbox-system) drives
+# BatchSandboxes and the pods/services/configmaps/PVCs they spawn INSIDE each
+# workspace's `<ws>-sandbox` namespace. The NamespaceReconciler binds this to the
+# server's ServiceAccount per-`<ws>-sandbox` (RegimeSandbox), so the server's
+# write authority is confined to tenant sandbox namespaces — never cluster-wide
+# (ADR042 D4 / m32 t006). No Secrets grant: sandbox pods carry no tenant creds.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: bex-tenant-sandbox-server
+rules:
+  - apiGroups: ["sandbox.opensandbox.io"]
+    resources: ["batchsandboxes", "pools", "sandboxsnapshots"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "services", "configmaps", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create", "get"]

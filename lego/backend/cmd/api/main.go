@@ -98,6 +98,16 @@ func requireCPAuth(token, insecure string) error {
 	return errors.New("BEX_CP_TOKEN is required when the control plane is enabled (BEX_CP_DB_URI set): the internal API grants workspace-admin and cross-tenant writes; refusing to serve it unauthenticated. Set BEX_CP_TOKEN, or set BEX_CP_INSECURE=1 to override in local dev only")
 }
 
+// sandboxKeyProvider adapts the control-plane store to the sandbox feature's
+// KeyProvider: it mints/returns each workspace's opaque OpenSandbox tenant key
+// (m32 t006). The reverse lookup (key → `<ws>-sandbox` namespace) is served by
+// the CP tenant-lookup endpoint the OpenSandbox server calls back to.
+type sandboxKeyProvider struct{ st *store.PGStore }
+
+func (p sandboxKeyProvider) WorkspaceKey(ctx context.Context, workspaceID string) (string, error) {
+	return p.st.SandboxKeyForWorkspace(ctx, workspaceID)
+}
+
 // drainWindow is how long a SIGTERM'd bex-api keeps serving NEW requests while
 // /readyz reports draining (w1/m52): long enough for the readiness probe
 // (periodSeconds 5, failureThreshold 1) plus endpoint/ingress propagation to
@@ -483,7 +493,7 @@ func main() {
 		if err := requireCPAuth(cpToken, os.Getenv("BEX_CP_INSECURE")); err != nil {
 			log.Fatalf("control plane: %v", err)
 		}
-		internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: cpToken, Grant: granter, Billing: stripeBillingAdmin, BillingOperations: st}
+		internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: cpToken, Grant: granter, Billing: stripeBillingAdmin, BillingOperations: st, SandboxTenants: st}
 		internalRoot := http.NewServeMux()
 		internalRoot.Handle("GET /metrics", promhttp.HandlerFor(metricRegistry, promhttp.HandlerOpts{}))
 		internalRoot.Handle("/", internal.Handler())
@@ -537,6 +547,14 @@ func main() {
 			"base": {Image: envOr("BEX_SANDBOX_IMAGE", "docker.io/library/alpine:3"), Entrypoint: []string{"sleep", "infinity"}, CPU: "500m", Memory: "512Mi"},
 		}
 		deps.SandboxDefaultPlan = sandbox.PlanStarter
+		// Multi-tenant OpenSandbox (m32 t006): with the control plane enabled, each
+		// workspace gets an opaque tenant key the sandbox feature stamps as the
+		// OPEN-SANDBOX-API-KEY header; the server resolves it back through the CP
+		// tenant-lookup endpoint to the `<ws>-sandbox` namespace. Without the store
+		// (st nil), Keys stays nil and OpenSandbox must run single-tenant.
+		if st != nil {
+			deps.SandboxKeys = sandboxKeyProvider{st}
+		}
 	}
 	// Browser Web Shell (docs/ADR035-ssh.md § Browser Web Shell): the HMAC key
 	// shared only with the isolated gateway and the browser-reachable gateway

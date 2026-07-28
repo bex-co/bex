@@ -2110,3 +2110,91 @@ func TestNotificationSettings(t *testing.T) {
 		t.Errorf("notification_settings after tenant delete = %d, want 0 (cascade)", n)
 	}
 }
+
+// TestSandboxKeyMintIdempotentAndResolves exercises the per-workspace OpenSandbox
+// tenant key (m32 t006): one key per workspace, race-safe minting, and the
+// reverse key→workspace lookup the tenant-provider endpoint serves.
+func TestSandboxKeyMintIdempotentAndResolves(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if _, err := pool.Exec(ctx, `TRUNCATE sandbox_tenant_keys`); err != nil {
+		t.Fatal(err)
+	}
+	s := NewPGStore(pool)
+
+	// First mint returns a key; repeat mint returns the SAME key (idempotent).
+	k1, err := s.SandboxKeyForWorkspace(ctx, "tea-a")
+	if err != nil {
+		t.Fatalf("first mint: %v", err)
+	}
+	if k1 == "" {
+		t.Fatal("empty key")
+	}
+	k2, err := s.SandboxKeyForWorkspace(ctx, "tea-a")
+	if err != nil {
+		t.Fatalf("second mint: %v", err)
+	}
+	if k1 != k2 {
+		t.Errorf("repeat mint diverged: %q vs %q", k1, k2)
+	}
+
+	// A different workspace gets a distinct key.
+	kb, err := s.SandboxKeyForWorkspace(ctx, "tea-b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if kb == k1 {
+		t.Error("distinct workspaces must get distinct keys")
+	}
+
+	// Reverse lookup resolves the key back to its workspace; unknown → ErrNotFound.
+	ws, err := s.WorkspaceForSandboxKey(ctx, k1)
+	if err != nil || ws != "tea-a" {
+		t.Errorf("resolve k1 = %q err %v, want tea-a", ws, err)
+	}
+	if _, err := s.WorkspaceForSandboxKey(ctx, "osk-nope"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("unknown key err = %v, want ErrNotFound", err)
+	}
+
+	// Concurrent first-mints for a fresh workspace converge to one key (the
+	// UNIQUE(workspace_id) constraint, not a check-then-insert).
+	const n = 20
+	keys := make([]string, n)
+	var wg sync.WaitGroup
+	for i := range n {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			k, err := s.SandboxKeyForWorkspace(ctx, "tea-race")
+			if err != nil {
+				t.Errorf("concurrent mint %d: %v", i, err)
+				return
+			}
+			keys[i] = k
+		}(i)
+	}
+	wg.Wait()
+	for i, k := range keys {
+		if k != keys[0] {
+			t.Fatalf("concurrent mints diverged: 0=%q %d=%q", keys[0], i, k)
+		}
+	}
+	var count int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM sandbox_tenant_keys WHERE workspace_id = $1`, "tea-race").Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Errorf("tea-race key rows = %d, want 1", count)
+	}
+}

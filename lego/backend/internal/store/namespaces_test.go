@@ -193,15 +193,31 @@ func TestTenantRoleBindingsStampedPerNamespace(t *testing.T) {
 		}
 	}
 
-	// Sandbox namespace binds ONLY the operator role (sealed; no api/ssh access).
+	// Sandbox namespace binds the operator role (namespace mgmt) + the OpenSandbox
+	// server role (BatchSandboxes), but NOT bex-api/ssh — those never touch a
+	// sandbox namespace (m32 t006). The server SA lives in opensandbox-system.
 	sandbox := SandboxNamespace(tn.ID)
 	if _, ok := binding(sandbox, "bex-tenant-operator"); !ok {
 		t.Error("sandbox missing bex-tenant-operator binding")
+	}
+	srvRB, ok := binding(sandbox, "bex-tenant-sandbox-server")
+	if !ok {
+		t.Fatal("sandbox missing bex-tenant-sandbox-server binding")
+	}
+	if srvRB.RoleRef.Name != "bex-tenant-sandbox-server" ||
+		len(srvRB.Subjects) != 1 ||
+		srvRB.Subjects[0].Name != "opensandbox-server" ||
+		srvRB.Subjects[0].Namespace != "opensandbox-system" {
+		t.Errorf("sandbox-server binding = ref %+v subjects %+v", srvRB.RoleRef, srvRB.Subjects)
 	}
 	for _, name := range []string{"bex-tenant-api", "bex-tenant-ssh-gateway"} {
 		if _, ok := binding(sandbox, name); ok {
 			t.Errorf("sandbox must NOT bind %s", name)
 		}
+	}
+	// The hosting namespace must NOT bind the sandbox-server role.
+	if _, ok := binding(host, "bex-tenant-sandbox-server"); ok {
+		t.Error("hosting must NOT bind bex-tenant-sandbox-server")
 	}
 }
 

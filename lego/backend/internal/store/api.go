@@ -54,6 +54,17 @@ type API struct {
 	Grant             MembershipGranter
 	Billing           BillingAdmin
 	BillingOperations BillingOperations
+	// SandboxTenants resolves an OpenSandbox per-workspace key to its workspace
+	// id for the GET /v1/sandbox-tenants tenant-lookup endpoint (w3/m32 t006).
+	// Nil => the endpoint returns 503 (sandbox multi-tenancy not configured).
+	SandboxTenants SandboxTenantResolver
+}
+
+// SandboxTenantResolver maps an OpenSandbox tenant key to its workspace id.
+// Satisfied by *PGStore (WorkspaceForSandboxKey); injected by cmd/api so the
+// store's big Store interface (and its fakes) need not carry the method.
+type SandboxTenantResolver interface {
+	WorkspaceForSandboxKey(ctx context.Context, apiKey string) (string, error)
 }
 
 type BillingAdmin interface {
@@ -117,6 +128,10 @@ func (a *API) Handler() http.Handler {
 	v1.HandleFunc("GET /v1/apps/{id}", a.getApp)
 	v1.HandleFunc("DELETE /v1/apps/{id}", a.deleteApp)
 	v1.HandleFunc("POST /v1/domains", a.createDomain)
+	// The OpenSandbox HTTP tenant provider (w3/m32 t006): the server presents the
+	// CP bearer as its Authorization auth_token (passing a.bearer) plus the
+	// caller's OPEN-SANDBOX-API-KEY, and this resolves the key to its namespace.
+	v1.HandleFunc("GET /v1/sandbox-tenants", a.sandboxTenant)
 	mux.Handle("/v1/", a.bearer(v1))
 	return mux
 }
@@ -513,6 +528,33 @@ func (a *API) kick() {
 	if a.Kick != nil {
 		a.Kick()
 	}
+}
+
+// sandboxTenant is the OpenSandbox HTTP tenant provider endpoint (OSEP-0014,
+// w3/m32 t006, ADR042 D4). The server GETs this with the caller's per-workspace
+// key in the OPEN-SANDBOX-API-KEY header; it is already behind a.bearer (the
+// server sends the CP token as its Authorization auth_token), so this trusts the
+// header and resolves the key to the workspace's `<ws>-sandbox` namespace. The
+// server then auto-scopes every lifecycle op to that namespace — a stolen key
+// cannot cross tenants even if bex-api mis-stamps a request.
+//
+// Contract (matches opensandbox_server/tenants/http_provider.py): 200
+// {"namespace","ttl"}; 401 {"code":"UNAUTHORIZED"} for an unknown key.
+func (a *API) sandboxTenant(w http.ResponseWriter, r *http.Request) {
+	if a.SandboxTenants == nil {
+		writeJSON(w, http.StatusServiceUnavailable,
+			map[string]string{"code": "UNAVAILABLE", "message": "sandbox multi-tenancy not configured"})
+		return
+	}
+	ws, err := a.SandboxTenants.WorkspaceForSandboxKey(r.Context(), r.Header.Get("OPEN-SANDBOX-API-KEY"))
+	if err != nil {
+		// Any resolution failure (unknown/empty key) is 401 — the provider maps a
+		// 401 to "invalid credentials", never a server outage.
+		writeJSON(w, http.StatusUnauthorized,
+			map[string]string{"code": "UNAUTHORIZED", "message": "unknown sandbox api key"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"namespace": SandboxNamespace(ws), "ttl": 60})
 }
 
 // bearer gates h behind the configured token; a no-op when Token is empty.
