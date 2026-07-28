@@ -83,6 +83,13 @@ spec:
             # in place, never moved (migration is scripts/migrate-tenant-namespaces.sh).
             - name: BEX_TENANT_NAMESPACES
               value: "1"
+            # Hosted agent sandboxes (pillar 5, ADR042/w3/m32): point bex-api at
+            # the in-cluster OpenSandbox lifecycle server so `render ea sandbox`
+            # (the /v1/sandboxes REST/GraphQL/MCP surface) works. Sandboxes run
+            # under gVisor on the dedicated sandbox node pool. Unset => the
+            # sandbox verbs 503.
+            - name: BEX_OPENSANDBOX_URL
+              value: http://opensandbox-server.opensandbox-system.svc:8077
             # Auth (docs/ADR012-auth.md): OAuth2 API keys introspected at Hydra's
             # admin API; Kratos sessions for humans. No shared static token —
             # the bootstrap client is seeded by scripts/auth-bootstrap-client.sh.

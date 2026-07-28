@@ -32,12 +32,15 @@ type KeyProvider interface {
 	WorkspaceKey(ctx context.Context, workspaceID string) (string, error)
 }
 
-// Template fixes a sandbox's image (and optional service port) at registration
-// time — bex's Create is template-based (ADR014 D2), never an arbitrary caller
-// image. The Render `image` field is informational only.
+// Template fixes a sandbox's image, entrypoint, and resource limits at
+// registration time — bex's Create is template-based (ADR014 D2), never an
+// arbitrary caller image. The OpenSandbox server requires an entrypoint when an
+// image is given and resource limits when no pool is referenced (validated live).
 type Template struct {
-	Image string
-	Port  int
+	Image      string
+	Entrypoint []string
+	CPU        string
+	Memory     string
 }
 
 // Service is the authorized sandbox feature. It is stateless: the per-workspace
@@ -98,7 +101,18 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Sandbox, error
 		return Sandbox{}, err
 	}
 	ws, _ := core.WorkspaceFrom(ctx)
-	id, status, err := s.Client.Create(ctx, key, tmpl.Image, tmpl.Port, nil, req.Template)
+	cpu, mem := tmpl.CPU, tmpl.Memory
+	if cpu == "" {
+		cpu = "500m"
+	}
+	if mem == "" {
+		mem = "512Mi"
+	}
+	entry := tmpl.Entrypoint
+	if len(entry) == 0 {
+		entry = []string{"sleep", "infinity"}
+	}
+	id, status, err := s.Client.Create(ctx, key, tmpl.Image, entry, cpu, mem, nil)
 	if err != nil {
 		return Sandbox{}, err
 	}
@@ -128,7 +142,7 @@ func (s *Service) List(ctx context.Context) ([]Sandbox, error) {
 	}
 	out := make([]Sandbox, 0, len(raw))
 	for _, r := range raw {
-		out = append(out, Sandbox{ID: r.ID, Status: mapOpenSandboxStatus(r.Status.Phase), Workspace: ws})
+		out = append(out, Sandbox{ID: r.ID, Status: mapOpenSandboxStatus(r.Status.State), Workspace: ws})
 	}
 	return out, nil
 }
