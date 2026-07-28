@@ -33,7 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -251,9 +250,6 @@ func (r *KeyValueReconciler) reconcileKeyValueTLS(
 	certificateName string,
 	tlsSecretName string,
 ) (string, error) {
-	if err := cleanupLegacyKeyValueRoutes(ctx, r.Client, kv); err != nil {
-		return "RouteCleanupFailed", err
-	}
 	if public && r.ClusterIssuer == "" {
 		kv.Status.ExternalHost = ""
 		return "TLSIssuerMissing", fmt.Errorf("BEX_CLUSTER_ISSUER is required for a public Key Value endpoint")
@@ -355,8 +351,8 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	public := kv.Spec.Public && r.KvDomain != ""
 	tlsSecretName := kv.Name + "-kv-tls"
 	certificateName := tlsSecretName
-	// Remove the old unmetered path before validating or creating the new one.
-	// A missing TLS issuer must fail closed, not leave a legacy route serving.
+	// Validate public TLS before updating the workload. A missing issuer must
+	// fail closed without publishing a public host.
 	if reason, err := r.reconcileKeyValueTLS(ctx, &kv, public, certificateName, tlsSecretName); err != nil {
 		return r.kvFail(ctx, &kv, reason, err)
 	}
@@ -769,22 +765,6 @@ func setKeyValueStorageCondition(kv *appv1alpha1.KeyValue, state keyValueStorage
 		Type: "StorageReady", Status: status, Reason: state.reason,
 		Message: state.message, ObservedGeneration: kv.Generation,
 	})
-}
-
-func cleanupLegacyKeyValueRoutes(ctx context.Context, c client.Client, kv *appv1alpha1.KeyValue) error {
-	route := &unstructured.Unstructured{}
-	route.SetGroupVersionKind(traefikIngressRouteTCPGVK)
-	route.SetName(kv.Name + "-kv")
-	route.SetNamespace(kv.Namespace)
-	if err := deleteOptionalObject(ctx, c, route); err != nil {
-		return err
-	}
-	for _, name := range []string{kv.Name + "-kv-allow", kv.Name + "-kv-env-allow"} {
-		if err := deleteOwned(ctx, c, kv, traefikMiddlewareTCPGVK, name); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (r *KeyValueReconciler) kvFail(ctx context.Context, kv *appv1alpha1.KeyValue, reason string, err error) (ctrl.Result, error) {

@@ -156,7 +156,7 @@ Adoption is an in-place state operation, not a traffic cutover:
 
 1. The workflow discovers the sole CAPH-managed Hetzner network named `bex`. Before that network exists, `app_network_id = 0` deliberately manages only the durable LB; later runs attach the projection without coupling day-0 Terraform to CAPH creation order.
 2. On a main-branch run, the workflow queries the exact `bex-traefik` name and imports the sole existing LB, network attachment, worker selector, and listeners that are not already in remote state. No match follows the normal create path; multiple matches fail closed.
-3. Terraform creates the autoscaling-safe worker label-selector target before the workflow removes legacy per-server targets left by the former CCM owner. That order keeps an eligible target set throughout adoption.
+3. The former CCM per-server target migration is complete. After every apply, the workflow verifies that the edge has no explicit server targets, exactly one private autoscaling-safe worker selector, the five canonical listeners, and at least one healthy selector-resolved backend per listener.
 4. Review the apply: the LB ID, IPv4, IPv6, type, location, private IP, and five listener mappings must remain unchanged. Confirm delete protection, all listener health checks, and successful HTTP/SSH/database/key-value probes.
 5. During a rebuild, CAPH recreates network `bex` and its labeled workers; the next infrastructure apply reattaches the protected LB and the NodePort health checks discover ready endpoints. Do not add a Kubernetes `LoadBalancer` Service for this edge.
 6. A destroy remains an explicit two-key operation: first remove Terraform `prevent_destroy` in reviewed code, then disable the Hetzner API protection.

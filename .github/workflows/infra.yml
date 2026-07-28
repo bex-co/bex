@@ -217,10 +217,10 @@ jobs:
         if: github.event_name == 'push'
         run: terraform apply -auto-approve -no-color tfplan
 
-      # The former CCM owner registered one target per current worker. Terraform
-      # first creates the equivalent autoscaling-safe label selector, then this
-      # one-time/idempotent cleanup removes only those legacy server targets.
-      - name: remove legacy per-server edge targets
+      # The one-time CCM target migration is complete. Keep the cloud boundary
+      # fail-closed: Terraform owns one private worker selector, no explicit
+      # server targets, and every declared listener has a healthy backend.
+      - name: verify canonical edge target shape
         if: github.event_name == 'push'
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
@@ -231,36 +231,47 @@ jobs:
           response="$(curl --fail --silent --show-error \
             -H "Authorization: Bearer ${HCLOUD_TOKEN}" \
             'https://api.hetzner.cloud/v1/load_balancers?name=bex-traefik')"
+          count="$(jq -r '.load_balancers | length' <<<"${response}")"
+          if [ "${count}" -ne 1 ]; then
+            echo "expected exactly one bex-traefik load balancer, found ${count}" >&2
+            exit 1
+          fi
           lb_id="$(jq -r '.load_balancers[0].id' <<<"${response}")"
+          selector='caph-cluster-bex=owned,machine_type=worker'
 
-          wait_action() {
-            local action_id="$1" status
-            for _ in $(seq 1 30); do
-              status="$(curl --fail --silent --show-error \
-                -H "Authorization: Bearer ${HCLOUD_TOKEN}" \
-                "https://api.hetzner.cloud/v1/actions/${action_id}" |
-                jq -r '.action.status')"
-              case "${status}" in
-                success) return 0 ;;
-                error) echo "Hetzner action ${action_id} failed" >&2; return 1 ;;
-              esac
-              sleep 2
-            done
-            echo "timed out waiting for Hetzner action ${action_id}" >&2
-            return 1
-          }
-
-          edge="$(curl --fail --silent --show-error \
-            -H "Authorization: Bearer ${HCLOUD_TOKEN}" \
-            "https://api.hetzner.cloud/v1/load_balancers/${lb_id}")"
-          while read -r server_id; do
-            [ -n "${server_id}" ] || continue
-            action_id="$(curl --fail --silent --show-error \
-              -X POST \
+          for _ in $(seq 1 30); do
+            edge="$(curl --fail --silent --show-error \
               -H "Authorization: Bearer ${HCLOUD_TOKEN}" \
-              -H 'Content-Type: application/json' \
-              -d "{\"type\":\"server\",\"server\":{\"id\":${server_id}}}" \
-              "https://api.hetzner.cloud/v1/load_balancers/${lb_id}/actions/remove_target" |
-              jq -r '.action.id')"
-            wait_action "${action_id}"
-          done < <(jq -r '.load_balancer.targets[]? | select(.type == "server") | .server.id' <<<"${edge}")
+              "https://api.hetzner.cloud/v1/load_balancers/${lb_id}")"
+            read -r explicit selector_count resolved ports missing_healthy <<<"$(
+              jq -r --arg selector "${selector}" '
+                (.load_balancer.targets // []) as $targets
+                | ([ $targets[] | select(.type == "server") ] | length) as $explicit
+                | ([ $targets[]
+                    | select(.type == "label_selector"
+                        and .label_selector.selector == $selector
+                        and .use_private_ip == true) ]) as $canonical
+                | ([ .load_balancer.services[].listen_port ] | sort) as $ports
+                | ([ $canonical[]
+                    | (.targets // [])[]
+                    | .health_status[]?
+                    | select(.status == "healthy")
+                    | .listen_port ] | unique) as $healthy_ports
+                | [ $explicit, ($canonical | length),
+                    ([ $canonical[] | (.targets // [])[] ] | length),
+                    ($ports | join(",")), (($ports - $healthy_ports) | length) ]
+                | @tsv
+              ' <<<"${edge}"
+            )"
+            if [ "${explicit}" -ne 0 ] || [ "${selector_count}" -ne 1 ] || [ "${resolved}" -eq 0 ] || [ "${ports}" != '22,80,443,5432,6379' ]; then
+              echo "invalid bex-traefik target/listener shape: explicit=${explicit} selectors=${selector_count} resolved=${resolved} ports=${ports}" >&2
+              exit 1
+            fi
+            if [ "${missing_healthy}" -eq 0 ]; then
+              echo "canonical edge target shape is healthy: selector=${selector} resolved=${resolved} ports=${ports}"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "bex-traefik has listeners without a healthy selector-resolved backend" >&2
+          exit 1

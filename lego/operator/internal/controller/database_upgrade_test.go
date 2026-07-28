@@ -86,8 +86,6 @@ func newMajorUpgradeReconciler(t *testing.T, phase string) (*DatabaseReconciler,
 		{cnpgBackupGVK.Group, cnpgBackupGVK.Version, cnpgBackupGVK.Kind},
 		{cnpgScheduledBackupGVK.Group, cnpgScheduledBackupGVK.Version, cnpgScheduledBackupGVK.Kind},
 		{cnpgPoolerGVK.Group, cnpgPoolerGVK.Version, cnpgPoolerGVK.Kind},
-		{traefikIngressRouteTCPGVK.Group, traefikIngressRouteTCPGVK.Version, traefikIngressRouteTCPGVK.Kind},
-		{traefikMiddlewareTCPGVK.Group, traefikMiddlewareTCPGVK.Version, traefikMiddlewareTCPGVK.Kind},
 	} {
 		scheme.AddKnownTypeWithName(schema.GroupVersionKind{Group: gvk.group, Version: gvk.version, Kind: gvk.kind}, &unstructured.Unstructured{})
 	}

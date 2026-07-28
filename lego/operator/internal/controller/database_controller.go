@@ -49,13 +49,6 @@ import (
 // from its version).
 var cnpgClusterGVK = schema.GroupVersionKind{Group: "postgresql.cnpg.io", Version: "v1", Kind: "Cluster"}
 
-// traefikIngressRouteTCPGVK identifies legacy public routes removed during the
-// migration to the metered SNI proxies.
-var traefikIngressRouteTCPGVK = schema.GroupVersionKind{Group: "traefik.io", Version: "v1alpha1", Kind: "IngressRouteTCP"}
-
-// traefikMiddlewareTCPGVK identifies the corresponding legacy allowlist.
-var traefikMiddlewareTCPGVK = schema.GroupVersionKind{Group: "traefik.io", Version: "v1alpha1", Kind: "MiddlewareTCP"}
-
 // cnpgScheduledBackupGVK / cnpgPoolerGVK are the CloudNativePG resources the
 // Database projects for durability (a daily base backup) and connection pooling
 // (a PgBouncer instance). Projected via unstructured like the Cluster.
@@ -826,35 +819,11 @@ func (r *DatabaseReconciler) triggerCNPGSwitchover(ctx context.Context, cluster 
 }
 
 // reconcileExternalRoutes publishes status hostnames for the metered Postgres
-// SNI proxy. It also deletes the pre-m15 Traefik TCP objects so there is exactly
-// one public accounting/enforcement path. The proxy watches the same Database
-// CR and owns exact endpoint/allowlist routing; internal CNPG Services are never
-// gated. InternalHost for replicas is always set.
+// SNI proxy. The proxy watches the same Database CR and owns exact
+// endpoint/allowlist routing; internal CNPG Services are never gated.
+// InternalHost for replicas is always set.
 func (r *DatabaseReconciler) reconcileExternalRoutes(ctx context.Context, db *appv1alpha1.Database) error {
-	mwName := db.Name + "-allow"
-	envMwName := db.Name + "-env-allow"
 	public := db.Spec.Public && r.DBDomain != ""
-
-	// Remove every legacy route name known from either the previous status or
-	// current spec. Reconciliation is idempotent and upgrades clean themselves.
-	legacyRoutes := map[string]bool{db.Name + "-pg": true, db.Name + "-pool": true}
-	for _, prev := range db.Status.ReadReplicaStatuses {
-		legacyRoutes[db.Name+"-ro-"+prev.Name] = true
-	}
-	for _, rep := range db.Spec.ReadReplicas {
-		legacyRoutes[db.Name+"-ro-"+rep.Name] = true
-	}
-	for name := range legacyRoutes {
-		if err := deleteOwned(ctx, r.Client, db, traefikIngressRouteTCPGVK, name); err != nil {
-			return err
-		}
-	}
-	if err := deleteOwned(ctx, r.Client, db, traefikMiddlewareTCPGVK, mwName); err != nil {
-		return err
-	}
-	if err := deleteOwned(ctx, r.Client, db, traefikMiddlewareTCPGVK, envMwName); err != nil {
-		return err
-	}
 
 	roInternal := fmt.Sprintf("%s-ro.%s.svc", db.Name, db.Namespace)
 	newStatuses := make([]appv1alpha1.DatabaseReadReplicaStatus, 0, len(db.Spec.ReadReplicas))

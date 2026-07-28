@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -402,7 +401,6 @@ func TestCNPGWorkspaceLabelPropagated(t *testing.T) {
 	}
 	for _, gvk := range []schema.GroupVersionKind{
 		cnpgClusterGVK, cnpgScheduledBackupGVK, cnpgBackupGVK, cnpgPoolerGVK,
-		traefikIngressRouteTCPGVK, traefikMiddlewareTCPGVK,
 	} {
 		scheme.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
 	}
@@ -456,7 +454,6 @@ func TestLegacyDatabaseGainsPgStatStatements(t *testing.T) {
 	_ = appv1alpha1.AddToScheme(scheme)
 	for _, gvk := range []schema.GroupVersionKind{
 		cnpgClusterGVK, cnpgScheduledBackupGVK, cnpgBackupGVK, cnpgPoolerGVK,
-		traefikIngressRouteTCPGVK, traefikMiddlewareTCPGVK,
 	} {
 		scheme.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
 	}
@@ -514,13 +511,7 @@ func TestLegacyDatabaseGainsPgStatStatements(t *testing.T) {
 	}
 }
 
-func TestDatabasePublicFrontDoorMigration(t *testing.T) {
-	scheme := runtime.NewScheme()
-	_ = clientgoscheme.AddToScheme(scheme)
-	_ = appv1alpha1.AddToScheme(scheme)
-	scheme.AddKnownTypeWithName(traefikIngressRouteTCPGVK, &unstructured.Unstructured{})
-	scheme.AddKnownTypeWithName(traefikMiddlewareTCPGVK, &unstructured.Unstructured{})
-
+func TestDatabasePublicFrontDoorStatus(t *testing.T) {
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "orders", Namespace: "default"},
 		Spec: appv1alpha1.DatabaseSpec{
@@ -531,29 +522,7 @@ func TestDatabasePublicFrontDoorMigration(t *testing.T) {
 			ReadReplicaStatuses: []appv1alpha1.DatabaseReadReplicaStatus{{Name: "retired"}},
 		},
 	}
-	type legacyObject struct {
-		gvk  schema.GroupVersionKind
-		name string
-	}
-	legacy := []legacyObject{
-		{traefikIngressRouteTCPGVK, "orders-pg"},
-		{traefikIngressRouteTCPGVK, "orders-pool"},
-		{traefikIngressRouteTCPGVK, "orders-ro-analytics"},
-		{traefikIngressRouteTCPGVK, "orders-ro-retired"},
-		{traefikMiddlewareTCPGVK, "orders-allow"},
-	}
-	objects := make([]client.Object, 0, 1+len(legacy))
-	objects = append(objects, db)
-	for _, item := range legacy {
-		object := &unstructured.Unstructured{}
-		object.SetGroupVersionKind(item.gvk)
-		object.SetName(item.name)
-		object.SetNamespace("default")
-		objects = append(objects, object)
-	}
-
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objects...).Build()
-	r := &DatabaseReconciler{Client: cl, Scheme: scheme, DBDomain: "db.example.test"}
+	r := &DatabaseReconciler{DBDomain: "db.example.test"}
 	if err := r.reconcileExternalRoutes(context.Background(), db); err != nil {
 		t.Fatal(err)
 	}
@@ -562,13 +531,5 @@ func TestDatabasePublicFrontDoorMigration(t *testing.T) {
 	}
 	if got := db.Status.ReadReplicaStatuses; len(got) != 1 || got[0].ExternalHost != "orders-ro-analytics.db.example.test" {
 		t.Fatalf("read replica status = %#v", got)
-	}
-	for _, item := range legacy {
-		current := &unstructured.Unstructured{}
-		current.SetGroupVersionKind(item.gvk)
-		key := types.NamespacedName{Name: item.name, Namespace: "default"}
-		if err := cl.Get(context.Background(), key, current); err == nil {
-			t.Fatalf("legacy public object %s was not deleted", key.Name)
-		}
 	}
 }
