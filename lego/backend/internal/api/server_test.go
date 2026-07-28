@@ -59,6 +59,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/projects"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/sshkeys"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -819,6 +820,7 @@ func sweepableServices(base *core.Base) []any {
 		&metrics.Service{Base: base},
 		&apikeys.Service{Base: base, APIKeys: newFakeKeyStore()},
 		&sshkeys.Service{Base: base},
+		&sandbox.Service{Base: base},
 		&postgres.Service{Base: base},
 		&secrets.Service{Base: base},
 		&envgroups.Service{Base: base},

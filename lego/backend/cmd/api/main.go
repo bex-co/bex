@@ -66,6 +66,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/notifications"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/serve"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -526,6 +527,18 @@ func main() {
 	deps.DashboardURL = os.Getenv("BEX_DASHBOARD_URL")
 	deps.DeployHookBaseURL = os.Getenv("BEX_API_PUBLIC_URL")
 	deps.SSHHost = os.Getenv("BEX_SSH_HOST")
+	// Hosted agent sandboxes (pillar 5, ADR042/w3/m32): wire the OpenSandbox
+	// lifecycle client only when BEX_OPENSANDBOX_URL is set — unset => the
+	// sandbox verbs 503 and the feature is not registered (byte-identical). The
+	// per-workspace tenant-key provider (m32 t006) and template registry are
+	// wired as they land; for now a single default "base" template.
+	if osURL := os.Getenv("BEX_OPENSANDBOX_URL"); osURL != "" {
+		deps.SandboxClient = sandbox.NewClient(osURL)
+		deps.SandboxTemplates = map[string]sandbox.Template{
+			"base": {Image: envOr("BEX_SANDBOX_IMAGE", "opensandbox/base:latest")},
+		}
+		deps.SandboxDefaultPlan = sandbox.PlanStarter
+	}
 	// Browser Web Shell (docs/ADR035-ssh.md § Browser Web Shell): the HMAC key
 	// shared only with the isolated gateway and the browser-reachable gateway
 	// WebSocket origin. Either unset => the ticket verb returns 503 and native

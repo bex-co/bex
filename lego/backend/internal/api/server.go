@@ -56,6 +56,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/projects"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/sshkeys"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -80,6 +81,7 @@ type Server struct {
 	Metrics       *metrics.Service
 	APIKeys       *apikeys.Service
 	SSHKeys       *sshkeys.Service
+	Sandbox       *sandbox.Service
 	Postgres      *postgres.Service
 	KeyValue      *keyvalue.Service
 	Secrets       *secrets.Service
@@ -182,6 +184,15 @@ type Deps struct {
 	// fingerprints for the separately deployed SSH gateway. nil => management
 	// verbs report ErrSSHKeysUnavailable.
 	SSHKeysStore sshkeys.Store
+	// SandboxClient is the OpenSandbox lifecycle client (pillar 5, ADR042/w3/m32);
+	// nil (BEX_OPENSANDBOX_URL unset) => the sandbox verbs report
+	// ErrSandboxesUnavailable and the feature is not registered. SandboxTemplates
+	// fixes the registered image(s); SandboxKeys mints per-workspace tenant keys
+	// (nil => single-tenant OpenSandbox).
+	SandboxClient      *sandbox.Client
+	SandboxTemplates   map[string]sandbox.Template
+	SandboxKeys        sandbox.KeyProvider
+	SandboxDefaultPlan sandbox.Plan
 	// SSHHost is the public gateway hostname advertised through Render's
 	// serviceDetails.sshAddress field. Empty disables SSH address advertising.
 	SSHHost string
@@ -543,6 +554,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		},
 		APIKeys:   &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder},
 		SSHKeys:   &sshkeys.Service{Base: base, Store: d.SSHKeysStore},
+		Sandbox:   sandboxService(base, d),
 		Postgres:  pg,
 		KeyValue:  kv,
 		Secrets:   secretsSvc,
@@ -634,6 +646,22 @@ type (
 
 // features lists the wired (non-nil) feature services in a stable order. A typed
 // nil stored in an interface is not == nil, so each is checked explicitly.
+// sandboxService constructs the sandbox feature when an OpenSandbox client is
+// wired (BEX_OPENSANDBOX_URL set), else nil so features() skips it and the verbs
+// report ErrSandboxesUnavailable — byte-identical to before pillar 5 (ADR042).
+func sandboxService(base *core.Base, d Deps) *sandbox.Service {
+	if d.SandboxClient == nil {
+		return nil
+	}
+	return &sandbox.Service{
+		Base:        base,
+		Client:      d.SandboxClient,
+		Keys:        d.SandboxKeys,
+		Templates:   d.SandboxTemplates,
+		DefaultPlan: d.SandboxDefaultPlan,
+	}
+}
+
 func (s *Server) features() []any {
 	var out []any
 	if s.Apps != nil {
@@ -650,6 +678,9 @@ func (s *Server) features() []any {
 	}
 	if s.SSHKeys != nil {
 		out = append(out, s.SSHKeys)
+	}
+	if s.Sandbox != nil {
+		out = append(out, s.Sandbox)
 	}
 	if s.Postgres != nil {
 		out = append(out, s.Postgres)
