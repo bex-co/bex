@@ -744,10 +744,10 @@ fi
 # Deny-overrides-allow means silently removing this exclusion breaks managed
 # Postgres on any fresh tenant node — this guard catches that regression in CI.
 #
-# Cilium also puts every endpoint selected by egressDeny into default-deny. The
-# namespace-wide metadata policy therefore needs a narrowly scoped API-server
-# allow for cluster-autoscaler; without it Pending build Pods cannot trigger a
-# CAPI scale-up. Pin the selector and the sole egress destination exactly.
+# The label-independent metadata deny selects every apps-namespace endpoint.
+# It must explicitly disable default-deny so non-App platform workloads (CNPG,
+# backup-purge Jobs, and the autoscaler) retain their ordinary egress. App Pods
+# remain default-denied by their operator-managed Kubernetes NetworkPolicy.
 EGRESS="deploy/gitops/base/tenant-node-egress.yaml"
 if [ -f "$EGRESS" ]; then
   echo "==> $EGRESS CNPG exclusion from node/metadata deny"
@@ -758,31 +758,24 @@ if [ -f "$EGRESS" ]; then
   [ "$cnpg_excl" = "DoesNotExist" ] \
     || { echo "FAIL: deny-tenant-node-and-metadata-egress must exclude cnpg.io/cluster pods (DoesNotExist matchExpression) — CNPG init pods need k8s API reachability (w7/m33)" >&2; fail=1; }
 
-  echo "==> $EGRESS cluster-autoscaler Kubernetes API allow"
-  autoscaler_api_allow="$(yq -N \
-    'select(.kind == "CiliumNetworkPolicy" and .metadata.name == "allow-cluster-autoscaler-kube-apiserver") |
+  echo "==> $EGRESS metadata deny does not enable namespace-wide default-deny"
+  metadata_deny_shape="$(yq -N \
+    'select(.kind == "CiliumNetworkPolicy" and .metadata.name == "deny-metadata-egress-all-pods") |
       [.metadata.namespace,
-       .spec.endpointSelector.matchLabels."app.kubernetes.io/instance",
-       (.spec.egress | length | tostring),
-       (.spec.egress[0].toEntities | join(",")),
-       ((.spec.egressDeny // []) | length | tostring)] | join(":")' \
+       (.spec.enableDefaultDeny.egress | tostring),
+       (.spec.egressDeny | length | tostring),
+       (.spec.egressDeny[0].toCIDR | join(",")),
+       ((.spec.egress // []) | length | tostring)] | join(":")' \
     "$EGRESS" | tr -d '\n')"
-  [ "$autoscaler_api_allow" = "default:cluster-autoscaler:1:kube-apiserver:0" ] \
-    || { echo "FAIL: allow-cluster-autoscaler-kube-apiserver must select only the cluster-autoscaler identity and allow exactly one kube-apiserver egress rule; got '$autoscaler_api_allow'" >&2; fail=1; }
+  [ "$metadata_deny_shape" = "default:false:1:169.254.0.0/16:0" ] \
+    || { echo "FAIL: deny-metadata-egress-all-pods must deny only metadata without enabling default-deny; got '$metadata_deny_shape'" >&2; fail=1; }
 
-  echo "==> $EGRESS CNPG Kubernetes API allow"
-  cnpg_api_allow="$(yq -N \
-    'select(.kind == "CiliumNetworkPolicy" and .metadata.name == "allow-cnpg-kube-apiserver") |
-      [.metadata.namespace,
-       (.spec.endpointSelector.matchExpressions | length | tostring),
-       .spec.endpointSelector.matchExpressions[0].key,
-       .spec.endpointSelector.matchExpressions[0].operator,
-       (.spec.egress | length | tostring),
-       (.spec.egress[0].toEntities | join(",")),
-       ((.spec.egressDeny // []) | length | tostring)] | join(":")' \
-    "$EGRESS" | tr -d '\n')"
-  [ "$cnpg_api_allow" = "default:1:cnpg.io/cluster:Exists:1:kube-apiserver:0" ] \
-    || { echo "FAIL: allow-cnpg-kube-apiserver must select only CNPG identities and allow exactly one kube-apiserver egress rule; got '$cnpg_api_allow'" >&2; fail=1; }
+  obsolete_platform_allows="$(yq -N \
+    'select(.kind == "CiliumNetworkPolicy" and
+      (.metadata.name == "allow-cluster-autoscaler-kube-apiserver" or .metadata.name == "allow-cnpg-kube-apiserver")) |
+      .metadata.name' "$EGRESS" | tr '\n' ' ')"
+  [ -z "$obsolete_platform_allows" ] \
+    || { echo "FAIL: obsolete egress allows remain after disabling metadata-policy default-deny: $obsolete_platform_allows" >&2; fail=1; }
 fi
 
 # Untrusted-execution boundary (w2/m59, ADR039 O-01/O-02). These assertions are
