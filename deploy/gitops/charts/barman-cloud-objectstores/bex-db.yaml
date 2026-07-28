@@ -1,6 +1,6 @@
 # ObjectStore for the control-plane database. The destination, retention, and
-# out-of-band Secret reference are byte-equivalent to bex-db's in-tree Barman
-# configuration; t006 atomically switches the Cluster and ScheduledBackup to it.
+# out-of-band Secret reference preserve bex-db's pre-plugin transport contract.
+# The bex-postgres chart references this object for WAL, base backup, and restore.
 apiVersion: barmancloud.cnpg.io/v1
 kind: ObjectStore
 metadata:

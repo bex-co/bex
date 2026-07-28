@@ -236,8 +236,11 @@ if yq -e 'select(.kind == "Secret")' - <<<"$objectstores_render" >/dev/null 2>&1
 fi
 plugin_wave="$(yq -N '.metadata.annotations."argocd.argoproj.io/sync-wave" + "|" + .spec.source.path' deploy/gitops/base/barman-cloud-plugin.yaml)"
 stores_wave="$(yq -N '.metadata.annotations."argocd.argoproj.io/sync-wave" + "|" + .spec.source.path' deploy/gitops/base/barman-cloud-objectstores.yaml)"
-if [ "$plugin_wave" != "2|deploy/gitops/charts/barman-cloud-plugin" ] || [ "$stores_wave" != "3|deploy/gitops/charts/barman-cloud-objectstores" ]; then
-  echo "FAIL: Barman plugin/ObjectStore Applications lost their ordered GitOps paths" >&2
+postgres_wave="$(yq -N '.metadata.annotations."argocd.argoproj.io/sync-wave" + "|" + .spec.source.path' deploy/gitops/base/bex-postgres.yaml)"
+if [ "$plugin_wave" != "2|deploy/gitops/charts/barman-cloud-plugin" ] \
+  || [ "$stores_wave" != "3|deploy/gitops/charts/barman-cloud-objectstores" ] \
+  || [ "$postgres_wave" != "4|deploy/gitops/charts/bex-postgres" ]; then
+  echo "FAIL: Barman plugin/ObjectStore/bex-postgres Applications lost their ordered GitOps paths" >&2
   fail=1
 fi
 if kubectl kustomize deploy/gitops/overlays/local | yq -e \
@@ -670,13 +673,58 @@ else
   fi
 fi
 
-# bex-db backup guard (w2/m27 t009): spec.backup.barmanObjectStore must be present
-# so a future edit can't silently drop the backup config. Same structural-manifest
-# pattern as the network-policy and RBAC checks above.
-echo "==> bex-db backup config present (deploy/gitops/charts/bex-postgres/cluster.yaml)"
-barman="$(yq '.spec.backup.barmanObjectStore' deploy/gitops/charts/bex-postgres/cluster.yaml)"
-if [ "$barman" = "null" ] || [ -z "$barman" ]; then
-  echo "FAIL: cluster.yaml missing spec.backup.barmanObjectStore — bex-db has no backup config (see docs/ADR031-platform-data-backup.md)" >&2
+# bex-db plugin backup guard (w1/m56 t006): Cluster WAL archiving and the
+# ScheduledBackup must use the one declared ObjectStore, preserve the 04:00 UTC
+# schedule, and contain no native barmanObjectStore fallback.
+echo "==> bex-db Barman plugin backup contract"
+bex_db_render="$(kubectl kustomize deploy/gitops/charts/bex-postgres)"
+bex_db_plugin="$(yq -N '
+  select(.kind == "Cluster" and .metadata.name == "bex-db") |
+  [.metadata.namespace,
+   (.spec.plugins | length | tostring),
+   .spec.plugins[0].name,
+   (.spec.plugins[0].isWALArchiver | tostring),
+   .spec.plugins[0].parameters.barmanObjectName,
+   .spec.plugins[0].parameters.serverName,
+   ((.spec.backup // {}) | length | tostring)] | join("|")' \
+  - <<<"$bex_db_render" | tr -d '\n')"
+if [ "$bex_db_plugin" != "bex-system|1|barman-cloud.cloudnative-pg.io|true|bex-db|bex-db|0" ]; then
+  echo "FAIL: bex-db Cluster plugin contract is '$bex_db_plugin'" >&2
+  fail=1
+fi
+bex_db_schedule="$(yq -N '
+  select(.kind == "ScheduledBackup" and .metadata.name == "bex-db-nightly") |
+  [.metadata.namespace,
+   .spec.schedule,
+   .spec.backupOwnerReference,
+   .spec.cluster.name,
+   .spec.method,
+   .spec.pluginConfiguration.name] | join("|")' \
+  - <<<"$bex_db_render" | tr -d '\n')"
+if [ "$bex_db_schedule" != "bex-system|0 0 4 * * *|self|bex-db|plugin|barman-cloud.cloudnative-pg.io" ]; then
+  echo "FAIL: bex-db ScheduledBackup plugin contract is '$bex_db_schedule'" >&2
+  fail=1
+fi
+if grep -R -n --include='*.yaml' 'barmanObjectStore' deploy/gitops/charts/bex-postgres >/dev/null; then
+  echo "FAIL: bex-postgres chart still contains native barmanObjectStore configuration" >&2
+  fail=1
+fi
+
+local_bex_db_render="$(kubectl kustomize deploy/gitops/charts/bex-postgres-local)"
+local_bex_db_shape="$(yq -N '
+  select(.kind == "Cluster" and .metadata.name == "bex-db") |
+  [((.spec.plugins // []) | length | tostring),
+   ((.spec.backup // {}) | length | tostring)] | join("|")' \
+  - <<<"$local_bex_db_render" | tr -d '\n')"
+local_bex_db_schedules="$(yq -N '
+  select(.kind == "ScheduledBackup" and .metadata.name == "bex-db-nightly") |
+  .metadata.name' - <<<"$local_bex_db_render" | tr -d '\n')"
+local_bex_db_path="$(kubectl kustomize deploy/gitops/overlays/local | yq -N '
+  select(.kind == "Application" and .metadata.name == "bex-postgres") |
+  .spec.source.path' - | tr -d '\n')"
+if [ "$local_bex_db_shape" != "0|0" ] || [ -n "$local_bex_db_schedules" ] \
+  || [ "$local_bex_db_path" != "deploy/gitops/charts/bex-postgres-local" ]; then
+  echo "FAIL: local bex-db must use the backup-disabled chart overlay; shape='$local_bex_db_shape' schedules='$local_bex_db_schedules' path='$local_bex_db_path'" >&2
   fail=1
 fi
 
