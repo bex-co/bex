@@ -260,7 +260,7 @@ func TestPostgresListPaginationAcrossRESTAndGraphQL(t *testing.T) {
 func TestRESTCreatePostgresIPAllowListWireShape(t *testing.T) {
 	svc, _ := newService()
 	w := serveREST(svc, "POST", "/v1/postgres",
-		`{"name":"pg-ipal","plan":"free","ipAllowList":[{"cidrBlock":"10.0.0.0/8","description":"internal"}]}`)
+		`{"name":"pg-ipal","plan":"free","region":"oregon","ipAllowList":[{"cidrBlock":"10.0.0.0/8","description":"internal"}]}`)
 	if w.Code != 201 {
 		t.Fatalf("create with object-array ipAllowList => 201, got %d: %s", w.Code, w.Body.String())
 	}

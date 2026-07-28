@@ -149,8 +149,12 @@ type CreateKeyValueRequest struct {
 	Name          string `json:"name"`
 	Plan          string `json:"plan,omitempty"`
 	Version       string `json:"version,omitempty"`
-	StorageGB     int32  `json:"storageGB,omitempty"`
-	Public        bool   `json:"public,omitempty"`
+	// Region is accepted from Render clients as a placement hint. bex currently
+	// exposes one configured region per control plane, so the server-owned
+	// BEX_REGION remains authoritative instead of persisting this request field.
+	Region    string `json:"region,omitempty"`
+	StorageGB int32  `json:"storageGB,omitempty"`
+	Public    bool   `json:"public,omitempty"`
 	// IPAllowList optionally seeds the external-endpoint allowlist at create —
 	// Render's {cidrBlock, description} entries.
 	IPAllowList []core.IPAllowListEntry `json:"ipAllowList,omitempty"`
