@@ -273,16 +273,22 @@ func baseResourceQuota(namespace string, t Tenant) *corev1.ResourceQuota {
 	}
 }
 
-// quotaForPlan maps a workspace plan to aggregate resource caps. The free tier
-// gets a small slice; paid plans get the generous ceiling the shared quota used
-// to hand the whole cluster. Deliberately coarse in t001 — t004 owns the exact
-// per-tier numbers.
+// quotaForPlan maps a workspace plan to aggregate resource caps: compute/pod
+// ceilings plus per-resource object counts. The count/<resource> caps push the
+// per-workspace service/Postgres/Key Value limits (the app-code BEX_MAX_*
+// counters) down to the API server, where a create past the cap is rejected by
+// admission and cannot be bypassed by an application bug (ADR043 D3, t004). The
+// free tier mirrors Render's Hobby anchors (25 services, 1 Postgres, 1 Key
+// Value); paid plans get a generous ceiling. Enforced only for CRs that land in
+// the namespace — i.e. once t002's per-tenant projection is enabled.
 func quotaForPlan(plan string) corev1.ResourceList {
 	// Paid default (mirrors the retired shared tenant-apps-quota, per tenant).
 	cpuReq, memReq, cpuLim, memLim, pods, jobs := "50", "100Gi", "100", "200Gi", "500", "250"
+	apps, dbs, kvs := "100", "25", "25"
 	switch plan {
 	case "", "free":
 		cpuReq, memReq, cpuLim, memLim, pods, jobs = "2", "4Gi", "4", "8Gi", "50", "25"
+		apps, dbs, kvs = "25", "1", "1" // Render Hobby anchors (root CLAUDE.md)
 	}
 	return corev1.ResourceList{
 		corev1.ResourceRequestsCPU:    resource.MustParse(cpuReq),
@@ -291,6 +297,9 @@ func quotaForPlan(plan string) corev1.ResourceList {
 		corev1.ResourceLimitsMemory:   resource.MustParse(memLim),
 		corev1.ResourcePods:           resource.MustParse(pods),
 		"count/jobs.batch":            resource.MustParse(jobs),
+		"count/apps.app.bex.co":       resource.MustParse(apps),
+		"count/databases.app.bex.co":  resource.MustParse(dbs),
+		"count/keyvalues.app.bex.co":  resource.MustParse(kvs),
 	}
 }
 

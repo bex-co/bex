@@ -94,6 +94,40 @@ func TestReconcileProvisionsHostingNamespaceWithBaseObjects(t *testing.T) {
 	}
 }
 
+func TestResourceQuotaCarriesPlanScopedObjectCounts(t *testing.T) {
+	ctx := context.Background()
+	r, store, cl := newTestNamespaceReconciler(t, false)
+	// Free plan → Render Hobby anchors (25 services, 1 Postgres, 1 Key Value).
+	free, _ := store.CreateTenant(ctx, "hobby", "free")
+	// Paid plan → generous ceiling.
+	paid, _ := store.CreateTenant(ctx, "team", "pro")
+	if err := r.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	countCap := func(nsID, res string) int64 {
+		var q corev1.ResourceQuota
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: nsID, Name: "tenant-quota"}, &q); err != nil {
+			t.Fatalf("quota for %s: %v", nsID, err)
+		}
+		v, ok := q.Spec.Hard[corev1.ResourceName(res)]
+		if !ok {
+			t.Fatalf("quota %s missing cap %s", nsID, res)
+		}
+		return v.Value()
+	}
+
+	if got := countCap(free.ID, "count/apps.app.bex.co"); got != 25 {
+		t.Errorf("free apps cap = %d, want 25", got)
+	}
+	if got := countCap(free.ID, "count/databases.app.bex.co"); got != 1 {
+		t.Errorf("free databases cap = %d, want 1", got)
+	}
+	if got := countCap(paid.ID, "count/apps.app.bex.co"); got != 100 {
+		t.Errorf("paid apps cap = %d, want 100", got)
+	}
+}
+
 func TestReconcileProvisionsSandboxNamespaceOnlyWhenEnabled(t *testing.T) {
 	ctx := context.Background()
 	r, store, cl := newTestNamespaceReconciler(t, false)
