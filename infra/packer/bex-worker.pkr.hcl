@@ -43,7 +43,7 @@ variable "hcloud_token" {
 # the CONTAINERD/RUNC the KubeadmConfigTemplates used before the bake.
 variable "kubernetes_version" {
   type    = string
-  default = "1.31.0"
+  default = "1.32.13"
 }
 
 variable "containerd_version" {
@@ -85,7 +85,7 @@ variable "location" {
 # immediately after a successful bake.
 variable "image_name" {
   type    = string
-  default = "bex-worker"
+  default = "bex-worker-k8s-1-32"
 }
 
 source "hcloud" "worker" {

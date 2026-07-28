@@ -572,8 +572,8 @@ spec:
       - set -x
       - export CONTAINERD=2.3.3
       - export RUNC=1.5.1
-      - export KUBERNETES_VERSION=$(echo v1.31.0 | sed 's/^v//')
-      - export TRIMMED_KUBERNETES_VERSION=$(echo v1.31.0 | sed 's/^v//' | awk -F . '{print $1 "." $2}')
+      - export KUBERNETES_VERSION=$(echo v1.32.13 | sed 's/^v//')
+      - export TRIMMED_KUBERNETES_VERSION=$(echo v1.32.13 | sed 's/^v//' | awk -F . '{print $1 "." $2}')
       - ARCH="$(dpkg --print-architecture)"
       - localectl set-locale LANG=en_US.UTF-8
       - localectl set-locale LANGUAGE=en_US.UTF-8
@@ -627,7 +627,7 @@ spec:
   replicas: 3
   # Bumping this k8s version? Also bump the kubeadm-matched etcd image in
   # deploy/gitops/charts/etcd-backup/cronjob.yaml (and the runbook it links).
-  version: v1.31.0
+  version: v1.32.13
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
@@ -669,6 +669,18 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
+  name: bex-tenant-0-k132
+  namespace: default
+spec:
+  template:
+    spec:
+      imageName: bex-worker-k8s-1-32
+      placementGroupName: tenant-0
+      type: cx33
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: HCloudMachineTemplate
+metadata:
   # CPX is the supported scale-out path in fsn1: the baked snapshot is x86 and
   # therefore portable from the existing Intel cx33 baseline to AMD cpx32.
   name: bex-tenant-burst-baked
@@ -677,6 +689,18 @@ spec:
   template:
     spec:
       imageName: bex-worker
+      placementGroupName: tenant-0
+      type: cpx32
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: HCloudMachineTemplate
+metadata:
+  name: bex-tenant-burst-k132
+  namespace: default
+spec:
+  template:
+    spec:
+      imageName: bex-worker-k8s-1-32
       placementGroupName: tenant-0
       type: cpx32
 ---
@@ -932,6 +956,18 @@ spec:
   template:
     spec:
       imageName: bex-worker
+      placementGroupName: platform
+      type: cx33
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: HCloudMachineTemplate
+metadata:
+  name: bex-platform-k132
+  namespace: default
+spec:
+  template:
+    spec:
+      imageName: bex-worker-k8s-1-32
       placementGroupName: platform
       type: cx33
 ---
