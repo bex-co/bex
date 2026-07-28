@@ -96,14 +96,18 @@ func TestObservedServiceStateTreatsConcreteOpenDeployFailureAsInstanceFailure(t 
 	}
 }
 
-// getApp fetches the one CR every test projects: tenant "acme" + app "web".
+// getApp fetches the one public-name "web" CR every test projects. The object
+// name intentionally uses the immutable tenant id, not the mutable tenant name.
 func getApp(t *testing.T, cl client.Client) *appv1alpha1.App {
 	t.Helper()
-	var app appv1alpha1.App
-	if err := cl.Get(context.Background(), types.NamespacedName{Namespace: "default", Name: "acme-web"}, &app); err != nil {
-		t.Fatalf("get App acme-web: %v", err)
+	var apps appv1alpha1.AppList
+	if err := cl.List(context.Background(), &apps, client.InNamespace("default"), client.MatchingLabels{core.LabelServiceName: "web"}); err != nil {
+		t.Fatalf("list App web: %v", err)
 	}
-	return &app
+	if len(apps.Items) != 1 {
+		t.Fatalf("App web count = %d, want 1", len(apps.Items))
+	}
+	return &apps.Items[0]
 }
 
 func TestReconcileCreatesAppCR(t *testing.T) {
@@ -129,6 +133,18 @@ func TestReconcileCreatesAppCR(t *testing.T) {
 	}
 }
 
+func TestProjectAppUsesTenantIDNotMutableTenantName(t *testing.T) {
+	rec := &Reconciler{Namespace: "default"}
+	d := DesiredApp{App: App{TenantID: "tea-stable", Name: "web"}, TenantName: "renamed-workspace"}
+	app := rec.projectApp(context.Background(), d)
+	if app.Name != "tea-stable-web" {
+		t.Fatalf("projected name = %q, want stable tenant-id name", app.Name)
+	}
+	if app.Labels[LabelTenant] != "tea-stable" || app.Labels[LabelAppID] != d.ID {
+		t.Fatalf("projected labels = %v", app.Labels)
+	}
+}
+
 func TestReconcileProjectsExplicitRegistryCredential(t *testing.T) {
 	ctx := context.Background()
 	rec, store, cl := newTestReconciler(t)
@@ -146,14 +162,15 @@ func TestReconcileProjectsExplicitRegistryCredential(t *testing.T) {
 	if app.Spec.RegistryCredentialID == nil || *app.Spec.RegistryCredentialID != credentialID {
 		t.Fatalf("registry credential id = %v, want %q", app.Spec.RegistryCredentialID, credentialID)
 	}
-	if app.Spec.ExternalRegistryPullSecret != "acme-web-registry-pull" {
-		t.Errorf("pull secret = %q, want acme-web-registry-pull", app.Spec.ExternalRegistryPullSecret)
+	wantPullSecret := core.CRName(ten.ID, "web") + "-registry-pull"
+	if app.Spec.ExternalRegistryPullSecret != wantPullSecret {
+		t.Errorf("pull secret = %q, want %q", app.Spec.ExternalRegistryPullSecret, wantPullSecret)
 	}
 	if err := rec.ReconcileOnce(ctx); err != nil {
 		t.Fatalf("second reconcile: %v", err)
 	}
 	app = getApp(t, cl)
-	if app.Spec.ExternalRegistryPullSecret != "acme-web-registry-pull" {
+	if app.Spec.ExternalRegistryPullSecret != wantPullSecret {
 		t.Errorf("second reconcile cleared pull secret = %q", app.Spec.ExternalRegistryPullSecret)
 	}
 
@@ -323,11 +340,11 @@ func TestReconcileWorkspaceLabelDistinct(t *testing.T) {
 	}
 
 	var appA, appB appv1alpha1.App
-	if err := cl.Get(ctx, types.NamespacedName{Namespace: "default", Name: "alpha-web"}, &appA); err != nil {
-		t.Fatalf("get alpha-web: %v", err)
+	if err := cl.Get(ctx, types.NamespacedName{Namespace: "default", Name: core.CRName(tenA.ID, "web")}, &appA); err != nil {
+		t.Fatalf("get alpha web: %v", err)
 	}
-	if err := cl.Get(ctx, types.NamespacedName{Namespace: "default", Name: "beta-api"}, &appB); err != nil {
-		t.Fatalf("get beta-api: %v", err)
+	if err := cl.Get(ctx, types.NamespacedName{Namespace: "default", Name: core.CRName(tenB.ID, "api")}, &appB); err != nil {
+		t.Fatalf("get beta api: %v", err)
 	}
 	wsA := appA.Labels[LabelWorkspace]
 	wsB := appB.Labels[LabelWorkspace]
@@ -969,8 +986,8 @@ func TestProjectAppCallsCloneSecreterForRepoApp(t *testing.T) {
 	}
 
 	app := getApp(t, cl)
-	if app.Spec.CloneSecret != "acme-web-clone" {
-		t.Errorf("CloneSecret = %q, want acme-web-clone", app.Spec.CloneSecret)
+	if app.Spec.CloneSecret != app.Name+"-clone" {
+		t.Errorf("CloneSecret = %q, want %q", app.Spec.CloneSecret, app.Name+"-clone")
 	}
 	if len(cs.calls) != 1 {
 		t.Fatalf("CloneSecreter called %d times, want 1", len(cs.calls))

@@ -630,7 +630,7 @@ func preDeployStatusFor(app *appv1alpha1.App) string {
 	}
 }
 
-// CRName is the projected CR's name, "<tenant>-<app>". Both parts are
+// CRName is the projected CR's name, "<tenant-id>-<app>". Both parts are
 // API-validated DNS labels of ≤30 chars, so the result always fits the
 // 63-char object-name limit. Delegates to core.CRName — the apps feature's
 // create path (w4/m19) computes the identical name for the same row, so
@@ -683,7 +683,7 @@ func stampLabels(cur *appv1alpha1.App, d DesiredApp) bool {
 func (r *Reconciler) projectApp(ctx context.Context, d DesiredApp) *appv1alpha1.App {
 	a := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      CRName(d.TenantName, d.Name),
+			Name:      CRName(d.TenantID, d.Name),
 			Namespace: r.Namespace,
 		},
 		Spec: projectSpec(d),
@@ -728,7 +728,7 @@ func projectSpec(d DesiredApp) appv1alpha1.AppSpec {
 		// Explicit credentials materialize to a deterministic Secret name. Keep
 		// this in the desired spec (not only projectApp) so every later resync
 		// preserves the reference instead of treating it as stale owned state.
-		s.ExternalRegistryPullSecret = CRName(d.TenantName, d.Name) + "-registry-pull"
+		s.ExternalRegistryPullSecret = CRName(d.TenantID, d.Name) + "-registry-pull"
 	}
 	return s
 }
