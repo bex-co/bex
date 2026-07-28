@@ -132,6 +132,11 @@ const (
 	// written directly by the control-plane internal API (not via a Base
 	// authorize), so it carries no target — it is workspace-wide.
 	AuditVerbBillingExclusionChanged = "billing.SetExclusion"
+	AuditVerbBillingCompChanged      = "billing.SetComp"
+	AuditVerbBillingGraceExtended    = "billing.ExtendGrace"
+	AuditVerbBillingRecoveryForced   = "billing.ForceRecovery"
+	AuditVerbBillingEnforced         = "billing.EnforceWorkspace"
+	AuditVerbBillingRecovered        = "billing.RecoverWorkspace"
 )
 
 // DatabaseAuditEffect is the closed set of successful Database mutations that

@@ -226,6 +226,43 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Automatic tax",
     description: "Stripe Tax activation row",
   },
+  "usage.billingLifecycleStatus": {
+    message: "Collection lifecycle",
+    description: "Stripe collection and reversible enforcement state row",
+  },
+  "usage.billingLifecycleGrace": {
+    message:
+      "Payment failed ({reason}). The workspace remains available during grace; reversible suspension is scheduled after {deadline}.",
+    description: "Visible billing grace state and authoritative deadline",
+  },
+  "usage.billingLifecycleEnforced": {
+    message:
+      "Billing enforcement is active ({reason}). Compute is suspended, but databases, key-value data, secrets, and billing evidence have not been deleted.",
+    description: "Visible reversible billing enforcement state",
+  },
+  "usage.billingLifecycleRecovering": {
+    message:
+      "Payment recovered. bex is restoring only resources changed by billing enforcement.",
+    description: "Visible precise recovery state",
+  },
+  "usage.billingLifecycleExcluded": {
+    message:
+      "This workspace is excluded from Stripe collection by an operator.",
+    description: "Visible structural billing exclusion state",
+  },
+  "usage.billingLifecycleComped": {
+    message: "This workspace is rated but fully comped by an operator.",
+    description: "Visible rated-but-free comp state",
+  },
+  "usage.billingLifecycleUnknown": {
+    message:
+      "Billing state is {reason}. Use the billing portal or contact support.",
+    description: "Forward-compatible unknown billing lifecycle state",
+  },
+  "usage.billingNoDeadline": {
+    message: "no deadline reported",
+    description: "Fallback when a malformed grace state has no deadline",
+  },
   "usage.billingTaxUnconfigured": {
     message:
       "Tax is not configured. Collection stays off until an operator confirms a canonical product tax code and an active test registration.",

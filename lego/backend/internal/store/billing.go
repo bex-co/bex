@@ -19,8 +19,6 @@ package store
 import (
 	"context"
 	"time"
-
-	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // SelectUnemittedUsage returns up to limit sealed usage_hourly rows that have
@@ -102,36 +100,6 @@ func (s *PGStore) MarkUsageEmitted(ctx context.Context, rows []HourlyRow, at tim
 // the value changed (a no-op toggle writes no audit row); ErrNotFound when the
 // workspace does not exist.
 func (s *PGStore) SetTenantBillingExcluded(ctx context.Context, tenantID string, excluded bool, actor string, at time.Time) (bool, error) {
-	var current bool
-	if err := s.Pool.QueryRow(ctx,
-		`SELECT billing_excluded FROM tenants WHERE id = $1`, tenantID,
-	).Scan(&current); err != nil {
-		return false, classify("tenant", err)
-	}
-	if current == excluded {
-		return false, nil // idempotent no-op: no state change, no audit noise
-	}
-	if _, err := s.Pool.Exec(ctx,
-		`UPDATE tenants SET billing_excluded = $2, updated_at = now() WHERE id = $1`,
-		tenantID, excluded,
-	); err != nil {
-		return false, err
-	}
-	if actor == "" {
-		actor = "control-plane"
-	}
-	if err := s.Record(ctx, core.AuditEvent{
-		Caller:            actor,
-		CallerMethod:      "control-plane",
-		Verb:              core.AuditVerbBillingExclusionChanged,
-		Resource:          core.WorkspaceObject(tenantID),
-		Outcome:           core.AuditAllowed,
-		At:                at,
-		BillingExcludedTo: &excluded,
-	}); err != nil {
-		// The flag is set; a failed audit write must not lose that fact. Surface
-		// it so the caller can retry the audit, but the exclusion already holds.
-		return true, err
-	}
-	return true, nil
+	changed, _, err := s.SetBillingException(ctx, tenantID, BillingExcluded, excluded, actor, "structural exclusion", at)
+	return changed, err
 }

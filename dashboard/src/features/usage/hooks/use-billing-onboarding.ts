@@ -38,7 +38,18 @@ export interface BillingReadiness {
   customerReady: boolean;
   subscriptionReady: boolean;
   paymentMethodReady: boolean;
+  lifecycle: BillingLifecycle;
   tax: BillingTaxReadiness;
+}
+
+export interface BillingLifecycle {
+  status: string;
+  reason: string;
+  graceDeadline: string;
+  enforcementOwned: boolean;
+  recoveryPending: boolean;
+  allowedActions: string[];
+  updatedAt: string;
 }
 
 export interface UseBillingOnboardingResult {
@@ -86,6 +97,17 @@ export function useBillingOnboarding(): UseBillingOnboardingResult {
       customerReady: raw.customerReady ?? false,
       subscriptionReady: raw.subscriptionReady ?? false,
       paymentMethodReady: raw.paymentMethodReady ?? false,
+      lifecycle: {
+        status: raw.lifecycle?.status ?? "healthy",
+        reason: raw.lifecycle?.reason ?? "",
+        graceDeadline: raw.lifecycle?.graceDeadline ?? "",
+        enforcementOwned: raw.lifecycle?.enforcementOwned ?? false,
+        recoveryPending: raw.lifecycle?.recoveryPending ?? false,
+        allowedActions: raw.lifecycle?.allowedActions?.filter(
+          (action): action is string => action != null,
+        ) ?? ["update_payment_method", "open_portal"],
+        updatedAt: raw.lifecycle?.updatedAt ?? "",
+      },
       tax: {
         configured: raw.tax?.configured ?? false,
         enabled: raw.tax?.enabled ?? false,

@@ -20,10 +20,13 @@ import (
 	"context"
 	"errors"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // newBillingTestStore is the shared harness for the billing outbox/exclusion
@@ -51,6 +54,180 @@ func newBillingTestStore(t *testing.T) (*PGStore, context.Context) {
 		t.Fatal(err)
 	}
 	return NewPGStore(pool), ctx
+}
+
+func TestPGStoreStripeBillingLifecycleIsIdempotentOrderedAndReplicaSafe(t *testing.T) {
+	s, ctx := newBillingTestStore(t)
+	tenant, err := s.CreateTenant(ctx, "dunning", "hobby")
+	if err != nil {
+		t.Fatalf("create tenant: %v", err)
+	}
+	base := time.Date(2026, 7, 28, 0, 0, 0, 0, time.UTC)
+	event := func(id, outcome string, at time.Time) StripeBillingEvent {
+		return StripeBillingEvent{
+			EventID: id, EventType: "invoice.payment_failed", WorkspaceID: tenant.ID,
+			CustomerID: "cus_test_lifecycle", SubscriptionID: "sub_test_lifecycle", ObjectID: "in_test_lifecycle",
+			ProviderCreatedAt: at, ReceivedAt: at.Add(time.Second), Outcome: outcome, Reason: "test",
+		}
+	}
+
+	failed := event("evt_failure_1", BillingOutcomeFailure, base)
+	state, inserted, changed, err := s.RecordStripeBillingEvent(ctx, failed, time.Hour)
+	if err != nil || !inserted || !changed || state.Status != BillingGrace || state.GraceDeadline == nil || !state.GraceDeadline.Equal(base.Add(time.Hour)) {
+		t.Fatalf("first failure = state %+v inserted=%v changed=%v err=%v", state, inserted, changed, err)
+	}
+	state, inserted, changed, err = s.RecordStripeBillingEvent(ctx, failed, time.Hour)
+	if err != nil || inserted || changed || state.Status != BillingGrace {
+		t.Fatalf("duplicate = state %+v inserted=%v changed=%v err=%v", state, inserted, changed, err)
+	}
+	stale := event("evt_stale_success", BillingOutcomeSuccess, base.Add(-time.Minute))
+	state, inserted, changed, err = s.RecordStripeBillingEvent(ctx, stale, time.Hour)
+	if err != nil || !inserted || changed || state.Status != BillingGrace {
+		t.Fatalf("stale success = state %+v inserted=%v changed=%v err=%v", state, inserted, changed, err)
+	}
+	var retained int
+	if err := s.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM stripe_billing_events WHERE workspace_id=$1 AND outcome IN ('failure','success')`, tenant.ID).Scan(&retained); err != nil || retained != 2 {
+		t.Fatalf("retained normalized events=%d err=%v", retained, err)
+	}
+
+	// One due row can be leased by only one replica.
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	claims := 0
+	errs := make(chan error, 2)
+	for range 2 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, ok, claimErr := s.ClaimDueBillingLifecycle(ctx, base.Add(2*time.Hour), time.Minute)
+			if claimErr != nil {
+				errs <- claimErr
+				return
+			}
+			if ok {
+				mu.Lock()
+				claims++
+				mu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for claimErr := range errs {
+		t.Fatalf("claim: %v", claimErr)
+	}
+	if claims != 1 {
+		t.Fatalf("replica claims = %d, want 1", claims)
+	}
+	claimedState, err := s.GetBillingLifecycle(ctx, tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CompleteBillingLifecycleWork(ctx, tenant.ID, claimedState.TransitionVersion, BillingEnforced, base.Add(2*time.Hour)); err != nil {
+		t.Fatalf("complete enforcement: %v", err)
+	}
+	if err := s.CheckBillingMutationAllowed(ctx, tenant.ID); !errors.Is(err, core.ErrBillingEnforced) {
+		t.Fatalf("mutation gate = %v, want ErrBillingEnforced", err)
+	}
+
+	// Structural exclusion wins over later provider events and uses the same
+	// recovery target instead of leaving billing-owned suspension behind.
+	changedFlag, state, err := s.SetBillingException(ctx, tenant.ID, BillingExcluded, true, "ops", "test workspace", base.Add(3*time.Hour))
+	if err != nil || !changedFlag || state.Status != BillingRecovering || state.RecoveryTarget != BillingExcluded {
+		t.Fatalf("exclude enforced workspace = %+v changed=%v err=%v", state, changedFlag, err)
+	}
+	providerSuccess := event("evt_success_ignored", BillingOutcomeSuccess, base.Add(4*time.Hour))
+	state, _, changed, err = s.RecordStripeBillingEvent(ctx, providerSuccess, time.Hour)
+	if err != nil || changed || state.Status != BillingRecovering || state.RecoveryTarget != BillingExcluded {
+		t.Fatalf("provider event during exclusion = %+v changed=%v err=%v", state, changed, err)
+	}
+	claimed, ok, err := s.ClaimDueBillingLifecycle(ctx, base.Add(4*time.Hour), time.Minute)
+	if err != nil || !ok || claimed.RecoveryTarget != BillingExcluded {
+		t.Fatalf("claim excluded recovery = %+v ok=%v err=%v", claimed, ok, err)
+	}
+	if _, err := s.CompleteBillingLifecycleWork(ctx, tenant.ID, claimed.TransitionVersion, claimed.RecoveryTarget, base.Add(4*time.Hour)); err != nil {
+		t.Fatalf("complete exclusion recovery: %v", err)
+	}
+	deferredFailure := event("evt_failure_while_excluded", BillingOutcomeFailure, base.Add(4*time.Hour+30*time.Minute))
+	if state, inserted, changed, err = s.RecordStripeBillingEvent(ctx, deferredFailure, time.Hour); err != nil || !inserted || changed || state.Status != BillingExcluded {
+		t.Fatalf("failure while excluded = %+v inserted=%v changed=%v err=%v", state, inserted, changed, err)
+	}
+	if changedFlag, state, err = s.SetBillingException(ctx, tenant.ID, BillingExcluded, false, "ops", "test complete", base.Add(5*time.Hour)); err != nil || !changedFlag || state.Status != BillingHealthy {
+		t.Fatalf("include = %+v changed=%v err=%v", state, changedFlag, err)
+	}
+	state, inserted, changed, err = s.RecordStripeBillingEvent(ctx, deferredFailure, time.Hour)
+	if err != nil || inserted || !changed || state.Status != BillingGrace {
+		t.Fatalf("deferred duplicate after include = %+v inserted=%v changed=%v err=%v", state, inserted, changed, err)
+	}
+
+	// A later failure can enforce again; a newer success enters recovery and
+	// returns the workspace to healthy without touching any unrelated intent.
+	failedAgain := event("evt_failure_2", BillingOutcomeFailure, base.Add(6*time.Hour))
+	if _, _, _, err := s.RecordStripeBillingEvent(ctx, failedAgain, time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	claimed, ok, err = s.ClaimDueBillingLifecycle(ctx, base.Add(8*time.Hour), time.Minute)
+	if err != nil || !ok {
+		t.Fatalf("claim second enforcement ok=%v err=%v", ok, err)
+	}
+	if _, err := s.CompleteBillingLifecycleWork(ctx, tenant.ID, claimed.TransitionVersion, BillingEnforced, base.Add(8*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	recovered := event("evt_success_2", BillingOutcomeSuccess, base.Add(9*time.Hour))
+	state, _, changed, err = s.RecordStripeBillingEvent(ctx, recovered, time.Hour)
+	if err != nil || !changed || state.Status != BillingRecovering {
+		t.Fatalf("payment recovery = %+v changed=%v err=%v", state, changed, err)
+	}
+	claimed, ok, err = s.ClaimDueBillingLifecycle(ctx, base.Add(9*time.Hour), time.Minute)
+	if err != nil || !ok || claimed.Status != BillingRecovering {
+		t.Fatalf("claim payment recovery = %+v ok=%v err=%v", claimed, ok, err)
+	}
+	state, err = s.CompleteBillingLifecycleWork(ctx, tenant.ID, claimed.TransitionVersion, BillingHealthy, base.Add(9*time.Hour))
+	if err != nil || state.Status != BillingHealthy {
+		t.Fatalf("healthy = %+v err=%v", state, err)
+	}
+}
+
+func TestPGStoreBillingWorkerCompletionUsesTransitionCAS(t *testing.T) {
+	s, ctx := newBillingTestStore(t)
+	tenant, err := s.CreateTenant(ctx, "billing-race", "hobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := time.Date(2026, 7, 28, 0, 0, 0, 0, time.UTC)
+	event := func(id, outcome string, at time.Time) StripeBillingEvent {
+		return StripeBillingEvent{
+			EventID: id, EventType: "billing.test", WorkspaceID: tenant.ID,
+			CustomerID: "cus_test_race", SubscriptionID: "sub_test_race", ObjectID: "in_test_race",
+			ProviderCreatedAt: at, ReceivedAt: at, Outcome: outcome, Reason: "race_test",
+		}
+	}
+	if _, _, _, err := s.RecordStripeBillingEvent(ctx, event("evt_race_fail", BillingOutcomeFailure, base), time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	enforcementClaim, ok, err := s.ClaimDueBillingLifecycle(ctx, base.Add(2*time.Hour), time.Minute)
+	if err != nil || !ok || enforcementClaim.Status != BillingEnforcing {
+		t.Fatalf("enforcement claim = %+v ok=%v err=%v", enforcementClaim, ok, err)
+	}
+	if state, _, _, err := s.RecordStripeBillingEvent(ctx, event("evt_race_paid", BillingOutcomeSuccess, base.Add(3*time.Hour)), time.Hour); err != nil || state.Status != BillingRecovering {
+		t.Fatalf("success during enforcement = %+v err=%v", state, err)
+	}
+	state, err := s.CompleteBillingLifecycleWork(ctx, tenant.ID, enforcementClaim.TransitionVersion, BillingEnforced, base.Add(3*time.Hour))
+	if err != nil || state.Status != BillingRecovering {
+		t.Fatalf("stale enforcement completion overwrote recovery: %+v err=%v", state, err)
+	}
+
+	recoveryClaim, ok, err := s.ClaimDueBillingLifecycle(ctx, base.Add(3*time.Hour), time.Minute)
+	if err != nil || !ok || recoveryClaim.Status != BillingRecovering {
+		t.Fatalf("recovery claim = %+v ok=%v err=%v", recoveryClaim, ok, err)
+	}
+	if state, _, _, err = s.RecordStripeBillingEvent(ctx, event("evt_race_failed_again", BillingOutcomeFailure, base.Add(4*time.Hour)), time.Hour); err != nil || state.Status != BillingEnforcing {
+		t.Fatalf("failure during recovery = %+v err=%v", state, err)
+	}
+	state, err = s.CompleteBillingLifecycleWork(ctx, tenant.ID, recoveryClaim.TransitionVersion, BillingHealthy, base.Add(4*time.Hour))
+	if err != nil || state.Status != BillingEnforcing {
+		t.Fatalf("stale recovery completion overwrote re-enforcement: %+v err=%v", state, err)
+	}
 }
 
 func TestPGStoreBillingOutbox(t *testing.T) {
@@ -81,8 +258,8 @@ func TestPGStoreBillingOutbox(t *testing.T) {
 			t.Fatalf("upsert usage: %v", err)
 		}
 	}
-	put(billable.ID, "srv-1", UsageKindInstanceSeconds, "starter", sealed, 3600) // qualifies
-	put(billable.ID, "srv-1", UsageKindInstanceSeconds, "starter", recent, 100)  // not sealed
+	put(billable.ID, "srv-1", UsageKindInstanceSeconds, "starter", sealed, 3600)  // qualifies
+	put(billable.ID, "srv-1", UsageKindInstanceSeconds, "starter", recent, 100)   // not sealed
 	put(billable.ID, "srv-1", UsageKindInstanceSeconds, "starter", belowFloor, 5) // below floor
 	put(excluded.ID, "srv-2", UsageKindInstanceSeconds, "starter", sealed, 999)   // excluded tenant
 

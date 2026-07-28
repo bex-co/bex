@@ -93,6 +93,16 @@ type StripeConfig struct {
 	// MaxNetworkRetries overrides the SDK retry count (nil ⇒ 2). Tests set 0 so
 	// a 5xx surfaces immediately without real backoff.
 	MaxNetworkRetries *int64
+	// State persists the provider mapping/lifecycle default used by webhook
+	// intake and polling. Nil is retained for isolated unit tests.
+	State BillingStateStore
+}
+
+// BillingStateStore is the narrow persistence seam the Stripe client needs.
+// *store.PGStore satisfies it without making provider ids public state.
+type BillingStateStore interface {
+	UpsertBillingProviderMapping(context.Context, store.BillingProviderMapping) error
+	EnsureBillingLifecycle(context.Context, string) (store.BillingLifecycle, error)
 }
 
 // compile-time check: the Stripe sink satisfies the emitter's Ingester seam,
@@ -117,6 +127,7 @@ type StripeClient struct {
 	taxCode               string
 	taxBehavior           string
 	testMode              bool
+	state                 BillingStateStore
 }
 
 // NewStripe builds a StripeClient, or returns nil when SecretKey is unset — the
@@ -152,6 +163,7 @@ func NewStripe(cfg StripeConfig) *StripeClient {
 		taxCode:               cfg.TaxCode,
 		taxBehavior:           cfg.TaxBehavior,
 		testMode:              strings.Contains(cfg.SecretKey, "_test_"),
+		state:                 cfg.State,
 	}
 }
 
@@ -185,8 +197,7 @@ func (c *StripeClient) EnsureCustomer(ctx context.Context, tenantID string) erro
 	if err != nil {
 		return fmt.Errorf("stripe: create customer %s: %w", tenantID, err)
 	}
-	c.storeCustomer(tenantID, cust.ID)
-	return nil
+	return c.rememberCustomer(ctx, tenantID, cust.ID)
 }
 
 // findCustomer resolves a workspace without creating it. Billing reads use
@@ -214,9 +225,41 @@ func (c *StripeClient) findCustomer(ctx context.Context, tenantID string) (strin
 	if len(found) == 0 {
 		return "", false, nil
 	}
-	c.storeCustomer(tenantID, found[0])
+	if err := c.rememberCustomer(ctx, tenantID, found[0]); err != nil {
+		return "", false, err
+	}
 	return found[0], true, nil
 }
+
+func (c *StripeClient) rememberCustomer(ctx context.Context, tenantID, customerID string) error {
+	if c.state != nil {
+		if err := c.state.UpsertBillingProviderMapping(ctx, store.BillingProviderMapping{
+			WorkspaceID: tenantID, CustomerID: customerID, Livemode: !c.testMode,
+		}); err != nil {
+			return fmt.Errorf("stripe: persist customer mapping for %s: %w", tenantID, err)
+		}
+		if _, err := c.state.EnsureBillingLifecycle(ctx, tenantID); err != nil {
+			return fmt.Errorf("stripe: initialize billing lifecycle for %s: %w", tenantID, err)
+		}
+	}
+	c.storeCustomer(tenantID, customerID)
+	return nil
+}
+
+func (c *StripeClient) rememberSubscription(ctx context.Context, tenantID, customerID, subscriptionID string) error {
+	if c.state == nil {
+		return nil
+	}
+	if err := c.state.UpsertBillingProviderMapping(ctx, store.BillingProviderMapping{
+		WorkspaceID: tenantID, CustomerID: customerID, SubscriptionID: subscriptionID, Livemode: !c.testMode,
+	}); err != nil {
+		return fmt.Errorf("stripe: persist Subscription mapping for %s: %w", tenantID, err)
+	}
+	_, err := c.state.EnsureBillingLifecycle(ctx, tenantID)
+	return err
+}
+
+func (c *StripeClient) ExpectedLivemode() bool { return !c.testMode }
 
 // IngestBatch ships each event to Stripe as a meter event (the /v1/ingest
 // equivalent). Stripe deduplicates the deterministic Identifier within its

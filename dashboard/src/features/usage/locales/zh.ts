@@ -224,6 +224,40 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "自动计税",
     description: "Stripe Tax activation row",
   },
+  "usage.billingLifecycleStatus": {
+    message: "收款生命周期",
+    description: "Stripe collection and reversible enforcement state row",
+  },
+  "usage.billingLifecycleGrace": {
+    message:
+      "付款失败（{reason}）。宽限期内工作区仍可用；可逆暂停将在 {deadline} 后执行。",
+    description: "Visible billing grace state and authoritative deadline",
+  },
+  "usage.billingLifecycleEnforced": {
+    message:
+      "账单限制已生效（{reason}）。计算资源已暂停，但数据库、Key Value 数据、Secrets 与账单证据均未删除。",
+    description: "Visible reversible billing enforcement state",
+  },
+  "usage.billingLifecycleRecovering": {
+    message: "付款已恢复。bex 正在仅恢复由账单限制所变更的资源。",
+    description: "Visible precise recovery state",
+  },
+  "usage.billingLifecycleExcluded": {
+    message: "运营人员已将此工作区排除在 Stripe 收款之外。",
+    description: "Visible structural billing exclusion state",
+  },
+  "usage.billingLifecycleComped": {
+    message: "运营人员已为此工作区应用全额减免，但仍保留计价记录。",
+    description: "Visible rated-but-free comp state",
+  },
+  "usage.billingLifecycleUnknown": {
+    message: "账单状态为 {reason}。请使用账单门户或联系支持。",
+    description: "Forward-compatible unknown billing lifecycle state",
+  },
+  "usage.billingNoDeadline": {
+    message: "未报告截止时间",
+    description: "Fallback when a malformed grace state has no deadline",
+  },
   "usage.billingTaxUnconfigured": {
     message:
       "税务尚未配置。在运营人员确认规范的产品税码和有效的测试注册前，税费收取会保持关闭。",

@@ -253,7 +253,8 @@ type Deps struct {
 	// Billing is the Stripe-hosted customer-onboarding provider. nil preserves a
 	// stable REST/GraphQL/MCP contract whose verbs fail with 503 while Stripe is
 	// disabled, instead of making the schema depend on process environment.
-	Billing billing.HostedProvider
+	Billing      billing.HostedProvider
+	BillingState billing.LifecycleReader
 	// Identities resolves owner/member email + MFA for the owners/members read
 	// API (w6/m2) — Kratos' admin API (BEX_KRATOS_ADMIN_URL). Nil omits those
 	// fields (honest subset) rather than failing the request.
@@ -481,7 +482,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		secretFileSeeder = secrets.NewCreateSecretFileSeeder(secretsSvc)
 		envGroupApplier = envGroupsSvc
 	}
-	billingSvc := &billing.Service{Base: base, Provider: d.Billing}
+	billingSvc := &billing.Service{Base: base, Provider: d.Billing, State: d.BillingState}
 	var environmentEnvGroups environments.EnvGroupIndex
 	if d.Secrets != nil {
 		environmentEnvGroups = envGroupsSvc

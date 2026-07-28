@@ -18,21 +18,35 @@ package billing
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // Readiness is the provider-neutral customer-billing state returned unchanged
 // by REST, GraphQL, MCP, and the dashboard. Stripe object ids stay server-side:
 // callers need state and hosted URLs, never provider credentials or topology.
 type Readiness struct {
-	WorkspaceID        string       `json:"workspaceId"`
-	Mode               string       `json:"mode"`
-	CustomerReady      bool         `json:"customerReady"`
-	SubscriptionReady  bool         `json:"subscriptionReady"`
-	PaymentMethodReady bool         `json:"paymentMethodReady"`
-	Tax                TaxReadiness `json:"tax"`
+	WorkspaceID        string        `json:"workspaceId"`
+	Mode               string        `json:"mode"`
+	CustomerReady      bool          `json:"customerReady"`
+	SubscriptionReady  bool          `json:"subscriptionReady"`
+	PaymentMethodReady bool          `json:"paymentMethodReady"`
+	Tax                TaxReadiness  `json:"tax"`
+	Lifecycle          LifecycleView `json:"lifecycle"`
+}
+
+type LifecycleView struct {
+	Status           string   `json:"status"`
+	Reason           string   `json:"reason,omitempty"`
+	GraceDeadline    string   `json:"graceDeadline,omitempty"`
+	EnforcementOwned bool     `json:"enforcementOwned"`
+	RecoveryPending  bool     `json:"recoveryPending"`
+	AllowedActions   []string `json:"allowedActions"`
+	UpdatedAt        string   `json:"updatedAt,omitempty"`
 }
 
 // TaxReadiness separates operator configuration from per-subscription
@@ -80,6 +94,11 @@ type HostedProvider interface {
 type Service struct {
 	*core.Base
 	Provider HostedProvider
+	State    LifecycleReader
+}
+
+type LifecycleReader interface {
+	GetBillingLifecycle(context.Context, string) (store.BillingLifecycle, error)
 }
 
 func (s *Service) Status(ctx context.Context, workspaceID string) (Readiness, error) {
@@ -92,7 +111,42 @@ func (s *Service) Status(ctx context.Context, workspaceID string) (Readiness, er
 		return Readiness{}, fmt.Errorf("%w: %v", core.ErrBillingUnavailable, err)
 	}
 	status.WorkspaceID = tenantID
+	status.Lifecycle, err = s.lifecycle(ctx, tenantID)
+	if err != nil {
+		return Readiness{}, fmt.Errorf("%w: %v", core.ErrBillingUnavailable, err)
+	}
 	return status, nil
+}
+
+func (s *Service) lifecycle(ctx context.Context, workspaceID string) (LifecycleView, error) {
+	if s.State == nil {
+		return lifecycleView(store.BillingLifecycle{Status: store.BillingHealthy}), nil
+	}
+	state, err := s.State.GetBillingLifecycle(ctx, workspaceID)
+	if errors.Is(err, store.ErrNotFound) {
+		return lifecycleView(store.BillingLifecycle{Status: store.BillingHealthy}), nil
+	}
+	if err != nil {
+		return LifecycleView{}, err
+	}
+	return lifecycleView(state), nil
+}
+
+func lifecycleView(state store.BillingLifecycle) LifecycleView {
+	status := state.Status
+	if status == "" {
+		status = store.BillingHealthy
+	}
+	v := LifecycleView{Status: status, Reason: state.Reason, AllowedActions: []string{"update_payment_method", "open_portal"}}
+	if state.GraceDeadline != nil {
+		v.GraceDeadline = state.GraceDeadline.UTC().Format(time.RFC3339)
+	}
+	if !state.UpdatedAt.IsZero() {
+		v.UpdatedAt = state.UpdatedAt.UTC().Format(time.RFC3339)
+	}
+	v.EnforcementOwned = status == store.BillingEnforcing || status == store.BillingEnforced || status == store.BillingRecovering
+	v.RecoveryPending = status == store.BillingRecovering
+	return v
 }
 
 func (s *Service) Checkout(ctx context.Context, workspaceID string, req CheckoutRequest) (HostedSession, error) {

@@ -527,6 +527,9 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if req.DryRun {
 		return s.view(d), nil
 	}
+	if err := s.RequireBillingMutation(ctx, tenantID); err != nil {
+		return PostgresView{}, err
+	}
 	resourcemeta.Touch(d, s.Now())
 	if err := s.Client.Create(ctx, d); err != nil {
 		if apierrors.IsAlreadyExists(err) {
@@ -623,6 +626,9 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (PostgresView,
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
 	if err != nil {
+		return PostgresView{}, err
+	}
+	if err := s.RequireBillingMutation(ctx, d.Labels[core.LabelTenant]); err != nil {
 		return PostgresView{}, err
 	}
 	if _, ok := tiers.Postgres.ByID(plan); !ok {
@@ -781,6 +787,11 @@ func (s *Service) UpdatePostgres(ctx context.Context, name string, patch Postgre
 	}
 	if err := patch.validate(); err != nil {
 		return PostgresView{}, err
+	}
+	if patch.Plan != nil || patch.Version != nil || patch.DiskSizeGB != nil || patch.EnableDiskAutoscaling != nil || patch.EnableHighAvailability != nil {
+		if err := s.RequireBillingMutation(ctx, d.Labels[core.LabelTenant]); err != nil {
+			return PostgresView{}, err
+		}
 	}
 	if err := validateDatabaseStorageResize(d, patch.DiskSizeGB); err != nil {
 		return PostgresView{}, err

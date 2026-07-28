@@ -434,6 +434,9 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if req.DryRun {
 		return s.view(kv), nil
 	}
+	if err := s.RequireBillingMutation(ctx, tenantID); err != nil {
+		return KeyValueView{}, err
+	}
 	resourcemeta.Touch(kv, s.Now())
 	if err := s.Client.Create(ctx, kv); err != nil {
 		if apierrors.IsAlreadyExists(err) {
@@ -480,6 +483,8 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 		if err := s.requireUnprotected(ctx, kv, "suspend"); err != nil {
 			return KeyValueView{}, err
 		}
+	} else if err := s.RequireBillingMutation(ctx, kv.Labels[core.LabelTenant]); err != nil {
+		return KeyValueView{}, err
 	}
 	if kv.Spec.Suspended != suspended {
 		kv.Spec.Suspended = suspended
@@ -591,6 +596,9 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (KeyValueView,
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	kv, err := s.fetchKeyValue(ctx, core.RelCanOperate, name)
 	if err != nil {
+		return KeyValueView{}, err
+	}
+	if err := s.RequireBillingMutation(ctx, kv.Labels[core.LabelTenant]); err != nil {
 		return KeyValueView{}, err
 	}
 	if _, ok := tiers.Valkey.ByID(plan); !ok {
@@ -713,6 +721,11 @@ func (s *Service) UpdateKeyValue(ctx context.Context, name string, patch KeyValu
 	}
 	if err := patch.validate(); err != nil {
 		return KeyValueView{}, err
+	}
+	if patch.Plan != nil {
+		if err := s.RequireBillingMutation(ctx, kv.Labels[core.LabelTenant]); err != nil {
+			return KeyValueView{}, err
+		}
 	}
 	if patch.Name != nil {
 		if err := s.ensureKeyValueNameAvailable(ctx, kv.Labels[core.LabelTenant], *patch.Name, kv.Name); err != nil {
