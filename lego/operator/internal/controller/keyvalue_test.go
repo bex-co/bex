@@ -27,7 +27,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,15 +69,12 @@ func TestValkeyImage(t *testing.T) {
 	}
 }
 
-// TestKeyValuePublicFrontDoorMigration pins the m15 cutover: the CR keeps its
-// external hostname/allowlist intent for kv-sni-proxy, while any legacy
-// Traefik TCP route and middleware are removed to prevent bypass/double count.
-func TestKeyValuePublicFrontDoorMigration(t *testing.T) {
+// TestKeyValuePublicFrontDoor pins the current SNI-proxy contract: the CR keeps
+// its external hostname/allowlist intent and receives a TLS certificate.
+func TestKeyValuePublicFrontDoor(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = appv1alpha1.AddToScheme(scheme)
-	scheme.AddKnownTypeWithName(traefikIngressRouteTCPGVK, &unstructured.Unstructured{})
-	scheme.AddKnownTypeWithName(traefikMiddlewareTCPGVK, &unstructured.Unstructured{})
 	scheme.AddKnownTypeWithName(certManagerCertificateGVK, &unstructured.Unstructured{})
 
 	kv := &appv1alpha1.KeyValue{
@@ -91,17 +87,7 @@ func TestKeyValuePublicFrontDoorMigration(t *testing.T) {
 			},
 		},
 	}
-	legacyRoute := &unstructured.Unstructured{}
-	legacyRoute.SetGroupVersionKind(traefikIngressRouteTCPGVK)
-	legacyRoute.SetName("acl-kv-kv")
-	legacyRoute.SetNamespace("default")
-	legacyRoute.Object["spec"] = map[string]any{}
-	legacyMiddleware := &unstructured.Unstructured{}
-	legacyMiddleware.SetGroupVersionKind(traefikMiddlewareTCPGVK)
-	legacyMiddleware.SetName("acl-kv-kv-allow")
-	legacyMiddleware.SetNamespace("default")
-	legacyMiddleware.Object["spec"] = map[string]any{}
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv, legacyRoute, legacyMiddleware).
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv).
 		WithStatusSubresource(&appv1alpha1.KeyValue{}).Build()
 	r := &KeyValueReconciler{Client: cl, Scheme: scheme, KvDomain: "kv.example.test", ClusterIssuer: "letsencrypt-prod"}
 	ctx := context.Background()
@@ -141,35 +127,19 @@ func TestKeyValuePublicFrontDoorMigration(t *testing.T) {
 	if !slices.Contains(args, "--tls-port") || !slices.Contains(args, strconv.Itoa(kvTLSPort)) {
 		t.Fatalf("public Valkey args lack TLS port: %v", args)
 	}
-	if err := cl.Get(ctx, types.NamespacedName{Name: "acl-kv-kv", Namespace: "default"}, legacyRoute); !apierrors.IsNotFound(err) {
-		t.Fatalf("legacy route was not deleted: %v", err)
-	}
-	if err := cl.Get(ctx, types.NamespacedName{Name: "acl-kv-kv-allow", Namespace: "default"}, legacyMiddleware); !apierrors.IsNotFound(err) {
-		t.Fatalf("legacy middleware was not deleted: %v", err)
-	}
 }
 
 func TestKeyValuePublicFrontDoorFailsClosedWithoutIssuer(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = appv1alpha1.AddToScheme(scheme)
-	scheme.AddKnownTypeWithName(traefikIngressRouteTCPGVK, &unstructured.Unstructured{})
-	scheme.AddKnownTypeWithName(traefikMiddlewareTCPGVK, &unstructured.Unstructured{})
 	scheme.AddKnownTypeWithName(certManagerCertificateGVK, &unstructured.Unstructured{})
 
 	kv := &appv1alpha1.KeyValue{
 		ObjectMeta: metav1.ObjectMeta{Name: "no-issuer", Namespace: "default"},
 		Spec:       appv1alpha1.KeyValueSpec{Plan: "free", Public: true},
 	}
-	legacyRoute := &unstructured.Unstructured{}
-	legacyRoute.SetGroupVersionKind(traefikIngressRouteTCPGVK)
-	legacyRoute.SetName("no-issuer-kv")
-	legacyRoute.SetNamespace("default")
-	legacyMiddleware := &unstructured.Unstructured{}
-	legacyMiddleware.SetGroupVersionKind(traefikMiddlewareTCPGVK)
-	legacyMiddleware.SetName("no-issuer-kv-allow")
-	legacyMiddleware.SetNamespace("default")
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv, legacyRoute, legacyMiddleware).
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv).
 		WithStatusSubresource(&appv1alpha1.KeyValue{}).Build()
 	r := &KeyValueReconciler{Client: cl, Scheme: scheme, KvDomain: "kv.example.test"}
 	ctx := context.Background()
@@ -182,12 +152,6 @@ func TestKeyValuePublicFrontDoorFailsClosedWithoutIssuer(t *testing.T) {
 	}
 	if kv.Status.Phase != appv1alpha1.KVPhaseFailed || kv.Status.ExternalHost != "" {
 		t.Fatalf("status = phase %q host %q, want failed with no public host", kv.Status.Phase, kv.Status.ExternalHost)
-	}
-	if err := cl.Get(ctx, types.NamespacedName{Name: "no-issuer-kv", Namespace: "default"}, legacyRoute); !apierrors.IsNotFound(err) {
-		t.Fatalf("legacy route survived fail-closed reconcile: %v", err)
-	}
-	if err := cl.Get(ctx, types.NamespacedName{Name: "no-issuer-kv-allow", Namespace: "default"}, legacyMiddleware); !apierrors.IsNotFound(err) {
-		t.Fatalf("legacy middleware survived fail-closed reconcile: %v", err)
 	}
 }
 
@@ -211,8 +175,6 @@ func TestKeyValuePlanChangeReconcile(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = appv1alpha1.AddToScheme(scheme)
-	scheme.AddKnownTypeWithName(traefikIngressRouteTCPGVK, &unstructured.Unstructured{})
-	scheme.AddKnownTypeWithName(traefikMiddlewareTCPGVK, &unstructured.Unstructured{})
 	scheme.AddKnownTypeWithName(certManagerCertificateGVK, &unstructured.Unstructured{})
 
 	kv := &appv1alpha1.KeyValue{

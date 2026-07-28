@@ -36,7 +36,7 @@ The only irreducible "bottom turtle" is the **remote-state bucket** + the CI run
 2. Add the repo secrets listed at the top of `infra.yml`.
 3. Open a PR touching `infra/terraform/**` → review the `plan` → merge → CI applies.
 
-If a `bex-traefik` Load Balancer already exists, the first main-branch run imports it by exact name before apply. Once CAPH's `bex` network exists, the workflow also imports the attachment, target selector, and five listeners, then replaces only legacy per-server targets with the equivalent dynamic selector. Terraform enables API deletion protection in place; it does not replace the object or change its public IP. The adoption and rebuild proof procedure is in [`docs/ADR002-architecture.md`](../../docs/ADR002-architecture.md#stable-production-edge-load-balancer).
+If a `bex-traefik` Load Balancer already exists, the first main-branch run imports it by exact name before apply. Once CAPH's `bex` network exists, the workflow also imports the attachment, target selector, and five listeners. The former per-server target migration is complete; every subsequent apply verifies that the edge has no explicit server targets, retains exactly one private worker selector, and has a healthy backend for every listener. Terraform enables API deletion protection in place; it does not replace the object or change its public IP. The adoption and rebuild proof procedure is in [`docs/ADR002-architecture.md`](../../docs/ADR002-architecture.md#stable-production-edge-load-balancer).
 
 ## Phase 2 — install CAPH and build the app cluster (next, also CI)
 

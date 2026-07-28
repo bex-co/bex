@@ -56,6 +56,25 @@ for required in \
     fail=1
   }
 done
+
+echo "==> production edge workflow is validation-only after target migration"
+if grep -qF '/actions/remove_target' .github/workflows/infra.yml ||
+  grep -qF 'remove legacy per-server edge targets' .github/workflows/infra.yml; then
+  echo "FAIL: infra workflow must not retain the completed per-server target deletion loop" >&2
+  fail=1
+fi
+for required in \
+  'name: verify canonical edge target shape' \
+  'select(.type == "server")' \
+  '.label_selector.selector == $selector' \
+  '.use_private_ip == true' \
+  "'22,80,443,5432,6379'" \
+  'missing_healthy'; do
+  grep -qF "$required" .github/workflows/infra.yml || {
+    echo "FAIL: infra workflow lost canonical edge validation: $required" >&2
+    fail=1
+  }
+done
 for edge in ssh:22:32207 http:80:31218 https:443:31976 postgres:5432:31056 valkey:6379:31892; do
   name="${edge%%:*}"
   ports="${edge#*:}"

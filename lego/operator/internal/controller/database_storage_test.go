@@ -44,7 +44,6 @@ func databaseStorageFixture(t *testing.T, db *appv1alpha1.Database, clusterGB in
 	}
 	for _, gvk := range []schema.GroupVersionKind{
 		cnpgClusterGVK, cnpgScheduledBackupGVK, cnpgBackupGVK, cnpgPoolerGVK,
-		traefikIngressRouteTCPGVK, traefikMiddlewareTCPGVK,
 	} {
 		scheme.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
 	}
