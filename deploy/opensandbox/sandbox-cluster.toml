@@ -1,0 +1,71 @@
+# OpenSandbox server config for the IN-CLUSTER deployment (ADR042 D1 / w3/m32
+# t002). Unlike sandbox-k8s.toml (the host-local dev config with a hardcoded
+# /Users/... kubeconfig), this runs inside the cluster: no kubeconfig_path (the
+# pod's ServiceAccount is used), the snapshot registry is the in-cluster Zot,
+# and multi-tenancy is enabled so each workspace's OPEN-SANDBOX-API-KEY resolves
+# to its own `<ws>-sandbox` namespace (OSEP-0014, ADR042 D4, t006).
+#
+# Mounted at /etc/opensandbox/sandbox-cluster.toml by the server Deployment
+# (t002); the BatchSandbox template is mounted from a ConfigMap.
+
+[server]
+host = "0.0.0.0"
+port = 8077
+max_sandbox_timeout_seconds = 86400
+# Multi-tenant: the shared api_key is NOT used as the tenant boundary — the
+# per-workspace key path below is. This stays set so anonymous callers are
+# rejected (defense in depth behind the admit-only-bex-api NetworkPolicy, t006).
+# Provided via env OPENSANDBOX_SERVER_API_KEY from a Secret; do not inline it.
+
+[log]
+level = "INFO"
+
+[runtime]
+type = "kubernetes"
+execd_image = "opensandbox/execd:v1.0.16"
+
+[storage]
+allowed_host_paths = []
+volume_default_size = "1Gi"
+
+[kubernetes]
+# No kubeconfig_path: the in-cluster ServiceAccount (SA + Role in
+# opensandbox-system, plus the per-tenant `<ws>-sandbox` grants) is used.
+# namespace is the DEFAULT target; multi-tenant lookups override it per request.
+namespace = "opensandbox-system"
+informer_enabled = true
+informer_resync_seconds = 300
+informer_watch_timeout_seconds = 60
+workload_provider = "batchsandbox"
+image_pull_policy = "IfNotPresent"
+snapshot_create_timeout_seconds = 900
+# Mounted from the batchsandbox-template ConfigMap (t002); Kata + sandbox-pool
+# scheduling are stamped onto this template by t004.
+batchsandbox_template_file = "/etc/opensandbox/batchsandbox-template.yaml"
+
+[ingress]
+mode = "direct"
+
+[egress]
+image = "opensandbox/egress:v1.0.12"
+mode = "dns"
+
+[snapshot]
+# In-cluster Zot instead of the host-local 127.0.0.1:5050 insecure registry
+# (ADR042 D1). Push/pull secrets are replicated into opensandbox-system by
+# scripts/registry-secrets.sh (the reg-* pattern); TLS on, not insecure.
+registry = "zot.bex-registry.svc:5000/snapshots"
+registryInsecure = false
+
+# Multi-tenant mode (OSEP-0014, ADR042 D4 / m32 t006): an HTTP tenant-lookup
+# provider resolves each caller's OPEN-SANDBOX-API-KEY to a `<ws>-sandbox`
+# namespace via bex-api's internal endpoint. Lifecycle ops (create/list/get/
+# delete) are then auto-scoped to that namespace; a stolen key cannot cross
+# tenants even if bex-api has a bug. auth_token is provided via env from a
+# Secret, never inlined.
+[tenants]
+endpoint = "http://bex-api.bex-system.svc:8091/internal/sandbox-tenants"
+max_stale_seconds = 60
+timeout_seconds = 5
+auth_header = "Authorization"
+# auth_token: from env (BEX_CP_TOKEN-style bearer), not inlined here.
