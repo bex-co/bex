@@ -15,6 +15,9 @@ cd "$(dirname "$0")/.."
 
 fail=0
 
+echo "==> retired platform source/config paths remain absent"
+bash scripts/platform-deprecations-validate.sh || fail=1
+
 # Stable-edge ownership guard (w1/m41): the API-level protection keeps hcloud
 # CCM's Service finalizer from deleting the adopted object, while prevent_destroy
 # independently blocks Terraform from planning its destruction. Keep both.

@@ -1,39 +1,25 @@
 name: scripts (test)
 
-# Pure-bash unit tests for production-sensitive scripts. The test harnesses use
-# shell fakes, so no live cluster or credentials are required.
+# Pure-bash unit tests and source-absence guards for production-sensitive paths.
+# They use shell fakes or static inspection, so no live credentials are required.
 on:
   pull_request:
     paths:
-      - "scripts/bao-init.sh"
-      - "scripts/bao-init.test.sh"
-      - "scripts/bao-endpoints.sh"
-      - "scripts/bao-k8s-auth.sh"
-      - "scripts/gh-secrets.sh"
-      - "scripts/keyvalue-cli-verify.sh"
-      - "scripts/keyvalue-cli-verify.test.sh"
-      - "scripts/cli-compat.sh"
-      - "scripts/keyvalue-rename-verify.sh"
-      - "scripts/postgres-rename-verify.sh"
-      - "scripts/rename-verify.test.sh"
-      - "scripts/github-actions-validate.sh"
+      - "lego/operator/**"
+      - "lego/backend/**"
+      - "deploy/gitops/**"
+      - "infra/**"
+      - "scripts/**"
       - ".env.example"
       - ".github/workflows/**"
   push:
     branches: [main]
     paths:
-      - "scripts/bao-init.sh"
-      - "scripts/bao-init.test.sh"
-      - "scripts/bao-endpoints.sh"
-      - "scripts/bao-k8s-auth.sh"
-      - "scripts/gh-secrets.sh"
-      - "scripts/keyvalue-cli-verify.sh"
-      - "scripts/keyvalue-cli-verify.test.sh"
-      - "scripts/cli-compat.sh"
-      - "scripts/keyvalue-rename-verify.sh"
-      - "scripts/postgres-rename-verify.sh"
-      - "scripts/rename-verify.test.sh"
-      - "scripts/github-actions-validate.sh"
+      - "lego/operator/**"
+      - "lego/backend/**"
+      - "deploy/gitops/**"
+      - "infra/**"
+      - "scripts/**"
       - ".env.example"
       - ".github/workflows/**"
 
@@ -49,6 +35,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Retired platform paths remain absent
+        run: bash scripts/platform-deprecations-validate.sh
       - name: GitHub Actions Node 24 inventory
         run: bash scripts/github-actions-validate.sh
       - name: bao-init unit tests
