@@ -47,7 +47,13 @@ require BEX_STRIPE_EPOCH
 
 case "$BEX_STRIPE_SECRET_KEY" in
   rk_test_*) stripe_mode=test ;;
-  rk_live_*) stripe_mode=live ;;
+  rk_live_*)
+    [ "${BEX_STRIPE_ALLOW_LIVE:-0}" = 1 ] || {
+      echo "error: live restricted keys are refused by default; BEX_STRIPE_ALLOW_LIVE=1 is a separate future go-live decision" >&2
+      exit 1
+    }
+    stripe_mode=live
+    ;;
   *)
     echo "error: BEX_STRIPE_SECRET_KEY must be a dedicated restricted key (rk_test_* or rk_live_*); refusing an unrestricted or non-Stripe credential" >&2
     exit 1

@@ -51,12 +51,19 @@ type API struct {
 	// Grant, when set, writes the new tenant's OpenFGA workspace membership so
 	// its owner can authorize resources (replacing the model's workspace:default
 	// placeholder). Nil => the tenant row is still created, without a membership.
-	Grant   MembershipGranter
-	Billing BillingAdmin
+	Grant             MembershipGranter
+	Billing           BillingAdmin
+	BillingOperations BillingOperations
 }
 
 type BillingAdmin interface {
 	OverrideBilling(context.Context, string, string, string, string, time.Duration) (BillingLifecycle, error)
+}
+
+type BillingOperations interface {
+	BillingExportReport(context.Context, string, time.Time, time.Time) (BillingExportReport, error)
+	ListBillingExportIssues(context.Context, bool, int) ([]BillingExportIssue, error)
+	ResolveBillingExportIssue(context.Context, string, string, string, string, time.Time) (BillingExportIssue, error)
 }
 
 // MembershipGranter writes/removes a subject's workspace membership in OpenFGA
@@ -102,6 +109,9 @@ func (a *API) Handler() http.Handler {
 	v1.HandleFunc("GET /v1/tenants", a.listTenants)
 	v1.HandleFunc("PATCH /v1/tenants/{id}/billing-excluded", a.setBillingExcluded)
 	v1.HandleFunc("POST /v1/tenants/{id}/billing-override", a.billingOverride)
+	v1.HandleFunc("GET /v1/tenants/{id}/billing-export", a.billingExportReport)
+	v1.HandleFunc("GET /v1/billing/export-issues", a.listBillingExportIssues)
+	v1.HandleFunc("POST /v1/billing/export-issues/{id}/resolve", a.resolveBillingExportIssue)
 	v1.HandleFunc("POST /v1/apps", a.createApp)
 	v1.HandleFunc("GET /v1/apps", a.listApps)
 	v1.HandleFunc("GET /v1/apps/{id}", a.getApp)
@@ -147,6 +157,68 @@ func (a *API) billingOverride(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"workspaceId": state.WorkspaceID, "status": state.Status, "reason": state.Reason, "graceDeadline": state.GraceDeadline})
+}
+
+func (a *API) billingExportReport(w http.ResponseWriter, r *http.Request) {
+	if a.BillingOperations == nil {
+		writeErr(w, fmt.Errorf("billing operations unavailable"))
+		return
+	}
+	start, err := time.Parse(time.RFC3339, r.URL.Query().Get("start"))
+	if err != nil {
+		writeErr(w, fmt.Errorf("%w: start must be RFC3339", ErrInvalid))
+		return
+	}
+	end, err := time.Parse(time.RFC3339, r.URL.Query().Get("end"))
+	if err != nil || !start.Before(end) || end.Sub(start) > 35*24*time.Hour {
+		writeErr(w, fmt.Errorf("%w: end must be RFC3339, after start, with a window no larger than 35 days", ErrInvalid))
+		return
+	}
+	report, err := a.BillingOperations.BillingExportReport(r.Context(), r.PathValue("id"), start, end)
+	if err != nil {
+		writeErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, report)
+}
+
+func (a *API) listBillingExportIssues(w http.ResponseWriter, r *http.Request) {
+	if a.BillingOperations == nil {
+		writeErr(w, fmt.Errorf("billing operations unavailable"))
+		return
+	}
+	openOnly := r.URL.Query().Get("status") != "all"
+	issues, err := a.BillingOperations.ListBillingExportIssues(r.Context(), openOnly, 100)
+	if err != nil {
+		writeErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"issues": issues})
+}
+
+type ResolveBillingExportIssueRequest struct {
+	Action string `json:"action"`
+	Actor  string `json:"actor"`
+	Reason string `json:"reason"`
+}
+
+func (a *API) resolveBillingExportIssue(w http.ResponseWriter, r *http.Request) {
+	if a.BillingOperations == nil {
+		writeErr(w, fmt.Errorf("billing operations unavailable"))
+		return
+	}
+	var req ResolveBillingExportIssueRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, fmt.Errorf("%w: bad request body", ErrInvalid))
+		return
+	}
+	issue, err := a.BillingOperations.ResolveBillingExportIssue(r.Context(), r.PathValue("id"), req.Action,
+		strings.TrimSpace(req.Actor), strings.TrimSpace(req.Reason), time.Now().UTC())
+	if err != nil {
+		writeErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, issue)
 }
 
 // CreateTenantRequest is the POST /v1/tenants body.

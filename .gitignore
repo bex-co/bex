@@ -12,6 +12,7 @@ deploy/opensandbox/sandbox.example.toml
 
 # CAPD workload cluster kubeconfig (credential)
 infra/local/*.kubeconfig
+infra/local/stripe-billing-*-fixtures.json
 
 projects-to-deploy
 .tmp

@@ -22,6 +22,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 
 	stripe "github.com/stripe/stripe-go/v86"
 	"github.com/stripe/stripe-go/v86/webhook"
@@ -37,6 +38,7 @@ type StripeWebhook struct {
 	ExpectedLivemode    bool
 	OnLifecycle         func(context.Context, *stripe.Event) error
 	OnCheckoutCompleted func(context.Context, *stripe.CheckoutSession) error
+	Metrics             *Metrics
 }
 
 func (h *StripeWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -46,28 +48,34 @@ func (h *StripeWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	body, err := io.ReadAll(io.LimitReader(r.Body, maxStripeWebhookBytes+1))
 	if err != nil {
+		h.Metrics.Operation("webhook_read", "error")
 		http.Error(w, "read webhook", http.StatusBadRequest)
 		return
 	}
 	if len(body) > maxStripeWebhookBytes {
+		h.Metrics.Operation("webhook_size", "error")
 		http.Error(w, "webhook body too large", http.StatusRequestEntityTooLarge)
 		return
 	}
 	event, err := webhook.ConstructEvent(body, r.Header.Get("Stripe-Signature"), h.Secret)
 	if err != nil {
+		h.Metrics.Operation("webhook_signature", "error")
 		http.Error(w, "invalid Stripe signature", http.StatusBadRequest)
 		return
 	}
 	if event.APIVersion != stripe.APIVersion {
+		h.Metrics.Operation("webhook_version", "error")
 		http.Error(w, "incompatible Stripe API version", http.StatusBadRequest)
 		return
 	}
 	if event.Livemode != h.ExpectedLivemode {
+		h.Metrics.Operation("webhook_mode", "error")
 		http.Error(w, "Stripe event mode mismatch", http.StatusBadRequest)
 		return
 	}
 	if isLifecycleEvent(event.Type) && h.OnLifecycle != nil {
 		if err := h.OnLifecycle(r.Context(), &event); err != nil {
+			h.Metrics.Operation("webhook_handler", "error")
 			log.Printf("billing: Stripe lifecycle handler event=%s type=%s: %v", event.ID, event.Type, err)
 			http.Error(w, "billing lifecycle unavailable", http.StatusServiceUnavailable)
 			return
@@ -81,11 +89,13 @@ func (h *StripeWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		if h.OnCheckoutCompleted != nil {
 			if err := h.OnCheckoutCompleted(r.Context(), &session); err != nil {
+				h.Metrics.Operation("webhook_handler", "error")
 				log.Printf("billing: Stripe checkout.session.completed handler for %s: %v", session.ID, err)
 				http.Error(w, "payment-setup handler unavailable", http.StatusServiceUnavailable)
 				return
 			}
 		}
 	}
+	h.Metrics.WebhookSucceeded(time.Now())
 	w.WriteHeader(http.StatusNoContent)
 }

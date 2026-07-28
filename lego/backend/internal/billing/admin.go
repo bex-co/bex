@@ -25,18 +25,21 @@ import (
 )
 
 type AdminStore interface {
+	GetBillingLifecycle(context.Context, string) (store.BillingLifecycle, error)
 	SetBillingException(context.Context, string, string, bool, string, string, time.Time) (bool, store.BillingLifecycle, error)
 	ExtendBillingGrace(context.Context, string, time.Duration, string, string, time.Time) (store.BillingLifecycle, error)
 	ForceBillingRecovery(context.Context, string, string, string, time.Time) (store.BillingLifecycle, error)
 }
 
-type CompProvider interface {
+type AdminProvider interface {
+	EnsureCustomer(context.Context, string) error
+	EnsureContract(context.Context, string) error
 	CompCustomer(context.Context, string) error
 }
 
 type Admin struct {
 	Store    AdminStore
-	Provider CompProvider
+	Provider AdminProvider
 	Clock    func() time.Time
 }
 
@@ -52,6 +55,17 @@ func (a *Admin) OverrideBilling(ctx context.Context, workspaceID, action, actor,
 		return store.BillingLifecycle{}, fmt.Errorf("billing admin unavailable")
 	}
 	switch action {
+	case "provision":
+		if a.Provider == nil {
+			return store.BillingLifecycle{}, fmt.Errorf("Stripe billing provider unavailable")
+		}
+		if err := a.Provider.EnsureCustomer(ctx, workspaceID); err != nil {
+			return store.BillingLifecycle{}, err
+		}
+		if err := a.Provider.EnsureContract(ctx, workspaceID); err != nil {
+			return store.BillingLifecycle{}, err
+		}
+		return a.Store.GetBillingLifecycle(ctx, workspaceID)
 	case "extend_grace":
 		return a.Store.ExtendBillingGrace(ctx, workspaceID, extension, actor, reason, a.now())
 	case "recover":

@@ -40,6 +40,7 @@ graph TD
 | **`HCLOUD_TOKEN`** | Hetzner Cloud API token | [`.env`](../.env.example); GitHub secret | operator; CI; Terraform; CCM (`hcloud` secret, `kube-system`) | full Hetzner Cloud API: servers, LBs, networks, firewalls |
 | **TF-state keys** | S3 access/secret (`TF_STATE_ACCESS_KEY`/`_SECRET_KEY`) | `.env`; GitHub secret | operator; CI | read/write Terraform state (infra topology, incl. `bootstrap_server_ipv4`) |
 | **platform app secrets** | `BEX_BOOTSTRAP_CLIENT_SECRET`, `KRATOS_SECRETS_*`, `HYDRA_SECRETS_*`, `HYDRA_OIDC_PAIRWISE_SALT`, `OPENFGA_PRESHARED_KEY` | `.env`; applied to the app cluster by `scripts/auth-secrets.sh` / `auth-bootstrap-client.sh` | operator; CI | bex-api bootstrap key ([ADR012-auth.md](ADR012-auth.md)), Kratos/Hydra/OpenFGA signing + preshared keys |
+| **Stripe test billing credentials** | dedicated `rk_test_*` + endpoint `whsec_*` | operator keychain/out-of-band source; `bex-system/bex-stripe` Secret | billing operator; bex-api runtime | least-privilege test Customer/Subscription/sessions/meter-event writes and catalog/invoice/meter summary reads; signed test webhook intake only |
 | **OpenBao unseal material** | `BAO_UNSEAL_KEY_1..3`, `BAO_ROOT_TOKEN` | `.env` (written back by `bao-init.sh`); GitHub secret | operator; CI | unseal + root the tenant secret store ([ADR013-secrets.md §3](ADR013-secrets.md)) |
 
 ## `.env`: the out-of-band bootstrap store
@@ -55,6 +56,12 @@ One mirror tracks it, value-less, and is kept in sync by rule (see [CLAUDE.md](.
 ### App SSH gateway host key is a separate credential
 
 Running-instance app SSH ([ADR035](ADR035-ssh.md)) uses a dedicated Ed25519 **server host key**, not the `bex` node-admin client key above. Its private file stays on the operator laptop at `BEX_SSH_HOST_KEY_FILE`; [`scripts/ssh-host-key-secret.sh`](../scripts/ssh-host-key-secret.sh) installs it out of band as `bex-system/bex-ssh-host-key`. The public fingerprint may be published. The key is stable across ordinary deploys; rotation is an explicit maintenance event because OpenSSH clients pin it in `known_hosts`. [`scripts/ssh-activate.sh`](../scripts/ssh-activate.sh) refuses to advertise the host until the complete public A/AAAA set equals the Terraform-owned Hetzner edge's public address set and TCP/22 presents that exact key; `--check` runs those gates without mutation.
+
+### Stripe test billing credentials are runtime-only
+
+The production-hosted billing sandbox uses a dedicated restricted `rk_test_*`, never the Stripe CLI login/setup key and never any `*_live_*` credential. [`scripts/stripe-billing-secret.sh`](../scripts/stripe-billing-secret.sh) validates the restricted/test prefix, keeps secret bytes in a mode-0600 temporary file, installs `bex-system/bex-stripe`, and refuses live runtime keys by default. On macOS the test endpoint secret may be sourced from the login keychain service `bex-stripe-test-webhook`; neither value belongs in `.env.example`, GitHub logs, tickets, drill evidence, or tenant-visible state.
+
+Rotation follows add → deploy → verify → revoke. Keep the previous test key/endpoint active until the replacement passes a production reconciliation and a new webhook delivery; record only non-secret key/object ids and timestamps. Test and live credentials must use separate custody records. See the exact permission inventory, disable path, and rotation drill in [the Stripe Billing runbook](runbooks/stripe-billing-setup.md#rotation-and-disable-drill).
 
 ## Decisions
 

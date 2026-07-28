@@ -39,10 +39,14 @@ type selCall struct {
 }
 
 type fakeEmitterStore struct {
-	queue    [][]store.HourlyRow // successive SelectUnemittedUsage returns
-	selCalls []selCall
-	stamped  [][]store.HourlyRow
-	stampErr error
+	queue           [][]store.HourlyRow // successive SelectUnemittedUsage returns
+	selCalls        []selCall
+	stamped         [][]store.HourlyRow
+	attempts        [][]store.UsageExportAttempt
+	rejected        []store.UsageExportReject
+	stampErr        error
+	quarantineCount int64
+	quarantineErr   error
 }
 
 func (f *fakeEmitterStore) SelectUnemittedUsage(_ context.Context, floor, sealBefore time.Time, limit int) ([]store.HourlyRow, error) {
@@ -55,12 +59,30 @@ func (f *fakeEmitterStore) SelectUnemittedUsage(_ context.Context, floor, sealBe
 	return rows, nil
 }
 
-func (f *fakeEmitterStore) MarkUsageEmitted(_ context.Context, rows []store.HourlyRow, _ time.Time) error {
+func (f *fakeEmitterStore) MarkUsageAttempted(_ context.Context, attempts []store.UsageExportAttempt, _ time.Time) error {
+	f.attempts = append(f.attempts, attempts)
+	return nil
+}
+
+func (f *fakeEmitterStore) RecordUsageExportResult(_ context.Context, accepted []store.UsageExportAttempt, rejected []store.UsageExportReject, _ time.Time) error {
 	if f.stampErr != nil {
 		return f.stampErr
 	}
+	rows := make([]store.HourlyRow, len(accepted))
+	for i, attempt := range accepted {
+		rows[i] = attempt.Row
+	}
 	f.stamped = append(f.stamped, rows)
+	f.rejected = append(f.rejected, rejected...)
 	return nil
+}
+
+func (f *fakeEmitterStore) QuarantineOldUsageAttempts(_ context.Context, _, _ time.Time) (int64, error) {
+	return f.quarantineCount, f.quarantineErr
+}
+
+func (f *fakeEmitterStore) BillingExportStats(_ context.Context, _, _, _ time.Time) (store.BillingExportStats, error) {
+	return store.BillingExportStats{}, nil
 }
 
 func (f *fakeEmitterStore) stampedCount() int {
@@ -77,6 +99,7 @@ type fakeIngester struct {
 	ensureErr  map[string]error
 	batches    [][]Event
 	ingestErr  error
+	result     *IngestResult
 }
 
 func (f *fakeIngester) EnsureCustomer(_ context.Context, id string) error {
@@ -89,12 +112,45 @@ func (f *fakeIngester) EnsureContract(_ context.Context, id string) error {
 	return nil
 }
 
-func (f *fakeIngester) IngestBatch(_ context.Context, events []Event) error {
-	if f.ingestErr != nil {
-		return f.ingestErr
-	}
+func (f *fakeIngester) IngestBatch(_ context.Context, events []Event) IngestResult {
 	f.batches = append(f.batches, events)
-	return nil
+	if f.result != nil {
+		return *f.result
+	}
+	if f.ingestErr != nil {
+		failed := make([]IngestFailure, len(events))
+		for i, event := range events {
+			failed[i] = IngestFailure{TransactionID: event.TransactionID, Code: "transient", Message: f.ingestErr.Error()}
+		}
+		return IngestResult{Failed: failed}
+	}
+	accepted := make([]string, len(events))
+	for i, event := range events {
+		accepted[i] = event.TransactionID
+	}
+	return IngestResult{Accepted: accepted}
+}
+
+func TestEmitOnceAccountsAcceptedAndPermanentRejectSeparately(t *testing.T) {
+	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
+	w := now.Add(-72 * time.Hour)
+	acceptedRow := row("tea-a", "srv-1", "instance_seconds", "starter", "service", 3600, w)
+	rejectedRow := row("tea-a", "srv-1", "build_seconds", "", "service", 30, w)
+	acceptedID := toEvent(acceptedRow).TransactionID
+	rejectedID := toEvent(rejectedRow).TransactionID
+	st := &fakeEmitterStore{queue: [][]store.HourlyRow{{acceptedRow, rejectedRow}}}
+	ing := &fakeIngester{result: &IngestResult{
+		Accepted: []string{acceptedID},
+		Failed:   []IngestFailure{{TransactionID: rejectedID, Code: "invalid_value", Message: "bad value", Permanent: true}},
+	}}
+	newEmitter(st, ing, now).emitOnce(context.Background())
+
+	if st.stampedCount() != 1 || len(st.rejected) != 1 {
+		t.Fatalf("accepted=%d rejected=%d, want 1/1", st.stampedCount(), len(st.rejected))
+	}
+	if st.rejected[0].Attempt.TransactionID != rejectedID || st.rejected[0].Code != "invalid_value" {
+		t.Fatalf("rejected result = %+v", st.rejected[0])
+	}
 }
 
 func (f *fakeIngester) allEvents() []Event {

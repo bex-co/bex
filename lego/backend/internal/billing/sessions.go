@@ -286,6 +286,7 @@ func (c *StripeClient) findSubscriptionObject(ctx context.Context, workspaceID, 
 		return nil, fmt.Errorf("stripe: list subscriptions for %s: %w", workspaceID, err)
 	}
 	if len(found) > 1 {
+		c.metrics.Operation("duplicate_subscription", "error")
 		ids := make([]string, 0, len(found))
 		for _, sub := range found {
 			ids = append(ids, sub.ID)

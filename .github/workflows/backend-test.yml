@@ -10,11 +10,19 @@ on:
     paths:
       - "lego/backend/**"
       - "lego/types/**"
+      - "scripts/stripe-billing-*.sh"
+      - "scripts/stripe_billing_*.py"
+      - "scripts/test_stripe_billing_*.py"
+      - "scripts/lib/stripe-billing.sh"
       - ".github/workflows/backend-test.yml"
   pull_request:
     paths:
       - "lego/backend/**"
       - "lego/types/**"
+      - "scripts/stripe-billing-*.sh"
+      - "scripts/stripe_billing_*.py"
+      - "scripts/test_stripe_billing_*.py"
+      - "scripts/lib/stripe-billing.sh"
       - ".github/workflows/backend-test.yml"
   workflow_call: {}
 
@@ -85,3 +93,9 @@ jobs:
         # package test binaries so those resets cannot erase another package's
         # live rows; tests within each package remain normally parallelizable.
         run: go test -p 1 ./...
+      - name: test Stripe billing operations (offline guards + reconciliation)
+        run: >-
+          python3 -m unittest
+          scripts/test_stripe_billing_secret.py
+          scripts/test_stripe_billing_operations.py
+          scripts/test_stripe_billing_reconcile.py

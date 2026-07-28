@@ -46,6 +46,7 @@ type Reconciler struct {
 	Interval    time.Duration
 	Concurrency int
 	Clock       func() time.Time
+	Metrics     *Metrics
 }
 
 func (r *Reconciler) now() time.Time {
@@ -112,8 +113,10 @@ func (r *Reconciler) RunOnce(ctx context.Context) error {
 	wg.Wait()
 	close(errCh)
 	for err := range errCh {
+		r.Metrics.Operation("lifecycle_reconcile", "error")
 		return err
 	}
+	r.Metrics.Operation("lifecycle_reconcile", "success")
 	return nil
 }
 

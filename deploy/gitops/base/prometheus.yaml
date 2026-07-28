@@ -223,6 +223,18 @@ spec:
                 scrape_interval: 15s
                 static_configs:
                   - targets: [bex-ssh-gateway.bex-system.svc:9090]
+              # Stripe Billing operations expose only account-wide gauges and
+              # bounded operation/result labels. No workspace, provider object,
+              # invoice, transaction, payment, or secret value is a label.
+              - job_name: bex-api
+                scrape_interval: 15s
+                metrics_path: /metrics
+                static_configs:
+                  - targets: [bex-api.bex-system.svc:8091]
+                metric_relabel_configs:
+                  - source_labels: [__name__]
+                    regex: bex_billing_.*
+                    action: keep
               # One post-policy netfilter meter per untainted tenant node. Pod discovery
               # (rather than the round-robin Service) preserves the node and
               # source_instance labels needed to detect a missing/reset source.
@@ -741,6 +753,104 @@ spec:
                     annotations:
                       summary: "bex-api has no available replicas"
                       description: "The bex-api control-plane surface (REST/GraphQL/MCP) has had zero available replicas for >5m. Debug: kubectl -n bex-system rollout status deploy/bex-api; kubectl -n bex-system logs deploy/bex-api"
+
+                  - alert: BillingExportBacklog
+                    expr: |
+                      bex_billing_enabled == 1
+                      and bex_billing_outbox_oldest_pending_age_seconds > (72 * 3600)
+                    for: 15m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Stripe billing export backlog is older than 72h"
+                      description: "A sealed usage row has remained pending for >24h beyond the 48h seal horizon. Inspect without replay: scripts/stripe-billing-reconcile.sh issues. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+
+                  - alert: BillingPermanentReject
+                    expr: |
+                      bex_billing_enabled == 1
+                      and bex_billing_export_rejected_rows > 0
+                    for: 5m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Stripe permanently rejected billing meter events"
+                      description: "One or more usage rows are held in the durable reject queue. Dry-run reconciliation before retry or acknowledgement: scripts/stripe-billing-reconcile.sh issues. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+
+                  - alert: BillingExportAmbiguity
+                    expr: |
+                      bex_billing_enabled == 1
+                      and bex_billing_export_ambiguous_rows > 0
+                    for: 1m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Stripe billing export has an old ambiguous provider outcome"
+                      description: "An attempted event exceeded Stripe's 24h identifier window without a local stamp and automatic replay stopped. Reconcile provider summaries, then explicitly mark repaired or acknowledge; never blind-retry. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+
+                  - alert: BillingLocalStampFailure
+                    expr: |
+                      sum by (job, instance) (
+                        increase(bex_billing_operations_total{operation="local_stamp",result="error"}[15m])
+                      ) > 0
+                      and on (job, instance) bex_billing_enabled == 1
+                    for: 1m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Stripe accepted usage but the local export stamp failed"
+                      description: "Provider acceptance may be ahead of local state. Restore Postgres and reconcile before the 24h identifier window expires. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+
+                  - alert: BillingProviderDuplicate
+                    expr: |
+                      sum by (job, instance) (
+                        increase(bex_billing_operations_total{operation=~"duplicate_customer|duplicate_subscription",result="error"}[15m])
+                      ) > 0
+                      and on (job, instance) bex_billing_enabled == 1
+                    for: 1m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Stripe billing found duplicate Customer or Subscription ownership"
+                      description: "The fail-closed ownership resolver found multiple provider objects for one workspace. Do not delete automatically; inspect metadata and subscription status under the test-mode guard. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+
+                  - alert: BillingInvoiceReadDegraded
+                    expr: |
+                      sum by (job, instance) (
+                        increase(bex_billing_operations_total{operation="invoice_read",result="error"}[15m])
+                      ) > 2
+                      and on (job, instance) bex_billing_enabled == 1
+                    for: 5m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Stripe invoice read-back is degraded"
+                      description: "Repeated invoice preview/history reads failed; the usage surface is falling back to estimates. Check restricted-key permissions and Stripe API health. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+
+                  - alert: BillingWebhookDrift
+                    expr: |
+                      sum by (job, instance) (
+                        increase(bex_billing_operations_total{operation=~"webhook_signature|webhook_version|webhook_mode",result="error"}[15m])
+                      ) > 0
+                      and on (job, instance) bex_billing_enabled == 1
+                    for: 1m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Stripe billing webhook signature, API version, or mode drifted"
+                      description: "Webhook intake rejected a signature, pinned API version, or test/live mode mismatch. Verify the test endpoint and rotate add→verify→revoke; never weaken verification. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+
+                  - alert: BillingProvisioningFailure
+                    expr: |
+                      sum by (job, instance) (
+                        increase(bex_billing_operations_total{operation="provisioning",result="error"}[15m])
+                      ) > 2
+                      and on (job, instance) bex_billing_enabled == 1
+                    for: 5m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Stripe Customer or Subscription provisioning is repeatedly failing"
+                      description: "Usage cannot export until the workspace's unique Customer and metered Subscription converge. Inspect catalog/key permissions and duplicate-object alerts. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
 
                   # Stranded node-local images: App images are node-local ctr imports
                   # (no registry — zot is empty), so a tenant-node replacement or an

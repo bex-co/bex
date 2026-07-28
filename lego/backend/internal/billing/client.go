@@ -41,10 +41,29 @@ type Event struct {
 	Properties    map[string]string
 }
 
+// IngestFailure is one event Stripe did not accept. Permanent means retrying
+// the same payload cannot succeed without an operator correction. A transient
+// failure may be retried only while the provider's identifier de-duplication
+// window is still open.
+type IngestFailure struct {
+	TransactionID string
+	Code          string
+	Message       string
+	Permanent     bool
+}
+
+// IngestResult accounts for every event attempted by an Ingester. Accepted
+// identifiers are safe to stamp emitted; permanent failures become durable
+// dead letters; transient failures remain pending for a bounded retry.
+type IngestResult struct {
+	Accepted []string
+	Failed   []IngestFailure
+}
+
 // Ingester is the slice the generic outbox emitter needs. Implementations
 // provision the customer and rating contract before accepting meter events.
 type Ingester interface {
 	EnsureCustomer(ctx context.Context, tenantID string) error
 	EnsureContract(ctx context.Context, tenantID string) error
-	IngestBatch(ctx context.Context, events []Event) error
+	IngestBatch(ctx context.Context, events []Event) IngestResult
 }

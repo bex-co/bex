@@ -8,6 +8,126 @@ rule_files:
 evaluation_interval: 1m
 
 tests:
+  - name: enabled billing exposes durable backlog reject and ambiguity
+    interval: 1m
+    input_series:
+      - series: "bex_billing_enabled"
+        values: "1x30"
+      - series: "bex_billing_outbox_oldest_pending_age_seconds"
+        values: "300000x30"
+      - series: "bex_billing_export_rejected_rows"
+        values: "1x30"
+      - series: "bex_billing_export_ambiguous_rows"
+        values: "1x30"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: BillingExportBacklog
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "Stripe billing export backlog is older than 72h"
+              description: "A sealed usage row has remained pending for >24h beyond the 48h seal horizon. Inspect without replay: scripts/stripe-billing-reconcile.sh issues. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+      - eval_time: 20m
+        alertname: BillingPermanentReject
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "Stripe permanently rejected billing meter events"
+              description: "One or more usage rows are held in the durable reject queue. Dry-run reconciliation before retry or acknowledgement: scripts/stripe-billing-reconcile.sh issues. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+      - eval_time: 20m
+        alertname: BillingExportAmbiguity
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: "Stripe billing export has an old ambiguous provider outcome"
+              description: "An attempted event exceeded Stripe's 24h identifier window without a local stamp and automatic replay stopped. Reconcile provider summaries, then explicitly mark repaired or acknowledge; never blind-retry. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+
+  - name: billing operation failures are bounded and actionable
+    interval: 1m
+    input_series:
+      - series: 'bex_billing_enabled{job="bex-api",instance="prod"}'
+        values: "1x30"
+      - series: 'bex_billing_operations_total{job="bex-api",instance="prod",operation="local_stamp",result="error"}'
+        values: "0+1x30"
+      - series: 'bex_billing_operations_total{job="bex-api",instance="prod",operation="duplicate_customer",result="error"}'
+        values: "0+1x30"
+      - series: 'bex_billing_operations_total{job="bex-api",instance="prod",operation="invoice_read",result="error"}'
+        values: "0+1x30"
+      - series: 'bex_billing_operations_total{job="bex-api",instance="prod",operation="webhook_version",result="error"}'
+        values: "0+1x30"
+      - series: 'bex_billing_operations_total{job="bex-api",instance="prod",operation="provisioning",result="error"}'
+        values: "0+1x30"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: BillingLocalStampFailure
+        exp_alerts:
+          - exp_labels: { severity: critical, job: bex-api, instance: prod }
+            exp_annotations:
+              summary: "Stripe accepted usage but the local export stamp failed"
+              description: "Provider acceptance may be ahead of local state. Restore Postgres and reconcile before the 24h identifier window expires. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+      - eval_time: 20m
+        alertname: BillingProviderDuplicate
+        exp_alerts:
+          - exp_labels: { severity: critical, job: bex-api, instance: prod }
+            exp_annotations:
+              summary: "Stripe billing found duplicate Customer or Subscription ownership"
+              description: "The fail-closed ownership resolver found multiple provider objects for one workspace. Do not delete automatically; inspect metadata and subscription status under the test-mode guard. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+      - eval_time: 20m
+        alertname: BillingInvoiceReadDegraded
+        exp_alerts:
+          - exp_labels: { severity: warning, job: bex-api, instance: prod }
+            exp_annotations:
+              summary: "Stripe invoice read-back is degraded"
+              description: "Repeated invoice preview/history reads failed; the usage surface is falling back to estimates. Check restricted-key permissions and Stripe API health. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+      - eval_time: 20m
+        alertname: BillingWebhookDrift
+        exp_alerts:
+          - exp_labels: { severity: critical, job: bex-api, instance: prod }
+            exp_annotations:
+              summary: "Stripe billing webhook signature, API version, or mode drifted"
+              description: "Webhook intake rejected a signature, pinned API version, or test/live mode mismatch. Verify the test endpoint and rotate add→verify→revoke; never weaken verification. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+      - eval_time: 20m
+        alertname: BillingProvisioningFailure
+        exp_alerts:
+          - exp_labels: { severity: warning, job: bex-api, instance: prod }
+            exp_annotations:
+              summary: "Stripe Customer or Subscription provisioning is repeatedly failing"
+              description: "Usage cannot export until the workspace's unique Customer and metered Subscription converge. Inspect catalog/key permissions and duplicate-object alerts. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+
+  - name: disabled billing never alerts on stale retained series
+    interval: 1m
+    input_series:
+      - series: 'bex_billing_enabled{job="bex-api",instance="prod"}'
+        values: "0x30"
+      - series: 'bex_billing_outbox_oldest_pending_age_seconds{job="bex-api",instance="prod"}'
+        values: "300000x30"
+      - series: 'bex_billing_export_rejected_rows{job="bex-api",instance="prod"}'
+        values: "1x30"
+      - series: 'bex_billing_export_ambiguous_rows{job="bex-api",instance="prod"}'
+        values: "1x30"
+      - series: 'bex_billing_operations_total{job="bex-api",instance="prod",operation="local_stamp",result="error"}'
+        values: "0+10x30"
+      - series: 'bex_billing_operations_total{job="bex-api",instance="prod",operation="duplicate_subscription",result="error"}'
+        values: "0+10x30"
+      - series: 'bex_billing_operations_total{job="bex-api",instance="prod",operation="invoice_read",result="error"}'
+        values: "0+10x30"
+      - series: 'bex_billing_operations_total{job="bex-api",instance="prod",operation="webhook_signature",result="error"}'
+        values: "0+10x30"
+      - series: 'bex_billing_operations_total{job="bex-api",instance="prod",operation="provisioning",result="error"}'
+        values: "0+10x30"
+    alert_rule_test:
+      - { eval_time: 20m, alertname: BillingExportBacklog, exp_alerts: [] }
+      - { eval_time: 20m, alertname: BillingPermanentReject, exp_alerts: [] }
+      - { eval_time: 20m, alertname: BillingExportAmbiguity, exp_alerts: [] }
+      - { eval_time: 20m, alertname: BillingLocalStampFailure, exp_alerts: [] }
+      - { eval_time: 20m, alertname: BillingProviderDuplicate, exp_alerts: [] }
+      - { eval_time: 20m, alertname: BillingInvoiceReadDegraded, exp_alerts: [] }
+      - { eval_time: 20m, alertname: BillingWebhookDrift, exp_alerts: [] }
+      - { eval_time: 20m, alertname: BillingProvisioningFailure, exp_alerts: [] }
+
   - name: missing tenant-node egress meter target
     interval: 1m
     input_series:

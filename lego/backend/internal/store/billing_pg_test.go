@@ -353,3 +353,100 @@ func TestPGStoreBillingExclusionAudited(t *testing.T) {
 		t.Fatalf("unknown tenant err = %v, want ErrNotFound", err)
 	}
 }
+
+func TestPGStoreBillingExportRejectAmbiguityAndAuditedRepair(t *testing.T) {
+	s, ctx := newBillingTestStore(t)
+	tenant, err := s.CreateTenant(ctx, "billing-ops", "hobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC().Truncate(time.Hour)
+	window := now.Add(-72 * time.Hour)
+	ambiguousRow := HourlyRow{WorkspaceID: tenant.ID, ServiceID: "srv-ambiguity", Kind: UsageKindBuildSeconds, ResourceKind: ResourceKindService, WindowStart: window, Quantity: 10}
+	rejectedRow := HourlyRow{WorkspaceID: tenant.ID, ServiceID: "srv-reject", Kind: UsageKindEgressBytes, ResourceKind: ResourceKindService, WindowStart: window.Add(time.Hour), Quantity: 1024}
+	for _, row := range []HourlyRow{ambiguousRow, rejectedRow} {
+		if err := s.UpsertUsageHourly(ctx, row); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ambiguous := UsageExportAttempt{Row: ambiguousRow, TransactionID: "tx-ambiguity", EventName: "build_seconds"}
+	if err := s.MarkUsageAttempted(ctx, []UsageExportAttempt{ambiguous}, now.Add(-25*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	count, err := s.QuarantineOldUsageAttempts(ctx, now.Add(-24*time.Hour), now)
+	if err != nil || count != 1 {
+		t.Fatalf("quarantine count=%d err=%v", count, err)
+	}
+	stats, err := s.BillingExportStats(ctx, now.Add(-34*24*time.Hour), now.Add(-48*time.Hour), now)
+	if err != nil || stats.AmbiguousRows != 1 {
+		t.Fatalf("stats=%+v err=%v", stats, err)
+	}
+	issues, err := s.ListBillingExportIssues(ctx, true, 100)
+	if err != nil || len(issues) != 1 || issues[0].IssueKind != "stamp_ambiguity" {
+		t.Fatalf("issues=%+v err=%v", issues, err)
+	}
+	if _, err := s.ResolveBillingExportIssue(ctx, ambiguous.TransactionID, "retry", "ops", "unsafe retry test", now); !errors.Is(err, ErrConflict) {
+		t.Fatalf("ambiguous retry err=%v, want conflict", err)
+	}
+	if _, err := s.ResolveBillingExportIssue(ctx, ambiguous.TransactionID, "mark_repaired", "ops", "summary proved provider receipt", now); err != nil {
+		t.Fatal(err)
+	}
+
+	rejected := UsageExportAttempt{Row: rejectedRow, TransactionID: "tx-reject", EventName: "egress_gib"}
+	if err := s.MarkUsageAttempted(ctx, []UsageExportAttempt{rejected}, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordUsageExportResult(ctx, nil, []UsageExportReject{{Attempt: rejected, Code: "parameter_invalid", Message: "bounded rejection"}}, now); err != nil {
+		t.Fatal(err)
+	}
+	report, err := s.BillingExportReport(ctx, tenant.ID, window, now)
+	if err != nil || len(report.Rows) != 2 {
+		t.Fatalf("report=%+v err=%v", report, err)
+	}
+	if _, err := s.ResolveBillingExportIssue(ctx, rejected.TransactionID, "retry", "ops", "catalog fixed", now.Add(time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	report, err = s.BillingExportReport(ctx, tenant.ID, window, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	states := map[string]string{}
+	for _, row := range report.Rows {
+		states[row.ServiceID] = row.State
+	}
+	if states["srv-ambiguity"] != "emitted" || states["srv-reject"] != "pending" {
+		t.Fatalf("states=%v", states)
+	}
+	// A sibling replica can observe a duplicate response after this replica
+	// stamps the deterministic event accepted. The stale reject must not reopen
+	// an issue or overwrite the final emitted state.
+	if err := s.RecordUsageExportResult(ctx, []UsageExportAttempt{rejected}, nil, now.Add(2*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordUsageExportResult(ctx, nil, []UsageExportReject{{Attempt: rejected, Code: "duplicate_meter_event", Message: "already submitted"}}, now.Add(3*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	report, err = s.BillingExportReport(ctx, tenant.ID, window, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	states = map[string]string{}
+	for _, row := range report.Rows {
+		states[row.ServiceID] = row.State
+	}
+	if states["srv-reject"] != "emitted" {
+		t.Fatalf("state after stale reject=%q, want emitted", states["srv-reject"])
+	}
+	openIssues, err := s.ListBillingExportIssues(ctx, true, 100)
+	if err != nil || len(openIssues) != 0 {
+		t.Fatalf("open issues after stale reject=%+v err=%v", openIssues, err)
+	}
+	var auditCount int
+	if err := s.Pool.QueryRow(ctx, `SELECT count(*) FROM audit_events WHERE workspace_id=$1 AND verb='billing.ResolveExportIssue'`, tenant.ID).Scan(&auditCount); err != nil || auditCount != 2 {
+		t.Fatalf("audit count=%d err=%v", auditCount, err)
+	}
+	stats, err = s.BillingExportStats(ctx, now.Add(-34*24*time.Hour), now.Add(-48*time.Hour), now.Add(4*time.Minute))
+	if err != nil || stats.RejectedRows != 0 || stats.AmbiguousRows != 0 {
+		t.Fatalf("resolved issue stats=%+v err=%v", stats, err)
+	}
+}
