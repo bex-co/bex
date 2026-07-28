@@ -29,10 +29,11 @@ cd "$(dirname "$0")/.."
 namespace="${BEX_SYSTEM_NAMESPACE:-bex-system}"
 secret_name="${BEX_STRIPE_SECRET_NAME:-bex-stripe}"
 
-if [ -f .env ]; then
+env_file="${BEX_STRIPE_ENV_FILE:-.env}"
+if [ -f "$env_file" ]; then
   set -a
   # shellcheck disable=SC1091
-  source ./.env
+  source "$env_file"
   set +a
 fi
 
@@ -83,12 +84,38 @@ if [ "$BEX_STRIPE_DUNNING_ENABLED" = 1 ] && [ "$stripe_mode" != test ]; then
 fi
 if [ "$BEX_STRIPE_DUNNING_ENABLED" = 1 ]; then
   python3 - "$BEX_STRIPE_GRACE_PERIOD" "$BEX_STRIPE_RECONCILE_INTERVAL" <<'PY'
+from decimal import Decimal
 import re
 import sys
 
-for name, value in zip(("BEX_STRIPE_GRACE_PERIOD", "BEX_STRIPE_RECONCILE_INTERVAL"), sys.argv[1:]):
-    if not re.fullmatch(r"(?:[1-9][0-9]*(?:\.[0-9]+)?(?:ns|us|µs|ms|s|m|h))+", value):
+units = {
+    "ns": Decimal("0.000000001"),
+    "us": Decimal("0.000001"),
+    "µs": Decimal("0.000001"),
+    "ms": Decimal("0.001"),
+    "s": Decimal(1),
+    "m": Decimal(60),
+    "h": Decimal(3600),
+}
+token = re.compile(r"([0-9]+(?:\.[0-9]+)?)(ns|us|µs|ms|s|m|h)")
+
+
+def duration_seconds(name, value):
+    position = 0
+    total = Decimal(0)
+    for match in token.finditer(value):
+        if match.start() != position:
+            break
+        total += Decimal(match.group(1)) * units[match.group(2)]
+        position = match.end()
+    if position != len(value) or position == 0 or total <= 0:
         raise SystemExit(f"error: {name} must be a positive Go duration")
+    return total
+
+
+duration_seconds("BEX_STRIPE_GRACE_PERIOD", sys.argv[1])
+if duration_seconds("BEX_STRIPE_RECONCILE_INTERVAL", sys.argv[2]) < 60:
+    raise SystemExit("error: BEX_STRIPE_RECONCILE_INTERVAL must be >= 1m")
 PY
 fi
 
