@@ -202,8 +202,8 @@ func (c *StripeClient) CompleteCheckoutSession(ctx context.Context, eventSession
 	if err != nil {
 		return fmt.Errorf("stripe: retrieve Checkout Session %s: %w", eventSession.ID, err)
 	}
-	if !c.expectedLivemode(session.Livemode) || session.Mode != stripe.CheckoutSessionModeSetup {
-		return &inputError{message: "checkout session mode does not match the billing environment"}
+	if !c.expectedLivemode(session.Livemode) || session.Mode != stripe.CheckoutSessionModeSetup || session.Status != stripe.CheckoutSessionStatusComplete {
+		return &inputError{message: "checkout session is not a completed setup session in the billing environment"}
 	}
 	workspaceID := session.Metadata[workspaceMetadataKey]
 	claimedSubscriptionID := session.Metadata[checkoutSubscriptionMetadataKey]

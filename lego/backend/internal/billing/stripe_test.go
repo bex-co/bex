@@ -540,7 +540,7 @@ func TestStripeCompleteCheckoutSessionBindsDefaultsIdempotently(t *testing.T) {
 	c, stub := newStripeTest(t, func(method, path string) (int, string) {
 		switch {
 		case method == http.MethodGet && path == "/v1/checkout/sessions/cs_test_1":
-			return 200, `{"id":"cs_test_1","object":"checkout.session","mode":"setup","livemode":false,"customer":"cus_1","setup_intent":"seti_1","metadata":{"bex_workspace":"tea-a","bex_subscription":"sub_1"}}`
+			return 200, `{"id":"cs_test_1","object":"checkout.session","mode":"setup","status":"complete","livemode":false,"customer":"cus_1","setup_intent":"seti_1","metadata":{"bex_workspace":"tea-a","bex_subscription":"sub_1"}}`
 		case method == http.MethodGet && path == "/v1/subscriptions":
 			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
 		case method == http.MethodGet && path == "/v1/setup_intents/seti_1":
@@ -619,7 +619,7 @@ func TestStripeCompleteCheckoutSessionRejectsCrossWorkspaceBinding(t *testing.T)
 	c, stub := newStripeTest(t, func(method, path string) (int, string) {
 		switch {
 		case method == http.MethodGet && path == "/v1/checkout/sessions/cs_test_bad":
-			return 200, `{"id":"cs_test_bad","object":"checkout.session","mode":"setup","livemode":false,"customer":"cus_other","setup_intent":"seti_1","metadata":{"bex_workspace":"tea-a","bex_subscription":"sub_other"}}`
+			return 200, `{"id":"cs_test_bad","object":"checkout.session","mode":"setup","status":"complete","livemode":false,"customer":"cus_other","setup_intent":"seti_1","metadata":{"bex_workspace":"tea-a","bex_subscription":"sub_other"}}`
 		default:
 			return 500, `{"error":{"type":"api_error","message":"must not mutate"}}`
 		}
@@ -631,6 +631,23 @@ func TestStripeCompleteCheckoutSessionRejectsCrossWorkspaceBinding(t *testing.T)
 	}
 	if stub.count("/customers/cus_1") != 0 || stub.count("/subscriptions/sub_other") != 0 {
 		t.Fatalf("cross-workspace completion mutated Stripe: %v", stub.hits)
+	}
+}
+
+func TestStripeCompleteCheckoutSessionRejectsAuthoritativeOpenSession(t *testing.T) {
+	c, stub := newStripeTest(t, func(method, path string) (int, string) {
+		if method == http.MethodGet && path == "/v1/checkout/sessions/cs_test_open" {
+			return 200, `{"id":"cs_test_open","object":"checkout.session","mode":"setup","status":"open","livemode":false,"customer":"cus_1","setup_intent":"seti_1","metadata":{"bex_workspace":"tea-a","bex_subscription":"sub_1"}}`
+		}
+		return 500, `{"error":{"type":"api_error","message":"must not mutate"}}`
+	})
+	c.storeCustomer("tea-a", "cus_1")
+	err := c.CompleteCheckoutSession(context.Background(), &stripe.CheckoutSession{ID: "cs_test_open"})
+	if err == nil || !isInputError(err) || !strings.Contains(err.Error(), "not a completed setup session") {
+		t.Fatalf("open Checkout completion error = %v", err)
+	}
+	if len(stub.hits) != 1 {
+		t.Fatalf("open Checkout caused additional Stripe calls: %v", stub.hits)
 	}
 }
 

@@ -1,24 +1,24 @@
 # w7 · m51 — Stripe customer billing: Checkout payment setup + Tax + Customer Portal
 
-**Worker:** worker7 **Goal:** make an existing bex Stripe Customer and metered Subscription payment-ready through Stripe-hosted test-mode Checkout, tax-aware invoice semantics, and a self-service Customer Portal, exposed API-first across REST, GraphQL, MCP, and the dashboard **Status:** todo
+**Worker:** worker7 **Goal:** make an existing bex Stripe Customer and metered Subscription payment-ready through Stripe-hosted test-mode Checkout, tax-aware invoice semantics, and a self-service Customer Portal, exposed API-first across REST, GraphQL, MCP, and the dashboard **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Upgrade and pin the Stripe SDK/API/webhook contract | 45m | — |
-| t002 | Define payment-readiness and hosted-session core contracts | 45m | — |
-| t003 | Create scoped Checkout setup sessions for the existing Customer | 1h | t001, t002 |
-| t004 | Complete payment setup idempotently and bind the default payment method | 1h | t003 |
-| t005 | Create scoped Customer Portal sessions | 45m | t001, t002 |
-| t006 | Add the fail-closed Stripe Tax test-mode activation gate | 1h | t001, t002 |
-| t007 | Expose checkout, portal, and billing-readiness across REST · GraphQL · MCP | 1h | t003, t004, t005, t006 |
-| t008 | Build the dashboard billing onboarding and portal experience | 1h | t007 |
-| t009 | Verify payment setup, tax, portal, and invoice preview in prod test mode | 1h | t008 |
-| t010 | Render parity | 30m | t009 |
-| t011 | Simplify | 30m | t010 |
-| t012 | Test coverage | 45m | t011 |
-| t013 | Closeout | 10m | t012 |
+| t001 | Upgrade and pin the Stripe SDK/API/webhook contract — **DONE** | 45m | — |
+| t002 | Define payment-readiness and hosted-session core contracts — **DONE** | 45m | — |
+| t003 | Create scoped Checkout setup sessions for the existing Customer — **DONE** | 1h | t001, t002 |
+| t004 | Complete payment setup idempotently and bind the default payment method — **DONE** | 1h | t003 |
+| t005 | Create scoped Customer Portal sessions — **DONE** | 45m | t001, t002 |
+| t006 | Add the fail-closed Stripe Tax test-mode activation gate — **DONE** | 1h | t001, t002 |
+| t007 | Expose checkout, portal, and billing-readiness across REST · GraphQL · MCP — **DONE** | 1h | t003, t004, t005, t006 |
+| t008 | Build the dashboard billing onboarding and portal experience — **DONE** | 1h | t007 |
+| t009 | Verify payment setup, tax, portal, and invoice preview in prod test mode — **DONE** | 1h | t008 |
+| t010 | Render parity — **DONE** | 30m | t009 |
+| t011 | Simplify — **DONE** | 30m | t010 |
+| t012 | Test coverage — **DONE** | 45m | t011 |
+| t013 | Closeout — **DONE** | 10m | t012 |
 
 ## Definition of done
 
