@@ -6,7 +6,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | **etcd** | App/Database/KeyValue CRs (user deployments) | CronJob `kube-system/etcd-backup` → `etcd-snapshots/` in `bex-tfstate` | 03:15 UTC daily | 7 snapshots (rolling) | Docker throwaway etcd → `kubectl apply` extracted CRs | 2026-07-14 (CAPD 2-node, w7/m29) |
 | **OpenBao** | All tenant env-var secrets | CronJob `secrets/openbao-backup` → `openbao-snapshots/` in `bex-tfstate` | 03:45 UTC daily | 7 snapshots (rolling) | `bao operator raft snapshot restore [-force]` onto running unsealed OpenBao | 2026-07-14 (Docker, fresh-node path, w7/m29) |
-| **bex-db** | Workspaces, members, audit log, usage, API keys, deploy history | Barman Cloud plugin → ObjectStore `bex-system/bex-db` → `bex-db/` in `bex-tfstate` + continuous WAL | 04:00 UTC daily (full base backup via plugin `ScheduledBackup`); WAL archiving is continuous | 7 days of base backups + WAL (ObjectStore retention) | CNPG `bootstrap.recovery` through the plugin ObjectStore into a throwaway cluster | 2026-07-14 native path; plugin re-drill pending w1/m56 t007 |
+| **bex-db** | Workspaces, members, audit log, usage, API keys, deploy history | Barman Cloud plugin → ObjectStore `bex-system/bex-db` → `bex-db/` in `bex-tfstate` + continuous WAL | 04:00 UTC daily (full base backup via plugin `ScheduledBackup`); WAL archiving is continuous | 7 days of base backups + WAL (ObjectStore retention) | CNPG `bootstrap.recovery` through the plugin ObjectStore into a throwaway cluster | 2026-07-28 (production plugin PITR, w1/m56) |
 
 All three use the same Wasabi/Hetzner Object Storage bucket (`bex-tfstate`) under separate prefixes. Credentials come from out-of-band Secrets (never in git), following the same pattern as `etcd-backup-s3` / `openbao-backup-s3`.
 
@@ -181,6 +181,10 @@ For a full cutover (live `bex-db` is destroyed): repeat the above, then rename `
 
 ## Drill records
 
+### Barman Cloud plugin PITR — 2026-07-28 (w1/m56, production)
+
+Fresh plugin backups and explicit point-in-time restores passed for both a disposable tenant Database and `bex-db`. Each new restore contained a pre-target marker and excluded a later marker; the `bex-db` restore also retained the expected control-plane schema and row counts. Sources stayed healthy and all throwaway compute/storage resources were removed. See the credential-free evidence record: [2026-07-28-barman-plugin-pitr.md](drills/2026-07-28-barman-plugin-pitr.md).
+
 ### etcd restore — 2026-07-14 (w7/m29, CAPD 2-node mock cluster)
 
 **Date:** 2026-07-14 · **Environment:** CAPI CAPD cluster (2 nodes: 1 control-plane + 1 worker, kindest/node:v1.36.1, kubeadm etcd 3.6.8-0) · **Duration:** ~8 min · **Outcome:** ✅ pass
@@ -261,4 +265,4 @@ For a full cutover (live `bex-db` is destroyed): repeat the above, then rename `
 | --- | --- | --- | --- |
 | etcd | 2026-07-14 | Annually or after any control-plane topology change | Path A tested; topology changes the recovery surface |
 | OpenBao | 2026-07-14 | Annually | Raft restore is idempotent and low-risk; fresh-node path now verified |
-| bex-db | 2026-07-14 | Before upgrading CNPG beyond 1.30.x | CNPG 1.30.0 deprecated `barmanObjectStore` (removed in 1.31.0); drill must confirm the plugin-based path before the upgrade |
+| bex-db | 2026-07-28 | Annually or after a CNPG/plugin major upgrade or backup-transport change | Production plugin base backup + explicit PITR restore verified; re-drill when the recovery surface changes |
