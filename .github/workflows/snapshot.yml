@@ -19,11 +19,11 @@ on:
       kubernetes_version:
         description: "Kubernetes version to bake (must match cluster.yaml `version:`)"
         required: false
-        default: "1.32.13"
+        default: "1.33.13"
       image_name:
         description: "CAPH image label; use a version-specific name for staged upgrades"
         required: false
-        default: "bex-worker-k8s-1-32"
+        default: "bex-worker-k8s-1-33"
 
 permissions:
   contents: read
