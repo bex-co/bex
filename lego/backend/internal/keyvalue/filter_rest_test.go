@@ -31,6 +31,9 @@ import (
 // seedKVWithLabels seeds a minimal KeyValue CR with the given spec and labels.
 func seedKVWithLabels(t *testing.T, svc *Service, name string, spec appv1alpha1.KeyValueSpec, labels map[string]string) {
 	t.Helper()
+	if spec.Name == "" {
+		spec.Name = name
+	}
 	kv := &appv1alpha1.KeyValue{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,

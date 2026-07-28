@@ -54,7 +54,7 @@ var _ = Describe("Database deletion events", func() {
 		nn := types.NamespacedName{Name: "delete-event-db", Namespace: "default"}
 		db := &appv1alpha1.Database{
 			ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
-			Spec:       appv1alpha1.DatabaseSpec{Plan: "free"},
+			Spec:       appv1alpha1.DatabaseSpec{Name: nn.Name, Plan: "free"},
 		}
 		Expect(k8sClient.Create(ctx, db)).To(Succeed())
 		Eventually(func(g Gomega) {

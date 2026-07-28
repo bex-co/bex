@@ -73,13 +73,13 @@ type Service struct {
 	// may own. 0 = unlimited (the default; byte-identical to before). Only
 	// enforced when the caller's tenant is resolvable (w7/m9).
 	MaxPostgres int
-	// DatabaseLogs is the production query seam for typed dpg- resources. The
+	// DatabaseLogs is the production query seam for canonical dpg- resources. The
 	// API composition root wires it to the generic durable logs service so the
 	// dedicated compatibility endpoints and Render's /logs surface share one
-	// authorization/filtering engine. nil keeps the direct-pod legacy fallback.
+	// authorization/filtering engine. nil enables the direct-pod test seam.
 	DatabaseLogs DatabaseLogQuerySource
-	// PodLogs backs the direct-pod fallback for legacy, name-shaped Database CRs
-	// and isolated tests. nil with no DatabaseLogs source => ErrLogsUnavailable.
+	// PodLogs backs the direct-pod path used by isolated tests. nil with no
+	// DatabaseLogs source => ErrLogsUnavailable.
 	PodLogs core.PodLogSource
 	// queryExecutor is the SQL transport seam used by Query and ExecuteQuery.
 	// Production leaves it nil and uses pgx; tests replace it so the REST and
@@ -89,7 +89,7 @@ type Service struct {
 
 // PostgresView is the Render-shaped "postgres" object.
 type PostgresView struct {
-	ID           string `json:"id"` // immutable dpg-... id (legacy CRs retain their metadata.name)
+	ID           string `json:"id"` // immutable dpg-... id
 	Name         string `json:"name"`
 	Plan         string `json:"plan"`
 	Version      string `json:"version,omitempty"`
@@ -321,7 +321,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 	}
 	return PostgresView{
 		ID:                      d.Name,
-		Name:                    d.DisplayName(),
+		Name:                    d.Spec.Name,
 		Plan:                    d.Spec.Plan,
 		Version:                 version,
 		Status:                  status,
@@ -422,7 +422,7 @@ func (s *Service) GetPostgres(ctx context.Context, name string) (PostgresView, e
 
 // ensureDatabaseNameAvailable enforces Render's workspace-scoped display-name
 // uniqueness without coupling identity to that name. excludeID is the stable
-// metadata.name of an object being renamed. Unlabelled legacy/dev objects form
+// metadata.name of an object being renamed. Unlabelled dev objects form
 // their own scope when the control-plane tenant resolver is disabled.
 func (s *Service) ensureDatabaseNameAvailable(ctx context.Context, tenantID, name, excludeID string) error {
 	var list appv1alpha1.DatabaseList
@@ -434,7 +434,7 @@ func (s *Service) ensureDatabaseNameAvailable(ctx context.Context, tenantID, nam
 		if d.Name == excludeID || d.Labels[core.LabelTenant] != tenantID {
 			continue
 		}
-		if d.DisplayName() == name {
+		if d.Spec.Name == name {
 			return fmt.Errorf("%w: a Postgres database named %q already exists in this workspace", core.ErrConflict, name)
 		}
 	}

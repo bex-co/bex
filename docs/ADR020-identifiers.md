@@ -47,7 +47,7 @@ Determinism is the requirement, not a nicety: a client pages with an event/run c
 
 An **id** and a **name** are different things and must not be conflated:
 
-- **ids** (`tea-…`/`srv-…`/`dpg-…`) are stable, opaque **keys** — the primary key in Postgres and the identifier in API URLs. A rename never changes an id, so references never break ([ADR009-postgresql-management.md](ADR009-postgresql-management.md) §4).
+- **ids** (`tea-…`/`srv-…`/`dpg-…`/`red-…`) are stable, opaque **keys** — the primary key in Postgres and the identifier in API URLs. A rename never changes an id, so references never break ([ADR009-postgresql-management.md](ADR009-postgresql-management.md) §4).
 - **names** (a workspace's name, an app's name) are **user-chosen DNS labels** (`[a-z0-9-]`, ≤30 chars) that become part of a CR name (`<workspace>-<app>`). They're human-facing and mutable.
 
 Render's own workspace names are freeform; bex constrains them to DNS labels because they land in CR/host names. That divergence is noted where it's enforced (`internal/workspaces`, `internal/store/api.go`).
@@ -64,7 +64,7 @@ Prose rules rot; these don't — the enforcement is layered, compiler first:
 
 ## Known deviations (deliberate, documented)
 
-- **Legacy Postgres and Key Value ids are grandfathered.** New managed Postgres / Key Value resources use a minted `dpg-<xid>` / `red-<xid>` as their `metadata.name` and keep the mutable display name in `spec.name`. Resources created before that split retain their existing metadata name as their stable API id; the backfill migration (`scripts/postgres-name-migrate.sh` / `scripts/keyvalue-name-migrate.sh`) only fills `spec.name` and never re-keys a live CR. This is an intentional compatibility exception, not a second mint path. (Managed Postgres shipped this in w9/m3; Key Value in w9/m6 — the last name-as-id datastore deviation, now closed.)
+- ~~Legacy Postgres and Key Value ids are grandfathered~~ — **closed by w1/m56 t009 (2026-07-28)**: production and maintained dev reported zero non-`dpg-`/`red-` ids and zero missing display names. Their CRDs now require `spec.name`, readers no longer substitute `metadata.name`, and the one-time backfill scripts are gone. A restored pre-normalization snapshot must be upgraded through the preceding release before the current CRD/code is applied.
 - **API keys carry Hydra's `client_id`, not a bex id.** OAuth2 clients are minted by Ory Hydra ([ADR012-auth.md](ADR012-auth.md)); their id format is Hydra's, outside this convention by design.
 - ~~GraphQL `Service.id` returns the App name~~ — **closed by w1/m46 (2026-07-16)**: GraphQL now emits the minted `srv-…` id like REST/MCP (`internal/apps/graphql.go`), and dashboard URLs follow (`/services/srv-…`). No verb-layer change was needed — `core.Base.AuthorizeApp`/`GetApp` already resolve `LabelAppID` first with a `LabelServiceName` fallback, so name-shaped args and pre-flip URLs keep resolving. Legacy hand-applied CRs without `LabelAppID` keep their name as id (`publicID` fallback).
 - **REST and GraphQL `Domain.id` return the hostname, not the minted `cdm-…` id.** Deliberate: domains are addressed by hostname in most Render flows (DNS instructions, the custom domain itself), making the hostname the honest identity contract. Both REST (`internal/apps/domains.go::toRenderCustomDomain`) and GraphQL (`internal/apps/graphql.go::customDomainGQLType`) emit `d.Name` consistently — no surface divergence.

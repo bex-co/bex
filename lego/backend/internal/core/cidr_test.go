@@ -26,22 +26,20 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// TestIPAllowListEntryDecodesBothShapes pins the wire/store compatibility
-// contract: entries decode from Render's {cidrBlock, description} objects AND
-// from bare CIDR strings (legacy environment store rows + old bex clients),
-// mixed in one list, with descriptions empty for the string form.
-func TestIPAllowListEntryDecodesBothShapes(t *testing.T) {
+// TestIPAllowListEntryRejectsBareCIDR pins the post-normalization wire/store
+// contract: Render's structured entry decodes, while the retired bare-string
+// shape fails instead of silently losing its description.
+func TestIPAllowListEntryRejectsBareCIDR(t *testing.T) {
 	var got []IPAllowListEntry
-	raw := `["10.0.0.0/8", {"cidrBlock": "203.0.113.0/24", "description": "office"}]`
-	if err := json.Unmarshal([]byte(raw), &got); err != nil {
-		t.Fatalf("unmarshal mixed shapes: %v", err)
+	if err := json.Unmarshal([]byte(`[{"cidrBlock":"203.0.113.0/24","description":"office"}]`), &got); err != nil {
+		t.Fatalf("unmarshal structured shape: %v", err)
 	}
-	want := []IPAllowListEntry{
-		{CIDRBlock: "10.0.0.0/8"},
-		{CIDRBlock: "203.0.113.0/24", Description: "office"},
-	}
+	want := []IPAllowListEntry{{CIDRBlock: "203.0.113.0/24", Description: "office"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("decoded = %+v, want %+v", got, want)
+	}
+	if err := json.Unmarshal([]byte(`["10.0.0.0/8"]`), &got); err == nil {
+		t.Fatal("bare CIDR string unexpectedly decoded as a structured entry")
 	}
 }
 

@@ -81,15 +81,14 @@ func (s DatabaseSpec) EffectiveDatabaseUser(resourceID string) string {
 // +kubebuilder:validation:XValidation:rule="!has(oldSelf.databaseName) ? !has(self.databaseName) : has(self.databaseName) && self.databaseName == oldSelf.databaseName",message="databaseName is immutable"
 // +kubebuilder:validation:XValidation:rule="!has(oldSelf.databaseUser) ? !has(self.databaseUser) : has(self.databaseUser) && self.databaseUser == oldSelf.databaseUser",message="databaseUser is immutable"
 type DatabaseSpec struct {
-	// Name is the mutable, user-facing database name. metadata.name is the
-	// immutable dpg-... resource id and the data-plane identity used for every
-	// CNPG/PVC/Secret/route name. Empty is the legacy representation: readers
-	// fall back to metadata.name until the backfill sets this field.
-	// +optional
+	// Name is the required mutable, user-facing database name. metadata.name is
+	// the immutable dpg-... resource id and the data-plane identity used for
+	// every CNPG/PVC/Secret/route name.
+	// +required
 	// +kubebuilder:validation:MinLength=1
 	// +kubebuilder:validation:MaxLength=30
 	// +kubebuilder:validation:Pattern=`^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$`
-	Name string `json:"name,omitempty"`
+	Name string `json:"name"`
 
 	// DatabaseName is the optional create-time physical PostgreSQL database.
 	// Empty preserves the stable legacy/default derived from metadata.name.
@@ -547,16 +546,6 @@ type Database struct {
 	Spec DatabaseSpec `json:"spec"`
 	// +optional
 	Status DatabaseStatus `json:"status,omitzero"`
-}
-
-// DisplayName returns the mutable user-facing name. Database CRs created before
-// spec.name existed keep working by falling back to their metadata.name until
-// the migration backfills the field.
-func (d *Database) DisplayName() string {
-	if d.Spec.Name != "" {
-		return d.Spec.Name
-	}
-	return d.Name
 }
 
 // +kubebuilder:object:root=true

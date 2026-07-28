@@ -435,7 +435,7 @@ func (b *Base) databaseEffectEvent(ctx context.Context, d *appv1alpha1.Database,
 		return AuditEvent{}, false
 	}
 	ev := b.verbAuditEvent(ctx, verb, resource, DatabaseTarget(d.Name))
-	ev.TargetName = d.DisplayName()
+	ev.TargetName = d.Spec.Name
 	return ev, true
 }
 
@@ -475,7 +475,7 @@ func (b *Base) keyValueEffectEvent(ctx context.Context, kv *appv1alpha1.KeyValue
 		return AuditEvent{}, false
 	}
 	ev := b.verbAuditEvent(ctx, verb, resource, KeyValueTarget(kv.Name))
-	ev.TargetName = kv.DisplayName()
+	ev.TargetName = kv.Spec.Name
 	return ev, true
 }
 

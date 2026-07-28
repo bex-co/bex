@@ -331,9 +331,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// — Render parity, see SetACL's doc comment for why it's full-replace).
 	// Body: {"protectedStatus": "protected"|"unprotected",
 	// "networkIsolationEnabled": bool, "ipAllowList": [...]}, where entries
-	// are {cidrBlock, description} objects or bare CIDR strings (the
-	// bex-native pre-m24 spelling — both decode, strings with an empty
-	// description).
+	// are Render-shaped {cidrBlock, description} objects.
 	mux.HandleFunc("PATCH /v1/environments/{id}/acl", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			ProtectedStatus         string                  `json:"protectedStatus"`

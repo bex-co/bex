@@ -320,10 +320,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// The bex-native GET/PUT pair keeps its plain {"cidrs": [...]} response
 	// shape (nothing Render-side depends on this endpoint); descriptions
 	// travel through the Render-shaped create/PATCH/get/list. The PUT body's
-	// array elements decode as either bare CIDR strings or {cidrBlock,
-	// description} objects (core.IPAllowListEntry's union), so a client that
-	// writes back entries keeps their descriptions; a string-only full
-	// replace clears them.
+	// array elements remain the route's documented string list. Structured
+	// entries and descriptions travel through Render's create/PATCH/get/list.
 	mux.HandleFunc("GET "+base+"/{id}/ip-allow-list", func(w http.ResponseWriter, r *http.Request) {
 		list, err := s.GetIPAllowList(r.Context(), r.PathValue("id"))
 		if err != nil {
@@ -334,13 +332,13 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 	mux.HandleFunc("PUT "+base+"/{id}/ip-allow-list", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			CIDRs []core.IPAllowListEntry `json:"cidrs"`
+			CIDRs []string `json:"cidrs"`
 		}
 		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
 			return
 		}
-		pg, err := s.SetIPAllowList(r.Context(), r.PathValue("id"), req.CIDRs)
+		pg, err := s.SetIPAllowList(r.Context(), r.PathValue("id"), core.AllowListFromCIDRs(req.CIDRs))
 		if err != nil {
 			core.WriteErr(w, err)
 			return

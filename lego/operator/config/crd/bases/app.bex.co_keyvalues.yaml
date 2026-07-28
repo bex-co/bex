@@ -116,11 +116,9 @@ spec:
                 type: string
               name:
                 description: |-
-                  Name is the mutable, user-facing key-value name. metadata.name is the
-                  immutable red-... resource id and the data-plane identity used for every
-                  StatefulSet/PVC/Secret/route name. Empty is the legacy representation:
-                  readers fall back to metadata.name until the backfill sets this field
-                  (w9/m6, mirroring Postgres's spec.name split from w9/m3).
+                  Name is the required mutable, user-facing key-value name. metadata.name is
+                  the immutable red-... resource id and the data-plane identity used for
+                  every StatefulSet/PVC/Secret/route name.
                 maxLength: 30
                 minLength: 1
                 pattern: ^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$
@@ -176,6 +174,8 @@ spec:
                 - "7"
                 - "8"
                 type: string
+            required:
+            - name
             type: object
           status:
             description: KeyValueStatus is the observed state of a KeyValue.

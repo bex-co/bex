@@ -359,7 +359,7 @@ func (s *Service) compact(ctx context.Context) {
 type datastoreEntry struct {
 	ID       string // immutable CR name (== service_id in usage rows)
 	Name     string // immutable data-plane name used in Prometheus selectors
-	Display  string // mutable user-facing name (DisplayName())
+	Display  string // required mutable user-facing spec.name
 	TenantID string // from core.LabelTenant
 	Plan     string // Spec.Plan (== tier in usage rows)
 	Kind     string // store.ResourceKindPostgres or store.ResourceKindKeyValue
@@ -386,7 +386,7 @@ func (s *Service) listDatastores(ctx context.Context) ([]datastoreEntry, error) 
 		out = append(out, datastoreEntry{
 			ID:       d.Name,
 			Name:     d.Name,
-			Display:  d.DisplayName(),
+			Display:  d.Spec.Name,
 			TenantID: tenantID,
 			Plan:     d.Spec.Plan,
 			Kind:     store.ResourceKindPostgres,
@@ -405,7 +405,7 @@ func (s *Service) listDatastores(ctx context.Context) ([]datastoreEntry, error) 
 		out = append(out, datastoreEntry{
 			ID:       kv.Name,
 			Name:     kv.Name,
-			Display:  kv.DisplayName(),
+			Display:  kv.Spec.Name,
 			TenantID: tenantID,
 			Plan:     kv.Spec.Plan,
 			Kind:     store.ResourceKindKeyValue,

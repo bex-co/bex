@@ -55,6 +55,9 @@ func newServiceCNPG(objs ...client.Object) (*Service, client.Client) {
 // seedDatabaseSpec adds a Ready Database with the given spec + a matching -app Secret.
 func seedDatabaseSpec(t *testing.T, cl client.Client, name string, spec appv1alpha1.DatabaseSpec, backupsEnabled bool) *appv1alpha1.Database {
 	t.Helper()
+	if spec.Name == "" {
+		spec.Name = name
+	}
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
 		Spec:       spec,

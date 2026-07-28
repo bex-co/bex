@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
 // DatabaseLogQuery is the filter set for QueryDatabaseLogs. It mirrors the
@@ -57,13 +56,13 @@ const (
 )
 
 // QueryDatabaseLogs is the dedicated Postgres adapters' compatibility verb.
-// Typed dpg- ids delegate to the generic durable logs core in production;
-// legacy name-shaped CRs and isolated tests retain the direct CNPG pod path.
-// Results are oldest-first and capped at q.Limit. ErrLogsUnavailable is
+// Production delegates every canonical resource id to the generic durable
+// logs core; isolated tests can omit that seam and exercise the direct CNPG pod
+// path. Results are oldest-first and capped at q.Limit. ErrLogsUnavailable is
 // returned when the selected path has no source; unknown instances return
 // ErrNotFound.
 func (s *Service) QueryDatabaseLogs(ctx context.Context, name string, q DatabaseLogQuery) ([]DatabaseLogEntry, error) {
-	if kind, ok := ids.KindOf(name); ok && kind == ids.Postgres && s.DatabaseLogs != nil {
+	if s.DatabaseLogs != nil {
 		return s.DatabaseLogs(ctx, name, q)
 	}
 	d, err := s.fetchDatabase(ctx, core.RelCanViewLogs, name)

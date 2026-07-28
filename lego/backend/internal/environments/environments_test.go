@@ -40,9 +40,6 @@ type fakeStore struct {
 	projs  map[string]store.Project
 	envs   map[string]store.Environment
 	assign map[string]map[string]bool // environmentID -> serviceName -> true
-	// driftedReturn is RepairDriftedEnvironmentIDs' canned result — see its
-	// doc comment.
-	driftedReturn []string
 }
 
 func newFakeStore() *fakeStore {
@@ -98,26 +95,6 @@ func (f *fakeStore) ListEnvironments(_ context.Context, projectID string) ([]sto
 		}
 	}
 	return out, nil
-}
-
-func (f *fakeStore) ListAllEnvironments(_ context.Context) ([]store.Environment, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	var out []store.Environment
-	for _, e := range f.envs {
-		out = append(out, e)
-	}
-	return out, nil
-}
-
-// RepairDriftedEnvironmentIDs is a fixed-return double: fakeStore doesn't
-// model the apps table's project_id/environment_id columns the real SQL
-// drift-detection JOIN reads (internal/store/environments.go), so the
-// drift-detection query itself is exercised by store_pg_test.go against real
-// Postgres. driftedReturn lets a Backfill test still exercise the app-CR
-// clear this method's non-empty result triggers.
-func (f *fakeStore) RepairDriftedEnvironmentIDs(_ context.Context) ([]string, error) {
-	return f.driftedReturn, nil
 }
 
 func (f *fakeStore) RenameEnvironment(_ context.Context, id, name string) error {

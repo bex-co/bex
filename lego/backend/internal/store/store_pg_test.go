@@ -383,15 +383,13 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 	if got, err := s.GetEnvironmentProtectedStatus(ctx, "env-deleted"); err != nil || got != "unprotected" {
 		t.Fatalf("GetEnvironmentProtectedStatus(missing) = %q, %v, want unprotected, nil", got, err)
 	}
-	// A pre-m24 row holds bare CIDR strings (exactly what migration 0034's
-	// to_jsonb conversion leaves in place) — it must read back with empty
-	// descriptions, never an error or a fabricated description.
-	if _, err := pool.Exec(ctx, `UPDATE environments SET ip_allow_list = '["203.0.113.0/24"]'::jsonb WHERE id = $1`, env.ID); err != nil {
-		t.Fatalf("seed legacy ip_allow_list row: %v", err)
+	// Migration 0053 closes the storage seam too: a direct legacy string write
+	// is rejected before the strict application decoder can encounter it.
+	if _, err := pool.Exec(ctx, `UPDATE environments SET ip_allow_list = '["203.0.113.0/24"]'::jsonb WHERE id = $1`, env.ID); err == nil {
+		t.Fatal("environment storage accepted a bare CIDR string")
 	}
-	if got, err := s.GetEnvironment(ctx, env.ID); err != nil ||
-		len(got.IPAllowList) != 1 || got.IPAllowList[0] != (core.IPAllowListEntry{CIDRBlock: "203.0.113.0/24"}) {
-		t.Fatalf("legacy string-list row = %+v (err %v), want cidr-only entry", got.IPAllowList, err)
+	if got, err := s.GetEnvironment(ctx, env.ID); err != nil || len(got.IPAllowList) != 2 || got.IPAllowList[0] != acl[0] || got.IPAllowList[1] != acl[1] {
+		t.Fatalf("rejected legacy write changed canonical ACL = %+v (err %v)", got.IPAllowList, err)
 	}
 
 	// w4/m32/t001: SetProjectServices must NULL environment_id (not just
@@ -417,44 +415,6 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 	// assume app is a prod member) still hold.
 	if err := s.SetEnvironmentServices(ctx, prod.ID, proj.ID, ten.ID, []string{app.ID}); err != nil {
 		t.Fatalf("rejoin prod: %v", err)
-	}
-
-	// w4/m32/t003: RepairDriftedEnvironmentIDs is the one-shot backfill for
-	// rows drifted BEFORE this milestone's fix — the store API itself can no
-	// longer produce that state (SetProjectServices nulls environment_id,
-	// SetEnvironmentServices always syncs project_id), so simulate the legacy
-	// row directly: app still points at prod (proj's environment) but its own
-	// project_id has drifted to a different project.
-	if list, err := s.ListAllEnvironments(ctx); err != nil || len(list) != 2 {
-		t.Fatalf("ListAllEnvironments = %+v (err %v), want 2 (env + prod, across every project)", list, err)
-	}
-	otherProj, err := s.CreateProject(ctx, ten.ID, "other-stack")
-	if err != nil {
-		t.Fatalf("create other project: %v", err)
-	}
-	if _, err := pool.Exec(ctx, `UPDATE apps SET project_id = $1 WHERE id = $2`, otherProj.ID, app.ID); err != nil {
-		t.Fatalf("seed legacy drift: %v", err)
-	}
-	repaired, err := s.RepairDriftedEnvironmentIDs(ctx)
-	if err != nil {
-		t.Fatalf("RepairDriftedEnvironmentIDs: %v", err)
-	}
-	if len(repaired) != 1 || repaired[0] != app.Name {
-		t.Fatalf("RepairDriftedEnvironmentIDs = %v, want [%s]", repaired, app.Name)
-	}
-	if err := pool.QueryRow(ctx, `SELECT environment_id FROM apps WHERE id = $1`, app.ID).Scan(&gotEnvID); err != nil {
-		t.Fatal(err)
-	}
-	if gotEnvID != nil {
-		t.Errorf("after repair, environment_id = %v, want NULL", gotEnvID)
-	}
-	if repaired2, err := s.RepairDriftedEnvironmentIDs(ctx); err != nil || len(repaired2) != 0 {
-		t.Errorf("2nd RepairDriftedEnvironmentIDs = %v (err %v), want none — idempotent", repaired2, err)
-	}
-	// Restore app's project membership so the DeleteEnvironment/DeleteProject
-	// assertions below (which assume app.project_id == proj.ID) still hold.
-	if _, err := pool.Exec(ctx, `UPDATE apps SET project_id = $1 WHERE id = $2`, proj.ID, app.ID); err != nil {
-		t.Fatalf("restore project: %v", err)
 	}
 
 	// Deleting an environment un-assigns its services but leaves their

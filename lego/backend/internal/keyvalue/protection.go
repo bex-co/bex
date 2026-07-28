@@ -32,8 +32,5 @@ func ProtectedConfirmation(verb, name string) string {
 func (s *Service) requireUnprotected(ctx context.Context, keyValue *appv1alpha1.KeyValue, verb string) error {
 	environmentID := keyValue.Labels[core.LabelEnvironment]
 	name := keyValue.Spec.Name
-	if name == "" {
-		name = keyValue.Name
-	}
 	return core.RequireEnvironmentConfirmation(ctx, s.Protection, environmentID, name, verb, ProtectedConfirmation(verb, name))
 }

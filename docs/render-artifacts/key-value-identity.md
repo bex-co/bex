@@ -10,7 +10,7 @@ Captured for w9/m6 (the KeyValue mirror of w9/m3's Postgres `dpg-` work). Source
 
 ## Mutable name
 
-- `name` is the user-facing display name, mutable and **not** the id. In bex it is `KeyValue.spec.name` (a DNS-1123 label, ≤30 chars); the immutable id lives in `metadata.name`. Legacy CRs without `spec.name` fall back to `metadata.name`.
+- `name` is the user-facing display name, mutable and **not** the id. In bex it is the required `KeyValue.spec.name` (a DNS-1123 label, ≤30 chars); the immutable `red-…` id lives in `metadata.name`. The temporary missing-name fallback was retired after the w1/m56 fleet gate reported zero legacy objects.
 - `name` is unique **per workspace** (owner), not globally — two workspaces may reuse a name; a duplicate inside one workspace is rejected.
 
 ## PATCH (partial update) semantics

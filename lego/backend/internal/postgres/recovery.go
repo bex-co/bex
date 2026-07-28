@@ -184,7 +184,7 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	if err := validateDatabaseName(req.Name); err != nil {
 		return PostgresView{}, err
 	}
-	if req.Name == src.DisplayName() {
+	if req.Name == src.Spec.Name {
 		return PostgresView{}, fmt.Errorf("%w: recover creates a NEW instance; name must differ from the source", core.ErrBadRequest)
 	}
 	tenantID := src.Labels[core.LabelTenant]

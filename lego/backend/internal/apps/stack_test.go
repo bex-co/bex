@@ -582,26 +582,6 @@ func TestDeployStackReapplyAfterRenameKeepsDatabaseIdentity(t *testing.T) {
 	}
 }
 
-func TestDeployStackBackfillsLegacyDatabaseNameWithoutChangingIdentity(t *testing.T) {
-	legacy := &appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: "db", Namespace: "default"}}
-	cl := fakeClient(legacy)
-	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}}
-	res, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: stackManifest})
-	if err != nil {
-		t.Fatalf("DeployStack: %v", err)
-	}
-	if res.Databases[0].ID != "db" || res.Databases[0].Name != "db" {
-		t.Fatalf("legacy database view = %+v", res.Databases[0])
-	}
-	if got := getDB(t, cl, "db").Spec.Name; got != "db" {
-		t.Errorf("legacy spec.name = %q, want db", got)
-	}
-	du := findEnv(t, getApp(t, cl, "web").Spec.Env, "DATABASE_URL")
-	if got := du.ValueFrom.SecretKeyRef.Name; got != "db-app" {
-		t.Errorf("legacy database secret = %q, want db-app", got)
-	}
-}
-
 func TestDeployStackChangedServiceRedeploys(t *testing.T) {
 	rec := &recordingStore{}
 	// A store-managed App (carries app-id): a changed re-apply opens a deploy

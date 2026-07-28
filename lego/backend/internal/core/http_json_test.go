@@ -104,7 +104,7 @@ func TestUnmarshalJSONUsesContextStrictness(t *testing.T) {
 	}
 }
 
-func TestDecodeJSONStrictChecksCustomUnmarshalers(t *testing.T) {
+func TestDecodeJSONStrictChecksAllowListEntries(t *testing.T) {
 	type request struct {
 		IPAllowList []IPAllowListEntry `json:"ipAllowList"`
 	}
@@ -115,20 +115,20 @@ func TestDecodeJSONStrictChecksCustomUnmarshalers(t *testing.T) {
 	}
 	var lenient request
 	if err := DecodeJSON(req, &lenient); err != nil {
-		t.Fatalf("legacy lenient decode: %v", err)
+		t.Fatalf("lenient decode: %v", err)
 	}
 	req, _ = http.NewRequest(http.MethodPost, "/", strings.NewReader(body))
 	req = req.WithContext(WithStrictJSONDecoding(req.Context()))
 	var strict request
 	err = DecodeJSON(req, &strict)
 	if err == nil || !strings.Contains(err.Error(), `unknown field "mystery"`) || strings.Contains(err.Error(), "secret-value") {
-		t.Fatalf("strict custom-unmarshal error = %v", err)
+		t.Fatalf("strict nested-entry error = %v", err)
 	}
 
-	// The documented legacy bare-string union remains accepted.
+	// The retired bare-string entry is rejected in strict mode too.
 	req, _ = http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"ipAllowList":["10.0.0.0/8"]}`))
 	req = req.WithContext(WithStrictJSONDecoding(req.Context()))
-	if err := DecodeJSON(req, &strict); err != nil {
-		t.Fatalf("strict legacy union: %v", err)
+	if err := DecodeJSON(req, &strict); err == nil {
+		t.Fatal("strict decode accepted a bare allowlist string")
 	}
 }

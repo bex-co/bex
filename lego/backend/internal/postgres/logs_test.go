@@ -70,7 +70,7 @@ func TestQueryDatabaseLogsNoSource(t *testing.T) {
 	}
 }
 
-func TestQueryDatabaseLogsDelegatesTypedResource(t *testing.T) {
+func TestQueryDatabaseLogsDelegatesWhenDurableSourceIsWired(t *testing.T) {
 	id := ids.New(ids.Postgres)
 	want := DatabaseLogEntry{Message: "durable", Labels: map[string]string{"service": id}}
 	var gotName string

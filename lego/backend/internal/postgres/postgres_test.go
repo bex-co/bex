@@ -886,9 +886,8 @@ func TestRESTUpdatePostgresPartial(t *testing.T) {
 	}
 
 	// The official CLI resolves a name through GET /postgres?name=...; the new
-	// display name resolves. This fixture is a grandfathered Database whose old
-	// display name is also its immutable id, so that string intentionally remains
-	// resolvable as an id after rename.
+	// display name resolves. The compact test id intentionally resembles the old
+	// display name, but remains the immutable id after rename.
 	var filtered []postgresWithCursor
 	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/postgres?name=renamed-db", "").Body.Bytes(), &filtered)
 	if len(filtered) != 1 || filtered[0].Postgres.ID != "upd-db" {

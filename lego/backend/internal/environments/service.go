@@ -51,17 +51,12 @@ type EnvironmentStore interface {
 	CreateEnvironment(ctx context.Context, projectID, tenantID, name string) (store.Environment, error)
 	GetEnvironment(ctx context.Context, id string) (store.Environment, error)
 	ListEnvironments(ctx context.Context, projectID string) ([]store.Environment, error)
-	// ListAllEnvironments backs the w4/m32/t003 backfill sweep (Backfill) —
-	// every environment, not scoped to one project.
-	ListAllEnvironments(ctx context.Context) ([]store.Environment, error)
 	RenameEnvironment(ctx context.Context, id, name string) error
 	DeleteEnvironment(ctx context.Context, id string) error
 	SetEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceNames []string) error
 	ListEnvironmentServices(ctx context.Context, environmentID, projectID string) ([]string, error)
 	// SetEnvironmentACL replaces the protected-environment ACL triple (w6/m19).
 	SetEnvironmentACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) error
-	// RepairDriftedEnvironmentIDs backs Backfill's t001-residue repair phase.
-	RepairDriftedEnvironmentIDs(ctx context.Context) ([]string, error)
 }
 
 // DatabaseIndex is the narrow contract environments needs from managed
@@ -546,79 +541,6 @@ func (s *Service) clearMembersForProject(ctx context.Context, projectID string) 
 		}
 	}
 	return nil
-}
-
-// BackfillReport summarizes one Backfill sweep — an operational count, not an
-// API-stable shape.
-type BackfillReport struct {
-	// DriftedAppsRepaired is how many apps had a pre-w4/m32/t001 stale
-	// environment_id NULLed (and their App CR cleared) by this run.
-	DriftedAppsRepaired int
-	// EnvironmentsSwept is how many environments had their member fan-out
-	// re-applied — every environment, not just ones this run changed
-	// anything for (the per-resource patches are equality-gated, so a
-	// steady-state environment costs a read pass and no writes).
-	EnvironmentsSwept int
-}
-
-// Backfiller adapts Service to the w4/m32/t003 one-shot admin sweep (the
-// `api environments-backfill` subcommand), mirroring ProjectMemberClearer's
-// shape: an internal system operation with no request-time caller identity
-// — never call s.Authorize/AuthorizeOn in Run or backfill.
-type Backfiller struct{ *Service }
-
-// Run executes one Backfill sweep. See backfill's doc comment for what it does.
-func (b *Backfiller) Run(ctx context.Context) (BackfillReport, error) {
-	return b.backfill(ctx)
-}
-
-// backfill is the w4/m32/t003 one-shot idempotent repair: it NULLs any
-// apps.environment_id left drifted by pre-w4/m32/t001 SetProjectServices
-// calls (RepairDriftedEnvironmentIDs) and clears those apps' CRs, then
-// re-applies the standard member fan-out (isolation label + inbound-IP
-// layer) to every environment's CURRENT members — the fix for environments
-// whose non-empty rules predate w4/m28 and so never triggered the fan-out at
-// write time, their members carrying no projected layer at all until an
-// unrelated write happened to touch them. Every per-App/Database/KeyValue
-// patch this reaches is already equality-gated
-// (setAppEnvironmentLabel/setAppEnvironmentAllowList and the Database/
-// KeyValue SetEnvironmentIPAllowList callers all skip a no-op patch), so a
-// second run finds nothing left to do — safe to re-run, not just a one-time
-// migration step. Intended to run once per cluster after this milestone
-// deploys, mirroring scripts/ipallowlist-normalize.sh's one-shot-sweep shape.
-func (s *Service) backfill(ctx context.Context) (BackfillReport, error) {
-	if s.Store == nil {
-		return BackfillReport{}, ErrEnvironmentsUnavailable
-	}
-	var report BackfillReport
-	repaired, err := s.Store.RepairDriftedEnvironmentIDs(ctx)
-	if err != nil {
-		return BackfillReport{}, err
-	}
-	if len(repaired) > 0 {
-		if err := s.clearServiceEnvironmentLayer(ctx, repaired); err != nil {
-			return BackfillReport{}, err
-		}
-		report.DriftedAppsRepaired = len(repaired)
-	}
-	envs, err := s.Store.ListAllEnvironments(ctx)
-	if err != nil {
-		return BackfillReport{}, err
-	}
-	for _, e := range envs {
-		names, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
-		if err != nil {
-			return BackfillReport{}, err
-		}
-		if err := s.applyAppEnvironmentLabels(ctx, names, e.ID, e.NetworkIsolationEnabled); err != nil {
-			return BackfillReport{}, err
-		}
-		if err := s.propagateIPAllowList(ctx, e.TenantID, e.ID, names, core.EnvironmentLayerCIDRs(e.IPAllowList)); err != nil {
-			return BackfillReport{}, err
-		}
-		report.EnvironmentsSwept++
-	}
-	return report, nil
 }
 
 // Delete removes an environment (its services' environment_id is set to NULL

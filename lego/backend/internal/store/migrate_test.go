@@ -219,6 +219,69 @@ func TestDeployLifecycleMigrationBackfillsOldRows(t *testing.T) {
 	}
 }
 
+func TestEnvironmentAllowListMigrationNormalizesLegacyRows(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer pool.Close()
+
+	sql, err := migrationsFS.ReadFile("migrations/0053_normalize_environment_allowlists.up.sql")
+	if err != nil {
+		t.Fatalf("read migration: %v", err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `
+		CREATE SCHEMA migration_0053_environment_allowlists;
+		SET LOCAL search_path TO migration_0053_environment_allowlists;
+		CREATE TABLE environments (
+			id text PRIMARY KEY,
+			ip_allow_list jsonb NOT NULL DEFAULT '[]'::jsonb
+		);
+		INSERT INTO environments (id, ip_allow_list) VALUES
+			('env-legacy', '["203.0.113.0/24", {"cidrBlock":"198.51.100.0/24","description":"office"}]'),
+			('env-canonical', '[{"cidrBlock":"192.0.2.0/24","description":"vpn"}]');
+	`); err != nil {
+		t.Fatalf("prepare legacy environment schema: %v", err)
+	}
+	if _, err := tx.Exec(ctx, string(sql)); err != nil {
+		t.Fatalf("migration 0053 against legacy allowlists: %v", err)
+	}
+
+	var normalized, canonical string
+	if err := tx.QueryRow(ctx, `SELECT ip_allow_list::text FROM environments WHERE id = 'env-legacy'`).Scan(&normalized); err != nil {
+		t.Fatal(err)
+	}
+	if want := `[{"cidrBlock": "203.0.113.0/24", "description": ""}, {"cidrBlock": "198.51.100.0/24", "description": "office"}]`; normalized != want {
+		t.Errorf("normalized legacy allowlist = %s, want %s", normalized, want)
+	}
+	if err := tx.QueryRow(ctx, `SELECT ip_allow_list::text FROM environments WHERE id = 'env-canonical'`).Scan(&canonical); err != nil {
+		t.Fatal(err)
+	}
+	if want := `[{"cidrBlock": "192.0.2.0/24", "description": "vpn"}]`; canonical != want {
+		t.Errorf("canonical allowlist changed = %s, want %s", canonical, want)
+	}
+
+	if _, err := tx.Exec(ctx, `SAVEPOINT reject_legacy_write`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE environments SET ip_allow_list = '["10.0.0.0/8"]' WHERE id = 'env-legacy'`); err == nil {
+		t.Fatal("migration constraint accepted a legacy bare-CIDR write")
+	}
+	if _, err := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT reject_legacy_write`); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // TestMigrationNumbersAreUnique guards against a bug class that has bitten
 // this migrations directory repeatedly: golang-migrate keys a migration off
 // its leading NNNN_ number, so two files sharing one is at best a refused
