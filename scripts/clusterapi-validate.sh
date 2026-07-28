@@ -47,7 +47,7 @@ while read -r md infra cfg; do
     echo "FAIL: MachineDeployment $md points at HCloudMachineTemplate '$infra' which is not defined in $OVERLAY" >&2; fail=1; continue
   fi
   case "$img" in
-    bex-worker)
+    bex-worker | bex-worker-k8s-*)
       if echo "$prek" | grep -qE "$FORBIDDEN"; then
         echo "FAIL: baked pool $md (KubeadmConfigTemplate $cfg) still has a download/pull/trimmed-apt line — the snapshot already carries the runtime:" >&2
         echo "$prek" | grep -nE "$FORBIDDEN" | sed 's/^/    /' >&2; fail=1
