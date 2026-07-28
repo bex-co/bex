@@ -673,9 +673,9 @@ else
   fi
 fi
 
-# bex-db plugin backup guard (w1/m56 t006): Cluster WAL archiving and the
-# ScheduledBackup must use the one declared ObjectStore, preserve the 04:00 UTC
-# schedule, and contain no native barmanObjectStore fallback.
+# bex-db plugin backup contract (w1/m56 t006/t008): Cluster WAL archiving and
+# ScheduledBackup use the one declared ObjectStore and preserve the 04:00 UTC
+# schedule. The exact plugin-only object shape is asserted below.
 echo "==> bex-db Barman plugin backup contract"
 bex_db_render="$(kubectl kustomize deploy/gitops/charts/bex-postgres)"
 bex_db_plugin="$(yq -N '
@@ -705,11 +705,6 @@ if [ "$bex_db_schedule" != "bex-system|0 0 4 * * *|self|bex-db|plugin|barman-clo
   echo "FAIL: bex-db ScheduledBackup plugin contract is '$bex_db_schedule'" >&2
   fail=1
 fi
-if grep -R -n --include='*.yaml' 'barmanObjectStore' deploy/gitops/charts/bex-postgres >/dev/null; then
-  echo "FAIL: bex-postgres chart still contains native barmanObjectStore configuration" >&2
-  fail=1
-fi
-
 local_bex_db_render="$(kubectl kustomize deploy/gitops/charts/bex-postgres-local)"
 local_bex_db_shape="$(yq -N '
   select(.kind == "Cluster" and .metadata.name == "bex-db") |

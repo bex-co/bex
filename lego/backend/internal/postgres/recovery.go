@@ -17,10 +17,10 @@ limitations under the License.
 // recovery.go is the managed-Postgres data-protection surface: recovery info
 // (the PITR window + backup list), recover-to-a-new-instance (Render's recover —
 // always a NEW Database, never in place), and on-demand exports. Backups are the
-// operator's doing (CNPG barmanObjectStore + ScheduledBackup → object storage);
-// this surface reads their status and drives recovery/exports, all keyed off the
-// Database's Status.BackupsEnabled signal so a no-backup plan degrades gracefully
-// rather than erroring.
+// operator's doing (the Barman Cloud WAL-archiver plugin plus plugin-method
+// ScheduledBackups write to object storage); this surface reads their status and
+// drives recovery/exports, all keyed off the Database's Status.BackupsEnabled
+// signal so a no-backup plan degrades gracefully rather than erroring.
 package postgres
 
 import (

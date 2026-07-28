@@ -10,7 +10,7 @@
 
 All three use the same Wasabi/Hetzner Object Storage bucket (`bex-tfstate`) under separate prefixes. Credentials come from out-of-band Secrets (never in git), following the same pattern as `etcd-backup-s3` / `openbao-backup-s3`.
 
-## Barman Cloud Plugin migration
+## Barman Cloud plugin
 
 The supported CNPG-I backup path is the [Barman Cloud Plugin](https://cloudnative-pg.io/plugin-barman-cloud/docs/intro/). bex vendors the exact upstream `v0.13.0` installation manifest (SHA-256 pinned in `deploy/gitops/charts/barman-cloud-plugin/README.md`) and installs it beside the CloudNativePG operator in `cnpg-system`; cert-manager supplies the client/server TLS certificates. The plugin controller runs on the platform pool, while its data-plane sidecar follows each CNPG instance pod's existing placement.
 
@@ -23,7 +23,7 @@ Two GitOps-managed `ObjectStore` resources preserve the pre-migration transport 
 
 Both references require only `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`; those Secrets remain provisioned out of band. Tenant clusters share the transport definition but pass their immutable per-database/per-major archive identity as the plugin's `serverName` parameter. This keeps one credential/config surface while preserving archive isolation.
 
-The migration was deliberately staged: the plugin and ObjectStores landed first, then tenant Clusters and `bex-db` switched atomically to `barman-cloud.cloudnative-pg.io`. Fresh backup/PITR/restore drills are the next gate (w1/m56 t007). Current manifests and runbook examples use only the plugin contract; the 2026-07-14 drill record below retains the native field names solely as historical evidence of what that drill exercised.
+The migration was deliberately staged: the plugin and ObjectStores landed first, then tenant Clusters and `bex-db` switched atomically to `barman-cloud.cloudnative-pg.io`. Fresh backup/PITR/restore drills passed for both paths on 2026-07-28, after which the native implementation and compatibility checks were removed. Current manifests, validation, alerts, and runbook examples use only the plugin contract; the 2026-07-14 drill record below retains the former field names solely as historical evidence of what that drill exercised.
 
 ```mermaid
 graph LR
@@ -177,7 +177,7 @@ kubectl -n bex-system delete cluster bex-db-recover
 
 For a full cutover (live `bex-db` is destroyed): repeat the above, then rename `bex-db-recover` → `bex-db` in the GitOps chart (or Argo force-sync after removing the existing Cluster) and update `bex-db-app` Secret to match the new cluster's credentials.
 
-> **CNPG 1.31+ readiness:** the active Cluster, ScheduledBackup, on-demand Backup example, and recovery example now use the Barman Cloud plugin. The historical 2026-07-14 drill below used CNPG's former native fields; do not copy that record as a current manifest. Re-drill the plugin path before upgrading CNPG beyond 1.30.x (w1/m56 t007).
+> **CNPG 1.31+ readiness:** PASS. The active Cluster, ScheduledBackup, on-demand Backup example, and recovery example use the Barman Cloud plugin, and the 2026-07-28 production drill restored both tenant and control-plane data at explicit PITR targets. The historical 2026-07-14 drill below used CNPG's former fields; do not copy that record as a current manifest.
 
 ## Drill records
 
@@ -257,7 +257,7 @@ Fresh plugin backups and explicit point-in-time restores passed for both a dispo
 ## Alerting
 
 - **`BackupCronJobStale`** (prometheus.yaml `bex` group): fires if `etcd-backup` or `openbao-backup` CronJobs have not succeeded in >26h. Severity: critical.
-- **`BexDbBackupStale`** (prometheus.yaml `bex` group): fires if CNPG's WAL archiver (`cnpg_pg_stat_archiver_last_archived_time` from the `cnpg-bex-db` scrape) has not archived in >26h. Severity: critical.
+- **`BexDbBackupStale`** (prometheus.yaml `bex` group): fires if the Barman Cloud plugin-backed WAL archiver (`cnpg_pg_stat_archiver_last_archived_time` from the `cnpg-bex-db` scrape) has not archived in >26h. Debugging starts with `pg_stat_archiver`, `ObjectStore/bex-db`, the `barman-cloud` deployment and instance-sidecar logs; credential presence is checked without printing Secret data. Severity: critical.
 
 ## Re-drill cadence
 

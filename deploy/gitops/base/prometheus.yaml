@@ -714,10 +714,10 @@ spec:
                       summary: "Backup {{ $labels.namespace }}/{{ $labels.cronjob }} has not succeeded in >26h"
                       description: "The nightly {{ $labels.cronjob }} last succeeded over 26h ago — silent backup rot is unrecoverable data loss. Debug: kubectl -n {{ $labels.namespace }} get cronjob {{ $labels.cronjob }}; kubectl -n {{ $labels.namespace }} get jobs -l batch.kubernetes.io/cronjob-name={{ $labels.cronjob }}. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md, docs/ADR031-platform-data-backup.md"
 
-                  # bex-db WAL archiver staleness — the CNPG-native backup path that
-                  # CronJobStale cannot see (CNPG uses pg_stat_archiver, not a CronJob).
-                  # Fires if pg_stat_archiver reports no successful archival in >26h.
-                  # Metric is served by the bex-db CNPG pod on :9187 (cnpg-bex-db scrape).
+                  # bex-db plugin-backed WAL archiver staleness — the path that
+                  # CronJobStale cannot see (continuous WAL uses pg_stat_archiver,
+                  # not a CronJob). Fires when no segment has archived in >26h.
+                  # The bex-db CNPG pod serves this metric on :9187.
                   - alert: BexDbBackupStale
                     expr: |
                       (time() - cnpg_pg_stat_archiver_last_archived_time{namespace="bex-system"}) > (26 * 3600)
@@ -726,7 +726,7 @@ spec:
                       severity: critical
                     annotations:
                       summary: "bex-db WAL archiving stalled (>26h since last archive)"
-                      description: "bex-db's WAL archiver hasn't shipped a segment in >26h — control-plane PITR data is at risk. Debug: kubectl -n bex-system exec {{ $labels.pod }} -- psql -U postgres -c \"SELECT * FROM pg_stat_archiver\"; check s3://bex-tfstate/bex-db/ for recent WAL; verify Secret bex-db-backup-s3 exists. Runbook: docs/ADR031-platform-data-backup.md"
+                      description: "bex-db's Barman Cloud plugin has not shipped a WAL segment in >26h — control-plane PITR data is at risk. Debug: inspect pg_stat_archiver, ObjectStore bex-system/bex-db, the barman-cloud deployment and sidecar logs, then verify Secret bex-db-backup-s3 exists without printing it. Runbook: docs/ADR031-platform-data-backup.md"
 
                   # Per-MEMBER seal detection off the openbao per-pod telemetry
                   # scrape (vault_core_unsealed=0 ⇒ sealed). Not the round-robin
