@@ -43,6 +43,25 @@ class StripeBillingSecretTest(unittest.TestCase):
                 result = self.run_secret(value)
                 self.assertEqual(0, result.returncode, result.stderr)
                 self.assertIn(f"reconcile={value}", result.stdout)
+                self.assertNotIn("rk_test_offline_fixture", result.stdout + result.stderr)
+                self.assertNotIn("whsec_offline_fixture", result.stdout + result.stderr)
+
+    def test_live_key_is_refused_without_separate_opt_in(self):
+        env = os.environ.copy()
+        env.update(
+            {
+                "BEX_STRIPE_ENV_FILE": "/dev/null",
+                "BEX_STRIPE_SECRET_KEY": "rk_live_offline_fixture",
+                "BEX_STRIPE_WEBHOOK_SECRET": "whsec_offline_fixture",
+                "BEX_STRIPE_EPOCH": "2026-07-01T00:00:00Z",
+                "DRY_RUN": "1",
+            }
+        )
+        result = subprocess.run(
+            ["bash", str(SCRIPT)], capture_output=True, text=True, env=env, check=False
+        )
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("live restricted keys are refused by default", result.stderr)
 
 
 if __name__ == "__main__":

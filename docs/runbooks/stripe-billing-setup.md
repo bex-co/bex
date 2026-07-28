@@ -66,6 +66,7 @@ Use a separate setup/admin credential for the script. For bex-api, create a Stri
 | Subscriptions | Write | list/create the complete metered contract, bind its default payment method, enable gated automatic tax, and apply the comp coupon |
 | Prices | Read | validate/resolve all active lookup keys before subscription creation |
 | Products | Read | verify the operator-confirmed Product tax code when the Tax gate is configured |
+| Billing meters | Read | reconcile event names to meter ids and read bounded event summaries |
 | Billing meter events | Write | export sealed usage |
 | Invoices | Read | current invoice preview and finalized invoice history |
 | Checkout Sessions | Write | create setup-mode hosted sessions and retrieve completed sessions |
@@ -77,7 +78,7 @@ Use a separate setup/admin credential for the script. For bex-api, create a Stri
 
 No runtime write access is needed for Products, Prices, meters, Coupons, Setup Intents, payment methods, Tax registrations, payouts, balances, disputes, or account settings. Portal **configuration** is setup/admin work; runtime only creates sessions against its `bpc_*` id. If Stripe's permission UI groups a read operation with a broader Billing category, choose the narrowest category that makes the documented calls succeed and record that exception in the credential inventory.
 
-Store the value out of band as `BEX_STRIPE_SECRET_KEY` using the same custody pattern as [ADR019](../ADR019-infra-credentials.md). Never commit or log it. Rotate by adding a new restricted key, deploying it, verifying successful calls, then revoking the old key.
+Store the value out of band as `BEX_STRIPE_SECRET_KEY` using the same custody pattern as [ADR019](../ADR019-infra-credentials.md). Never commit or log it. The installer accepts only `rk_*`; `rk_live_*` is additionally refused unless `BEX_STRIPE_ALLOW_LIVE=1` records a separate go-live decision. Rotate by adding a new restricted key, deploying it, verifying successful calls, then revoking the old key.
 
 ## 3. Create and custody the webhook
 
@@ -158,6 +159,8 @@ Verify all of the following before live activation:
 13. A newer successful payment enters recovery and resumes only resources whose exact marker remains. A pre-suspended, deleted, or independently re-marked resource remains untouched.
 14. Polling repairs one deliberately missed webhook, owner notification failures retry independently, and the same lifecycle fields appear on REST, GraphQL, MCP, and the dashboard.
 15. Removing `BEX_STRIPE_DUNNING_ENABLED` stops lifecycle processing without enabling live enforcement. Removing `BEX_STRIPE_SECRET_KEY` and restarting produces no Stripe network traffic and returns estimate-only usage.
+16. `/metrics` reports `bex_billing_enabled=1`, bounded outbox/reject/ambiguity gauges, and only `operation`/`result` counter labels. No workspace, Stripe object, transaction, invoice, payment, request, or secret value is a label.
+17. Every selected row reaches exactly one local terminal state: accepted rows become `emitted`, permanent 4xx rows become `rejected`, and an unstamped attempt older than 24 hours becomes `ambiguous` and cannot automatically replay.
 
 For a disposable production-hosted test workspace, the cross-surface and hosted-session portion is reproducible without placing a Stripe credential in the verifier:
 
@@ -171,7 +174,78 @@ BEX_VERIFY_HOSTED_URL_FILE="$verify_dir/hosted.json" \
 
 The script refuses a non-`tea-*` target, requires readiness `mode=test` with one Customer and one complete Subscription, compares normalized REST/GraphQL/MCP results, and validates only the returned Stripe HTTPS hosts. It never prints the Kratos session token or hosted-session URLs. When `BEX_VERIFY_HOSTED_URL_FILE` is set, the script exclusively creates that previously nonexistent file with mode `0600`; use its `checkoutUrl` in a private browser, complete Checkout with a documented Stripe test payment method, then `unlink "$verify_dir/hosted.json" && rmdir "$verify_dir"`. Re-run without the output-file variable and with `BEX_VERIFY_REQUIRE_PAYMENT_READY=1` to prove webhook completion bound the default payment method, then clean up the disposable workspace, Customer, and Subscription.
 
-## 5. Activate live mode
+## 5. Operations: reconciliation and repair
+
+All commands in this section run against the production deployment but permit only Stripe test-mode keys. Start a local port-forward to the authenticated control-plane API without printing its bearer token, then set `BEX_CP_URL`, `BEX_CP_TOKEN`, and the dedicated `rk_test_*` in a history-disabled shell.
+
+Read-only reconciliation compares local quantities, normalized units, Stripe meter summaries, and the current rated invoice lines. Stripe summaries are eventually consistent, so rerun after a short bounded wait before declaring a mismatch:
+
+```bash
+scripts/stripe-billing-reconcile.sh report tea-... \
+  2026-07-27T00:00:00Z 2026-07-28T00:00:00Z
+scripts/stripe-billing-reconcile.sh issues
+```
+
+The report lists `instance_seconds.<resource_kind>.<tier>`, `egress_gib`, `build_seconds`, and `storage_gb_hours` separately and exits non-zero for mismatches, rejected/ambiguous rows, duplicate local transaction ids, or duplicate rated lines. It refuses `rk_live_*`/`sk_live_*`, never passes a key on the process command line, and never prints a key or webhook secret.
+
+Repair is explicitly dry-run-first:
+
+```bash
+scripts/stripe-billing-reconcile.sh repair TRANSACTION_ID acknowledge OPERATOR "reason"
+scripts/stripe-billing-reconcile.sh repair TRANSACTION_ID retry OPERATOR "catalog corrected"
+scripts/stripe-billing-reconcile.sh repair TRANSACTION_ID mark_repaired OPERATOR "summary proved receipt"
+APPLY=1 scripts/stripe-billing-reconcile.sh repair TRANSACTION_ID mark_repaired OPERATOR "summary proved receipt"
+```
+
+- `acknowledge` closes the issue while leaving the usage row held as evidence.
+- `retry` is only for a definite permanent rejection after its cause is corrected and while its event remains inside the 34-day operational horizon.
+- `mark_repaired` stamps a rejected/ambiguous row only after reconciliation proves the provider-side outcome or an explicit provider adjustment was made.
+- An ambiguous row can never use `retry`. Every applied resolution requires actor/reason and creates `billing.ResolveExportIssue` audit evidence.
+
+Prometheus scrapes the cluster-internal `bex-api.bex-system.svc:8091/metrics`; the public product listener does not expose process metrics. The tested alerts are `BillingExportBacklog`, `BillingPermanentReject`, `BillingExportAmbiguity`, `BillingLocalStampFailure`, `BillingProviderDuplicate`, `BillingInvoiceReadDegraded`, `BillingWebhookDrift`, and `BillingProvisioningFailure`. Disabled billing (`bex_billing_enabled=0`) suppresses all eight.
+
+For the recurring production-hosted test, provision isolated paid/excluded/comp workspaces with explicit owner/24-hour expiry metadata, seed four bounded dimensions, and clean exactly those ids:
+
+```bash
+scripts/stripe-billing-prod-test-fixtures.sh plan
+
+# Staffed test window only: make the fixture's now-2h rows seal without moving
+# the account-wide billing epoch. This value is non-secret.
+kubectl -n bex-system patch secret bex-stripe --type merge \
+  -p '{"stringData":{"BEX_STRIPE_SEAL_HOURS":"1"}}'
+kubectl -n bex-system rollout restart deployment/bex-api
+kubectl -n bex-system rollout status deployment/bex-api --timeout=300s
+
+scripts/stripe-billing-prod-test-fixtures.sh apply
+scripts/stripe-billing-prod-test-fixtures.sh verify
+scripts/stripe-billing-reconcile.sh report tea-PAID WINDOW_START WINDOW_END
+scripts/stripe-billing-reconcile.sh report tea-COMP WINDOW_START WINDOW_END
+
+# Restore the production rewrite horizon before cleanup/handoff.
+kubectl -n bex-system patch secret bex-stripe --type merge \
+  -p '{"stringData":{"BEX_STRIPE_SEAL_HOURS":"48"}}'
+kubectl -n bex-system rollout restart deployment/bex-api
+kubectl -n bex-system rollout status deployment/bex-api --timeout=300s
+scripts/stripe-billing-prod-test-fixtures.sh cleanup
+```
+
+Use the exact paid/comp ids and one-hour window recorded in the state file; do not paste the file itself into evidence. Wait up to the documented emitter interval plus Stripe's eventual-consistency delay before declaring a reconciliation mismatch. Always restore `48` even if acceptance fails.
+
+The state file is created before the first workspace and atomically updated after each successful create, is mode `0600`, and is gitignored. A failed partial apply is therefore recoverable with `cleanup`. Exclusion is applied before provisioning or seeding can export, so it must have no Customer, Subscription, or events. Paid and comp objects are tagged `bex_fixture=m53` with owner/expiry metadata; comp retains rated lines but uses the perpetual 100%-off coupon. Cleanup validates `livemode=false`, deletes only the two fixture Customers and three exact tenant ids, proves absence, and retains catalog/invoice/audit evidence.
+
+### Rotation and disable drill
+
+Use add → deploy → verify → revoke, never in-place guessing:
+
+1. Create a replacement test restricted key with the exact §2 permission inventory. Keep the old key active.
+2. Put the replacement in the out-of-band/keychain custody source, run `DRY_RUN=1 scripts/stripe-billing-secret.sh`, apply it, and wait for both bex-api replicas plus `/healthz` and `/metrics`.
+3. Run the read-only reconciliation, create/resolve one disposable Customer/Subscription, and verify no duplicate object or event quantity.
+4. Revoke the old restricted key only after the replacement passes. Record key ids/fingerprints and timestamps, never values.
+5. For webhook rotation, create a second test endpoint with the exact ten events/API version, deploy its one-time signing secret, prove a new test event reaches `pending_webhooks=0`, then disable/delete the old endpoint. Do not revoke the only working secret first.
+
+To disable, remove the out-of-band `bex-stripe` Secret and roll bex-api. Confirm `bex_billing_enabled=0`, estimate-only surfaces, continuing `usage_hourly` writes, zero provider traffic, and no alerts. Disabling emission does **not** pause or cancel existing Subscriptions. Restore the Secret, reconcile backlog before resuming, and confirm the unique Customer/Subscription counts and meter-summary quantities did not increase twice.
+
+## 6. Activate live mode
 
 Live catalog mutation is explicit and irreversible enough to require a second operator:
 
@@ -186,22 +260,22 @@ Before deploying:
 
 1. Compare all 13 live lookup keys and rates with `pricing.yaml`.
 2. Confirm `bex-comp-100` is valid, perpetual, and exactly 100% off.
-3. Confirm the webhook URL, API version, and both enabled events.
+3. Confirm the webhook URL, API version, and exact ten-event allowlist from §3.
 4. Confirm Stripe's account-level invoice, retry/dunning, and email settings.
 5. Confirm Checkout setup and the scoped Customer Portal round trip in test mode, including replay-safe completion and trusted returns.
 6. Set an explicit `BEX_STRIPE_EPOCH`; understand that sealed rows after that instant and within the 34-day safety window can be backfilled and charged.
 
-Deploy the live secrets during a staffed window. Watch provisioning errors, event rejects, outbox backlog/stamp failures, invoice-read degradation, duplicate Customer/Subscription alarms, and webhook signature failures.
+Deploying a live runtime Secret additionally requires `BEX_STRIPE_ALLOW_LIVE=1`; that variable is authorization for a future go-live, not part of this test-mode handoff. Deploy live secrets only during a staffed window. Watch provisioning errors, event rejects, outbox backlog/stamp failures, invoice-read degradation, duplicate Customer/Subscription alarms, and webhook signature failures.
 
-## 6. Rollback and incident response
+## 7. Rollback and incident response
 
 To stop new Stripe activity without affecting operational metering:
 
 1. Remove `BEX_STRIPE_SECRET_KEY` and `BEX_STRIPE_WEBHOOK_SECRET` from bex-api.
 2. Restart bex-api and verify estimate-only usage plus no Stripe calls.
-3. Preserve `usage_hourly`, `emitted_at`, Customers, meters, Prices, coupon, and invoice evidence.
+3. Preserve `usage_hourly`, `billing_export_state`, first-attempt metadata, `billing_export_issues`, Customers, meters, Prices, coupon, and invoice evidence.
 4. Decide separately whether live Subscriptions should remain active, pause, or cancel. Disabling emission does not cancel collection policy in Stripe.
 
-Do not delete Stripe objects during an incident. A stamp failure after Stripe accepted an event is ambiguous; retrying within Stripe's documented identifier-uniqueness window is deduplicated, but older ambiguity requires reconciliation before replay. A permanent 4xx dead-letter requires correcting the catalog/event in Stripe or an explicit billing adjustment.
+Do not delete Stripe objects during an incident. A stamp failure after Stripe accepted an event is ambiguous; retrying within Stripe's documented 24-hour identifier window is deduplicated, while the application automatically quarantines an older attempt and forbids blind replay. A permanent 4xx dead letter remains durable until an audited acknowledgement, corrected retry, or reconciled repair.
 
 For a suspected credential leak, disable billing, roll the affected key/endpoint secret, deploy the replacement, verify it, then revoke the old credential. Record the incident without recording secret values.

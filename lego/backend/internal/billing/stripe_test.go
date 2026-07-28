@@ -195,8 +195,9 @@ func TestStripeIngestBatchEmitsMeterEvents(t *testing.T) {
 		{TransactionID: "tx1", CustomerID: "tea-a", EventType: "instance_seconds", Timestamp: w, Properties: map[string]string{"tier": "starter", "resource_kind": "service", "value": "3600"}},
 		{TransactionID: "tx2", CustomerID: "tea-a", EventType: "egress_bytes", Timestamp: w, Properties: map[string]string{"value": "1073741824"}}, // 1 GiB
 	}
-	if err := c.IngestBatch(ctx, events); err != nil {
-		t.Fatalf("IngestBatch: %v", err)
+	result := c.IngestBatch(ctx, events)
+	if len(result.Failed) != 0 || len(result.Accepted) != len(events) {
+		t.Fatalf("IngestBatch result = %+v", result)
 	}
 	if got := stub.count("/billing/meter_events"); got != 2 {
 		t.Fatalf("meter events posted = %d, want 2", got)
@@ -245,16 +246,32 @@ func TestStripeIngestBatchDeadLettersPermanent4xx(t *testing.T) {
 		return 200, `{"id":"cus_1","object":"customer"}`
 	})
 	c.storeCustomer("tea-a", "cus_1") // pre-seed the customer cache
-	// A permanent 400 is dead-lettered (logged, dropped) — IngestBatch returns nil.
-	err := c.IngestBatch(context.Background(), []Event{
+	// A permanent 400 is returned as a per-event durable-reject candidate.
+	result := c.IngestBatch(context.Background(), []Event{
 		{TransactionID: "tx1", CustomerID: "tea-a", EventType: "instance_seconds", Timestamp: time.Now(), Properties: map[string]string{"tier": "starter", "resource_kind": "service", "value": "1"}},
 	})
-	if err != nil {
-		t.Fatalf("IngestBatch on 400 = %v, want nil (dead-lettered)", err)
+	if len(result.Accepted) != 0 || len(result.Failed) != 1 || !result.Failed[0].Permanent {
+		t.Fatalf("IngestBatch on 400 = %+v, want one permanent failure", result)
 	}
 }
 
-func TestStripeIngestBatchReturnsErrorOnTransient(t *testing.T) {
+func TestStripeIngestBatchTreatsDuplicateIdentifierAsAccepted(t *testing.T) {
+	c, _ := newStripeTest(t, func(_ string, path string) (int, string) {
+		if strings.Contains(path, "/billing/meter_events") {
+			return 400, `{"error":{"type":"invalid_request_error","code":"duplicate_meter_event","message":"already submitted"}}`
+		}
+		return 200, `{"id":"cus_1","object":"customer"}`
+	})
+	c.storeCustomer("tea-a", "cus_1")
+	result := c.IngestBatch(context.Background(), []Event{
+		{TransactionID: "tx1", CustomerID: "tea-a", EventType: "instance_seconds", Timestamp: time.Now(), Properties: map[string]string{"tier": "starter", "resource_kind": "service", "value": "1"}},
+	})
+	if len(result.Accepted) != 1 || result.Accepted[0] != "tx1" || len(result.Failed) != 0 {
+		t.Fatalf("IngestBatch duplicate result = %+v, want accepted tx1", result)
+	}
+}
+
+func TestStripeIngestBatchReturnsRetryableResultOnTransient(t *testing.T) {
 	c, _ := newStripeTest(t, func(_ string, path string) (int, string) {
 		if strings.Contains(path, "/billing/meter_events") {
 			return 500, `{"error":{"type":"api_error","message":"boom"}}`
@@ -262,11 +279,11 @@ func TestStripeIngestBatchReturnsErrorOnTransient(t *testing.T) {
 		return 200, `{"id":"cus_1","object":"customer"}`
 	})
 	c.storeCustomer("tea-a", "cus_1")
-	err := c.IngestBatch(context.Background(), []Event{
+	result := c.IngestBatch(context.Background(), []Event{
 		{TransactionID: "tx1", CustomerID: "tea-a", EventType: "instance_seconds", Timestamp: time.Now(), Properties: map[string]string{"tier": "starter", "resource_kind": "service", "value": "1"}},
 	})
-	if err == nil {
-		t.Fatal("IngestBatch on 5xx = nil, want an error (transient → retry next cycle)")
+	if len(result.Accepted) != 0 || len(result.Failed) != 1 || result.Failed[0].Permanent {
+		t.Fatalf("IngestBatch on 5xx = %+v, want one retryable failure", result)
 	}
 }
 

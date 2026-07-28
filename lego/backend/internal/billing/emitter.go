@@ -51,13 +51,21 @@ const (
 	// DefaultBatchLimit caps rows fetched per outbox pass; emitOnce loops until
 	// the backlog drains, so this only bounds memory + one ingest fan-out.
 	DefaultBatchLimit = 1000
+
+	// ProviderDedupWindow is Stripe v1 meter events' documented rolling
+	// identifier uniqueness window. Attempts older than this are quarantined for
+	// reconciliation rather than replayed.
+	ProviderDedupWindow = 24 * time.Hour
 )
 
 // EmitterStore is the slice of internal/store the emitter needs: the billing
 // outbox read + stamp. *store.PGStore satisfies it.
 type EmitterStore interface {
 	SelectUnemittedUsage(ctx context.Context, floor, sealBefore time.Time, limit int) ([]store.HourlyRow, error)
-	MarkUsageEmitted(ctx context.Context, rows []store.HourlyRow, at time.Time) error
+	MarkUsageAttempted(ctx context.Context, attempts []store.UsageExportAttempt, at time.Time) error
+	RecordUsageExportResult(ctx context.Context, accepted []store.UsageExportAttempt, rejected []store.UsageExportReject, at time.Time) error
+	QuarantineOldUsageAttempts(ctx context.Context, before, at time.Time) (int64, error)
+	BillingExportStats(ctx context.Context, floor, sealBefore, now time.Time) (store.BillingExportStats, error)
 }
 
 // Emitter is the seal-then-emit loop (ADR040 §3–5): it ships each sealed,
@@ -74,6 +82,7 @@ type Emitter struct {
 	Epoch      time.Time
 	Interval   time.Duration
 	BatchLimit int
+	Metrics    *Metrics
 
 	now     func() time.Time
 	gapOnce sync.Once
@@ -124,6 +133,7 @@ func (e *Emitter) floor(now time.Time) time.Time {
 // re-sent after a crash within Stripe's documented rolling uniqueness window.
 func (e *Emitter) emitOnce(ctx context.Context) {
 	now := e.now().UTC()
+	defer e.refreshMetrics(ctx, now)
 	sealBefore := now.Add(-e.SealHours)
 	floor := e.floor(now)
 	e.gapOnce.Do(func() {
@@ -134,6 +144,14 @@ func (e *Emitter) emitOnce(ctx context.Context) {
 	// above the floor — nothing to do until more rows age past the horizon.
 	if !floor.Before(sealBefore) {
 		return
+	}
+	quarantined, err := e.Store.QuarantineOldUsageAttempts(ctx, now.Add(-ProviderDedupWindow), now)
+	if err != nil {
+		log.Printf("billing: quarantine expired export attempts: %v", err)
+		return
+	}
+	if quarantined > 0 {
+		log.Printf("billing: quarantined %d export attempts beyond provider deduplication window", quarantined)
 	}
 	for {
 		if ctx.Err() != nil {
@@ -162,7 +180,7 @@ func (e *Emitter) emitOnce(ctx context.Context) {
 // only on a fully successful ingest. Returns how many rows were durably emitted.
 func (e *Emitter) emitRows(ctx context.Context, rows []store.HourlyRow, now time.Time) int {
 	customerReady := map[string]bool{}
-	okRows := make([]store.HourlyRow, 0, len(rows))
+	attempts := make([]store.UsageExportAttempt, 0, len(rows))
 	events := make([]Event, 0, len(rows))
 	for _, r := range rows {
 		ready, seen := customerReady[r.WorkspaceID]
@@ -172,30 +190,87 @@ func (e *Emitter) emitRows(ctx context.Context, rows []store.HourlyRow, now time
 			customerReady[r.WorkspaceID] = ready
 			if !ready {
 				log.Printf("billing: provision %s failed, skipping its rows this cycle: %v", r.WorkspaceID, err)
+				e.Metrics.Operation("provisioning", "error")
+			} else {
+				e.Metrics.Operation("provisioning", "success")
 			}
 		}
 		if !ready {
 			continue
 		}
-		okRows = append(okRows, r)
-		events = append(events, toEvent(r))
+		event := toEvent(r)
+		eventName, _, skip := stripeMeterEvent(event)
+		if skip {
+			eventName = "local_zero_rate"
+		}
+		attempts = append(attempts, store.UsageExportAttempt{Row: r, TransactionID: event.TransactionID, EventName: eventName})
+		events = append(events, event)
 	}
 	if len(events) == 0 {
 		return 0
 	}
-	if err := e.Client.IngestBatch(ctx, events); err != nil {
-		log.Printf("billing: ingest %d events failed, leaving un-emitted for retry: %v", len(events), err)
+	if err := e.Store.MarkUsageAttempted(ctx, attempts, now); err != nil {
+		log.Printf("billing: persist %d export attempts before provider call: %v", len(attempts), err)
 		return 0
 	}
-	if err := e.Store.MarkUsageEmitted(ctx, okRows, now); err != nil {
-		// Ingest succeeded but the stamp did not: the rows stay un-emitted and
-		// re-ship next cycle. The deterministic identifier deduplicates an
-		// ordinary retry within Stripe's documented rolling uniqueness window;
-		// operators must reconcile ambiguity older than that window (ADR040).
-		log.Printf("billing: stamp emitted_at for %d rows failed: %v", len(okRows), err)
-		return 0
+	result := e.Client.IngestBatch(ctx, events)
+	byID := make(map[string]store.UsageExportAttempt, len(attempts))
+	for _, attempt := range attempts {
+		byID[attempt.TransactionID] = attempt
 	}
-	return len(okRows)
+	accepted := make([]store.UsageExportAttempt, 0, len(result.Accepted))
+	for _, id := range result.Accepted {
+		if attempt, ok := byID[id]; ok {
+			accepted = append(accepted, attempt)
+		}
+	}
+	rejected := make([]store.UsageExportReject, 0)
+	transient := 0
+	for _, failure := range result.Failed {
+		attempt, ok := byID[failure.TransactionID]
+		if !ok {
+			continue
+		}
+		if failure.Permanent {
+			e.Metrics.Operation("meter_event", "rejected")
+			rejected = append(rejected, store.UsageExportReject{Attempt: attempt, Code: failure.Code, Message: failure.Message})
+		} else {
+			e.Metrics.Operation("meter_event", "retryable")
+			transient++
+		}
+	}
+	if len(accepted)+len(rejected) > 0 {
+		if err := e.Store.RecordUsageExportResult(ctx, accepted, rejected, now); err != nil {
+			e.Metrics.Operation("local_stamp", "error")
+			// Provider calls may have succeeded while the local transaction failed.
+			// The immutable first-attempt timestamp bounds automatic retry; once the
+			// 24h identifier window closes the rows become explicit ambiguity.
+			log.Printf("billing: persist export result accepted=%d rejected=%d: %v", len(accepted), len(rejected), err)
+			return 0
+		}
+		e.Metrics.Operation("local_stamp", "success")
+	}
+	for range accepted {
+		e.Metrics.Operation("meter_event", "accepted")
+	}
+	if transient > 0 {
+		log.Printf("billing: %d meter events remain pending after retryable provider failures", transient)
+		return 0 // stop this pass so retryable rows cannot hot-loop
+	}
+	return len(accepted) + len(rejected)
+}
+
+func (e *Emitter) refreshMetrics(ctx context.Context, now time.Time) {
+	if e.Metrics == nil {
+		return
+	}
+	stats, err := e.Store.BillingExportStats(ctx, e.floor(now), now.Add(-e.SealHours), now)
+	if err != nil {
+		e.Metrics.Operation("outbox_snapshot", "error")
+		return
+	}
+	e.Metrics.SetExportStats(stats)
+	e.Metrics.Operation("outbox_snapshot", "success")
 }
 
 // ensureBillingSetup provisions a workspace's Stripe billing before its usage

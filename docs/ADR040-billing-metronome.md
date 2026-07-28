@@ -1,6 +1,6 @@
 # ADR040 — Direct Stripe usage billing
 
-**Status:** Accepted · **Owner:** backend/control plane · **Originally accepted:** 2026-07-17 · **Revised:** 2026-07-28 (w7/m52)
+**Status:** Accepted · **Owner:** backend/control plane · **Originally accepted:** 2026-07-17 · **Revised:** 2026-07-28 (w7/m53)
 
 > The filename is retained for stable links. The original decision used Metronome as an intermediate rating service. w7/m50 replaces that sink with Stripe Billing; Metronome is no longer a runtime dependency.
 
@@ -50,16 +50,19 @@ The m47 outbox remains:
 
 1. roll usage into `usage_hourly`;
 2. wait for the rewrite horizon (`BEX_STRIPE_SEAL_HOURS`, default 48 hours);
-3. select non-excluded, unstamped rows at or after `max(BEX_STRIPE_EPOCH, now − 34 days)`;
+3. select non-excluded `pending` rows at or after `max(BEX_STRIPE_EPOCH, now − 34 days)`;
 4. ensure the Customer and Subscription;
-5. send one Stripe meter event per paid row;
-6. stamp `emitted_at` only after the batch succeeds.
+5. persist the deterministic identifier, meter name, and immutable first-attempt timestamp before any provider call;
+6. send one Stripe meter event per paid row; and
+7. atomically stamp accepted rows `emitted`, hold permanent rejects, and leave retryable outcomes `pending`.
 
 The 34-day cap stays inside Stripe's 35-calendar-day past-timestamp limit and prevents first enable from billing unbounded history. A future timestamp is never manufactured.
 
-The meter-event `identifier` is the SHA-256 hash of normalized resource kind, service id, meter kind, tier, and UTC hour. Stripe guarantees identifier uniqueness for a rolling window of at least 24 hours. Because the emitter retries hourly, an ordinary crash between event acceptance and the local stamp is deduplicated. This is a bounded provider guarantee, not mathematically strict exactly-once delivery: if the local stamp remains broken longer than Stripe's identifier window, a later retry could be counted twice. Operators must alert on stamp failures/backlog and reconcile before retrying an ambiguity older than that window. Stripe exposes no permanent receipt lookup that can close this two-system commit gap.
+The meter-event `identifier` is the SHA-256 hash of normalized resource kind, service id, meter kind, tier, and UTC hour. Stripe enforces identifier uniqueness within a rolling 24-hour period. Because the emitter retries hourly, an ordinary crash between event acceptance and the local stamp is deduplicated. This is a bounded provider guarantee, not mathematically strict exactly-once delivery. `billing_export_attempted_at` therefore never moves: once an unstamped attempt exceeds 24 hours, the row becomes `ambiguous`, a durable `stamp_ambiguity` issue is created, and automatic replay stops. An operator must compare the local row with Stripe meter summaries and invoice lines, then explicitly `mark_repaired` or `acknowledge`; ambiguity can never use the automatic `retry` action.
 
-A retryable network/5xx/429 failure leaves rows unstamped for the next cycle. A permanent non-429 4xx is logged as a dead-letter and consumed so one malformed event cannot hot-loop the entire outbox; operators reconcile and correct it in Stripe if necessary.
+A retryable network/5xx/429 failure leaves its row pending for the next cycle while accepted siblings are stamped independently. A permanent non-429 4xx becomes a durable `permanent_reject` issue and the row becomes `rejected`; it is never falsely stamped emitted and cannot hot-loop the outbox. Repair is dry-run-first and audited. `retry` is allowed only for a definite permanent reject whose event timestamp remains inside the 34-day operational backfill horizon; `mark_repaired` records an externally reconciled outcome without manufacturing another provider event.
+
+The internal control-plane operations API exposes bounded local rows and issue context, never secret values or payment payloads. [`scripts/stripe-billing-reconcile.sh`](../scripts/stripe-billing-reconcile.sh) compares each normalized paid dimension with Stripe's eventually consistent meter-event summaries and invoice-preview lines, fails on mismatch/reject/ambiguity/duplicate evidence, and refuses every live key.
 
 ### 4. Invoice reads preserve the m48 public contract
 
@@ -148,14 +151,15 @@ Rollback is non-destructive: remove `BEX_STRIPE_SECRET_KEY` and `BEX_STRIPE_WEBH
 
 - Setup and runtime credentials are separate. Runtime uses a restricted key with only the Customer/Subscription/session writes and catalog, SetupIntent, PaymentMethod, Tax-registration, and Invoice reads listed in the runbook.
 - API keys and webhook secrets stay out of git, logs, command history, audit payloads, and tenant-visible state.
-- Test and live Stripe objects are independent. The setup script defaults to test mode and requires explicit `--live` for live mutation.
+- Test and live Stripe objects are independent. The setup script defaults to test mode and requires explicit `--live` for catalog mutation; the runtime Secret installer additionally refuses `rk_live_*` unless a separate `BEX_STRIPE_ALLOW_LIVE=1` go-live decision is present.
 - Customer/subscription ambiguity and catalog mismatch fail closed.
-- Alert on billing emitter backlog, provisioning failures, permanent event rejects, invoice-read degradation, and signature failures.
+- `/metrics` exposes only account-wide gauges and bounded `operation`/`result` labels. Workspace ids, provider objects, transaction ids, invoices, payment data, request ids, and secrets never become labels.
+- Tested alerts cover export backlog, permanent rejects, old ambiguity, local-stamp failure, Customer/Subscription duplicates, invoice-read degradation, webhook signature/version/mode drift, and provisioning failure. Every expression gates on `bex_billing_enabled == 1`, so disabled and retained idle state do not page.
 
 ## Consequences
 
 - `internal/billing` has one Stripe client for customer/subscription reconciliation, hosted payment setup, Portal sessions, tax gating, event emission, invoice reads, comps, and verified webhook intake.
-- The m47 `emitted_at` migration and store API remain provider-neutral and unchanged.
+- `usage_hourly` remains the operational quantity source, while `billing_export_state`, first-attempt metadata, and `billing_export_issues` make the external commit boundary explicit and repairable.
 - `pricing.yaml` now has two deliberate consumers: advisory estimates and Stripe catalog setup. Stripe invoices remain authoritative.
 - The operator and CRD contract remain unchanged.
 - Payment-method onboarding and Customer Portal access are Stripe-hosted and API-operable across all bex surfaces. Tax remains deliberately unconfigured until the operator supplies the legal/business inputs and same-mode registration. Test-mode non-payment now converges through a durable, reversible lifecycle; live enforcement and eventual termination remain product decisions.

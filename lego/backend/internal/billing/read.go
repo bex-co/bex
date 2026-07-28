@@ -55,7 +55,14 @@ type Invoice struct {
 // Subscription, then reads Stripe's current invoice preview plus finalized
 // history. No Customer/subscription means estimate-only. API failures are
 // returned so the usage service can log and gracefully fall back.
-func (c *StripeClient) BillingFor(ctx context.Context, tenantID string, periodStart, periodEnd time.Time) (*Billing, error) {
+func (c *StripeClient) BillingFor(ctx context.Context, tenantID string, periodStart, periodEnd time.Time) (billing *Billing, err error) {
+	defer func() {
+		if err != nil {
+			c.metrics.Operation("invoice_read", "error")
+		} else {
+			c.metrics.Operation("invoice_read", "success")
+		}
+	}()
 	customerID, found, err := c.findCustomer(ctx, tenantID)
 	if err != nil {
 		return nil, err

@@ -39,6 +39,8 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -106,6 +108,9 @@ const drainWindow = 15 * time.Second
 
 func main() {
 	ctx := ctrl.SetupSignalHandler()
+	metricRegistry := prometheus.NewRegistry()
+	metricRegistry.MustRegister(prometheus.NewGoCollector(), prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+	billingMetrics := billing.NewMetrics(metricRegistry)
 
 	scheme := runtime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
@@ -394,6 +399,7 @@ func main() {
 			log.Fatalf("bex-api: %v", err)
 		}
 		if stripeEnabled {
+			billingMetrics.SetEnabled(true)
 			stripeClient := billing.NewStripe(billing.StripeConfig{
 				SecretKey:             stripeSecretKey,
 				BaseURL:               os.Getenv("BEX_STRIPE_API_URL"),
@@ -404,6 +410,7 @@ func main() {
 				TaxCode:               os.Getenv("BEX_STRIPE_TAX_CODE"),
 				TaxBehavior:           os.Getenv("BEX_STRIPE_TAX_BEHAVIOR"),
 				State:                 st,
+				Metrics:               billingMetrics,
 			})
 			usageSvc.Billing = stripeClient
 			deps.Billing = stripeClient
@@ -411,6 +418,7 @@ func main() {
 			stripeBillingAdmin = &billing.Admin{Store: st, Provider: stripeClient}
 
 			emitter := billing.NewEmitter(st, stripeClient)
+			emitter.Metrics = billingMetrics
 			emitter.Epoch = billingEpoch
 			if v := os.Getenv("BEX_STRIPE_SEAL_HOURS"); v != "" {
 				if n, err := strconv.Atoi(v); err == nil && n >= 1 {
@@ -435,11 +443,11 @@ func main() {
 				lifecycle = &billing.Lifecycle{Store: st, GracePeriod: grace, ExpectedLivemode: false}
 				enforcer := &billing.KubernetesEnforcer{Client: cl, Store: st, Namespace: envOr("BEX_CP_APPS_NAMESPACE", base.Namespace)}
 				stripeLifecycleWorker = &billing.Worker{Store: st, Enforcer: enforcer}
-				stripeLifecycleReconciler = &billing.Reconciler{Store: st, Provider: stripeClient, GracePeriod: grace, Interval: reconcileEvery}
+				stripeLifecycleReconciler = &billing.Reconciler{Store: st, Provider: stripeClient, GracePeriod: grace, Interval: reconcileEvery, Metrics: billingMetrics}
 				log.Printf("bex-api Stripe test-mode dunning enabled (grace %s, reconcile %s)", grace, reconcileEvery)
 			}
 			if secret := os.Getenv("BEX_STRIPE_WEBHOOK_SECRET"); secret != "" {
-				handler := &billing.StripeWebhook{Secret: secret, ExpectedLivemode: stripeClient.ExpectedLivemode(), OnCheckoutCompleted: stripeClient.CompleteCheckoutSession}
+				handler := &billing.StripeWebhook{Secret: secret, ExpectedLivemode: stripeClient.ExpectedLivemode(), OnCheckoutCompleted: stripeClient.CompleteCheckoutSession, Metrics: billingMetrics}
 				if lifecycle != nil {
 					handler.OnLifecycle = lifecycle.HandleStripeEvent
 				}
@@ -475,11 +483,14 @@ func main() {
 		if err := requireCPAuth(cpToken, os.Getenv("BEX_CP_INSECURE")); err != nil {
 			log.Fatalf("control plane: %v", err)
 		}
-		internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: cpToken, Grant: granter, Billing: stripeBillingAdmin}
+		internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: cpToken, Grant: granter, Billing: stripeBillingAdmin, BillingOperations: st}
+		internalRoot := http.NewServeMux()
+		internalRoot.Handle("GET /metrics", promhttp.HandlerFor(metricRegistry, promhttp.HandlerOpts{}))
+		internalRoot.Handle("/", internal.Handler())
 		cpAddr := envOr("BEX_CP_ADDR", ":8091")
 		cpSrv := &http.Server{
 			Addr:              cpAddr,
-			Handler:           internal.Handler(),
+			Handler:           internalRoot,
 			ReadHeaderTimeout: 10 * time.Second,
 			ReadTimeout:       30 * time.Second,
 			WriteTimeout:      30 * time.Second,

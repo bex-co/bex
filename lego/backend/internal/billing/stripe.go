@@ -96,6 +96,9 @@ type StripeConfig struct {
 	// State persists the provider mapping/lifecycle default used by webhook
 	// intake and polling. Nil is retained for isolated unit tests.
 	State BillingStateStore
+	// Metrics is the process-local, low-cardinality operational sink. Nil keeps
+	// isolated tests and non-instrumented callers unchanged.
+	Metrics *Metrics
 }
 
 // BillingStateStore is the narrow persistence seam the Stripe client needs.
@@ -128,6 +131,7 @@ type StripeClient struct {
 	taxBehavior           string
 	testMode              bool
 	state                 BillingStateStore
+	metrics               *Metrics
 }
 
 // NewStripe builds a StripeClient, or returns nil when SecretKey is unset — the
@@ -164,6 +168,7 @@ func NewStripe(cfg StripeConfig) *StripeClient {
 		taxBehavior:           cfg.TaxBehavior,
 		testMode:              strings.Contains(cfg.SecretKey, "_test_"),
 		state:                 cfg.State,
+		metrics:               cfg.Metrics,
 	}
 }
 
@@ -220,6 +225,7 @@ func (c *StripeClient) findCustomer(ctx context.Context, tenantID string) (strin
 		return "", false, fmt.Errorf("stripe: search customer %s: %w", tenantID, err)
 	}
 	if len(found) > 1 {
+		c.metrics.Operation("duplicate_customer", "error")
 		return "", false, fmt.Errorf("stripe: workspace %s has %d Customers with metadata %s: %v", tenantID, len(found), workspaceMetadataKey, found)
 	}
 	if len(found) == 0 {
@@ -267,17 +273,23 @@ func (c *StripeClient) ExpectedLivemode() bool { return !c.testMode }
 // dead-lettered — logged and skipped — so one bad event never blocks the batch;
 // a transient/other error is returned so the emitter leaves the rows un-stamped
 // and retries next cycle.
-func (c *StripeClient) IngestBatch(ctx context.Context, events []Event) error {
+func (c *StripeClient) IngestBatch(ctx context.Context, events []Event) IngestResult {
+	result := IngestResult{}
 	for _, e := range events {
 		eventName, value, skip := stripeMeterEvent(e)
 		if skip {
-			continue // free tier (no meter/price) — nothing owed, nothing to send
+			// Free/zero-rate rows are intentionally accounted locally without a
+			// provider event; otherwise they would remain in the outbox forever.
+			result.Accepted = append(result.Accepted, e.TransactionID)
+			continue
 		}
 		custID, ok := c.lookupCustomer(e.CustomerID)
 		if !ok {
-			// The emitter ensures the customer before ingesting; a miss means a
-			// transient ensure gap — surface it so the batch retries.
-			return fmt.Errorf("stripe: no customer for workspace %s", e.CustomerID)
+			result.Failed = append(result.Failed, IngestFailure{
+				TransactionID: e.TransactionID, Code: "customer_not_ready",
+				Message: "Stripe customer mapping unavailable", Permanent: false,
+			})
+			continue
 		}
 		params := &stripe.BillingMeterEventParams{
 			EventName:  stripe.String(eventName),
@@ -290,14 +302,65 @@ func (c *StripeClient) IngestBatch(ctx context.Context, events []Event) error {
 		}
 		params.Context = ctx
 		if _, err := c.sc.BillingMeterEvents.New(params); err != nil {
-			if permanentStripeError(err) {
-				log.Printf("stripe: DLQ meter event %s (%s) dropped: %v", e.TransactionID, eventName, err)
+			// Two bex-api replicas can race on the same deterministic event. Stripe
+			// guarantees identifier uniqueness for at least 24h; its duplicate
+			// response therefore proves that this exact outbox event was already
+			// accepted and is safe to stamp locally.
+			if duplicateMeterEvent(err) {
+				result.Accepted = append(result.Accepted, e.TransactionID)
 				continue
 			}
-			return fmt.Errorf("stripe: meter event %s: %w", e.TransactionID, err)
+			if permanentStripeError(err) {
+				code, message := safeStripeError(err)
+				log.Printf("billing: Stripe meter event rejected transaction=%s event=%s code=%s", e.TransactionID, eventName, code)
+				result.Failed = append(result.Failed, IngestFailure{
+					TransactionID: e.TransactionID, Code: code, Message: message, Permanent: true,
+				})
+				continue
+			}
+			code, _ := safeStripeError(err)
+			log.Printf("billing: Stripe meter event retryable transaction=%s event=%s code=%s", e.TransactionID, eventName, code)
+			result.Failed = append(result.Failed, IngestFailure{
+				TransactionID: e.TransactionID, Code: code,
+				Message: "transient Stripe meter-event failure", Permanent: false,
+			})
+			continue
 		}
+		result.Accepted = append(result.Accepted, e.TransactionID)
 	}
-	return nil
+	return result
+}
+
+func duplicateMeterEvent(err error) bool {
+	var se *stripe.Error
+	return errors.As(err, &se) && string(se.Code) == "duplicate_meter_event"
+}
+
+// safeStripeError reduces an SDK error to bounded, non-payment diagnostics.
+// The provider request id, response body, parameters, and full payload are
+// deliberately excluded from durable state and logs.
+func safeStripeError(err error) (code, message string) {
+	code = "provider_error"
+	message = "Stripe rejected the meter event"
+	var se *stripe.Error
+	if !errors.As(err, &se) {
+		return code, message
+	}
+	if se.Code != "" {
+		code = string(se.Code)
+	} else if se.Type != "" {
+		code = string(se.Type)
+	}
+	if se.Msg != "" {
+		message = se.Msg
+	}
+	if len(code) > 80 {
+		code = code[:80]
+	}
+	if len(message) > 240 {
+		message = message[:240]
+	}
+	return code, message
 }
 
 // stripeMeterEvent maps a generic bex usage Event onto the Stripe meter it
