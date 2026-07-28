@@ -1,6 +1,8 @@
 # Tenant isolation: east-west network enforcement
 
-**Status:** implemented (w7/m1)
+> ⚠️ **DEPRECATED tenant-boundary mechanism (2026-07-27) — superseded by [ADR043: per-tenant namespace isolation](ADR043-tenant-namespace-isolation.md).** The [§Mechanism choice](#mechanism-choice) decision below ("Option B": a **shared apps namespace + label-scoped per-App NetworkPolicies** as the tenant boundary) is deprecated in favor of namespace-per-workspace. The implemented policies remain in production until ADR043 is implemented. **The rest of this doc is retained** — the Cilium node/cloud-metadata `egressDeny` (w7/m4), platform-side lockdown (t004), registry access control (w7/m8), and tenant container hardening (w7/m2) move _into_ the per-tenant namespace model; only the label-scoped boundary primitive is superseded. See ADR043 for the reversal rationale and its point-by-point engagement of this doc's objections to namespace-per-workspace.
+
+**Status:** implemented (w7/m1); tenant-boundary mechanism deprecated 2026-07-27 — see the banner above and [ADR043](ADR043-tenant-namespace-isolation.md).
 
 ## Threat model
 
