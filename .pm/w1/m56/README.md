@@ -1,6 +1,6 @@
 # w1 · m56 — Exit deprecated platform versions and fleet migration scaffolding
 
-**Worker:** worker1 **Goal:** Move production off end-of-life Kubernetes and CNPG's retiring in-tree Barman path, then remove one-time fleet backfills, legacy route cleanup, and Node 20 CI actions only after their live-state gates are satisfied. **Status:** in progress (t001–t012 done)
+**Worker:** worker1 **Goal:** Move production off end-of-life Kubernetes and CNPG's retiring in-tree Barman path, then remove one-time fleet backfills, legacy route cleanup, and Node 20 CI actions only after their live-state gates are satisfied. **Status:** in progress (t001–t013 done)
 
 ## Tasks (in order)
 
@@ -18,7 +18,7 @@
 | t010 | Normalize build/release metadata; remove artifact-adoption and fingerprint backfills — **DONE** | 45m | t001 |
 | t011 | Retire old Traefik datastore routes and recurring legacy load-balancer cleanup — **DONE** | 45m | t001 |
 | t012 | Upgrade GitHub Actions to Node 24-compatible maintained majors — **DONE** | 30m | — |
-| t013 | Simplify — run /simplify over the changed platform code | 20m | t003, t008, t009, t010, t011, t012 |
+| t013 | Simplify — run /simplify over the changed platform code — **DONE** | 20m | t003, t008, t009, t010, t011, t012 |
 | t014 | Test coverage — upgrade, migration, restore, and absence guards | 45m | t003, t008, t009, t010, t011, t012 |
 | t015 | Closeout — verify DoD, mark done, move milestone | 15m | t013, t014 |
 
