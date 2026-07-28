@@ -96,3 +96,24 @@ spec:
   egress:
     - toEntities:
         - kube-apiserver
+---
+# CNPG init and instance-manager containers continuously reconcile their own
+# Cluster through the Kubernetes API. They are deliberately excluded from the
+# tenant node/remote-node deny above, but the namespace-wide metadata policy
+# still enables egress enforcement for them. Restore only the API edge here;
+# metadata remains denied and no arbitrary node or public-network access is
+# introduced. The selector follows CNPG's invariant identity label and covers
+# bootstrap Jobs as well as steady-state instance Pods.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-cnpg-kube-apiserver
+  namespace: default
+spec:
+  endpointSelector:
+    matchExpressions:
+      - key: cnpg.io/cluster
+        operator: Exists
+  egress:
+    - toEntities:
+        - kube-apiserver
