@@ -958,8 +958,8 @@ spec:
       infrastructureRef:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: HCloudMachineTemplate
-        name: bex-platform-baked
-      version: v1.31.0
+        name: bex-platform-k132
+      version: v1.32.13
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
