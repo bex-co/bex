@@ -36,8 +36,8 @@ import (
 // The pre-deploy gate (w1/m33): spec.preDeployCommand runs as a Job against the
 // new revision's image and the rollout waits on it. envtest has no kubelet, so
 // the Job never runs on its own — the specs drive its terminal condition by
-// hand (the same technique the build-adoption spec uses) to exercise the
-// success and failure branches.
+// hand to exercise the success and failure branches, matching the build
+// completion specs.
 var _ = Describe("Pre-deploy gate (kubernetes runtime)", func() {
 	ctx := context.Background()
 

@@ -523,9 +523,7 @@ func TestDatabasePublicFrontDoorStatus(t *testing.T) {
 		},
 	}
 	r := &DatabaseReconciler{DBDomain: "db.example.test"}
-	if err := r.reconcileExternalRoutes(context.Background(), db); err != nil {
-		t.Fatal(err)
-	}
+	r.updateExternalAddressStatus(db)
 	if db.Status.ExternalHost != "orders.db.example.test" || db.Status.PoolerExternalHost != "orders-pool.db.example.test" {
 		t.Fatalf("public status hosts = %q / %q", db.Status.ExternalHost, db.Status.PoolerExternalHost)
 	}
