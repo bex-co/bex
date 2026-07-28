@@ -211,7 +211,11 @@ type CreatePostgresRequest struct {
 	DatabaseUser string `json:"databaseUser,omitempty"`
 	Plan         string `json:"plan,omitempty"`
 	Version      string `json:"version,omitempty"`
-	DiskSizeGB   int32  `json:"diskSizeGB,omitempty"`
+	// Region is accepted from Render clients as a placement hint. bex currently
+	// exposes one configured region per control plane, so the server-owned
+	// BEX_REGION remains authoritative instead of persisting this request field.
+	Region     string `json:"region,omitempty"`
+	DiskSizeGB int32  `json:"diskSizeGB,omitempty"`
 	// Datadog fields are decoded so the Render CLI receives an explicit
 	// unsupported error instead of a successful no-op. Pointers distinguish an
 	// omitted field from an explicitly supplied empty string without ever

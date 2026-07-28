@@ -855,7 +855,7 @@ func TestRESTIPAllowList(t *testing.T) {
 
 	// create with an allowlist seed — Render's real wire shape is
 	// {cidrBlock,description} objects, not bare CIDR strings.
-	w := serveREST(svc, "POST", "/v1/key-value", `{"name":"acl-rest","public":true,"ipAllowList":[{"cidrBlock":"203.0.113.0/24","description":"office"}]}`)
+	w := serveREST(svc, "POST", "/v1/key-value", `{"name":"acl-rest","region":"oregon","public":true,"ipAllowList":[{"cidrBlock":"203.0.113.0/24","description":"office"}]}`)
 	if w.Code != 201 {
 		t.Fatalf("create => 201, got %d: %s", w.Code, w.Body.String())
 	}
