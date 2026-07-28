@@ -54,7 +54,7 @@ var (
 func KpackImage(o Options) *unstructured.Unstructured {
 	env := make([]any, 0, len(o.BuildEnv))
 	for _, item := range o.BuildEnv {
-		// kpack v0.17 rejects SecretKeyRef in Image env. The controller already
+		// kpack rejects SecretKeyRef in Image env. The controller already
 		// supplies literal BP_/BPE_ entries only; keep this boundary defensive.
 		if item.Name == "" || item.ValueFrom != nil {
 			continue

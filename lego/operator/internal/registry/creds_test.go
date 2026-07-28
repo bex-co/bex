@@ -388,6 +388,39 @@ func TestBaseZotConfigBuilderAdminPolicy(t *testing.T) {
 	}
 }
 
+func TestPlatformBuilderRepositoryIsReadOnlyForAuthenticatedApps(t *testing.T) {
+	base := (&Creds{}).baseZotConfig()
+	if !zotConfigHasPlatformBuilderReadPolicy(base) {
+		t.Fatal("base config must grant authenticated builds read-only access to the shared kpack builder")
+	}
+
+	legacy := []byte(`{"http":{"accessControl":{"repositories":{"**":{"defaultPolicy":[]}},"adminPolicy":{"users":["bex-builder"],"actions":["read","create","update","delete"]}}}}`)
+	migrated, err := ensureZotPlatformBuilderReadPolicy(legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !zotConfigHasPlatformBuilderReadPolicy(migrated) {
+		t.Fatal("legacy config did not gain the shared builder read policy")
+	}
+
+	// A tenant service whose public name collides with the platform repository
+	// must never gain write permission or remove the platform rule on deletion.
+	collided, err := addZotACLEntry(migrated, platformBuilderRepository, "app-"+platformBuilderRepository)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if zotConfigHasRepoWritePolicy(collided, platformBuilderRepository, "app-"+platformBuilderRepository) || !zotConfigHasPlatformBuilderReadPolicy(collided) {
+		t.Fatal("colliding App replaced the platform builder read-only policy")
+	}
+	removed, err := removeZotACLEntry(collided, platformBuilderRepository)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !zotConfigHasPlatformBuilderReadPolicy(removed) {
+		t.Fatal("colliding App deletion removed the platform builder policy")
+	}
+}
+
 // TestBaseZotConfigContractValues pins the Zot config contract so drift is
 // detected at test time, not when the Zot pod fails to start.
 func TestBaseZotConfigContractValues(t *testing.T) {
