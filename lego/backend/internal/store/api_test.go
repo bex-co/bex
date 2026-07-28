@@ -257,3 +257,82 @@ func TestHealthzReportsDBState(t *testing.T) {
 		t.Errorf("healthz with failing ping: got %d want 503", rr.Code)
 	}
 }
+
+// fakeSandboxTenants is a stub SandboxTenantResolver: it maps known keys to
+// workspaces and errors on the rest (the 401 path).
+type fakeSandboxTenants map[string]string
+
+func (f fakeSandboxTenants) WorkspaceForSandboxKey(_ context.Context, key string) (string, error) {
+	if ws, ok := f[key]; ok {
+		return ws, nil
+	}
+	return "", ErrNotFound
+}
+
+func TestSandboxTenantLookup(t *testing.T) {
+	api, _, _ := newTestAPI(t)
+	api.Token = "cp-secret"
+	api.SandboxTenants = fakeSandboxTenants{"osk-good": "tea-a"}
+	h := api.Handler()
+
+	get := func(auth, key string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, "/v1/sandbox-tenants", nil)
+		if auth != "" {
+			req.Header.Set("Authorization", auth)
+		}
+		if key != "" {
+			req.Header.Set("OPEN-SANDBOX-API-KEY", key)
+		}
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, req)
+		return rr
+	}
+
+	// Wrong/absent CP bearer is rejected by a.bearer before the handler runs.
+	if rr := get("", "osk-good"); rr.Code != http.StatusUnauthorized {
+		t.Errorf("no bearer: got %d want 401", rr.Code)
+	}
+
+	// Valid bearer + known key → 200 with the `<ws>-sandbox` namespace and a ttl.
+	rr := get("Bearer cp-secret", "osk-good")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("known key: got %d %s", rr.Code, rr.Body.String())
+	}
+	var ok struct {
+		Namespace string `json:"namespace"`
+		TTL       int    `json:"ttl"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &ok); err != nil {
+		t.Fatal(err)
+	}
+	if ok.Namespace != "tea-a-sandbox" || ok.TTL <= 0 {
+		t.Errorf("lookup body = %+v, want namespace tea-a-sandbox + positive ttl", ok)
+	}
+
+	// Valid bearer + unknown key → 401 with the provider's UNAUTHORIZED shape.
+	rr = get("Bearer cp-secret", "osk-bogus")
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("unknown key: got %d want 401", rr.Code)
+	}
+	var bad struct {
+		Code string `json:"code"`
+	}
+	_ = json.Unmarshal(rr.Body.Bytes(), &bad)
+	if bad.Code != "UNAUTHORIZED" {
+		t.Errorf("unknown-key code = %q, want UNAUTHORIZED", bad.Code)
+	}
+}
+
+func TestSandboxTenantUnconfiguredIs503(t *testing.T) {
+	api, _, _ := newTestAPI(t)
+	api.Token = "cp-secret"
+	// SandboxTenants left nil.
+	req := httptest.NewRequest(http.MethodGet, "/v1/sandbox-tenants", nil)
+	req.Header.Set("Authorization", "Bearer cp-secret")
+	req.Header.Set("OPEN-SANDBOX-API-KEY", "osk-x")
+	rr := httptest.NewRecorder()
+	api.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Errorf("nil resolver: got %d want 503", rr.Code)
+	}
+}

@@ -59,13 +59,21 @@ registryInsecure = false
 
 # Multi-tenant mode (OSEP-0014, ADR042 D4 / m32 t006): an HTTP tenant-lookup
 # provider resolves each caller's OPEN-SANDBOX-API-KEY to a `<ws>-sandbox`
-# namespace via bex-api's internal endpoint. Lifecycle ops (create/list/get/
+# namespace via bex-api's control-plane endpoint. Lifecycle ops (create/list/get/
 # delete) are then auto-scoped to that namespace; a stolen key cannot cross
-# tenants even if bex-api has a bug. auth_token is provided via env from a
-# Secret, never inlined.
+# tenants even if bex-api has a bug (opensandbox_server/tenants/http_provider.py:
+# GET {endpoint}, header OPEN-SANDBOX-API-KEY → 200 {namespace,ttl} | 401).
+#
+# Presence of this block flips the server into multi-tenant mode; drop it (and
+# set OPENSANDBOX_INSECURE_SERVER) only for a single-tenant bring-up. The route
+# sits behind the CP bearer, so auth_token must be `Bearer <BEX_CP_TOKEN>`. The
+# server does NOT env-expand auth_token (config.py only overrides server.api_key
+# from OPENSANDBOX_SERVER_API_KEY), so this whole file is rendered from a Secret
+# at deploy time with the real token filled in — never committed with the token.
 [tenants]
-endpoint = "http://bex-api.bex-system.svc:8091/internal/sandbox-tenants"
+provider = "http"
+endpoint = "http://bex-api.bex-system.svc:8091/v1/sandbox-tenants"
 max_stale_seconds = 60
 timeout_seconds = 5
 auth_header = "Authorization"
-# auth_token: from env (BEX_CP_TOKEN-style bearer), not inlined here.
+auth_token = "Bearer __BEX_CP_TOKEN__" # placeholder; rendered from a Secret at deploy

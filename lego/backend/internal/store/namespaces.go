@@ -466,10 +466,16 @@ func internetEgressNetworkPolicy(namespace string) *networkingv1.NetworkPolicy {
 // All live in bex-system (a RoleBinding may reference a SA in another namespace).
 const platformNamespace = "bex-system"
 
+// openSandboxNamespace hosts the OpenSandbox lifecycle server (m32 t002); its SA
+// is bound per-`<ws>-sandbox` so the server can drive BatchSandboxes there.
+const openSandboxNamespace = "opensandbox-system"
+
 var (
 	operatorSA   = rbacSubject("bex-controller-manager")
 	apiSA        = rbacSubject("bex-api")
 	sshGatewaySA = rbacSubject("bex-ssh-gateway")
+	// sandboxServerSA is the OpenSandbox server ServiceAccount (opensandbox-system).
+	sandboxServerSA = rbacv1.Subject{Kind: "ServiceAccount", Name: "opensandbox-server", Namespace: openSandboxNamespace}
 )
 
 func rbacSubject(name string) rbacv1.Subject {
@@ -484,17 +490,25 @@ func rbacSubject(name string) rbacv1.Subject {
 // tenant namespaces — never cluster-wide. Stamped by the reconciler at
 // namespace-create so there is no manual per-workspace RoleBinding churn.
 //
-// A sandbox namespace (`<ws>-sandbox`) is driven by OpenSandbox, not bex-api's
-// pod reads or the SSH gateway, so it binds only the operator role (namespace
-// management); the hosting namespace binds all three.
+// A sandbox namespace (`<ws>-sandbox`) is driven by the OpenSandbox lifecycle
+// server, not bex-api's pod reads or the SSH gateway: it binds the operator role
+// (namespace management) plus the OpenSandbox server role (BatchSandboxes + the
+// pods/services/configmaps they spawn), scoped to this one namespace so the
+// server's authority never leaks cluster-wide (ADR042 D4 / m32 t006). The
+// hosting namespace binds operator + bex-api + ssh-gateway.
 func tenantRoleBindings(namespace, regime string) []*rbacv1.RoleBinding {
 	bindings := []*rbacv1.RoleBinding{
 		tenantRoleBinding(namespace, "bex-tenant-operator", operatorSA),
 	}
-	if regime == RegimeHosting {
+	switch regime {
+	case RegimeHosting:
 		bindings = append(bindings,
 			tenantRoleBinding(namespace, "bex-tenant-api", apiSA),
 			tenantRoleBinding(namespace, "bex-tenant-ssh-gateway", sshGatewaySA),
+		)
+	case RegimeSandbox:
+		bindings = append(bindings,
+			tenantRoleBinding(namespace, "bex-tenant-sandbox-server", sandboxServerSA),
 		)
 	}
 	return bindings
