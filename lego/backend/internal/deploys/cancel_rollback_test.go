@@ -107,6 +107,10 @@ func TestCancelDeletesInFlightBuildJob(t *testing.T) {
 	if !apierrors.IsNotFound(err) {
 		t.Errorf("build job after cancel: want deleted (NotFound), got %v", err)
 	}
+	got := getApp(t, cl, "web")
+	if marker := got.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration]; marker != "3" {
+		t.Errorf("canceled release marker = %q, want deploy generation 3", marker)
+	}
 }
 
 func TestCancelDeletesInFlightKpackImage(t *testing.T) {
@@ -129,6 +133,10 @@ func TestCancelDeletesInFlightKpackImage(t *testing.T) {
 	err := cl.Get(context.Background(), client.ObjectKeyFromObject(image), gone)
 	if !apierrors.IsNotFound(err) {
 		t.Errorf("kpack Image after cancel: want deleted (NotFound), got %v", err)
+	}
+	got := getApp(t, cl, "web")
+	if marker := got.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration]; marker != "3" {
+		t.Errorf("canceled release marker = %q, want 3", marker)
 	}
 }
 

@@ -223,6 +223,7 @@ type appReleaseDecision struct {
 	artifactChanged bool
 	releaseChanged  bool
 	legacyBackfill  bool
+	canceled        bool
 }
 
 // prepareAppReleaseDecision mutates only operator-owned status. A legacy App
@@ -231,6 +232,13 @@ type appReleaseDecision struct {
 // without treating the upgrade/current operational generation as a deploy.
 func prepareAppReleaseDecision(app *appv1alpha1.App) appReleaseDecision {
 	desired := desiredAppReleaseIdentity(app.Spec)
+	if generation, ok := canceledReleaseGeneration(app); ok && generation == requestedReleaseGeneration(app) {
+		// Cancel deletes the deterministic build artifact, but reconciliation is
+		// level-triggered. Keep the last successful generation active so this
+		// pass cannot recreate the canceled build or falsely promote its release.
+		app.Status.ReleaseGeneration = successfulReleaseGeneration(app)
+		return appReleaseDecision{desired: desired, canceled: true}
+	}
 	legacy := app.Status.ReleaseFingerprint == "" && app.Status.ActiveRevision != ""
 	if legacy {
 		app.Status.ArtifactFingerprint = desired.artifact
@@ -254,6 +262,24 @@ func prepareAppReleaseDecision(app *appv1alpha1.App) appReleaseDecision {
 		artifactChanged: artifactChanged,
 		releaseChanged:  releaseChanged,
 	}
+}
+
+func canceledReleaseGeneration(app *appv1alpha1.App) (int64, bool) {
+	raw := app.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration]
+	generation, err := strconv.ParseInt(raw, 10, 64)
+	return generation, err == nil && generation > 0
+}
+
+func successfulReleaseGeneration(app *appv1alpha1.App) int64 {
+	if raw, ok := strings.CutPrefix(app.Status.ActiveRevision, "rev-"); ok {
+		if generation, err := strconv.ParseInt(raw, 10, 64); err == nil && generation > 0 {
+			return generation
+		}
+	}
+	if app.Status.Image != "" && app.Status.ObservedGeneration > 0 {
+		return app.Status.ObservedGeneration
+	}
+	return 0
 }
 
 // reusableArtifactImage selects the resolved artifact independently from the
