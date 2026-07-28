@@ -279,7 +279,7 @@ tests:
               pod: bex-db-1
             exp_annotations:
               summary: "bex-db WAL archiving stalled (>26h since last archive)"
-              description: "bex-db's WAL archiver hasn't shipped a segment in >26h — control-plane PITR data is at risk. Debug: kubectl -n bex-system exec bex-db-1 -- psql -U postgres -c \"SELECT * FROM pg_stat_archiver\"; check s3://bex-tfstate/bex-db/ for recent WAL; verify Secret bex-db-backup-s3 exists. Runbook: docs/ADR031-platform-data-backup.md"
+              description: "bex-db's Barman Cloud plugin has not shipped a WAL segment in >26h — control-plane PITR data is at risk. Debug: inspect pg_stat_archiver, ObjectStore bex-system/bex-db, the barman-cloud deployment and sidecar logs, then verify Secret bex-db-backup-s3 exists without printing it. Runbook: docs/ADR031-platform-data-backup.md"
 
   - name: bex-db WAL archiver not stale
     interval: 1m
