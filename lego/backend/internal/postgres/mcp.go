@@ -52,7 +52,7 @@ func parseMCPTimeWindow(startTime, endTime string) (since, end time.Time, err er
 
 // postgresArgs is the shared single-instance argument. Render's tools key on
 // `postgresId`; bex round-trips the immutable dpg-... id returned by
-// list_postgres_instances (legacy resources retain their original id).
+// list_postgres_instances.
 type postgresArgs struct {
 	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id, as returned by list_postgres_instances"`
 }
@@ -320,7 +320,7 @@ func (s *Service) registerLifecycleMCP(srv *mcp.Server) {
 // recoverPostgresArgs is recover_postgres' input: the source id, the new
 // instance name, and an optional PITR target time.
 type recoverPostgresArgs struct {
-	PostgresID string `json:"postgresId" jsonschema:"the source postgres id (bex Database name) to recover from"`
+	PostgresID string `json:"postgresId" jsonschema:"the immutable source postgres id (dpg-...) to recover from"`
 	Name       string `json:"name" jsonschema:"the name of the NEW database to restore into (must differ from the source)"`
 	TargetTime string `json:"targetTime,omitempty" jsonschema:"an RFC3339 point in time to recover to; omit to restore the latest available point"`
 	Plan       string `json:"plan,omitempty" jsonschema:"the new instance's plan (omit to match the source)"`
@@ -369,7 +369,7 @@ func (s *Service) registerRecoveryMCP(srv *mcp.Server) {
 
 // ipAllowListArgs / userArgs are the access-tool inputs.
 type ipAllowListArgs struct {
-	PostgresID string   `json:"postgresId" jsonschema:"the postgres id (bex Database name)"`
+	PostgresID string   `json:"postgresId" jsonschema:"the immutable postgres id (dpg-...)"`
 	CIDRs      []string `json:"cidrs,omitempty" jsonschema:"the CIDR allowlist for the external endpoint; an empty list opens it to all source IPs"`
 	// Entries is the description-carrying form (w4/m24); when present it wins
 	// over cidrs. Both are a full replace.
@@ -377,7 +377,7 @@ type ipAllowListArgs struct {
 }
 
 type userArgs struct {
-	PostgresID string `json:"postgresId" jsonschema:"the postgres id (bex Database name)"`
+	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id (dpg-...)"`
 	Name       string `json:"name" jsonschema:"the login role name (lowercase letters, digits and underscores)"`
 }
 
@@ -463,7 +463,7 @@ type parameterOverridesResult struct {
 
 // setParameterOverridesArgs is the input for set_postgres_parameter_overrides.
 type setParameterOverridesArgs struct {
-	PostgresID string            `json:"postgresId" jsonschema:"the postgres id (bex Database name)"`
+	PostgresID string            `json:"postgresId" jsonschema:"the immutable postgres id (dpg-...)"`
 	Parameters map[string]string `json:"parameters" jsonschema:"key-value pairs of postgresql.conf parameter names and their desired settings"`
 }
 
