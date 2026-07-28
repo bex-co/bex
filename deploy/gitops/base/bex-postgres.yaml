@@ -1,13 +1,14 @@
 # The bex control-plane Postgres Cluster (CNPG), vendored in this repo (Argo reads it
-# via the SSH deploy key, like bex.yaml). sync-wave 2 so the CNPG operator + CRDs from
-# wave 1 exist first.
+# via the SSH deploy key, like bex.yaml). Sync wave 4 follows the Barman plugin
+# (wave 2) and ObjectStore (wave 3), so fresh clusters never reference a missing
+# plugin transport.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: bex-postgres
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "4"
 spec:
   project: default
   source:

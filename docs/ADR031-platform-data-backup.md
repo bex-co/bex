@@ -6,7 +6,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | **etcd** | App/Database/KeyValue CRs (user deployments) | CronJob `kube-system/etcd-backup` → `etcd-snapshots/` in `bex-tfstate` | 03:15 UTC daily | 7 snapshots (rolling) | Docker throwaway etcd → `kubectl apply` extracted CRs | 2026-07-14 (CAPD 2-node, w7/m29) |
 | **OpenBao** | All tenant env-var secrets | CronJob `secrets/openbao-backup` → `openbao-snapshots/` in `bex-tfstate` | 03:45 UTC daily | 7 snapshots (rolling) | `bao operator raft snapshot restore [-force]` onto running unsealed OpenBao | 2026-07-14 (Docker, fresh-node path, w7/m29) |
-| **bex-db** | Workspaces, members, audit log, usage, API keys, deploy history | CNPG native backup (`spec.backup.barmanObjectStore`) → `bex-db/` in `bex-tfstate` + continuous WAL | 04:00 UTC daily (full base backup via `ScheduledBackup`); WAL archiving is continuous | 7 days of base backups + WAL | CNPG `bootstrap.recovery` from barmanObjectStore into a throwaway cluster | 2026-07-14 (kind + CNPG 1.30.0 + minio, w7/m29) |
+| **bex-db** | Workspaces, members, audit log, usage, API keys, deploy history | Barman Cloud plugin → ObjectStore `bex-system/bex-db` → `bex-db/` in `bex-tfstate` + continuous WAL | 04:00 UTC daily (full base backup via plugin `ScheduledBackup`); WAL archiving is continuous | 7 days of base backups + WAL (ObjectStore retention) | CNPG `bootstrap.recovery` through the plugin ObjectStore into a throwaway cluster | 2026-07-14 native path; plugin re-drill pending w1/m56 t007 |
 
 All three use the same Wasabi/Hetzner Object Storage bucket (`bex-tfstate`) under separate prefixes. Credentials come from out-of-band Secrets (never in git), following the same pattern as `etcd-backup-s3` / `openbao-backup-s3`.
 
@@ -23,7 +23,7 @@ Two GitOps-managed `ObjectStore` resources preserve the pre-migration transport 
 
 Both references require only `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`; those Secrets remain provisioned out of band. Tenant clusters share the transport definition but pass their immutable per-database/per-major archive identity as the plugin's `serverName` parameter. This keeps one credential/config surface while preserving archive isolation.
 
-Migration is deliberately staged: install the plugin and ObjectStores first, then atomically switch each Cluster, recovery source, and ScheduledBackup to `barman-cloud.cloudnative-pg.io`, then run fresh backup/PITR/restore drills. The in-tree configuration remains present until those drills pass, so installing the plugin alone cannot interrupt current WAL archiving.
+The migration was deliberately staged: the plugin and ObjectStores landed first, then tenant Clusters and `bex-db` switched atomically to `barman-cloud.cloudnative-pg.io`. Fresh backup/PITR/restore drills are the next gate (w1/m56 t007). Current manifests and runbook examples use only the plugin contract; the 2026-07-14 drill record below retains the native field names solely as historical evidence of what that drill exercised.
 
 ```mermaid
 graph LR
@@ -51,7 +51,7 @@ See [ADR011-etcd-backup-restore.md](ADR011-etcd-backup-restore.md) §One-time se
 
 See [ADR015-openbao-backup-restore.md](ADR015-openbao-backup-restore.md) §One-time setup. The `openbao-backup-s3` Secret in `secrets` holds the object-store credentials.
 
-### bex-db (new — w2/m27)
+### bex-db
 
 Two out-of-band steps — the same trust boundary as etcd/openbao:
 
@@ -80,6 +80,9 @@ Two out-of-band steps — the same trust boundary as etcd/openbao:
      name: bex-db-initial
      namespace: bex-system
    spec:
+     method: plugin
+     pluginConfiguration:
+       name: barman-cloud.cloudnative-pg.io
      cluster:
        name: bex-db
    EOF
@@ -96,7 +99,7 @@ Two out-of-band steps — the same trust boundary as etcd/openbao:
    # Expect: base/YYYYMMDDTHHMMSS/backup.info, base/.../data.tar.gz, wals/.../*.gz
    ```
 
-**Note on `endpointURL`:** `deploy/gitops/charts/bex-postgres/cluster.yaml` has `endpointURL: https://s3.eu-central-2.wasabisys.com`. Update this to match `$TF_STATE_ENDPOINT` if the cluster uses a different provider (Hetzner: `https://fsn1.your-objectstorage.com`).
+**Note on `endpointURL`:** `deploy/gitops/charts/barman-cloud-objectstores/bex-db.yaml` has `endpointURL: https://s3.eu-central-2.wasabisys.com`. Update the ObjectStore to match `$TF_STATE_ENDPOINT` if the cluster uses a different provider (Hetzner: `https://fsn1.your-objectstorage.com`).
 
 ## Restore runbooks
 
@@ -110,7 +113,7 @@ See [ADR015-openbao-backup-restore.md](ADR015-openbao-backup-restore.md) §Resto
 
 ### bex-db restore
 
-CNPG recovers `bex-db` by bootstrapping a new `Cluster` from the barmanObjectStore backup. Never restore in-place onto the live `bex-db` — always recover to a throwaway cluster first, verify a known row survives, then cut over.
+CNPG recovers `bex-db` by bootstrapping a new `Cluster` through the Barman Cloud plugin and the existing `bex-system/bex-db` ObjectStore. Never restore in-place onto the live `bex-db` — always recover to a throwaway cluster first, verify a known row survives, then cut over.
 
 ```sh
 # 0. Note a known identifiable row before recovery (so you can verify afterward).
@@ -154,20 +157,11 @@ spec:
       source: bex-db
   externalClusters:
     - name: bex-db
-      barmanObjectStore:
-        destinationPath: s3://bex-tfstate/bex-db
-        endpointURL: https://s3.eu-central-2.wasabisys.com
-        s3Credentials:
-          accessKeyId:
-            name: bex-db-backup-s3
-            key: AWS_ACCESS_KEY_ID
-          secretAccessKey:
-            name: bex-db-backup-s3
-            key: AWS_SECRET_ACCESS_KEY
-        wal:
-          compression: gzip
-        data:
-          compression: gzip
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: bex-db
+          serverName: bex-db
 EOF
 kubectl -n bex-system get cluster bex-db-recover -w
 # phase → Cluster in healthy state
@@ -183,7 +177,7 @@ kubectl -n bex-system delete cluster bex-db-recover
 
 For a full cutover (live `bex-db` is destroyed): repeat the above, then rename `bex-db-recover` → `bex-db` in the GitOps chart (or Argo force-sync after removing the existing Cluster) and update `bex-db-app` Secret to match the new cluster's credentials.
 
-> **CNPG 1.31+ migration note:** `spec.backup.barmanObjectStore` and `spec.externalClusters[*].barmanObjectStore` are deprecated in CNPG 1.30.0 and will be removed in 1.31.0. Before upgrading CNPG beyond 1.30.x, migrate to the [Barman Cloud Plugin](https://cloudnative-pg.io/documentation/current/barman-cloud/) and re-drill the restore path.
+> **CNPG 1.31+ readiness:** the active Cluster, ScheduledBackup, on-demand Backup example, and recovery example now use the Barman Cloud plugin. The historical 2026-07-14 drill below used CNPG's former native fields; do not copy that record as a current manifest. Re-drill the plugin path before upgrading CNPG beyond 1.30.x (w1/m56 t007).
 
 ## Drill records
 

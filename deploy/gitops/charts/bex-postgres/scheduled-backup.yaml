@@ -1,9 +1,9 @@
 # Nightly full base backup for bex-db via CNPG's ScheduledBackup.
 # Staggered after etcd-backup (03:15) and openbao-backup (03:45).
-# WAL archiving is continuous (cluster.yaml spec.backup.barmanObjectStore);
-# this triggers the periodic full base backup that makes PITR viable.
-# Credentials come from Secret `bex-db-backup-s3` (NOT in git) — same creation
-# command as the etcd/openbao S3 secrets; see docs/ADR031-platform-data-backup.md.
+# WAL archiving is continuous through cluster.yaml's Barman Cloud plugin; this
+# triggers the periodic full base backup that makes PITR viable. ObjectStore
+# `bex-db` owns the destination, retention, and out-of-band Secret reference;
+# see docs/ADR031-platform-data-backup.md.
 apiVersion: postgresql.cnpg.io/v1
 kind: ScheduledBackup
 metadata:
@@ -12,7 +12,11 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true # CRD may be mid-install
 spec:
-  schedule: "0 4 * * *" # 04:00 UTC — staggered after etcd-backup (03:15) and openbao-backup (03:45)
+  # CNPG uses six-field cron syntax (seconds first): daily at 04:00 UTC.
+  schedule: "0 0 4 * * *"
   backupOwnerReference: self
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
   cluster:
     name: bex-db

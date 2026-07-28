@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../bex-postgres
+patches:
+  # The local CAPD cluster deliberately has no credential-backed ObjectStore.
+  # Keep bex-db itself available, but disable its backup transport and schedule.
+  - target:
+      group: postgresql.cnpg.io
+      version: v1
+      kind: Cluster
+      name: bex-db
+    patch: |-
+      - op: remove
+        path: /spec/plugins
+  - target:
+      group: postgresql.cnpg.io
+      version: v1
+      kind: ScheduledBackup
+      name: bex-db-nightly
+    patch: |-
+      $patch: delete
+      apiVersion: postgresql.cnpg.io/v1
+      kind: ScheduledBackup
+      metadata:
+        name: bex-db-nightly

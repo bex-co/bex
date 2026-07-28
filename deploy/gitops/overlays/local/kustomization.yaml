@@ -53,6 +53,17 @@ patches:
         name: barman-cloud-objectstores
         namespace: argocd
       $patch: delete
+  # Keep the control-plane database local, but render it without the plugin or
+  # ScheduledBackup because this disposable environment has no ObjectStore.
+  - target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Application
+      name: bex-postgres
+    patch: |-
+      - op: replace
+        path: /spec/source/path
+        value: deploy/gitops/charts/bex-postgres-local
   # Auth DBs: shrink to CAPD scale — 1Gi on local-path (no hcloud-volumes here;
   # the CAPD cluster needs the local-path provisioner installed, see docs/ADR012-auth.md).
   - patch: |-
