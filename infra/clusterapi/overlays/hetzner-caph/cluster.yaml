@@ -627,8 +627,9 @@ spec:
   # 3 = etcd quorum (rearchitecture decision 2) — CP is HA and tainted; the KCP
   # webhook forbids even counts with stacked etcd.
   replicas: 3
-  # Bumping this k8s version? Also bump the kubeadm-matched etcd image in
-  # deploy/gitops/charts/etcd-backup/cronjob.yaml (and the runbook it links).
+  # Bumping this k8s version? Verify the stacked-etcd image and execute the
+  # backup Job after the hop. The backup/restore client intentionally stays on
+  # an etcd 3.6 image that contains both etcdctl and etcdutl.
   version: v1.32.13
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
