@@ -53,7 +53,7 @@ The invariant that keeps "sleep = free" working: **per-tenant namespace (logical
 
 What ADR022 built beyond the boundary choice stays; it is applied per-namespace instead of label-scoped-in-one-namespace:
 
-- The Cilium `egressDeny` for node/cloud-metadata ([ADR022 §node and cloud-metadata egress](ADR022-tenant-isolation.md#node-and-cloud-metadata-egress-w7m4)) — still cluster-wide.
+- The Cilium `egressDeny` for node/cloud-metadata ([ADR022 §node and cloud-metadata egress](ADR022-tenant-isolation.md#node-and-cloud-metadata-egress-w7m4)) — retained, but **not by leaving it alone**: today it is a _namespaced_ `CiliumNetworkPolicy` in the shared apps namespace (`deploy/gitops/base/tenant-node-egress.yaml` — a namespaced CNP only selects pods in its own namespace), so it must be promoted to a `CiliumClusterwideNetworkPolicy` (or stamped per `<ws>`) during migration, or migrated pods silently lose the kubelet/metadata guard.
 - Platform-side lockdown ([ADR022 §Platform-side lockdown](ADR022-tenant-isolation.md#platform-side-lockdown-t004)) — still denies tenant→platform.
 - Registry access control / per-App Zot ACLs ([ADR022 §Registry access control](ADR022-tenant-isolation.md#registry-access-control-w7m8)) — unchanged.
 - Tenant container hardening ([ADR022 §Tenant container hardening](ADR022-tenant-isolation.md#tenant-container-hardening-w7m2)) — unchanged.
@@ -81,5 +81,5 @@ ADR022 rejected namespace-per-workspace on four grounds. Each, re-examined:
 - **Refactor scope** (factual, not a reason against): the operator, bex-api, the control-plane projector, and RBAC move from single-namespace assumptions (`BEX_APPS_NAMESPACE`, `BEX_API_NAMESPACE`, the `bex-operator-apps` RoleBinding) to cluster-scoped/per-namespace over tenant namespaces. Namespace lifecycle becomes workspace lifecycle (create/delete on workspace create/delete).
 - **Per-tenant `ResourceQuota`/`LimitRange`** replace the `BEX_MAX_SERVICES` / `BEX_MAX_POSTGRES` / `BEX_MAX_KEYVALUES` app-code caps — same intent, enforced one layer down.
 - **ADR022 is marked deprecated** (banner added, linking here). Its implemented label-scoped policies remain in production until this ADR is implemented; its other mechanisms are retained.
-- **ADR042 D3 is refined**: the shared `bex-sandbox` namespace becomes per-tenant `<ws>-sandbox` (consistent with D1). ADR042 should be updated to match on implementation.
-- **Migration**: new workspaces provision `<ws>` (+`<ws>-sandbox` on pillar-5 enable); existing workspaces migrated. The label `app.bex.co/workspace` is retained as a pod label within namespaces (useful for selection/metrics), it just stops being the _boundary_.
+- **ADR042 D3 is refined**: the shared `bex-sandbox` namespace becomes per-tenant `<ws>-sandbox` (consistent with D1). ADR042 D3/D4 were amended to match on 2026-07-27.
+- **Migration**: new workspaces provision `<ws>` + `<ws>-sandbox` (both eagerly at workspace create — pillar 5 is re-opened and `w3/m32` consumes the sandbox namespaces; an empty namespace costs nothing and keeps one uniform lifecycle); existing workspaces migrated. The label `app.bex.co/workspace` is retained as a pod label within namespaces (useful for selection/metrics), it just stops being the _boundary_.

@@ -105,7 +105,7 @@ A node's public IP is not RFC1918, so the m1 `0.0.0.0/0` allow reached it — a 
 
 ### Mechanism: a platform `CiliumNetworkPolicy` egressDeny
 
-`deploy/gitops/base/tenant-node-egress.yaml` is a single cluster-wide `CiliumNetworkPolicy` in the apps namespace that selects every workspace-labeled tenant pod (`app.bex.co/workspace` Exists) and `egressDeny`-s:
+`deploy/gitops/base/tenant-node-egress.yaml` is a single platform-wide guard implemented as a **namespaced** `CiliumNetworkPolicy` in the apps namespace (a namespaced CNP only selects pods in its own namespace — "every tenant pod" holds only while all tenant pods share that namespace; under ADR043's per-tenant namespaces it must become a `CiliumClusterwideNetworkPolicy` or be stamped per-namespace). It selects every workspace-labeled tenant pod (`app.bex.co/workspace` Exists) and `egressDeny`-s:
 
 - `toEntities: [host, remote-node]` — the nodes themselves (kubelet, nodePorts).
 - `toCIDR: [169.254.0.0/16]` — the link-local / metadata range (belt-and-suspenders with the per-App `except`).

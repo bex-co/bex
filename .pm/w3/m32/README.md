@@ -14,8 +14,8 @@
 | t006 | Security — single trusted hop: NetworkPolicy admit-only-bex-api on opensandbox-system + OpenSandbox multi-tenant mode (per-workspace key → `<ws>-sandbox` via HTTP provider → bex IAM) | 3h  | t002, t005             |
 | t007 | k3s validation node (containerd-CRI + Kata) + validate BatchSandbox lifecycle/snapshot round-trip (rootfs-only) under Kata + Cilium | 1d  | t003, t004, t006       |
 | t008 | Capture Render CLI `ea sandbox` wire shape (`render-oss/cli`) → `docs/render-artifacts`                                    | 1h  | —                     |
-| t009 | bex-api sandbox feature package: `lego/backend/internal/sandbox` (service/client/rest/mcp/graphql) + template registry + 5-point wiring + per-workspace OpenSandbox key minting | 1d  | t007, t008, w3/m31     |
-| t010 | `cli-compatibility-checklist` rows 237-240 `[-]`→`[x]` + `scripts/cli-compat.sh` sandbox leg (unmodified CLI)               | 2h  | t009                  |
+| t009 | bex-api sandbox feature package: `lego/backend/internal/sandbox` (service/client/rest/mcp/graphql) + template registry + 5-point wiring (consumes t006's per-workspace keys) | 1d  | t007, t008, w3/m31/t010 |
+| t010 | `cli-compatibility-checklist` rows 238-241 `[-]`→`[x]` + `scripts/cli-compat.sh` sandbox leg (unmodified CLI)               | 2h  | t009                  |
 | t011 | Render parity (`ea sandbox` across REST/MCP + CLI compat)                                                                  | 1h  | t010                  |
 | t012 | Simplify (`/simplify` over changed code)                                                                                   | 30m | t011                  |
 | t013 | Test coverage (sandbox client, lifecycle, authz/quota, snapshot round-trip)                                                | 3h  | t011                  |
@@ -23,7 +23,7 @@
 
 ## Definition of done
 
-`render ea sandbox create/exec/list/stop` works against bex unmodified (`cli-compatibility-checklist` rows 237-240 green via a `scripts/cli-compat.sh` sandbox leg); sandboxes run on a multi-node OpenSandbox Kubernetes-runtime substrate in per-tenant `<ws>-sandbox` namespaces under Kata; the bex-api↔OpenSandbox link is single-trusted-hop (NetworkPolicy admit-only-bex-api + api_key + OpenSandbox multi-tenant mode); pause/resume round-trips the rootfs (v1 rootfs-only — memory hibernation is a documented watch item, not v1); validated on a k3s node (real containerd-CRI), not the OrbStack mock.
+`render ea sandbox create/exec/list/stop` works against bex unmodified (`cli-compatibility-checklist` rows 238-241 green via a `scripts/cli-compat.sh` sandbox leg); sandboxes run on a multi-node OpenSandbox Kubernetes-runtime substrate in per-tenant `<ws>-sandbox` namespaces under Kata; the bex-api↔OpenSandbox link is single-trusted-hop (NetworkPolicy admit-only-bex-api + api_key + OpenSandbox multi-tenant mode); pause/resume round-trips the rootfs (v1 rootfs-only — memory hibernation is a documented watch item, not v1); validated on a k3s node (real containerd-CRI), not the OrbStack mock.
 
 ## Source + Goal linkage
 
@@ -31,5 +31,5 @@
 - **Goal linkage:** pillar 5 — hosted agent execution environments ([ADR008-vision](../../docs/ADR008-vision.md)).
 - **Expected outcome:** agents (and the Render CLI) can spawn/exec/pause/resume sandboxes against bex, backed by a real multi-node substrate instead of the single-host Docker toy.
 - **Why now:** pillar 5 re-opened 2026-07-27; depends on m31's per-tenant `<ws>-sandbox` namespace model so hosting and sandbox share one tenancy model.
-- **Render parity:** INCLUDED — `render ea sandbox` is a CLI/REST surface ([cli-compatibility-checklist:237-240](../../docs/cli-compatibility-checklist.md), today 404).
+- **Render parity:** INCLUDED — `render ea sandbox` is a CLI/REST surface ([cli-compatibility-checklist:238-241](../../docs/cli-compatibility-checklist.md), today 404).
 - **Cross-theme note:** this is AI-native/sandbox work, not observability; placed in w3 by explicit user direction (2026-07-27), recorded in `.pm/DO_NOT_DO.md` #18.

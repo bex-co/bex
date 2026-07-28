@@ -1,6 +1,6 @@
 # ADR: E2B-compatible sandboxes — opensandbox pause/resume as hosted agent execution environments
 
-**Status:** proposed — design for `.pm/w2/m3` (pillar 5). No product code yet; this ADR settles the architecture the milestone builds against.
+**Status:** proposed — the sandbox-gateway design record for pillar 5. Originally written for `.pm/w2/m3` (removed 2026-07-08 when pillar 5 was paused); pillar 5 was **re-opened 2026-07-27** and is now tracked as `.pm/w3/m32`. [ADR042-sandbox-cluster-substrate.md](ADR042-sandbox-cluster-substrate.md) refines this ADR's substrate and surface assumptions: the substrate is a multi-node OpenSandbox **Kubernetes**-runtime cluster (not the single-host Docker server), isolation is Kata/microVM, `/v1/sandboxes*` serves the **Render CLI `ea sandbox`** wire shapes (displacing D2's E2B REST lifecycle shapes — E2B REST and gRPC parity are both deferred), and pause/resume is **rootfs-only** on the k8s substrate (D5's ~80 ms memory-preserving wake does not carry over). D0–D7 otherwise still govern the bex-api gateway side. No product code yet.
 
 ## Context
 
