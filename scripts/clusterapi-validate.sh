@@ -96,7 +96,16 @@ while read -r kind name; do
   fi
 done < <(yq -N 'select(.kind=="KubeadmControlPlane" or .kind=="KubeadmConfigTemplate") | .kind + " " + .metadata.name' "$OVERLAY")
 
-# 2. Autoscaler pool bounds must preserve platform quorum and route tenant
+# 2. Every replacement path must use server capacity fsn1 can still create.
+echo "==> $OVERLAY control-plane replacement capacity"
+control_plane_infra="$(yq -N 'select(.kind=="KubeadmControlPlane") | .spec.machineTemplate.infrastructureRef.name' "$OVERLAY")"
+control_plane_type="$(yq -N "select(.kind==\"HCloudMachineTemplate\" and .metadata.name==\"$control_plane_infra\") | .spec.template.spec.type" "$OVERLAY")"
+if [ "$control_plane_type" != "cpx32" ]; then
+  echo "FAIL: control-plane template '$control_plane_infra' uses '$control_plane_type' (want cpx32; cx33 replacement capacity is unavailable in fsn1)" >&2
+  fail=1
+fi
+
+# Autoscaler pool bounds must preserve platform quorum and route tenant
 # scale-out through a server type that fsn1 can still create.
 echo "==> $OVERLAY platform autoscaler floor"
 platform_min="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-platform") | .metadata.annotations."cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size"' "$OVERLAY")"
