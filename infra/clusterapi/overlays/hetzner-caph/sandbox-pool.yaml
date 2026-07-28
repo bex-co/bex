@@ -1,0 +1,256 @@
+# Dedicated gVisor sandbox node pool (ADR042 D3 as amended / w3/m32 t004).
+#
+# Applied to prod 2026-07-28 and validated: a stable (replicas=1, NOT autoscaled
+# — an idle burst node gets reclaimed) cpx32 node, tainted bex.co/sandbox, with
+# gVisor (runsc) installed at BOOTSTRAP via preKubeadmCommands (an in-place
+# containerd restart on a live node breaks the Cilium datapath). A Pod under
+# runtimeClassName: gvisor on this node reports kernel "4.19.0-gvisor" (not the
+# host 6.8.0) — confirmed gVisor isolation, no /dev/kvm needed (Hetzner Cloud
+# cpx has none, so Kata is impossible here; see ADR042 D3).
+#
+# Mirrors bex-tenant-0 (baked bex-worker image) + adds: gVisor install, the
+# bex.co/pool=sandbox label, and the bex.co/sandbox NoSchedule taint. The
+# generated kubeletExtraArgs use CAPI's list form (server-normalized).
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: HCloudMachineTemplate
+metadata:
+  name: bex-sandbox
+  namespace: default
+spec:
+  template:
+    spec:
+      imageName: bex-worker-k8s-1-34
+      placementGroupName: tenant-0
+      type: cpx32
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: KubeadmConfigTemplate
+metadata:
+  name: bex-sandbox
+  namespace: default
+spec:
+  template:
+    spec:
+      files:
+      - content: 'net.ipv4.conf.lxc*.rp_filter = 0
+
+          '
+        owner: root:root
+        path: /etc/sysctl.d/99-cilium.conf
+        permissions: '0744'
+      - content: 'overlay
+
+          br_netfilter
+
+          '
+        owner: root:root
+        path: /etc/modules-load.d/crio.conf
+        permissions: '0744'
+      - content: 'net.bridge.bridge-nf-call-iptables  = 1
+
+          net.bridge.bridge-nf-call-ip6tables = 1
+
+          net.ipv4.ip_forward                 = 1
+
+          '
+        owner: root:root
+        path: /etc/sysctl.d/99-kubernetes-cri.conf
+        permissions: '0744'
+      - content: 'vm.overcommit_memory=1
+
+          kernel.panic=10
+
+          kernel.panic_on_oops=1
+
+          '
+        owner: root:root
+        path: /etc/sysctl.d/99-kubelet.conf
+        permissions: '0744'
+      - content: 'nameserver 1.1.1.1
+
+          nameserver 1.0.0.1
+
+          nameserver 2606:4700:4700::1111
+
+          '
+        owner: root:root
+        path: /etc/kubernetes/resolv.conf
+        permissions: '0744'
+      - content: '# Copyright The containerd Authors.
+
+          #
+
+          # Licensed under the Apache License, Version 2.0 (the "License");
+
+          # you may not use this file except in compliance with the License.
+
+          # You may obtain a copy of the License at
+
+          #
+
+          #     http://www.apache.org/licenses/LICENSE-2.0
+
+          #
+
+          # Unless required by applicable law or agreed to in writing, software
+
+          # distributed under the License is distributed on an "AS IS" BASIS,
+
+          # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+          # See the License for the specific language governing permissions and
+
+          # limitations under the License.
+
+          #
+
+          # https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
+
+
+          [Unit]
+
+          Description=containerd container runtime
+
+          Documentation=https://containerd.io
+
+          After=network.target local-fs.target dbus.service
+
+
+          [Service]
+
+          ExecStartPre=-/sbin/modprobe overlay
+
+          ExecStart=/usr/local/bin/containerd
+
+
+          Type=notify
+
+          Delegate=yes
+
+          KillMode=process
+
+          Restart=always
+
+          RestartSec=5
+
+
+          # Having non-zero Limit*s causes performance problems due to accounting
+          overhead
+
+          # in the kernel. We recommend using cgroups to do container-local accounting.
+
+          LimitNPROC=infinity
+
+          LimitCORE=infinity
+
+
+          # Comment TasksMax if your systemd version does not supports it.
+
+          # Only systemd 226 and above support this version.
+
+          TasksMax=infinity
+
+          OOMScoreAdjust=-999
+
+
+          [Install]
+
+          WantedBy=multi-user.target
+
+          '
+        owner: root:root
+        path: /etc/systemd/system/containerd.service
+        permissions: '0744'
+      joinConfiguration:
+        nodeRegistration:
+          kubeletExtraArgs:
+          - name: anonymous-auth
+            value: 'false'
+          - name: authentication-token-webhook
+            value: 'true'
+          - name: authorization-mode
+            value: Webhook
+          - name: cloud-provider
+            value: external
+          - name: event-qps
+            value: '5'
+          - name: feature-gates
+            value: UserNamespacesSupport=true
+          - name: kubeconfig
+            value: /etc/kubernetes/kubelet.conf
+          - name: max-pods
+            value: '220'
+          - name: node-labels
+            value: bex.co/pool=sandbox,bex.co/sandbox=true
+          - name: read-only-port
+            value: '0'
+          - name: resolv-conf
+            value: /etc/kubernetes/resolv.conf
+          - name: rotate-server-certificates
+            value: 'true'
+          - name: tls-cipher-suites
+            value: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256
+          - name: register-with-taints
+            value: bex.co/sandbox=true:NoSchedule
+      preKubeadmCommands:
+      - set -x
+      - grep VERSION= /etc/os-release; uname -a
+      - /usr/local/bin/containerd --version | grep -q ' v2.3.3 '
+      - sed -i '/swap/d' /etc/fstab
+      - swapoff -a
+      - modprobe overlay && modprobe br_netfilter && sysctl --system
+      - mkdir -p /etc/containerd
+      - containerd config default > /etc/containerd/config.toml
+      - sed -i  "s/SystemdCgroup = false/SystemdCgroup = true/" /etc/containerd/config.toml
+      - ARCH=$(uname -m); GVURL="https://storage.googleapis.com/gvisor/releases/release/latest/${ARCH}";
+        cd /tmp && wget -q ${GVURL}/runsc ${GVURL}/containerd-shim-runsc-v1 && chmod
+        a+rx runsc containerd-shim-runsc-v1 && cp runsc containerd-shim-runsc-v1 /usr/local/bin/
+      - printf '\n[plugins.'"'"'io.containerd.cri.v1.runtime'"'"'.containerd.runtimes.runsc]\n  runtime_type
+        = '"'"'io.containerd.runsc.v1'"'"'\n' >> /etc/containerd/config.toml
+      - grep -q runtimes.runsc /etc/containerd/config.toml
+      - mkdir -p /etc/containerd/certs.d/zot.bex-registry.svc:5000 /etc/containerd/certs.d/zot.local:5000
+      - printf 'server = "http://127.0.0.1:30500"\n[host."http://127.0.0.1:30500"]\n  skip_verify
+        = true\n  capabilities = ["pull", "resolve"]\n' > /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml
+      - cp /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml /etc/containerd/certs.d/zot.local:5000/hosts.toml
+      - sed -i -E '/^[[:space:]]*\[plugins\..*cri.*\.registry\]$/,/^[[:space:]]*\[/
+        s#^([[:space:]]*)config_path =.*#\1config_path = "/etc/containerd/certs.d"#'
+        /etc/containerd/config.toml
+      - test "$(sed -n '/^[[:space:]]*\[plugins\..*cri.*\.registry\]$/,/^[[:space:]]*\[/
+        { /^[[:space:]]*config_path = "/p; }' /etc/containerd/config.toml | wc -l)"
+        -eq 1
+      - sed -n '/^[[:space:]]*\[plugins\..*cri.*\.registry\]$/,/^[[:space:]]*\[/ {
+        /^[[:space:]]*config_path = "/p; }' /etc/containerd/config.toml | grep -q
+        'config_path = "/etc/containerd/certs.d"'
+      - systemctl daemon-reload && systemctl enable containerd && systemctl restart
+        containerd
+      - systemctl enable kubelet
+      - echo 'source <(kubectl completion bash)' >>/root/.bashrc
+      - echo 'export KUBECONFIG=/etc/kubernetes/admin.conf' >>/root/.bashrc
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: bex-sandbox
+  namespace: default
+  labels: {nodepool: bex-sandbox}
+spec:
+  clusterName: bex
+  replicas: 1
+  selector: {matchLabels: null}
+  template:
+    metadata:
+      labels: {nodepool: bex-sandbox}
+    spec:
+      clusterName: bex
+      failureDomain: fsn1
+      version: v1.34.9
+      bootstrap:
+        configRef:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          kind: KubeadmConfigTemplate
+          name: bex-sandbox
+      infrastructureRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: HCloudMachineTemplate
+        name: bex-sandbox
