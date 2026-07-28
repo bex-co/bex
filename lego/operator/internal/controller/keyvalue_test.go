@@ -443,7 +443,7 @@ var _ = Describe("KeyValue Controller", func() {
 		By("creating a standard KeyValue")
 		kv := &appv1alpha1.KeyValue{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
-			Spec:       appv1alpha1.KeyValueSpec{Plan: "standard"},
+			Spec:       appv1alpha1.KeyValueSpec{Name: name, Plan: "standard"},
 		}
 		Expect(k8sClient.Create(ctx, kv)).To(Succeed())
 		reconcileN()
@@ -517,7 +517,7 @@ var _ = Describe("KeyValue Controller", func() {
 		By("creating a running KeyValue")
 		kv := &appv1alpha1.KeyValue{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
-			Spec:       appv1alpha1.KeyValueSpec{Plan: "free"},
+			Spec:       appv1alpha1.KeyValueSpec{Name: name, Plan: "free"},
 		}
 		Expect(k8sClient.Create(ctx, kv)).To(Succeed())
 		reconcileN()
@@ -566,7 +566,7 @@ var _ = Describe("KeyValue Controller", func() {
 
 		kv := &appv1alpha1.KeyValue{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
-			Spec:       appv1alpha1.KeyValueSpec{Plan: "free"},
+			Spec:       appv1alpha1.KeyValueSpec{Name: name, Plan: "free"},
 		}
 		Expect(k8sClient.Create(ctx, kv)).To(Succeed())
 		reconcileN()
@@ -625,7 +625,7 @@ var _ = Describe("KeyValue Controller", func() {
 	It("treats a reconciled-then-deleted KeyValue as a clean no-op", func() {
 		kv := &appv1alpha1.KeyValue{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
-			Spec:       appv1alpha1.KeyValueSpec{Plan: "free"},
+			Spec:       appv1alpha1.KeyValueSpec{Name: name, Plan: "free"},
 		}
 		Expect(k8sClient.Create(ctx, kv)).To(Succeed())
 		reconcileN()
@@ -640,8 +640,8 @@ var _ = Describe("KeyValue Controller", func() {
 })
 
 // The w4/m29 admission contract through a REAL apiserver (envtest): the
-// pre-m24 bare-CIDR-string serialization was normalized fleet-wide
-// (scripts/ipallowlist-normalize.sh) and the CRD field is structural again —
+// pre-m24 bare-CIDR-string serialization was normalized fleet-wide and the CRD
+// field is structural again —
 // a string entry (or an object missing cidr) is REJECTED at admission, the
 // structured shape round-trips with descriptions preserved, and descriptions
 // never influence the rendered middleware. This inverts the m24-era test that
@@ -664,6 +664,7 @@ var _ = Describe("KeyValue ipAllowList structural schema", func() {
 			"kind":       "KeyValue",
 			"metadata":   map[string]any{"name": name, "namespace": "default"},
 			"spec": map[string]any{
+				"name":        name,
 				"plan":        "free",
 				"public":      true,
 				"ipAllowList": []any{"203.0.113.0/24", "10.0.0.0/8"},
@@ -678,6 +679,7 @@ var _ = Describe("KeyValue ipAllowList structural schema", func() {
 			"kind":       "KeyValue",
 			"metadata":   map[string]any{"name": name, "namespace": "default"},
 			"spec": map[string]any{
+				"name":        name,
 				"plan":        "free",
 				"public":      true,
 				"ipAllowList": []any{map[string]any{"description": "no cidr"}},
@@ -690,6 +692,7 @@ var _ = Describe("KeyValue ipAllowList structural schema", func() {
 		kv := &appv1alpha1.KeyValue{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
 			Spec: appv1alpha1.KeyValueSpec{
+				Name:   name,
 				Plan:   "free",
 				Public: true,
 				IPAllowList: []appv1alpha1.IPAllowEntry{

@@ -71,9 +71,8 @@ df() { yq ".[] | select(.name == \"$1\") | .$2" "$tmp/databases.yml"; } # $1=nam
 db_id() { NAME="$1" yq -r '.[strenv(NAME)] // ""' "$tmp/database-ids.yml"; }
 
 # resolve_database_id preserves an existing Database's metadata.name when its
-# mutable spec.name matches the Blueprint display name, or mints a canonical
-# dpg-... id through backend/internal/id for a new Database. Legacy CRs without
-# spec.name fall back to metadata.name and are backfilled by the rendered spec.
+# required mutable spec.name matches the Blueprint display name, or mints a
+# canonical dpg-... id through backend/internal/id for a new Database.
 resolve_database_id() { # $1 = display name
   local name=$1 matches count database_id
   if [ "${#name}" -gt 30 ] || [[ ! "$name" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; then
@@ -83,11 +82,11 @@ resolve_database_id() { # $1 = display name
   matches=""
   if [ "${DRY_RUN:-}" != "1" ]; then
     matches=$(DISPLAY_NAME="$name" kubectl get databases.app.bex.co -o json |
-      DISPLAY_NAME="$name" yq -p=json -r '.items[] | select((.spec.name // .metadata.name) == strenv(DISPLAY_NAME)) | .metadata.name')
+      DISPLAY_NAME="$name" yq -p=json -r '.items[] | select(.spec.name == strenv(DISPLAY_NAME)) | .metadata.name')
   fi
   count=$(printf '%s\n' "$matches" | sed '/^$/d' | wc -l | tr -d ' ')
   if [ "$count" -gt 1 ]; then
-    echo "error: database display name '$name' resolves to multiple CRs; run scripts/postgres-name-migrate.sh first" >&2
+    echo "error: database display name '$name' resolves to multiple CRs; repair the violated uniqueness invariant first" >&2
     exit 1
   elif [ "$count" -eq 1 ]; then
     database_id=$matches

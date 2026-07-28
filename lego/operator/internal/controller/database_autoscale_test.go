@@ -43,7 +43,7 @@ var _ = Describe("Database disk autoscaling", func() {
 		db := &appv1alpha1.Database{
 			ObjectMeta: metav1.ObjectMeta{Name: "dpg-autoscale-envtest", Namespace: "default"},
 			Spec: appv1alpha1.DatabaseSpec{
-				Plan: "free", StorageGB: 10, DiskAutoscaling: true,
+				Name: "autoscale-envtest", Plan: "free", StorageGB: 10, DiskAutoscaling: true,
 			},
 		}
 		Expect(k8sClient.Create(ctx, db)).To(Succeed())

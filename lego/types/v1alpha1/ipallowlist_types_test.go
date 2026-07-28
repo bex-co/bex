@@ -24,7 +24,7 @@ import (
 
 // legacyIPAllowListFixture documents the retired pre-m24 serialization: a
 // bare CIDR string per entry. w4/m29 normalized every CR to the {cidr} object
-// shape (scripts/ipallowlist-normalize.sh) and retired the UnmarshalJSON
+// shape during the one-time fleet normalization and retired the UnmarshalJSON
 // union decoder that accepted this fixture, so it must now FAIL to decode —
 // the structural CRD schema likewise rejects it at admission. Kept as the
 // record of what the normalizer rewrites, not as a supported input.

@@ -22,9 +22,8 @@ limitations under the License.
 //
 // It is the datastore sibling of internal/postgres: a managed key-value store
 // carries a stable, immutable red- resource id (metadata.name) and a separate
-// mutable display name (spec.name), the same identity split Postgres shipped in
-// w9/m3. Legacy CRs created before the split keep working — reads fall back to
-// metadata.name until the backfill sets spec.name (see DisplayName).
+// required mutable display name (spec.name), the same identity split Postgres
+// shipped in w9/m3.
 package keyvalue
 
 import (
@@ -153,8 +152,7 @@ type CreateKeyValueRequest struct {
 	StorageGB     int32  `json:"storageGB,omitempty"`
 	Public        bool   `json:"public,omitempty"`
 	// IPAllowList optionally seeds the external-endpoint allowlist at create —
-	// Render's {cidrBlock, description} entries (bare CIDR strings also decode,
-	// the pre-m24 lenient shape).
+	// Render's {cidrBlock, description} entries.
 	IPAllowList []core.IPAllowListEntry `json:"ipAllowList,omitempty"`
 	// MaxmemoryPolicy / PersistenceMode are Render's eviction + persistence
 	// settings. Empty => the CRD default (allkeys-lru / journal-snapshot).
@@ -229,7 +227,7 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 	}
 	return KeyValueView{
 		ID:              kv.Name,
-		Name:            kv.DisplayName(),
+		Name:            kv.Spec.Name,
 		Plan:            kv.Spec.Plan,
 		Version:         kv.Spec.Version,
 		Status:          status,
@@ -322,7 +320,7 @@ func (s *Service) ListKeyValues(ctx context.Context, ownerID string) ([]KeyValue
 // ensureKeyValueNameAvailable enforces Render's workspace-scoped display-name
 // uniqueness without coupling identity to that name (mirrors postgres's
 // ensureDatabaseNameAvailable). excludeID is the stable metadata.name of an
-// object being renamed. Unlabelled legacy/dev objects form their own scope when
+// object being renamed. Unlabelled dev objects form their own scope when
 // the control-plane tenant resolver is disabled.
 func (s *Service) ensureKeyValueNameAvailable(ctx context.Context, tenantID, name, excludeID string) error {
 	var list appv1alpha1.KeyValueList
@@ -334,7 +332,7 @@ func (s *Service) ensureKeyValueNameAvailable(ctx context.Context, tenantID, nam
 		if kv.Name == excludeID || kv.Labels[core.LabelTenant] != tenantID {
 			continue
 		}
-		if kv.DisplayName() == name {
+		if kv.Spec.Name == name {
 			return fmt.Errorf("%w: a key-value store named %q already exists in this workspace", core.ErrConflict, name)
 		}
 	}

@@ -96,7 +96,6 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		// itself a per-App verb" reasoning as the entries above.
 		"environments.ClearServiceEnvironmentLayer": "fans AuthorizeApp out over member Apps clearing the environment layer; not itself a per-App verb",
 		"environments.ClearMembersForProject":       "fans AuthorizeApp out over every child environment's member Apps; not itself a per-App verb",
-		"environments.Run": "Backfiller.Run, the one-shot admin sweep (w4/m32/t003, `api environments-backfill`) fans out over every environment's members; not itself a per-App verb, and (like apps.WorkspacePurger.PurgeWorkspace) has no request-time caller to attribute an event to",
 		// w1/m33: the members verbs record member:/invite: targets on the
 		// WORKSPACE audit trail — kinds the per-SERVICE events feed can never
 		// join (there is no members feed); the workspace audit log is their

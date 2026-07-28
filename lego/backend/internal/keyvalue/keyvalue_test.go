@@ -1362,7 +1362,7 @@ func TestRenameKeyValueDryRun(t *testing.T) {
 // core UpdateKeyValue verb: the display name changes, the id stays put.
 func TestGraphQLRenameKeyValue(t *testing.T) {
 	svc, cl := newService()
-	seedKeyValue(t, cl, "gql-rn") // grandfathered: metadata.name is also the id
+	seedKeyValue(t, cl, "gql-rn") // compact fixture id; spec.name is still explicit
 	schema, err := graphql.NewSchema(graphql.SchemaConfig{
 		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
 		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),

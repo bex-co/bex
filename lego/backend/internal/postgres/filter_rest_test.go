@@ -31,6 +31,9 @@ import (
 // seedPGWithLabels seeds a minimal Database CR with the given labels.
 func seedPGWithLabels(t *testing.T, svc *Service, name string, spec appv1alpha1.DatabaseSpec, labels map[string]string) {
 	t.Helper()
+	if spec.Name == "" {
+		spec.Name = name
+	}
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,

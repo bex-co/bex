@@ -1795,7 +1795,7 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 		if scoped && candidate.Labels[core.LabelTenant] != tenantID {
 			continue
 		}
-		if candidate.DisplayName() != db.name {
+		if candidate.Spec.Name != db.name {
 			continue
 		}
 		if existing != nil {
@@ -1900,7 +1900,7 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 		if scoped && candidate.Labels[core.LabelTenant] != tenantID {
 			continue
 		}
-		if candidate.DisplayName() != kv.name {
+		if candidate.Spec.Name != kv.name {
 			continue
 		}
 		if existing != nil {
@@ -1954,7 +1954,7 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 }
 
 func stackKeyValueView(kv *appv1alpha1.KeyValue) StackKeyValueView {
-	return StackKeyValueView{ID: kv.Name, Name: kv.DisplayName(), Status: string(kv.Status.Phase)}
+	return StackKeyValueView{ID: kv.Name, Name: kv.Spec.Name, Status: string(kv.Status.Phase)}
 }
 
 // applyDatabaseSpec copies the Blueprint-owned Database fields onto dst (the set
@@ -1980,5 +1980,5 @@ func applyKeyValueSpec(dst *appv1alpha1.KeyValueSpec, want appv1alpha1.KeyValueS
 }
 
 func stackDatabaseView(d *appv1alpha1.Database) StackDatabaseView {
-	return StackDatabaseView{ID: d.Name, Name: d.DisplayName(), Status: string(d.Status.Phase)}
+	return StackDatabaseView{ID: d.Name, Name: d.Spec.Name, Status: string(d.Status.Phase)}
 }

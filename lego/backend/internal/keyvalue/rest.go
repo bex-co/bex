@@ -239,9 +239,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, s.toKeyValueList(r.Context(), page)) // [{keyValue, cursor}, ...]
 	})
 	mux.HandleFunc("POST "+base, func(w http.ResponseWriter, r *http.Request) {
-		// CreateKeyValueRequest.IPAllowList decodes Render's {cidrBlock,
-		// description} objects directly (and tolerates bare CIDR strings, the
-		// pre-m24 lenient shape) — no wire wrapper needed since w4/m24.
+		// CreateKeyValueRequest.IPAllowList decodes Render's structured
+		// {cidrBlock, description} objects directly.
 		var req CreateKeyValueRequest
 		if err := core.DecodeJSON(r, &req); err != nil {
 			writeBadRequestBody(w, err)
@@ -311,10 +310,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// This GET/PUT pair stays for parity with postgres; {"cidrs": [...]} stays
 	// bex-native-plain in the response since nothing
 	// Render-side depends on this endpoint's shape; descriptions travel
-	// through the Render-shaped create/get/list. The PUT body's array elements
-	// decode as either bare CIDR strings or {cidrBlock, description} objects
-	// (core.IPAllowListEntry's union), so a client that writes back entries
-	// keeps their descriptions; a string-only full replace clears them.
+	// through the Render-shaped create/get/list. The PUT body remains this
+	// route's documented string list and explicitly lifts each CIDR into an
+	// entry with an empty description.
 	mux.HandleFunc("GET "+base+"/{id}/ip-allow-list", func(w http.ResponseWriter, r *http.Request) {
 		list, err := s.GetIPAllowList(r.Context(), r.PathValue("id"))
 		if err != nil {
@@ -325,13 +323,13 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 	mux.HandleFunc("PUT "+base+"/{id}/ip-allow-list", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			CIDRs []core.IPAllowListEntry `json:"cidrs"`
+			CIDRs []string `json:"cidrs"`
 		}
 		if err := core.DecodeJSON(r, &req); err != nil {
 			writeBadRequestBody(w, err)
 			return
 		}
-		kv, err := s.SetIPAllowList(r.Context(), r.PathValue("id"), req.CIDRs)
+		kv, err := s.SetIPAllowList(r.Context(), r.PathValue("id"), core.AllowListFromCIDRs(req.CIDRs))
 		if err != nil {
 			core.WriteErr(w, err)
 			return

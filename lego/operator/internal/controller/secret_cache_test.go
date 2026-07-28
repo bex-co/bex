@@ -165,7 +165,10 @@ var _ = Describe("Namespace-scoped Secret cache", func() {
 		})
 
 		kvName := "secret-cache-kv-" + suffix
-		kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: kvName, Namespace: "default"}}
+		kv := &appv1alpha1.KeyValue{
+			ObjectMeta: metav1.ObjectMeta{Name: kvName, Namespace: "default"},
+			Spec:       appv1alpha1.KeyValueSpec{Name: "secret-cache-kv"},
+		}
 		Expect(admin.Create(ctx, kv)).To(Succeed())
 		DeferCleanup(func() { _ = admin.Delete(context.Background(), kv) })
 		Expect(admin.Get(ctx, types.NamespacedName{Name: kvName, Namespace: "default"}, kv)).To(Succeed())

@@ -17,7 +17,6 @@ limitations under the License.
 package core
 
 import (
-	"encoding/json"
 	"fmt"
 	"net"
 	"slices"
@@ -50,29 +49,6 @@ func ValidateCIDRs(cidrs []string) error {
 type IPAllowListEntry struct {
 	CIDRBlock   string `json:"cidrBlock"`
 	Description string `json:"description"`
-}
-
-// UnmarshalJSON also accepts a bare CIDR string — the pre-m24 serialization
-// still present in legacy environment store rows, and the lenient shape old
-// bex clients sent on the wire before RC12/RC14 aligned it with Render's.
-// Its CR-side twin (v1alpha1.IPAllowEntry.UnmarshalJSON) was retired in
-// w4/m29 after the fleet normalization made the CRD structural again; this
-// wire-side leniency is a deliberate surface-contract survivor, not a mirror
-// of the CR.
-func (e *IPAllowListEntry) UnmarshalJSON(data []byte) error {
-	if len(data) > 0 && data[0] == '"' {
-		e.Description = ""
-		return json.Unmarshal(data, &e.CIDRBlock)
-	}
-	// A local alias drops the method set so the object form decodes without
-	// recursing into this method.
-	type entry IPAllowListEntry
-	var v entry
-	if err := json.Unmarshal(data, &v); err != nil {
-		return err
-	}
-	*e = IPAllowListEntry(v)
-	return nil
 }
 
 // AllowListToSpec / AllowListFromSpec convert between the wire entries and the

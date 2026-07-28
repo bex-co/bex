@@ -19,12 +19,11 @@ package v1alpha1
 // History, deliberately detached from the type's godoc so it never reaches
 // the generated CRD description: a pre-m24 CR stored the list as bare CIDR
 // strings, decoded by a custom UnmarshalJSON union while the CRD field was
-// Schemaless. w4/m29 normalized the fleet (scripts/ipallowlist-normalize.sh,
-// verified clean) and retired the decoder; the structural schema (required
-// cidr) now rejects a bare string at admission. The legacy shape survives
-// only as a test fixture (ipallowlist_types_test.go). The backend's
-// core.IPAllowListEntry keeps its own wire-side union decoder — that surface
-// contract is unchanged.
+// Schemaless. w4/m29 normalized the CR fleet and retired the decoder; the
+// structural schema (required cidr) now rejects a bare string at admission.
+// The legacy shape survives only as a test fixture
+// (ipallowlist_types_test.go). w1/m56 later retired the backend wire/store
+// decoder after normalizing that fleet too.
 
 // IPAllowEntry is one ipAllowList item on an App/Database/KeyValue spec: the
 // CIDR the operator enforces plus an optional human-facing description that
