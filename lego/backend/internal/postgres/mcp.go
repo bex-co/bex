@@ -67,7 +67,6 @@ type suspendPostgresArgs struct {
 // createPostgresArgs mirrors the create body the REST/GraphQL surfaces accept
 // (bex's Render subset). name is required; the rest default.
 type createPostgresArgs struct {
-	OwnerID               string   `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
 	EnvironmentID         string   `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
 	Name                  string   `json:"name" jsonschema:"the database name"`
 	DatabaseName          string   `json:"databaseName,omitempty" jsonschema:"optional physical PostgreSQL database name; lowercase letters, digits, and underscores"`
@@ -90,9 +89,8 @@ type listPostgresResult struct {
 	Postgres []PostgresView `json:"postgres"`
 }
 
-// listPostgresArgs is deliberately empty: Render's official
-// list_postgres_instances tool accepts no arguments and walks the REST pages
-// internally. bex selects the workspace through select_workspace/session state.
+// listPostgresArgs contains only feature arguments; the composition root adds
+// Render's shared optional workspaceId parameter.
 type listPostgresArgs struct{}
 
 // queryPostgresArgs mirrors Render's query_render_postgres arguments verbatim
@@ -133,13 +131,9 @@ type renamePostgresArgs struct {
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_instances",
-		Description: "List all managed Postgres databases in the selected workspace with their status. Use select_workspace first to change workspace.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in listPostgresArgs) (*mcp.CallToolResult, listPostgresResult, error) {
-		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, "")
-		if err != nil {
-			return nil, listPostgresResult{}, err
-		}
-		list, err := s.ListPostgres(ctx, ownerID)
+		Description: "List all managed Postgres databases in a workspace with their status.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listPostgresArgs) (*mcp.CallToolResult, listPostgresResult, error) {
+		list, err := s.ListPostgres(ctx, core.NamedWorkspace(ctx))
 		if err != nil {
 			return nil, listPostgresResult{}, err
 		}
@@ -160,13 +154,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_postgres",
 		Description: "Create a managed Postgres database. name is required; databaseName, databaseUser, plan, version, diskSizeGB, public, ipAllowList/ipAllowListEntries and enableHighAvailability are optional. Pass dryRun:true to preview the resolved spec without any writes.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in createPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
-		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
-		if err != nil {
-			return nil, PostgresView{}, err
-		}
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		v, err := s.CreatePostgres(ctx, CreatePostgresRequest{
-			OwnerID:                ownerID,
+			OwnerID:                core.NamedWorkspace(ctx),
 			EnvironmentID:          in.EnvironmentID,
 			Name:                   in.Name,
 			DatabaseName:           in.DatabaseName,

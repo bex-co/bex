@@ -63,11 +63,6 @@ type Service struct {
 	// the browser after success or with a bounded failure code. Empty => the
 	// callback returns JSON instead of redirecting.
 	DashboardURL string
-	// Selections is the shared MCP per-session workspace selection
-	// (w6/m2/t005, core.WorkspaceSelections): the git-connect tools' ownerId
-	// precedence (explicit arg > the session's select_workspace > the
-	// caller's default). nil degrades to explicit-arg-or-default.
-	Selections core.WorkspaceSelectionReader
 }
 
 // Connection is the neutral connection view every adapter renders. InstallURL is

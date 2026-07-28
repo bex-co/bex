@@ -182,12 +182,13 @@ func TestCreateAcceptsRenderPlanSpelling(t *testing.T) {
 // --- Deploy (bex.yml -> Create) ---
 
 const sampleManifest = `
-apps:
+services:
   - name: hello
+    type: web
+    runtime: docker
     repo: https://github.com/bex/hello
     branch: main
-    port: 3000
-    tier: starter
+    plan: starter
     healthCheckPath: /healthz
     envVars:
       - key: FOO
@@ -196,12 +197,16 @@ apps:
       - hello.example.com
 `
 
-func TestDeployMapsManifest(t *testing.T) {
+func TestDeployStackMapsManifest(t *testing.T) {
 	svc, cl := newService(nil)
-	v, err := svc.Deploy(context.Background(), DeployRequest{Manifest: sampleManifest})
+	result, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: sampleManifest})
 	if err != nil {
-		t.Fatalf("Deploy: %v", err)
+		t.Fatalf("DeployStack: %v", err)
 	}
+	if len(result.Services) != 1 {
+		t.Fatalf("services = %+v, want one", result.Services)
+	}
+	v := result.Services[0]
 	if v.Name != "hello" {
 		t.Fatalf("name = %q, want hello", v.Name)
 	}
@@ -220,7 +225,7 @@ func TestDeployMapsManifest(t *testing.T) {
 	}
 }
 
-func TestDeployMapsDockerfilePathAndStartCommand(t *testing.T) {
+func TestDeployStackMapsDockerfilePathAndStartCommand(t *testing.T) {
 	svc, cl := newService(nil)
 	manifest := `
 services:
@@ -230,8 +235,8 @@ services:
     dockerfilePath: docker/Dockerfile.prod
     startCommand: bin/server
 `
-	if _, err := svc.Deploy(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
-		t.Fatalf("Deploy: %v", err)
+	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("DeployStack: %v", err)
 	}
 	a := getApp(t, cl, "hello-docker")
 	if a.Spec.DockerfilePath != "docker/Dockerfile.prod" {
@@ -242,25 +247,25 @@ services:
 	}
 }
 
-func TestDeployRepoOverrideWins(t *testing.T) {
+func TestDeployStackRepoOverrideWins(t *testing.T) {
 	svc, cl := newService(nil)
-	if _, err := svc.Deploy(context.Background(), DeployRequest{
+	if _, err := svc.DeployStack(context.Background(), DeployRequest{
 		Repo: "https://github.com/other/repo", Manifest: sampleManifest,
 	}); err != nil {
-		t.Fatalf("Deploy: %v", err)
+		t.Fatalf("DeployStack: %v", err)
 	}
 	if r := getApp(t, cl, "hello").Spec.Repo; r != "https://github.com/other/repo" {
 		t.Errorf("repo = %q, want the override", r)
 	}
 }
 
-func TestDeployRejectsEmptyAndPrivateWithDomains(t *testing.T) {
+func TestDeployStackRejectsEmptyAndPrivateWithDomains(t *testing.T) {
 	svc, _ := newService(nil)
-	if _, err := svc.Deploy(context.Background(), DeployRequest{Manifest: "apps: []"}); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: "apps: []"}); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("empty manifest => ErrBadRequest, got %v", err)
 	}
-	priv := "apps:\n  - name: p\n    image: x\n    type: private\n    domains: [a.example.com]\n"
-	if _, err := svc.Deploy(context.Background(), DeployRequest{Manifest: priv}); !errors.Is(err, core.ErrBadRequest) {
+	priv := "services:\n  - name: p\n    image: {url: x}\n    type: private\n    domains: [a.example.com]\n"
+	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: priv}); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("private+domains => ErrBadRequest, got %v", err)
 	}
 }

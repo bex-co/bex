@@ -294,7 +294,6 @@ describe("toServiceView", () => {
     expect(v.runs).toHaveLength(1);
     expect(v.runs[0]).toEqual({
       id: "crr-d2g9h41kc86ots6qg9s0",
-      name: "nightly-run-1",
       startedAt: "2026-07-09T10:00:00Z",
       finishedAt: "2026-07-09T10:00:05Z",
       status: "Succeeded",

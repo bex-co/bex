@@ -47,7 +47,7 @@ bex matches the observable shape and makes the following explicit decisions wher
 - The shared export object is a safe superset of Render's schema: `id`, `createdAt`, and optional `url`, plus `status`, `urlExpiresAt`, `expiresAt`, `filename`, and `failureReason` for an honest UI/agent lifecycle.
 - Status progresses `created` → `running` → `available` or `failed`; expiry uses `expiring` → `expired` and is not marked complete until the object-delete Job succeeds.
 - The operator runs version-compatible `pg_dump --format=directory`, packages the output as `.dir.tar.gz`, and uploads it below `<BEX_DB_BACKUP_DESTINATION>/logical-exports/<database>/<export-id>/`. Dump bytes never transit bex-api.
-- bex keeps the existing plural `/exports` endpoint as a compatibility alias; the documented Render-compatible route is singular `/export`.
+- The Render-compatible route is singular `/export`; the retired plural `/exports` route returns 404.
 
 The intentional product difference is plan eligibility: bex exposes exports whenever the Database reports a durable plan and configured backup store. That is the same gate as bex PITR; it is not coupled to Render's commercial plan names.
 

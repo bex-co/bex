@@ -7,9 +7,9 @@
 #   BEX_SSH_HOST=ssh.bex.co CLOUDFLARE_API_TOKEN=... \
 #     scripts/ssh-dns-cloudflare.sh [--check]
 #
-# The token needs Zone / DNS / Edit for the one DNS zone. If neither
-# CLOUDFLARE_ZONE_ID nor the legacy CF_ZONE_ID is set, it also needs Zone / Zone
-# / Read so the script can discover the zone id from BEX_SSH_DNS_ZONE.
+# The token needs Zone / DNS / Edit for the one DNS zone. If
+# CLOUDFLARE_ZONE_ID is unset, it also needs Zone / Zone / Read so the script
+# can discover the zone id from BEX_SSH_DNS_ZONE.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -36,7 +36,7 @@ if [[ "$hostname" == \*.* ]]; then
   validation_host="${hostname:2}"
 fi
 zone_name="$(printf '%s' "${BEX_EDGE_DNS_ZONE:-${BEX_SSH_DNS_ZONE:-${validation_host#*.}}}" | tr '[:upper:]' '[:lower:]')"
-zone_id="${CLOUDFLARE_ZONE_ID:-${CF_ZONE_ID:-}}"
+zone_id="${CLOUDFLARE_ZONE_ID:-}"
 
 hostname_pattern='^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]*[a-z0-9])?$'
 if [[ ! "$validation_host" =~ $hostname_pattern || ! "$zone_name" =~ $hostname_pattern ]]; then

@@ -36,8 +36,3 @@ export function classifyResourceHealth(row: ResourceRow): ResourceHealth {
   }
   return "healthy";
 }
-
-/** Backward-compatible predicate for callers that only need the green state. */
-export function isRowHealthy(row: ResourceRow): boolean {
-  return classifyResourceHealth(row) === "healthy";
-}

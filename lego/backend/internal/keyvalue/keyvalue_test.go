@@ -758,12 +758,15 @@ func TestMCPKeyValue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantedLists := map[string]bool{"list_key_value": false, "list_key_value_instances": false}
+	foundCanonical := false
 	for _, tool := range tools.Tools {
-		if _, ok := wantedLists[tool.Name]; !ok {
+		if tool.Name == "list_key_value_instances" {
+			t.Fatal("deprecated list_key_value_instances tool is still registered")
+		}
+		if tool.Name != "list_key_value" {
 			continue
 		}
-		wantedLists[tool.Name] = true
+		foundCanonical = true
 		b, _ := json.Marshal(tool.InputSchema)
 		var schema struct {
 			Properties map[string]any `json:"properties"`
@@ -773,10 +776,8 @@ func TestMCPKeyValue(t *testing.T) {
 			t.Fatalf("%s args = %v, Render accepts none", tool.Name, schema.Properties)
 		}
 	}
-	for name, found := range wantedLists {
-		if !found {
-			t.Fatalf("missing key-value list tool %q", name)
-		}
+	if !foundCanonical {
+		t.Fatal("missing key-value list tool list_key_value")
 	}
 
 	call := func(name string, args map[string]any) map[string]any {
@@ -795,9 +796,6 @@ func TestMCPKeyValue(t *testing.T) {
 	// Render's tool names + arg (keyValueId), delegating to the same Core verbs.
 	if list, ok := call("list_key_value", nil)["keyValues"].([]any); !ok || len(list) != 1 {
 		t.Fatalf("list_key_value want 1, got %v", call("list_key_value", nil))
-	}
-	if list, ok := call("list_key_value_instances", nil)["keyValues"].([]any); !ok || len(list) != 1 {
-		t.Fatalf("deprecated list alias want 1, got %v", call("list_key_value_instances", nil))
 	}
 	if got := call("get_key_value", map[string]any{"keyValueId": "mcp-kv"}); got["id"] != "mcp-kv" {
 		t.Fatalf("get_key_value id = %v", got["id"])

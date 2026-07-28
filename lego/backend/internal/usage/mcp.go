@@ -31,10 +31,6 @@ import (
 
 type getUsageArgs struct {
 	Period string `json:"period,omitempty" jsonschema:"calendar month as YYYY-MM; defaults to the current month"`
-	// OwnerID follows the same ownerId precedence every workspace-scoped MCP
-	// tool shares (core.SelectedWorkspace, w6/m18): explicit arg > the
-	// session's select_workspace > the caller's default workspace.
-	OwnerID string `json:"ownerId,omitempty" jsonschema:"workspace id to query; defaults to the selected or caller's default workspace"`
 }
 
 // RegisterMCP adds the get_usage tool to the shared MCP server.
@@ -42,13 +38,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_usage",
 		Description: "Get month-to-date usage (instance-seconds by tier, egress bytes, build seconds, and managed-datastore storage GB-seconds) for the caller's workspace, plus an estimated cost in USD (estimate only — not an invoice; 30% below Render on compute/Postgres/KeyValue/build/Postgres storage, 90% below on bandwidth). When the workspace has a bex Stripe subscription, the response also carries a `billing` object with the real current-period invoice preview and finalized invoices (absent for estimate-only workspaces). Returns the same quantities, cost estimate, and billing as GET /v1/usage.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in getUsageArgs) (*mcp.CallToolResult, usageResponse, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getUsageArgs) (*mcp.CallToolResult, usageResponse, error) {
 		now := resolvePeriodEnd(in.Period, s.Now().UTC())
-		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
-		if err != nil {
-			return nil, usageResponse{}, err
-		}
-		summary, err := s.monthToDateAt(ctx, ownerID, now)
+		summary, err := s.monthToDateAt(ctx, core.NamedWorkspace(ctx), now)
 		if err != nil {
 			return nil, usageResponse{}, err
 		}

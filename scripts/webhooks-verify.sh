@@ -261,16 +261,16 @@ verify_line_signature() { # RECV_LINE SECRET
 echo "==> 1. register: workspace + webhook endpoint (secret shown once)"
 TENANT_ID="$(cp_post /v1/tenants "{\"name\":\"$TENANT\",\"plan\":\"pro\",\"admin\":\"$CLIENT_ID\"}" | jq -r '.id // empty')"
 [ -n "$TENANT_ID" ] || fail "could not create tenant via the control-plane API"
-request POST "/v1/webhooks/endpoints" "{\"ownerId\":\"$TENANT_ID\",\"name\":\"ok-hook\",\"url\":\"http://$RECEIVER/ok\",\"eventTypes\":[\"deploy_started\",\"deploy_ended\",\"service_suspended\",\"service_resumed\"]}"
+request POST "/v1/webhooks" "{\"ownerId\":\"$TENANT_ID\",\"name\":\"ok-hook\",\"url\":\"http://$RECEIVER/ok\",\"eventFilter\":[\"deploy_started\",\"deploy_ended\",\"service_suspended\",\"service_resumed\"]}"
 expect 201 "create webhook endpoint"
 EP1="$(echo "$LAST_BODY" | jq -r .id)"
 SECRET1="$(echo "$LAST_BODY" | jq -r .secret)"
 case "$SECRET1" in whsec_*) ;; *) fail "create did not return a whsec_… secret: $SECRET1" ;; esac
-request GET "/v1/webhooks/endpoints?ownerId=$TENANT_ID" ''
+request GET "/v1/webhooks?ownerId=$TENANT_ID" ''
 expect 200 "list webhook endpoints"
 echo "$LAST_BODY" | jq -e '.[0] | has("secret") | not' >/dev/null || fail "list response carries a secret field"
 echo "$LAST_BODY" | grep -q "$SECRET1" && fail "list response leaked the secret"
-request GET "/v1/webhooks/endpoints/$EP1?ownerId=$TENANT_ID" ''
+request GET "/v1/webhooks/$EP1?ownerId=$TENANT_ID" ''
 expect 200 "get webhook endpoint"
 echo "$LAST_BODY" | grep -q "$SECRET1" && fail "get response leaked the secret"
 pass "endpoint $EP1 registered; secret returned once and never re-readable"
@@ -291,7 +291,7 @@ wait_delivery service_suspended /ok ; verify_line_signature "$RECV_LINE" "$SECRE
 wait_delivery service_resumed /ok   ; verify_line_signature "$RECV_LINE" "$SECRET1"
 pass "service_suspended + service_resumed delivered and verified"
 
-request GET "/v1/webhooks/endpoints/$EP1/deliveries?ownerId=$TENANT_ID" ''
+request GET "/v1/webhooks/$EP1/events?ownerId=$TENANT_ID" ''
 expect 200 "delivery history"
 delivered="$(echo "$LAST_BODY" | jq '[.[] | select(.delivery.status=="delivered")] | length')"
 [ "$delivered" -ge 3 ] || fail "delivery history shows $delivered delivered, want >= 3 (body: $LAST_BODY)"
@@ -299,7 +299,7 @@ echo "$LAST_BODY" | jq -e '.[0].delivery.attemptCount == 1' >/dev/null || fail "
 pass "delivery history records $delivered delivered entries, cursor envelope intact"
 
 echo "==> 4. retry + auto-disable: a failing endpoint"
-request POST "/v1/webhooks/endpoints" "{\"ownerId\":\"$TENANT_ID\",\"name\":\"fail-hook\",\"url\":\"http://$RECEIVER/fail\",\"eventTypes\":[\"service_suspended\"]}"
+request POST "/v1/webhooks" "{\"ownerId\":\"$TENANT_ID\",\"name\":\"fail-hook\",\"url\":\"http://$RECEIVER/fail\",\"eventFilter\":[\"service_suspended\"]}"
 expect 201 "create failing endpoint"
 EP2="$(echo "$LAST_BODY" | jq -r .id)"
 request POST "/v1/services/$SVC/suspend" '' ; expect 202 "suspend (for the failing endpoint)"
@@ -307,7 +307,7 @@ request POST "/v1/services/$SVC/suspend" '' ; expect 202 "suspend (for the faili
 deadline=$((SECONDS + 60))
 EP2_STATE=""
 while [ $SECONDS -lt $deadline ]; do
-  request GET "/v1/webhooks/endpoints/$EP2/deliveries?ownerId=$TENANT_ID" ''
+  request GET "/v1/webhooks/$EP2/events?ownerId=$TENANT_ID" ''
   EP2_STATE="$(echo "$LAST_BODY" | jq -c '[.[] | select(.delivery.eventType=="service_suspended")][0].delivery // empty')"
   [ -n "$EP2_STATE" ] && [ "$(echo "$EP2_STATE" | jq -r .status)" = "failed" ] && break
   sleep 2
@@ -317,7 +317,7 @@ done
 [ "$(echo "$EP2_STATE" | jq -r .lastStatusCode)" = "500" ] || fail "lastStatusCode = $(echo "$EP2_STATE" | jq -r .lastStatusCode), want 500"
 fails="$(jq -c 'select(.path=="/fail")' "$RECV_LOG" | wc -l | tr -d ' ')"
 [ "$fails" = "4" ] || fail "receiver saw $fails /fail attempts, want 4"
-request GET "/v1/webhooks/endpoints/$EP2?ownerId=$TENANT_ID" ''
+request GET "/v1/webhooks/$EP2?ownerId=$TENANT_ID" ''
 expect 200 "get failing endpoint"
 [ "$(echo "$LAST_BODY" | jq -r .enabled)" = "false" ] || fail "endpoint was not auto-disabled: $LAST_BODY"
 echo "$LAST_BODY" | jq -r .disabledReason | grep -qi "automatically" || fail "disabledReason missing: $LAST_BODY"

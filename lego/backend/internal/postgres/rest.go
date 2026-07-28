@@ -84,7 +84,7 @@ func (s *Service) toPostgresList(ctx context.Context, pgs []PostgresView) []post
 }
 
 // RegisterREST adds the managed-Postgres endpoints, Render-shaped (/v1/postgres)
-// plus a bex-native /v1/databases alias.
+// using Render's canonical /v1/postgres noun.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// verb maps a lifecycle action to a handler with a Render-accurate status code
 	// (suspend/resume 202, restart 200 — same as services).
@@ -99,378 +99,365 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteJSON(w, status, s.renderOnePostgres(r.Context(), pg))
 		}
 	}
-	for _, base := range []string{"/v1/postgres", "/v1/databases"} {
-		mux.HandleFunc("GET "+base, func(w http.ResponseWriter, r *http.Request) {
-			q := r.URL.Query()
-			out, err := s.ListPostgres(r.Context(), q.Get("ownerId"))
-			if err != nil {
-				core.WriteErr(w, err)
+	const base = "/v1/postgres"
+	mux.HandleFunc("GET "+base, func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		out, err := s.ListPostgres(r.Context(), q.Get("ownerId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		// name filters by exact name, OR'd across repeated ?name= values (Render's
+		// documented "Filter by name" — the official CLI resolves a bare
+		// name/id argument to a database id by calling this with ?name=, and
+		// requires it to narrow to exactly one match).
+		if names := q["name"]; len(names) > 0 {
+			filtered := make([]PostgresView, 0, len(out))
+			for _, p := range out {
+				if slices.Contains(names, p.Name) || slices.Contains(names, p.ID) {
+					filtered = append(filtered, p)
+				}
+			}
+			out = filtered
+		}
+		if envIDs := q["environmentId"]; len(envIDs) > 0 {
+			filtered := make([]PostgresView, 0, len(out))
+			for _, p := range out {
+				if slices.Contains(envIDs, p.EnvironmentID) {
+					filtered = append(filtered, p)
+				}
+			}
+			out = filtered
+		}
+		// suspended= filters by Render's string enum (w2/m53). Unknown value → 400.
+		if sv := q.Get("suspended"); sv != "" {
+			if sv != core.RenderSuspended && sv != core.RenderNotSuspended {
+				core.WriteErr(w, fmt.Errorf("%w: suspended must be %q or %q", core.ErrBadRequest, core.RenderSuspended, core.RenderNotSuspended))
 				return
 			}
-			// name filters by exact name, OR'd across repeated ?name= values (Render's
-			// documented "Filter by name" — the official CLI resolves a bare
-			// name/id argument to a database id by calling this with ?name=, and
-			// requires it to narrow to exactly one match).
-			if names := q["name"]; len(names) > 0 {
-				filtered := make([]PostgresView, 0, len(out))
-				for _, p := range out {
-					if slices.Contains(names, p.Name) || slices.Contains(names, p.ID) {
-						filtered = append(filtered, p)
-					}
+			filtered := make([]PostgresView, 0, len(out))
+			for _, p := range out {
+				if p.Suspended == sv {
+					filtered = append(filtered, p)
 				}
-				out = filtered
 			}
-			if envIDs := q["environmentId"]; len(envIDs) > 0 {
-				filtered := make([]PostgresView, 0, len(out))
-				for _, p := range out {
-					if slices.Contains(envIDs, p.EnvironmentID) {
-						filtered = append(filtered, p)
-					}
-				}
-				out = filtered
-			}
-			// suspended= filters by Render's string enum (w2/m53). Unknown value → 400.
-			if sv := q.Get("suspended"); sv != "" {
-				if sv != core.RenderSuspended && sv != core.RenderNotSuspended {
-					core.WriteErr(w, fmt.Errorf("%w: suspended must be %q or %q", core.ErrBadRequest, core.RenderSuspended, core.RenderNotSuspended))
+			out = filtered
+		}
+		// Time-window filters (w2/m53): RFC3339, named 400 on malformed, empty
+		// timestamp passes (legacy DBs without stored timestamps are never excluded).
+		for _, tf := range []struct {
+			before, after string
+			get           func(PostgresView) string
+		}{
+			{"createdBefore", "createdAfter", func(p PostgresView) string { return p.CreatedAt }},
+			{"updatedBefore", "updatedAfter", func(p PostgresView) string { return p.UpdatedAt }},
+		} {
+			var before, after time.Time
+			if v := q.Get(tf.before); v != "" {
+				t, err := time.Parse(time.RFC3339, v)
+				if err != nil {
+					core.WriteErr(w, fmt.Errorf("%w: %s must be RFC3339", core.ErrBadRequest, tf.before))
 					return
 				}
-				filtered := make([]PostgresView, 0, len(out))
-				for _, p := range out {
-					if p.Suspended == sv {
-						filtered = append(filtered, p)
-					}
-				}
-				out = filtered
+				before = t
 			}
-			// Time-window filters (w2/m53): RFC3339, named 400 on malformed, empty
-			// timestamp passes (legacy DBs without stored timestamps are never excluded).
-			for _, tf := range []struct {
-				before, after string
-				get           func(PostgresView) string
-			}{
-				{"createdBefore", "createdAfter", func(p PostgresView) string { return p.CreatedAt }},
-				{"updatedBefore", "updatedAfter", func(p PostgresView) string { return p.UpdatedAt }},
-			} {
-				var before, after time.Time
-				if v := q.Get(tf.before); v != "" {
-					t, err := time.Parse(time.RFC3339, v)
-					if err != nil {
-						core.WriteErr(w, fmt.Errorf("%w: %s must be RFC3339", core.ErrBadRequest, tf.before))
-						return
-					}
-					before = t
+			if v := q.Get(tf.after); v != "" {
+				t, err := time.Parse(time.RFC3339, v)
+				if err != nil {
+					core.WriteErr(w, fmt.Errorf("%w: %s must be RFC3339", core.ErrBadRequest, tf.after))
+					return
 				}
-				if v := q.Get(tf.after); v != "" {
-					t, err := time.Parse(time.RFC3339, v)
-					if err != nil {
-						core.WriteErr(w, fmt.Errorf("%w: %s must be RFC3339", core.ErrBadRequest, tf.after))
-						return
-					}
-					after = t
-				}
-				if before.IsZero() && after.IsZero() {
+				after = t
+			}
+			if before.IsZero() && after.IsZero() {
+				continue
+			}
+			filtered := make([]PostgresView, 0, len(out))
+			for _, p := range out {
+				raw := tf.get(p)
+				if raw == "" {
+					filtered = append(filtered, p)
 					continue
 				}
-				filtered := make([]PostgresView, 0, len(out))
-				for _, p := range out {
-					raw := tf.get(p)
-					if raw == "" {
-						filtered = append(filtered, p)
-						continue
-					}
-					v, err := time.Parse(time.RFC3339, raw)
-					if err != nil {
-						filtered = append(filtered, p)
-						continue
-					}
-					if (before.IsZero() || v.Before(before)) && (after.IsZero() || v.After(after)) {
-						filtered = append(filtered, p)
-					}
+				v, err := time.Parse(time.RFC3339, raw)
+				if err != nil {
+					filtered = append(filtered, p)
+					continue
 				}
-				out = filtered
+				if (before.IsZero() || v.Before(before)) && (after.IsZero() || v.After(after)) {
+					filtered = append(filtered, p)
+				}
 			}
-			// Render's cursor-pagination envelope (components.schemas.postgresWithCursor),
-			// verified against the render-oss/cli generated client: a bare array of
-			// Postgres objects breaks the official CLI's list decode. Omission of both
-			// paging params preserves bex's original complete-list behavior; once either
-			// is present the stable id order makes a full walk gap/duplicate-free.
-			after, limit := core.PageParams(q)
-			page := core.StablePage(out, after, limit, q.Has("cursor") || q.Has("limit"), func(p PostgresView) string { return p.ID })
-			core.WriteJSON(w, http.StatusOK, s.toPostgresList(r.Context(), page)) // [{postgres, cursor}, ...]
-		})
-		mux.HandleFunc("POST "+base, func(w http.ResponseWriter, r *http.Request) {
-			var req CreatePostgresRequest
-			if err := core.DecodeJSON(r, &req); err != nil {
-				core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
-				return
-			}
-			if !req.DryRun && r.URL.Query().Get("dryRun") == "true" {
-				req.DryRun = true
-			}
-			pg, err := s.CreatePostgres(r.Context(), req)
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			if req.DryRun {
-				core.WriteJSON(w, http.StatusOK, s.renderOnePostgres(r.Context(), pg)) // dry-run: 200 (nothing created, w2/m29)
-				return
-			}
-			core.WriteJSON(w, http.StatusCreated, s.renderOnePostgres(r.Context(), pg)) // Render: create => 201
-		})
-		mux.HandleFunc("GET "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
-			pg, err := s.GetPostgres(r.Context(), r.PathValue("id"))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, s.renderOnePostgres(r.Context(), pg))
-		})
-		mux.HandleFunc("PATCH "+base+"/{id}", s.handleUpdatePostgres)
-		mux.HandleFunc("DELETE "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
-			ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
-			if err := s.DeletePostgres(ctx, r.PathValue("id")); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			w.WriteHeader(http.StatusNoContent) // Render: delete => 204
-		})
-		mux.HandleFunc("GET "+base+"/{id}/connection-info", func(w http.ResponseWriter, r *http.Request) {
-			info, err := s.PostgresConnectionInfo(r.Context(), r.PathValue("id"))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, info)
-		})
-		mux.HandleFunc("POST "+base+"/{id}/query", func(w http.ResponseWriter, r *http.Request) {
-			var req struct {
-				SQL         string `json:"sql"`
-				AllowWrites bool   `json:"allowWrites"`
-			}
-			if err := core.DecodeJSON(r, &req); err != nil {
-				core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
-				return
-			}
-			result, err := s.ExecuteQuery(r.Context(), r.PathValue("id"), req.SQL, req.AllowWrites)
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, result)
-		})
-
-		// --- lifecycle (Render: POST /postgres/{id}/{suspend,resume,restart,failover}) ---
-		mux.HandleFunc("POST "+base+"/{id}/suspend", verb(http.StatusAccepted, s.Suspend))
-		mux.HandleFunc("POST "+base+"/{id}/resume", verb(http.StatusAccepted, s.Resume))
-		mux.HandleFunc("POST "+base+"/{id}/restart", verb(http.StatusOK, s.Restart))
-		mux.HandleFunc("POST "+base+"/{id}/failover", func(w http.ResponseWriter, r *http.Request) {
-			// Render: 202 Accepted, no response body.
-			if err := s.Failover(r.Context(), r.PathValue("id")); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			w.WriteHeader(http.StatusAccepted)
-		})
-
-		// --- recovery / exports (Render: recovery-info, recover, export) ---
-		recoveryInfo := func(w http.ResponseWriter, r *http.Request) {
-			info, err := s.RecoveryInfo(r.Context(), r.PathValue("id"))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, info)
+			out = filtered
 		}
-		mux.HandleFunc("GET "+base+"/{id}/recovery-info", recoveryInfo)
-		mux.HandleFunc("POST "+base+"/{id}/recovery-info", recoveryInfo) // Render uses POST; bex accepts both
-		mux.HandleFunc("POST "+base+"/{id}/recover", func(w http.ResponseWriter, r *http.Request) {
-			var req RecoverRequest
-			if err := core.DecodeJSON(r, &req); err != nil {
-				core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
-				return
-			}
-			pg, err := s.Recover(r.Context(), r.PathValue("id"), req)
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusCreated, s.renderOnePostgres(r.Context(), pg)) // a new instance => 201
-		})
-		listExports := func(w http.ResponseWriter, r *http.Request) {
-			out, err := s.ListExports(r.Context(), r.PathValue("id"))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, out)
+		// Render's cursor-pagination envelope (components.schemas.postgresWithCursor),
+		// verified against the render-oss/cli generated client: a bare array of
+		// Postgres objects breaks the official CLI's list decode. Omission of both
+		// paging params preserves bex's original complete-list behavior; once either
+		// is present the stable id order makes a full walk gap/duplicate-free.
+		after, limit := core.PageParams(q)
+		page := core.StablePage(out, after, limit, q.Has("cursor") || q.Has("limit"), func(p PostgresView) string { return p.ID })
+		core.WriteJSON(w, http.StatusOK, s.toPostgresList(r.Context(), page)) // [{postgres, cursor}, ...]
+	})
+	mux.HandleFunc("POST "+base, func(w http.ResponseWriter, r *http.Request) {
+		var req CreatePostgresRequest
+		if err := core.DecodeJSON(r, &req); err != nil {
+			core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
+			return
 		}
-		createExport := func(w http.ResponseWriter, r *http.Request) {
-			if _, err := s.CreateExport(r.Context(), r.PathValue("id")); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			// Render returns 202 with no response body.
-			w.WriteHeader(http.StatusAccepted)
+		if !req.DryRun && r.URL.Query().Get("dryRun") == "true" {
+			req.DryRun = true
 		}
-		mux.HandleFunc("GET "+base+"/{id}/export", listExports)
-		mux.HandleFunc("POST "+base+"/{id}/export", createExport)
-		// Keep the old plural spelling as a compatibility alias while generated
-		// clients move to Render's singular /export path.
-		mux.HandleFunc("GET "+base+"/{id}/exports", listExports)
-		mux.HandleFunc("POST "+base+"/{id}/exports", func(w http.ResponseWriter, r *http.Request) {
-			exp, err := s.CreateExport(r.Context(), r.PathValue("id"))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusCreated, exp)
-		})
+		pg, err := s.CreatePostgres(r.Context(), req)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		if req.DryRun {
+			core.WriteJSON(w, http.StatusOK, s.renderOnePostgres(r.Context(), pg)) // dry-run: 200 (nothing created, w2/m29)
+			return
+		}
+		core.WriteJSON(w, http.StatusCreated, s.renderOnePostgres(r.Context(), pg)) // Render: create => 201
+	})
+	mux.HandleFunc("GET "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
+		pg, err := s.GetPostgres(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, s.renderOnePostgres(r.Context(), pg))
+	})
+	mux.HandleFunc("PATCH "+base+"/{id}", s.handleUpdatePostgres)
+	mux.HandleFunc("DELETE "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
+		ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
+		if err := s.DeletePostgres(ctx, r.PathValue("id")); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent) // Render: delete => 204
+	})
+	mux.HandleFunc("GET "+base+"/{id}/connection-info", func(w http.ResponseWriter, r *http.Request) {
+		info, err := s.PostgresConnectionInfo(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, info)
+	})
+	mux.HandleFunc("POST "+base+"/{id}/query", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			SQL         string `json:"sql"`
+			AllowWrites bool   `json:"allowWrites"`
+		}
+		if err := core.DecodeJSON(r, &req); err != nil {
+			core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
+			return
+		}
+		result, err := s.ExecuteQuery(r.Context(), r.PathValue("id"), req.SQL, req.AllowWrites)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, result)
+	})
 
-		// --- access: IP allowlist + users ---
-		// The bex-native GET/PUT pair keeps its plain {"cidrs": [...]} response
-		// shape (nothing Render-side depends on this endpoint); descriptions
-		// travel through the Render-shaped create/PATCH/get/list. The PUT body's
-		// array elements decode as either bare CIDR strings or {cidrBlock,
-		// description} objects (core.IPAllowListEntry's union), so a client that
-		// writes back entries keeps their descriptions; a string-only full
-		// replace clears them.
-		mux.HandleFunc("GET "+base+"/{id}/ip-allow-list", func(w http.ResponseWriter, r *http.Request) {
-			list, err := s.GetIPAllowList(r.Context(), r.PathValue("id"))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, map[string][]string{"cidrs": core.AllowListCIDRs(list)})
-		})
-		mux.HandleFunc("PUT "+base+"/{id}/ip-allow-list", func(w http.ResponseWriter, r *http.Request) {
-			var req struct {
-				CIDRs []core.IPAllowListEntry `json:"cidrs"`
-			}
-			if err := core.DecodeJSON(r, &req); err != nil {
-				core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
-				return
-			}
-			pg, err := s.SetIPAllowList(r.Context(), r.PathValue("id"), req.CIDRs)
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, s.renderOnePostgres(r.Context(), pg))
-		})
-		mux.HandleFunc("GET "+base+"/{id}/users", func(w http.ResponseWriter, r *http.Request) {
-			users, err := s.ListUsers(r.Context(), r.PathValue("id"))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, users)
-		})
-		mux.HandleFunc("POST "+base+"/{id}/users", func(w http.ResponseWriter, r *http.Request) {
-			var req struct {
-				Name string `json:"name"`
-			}
-			if err := core.DecodeJSON(r, &req); err != nil {
-				core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
-				return
-			}
-			res, err := s.CreateUser(r.Context(), r.PathValue("id"), req.Name)
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusCreated, res)
-		})
-		mux.HandleFunc("DELETE "+base+"/{id}/users/{user}", func(w http.ResponseWriter, r *http.Request) {
-			if err := s.DeleteUser(r.Context(), r.PathValue("id"), r.PathValue("user")); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			w.WriteHeader(http.StatusNoContent)
-		})
+	// --- lifecycle (Render: POST /postgres/{id}/{suspend,resume,restart,failover}) ---
+	mux.HandleFunc("POST "+base+"/{id}/suspend", verb(http.StatusAccepted, s.Suspend))
+	mux.HandleFunc("POST "+base+"/{id}/resume", verb(http.StatusAccepted, s.Resume))
+	mux.HandleFunc("POST "+base+"/{id}/restart", verb(http.StatusOK, s.Restart))
+	mux.HandleFunc("POST "+base+"/{id}/failover", func(w http.ResponseWriter, r *http.Request) {
+		// Render: 202 Accepted, no response body.
+		if err := s.Failover(r.Context(), r.PathValue("id")); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+	})
 
-		// --- logs (w3/m28) ---
-		mux.HandleFunc("GET "+base+"/{id}/logs", func(w http.ResponseWriter, r *http.Request) {
-			q := r.URL.Query()
-			limit, _ := strconv.ParseInt(q.Get("limit"), 10, 64)
-			since, end, err := parsePGTimeWindow(q.Get("startTime"), q.Get("endTime"))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			entries, err := s.QueryDatabaseLogs(r.Context(), r.PathValue("id"), DatabaseLogQuery{
-				Search:    q.Get("text"),
-				Since:     since,
-				End:       end,
-				Limit:     limit,
-				Direction: q.Get("direction"),
-				Instance:  q["instance"],
-			})
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, entries)
-		})
-
-		// --- observability: processes / top-queries / sizes / table-scans / parameter-overrides ---
-		mux.HandleFunc("GET "+base+"/{id}/processes", func(w http.ResponseWriter, r *http.Request) {
-			out, err := s.Processes(r.Context(), r.PathValue("id"))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, out)
-		})
-		mux.HandleFunc("GET "+base+"/{id}/top-queries", func(w http.ResponseWriter, r *http.Request) {
-			out, err := s.TopQueries(r.Context(), r.PathValue("id"))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, out)
-		})
-		mux.HandleFunc("GET "+base+"/{id}/sizes", func(w http.ResponseWriter, r *http.Request) {
-			out, err := s.Sizes(r.Context(), r.PathValue("id"))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, out)
-		})
-		mux.HandleFunc("GET "+base+"/{id}/table-scans", func(w http.ResponseWriter, r *http.Request) {
-			out, err := s.TableScans(r.Context(), r.PathValue("id"))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, out)
-		})
-		mux.HandleFunc("GET "+base+"/{id}/parameter-overrides", func(w http.ResponseWriter, r *http.Request) {
-			out, err := s.ParameterOverrides(r.Context(), r.PathValue("id"))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, out)
-		})
-		mux.HandleFunc("PUT "+base+"/{id}/parameter-overrides", func(w http.ResponseWriter, r *http.Request) {
-			var req struct {
-				Parameters map[string]string `json:"parameters"`
-			}
-			if err := core.DecodeJSON(r, &req); err != nil {
-				core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
-				return
-			}
-			pg, err := s.SetParameterOverrides(r.Context(), r.PathValue("id"), req.Parameters)
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, s.renderOnePostgres(r.Context(), pg))
-		})
+	// --- recovery / exports (Render: recovery-info, recover, export) ---
+	recoveryInfo := func(w http.ResponseWriter, r *http.Request) {
+		info, err := s.RecoveryInfo(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, info)
 	}
+	mux.HandleFunc("POST "+base+"/{id}/recovery-info", recoveryInfo)
+	mux.HandleFunc("POST "+base+"/{id}/recover", func(w http.ResponseWriter, r *http.Request) {
+		var req RecoverRequest
+		if err := core.DecodeJSON(r, &req); err != nil {
+			core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
+			return
+		}
+		pg, err := s.Recover(r.Context(), r.PathValue("id"), req)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusCreated, s.renderOnePostgres(r.Context(), pg)) // a new instance => 201
+	})
+	listExports := func(w http.ResponseWriter, r *http.Request) {
+		out, err := s.ListExports(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, out)
+	}
+	createExport := func(w http.ResponseWriter, r *http.Request) {
+		if _, err := s.CreateExport(r.Context(), r.PathValue("id")); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		// Render returns 202 with no response body.
+		w.WriteHeader(http.StatusAccepted)
+	}
+	mux.HandleFunc("GET "+base+"/{id}/export", listExports)
+	mux.HandleFunc("POST "+base+"/{id}/export", createExport)
+
+	// --- access: IP allowlist + users ---
+	// The bex-native GET/PUT pair keeps its plain {"cidrs": [...]} response
+	// shape (nothing Render-side depends on this endpoint); descriptions
+	// travel through the Render-shaped create/PATCH/get/list. The PUT body's
+	// array elements decode as either bare CIDR strings or {cidrBlock,
+	// description} objects (core.IPAllowListEntry's union), so a client that
+	// writes back entries keeps their descriptions; a string-only full
+	// replace clears them.
+	mux.HandleFunc("GET "+base+"/{id}/ip-allow-list", func(w http.ResponseWriter, r *http.Request) {
+		list, err := s.GetIPAllowList(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, map[string][]string{"cidrs": core.AllowListCIDRs(list)})
+	})
+	mux.HandleFunc("PUT "+base+"/{id}/ip-allow-list", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			CIDRs []core.IPAllowListEntry `json:"cidrs"`
+		}
+		if err := core.DecodeJSON(r, &req); err != nil {
+			core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
+			return
+		}
+		pg, err := s.SetIPAllowList(r.Context(), r.PathValue("id"), req.CIDRs)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, s.renderOnePostgres(r.Context(), pg))
+	})
+	mux.HandleFunc("GET "+base+"/{id}/users", func(w http.ResponseWriter, r *http.Request) {
+		users, err := s.ListUsers(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, users)
+	})
+	mux.HandleFunc("POST "+base+"/{id}/users", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Name string `json:"name"`
+		}
+		if err := core.DecodeJSON(r, &req); err != nil {
+			core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
+			return
+		}
+		res, err := s.CreateUser(r.Context(), r.PathValue("id"), req.Name)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusCreated, res)
+	})
+	mux.HandleFunc("DELETE "+base+"/{id}/users/{user}", func(w http.ResponseWriter, r *http.Request) {
+		if err := s.DeleteUser(r.Context(), r.PathValue("id"), r.PathValue("user")); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	// --- logs (w3/m28) ---
+	mux.HandleFunc("GET "+base+"/{id}/logs", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		limit, _ := strconv.ParseInt(q.Get("limit"), 10, 64)
+		since, end, err := parsePGTimeWindow(q.Get("startTime"), q.Get("endTime"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		entries, err := s.QueryDatabaseLogs(r.Context(), r.PathValue("id"), DatabaseLogQuery{
+			Search:    q.Get("text"),
+			Since:     since,
+			End:       end,
+			Limit:     limit,
+			Direction: q.Get("direction"),
+			Instance:  q["instance"],
+		})
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, entries)
+	})
+
+	// --- observability: processes / top-queries / sizes / table-scans / parameter-overrides ---
+	mux.HandleFunc("GET "+base+"/{id}/processes", func(w http.ResponseWriter, r *http.Request) {
+		out, err := s.Processes(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, out)
+	})
+	mux.HandleFunc("GET "+base+"/{id}/top-queries", func(w http.ResponseWriter, r *http.Request) {
+		out, err := s.TopQueries(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, out)
+	})
+	mux.HandleFunc("GET "+base+"/{id}/sizes", func(w http.ResponseWriter, r *http.Request) {
+		out, err := s.Sizes(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, out)
+	})
+	mux.HandleFunc("GET "+base+"/{id}/table-scans", func(w http.ResponseWriter, r *http.Request) {
+		out, err := s.TableScans(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, out)
+	})
+	mux.HandleFunc("GET "+base+"/{id}/parameter-overrides", func(w http.ResponseWriter, r *http.Request) {
+		out, err := s.ParameterOverrides(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, out)
+	})
+	mux.HandleFunc("PUT "+base+"/{id}/parameter-overrides", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Parameters map[string]string `json:"parameters"`
+		}
+		if err := core.DecodeJSON(r, &req); err != nil {
+			core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
+			return
+		}
+		pg, err := s.SetParameterOverrides(r.Context(), r.PathValue("id"), req.Parameters)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, s.renderOnePostgres(r.Context(), pg))
+	})
 }
 
 // parsePGTimeWindow parses optional startTime/endTime RFC3339 bounds for log
@@ -489,7 +476,7 @@ func parsePGTimeWindow(startTime, endTime string) (since, end time.Time, err err
 	return since, end, nil
 }
 
-// handleUpdatePostgres is PATCH /v1/postgres/{id} (+ /v1/databases alias) —
+// handleUpdatePostgres is PATCH /v1/postgres/{id} —
 // pulled out of RegisterREST to keep that registration function's own
 // complexity down. Render's PostgresPATCHInput (verified against the
 // render-oss/cli generated client, cli/pkg/client/types_gen.go): every field

@@ -44,13 +44,14 @@ The operation-ID inventory guard currently finds exactly 119 enforced operations
 | Postgres | enforce where implemented | CRUD, suspend/resume/restart/failover, connection info, and exports |
 | Key Value | enforce where implemented | canonical Key Value CRUD, suspend/resume, and connection info |
 | Projects & Environments | enforce where implemented | CRUD and official service/environment-group association operations |
-| Registry Credentials | enforce canonical spelling | `/v1/registrycredentials`; the hyphenated bex spelling remains pass-through |
+| Registry Credentials | enforce canonical spelling | `/v1/registrycredentials`; the retired hyphenated spelling returns 404 |
 | Webhooks | enforce where implemented | endpoint CRUD plus event reads; the inbound git webhook is public/HMAC and outside the gate |
 | Blueprints | enforce where implemented | list/get/validate; bex-only sync spelling remains pass-through |
 | Users and Workspaces | enforce where paths overlap | user, owner/workspace list/get/member reads; bex member/invite management routes remain pass-through |
 | Workflows | enforce list stub only | the official CLI probe receives `[]`; workflow details/tasks remain unsupported |
 | Audit Logs, Dedicated IPs, Disks, Maintenance, general Notification Settings, unsupported Postgres/Key Value/Blueprint/Workflow operations, deprecated Redis operations | Render operation not implemented | existing 404/405 or existing bex route behavior; no spec-only validation |
-| `/v1/apps`, `/v1/databases`, `/v1/registry-credentials`, datastore-specific logs/IP-allowlist/users/query routes, API keys, usage, tenant/workspace management, GitHub connect, shell tickets, cron history, deploy-hook management, and other bex extensions | bex-only or alias pass-through | handler behavior remains byte-compatible; strictness is not inferred from a similar Render noun |
+| Retired `/v1/apps`, `/v1/databases`, `/v1/registry-credentials`, `/v1/webhooks/endpoints`, Postgres `/exports`, and GET recovery-info | retired public alias | rejected with 404 before dispatch; the private port-8091 control-plane `/v1/apps` API is separate and unchanged |
+| Datastore-specific logs/IP-allowlist/users/query routes, API keys, usage, tenant/workspace management, GitHub connect, shell tickets, cron history, deploy-hook management, and other bex extensions | bex extension pass-through | handler behavior remains byte-compatible; strictness is not inferred from a similar Render noun |
 | CLI device grant/token/refresh, inbound HMAC git webhook, tokenized deploy hooks | public credential-specific route | mounted outside OAuth and outside this validator |
 | GraphQL, MCP, health/discovery, SSE response stream | non-REST or response boundary | GraphQL/MCP are not checked with the REST contract; the SSE request is checked but its stream is never response-validated |
 

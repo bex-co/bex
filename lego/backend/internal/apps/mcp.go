@@ -46,11 +46,7 @@ type listServicesResult struct {
 	Services []renderService `json:"services"`
 }
 
-// listServicesArgs is list_services' input — the ownerId scoping filter
-// (w6/m2/t004), mirroring the REST/GraphQL surfaces. Empty => unscoped.
-type listServicesArgs struct {
-	OwnerID string `json:"ownerId,omitempty" jsonschema:"restrict the list to this workspace id (tea-…); omit to use the session's selected workspace, if any"`
-}
+type listServicesArgs struct{}
 
 // updatePlanArgs is update_service_plan's input — Render's plan spelling
 // (e.g. "pro_plus"), same as the REST/GraphQL surfaces.
@@ -231,7 +227,7 @@ type serviceIPAllowListArgs struct {
 // contract; builder and image are bex extensions. Region remains a one-region
 // platform concern and is intentionally absent.
 type createWebServiceArgs struct {
-	OwnerID                 string                  `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
+	OwnerID                 string                  `json:"-"`
 	EnvironmentID           string                  `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
 	Name                    string                  `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
 	Type                    string                  `json:"type,omitempty" jsonschema:"service type: web_service (default), private_service, or background_worker. Use create_cron_job for a cron_job"`
@@ -326,7 +322,7 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 // tracks create_web_service but requires a schedule and has no port/replicas
 // (a cron runs its command to completion on the schedule, not as a server).
 type createCronJobArgs struct {
-	OwnerID              string          `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
+	OwnerID              string          `json:"-"`
 	EnvironmentID        string          `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
 	Name                 string          `json:"name" jsonschema:"the cron job name (a DNS label, 1-30 chars)"`
 	Schedule             string          `json:"schedule" jsonschema:"the cron schedule (standard 5-field crontab, e.g. '0 * * * *')"`
@@ -398,7 +394,6 @@ func toSecretFiles(in []secretFileArg) []core.SecretFile {
 // is create with a manifest — one agent call takes code (one service or a whole
 // stack) to live URLs.
 type deployArgs struct {
-	OwnerID string `json:"ownerId,omitempty" jsonschema:"the workspace to deploy into (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
 	Repo    string `json:"repo,omitempty" jsonschema:"git repository URL to deploy (overrides the repo in bexYaml, if any)"`
 	Branch  string `json:"branch,omitempty" jsonschema:"branch to deploy (overrides the branch in bexYaml, if any)"`
 	BexYAML string `json:"bexYaml" jsonschema:"the project's bex.yml — a render.yaml Blueprint manifest. May declare a whole stack: services: (web/worker/cron) + databases:, wired by fromDatabase env references. One call converges all of it; validation is all-or-nothing; re-applying an unchanged file is a no-op"`
@@ -424,13 +419,9 @@ func toRenderStack(res StackResult) renderStack {
 // validateBlueprintArgs is validate_bex_yml's input (w2/m15).
 type validateBlueprintArgs struct {
 	BexYAML string `json:"bexYaml" jsonschema:"the bex.yml content to validate (render.yaml Blueprint shape); parsed and checked for per-entry errors with no apply"`
-	OwnerID string `json:"ownerId,omitempty" jsonschema:"workspace id (tea-...); omit to use the session's selected workspace"`
 }
 
-// listBlueprintsArgs is list_blueprints' input (w2/m15).
-type listBlueprintsArgs struct {
-	OwnerID string `json:"ownerId,omitempty" jsonschema:"restrict to this workspace id (tea-...); omit to use the session's selected workspace"`
-}
+type listBlueprintsArgs struct{}
 
 // listBlueprintsResult wraps the array — MCP tool outputs must be JSON objects.
 type listBlueprintsResult struct {
@@ -439,15 +430,13 @@ type listBlueprintsResult struct {
 
 // getBlueprintArgs is get_blueprint's input (w2/m41).
 type getBlueprintArgs struct {
-	ID      string `json:"id" jsonschema:"the blueprint id (blp-…), as returned by list_blueprints or a prior deploy call"`
-	OwnerID string `json:"ownerId,omitempty" jsonschema:"workspace id (tea-...); omit to use the session's selected workspace"`
+	ID string `json:"id" jsonschema:"the blueprint id (blp-…), as returned by list_blueprints or a prior deploy call"`
 }
 
 // syncBlueprintArgs is sync_blueprint's input (w2/m15).
 type syncBlueprintArgs struct {
 	ID      string `json:"id" jsonschema:"the blueprint id (blp-…), as returned by list_blueprints or a prior deploy call"`
 	BexYAML string `json:"bexYaml,omitempty" jsonschema:"optional updated bex.yml to store and apply; omit to re-apply the stored manifest unchanged"`
-	OwnerID string `json:"ownerId,omitempty" jsonschema:"workspace id (tea-...); omit to use the session's selected workspace"`
 	Confirm string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned by a protected-environment error when the sync overrides an existing service"`
 }
 
@@ -497,7 +486,7 @@ type staticHeaderArg struct {
 // object-store origin (no running container). publishPath is required; routes and
 // headers are the optional edge rules.
 type createStaticSiteArgs struct {
-	OwnerID            string                  `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
+	OwnerID            string                  `json:"-"`
 	EnvironmentID      string                  `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
 	Name               string                  `json:"name" jsonschema:"the static site name (a DNS label, 1-30 chars)"`
 	Repo               string                  `json:"repo,omitempty" jsonschema:"git repository URL to build from; omit if using image"`
@@ -610,13 +599,9 @@ type serviceConfirmArgs struct {
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_services",
-		Description: "List all services (bex Apps) in the workspace with their status. Scoped to ownerId if given, else to the session's selected workspace (select_workspace), else unscoped.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in listServicesArgs) (*mcp.CallToolResult, listServicesResult, error) {
-		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
-		if err != nil {
-			return nil, listServicesResult{}, err
-		}
-		apps, err := s.List(ctx, ownerID)
+		Description: "List all services (bex Apps) in a workspace with their status.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listServicesArgs) (*mcp.CallToolResult, listServicesResult, error) {
+		apps, err := s.List(ctx, core.NamedWorkspace(ctx))
 		if err != nil {
 			return nil, listServicesResult{}, err
 		}
@@ -631,12 +616,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_web_service",
 		Description: "Create a web service from a repo or a prebuilt image and get back the service to poll until its url is live. A name already used in the target workspace is rejected (name already in use) rather than redeployed — use restart_service to redeploy an existing one. Tracks Render's MCP tool.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in createWebServiceArgs) (*mcp.CallToolResult, renderService, error) {
-		var err error
-		in.OwnerID, err = core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
-		if err != nil {
-			return nil, renderService{}, err
-		}
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createWebServiceArgs) (*mcp.CallToolResult, renderService, error) {
+		in.OwnerID = core.NamedWorkspace(ctx)
 		allowList, err := core.ResolveAllowListInputs(in.IPAllowListEntries, in.IPAllowListEntries != nil, in.IPAllowList, in.IPAllowList != nil)
 		if err != nil {
 			return nil, renderService{}, err
@@ -653,12 +634,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_cron_job",
 		Description: "Create a cron job that runs a repo/image's command on a schedule, and get back the service. A name already used in the target workspace is rejected (name already in use) rather than redeployed — use restart_service to redeploy an existing one. Tracks Render's MCP tool.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in createCronJobArgs) (*mcp.CallToolResult, renderService, error) {
-		var err error
-		in.OwnerID, err = core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
-		if err != nil {
-			return nil, renderService{}, err
-		}
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createCronJobArgs) (*mcp.CallToolResult, renderService, error) {
+		in.OwnerID = core.NamedWorkspace(ctx)
 		app, err := s.Create(ctx, in.toCreateRequest())
 		if err != nil {
 			return nil, renderService{}, err
@@ -669,12 +646,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_static_site",
 		Description: "Create a static site: build a repo and serve its publishPath output from the object-store origin (no running container). Redirects/rewrites (routes) and custom response headers apply at the edge. A name already used in the target workspace is rejected (name already in use) rather than republished — use restart_service to republish an existing one. Tracks Render's MCP tool.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in createStaticSiteArgs) (*mcp.CallToolResult, renderService, error) {
-		var err error
-		in.OwnerID, err = core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
-		if err != nil {
-			return nil, renderService{}, err
-		}
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createStaticSiteArgs) (*mcp.CallToolResult, renderService, error) {
+		in.OwnerID = core.NamedWorkspace(ctx)
 		allowList, err := core.ResolveAllowListInputs(in.IPAllowListEntries, in.IPAllowListEntries != nil, in.IPAllowList, in.IPAllowList != nil)
 		if err != nil {
 			return nil, renderService{}, err
@@ -1214,48 +1187,32 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "validate_bex_yml",
 		Description: "Dry-run parse a bex.yml (render.yaml Blueprint) and return structured per-entry errors plus a resource plan without applying anything — the safe pre-flight check before a deploy call. Returns {valid, errors: [{error, line?, column?, path?}], plan?}. Requires no store; always available. bex extension (pillar 4 agent safety).",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in validateBlueprintArgs) (*mcp.CallToolResult, BlueprintValidation, error) {
-		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
-		if err != nil {
-			return nil, BlueprintValidation{}, err
-		}
-		v, err := s.ValidateBlueprint(ctx, ownerID, in.BexYAML)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in validateBlueprintArgs) (*mcp.CallToolResult, BlueprintValidation, error) {
+		v, err := s.ValidateBlueprint(ctx, core.NamedWorkspace(ctx), in.BexYAML)
 		return nil, v, err
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_blueprints",
 		Description: "List known bex.yml stack sources (blueprints) for a workspace. Blueprints are auto-registered on the first deploy call that includes a repo+bexYaml. Returns {blueprints: [{id, name, repo, branch, status, createdAt, updatedAt}]}. bex extension.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in listBlueprintsArgs) (*mcp.CallToolResult, listBlueprintsResult, error) {
-		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
-		if err != nil {
-			return nil, listBlueprintsResult{}, err
-		}
-		views, err := s.ListBlueprints(ctx, ownerID)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listBlueprintsArgs) (*mcp.CallToolResult, listBlueprintsResult, error) {
+		views, err := s.ListBlueprints(ctx, core.NamedWorkspace(ctx))
 		return nil, listBlueprintsResult{Blueprints: views}, err
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_blueprint",
 		Description: "Get a single blueprint by its id. Returns {id, name, repo, branch, status, createdAt, updatedAt}. bex extension.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in getBlueprintArgs) (*mcp.CallToolResult, BlueprintView, error) {
-		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
-		if err != nil {
-			return nil, BlueprintView{}, err
-		}
-		view, err := s.GetBlueprintByID(ctx, in.ID, ownerID)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getBlueprintArgs) (*mcp.CallToolResult, BlueprintView, error) {
+		view, err := s.GetBlueprintByID(ctx, in.ID, core.NamedWorkspace(ctx))
 		return nil, view, err
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "sync_blueprint",
 		Description: "Re-apply a stored blueprint idempotently — same all-or-nothing semantics as deploy, but sourced from the stored manifest. If bex_yaml is provided, the stored manifest is replaced before re-apply. Returns {blueprint, stack: {services, databases}}. Use validate_bex_yml first to catch errors with no side effects. bex extension (pillar 4, validate-then-deploy flow).",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in syncBlueprintArgs) (*mcp.CallToolResult, SyncBlueprintResult, error) {
-		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
-		if err != nil {
-			return nil, SyncBlueprintResult{}, err
-		}
-		res, err := s.SyncBlueprint(ctx, in.ID, ownerID, in.BexYAML, in.Confirm)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in syncBlueprintArgs) (*mcp.CallToolResult, SyncBlueprintResult, error) {
+		res, err := s.SyncBlueprint(ctx, in.ID, core.NamedWorkspace(ctx), in.BexYAML, in.Confirm)
 		return nil, res, err
 	})
 }

@@ -38,7 +38,6 @@ export function useCronRuns(serviceId: string): UseCronRunsResult {
     .filter((run): run is NonNullable<typeof run> => run != null && !!run.id)
     .map((run) => ({
       id: run.id ?? "",
-      name: run.id ?? "",
       startedAt: run.startedAt ?? null,
       finishedAt: run.finishedAt ?? null,
       status: run.status ?? "pending",

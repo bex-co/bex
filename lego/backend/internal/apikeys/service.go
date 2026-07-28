@@ -83,12 +83,6 @@ type Service struct {
 	// Binding, when set (the control-plane store is on), ties each minted key to
 	// the caller's tenant. nil => legacy unbound mint (store off).
 	Binding KeyBinder
-	// Selections is the shared MCP per-session workspace selection
-	// (w6/m2/t005, core.WorkspaceSelections): the api-key tools' ownerId
-	// precedence (explicit arg > the session's select_workspace > the
-	// caller's default). nil degrades to explicit-arg-or-default.
-	Selections core.WorkspaceSelectionReader
-
 	// touch throttle: earliest next last-used write per key id. Guards against a
 	// chatty caller turning every introspection into a Hydra write (w4/m13).
 	touchMu   sync.Mutex

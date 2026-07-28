@@ -30,11 +30,8 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// owners_mcp_test.go drives the w6/m2/t005 MCP workspace trio end-to-end over
-// one real (in-memory transport) MCP session: list_workspaces, select_workspace,
-// get_selected_workspace, and the scoping it gives list_services — the DoD's
-// "over MCP, an agent calls list_workspaces, select_workspace(ownerID), and
-// subsequent tool calls (list services) are scoped to the selection" clause.
+// owners_mcp_test.go drives Render's stateless per-call workspaceId contract
+// end-to-end over a real in-memory MCP connection.
 
 // mcpSessionAs is mcpSession plus a caller Identity on the connect-time
 // context — the in-memory transport skips the HTTP auth middleware entirely,
@@ -85,7 +82,7 @@ func callToolError(t *testing.T, cs *mcp.ClientSession, name string, args map[st
 	}
 }
 
-func TestMCP_WorkspaceSelectionScopesListServices(t *testing.T) {
+func TestMCP_ExplicitWorkspaceScopesListServices(t *testing.T) {
 	st := newFakeWSStore()
 	first := mustCreate(t, st, "first", "hobby", "client-1")
 	second := mustCreate(t, st, "second", "hobby", "client-1")
@@ -94,54 +91,65 @@ func TestMCP_WorkspaceSelectionScopesListServices(t *testing.T) {
 		appWithOwnerLabel("first-web", first.ID),
 		appWithOwnerLabel("second-web", second.ID),
 	)
-	base := &core.Base{Client: cl, Namespace: "default"}
+	base := &core.Base{Client: cl, Namespace: "default", Workspace: &apiFakeResolver{store: st}}
 	srv := NewServer(base, Deps{WorkspaceStore: st})
 	cs := mcpSessionAs(t, srv, "client-1")
 
-	// list_workspaces: both, unscoped (two workspaces => no auto-select).
+	// list_workspaces is caller-scoped discovery and carries no selection state.
 	lw := callTool[struct {
 		Workspaces []struct{ ID, Name string }
-		Selected   *struct{ ID string }
 	}](t, cs, "list_workspaces", nil)
-	if len(lw.Workspaces) != 2 || lw.Selected != nil {
-		t.Fatalf("list_workspaces = %+v, want 2 workspaces and no auto-selection", lw)
+	if len(lw.Workspaces) != 2 {
+		t.Fatalf("list_workspaces = %+v, want 2 workspaces", lw)
 	}
 
-	// Before any selection, list_services is unscoped: both Apps.
-	all := callTool[struct{ Services []struct{ Name string } }](t, cs, "list_services", nil)
-	if len(all.Services) != 2 {
-		t.Fatalf("unscoped list_services = %+v, want 2", all)
+	// Omitting workspaceId uses the caller's deterministic default workspace.
+	defaulted := callTool[struct{ Services []struct{ Name string } }](t, cs, "list_services", nil)
+	if len(defaulted.Services) != 1 || defaulted.Services[0].Name != "first-web" {
+		t.Fatalf("default list_services = %+v, want only first-web", defaulted)
 	}
 
-	// select_workspace(second) — the DoD flow.
-	sel := callTool[struct {
-		Selected struct{ ID, Name string }
-	}](t, cs, "select_workspace", map[string]any{"ownerID": second.ID})
-	if sel.Selected.ID != second.ID {
-		t.Fatalf("select_workspace result = %+v", sel)
-	}
-
-	// get_selected_workspace echoes it.
-	got := callTool[struct {
-		Selected struct{ ID string }
-	}](t, cs, "get_selected_workspace", nil)
-	if got.Selected.ID != second.ID {
-		t.Fatalf("get_selected_workspace = %+v, want %s", got, second.ID)
-	}
-
-	// list_services is now scoped to the selection: only second-web.
-	scoped := callTool[struct{ Services []struct{ Name string } }](t, cs, "list_services", nil)
+	// The explicit workspace applies to this call only.
+	scoped := callTool[struct{ Services []struct{ Name string } }](t, cs, "list_services", map[string]any{"workspaceId": second.ID})
 	if len(scoped.Services) != 1 || scoped.Services[0].Name != "second-web" {
 		t.Fatalf("scoped list_services = %+v, want only second-web", scoped)
 	}
+	callToolError(t, cs, "list_services", map[string]any{"workspaceId": "tea-does-not-exist"})
+	callToolError(t, cs, "list_services", map[string]any{"ownerId": second.ID})
+	callToolError(t, cs, "get_service", map[string]any{"serviceId": "second-web", "workspaceId": first.ID})
+}
 
-	// Foreign/unknown workspace id: tool error, selection left untouched.
-	callToolError(t, cs, "select_workspace", map[string]any{"ownerID": "tea-does-not-exist"})
-	still := callTool[struct {
-		Selected struct{ ID string }
-	}](t, cs, "get_selected_workspace", nil)
-	if still.Selected.ID != second.ID {
-		t.Fatalf("selection changed after a failed select_workspace: %+v", still)
+func TestMCPWorkspaceSchemasAreStatelessAndCanonical(t *testing.T) {
+	srv := NewServer(&core.Base{}, Deps{})
+	cs := mcpSessionAs(t, srv, "client-1")
+	listed, err := cs.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	for _, tool := range listed.Tools {
+		seen[tool.Name] = true
+		if _, callerScoped := mcpCallerScopedTools[tool.Name]; callerScoped {
+			continue
+		}
+		raw, _ := json.Marshal(tool.InputSchema)
+		var schema struct {
+			Properties map[string]any `json:"properties"`
+		}
+		if err := json.Unmarshal(raw, &schema); err != nil {
+			t.Fatalf("%s schema: %v", tool.Name, err)
+		}
+		if schema.Properties["workspaceId"] == nil {
+			t.Errorf("%s omits workspaceId", tool.Name)
+		}
+		if schema.Properties["ownerId"] != nil || schema.Properties["ownerID"] != nil {
+			t.Errorf("%s still exposes an MCP ownerId alias", tool.Name)
+		}
+	}
+	for _, removed := range []string{"select_workspace", "get_selected_workspace", "list_key_value_instances"} {
+		if seen[removed] {
+			t.Errorf("deprecated tool %s is still registered", removed)
+		}
 	}
 }
 
@@ -190,13 +198,7 @@ func appWithOwnerLabel(name, ownerID string) *appv1alpha1.App {
 	return a
 }
 
-// TestMCP_CreateLandsInTheSelectedWorkspace is w6/m14's MCP leg: an agent that
-// has called select_workspace(B) must have its CREATES land in B too — not just
-// its lists scoped to it. Before m14 the create tools ignored the session
-// selection entirely and the new service landed in whichever workspace the
-// membership join happened to resolve, which for an agent working in B is the
-// one place it must not go.
-func TestMCP_CreateLandsInTheSelectedWorkspace(t *testing.T) {
+func TestMCP_CreateLandsInExplicitWorkspace(t *testing.T) {
 	st := newFakeWSStore()
 	first := mustCreate(t, st, "first", "hobby", "client-1")
 	second := mustCreate(t, st, "second", "hobby", "client-1")
@@ -206,7 +208,7 @@ func TestMCP_CreateLandsInTheSelectedWorkspace(t *testing.T) {
 	srv := NewServer(base, Deps{WorkspaceStore: st})
 	cs := mcpSessionAs(t, srv, "client-1")
 
-	// With no selection, a create lands in the caller's DEFAULT workspace (the
+	// With no workspaceId, a create lands in the caller's DEFAULT workspace (the
 	// oldest membership — `first`).
 	callTool[struct{ ID string }](t, cs, "create_web_service",
 		map[string]any{"name": "before", "image": "nginx", "runtime": "image", "buildCommand": "", "startCommand": ""})
@@ -214,28 +216,16 @@ func TestMCP_CreateLandsInTheSelectedWorkspace(t *testing.T) {
 		t.Errorf("unselected create landed in %q, want the default workspace %q", got, first.ID)
 	}
 
-	// select_workspace(second), then create: it must land in `second`.
-	callTool[struct {
-		Selected struct{ ID string }
-	}](t, cs, "select_workspace", map[string]any{"ownerID": second.ID})
-
+	// workspaceId applies to this create and lands it in `second`.
 	callTool[struct{ ID string }](t, cs, "create_web_service",
-		map[string]any{"name": "after", "image": "nginx", "runtime": "image", "buildCommand": "", "startCommand": ""})
+		map[string]any{"name": "after", "image": "nginx", "runtime": "image", "buildCommand": "", "startCommand": "", "workspaceId": second.ID})
 	if got := appTenant(t, cl, "after"); got != second.ID {
-		t.Errorf("create after select_workspace landed in %q, want the SELECTED workspace %q", got, second.ID)
-	}
-
-	// An explicit ownerId still wins over the session selection (the same
-	// precedence list_services uses).
-	callTool[struct{ ID string }](t, cs, "create_web_service",
-		map[string]any{"name": "explicit", "image": "nginx", "runtime": "image", "buildCommand": "", "startCommand": "", "ownerId": first.ID})
-	if got := appTenant(t, cl, "explicit"); got != first.ID {
-		t.Errorf("explicit ownerId landed in %q, want %q — an argument must beat the session selection", got, first.ID)
+		t.Errorf("explicit create landed in %q, want %q", got, second.ID)
 	}
 
 	// A workspace client-1 is not a member of: tool error, nothing created.
 	callToolError(t, cs, "create_web_service",
-		map[string]any{"name": "stranger", "image": "nginx", "runtime": "image", "buildCommand": "", "startCommand": "", "ownerId": "tea-not-mine"})
+		map[string]any{"name": "stranger", "image": "nginx", "runtime": "image", "buildCommand": "", "startCommand": "", "workspaceId": "tea-not-mine"})
 	var a appv1alpha1.App
 	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "stranger"}, &a); err == nil {
 		t.Errorf("a create into a non-member workspace wrote an App (%q) — it must be refused", a.Labels[core.LabelTenant])

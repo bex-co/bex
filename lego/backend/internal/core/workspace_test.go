@@ -148,6 +148,16 @@ func TestGetAppInAnotherOwnedWorkspaceIsNotForbidden(t *testing.T) {
 	}
 }
 
+func TestExplicitWorkspaceRejectsResourceOwnedByAnotherWorkspace(t *testing.T) {
+	cl := fakeAppClient(sampleApp("web", "tea-b"))
+	b := &Base{Client: cl, Namespace: "default", Workspace: aliceResolver(), Authz: &fakeAllowChecker{}}
+	ctx := WithWorkspace(aliceCtx(), "tea-a")
+
+	if _, err := b.GetApp(ctx, RelCanView, "web"); !errors.Is(err, ErrForbidden) {
+		t.Errorf("GetApp(workspaceId=tea-a) for a tea-b App: got %v, want ErrForbidden", err)
+	}
+}
+
 // TestGetAppInAnotherWorkspaceStillChecksTheRelationThere is what makes the
 // regression above safe to fix. Roles are PER workspace: an admin of tea-a may
 // be only a viewer of tea-b. Reaching an App by name must not carry tea-a's
@@ -184,17 +194,16 @@ func TestGetAppInAWorkspaceTheCallerDoesNotBelongToIsForbidden(t *testing.T) {
 	}
 }
 
-func TestGetAppNamedWorkspaceDoesNotHideTheCallersOtherApps(t *testing.T) {
-	// The App is in tea-a; the request explicitly acts in tea-b. tea-a is still
-	// hers, so the relation holds there and the App is served — the named
-	// workspace scopes where a CREATE lands (Tenant), it does not hide Apps she
-	// may otherwise reach by name.
+func TestGetAppNamedWorkspacePinsResourceLookup(t *testing.T) {
+	// The App is in tea-a; the request explicitly acts in tea-b. Even though
+	// both are hers, an explicit per-call workspace must never drift to another
+	// workspace during resource lookup.
 	cl := fakeAppClient(sampleApp("web", "tea-a"))
 	b := &Base{Client: cl, Namespace: "default", Workspace: aliceResolver(), Authz: &fakeAllowChecker{}}
 	ctx := WithWorkspace(aliceCtx(), "tea-b")
 
-	if _, err := b.GetApp(ctx, RelCanView, "web"); err != nil {
-		t.Errorf("GetApp: got %v, want served (the App is in another workspace of hers)", err)
+	if _, err := b.GetApp(ctx, RelCanView, "web"); !errors.Is(err, ErrForbidden) {
+		t.Errorf("GetApp: got %v, want ErrForbidden for an explicit workspace mismatch", err)
 	}
 }
 

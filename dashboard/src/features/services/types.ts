@@ -234,8 +234,6 @@ export interface StaticHeaderView {
 export interface CronRunView {
   /** Stable, opaque crr- id. */
   id: string;
-  /** Legacy nested-service alias; first-class reads set this to id. */
-  name: string;
   /** RFC3339 start time, or null if it hasn't started. */
   startedAt: string | null;
   /** RFC3339 completion/failure time, or null while running. */

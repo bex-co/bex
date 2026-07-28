@@ -27,23 +27,18 @@ import (
 // mcp.go is the env-groups MCP fragment (Render's official MCP has no env-group
 // tools, so these are bex extensions named after Render's env-groups REST noun).
 // Every tool delegates to the same Service method the REST/GraphQL surfaces call.
-// OwnerID on list/create (w6/m24) follows the shared ownerId precedence every
-// workspace-scoped MCP tool uses (core.SelectedWorkspace): explicit arg > the
-// session's select_workspace > the caller's default workspace.
 
 type envGroupArgs struct {
 	ID string `json:"id" jsonschema:"the env group id (evg-...)"`
 }
 
 type listEnvGroupsArgs struct {
-	OwnerID string `json:"ownerId,omitempty" jsonschema:"workspace id to list; defaults to the selected or caller's default workspace"`
-	Cursor  string `json:"cursor,omitempty" jsonschema:"opaque cursor from the last group in the previous page"`
-	Limit   int    `json:"limit,omitempty" jsonschema:"maximum groups to return (1-100); omitted returns the complete list for compatibility"`
+	Cursor string `json:"cursor,omitempty" jsonschema:"opaque cursor from the last group in the previous page"`
+	Limit  int    `json:"limit,omitempty" jsonschema:"maximum groups to return (1-100); omitted returns the complete list for compatibility"`
 }
 
 type createEnvGroupArgs struct {
 	Name          string              `json:"name" jsonschema:"the env group name"`
-	OwnerID       string              `json:"ownerId,omitempty" jsonschema:"workspace id to create the group in; defaults to the selected or caller's default workspace"`
 	EnvironmentID string              `json:"environmentId,omitempty" jsonschema:"optional environment id (env-...) in the same workspace to assign this group to"`
 	EnvVars       []CreateEnvVarInput `json:"envVars,omitempty" jsonschema:"optional initial {key,value|generateValue} variables"`
 	SecretFiles   []SecretFileView    `json:"secretFiles,omitempty" jsonschema:"optional initial {name,content} secret files"`
@@ -100,12 +95,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_env_groups",
 		Description: "List one workspace's environment groups with cursor paging (names, linked services, and env-var keys / secret-file names — no values); Render's name, environment, and timestamp filters are REST-only.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in listEnvGroupsArgs) (*mcp.CallToolResult, listEnvGroupsResult, error) {
-		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
-		if err != nil {
-			return nil, listEnvGroupsResult{}, err
-		}
-		groups, err := s.ListEnvGroups(ctx, ownerID)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listEnvGroupsArgs) (*mcp.CallToolResult, listEnvGroupsResult, error) {
+		groups, err := s.ListEnvGroups(ctx, core.NamedWorkspace(ctx))
 		if err == nil {
 			groups = pageEnvGroups(groups, in.Cursor, in.Limit, in.Cursor != "" || in.Limit != 0)
 		}
@@ -123,13 +114,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_env_group",
 		Description: "Create an environment group, optionally with initial variables, secret files, and service links in one atomic operation.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in createEnvGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
-		ownerID, err := core.SelectedWorkspace(ctx, s.Selections, req, in.OwnerID)
-		if err != nil {
-			return nil, EnvGroupView{}, err
-		}
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createEnvGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
 		g, err := s.CreateEnvGroup(ctx, CreateEnvGroupRequest{
-			Name: in.Name, OwnerID: ownerID,
+			Name: in.Name, OwnerID: core.NamedWorkspace(ctx),
 			EnvironmentID: in.EnvironmentID, EnvVars: in.EnvVars,
 			SecretFiles: in.SecretFiles, ServiceIDs: in.ServiceIDs,
 		})

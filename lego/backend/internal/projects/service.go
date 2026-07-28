@@ -99,7 +99,6 @@ type Service struct {
 	Databases    DatabaseIndex
 	KeyValues    KeyValueIndex
 	Environments EnvironmentIndex
-	Selections   core.WorkspaceSelectionReader
 }
 
 // ErrProjectsUnavailable is returned when the control-plane store is not wired

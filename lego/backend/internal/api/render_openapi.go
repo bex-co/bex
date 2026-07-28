@@ -224,8 +224,12 @@ func newRenderRequestValidator(next *http.ServeMux) (http.Handler, error) {
 }
 
 func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if retiredPublicRESTAlias(r) {
+		http.NotFound(w, r)
+		return
+	}
 	// A route that exists only in Render's much larger spec must retain bex's
-	// existing 404/405. Conversely, bex-native routes and aliases are outside
+	// existing 404/405. Conversely, bex-native routes are outside
 	// this contract and pass through byte-for-byte.
 	if _, pattern := v.next.Handler(r); pattern == "" {
 		v.next.ServeHTTP(w, r)
@@ -273,6 +277,26 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	}
 
 	v.next.ServeHTTP(w, r.WithContext(core.WithStrictJSONDecoding(r.Context())))
+}
+
+func retiredPublicRESTAlias(r *http.Request) bool {
+	path := r.URL.Path
+	switch {
+	case path == "/v1/apps" || strings.HasPrefix(path, "/v1/apps/"):
+		return true
+	case path == "/v1/databases" || strings.HasPrefix(path, "/v1/databases/"):
+		return true
+	case path == "/v1/registry-credentials" || strings.HasPrefix(path, "/v1/registry-credentials/"):
+		return true
+	case path == "/v1/webhooks/endpoints" || strings.HasPrefix(path, "/v1/webhooks/endpoints/"):
+		return true
+	case strings.HasPrefix(path, "/v1/postgres/") && strings.HasSuffix(path, "/exports"):
+		return true
+	case r.Method == http.MethodGet && strings.HasPrefix(path, "/v1/postgres/") && strings.HasSuffix(path, "/recovery-info"):
+		return true
+	default:
+		return false
+	}
 }
 
 func validateRenderRequest(ctx context.Context, request *http.Request, route *routers.Route, pathParams map[string]string) (err error) {

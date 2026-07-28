@@ -9,10 +9,10 @@
 services:
   - name: web
     type: web
+    runtime: docker
     repo: https://github.com/bex-co/bex # replace with your fork/checkout
     rootDir: examples/stack-demo
     plan: free
-    port: 3000
     healthCheckPath: /healthz
     envVars:
       - key: DATABASE_URL
@@ -21,6 +21,7 @@ services:
           property: connectionString
   - name: worker
     type: worker
+    runtime: docker
     repo: https://github.com/bex-co/bex
     rootDir: examples/stack-demo
     envVars:

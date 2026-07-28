@@ -18,7 +18,6 @@ package apps
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -50,16 +49,14 @@ const (
 )
 
 // deploy.go is the deploy-from-chat mapper (pillar 4): it turns a repo + a
-// render.yaml-shaped bex.yml into a stack of CreateRequests + Database specs and
+// Render Blueprint-shaped bex.yml into a stack of CreateRequests + Database specs and
 // rides Core.Create, so "deploy this repo (web + worker + postgres)" is one agent
 // call — no bespoke deploy endpoint (t001 amended 2026-07-08; multi-service form
 // w1/m24). The single-service field mapping mirrors scripts/app-apply.sh, the
 // reference bex.yml → CR projection.
 //
-// A bex.yml carries the render.yaml Blueprint shape: top-level `services:` +
-// `databases:` + `envVarGroups:`. The legacy single-service `apps:` list is
-// accepted as an alias for `services:` so pre-existing files parse
-// byte-identically. All validation is all-or-nothing: one invalid entry rejects
+// A bex.yml carries the Render Blueprint shape: top-level `services:` +
+// `databases:` + `envVarGroups:`. All validation is all-or-nothing: one invalid entry rejects
 // the whole apply with a per-entry error before any resource is written (w1/m24
 // DoD). Re-applying an unchanged file is a per-resource idempotent no-op — no
 // spurious restarts, no new deploy records.
@@ -81,9 +78,9 @@ const (
 type DeployRequest struct {
 	// OwnerID is the workspace to deploy INTO — the same optional, membership-checked
 	// `ownerId` contract Create has (w6/m14). Empty means the caller's default
-	// workspace. Deploy creates a service, so an agent that selected a workspace
-	// (MCP select_workspace) must land its deploy there, not in whichever workspace
-	// the caller happens to resolve to.
+	// workspace. Deploy creates a service, so an MCP call's explicit workspaceId
+	// must land its deploy there, not in whichever workspace the caller happens
+	// to resolve to.
 	OwnerID  string
 	Repo     string
 	Branch   string
@@ -164,11 +161,9 @@ type StackKeyValueView struct {
 // --- manifest shape (render.yaml Blueprint vocabulary) ---
 
 // bexManifest is the render.yaml-shaped bex.yml. Services may be declared under
-// either the Blueprint key `services:` or the legacy alias `apps:` (mutually
-// exclusive); databases live under `databases:`; env groups under
+// the Blueprint key `services:`; databases live under `databases:`; env groups under
 // `envVarGroups:` (materialized by name at apply, w1/m35).
 type bexManifest struct {
-	Apps         []bexService  `json:"apps"`         // legacy alias for services (single-service files)
 	Services     []bexService  `json:"services"`     // Blueprint services list
 	Databases    []bexDatabase `json:"databases"`    // Blueprint databases list
 	EnvVarGroups []bexEnvGroup `json:"envVarGroups"` // Blueprint env-groups list
@@ -213,32 +208,27 @@ type bexEnvGroup struct {
 	EnvVars []bexEnvVar `json:"envVars"`
 }
 
-// bexService is one entry in services:/apps:. It accepts render.yaml's field
-// names (plan, numInstances, type, runtime, domains, staticPublishPath, …) and
-// the bex aliases a legacy bex.yml uses (tier, replicas, port, publishPath).
+// bexService is one entry in services:. It accepts Render Blueprint field names
+// (plan, numInstances, type, runtime, domains, staticPublishPath, …).
 // Fields bex does not honor are parsed elsewhere or rejected with a clear error
 // (see docs/ADR018-render-parity.md's Blueprint row for the field-by-field map).
 type bexService struct {
-	Name      string    `json:"name"`
-	Type      string    `json:"type"`    // render.yaml short type: web|pserv|worker|cron (empty=web); runtime:static => static_site
-	Runtime   string    `json:"runtime"` // render.yaml runtime; "static" selects static_site, "image" => prebuilt
-	Plan      string    `json:"plan"`    // render.yaml plan (Render spelling)
-	Tier      string    `json:"tier"`    // bex alias for plan
-	Repo      string    `json:"repo"`
-	Branch    string    `json:"branch"`
-	Image     *bexImage `json:"image,omitempty"` // render.yaml image: {url} OR a bare image string (legacy)
-	ImagePath string    `json:"imagePath"`       // bex alias: bare prebuilt image
-	Builder   string    `json:"builder"`         // bex builder (auto|buildpack|dockerfile)
-	RootDir   string    `json:"rootDir"`
+	Name    string    `json:"name"`
+	Type    string    `json:"type"`    // render.yaml short type: web|pserv|worker|cron (empty=web); runtime:static => static_site
+	Runtime string    `json:"runtime"` // render.yaml runtime; "static" selects static_site, "image" => prebuilt
+	Plan    string    `json:"plan"`    // render.yaml plan (Render spelling)
+	Repo    string    `json:"repo"`
+	Branch  string    `json:"branch"`
+	Image   *bexImage `json:"image,omitempty"` // render.yaml image: {url}
+	Builder string    `json:"builder"`         // bex builder (auto|buildpack|dockerfile)
+	RootDir string    `json:"rootDir"`
 	// BuildFilter is render.yaml's Build Filters (paths/ignoredPaths globs) — the
 	// same {paths, ignoredPaths} shape every surface uses (BuildFilterView).
 	BuildFilter             *BuildFilterView    `json:"buildFilter"`
 	BuildCommand            string              `json:"buildCommand"`
 	StartCommand            string              `json:"startCommand"`
 	DockerfilePath          string              `json:"dockerfilePath"` // Render's Dockerfile Path, relative to rootDir; docker runtime only
-	NumInstances            int32               `json:"numInstances"`   // render.yaml; alias for replicas
-	Replicas                int32               `json:"replicas"`       // bex alias
-	Port                    int32               `json:"port"`           // bex (Render infers PORT env)
+	NumInstances            int32               `json:"numInstances"`   // render.yaml manual instance count
 	HealthCheckPath         string              `json:"healthCheckPath"`
 	Domains                 []string            `json:"domains"`
 	Schedule                string              `json:"schedule"`                // cron expression, required when type is cron
@@ -250,7 +240,6 @@ type bexService struct {
 	AutoDeploy              *bool               `json:"autoDeploy"`              // deprecated render.yaml bool; nil => default
 	AutoDeployTrigger       string              `json:"autoDeployTrigger"`       // render.yaml: commit|checksPass|off
 	StaticPublishPath       string              `json:"staticPublishPath"`       // render.yaml static-site publish dir
-	PublishPath             string              `json:"publishPath"`             // bex alias
 	EnvVars                 []bexEnvVar         `json:"envVars"`
 	IPAllowList             []bexIPEntry        `json:"ipAllowList"`
 	MaxmemoryPolicy         string              `json:"maxmemoryPolicy"`
@@ -279,29 +268,8 @@ type bexScaling struct {
 }
 
 // bexImage is render.yaml's `image: {url, creds}` — bex honors just the url.
-// It also accepts a bare image string (the legacy bex.yml spelling), so a
-// service entry can be either `image: nginx:1` or `image: {url: nginx:1}`.
 type bexImage struct {
 	URL string `json:"url"`
-}
-
-// UnmarshalJSON accepts image as either a bare string (legacy) or {url} object
-// (render.yaml). sigs.k8s.io/yaml routes YAML through JSON unmarshaling, so this
-// covers both the `apps:` legacy form and the `services:` Blueprint form.
-func (i *bexImage) UnmarshalJSON(data []byte) error {
-	var s string
-	if err := json.Unmarshal(data, &s); err == nil {
-		i.URL = s
-		return nil
-	}
-	var obj struct {
-		URL string `json:"url"`
-	}
-	if err := json.Unmarshal(data, &obj); err != nil {
-		return fmt.Errorf("image must be a string or {url: ...}: %w", err)
-	}
-	i.URL = obj.URL
-	return nil
 }
 
 // bexDatabase is one entry in databases:. Field names follow render.yaml; bex
@@ -464,7 +432,7 @@ var dbPropertyKey = map[string]string{
 
 // serviceRefProperty is the set of fromService properties bex honors for a
 // web/private service (host/port/hostport), resolved to literal env values:
-// port at parse (declared in the same file); host/hostport at apply, injecting
+// port at parse (the platform default); host/hostport at apply, injecting
 // the sibling's slug — the hostname the operator's slug-named Service makes
 // resolvable in-cluster (docs/ADR041-service-addresses.md D3, w9/m57).
 var serviceRefProperty = map[string]bool{
@@ -481,27 +449,6 @@ var kvPropertyKey = map[string]string{
 	"password":         "password",
 }
 
-// Deploy maps a repo + single-service bex.yml onto one Create — the legacy
-// contract (a repo maps to one service). It delegates to DeployStack and returns
-// the single service for a one-service, zero-database manifest; a multi-resource
-// manifest is rejected here with a pointer to the stack form (the MCP `deploy`
-// tool is the stack entry point). Re-applying an unchanged file is an idempotent
-// no-op, not a forced redeploy (w1/m24 DoD).
-func (s *Service) Deploy(ctx context.Context, req DeployRequest) (AppView, error) {
-	ctx = core.WithWorkspace(ctx, req.OwnerID)
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
-		return AppView{}, err
-	}
-	res, err := s.deployStack(ctx, req)
-	if err != nil {
-		return AppView{}, err
-	}
-	if len(res.Services) != 1 || len(res.Databases) != 0 {
-		return AppView{}, fmt.Errorf("%w: bex.yml declares %d service(s) + %d database(s); a single-service deploy takes exactly one service and no databases (use the stack form for multi-resource manifests)", core.ErrBadRequest, len(res.Services), len(res.Databases))
-	}
-	return res.Services[0], nil
-}
-
 // DeployStack applies a whole bex.yml in one call: databases first (dependents
 // reference them via fromDatabase), then services, each as an idempotent upsert.
 // All validation runs in parseStack before any write — one invalid entry rejects
@@ -514,8 +461,8 @@ func (s *Service) DeployStack(ctx context.Context, req DeployRequest) (StackResu
 	return s.deployStack(ctx, req)
 }
 
-// deployStack is the unauthorized core (Authorize runs once in each entry point)
-// — shared by Deploy (single-service) and DeployStack (stack).
+// deployStack is the unauthorized core; DeployStack authorizes once before
+// parsing and applying the stack.
 func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResult, error) {
 	st, err := parseStack(req)
 	if err != nil {
@@ -832,6 +779,9 @@ func (s *Service) preflightBlueprintEnv(ctx context.Context, st parsedStack) err
 // list it; the whole parse fails on the first error (w1/m24 DoD: nothing
 // half-created).
 func parseStack(req DeployRequest) (parsedStack, error) {
+	if err := validateBlueprintDialect(req.Manifest); err != nil {
+		return parsedStack{}, err
+	}
 	var m bexManifest
 	if err := yaml.Unmarshal([]byte(req.Manifest), &m); err != nil {
 		return parsedStack{}, fmt.Errorf("%w: bex.yml is not valid YAML: %v", core.ErrBadRequest, err)
@@ -846,15 +796,8 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 		grouping  string
 		ungrouped bool
 	}
-	services := make([]serviceDecl, 0, len(m.Services)+len(m.Apps))
-	rootServices := m.Services
-	if len(m.Apps) > 0 {
-		if len(m.Services) > 0 {
-			return parsedStack{}, fmt.Errorf("%w: use either services: or apps:, not both", core.ErrBadRequest)
-		}
-		rootServices = m.Apps
-	}
-	for _, service := range rootServices {
+	services := make([]serviceDecl, 0, len(m.Services))
+	for _, service := range m.Services {
 		services = append(services, serviceDecl{value: service})
 	}
 	databases := make([]databaseDecl, 0, len(m.Databases))
@@ -1074,6 +1017,70 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 	return st, nil
 }
 
+// validateBlueprintDialect rejects bex's retired manifest spellings before the
+// typed YAML decode. The messages name the canonical Render replacement instead
+// of allowing yaml.Unmarshal to silently discard unknown fields.
+func validateBlueprintDialect(manifest string) error {
+	var root map[string]any
+	if err := yaml.Unmarshal([]byte(manifest), &root); err != nil {
+		return nil // parseStack reports the canonical malformed-YAML error below.
+	}
+	if _, ok := root["apps"]; ok {
+		return fmt.Errorf("%w: top-level apps is retired; rename it to services", core.ErrBadRequest)
+	}
+	return validateBlueprintServiceNodes(root)
+}
+
+func validateBlueprintServiceNodes(node any) error {
+	switch value := node.(type) {
+	case map[string]any:
+		if rawServices, ok := value["services"]; ok {
+			if services, ok := rawServices.([]any); ok {
+				for _, rawService := range services {
+					service, ok := rawService.(map[string]any)
+					if !ok {
+						continue
+					}
+					name, _ := service["name"].(string)
+					if name == "" {
+						name = "<unnamed>"
+					}
+					for _, retired := range []struct{ field, replacement string }{
+						{"tier", "plan"},
+						{"replicas", "numInstances"},
+						{"imagePath", "image: {url: ...}"},
+						{"publishPath", "staticPublishPath"},
+					} {
+						if _, present := service[retired.field]; present {
+							return fmt.Errorf("%w: service %q uses retired Blueprint field %q; use %s", core.ErrBadRequest, name, retired.field, retired.replacement)
+						}
+					}
+					if _, present := service["port"]; present {
+						return fmt.Errorf("%w: service %q uses retired Blueprint field %q; remove it and listen on the platform-provided PORT", core.ErrBadRequest, name, "port")
+					}
+					if image, present := service["image"]; present {
+						if _, bare := image.(string); bare {
+							return fmt.Errorf("%w: service %q uses a bare image string; use image: {url: ...}", core.ErrBadRequest, name)
+						}
+					}
+				}
+			}
+		}
+		for _, child := range value {
+			if err := validateBlueprintServiceNodes(child); err != nil {
+				return err
+			}
+		}
+	case []any:
+		for _, child := range value {
+			if err := validateBlueprintServiceNodes(child); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // parseEnvGroup validates one envVarGroups[] entry and classifies its vars into
 // literals + generateValue keys. Per Render, a group var may be only a literal or
 // a generateValue — a group cannot reference services/groups (fromService/
@@ -1130,7 +1137,7 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, e
 		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q uses secretFiles, which Render's Blueprint schema does not support; use createService secretFiles or the secret-files API", core.ErrBadRequest, a.Name)
 	}
 	repo := a.Repo
-	if dep.Repo != "" {
+	if dep.Repo != "" && a.Image == nil {
 		repo = dep.Repo // the explicit deploy target wins over the manifest
 	}
 	branch := a.Branch
@@ -1148,11 +1155,7 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, e
 		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: %s has no ingress and cannot list domains", core.ErrBadRequest, a.Name)
 	}
 
-	// Plan: render.yaml `plan` or the bex `tier` alias (Render spelling accepted).
 	plan := a.Plan
-	if plan == "" {
-		plan = a.Tier
-	}
 	// Render Blueprints default a service carrying this paid-only field to a
 	// paid starter plan when no plan is declared.
 	if plan == "" && a.MaintenanceMode != nil {
@@ -1168,21 +1171,12 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, e
 			return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q maintenanceMode.uri: %v", core.ErrBadRequest, a.Name, err)
 		}
 	}
-	// Replicas: render.yaml `numInstances` or the bex `replicas` alias.
 	replicas := a.NumInstances
-	if replicas == 0 {
-		replicas = a.Replicas
-	}
-	// Image: render.yaml `image.url` or the bex bare alias.
-	image := a.ImagePath
+	image := ""
 	if a.Image != nil && a.Image.URL != "" {
 		image = a.Image.URL
 	}
-	// Static publish dir: render.yaml `staticPublishPath` or the bex alias.
 	publish := a.StaticPublishPath
-	if publish == "" {
-		publish = a.PublishPath
-	}
 	runtime := a.Runtime
 	if strings.EqualFold(runtime, "static") {
 		runtime = "" // static is represented by the service type, not an App runtime
@@ -1260,7 +1254,7 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, e
 		RootDir:                 a.RootDir,
 		BuildFilter:             a.BuildFilter,
 		DockerfilePath:          a.DockerfilePath,
-		Port:                    a.Port,
+		Port:                    0,
 		Replicas:                replicas,
 		Plan:                    plan,
 		HealthCheckPath:         a.HealthCheckPath,

@@ -91,11 +91,6 @@ type Service struct {
 	// EventFacts persists closed, non-secret service activity that cannot be
 	// represented by an ordinary authorization audit row. nil in store-less mode.
 	EventFacts store.EventFactWriter
-	// Selections is the shared MCP per-session workspace selection (w6/m2/t005):
-	// list_services falls back to the caller's selected workspace when its
-	// ownerId argument is omitted. Read-only (apps never selects a workspace,
-	// only workspaces.Service's select_workspace does). Nil => no fallback.
-	Selections core.WorkspaceSelectionReader
 	// GitHub, when set (the GitHub App + control-plane store are wired), mints a
 	// fresh installation token and writes the <app>-clone Secret on every deploy
 	// trigger whose repo belongs to the workspace's connection, so private repos
@@ -333,8 +328,8 @@ type AppView struct {
 	// slug + port), so surfacing it is additive on the Render-compatible
 	// surfaces.
 	InternalAddress string `json:"internalAddress,omitempty"`
-	CreatedAt  string `json:"createdAt"`
-	UpdatedAt  string `json:"updatedAt,omitempty"`
+	CreatedAt       string `json:"createdAt"`
+	UpdatedAt       string `json:"updatedAt,omitempty"`
 	// DashboardURL is the control-plane detail route, in Render's
 	// `/{web|worker|pserv|static|cron}/{id}` shape (docs/render-artifacts/
 	// dashboard-routes.md). URL above remains the hosted data-plane endpoint;
@@ -704,13 +699,13 @@ func view(a *appv1alpha1.App) AppView {
 		phase = "Deleting"
 	}
 	return AppView{
-		ID:                    appID,
-		Name:                  name,
-		Slug:                  a.Spec.PlatformSubdomain(a.Name),
-		DisplayName:           a.Spec.DisplayName,
-		Type:                  svcType,
-		Phase:                 phase,
-		URL: a.Status.URL,
+		ID:          appID,
+		Name:        name,
+		Slug:        a.Spec.PlatformSubdomain(a.Name),
+		DisplayName: a.Spec.DisplayName,
+		Type:        svcType,
+		Phase:       phase,
+		URL:         a.Status.URL,
 		// The contract-level derivation (types/v1alpha1) the operator's slug
 		// Service answers — surfaced string and resolvable hostname cannot
 		// drift (ADR041 D2/D4).
@@ -1241,7 +1236,7 @@ type CreateRequest struct {
 	// membership), so a single-workspace client never has to say it; a workspace
 	// the caller is not a member of is core.ErrForbidden, never a create that
 	// silently lands somewhere else. All three surfaces fill it (REST body,
-	// GraphQL arg, the MCP session's selected workspace), so the workspace a
+	// GraphQL arg, or MCP's per-call workspaceId), so the workspace a
 	// create targets is decided in exactly one place: Create.
 	OwnerID string
 	// EnvironmentID optionally assigns the new service to an existing

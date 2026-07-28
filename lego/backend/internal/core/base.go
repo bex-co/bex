@@ -261,7 +261,7 @@ func (b *Base) Now() time.Time {
 // CLAUDE.md), so it's resolved here rather than threaded through 80+ call
 // sites — a write-relation verb can't opt out of being recorded.
 // A caller who NAMES a workspace (core.WithWorkspace — REST/GraphQL ownerId, an
-// MCP session's select_workspace) is checked against THAT workspace instead of
+// MCP's per-call workspaceId) is checked against THAT workspace instead of
 // their default one, but only once they are shown to be a member of it: naming a
 // workspace the caller does not belong to is ErrForbidden, never a silent
 // fall-back to their own (that fall-back is the confused-deputy shape — the
@@ -319,6 +319,22 @@ func (b *Base) resolveWorkspace(ctx context.Context) (string, error) {
 		return cached.acting, cached.err
 	}
 	return b.resolveWorkspaceUncached(ctx)
+}
+
+// ValidateNamedWorkspace verifies the membership behind an adapter-supplied
+// explicit workspace before a typed handler runs. It deliberately does
+// nothing when no workspace was named: the handler will resolve the caller's
+// normal default through the same Base path. An explicit workspace cannot be
+// validated in store-off mode and therefore fails closed.
+func (b *Base) ValidateNamedWorkspace(ctx context.Context) error {
+	if _, named := WorkspaceFrom(ctx); !named {
+		return nil
+	}
+	if b == nil || b.Workspace == nil {
+		return ErrAuthzUnavailable
+	}
+	_, err := b.resolveWorkspace(ctx)
+	return err
 }
 
 // resolveWorkspaceMemo is resolveWorkspace plus context memoization. Use it when
@@ -704,6 +720,9 @@ func (b *Base) resourceWorkspaceFor(ctx context.Context, acting string, actingEr
 		return DefaultWorkspace, nil
 	}
 	owner := labels[LabelTenant]
+	if named, explicit := WorkspaceFrom(ctx); explicit && owner != "" && owner != named {
+		return WorkspaceObject(named), ErrForbidden
+	}
 	switch {
 	case owner == "":
 		return WorkspaceObject(acting), ErrForbidden
@@ -881,6 +900,9 @@ func (b *Base) AuthorizeLabeled(ctx context.Context, relation string, labels map
 		return nil
 	}
 	owner := labels[LabelTenant]
+	if named, explicit := WorkspaceFrom(ctx); explicit && owner != "" && owner != named {
+		return ErrForbidden
+	}
 	if owner == acting {
 		return nil
 	}

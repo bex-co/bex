@@ -20,6 +20,8 @@ import (
 	"context"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // mcp.go is the registry-credentials MCP fragment. A bex superset — Render's
@@ -30,10 +32,6 @@ import (
 // (authToken) is accepted on create/update but never returned by any tool —
 // the same "write-only past creation" rule REST/GraphQL hold.
 
-type listCredentialsArgs struct {
-	OwnerID string `json:"ownerId,omitempty" jsonschema:"restrict the list to this workspace id (tea-…); omit to use the session's selected workspace, if any"`
-}
-
 type listCredentialsResult struct {
 	Credentials []credentialWire `json:"credentials"`
 }
@@ -43,7 +41,6 @@ type getCredentialArgs struct {
 }
 
 type createCredentialArgs struct {
-	OwnerID   string `json:"ownerId,omitempty" jsonschema:"the workspace id (tea-…) to create the credential in; omit to use the session's selected workspace, if any"`
 	Name      string `json:"name,omitempty" jsonschema:"a human display label; defaults to host when omitted"`
 	Host      string `json:"host" jsonschema:"the registry hostname the credential authenticates to, e.g. ghcr.io, docker.io, registry.gitlab.com"`
 	Username  string `json:"username" jsonschema:"the registry username"`
@@ -75,8 +72,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_registry_credentials",
 		Description: "List the workspace's stored external image-registry credentials (host, username, expiry status — never the secret). Use this before create_registry_credential to check whether a host is already configured.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listCredentialsArgs) (*mcp.CallToolResult, listCredentialsResult, error) {
-		views, err := s.List(ctx, in.OwnerID)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listCredentialsResult, error) {
+		views, err := s.List(ctx, core.NamedWorkspace(ctx))
 		if err != nil {
 			return nil, listCredentialsResult{}, err
 		}
@@ -103,7 +100,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			return nil, credentialWire{}, err
 		}
 		v, err := s.Create(ctx, CreateRequest{
-			OwnerID: in.OwnerID, Name: in.Name, Host: in.Host, Username: in.Username,
+			OwnerID: core.NamedWorkspace(ctx), Name: in.Name, Host: in.Host, Username: in.Username,
 			Secret: in.AuthToken, ExpiresAt: expiresAt,
 		})
 		if err != nil {

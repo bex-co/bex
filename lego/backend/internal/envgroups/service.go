@@ -57,12 +57,6 @@ type Service struct {
 	// groups available while honestly refusing an association the process cannot
 	// validate.
 	EnvironmentWorkspace func(ctx context.Context, environmentID string) (string, error)
-	// Selections is the shared MCP per-session workspace selection (w6/m24,
-	// mirroring apps/postgres/keyvalue/apikeys, core.WorkspaceSelectionReader):
-	// list_env_groups'/create_env_group's ownerId precedence (explicit arg > the
-	// session's select_workspace > the caller's default). nil degrades to
-	// explicit-arg-or-default.
-	Selections core.WorkspaceSelectionReader
 }
 
 // EnvVarView is a group env var ({key, value}); value is empty in list/get

@@ -33,7 +33,7 @@ import (
 // list envelope, honoring status, created/updated/finished time bounds,
 // cursor, and limit), GET .../deploys/{id}, POST .../deploys (trigger),
 // POST .../deploys/{id}/cancel, and POST .../rollback. Served under both
-// /v1/services and /v1/apps, same as every other apps-adjacent route.
+// /v1/services, the canonical Render service route.
 // Behavior lives in the Service, so GraphQL and MCP stay identical.
 
 // renderCommit is Render's nested deploy.commit object — the resolved commit
@@ -177,112 +177,111 @@ func filterFromQuery(q url.Values) (ListFilter, error) {
 // unconfigured => the Service returns core.ErrDeploysUnavailable => 503 on
 // these routes only.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
-	for _, base := range []string{"/v1/services", "/v1/apps"} {
-		// Deploy-hook management is authenticated like every other service setting.
-		// The URL itself is the credential, so prevent intermediary/browser caches
-		// from retaining either a read or a newly rotated value.
-		mux.HandleFunc("GET "+base+"/{id}/deploy-hook", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Cache-Control", "no-store")
-			hook, err := s.GetDeployHook(r.Context(), r.PathValue("id"))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, hook)
+	const base = "/v1/services"
+	// Deploy-hook management is authenticated like every other service setting.
+	// The URL itself is the credential, so prevent intermediary/browser caches
+	// from retaining either a read or a newly rotated value.
+	mux.HandleFunc("GET "+base+"/{id}/deploy-hook", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		hook, err := s.GetDeployHook(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, hook)
+	})
+	mux.HandleFunc("POST "+base+"/{id}/deploy-hook/regenerate", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		hook, err := s.RegenerateDeployHook(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, hook)
+	})
+	mux.HandleFunc("GET "+base+"/{id}/deploys", func(w http.ResponseWriter, r *http.Request) {
+		filter, err := filterFromQuery(r.URL.Query())
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		deploys, err := s.List(r.Context(), r.PathValue("id"), filter)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toDeployList(deploys))
+	})
+	mux.HandleFunc("GET "+base+"/{id}/deploys/{deployId}", func(w http.ResponseWriter, r *http.Request) {
+		d, err := s.Get(r.Context(), r.PathValue("id"), r.PathValue("deployId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toRenderDeploy(d))
+	})
+	// Trigger (Render's POST .../deploys): decode the optional body fields
+	// bex can honestly honor (commitId, deployMode). clearCache is Render's
+	// string enum "clear" | "do_not_clear" (cli/pkg/client/types_gen.go's
+	// CreateDeployJSONBodyClearCache) — NOT a bool; the official CLI always
+	// sends it explicitly (defaulting to "do_not_clear" absent --clear-cache),
+	// so a bool-typed field here 400s every deploys-create call the CLI
+	// makes. bex builds are always cache-free (ephemeral BuildKit Jobs, no
+	// --cache-to/--cache-from) — "clear" and "do_not_clear" are both
+	// already-true no-ops, so any recognized value (or an omitted one) is
+	// accepted rather than rejected; only a value outside the enum 400s.
+	mux.HandleFunc("POST "+base+"/{id}/deploys", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			CommitID   string `json:"commitId"`
+			ClearCache string `json:"clearCache"`
+			DeployMode string `json:"deployMode"`
+			ImageURL   string `json:"imageUrl"`
+		}
+		if err := core.DecodeJSON(r, &body); err != nil && !errors.Is(err, io.EOF) {
+			core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
+			return
+		}
+		if body.ClearCache != "" && body.ClearCache != "clear" && body.ClearCache != "do_not_clear" {
+			core.WriteErr(w, fmt.Errorf("%w: unknown clearCache %q (valid: clear, do_not_clear)",
+				core.ErrBadRequest, body.ClearCache))
+			return
+		}
+		d, err := s.Trigger(r.Context(), r.PathValue("id"), TriggerParams{
+			CommitID:   body.CommitID,
+			DeployMode: body.DeployMode,
+			ImageURL:   body.ImageURL,
 		})
-		mux.HandleFunc("POST "+base+"/{id}/deploy-hook/regenerate", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Cache-Control", "no-store")
-			hook, err := s.RegenerateDeployHook(r.Context(), r.PathValue("id"))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, hook)
-		})
-		mux.HandleFunc("GET "+base+"/{id}/deploys", func(w http.ResponseWriter, r *http.Request) {
-			filter, err := filterFromQuery(r.URL.Query())
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			deploys, err := s.List(r.Context(), r.PathValue("id"), filter)
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, toDeployList(deploys))
-		})
-		mux.HandleFunc("GET "+base+"/{id}/deploys/{deployId}", func(w http.ResponseWriter, r *http.Request) {
-			d, err := s.Get(r.Context(), r.PathValue("id"), r.PathValue("deployId"))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, toRenderDeploy(d))
-		})
-		// Trigger (Render's POST .../deploys): decode the optional body fields
-		// bex can honestly honor (commitId, deployMode). clearCache is Render's
-		// string enum "clear" | "do_not_clear" (cli/pkg/client/types_gen.go's
-		// CreateDeployJSONBodyClearCache) — NOT a bool; the official CLI always
-		// sends it explicitly (defaulting to "do_not_clear" absent --clear-cache),
-		// so a bool-typed field here 400s every deploys-create call the CLI
-		// makes. bex builds are always cache-free (ephemeral BuildKit Jobs, no
-		// --cache-to/--cache-from) — "clear" and "do_not_clear" are both
-		// already-true no-ops, so any recognized value (or an omitted one) is
-		// accepted rather than rejected; only a value outside the enum 400s.
-		mux.HandleFunc("POST "+base+"/{id}/deploys", func(w http.ResponseWriter, r *http.Request) {
-			var body struct {
-				CommitID   string `json:"commitId"`
-				ClearCache string `json:"clearCache"`
-				DeployMode string `json:"deployMode"`
-				ImageURL   string `json:"imageUrl"`
-			}
-			if err := core.DecodeJSON(r, &body); err != nil && !errors.Is(err, io.EOF) {
-				core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
-				return
-			}
-			if body.ClearCache != "" && body.ClearCache != "clear" && body.ClearCache != "do_not_clear" {
-				core.WriteErr(w, fmt.Errorf("%w: unknown clearCache %q (valid: clear, do_not_clear)",
-					core.ErrBadRequest, body.ClearCache))
-				return
-			}
-			d, err := s.Trigger(r.Context(), r.PathValue("id"), TriggerParams{
-				CommitID:   body.CommitID,
-				DeployMode: body.DeployMode,
-				ImageURL:   body.ImageURL,
-			})
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusCreated, toRenderDeploy(d))
-		})
-		// Cancel (Render's POST .../deploys/{deployId}/cancel, w2/m10): past the
-		// cancelable window this is a 409, never a silent no-op.
-		mux.HandleFunc("POST "+base+"/{id}/deploys/{deployId}/cancel", func(w http.ResponseWriter, r *http.Request) {
-			d, err := s.Cancel(r.Context(), r.PathValue("id"), r.PathValue("deployId"))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, toRenderDeploy(d))
-		})
-		// Rollback (Render's POST .../rollback {deployId}, w2/m10): a fresh
-		// deploy restoring deployId's exact image, never a history rewrite.
-		mux.HandleFunc("POST "+base+"/{id}/rollback", func(w http.ResponseWriter, r *http.Request) {
-			var body struct {
-				DeployID string `json:"deployId"`
-			}
-			if err := core.DecodeJSON(r, &body); err != nil {
-				core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
-				return
-			}
-			d, err := s.Rollback(r.Context(), r.PathValue("id"), body.DeployID)
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusCreated, toRenderDeploy(d))
-		})
-	}
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusCreated, toRenderDeploy(d))
+	})
+	// Cancel (Render's POST .../deploys/{deployId}/cancel, w2/m10): past the
+	// cancelable window this is a 409, never a silent no-op.
+	mux.HandleFunc("POST "+base+"/{id}/deploys/{deployId}/cancel", func(w http.ResponseWriter, r *http.Request) {
+		d, err := s.Cancel(r.Context(), r.PathValue("id"), r.PathValue("deployId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toRenderDeploy(d))
+	})
+	// Rollback (Render's POST .../rollback {deployId}, w2/m10): a fresh
+	// deploy restoring deployId's exact image, never a history rewrite.
+	mux.HandleFunc("POST "+base+"/{id}/rollback", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			DeployID string `json:"deployId"`
+		}
+		if err := core.DecodeJSON(r, &body); err != nil {
+			core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
+			return
+		}
+		d, err := s.Rollback(r.Context(), r.PathValue("id"), body.DeployID)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusCreated, toRenderDeploy(d))
+	})
 }

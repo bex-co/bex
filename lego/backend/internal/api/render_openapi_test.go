@@ -387,10 +387,13 @@ func TestRenderRequestValidatorBodyIsBytePreservedAndDefaultsAreNotInjected(t *t
 
 func TestRenderRequestValidatorPassThroughBoundaries(t *testing.T) {
 	mux := http.NewServeMux()
-	var aliasBody string
+	var nativeBody string
 	mux.HandleFunc("POST /v1/apps", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusAccepted)
+	})
+	mux.HandleFunc("POST /v1/native", func(w http.ResponseWriter, r *http.Request) {
 		data, _ := io.ReadAll(r.Body)
-		aliasBody = string(data)
+		nativeBody = string(data)
 		w.WriteHeader(http.StatusAccepted)
 	})
 	h, err := newRenderRequestValidator(mux)
@@ -399,8 +402,12 @@ func TestRenderRequestValidatorPassThroughBoundaries(t *testing.T) {
 	}
 	body := `{"unknown":"kept"} {"trailing":"kept"}`
 	w := requestOpenAPITest(t, h, http.MethodPost, "/v1/apps?unknown=kept", "text/plain", body)
-	if w.Code != http.StatusAccepted || aliasBody != body {
-		t.Fatalf("alias changed: status=%d body=%q", w.Code, aliasBody)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("retired alias status=%d, want 404", w.Code)
+	}
+	w = requestOpenAPITest(t, h, http.MethodPost, "/v1/native?unknown=kept", "text/plain", body)
+	if w.Code != http.StatusAccepted || nativeBody != body {
+		t.Fatalf("native route changed: status=%d body=%q", w.Code, nativeBody)
 	}
 	w = requestOpenAPITest(t, h, http.MethodGet, "/v1/disks", "", "")
 	if w.Code != http.StatusNotFound {

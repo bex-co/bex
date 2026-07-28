@@ -137,7 +137,7 @@ func TestMaintenanceModeBlueprintOmissionAndPaidDefault(t *testing.T) {
 	stack, err := parseStack(DeployRequest{Manifest: `services:
   - type: web
     name: web
-    image: nginx:1
+    image: {url: nginx:1}
     maintenanceMode:
       enabled: true
 `})
@@ -168,7 +168,7 @@ func TestMaintenanceModeBlueprintValidateApplyAndResync(t *testing.T) {
   - type: web
     name: web
     plan: starter
-    image: nginx:1
+    image: {url: nginx:1}
     maintenanceMode:
       enabled: true
       uri: https://status.example.com/maintenance
@@ -190,7 +190,7 @@ func TestMaintenanceModeBlueprintValidateApplyAndResync(t *testing.T) {
   - type: web
     name: web
     plan: starter
-    image: nginx:1
+    image: {url: nginx:1}
 `
 	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: omitted}); err != nil {
 		t.Fatalf("omitted re-sync: %v", err)
@@ -216,7 +216,7 @@ func TestMaintenanceModeBlueprintValidateApplyAndResync(t *testing.T) {
 	// maintenance portion through the same typed effects as every other surface.
 	sink := &maintenanceAuditSink{}
 	svc.Audit = sink
-	mixed := strings.Replace(custom, "image: nginx:1", "image: nginx:2", 1)
+	mixed := strings.Replace(custom, "image: {url: nginx:1}", "image: {url: nginx:2}", 1)
 	mixed = strings.Replace(mixed, "https://status.example.com/maintenance", "https://status.example.com/next", 1)
 	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: mixed}); err != nil {
 		t.Fatalf("mixed Blueprint update: %v", err)
@@ -246,11 +246,11 @@ func TestMaintenanceModeBlueprintInvalidStackWritesNothing(t *testing.T) {
   - type: web
     name: valid
     plan: starter
-    image: nginx:1
+    image: {url: nginx:1}
   - type: web
     name: invalid
     plan: starter
-    image: nginx:1
+    image: {url: nginx:1}
     maintenanceMode:
       enabled: true
       uri: https://invalid.onbex.co/maintenance
@@ -283,7 +283,7 @@ func TestMaintenanceModeBlueprintRejectsInvalidPlacementAndURIWithoutWrites(t *t
   - type: web
     name: web
     plan: free
-    image: nginx:1
+    image: {url: nginx:1}
     maintenanceMode:
       enabled: true
 `,
@@ -295,7 +295,7 @@ func TestMaintenanceModeBlueprintRejectsInvalidPlacementAndURIWithoutWrites(t *t
   - type: worker
     name: worker
     plan: starter
-    image: nginx:1
+    image: {url: nginx:1}
     maintenanceMode:
       enabled: true
 `,
@@ -307,7 +307,7 @@ func TestMaintenanceModeBlueprintRejectsInvalidPlacementAndURIWithoutWrites(t *t
   - type: web
     name: web
     plan: starter
-    image: nginx:1
+    image: {url: nginx:1}
     maintenanceMode:
       enabled: true
       uri: ftp://status.example.com/page

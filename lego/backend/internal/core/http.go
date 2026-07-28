@@ -35,7 +35,8 @@ type strictJSONDecodingKey struct{}
 
 // WithStrictJSONDecoding marks a request whose JSON body must reject unknown
 // fields and trailing values. The Render OpenAPI gate sets it only for the
-// bex∩Render route intersection, leaving bex-native aliases byte-compatible.
+// bex∩Render route intersection; bex-native extension routes retain their
+// existing decoding behavior unless they opt in separately.
 func WithStrictJSONDecoding(ctx context.Context) context.Context {
 	return context.WithValue(ctx, strictJSONDecodingKey{}, true)
 }

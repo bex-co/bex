@@ -1,14 +1,14 @@
 # bex.yml — Python (Flask) hello-world web service.
 # Replace repo/rootDir with your own checkout; bex builds from the Dockerfile and
 # returns a live https URL. A git push redeploys automatically via the push webhook.
-apps:
+services:
   - name: hello-python
+    type: web
+    runtime: docker
     repo: https://github.com/bex-co/bex # replace with your fork/checkout
     rootDir: examples/hello-python
     branch: main
-    builder: auto # Dockerfile present ⇒ docker build
-    port: 3000
-    tier: free
+    plan: free
     healthCheckPath: /healthz
     envVars:
       - key: MESSAGE

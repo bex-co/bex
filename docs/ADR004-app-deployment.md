@@ -113,14 +113,13 @@ Rather than hand-writing `kubectl patch`, a project can carry a `bex.yml` at its
 
 ```yaml
 # bex.yml
-apps:
+services:
   - name: my-app
-    type:
-      web # web (default): public — <name>.<base-domain> auto-assigned.
-      # private: in-cluster only (ClusterIP, no Ingress, no domains).
-    image: my-app:<sha> # or repo: + branch: to build from git
-    port: 3000
-    replicas: 1
+    type: web # public; use pserv for a private service
+    runtime: image
+    image: { url: my-app:<sha> }
+    # For a git build, use runtime: docker plus repo/branch instead of image.
+    numInstances: 1
     healthCheckPath: / # GET path the operator probes for pod readiness (2xx/3xx → ready); defaults to "/"
 
     envVars: # literal (non-secret) config -> App.spec.env (PORT is operator-owned)
@@ -131,13 +130,13 @@ apps:
       - www.customer.com # rest -> App.spec.hosts (each gets its own TLS cert)
 ```
 
-`envVars` are **literal, non-secret** configuration: they map to `App.spec.env` and are set on the container in order, with the operator-owned `PORT` always appended last so a user variable can never shadow it. `PORT` aside, an App received no configuration at all before this. **The container must listen on `$PORT`** (the App's `port`, default 3000) — bex routes and health-checks that port, and unlike Render there is no listening-port auto-detection; tenant containers also **cannot bind ports below 1024** (all Linux capabilities are dropped, [ADR022-tenant-isolation.md](ADR022-tenant-isolation.md)), so a stock image that defaults to `:80` (nginx, httpd, whoami) must be pointed at a high port. A rollout stuck on either mistake surfaces the diagnosis on the failed deploy itself: the operator inspects crash-looping/unpullable pods and stamps an actionable message that closes the deploy as its `failureReason` (w9/011, REST/GraphQL/MCP + the dashboard's deploy page). **Credentials** (a database URL, an API key) don't belong in `bex.yml` — set them through the env-vars API ([ADR006-bex-api.md](ADR006-bex-api.md#env-vars--tenant-secrets-render-env-vars-compatible)), which stores them in OpenBao and materializes a `<name>-env` Secret consumed via `App.spec.envFromSecret` ([ADR013-secrets.md](ADR013-secrets.md#product-usage-w4m6-the-env-vars-api)).
+`envVars` are **literal, non-secret** configuration: they map to `App.spec.env` and are set on the container in order, with the operator-owned `PORT` always appended last so a user variable can never shadow it. `PORT` aside, an App received no configuration at all before this. **The container must listen on `$PORT`** (the platform default is 3000) — bex routes and health-checks that port, and unlike Render there is no listening-port auto-detection; Blueprint `port` is not accepted. Tenant containers also **cannot bind ports below 1024** (all Linux capabilities are dropped, [ADR022-tenant-isolation.md](ADR022-tenant-isolation.md)), so a stock image that defaults to `:80` (nginx, httpd, whoami) must be pointed at a high port. A rollout stuck on either mistake surfaces the diagnosis on the failed deploy itself: the operator inspects crash-looping/unpullable pods and stamps an actionable message that closes the deploy as its `failureReason` (w9/011, REST/GraphQL/MCP + the dashboard's deploy page). **Credentials** (a database URL, an API key) don't belong in `bex.yml` — set them through the env-vars API ([ADR006-bex-api.md](ADR006-bex-api.md#env-vars--tenant-secrets-render-env-vars-compatible)), which stores them in OpenBao and materializes a `<name>-env` Secret consumed via `App.spec.envFromSecret` ([ADR013-secrets.md](ADR013-secrets.md#product-usage-w4m6-the-env-vars-api)).
 
-Like render.yaml, **the service `type` decides exposure** — a `web` service is public by definition and its platform hostname is mandatory (there is no opt-out flag); `private` services are reachable only in-cluster at `<name>.<namespace>.svc:<port>`.
+Like render.yaml, **the service `type` decides exposure** — a `web` service is public by definition and its platform hostname is mandatory (there is no opt-out flag); `pserv` services are reachable only in-cluster at `<name>.<namespace>.svc:<port>`.
 
 The workload type is immutable after creation. Render's [Blueprint specification](https://render.com/docs/blueprint-spec) says an existing resource's `type` cannot be modified, and the public [Update service API](https://api-docs.render.com/reference/update-service) has no type field. bex enforces that contract twice: CRD CEL admission compares the effective old/new `App.spec.type`, and Blueprint sync returns the same named bad request before it mutates an existing App. The legacy empty type is semantically `web_service`, so empty ↔ explicit web normalization remains valid. Changing between web, private, worker, cron, or static requires deleting and recreating the service; this prevents an old Deployment/Service/Ingress or CronJob from surviving beside a different workload kind.
 
-Apply it from the bex repo — this renders each `.apps[]` entry into an App CR and `kubectl apply`s it (respects `$KUBECONFIG`; `DRY_RUN=1` prints the CRs instead):
+Apply it from the bex repo — this renders each `.services[]` entry into an App CR and `kubectl apply`s it (respects `$KUBECONFIG`; `DRY_RUN=1` prints the CRs instead):
 
 ```sh
 scripts/app-apply.sh <project-dir | path/to/bex.yml>

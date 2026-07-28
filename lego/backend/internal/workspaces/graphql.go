@@ -72,7 +72,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		},
 		// workspaceLimits returns the named workspace's resource usage vs. cap
 		// (w7/m9): "3/5 services" visibility surface. Authorizes can_view on the
-		// workspace (same as the workspaces list + select_workspace path).
+		// workspace (the same membership source as the workspaces list).
 		"workspaceLimits": &graphql.Field{
 			Type: resourceLimitsGQLType,
 			Args: graphql.FieldConfigArgument{

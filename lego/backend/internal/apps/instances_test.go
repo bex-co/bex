@@ -160,7 +160,7 @@ func TestListInstancesAuthorizesBeforeObservingPods(t *testing.T) {
 	}
 }
 
-func TestRESTServiceInstancesExactWireShapeAndAliases(t *testing.T) {
+func TestRESTServiceInstancesExactWireShape(t *testing.T) {
 	app := instanceTestApp()
 	created := time.Date(2026, 7, 14, 20, 30, 0, 0, time.UTC)
 	pod := instanceTestPod("web-abc-123", app.Name, "99999999-9999-9999-9999-999999999999", corev1.PodRunning, created)
@@ -168,29 +168,28 @@ func TestRESTServiceInstancesExactWireShapeAndAliases(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
-	for _, path := range []string{"/v1/services/" + testServiceID + "/instances", "/v1/apps/" + testServiceID + "/instances"} {
-		t.Run(path, func(t *testing.T) {
-			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
-			if rec.Code != http.StatusOK {
-				t.Fatalf("GET %s = %d: %s", path, rec.Code, rec.Body.String())
-			}
-			var renderCompatible []struct {
-				ID        string    `json:"id"`
-				CreatedAt time.Time `json:"createdAt"`
-			}
-			if err := json.Unmarshal(rec.Body.Bytes(), &renderCompatible); err != nil || len(renderCompatible) != 1 {
-				t.Fatalf("Render-compatible decode: %v %#v body=%s", err, renderCompatible, rec.Body.String())
-			}
-			if renderCompatible[0].ID == "" || !renderCompatible[0].CreatedAt.Equal(created) {
-				t.Fatalf("decoded instance = %+v", renderCompatible[0])
-			}
-			var raw []map[string]any
-			if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil || len(raw[0]) != 2 {
-				t.Fatalf("wire shape contains fields beyond id/createdAt: %v %#v", err, raw)
-			}
-		})
-	}
+	path := "/v1/services/" + testServiceID + "/instances"
+	t.Run(path, func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET %s = %d: %s", path, rec.Code, rec.Body.String())
+		}
+		var renderCompatible []struct {
+			ID        string    `json:"id"`
+			CreatedAt time.Time `json:"createdAt"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &renderCompatible); err != nil || len(renderCompatible) != 1 {
+			t.Fatalf("Render-compatible decode: %v %#v body=%s", err, renderCompatible, rec.Body.String())
+		}
+		if renderCompatible[0].ID == "" || !renderCompatible[0].CreatedAt.Equal(created) {
+			t.Fatalf("decoded instance = %+v", renderCompatible[0])
+		}
+		var raw []map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil || len(raw[0]) != 2 {
+			t.Fatalf("wire shape contains fields beyond id/createdAt: %v %#v", err, raw)
+		}
+	})
 }
 
 func TestRESTServiceInstancesEmptyMissingAndForeignWorkspace(t *testing.T) {

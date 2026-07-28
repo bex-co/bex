@@ -28,7 +28,7 @@ import "context"
 //
 // It travels in the context — the same seam core.Identity already uses — so the
 // 80+ verb signatures stay untouched: the three adapters (REST ownerId, GraphQL
-// ownerId, MCP's session select_workspace) each decode their own spelling of
+// ownerId, MCP's per-call workspaceId) each decode their own spelling of
 // "which workspace" and put the resolved id here, and every verb inherits it
 // through core.Base without knowing which surface it came from.
 //
@@ -54,6 +54,15 @@ func WithWorkspace(ctx context.Context, tenantID string) context.Context {
 func WorkspaceFrom(ctx context.Context) (string, bool) {
 	tenantID, ok := ctx.Value(workspaceKey{}).(string)
 	return tenantID, ok && tenantID != ""
+}
+
+// NamedWorkspace returns the explicitly named workspace or "" when the
+// request intentionally relies on the caller's default workspace. Adapters use
+// this after placing their canonical workspace parameter in the context; the
+// domain layer still resolves and authorizes the value through Base.
+func NamedWorkspace(ctx context.Context) string {
+	tenantID, _ := WorkspaceFrom(ctx)
+	return tenantID
 }
 
 // resolvedWorkspaceKey caches the result of Base.resolveWorkspace for the

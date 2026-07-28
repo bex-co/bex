@@ -311,9 +311,9 @@ func TestRedeployNeverTouchesMaintenanceMode(t *testing.T) {
 	// A manifest that changes a create-owned field (buildCommand), so the
 	// idempotent-upsert path actually reaches applyCreateToSpec instead of
 	// short-circuiting as a no-op.
-	manifest := "apps:\n  - name: web\n    repo: https://github.com/x/mono\n    plan: starter\n    buildCommand: make build\n"
-	if _, err := svc.Deploy(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
-		t.Fatalf("Deploy (redeploy): %v", err)
+	manifest := "services:\n  - name: web\n    repo: https://github.com/x/mono\n    plan: starter\n    buildCommand: make build\n"
+	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("DeployStack (redeploy): %v", err)
 	}
 	got := getApp(t, cl, "web")
 	if got.Spec.BuildCommand != "make build" {

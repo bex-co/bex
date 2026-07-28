@@ -109,60 +109,59 @@ func filterFromQuery(q http.Header, vals map[string][]string) (ListFilter, error
 // RegisterREST adds the Render-shaped one-off jobs endpoints to the mux.
 // Store unconfigured ⇒ the Service returns ErrJobsUnavailable ⇒ 503.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
-	for _, base := range []string{"/v1/services", "/v1/apps"} {
-		mux.HandleFunc("GET "+base+"/{id}/jobs", func(w http.ResponseWriter, r *http.Request) {
-			q := r.URL.Query()
-			vals := map[string][]string(q)
-			filter, err := filterFromQuery(r.Header, vals)
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			jobs, err := s.List(r.Context(), r.PathValue("id"), filter)
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, toJobList(jobs))
-		})
+	const base = "/v1/services"
+	mux.HandleFunc("GET "+base+"/{id}/jobs", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		vals := map[string][]string(q)
+		filter, err := filterFromQuery(r.Header, vals)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		jobs, err := s.List(r.Context(), r.PathValue("id"), filter)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toJobList(jobs))
+	})
 
-		mux.HandleFunc("POST "+base+"/{id}/jobs", func(w http.ResponseWriter, r *http.Request) {
-			var body struct {
-				StartCommand string `json:"startCommand"`
-				PlanID       string `json:"planId"`
-			}
-			if err := core.DecodeJSON(r, &body); err != nil {
-				core.WriteErr(w, core.ErrBadRequest)
-				return
-			}
-			if body.StartCommand == "" {
-				core.WriteErr(w, core.ErrBadRequest)
-				return
-			}
-			j, err := s.Create(r.Context(), r.PathValue("id"), body.StartCommand, body.PlanID)
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusCreated, toRenderJob(j))
-		})
+	mux.HandleFunc("POST "+base+"/{id}/jobs", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			StartCommand string `json:"startCommand"`
+			PlanID       string `json:"planId"`
+		}
+		if err := core.DecodeJSON(r, &body); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		if body.StartCommand == "" {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		j, err := s.Create(r.Context(), r.PathValue("id"), body.StartCommand, body.PlanID)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusCreated, toRenderJob(j))
+	})
 
-		mux.HandleFunc("GET "+base+"/{id}/jobs/{jobId}", func(w http.ResponseWriter, r *http.Request) {
-			j, err := s.Get(r.Context(), r.PathValue("id"), r.PathValue("jobId"))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, toRenderJob(j))
-		})
+	mux.HandleFunc("GET "+base+"/{id}/jobs/{jobId}", func(w http.ResponseWriter, r *http.Request) {
+		j, err := s.Get(r.Context(), r.PathValue("id"), r.PathValue("jobId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toRenderJob(j))
+	})
 
-		mux.HandleFunc("POST "+base+"/{id}/jobs/{jobId}/cancel", func(w http.ResponseWriter, r *http.Request) {
-			j, err := s.Cancel(r.Context(), r.PathValue("id"), r.PathValue("jobId"))
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, toRenderJob(j))
-		})
-	}
+	mux.HandleFunc("POST "+base+"/{id}/jobs/{jobId}/cancel", func(w http.ResponseWriter, r *http.Request) {
+		j, err := s.Cancel(r.Context(), r.PathValue("id"), r.PathValue("jobId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toRenderJob(j))
+	})
 }

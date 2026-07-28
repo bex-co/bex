@@ -130,15 +130,16 @@ func TestBillingStatusRESTGraphQLMCPParity(t *testing.T) {
 	mcpServer := mcp.NewServer(&mcp.Implementation{Name: "billing-test", Version: "0"}, nil)
 	svc.RegisterMCP(mcpServer)
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
-	if _, err := mcpServer.Connect(ctx, serverTransport, nil); err != nil {
+	mcpCtx := core.WithWorkspace(ctx, "tea-a")
+	if _, err := mcpServer.Connect(mcpCtx, serverTransport, nil); err != nil {
 		t.Fatal(err)
 	}
-	client, err := mcp.NewClient(&mcp.Implementation{Name: "billing-client", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
+	client, err := mcp.NewClient(&mcp.Implementation{Name: "billing-client", Version: "0"}, nil).Connect(mcpCtx, clientTransport, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer client.Close()
-	result, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "get_billing_readiness", Arguments: map[string]any{"workspaceId": "tea-a"}})
+	result, err := client.CallTool(mcpCtx, &mcp.CallToolParams{Name: "get_billing_readiness"})
 	if err != nil || result.IsError {
 		t.Fatalf("MCP result=%+v err=%v", result, err)
 	}

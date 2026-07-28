@@ -148,7 +148,7 @@ func TestInternalAddressOnAllThreeSurfaces(t *testing.T) {
 			mux := http.NewServeMux()
 			svc.RegisterREST(mux)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/apps/web", nil))
+			mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("REST GET: %d %s", rec.Code, rec.Body)
 			}
@@ -233,7 +233,7 @@ func TestSlugPresentOnAllThreeSurfaces(t *testing.T) {
 			mux := http.NewServeMux()
 			svc.RegisterREST(mux)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/apps/web", nil))
+			mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("REST GET: %d %s", rec.Code, rec.Body)
 			}
@@ -298,7 +298,7 @@ func TestSuspendersPresentOnAllThreeSurfaces(t *testing.T) {
 			mux := http.NewServeMux()
 			svc.RegisterREST(mux)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/apps/web", nil))
+			mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("REST GET: %d %s", rec.Code, rec.Body)
 			}
@@ -1450,14 +1450,14 @@ func TestRESTDeleteService(t *testing.T) {
 		t.Errorf("delete unknown => 404, got %d", rec.Code)
 	}
 
-	// The /v1/apps alias serves delete too.
+	// The canonical /v1/services route serves delete.
 	svc2, cl2 := newService(nil, sampleApp("api"))
 	mux2 := http.NewServeMux()
 	svc2.RegisterREST(mux2)
 	rec = httptest.NewRecorder()
-	mux2.ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/apps/api", nil))
+	mux2.ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/services/api", nil))
 	if rec.Code != http.StatusNoContent {
-		t.Errorf("delete via /v1/apps alias => 204, got %d", rec.Code)
+		t.Errorf("delete via /v1/services => 204, got %d", rec.Code)
 	}
 	gone(t, cl2, "api")
 }

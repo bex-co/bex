@@ -194,10 +194,6 @@ type Deps struct {
 	ShellTicketSecret []byte
 	ShellWSURL        string
 	Store             apps.IntentStore
-	// MCPWorkspaceSelections shares select_workspace state across bex-api
-	// replicas. nil keeps the process-local fallback used by storeless and stdio
-	// operation.
-	MCPWorkspaceSelections core.MCPWorkspaceSelectionStore
 	// Secrets is the shared OpenBao-backed store both the env-vars/secret-files
 	// feature and the env-groups feature read/write through (docs/ADR013-secrets.md). One
 	// instance, wired into both services below. nil => those verbs 503.
@@ -343,10 +339,6 @@ func hostOf(rawURL string) string {
 // NewServer wires the five feature services over one core.Base + deps. Callers
 // set the HTTP config fields (CORSOrigin/HydraAdminURL/KratosURL) on the result.
 func NewServer(base *core.Base, d Deps) *Server {
-	// One selection store shared by the workspace-select tools (write) and the
-	// apps/postgres list tools (read) — w6/m2/t005. Always wired: with no MCP
-	// transport in use, it simply never gets a Get/Set call.
-	selections := core.NewWorkspaceSelections(d.MCPWorkspaceSelections)
 	workspaceSvc := &workspaces.Service{
 		Base:       base,
 		Store:      d.WorkspaceStore,
@@ -359,7 +351,6 @@ func NewServer(base *core.Base, d Deps) *Server {
 		// the identical signature) — no adapter, and no cache: the lookup runs at
 		// most once per GET /v1/users (cold path), only for API-key callers.
 		KeyOwners:    d.APIKeys,
-		Selections:   selections,
 		MaxServices:  d.MaxServices,
 		MaxPostgres:  d.MaxPostgres,
 		MaxKeyValues: d.MaxKeyValues,
@@ -374,7 +365,6 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Store:        d.GitHubStore,
 		StateSecret:  d.GitHubStateSecret,
 		DashboardURL: d.DashboardURL,
-		Selections:   selections,
 	}
 	// The registry-credentials service is also the apps deploy path's
 	// pull-secret seam (w2/m14), so build it once and share it, same as gh
@@ -422,7 +412,6 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Base:         base,
 		Protection:   protectionStore,
 		ExportSigner: exportSigner,
-		Selections:   selections,
 		MaxPostgres:  d.MaxPostgres,
 		Owners:       workspaceSvc,
 		Metadata:     resourceMetadata,
@@ -451,7 +440,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		}
 		return out, nil
 	}
-	kv := &keyvalue.Service{Base: base, Protection: protectionStore, Selections: selections, MaxKeyValues: d.MaxKeyValues, Owners: workspaceSvc, Metadata: resourceMetadata}
+	kv := &keyvalue.Service{Base: base, Protection: protectionStore, MaxKeyValues: d.MaxKeyValues, Owners: workspaceSvc, Metadata: resourceMetadata}
 	kv.PodLogs = d.PodLogs
 	kv.KeyValueLogs = func(ctx context.Context, name string, q keyvalue.KeyValueLogQuery) ([]keyvalue.KeyValueLogEntry, error) {
 		entries, err := logSvc.QueryLogs(ctx, logs.LogQuery{
@@ -483,7 +472,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// using envVarGroups/fromGroup/sync:false/generateValue then fails before any
 	// write, never silently drops the var).
 	secretsSvc := &secrets.Service{Base: base, Store: d.Secrets}
-	envGroupsSvc := &envgroups.Service{Base: base, Store: d.Secrets, Selections: selections}
+	envGroupsSvc := &envgroups.Service{Base: base, Store: d.Secrets}
 	var envSeeder apps.EnvSeeder
 	var secretFileSeeder apps.SecretFileSeeder
 	var envGroupApplier apps.EnvGroupApplier
@@ -492,15 +481,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		secretFileSeeder = secrets.NewCreateSecretFileSeeder(secretsSvc)
 		envGroupApplier = envGroupsSvc
 	}
-	// Usage is constructed and its metering loop started in cmd/api/main.go
-	// (before NewServer runs), so it can't take Selections as a constructor
-	// arg like pg/kv above — wire it onto the already-built pointer instead, so
-	// get_usage shares the SAME per-session selection store as every other
-	// workspace-scoped MCP tool (w6/m18).
-	if d.Usage != nil {
-		d.Usage.Selections = selections
-	}
-	billingSvc := &billing.Service{Base: base, Provider: d.Billing, Selections: selections}
+	billingSvc := &billing.Service{Base: base, Provider: d.Billing}
 	var environmentEnvGroups environments.EnvGroupIndex
 	if d.Secrets != nil {
 		environmentEnvGroups = envGroupsSvc
@@ -545,7 +526,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		sshHost = d.SSHHost
 	}
 	srv := &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, Selections: selections, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore, BlueprintGroups: blueprintGroups, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, SecretFileSeeder: secretFileSeeder, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
+		Apps: &apps.Service{Base: base, Store: d.Store, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore, BlueprintGroups: blueprintGroups, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, SecretFileSeeder: secretFileSeeder, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
 		Logs: logSvc,
 		Metrics: &metrics.Service{
 			Base:                       base,
@@ -559,7 +540,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			ReplicationLag:             d.ReplicationLag,
 			KeyValueStats:              d.KeyValueStats,
 		},
-		APIKeys:   &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder, Selections: selections},
+		APIKeys:   &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder},
 		SSHKeys:   &sshkeys.Service{Base: base, Store: d.SSHKeysStore},
 		Postgres:  pg,
 		KeyValue:  kv,
@@ -592,12 +573,11 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Databases:    pg,
 			KeyValues:    kv,
 			Environments: &environments.ProjectMemberClearer{Service: environmentsSvc},
-			Selections:   selections,
 		},
 		Environments:  environmentsSvc,
 		GitHub:        gh,
 		RegistryCreds: rc,
-		Webhooks:      &webhooks.Service{Base: base, Store: d.WebhookStore, Selections: selections},
+		Webhooks:      &webhooks.Service{Base: base, Store: d.WebhookStore},
 		Jobs:          &jobs.Service{Base: base, Store: d.JobStore},
 		Onboard:       d.Onboard,
 		Usage:         d.Usage,
@@ -941,6 +921,11 @@ func (s *Server) MCPServer() *mcp.Server {
 			r.RegisterMCP(srv)
 		}
 	}
+	var base *core.Base
+	if s.Apps != nil {
+		base = s.Apps.Base
+	}
+	srv.AddReceivingMiddleware(mcpWorkspaceMiddleware(base))
 	return srv
 }
 
