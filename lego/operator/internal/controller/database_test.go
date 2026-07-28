@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -166,34 +167,44 @@ func TestCnpgClusterSpec(t *testing.T) {
 func TestCnpgClusterSpecBackup(t *testing.T) {
 	plan, gb := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "basic-1gb"})
 
-	// Backups off => no backup block.
+	// Backups off => no plugin or legacy backup block.
 	off := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user"})
 	if _, has := off["backup"]; has {
-		t.Error("no store => no backup block")
+		t.Error("no store => no legacy backup block")
+	}
+	if _, has := off["plugins"]; has {
+		t.Error("no store => no backup plugin")
 	}
 
-	// Backups on => barmanObjectStore + retention, credentials from the Secret.
+	// Backups on => the Barman Cloud plugin is the sole WAL archiver. Transport,
+	// credentials, and retention stay on the GitOps-managed ObjectStore.
 	on := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user", store: &testStore, backupServerName: "d-pg16"})
-	backup := on["backup"].(map[string]any)
-	if backup["retentionPolicy"] != backupRetention {
-		t.Errorf("retentionPolicy = %v", backup["retentionPolicy"])
+	if _, has := on["backup"]; has {
+		t.Fatalf("plugin-backed cluster must not project spec.backup: %v", on["backup"])
 	}
-	bos := backup["barmanObjectStore"].(map[string]any)
-	if bos["destinationPath"] != testStore.DestinationPath || bos["endpointURL"] != testStore.EndpointURL {
-		t.Errorf("barmanObjectStore target = %v", bos)
+	plugins := on["plugins"].([]any)
+	if len(plugins) != 1 {
+		t.Fatalf("plugins = %v, want exactly one", plugins)
 	}
-	creds := bos["s3Credentials"].(map[string]any)["accessKeyId"].(map[string]any)
-	if creds["name"] != testStore.S3Secret || creds["key"] != "AWS_ACCESS_KEY_ID" {
-		t.Errorf("s3 credentials ref = %v", creds)
+	plugin := plugins[0].(map[string]any)
+	if plugin["name"] != barmanCloudPluginName || plugin["isWALArchiver"] != true {
+		t.Errorf("backup plugin = %v", plugin)
 	}
-	// Major versions use distinct archive namespaces because pg_upgrade resets
-	// the PostgreSQL system ID/timeline.
-	if bos["serverName"] != "d-pg16" {
-		t.Errorf("own backup serverName = %v, want d-pg16", bos["serverName"])
+	parameters := plugin["parameters"].(map[string]any)
+	if parameters["barmanObjectName"] != tenantBackupObjectStoreName || parameters["serverName"] != "d-pg16" {
+		t.Errorf("backup plugin parameters = %v", parameters)
 	}
 	// initdb bootstrap when not recovering.
 	if _, has := on["bootstrap"].(map[string]any)["initdb"]; !has {
 		t.Error("non-recovery cluster should bootstrap via initdb")
+	}
+
+	// A configured store must not change a plan whose durability bit is off.
+	free, freeGB := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "free"})
+	freeWithoutStore := cnpgClusterSpec(clusterParams{plan: free, storageGB: freeGB, dbname: "d", owner: "d_user"})
+	freeWithStore := cnpgClusterSpec(clusterParams{plan: free, storageGB: freeGB, dbname: "d", owner: "d_user", store: &testStore})
+	if !reflect.DeepEqual(freeWithoutStore, freeWithStore) {
+		t.Fatalf("backup-disabled plan changed when store configured:\nwithout=%v\nwith=%v", freeWithoutStore, freeWithStore)
 	}
 }
 
@@ -213,13 +224,29 @@ func TestCnpgClusterSpecRecovery(t *testing.T) {
 	if recovery["recoveryTarget"].(map[string]any)["targetTime"] != rec.TargetTime {
 		t.Errorf("recoveryTarget = %v", recovery["recoveryTarget"])
 	}
-	// externalClusters reads the SOURCE's serverName from the shared store.
+	// externalClusters reads the source's exact archive generation through the
+	// same shared namespaced ObjectStore.
 	ext := spec["externalClusters"].([]any)[0].(map[string]any)
 	if ext["name"] != recoverySource {
 		t.Errorf("externalCluster name = %v", ext["name"])
 	}
-	if ext["barmanObjectStore"].(map[string]any)["serverName"] != "src-pg16" {
-		t.Errorf("externalCluster serverName should be the source db, got %v", ext["barmanObjectStore"])
+	if _, has := ext["barmanObjectStore"]; has {
+		t.Fatalf("plugin recovery must not retain barmanObjectStore: %v", ext)
+	}
+	plugin := ext["plugin"].(map[string]any)
+	if plugin["name"] != barmanCloudPluginName {
+		t.Errorf("recovery plugin = %v", plugin)
+	}
+	parameters := plugin["parameters"].(map[string]any)
+	if parameters["barmanObjectName"] != tenantBackupObjectStoreName || parameters["serverName"] != "src-pg16" {
+		t.Errorf("recovery plugin parameters = %v", parameters)
+	}
+	if _, has := plugin["isWALArchiver"]; has {
+		t.Errorf("external recovery plugin must not be marked WAL archiver: %v", plugin)
+	}
+	withoutGeneration := barmanCloudPlugin("", false)["parameters"].(map[string]any)
+	if _, has := withoutGeneration["serverName"]; has {
+		t.Errorf("empty legacy recovery serverName must use the plugin default: %v", withoutGeneration)
 	}
 }
 
@@ -245,11 +272,59 @@ func TestCnpgClusterSpecManagedRoles(t *testing.T) {
 
 func TestScheduledBackupSpec(t *testing.T) {
 	sb := scheduledBackupSpec("mydb")
-	if sb["schedule"] != backupSchedule || sb["method"] != "barmanObjectStore" {
+	if sb["schedule"] != backupSchedule || sb["method"] != "plugin" {
 		t.Errorf("scheduledBackup = %v", sb)
 	}
 	if sb["cluster"].(map[string]any)["name"] != "mydb" {
 		t.Errorf("scheduledBackup cluster = %v", sb["cluster"])
+	}
+	if sb["pluginConfiguration"].(map[string]any)["name"] != barmanCloudPluginName {
+		t.Errorf("scheduledBackup plugin = %v", sb["pluginConfiguration"])
+	}
+	if _, has := sb["barmanObjectStore"]; has {
+		t.Errorf("scheduledBackup retained legacy config: %v", sb)
+	}
+
+	onDemand := onDemandBackupSpec("mydb")
+	if onDemand["method"] != "plugin" || onDemand["pluginConfiguration"].(map[string]any)["name"] != barmanCloudPluginName {
+		t.Errorf("on-demand backup = %v", onDemand)
+	}
+}
+
+func TestDatabaseRecoveryRequiresCompleteBackupStore(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "restore-db", Namespace: "default", Finalizers: []string{dbFinalizer}},
+		Spec: appv1alpha1.DatabaseSpec{
+			Plan: "free",
+			Recovery: &appv1alpha1.DatabaseRecovery{
+				SourceDatabase:         "source-db",
+				SourceBackupServerName: "source-db-pg16",
+			},
+		},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(db).
+		WithStatusSubresource(&appv1alpha1.Database{}).Build()
+	r := &DatabaseReconciler{
+		Client: cl,
+		Scheme: scheme,
+		Backup: BackupStore{DestinationPath: testStore.DestinationPath, EndpointURL: testStore.EndpointURL},
+	}
+	req := reconcile.Request{NamespacedName: types.NamespacedName{Name: db.Name, Namespace: db.Namespace}}
+	if _, err := r.Reconcile(context.Background(), req); err == nil || !strings.Contains(err.Error(), "no backup store is configured") {
+		t.Fatalf("incomplete backup store recovery error = %v", err)
+	}
+	if err := cl.Get(context.Background(), req.NamespacedName, db); err != nil {
+		t.Fatal(err)
+	}
+	if db.Status.Phase != appv1alpha1.DBPhaseFailed || len(db.Status.Conditions) == 0 || db.Status.Conditions[0].Reason != "RecoveryUnavailable" {
+		t.Fatalf("recovery failure status = phase %q conditions %v", db.Status.Phase, db.Status.Conditions)
 	}
 }
 

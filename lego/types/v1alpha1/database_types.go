@@ -429,14 +429,15 @@ type DatabaseStatus struct {
 	// +optional
 	PoolerExternalHost string `json:"poolerExternalHost,omitempty"`
 
-	// BackupsEnabled is true when the controller projected a barmanObjectStore +
-	// ScheduledBackup for this database (the plan opts in and the backup store is
-	// configured) — the signal that recovery/PITR is available.
+	// BackupsEnabled is true when the controller projected the Barman Cloud WAL
+	// archiver plugin plus a plugin-method ScheduledBackup for this database (the
+	// plan opts in and the backup store is configured) — the signal that
+	// recovery/PITR is available.
 	// +optional
 	BackupsEnabled bool `json:"backupsEnabled,omitempty"`
 
-	// BackupServerName is the CNPG barman archive generation currently receiving
-	// WAL and base backups. The first major uses the legacy Database name; each
+	// BackupServerName is the Barman archive generation currently receiving WAL
+	// and base backups. The first major uses the Database name; each
 	// successful major upgrade moves to <name>-pg<major> to avoid timeline/system
 	// ID collisions across pg_upgrade boundaries.
 	// +optional

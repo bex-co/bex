@@ -75,11 +75,14 @@ const (
 	// recoverySource is the externalClusters entry name a restore-to-new Database
 	// references from its bootstrap.recovery.
 	recoverySource = "source"
-	// backupRetention is how long CNPG keeps base backups + WAL in object storage.
-	backupRetention = "30d"
 	// backupSchedule is the daily base-backup cron (CNPG's 6-field form:
 	// sec min hour dom mon dow) — 03:00 UTC.
 	backupSchedule = "0 0 3 * * *"
+	// barmanCloudPluginName is CNPG's stable plugin identifier. The namespaced
+	// ObjectStore is installed by GitOps before the operator starts projecting
+	// plugin-backed tenant databases.
+	barmanCloudPluginName       = "barman-cloud.cloudnative-pg.io"
+	tenantBackupObjectStoreName = "bex-tenant-postgres"
 	// logicalExportRetention matches Render's documented logical-backup window.
 	logicalExportRetention = 7 * 24 * time.Hour
 	// logicalExportClientVersion is used when Database.spec.version is empty.
@@ -97,10 +100,11 @@ const (
 	annotDBBackupPurgeComplete = "app.bex.co/backup-purge-complete"
 )
 
-// BackupStore is the object-store target CNPG's barmanObjectStore writes to
-// (Wasabi/S3-compatible), reusing the etcd/OpenBao backup credential pattern
-// (docs/ADR011-etcd-backup-restore.md). All three fields must be set for the controller
-// to project backups; otherwise no plan gets them (recovery/PITR unavailable).
+// BackupStore is the non-secret object-store contract shared by the GitOps
+// Barman Cloud ObjectStore, logical exports, and finalizer purge jobs. The
+// physical Cluster projection references the namespaced ObjectStore by name;
+// exports and purge jobs still need these coordinates directly. All three
+// fields must be set for the controller to enable either path.
 type BackupStore struct {
 	// DestinationPath is the S3 URL prefix, e.g. "s3://bex-tfstate/postgres".
 	// CNPG namespaces each cluster under it by serverName.
@@ -165,10 +169,10 @@ type clusterParams struct {
 	version   string
 	dbname    string
 	owner     string
-	// store is the object-store config when the controller has one (nil => not
-	// configured). It backs both this cluster's own backups and a recovery read.
-	// A cluster gets its own backup stanza when the plan opts in (plan.Backup) and
-	// store is set — derived, not passed.
+	// store is the object-store contract when the controller has one (nil => not
+	// configured). It gates both this cluster's own plugin and a recovery read.
+	// A cluster loads the WAL-archiver plugin when the plan opts in (plan.Backup)
+	// and store is set — derived, not passed.
 	store *BackupStore
 	// backupServerName isolates physical archives by PostgreSQL major. CNPG
 	// resets the system ID/timeline during pg_upgrade, so reusing one archive
@@ -207,25 +211,22 @@ func databaseBackupServerNames(db *appv1alpha1.Database) (current, target string
 	return current, target
 }
 
-// barmanObjectStore builds a CNPG barmanObjectStore config pointing at the S3
-// target. serverName scopes the backup path under DestinationPath — empty lets
-// CNPG default it to the cluster name (for a cluster's own backups); a restore's
-// externalCluster passes the source Database name so it reads the right path.
-func barmanObjectStore(store BackupStore, serverName string) map[string]any {
-	m := map[string]any{
-		"destinationPath": store.DestinationPath,
-		"endpointURL":     store.EndpointURL,
-		"s3Credentials": map[string]any{
-			"accessKeyId":     map[string]any{"name": store.S3Secret, "key": "AWS_ACCESS_KEY_ID"},
-			"secretAccessKey": map[string]any{"name": store.S3Secret, "key": "AWS_SECRET_ACCESS_KEY"},
-		},
-		"wal":  map[string]any{"compression": "gzip"},
-		"data": map[string]any{"compression": "gzip"},
-	}
+// barmanCloudPlugin builds the CNPG-I reference used for both a Cluster's WAL
+// archiver and a recovery externalCluster. serverName keeps each database and
+// PostgreSQL-major generation in its existing isolated archive prefix.
+func barmanCloudPlugin(serverName string, walArchiver bool) map[string]any {
+	parameters := map[string]any{"barmanObjectName": tenantBackupObjectStoreName}
 	if serverName != "" {
-		m["serverName"] = serverName
+		parameters["serverName"] = serverName
 	}
-	return m
+	plugin := map[string]any{
+		"name":       barmanCloudPluginName,
+		"parameters": parameters,
+	}
+	if walArchiver {
+		plugin["isWALArchiver"] = true
+	}
+	return plugin
 }
 
 // managedRoles projects additional Database users onto CNPG spec.managed.roles —
@@ -248,8 +249,8 @@ func managedRoles(users []appv1alpha1.DatabaseUser) []any {
 
 // cnpgClusterSpec builds the CloudNativePG Cluster .spec for a Database. Pure
 // (no client) so the plan->Cluster projection is unit-testable. When p.recovery
-// is set (with a backup store), the cluster bootstraps by restoring a source
-// Database's object-store backups — a NEW instance, never in place.
+// is set (with a backup store), the cluster bootstraps through the Barman Cloud
+// plugin from a source Database's backups — a NEW instance, never in place.
 // When p.highAvailability is true, instances is raised to at least 2 and pod
 // anti-affinity is set to spread the primary and standby across nodes.
 func cnpgClusterSpec(p clusterParams) map[string]any {
@@ -288,8 +289,8 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 		}
 		spec["bootstrap"] = map[string]any{"recovery": rec}
 		spec["externalClusters"] = []any{map[string]any{
-			"name":              recoverySource,
-			"barmanObjectStore": barmanObjectStore(*p.store, p.recovery.SourceBackupServerName),
+			"name":   recoverySource,
+			"plugin": barmanCloudPlugin(p.recovery.SourceBackupServerName, false),
 		}}
 	} else {
 		spec["bootstrap"] = map[string]any{
@@ -320,13 +321,12 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 		"parameters":               pgParams,
 		"shared_preload_libraries": []any{"pg_stat_statements"},
 	}
-	// Durability: continuous WAL archiving + base backups to object storage —
-	// when the plan opts in and a store is configured.
+	// Durability: load the Barman Cloud plugin as the sole WAL archiver when the
+	// plan opts in and the object-store contract is configured. Retention and S3
+	// transport live on the namespaced ObjectStore; ScheduledBackup pins daily
+	// base backups below.
 	if p.plan.Backup && p.store != nil {
-		spec["backup"] = map[string]any{
-			"barmanObjectStore": barmanObjectStore(*p.store, p.backupServerName),
-			"retentionPolicy":   backupRetention,
-		}
+		spec["plugins"] = []any{barmanCloudPlugin(p.backupServerName, true)}
 	}
 	if roles := managedRoles(p.users); roles != nil {
 		spec["managed"] = map[string]any{"roles": roles}
@@ -335,22 +335,24 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 }
 
 // scheduledBackupSpec builds a CNPG ScheduledBackup .spec: a daily base backup
-// of the cluster to object storage (WAL archiving from the Cluster's backup
-// stanza is what actually enables PITR; this pins recovery windows down).
+// of the cluster to object storage (WAL archiving from the Cluster's plugin is
+// what actually enables PITR; this pins recovery windows down).
 func scheduledBackupSpec(clusterName string) map[string]any {
 	return map[string]any{
 		"schedule":             backupSchedule,
 		"backupOwnerReference": "self",
 		"immediate":            true,
 		"cluster":              map[string]any{"name": clusterName},
-		"method":               "barmanObjectStore",
+		"method":               "plugin",
+		"pluginConfiguration":  map[string]any{"name": barmanCloudPluginName},
 	}
 }
 
 func onDemandBackupSpec(clusterName string) map[string]any {
 	return map[string]any{
-		"cluster": map[string]any{"name": clusterName},
-		"method":  "barmanObjectStore",
+		"cluster":             map[string]any{"name": clusterName},
+		"method":              "plugin",
+		"pluginConfiguration": map[string]any{"name": barmanCloudPluginName},
 	}
 }
 
@@ -389,7 +391,7 @@ func deleteOptionalObject(ctx context.Context, c client.Client, o *unstructured.
 
 // DatabaseReconciler projects a Database into a CloudNativePG Cluster and
 // surfaces the connection info. Optionally exposes an external SNI endpoint via
-// Traefik, off-cluster backups (barmanObjectStore + ScheduledBackup), a
+// Traefik, off-cluster backups (Barman Cloud plugin + ScheduledBackup), a
 // PgBouncer Pooler, and an IP-allowlist middleware. It is a thin executor —
 // CNPG does the actual Postgres lifecycle.
 type DatabaseReconciler struct {
