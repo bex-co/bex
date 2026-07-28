@@ -62,6 +62,10 @@ var (
 	// control-plane store isn't wired (BEX_CP_DB_URI unset); adapters surface it
 	// as 503 — deploy history has no CR-only equivalent to fall back to.
 	ErrDeploysUnavailable = errors.New("deploy history store not configured")
+	// ErrSandboxesUnavailable is returned by the sandbox verbs when the
+	// OpenSandbox lifecycle client isn't wired (BEX_OPENSANDBOX_URL unset);
+	// adapters surface it as 503 (pillar 5, ADR042/w3/m32).
+	ErrSandboxesUnavailable = errors.New("sandbox runtime not configured")
 	// ErrBadRequest is returned for invalid caller input (adapters map it to 400).
 	ErrBadRequest = errors.New("bad request")
 	// ErrForbidden is returned when the caller lacks the permission a verb requires
