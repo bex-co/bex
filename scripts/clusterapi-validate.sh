@@ -96,6 +96,16 @@ while read -r kind name; do
   fi
 done < <(yq -N 'select(.kind=="KubeadmControlPlane" or .kind=="KubeadmConfigTemplate") | .kind + " " + .metadata.name' "$OVERLAY")
 
+# Kubernetes 1.33 removed kube-apiserver's cloud-provider flag. The external
+# CCM contract still needs the setting on kube-controller-manager and kubelet,
+# but rendering it into the apiserver static Pod makes every new CP CrashLoop.
+echo "==> $OVERLAY carries no removed kube-apiserver cloud-provider flag"
+api_cloud_provider="$(yq -N 'select(.kind=="KubeadmControlPlane") | .spec.kubeadmConfigSpec.clusterConfiguration.apiServer.extraArgs."cloud-provider" // ""' "$OVERLAY")"
+if [ -n "$api_cloud_provider" ]; then
+  echo "FAIL: kube-apiserver cloud-provider '$api_cloud_provider' is removed in Kubernetes 1.33+" >&2
+  fail=1
+fi
+
 # 2. Every replacement path must use server capacity fsn1 can still create.
 echo "==> $OVERLAY control-plane replacement capacity"
 control_plane_infra="$(yq -N 'select(.kind=="KubeadmControlPlane") | .spec.machineTemplate.infrastructureRef.name' "$OVERLAY")"
