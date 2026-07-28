@@ -1,11 +1,19 @@
 # In-cluster OpenSandbox lifecycle server (ADR042 D1 / w3/m32 t002).
 #
-# NOT wired into deploy/gitops/base/kustomization.yaml yet: the image
-# (server.Dockerfile, t001) must be built and pushed to Zot first, and the
-# substrate validated on a real containerd-CRI + Kata node (t007). Applying this
-# before the image exists would CrashLoop the pod. It ships here as the
-# ready-to-enable manifest set; the operator's BEX_OPENSANDBOX_URL then points at
-# the Service below (http://opensandbox-server.opensandbox-system.svc:8077).
+# APPLIED + VALIDATED on prod 2026-07-28: image built from server.Dockerfile and
+# pushed to Zot; server runs; POST /sandboxes creates a BatchSandbox → the
+# controller schedules a pod on the gVisor sandbox node (runtimeClassName gvisor,
+# kernel 4.19.0-gvisor); list/delete round-trip. Two corrections vs the first
+# draft that live testing forced: (1) the BatchSandbox apiGroup is
+# `sandbox.opensandbox.io` (below); (2) sandbox PODS run in a SEPARATE
+# baseline-PSS namespace (`bex-sandbox` here; per-tenant `<ws>-sandbox` in prod) —
+# untrusted sandbox pods (execd-installer/sandbox containers) cannot satisfy the
+# `restricted` PSS this platform namespace enforces, and gVisor is the isolation
+# boundary, so baseline is correct. The server needs a Zot imagePullSecret and,
+# for a first bring-up, OPENSANDBOX_INSECURE_SERVER=YES (multi-tenant api_key +
+# the HTTP tenant-lookup provider are the t006 hardening). bex-api's
+# BEX_OPENSANDBOX_URL points at the Service below
+# (http://opensandbox-server.opensandbox-system.svc:8077).
 ---
 apiVersion: v1
 kind: Namespace
@@ -33,7 +41,7 @@ kind: ClusterRole
 metadata:
   name: opensandbox-server
 rules:
-  - apiGroups: ["opensandbox.dev", "batch.opensandbox.dev"]
+  - apiGroups: ["sandbox.opensandbox.io"]
     resources: ["batchsandboxes", "pools", "sandboxsnapshots"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: [""]
