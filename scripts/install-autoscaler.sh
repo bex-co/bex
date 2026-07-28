@@ -10,8 +10,8 @@
 #
 # CA_TAG pins the autoscaler IMAGE to the workload cluster's k8s minor (the
 # chart default tracks the latest minor). This matters below the chart level:
-# a newer CA's DRA informers watch resource.k8s.io/v1, which older apiservers
-# (e.g. prod v1.31) don't serve — the informer cache never syncs and the main
+# a newer CA's DRA informers can watch APIs an older apiserver does not serve —
+# the informer cache never syncs and the main
 # loop silently never starts (learned on prod, 2026-07-10). Unset ⇒ chart
 # default, fine when the workload tracks recent k8s (the CAPD mock).
 set -euo pipefail
