@@ -1,6 +1,6 @@
 # w1 · m56 — Exit deprecated platform versions and fleet migration scaffolding
 
-**Worker:** worker1 **Goal:** Move production off end-of-life Kubernetes and CNPG's retiring in-tree Barman path, then remove one-time fleet backfills, legacy route cleanup, and Node 20 CI actions only after their live-state gates are satisfied. **Status:** in progress (t001–t014 done)
+**Worker:** worker1 **Goal:** Move production off end-of-life Kubernetes and CNPG's retiring in-tree Barman path, then remove one-time fleet backfills, legacy route cleanup, and Node 20 CI actions only after their live-state gates are satisfied. **Status:** done (2026-07-28)
 
 ## Tasks (in order)
 
@@ -20,13 +20,15 @@
 | t012 | Upgrade GitHub Actions to Node 24-compatible maintained majors — **DONE** | 30m | — |
 | t013 | Simplify — run /simplify over the changed platform code — **DONE** | 20m | t003, t008, t009, t010, t011, t012 |
 | t014 | Test coverage — upgrade, migration, restore, and absence guards — **DONE** | 45m | t003, t008, t009, t010, t011, t012 |
-| t015 | Closeout — verify DoD, mark done, move milestone | 15m | t013, t014 |
+| t015 | Closeout — verify DoD, mark done, move milestone — **DONE** | 15m | t013, t014 |
 
 ## Definition of done
 
 The production CAPI templates and live cluster run a Kubernetes release supported by both Kubernetes and the deployed CNPG/kpack stack, and the temporary kpack 1.31 override is absent. Tenant databases and bex-db archive WAL and take scheduled backups through the Barman Cloud plugin; fresh backup plus point-in-time restore drills recover known data for both paths before all in-tree barmanObjectStore fields and code are removed. Production inventory contains no legacy datastore name/IP shapes, unlabeled build artifacts, missing release fingerprints, old Traefik datastore routes, or legacy per-server load-balancer targets, and the corresponding ongoing migration scaffolding is gone. CI workflows use maintained Node 24-compatible action majors. GitOps validation, operator/backend tests, restore evidence, and rollout health are green.
 
-**Final regression evidence:** operator/backend/dashboard suites, builds, lint, GitOps, Cluster API, scripts, Node 24/Gitleaks, Terraform, image signing/SBOM/CVE gates, and production rollout are green. The non-destructive tenant and control-plane recovery proof is recorded in [the Barman plugin PITR drill](../../../docs/drills/2026-07-28-barman-plugin-pitr.md).
+**Final regression evidence:** operator/backend/dashboard suites, builds, lint, GitOps, Cluster API, scripts, Node 24/Gitleaks, Terraform, image signing/SBOM/CVE gates, and production rollout are green. The non-destructive tenant and control-plane recovery proof is recorded in [the Barman plugin PITR drill](../../../../docs/drills/2026-07-28-barman-plugin-pitr.md).
+
+**Final live state (2026-07-28 UTC):** production is 9/9 Ready at Kubernetes v1.34.9; bex-db is plugin-only, 2/2 Ready, and continuously archiving; every milestone legacy-state count is zero; the edge uses one healthy private worker selector and no explicit targets; controller/API/dashboard/proxies are fully Ready. No deprecated path from this milestone remains load-bearing.
 
 ## Source + Goal linkage
 
