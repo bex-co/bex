@@ -1,0 +1,27 @@
+# Shared object-store transport for operator-managed tenant Postgres. Each
+# Database supplies its immutable backup server name through the Cluster plugin
+# parameter, retaining per-database/per-major archive isolation without copying
+# credentials into Git. The Secret is provisioned out of band in this namespace.
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: bex-tenant-postgres
+  namespace: default
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  configuration:
+    destinationPath: s3://bex-tfstate/postgres
+    endpointURL: https://s3.eu-central-2.wasabisys.com
+    s3Credentials:
+      accessKeyId:
+        name: bex-db-backup-s3
+        key: AWS_ACCESS_KEY_ID
+      secretAccessKey:
+        name: bex-db-backup-s3
+        key: AWS_SECRET_ACCESS_KEY
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+  retentionPolicy: 30d

@@ -1,0 +1,24 @@
+# CNPG-I Barman Cloud plugin. Wave 2 waits for both CloudNativePG and
+# cert-manager (wave 1); the exact upstream artifact is vendored and checksummed.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: barman-cloud-plugin
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:bex-co/bex.git
+    targetRevision: main
+    path: deploy/gitops/charts/barman-cloud-plugin
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cnpg-system
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true

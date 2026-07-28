@@ -1,0 +1,26 @@
+# ObjectStore for the control-plane database. The destination, retention, and
+# out-of-band Secret reference are byte-equivalent to bex-db's in-tree Barman
+# configuration; t006 atomically switches the Cluster and ScheduledBackup to it.
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: bex-db
+  namespace: bex-system
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  configuration:
+    destinationPath: s3://bex-tfstate/bex-db
+    endpointURL: https://s3.eu-central-2.wasabisys.com
+    s3Credentials:
+      accessKeyId:
+        name: bex-db-backup-s3
+        key: AWS_ACCESS_KEY_ID
+      secretAccessKey:
+        name: bex-db-backup-s3
+        key: AWS_SECRET_ACCESS_KEY
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+  retentionPolicy: 7d

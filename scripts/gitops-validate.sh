@@ -168,6 +168,84 @@ if [ "$kpack_sa_namespace" != "bex-system" ] \
   fail=1
 fi
 
+# Barman Cloud is vendored for the same reproducibility reason as kpack. Pin
+# the upstream bytes, controller placement/image, CRD + TLS resources, and the
+# two credential-reference-only ObjectStores. These checks deliberately inspect
+# only Secret names/key names; no credential data is present or decoded.
+echo "==> vendored Barman Cloud Plugin v0.13.0 + ObjectStore contracts"
+BARMAN_ASSET="deploy/gitops/charts/barman-cloud-plugin/upstream/manifest-0.13.0.yaml"
+BARMAN_SHA="d2e71e7b06822448f1a421f05781846cfdb9cc621e7ef32eef5e20c5133213b0"
+actual_barman_sha="$(sha256sum "$BARMAN_ASSET" | awk '{print $1}')"
+if [ "$actual_barman_sha" != "$BARMAN_SHA" ]; then
+  echo "FAIL: $BARMAN_ASSET SHA-256 is $actual_barman_sha (want $BARMAN_SHA)" >&2
+  fail=1
+fi
+barman_render="$(kubectl kustomize deploy/gitops/charts/barman-cloud-plugin)"
+barman_deployment="$(yq -N '
+  select(.kind == "Deployment" and .metadata.name == "barman-cloud") |
+  [.metadata.namespace,
+   .spec.template.spec.containers[0].image,
+   .spec.template.spec.nodeSelector."bex.co/pool",
+   .spec.template.spec.tolerations[0].key,
+   .spec.template.spec.tolerations[0].value,
+   .spec.template.spec.tolerations[0].effect] | join("|")' \
+  - <<<"$barman_render" | tr -d '\n')"
+if [ "$barman_deployment" != "cnpg-system|ghcr.io/cloudnative-pg/plugin-barman-cloud:v0.13.0|platform|bex.co/platform|true|NoSchedule" ]; then
+  echo "FAIL: Barman plugin deployment contract is '$barman_deployment'" >&2
+  fail=1
+fi
+for resource in \
+  'CustomResourceDefinition:objectstores.barmancloud.cnpg.io' \
+  'Certificate:barman-cloud-client' \
+  'Certificate:barman-cloud-server'; do
+  kind="${resource%%:*}"
+  name="${resource#*:}"
+  if ! yq -e "select(.kind == \"$kind\" and .metadata.name == \"$name\")" \
+    - <<<"$barman_render" >/dev/null; then
+    echo "FAIL: rendered Barman plugin is missing $kind/$name" >&2
+    fail=1
+  fi
+done
+
+objectstores_render="$(kubectl kustomize deploy/gitops/charts/barman-cloud-objectstores)"
+for expected in \
+  'bex-system|bex-db|s3://bex-tfstate/bex-db|https://s3.eu-central-2.wasabisys.com|7d|bex-db-backup-s3|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY' \
+  'default|bex-tenant-postgres|s3://bex-tfstate/postgres|https://s3.eu-central-2.wasabisys.com|30d|bex-db-backup-s3|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY'; do
+  namespace="${expected%%|*}"
+  rest="${expected#*|}"
+  name="${rest%%|*}"
+  actual="$(yq -N \
+    "select(.kind == \"ObjectStore\" and .metadata.namespace == \"$namespace\" and .metadata.name == \"$name\") |
+      [.metadata.namespace,
+       .metadata.name,
+       .spec.configuration.destinationPath,
+       .spec.configuration.endpointURL,
+       .spec.retentionPolicy,
+       .spec.configuration.s3Credentials.accessKeyId.name,
+       .spec.configuration.s3Credentials.accessKeyId.key,
+       .spec.configuration.s3Credentials.secretAccessKey.key] | join(\"|\")" \
+    - <<<"$objectstores_render" | tr -d '\n')"
+  if [ "$actual" != "$expected" ]; then
+    echo "FAIL: ObjectStore $namespace/$name contract is '$actual' (want '$expected')" >&2
+    fail=1
+  fi
+done
+if yq -e 'select(.kind == "Secret")' - <<<"$objectstores_render" >/dev/null 2>&1; then
+  echo "FAIL: ObjectStore manifests must reference out-of-band Secrets, never render a Secret" >&2
+  fail=1
+fi
+plugin_wave="$(yq -N '.metadata.annotations."argocd.argoproj.io/sync-wave" + "|" + .spec.source.path' deploy/gitops/base/barman-cloud-plugin.yaml)"
+stores_wave="$(yq -N '.metadata.annotations."argocd.argoproj.io/sync-wave" + "|" + .spec.source.path' deploy/gitops/base/barman-cloud-objectstores.yaml)"
+if [ "$plugin_wave" != "2|deploy/gitops/charts/barman-cloud-plugin" ] || [ "$stores_wave" != "3|deploy/gitops/charts/barman-cloud-objectstores" ]; then
+  echo "FAIL: Barman plugin/ObjectStore Applications lost their ordered GitOps paths" >&2
+  fail=1
+fi
+if kubectl kustomize deploy/gitops/overlays/local | yq -e \
+  'select(.kind == "Application" and .metadata.name == "barman-cloud-objectstores")' - >/dev/null 2>&1; then
+  echo "FAIL: local overlay must omit credential-backed ObjectStores" >&2
+  fail=1
+fi
+
 # The production kernel requires CAP_SYS_ADMIN to create the meter's private
 # pin directory on Cilium's bpffs mount. Keep the complete set explicit: the
 # container drops ALL first and remains non-privileged, but omitting any one of

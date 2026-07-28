@@ -44,6 +44,15 @@ patches:
         name: openbao-backup
         namespace: argocd
       $patch: delete
+  # The plugin itself remains installed for local migration tests, but the
+  # disposable cluster has no object-store credential Secrets.
+  - patch: |-
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: barman-cloud-objectstores
+        namespace: argocd
+      $patch: delete
   # Auth DBs: shrink to CAPD scale — 1Gi on local-path (no hcloud-volumes here;
   # the CAPD cluster needs the local-path provisioner installed, see docs/ADR012-auth.md).
   - patch: |-

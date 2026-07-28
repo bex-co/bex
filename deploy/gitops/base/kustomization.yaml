@@ -21,6 +21,8 @@ resources:
   - cert-manager.yaml            # automated Let's Encrypt TLS
   - cert-manager-issuers.yaml    # letsencrypt-staging + -prod ClusterIssuers (after cert-manager)
   - cnpg-operator.yaml           # CloudNativePG operator (Postgres)
+  - barman-cloud-plugin.yaml     # supported CNPG-I object-store backup/restore plugin
+  - barman-cloud-objectstores.yaml # prod backup transports; local overlay excludes (no S3 creds)
   - bex-postgres.yaml            # the control-plane DB Cluster (db `bex`), after CNPG
   - etcd-backup.yaml             # nightly etcd snapshot -> object storage (local overlay excludes)
   - auth-dbs.yaml                # kratos-db + hydra-db CNPG Clusters, after CNPG

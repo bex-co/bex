@@ -10,6 +10,21 @@
 
 All three use the same Wasabi/Hetzner Object Storage bucket (`bex-tfstate`) under separate prefixes. Credentials come from out-of-band Secrets (never in git), following the same pattern as `etcd-backup-s3` / `openbao-backup-s3`.
 
+## Barman Cloud Plugin migration
+
+The supported CNPG-I backup path is the [Barman Cloud Plugin](https://cloudnative-pg.io/plugin-barman-cloud/docs/intro/). bex vendors the exact upstream `v0.13.0` installation manifest (SHA-256 pinned in `deploy/gitops/charts/barman-cloud-plugin/README.md`) and installs it beside the CloudNativePG operator in `cnpg-system`; cert-manager supplies the client/server TLS certificates. The plugin controller runs on the platform pool, while its data-plane sidecar follows each CNPG instance pod's existing placement.
+
+Two GitOps-managed `ObjectStore` resources preserve the pre-migration transport contract without containing credential bytes:
+
+| ObjectStore | destination | retention | credential reference |
+| --- | --- | --- | --- |
+| `bex-system/bex-db` | `s3://bex-tfstate/bex-db` | 7d | `bex-system/bex-db-backup-s3` |
+| `default/bex-tenant-postgres` | `s3://bex-tfstate/postgres` | 30d | `default/bex-db-backup-s3` |
+
+Both references require only `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`; those Secrets remain provisioned out of band. Tenant clusters share the transport definition but pass their immutable per-database/per-major archive identity as the plugin's `serverName` parameter. This keeps one credential/config surface while preserving archive isolation.
+
+Migration is deliberately staged: install the plugin and ObjectStores first, then atomically switch each Cluster, recovery source, and ScheduledBackup to `barman-cloud.cloudnative-pg.io`, then run fresh backup/PITR/restore drills. The in-tree configuration remains present until those drills pass, so installing the plugin alone cannot interrupt current WAL archiving.
+
 ```mermaid
 graph LR
   subgraph cluster["app cluster (Hetzner)"]
