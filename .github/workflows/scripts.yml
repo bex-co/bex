@@ -10,10 +10,6 @@ on:
       - "scripts/bao-endpoints.sh"
       - "scripts/bao-k8s-auth.sh"
       - "scripts/gh-secrets.sh"
-      - "scripts/postgres-name-migrate.sh"
-      - "scripts/postgres-name-migrate.test.sh"
-      - "scripts/keyvalue-name-migrate.sh"
-      - "scripts/keyvalue-name-migrate.test.sh"
       - "scripts/keyvalue-cli-verify.sh"
       - "scripts/keyvalue-cli-verify.test.sh"
       - "scripts/cli-compat.sh"
@@ -30,10 +26,6 @@ on:
       - "scripts/bao-endpoints.sh"
       - "scripts/bao-k8s-auth.sh"
       - "scripts/gh-secrets.sh"
-      - "scripts/postgres-name-migrate.sh"
-      - "scripts/postgres-name-migrate.test.sh"
-      - "scripts/keyvalue-name-migrate.sh"
-      - "scripts/keyvalue-name-migrate.test.sh"
       - "scripts/keyvalue-cli-verify.sh"
       - "scripts/keyvalue-cli-verify.test.sh"
       - "scripts/cli-compat.sh"
@@ -57,10 +49,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: bao-init unit tests
         run: bash scripts/bao-init.test.sh
-      - name: Postgres name-migration unit tests
-        run: bash scripts/postgres-name-migrate.test.sh
-      - name: Key-value name-migration unit tests
-        run: bash scripts/keyvalue-name-migrate.test.sh
       - name: Official Key Value CLI verifier safety tests
         run: bash scripts/keyvalue-cli-verify.test.sh
       - name: Rename-verify snapshot error-handling unit tests
