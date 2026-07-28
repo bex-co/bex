@@ -6,7 +6,8 @@
 # Per-App pull credentials (w7/m36): the bex-puller shared credential is no longer
 # used. Each App gets its own "app-<name>" htpasswd user and a per-repo Zot ACL
 # entry, managed dynamically by the operator. This script:
-#   - seeds zot-htpasswd with bex-builder only (bex-puller removed);
+#   - refreshes bex-builder while preserving operator-managed app-<name> users
+#     already present in zot-htpasswd (bex-puller remains removed);
 #   - does NOT create bex-registry-pull (deprecated; superseded by per-App
 #     "reg-pull-<name>" Secrets in the apps namespace created by the operator).
 #   - creates bex-registry-pull in the BUILD namespace only (for the static-site
@@ -33,7 +34,7 @@
 #                             (default bex-system; charts/kpack/platform.yaml)
 #
 # Secrets created (idempotent — re-run to rotate):
-#   bex-registry/zot-htpasswd        key htpasswd   (bcrypt, bex-builder only; per-App added by operator)
+#   bex-registry/zot-htpasswd        key htpasswd   (bcrypt, bex-builder + preserved per-App users)
 #   <build-ns>/bex-registry-push     key config.json  (docker-config, bex-builder)
 #   <build-ns>/bex-registry-push-kpack type dockerconfigjson (same credential + alias)
 #   <build-ns>/bex-registry-pull     type dockerconfigjson (bex-builder cred for publish Job)
@@ -107,7 +108,7 @@ registry_config() {
 
 if [ "${DRY_RUN:-}" = "1" ]; then
   echo "would ensure namespace $REGISTRY_NS"
-  echo "would apply secret $REGISTRY_NS/zot-htpasswd (key htpasswd, user: bex-builder only — per-App users added by operator)"
+  echo "would apply secret $REGISTRY_NS/zot-htpasswd (key htpasswd, refresh bex-builder + preserve existing app-* users)"
   echo "would apply secret $BUILD_NS/bex-registry-push (key config.json, user bex-builder → $REGISTRY)"
   echo "would apply secret $BUILD_NS/bex-registry-push-kpack (dockerconfigjson, user bex-builder → $KPACK_REGISTRY)"
   echo "would apply secret $BUILD_NS/bex-registry-pull (dockerconfigjson, bex-builder for publish Job)"
@@ -126,9 +127,16 @@ kubectl get namespace "$BUILD_NS" >/dev/null 2>&1 || kubectl create namespace "$
 kubectl get namespace "$KPACK_NS" >/dev/null 2>&1 || kubectl create namespace "$KPACK_NS" >/dev/null
 
 # 1. htpasswd (bcrypt) Zot mounts via externalSecrets (deploy/gitops/base/zot.yaml).
-# Only bex-builder is seeded here. Per-App users ("app-<name>") are added by the
-# operator as each App is reconciled (w7/m36).
-HTPASSWD="$(htpasswd_line bex-builder "$BEX_REGISTRY_BUILDER_PASSWORD")"
+# Refresh the out-of-band builder hash but retain the operator's existing
+# repository-scoped App identities. Re-running this rotation script must not
+# invalidate every live App until its next reconcile. Unknown and deprecated
+# users (including bex-puller) are deliberately not carried forward.
+EXISTING_HTPASSWD="$(kubectl get secret zot-htpasswd -n "$REGISTRY_NS" -o json 2>/dev/null \
+  | jq -r '.data.htpasswd | @base64d' 2>/dev/null || true)"
+HTPASSWD="$({
+  printf '%s\n' "$(htpasswd_line bex-builder "$BEX_REGISTRY_BUILDER_PASSWORD")"
+  printf '%s\n' "$EXISTING_HTPASSWD" | awk -F: '$1 ~ /^app-/ && NF == 2 { print }'
+} | awk -F: 'NF == 2 && !seen[$1]++ { print }')"
 kubectl create secret generic zot-htpasswd -n "$REGISTRY_NS" \
   --from-literal=htpasswd="$HTPASSWD" \
   --dry-run=client -o yaml | kubectl apply -f - >/dev/null
@@ -169,6 +177,6 @@ kubectl create secret generic bex-registry-pull -n "$BUILD_NS" \
   --from-literal=.dockerconfigjson="$(registry_config bex-builder "$BEX_REGISTRY_BUILDER_PASSWORD")" \
   --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 
-echo "applied: $REGISTRY_NS/zot-htpasswd (bex-builder only), $BUILD_NS/bex-registry-push{,-kpack,-pull}, $KPACK_NS/bex-registry-push-kpack"
+echo "applied: $REGISTRY_NS/zot-htpasswd (bex-builder + preserved app-* users), $BUILD_NS/bex-registry-push{,-kpack,-pull}, $KPACK_NS/bex-registry-push-kpack"
 echo "operator will mint per-App reg-pull-<name> Secrets and add app-<name> htpasswd entries as Apps are reconciled"
 echo "after first reconcile, restart Zot to load initial zot-config:  kubectl rollout restart statefulset zot -n $REGISTRY_NS"

@@ -162,8 +162,9 @@ kpack_sa_namespace="$(yq -N \
   deploy/gitops/charts/kpack/platform.yaml | tr -d '\n')"
 if [ "$kpack_sa_namespace" != "bex-system" ] \
   || ! grep -Fq 'KPACK_NS="${BEX_KPACK_NAMESPACE:-bex-system}"' scripts/registry-secrets.sh \
-  || ! grep -Fq 'kubectl create secret generic bex-registry-push-kpack -n "$KPACK_NS"' scripts/registry-secrets.sh; then
-  echo "FAIL: kpack ClusterBuilder ServiceAccount and out-of-band push credential must share namespace bex-system" >&2
+  || ! grep -Fq 'kubectl create secret generic bex-registry-push-kpack -n "$KPACK_NS"' scripts/registry-secrets.sh \
+  || ! grep -Fq '$1 ~ /^app-/ && NF == 2' scripts/registry-secrets.sh; then
+  echo "FAIL: kpack builder credential must share bex-system with its ServiceAccount and registry rotation must preserve app-* identities" >&2
   fail=1
 fi
 
