@@ -1,5 +1,5 @@
 # kpack — Kubernetes-native Cloud Native Buildpack builds. The exact upstream
-# v0.17.2 controller/CRDs and bex's ClusterBuilder are vendored so Argo applies a
+# v0.18.0 controller/CRDs and bex's ClusterBuilder are vendored so Argo applies a
 # reproducible artifact rather than following a moving remote URL.
 apiVersion: argoproj.io/v1alpha1
 kind: Application

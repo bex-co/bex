@@ -72,7 +72,7 @@ spec:
   runImage:
     image: paketobuildpacks/run-jammy-base
 ---
-# kpack v0.17 no longer accepts a complete builder image directly on Image.
+# kpack v0.18 does not accept a complete builder image directly on Image.
 # Instead, ClusterStore imports its buildpackages and this ClusterBuilder
 # recreates the complete Paketo detection order against the matching Jammy
 # stack. Versions are intentionally omitted so a deliberate cnbBuilder update
