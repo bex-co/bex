@@ -317,6 +317,27 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	// that actually need a build/pre-deploy/rollout. Operational mutations such as
 	// manual scale therefore keep using the active artifact and release.
 	releaseDecision := prepareAppReleaseDecision(&app)
+	if releaseDecision.canceled {
+		// The backend already deleted this generation's build artifact. Preserve
+		// the last healthy release (if any) and acknowledge the current App
+		// generation without ever dispatching the canceled build again.
+		if app.Status.Image == "" {
+			app.Status.Phase = appv1alpha1.PhaseFailed
+			app.Status.ObservedGeneration = app.Generation
+			meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+				Type: "Ready", Status: metav1.ConditionFalse, Reason: "BuildCanceled",
+				Message: "build canceled before a release became available", ObservedGeneration: app.Generation,
+			})
+			if err := r.Status().Update(ctx, &app); err != nil {
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, nil
+		}
+		if r.Mode == ModeKubernetes {
+			return r.reconcileKubernetes(ctx, &app, app.Status.Image, port)
+		}
+		return r.reconcileOpenSandbox(ctx, &app, app.Status.Image, port)
+	}
 
 	// --- resolve the image: prebuilt, cached artifact, or build from git ---
 	image, artifactResolved := reusableArtifactImage(&app, releaseDecision)

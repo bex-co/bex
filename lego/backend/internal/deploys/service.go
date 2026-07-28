@@ -620,6 +620,19 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 		return DeployView{}, fmt.Errorf("%w: deploy %q is already %s", core.ErrConflict, deployID, d.Status)
 	}
 	if a.Spec.Repo != "" {
+		// Mark the release before deleting its artifact. The operator is
+		// level-triggered and would otherwise recreate the deterministic build
+		// Job/kpack Image on its next pass because the App generation still asks
+		// for this release. A newer deploy stamps a newer release-generation and
+		// naturally supersedes this marker.
+		base := a.DeepCopy()
+		if a.Annotations == nil {
+			a.Annotations = map[string]string{}
+		}
+		a.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] = strconv.FormatInt(d.Generation, 10)
+		if err := s.Client.Patch(ctx, a, client.MergeFrom(base)); err != nil {
+			return DeployView{}, fmt.Errorf("mark canceled release: %w", err)
+		}
 		buildNS := a.Namespace
 		if s.BuildNamespace != "" {
 			buildNS = s.BuildNamespace

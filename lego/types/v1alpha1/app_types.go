@@ -38,6 +38,13 @@ const (
 // stable identity.
 const AnnotationReleaseGeneration = "app.bex.co/release-generation"
 
+// AnnotationCanceledReleaseGeneration records a repo-backed release whose
+// build was explicitly canceled. The operator keeps the previous healthy
+// release serving and must not recreate build artifacts for this generation;
+// a later deploy carries a newer AnnotationReleaseGeneration and supersedes
+// this marker.
+const AnnotationCanceledReleaseGeneration = "app.bex.co/canceled-release-generation"
+
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 

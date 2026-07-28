@@ -185,6 +185,64 @@ func TestReleaseGenerationSurvivesOperationalMutationBeforeReconcile(t *testing.
 	}
 }
 
+func TestCanceledReleaseKeepsLastSuccessfulGeneration(t *testing.T) {
+	previousSpec := appv1alpha1.AppSpec{Repo: "https://example.invalid/repo.git", RestartedAt: "first"}
+	previous := desiredAppReleaseIdentity(previousSpec)
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Generation: 2,
+			Annotations: map[string]string{
+				appv1alpha1.AnnotationReleaseGeneration:         "2",
+				appv1alpha1.AnnotationCanceledReleaseGeneration: "2",
+			},
+		},
+		Spec: appv1alpha1.AppSpec{Repo: previousSpec.Repo, RestartedAt: "second"},
+		Status: appv1alpha1.AppStatus{
+			Image:               "registry.example/app@sha256:old",
+			ArtifactImage:       "registry.example/app@sha256:old",
+			ArtifactFingerprint: previous.artifact,
+			ReleaseFingerprint:  previous.release,
+			ReleaseGeneration:   2,
+			ActiveRevision:      "rev-1",
+			ObservedGeneration:  1,
+		},
+	}
+
+	decision := prepareAppReleaseDecision(app)
+	if !decision.canceled {
+		t.Fatalf("decision = %+v, want canceled", decision)
+	}
+	if app.Status.ReleaseGeneration != 1 {
+		t.Fatalf("releaseGeneration = %d, want last successful generation 1", app.Status.ReleaseGeneration)
+	}
+}
+
+func TestNewReleaseSupersedesCanceledGeneration(t *testing.T) {
+	previous := desiredAppReleaseIdentity(appv1alpha1.AppSpec{Repo: "https://example.invalid/repo.git", RestartedAt: "first"})
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Generation: 3,
+			Annotations: map[string]string{
+				appv1alpha1.AnnotationReleaseGeneration:         "3",
+				appv1alpha1.AnnotationCanceledReleaseGeneration: "2",
+			},
+		},
+		Spec: appv1alpha1.AppSpec{Repo: "https://example.invalid/repo.git", RestartedAt: "third"},
+		Status: appv1alpha1.AppStatus{
+			Image:               "registry.example/app@sha256:old",
+			ArtifactFingerprint: previous.artifact,
+			ReleaseFingerprint:  previous.release,
+			ReleaseGeneration:   1,
+			ActiveRevision:      "rev-1",
+		},
+	}
+
+	decision := prepareAppReleaseDecision(app)
+	if decision.canceled || !decision.releaseChanged || app.Status.ReleaseGeneration != 3 {
+		t.Fatalf("decision=%+v releaseGeneration=%d, want normal release 3", decision, app.Status.ReleaseGeneration)
+	}
+}
+
 func mutateIdentityTestField(value reflect.Value) {
 	switch value.Kind() {
 	case reflect.String:
