@@ -1,6 +1,6 @@
 # ADR040 — Direct Stripe usage billing
 
-**Status:** Accepted · **Owner:** backend/control plane · **Originally accepted:** 2026-07-17 · **Revised:** 2026-07-27 (w7/m51)
+**Status:** Accepted · **Owner:** backend/control plane · **Originally accepted:** 2026-07-17 · **Revised:** 2026-07-28 (w7/m52)
 
 > The filename is retained for stable links. The original decision used Metronome as an intermediate rating service. w7/m50 replaces that sink with Stripe Billing; Metronome is no longer a runtime dependency.
 
@@ -90,11 +90,27 @@ Tax collection stays off unless all of these are true in the same Stripe mode:
 
 No code path guesses the legal/product classification or creates a registration. Before the gate passes, REST, GraphQL, MCP, and the dashboard return an explicit unconfigured reason and never claim tax is collected. Once it passes, Checkout collects billing address and tax-ID inputs on Stripe's hosted page, and the completion handler enables `automatic_tax` on the existing Subscription. This is configuration enforcement, not legal advice, registration, filing, or remittance.
 
-### 7. Webhook intake and payment setup, not dunning enforcement
+### 7. Durable dunning and reversible enforcement
 
-When both Stripe runtime and webhook secrets are configured, `POST /v1/webhooks/stripe` is mounted outside OAuth because `Stripe-Signature` is its credential. The handler reads a bounded body, verifies the signature and stripe-go v86 API version `2026-06-24.dahlia`, and accepts exactly `checkout.session.completed` and `invoice.payment_failed`. Checkout completion performs the ownership-checked default-payment-method binding above. Payment failure is trusted intake only at m51 and does not suspend or delete anything.
+When both Stripe runtime and webhook secrets are configured, `POST /v1/webhooks/stripe` is mounted outside OAuth because `Stripe-Signature` is its credential. The handler reads a bounded body, verifies the signature, stripe-go v86 API version `2026-06-24.dahlia`, and test/live mode before dispatch. It accepts Checkout completion plus invoice payment failed/action-required/succeeded/paid and Subscription created/updated/deleted/paused/resumed. Checkout completion performs the ownership-checked default-payment-method binding above.
 
-The dunning enforcement ladder remains deferred: payment failure → grace → reversible suspension → eventual audited termination. Stripe owns invoice state and payment retries; bex will own only the later resource reaction. A polling backstop, notifications, and enforcement state are separate work.
+Every accepted collection event is reduced to identifiers, mode, provider time, normalized outcome, and bounded reason in one Postgres transaction; the signed body and payment details are never stored. Event id is the idempotency key. A provider timestamp makes stale/reordered events ledger-only facts, while a bounded Stripe Subscription poll feeds the same transition engine when a webhook is missed. Events for objects without immutable `bex_workspace` and `bex_billing_contract=true` Subscription metadata are acknowledged and ignored rather than poisoning retries.
+
+The state ladder is `healthy → grace → enforcing → enforced → recovering → healthy`. A failed/action-required invoice or non-collectible Subscription opens one durable grace deadline. Payment recovery before the deadline cancels enforcement; recovery after enforcement reverses it. Workers claim due rows with a database lease, so replicas and restarts cannot create parallel ownership. `excluded` and `comped` are terminal collection exceptions until an audited operator changes them.
+
+The enforcement matrix is deliberately conservative and reversible:
+
+| Resource | At grace expiry | Billing ownership | Recovery |
+| --- | --- | --- | --- |
+| web/private/worker/cron App | set `spec.suspended=true` | marker row plus `billing.bex.co/enforcement` annotation, only when previously running | resume only while the same annotation remains |
+| managed Postgres | hibernate (`spec.suspended=true`) | same marker/annotation rule | unhibernate only billing-owned changes |
+| managed Key Value | scale to zero (`spec.suspended=true`) | same marker/annotation rule | resume only billing-owned changes |
+| static site | no serving mutation | none | none |
+| PVC/object data, credentials, OpenBao secrets, usage, invoices, audit evidence | no touch and never delete | none | none required |
+
+An already suspended resource gets no billing marker and therefore stays suspended after payment. A deleted or independently unmarked resource is treated as operator/user-owned and is never recreated or resumed. Billable creates, upgrades, deploys, and tenant resume attempts are gated while enforcement/recovery is active. Eventual deletion and debt collection are explicitly outside this milestone.
+
+Each visible transition creates one durable owner notification. SMTP/provider failure retries independently and never rolls back billing state. Operator overrides require an actor and reason, are audit-recorded, and use the same marker-based recovery path; tenant credentials cannot invoke them.
 
 ### 8. Customer-billing API contract
 
@@ -115,6 +131,9 @@ The dashboard consumes the GraphQL contract with its existing Kratos HttpOnly se
 | `BEX_STRIPE_PORTAL_CONFIGURATION_ID` | Optional operator-owned `bpc_*` configuration used for every Portal session. |
 | `BEX_STRIPE_TAX_CODE` | Operator-confirmed canonical Product tax code. Requires `BEX_STRIPE_TAX_BEHAVIOR` and an active same-mode registration; otherwise Tax stays unconfigured. |
 | `BEX_STRIPE_TAX_BEHAVIOR` | Explicit `exclusive` or `inclusive` Price behavior. Requires `BEX_STRIPE_TAX_CODE`. |
+| `BEX_STRIPE_DUNNING_ENABLED` | `1` enables the durable grace/enforcement workers. Test mode only at m52; live-mode enable is refused. |
+| `BEX_STRIPE_GRACE_PERIOD` | Go duration for the grace deadline; default `168h`, minimum `1m`, parsed only when dunning is enabled. |
+| `BEX_STRIPE_RECONCILE_INTERVAL` | Stripe polling backstop cadence; default `5m`, minimum `1m`. |
 | `BEX_DASHBOARD_URL` | Trusted first-party dashboard origin for Checkout success/cancel and Portal return URLs. Missing/invalid configuration makes hosted-session creation fail closed. |
 
 `BEX_METRONOME_*` variables are retired and ignored. The Metronome SDK, client, setup runbook, and reconciliation script are removed.
@@ -139,7 +158,7 @@ Rollback is non-destructive: remove `BEX_STRIPE_SECRET_KEY` and `BEX_STRIPE_WEBH
 - The m47 `emitted_at` migration and store API remain provider-neutral and unchanged.
 - `pricing.yaml` now has two deliberate consumers: advisory estimates and Stripe catalog setup. Stripe invoices remain authoritative.
 - The operator and CRD contract remain unchanged.
-- Payment-method onboarding and Customer Portal access are Stripe-hosted and API-operable across all bex surfaces. Tax remains deliberately unconfigured until the operator supplies the legal/business inputs and same-mode registration. Non-payment enforcement remains product work.
+- Payment-method onboarding and Customer Portal access are Stripe-hosted and API-operable across all bex surfaces. Tax remains deliberately unconfigured until the operator supplies the legal/business inputs and same-mode registration. Test-mode non-payment now converges through a durable, reversible lifecycle; live enforcement and eventual termination remain product decisions.
 
 ## Render parity
 

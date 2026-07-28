@@ -62,6 +62,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/mailer"
 	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
+	"github.com/bex-co/bex/lego/backend/internal/notifications"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/serve"
@@ -241,6 +242,9 @@ func main() {
 	// constructed after NewServer (it shares deps.Mailer + the identity email
 	// lookup) but reads/writes the store directly.
 	var st *store.PGStore
+	var stripeLifecycleWorker *billing.Worker
+	var stripeLifecycleReconciler *billing.Reconciler
+	var stripeBillingAdmin store.BillingAdmin
 	if dbURI := os.Getenv("BEX_CP_DB_URI"); dbURI != "" && !mcpStdio() {
 		appsNS := envOr("BEX_CP_APPS_NAMESPACE", "default")
 		pool, err := pgxpool.New(ctx, dbURI)
@@ -292,6 +296,7 @@ func main() {
 		// core.AuditSink, so every write verb's Authorize/AuthorizeOn call
 		// starts recording the instant the store is wired — no extra plumbing.
 		base.Audit = st
+		base.Billing = st
 
 		// Workspace lifecycle (w6/m1): the workspaces feature writes through the
 		// same store and nudges the same projector to prune a deleted workspace's
@@ -398,9 +403,12 @@ func main() {
 				PortalConfigurationID: os.Getenv("BEX_STRIPE_PORTAL_CONFIGURATION_ID"),
 				TaxCode:               os.Getenv("BEX_STRIPE_TAX_CODE"),
 				TaxBehavior:           os.Getenv("BEX_STRIPE_TAX_BEHAVIOR"),
+				State:                 st,
 			})
 			usageSvc.Billing = stripeClient
 			deps.Billing = stripeClient
+			deps.BillingState = st
+			stripeBillingAdmin = &billing.Admin{Store: st, Provider: stripeClient}
 
 			emitter := billing.NewEmitter(st, stripeClient)
 			emitter.Epoch = billingEpoch
@@ -411,8 +419,31 @@ func main() {
 					log.Printf("BEX_STRIPE_SEAL_HOURS=%q invalid (want integer ≥ 1); using default %s", v, billing.DefaultSealHours)
 				}
 			}
+			var lifecycle *billing.Lifecycle
+			if os.Getenv("BEX_STRIPE_DUNNING_ENABLED") == "1" {
+				if stripeClient.ExpectedLivemode() {
+					log.Fatal("bex-api: BEX_STRIPE_DUNNING_ENABLED=1 is test-mode only at w7/m52; refusing live enforcement")
+				}
+				grace, err := time.ParseDuration(envOr("BEX_STRIPE_GRACE_PERIOD", "168h"))
+				if err != nil || grace < time.Minute {
+					log.Fatalf("bex-api: BEX_STRIPE_GRACE_PERIOD must be a duration >= 1m: %v", err)
+				}
+				reconcileEvery, err := time.ParseDuration(envOr("BEX_STRIPE_RECONCILE_INTERVAL", "5m"))
+				if err != nil || reconcileEvery < time.Minute {
+					log.Fatalf("bex-api: BEX_STRIPE_RECONCILE_INTERVAL must be a duration >= 1m: %v", err)
+				}
+				lifecycle = &billing.Lifecycle{Store: st, GracePeriod: grace, ExpectedLivemode: false}
+				enforcer := &billing.KubernetesEnforcer{Client: cl, Store: st, Namespace: envOr("BEX_CP_APPS_NAMESPACE", base.Namespace)}
+				stripeLifecycleWorker = &billing.Worker{Store: st, Enforcer: enforcer}
+				stripeLifecycleReconciler = &billing.Reconciler{Store: st, Provider: stripeClient, GracePeriod: grace, Interval: reconcileEvery}
+				log.Printf("bex-api Stripe test-mode dunning enabled (grace %s, reconcile %s)", grace, reconcileEvery)
+			}
 			if secret := os.Getenv("BEX_STRIPE_WEBHOOK_SECRET"); secret != "" {
-				deps.StripeWebhook = &billing.StripeWebhook{Secret: secret, OnCheckoutCompleted: stripeClient.CompleteCheckoutSession}
+				handler := &billing.StripeWebhook{Secret: secret, ExpectedLivemode: stripeClient.ExpectedLivemode(), OnCheckoutCompleted: stripeClient.CompleteCheckoutSession}
+				if lifecycle != nil {
+					handler.OnLifecycle = lifecycle.HandleStripeEvent
+				}
+				deps.StripeWebhook = handler
 			}
 			log.Printf("bex-api Stripe Billing enabled (seal horizon %s, epoch %s, webhook %t)", emitter.SealHours, billingEpoch.Format(time.RFC3339), deps.StripeWebhook != nil)
 			go emitter.Run(ctx)
@@ -444,7 +475,7 @@ func main() {
 		if err := requireCPAuth(cpToken, os.Getenv("BEX_CP_INSECURE")); err != nil {
 			log.Fatalf("control plane: %v", err)
 		}
-		internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: cpToken, Grant: granter}
+		internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: cpToken, Grant: granter, Billing: stripeBillingAdmin}
 		cpAddr := envOr("BEX_CP_ADDR", ":8091")
 		cpSrv := &http.Server{
 			Addr:              cpAddr,
@@ -500,6 +531,11 @@ func main() {
 	deps.MaxKeyValues, _ = strconv.Atoi(os.Getenv("BEX_MAX_KEYVALUES"))
 
 	srv := api.NewServer(base, deps)
+	if stripeLifecycleWorker != nil {
+		stripeLifecycleWorker.Notifier = notifications.BillingNotifier{Service: srv.Notifications}
+		go stripeLifecycleWorker.Run(ctx)
+		go stripeLifecycleReconciler.Run(ctx)
+	}
 
 	// environments-backfill mode: `api environments-backfill` runs the
 	// w4/m32/t003 one-shot idempotent repair (drifted apps.environment_id

@@ -22,6 +22,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -114,6 +115,7 @@ func TestBillingStatusRESTGraphQLMCPParity(t *testing.T) {
 		RequestString: `{ workspaceBillingReadiness(workspaceId:"tea-a") {
 			workspaceId mode customerReady subscriptionReady paymentMethodReady
 			tax { configured enabled reason productTaxCode taxBehavior registrationCount }
+			lifecycle { status reason graceDeadline enforcementOwned recoveryPending allowedActions updatedAt }
 		} }`,
 		Context: ctx,
 	})
@@ -149,7 +151,7 @@ func TestBillingStatusRESTGraphQLMCPParity(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if rest != graph || rest != agent {
+	if !reflect.DeepEqual(rest, graph) || !reflect.DeepEqual(rest, agent) {
 		t.Fatalf("surface drift:\nREST  %+v\nGraph %+v\nMCP   %+v", rest, graph, agent)
 	}
 	if rest.WorkspaceID != "tea-a" || provider.workspace != "tea-a" {

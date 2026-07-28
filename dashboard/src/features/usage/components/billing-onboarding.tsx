@@ -57,6 +57,30 @@ function StatusRow({ label, ready }: { label: string; ready: boolean }) {
   );
 }
 
+function LifecycleAlert({ readiness }: { readiness: BillingReadiness }) {
+  const { t } = useTranslations();
+  const state = readiness.lifecycle;
+  if (state.status === "healthy") return null;
+  let key = "usage.billingLifecycleUnknown";
+  if (state.status === "grace") key = "usage.billingLifecycleGrace";
+  if (state.status === "enforcing" || state.status === "enforced")
+    key = "usage.billingLifecycleEnforced";
+  if (state.status === "recovering") key = "usage.billingLifecycleRecovering";
+  if (state.status === "excluded") key = "usage.billingLifecycleExcluded";
+  if (state.status === "comped") key = "usage.billingLifecycleComped";
+  return (
+    <Alert variant={state.enforcementOwned ? "destructive" : "default"}>
+      <TriangleAlert aria-hidden="true" />
+      <AlertDescription>
+        {t(key, {
+          deadline: state.graceDeadline || t("usage.billingNoDeadline"),
+          reason: state.reason || state.status,
+        })}
+      </AlertDescription>
+    </Alert>
+  );
+}
+
 export function BillingOnboardingView({
   readiness,
   loading,
@@ -111,7 +135,12 @@ export function BillingOnboardingView({
                 label={t("usage.billingTaxStatus")}
                 ready={readiness.tax.enabled}
               />
+              <StatusRow
+                label={t("usage.billingLifecycleStatus")}
+                ready={readiness.lifecycle.status === "healthy"}
+              />
             </div>
+            <LifecycleAlert readiness={readiness} />
             {!readiness.tax.configured && (
               <Alert>
                 <TriangleAlert aria-hidden="true" />

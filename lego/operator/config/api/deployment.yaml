@@ -198,6 +198,27 @@ spec:
                   name: bex-stripe
                   key: BEX_STRIPE_TAX_BEHAVIOR
                   optional: true
+            # w7/m52: durable dunning is an explicit, test-mode-only opt-in.
+            # The process refuses rk_live_* when enabled; omitting these keys
+            # preserves payment onboarding without enforcement.
+            - name: BEX_STRIPE_DUNNING_ENABLED
+              valueFrom:
+                secretKeyRef:
+                  name: bex-stripe
+                  key: BEX_STRIPE_DUNNING_ENABLED
+                  optional: true
+            - name: BEX_STRIPE_GRACE_PERIOD
+              valueFrom:
+                secretKeyRef:
+                  name: bex-stripe
+                  key: BEX_STRIPE_GRACE_PERIOD
+                  optional: true
+            - name: BEX_STRIPE_RECONCILE_INTERVAL
+              valueFrom:
+                secretKeyRef:
+                  name: bex-stripe
+                  key: BEX_STRIPE_RECONCILE_INTERVAL
+                  optional: true
             # REQUIRED once BEX_CP_DB_URI is set: the internal tenant API (:8091)
             # grants workspace-admin and cross-tenant writes, so bex-api refuses
             # to start with an empty BEX_CP_TOKEN (w1/m53 requireCPAuth — the token

@@ -1461,6 +1461,9 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		stampEnvironmentMembership(a, environment)
 		return s.view(a), nil
 	}
+	if err := s.RequireBillingMutation(ctx, tenantID); err != nil {
+		return AppView{}, err
+	}
 
 	// Duplicate check, scoped to exactly the target workspace (w4/m19) —
 	// deliberately NOT GetApp, whose cross-workspace fallback exists so a
@@ -2338,6 +2341,9 @@ func (s *Service) TriggerCronRun(ctx context.Context, name string) (CronRunView,
 	if a.Spec.Type != appv1alpha1.TypeCronJob {
 		return CronRunView{}, fmt.Errorf("%w: service %q is not a cron_job", core.ErrBadRequest, name)
 	}
+	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
+		return CronRunView{}, err
+	}
 	now := s.Now().UTC()
 	runAt := now.Format(time.RFC3339Nano)
 	jobName := appv1alpha1.ManualCronRunJobName(a.Name, runAt)
@@ -2482,6 +2488,9 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 	if err != nil {
 		return AppView{}, err
 	}
+	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
+		return AppView{}, err
+	}
 	t, ok := tiers.Compute.ByRenderPlan(plan)
 	if !ok {
 		return AppView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
@@ -2540,6 +2549,9 @@ func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (AppVie
 func (s *Service) Scale(ctx context.Context, name string, replicas int32) (AppView, error) {
 	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
 	if err != nil {
+		return AppView{}, err
+	}
+	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
 		return AppView{}, err
 	}
 	if replicas < 1 || replicas > store.MaxReplicas {
@@ -3075,6 +3087,8 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 		if err := s.requireUnprotected(ctx, a, "suspend"); err != nil {
 			return AppView{}, err
 		}
+	} else if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
+		return AppView{}, err
 	}
 	return s.writeThroughStoreFetched(ctx, a,
 		func(ctx context.Context, id string) error { return s.Store.SetAppSuspended(ctx, id, suspended) },

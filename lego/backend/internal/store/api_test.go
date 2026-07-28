@@ -24,7 +24,18 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
+
+type billingAdminCapture struct {
+	workspace, action, actor, reason string
+	extension                        time.Duration
+}
+
+func (a *billingAdminCapture) OverrideBilling(_ context.Context, workspace, action, actor, reason string, extension time.Duration) (BillingLifecycle, error) {
+	a.workspace, a.action, a.actor, a.reason, a.extension = workspace, action, actor, reason, extension
+	return BillingLifecycle{WorkspaceID: workspace, Status: BillingGrace, Reason: reason}, nil
+}
 
 func newTestAPI(t *testing.T) (*API, *memStore, *int) {
 	t.Helper()
@@ -213,6 +224,29 @@ func TestBearerToken(t *testing.T) {
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
 		t.Errorf("with token: got %d want 200 (%s)", rr.Code, rr.Body)
+	}
+}
+
+func TestBillingOverrideIsControlPlaneBearerOnlyAndReasoned(t *testing.T) {
+	api, _, _ := newTestAPI(t)
+	admin := &billingAdminCapture{}
+	api.Token = "control-plane-secret"
+	api.Billing = admin
+	h := api.Handler()
+	body := `{"action":"extend_grace","actor":"ops@example.com","reason":"support incident","extension":"2h"}`
+
+	if rr := do(t, h, http.MethodPost, "/v1/tenants/tea-a/billing-override", body); rr.Code != http.StatusUnauthorized {
+		t.Fatalf("unauthorized override = %d %s", rr.Code, rr.Body.String())
+	}
+	req := httptest.NewRequest(http.MethodPost, "/v1/tenants/tea-a/billing-override", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer control-plane-secret")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("authorized override = %d %s", rr.Code, rr.Body.String())
+	}
+	if admin.workspace != "tea-a" || admin.action != "extend_grace" || admin.actor != "ops@example.com" || admin.reason != "support incident" || admin.extension != 2*time.Hour {
+		t.Fatalf("override args = %+v", admin)
 	}
 }
 

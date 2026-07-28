@@ -51,7 +51,12 @@ type API struct {
 	// Grant, when set, writes the new tenant's OpenFGA workspace membership so
 	// its owner can authorize resources (replacing the model's workspace:default
 	// placeholder). Nil => the tenant row is still created, without a membership.
-	Grant MembershipGranter
+	Grant   MembershipGranter
+	Billing BillingAdmin
+}
+
+type BillingAdmin interface {
+	OverrideBilling(context.Context, string, string, string, string, time.Duration) (BillingLifecycle, error)
 }
 
 // MembershipGranter writes/removes a subject's workspace membership in OpenFGA
@@ -96,6 +101,7 @@ func (a *API) Handler() http.Handler {
 	v1.HandleFunc("POST /v1/tenants", a.createTenant)
 	v1.HandleFunc("GET /v1/tenants", a.listTenants)
 	v1.HandleFunc("PATCH /v1/tenants/{id}/billing-excluded", a.setBillingExcluded)
+	v1.HandleFunc("POST /v1/tenants/{id}/billing-override", a.billingOverride)
 	v1.HandleFunc("POST /v1/apps", a.createApp)
 	v1.HandleFunc("GET /v1/apps", a.listApps)
 	v1.HandleFunc("GET /v1/apps/{id}", a.getApp)
@@ -103,6 +109,44 @@ func (a *API) Handler() http.Handler {
 	v1.HandleFunc("POST /v1/domains", a.createDomain)
 	mux.Handle("/v1/", a.bearer(v1))
 	return mux
+}
+
+type BillingOverrideRequest struct {
+	Action    string `json:"action"`
+	Actor     string `json:"actor"`
+	Reason    string `json:"reason"`
+	Extension string `json:"extension,omitempty"`
+}
+
+func (a *API) billingOverride(w http.ResponseWriter, r *http.Request) {
+	if a.Billing == nil {
+		writeErr(w, fmt.Errorf("billing admin unavailable"))
+		return
+	}
+	var req BillingOverrideRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, fmt.Errorf("%w: bad request body", ErrInvalid))
+		return
+	}
+	if strings.TrimSpace(req.Actor) == "" || strings.TrimSpace(req.Reason) == "" {
+		writeErr(w, fmt.Errorf("%w: actor and reason are required", ErrInvalid))
+		return
+	}
+	var extension time.Duration
+	if req.Action == "extend_grace" {
+		var err error
+		extension, err = time.ParseDuration(req.Extension)
+		if err != nil || extension <= 0 {
+			writeErr(w, fmt.Errorf("%w: extension must be a positive duration", ErrInvalid))
+			return
+		}
+	}
+	state, err := a.Billing.OverrideBilling(r.Context(), r.PathValue("id"), req.Action, req.Actor, req.Reason, extension)
+	if err != nil {
+		writeErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"workspaceId": state.WorkspaceID, "status": state.Status, "reason": state.Reason, "graceDeadline": state.GraceDeadline})
 }
 
 // CreateTenantRequest is the POST /v1/tenants body.

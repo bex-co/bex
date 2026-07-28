@@ -295,6 +295,9 @@ func (c *StripeClient) findSubscriptionObject(ctx context.Context, workspaceID, 
 	if len(found) == 0 {
 		return nil, nil
 	}
+	if err := c.rememberSubscription(ctx, workspaceID, customerID, found[0].ID); err != nil {
+		return nil, err
+	}
 	return found[0], nil
 }
 

@@ -45,7 +45,7 @@ api_curl() { curl -fsS --config "$auth_config" "$@"; }
 post_json() { api_curl -H 'Content-Type: application/json' -X POST -d "$2" "$1"; }
 
 normalize_readiness() {
-  jq -Sc '{workspaceId,mode,customerReady,subscriptionReady,paymentMethodReady,tax:{configured:.tax.configured,enabled:.tax.enabled,reason:(.tax.reason // ""),productTaxCode:(.tax.productTaxCode // ""),taxBehavior:(.tax.taxBehavior // ""),registrationCount:.tax.registrationCount}}'
+  jq -Sc '{workspaceId,mode,customerReady,subscriptionReady,paymentMethodReady,lifecycle:{status:(.lifecycle.status // "healthy"),reason:(.lifecycle.reason // ""),graceDeadline:(.lifecycle.graceDeadline // ""),enforcementOwned:(.lifecycle.enforcementOwned // false),recoveryPending:(.lifecycle.recoveryPending // false),allowedActions:(.lifecycle.allowedActions // []),updatedAt:(.lifecycle.updatedAt // "")},tax:{configured:.tax.configured,enabled:.tax.enabled,reason:(.tax.reason // ""),productTaxCode:(.tax.productTaxCode // ""),taxBehavior:(.tax.taxBehavior // ""),registrationCount:.tax.registrationCount}}'
 }
 
 rest="$(api_curl "$api_url/v1/workspaces/$workspace_id/billing")" \
@@ -63,7 +63,7 @@ if [ "$require_payment_ready" = 1 ]; then
     || fail "Checkout completion has not bound the default payment method"
 fi
 
-gql_query="$(jq -cn --arg workspace "$workspace_id" '{query:"query BillingVerify($workspace: String!) { workspaceBillingReadiness(workspaceId: $workspace) { workspaceId mode customerReady subscriptionReady paymentMethodReady tax { configured enabled reason productTaxCode taxBehavior registrationCount } } }",variables:{workspace:$workspace}}')"
+gql_query="$(jq -cn --arg workspace "$workspace_id" '{query:"query BillingVerify($workspace: String!) { workspaceBillingReadiness(workspaceId: $workspace) { workspaceId mode customerReady subscriptionReady paymentMethodReady lifecycle { status reason graceDeadline enforcementOwned recoveryPending allowedActions updatedAt } tax { configured enabled reason productTaxCode taxBehavior registrationCount } } }",variables:{workspace:$workspace}}')"
 gql="$(post_json "$api_url/graphql" "$gql_query")" \
   || fail "GraphQL readiness request failed"
 [ "$(printf '%s' "$gql" | jq '.errors // [] | length')" = 0 ] \

@@ -82,6 +82,9 @@ var (
 	// distinct from ErrUsageUnavailable: advisory usage remains available while
 	// hosted Checkout, Portal, and payment readiness fail closed.
 	ErrBillingUnavailable = errors.New("billing integration unavailable")
+	// ErrBillingEnforced blocks new billable work and tenant-driven resumes
+	// while the durable dunning lifecycle owns reversible suspension.
+	ErrBillingEnforced = errors.New("workspace billing enforcement is active")
 	// ErrAuditUnavailable is returned by the audit-log read verb when the
 	// control-plane store isn't wired (BEX_CP_DB_URI unset); adapters surface it
 	// as 503 — omitted, not faked (the deploy-history/env-vars precedent).

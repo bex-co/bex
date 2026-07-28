@@ -36,6 +36,7 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/email"
@@ -68,6 +69,10 @@ type EmailLookup interface {
 	LookupEmail(ctx context.Context, subject string) (string, bool)
 }
 
+type billingOwnerStore interface {
+	ListBillingOwnerSubjects(context.Context, string) ([]string, error)
+}
+
 // Service is the notifications feature. Store nil (BEX_CP_DB_URI unset)
 // leaves the settings verbs answering core.ErrNotificationsUnavailable and
 // NotifyDeploy a no-op. Mailer/Identities nil leaves NotifyDeploy a no-op too
@@ -82,6 +87,84 @@ type Service struct {
 	// the deploy email (w7/m44); empty ⇒ the link is omitted, honest-omit like
 	// the invite email's link.
 	DashboardBaseURL string
+}
+
+// BillingNotifier is the asynchronous m52 lifecycle sink. It is deliberately
+// separate from the caller-facing Service so auth/audit verb sweeps cannot
+// mistake an internal worker callback for a public API verb.
+type BillingNotifier struct{ Service *Service }
+
+func (n BillingNotifier) NotifyBilling(ctx context.Context, notice store.BillingNotification) error {
+	if n.Service == nil {
+		return fmt.Errorf("billing notifier unavailable")
+	}
+	return n.Service.notifyBilling(ctx, notice)
+}
+
+// notifyBilling sends the lifecycle notice. Billing notices are
+// mandatory operational messages to workspace admins, independent of deploy
+// notification preferences. The durable billing worker owns deduplication and
+// retry; this method returns delivery errors but never runs on a webhook path.
+func (s *Service) notifyBilling(ctx context.Context, n store.BillingNotification) error {
+	owners, ok := s.Store.(billingOwnerStore)
+	if !ok {
+		return fmt.Errorf("billing owner store unavailable")
+	}
+	if s.Mailer == nil || s.Identities == nil {
+		log.Printf("notifications: billing %s for %s not emailed (SMTP or identity lookup unavailable)", n.Status, n.WorkspaceID)
+		return nil
+	}
+	subjects, err := owners.ListBillingOwnerSubjects(ctx, n.WorkspaceID)
+	if err != nil {
+		return err
+	}
+	subject, msg := billingEmail(n, s.DashboardBaseURL)
+	text, html := msg.Text(), msg.HTML()
+	var errs []error
+	for _, owner := range subjects {
+		addr, found := s.Identities.LookupEmail(ctx, owner)
+		if !found {
+			errs = append(errs, fmt.Errorf("owner %s email unavailable", owner))
+			continue
+		}
+		if err := s.Mailer.Send(ctx, addr, subject, text, html); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func billingEmail(n store.BillingNotification, dashboardBaseURL string) (string, email.Message) {
+	mode := "Live Mode"
+	if !n.Livemode {
+		mode = "Test Mode"
+	}
+	title, paragraph := "Billing status updated", "Your workspace billing status changed to "+n.Status+"."
+	switch n.Status {
+	case store.BillingGrace:
+		title = "Payment failed — grace period started"
+		paragraph = "Stripe could not collect payment. Your workspace is in a grace period."
+		if n.GraceDeadline != nil {
+			paragraph += " Reversible suspension is scheduled after " + n.GraceDeadline.UTC().Format(time.RFC3339) + "."
+		}
+	case store.BillingEnforced:
+		title = "Workspace compute suspended for billing"
+		paragraph = "The payment grace period ended. Workspace compute was suspended without deleting databases, key-value data, or secrets."
+	case store.BillingHealthy:
+		title = "Billing recovered"
+		paragraph = "Payment recovered and resources changed by billing enforcement were restored. Independently suspended resources remain suspended."
+	case store.BillingExcluded:
+		title = "Workspace excluded from collection"
+		paragraph = "An operator excluded this workspace from Stripe collection."
+	case store.BillingComped:
+		title = "Workspace billing comp applied"
+		paragraph = "An operator applied the rated-but-free billing comp."
+	}
+	msg := email.Message{Title: title, Paragraphs: []string{paragraph}, Footer: []string{"Stripe " + mode + " · no payment details are included in this message."}}
+	if u := strings.TrimRight(dashboardBaseURL, "/"); u != "" {
+		msg.CTA = &email.CTA{Lead: "Review billing and payment method", Label: "Open Billing", URL: u + "/usage"}
+	}
+	return "[bex " + mode + "] " + title, msg
 }
 
 // SettingsView is the neutral projection of a member's deploy-notification

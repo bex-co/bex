@@ -29,15 +29,14 @@ import (
 
 const maxStripeWebhookBytes = 1 << 20
 
-// StripeWebhook verifies Stripe's signature before accepting events. Checkout
-// completion binds the payment method after authoritative Stripe re-reads;
-// payment-failure intake remains deliberately non-enforcing until the dunning
-// ladder lands. A nil failure callback records the verified event for operators
-// without mutating tenant state.
+// StripeWebhook verifies Stripe's signature and pinned API version before
+// dispatch. Checkout completion performs its authoritative object re-reads;
+// lifecycle events are reduced and committed by OnLifecycle before the 204.
 type StripeWebhook struct {
-	Secret                 string
-	OnInvoicePaymentFailed func(*stripe.Invoice) error
-	OnCheckoutCompleted    func(context.Context, *stripe.CheckoutSession) error
+	Secret              string
+	ExpectedLivemode    bool
+	OnLifecycle         func(context.Context, *stripe.Event) error
+	OnCheckoutCompleted func(context.Context, *stripe.CheckoutSession) error
 }
 
 func (h *StripeWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -59,24 +58,19 @@ func (h *StripeWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid Stripe signature", http.StatusBadRequest)
 		return
 	}
-	if event.Type == stripe.EventTypeInvoicePaymentFailed {
-		var invoice stripe.Invoice
-		if event.Data == nil || json.Unmarshal(event.Data.Raw, &invoice) != nil {
-			http.Error(w, "invalid invoice event", http.StatusBadRequest)
+	if event.APIVersion != stripe.APIVersion {
+		http.Error(w, "incompatible Stripe API version", http.StatusBadRequest)
+		return
+	}
+	if event.Livemode != h.ExpectedLivemode {
+		http.Error(w, "Stripe event mode mismatch", http.StatusBadRequest)
+		return
+	}
+	if isLifecycleEvent(event.Type) && h.OnLifecycle != nil {
+		if err := h.OnLifecycle(r.Context(), &event); err != nil {
+			log.Printf("billing: Stripe lifecycle handler event=%s type=%s: %v", event.ID, event.Type, err)
+			http.Error(w, "billing lifecycle unavailable", http.StatusServiceUnavailable)
 			return
-		}
-		if h.OnInvoicePaymentFailed != nil {
-			if err := h.OnInvoicePaymentFailed(&invoice); err != nil {
-				log.Printf("billing: Stripe invoice.payment_failed handler for %s: %v", invoice.ID, err)
-				http.Error(w, "payment-failure handler unavailable", http.StatusServiceUnavailable)
-				return
-			}
-		} else {
-			customerID := ""
-			if invoice.Customer != nil {
-				customerID = invoice.Customer.ID
-			}
-			log.Printf("billing: verified Stripe invoice.payment_failed invoice=%s customer=%s (enforcement deferred)", invoice.ID, customerID)
 		}
 	}
 	if event.Type == stripe.EventTypeCheckoutSessionCompleted {

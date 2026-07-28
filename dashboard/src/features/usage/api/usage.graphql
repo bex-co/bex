@@ -81,6 +81,15 @@ query BillingReadiness($workspaceId: String!) {
     customerReady
     subscriptionReady
     paymentMethodReady
+    lifecycle {
+      status
+      reason
+      graceDeadline
+      enforcementOwned
+      recoveryPending
+      allowedActions
+      updatedAt
+    }
     tax {
       configured
       enabled

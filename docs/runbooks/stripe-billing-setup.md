@@ -81,14 +81,22 @@ Store the value out of band as `BEX_STRIPE_SECRET_KEY` using the same custody pa
 
 ## 3. Create and custody the webhook
 
-The receiver uses stripe-go v86.1.1's API version `2026-06-24.dahlia`. Create the endpoint in test mode with exactly the two events the m51 handler accepts:
+The receiver uses stripe-go v86.1.1's API version `2026-06-24.dahlia`. Create the endpoint in test mode with exactly the events consumed by payment onboarding and the m52 lifecycle:
 
 ```bash
 stripe webhook_endpoints create \
   --url https://api.example.com/v1/webhooks/stripe \
   --api-version 2026-06-24.dahlia \
   -d 'enabled_events[0]=checkout.session.completed' \
-  -d 'enabled_events[1]=invoice.payment_failed'
+  -d 'enabled_events[1]=invoice.payment_failed' \
+  -d 'enabled_events[2]=invoice.payment_action_required' \
+  -d 'enabled_events[3]=invoice.payment_succeeded' \
+  -d 'enabled_events[4]=invoice.paid' \
+  -d 'enabled_events[5]=customer.subscription.created' \
+  -d 'enabled_events[6]=customer.subscription.updated' \
+  -d 'enabled_events[7]=customer.subscription.deleted' \
+  -d 'enabled_events[8]=customer.subscription.paused' \
+  -d 'enabled_events[9]=customer.subscription.resumed'
 ```
 
 Capture the returned signing `secret` once and store it out of band as `BEX_STRIPE_WEBHOOK_SECRET`. It is a distinct credential from the restricted API key. Do not paste it into git, `.env.example`, logs, or a ticket.
@@ -97,11 +105,11 @@ For local signature verification, use Stripe CLI forwarding and its temporary si
 
 ```bash
 stripe listen \
-  --events checkout.session.completed,invoice.payment_failed \
+  --events checkout.session.completed,invoice.payment_failed,invoice.payment_action_required,invoice.payment_succeeded,invoice.paid,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,customer.subscription.paused,customer.subscription.resumed \
   --forward-to localhost:8090/v1/webhooks/stripe
 ```
 
-An invalid/missing `Stripe-Signature` must return 400. A compatible, correctly signed event returns 204. With `BEX_STRIPE_WEBHOOK_SECRET` unset, the public route is not mounted. `checkout.session.completed` retrieves and verifies authoritative objects before binding defaults; `invoice.payment_failed` remains trusted intake only until m52.
+An invalid/missing `Stripe-Signature`, incompatible API version, or mode mismatch must return 400. A compatible, correctly signed event returns 204 only after its normalized ledger/state transaction commits. With `BEX_STRIPE_WEBHOOK_SECRET` unset, the public route is not mounted. `checkout.session.completed` retrieves and verifies authoritative objects before binding defaults; lifecycle events require the immutable bex Subscription metadata.
 
 ## 4. Verify test-mode behavior
 
@@ -114,6 +122,9 @@ BEX_STRIPE_SEAL_HOURS=48
 BEX_STRIPE_WEBHOOK_SECRET=<out-of-band test endpoint secret>
 BEX_STRIPE_COMP_COUPON_ID=bex-comp-100
 BEX_STRIPE_PORTAL_CONFIGURATION_ID=<non-secret bpc_* id from setup>
+BEX_STRIPE_DUNNING_ENABLED=1
+BEX_STRIPE_GRACE_PERIOD=168h
+BEX_STRIPE_RECONCILE_INTERVAL=5m
 # Set these only after the optional Tax gate above passes:
 # BEX_STRIPE_TAX_CODE=<operator-confirmed txcd_*>
 # BEX_STRIPE_TAX_BEHAVIOR=exclusive
@@ -142,8 +153,11 @@ Verify all of the following before live activation:
 8. Setup-mode Checkout uses the existing Customer, USD currency, dynamic payment methods (no `payment_method_types`), no line items, and no Subscription creation. Completing it with a Stripe test payment method makes both Customer and existing Subscription defaults match; replaying the signed completion is harmless.
 9. If the optional Tax gate is absent, readiness and invoice preview expose the explicit unconfigured reason and automatic tax stays off. If configured, the catalog and active test registration match and the resulting Subscription/invoice exposes Stripe's tax result.
 10. The scoped Portal opens for the same Customer, permits payment/billing-information updates and invoice history, returns only to the trusted dashboard origin, and cannot cancel or change the metered Subscription.
-11. Replaying a signed `invoice.payment_failed` event returns 204 and logs trusted intake without enforcing suspension.
-12. Removing `BEX_STRIPE_SECRET_KEY` and restarting produces no Stripe network traffic and returns estimate-only usage.
+11. With dunning enabled in test mode, a failed/action-required invoice creates one visible grace deadline; duplicate and older events are retained without repeating the transition.
+12. Grace expiry suspends only running App/Postgres/Key Value resources, never static content or tenant data; each changed resource has the exact billing ownership marker.
+13. A newer successful payment enters recovery and resumes only resources whose exact marker remains. A pre-suspended, deleted, or independently re-marked resource remains untouched.
+14. Polling repairs one deliberately missed webhook, owner notification failures retry independently, and the same lifecycle fields appear on REST, GraphQL, MCP, and the dashboard.
+15. Removing `BEX_STRIPE_DUNNING_ENABLED` stops lifecycle processing without enabling live enforcement. Removing `BEX_STRIPE_SECRET_KEY` and restarting produces no Stripe network traffic and returns estimate-only usage.
 
 For a disposable production-hosted test workspace, the cross-surface and hosted-session portion is reproducible without placing a Stripe credential in the verifier:
 

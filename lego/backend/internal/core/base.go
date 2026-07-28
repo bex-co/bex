@@ -76,6 +76,10 @@ type Checker interface {
 	Check(ctx context.Context, subject, relation, object string) (bool, error)
 }
 
+type BillingMutationGate interface {
+	CheckBillingMutationAllowed(context.Context, string) error
+}
+
 // The relations feature verbs require, matching deploy/gitops/authz/model.fga
 // (Render's workspace roles). Each check targets the caller's workspace —
 // workspace:tea-<id> when the control-plane store resolves the caller to a
@@ -239,6 +243,16 @@ type Base struct {
 	// Audit records write-verb authorization decisions (w4/m10); nil => audit.go's
 	// NoopAuditSink, the store-off degrade every other store-backed feature uses.
 	Audit AuditSink
+	// Billing gates only explicitly billable feature mutations. Reads and
+	// payment/Portal recovery remain available while enforcement is active.
+	Billing BillingMutationGate
+}
+
+func (b *Base) RequireBillingMutation(ctx context.Context, workspaceID string) error {
+	if b == nil || b.Billing == nil || workspaceID == "" || workspaceID == DefaultTenant {
+		return nil
+	}
+	return b.Billing.CheckBillingMutationAllowed(ctx, workspaceID)
 }
 
 // Now returns the (injectable) current time.

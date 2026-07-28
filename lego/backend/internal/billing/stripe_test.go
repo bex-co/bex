@@ -414,19 +414,19 @@ func TestStripeBillingForMissingCustomerDoesNotCreate(t *testing.T) {
 
 func TestStripeWebhookVerifiesSignatureAndDispatchesPaymentFailure(t *testing.T) {
 	secret := "whsec_test"
-	payload := []byte(fmt.Sprintf(`{"id":"evt_1","object":"event","api_version":%q,"type":"invoice.payment_failed","data":{"object":{"id":"in_1","object":"invoice","customer":"cus_1"}}}`, stripe.APIVersion))
+	payload := []byte(fmt.Sprintf(`{"id":"evt_1","object":"event","api_version":%q,"created":1785196800,"livemode":false,"type":"invoice.payment_failed","data":{"object":{"id":"in_1","object":"invoice","livemode":false,"customer":"cus_1","parent":{"type":"subscription_details","subscription_details":{"subscription":"sub_1","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}}}}}`, stripe.APIVersion))
 	signed := webhook.GenerateTestSignedPayload(&webhook.UnsignedPayload{Payload: payload, Secret: secret, Timestamp: time.Now()})
 	var got string
-	h := &StripeWebhook{Secret: secret, OnInvoicePaymentFailed: func(inv *stripe.Invoice) error {
-		got = inv.ID
+	h := &StripeWebhook{Secret: secret, OnLifecycle: func(_ context.Context, event *stripe.Event) error {
+		got = event.ID
 		return nil
 	}}
 	req := httptest.NewRequest(http.MethodPost, "/v1/webhooks/stripe", strings.NewReader(string(payload)))
 	req.Header.Set("Stripe-Signature", signed.Header)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
-	if w.Code != http.StatusNoContent || got != "in_1" {
-		t.Fatalf("webhook status=%d invoice=%q body=%s", w.Code, got, w.Body.String())
+	if w.Code != http.StatusNoContent || got != "evt_1" {
+		t.Fatalf("webhook status=%d event=%q body=%s", w.Code, got, w.Body.String())
 	}
 
 	req = httptest.NewRequest(http.MethodPost, "/v1/webhooks/stripe", strings.NewReader(string(payload)))
@@ -435,6 +435,29 @@ func TestStripeWebhookVerifiesSignatureAndDispatchesPaymentFailure(t *testing.T)
 	h.ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("bad signature status=%d, want 400", w.Code)
+	}
+}
+
+func TestStripeWebhookRejectsIncompatibleVersionAndMode(t *testing.T) {
+	secret := "whsec_test"
+	for _, tc := range []struct {
+		name, version string
+		livemode      bool
+	}{
+		{name: "version", version: "2025-01-01", livemode: false},
+		{name: "mode", version: stripe.APIVersion, livemode: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			payload := []byte(fmt.Sprintf(`{"id":"evt_guard","object":"event","api_version":%q,"created":1785196800,"livemode":%t,"type":"invoice.payment_failed","data":{"object":{}}}`, tc.version, tc.livemode))
+			signed := webhook.GenerateTestSignedPayload(&webhook.UnsignedPayload{Payload: payload, Secret: secret, Timestamp: time.Now()})
+			req := httptest.NewRequest(http.MethodPost, "/v1/webhooks/stripe", strings.NewReader(string(payload)))
+			req.Header.Set("Stripe-Signature", signed.Header)
+			w := httptest.NewRecorder()
+			(&StripeWebhook{Secret: secret, ExpectedLivemode: false}).ServeHTTP(w, req)
+			if w.Code != http.StatusBadRequest {
+				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+			}
+		})
 	}
 }
 

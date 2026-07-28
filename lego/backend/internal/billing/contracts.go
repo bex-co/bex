@@ -77,7 +77,7 @@ func (c *StripeClient) EnsureContract(ctx context.Context, tenantID string) erro
 	if sub.ID == "" {
 		return fmt.Errorf("stripe: create subscription for %s returned an empty id", tenantID)
 	}
-	return nil
+	return c.rememberSubscription(ctx, tenantID, customerID, sub.ID)
 }
 
 // CompCustomer applies Mode B: keep rated line items and invoice history, but

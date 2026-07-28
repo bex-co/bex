@@ -402,6 +402,9 @@ func (s *Service) Trigger(ctx context.Context, service string, p TriggerParams) 
 	if err != nil {
 		return DeployView{}, err
 	}
+	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
+		return DeployView{}, err
+	}
 	return s.triggerFetched(ctx, service, a, p, store.TriggerAPI)
 }
 

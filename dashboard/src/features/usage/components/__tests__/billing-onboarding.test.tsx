@@ -22,6 +22,15 @@ const baseReadiness = {
   customerReady: true,
   subscriptionReady: true,
   paymentMethodReady: false,
+  lifecycle: {
+    status: "healthy",
+    reason: "",
+    graceDeadline: "",
+    enforcementOwned: false,
+    recoveryPending: false,
+    allowedActions: ["update_payment_method", "open_portal"],
+    updatedAt: "2026-07-28T01:00:00Z",
+  },
   tax: {
     configured: false,
     enabled: false,
@@ -79,6 +88,62 @@ describe("BillingOnboardingView", () => {
     expect(onCheckout).toHaveBeenCalledOnce();
     expect(onPortal).toHaveBeenCalledOnce();
     expect(screen.getByText(/only on Stripe-hosted pages/)).toBeInTheDocument();
+  });
+
+  it("shows the authoritative grace deadline without inventing state", () => {
+    render(
+      <BillingOnboardingView
+        readiness={{
+          ...baseReadiness,
+          lifecycle: {
+            ...baseReadiness.lifecycle,
+            status: "grace",
+            reason: "payment_failed",
+            graceDeadline: "2026-07-29T01:00:00Z",
+          },
+        }}
+        loading={false}
+        checkoutBusy={false}
+        portalBusy={false}
+        onCheckout={() => undefined}
+        onPortal={() => undefined}
+      />,
+    );
+    expect(screen.getByText(/2026-07-29T01:00:00Z/)).toBeInTheDocument();
+    expect(screen.getByText(/payment failed/i)).toBeInTheDocument();
+  });
+
+  it.each([
+    [
+      "enforced",
+      { enforcementOwned: true, recoveryPending: false },
+      /enforcement is active/i,
+    ],
+    [
+      "recovering",
+      { enforcementOwned: true, recoveryPending: true },
+      /restoring only resources changed/i,
+    ],
+  ])("renders the provider-neutral %s state", (status, flags, expected) => {
+    render(
+      <BillingOnboardingView
+        readiness={{
+          ...baseReadiness,
+          lifecycle: {
+            ...baseReadiness.lifecycle,
+            ...flags,
+            status,
+            reason: "test_transition",
+          },
+        }}
+        loading={false}
+        checkoutBusy={false}
+        portalBusy={false}
+        onCheckout={() => undefined}
+        onPortal={() => undefined}
+      />,
+    );
+    expect(screen.getByText(expected)).toBeInTheDocument();
   });
 
   it("keeps Portal disabled until the unique contract is ready", () => {

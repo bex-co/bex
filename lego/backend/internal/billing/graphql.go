@@ -43,6 +43,20 @@ var billingReadinessGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"subscriptionReady":  &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(r Readiness) any { return r.SubscriptionReady })},
 		"paymentMethodReady": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(r Readiness) any { return r.PaymentMethodReady })},
 		"tax":                &graphql.Field{Type: taxReadinessGQLType, Resolve: gqlutil.Field(func(r Readiness) any { return r.Tax })},
+		"lifecycle":          &graphql.Field{Type: billingLifecycleGQLType, Resolve: gqlutil.Field(func(r Readiness) any { return r.Lifecycle })},
+	},
+})
+
+var billingLifecycleGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BillingLifecycle",
+	Fields: graphql.Fields{
+		"status":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v LifecycleView) any { return v.Status })},
+		"reason":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v LifecycleView) any { return v.Reason })},
+		"graceDeadline":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v LifecycleView) any { return v.GraceDeadline })},
+		"enforcementOwned": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v LifecycleView) any { return v.EnforcementOwned })},
+		"recoveryPending":  &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v LifecycleView) any { return v.RecoveryPending })},
+		"allowedActions":   &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(v LifecycleView) any { return v.AllowedActions })},
+		"updatedAt":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v LifecycleView) any { return v.UpdatedAt })},
 	},
 })
 

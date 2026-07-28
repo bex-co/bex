@@ -237,7 +237,7 @@ func WriteErr(w http.ResponseWriter, err error) {
 		code = http.StatusBadRequest
 	case errors.Is(err, ErrForbidden):
 		code = http.StatusForbidden
-	case errors.Is(err, ErrConflict):
+	case errors.Is(err, ErrConflict), errors.Is(err, ErrBillingEnforced):
 		code = http.StatusConflict
 	}
 	msg := err.Error()
