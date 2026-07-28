@@ -99,13 +99,17 @@ pass "shape: 3 tainted CP + 3 tainted platform + $TENANT_COUNT tenant nodes, all
 
 # --- 4. PLACEMENT: platform pods + CAPI controllers ---------------------------
 CP_NODES=$(wl get nodes -l node-role.kubernetes.io/control-plane -o jsonpath='{.items[*].metadata.name}')
-for ns in capi-system caph-system; do
-  POD_NODE=$(wl get pods -n "$ns" -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null) \
-    || fail "placement: no pods in $ns"
-  case " $CP_NODES " in
-    *" $POD_NODE "*) ;;
-    *) fail "placement: $ns pod on '$POD_NODE' (not a CP node)" ;;
-  esac
+for ns in capi-system caph-system capi-kubeadm-bootstrap-system capi-kubeadm-control-plane-system; do
+  CAPI_PODS=$(wl get pods -n "$ns" -o json 2>/dev/null) \
+    || fail "placement: could not list pods in $ns"
+  CAPI_POD_COUNT=$(jq '.items | length' <<<"$CAPI_PODS")
+  [ "$CAPI_POD_COUNT" -gt 0 ] || fail "placement: no pods in $ns"
+  while IFS= read -r pod_node; do
+    case " $CP_NODES " in
+      *" $pod_node "*) ;;
+      *) fail "placement: $ns pod on '${pod_node:-<pending>}' (not a CP node)" ;;
+    esac
+  done < <(jq -r '.items[].spec.nodeName // ""' <<<"$CAPI_PODS")
 done
 PLATFORM_NODES=$(jq '[.items[] | select(.metadata.labels["bex.co/pool"] == "platform") | .metadata.name]' <<<"$NODES_JSON")
 PODS_JSON=$(wl get pods -A -o json)
@@ -119,7 +123,7 @@ BAD_PLATFORM_SELECTOR=$(jq '[.items[]
   | select(.spec.nodeSelector["bex.co/pool"] != "platform")] | length' <<<"$PODS_JSON")
 [ "$PLATFORM_SELECTED" -gt 0 ] && [ "$BAD_PLATFORM_PLACEMENT" -eq 0 ] && [ "$BAD_PLATFORM_SELECTOR" -eq 0 ] \
   || fail "placement: selected=$PLATFORM_SELECTED misplaced=$BAD_PLATFORM_PLACEMENT missing-platform-selector=$BAD_PLATFORM_SELECTOR"
-pass "placement: $PLATFORM_SELECTED platform-selected pods on platform nodes; CAPI/CAPH controllers on CP"
+pass "placement: $PLATFORM_SELECTED platform-selected pods on platform nodes; all CAPI/CAPH controllers on CP"
 
 # --- 5. DATA: OpenBao quorum + platform CNPG HA -------------------------------
 BAO_JSON=$(wl get pods -n secrets -l app.kubernetes.io/name=openbao -o json)
