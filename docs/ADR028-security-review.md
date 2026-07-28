@@ -146,7 +146,7 @@ A second evidence-backed pass (six focused audits) covered the surface added sin
 | Fail-open authz mode (store on, OpenFGA off) is role-less within a workspace | LOW | **fixed** — startup WARNING when store-on + OpenFGA-off |
 | `RevokeAPIKey` skipped the ownership check for unbound keys | LOW | **fixed** — unbound key ⇒ `ErrNotFound` in scoped mode |
 | Managed Valkey pods unhardened + mounted the default SA token | LOW | **fixed** — `tenantSecCtx()` + `AutomountServiceAccountToken:false` |
-| Tenant metadata-egress deny hinged on the workspace label (label-less Apps reached `169.254.169.254`) | LOW | **fixed (metadata)** — label-independent `deny-metadata-egress-all-pods` CiliumNetworkPolicy for all apps-namespace pods |
+| Tenant metadata-egress deny hinged on the workspace label (label-less Apps reached `169.254.169.254`) | LOW | **fixed (metadata)** — label-independent `deny-metadata-egress-all-pods` CiliumNetworkPolicy for all apps-namespace pods; `enableDefaultDeny.egress: false` preserves ordinary egress for non-App CNPG/purge/autoscaler workloads while the deny still takes precedence |
 | projects REST adapter reached into the store directly | LOW | **fixed** — moved to a `Service` helper |
 | deploy-hook `imgURL` = arbitrary-image deploy credential | LOW | **fixed** — `ValidImage` at the boundary + documented as a credential |
 | Invite tokens stored plaintext at rest | LOW | **fixed** (2026-07-20, `w1/041`) — `token_hash` (sha256) at rest, in-place backfill; resend now mints a fresh token (the old link dies), docs/ADR024-members.md updated |
