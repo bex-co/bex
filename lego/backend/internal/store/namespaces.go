@@ -28,6 +28,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -168,6 +169,11 @@ func (r *NamespaceReconciler) ensureNamespace(ctx context.Context, t Tenant, reg
 	}
 	if err := r.applyObject(ctx, defaultDenyNetworkPolicy(name)); err != nil {
 		return fmt.Errorf("networkpolicy: %w", err)
+	}
+	for _, np := range allowNetworkPolicies(name, regime) {
+		if err := r.applyObject(ctx, np); err != nil {
+			return fmt.Errorf("networkpolicy %s: %w", np.Name, err)
+		}
 	}
 	return nil
 }
@@ -332,10 +338,129 @@ func baseLimitRange(namespace string) *corev1.LimitRange {
 	}
 }
 
+// allowNetworkPolicies layers the opt-in allows on top of the default-deny
+// (NetworkPolicies are additive), regime-aware per ADR043 D2 (t005). Because a
+// per-tenant namespace IS exactly one workspace, "same-workspace" collapses to
+// "same-namespace" — no label selector needed, the namespace boundary is the
+// selector. Every policy is namespace-scoped, so an allow physically cannot
+// name a pod in another tenant's namespace.
+//
+//   - hosting (`<ws>`): an addressable service — allow intra-namespace, DNS,
+//     Traefik ingress (external traffic enters here), and internet egress minus
+//     in-cluster private ranges and the link-local cloud-metadata range.
+//   - sandbox (`<ws>-sandbox`): a sealed exec-box — allow only intra-namespace
+//     and DNS; no Traefik ingress, no broad internet egress. The build-boundary
+//     Cilium egress-deny (m32 t005) governs any narrowed external access.
+func allowNetworkPolicies(namespace, regime string) []*networkingv1.NetworkPolicy {
+	policies := []*networkingv1.NetworkPolicy{
+		sameNamespaceNetworkPolicy(namespace),
+		dnsEgressNetworkPolicy(namespace),
+	}
+	if regime == RegimeHosting {
+		policies = append(policies,
+			traefikIngressNetworkPolicy(namespace),
+			internetEgressNetworkPolicy(namespace),
+		)
+	}
+	return policies
+}
+
+func npMeta(namespace, name string) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Name:      name,
+		Namespace: namespace,
+		Labels:    map[string]string{LabelManagedBy: ManagedByValue},
+	}
+}
+
+// sameNamespaceNetworkPolicy allows all traffic between pods in the namespace
+// (private services between a workspace's own apps).
+func sameNamespaceNetworkPolicy(namespace string) *networkingv1.NetworkPolicy {
+	inNamespace := []networkingv1.NetworkPolicyPeer{{PodSelector: &metav1.LabelSelector{}}}
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: npMeta(namespace, "allow-same-namespace"),
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
+			Ingress:     []networkingv1.NetworkPolicyIngressRule{{From: inNamespace}},
+			Egress:      []networkingv1.NetworkPolicyEgressRule{{To: inNamespace}},
+		},
+	}
+}
+
+// dnsEgressNetworkPolicy allows DNS to kube-system (both regimes need it).
+func dnsEgressNetworkPolicy(namespace string) *networkingv1.NetworkPolicy {
+	udp, tcp := corev1.ProtocolUDP, corev1.ProtocolTCP
+	dnsPort := intstr.FromInt32(53)
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: npMeta(namespace, "allow-dns-egress"),
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
+			Egress: []networkingv1.NetworkPolicyEgressRule{{
+				Ports: []networkingv1.NetworkPolicyPort{
+					{Protocol: &udp, Port: &dnsPort},
+					{Protocol: &tcp, Port: &dnsPort},
+				},
+				To: []networkingv1.NetworkPolicyPeer{{
+					NamespaceSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{"kubernetes.io/metadata.name": "kube-system"},
+					},
+				}},
+			}},
+		},
+	}
+}
+
+// traefikIngressNetworkPolicy allows external traffic to enter a hosting
+// namespace's pods through the Traefik ingress controller.
+func traefikIngressNetworkPolicy(namespace string) *networkingv1.NetworkPolicy {
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: npMeta(namespace, "allow-traefik-ingress"),
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{{
+				From: []networkingv1.NetworkPolicyPeer{{
+					NamespaceSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{"kubernetes.io/metadata.name": "traefik"},
+					},
+				}},
+			}},
+		},
+	}
+}
+
+// internetEgressNetworkPolicy allows a hosting namespace's pods to reach the
+// public internet, minus in-cluster private ranges (RFC1918 / CGNAT) and the
+// link-local cloud-metadata range — the same "internet yes, cluster no" shape
+// the shared per-App policy used (ADR022 §Per-App NetworkPolicy shape).
+func internetEgressNetworkPolicy(namespace string) *networkingv1.NetworkPolicy {
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: npMeta(namespace, "allow-internet-egress"),
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
+			Egress: []networkingv1.NetworkPolicyEgressRule{{
+				To: []networkingv1.NetworkPolicyPeer{{
+					IPBlock: &networkingv1.IPBlock{
+						CIDR: "0.0.0.0/0",
+						Except: []string{
+							"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
+							"100.64.0.0/10", "169.254.0.0/16",
+						},
+					},
+				}},
+			}},
+		},
+	}
+}
+
 // defaultDenyNetworkPolicy denies all ingress and egress in the namespace — the
-// structural default ADR043 D3 requires. t005 layers the same-workspace,
-// DNS, and platform-ingress allows on top; until then a workspace namespace is
-// sealed (which is the safe direction for a not-yet-migrated tenant).
+// structural default ADR043 D3 requires. allowNetworkPolicies layers the
+// same-namespace, DNS, and (hosting-only) Traefik-ingress/internet-egress allows
+// on top; the cluster-wide node/metadata Cilium egressDeny (retained from
+// ADR022) still applies beneath all of these.
 func defaultDenyNetworkPolicy(namespace string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{

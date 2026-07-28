@@ -94,6 +94,39 @@ func TestReconcileProvisionsHostingNamespaceWithBaseObjects(t *testing.T) {
 	}
 }
 
+func TestHostingNamespaceGetsAllowPoliciesSandboxSealed(t *testing.T) {
+	ctx := context.Background()
+	r, store, cl := newTestNamespaceReconciler(t, true) // both regimes
+	tn, _ := store.CreateTenant(ctx, "acme", "free")
+	if err := r.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	has := func(ns, name string) bool {
+		var np networkingv1.NetworkPolicy
+		return cl.Get(ctx, client.ObjectKey{Namespace: ns, Name: name}, &np) == nil
+	}
+
+	host := WorkspaceNamespace(tn.ID)
+	for _, name := range []string{"default-deny", "allow-same-namespace", "allow-dns-egress", "allow-traefik-ingress", "allow-internet-egress"} {
+		if !has(host, name) {
+			t.Errorf("hosting namespace missing policy %s", name)
+		}
+	}
+
+	sandbox := SandboxNamespace(tn.ID)
+	// Sandbox is sealed: intra-namespace + DNS only, no ingress/internet allows.
+	for _, name := range []string{"default-deny", "allow-same-namespace", "allow-dns-egress"} {
+		if !has(sandbox, name) {
+			t.Errorf("sandbox namespace missing policy %s", name)
+		}
+	}
+	for _, name := range []string{"allow-traefik-ingress", "allow-internet-egress"} {
+		if has(sandbox, name) {
+			t.Errorf("sandbox namespace must NOT have %s (sealed exec-box)", name)
+		}
+	}
+}
+
 func TestResourceQuotaCarriesPlanScopedObjectCounts(t *testing.T) {
 	ctx := context.Background()
 	r, store, cl := newTestNamespaceReconciler(t, false)
