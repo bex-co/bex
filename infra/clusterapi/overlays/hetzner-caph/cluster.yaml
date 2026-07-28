@@ -216,8 +216,8 @@ spec:
         kind: HCloudMachineTemplate
         # Repointed to the rotated template (w1/m36 t001) — this change is what
         # rolls the pool onto the baked snapshot.
-        name: bex-tenant-0-k133-cpx32
-      version: v1.33.13
+        name: bex-tenant-0-k134-cpx32
+      version: v1.34.9
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
