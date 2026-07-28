@@ -7,10 +7,10 @@
 | id   | title                                                                                                                            | est | depends_on          |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------- | --- | ------------------- |
 | t001 | Namespace lifecycle: workspace create/delete → `<ws>` (+`<ws>-sandbox`) namespace + base `ResourceQuota`/`LimitRange`/NetworkPolicy | 2h  | —                   |
-| t002 | Operator + bex-api: single-namespace watch → cluster-wide/multi-ns; place App/Database/KeyValue workloads in `<ws>`             | 3h  | t001                |
-| t003 | RBAC: operator + bex-api authority over all tenant namespaces (replace single `bex-operator-apps` RoleBinding)                  | 1h  | t002                |
-| t004 | Per-tenant `ResourceQuota`/`LimitRange` replace `BEX_MAX_*` app-code caps                                                       | 2h  | t001                |
-| t005 | NetworkPolicy re-scope: namespace default-deny + same-workspace + platform allows; retain Cilium egressDeny/platform-lockdown/registry-ACL/hardening | 3h  | t002                |
+| t002 | Operator + bex-api + egress-meter: multi-namespace tenant scope (Secret cache, projector placement); place App/Database/KeyValue workloads in `<ws>` | 3h  | t001                |
+| t003 | RBAC: operator + bex-api + ssh-gateway authority over all tenant namespaces (per-`<ws>` RoleBindings stamped by t001's reconciler; no cluster-wide Secrets grant) | 2h  | t002                |
+| t004 | Per-tenant `ResourceQuota`/`LimitRange` replace `BEX_MAX_*` app-code caps; retire shared `tenant-quotas.yaml`                   | 2h  | t001, t002          |
+| t005 | NetworkPolicy re-scope: namespace default-deny + same-workspace + platform allows; promote the node/metadata Cilium egressDeny to clusterwide (it is namespaced-to-`default` today); retain platform-lockdown/registry-ACL/hardening | 3h  | t002                |
 | t006 | Migration: move existing `default` workloads to per-tenant namespaces, no downtime                                              | 2h  | t002, t003, t004, t005 |
 | t007 | Verify scale-0 + bin-pack on the shared tenant pool; re-assert the tenant-isolation reachability matrix per-namespace           | 2h  | t006                |
 | t008 | Simplify (`/simplify` over changed code)                                                                                        | 30m | t007                |

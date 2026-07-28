@@ -592,6 +592,27 @@ func main() {
 		// before the first reconcile pass.
 		rec.DeployNotifier = srv.Notifications
 		go rec.Run(ctx)
+
+		// Per-tenant namespace isolation (ADR043, w3/m31). Gated behind
+		// BEX_TENANT_NAMESPACES so production stays byte-identical until a cluster
+		// opts in: set => the control plane also provisions a `<ws>` (and, with
+		// BEX_TENANT_SANDBOX_NAMESPACES, `<ws>-sandbox`) namespace per workspace
+		// with base ResourceQuota/LimitRange/default-deny NetworkPolicy, and prunes
+		// them for deleted workspaces. Unset => no NamespaceReconciler runs and the
+		// workspace lifecycle is unchanged.
+		if os.Getenv("BEX_TENANT_NAMESPACES") != "" {
+			nsRec := store.NewNamespaceReconciler(cl, st)
+			nsRec.Sandboxes = os.Getenv("BEX_TENANT_SANDBOX_NAMESPACES") != ""
+			// Kick BOTH reconcilers on workspace create/delete for the same
+			// low-latency reason the projector is kicked on app writes: the
+			// projector prunes the deleted workspace's orphaned App CRs, the
+			// namespace reconciler provisions/prunes its `<ws>` namespace(s).
+			srv.Workspaces.Kick = func() {
+				rec.Kick()
+				nsRec.Kick()
+			}
+			go nsRec.Run(ctx)
+		}
 	}
 	// Outbound event webhooks (w3/m11): the delivery worker tails the composed
 	// event feed (deploys + audit_events + service_event_facts — the same rows the events feed reads)

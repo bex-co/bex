@@ -1,6 +1,6 @@
 # ADR: Sandbox cluster substrate — multi-node OpenSandbox, Kata isolation, and the bex-api gateway
 
-**Status:** proposed — the architectural design for the **re-opened pillar 5** (re-open authorized 2026-07-27, reversing [`.pm/DO_NOT_DO.md`](../.pm/DO_NOT_DO.md) #18); no substrate or gateway code yet. It refines the substrate and surface assumptions of [ADR014-sandboxes.md](ADR014-sandboxes.md); ADR014 remains the sandbox-gateway design record (D0–D7 still govern the bex-api side).
+**Status:** proposed — the architectural design for the **re-opened pillar 5** (re-open authorized 2026-07-27, reversing [`.pm/DO_NOT_DO.md`](../.pm/DO_NOT_DO.md) #18); no substrate or gateway code yet. It refines the substrate and surface assumptions of [ADR014-sandboxes.md](ADR014-sandboxes.md); ADR014 remains the sandbox-gateway design record (D0–D7 still govern the bex-api side, except D2's E2B REST lifecycle shapes — displaced by the Render `ea sandbox` shapes, see D2). Amended 2026-07-27 after [ADR043-tenant-namespace-isolation.md](ADR043-tenant-namespace-isolation.md): D3/D4 now specify per-tenant `<ws>-sandbox` namespaces and OpenSandbox multi-tenant mode (the original text had a single shared `bex-sandbox` namespace and a single shared `api_key`).
 
 ## Context
 
@@ -16,8 +16,8 @@ Today bex has **no consumer of a multi-node OpenSandbox cluster** (verified 2026
 
 Two refinements to ADR014 shape this design:
 
-1. **Surface = Render CLI `ea sandbox`.** The official `render-oss/cli` v2.21.0 already ships `render ea sandbox create/exec/list/stop` → `/v1/sandboxes*`, today returning 404 ([`docs/cli-compatibility-checklist.md`](cli-compatibility-checklist.md):237-240). Making those work unmodified is bex's core parity philosophy — the sandbox becomes a Render-CLI-compatible REST surface, not (only) E2B/MCP.
-2. **Isolation = Kata/microVM now** (user decision). Caveat per [ADR041](ADR041-sandbox-runtime-comparison.md): Kata pods still have container-style snapshot semantics, so pause/resume stays **rootfs-only** — Kata buys hypervisor isolation, not memory snapshots.
+1. **Surface = Render CLI `ea sandbox`.** The official `render-oss/cli` v2.21.0 already ships `render ea sandbox create/exec/list/stop` → `/v1/sandboxes*`, today returning 404 ([`docs/cli-compatibility-checklist.md`](cli-compatibility-checklist.md):238-241). Making those work unmodified is bex's core parity philosophy — the sandbox becomes a Render-CLI-compatible REST surface, not (only) E2B/MCP.
+2. **Isolation = Kata/microVM now** (user decision). Caveat per [ADR044](ADR044-sandbox-runtime-comparison.md): Kata pods still have container-style snapshot semantics, so pause/resume stays **rootfs-only** — Kata buys hypervisor isolation, not memory snapshots.
 
 ## Decision
 
@@ -29,23 +29,23 @@ Deploy `opensandbox-server` (the Python lifecycle API) **in-cluster** as a Deplo
 
 ### D2 — bex-api is the synchronous sandbox gateway; surface = Render CLI `ea sandbox`
 
-A new `lego/backend/internal/sandbox/` feature package owns an **in-package OpenSandbox HTTP client** (`core.DoJSON` / `core.OryTransport` — the Hydra/OpenBao pattern; the operator's `lego/operator/internal/runtime/opensandbox.go` client is unimportable from backend by Go's `internal` rule and the `operator → types ← backend` arrow). `Create` is rewritten to be **template-based** (ADR014 D2), dropping the host-local `docker inspect` coupling; a template registry fixes image+entrypoint at registration time. The REST surface serves the **Render CLI `ea sandbox` shapes** at `/v1/sandboxes*` (create/exec/list/stop); MCP tools `spawn_sandbox` / `sandbox_exec` follow the per-feature `mcp.go` fragment. E2B-SDK gRPC data-plane parity stays deferred (ADR014 D2). It wires in at the five canonical insertion points (`cmd/api/main.go` env-read, `api.Deps`, `api.Server`, `NewServer`, `features()`).
+A new `lego/backend/internal/sandbox/` feature package owns an **in-package OpenSandbox HTTP client** (`core.DoJSON` / `core.OryTransport` — the Hydra/OpenBao pattern; the operator's `lego/operator/internal/runtime/opensandbox.go` client is unimportable from backend by Go's `internal` rule and the `operator → types ← backend` arrow). `Create` is rewritten to be **template-based** (ADR014 D2), dropping the host-local `docker inspect` coupling; a template registry fixes image+entrypoint at registration time. The REST surface serves the **Render CLI `ea sandbox` shapes** at `/v1/sandboxes*` (create/exec/list/stop); MCP tools `spawn_sandbox` / `sandbox_exec` follow the per-feature `mcp.go` fragment. E2B parity stays deferred (ADR014 D2) — both the gRPC data plane and ADR014 D2's E2B REST lifecycle shapes: the Render shapes occupy `/v1/sandboxes*`, so E2B REST compatibility would need distinct routes if ever revived. It wires in at the five canonical insertion points (`cmd/api/main.go` env-read, `api.Deps`, `api.Server`, `NewServer`, `features()`).
 
 ### D3 — Kata/microVM isolation now + dedicated sandbox node pool
 
-Untrusted agent-generated code demands hypervisor-grade isolation (ADR014 "Future considerations"; [ADR022-tenant-isolation.md](ADR022-tenant-isolation.md)). Ship a `kata` `RuntimeClass`, bake `kata-containerd` into the worker image (CAPH [`infra/clusterapi/overlays/hetzner-caph/`](../infra/clusterapi/overlays/hetzner-caph/)), and run sandboxes in a dedicated **`bex-sandbox` namespace** on a **tainted `bex.co/sandbox` node pool**, behind a Cilium egress-deny/metadata-deny boundary mirroring [`deploy/gitops/base/build-boundary.yaml`](../deploy/gitops/base/build-boundary.yaml). The dedicated pool separates sandbox capacity from the tenant pool — directly addressing the original DO_NOT_DO "competing for capacity" concern.
+Untrusted agent-generated code demands hypervisor-grade isolation (ADR014 "Future considerations"; [ADR022-tenant-isolation.md](ADR022-tenant-isolation.md)). Ship a `kata` `RuntimeClass`, bake `kata-containerd` into the worker image (CAPH [`infra/clusterapi/overlays/hetzner-caph/`](../infra/clusterapi/overlays/hetzner-caph/)), and run sandboxes in per-tenant **`<ws>-sandbox` namespaces** ([ADR043](ADR043-tenant-namespace-isolation.md) D1/D2) on a **tainted `bex.co/sandbox` node pool**, behind a Cilium egress-deny/metadata-deny boundary mirroring [`deploy/gitops/base/build-boundary.yaml`](../deploy/gitops/base/build-boundary.yaml). The dedicated pool separates sandbox capacity from the tenant pool — directly addressing the original DO_NOT_DO "competing for capacity" concern.
 
 ### D4 — Security: the bex-api ↔ OpenSandbox link is a single trusted hop
 
-Today there is **no** application-layer security: the server binds `127.0.0.1`, has no `api_key`, runs `OPENSANDBOX_INSECURE_SERVER=YES`, and the operator client sends no auth — the boundary is loopback (bex-api does not call OpenSandbox yet). Once the server is an in-cluster Service this is unsafe: OpenSandbox's lifecycle API does **no per-tenant authz**, so anyone who reaches it can drive any sandbox. Defense in depth mirrors the bex-api↔OpenFGA/Hydra/OpenBao pattern:
+Today there is **no** application-layer security: the server binds `127.0.0.1`, has no `api_key`, runs `OPENSANDBOX_INSECURE_SERVER=YES`, and the operator client sends no auth — the boundary is loopback (bex-api does not call OpenSandbox yet). Once the server is an in-cluster Service this is unsafe: without multi-tenancy enabled, anyone who reaches the lifecycle API can drive any sandbox. Upstream OpenSandbox ships a **multi-tenant mode** (OSEP-0014): tenants come from a `[[tenants]]` file or an **HTTP tenant-lookup provider** (the server forwards the caller's `OPEN-SANDBOX-API-KEY` header; the endpoint answers `{namespace, ttl}` or 401), and lifecycle operations are auto-scoped to the tenant's namespace. Defense in depth mirrors the bex-api↔OpenFGA/Hydra/OpenBao pattern:
 
-- **L3/L4** — NetworkPolicy (or Cilium identity policy) on `opensandbox-system` admitting **only bex-api** (`bex-system`), denying tenant + sandbox pods ([`deploy/gitops/base/network-policies.yaml`](../deploy/gitops/base/network-policies.yaml) `bex-registry/deny-tenant-ingress` / `secrets/deny-tenant-ingress` admit only `bex-system`).
-- **L7** — set `[server].api_key`, drop `INSECURE_SERVER`; pass the key via a k8s Secret + env (mirror `BEX_OPENFGA_TOKEN`); the client sends it as a bearer header.
-- **East-west (load-bearing)** — a compromised sandbox must not bypass bex-api and drive the lifecycle API directly. Closed by the `bex-sandbox` egress-deny (D3) **plus** the admit-only-bex-api NetworkPolicy.
+- **L3/L4** — NetworkPolicy (or Cilium identity policy) on `opensandbox-system` admitting **only bex-api** (`bex-system`), denying tenant + sandbox pods (following the [`deploy/gitops/base/network-policies.yaml`](../deploy/gitops/base/network-policies.yaml) `deny-tenant-ingress` pattern — those policies admit `bex-system` plus each namespace's own platform peers such as `kpack`/`bex-build`, never tenant pods; here the admit list is bex-api alone).
+- **L7** — enable multi-tenant mode with the HTTP tenant-lookup provider backed by bex IAM: bex-api mints per-workspace keys mapped to `<ws>-sandbox`, so OpenSandbox itself rejects cross-tenant operations even if bex-api bugs; drop `INSECURE_SERVER`. Key custody mirrors `BEX_OPENFGA_TOKEN` (k8s Secret + env, out-of-band).
+- **East-west (load-bearing)** — a compromised sandbox must not bypass bex-api and drive the lifecycle API directly. Closed by the `<ws>-sandbox` egress-deny (D3) **plus** the admit-only-bex-api NetworkPolicy.
 
 ### D5 — Snapshot semantics: v1 is rootfs-only; memory hibernation is a watch item
 
-The k8s BatchSandbox pause/resume commits the rootfs to an OCI image and recreates the pod ([ADR041](ADR041-sandbox-runtime-comparison.md)); Kata does not change this. So v1 "sleep = free" preserves the **filesystem only — memory and processes do not survive pause.** This is weaker than E2B's memory hibernation and weaker than the single-host Docker path ADR014 D5 described. The k8s-native path to memory hibernation is containerd checkpoint/restore (CRIU) — recorded as a watch item, not v1 work.
+The k8s BatchSandbox pause/resume commits the rootfs to an OCI image and recreates the pod ([ADR044](ADR044-sandbox-runtime-comparison.md)); Kata does not change this. So v1 "sleep = free" preserves the **filesystem only — memory and processes do not survive pause.** This is weaker than E2B's memory hibernation and weaker than the single-host Docker path ADR014 D5 described. The k8s-native path to memory hibernation is containerd checkpoint/restore (CRIU) — recorded as a watch item, not v1 work.
 
 ### D6 — Validate on real containerd-CRI, not the OrbStack mock
 
@@ -68,7 +68,7 @@ flowchart TB
       ctrl["📦 OpenSandbox controller<br/>BatchSandbox / Pool / SandboxSnapshot CRDs"]
       pool["warm Pool CR (pre-warmed capacity)"]
     end
-    subgraph sandboxns["bex-sandbox · UNTRUSTED"]
+    subgraph sandboxns["ws-sandbox (one per tenant) · UNTRUSTED"]
       sbx["📦 sandbox pods<br/>agent code · Kata RuntimeClass<br/>tainted node pool · Cilium egress-deny"]
     end
     subgraph regns["bex-registry"]
@@ -79,7 +79,7 @@ flowchart TB
   agent --> api
   cli --> api
   mcp --> api
-  api -->|"api_key + NetworkPolicy (only bex-api)"| osserver
+  api -->|"per-workspace key + NetworkPolicy (only bex-api)"| osserver
   osserver --> ctrl
   sbx -->|"managed by"| ctrl
   ctrl -->|"maintains"| pool
@@ -93,7 +93,7 @@ flowchart TB
 ## Alternatives considered
 
 - **Keep the single-host Docker runtime** — rejected. No HA, no multi-node, host loss loses all sandboxes and snapshots. This was the mechanism gap that paused pillar 5; D1 removes it.
-- **AgentENV / Firecracker substrate** ([ADR041](ADR041-sandbox-runtime-comparison.md)) — rejected for bex: Rust node, prototype in-memory control plane, no client surface; would trade a working integration for a substrate rewrite and a second non-k8s scheduler. Tracked as the reference design for memory snapshots and microVM isolation.
+- **AgentENV / Firecracker substrate** ([ADR044](ADR044-sandbox-runtime-comparison.md)) — rejected for bex: Rust node, prototype in-memory control plane, no client surface; would trade a working integration for a substrate rewrite and a second non-k8s scheduler. Tracked as the reference design for memory snapshots and microVM isolation.
 - **Container-level isolation (build-boundary) instead of Kata** — rejected for pillar 5. Sandboxes run **untrusted agent-generated code**; ADR014 flags this as the strongest case for microVM isolation. Kata is chosen now (D3); the build-boundary pattern is still reused for the namespace/egress boundary underneath.
 - **E2B-SDK as the primary surface** — deferred. Render-CLI compatibility is bex's parity philosophy and the `render ea sandbox` commands already exist as 404s to close; E2B's gRPC data plane is deferred per ADR014 D2.
 - **`Sandbox` CRD reconciled by the operator** — rejected in ADR014 D0. Sandboxes are interactive, ephemeral sessions; async CR reconcile fights synchronous create/exec/connect.
@@ -106,4 +106,4 @@ flowchart TB
 - v1 "sleep = free" is **rootfs-only**; the memory-hibernation story is honestly weaker than E2B's until CRIU lands (D5).
 - `.pm`: a dated (2026-07-27) re-open clause on `DO_NOT_DO.md` #18 + a fresh milestone (not a reuse of the removed `w2/m3`); ADR014 status amended to match.
 - Validation is gated on a real containerd-CRI node (D6) — the local mock cannot close the snapshot DoD.
-- Two watch items carry forward: containerd/CRIU for k8s memory hibernation (D5); and the bex-api↔OpenSandbox link stays single-hop-only as the sandbox tenant boundary hardens.
+- Three watch items carry forward: containerd/CRIU for k8s memory hibernation (D5); the bex-api↔OpenSandbox link stays single-hop-only as the sandbox tenant boundary hardens; and the warm `Pool` (D1) pre-warms capacity in `opensandbox-system` — under per-tenant `<ws>-sandbox` scoping (D3/D4) a tenant's create cannot draw from a pool in another namespace, so pool-backed create latency needs a per-tenant (or claim-time-move) warm strategy before it helps multi-tenant traffic.

@@ -1,0 +1,346 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package store
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"time"
+
+	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
+)
+
+// Per-tenant namespace isolation (ADR043, w3/m31 t001). A workspace maps to a
+// hosting namespace `<ws>` and, when sandboxes are enabled (pillar 5, m32), a
+// `<ws>-sandbox` namespace. The NamespaceReconciler is the lifecycle mechanism:
+// it is level-triggered exactly like the App Reconciler — a full resync plus a
+// Kick after workspace writes — so the set of tenant namespaces is a rebuildable
+// projection of the `tenants` table, never imperative drift.
+//
+// This is the FOUNDATION only: t001 provisions each namespace with its identity
+// labels, a base ResourceQuota/LimitRange, and a default-deny NetworkPolicy.
+// Placing workloads into `<ws>` (t002), per-`<ws>` RBAC (t003), plan-tier quota
+// values (t004), and the same-workspace/platform NetworkPolicy allows (t005)
+// build on top of what this creates. Gated off by default (BEX_TENANT_NAMESPACES
+// unset in cmd/api) so production is byte-identical until a cluster opts in.
+const (
+	// RegimeLabel distinguishes a workspace's hosting namespace from its sandbox
+	// namespace (ADR043 D2 — both untrusted, opposite default network postures).
+	RegimeLabel   = "app.bex.co/regime"
+	RegimeHosting = "hosting"
+	RegimeSandbox = "sandbox"
+
+	// sandboxSuffix names the sandbox regime namespace for a workspace.
+	sandboxSuffix = "-sandbox"
+
+	defaultNamespaceResync = 60 * time.Second
+)
+
+// WorkspaceNamespace is the hosting namespace name for a workspace id. The
+// workspace id (tea-<xid>) is already a DNS-safe label ≤63 chars (ADR020), so
+// it is used verbatim as the namespace name — the k8s object IS the tenant.
+func WorkspaceNamespace(workspaceID string) string { return workspaceID }
+
+// SandboxNamespace is the sandbox-regime namespace name for a workspace id.
+func SandboxNamespace(workspaceID string) string { return workspaceID + sandboxSuffix }
+
+// NamespaceReconciler ensures every workspace has its per-tenant namespace(s)
+// with base isolation objects, and prunes namespaces for deleted workspaces.
+type NamespaceReconciler struct {
+	Client client.Client
+	Store  Store
+	Resync time.Duration
+	// Sandboxes, when true, also provisions and prunes each workspace's
+	// `<ws>-sandbox` namespace (pillar 5 / m32). Off keeps hosting-only.
+	Sandboxes bool
+
+	kick chan struct{}
+}
+
+// NewNamespaceReconciler builds a reconciler with the default resync period.
+func NewNamespaceReconciler(cl client.Client, store Store) *NamespaceReconciler {
+	return &NamespaceReconciler{
+		Client: cl,
+		Store:  store,
+		Resync: defaultNamespaceResync,
+		kick:   make(chan struct{}, 1),
+	}
+}
+
+// Kick schedules an immediate reconcile (non-blocking, coalescing) — called
+// after a workspace create/delete so provisioning is not a full resync away.
+func (r *NamespaceReconciler) Kick() {
+	select {
+	case r.kick <- struct{}{}:
+	default:
+	}
+}
+
+// Run reconciles until ctx is done.
+func (r *NamespaceReconciler) Run(ctx context.Context) {
+	ticker := time.NewTicker(r.Resync)
+	defer ticker.Stop()
+	for {
+		if err := r.ReconcileOnce(ctx); err != nil && ctx.Err() == nil {
+			log.Printf("controlplane: namespace reconcile: %v", err)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		case <-r.kick:
+		}
+	}
+}
+
+// ReconcileOnce ensures a namespace (and its base isolation objects) for every
+// workspace, then deletes managed namespaces whose workspace no longer exists.
+// Per-workspace failures are collected, not fatal — one bad workspace can't
+// block the rest, mirroring the App Reconciler's error discipline.
+func (r *NamespaceReconciler) ReconcileOnce(ctx context.Context) error {
+	tenants, err := r.Store.ListTenants(ctx)
+	if err != nil {
+		return fmt.Errorf("list workspaces: %w", err)
+	}
+	desired := make(map[string]bool, len(tenants)*2)
+	var errs []error
+	for _, t := range tenants {
+		desired[WorkspaceNamespace(t.ID)] = true
+		if err := r.ensureNamespace(ctx, t, RegimeHosting); err != nil {
+			errs = append(errs, fmt.Errorf("workspace %s hosting namespace: %w", t.ID, err))
+		}
+		if r.Sandboxes {
+			desired[SandboxNamespace(t.ID)] = true
+			if err := r.ensureNamespace(ctx, t, RegimeSandbox); err != nil {
+				errs = append(errs, fmt.Errorf("workspace %s sandbox namespace: %w", t.ID, err))
+			}
+		}
+	}
+	if err := r.pruneOrphans(ctx, desired); err != nil {
+		errs = append(errs, err)
+	}
+	return errors.Join(errs...)
+}
+
+// namespaceName returns the namespace name for a workspace under a regime.
+func namespaceName(workspaceID, regime string) string {
+	if regime == RegimeSandbox {
+		return SandboxNamespace(workspaceID)
+	}
+	return WorkspaceNamespace(workspaceID)
+}
+
+// ensureNamespace creates or converges one workspace namespace and its base
+// isolation objects (ResourceQuota, LimitRange, default-deny NetworkPolicy).
+func (r *NamespaceReconciler) ensureNamespace(ctx context.Context, t Tenant, regime string) error {
+	name := namespaceName(t.ID, regime)
+	if err := r.applyObject(ctx, workspaceNamespaceObject(name, t, regime)); err != nil {
+		return fmt.Errorf("namespace: %w", err)
+	}
+	if err := r.applyObject(ctx, baseResourceQuota(name, t)); err != nil {
+		return fmt.Errorf("resourcequota: %w", err)
+	}
+	if err := r.applyObject(ctx, baseLimitRange(name)); err != nil {
+		return fmt.Errorf("limitrange: %w", err)
+	}
+	if err := r.applyObject(ctx, defaultDenyNetworkPolicy(name)); err != nil {
+		return fmt.Errorf("networkpolicy: %w", err)
+	}
+	return nil
+}
+
+// applyObject creates obj, or — if it already exists — updates it to converge
+// on the desired managed shape. Only bex-managed objects are touched: a Create
+// conflict on a pre-existing object we don't manage would surface as an update
+// error, which the caller collects rather than silently overwriting.
+func (r *NamespaceReconciler) applyObject(ctx context.Context, obj client.Object) error {
+	err := r.Client.Create(ctx, obj)
+	if err == nil {
+		return nil
+	}
+	if !apierrors.IsAlreadyExists(err) {
+		return err
+	}
+	// Converge managed labels/spec on an existing object. Fetch-merge-update via
+	// a fresh copy so ResourceVersion is current.
+	existing := obj.DeepCopyObject().(client.Object)
+	if getErr := r.Client.Get(ctx, client.ObjectKeyFromObject(obj), existing); getErr != nil {
+		return getErr
+	}
+	if !isManaged(existing) {
+		return fmt.Errorf("object %s exists and is not bex-managed", client.ObjectKeyFromObject(obj))
+	}
+	obj.SetResourceVersion(existing.GetResourceVersion())
+	return r.Client.Update(ctx, obj)
+}
+
+// pruneOrphans deletes managed tenant namespaces whose workspace is gone.
+// Only namespaces carrying the managed-by label and a workspace label are
+// considered — platform namespaces (bex-system, bex-build, …) never match.
+func (r *NamespaceReconciler) pruneOrphans(ctx context.Context, desired map[string]bool) error {
+	var list corev1.NamespaceList
+	if err := r.Client.List(ctx, &list,
+		client.MatchingLabels{LabelManagedBy: ManagedByValue}); err != nil {
+		return fmt.Errorf("list managed namespaces: %w", err)
+	}
+	var errs []error
+	for i := range list.Items {
+		ns := &list.Items[i]
+		if ns.Labels[LabelWorkspace] == "" || desired[ns.Name] {
+			continue
+		}
+		if ns.DeletionTimestamp != nil {
+			continue
+		}
+		if err := r.Client.Delete(ctx, ns); err != nil && !apierrors.IsNotFound(err) {
+			errs = append(errs, fmt.Errorf("delete orphan namespace %s: %w", ns.Name, err))
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// isManaged reports whether an object carries bex's managed-by label — the
+// guard that keeps the reconciler from ever clobbering a hand-created object.
+func isManaged(obj client.Object) bool {
+	return obj.GetLabels()[LabelManagedBy] == ManagedByValue
+}
+
+// managedLabels are stamped on every object the namespace reconciler owns, so
+// pruneOrphans and applyObject can recognize them and List can select them.
+func managedLabels(workspaceID string) map[string]string {
+	return map[string]string{
+		LabelManagedBy:              ManagedByValue,
+		core.LabelWorkspace:         workspaceID,
+		"app.kubernetes.io/part-of": "bex",
+	}
+}
+
+// workspaceNamespaceObject builds the Namespace for a workspace regime, with the
+// identity labels plus the Pod Security Admission baseline the shared tenant
+// namespace already enforces (deploy/gitops/base/tenant-namespace.yaml).
+func workspaceNamespaceObject(name string, t Tenant, regime string) *corev1.Namespace {
+	labels := managedLabels(t.ID)
+	labels[RegimeLabel] = regime
+	// PSS baseline enforced; restricted warned/audited (matches the shared
+	// tenant namespace — tenant images may legitimately run as root).
+	labels["pod-security.kubernetes.io/enforce"] = "baseline"
+	labels["pod-security.kubernetes.io/enforce-version"] = "latest"
+	labels["pod-security.kubernetes.io/warn"] = "restricted"
+	labels["pod-security.kubernetes.io/warn-version"] = "latest"
+	labels["pod-security.kubernetes.io/audit"] = "restricted"
+	labels["pod-security.kubernetes.io/audit-version"] = "latest"
+	return &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Labels: labels},
+	}
+}
+
+// baseResourceQuota is the per-namespace aggregate ceiling. t001 ships a
+// generous plan-scaled base (the per-namespace analog of the shared
+// tenant-apps-quota); t004 replaces the numbers with the exact plan-tier
+// catalog values and adds the count/<resource> caps that retire BEX_MAX_*.
+func baseResourceQuota(namespace string, t Tenant) *corev1.ResourceQuota {
+	caps := quotaForPlan(t.Plan)
+	return &corev1.ResourceQuota{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "tenant-quota",
+			Namespace: namespace,
+			Labels:    managedLabels(t.ID),
+		},
+		Spec: corev1.ResourceQuotaSpec{Hard: caps},
+	}
+}
+
+// quotaForPlan maps a workspace plan to aggregate resource caps. The free tier
+// gets a small slice; paid plans get the generous ceiling the shared quota used
+// to hand the whole cluster. Deliberately coarse in t001 — t004 owns the exact
+// per-tier numbers.
+func quotaForPlan(plan string) corev1.ResourceList {
+	// Paid default (mirrors the retired shared tenant-apps-quota, per tenant).
+	cpuReq, memReq, cpuLim, memLim, pods, jobs := "50", "100Gi", "100", "200Gi", "500", "250"
+	switch plan {
+	case "", "free":
+		cpuReq, memReq, cpuLim, memLim, pods, jobs = "2", "4Gi", "4", "8Gi", "50", "25"
+	}
+	return corev1.ResourceList{
+		corev1.ResourceRequestsCPU:    resource.MustParse(cpuReq),
+		corev1.ResourceRequestsMemory: resource.MustParse(memReq),
+		corev1.ResourceLimitsCPU:      resource.MustParse(cpuLim),
+		corev1.ResourceLimitsMemory:   resource.MustParse(memLim),
+		corev1.ResourcePods:           resource.MustParse(pods),
+		"count/jobs.batch":            resource.MustParse(jobs),
+	}
+}
+
+// baseLimitRange supplies request/limit defaults for pods that omit them
+// (hand-applied or legacy App CRs), mirroring the shared tenant-apps-limits.
+func baseLimitRange(namespace string) *corev1.LimitRange {
+	return &corev1.LimitRange{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "tenant-limits",
+			Namespace: namespace,
+			Labels:    map[string]string{LabelManagedBy: ManagedByValue},
+		},
+		Spec: corev1.LimitRangeSpec{
+			Limits: []corev1.LimitRangeItem{{
+				Type: corev1.LimitTypeContainer,
+				DefaultRequest: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("100m"),
+					corev1.ResourceMemory: resource.MustParse("128Mi"),
+				},
+				Default: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("2"),
+					corev1.ResourceMemory: resource.MustParse("4Gi"),
+				},
+				Max: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("8"),
+					corev1.ResourceMemory: resource.MustParse("32Gi"),
+				},
+			}},
+		},
+	}
+}
+
+// defaultDenyNetworkPolicy denies all ingress and egress in the namespace — the
+// structural default ADR043 D3 requires. t005 layers the same-workspace,
+// DNS, and platform-ingress allows on top; until then a workspace namespace is
+// sealed (which is the safe direction for a not-yet-migrated tenant).
+func defaultDenyNetworkPolicy(namespace string) *networkingv1.NetworkPolicy {
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default-deny",
+			Namespace: namespace,
+			Labels:    map[string]string{LabelManagedBy: ManagedByValue},
+		},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{}, // all pods
+			PolicyTypes: []networkingv1.PolicyType{
+				networkingv1.PolicyTypeIngress,
+				networkingv1.PolicyTypeEgress,
+			},
+			// No Ingress/Egress rules => deny all in both directions.
+		},
+	}
+}
