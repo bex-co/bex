@@ -22,6 +22,7 @@ on:
     paths:
       - "infra/clusterapi/overlays/hetzner-caph/**"
       - "scripts/fetch-app-kubeconfig.sh"
+      - "scripts/wait-capi-rollout.sh"
       - ".github/workflows/app-cluster.yml"
   workflow_dispatch: {}
 
