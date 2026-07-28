@@ -21,6 +21,20 @@
 #
 # Exit 0 on full compliance; non-zero with the failing probe name on stdout.
 # Requires: kubectl, curl-capable pod image (nicolaka/netshoot or curlimages/curl).
+#
+# ADR043 per-namespace model (w3/m31 t007 — TODO, needs a live cluster to run):
+# once BEX_TENANT_NAMESPACES is enabled, the two workspaces live in SEPARATE
+# namespaces (WS_A -> namespace WS_A, WS_B -> namespace WS_B) rather than sharing
+# $NS with distinct labels. To re-assert the matrix per-namespace, this harness
+# needs: (1) App A / probe-a created in namespace WS_A and App B / probe-b in
+# namespace WS_B; (2) the cross-workspace DENY probes target "$APP_B.$WS_B.svc"
+# (a DIFFERENT namespace), which the namespace-scoped default-deny (t005) must
+# refuse; (3) the same-workspace ALLOW probe stays within WS_A. The node/metadata
+# DENY probes are unchanged IF the Cilium egressDeny was promoted to clusterwide
+# (t005) — verify that promotion here too, since a namespaced CNP in `default`
+# would silently stop covering pods in WS_A/WS_B. This change is deliberately NOT
+# made blind: a mis-edited reachability harness can pass when it should fail, so
+# it must be authored and RUN against the migrated cluster, not guessed.
 
 set -euo pipefail
 
