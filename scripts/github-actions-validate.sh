@@ -34,4 +34,11 @@ if grep -REn "node-version:[[:space:]]*['\"]?20(['\"]|$)" .github/workflows; the
   exit 1
 fi
 
-echo "PASS: GitHub Action refs and explicit Node runtimes are Node 24-compatible"
+if ! grep -Fq 'GITLEAKS_VERSION: 8.30.1' .github/workflows/deploy.yml \
+  || ! grep -Fq 'GITLEAKS_LINUX_X64_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb' .github/workflows/deploy.yml \
+  || ! grep -Fq 'gitleaks git --no-banner --redact --exit-code 1 --log-opts="$log_opts" .' .github/workflows/deploy.yml; then
+  echo "FAIL: deploy must checksum-pin and execute the reviewed Gitleaks CLI scanner" >&2
+  exit 1
+fi
+
+echo "PASS: GitHub Action refs, explicit Node runtimes, and Gitleaks scan are current"

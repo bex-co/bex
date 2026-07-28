@@ -16,6 +16,8 @@
 #   3. the packer bake (infra/packer/bex-worker.pkr.hcl) installs no trimmed package.
 #   4. the packer version pins (k8s/containerd/runc) MATCH the overlay — the bake
 #      and the download-at-boot pools must stay in lockstep.
+#   5. every CAPI workload and snapshot default matches that pin, and the retired
+#      Kubernetes 1.31-or-older line cannot return.
 # Run locally before pushing overlay/packer changes; CI runs it via
 # .github/workflows/clusterapi-validate.yml.
 # Requires: yq v4.
@@ -31,6 +33,28 @@ fail=0
 
 pk_var() { grep -A4 "variable \"$1\"" "$PACKER" | grep -m1 -oE 'default[[:space:]]*=[[:space:]]*"[^"]+"' | grep -oE '"[^"]+"' | tr -d '"'; }
 pk_k8s="$(pk_var kubernetes_version)"; pk_containerd="$(pk_var containerd_version)"; pk_runc="$(pk_var runc_version)"
+
+echo "==> supported Kubernetes version is consistent across CAPI, Packer, and snapshot defaults"
+if [[ ! "$pk_k8s" =~ ^([0-9]+)\.([0-9]+)\.[0-9]+$ ]]; then
+  echo "FAIL: invalid Packer Kubernetes version '$pk_k8s'" >&2
+  fail=1
+elif ((BASH_REMATCH[1] < 1 || (BASH_REMATCH[1] == 1 && BASH_REMATCH[2] <= 31))); then
+  echo "FAIL: Kubernetes $pk_k8s is on the retired 1.31-or-older line" >&2
+  fail=1
+fi
+while read -r desired; do
+  [ -n "$desired" ] || continue
+  desired="${desired#v}"
+  if [ "$desired" != "$pk_k8s" ]; then
+    echo "FAIL: CAPI workload version '$desired' differs from Packer '$pk_k8s'" >&2
+    fail=1
+  fi
+done < <(yq -N 'select(.kind == "KubeadmControlPlane" or .kind == "MachineDeployment") | (.spec.version // .spec.template.spec.version)' "$OVERLAY")
+snapshot_k8s="$(yq -N '.on.workflow_dispatch.inputs.kubernetes_version.default' "$SNAPSHOT_WORKFLOW")"
+if [ "$snapshot_k8s" != "$pk_k8s" ]; then
+  echo "FAIL: snapshot default '$snapshot_k8s' differs from Packer '$pk_k8s'" >&2
+  fail=1
+fi
 
 # Trimmed packages (w1/m36 t003) — shared by the overlay + packer apt checks.
 TRIMMED_PKGS='(\bat\b|\bjq\b|\bunzip\b|\bmtr\b|apt-transport-https)'
