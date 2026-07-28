@@ -570,8 +570,8 @@ spec:
       - set -x
       - export CONTAINERD=2.3.3
       - export RUNC=1.5.1
-      - export KUBERNETES_VERSION=$(echo v1.33.13 | sed 's/^v//')
-      - export TRIMMED_KUBERNETES_VERSION=$(echo v1.33.13 | sed 's/^v//' | awk -F . '{print $1 "." $2}')
+      - export KUBERNETES_VERSION=$(echo v1.34.9 | sed 's/^v//')
+      - export TRIMMED_KUBERNETES_VERSION=$(echo v1.34.9 | sed 's/^v//' | awk -F . '{print $1 "." $2}')
       - ARCH="$(dpkg --print-architecture)"
       - localectl set-locale LANG=en_US.UTF-8
       - localectl set-locale LANGUAGE=en_US.UTF-8
@@ -628,7 +628,7 @@ spec:
   # Bumping this k8s version? Verify the stacked-etcd image and execute the
   # backup Job after the hop. The backup/restore client intentionally stays on
   # an etcd 3.6 image that contains both etcdctl and etcdutl.
-  version: v1.33.13
+  version: v1.34.9
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
@@ -707,6 +707,18 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
+  name: bex-tenant-0-k134-cpx32
+  namespace: default
+spec:
+  template:
+    spec:
+      imageName: bex-worker-k8s-1-34
+      placementGroupName: tenant-0
+      type: cpx32
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: HCloudMachineTemplate
+metadata:
   # CPX is the supported scale-out path in fsn1: the baked snapshot is x86 and
   # therefore portable from the existing Intel cx33 baseline to AMD cpx32.
   name: bex-tenant-burst-baked
@@ -739,6 +751,18 @@ spec:
   template:
     spec:
       imageName: bex-worker-k8s-1-33
+      placementGroupName: tenant-0
+      type: cpx32
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: HCloudMachineTemplate
+metadata:
+  name: bex-tenant-burst-k134
+  namespace: default
+spec:
+  template:
+    spec:
+      imageName: bex-worker-k8s-1-34
       placementGroupName: tenant-0
       type: cpx32
 ---
@@ -1019,6 +1043,18 @@ spec:
   template:
     spec:
       imageName: bex-worker-k8s-1-33
+      placementGroupName: platform
+      type: cpx32
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: HCloudMachineTemplate
+metadata:
+  name: bex-platform-k134-cpx32
+  namespace: default
+spec:
+  template:
+    spec:
+      imageName: bex-worker-k8s-1-34
       placementGroupName: platform
       type: cpx32
 ---
