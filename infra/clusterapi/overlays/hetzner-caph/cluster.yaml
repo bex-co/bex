@@ -621,7 +621,9 @@ spec:
     infrastructureRef:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       kind: HCloudMachineTemplate
-      name: bex-control-plane
+      # cx33 replacement capacity is unavailable in fsn1. Rotate the immutable
+      # template to the supported x86 cpx line before the Kubernetes roll.
+      name: bex-control-plane-cpx32
   # 3 = etcd quorum (rearchitecture decision 2) — CP is HA and tainted; the KCP
   # webhook forbids even counts with stacked etcd.
   replicas: 3
@@ -640,6 +642,18 @@ spec:
       imageName: ubuntu-24.04
       placementGroupName: control-plane
       type: cx33
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: HCloudMachineTemplate
+metadata:
+  name: bex-control-plane-cpx32
+  namespace: default
+spec:
+  template:
+    spec:
+      imageName: ubuntu-24.04
+      placementGroupName: control-plane
+      type: cpx32
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
