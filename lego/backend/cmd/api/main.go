@@ -601,6 +601,10 @@ func main() {
 		// them for deleted workspaces. Unset => no NamespaceReconciler runs and the
 		// workspace lifecycle is unchanged.
 		if os.Getenv("BEX_TENANT_NAMESPACES") != "" {
+			// Project newly created App CRs into their workspace's `<ws>`
+			// namespace (t002). Existing CRs in the shared namespace are updated
+			// in place, never moved — migration is a separate step (t006).
+			rec.TenantNamespaces = true
 			nsRec := store.NewNamespaceReconciler(cl, st)
 			nsRec.Sandboxes = os.Getenv("BEX_TENANT_SANDBOX_NAMESPACES") != ""
 			// Kick BOTH reconcilers on workspace create/delete for the same

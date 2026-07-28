@@ -153,7 +153,27 @@ type Reconciler struct {
 	// (notifications feature off / store off).
 	DeployNotifier DeployNotifier
 
+	// TenantNamespaces, when true, projects each App CR into its workspace's
+	// per-tenant hosting namespace (WorkspaceNamespace(d.TenantID)) instead of
+	// the single shared r.Namespace (ADR043, w3/m31 t002). Off (default) is
+	// byte-identical to the shared-namespace projection. Enabling it only
+	// affects where NEWLY created CRs land — CRs already in the shared namespace
+	// are updated in place, never moved (moving existing workloads is the
+	// no-downtime migration, t006). Gated behind BEX_TENANT_NAMESPACES in
+	// cmd/api alongside the NamespaceReconciler that provisions those namespaces.
+	TenantNamespaces bool
+
 	kick chan struct{}
+}
+
+// namespaceFor returns the namespace an App row projects into: its workspace's
+// hosting namespace when per-tenant namespaces are enabled, else the shared
+// projection namespace (byte-identical to the pre-m31 behavior).
+func (r *Reconciler) namespaceFor(d DesiredApp) string {
+	if r.TenantNamespaces {
+		return WorkspaceNamespace(d.TenantID)
+	}
+	return r.Namespace
 }
 
 func NewReconciler(cl client.Client, store Store, namespace string) *Reconciler {
@@ -204,10 +224,17 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("list desired apps: %w", err)
 	}
+	// With per-tenant namespaces the managed CRs are spread across every `<ws>`
+	// namespace, so the list must be cluster-wide (still filtered to our
+	// managed-by label); the shared-namespace path keeps its single-namespace
+	// list. The byID index keys on the unique app-id label either way, so
+	// create/update/delete matching is namespace-agnostic.
+	listOpts := []client.ListOption{client.MatchingLabels{LabelManagedBy: ManagedByValue}}
+	if !r.TenantNamespaces {
+		listOpts = append(listOpts, client.InNamespace(r.Namespace))
+	}
 	var existing appv1alpha1.AppList
-	if err := r.Client.List(ctx, &existing,
-		client.InNamespace(r.Namespace),
-		client.MatchingLabels{LabelManagedBy: ManagedByValue}); err != nil {
+	if err := r.Client.List(ctx, &existing, listOpts...); err != nil {
 		return fmt.Errorf("list App CRs: %w", err)
 	}
 	byID := make(map[string]*appv1alpha1.App, len(existing.Items))
@@ -681,16 +708,17 @@ func stampLabels(cur *appv1alpha1.App, d DesiredApp) bool {
 // private repo authenticates without a separate API trigger. Minting errors are
 // soft (logged, CR still created) so a GitHub outage never blocks projection.
 func (r *Reconciler) projectApp(ctx context.Context, d DesiredApp) *appv1alpha1.App {
+	ns := r.namespaceFor(d)
 	a := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      CRName(d.TenantID, d.Name),
-			Namespace: r.Namespace,
+			Namespace: ns,
 		},
 		Spec: projectSpec(d),
 	}
 	stampLabels(a, d)
 	if r.CloneSecrets != nil && d.Repo != "" {
-		if secretName, err := r.CloneSecrets.EnsureCloneSecret(ctx, r.Namespace, a.Name, d.TenantID, d.Repo); err != nil {
+		if secretName, err := r.CloneSecrets.EnsureCloneSecret(ctx, ns, a.Name, d.TenantID, d.Repo); err != nil {
 			log.Printf("controlplane: clone secret for %s: %v (proceeding without)", a.Name, err)
 		} else {
 			a.Spec.CloneSecret = secretName

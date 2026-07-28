@@ -255,6 +255,57 @@ func TestReconcileStampsWorkspaceLabel(t *testing.T) {
 	}
 }
 
+func TestTenantNamespacesProjectAppsIntoWorkspaceNamespace(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t)
+	rec.TenantNamespaces = true // t002: project into <ws>, not the shared ns
+	ten, _ := store.CreateTenant(ctx, "acme", "free")
+	store.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"}) //nolint:errcheck
+
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	// The App CR must land in the workspace's hosting namespace, not "default".
+	var apps appv1alpha1.AppList
+	if err := cl.List(ctx, &apps, client.MatchingLabels{LabelManagedBy: ManagedByValue}); err != nil {
+		t.Fatal(err)
+	}
+	if len(apps.Items) != 1 {
+		t.Fatalf("App count = %d, want 1", len(apps.Items))
+	}
+	if got, want := apps.Items[0].Namespace, WorkspaceNamespace(ten.ID); got != want {
+		t.Errorf("App namespace = %q, want %q", got, want)
+	}
+
+	// A second pass is a stable no-op: the cluster-wide list finds it by app-id
+	// and updates in place (no duplicate, no move).
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("second reconcile: %v", err)
+	}
+	if err := cl.List(ctx, &apps, client.MatchingLabels{LabelManagedBy: ManagedByValue}); err != nil {
+		t.Fatal(err)
+	}
+	if len(apps.Items) != 1 {
+		t.Fatalf("App count after resync = %d, want 1 (no duplicate)", len(apps.Items))
+	}
+}
+
+func TestSharedNamespaceProjectionIsUnchangedWhenGateOff(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t) // TenantNamespaces defaults false
+	ten, _ := store.CreateTenant(ctx, "acme", "free")
+	store.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"}) //nolint:errcheck
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	// Byte-identical to pre-m31: the App lands in the shared "default" namespace.
+	app := getApp(t, cl)
+	if app.Namespace != "default" {
+		t.Errorf("App namespace = %q, want default (gate off must be unchanged)", app.Namespace)
+	}
+}
+
 func TestReconcileWorkspaceLabelSurvivesResync(t *testing.T) {
 	ctx := context.Background()
 	rec, store, cl := newTestReconciler(t)
