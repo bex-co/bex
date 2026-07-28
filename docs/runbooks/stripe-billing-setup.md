@@ -74,9 +74,11 @@ Use a separate setup/admin credential for the script. For bex-api, create a Stri
 | Setup Intents | Read | verify the succeeded setup and owned payment method after the webhook |
 | Payment Methods | Read | verify Customer ownership before binding defaults |
 | Customer Portal | Write | create a short-lived session for the resolved Customer |
-| Tax registrations | Read | verify an active same-mode registration when the Tax gate is configured |
+| Tax Settings, Registrations | Read | verify an active same-mode registration when the Tax gate is configured (`tax_settings_read` in Stripe's restricted-key error) |
 
-No runtime write access is needed for Products, Prices, meters, Coupons, Setup Intents, payment methods, Tax registrations, payouts, balances, disputes, or account settings. Portal **configuration** is setup/admin work; runtime only creates sessions against its `bpc_*` id. If Stripe's permission UI groups a read operation with a broader Billing category, choose the narrowest category that makes the documented calls succeed and record that exception in the credential inventory.
+No runtime write access is needed for Products, Prices, meters, Coupons, Setup Intents, payment methods, Tax settings/registrations, payouts, balances, disputes, or account settings. Portal **configuration** is setup/admin work; runtime only creates sessions against its `bpc_*` id. If Stripe's permission UI groups a read operation with a broader Billing category, choose the narrowest category that makes the documented calls succeed and record that exception in the credential inventory.
+
+Verify the two operational reads by inspecting the returned JSON, not only the Stripe CLI process status: the CLI can exit zero while the body contains `error.code=more_permissions_required`. `/v1/billing/meters` must succeed with **Billing Meters Read** (`billing_meter_read`), and `/v1/tax/registrations` must succeed with **Tax Settings, Registrations Read** (`tax_settings_read`). Keep the complete error body out of evidence because it identifies the account and restricted key.
 
 Store the value out of band as `BEX_STRIPE_SECRET_KEY` using the same custody pattern as [ADR019](../ADR019-infra-credentials.md). Never commit or log it. The installer accepts only `rk_*`; `rk_live_*` is additionally refused unless `BEX_STRIPE_ALLOW_LIVE=1` records a separate go-live decision. Rotate by adding a new restricted key, deploying it, verifying successful calls, then revoking the old key.
 
@@ -187,6 +189,10 @@ scripts/stripe-billing-reconcile.sh issues
 ```
 
 The report lists `instance_seconds.<resource_kind>.<tier>`, `egress_gib`, `build_seconds`, and `storage_gb_hours` separately and exits non-zero for mismatches, rejected/ambiguous rows, duplicate local transaction ids, or duplicate rated lines. It refuses `rk_live_*`/`sk_live_*`, never passes a key on the process command line, and never prints a key or webhook secret.
+
+Stripe permits at most 12 decimal places in a meter-event value. bex therefore normalizes each bytes→GiB and GB-seconds→GB-hours event independently with exact rational arithmetic and half-up rounding to 12 places; reconciliation applies the identical per-event rule before summing. Do not aggregate unrounded values first. Stripe invoice-line `quantity` is an integer presentation even when the underlying meter aggregate is decimal, so the harness separately proves the decimal meter summary and recomputes the rounded cent `amount` from `pricing.unit_amount_decimal`.
+
+An invoice preview embeds only its first page of lines (10 in the current API). The harness follows the preview's `lines.url`, paginates every line, and expands each Price before comparing lookup key, quantity, rate, amount, and currency. Reading only `preview.lines.data` produces a false missing-line result for bex's 13-price contract.
 
 Repair is explicitly dry-run-first:
 
