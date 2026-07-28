@@ -17,10 +17,12 @@ kind: ClusterRole
 metadata:
   name: bex-api-namespaces
 rules:
-  # Namespace lifecycle (create on workspace create, delete on workspace delete).
+  # Namespace lifecycle (create on workspace create, delete on workspace delete)
+  # plus update/patch so the reconciler can converge managed labels on an
+  # existing namespace (applyObject's create-then-update path).
   - apiGroups: [""]
     resources: ["namespaces"]
-    verbs: ["get", "list", "watch", "create", "delete"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   # Base isolation objects the reconciler applies INTO each `<ws>` namespace.
   - apiGroups: [""]
     resources: ["resourcequotas", "limitranges"]
