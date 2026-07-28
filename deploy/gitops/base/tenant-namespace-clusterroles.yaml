@@ -1,0 +1,57 @@
+# Per-tenant namespace RBAC (ADR043, w3/m31 t003). These ClusterRoles carry the
+# SAME verbs the shared-namespace Roles (bex-api-apps / operator-apps /
+# bex-ssh-apps) grant in `default`, but as ClusterRoles they can be bound
+# per-namespace: the NamespaceReconciler (internal/store/namespaces.go) stamps a
+# RoleBinding into each `<ws>` (and `<ws>-sandbox`) namespace it provisions, so a
+# service account's access — including Secret access — exists ONLY inside the
+# tenant namespaces, never cluster-wide. This preserves the deliberate
+# least-privilege decision in operator-apps-rbac.yaml (the manager ClusterRole
+# omits Secrets so a compromised operator cannot read platform credentials).
+#
+# A ClusterRole grants nothing on its own — it is inert until a RoleBinding
+# references it. With BEX_TENANT_NAMESPACES unset (no RoleBindings stamped),
+# these are dead weight and production behavior is unchanged.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: bex-tenant-operator
+rules:
+  - apiGroups: [""]
+    resources: ["secrets", "serviceaccounts"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: bex-tenant-api
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: bex-tenant-ssh-gateway
+rules:
+  - apiGroups: ["app.bex.co"]
+    resources: ["apps"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]

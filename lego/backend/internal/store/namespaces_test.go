@@ -22,6 +22,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -158,6 +159,49 @@ func TestResourceQuotaCarriesPlanScopedObjectCounts(t *testing.T) {
 	}
 	if got := countCap(paid.ID, "count/apps.app.bex.co"); got != 100 {
 		t.Errorf("paid apps cap = %d, want 100", got)
+	}
+}
+
+func TestTenantRoleBindingsStampedPerNamespace(t *testing.T) {
+	ctx := context.Background()
+	r, store, cl := newTestNamespaceReconciler(t, true) // both regimes
+	tn, _ := store.CreateTenant(ctx, "acme", "free")
+	if err := r.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	binding := func(ns, name string) (rbacv1.RoleBinding, bool) {
+		var rb rbacv1.RoleBinding
+		err := cl.Get(ctx, client.ObjectKey{Namespace: ns, Name: name}, &rb)
+		return rb, err == nil
+	}
+
+	// Hosting namespace binds all three roles, each to the right SA in bex-system.
+	host := WorkspaceNamespace(tn.ID)
+	rb, ok := binding(host, "bex-tenant-operator")
+	if !ok {
+		t.Fatal("hosting missing bex-tenant-operator binding")
+	}
+	if rb.RoleRef.Kind != "ClusterRole" || rb.RoleRef.Name != "bex-tenant-operator" {
+		t.Errorf("operator binding roleRef = %+v", rb.RoleRef)
+	}
+	if len(rb.Subjects) != 1 || rb.Subjects[0].Name != "bex-controller-manager" || rb.Subjects[0].Namespace != "bex-system" {
+		t.Errorf("operator binding subject = %+v", rb.Subjects)
+	}
+	for _, name := range []string{"bex-tenant-api", "bex-tenant-ssh-gateway"} {
+		if _, ok := binding(host, name); !ok {
+			t.Errorf("hosting missing %s binding", name)
+		}
+	}
+
+	// Sandbox namespace binds ONLY the operator role (sealed; no api/ssh access).
+	sandbox := SandboxNamespace(tn.ID)
+	if _, ok := binding(sandbox, "bex-tenant-operator"); !ok {
+		t.Error("sandbox missing bex-tenant-operator binding")
+	}
+	for _, name := range []string{"bex-tenant-api", "bex-tenant-ssh-gateway"} {
+		if _, ok := binding(sandbox, name); ok {
+			t.Errorf("sandbox must NOT bind %s", name)
+		}
 	}
 }
 

@@ -25,6 +25,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -173,6 +174,11 @@ func (r *NamespaceReconciler) ensureNamespace(ctx context.Context, t Tenant, reg
 	for _, np := range allowNetworkPolicies(name, regime) {
 		if err := r.applyObject(ctx, np); err != nil {
 			return fmt.Errorf("networkpolicy %s: %w", np.Name, err)
+		}
+	}
+	for _, rb := range tenantRoleBindings(name, regime) {
+		if err := r.applyObject(ctx, rb); err != nil {
+			return fmt.Errorf("rolebinding %s: %w", rb.Name, err)
 		}
 	}
 	return nil
@@ -453,6 +459,60 @@ func internetEgressNetworkPolicy(namespace string) *networkingv1.NetworkPolicy {
 				}},
 			}},
 		},
+	}
+}
+
+// platform service accounts the tenant-namespace RoleBindings grant access to.
+// All live in bex-system (a RoleBinding may reference a SA in another namespace).
+const platformNamespace = "bex-system"
+
+var (
+	operatorSA   = rbacSubject("bex-controller-manager")
+	apiSA        = rbacSubject("bex-api")
+	sshGatewaySA = rbacSubject("bex-ssh-gateway")
+)
+
+func rbacSubject(name string) rbacv1.Subject {
+	return rbacv1.Subject{Kind: "ServiceAccount", Name: name, Namespace: platformNamespace}
+}
+
+// tenantRoleBindings binds the per-tenant-namespace ClusterRoles
+// (deploy/gitops/base/tenant-namespace-clusterroles.yaml) to the platform
+// service accounts, scoped to this one namespace (ADR043 D5, t003). A
+// RoleBinding→ClusterRole grants the ClusterRole's rules ONLY within the
+// binding's namespace, so operator/bex-api Secret access exists only inside
+// tenant namespaces — never cluster-wide. Stamped by the reconciler at
+// namespace-create so there is no manual per-workspace RoleBinding churn.
+//
+// A sandbox namespace (`<ws>-sandbox`) is driven by OpenSandbox, not bex-api's
+// pod reads or the SSH gateway, so it binds only the operator role (namespace
+// management); the hosting namespace binds all three.
+func tenantRoleBindings(namespace, regime string) []*rbacv1.RoleBinding {
+	bindings := []*rbacv1.RoleBinding{
+		tenantRoleBinding(namespace, "bex-tenant-operator", operatorSA),
+	}
+	if regime == RegimeHosting {
+		bindings = append(bindings,
+			tenantRoleBinding(namespace, "bex-tenant-api", apiSA),
+			tenantRoleBinding(namespace, "bex-tenant-ssh-gateway", sshGatewaySA),
+		)
+	}
+	return bindings
+}
+
+func tenantRoleBinding(namespace, clusterRole string, subject rbacv1.Subject) *rbacv1.RoleBinding {
+	return &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      clusterRole, // one binding per role; name mirrors the role
+			Namespace: namespace,
+			Labels:    map[string]string{LabelManagedBy: ManagedByValue},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: rbacv1.GroupName,
+			Kind:     "ClusterRole",
+			Name:     clusterRole,
+		},
+		Subjects: []rbacv1.Subject{subject},
 	}
 }
 
