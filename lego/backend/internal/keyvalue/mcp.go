@@ -37,22 +37,22 @@ import (
 // Service method REST and GraphQL call, so the surfaces can't drift.
 
 // keyValueArgs is the shared single-instance argument. Render's tools key on
-// `keyValueId`; for bex that id is the KeyValue name (opaque, round-tripped from
+// `keyValueId`; bex round-trips the immutable red-... id returned by
 // list_key_value.
 type keyValueArgs struct {
-	KeyValueID string `json:"keyValueId" jsonschema:"the key-value id (bex KeyValue name), as returned by list_key_value"`
+	KeyValueID string `json:"keyValueId" jsonschema:"the immutable key-value id (red-...), as returned by list_key_value"`
 }
 
 // suspendKeyValueArgs keeps the protected-environment confirmation field
 // scoped to suspend_keyvalue instead of advertising it on get_key_value.
 type suspendKeyValueArgs struct {
-	KeyValueID string `json:"keyValueId" jsonschema:"the key-value id (bex KeyValue name), as returned by list_key_value"`
+	KeyValueID string `json:"keyValueId" jsonschema:"the immutable key-value id (red-...), as returned by list_key_value"`
 	Confirm    string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned when a protected environment blocks suspend"`
 }
 
 // updateKeyValuePlanArgs is update_key_value_plan's input.
 type updateKeyValuePlanArgs struct {
-	KeyValueID string `json:"keyValueId" jsonschema:"the key-value id (bex KeyValue name), as returned by list_key_value"`
+	KeyValueID string `json:"keyValueId" jsonschema:"the immutable key-value id (red-...), as returned by list_key_value"`
 	Plan       string `json:"plan" jsonschema:"the target instance plan (e.g. free, starter, standard)"`
 	DryRun     bool   `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
