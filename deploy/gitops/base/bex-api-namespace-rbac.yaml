@@ -1,0 +1,54 @@
+# Cluster authority for bex-api's NamespaceReconciler (ADR043 / w3/m31 t001-t003).
+#
+# The reconciler provisions a per-tenant `<ws>` (and `<ws>-sandbox`) namespace
+# per workspace with base ResourceQuota/LimitRange/default-deny+allow
+# NetworkPolicies, and stamps a RoleBinding→bex-tenant-* ClusterRole into each,
+# then prunes them on workspace delete. That needs cluster-wide namespace
+# lifecycle + the in-namespace object management below — the bex-api-apps Role
+# (secrets/pods in one namespace) does NOT cover it.
+#
+# Least-privilege preserved: this grants NAMESPACE MANAGEMENT, not Secret reads —
+# the deliberate omission of cluster-wide `secrets` from bex-api (ADR028, guarded
+# by scripts/gitops-validate.sh) is untouched. Inert until BEX_TENANT_NAMESPACES
+# is set (the reconciler doesn't run otherwise), so applying it changes nothing
+# on its own.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: bex-api-namespaces
+rules:
+  # Namespace lifecycle (create on workspace create, delete on workspace delete).
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  # Base isolation objects the reconciler applies INTO each `<ws>` namespace.
+  - apiGroups: [""]
+    resources: ["resourcequotas", "limitranges"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # The per-`<ws>` RoleBindings (t003). Creating a RoleBinding that references a
+  # ClusterRole requires either holding that role's rules or `bind` on it; the
+  # bind grant below satisfies the RBAC escalation-prevention check without
+  # handing bex-api the tenant roles' own (Secret-bearing) permissions.
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["rolebindings"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles"]
+    resourceNames: ["bex-tenant-operator", "bex-tenant-api", "bex-tenant-ssh-gateway"]
+    verbs: ["bind"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: bex-api-namespaces
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: bex-api-namespaces
+subjects:
+  - kind: ServiceAccount
+    name: bex-api
+    namespace: bex-system
