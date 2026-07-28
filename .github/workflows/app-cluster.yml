@@ -96,8 +96,11 @@ jobs:
             caph-system \
             capi-kubeadm-bootstrap-system \
             capi-kubeadm-control-plane-system; do
-            kubectl -n "$ns" patch deployment --all --type=merge \
-              -p '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""}}}}}'
+            kubectl -n "$ns" get deployment -o name |
+              while IFS= read -r deployment; do
+                kubectl -n "$ns" patch "$deployment" --type=merge \
+                  -p '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""}}}}}'
+              done
           done
       - name: wait for CAPI/CAPH controllers
         run: |
