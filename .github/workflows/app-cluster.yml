@@ -4,8 +4,9 @@ name: app-cluster (CAPH)
 # in the cluster it manages; no mgmt cluster). It:
 #   1. fetches the cluster's own kubeconfig (hcloud API -> CP node -> SSH admin.conf)
 #   2. ensures CAPH at the pinned version (clusterctl, in-cluster)
-#   3. applies the CAPH overlay -> the cluster reconciles its own machines
-#   4. ensures the addons: CNI (Cilium) + Hetzner CCM + CSI
+#   3. pins every CAPI/CAPH controller to the tainted control-plane pool
+#   4. applies the CAPH overlay -> the cluster reconciles its own machines
+#   5. ensures the addons: CNI (Cilium) + Hetzner CCM + CSI
 #
 # Runs in CI, never a laptop. Idempotent: re-runnable (clusterctl init / kubectl
 # apply / helm upgrade --install / secret apply are all no-ops when unchanged).
@@ -83,9 +84,29 @@ jobs:
           else
             echo "CAPH already at ${CAPH_VERSION}"
           fi
+      # clusterctl's upstream provider manifests tolerate control-plane taints but
+      # do not select those nodes. In the self-managed cluster that lets all four
+      # infrastructure-critical controllers drift onto disposable tenant nodes.
+      # Reapply this desired placement after every init/upgrade because clusterctl
+      # remains the owner of the provider manifests.
+      - name: pin CAPI/CAPH controllers to control-plane nodes
+        run: |
+          for ns in \
+            capi-system \
+            caph-system \
+            capi-kubeadm-bootstrap-system \
+            capi-kubeadm-control-plane-system; do
+            kubectl -n "$ns" patch deployment --all --type=merge \
+              -p '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""}}}}}'
+          done
       - name: wait for CAPI/CAPH controllers
         run: |
-          for ns in cert-manager capi-system caph-system; do
+          for ns in \
+            cert-manager \
+            capi-system \
+            caph-system \
+            capi-kubeadm-bootstrap-system \
+            capi-kubeadm-control-plane-system; do
             kubectl -n "$ns" wait --for=condition=Available deploy --all --timeout=300s
           done
 
