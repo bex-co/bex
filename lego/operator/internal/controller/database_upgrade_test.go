@@ -136,7 +136,11 @@ func TestReconcileMajorVersionUpgradeLifecycle(t *testing.T) {
 	if image != "ghcr.io/cloudnative-pg/postgresql:17" {
 		t.Errorf("cluster image = %q, want PostgreSQL 17", image)
 	}
-	serverName, _, _ := unstructured.NestedString(cluster.Object, "spec", "backup", "barmanObjectStore", "serverName")
+	plugins, _, _ := unstructured.NestedSlice(cluster.Object, "spec", "plugins")
+	if len(plugins) != 1 {
+		t.Fatalf("upgrade plugins = %v, want one Barman Cloud WAL archiver", plugins)
+	}
+	serverName, _, _ := unstructured.NestedString(plugins[0].(map[string]any), "parameters", "serverName")
 	if serverName != "upgrade-db-pg17" {
 		t.Errorf("upgrade backup serverName = %q, want target generation", serverName)
 	}
