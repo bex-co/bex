@@ -225,7 +225,10 @@ func TestStripeMeterEventMapping(t *testing.T) {
 		{"instance postgres", Event{EventType: "instance_seconds", Properties: map[string]string{"tier": "basic-1gb", "resource_kind": "postgres", "value": "60"}}, "instance_seconds.postgres.basic-1gb", "60", false},
 		{"free tier skipped", Event{EventType: "instance_seconds", Properties: map[string]string{"tier": "free", "resource_kind": "service", "value": "3600"}}, "", "", true},
 		{"egress re-based to GiB", Event{EventType: "egress_bytes", Properties: map[string]string{"value": "2147483648"}}, "egress_gib", "2", false},
+		{"egress rounded to Stripe precision", Event{EventType: "egress_bytes", Properties: map[string]string{"value": "1528842059"}}, "egress_gib", "1.423845122568", false},
+		{"single byte retained", Event{EventType: "egress_bytes", Properties: map[string]string{"value": "1"}}, "egress_gib", "0.000000000931", false},
 		{"storage re-based to GB-hours", Event{EventType: "storage_gb_seconds", Properties: map[string]string{"value": "7200"}}, "storage_gb_hours", "2", false},
+		{"storage rounded to Stripe precision", Event{EventType: "storage_gb_seconds", Properties: map[string]string{"value": "1"}}, "storage_gb_hours", "0.000277777778", false},
 		{"build unchanged", Event{EventType: "build_seconds", Properties: map[string]string{"value": "120"}}, "build_seconds", "120", false},
 	}
 	for _, tc := range cases {

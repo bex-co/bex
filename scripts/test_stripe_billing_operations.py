@@ -21,7 +21,7 @@ class BillingOperationsGuardTest(unittest.TestCase):
             {
                 "BEX_STRIPE_SECRET_KEY": key,
                 "BEX_CP_TOKEN": "offline",
-                "BEX_BILLING_FIXTURE_DB_URI": "postgres://offline",
+                "BEX_BILLING_FIXTURE_DB_URI": "postgres://offline:offline@localhost/offline",
             }
         )
         return subprocess.run(
@@ -93,7 +93,7 @@ class BillingOperationsGuardTest(unittest.TestCase):
                     "PATH": f"{bin_dir}:{env['PATH']}",
                     "BEX_STRIPE_SECRET_KEY": "rk_test_offline",
                     "BEX_CP_TOKEN": "offline",
-                    "BEX_BILLING_FIXTURE_DB_URI": "postgres://offline",
+                    "BEX_BILLING_FIXTURE_DB_URI": "postgres://offline:offline@localhost/offline",
                     "BEX_BILLING_FIXTURE_STATE": str(state),
                 }
             )

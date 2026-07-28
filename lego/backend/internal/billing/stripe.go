@@ -21,8 +21,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/big"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -393,14 +393,20 @@ func stripeMeterEvent(e Event) (eventName, value string, skip bool) {
 	}
 }
 
-// scaleDown divides an integer-string quantity by divisor, returning the
-// shortest exact decimal string — for re-basing bytes→GiB and GB-seconds→GB-hours.
+// scaleDown divides an integer-string quantity by divisor and rounds to the 12
+// decimal places Stripe permits in a meter-event payload. Rational arithmetic
+// avoids float64 tails that Stripe permanently rejects.
 func scaleDown(intStr string, divisor int64) string {
-	n, err := strconv.ParseInt(intStr, 10, 64)
-	if err != nil {
+	n, ok := new(big.Int).SetString(intStr, 10)
+	if !ok || divisor <= 0 {
 		return "0"
 	}
-	return strconv.FormatFloat(float64(n)/float64(divisor), 'f', -1, 64)
+	value := new(big.Rat).SetFrac(n, big.NewInt(divisor)).FloatString(12)
+	value = strings.TrimRight(strings.TrimRight(value, "0"), ".")
+	if value == "" || value == "-0" {
+		return "0"
+	}
+	return value
 }
 
 // permanentStripeError reports whether err is a non-retryable client error
