@@ -1240,12 +1240,12 @@ expected_sandbox_pod_admission_objects=$'ValidatingAdmissionPolicy:bex-sandbox-p
 sandbox_pod_admission_rule="$(yq -N \
   'select(.kind == "ValidatingAdmissionPolicy" and .metadata.name == "bex-sandbox-pods") |
     [.spec.matchConstraints.resourceRules[0].resources[0],
-     (.spec.matchConstraints.resourceRules[0].operations | sort | join(","))] | join(":")' \
+     (.spec.matchConstraints.resourceRules[0].operations | sort | join(",")),
+     .spec.matchConstraints.namespaceSelector.matchLabels."app.bex.co/regime"] | join(":")' \
   - <<<"$sandbox_pod_admission_render" | tr -d '\n')"
-[ "$sandbox_pod_admission_rule" = "pods:CREATE,UPDATE" ] \
+[ "$sandbox_pod_admission_rule" = "pods:CREATE,UPDATE:sandbox" ] \
   || { echo "FAIL: sandbox Pod admission match is '$sandbox_pod_admission_rule'" >&2; fail=1; }
 for required_guard in \
-  "namespaceObject.metadata.?labels['app.bex.co/regime'].orValue('') == 'sandbox'" \
   "object.metadata.?labels['app.bex.co/regime'].orValue('') == 'sandbox'" \
   "object.spec.runtimeClassName == 'gvisor'" \
   "object.spec.automountServiceAccountToken == false" \

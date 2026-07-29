@@ -14,16 +14,14 @@ metadata:
 spec:
   failurePolicy: Fail
   matchConstraints:
+    namespaceSelector:
+      matchLabels:
+        app.bex.co/regime: sandbox
     resourceRules:
       - apiGroups: [""]
         apiVersions: ["v1"]
         operations: ["CREATE", "UPDATE"]
         resources: ["pods"]
-  matchConditions:
-    - name: sandbox-namespace
-      expression: >-
-        namespaceObject != null &&
-        namespaceObject.metadata.?labels['app.bex.co/regime'].orValue('') == 'sandbox'
   validations:
     - expression: >-
         object.metadata.?labels['app.bex.co/regime'].orValue('') == 'sandbox' &&
