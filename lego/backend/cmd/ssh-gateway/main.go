@@ -107,14 +107,15 @@ func main() {
 	registry := prometheus.NewRegistry()
 	gateway := &sshgateway.Server{
 		Store: st, Apps: appService,
-		Executor:         &sshgateway.KubeExecutor{Config: restConfig, Client: clientset},
-		Signer:           signer,
-		Metrics:          sshgateway.NewMetrics(registry),
-		TicketSecret:     []byte(os.Getenv("BEX_SHELL_TICKET_SECRET")),
-		HandshakeTimeout: durationEnv("BEX_SSH_HANDSHAKE_TIMEOUT", 10*time.Second),
-		SessionTimeout:   durationEnv("BEX_SSH_SESSION_TIMEOUT", 4*time.Hour),
-		MaxSessions:      intEnv("BEX_SSH_MAX_SESSIONS", 100),
-		MaxPerIdentity:   intEnv("BEX_SSH_MAX_SESSIONS_PER_IDENTITY", 5),
+		Executor:          &sshgateway.KubeExecutor{Config: restConfig, Client: clientset},
+		Signer:            signer,
+		Metrics:           sshgateway.NewMetrics(registry),
+		TicketSecret:      []byte(os.Getenv("BEX_SHELL_TICKET_SECRET")),
+		SandboxExecSecret: []byte(os.Getenv("BEX_SANDBOX_EXEC_SECRET")),
+		HandshakeTimeout:  durationEnv("BEX_SSH_HANDSHAKE_TIMEOUT", 10*time.Second),
+		SessionTimeout:    durationEnv("BEX_SSH_SESSION_TIMEOUT", 4*time.Hour),
+		MaxSessions:       intEnv("BEX_SSH_MAX_SESSIONS", 100),
+		MaxPerIdentity:    intEnv("BEX_SSH_MAX_SESSIONS_PER_IDENTITY", 5),
 	}
 	addr := envOr("BEX_SSH_ADDR", ":2222")
 	listener, err := net.Listen("tcp", addr)
@@ -166,6 +167,33 @@ func main() {
 			_ = shellServer.Shutdown(shutdownCtx)
 		}()
 		log.Printf("web shell listening on %s", shellAddr)
+	}
+
+	// Sandbox-exec SSE listener (w3/m33, `render ea sandbox exec`). Internal-only
+	// (bex-api → gateway; the exec-secret HMAC is the trust) — NOT browser-facing,
+	// so it is a distinct listener from the Web Shell. Started only when
+	// BEX_SANDBOX_EXEC_SECRET is set. pods/exec stays confined here.
+	if gateway.SandboxExecEnabled() {
+		execMux := http.NewServeMux()
+		execMux.Handle("POST /sandbox-exec", gateway.SandboxExecHandler())
+		execMux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+		execServer := &http.Server{Handler: execMux, ReadHeaderTimeout: 5 * time.Second}
+		execAddr := envOr("BEX_SANDBOX_EXEC_ADDR", ":8081")
+		execListener, err := net.Listen("tcp", execAddr)
+		if err != nil {
+			log.Fatalf("ssh gateway: sandbox-exec listen %s: %v", execAddr, err)
+		}
+		go func() {
+			if err := execServer.Serve(execListener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				stop()
+			}
+		}()
+		defer func() {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = execServer.Shutdown(shutdownCtx)
+		}()
+		log.Printf("sandbox exec listening on %s", execAddr)
 	}
 	log.Printf("ssh gateway listening on %s", addr)
 	if err := gateway.Serve(ctx, listener); err != nil && !errors.Is(err, context.Canceled) {

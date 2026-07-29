@@ -194,6 +194,9 @@ type Deps struct {
 	SandboxKeys            sandbox.KeyProvider
 	SandboxDefaultPlan     sandbox.Plan
 	SandboxDefaultTemplate string
+	// SandboxExec wires `render ea sandbox exec` (w3/m33) — bex-api authorizes and
+	// reverse-proxies the SSE from the isolated gateway; nil => the exec verb 503s.
+	SandboxExec *sandbox.ExecConfig
 	// SSHHost is the public gateway hostname advertised through Render's
 	// serviceDetails.sshAddress field. Empty disables SSH address advertising.
 	SSHHost string
@@ -661,6 +664,7 @@ func sandboxService(base *core.Base, d Deps) *sandbox.Service {
 		Templates:       d.SandboxTemplates,
 		DefaultPlan:     d.SandboxDefaultPlan,
 		DefaultTemplate: d.SandboxDefaultTemplate,
+		Exec:            d.SandboxExec,
 	}
 }
 

@@ -334,6 +334,20 @@ spec:
                   optional: true
             - name: BEX_SHELL_WS_URL
               value: wss://ssh.bex.co/shell
+            # `render ea sandbox exec` (w3/m33): bex-api authorizes can_operate and
+            # signs a ticket, then reverse-proxies the SSE stream from the isolated
+            # SSH gateway (which alone holds pods/exec, Option A). The secret must
+            # match the gateway's BEX_SANDBOX_EXEC_SECRET; the URL is the gateway's
+            # internal exec listener. optional ⇒ absent Secret leaves the exec verb
+            # 503; create/list/stop are unaffected.
+            - name: BEX_SANDBOX_EXEC_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bex-sandbox-exec
+                  key: secret
+                  optional: true
+            - name: BEX_SANDBOX_EXEC_URL
+              value: http://bex-ssh-gateway.bex-system.svc:8081/sandbox-exec
             # Login-time invite redemption requires a Kratos-VERIFIED email
             # (w1/040, closing w1/m53's V1 window: an attacker who registered
             # with a victim's not-yet-signed-up invited address could otherwise

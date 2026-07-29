@@ -509,6 +509,11 @@ func tenantRoleBindings(namespace, regime string) []*rbacv1.RoleBinding {
 	case RegimeSandbox:
 		bindings = append(bindings,
 			tenantRoleBinding(namespace, "bex-tenant-sandbox-server", sandboxServerSA),
+			// `render ea sandbox exec` (w3/m33): the isolated SSH gateway runs the
+			// command in the sandbox pod via pods/exec — the same ClusterRole it uses
+			// for running-instance SSH, now bound in the sandbox regime too so
+			// pods/exec stays confined to the gateway (never bex-api, Option A).
+			tenantRoleBinding(namespace, "bex-tenant-ssh-gateway", sshGatewaySA),
 		)
 	}
 	return bindings

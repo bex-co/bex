@@ -57,6 +57,8 @@ type Service struct {
 	// `ea sandbox create` sends only a plan (no template flag exists), so an empty
 	// template must resolve to a registered default rather than 400 (w3/m32 t009).
 	DefaultTemplate string
+	// Exec wires `render ea sandbox exec` (w3/m33); nil => the exec verb 503s.
+	Exec *ExecConfig
 }
 
 // CreateRequest is the caller's create input. OwnerID binds the workspace (as

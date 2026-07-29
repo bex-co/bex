@@ -22,3 +22,10 @@ spec:
       port: 8080
       targetPort: shell
       protocol: TCP
+    # Sandbox-exec SSE (w3/m33). Internal-only — bex-api reverse-proxies
+    # `render ea sandbox exec` here; the listener runs only when the shared
+    # BEX_SANDBOX_EXEC_SECRET is installed. Never exposed at the edge.
+    - name: sandbox-exec
+      port: 8081
+      targetPort: sandbox-exec
+      protocol: TCP

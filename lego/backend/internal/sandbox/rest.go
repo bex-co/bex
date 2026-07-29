@@ -84,6 +84,31 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, sb)
 	})
+	// Render CLI `exec` → run one command, stream stdout/stderr + exitCode as SSE.
+	// The CLI POSTs {"command":"…"} and reads the response as an event stream
+	// (docs/render-artifacts/ea-sandbox.md §exec). ownerId is query-or-body.
+	mux.HandleFunc("POST /v1/sandboxes/{id}/exec", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			OwnerID string `json:"ownerId"`
+			Command string `json:"command"`
+		}
+		_ = core.DecodeJSON(r, &body)
+		owner := r.URL.Query().Get("ownerId")
+		if owner == "" {
+			owner = body.OwnerID
+		}
+		flush := func() {
+			if f, ok := w.(http.Flusher); ok {
+				f.Flush()
+			}
+		}
+		err := s.StreamExec(r.Context(), ExecRequest{
+			OwnerID: owner, SandboxID: r.PathValue("id"), Command: body.Command,
+		}, w, flush)
+		if err != nil {
+			core.WriteErr(w, err)
+		}
+	})
 	// Render CLI `stop` → terminate.
 	mux.HandleFunc("POST /v1/sandboxes/{id}/terminate", func(w http.ResponseWriter, r *http.Request) {
 		s.lifecycleREST(w, r, s.Terminate)
