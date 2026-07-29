@@ -940,15 +940,10 @@ if [ -f "$EGRESS" ]; then
   server_entities="$(yq -N \
     'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-server-egress") |
       .spec.egress[].toEntities[]?' "$EGRESS" | sort | paste -sd, -)"
-  server_api_service="$(yq -N \
-    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-server-egress") |
-      .spec.egress[].toServices[]?.k8sService |
-      [.namespace, .serviceName] | join("/")' "$EGRESS" | tr -d '\n')"
   if [ "$server_selector" != "opensandbox-system:opensandbox-server" ] \
-    || [ "$server_ports" != "53,443,8091,44772" ] \
-    || [ "$server_entities" != "kube-apiserver" ] \
-    || [ "$server_api_service" != "default/kubernetes" ]; then
-    echo "FAIL: lifecycle-server egress is selector=$server_selector ports=$server_ports entities=$server_entities apiService=$server_api_service" >&2
+    || [ "$server_ports" != "53,443,6443,8091,44772" ] \
+    || [ "$server_entities" != "kube-apiserver" ]; then
+    echo "FAIL: lifecycle-server egress is selector=$server_selector ports=$server_ports entities=$server_entities" >&2
     fail=1
   fi
 
@@ -1265,16 +1260,10 @@ controller_egress_selector="$(yq -N \
      .spec.endpointSelector.matchLabels."k8s:io.cilium.k8s.policy.serviceaccount",
      .spec.endpointSelector.matchLabels."k8s:app.kubernetes.io/name",
      .spec.egress[0].toEntities[0],
-     .spec.egress[0].toPorts[0].ports[0].port] | join(":")' \
+     (.spec.egress[0].toPorts[0].ports | map(.port) | sort | join(","))] | join(":")' \
   "$EGRESS" | tr -d '\n')"
-[ "$controller_egress_selector" = "opensandbox-system:opensandbox-controller-manager:opensandbox:kube-apiserver:443" ] \
+[ "$controller_egress_selector" = "opensandbox-system:opensandbox-controller-manager:opensandbox:kube-apiserver:443,6443" ] \
   || { echo "FAIL: OpenSandbox controller egress is '$controller_egress_selector'" >&2; fail=1; }
-controller_api_service="$(yq -N \
-  'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-controller-egress") |
-    .spec.egress[].toServices[]?.k8sService |
-    [.namespace, .serviceName] | join("/")' "$EGRESS" | tr -d '\n')"
-[ "$controller_api_service" = "default/kubernetes" ] \
-  || { echo "FAIL: OpenSandbox controller lacks the exact Kubernetes Service egress fallback: '$controller_api_service'" >&2; fail=1; }
 server_policy_identities="$(yq -N \
   'select(.kind == "CiliumClusterwideNetworkPolicy" and
     (.metadata.name == "opensandbox-server-ingress" or .metadata.name == "opensandbox-server-egress")) |
@@ -1329,8 +1318,9 @@ for required in \
   'bash scripts/opensandbox-server-secret.sh' \
   'wait for OpenSandbox control plane' \
   'BEX_EXPECTED_OPENSANDBOX_IMAGE' \
-  'rollout status deploy/opensandbox-controller-manager' \
-  'rollout status deploy/opensandbox-server'; do
+  'rollout restart' \
+  'for deployment in opensandbox-controller-manager opensandbox-server' \
+  '.status.availableReplicas'; do
   grep -qF "$required" .github/workflows/deploy.yml \
     || { echo "FAIL: deploy workflow lost OpenSandbox supply-chain/secret step: $required" >&2; fail=1; }
 done
