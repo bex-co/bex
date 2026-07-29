@@ -132,6 +132,12 @@ spec:
           # BEX_API_NAMESPACE / BEX_CP_APPS_NAMESPACE.
           - name: BEX_APPS_NAMESPACE
             value: default
+          # Per-tenant namespace isolation (ADR043, m31 t005): must match bex-api's
+          # BEX_TENANT_NAMESPACES. When set, each workspace's `<ws>` namespace
+          # NetworkPolicies are the tenant boundary, so the operator stops stamping
+          # redundant per-App label-scoped policies and deletes any it left behind.
+          - name: BEX_TENANT_NAMESPACES
+            value: "1"
           # Dedicated namespace for every tenant-controlled build, publish, and
           # pre-deploy execution workload.
           - name: BEX_BUILD_NAMESPACE

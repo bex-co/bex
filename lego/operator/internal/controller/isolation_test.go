@@ -177,6 +177,22 @@ var _ = Describe("Tenant isolation (w7/m1)", func() {
 			err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, np)
 			Expect(errors.IsNotFound(err)).To(BeTrue(), "NetworkPolicy must be removed when workspace label is absent")
 		})
+
+		It("skips and cleans up the per-App NetworkPolicy when tenant-namespace isolation is active (m31 t005)", func() {
+			By("first reconciling without isolation to create the legacy per-App policy")
+			reconcileApp(r, name)
+			np := &networkingv1.NetworkPolicy{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, np)).To(Succeed())
+
+			By("enabling per-tenant namespace isolation and reconciling again")
+			r.TenantNamespaces = true
+			reconcileApp(r, name)
+
+			By("verifying the redundant per-App NetworkPolicy is deleted and none is recreated")
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, np)
+			Expect(errors.IsNotFound(err)).To(BeTrue(),
+				"the `<ws>` namespace policies are the boundary; the per-App policy must be removed")
+		})
 	})
 
 	Context("legacy App without workspace label", func() {
