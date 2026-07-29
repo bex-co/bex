@@ -66,12 +66,20 @@ type CreateRequest struct {
 func (s *Service) enabled() bool { return s.Client != nil }
 
 // workspaceKey resolves the caller's workspace tenant key. Empty when no key
-// provider is wired (single-tenant OpenSandbox).
+// provider is wired (single-tenant OpenSandbox). It keys off the RESOLVED
+// workspace (s.Tenant — the caller's default when they named none, or the named
+// one after the membership check), never the raw named value: a create with no
+// ownerId must mint the key for the caller's own workspace, not an empty one.
 func (s *Service) workspaceKey(ctx context.Context) (string, error) {
 	if s.Keys == nil {
 		return "", nil
 	}
-	ws, _ := core.WorkspaceFrom(ctx)
+	ws, ok := s.Tenant(ctx)
+	if !ok {
+		// Multi-tenant OpenSandbox but the caller resolves to no workspace (store
+		// off, or an unbound machine key): there is no `<ws>-sandbox` to scope to.
+		return "", fmt.Errorf("%w: no workspace resolved for the sandbox tenant key", core.ErrForbidden)
+	}
 	return s.Keys.WorkspaceKey(ctx, ws)
 }
 
@@ -100,7 +108,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if err != nil {
 		return Sandbox{}, err
 	}
-	ws, _ := core.WorkspaceFrom(ctx)
+	ws, _ := s.Tenant(ctx) // resolved workspace (default or named), for response metadata
 	cpu, mem := tmpl.CPU, tmpl.Memory
 	if cpu == "" {
 		cpu = "500m"
@@ -135,7 +143,7 @@ func (s *Service) List(ctx context.Context) ([]Sandbox, error) {
 	if err != nil {
 		return nil, err
 	}
-	ws, _ := core.WorkspaceFrom(ctx)
+	ws, _ := s.Tenant(ctx) // resolved workspace (default or named), for response metadata
 	raw, err := s.Client.List(ctx, key)
 	if err != nil {
 		return nil, err

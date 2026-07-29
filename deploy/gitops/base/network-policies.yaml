@@ -93,6 +93,38 @@ spec:
           port: 8090
 
 ---
+# allow-opensandbox-to-cp-api (m32 t006): the OpenSandbox lifecycle server's HTTP
+# tenant provider calls bex-api's control-plane endpoint (:8091
+# /v1/sandbox-tenants) to resolve each OPEN-SANDBOX-API-KEY to its `<ws>-sandbox`
+# namespace. deny-tenant-ingress only admits bex-system/traefik/monitoring on
+# bex-api, so without this the tenant lookup times out and every sandbox op fails
+# TENANT_PROVIDER_UNAVAILABLE. Scoped tightly: only the opensandbox-server pod in
+# opensandbox-system, only the CP port. It does NOT open :8090 (the public API)
+# to the sandbox server — only the bearer-gated CP lookup.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-opensandbox-to-cp-api
+  namespace: bex-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: bex-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: opensandbox-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: opensandbox-server
+      ports:
+        - protocol: TCP
+          port: 8091
+
+---
 # bex-registry: zot OCI registry on :5000
 # Allowed: bex-system (operator registry administration), bex-build (scoped
 #   build/publish/pre-deploy registry access),
