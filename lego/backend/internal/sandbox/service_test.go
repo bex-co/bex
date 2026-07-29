@@ -18,6 +18,7 @@ package sandbox
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -42,6 +43,18 @@ type denyChecker struct{}
 
 func (denyChecker) Check(context.Context, string, string, string) (bool, error) { return false, nil }
 
+// adminChecker allows ordinary workspace relations for every fixture identity,
+// but reserves can_manage for id-admin. This models two members and one explicit
+// administrator in the same workspace.
+type adminChecker struct{}
+
+func (adminChecker) Check(_ context.Context, subject, relation, _ string) (bool, error) {
+	if relation == core.RelCanManage {
+		return subject == "user:id-admin", nil
+	}
+	return true, nil
+}
+
 func stubServer(t *testing.T, handler http.HandlerFunc) *Service {
 	t.Helper()
 	srv := httptest.NewServer(handler)
@@ -54,17 +67,25 @@ func stubServer(t *testing.T, handler http.HandlerFunc) *Service {
 }
 
 func callerCtx() context.Context {
-	return core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "session"})
+	return identityCtx("id-a")
+}
+
+func identityCtx(subject string) context.Context {
+	return core.WithIdentity(context.Background(), core.Identity{Subject: subject, Method: "session"})
 }
 
 func TestCreateUsesTemplateImageAndEchoesPlan(t *testing.T) {
-	var gotBody string
+	var got createRequest
 	svc := stubServer(t, func(w http.ResponseWriter, r *http.Request) {
-		buf := make([]byte, r.ContentLength)
-		_, _ = r.Body.Read(buf)
-		gotBody = string(buf)
+		if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+			t.Errorf("decode create body: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(`{"id":"os-1","status":{"state":"Creating"}}`))
+		// A partial create echo must not replace the exact server-bound metadata in
+		// the immediate public response.
+		_, _ = w.Write([]byte(`{"id":"os-1","metadata":{"bex.co/owner":"wrong"},"status":{"state":"Creating"}}`))
 	})
 	sb, err := svc.Create(callerCtx(), CreateRequest{Template: "node", Plan: PlanStandard})
 	if err != nil {
@@ -79,18 +100,66 @@ func TestCreateUsesTemplateImageAndEchoesPlan(t *testing.T) {
 	if sb.Owner != "id-a" {
 		t.Errorf("owner = %q, want id-a", sb.Owner)
 	}
-	if want := `"node:20"`; !contains(gotBody, want) {
-		t.Errorf("create body %q missing template image %s", gotBody, want)
+	if got.Image.URI != "node:20" {
+		t.Errorf("create image = %q, want node:20", got.Image.URI)
+	}
+	if got.Metadata[metadataOwner] != "id-a" || got.Metadata[metadataWorkspace] != "tea-a" ||
+		got.Metadata[metadataNetworkPolicy] != string(NetworkPolicyDenyAll) || got.Metadata[metadataRegime] != metadataSandboxRegime {
+		t.Errorf("security metadata = %#v", got.Metadata)
+	}
+	if sb.NetworkPolicy == nil || sb.NetworkPolicy.Default != NetworkPolicyDenyAll {
+		t.Errorf("effective network policy = %#v, want deny-all", sb.NetworkPolicy)
+	}
+}
+
+func TestCreateRejectsUnenforcedNetworkPolicyBeforeUpstream(t *testing.T) {
+	calls := 0
+	svc := stubServer(t, func(w http.ResponseWriter, r *http.Request) { calls++ })
+	_, err := svc.Create(callerCtx(), CreateRequest{
+		Template:      "node",
+		NetworkPolicy: &NetworkPolicy{Default: NetworkPolicyAllowAll},
+	})
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("allow-all error = %v, want ErrBadRequest", err)
+	}
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "SANDBOX_NETWORK_POLICY_UNSUPPORTED" {
+		t.Fatalf("allow-all error = %#v, want named policy refusal", err)
+	}
+	if calls != 0 {
+		t.Fatalf("unsupported policy reached OpenSandbox %d time(s)", calls)
 	}
 }
 
 func TestCreateRejectsUnknownTemplateAndPlan(t *testing.T) {
-	svc := stubServer(t, func(w http.ResponseWriter, r *http.Request) { t.Fatal("must not reach server") })
+	svc := stubServer(t, func(w http.ResponseWriter, r *http.Request) { t.Error("must not reach server") })
 	if _, err := svc.Create(callerCtx(), CreateRequest{Template: "ghost"}); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("unknown template err = %v, want ErrBadRequest", err)
 	}
 	if _, err := svc.Create(callerCtx(), CreateRequest{Template: "node", Plan: "mega"}); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("unknown plan err = %v, want ErrBadRequest", err)
+	}
+}
+
+func TestCreateRejectsUnpersistableRegionAndTimeout(t *testing.T) {
+	svc := stubServer(t, func(w http.ResponseWriter, r *http.Request) { t.Error("must not reach server") })
+	for _, tc := range []struct {
+		name string
+		req  CreateRequest
+		code string
+	}{
+		{name: "region", req: CreateRequest{Template: "node", Region: "not/a/label"}, code: "SANDBOX_REGION_INVALID"},
+		{name: "negative timeout", req: CreateRequest{Template: "node", TimeoutSeconds: -1}, code: "SANDBOX_TIMEOUT_INVALID"},
+		{name: "below upstream minimum timeout", req: CreateRequest{Template: "node", TimeoutSeconds: minSandboxTimeout - 1}, code: "SANDBOX_TIMEOUT_INVALID"},
+		{name: "excess timeout", req: CreateRequest{Template: "node", TimeoutSeconds: maxSandboxTimeout + 1}, code: "SANDBOX_TIMEOUT_INVALID"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := svc.Create(callerCtx(), tc.req)
+			var coded *core.CodedError
+			if !errors.As(err, &coded) || coded.Code != tc.code {
+				t.Fatalf("error = %v, want %s", err, tc.code)
+			}
+		})
 	}
 }
 
@@ -110,7 +179,7 @@ func TestVerbsReturnUnavailableWhenClientNil(t *testing.T) {
 
 func TestAuthzRefusalBlocksBeforeServerCall(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Fatal("authz-refused verb must not reach the server")
+		t.Error("authz-refused verb must not reach the server")
 	}))
 	t.Cleanup(srv.Close)
 	svc := &Service{
@@ -127,7 +196,7 @@ func TestListAndLifecycleScopedByWorkspaceKey(t *testing.T) {
 	var keys []string
 	svc := stubServer(t, func(w http.ResponseWriter, r *http.Request) {
 		keys = append(keys, r.Header.Get(tenantKeyHeader))
-		_, _ = w.Write([]byte(`[{"id":"os-1","status":{"state":"Running"}}]`))
+		_, _ = w.Write([]byte(`[{"id":"os-1","metadata":{"bex.co/owner":"id-a","bex.co/workspace":"tea-a","bex.co/network-policy":"deny-all","app.bex.co/regime":"sandbox"},"status":{"state":"Running"}}]`))
 	})
 	svc.Keys = staticKey("ws-key-tea-a")
 	got, err := svc.List(callerCtx())
@@ -136,6 +205,87 @@ func TestListAndLifecycleScopedByWorkspaceKey(t *testing.T) {
 	}
 	if len(keys) == 0 || keys[0] != "ws-key-tea-a" {
 		t.Errorf("workspace key not sent: %v", keys)
+	}
+}
+
+func TestOwnerBoundaryAndWorkspaceAdminOverride(t *testing.T) {
+	var deletes int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/sandboxes":
+			_, _ = w.Write([]byte(`[
+				{"id":"os-a","metadata":{"bex.co/owner":"id-a","bex.co/workspace":"tea-a","bex.co/network-policy":"deny-all","app.bex.co/regime":"sandbox"},"status":{"state":"Running"}},
+				{"id":"os-b","metadata":{"bex.co/owner":"id-b","bex.co/workspace":"tea-a","bex.co/network-policy":"deny-all","app.bex.co/regime":"sandbox"},"status":{"state":"Running"}},
+				{"id":"os-legacy","metadata":{"bex.co/workspace":"tea-a"},"status":{"state":"Running"}},
+				{"id":"os-unhardened","metadata":{"bex.co/owner":"id-a","bex.co/workspace":"tea-a","app.bex.co/regime":"sandbox"},"status":{"state":"Running"}},
+				{"id":"os-foreign","metadata":{"bex.co/owner":"id-a","bex.co/workspace":"tea-other","bex.co/network-policy":"deny-all","app.bex.co/regime":"sandbox"},"status":{"state":"Running"}}
+			]`))
+		case r.Method == http.MethodGet && r.URL.Path == "/sandboxes/os-b":
+			_, _ = w.Write([]byte(`{"id":"os-b","metadata":{"bex.co/owner":"id-b","bex.co/workspace":"tea-a","bex.co/network-policy":"deny-all","app.bex.co/regime":"sandbox"},"status":{"state":"Running"}}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/sandboxes/os-legacy":
+			_, _ = w.Write([]byte(`{"id":"os-legacy","metadata":{"bex.co/workspace":"tea-a"},"status":{"state":"Running"}}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/sandboxes/os-unhardened":
+			_, _ = w.Write([]byte(`{"id":"os-unhardened","metadata":{"bex.co/owner":"id-a","bex.co/workspace":"tea-a","app.bex.co/regime":"sandbox"},"status":{"state":"Running"}}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/sandboxes/os-foreign":
+			_, _ = w.Write([]byte(`{"id":"os-foreign","metadata":{"bex.co/owner":"id-a","bex.co/workspace":"tea-other","bex.co/network-policy":"deny-all","app.bex.co/regime":"sandbox"},"status":{"state":"Running"}}`))
+		case r.Method == http.MethodDelete && r.URL.Path == "/sandboxes/os-b":
+			deletes++
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	svc := &Service{
+		Base: &core.Base{
+			Namespace: "default",
+			Workspace: fakeWorkspace{"id-a": "tea-a", "id-b": "tea-a", "id-admin": "tea-a"},
+			Authz:     adminChecker{},
+		},
+		Client: NewClient(srv.URL),
+	}
+
+	for _, tc := range []struct {
+		subject string
+		wantID  string
+	}{
+		{subject: "id-a", wantID: "os-a"},
+		{subject: "id-b", wantID: "os-b"},
+	} {
+		got, err := svc.List(identityCtx(tc.subject))
+		if err != nil || len(got) != 1 || got[0].ID != tc.wantID {
+			t.Fatalf("list as %s = %+v, %v; want only %s", tc.subject, got, err, tc.wantID)
+		}
+	}
+
+	if _, err := svc.Get(identityCtx("id-a"), "os-b"); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("cross-owner get = %v, want non-enumerating not found", err)
+	}
+	for _, id := range []string{"os-legacy", "os-unhardened", "os-foreign"} {
+		if _, err := svc.Get(identityCtx("id-a"), id); !errors.Is(err, core.ErrNotFound) {
+			t.Fatalf("%s get = %v, want non-enumerating not found", id, err)
+		}
+	}
+	if err := svc.Terminate(identityCtx("id-a"), "os-b"); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("cross-owner terminate = %v, want non-enumerating not found", err)
+	}
+	if deletes != 0 {
+		t.Fatalf("cross-owner terminate issued %d delete(s)", deletes)
+	}
+
+	adminList, err := svc.List(identityCtx("id-admin"))
+	if err != nil || len(adminList) != 2 {
+		t.Fatalf("admin list = %+v, %v; want both owned resources only", adminList, err)
+	}
+	if _, err := svc.Get(identityCtx("id-admin"), "os-b"); err != nil {
+		t.Fatalf("admin get: %v", err)
+	}
+	if err := svc.Terminate(identityCtx("id-admin"), "os-b"); err != nil {
+		t.Fatalf("admin terminate: %v", err)
+	}
+	if deletes != 1 {
+		t.Fatalf("admin terminate issued %d delete(s), want 1", deletes)
 	}
 }
 

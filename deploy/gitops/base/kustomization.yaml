@@ -7,6 +7,7 @@ resources:
   - zot.yaml                     # OCI registry (build -> registry -> deploy)
   - kpack.yaml                   # CNB build controller + Paketo ClusterBuilder (spec.builder=buildpack)
   - opensandbox-controller.yaml  # OpenSandbox BatchSandbox/Pool/SandboxSnapshot CRDs + controller
+  - opensandbox-server.yaml      # GitOps-owned lifecycle server + gVisor RuntimeClass/config/RBAC
   - bex.yaml                     # the bex control plane (operator + gateway)
   - dashboard.yaml                # the bex dashboard (Render-style human UI, docs/ADR012-auth.md §5)
   - cluster-api.yaml             # Cluster API + provider controllers (the node-provisioning engine)
@@ -44,3 +45,5 @@ resources:
   - operator-daytoday-rbac.yaml  # scoped (non-system:masters) operator SA + ClusterRole for day-to-day ops (w7/m37, docs/ADR019-infra-credentials.md)
   - tenant-namespace-clusterroles.yaml  # per-tenant-namespace ClusterRoles bound per-<ws> by the NamespaceReconciler (w3/m31 t003, ADR043); inert until BEX_TENANT_NAMESPACES on
   - bex-api-namespace-rbac.yaml  # cluster authority for bex-api's NamespaceReconciler to create/prune <ws> namespaces + quota/policy/rolebinding (w3/m31 t001-t003); namespace mgmt only, no secrets; inert until BEX_TENANT_NAMESPACES on
+  - bex-api-namespace-admission.yaml # API-server CEL guard: confine the reconciler SA's cluster verbs to canonical managed tenant namespaces/bindings (w3/m35)
+  - sandbox-pod-admission.yaml   # API-server guard: every sandbox Pod must retain gVisor/placement/token invariants (w3/m35)

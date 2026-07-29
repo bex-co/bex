@@ -18,6 +18,8 @@ package sandbox
 
 import (
 	"context"
+	"errors"
+	"io"
 	"net/http"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -38,8 +40,13 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			TimeoutSeconds int            `json:"timeoutSeconds"`
 			NetworkPolicy  *NetworkPolicy `json:"networkPolicy"`
 		}
-		// A missing/empty body is fine — template+plan fall back to defaults.
-		_ = core.DecodeJSON(r, &body)
+		// A missing/empty body is fine — template+plan fall back to defaults —
+		// but malformed or unknown nested policy fields must never be ignored.
+		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
+		if err := core.DecodeJSON(r, &body); err != nil && !errors.Is(err, io.EOF) {
+			core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		// The Render CLI sends ownerId in the BODY; the query param is the REST
 		// convention. Prefer the query, fall back to the body (empty ⇒ default ws).
 		owner := r.URL.Query().Get("ownerId")

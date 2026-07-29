@@ -27,6 +27,58 @@ patches:
         name: deny-build-node-and-metadata-egress
         namespace: bex-build
       $patch: delete
+  - patch: |-
+      apiVersion: cilium.io/v2
+      kind: CiliumClusterwideNetworkPolicy
+      metadata:
+        name: deny-tenant-node-and-metadata-egress
+      $patch: delete
+  - patch: |-
+      apiVersion: cilium.io/v2
+      kind: CiliumClusterwideNetworkPolicy
+      metadata:
+        name: sandbox-egress-default-deny
+      $patch: delete
+  - patch: |-
+      apiVersion: cilium.io/v2
+      kind: CiliumClusterwideNetworkPolicy
+      metadata:
+        name: sandbox-execd-ingress
+      $patch: delete
+  - patch: |-
+      apiVersion: cilium.io/v2
+      kind: CiliumClusterwideNetworkPolicy
+      metadata:
+        name: opensandbox-server-ingress
+      $patch: delete
+  - patch: |-
+      apiVersion: cilium.io/v2
+      kind: CiliumClusterwideNetworkPolicy
+      metadata:
+        name: sandbox-exec-gateway-ingress
+      $patch: delete
+  - patch: |-
+      apiVersion: cilium.io/v2
+      kind: CiliumClusterwideNetworkPolicy
+      metadata:
+        name: opensandbox-server-egress
+      $patch: delete
+  - patch: |-
+      apiVersion: cilium.io/v2
+      kind: CiliumClusterwideNetworkPolicy
+      metadata:
+        name: opensandbox-controller-egress
+      $patch: delete
+  # The CAPD mock has neither Cilium nor the runsc-backed sandbox pool. Keep
+  # installing the OpenSandbox CRDs/controller for API tests, but do not deploy
+  # the production lifecycle server or advertise a RuntimeClass with no handler.
+  - patch: |-
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: opensandbox-server
+        namespace: argocd
+      $patch: delete
   # No etcd backups locally: the CAPD cluster is disposable and has no
   # object-storage creds.
   - patch: |-

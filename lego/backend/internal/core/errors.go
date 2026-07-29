@@ -204,6 +204,14 @@ func NewBadRequestError(code, msg string, params map[string]any) *CodedError {
 	return &CodedError{Code: code, Params: params, sentinel: ErrBadRequest, msg: msg}
 }
 
+// NewNotFoundError returns a machine-readable 404 for a feature-specific
+// resource lookup. It deliberately wraps the shared ErrNotFound sentinel so all
+// transports keep the same status mapping while avoiding the App-specific
+// sentinel text in another feature's response.
+func NewNotFoundError(code, msg string, params map[string]any) *CodedError {
+	return &CodedError{Code: code, Params: params, sentinel: ErrNotFound, msg: msg}
+}
+
 // NewConflictError returns a machine-readable 409 error for a valid operation
 // that the resource's current state makes unsafe.
 func NewConflictError(code, msg string, params map[string]any) *CodedError {

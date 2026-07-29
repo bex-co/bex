@@ -115,16 +115,55 @@ func TestHostingNamespaceGetsAllowPoliciesSandboxSealed(t *testing.T) {
 	}
 
 	sandbox := SandboxNamespace(tn.ID)
-	// Sandbox is sealed: intra-namespace + DNS only, no ingress/internet allows.
-	for _, name := range []string{"default-deny", "allow-same-namespace", "allow-dns-egress"} {
-		if !has(sandbox, name) {
-			t.Errorf("sandbox namespace missing policy %s", name)
+	// Every sandbox is its own trust domain. Only default-deny is native; Cilium
+	// supplies exact-SA execd ingress plus narrowed DNS/FQDN egress.
+	if !has(sandbox, "default-deny") {
+		t.Error("sandbox namespace missing default-deny")
+	}
+	for _, name := range []string{"allow-same-namespace", "allow-dns-egress", "allow-traefik-ingress", "allow-internet-egress", "allow-opensandbox-server-execd"} {
+		if has(sandbox, name) {
+			t.Errorf("sandbox namespace must NOT have %s (per-sandbox boundary)", name)
 		}
 	}
-	for _, name := range []string{"allow-traefik-ingress", "allow-internet-egress"} {
-		if has(sandbox, name) {
-			t.Errorf("sandbox namespace must NOT have %s (sealed exec-box)", name)
+}
+
+func TestSandboxReconcilePrunesLegacyBroadPolicies(t *testing.T) {
+	ctx := context.Background()
+	r, store, cl := newTestNamespaceReconciler(t, true)
+	tn, _ := store.CreateTenant(ctx, "acme", "free")
+	if err := r.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	namespace := SandboxNamespace(tn.ID)
+	// These are the exact policies emitted for sandbox namespaces before m35.
+	for _, legacy := range []*networkingv1.NetworkPolicy{
+		sameNamespaceNetworkPolicy(namespace),
+		dnsEgressNetworkPolicy(namespace),
+		{ObjectMeta: npMeta(namespace, "allow-opensandbox-server-execd")},
+	} {
+		if err := cl.Create(ctx, legacy); err != nil {
+			t.Fatal(err)
 		}
+	}
+	// Ownership, not just an unfamiliar name, is the deletion boundary.
+	unmanaged := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: "tenant-custom", Namespace: namespace}}
+	if err := cl.Create(ctx, unmanaged); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := r.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"allow-same-namespace", "allow-dns-egress", "allow-opensandbox-server-execd"} {
+		var policy networkingv1.NetworkPolicy
+		err := cl.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, &policy)
+		if !apierrors.IsNotFound(err) {
+			t.Errorf("obsolete sandbox policy %s survived reconcile: %v", name, err)
+		}
+	}
+	var custom networkingv1.NetworkPolicy
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: namespace, Name: unmanaged.Name}, &custom); err != nil {
+		t.Fatalf("unmanaged tenant policy was pruned: %v", err)
 	}
 }
 
@@ -193,14 +232,10 @@ func TestTenantRoleBindingsStampedPerNamespace(t *testing.T) {
 		}
 	}
 
-	// Sandbox namespace binds the operator role (namespace mgmt) + the OpenSandbox
-	// server role (BatchSandboxes) + the ssh-gateway role (pods/exec for
-	// `ea sandbox exec`, w3/m33), but NOT bex-api — bex-api never touches a sandbox
-	// namespace. The server SA lives in opensandbox-system.
+	// Sandbox namespace binds the OpenSandbox server/controller roles and the
+	// isolated SSH gateway's pods/exec role. The operator and bex-api never touch
+	// a sandbox namespace; lifecycle SAs live in opensandbox-system.
 	sandbox := SandboxNamespace(tn.ID)
-	if _, ok := binding(sandbox, "bex-tenant-operator"); !ok {
-		t.Error("sandbox missing bex-tenant-operator binding")
-	}
 	srvRB, ok := binding(sandbox, "bex-tenant-sandbox-server")
 	if !ok {
 		t.Fatal("sandbox missing bex-tenant-sandbox-server binding")
@@ -211,18 +246,63 @@ func TestTenantRoleBindingsStampedPerNamespace(t *testing.T) {
 		srvRB.Subjects[0].Namespace != "opensandbox-system" {
 		t.Errorf("sandbox-server binding = ref %+v subjects %+v", srvRB.RoleRef, srvRB.Subjects)
 	}
-	// ssh-gateway is bound in the sandbox regime for `ea sandbox exec` (pods/exec).
-	gwRB, ok := binding(sandbox, "bex-tenant-ssh-gateway")
-	if !ok || len(gwRB.Subjects) != 1 || gwRB.Subjects[0].Name != "bex-ssh-gateway" {
-		t.Errorf("sandbox ssh-gateway binding missing/wrong: ok=%v subjects=%+v", ok, gwRB.Subjects)
+	controllerRB, ok := binding(sandbox, "bex-tenant-sandbox-controller")
+	if !ok {
+		t.Fatal("sandbox missing bex-tenant-sandbox-controller binding")
 	}
-	// bex-api must NOT be bound in a sandbox namespace (it never gains pods/exec).
-	if _, ok := binding(sandbox, "bex-tenant-api"); ok {
-		t.Error("sandbox must NOT bind bex-tenant-api")
+	if controllerRB.RoleRef.Name != "bex-tenant-sandbox-controller" ||
+		len(controllerRB.Subjects) != 1 ||
+		controllerRB.Subjects[0].Name != "opensandbox-controller-manager" ||
+		controllerRB.Subjects[0].Namespace != "opensandbox-system" {
+		t.Errorf("sandbox-controller binding = ref %+v subjects %+v", controllerRB.RoleRef, controllerRB.Subjects)
+	}
+	gwRB, ok := binding(sandbox, "bex-tenant-ssh-gateway")
+	if !ok || gwRB.RoleRef.Name != "bex-tenant-ssh-gateway" || len(gwRB.Subjects) != 1 ||
+		gwRB.Subjects[0].Name != "bex-ssh-gateway" || gwRB.Subjects[0].Namespace != "bex-system" {
+		t.Errorf("sandbox ssh-gateway binding missing/wrong: ok=%v ref=%+v subjects=%+v", ok, gwRB.RoleRef, gwRB.Subjects)
+	}
+	for _, name := range []string{"bex-tenant-operator", "bex-tenant-api"} {
+		if _, ok := binding(sandbox, name); ok {
+			t.Errorf("sandbox must NOT bind %s", name)
+		}
 	}
 	// The hosting namespace must NOT bind the sandbox-server role.
 	if _, ok := binding(host, "bex-tenant-sandbox-server"); ok {
 		t.Error("hosting must NOT bind bex-tenant-sandbox-server")
+	}
+	if _, ok := binding(host, "bex-tenant-sandbox-controller"); ok {
+		t.Error("hosting must NOT bind bex-tenant-sandbox-controller")
+	}
+}
+
+func TestSandboxReconcilePrunesLegacyOperatorBinding(t *testing.T) {
+	ctx := context.Background()
+	r, store, cl := newTestNamespaceReconciler(t, true)
+	tn, _ := store.CreateTenant(ctx, "acme", "free")
+	if err := r.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	sandbox := SandboxNamespace(tn.ID)
+	legacy := tenantRoleBinding(sandbox, "bex-tenant-operator", operatorSA)
+	if err := cl.Create(ctx, legacy); err != nil {
+		t.Fatal(err)
+	}
+	custom := tenantRoleBinding(sandbox, "customer-binding", operatorSA)
+	delete(custom.Labels, LabelManagedBy)
+	if err := cl.Create(ctx, custom); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := r.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var got rbacv1.RoleBinding
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: sandbox, Name: legacy.Name}, &got); !apierrors.IsNotFound(err) {
+		t.Errorf("legacy sandbox operator binding survived reconcile: %v", err)
+	}
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: sandbox, Name: custom.Name}, &got); err != nil {
+		t.Errorf("unmanaged custom binding was pruned: %v", err)
 	}
 }
 

@@ -22,6 +22,20 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
+var sandboxNetworkPolicyGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "SandboxNetworkPolicy",
+	Fields: graphql.Fields{
+		"default": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(p *NetworkPolicy) any { return string(p.Default) })},
+	},
+})
+
+var sandboxNetworkPolicyInput = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "SandboxNetworkPolicyInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"default": &graphql.InputObjectFieldConfig{Type: graphql.String},
+	},
+})
+
 // sandboxGQLType is the GraphQL projection of a Sandbox, keeping the third
 // surface behavior-identical to REST/MCP (internal/api/CLAUDE.md three-adapter
 // parity). Extra fields (owner/workspace/image) are a safe superset over the
@@ -35,6 +49,13 @@ var sandboxGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"owner":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Sandbox) any { return s.Owner })},
 		"workspace": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Sandbox) any { return s.Workspace })},
 		"image":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Sandbox) any { return s.Image })},
+		"region":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Sandbox) any { return s.Region })},
+		"timeoutSeconds": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(s Sandbox) any {
+			return s.TimeoutSeconds
+		})},
+		"networkPolicy": &graphql.Field{Type: sandboxNetworkPolicyGQLType, Resolve: gqlutil.Field(func(s Sandbox) any {
+			return s.NetworkPolicy
+		})},
 	},
 })
 
@@ -51,15 +72,25 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createSandbox": &graphql.Field{
 			Type: sandboxGQLType,
 			Args: graphql.FieldConfigArgument{
-				"template": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"plan":     &graphql.ArgumentConfig{Type: graphql.String},
-				"ownerId":  &graphql.ArgumentConfig{Type: graphql.String},
+				"template":       &graphql.ArgumentConfig{Type: graphql.String},
+				"plan":           &graphql.ArgumentConfig{Type: graphql.String},
+				"ownerId":        &graphql.ArgumentConfig{Type: graphql.String},
+				"region":         &graphql.ArgumentConfig{Type: graphql.String},
+				"timeoutSeconds": &graphql.ArgumentConfig{Type: graphql.Int},
+				"networkPolicy":  &graphql.ArgumentConfig{Type: sandboxNetworkPolicyInput},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
+				var policy *NetworkPolicy
+				if raw, ok := p.Args["networkPolicy"].(map[string]any); ok {
+					policy = &NetworkPolicy{Default: NetworkPolicyDefault(gqlStr(raw, "default"))}
+				}
 				return s.Create(p.Context, CreateRequest{
-					OwnerID:  gqlStr(p.Args, "ownerId"),
-					Template: p.Args["template"].(string),
-					Plan:     Plan(gqlStr(p.Args, "plan")),
+					OwnerID:        gqlStr(p.Args, "ownerId"),
+					Template:       gqlStr(p.Args, "template"),
+					Plan:           Plan(gqlStr(p.Args, "plan")),
+					Region:         gqlStr(p.Args, "region"),
+					TimeoutSeconds: gqlInt(p.Args, "timeoutSeconds"),
+					NetworkPolicy:  policy,
 				})
 			},
 		},
@@ -74,6 +105,13 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 	}
+}
+
+func gqlInt(args map[string]any, key string) int {
+	if v, ok := args[key].(int); ok {
+		return v
+	}
+	return 0
 }
 
 // gqlStr reads an optional string arg, "" when absent.

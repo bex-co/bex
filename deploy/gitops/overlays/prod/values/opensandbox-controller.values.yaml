@@ -1,0 +1,8 @@
+# Production snapshot transport is deliberately disabled. The upstream commit
+# Job requires a hostPath containerd socket and is rejected by the sandbox
+# namespace's baseline PSS (ADR042 D5); supplying a registry or credential would
+# only create dormant secret-bearing authority for an unavailable feature.
+controller:
+  snapshot:
+    registry: ""
+    registryInsecure: false

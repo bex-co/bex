@@ -7,12 +7,24 @@
 
 # Metadata template (will be merged with runtime-generated metadata)
 metadata:
+  labels:
+    app.bex.co/regime: sandbox
 # Spec template
 spec:
   replicas: 1
   # Pod template specification
   template:
+    metadata:
+      labels:
+        app.bex.co/regime: sandbox
     spec:
+      runtimeClassName: gvisor
+      automountServiceAccountToken: false
+      nodeSelector:
+        bex.co/pool: sandbox
       restartPolicy: Never
       tolerations:
-        - operator: "Exists"
+        - key: bex.co/sandbox
+          operator: Equal
+          value: "true"
+          effect: NoSchedule

@@ -1,0 +1,177 @@
+# Admission guard for the deliberately cluster-scoped NamespaceReconciler
+# authority in bex-api-namespace-rbac.yaml (ADR043 / w3/m35).
+#
+# Kubernetes RBAC cannot scope a ClusterRole to dynamically named namespaces.
+# Without this fail-closed CEL boundary, a compromised bex-api Pod could use its
+# namespace/RoleBinding verbs outside the reconciler's code path: relabel or
+# delete a platform namespace, or bind a Secret-bearing tenant ClusterRole in
+# it. These policies constrain the bex-api ServiceAccount itself, so the rule is
+# enforced by the API server rather than by trusted application code.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: bex-api-tenant-namespaces
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["namespaces"]
+  matchConditions:
+    - name: bex-api-service-account
+      expression: request.userInfo.username == 'system:serviceaccount:bex-system:bex-api'
+  variables:
+    - name: target
+      expression: >-
+        object != null ? object : oldObject
+    - name: workspace
+      expression: variables.target.metadata.?labels['app.bex.co/workspace'].orValue('')
+    - name: regime
+      expression: variables.target.metadata.?labels['app.bex.co/regime'].orValue('')
+    - name: canonical
+      expression: >-
+        variables.target.metadata.?labels['app.kubernetes.io/managed-by'].orValue('') == 'bex-controlplane' &&
+        variables.target.metadata.?labels['app.kubernetes.io/part-of'].orValue('') == 'bex' &&
+        variables.target.metadata.?labels['pod-security.kubernetes.io/enforce'].orValue('') == 'baseline' &&
+        variables.target.metadata.?labels['pod-security.kubernetes.io/enforce-version'].orValue('') == 'latest' &&
+        variables.target.metadata.?labels['pod-security.kubernetes.io/warn'].orValue('') == 'restricted' &&
+        variables.target.metadata.?labels['pod-security.kubernetes.io/warn-version'].orValue('') == 'latest' &&
+        variables.target.metadata.?labels['pod-security.kubernetes.io/audit'].orValue('') == 'restricted' &&
+        variables.target.metadata.?labels['pod-security.kubernetes.io/audit-version'].orValue('') == 'latest' &&
+        variables.workspace.matches('^tea-[0-9a-v]{20}$') &&
+        ((variables.regime == 'hosting' && variables.target.metadata.name == variables.workspace) ||
+         (variables.regime == 'sandbox' && variables.target.metadata.name == variables.workspace + '-sandbox'))
+  validations:
+    - expression: variables.canonical
+      reason: Forbidden
+      message: bex-api may mutate only canonical bex-managed tenant namespaces
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: bex-api-tenant-namespaces
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  policyName: bex-api-tenant-namespaces
+  validationActions: [Deny, Audit]
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: bex-api-tenant-namespace-objects
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["resourcequotas", "limitranges"]
+      - apiGroups: ["networking.k8s.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["networkpolicies"]
+      - apiGroups: ["rbac.authorization.k8s.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["rolebindings"]
+  matchConditions:
+    - name: bex-api-service-account
+      expression: request.userInfo.username == 'system:serviceaccount:bex-system:bex-api'
+  variables:
+    - name: target
+      expression: >-
+        object != null ? object : oldObject
+    - name: workspace
+      expression: namespaceObject.metadata.?labels['app.bex.co/workspace'].orValue('')
+    - name: regime
+      expression: namespaceObject.metadata.?labels['app.bex.co/regime'].orValue('')
+    - name: canonicalNamespace
+      expression: >-
+        namespaceObject != null &&
+        namespaceObject.metadata.?labels['app.kubernetes.io/managed-by'].orValue('') == 'bex-controlplane' &&
+        namespaceObject.metadata.?labels['app.kubernetes.io/part-of'].orValue('') == 'bex' &&
+        namespaceObject.metadata.?labels['pod-security.kubernetes.io/enforce'].orValue('') == 'baseline' &&
+        namespaceObject.metadata.?labels['pod-security.kubernetes.io/enforce-version'].orValue('') == 'latest' &&
+        namespaceObject.metadata.?labels['pod-security.kubernetes.io/warn'].orValue('') == 'restricted' &&
+        namespaceObject.metadata.?labels['pod-security.kubernetes.io/warn-version'].orValue('') == 'latest' &&
+        namespaceObject.metadata.?labels['pod-security.kubernetes.io/audit'].orValue('') == 'restricted' &&
+        namespaceObject.metadata.?labels['pod-security.kubernetes.io/audit-version'].orValue('') == 'latest' &&
+        variables.workspace.matches('^tea-[0-9a-v]{20}$') &&
+        ((variables.regime == 'hosting' && namespaceObject.metadata.name == variables.workspace) ||
+         (variables.regime == 'sandbox' && namespaceObject.metadata.name == variables.workspace + '-sandbox'))
+    - name: exactRoleBinding
+      expression: >-
+        variables.target.metadata.name == variables.target.roleRef.name &&
+        variables.target.metadata.?labels['app.kubernetes.io/managed-by'].orValue('') == 'bex-controlplane' &&
+        variables.target.roleRef.apiGroup == 'rbac.authorization.k8s.io' &&
+        variables.target.roleRef.kind == 'ClusterRole' &&
+        has(variables.target.subjects) && size(variables.target.subjects) == 1 &&
+        variables.target.subjects[0].kind == 'ServiceAccount' &&
+        ((variables.target.roleRef.name == 'bex-tenant-operator' &&
+          variables.target.subjects[0].name == 'bex-controller-manager' &&
+          variables.target.subjects[0].namespace == 'bex-system') ||
+         (variables.target.roleRef.name == 'bex-tenant-api' &&
+          variables.target.subjects[0].name == 'bex-api' &&
+          variables.target.subjects[0].namespace == 'bex-system') ||
+         (variables.target.roleRef.name == 'bex-tenant-ssh-gateway' &&
+          variables.target.subjects[0].name == 'bex-ssh-gateway' &&
+          variables.target.subjects[0].namespace == 'bex-system') ||
+         (variables.target.roleRef.name == 'bex-tenant-sandbox-server' &&
+          variables.target.subjects[0].name == 'opensandbox-server' &&
+          variables.target.subjects[0].namespace == 'opensandbox-system') ||
+         (variables.target.roleRef.name == 'bex-tenant-sandbox-controller' &&
+          variables.target.subjects[0].name == 'opensandbox-controller-manager' &&
+          variables.target.subjects[0].namespace == 'opensandbox-system'))
+  validations:
+    - expression: variables.canonicalNamespace
+      reason: Forbidden
+      message: bex-api may mutate namespace objects only inside canonical bex-managed tenant namespaces
+    - expression: >-
+        variables.target.metadata.?labels['app.kubernetes.io/managed-by'].orValue('') == 'bex-controlplane'
+      reason: Forbidden
+      message: bex-api may mutate only objects owned by the tenant namespace reconciler
+    - expression: >-
+        request.resource.resource != 'networkpolicies' ||
+        variables.regime != 'sandbox' ||
+        (request.operation == 'DELETE' ?
+          variables.target.metadata.name in ['allow-same-namespace', 'allow-dns-egress', 'allow-opensandbox-server-execd'] :
+          (variables.target.metadata.name == 'default-deny' &&
+           has(object.spec.podSelector) &&
+           !has(object.spec.podSelector.matchLabels) &&
+           !has(object.spec.podSelector.matchExpressions) &&
+           has(object.spec.policyTypes) && size(object.spec.policyTypes) == 2 &&
+           object.spec.policyTypes.exists(policyType, policyType == 'Ingress') &&
+           object.spec.policyTypes.exists(policyType, policyType == 'Egress') &&
+           (!has(object.spec.ingress) || size(object.spec.ingress) == 0) &&
+           (!has(object.spec.egress) || size(object.spec.egress) == 0)))
+      reason: Forbidden
+      message: bex-api may only converge sandbox default-deny or prune known legacy sandbox allows
+    - expression: >-
+        request.resource.resource != 'rolebindings' ||
+        (request.operation == 'DELETE' ?
+          variables.target.metadata.name in ['bex-tenant-operator', 'bex-tenant-api', 'bex-tenant-ssh-gateway', 'bex-tenant-sandbox-server', 'bex-tenant-sandbox-controller'] :
+          (variables.exactRoleBinding &&
+           ((variables.regime == 'hosting' &&
+            variables.target.roleRef.name in ['bex-tenant-operator', 'bex-tenant-api', 'bex-tenant-ssh-gateway']) ||
+            (variables.regime == 'sandbox' &&
+             variables.target.roleRef.name in ['bex-tenant-sandbox-server', 'bex-tenant-sandbox-controller', 'bex-tenant-ssh-gateway']))))
+      reason: Forbidden
+      message: bex-api may create or update only exact regime bindings and delete only known managed projections
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: bex-api-tenant-namespace-objects
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  policyName: bex-api-tenant-namespace-objects
+  validationActions: [Deny, Audit]

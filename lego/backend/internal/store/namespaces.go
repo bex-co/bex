@@ -51,6 +51,8 @@ import (
 const (
 	// RegimeLabel distinguishes a workspace's hosting namespace from its sandbox
 	// namespace (ADR043 D2 — both untrusted, opposite default network postures).
+	// RegimeLabel also rides OpenSandbox create metadata, selecting the resulting
+	// BatchSandbox and Pod for sandbox-only network policy.
 	RegimeLabel   = "app.bex.co/regime"
 	RegimeHosting = "hosting"
 	RegimeSandbox = "sandbox"
@@ -171,17 +173,82 @@ func (r *NamespaceReconciler) ensureNamespace(ctx context.Context, t Tenant, reg
 	if err := r.applyObject(ctx, defaultDenyNetworkPolicy(name)); err != nil {
 		return fmt.Errorf("networkpolicy: %w", err)
 	}
-	for _, np := range allowNetworkPolicies(name, regime) {
+	allows := allowNetworkPolicies(name, regime)
+	desiredPolicies := map[string]bool{"default-deny": true}
+	for _, np := range allows {
+		desiredPolicies[np.Name] = true
+	}
+	// Reconciliation must remove policies that belonged to an older regime
+	// shape. In particular, merely ceasing to generate allow-same-namespace and
+	// allow-dns-egress would leave those broad allows active forever in existing
+	// sandbox namespaces. Prune before adding allows so a partial reconcile fails
+	// closed behind default-deny.
+	if err := r.pruneManagedNetworkPolicies(ctx, name, desiredPolicies); err != nil {
+		return fmt.Errorf("networkpolicy prune: %w", err)
+	}
+	for _, np := range allows {
 		if err := r.applyObject(ctx, np); err != nil {
 			return fmt.Errorf("networkpolicy %s: %w", np.Name, err)
 		}
 	}
-	for _, rb := range tenantRoleBindings(name, regime) {
+	desiredBindings := tenantRoleBindings(name, regime)
+	if err := r.pruneManagedRoleBindings(ctx, name, desiredBindings); err != nil {
+		return fmt.Errorf("rolebinding prune: %w", err)
+	}
+	for _, rb := range desiredBindings {
 		if err := r.applyObject(ctx, rb); err != nil {
 			return fmt.Errorf("rolebinding %s: %w", rb.Name, err)
 		}
 	}
 	return nil
+}
+
+// pruneManagedRoleBindings removes obsolete control-plane projections without
+// touching tenant-authored RoleBindings. Removing a binding from the desired
+// regime must revoke it from already-provisioned namespaces on the next pass.
+func (r *NamespaceReconciler) pruneManagedRoleBindings(ctx context.Context, namespace string, desired []*rbacv1.RoleBinding) error {
+	wanted := make(map[string]bool, len(desired))
+	for _, binding := range desired {
+		wanted[binding.Name] = true
+	}
+
+	var list rbacv1.RoleBindingList
+	if err := r.Client.List(ctx, &list,
+		client.InNamespace(namespace),
+		client.MatchingLabels{LabelManagedBy: ManagedByValue}); err != nil {
+		return err
+	}
+	var errs []error
+	for i := range list.Items {
+		binding := &list.Items[i]
+		if !wanted[binding.Name] {
+			errs = append(errs, client.IgnoreNotFound(r.Client.Delete(ctx, binding)))
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// pruneManagedNetworkPolicies deletes obsolete projections from one tenant
+// namespace. The managed-by selector is the ownership boundary: a tenant's
+// hand-written policy is never touched even when its name is not desired.
+func (r *NamespaceReconciler) pruneManagedNetworkPolicies(ctx context.Context, namespace string, desired map[string]bool) error {
+	var list networkingv1.NetworkPolicyList
+	if err := r.Client.List(ctx, &list,
+		client.InNamespace(namespace),
+		client.MatchingLabels{LabelManagedBy: ManagedByValue}); err != nil {
+		return err
+	}
+	var errs []error
+	for i := range list.Items {
+		policy := &list.Items[i]
+		if desired[policy.Name] {
+			continue
+		}
+		if err := r.Client.Delete(ctx, policy); err != nil && !apierrors.IsNotFound(err) {
+			errs = append(errs, fmt.Errorf("delete obsolete policy %s: %w", policy.Name, err))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // applyObject creates obj, or — if it already exists — updates it to converge
@@ -346,29 +413,26 @@ func baseLimitRange(namespace string) *corev1.LimitRange {
 
 // allowNetworkPolicies layers the opt-in allows on top of the default-deny
 // (NetworkPolicies are additive), regime-aware per ADR043 D2 (t005). Because a
-// per-tenant namespace IS exactly one workspace, "same-workspace" collapses to
-// "same-namespace" — no label selector needed, the namespace boundary is the
-// selector. Every policy is namespace-scoped, so an allow physically cannot
-// name a pod in another tenant's namespace.
-//
 //   - hosting (`<ws>`): an addressable service — allow intra-namespace, DNS,
 //     Traefik ingress (external traffic enters here), and internet egress minus
 //     in-cluster private ranges and the link-local cloud-metadata range.
-//   - sandbox (`<ws>-sandbox`): a sealed exec-box — allow only intra-namespace
-//     and DNS; no Traefik ingress, no broad internet egress. The build-boundary
-//     Cilium egress-deny (m32 t005) governs any narrowed external access.
+//   - sandbox (`<ws>-sandbox`): every Pod is a separate hostile principal. No
+//     native same-namespace, raw-DNS, or label-only lifecycle allow is
+//     installed. Cluster-wide Cilium policy owns both exact-ServiceAccount
+//     execd ingress and approved DNS/FQDN/SNI egress outside gVisor.
 func allowNetworkPolicies(namespace, regime string) []*networkingv1.NetworkPolicy {
-	policies := []*networkingv1.NetworkPolicy{
-		sameNamespaceNetworkPolicy(namespace),
-		dnsEgressNetworkPolicy(namespace),
-	}
-	if regime == RegimeHosting {
-		policies = append(policies,
+	switch regime {
+	case RegimeHosting:
+		return []*networkingv1.NetworkPolicy{
+			sameNamespaceNetworkPolicy(namespace),
+			dnsEgressNetworkPolicy(namespace),
 			traefikIngressNetworkPolicy(namespace),
 			internetEgressNetworkPolicy(namespace),
-		)
+		}
+	case RegimeSandbox:
+		return nil
 	}
-	return policies
+	return nil
 }
 
 func npMeta(namespace, name string) metav1.ObjectMeta {
@@ -394,7 +458,8 @@ func sameNamespaceNetworkPolicy(namespace string) *networkingv1.NetworkPolicy {
 	}
 }
 
-// dnsEgressNetworkPolicy allows DNS to kube-system (both regimes need it).
+// dnsEgressNetworkPolicy allows hosting workloads to query kube-system DNS.
+// Sandbox DNS is instead constrained by the cluster-wide Cilium L7 policy.
 func dnsEgressNetworkPolicy(namespace string) *networkingv1.NetworkPolicy {
 	udp, tcp := corev1.ProtocolUDP, corev1.ProtocolTCP
 	dnsPort := intstr.FromInt32(53)
@@ -476,6 +541,9 @@ var (
 	sshGatewaySA = rbacSubject("bex-ssh-gateway")
 	// sandboxServerSA is the OpenSandbox server ServiceAccount (opensandbox-system).
 	sandboxServerSA = rbacv1.Subject{Kind: "ServiceAccount", Name: "opensandbox-server", Namespace: openSandboxNamespace}
+	// sandboxControllerSA is the vendored OpenSandbox controller. Its cluster
+	// role is informer-only; reconciliation writes are bound per sandbox ns.
+	sandboxControllerSA = rbacv1.Subject{Kind: "ServiceAccount", Name: "opensandbox-controller-manager", Namespace: openSandboxNamespace}
 )
 
 func rbacSubject(name string) rbacv1.Subject {
@@ -487,36 +555,33 @@ func rbacSubject(name string) rbacv1.Subject {
 // service accounts, scoped to this one namespace (ADR043 D5, t003). A
 // RoleBinding→ClusterRole grants the ClusterRole's rules ONLY within the
 // binding's namespace, so operator/bex-api Secret access exists only inside
-// tenant namespaces — never cluster-wide. Stamped by the reconciler at
+// hosting tenant namespaces — never cluster-wide. Stamped by the reconciler at
 // namespace-create so there is no manual per-workspace RoleBinding churn.
 //
 // A sandbox namespace (`<ws>-sandbox`) is driven by the OpenSandbox lifecycle
-// server, not bex-api's pod reads or the SSH gateway: it binds the operator role
-// (namespace management) plus the OpenSandbox server role (BatchSandboxes + the
-// pods/services/configmaps they spawn), scoped to this one namespace so the
-// server's authority never leaks cluster-wide (ADR042 D4 / m32 t006). The
-// hosting namespace binds operator + bex-api + ssh-gateway.
+// server and controller, not the operator, bex-api's pod reads, or the SSH
+// gateway. The hosting namespace binds operator + bex-api + ssh-gateway.
 func tenantRoleBindings(namespace, regime string) []*rbacv1.RoleBinding {
-	bindings := []*rbacv1.RoleBinding{
-		tenantRoleBinding(namespace, "bex-tenant-operator", operatorSA),
-	}
 	switch regime {
 	case RegimeHosting:
-		bindings = append(bindings,
+		return []*rbacv1.RoleBinding{
+			tenantRoleBinding(namespace, "bex-tenant-operator", operatorSA),
 			tenantRoleBinding(namespace, "bex-tenant-api", apiSA),
 			tenantRoleBinding(namespace, "bex-tenant-ssh-gateway", sshGatewaySA),
-		)
+		}
 	case RegimeSandbox:
-		bindings = append(bindings,
+		return []*rbacv1.RoleBinding{
 			tenantRoleBinding(namespace, "bex-tenant-sandbox-server", sandboxServerSA),
+			tenantRoleBinding(namespace, "bex-tenant-sandbox-controller", sandboxControllerSA),
 			// `render ea sandbox exec` (w3/m33): the isolated SSH gateway runs the
 			// command in the sandbox pod via pods/exec — the same ClusterRole it uses
 			// for running-instance SSH, now bound in the sandbox regime too so
 			// pods/exec stays confined to the gateway (never bex-api, Option A).
 			tenantRoleBinding(namespace, "bex-tenant-ssh-gateway", sshGatewaySA),
-		)
+		}
+	default:
+		return nil
 	}
-	return bindings
 }
 
 func tenantRoleBinding(namespace, clusterRole string, subject rbacv1.Subject) *rbacv1.RoleBinding {

@@ -76,3 +76,40 @@ rules:
   - apiGroups: [""]
     resources: ["pods/exec"]
     verbs: ["create", "get"]
+---
+# The OpenSandbox controller watches cluster-wide through the vendored chart's
+# read-only informer ClusterRole. Its reconciliation writes are separately bound
+# into each provisioned sandbox namespace, containing a controller exploit to
+# the same namespace set the lifecycle server is allowed to drive. Snapshot
+# registry credential flags are deliberately unset. This role is never bound in
+# credential-bearing opensandbox-system: Pod creation there would implicitly
+# permit mounting Secrets even without a direct Secrets RBAC verb.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: bex-tenant-sandbox-controller
+rules:
+  - apiGroups: [""]
+    resources: ["events", "pods"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["jobs/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["sandbox.opensandbox.io"]
+    resources: ["batchsandboxes", "pools", "sandboxsnapshots"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["sandbox.opensandbox.io"]
+    resources: ["batchsandboxes/finalizers", "pools/finalizers", "sandboxsnapshots/finalizers"]
+    verbs: ["update"]
+  - apiGroups: ["sandbox.opensandbox.io"]
+    resources: ["batchsandboxes/status", "pools/status", "sandboxsnapshots/status"]
+    verbs: ["get", "update", "patch"]

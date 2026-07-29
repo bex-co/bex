@@ -11,18 +11,6 @@ metadata:
     app.kubernetes.io/component: rbac
 rules:
 - apiGroups:
-  - ""
-  resources:
-  - configmaps
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
   - coordination.k8s.io
   resources:
   - leases
@@ -43,7 +31,10 @@ rules:
   - patch
 
 ---
-# Manager ClusterRole
+# Manager cluster-wide informer role. Mutation is intentionally absent: the
+# NamespaceReconciler binds bex-tenant-sandbox-controller inside each
+# provisioned `<ws>-sandbox` namespace. This keeps an upstream controller
+# compromise out of hosting/platform/other unprovisioned namespaces.
 apiVersion: {{ include "opensandbox.rbac.apiVersion" . }}
 kind: ClusterRole
 metadata:
@@ -55,15 +46,10 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - events
   - pods
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - ""
@@ -71,8 +57,6 @@ rules:
   - pods/status
   verbs:
   - get
-  - patch
-  - update
 - apiGroups:
   - ""
   resources:
@@ -82,24 +66,12 @@ rules:
   - list
   - watch
 - apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
   - batch
   resources:
   - jobs
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - batch
@@ -107,8 +79,6 @@ rules:
   - jobs/status
   verbs:
   - get
-  - patch
-  - update
 - apiGroups:
   - sandbox.opensandbox.io
   resources:
@@ -116,21 +86,9 @@ rules:
   - pools
   - sandboxsnapshots
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
-- apiGroups:
-  - sandbox.opensandbox.io
-  resources:
-  - batchsandboxes/finalizers
-  - pools/finalizers
-  - sandboxsnapshots/finalizers
-  verbs:
-  - update
 - apiGroups:
   - sandbox.opensandbox.io
   resources:
@@ -139,7 +97,5 @@ rules:
   - sandboxsnapshots/status
   verbs:
   - get
-  - patch
-  - update
 
 {{- end }}

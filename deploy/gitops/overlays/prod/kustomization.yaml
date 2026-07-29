@@ -1,5 +1,5 @@
 # Prod overlay (Hetzner CAPH). References the shared base; prod-only patches go here
-# as they materialize (e.g. real-TLS Zot, higher replicas). Applied via the
+# as they materialize (for example higher production replicas). Applied via the
 # ../../bootstrap/prod.yaml app-of-apps entrypoint.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
@@ -7,6 +7,19 @@ resources:
   - ../../base
   - openfga-pdb.yaml
 patches:
+  # The shared controller values retain the local snapshot registry so the CAPD
+  # mock remains usable. Production clears it because the secure namespace's
+  # baseline PSS blocks the upstream commit Job (ADR042 D5); controller/committer
+  # image digests stay inherited from the shared values.
+  - target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Application
+      name: opensandbox-controller
+    patch: |-
+      - op: add
+        path: /spec/source/helm/valueFiles/-
+        value: ../../overlays/prod/values/opensandbox-controller.values.yaml
   # Auth servers: two required-anti-affinity replicas keep the public and admin
   # Services available while one platform node drains. Local keeps the charts'
   # single-replica defaults so the one-worker CAPD mock remains schedulable.

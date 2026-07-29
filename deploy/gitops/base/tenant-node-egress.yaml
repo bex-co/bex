@@ -107,5 +107,277 @@ spec:
     - toEntities:
         - host
         - remote-node
+        - kube-apiserver
     - toCIDR:
         - 169.254.0.0/16
+        - fe80::/10
+---
+# Sandbox egress posture (w3/m35): every OpenSandbox workload is labeled
+# app.bex.co/regime=sandbox by both bex create metadata and the BatchSandbox
+# template. Cilium enforces this outside the gVisor guest; no iptables/nftables
+# sidecar runs inside the sandbox network namespace.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: sandbox-egress-default-deny
+spec:
+  endpointSelector:
+    matchLabels:
+      app.bex.co/regime: sandbox
+  egress:
+    # DNS is L7-filtered: only names that can subsequently be reached may be
+    # queried, so attacker-controlled labels cannot become a DNS tunnel.
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchName: api.github.com
+              - matchName: github.com
+              - matchName: objects.githubusercontent.com
+              - matchName: raw.githubusercontent.com
+              - matchName: registry.npmjs.org
+              - matchName: pypi.org
+              - matchName: files.pythonhosted.org
+              - matchName: api.anthropic.com
+              - matchName: api.openai.com
+    # toFQDNs supplies the L3 allow; TLS SNI keeps a literal-IP connection from
+    # riding an IP learned through an approved DNS response.
+    - toFQDNs:
+        - matchName: api.github.com
+        - matchName: github.com
+        - matchName: objects.githubusercontent.com
+        - matchName: raw.githubusercontent.com
+        - matchName: registry.npmjs.org
+        - matchName: pypi.org
+        - matchName: files.pythonhosted.org
+        - matchName: api.anthropic.com
+        - matchName: api.openai.com
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+          serverNames:
+            - api.github.com
+            - github.com
+            - objects.githubusercontent.com
+            - raw.githubusercontent.com
+            - registry.npmjs.org
+            - pypi.org
+            - files.pythonhosted.org
+            - api.anthropic.com
+            - api.openai.com
+  egressDeny:
+    - toEntities:
+        - host
+        - remote-node
+        - kube-apiserver
+    - toCIDR:
+        - 169.254.0.0/16
+        - fe80::/10
+    # toFQDNs learns IPs from approved DNS answers. Deny private HTTPS targets
+    # explicitly so a poisoned/rebound approved name cannot turn that cache into
+    # a Pod, Service, node, or private-network allow. DNS itself remains the one
+    # CoreDNS:53 endpoint rule above.
+    - toCIDR:
+        - 10.0.0.0/8
+        - 100.64.0.0/10
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+        - fc00::/7
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+---
+# Execd is the only inbound path to a sandbox Pod. Kubernetes NetworkPolicy
+# cannot match a ServiceAccount, so this identity check must stay Cilium-native:
+# a Pod that merely spoofs the server workload label is still denied.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: sandbox-execd-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      app.bex.co/regime: sandbox
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: opensandbox-system
+            k8s:io.cilium.k8s.policy.serviceaccount: opensandbox-server
+            k8s:app.kubernetes.io/name: opensandbox-server
+      toPorts:
+        - ports:
+            - port: "44772"
+              protocol: TCP
+---
+# Authenticate the lifecycle API's one inbound caller by Cilium identity, not a
+# user-spoofable Kubernetes Pod label alone. bex-api is the only ServiceAccount
+# admitted on TCP 8077; tenant, sandbox, and other bex-system Pods stay denied.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: opensandbox-server-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:io.kubernetes.pod.namespace: opensandbox-system
+      k8s:io.cilium.k8s.policy.serviceaccount: opensandbox-server
+      k8s:app.kubernetes.io/name: opensandbox-server
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: bex-system
+            k8s:io.cilium.k8s.policy.serviceaccount: bex-api
+            k8s:app.kubernetes.io/name: bex-api
+      toPorts:
+        - ports:
+            - port: "8077"
+              protocol: TCP
+---
+# The shared platform ingress policy admits same-namespace, Traefik, and
+# monitoring traffic broadly. Sandbox exec is more privileged: only bex-api may
+# reach the SSH gateway's internal ticket-verifying listener. Deny rules are the
+# complement of the exact namespace + ServiceAccount + workload identity and
+# override every broader Kubernetes NetworkPolicy allow on TCP 8081.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: sandbox-exec-gateway-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:io.kubernetes.pod.namespace: bex-system
+      k8s:io.cilium.k8s.policy.serviceaccount: bex-ssh-gateway
+      k8s:app.kubernetes.io/name: bex-ssh-gateway
+  ingressDeny:
+    - fromEndpoints:
+        - matchExpressions:
+            - key: k8s:io.kubernetes.pod.namespace
+              operator: NotIn
+              values: [bex-system]
+      toPorts:
+        - ports:
+            - port: "8081"
+              protocol: TCP
+    - fromEndpoints:
+        - matchExpressions:
+            - key: k8s:io.cilium.k8s.policy.serviceaccount
+              operator: NotIn
+              values: [bex-api]
+      toPorts:
+        - ports:
+            - port: "8081"
+              protocol: TCP
+    - fromEndpoints:
+        - matchExpressions:
+            - key: k8s:app.kubernetes.io/name
+              operator: NotIn
+              values: [bex-api]
+      toPorts:
+        - ports:
+            - port: "8081"
+              protocol: TCP
+    - fromEntities:
+        - world
+        - host
+        - remote-node
+      toPorts:
+        - ports:
+            - port: "8081"
+              protocol: TCP
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: bex-system
+            k8s:io.cilium.k8s.policy.serviceaccount: bex-api
+            k8s:app.kubernetes.io/name: bex-api
+      toPorts:
+        - ports:
+            - port: "8081"
+              protocol: TCP
+---
+# A lifecycle-server compromise must not turn its control-plane bearer into an
+# unrestricted exfiltration primitive. Its only outbound dependencies are the
+# Kubernetes API, the bex-api tenant-key resolver, cluster DNS, and execd in a
+# sandbox Pod. Selecting the server in a Cilium policy makes every other egress
+# destination default-denied while allowing sandbox namespaces dynamically by
+# workload identity rather than by namespace name.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: opensandbox-server-egress
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:io.kubernetes.pod.namespace: opensandbox-system
+      k8s:io.cilium.k8s.policy.serviceaccount: opensandbox-server
+      k8s:app.kubernetes.io/name: opensandbox-server
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          # The server config contains one fixed in-cluster hostname. Do not
+          # leave raw DNS as a bearer-exfiltration channel after a server
+          # compromise. The first two names are the deterministic ndots search
+          # expansions; the third is the canonical successful query.
+          rules:
+            dns:
+              - matchName: bex-api.bex-system.svc.opensandbox-system.svc.cluster.local
+              - matchName: bex-api.bex-system.svc.svc.cluster.local
+              - matchName: bex-api.bex-system.svc.cluster.local
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: bex-system
+            k8s:io.cilium.k8s.policy.serviceaccount: bex-api
+            k8s:app.kubernetes.io/name: bex-api
+      toPorts:
+        - ports:
+            - port: "8091"
+              protocol: TCP
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:app.bex.co/regime: sandbox
+      toPorts:
+        - ports:
+            - port: "44772"
+              protocol: TCP
+---
+# The controller has no DNS or external dependency: the in-cluster Kubernetes
+# client receives the API Service IP through KUBERNETES_SERVICE_HOST. Constrain
+# it to the API server only so its informer token cannot leave through raw DNS
+# if a crafted BatchSandbox exploits the upstream reconciliation code.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: opensandbox-controller-egress
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:io.kubernetes.pod.namespace: opensandbox-system
+      k8s:io.cilium.k8s.policy.serviceaccount: opensandbox-controller-manager
+      k8s:app.kubernetes.io/name: opensandbox
+  egress:
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP

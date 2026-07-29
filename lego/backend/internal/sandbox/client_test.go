@@ -18,6 +18,8 @@ package sandbox
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -25,31 +27,40 @@ import (
 
 func TestClientCreateSendsTenantKeyAndMapsStatus(t *testing.T) {
 	var gotKey, gotPath, gotMethod string
+	var gotBody createRequest
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotKey = r.Header.Get(tenantKeyHeader)
 		gotPath = r.URL.Path
 		gotMethod = r.Method
+		if err := json.NewDecoder(r.Body).Decode(&gotBody); err != nil {
+			t.Errorf("decode create body: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 		w.WriteHeader(http.StatusCreated)
 		_, _ = w.Write([]byte(`{"id":"os-abc","status":{"state":"Creating"}}`))
 	}))
 	defer srv.Close()
 
 	c := NewClient(srv.URL)
-	id, status, err := c.Create(context.Background(), "wskey-123", "img:1", []string{"sh"}, "500m", "512Mi", map[string]string{"A": "b"})
+	sandbox, err := c.Create(context.Background(), "wskey-123", "img:1", []string{"sh"}, "500m", "512Mi", 600, map[string]string{"A": "b"}, map[string]string{metadataOwner: "id-a"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if id != "os-abc" {
-		t.Errorf("id = %q, want os-abc", id)
+	if sandbox.ID != "os-abc" {
+		t.Errorf("id = %q, want os-abc", sandbox.ID)
 	}
-	if status != StatusCreating {
-		t.Errorf("status = %q, want creating", status)
+	if mapOpenSandboxStatus(sandbox.Status.State) != StatusCreating {
+		t.Errorf("status = %q, want creating", sandbox.Status.State)
 	}
 	if gotKey != "wskey-123" {
 		t.Errorf("tenant key header = %q, want wskey-123", gotKey)
 	}
 	if gotMethod != http.MethodPost || gotPath != "/sandboxes" {
 		t.Errorf("request = %s %s, want POST /sandboxes", gotMethod, gotPath)
+	}
+	if gotBody.Timeout != 600 || gotBody.Env["A"] != "b" || gotBody.Metadata[metadataOwner] != "id-a" {
+		t.Errorf("create body = %+v, want timeout/env/security metadata", gotBody)
 	}
 }
 
@@ -65,14 +76,14 @@ func TestClientGetMapsRunningAndNotFound(t *testing.T) {
 	defer srv.Close()
 	c := NewClient(srv.URL)
 
-	st, err := c.Get(context.Background(), "k", "os-abc")
-	if err != nil || st != StatusRunning {
-		t.Fatalf("get running: st=%q err=%v", st, err)
+	sandbox, err := c.Get(context.Background(), "k", "os-abc")
+	if err != nil || mapOpenSandboxStatus(sandbox.Status.State) != StatusRunning {
+		t.Fatalf("get running: sandbox=%+v err=%v", sandbox, err)
 	}
 	notFound = true
-	st, err = c.Get(context.Background(), "k", "os-abc")
-	if err != nil || st != StatusTerminated {
-		t.Fatalf("get 404 should map to terminated: st=%q err=%v", st, err)
+	_, err = c.Get(context.Background(), "k", "os-abc")
+	if !errors.Is(err, errOpenSandboxNotFound) {
+		t.Fatalf("get 404 error = %v, want errOpenSandboxNotFound", err)
 	}
 }
 
@@ -131,7 +142,7 @@ func TestClientCreateErrorsOnBadStatus(t *testing.T) {
 	}))
 	defer srv.Close()
 	c := NewClient(srv.URL)
-	if _, _, err := c.Create(context.Background(), "k", "img", []string{"sh"}, "500m", "512Mi", nil); err == nil {
+	if _, err := c.Create(context.Background(), "k", "img", []string{"sh"}, "500m", "512Mi", 0, nil, nil); err == nil {
 		t.Fatal("expected error on 500")
 	}
 }

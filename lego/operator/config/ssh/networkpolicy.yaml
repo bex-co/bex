@@ -29,13 +29,6 @@ spec:
       ports:
         - port: 9090
           protocol: TCP
-    # Sandbox-exec SSE (w3/m33): bex-api (bex-system) reverse-proxies
-    # `render ea sandbox exec` to the gateway's internal BEX_SANDBOX_EXEC_ADDR
-    # (:8081). Internal-only — never reachable from traefik/the edge.
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: bex-system
-      ports:
-        - port: 8081
-          protocol: TCP
+    # Sandbox-exec SSE (:8081) is intentionally absent here. The base's Cilium
+    # identity policy admits only the exact bex-api ServiceAccount/workload and
+    # denies the broader same-namespace/Traefik/monitoring allows on that port.
