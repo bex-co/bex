@@ -181,6 +181,16 @@ type AppReconciler struct {
 	StaticServerService string
 	// StaticServerPort is the static-server Service port (default 8080).
 	StaticServerPort int
+	// TenantNamespaces reports that per-tenant namespace isolation is active
+	// (ADR043, BEX_TENANT_NAMESPACES on bex-api's NamespaceReconciler). When set,
+	// each workspace runs in its own `<ws>` namespace whose default-deny +
+	// same-namespace/DNS/Traefik/internet-egress NetworkPolicies (stamped by the
+	// control plane) ARE the tenant boundary, so the operator's legacy per-App
+	// label-scoped policies (ADR022 Option B) are redundant: reconcileNetworkPolicy
+	// deletes any it previously created and skips creating new ones (m31 t005).
+	// Unset => the pre-ADR043 shared-namespace behavior (per-App policies), so
+	// clusters that have not opted into namespace isolation are byte-identical.
+	TenantNamespaces bool
 	// TenantSignKeySecret names a Secret (in the build namespace, keys
 	// "cosign.key"+"cosign.password") that enables tenant-image signing in the
 	// in-cluster build Job (w6/006). Empty => tenant images unsigned (the default).
@@ -2793,6 +2803,17 @@ func (r *AppReconciler) failPreDeploy(ctx context.Context, app *appv1alpha1.App,
 func (r *AppReconciler) reconcileNetworkPolicy(ctx context.Context, app *appv1alpha1.App) error {
 	ws := app.Labels[labelWorkspace]
 	np := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
+	if r.TenantNamespaces {
+		// Per-tenant namespace isolation is active (ADR043, m31 t005): the
+		// workspace's `<ws>` namespace default-deny + allow policies (control-plane
+		// NamespaceReconciler) are the boundary, so this per-App label-scoped policy
+		// is redundant. Delete any we previously created and skip — the namespace,
+		// not a label, is now the tenant boundary.
+		if err := r.Delete(ctx, np); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
+	}
 	if ws == "" {
 		// No workspace label: remove any stale NetworkPolicy we may have left from
 		// a prior reconcile that had the label, then skip.
