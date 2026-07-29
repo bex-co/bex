@@ -3109,30 +3109,6 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Manual Deploy dropdown item: roll the service's pods without rebuilding",
   },
-  "services.deployConfirmCommitTitle": {
-    message: "部署 {branch} 分支的最新提交？",
-    description: "Confirm dialog title for a repo-backed manual deploy",
-  },
-  "services.deployConfirmCommitBody": {
-    message: "将使用 {branch} 分支的最新提交重新构建并部署「{name}」。",
-    description: "Confirm dialog body for a repo-backed manual deploy",
-  },
-  "services.deployConfirmImageTitle": {
-    message: "重新部署「{name}」？",
-    description: "Confirm dialog title for an image-backed manual deploy",
-  },
-  "services.deployConfirmImageBody": {
-    message: "将使用当前镜像重启「{name}」。没有可重新构建的源代码仓库。",
-    description: "Confirm dialog body for an image-backed manual deploy",
-  },
-  "services.eventsManualDeployConfirmTitle": {
-    message: "触发新的部署？",
-    description: "Manual deploy confirm dialog title",
-  },
-  "services.eventsManualDeployConfirmBody": {
-    message: "这将从当前镜像或分支重新构建并重新部署该服务。",
-    description: "Manual deploy confirm dialog body",
-  },
   "services.eventsCancelDeploy": {
     message: "取消",
     description: "Button to cancel an in-progress deploy",

@@ -3161,33 +3161,6 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Manual Deploy dropdown item: roll the service's pods without rebuilding",
   },
-  "services.deployConfirmCommitTitle": {
-    message: "Deploy the latest commit on {branch}?",
-    description: "Confirm dialog title for a repo-backed manual deploy",
-  },
-  "services.deployConfirmCommitBody": {
-    message:
-      "Rebuilds {name} from the latest commit on {branch} and redeploys it.",
-    description: "Confirm dialog body for a repo-backed manual deploy",
-  },
-  "services.deployConfirmImageTitle": {
-    message: "Redeploy {name}?",
-    description: "Confirm dialog title for an image-backed manual deploy",
-  },
-  "services.deployConfirmImageBody": {
-    message:
-      "Restarts {name} using its current image. There's no source repo to rebuild from.",
-    description: "Confirm dialog body for an image-backed manual deploy",
-  },
-  "services.eventsManualDeployConfirmTitle": {
-    message: "Trigger a new deploy?",
-    description: "Manual deploy confirm dialog title",
-  },
-  "services.eventsManualDeployConfirmBody": {
-    message:
-      "This will rebuild and redeploy the service from its current image or branch.",
-    description: "Manual deploy confirm dialog body",
-  },
   "services.eventsCancelDeploy": {
     message: "Cancel",
     description: "Button to cancel an in-progress deploy",
