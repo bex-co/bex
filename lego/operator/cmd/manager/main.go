@@ -270,6 +270,7 @@ func main() {
 			Secret:   envOr("BEX_STATIC_S3_SECRET", ""),
 		},
 		StaticServerService:     envOr("BEX_STATIC_SERVER_SERVICE", ""),
+		StaticServerNamespace:   envOr("POD_NAMESPACE", "bex-system"),
 		StaticServerPort:        staticServerPort,
 		TenantSignKeySecret:     os.Getenv("BEX_TENANT_SIGNING_KEY_SECRET"),
 		TenantSignImage:         envOr("BEX_TENANT_SIGNING_IMAGE", ""),

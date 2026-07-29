@@ -46,11 +46,18 @@ Any of the operator's `BEX_STATIC_S3_*` (or `BEX_STATIC_SERVER_SERVICE`) unset â
 # 1. Create the bucket once (never the tfstate bucket).
 aws --endpoint-url "$TF_STATE_ENDPOINT" s3 mb s3://bex-static
 
-# 2. Credentials Secret for the publish Job (reuses the state-store creds).
-source .env && kubectl -n bex-system create secret generic static-s3 \
-  --from-literal=AWS_ACCESS_KEY_ID="$TF_STATE_ACCESS_KEY" \
-  --from-literal=AWS_SECRET_ACCESS_KEY="$TF_STATE_SECRET_KEY" \
-  --from-literal=AWS_DEFAULT_REGION="$TF_STATE_REGION"
+# 2. Credentials Secret for the static-server and publish Jobs (reuses the
+#    state-store creds). STATIC_PUBLISH_NAMESPACE must equal the operator's
+#    BEX_BUILD_NAMESPACE; production uses bex-build.
+source .env
+STATIC_PUBLISH_NAMESPACE=bex-build
+for namespace in bex-system "$STATIC_PUBLISH_NAMESPACE"; do
+  kubectl -n "$namespace" create secret generic static-s3 \
+    --from-literal=AWS_ACCESS_KEY_ID="$TF_STATE_ACCESS_KEY" \
+    --from-literal=AWS_SECRET_ACCESS_KEY="$TF_STATE_SECRET_KEY" \
+    --from-literal=AWS_DEFAULT_REGION="$TF_STATE_REGION" \
+    --dry-run=client -o yaml | kubectl apply -f -
+done
 
 # 3. Endpoint/bucket for the static-server (the operator gets the same via env).
 kubectl -n bex-system create configmap bex-static-config \

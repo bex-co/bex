@@ -175,10 +175,13 @@ type AppReconciler struct {
 	// rejected with a clear status, the way unset backup vars disable backups.
 	StaticStore publish.Store
 	// StaticServerService is the k8s Service name of the shared static-server that
-	// serves static_site content; a static-site host's Ingress backs onto it (the
-	// same by-name backend wiring the activator uses). Empty => static_site
-	// serving is unavailable.
+	// serves static_site content. A static-site host's Ingress backs onto an
+	// App-owned ExternalName alias when the shared Service is in another
+	// namespace. Empty => static_site serving is unavailable.
 	StaticServerService string
+	// StaticServerNamespace is the namespace of the shared static-server Service
+	// (normally the operator's own namespace, default bex-system).
+	StaticServerNamespace string
 	// StaticServerPort is the static-server Service port (default 8080).
 	StaticServerPort int
 	// TenantNamespaces reports that per-tenant namespace isolation is active
@@ -1918,7 +1921,11 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	if _, err := r.reconcileWebsocketMeterMiddleware(ctx, app, false); err != nil {
 		return r.fail(ctx, app, "MiddlewareFailed", err)
 	}
-	if err := r.reconcileIngress(ctx, app, hosts, r.StaticServerService, int32(r.staticServerPort()), staticMWNames); err != nil {
+	staticService, err := r.reconcileStaticServerAlias(ctx, app)
+	if err != nil {
+		return r.fail(ctx, app, "StaticAliasFailed", err)
+	}
+	if err := r.reconcileIngress(ctx, app, hosts, staticService, int32(r.staticServerPort()), staticMWNames); err != nil {
 		return r.fail(ctx, app, "IngressFailed", err)
 	}
 
@@ -1948,6 +1955,44 @@ func (r *AppReconciler) staticServerPort() int {
 		return r.StaticServerPort
 	}
 	return 8080
+}
+
+func (r *AppReconciler) staticServerNamespace() string {
+	if r.StaticServerNamespace != "" {
+		return r.StaticServerNamespace
+	}
+	return "bex-system"
+}
+
+// Ingress backends must live in the Ingress namespace. Static sites normally
+// live in tenant namespaces while the shared origin runs in bex-system, so
+// route through an App-owned ExternalName alias there.
+func (r *AppReconciler) reconcileStaticServerAlias(ctx context.Context, app *appv1alpha1.App) (string, error) {
+	if app.Namespace == r.staticServerNamespace() {
+		return r.StaticServerService, nil
+	}
+	name := staticServerAliasName(app.Name)
+	alias := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, alias, func() error {
+		alias.Spec.Type = corev1.ServiceTypeExternalName
+		alias.Spec.ExternalName = fmt.Sprintf("%s.%s.svc.cluster.local", r.StaticServerService, r.staticServerNamespace())
+		alias.Spec.Selector = nil
+		alias.Spec.Ports = []corev1.ServicePort{{Name: "http", Port: int32(r.staticServerPort())}}
+		return controllerutil.SetControllerReference(app, alias, r.Scheme)
+	}); err != nil {
+		return "", fmt.Errorf("reconciling static-server alias: %w", err)
+	}
+	return name, nil
+}
+
+func staticServerAliasName(appName string) string {
+	const prefix = "bex-static-"
+	if len(prefix)+len(appName) <= 63 {
+		return prefix + appName
+	}
+	sum := fmt.Sprintf("%x", sha256.Sum256([]byte(appName)))[:8]
+	keep := 63 - len(prefix) - 1 - len(sum)
+	return prefix + appName[:keep] + "-" + sum
 }
 
 // defaultMaintenanceService is the wake-activator Service name assumed when
@@ -3132,7 +3177,7 @@ func (r *AppReconciler) revokeAppRegistryCredentials(ctx context.Context, app *a
 		errs = append(errs, fmt.Errorf("revoke per-app registry credentials: %w", err))
 	}
 	pullSec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: registry.PullSecretName(app.Name), Namespace: app.Namespace}}
-	if done, deleteErr := deleteAndWait(ctx, r.Client, pullSec); deleteErr != nil {
+	if done, deleteErr := deleteAndWait(ctx, cl, pullSec); deleteErr != nil {
 		errs = append(errs, fmt.Errorf("delete per-app pull Secret: %w", deleteErr))
 	} else {
 		pending = pending || !done
@@ -3255,6 +3300,7 @@ func (r *AppReconciler) quiesceTLSProducers(ctx context.Context, app *appv1alpha
 }
 
 func (r *AppReconciler) deleteTLSSecrets(ctx context.Context, app *appv1alpha1.App) (bool, error) {
+	secretClient := r.buildPlaneClient()
 	names := make(map[string]struct{})
 	for _, name := range tlsSecretHistory(app) {
 		names[name] = struct{}{}
@@ -3265,7 +3311,7 @@ func (r *AppReconciler) deleteTLSSecrets(ctx context.Context, app *appv1alpha1.A
 	// Migration safety for Apps whose custom host was removed before m61 wrote
 	// the history annotation. These names are operator-reserved for this App.
 	var secrets corev1.SecretList
-	if err := r.List(ctx, &secrets, client.InNamespace(app.Namespace)); err != nil {
+	if err := secretClient.List(ctx, &secrets, client.InNamespace(app.Namespace)); err != nil {
 		return false, fmt.Errorf("list TLS Secrets: %w", err)
 	}
 	for idx := range secrets.Items {
@@ -3278,7 +3324,7 @@ func (r *AppReconciler) deleteTLSSecrets(ctx context.Context, app *appv1alpha1.A
 	pending := false
 	for name := range names {
 		sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
-		done, err := deleteAndWait(ctx, r.Client, sec)
+		done, err := deleteAndWait(ctx, secretClient, sec)
 		pending = pending || !done
 		if err != nil {
 			errs = append(errs, fmt.Errorf("delete TLS Secret %s: %w", name, err))
