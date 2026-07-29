@@ -936,14 +936,19 @@ if [ -f "$EGRESS" ]; then
        .spec.endpointSelector.matchLabels."k8s:app.kubernetes.io/name"] | join(":")' "$EGRESS" | tr -d '\n')"
   server_ports="$(yq -N \
     'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-server-egress") |
-      .spec.egress[].toPorts[]?.ports[]?.port' "$EGRESS" | sort -n | paste -sd, -)"
+      .spec.egress[].toPorts[]?.ports[]?.port' "$EGRESS" | sort -nu | paste -sd, -)"
   server_entities="$(yq -N \
     'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-server-egress") |
       .spec.egress[].toEntities[]?' "$EGRESS" | sort | paste -sd, -)"
+  server_api_service="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-server-egress") |
+      .spec.egress[].toServices[]?.k8sService |
+      [.namespace, .serviceName] | join("/")' "$EGRESS" | tr -d '\n')"
   if [ "$server_selector" != "opensandbox-system:opensandbox-server" ] \
     || [ "$server_ports" != "53,443,8091,44772" ] \
-    || [ "$server_entities" != "kube-apiserver" ]; then
-    echo "FAIL: lifecycle-server egress is selector=$server_selector ports=$server_ports entities=$server_entities" >&2
+    || [ "$server_entities" != "kube-apiserver" ] \
+    || [ "$server_api_service" != "default/kubernetes" ]; then
+    echo "FAIL: lifecycle-server egress is selector=$server_selector ports=$server_ports entities=$server_entities apiService=$server_api_service" >&2
     fail=1
   fi
 
@@ -993,6 +998,15 @@ case "$opensandbox_config_ref" in
   opensandbox-config-*) ;;
   *) echo "FAIL: OpenSandbox config has no content hash to trigger rollout: '$opensandbox_config_ref'" >&2; fail=1 ;;
 esac
+opensandbox_config_mounts="$(yq -N \
+  'select(.kind == "Deployment" and .metadata.name == "opensandbox-server") |
+    .spec.template.spec.containers[] | select(.name == "server") |
+    .volumeMounts[] | select(.name == "rendered-config" or .name == "config-template") |
+    [.name, .mountPath, .subPath, .readOnly] | join(":")' \
+  - <<<"$opensandbox_render" | sed '/^[[:space:]]*$/d' | sort)"
+expected_opensandbox_config_mounts=$'config-template:/etc/opensandbox/batchsandbox-template.yaml:batchsandbox-template.yaml:true\nrendered-config:/etc/opensandbox/sandbox-cluster.toml:sandbox-cluster.toml:true'
+[ "$opensandbox_config_mounts" = "$expected_opensandbox_config_mounts" ] \
+  || { echo "FAIL: OpenSandbox server config/template mounts can mask packaged files: '$opensandbox_config_mounts'" >&2; fail=1; }
 
 opensandbox_images="$(yq -N \
   'select(.kind == "Deployment" and .metadata.name == "opensandbox-server") |
@@ -1255,6 +1269,12 @@ controller_egress_selector="$(yq -N \
   "$EGRESS" | tr -d '\n')"
 [ "$controller_egress_selector" = "opensandbox-system:opensandbox-controller-manager:opensandbox:kube-apiserver:443" ] \
   || { echo "FAIL: OpenSandbox controller egress is '$controller_egress_selector'" >&2; fail=1; }
+controller_api_service="$(yq -N \
+  'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-controller-egress") |
+    .spec.egress[].toServices[]?.k8sService |
+    [.namespace, .serviceName] | join("/")' "$EGRESS" | tr -d '\n')"
+[ "$controller_api_service" = "default/kubernetes" ] \
+  || { echo "FAIL: OpenSandbox controller lacks the exact Kubernetes Service egress fallback: '$controller_api_service'" >&2; fail=1; }
 server_policy_identities="$(yq -N \
   'select(.kind == "CiliumClusterwideNetworkPolicy" and
     (.metadata.name == "opensandbox-server-ingress" or .metadata.name == "opensandbox-server-egress")) |
@@ -1306,7 +1326,11 @@ for required in \
   'grep -qF "digest: ${OPENSANDBOX_DIGEST}"' \
   'deploy/opensandbox/kustomization.yaml' \
   'git push origin HEAD:main' \
-  'bash scripts/opensandbox-server-secret.sh'; do
+  'bash scripts/opensandbox-server-secret.sh' \
+  'wait for OpenSandbox control plane' \
+  'BEX_EXPECTED_OPENSANDBOX_IMAGE' \
+  'rollout status deploy/opensandbox-controller-manager' \
+  'rollout status deploy/opensandbox-server'; do
   grep -qF "$required" .github/workflows/deploy.yml \
     || { echo "FAIL: deploy workflow lost OpenSandbox supply-chain/secret step: $required" >&2; fail=1; }
 done
@@ -1344,6 +1368,7 @@ for required_probe in \
   'SANDBOX_NETWORK_POLICY_UNSUPPORTED' \
   'preflight_cluster' \
   'BEX_PREFLIGHT_ONLY' \
+  'pods --subresource=exec' \
   'preflight-only mode made no fixture or API mutation' \
   'hardening resource' \
   'enable-l7-proxy' \

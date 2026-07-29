@@ -196,9 +196,9 @@ preflight_cluster() {
     || fail "OpenSandbox controller lacks its sandbox-namespace mutation grant"
   [ "$(kubectl auth can-i create pods -n opensandbox-system --as "$controller_as")" = no ] \
     || fail "OpenSandbox controller can create Pods in opensandbox-system"
-  [ "$(kubectl auth can-i create pods/exec -n "$namespace_a" --as "$gateway_as")" = yes ] \
+  [ "$(kubectl auth can-i create pods --subresource=exec -n "$namespace_a" --as "$gateway_as")" = yes ] \
     || fail "isolated SSH gateway lacks its sandbox-namespace pods/exec grant"
-  [ "$(kubectl auth can-i create pods/exec -n opensandbox-system --as "$gateway_as")" = no ] \
+  [ "$(kubectl auth can-i create pods --subresource=exec -n opensandbox-system --as "$gateway_as")" = no ] \
     || fail "isolated SSH gateway has pods/exec authority in opensandbox-system"
 
   for deployment in opensandbox-server opensandbox-controller-manager; do

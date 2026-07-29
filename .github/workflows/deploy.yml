@@ -407,6 +407,32 @@ jobs:
           timeout 300 bash -c 'until kubectl get namespace opensandbox-system >/dev/null 2>&1; do sleep 5; done'
           bash scripts/opensandbox-server-secret.sh
 
+      # The OpenSandbox Applications are independent Argo children, so waiting
+      # only for bex/dashboard can report a green deployment while the sandbox
+      # control plane is CrashLooping. Require the just-built server digest and
+      # both lifecycle/controller Deployments to become fully available.
+      - name: wait for OpenSandbox control plane
+        timeout-minutes: 12
+        env:
+          BEX_EXPECTED_OPENSANDBOX_IMAGE: ${{ env.OPENSANDBOX_IMAGE }}@${{ steps.build_opensandbox.outputs.digest }}
+        run: |
+          deadline=$((SECONDS + 600))
+          actual=""
+          while ((SECONDS < deadline)); do
+            actual="$(kubectl -n opensandbox-system get deployment opensandbox-server -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)"
+            [ "$actual" = "$BEX_EXPECTED_OPENSANDBOX_IMAGE" ] && break
+            sleep 5
+          done
+          if [ "$actual" != "$BEX_EXPECTED_OPENSANDBOX_IMAGE" ]; then
+            echo "opensandbox-server image is ${actual:-missing}, want $BEX_EXPECTED_OPENSANDBOX_IMAGE" >&2
+            kubectl -n argocd get applications
+            exit 1
+          fi
+          kubectl -n opensandbox-system rollout status deploy/opensandbox-controller-manager --timeout=300s \
+            || { kubectl -n opensandbox-system get pods; exit 1; }
+          kubectl -n opensandbox-system rollout status deploy/opensandbox-server --timeout=300s \
+            || { kubectl -n opensandbox-system get pods; exit 1; }
+
       # --- 4b. auth substrate secrets (docs/ADR012-auth.md) — out-of-band of GitOps ---
       # Argo creates the CNPG Clusters (auth-dbs, sync-wave 2); once CNPG has
       # generated their DB credentials, auth-secrets.sh composes the DSNs and
