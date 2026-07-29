@@ -1,4 +1,4 @@
-# Static-site trust-boundary baseline — 2026-07-29
+# Static-site trust-boundary baseline and rollout — 2026-07-29
 
 This is a sanitized production/pre-rollout capture for w7/m54. Commands used a mode-0600 kubeconfig outside the repository and never printed Secret payloads, access-key ids, tokens, kubeconfig bytes, or hashes.
 
@@ -52,3 +52,29 @@ The probe used a random `.bex-security-probe/` object and deleted it. No key ide
 ## Pre-rollout service control
 
 The existing production static site was `Running` at revision 2 and its platform URL returned HTTP 200 with a 1,548-byte body. The static-server was Ready. This is the availability baseline the split-credential rollout must preserve.
+
+## Production rollout and negative proof
+
+The signed production workflow `30496239404` completed successfully for the final admission-policy change. During rollout, two checks caught defects before closeout:
+
+- Argo briefly projected the renamed publisher setting onto the previous manager image. The service recovered after the manifest supplied both setting names, pointed at the same least-privilege publisher Secret; the current manager reads only `BEX_STATIC_PUBLISH_S3_SECRET`.
+- The first admission policy's namespace CEL match condition evaluated false and skipped all validations. A live hostile-target probe detected the gap. The final policy scopes two bindings with API-server namespace selectors (hosting namespaces and `default`) and leaves only the ExternalName transition as a CEL match condition.
+
+The post-fix live verifier passed with `PSL_EXPECTED=absent`:
+
+- three tenant-facing identities were denied Service and Ingress create/update/patch/delete;
+- the manager retained those verbs and exact static/maintenance alias reconciliation;
+- dry-run updates targeting bex-api, Zot, OpenBao, a tenant database, and external DNS were all denied;
+- every live hosting ExternalName had the exact App label, controller owner, port, and fixed platform destination;
+- a disposable paid-tier web fixture returned HTTP 200, switched through its exact maintenance alias to HTTP 503, returned to HTTP 200, and was deleted.
+
+The split S3 credential lifecycle also passed:
+
+- manual deploy `dep-d9l7hk03q32s73ba0gi0` published revision 3 before legacy removal;
+- disposable static App `m54-static-223511` published revisions 1 and 2, returned HTTP 200 for both, deleted through the finalizer, and left zero objects under its App prefix;
+- the stale default static-server Deployment/Service, ownerless tenant alias, and failed old purge Job were removed after proving that no Ingress used them;
+- `bex-build/static-s3`, `bex-system/static-s3`, and `default/static-s3` were removed after a zero-reference scan; no legacy Secret remained;
+- post-revocation manual deploy `dep-d9l81g10o6pc73aijtrg` published revision 4 with `bex-static-publish-s3`, and the platform URL still returned HTTP 200 with a 1,548-byte body;
+- the final reader/publisher positive and negative matrix passed again after revocation.
+
+The canonical PSL still lacks `onbex.co`, and the real-browser probe still demonstrates the parent-cookie crossing that membership must close. Tasks t002/t006 and milestone closeout therefore remain open; this record does not treat the interim `__Host-` guidance as equivalent isolation.

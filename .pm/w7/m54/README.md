@@ -1,6 +1,6 @@
 # w7 · m54 — Static-site multi-tenant trust boundaries
 
-**Worker:** worker7 **Goal:** Close the browser-domain, Kubernetes alias-authority, and object-store credential boundaries around the shared static-site serving plane. **Status:** todo (t001, t004 done)
+**Worker:** worker7 **Goal:** Close the browser-domain, Kubernetes alias-authority, and object-store credential boundaries around the shared static-site serving plane. **Status:** todo (t001, t003, t004, t005 done)
 
 ## Tasks (in order)
 
@@ -8,9 +8,9 @@
 | ---- | -------------------------------------------------------------- | --- | --------------- |
 | t001 | Capture the static-site threat model and reproducible baseline — **DONE** | 45m | —               |
 | t002 | Put `onbex.co` on the Public Suffix List                       | 45m | t001            |
-| t003 | Enforce operator-only ExternalName alias authority             | 45m | t001            |
+| t003 | Enforce operator-only ExternalName alias authority — **DONE** | 45m | t001            |
 | t004 | Provision separate bucket-scoped static-site identities — **DONE**        | 45m | t001            |
-| t005 | Wire, rotate, and production-prove read/write S3 separation    | 45m | t004            |
+| t005 | Wire, rotate, and production-prove read/write S3 separation — **DONE** | 45m | t004            |
 | t006 | Verify Render-equivalent browser-origin isolation              | 30m | t002, t003, t005 |
 | t007 | Simplify the static-site security implementation               | 30m | t006            |
 | t008 | Complete negative-path and production smoke coverage           | 45m | t006, t007      |
