@@ -60,16 +60,37 @@ const (
 
 // Sandbox is the Render-compatible resource returned on the REST/GraphQL/MCP
 // surfaces. Id is a bex typed id (sbx-<xid>); Owner is the resolved caller
-// identity (ADR014 D7 ownership); Workspace scopes list/get to the tenant.
+// identity (ADR014 D7 ownership); Workspace scopes list/get to the tenant. The
+// Render CLI's Sandbox model also carries region/timeout/networkPolicy/timestamps
+// (docs/render-artifacts/ea-sandbox.md); bex fills what it knows and reflects the
+// rest so `render ea sandbox` renders a faithful record.
 type Sandbox struct {
-	ID        string `json:"id"`
-	Plan      Plan   `json:"plan"`
-	Status    Status `json:"status"`
-	Owner     string `json:"owner,omitempty"`
-	Workspace string `json:"workspace,omitempty"`
+	ID             string         `json:"id"`
+	Plan           Plan           `json:"plan"`
+	Status         Status         `json:"status"`
+	Region         string         `json:"region,omitempty"`
+	TimeoutSeconds int            `json:"timeoutSeconds,omitempty"`
+	NetworkPolicy  *NetworkPolicy `json:"networkPolicy,omitempty"`
+	Owner          string         `json:"owner,omitempty"`
+	Workspace      string         `json:"workspace,omitempty"`
 	// Image is the resolved template image (bex Create is template-based,
 	// ADR014 D2) — informational; the request never picks an arbitrary image.
 	Image string `json:"image,omitempty"`
+}
+
+// NetworkPolicy mirrors Render's per-sandbox network posture. bex accepts and
+// reflects it, but the effective policy is the `<ws>-sandbox` namespace boundary
+// (ADR042 D3 / ADR043 D2), not a per-sandbox setting (ea-sandbox.md §Divergences).
+type NetworkPolicy struct {
+	Default string `json:"default,omitempty"`
+}
+
+// SandboxEnvelope wraps a Sandbox for the Render CLI's list surface, which reads
+// a cursor-paginated array of `{ sandbox, cursor }` items, not a bare array
+// (docs/render-artifacts/ea-sandbox.md — `ea sandbox list`).
+type SandboxEnvelope struct {
+	Sandbox Sandbox `json:"sandbox"`
+	Cursor  string  `json:"cursor,omitempty"`
 }
 
 // mapOpenSandboxStatus maps an OpenSandbox lifecycle state string onto the

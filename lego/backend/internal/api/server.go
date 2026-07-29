@@ -189,10 +189,11 @@ type Deps struct {
 	// ErrSandboxesUnavailable and the feature is not registered. SandboxTemplates
 	// fixes the registered image(s); SandboxKeys mints per-workspace tenant keys
 	// (nil => single-tenant OpenSandbox).
-	SandboxClient      *sandbox.Client
-	SandboxTemplates   map[string]sandbox.Template
-	SandboxKeys        sandbox.KeyProvider
-	SandboxDefaultPlan sandbox.Plan
+	SandboxClient          *sandbox.Client
+	SandboxTemplates       map[string]sandbox.Template
+	SandboxKeys            sandbox.KeyProvider
+	SandboxDefaultPlan     sandbox.Plan
+	SandboxDefaultTemplate string
 	// SSHHost is the public gateway hostname advertised through Render's
 	// serviceDetails.sshAddress field. Empty disables SSH address advertising.
 	SSHHost string
@@ -654,11 +655,12 @@ func sandboxService(base *core.Base, d Deps) *sandbox.Service {
 		return nil
 	}
 	return &sandbox.Service{
-		Base:        base,
-		Client:      d.SandboxClient,
-		Keys:        d.SandboxKeys,
-		Templates:   d.SandboxTemplates,
-		DefaultPlan: d.SandboxDefaultPlan,
+		Base:            base,
+		Client:          d.SandboxClient,
+		Keys:            d.SandboxKeys,
+		Templates:       d.SandboxTemplates,
+		DefaultPlan:     d.SandboxDefaultPlan,
+		DefaultTemplate: d.SandboxDefaultTemplate,
 	}
 }
 

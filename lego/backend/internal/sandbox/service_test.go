@@ -151,3 +151,47 @@ func contains(s, sub string) bool {
 	}
 	return false
 }
+
+func TestCreateUsesDefaultTemplateWhenEmpty(t *testing.T) {
+	var gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		buf := make([]byte, r.ContentLength)
+		_, _ = r.Body.Read(buf)
+		gotBody = string(buf)
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"os-1","status":{"state":"Running"}}`))
+	}))
+	t.Cleanup(srv.Close)
+	svc := &Service{
+		Base:            &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
+		Client:          NewClient(srv.URL),
+		Templates:       map[string]Template{"base": {Image: "alpine:3", Entrypoint: []string{"sh"}, CPU: "500m", Memory: "512Mi"}},
+		DefaultTemplate: "base",
+	}
+	// The Render CLI sends no template — an empty Template must resolve to the default.
+	sb, err := svc.Create(callerCtx(), CreateRequest{Plan: PlanStarter, Region: "oregon", TimeoutSeconds: 3600})
+	if err != nil {
+		t.Fatalf("create with empty template should use default: %v", err)
+	}
+	if sb.Image != "alpine:3" {
+		t.Errorf("image = %q, want alpine:3 (default template)", sb.Image)
+	}
+	if sb.Region != "oregon" || sb.TimeoutSeconds != 3600 {
+		t.Errorf("region/timeout not echoed: %+v", sb)
+	}
+	if !contains(gotBody, `"alpine:3"`) {
+		t.Errorf("create body %q missing default-template image", gotBody)
+	}
+}
+
+func TestCreateStillRejectsWhenNoDefaultAndNoTemplate(t *testing.T) {
+	svc := &Service{
+		Base:      &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
+		Client:    NewClient(httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})).URL),
+		Templates: map[string]Template{"base": {Image: "alpine:3", Entrypoint: []string{"sh"}}},
+		// DefaultTemplate unset.
+	}
+	if _, err := svc.Create(callerCtx(), CreateRequest{}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("empty template + no default should be ErrBadRequest, got %v", err)
+	}
+}

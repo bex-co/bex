@@ -53,14 +53,23 @@ type Service struct {
 	Keys        KeyProvider
 	Templates   map[string]Template
 	DefaultPlan Plan
+	// DefaultTemplate is used when a create names no template — the Render CLI's
+	// `ea sandbox create` sends only a plan (no template flag exists), so an empty
+	// template must resolve to a registered default rather than 400 (w3/m32 t009).
+	DefaultTemplate string
 }
 
 // CreateRequest is the caller's create input. OwnerID binds the workspace (as
-// every create does); Template selects a registered image; Plan is echoed back.
+// every create does); Template selects a registered image (empty ⇒ the default,
+// since the Render CLI sends no template); Plan/Region/TimeoutSeconds/NetworkPolicy
+// are Render CLI create fields echoed back on the resource.
 type CreateRequest struct {
-	OwnerID  string
-	Template string
-	Plan     Plan
+	OwnerID        string
+	Template       string
+	Plan           Plan
+	Region         string
+	TimeoutSeconds int
+	NetworkPolicy  *NetworkPolicy
 }
 
 func (s *Service) enabled() bool { return s.Client != nil }
@@ -100,9 +109,13 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if plan != "" && !ValidPlan(plan) {
 		return Sandbox{}, fmt.Errorf("%w: unknown plan %q", core.ErrBadRequest, plan)
 	}
-	tmpl, ok := s.Templates[req.Template]
+	name := req.Template
+	if name == "" {
+		name = s.DefaultTemplate // Render CLI create sends no template — use the default.
+	}
+	tmpl, ok := s.Templates[name]
 	if !ok {
-		return Sandbox{}, fmt.Errorf("%w: unknown template %q", core.ErrBadRequest, req.Template)
+		return Sandbox{}, fmt.Errorf("%w: unknown template %q", core.ErrBadRequest, name)
 	}
 	key, err := s.workspaceKey(ctx)
 	if err != nil {
@@ -128,7 +141,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if idn, ok := core.IdentityFrom(ctx); ok {
 		owner = idn.Subject
 	}
-	return Sandbox{ID: id, Plan: plan, Status: status, Owner: owner, Workspace: ws, Image: tmpl.Image}, nil
+	return Sandbox{
+		ID: id, Plan: plan, Status: status, Owner: owner, Workspace: ws, Image: tmpl.Image,
+		Region: req.Region, TimeoutSeconds: req.TimeoutSeconds, NetworkPolicy: req.NetworkPolicy,
+	}, nil
 }
 
 // List returns the caller's workspace's sandboxes (tenant-key-scoped).
