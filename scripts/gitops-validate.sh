@@ -1472,11 +1472,18 @@ alias_admission_shape="$(yq -N '
   fail=1
 }
 alias_binding_shape="$(yq -N '
-  select(.kind == "ValidatingAdmissionPolicyBinding" and .metadata.name == "bex-operator-platform-aliases") |
-  [.metadata.annotations."argocd.argoproj.io/sync-wave", .spec.policyName,
-   (.spec.validationActions | sort | join(","))] | join(":")' \
-  - <<<"$BASE_RENDER" | tr -d '\n')"
-[ "$alias_binding_shape" = "-2:bex-operator-platform-aliases:Audit,Deny" ] || {
+  select(.kind == "ValidatingAdmissionPolicyBinding" and
+         (.metadata.name == "bex-operator-platform-aliases" or
+          .metadata.name == "bex-operator-platform-aliases-default")) |
+  [.metadata.name,
+   .metadata.annotations."argocd.argoproj.io/sync-wave",
+   .spec.policyName,
+   (.spec.validationActions | sort | join(",")),
+   (.spec.matchResources.namespaceSelector.matchLabels."app.bex.co/regime" // ""),
+  (.spec.matchResources.namespaceSelector.matchLabels."kubernetes.io/metadata.name" // "")] |
+  join(":")' - <<<"$BASE_RENDER" | sed '/^$/d' | sort)"
+expected_alias_binding_shape=$'bex-operator-platform-aliases-default:-2:bex-operator-platform-aliases:Audit,Deny::default\nbex-operator-platform-aliases:-2:bex-operator-platform-aliases:Audit,Deny:hosting:'
+[ "$alias_binding_shape" = "$expected_alias_binding_shape" ] || {
   echo "FAIL: static-site alias binding shape is '$alias_binding_shape'" >&2
   fail=1
 }

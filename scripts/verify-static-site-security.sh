@@ -55,6 +55,7 @@ fi
 
 kubectl get validatingadmissionpolicy bex-operator-platform-aliases >/dev/null
 kubectl get validatingadmissionpolicybinding bex-operator-platform-aliases >/dev/null
+kubectl get validatingadmissionpolicybinding bex-operator-platform-aliases-default >/dev/null
 
 hosting_namespaces="$(kubectl get namespaces -o json | jq -r '
   .items[] | select(.metadata.name == "default" or
@@ -95,7 +96,9 @@ done <<<"$hosting_namespaces")"
 echo "PASS  inventory: every hosting ExternalName alias has an exact operator/App-owned shape"
 
 app_json="$(kubectl get apps.app.bex.co -A -o json | jq -c '
-  [.items[] | select(.spec.type == "static_site" and (.status.url // "") != "")] | first // empty')"
+  [.items[] | select(.spec.type == "static_site" and (.status.url // "") != "")] as $apps |
+  (($apps | map(select(.metadata.namespace != "default")) | first) //
+   ($apps | first) // empty)')"
 [ -n "$app_json" ] || { echo "error: no live static_site App with a URL found" >&2; exit 1; }
 app_namespace="$(jq -r '.metadata.namespace' <<<"$app_json")"
 app_name="$(jq -r '.metadata.name' <<<"$app_json")"
@@ -110,7 +113,7 @@ while IFS= read -r identity; do
   identity_count=$((identity_count + 1))
   for resource in services ingresses.networking.k8s.io; do
     for verb in create update patch delete; do
-      answer="$(kubectl auth can-i "$verb" "$resource" -n "$app_namespace" --as="$identity" 2>/dev/null)"
+      answer="$(kubectl auth can-i "$verb" "$resource" -n "$app_namespace" --as="$identity" 2>/dev/null || true)"
       if [ "$answer" != "no" ]; then
         echo "FAIL  RBAC: $identity can $verb $resource in $app_namespace" >&2
         exit 1
@@ -131,7 +134,7 @@ echo "PASS  RBAC: $identity_count tenant-facing identities cannot mutate Service
 
 for resource in services ingresses.networking.k8s.io; do
   for verb in create update patch delete; do
-    answer="$(kubectl auth can-i "$verb" "$resource" -n "$app_namespace" --as="$MANAGER_IDENTITY" 2>/dev/null)"
+    answer="$(kubectl auth can-i "$verb" "$resource" -n "$app_namespace" --as="$MANAGER_IDENTITY" 2>/dev/null || true)"
     [ "$answer" = "yes" ] || {
       echo "FAIL  RBAC: operator cannot $verb $resource in $app_namespace" >&2
       exit 1

@@ -22,15 +22,6 @@ spec:
         operations: ["CREATE", "UPDATE"]
         resources: ["services"]
   matchConditions:
-    - name: tenant-hosting-namespace
-      expression: >-
-        namespaceObject != null &&
-        (namespaceObject.metadata.name == 'default' ||
-         (namespaceObject.metadata.?labels['app.kubernetes.io/managed-by'].orValue('') == 'bex-controlplane' &&
-          namespaceObject.metadata.?labels['app.kubernetes.io/part-of'].orValue('') == 'bex' &&
-          namespaceObject.metadata.?labels['app.bex.co/regime'].orValue('') == 'hosting' &&
-          namespaceObject.metadata.?labels['app.bex.co/workspace'].orValue('').matches('^tea-[0-9a-v]{20}$') &&
-          namespaceObject.metadata.name == namespaceObject.metadata.?labels['app.bex.co/workspace'].orValue('')))
     - name: external-name-create-or-transition
       expression: >-
         object.spec.type == 'ExternalName' ||
@@ -92,3 +83,29 @@ metadata:
 spec:
   policyName: bex-operator-platform-aliases
   validationActions: [Deny, Audit]
+  # Binding selectors are the API-server-enforced scope. Keeping namespace
+  # selection out of a CEL matchCondition prevents a false condition from
+  # silently skipping every validation.
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        app.kubernetes.io/managed-by: bex-controlplane
+        app.kubernetes.io/part-of: bex
+        app.bex.co/regime: hosting
+      matchExpressions:
+        - key: app.bex.co/workspace
+          operator: Exists
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: bex-operator-platform-aliases-default
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  policyName: bex-operator-platform-aliases
+  validationActions: [Deny, Audit]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: default
