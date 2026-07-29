@@ -39,7 +39,7 @@ rules:
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: ["rbac.authorization.k8s.io"]
     resources: ["clusterroles"]
-    resourceNames: ["bex-tenant-operator", "bex-tenant-api", "bex-tenant-ssh-gateway"]
+    resourceNames: ["bex-tenant-operator", "bex-tenant-api", "bex-tenant-ssh-gateway", "bex-tenant-sandbox-server"]
     verbs: ["bind"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
