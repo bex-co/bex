@@ -79,3 +79,33 @@ spec:
   egressDeny:
     - toCIDR:
         - 169.254.0.0/16
+---
+# Cluster-wide promotion for per-tenant namespace isolation (ADR043 / m31 t005).
+# The namespaced CiliumNetworkPolicy above selects only pods in `default`, but
+# with namespace isolation tenant workloads run in their own `<ws>` namespace —
+# so the node/metadata deny must follow them. This CiliumClusterwideNetworkPolicy
+# reproduces the workspace-labeled deny across ALL namespaces: it selects tenant
+# pods by their app.bex.co/workspace label (which the operator propagates onto
+# every tenant Deployment pod template, in any namespace) and excludes CNPG pods
+# exactly as the namespaced policy does. Platform pods carry no workspace label
+# and are unaffected; sandbox pods (`<ws>-sandbox`) are already sealed with no
+# internet egress at all. Metadata is additionally blocked at the `<ws>`
+# NetworkPolicy layer (internet-egress excepts 169.254.0.0/16) — this is the
+# Cilium-native L3 defense-in-depth restored for the post-migration topology.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: deny-tenant-node-and-metadata-egress
+spec:
+  endpointSelector:
+    matchExpressions:
+      - key: app.bex.co/workspace
+        operator: Exists
+      - key: cnpg.io/cluster
+        operator: DoesNotExist
+  egressDeny:
+    - toEntities:
+        - host
+        - remote-node
+    - toCIDR:
+        - 169.254.0.0/16
