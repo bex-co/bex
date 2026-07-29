@@ -36,8 +36,13 @@ import {
 } from "@/features/services/lib/service-type";
 
 export const Route = createFileRoute("/services/$serviceId/settings")({
-  component: ServiceSettingsPage,
+  component: RouteComponent,
 });
+
+function RouteComponent() {
+  const { serviceId } = Route.useParams();
+  return <ServiceSettingsPage serviceId={serviceId} />;
+}
 
 /**
  * The Settings tab (w5/m7, w1/m11.5, w5/m13): the mutable service label and
@@ -45,8 +50,7 @@ export const Route = createFileRoute("/services/$serviceId/settings")({
  * (repo-backed Apps only — Source/Branch read-only, Root Directory editable),
  * Custom Domains, and the platform subdomain (Render parity).
  */
-export function ServiceSettingsPage() {
-  const { serviceId } = Route.useParams();
+export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
   const { service, loading, refetch } = useServer(serviceId);
   const router = useRouter();
   const { pending, run } = useServiceLifecycle({ refetch });
@@ -84,8 +88,11 @@ export function ServiceSettingsPage() {
               {/* Region: read-only platform placement (Render's General row),
                   projected from BEX_REGION (w1/m53). Hidden when the install
                   sets no region — never inferred. Permanently disabled (no
-                  pencil): region is installation-stamped, not tenant-editable. */}
-              {service?.region && (
+                  pencil): region is installation-stamped, not tenant-editable.
+                  A static_site is region-agnostic — it serves from the object
+                  store via the shared static-server (docs/ADR029-static-sites.md),
+                  so Render's static Settings omits Region entirely (w5/m57/t003). */}
+              {service?.region && !staticSite && (
                 <EditableFieldRow
                   label={t("services.regionLabel")}
                   hint={t("services.regionHint")}

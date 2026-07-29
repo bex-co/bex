@@ -130,7 +130,7 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
     ).not.toBeInTheDocument();
   });
 
-  it("type-gates a static site: no Logs/Shell/Scaling/Plan, adds Redirects + Headers (w5/m48)", async () => {
+  it("type-gates a static site: Events-first, no Deploys/Logs/Shell/Scaling/Plan, adds Redirects + Headers (w5/m48, w5/m57)", async () => {
     serverState.service = {
       id: "srv-1",
       name: "docs-site",
@@ -146,7 +146,12 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
       "/services/srv-1/headers",
     );
 
-    // Render's static sidebar has none of the runtime-instance tabs.
+    // Render's static sidebar leads with Events and has no Deploys tab (deploy
+    // history/detail is reached from the Events feed) nor any runtime-instance
+    // tab (w5/m57).
+    expect(
+      screen.queryByRole("link", { name: "Deploys" }),
+    ).not.toBeInTheDocument();
     expect(
       screen
         .getAllByRole("link")
@@ -154,9 +159,8 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
         .filter(Boolean),
     ).toEqual([
       "Dashboard",
-      "Deploys",
-      "Settings",
       "Events",
+      "Settings",
       "Metrics",
       "Environment",
       "Redirects/Rewrites",

@@ -301,7 +301,9 @@ function renderSettings(serviceId = "app") {
   const settingsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/services/$serviceId/settings",
-    component: ServiceSettingsPage,
+    // The page now takes serviceId as a prop (shared by the /services and
+    // /static route trees, w5/m57); pass the route's own param.
+    component: () => <ServiceSettingsPage serviceId={serviceId} />,
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([settingsRoute]),

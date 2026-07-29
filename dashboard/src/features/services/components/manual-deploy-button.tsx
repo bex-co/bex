@@ -10,6 +10,7 @@ import {
 } from "@/common/components/ui/dropdown-menu";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useTriggerDeploy } from "@/features/services/hooks/use-trigger-deploy";
+import { serviceBaseForType } from "@/features/services/lib/service-base";
 import type { ServiceView } from "@/features/services/types";
 
 export interface ManualDeployButtonProps {
@@ -35,10 +36,15 @@ export interface ManualDeployButtonProps {
  * dropdown are omitted: bex's builds are always cache-free (ephemeral BuildKit
  * Jobs), and per-commit targeting via commitId is an API-only feature for now.
  */
-export function ManualDeployButton({ service, pending }: ManualDeployButtonProps) {
+export function ManualDeployButton({
+  service,
+  pending,
+}: ManualDeployButtonProps) {
   const { t } = useTranslations();
   const { deploying, trigger } = useTriggerDeploy();
   const navigate = useNavigate();
+  // A static_site's deploys live under /static (Render parity, w5/m57).
+  const base = serviceBaseForType(service.type);
   const busy = deploying || pending;
   const repoBacked = !!service.repo;
 
@@ -56,7 +62,7 @@ export function ManualDeployButton({ service, pending }: ManualDeployButtonProps
     // failed trigger already toasted and has no deploy id to navigate to.
     if (deployId) {
       void navigate({
-        to: "/services/$serviceId/deploys/$deployId",
+        to: `${base}/$serviceId/deploys/$deployId`,
         params: { serviceId: service.id, deployId },
       });
     }
@@ -71,17 +77,11 @@ export function ManualDeployButton({ service, pending }: ManualDeployButtonProps
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          disabled={busy}
-          onSelect={() => void handleDeploy()}
-        >
+        <DropdownMenuItem disabled={busy} onSelect={() => void handleDeploy()}>
           {deployLabel}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          disabled={busy}
-          onSelect={() => void handleDeploy()}
-        >
+        <DropdownMenuItem disabled={busy} onSelect={() => void handleDeploy()}>
           {t("services.deployMenuRestart")}
         </DropdownMenuItem>
       </DropdownMenuContent>

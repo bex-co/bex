@@ -7,15 +7,19 @@ import { ServiceEnvironmentEditor } from "@/features/services/components/service
 import { EnvGroupsPanel } from "@/features/services/components/env-groups-panel";
 
 export const Route = createFileRoute("/services/$serviceId/env")({
-  component: ServiceEnvPage,
+  component: RouteComponent,
 });
+
+function RouteComponent() {
+  const { serviceId } = Route.useParams();
+  return <ServiceEnvPage serviceId={serviceId} />;
+}
 
 // The Environment tab (w4/m6.5): a Render-style environment surface over bex-api.
 // Three stacked sections — env vars (keys list + per-key reveal + CRUD), secret
 // files (per-service, same reveal/CRUD shape), and environment groups (reusable
 // bundles linked to this service).
-export function ServiceEnvPage() {
-  const { serviceId } = Route.useParams();
+export function ServiceEnvPage({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   return (

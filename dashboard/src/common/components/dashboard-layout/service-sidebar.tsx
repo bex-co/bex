@@ -8,6 +8,7 @@ import {
 } from "@/common/components/ui/sidebar.tsx";
 import { serviceNavGroups } from "@/features/services/components/service-nav";
 import { deriveServiceType } from "@/features/services/lib/service-type";
+import { useServiceBase } from "@/features/services/lib/service-base";
 import { useServer } from "@/features/services/hooks/use-server";
 import { isNavItemActive } from "./nav-active";
 import { SidebarBrand } from "./sidebar-brand";
@@ -33,6 +34,7 @@ export interface ServiceSidebarProps {
  */
 export function ServiceSidebar({ serviceId }: ServiceSidebarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const base = useServiceBase();
   const { t } = useTranslations();
   const { service, loading } = useServer(serviceId);
   // An id the caller can't see gets no service nav — the shell renders its
@@ -62,6 +64,7 @@ export function ServiceSidebar({ serviceId }: ServiceSidebarProps) {
           <SidebarNavGroups
             groups={serviceNavGroups(
               service ? deriveServiceType(service.type) : null,
+              base,
             )}
             linkParams={{ serviceId }}
             isItemActive={(to) =>

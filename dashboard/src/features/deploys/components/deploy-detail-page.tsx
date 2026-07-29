@@ -3,6 +3,7 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { EmptyState } from "@/common/components/empty-state";
 import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useServiceBase } from "@/features/services/lib/service-base";
 import { useDeploy } from "../hooks/use-deploy";
 import { rangeStart, type LogRange } from "../lib/log-range";
 import { DeployHeader } from "./deploy-header";
@@ -34,6 +35,7 @@ export function DeployDetailPage({
   onRangeChange,
 }: DeployDetailPageProps) {
   const { t } = useTranslations();
+  const base = useServiceBase();
   const { deploy, loading, error, notFound } = useDeploy(serviceId, deployId);
 
   // A dead deploy id under a live service redirects to that service's Deploys
@@ -43,11 +45,11 @@ export function DeployDetailPage({
   // from `notFound`, so outages keep the inline error state below.
   const deploysTab = useMemo(
     () => ({
-      to: "/services/$serviceId/deploys" as const,
+      to: `${base}/$serviceId/deploys` as const,
       params: { serviceId },
       replace: true,
     }),
-    [serviceId],
+    [serviceId, base],
   );
   useNotFoundRedirect(notFound, deploysTab);
 

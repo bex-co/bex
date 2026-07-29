@@ -30,7 +30,8 @@ describe("Render dashboard-route aliases", () => {
     ["/web/$"],
     ["/worker/$"],
     ["/pserv/$"],
-    ["/static/$"],
+    // /static is NOT a splat alias — w5/m57 made static sites a canonical route
+    // tree (/static/$serviceId); its mounting is asserted separately below.
     ["/cron/$"],
     ["/d/$"],
     ["/r/$"],
@@ -49,6 +50,32 @@ describe("Render dashboard-route aliases", () => {
 
   it("keeps the root 404 catch-all for unknown segments", () => {
     expect(topLevel.find((route) => route.fullPath === "/$")).toBeDefined();
+  });
+
+  // w5/m57: static sites are a canonical route tree under /static/$serviceId
+  // (Render's /static/<id> scheme), not a splat alias. The layout, its tab
+  // pages, the deploy detail, and the create URL must all mount.
+  function collectPaths(node: RuntimeRoute, acc: string[] = []): string[] {
+    if (node.fullPath) acc.push(node.fullPath);
+    for (const child of Object.values(node.children ?? {})) {
+      collectPaths(child as RuntimeRoute, acc);
+    }
+    return acc;
+  }
+  const allPaths = collectPaths(root);
+
+  it.each([
+    ["/static/$serviceId"],
+    ["/static/$serviceId/events"],
+    ["/static/$serviceId/settings"],
+    ["/static/$serviceId/metrics"],
+    ["/static/$serviceId/env"],
+    ["/static/$serviceId/redirects"],
+    ["/static/$serviceId/headers"],
+    ["/static/$serviceId/deploys/$deployId"],
+    ["/static/new"],
+  ])("mounts the static-site canonical route %s", (fullPath) => {
+    expect(allPaths).toContain(fullPath);
   });
 
   // w1/m45: Webhooks/Notifications became first-class pages (Render's
@@ -86,7 +113,9 @@ describe("Render dashboard-route aliases", () => {
       }),
     });
     await router.load();
-    expect(router.state.location.pathname).toBe("/services/srv-1/deploys/dep-2");
+    expect(router.state.location.pathname).toBe(
+      "/services/srv-1/deploys/dep-2",
+    );
     expect(router.state.location.search).toEqual({ x: 1 });
   });
 });

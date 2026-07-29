@@ -21,8 +21,8 @@ vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: () => serverState,
 }));
 
-// Mounts the guard on a runtime tab with the Deploys route as the redirect
-// target, so the Navigate has a real destination to resolve.
+// Mounts the guard on a runtime tab with the static Events landing as the
+// redirect target (w5/m57), so the Navigate has a real destination to resolve.
 function renderGuarded() {
   const rootRoute = createRootRoute();
   const shellRoute = createRoute({
@@ -34,13 +34,13 @@ function renderGuarded() {
       </NonStaticRoute>
     ),
   });
-  const deploysRoute = createRoute({
+  const staticEventsRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "/services/$serviceId/deploys",
-    component: () => <p>deploys tab</p>,
+    path: "/static/$serviceId/events",
+    component: () => <p>static events landing</p>,
   });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([shellRoute, deploysRoute]),
+    routeTree: rootRoute.addChildren([shellRoute, staticEventsRoute]),
     history: createMemoryHistory({
       initialEntries: ["/services/srv-1/shell"],
     }),
@@ -62,11 +62,13 @@ describe("NonStaticRoute (w5/m48 — static sites have no runtime tabs)", () => 
     expect(await screen.findByText("runtime tab content")).toBeInTheDocument();
   });
 
-  it("redirects a static site's direct URL to Deploys", async () => {
+  it("redirects a static site's direct URL to its /static Events landing (w5/m57)", async () => {
     serverState.service = { id: "srv-1", type: "static_site" } as ServiceView;
     renderGuarded();
 
-    expect(await screen.findByText("deploys tab")).toBeInTheDocument();
+    expect(
+      await screen.findByText("static events landing"),
+    ).toBeInTheDocument();
     expect(screen.queryByText("runtime tab content")).not.toBeInTheDocument();
   });
 

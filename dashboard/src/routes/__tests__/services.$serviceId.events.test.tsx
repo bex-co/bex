@@ -64,7 +64,9 @@ function renderEvents(serviceId = "app") {
   const eventsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/services/$serviceId/events",
-    component: ServiceEventsPage,
+    // The page now takes serviceId as a prop (shared by the /services and
+    // /static route trees, w5/m57); pass the route's own param.
+    component: () => <ServiceEventsPage serviceId={serviceId} />,
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([eventsRoute]),
@@ -212,9 +214,7 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
     const user = userEvent.setup();
     const { router } = renderEvents("app");
 
-    await user.click(
-      await screen.findByRole("button", { name: "Rollback" }),
-    );
+    await user.click(await screen.findByRole("button", { name: "Rollback" }));
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
 
@@ -239,9 +239,7 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
     const user = userEvent.setup();
     const { router } = renderEvents("app");
 
-    await user.click(
-      await screen.findByRole("button", { name: "Rollback" }),
-    );
+    await user.click(await screen.findByRole("button", { name: "Rollback" }));
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
 
