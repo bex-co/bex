@@ -1,20 +1,20 @@
 # w3 · m32 — Sandbox cluster substrate: multi-node OpenSandbox + Kata + Render CLI `ea sandbox`
 
-**Worker:** worker3 **Goal:** realize the re-opened pillar 5 per ADR042 — stand up a multi-node OpenSandbox Kubernetes-runtime substrate with Kata isolation, a single-trusted-hop security model, and a bex-api surface that makes `render ea sandbox create/exec/list/stop` work unmodified. **Status:** todo
+**Worker:** worker3 **Goal:** realize the re-opened pillar 5 per ADR042 — stand up a multi-node OpenSandbox Kubernetes-runtime substrate with Kata isolation, a single-trusted-hop security model, and a bex-api surface that makes `render ea sandbox create/exec/list/stop` work unmodified. **Status:** in progress — t001,t002,t004,t005,t006,t008,t009 **DONE** + validated on prod (gVisor substrate — **Kata was infeasible on Hetzner Cloud, ADR042 amended to gVisor**; `render ea sandbox` create/list/stop end-to-end; multi-tenant per-`<ws>-sandbox` scoping). Open: t003 (warm Pool), t007 (snapshot pause/resume round-trip), t010/t011 (cli-compat checklist + parity), t012–t014 (simplify/tests/closeout). Follow-ups: OpenSandbox server Deployment + tenant-config Secret are prod-applied, not yet gitops-durable; narrow the server's residual cluster-wide RBAC; HTTPS for the server→CP tenant lookup.
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                       | est | depends_on            |
 | ---- | -------------------------------------------------------------------------------------------------------------------------- | --- | --------------------- |
-| t001 | `opensandbox-server` container image (Dockerfile, push to Zot)                                                             | 2h  | —                     |
-| t002 | OpenSandbox control-plane server in-cluster (Deployment/Service/ConfigMap/PVC/SA+Role) + cluster TOML (k8s runtime, in-cluster SA, batchsandbox template) | 3h  | t001                  |
+| t001 | `opensandbox-server` container image (Dockerfile, push to Zot)                                                             | 2h  | —                     | — **DONE** |
+| t002 | OpenSandbox control-plane server in-cluster (Deployment/Service/ConfigMap/PVC/SA+Role) + cluster TOML (k8s runtime, in-cluster SA, batchsandbox template) | 3h  | t001                  | — **DONE** |
 | t003 | Snapshot registry → in-cluster Zot + push/pull secrets; warm `Pool`; execd in-cluster                                      | 2h  | t002                  |
-| t004 | Kata `RuntimeClass` + bake kata-containerd into the worker image (CAPH) + dedicated sandbox node pool (tainted)            | 1d  | —                     |
-| t005 | Per-tenant `<ws>-sandbox` boundary: egress-deny/metadata-deny (mirror build-boundary), Kata scheduling                      | 2h  | w3/m31/t001, t004      |
-| t006 | Security — single trusted hop: NetworkPolicy admit-only-bex-api on opensandbox-system + OpenSandbox multi-tenant mode (per-workspace key → `<ws>-sandbox` via HTTP provider → bex IAM) | 3h  | t002, t005             | — **DONE** |
+| t004 | Kata `RuntimeClass` + bake kata-containerd into the worker image (CAPH) + dedicated sandbox node pool (tainted)            | 1d  | —                     | — **DONE** |
+| t005 | Per-tenant `<ws>-sandbox` boundary: egress-deny/metadata-deny (mirror build-boundary), Kata scheduling                      | 2h  | w3/m31/t001, t004      | — **DONE** |
+| t006 | Security — single trusted hop: NetworkPolicy admit-only-bex-api on opensandbox-system + OpenSandbox multi-tenant mode (per-workspace key → `<ws>-sandbox` via HTTP provider → bex IAM) | 3h  | t002, t005             | — **DONE** | — **DONE** |
 | t007 | k3s validation node (containerd-CRI + Kata) + validate BatchSandbox lifecycle/snapshot round-trip (rootfs-only) under Kata + Cilium | 1d  | t003, t004, t006       |
-| t008 | Capture Render CLI `ea sandbox` wire shape (`render-oss/cli`) → `docs/render-artifacts`                                    | 1h  | —                     |
-| t009 | bex-api sandbox feature package: `lego/backend/internal/sandbox` (service/client/rest/mcp/graphql) + template registry + 5-point wiring (consumes t006's per-workspace keys) | 1d  | t007, t008, w3/m31/t010 |
+| t008 | Capture Render CLI `ea sandbox` wire shape (`render-oss/cli`) → `docs/render-artifacts`                                    | 1h  | —                     | — **DONE** |
+| t009 | bex-api sandbox feature package: `lego/backend/internal/sandbox` (service/client/rest/mcp/graphql) + template registry + 5-point wiring (consumes t006's per-workspace keys) | 1d  | t007, t008, w3/m31/t010 | — **DONE** |
 | t010 | `cli-compatibility-checklist` rows 238-241 `[-]`→`[x]` + `scripts/cli-compat.sh` sandbox leg (unmodified CLI)               | 2h  | t009                  |
 | t011 | Render parity (`ea sandbox` across REST/MCP + CLI compat)                                                                  | 1h  | t010                  |
 | t012 | Simplify (`/simplify` over changed code)                                                                                   | 30m | t011                  |
