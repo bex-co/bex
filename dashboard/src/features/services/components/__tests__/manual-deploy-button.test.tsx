@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ManualDeployButton } from "@/features/services/components/manual-deploy-button";
 import type { ServiceView } from "@/features/services/types";
@@ -52,15 +52,15 @@ describe("ManualDeployButton — navigate to the new deploy's page (w9/m1/t004)"
       screen.getByRole("button", { name: /Manual Deploy/i }),
     );
     await user.click(screen.getByText("Deploy latest image"));
-    await user.click(
-      screen.getByRole("button", { name: "Proceed" }),
-    );
 
     expect(trigger).toHaveBeenCalledWith("web");
-    expect(mockNavigate).toHaveBeenCalledWith({
-      to: "/services/$serviceId/deploys/$deployId",
-      params: { serviceId: "web", deployId: "dep-new-1" },
-    });
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/services/$serviceId/deploys/$deployId",
+        params: { serviceId: "web", deployId: "dep-new-1" },
+      }),
+    );
   });
 
   it("does not navigate when the trigger fails (already toasted, no deploy id)", async () => {
@@ -72,9 +72,6 @@ describe("ManualDeployButton — navigate to the new deploy's page (w9/m1/t004)"
       screen.getByRole("button", { name: /Manual Deploy/i }),
     );
     await user.click(screen.getByText("Deploy latest image"));
-    await user.click(
-      screen.getByRole("button", { name: "Proceed" }),
-    );
 
     expect(trigger).toHaveBeenCalledWith("web");
     expect(mockNavigate).not.toHaveBeenCalled();
@@ -89,13 +86,12 @@ describe("ManualDeployButton — navigate to the new deploy's page (w9/m1/t004)"
       screen.getByRole("button", { name: /Manual Deploy/i }),
     );
     await user.click(screen.getByText("Restart service"));
-    await user.click(
-      screen.getByRole("button", { name: "Proceed" }),
-    );
 
-    expect(mockNavigate).toHaveBeenCalledWith({
-      to: "/services/$serviceId/deploys/$deployId",
-      params: { serviceId: "web", deployId: "dep-restart-1" },
-    });
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/services/$serviceId/deploys/$deployId",
+        params: { serviceId: "web", deployId: "dep-restart-1" },
+      }),
+    );
   });
 });

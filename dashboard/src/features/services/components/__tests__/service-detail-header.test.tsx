@@ -289,7 +289,7 @@ describe("ServiceDetailHeader", () => {
     expect(screen.queryByText("https://app.onbex.co")).not.toBeInTheDocument();
   });
 
-  it("deploys the latest commit from the Manual Deploy dropdown, behind a confirm naming the branch", async () => {
+  it("deploys the latest commit directly from the Manual Deploy dropdown", async () => {
     const user = userEvent.setup();
     renderHeader(svc());
 
@@ -299,12 +299,9 @@ describe("ServiceDetailHeader", () => {
     await user.click(
       await screen.findByRole("menuitem", { name: "Deploy latest commit" }),
     );
-    expect(
-      screen.getByText("Deploy the latest commit on main?"),
-    ).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Proceed" }));
 
     expect(triggerDeploy).toHaveBeenCalledWith("app");
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 
   it("labels the deploy item for an image-backed service (no repo to rebuild from)", async () => {
@@ -334,11 +331,11 @@ describe("ServiceDetailHeader", () => {
     await user.click(
       await screen.findByRole("menuitem", { name: "Restart service" }),
     );
-    await user.click(screen.getByRole("button", { name: "Proceed" }));
 
     // Restart routes through the same triggerDeploy mutation as Deploy,
     // so every restart opens a deploy-history row (not a separate onRun path).
     expect(triggerDeploy).toHaveBeenCalledWith("app");
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 
   it('has no "•••" actions menu — only Connect + Manual Deploy; restart in Manual Deploy, suspend/resume on Settings', async () => {
