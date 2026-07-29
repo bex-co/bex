@@ -1453,4 +1453,132 @@ if ! grep -q 'export CONTAINERD=2.3.3' infra/clusterapi/overlays/hetzner-caph/cl
   fail=1
 fi
 
+# Static-site trust boundaries (w7/m54): Traefik must keep ExternalName support
+# for two platform features, so API-server admission — not convention — pins
+# every tenant alias to one of those exact operator-owned shapes. The object
+# store credentials are deliberately two different names and provider policies.
+echo "==> static-site alias admission and split S3 credential contracts"
+BASE_RENDER="$(kubectl kustomize deploy/gitops/base)"
+alias_admission_shape="$(yq -N '
+  select(.kind == "ValidatingAdmissionPolicy" and .metadata.name == "bex-operator-platform-aliases") |
+  [.metadata.annotations."argocd.argoproj.io/sync-wave",
+   .spec.failurePolicy,
+   (.spec.matchConstraints.resourceRules[0].operations | sort | join(",")),
+   (.spec.matchConstraints.resourceRules[0].resources | join(",")),
+   (.spec.validations | length | tostring)] | join(":")' \
+  - <<<"$BASE_RENDER" | tr -d '\n')"
+[ "$alias_admission_shape" = "-3:Fail:CREATE,UPDATE:services:4" ] || {
+  echo "FAIL: static-site alias admission shape is '$alias_admission_shape'" >&2
+  fail=1
+}
+alias_binding_shape="$(yq -N '
+  select(.kind == "ValidatingAdmissionPolicyBinding" and .metadata.name == "bex-operator-platform-aliases") |
+  [.metadata.annotations."argocd.argoproj.io/sync-wave", .spec.policyName,
+   (.spec.validationActions | sort | join(","))] | join(":")' \
+  - <<<"$BASE_RENDER" | tr -d '\n')"
+[ "$alias_binding_shape" = "-2:bex-operator-platform-aliases:Audit,Deny" ] || {
+  echo "FAIL: static-site alias binding shape is '$alias_binding_shape'" >&2
+  fail=1
+}
+for required_alias_invariant in \
+  "system:serviceaccount:bex-system:bex-controller-manager" \
+  "bex-static-server.bex-system.svc.cluster.local" \
+  "bex-activator.bex-system.svc.cluster.local" \
+  "app.bex.co/platform-alias" \
+  "app.kubernetes.io/managed-by" \
+  "ownerReferences"; do
+  grep -qF "$required_alias_invariant" deploy/gitops/base/operator-alias-admission.yaml || {
+    echo "FAIL: operator alias admission lost '$required_alias_invariant'" >&2
+    fail=1
+  }
+done
+
+traefik_external_names="$(yq -N '.providers.kubernetesIngress.allowExternalNameServices' \
+  deploy/gitops/base/values/traefik.values.yaml | tr -d '\n')"
+[ "$traefik_external_names" = "true" ] || {
+  echo "FAIL: ExternalName support changed; static and maintenance aliases require it" >&2
+  fail=1
+}
+
+tenant_alias_writes="$(yq -N '
+  select((.kind == "ClusterRole" or .kind == "Role") and
+    (.metadata.name == "bex-tenant-api" or .metadata.name == "bex-tenant-ssh-gateway" or
+     .metadata.name == "bex-api-apps" or .metadata.name == "bex-ssh-apps")) |
+  .rules[] | select(.resources[]? == "services" or .resources[]? == "ingresses") |
+  .verbs[] | select(test("^(create|update|patch|delete|deletecollection)$"))' \
+  - <<<"$BASE_RENDER" | tr '\n' ' ')"
+[ -z "$tenant_alias_writes" ] || {
+  echo "FAIL: a tenant-facing ClusterRole gained Service/Ingress mutation: $tenant_alias_writes" >&2
+  fail=1
+}
+
+publish_secret="$(yq -N '
+  select(.kind == "Deployment" and .metadata.name == "controller-manager") |
+  .spec.template.spec.containers[].env[] |
+  select(.name == "BEX_STATIC_PUBLISH_S3_SECRET") | .value' \
+  lego/operator/config/manager/manager.yaml | tr -d '\n')"
+[ "$publish_secret" = "bex-static-publish-s3" ] || {
+  echo "FAIL: manager static publish Secret is '$publish_secret'" >&2
+  fail=1
+}
+read_secret="$(yq -N '
+  select(.kind == "Deployment" and .metadata.name == "static-server") |
+  .spec.template.spec.containers[].envFrom[] | select(has("secretRef")) | .secretRef |
+  [.name, ((.optional // false) | tostring)] | join(":")' \
+  lego/operator/config/staticserver/deployment.yaml | tr -d '\n')"
+[ "$read_secret" = "bex-static-read-s3:false" ] || {
+  echo "FAIL: static-server read Secret contract is '$read_secret'" >&2
+  fail=1
+}
+metadata_fallback="$(yq -N '
+  select(.kind == "Deployment" and .metadata.name == "static-server") |
+  .spec.template.spec.containers[].env[] |
+  select(.name == "AWS_EC2_METADATA_DISABLED") | .value' \
+  lego/operator/config/staticserver/deployment.yaml | tr -d '\n')"
+[ "$metadata_fallback" = "true" ] || {
+  echo "FAIL: static-server must disable AWS metadata credential fallback" >&2
+  fail=1
+}
+if rg -n 'BEX_STATIC_S3_SECRET|name: static-s3$' \
+    lego/operator/cmd lego/operator/config lego/operator/internal/publish >/dev/null; then
+  echo "FAIL: legacy shared static S3 Secret contract remains in runtime code/config" >&2
+  fail=1
+fi
+
+read_policy_shape="$(jq -r '
+  [.Statement[] | .Action[]? // .Action] | flatten | sort | join(",")' \
+  infra/wasabi/static-s3-read-policy.json)"
+[ "$read_policy_shape" = "s3:GetBucketLocation,s3:GetObject,s3:ListBucket" ] || {
+  echo "FAIL: static reader IAM actions drifted: $read_policy_shape" >&2
+  fail=1
+}
+publish_policy_shape="$(jq -r '
+  [.Statement[] | .Action[]? // .Action] | flatten | sort | join(",")' \
+  infra/wasabi/static-s3-publish-policy.json)"
+expected_publish_actions='s3:AbortMultipartUpload,s3:DeleteObject,s3:GetBucketLocation,s3:GetObject,s3:ListBucket,s3:ListBucketMultipartUploads,s3:ListMultipartUploadParts,s3:PutObject'
+[ "$publish_policy_shape" = "$expected_publish_actions" ] || {
+  echo "FAIL: static publisher IAM actions drifted: $publish_policy_shape" >&2
+  fail=1
+}
+for policy in infra/wasabi/static-s3-read-policy.json infra/wasabi/static-s3-publish-policy.json; do
+  resources="$(jq -r '[.Statement[].Resource] | flatten | sort | join(",")' "$policy")"
+  [ "$resources" = "arn:aws:s3:::bex-static,arn:aws:s3:::bex-static/*" ] || {
+    echo "FAIL: $policy is not confined to the static bucket: $resources" >&2
+    fail=1
+  }
+done
+for required_probe in \
+  'reader write static object' \
+  'reader list tfstate bucket' \
+  'publisher list tfstate bucket' \
+  'reader list account buckets' \
+  'publisher list account buckets' \
+  'reader list unrelated bucket' \
+  'publisher list unrelated bucket'; do
+  grep -qF "$required_probe" scripts/static-s3-credentials.sh || {
+    echo "FAIL: static S3 verifier lost '$required_probe'" >&2
+    fail=1
+  }
+done
+
 [ "$fail" -eq 0 ] && echo "PASS: gitops tree renders" || { echo "FAIL: see errors above" >&2; exit 1; }

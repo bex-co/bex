@@ -67,11 +67,11 @@ const outMount = "/out"
 // Store is the operator's static-site object-store target: the S3-compatible
 // bucket + endpoint (deployment-time config, BEX_STATIC_S3_ENDPOINT/BUCKET) and
 // the name of a k8s Secret holding AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY
-// (BEX_STATIC_S3_SECRET). All three unset => static_site is unavailable, the way
-// unset BEX_DB_BACKUP_* disables Postgres backups. Reuses the Terraform-state
-// object-store credentials; the bucket MUST be separate from bex-tfstate (never
-// serve public content from the private state/backup bucket — see the milestone
-// design record and docs/ADR029-static-sites.md).
+// (BEX_STATIC_PUBLISH_S3_SECRET). All three unset => static_site is unavailable,
+// the way unset BEX_DB_BACKUP_* disables Postgres backups. The publish identity
+// is write/delete scoped to the dedicated static bucket and is deliberately
+// distinct from the static-server's read-only identity and every backup/tfstate
+// credential (docs/ADR029-static-sites.md).
 type Store struct {
 	// Bucket is the object-store bucket static content is published to (a bucket
 	// dedicated to static sites, e.g. "bex-static").

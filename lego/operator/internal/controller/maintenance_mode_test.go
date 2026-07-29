@@ -257,6 +257,11 @@ func TestCrossNamespaceMaintenanceUsesOwnedExternalNameAlias(t *testing.T) {
 	if len(alias.OwnerReferences) != 1 || alias.OwnerReferences[0].UID != app.UID {
 		t.Fatalf("maintenance alias ownerRefs = %+v, want App owner", alias.OwnerReferences)
 	}
+	if alias.Labels[labelApp] != app.Name ||
+		alias.Labels[labelPlatformAliasPurpose] != platformAliasMaintenance ||
+		alias.Labels["app.kubernetes.io/managed-by"] != "bex-operator" {
+		t.Fatalf("maintenance alias labels = %+v, want exact admission identity", alias.Labels)
+	}
 	var ing networkingv1.Ingress
 	if err := cl.Get(ctx, nn, &ing); err != nil {
 		t.Fatal(err)

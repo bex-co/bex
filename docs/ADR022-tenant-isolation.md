@@ -132,6 +132,16 @@ Defense-in-depth: even if the tenant-side policy regresses, platform namespaces 
 
 Each namespace gets an ingress NetworkPolicy that allows the known-legitimate callers and implicitly blocks everything else (including tenant apps pods) by virtue of `policyTypes: [Ingress]`.
 
+### Static edge aliases are an authorization boundary (w7/m54)
+
+NetworkPolicy does not constrain what Traefik itself may route. Traefik's global ExternalName support is required for the operator's cross-namespace static-server and maintenance aliases; if a tenant-facing identity could mutate a Service or Ingress, it could turn that feature into a platform/tenant-network routing primitive. The effective boundary is therefore layered:
+
+- `bex-api`, `bex-ssh-gateway`, and tenant workload ServiceAccounts have no create/update/patch/delete on Services or Ingresses in hosting namespaces;
+- the operator remains the trusted reconciler;
+- fail-closed [`operator-alias-admission.yaml`](../deploy/gitops/base/operator-alias-admission.yaml) accepts ExternalName create/update only from that manager and only for an App-owned `bex-static-* → bex-static-server:8080` or `bex-maintenance-* → bex-activator:8888` shape.
+
+This closes the control-plane bypass adjacent to network isolation. It does not add an arbitrary upstream proxy to static sites: their rewrites remain object-key rewrites inside the fixed S3 origin ([ADR029](ADR029-static-sites.md)). `scripts/verify-static-site-security.sh live` enumerates real ServiceAccounts/RoleBinding subjects, checks every write verb by impersonation, and submits both admitted and hostile server-side dry-run aliases.
+
 ## Tenant container hardening (w7/m2)
 
 Every tenant container (Deployments, CronJobs, pre-deploy Jobs) is stamped with a hardening SecurityContext (`tenantSecCtx()`, `app_controller.go`): `allowPrivilegeEscalation: false`, **all Linux capabilities dropped**, RuntimeDefault seccomp. `runAsNonRoot` is deliberately absent — tenant images may run as root (PSS baseline, not restricted). A user-visible consequence of dropping ALL: `NET_BIND_SERVICE` is gone, so **a tenant container cannot bind ports below 1024 even as root** — stock port-80 images (nginx, httpd, whoami) crash-loop with `bind: permission denied` unless pointed at a high port. Deliberate posture (kept over Render parity); the operator diagnoses the crash loop and stamps the actionable cause — listen on `$PORT`, no ports < 1024 — onto the failed deploy's `failureReason` (w9/011, [ADR004-app-deployment.md](ADR004-app-deployment.md)).
@@ -168,6 +178,7 @@ The live matrix that script asserts is wired for repeatability two ways, so a re
 
 - **On demand** — `make verify-tenant-isolation` (from `lego/operator/`) runs `scripts/verify-tenant-isolation.sh` against the current kubeconfig.
 - **In CI** — `scripts/gitops-validate.sh` (cluster-less, runs in `.github/workflows/gitops.yml`) asserts every platform namespace carries a default-deny-ingress policy (`podSelector: {}` + `policyTypes: [Ingress]`) and that no allow-list peer names the tenant apps namespace (`default`) — a manifest regression in `deploy/gitops/base/network-policies.yaml` fails before Argo CD applies it.
+- **Static edge** — `scripts/gitops-validate.sh` pins the operator alias admission/RBAC shape; `scripts/verify-static-site-security.sh live` proves the API-server allow/deny behavior against a canonical hosting namespace.
 
 ## Registry access control (w7/m8)
 

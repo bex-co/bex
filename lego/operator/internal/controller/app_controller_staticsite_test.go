@@ -110,6 +110,9 @@ var _ = Describe("reconciling a static_site App", func() {
 		Expect(alias.Spec.Ports).To(HaveLen(1))
 		Expect(alias.Spec.Ports[0].Name).To(Equal("http"))
 		Expect(alias.Spec.Ports[0].Port).To(Equal(int32(8080)))
+		Expect(alias.Labels).To(HaveKeyWithValue(labelApp, name))
+		Expect(alias.Labels).To(HaveKeyWithValue(labelPlatformAliasPurpose, platformAliasStatic))
+		Expect(alias.Labels).To(HaveKeyWithValue("app.kubernetes.io/managed-by", "bex-operator"))
 		Expect(alias.OwnerReferences).To(HaveLen(1))
 		Expect(alias.OwnerReferences[0].UID).To(Equal(app.UID))
 
@@ -133,6 +136,15 @@ var _ = Describe("reconciling a static_site App", func() {
 			},
 		}
 		Expect(k8sClient.Create(ctx, app)).To(Succeed())
+		credential := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "static-s3", Namespace: ns},
+			Data: map[string][]byte{
+				"AWS_ACCESS_KEY_ID":     []byte("test-access"),
+				"AWS_SECRET_ACCESS_KEY": []byte("test-secret"),
+			},
+		}
+		Expect(k8sClient.Create(ctx, credential)).To(Succeed())
+		DeferCleanup(func() { _ = k8sClient.Delete(ctx, credential) })
 
 		// The reconcile blocks inside publish.Publish waiting for the Job, so
 		// drive it from a goroutine and complete the Job by hand (envtest has no
@@ -185,6 +197,31 @@ var _ = Describe("reconciling a static_site App", func() {
 		var ing networkingv1.Ingress
 		Expect(k8sClient.Get(ctx, nn, &ing)).To(Succeed())
 		Expect(ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name).To(Equal(staticServerAliasName(name)))
+	})
+
+	It("fails before dispatch when the publish credential Secret is missing", func() {
+		const name = "site-no-publish-credential"
+		nn := types.NamespacedName{Name: name, Namespace: ns}
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+			Spec: appv1alpha1.AppSpec{
+				Type: appv1alpha1.TypeStaticSite, Image: "site:v1", PublishPath: "dist", Expose: true,
+			},
+		}
+		Expect(k8sClient.Create(ctx, app)).To(Succeed())
+
+		reconcileFailing(staticReconciler(), nn)
+
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseFailed))
+		Expect(app.Status.Conditions).To(ContainElement(And(
+			HaveField("Type", "Ready"),
+			HaveField("Reason", "StaticCredentialUnavailable"),
+			HaveField("Message", ContainSubstring("static publish credential Secret default/static-s3 is unavailable")),
+		)))
+		var publishJob batchv1.Job
+		Expect(apierrors.IsNotFound(k8sClient.Get(ctx,
+			types.NamespacedName{Name: "pub-" + name + "-rev-1", Namespace: ns}, &publishJob))).To(BeTrue())
 	})
 
 	It("fails a static_site with no publishPath", func() {

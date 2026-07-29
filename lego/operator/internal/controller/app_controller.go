@@ -125,6 +125,18 @@ const labelWorkspace = "app.bex.co/workspace"
 // present.
 const labelNetworkIsolation = "app.bex.co/network-isolation"
 
+// labelPlatformAliasPurpose marks the only ExternalName Services the operator
+// may create in tenant namespaces. The API-server admission policy in
+// deploy/gitops/base/operator-alias-admission.yaml requires this label, the
+// exact platform target, and an App controller owner reference before admitting
+// an ExternalName create/update from the manager ServiceAccount.
+const labelPlatformAliasPurpose = "app.bex.co/platform-alias"
+
+const (
+	platformAliasStatic      = "static-server"
+	platformAliasMaintenance = "maintenance"
+)
+
 // annotLastActive records when the app last served (or received) traffic.
 // Set by the operator on first Running and reset on each wake; updated by the
 // activator on each inbound request. Free-tier apps auto-hibernate after
@@ -171,8 +183,9 @@ type AppReconciler struct {
 	MaintenanceNamespace string                  // namespace of the shared responder Service (default bex-system)
 	MaintenancePort      int                     // maintenance responder Service port (default 8888)
 	// StaticStore is the object-store target for static_site publishing
-	// (BEX_STATIC_S3_ENDPOINT/BUCKET/SECRET). Unconfigured => static_site Apps are
-	// rejected with a clear status, the way unset backup vars disable backups.
+	// (BEX_STATIC_S3_ENDPOINT/BUCKET + BEX_STATIC_PUBLISH_S3_SECRET).
+	// Unconfigured => static_site Apps are rejected with a clear status, the way
+	// unset backup vars disable backups.
 	StaticStore publish.Store
 	// StaticServerService is the k8s Service name of the shared static-server that
 	// serves static_site content. A static-site host's Ingress backs onto an
@@ -1816,7 +1829,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	}
 	if !r.StaticStore.Configured() || r.StaticServerService == "" {
 		return r.fail(ctx, app, "StaticUnavailable",
-			fmt.Errorf("static_site is unavailable: set BEX_STATIC_S3_ENDPOINT/BUCKET/SECRET and BEX_STATIC_SERVER_SERVICE"))
+			fmt.Errorf("static_site is unavailable: set BEX_STATIC_S3_ENDPOINT/BUCKET, BEX_STATIC_PUBLISH_S3_SECRET, and BEX_STATIC_SERVER_SERVICE"))
 	}
 
 	// Type-change cleanup: a static_site has no Deployment/Service of its own.
@@ -1836,6 +1849,10 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	// already the active revision (idempotent: the publish Job is named per
 	// revision, so a retry reuses the exact-lifetime Job rather than re-uploading).
 	if app.Status.ActiveRevision != rev {
+		publishNamespace := r.buildNamespace(app.Namespace)
+		if err := validateStaticCredentialSecret(ctx, r.buildPlaneClient(), publishNamespace, r.StaticStore.Secret); err != nil {
+			return r.fail(ctx, app, "StaticCredentialUnavailable", err)
+		}
 		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Publishing", "Publishing static output to object store")
 		opts := publish.Options{
 			Image:        image,
@@ -1844,7 +1861,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 			AppUID:       string(app.UID),
 			Revision:     rev,
 			Store:        r.StaticStore,
-			Namespace:    r.buildNamespace(app.Namespace),
+			Namespace:    publishNamespace,
 			Workspace:    app.Labels[labelWorkspace],
 			AppNamespace: app.Namespace,
 			VerifyImage:  r.TenantSignKeySecret != "",
@@ -1972,14 +1989,8 @@ func (r *AppReconciler) reconcileStaticServerAlias(ctx context.Context, app *app
 		return r.StaticServerService, nil
 	}
 	name := staticServerAliasName(app.Name)
-	alias := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, alias, func() error {
-		alias.Spec.Type = corev1.ServiceTypeExternalName
-		alias.Spec.ExternalName = fmt.Sprintf("%s.%s.svc.cluster.local", r.StaticServerService, r.staticServerNamespace())
-		alias.Spec.Selector = nil
-		alias.Spec.Ports = []corev1.ServicePort{{Name: "http", Port: int32(r.staticServerPort())}}
-		return controllerutil.SetControllerReference(app, alias, r.Scheme)
-	}); err != nil {
+	if err := r.reconcilePlatformAlias(ctx, app, name, platformAliasStatic,
+		r.StaticServerService, r.staticServerNamespace(), int32(r.staticServerPort())); err != nil {
 		return "", fmt.Errorf("reconciling static-server alias: %w", err)
 	}
 	return name, nil
@@ -2029,17 +2040,34 @@ func (r *AppReconciler) reconcileMaintenanceAlias(ctx context.Context, app *appv
 		return r.maintenanceService(), nil
 	}
 	name := maintenanceAliasName(app.Name)
-	alias := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, alias, func() error {
-		alias.Spec.Type = corev1.ServiceTypeExternalName
-		alias.Spec.ExternalName = fmt.Sprintf("%s.%s.svc.cluster.local", r.maintenanceService(), r.maintenanceNamespace())
-		alias.Spec.Selector = nil
-		alias.Spec.Ports = []corev1.ServicePort{{Name: "http", Port: int32(r.maintenancePort())}}
-		return controllerutil.SetControllerReference(app, alias, r.Scheme)
-	}); err != nil {
+	if err := r.reconcilePlatformAlias(ctx, app, name, platformAliasMaintenance,
+		r.maintenanceService(), r.maintenanceNamespace(), int32(r.maintenancePort())); err != nil {
 		return "", fmt.Errorf("reconciling maintenance responder alias: %w", err)
 	}
 	return name, nil
+}
+
+// reconcilePlatformAlias is the single constructor for tenant ExternalName
+// Services. Keep its labels, owner reference, target, and one-port shape aligned
+// with operator-alias-admission.yaml: admission treats every other ExternalName
+// create/update in a tenant namespace as an attempted routing-authority escape.
+func (r *AppReconciler) reconcilePlatformAlias(ctx context.Context, app *appv1alpha1.App, name, purpose, service, namespace string, port int32) error {
+	alias := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, alias, func() error {
+		alias.Labels = map[string]string{
+			labelApp:                       app.Name,
+			labelPlatformAliasPurpose:      purpose,
+			"app.kubernetes.io/managed-by": "bex-operator",
+		}
+		alias.Spec.Type = corev1.ServiceTypeExternalName
+		alias.Spec.ExternalName = fmt.Sprintf("%s.%s.svc.cluster.local", service, namespace)
+		alias.Spec.Selector = nil
+		alias.Spec.Ports = []corev1.ServicePort{{Name: "http", Port: port}}
+		return controllerutil.SetControllerReference(app, alias, r.Scheme)
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 func maintenanceAliasName(appName string) string {
@@ -3136,6 +3164,8 @@ func (r *AppReconciler) reclaimAppExternalArtifacts(ctx context.Context, app *ap
 	if app.Spec.Type == appv1alpha1.TypeStaticSite {
 		if !r.StaticStore.Configured() {
 			errs = append(errs, fmt.Errorf("static purge configuration is unavailable"))
+		} else if credentialErr := validateStaticCredentialSecret(ctx, r.buildPlaneClient(), namespace, r.StaticStore.Secret); credentialErr != nil {
+			errs = append(errs, credentialErr)
 		} else {
 			purgeJob := publish.PurgeJob(app.Name, string(app.UID), app.Labels[labelWorkspace],
 				app.Namespace, r.StaticStore, namespace, r.RegistryBuildPullSecret, "")
@@ -3165,6 +3195,24 @@ func (r *AppReconciler) reclaimAppExternalArtifacts(ctx context.Context, app *ap
 		}
 	}
 	return pending, errors.Join(errs...)
+}
+
+// validateStaticCredentialSecret fails before a publish/purge Pod is created,
+// so a missing or malformed build-namespace credential becomes an actionable
+// App condition instead of a Job stuck in CreateContainerConfigError. The
+// operator's direct build client is RBAC-scoped to this namespace and never
+// reads the static-server's separate bex-system read credential.
+func validateStaticCredentialSecret(ctx context.Context, cl client.Client, namespace, name string) error {
+	var secret corev1.Secret
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, &secret); err != nil {
+		return fmt.Errorf("static publish credential Secret %s/%s is unavailable: %w", namespace, name, err)
+	}
+	for _, key := range []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"} {
+		if len(secret.Data[key]) == 0 {
+			return fmt.Errorf("static publish credential Secret %s/%s is missing key %s", namespace, name, key)
+		}
+	}
+	return nil
 }
 
 func (r *AppReconciler) revokeAppRegistryCredentials(ctx context.Context, app *appv1alpha1.App, namespace string, cl client.Client) (bool, error) {

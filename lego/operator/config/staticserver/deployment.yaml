@@ -31,19 +31,22 @@ spec:
           env:
             - name: BEX_STATIC_ADDR
               value: ":8080"
+            # Never fall back to a node/cloud metadata credential if the
+            # namespace-local reader Secret is malformed.
+            - name: AWS_EC2_METADATA_DISABLED
+              value: "true"
           # Object-store config (endpoint/bucket/region + base domain) comes from
-          # an optional ConfigMap; the S3 credentials from the out-of-band Secret
-          # (created from .env like etcd-backup-s3, keys AWS_ACCESS_KEY_ID /
-          # AWS_SECRET_ACCESS_KEY). Both optional so the pod stays Ready and serves
-          # 503 until configured (docs/ADR029-static-sites.md). The Secret name here must
-          # match the operator's BEX_STATIC_S3_SECRET.
+          # an optional ConfigMap; the S3 credentials come from a dedicated,
+          # bucket-scoped read-only identity. Endpoint/bucket may stay optional
+          # for an intentionally disabled deployment, but once configured the
+          # credential Secret is required and startup verifies ListBucket access.
+          # Publishing uses a different Secret and identity in bex-build.
           envFrom:
             - configMapRef:
                 name: bex-static-config
                 optional: true
             - secretRef:
-                name: static-s3
-                optional: true
+                name: bex-static-read-s3
           readinessProbe:
             httpGet:
               path: /healthz

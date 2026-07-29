@@ -1,0 +1,94 @@
+# Fail-closed boundary for Traefik's deliberately global
+# allowExternalNameServices switch (ADR029 / w7/m54).
+#
+# Tenant namespaces need exactly two operator-owned alias shapes: static sites
+# route to the shared static-server and maintenance mode routes to the shared
+# activator. RBAC already denies every tenant-facing identity Service/Ingress
+# mutation; this policy additionally confines every ExternalName object the
+# trusted manager creates. Tenant Ingresses therefore cannot be backed by an
+# unowned or retargeted ExternalName alias even if RBAC drifts elsewhere.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: bex-operator-platform-aliases
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["services"]
+  matchConditions:
+    - name: tenant-hosting-namespace
+      expression: >-
+        namespaceObject != null &&
+        (namespaceObject.metadata.name == 'default' ||
+         (namespaceObject.metadata.?labels['app.kubernetes.io/managed-by'].orValue('') == 'bex-controlplane' &&
+          namespaceObject.metadata.?labels['app.kubernetes.io/part-of'].orValue('') == 'bex' &&
+          namespaceObject.metadata.?labels['app.bex.co/regime'].orValue('') == 'hosting' &&
+          namespaceObject.metadata.?labels['app.bex.co/workspace'].orValue('').matches('^tea-[0-9a-v]{20}$') &&
+          namespaceObject.metadata.name == namespaceObject.metadata.?labels['app.bex.co/workspace'].orValue('')))
+    - name: external-name-create-or-transition
+      expression: >-
+        object.spec.type == 'ExternalName' ||
+        (oldObject != null && oldObject.spec.type == 'ExternalName')
+  variables:
+    - name: purpose
+      expression: object.metadata.?labels['app.bex.co/platform-alias'].orValue('')
+    - name: app
+      expression: object.metadata.?labels['app.bex.co/app'].orValue('')
+    - name: controllerOwners
+      expression: >-
+        has(object.metadata.ownerReferences)
+          ? object.metadata.ownerReferences.filter(owner, owner.?controller.orValue(false))
+          : []
+    - name: exactStaticAlias
+      expression: >-
+        variables.purpose == 'static-server' &&
+        object.metadata.name == 'bex-static-' + variables.app &&
+        object.spec.externalName == 'bex-static-server.bex-system.svc.cluster.local' &&
+        size(object.spec.ports) == 1 &&
+        object.spec.ports[0].name == 'http' &&
+        object.spec.ports[0].port == 8080
+    - name: exactMaintenanceAlias
+      expression: >-
+        variables.purpose == 'maintenance' &&
+        object.metadata.name == 'bex-maintenance-' + variables.app &&
+        object.spec.externalName == 'bex-activator.bex-system.svc.cluster.local' &&
+        size(object.spec.ports) == 1 &&
+        object.spec.ports[0].name == 'http' &&
+        object.spec.ports[0].port == 8888
+  validations:
+    - expression: >-
+        request.userInfo.username == 'system:serviceaccount:bex-system:bex-controller-manager'
+      reason: Forbidden
+      message: only the bex operator may create or update tenant ExternalName aliases
+    - expression: >-
+        object.spec.type == 'ExternalName' && !has(object.spec.selector)
+      reason: Invalid
+      message: a platform alias must remain an ExternalName Service without selectors
+    - expression: >-
+        object.metadata.?labels['app.kubernetes.io/managed-by'].orValue('') == 'bex-operator' &&
+        variables.app != '' &&
+        size(variables.controllerOwners) == 1 &&
+        variables.controllerOwners[0].apiVersion == 'app.bex.co/v1alpha1' &&
+        variables.controllerOwners[0].kind == 'App' &&
+        variables.controllerOwners[0].name == variables.app
+      reason: Invalid
+      message: a platform alias must be labeled and controller-owned by its exact App
+    - expression: variables.exactStaticAlias || variables.exactMaintenanceAlias
+      reason: Invalid
+      message: a platform alias may target only the fixed static-server or maintenance responder
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: bex-operator-platform-aliases
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  policyName: bex-operator-platform-aliases
+  validationActions: [Deny, Audit]

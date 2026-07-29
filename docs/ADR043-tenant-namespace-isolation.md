@@ -76,6 +76,14 @@ The API server, not bex-api, enforces the missing scope. [`bex-api-namespace-adm
 
 This is a containment boundary, not an authorization substitute. bex-api remains trusted to manage every real tenant namespace, but its projected ServiceAccount token cannot use that dynamic authority against `bex-system`, `opensandbox-system`, `kube-system`, or another noncanonical namespace.
 
+### D7 — Tenant edge aliases are operator-only and destination-fixed
+
+Hosting namespaces may contain operator-created ExternalName Services because Traefik needs cross-namespace static-server and maintenance routing. Namespace isolation alone does not make those aliases safe: Traefik is a trusted ingress principal that can reach platform Services, so a retargeted alias could bypass the tenant pod's own egress rules.
+
+The namespace roles bound to `bex-api`, `bex-ssh-gateway`, and tenant workloads deliberately omit Service/Ingress mutation. The API server additionally applies [`operator-alias-admission.yaml`](../deploy/gitops/base/operator-alias-admission.yaml) only to `default` (legacy) or canonical `bex-controlplane` hosting namespaces. It requires the exact manager principal, matching App controller ownership/labels, and one of the static-server/activator DNS+port tuples. A transition away from ExternalName is matched too. Policy/binding sync waves `-3`/`-2` precede platform workload reconciliation, matching D6's no-unguarded-window rule.
+
+This is separate from D6: D6 confines the namespace reconciler's dynamic authority; D7 confines the operator's deliberate tenant edge objects. Live proof is `scripts/verify-static-site-security.sh live`.
+
 ## Engaging ADR022's objections to Option A
 
 ADR022 rejected namespace-per-workspace on four grounds. Each, re-examined:
