@@ -17,6 +17,7 @@ limitations under the License.
 package sandbox
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -27,6 +28,27 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
 )
+
+func execSandboxClient(t *testing.T, owner string) *Client {
+	t.Helper()
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/sandboxes/os-1" {
+			http.NotFound(w, r)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(osSandbox{
+			ID: "os-1",
+			Metadata: map[string]string{
+				metadataOwner:         owner,
+				metadataWorkspace:     "tea-a",
+				metadataRegime:        metadataSandboxRegime,
+				metadataNetworkPolicy: string(NetworkPolicyDenyAll),
+			},
+		})
+	}))
+	t.Cleanup(upstream.Close)
+	return NewClient(upstream.URL)
+}
 
 func TestStreamExecAuthorizesMintsTicketAndRelaysSSE(t *testing.T) {
 	secret := []byte("exec-secret")
@@ -48,7 +70,7 @@ func TestStreamExecAuthorizesMintsTicketAndRelaysSSE(t *testing.T) {
 
 	svc := &Service{
 		Base:   &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
-		Client: NewClient("http://unused"),
+		Client: execSandboxClient(t, "id-a"),
 		Exec:   &ExecConfig{Secret: secret, GatewayURL: gw.URL, Client: gw.Client()},
 	}
 	rr := httptest.NewRecorder()
@@ -113,7 +135,7 @@ func TestExecBufferedParsesSSE(t *testing.T) {
 	defer gw.Close()
 	svc := &Service{
 		Base:   &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
-		Client: NewClient("http://unused"),
+		Client: execSandboxClient(t, "id-a"),
 		Exec:   &ExecConfig{Secret: secret, GatewayURL: gw.URL, Client: gw.Client()},
 	}
 	res, err := svc.ExecBuffered(callerCtx(), ExecRequest{OwnerID: "tea-a", SandboxID: "os-1", Command: "echo hi"})
@@ -122,5 +144,47 @@ func TestExecBufferedParsesSSE(t *testing.T) {
 	}
 	if res.Stdout != "hi\n" || res.Stderr != "oops\n" || res.ExitCode != 7 {
 		t.Errorf("buffered result = %+v", res)
+	}
+}
+
+func TestExecEnforcesOwnerAndWorkspaceAdminOverride(t *testing.T) {
+	secret := []byte("exec-secret")
+	gatewayCalls := 0
+	gw := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gatewayCalls++
+		if _, err := sandboxexec.Verify(secret, r.Header.Get(sandboxexec.TicketHeader), time.Now()); err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write([]byte("event: exit\ndata: {\"exitCode\":0}\n\n"))
+	}))
+	t.Cleanup(gw.Close)
+
+	svc := &Service{
+		Base: &core.Base{
+			Namespace: "default",
+			Workspace: fakeWorkspace{"id-a": "tea-a", "id-admin": "tea-a"},
+			Authz:     adminChecker{},
+		},
+		Client: execSandboxClient(t, "id-b"),
+		Exec:   &ExecConfig{Secret: secret, GatewayURL: gw.URL, Client: gw.Client()},
+	}
+
+	rr := httptest.NewRecorder()
+	err := svc.StreamExec(identityCtx("id-a"), ExecRequest{OwnerID: "tea-a", SandboxID: "os-1", Command: "id"}, rr, rr.Flush)
+	if !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("cross-owner exec = %v, want non-enumerating not found", err)
+	}
+	if gatewayCalls != 0 {
+		t.Fatalf("cross-owner exec reached gateway %d time(s)", gatewayCalls)
+	}
+
+	rr = httptest.NewRecorder()
+	if err := svc.StreamExec(identityCtx("id-admin"), ExecRequest{OwnerID: "tea-a", SandboxID: "os-1", Command: "id"}, rr, rr.Flush); err != nil {
+		t.Fatalf("workspace-admin exec: %v", err)
+	}
+	if gatewayCalls != 1 {
+		t.Fatalf("workspace-admin exec reached gateway %d time(s), want 1", gatewayCalls)
 	}
 }

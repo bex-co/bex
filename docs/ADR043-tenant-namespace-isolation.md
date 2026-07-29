@@ -1,6 +1,6 @@
 # ADR: Per-tenant namespace isolation — workspace = namespace
 
-**Status:** proposed — supersedes the **tenant-boundary mechanism** of [ADR022-tenant-isolation.md](ADR022-tenant-isolation.md) (its "Option B": a shared apps namespace + label-scoped per-App NetworkPolicies). ADR022's _other_ mechanisms (platform-side lockdown, registry access control, tenant container hardening, node/cloud-metadata egress) remain in force — they move _into_ the per-tenant namespace model rather than being discarded. Also refines [ADR042-sandbox-cluster-substrate.md](ADR042-sandbox-cluster-substrate.md) D3 (a shared `bex-sandbox` namespace → per-tenant `<ws>-sandbox`).
+**Status:** accepted and implemented behind `BEX_TENANT_NAMESPACES` / `BEX_TENANT_SANDBOX_NAMESPACES`. Supersedes the **tenant-boundary mechanism** of [ADR022-tenant-isolation.md](ADR022-tenant-isolation.md) (its "Option B": a shared apps namespace + label-scoped per-App NetworkPolicies). ADR022's other mechanisms remain in force and are re-scoped into the per-tenant namespace model. Also refines [ADR042-sandbox-cluster-substrate.md](ADR042-sandbox-cluster-substrate.md) D3.
 
 ## Context
 
@@ -43,7 +43,15 @@ Hosting (`<ws>`, an addressable **service** that serves traffic) and sandbox (`<
 
 ### D3 — zero-trust east-west; enforcement pushed to the lowest layer
 
-All tenant workloads are mutually untrusted. Default-deny between namespaces (tenant↔tenant, hosting↔sandbox); communication is opt-in, namespace-scoped so an allow physically cannot cross tenants, and narrowed to named services/ports. Plan-tier caps move out of bex-api code (`BEX_MAX_*`) into per-namespace `ResourceQuota`/`LimitRange` — enforced by the API server, not bypassable by an application bug.
+All tenant workloads are mutually untrusted. Default-deny applies between namespaces (tenant↔tenant, hosting↔sandbox) **and between sandbox Pods inside one `<ws>-sandbox` namespace**. A workspace groups authorization and quota; it does not make two members' arbitrary code mutually trusted. Hosting retains its intentional same-namespace service allow, while the sandbox regime gets no same-namespace or label-only allow. Cilium admits only the exact `opensandbox-system/opensandbox-server` ServiceAccount and workload identity to sandbox execd TCP 44772.
+
+Sandbox DNS and public egress are Cilium-enforced outside gVisor: only approved DNS names may be queried through CoreDNS UDP/TCP 53, and the matching public destinations are reachable only through `toFQDNs` plus exact TLS SNI on TCP 443. Public-IP traffic without an approved SNI, arbitrary DNS names, private/rebound targets, cluster/service CIDRs, API server, host/remote-node, and link-local metadata remain denied. A socket may use a learned public IP only while presenting the approved SNI; that is the destination identity Cilium can authenticate. The OpenSandbox iptables/nftables egress sidecar is deliberately absent because it is not a valid gVisor enforcement point.
+
+Namespace-scoped Pod RBAC is not sufficient to preserve the host boundary: an authorized but compromised controller could submit a runc Pod. Native API-server admission therefore requires the gVisor RuntimeClass, sandbox node placement and identity, and disabled ServiceAccount token for every Pod in a sandbox-regime namespace, regardless of which controller creates it.
+
+This is reachability control, not data-loss prevention: an approved writable HTTPS destination may still accept data into an attacker-controlled account. The guest receives no platform or tenant credentials; credential brokering and content-aware outbound proxying are separate future controls.
+
+Other communication is opt-in, namespace-scoped so an allow physically cannot cross tenants, and narrowed to named services/ports. Plan-tier caps move out of bex-api code (`BEX_MAX_*`) into per-namespace `ResourceQuota`/`LimitRange` — enforced by the API server, not bypassable by an application bug.
 
 ### D4 — scale-to-zero is preserved (namespace is logical, node pool is physical)
 
@@ -59,6 +67,14 @@ What ADR022 built beyond the boundary choice stays; it is applied per-namespace 
 - Tenant container hardening ([ADR022 §Tenant container hardening](ADR022-tenant-isolation.md#tenant-container-hardening-w7m2)) — unchanged.
 
 Only the **per-App label-scoped NetworkPolicy in a shared namespace as the tenant boundary** (ADR022 t003) is superseded.
+
+### D6 — Dynamic namespace RBAC is admission-confined
+
+The `bex-api` NamespaceReconciler must create and prune namespaces whose names do not exist when its RBAC is installed. Kubernetes RBAC cannot scope a ClusterRole to a namespace-name pattern, and creating a RoleBinding to a ClusterRole requires either holding that role or the `bind` verb. A bare cluster-wide `namespaces` mutation grant plus cluster-wide `rolebindings` mutation and named `bind` grants would therefore make the reconciler's application-code checks the only thing stopping a compromised public `bex-api` Pod from deleting a platform namespace or binding a Secret-bearing tenant role there.
+
+The API server, not bex-api, enforces the missing scope. [`bex-api-namespace-admission.yaml`](../deploy/gitops/base/bex-api-namespace-admission.yaml) installs fail-closed `ValidatingAdmissionPolicy` rules keyed to the exact `system:serviceaccount:bex-system:bex-api` principal. Namespace operations are admitted only when the object is a canonical `tea-<xid>` hosting namespace or its `<ws>-sandbox` counterpart and retains the reconciler's workspace/regime/managed identity plus the exact baseline-enforce/restricted-warn-and-audit Pod Security labels. ResourceQuota, LimitRange, NetworkPolicy, and RoleBinding writes are admitted only inside those canonical namespaces and only for reconciler-owned objects. In a sandbox namespace, NetworkPolicy create/update is further limited to the exact empty-rule `default-deny`; delete is allowed only for the three known legacy broad allows that migration must prune. RoleBinding create/update requires the exact managed name→ClusterRole→ServiceAccount mapping for the regime, while delete accepts any known reconciler-owned binding name from either regime: revocation must still remove a malformed or stale pre-migration grant rather than admission preserving it. The RBAC grant itself contains only verbs the direct controller-runtime create/get/list/update/delete path actually invokes; `patch` and `watch` are absent, and ResourceQuota/LimitRange have no delete. Admission supplies the dynamic object scope RBAC cannot express. Argo sync waves install policy (`-3`) then binding (`-2`) before the authority (`-1`), so initial convergence has no unguarded privilege window.
+
+This is a containment boundary, not an authorization substitute. bex-api remains trusted to manage every real tenant namespace, but its projected ServiceAccount token cannot use that dynamic authority against `bex-system`, `opensandbox-system`, `kube-system`, or another noncanonical namespace.
 
 ## Engaging ADR022's objections to Option A
 

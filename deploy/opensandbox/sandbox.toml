@@ -1,4 +1,6 @@
-# OpenSandbox server config for bex — Docker runtime on the host OrbStack daemon.
+# LEGACY LOCAL-DEV ONLY: OpenSandbox server config for bex — Docker runtime on
+# the host OrbStack daemon. The hosted path is sandbox-cluster.toml under GitOps;
+# this file is intentionally loopback-only and must never back a cluster Service.
 # Runs on a dedicated port (8077) so it shares the host Docker image cache and can
 # reach the local Zot registry; the dokploy-VM OpenSandbox on :8080 cannot.
 # Start with: bash scripts/start-opensandbox.sh
@@ -14,7 +16,7 @@ level = "INFO"
 
 [runtime]
 type = "docker"
-execd_image = "opensandbox/execd:v1.0.16"
+execd_image = "opensandbox/execd:v1.0.16@sha256:af7b55c861926c1304371c4578007fbaa424538219154a6a49a5d636217d2a3a"
 
 [storage]
 allowed_host_paths = []
@@ -36,7 +38,7 @@ seccomp_profile = ""
 mode = "direct"
 
 [egress]
-image = "opensandbox/egress:v1.0.12"
+image = "opensandbox/egress:v1.0.12@sha256:ddf92e8f303c5715c8bbe8f346af80d7f14efaef6d760add92bf50e558b06c2a"
 mode = "dns"
 
 [renew_intent]

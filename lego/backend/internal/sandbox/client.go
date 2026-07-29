@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -31,6 +32,8 @@ import (
 // `<ws>-sandbox` namespace and scopes every lifecycle op there (ADR042 D4, m32
 // t006). bex-api mints one key per workspace and sends it per request.
 const tenantKeyHeader = "OPEN-SANDBOX-API-KEY"
+
+var errOpenSandboxNotFound = errors.New("opensandbox sandbox not found")
 
 // Client is bex-api's in-package OpenSandbox lifecycle client. It is separate
 // from the operator's runtime/opensandbox client (unimportable across the
@@ -51,8 +54,11 @@ func NewClient(baseURL string) *Client {
 // osSandbox is the OpenSandbox server's sandbox representation (a subset).
 // The server's status carries `state` (Running/Suspended/…), validated on prod.
 type osSandbox struct {
-	ID     string `json:"id"`
-	Status struct {
+	ID       string            `json:"id"`
+	Metadata map[string]string `json:"metadata,omitempty"`
+	Created  *time.Time        `json:"createdAt,omitempty"`
+	Image    osImageSpec       `json:"image,omitempty"`
+	Status   struct {
 		State string `json:"state"`
 	} `json:"status"`
 }
@@ -68,6 +74,7 @@ type createRequest struct {
 	ResourceLimits osResourceLimits  `json:"resourceLimits"`
 	Env            map[string]string `json:"env,omitempty"`
 	Metadata       map[string]string `json:"metadata,omitempty"`
+	Timeout        int               `json:"timeout,omitempty"`
 }
 
 type osImageSpec struct {
@@ -114,43 +121,46 @@ func (c *Client) do(ctx context.Context, method, path, tenantKey string, body an
 
 // Create starts a sandbox from a resolved template image and returns its id and
 // mapped status. tenantKey scopes it to the caller's `<ws>-sandbox` namespace.
-func (c *Client) Create(ctx context.Context, tenantKey, image string, entrypoint []string, cpu, memory string, env map[string]string) (string, Status, error) {
+func (c *Client) Create(ctx context.Context, tenantKey, image string, entrypoint []string, cpu, memory string, timeout int, env, metadata map[string]string) (osSandbox, error) {
 	data, code, err := c.do(ctx, http.MethodPost, "/sandboxes", tenantKey, createRequest{
 		Image:          osImageSpec{URI: image},
 		Entrypoint:     entrypoint,
 		ResourceLimits: osResourceLimits{CPU: cpu, Memory: memory},
 		Env:            env,
+		Metadata:       metadata,
+		Timeout:        timeout,
 	})
 	if err != nil {
-		return "", "", err
+		return osSandbox{}, err
 	}
 	if code != http.StatusOK && code != http.StatusCreated && code != http.StatusAccepted {
-		return "", "", fmt.Errorf("opensandbox create: status %d: %s", code, truncate(data))
+		return osSandbox{}, fmt.Errorf("opensandbox create: status %d: %s", code, truncate(data))
 	}
 	var s osSandbox
 	if err := json.Unmarshal(data, &s); err != nil || s.ID == "" {
-		return "", "", fmt.Errorf("opensandbox create: bad response: %s", truncate(data))
+		return osSandbox{}, fmt.Errorf("opensandbox create: bad response: %s", truncate(data))
 	}
-	return s.ID, mapOpenSandboxStatus(s.Status.State), nil
+	return s, nil
 }
 
-// Get returns a sandbox's mapped status.
-func (c *Client) Get(ctx context.Context, tenantKey, id string) (Status, error) {
+// Get returns a sandbox's durable OpenSandbox representation. A missing object
+// remains distinguishable so the service can map it to one non-enumerating 404.
+func (c *Client) Get(ctx context.Context, tenantKey, id string) (osSandbox, error) {
 	data, code, err := c.do(ctx, http.MethodGet, "/sandboxes/"+id, tenantKey, nil)
 	if err != nil {
-		return "", err
+		return osSandbox{}, err
 	}
 	if code == http.StatusNotFound {
-		return StatusTerminated, nil
+		return osSandbox{}, errOpenSandboxNotFound
 	}
 	if code != http.StatusOK {
-		return "", fmt.Errorf("opensandbox get: status %d", code)
+		return osSandbox{}, fmt.Errorf("opensandbox get: status %d", code)
 	}
 	var s osSandbox
-	if err := json.Unmarshal(data, &s); err != nil {
-		return "", fmt.Errorf("opensandbox get: bad response")
+	if err := json.Unmarshal(data, &s); err != nil || s.ID == "" {
+		return osSandbox{}, fmt.Errorf("opensandbox get: bad response")
 	}
-	return mapOpenSandboxStatus(s.Status.State), nil
+	return s, nil
 }
 
 // List returns every sandbox visible to the tenant key (the server scopes to

@@ -142,7 +142,7 @@ bash scripts/datastore-dns-cloudflare.test.sh || { echo "FAIL: datastore Cloudfl
 echo "==> SSH verifier CLI safety gates"
 bash scripts/ssh-verify.test.sh || { echo "FAIL: SSH verifier CLI safety gates" >&2; fail=1; }
 
-for dir in deploy/gitops/base deploy/gitops/overlays/*/ deploy/gitops/charts/*/; do
+for dir in deploy/opensandbox deploy/gitops/base deploy/gitops/overlays/*/ deploy/gitops/charts/*/; do
   [ -f "$dir/kustomization.yaml" ] || continue # e.g. charts/opensandbox-controller is a Helm chart
   echo "==> kustomize build $dir"
   kubectl kustomize "$dir" >/dev/null || { echo "FAIL: $dir does not render" >&2; fail=1; }
@@ -841,7 +841,519 @@ if [ -f "$EGRESS" ]; then
       .metadata.name' "$EGRESS" | tr '\n' ' ')"
   [ -z "$obsolete_platform_allows" ] \
     || { echo "FAIL: obsolete egress allows remain after disabling metadata-policy default-deny: $obsolete_platform_allows" >&2; fail=1; }
+
+  echo "==> sandbox Cilium DNS/FQDN/SNI and lifecycle-server egress boundaries"
+  grep -qF -- '--set l7Proxy=true' .github/workflows/app-cluster.yml \
+    || { echo "FAIL: sandbox TLS SNI policy requires Cilium l7Proxy=true at cluster bootstrap" >&2; fail=1; }
+  sandbox_selector="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-default-deny") |
+      .spec.endpointSelector.matchLabels."app.bex.co/regime"' "$EGRESS" | tr -d '\n')"
+  [ "$sandbox_selector" = "sandbox" ] \
+    || { echo "FAIL: sandbox egress policy must select app.bex.co/regime=sandbox" >&2; fail=1; }
+
+  expected_sandbox_names=$'api.anthropic.com\napi.github.com\napi.openai.com\nfiles.pythonhosted.org\ngithub.com\nobjects.githubusercontent.com\npypi.org\nraw.githubusercontent.com\nregistry.npmjs.org'
+  dns_names="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-default-deny") |
+      .spec.egress[].toPorts[]?.rules.dns[]?.matchName' "$EGRESS" | sort)"
+  fqdn_names="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-default-deny") |
+      .spec.egress[].toFQDNs[]?.matchName' "$EGRESS" | sort)"
+  sni_names="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-default-deny") |
+      .spec.egress[].toPorts[]?.serverNames[]?' "$EGRESS" | sort)"
+  for surface in dns_names fqdn_names sni_names; do
+    actual="${!surface}"
+    [ "$actual" = "$expected_sandbox_names" ] \
+      || { echo "FAIL: sandbox $surface allowlist drifted: $actual" >&2; fail=1; }
+  done
+  if yq -e \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-default-deny") |
+      .. | select(tag == "!!str" and (test("\\*") or . == "world" or . == "0.0.0.0/0"))' \
+    "$EGRESS" >/dev/null 2>&1; then
+    echo "FAIL: sandbox egress policy contains a wildcard/world/public-CIDR allow" >&2
+    fail=1
+  fi
+  sandbox_deny="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-default-deny") |
+      [(.spec.egressDeny[0].toEntities | sort | join(",")),
+       (.spec.egressDeny[1].toCIDR | sort | join(",")),
+       (.spec.egressDeny[2].toCIDR | sort | join(",")),
+       .spec.egressDeny[2].toPorts[0].ports[0].port,
+       .spec.egressDeny[2].toPorts[0].ports[0].protocol] | join(":")' "$EGRESS" | tr -d '\n')"
+  [ "$sandbox_deny" = "host,kube-apiserver,remote-node:169.254.0.0/16,fe80::/10:10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fc00::/7:443:TCP" ] \
+    || { echo "FAIL: sandbox host/node/metadata/private-rebinding deny is '$sandbox_deny'" >&2; fail=1; }
+
+  sandbox_execd_ingress="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-execd-ingress") |
+      [.spec.endpointSelector.matchLabels."app.bex.co/regime",
+       .spec.ingress[0].fromEndpoints[0].matchLabels."k8s:io.kubernetes.pod.namespace",
+       .spec.ingress[0].fromEndpoints[0].matchLabels."k8s:io.cilium.k8s.policy.serviceaccount",
+       .spec.ingress[0].fromEndpoints[0].matchLabels."k8s:app.kubernetes.io/name",
+       .spec.ingress[0].toPorts[0].ports[0].protocol,
+       .spec.ingress[0].toPorts[0].ports[0].port] | join(":")' \
+    "$EGRESS" | tr -d '\n')"
+  [ "$sandbox_execd_ingress" = "sandbox:opensandbox-system:opensandbox-server:opensandbox-server:TCP:44772" ] \
+    || { echo "FAIL: sandbox execd ingress identity is '$sandbox_execd_ingress'" >&2; fail=1; }
+
+  server_ingress="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-server-ingress") |
+      [.spec.endpointSelector.matchLabels."k8s:io.kubernetes.pod.namespace",
+       .spec.endpointSelector.matchLabels."k8s:app.kubernetes.io/name",
+       (.spec.ingress | length | tostring),
+       .spec.ingress[0].fromEndpoints[0].matchLabels."k8s:io.kubernetes.pod.namespace",
+       .spec.ingress[0].fromEndpoints[0].matchLabels."k8s:io.cilium.k8s.policy.serviceaccount",
+       .spec.ingress[0].fromEndpoints[0].matchLabels."k8s:app.kubernetes.io/name",
+       (.spec.ingress[0].toPorts | length | tostring),
+       .spec.ingress[0].toPorts[0].ports[0].protocol,
+       .spec.ingress[0].toPorts[0].ports[0].port] | join(":")' \
+    "$EGRESS" | tr -d '\n')"
+  [ "$server_ingress" = "opensandbox-system:opensandbox-server:1:bex-system:bex-api:bex-api:1:TCP:8077" ] \
+    || { echo "FAIL: lifecycle-server ingress identity is '$server_ingress'" >&2; fail=1; }
+
+  exec_gateway_ingress="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-exec-gateway-ingress") |
+      [.spec.endpointSelector.matchLabels."k8s:io.kubernetes.pod.namespace",
+       .spec.endpointSelector.matchLabels."k8s:io.cilium.k8s.policy.serviceaccount",
+       .spec.endpointSelector.matchLabels."k8s:app.kubernetes.io/name",
+       (.spec.ingressDeny | length | tostring),
+       .spec.ingress[0].fromEndpoints[0].matchLabels."k8s:io.kubernetes.pod.namespace",
+       .spec.ingress[0].fromEndpoints[0].matchLabels."k8s:io.cilium.k8s.policy.serviceaccount",
+       .spec.ingress[0].fromEndpoints[0].matchLabels."k8s:app.kubernetes.io/name",
+       .spec.ingress[0].toPorts[0].ports[0].protocol,
+       .spec.ingress[0].toPorts[0].ports[0].port] | join(":")' \
+    "$EGRESS" | tr -d '\n')"
+  [ "$exec_gateway_ingress" = "bex-system:bex-ssh-gateway:bex-ssh-gateway:4:bex-system:bex-api:bex-api:TCP:8081" ] \
+    || { echo "FAIL: sandbox exec-gateway ingress identity is '$exec_gateway_ingress'" >&2; fail=1; }
+  exec_gateway_deny_keys="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-exec-gateway-ingress") |
+      .spec.ingressDeny[].fromEndpoints[]?.matchExpressions[]?.key' "$EGRESS" | sort)"
+  [ "$exec_gateway_deny_keys" = $'k8s:app.kubernetes.io/name\nk8s:io.cilium.k8s.policy.serviceaccount\nk8s:io.kubernetes.pod.namespace' ] \
+    || { echo "FAIL: sandbox exec-gateway deny complement drifted: '$exec_gateway_deny_keys'" >&2; fail=1; }
+
+  server_selector="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-server-egress") |
+      [.spec.endpointSelector.matchLabels."k8s:io.kubernetes.pod.namespace",
+       .spec.endpointSelector.matchLabels."k8s:app.kubernetes.io/name"] | join(":")' "$EGRESS" | tr -d '\n')"
+  server_ports="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-server-egress") |
+      .spec.egress[].toPorts[]?.ports[]?.port' "$EGRESS" | sort -n | paste -sd, -)"
+  server_entities="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-server-egress") |
+      .spec.egress[].toEntities[]?' "$EGRESS" | sort | paste -sd, -)"
+  if [ "$server_selector" != "opensandbox-system:opensandbox-server" ] \
+    || [ "$server_ports" != "53,443,8091,44772" ] \
+    || [ "$server_entities" != "kube-apiserver" ]; then
+    echo "FAIL: lifecycle-server egress is selector=$server_selector ports=$server_ports entities=$server_entities" >&2
+    fail=1
+  fi
+
+  local_cilium="$(kubectl kustomize deploy/gitops/overlays/local | yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and
+      (.metadata.name == "sandbox-egress-default-deny" or
+       .metadata.name == "sandbox-execd-ingress" or
+       .metadata.name == "opensandbox-server-ingress" or
+       .metadata.name == "sandbox-exec-gateway-ingress" or
+       .metadata.name == "opensandbox-server-egress" or
+       .metadata.name == "opensandbox-controller-egress")) |
+      .metadata.name' - | tr '\n' ' ')"
+  [ -z "$local_cilium" ] \
+    || { echo "FAIL: non-Cilium local overlay retained sandbox policy resources: $local_cilium" >&2; fail=1; }
 fi
+
+# OpenSandbox lifecycle-server GitOps shape (w3/m35): gVisor + immutable
+# dependencies, no shared API key, least-privilege cluster reads, exact ingress,
+# and an out-of-band control-plane bearer rendered into the TOML at pod start.
+echo "==> hardened OpenSandbox lifecycle server GitOps shape"
+opensandbox_render="$(kubectl kustomize deploy/opensandbox)"
+opensandbox_runtime="$(yq -N \
+  'select(.kind == "RuntimeClass" and .metadata.name == "gvisor") |
+    [.handler, .scheduling.nodeSelector."bex.co/pool",
+     .scheduling.tolerations[0].key, .scheduling.tolerations[0].value,
+     .scheduling.tolerations[0].effect] | join(":")' - <<<"$opensandbox_render" | tr -d '\n')"
+[ "$opensandbox_runtime" = "runsc:sandbox:bex.co/sandbox:true:NoSchedule" ] \
+  || { echo "FAIL: gVisor RuntimeClass shape is '$opensandbox_runtime'" >&2; fail=1; }
+
+opensandbox_pod="$(yq -N \
+  'select(.kind == "Deployment" and .metadata.name == "opensandbox-server") |
+    [.spec.template.spec.serviceAccountName,
+     .spec.template.spec.nodeSelector."bex.co/pool",
+     .spec.template.spec.securityContext.runAsNonRoot,
+     .spec.template.spec.securityContext.runAsUser,
+     .spec.template.spec.securityContext.seccompProfile.type,
+     .spec.template.spec.initContainers[0].env[0].valueFrom.secretKeyRef.name,
+     .spec.template.spec.initContainers[0].env[0].valueFrom.secretKeyRef.key] | join(":")' \
+  - <<<"$opensandbox_render" | tr -d '\n')"
+[ "$opensandbox_pod" = "opensandbox-server:platform:true:10001:RuntimeDefault:opensandbox-server-auth:cp_token" ] \
+  || { echo "FAIL: lifecycle-server pod hardening is '$opensandbox_pod'" >&2; fail=1; }
+opensandbox_config_ref="$(yq -N \
+  'select(.kind == "Deployment" and .metadata.name == "opensandbox-server") |
+    .spec.template.spec.volumes[] | select(.name == "config-template") | .configMap.name' \
+  - <<<"$opensandbox_render" | tr -d '\n')"
+case "$opensandbox_config_ref" in
+  opensandbox-config-*) ;;
+  *) echo "FAIL: OpenSandbox config has no content hash to trigger rollout: '$opensandbox_config_ref'" >&2; fail=1 ;;
+esac
+
+opensandbox_images="$(yq -N \
+  'select(.kind == "Deployment" and .metadata.name == "opensandbox-server") |
+    .spec.template.spec | [.initContainers[].image, .containers[].image] | .[]' \
+  - <<<"$opensandbox_render")"
+if [ "$(wc -l <<<"$opensandbox_images" | tr -d ' ')" -ne 2 ] \
+  || grep -q ':latest' <<<"$opensandbox_images" \
+  || grep -Evq '^ghcr.io/bex-co/opensandbox-server@sha256:[a-f0-9]{64}$' <<<"$opensandbox_images"; then
+  echo "FAIL: lifecycle-server images must use a CI-written digest or fail-closed bootstrap digest: $opensandbox_images" >&2
+  fail=1
+fi
+if ! grep -qE '^    digest: sha256:[a-f0-9]{64}$' deploy/opensandbox/kustomization.yaml \
+  || grep -qE '^    newTag:' deploy/opensandbox/kustomization.yaml; then
+  echo "FAIL: OpenSandbox GitOps must never expose a mutable bootstrap tag" >&2
+  fail=1
+fi
+
+opensandbox_cluster_verbs="$(yq -N \
+  'select(.kind == "ClusterRole" and .metadata.name == "opensandbox-server") |
+    .rules[].verbs[]' - <<<"$opensandbox_render" | sort -u | paste -sd, -)"
+[ "$opensandbox_cluster_verbs" = "get,list,watch" ] \
+  || { echo "FAIL: lifecycle server cluster verbs are '$opensandbox_cluster_verbs', want read-only" >&2; fail=1; }
+opensandbox_runtimeclass_rbac="$(yq -N \
+  'select(.kind == "ClusterRole" and .metadata.name == "opensandbox-server") |
+    .rules[] | select(.apiGroups[]? == "node.k8s.io") |
+    [(.resources | join(",")), (.resourceNames | join(",")), (.verbs | join(","))] | join(":")' \
+  - <<<"$opensandbox_render" | tr -d '\n')"
+[ "$opensandbox_runtimeclass_rbac" = "runtimeclasses:gvisor:get" ] \
+  || { echo "FAIL: lifecycle server RuntimeClass read is '$opensandbox_runtimeclass_rbac'" >&2; fail=1; }
+if yq -e \
+  'select(.kind == "ClusterRole" and .metadata.name == "opensandbox-server") |
+    .rules[] | select(.resources[]? == "namespaces")' \
+  - <<<"$opensandbox_render" >/dev/null 2>&1; then
+  echo "FAIL: lifecycle server does not need cluster-wide Namespace reads" >&2
+  fail=1
+fi
+if yq -e \
+  'select(.kind == "ClusterRoleBinding" and .roleRef.name == "bex-tenant-sandbox-server")' \
+  - <<<"$opensandbox_render" >/dev/null 2>&1; then
+  echo "FAIL: mutation-capable tenant sandbox role must never receive a ClusterRoleBinding" >&2
+  fail=1
+fi
+
+opensandbox_ingress="$(yq -N \
+  'select(.kind == "NetworkPolicy" and .metadata.name == "admit-only-bex-api") |
+    [.metadata.namespace,
+     .spec.podSelector.matchLabels."app.kubernetes.io/name",
+     (.spec | has("ingress") | tostring),
+     (.spec.ingress | length | tostring)] | join(":")' - <<<"$opensandbox_render" | tr -d '\n')"
+[ "$opensandbox_ingress" = "opensandbox-system:opensandbox-server:true:0" ] \
+  || { echo "FAIL: lifecycle-server ingress is '$opensandbox_ingress'" >&2; fail=1; }
+
+batchsandbox_shape="$(yq -N \
+  '[.metadata.labels."app.bex.co/regime",
+    .spec.template.metadata.labels."app.bex.co/regime",
+    .spec.template.spec.runtimeClassName,
+    .spec.template.spec.automountServiceAccountToken,
+    .spec.template.spec.nodeSelector."bex.co/pool",
+    .spec.template.spec.tolerations[0].key,
+    .spec.template.spec.tolerations[0].value,
+    .spec.template.spec.tolerations[0].effect] | join(":")' \
+  deploy/opensandbox/batchsandbox-template.yaml | tr -d '\n')"
+[ "$batchsandbox_shape" = "sandbox:sandbox:gvisor:false:sandbox:bex.co/sandbox:true:NoSchedule" ] \
+  || { echo "FAIL: BatchSandbox security shape is '$batchsandbox_shape'" >&2; fail=1; }
+
+for required in \
+  '[secure_runtime]' \
+  'type = "gvisor"' \
+  'k8s_runtime_class = "gvisor"' \
+  'execd_image = "opensandbox/execd:v1.0.16@sha256:af7b55c861926c1304371c4578007fbaa424538219154a6a49a5d636217d2a3a"' \
+  'auth_token = "Bearer __BEX_CP_TOKEN__"'; do
+  grep -qF "$required" deploy/opensandbox/sandbox-cluster.toml \
+    || { echo "FAIL: sandbox-cluster.toml lost: $required" >&2; fail=1; }
+done
+if grep -Eq '^[[:space:]]*(\[egress\]|OPENSANDBOX_(INSECURE_SERVER|SERVER_API_KEY)|api_key[[:space:]]*=)' \
+  deploy/opensandbox/sandbox-cluster.toml deploy/opensandbox/server-in-cluster.yaml; then
+  echo "FAIL: OpenSandbox config restored the gVisor-incompatible sidecar or a shared/insecure server credential" >&2
+  fail=1
+fi
+if ! grep -qF 'ARG OPENSANDBOX_SERVER_VERSION=0.2.2' deploy/opensandbox/server.Dockerfile \
+  || ! grep -qF 'COPY requirements.lock' deploy/opensandbox/server.Dockerfile \
+  || ! grep -qF 'opensandbox-server==${OPENSANDBOX_SERVER_VERSION}' deploy/opensandbox/server.Dockerfile \
+  || ! grep -qxF 'opensandbox-server==0.2.2' deploy/opensandbox/requirements.lock \
+  || grep -qE '^FROM .*:latest' deploy/opensandbox/server.Dockerfile; then
+  echo "FAIL: OpenSandbox server package/base image must stay deliberately pinned" >&2
+  fail=1
+fi
+if grep -Ev '^[[:space:]]*(#.*|$|[A-Za-z0-9_.-]+==[^[:space:]]+)$' deploy/opensandbox/requirements.lock >/dev/null; then
+  echo "FAIL: OpenSandbox requirements.lock contains an unpinned dependency" >&2
+  fail=1
+fi
+for legacy_config in deploy/opensandbox/sandbox.toml deploy/opensandbox/sandbox-k8s.toml; do
+  for required in \
+    'LEGACY LOCAL-DEV ONLY' \
+    'execd_image = "opensandbox/execd:v1.0.16@sha256:af7b55c861926c1304371c4578007fbaa424538219154a6a49a5d636217d2a3a"' \
+    'image = "opensandbox/egress:v1.0.12@sha256:ddf92e8f303c5715c8bbe8f346af80d7f14efaef6d760add92bf50e558b06c2a"'; do
+    grep -qF "$required" "$legacy_config" \
+      || { echo "FAIL: $legacy_config lost legacy-path pin/guard: $required" >&2; fail=1; }
+  done
+done
+for legacy_start in scripts/start-opensandbox.sh scripts/start-opensandbox-k8s.sh; do
+  grep -qF 'uvx --from opensandbox-server==0.2.2' "$legacy_start" \
+    || { echo "FAIL: $legacy_start must pin opensandbox-server" >&2; fail=1; }
+done
+
+opensandbox_app="$(yq -N \
+  'select(.kind == "Application" and .metadata.name == "opensandbox-server") |
+    [.metadata.annotations."argocd.argoproj.io/sync-wave", .spec.source.path] | join(":")' \
+  deploy/gitops/base/opensandbox-server.yaml | tr -d '\n')"
+[ "$opensandbox_app" = "2:deploy/opensandbox" ] \
+  || { echo "FAIL: OpenSandbox GitOps Application is '$opensandbox_app'" >&2; fail=1; }
+
+opensandbox_controller_render="$(helm template opensandbox-controller \
+  deploy/gitops/charts/opensandbox-controller -n opensandbox-system \
+  -f deploy/gitops/base/values/opensandbox-controller.values.yaml \
+  -f deploy/gitops/overlays/prod/values/opensandbox-controller.values.yaml)"
+controller_image="$(yq -N \
+  'select(.kind == "Deployment" and .metadata.name == "opensandbox-controller-manager") |
+    .spec.template.spec.containers[0].image' - <<<"$opensandbox_controller_render" | tr -d '\n')"
+expected_controller_image='sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/controller:v0.2.0@sha256:a9a5f73c1785ebd955336ffa313973a35c1a1b662cb7afc4ea82d92021b3532a'
+[ "$controller_image" = "$expected_controller_image" ] \
+  || { echo "FAIL: OpenSandbox controller image is '$controller_image'" >&2; fail=1; }
+controller_args="$(yq -N \
+  'select(.kind == "Deployment" and .metadata.name == "opensandbox-controller-manager") |
+    .spec.template.spec.containers[0].args[]' - <<<"$opensandbox_controller_render")"
+for required in \
+  '--image-committer-image=sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/image-committer:v0.1.0@sha256:d72cce22ff1ea248e86620e945b7cf12615db74c8a8402fcc01dbfa4a09e7442'; do
+  grep -qFx -- "$required" <<<"$controller_args" \
+    || { echo "FAIL: production OpenSandbox controller lost: $required" >&2; fail=1; }
+done
+if grep -Eq '^--snapshot-(registry|registry-insecure|push-secret)|^--resume-pull-secret' <<<"$controller_args"; then
+  echo "FAIL: production OpenSandbox controller enabled unavailable snapshot transport/credentials" >&2
+  fail=1
+fi
+controller_cluster_verbs="$(yq -N \
+  'select(.kind == "ClusterRole") | .rules[].verbs[]' - <<<"$opensandbox_controller_render" | sort -u | paste -sd, -)"
+[ "$controller_cluster_verbs" = "get,list,watch" ] \
+  || { echo "FAIL: OpenSandbox controller cluster verbs are '$controller_cluster_verbs', want informer-only" >&2; fail=1; }
+controller_system_mutations="$(yq -N \
+  'select(.kind == "Role" and .metadata.namespace == "opensandbox-system") |
+    .rules[].resources[]' - <<<"$opensandbox_controller_render" | sort -u | paste -sd, -)"
+[ "$controller_system_mutations" = "events,leases" ] \
+  || { echo "FAIL: controller system-namespace mutation resources are '$controller_system_mutations'" >&2; fail=1; }
+if yq -e \
+  'select(.kind == "ClusterRole" and
+    (.metadata.name == "opensandbox-manager-role" or .metadata.name == "bex-tenant-sandbox-controller")) |
+    .rules[] | select(.resources[]? == "secrets")' \
+  - <<<"$(printf '%s\n%s' "$opensandbox_controller_render" "$(kubectl kustomize deploy/gitops/base)")" >/dev/null 2>&1; then
+  echo "FAIL: OpenSandbox controller has Secret access while snapshot credential flags are disabled" >&2
+  fail=1
+fi
+if yq -e \
+  'select(.kind == "ClusterRoleBinding" and
+    (.roleRef.name == "bex-tenant-sandbox-controller" or .roleRef.name == "bex-tenant-sandbox-server"))' \
+  - <<<"$(printf '%s\n%s' "$opensandbox_controller_render" "$opensandbox_render")" >/dev/null 2>&1; then
+  echo "FAIL: an OpenSandbox mutation role received a ClusterRoleBinding" >&2
+  fail=1
+fi
+if yq -e \
+  'select(.kind == "RoleBinding" and .metadata.namespace == "opensandbox-system" and
+    (.roleRef.name == "bex-tenant-sandbox-controller" or .roleRef.name == "bex-tenant-sandbox-server"))' \
+  - <<<"$opensandbox_render" >/dev/null 2>&1; then
+  echo "FAIL: OpenSandbox mutation roles must not create Pods in the credential-bearing system namespace" >&2
+  fail=1
+fi
+sandbox_bind_roles="$(yq -N \
+  'select(.kind == "ClusterRole" and .metadata.name == "bex-api-namespaces") |
+    .rules[] | select(.verbs[]? == "bind") | .resourceNames[]' \
+  deploy/gitops/base/bex-api-namespace-rbac.yaml | sort)"
+expected_sandbox_bind_roles=$'bex-tenant-api\nbex-tenant-operator\nbex-tenant-sandbox-controller\nbex-tenant-sandbox-server\nbex-tenant-ssh-gateway'
+[ "$sandbox_bind_roles" = "$expected_sandbox_bind_roles" ] \
+  || { echo "FAIL: namespace reconciler bind allowlist is '$sandbox_bind_roles'" >&2; fail=1; }
+namespace_rolebinding_verbs="$(yq -N \
+  'select(.kind == "ClusterRole" and .metadata.name == "bex-api-namespaces") |
+    .rules[] | select(.resources[]? == "rolebindings") | .verbs[]' \
+  deploy/gitops/base/bex-api-namespace-rbac.yaml | sort | paste -sd, -)"
+[ "$namespace_rolebinding_verbs" = "create,delete,get,list,update" ] \
+  || { echo "FAIL: namespace reconciler RoleBinding verbs are '$namespace_rolebinding_verbs'" >&2; fail=1; }
+namespace_object_verbs="$(yq -N \
+  'select(.kind == "ClusterRole" and .metadata.name == "bex-api-namespaces") |
+    .rules[] | select(.verbs[]? != "bind") |
+    [(.resources | sort | join("+")), (.verbs | sort | join(","))] | join(":")' \
+  deploy/gitops/base/bex-api-namespace-rbac.yaml | sed '/^$/d' | sort)"
+expected_namespace_object_verbs=$'limitranges+resourcequotas:create,get,update\nnamespaces:create,delete,get,list,update\nnetworkpolicies:create,delete,get,list,update\nrolebindings:create,delete,get,list,update'
+[ "$namespace_object_verbs" = "$expected_namespace_object_verbs" ] \
+  || { echo "FAIL: namespace reconciler object verbs drifted: '$namespace_object_verbs'" >&2; fail=1; }
+namespace_admission_render="$(kubectl kustomize deploy/gitops/base | yq \
+  'select((.kind == "ValidatingAdmissionPolicy" or .kind == "ValidatingAdmissionPolicyBinding") and
+    (.metadata.name == "bex-api-tenant-namespaces" or .metadata.name == "bex-api-tenant-namespace-objects"))')"
+namespace_admission_objects="$(yq -N \
+  '[.kind, .metadata.name,
+    (.metadata.annotations."argocd.argoproj.io/sync-wave" // ""),
+    (.spec.failurePolicy // ""),
+    ((.spec.validationActions // []) | join(","))] | join(":")' \
+  - <<<"$namespace_admission_render" | sort)"
+expected_namespace_admission_objects=$'ValidatingAdmissionPolicy:bex-api-tenant-namespace-objects:-3:Fail:\nValidatingAdmissionPolicy:bex-api-tenant-namespaces:-3:Fail:\nValidatingAdmissionPolicyBinding:bex-api-tenant-namespace-objects:-2::Deny,Audit\nValidatingAdmissionPolicyBinding:bex-api-tenant-namespaces:-2::Deny,Audit'
+[ "$namespace_admission_objects" = "$expected_namespace_admission_objects" ] \
+  || { echo "FAIL: namespace admission policy/binding shape drifted" >&2; fail=1; }
+namespace_rbac_waves="$(yq -N \
+  'select((.kind == "ClusterRole" or .kind == "ClusterRoleBinding") and .metadata.name == "bex-api-namespaces") |
+    [.kind, .metadata.annotations."argocd.argoproj.io/sync-wave"] | join(":")' \
+  deploy/gitops/base/bex-api-namespace-rbac.yaml | sort)"
+expected_namespace_rbac_waves=$'ClusterRole:-1\nClusterRoleBinding:-1'
+[ "$namespace_rbac_waves" = "$expected_namespace_rbac_waves" ] \
+  || { echo "FAIL: NamespaceReconciler RBAC must sync only after its admission boundary" >&2; fail=1; }
+for required_guard in \
+  "request.userInfo.username == 'system:serviceaccount:bex-system:bex-api'" \
+  "matches('^tea-[0-9a-v]{20}$')" \
+  "variables.target.metadata.name == variables.workspace + '-sandbox'" \
+  "metadata.?labels['pod-security.kubernetes.io/enforce'].orValue('') == 'baseline'" \
+  "request.resource.resource != 'networkpolicies'" \
+  "variables.target.metadata.name == 'default-deny'" \
+  "variables.target.metadata.name in ['allow-same-namespace', 'allow-dns-egress', 'allow-opensandbox-server-execd']" \
+  "request.resource.resource != 'rolebindings'" \
+  "request.operation == 'DELETE'" \
+  "variables.target.metadata.name == variables.target.roleRef.name" \
+  "variables.target.roleRef.name == 'bex-tenant-operator'" \
+  "variables.target.roleRef.name == 'bex-tenant-sandbox-server'" \
+  "variables.target.roleRef.name in ['bex-tenant-sandbox-server', 'bex-tenant-sandbox-controller', 'bex-tenant-ssh-gateway']" \
+  "variables.target.subjects[0].name == 'opensandbox-controller-manager'"; do
+  grep -qF "$required_guard" deploy/gitops/base/bex-api-namespace-admission.yaml \
+    || { echo "FAIL: NamespaceReconciler admission guard lost: $required_guard" >&2; fail=1; }
+done
+sandbox_pod_admission_render="$(kubectl kustomize deploy/gitops/base | yq \
+  'select((.kind == "ValidatingAdmissionPolicy" or .kind == "ValidatingAdmissionPolicyBinding") and
+    .metadata.name == "bex-sandbox-pods")')"
+sandbox_pod_admission_objects="$(yq -N \
+  '[.kind, .metadata.name,
+    (.metadata.annotations."argocd.argoproj.io/sync-wave" // ""),
+    (.spec.failurePolicy // ""),
+    ((.spec.validationActions // []) | join(","))] | join(":")' \
+  - <<<"$sandbox_pod_admission_render" | sort)"
+expected_sandbox_pod_admission_objects=$'ValidatingAdmissionPolicy:bex-sandbox-pods:-3:Fail:\nValidatingAdmissionPolicyBinding:bex-sandbox-pods:-2::Deny,Audit'
+[ "$sandbox_pod_admission_objects" = "$expected_sandbox_pod_admission_objects" ] \
+  || { echo "FAIL: sandbox Pod admission policy/binding shape drifted" >&2; fail=1; }
+sandbox_pod_admission_rule="$(yq -N \
+  'select(.kind == "ValidatingAdmissionPolicy" and .metadata.name == "bex-sandbox-pods") |
+    [.spec.matchConstraints.resourceRules[0].resources[0],
+     (.spec.matchConstraints.resourceRules[0].operations | sort | join(","))] | join(":")' \
+  - <<<"$sandbox_pod_admission_render" | tr -d '\n')"
+[ "$sandbox_pod_admission_rule" = "pods:CREATE,UPDATE" ] \
+  || { echo "FAIL: sandbox Pod admission match is '$sandbox_pod_admission_rule'" >&2; fail=1; }
+for required_guard in \
+  "namespaceObject.metadata.?labels['app.bex.co/regime'].orValue('') == 'sandbox'" \
+  "object.metadata.?labels['app.bex.co/regime'].orValue('') == 'sandbox'" \
+  "object.spec.runtimeClassName == 'gvisor'" \
+  "object.spec.automountServiceAccountToken == false" \
+  "object.spec.nodeSelector['bex.co/pool'] == 'sandbox'" \
+  "request.operation != 'CREATE' || !has(object.spec.nodeName)"; do
+  grep -qF "$required_guard" deploy/gitops/base/sandbox-pod-admission.yaml \
+    || { echo "FAIL: sandbox Pod admission guard lost: $required_guard" >&2; fail=1; }
+done
+controller_egress_selector="$(yq -N \
+  'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-controller-egress") |
+    [.spec.endpointSelector.matchLabels."k8s:io.kubernetes.pod.namespace",
+     .spec.endpointSelector.matchLabels."k8s:io.cilium.k8s.policy.serviceaccount",
+     .spec.endpointSelector.matchLabels."k8s:app.kubernetes.io/name",
+     .spec.egress[0].toEntities[0],
+     .spec.egress[0].toPorts[0].ports[0].port] | join(":")' \
+  "$EGRESS" | tr -d '\n')"
+[ "$controller_egress_selector" = "opensandbox-system:opensandbox-controller-manager:opensandbox:kube-apiserver:443" ] \
+  || { echo "FAIL: OpenSandbox controller egress is '$controller_egress_selector'" >&2; fail=1; }
+server_policy_identities="$(yq -N \
+  'select(.kind == "CiliumClusterwideNetworkPolicy" and
+    (.metadata.name == "opensandbox-server-ingress" or .metadata.name == "opensandbox-server-egress")) |
+    [.metadata.name,
+     .spec.endpointSelector.matchLabels."k8s:io.cilium.k8s.policy.serviceaccount"] | join(":")' \
+  "$EGRESS" | sed '/^$/d' | sort)"
+expected_server_policy_identities=$'opensandbox-server-egress:opensandbox-server\nopensandbox-server-ingress:opensandbox-server'
+[ "$server_policy_identities" = "$expected_server_policy_identities" ] \
+  || { echo "FAIL: lifecycle-server Cilium policy identities drifted: '$server_policy_identities'" >&2; fail=1; }
+server_callback_identity="$(yq -N \
+  'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-server-egress") |
+    .spec.egress[] | select(.toEndpoints[0].matchLabels."k8s:io.kubernetes.pod.namespace" == "bex-system") |
+    .toEndpoints[0].matchLabels."k8s:io.cilium.k8s.policy.serviceaccount"' \
+  "$EGRESS" | tr -d '\n')"
+[ "$server_callback_identity" = "bex-api" ] \
+  || { echo "FAIL: lifecycle-server callback lost bex-api ServiceAccount identity" >&2; fail=1; }
+server_dns_names="$(yq -N \
+  'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-server-egress") |
+    .spec.egress[].toPorts[]?.rules.dns[]?.matchName' \
+  "$EGRESS" | sed '/^$/d' | sort | paste -sd, -)"
+expected_server_dns_names='bex-api.bex-system.svc.cluster.local,bex-api.bex-system.svc.opensandbox-system.svc.cluster.local,bex-api.bex-system.svc.svc.cluster.local'
+[ "$server_dns_names" = "$expected_server_dns_names" ] \
+  || { echo "FAIL: lifecycle-server DNS allowlist drifted: '$server_dns_names'" >&2; fail=1; }
+controller_dns_rules="$(yq -N \
+  'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-controller-egress") |
+    .spec.egress[].toPorts[]? | select(has("rules")) | .rules.dns[]?.matchName' \
+  "$EGRESS" | sed '/^$/d' | wc -l | tr -d ' ')"
+[ "$controller_dns_rules" = "0" ] \
+  || { echo "FAIL: OpenSandbox controller regained a raw DNS egress rule" >&2; fail=1; }
+controller_pod_identity="$(yq -N \
+  'select(.kind == "Deployment" and .metadata.name == "opensandbox-controller-manager") |
+    [.metadata.namespace, .spec.template.spec.serviceAccountName,
+     .spec.template.metadata.labels."app.kubernetes.io/name"] | join(":")' \
+  - <<<"$opensandbox_controller_render" | tr -d '\n')"
+[ "$controller_pod_identity" = "opensandbox-system:opensandbox-controller-manager:opensandbox" ] \
+  || { echo "FAIL: rendered OpenSandbox controller identity drifted: '$controller_pod_identity'" >&2; fail=1; }
+if kubectl kustomize deploy/gitops/overlays/local | yq -e \
+  'select(.kind == "Application" and .metadata.name == "opensandbox-server")' - >/dev/null 2>&1; then
+  echo "FAIL: local overlay must omit the gVisor/Cilium-only OpenSandbox server" >&2
+  fail=1
+fi
+for required in \
+  'build-args: OPENSANDBOX_SERVER_VERSION=0.2.2' \
+  '${{ env.OPENSANDBOX_IMAGE }}@${{ steps.build_opensandbox.outputs.digest }}' \
+  'group: bex-production-deploy' \
+  'git diff --quiet "$GITHUB_SHA" origin/main' \
+  'production inputs advanced while this run was building' \
+  '[[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]' \
+  'grep -qF "digest: ${OPENSANDBOX_DIGEST}"' \
+  'deploy/opensandbox/kustomization.yaml' \
+  'git push origin HEAD:main' \
+  'bash scripts/opensandbox-server-secret.sh'; do
+  grep -qF "$required" .github/workflows/deploy.yml \
+    || { echo "FAIL: deploy workflow lost OpenSandbox supply-chain/secret step: $required" >&2; fail=1; }
+done
+if grep -qF 'git reset --soft HEAD~1' .github/workflows/deploy.yml; then
+  echo "FAIL: deploy workflow restored the broken digest write-back retry" >&2
+  fail=1
+fi
+bash -n scripts/opensandbox-server-secret.sh \
+  || { echo "FAIL: opensandbox-server-secret.sh is not valid shell" >&2; fail=1; }
+grep -qF '"path":"/data/api_key"' scripts/opensandbox-server-secret.sh \
+  || { echo "FAIL: OpenSandbox Secret convergence no longer removes the legacy shared api_key" >&2; fail=1; }
+bash -n scripts/verify-sandbox-isolation.sh \
+  || { echo "FAIL: verify-sandbox-isolation.sh is not valid shell" >&2; fail=1; }
+for required_probe in \
+  'api.github.com' \
+  '169.254.169.254' \
+  'learned approved public IP with approved SNI' \
+  'private Kubernetes API target with approved SNI' \
+  'sandbox to Kubernetes API' \
+  'same-workspace peer execd' \
+  'cross-workspace peer execd' \
+  'digest-pinned execd or unexpectedly gained an egress sidecar' \
+  'bex-api label spoof on the default ServiceAccount' \
+  'bex-api namespace + ServiceAccount + workload identity' \
+  'lifecycle-server DNS exfiltration' \
+  'controller DNS exfiltration' \
+  'NamespaceReconciler admission boundary' \
+  'sandbox PSS downgrade' \
+  'arbitrary sandbox NetworkPolicy' \
+  'sandbox Pod admission allowed non-sandbox node placement' \
+  'sandbox Pod admission allowed automatic ServiceAccount-token mounting' \
+  'sandbox Pod admission allowed omission of the sandbox regime identity' \
+  'sandbox baseline Pod Security allowed a hostPath mount' \
+  'admission boundary allowed relabeling kube-system' \
+  'SANDBOX_NETWORK_POLICY_UNSUPPORTED' \
+  'preflight_cluster' \
+  'BEX_PREFLIGHT_ONLY' \
+  'preflight-only mode made no fixture or API mutation' \
+  'hardening resource' \
+  'enable-l7-proxy' \
+  'unique DNS-exfiltration query' \
+  'Hubble drops do not contain the unique denied DNS-exfiltration query' \
+  'unix:///var/run/cilium/hubble.sock' \
+  'hubble observe'; do
+  grep -qF "$required_probe" scripts/verify-sandbox-isolation.sh \
+    || { echo "FAIL: sandbox isolation verifier lost probe: $required_probe" >&2; fail=1; }
+done
 
 # Untrusted-execution boundary (w2/m59, ADR039 O-01/O-02). These assertions are
 # intentionally source-level as well as covered by kustomize rendering above:

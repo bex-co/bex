@@ -70,7 +70,7 @@ func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Respo
 	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
 		return nil, err
 	}
-	if !s.execEnabled() {
+	if !s.execEnabled() || !s.enabled() {
 		return nil, core.ErrSandboxesUnavailable
 	}
 	if req.SandboxID == "" || req.Command == "" {
@@ -79,6 +79,13 @@ func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Respo
 	ws, ok := s.Tenant(ctx)
 	if !ok {
 		return nil, fmt.Errorf("%w: no workspace resolved for exec", core.ErrForbidden)
+	}
+	key, err := s.workspaceKey(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.ownedSandbox(ctx, key, ws, req.SandboxID); err != nil {
+		return nil, err
 	}
 	subject := ""
 	if idn, ok := core.IdentityFrom(ctx); ok {

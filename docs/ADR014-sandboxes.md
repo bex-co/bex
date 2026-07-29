@@ -1,6 +1,8 @@
 # ADR: E2B-compatible sandboxes — opensandbox pause/resume as hosted agent execution environments
 
-**Status:** proposed — the sandbox-gateway design record for pillar 5. Originally written for `.pm/w2/m3` (removed 2026-07-08 when pillar 5 was paused); pillar 5 was **re-opened 2026-07-27** and is now tracked as `.pm/w3/m32`. [ADR042-sandbox-cluster-substrate.md](ADR042-sandbox-cluster-substrate.md) refines this ADR's substrate and surface assumptions: the substrate is a multi-node OpenSandbox **Kubernetes**-runtime cluster (not the single-host Docker server), isolation is Kata/microVM, `/v1/sandboxes*` serves the **Render CLI `ea sandbox`** wire shapes (displacing D2's E2B REST lifecycle shapes — E2B REST and gRPC parity are both deferred), and pause/resume is **rootfs-only** on the k8s substrate (D5's ~80 ms memory-preserving wake does not carry over). D0–D7 otherwise still govern the bex-api gateway side. No product code yet.
+**Status:** accepted gateway design. Pillar 5 was re-opened 2026-07-27 and create/list/get/exec/stop now run through a multi-node OpenSandbox **Kubernetes** runtime under gVisor. [ADR042-sandbox-cluster-substrate.md](ADR042-sandbox-cluster-substrate.md) is authoritative for the substrate, Render `ea sandbox` wire shapes, network/RBAC threat model, and rootfs-only pause limitation; E2B REST/gRPC compatibility remains deferred.
+
+The original context and D2/D4–D6 discussion below are retained as design history. Where they describe a single-host Docker runtime, E2B routes, memory-preserving pause, or an unwired gateway, ADR042's implemented Kubernetes/Render contract supersedes them.
 
 ## Context
 
@@ -72,6 +74,12 @@ Serve E2B's REST **lifecycle** shapes so E2B lifecycle tooling transfers. Spawn 
 
 Claude Code / any agent drives sandboxes **from outside** via MCP tools — `spawn_sandbox` and `sandbox_exec` (`run_code`) — following the shipped adapter pattern of the per-feature `mcp.go` fragments in `lego/backend/internal/` (streamable-HTTP at `/mcp` behind the auth gate; stdio via `api mcp-stdio`). The sandbox holds the agent's (untrusted) generated code; the agent stays outside. _(Deferred, not chosen: Claude Code running **inside** the sandbox as a hosted workspace — a different product that needs a per-sandbox external URL + gateway auth that does not exist yet.)_
 
+#### D3a — Security boundary for external drivers
+
+Every sandbox is mutually untrusted, including two sandboxes in the same workspace. gVisor is the syscall/kernel boundary; Cilium outside the guest removes same-namespace lateral traffic, filters DNS queries, and admits only platform-approved FQDN+TLS-SNI egress. There is no OpenSandbox iptables/nftables egress sidecar and no raw DNS exception. The exact source/destination/port/authentication matrix is normative in [ADR042 D4](ADR042-sandbox-cluster-substrate.md#d4--security-the-bex-api--opensandbox-link-is-a-single-trusted-hop).
+
+The gateway persists reserved owner and workspace metadata and checks it after the ordinary workspace authorization on list/get/lifecycle/exec. An owner or explicit workspace administrator may operate the sandbox; every other caller receives the same not-found result as for an absent id. The lifecycle server and controller have cluster-wide informer-only RBAC (the controller cannot read Secrets cluster-wide); Kubernetes mutations come from RoleBindings scoped to provisioned `<ws>-sandbox` namespaces, and ingress to lifecycle TCP 8077 plus exec-gateway TCP 8081 selects the exact bex-api Pod and ServiceAccount identity rather than trusting its whole namespace.
+
 ### D4 — Idle-hibernate = gateway-observed autoPause
 
 The gateway tracks per-sandbox **last-activity** (every connect/exec resets it). A background sweeper pauses sandboxes past their idle window (opensandbox `Pause`); the next connect/exec on a paused sandbox **resumes first** (opensandbox `Resume`) — wake-on-connect. This reuses the `spec.idleTTLSeconds` semantics (declared but unread today, per [ADR007-restart-suspend-and-resume.md](ADR007-restart-suspend-and-resume.md)) and maps 1:1 to E2B's `autoPause`. Idle state is **soft** — the sweeper's timers are rebuildable by listing opensandbox sandboxes on startup, since the opensandbox store is the source of truth.
@@ -106,13 +114,13 @@ Because bex-api is the single funnel (D1), it is the natural **admission-control
 | memory + processes + fs (inside sandbox) | **pause/resume** | opensandbox snapshot | strong — full memory+fs, like E2B |
 | sandbox rootfs | **not `kill`** | — | `kill` is destructive by design |
 | data meant to outlive a sandbox | across `kill` / new sandbox | persistent **volume** (opensandbox `[storage]`) | deferred (t004 "persistent sandbox volumes") |
-| owner → sandbox (reconnect) | across sessions | sandbox id + `metadata.owner` | blocked on tenancy |
+| owner → sandbox (reconnect) | across sessions | sandbox id + reserved owner/workspace metadata | implemented; owner or explicit workspace admin only |
 | the snapshot store itself | **host loss** | single-host sqlite + disk | no HA |
 
 The stance: **a sandbox is an ephemeral session** (D0). Its in-sandbox state is faithfully preserved **across pause/resume** and **deliberately destroyed on `kill`** — that is the contract, not a bug. Everything more durable is an explicit, deferred layer:
 
 - **Persistence beyond a sandbox → volumes.** To keep data across `kill` or share it across sandboxes, mount an opensandbox volume (bex's counterpart to E2B `volumeMounts`); the rootfs is never the durable store. **Deferred**, aligned with t004's out-of-scope.
-- **Per-user ownership keys on the resolved caller identity.** Reconnect works off the sandbox id + `metadata.owner`; bex-api now resolves a real caller (OAuth2 `client_id` or Kratos identity, `api.IdentityFrom` — [ADR012-auth.md](ADR012-auth.md)), so the gateway stamps that identity as the owner on `Create` and scopes list/connect to it. Full multi-tenant isolation (quotas, cross-tenant guarantees) still matures with the control plane, but ownership is no longer a single shared token.
+- **Per-user ownership keys on the resolved caller identity.** Reconnect works off the sandbox id plus reserved owner, workspace, sandbox-regime, and effective-policy metadata. The gateway stamps these values on `Create`; list/get/lifecycle/exec hide other members' objects and incompletely hardened resources behind the same not-found response. Only an explicit workspace administrator may override the owner check. Caller metadata is not accepted, and legacy ownerless objects fail closed. Exec calls this same centralized resource check before minting the ssh-gateway ticket.
 - **No durability beyond the host.** All sandboxes and snapshots live on the single opensandbox host's sqlite + disk — host loss loses them, the same no-HA gap [ADR002-architecture.md](ADR002-architecture.md) flags for App state in single-node etcd. HA/replication waits on a multi-node runtime.
 
 ## Alternatives considered

@@ -7,45 +7,58 @@
 # lifecycle + the in-namespace object management below — the bex-api-apps Role
 # (secrets/pods in one namespace) does NOT cover it.
 #
-# Least-privilege preserved: this grants NAMESPACE MANAGEMENT, not Secret reads —
-# the deliberate omission of cluster-wide `secrets` from bex-api (ADR028, guarded
-# by scripts/gitops-validate.sh) is untouched. Inert until BEX_TENANT_NAMESPACES
-# is set (the reconciler doesn't run otherwise), so applying it changes nothing
-# on its own.
+# Least-privilege preserved: this grants NAMESPACE MANAGEMENT, not Secret reads.
+# Kubernetes RBAC cannot name dynamic namespaces, so the API-server CEL policies
+# in bex-api-namespace-admission.yaml additionally reject this ServiceAccount's
+# writes outside canonical bex-managed tenant namespaces and exact RoleBindings.
+# The deliberate omission of cluster-wide `secrets` from bex-api (ADR028,
+# guarded by scripts/gitops-validate.sh) is untouched. Inert until
+# BEX_TENANT_NAMESPACES is set (the reconciler doesn't run otherwise).
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: bex-api-namespaces
+  annotations:
+    # Admission policy (-3) and binding (-2) must exist before this dynamic
+    # cluster authority is installed or expanded.
+    argocd.argoproj.io/sync-wave: "-1"
 rules:
   # Namespace lifecycle (create on workspace create, delete on workspace delete)
-  # plus update/patch so the reconciler can converge managed labels on an
+  # plus update so the reconciler can converge managed labels on an
   # existing namespace (applyObject's create-then-update path).
   - apiGroups: [""]
     resources: ["namespaces"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    verbs: ["get", "list", "create", "update", "delete"]
   # Base isolation objects the reconciler applies INTO each `<ws>` namespace.
   - apiGroups: [""]
     resources: ["resourcequotas", "limitranges"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    verbs: ["get", "create", "update"]
   - apiGroups: ["networking.k8s.io"]
     resources: ["networkpolicies"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    verbs: ["get", "list", "create", "update", "delete"]
   # The per-`<ws>` RoleBindings (t003). Creating a RoleBinding that references a
   # ClusterRole requires either holding that role's rules or `bind` on it; the
   # bind grant below satisfies the RBAC escalation-prevention check without
   # handing bex-api the tenant roles' own (Secret-bearing) permissions.
   - apiGroups: ["rbac.authorization.k8s.io"]
     resources: ["rolebindings"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    verbs: ["get", "list", "create", "update", "delete"]
   - apiGroups: ["rbac.authorization.k8s.io"]
     resources: ["clusterroles"]
-    resourceNames: ["bex-tenant-operator", "bex-tenant-api", "bex-tenant-ssh-gateway", "bex-tenant-sandbox-server"]
+    resourceNames:
+      - bex-tenant-operator
+      - bex-tenant-api
+      - bex-tenant-ssh-gateway
+      - bex-tenant-sandbox-server
+      - bex-tenant-sandbox-controller
     verbs: ["bind"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: bex-api-namespaces
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

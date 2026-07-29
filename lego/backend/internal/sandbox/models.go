@@ -25,6 +25,8 @@ limitations under the License.
 // binary is byte-identical to before this feature.
 package sandbox
 
+import "time"
+
 // Plan is the Render-compatible sandbox compute size (SandboxPlan in the CLI's
 // OpenAPI client). bex maps these onto its own sizing at Create time.
 type Plan string
@@ -73,17 +75,27 @@ type Sandbox struct {
 	NetworkPolicy  *NetworkPolicy `json:"networkPolicy,omitempty"`
 	Owner          string         `json:"owner,omitempty"`
 	Workspace      string         `json:"workspace,omitempty"`
+	CreatedAt      *time.Time     `json:"createdAt,omitempty"`
 	// Image is the resolved template image (bex Create is template-based,
 	// ADR014 D2) — informational; the request never picks an arbitrary image.
 	Image string `json:"image,omitempty"`
 }
 
-// NetworkPolicy mirrors Render's per-sandbox network posture. bex accepts and
-// reflects it, but the effective policy is the `<ws>-sandbox` namespace boundary
-// (ADR042 D3 / ADR043 D2), not a per-sandbox setting (ea-sandbox.md §Divergences).
+// NetworkPolicy mirrors Render's per-sandbox outbound posture. The gVisor
+// substrate currently supports only deny-all: Cilium supplies the
+// platform-managed DNS/FQDN allowlist outside the guest. Accepting allow-all
+// would claim a posture the platform intentionally cannot provide.
 type NetworkPolicy struct {
-	Default string `json:"default,omitempty"`
+	Default NetworkPolicyDefault `json:"default"`
 }
+
+// NetworkPolicyDefault is Render's exact sandboxNetworkPolicy.default enum.
+type NetworkPolicyDefault string
+
+const (
+	NetworkPolicyAllowAll NetworkPolicyDefault = "allow-all"
+	NetworkPolicyDenyAll  NetworkPolicyDefault = "deny-all"
+)
 
 // SandboxEnvelope wraps a Sandbox for the Render CLI's list surface, which reads
 // a cursor-paginated array of `{ sandbox, cursor }` items, not a bare array

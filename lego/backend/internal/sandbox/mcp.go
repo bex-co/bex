@@ -18,17 +18,24 @@ package sandbox
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // spawnSandboxArgs is the MCP input for spawn_sandbox. Template selects a
 // registered image; plan is the Render-compatible size; ownerId scopes the
 // workspace (empty => the caller's default).
 type spawnSandboxArgs struct {
-	Template string `json:"template"`
-	Plan     string `json:"plan,omitempty"`
-	OwnerID  string `json:"ownerId,omitempty"`
+	Template       string         `json:"template,omitempty"`
+	Plan           string         `json:"plan,omitempty"`
+	OwnerID        string         `json:"ownerId,omitempty"`
+	Region         string         `json:"region,omitempty"`
+	TimeoutSeconds int            `json:"timeoutSeconds,omitempty"`
+	NetworkPolicy  *NetworkPolicy `json:"networkPolicy,omitempty"`
 }
 
 type sandboxIDArgs struct {
@@ -51,6 +58,17 @@ type execSandboxArgs struct {
 	OwnerID string `json:"ownerId,omitempty"`
 }
 
+// mcpError keeps the domain's machine-readable refusal name visible in MCP's
+// text error content. REST carries it in `code` and GraphQL in `extensions`;
+// the MCP SDK otherwise serializes only Error(), which would erase the name.
+func mcpError(err error) error {
+	var coded *core.CodedError
+	if errors.As(err, &coded) {
+		return fmt.Errorf("%s: %w", coded.Code, err)
+	}
+	return err
+}
+
 // RegisterMCP wires the agent-facing sandbox tools (ADR042 D2 / ADR014 D3 —
 // agents drive sandboxes from outside over MCP). spawn_sandbox mirrors the
 // Render `ea sandbox create` intent; sandbox_exec runs a command via the same
@@ -58,22 +76,29 @@ type execSandboxArgs struct {
 func (s *Service) RegisterMCP(server *mcp.Server) {
 	mcp.AddTool(server, &mcp.Tool{Name: "spawn_sandbox", Description: "Create a hosted agent sandbox from a registered template and return its id and status."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in spawnSandboxArgs) (*mcp.CallToolResult, Sandbox, error) {
-			sb, err := s.Create(ctx, CreateRequest{OwnerID: in.OwnerID, Template: in.Template, Plan: Plan(in.Plan)})
-			return nil, sb, err
+			sb, err := s.Create(ctx, CreateRequest{
+				OwnerID:        in.OwnerID,
+				Template:       in.Template,
+				Plan:           Plan(in.Plan),
+				Region:         in.Region,
+				TimeoutSeconds: in.TimeoutSeconds,
+				NetworkPolicy:  in.NetworkPolicy,
+			})
+			return nil, sb, mcpError(err)
 		})
 	mcp.AddTool(server, &mcp.Tool{Name: "list_sandboxes", Description: "List the caller's workspace's sandboxes with their statuses."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listSandboxesResult, error) {
 			out, err := s.List(ctx)
-			return nil, listSandboxesResult{Sandboxes: out}, err
+			return nil, listSandboxesResult{Sandboxes: out}, mcpError(err)
 		})
 	mcp.AddTool(server, &mcp.Tool{Name: "stop_sandbox", Description: "Terminate a sandbox by id."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in sandboxIDArgs) (*mcp.CallToolResult, stopSandboxResult, error) {
 			err := s.Terminate(ctx, in.ID)
-			return nil, stopSandboxResult{Stopped: err == nil}, err
+			return nil, stopSandboxResult{Stopped: err == nil}, mcpError(err)
 		})
 	mcp.AddTool(server, &mcp.Tool{Name: "sandbox_exec", Description: "Run a shell command in a sandbox and return its stdout, stderr, and exit code."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in execSandboxArgs) (*mcp.CallToolResult, ExecResult, error) {
 			res, err := s.ExecBuffered(ctx, ExecRequest{OwnerID: in.OwnerID, SandboxID: in.ID, Command: in.Command})
-			return nil, res, err
+			return nil, res, mcpError(err)
 		})
 }

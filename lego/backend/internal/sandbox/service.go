@@ -18,9 +18,27 @@ package sandbox
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"k8s.io/apimachinery/pkg/util/validation"
+)
+
+const (
+	metadataOwner         = "bex.co/owner"
+	metadataWorkspace     = "bex.co/workspace"
+	metadataNetworkPolicy = "bex.co/network-policy"
+	metadataPlan          = "bex.co/plan"
+	metadataRegion        = "bex.co/region"
+	metadataTimeout       = "bex.co/timeout-seconds"
+	metadataRegime        = "app.bex.co/regime"
+	metadataSandboxRegime = "sandbox"
+	minSandboxTimeout     = 60
+	maxSandboxTimeout     = 86400
 )
 
 // KeyProvider mints/looks up a workspace's OpenSandbox tenant key (OSEP-0014):
@@ -94,6 +112,155 @@ func (s *Service) workspaceKey(ctx context.Context) (string, error) {
 	return s.Keys.WorkspaceKey(ctx, ws)
 }
 
+func normalizeNetworkPolicy(policy *NetworkPolicy) (*NetworkPolicy, error) {
+	if policy == nil || policy.Default == "" {
+		return &NetworkPolicy{Default: NetworkPolicyDenyAll}, nil
+	}
+	if policy.Default != NetworkPolicyDenyAll {
+		return nil, core.NewBadRequestError(
+			"SANDBOX_NETWORK_POLICY_UNSUPPORTED",
+			fmt.Sprintf("sandbox networkPolicy.default %q is unsupported; only %q is enforced", policy.Default, NetworkPolicyDenyAll),
+			map[string]any{"field": "networkPolicy.default", "supported": []string{string(NetworkPolicyDenyAll)}},
+		)
+	}
+	return &NetworkPolicy{Default: NetworkPolicyDenyAll}, nil
+}
+
+func validateCreateMetadata(region string, timeout int) error {
+	if region != "" && len(validation.IsValidLabelValue(region)) != 0 {
+		return core.NewBadRequestError(
+			"SANDBOX_REGION_INVALID",
+			"sandbox region must be a Kubernetes label-safe value",
+			map[string]any{"field": "region"},
+		)
+	}
+	if timeout < 0 || (timeout > 0 && timeout < minSandboxTimeout) || timeout > maxSandboxTimeout {
+		return core.NewBadRequestError(
+			"SANDBOX_TIMEOUT_INVALID",
+			fmt.Sprintf("sandbox timeoutSeconds must be 0 (no expiry) or between %d and %d", minSandboxTimeout, maxSandboxTimeout),
+			map[string]any{"field": "timeoutSeconds", "minimumNonZero": minSandboxTimeout, "max": maxSandboxTimeout},
+		)
+	}
+	return nil
+}
+
+// ownerID is stable and Kubernetes-label-safe because OpenSandbox persists
+// request metadata as labels. Normal identity ids round-trip unchanged; an
+// unusual subject is represented by a non-reversible digest instead of being
+// rejected or written into metadata in an invalid form.
+func ownerID(ctx context.Context) string {
+	id, ok := core.IdentityFrom(ctx)
+	if !ok || id.Subject == "" {
+		return "local"
+	}
+	if len(validation.IsValidLabelValue(id.Subject)) == 0 {
+		return id.Subject
+	}
+	sum := sha256.Sum256([]byte(id.Subject))
+	return "subject-" + hex.EncodeToString(sum[:20])
+}
+
+func workspaceID(s *Service, ctx context.Context) string {
+	if ws, ok := s.Tenant(ctx); ok {
+		return ws
+	}
+	return core.DefaultTenant
+}
+
+func sandboxMetadata(ctx context.Context, workspace string, plan Plan, region string, timeout int, policy *NetworkPolicy) map[string]string {
+	metadata := map[string]string{
+		metadataOwner:         ownerID(ctx),
+		metadataWorkspace:     workspace,
+		metadataNetworkPolicy: string(policy.Default),
+		metadataPlan:          string(plan),
+		metadataTimeout:       strconv.Itoa(timeout),
+		metadataRegime:        metadataSandboxRegime,
+	}
+	if region != "" {
+		metadata[metadataRegion] = region
+	}
+	return metadata
+}
+
+func sandboxNotFound(id string) error {
+	return core.NewNotFoundError("SANDBOX_NOT_FOUND", "sandbox not found", map[string]any{"id": id})
+}
+
+func (s *Service) isWorkspaceAdmin(ctx context.Context, workspace string) (bool, error) {
+	if s.Authz == nil {
+		return false, nil
+	}
+	id, ok := core.IdentityFrom(ctx)
+	if !ok {
+		return false, core.ErrForbidden
+	}
+	allowed, err := s.Authz.Check(ctx, "user:"+id.Subject, core.RelCanManage, core.WorkspaceObject(workspace))
+	if err != nil {
+		return false, fmt.Errorf("%w: %v", core.ErrAuthzUnavailable, err)
+	}
+	return allowed, nil
+}
+
+func validOwnedSandbox(raw osSandbox, workspace string) bool {
+	return raw.ID != "" &&
+		raw.Metadata[metadataOwner] != "" &&
+		raw.Metadata[metadataWorkspace] == workspace &&
+		raw.Metadata[metadataRegime] == metadataSandboxRegime &&
+		raw.Metadata[metadataNetworkPolicy] == string(NetworkPolicyDenyAll)
+}
+
+func (s *Service) mayAccessSandbox(ctx context.Context, workspace string, raw osSandbox) (bool, error) {
+	if !validOwnedSandbox(raw, workspace) {
+		return false, nil // legacy, foreign, or incompletely hardened metadata fails closed
+	}
+	if raw.Metadata[metadataOwner] == ownerID(ctx) {
+		return true, nil
+	}
+	return s.isWorkspaceAdmin(ctx, workspace)
+}
+
+// ownedSandbox resolves one durable OpenSandbox object and applies the shared
+// owner/admin boundary used by reads, lifecycle verbs, and exec. Returning the
+// same named not-found for absent, foreign, legacy, or incompletely hardened
+// objects prevents every adapter from becoming an existence oracle.
+func (s *Service) ownedSandbox(ctx context.Context, key, workspace, id string) (osSandbox, error) {
+	raw, err := s.Client.Get(ctx, key, id)
+	if err != nil {
+		if errors.Is(err, errOpenSandboxNotFound) {
+			return osSandbox{}, sandboxNotFound(id)
+		}
+		return osSandbox{}, err
+	}
+	allowed, err := s.mayAccessSandbox(ctx, workspace, raw)
+	if err != nil {
+		return osSandbox{}, err
+	}
+	if !allowed {
+		return osSandbox{}, sandboxNotFound(id)
+	}
+	return raw, nil
+}
+
+func sandboxFromOpenSandbox(raw osSandbox, workspace string) Sandbox {
+	policy := &NetworkPolicy{Default: NetworkPolicyDefault(raw.Metadata[metadataNetworkPolicy])}
+	if policy.Default == "" {
+		policy = nil
+	}
+	timeout, _ := strconv.Atoi(raw.Metadata[metadataTimeout])
+	return Sandbox{
+		ID:             raw.ID,
+		Plan:           Plan(raw.Metadata[metadataPlan]),
+		Status:         mapOpenSandboxStatus(raw.Status.State),
+		Region:         raw.Metadata[metadataRegion],
+		TimeoutSeconds: timeout,
+		NetworkPolicy:  policy,
+		Owner:          raw.Metadata[metadataOwner],
+		Workspace:      raw.Metadata[metadataWorkspace],
+		CreatedAt:      raw.Created,
+		Image:          raw.Image.URI,
+	}
+}
+
 // Create authorizes, resolves the template, and starts a sandbox scoped to the
 // caller's workspace.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (Sandbox, error) {
@@ -111,6 +278,13 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if plan != "" && !ValidPlan(plan) {
 		return Sandbox{}, fmt.Errorf("%w: unknown plan %q", core.ErrBadRequest, plan)
 	}
+	if err := validateCreateMetadata(req.Region, req.TimeoutSeconds); err != nil {
+		return Sandbox{}, err
+	}
+	policy, err := normalizeNetworkPolicy(req.NetworkPolicy)
+	if err != nil {
+		return Sandbox{}, err
+	}
 	name := req.Template
 	if name == "" {
 		name = s.DefaultTemplate // Render CLI create sends no template — use the default.
@@ -123,7 +297,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if err != nil {
 		return Sandbox{}, err
 	}
-	ws, _ := s.Tenant(ctx) // resolved workspace (default or named), for response metadata
+	ws := workspaceID(s, ctx)
 	cpu, mem := tmpl.CPU, tmpl.Memory
 	if cpu == "" {
 		cpu = "500m"
@@ -135,18 +309,24 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if len(entry) == 0 {
 		entry = []string{"sleep", "infinity"}
 	}
-	id, status, err := s.Client.Create(ctx, key, tmpl.Image, entry, cpu, mem, nil)
+	metadata := sandboxMetadata(ctx, ws, plan, req.Region, req.TimeoutSeconds, policy)
+	raw, err := s.Client.Create(ctx, key, tmpl.Image, entry, cpu, mem, req.TimeoutSeconds, nil, metadata)
 	if err != nil {
 		return Sandbox{}, err
 	}
-	owner := ""
-	if idn, ok := core.IdentityFrom(ctx); ok {
-		owner = idn.Subject
+	if raw.Metadata == nil {
+		raw.Metadata = make(map[string]string, len(metadata))
 	}
-	return Sandbox{
-		ID: id, Plan: plan, Status: status, Owner: owner, Workspace: ws, Image: tmpl.Image,
-		Region: req.Region, TimeoutSeconds: req.TimeoutSeconds, NetworkPolicy: req.NetworkPolicy,
-	}, nil
+	// The create response is informational; use the exact server-bound values
+	// even when an OpenSandbox version omits or partially echoes metadata. Durable
+	// list/get authorization still reads the separately persisted upstream copy.
+	for key, value := range metadata {
+		raw.Metadata[key] = value
+	}
+	if raw.Image.URI == "" {
+		raw.Image.URI = tmpl.Image
+	}
+	return sandboxFromOpenSandbox(raw, ws), nil
 }
 
 // List returns the caller's workspace's sandboxes (tenant-key-scoped).
@@ -161,14 +341,34 @@ func (s *Service) List(ctx context.Context) ([]Sandbox, error) {
 	if err != nil {
 		return nil, err
 	}
-	ws, _ := s.Tenant(ctx) // resolved workspace (default or named), for response metadata
+	ws := workspaceID(s, ctx)
 	raw, err := s.Client.List(ctx, key)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]Sandbox, 0, len(raw))
+	callerOwner := ownerID(ctx)
+	admin, adminChecked := false, false
 	for _, r := range raw {
-		out = append(out, Sandbox{ID: r.ID, Status: mapOpenSandboxStatus(r.Status.State), Workspace: ws})
+		if !validOwnedSandbox(r, ws) {
+			continue
+		}
+		if r.Metadata[metadataOwner] == callerOwner {
+			out = append(out, sandboxFromOpenSandbox(r, ws))
+			continue
+		}
+		// A list can contain many sandboxes owned by other members. Resolve the
+		// workspace-admin override once, not once per object/FGA round trip.
+		if !adminChecked {
+			admin, err = s.isWorkspaceAdmin(ctx, ws)
+			if err != nil {
+				return nil, err
+			}
+			adminChecked = true
+		}
+		if admin {
+			out = append(out, sandboxFromOpenSandbox(r, ws))
+		}
 	}
 	return out, nil
 }
@@ -185,11 +385,12 @@ func (s *Service) Get(ctx context.Context, id string) (Sandbox, error) {
 	if err != nil {
 		return Sandbox{}, err
 	}
-	status, err := s.Client.Get(ctx, key, id)
+	ws := workspaceID(s, ctx)
+	raw, err := s.ownedSandbox(ctx, key, ws, id)
 	if err != nil {
 		return Sandbox{}, err
 	}
-	return Sandbox{ID: id, Status: status}, nil
+	return sandboxFromOpenSandbox(raw, ws), nil
 }
 
 // Suspend/Resume/Terminate are the lifecycle verbs; suspend/resume need operate,
@@ -223,6 +424,10 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, op func(ct
 	}
 	key, err := s.workspaceKey(ctx)
 	if err != nil {
+		return err
+	}
+	ws := workspaceID(s, ctx)
+	if _, err := s.ownedSandbox(ctx, key, ws, id); err != nil {
 		return err
 	}
 	return op(ctx, key, id)

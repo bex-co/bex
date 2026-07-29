@@ -1,0 +1,21 @@
+# OpenSandbox lifecycle server + gVisor RuntimeClass. The child Application owns
+# deploy/opensandbox; secret bytes remain out of band.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: opensandbox-server
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:bex-co/bex.git
+    targetRevision: main
+    path: deploy/opensandbox
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: opensandbox-system
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]

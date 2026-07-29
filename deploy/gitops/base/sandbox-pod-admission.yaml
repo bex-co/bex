@@ -1,0 +1,46 @@
+# API-server enforcement for the sandbox host boundary (ADR042 / w3/m35).
+#
+# The OpenSandbox server/controller need Pod or Job mutation inside provisioned
+# `<ws>-sandbox` namespaces. Their checked-in template is not an authorization
+# boundary: a compromised component could otherwise create an ordinary runc Pod
+# and bypass gVisor. This policy applies to every Pod creator, including the
+# Kubernetes Job controller, based on the trusted namespace regime label.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: bex-sandbox-pods
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+  matchConditions:
+    - name: sandbox-namespace
+      expression: >-
+        namespaceObject != null &&
+        namespaceObject.metadata.?labels['app.bex.co/regime'].orValue('') == 'sandbox'
+  validations:
+    - expression: >-
+        object.metadata.?labels['app.bex.co/regime'].orValue('') == 'sandbox' &&
+        has(object.spec.runtimeClassName) && object.spec.runtimeClassName == 'gvisor' &&
+        has(object.spec.automountServiceAccountToken) && object.spec.automountServiceAccountToken == false &&
+        has(object.spec.nodeSelector) &&
+        'bex.co/pool' in object.spec.nodeSelector && object.spec.nodeSelector['bex.co/pool'] == 'sandbox' &&
+        (request.operation != 'CREATE' || !has(object.spec.nodeName) || object.spec.nodeName == '')
+      reason: Forbidden
+      message: sandbox Pods must retain the gVisor runtime, scheduler-enforced sandbox placement, regime identity, and disabled ServiceAccount token
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: bex-sandbox-pods
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  policyName: bex-sandbox-pods
+  validationActions: [Deny, Audit]

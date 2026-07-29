@@ -1,17 +1,10 @@
 # In-cluster OpenSandbox lifecycle server (ADR042 D1 / w3/m32 t002).
 #
-# APPLIED + VALIDATED on prod 2026-07-28: image built from server.Dockerfile and
-# pushed to Zot; server runs; POST /sandboxes creates a BatchSandbox → the
-# controller schedules a pod on the gVisor sandbox node (runtimeClassName gvisor,
-# kernel 4.19.0-gvisor); list/delete round-trip. Two corrections vs the first
-# draft that live testing forced: (1) the BatchSandbox apiGroup is
-# `sandbox.opensandbox.io` (below); (2) sandbox PODS run in a SEPARATE
-# baseline-PSS namespace (`bex-sandbox` here; per-tenant `<ws>-sandbox` in prod) —
-# untrusted sandbox pods (execd-installer/sandbox containers) cannot satisfy the
-# `restricted` PSS this platform namespace enforces, and gVisor is the isolation
-# boundary, so baseline is correct. The server needs a Zot imagePullSecret and,
-# for a first bring-up, OPENSANDBOX_INSECURE_SERVER=YES (multi-tenant api_key +
-# the HTTP tenant-lookup provider are the t006 hardening). bex-api's
+# GitOps owns this server and its security configuration. Sandbox Pods run in
+# per-tenant `<ws>-sandbox` baseline-PSS namespaces; gVisor is the host boundary.
+# The HTTP tenant provider authenticates every per-workspace key, so the server
+# must never run with OPENSANDBOX_INSECURE_SERVER or a shared server API key.
+# bex-api's
 # BEX_OPENSANDBOX_URL points at the Service below
 # (http://opensandbox-server.opensandbox-system.svc:8077).
 ---
@@ -32,24 +25,27 @@ metadata:
   name: opensandbox-server
   namespace: opensandbox-system
 ---
-# The server drives BatchSandbox CRs and (multi-tenant) resources in each
-# `<ws>-sandbox` namespace. Cluster-scoped read of namespaces + a ClusterRole
-# for the BatchSandbox CRDs; the per-`<ws>-sandbox` write grants are stamped by
-# the tenant-namespace reconciler alongside the operator grants (m31 t003 pattern).
+# Cluster-wide authority is informer-only. All mutation comes exclusively from
+# the per-`<ws>-sandbox` RoleBindings stamped by the NamespaceReconciler.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
+  # Keep the pre-GitOps object name so Argo converges the previously hand-applied
+  # mutation role in place instead of leaving it active beside a new role.
   name: opensandbox-server
 rules:
   - apiGroups: ["sandbox.opensandbox.io"]
     resources: ["batchsandboxes", "pools", "sandboxsnapshots"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  - apiGroups: [""]
-    resources: ["pods", "pods/log", "services", "configmaps"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  - apiGroups: [""]
-    resources: ["namespaces"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+  # OpenSandbox resolves and verifies secure_runtime at startup. RuntimeClass
+  # is cluster-scoped, but only an exact-name read is needed by the client.
+  - apiGroups: ["node.k8s.io"]
+    resources: ["runtimeclasses"]
+    resourceNames: ["gvisor"]
+    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -75,20 +71,6 @@ spec:
     requests:
       storage: 5Gi
 ---
-# The cluster TOML (sandbox-cluster.toml, t002) + the BatchSandbox template are
-# mounted from ConfigMaps. Generated from the checked-in files at deploy time;
-# shown here as the mount contract (kustomize configMapGenerator populates them).
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: opensandbox-config
-  namespace: opensandbox-system
-data:
-  # sandbox-cluster.toml: from deploy/opensandbox/sandbox-cluster.toml
-  # batchsandbox-template.yaml: from deploy/opensandbox/batchsandbox-template.yaml
-  #   (with Kata + sandbox-pool scheduling stamped by t004)
-  placeholder: "populated by kustomize configMapGenerator from the checked-in files"
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -98,6 +80,8 @@ metadata:
     app.kubernetes.io/name: opensandbox-server
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: opensandbox-server
@@ -107,30 +91,71 @@ spec:
         app.kubernetes.io/name: opensandbox-server
     spec:
       serviceAccountName: opensandbox-server
+      nodeSelector:
+        bex.co/pool: platform
+      tolerations:
+        - key: bex.co/platform
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
+        fsGroup: 10001
         seccompProfile:
           type: RuntimeDefault
-      containers:
-        - name: server
-          # Pinned to the Zot-hosted image built from server.Dockerfile; the
-          # deploy pipeline rewrites this to the built digest.
-          image: zot.bex-registry.svc:5000/opensandbox-server:latest
-          args: ["--config", "/etc/opensandbox/sandbox-cluster.toml"]
+      initContainers:
+        - name: render-config
+          image: opensandbox-server:0.2.2
+          command:
+            - python
+            - -c
+            - |
+              import os
+              import re
+              from pathlib import Path
+              source = Path("/config-template/sandbox-cluster.toml").read_text()
+              marker = "__BEX_CP_TOKEN__"
+              token = os.environ["BEX_CP_TOKEN"]
+              if source.count(marker) != 1:
+                  raise SystemExit("sandbox config must contain exactly one token marker")
+              if not re.fullmatch(r"[A-Za-z0-9._~-]{32,256}", token):
+                  raise SystemExit("control-plane token has an unsafe format")
+              Path("/rendered/sandbox-cluster.toml").write_text(source.replace(marker, token))
           env:
-            # Shared api_key (defense in depth behind the admit-only-bex-api
-            # NetworkPolicy) + the tenant-provider bearer, from a Secret.
-            - name: OPENSANDBOX_SERVER_API_KEY
+            - name: BEX_CP_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: opensandbox-server-auth
-                  key: api_key
+                  key: cp_token
+          volumeMounts:
+            - name: config-template
+              mountPath: /config-template
+              readOnly: true
+            - name: rendered-config
+              mountPath: /rendered
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+      containers:
+        - name: server
+          # CI rewrites the kustomize image to the pushed content digest.
+          image: opensandbox-server:0.2.2
+          args: ["--config", "/etc/opensandbox/sandbox-cluster.toml"]
           ports:
             - name: http
               containerPort: 8077
           volumeMounts:
-            - name: config
+            - name: rendered-config
               mountPath: /etc/opensandbox
               readOnly: true
             - name: store
@@ -140,15 +165,30 @@ spec:
               path: /health
               port: http
             initialDelaySeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
       volumes:
-        - name: config
+        - name: config-template
           configMap:
             name: opensandbox-config
+        - name: rendered-config
+          emptyDir: {}
         - name: store
           persistentVolumeClaim:
             claimName: opensandbox-store
@@ -166,12 +206,16 @@ spec:
       port: 8077
       targetPort: http
 ---
-# Single trusted hop (ADR042 D4 / t006): admit ONLY bex-api (bex-system) to the
-# server; deny tenant + sandbox pods. Combined with the `<ws>-sandbox` egress-deny
-# (t005), a compromised sandbox cannot bypass bex-api to drive the lifecycle API.
+# Defense-in-depth ingress default deny. The positive allow is the Cilium
+# `opensandbox-server-ingress` policy in tenant-node-egress.yaml, which matches
+# bex-api's namespace, ServiceAccount, and workload label. A portable Kubernetes
+# NetworkPolicy cannot authenticate the source ServiceAccount and would allow a
+# label-spoofing Pod, so it deliberately contains no positive rule here.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
+  # Preserve the legacy object name so the former label-only allow is replaced
+  # rather than surviving as an additive policy beside this deny.
   name: admit-only-bex-api
   namespace: opensandbox-system
 spec:
@@ -179,11 +223,6 @@ spec:
     matchLabels:
       app.kubernetes.io/name: opensandbox-server
   policyTypes: ["Ingress"]
-  ingress:
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: bex-system
-      ports:
-        - protocol: TCP
-          port: 8077
+  # Explicit empty list overwrites the legacy object's positive rule even when
+  # that hand-applied object has no Argo/client-side last-applied annotation.
+  ingress: []

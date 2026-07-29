@@ -1,12 +1,12 @@
-# ADR: Sandbox cluster substrate — multi-node OpenSandbox, Kata isolation, and the bex-api gateway
+# ADR: Sandbox cluster substrate — multi-node OpenSandbox, gVisor isolation, and the bex-api gateway
 
-**Status:** proposed — the architectural design for the **re-opened pillar 5** (re-open authorized 2026-07-27, reversing [`.pm/DO_NOT_DO.md`](../.pm/DO_NOT_DO.md) #18); no substrate or gateway code yet. It refines the substrate and surface assumptions of [ADR014-sandboxes.md](ADR014-sandboxes.md); ADR014 remains the sandbox-gateway design record (D0–D7 still govern the bex-api side, except D2's E2B REST lifecycle shapes — displaced by the Render `ea sandbox` shapes, see D2). Amended 2026-07-27 after [ADR043-tenant-namespace-isolation.md](ADR043-tenant-namespace-isolation.md): D3/D4 now specify per-tenant `<ws>-sandbox` namespaces and OpenSandbox multi-tenant mode (the original text had a single shared `bex-sandbox` namespace and a single shared `api_key`).
+**Status:** accepted and implemented for create/list/get/exec/stop on the Kubernetes/gVisor substrate. m33 exec landed concurrently with the checked-in m35 security hardening; production-equivalent adversarial verification remains the closeout gate before any further sandbox expansion. This ADR refines [ADR014-sandboxes.md](ADR014-sandboxes.md); Render `ea sandbox` shapes displace that ADR's original E2B lifecycle routes.
 
 ## Context
 
 Pillar 5 (hosted agent sandboxes) was taken off the roadmap on 2026-07-08 ([`.pm/DO_NOT_DO.md`](../.pm/DO_NOT_DO.md) #18) for three reasons: the Render-alternative core was unfinished, sandboxes are a second product surface competing for worker capacity, and **the mechanism was single-host-only**. This ADR records how pillar 5 is now realized — by removing that third reason: taking OpenSandbox from a host-local Docker-runtime toy to a real **multi-node Kubernetes-runtime cluster substrate**.
 
-Today bex has **no consumer of a multi-node OpenSandbox cluster** (verified 2026-07-27):
+Before w3/m32, bex had **no consumer of a multi-node OpenSandbox cluster** (audit captured 2026-07-27):
 
 - The GitOps-installed controller ([`deploy/gitops/charts/opensandbox-controller/`](../deploy/gitops/charts/opensandbox-controller/)) has **zero CR instances** — installed but undriven.
 - The lifecycle control-plane server runs only as a host `uvx --from opensandbox-server` process on `:8077`; there is **no container image, Deployment, Service, ConfigMap, or PVC** for it.
@@ -21,11 +21,11 @@ Two refinements to ADR014 shape this design:
 
 ## Decision
 
-Six decisions. Directory layout follows the repo's function-based convention (like `zot`): substrate configs in `deploy/opensandbox/`, Argo-reconciled manifests in `deploy/gitops/`, the Kata node pool in `infra/`, and the Go gateway in `lego/backend/internal/sandbox/`.
+Six decisions. Directory layout follows the repo's function-based convention (like `zot`): substrate configs in `deploy/opensandbox/`, Argo-reconciled manifests in `deploy/gitops/`, the gVisor node pool in `infra/`, and the Go gateway in `lego/backend/internal/sandbox/`.
 
 ### D1 — Multi-node Kubernetes-runtime substrate (replace the single-host toy)
 
-Deploy `opensandbox-server` (the Python lifecycle API) **in-cluster** as a Deployment + Service + ConfigMap (cluster-portable TOML) + PVC (sqlite store) + ServiceAccount/Role in `opensandbox-system`, talking to the already-installed BatchSandbox controller. A `server.Dockerfile` packages the PyPI package into an image (no official image exists today). The cluster TOML drops the hardcoded `kubeconfig_path` (in-cluster ServiceAccount), bind-mounts the BatchSandbox template as a ConfigMap, and sets `[runtime] type=kubernetes workload_provider=batchsandbox`. `BEX_OPENSANDBOX_URL` becomes `http://<svc>.opensandbox-system.svc:<port>`. The snapshot registry switches from `127.0.0.1:5050` insecure to the in-cluster Zot (`zot.bex-registry.svc:5000/snapshots`, `registryInsecure=false`, push/pull secrets replicated via the [`scripts/registry-secrets.sh`](../scripts/registry-secrets.sh) pattern); the chart's existing `snapshot.*` knobs need no chart change.
+Deploy `opensandbox-server` (the Python lifecycle API) **in-cluster** as a Deployment + Service + ConfigMap (cluster-portable TOML) + PVC (sqlite store) + ServiceAccount/Role in `opensandbox-system`, talking to the already-installed BatchSandbox controller. A `server.Dockerfile` packages the PyPI package into an image (no official image exists today). The cluster TOML drops the hardcoded `kubeconfig_path` (in-cluster ServiceAccount), bind-mounts the BatchSandbox template as a ConfigMap, and sets `[runtime] type=kubernetes workload_provider=batchsandbox`. `BEX_OPENSANDBOX_URL` becomes `http://<svc>.opensandbox-system.svc:<port>`. Production does not pass the controller any snapshot registry or credential flags: pause is unavailable under D5's baseline-PSS constraint, and dormant snapshot credentials would expand authority without providing a working feature. The server's own 0.2.2 config model has no `[snapshot]` block; writing one into its TOML would be silently ignored rather than configuring the controller.
 
 ### D2 — bex-api is the synchronous sandbox gateway; surface = Render CLI `ea sandbox`
 
@@ -33,29 +33,67 @@ A new `lego/backend/internal/sandbox/` feature package owns an **in-package Open
 
 ### D3 — Strong isolation on a dedicated sandbox node pool — **gVisor, not Kata** (amended 2026-07-28)
 
-Untrusted agent-generated code demands stronger-than-container isolation (ADR014 "Future considerations"; [ADR022-tenant-isolation.md](ADR022-tenant-isolation.md)). This ADR originally chose **Kata**, but Kata needs hardware virtualization (`/dev/kvm`), and **verified on prod 2026-07-28 the cluster's Hetzner Cloud `cpx32` nodes do not expose it** (no nested virt, no `vmx`/`svm`) — Kata is **impossible** on this infra. The substitute is **gVisor (`runsc`)**: a user-space kernel giving strong syscall-level isolation whose `systrap` platform needs **no KVM**. Validated live on a `cpx32` node — `runsc --platform=systrap do echo` runs and a Pod reached `Running` under `runtimeClassName: gvisor`. gVisor is explicitly the non-KVM rung of the isolation ladder (namespace → microVM: Kata/**gVisor**/Firecracker); Kata remains the choice if KVM-capable nodes (Hetzner dedicated/bare-metal) ever join.
+Untrusted agent-generated code demands stronger-than-container isolation (ADR014 "Future considerations"; [ADR022-tenant-isolation.md](ADR022-tenant-isolation.md)). This ADR originally chose **Kata**, but Kata needs hardware virtualization (`/dev/kvm`), and **verified on prod 2026-07-28 the cluster's Hetzner Cloud `cpx32` nodes do not expose it** (no nested virt, no `vmx`/`svm`) — Kata is **impossible** on this infra. The substitute is **gVisor (`runsc`)**: a user-space application kernel that reduces the host-kernel syscall attack surface and whose `systrap` platform needs **no KVM**. Validated live on a `cpx32` node — `runsc --platform=systrap do echo` runs and a Pod reached `Running` under `runtimeClassName: gvisor`. gVisor is the non-KVM rung between ordinary `runc` and a Kata/Firecracker microVM; Kata remains the choice if KVM-capable nodes (Hetzner dedicated/bare-metal) ever join.
 
 Ship a `gvisor` `RuntimeClass` ([`deploy/opensandbox/gvisor-runtimeclass.yaml`](../deploy/opensandbox/gvisor-runtimeclass.yaml)) and install `runsc` + the containerd runsc runtime **at node bootstrap** on a dedicated **tainted `bex.co/sandbox` node pool** (CAPH `preKubeadmCommands` in [`infra/clusterapi/overlays/hetzner-caph/`](../infra/clusterapi/overlays/hetzner-caph/)) — **not** by restarting containerd on a live node, which breaks the Cilium datapath (learned 2026-07-28). The pool must be **stable (min ≥ 1)**, not the autoscaled burst pool (an idle burst node is reclaimed, taking any imperative install with it — also learned 2026-07-28). Sandboxes run in per-tenant **`<ws>-sandbox` namespaces** ([ADR043](ADR043-tenant-namespace-isolation.md) D1/D2) on that pool, behind a Cilium egress-deny/metadata-deny boundary mirroring [`deploy/gitops/base/build-boundary.yaml`](../deploy/gitops/base/build-boundary.yaml). The dedicated pool separates sandbox capacity from the tenant pool — the original DO_NOT_DO "competing for capacity" concern.
 
+The namespace is an administrative/workspace boundary, **not a trust boundary between sandboxes**. Every sandbox Pod is a separate hostile principal, including two sandboxes owned by different members of the same workspace. `<ws>-sandbox` therefore gets no same-namespace allow and no raw DNS allow. Sidecars belonging to one sandbox share that Pod's network namespace and need no cross-Pod exception.
+
+The BatchSandbox template is not trusted as the runtime boundary. A fail-closed `bex-sandbox-pods` ValidatingAdmissionPolicy selects namespaces carrying the reconciler-owned sandbox regime label and rejects every Pod—including Pods created indirectly by Jobs—unless it retains `runtimeClassName: gvisor`, `bex.co/pool=sandbox` placement, the sandbox workload label, `automountServiceAccountToken: false`, and no create-time `nodeName` scheduler bypass. This prevents a compromised lifecycle server/controller from using its legitimate namespace-scoped Pod authority to fall back to runc or jump pools.
+
+OpenSandbox's egress sidecar is not used. Its [Kubernetes network-isolation guidance](https://open-sandbox.ai/architecture/network-isolation) confirms that the sidecar depends on an `iptables` NAT redirect that gVisor's netstack does not implement and recommends a CNI-level FQDN policy such as Cilium `toFQDNs` for this combination. Cilium therefore enforces DNS, FQDN, TLS SNI, node, API-server, cluster, and metadata policy outside the guest. A missing Cilium rule fails closed through the namespace's default-deny policy.
+
 Snapshot semantics (D5) are unchanged by gVisor: pause/resume stays rootfs-only.
+
+gVisor is deliberately **not described as a microVM boundary**. It still relies on the host kernel beneath its application kernel and has a different residual escape surface from hardware-virtualized Kata/Firecracker. Dedicated tainted nodes, restricted Pod security, no ServiceAccount token, and Cilium policy are compensating layers; a future high-assurance tier should move to KVM-capable nodes and a microVM runtime rather than claiming gVisor provides hardware isolation.
 
 ### D4 — Security: the bex-api ↔ OpenSandbox link is a single trusted hop
 
-Today there is **no** application-layer security: the server binds `127.0.0.1`, has no `api_key`, runs `OPENSANDBOX_INSECURE_SERVER=YES`, and the operator client sends no auth — the boundary is loopback (bex-api does not call OpenSandbox yet). Once the server is an in-cluster Service this is unsafe: without multi-tenancy enabled, anyone who reaches the lifecycle API can drive any sandbox. Upstream OpenSandbox ships a **multi-tenant mode** (OSEP-0014): tenants come from a `[[tenants]]` file or an **HTTP tenant-lookup provider** (the server forwards the caller's `OPEN-SANDBOX-API-KEY` header; the endpoint answers `{namespace, ttl}` or 401), and lifecycle operations are auto-scoped to the tenant's namespace. Defense in depth mirrors the bex-api↔OpenFGA/Hydra/OpenBao pattern:
+The retired host-local path had **no** application-layer security: the server bound `127.0.0.1`, had no `api_key`, ran `OPENSANDBOX_INSECURE_SERVER=YES`, and relied on loopback. That is unsafe for an in-cluster Service because anyone reaching the lifecycle API could drive any sandbox. The GitOps deployment therefore enables upstream OpenSandbox's **multi-tenant mode** (OSEP-0014): an HTTP tenant-lookup provider receives the caller's `OPEN-SANDBOX-API-KEY`, returns `{namespace, ttl}` or 401, and scopes lifecycle operations to that namespace. Defense in depth mirrors the bex-api↔OpenFGA/Hydra/OpenBao pattern:
 
-- **L3/L4** — NetworkPolicy (or Cilium identity policy) on `opensandbox-system` admitting **only bex-api** (`bex-system`), denying tenant + sandbox pods (following the [`deploy/gitops/base/network-policies.yaml`](../deploy/gitops/base/network-policies.yaml) `deny-tenant-ingress` pattern — those policies admit `bex-system` plus each namespace's own platform peers such as `kpack`/`bex-build`, never tenant pods; here the admit list is bex-api alone).
+- **L3/L4** — portable ingress default-deny plus Cilium identity policy on `opensandbox-system`, admitting only the `bex-api` ServiceAccount/workload in `bex-system` on TCP 8077 and denying tenant, sandbox, label-spoofing, and other platform Pods.
 - **L7** — enable multi-tenant mode with the HTTP tenant-lookup provider backed by bex IAM: bex-api mints per-workspace keys mapped to `<ws>-sandbox`, so OpenSandbox itself rejects cross-tenant operations even if bex-api bugs; drop `INSECURE_SERVER`. Key custody mirrors `BEX_OPENFGA_TOKEN` (k8s Secret + env, out-of-band).
-- **East-west (load-bearing)** — a compromised sandbox must not bypass bex-api and drive the lifecycle API directly. Closed by the `<ws>-sandbox` egress-deny (D3) **plus** the admit-only-bex-api NetworkPolicy.
+- **East-west (load-bearing)** — a compromised sandbox must not bypass bex-api and drive the lifecycle API directly. Closed by the `<ws>-sandbox` egress-deny (D3), a portable default-deny on the server, and Cilium ingress that matches bex-api's namespace, ServiceAccount, workload identity, and TCP 8077. A Pod label alone is not treated as authentication.
+
+#### Security principals and fail-closed rules
+
+The protected assets are tenant source/data in each sandbox, the workspace tenant keys, the bex control-plane bearer, the Kubernetes API, node/kubelet credentials, cloud metadata, and every other tenant or platform workload. The attacker is arbitrary code with full control of one sandbox process and network stack, and may also be an authenticated ordinary member trying to operate another member's sandbox. A compromised lifecycle server is a separate trusted-component failure and must be contained to already-provisioned sandbox namespaces.
+
+The NamespaceReconciler that creates those per-tenant RoleBindings has a separate API-server admission boundary ([ADR043 D6](ADR043-tenant-namespace-isolation.md#d6--dynamic-namespace-rbac-is-admission-confined)). Although Kubernetes RBAC must grant its `bex-api` ServiceAccount cluster-scoped namespace and named-role `bind` verbs, fail-closed CEL policies admit them only for canonical bex-managed tenant namespaces with fixed Pod Security labels, the exact sandbox `default-deny`, migration-only deletion of known legacy allows, and exact regime-specific subjects. A bex-api token therefore cannot reuse that plumbing to downgrade sandbox PSS/network isolation or bind a sandbox/Secret role into a platform namespace.
+
+The shared OpenSandbox server, controller, and sandbox-exec SSH gateway remain part of the multi-tenant trusted computing base. Binding the same ServiceAccounts into every provisioned `<ws>-sandbox` contains their Kubernetes authority to the sandbox regime, but those RoleBindings aggregate: compromise of a shared component is **not** contained to one workspace and can affect or inspect all provisioned sandbox namespaces within that component's verbs. The exec gateway is reachable on its internal TCP 8081 listener only from the exact bex-api Cilium identity and requires a short-lived, signed, single-use command ticket; its Kubernetes `pods/exec` grant exists only through sandbox-namespace RoleBindings. Per-tenant component identities or an API-server broker/impersonation design would be required to reduce the remaining blast radius; m35 claims cluster/platform containment, not tenant containment after a trusted-component exploit.
+
+The exact allowed flows are:
+
+| Source identity | Destination | Port / protocol | Authentication and authorization |
+| --- | --- | --- | --- |
+| Authenticated external caller | bex-api public API | HTTPS → TCP 8090 | OAuth/API key/Kratos authentication, workspace membership, OpenFGA verb check, then per-sandbox owner check |
+| `bex-system/bex-api` Pod | `opensandbox-system/opensandbox-server` Pod | TCP 8077 | Cilium namespace + ServiceAccount + workload identity and per-workspace `OPEN-SANDBOX-API-KEY`; no shared server key or insecure mode |
+| `bex-system/bex-api` Pod | `bex-system/bex-ssh-gateway` Pod | TCP 8081 | Cilium namespace + ServiceAccount + workload identity and a short-lived HMAC-signed, single-use ticket binding caller, workspace, sandbox, namespace, and command; no other same-namespace/Traefik/monitoring Pod is admitted on this port |
+| `bex-system/bex-ssh-gateway` ServiceAccount | Kubernetes API | TCP 443 | projected ServiceAccount token; `pods/exec` only through per-`<ws>-sandbox` RoleBindings after verifying the exact ticket; no Secret read and no cluster-wide binding |
+| `opensandbox-system/opensandbox-server` Pod | `bex-system/bex-api` Pod | TCP 8091 | Cilium/Kubernetes pod identity plus `Authorization: Bearer <BEX_CP_TOKEN>` for tenant-key resolution |
+| `opensandbox-system/opensandbox-server` Pod | CoreDNS Pod | UDP/TCP 53 | Cilium L7 DNS permits only the fixed `bex-api` tenant-resolver Service name and its deterministic resolver search expansions; arbitrary queries are denied |
+| `opensandbox-system/opensandbox-server` ServiceAccount | Kubernetes API | TCP 443 | projected ServiceAccount token; cluster-wide `get/list/watch` only, with mutation granted solely by RoleBindings inside provisioned `<ws>-sandbox` namespaces |
+| `opensandbox-system/opensandbox-controller-manager` ServiceAccount | Kubernetes API | TCP 443 | projected ServiceAccount token; cluster-wide informer reads omit Secrets, while pod/job/CR/status/finalizer writes exist only through RoleBindings in provisioned `<ws>-sandbox` namespaces; its system-namespace Role is Lease+event only (no ConfigMap or Pod mutation), it cannot create Pods that mount credentials there, and snapshot credential flags are disabled |
+| `opensandbox-system/opensandbox-server` Pod | sandbox Pod `execd` | TCP 44772 | Cilium namespace + ServiceAccount + workload identity; no label-only Kubernetes NetworkPolicy allow, no other source is admitted, and there is no separate upstream L7 credential |
+| sandbox Pod | CoreDNS Pod | UDP/TCP 53 | Cilium L7 DNS rules admit only the platform FQDN allowlist; arbitrary query names are denied |
+| sandbox Pod | platform-approved public FQDN | TLS/TCP 443 | Cilium `toFQDNs` plus exact TLS SNI; no/wrong-SNI, wildcard, non-443, private/rebound targets, and unapproved names are denied. A client may connect to a learned public IP only when it still authenticates the approved destination through SNI—the network layer cannot observe whether the socket API originally received a hostname or an IP literal |
+
+Everything not in the table is denied, including sandbox→sandbox in the same workspace, sandbox→hosting, sandbox→platform/lifecycle API/Kubernetes API/node/metadata, public IP traffic without an approved TLS SNI, private-IP rebinding, and arbitrary DNS. The lifecycle server's own egress is default-denied outside the four dependencies above and its DNS is name-filtered; the controller has no DNS egress at all. These controls close direct internet/DNS bearer exfiltration, while the shared-component cross-tenant TCB limitation above still applies to their deliberately reachable Kubernetes/bex-api/execd destinations.
+
+The public FQDN allowlist is destination confinement, **not DLP**. Any approved writable HTTPS service can still be used to exfiltrate data to an attacker-controlled account on that service; Cilium authenticates the destination name/SNI, not the remote account or request contents. Do not inject platform or tenant credentials into the guest. Per-destination credential brokering and an outbound content-aware proxy remain future hardening rather than claims of this boundary.
+
+On create, bex stamps reserved `bex.co/owner`, `bex.co/workspace`, effective network-policy, plan, region, timeout, and `app.bex.co/regime=sandbox` metadata. Callers cannot supply or override that metadata. List/get/lifecycle/exec first require the exact workspace, sandbox regime, enforced `deny-all` stamp, and owner; an explicit workspace administrator (`can_manage`) may override ownership. Foreign, missing, incompletely hardened, malformed, and legacy ownerless metadata all produce the same `SANDBOX_NOT_FOUND` 404 so another sandbox's existence is not disclosed.
 
 ### D5 — Snapshot semantics: v1 is rootfs-only; memory hibernation is a watch item
 
-The k8s BatchSandbox pause/resume commits the rootfs to an OCI image and recreates the pod ([ADR044](ADR044-sandbox-runtime-comparison.md)); Kata does not change this. So v1 "sleep = free" preserves the **filesystem only — memory and processes do not survive pause.** This is weaker than E2B's memory hibernation and weaker than the single-host Docker path ADR014 D5 described. The k8s-native path to memory hibernation is containerd checkpoint/restore (CRIU) — recorded as a watch item, not v1 work.
+The k8s BatchSandbox pause/resume commits the rootfs to an OCI image and recreates the pod ([ADR044](ADR044-sandbox-runtime-comparison.md)); gVisor does not change this. So v1 "sleep = free" preserves the **filesystem only — memory and processes do not survive pause.** This is weaker than E2B's memory hibernation and weaker than the single-host Docker path ADR014 D5 described. The k8s-native path to memory hibernation is containerd checkpoint/restore (CRIU) — recorded as a watch item, not v1 work.
 
 **Blocked on prod by the per-tenant PSS floor (found w3/m32/t007, 2026-07-29).** Once sandboxes run in the per-tenant `<ws>-sandbox` namespace (ADR043/m31), pause fails: the OpenSandbox controller's snapshot **commit Job mounts the node `containerd.sock` via a `hostPath` volume** to export the rootfs, but `<ws>-sandbox` enforces PodSecurity **`baseline`**, which forbids `hostPath` — so the commit pod is rejected (`FailedCreate … violates PodSecurity "baseline": hostPath volumes`) and the sandbox hangs in `Pausing` indefinitely. Create/list/exec/stop are unaffected (validated). The two ways forward, neither v1: (a) run the privileged commit Job in a dedicated platform namespace (not the tenant's) — an upstream OpenSandbox change, since it currently creates the Job in the sandbox namespace; or (b) relax the sandbox-namespace PSS to admit the commit Job — **rejected**, it would let every untrusted sandbox pod mount `hostPath`, dissolving the isolation floor. Net: pause/resume is **unavailable** under the secure per-tenant topology until (a) lands; the "sleep = free" economics wait on it. This strengthens D5's original "watch item" call with a concrete mechanism.
 
 ### D6 — Validate on real containerd-CRI, not the OrbStack mock
 
-The BatchSandbox snapshot path does **not** work on `scripts/mock-cluster.sh` (OrbStack/cri-dockerd). Validation needs a real containerd-CRI node — a **disposable k3s node** (with Kata) for development, then Hetzner prod. The k3s DoD loop (adapted from ADR014 §Verification): create → exec → pause → resume (rootfs restored) → stop/delete, under Kata + the Cilium boundary.
+The BatchSandbox snapshot path does **not** work on `scripts/mock-cluster.sh` (OrbStack/cri-dockerd), and that local cluster has neither Cilium nor runsc. Security validation therefore needs a real containerd-CRI+Cilium+gVisor node. The DoD loop is create → execute adversarial probes → stop/delete under gVisor; pause/resume remains separately blocked by D5's baseline-PSS conflict.
 
 ## Architecture
 
@@ -75,10 +113,10 @@ flowchart TB
       pool["warm Pool CR (pre-warmed capacity)"]
     end
     subgraph sandboxns["ws-sandbox (one per tenant) · UNTRUSTED"]
-      sbx["📦 sandbox pods<br/>agent code · Kata RuntimeClass<br/>tainted node pool · Cilium egress-deny"]
+      sbx["📦 sandbox pods<br/>agent code · gVisor RuntimeClass<br/>tainted node pool · Cilium DNS/FQDN default-deny"]
     end
     subgraph regns["bex-registry"]
-      zot[("📦 Zot — snapshot store")]
+      zot[("📦 Zot — future snapshot store<br/>disabled in prod")]
     end
   end
 
@@ -89,7 +127,7 @@ flowchart TB
   osserver --> ctrl
   sbx -->|"managed by"| ctrl
   ctrl -->|"maintains"| pool
-  ctrl -->|"pause: commit rootfs snapshot"| zot
+  ctrl -.->|"pause path blocked by baseline PSS (D5)"| zot
   sbx -->|"resume: pull rootfs — v1 rootfs-only, no memory"| zot
   sbx -.->|"✗ blocked — anti-lateral-movement"| osserver
 ```
@@ -100,14 +138,14 @@ flowchart TB
 
 - **Keep the single-host Docker runtime** — rejected. No HA, no multi-node, host loss loses all sandboxes and snapshots. This was the mechanism gap that paused pillar 5; D1 removes it.
 - **AgentENV / Firecracker substrate** ([ADR044](ADR044-sandbox-runtime-comparison.md)) — rejected for bex: Rust node, prototype in-memory control plane, no client surface; would trade a working integration for a substrate rewrite and a second non-k8s scheduler. Tracked as the reference design for memory snapshots and microVM isolation.
-- **Container-level isolation (build-boundary) instead of Kata** — rejected for pillar 5. Sandboxes run **untrusted agent-generated code**; ADR014 flags this as the strongest case for microVM isolation. Kata is chosen now (D3); the build-boundary pattern is still reused for the namespace/egress boundary underneath.
+- **Ordinary container isolation (build-boundary) instead of gVisor** — rejected for pillar 5. Sandboxes run **untrusted agent-generated code**; gVisor's user-space kernel adds a syscall boundary that a runc container does not. The build-boundary pattern is still reused for namespace and egress isolation underneath it.
 - **E2B-SDK as the primary surface** — deferred. Render-CLI compatibility is bex's parity philosophy and the `render ea sandbox` commands already exist as 404s to close; E2B's gRPC data plane is deferred per ADR014 D2.
 - **`Sandbox` CRD reconciled by the operator** — rejected in ADR014 D0. Sandboxes are interactive, ephemeral sessions; async CR reconcile fights synchronous create/exec/connect.
 
 ## Consequences
 
 - A new `opensandbox-server` container image must be built/sourced (D1).
-- Kata node-image work (CAPH `KubeadmConfigTemplate` + the k3s node) is the long pole and the riskiest piece (D3).
+- gVisor node-image work (CAPH `KubeadmConfigTemplate` + the stable sandbox pool) is the long pole and the riskiest piece (D3).
 - bex-api gains a direct-runtime responsibility (an OpenSandbox client) — a documented, sandbox-scoped exception to the operator-is-the-only-mechanism rule (ADR014).
 - v1 "sleep = free" is **rootfs-only**; the memory-hibernation story is honestly weaker than E2B's until CRIU lands (D5).
 - `.pm`: a dated (2026-07-27) re-open clause on `DO_NOT_DO.md` #18 + a fresh milestone (not a reuse of the removed `w2/m3`); ADR014 status amended to match.
