@@ -1521,6 +1521,15 @@ publish_secret="$(yq -N '
   echo "FAIL: manager static publish Secret is '$publish_secret'" >&2
   fail=1
 }
+publish_compat_secret="$(yq -N '
+  select(.kind == "Deployment" and .metadata.name == "controller-manager") |
+  .spec.template.spec.containers[].env[] |
+  select(.name == "BEX_STATIC_S3_SECRET") | .value' \
+  lego/operator/config/manager/manager.yaml | tr -d '\n')"
+[ "$publish_compat_secret" = "bex-static-publish-s3" ] || {
+  echo "FAIL: manager rollout-compatible static publish Secret is '$publish_compat_secret'" >&2
+  fail=1
+}
 read_secret="$(yq -N '
   select(.kind == "Deployment" and .metadata.name == "static-server") |
   .spec.template.spec.containers[].envFrom[] | select(has("secretRef")) | .secretRef |
@@ -1540,7 +1549,8 @@ metadata_fallback="$(yq -N '
   fail=1
 }
 if rg -n 'BEX_STATIC_S3_SECRET|name: static-s3$' \
-    lego/operator/cmd lego/operator/config lego/operator/internal/publish >/dev/null; then
+    lego/operator/cmd lego/operator/internal/publish >/dev/null || \
+   rg -n 'name: static-s3$' lego/operator/config >/dev/null; then
   echo "FAIL: legacy shared static S3 Secret contract remains in runtime code/config" >&2
   fail=1
 fi

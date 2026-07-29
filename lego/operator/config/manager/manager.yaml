@@ -189,6 +189,12 @@ spec:
             value: eu-central-2
           - name: BEX_STATIC_PUBLISH_S3_SECRET
             value: bex-static-publish-s3
+          # Rollout compatibility: an older manager can briefly run with this
+          # newer manifest while Argo and the image write-back converge. Keep
+          # the legacy input pointed at the same least-privilege publisher
+          # Secret; current managers ignore it.
+          - name: BEX_STATIC_S3_SECRET
+            value: bex-static-publish-s3
           - name: BEX_STATIC_SERVER_SERVICE
             value: bex-static-server
           # The activator (w1/m4 wake-on-request, w1/m37 maintenance mode):
