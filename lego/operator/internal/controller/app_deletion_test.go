@@ -167,6 +167,37 @@ func TestAppDeletionRemovesHistoricalTLSSecretBeforeFinalizer(t *testing.T) {
 	}
 }
 
+func TestDeleteTLSSecretsUsesUncachedClientForTenantNamespace(t *testing.T) {
+	ctx := context.Background()
+	scheme := deletionScheme(t)
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
+		Name: "tenant-tls", Namespace: "tea-test",
+		Annotations: map[string]string{annotTLSSecretHistory: `["tenant-tls-tls"]`},
+	}}
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "tenant-tls-tls", Namespace: app.Namespace}}
+	cached := fake.NewClientBuilder().WithScheme(scheme).
+		WithInterceptorFuncs(interceptor.Funcs{List: func(_ context.Context, _ client.WithWatch, list client.ObjectList, _ ...client.ListOption) error {
+			if _, ok := list.(*corev1.SecretList); ok {
+				return errors.New("unknown namespace for the cache")
+			}
+			return nil
+		}}).Build()
+	direct := fake.NewClientBuilder().WithScheme(scheme).WithObjects(secret).Build()
+	r := &AppReconciler{Client: cached, BuildClient: direct, Scheme: scheme}
+
+	done, err := r.deleteTLSSecrets(ctx, app)
+	if err != nil || done {
+		t.Fatalf("first TLS cleanup pass = done %v err %v, want pending delete", done, err)
+	}
+	done, err = r.deleteTLSSecrets(ctx, app)
+	if err != nil || !done {
+		t.Fatalf("second TLS cleanup pass = done %v err %v, want observed absence", done, err)
+	}
+	if err := direct.Get(ctx, client.ObjectKeyFromObject(secret), &corev1.Secret{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("tenant TLS Secret survived direct-client cleanup: %v", err)
+	}
+}
+
 func TestAppDeletionQuiescesIngressAndCertificateBeforeTLSSecret(t *testing.T) {
 	app := deletionApp("tls-live")
 	app.Annotations = map[string]string{annotTLSSecretHistory: `["tls-live-tls"]`}

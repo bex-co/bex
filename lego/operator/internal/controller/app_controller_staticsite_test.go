@@ -100,8 +100,18 @@ var _ = Describe("reconciling a static_site App", func() {
 		Expect(ing.Spec.Rules).To(HaveLen(1))
 		Expect(ing.Spec.Rules[0].Host).To(Equal(name + ".onbex.co"))
 		backend := ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service
-		Expect(backend.Name).To(Equal("bex-static-server"))
+		aliasName := staticServerAliasName(name)
+		Expect(backend.Name).To(Equal(aliasName))
 		Expect(backend.Port.Number).To(Equal(int32(8080)))
+		var alias corev1.Service
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: aliasName, Namespace: ns}, &alias)).To(Succeed())
+		Expect(alias.Spec.Type).To(Equal(corev1.ServiceTypeExternalName))
+		Expect(alias.Spec.ExternalName).To(Equal("bex-static-server.bex-system.svc.cluster.local"))
+		Expect(alias.Spec.Ports).To(HaveLen(1))
+		Expect(alias.Spec.Ports[0].Name).To(Equal("http"))
+		Expect(alias.Spec.Ports[0].Port).To(Equal(int32(8080)))
+		Expect(alias.OwnerReferences).To(HaveLen(1))
+		Expect(alias.OwnerReferences[0].UID).To(Equal(app.UID))
 
 		By("reporting Running with the served URL")
 		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
@@ -174,7 +184,7 @@ var _ = Describe("reconciling a static_site App", func() {
 		Expect(app.Status.Image).To(BeEmpty())
 		var ing networkingv1.Ingress
 		Expect(k8sClient.Get(ctx, nn, &ing)).To(Succeed())
-		Expect(ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name).To(Equal("bex-static-server"))
+		Expect(ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name).To(Equal(staticServerAliasName(name)))
 	})
 
 	It("fails a static_site with no publishPath", func() {
