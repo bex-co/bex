@@ -352,6 +352,18 @@ spec:
         - ports:
             - port: "443"
               protocol: TCP
+    # `kube-apiserver` is the preferred semantic identity, but clusters where
+    # the control-plane endpoints are outside Cilium can fail to classify the
+    # default/kubernetes Service VIP as that entity. Keep the destination exact
+    # while covering that topology through Cilium's Service-aware translation.
+    - toServices:
+        - k8sService:
+            serviceName: kubernetes
+            namespace: default
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
     - toEndpoints:
         - matchLabels:
             k8s:app.bex.co/regime: sandbox
@@ -377,6 +389,16 @@ spec:
   egress:
     - toEntities:
         - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    # See opensandbox-server-egress above: retain the preferred entity and add
+    # the exact default/kubernetes Service for external-control-plane topology.
+    - toServices:
+        - k8sService:
+            serviceName: kubernetes
+            namespace: default
       toPorts:
         - ports:
             - port: "443"

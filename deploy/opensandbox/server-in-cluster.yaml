@@ -156,7 +156,12 @@ spec:
               containerPort: 8077
           volumeMounts:
             - name: rendered-config
-              mountPath: /etc/opensandbox
+              mountPath: /etc/opensandbox/sandbox-cluster.toml
+              subPath: sandbox-cluster.toml
+              readOnly: true
+            - name: config-template
+              mountPath: /etc/opensandbox/batchsandbox-template.yaml
+              subPath: batchsandbox-template.yaml
               readOnly: true
             - name: store
               mountPath: /var/lib/opensandbox
