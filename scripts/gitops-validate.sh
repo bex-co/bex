@@ -1479,10 +1479,14 @@ alias_binding_shape="$(yq -N '
    .metadata.annotations."argocd.argoproj.io/sync-wave",
    .spec.policyName,
    (.spec.validationActions | sort | join(",")),
+   (.spec.matchResources.namespaceSelector.matchLabels."app.kubernetes.io/managed-by" // ""),
+   (.spec.matchResources.namespaceSelector.matchLabels."app.kubernetes.io/part-of" // ""),
    (.spec.matchResources.namespaceSelector.matchLabels."app.bex.co/regime" // ""),
+   ([.spec.matchResources.namespaceSelector.matchExpressions[]? |
+      select(.key == "app.bex.co/workspace" and .operator == "Exists")] | length | tostring),
   (.spec.matchResources.namespaceSelector.matchLabels."kubernetes.io/metadata.name" // "")] |
   join(":")' - <<<"$BASE_RENDER" | sed '/^$/d' | sort)"
-expected_alias_binding_shape=$'bex-operator-platform-aliases-default:-2:bex-operator-platform-aliases:Audit,Deny::default\nbex-operator-platform-aliases:-2:bex-operator-platform-aliases:Audit,Deny:hosting:'
+expected_alias_binding_shape=$'bex-operator-platform-aliases-default:-2:bex-operator-platform-aliases:Audit,Deny::::0:default\nbex-operator-platform-aliases:-2:bex-operator-platform-aliases:Audit,Deny:bex-controlplane:bex:hosting:1:'
 [ "$alias_binding_shape" = "$expected_alias_binding_shape" ] || {
   echo "FAIL: static-site alias binding shape is '$alias_binding_shape'" >&2
   fail=1
@@ -1594,6 +1598,17 @@ for required_probe in \
   'publisher list unrelated bucket'; do
   grep -qF "$required_probe" scripts/static-s3-credentials.sh || {
     echo "FAIL: static S3 verifier lost '$required_probe'" >&2
+    fail=1
+  }
+done
+for required_live_scope_guard in \
+  'expected default plus at least one tenant hosting namespace' \
+  'App namespaces outside the admission-protected hosting set' \
+  'get serviceaccounts -o json' \
+  'get rolebindings -o json' \
+  'kubectl auth can-i'; do
+  grep -qF "$required_live_scope_guard" scripts/verify-static-site-security.sh || {
+    echo "FAIL: static live verifier lost exhaustive scope guard '$required_live_scope_guard'" >&2
     fail=1
   }
 done

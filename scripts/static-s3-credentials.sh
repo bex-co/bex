@@ -123,14 +123,15 @@ credential_s3_at() {
   )
 }
 
-CLEANUP_PROBE_URI=""
+declare -a CLEANUP_PROBE_URIS=()
 CLEANUP_PROBE_ACCESS=""
 CLEANUP_PROBE_SECRET=""
 cleanup_probe() {
-  if [ -n "$CLEANUP_PROBE_URI" ]; then
+  local uri
+  for uri in "${CLEANUP_PROBE_URIS[@]}"; do
     credential_s3 "$CLEANUP_PROBE_ACCESS" "$CLEANUP_PROBE_SECRET" \
-      s3 rm "$CLEANUP_PROBE_URI" >/dev/null 2>&1 || true
-  fi
+      s3 rm "$uri" >/dev/null 2>&1 || true
+  done
 }
 
 apply_secret() {
@@ -280,7 +281,9 @@ verify_matrix() {
   fi
 
   probe_uri="s3://$STATIC_BUCKET/.bex-security-probe/$(date -u +%Y%m%dT%H%M%SZ)-$$"
-  CLEANUP_PROBE_URI="$probe_uri"
+  # The publisher cleans both paths if any assertion aborts. This also removes
+  # the reader-write object if that negative probe ever succeeds unexpectedly.
+  CLEANUP_PROBE_URIS=("$probe_uri" "${probe_uri}-reader")
   CLEANUP_PROBE_ACCESS="$publish_access"
   CLEANUP_PROBE_SECRET="$publish_secret"
   trap cleanup_probe EXIT
@@ -315,7 +318,7 @@ verify_matrix() {
   expect_allowed "publisher delete static object" \
     credential_s3 "$publish_access" "$publish_secret" s3 rm "$probe_uri"
 
-  CLEANUP_PROBE_URI=""
+  CLEANUP_PROBE_URIS=()
   CLEANUP_PROBE_ACCESS=""
   CLEANUP_PROBE_SECRET=""
   trap - EXIT

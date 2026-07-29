@@ -178,7 +178,7 @@ The live matrix that script asserts is wired for repeatability two ways, so a re
 
 - **On demand** — `make verify-tenant-isolation` (from `lego/operator/`) runs `scripts/verify-tenant-isolation.sh` against the current kubeconfig.
 - **In CI** — `scripts/gitops-validate.sh` (cluster-less, runs in `.github/workflows/gitops.yml`) asserts every platform namespace carries a default-deny-ingress policy (`podSelector: {}` + `policyTypes: [Ingress]`) and that no allow-list peer names the tenant apps namespace (`default`) — a manifest regression in `deploy/gitops/base/network-policies.yaml` fails before Argo CD applies it.
-- **Static edge** — `scripts/gitops-validate.sh` pins the operator alias admission/RBAC shape; `scripts/verify-static-site-security.sh live` proves the API-server allow/deny behavior against a canonical hosting namespace.
+- **Static edge** — `scripts/gitops-validate.sh` pins the operator alias admission/RBAC shape; `scripts/verify-static-site-security.sh live` proves the API-server allow/deny behavior across every canonical hosting namespace and refuses Apps outside that protected set.
 
 ## Registry access control (w7/m8)
 
