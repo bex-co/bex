@@ -70,7 +70,12 @@ func (s *Service) NameAvailable(ctx context.Context, name string) (NameAvailabil
 func (s *Service) tenantNames(ctx context.Context) (map[string]bool, error) {
 	var list appv1alpha1.AppList
 	if tenantID, ok := s.Tenant(ctx); ok {
-		if err := s.ListByTenant(ctx, &list, tenantID); err != nil {
+		// App-scoped, per-tenant-namespace-aware (not core.ListByTenant, whose
+		// shared b.Namespace still serves the non-App purge paths): a workspace's
+		// Apps live in AppNamespace(tenantID) under per-tenant isolation (ADR043).
+		if err := s.Client.List(ctx, &list,
+			client.InNamespace(s.AppNamespace(tenantID)),
+			client.MatchingLabels{core.LabelTenant: tenantID}); err != nil {
 			return nil, err
 		}
 	} else if err := s.Client.List(ctx, &list, client.InNamespace(s.Namespace)); err != nil {

@@ -471,7 +471,10 @@ func (s *Service) resourceMetric(ctx context.Context, q MetricQuery, appName str
 // fallbacks — the resource-family sibling of requestMetric's single funnel.
 func (s *Service) rangedResourceSeries(ctx context.Context, q MetricQuery, appName, metric, unit string) ([]MetricSeries, error) {
 	series, err := s.ResourceMetricsRange(ctx, ResourceMetricsRangeRequest{
-		Namespace:  s.Namespace,
+		// cAdvisor series carry the pod's namespace; under ADR043 that is the
+		// App's per-tenant `<ws>` namespace, so resolve it from the app name rather
+		// than pinning the shared namespace (which the migration emptied of pods).
+		Namespace:  s.AppNamespaceByName(ctx, appName),
 		App:        appName,
 		Metric:     metric,
 		Start:      q.Start,
@@ -623,7 +626,9 @@ func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1al
 		}
 	}
 	series, err := s.RequestMetrics(ctx, RequestMetricsRequest{
-		Namespace:  s.Namespace,
+		// The App CR is in hand — its namespace is the per-tenant `<ws>` namespace
+		// under ADR043; use it directly rather than the shared s.Namespace.
+		Namespace:  app.Namespace,
 		App:        appName,
 		AppID:      appResourceID(app, q.App),
 		Direct:     app.Spec.Type != appv1alpha1.TypeStaticSite,

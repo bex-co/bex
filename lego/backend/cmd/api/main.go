@@ -139,6 +139,16 @@ func main() {
 	}
 
 	base := &core.Base{Client: cl, Namespace: envOr("BEX_API_NAMESPACE", "default")}
+	// Per-tenant namespace isolation (ADR043): resolve App-CR reads/writes and pod
+	// lookups into each workspace's own `<ws>` namespace, mirroring the projector's
+	// rec.TenantNamespaces below. Gated on the store being wired (the flag needs
+	// BEX_CP_DB_URI, and only store-managed Apps are ever projected into per-tenant
+	// namespaces) so store-off deployments stay byte-identical on the shared
+	// namespace. Set here at base creation — before any feature service captures
+	// the shared *core.Base — so every surface sees it.
+	if os.Getenv("BEX_TENANT_NAMESPACES") != "" && os.Getenv("BEX_CP_DB_URI") != "" {
+		base.TenantNamespaces = true
+	}
 
 	// One readiness flag for the whole pod (w1/m52): the public server's
 	// /readyz answers 200 until SIGTERM, then 503 while both servers keep
@@ -451,7 +461,7 @@ func main() {
 					log.Fatalf("bex-api: BEX_STRIPE_RECONCILE_INTERVAL must be a duration >= 1m: %v", err)
 				}
 				lifecycle = &billing.Lifecycle{Store: st, GracePeriod: grace, ExpectedLivemode: false}
-				enforcer := &billing.KubernetesEnforcer{Client: cl, Store: st, Namespace: envOr("BEX_CP_APPS_NAMESPACE", base.Namespace)}
+				enforcer := &billing.KubernetesEnforcer{Client: cl, Store: st, Namespace: envOr("BEX_CP_APPS_NAMESPACE", base.Namespace), TenantNamespaces: base.TenantNamespaces}
 				stripeLifecycleWorker = &billing.Worker{Store: st, Enforcer: enforcer}
 				stripeLifecycleReconciler = &billing.Reconciler{Store: st, Provider: stripeClient, GracePeriod: grace, Interval: reconcileEvery, Metrics: billingMetrics}
 				log.Printf("bex-api Stripe test-mode dunning enabled (grace %s, reconcile %s)", grace, reconcileEvery)

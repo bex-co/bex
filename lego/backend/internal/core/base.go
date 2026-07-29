@@ -246,6 +246,44 @@ type Base struct {
 	// Billing gates only explicitly billable feature mutations. Reads and
 	// payment/Portal recovery remain available while enforcement is active.
 	Billing BillingMutationGate
+	// TenantNamespaces mirrors store.Reconciler.TenantNamespaces
+	// (BEX_TENANT_NAMESPACES, ADR043): when true each workspace's App CRs (and
+	// their replica pods, clone/pull Secrets) live in that workspace's own
+	// per-tenant namespace — AppNamespace(tenantID), which is the workspace id
+	// itself (store.WorkspaceNamespace) — rather than the shared b.Namespace, so
+	// every App-CR read/write and pod lookup must resolve there. Wired by cmd/api
+	// alongside the projector's identical flag; off => byte-identical shared-ns
+	// behavior. Only Apps moved to per-tenant namespaces (Databases/KeyValues/
+	// Secrets stay in b.Namespace), so this gates App-CR access alone.
+	TenantNamespaces bool
+}
+
+// AppNamespace returns the namespace a workspace's App CRs live in. With
+// per-tenant namespace isolation (TenantNamespaces, ADR043) each workspace's Apps
+// are projected into its own namespace — store.WorkspaceNamespace(tenantID), which
+// is the workspace id itself — so App-CR reads and writes must target it;
+// otherwise every workspace shares b.Namespace. An empty or default tenant (store
+// off / unbound caller) always maps to b.Namespace, which is also what this
+// returns whenever TenantNamespaces is off, keeping the shared-ns path identical.
+func (b *Base) AppNamespace(tenantID string) string {
+	if b.TenantNamespaces && tenantID != "" && tenantID != DefaultTenant {
+		return tenantID
+	}
+	return b.Namespace
+}
+
+// AppListScope scopes an App List that must reach ANY workspace (an exact srv-
+// id, a service-name collision search, a host-claim or deploy-hook-token sweep).
+// In shared-namespace mode every App is in b.Namespace. With per-tenant namespaces
+// the CRs are spread across workspace namespaces, so the list runs cluster-wide
+// (label-filtered by the caller) exactly as the projector does (store/reconciler.go)
+// — bex-api's role grants cluster-wide App list for precisely this reason. Returns
+// a fresh slice each call so callers may append their own label/field options.
+func (b *Base) AppListScope() []client.ListOption {
+	if b.TenantNamespaces {
+		return nil
+	}
+	return []client.ListOption{client.InNamespace(b.Namespace)}
 }
 
 func (b *Base) RequireBillingMutation(ctx context.Context, workspaceID string) error {
@@ -537,7 +575,7 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 	// so resolve the unique id before trying the name-compatible fallbacks.
 	var byID appv1alpha1.AppList
 	if err := b.Client.List(ctx, &byID,
-		client.InNamespace(b.Namespace), client.MatchingLabels{LabelAppID: name}); err != nil {
+		append(b.AppListScope(), client.MatchingLabels{LabelAppID: name})...); err != nil {
 		return nil, err
 	}
 	if len(byID.Items) > 0 {
@@ -554,7 +592,7 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 	}
 	var a appv1alpha1.App
 	for _, candidate := range appCandidateNames(acting, name) {
-		getErr := b.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: candidate}, &a)
+		getErr := b.Client.Get(ctx, client.ObjectKey{Namespace: b.AppNamespace(acting), Name: candidate}, &a)
 		if getErr == nil {
 			object, resolveErr := b.resourceWorkspaceFor(ctx, acting, actingErr, a.Labels)
 			if err := b.authorizeAndAudit(ctx, relation, object, canonicalAppTarget(&a), verb, resolveErr); err != nil {
@@ -569,7 +607,7 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 	if acting != "" {
 		var list appv1alpha1.AppList
 		if err := b.Client.List(ctx, &list,
-			client.InNamespace(b.Namespace), client.MatchingLabels{LabelServiceName: name}); err != nil {
+			append(b.AppListScope(), client.MatchingLabels{LabelServiceName: name})...); err != nil {
 			return nil, err
 		}
 		// Every colliding candidate is a distinct authorization decision, but
@@ -837,7 +875,7 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 	// compatibility with bex-native callers and hand-applied legacy CRs.
 	var byID appv1alpha1.AppList
 	if err := b.Client.List(ctx, &byID,
-		client.InNamespace(b.Namespace), client.MatchingLabels{LabelAppID: name}); err != nil {
+		append(b.AppListScope(), client.MatchingLabels{LabelAppID: name})...); err != nil {
 		return nil, err
 	}
 	if len(byID.Items) > 0 {
@@ -853,7 +891,7 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 	}
 	var a appv1alpha1.App
 	for _, candidate := range appCandidateNames(acting, name) {
-		err := b.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: candidate}, &a)
+		err := b.Client.Get(ctx, client.ObjectKey{Namespace: b.AppNamespace(acting), Name: candidate}, &a)
 		if err == nil {
 			if err := b.AuthorizeLabeled(ctx, relation, a.Labels); err != nil {
 				return nil, err
@@ -869,7 +907,7 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 	}
 	var list appv1alpha1.AppList
 	if err := b.Client.List(ctx, &list,
-		client.InNamespace(b.Namespace), client.MatchingLabels{LabelServiceName: name}); err != nil {
+		append(b.AppListScope(), client.MatchingLabels{LabelServiceName: name})...); err != nil {
 		return nil, err
 	}
 	lastErr := error(ErrNotFound)
@@ -959,13 +997,67 @@ func (b *Base) requireMember(ctx context.Context, id Identity, tenantID string) 
 // AppPods lists an App's replica pods (the controller's app.bex.co/app label) —
 // the selection the logs and metrics features share.
 func (b *Base) AppPods(ctx context.Context, app string) ([]corev1.Pod, error) {
+	namespace := b.Namespace
+	if b.TenantNamespaces {
+		// An App's replica pods live in its per-tenant namespace (their
+		// Deployment is created there), and bex-api's role does NOT grant
+		// cluster-wide pod list — only per-namespace. Resolve the App's namespace
+		// first via the cluster-wide App list the role does grant. app is the App
+		// CR's metadata.name, which is exactly the value the controller stamps as
+		// PodLabelApp, so the by-name resolve and the pod filter agree.
+		ns, err := b.appNamespaceByName(ctx, app)
+		if err != nil {
+			return nil, err
+		}
+		if ns == "" {
+			// No such App => no pods, the same empty result a shared-namespace
+			// list gives for an unknown app.
+			return nil, nil
+		}
+		namespace = ns
+	}
 	var pods corev1.PodList
 	if err := b.Client.List(ctx, &pods,
-		client.InNamespace(b.Namespace),
+		client.InNamespace(namespace),
 		client.MatchingLabels{PodLabelApp: app}); err != nil {
 		return nil, err
 	}
 	return pods.Items, nil
+}
+
+// AppNamespaceByName resolves the namespace an App's pods and Prometheus series
+// live in from its metadata.name — for callers (e.g. the metrics resource-series
+// funnel) that hold only the name, not the App CR. In shared-namespace mode it is
+// b.Namespace; under per-tenant namespaces (ADR043) it is the App's `<ws>`
+// namespace. A missing App or lookup error falls back to b.Namespace, where a
+// query simply returns empty series — never an error to the caller. Callers that
+// already hold the App CR should use app.Namespace directly instead.
+func (b *Base) AppNamespaceByName(ctx context.Context, app string) string {
+	if !b.TenantNamespaces {
+		return b.Namespace
+	}
+	ns, err := b.appNamespaceByName(ctx, app)
+	if err != nil || ns == "" {
+		return b.Namespace
+	}
+	return ns
+}
+
+// appNamespaceByName resolves the namespace of the App CR whose metadata.name is
+// app — used only in per-tenant-namespace mode, where AppPods cannot list pods
+// cluster-wide and so must first learn which workspace namespace the App (and
+// therefore its pods) lives in. Returns "" when no such App exists.
+func (b *Base) appNamespaceByName(ctx context.Context, app string) (string, error) {
+	var list appv1alpha1.AppList
+	if err := b.Client.List(ctx, &list); err != nil {
+		return "", err
+	}
+	for i := range list.Items {
+		if list.Items[i].Name == app {
+			return list.Items[i].Namespace, nil
+		}
+	}
+	return "", nil
 }
 
 // PreDeployPods lists an App's pre-deploy Job pods (the app.bex.co/predeploy

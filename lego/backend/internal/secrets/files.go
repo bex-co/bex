@@ -226,7 +226,11 @@ func (s *Service) prepareSecretFiles(ctx context.Context, service string, a *app
 	}
 	name := filesSecretName(a.Name)
 	sec := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.Namespace},
+		// The pod projects this Secret as files (spec.filesFromSecrets) and later
+		// owns it (commitSecretFiles' controller ref), so it MUST share the App's
+		// namespace — the per-tenant `<ws>` namespace under ADR043. A cross-namespace
+		// owner ref would also be garbage-collected.
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: a.Namespace},
 		Type:       corev1.SecretTypeOpaque,
 		Data:       data,
 	}
@@ -248,7 +252,7 @@ func (s *Service) commitSecretFiles(ctx context.Context, _ string, a *appv1alpha
 	}
 	name := filesSecretName(a.Name)
 	sec := &corev1.Secret{}
-	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: name}, sec); err != nil {
+	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: a.Namespace, Name: name}, sec); err != nil {
 		return err
 	}
 	if err := controllerutil.SetControllerReference(a, sec, s.Client.Scheme()); err != nil {
@@ -265,7 +269,7 @@ func (s *Service) abortSecretFiles(ctx context.Context, service string, a *appv1
 	}
 	service = storeServiceName(a, service)
 	return errors.Join(
-		s.deleteSecret(ctx, filesSecretName(a.Name)),
+		s.deleteSecret(ctx, a.Namespace, filesSecretName(a.Name)),
 		s.Store.Delete(ctx, filesPath(service)),
 	)
 }
@@ -370,7 +374,7 @@ func (s *Service) materializeFiles(ctx context.Context, a *appv1alpha1.App, file
 func (s *Service) projectFiles(ctx context.Context, a *appv1alpha1.App, files map[string]string) error {
 	name := filesSecretName(a.Name)
 	if len(files) == 0 {
-		if err := s.deleteSecret(ctx, name); err != nil {
+		if err := s.deleteSecret(ctx, a.Namespace, name); err != nil {
 			return err
 		}
 		a.Spec.FilesFromSecrets = removeString(a.Spec.FilesFromSecrets, name)
@@ -383,10 +387,12 @@ func (s *Service) projectFiles(ctx context.Context, a *appv1alpha1.App, files ma
 	return nil
 }
 
-// deleteSecret removes a projection Secret by name (idempotent — absence is fine).
-func (s *Service) deleteSecret(ctx context.Context, name string) error {
+// deleteSecret removes a projection Secret by name in namespace (idempotent —
+// absence is fine). namespace is the App's namespace (its pod mounted the
+// Secret), the per-tenant `<ws>` namespace under ADR043; callers pass a.Namespace.
+func (s *Service) deleteSecret(ctx context.Context, namespace, name string) error {
 	sec := &corev1.Secret{}
-	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: name}, sec); err != nil {
+	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, sec); err != nil {
 		if client.IgnoreNotFound(err) == nil {
 			return nil
 		}

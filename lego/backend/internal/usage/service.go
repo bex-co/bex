@@ -647,7 +647,10 @@ func (s *Service) processAppMeterWindowResult(ctx context.Context, app store.App
 	var ok bool
 	switch kind {
 	case store.UsageKindInstanceSeconds:
-		quantity, ok = s.queryInstanceSeconds(ctx, app.Name, s.Namespace, window, end)
+		// The App's pods live in its per-tenant namespace under ADR043, so the
+		// cAdvisor `namespace=` matcher must target AppNamespace(app.TenantID), not
+		// the shared namespace (which after the migration holds none of its pods).
+		quantity, ok = s.queryInstanceSeconds(ctx, app.Name, s.AppNamespace(app.TenantID), window, end)
 	case store.UsageKindEgressBytes:
 		quantity, ok = s.queryEgressBytes(ctx, app, window, end)
 	case store.UsageKindBuildSeconds:
@@ -767,10 +770,12 @@ func (s *Service) queryEgressBytes(ctx context.Context, app store.App, start, en
 	if s.PromBase == "" || s.Client == nil {
 		return 0, false
 	}
+	// Resolve the App CR by its unique app-id across every workspace: per-tenant
+	// namespaces (ADR043) scatter the CRs across `<ws>` namespaces, so a shared-
+	// namespace list would resolve zero and silently undercount egress (billing).
 	var projected appv1alpha1.AppList
 	if err := s.Client.List(ctx, &projected,
-		client.InNamespace(s.Namespace),
-		client.MatchingLabels{store.LabelAppID: app.ID},
+		append(s.AppListScope(), client.MatchingLabels{store.LabelAppID: app.ID})...,
 	); err != nil {
 		log.Printf("usage: egress_bytes resolve App CR for %s: %v", app.ID, err)
 		return 0, false

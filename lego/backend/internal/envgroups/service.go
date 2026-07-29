@@ -1271,7 +1271,7 @@ func (s *Service) upsertSecret(ctx context.Context, name string, data map[string
 	for k, v := range data {
 		bytesData[k] = []byte(v)
 	}
-	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.Namespace}}
+	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.envGroupNamespace(ctx)}}
 	_, err := controllerutil.CreateOrUpdate(ctx, s.Client, sec, func() error {
 		sec.Type = corev1.SecretTypeOpaque
 		sec.Data = bytesData
@@ -1281,8 +1281,19 @@ func (s *Service) upsertSecret(ctx context.Context, name string, data map[string
 }
 
 func (s *Service) deleteSecret(ctx context.Context, name string) error {
-	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.Namespace}}
+	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.envGroupNamespace(ctx)}}
 	return client.IgnoreNotFound(s.Client.Delete(ctx, sec))
+}
+
+// envGroupNamespace is where a group's projection Secrets live: the workspace's
+// own namespace under per-tenant isolation (ADR043), so the linked services'
+// pods (all in that one namespace) resolve them via envFrom / projected volumes.
+// The group's workspace is the one the verb resolved into ctx (core.WithWorkspace
+// + s.Tenant), the same resolution every env-group verb authorizes against.
+// Empty tenant (store off) or TenantNamespaces off => the shared s.Namespace.
+func (s *Service) envGroupNamespace(ctx context.Context) string {
+	tenantID, _ := s.Tenant(ctx)
+	return s.AppNamespace(tenantID)
 }
 
 // now is the rolling-restart stamp (RFC3339Nano so back-to-back edits differ).
