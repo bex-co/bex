@@ -72,6 +72,13 @@ type Server struct {
 	// mints. Empty => the WebSocket listener is not started (native SSH only).
 	TicketSecret []byte
 
+	// SandboxExecSecret enables the sandbox-exec SSE path (sandbox_exec.go, w3/m33,
+	// `render ea sandbox exec`). It must equal bex-api's BEX_SANDBOX_EXEC_SECRET so
+	// the gateway can verify the exec tickets bex-api mints after authorizing
+	// can_operate on a sandbox. Empty => the sandbox-exec route 503s (feature off).
+	// pods/exec stays confined to this process; bex-api reverse-proxies the SSE.
+	SandboxExecSecret []byte
+
 	HandshakeTimeout time.Duration
 	SessionTimeout   time.Duration
 	MaxSessions      int

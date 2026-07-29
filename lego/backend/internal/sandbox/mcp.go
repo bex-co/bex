@@ -43,10 +43,18 @@ type stopSandboxResult struct {
 	Stopped bool `json:"stopped"`
 }
 
+// execSandboxArgs is the MCP input for sandbox_exec: run one command in a
+// sandbox and return its collected output + exit code.
+type execSandboxArgs struct {
+	ID      string `json:"id"`
+	Command string `json:"command"`
+	OwnerID string `json:"ownerId,omitempty"`
+}
+
 // RegisterMCP wires the agent-facing sandbox tools (ADR042 D2 / ADR014 D3 —
 // agents drive sandboxes from outside over MCP). spawn_sandbox mirrors the
-// Render `ea sandbox create` intent; sandbox_exec (the streaming run) is a
-// follow-up once the exec transport lands.
+// Render `ea sandbox create` intent; sandbox_exec runs a command via the same
+// authorized gateway path the CLI uses, returning buffered output (no SSE dance).
 func (s *Service) RegisterMCP(server *mcp.Server) {
 	mcp.AddTool(server, &mcp.Tool{Name: "spawn_sandbox", Description: "Create a hosted agent sandbox from a registered template and return its id and status."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in spawnSandboxArgs) (*mcp.CallToolResult, Sandbox, error) {
@@ -62,5 +70,10 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 		func(ctx context.Context, _ *mcp.CallToolRequest, in sandboxIDArgs) (*mcp.CallToolResult, stopSandboxResult, error) {
 			err := s.Terminate(ctx, in.ID)
 			return nil, stopSandboxResult{Stopped: err == nil}, err
+		})
+	mcp.AddTool(server, &mcp.Tool{Name: "sandbox_exec", Description: "Run a shell command in a sandbox and return its stdout, stderr, and exit code."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in execSandboxArgs) (*mcp.CallToolResult, ExecResult, error) {
+			res, err := s.ExecBuffered(ctx, ExecRequest{OwnerID: in.OwnerID, SandboxID: in.ID, Command: in.Command})
+			return nil, res, err
 		})
 }

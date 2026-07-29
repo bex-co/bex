@@ -79,6 +79,19 @@ spec:
                   name: bex-shell-ticket
                   key: secret
                   optional: true
+            # Sandbox-exec SSE transport (w3/m33, `render ea sandbox exec`). An
+            # INTERNAL-only listener bex-api reverse-proxies to (NOT browser-facing,
+            # so distinct from the Web Shell on :8080). Started only when
+            # BEX_SANDBOX_EXEC_SECRET is present; must match bex-api's. pods/exec
+            # stays confined to this gateway (Option A).
+            - name: BEX_SANDBOX_EXEC_ADDR
+              value: ":8081"
+            - name: BEX_SANDBOX_EXEC_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bex-sandbox-exec
+                  key: secret
+                  optional: true
           ports:
             - name: ssh
               containerPort: 2222
@@ -88,6 +101,9 @@ spec:
               protocol: TCP
             - name: shell
               containerPort: 8080
+              protocol: TCP
+            - name: sandbox-exec
+              containerPort: 8081
               protocol: TCP
           readinessProbe:
             httpGet:

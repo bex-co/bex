@@ -194,8 +194,9 @@ func TestTenantRoleBindingsStampedPerNamespace(t *testing.T) {
 	}
 
 	// Sandbox namespace binds the operator role (namespace mgmt) + the OpenSandbox
-	// server role (BatchSandboxes), but NOT bex-api/ssh — those never touch a
-	// sandbox namespace (m32 t006). The server SA lives in opensandbox-system.
+	// server role (BatchSandboxes) + the ssh-gateway role (pods/exec for
+	// `ea sandbox exec`, w3/m33), but NOT bex-api — bex-api never touches a sandbox
+	// namespace. The server SA lives in opensandbox-system.
 	sandbox := SandboxNamespace(tn.ID)
 	if _, ok := binding(sandbox, "bex-tenant-operator"); !ok {
 		t.Error("sandbox missing bex-tenant-operator binding")
@@ -210,10 +211,14 @@ func TestTenantRoleBindingsStampedPerNamespace(t *testing.T) {
 		srvRB.Subjects[0].Namespace != "opensandbox-system" {
 		t.Errorf("sandbox-server binding = ref %+v subjects %+v", srvRB.RoleRef, srvRB.Subjects)
 	}
-	for _, name := range []string{"bex-tenant-api", "bex-tenant-ssh-gateway"} {
-		if _, ok := binding(sandbox, name); ok {
-			t.Errorf("sandbox must NOT bind %s", name)
-		}
+	// ssh-gateway is bound in the sandbox regime for `ea sandbox exec` (pods/exec).
+	gwRB, ok := binding(sandbox, "bex-tenant-ssh-gateway")
+	if !ok || len(gwRB.Subjects) != 1 || gwRB.Subjects[0].Name != "bex-ssh-gateway" {
+		t.Errorf("sandbox ssh-gateway binding missing/wrong: ok=%v subjects=%+v", ok, gwRB.Subjects)
+	}
+	// bex-api must NOT be bound in a sandbox namespace (it never gains pods/exec).
+	if _, ok := binding(sandbox, "bex-tenant-api"); ok {
+		t.Error("sandbox must NOT bind bex-tenant-api")
 	}
 	// The hosting namespace must NOT bind the sandbox-server role.
 	if _, ok := binding(host, "bex-tenant-sandbox-server"); ok {

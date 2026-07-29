@@ -560,6 +560,21 @@ func main() {
 		// The Render CLI's `ea sandbox create` sends no template (no such flag), so
 		// an empty template resolves to this registered default (w3/m32 t009).
 		deps.SandboxDefaultTemplate = "base"
+		// `render ea sandbox exec` (m33): bex-api authorizes can_operate and mints a
+		// signed ticket, then reverse-proxies the SSE stream from the isolated SSH
+		// gateway (which alone holds pods/exec, Option A). Both the shared HMAC
+		// secret and the gateway's internal exec URL must be set, else the exec verb
+		// 503s (create/list/stop are unaffected).
+		if secret := os.Getenv("BEX_SANDBOX_EXEC_SECRET"); secret != "" {
+			if gwURL := os.Getenv("BEX_SANDBOX_EXEC_URL"); gwURL != "" {
+				deps.SandboxExec = &sandbox.ExecConfig{
+					Secret:     []byte(secret),
+					GatewayURL: gwURL,
+					Client:     &http.Client{}, // no timeout: the exec stream is long-lived
+					TTL:        60 * time.Second,
+				}
+			}
+		}
 		// Multi-tenant OpenSandbox (m32 t006): with the control plane enabled, each
 		// workspace gets an opaque tenant key the sandbox feature stamps as the
 		// OPEN-SANDBOX-API-KEY header; the server resolves it back through the CP
