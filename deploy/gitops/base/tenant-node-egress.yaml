@@ -352,17 +352,10 @@ spec:
         - ports:
             - port: "443"
               protocol: TCP
-    # `kube-apiserver` is the preferred semantic identity, but clusters where
-    # the control-plane endpoints are outside Cilium can fail to classify the
-    # default/kubernetes Service VIP as that entity. Keep the destination exact
-    # while covering that topology through Cilium's Service-aware translation.
-    - toServices:
-        - k8sService:
-            serviceName: kubernetes
-            namespace: default
-      toPorts:
-        - ports:
-            - port: "443"
+            # Cilium enforces the L4 rule after default/kubernetes Service DNAT
+            # on this cluster. The client dials 443; the classified
+            # kube-apiserver backend receives 6443 (confirmed by Hubble).
+            - port: "6443"
               protocol: TCP
     - toEndpoints:
         - matchLabels:
@@ -393,13 +386,7 @@ spec:
         - ports:
             - port: "443"
               protocol: TCP
-    # See opensandbox-server-egress above: retain the preferred entity and add
-    # the exact default/kubernetes Service for external-control-plane topology.
-    - toServices:
-        - k8sService:
-            serviceName: kubernetes
-            namespace: default
-      toPorts:
-        - ports:
-            - port: "443"
+            # See opensandbox-server-egress: Service 443 is enforced against
+            # the classified kube-apiserver backend port after DNAT.
+            - port: "6443"
               protocol: TCP

@@ -428,10 +428,30 @@ jobs:
             kubectl -n argocd get applications
             exit 1
           fi
-          kubectl -n opensandbox-system rollout status deploy/opensandbox-controller-manager --timeout=300s \
-            || { kubectl -n opensandbox-system get pods; exit 1; }
-          kubectl -n opensandbox-system rollout status deploy/opensandbox-server --timeout=300s \
-            || { kubectl -n opensandbox-system get pods; exit 1; }
+          # Reset crash backoff and stale ProgressDeadlineExceeded conditions
+          # from a previously degraded release, then level-check availability.
+          kubectl -n opensandbox-system rollout restart \
+            deploy/opensandbox-controller-manager deploy/opensandbox-server
+          for deployment in opensandbox-controller-manager opensandbox-server; do
+            deadline=$((SECONDS + 600))
+            available=0
+            desired=1
+            while ((SECONDS < deadline)); do
+              state="$(kubectl -n opensandbox-system get deployment "$deployment" -o json 2>/dev/null \
+                | jq -r '[.metadata.generation, (.status.observedGeneration // 0), (.spec.replicas // 1), (.status.availableReplicas // 0)] | @tsv' \
+                || true)"
+              read -r generation observed desired available <<<"$state"
+              if [ -n "${generation:-}" ] && ((observed >= generation && available >= desired)); then
+                break
+              fi
+              sleep 5
+            done
+            if [ -z "${generation:-}" ] || ((observed < generation || available < desired)); then
+              echo "$deployment has ${available:-0}/${desired:-1} available replicas" >&2
+              kubectl -n opensandbox-system get pods
+              exit 1
+            fi
+          done
 
       # --- 4b. auth substrate secrets (docs/ADR012-auth.md) — out-of-band of GitOps ---
       # Argo creates the CNPG Clusters (auth-dbs, sync-wave 2); once CNPG has
