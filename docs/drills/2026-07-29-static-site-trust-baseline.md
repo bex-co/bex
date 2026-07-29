@@ -62,7 +62,7 @@ The signed production workflow `30496239404` completed successfully for the fina
 
 The post-fix live verifier passed with `PSL_EXPECTED=absent`:
 
-- three tenant-facing identities were denied Service and Ingress create/update/patch/delete;
+- all 20 discovered identities were denied Service and Ingress create/update/patch/delete across their 50 effective scopes in all 16 hosting namespaces (the legacy `default` namespace plus 15 tenant namespaces); every App namespace was inside that admission-protected set;
 - the manager retained those verbs and exact static/maintenance alias reconciliation;
 - dry-run updates targeting bex-api, Zot, OpenBao, a tenant database, and external DNS were all denied;
 - every live hosting ExternalName had the exact App label, controller owner, port, and fixed platform destination;

@@ -57,14 +57,31 @@ kubectl get validatingadmissionpolicy bex-operator-platform-aliases >/dev/null
 kubectl get validatingadmissionpolicybinding bex-operator-platform-aliases >/dev/null
 kubectl get validatingadmissionpolicybinding bex-operator-platform-aliases-default >/dev/null
 
-hosting_namespaces="$(kubectl get namespaces -o json | jq -r '
+namespaces_json="$(kubectl get namespaces -o json)"
+hosting_namespaces="$(jq -r '
   .items[] | select(.metadata.name == "default" or
     (.metadata.labels."app.kubernetes.io/managed-by" == "bex-controlplane" and
      .metadata.labels."app.kubernetes.io/part-of" == "bex" and
      .metadata.labels."app.bex.co/regime" == "hosting" and
      ((.metadata.labels."app.bex.co/workspace" // "") | test("^tea-[0-9a-v]{20}$")) and
      .metadata.name == .metadata.labels."app.bex.co/workspace")) |
-  .metadata.name' | sort -u)"
+  .metadata.name' <<<"$namespaces_json" | sort -u)"
+hosting_namespace_json="$(jq -Rn '[inputs | select(length > 0)]' <<<"$hosting_namespaces")"
+hosting_namespace_count="$(jq 'length' <<<"$hosting_namespace_json")"
+[ "$hosting_namespace_count" -gt 1 ] || {
+  echo "error: expected default plus at least one tenant hosting namespace" >&2
+  exit 1
+}
+
+apps_json="$(kubectl get apps.app.bex.co -A -o json)"
+unprotected_app_namespaces="$(jq -r --argjson protected "$hosting_namespace_json" '
+  ([.items[].metadata.namespace] | unique) - $protected | .[]' <<<"$apps_json")"
+[ -z "$unprotected_app_namespaces" ] || {
+  echo "FAIL  inventory: App namespaces outside the admission-protected hosting set:" >&2
+  printf '%s\n' "$unprotected_app_namespaces" >&2
+  exit 1
+}
+
 invalid_aliases="$(while IFS= read -r namespace; do
   [ -n "$namespace" ] || continue
   kubectl -n "$namespace" get services -o json | jq -r '
@@ -95,10 +112,10 @@ done <<<"$hosting_namespaces")"
 }
 echo "PASS  inventory: every hosting ExternalName alias has an exact operator/App-owned shape"
 
-app_json="$(kubectl get apps.app.bex.co -A -o json | jq -c '
+app_json="$(jq -c '
   [.items[] | select(.spec.type == "static_site" and (.status.url // "") != "")] as $apps |
   (($apps | map(select(.metadata.namespace != "default")) | first) //
-   ($apps | first) // empty)')"
+   ($apps | first) // empty)' <<<"$apps_json")"
 [ -n "$app_json" ] || { echo "error: no live static_site App with a URL found" >&2; exit 1; }
 app_namespace="$(jq -r '.metadata.namespace' <<<"$app_json")"
 app_name="$(jq -r '.metadata.name' <<<"$app_json")"
@@ -107,30 +124,45 @@ app_url="$(jq -r '.status.url' <<<"$app_json")"
 alias_name="bex-static-$app_name"
 maintenance_alias_name="bex-maintenance-$app_name"
 
-identity_count=0
-while IFS= read -r identity; do
-  [ -n "$identity" ] || continue
-  identity_count=$((identity_count + 1))
+# Enumerate every ServiceAccount where it exists and every cross-namespace
+# ServiceAccount subject where a RoleBinding grants it authority. Checking each
+# identity in each effective namespace catches namespaced Roles as well as any
+# accidental ClusterRoleBinding without an O(namespaces²) cross-product.
+identity_scopes="$(while IFS= read -r namespace; do
+  [ -n "$namespace" ] || continue
+  kubectl -n "$namespace" get serviceaccounts -o json | jq -r --arg namespace "$namespace" '
+    .items[].metadata.name |
+    [$namespace, ("system:serviceaccount:" + $namespace + ":" + .)] | @tsv'
+  kubectl -n "$namespace" get rolebindings -o json | jq -r --arg namespace "$namespace" '
+    .items[].subjects[]? | select(.kind == "ServiceAccount") |
+    [$namespace, ("system:serviceaccount:" + (.namespace // $namespace) + ":" + .name)] | @tsv'
+done <<<"$hosting_namespaces" | sort -u | awk -F '\t' -v manager="$MANAGER_IDENTITY" '$2 != manager')"
+[ -n "$identity_scopes" ] || { echo "error: no tenant-facing identity scopes found" >&2; exit 1; }
+
+# Eight SubjectAccessReviews per scope run concurrently, keeping the exhaustive
+# live proof bounded without weakening it to a manifest-only RBAC inspection.
+rbac_failures="$(while IFS=$'\t' read -r scope_namespace identity; do
+  [ -n "$scope_namespace" ] && [ -n "$identity" ] || continue
   for resource in services ingresses.networking.k8s.io; do
     for verb in create update patch delete; do
-      answer="$(kubectl auth can-i "$verb" "$resource" -n "$app_namespace" --as="$identity" 2>/dev/null || true)"
-      if [ "$answer" != "no" ]; then
-        echo "FAIL  RBAC: $identity can $verb $resource in $app_namespace" >&2
-        exit 1
-      fi
+      (
+        answer="$(kubectl auth can-i "$verb" "$resource" -n "$scope_namespace" --as="$identity" 2>/dev/null || true)"
+        if [ "$answer" != "no" ]; then
+          printf '%s can %s %s in %s (answer=%s)\n' "$identity" "$verb" "$resource" "$scope_namespace" "${answer:-empty}"
+        fi
+      ) &
     done
   done
-done < <(
-  {
-    kubectl -n "$app_namespace" get serviceaccounts -o json \
-      | jq -r '.items[].metadata.name | "system:serviceaccount:'"$app_namespace"':" + .'
-    kubectl -n "$app_namespace" get rolebindings -o json \
-      | jq -r '.items[].subjects[]? | select(.kind == "ServiceAccount") |
-          "system:serviceaccount:" + (.namespace // "'"$app_namespace"'") + ":" + .name'
-  } | sort -u | grep -vFx "$MANAGER_IDENTITY"
-)
-[ "$identity_count" -gt 0 ] || { echo "error: no tenant-facing identities found" >&2; exit 1; }
-echo "PASS  RBAC: $identity_count tenant-facing identities cannot mutate Services or Ingresses"
+  wait
+done <<<"$identity_scopes")"
+[ -z "$rbac_failures" ] || {
+  echo "FAIL  RBAC: tenant-facing mutation authority detected:" >&2
+  printf '%s\n' "$rbac_failures" >&2
+  exit 1
+}
+identity_scope_count="$(wc -l <<<"$identity_scopes" | tr -d ' ')"
+identity_count="$(cut -f2 <<<"$identity_scopes" | sort -u | wc -l | tr -d ' ')"
+echo "PASS  RBAC: $identity_count identities in $identity_scope_count scopes across $hosting_namespace_count hosting namespaces cannot mutate Services or Ingresses"
 
 for resource in services ingresses.networking.k8s.io; do
   for verb in create update patch delete; do
