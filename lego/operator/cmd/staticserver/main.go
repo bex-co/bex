@@ -111,6 +111,10 @@ func main() {
 			setupLog.Error(err, "build s3 origin")
 			os.Exit(1)
 		}
+		if err := origin.Check(ctx); err != nil {
+			setupLog.Error(err, "verify static origin credential")
+			os.Exit(1)
+		}
 		resolver := staticserver.NewCachedResolver(cl, namespace, baseDomain)
 		go resolver.Run(ctx, resync, func(err error) {
 			setupLog.Error(err, "refresh static-site snapshot")

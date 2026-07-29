@@ -35,7 +35,7 @@ func testOptions() Options {
 		Store: Store{
 			Bucket:   "bex-static",
 			Endpoint: "https://s3.eu-central-2.wasabisys.com",
-			Secret:   "static-s3",
+			Secret:   "bex-static-publish-s3",
 		},
 		Namespace: "bex-system",
 	}
@@ -118,8 +118,8 @@ func TestPublishJobShape(t *testing.T) {
 	}
 	// Credentials come from the S3 Secret via envFrom.
 	if len(upload.EnvFrom) != 1 || upload.EnvFrom[0].SecretRef == nil ||
-		upload.EnvFrom[0].SecretRef.Name != "static-s3" {
-		t.Errorf("upload must envFrom the S3 secret static-s3, got %+v", upload.EnvFrom)
+		upload.EnvFrom[0].SecretRef.Name != "bex-static-publish-s3" {
+		t.Errorf("upload must envFrom the S3 secret bex-static-publish-s3, got %+v", upload.EnvFrom)
 	}
 
 	// Both containers share the /out emptyDir.

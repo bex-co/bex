@@ -177,16 +177,18 @@ spec:
           # origin a static_site publishes to + the shared static-server its host
           # Ingress backs onto. Endpoint/bucket/region are deployment-time config
           # (a bucket DEDICATED to static content — never bex-tfstate); the S3
-          # credentials come from the out-of-band `static-s3` Secret (created from
-          # .env, the etcd-backup pattern). Any unset => static_site is rejected.
+          # publish/purge credentials come from the out-of-band, bucket-scoped
+          # `bex-static-publish-s3` Secret in BEX_BUILD_NAMESPACE. The shared
+          # static-server uses a separate read-only identity in bex-system.
+          # Any unset => static_site is rejected.
           - name: BEX_STATIC_S3_ENDPOINT
             value: https://s3.eu-central-2.wasabisys.com
           - name: BEX_STATIC_S3_BUCKET
             value: bex-static
           - name: BEX_STATIC_S3_REGION
             value: eu-central-2
-          - name: BEX_STATIC_S3_SECRET
-            value: static-s3
+          - name: BEX_STATIC_PUBLISH_S3_SECRET
+            value: bex-static-publish-s3
           - name: BEX_STATIC_SERVER_SERVICE
             value: bex-static-server
           # The activator (w1/m4 wake-on-request, w1/m37 maintenance mode):

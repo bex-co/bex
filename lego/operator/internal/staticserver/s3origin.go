@@ -38,6 +38,33 @@ type S3Origin struct {
 	bucket string
 }
 
+// Check verifies the configured identity can list the dedicated origin bucket.
+// It is called once at startup so a missing, wrong, or over-rotated read Secret
+// fails the static-server Deployment immediately instead of leaving a Ready pod
+// that answers every tenant request with an opaque 503.
+func (o *S3Origin) Check(ctx context.Context) error {
+	maxKeys := int32(1)
+	objects, err := o.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+		Bucket:  aws.String(o.bucket),
+		MaxKeys: &maxKeys,
+	})
+	if err != nil {
+		return fmt.Errorf("staticserver: verify read access to bucket %q: %w", o.bucket, err)
+	}
+	// An empty new bucket has nothing to read yet. Once any published object is
+	// present, a signed HEAD proves the identity also has GetObject rather than
+	// merely enough ListBucket authority to appear healthy.
+	if len(objects.Contents) > 0 && objects.Contents[0].Key != nil {
+		if _, err := o.client.HeadObject(ctx, &s3.HeadObjectInput{
+			Bucket: aws.String(o.bucket),
+			Key:    objects.Contents[0].Key,
+		}); err != nil {
+			return fmt.Errorf("staticserver: verify object read access in bucket %q: %w", o.bucket, err)
+		}
+	}
+	return nil
+}
+
 // NewS3Origin builds an S3-backed Origin. Credentials come from the standard AWS
 // environment (the ServiceAccount-mounted Secret in-cluster). endpoint is the
 // S3-compatible base URL (e.g. https://s3.eu-central-2.wasabisys.com); region

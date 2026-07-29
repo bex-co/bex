@@ -21,51 +21,80 @@ graph LR
 
 Edge rules live on the App CR (`spec.routes`/`spec.headers`) and the static-server reads them **live**, so a routes/headers edit takes effect on the next resolver refresh with no rebuild or republish. Changing `publishPath` does republish (it bumps `spec.restartedAt`).
 
+## Trust boundaries
+
+Static hosting has three independent security boundaries; none substitutes for another:
+
+| Boundary | Attacker capability | Enforced invariant |
+| --- | --- | --- |
+| Browser site boundary | A malicious tenant controls HTML/JavaScript on one `*.onbex.co` origin | `onbex.co` must be a browser-consumed Public Suffix so `Domain=onbex.co` cookies are rejected; local storage and Service Workers remain origin-scoped |
+| Kubernetes routing authority | A tenant workload or compromised tenant-facing API/gateway identity can call the API server with only its effective RBAC | Those identities cannot mutate Services or Ingresses; fail-closed admission accepts tenant ExternalName aliases only from the operator, with an App controller owner and one of two fixed destinations |
+| Object-store blast radius | The shared static-server or an ephemeral publish/purge Job is compromised | The server identity is read-only on `bex-static`; the publisher identity is write/delete-capable only on `bex-static`; neither can enumerate the account or reach `bex-tfstate` backups or another bucket |
+
+A malicious static-site owner can publish active browser content, configure rooted object-key rewrites/redirects, and set response headers for their own origins. They cannot choose an upstream server: the API rejects route destinations that do not begin with `/`, and the static handler normalizes rewrites into `<app>/<revision>/<path>` before calling its S3 `Origin`. It has no generic HTTP fetch path. In particular, a string that resembles `bex-api.bex-system.svc`, a tenant ClusterIP, cloud metadata, or an external URL is only an object key and returns the ordinary object-store miss.
+
+Traefik deliberately keeps `providers.kubernetesIngress.allowExternalNameServices=true` because static hosting and maintenance mode need cross-namespace aliases. [`operator-alias-admission.yaml`](../deploy/gitops/base/operator-alias-admission.yaml) makes the corresponding authority explicit. In a canonical hosting namespace, an ExternalName create/update (including a transition away from ExternalName) must be requested by `bex-system/bex-controller-manager`, carry exactly one matching App controller owner, and be one of:
+
+- `bex-static-*` → `bex-static-server.bex-system.svc.cluster.local:8080`
+- `bex-maintenance-*` → `bex-activator.bex-system.svc.cluster.local:8888`
+
+Tenant-facing ServiceAccounts are separately denied Service and Ingress mutation by RBAC. Admission is defense in depth for alias shape; it does not make the manager untrusted or replace its reconciliation tests.
+
+### Browser platform-domain contract
+
+Tenant content stays on `*.onbex.co`; dashboard, API, Kratos, and Hydra stay on `*.bex.co`. No control-plane session or OAuth token is intentionally sent to the tenant content suffix. Platform-hosted tenant applications should use host-only cookies, preferably `Secure; HttpOnly; SameSite=Lax` and the `__Host-` prefix (which also requires `Path=/` and forbids `Domain`). Custom domains are separate registrable sites and remain the domain owner's cookie-policy responsibility.
+
+`onrender.com` is in the Public Suffix List, so sibling Render sites cannot set a parent-domain cookie. As of 2026-07-29, the canonical list does **not** contain `onbex.co`: real Chrome accepts `Domain=onbex.co` on tenant A and sends it to tenant B. The current upstream PRIVATE-section request template requires 2,000–3,000 distinct users; production has 17 distinct tenant members, so bex cannot truthfully submit yet. This is a known release boundary, not a locally papered-over success. [`static-site-browser-isolation.mjs`](../scripts/static-site-browser-isolation.mjs) compares real-Chrome behavior with `onrender.com`; its default expects the secure final state and therefore fails until upstream membership reaches browser releases. `PSL_EXPECTED=absent` exists only to reproduce the dated baseline.
+
 ## Object store
 
-Reuses the platform's existing S3-compatible account (the Terraform-state credentials, e.g. Wasabi) but a **separate bucket** — never serve public content from the private `bex-tfstate` state/backup bucket. Endpoint/bucket are deployment-time config; credentials come from an out-of-band Secret, exactly the etcd/OpenBao/CNPG backup pattern ([ADR011-etcd-backup-restore.md](ADR011-etcd-backup-restore.md)).
+Static content uses a **separate private bucket** and two dedicated Wasabi IAM users. The bootstrap Terraform-state credential may provision/rotate them, but it is never mounted into the static plane. Default-deny IAM semantics plus explicit `bex-static` resource ARNs keep the state and backup bucket (`bex-tfstate`) outside both runtime identities.
 
 | Variable (operator / static-server) | Meaning |
 | --- | --- |
 | `BEX_STATIC_S3_ENDPOINT` | S3-compatible endpoint URL (e.g. `https://s3.eu-central-2.wasabisys.com`) |
 | `BEX_STATIC_S3_BUCKET` | bucket dedicated to static content (e.g. `bex-static`) |
 | `BEX_STATIC_S3_REGION` | S3 region (optional; also read from the Secret's `AWS_DEFAULT_REGION`) |
-| `BEX_STATIC_S3_SECRET` (operator) | name of the Secret holding `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` for the publish Job |
+| `BEX_STATIC_PUBLISH_S3_SECRET` (operator) | publish/purge Secret name in `BEX_BUILD_NAMESPACE` (production: `bex-static-publish-s3`) |
 | `BEX_STATIC_SERVER_SERVICE` (operator) | k8s Service name of the static-server the host Ingress backs onto |
 | `BEX_STATIC_SERVER_PORT` (operator) | static-server Service port (default `8080`) |
 | `BEX_STATIC_ADDR` (static-server) | listen address (default `:8080`) |
 | `BEX_STATIC_NAMESPACE` (static-server) | App namespace to watch (empty ⇒ all) |
 | `BEX_STATIC_CACHE_BYTES` (static-server) | in-memory object-cache budget (default 256 MiB) |
 | `BEX_STATIC_RESYNC` (static-server) | host→site snapshot refresh interval (default `10s`) |
+| `bex-system/bex-static-read-s3` | required static-server env Secret; a different provider identity from the publisher |
 
-Any of the operator's `BEX_STATIC_S3_*` (or `BEX_STATIC_SERVER_SERVICE`) unset ⇒ `static_site` Apps are rejected with a clear status, the way unset `BEX_DB_BACKUP_*` disables Postgres backups. The static-server itself starts in a degraded mode (healthy, but 503 for content) until its endpoint/bucket are set, so the platform can deploy it unconditionally.
+Any operator endpoint/bucket/publish-Secret setting (or `BEX_STATIC_SERVER_SERVICE`) unset rejects `static_site` Apps with a clear status. Before dispatching publish or purge, reconciliation loads the namespace-local publish Secret and requires both AWS credential keys, so a missing Secret becomes an actionable App condition rather than a Job-start surprise. The static-server Secret is non-optional, AWS metadata fallback is disabled, and startup performs a signed one-object list plus `HeadObject` check when content exists; missing or denied read credentials prevent readiness instead of producing a healthy-looking server that fails only on traffic. Endpoint/bucket unset still selects the explicit degraded 503 origin for installations where static hosting is disabled.
 
-### One-time setup (out-of-band, like `bex-tfstate`)
+### IAM and one-time setup
+
+The committed provider policies are auditable inputs, never credentials:
+
+- [`static-s3-read-policy.json`](../infra/wasabi/static-s3-read-policy.json): `GetBucketLocation`, `ListBucket`, and `GetObject` on `bex-static` only.
+- [`static-s3-publish-policy.json`](../infra/wasabi/static-s3-publish-policy.json): the same metadata/read actions plus `PutObject`, `DeleteObject`, and only the multipart actions required by `aws s3 sync`, on `bex-static` only.
+
+Neither includes `ListAllMyBuckets`, wildcard resources, or a statement for `bex-tfstate`.
 
 ```sh
-# 1. Create the bucket once (never the tfstate bucket).
-aws --endpoint-url "$TF_STATE_ENDPOINT" s3 mb s3://bex-static
+# Uses TF_STATE_* only as the out-of-band Wasabi IAM administrator. It creates
+# bex-static-reader / bex-static-publisher and installs values without printing
+# them or placing them in process arguments.
+KUBECONFIG=/secure/path/app.kubeconfig scripts/static-s3-credentials.sh provision
 
-# 2. Credentials Secret for the static-server and publish Jobs (reuses the
-#    state-store creds). STATIC_PUBLISH_NAMESPACE must equal the operator's
-#    BEX_BUILD_NAMESPACE; production uses bex-build.
-source .env
-STATIC_PUBLISH_NAMESPACE=bex-build
-for namespace in bex-system "$STATIC_PUBLISH_NAMESPACE"; do
-  kubectl -n "$namespace" create secret generic static-s3 \
-    --from-literal=AWS_ACCESS_KEY_ID="$TF_STATE_ACCESS_KEY" \
-    --from-literal=AWS_SECRET_ACCESS_KEY="$TF_STATE_SECRET_KEY" \
-    --from-literal=AWS_DEFAULT_REGION="$TF_STATE_REGION" \
-    --dry-run=client -o yaml | kubectl apply -f -
-done
-
-# 3. Endpoint/bucket for the static-server (the operator gets the same via env).
-kubectl -n bex-system create configmap bex-static-config \
-  --from-literal=BEX_STATIC_S3_ENDPOINT="https://s3.eu-central-2.wasabisys.com" \
-  --from-literal=BEX_STATIC_S3_BUCKET=bex-static \
-  --from-literal=BEX_STATIC_S3_REGION=eu-central-2 \
-  --from-literal=BEX_BASE_DOMAIN=onbex.co
+# Positive + negative matrix: required static actions work; reader write/delete,
+# tfstate/backups, and an unrelated bucket are denied.
+KUBECONFIG=/secure/path/app.kubeconfig scripts/static-s3-credentials.sh verify
 ```
+
+Rotation follows add → verify → deploy → lifecycle proof → revoke. The exact rollback and legacy-secret removal gates are in [the static S3 rotation runbook](runbooks/static-site-s3-rotation.md). Secret values, access-key ids, kubeconfigs, and hashes do not belong in Git, logs, tickets, or drill evidence.
+
+## Verification
+
+- `scripts/gitops-validate.sh` pins the admission objects, tenant Role shapes, fixed alias destinations, split Secret names, and exact IAM actions/resources.
+- `PSL_EXPECTED=absent scripts/verify-static-site-security.sh repo` reproduces the 2026-07-29 browser baseline; the production/final gate omits the override and requires current canonical membership.
+- `KUBECONFIG=… scripts/verify-static-site-security.sh live` enumerates tenant ServiceAccounts/RoleBinding subjects, checks every Service/Ingress write verb by impersonation, exercises positive and hostile server-side dry-run admission, fetches a live static URL, and runs the S3 matrix.
+- Controller/envtest tests prove operator reconciliation for both alias purposes and fail-before-Job behavior for a missing publisher Secret. Static-server unit/integration tests prove object-only rewrites and fail-closed S3 startup.
+- Sanitized baseline: [2026-07-29 static-site trust boundaries](drills/2026-07-29-static-site-trust-baseline.md).
 
 ## API surface
 

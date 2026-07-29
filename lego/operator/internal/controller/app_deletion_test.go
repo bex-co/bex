@@ -261,7 +261,11 @@ func TestAppDeletionQuiescesIngressAndCertificateBeforeTLSSecret(t *testing.T) {
 func TestStaticAppDeletionWaitsForPurgeCompletionAndJobAbsence(t *testing.T) {
 	app := deletionApp("static-delete")
 	app.Spec.Type = appv1alpha1.TypeStaticSite
-	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(app).
+	creds := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "static-creds", Namespace: app.Namespace}, Data: map[string][]byte{
+		"AWS_ACCESS_KEY_ID":     []byte("test-access"),
+		"AWS_SECRET_ACCESS_KEY": []byte("test-secret"),
+	}}
+	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(app, creds).
 		WithStatusSubresource(&appv1alpha1.App{}, &batchv1.Job{}).Build()
 	store := publish.Store{Bucket: "static", Endpoint: "https://s3.example", Secret: "static-creds"}
 	r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes, StaticStore: store}

@@ -143,6 +143,27 @@ func TestRewriteRoute(t *testing.T) {
 	}
 }
 
+func TestRewriteNeverFetchesAnUpstreamURL(t *testing.T) {
+	// The API accepts only destinations beginning with "/". Even if a tenant
+	// makes the remainder look like an internal URL, the static server cleans it
+	// as a path and asks the S3 Origin seam for that object key. It never creates
+	// an HTTP request to the apparent host.
+	h, origin := newTestHandler(t, Site{
+		Routes: []appv1alpha1.StaticRoute{{
+			Type:        "rewrite",
+			Source:      "/internal",
+			Destination: "/http://bex-api.bex-system.svc:8091/private",
+		}},
+	}, map[string]Object{})
+	rec := do(h, http.MethodGet, "/internal")
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("internal-looking rewrite => %d, want object-store 404", rec.Code)
+	}
+	if got := origin.gets[key("http:/bex-api.bex-system.svc:8091/private")]; got != 1 {
+		t.Fatalf("origin object lookup count = %d, want 1", got)
+	}
+}
+
 func TestSplatRewrite(t *testing.T) {
 	h, _ := newTestHandler(t, Site{
 		Routes: []appv1alpha1.StaticRoute{{Type: "rewrite", Source: "/docs/*", Destination: "/help/:splat"}},

@@ -267,7 +267,7 @@ func main() {
 			Bucket:   envOr("BEX_STATIC_S3_BUCKET", ""),
 			Endpoint: envOr("BEX_STATIC_S3_ENDPOINT", ""),
 			Region:   envOr("BEX_STATIC_S3_REGION", ""),
-			Secret:   envOr("BEX_STATIC_S3_SECRET", ""),
+			Secret:   envOr("BEX_STATIC_PUBLISH_S3_SECRET", ""),
 		},
 		StaticServerService:     envOr("BEX_STATIC_SERVER_SERVICE", ""),
 		StaticServerNamespace:   envOr("POD_NAMESPACE", "bex-system"),
