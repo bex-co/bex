@@ -230,15 +230,15 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
 ## Additional commands
 
 - [x] **`docs`** — opens `render.com/docs` client-side (no bex call)
-- [-] **`ea`** — early-access surfaces, not implemented by bex (outside the compatibility target)
+- [~] **`ea`** — early-access surfaces; `ea sandbox` create/list/stop now ship on the gVisor substrate (w3/m32), `ea objects` still out of the compatibility target
   - [-] `ea objects list` — bex `/v1/objects` → `404` (`--local` works client-side)
   - [-] `ea objects put` — `404` (`--local` works client-side)
   - [-] `ea objects get` — `404` (`--local` works client-side)
   - [-] `ea objects delete` — `404` (`--local` works client-side)
-  - [-] `ea sandbox create` — `/v1/sandboxes` → `404`
-  - [-] `ea sandbox exec` — `404`
-  - [-] `ea sandbox list` — `404`
-  - [-] `ea sandbox stop` — `404`
+  - [x] `ea sandbox create` — `POST /v1/sandboxes?ownerId=` → `201` (runs on the gVisor substrate in the caller's `<ws>-sandbox` namespace; w3/m32 t009 + t006)
+  - [-] `ea sandbox exec` — `404` (two-step run-token + SSE stream; a follow-up, `internal/sandbox/rest.go`)
+  - [x] `ea sandbox list` — `GET /v1/sandboxes` → `200`
+  - [x] `ea sandbox stop` — `POST /v1/sandboxes/{id}/terminate` → `204`
 - [~] **`skills`** — manage Render agent skills for AI coding tools (client-side; no bex dependency)
   - [x] `skills install` — works; `--dry-run` reports intended changes without writing
   - [ ] `skills list` — **upstream CLI panic** (nil-pointer) in every non-TTY output mode
