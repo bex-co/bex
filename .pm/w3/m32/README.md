@@ -11,7 +11,7 @@
 | t003 | Snapshot registry → in-cluster Zot + push/pull secrets; warm `Pool`; execd in-cluster                                      | 2h  | t002                  |
 | t004 | Kata `RuntimeClass` + bake kata-containerd into the worker image (CAPH) + dedicated sandbox node pool (tainted)            | 1d  | —                     |
 | t005 | Per-tenant `<ws>-sandbox` boundary: egress-deny/metadata-deny (mirror build-boundary), Kata scheduling                      | 2h  | w3/m31/t001, t004      |
-| t006 | Security — single trusted hop: NetworkPolicy admit-only-bex-api on opensandbox-system + OpenSandbox multi-tenant mode (per-workspace key → `<ws>-sandbox` via HTTP provider → bex IAM) | 3h  | t002, t005             |
+| t006 | Security — single trusted hop: NetworkPolicy admit-only-bex-api on opensandbox-system + OpenSandbox multi-tenant mode (per-workspace key → `<ws>-sandbox` via HTTP provider → bex IAM) | 3h  | t002, t005             | — **DONE** |
 | t007 | k3s validation node (containerd-CRI + Kata) + validate BatchSandbox lifecycle/snapshot round-trip (rootfs-only) under Kata + Cilium | 1d  | t003, t004, t006       |
 | t008 | Capture Render CLI `ea sandbox` wire shape (`render-oss/cli`) → `docs/render-artifacts`                                    | 1h  | —                     |
 | t009 | bex-api sandbox feature package: `lego/backend/internal/sandbox` (service/client/rest/mcp/graphql) + template registry + 5-point wiring (consumes t006's per-workspace keys) | 1d  | t007, t008, w3/m31/t010 |
