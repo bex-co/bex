@@ -1,20 +1,20 @@
 # w3 · m33 — Sandbox exec: `render ea sandbox exec`
 
-**Worker:** worker3 **Goal:** implement the one remaining `render ea sandbox` verb — `exec` — so an unmodified Render CLI (and MCP agents) can run a command in a hosted sandbox and stream stdout/stderr, completing the `ea sandbox` surface m32 shipped (create/list/stop). **Status:** in progress — t001–t004 **DONE** (execd found to be gRPC → exec runs via gateway `pods/exec`, **Option A**; t002 token endpoint **dropped** — the real CLI is single-POST-reads-SSE; ticket + SSE bridge + bex-api relay + MCP `sandbox_exec` implemented and **validated end-to-end with the unmodified render CLI** against the REST surface, commit 8f82800a). Remaining: t005 (prod validation + cli-compat row 239 — needs the `BEX_SANDBOX_EXEC_SECRET` Secret + deploy), t006 parity, t007 simplify, t008 tests (largely done), t009 closeout.
+**Worker:** worker3 **Goal:** implement the one remaining `render ea sandbox` verb — `exec` — so an unmodified Render CLI (and MCP agents) can run a command in a hosted sandbox and stream stdout/stderr, completing the `ea sandbox` surface m32 shipped (create/list/stop). **Status:** **DONE** 2026-07-29 — `render ea sandbox exec` works unmodified end-to-end on the prod gVisor substrate (`sh -c 'uname -r'` → `4.19.0-gvisor` from inside the sandbox; exit codes + multi-part commands; foreign-sandbox scoping). **Option A**: exec runs via k8s `pods/exec` confined to the isolated ssh-gateway; bex-api authorizes `can_operate` + signs a per-exec ticket + reverse-proxies the SSE, never gaining `pods/exec`. t002 (token endpoint) **dropped** — the real CLI is single-POST-reads-SSE. MCP `sandbox_exec` ships; cli-compat row 239 `[x]`.
 
 ## Tasks (in order)
 
 | id   | title                                                                                                  | est | depends_on       |
 | ---- | ------------------------------------------------------------------------------------------------------ | --- | ---------------- |
-| t001 | OpenSandbox execd exec transport: add `Client.Exec` (run command → stdout/stderr stream)               | 3h  | —                |
-| t002 | Two-step run-token endpoint: `POST /v1/sandboxes/{id}/runs/{operation}/token` → `{method, uri, token}` | 2h  | t001             |
-| t003 | SSE exec-stream endpoint: token-verified, workspace-key-scoped bridge to execd (the CLI's stream)      | 3h  | t002             |
-| t004 | MCP `sandbox_exec` (+ GraphQL if applicable): direct exec via execd, no token dance (agents, ADR014 D3) | 2h  | t001             |
-| t005 | Validate unmodified `render ea sandbox exec` end-to-end; flip cli-compatibility-checklist row 239       | 2h  | t003, t004       |
-| t006 | Render parity (`ea sandbox exec` across REST + MCP + CLI)                                               | 1h  | t005             |
-| t007 | Simplify (`/simplify` over changed code)                                                                | 30m | t006             |
-| t008 | Test coverage (token mint/verify, stream bridge, authz, MCP exec)                                       | 2h  | t006             |
-| t009 | Closeout                                                                                                | 15m | t008             |
+| t001 | OpenSandbox execd exec transport: add `Client.Exec` (run command → stdout/stderr stream)               | 3h  | —                | — **DONE** |
+| t002 | Two-step run-token endpoint: `POST /v1/sandboxes/{id}/runs/{operation}/token` → `{method, uri, token}` | 2h  | t001             | — **DEFERRED** |
+| t003 | SSE exec-stream endpoint: token-verified, workspace-key-scoped bridge to execd (the CLI's stream)      | 3h  | t002             | — **DONE** |
+| t004 | MCP `sandbox_exec` (+ GraphQL if applicable): direct exec via execd, no token dance (agents, ADR014 D3) | 2h  | t001             | — **DONE** |
+| t005 | Validate unmodified `render ea sandbox exec` end-to-end; flip cli-compatibility-checklist row 239       | 2h  | t003, t004       | — **DONE** |
+| t006 | Render parity (`ea sandbox exec` across REST + MCP + CLI)                                               | 1h  | t005             | — **DONE** |
+| t007 | Simplify (`/simplify` over changed code)                                                                | 30m | t006             | — **DONE** |
+| t008 | Test coverage (token mint/verify, stream bridge, authz, MCP exec)                                       | 2h  | t006             | — **DONE** |
+| t009 | Closeout                                                                                                | 15m | t008             | — **DONE** |
 
 ## Investigation findings (2026-07-29, corrects the initial spec)
 

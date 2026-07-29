@@ -230,13 +230,13 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
 ## Additional commands
 
 - [x] **`docs`** — opens `render.com/docs` client-side (no bex call)
-- [~] **`ea`** — early-access surfaces; `ea sandbox` create/list/stop now ship on the gVisor substrate (w3/m32), `ea objects` still out of the compatibility target
+- [~] **`ea`** — early-access surfaces; `ea sandbox` create/list/stop (w3/m32) **and exec** (w3/m33) all ship on the gVisor substrate, `ea objects` still out of the compatibility target
   - [-] `ea objects list` — bex `/v1/objects` → `404` (`--local` works client-side)
   - [-] `ea objects put` — `404` (`--local` works client-side)
   - [-] `ea objects get` — `404` (`--local` works client-side)
   - [-] `ea objects delete` — `404` (`--local` works client-side)
   - [x] `ea sandbox create` — verified with the real CLI (v2.21.0): `POST /v1/sandboxes` → `201`. Fixes the CLI found: the CLI sends only `--plan` (no template flag) so an empty template resolves to a default (`base`), and it sends `ownerId` in the BODY (bex now reads body-or-query); `plan/region/timeoutSeconds` are echoed back. Runs on the gVisor substrate in the caller's `<ws>-sandbox` namespace (w3/m32 t009 + t006).
-  - [-] `ea sandbox exec` — `404` (the two-step `…/runs/{op}/token` + SSE stream is not implemented; a documented follow-up bridging to OpenSandbox `execd`, `internal/sandbox/rest.go`)
+  - [x] `ea sandbox exec` — verified on prod with the real CLI (w3/m33): `POST /v1/sandboxes/{id}/exec` streams the command's stdout/stderr + exit as SSE (`event: output`/`exit`). `render ea sandbox exec <id> -- sh -c 'uname -r'` returned `4.19.0-gvisor` from inside the gVisor sandbox. Runs via k8s `pods/exec` confined to the isolated ssh-gateway (bex-api authorizes + reverse-proxies, never gains `pods/exec`); execd's gRPC API and the CLI's older two-step token flow are both unused.
   - [x] `ea sandbox list` — verified with the real CLI: `GET /v1/sandboxes` → `200`, returned as the CLI's cursor-paginated `[{sandbox, cursor}]` envelope (a bare array made the CLI render empty id/status — fixed).
   - [x] `ea sandbox stop` — verified with the real CLI: `POST /v1/sandboxes/{id}/terminate` → `204`.
 - [~] **`skills`** — manage Render agent skills for AI coding tools (client-side; no bex dependency)
