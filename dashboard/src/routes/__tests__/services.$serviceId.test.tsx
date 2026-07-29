@@ -7,7 +7,7 @@ import {
   createRoute,
   createMemoryHistory,
 } from "@tanstack/react-router";
-import { ServiceDetailLayout } from "../services.$serviceId";
+import { ServiceDetailLayout } from "@/features/services/components/service-detail-layout";
 import { ServiceLogsPage } from "../services.$serviceId.logs";
 import type { ServiceView } from "@/features/services/types";
 import type { UseServerResult } from "@/features/services/hooks/use-server";

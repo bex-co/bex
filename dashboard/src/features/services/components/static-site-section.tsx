@@ -27,6 +27,7 @@ import {
 } from "@/common/components/ui/select";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
+import { useServiceBase } from "@/features/services/lib/service-base";
 import { useStaticSiteMutations } from "@/features/services/hooks/use-static-site";
 import { rootDirPrefix } from "@/features/services/lib/format";
 import type {
@@ -53,6 +54,7 @@ export function StaticSiteSection({
   refetch: () => Promise<ServiceView[]>;
 }) {
   const { t } = useTranslations();
+  const base = useServiceBase();
   const { setPublishPath, busy } = useStaticSiteMutations(serviceId, refetch);
 
   return (
@@ -71,7 +73,7 @@ export function StaticSiteSection({
         <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
           <span>{t("services.staticEdgeRulesHint")}</span>
           <Link
-            to="/services/$serviceId/redirects"
+            to={`${base}/$serviceId/redirects`}
             params={{ serviceId }}
             className="text-foreground inline-flex items-center gap-1 hover:underline"
           >
@@ -79,7 +81,7 @@ export function StaticSiteSection({
             {t("services.navRedirects")}
           </Link>
           <Link
-            to="/services/$serviceId/headers"
+            to={`${base}/$serviceId/headers`}
             params={{ serviceId }}
             className="text-foreground inline-flex items-center gap-1 hover:underline"
           >

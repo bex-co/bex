@@ -27,6 +27,7 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { useServer } from "@/features/services/hooks/use-server";
 import { CronRunsSection } from "@/features/services/components/cron-runs-section";
 import { isCron } from "@/features/services/lib/service-type";
+import { useServiceBase } from "@/features/services/lib/service-base";
 import { formatRelativeAge } from "@/features/services/lib/format";
 import { formatDateTime } from "@/common/lib/format";
 import {
@@ -44,8 +45,13 @@ import {
 } from "@/features/events/service-event-catalog";
 
 export const Route = createFileRoute("/services/$serviceId/events")({
-  component: ServiceEventsPage,
+  component: RouteComponent,
 });
+
+function RouteComponent() {
+  const { serviceId } = Route.useParams();
+  return <ServiceEventsPage serviceId={serviceId} />;
+}
 
 // ServiceEventDetails.trigger is the Trigger object (boolean flags), a
 // different shape from Deploy.trigger's plain string — derive a short label
@@ -123,9 +129,9 @@ function eventIconClass(type: string, status: string): string {
   return "bg-muted text-muted-foreground";
 }
 
-export function ServiceEventsPage() {
-  const { serviceId } = Route.useParams();
+export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
+  const base = useServiceBase();
   // A cron_job's first-class run history hangs off the same landing tab.
   const { service } = useServer(serviceId);
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(
@@ -301,7 +307,7 @@ export function ServiceEventsPage() {
                   >
                     {deployId ? (
                       <Link
-                        to="/services/$serviceId/deploys/$deployId"
+                        to={`${base}/$serviceId/deploys/$deployId`}
                         params={{ serviceId, deployId }}
                         className="group min-w-0 flex-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >

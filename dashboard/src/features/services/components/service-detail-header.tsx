@@ -36,6 +36,7 @@ import {
   SERVICE_TYPE_ICON,
   SERVICE_TYPE_LABEL,
 } from "@/features/services/lib/service-type";
+import { serviceBaseForType } from "@/features/services/lib/service-base";
 import { isSleeping } from "@/features/services/lib/status";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
 import { useRegistryCredentials } from "@/features/registry-credentials/hooks/use-registry-credentials";
@@ -75,6 +76,10 @@ export function ServiceDetailHeader({
   const { byID } = useInstanceTypes();
   const typeKey = deriveServiceType(service.type);
   const TypeIcon = SERVICE_TYPE_ICON[typeKey];
+  // Header links point at the service's canonical base (a static_site lives
+  // under /static, Render parity w5/m57). The Plan chip below stays on
+  // /services — plan has no /static route and only renders for compute types.
+  const base = serviceBaseForType(service.type);
   const instanceType = byID(service.plan);
   const repoUrl = service.repo
     ? repoBrowseUrl(service.repo, service.branch)
@@ -96,7 +101,7 @@ export function ServiceDetailHeader({
           <ServiceStatusBadge service={service} />
           {latestDeploy ? (
             <Link
-              to="/services/$serviceId/deploys/$deployId"
+              to={`${base}/$serviceId/deploys/$deployId`}
               params={{ serviceId: service.id, deployId: latestDeploy.id }}
               aria-label={`${t("services.headerLatestDeploy")}: ${t(
                 deployStatusKey(latestDeploy.status) as Parameters<typeof t>[0],

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { CircleDot, Rocket } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useServiceBase } from "@/features/services/lib/service-base";
 import {
   CHART_WIDTH as WIDTH,
   CHART_HEIGHT as HEIGHT,
@@ -65,6 +66,7 @@ export function ChartEventStrip({
   serviceId: string;
 }) {
   const { t } = useTranslations();
+  const base = useServiceBase();
   const [active, setActive] = useState<number | null>(null);
 
   if (clusters.length === 0) return null;
@@ -95,7 +97,7 @@ export function ChartEventStrip({
           >
             {single?.deployId ? (
               <Link
-                to="/services/$serviceId/deploys/$deployId"
+                to={`${base}/$serviceId/deploys/$deployId`}
                 params={{ serviceId, deployId: single.deployId }}
                 aria-label={markerLabel(single, t)}
                 className="block rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -106,7 +108,7 @@ export function ChartEventStrip({
               </Link>
             ) : (
               <Link
-                to="/services/$serviceId/events"
+                to={`${base}/$serviceId/events`}
                 params={{ serviceId }}
                 aria-label={
                   single

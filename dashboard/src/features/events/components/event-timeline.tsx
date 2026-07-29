@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useServiceBase } from "@/features/services/lib/service-base";
 import { formatRelativeAge } from "@/features/services/lib/format";
 import { useServiceEvents } from "@/features/events/hooks/use-service-events";
 import {
@@ -29,6 +30,7 @@ export function EventTimeline({
   filter?: EventTimelineFilter;
 }) {
   const { t } = useTranslations();
+  const base = useServiceBase();
   const { events, loading, error } = useServiceEvents(serviceId, {
     limit: 100,
     startTime,
@@ -92,7 +94,7 @@ export function EventTimeline({
                 <li key={event.id}>
                   {deployId ? (
                     <Link
-                      to="/services/$serviceId/deploys/$deployId"
+                      to={`${base}/$serviceId/deploys/$deployId`}
                       params={{ serviceId, deployId }}
                       className="block rounded-md hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >

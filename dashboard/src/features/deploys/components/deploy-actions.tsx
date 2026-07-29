@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/common/components/ui/alert-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useServiceBase } from "@/features/services/lib/service-base";
 import {
   isCancelableDeployStatus,
   isRollbackableDeployStatus,
@@ -46,6 +47,7 @@ export function DeployActions({
 }: DeployActionsProps) {
   const { t } = useTranslations();
   const navigate = useNavigate();
+  const base = useServiceBase();
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
   // Both verbs change the deploy history and the events feed: rollback mints a
   // brand-new deploy (which no cached list contains) and cancel appends an
@@ -77,7 +79,7 @@ export function DeployActions({
           throw new Error("rollbackService returned no deploy id");
         toast.success(t("services.rollbackSuccess"));
         void navigate({
-          to: "/services/$serviceId/deploys/$deployId",
+          to: `${base}/$serviceId/deploys/$deployId`,
           params: { serviceId, deployId: rollbackId },
         });
       }
