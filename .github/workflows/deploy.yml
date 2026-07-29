@@ -263,14 +263,50 @@ jobs:
           # Runs are serialized above, but ordinary pushes can still advance
           # main while images are building. Never attach images built from this
           # event to newer production source/manifests: the newer queued run
-          # must build and pin its own digests. Advancements outside the deploy
-          # input paths (for example docs-only commits) are safe to rebase onto.
+          # must build and pin its own digests. A preceding run can legitimately
+          # finish its [skip ci] digest write-back after this event was created,
+          # so permit only exact digest-value changes in the three generated
+          # image fields; every other production-input change remains stale.
           git fetch --no-tags origin main
           if ! git diff --quiet "$GITHUB_SHA" origin/main -- \
-            lego dashboard deploy/opensandbox deploy/gitops .github/workflows/deploy.yml; then
+            lego dashboard deploy/opensandbox deploy/gitops .github/workflows/deploy.yml \
+            ':(exclude)deploy/gitops/base/bex.yaml' \
+            ':(exclude)deploy/gitops/base/dashboard.yaml' \
+            ':(exclude)deploy/opensandbox/kustomization.yaml'; then
             echo "production inputs advanced while this run was building; refusing stale digest write-back" >&2
             exit 1
           fi
+          python3 - "$GITHUB_SHA" origin/main <<'PY'
+          import re
+          import subprocess
+          import sys
+
+          revisions = sys.argv[1:]
+          generated = {
+              "deploy/gitops/base/bex.yaml":
+                  r"(?m)^(\s+- controller=[^@\n]+@sha256:)[0-9a-f]{64}$",
+              "deploy/gitops/base/dashboard.yaml":
+                  r"(?m)^(\s+- dashboard=[^@\n]+@sha256:)[0-9a-f]{64}$",
+              "deploy/opensandbox/kustomization.yaml":
+                  r"(?m)(^  - name: opensandbox-server\n    newName: [^\n]+\n    digest: sha256:)[0-9a-f]{64}$",
+          }
+
+          def normalized(revision, path, pattern):
+              text = subprocess.check_output(
+                  ["git", "show", f"{revision}:{path}"], text=True
+              )
+              rendered, count = re.subn(pattern, r"\g<1><generated>", text)
+              if count != 1:
+                  raise SystemExit(f"expected exactly one generated digest field in {path}")
+              return rendered
+
+          for path, pattern in generated.items():
+              if normalized(revisions[0], path, pattern) != normalized(revisions[1], path, pattern):
+                  raise SystemExit(
+                      f"production input {path} changed beyond its generated digest; "
+                      "refusing stale digest write-back"
+                  )
+          PY
           git rebase origin/main
           for digest in "$OP_DIGEST" "$DASH_DIGEST" "$OPENSANDBOX_DIGEST"; do
             if ! [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
