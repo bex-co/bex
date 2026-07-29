@@ -1,6 +1,6 @@
 # w3 · m31 — Tenant namespace isolation: workspace = namespace
 
-**Worker:** worker3 **Goal:** migrate bex's tenant boundary from a shared `default` namespace + label-scoped policies (ADR022 Option B) to per-tenant namespaces — `<ws>` (hosting) + `<ws>-sandbox` (regime split) — with zero-trust east-west and per-namespace `ResourceQuota`, preserving scale-to-zero. **Status:** in progress — t001–t006 **DONE** + validated on prod (per-tenant `<ws>` namespaces, quota replacing `BEX_MAX_*`, RBAC, migration 18/18, per-App-policy gating + cluster-wide node/metadata egressDeny); t007 (scale-0/bin-pack full cycle) partial — activator healthy, sleep/wake cycle pending; t008–t010 open.
+**Worker:** worker3 **Goal:** migrate bex's tenant boundary from a shared `default` namespace + label-scoped policies (ADR022 Option B) to per-tenant namespaces — `<ws>` (hosting) + `<ws>-sandbox` (regime split) — with zero-trust east-west and per-namespace `ResourceQuota`, preserving scale-to-zero. **Status:** **DONE** 2026-07-29 — all tasks complete + validated on prod: per-tenant `<ws>` (+`<ws>-sandbox`) namespaces, plan-tier ResourceQuota replacing `BEX_MAX_*`, per-namespace RBAC, no-downtime migration (18/18), namespace-scoped NetworkPolicies + operator per-App-policy gating + cluster-wide node/metadata egressDeny; reachability matrix 5/5, bin-pack, and scale-to-zero re-asserted per-namespace. ADR022 Option B superseded; ADR043 implemented.
 
 ## Tasks (in order)
 
@@ -12,10 +12,10 @@
 | t004 | Per-tenant `ResourceQuota`/`LimitRange` replace `BEX_MAX_*` app-code caps; retire shared `tenant-quotas.yaml`                   | 2h  | t001, t002          | — **DONE** |
 | t005 | NetworkPolicy re-scope: namespace default-deny + same-workspace + platform allows; promote the node/metadata Cilium egressDeny to clusterwide (it is namespaced-to-`default` today); retain platform-lockdown/registry-ACL/hardening | 3h  | t002                | — **DONE** |
 | t006 | Migration: move existing `default` workloads to per-tenant namespaces, no downtime                                              | 2h  | t002, t003, t004, t005 | — **DONE** |
-| t007 | Verify scale-0 + bin-pack on the shared tenant pool; re-assert the tenant-isolation reachability matrix per-namespace           | 2h  | t006                |
-| t008 | Simplify (`/simplify` over changed code)                                                                                        | 30m | t007                |
-| t009 | Test coverage (namespace lifecycle, per-tenant quota, NetworkPolicy, scale-0)                                                   | 2h  | t007                |
-| t010 | Closeout                                                                                                                        | 15m | t009                |
+| t007 | Verify scale-0 + bin-pack on the shared tenant pool; re-assert the tenant-isolation reachability matrix per-namespace           | 2h  | t006                | — **DONE** |
+| t008 | Simplify (`/simplify` over changed code)                                                                                        | 30m | t007                | — **DONE** |
+| t009 | Test coverage (namespace lifecycle, per-tenant quota, NetworkPolicy, scale-0)                                                   | 2h  | t007                | — **DONE** |
+| t010 | Closeout                                                                                                                        | 15m | t009                | — **DONE** |
 
 ## Definition of done
 

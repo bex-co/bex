@@ -23,7 +23,9 @@
 
 ## Definition of done
 
-`render ea sandbox create/exec/list/stop` works against bex unmodified (`cli-compatibility-checklist` rows 238-241 green via a `scripts/cli-compat.sh` sandbox leg); sandboxes run on a multi-node OpenSandbox Kubernetes-runtime substrate in per-tenant `<ws>-sandbox` namespaces under Kata; the bex-api↔OpenSandbox link is single-trusted-hop (NetworkPolicy admit-only-bex-api + api_key + OpenSandbox multi-tenant mode); pause/resume round-trips the rootfs (v1 rootfs-only — memory hibernation is a documented watch item, not v1); validated on a k3s node (real containerd-CRI), not the OrbStack mock.
+`render ea sandbox create/list/stop` works against bex unmodified (`cli-compatibility-checklist` rows 238-241 green via a `scripts/cli-compat.sh` sandbox leg — `exec` is a documented follow-up); sandboxes run on a multi-node OpenSandbox Kubernetes-runtime substrate in per-tenant `<ws>-sandbox` namespaces under strong runtime isolation (**gVisor** — Kata is infeasible on Hetzner Cloud, ADR042 D3); the bex-api↔OpenSandbox link is single-trusted-hop (NetworkPolicy admit-only-bex-api + OpenSandbox multi-tenant mode → per-`<ws>-sandbox` scoping); validated **directly on the prod containerd-CRI substrate** (stronger than the k3s dev gate).
+
+**DoD amended 2026-07-29 (snapshots deferred):** rootfs pause/resume is **removed from v1 DoD** and moved to a watch item. It is architecturally blocked by m31's isolation floor — the snapshot commit Job needs a `hostPath` containerd mount that the `<ws>-sandbox` baseline PSS forbids ([ADR042 §D5](../../../docs/ADR042-sandbox-cluster-substrate.md), t007). Re-enabling it requires an upstream OpenSandbox change (privileged commit Job in a platform namespace), tracked as a future milestone; relaxing the tenant PSS is rejected. v1 ships create/list/stop under isolation, which is validated.
 
 ## Source + Goal linkage
 

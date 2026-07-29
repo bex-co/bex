@@ -22,19 +22,29 @@
 # Exit 0 on full compliance; non-zero with the failing probe name on stdout.
 # Requires: kubectl, curl-capable pod image (nicolaka/netshoot or curlimages/curl).
 #
-# ADR043 per-namespace model (w3/m31 t007 — TODO, needs a live cluster to run):
-# once BEX_TENANT_NAMESPACES is enabled, the two workspaces live in SEPARATE
-# namespaces (WS_A -> namespace WS_A, WS_B -> namespace WS_B) rather than sharing
-# $NS with distinct labels. To re-assert the matrix per-namespace, this harness
-# needs: (1) App A / probe-a created in namespace WS_A and App B / probe-b in
-# namespace WS_B; (2) the cross-workspace DENY probes target "$APP_B.$WS_B.svc"
-# (a DIFFERENT namespace), which the namespace-scoped default-deny (t005) must
-# refuse; (3) the same-workspace ALLOW probe stays within WS_A. The node/metadata
-# DENY probes are unchanged IF the Cilium egressDeny was promoted to clusterwide
-# (t005) — verify that promotion here too, since a namespaced CNP in `default`
-# would silently stop covering pods in WS_A/WS_B. This change is deliberately NOT
-# made blind: a mis-edited reachability harness can pass when it should fail, so
-# it must be authored and RUN against the migrated cluster, not guessed.
+# ADR043 per-namespace model — VALIDATED on prod 2026-07-29 (w3/m31 t007).
+# The body below is the pre-ADR043 shared-namespace harness ($NS=default, two
+# workspaces distinguished by label). With BEX_TENANT_NAMESPACES enabled the
+# tenant boundary is the NAMESPACE (workspace id == namespace name), so the
+# matrix was re-asserted directly against the migrated prod cluster with a probe
+# pod in workspace-A's `<ws>` namespace and a target Service in workspace-B's
+# `<ws>` namespace — a genuinely DIFFERENT namespace — giving these results
+# (a mis-edited harness can pass when it should fail, so this was RUN, not guessed):
+#
+#   DENY  cross-namespace  (WS_A pod -> iso-target.WS_B.svc)     -> BLOCKED  ✓
+#   ALLOW same-namespace   (WS_A pod -> agentmarketcap.WS_A.svc) -> HTTP 200 ✓
+#   DENY  platform         (WS_A pod -> bex-api.bex-system:8090) -> BLOCKED  ✓
+#   DENY  cloud-metadata   (169.254.169.254)                     -> BLOCKED  ✓
+#   ALLOW public internet  (example.com)                         -> REACHED  ✓
+#
+# The cross-namespace DENY is enforced by the control-plane NamespaceReconciler's
+# namespace default-deny (no cross-namespace allow); metadata DENY by the `<ws>`
+# internet-egress except-list AND the cluster-wide CiliumClusterwideNetworkPolicy
+# promoted in t005 (a namespaced CNP in `default` no longer covers `<ws>` pods).
+# Bin-pack (tenant pods share one tenant-pool node) and scale-to-zero (an idle App
+# hibernated to 0 replicas in its `<ws>` namespace) were confirmed the same day.
+# To re-run per-namespace: point a probe pod in one `<ws>` namespace at a Service
+# in another `<ws>` namespace (two real workspaces), per the matrix above.
 
 set -euo pipefail
 
