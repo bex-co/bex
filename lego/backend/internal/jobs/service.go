@@ -320,7 +320,10 @@ func (s *Service) createK8sJob(ctx context.Context, jobID, namespace, image, sta
 // a temporary cluster outage must not fail a job list/get call.
 func (s *Service) syncStatus(ctx context.Context, j store.Job) store.Job {
 	var kj batchv1.Job
-	if err := s.Client.Get(ctx, client.ObjectKey{Name: k8sJobName(j.ID), Namespace: s.Namespace}, &kj); err != nil {
+	// The Job was created in its App's namespace (createK8sJob, a.Namespace) — the
+	// per-tenant `<ws>` namespace under ADR043 — so read it back from there, not
+	// the shared s.Namespace. AppNamespace(j.TenantID) == s.Namespace when off.
+	if err := s.Client.Get(ctx, client.ObjectKey{Name: k8sJobName(j.ID), Namespace: s.AppNamespace(j.TenantID)}, &kj); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return j
 		}

@@ -416,7 +416,11 @@ func (s *Service) upsertSecret(ctx context.Context, a *appv1alpha1.App, name str
 	for k, v := range data {
 		bytesData[k] = []byte(v)
 	}
-	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.Namespace}}
+	// The pod injects this Secret via envFrom (spec.envFromSecret) and owns it
+	// (controller ref below), so it MUST live in the App's namespace — the
+	// per-tenant `<ws>` namespace under ADR043; a cross-namespace owner ref would
+	// be garbage-collected and envFrom would resolve nothing.
+	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: a.Namespace}}
 	_, err := controllerutil.CreateOrUpdate(ctx, s.Client, sec, func() error {
 		sec.Type = corev1.SecretTypeOpaque
 		sec.Data = bytesData

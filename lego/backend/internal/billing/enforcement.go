@@ -51,7 +51,22 @@ type KubernetesEnforcer struct {
 	Client    client.Client
 	Store     EnforcementStore
 	Namespace string
-	Clock     func() time.Time
+	// TenantNamespaces mirrors core.Base.TenantNamespaces (BEX_TENANT_NAMESPACES,
+	// ADR043): when set, App CRs live in their workspace's own `<ws>` namespace, so
+	// the enforcer must suspend/recover them there. Databases and KeyValues did NOT
+	// move — they stay in e.Namespace regardless.
+	TenantNamespaces bool
+	Clock            func() time.Time
+}
+
+// appNamespace is where a workspace's App CRs live: its own `<ws>` namespace under
+// per-tenant isolation (ADR043), else the shared e.Namespace. Only Apps moved;
+// Databases/KeyValues always use e.Namespace.
+func (e *KubernetesEnforcer) appNamespace(workspaceID string) string {
+	if e.TenantNamespaces && workspaceID != "" {
+		return workspaceID
+	}
+	return e.Namespace
 }
 
 func (e *KubernetesEnforcer) now() time.Time {
@@ -71,7 +86,7 @@ func (e *KubernetesEnforcer) Enforce(ctx context.Context, state store.BillingLif
 	}
 	marker := e.marker(state)
 	var apps appv1alpha1.AppList
-	if err := e.Client.List(ctx, &apps, client.InNamespace(e.Namespace), client.MatchingLabels{core.LabelTenant: state.WorkspaceID}); err != nil {
+	if err := e.Client.List(ctx, &apps, client.InNamespace(e.appNamespace(state.WorkspaceID)), client.MatchingLabels{core.LabelTenant: state.WorkspaceID}); err != nil {
 		return err
 	}
 	for i := range apps.Items {
@@ -190,9 +205,12 @@ func (e *KubernetesEnforcer) Recover(ctx context.Context, state store.BillingLif
 
 func (e *KubernetesEnforcer) recoverOne(ctx context.Context, entry store.BillingEnforcement) error {
 	var obj client.Object
+	namespace := e.Namespace
 	switch entry.ResourceKind {
 	case "service":
 		obj = &appv1alpha1.App{}
+		// Only App CRs moved to per-tenant namespaces (ADR043); DB/KV stay put.
+		namespace = e.appNamespace(entry.WorkspaceID)
 	case "postgres":
 		obj = &appv1alpha1.Database{}
 	case "key_value":
@@ -200,7 +218,7 @@ func (e *KubernetesEnforcer) recoverOne(ctx context.Context, entry store.Billing
 	default:
 		return fmt.Errorf("unknown billing resource kind %q", entry.ResourceKind)
 	}
-	key := client.ObjectKey{Namespace: e.Namespace, Name: entry.ResourceName}
+	key := client.ObjectKey{Namespace: namespace, Name: entry.ResourceName}
 	if err := e.Client.Get(ctx, key, obj); err != nil {
 		if apierrors.IsNotFound(err) {
 			return e.Store.MarkBillingEnforcementRecovered(ctx, entry.WorkspaceID, entry.ResourceKind, entry.ResourceName, e.now())

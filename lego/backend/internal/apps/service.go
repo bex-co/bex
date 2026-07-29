@@ -890,15 +890,20 @@ func (s *Service) List(ctx context.Context, ownerID string) ([]AppView, error) {
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
-	opts := []client.ListOption{client.InNamespace(s.Namespace)}
-	switch {
-	case ownerID != "":
-		opts = append(opts, client.MatchingLabels{core.LabelTenant: ownerID})
-	case s.Workspace != nil:
-		tenantID, ok := s.Tenant(ctx)
+	// Resolve the workspace this list targets — the one named by ownerID or, when
+	// unnamed, the caller's own — BEFORE picking the namespace: with per-tenant
+	// namespaces (ADR043) each workspace's Apps live in AppNamespace(tenantID), so
+	// the list must be scoped there, not the shared s.Namespace.
+	tenantID := ownerID
+	if tenantID == "" && s.Workspace != nil {
+		t, ok := s.Tenant(ctx)
 		if !ok {
 			return []AppView{}, nil
 		}
+		tenantID = t
+	}
+	opts := []client.ListOption{client.InNamespace(s.AppNamespace(tenantID))}
+	if tenantID != "" {
 		opts = append(opts, client.MatchingLabels{core.LabelTenant: tenantID})
 	}
 	var list appv1alpha1.AppList
@@ -1453,7 +1458,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	if req.DryRun {
 		a := &appv1alpha1.App{}
 		a.Name = req.Name
-		a.Namespace = s.Namespace
+		a.Namespace = s.AppNamespace(tenantID)
 		a.Spec = desired
 		if tenantID != "" {
 			a.Labels = map[string]string{core.LabelTenant: tenantID}
@@ -1488,7 +1493,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		// collide on the bare name the way the pre-migration scheme did.
 		a.Name = core.CRName(tenantID, req.Name)
 	}
-	a.Namespace = s.Namespace
+	a.Namespace = s.AppNamespace(tenantID)
 	a.Spec = desired
 	// A store-managed create writes its source-of-truth row before the CR so the
 	// CR can be stamped with the row id and its initial deploy history exists as
@@ -1517,7 +1522,13 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	// resolved tenant (store off / unbound).
 	if s.MaxServices > 0 && tenantID != "" {
 		var existing appv1alpha1.AppList
-		if listErr := s.ListByTenant(ctx, &existing, tenantID); listErr != nil {
+		// App-scoped, per-tenant-namespace-aware count (not core.ListByTenant,
+		// whose shared b.Namespace still serves the DB/KeyValue/Secret purge that
+		// did NOT move to per-tenant namespaces): Apps for tenantID live in
+		// AppNamespace(tenantID) under per-tenant isolation (ADR043).
+		if listErr := s.Client.List(ctx, &existing,
+			client.InNamespace(s.AppNamespace(tenantID)),
+			client.MatchingLabels{core.LabelTenant: tenantID}); listErr != nil {
 			return AppView{}, fmt.Errorf("checking service cap: %w", listErr)
 		}
 		if len(existing.Items) >= s.MaxServices {
@@ -1624,7 +1635,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 func (s *Service) nameTaken(ctx context.Context, tenantID, name string) (bool, error) {
 	get := func(objName string) (*appv1alpha1.App, error) {
 		var a appv1alpha1.App
-		err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: objName}, &a)
+		err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.AppNamespace(tenantID), Name: objName}, &a)
 		if apierrors.IsNotFound(err) {
 			return nil, nil
 		}
@@ -1671,6 +1682,10 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 		// bare-name collision create() just closed.
 		a.Name = core.CRName(tenantID, req.Name)
 		a.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelServiceName: req.Name}
+		// Land the CR (and its clone/pull Secrets, written to a.Namespace) in the
+		// workspace's own namespace under per-tenant isolation (ADR043), matching
+		// where the projector projects it; AppNamespace == s.Namespace when off.
+		a.Namespace = s.AppNamespace(tenantID)
 	}
 	environment, err := s.resolveEnvironmentForCreate(ctx, req.EnvironmentID, tenantID)
 	if err != nil {

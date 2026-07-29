@@ -310,7 +310,7 @@ func (s *Service) compensateEnvironment(ctx context.Context, service string, ori
 			if err := s.upsertSecret(ctx, originalApp, envSecretName(originalApp.Name), oldEnv); err != nil {
 				compensation = append(compensation, fmt.Errorf("restore environment projection: %w", err))
 			}
-		} else if err := s.deleteSecret(ctx, envSecretName(originalApp.Name)); err != nil {
+		} else if err := s.deleteSecret(ctx, originalApp.Namespace, envSecretName(originalApp.Name)); err != nil {
 			compensation = append(compensation, fmt.Errorf("remove environment projection: %w", err))
 		}
 	}
@@ -320,7 +320,7 @@ func (s *Service) compensateEnvironment(ctx context.Context, service string, ori
 			if err := s.upsertSecret(ctx, originalApp, name, oldFiles); err != nil {
 				compensation = append(compensation, fmt.Errorf("restore secret-file projection: %w", err))
 			}
-		} else if err := s.deleteSecret(ctx, name); err != nil {
+		} else if err := s.deleteSecret(ctx, originalApp.Namespace, name); err != nil {
 			compensation = append(compensation, fmt.Errorf("remove secret-file projection: %w", err))
 		}
 	}

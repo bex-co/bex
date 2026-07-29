@@ -179,7 +179,10 @@ func tlsSecretForHost(app *appv1alpha1.App, host string) string {
 // is treated as "pending" — the conservative state during cert issuance.
 func (s *Service) domainVerified(ctx context.Context, app *appv1alpha1.App, host string) bool {
 	var sec corev1.Secret
-	err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: tlsSecretForHost(app, host)}, &sec)
+	// cert-manager writes the TLS Secret into the App's own namespace (its
+	// Ingress lives there), which is the per-tenant `<ws>` namespace under ADR043,
+	// not the shared one — read it from the App's namespace.
+	err := s.Client.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: tlsSecretForHost(app, host)}, &sec)
 	return err == nil && len(sec.Data["tls.crt"]) > 0
 }
 
@@ -293,8 +296,12 @@ func errDomainInUse() error {
 // deliberately not returned: a caller must not learn another tenant's service
 // name from the rejection.
 func (s *Service) hostClaimedElsewhere(ctx context.Context, appName, host string) (bool, error) {
+	// A host is unique across the whole platform, and Apps are spread across
+	// per-tenant namespaces (ADR043), so the collision sweep must be cluster-wide
+	// (AppListScope) — a shared-namespace list would let two workspaces claim the
+	// same host after the migration.
 	var list appv1alpha1.AppList
-	if err := s.Client.List(ctx, &list, client.InNamespace(s.Namespace)); err != nil {
+	if err := s.Client.List(ctx, &list, s.AppListScope()...); err != nil {
 		return false, err
 	}
 	for i := range list.Items {
