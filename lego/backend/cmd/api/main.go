@@ -557,6 +557,9 @@ func main() {
 			"base": {Image: envOr("BEX_SANDBOX_IMAGE", "docker.io/library/alpine:3"), Entrypoint: []string{"sleep", "infinity"}, CPU: "500m", Memory: "512Mi"},
 		}
 		deps.SandboxDefaultPlan = sandbox.PlanStarter
+		// The Render CLI's `ea sandbox create` sends no template (no such flag), so
+		// an empty template resolves to this registered default (w3/m32 t009).
+		deps.SandboxDefaultTemplate = "base"
 		// Multi-tenant OpenSandbox (m32 t006): with the control plane enabled, each
 		// workspace gets an opaque tenant key the sandbox feature stamps as the
 		// OPEN-SANDBOX-API-KEY header; the server resolves it back through the CP

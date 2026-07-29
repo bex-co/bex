@@ -31,15 +31,28 @@ import (
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/sandboxes", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
-			Plan     Plan   `json:"plan"`
-			Template string `json:"template"`
+			OwnerID        string         `json:"ownerId"`
+			Plan           Plan           `json:"plan"`
+			Template       string         `json:"template"`
+			Region         string         `json:"region"`
+			TimeoutSeconds int            `json:"timeoutSeconds"`
+			NetworkPolicy  *NetworkPolicy `json:"networkPolicy"`
 		}
 		// A missing/empty body is fine — template+plan fall back to defaults.
 		_ = core.DecodeJSON(r, &body)
+		// The Render CLI sends ownerId in the BODY; the query param is the REST
+		// convention. Prefer the query, fall back to the body (empty ⇒ default ws).
+		owner := r.URL.Query().Get("ownerId")
+		if owner == "" {
+			owner = body.OwnerID
+		}
 		sb, err := s.Create(r.Context(), CreateRequest{
-			OwnerID:  r.URL.Query().Get("ownerId"),
-			Template: body.Template,
-			Plan:     body.Plan,
+			OwnerID:        owner,
+			Template:       body.Template,
+			Plan:           body.Plan,
+			Region:         body.Region,
+			TimeoutSeconds: body.TimeoutSeconds,
+			NetworkPolicy:  body.NetworkPolicy,
 		})
 		if err != nil {
 			core.WriteErr(w, err)
@@ -54,7 +67,13 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, out)
+		// The Render CLI reads a cursor-paginated `[{sandbox, cursor}]` array, not
+		// a bare list — wrap each item so `render ea sandbox list` renders it.
+		envelopes := make([]SandboxEnvelope, 0, len(out))
+		for _, sb := range out {
+			envelopes = append(envelopes, SandboxEnvelope{Sandbox: sb})
+		}
+		core.WriteJSON(w, http.StatusOK, envelopes)
 	})
 	mux.HandleFunc("GET /v1/sandboxes/{id}", func(w http.ResponseWriter, r *http.Request) {
 		ctx := core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId"))

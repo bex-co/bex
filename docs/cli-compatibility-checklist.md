@@ -235,10 +235,10 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
   - [-] `ea objects put` — `404` (`--local` works client-side)
   - [-] `ea objects get` — `404` (`--local` works client-side)
   - [-] `ea objects delete` — `404` (`--local` works client-side)
-  - [x] `ea sandbox create` — `POST /v1/sandboxes?ownerId=` → `201` (runs on the gVisor substrate in the caller's `<ws>-sandbox` namespace; w3/m32 t009 + t006)
-  - [-] `ea sandbox exec` — `404` (two-step run-token + SSE stream; a follow-up, `internal/sandbox/rest.go`)
-  - [x] `ea sandbox list` — `GET /v1/sandboxes` → `200`
-  - [x] `ea sandbox stop` — `POST /v1/sandboxes/{id}/terminate` → `204`
+  - [x] `ea sandbox create` — verified with the real CLI (v2.21.0): `POST /v1/sandboxes` → `201`. Fixes the CLI found: the CLI sends only `--plan` (no template flag) so an empty template resolves to a default (`base`), and it sends `ownerId` in the BODY (bex now reads body-or-query); `plan/region/timeoutSeconds` are echoed back. Runs on the gVisor substrate in the caller's `<ws>-sandbox` namespace (w3/m32 t009 + t006).
+  - [-] `ea sandbox exec` — `404` (the two-step `…/runs/{op}/token` + SSE stream is not implemented; a documented follow-up bridging to OpenSandbox `execd`, `internal/sandbox/rest.go`)
+  - [x] `ea sandbox list` — verified with the real CLI: `GET /v1/sandboxes` → `200`, returned as the CLI's cursor-paginated `[{sandbox, cursor}]` envelope (a bare array made the CLI render empty id/status — fixed).
+  - [x] `ea sandbox stop` — verified with the real CLI: `POST /v1/sandboxes/{id}/terminate` → `204`.
 - [~] **`skills`** — manage Render agent skills for AI coding tools (client-side; no bex dependency)
   - [x] `skills install` — works; `--dry-run` reports intended changes without writing
   - [ ] `skills list` — **upstream CLI panic** (nil-pointer) in every non-TTY output mode
