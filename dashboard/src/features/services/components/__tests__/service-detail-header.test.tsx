@@ -260,6 +260,21 @@ describe("ServiceDetailHeader", () => {
     expect(screen.queryByText("Instances")).not.toBeInTheDocument();
   });
 
+  it("omits the instance-type/plan chip for a static site (no /static plan route → would 404, w5/m57)", async () => {
+    // A static_site is canonical under /static, which has no plan tab; the chip
+    // linked to /services/<id>/plan and canonicalized to a nonexistent
+    // /static/<id>/plan (404). Render's static header has no plan concept.
+    renderHeader(svc({ type: "static_site", plan: "starter" }));
+
+    await screen.findByRole("heading", { name: "app" });
+    expect(screen.queryByRole("link", { name: "Starter" })).not.toBeInTheDocument();
+    // A compute type with the same plan still shows the chip.
+    renderHeader(svc({ type: "web_service", plan: "starter" }));
+    expect(
+      await screen.findByRole("link", { name: "Starter" }),
+    ).toHaveAttribute("href", "/services/app/plan");
+  });
+
   it("shows a bound image credential by name and links to its settings panel", async () => {
     renderHeader(
       svc({ repo: null, branch: null, registryCredentialId: "rgc-private" }),

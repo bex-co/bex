@@ -78,7 +78,9 @@ export function ServiceDetailHeader({
   const TypeIcon = SERVICE_TYPE_ICON[typeKey];
   // Header links point at the service's canonical base (a static_site lives
   // under /static, Render parity w5/m57). The Plan chip below stays on
-  // /services — plan has no /static route and only renders for compute types.
+  // /services — plan has no /static route and renders for compute types only
+  // (a static_site is gated out: its "Free" chip would link to a nonexistent
+  // /static/<id>/plan and 404, and Render's static header has no plan concept).
   const base = serviceBaseForType(service.type);
   const instanceType = byID(service.plan);
   const repoUrl = service.repo
@@ -120,7 +122,7 @@ export function ServiceDetailHeader({
               </Badge>
             </Link>
           ) : null}
-          {instanceType ? (
+          {instanceType && !isStaticSite(service) ? (
             <Link
               to="/services/$serviceId/plan"
               params={{ serviceId: service.id }}

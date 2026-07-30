@@ -1,6 +1,6 @@
 # w5 · m57 — Static-site page Render-parity polish (URL + landing IA)
 
-**Worker:** worker5 **Goal:** close the residual static-site dashboard divergences w5/m48 left open — a canonical `/static/<id>` URL, an Events-first sidebar/landing (no Deploys tab), and a Region-free Settings page — so bex's static-site page matches Render's `/static/<id>` page. **Status:** in progress (t001–t003 + t006 done; t004 live-dashboard walk, t005 simplify, t007 closeout open)
+**Worker:** worker5 **Goal:** close the residual static-site dashboard divergences w5/m48 left open — a canonical `/static/<id>` URL, an Events-first sidebar/landing (no Deploys tab), and a Region-free Settings page — so bex's static-site page matches Render's `/static/<id>` page. **Status:** done (t001–t007 complete; live walk logged, one drift found + fixed, gates green)
 
 ## Tasks (in order)
 
@@ -9,10 +9,12 @@
 | t001 | Canonical `/static/<id>` route for static sites             | 1h30m | —                | — **DONE**   |
 | t002 | Static-site sidebar/landing — Events first, drop Deploys tab | 45m   | t001             | — **DONE**   |
 | t003 | Hide read-only Region row on static-site Settings           | 20m   | —                | — **DONE**   |
-| t004 | Render parity — live static-site page walk vs render.com    | 45m   | t001, t002, t003 | todo         |
-| t005 | Simplify — reuse/simplification pass over the changes       | 30m   | t004             | todo         |
+| t004 | Render parity — live static-site page walk vs render.com    | 45m   | t001, t002, t003 | — **DONE**   |
+| t005 | Simplify — reuse/simplification pass over the changes       | 30m   | t004             | — **DONE**   |
 | t006 | Test coverage — routing, landing, nav, settings gating      | 1h    | t004             | — **DONE**   |
-| t007 | Closeout — land the milestone                               | 10m   | t006             | todo         |
+| t007 | Closeout — land the milestone                               | 10m   | t006             | — **DONE**   |
+
+**Closeout note (2026-07-30):** t004 walked the static-site page live against the offline dashboard (`yarn dev:local` + the `docs-site` `static_site` fixture, which carries `region: "fsn1"` so the Region-gating is exercised) with the 2026-07-28 Render capture as the reference — URL scheme, `/services`→`/static` reverse-redirect, Events-first sidebar/landing, edge-rule pages, and the Region-free/Instance-Type-free Settings all match; evidence + the side-by-side table live in `docs/render-artifacts/static-site-page-walk.md` (screenshot `.playwright-mcp/m57-static-events-landing.png`). The walk surfaced **one drift**: the shared service header rendered a "Free" instance-type/plan chip linking to `/services/<id>/plan`, which canonicalizes to a nonexistent `/static/<id>/plan` → 404 (Render's static header has no plan concept, and the header's own comment already said the chip should render for compute types only — the `!isStaticSite` gate was simply missing). t005 gated it in `service-detail-header.tsx` and added a header test; the rest of the m57 route tree was already minimal (thin re-exports, single-source nav in `service-nav.tsx`, reused `service-type.ts` helpers), so no other cleanup. `yarn typecheck && lint && test` green (1685 tests).
 
 **Implementation note (2026-07-29):** shipped as a full parallel `/static/$serviceId` route tree that reuses the shared `ServiceDetailLayout` + tab pages; the base rides a `ServiceBaseContext` the layout provides, and a shared detail loader (`service-detail-loader.ts`) canonicalizes the base (a static site under `/services` bounces to `/static`, and vice-versa — loop-free). Entry links stay bare `/services/$serviceId` and self-canonicalize via the index redirect. Verified with `yarn typecheck && lint && test` (1684 tests). The "Redirects/Rewrites" rename was already shipped (not a task). t004 needs a running/logged-in dashboard (dev-5 or prod) for the live side-by-side, which wasn't available in the implementing session.
 
