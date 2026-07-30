@@ -54,11 +54,15 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 - [x] **m52** — Stripe dunning lifecycle: trusted events → grace → reversible enforcement → recovery (15 tasks) ← from user `$pm` handoff 2026-07-27; needs m51 and closes ADR040's explicitly deferred payment-failure reaction in **test mode only** — done 2026-07-28: durable/reorder-safe webhook + polling convergence, notification delivery, reversible enforcement, audited controls, exact App recovery, cross-surface parity, and full production-hosted test-clock evidence in `docs/drills/2026-07-28-stripe-billing-dunning.md`
 - [x] **m53** — Production Stripe test-mode billing acceptance + operations handoff (12 tasks) ← from user `$pm` handoff 2026-07-27; needs m51–m52 and proves the whole billing lifecycle in prod without creating or using live-mode objects — done 2026-07-28: runtime-RAK reconciliation of 434 emitted rows, eight loaded/inactive alerts, exact rejection repair, paid/excluded/comp fixtures, disable/recovery, webhook rotation, and complete non-secret evidence in `docs/drills/2026-07-28-stripe-billing-operations.md`
 - [x] **m54** — Static-site multi-tenant trust boundaries: accepted browser divergence · alias authority · least-privilege S3 (9 tasks) ← from user `$ship` → `$pm` security handoff after the 2026-07-28 production static-site repair; done 2026-07-30 after the owner explicitly waived PSL inclusion
+- [ ] **m55** — Cross-workspace negative-authorization matrix: REST · GraphQL · MCP non-member deny guard (7 tasks) ← promotes `009` 2026-07-30 (`/pm-brainstorm for w7` coverage sweep confirmed spot-checked, not systematic: deny-all sweep can't catch confused-deputy authz, 3/186 REST routes E2E-checked, zero MCP cross-workspace tests)
+- [ ] **m56** — SSH gateway least-privilege DB credential (ADR035 §116) (6 tasks) ← from `/pm-brainstorm for w7` 2026-07-30 (the only unowned security follow-up left in `docs/`; gateway exposure grew twice since it was written — web shell `w2/m55`, sandbox exec `w3/m33` — while the credential stayed full-privilege)
 
 ## Inbox
 
 - `008.md` — Registry in-cluster TLS residual (ADR022 §225–227): Zot HTTP-only, build-push creds cross the cluster net in plaintext; largely mitigated by shipped Cilium WireGuard node encryption (cross-node only). Defense-in-depth, weak why-now — record, don't build until a driver appears.
-- `009.md` — Investigate cross-workspace authz negative-test coverage: confirm whether a systematic non-member deny-test across every REST/GraphQL/MCP verb has a real gap vs m30 conformance + existing OpenFGA tests before proposing a milestone.
+- `010.md` — Audit round 3 over post-2026-07-20 surfaces (namespaces/sandboxes/billing/static): trigger-gated on `w3/m35` closing — promoting earlier would double-cover m35's owned sandbox/NamespaceReconciler work.
+
+> `009.md` promoted to **m55** 2026-07-30 (the investigate-first branch fired: gap confirmed by the coverage sweep); note moved to `done/`.
 
 _(`001.md` — fresh tenant nodes could not pull authenticated Zot images — promoted to `w6/m29` and closed 2026-07-15; the source incident had already been archived as `done/005.md` by the earlier cross-workstream note-retirement pass.)_
 
