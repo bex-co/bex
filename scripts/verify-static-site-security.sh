@@ -5,10 +5,11 @@
 #   scripts/verify-static-site-security.sh repo
 #   KUBECONFIG=... scripts/verify-static-site-security.sh live
 #
-# PSL_EXPECTED defaults to `present`, the production contract. Use `absent`
-# only to capture the explicitly vulnerable pre-upstream baseline. The live
-# mode is read-only except for the isolated object-store probe created and
-# deleted by static-s3-credentials.sh; admission requests use server dry-run.
+# PSL_EXPECTED defaults to `report`: PSL membership was waived by owner decision
+# on 2026-07-30, so neither presence nor absence gates production. Use `present`
+# or `absent` to pin either state explicitly. The live mode is read-only except
+# for the isolated object-store probe created and deleted by
+# static-s3-credentials.sh; admission requests use server dry-run.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -18,7 +19,7 @@ case "$MODE" in
   *) echo "usage: $0 {repo|live}" >&2; exit 2 ;;
 esac
 
-PSL_EXPECTED="${PSL_EXPECTED:-present}"
+PSL_EXPECTED="${PSL_EXPECTED:-report}"
 PSL_URL="${PSL_URL:-https://raw.githubusercontent.com/publicsuffix/list/master/public_suffix_list.dat}"
 MANAGER_IDENTITY="system:serviceaccount:bex-system:bex-controller-manager"
 
@@ -28,6 +29,13 @@ command -v kubectl >/dev/null || { echo "error: kubectl not found" >&2; exit 1; 
 
 psl_entry="$(curl -fsSL "$PSL_URL" | awk '$0 == "onbex.co" { print; exit }')"
 case "$PSL_EXPECTED" in
+  report)
+    if [ "$psl_entry" = "onbex.co" ]; then
+      echo "INFO  PSL: canonical list contains onbex.co (membership is not gated)"
+    else
+      echo "INFO  PSL: canonical list excludes onbex.co (membership is not gated)"
+    fi
+    ;;
   present)
     [ "$psl_entry" = "onbex.co" ] || {
       echo "FAIL  PSL: canonical list does not contain onbex.co" >&2
@@ -37,12 +45,12 @@ case "$PSL_EXPECTED" in
     ;;
   absent)
     [ -z "$psl_entry" ] || {
-      echo "FAIL  PSL baseline: onbex.co is now present; update the expected contract" >&2
+      echo "FAIL  PSL contract: onbex.co is now present; update the accepted contract" >&2
       exit 1
     }
-    echo "PASS  PSL baseline: canonical list does not yet contain onbex.co"
+    echo "PASS  PSL contract: canonical list excludes onbex.co"
     ;;
-  *) echo "error: PSL_EXPECTED must be present or absent" >&2; exit 2 ;;
+  *) echo "error: PSL_EXPECTED must be report, present, or absent" >&2; exit 2 ;;
 esac
 
 PSL_EXPECTED="$PSL_EXPECTED" node scripts/static-site-browser-isolation.mjs

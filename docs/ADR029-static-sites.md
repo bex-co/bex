@@ -23,11 +23,11 @@ Edge rules live on the App CR (`spec.routes`/`spec.headers`) and the static-serv
 
 ## Trust boundaries
 
-Static hosting has three independent security boundaries; none substitutes for another:
+Static hosting has three independent security domains; the accepted browser divergence does not weaken the Kubernetes or object-store boundaries:
 
-| Boundary | Attacker capability | Enforced invariant |
+| Boundary | Attacker capability | Current contract |
 | --- | --- | --- |
-| Browser site boundary | A malicious tenant controls HTML/JavaScript on one `*.onbex.co` origin | `onbex.co` must be a browser-consumed Public Suffix so `Domain=onbex.co` cookies are rejected; local storage and Service Workers remain origin-scoped |
+| Browser site boundary | A malicious tenant controls HTML/JavaScript on one `*.onbex.co` origin | PSL membership is an owner-accepted non-goal: `Domain=onbex.co` cookies can cross siblings; local storage and Service Workers remain origin-scoped; tenant apps must use host-only/`__Host-` cookies |
 | Kubernetes routing authority | A tenant workload or compromised tenant-facing API/gateway identity can call the API server with only its effective RBAC | Those identities cannot mutate Services or Ingresses; fail-closed admission accepts tenant ExternalName aliases only from the operator, with an App controller owner and one of two fixed destinations |
 | Object-store blast radius | The shared static-server or an ephemeral publish/purge Job is compromised | The server identity is read-only on `bex-static`; the publisher identity is write/delete-capable only on `bex-static`; neither can enumerate the account or reach `bex-tfstate` backups or another bucket |
 
@@ -44,7 +44,7 @@ Tenant-facing ServiceAccounts are separately denied Service and Ingress mutation
 
 Tenant content stays on `*.onbex.co`; dashboard, API, Kratos, and Hydra stay on `*.bex.co`. No control-plane session or OAuth token is intentionally sent to the tenant content suffix. Platform-hosted tenant applications should use host-only cookies, preferably `Secure; HttpOnly; SameSite=Lax` and the `__Host-` prefix (which also requires `Path=/` and forbids `Domain`). Custom domains are separate registrable sites and remain the domain owner's cookie-policy responsibility.
 
-`onrender.com` is in the Public Suffix List, so sibling Render sites cannot set a parent-domain cookie. As of 2026-07-29, the canonical list does **not** contain `onbex.co`: real Chrome accepts `Domain=onbex.co` on tenant A and sends it to tenant B. The current upstream PRIVATE-section request template requires 2,000–3,000 distinct users; production has 17 distinct tenant members, so bex cannot truthfully submit yet. This is a known release boundary, not a locally papered-over success. [`static-site-browser-isolation.mjs`](../scripts/static-site-browser-isolation.mjs) compares real-Chrome behavior with `onrender.com`; its default expects the secure final state and therefore fails until upstream membership reaches browser releases. `PSL_EXPECTED=absent` exists only to reproduce the dated baseline.
+`onrender.com` is in the Public Suffix List, so sibling Render sites cannot set a parent-domain cookie. The canonical list does **not** contain `onbex.co`: real Chrome accepts `Domain=onbex.co` on tenant A and sends it to tenant B. On 2026-07-30 the owner explicitly waived PSL inclusion and accepted this platform-hostname cookie divergence; this is not a claim of equivalent isolation. [`static-site-browser-isolation.mjs`](../scripts/static-site-browser-isolation.mjs) keeps the difference executable and defaults to reporting—not gating—the current parent-cookie result. `PSL_EXPECTED=present` or `absent` pins either state for an explicit regression check.
 
 ## Object store
 
@@ -91,7 +91,7 @@ Rotation follows add → verify → deploy → lifecycle proof → revoke. The e
 ## Verification
 
 - `scripts/gitops-validate.sh` pins the admission objects, tenant Role shapes, fixed alias destinations, split Secret names, and exact IAM actions/resources.
-- `PSL_EXPECTED=absent scripts/verify-static-site-security.sh repo` reproduces the 2026-07-29 browser baseline; the production/final gate omits the override and requires current canonical membership.
+- `scripts/verify-static-site-security.sh repo` reports the current parent-cookie behavior without gating PSL membership and still fails if storage or Service Workers cross origins; `PSL_EXPECTED=present` or `absent` pins either membership state explicitly.
 - `KUBECONFIG=… scripts/verify-static-site-security.sh live` enumerates tenant ServiceAccounts/RoleBinding subjects, checks every Service/Ingress write verb by impersonation, exercises positive and hostile server-side dry-run admission, fetches a live static URL, and runs the S3 matrix.
 - Controller/envtest tests prove operator reconciliation for both alias purposes and fail-before-Job behavior for a missing publisher Secret. Static-server unit/integration tests prove object-only rewrites and fail-closed S3 startup.
 - Sanitized baseline: [2026-07-29 static-site trust boundaries](drills/2026-07-29-static-site-trust-baseline.md).
