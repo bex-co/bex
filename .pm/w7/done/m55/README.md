@@ -1,18 +1,22 @@
 # w7 · m55 — Cross-workspace negative-authorization matrix
 
-**Worker:** worker7 **Goal:** make any authorization regression that opens cross-workspace reads/writes — including wrong-object (confused-deputy) authorization — a CI failure across REST, GraphQL, and MCP. **Status:** todo
+**Worker:** worker7 **Goal:** make any authorization regression that opens cross-workspace reads/writes — including wrong-object (confused-deputy) authorization — a CI failure across REST, GraphQL, and MCP. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                          | est | depends_on |
 | ---- | ------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Two-workspace deny fixture + verb-enumeration harness                          | 90m | —          |
-| t002 | REST route matrix with completeness guard (~186 registered routes)             | 60m | t001       |
-| t003 | GraphQL + MCP non-member deny matrices                                         | 60m | t001       |
-| t004 | Extend the OpenFGA-backed multi-workspace E2E to a per-service sample          | 45m | t002, t003 |
-| t005 | Simplify                                                                       | 30m | t004       |
-| t006 | Test coverage: seeded-regression (mutation) verification of the matrix itself  | 45m | t004       |
-| t007 | Closeout                                                                       | 15m | t006       |
+| t001 | Two-workspace deny fixture + verb-enumeration harness                          | 90m | —          | — **DONE** |
+| t002 | REST route matrix with completeness guard (~186 registered routes)             | 60m | t001       | — **DONE** |
+| t003 | GraphQL + MCP non-member deny matrices                                         | 60m | t001       | — **DONE** |
+| t004 | Extend the OpenFGA-backed multi-workspace E2E to a per-service sample          | 45m | t002, t003 | — **DONE** |
+| t005 | Simplify                                                                       | 30m | t004       | — **DONE** |
+| t006 | Test coverage: seeded-regression (mutation) verification of the matrix itself  | 45m | t004       | — **DONE** |
+| t007 | Closeout                                                                       | 15m | t006       | — **DONE** |
+
+## Outcome (2026-07-30)
+
+Shipped: `crossworkspace_matrix_test.go` (verb sweep — **247/252** verbs deny a non-member cross-workspace caller, 5 justified caller-scoped exclusions), `crossworkspace_rest_test.go` (**146** resource-targeted REST routes deny via a reflection walk of the `http.ServeMux` tree, 52 caller-scoped + 1 public excused, all completeness-guarded), `crossworkspace_gqlmcp_test.go` (GraphQL **201/207** + MCP **182/186** deny), an extended `TestMultiWorkspaceTargetingE2E` (real OpenFGA: per-object Database/KeyValue + members read-allow/write-deny), and `crossworkspace_selftest_test.go` (the anti-tautology proof). Every surface enumerates mechanically with a completeness guard, so a new verb/route/field/tool auto-joins the matrix or fails CI. All five regression classes demonstrably turn the suite red (t006 evidence). Backend integration suite + lint green; verified locally against ephemeral Postgres + OpenFGA.
 
 ## Definition of done
 
