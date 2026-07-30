@@ -1,6 +1,6 @@
 # ADR: Sandbox cluster substrate — multi-node OpenSandbox, gVisor isolation, and the bex-api gateway
 
-**Status:** accepted and implemented for create/list/get/exec/stop on the Kubernetes/gVisor substrate. m33 exec landed concurrently with the checked-in m35 security hardening; production-equivalent adversarial verification remains the closeout gate before any further sandbox expansion. This ADR refines [ADR014-sandboxes.md](ADR014-sandboxes.md); Render `ea sandbox` shapes displace that ADR's original E2B lifecycle routes.
+**Status:** accepted and implemented for create/list/get/exec/stop on the Kubernetes/gVisor substrate. m33 exec landed concurrently with the m35 security hardening, which is deployed and adversarially verified on the production gVisor/Cilium substrate (2026-07-30: the full ownership, same/cross-workspace network, DNS/FQDN/SNI egress, identity ingress, lifecycle RBAC, sandbox-Pod runtime admission, NamespaceReconciler admission, and Hubble matrix — 40 checks, clean disposable-fixture audit); the sandbox may now expand further. This ADR refines [ADR014-sandboxes.md](ADR014-sandboxes.md); Render `ea sandbox` shapes displace that ADR's original E2B lifecycle routes.
 
 ## Context
 

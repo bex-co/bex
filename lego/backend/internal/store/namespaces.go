@@ -174,7 +174,7 @@ func (r *NamespaceReconciler) ensureNamespace(ctx context.Context, t Tenant, reg
 		return fmt.Errorf("networkpolicy: %w", err)
 	}
 	allows := allowNetworkPolicies(name, regime)
-	desiredPolicies := map[string]bool{"default-deny": true}
+	desiredPolicies := map[string]bool{defaultDenyNetworkPolicyName: true}
 	for _, np := range allows {
 		desiredPolicies[np.Name] = true
 	}
@@ -605,10 +605,15 @@ func tenantRoleBinding(namespace, clusterRole string, subject rbacv1.Subject) *r
 // same-namespace, DNS, and (hosting-only) Traefik-ingress/internet-egress allows
 // on top; the cluster-wide node/metadata Cilium egressDeny (retained from
 // ADR022) still applies beneath all of these.
+// defaultDenyNetworkPolicyName is the structural deny policy's name and the
+// single source of truth shared by the constructor and the prune desired-set
+// seed, so the two cannot drift and silently prune the namespace's default-deny.
+const defaultDenyNetworkPolicyName = "default-deny"
+
 func defaultDenyNetworkPolicy(namespace string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "default-deny",
+			Name:      defaultDenyNetworkPolicyName,
 			Namespace: namespace,
 			Labels:    map[string]string{LabelManagedBy: ManagedByValue},
 		},
