@@ -77,4 +77,4 @@ The split S3 credential lifecycle also passed:
 - post-revocation manual deploy `dep-d9l81g10o6pc73aijtrg` published revision 4 with `bex-static-publish-s3`, and the platform URL still returned HTTP 200 with a 1,548-byte body;
 - the final reader/publisher positive and negative matrix passed again after revocation.
 
-The canonical PSL still lacks `onbex.co`, and the real-browser probe still demonstrates the parent-cookie crossing that membership must close. Tasks t002/t006 and milestone closeout therefore remain open; this record does not treat the interim `__Host-` guidance as equivalent isolation.
+The canonical PSL still lacks `onbex.co`, and the real-browser probe still demonstrates parent-cookie crossing. On 2026-07-30 the owner explicitly waived PSL inclusion and accepted this browser-domain divergence; the milestone closeout does not treat host-only/`__Host-` guidance as equivalent browser enforcement.

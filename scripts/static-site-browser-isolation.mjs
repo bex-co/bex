@@ -4,11 +4,12 @@
 // No live tenant site is modified. A loopback HTTPS server is reached through
 // Chrome host mappings for two sibling hosts. The browser, not a PSL library,
 // decides whether Domain=<suffix> is legal. onrender.com is the reference;
-// onbex.co is checked against the desired contract by default.
+// onbex.co defaults to report-only after PSL membership was waived (2026-07-30).
 //
 // Usage:
 //   node scripts/static-site-browser-isolation.mjs
-//   PSL_EXPECTED=absent node scripts/static-site-browser-isolation.mjs # baseline before upstream merge
+//   PSL_EXPECTED=absent node scripts/static-site-browser-isolation.mjs # pin today's behavior
+//   PSL_EXPECTED=present node scripts/static-site-browser-isolation.mjs # opt in after any future PSL merge
 //   CHROME_BIN=/path/to/chrome node scripts/static-site-browser-isolation.mjs
 import { execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
@@ -16,9 +17,9 @@ import https from "node:https";
 import os from "node:os";
 import path from "node:path";
 
-const expected = process.env.PSL_EXPECTED ?? "present";
-if (!new Set(["present", "absent"]).has(expected)) {
-  throw new Error("PSL_EXPECTED must be present or absent");
+const expected = process.env.PSL_EXPECTED ?? "report";
+if (!new Set(["report", "present", "absent"]).has(expected)) {
+  throw new Error("PSL_EXPECTED must be report, present, or absent");
 }
 
 const chromeCandidates = [
@@ -219,11 +220,11 @@ async function checkSuffix(cdp, suffix, wantPSL) {
 
   const parentCrossed = tenantB.cookie.includes("bex_parent_probe=tenant-a");
   const failures = [];
-  if (parentCrossed === wantPSL) {
+  if (wantPSL !== null && parentCrossed === wantPSL) {
     failures.push(
       wantPSL
         ? "browser accepted a cookie scoped to the public suffix"
-        : "browser rejected the expected pre-PSL baseline cookie",
+        : "browser rejected the expected non-PSL cookie behavior",
     );
   }
   if (tenantB.storage !== null) failures.push("localStorage crossed sibling origins");
@@ -238,8 +239,10 @@ async function checkSuffix(cdp, suffix, wantPSL) {
     console.error(`FAIL  ${suffix}: ${failures.join("; ")}`);
     return false;
   }
+  const cookieResult = parentCrossed ? "crossed to sibling" : "rejected";
+  const expectation = wantPSL === null ? "reported, not gated" : "expected";
   console.log(
-    `PASS  ${suffix}: parent cookie ${wantPSL ? "rejected" : "crossed (pre-PSL baseline)"}; storage and Service Worker stayed origin-local`,
+    `PASS  ${suffix}: parent cookie ${cookieResult} (${expectation}); storage and Service Worker stayed origin-local`,
   );
   return true;
 }
@@ -248,7 +251,8 @@ let cdp;
 try {
   cdp = await connect(await waitForDevTools());
   const renderOK = await checkSuffix(cdp, "onrender.com", true);
-  const bexOK = await checkSuffix(cdp, "onbex.co", expected === "present");
+  const bexExpectation = expected === "report" ? null : expected === "present";
+  const bexOK = await checkSuffix(cdp, "onbex.co", bexExpectation);
   if (!renderOK || !bexOK) process.exitCode = 1;
 } finally {
   if (cdp) await cdp.send("Browser.close").catch(() => {});
