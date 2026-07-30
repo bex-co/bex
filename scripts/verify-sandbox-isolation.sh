@@ -843,14 +843,14 @@ hubble_agent_pod="$(kubectl -n kube-system get pods -l k8s-app=cilium \
   || fail "no Ready Cilium agent is running on attacker node $sandbox_node"
 if command -v hubble >/dev/null 2>&1 \
   && hubble status >/dev/null 2>&1 \
-  && hubble observe --namespace "$namespace_a" --from-pod "$namespace_a/$pod_a" \
+  && hubble observe --from-pod "$namespace_a/$pod_a" \
     --since "$started_at" --verdict DROPPED --output compact \
     >"$fixture_dir/hubble-drops.txt"; then
   : # Prefer an available relay because it includes cluster-wide flow context.
 else
   kubectl -n kube-system exec "$hubble_agent_pod" -c cilium-agent -- \
     hubble observe --server unix:///var/run/cilium/hubble.sock \
-      --namespace "$namespace_a" --from-pod "$namespace_a/$pod_a" \
+      --from-pod "$namespace_a/$pod_a" \
       --since "$started_at" --verdict DROPPED --output compact \
       >"$fixture_dir/hubble-drops.txt" \
     || fail "could not collect local Hubble flows from attacker node $sandbox_node"

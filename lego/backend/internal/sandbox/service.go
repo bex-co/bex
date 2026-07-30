@@ -160,7 +160,7 @@ func ownerID(ctx context.Context) string {
 	return "subject-" + hex.EncodeToString(sum[:20])
 }
 
-func workspaceID(s *Service, ctx context.Context) string {
+func (s *Service) workspaceID(ctx context.Context) string {
 	if ws, ok := s.Tenant(ctx); ok {
 		return ws
 	}
@@ -297,7 +297,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if err != nil {
 		return Sandbox{}, err
 	}
-	ws := workspaceID(s, ctx)
+	ws := s.workspaceID(ctx)
 	cpu, mem := tmpl.CPU, tmpl.Memory
 	if cpu == "" {
 		cpu = "500m"
@@ -341,7 +341,7 @@ func (s *Service) List(ctx context.Context) ([]Sandbox, error) {
 	if err != nil {
 		return nil, err
 	}
-	ws := workspaceID(s, ctx)
+	ws := s.workspaceID(ctx)
 	raw, err := s.Client.List(ctx, key)
 	if err != nil {
 		return nil, err
@@ -385,7 +385,7 @@ func (s *Service) Get(ctx context.Context, id string) (Sandbox, error) {
 	if err != nil {
 		return Sandbox{}, err
 	}
-	ws := workspaceID(s, ctx)
+	ws := s.workspaceID(ctx)
 	raw, err := s.ownedSandbox(ctx, key, ws, id)
 	if err != nil {
 		return Sandbox{}, err
@@ -426,7 +426,7 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, op func(ct
 	if err != nil {
 		return err
 	}
-	ws := workspaceID(s, ctx)
+	ws := s.workspaceID(ctx)
 	if _, err := s.ownedSandbox(ctx, key, ws, id); err != nil {
 		return err
 	}
