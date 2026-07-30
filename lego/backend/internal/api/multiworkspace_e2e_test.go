@@ -229,6 +229,67 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 	if rec := call(erin, "GET", "/v1/services/"+bravoWeb, ""); rec.Code != http.StatusForbidden {
 		t.Errorf("erin GET dana's service: %d %s, want 403", rec.Code, rec.Body.String())
 	}
+
+	// (6) PER-SERVICE SAMPLE against the REAL FGA model (w7/m55/t004). The
+	// fake-checker matrices (crossworkspace_*_test.go) catch route/verb WIRING
+	// regressions but use a fake checker, so an FGA MODEL regression — a schema
+	// change that let a viewer's can_view resolve to can_create, or made a
+	// relation public — would pass them. These cases drive one representative
+	// read and one representative write per resource OBJECT TYPE (Database,
+	// KeyValue — beyond the App the cases above already cover) through the real
+	// OpenFGA model, so such a regression fails CI. For each: erin (non-member)
+	// is denied both; carl (VIEWER of bravo) may read (can_view) but not delete
+	// (can_create) — the exact per-relation resolution only the real model
+	// exercises. bravo's Database and KeyValue are seeded straight into the fake
+	// apiserver, labeled bravo, since this test drives the authz path, not the
+	// operator's provisioning.
+	bravoDB, bravoKV := "bravo-db-"+run, "bravo-kv-"+run
+	if err := cl.Create(ctx, ownedDB(bravoDB, wsB.ID)); err != nil {
+		t.Fatalf("seed bravo Database: %v", err)
+	}
+	if err := cl.Create(ctx, ownedKV(bravoKV, wsB.ID)); err != nil {
+		t.Fatalf("seed bravo KeyValue: %v", err)
+	}
+	perObject := []struct {
+		object, readPath, writePath string
+	}{
+		{"Database", "/v1/postgres/" + bravoDB, "/v1/postgres/" + bravoDB},
+		{"KeyValue", "/v1/key-value/" + bravoKV, "/v1/key-value/" + bravoKV},
+	}
+	for _, o := range perObject {
+		// erin (non-member) — denied read AND write, the isolation floor.
+		if rec := call(erin, "GET", o.readPath, ""); rec.Code != http.StatusForbidden {
+			t.Errorf("erin (non-member) GET %s [%s]: %d %s, want 403", o.readPath, o.object, rec.Code, rec.Body.String())
+		}
+		if rec := call(erin, "DELETE", o.writePath, ""); rec.Code != http.StatusForbidden {
+			t.Errorf("erin (non-member) DELETE %s [%s]: %d %s, want 403", o.writePath, o.object, rec.Code, rec.Body.String())
+		}
+		// carl (viewer of bravo) — can_view holds, can_create does not: the model
+		// regression catch. A read that 403s would be a false negative; a delete
+		// that 2xxes would be the role leak this asserts against.
+		if rec := call(carl, "GET", o.readPath, ""); rec.Code != http.StatusOK {
+			t.Errorf("carl (viewer of bravo) GET %s [%s]: %d %s, want 200 — can_view must hold for a viewer",
+				o.readPath, o.object, rec.Code, rec.Body.String())
+		}
+		if rec := call(carl, "DELETE", o.writePath, ""); rec.Code != http.StatusForbidden {
+			t.Errorf("carl (viewer of bravo) DELETE %s [%s]: %d %s, want 403 — can_create must NOT hold for a viewer",
+				o.writePath, o.object, rec.Code, rec.Body.String())
+		}
+	}
+
+	// (7) Members read/write against the real model on the WORKSPACE object: carl,
+	// a viewer of bravo, may LIST its members (can_view) but not INVITE (can_manage
+	// — admin only). This exercises the AuthorizeOn(workspace) seam the resource
+	// verbs above don't touch.
+	if rec := call(carl, "GET", "/v1/owners/"+wsB.ID+"/members", ""); rec.Code != http.StatusOK {
+		t.Errorf("carl (viewer of bravo) GET bravo members: %d %s, want 200 — can_view must hold", rec.Code, rec.Body.String())
+	}
+	if rec := call(carl, "POST", "/v1/workspaces/"+wsB.ID+"/members", `{"email":"x@example.com","role":"viewer"}`); rec.Code != http.StatusForbidden {
+		t.Errorf("carl (viewer of bravo) invite a member: %d %s, want 403 — can_manage must NOT hold for a viewer", rec.Code, rec.Body.String())
+	}
+	if rec := call(erin, "GET", "/v1/owners/"+wsB.ID+"/members", ""); rec.Code != http.StatusForbidden {
+		t.Errorf("erin (non-member) GET bravo members: %d %s, want 403", rec.Code, rec.Body.String())
+	}
 }
 
 // k8sKey is the fake apiserver's object key for an App in the test namespace.
