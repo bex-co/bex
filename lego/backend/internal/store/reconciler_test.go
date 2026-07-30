@@ -732,6 +732,45 @@ func TestObservedDeployStatusCancelsSupersededRow(t *testing.T) {
 	}
 }
 
+// TestObservedDeployStatusCancelsOrphanedRowAfterTimeout guards the recreated-CR
+// case: an App CR deleted and recreated (e.g. the ADR043 per-tenant-namespace
+// migration re-applying every CR) restarts status.releaseGeneration at 1, far
+// BELOW the stored generation of any deploy row opened against the prior CR.
+// The row can never be adopted, and a healthy PhaseRunning App never trips the
+// phase-switch timeout, so before the fix it stayed build_in_progress forever
+// (prod dep-d9kge9usnfpc73ajp8a0: generation 495 vs a recreated CR at rev-1).
+// Once the row sits past its gate timeout it closes canceled — but only for a
+// release-generation-aware operator, and never before the timeout (an operator
+// merely lagging one generation behind must keep waiting).
+func TestObservedDeployStatusCancelsOrphanedRowAfterTimeout(t *testing.T) {
+	orphaned := &appv1alpha1.App{}
+	orphaned.Generation = 1
+	orphaned.Status.Phase = appv1alpha1.PhaseRunning
+	orphaned.Status.ReleaseGeneration = 1
+	orphaned.Status.ActiveRevision = "rev-1"
+	open := Deploy{Generation: 495, Status: DeployBuildInProgress}
+
+	// Not yet timed out: the operator might still be catching up — keep waiting.
+	if got := observedDeployStatus(open, orphaned, false); got != "" {
+		t.Errorf("orphaned row before timeout => %q, want no transition", got)
+	}
+	// Timed out against a recreated CR whose releaseGeneration can never reach the
+	// row's: close it canceled instead of stranding it open forever.
+	if got := observedDeployStatus(open, orphaned, true); got != DeployCanceled {
+		t.Errorf("orphaned row after timeout => %q, want %q", got, DeployCanceled)
+	}
+
+	// A legacy operator (no status.releaseGeneration) still keeps the conservative
+	// wait even when timed out: its metadata generation moves for operational
+	// churn, so a mismatch is not trustworthy evidence of an orphaned release.
+	legacy := &appv1alpha1.App{}
+	legacy.Generation = 1
+	legacy.Status.Phase = appv1alpha1.PhaseRunning
+	if got := observedDeployStatus(open, legacy, true); got != "" {
+		t.Errorf("legacy orphaned row after timeout => %q, want no transition", got)
+	}
+}
+
 // TestRecordDeployCancelsSupersededRow runs the same scenario through the full
 // Reconciler pass: an open create-row (generation 1) whose App the operator
 // reports at releaseGeneration 3 closes canceled — finished, no failure

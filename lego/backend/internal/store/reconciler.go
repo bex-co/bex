@@ -454,6 +454,22 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 		return DeployCanceled
 	}
 	if generation := appReleaseGeneration(app); generation != 0 && open.Generation != 0 && generation != open.Generation {
+		// The CR's release generation no longer matches this open row. Usually a
+		// brief transient while the operator catches up to a just-patched spec, so
+		// keep waiting. But once the row has sat past its gate timeout the match
+		// will never arrive: if the App CR was deleted and recreated — e.g. the
+		// ADR043 per-tenant-namespace migration re-applying every CR — its
+		// status.releaseGeneration restarts BELOW this row's stored generation, so
+		// the release can never be adopted and the row would otherwise report
+		// "in progress" forever (a healthy PhaseRunning App never trips the
+		// phase-switch timeout below). Close it canceled — the terminal the
+		// superseded case above already uses — but only for a release-generation-
+		// aware operator (status.releaseGeneration > 0); a legacy operator's
+		// metadata generation also moves for operational churn (manual scale), so
+		// it keeps the conservative wait rather than risk canceling a live rollout.
+		if timedOut && app.Status.ReleaseGeneration > 0 {
+			return DeployCanceled
+		}
 		return ""
 	}
 	pds := preDeployStatusFor(app)
