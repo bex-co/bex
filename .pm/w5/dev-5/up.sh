@@ -22,9 +22,65 @@ source "$ENVDIR/ports.env"
 mkdir -p "$ENVDIR/.pids" "$ENVDIR/logs" "$ENVDIR/bin"
 KUBECONFIG_FILE="$ENVDIR/.kubeconfig"
 
+# --- preflight (w5/m62): fail fast with an actionable message instead of a
+# cryptic mid-run error. The header once claimed dev-5 "reuses the shared
+# cluster's CNPG operator" — a precondition that silently stopped holding, so
+# up.sh died opaquely at the Cluster apply ("no matches for kind Cluster").
+echo "==> preflight"
+for tool in kind kubectl helm go openssl; do
+  command -v "$tool" >/dev/null 2>&1 \
+    || { echo "error: '$tool' not found on PATH — dev-5 needs kind/kubectl/helm/go/openssl" >&2; exit 1; }
+done
+kind get clusters 2>/dev/null | grep -qx bex \
+  || { echo "error: kind cluster 'bex' not found — run 'bash scripts/mock-cluster.sh' first" >&2; exit 1; }
+
 echo "==> refreshing kubeconfig for kind cluster 'bex'"
 kind get kubeconfig --name bex > "$KUBECONFIG_FILE"
 export KUBECONFIG="$PWD/$KUBECONFIG_FILE"
+kubectl cluster-info >/dev/null 2>&1 \
+  || { echo "error: cluster 'bex' is unreachable via $KUBECONFIG_FILE — is the kind cluster running?" >&2; exit 1; }
+
+# A default StorageClass is a hard precondition: every stateful workload dev-5
+# creates needs a PVC — the three CNPG databases (kratos/hydra/bex) AND Loki. A
+# cluster with none leaves them all Pending ("unbound immediate PVC"), which
+# looks like a dev-5 bug but is a broken shared cluster. Catch it here with a
+# fix pointer instead (w5/m62 — this was a real dev-5 block: the CAPD `bex`
+# cluster came up storage-less).
+kubectl get storageclass -o jsonpath='{range .items[*]}{.metadata.annotations.storageclass\.kubernetes\.io/is-default-class}{"\n"}{end}' 2>/dev/null | grep -qx true \
+  || { echo "error: cluster 'bex' has no default StorageClass — CNPG databases and Loki cannot bind their PVCs. Reprovision the cluster ('bash scripts/mock-cluster.sh') so its default StorageClass (local-path on CAPD) is present." >&2; exit 1; }
+
+# ensure_cnpg (w5/m62): install the CloudNativePG operator ourselves when the
+# CRD is absent, instead of assuming the shared cluster already has it, then
+# wait for the operator to become *ready* — not just installed. Pins the same
+# chart as deploy/gitops/base/cnpg-operator.yaml (0.29.0), minus the platform
+# nodeSelector the disposable kind node doesn't carry. Failing here with the
+# diagnostic below is the correct outcome for an unmeetable precondition (e.g.
+# the CNPG admission webhook can't bind :9443 on some kind builds) — far better
+# than the previous silent "no matches for kind Cluster".
+ensure_cnpg() {
+  if ! kubectl get crd clusters.postgresql.cnpg.io >/dev/null 2>&1; then
+    echo "    CNPG operator absent — installing cloudnative-pg 0.29.0"
+    helm repo add cnpg https://cloudnative-pg.github.io/charts >/dev/null 2>&1 || true
+    helm repo update cnpg >/dev/null
+    helm upgrade --install cnpg cnpg/cloudnative-pg --version 0.29.0 \
+      -n cnpg-system --create-namespace >/dev/null
+  fi
+  kubectl wait --for=condition=established crd/clusters.postgresql.cnpg.io --timeout=120s >/dev/null 2>&1 \
+    || { echo "error: the CNPG 'clusters' CRD never established — operator install failed" >&2; exit 1; }
+  echo "    waiting for the CNPG operator to become ready..."
+  if ! kubectl -n cnpg-system rollout status deploy/cnpg-cloudnative-pg --timeout=150s; then
+    {
+      echo "error: the CNPG operator did not become ready — dev-5's databases cannot be created."
+      echo "diagnose:"
+      echo "  KUBECONFIG=$PWD/$KUBECONFIG_FILE kubectl -n cnpg-system describe pod -l app.kubernetes.io/name=cloudnative-pg"
+      echo "  KUBECONFIG=$PWD/$KUBECONFIG_FILE kubectl -n cnpg-system logs deploy/cnpg-cloudnative-pg --tail=40"
+      echo "(a webhook :9443 startup-probe failure means the operator's admission webhook can't bind — a CNPG-on-kind issue, not a dev-5 script bug)"
+    } >&2
+    exit 1
+  fi
+}
+echo "==> CNPG operator (self-installing if absent)"
+ensure_cnpg
 
 echo "==> namespaces"
 kubectl create namespace "$DEV_AUTH_NS" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
@@ -48,6 +104,24 @@ done
 echo "==> mailpit"
 kubectl apply -f "$ENVDIR/mailpit/deployment.yaml" >/dev/null
 kubectl -n "$DEV_AUTH_NS" rollout status deployment/mailpit --timeout=120s
+
+# ensure_observability (w5/m62): a minimal Loki + Alloy log-shipper, so dev-5 can
+# prove the store-gated log path (request logs, structured filters, host/path
+# metrics) that used to only ever show its 503 state locally — Loki was never
+# part of dev-5. Mirrors deploy/gitops/base/{loki,log-shipper}.yaml (the Argo
+# Applications) via direct Helm installs with dev-5 values (values/loki.values.yaml,
+# values/log-shipper.values.yaml). bex-api reaches Loki through a host
+# port-forward below (BEX_LOKI_URL). SingleBinary Loki + a type=app shipper only
+# — the datastore/request pipelines are prod scale (see the values file).
+echo "==> observability (Loki + log-shipper)"
+helm repo add grafana https://grafana.github.io/helm-charts >/dev/null 2>&1 || true
+helm repo update grafana >/dev/null
+helm upgrade --install loki grafana/loki --version '6.*' -n monitoring --create-namespace \
+  -f "$ENVDIR/values/loki.values.yaml" >/dev/null
+helm upgrade --install log-shipper grafana/alloy --version '1.*' -n monitoring \
+  -f "$ENVDIR/values/log-shipper.values.yaml" >/dev/null
+kubectl -n monitoring rollout status statefulset/loki --timeout=180s \
+  || { echo "error: Loki did not become ready — dev-5's log store is down. Check 'kubectl -n monitoring describe pod loki-0' (an unbound PVC means no default StorageClass)." >&2; exit 1; }
 
 # dsn CLUSTER DB — postgres:// DSN for a CNPG cluster's app user (mirrors
 # scripts/auth-secrets.sh's dsn() helper, dev-5-auth namespace).
@@ -96,15 +170,16 @@ kill_if_running() {
   rm -f "$pidfile"
 }
 
-# forward NAME SERVICE LOCALPORT:REMOTEPORT — a self-healing port-forward: kind's
-# Calico CNI occasionally resets an idle port-forward's connection ("lost
-# connection to pod"), which would otherwise wedge bex-api's DB pool until a
-# manual restart. Loops kubectl port-forward under a supervisor instead of
-# forking it directly, so a drop reconnects on its own within ~1s.
+# forward NAME SERVICE LOCALPORT:REMOTEPORT [NAMESPACE] — a self-healing
+# port-forward: kind's Calico CNI occasionally resets an idle port-forward's
+# connection ("lost connection to pod"), which would otherwise wedge bex-api's
+# DB pool until a manual restart. Loops kubectl port-forward under a supervisor
+# instead of forking it directly, so a drop reconnects on its own within ~1s.
+# NAMESPACE defaults to the auth stack's; Loki lives in `monitoring` (w5/m62).
 forward() {
-  local name="$1" service="$2" ports="$3"
+  local name="$1" service="$2" ports="$3" ns="${4:-$DEV_AUTH_NS}"
   kill_if_running "$ENVDIR/.pids/pf-$name.pid"
-  nohup bash -c "while true; do kubectl -n '$DEV_AUTH_NS' port-forward service/$service $ports; sleep 1; done" \
+  nohup bash -c "while true; do kubectl -n '$ns' port-forward service/$service $ports; sleep 1; done" \
     > "$ENVDIR/logs/pf-$name.log" 2>&1 & echo $! > "$ENVDIR/.pids/pf-$name.pid"
 }
 
@@ -114,6 +189,7 @@ forward kratos-admin kratos-admin "$KRATOS_ADMIN_PORT:80"
 forward hydra hydra-admin "$HYDRA_ADMIN_PORT:4445"
 forward mailpit mailpit "$MAILPIT_HTTP_PORT:8025"
 forward bex-db bex-db-rw "$BEX_DB_PORT:5432"
+forward loki loki "$LOKI_PORT:3100" monitoring
 sleep 3
 
 echo "==> building bex-api"
@@ -145,6 +221,7 @@ for attempt in $(seq 1 5); do
     BEX_CP_DB_URI="$(hostDsn bex-db bex "$BEX_DB_PORT")" \
     BEX_CP_APPS_NAMESPACE="$DEV_NS" \
     BEX_BASE_DOMAIN="onbex.co" \
+    BEX_LOKI_URL="http://localhost:$LOKI_PORT" \
     "./$ENVDIR/bin/bex-api" > "$ENVDIR/logs/bex-api.log" 2>&1 & echo $! > "$ENVDIR/.pids/bex-api.pid"
   sleep 3
   if kill -0 "$(cat "$ENVDIR/.pids/bex-api.pid")" 2>/dev/null; then
@@ -166,6 +243,7 @@ echo "  kubeconfig:  $KUBECONFIG_FILE (KUBECONFIG=\$PWD/$KUBECONFIG_FILE kubectl
 echo "  kratos:      http://localhost:$KRATOS_PUBLIC_PORT (admin: http://localhost:$KRATOS_ADMIN_PORT)"
 echo "  hydra admin: http://localhost:$HYDRA_ADMIN_PORT"
 echo "  mailpit UI:  http://localhost:$MAILPIT_HTTP_PORT"
+echo "  loki:        http://localhost:$LOKI_PORT (bex-api BEX_LOKI_URL — log store)"
 echo "  bex-api:     http://localhost:$BEX_API_PORT (log: $ENVDIR/logs/bex-api.log)"
 echo
 echo "start the dashboard against it:"
