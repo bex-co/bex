@@ -63,3 +63,14 @@ Render's cron service details include `lastSuccessfulRunAt` as an RFC3339 date-t
 ## MCP
 
 Render's official MCP server currently exposes cron creation but no run trigger/list/get/cancel tools. bex's `run_cron_job`, `list_cron_job_runs`, `get_cron_job_run`, and `cancel_cron_job_run` are documented extensions over the same service-layer verbs used by REST and GraphQL.
+
+## Dashboard (w5/m60)
+
+The cron-job runs panel now reaches the two previously dashboard-unconsumed verbs, matching Render's cron page interactions:
+
+| Closure | Verdict | Notes |
+| --- | --- | --- |
+| Trigger Run (`runCronJob`) | ✅ match | A confirmed **Trigger Run** button in the runs-panel header fires `runCronJob(id)` and refetches the history so the new run appears with live status. The button is disabled while a run is active (client mirror of `ForbidConcurrent`); the backend's rejection of a concurrent trigger is surfaced **inline**, not swallowed in a toast. Divergence from Render's REST cancel-then-replace: bex's manual trigger does **not** cancel the active run — it rejects while one is active (the backend's `ForbidConcurrent`, per the REST section above), which is the safer of the two and consistent across bex's own surfaces. |
+| Run detail (`cronJobRun`) | ✅ match | A history row expands to a detail read via `cronJobRun(serviceId, runId)` — status, absolute start/finish timestamps, computed duration, and the run id (the row shows only relative start + duration). A stale/unknown run id renders an explicit error, never a blank panel. |
+
+Cross-surface: the UI's semantics equal the REST/MCP verbs — `runCronJob` = MCP `run_cron_job` = `POST .../runs`; `cronJobRun` = MCP `get_cron_job_run` = `GET .../runs/{runId}`. No new drift filed. Verified by the dashboard suite (`use-cron-runs`/`cron-runs-section` trigger, active-run rejection, detail-expand, and detail-error tests); the live browser walk was infra-blocked in-session (dev-5 unraisable) and is folded into the shared w5/m60 deferral note.

@@ -16,11 +16,14 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatRelativeAge } from "@/features/services/lib/format";
 import { formatDateLong } from "@/common/lib/format";
+import { EditRegistryCredentialDialog } from "@/features/registry-credentials/components/edit-registry-credential-dialog";
 import type { RegistryCredentialView } from "@/features/registry-credentials/types";
 
 export interface RegistryCredentialRowProps {
   entry: RegistryCredentialView;
   onDelete: (id: string, name: string) => Promise<boolean>;
+  /** Called after an edit succeeds, so the list re-reads the updated values. */
+  onUpdated: () => void;
   /** True while this row's delete is in flight — disables its own control. */
   deleting: boolean;
 }
@@ -33,6 +36,7 @@ export interface RegistryCredentialRowProps {
 export function RegistryCredentialRow({
   entry,
   onDelete,
+  onUpdated,
   deleting,
 }: RegistryCredentialRowProps) {
   const { t } = useTranslations();
@@ -55,6 +59,7 @@ export function RegistryCredentialRow({
         {entry.createdAt ? formatRelativeAge(entry.createdAt) : "—"}
       </TableCell>
       <TableCell className="text-right whitespace-nowrap">
+        <EditRegistryCredentialDialog entry={entry} onUpdated={onUpdated} />
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button

@@ -17,3 +17,26 @@ mutation CancelCronJobRun($serviceId: String!, $runId: String!) {
     finishedAt
   }
 }
+
+# Trigger Run (w5/m60): fires an immediate run of the cron job's command via
+# spec.runAt; the operator creates the run and it lands in cronJobRuns. Returns
+# the accepted pending run; an already-active run is rejected (ForbidConcurrent).
+mutation RunCronJob($id: String!) {
+  runCronJob(id: $id) {
+    id
+    status
+    startedAt
+    finishedAt
+  }
+}
+
+# Single-run detail (w5/m60): a fresh read of one run's status + timing, so a
+# history row can show live/absolute detail without correlating by eye.
+query CronJobRun($serviceId: String!, $runId: String!) {
+  cronJobRun(serviceId: $serviceId, runId: $runId) {
+    id
+    status
+    startedAt
+    finishedAt
+  }
+}

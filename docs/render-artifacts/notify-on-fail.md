@@ -70,6 +70,10 @@ https://dashboard.bex.co/services/backend-v2/deploys/dep-…
 - **View Logs** is the deploy-detail deep link (`<BEX_DASHBOARD_URL>/services/<service>/deploys/<deployId>`, which renders build/deploy logs), omitted when `BEX_DASHBOARD_URL` is unset — the same honest-omit the workspace-invite email uses for its link.
 - **Consistency**: the reconcile-time failure/succeeded path carries commit + link (the deploy row is in hand); the request-time started path has no deploy row, so its email carries the framing only ("when available" — never a broken or half link).
 
+## Dashboard override (w5/m60 verification)
+
+The per-service notification override **is already wired in the dashboard** — the Settings → Notifications section renders `ServiceNotificationsRow`, a four-state edit-in-place select (`default | all | failure | none`, Render's captured vocabulary) backed by the authoritative `setNotificationsToSend` verb and reading `notificationsToSend`. So the w5/m60 miner's "`setNotifyOnFail` is dashboard-unconsumed" finding is accurate but **intentional**: `setNotifyOnFail` is the legacy narrow (`default | notify | ignore`) setter that _clears_ the richer `notificationsToSend` field (see the Legacy-compatibility row above), so wiring it in the UI would be a parity regression. The override closure was therefore already satisfied by the authoritative setter; the legacy verb stays deliberately unconsumed (available to REST/CLI clients that still send it). No dashboard change was needed for this closure.
+
 ## Divergences from Render, stated
 
 - Workspace defaults remain member-scoped instead of Render's owner-wide email/Slack configuration.
