@@ -14,6 +14,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m57** — Codify static-site's manual prod fixes into gitops (7 tasks) ← promoted from `w9/014` (the w9/m44 prod-sweep residual: three hand-applied `kubectl` fixes — `bex-registry-pull` re-mint, static-server CRB, static-server Deployment drift — that regress on the next redeploy) via `/pm-brainstorm more work for w1` 2026-07-30; w9 is drained, platform infra is w1's lane
 - [x] **m55** — Retire deprecated product compatibility surfaces (12 tasks) ← from user-requested deprecated-code audit, 2026-07-27 — done 2026-07-27, moved to `done/m55/`
 - [x] **m56** — Exit deprecated platform versions and fleet migration scaffolding (15 tasks) ← from the same audit; operational companion to m55 — done 2026-07-28, moved to `done/m56/`
 - [x] **m54** — Branded email module: dashboard-token codegen + HTML/text layout for all bex-sent mail (11 tasks) ← user request 2026-07-20 ("dedicated email template module… dashboard-consistent styles", "share code from dashboard", "do the right thing at once"); implementation started same session, uncommitted (codegen script + generated `brand_gen.go` + `layout.html.tmpl` in the working tree) — brand tokens generated from `dashboard/src/style.css` (oklch→hex, drift CI-gated by the dashboard suite), `internal/email` Message → text+HTML, multipart mailer with QP HTML + header hardening, all three senders rewired (members invites byte-parity, notifications deploy emails byte-parity, webhooks notices), dev-1 Mailpit visual verification
@@ -90,8 +91,9 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `033` — m49 simplify residuals (shared type-to-confirm delete dialog, long-date formatter, field block, detail-shell data-sharing convention, backend event-group keys, set-equality helpers; + m51's per-source egress-health loop fold) — each waits on its trigger firing
-- `038` — flaky operator CI test (`kv-sni-proxy` meter assertion, races the async byte-meter) failed the `3cb335cf` deploy run once; rerun passed. Fix when it recurs: poll the meter delta instead of one post-write read
+(no open notes)
+
+> **Sync fix 2026-07-30:** `033` and `038` were still listed here as open but both live in `done/` — this section had lagged the moves. `033`'s trigger-gated simplify residuals are tracked in `.pm/FUTURE-MAYBE.md` (micro-abstraction residuals entry); `038` remains a fix-on-recurrence recipe recorded in `done/038.md` (poll the `kv-sni-proxy` meter delta if the flake returns).
 
 > `037` closed 2026-07-18 same day it was filed — the post-ship confirmation ran immediately after `/ship` (evidence in `done/m52/`); note moved to `done/`.
 
