@@ -55,3 +55,5 @@ jobs:
         run: bash scripts/keyvalue-cli-verify.test.sh
       - name: Rename-verify snapshot error-handling unit tests
         run: bash scripts/rename-verify.test.sh
+      - name: Deploy supersession detection unit tests
+        run: bash scripts/deploy-superseded.test.sh

@@ -98,8 +98,34 @@ jobs:
           fi
           gitleaks git --no-banner --redact --exit-code 1 --log-opts="$log_opts" .
 
+  # --- supersession pre-check (w1/m59): if a newer deploy-triggering commit has
+  # already landed on main (this run was queued behind it), skip build-and-deploy
+  # BEFORE it wastes an image build — the job is then reported skipped (neutral),
+  # not failed. Optimization only: the write-back guard below stays the
+  # correctness gate (never pin stale images), so scripts/deploy-superseded.sh
+  # reporting "not superseded" on any error just lets the build proceed to be
+  # re-checked there. cancel-in-progress:false is untouched — a running build is
+  # never cancelled; only a not-yet-started one is skipped. ---
+  check-supersession:
+    runs-on: ubuntu-latest
+    outputs:
+      superseded: ${{ steps.check.outputs.superseded }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: check
+        run: |
+          if bash scripts/deploy-superseded.sh "$GITHUB_SHA"; then
+            echo "superseded=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "superseded=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build-and-deploy:
-    needs: [test-backend, test-operator, test-dashboard, secret-scan]
+    needs: [test-backend, test-operator, test-dashboard, secret-scan, check-supersession]
+    # A run superseded before its build starts is skipped here (neutral, no
+    # build). A run superseded DURING its build is caught by the write-back guard
+    # (it concludes neutral instead). w1/m59.
+    if: needs.check-supersession.outputs.superseded != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -265,15 +291,21 @@ jobs:
           # event to newer production source/manifests: the newer queued run
           # must build and pin its own digests. A preceding run can legitimately
           # finish its [skip ci] digest write-back after this event was created,
-          # so permit only exact digest-value changes in the three generated
-          # image fields; every other production-input change remains stale.
-          git fetch --no-tags origin main
-          if ! git diff --quiet "$GITHUB_SHA" origin/main -- \
-            lego dashboard deploy/opensandbox deploy/gitops .github/workflows/deploy.yml \
-            ':(exclude)deploy/gitops/base/bex.yaml' \
-            ':(exclude)deploy/gitops/base/dashboard.yaml' \
-            ':(exclude)deploy/opensandbox/kustomization.yaml'; then
-            echo "production inputs advanced while this run was building; refusing stale digest write-back" >&2
+          # so scripts/deploy-superseded.sh permits only the three generated image
+          # fields to differ; every other production-input change is a supersession.
+          # When superseded (the pre-check job could not catch a commit that landed
+          # DURING this build), conclude NEUTRAL: flag the rollout steps below to
+          # skip, pin nothing, and exit 0 (green, not red). w1/m59.
+          set +e
+          bash scripts/deploy-superseded.sh "$GITHUB_SHA"
+          superseded_rc=$?
+          set -e
+          if [ "$superseded_rc" -eq 0 ]; then
+            echo "SUPERSEDED=true" >> "$GITHUB_ENV"
+            echo "::notice::superseded by a newer run — images built but intentionally not pinned; skipping the rollout"
+            exit 0
+          elif [ "$superseded_rc" -ne 1 ]; then
+            echo "supersession check errored (rc=$superseded_rc); refusing stale digest write-back" >&2
             exit 1
           fi
           python3 - "$GITHUB_SHA" origin/main <<'PY'
@@ -579,7 +611,7 @@ jobs:
           bash scripts/bao-k8s-auth.sh
 
       - name: wait for the bex operator
-        if: always()
+        if: ${{ always() && env.SUPERSEDED != 'true' }}
         run: |
           kubectl -n bex-system rollout status deploy/bex-controller-manager --timeout=600s \
             || { echo "operator not ready — Argo status:"; kubectl -n argocd get applications; exit 1; }
@@ -596,7 +628,7 @@ jobs:
       # run even when earlier idempotent steps fail (e.g. kubelet TLS cert expiry
       # blocking exec/port-forward). Argo also deploys via the digest pin (slower).
       - name: roll bex onto the freshly-pushed image
-        if: always()
+        if: ${{ always() && env.SUPERSEDED != 'true' }}
         run: |
           kubectl -n bex-system rollout status deploy/bex-api --timeout=300s
           kubectl -n bex-system rollout restart deploy/bex-controller-manager deploy/bex-api
@@ -610,7 +642,7 @@ jobs:
       # Ready DaemonSet would return immediately before Argo observes the digest
       # write-back above.
       - name: wait for PROXY-compatible datastore proxies
-        if: ${{ always() && steps.build_operator.outputs.digest != '' }}
+        if: ${{ always() && steps.build_operator.outputs.digest != '' && env.SUPERSEDED != 'true' }}
         timeout-minutes: 12
         env:
           BEX_EXPECTED_PROXY_IMAGE: ${{ env.IMAGE }}@${{ steps.build_operator.outputs.digest }}
@@ -633,7 +665,7 @@ jobs:
       # --- 6. roll the dashboard onto the freshly-pushed image ---
       # Same mutable-:latest caveat as step 5 (deploy/gitops/base/dashboard.yaml).
       - name: roll dashboard onto the freshly-pushed image
-        if: always()
+        if: ${{ always() && env.SUPERSEDED != 'true' }}
         run: |
           kubectl -n dashboard rollout status deploy/dashboard --timeout=300s \
             || { echo "dashboard not ready — Argo status:"; kubectl -n argocd get applications; exit 1; }
