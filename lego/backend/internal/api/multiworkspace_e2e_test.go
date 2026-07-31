@@ -290,6 +290,69 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 	if rec := call(erin, "GET", "/v1/owners/"+wsB.ID+"/members", ""); rec.Code != http.StatusForbidden {
 		t.Errorf("erin (non-member) GET bravo members: %d %s, want 403", rec.Code, rec.Body.String())
 	}
+
+	// (8) w7/m61 — the INSIDER role ladder against the REAL model, one verb per
+	// relation class per lower rung. The fake-checker matrix (roleladder_test.go)
+	// proves the ladder for every verb; these prove the deployed model resolves the
+	// per-role relations correctly end-to-end (a schema change that let a
+	// contributor's can_operate resolve to can_create, say, fails here). carl
+	// (viewer) is covered above; add a CONTRIBUTOR and a BILLING member of bravo,
+	// each with their own home workspace (mirroring carl) so the resolver always has
+	// a default membership.
+	fred, gwen := "fred-"+run, "gwen-"+run
+	wsF, err := st.CreateWorkspace(ctx, ws("foxtrot"), store.PlanHobby, fred)
+	if err != nil {
+		t.Fatalf("create foxtrot: %v", err)
+	}
+	wsG, err := st.CreateWorkspace(ctx, ws("golf"), store.PlanHobby, gwen)
+	if err != nil {
+		t.Fatalf("create golf: %v", err)
+	}
+	for subj, w := range map[string]store.Tenant{fred: wsF, gwen: wsG} {
+		if err := granter.GrantWorkspaceAdmin(ctx, w.ID, "user:"+subj); err != nil {
+			t.Fatalf("grant admin on %s: %v", w.Name, err)
+		}
+	}
+	for subj, role := range map[string]string{fred: "contributor", gwen: "billing"} {
+		if err := st.AddMember(ctx, subj, wsB.ID, role); err != nil {
+			t.Fatalf("add %s to bravo as %s: %v", subj, role, err)
+		}
+		if err := roles.GrantWorkspaceRole(ctx, wsB.ID, "user:"+subj, role); err != nil {
+			t.Fatalf("grant %s %s on bravo: %v", subj, role, err)
+		}
+	}
+
+	// CONTRIBUTOR (fred): can_operate holds (restart 2xx); can_create does not
+	// (delete 403); can_view_sensitive does not (env vars refused).
+	if rec := call(fred, "POST", "/v1/services/"+bravoWeb+"/restart", ""); rec.Code != http.StatusOK {
+		t.Errorf("fred (contributor of bravo) restart bravo-web: %d %s, want 200 — can_operate must hold", rec.Code, rec.Body.String())
+	}
+	if rec := call(fred, "DELETE", "/v1/services/"+bravoWeb, ""); rec.Code != http.StatusForbidden {
+		t.Errorf("fred (contributor) DELETE bravo-web: %d %s, want 403 — can_create must NOT hold for a contributor", rec.Code, rec.Body.String())
+	}
+	if rec := call(fred, "GET", "/v1/services/"+bravoWeb+"/env-vars", ""); rec.Code == http.StatusOK {
+		t.Errorf("fred (contributor) read bravo-web env vars: %d — want a refusal (can_view_sensitive is developer+)", rec.Code)
+	}
+
+	// BILLING (gwen): can_view holds (read 2xx); resource mutation denied (delete
+	// 403); sensitive read denied (env vars refused). NOTE: billing MANAGEMENT
+	// verbs gate on can_manage (admin), not can_manage_billing — so a billing-role
+	// member is also refused them; that too-strong gating is a documented finding
+	// (w7/m61 closeout), not a security hole (fail-safe).
+	if rec := call(gwen, "GET", "/v1/services/"+bravoWeb, ""); rec.Code != http.StatusOK {
+		t.Errorf("gwen (billing of bravo) GET bravo-web: %d %s, want 200 — can_view must hold", rec.Code, rec.Body.String())
+	}
+	if rec := call(gwen, "DELETE", "/v1/services/"+bravoWeb, ""); rec.Code != http.StatusForbidden {
+		t.Errorf("gwen (billing) DELETE bravo-web: %d %s, want 403 — can_create must NOT hold for a billing member", rec.Code, rec.Body.String())
+	}
+	if rec := call(gwen, "GET", "/v1/services/"+bravoWeb+"/env-vars", ""); rec.Code == http.StatusOK {
+		t.Errorf("gwen (billing) read bravo-web env vars: %d — want a refusal (can_view_sensitive is developer+)", rec.Code)
+	}
+
+	// Neither lower rung's denied mutation actually deleted the service.
+	if err := cl.Get(ctx, k8sKey(core.CRName(wsB.ID, bravoWeb)), &stray); err != nil {
+		t.Errorf("bravo-web was deleted by a contributor/billing member: %v", err)
+	}
 }
 
 // k8sKey is the fake apiserver's object key for an App in the test namespace.
