@@ -1329,8 +1329,8 @@ for required in \
   'build-args: OPENSANDBOX_SERVER_VERSION=0.2.2' \
   '${{ env.OPENSANDBOX_IMAGE }}@${{ steps.build_opensandbox.outputs.digest }}' \
   'group: bex-production-deploy' \
-  'git diff --quiet "$GITHUB_SHA" origin/main' \
-  'production inputs advanced while this run was building' \
+  'bash scripts/deploy-superseded.sh "$GITHUB_SHA"' \
+  'refusing stale digest write-back' \
   '[[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]' \
   'grep -qF "digest: ${OPENSANDBOX_DIGEST}"' \
   'deploy/opensandbox/kustomization.yaml' \
