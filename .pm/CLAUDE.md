@@ -1,6 +1,6 @@
 # .pm/CLAUDE.md
 
-Internal PM board — see [README.md](README.md). `/pm` is the only command that writes here; its conventions live in [.claude/commands/pm.md](../.claude/commands/pm.md).
+Internal PM board — see [README.md](README.md). `/pm` is the only skill that writes here; its conventions live in [.claude/skills/pm/SKILL.md](../.claude/skills/pm/SKILL.md).
 
 ## Done items move to `done/` folders
 

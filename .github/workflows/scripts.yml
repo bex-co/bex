@@ -10,8 +10,12 @@ on:
       - "deploy/gitops/**"
       - "infra/**"
       - "scripts/**"
+      - ".agents/skills/**"
+      - ".claude/commands/**"
+      - ".claude/skills/**"
       - ".env.example"
       - ".github/workflows/**"
+      - "skills-lock.json"
   push:
     branches: [main]
     paths:
@@ -20,8 +24,12 @@ on:
       - "deploy/gitops/**"
       - "infra/**"
       - "scripts/**"
+      - ".agents/skills/**"
+      - ".claude/commands/**"
+      - ".claude/skills/**"
       - ".env.example"
       - ".github/workflows/**"
+      - "skills-lock.json"
 
 permissions:
   contents: read
@@ -35,6 +43,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Skill layout consistency
+        run: bash scripts/skill-layout-validate.sh
       - name: Retired platform paths remain absent
         run: bash scripts/platform-deprecations-validate.sh
       - name: GitHub Actions Node 24 inventory
