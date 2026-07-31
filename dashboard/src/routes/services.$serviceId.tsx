@@ -11,11 +11,18 @@ import {
   loadRouteResource,
   routeResourceTitle,
   titleHead,
+  titleLoaderFetchPolicy,
   translatedText,
 } from "@/common/lib/document-head";
 
 export const Route = createFileRoute("/services/$serviceId")({
   component: RouteComponent,
+  // The page doubles as its own pending state at 0ms: ServiceDetailLayout
+  // renders full chrome + a header skeleton while its Apollo read loads
+  // (tolerating the absent loaderData), so the title-loader wait shows the
+  // real frame instead of the router-level blank that used to flash white.
+  pendingComponent: RouteComponent,
+  pendingMs: 0,
   // No-arg requireAuth: `next` is the requested href (the old form passed the
   // literal "$serviceId" pattern), so a login bounce returns to the actual
   // service URL — id- or name-shaped.
@@ -24,13 +31,13 @@ export const Route = createFileRoute("/services/$serviceId")({
   // plain loader (no reverse-redirect) so a static service reached at an old
   // /services/<id>/<subpath> bookmark still renders — canonicalization of the
   // bare service URL happens in the index route (service-root-redirect.ts).
-  loader: ({ context, params }) =>
+  loader: ({ context, params, cause }) =>
     loadRouteResource(
       () =>
         context.client.query({
           query: ServerDocument,
           variables: { id: params.serviceId },
-          fetchPolicy: "network-only",
+          fetchPolicy: titleLoaderFetchPolicy(cause),
           errorPolicy: "all",
         }),
       (data) =>

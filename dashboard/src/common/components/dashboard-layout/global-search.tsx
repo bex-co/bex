@@ -31,6 +31,7 @@ import { useEnvGroups } from "@/features/env-groups/hooks/use-env-groups";
 import { useKeyValues } from "@/features/keyvalue/hooks/use-key-values";
 import { useProjects } from "@/features/projects/hooks/use-projects";
 import { useServices } from "@/features/services/hooks/use-services";
+import { serviceBaseForType } from "@/features/services/lib/service-base";
 
 /**
  * Workspace-wide command search, opened from any dashboard page or with
@@ -202,10 +203,19 @@ function SearchResults({ close }: { close: () => void }) {
             value={`${service.name} ${service.id} ${t("common.topbarServiceResource")}`}
             onSelect={() =>
               select(() => {
-                void navigate({
-                  to: "/services/$serviceId",
-                  params: { serviceId: service.id },
-                });
+                // Canonical base per type — routing a static_site through
+                // /services/<id> costs an extra bounce navigation.
+                if (serviceBaseForType(service.type) === "/static") {
+                  void navigate({
+                    to: "/static/$serviceId",
+                    params: { serviceId: service.id },
+                  });
+                } else {
+                  void navigate({
+                    to: "/services/$serviceId",
+                    params: { serviceId: service.id },
+                  });
+                }
               })
             }
           >

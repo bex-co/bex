@@ -124,6 +124,22 @@ export function isNotFoundError(error: unknown): boolean {
   return error instanceof Error && /\bnot[ -]?found\b/i.test(error.message);
 }
 
+/**
+ * Apollo fetchPolicy for a resource-title loader, chosen by why the router is
+ * running it. Entering a route (or hover-preloading it) fetches fresh so the
+ * title never shows a stale name. `stay` — the match is merely retained: a
+ * child tab navigation, a search-param change, `useLoaderErrorRetry`'s
+ * same-location replace — answers from Apollo's normalized cache when it can,
+ * so every tab click stops refiring the title query in the background. A
+ * cache miss (including the retry path, whose errored query cached nothing)
+ * still reaches the network.
+ */
+export function titleLoaderFetchPolicy(
+  cause: "preload" | "enter" | "stay",
+): "network-only" | "cache-first" {
+  return cause === "stay" ? "cache-first" : "network-only";
+}
+
 export function normalizeDashboardOrigin(
   origin: string | null | undefined,
 ): string | null {

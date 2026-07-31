@@ -11,6 +11,16 @@ export default defineConfig({
       quoteStyle: "double",
       semicolons: true,
       routeFileIgnorePattern: "__tests__",
+      codeSplittingOptions: {
+        // Keep `component` + `pendingComponent` in one split chunk — the
+        // detail routes reuse the component as their own pending state. Must
+        // match vite.config.ts's tanstackStart() grouping.
+        defaultBehavior: [
+          ["component", "pendingComponent"],
+          ["errorComponent"],
+          ["notFoundComponent"],
+        ],
+      },
     }),
     react(),
   ],

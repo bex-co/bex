@@ -35,6 +35,7 @@ import {
   loadRouteResource,
   routeResourceTitle,
   titleHead,
+  titleLoaderFetchPolicy,
   translatedText,
 } from "@/common/lib/document-head";
 
@@ -44,14 +45,20 @@ import {
 // the list mounted because it has no <Outlet />.
 export const Route = createFileRoute("/env-groups_/$groupId")({
   component: EnvGroupDetailPage,
+  // The page doubles as its own pending state at 0ms: it renders full
+  // chrome + its skeleton stack while its Apollo read loads (tolerating the
+  // absent loaderData), so the title-loader wait shows the real frame
+  // instead of the router-level blank that used to flash white.
+  pendingComponent: EnvGroupDetailPage,
+  pendingMs: 0,
   beforeLoad: requireAuth(),
-  loader: ({ context, params }) =>
+  loader: ({ context, params, cause }) =>
     loadRouteResource(
       () =>
         context.client.query({
           query: EnvGroupDocument,
           variables: { id: params.groupId },
-          fetchPolicy: "network-only",
+          fetchPolicy: titleLoaderFetchPolicy(cause),
           errorPolicy: "all",
         }),
       (data) => (data?.envGroup?.name?.trim() ? data.envGroup : null),

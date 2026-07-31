@@ -339,7 +339,23 @@ export default defineConfig(({ mode }) => {
       devtools(),
       tsconfigPaths({ projects: ["./tsconfig.json"] }),
       tailwindcss(),
-      tanstackStart(),
+      tanstackStart({
+        router: {
+          codeSplittingOptions: {
+            // The detail routes reuse their `component` as `pendingComponent`
+            // (the page frame doubles as its own pending state — the sidebar
+            // white-flash fix). The two options must land in the same split
+            // chunk, or the splitter strips the shared identifier out of the
+            // reference file and `pendingComponent` dangles (ReferenceError).
+            // Must match vitest.config.ts's tanstackRouter() grouping.
+            defaultBehavior: [
+              ["component", "pendingComponent"],
+              ["errorComponent"],
+              ["notFoundComponent"],
+            ],
+          },
+        },
+      }),
       viteReact(),
       nitro({ routeRules: { "/**": { headers: securityHeaders } } }),
     ],

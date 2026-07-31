@@ -77,6 +77,15 @@ Pages/components this pattern applies to (w5/m2 scope): `features/auth/pages/{lo
 
 `vite.config.ts` sets `ssr.noExternal: ["@ory/elements-react"]` — the package ships extensionless relative imports (e.g. `"./session-provider"`) that only resolve under bundler resolution, not Node's strict ESM loader. Without this, `yarn dev`/`yarn build` SSR-render any page importing `@ory/elements-react` with "Cannot find module" and silently falls back to full client rendering. Don't remove it.
 
+## Navigation pending states (the white-flash fix)
+
+The router (`src/router.tsx`) holds the outgoing page for `defaultPendingMs: 150` and then shows `RoutePending` (`common/root-route/route-pending.tsx`), a **visible** spinner + loading title. Never swap the default pending back to a DOM-less component and never set `defaultPendingMs`/`defaultPendingMinMs` to 0 globally: any navigation slow enough to show pending would unmount the page into a blank white document, and every fast navigation would double-mount the chrome.
+
+- Resource-detail routes (`services.$serviceId`, `static.$serviceId`, `databases.$databaseId`, `keyvalue.$keyValueId`, `blueprints.$blueprintId`, `webhook.$webhookId`, `env-groups_.$groupId`) reuse their **`component` as `pendingComponent`** with a route-level `pendingMs: 0` — the page frame (chrome + header + skeleton stack) doubles as its own pending state during the blocking title loader. This works because those components tolerate an absent `Route.useLoaderData()` (only `useLoaderErrorRetry` reads it, and it no-ops on `undefined`). A component that dereferences its loader data or renders `<Outlet/>` unconditionally (see `project.$projectId`) needs a dedicated pending component instead.
+- The component-as-pending pattern requires `component` + `pendingComponent` to share one code-split chunk: `codeSplittingOptions.defaultBehavior` groups them in **both** `vite.config.ts` (`tanstackStart({ router: ... })`) and `vitest.config.ts` (`tanstackRouter(...)`). If the groupings drift apart or are removed, the splitter strips the shared identifier out of the reference file and the route module throws `ReferenceError` at import.
+- Title loaders pass `cause` to `titleLoaderFetchPolicy` (`common/lib/document-head`): `network-only` on entry/preload, `cache-first` on retained-match re-runs (`stay` — tab switches, search-param changes, the loader-error retry) so tab clicks don't refire the title query.
+- Links to a service must target its canonical base (`serviceBaseForType`: `static_site` → `/static/<id>`, else `/services/<id>` — see `ResourceLink`, global search). Linking a static site to `/services/<id>` still works but costs a full extra navigation (loader round trip + chunk) to be bounced by the canonicalizing loader.
+
 ## Internationalization (i18n)
 
 i18next + react-i18next (w5/m3), modeled on `beancount-dashboard`'s `docs/i18n.md` but adapted for TanStack Start SSR (no custom `entry-server.tsx` here — detection happens in the root route's `beforeLoad`).

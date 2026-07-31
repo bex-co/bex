@@ -32,21 +32,28 @@ import {
   loadRouteResource,
   routeResourceTitle,
   titleHead,
+  titleLoaderFetchPolicy,
   translatedText,
 } from "@/common/lib/document-head";
 
 export const Route = createFileRoute("/keyvalue/$keyValueId")({
   component: KeyValueDetailPage,
+  // The page doubles as its own pending state at 0ms: it renders full
+  // chrome + its skeleton stack while its Apollo read loads (tolerating the
+  // absent loaderData), so the title-loader wait shows the real frame
+  // instead of the router-level blank that used to flash white.
+  pendingComponent: KeyValueDetailPage,
+  pendingMs: 0,
   beforeLoad: requireAuth(),
   validateSearch: (search: Record<string, unknown>): { tab?: "logs" } =>
     search.tab === "logs" ? { tab: "logs" } : {},
-  loader: ({ context, params }) =>
+  loader: ({ context, params, cause }) =>
     loadRouteResource(
       () =>
         context.client.query({
           query: KeyValueDocument,
           variables: { id: params.keyValueId },
-          fetchPolicy: "network-only",
+          fetchPolicy: titleLoaderFetchPolicy(cause),
           errorPolicy: "all",
         }),
       (data) => (data?.keyValue?.name?.trim() ? data.keyValue : null),

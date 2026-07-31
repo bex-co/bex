@@ -3,6 +3,7 @@ import { ServerDocument } from "@/graphql/definitions";
 import type { ServerQuery } from "@/graphql/definitions";
 import {
   isNotFoundError,
+  titleLoaderFetchPolicy,
   type RouteResource,
 } from "@/common/lib/document-head";
 import { redirectPreservingSuffix } from "@/common/lib/render-alias";
@@ -18,19 +19,21 @@ export type ServerResource = NonNullable<ServerQuery["server"]>;
  * wrong base for this service's type we bounce to the canonical one — carrying
  * the sub-path, query, and hash — before rendering, so `/services/<static-id>`
  * and `/static/<compute-id>` both settle on the right tree. Reuses the layout's
- * single network-only fetch (no extra request) and keeps loadRouteResource's
- * not-found-vs-error distinction for the shell.
+ * single fetch (network on entry/preload, cache on retained-match re-runs —
+ * `titleLoaderFetchPolicy`) and keeps loadRouteResource's not-found-vs-error
+ * distinction for the shell.
  */
 export async function loadServiceDetail(
   client: RouterContext["client"],
   serviceId: string,
   base: ServiceBase,
   location: ParsedLocation,
+  cause: "preload" | "enter" | "stay" = "enter",
 ): Promise<RouteResource<ServerResource>> {
   const result = await client.query({
     query: ServerDocument,
     variables: { id: serviceId },
-    fetchPolicy: "network-only",
+    fetchPolicy: titleLoaderFetchPolicy(cause),
     errorPolicy: "all",
   });
   const server = result.data?.server ?? undefined;
