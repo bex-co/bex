@@ -294,6 +294,15 @@ const DefaultRetentionMonths = 3
 // Prometheus's typical retention + a weekend outage).
 const catchupLimit = 48 * time.Hour
 
+// CatchupWindow exports catchupLimit so the billing seal horizon can be clamped
+// to never fall inside the rollup's rewrite window (w7/m57): a usage_hourly row
+// is rewritable for up to CatchupWindow, so the Stripe seal horizon must be at
+// least this long, else an already-exported row could be silently rewritten and
+// never re-emitted (under/over-billing). The two constants lived in separate
+// packages coupled only by the coincidence 48h == 48h; this makes the coupling
+// explicit (billing.ClampSealHours reads it, main.go enforces it).
+const CatchupWindow = catchupLimit
+
 // Run is the metering + retention loop: catches up missed windows on startup,
 // rolls up every Interval, and compacts spent months every CompactInterval,
 // until ctx is cancelled. Only call when Store is set; with PromBase empty the

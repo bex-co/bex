@@ -1787,6 +1787,14 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 // after Kubernetes assigns the App UID, Commit adopts the Secret. Every failure
 // removes both the pre-created projection and its OpenBao path.
 func (s *Service) writeNewApp(ctx context.Context, publicName string, a *appv1alpha1.App, files []core.SecretFile) error {
+	// Host authority (w7/m57): the sole write seam for every new-App create path
+	// (direct create, blueprint upsert, deploy manifest) gates create-time hosts
+	// through the same reserved-platform + cross-App collision check AddDomain
+	// enforces — closing the hole where a create could bind spec.host/spec.hosts
+	// to a platform-reserved or foreign-owned host and mint a hijacking Ingress.
+	if err := s.ensureHostsClaimable(ctx, a.Name, a.Spec.Host, a.Spec.Hosts); err != nil {
+		return err
+	}
 	if len(files) == 0 {
 		return s.Client.Create(ctx, a)
 	}

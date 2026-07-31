@@ -451,6 +451,12 @@ func main() {
 					log.Printf("BEX_STRIPE_SEAL_HOURS=%q invalid (want integer ≥ 1); using default %s", v, billing.DefaultSealHours)
 				}
 			}
+			// w7/m57: never seal shorter than the usage rollup's catch-up window, or
+			// an exported row could still be rewritten and never re-emitted.
+			if clamped := billing.ClampSealHours(emitter.SealHours, usage.CatchupWindow); clamped != emitter.SealHours {
+				log.Printf("BEX_STRIPE_SEAL_HOURS=%s is below the usage catch-up window; raising the seal horizon to %s so exported rows are final", emitter.SealHours, clamped)
+				emitter.SealHours = clamped
+			}
 			var lifecycle *billing.Lifecycle
 			if os.Getenv("BEX_STRIPE_DUNNING_ENABLED") == "1" {
 				if stripeClient.ExpectedLivemode() {
