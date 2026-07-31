@@ -93,7 +93,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-(no open notes)
+- `043` — Reprovision the shared CAPD mock cluster (recreate, don't repair) — unblocks the `w5/028`/`w5/029` live walks + restores the local `dev-N` verification loop (← `/pm-brainstorm more for w1 to work on`, 2026-07-30)
 
 > **Sync fix 2026-07-30:** `033` and `038` were still listed here as open but both live in `done/` — this section had lagged the moves. `033`'s trigger-gated simplify residuals are tracked in `.pm/FUTURE-MAYBE.md` (micro-abstraction residuals entry); `038` remains a fix-on-recurrence recipe recorded in `done/038.md` (poll the `kv-sni-proxy` meter delta if the flake returns).
 
