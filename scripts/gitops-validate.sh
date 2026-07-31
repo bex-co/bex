@@ -1566,6 +1566,63 @@ if rg -n 'BEX_STATIC_S3_SECRET|name: static-s3$' \
   fail=1
 fi
 
+# Static-server GitOps codification (w1/m57, docs/ADR029-static-sites.md): the
+# three hand-applied prod fixes are now git-owned, and these render-level
+# invariants are the CI twin of the drift that motivated the milestone —
+# a singular Argo-managed static-server, config-complete via bex-static-config,
+# whose serve origin equals the manager's publish origin, with the origin config
+# kept OUT of the local base (else the credential-less CAPD static-server
+# CrashLoops instead of serving the intentional degraded-503).
+echo "==> static-server is singular + config-complete (prod) and origin-free (local)"
+# $tmp/bex-operator-prod.yaml was rendered above (config/prod).
+prod_static_count="$(yq -N 'select(.kind == "Deployment" and .metadata.name == "bex-static-server") | .metadata.name' "$tmp/bex-operator-prod.yaml" | grep -c . || true)"
+if [ "$prod_static_count" != "1" ]; then
+  echo "FAIL: prod render has $prod_static_count bex-static-server Deployments, want exactly 1" >&2
+  fail=1
+fi
+static_envfrom="$(yq -N 'select(.kind == "Deployment" and .metadata.name == "bex-static-server") | .spec.template.spec.containers[].envFrom[] | select(has("configMapRef")) | .configMapRef.name + ":" + ((.configMapRef.optional // false) | tostring)' "$tmp/bex-operator-prod.yaml" | tr -d '\n')"
+if [ "$static_envfrom" != "bex-static-config:true" ]; then
+  echo "FAIL: static-server envFrom ConfigMap is '$static_envfrom', want bex-static-config:true (optional so local renders without it)" >&2
+  fail=1
+fi
+# Env completeness + serve-origin==publish-origin: the ConfigMap the server reads
+# must carry exactly the four origin/base-domain keys AND match the manager env
+# that dispatches the publish Job, or the server serves a different bucket/domain
+# than the operator publishes to.
+static_cfg_kv="$(yq -N 'select(.kind == "ConfigMap" and .metadata.name == "bex-static-config") | .data | to_entries | map(.key + "=" + .value) | sort | join(",")' "$tmp/bex-operator-prod.yaml" | tr -d '\n')"
+mgr_origin_kv="$(yq -N 'select(.kind == "Deployment" and .metadata.name == "bex-controller-manager") | .spec.template.spec.containers[] | select(.name == "manager") | [.env[] | select(.name == "BEX_BASE_DOMAIN" or .name == "BEX_STATIC_S3_ENDPOINT" or .name == "BEX_STATIC_S3_BUCKET" or .name == "BEX_STATIC_S3_REGION") | .name + "=" + .value] | sort | join(",")' "$tmp/bex-operator-prod.yaml" | tr -d '\n')"
+expected_origin_kv='BEX_BASE_DOMAIN=onbex.co,BEX_STATIC_S3_BUCKET=bex-static,BEX_STATIC_S3_ENDPOINT=https://s3.eu-central-2.wasabisys.com,BEX_STATIC_S3_REGION=eu-central-2'
+if [ "$static_cfg_kv" != "$expected_origin_kv" ]; then
+  echo "FAIL: bex-static-config keys/values are '$static_cfg_kv', want '$expected_origin_kv'" >&2
+  fail=1
+fi
+if [ "$static_cfg_kv" != "$mgr_origin_kv" ]; then
+  echo "FAIL: static serve origin (bex-static-config) != publish origin (manager env): '$static_cfg_kv' vs '$mgr_origin_kv'" >&2
+  fail=1
+fi
+kubectl kustomize lego/operator/config/default >"$tmp/bex-operator-default.yaml"
+if yq -e 'select(.kind == "ConfigMap" and .metadata.name == "bex-static-config")' - <"$tmp/bex-operator-default.yaml" >/dev/null 2>&1; then
+  echo "FAIL: config/default (local) renders bex-static-config — the CAPD static-server would CrashLoop on a missing Wasabi read credential" >&2
+  fail=1
+fi
+
+# Static publish pull-secret custody (w1/m57, w9/012 chain #3): the publish Job's
+# extract initContainer pulls the built tenant image with bex-registry-pull in
+# the BUILD namespace, minted out-of-band by registry-secrets.sh as the
+# bex-builder identity — the per-App reg-pull-<name> scheme dropped the shared
+# bex-puller from the Zot ACLs, so a bex-puller-authed pull 403s. Pin the
+# script's mint target/identity and the operator's default.
+echo "==> static publish pull-secret custody (bex-registry-pull minted as bex-builder)"
+grep -q 'bex-registry-pull -n "$BUILD_NS"' scripts/registry-secrets.sh \
+  && grep -q 'registry_config bex-builder "$BEX_REGISTRY_BUILDER_PASSWORD"' scripts/registry-secrets.sh \
+  || { echo "FAIL: registry-secrets.sh must mint bex-registry-pull in the build ns as bex-builder" >&2; fail=1; }
+if grep -q 'registry_config bex-puller' scripts/registry-secrets.sh; then
+  echo "FAIL: registry-secrets.sh must never mint a credential as the retired bex-puller identity" >&2
+  fail=1
+fi
+grep -q 'RegistryBuildPullSecret = "bex-registry-pull"' lego/operator/cmd/manager/main.go \
+  || { echo "FAIL: operator must default BEX_REGISTRY_BUILD_PULL_SECRET to bex-registry-pull" >&2; fail=1; }
+
 read_policy_shape="$(jq -r '
   [.Statement[] | .Action[]? // .Action] | flatten | sort | join(",")' \
   infra/wasabi/static-s3-read-policy.json)"

@@ -41,6 +41,11 @@ spec:
           # for an intentionally disabled deployment, but once configured the
           # credential Secret is required and startup verifies ListBucket access.
           # Publishing uses a different Secret and identity in bex-build.
+          # The bex-static-config ConfigMap is git-owned in config/prod
+          # (config/prod/static-config.yaml, w1/m57) — prod-only so local stays
+          # degraded-503-but-Ready without a Wasabi read credential. It is
+          # `optional: true` precisely so config/default (local) renders without
+          # it; do not require it here.
           envFrom:
             - configMapRef:
                 name: bex-static-config
