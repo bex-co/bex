@@ -1,17 +1,17 @@
 # w7 · m60 — Outside-gate public route hardening: webhook intake metering + completeness guard
 
-**Worker:** worker7 **Goal:** the last two unmetered unauthenticated POST routes (`/v1/webhooks/git`, `/v1/webhooks/stripe`) shed floods before any signature work, and a CI completeness guard forces every future directly-mounted route to be classified and protected **Status:** todo
+**Worker:** worker7 **Goal:** the last two unmetered unauthenticated POST routes (`/v1/webhooks/git`, `/v1/webhooks/stripe`) shed floods before any signature work, and a CI completeness guard forces every future directly-mounted route to be classified and protected **Status:** done — **DONE 2026-07-31**
 
 ## Tasks (in order)
 
-| id   | title                                                                                                 | est | depends_on |
-| ---- | ------------------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | IP-keyed token bucket on `/v1/webhooks/git` + `/v1/webhooks/stripe` (`BEX_WEBHOOK_RATE_LIMIT`/`_BURST`) | 45m | —          |
-| t002 | Completeness guard over the composed `Handler()` mux (the `012` fix)                                    | 45m | t001       |
-| t003 | Env-table / `.env.example` / `internal/api/CLAUDE.md` always-public inventory sync                      | 15m | t002       |
-| t004 | Simplify pass over the changed code                                                                     | 20m | t003       |
-| t005 | Test coverage: shed-before-HMAC, legit-delivery pass-through, guard turns red on unclassified mounts    | 45m | t003       |
-| t006 | Closeout                                                                                                | 10m | t005       |
+| id   | title                                                                                                 | est | depends_on | status |
+| ---- | ------------------------------------------------------------------------------------------------------ | --- | ---------- | ------ |
+| t001 | IP-keyed token bucket on `/v1/webhooks/git` + `/v1/webhooks/stripe` (`BEX_WEBHOOK_RATE_LIMIT`/`_BURST`) | 45m | —          | — **DONE** |
+| t002 | Completeness guard over the composed `Handler()` mux (the `012` fix)                                    | 45m | t001       | — **DONE** |
+| t003 | Env-table / `.env.example` / `internal/api/CLAUDE.md` always-public inventory sync                      | 15m | t002       | — **DONE** |
+| t004 | Simplify pass over the changed code                                                                     | 20m | t003       | — **DONE** |
+| t005 | Test coverage: shed-before-HMAC, legit-delivery pass-through, guard turns red on unclassified mounts    | 45m | t003       | — **DONE** |
+| t006 | Closeout                                                                                                | 10m | t005       | — **DONE** |
 
 ## Definition of done
 

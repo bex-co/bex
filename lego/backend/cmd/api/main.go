@@ -739,6 +739,22 @@ func main() {
 	deviceBurst, _ := strconv.Atoi(envOr("BEX_DEVICE_RATE_BURST", "0"))
 	srv.DeviceRateLimiter = cliauth.NewDeviceRateLimiter(deviceRPM, deviceBurst)
 
+	// Webhook intake rate limiting (w7/m60). The two unauthenticated intakes
+	// (POST /v1/webhooks/git, /v1/webhooks/stripe) mount outside the auth gate, so
+	// neither BEX_RATE_LIMIT nor BEX_DEVICE_RATE_LIMIT reaches them; this IP-keyed
+	// limiter sheds a flood with 429 before the body read + HMAC verification.
+	// Default 600/min per IP is deliberately generous: no legitimate GitHub/Stripe
+	// delivery pattern hits 10 req/s from one source IP, and both senders retry, so
+	// an unlucky burst-shed self-heals — only an abusive flood is turned away.
+	// BEX_WEBHOOK_RATE_LIMIT=0 disables it (byte-identical to before m60).
+	webhookRPMStr := envOr("BEX_WEBHOOK_RATE_LIMIT", "600")
+	webhookRPM, err := strconv.ParseFloat(webhookRPMStr, 64)
+	if err != nil {
+		log.Fatalf("bex-api: bad BEX_WEBHOOK_RATE_LIMIT %q: %v", webhookRPMStr, err)
+	}
+	webhookBurst, _ := strconv.Atoi(envOr("BEX_WEBHOOK_RATE_BURST", "0"))
+	srv.WebhookRateLimiter = api.NewRateLimiter(webhookRPM, webhookBurst) // nil when rpm=0
+
 	maxBody, _ := strconv.ParseInt(envOr("BEX_MAX_BODY_BYTES", "2097152"), 10, 64)
 	srv.MaxBodyBytes = maxBody
 
