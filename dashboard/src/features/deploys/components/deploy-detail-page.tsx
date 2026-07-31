@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { CardSkeleton } from "@/common/components/detail-skeletons";
 import { EmptyState } from "@/common/components/empty-state";
 import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -75,7 +76,12 @@ export function DeployDetailPage({
   if (loading || !deploy) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-32 w-full" />
+        {/* header (id + status + timestamps), timeline, then the log panel */}
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-64" />
+          <Skeleton className="h-4 w-40" />
+        </div>
+        <CardSkeleton rows={2} />
         <Skeleton className="h-64 w-full" />
       </div>
     );

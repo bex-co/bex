@@ -6,7 +6,7 @@ import {
   CardDescription,
   CardContent,
 } from "@/common/components/ui/card";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import { FieldRowsSkeleton } from "@/common/components/detail-skeletons";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServer } from "@/features/services/hooks/use-server";
 import { InstanceTypeRow } from "@/features/services/components/instance-type-row";
@@ -76,7 +76,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
         </CardHeader>
         <CardContent>
           {!service && loading ? (
-            <Skeleton className="h-10 w-full" />
+            <FieldRowsSkeleton rows={4} />
           ) : (
             <div className="space-y-6">
               <DisplayNameRow

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import { CardSkeleton } from "@/common/components/detail-skeletons";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { WorkspaceDetailsCard } from "@/features/workspaces/components/workspace-details-card";
@@ -54,7 +54,10 @@ export function WorkspaceSettingsPage() {
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto w-full max-w-2xl space-y-6">
           {!currentWorkspace && loading ? (
-            <Skeleton className="h-64 w-full" />
+            <>
+              <CardSkeleton rows={5} />
+              <CardSkeleton rows={3} />
+            </>
           ) : !currentWorkspace ? (
             <p className="text-muted-foreground text-sm">
               {t("workspaces.settingsEmpty")}

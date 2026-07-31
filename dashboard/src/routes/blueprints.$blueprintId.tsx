@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import { CardSkeleton } from "@/common/components/detail-skeletons";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -179,7 +179,11 @@ export function BlueprintDetailPage() {
               <ValidatePanel manifest={blueprint.manifest} />
             </>
           ) : (
-            <Skeleton className="h-64 w-full" />
+            <>
+              <CardSkeleton rows={3} />
+              <CardSkeleton rows={6} />
+              <CardSkeleton rows={2} />
+            </>
           )}
         </div>
       </div>

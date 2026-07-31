@@ -3,6 +3,7 @@ import { AlertTriangle } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { CardSkeleton } from "@/common/components/detail-skeletons";
 import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
 import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -92,9 +93,15 @@ function WebhookDetailShell() {
           </div>
         </>
       ) : loading || (notFound && !error) ? (
-        <div className="space-y-4 p-4 sm:p-6">
-          <Skeleton className="h-24" />
-          <Skeleton className="h-64" />
+        <div className="p-4 sm:p-6">
+          <div className="mx-auto w-full max-w-4xl space-y-6">
+            {/* endpoint header (url + meta) then the activity/settings card */}
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-56" />
+              <Skeleton className="h-4 w-72" />
+            </div>
+            <CardSkeleton rows={4} />
+          </div>
         </div>
       ) : (
         <div className="flex flex-col items-center gap-2 py-12 text-center">

@@ -7,7 +7,7 @@ import {
   CardContent,
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import { PlanPickerGridSkeleton } from "@/common/components/detail-skeletons";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -93,7 +93,7 @@ export function InstanceTypePicker({
       </CardHeader>
       <CardContent className="space-y-6">
         {loading && instanceTypes.length === 0 ? (
-          <PickerSkeleton />
+          <PlanPickerGridSkeleton />
         ) : (
           <div
             role="radiogroup"
@@ -221,15 +221,5 @@ function InstanceTypeCard({
         <div>{formatInstanceCPU(instanceType.cpu)}</div>
       </div>
     </button>
-  );
-}
-
-function PickerSkeleton() {
-  return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <Skeleton key={i} className="h-24 w-full" />
-      ))}
-    </div>
   );
 }
