@@ -281,7 +281,7 @@ const zhUsage: Record<string, TranslationEntry> = {
     description: "Hosted billing security note",
   },
   "usage.billingUnavailable": {
-    message: "账单设置暂不可用，或您没有工作区管理员权限。",
+    message: "账单设置暂不可用，或您没有账单权限（账单角色或管理员）。",
     description: "Degraded or unauthorized billing onboarding state",
   },
   "usage.billingCheckoutError": {

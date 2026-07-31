@@ -536,6 +536,7 @@ var writeRelations = map[string]bool{
 	RelCanManageKeys:    true,
 	RelCanManageSSHKeys: true,
 	RelCanManage:        true,
+	RelCanManageBilling: true,
 }
 
 // readRelations are the Rel… constants that gate a read. A successful read

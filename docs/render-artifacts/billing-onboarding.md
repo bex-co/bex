@@ -12,11 +12,13 @@ Render documents billing as a workspace-dashboard workflow. Its [Dashboard guide
 | --- | --- | --- |
 | Payment setup | Dashboard Billing page | Stripe-hosted setup-mode Checkout launched from dashboard, REST, GraphQL, or MCP |
 | Invoice self-service | Dashboard Billing page | Stripe-hosted Customer Portal plus normalized invoice reads on every API surface |
-| Authorization | Admin and Billing can edit; Developer view only | Workspace admin required for readiness and both hosted actions |
+| Authorization | Admin and Billing can edit; Developer view only | Billing role or admin (`can_manage_billing`, w1/m60) for onboarding readiness and both hosted actions; billing/invoice **visibility** stays open to any `can_view` member via the usage `billing` object |
 | Machine surface | No public billing-onboarding verb found | Shared core with three thin adapters; dashboard consumes GraphQL |
 | Provider details | Not specified publicly | Test/live mode, Customer/Subscription/payment readiness, and fail-closed Tax state are explicit; provider IDs stay private |
 
-The API-first expansion is intentional under ADR008, not a claim that Render exposes matching endpoints. The admin-only rule is deliberately narrower than Render's Billing role until bex defines and tests a dedicated `can_manage_billing` relation. That is a product-policy residual, not adapter drift.
+The API-first expansion is intentional under ADR008, not a claim that Render exposes matching endpoints. **Billing-management authorization reaches Render parity as of w1/m60:** the billing verbs gate on a dedicated, now-consumed `can_manage_billing` relation (`billing or admin`), so Render's **Billing** role manages billing without full workspace-admin — matching Render's payment-method edit split (admin + billing edit; others cannot). The earlier admin-only narrowing (a product-policy residual until the relation had a Go consumer and tests, never adapter drift) is closed; the reach is proven end-to-end against a real OpenFGA store (`TestMultiWorkspaceTargetingE2E`).
+
+**Flagged residual divergence (deliberate, not silently accepted):** Render lets a **developer** _view_ billing details (invoices, accrued usage) but not edit. bex has no separate "view billing" relation; the onboarding **readiness** verb (`Status`) is gated on `can_manage_billing`, so a developer cannot open the onboarding readiness panel. It is a narrow gap, not a visibility hole: the billing/invoice **data** Render surfaces to a developer — the Stripe invoice preview + finalized invoices — is exposed to any `can_view` member (developer included) through the usage `billing` object (`GET /v1/usage`, `usage.billing`, `get_usage`; [ADR040 § Render parity](../ADR040-billing-metronome.md)). Only the setup/management readiness state is management-gated. A finer split (a `can_view_billing` relation opening `Status` to developers) is a possible future refinement, tracked as a follow-up rather than expanded into w1/m60.
 
 ## Cross-surface evidence
 

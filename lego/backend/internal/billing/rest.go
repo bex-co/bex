@@ -22,7 +22,8 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// RegisterREST mounts the workspace-admin customer-billing onboarding API.
+// RegisterREST mounts the customer-billing onboarding API, gated on the billing
+// role or workspace admin (can_manage_billing).
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/workspaces/{workspaceId}/billing", func(w http.ResponseWriter, r *http.Request) {
 		status, err := s.Status(r.Context(), r.PathValue("workspaceId"))

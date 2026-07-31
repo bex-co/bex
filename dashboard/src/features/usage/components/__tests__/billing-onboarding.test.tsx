@@ -167,7 +167,12 @@ describe("BillingOnboardingView", () => {
     ).toBeDisabled();
   });
 
-  it("does not render actions when readiness is unavailable", () => {
+  // The billing card is backend-gated, not client-role-gated: it runs the
+  // readiness query and surfaces the server's authorization decision. A billing
+  // role or admin gets readiness (the actions render — covered by the cases
+  // above); a member without can_manage_billing (viewer/contributor/developer)
+  // gets a 403 that arrives here as an error, and no action button is shown.
+  it("does not render actions when readiness is unavailable (denied role or degraded)", () => {
     render(
       <BillingOnboardingView
         readiness={null}
@@ -181,7 +186,7 @@ describe("BillingOnboardingView", () => {
     );
 
     expect(
-      screen.getByText(/unavailable or you do not have workspace-admin access/),
+      screen.getByText(/unavailable or you do not have billing access/),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });

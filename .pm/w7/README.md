@@ -68,6 +68,8 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 
 - `008.md` — Registry in-cluster TLS residual (ADR022 §225–227): Zot HTTP-only, build-push creds cross the cluster net in plaintext; largely mitigated by shipped Cilium WireGuard node encryption (cross-node only). Defense-in-depth, weak why-now — record, don't build until a driver appears.
 
+> `014.md` (billing verbs gate on `can_manage`, not `can_manage_billing` — the m61 sweep's finding) promoted to **`w1/m60`** 2026-07-31 (user picked Option 1, align to Render; w7 drained, w1 adopted it m57-style); note moved to `done/`.
+
 > `011.md` + `013.md` grouped into **m62** and `012.md` absorbed into **m60** (its completeness-guard task) 2026-07-30; notes moved to `done/`.
 
 > `009.md` promoted to **m55** 2026-07-30 (the investigate-first branch fired: gap confirmed by the coverage sweep); note moved to `done/`.

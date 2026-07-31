@@ -338,3 +338,21 @@ func TestCallerVerbWalksPastUnexportedHelperMethods(t *testing.T) {
 		t.Errorf("Verb = %q, want %q — plain functions are terminal", got, "core.scaleLikeVerb")
 	}
 }
+
+// TestCanManageBillingIsAuditedWrite pins can_manage_billing into the write
+// audit tier (w1/m60). The billing verbs it now gates (billing.Status/Checkout/
+// Portal) are management actions, so a billing check must leave an audit trail —
+// allowed and denied — exactly as the admin-only can_manage it replaced did.
+// Dropping it from writeRelations (so a denied billing check leaves no trail)
+// turns this red.
+func TestCanManageBillingIsAuditedWrite(t *testing.T) {
+	if !writeRelations[RelCanManageBilling] {
+		t.Error("RelCanManageBilling missing from writeRelations — a billing management check must be audited (allowed and denied)")
+	}
+	if !auditsDenial(RelCanManageBilling) {
+		t.Error("auditsDenial(RelCanManageBilling) = false — a denied billing check would leave no audit trail")
+	}
+	if readRelations[RelCanManageBilling] {
+		t.Error("RelCanManageBilling is in readRelations — billing management is a write, not a read")
+	}
+}
