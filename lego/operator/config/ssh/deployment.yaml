@@ -45,10 +45,17 @@ spec:
               value: /var/run/bex-ssh-host-key/ssh_host_ed25519_key
             - name: BEX_API_NAMESPACE
               value: default
+            # Least-privilege control-plane credential (w7/m56, docs/ADR035-ssh.md
+            # §116): the gateway connects as the scoped `bex_ssh_gateway` role
+            # (key lookup + its own session/nonce/audit rows only) via its OWN
+            # Secret, NOT bex-api's full-privilege bex-db-app. The Secret is
+            # installed out of band by scripts/ssh-gateway-db-role.sh (never
+            # committed). The gateway does not migrate or own the schema — bex-api
+            # (on bex-db-app) does — so this role needs no DDL privilege.
             - name: BEX_CP_DB_URI
               valueFrom:
                 secretKeyRef:
-                  name: bex-db-app
+                  name: bex-db-ssh-gateway
                   key: uri
             - name: BEX_OPENFGA_URL
               value: http://openfga.auth.svc:8080
