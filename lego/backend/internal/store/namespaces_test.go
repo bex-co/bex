@@ -168,6 +168,46 @@ func TestSandboxReconcilePrunesLegacyBroadPolicies(t *testing.T) {
 	}
 }
 
+// TestSandboxNamespaceSurvivesToggleOffButPrunesOnWorkspaceDelete is w7/m62 t002
+// (ADR045 Finding 6): flipping BEX_TENANT_SANDBOX_NAMESPACES off must NOT reap a
+// live workspace's <ws>-sandbox namespace — the prune keys on workspace existence,
+// not the config toggle. Workspace deletion still prunes both namespaces.
+func TestSandboxNamespaceSurvivesToggleOffButPrunesOnWorkspaceDelete(t *testing.T) {
+	ctx := context.Background()
+	// Start with sandboxes ON so both namespaces are provisioned.
+	r, store, cl := newTestNamespaceReconciler(t, true)
+	tn, _ := store.CreateTenant(ctx, "acme", "free")
+	if err := r.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	sandboxNS := SandboxNamespace(tn.ID)
+	var ns corev1.Namespace
+	if err := cl.Get(ctx, client.ObjectKey{Name: sandboxNS}, &ns); err != nil {
+		t.Fatalf("sandbox namespace not provisioned: %v", err)
+	}
+
+	// Operator rolls BEX_TENANT_SANDBOX_NAMESPACES OFF. The workspace is still live.
+	r.Sandboxes = false
+	if err := r.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(ctx, client.ObjectKey{Name: sandboxNS}, &ns); err != nil {
+		t.Fatalf("toggle-off reaped a live workspace's sandbox namespace: %v — prune must key on workspace existence, not the toggle", err)
+	}
+
+	// Now delete the workspace: both namespaces must be pruned regardless of the toggle.
+	delete(store.tenants, tn.ID)
+	if err := r.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(ctx, client.ObjectKey{Name: sandboxNS}, &ns); !apierrors.IsNotFound(err) {
+		t.Errorf("sandbox namespace survived workspace deletion: %v", err)
+	}
+	if err := cl.Get(ctx, client.ObjectKey{Name: WorkspaceNamespace(tn.ID)}, &ns); !apierrors.IsNotFound(err) {
+		t.Errorf("hosting namespace survived workspace deletion: %v", err)
+	}
+}
+
 func TestResourceQuotaCarriesPlanScopedObjectCounts(t *testing.T) {
 	ctx := context.Background()
 	r, store, cl := newTestNamespaceReconciler(t, false)
