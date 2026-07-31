@@ -49,6 +49,17 @@ Add new non-auth feature code under `src/features/<name>/`, following a self-con
 
 `codegen.ts` generates typed queries/mutations from `src/**/*.graphql` into `src/graphql/definitions.ts`, introspecting bex-api's `/graphql` (`VITE_API_URL`). Every bex-api route requires a real credential (`docs/ADR012-auth.md`) — introspection too — so `yarn codegen` needs `CODEGEN_SESSION_TOKEN` (an Ory session token) set in the environment; without it, codegen falls back to an unauthenticated request that bex-api will reject. This is unrelated to Kratos as a runtime dependency — bex-api and Kratos are separate services (`docs/ADR002-architecture.md`, `docs/ADR012-auth.md`) — the token is just how codegen authenticates _to_ bex-api.
 
+### Offline codegen (no live bex-api / no session token)
+
+When you have no running bex-api to introspect (the common case for a feature splice — see the hand-splice note below), regenerate from the backend's own schema dump instead of a live endpoint — two commands, no session:
+
+```bash
+cd lego/backend && SCHEMA_DUMP_PATH=/tmp/schema.json go test ./internal/api/ -run '^TestDumpGraphQLSchema$' -count=1
+cd dashboard && SCHEMA_JSON=/tmp/schema.json yarn codegen   # codegen.ts prefers SCHEMA_JSON over the live endpoint
+```
+
+`TestDumpGraphQLSchema` (`internal/api/schema_dump_test.go`) writes the server's introspection JSON; `codegen.ts` reads `SCHEMA_JSON` when set. Use this to **reconcile a hand-splice**: run it, then `git diff src/graphql/definitions.ts`. An empty diff means the hand-spliced types match what codegen produces (correct); any hunk is the drift to reconcile — **splice per-feature, never wholesale-accept the regenerated file** (`definitions.ts` is partly hand-maintained; a full-codegen overwrite can lose hand-maintained parts, so keep only the reconciled feature hunk and restore the rest). Verified end to end reconciling w5/m60's cron/registry-credential splices (`w5/032`): byte-identical, zero drift.
+
 ## Visual layout pattern (w5/m2)
 
 Reused from `beancount-dashboard`'s reports/overview page and ledger-layout chrome — reference files (read-only, not in this repo): `.../src/features/reports/overview/{index.tsx,components/overview-stat-card.tsx,components/overview-metrics-panel.tsx}`, `.../src/common/components/ledger-layout/{index.tsx,layout-header.tsx}`. Reuse our own `Card`/shadcn primitives — don't import beancount's components or CSS.

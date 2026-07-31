@@ -4,10 +4,12 @@ import { LogsDocument } from "@/graphql/definitions";
 import { toLogLines } from "@/features/logs/lib/map";
 import type { LogLine } from "@/features/logs/types";
 
-export type KeyValueLogRange = "1h" | "6h" | "24h";
-
+// Window-based since w5/030 — the datastore Logs viewers share the m56 range
+// ladder (via RangeSelect), so their range control is a resolved
+// [startTime, endTime] window, not a private 1h/6h/24h enum.
 export interface KeyValueLogFilters {
-  range: KeyValueLogRange;
+  startTime: string;
+  endTime: string;
   text: string;
   instance: string;
 }
@@ -20,38 +22,22 @@ export interface UseKeyValueLogsResult {
   unauthorized: boolean;
 }
 
-const RANGE_MS: Record<KeyValueLogRange, number> = {
-  "1h": 60 * 60 * 1000,
-  "6h": 6 * 60 * 60 * 1000,
-  "24h": 24 * 60 * 60 * 1000,
-};
-
 /**
  * Reads one managed Key Value (Valkey) resource through the same generic
- * GraphQL logs query used by services. Only the datastore contract's range,
+ * GraphQL logs query used by services. Only the datastore contract's window,
  * text, and instance filters are sent.
  */
 export function useKeyValueLogs(
   resource: string,
   filters: KeyValueLogFilters,
 ): UseKeyValueLogsResult {
-  const window = useMemo(() => {
-    const end = new Date();
-    return {
-      startTime: new Date(
-        end.getTime() - RANGE_MS[filters.range],
-      ).toISOString(),
-      endTime: end.toISOString(),
-    };
-  }, [filters.range]);
-
   const { data, loading, error } = useQuery(LogsDocument, {
     variables: {
       resource,
       text: filters.text || undefined,
       instance: filters.instance ? [filters.instance] : undefined,
-      startTime: window.startTime,
-      endTime: window.endTime,
+      startTime: filters.startTime,
+      endTime: filters.endTime,
       limit: 100,
     },
     fetchPolicy: "cache-and-network",
