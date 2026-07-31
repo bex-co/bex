@@ -319,6 +319,32 @@ func (s *Service) hostClaimedElsewhere(ctx context.Context, appName, host string
 	return false, nil
 }
 
+// ensureHostsClaimable runs the same platform-reserved + cross-App collision
+// gate AddDomain enforces (reservedHost + hostClaimedElsewhere) over a NEW App's
+// create-time host set, so the create/blueprint/deploy-manifest paths — which all
+// funnel through writeNewApp — cannot bind spec.host/spec.hosts to a reserved
+// platform name (api/dashboard/`*.<base>`) or one another tenant already owns and
+// have the operator mint an Ingress that hijacks it (w7/m57). Before this, the
+// guard lived ONLY in AddDomain, so a create could claim any host unchecked.
+// appName is the new App's CR name; hostClaimedElsewhere skips that name, so a
+// blueprint re-apply that re-states the App's own hosts is not self-rejected.
+func (s *Service) ensureHostsClaimable(ctx context.Context, appName, host string, hosts []string) error {
+	for _, h := range append([]string{host}, hosts...) {
+		if h == "" {
+			continue
+		}
+		if s.reservedHost(appName, h) {
+			return fmt.Errorf("%w: %q is a reserved platform hostname", core.ErrBadRequest, h)
+		}
+		if claimed, err := s.hostClaimedElsewhere(ctx, appName, h); err != nil {
+			return err
+		} else if claimed {
+			return errDomainInUse()
+		}
+	}
+	return nil
+}
+
 // AddDomain appends hostname (lowercased, so casing can't split one logical
 // host into two spec.hosts[] entries) to App.spec.hosts[] if not already
 // present, then auto-pairs its www<->apex sibling (wwwSibling, t002) the way

@@ -1459,6 +1459,18 @@ fi
 # store credentials are deliberately two different names and provider policies.
 echo "==> static-site alias admission and split S3 credential contracts"
 BASE_RENDER="$(kubectl kustomize deploy/gitops/base)"
+# w7/m57: the bex-tenant-api / bex-tenant-operator ClusterRoles grant cluster-wide
+# `secrets` write — safe ONLY because they are bound per-tenant-namespace by
+# RoleBinding (never a ClusterRoleBinding). A ClusterRoleBinding to either would
+# make every workspace's Secrets readable/writable cluster-wide. Guard it the same
+# way the sandbox mutation roles are guarded above.
+if yq -e \
+  'select(.kind == "ClusterRoleBinding" and
+    (.roleRef.name == "bex-tenant-api" or .roleRef.name == "bex-tenant-operator"))' \
+  - <<<"$BASE_RENDER" >/dev/null 2>&1; then
+  echo "FAIL: a secret-bearing tenant role (bex-tenant-api/bex-tenant-operator) received a ClusterRoleBinding — bind it per-namespace only" >&2
+  fail=1
+fi
 alias_admission_shape="$(yq -N '
   select(.kind == "ValidatingAdmissionPolicy" and .metadata.name == "bex-operator-platform-aliases") |
   [.metadata.annotations."argocd.argoproj.io/sync-wave",

@@ -33,7 +33,8 @@ const (
 	// exported (ADR040 §3), aligned with ADR023's
 	// 48h compaction clamp: past this point an hour's quantity is final, so it
 	// can be shipped after its quantity is final. Overridable via
-	// BEX_STRIPE_SEAL_HOURS.
+	// BEX_STRIPE_SEAL_HOURS, but never below the usage rollup's catch-up window
+	// (ClampSealHours) — see that function for the integrity invariant.
 	DefaultSealHours = 48 * time.Hour
 
 	// BackfillHorizon bounds how far back the emitter ever ships when
@@ -57,6 +58,22 @@ const (
 	// reconciliation rather than replayed.
 	ProviderDedupWindow = 24 * time.Hour
 )
+
+// ClampSealHours raises a configured seal horizon to at least catchupWindow — the
+// window during which the usage rollup may still rewrite a usage_hourly row's
+// quantity (usage.CatchupWindow). The emitter exports a row once it is older than
+// SealHours; if that were shorter than catchupWindow, a row could be exported to
+// Stripe and then rewritten by a later catch-up rollup — a silent, unre-emitted
+// over/under-bill (w7/m57). Clamping makes the export and rewrite windows
+// non-overlapping by construction, so an exported row is provably final. The
+// composition root (cmd/api) passes usage.CatchupWindow so the two packages'
+// constants are coupled by code, not by a 48h==48h coincidence.
+func ClampSealHours(configured, catchupWindow time.Duration) time.Duration {
+	if configured < catchupWindow {
+		return catchupWindow
+	}
+	return configured
+}
 
 // EmitterStore is the slice of internal/store the emitter needs: the billing
 // outbox read + stamp. *store.PGStore satisfies it.
