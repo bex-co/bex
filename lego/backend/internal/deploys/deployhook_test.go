@@ -192,6 +192,30 @@ func TestDeployHookHandlerHasIndependentPerTokenRateLimit(t *testing.T) {
 	}
 }
 
+// TestDeployHookRateLimiterIsPerReplica pins the w1/m58 decision: the deploy-hook
+// limiter is intentionally replica-local (see DeployHookRateLimiter's doc), so
+// two bex-api replicas each grant the same token its own bucket — an effective
+// per-token ceiling of up to 2× DefaultDeployHookRPM, accepted as a bounded
+// over-provision for a credential-gated, newest-wins-idempotent endpoint.
+func TestDeployHookRateLimiterIsPerReplica(t *testing.T) {
+	const token = "dhk-sametoken0000000"
+	replicaA := NewDeployHookRateLimiter(0.01, 1) // burst 1, effectively no refill
+	replicaB := NewDeployHookRateLimiter(0.01, 1)
+
+	// Within a replica the per-token guarantee holds: first allowed, second denied.
+	if ok, _ := replicaA.reserve(token); !ok {
+		t.Fatal("replica A must allow the token's first request")
+	}
+	if ok, _ := replicaA.reserve(token); ok {
+		t.Fatal("replica A must deny the token's second request (burst exhausted)")
+	}
+	// The second replica's bucket is independent: the same token is allowed once
+	// more there. Two replicas ⇒ up to 2× the per-token budget, by design.
+	if ok, _ := replicaB.reserve(token); !ok {
+		t.Fatal("replica B must independently allow the same token (per-replica by design)")
+	}
+}
+
 func TestDeployHookManagementSurfaceParity(t *testing.T) {
 	svc, _ := newService(newFakeStore(), sampleApp("web", "srv-1"))
 	svc.DeployHookBaseURL = "https://api.bex.co"

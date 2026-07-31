@@ -190,8 +190,17 @@ func deployHookServiceName(a *appv1alpha1.App) string {
 }
 
 // DeployHookRateLimiter is a token-keyed in-memory bucket. Like the main API
-// limiter it is replica-local; bex-api currently runs one replica. Keys are
-// SHA-256 digests so the raw credential is not retained in the limiter map.
+// limiter (BEX_RATE_LIMIT) and the device-flow limiter, it is REPLICA-LOCAL by
+// design: with bex-api's two replicas (w1/m52) the effective per-token ceiling
+// is up to 2× DefaultDeployHookRPM. That is an accepted, bounded over-provision
+// (w1/m58 audit): the endpoint is credential-gated (a leaked dhk- token, never
+// an anonymous flood) and its action is newest-wins idempotent — extra triggers
+// are superseded, not multiplied into extra builds — so a coarse per-replica
+// ceiling is an abuse damper, not a security boundary. A shared control-plane
+// counter was considered and rejected as disproportionate (a DB round trip per
+// hook request to tighten a non-threat, and inconsistent with the other two
+// replica-local limiters). Keys are SHA-256 digests so the raw credential is not
+// retained in the limiter map.
 type DeployHookRateLimiter struct {
 	*core.KeyedRateLimiter[[sha256.Size]byte]
 }

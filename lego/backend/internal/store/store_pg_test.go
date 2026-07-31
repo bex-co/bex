@@ -1453,7 +1453,7 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	if err != nil || !wmAt3.Equal(now) || wmKey3 != "advance-key" {
 		t.Errorf("watermark after enqueue = (%v, %q, %v), want (%v, advance-key)", wmAt3, wmKey3, err, now)
 	}
-	due, err := s.DueWebhookDeliveries(ctx, now.Add(time.Second), 10)
+	due, err := s.ClaimDueWebhookDeliveries(ctx, now.Add(time.Second), now.Add(time.Second+time.Minute), 10)
 	if err != nil || len(due) != 1 {
 		t.Fatalf("due = %+v (err %v), want the one enqueued delivery", due, err)
 	}
@@ -1464,14 +1464,14 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	if err := s.RecordWebhookAttempt(ctx, d.ID, 502, "bad gateway", now, now.Add(time.Hour), false, false); err != nil {
 		t.Fatalf("record attempt: %v", err)
 	}
-	if due, _ := s.DueWebhookDeliveries(ctx, now.Add(time.Second), 10); len(due) != 0 {
+	if due, _ := s.ClaimDueWebhookDeliveries(ctx, now.Add(time.Second), now.Add(time.Second+time.Minute), 10); len(due) != 0 {
 		t.Errorf("rescheduled delivery must not be due, got %+v", due)
 	}
 	// Disabling the endpoint parks the queue even when the row is due.
 	if err := s.DisableWebhookEndpoint(ctx, ep.ID, "auto"); err != nil {
 		t.Fatalf("disable: %v", err)
 	}
-	if due, _ := s.DueWebhookDeliveries(ctx, now.Add(2*time.Hour), 10); len(due) != 0 {
+	if due, _ := s.ClaimDueWebhookDeliveries(ctx, now.Add(2*time.Hour), now.Add(2*time.Hour+time.Minute), 10); len(due) != 0 {
 		t.Errorf("a disabled endpoint's deliveries must not be due, got %+v", due)
 	}
 	if _, err := s.SetWebhookEndpointEnabled(ctx, ten.ID, ep.ID, true, ""); err != nil {
@@ -1489,6 +1489,116 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	if h.AttemptCount != 2 || h.DeliveredAt == nil || h.LastStatus != 200 {
 		t.Errorf("history row = %+v, want 2 attempts, delivered, 200", h)
 	}
+
+	// --- w1/m58 multi-replica correctness ---
+	cnow := time.Now().UTC().Truncate(time.Microsecond) // timestamptz microsecond boundary
+	// Dispatch dedup: re-dispatching the same (endpoint, event) — what a second
+	// replica or a crash-replay does — inserts no duplicate delivery, even with a
+	// fresh delivery id, thanks to the (endpoint_id, event_id) unique index +
+	// ON CONFLICT DO NOTHING.
+	dupA := WebhookDelivery{ID: ids.New(ids.WebhookDelivery), EndpointID: ep.ID, EventID: "evt-dedup-0000000000", EventType: "deploy_started", ServiceID: app.Name, Payload: `{}`, NextAttemptAt: cnow}
+	dupB := dupA
+	dupB.ID = ids.New(ids.WebhookDelivery) // different delivery id, SAME (endpoint, event)
+	if err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{dupA}, cnow, "k1"); err != nil {
+		t.Fatalf("enqueue dupA: %v", err)
+	}
+	if err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{dupB}, cnow, "k2"); err != nil {
+		t.Fatalf("enqueue dupB: %v", err)
+	}
+	var nDup int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM webhook_deliveries WHERE endpoint_id=$1 AND event_id=$2`, ep.ID, "evt-dedup-0000000000").Scan(&nDup); err != nil || nDup != 1 {
+		t.Fatalf("dedup: (endpoint, event) has %d rows (err %v), want exactly 1 (ON CONFLICT DO NOTHING)", nDup, err)
+	}
+
+	// SKIP LOCKED disjoint claim: enqueue a batch of due deliveries, then claim
+	// concurrently from several goroutines (two replicas' send passes). Every row
+	// must be claimed by EXACTLY ONE claimer — never two — proving no double-send.
+	const nRows = 24
+	batch := make([]WebhookDelivery, 0, nRows)
+	for i := 0; i < nRows; i++ {
+		batch = append(batch, WebhookDelivery{
+			ID: ids.New(ids.WebhookDelivery), EndpointID: ep.ID,
+			EventID:   ids.New(ids.WebhookDelivery), // arbitrary unique per-row event token
+			EventType: "deploy_started", ServiceID: app.Name, Payload: `{}`, NextAttemptAt: cnow,
+		})
+	}
+	if err := s.EnqueueWebhookDeliveries(ctx, batch, cnow, "k3"); err != nil {
+		t.Fatalf("enqueue claim batch: %v", err)
+	}
+	var mu sync.Mutex
+	claimedBy := map[string]int{} // delivery id -> claimer index
+	var wg sync.WaitGroup
+	for g := 0; g < 4; g++ {
+		wg.Add(1)
+		go func(g int) {
+			defer wg.Done()
+			got, err := s.ClaimDueWebhookDeliveries(ctx, cnow.Add(time.Second), cnow.Add(time.Minute), nRows)
+			if err != nil {
+				t.Errorf("claim g%d: %v", g, err)
+				return
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			for _, d := range got {
+				if prev, dup := claimedBy[d.ID]; dup {
+					t.Errorf("delivery %s double-claimed by g%d and g%d (SKIP LOCKED broken)", d.ID, prev, g)
+				}
+				claimedBy[d.ID] = g
+			}
+		}(g)
+	}
+	wg.Wait()
+	claimed := 0
+	for _, d := range batch {
+		if _, ok := claimedBy[d.ID]; ok {
+			claimed++
+		}
+	}
+	if claimed != nRows {
+		t.Errorf("SKIP LOCKED claim covered %d/%d rows; every due row must be claimed exactly once", claimed, nRows)
+	}
+
+	// Lease re-visibility: a claimed-but-unacked row (a crashed send) is invisible
+	// while leased and becomes due again after the lease, so it retries at-least-once
+	// rather than being lost.
+	lease := WebhookDelivery{ID: ids.New(ids.WebhookDelivery), EndpointID: ep.ID, EventID: "evt-lease-0000000000", EventType: "deploy_started", ServiceID: app.Name, Payload: `{}`, NextAttemptAt: cnow}
+	if err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{lease}, cnow, "k4"); err != nil {
+		t.Fatalf("enqueue lease: %v", err)
+	}
+	leaseUntil := cnow.Add(30 * time.Second)
+	if got, err := s.ClaimDueWebhookDeliveries(ctx, cnow.Add(time.Second), leaseUntil, 100); err != nil || !containsDelivery(got, lease.ID) {
+		t.Fatalf("lease claim did not return the row (err %v)", err)
+	}
+	if got, _ := s.ClaimDueWebhookDeliveries(ctx, leaseUntil.Add(-time.Second), leaseUntil.Add(time.Minute), 100); containsDelivery(got, lease.ID) {
+		t.Error("leased row must not be re-claimable before the lease expires")
+	}
+	if got, err := s.ClaimDueWebhookDeliveries(ctx, leaseUntil.Add(time.Second), leaseUntil.Add(time.Minute), 100); err != nil || !containsDelivery(got, lease.ID) {
+		t.Fatalf("expired lease must be re-claimable (err %v)", err)
+	}
+
+	// notified_at CAS: exactly one failure notice per endpoint per window across
+	// replicas/restarts, and re-enabling clears it so the next cycle emails once more.
+	win := time.Hour
+	t0 := time.Now().UTC()
+	if ok, err := s.ClaimWebhookFailureNotice(ctx, ep.ID, t0, t0.Add(-win)); err != nil || !ok {
+		t.Fatalf("first failure-notice claim must succeed (err %v)", err)
+	}
+	if ok, _ := s.ClaimWebhookFailureNotice(ctx, ep.ID, t0.Add(time.Minute), t0.Add(time.Minute-win)); ok {
+		t.Error("second claim within the window must be suppressed (no re-email on restart/second replica)")
+	}
+	if ok, _ := s.ClaimWebhookFailureNotice(ctx, ep.ID, t0.Add(2*win), t0.Add(win)); !ok {
+		t.Error("a claim past the suppression window must succeed again")
+	}
+	if _, err := s.SetWebhookEndpointEnabled(ctx, ten.ID, ep.ID, false, "manual"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.SetWebhookEndpointEnabled(ctx, ten.ID, ep.ID, true, ""); err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := s.ClaimWebhookFailureNotice(ctx, ep.ID, t0.Add(3*win), t0.Add(2*win)); err != nil || !ok {
+		t.Fatalf("re-enable must clear notified_at so a notice can send again (err %v)", err)
+	}
+
 	// Deleting the endpoint cascades its deliveries.
 	if err := s.DeleteWebhookEndpoint(ctx, ten.ID, ep.ID); err != nil {
 		t.Fatalf("delete endpoint: %v", err)
@@ -1497,6 +1607,15 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM webhook_deliveries WHERE endpoint_id = $1`, ep.ID).Scan(&nDeliveries); err != nil || nDeliveries != 0 {
 		t.Errorf("deliveries after endpoint delete = %d (err %v), want 0 (cascade)", nDeliveries, err)
 	}
+}
+
+func containsDelivery(due []DueWebhookDelivery, id string) bool {
+	for _, d := range due {
+		if d.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 func assertDeleteCascades(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool.Pool, app App) {
