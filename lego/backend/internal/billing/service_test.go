@@ -203,3 +203,57 @@ func TestBillingAdminAuthorizationAndDegradedProvider(t *testing.T) {
 		t.Fatalf("provider failure error=%v, want billing unavailable", err)
 	}
 }
+
+// billingRecordChecker is a core.Checker that records every relation asked for
+// and answers from a fixed grant set — the seam for pinning WHICH relation each
+// billing verb gates on.
+type billingRecordChecker struct {
+	grant     map[string]bool
+	relations []string
+}
+
+func (c *billingRecordChecker) Check(_ context.Context, _, relation, _ string) (bool, error) {
+	c.relations = append(c.relations, relation)
+	return c.grant[relation], nil
+}
+
+// TestBillingVerbsGateOnCanManageBilling pins the w1/m60 flip: every billing
+// verb (Status/Checkout/Portal) must authorize on exactly can_manage_billing —
+// NOT the admin-only can_manage it replaced. Reverting billing.authorize() to
+// core.RelCanManage fails this (the "granted can_manage_billing" leg denies, and
+// the "only can_manage" leg wrongly allows), so the dead-relation regression
+// (w7/014) cannot silently return.
+func TestBillingVerbsGateOnCanManageBilling(t *testing.T) {
+	verbs := []struct {
+		name string
+		call func(*Service, context.Context) error
+	}{
+		{"Status", func(s *Service, ctx context.Context) error { _, err := s.Status(ctx, "tea-a"); return err }},
+		{"Checkout", func(s *Service, ctx context.Context) error { _, err := s.Checkout(ctx, "tea-a", CheckoutRequest{}); return err }},
+		{"Portal", func(s *Service, ctx context.Context) error { _, err := s.Portal(ctx, "tea-a", PortalRequest{}); return err }},
+	}
+	for _, v := range verbs {
+		t.Run(v.name, func(t *testing.T) {
+			// Granting ONLY can_manage_billing must allow, and it must be the sole
+			// relation the verb checks.
+			rec := &billingRecordChecker{grant: map[string]bool{core.RelCanManageBilling: true}}
+			svc := billingTestService(&billingProviderFake{})
+			svc.Authz = rec
+			if err := v.call(svc, billingIdentity(context.Background())); err != nil {
+				t.Fatalf("%s with can_manage_billing granted: %v — want allowed", v.name, err)
+			}
+			if len(rec.relations) != 1 || rec.relations[0] != core.RelCanManageBilling {
+				t.Fatalf("%s checked %v, want exactly [%s] — the billing role must reach this verb", v.name, rec.relations, core.RelCanManageBilling)
+			}
+
+			// Granting the admin-only can_manage but NOT can_manage_billing must DENY —
+			// proving the verb no longer gates on can_manage (the w7/014 fix).
+			recAdmin := &billingRecordChecker{grant: map[string]bool{core.RelCanManage: true}}
+			svcAdmin := billingTestService(&billingProviderFake{})
+			svcAdmin.Authz = recAdmin
+			if err := v.call(svcAdmin, billingIdentity(context.Background())); !errors.Is(err, core.ErrForbidden) {
+				t.Fatalf("%s with only can_manage granted: %v — want ErrForbidden (must NOT gate on admin-only can_manage)", v.name, err)
+			}
+		})
+	}
+}

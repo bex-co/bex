@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/authz"
+	"github.com/bex-co/bex/lego/backend/internal/billing"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -135,7 +136,10 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 		Authz:     checker,
 		Workspace: NewTenantService(st, roles),
 	}
-	srv := NewServer(base, Deps{Store: st, WorkspaceStore: st, WorkspaceGranter: granter})
+	// A fake HostedProvider so an AUTHORIZED billing verb returns a real 2xx, not
+	// the 503 a nil provider yields — making the w1/m60 billing allow-vs-deny below
+	// unambiguous (a denied caller still 403s before the provider is ever reached).
+	srv := NewServer(base, Deps{Store: st, WorkspaceStore: st, WorkspaceGranter: granter, Billing: e2eBillingProvider{}})
 	mux := srv.restHandler()
 
 	// call drives the real REST router as `subject` (the auth middleware's job —
@@ -335,10 +339,9 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 	}
 
 	// BILLING (gwen): can_view holds (read 2xx); resource mutation denied (delete
-	// 403); sensitive read denied (env vars refused). NOTE: billing MANAGEMENT
-	// verbs gate on can_manage (admin), not can_manage_billing — so a billing-role
-	// member is also refused them; that too-strong gating is a documented finding
-	// (w7/m61 closeout), not a security hole (fail-safe).
+	// 403); sensitive read denied (env vars refused). The billing MANAGEMENT verbs
+	// (Status/Checkout/Portal) she IS allowed — they gate on can_manage_billing
+	// (billing or admin), asserted against the real model in (9) just below (w1/m60).
 	if rec := call(gwen, "GET", "/v1/services/"+bravoWeb, ""); rec.Code != http.StatusOK {
 		t.Errorf("gwen (billing of bravo) GET bravo-web: %d %s, want 200 — can_view must hold", rec.Code, rec.Body.String())
 	}
@@ -353,6 +356,64 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 	if err := cl.Get(ctx, k8sKey(core.CRName(wsB.ID, bravoWeb)), &stray); err != nil {
 		t.Errorf("bravo-web was deleted by a contributor/billing member: %v", err)
 	}
+
+	// (9) w1/m60 — the billing MANAGEMENT ladder against the REAL model. The billing
+	// verbs (Status/Checkout/Portal, all funnelling through billing.authorize) gate
+	// on can_manage_billing, which model.fga resolves as `billing or admin`. So the
+	// BILLING role reaches them and every lower/other rung is refused — the exact
+	// per-relation resolution only the deployed model exercises, and the closeout of
+	// the dead-relation finding (w7/014) this milestone fixes. Each verb targets the
+	// NAMED workspace (bravo via the {workspaceId} path), so this checks can_manage_billing
+	// on bravo — where gwen is billing and carl/fred are not — never a caller's home.
+	billingBase := "/v1/workspaces/" + wsB.ID + "/billing"
+	checkoutBody := `{"successUrl":"https://dashboard.bex.co/usage","cancelUrl":"https://dashboard.bex.co/usage"}`
+	portalBody := `{"returnUrl":"https://dashboard.bex.co/usage"}`
+
+	// gwen (BILLING) — allowed all three billing verbs (can_manage_billing holds).
+	if rec := call(gwen, "GET", billingBase, ""); rec.Code != http.StatusOK {
+		t.Errorf("gwen (billing) GET billing readiness: %d %s, want 200 — can_manage_billing must hold for the billing role", rec.Code, rec.Body.String())
+	}
+	if rec := call(gwen, "POST", billingBase+"/checkout-session", checkoutBody); rec.Code != http.StatusCreated {
+		t.Errorf("gwen (billing) POST checkout-session: %d %s, want 201 — the billing role manages billing", rec.Code, rec.Body.String())
+	}
+	if rec := call(gwen, "POST", billingBase+"/portal-session", portalBody); rec.Code != http.StatusCreated {
+		t.Errorf("gwen (billing) POST portal-session: %d %s, want 201 — the billing role opens the portal", rec.Code, rec.Body.String())
+	}
+
+	// dana (ADMIN of bravo) — still reaches billing (can_manage_billing: `billing or admin`).
+	if rec := call(dana, "GET", billingBase, ""); rec.Code != http.StatusOK {
+		t.Errorf("dana (admin of bravo) GET billing readiness: %d %s, want 200 — admin retains billing management", rec.Code, rec.Body.String())
+	}
+
+	// Every OTHER rung is refused all three — can_manage_billing does NOT hold. This
+	// is the "denials unchanged" half of the DoD: only the billing rows flipped.
+	for _, d := range []struct{ subject, role string }{
+		{carl, "viewer"}, {fred, "contributor"}, {erin, "non-member"},
+	} {
+		if rec := call(d.subject, "GET", billingBase, ""); rec.Code != http.StatusForbidden {
+			t.Errorf("%s (%s of bravo) GET billing readiness: %d %s, want 403 — can_manage_billing must NOT hold", d.subject, d.role, rec.Code, rec.Body.String())
+		}
+		if rec := call(d.subject, "POST", billingBase+"/checkout-session", checkoutBody); rec.Code != http.StatusForbidden {
+			t.Errorf("%s (%s of bravo) POST checkout-session: %d %s, want 403 — billing management is not theirs", d.subject, d.role, rec.Code, rec.Body.String())
+		}
+	}
+}
+
+// e2eBillingProvider is a stand-in billing.HostedProvider for the real-FGA E2E:
+// it returns fixed hosted URLs so an AUTHORIZED billing verb yields a real 2xx,
+// isolating the authorization decision (403 vs allowed) from Stripe availability.
+type e2eBillingProvider struct{}
+
+func (e2eBillingProvider) Readiness(_ context.Context, workspaceID string) (billing.Readiness, error) {
+	return billing.Readiness{WorkspaceID: workspaceID, Mode: "test"}, nil
+}
+
+func (e2eBillingProvider) CreateCheckoutSession(_ context.Context, _ string, _ billing.CheckoutRequest) (billing.HostedSession, error) {
+	return billing.HostedSession{URL: "https://checkout.stripe.test/session"}, nil
+}
+
+func (e2eBillingProvider) CreatePortalSession(_ context.Context, _ string, _ billing.PortalRequest) (billing.HostedSession, error) {
+	return billing.HostedSession{URL: "https://billing.stripe.test/portal"}, nil
 }
 
 // k8sKey is the fake apiserver's object key for an App in the test namespace.

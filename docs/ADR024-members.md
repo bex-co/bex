@@ -21,9 +21,11 @@ The five Render roles, verified live (`docs/render-artifacts/team-members.graphq
 | `contributor` | + logs, restart/suspend/resume; **not** create/delete or sensitive fields |
 | `developer` | + create/delete, connection strings, env vars, API keys; **no** org settings |
 | `admin` | full resources **and** org settings — members, billing, protected envs |
-| `billing` | billing only (+ non-sensitive names) |
+| `billing` | billing management only (Stripe onboarding/checkout/portal via `can_manage_billing`) + read-only non-sensitive names |
 
 Roles are **UPPERCASE on the wire** (Render's enum: `ADMIN`, `DEVELOPER`, …) and lowercase as the stored role / FGA relation; adapters convert at the view boundary. A change of role is a Revoke of the old relation tuple then a Grant of the new one; the `tenant_members.role` column is the source of truth, the tuple a best-effort follow-up (the resolver re-drives a missing grant on login).
+
+The `billing` role's distinguishing capability became **live and enforced in w1/m60**: the customer-billing verbs (`internal/billing`'s `Status`/`Checkout`/`Portal`) now gate on `can_manage_billing` (`billing or admin`), so a billing-role member manages billing without workspace-admin — exactly Render's BILLING role — while staying denied every resource mutation and sensitive read. Before w1/m60 the relation was modelled in `model.fga` but had **no Go consumer** (billing verbs gated on admin-only `can_manage`), so the role's one distinguishing power was inert; the fix is the last modelled-but-dead relation gaining its consumer ([ADR012-auth.md](ADR012-auth.md), [ADR040-billing-metronome.md](ADR040-billing-metronome.md)).
 
 ### Roles are plan-gated (w6/m12)
 

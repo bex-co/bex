@@ -94,6 +94,7 @@ const (
 	RelCanManageKeys    = "can_manage_keys"     // developer and up: workspace API keys
 	RelCanManageSSHKeys = "can_manage_ssh_keys" // any workspace member: their own SSH public keys
 	RelCanManage        = "can_manage"          // admin only: manage the workspace itself (rename/delete)
+	RelCanManageBilling = "can_manage_billing"  // billing or admin: customer-billing setup/portal (Render's BILLING role)
 
 	DefaultWorkspace = "workspace:default"
 	// DefaultTenant is the tenant/workspace id used when no control-plane tenant

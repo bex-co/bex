@@ -287,7 +287,7 @@ const enUsage: Record<string, TranslationEntry> = {
   },
   "usage.billingUnavailable": {
     message:
-      "Billing onboarding is unavailable or you do not have workspace-admin access.",
+      "Billing onboarding is unavailable or you do not have billing access (billing role or admin).",
     description: "Degraded or unauthorized billing onboarding state",
   },
   "usage.billingCheckoutError": {

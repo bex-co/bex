@@ -181,8 +181,10 @@ func (s *Service) authorize(ctx context.Context, workspaceID string) (context.Co
 		ctx = core.WithWorkspace(ctx, workspaceID)
 	}
 	// Billing setup and hosted-session links expose organization-level financial
-	// controls, so m51 intentionally requires the workspace-admin relation.
-	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
+	// controls, gated on the dedicated can_manage_billing relation — held by
+	// Render's BILLING role and by admin (model.fga: `billing or admin`), so a
+	// billing-role member manages billing without workspace-admin (w1/m60).
+	if err := s.Authorize(ctx, core.RelCanManageBilling); err != nil {
 		return ctx, "", err
 	}
 	if s.Provider == nil {

@@ -39,13 +39,14 @@ import (
 // workspaceRoles are the five member roles model.fga's workspace type defines.
 var workspaceRoles = []string{"viewer", "contributor", "developer", "admin", "billing"}
 
-// modelRelations are the nine workspace-derived permissions model.fga defines.
-// Eight are checked by verbs today; can_manage_billing is modelled but currently
-// unused (billing verbs gate on can_manage — admin — see the note on billingRole).
+// modelRelations are the nine workspace-derived permissions model.fga defines,
+// every one now checked by at least one verb: can_manage_billing gained its Go
+// consumer in w1/m60 — the billing verbs (Status/Checkout/Portal) gate on it, so
+// Render's BILLING role reaches billing management (billing or admin).
 var modelRelations = []string{
 	core.RelCanView, core.RelCanViewLogs, core.RelCanOperate, core.RelCanCreate,
 	core.RelCanViewSensitive, core.RelCanManageKeys, core.RelCanManageSSHKeys,
-	core.RelCanManage, "can_manage_billing",
+	core.RelCanManage, core.RelCanManageBilling,
 }
 
 // roleGrants is the pinned role→relation grant table, the executable form of
@@ -63,8 +64,8 @@ var roleGrants = map[string]map[string]bool{
 		core.RelCanManageSSHKeys),
 	"admin": set(core.RelCanView, core.RelCanViewLogs, core.RelCanOperate,
 		core.RelCanCreate, core.RelCanViewSensitive, core.RelCanManageKeys,
-		core.RelCanManageSSHKeys, core.RelCanManage, "can_manage_billing"),
-	"billing": set(core.RelCanView, core.RelCanManageSSHKeys, "can_manage_billing"),
+		core.RelCanManageSSHKeys, core.RelCanManage, core.RelCanManageBilling),
+	"billing": set(core.RelCanView, core.RelCanManageSSHKeys, core.RelCanManageBilling),
 }
 
 func set(vals ...string) map[string]bool {
@@ -322,12 +323,16 @@ var representativeVerbRelations = map[string]string{
 	"*deploys.Service.GetDeployHook":           core.RelCanViewSensitive,
 	// can_manage_keys — developer and up (workspace API keys).
 	"*apikeys.Service.CreateAPIKey": core.RelCanManageKeys,
-	// can_manage — admin only (workspace/members/billing/git settings).
+	// can_manage — admin only (workspace/members/git settings).
 	"*audit.Service.List":         core.RelCanManage,
 	"*members.Service.Invite":     core.RelCanManage,
 	"*members.Service.ChangeRole": core.RelCanManage,
 	"*github.Service.Connect":     core.RelCanManage,
-	"*billing.Service.Checkout":   core.RelCanManage,
+	// can_manage_billing — billing or admin (Render's BILLING role): every billing
+	// verb funnels through billing.authorize(), so all three gate on it (w1/m60).
+	"*billing.Service.Status":   core.RelCanManageBilling,
+	"*billing.Service.Checkout": core.RelCanManageBilling,
+	"*billing.Service.Portal":   core.RelCanManageBilling,
 	// can_manage_ssh_keys — every member role (their own SSH public keys).
 	"*sshkeys.Service.Create": core.RelCanManageSSHKeys,
 	"*sshkeys.Service.Delete": core.RelCanManageSSHKeys,
