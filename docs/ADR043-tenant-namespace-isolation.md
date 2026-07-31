@@ -53,6 +53,17 @@ This is reachability control, not data-loss prevention: an approved writable HTT
 
 Other communication is opt-in, namespace-scoped so an allow physically cannot cross tenants, and narrowed to named services/ports. Plan-tier caps move out of bex-api code (`BEX_MAX_*`) into per-namespace `ResourceQuota`/`LimitRange` — enforced by the API server, not bypassable by an application bug.
 
+**Per-plan quota dimensions (w7/m59, ADR045 Finding 4).** `quotaForPlan` (`lego/backend/internal/store/namespaces.go`) stamps each namespace's `tenant-quota` ResourceQuota with compute (cpu/memory requests+limits), `pods`, `count/jobs.batch`, the object-count caps that retire `BEX_MAX_*` (`count/{apps,databases,keyvalues}.app.bex.co`), and the storage/Service axis that bounds the cost-abuse vector:
+
+| dimension | free | paid | rationale |
+| --- | --- | --- | --- |
+| `requests.storage` | 20Gi | 5Ti | aggregate tenant disk ceiling. The CNPG disk-autoscaler grows PVCs automatically, so without this an autoscaling Postgres is an unbounded per-GB-second bill. Derived from the tier catalog's largest datastore floor (5 GB) × the plan's Postgres+Key Value count caps × a generous autoscale-headroom factor, kept far below "every datastore at the 16 TiB disk-autoscale ceiling" (~400 TiB for a paid namespace). |
+| `persistentvolumeclaims` | 4 | 200 | one PVC per datastore (HA replicas included) plus slack. |
+| `services.loadbalancers` | 0 | 0 | bex only ever creates ClusterIP Services in a tenant namespace; deny billable cloud LBs outright (defense-in-depth against an operator bug or compromised principal). |
+| `services.nodeports` | 0 | 0 | same — no NodePort exposure from a tenant namespace. |
+
+A quota-blocked storage grow is **observable and self-clearing**, never a silent failure. The Postgres disk-autoscaler patches the CNPG Cluster CR, not the PVC — a `requests.storage` rejection would surface only inside CNPG as a silently-unfulfilled resize — so it pre-flights the namespace headroom, sets a `DiskGrowthBlockedByQuota` Database condition, and backs off until headroom returns (a plan upgrade or freed storage). The KeyValue reconciler patches its own PVC, so it catches the `exceeded quota` Forbidden directly and surfaces a `StorageBlockedByQuota` status instead of hot-looping. **Non-disruptive rollout:** a ResourceQuota set below current usage never evicts — Kubernetes only rejects new or increased requests — so the NamespaceReconciler's converge-on-reconcile update path adds these dimensions to already-provisioned `tea-*` quotas without disturbing running workloads.
+
 ### D4 — scale-to-zero is preserved (namespace is logical, node pool is physical)
 
 The invariant that keeps "sleep = free" working: **per-tenant namespace (logical) + shared tenant node pool (physical)**. Pods from every `<ws>` bin-pack onto the same tenant nodes, so when all tenants sleep the pool scales to 0 exactly as today. The activator/operator/bex-api stay always-on in platform namespaces and manage wake across all `<ws>` namespaces (cluster-scoped or per-namespace RBAC). Namespace lifecycle is tied to **workspace** create/delete, not to App sleep/wake. The one thing that _would_ break scale-0 — confusing namespace with a per-tenant node pool — is explicitly rejected (see Alternatives).

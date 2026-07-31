@@ -353,32 +353,52 @@ func baseResourceQuota(namespace string, t Tenant) *corev1.ResourceQuota {
 }
 
 // quotaForPlan maps a workspace plan to aggregate resource caps: compute/pod
-// ceilings plus per-resource object counts. The count/<resource> caps push the
-// per-workspace service/Postgres/Key Value limits (the app-code BEX_MAX_*
-// counters) down to the API server, where a create past the cap is rejected by
-// admission and cannot be bypassed by an application bug (ADR043 D3, t004). The
-// free tier mirrors Render's Hobby anchors (25 services, 1 Postgres, 1 Key
-// Value); paid plans get a generous ceiling. Enforced only for CRs that land in
-// the namespace — i.e. once t002's per-tenant projection is enabled.
+// ceilings, per-resource object counts, and the storage/PVC/LoadBalancer axis
+// (ADR045 Finding 4, w7/m59). The count/<resource> caps push the per-workspace
+// service/Postgres/Key Value limits (the app-code BEX_MAX_* counters) down to the
+// API server, where a create past the cap is rejected by admission and cannot be
+// bypassed by an application bug (ADR043 D3, t004). The free tier mirrors Render's
+// Hobby anchors (25 services, 1 Postgres, 1 Key Value); paid plans get a generous
+// ceiling. Enforced only for CRs that land in the namespace — i.e. once t002's
+// per-tenant projection is enabled.
+//
+// requests.storage + persistentvolumeclaims bound aggregate tenant disk so an
+// autoscaling PVC (the CNPG Postgres disk-autoscaler grows PVCs automatically)
+// cannot inflate a namespace's storage — and its per-GB-second bill — without
+// limit. Derivation: the tier catalog's largest datastore floor (5 GB: postgres
+// basic-1gb / valkey standard) × the plan's Postgres+Key Value count caps, times
+// a generous autoscale-headroom factor, kept deliberately far below "every
+// datastore at the 16 TiB disk-autoscale ceiling" (which would be ~400 TiB for a
+// paid namespace). paid: 50 datastores × 5 GB × ~20 ≈ 5 TiB; free: 2 × 1 GB × ~10
+// = 20 GiB. persistentvolumeclaims covers each datastore's PVC (HA replicas
+// included) plus slack. services.loadbalancers/nodeports are zeroed because bex
+// only ever creates ClusterIP Services in a tenant namespace — a defense-in-depth
+// denial of billable cloud LBs against an operator bug or a compromised principal.
 func quotaForPlan(plan string) corev1.ResourceList {
 	// Paid default (mirrors the retired shared tenant-apps-quota, per tenant).
 	cpuReq, memReq, cpuLim, memLim, pods, jobs := "50", "100Gi", "100", "200Gi", "500", "250"
 	apps, dbs, kvs := "100", "25", "25"
+	storage, pvcs := "5Ti", "200"
 	switch plan {
 	case "", "free":
 		cpuReq, memReq, cpuLim, memLim, pods, jobs = "2", "4Gi", "4", "8Gi", "50", "25"
 		apps, dbs, kvs = "25", "1", "1" // Render Hobby anchors (root CLAUDE.md)
+		storage, pvcs = "20Gi", "4"
 	}
 	return corev1.ResourceList{
-		corev1.ResourceRequestsCPU:    resource.MustParse(cpuReq),
-		corev1.ResourceRequestsMemory: resource.MustParse(memReq),
-		corev1.ResourceLimitsCPU:      resource.MustParse(cpuLim),
-		corev1.ResourceLimitsMemory:   resource.MustParse(memLim),
-		corev1.ResourcePods:           resource.MustParse(pods),
-		"count/jobs.batch":            resource.MustParse(jobs),
-		"count/apps.app.bex.co":       resource.MustParse(apps),
-		"count/databases.app.bex.co":  resource.MustParse(dbs),
-		"count/keyvalues.app.bex.co":  resource.MustParse(kvs),
+		corev1.ResourceRequestsCPU:            resource.MustParse(cpuReq),
+		corev1.ResourceRequestsMemory:         resource.MustParse(memReq),
+		corev1.ResourceLimitsCPU:              resource.MustParse(cpuLim),
+		corev1.ResourceLimitsMemory:           resource.MustParse(memLim),
+		corev1.ResourcePods:                   resource.MustParse(pods),
+		corev1.ResourceRequestsStorage:        resource.MustParse(storage),
+		corev1.ResourcePersistentVolumeClaims: resource.MustParse(pvcs),
+		corev1.ResourceServicesLoadBalancers:  resource.MustParse("0"),
+		corev1.ResourceServicesNodePorts:      resource.MustParse("0"),
+		"count/jobs.batch":                    resource.MustParse(jobs),
+		"count/apps.app.bex.co":               resource.MustParse(apps),
+		"count/databases.app.bex.co":          resource.MustParse(dbs),
+		"count/keyvalues.app.bex.co":          resource.MustParse(kvs),
 	}
 }
 

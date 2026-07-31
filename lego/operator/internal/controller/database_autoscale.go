@@ -25,6 +25,10 @@ import (
 	"strings"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -46,6 +50,13 @@ const (
 	annotDiskAutoscaleUsed     = "app.bex.co/disk-autoscale-used-bytes"
 	annotDiskAutoscaleCapacity = "app.bex.co/disk-autoscale-capacity-bytes"
 	annotDiskSampleFailures    = "app.bex.co/disk-autoscale-sample-failures"
+
+	// conditionDiskGrowthBlockedByQuota is set on Database.status when a disk
+	// autoscale grow would exceed the namespace's requests.storage ResourceQuota
+	// (ADR045 Finding 4, w7/m59). It is an observable, self-clearing block: the
+	// operator backs off instead of stranding spec.storageGB ahead of a PVC that
+	// cannot grow, and growth resumes once quota headroom returns.
+	conditionDiskGrowthBlockedByQuota = "DiskGrowthBlockedByQuota"
 )
 
 // DatabaseDiskUsage is the fullest CNPG instance PVC's current kubelet sample.
@@ -166,7 +177,8 @@ func (r *DatabaseReconciler) applyDiskAutoscaling(ctx context.Context, db *appv1
 		if err := r.resetDiskSampleFailures(ctx, db); err != nil {
 			return 0, err
 		}
-		return 0, nil
+		// Autoscaling off (or suspended) — a lingering quota block is now moot.
+		return 0, r.clearDiskGrowthBlockedByQuota(ctx, db)
 	}
 	if r.DiskUsageReader == nil {
 		return databaseDiskAutoscaleInterval, nil
@@ -181,13 +193,37 @@ func (r *DatabaseReconciler) applyDiskAutoscaling(ctx context.Context, db *appv1
 		return databaseDiskAutoscaleInterval, err
 	}
 
-	_, currentGB := resolvePlan(db.Spec)
+	plan, currentGB := resolvePlan(db.Spec)
 	currentGB = max(currentGB, db.Status.AllocatedStorageGB)
 	now := r.databaseNow()
 	lastResize, _ := time.Parse(time.RFC3339, db.Annotations[annotDiskAutoscaleAt])
 	nextGB, grow := databaseDiskAutoscaleDecision(currentGB, usage, lastResize, now)
 	if !grow {
+		// Not growing this cycle — drop any stale quota-block condition.
+		return databaseDiskAutoscaleInterval, r.clearDiskGrowthBlockedByQuota(ctx, db)
+	}
+
+	// Pre-flight the namespace ResourceQuota before growing. The operator patches
+	// the CNPG Cluster CR, not the PVC — CNPG resizes the PVC — so a
+	// requests.storage quota rejection would surface only inside CNPG as a
+	// silently-unfulfilled resize, never as a Forbidden on our own write. Reading
+	// the quota's headroom here turns that silent failure into an observable
+	// Database condition and backs off, instead of stranding spec.storageGB ahead
+	// of a PVC that cannot grow. CNPG grows one PVC per instance, so the aggregate
+	// delta scales with the cluster size.
+	instances := int64(plan.Instances)
+	if db.Spec.HighAvailability && instances < 2 {
+		instances = 2
+	}
+	blocked, quotaDetail, quotaErr := r.diskGrowthQuotaBlocks(ctx, db.Namespace, int64(nextGB-currentGB)*instances)
+	if quotaErr != nil {
+		// Could not read the quota — back off and retry rather than growing blind
+		// (risking the silent CNPG resize failure) or hot-looping an error.
+		logf.FromContext(ctx).Info("database disk autoscaling quota preflight unavailable", "name", db.Name, "reason", quotaErr)
 		return databaseDiskAutoscaleInterval, nil
+	}
+	if blocked {
+		return databaseDiskAutoscaleInterval, r.setDiskGrowthBlockedByQuota(ctx, db, nextGB, quotaDetail)
 	}
 
 	before := db.DeepCopy()
@@ -216,7 +252,84 @@ func (r *DatabaseReconciler) applyDiskAutoscaling(ctx context.Context, db *appv1
 	}
 	logf.FromContext(ctx).Info("database disk autoscaled", "name", db.Name, "pvc", usage.PVC,
 		"fromGB", currentGB, "toGB", nextGB, "usagePercent", usage.ratio()*100)
-	return databaseDiskAutoscaleInterval, nil
+	return databaseDiskAutoscaleInterval, r.clearDiskGrowthBlockedByQuota(ctx, db)
+}
+
+// diskGrowthQuotaBlocks reports whether growing this namespace's aggregate
+// requests.storage by deltaGi GiB would exceed any ResourceQuota in it, reading
+// the live quotas the way the API server's admission does. A namespace with no
+// requests.storage cap — or no quota at all, e.g. the shared-namespace runtime
+// where per-tenant namespaces are disabled — never blocks, keeping those
+// deployments byte-identical.
+func (r *DatabaseReconciler) diskGrowthQuotaBlocks(ctx context.Context, namespace string, deltaGi int64) (bool, string, error) {
+	if deltaGi <= 0 {
+		return false, "", nil
+	}
+	var quotas corev1.ResourceQuotaList
+	if err := r.List(ctx, &quotas, client.InNamespace(namespace)); err != nil {
+		return false, "", err
+	}
+	delta := resource.NewQuantity(deltaGi*(1<<30), resource.BinarySI)
+	for i := range quotas.Items {
+		q := &quotas.Items[i]
+		hard, ok := q.Status.Hard[corev1.ResourceRequestsStorage]
+		if !ok {
+			// Status may not be populated yet (freshly created quota); fall back
+			// to the declared spec so a brand-new namespace still enforces.
+			hard, ok = q.Spec.Hard[corev1.ResourceRequestsStorage]
+		}
+		if !ok {
+			continue
+		}
+		used := q.Status.Used[corev1.ResourceRequestsStorage]
+		projected := used.DeepCopy()
+		projected.Add(*delta)
+		if projected.Cmp(hard) > 0 {
+			return true, fmt.Sprintf("ResourceQuota %q (requests.storage hard=%s, used=%s)", q.Name, hard.String(), used.String()), nil
+		}
+	}
+	return false, "", nil
+}
+
+// setDiskGrowthBlockedByQuota records the quota block on Database.status and
+// emits a single Warning event on the transition into blocked (subsequent
+// blocked reconciles only refresh the message, never re-alert).
+func (r *DatabaseReconciler) setDiskGrowthBlockedByQuota(ctx context.Context, db *appv1alpha1.Database, nextGB int32, quotaDetail string) error {
+	message := fmt.Sprintf("disk autoscaling to %d GB is blocked by the namespace storage quota: %s; growth resumes when quota headroom is available (plan upgrade or freed storage)", nextGB, quotaDetail)
+	prev := meta.FindStatusCondition(db.Status.Conditions, conditionDiskGrowthBlockedByQuota)
+	wasBlocked := prev != nil && prev.Status == metav1.ConditionTrue
+	statusBefore := db.DeepCopy()
+	meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
+		Type:               conditionDiskGrowthBlockedByQuota,
+		Status:             metav1.ConditionTrue,
+		Reason:             "ExceededNamespaceStorageQuota",
+		Message:            message,
+		ObservedGeneration: db.Generation,
+	})
+	if err := r.Status().Patch(ctx, db, client.MergeFrom(statusBefore)); err != nil {
+		return fmt.Errorf("persist disk growth quota block: %w", err)
+	}
+	if !wasBlocked && r.Recorder != nil {
+		r.Recorder.Eventf(db, "Warning", "DiskGrowthBlockedByQuota", "%s", message)
+	}
+	logf.FromContext(ctx).Info("database disk growth blocked by namespace quota", "name", db.Name, "toGB", nextGB, "quota", quotaDetail)
+	return nil
+}
+
+// clearDiskGrowthBlockedByQuota removes the block condition once growth is no
+// longer blocked; a no-op (no API write) when the condition is absent, so a
+// healthy Database is never touched.
+func (r *DatabaseReconciler) clearDiskGrowthBlockedByQuota(ctx context.Context, db *appv1alpha1.Database) error {
+	if meta.FindStatusCondition(db.Status.Conditions, conditionDiskGrowthBlockedByQuota) == nil {
+		return nil
+	}
+	statusBefore := db.DeepCopy()
+	if meta.RemoveStatusCondition(&db.Status.Conditions, conditionDiskGrowthBlockedByQuota) {
+		if err := r.Status().Patch(ctx, db, client.MergeFrom(statusBefore)); err != nil {
+			return fmt.Errorf("clear disk growth quota block: %w", err)
+		}
+	}
+	return nil
 }
 
 // recordDiskSampleFailure debounces transient/no-PVC startup noise. Only a

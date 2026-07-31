@@ -26,6 +26,7 @@ rules:
   - ""
   resources:
   - pods
+  - resourcequotas
   verbs:
   - get
   - list

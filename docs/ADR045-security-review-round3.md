@@ -24,7 +24,7 @@ In-window surfaces and their audit disposition (double-coverage of already-verif
 | 1 | Static | Cross-tenant host claim / traffic hijack unguarded on create/blueprint/deploy-manifest | **High** | **Fixed in place** |
 | 2 | Billing | Seal horizon vs. usage catch-up window decoupled — sub-48h seal lets an exported row be rewritten | Medium | **Fixed in place** |
 | 3 | Cross-cutting | `.env.example` omits 6 in-window Stripe vars (repo mirror-rule violation) | Medium | **Fixed in place** |
-| 4 | Tenant-ns | ResourceQuota omits storage/PVC/LoadBalancer caps (resource-exhaustion axis) | Medium | Follow-up → w3/m34 |
+| 4 | Tenant-ns | ResourceQuota omits storage/PVC/LoadBalancer caps (resource-exhaustion axis) | Medium | **Fixed in place** (w7/m59) |
 | 5 | Cross-cutting | No CI guard forbids a ClusterRoleBinding to secret-bearing `bex-tenant-api`/`-operator` | Low | **Fixed in place** |
 | 6 | Tenant-ns | Toggling `BEX_TENANT_SANDBOX_NAMESPACES` off prunes live `<ws>-sandbox` namespaces | Low | Follow-up |
 | 7 | Static | Publish Job holds the wildcard `bex-builder` pull credential | Low | Follow-up → w1/m57 |
@@ -52,7 +52,7 @@ No critical findings. Every plane was probed with sweep evidence; the clean resu
 
 **Clean (evidence).** Prune-on-delete lists namespaces by a two-label AND gate (`managed-by=bex-controlplane` AND non-empty `workspace`) and a `ListTenants` failure returns before prune — platform namespaces carry neither label and tenant ids are `tea-<xid>` (uncollidable), so prune can never select a platform namespace (`TestPruneNeverTouchesUnmanaged`). Identity labels the NetworkPolicy/quota select on live on the **namespace object** (tenant-unwritable) and the policies use an empty PodSelector (= all pods), so a tenant workload cannot escape default-deny or quota by forging pod labels. A fresh `<ws>` gets a both-directions default-deny NetworkPolicy applied before any workload can schedule (`namespaces.go:162–204,613–629`, `TestReconcileProvisionsHostingNamespaceWithBaseObjects`).
 
-**Finding 4 [Medium] — ResourceQuota omits storage/PVC/LoadBalancer caps.** `quotaForPlan` caps cpu/memory/pods/jobs and `count/{apps,databases,keyvalues}` but has no `requests.storage`, `persistentvolumeclaims`, `ephemeral-storage`, or `services.loadbalancers`/`nodeports` (`store/namespaces.go:363–383`). Each managed Database/KeyValue can request arbitrarily large (autoscaling) PVCs, and nothing bounds aggregate storage or billable cloud LBs per namespace. This becomes load-bearing exactly when w3/m34 makes this quota the **sole** enforcement path. Filed as a follow-up cross-referenced to w3/m34.
+**Finding 4 [Medium] — ResourceQuota omits storage/PVC/LoadBalancer caps.** `quotaForPlan` caps cpu/memory/pods/jobs and `count/{apps,databases,keyvalues}` but has no `requests.storage`, `persistentvolumeclaims`, `ephemeral-storage`, or `services.loadbalancers`/`nodeports` (`store/namespaces.go:363–383`). Each managed Database/KeyValue can request arbitrarily large (autoscaling) PVCs, and nothing bounds aggregate storage or billable cloud LBs per namespace. This becomes load-bearing exactly when w3/m34 makes this quota the **sole** enforcement path. **Fixed in place (w7/m59):** `quotaForPlan` now carries `requests.storage` (free 20Gi / paid 5Ti), `persistentvolumeclaims` (4 / 200), and `services.loadbalancers`/`services.nodeports` (0 for all plans), documented in [ADR043 §D3](ADR043-tenant-namespace-isolation.md#d3--zero-trust-east-west-enforcement-pushed-to-the-lowest-layer). A quota-blocked grow is surfaced observably and self-clears: the Postgres disk-autoscaler pre-flights headroom and sets a `DiskGrowthBlockedByQuota` condition (it patches the CNPG Cluster, not the PVC, so a rejection would otherwise strand `spec.storageGB`), while the KeyValue reconciler catches the `exceeded quota` Forbidden on its own PVC resize and surfaces `StorageBlockedByQuota` instead of hot-looping. The `ephemeral-storage` dimension and LimitRange Min/Max (Finding 10) remain accepted risk.
 
 **Finding 6 [Low] — Sandbox-toggle prune reaps live namespaces.** With `BEX_TENANT_SANDBOX_NAMESPACES` off, `ReconcileOnce` omits `<ws>-sandbox` from the desired set, so `pruneOrphans` deletes a still-live sandbox namespace (keying on config state, not workspace existence). Operator-controlled + monotonic in practice; filed as a follow-up.
 
@@ -74,7 +74,7 @@ No critical findings. Every plane was probed with sweep evidence; the clean resu
 
 | Finding | Severity | Owner / cross-ref |
 | --- | --- | --- |
-| 4 — quota storage/PVC/LB caps | Medium | **w3/m34** (makes the quota the sole enforcement path) |
+| 4 — quota storage/PVC/LB caps | Medium | **Fixed in place (w7/m59)**; w3/m34 later makes the quota the sole enforcement path |
 | 7 — repo-scope the publish-Job pull credential | Low | **w1/m57** (already re-mints it; scope it down there) |
 | 6 — sandbox-toggle prune reaps live namespaces | Low | new note `w7/011` |
 | 8 — completeness guard for outside-gate routes | Low | new note `w7/012` |

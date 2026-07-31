@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"strconv"
 	"testing"
@@ -27,15 +28,18 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -311,6 +315,62 @@ func TestKeyValuePVCExpansionAndStorageClassFailure(t *testing.T) {
 				t.Fatalf("failure reason = %q", state.reason)
 			}
 		})
+	}
+}
+
+// TestKeyValuePVCExpansionBlockedByNamespaceQuota proves a namespace
+// requests.storage quota rejection on the KeyValue PVC resize surfaces as an
+// observable, backed-off status rather than a hot-looping reconcile error
+// (ADR045 Finding 4, w7/m59).
+func TestKeyValuePVCExpansionBlockedByNamespaceQuota(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "quota-kv", Namespace: "tea-kv", Generation: 2},
+		Spec:       appv1alpha1.KeyValueSpec{Plan: "standard"},
+		Status:     appv1alpha1.KeyValueStatus{AllocatedStorageGB: 1},
+	}
+	sts := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace}}
+	pvc := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{Name: keyValuePVCName(kv.Name), Namespace: kv.Namespace},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			StorageClassName: ptr(kvStorageClass),
+			Resources: corev1.VolumeResourceRequirements{Requests: corev1.ResourceList{
+				corev1.ResourceStorage: resource.MustParse("1Gi"),
+			}},
+		},
+		Status: corev1.PersistentVolumeClaimStatus{
+			Phase:    corev1.ClaimBound,
+			Capacity: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
+		},
+	}
+	expandable := true
+	sc := &storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{Name: kvStorageClass}, AllowVolumeExpansion: &expandable}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv, pvc, sc).
+		WithInterceptorFuncs(interceptor.Funcs{
+			Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+				if _, ok := obj.(*corev1.PersistentVolumeClaim); ok {
+					return apierrors.NewForbidden(schema.GroupResource{Resource: "persistentvolumeclaims"}, obj.GetName(),
+						fmt.Errorf("exceeded quota: tenant-quota, requested: requests.storage=5Gi, used: requests.storage=1Gi, limited: requests.storage=2Gi"))
+				}
+				return c.Patch(ctx, obj, patch, opts...)
+			},
+		}).Build()
+	r := &KeyValueReconciler{Client: cl, Scheme: scheme}
+
+	state, err := r.reconcileKeyValueStorage(context.Background(), kv, sts, 5)
+	if err != nil {
+		t.Fatalf("quota-blocked resize returned a bare error (should surface + back off): %v", err)
+	}
+	if !state.failed || state.reason != "StorageBlockedByQuota" {
+		t.Fatalf("state = %+v, want a failed StorageBlockedByQuota", state)
+	}
+	if state.requeue != kvStorageFailureRequeue {
+		t.Fatalf("requeue = %s, want the storage-failure backoff", state.requeue)
+	}
+	if c := meta.FindStatusCondition(kv.Status.Conditions, "StorageReady"); c == nil || c.Reason != "StorageBlockedByQuota" {
+		t.Fatalf("StorageReady condition = %+v, want reason StorageBlockedByQuota", c)
 	}
 }
 

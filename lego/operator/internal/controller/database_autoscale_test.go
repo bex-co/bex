@@ -27,6 +27,9 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -232,6 +235,12 @@ func TestApplyDatabaseDiskAutoscalingPersistsOneResizeEventAndStatus(t *testing.
 	if err := appv1alpha1.AddToScheme(scheme); err != nil {
 		t.Fatal(err)
 	}
+	// corev1 mirrors the manager's real scheme so the autoscaler's quota
+	// pre-flight (a ResourceQuota List) can run; without it the List errors and
+	// the grow is skipped.
+	if err := corev1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "dpg-autoscale", Namespace: "default"},
 		Spec: appv1alpha1.DatabaseSpec{
@@ -328,6 +337,174 @@ func TestApplyDatabaseDiskAutoscalingDisabledNeverReadsOrResizes(t *testing.T) {
 	}
 	if got.Spec.StorageGB != 10 {
 		t.Fatalf("disabled storageGB = %d, want 10", got.Spec.StorageGB)
+	}
+}
+
+// TestDiskGrowthQuotaBlocks exercises the pre-flight headroom check directly:
+// no quota / no storage cap / ample headroom never blocks; a grow past the
+// remaining requests.storage headroom blocks (ADR045 Finding 4, w7/m59).
+func TestDiskGrowthQuotaBlocks(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := corev1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	withStorage := func(hard, used string) *corev1.ResourceQuota {
+		st := corev1.ResourceQuotaStatus{Hard: corev1.ResourceList{}, Used: corev1.ResourceList{}}
+		if hard != "" {
+			st.Hard[corev1.ResourceRequestsStorage] = resource.MustParse(hard)
+		}
+		if used != "" {
+			st.Used[corev1.ResourceRequestsStorage] = resource.MustParse(used)
+		}
+		return &corev1.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "tenant-quota", Namespace: "tea-x"}, Status: st}
+	}
+	tests := []struct {
+		name    string
+		quota   *corev1.ResourceQuota
+		deltaGi int64
+		want    bool
+	}{
+		{"no quota at all", nil, 5, false},
+		{"headroom fits", withStorage("100Gi", "10Gi"), 5, false},
+		{"grow exceeds headroom", withStorage("12Gi", "10Gi"), 5, true},
+		{"quota without a storage cap", &corev1.ResourceQuota{ObjectMeta: metav1.ObjectMeta{Name: "tenant-quota", Namespace: "tea-x"}}, 5, false},
+		{"spec-hard fallback before status populated", &corev1.ResourceQuota{
+			ObjectMeta: metav1.ObjectMeta{Name: "tenant-quota", Namespace: "tea-x"},
+			Spec:       corev1.ResourceQuotaSpec{Hard: corev1.ResourceList{corev1.ResourceRequestsStorage: resource.MustParse("3Gi")}},
+		}, 5, true},
+		{"zero delta never blocks", withStorage("1Gi", "1Gi"), 0, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := fake.NewClientBuilder().WithScheme(scheme)
+			if tt.quota != nil {
+				b = b.WithObjects(tt.quota)
+			}
+			r := &DatabaseReconciler{Client: b.Build()}
+			blocked, detail, err := r.diskGrowthQuotaBlocks(context.Background(), "tea-x", tt.deltaGi)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if blocked != tt.want {
+				t.Fatalf("blocked = %v (%q), want %v", blocked, detail, tt.want)
+			}
+			if blocked && detail == "" {
+				t.Fatal("a block must carry a quota detail message")
+			}
+		})
+	}
+}
+
+// TestDatabaseDiskAutoscaleBlockedByNamespaceQuota proves the autoscaler surfaces
+// a quota-blocked grow on Database.status and backs off without stranding
+// spec.storageGB, then resumes once headroom returns (ADR045 Finding 4, w7/m59).
+func TestDatabaseDiskAutoscaleBlockedByNamespaceQuota(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := corev1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-quota", Namespace: "tea-quota"},
+		Spec:       appv1alpha1.DatabaseSpec{Plan: "free", StorageGB: 10, DiskAutoscaling: true},
+		Status:     appv1alpha1.DatabaseStatus{Phase: appv1alpha1.DBPhaseReady},
+	}
+	// 10 GiB used, 12 GiB hard — no room for the +5 GiB grow to 15 GiB.
+	quota := &corev1.ResourceQuota{
+		ObjectMeta: metav1.ObjectMeta{Name: "tenant-quota", Namespace: "tea-quota"},
+		Spec:       corev1.ResourceQuotaSpec{Hard: corev1.ResourceList{corev1.ResourceRequestsStorage: resource.MustParse("12Gi")}},
+		Status: corev1.ResourceQuotaStatus{
+			Hard: corev1.ResourceList{corev1.ResourceRequestsStorage: resource.MustParse("12Gi")},
+			Used: corev1.ResourceList{corev1.ResourceRequestsStorage: resource.MustParse("10Gi")},
+		},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).
+		WithStatusSubresource(&appv1alpha1.Database{}).WithObjects(db, quota).Build()
+	recorder := record.NewFakeRecorder(10)
+	now := time.Date(2026, 7, 31, 12, 0, 0, 0, time.UTC)
+	r := &DatabaseReconciler{
+		Client: cl, Scheme: scheme, Recorder: recorder, Now: func() time.Time { return now },
+		DiskUsageReader: func(context.Context, string, string) (DatabaseDiskUsage, error) {
+			return DatabaseDiskUsage{PVC: "dpg-quota-1", UsedBytes: 9, CapacityBytes: 10}, nil
+		},
+	}
+	key := client.ObjectKeyFromObject(db)
+	apply := func() appv1alpha1.Database {
+		t.Helper()
+		var current appv1alpha1.Database
+		if err := cl.Get(context.Background(), key, &current); err != nil {
+			t.Fatal(err)
+		}
+		requeue, err := r.applyDiskAutoscaling(context.Background(), &current)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if requeue != databaseDiskAutoscaleInterval {
+			t.Fatalf("requeue = %s, want the autoscale interval", requeue)
+		}
+		if err := cl.Get(context.Background(), key, &current); err != nil {
+			t.Fatal(err)
+		}
+		return current
+	}
+
+	blocked := apply()
+	if blocked.Spec.StorageGB != 10 {
+		t.Fatalf("quota-blocked grow still bumped storage to %d GB", blocked.Spec.StorageGB)
+	}
+	cond := meta.FindStatusCondition(blocked.Status.Conditions, conditionDiskGrowthBlockedByQuota)
+	if cond == nil || cond.Status != metav1.ConditionTrue || cond.Reason != "ExceededNamespaceStorageQuota" {
+		t.Fatalf("block condition = %+v", cond)
+	}
+	select {
+	case ev := <-recorder.Events:
+		if !strings.Contains(ev, "Warning DiskGrowthBlockedByQuota") {
+			t.Fatalf("event = %q", ev)
+		}
+	default:
+		t.Fatal("expected a DiskGrowthBlockedByQuota warning event")
+	}
+
+	// A second blocked reconcile must not re-alert (transition-only event).
+	_ = apply()
+	select {
+	case ev := <-recorder.Events:
+		t.Fatalf("duplicate block event on a steady-state block: %q", ev)
+	default:
+	}
+
+	// Free the quota headroom → growth resumes and the block condition clears.
+	var fresh corev1.ResourceQuota
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(quota), &fresh); err != nil {
+		t.Fatal(err)
+	}
+	fresh.Status.Hard[corev1.ResourceRequestsStorage] = resource.MustParse("1Ti")
+	if err := cl.Update(context.Background(), &fresh); err != nil {
+		t.Fatal(err)
+	}
+	grown := apply()
+	if grown.Spec.StorageGB != 15 {
+		t.Fatalf("grow did not resume after quota freed: %d GB", grown.Spec.StorageGB)
+	}
+	if meta.FindStatusCondition(grown.Status.Conditions, conditionDiskGrowthBlockedByQuota) != nil {
+		t.Fatal("block condition was not cleared after a successful grow")
+	}
+	var sawResize bool
+	for {
+		select {
+		case ev := <-recorder.Events:
+			if strings.Contains(ev, "DiskAutoscaled") {
+				sawResize = true
+			}
+			continue
+		default:
+		}
+		break
+	}
+	if !sawResize {
+		t.Fatal("expected a DiskAutoscaled event once the quota freed")
 	}
 }
 
