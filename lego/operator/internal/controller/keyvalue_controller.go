@@ -729,6 +729,23 @@ func (r *KeyValueReconciler) reconcileKeyValueStorage(ctx context.Context, kv *a
 		}
 		pvc.Spec.Resources.Requests[corev1.ResourceStorage] = resource.MustParse(fmt.Sprintf("%dGi", desiredGB))
 		if err := r.Patch(ctx, pvc, client.MergeFrom(before)); err != nil {
+			// Unlike Postgres (whose PVC CNPG owns, so the operator pre-flights the
+			// quota), the KeyValue reconciler patches the PVC itself — a namespace
+			// requests.storage quota rejection therefore reaches us directly as a
+			// Forbidden. Surface it and back off instead of hot-looping a bare error
+			// (ADR045 Finding 4, w7/m59); the resize resumes once quota headroom
+			// returns. This grow seam is user-initiated (a plan/storage change), not
+			// an autoscale loop, so there is no periodic-retry storm to debounce.
+			if isQuotaExceeded(err) {
+				state := keyValueStorageState{
+					failed:  true,
+					reason:  "StorageBlockedByQuota",
+					message: fmt.Sprintf("Valkey PVC expansion to %d GB is blocked by the namespace storage quota; growth resumes when quota headroom is available", desiredGB),
+					requeue: kvStorageFailureRequeue,
+				}
+				setKeyValueStorageCondition(kv, state)
+				return state, nil
+			}
 			return keyValueStorageState{}, err
 		}
 		requestedGB = desiredGB
@@ -754,6 +771,14 @@ func (r *KeyValueReconciler) reconcileKeyValueStorage(ctx context.Context, kv *a
 	state := keyValueStorageState{ready: true, reason: "StorageProvisioned", message: fmt.Sprintf("Valkey PVC capacity is %d GB", capacityGB)}
 	setKeyValueStorageCondition(kv, state)
 	return state, nil
+}
+
+// isQuotaExceeded reports whether err is an API-server ResourceQuota rejection —
+// a Forbidden carrying "exceeded quota". Used by the KeyValue storage grow path
+// (which patches its own PVC) to surface a quota block as a backed-off status
+// instead of a hot-looping reconcile error (ADR045 Finding 4, w7/m59).
+func isQuotaExceeded(err error) bool {
+	return err != nil && apierrors.IsForbidden(err) && strings.Contains(err.Error(), "exceeded quota")
 }
 
 func setKeyValueStorageCondition(kv *appv1alpha1.KeyValue, state keyValueStorageState) {

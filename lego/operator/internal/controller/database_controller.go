@@ -417,6 +417,7 @@ type DatabaseReconciler struct {
 // +kubebuilder:rbac:groups=traefik.io,resources=ingressroutetcps;middlewaretcps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;delete
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch;update
+// +kubebuilder:rbac:groups="",resources=resourcequotas,verbs=get;list;watch
 // Secrets access is namespace-scoped to the apps namespace via deploy/gitops/base/operator-apps-rbac.yaml.
 
 // upsertOwned creates-or-updates an owned unstructured object (gvk/name in the

@@ -24,6 +24,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -198,6 +199,103 @@ func TestResourceQuotaCarriesPlanScopedObjectCounts(t *testing.T) {
 	}
 	if got := countCap(paid.ID, "count/apps.app.bex.co"); got != 100 {
 		t.Errorf("paid apps cap = %d, want 100", got)
+	}
+}
+
+// TestResourceQuotaCarriesStoragePVCandLBCaps pins the storage/PVC/LoadBalancer
+// axis (ADR045 Finding 4, w7/m59): every provisioned namespace's quota bounds
+// requests.storage + persistentvolumeclaims and zero-caps billable cloud
+// Services. A dropped dimension turns this red.
+func TestResourceQuotaCarriesStoragePVCandLBCaps(t *testing.T) {
+	ctx := context.Background()
+	r, store, cl := newTestNamespaceReconciler(t, false)
+	free, _ := store.CreateTenant(ctx, "hobby", "free")
+	paid, _ := store.CreateTenant(ctx, "team", "pro")
+	if err := r.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	quotaFor := func(nsID string) corev1.ResourceQuota {
+		var q corev1.ResourceQuota
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: nsID, Name: "tenant-quota"}, &q); err != nil {
+			t.Fatalf("quota for %s: %v", nsID, err)
+		}
+		return q
+	}
+	hard := func(q corev1.ResourceQuota, res corev1.ResourceName) resource.Quantity {
+		v, ok := q.Spec.Hard[res]
+		if !ok {
+			t.Fatalf("quota %s missing cap %s", q.Namespace, res)
+		}
+		return v
+	}
+
+	for _, tc := range []struct {
+		nsID        string
+		wantStorage string
+		wantPVCs    int64
+	}{
+		{free.ID, "20Gi", 4},
+		{paid.ID, "5Ti", 200},
+	} {
+		q := quotaFor(tc.nsID)
+		if got := hard(q, corev1.ResourceRequestsStorage); got.String() != tc.wantStorage {
+			t.Errorf("%s requests.storage = %s, want %s", tc.nsID, got.String(), tc.wantStorage)
+		}
+		if got := hard(q, corev1.ResourcePersistentVolumeClaims); got.Value() != tc.wantPVCs {
+			t.Errorf("%s persistentvolumeclaims = %d, want %d", tc.nsID, got.Value(), tc.wantPVCs)
+		}
+		// Billable cloud Services are denied outright in every tenant namespace.
+		if got := hard(q, corev1.ResourceServicesLoadBalancers); got.Value() != 0 {
+			t.Errorf("%s services.loadbalancers = %d, want 0", tc.nsID, got.Value())
+		}
+		if got := hard(q, corev1.ResourceServicesNodePorts); got.Value() != 0 {
+			t.Errorf("%s services.nodeports = %d, want 0", tc.nsID, got.Value())
+		}
+	}
+}
+
+// TestResourceQuotaConvergesExistingNamespaceToNewShape proves the reconciler's
+// update path rewrites an already-provisioned quota that predates the
+// storage/PVC/LB dimensions — the non-disruptive rollout t003 relies on (a
+// create-only reconcile would leave old namespaces uncapped, turning this red).
+func TestResourceQuotaConvergesExistingNamespaceToNewShape(t *testing.T) {
+	ctx := context.Background()
+	r, store, cl := newTestNamespaceReconciler(t, false)
+	tn, _ := store.CreateTenant(ctx, "legacy", "free")
+
+	// Seed a managed quota in the pre-m59 shape (pods only, no storage axis).
+	stale := &corev1.ResourceQuota{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "tenant-quota",
+			Namespace: WorkspaceNamespace(tn.ID),
+			Labels:    managedLabels(tn.ID),
+		},
+		Spec: corev1.ResourceQuotaSpec{Hard: corev1.ResourceList{
+			corev1.ResourcePods: resource.MustParse("50"),
+		}},
+	}
+	// The namespace must exist first for the quota to live in it.
+	if err := cl.Create(ctx, workspaceNamespaceObject(WorkspaceNamespace(tn.ID), tn, RegimeHosting)); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Create(ctx, stale); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := r.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	var q corev1.ResourceQuota
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: WorkspaceNamespace(tn.ID), Name: "tenant-quota"}, &q); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := q.Spec.Hard[corev1.ResourceRequestsStorage]; !ok {
+		t.Error("reconcile did not converge existing quota to the new storage shape")
+	}
+	if _, ok := q.Spec.Hard[corev1.ResourceServicesLoadBalancers]; !ok {
+		t.Error("reconcile did not add the services.loadbalancers cap to an existing quota")
 	}
 }
 
