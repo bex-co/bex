@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Card, CardContent, CardHeader } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { PlanPickerGridSkeleton } from "@/common/components/detail-skeletons";
 import { InstanceTypePicker } from "@/features/services/components/instance-type-picker";
 import { NonStaticRoute } from "@/features/services/components/non-static-route";
 import { useServer } from "@/features/services/hooks/use-server";
@@ -23,7 +25,22 @@ export function ServicePlanPage() {
   const { service, loading } = useServer(serviceId);
 
   if (!service && loading) {
-    return <Skeleton className="h-64 w-full" />;
+    // Mirror InstanceTypePicker's outer shape — titled card, tier grid, footer
+    // actions — so the pre-query load reads as the picker it becomes.
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-5 w-48" />
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <PlanPickerGridSkeleton />
+          <div className="flex justify-end gap-2 border-t pt-4">
+            <Skeleton className="h-9 w-20" />
+            <Skeleton className="h-9 w-20" />
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (

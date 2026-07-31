@@ -10,7 +10,10 @@ import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
 import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { MetadataList } from "@/common/components/metadata-list";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import {
+  CardSkeleton,
+  MetadataListSkeleton,
+} from "@/common/components/detail-skeletons";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { formatRelativeAge } from "@/features/services/lib/format";
 import { useKeyValue } from "@/features/keyvalue/hooks/use-key-value";
@@ -149,7 +152,12 @@ export function KeyValueDetailPage() {
               />
             </>
           ) : (
-            <Skeleton className="h-64 w-full" />
+            <>
+              <MetadataListSkeleton rows={8} />
+              <CardSkeleton rows={3} />
+              <CardSkeleton rows={2} />
+              <CardSkeleton rows={4} />
+            </>
           )}
         </div>
       </div>
