@@ -41,4 +41,18 @@ if ! grep -Fq 'GITLEAKS_VERSION: 8.30.1' .github/workflows/deploy.yml \
   exit 1
 fi
 
-echo "PASS: GitHub Action refs, explicit Node runtimes, and Gitleaks scan are current"
+# w1/m59: a superseded deploy run must be skipped/neutralized (never red at the
+# write-back), and no image built when superseded pre-build. Pin the wiring so it
+# can't silently drift back to the old exit-1 path.
+if ! grep -Eq '^  check-supersession:' .github/workflows/deploy.yml \
+  || ! grep -Fq "needs.check-supersession.outputs.superseded != 'true'" .github/workflows/deploy.yml \
+  || [ "$(grep -cF 'bash scripts/deploy-superseded.sh "$GITHUB_SHA"' .github/workflows/deploy.yml)" -lt 2 ]; then
+  echo "FAIL: deploy.yml lost the w1/m59 supersession pre-check / write-back wiring (scripts/deploy-superseded.sh)" >&2
+  exit 1
+fi
+if [ "$(grep -cF "env.SUPERSEDED != 'true'" .github/workflows/deploy.yml)" -lt 4 ]; then
+  echo "FAIL: deploy.yml rollout steps must gate on env.SUPERSEDED so a mid-build supersession concludes neutral (w1/m59)" >&2
+  exit 1
+fi
+
+echo "PASS: GitHub Action refs, explicit Node runtimes, Gitleaks scan, and supersession wiring are current"
