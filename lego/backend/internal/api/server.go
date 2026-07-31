@@ -140,8 +140,20 @@ type Server struct {
 
 	// RateLimiter, when set, enforces per-caller token-bucket limits on the three
 	// auth-gated surfaces (REST, GraphQL, MCP). nil disables rate limiting. The
-	// webhook and healthz endpoints are intentionally exempt.
+	// healthz endpoint is intentionally exempt; the webhook intakes get their own
+	// WebhookRateLimiter below (they mount outside this gate).
 	RateLimiter *RateLimiter
+	// WebhookRateLimiter, when set, meters the two unauthenticated webhook intakes
+	// (POST /v1/webhooks/git, /v1/webhooks/stripe) with an IP-keyed token bucket so
+	// a flood sheds with 429 BEFORE the body read and HMAC/signature verification
+	// (w7/m60). These routes mount outside the auth gate, so the identity-keyed
+	// RateLimiter never sees them; a separate instance keeps a webhook flood from
+	// draining an IP's API budget and vice-versa. Requests here carry no Identity,
+	// so RateLimiter.callerKey degrades to pure IP keying. nil disables (the
+	// default is generous — see cmd/api). The device-flow routes have their own
+	// DeviceRateLimiter because they need the OAuth slow_down 429 dialect; a
+	// webhook sender only needs a plain 429 + Retry-After, so it reuses this one.
+	WebhookRateLimiter *RateLimiter
 	// MaxBodyBytes, when positive, caps non-GET request bodies at this many bytes,
 	// returning 413 for oversized payloads. 0 disables the check.
 	MaxBodyBytes int64
@@ -760,6 +772,21 @@ func (s *Server) features() []any {
 //	POST /graphql                              (auth)   GraphQL
 //	     /mcp                                  (auth)   MCP (streamable-http)
 func (s *Server) Handler() (http.Handler, error) {
+	mux, err := s.rootMux()
+	if err != nil {
+		return nil, err
+	}
+	return withSecurityHeaders(withBodyLimit(s.MaxBodyBytes)(withCORS(s.CORSOrigin, mux))), nil
+}
+
+// rootMux builds the composed top-level mux: the directly-mounted always-public
+// routes (healthz, the CLI device-flow routes, the two webhook intakes, deploy
+// hooks, RFC 9728 discovery) plus the three auth-gated wildcards (/v1/, /graphql,
+// /mcp). Split out of Handler() (which only adds the body-limit/CORS/security
+// wrappers) so the completeness guard (alwayspublic_guard_test.go, w7/m60) can
+// enumerate the raw mux and force every directly-mounted route to be a classified
+// always-public inventory entry — the CI census internal/api/CLAUDE.md documents.
+func (s *Server) rootMux() (*http.ServeMux, error) {
 	authGate, err := s.newAuthGate()
 	if err != nil {
 		return nil, err
@@ -787,15 +814,18 @@ func (s *Server) Handler() (http.Handler, error) {
 	cliAuth.RegisterPublic(mux)
 	// The git push webhook authenticates by HMAC signature, not the OAuth gate,
 	// so it mounts directly (ahead of the /v1/ wildcard — a more specific pattern
-	// wins in net/http's mux). A git host can't present a bearer token.
+	// wins in net/http's mux). A git host can't present a bearer token. The
+	// IP-keyed webhook limiter wraps the handler so a flood sheds with 429 before
+	// the body read + HMAC verification (w7/m60).
+	webhookLimit := s.webhookRateLimitMiddleware()
 	if s.Apps != nil {
-		mux.Handle("POST /v1/webhooks/git", &apps.GitWebhook{Svc: s.Apps, Secret: s.WebhookSecret, GitHubSecret: s.GitHubWebhookSecret})
+		mux.Handle("POST /v1/webhooks/git", webhookLimit(&apps.GitWebhook{Svc: s.Apps, Secret: s.WebhookSecret, GitHubSecret: s.GitHubWebhookSecret}))
 	}
 	// Stripe cannot present a bex bearer token; its timestamped HMAC signature
 	// is the route's authentication. The injected handler verifies it before
-	// decoding or acting on any event.
+	// decoding or acting on any event; the limiter sheds a flood ahead of that.
 	if s.StripeWebhook != nil {
-		mux.Handle("POST /v1/webhooks/stripe", s.StripeWebhook)
+		mux.Handle("POST /v1/webhooks/stripe", webhookLimit(s.StripeWebhook))
 	}
 	// Deploy hooks authenticate with the unguessable URL token itself. Mount the
 	// whole prefix outside OAuth so malformed credentials containing an extra
@@ -834,7 +864,7 @@ func (s *Server) Handler() (http.Handler, error) {
 		})
 	}
 
-	return withSecurityHeaders(withBodyLimit(s.MaxBodyBytes)(withCORS(s.CORSOrigin, mux))), nil
+	return mux, nil
 }
 
 // rateLimitMiddleware returns the rate-limiting middleware when a RateLimiter
@@ -844,6 +874,18 @@ func (s *Server) rateLimitMiddleware() func(http.Handler) http.Handler {
 		return func(h http.Handler) http.Handler { return h }
 	}
 	return s.RateLimiter.Middleware
+}
+
+// webhookRateLimitMiddleware returns the IP-keyed limiter that wraps the two
+// unauthenticated webhook intakes, or a no-op pass-through when disabled. It
+// runs OUTSIDE the auth gate, so RateLimiter.Middleware keys on IP (no Identity
+// is ever attached to a webhook request) — shedding a flood before the handler
+// reads the body or verifies the HMAC.
+func (s *Server) webhookRateLimitMiddleware() func(http.Handler) http.Handler {
+	if s.WebhookRateLimiter == nil {
+		return func(h http.Handler) http.Handler { return h }
+	}
+	return s.WebhookRateLimiter.Middleware
 }
 
 func (s *Server) newAuthGate() (*oryAuth, error) {
