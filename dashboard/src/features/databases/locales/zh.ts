@@ -1185,18 +1185,6 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "时间范围",
     description: "Managed Postgres log range filter label",
   },
-  "databases.logsRange1h": {
-    message: "最近 1 小时",
-    description: "Managed Postgres one-hour log range",
-  },
-  "databases.logsRange6h": {
-    message: "最近 6 小时",
-    description: "Managed Postgres six-hour log range",
-  },
-  "databases.logsRange24h": {
-    message: "最近 24 小时",
-    description: "Managed Postgres 24-hour log range",
-  },
   "databases.logsInstanceLabel": {
     message: "数据库实例",
     description: "Managed Postgres log instance filter label",

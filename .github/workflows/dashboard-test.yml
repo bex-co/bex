@@ -44,3 +44,11 @@ jobs:
       - name: typecheck + lint + test
         working-directory: dashboard
         run: yarn typecheck && yarn lint && yarn test
+      # Production build (w5/034): typecheck+lint+test don't exercise the SSR
+      # production bundle, so an SSR-only break (e.g. the @ory/elements-react
+      # extensionless-import gotcha, dashboard/CLAUDE.md § SSR gotcha) used to
+      # pass PR CI and only surface post-merge in deploy.yml's image build. One
+      # step closes the gap pre-merge.
+      - name: production build
+        working-directory: dashboard
+        run: yarn build

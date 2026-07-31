@@ -1205,18 +1205,6 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Time range",
     description: "Managed Postgres log range filter label",
   },
-  "databases.logsRange1h": {
-    message: "Last hour",
-    description: "Managed Postgres one-hour log range",
-  },
-  "databases.logsRange6h": {
-    message: "Last 6 hours",
-    description: "Managed Postgres six-hour log range",
-  },
-  "databases.logsRange24h": {
-    message: "Last 24 hours",
-    description: "Managed Postgres 24-hour log range",
-  },
   "databases.logsInstanceLabel": {
     message: "Database instance",
     description: "Managed Postgres log instance filter label",

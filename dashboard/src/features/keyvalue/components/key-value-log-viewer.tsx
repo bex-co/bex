@@ -13,25 +13,26 @@ import { useDebounce } from "@/common/hooks/use-debounce";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { LogLineList } from "@/features/logs/components/log-line-list";
 import { useLogLabelValues } from "@/features/logs/hooks/use-log-label-values";
+import { RangeSelect } from "@/features/metrics/components/range-select";
 import {
-  type KeyValueLogFilters,
-  type KeyValueLogRange,
-  useKeyValueLogs,
-} from "../hooks/use-key-value-logs";
+  DEFAULT_DATASTORE_LOG_RANGE,
+  rangeWindow,
+} from "@/features/logs/lib/datastore-log-range";
+import { type RangeSelection } from "@/features/metrics/lib/range";
+import { useKeyValueLogs } from "../hooks/use-key-value-logs";
 
 const ALL_INSTANCES = "all";
 
 export function KeyValueLogViewer({ resource }: { resource: string }) {
   const { t } = useTranslations();
-  const [filters, setFilters] = useState<KeyValueLogFilters>({
-    range: "1h",
-    text: "",
-    instance: "",
-  });
-  const debouncedText = useDebounce(filters.text, 300);
+  const [range, setRange] = useState<RangeSelection>(DEFAULT_DATASTORE_LOG_RANGE);
+  const [text, setText] = useState("");
+  const [instance, setInstance] = useState("");
+  const debouncedText = useDebounce(text, 300);
+  const win = useMemo(() => rangeWindow(range), [range]);
   const queryFilters = useMemo(
-    () => ({ ...filters, text: debouncedText }),
-    [filters, debouncedText],
+    () => ({ ...win, text: debouncedText, instance }),
+    [win, debouncedText, instance],
   );
   const result = useKeyValueLogs(resource, queryFilters);
   const instances = useLogLabelValues(resource, "instance");
@@ -74,7 +75,7 @@ export function KeyValueLogViewer({ resource }: { resource: string }) {
         iconName="ScrollText"
         title={t("keyvalue.logsEmptyTitle")}
         description={
-          filters.text || filters.instance
+          text || instance
             ? t("keyvalue.logsEmptyFilteredBody")
             : t("keyvalue.logsEmptyBody")
         }
@@ -87,36 +88,16 @@ export function KeyValueLogViewer({ resource }: { resource: string }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Select
-          value={filters.range}
-          onValueChange={(range) =>
-            setFilters((current) => ({
-              ...current,
-              range: range as KeyValueLogRange,
-            }))
-          }
-        >
-          <SelectTrigger
-            className="w-40"
-            size="sm"
-            aria-label={t("keyvalue.logsRangeLabel")}
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="1h">{t("keyvalue.logsRange1h")}</SelectItem>
-            <SelectItem value="6h">{t("keyvalue.logsRange6h")}</SelectItem>
-            <SelectItem value="24h">{t("keyvalue.logsRange24h")}</SelectItem>
-          </SelectContent>
-        </Select>
+        <RangeSelect
+          range={range}
+          onRangeChange={setRange}
+          ariaLabel={t("keyvalue.logsRangeLabel")}
+        />
 
         <Select
-          value={filters.instance || ALL_INSTANCES}
-          onValueChange={(instance) =>
-            setFilters((current) => ({
-              ...current,
-              instance: instance === ALL_INSTANCES ? "" : instance,
-            }))
+          value={instance || ALL_INSTANCES}
+          onValueChange={(value) =>
+            setInstance(value === ALL_INSTANCES ? "" : value)
           }
         >
           <SelectTrigger
@@ -130,9 +111,9 @@ export function KeyValueLogViewer({ resource }: { resource: string }) {
             <SelectItem value={ALL_INSTANCES}>
               {t("keyvalue.logsAllInstances")}
             </SelectItem>
-            {instances.map((instance) => (
-              <SelectItem key={instance} value={instance}>
-                {instance}
+            {instances.map((inst) => (
+              <SelectItem key={inst} value={inst}>
+                {inst}
               </SelectItem>
             ))}
           </SelectContent>
@@ -141,13 +122,8 @@ export function KeyValueLogViewer({ resource }: { resource: string }) {
         <div className="relative min-w-56 flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            value={filters.text}
-            onChange={(event) =>
-              setFilters((current) => ({
-                ...current,
-                text: event.target.value,
-              }))
-            }
+            value={text}
+            onChange={(event) => setText(event.target.value)}
             placeholder={t("keyvalue.logsSearchPlaceholder")}
             aria-label={t("keyvalue.logsSearchPlaceholder")}
             className="pl-8"

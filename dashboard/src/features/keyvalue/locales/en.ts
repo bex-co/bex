@@ -552,18 +552,6 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Time range",
     description: "Accessible label for the log time-range select",
   },
-  "keyvalue.logsRange1h": {
-    message: "Last 1 hour",
-    description: "Log time range option",
-  },
-  "keyvalue.logsRange6h": {
-    message: "Last 6 hours",
-    description: "Log time range option",
-  },
-  "keyvalue.logsRange24h": {
-    message: "Last 24 hours",
-    description: "Log time range option",
-  },
   "keyvalue.logsInstanceLabel": {
     message: "Instance",
     description: "Accessible label for the log instance (pod) select",

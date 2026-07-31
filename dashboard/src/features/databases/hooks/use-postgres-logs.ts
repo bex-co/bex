@@ -4,10 +4,12 @@ import { LogsDocument } from "@/graphql/definitions";
 import { toLogLines } from "@/features/logs/lib/map";
 import type { LogLine } from "@/features/logs/types";
 
-export type PostgresLogRange = "1h" | "6h" | "24h";
-
+// The datastore Logs viewers share the service Logs/Metrics range ladder now
+// (w5/030), so their range control is the resolved [startTime, endTime] window
+// the shared RangeSelect produces — not a private 1h/6h/24h enum.
 export interface PostgresLogFilters {
-  range: PostgresLogRange;
+  startTime: string;
+  endTime: string;
   text: string;
   instance: string;
 }
@@ -20,38 +22,22 @@ export interface UsePostgresLogsResult {
   unauthorized: boolean;
 }
 
-const RANGE_MS: Record<PostgresLogRange, number> = {
-  "1h": 60 * 60 * 1000,
-  "6h": 6 * 60 * 60 * 1000,
-  "24h": 24 * 60 * 60 * 1000,
-};
-
 /**
  * Reads one managed Postgres resource through the same generic GraphQL logs
- * query used by services. Only the datastore contract's range, text, and
+ * query used by services. Only the datastore contract's window, text, and
  * instance filters are sent; no service/request filter is silently reused.
  */
 export function usePostgresLogs(
   resource: string,
   filters: PostgresLogFilters,
 ): UsePostgresLogsResult {
-  const window = useMemo(() => {
-    const end = new Date();
-    return {
-      startTime: new Date(
-        end.getTime() - RANGE_MS[filters.range],
-      ).toISOString(),
-      endTime: end.toISOString(),
-    };
-  }, [filters.range]);
-
   const { data, loading, error } = useQuery(LogsDocument, {
     variables: {
       resource,
       text: filters.text || undefined,
       instance: filters.instance ? [filters.instance] : undefined,
-      startTime: window.startTime,
-      endTime: window.endTime,
+      startTime: filters.startTime,
+      endTime: filters.endTime,
       limit: 100,
     },
     fetchPolicy: "cache-and-network",

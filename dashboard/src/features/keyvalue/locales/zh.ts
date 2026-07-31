@@ -545,18 +545,6 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "时间范围",
     description: "Accessible label for the log time-range select",
   },
-  "keyvalue.logsRange1h": {
-    message: "最近 1 小时",
-    description: "Log time range option",
-  },
-  "keyvalue.logsRange6h": {
-    message: "最近 6 小时",
-    description: "Log time range option",
-  },
-  "keyvalue.logsRange24h": {
-    message: "最近 24 小时",
-    description: "Log time range option",
-  },
   "keyvalue.logsInstanceLabel": {
     message: "实例",
     description: "Accessible label for the log instance (pod) select",
