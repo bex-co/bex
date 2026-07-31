@@ -300,6 +300,26 @@ if kubectl kustomize lego/operator/config/default | yq -e '
   fail=1
 fi
 
+# w7/m58: universal platform-pod hardening. bex-system is deliberately
+# privileged-PSS (egress-meter needs BPF/NET_ADMIN caps + hostNetwork), so there
+# is NO namespace PodSecurity backstop — the per-pod securityContext is the only
+# control. Assert EVERY platform Deployment/DaemonSet carries the hardened
+# baseline: pod-level runAsNonRoot:true + seccompProfile RuntimeDefault, and each
+# container allowPrivilegeEscalation:false + readOnlyRootFilesystem:true +
+# capabilities.drop [ALL]. Enumerated over the rendered tree (not hand-picked), so
+# a newly added component is covered automatically, and fail-closed on a MISSING
+# field — exactly the static-server gap this milestone closed. Sole exemption:
+# bex-egress-meter (deliberately privileged for post-policy L3 metering, checked
+# separately below).
+platform_hardening_guard="$(cat "$(dirname "${BASH_SOURCE[0]}")/lib/platform-pod-hardening-guard.yq")"
+unhardened_pods="$(yq ea "$platform_hardening_guard" - <<<"$prod_operator_render" | sed '/^$/d' | sort -u | tr '\n' ' ')"
+if [ -n "$unhardened_pods" ]; then
+  echo "FAIL: platform workload(s) below the securityContext hardening baseline (w7/m58): ${unhardened_pods}" >&2
+  echo "      each non-exempt Deployment/DaemonSet needs pod runAsNonRoot:true + seccompProfile RuntimeDefault and" >&2
+  echo "      per-container allowPrivilegeEscalation:false + readOnlyRootFilesystem:true + capabilities.drop:[ALL]" >&2
+  fail=1
+fi
+
 # The production kernel requires CAP_SYS_ADMIN to create the meter's private
 # pin directory on Cilium's bpffs mount. Keep the complete set explicit: the
 # container drops ALL first and remains non-privileged, but omitting any one of

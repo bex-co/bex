@@ -13,6 +13,14 @@ spec:
         app.bex.co/component: kv-sni-proxy
     spec:
       serviceAccountName: kv-sni-proxy
+      # Platform-pod hardening parity (w7/m58): the pod already runs as non-root
+      # uid 65532 (container securityContext below); add the pod-level
+      # seccompProfile so it carries the full baseline like every other platform
+      # pod (runAsNonRoot is also restated at the pod level for the CI guard).
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       nodeSelector:
         bex.co/pool: platform
       tolerations:
