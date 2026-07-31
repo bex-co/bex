@@ -42,13 +42,15 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Skill layout consistency
         run: bash scripts/skill-layout-validate.sh
       - name: Retired platform paths remain absent
         run: bash scripts/platform-deprecations-validate.sh
-      - name: GitHub Actions Node 24 inventory
+      - name: GitHub Actions SHA-pin + inventory guard
         run: bash scripts/github-actions-validate.sh
+      - name: GitHub Actions guard self-test
+        run: bash scripts/github-actions-validate.test.sh
       - name: bao-init unit tests
         run: bash scripts/bao-init.test.sh
       - name: Official Key Value CLI verifier safety tests

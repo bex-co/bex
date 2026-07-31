@@ -56,7 +56,7 @@ jobs:
   render:
     runs-on: ubuntu-latest # ships kubectl, helm 3, and yq v4 preinstalled
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: install fga CLI # model.fga <-> model.json drift gate
         run: |
           curl -fsSL https://github.com/openfga/cli/releases/download/v0.7.17/fga_0.7.17_linux_amd64.tar.gz \

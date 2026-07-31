@@ -1,0 +1,38 @@
+# Dependabot config (w7/m65). Keeps two dependency surfaces fresh with automated
+# PRs: the SHA-pinned GitHub Actions (t001) and the dashboard's npm tree (which
+# had no update mechanism at all — Go is covered by the m62 govulncheck gate).
+#
+# Triage boundary: reviewing and merging the PRs Dependabot opens is w1/006's
+# lane (sub-hour alert triage), per the w7 README "Not in w7 (deliberate)" note —
+# this file only provides the config that produces them.
+#
+# github-actions interplay: Dependabot rewrites each `uses:` SHA pin AND its
+# trailing `# vX.Y.Z` comment. Such a PR turns `scripts/github-actions-validate.sh`
+# RED until `expected_actions` is bumped to the new SHA — that is intended
+# fail-closed behavior: an actions bump needs a human to review the upstream
+# action.yml/permissions/release notes (the script header) before the inventory
+# is updated. So actions PRs never auto-merge clean; that friction is the point.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      # One PR per week for all action bumps — the reviewer touches the inventory
+      # once, not per-action.
+      github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/dashboard"
+    schedule:
+      interval: "weekly"
+    groups:
+      # Minor/patch bumps ride together (low-risk, one PR); majors come as
+      # individual PRs so each breaking upgrade is reviewed on its own.
+      dashboard-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
