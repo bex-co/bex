@@ -507,43 +507,77 @@ func TestLegacyLabelLessAppNameMetricsCompatibility(t *testing.T) {
 	}
 }
 
-// TestHostPathFiltersRejected: a host/path filter is refused with ErrBadRequest
-// before any source is queried — Traefik's service-level counters carry no
-// host/path labels, so honoring the query shape while ignoring the filter would
-// return whole-service numbers dressed up as host/path-scoped ones (w3/m12).
-func TestHostPathFiltersRejected(t *testing.T) {
-	sourceCalled := false
-	req := func(_ context.Context, _ RequestMetricsRequest) ([]MetricSeries, error) {
-		sourceCalled = true
+// TestHostPathFiltersRouteToLogStore: a host/path filter on a request metric is
+// served from the request-log store (Loki), never from Prometheus (which has no
+// host/path axis) — with the Loki source unwired it is an explicit store-
+// unavailable, and on a metric that has no per-request host/path axis it is a
+// named ErrBadRequest. It never silently returns whole-service Prometheus numbers
+// dressed up as host/path-scoped (w5/m58, retiring the w3/m12 blanket refusal).
+func TestHostPathFiltersRouteToLogStore(t *testing.T) {
+	var promCalled, lokiCalled bool
+	prom := func(_ context.Context, _ RequestMetricsRequest) ([]MetricSeries, error) {
+		promCalled = true
 		return []MetricSeries{{Points: []MetricPoint{{Value: 1}}}}, nil
+	}
+	loki := func(_ context.Context, r RequestMetricsRequest) ([]MetricSeries, error) {
+		lokiCalled = true
+		if r.Host == "" && r.Path == "" {
+			t.Errorf("loki source reached without a host/path filter: %+v", r)
+		}
+		return []MetricSeries{{Points: []MetricPoint{{Value: 3}}}}, nil
 	}
 	svc := newService(staticResourceMetrics(map[string]PodResourceUsage{
 		webInst: {CPUCores: 0.5},
-	}), req, sampleApp("web"), podWithLimits(webInst))
+	}), prom, sampleApp("web"), podWithLimits(webInst))
+	svc.RequestLogMetrics = loki
 
+	// http_requests/http_latency + host/path => served from Loki, Prometheus untouched.
 	for _, q := range []MetricQuery{
 		{App: "web", Metric: MetricHTTPRequests, Host: "web.example.com"},
 		{App: "web", Metric: MetricHTTPLatency, Path: "/api"},
-		{App: "web", Metric: MetricBandwidth, Host: "web.example.com", Path: "/api"},
-		{App: "web", Metric: MetricCPU, Path: "/api"}, // every metric refuses, not just the request family
 	} {
-		_, err := svc.Metrics(context.Background(), q)
-		if !errors.Is(err, core.ErrBadRequest) {
-			t.Errorf("%s with host=%q path=%q: want ErrBadRequest, got %v", q.Metric, q.Host, q.Path, err)
+		series, err := svc.Metrics(context.Background(), q)
+		if err != nil {
+			t.Errorf("%s host=%q path=%q: want Loki series, got %v", q.Metric, q.Host, q.Path, err)
+		} else if len(series) != 1 || series[0].Points[0].Value != 3 {
+			t.Errorf("%s: want the Loki source's series, got %+v", q.Metric, series)
 		}
 	}
-	if sourceCalled {
-		t.Error("a rejected query must not reach the request-metrics source")
+	if promCalled {
+		t.Error("a host/path-filtered read must not reach the Prometheus source")
 	}
-	// The same queries without host/path still answer.
+	if !lokiCalled {
+		t.Error("a host/path-filtered read must reach the Loki source")
+	}
+
+	// A metric with no per-request host/path axis is rejected before any store.
+	for _, q := range []MetricQuery{
+		{App: "web", Metric: MetricBandwidth, Host: "web.example.com", Path: "/api"},
+		{App: "web", Metric: MetricCPU, Path: "/api"},
+	} {
+		if _, err := svc.Metrics(context.Background(), q); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("%s with host/path: want ErrBadRequest, got %v", q.Metric, err)
+		}
+	}
+
+	// Loki unwired => host/path filter is an explicit store-unavailable, never a
+	// silent Prometheus fall-through.
+	noLoki := newService(nil, prom, sampleApp("web"), podFor("web", webInst))
+	if _, err := noLoki.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPRequests, Host: "web.example.com"}); !errors.Is(err, core.ErrLogStoreUnavailable) {
+		t.Errorf("host filter with no Loki source: want ErrLogStoreUnavailable, got %v", err)
+	}
+
+	// The same queries without host/path still answer from Prometheus.
 	if _, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPRequests, StatusCode: "5xx"}); err != nil {
 		t.Errorf("unfiltered http_requests should succeed, got %v", err)
 	}
 }
 
-// TestMetricsFiltersOfferNoHostPathValues: the filter-discovery verb reports
-// empty HOST/PATH values even when the App has live hosts — a client is never
-// handed a filter value the Metrics verb would refuse (w3/m12).
+// TestMetricsFiltersOfferNoHostPathValues: the Prometheus filter-discovery verb
+// reports empty HOST/PATH values even when the App has live hosts — Prometheus
+// has no host/path axis. Host/Path values for the metrics UI come from the logs
+// label-values read instead (w5/m58), so this verb stays honestly empty rather
+// than fabricating a value from a store it can't query.
 func TestMetricsFiltersOfferNoHostPathValues(t *testing.T) {
 	app := sampleApp("web")
 	app.Status.URLs = []string{"https://web.example.com"}
@@ -659,25 +693,40 @@ func TestRESTMetricsShapeAndErrors(t *testing.T) {
 	}
 }
 
-// TestRESTHostPathFiltersReturn400: REST maps the host/path rejection to a 400
-// naming the filter, on every request-metric endpoint — never a silently
-// unfiltered 200 (w3/m12).
-func TestRESTHostPathFiltersReturn400(t *testing.T) {
-	req := func(_ context.Context, _ RequestMetricsRequest) ([]MetricSeries, error) {
+// TestRESTHostPathFilters: REST serves a host/path filter on a request metric
+// from the log store (200 with the Loki series when wired, 503 store-unavailable
+// when not), and refuses it on bandwidth with a named 400 — never a silently
+// unfiltered 200 (w5/m58).
+func TestRESTHostPathFilters(t *testing.T) {
+	prom := func(_ context.Context, _ RequestMetricsRequest) ([]MetricSeries, error) {
 		return []MetricSeries{{Points: []MetricPoint{{Value: 1}}}}, nil
 	}
-	svc := newService(nil, req, sampleApp("web"), podFor("web", webInst))
+	loki := func(_ context.Context, _ RequestMetricsRequest) ([]MetricSeries, error) {
+		return []MetricSeries{{Points: []MetricPoint{{Value: 3}}}}, nil
+	}
+	svc := newService(nil, prom, sampleApp("web"), podFor("web", webInst))
+	svc.RequestLogMetrics = loki
 
-	for _, seg := range []string{"http-requests", "http-latency", "bandwidth"} {
+	// The two request metrics serve the filter from Loki (200).
+	for _, seg := range []string{"http-requests", "http-latency"} {
 		for _, filter := range []string{"host=web.example.com", "path=%2Fapi"} {
-			rec := serveREST(svc, "/v1/metrics/"+seg+"?resource=web&"+filter)
-			if rec.Code != 400 {
-				t.Errorf("%s?%s: want 400, got %d (%s)", seg, filter, rec.Code, rec.Body.String())
-			} else if !strings.Contains(rec.Body.String(), "host/path") {
-				t.Errorf("%s?%s: 400 body should name the filter, got %s", seg, filter, rec.Body.String())
+			if rec := serveREST(svc, "/v1/metrics/"+seg+"?resource=web&"+filter); rec.Code != 200 {
+				t.Errorf("%s?%s: want 200 (Loki-served), got %d (%s)", seg, filter, rec.Code, rec.Body.String())
 			}
 		}
-		// The same endpoint without host/path still answers.
+	}
+	// Bandwidth has no per-request host/path axis => named 400.
+	if rec := serveREST(svc, "/v1/metrics/bandwidth?resource=web&host=web.example.com"); rec.Code != 400 {
+		t.Errorf("bandwidth+host: want 400, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	// Loki unwired => the request-metric filter is an explicit 503, not a silent
+	// unfiltered 200.
+	noLoki := newService(nil, prom, sampleApp("web"), podFor("web", webInst))
+	if rec := serveREST(noLoki, "/v1/metrics/http-requests?resource=web&host=web.example.com"); rec.Code != 503 {
+		t.Errorf("host filter with no Loki source: want 503, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	// The same endpoints without host/path still answer from Prometheus.
+	for _, seg := range []string{"http-requests", "http-latency", "bandwidth"} {
 		if rec := serveREST(svc, "/v1/metrics/"+seg+"?resource=web&statusCode=5xx"); rec.Code != 200 {
 			t.Errorf("%s unfiltered: want 200, got %d (%s)", seg, rec.Code, rec.Body.String())
 		}
@@ -725,15 +774,29 @@ func TestGraphQLMetrics(t *testing.T) {
 		t.Error("filters without RESOURCE should error")
 	}
 
-	// A HOST/PATH filter is refused, mirroring REST's 400 (w3/m12).
+	// A HOST/PATH filter on a request metric with no Loki source is an explicit
+	// store-unavailable error (mirroring REST's 503), never a silent unfiltered
+	// result (w5/m58). This svc has no RequestLogMetrics wired.
 	for _, field := range []string{"HOST", "PATH"} {
 		res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
 			RequestString: `{ metrics(query: {filters: [{field: "RESOURCE", values: ["web"]}, {field: "` + field + `", values: ["x"]}], name: "HTTP_REQUESTS"}) { unit } }`})
 		if len(res.Errors) == 0 {
-			t.Errorf("%s filter should error", field)
-		} else if !strings.Contains(res.Errors[0].Message, "host/path") {
-			t.Errorf("%s filter error should name the filter, got %q", field, res.Errors[0].Message)
+			t.Errorf("%s filter with no log store should error", field)
 		}
+	}
+	// With a Loki source wired, the same HOST filter succeeds and returns the
+	// store's series.
+	lokiSvc := newService(nil, nil, sampleApp("web"), podFor("web", webInst))
+	lokiSvc.RequestLogMetrics = func(_ context.Context, _ RequestMetricsRequest) ([]MetricSeries, error) {
+		return []MetricSeries{{Unit: unitCount, Points: []MetricPoint{{Value: 9}}}}, nil
+	}
+	lokiSchema, _ := gqlSchema(lokiSvc)
+	res = graphql.Do(graphql.Params{Schema: lokiSchema, Context: context.Background(),
+		RequestString: `{ metrics(query: {filters: [{field: "RESOURCE", values: ["web"]}, {field: "HOST", values: ["web.example.com"]}], name: "HTTP_REQUESTS"}) { unit values { value } } }`})
+	if len(res.Errors) > 0 {
+		t.Errorf("HOST filter with a log store should succeed, got %v", res.Errors)
+	} else if got := res.Data.(map[string]any)["metrics"].([]any)[0].(map[string]any)["values"].([]any)[0].(map[string]any)["value"].(float64); got != 9 {
+		t.Errorf("HOST-filtered value should be the Loki series' 9, got %v", got)
 	}
 }
 
@@ -915,5 +978,139 @@ func TestPrometheusFilterValuesRoundTrip(t *testing.T) {
 	}
 	if !strings.Contains(gotMatch, `traefik_service_requests_total{service=~".*web.*"}`) {
 		t.Errorf("unexpected match[]: %q", gotMatch)
+	}
+}
+
+// TestLokiRequestQueryFor pins the pure LogQL builder for host/path-filtered
+// request metrics (w5/m58): rate for the count, quantile_over_time over the
+// unwrapped ns Duration for latency, the json stage extracting exactly the
+// filtered fields, and "" for a metric with no per-request host/path axis.
+func TestLokiRequestQueryFor(t *testing.T) {
+	base := RequestMetricsRequest{Namespace: "default", App: "web", Resolution: time.Minute}
+	with := func(mut func(*RequestMetricsRequest)) RequestMetricsRequest {
+		r := base
+		mut(&r)
+		return r
+	}
+	cases := []struct {
+		name string
+		req  RequestMetricsRequest
+		want string
+	}{
+		{
+			name: "requests host filter",
+			req:  with(func(r *RequestMetricsRequest) { r.Metric = MetricHTTPRequests; r.Host = "web.example.com" }),
+			want: `sum(rate({namespace="default", app="web", type="request"} | json request_host="RequestHost", request_path="RequestPath" | request_host="web.example.com" [60s]))`,
+		},
+		{
+			name: "requests path filter, group by status, 5xx",
+			req: with(func(r *RequestMetricsRequest) {
+				r.Metric, r.Path, r.GroupBy, r.StatusCode = MetricHTTPRequests, "/api", "status", "5xx"
+			}),
+			want: `sum by (status) (rate({namespace="default", app="web", type="request", status=~"5.."} | json request_host="RequestHost", request_path="RequestPath" | request_path="/api" [60s]))`,
+		},
+		{
+			name: "latency host+path, p90",
+			req: with(func(r *RequestMetricsRequest) {
+				r.Metric, r.Host, r.Path, r.Quantile = MetricHTTPLatency, "web.example.com", "/api", 0.9
+			}),
+			want: `quantile_over_time(0.9, {namespace="default", app="web", type="request"} | json latency_ns="Duration", request_host="RequestHost", request_path="RequestPath" | request_host="web.example.com" | request_path="/api" | unwrap latency_ns [60s]) / 1000000000`,
+		},
+		{
+			name: "bandwidth has no host/path axis",
+			req:  with(func(r *RequestMetricsRequest) { r.Metric = MetricBandwidth; r.Host = "web.example.com" }),
+			want: "",
+		},
+	}
+	for _, tc := range cases {
+		if got := lokiRequestQueryFor(tc.req); got != tc.want {
+			t.Errorf("%s:\n got  %s\n want %s", tc.name, got, tc.want)
+		}
+	}
+}
+
+// TestLokiRequestMetricsSourceRoundTrip drives the real source against a fake
+// Loki matrix reply, asserting it parses the Prometheus-shaped body and relabels
+// the store's `status` group label onto Prometheus's `code` vocabulary so a
+// filtered group-by series legends identically to the unfiltered one.
+func TestLokiRequestMetricsSourceRoundTrip(t *testing.T) {
+	var gotQuery string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query().Get("query")
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"status":"200"},"values":[[1000000,"1.5"]]}]}}`))
+	}))
+	defer ts.Close()
+	series, err := NewLokiRequestMetricsSource(ts.URL, ts.Client())(context.Background(), RequestMetricsRequest{
+		Namespace: "default", App: "web", Metric: MetricHTTPRequests, GroupBy: "status",
+		Host: "web.example.com", Resolution: time.Minute, Start: time.Unix(1000, 0), End: time.Unix(2000, 0),
+	})
+	if err != nil {
+		t.Fatalf("loki source: %v", err)
+	}
+	if len(series) != 1 || series[0].Labels["code"] != "200" {
+		t.Fatalf("status should be relabelled to code: %+v", series)
+	}
+	if _, ok := series[0].Labels["status"]; ok {
+		t.Errorf("raw status label should be removed: %+v", series[0].Labels)
+	}
+	if series[0].Points[0].Value != 1.5 {
+		t.Errorf("value should parse from the matrix: %+v", series[0].Points)
+	}
+	if !strings.Contains(gotQuery, "sum by (status)") || !strings.Contains(gotQuery, `request_host="web.example.com"`) {
+		t.Errorf("query missing group-by/host: %s", gotQuery)
+	}
+}
+
+// TestHostPathFilterCrossSurfaceParity: REST, GraphQL, and MCP must all route a
+// host+path filter to the SAME RequestLogMetrics source with identical Host/Path
+// values — no adapter drift (w5/m58, the parity rule in internal/api/CLAUDE.md).
+func TestHostPathFilterCrossSurfaceParity(t *testing.T) {
+	newSurfaceSvc := func() (*Service, *[]RequestMetricsRequest) {
+		got := &[]RequestMetricsRequest{}
+		svc := newService(nil, nil, sampleApp("web"), podFor("web", webInst))
+		svc.RequestLogMetrics = func(_ context.Context, r RequestMetricsRequest) ([]MetricSeries, error) {
+			*got = append(*got, r)
+			return []MetricSeries{{Points: []MetricPoint{{Value: 1}}}}, nil
+		}
+		return svc, got
+	}
+	const host, path = "web.example.com", "/api"
+
+	restSvc, restGot := newSurfaceSvc()
+	if rec := serveREST(restSvc, "/v1/metrics/http-requests?resource=web&host="+host+"&path=%2Fapi"); rec.Code != 200 {
+		t.Fatalf("REST: %d %s", rec.Code, rec.Body.String())
+	}
+
+	gqlSvc, gqlGot := newSurfaceSvc()
+	schema, _ := gqlSchema(gqlSvc)
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `{ metrics(query: {filters: [{field:"RESOURCE",values:["web"]},{field:"HOST",values:["` + host + `"]},{field:"PATH",values:["` + path + `"]}], name:"HTTP_REQUESTS"}) { unit } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("GraphQL: %v", res.Errors)
+	}
+
+	mcpSvc, mcpGot := newSurfaceSvc()
+	ctx := context.Background()
+	server := mcp.NewServer(&mcp.Implementation{Name: "t", Version: "0"}, nil)
+	mcpSvc.RegisterMCP(server)
+	st, ct := mcp.NewInMemoryTransports()
+	if _, err := server.Connect(ctx, st, nil); err != nil {
+		t.Fatal(err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "tc", Version: "0"}, nil).Connect(ctx, ct, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cs.Close()
+	if _, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "get_metrics", Arguments: map[string]any{
+		"resource": []string{"web"}, "metricTypes": []string{MetricHTTPRequests}, "host": host, "path": path,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+
+	for name, got := range map[string]*[]RequestMetricsRequest{"REST": restGot, "GraphQL": gqlGot, "MCP": mcpGot} {
+		if len(*got) != 1 || (*got)[0].Host != host || (*got)[0].Path != path {
+			t.Errorf("%s routed %+v, want one call with host=%q path=%q", name, *got, host, path)
+		}
 	}
 }

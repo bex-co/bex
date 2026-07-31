@@ -243,6 +243,31 @@ const enMetrics: Record<string, TranslationEntry> = {
     message: "All",
     description: "Status-code filter option meaning no filtering",
   },
+  "metrics.host": {
+    message: "Host",
+    description: "Network-card filter label for the request Host",
+  },
+  "metrics.hostAll": {
+    message: "All",
+    description: "Host filter option meaning no filtering",
+  },
+  "metrics.path": {
+    message: "Path",
+    description: "Network-card filter label for the request Path",
+  },
+  "metrics.pathPlaceholder": {
+    message: "Path…",
+    description: "Placeholder for the free-text Path filter input",
+  },
+  "metrics.pathClear": {
+    message: "Clear path filter",
+    description: "Accessible label for the button that clears the Path filter",
+  },
+  "metrics.hostPathStoreUnavailable": {
+    message: "Host and Path filters need the log store",
+    description:
+      "Per-section state when a host/path-filtered request metric hits a deployment with no durable log store (503) — served from the request-log store (Loki), unavailable here",
+  },
   "metrics.groupBy": {
     message: "Group by",
     description: "Total Requests chart control label",

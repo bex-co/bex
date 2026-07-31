@@ -198,4 +198,55 @@ describe("useMetrics", () => {
     expect(result.current.unavailable).toBe(false);
     expect(result.current.error).toBe(otherError);
   });
+
+  it("sends host and path as HOST/PATH filters entries alongside RESOURCE (w5/m58)", () => {
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      loading: true,
+      error: undefined,
+    });
+
+    renderHook(() =>
+      useMetrics("app", "http_requests", { host: "web.onbex.co", path: "/api" }),
+    );
+
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        variables: expect.objectContaining({
+          query: expect.objectContaining({
+            filters: [
+              { field: "RESOURCE", values: ["app"] },
+              { field: "HOST", values: ["web.onbex.co"] },
+              { field: "PATH", values: ["/api"] },
+            ],
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("reports storeUnavailable (not a generic error) when a host/path filter hits no log store (w5/m58)", () => {
+    const storeError = new CombinedGraphQLErrors({
+      errors: [
+        {
+          message:
+            "request logs and structured log filters require the durable log store",
+        },
+      ],
+    } as never);
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      loading: false,
+      error: storeError,
+    });
+
+    const { result } = renderHook(() =>
+      useMetrics("app", "http_requests", { host: "web.onbex.co" }),
+    );
+
+    expect(result.current.storeUnavailable).toBe(true);
+    expect(result.current.unavailable).toBe(false);
+    expect(result.current.error).toBeUndefined();
+  });
 });

@@ -241,6 +241,31 @@ const zhMetrics: Record<string, TranslationEntry> = {
     message: "全部",
     description: "Status-code filter option meaning no filtering",
   },
+  "metrics.host": {
+    message: "主机",
+    description: "Network-card filter label for the request Host",
+  },
+  "metrics.hostAll": {
+    message: "全部",
+    description: "Host filter option meaning no filtering",
+  },
+  "metrics.path": {
+    message: "路径",
+    description: "Network-card filter label for the request Path",
+  },
+  "metrics.pathPlaceholder": {
+    message: "路径…",
+    description: "Placeholder for the free-text Path filter input",
+  },
+  "metrics.pathClear": {
+    message: "清除路径筛选",
+    description: "Accessible label for the button that clears the Path filter",
+  },
+  "metrics.hostPathStoreUnavailable": {
+    message: "主机和路径筛选需要日志存储",
+    description:
+      "Per-section state when a host/path-filtered request metric hits a deployment with no durable log store (503) — served from the request-log store (Loki), unavailable here",
+  },
   "metrics.groupBy": {
     message: "分组",
     description: "Total Requests chart control label",

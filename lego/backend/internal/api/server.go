@@ -169,6 +169,11 @@ type Deps struct {
 	ResourceMetrics      metrics.ResourceMetricsSource
 	ResourceMetricsRange metrics.ResourceMetricsRangeSource
 	RequestMetrics       metrics.RequestMetricsSource
+	// RequestLogMetrics, when set (BEX_LOKI_URL), serves host/path-filtered
+	// request metrics from the Traefik access log in Loki — the only store with a
+	// per-request host/path axis (w5/m58). nil => a host/path-filtered read
+	// reports core.ErrLogStoreUnavailable (the Logs-tab 503 pattern).
+	RequestLogMetrics    metrics.RequestMetricsSource
 	MonthToDateBandwidth metrics.MonthToDateBandwidthSource
 	MetricsFilterValues  metrics.MetricsFilterValuesSource
 	// DiskUsage/DBConnections/ReplicationLag (w3/m10) back the datastore-scoped
@@ -549,6 +554,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			ResourceMetrics:            d.ResourceMetrics,
 			ResourceMetricsRange:       d.ResourceMetricsRange,
 			RequestMetrics:             d.RequestMetrics,
+			RequestLogMetrics:          d.RequestLogMetrics,
 			MonthToDateBandwidthSource: d.MonthToDateBandwidth,
 			MetricsFilterValuesSource:  d.MetricsFilterValues,
 			DiskUsage:                  d.DiskUsage,

@@ -38,9 +38,13 @@ query MonthToDateBandwidth($resourceId: String!) {
 }
 
 # Populates the Status Code filter dropdown from real observed label values
-# (Prometheus label-value discovery) rather than a fixed list. Host/Path report
-# no values — the metrics API rejects those filters (w3/m12), so discovery
-# never offers a value the query would refuse.
+# (Prometheus label-value discovery) rather than a fixed list. Host/Path still
+# report no values here — Prometheus has no host/path axis. Since w5/m58 those
+# filters ARE served (from the request-log store, Loki): the Network card's Host
+# dropdown is discovered via the logs `logLabelValues(label:"host")` read
+# instead, and Path is a free-text filter (path is a line field, not a
+# discoverable label). So this Prometheus discovery staying empty for Host/Path
+# is correct, not a dead control.
 query MetricsFilters($query: MetricsFiltersQueryInput!) {
   metricsFilters(query: $query) {
     values {
