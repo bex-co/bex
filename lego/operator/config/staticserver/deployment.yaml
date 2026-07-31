@@ -14,6 +14,16 @@ spec:
         app.bex.co/component: static-server
     spec:
       serviceAccountName: static-server
+      # Platform-pod hardening parity (w7/m58): bex-system is deliberately
+      # privileged-PSS (egress-meter needs BPF caps), so there is no namespace
+      # PodSecurity backstop — this per-pod context is the only control on the
+      # internet-facing static-server. Matches bex-api / ssh-gateway / manager /
+      # activator. The static-server writes no temp files, so readOnlyRootFilesystem
+      # needs no writable emptyDir.
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       # w1/m19 t003: platform pool (same placement as the activator/operator).
       nodeSelector:
         bex.co/pool: platform
@@ -26,6 +36,11 @@ spec:
         - name: static-server
           image: controller:latest # overridden by kustomize; same image as the manager, different entrypoint
           command: ["/staticserver"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 8080
           env:

@@ -10,6 +10,8 @@ on:
       - "deploy/gitops/**"
       - "lego/operator/config/**"
       - "scripts/gitops-validate.sh"
+      - "scripts/gitops-hardening-guard-test.sh"
+      - "scripts/lib/platform-pod-hardening-guard.yq"
       - "scripts/platform-deprecations-validate.sh"
       - "scripts/lib/ssh-edge.sh"
       - "scripts/ssh-activate.sh"
@@ -28,6 +30,8 @@ on:
       - "deploy/gitops/**"
       - "lego/operator/config/**"
       - "scripts/gitops-validate.sh"
+      - "scripts/gitops-hardening-guard-test.sh"
+      - "scripts/lib/platform-pod-hardening-guard.yq"
       - "scripts/platform-deprecations-validate.sh"
       - "scripts/lib/ssh-edge.sh"
       - "scripts/ssh-activate.sh"
@@ -64,3 +68,5 @@ jobs:
           sudo install /tmp/prometheus-2.55.1.linux-amd64/promtool /usr/local/bin/promtool
       - name: validate
         run: bash scripts/gitops-validate.sh
+      - name: platform-pod hardening guard self-test # w7/m58: proves the guard bites
+        run: bash scripts/gitops-hardening-guard-test.sh

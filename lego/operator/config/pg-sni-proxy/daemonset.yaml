@@ -13,6 +13,14 @@ spec:
         app.bex.co/component: pg-sni-proxy
     spec:
       serviceAccountName: pg-sni-proxy
+      # Platform-pod hardening parity (w7/m58): runAsNonRoot + seccompProfile
+      # match kv-sni-proxy and the other platform pods. hostPort binding is
+      # kubelet-side and does not need the container to run as root, so the proxy
+      # runs as the non-root uid 65532 (below), same as kv-sni-proxy.
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       # Run on platform nodes alongside Traefik so the proxy binds :5432 on the
       # same host that Traefik exposes :80/:443 (docs/ADR009-postgresql-management.md).
       nodeSelector:
@@ -52,6 +60,9 @@ spec:
             initialDelaySeconds: 2
             periodSeconds: 5
           securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
             allowPrivilegeEscalation: false
             capabilities:
               drop: [ALL]

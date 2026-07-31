@@ -1,0 +1,25 @@
+# w7/m58 — the platform-pod hardening invariant, single-sourced so the CI guard
+# (scripts/gitops-validate.sh) and its self-test (scripts/gitops-hardening-guard-test.sh)
+# assert the identical rule and cannot drift.
+#
+# Emits the .metadata.name of every Deployment/DaemonSet that is NOT the
+# deliberately-privileged egress-meter exemption AND is below the hardened
+# baseline: pod-level runAsNonRoot:true + seccompProfile RuntimeDefault, and each
+# container allowPrivilegeEscalation:false + readOnlyRootFilesystem:true +
+# capabilities.drop containing ALL. Fail-closed: a MISSING field (a workload with
+# no securityContext at all — the static-server bug) is non-compliant, not passed.
+# Run with `yq ea` over a rendered (multi-doc) manifest stream.
+select(.kind == "Deployment" or .kind == "DaemonSet")
+| select(.metadata.name != "bex-egress-meter")
+| select(
+    (.spec.template.spec.securityContext.runAsNonRoot != true)
+    or (.spec.template.spec.securityContext.seccompProfile.type != "RuntimeDefault")
+    or ([.spec.template.spec.containers[]
+          | select(
+              (.securityContext.allowPrivilegeEscalation != false)
+              or (.securityContext.readOnlyRootFilesystem != true)
+              or (((.securityContext.capabilities.drop // []) | contains(["ALL"])) | not)
+            )
+        ] | length > 0)
+  )
+| .metadata.name
