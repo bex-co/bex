@@ -132,7 +132,8 @@ func (s *PGStore) SetWebhookEndpointEnabled(ctx context.Context, tenantID, id st
 		reason = ""
 	}
 	e, err := scanWebhookEndpoint(s.Pool.QueryRow(ctx,
-		`UPDATE webhook_endpoints SET enabled = $3, disabled_reason = $4, updated_at = now()
+		`UPDATE webhook_endpoints SET enabled = $3, disabled_reason = $4, updated_at = now(),
+		     notified_at = CASE WHEN $3 THEN NULL ELSE notified_at END
 		 WHERE id = $1 AND tenant_id = $2 RETURNING `+webhookEndpointColumns, id, tenantID, enabled, reason))
 	if err != nil {
 		return WebhookEndpoint{}, classify("webhook endpoint", err)
@@ -171,6 +172,7 @@ func (s *PGStore) UpdateWebhookEndpoint(ctx context.Context, tenantID, id, name,
 		`UPDATE webhook_endpoints
 		 SET name = $3, url = $4, event_types = $5, enabled = $6,
 		     disabled_reason = CASE WHEN $6 THEN '' ELSE disabled_reason END,
+		     notified_at = CASE WHEN $6 THEN NULL ELSE notified_at END,
 		     updated_at = now()
 		 WHERE id = $1 AND tenant_id = $2
 		 RETURNING `+webhookEndpointColumns, id, tenantID, name, url, eventTypes, enabled))
@@ -462,9 +464,14 @@ func (s *PGStore) EnqueueWebhookDeliveries(ctx context.Context, deliveries []Web
 	// of event×endpoint rows), not one per insert while the txn sits open.
 	b := &pgx.Batch{}
 	for _, d := range deliveries {
+		// ON CONFLICT (endpoint_id, event_id) DO NOTHING makes dispatch idempotent
+		// across replicas and restarts (w1/m58): a second replica reading the same
+		// feed window — or this worker re-reading after a crash — inserts no
+		// duplicate delivery even though it mints a fresh delivery id each pass.
 		b.Queue(
 			`INSERT INTO webhook_deliveries (id, endpoint_id, event_id, event_type, service_id, payload, next_attempt_at)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+			 VALUES ($1, $2, $3, $4, $5, $6, $7)
+			 ON CONFLICT (endpoint_id, event_id) DO NOTHING`,
 			d.ID, d.EndpointID, d.EventID, d.EventType, d.ServiceID, d.Payload, d.NextAttemptAt)
 	}
 	b.Queue(`UPDATE webhook_watermark SET at = $1, key = $2 WHERE id`, at, key)
@@ -486,17 +493,39 @@ type DueWebhookDelivery struct {
 	CreatedBy    string
 }
 
-// DueWebhookDeliveries returns open deliveries whose next attempt is due,
-// oldest first, for enabled endpoints only — disabling an endpoint parks its
-// queue (rows stay open but are never selected) until it is re-enabled.
-func (s *PGStore) DueWebhookDeliveries(ctx context.Context, now time.Time, limit int) ([]DueWebhookDelivery, error) {
+// ClaimDueWebhookDeliveries atomically leases open, due deliveries for enabled
+// endpoints (oldest first) to exactly one caller and returns them with what the
+// sender needs. It is the multi-replica-safe replacement for a plain due-read
+// (w1/m58): `FOR UPDATE ... SKIP LOCKED` hands each concurrent worker a DISJOINT
+// batch (no two replicas claim the same row), and the claim bumps next_attempt_at
+// to leaseUntil so a row stays invisible to other workers for the whole POST
+// window — a worker that crashes mid-send simply releases the lease, and the row
+// becomes due again after leaseUntil (at-least-once; receivers dedupe on
+// webhook-id). The lease is not an attempt: attempt_count is untouched, so a
+// crashed claim does not consume a retry. Disabling an endpoint still parks its
+// queue (rows stay open but are never claimed) until it is re-enabled.
+func (s *PGStore) ClaimDueWebhookDeliveries(ctx context.Context, now, leaseUntil time.Time, limit int) ([]DueWebhookDelivery, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT `+prefixColumns("d", webhookDeliveryColumns)+`, e.url, e.secret, e.tenant_id, e.name, e.created_by
-		 FROM webhook_deliveries d
-		 JOIN webhook_endpoints e ON e.id = d.endpoint_id
-		 WHERE d.delivered_at IS NULL AND d.failed_at IS NULL AND d.next_attempt_at <= $1 AND e.enabled
-		 ORDER BY d.next_attempt_at
-		 LIMIT $2`, now, limit)
+		`WITH due AS (
+		     SELECT d.id
+		     FROM webhook_deliveries d
+		     JOIN webhook_endpoints e ON e.id = d.endpoint_id
+		     WHERE d.delivered_at IS NULL AND d.failed_at IS NULL
+		       AND d.next_attempt_at <= $1 AND e.enabled
+		     ORDER BY d.next_attempt_at
+		     LIMIT $3
+		     FOR UPDATE OF d SKIP LOCKED
+		 ), claimed AS (
+		     UPDATE webhook_deliveries d
+		     SET next_attempt_at = $2
+		     FROM due
+		     WHERE d.id = due.id
+		     RETURNING `+prefixColumns("d", webhookDeliveryColumns)+`
+		 )
+		 SELECT `+prefixColumns("claimed", webhookDeliveryColumns)+`, e.url, e.secret, e.tenant_id, e.name, e.created_by
+		 FROM claimed
+		 JOIN webhook_endpoints e ON e.id = claimed.endpoint_id
+		 ORDER BY claimed.created_at, claimed.id`, now, leaseUntil, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -513,6 +542,22 @@ func (s *PGStore) DueWebhookDeliveries(ctx context.Context, now time.Time, limit
 		out = append(out, d)
 	}
 	return out, rows.Err()
+}
+
+// ClaimWebhookFailureNotice compare-and-sets the endpoint's notified_at marker:
+// it succeeds (returns true, records `now`) only when no notice has been sent
+// since `threshold` (now − suppression window), so across replicas and restarts
+// exactly one worker emails per window (w1/m58). NULL notified_at (never
+// notified, or cleared on re-enable) always claims.
+func (s *PGStore) ClaimWebhookFailureNotice(ctx context.Context, endpointID string, now, threshold time.Time) (bool, error) {
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE webhook_endpoints SET notified_at = $2
+		 WHERE id = $1 AND (notified_at IS NULL OR notified_at <= $3)`,
+		endpointID, now, threshold)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
 }
 
 // RecordWebhookAttempt books one attempt's outcome: increments the count,

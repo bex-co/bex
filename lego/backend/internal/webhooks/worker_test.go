@@ -44,12 +44,21 @@ type fakeWorkerStore struct {
 	wmAt       time.Time
 	wmKey      string
 	queue      map[string]*store.WebhookDelivery
-	disabled   map[string]string // endpoint id -> reason
+	disabled   map[string]string    // endpoint id -> reason
+	notifiedAt map[string]time.Time // endpoint id -> last failure-notice CAS
 	queueOrder []string
+	// seen dedupes inserts on (endpoint_id, event_id), mirroring the store's
+	// unique index so a re-dispatch of the same event enqueues no duplicate.
+	seen map[string]bool
 }
 
 func newFakeWorkerStore() *fakeWorkerStore {
-	return &fakeWorkerStore{queue: map[string]*store.WebhookDelivery{}, disabled: map[string]string{}}
+	return &fakeWorkerStore{
+		queue:      map[string]*store.WebhookDelivery{},
+		disabled:   map[string]string{},
+		notifiedAt: map[string]time.Time{},
+		seen:       map[string]bool{},
+	}
 }
 
 func (f *fakeWorkerStore) EnsureWebhookWatermark(_ context.Context, at time.Time) (time.Time, string, error) {
@@ -102,6 +111,11 @@ func (f *fakeWorkerStore) EnqueueWebhookDeliveries(_ context.Context, deliveries
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	for _, d := range deliveries {
+		dedupKey := d.EndpointID + "\x00" + d.EventID
+		if f.seen[dedupKey] { // mirrors the (endpoint_id, event_id) unique index
+			continue
+		}
+		f.seen[dedupKey] = true
 		cp := d
 		f.queue[d.ID] = &cp
 		f.queueOrder = append(f.queueOrder, d.ID)
@@ -110,7 +124,7 @@ func (f *fakeWorkerStore) EnqueueWebhookDeliveries(_ context.Context, deliveries
 	return nil
 }
 
-func (f *fakeWorkerStore) DueWebhookDeliveries(_ context.Context, now time.Time, limit int) ([]store.DueWebhookDelivery, error) {
+func (f *fakeWorkerStore) ClaimDueWebhookDeliveries(_ context.Context, now, leaseUntil time.Time, limit int) ([]store.DueWebhookDelivery, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	var out []store.DueWebhookDelivery
@@ -126,6 +140,7 @@ func (f *fakeWorkerStore) DueWebhookDeliveries(_ context.Context, now time.Time,
 		if _, off := f.disabled[ep.ID]; off || !ep.Enabled {
 			continue
 		}
+		d.NextAttemptAt = leaseUntil // lease the row, mirroring the SKIP LOCKED claim
 		out = append(out, store.DueWebhookDelivery{
 			WebhookDelivery: *d,
 			URL:             ep.URL, Secret: ep.Secret, TenantID: ep.TenantID,
@@ -136,6 +151,16 @@ func (f *fakeWorkerStore) DueWebhookDeliveries(_ context.Context, now time.Time,
 		}
 	}
 	return out, nil
+}
+
+func (f *fakeWorkerStore) ClaimWebhookFailureNotice(_ context.Context, endpointID string, now, threshold time.Time) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if last, ok := f.notifiedAt[endpointID]; ok && last.After(threshold) {
+		return false, nil
+	}
+	f.notifiedAt[endpointID] = now
+	return true, nil
 }
 
 func (f *fakeWorkerStore) endpointByID(id string) (store.WebhookEndpoint, bool) {

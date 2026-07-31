@@ -52,9 +52,11 @@ import (
 //
 // Durability lives in Postgres (rows + watermark), so retries survive
 // restarts and a deploy that happens while bex-api is down is still delivered
-// once it is back. Single-replica caveat (the w7/m3 rate-limiter precedent):
-// two bex-api replicas would double-deliver — a distributed claim
-// (SKIP LOCKED) is the multi-replica follow-up.
+// once it is back. Multi-replica-safe (w1/m58): dispatch dedupes on the
+// (endpoint_id, event_id) unique index (ON CONFLICT DO NOTHING) and send leases
+// each row with FOR UPDATE SKIP LOCKED, so the two bex-api replicas (w1/m52)
+// deliver each event exactly once and a crash mid-send re-delivers at-least-once
+// (receivers dedupe on webhook-id) rather than dropping it.
 
 // DefaultBackoff is the retry schedule after each failed attempt: 8 retries,
 // exponential, the last ~33h after the first attempt — Render's documented
@@ -94,6 +96,11 @@ const (
 	// requestTimeout is Render's documented per-attempt budget: respond 2xx
 	// within 15s or the attempt failed.
 	requestTimeout = 15 * time.Second
+	// claimLease is how long ClaimDueWebhookDeliveries hides a claimed row from
+	// other workers while this one POSTs it. It must exceed requestTimeout so a
+	// slow-but-live attempt is never re-claimed by a second replica; a worker that
+	// crashes mid-send releases the row after this window (at-least-once).
+	claimLease = 4 * requestTimeout
 	// emailAfterFailures is when the failure notice goes out (Render: "after 3
 	// consecutive failures"); emailSuppression stops a burst of failing
 	// deliveries to one endpoint from mailing per-delivery.
@@ -117,9 +124,10 @@ type WorkerStore interface {
 	ListWebhookEvents(ctx context.Context, afterAt time.Time, afterKey string, until time.Time, verbs, tenants []string, limit int) ([]store.WebhookEventRow, error)
 	ListEnabledWebhookEndpoints(ctx context.Context) ([]store.WebhookEndpoint, error)
 	EnqueueWebhookDeliveries(ctx context.Context, deliveries []store.WebhookDelivery, at time.Time, key string) error
-	DueWebhookDeliveries(ctx context.Context, now time.Time, limit int) ([]store.DueWebhookDelivery, error)
+	ClaimDueWebhookDeliveries(ctx context.Context, now, leaseUntil time.Time, limit int) ([]store.DueWebhookDelivery, error)
 	RecordWebhookAttempt(ctx context.Context, id string, status int, errMsg string, at, next time.Time, delivered, failed bool) error
 	DisableWebhookEndpoint(ctx context.Context, id, reason string) error
+	ClaimWebhookFailureNotice(ctx context.Context, endpointID string, now, threshold time.Time) (bool, error)
 }
 
 // Mailer sends the failure-notice email (text + optional HTML alternative) —
@@ -151,18 +159,14 @@ type Worker struct {
 	// Client posts deliveries; nil => defaultClient.
 	Client *http.Client
 
-	// wm* cache the durable watermark between ticks — the worker is the
-	// single writer (the package's documented single-replica caveat), so
-	// re-reading it from Postgres every 2s would be pure I/O. Loaded once,
-	// updated after every successful EnqueueWebhookDeliveries.
+	// wm* cache the durable watermark between ticks to skip an I/O round trip on
+	// a quiet tick. It is a pure optimization under two replicas: the
+	// (endpoint_id, event_id) unique index (w1/m58) dedupes any delivery a stale
+	// cache re-reads, so a lagging cache converges rather than duplicates. Loaded
+	// once, updated after every successful EnqueueWebhookDeliveries.
 	wmLoaded bool
 	wmAt     time.Time
 	wmKey    string
-
-	// emailedAt suppresses repeat failure notices per endpoint (in-memory —
-	// adequate for the single-replica worker).
-	emailedMu sync.Mutex
-	emailedAt map[string]time.Time
 }
 
 func (w *Worker) now() time.Time {
@@ -381,11 +385,14 @@ func project(r store.WebhookEventRow) (string, payloadData, bool) {
 	return "", payloadData{}, false
 }
 
-// send POSTs every due delivery, senderConcurrency at a time.
+// send claims every due delivery and POSTs it, senderConcurrency at a time. The
+// claim (SKIP LOCKED + lease) is what makes two replicas safe: each send pass
+// leases a disjoint batch, so no event is POSTed twice concurrently.
 func (w *Worker) send(ctx context.Context) error {
-	due, err := w.Store.DueWebhookDeliveries(ctx, w.now(), sendBatch)
+	now := w.now()
+	due, err := w.Store.ClaimDueWebhookDeliveries(ctx, now, now.Add(claimLease), sendBatch)
 	if err != nil {
-		return fmt.Errorf("due deliveries: %w", err)
+		return fmt.Errorf("claim due deliveries: %w", err)
 	}
 	sem := make(chan struct{}, senderConcurrency)
 	var wg sync.WaitGroup
@@ -471,8 +478,21 @@ func (w *Worker) post(ctx context.Context, d store.DueWebhookDelivery, at time.T
 // With no mailer, no lookup, or no resolvable address it logs instead — the
 // notifications feature's degrade-quietly convention.
 func (w *Worker) notifyFailure(ctx context.Context, d store.DueWebhookDelivery, final bool) {
-	if !final && !w.shouldEmail(d.EndpointID) {
-		return
+	// The 3rd-failure notice is suppressed to one per endpoint per window via a
+	// durable compare-and-set, so a restart or a second replica cannot re-send it
+	// (w1/m58). The final disable notice is not suppressed here — only one replica
+	// drives a delivery to exhaustion (it holds the SKIP LOCKED claim), so it is
+	// already sent once.
+	if !final {
+		now := w.now()
+		claimed, err := w.Store.ClaimWebhookFailureNotice(ctx, d.EndpointID, now, now.Add(-emailSuppression))
+		if err != nil {
+			log.Printf("webhooks: claim failure notice for %s: %v", d.EndpointID, err)
+			return
+		}
+		if !claimed {
+			return
+		}
 	}
 	subject := fmt.Sprintf("[bex] webhook %q is failing to deliver", d.EndpointName)
 	msg := email.Message{
@@ -505,23 +525,6 @@ func (w *Worker) notifyFailure(ctx context.Context, d store.DueWebhookDelivery, 
 	if err := w.Mailer.Send(ctx, to, subject, msg.Text(), msg.HTML()); err != nil {
 		log.Printf("webhooks: email %s: %v", to, err)
 	}
-}
-
-// shouldEmail rate-limits the 3rd-failure notice to one per endpoint per
-// suppression window — an endpoint-wide outage fails many deliveries at once
-// and must not mail once per delivery.
-func (w *Worker) shouldEmail(endpointID string) bool {
-	w.emailedMu.Lock()
-	defer w.emailedMu.Unlock()
-	now := w.now()
-	if last, ok := w.emailedAt[endpointID]; ok && now.Sub(last) < emailSuppression {
-		return false
-	}
-	if w.emailedAt == nil {
-		w.emailedAt = make(map[string]time.Time)
-	}
-	w.emailedAt[endpointID] = now
-	return true
 }
 
 // ParseBackoff parses BEX_WEBHOOK_BACKOFF — a comma-separated list of Go
