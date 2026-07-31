@@ -36,13 +36,20 @@ import {
   loadRouteResource,
   routeResourceTitle,
   titleHead,
+  titleLoaderFetchPolicy,
   translatedText,
 } from "@/common/lib/document-head";
 
 export const Route = createFileRoute("/blueprints/$blueprintId")({
   component: BlueprintDetailPage,
+  // The page doubles as its own pending state at 0ms: it renders full
+  // chrome + its skeleton stack while its Apollo read loads (tolerating the
+  // absent loaderData), so the title-loader wait shows the real frame
+  // instead of the router-level blank that used to flash white.
+  pendingComponent: BlueprintDetailPage,
+  pendingMs: 0,
   beforeLoad: requireAuth(),
-  loader: ({ context, params }) =>
+  loader: ({ context, params, cause }) =>
     loadRouteResource(
       () =>
         context.client.query({
@@ -51,7 +58,7 @@ export const Route = createFileRoute("/blueprints/$blueprintId")({
             id: params.blueprintId,
             ownerId: context.workspaceId,
           },
-          fetchPolicy: "network-only",
+          fetchPolicy: titleLoaderFetchPolicy(cause),
           errorPolicy: "all",
         }),
       (data) => (data?.blueprint?.name?.trim() ? data.blueprint : null),

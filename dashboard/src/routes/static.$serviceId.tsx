@@ -23,9 +23,20 @@ import {
  */
 export const Route = createFileRoute("/static/$serviceId")({
   component: RouteComponent,
+  // The page doubles as its own pending state at 0ms — same rationale as
+  // /services/$serviceId: ServiceDetailLayout's own skeleton chrome replaces
+  // the router-level blank for the whole title-loader wait.
+  pendingComponent: RouteComponent,
+  pendingMs: 0,
   beforeLoad: requireAuth(),
-  loader: ({ context, params, location }) =>
-    loadServiceDetail(context.client, params.serviceId, "/static", location),
+  loader: ({ context, params, location, cause }) =>
+    loadServiceDetail(
+      context.client,
+      params.serviceId,
+      "/static",
+      location,
+      cause,
+    ),
   head: ({ loaderData, match }) =>
     titleHead(
       routeResourceTitle(loaderData, (service) => [

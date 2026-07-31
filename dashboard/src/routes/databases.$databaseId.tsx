@@ -39,21 +39,28 @@ import {
   loadRouteResource,
   routeResourceTitle,
   titleHead,
+  titleLoaderFetchPolicy,
   translatedText,
 } from "@/common/lib/document-head";
 
 export const Route = createFileRoute("/databases/$databaseId")({
   component: DatabaseDetailPage,
+  // The page doubles as its own pending state at 0ms: it renders full
+  // chrome + its skeleton stack while its Apollo read loads (tolerating the
+  // absent loaderData), so the title-loader wait shows the real frame
+  // instead of the router-level blank that used to flash white.
+  pendingComponent: DatabaseDetailPage,
+  pendingMs: 0,
   beforeLoad: requireAuth(),
   validateSearch: (search: Record<string, unknown>): { tab?: "logs" } =>
     search.tab === "logs" ? { tab: "logs" } : {},
-  loader: ({ context, params }) =>
+  loader: ({ context, params, cause }) =>
     loadRouteResource(
       () =>
         context.client.query({
           query: DatabaseDocument,
           variables: { id: params.databaseId },
-          fetchPolicy: "network-only",
+          fetchPolicy: titleLoaderFetchPolicy(cause),
           errorPolicy: "all",
         }),
       (data) => (data?.database?.name?.trim() ? data.database : null),

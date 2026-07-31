@@ -11,6 +11,7 @@ import { Checkbox } from "@/common/components/ui/checkbox";
 import { Skeleton } from "@/common/components/ui/skeleton.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatRelativeAge } from "@/features/services/lib/format";
+import { serviceBaseForType } from "@/features/services/lib/service-base";
 import { ServiceStatusBadge } from "@/features/services/components/service-status-badge";
 import { ServiceRowActions } from "@/features/services/components/service-row-actions";
 import { DatabaseStatusBadge } from "@/features/databases/components/database-status-badge";
@@ -239,7 +240,18 @@ function ResourceTableRow({
 function ResourceLink({ row }: { row: ResourceRow }) {
   const className = "block max-w-40 truncate hover:underline sm:max-w-56";
   if (row.kind === "service") {
-    return (
+    // Link straight to the type's canonical base: a static_site sent through
+    // /services/<id> costs a full extra navigation (loader round trip + route
+    // chunk) just to be bounced to /static/<id> by the canonicalizing loader.
+    return row.service && serviceBaseForType(row.service.type) === "/static" ? (
+      <Link
+        to="/static/$serviceId"
+        params={{ serviceId: row.id }}
+        className={className}
+      >
+        {row.name}
+      </Link>
+    ) : (
       <Link
         to="/services/$serviceId"
         params={{ serviceId: row.id }}
