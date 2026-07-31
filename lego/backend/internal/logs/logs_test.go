@@ -1032,3 +1032,30 @@ func TestLogsSubscribeCapSpeaksRenderErrorDialect(t *testing.T) {
 		t.Errorf("sseConns leaked: got %d, want 1", got)
 	}
 }
+
+// TestLogLabelValuesHostAndPathForMetricsFilters pins the discovery the metrics
+// Network card's Host/Path filters reuse (w5/m58): `host` resolves from the App's
+// own URLs even with no store wired (so the Host dropdown always populates),
+// while `path` is deliberately NOT a discoverable label — a high-cardinality line
+// field, not a Loki stream label — so the metrics UI uses a free-text Path filter
+// rather than a fabricated dropdown, exactly as the Logs tab does.
+func TestLogLabelValuesHostAndPathForMetricsFilters(t *testing.T) {
+	app := sampleApp("web")
+	app.Status.URLs = []string{"https://web.onbex.co", "https://www.example.com"}
+	cl := fake.NewClientBuilder().WithScheme(testScheme()).WithObjects(app).Build()
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}} // no LabelValues source: Loki unwired
+
+	// host resolves from the App's URLs with no store wired.
+	hosts, err := svc.LogLabelValues(context.Background(), LabelHost, LogQuery{App: "web"})
+	if err != nil {
+		t.Fatalf("host discovery: %v", err)
+	}
+	if !slices.Contains(hosts, "web.onbex.co") || !slices.Contains(hosts, "www.example.com") {
+		t.Errorf("host values = %v, want both of the App's hostnames", hosts)
+	}
+
+	// path is not discoverable — the verb names it rather than fabricating a dropdown.
+	if _, err := svc.LogLabelValues(context.Background(), "path", LogQuery{App: "web"}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("path discovery: want ErrBadRequest (not a discoverable label), got %v", err)
+	}
+}

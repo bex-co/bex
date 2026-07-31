@@ -180,6 +180,10 @@ func main() {
 	if lokiURL := os.Getenv("BEX_LOKI_URL"); lokiURL != "" {
 		deps.LogHistory = logs.NewLokiSource(lokiURL, nil)
 		deps.LogLabelValues = logs.NewLokiLabelValuesSource(lokiURL, nil)
+		// Host/path-filtered request metrics are served from the same Traefik
+		// access log in Loki (w5/m58) — the only store with a per-request
+		// host/path axis; unset => a host/path-filtered metrics read 503s.
+		deps.RequestLogMetrics = metrics.NewLokiRequestMetricsSource(lokiURL, nil)
 	}
 	// Prometheus-backed history, wired only when BEX_PROM_URL is set: request
 	// metrics (http_requests/latency/bandwidth via Traefik's counters — unwired

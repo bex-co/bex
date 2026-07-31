@@ -163,7 +163,15 @@ func promQueryRange(ctx context.Context, hc *http.Client, base, query string, st
 		"end":   {strconv.FormatInt(end.Unix(), 10)},
 		"step":  {strconv.FormatInt(step, 10)},
 	}.Encode())
+	return queryRangeMatrix(ctx, hc, u, "prometheus")
+}
 
+// queryRangeMatrix performs a query_range GET and parses the matrix reply. Both
+// Prometheus and Loki return the identical {status, data:{resultType:"matrix",
+// result:[{metric, values:[[unixSeconds, "value"]]}]}} envelope, so the Loki
+// request-metrics source (w5/m58) reuses this parser after building its own URL.
+// store names the backend for the transport error message only.
+func queryRangeMatrix(ctx context.Context, hc *http.Client, u, store string) ([]MetricSeries, error) {
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, err
@@ -174,11 +182,11 @@ func promQueryRange(ctx context.Context, hc *http.Client, base, query string, st
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("prometheus: status %d", resp.StatusCode)
+		return nil, fmt.Errorf("%s: status %d", store, resp.StatusCode)
 	}
 	var pr promRangeResponse
 	if err := json.NewDecoder(resp.Body).Decode(&pr); err != nil {
-		return nil, fmt.Errorf("decode prometheus response: %w", err)
+		return nil, fmt.Errorf("decode %s response: %w", store, err)
 	}
 	return parsePromMatrix(pr)
 }
@@ -251,8 +259,9 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 // counters. HTTP count/latency retain their service selector; bandwidth uses
 // exact router identities so shared backends remain attributable. Traefik's
 // Prometheus counters carry no host or path labels (the router label is a name,
-// not a matched Host()/PathPrefix() value), so host/path filters are refused
-// upstream (MetricQuery.Host/Path → 400) and absent from RequestMetricsRequest.
+// not a matched Host()/PathPrefix() value), so a host/path-filtered read is never
+// routed here — it goes to the Loki request-metrics source instead (w5/m58); this
+// builder ignores RequestMetricsRequest.Host/Path.
 func promQueryFor(req RequestMetricsRequest) string {
 	selector := fmt.Sprintf(`service=~".*%s.*"`, egressquery.RegexEscape(req.App))
 	if req.Metric == MetricBandwidth {

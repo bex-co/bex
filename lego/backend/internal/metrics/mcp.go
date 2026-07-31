@@ -35,6 +35,8 @@ type getMetricsArgs struct {
 	Quantile          float64   `json:"quantile,omitempty" jsonschema:"http_latency percentile 0..1 (default .95)"`
 	Quantiles         []float64 `json:"quantiles,omitempty" jsonschema:"http_latency percentiles 0..1 to read together — the percentile 'All' overlay (e.g. [0.5,0.9,0.99]); each returned series carries a quantile label so the overlaid percentiles stay distinct"`
 	Percentage        bool      `json:"percentage,omitempty" jsonschema:"report cpu/memory as a percentage of the pod limit"`
+	Host              string    `json:"host,omitempty" jsonschema:"filter http_requests/http_latency to one request Host — served from the request-log store (Loki); requires BEX_LOKI_URL or the read returns store-unavailable, and is rejected for any other metric"`
+	Path              string    `json:"path,omitempty" jsonschema:"filter http_requests/http_latency to one request Path — served from the request-log store (Loki); requires BEX_LOKI_URL or the read returns store-unavailable, and is rejected for any other metric"`
 }
 
 type getMetricsResult struct {
@@ -51,6 +53,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			Quantile:   in.Quantile,
 			Quantiles:  in.Quantiles,
 			Percentage: in.Percentage,
+			Host:       in.Host,
+			Path:       in.Path,
 			Resolution: time.Duration(in.ResolutionSeconds) * time.Second,
 		}
 		if in.StartTime != "" {

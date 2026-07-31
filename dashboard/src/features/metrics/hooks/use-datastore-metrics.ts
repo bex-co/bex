@@ -67,6 +67,9 @@ export function useDatastoreMetrics(
     series,
     loading,
     unavailable,
+    // Datastore metrics take no host/path filter, so the log-store-unavailable
+    // state (w5/m58) never applies here.
+    storeUnavailable: false,
     error: unavailable ? undefined : error,
     // Datastore metrics never carry the bandwidth degraded_sources label.
     degradedSources: EMPTY_DEGRADED,

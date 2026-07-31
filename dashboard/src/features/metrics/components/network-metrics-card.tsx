@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, X } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -14,6 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/common/components/ui/select.tsx";
+import { Input } from "@/common/components/ui/input.tsx";
+import { useLogLabelValues } from "@/features/logs/hooks/use-log-label-values";
 import {
   SvgBarChart,
   type BarSeriesInput,
@@ -68,16 +70,26 @@ const ALL_QUANTILES = [0.5, 0.9, 0.99];
 const STATUS_CODE_ALL = "all";
 const STATUS_CODE_CLASSES = ["2xx", "4xx", "5xx"];
 
+// Render's Host filter (w5/m58). Discovered from the App's request-log hosts via
+// the logs label-values read — the same source the Logs tab uses — so it lists
+// only hosts the App actually serves. "all" is the no-filter sentinel. Path has
+// no dropdown: `path` is a high-cardinality line field, not a discoverable
+// label, so (like the Logs tab) it is a free-text filter, not a fabricated list.
+const HOST_ALL = "all";
+
 /**
  * Render's "Network Metrics" card: Total Requests, Response Times, Outbound
  * Bandwidth — Prometheus-backed time-series honoring the range/resolution.
- * The Status Code filter sits in the card header and the Percentile picker on
- * the Response Times section (Render's placement, captured live 2026-07-17,
- * w5/m42) — both alter only this card, so their state lives here. Status Code
- * applies to requests + latency; bandwidth is deliberately left unfiltered
- * because its composed HTTP, WebSocket, and direct-public sources do not share
- * a status-code label (same honesty rule as the backend's rejected host/path
- * filters — w3/m12).
+ * The Status Code, Host, and Path filters sit in the card header and the
+ * Percentile picker on the Response Times section (Render's placement, captured
+ * live 2026-07-17, w5/m42; Host/Path added w5/m58) — all alter only this card,
+ * so their state lives here. Status Code / Host / Path apply to requests +
+ * latency; bandwidth is deliberately left unfiltered because its composed HTTP,
+ * WebSocket, and direct-public sources share no such label. Host/Path are served
+ * from the request-log store (Loki) — the only backend with a per-request
+ * host/path axis; with no store wired those two sections show an explicit
+ * "needs the log store" state (via MetricSection), never a silent unfiltered
+ * chart.
  */
 export function NetworkMetricsCard({
   resource,
@@ -93,7 +105,18 @@ export function NetworkMetricsCard({
   const isAllPercentiles = percentile === PERCENTILE_ALL;
   const [statusCode, setStatusCode] = useState(""); // "" = all
   const discoveredStatusCodes = useMetricsFilterValues(resource, "STATUS_CODE");
-  const queryOpts = { ...window, statusCode: statusCode || undefined };
+  // Host: a dropdown discovered from the App's request-log hosts. Path: free
+  // text (not discoverable) committed on Enter/blur, cleared with the × button.
+  const [host, setHost] = useState(""); // "" = all
+  const discoveredHosts = useLogLabelValues(resource, "host");
+  const [pathInput, setPathInput] = useState("");
+  const [path, setPath] = useState(""); // committed value driving the query
+  const queryOpts = {
+    ...window,
+    statusCode: statusCode || undefined,
+    host: host || undefined,
+    path: path || undefined,
+  };
   const requests = useMetrics(resource, "http_requests", {
     ...queryOpts,
     groupBy,
@@ -161,31 +184,80 @@ export function NetworkMetricsCard({
           <CardTitle>{t("metrics.networkTitle")}</CardTitle>
           <CardDescription>{t("metrics.networkDescription")}</CardDescription>
         </div>
-        <Select
-          value={statusCode === "" ? STATUS_CODE_ALL : statusCode}
-          onValueChange={(v) => setStatusCode(v === STATUS_CODE_ALL ? "" : v)}
-        >
-          <SelectTrigger
-            size="sm"
-            className="w-40"
-            aria-label={t("metrics.statusCode")}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Select
+            value={statusCode === "" ? STATUS_CODE_ALL : statusCode}
+            onValueChange={(v) => setStatusCode(v === STATUS_CODE_ALL ? "" : v)}
           >
-            <span className="text-muted-foreground">
-              {t("metrics.statusCode")}
-            </span>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={STATUS_CODE_ALL}>
-              {t("metrics.statusCodeAll")}
-            </SelectItem>
-            {statusCodeOptions.map((code) => (
-              <SelectItem key={code} value={code}>
-                {code}
+            <SelectTrigger
+              size="sm"
+              className="w-36"
+              aria-label={t("metrics.statusCode")}
+            >
+              <span className="text-muted-foreground">
+                {t("metrics.statusCode")}
+              </span>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={STATUS_CODE_ALL}>
+                {t("metrics.statusCodeAll")}
               </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+              {statusCodeOptions.map((code) => (
+                <SelectItem key={code} value={code}>
+                  {code}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={host === "" ? HOST_ALL : host}
+            onValueChange={(v) => setHost(v === HOST_ALL ? "" : v)}
+          >
+            <SelectTrigger
+              size="sm"
+              className="w-36"
+              aria-label={t("metrics.host")}
+            >
+              <span className="text-muted-foreground">{t("metrics.host")}</span>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={HOST_ALL}>{t("metrics.hostAll")}</SelectItem>
+              {discoveredHosts.map((h) => (
+                <SelectItem key={h} value={h}>
+                  {h}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="relative">
+            <Input
+              value={pathInput}
+              onChange={(e) => setPathInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") setPath(pathInput.trim());
+              }}
+              onBlur={() => setPath(pathInput.trim())}
+              placeholder={t("metrics.pathPlaceholder")}
+              aria-label={t("metrics.path")}
+              className="h-8 w-40 pr-7"
+            />
+            {path !== "" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPath("");
+                  setPathInput("");
+                }}
+                aria-label={t("metrics.pathClear")}
+                className="absolute inset-y-0 right-1 flex items-center text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <MetricSection

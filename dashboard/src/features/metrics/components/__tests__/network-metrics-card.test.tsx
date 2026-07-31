@@ -27,6 +27,11 @@ vi.mock("@/features/metrics/hooks/use-month-to-date-bandwidth", () => ({
 vi.mock("@/features/metrics/hooks/use-metrics-filter-values", () => ({
   useMetricsFilterValues: () => ["404"],
 }));
+// Host discovery reuses the logs label-values read (also Apollo) — stub it the
+// same way so the Host dropdown has options without an ApolloProvider (w5/m58).
+vi.mock("@/features/logs/hooks/use-log-label-values", () => ({
+  useLogLabelValues: () => ["web.onbex.co", "www.example.com"],
+}));
 
 const mockUseMetrics = vi.mocked(useMetrics);
 const mockUseMonthToDateBandwidth = vi.mocked(useMonthToDateBandwidth);
@@ -44,6 +49,7 @@ function emptyResult() {
     series: [],
     loading: false,
     unavailable: false,
+    storeUnavailable: false,
     error: undefined,
     degradedSources: [],
   };
@@ -190,6 +196,89 @@ describe("NetworkMetricsCard", () => {
     for (const code of ["All", "2xx", "4xx", "5xx", "404"]) {
       expect(screen.getByRole("option", { name: code })).toBeInTheDocument();
     }
+  });
+
+  it("populates the Host dropdown from the App's discovered request-log hosts (w5/m58)", async () => {
+    const user = userEvent.setup();
+    mockUseMetrics.mockReturnValue(emptyResult());
+
+    renderCard();
+    await user.click(screen.getByLabelText("Host"));
+
+    for (const host of ["All", "web.onbex.co", "www.example.com"]) {
+      expect(screen.getByRole("option", { name: host })).toBeInTheDocument();
+    }
+  });
+
+  it("applies its Host filter to requests and latency but never bandwidth (w5/m58)", async () => {
+    const user = userEvent.setup();
+    mockUseMetrics.mockReturnValue(emptyResult());
+
+    renderCard();
+    await user.click(screen.getByLabelText("Host"));
+    await user.click(screen.getByRole("option", { name: "web.onbex.co" }));
+
+    expect(mockUseMetrics).toHaveBeenCalledWith(
+      "beancount-cms",
+      "http_requests",
+      expect.objectContaining({ host: "web.onbex.co" }),
+    );
+    expect(mockUseMetrics).toHaveBeenCalledWith(
+      "beancount-cms",
+      "http_latency",
+      expect.objectContaining({ host: "web.onbex.co" }),
+    );
+    const bandwidthCalls = mockUseMetrics.mock.calls.filter(
+      ([, metric]) => metric === "bandwidth",
+    );
+    for (const call of bandwidthCalls) {
+      expect(call[2]).not.toHaveProperty("host");
+    }
+  });
+
+  it("applies the free-text Path filter to requests and latency on Enter, and clears it (w5/m58)", async () => {
+    const user = userEvent.setup();
+    mockUseMetrics.mockReturnValue(emptyResult());
+
+    renderCard();
+    await user.type(screen.getByLabelText("Path"), "/api{Enter}");
+
+    expect(mockUseMetrics).toHaveBeenCalledWith(
+      "beancount-cms",
+      "http_requests",
+      expect.objectContaining({ path: "/api" }),
+    );
+    expect(mockUseMetrics).toHaveBeenCalledWith(
+      "beancount-cms",
+      "http_latency",
+      expect.objectContaining({ path: "/api" }),
+    );
+
+    // The × button clears the active filter (path back to undefined).
+    mockUseMetrics.mockClear();
+    await user.click(screen.getByLabelText("Clear path filter"));
+    const requestsCall = mockUseMetrics.mock.calls.find(
+      ([, metric]) => metric === "http_requests",
+    );
+    expect(requestsCall?.[2].path).toBeUndefined();
+  });
+
+  it("shows the store-unavailable state on the request sections when a host/path filter hits no log store (w5/m58)", () => {
+    // A host/path-filtered read against a deployment with no Loki returns
+    // storeUnavailable; the requests + latency sections must show the explicit
+    // "needs the log store" copy, never a silently-unfiltered chart. Bandwidth
+    // (never host/path-filtered) is unaffected.
+    mockUseMetrics.mockImplementation((_resource, metric) =>
+      metric === "bandwidth"
+        ? emptyResult()
+        : { ...emptyResult(), storeUnavailable: true },
+    );
+
+    renderCard();
+
+    expect(
+      screen.getAllByText("Host and Path filters need the log store").length,
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it("renders a populated chart for a metric with data", () => {

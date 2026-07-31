@@ -8,6 +8,7 @@ import {
 } from "@/features/metrics/types";
 import {
   isMetricsUnavailable,
+  isLogStoreUnavailable,
   toChartSeries,
   METRICS_UNAVAILABLE_MESSAGE,
 } from "@/features/metrics/lib/graphql-series";
@@ -48,6 +49,16 @@ export interface UseMetricsOptions {
    * onto Core's groupBy exactly like REST's `groupBy` param).
    */
   groupBy?: "status" | "method";
+  /**
+   * Render's Network-card Host / Path filters (w5/m58). Sent as HOST / PATH
+   * filters entries alongside RESOURCE; they apply only to http_requests /
+   * http_latency. Traefik's Prometheus counters carry no host/path axis, so
+   * bex-api serves a host/path-filtered read from the request-log store (Loki)
+   * instead — with no store wired the read reports storeUnavailable (503), never
+   * a silently-unfiltered result.
+   */
+  host?: string;
+  path?: string;
   /** Polling cadence; 0 disables polling. Defaults to 30s. */
   pollIntervalMs?: number;
 }
@@ -57,6 +68,13 @@ export interface UseMetricsResult {
   loading: boolean;
   /** true when bex-api reported ErrMetricsUnavailable (no backend wired). */
   unavailable: boolean;
+  /**
+   * true when a host/path-filtered request read hit a deployment with no durable
+   * log store (bex-api's ErrLogStoreUnavailable → 503, w5/m58). The Network card
+   * renders this as an explicit "needs the log store" state, never a silently
+   * unfiltered chart — the Logs-tab 503 pattern.
+   */
+  storeUnavailable: boolean;
   /** Any other error (network, auth, ...). */
   error: Error | undefined;
   /**
@@ -93,6 +111,8 @@ export function useMetrics(
     aggregateMax,
     statusCode,
     groupBy,
+    host,
+    path,
   } = opts;
 
   const { data, loading, error } = useQuery(MetricsDocument, {
@@ -103,6 +123,8 @@ export function useMetrics(
           ...(statusCode
             ? [{ field: "STATUS_CODE", values: [statusCode] }]
             : []),
+          ...(host ? [{ field: "HOST", values: [host] }] : []),
+          ...(path ? [{ field: "PATH", values: [path] }] : []),
         ],
         name: RENDER_METRIC_NAMES[metric],
         start: startTime,
@@ -131,6 +153,7 @@ export function useMetrics(
   });
 
   const unavailable = isMetricsUnavailable(error);
+  const storeUnavailable = !unavailable && isLogStoreUnavailable(error);
 
   // Memoized on data identity: a stable series identity is what lets the
   // charts' geometry useMemos actually cache across poll-tick re-renders.
@@ -150,7 +173,8 @@ export function useMetrics(
     series,
     loading,
     unavailable,
-    error: unavailable ? undefined : error,
+    storeUnavailable,
+    error: unavailable || storeUnavailable ? undefined : error,
     degradedSources,
   };
 }

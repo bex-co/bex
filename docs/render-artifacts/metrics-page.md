@@ -32,7 +32,6 @@ Authenticated side-by-side capture, 2026-07-17: Render `dashboard.render.com/web
 
 | Render capability | Why bex diverges |
 | --- | --- |
-| Host / Path network filters | bex's metrics API rejects HOST/PATH filters (w3/m12) — Traefik's service-level series carry no such labels; discovery (`metricsFilters`) offers no values, so the dropdowns would be dead controls |
 | Observability-integrations banner | External metric drains are an explicit non-goal (`.pm/DO_NOT_DO.md`; same class as log/metric drains) |
 | Group-by option set | bex groups by status/method (Traefik labels); Render's set differs — bex's is the honest label set its meter actually has |
 | Bandwidth "Usage this month" value | bex composes real HTTP + NAT (direct-public L3) + WebSocket egress (w8/m15); only `privateLink` reports 0 (no such product surface) — an honest subset, never a fabricated total |
@@ -47,6 +46,33 @@ The three recorded drifts on the percentile + range controls were closed after a
 | Percentile "All" overlay | ✅ The metrics read returns several quantiles in one call — REST repeats `?quantile=`, GraphQL sends several `parameters[].quantile`, MCP takes `quantiles[]`; each series is tagged with its `quantile` label (GraphQL also echoes `parameters { quantile }`). The card's "All" option overlays p50/p90/p99 with a p50/p90/p99 legend. Single-quantile reads are byte-identical. |
 | "Last 30 days" range | ✅ Added as a relative preset on the shared range dropdown, **ungated** (Render plan-gates it). 30 days = `BEX_MAX_QUERY_HOURS`' default, the effective ceiling. |
 | "Custom" range | ✅ A "Custom…" dropdown option opens an absolute start/end picker (Metrics + Logs, via the shared control), bounded client-side by `MAX_CUSTOM_RANGE_HOURS` (30 days) and honestly by the backend's over-window 400 beyond it. Custom windows are URL-backed on the Logs tab. |
+
+## Closed by w5/m58 (2026-07-30)
+
+The last recorded Network-card drift — Host / Path filters — is closed. The t001 design probe refuted the earlier hypothesis that Host could ride Prometheus router labels: `traefik_service_requests_total` / `traefik_service_request_duration_seconds_bucket` carry `service`/`code`/`method`/`le` only, and `addRoutersLabels` adds a router **name**, not the matched `Host()`/`Path()`. So **both** filters are served from the request-log store (Loki), the one backend with a per-request host/path axis (Traefik's access log carries `RequestHost`/`RequestPath` per line, plus `Duration` ns for latency).
+
+| Was drift | Now |
+| --- | --- |
+| Host network filter | ✅ Card-header **Host dropdown**, discovered via the logs `logLabelValues(label:"host")` read (host resolves from the App's own URLs, so the dropdown populates even with no store). A host-filtered `http_requests`/`http_latency` read is served from Loki (`sum(rate(... \| json \| request_host=… [step]))` / `quantile_over_time(… \| unwrap latency_ns …)/1e9`), so the requests + response-time series change to the filtered subset. |
+| Path network filter | ✅ Card-header **free-text Path input** (committed on Enter/blur, clearable). `path` is a high-cardinality line field, not a discoverable Loki label — so, exactly like the Logs tab, it is a text filter, not a fabricated dropdown; its value becomes the Loki `request_path` line filter. |
+| Store-gated honest state | ✅ Host/Path apply only to `http_requests`/`http_latency` (bandwidth + host/path → named 400). With no `BEX_LOKI_URL`, a host/path-filtered read returns `ErrLogStoreUnavailable` (503) and the two sections render an explicit "Host and Path filters need the log store" state — **never** a silently-unfiltered chart (the Logs-tab 503 pattern). |
+
+### Cross-surface parity verdicts (t007)
+
+Filter fields/semantics are consistent across every surface, one spelling, one error dialect — asserted by `TestHostPathFilterCrossSurfaceParity` (all three route the same `host`/`path` to the same Loki source):
+
+| Surface | Spelling | Verdict |
+| --- | --- | --- |
+| REST | `GET /v1/metrics/{http-requests,http-latency}?host=&path=` | ✅ match — the parameter names Render's own metrics API uses; store-unavailable → 503, bandwidth+host/path → 400 |
+| GraphQL | `metrics(query:{filters:[{field:"HOST"…},{field:"PATH"…}]})` | ✅ match — same generic filters array as RESOURCE/STATUS_CODE (no schema change); store-unavailable → GraphQL error |
+| MCP | `get_metrics(host, path)` | ✅ match — new tool args, same core; store-unavailable → tool error |
+| UI (Network card) | Host dropdown + Path text input, card-header placement | ✅ match — Render's captured card-level Host/Path placement; Host discovered, Path free-text, both clearable |
+
+No new divergence filed. Discovery-side note: the Prometheus `metricsFilters` verb still reports empty HOST/PATH values (Prometheus has no host/path axis) — correct, not a dead control, because the UI discovers Host from the logs label-values read instead.
+
+### Live-proof status (t006)
+
+The shipped code is verified by the CI-enforced automated gates — backend `go test ./...` (40 packages, incl. `TestHostPathFiltersRouteToLogStore`, `TestRESTHostPathFilters`, `TestLokiRequestQueryFor`, `TestLokiRequestMetricsSourceRoundTrip`, `TestHostPathFilterCrossSurfaceParity`) + golangci-lint, and dashboard `yarn typecheck && yarn lint && yarn test` (1,691 tests, incl. the Host/Path dropdown/input, clear, and store-unavailable card states). The **live browser walk was blocked in-session**: the local `dev-5` stack could not be raised (the shared kind cluster is missing the CNPG `postgresql.cnpg.io/v1` CRDs the stack depends on, and it lacks Loki, which the filtered-series path needs). Per the milestone's own fallback, the live filtered-series + store-unavailable walk is deferred to the deployed dashboard post-ship (prod carries real Prometheus + Loki). This note records the deferral honestly rather than claiming an un-run walk.
 
 ## Cross-surface note
 

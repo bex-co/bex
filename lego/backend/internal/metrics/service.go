@@ -104,15 +104,17 @@ type MetricQuery struct {
 	Quantiles  []float64
 	Percentage bool   // cpu/memory as a fraction of the pod limit instead of absolute
 	StatusCode string // request filter: "2xx" | "5xx" | "500" | ""
-	// Host/Path carry Render's host/path request filters only so Metrics can
-	// refuse them with ErrBadRequest: Traefik's Prometheus counters (service-
-	// and router-level) intentionally carry no host or path labels — adding
-	// them would be unbounded cardinality. Even with addRoutersLabels: true
-	// the router label is the router NAME, not the matched Host()/Path().
-	// Filtering by host/path would require log-based aggregation (Loki), not
-	// Prometheus — infeasible on this stack (w3/m12, w3/m18 verified).
-	Host    string // 400: infeasible via Traefik Prometheus metrics
-	Path    string // 400: infeasible via Traefik Prometheus metrics
+	// Host/Path carry Render's host/path request filters. Traefik's Prometheus
+	// counters (service- and router-level) carry no host or path axis — even with
+	// addRoutersLabels the router label is the router NAME, not the matched
+	// Host()/Path() — so when either is set the request-metrics read is served
+	// from the request-log store (Loki) instead of Prometheus (w5/m58): the
+	// Traefik access log carries RequestHost/RequestPath per line. They apply
+	// only to http_requests/http_latency (bandwidth has no per-request host/path
+	// axis → ErrBadRequest); with the Loki source unwired they surface
+	// core.ErrLogStoreUnavailable, never a silently-unfiltered Prometheus result.
+	Host    string
+	Path    string
 	GroupBy string // request group-by: "status" | "method" | "instance" | ""
 	// AggregateMax collapses a per-instance series (cpu_limit/memory_limit) down
 	// to one series holding the max value across instances — Render's dashboard
@@ -186,6 +188,12 @@ type RequestMetricsRequest struct {
 	Quantile   float64
 	StatusCode string
 	GroupBy    string
+	// Host/Path are the per-request filters served by the request-log backend
+	// (NewLokiRequestMetricsSource, w5/m58). The Prometheus source ignores them
+	// (a host/path read is never routed to it); the Loki source turns them into
+	// LogQL line filters over the Traefik access log's RequestHost/RequestPath.
+	Host string
+	Path string
 }
 
 // RequestMetricsSource returns request time-series for an App from the ingress
@@ -224,6 +232,13 @@ type Service struct {
 	// RequestMetrics reads request time-series (Traefik via Prometheus); nil =>
 	// http_requests/http_latency/bandwidth report core.ErrMetricsUnavailable.
 	RequestMetrics RequestMetricsSource
+	// RequestLogMetrics reads host/path-filtered request time-series from the
+	// request-log store (Traefik access log via Loki, w5/m58) — the only backend
+	// that carries a per-request host/path axis. Reached only when a MetricQuery
+	// sets Host or Path; nil (BEX_LOKI_URL unset) => a host/path-filtered read
+	// reports core.ErrLogStoreUnavailable (the Logs-tab 503 pattern), never a
+	// silently-unfiltered Prometheus result. Same signature as RequestMetrics.
+	RequestLogMetrics RequestMetricsSource
 	// MonthToDateBandwidthSource reads cumulative composed egress since a given time.
 	MonthToDateBandwidthSource MonthToDateBandwidthSource
 	// MetricsFilterValuesSource discovers a Prometheus label's observed values.
@@ -259,7 +274,13 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 		return nil, err // ErrNotFound for unknown apps, exactly like Get
 	}
 	if q.Host != "" || q.Path != "" {
-		return nil, fmt.Errorf("%w: host/path metrics filters are not supported — Traefik's Prometheus counters carry no host or path labels (addRoutersLabels only adds a router-name label, not the matched Host()/Path() values); use the logs API for host/path-scoped request analysis", core.ErrBadRequest)
+		// host/path narrow request traffic only — they have no meaning for a
+		// resource metric, and bandwidth (egress L3/L7) carries no per-request
+		// host/path axis. Reject anything but the two request metrics up front,
+		// with a named error, before touching a store (w5/m58).
+		if q.Metric != MetricHTTPRequests && q.Metric != MetricHTTPLatency {
+			return nil, fmt.Errorf("%w: host/path filters apply only to http_requests and http_latency", core.ErrBadRequest)
+		}
 	}
 	q = q.normalized(s.Now())
 	var series []MetricSeries
@@ -614,6 +635,16 @@ func (s *Service) instanceCountMetric(ctx context.Context, q MetricQuery, appNam
 
 // requestMetric delegates to the injected request-metrics source.
 func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1alpha1.App, appName string) ([]MetricSeries, error) {
+	// A host/path filter is served from the request-log store (Loki) — Traefik's
+	// Prometheus counters carry no per-request host/path axis (w5/m58). Metrics()
+	// has already rejected host/path on any metric but the two request metrics, so
+	// this branch only ever sees http_requests/http_latency.
+	if q.Host != "" || q.Path != "" {
+		if s.RequestLogMetrics == nil {
+			return nil, core.ErrLogStoreUnavailable
+		}
+		return s.readRequestSeries(ctx, s.RequestLogMetrics, q, app, appName, nil)
+	}
 	if s.RequestMetrics == nil {
 		return nil, core.ErrMetricsUnavailable
 	}
@@ -625,7 +656,15 @@ func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1al
 			return nil, fmt.Errorf("%w: %v", core.ErrMetricsUnavailable, err)
 		}
 	}
-	series, err := s.RequestMetrics(ctx, RequestMetricsRequest{
+	return s.readRequestSeries(ctx, s.RequestMetrics, q, app, appName, routers)
+}
+
+// readRequestSeries issues one request-metric read against the chosen backend
+// (Prometheus for the unfiltered path, Loki for a host/path-filtered one) and
+// restores the caller-facing resource identity + unit on every returned series —
+// the post-processing both backends share.
+func (s *Service) readRequestSeries(ctx context.Context, source RequestMetricsSource, q MetricQuery, app *appv1alpha1.App, appName string, routers []string) ([]MetricSeries, error) {
+	series, err := source(ctx, RequestMetricsRequest{
 		// The App CR is in hand — its namespace is the per-tenant `<ws>` namespace
 		// under ADR043; use it directly rather than the shared s.Namespace.
 		Namespace:  app.Namespace,
@@ -640,6 +679,8 @@ func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1al
 		Quantile:   q.Quantile,
 		StatusCode: q.StatusCode,
 		GroupBy:    q.GroupBy,
+		Host:       q.Host,
+		Path:       q.Path,
 	})
 	if err != nil {
 		return nil, err
@@ -649,8 +690,8 @@ func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1al
 		if series[i].Labels == nil {
 			series[i].Labels = map[string]string{}
 		}
-		// Prometheus aggregation commonly removes every selector label. Restore
-		// the caller-facing resource identity here: operational selectors use the
+		// Aggregation commonly removes every selector label. Restore the
+		// caller-facing resource identity here: operational selectors use the
 		// resolved App name, but multi-resource REST/GraphQL/MCP responses must
 		// remain attributable to the public id or name the caller requested.
 		series[i].Labels["resource"] = q.App
@@ -787,8 +828,11 @@ type MetricsFilterValues struct {
 // MetricsFilters resolves available values for each requested output filter.
 // RESOURCE/INSTANCE are answered from data the service already has;
 // STATUS_CODE needs MetricsFilterValuesSource; BUILD/HOST/PATH always report
-// empty — discovery never offers a filter value the Metrics verb refuses
-// (host/path are rejected, w3/m12).
+// empty here — this Prometheus-backed discovery has no build/host/path axis.
+// Since w5/m58 the Metrics verb DOES accept host/path (for http_requests/
+// http_latency, served from the request-log store), but their values are
+// discovered from the logs label-values read instead (host from the App's URLs,
+// path is a free-text filter), never from this verb.
 func (s *Service) MetricsFilters(ctx context.Context, q MetricsFiltersQuery) ([]MetricsFilterValues, error) {
 	app, err := s.AuthorizeApp(ctx, core.RelCanView, q.App)
 	if err != nil {

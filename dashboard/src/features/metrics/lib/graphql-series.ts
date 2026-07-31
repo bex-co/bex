@@ -14,6 +14,21 @@ export function isMetricsUnavailable(error: unknown): boolean {
   );
 }
 
+// Substring of bex-api's ErrLogStoreUnavailable message (Core), returned by a
+// host/path-filtered request-metrics read when no durable log store (Loki) is
+// wired (w5/m58). Same marker the Logs tab matches on.
+export const LOG_STORE_UNAVAILABLE_MARKER = "durable log store";
+
+export function isLogStoreUnavailable(error: unknown): boolean {
+  return Boolean(
+    error &&
+    CombinedGraphQLErrors.is(error) &&
+    error.errors.some((e) =>
+      e.message.includes(LOG_STORE_UNAVAILABLE_MARKER),
+    ),
+  );
+}
+
 /** The wire shape shared by GraphQL's MetricSeries type — metrics() and
  * datastoreMetrics() both return this, just under different query names. */
 export interface RawMetricSeries {
