@@ -1,0 +1,61 @@
+name: govulncheck (Go workspace)
+
+# Source-level, call-graph-aware vulnerability scanning (w7/m62 t001) — the
+# complement to Trivy (container images) and gitleaks (commit secrets) in the CI
+# security-guard family. govulncheck reports ONLY vulnerabilities in REACHABLE
+# code, so it is low-false-positive and safe to GATE on.
+#
+# Gate policy: FAIL when a reachable vulnerability has a fixed version available
+# (the actionable case) — govulncheck's non-zero exit blocks the merge. A finding
+# with NO fix available would be triaged to a documented `warn` (exclude it and
+# note it here) rather than blocking indefinitely; the current baseline has none.
+#
+# Baseline (2026-07-31, triaged before enabling the gate — all three modules now
+# scan clean):
+#   - GO-2026-5970 (golang.org/x/text < v0.39.0, reachable) — FIXED by bumping
+#     x/text to v0.39.0 in lego/operator + lego/backend.
+#   - GO-2026-5856 (crypto/tls ECH privacy leak, fixed in go1.25.12 / go1.26.5) —
+#     resolved by scanning under the `1.25` Go line the release image builds with
+#     (lego/Dockerfile `FROM golang:1.25`; setup-go's latest 1.25.x is >= 1.25.12),
+#     so what govulncheck sees is the stdlib production actually ships.
+#
+# Go version: pinned to the `1.25` line to MATCH lego/Dockerfile, never a newer
+# toolchain — a newer Go would hide a stdlib vuln the release image still carries.
+# Tool pin: govulncheck@v1.1.4 via `go install`, integrity-verified against the Go
+# checksum database (GOSUMDB, on by default) — the go-install equivalent of the
+# gitleaks/trivy version+sha256 binary pin.
+on:
+  pull_request:
+    paths:
+      - "lego/**"
+      - ".github/workflows/govulncheck.yml"
+  push:
+    branches: [main]
+    paths:
+      - "lego/**"
+      - ".github/workflows/govulncheck.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          # The latest 1.25.x, matching lego/Dockerfile's `FROM golang:1.25`.
+          go-version: "1.25"
+          cache: false
+      - name: Install govulncheck (pinned, checksum-DB verified)
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+      - name: Scan the Go workspace modules (fail on any reachable vuln)
+        run: |
+          rc=0
+          for mod in types operator backend; do
+            echo "::group::govulncheck lego/$mod"
+            (cd "lego/$mod" && govulncheck ./...) || rc=1
+            echo "::endgroup::"
+          done
+          exit $rc

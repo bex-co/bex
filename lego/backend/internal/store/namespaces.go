@@ -133,11 +133,18 @@ func (r *NamespaceReconciler) ReconcileOnce(ctx context.Context) error {
 	var errs []error
 	for _, t := range tenants {
 		desired[WorkspaceNamespace(t.ID)] = true
+		// A live workspace's <ws>-sandbox namespace is a prune candidate ONLY when
+		// the workspace itself is gone — never merely because sandboxes are toggled
+		// off (ADR045 Finding 6, w7/m62). Flipping BEX_TENANT_SANDBOX_NAMESPACES off
+		// must not reap a live workspace's sandbox namespace (and its running
+		// sandboxes), so it is always "desired"; the toggle governs only whether we
+		// CREATE/converge it below (create-only). Workspace deletion still prunes
+		// both namespaces, whatever the toggle.
+		desired[SandboxNamespace(t.ID)] = true
 		if err := r.ensureNamespace(ctx, t, RegimeHosting); err != nil {
 			errs = append(errs, fmt.Errorf("workspace %s hosting namespace: %w", t.ID, err))
 		}
 		if r.Sandboxes {
-			desired[SandboxNamespace(t.ID)] = true
 			if err := r.ensureNamespace(ctx, t, RegimeSandbox); err != nil {
 				errs = append(errs, fmt.Errorf("workspace %s sandbox namespace: %w", t.ID, err))
 			}
