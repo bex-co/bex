@@ -67,6 +67,13 @@ ensure_cnpg() {
   fi
   kubectl wait --for=condition=established crd/clusters.postgresql.cnpg.io --timeout=120s >/dev/null 2>&1 \
     || { echo "error: the CNPG 'clusters' CRD never established — operator install failed" >&2; exit 1; }
+  # Pin the manager to the control-plane node: on the CAPD mock, pods on worker
+  # nodes can't reach the apiserver (OrbStack+Calico, docs/ADR004-app-deployment.md),
+  # so a worker-scheduled CNPG manager starts, hangs on its first API call, and
+  # crashloops (w1/043 — the prior cluster's cnpg CrashLoopBackOff root cause).
+  kubectl -n cnpg-system patch deploy cnpg-cloudnative-pg --type merge -p \
+    '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},
+     "tolerations":[{"key":"node-role.kubernetes.io/control-plane","effect":"NoSchedule"}]}}}}' >/dev/null
   echo "    waiting for the CNPG operator to become ready..."
   if ! kubectl -n cnpg-system rollout status deploy/cnpg-cloudnative-pg --timeout=150s; then
     {
@@ -219,6 +226,7 @@ for attempt in $(seq 1 5); do
     BEX_KRATOS_ADMIN_URL="http://localhost:$KRATOS_ADMIN_PORT" \
     BEX_HYDRA_ADMIN_URL="http://localhost:$HYDRA_ADMIN_PORT" \
     BEX_CP_DB_URI="$(hostDsn bex-db bex "$BEX_DB_PORT")" \
+    BEX_CP_INSECURE="1" \
     BEX_CP_APPS_NAMESPACE="$DEV_NS" \
     BEX_BASE_DOMAIN="onbex.co" \
     BEX_LOKI_URL="http://localhost:$LOKI_PORT" \
