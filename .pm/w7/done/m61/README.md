@@ -1,17 +1,21 @@
 # w7 · m61 — Insider role-ladder deny matrix: every mutating verb × under-privileged role (m55 sibling)
 
-**Worker:** worker7 **Goal:** CI systematically proves that within-workspace roles are enforced per verb — a viewer/billing member is denied every mutating verb, a contributor can operate but not create/delete — completing w7/m55's negative-authorization program on its second (insider) axis **Status:** todo
+**Worker:** worker7 **Goal:** CI systematically proves that within-workspace roles are enforced per verb — a viewer/billing member is denied every mutating verb, a contributor can operate but not create/delete — completing w7/m55's negative-authorization program on its second (insider) axis **Status:** done — **DONE 2026-07-31**
 
 ## Tasks (in order)
 
-| id   | title                                                                                       | est | depends_on |
-| ---- | -------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Pin the role→relation grant table from `model.fga` in a test helper                           | 45m | —          |
-| t002 | Role-ladder sweep: every sweepable verb × {viewer, contributor, billing}, completeness-guarded | 60m | t001       |
-| t003 | Real-OpenFGA E2E: one verb per relation class per role                                        | 45m | t002       |
-| t004 | Simplify pass over the changed code                                                           | 20m | t003       |
-| t005 | Test coverage: anti-tautology self-tests — each regression class turns CI red                 | 45m | t003       |
-| t006 | Closeout                                                                                      | 10m | t005       |
+| id   | title                                                                                       | est | depends_on | status |
+| ---- | -------------------------------------------------------------------------------------------- | --- | ---------- | ------ |
+| t001 | Pin the role→relation grant table from `model.fga` in a test helper                           | 45m | —          | — **DONE** |
+| t002 | Role-ladder sweep: every sweepable verb × {viewer, contributor, billing}, completeness-guarded | 60m | t001       | — **DONE** |
+| t003 | Real-OpenFGA E2E: one verb per relation class per role                                        | 45m | t002       | — **DONE** |
+| t004 | Simplify pass over the changed code                                                           | 20m | t003       | — **DONE** |
+| t005 | Test coverage: anti-tautology self-tests — each regression class turns CI red                 | 45m | t003       | — **DONE** |
+| t006 | Closeout                                                                                      | 10m | t005       | — **DONE** |
+
+## Finding (filed, not fixed — test-only milestone)
+
+Billing verbs (`billing.Service.Checkout/Portal/Status`) gate on `can_manage` (admin), not `can_manage_billing` — so a **billing-role** member cannot manage billing in bex, and `can_manage_billing` is modelled but unused by any verb. A Render-divergence + functional gap (fail-safe, not a security hole: the role is too restricted, never over-privileged). Recorded in `.pm/w7/014.md` for a future decision (align billing verbs to `can_manage_billing`, or drop the unused relation).
 
 ## Definition of done
 
