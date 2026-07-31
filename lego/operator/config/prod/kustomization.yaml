@@ -6,6 +6,11 @@ resources:
   - pg-sni-proxy-lb.yaml
   - kv-sni-proxy-lb.yaml
   - edge-proxy-network-policy.yaml
+  # Object-store origin + base domain for the shared static-server (w1/m57,
+  # docs/ADR029-static-sites.md). Prod-only: the base static-server stays
+  # degraded-503 without it, so local (config/default) does not CrashLoop on a
+  # missing Wasabi read credential.
+  - static-config.yaml
 patches:
   # Tenant Postgres physical backups resolve through the namespaced Barman
   # Cloud ObjectStore, while logical exports and finalizer purge Jobs consume

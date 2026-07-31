@@ -90,7 +90,7 @@ Rotation follows add → verify → deploy → lifecycle proof → revoke. The e
 
 ## Verification
 
-- `scripts/gitops-validate.sh` pins the admission objects, tenant Role shapes, fixed alias destinations, split Secret names, and exact IAM actions/resources.
+- `scripts/gitops-validate.sh` pins the admission objects, tenant Role shapes, fixed alias destinations, split Secret names, and exact IAM actions/resources. It also pins the static-server's GitOps codification (w1/m57): a **singular** Argo-managed static-server, **config-complete** via the git-owned `bex-static-config` ConfigMap (`lego/operator/config/prod/static-config.yaml`) whose serve origin equals the manager's publish origin, kept out of the local base so the credential-less CAPD static-server stays degraded-503 rather than CrashLooping; and the `bex-registry-pull` publish-pull custody (minted as `bex-builder`, never the retired `bex-puller`).
 - `scripts/verify-static-site-security.sh repo` reports the current parent-cookie behavior without gating PSL membership and still fails if storage or Service Workers cross origins; `PSL_EXPECTED=present` or `absent` pins either membership state explicitly.
 - `KUBECONFIG=… scripts/verify-static-site-security.sh live` enumerates tenant ServiceAccounts/RoleBinding subjects, checks every Service/Ingress write verb by impersonation, exercises positive and hostile server-side dry-run admission, fetches a live static URL, and runs the S3 matrix.
 - Controller/envtest tests prove operator reconciliation for both alias purposes and fail-before-Job behavior for a missing publisher Secret. Static-server unit/integration tests prove object-only rewrites and fail-closed S3 startup.
