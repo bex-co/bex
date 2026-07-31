@@ -65,6 +65,43 @@ KUBECONFIG="$WL_KUBECONFIG" kubectl -n kube-system patch deploy coredns --type m
   '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},
    "tolerations":[{"key":"node-role.kubernetes.io/control-plane","effect":"NoSchedule"},
    {"key":"CriticalAddonsOnly","operator":"Exists"}]}}}}' >/dev/null
+# calico-kube-controllers has the same apiserver dependency — on a worker node it
+# crashloops forever (observed at 1903 restarts on the rotted 2026-07-26 cluster; w1/043).
+KUBECONFIG="$WL_KUBECONFIG" kubectl -n kube-system patch deploy calico-kube-controllers --type merge -p \
+  '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},
+   "tolerations":[{"key":"node-role.kubernetes.io/control-plane","effect":"NoSchedule"},
+   {"key":"CriticalAddonsOnly","operator":"Exists"}]}}}}' >/dev/null
+
+# Storage: CAPD nodes ship no CSI, so PVCs (dev-N CNPG databases + Loki) can
+# never bind on a fresh cluster — install local-path-provisioner and mark it the
+# default StorageClass (.pm/w5/dev-5/up.sh fail-fasts on exactly this; w1/043).
+# Same OrbStack+Calico caveat as coredns above: the provisioner watches the
+# apiserver, so keep it on the control-plane node.
+KUBECONFIG="$WL_KUBECONFIG" kubectl apply -f \
+  https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml >/dev/null
+# The cluster's default PodSecurity is baseline, which forbids the hostPath
+# helper pods local-path uses to mkdir/rm volume dirs — exempt its namespace.
+KUBECONFIG="$WL_KUBECONFIG" kubectl label ns local-path-storage \
+  pod-security.kubernetes.io/enforce=privileged --overwrite >/dev/null
+KUBECONFIG="$WL_KUBECONFIG" kubectl -n local-path-storage patch deploy local-path-provisioner --type merge -p \
+  '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},
+   "tolerations":[{"key":"node-role.kubernetes.io/control-plane","effect":"NoSchedule"}]}}}}' >/dev/null
+KUBECONFIG="$WL_KUBECONFIG" kubectl annotate storageclass local-path \
+  storageclass.kubernetes.io/is-default-class=true --overwrite >/dev/null
+
+# cert-manager (same version deploy/gitops/base/cert-manager.yaml pins for prod):
+# the operator's `make deploy` hard-requires it — config/default mounts the
+# cert-manager-issued webhook-server-cert Secret, so without it the manager pod
+# wedges in ContainerCreating on a missing mount (w1/043). Control-plane-pinned
+# for the same OrbStack+Calico apiserver-reachability reason as coredns above.
+KUBECONFIG="$WL_KUBECONFIG" kubectl apply -f \
+  https://github.com/cert-manager/cert-manager/releases/download/v1.20.3/cert-manager.yaml >/dev/null
+for d in cert-manager cert-manager-cainjector cert-manager-webhook; do
+  KUBECONFIG="$WL_KUBECONFIG" kubectl -n cert-manager patch deploy "$d" --type merge -p \
+    '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},
+     "tolerations":[{"key":"node-role.kubernetes.io/control-plane","effect":"NoSchedule"}]}}}}' >/dev/null
+done
+KUBECONFIG="$WL_KUBECONFIG" kubectl -n cert-manager wait deploy --all --for=condition=Available --timeout=300s >/dev/null || true
 
 # 5. cluster-autoscaler beside CAPI (w1/m3) — same installer as prod CI.
 #    Why on the mgmt cluster: infra/clusterapi/autoscaler-values.yaml.
