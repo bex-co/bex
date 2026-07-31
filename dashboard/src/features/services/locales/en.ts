@@ -2285,6 +2285,55 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't cancel the cron run.",
     description: "Toast after cron run cancellation fails",
   },
+  "services.cronTriggerRun": {
+    message: "Trigger Run",
+    description: "Button that fires an immediate cron run (Render parity)",
+  },
+  "services.cronTriggering": {
+    message: "Triggering…",
+    description: "Trigger Run button label while the run is being created",
+  },
+  "services.cronTriggerActive": {
+    message: "A run is already in progress",
+    description: "Trigger Run disabled tooltip while a run is active",
+  },
+  "services.cronTriggerSuccess": {
+    message: "Cron run triggered.",
+    description: "Toast after a manual cron run is accepted",
+  },
+  "services.cronTriggerError": {
+    message: "Couldn't trigger the run.",
+    description: "Fallback inline error when triggering a cron run fails",
+  },
+  "services.cronTriggerConfirmTitle": {
+    message: "Trigger a run now?",
+    description: "Trigger Run confirmation dialog title",
+  },
+  "services.cronTriggerConfirmBody": {
+    message:
+      "This runs the job's command immediately, outside its schedule. Only one run can be active at a time.",
+    description: "Trigger Run confirmation dialog body",
+  },
+  "services.cronRunDetailToggle": {
+    message: "Toggle run detail",
+    description: "Accessible label for the expand/collapse run-detail control",
+  },
+  "services.cronRunDetailError": {
+    message: "Couldn't load this run's detail.",
+    description: "Shown when the single-run detail read fails (e.g. stale id)",
+  },
+  "services.cronRunDetailStarted": {
+    message: "Started",
+    description: "Run detail: absolute start timestamp label",
+  },
+  "services.cronRunDetailFinished": {
+    message: "Finished",
+    description: "Run detail: absolute finish timestamp label",
+  },
+  "services.cronRunDetailId": {
+    message: "Run ID",
+    description: "Run detail: the run's opaque id label",
+  },
   "services.cronRunsLoadMore": {
     message: "Load more",
     description: "Cron run history pagination button",

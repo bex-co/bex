@@ -2243,6 +2243,54 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法取消定时任务运行。",
     description: "Toast after cron run cancellation fails",
   },
+  "services.cronTriggerRun": {
+    message: "手动运行",
+    description: "Button that fires an immediate cron run (Render parity)",
+  },
+  "services.cronTriggering": {
+    message: "正在触发…",
+    description: "Trigger Run button label while the run is being created",
+  },
+  "services.cronTriggerActive": {
+    message: "已有运行正在进行",
+    description: "Trigger Run disabled tooltip while a run is active",
+  },
+  "services.cronTriggerSuccess": {
+    message: "已触发定时任务运行。",
+    description: "Toast after a manual cron run is accepted",
+  },
+  "services.cronTriggerError": {
+    message: "无法触发运行。",
+    description: "Fallback inline error when triggering a cron run fails",
+  },
+  "services.cronTriggerConfirmTitle": {
+    message: "立即触发一次运行？",
+    description: "Trigger Run confirmation dialog title",
+  },
+  "services.cronTriggerConfirmBody": {
+    message: "这将立即运行任务命令，不受计划限制。同一时间只能有一个运行。",
+    description: "Trigger Run confirmation dialog body",
+  },
+  "services.cronRunDetailToggle": {
+    message: "展开运行详情",
+    description: "Accessible label for the expand/collapse run-detail control",
+  },
+  "services.cronRunDetailError": {
+    message: "无法加载该运行的详情。",
+    description: "Shown when the single-run detail read fails (e.g. stale id)",
+  },
+  "services.cronRunDetailStarted": {
+    message: "开始时间",
+    description: "Run detail: absolute start timestamp label",
+  },
+  "services.cronRunDetailFinished": {
+    message: "结束时间",
+    description: "Run detail: absolute finish timestamp label",
+  },
+  "services.cronRunDetailId": {
+    message: "运行 ID",
+    description: "Run detail: the run's opaque id label",
+  },
   "services.cronRunsLoadMore": {
     message: "加载更多",
     description: "Cron run history pagination button",

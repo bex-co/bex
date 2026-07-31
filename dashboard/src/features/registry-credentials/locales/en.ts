@@ -109,6 +109,44 @@ const enRegistryCredentials: Record<string, TranslationEntry> = {
     message: "Delete",
     description: "Row action / confirmation button to delete a credential",
   },
+  "registryCredentials.edit": {
+    message: "Edit",
+    description: "Row action to open the edit-credential dialog",
+  },
+  "registryCredentials.editTitle": {
+    message: "Edit registry credential",
+    description: "Edit-credential dialog title",
+  },
+  "registryCredentials.editDescription": {
+    message:
+      "Rename the credential, change its username, or rotate the token. The registry host can't be changed.",
+    description: "Edit-credential dialog description",
+  },
+  "registryCredentials.editSubmit": {
+    message: "Save changes",
+    description: "Edit-credential dialog submit button",
+  },
+  "registryCredentials.fieldHostImmutable": {
+    message: "The registry host can't be changed after creation.",
+    description: "Hint under the read-only host field in the edit dialog",
+  },
+  "registryCredentials.fieldAuthTokenKeep": {
+    message: "Leave blank to keep the current token",
+    description: "Placeholder for the token field in the edit dialog",
+  },
+  "registryCredentials.fieldAuthTokenKeepHint": {
+    message:
+      "The stored token is never shown. Enter a new value only to rotate it.",
+    description: "Hint under the token field in the edit dialog",
+  },
+  "registryCredentials.updateSuccess": {
+    message: "Registry credential updated.",
+    description: "Toast after an edit succeeds",
+  },
+  "registryCredentials.updateError": {
+    message: "Couldn't update the registry credential.",
+    description: "Toast after an edit fails",
+  },
   "registryCredentials.deleteConfirmTitle": {
     message: "Delete {name}?",
     description: "Delete-confirmation dialog title",

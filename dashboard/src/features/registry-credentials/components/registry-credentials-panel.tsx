@@ -90,6 +90,7 @@ export function RegistryCredentialsPanel() {
                   key={entry.id}
                   entry={entry}
                   onDelete={handleDelete}
+                  onUpdated={() => void refetch()}
                   deleting={deleting === entry.id}
                 />
               ))}

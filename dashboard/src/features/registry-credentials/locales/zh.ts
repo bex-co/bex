@@ -106,6 +106,42 @@ const zhRegistryCredentials: Record<string, TranslationEntry> = {
     message: "删除",
     description: "Row action / confirmation button to delete a credential",
   },
+  "registryCredentials.edit": {
+    message: "编辑",
+    description: "Row action to open the edit-credential dialog",
+  },
+  "registryCredentials.editTitle": {
+    message: "编辑镜像仓库凭据",
+    description: "Edit-credential dialog title",
+  },
+  "registryCredentials.editDescription": {
+    message: "重命名凭据、修改用户名或轮换令牌。仓库主机创建后不可更改。",
+    description: "Edit-credential dialog description",
+  },
+  "registryCredentials.editSubmit": {
+    message: "保存更改",
+    description: "Edit-credential dialog submit button",
+  },
+  "registryCredentials.fieldHostImmutable": {
+    message: "仓库主机创建后不可更改。",
+    description: "Hint under the read-only host field in the edit dialog",
+  },
+  "registryCredentials.fieldAuthTokenKeep": {
+    message: "留空以保留当前令牌",
+    description: "Placeholder for the token field in the edit dialog",
+  },
+  "registryCredentials.fieldAuthTokenKeepHint": {
+    message: "存储的令牌不会显示。仅在需要轮换时输入新值。",
+    description: "Hint under the token field in the edit dialog",
+  },
+  "registryCredentials.updateSuccess": {
+    message: "镜像仓库凭据已更新。",
+    description: "Toast after an edit succeeds",
+  },
+  "registryCredentials.updateError": {
+    message: "无法更新镜像仓库凭据。",
+    description: "Toast after an edit fails",
+  },
   "registryCredentials.deleteConfirmTitle": {
     message: "删除 {name}？",
     description: "Delete-confirmation dialog title",
