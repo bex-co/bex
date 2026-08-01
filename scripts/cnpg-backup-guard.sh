@@ -23,7 +23,8 @@ scan() (
   : >"$tmp/clusters.tsv"
   : >"$tmp/objectstores.tsv"
 
-  cluster_files="$(rg -l '^kind:[[:space:]]*Cluster[[:space:]]*$' "$root" -g '*.yaml' -g '*.yml' || true)"
+  cluster_files="$(find "$root" -type f \( -name '*.yaml' -o -name '*.yml' \) \
+    -exec grep -lE '^kind:[[:space:]]*Cluster[[:space:]]*$' {} + || true)"
   while IFS= read -r file; do
     [ -n "$file" ] || continue
     yq ea -r '
@@ -42,7 +43,8 @@ scan() (
     }
   done <<<"$cluster_files"
 
-  objectstore_files="$(rg -l '^kind:[[:space:]]*ObjectStore[[:space:]]*$' "$root" -g '*.yaml' -g '*.yml' || true)"
+  objectstore_files="$(find "$root" -type f \( -name '*.yaml' -o -name '*.yml' \) \
+    -exec grep -lE '^kind:[[:space:]]*ObjectStore[[:space:]]*$' {} + || true)"
   while IFS= read -r file; do
     [ -n "$file" ] || continue
     yq ea -r '
