@@ -4,3 +4,4 @@ resources:
   - kratos-db.yaml
   - hydra-db.yaml
   - openfga-db.yaml
+  - scheduled-backups.yaml

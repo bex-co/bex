@@ -31,3 +31,11 @@ spec:
     initdb:
       database: hydra
       owner: hydra
+  # The running cluster is PostgreSQL 18. Keep the major in the archive identity
+  # so a future major upgrade starts a new, non-overlapping WAL history.
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: auth-dbs
+        serverName: hydra-db-pg18

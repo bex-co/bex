@@ -1,0 +1,53 @@
+# Nightly full base backups for the auth databases. WAL archiving is continuous
+# through each Cluster's Barman Cloud plugin. Stagger these after bex-db's 04:00
+# UTC backup so the shared platform nodes and object-store path do not contend.
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: kratos-db-nightly
+  namespace: auth
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  # CNPG uses six-field cron syntax (seconds first): daily at 04:15 UTC.
+  schedule: "0 15 4 * * *"
+  backupOwnerReference: self
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+  cluster:
+    name: kratos-db
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: hydra-db-nightly
+  namespace: auth
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  # Daily at 04:30 UTC.
+  schedule: "0 30 4 * * *"
+  backupOwnerReference: self
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+  cluster:
+    name: hydra-db
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: openfga-db-nightly
+  namespace: auth
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  # Daily at 04:45 UTC.
+  schedule: "0 45 4 * * *"
+  backupOwnerReference: self
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+  cluster:
+    name: openfga-db

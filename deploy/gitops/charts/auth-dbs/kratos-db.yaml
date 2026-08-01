@@ -41,3 +41,11 @@ spec:
     initdb:
       database: kratos
       owner: kratos
+  # The running cluster is PostgreSQL 18. Keep the major in the archive identity
+  # so a future major upgrade starts a new, non-overlapping WAL history.
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: auth-dbs
+        serverName: kratos-db-pg18
