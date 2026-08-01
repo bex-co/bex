@@ -59,3 +59,12 @@ jobs:
         run: bash scripts/rename-verify.test.sh
       - name: Deploy supersession detection unit tests
         run: bash scripts/deploy-superseded.test.sh
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Restore script shellcheck
+        run: >-
+          shellcheck scripts/lib/restore.sh scripts/restore-etcd.sh
+          scripts/restore-openbao.sh scripts/restore-postgres.sh
+          scripts/restore-keyvalue.sh scripts/restore.test.sh
+      - name: Restore script hermetic safety tests
+        run: bash scripts/restore.test.sh
