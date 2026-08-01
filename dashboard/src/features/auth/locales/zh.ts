@@ -38,8 +38,37 @@ const zhAuth: Record<string, TranslationEntry> = {
     description: "Account settings page heading",
   },
   "auth.settingsSubtitle": {
-    message: "管理您的账户资料、密码和双重身份验证安全设置。",
+    message: "管理您的身份、集成、访问权限和安全设置。",
     description: "Account settings page subheading",
+  },
+  "auth.settingsNavigation": {
+    message: "设置分区",
+    description: "Accessible label for the settings page section navigation",
+  },
+  "auth.accountSection": {
+    message: "账户",
+    description: "Settings page account section heading and navigation label",
+  },
+  "auth.accountSectionSubtitle": {
+    message: "更新您的资料、密码和双重身份验证设置。",
+    description: "Settings page account section description",
+  },
+  "auth.integrationsSection": {
+    message: "集成",
+    description:
+      "Settings page integrations section heading and navigation label",
+  },
+  "auth.integrationsSectionSubtitle": {
+    message: "连接源代码管理和私有镜像仓库。",
+    description: "Settings page integrations section description",
+  },
+  "auth.accessSection": {
+    message: "访问凭据",
+    description: "Settings page access section heading and navigation label",
+  },
+  "auth.accessSectionSubtitle": {
+    message: "管理编程访问和 SSH 身份。",
+    description: "Settings page access section description",
   },
   "auth.securityComplianceSection": {
     message: "安全与合规",

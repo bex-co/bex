@@ -11,17 +11,23 @@ import { useId, type ReactNode } from "react";
  * card can be asserted as living *under* a given section, not merely present.
  */
 export function SettingsSection({
+  id,
   title,
   description,
   children,
 }: {
+  id?: string;
   title: string;
   description?: string;
   children: ReactNode;
 }) {
   const headingId = useId();
   return (
-    <section aria-labelledby={headingId} className="space-y-4">
+    <section
+      id={id}
+      aria-labelledby={headingId}
+      className="scroll-mt-16 space-y-4 lg:scroll-mt-6"
+    >
       <div className="space-y-1">
         <h2 id={headingId} className="text-lg font-semibold text-foreground">
           {title}
