@@ -372,10 +372,12 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 		envGroupID = group.ID
 	}
 
-	// Wire the purgers exactly as cmd/api/main.go does (t005) — mutating the
-	// already-built srv.Workspaces in place takes effect immediately, since the
-	// schema's resolvers read s.Purgers at call time through the same pointer.
-	srv.Workspaces.Purgers = []workspaces.WorkspacePurger{
+	// Wire the pre-cascade purgers exactly as cmd/api/main.go does (t005) —
+	// mutating the already-built srv.Workspaces in place takes effect immediately,
+	// since the schema's resolvers read PreCascadePurgers at call time through the
+	// same pointer. These four all run pre-cascade (the apps purger, post-cascade,
+	// isn't exercised here — envtest has no projector to resurrect against).
+	srv.Workspaces.PreCascadePurgers = []workspaces.WorkspacePurger{
 		&secrets.WorkspacePurger{Service: &secrets.Service{Base: base, Store: secretsStore}},
 		&envgroups.WorkspacePurger{Service: &envgroups.Service{Base: base, Store: secretsStore}},
 		&postgres.WorkspacePurger{Service: &postgres.Service{Base: base}},

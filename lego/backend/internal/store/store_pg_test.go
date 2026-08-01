@@ -2247,20 +2247,31 @@ func TestSandboxKeyMintIdempotentAndResolves(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer pool.Close()
-	if _, err := pool.Exec(ctx, `TRUNCATE sandbox_tenant_keys`); err != nil {
+	if _, err := pool.Exec(ctx, `TRUNCATE tenants CASCADE`); err != nil {
 		t.Fatal(err)
 	}
 	s := NewPGStore(pool)
 
+	// The workspace_id FK (migration 0056) requires real tenant rows, so the key
+	// dies with its workspace instead of outliving it (w1/m61).
+	tenA, err := s.CreateWorkspace(ctx, "sbxkey-a", PlanPro, "sbxkey-owner-a")
+	if err != nil {
+		t.Fatalf("create workspace a: %v", err)
+	}
+	tenB, err := s.CreateWorkspace(ctx, "sbxkey-b", PlanPro, "sbxkey-owner-b")
+	if err != nil {
+		t.Fatalf("create workspace b: %v", err)
+	}
+
 	// First mint returns a key; repeat mint returns the SAME key (idempotent).
-	k1, err := s.SandboxKeyForWorkspace(ctx, "tea-a")
+	k1, err := s.SandboxKeyForWorkspace(ctx, tenA.ID)
 	if err != nil {
 		t.Fatalf("first mint: %v", err)
 	}
 	if k1 == "" {
 		t.Fatal("empty key")
 	}
-	k2, err := s.SandboxKeyForWorkspace(ctx, "tea-a")
+	k2, err := s.SandboxKeyForWorkspace(ctx, tenA.ID)
 	if err != nil {
 		t.Fatalf("second mint: %v", err)
 	}
@@ -2269,7 +2280,7 @@ func TestSandboxKeyMintIdempotentAndResolves(t *testing.T) {
 	}
 
 	// A different workspace gets a distinct key.
-	kb, err := s.SandboxKeyForWorkspace(ctx, "tea-b")
+	kb, err := s.SandboxKeyForWorkspace(ctx, tenB.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2279,15 +2290,30 @@ func TestSandboxKeyMintIdempotentAndResolves(t *testing.T) {
 
 	// Reverse lookup resolves the key back to its workspace; unknown → ErrNotFound.
 	ws, err := s.WorkspaceForSandboxKey(ctx, k1)
-	if err != nil || ws != "tea-a" {
-		t.Errorf("resolve k1 = %q err %v, want tea-a", ws, err)
+	if err != nil || ws != tenA.ID {
+		t.Errorf("resolve k1 = %q err %v, want %q", ws, err, tenA.ID)
 	}
 	if _, err := s.WorkspaceForSandboxKey(ctx, "osk-nope"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("unknown key err = %v, want ErrNotFound", err)
 	}
 
+	// Lookup-only resolver (w1/m61): returns the minted key WITHOUT minting, and
+	// reports found=false for a workspace that never created a sandbox — the seam
+	// the workspace-delete purger uses to find the key to tear sandboxes down.
+	gotKey, found, err := s.SandboxKeyLookup(ctx, tenA.ID)
+	if err != nil || !found || gotKey != k1 {
+		t.Errorf("SandboxKeyLookup(a) = %q found=%v err=%v, want %q true nil", gotKey, found, err, k1)
+	}
+	if gotKey, found, err := s.SandboxKeyLookup(ctx, "tea-never"); err != nil || found || gotKey != "" {
+		t.Errorf("SandboxKeyLookup(unknown) = %q found=%v err=%v, want \"\" false nil", gotKey, found, err)
+	}
+
 	// Concurrent first-mints for a fresh workspace converge to one key (the
 	// UNIQUE(workspace_id) constraint, not a check-then-insert).
+	tenRace, err := s.CreateWorkspace(ctx, "sbxkey-race", PlanPro, "sbxkey-owner-race")
+	if err != nil {
+		t.Fatalf("create workspace race: %v", err)
+	}
 	const n = 20
 	keys := make([]string, n)
 	var wg sync.WaitGroup
@@ -2295,7 +2321,7 @@ func TestSandboxKeyMintIdempotentAndResolves(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			k, err := s.SandboxKeyForWorkspace(ctx, "tea-race")
+			k, err := s.SandboxKeyForWorkspace(ctx, tenRace.ID)
 			if err != nil {
 				t.Errorf("concurrent mint %d: %v", i, err)
 				return
@@ -2310,10 +2336,61 @@ func TestSandboxKeyMintIdempotentAndResolves(t *testing.T) {
 		}
 	}
 	var count int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM sandbox_tenant_keys WHERE workspace_id = $1`, "tea-race").Scan(&count); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM sandbox_tenant_keys WHERE workspace_id = $1`, tenRace.ID).Scan(&count); err != nil {
 		t.Fatal(err)
 	}
 	if count != 1 {
-		t.Errorf("tea-race key rows = %d, want 1", count)
+		t.Errorf("race key rows = %d, want 1", count)
+	}
+}
+
+// TestSandboxKeyCascadesOnTenantDelete proves migration 0056's ON DELETE CASCADE:
+// deleting a workspace drops its sandbox tenant key so a stale key can no longer
+// resolve to a dead tenant, closing the w1/m61 orphaned-credential gap.
+func TestSandboxKeyCascadesOnTenantDelete(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if _, err := pool.Exec(ctx, `TRUNCATE tenants CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+	s := NewPGStore(pool)
+
+	ten, err := s.CreateWorkspace(ctx, "sbxkey-cascade", PlanPro, "sbxkey-cascade-owner")
+	if err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	key, err := s.SandboxKeyForWorkspace(ctx, ten.ID)
+	if err != nil {
+		t.Fatalf("mint key: %v", err)
+	}
+	// The key resolves both ways while the workspace lives.
+	if _, found, err := s.SandboxKeyLookup(ctx, ten.ID); err != nil || !found {
+		t.Fatalf("pre-delete lookup found=%v err=%v, want true", found, err)
+	}
+	if ws, err := s.WorkspaceForSandboxKey(ctx, key); err != nil || ws != ten.ID {
+		t.Fatalf("pre-delete resolve = %q err=%v, want %q", ws, err, ten.ID)
+	}
+
+	if err := s.DeleteTenant(ctx, ten.ID); err != nil {
+		t.Fatalf("delete tenant: %v", err)
+	}
+
+	// The FK cascade dropped the key row: neither direction resolves anymore.
+	if gotKey, found, err := s.SandboxKeyLookup(ctx, ten.ID); err != nil || found || gotKey != "" {
+		t.Errorf("post-delete lookup = %q found=%v err=%v, want \"\" false nil", gotKey, found, err)
+	}
+	if _, err := s.WorkspaceForSandboxKey(ctx, key); !errors.Is(err, ErrNotFound) {
+		t.Errorf("post-delete resolve err = %v, want ErrNotFound", err)
 	}
 }

@@ -280,20 +280,55 @@ func (p *fakePurger) PurgeWorkspace(_ context.Context, tenantID string) error {
 	return nil
 }
 
+// flakyPurger fails its first failN PurgeWorkspace calls, then succeeds — a
+// transient outage (OpenBao/k8s blip) that a retry recovers from. It counts its
+// successful purges so a test can prove the retry actually completed the sweep.
+type flakyPurger struct {
+	failN     int
+	calls     int
+	succeeded int
+}
+
+func (p *flakyPurger) PurgeWorkspace(_ context.Context, _ string) error {
+	p.calls++
+	if p.calls <= p.failN {
+		return errors.New("transient purge failure")
+	}
+	p.succeeded++
+	return nil
+}
+
+// existenceProbePurger records, at purge time, whether the tenant row still
+// exists — so a test can pin which phase (pre- or post-cascade) it ran in.
+type existenceProbePurger struct {
+	st       WorkspaceStore
+	rowAlive *bool
+}
+
+func (p *existenceProbePurger) PurgeWorkspace(ctx context.Context, tenantID string) error {
+	_, err := p.st.GetTenant(ctx, tenantID)
+	alive := err == nil
+	p.rowAlive = &alive
+	return nil
+}
+
 // ctxAs returns a context carrying the given subject identity.
 func ctxAs(subject string) context.Context {
 	return core.WithIdentity(context.Background(), core.Identity{Subject: subject, Method: "session"})
 }
 
 // allowSvc builds a Service with an allow-all checker and the given collaborators.
+// The variadic purgers are wired as PRE-cascade purgers — the retry-safe phase
+// the general Delete tests exercise; post-cascade purgers are set explicitly by
+// the tests that need them.
 func allowSvc(st WorkspaceStore, g WorkspaceGranter, r WorkspaceRevoker, kick func(), purgers ...WorkspacePurger) *Service {
 	return &Service{
-		Base:    &core.Base{Authz: &fakeChecker{allow: true}, Workspace: &fakeResolver{store: st}},
-		Store:   st,
-		Granter: g,
-		Revoker: r,
-		Kick:    kick,
-		Purgers: purgers,
+		Base:              &core.Base{Authz: &fakeChecker{allow: true}, Workspace: &fakeResolver{store: st}},
+		Store:             st,
+		Granter:           g,
+		Revoker:           r,
+		Kick:              kick,
+		PreCascadePurgers: purgers,
 	}
 }
 
@@ -486,6 +521,81 @@ func TestDelete_PurgerFailureSurfaces(t *testing.T) {
 	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
 	if err := svc.Delete(ctxAs("user-a"), w.ID, "sudo delete workspace acme"); err == nil {
 		t.Fatal("want purger error surfaced")
+	}
+	// A pre-cascade purger failure must LEAVE THE ROW INTACT so the delete is
+	// retryable (w1/m61/t001): the confirmation phrase GetTenant re-reads on the
+	// next attempt is still there. Before m61 the row was already dropped by the
+	// time a purger ran, so a failure stranded the resource with no way back.
+	if _, err := st.GetTenant(context.Background(), w.ID); err != nil {
+		t.Fatalf("pre-cascade purger failure destroyed the row (delete would be unretryable): %v", err)
+	}
+}
+
+// TestDelete_RetryAfterPreCascadePurgerFailureCompletes is the headline w1/m61
+// guarantee: a transient purger failure leaves the workspace row intact, and
+// re-issuing the identical Delete converges — every phase runs and the row is
+// finally gone, nothing orphaned.
+func TestDelete_RetryAfterPreCascadePurgerFailureCompletes(t *testing.T) {
+	st := newFakeStore()
+	flaky := &flakyPurger{failN: 1} // fails once (e.g. an OpenBao blip), then recovers
+	good := &fakePurger{}
+	post := &fakePurger{}
+	svc := allowSvc(st, &fakeGranter{}, &fakeRevoker{}, nil, flaky, good)
+	svc.PostCascadePurgers = []WorkspacePurger{post}
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
+
+	// First attempt: the flaky purger fails, so Delete errors and the row survives.
+	if err := svc.Delete(ctxAs("user-a"), w.ID, "sudo delete workspace acme"); err == nil {
+		t.Fatal("first attempt: want the transient purger error")
+	}
+	if _, err := st.GetTenant(context.Background(), w.ID); err != nil {
+		t.Fatalf("first attempt destroyed the row, delete is unretryable: %v", err)
+	}
+	// The row was never dropped, so the post-cascade purger must not have run.
+	if len(post.purged) != 0 {
+		t.Fatalf("post-cascade purger ran despite a pre-cascade failure: %v", post.purged)
+	}
+
+	// Retry: the flaky purger now succeeds, the row is dropped, and every phase runs.
+	if err := svc.Delete(ctxAs("user-a"), w.ID, "sudo delete workspace acme"); err != nil {
+		t.Fatalf("retry: %v", err)
+	}
+	if _, err := st.GetTenant(context.Background(), w.ID); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("retry did not remove the row: %v", err)
+	}
+	if flaky.succeeded != 1 {
+		t.Errorf("flaky purger succeeded %d times, want 1", flaky.succeeded)
+	}
+	if len(good.purged) != 1 {
+		t.Errorf("the sweep did not continue past the recovered purger: good ran %d times, want 1", len(good.purged))
+	}
+	if len(post.purged) != 1 {
+		t.Errorf("post-cascade purger ran %d times, want 1", len(post.purged))
+	}
+}
+
+// TestDelete_PurgerPhaseOrdering pins the pre/post-cascade contract (w1/m61/t001):
+// a pre-cascade purger observes the tenant row STILL PRESENT (so the sandbox/Stripe
+// purgers can read the ids the cascade drops, and the delete stays retryable), and
+// a post-cascade purger observes it GONE (so the App-CR purger can't be resurrected
+// by the projector from a still-live row). Moving a purger to the wrong phase fails
+// this.
+func TestDelete_PurgerPhaseOrdering(t *testing.T) {
+	st := newFakeStore()
+	pre := &existenceProbePurger{st: st}
+	post := &existenceProbePurger{st: st}
+	svc := allowSvc(st, &fakeGranter{}, &fakeRevoker{}, nil, pre)
+	svc.PostCascadePurgers = []WorkspacePurger{post}
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
+
+	if err := svc.Delete(ctxAs("user-a"), w.ID, "sudo delete workspace acme"); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	if pre.rowAlive == nil || !*pre.rowAlive {
+		t.Errorf("pre-cascade purger ran with the row already gone (want present): %v", pre.rowAlive)
+	}
+	if post.rowAlive == nil || *post.rowAlive {
+		t.Errorf("post-cascade purger ran with the row still present (want gone): %v", post.rowAlive)
 	}
 }
 

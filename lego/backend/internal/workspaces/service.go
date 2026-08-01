@@ -63,10 +63,25 @@ type Service struct {
 	// orphaned App CRs are pruned immediately instead of on the next resync. Nil
 	// => pruning waits for the resync.
 	Kick func()
-	// Purgers tear down a deleted workspace's out-of-cascade resources (its
-	// OpenBao env-var secrets, its managed Databases). Each is best-effort and
-	// injected by the composition root; see WorkspacePurger.
-	Purgers []WorkspacePurger
+	// PreCascadePurgers tear down a deleted workspace's out-of-cascade resources
+	// BEFORE the tenant row (and its FK cascade) is dropped: OpenBao env-var
+	// secrets, env groups, managed Databases/KeyValues, its OpenSandbox
+	// sandboxes, and its Stripe subscription. Running before DeleteTenant is what
+	// makes Delete retryable — a purger failure leaves the row (and the
+	// confirmation phrase GetTenant re-reads) intact, so re-issuing the identical
+	// Delete re-runs the whole teardown. Two of them also REQUIRE the pre-cascade
+	// slot: the sandbox tenant key and the Stripe subscription id live in rows the
+	// cascade is about to drop, and the secrets purger must enumerate the App CRs
+	// while they still exist. Each is best-effort and idempotent; injected by the
+	// composition root. See WorkspacePurger.
+	PreCascadePurgers []WorkspacePurger
+	// PostCascadePurgers tear down resources that must wait until AFTER the row
+	// cascade: today just the App CRs, which the apps-rows→App-CR projector would
+	// immediately re-create if they were purged while their rows still exist.
+	// Their second net is the projector's own prune (Kick), so a post-cascade
+	// purger failure — unlike a pre-cascade one — is still eventually reconciled
+	// even though the Delete call itself can't be retried past the vanished row.
+	PostCascadePurgers []WorkspacePurger
 	// Identities looks up owner/member email + name + MFA from Kratos (the store
 	// carries only subjects). Nil => those fields omitted from the owners/members
 	// responses (honest subset; BEX_KRATOS_ADMIN_URL unset).
@@ -141,10 +156,12 @@ type TenantResolutionInvalidator interface {
 }
 
 // WorkspacePurger tears down one class of a deleted workspace's resources that
-// the tenant-row FK cascade does NOT reach — its OpenBao env-var secrets, its
-// managed Databases. Purge is called after the row (and its cascade) is gone;
-// it must be idempotent so a retried delete completes the teardown. Injected by
-// the composition root, so this feature imports neither secrets nor postgres.
+// the tenant-row FK cascade does NOT reach — OpenBao env-var secrets, managed
+// Databases/KeyValues, App CRs, OpenSandbox sandboxes, the Stripe subscription.
+// Delete runs most of them BEFORE the cascade (see PreCascadePurgers) and the
+// App-CR purger AFTER it (PostCascadePurgers); every implementation must be
+// idempotent either way, so a retried delete completes the teardown. Injected
+// by the composition root, so this feature imports none of those packages.
 type WorkspacePurger interface {
 	PurgeWorkspace(ctx context.Context, tenantID string) error
 }
@@ -701,14 +718,20 @@ func (s *Service) guardPerUserWorkspaceCap(ctx context.Context, subject, plan st
 // docs, and the dashboard danger-zone (delete-workspace-card.tsx) agree.
 func DeleteConfirmation(name string) string { return "sudo delete workspace " + name }
 
-// Delete tears a workspace down: it revokes each member's OpenFGA tuple, deletes
-// the tenant row (the FK cascade drops its apps, domains, and memberships in the
-// same statement), nudges the projector to prune the orphaned App CRs, and runs
-// the injected purgers (OpenBao secrets, managed Databases). Admin-only, and
-// guarded by a confirmation that must equal DeleteConfirmation(name) — Render's
-// "sudo delete workspace <name>" phrase (a typo is a no-op, not a destroyed
-// workspace). Idempotent enough to re-run after a partial failure: revoke/purge
-// tolerate already-gone tuples/resources.
+// Delete tears a workspace down, in an order chosen so a transient failure is
+// recoverable: it revokes each member's OpenFGA tuple, runs the pre-cascade
+// purgers (OpenBao secrets, env groups, managed Databases/KeyValues, OpenSandbox
+// sandboxes, the Stripe subscription) while the tenant row still exists, deletes
+// the tenant row (the FK cascade drops its apps, domains, memberships, sandbox
+// key, and billing rows in the same statement), nudges the projector to prune
+// the orphaned App CRs, then runs the post-cascade purger (the App CRs). Running
+// the bulk of the teardown BEFORE the row is dropped is what makes it retryable:
+// a pre-cascade purger failure leaves the row (and its confirmation phrase)
+// intact, so re-issuing the identical Delete re-runs the whole sweep. Admin-only,
+// and guarded by a confirmation that must equal DeleteConfirmation(name) —
+// Render's "sudo delete workspace <name>" phrase (a typo is a no-op, not a
+// destroyed workspace). Every purger and the revoke tolerate already-gone
+// tuples/resources so the retry converges.
 func (s *Service) Delete(ctx context.Context, id, confirmName string) error {
 	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(id)); err != nil {
 		return err
@@ -742,16 +765,35 @@ func (s *Service) Delete(ctx context.Context, id, confirmName string) error {
 			}
 		}
 	}
+	// Pre-cascade teardown: everything except the App CRs runs while the tenant
+	// row still exists. That is what makes Delete retryable — a failure here
+	// leaves the row (and the confirmation phrase GetTenant re-reads) intact, so
+	// re-issuing the identical Delete re-runs the whole sweep — and it is what
+	// lets the sandbox/Stripe purgers still read the ids the cascade is about to
+	// drop and the secrets purger still enumerate the workspace's App CRs.
+	if err := runPurgers(ctx, s.PreCascadePurgers, id); err != nil {
+		return err
+	}
 	if err := s.Store.DeleteTenant(ctx, id); err != nil {
 		return mapStoreErr(err)
 	}
 	if s.Kick != nil {
 		s.Kick()
 	}
-	// Out-of-cascade teardown (OpenBao secrets, Databases). Best-effort and
-	// idempotent; a purger failure is surfaced so a retry completes it, but the
-	// row is already gone so the workspace is unusable regardless.
-	for _, p := range s.Purgers {
+	// Post-cascade teardown: the App CRs, now that their backing rows are gone so
+	// the projector won't resurrect them. Best-effort — the projector's own prune
+	// (Kick, above) is the second net if this fails, and the row is already gone
+	// so the workspace is unusable regardless.
+	if err := runPurgers(ctx, s.PostCascadePurgers, id); err != nil {
+		return err
+	}
+	return nil
+}
+
+// runPurgers invokes each purger in order, wrapping the first failure so Delete
+// surfaces it (a pre-cascade failure then leaves the row intact for a retry).
+func runPurgers(ctx context.Context, purgers []WorkspacePurger, id string) error {
+	for _, p := range purgers {
 		if err := p.PurgeWorkspace(ctx, id); err != nil {
 			return fmt.Errorf("purge workspace %s: %w", id, err)
 		}

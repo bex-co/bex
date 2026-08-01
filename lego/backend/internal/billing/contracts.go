@@ -113,6 +113,43 @@ func (c *StripeClient) CompCustomer(ctx context.Context, tenantID string) error 
 	return nil
 }
 
+// CancelContract immediately cancels the workspace's live bex Subscription when
+// its workspace is deleted, invoicing any already-exported metered usage one
+// last time (InvoiceNow). Idempotent: a workspace that was never billable (Mode A
+// excluded, so it never got a Customer) or whose subscription is already
+// cancelled/absent is a no-op — findCustomer/findSubscription resolve without
+// creating, and findSubscriptionObject already skips cancelled subscriptions. The
+// Customer is deliberately KEPT so its invoice history stays readable after the
+// workspace is gone (Stripe's guidance is cancel-not-delete; a delete would orphan
+// past invoices). Usage still inside the seal window at delete time was never
+// exported and is not billed — an accepted loss consistent with the seal-then-emit
+// outbox (ADR040 §3).
+func (c *StripeClient) CancelContract(ctx context.Context, tenantID string) error {
+	customerID, found, err := c.findCustomer(ctx, tenantID)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return nil // no Customer ⇒ never billable ⇒ nothing to cancel
+	}
+	subscriptionID, found, err := c.findSubscription(ctx, tenantID, customerID)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return nil // no live subscription ⇒ nothing to cancel
+	}
+	params := &stripe.SubscriptionCancelParams{
+		InvoiceNow: stripe.Bool(true),  // bill already-exported metered usage one last time
+		Prorate:    stripe.Bool(false), // a metered plan has no prepaid time to credit
+	}
+	params.Context = ctx
+	if _, err := c.sc.Subscriptions.Cancel(subscriptionID, params); err != nil {
+		return fmt.Errorf("stripe: cancel subscription %s for %s: %w", subscriptionID, tenantID, err)
+	}
+	return nil
+}
+
 // findSubscription resolves the one live bex billing contract for a workspace
 // without creating it. Multiple matches are rejected instead of silently
 // choosing one and risking double-rated usage.
