@@ -17,19 +17,20 @@ Usage:
 
   scripts/restore-etcd.sh [same options] --output-dir DIR
 
-  scripts/restore-etcd.sh [same options] --apply --target-context restore-NAME \
+  scripts/restore-etcd.sh --apply-dir DIR --target-context restore-NAME \
     --confirm APPLY-restore-NAME
 
 Default extracted prefixes are Apps, Databases, and KeyValues. --prefix may be
-repeated for another /registry/... prefix. With no --apply, Kubernetes is never
-contacted. Apply is permitted only to a kube context whose name starts restore-.
+repeated for another /registry/... prefix. Extraction never contacts Kubernetes.
+--apply-dir is a separate, no-S3 phase: every reviewed JSON file is validated,
+then only those exact files are applied to a context whose name starts restore-.
 EOF
 }
 
 SNAPSHOT="latest"
 IMAGE="registry.k8s.io/etcd:3.6.5-0"
 OUTPUT_DIR=""
-APPLY=0
+APPLY_DIR=""
 TARGET_CONTEXT=""
 CONFIRM=""
 PREFIXES=(
@@ -47,7 +48,7 @@ while [ "$#" -gt 0 ]; do
     --prefix)
       [ "$CUSTOM_PREFIX" -eq 1 ] || { PREFIXES=(); CUSTOM_PREFIX=1; }
       PREFIXES+=("${2:-}"); shift 2 ;;
-    --apply) APPLY=1; shift ;;
+    --apply-dir) APPLY_DIR="${2:-}"; shift 2 ;;
     --target-context) TARGET_CONTEXT="${2:-}"; shift 2 ;;
     --confirm) CONFIRM="${2:-}"; shift 2 ;;
     --in-place|--path-b) restore_die "in-place etcd restore is forbidden; ADR011 Path B remains prose-only" ;;
@@ -56,21 +57,43 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-restore_require_command docker
 restore_require_command jq
+
+if [ -n "$APPLY_DIR" ]; then
+  restore_require_command kubectl
+  [ "${DRY_RUN:-0}" != "1" ] || restore_die "--apply-dir is unavailable in DRY_RUN mode"
+  [ -d "$APPLY_DIR" ] || restore_die "--apply-dir must be an existing directory"
+  [[ "$TARGET_CONTEXT" == restore-* ]] || \
+    restore_die "--target-context must start with restore-"
+  [ "$CONFIRM" = "APPLY-$TARGET_CONTEXT" ] || \
+    restore_die "refusing apply: rerun with --confirm APPLY-$TARGET_CONTEXT"
+  reviewed=()
+  while IFS= read -r -d '' file; do
+    jq -e '
+      type == "object" and
+      (.apiVersion | type == "string") and (.kind | type == "string") and
+      (.metadata.name | type == "string") and
+      (has("status") | not) and
+      (.metadata | ([has("uid"), has("resourceVersion"), has("creationTimestamp"),
+                     has("managedFields"), has("finalizers"), has("ownerReferences"),
+                     has("deletionTimestamp")] | any | not))
+    ' "$file" >/dev/null || restore_die "reviewed manifest failed safety validation: $file"
+    reviewed+=("$file")
+  done < <(find "$APPLY_DIR" -maxdepth 1 -type f -name '*.json' -print0)
+  [ "${#reviewed[@]}" -gt 0 ] || restore_die "--apply-dir contains no JSON manifests"
+  for file in "${reviewed[@]}"; do
+    kubectl --context "$TARGET_CONTEXT" apply -f "$file"
+  done
+  echo "applied ${#reviewed[@]} reviewed manifest(s) only to context $TARGET_CONTEXT"
+  exit 0
+fi
+
+restore_require_command docker
 for prefix in "${PREFIXES[@]}"; do
   [[ "$prefix" == /registry/*/ ]] || restore_die "--prefix must start /registry/ and end /"
   [[ "$prefix" != *$'\n'* ]] || restore_die "invalid registry prefix"
 done
 [[ "$IMAGE" =~ ^[A-Za-z0-9./:@_-]+$ ]] || restore_die "invalid etcd image"
-
-if [ "$APPLY" -eq 1 ]; then
-  restore_require_command kubectl
-  [[ "$TARGET_CONTEXT" == restore-* ]] || \
-    restore_die "--target-context must start with restore-"
-  [ "$CONFIRM" = "APPLY-$TARGET_CONTEXT" ] || \
-    restore_die "refusing apply: rerun with --confirm APPLY-$TARGET_CONTEXT"
-fi
 
 restore_load_dotenv "$REPO_ROOT"
 bucket="${RESTORE_S3_BUCKET_NAME:-${TF_STATE_BUCKET:-}}"
@@ -114,6 +137,9 @@ docker exec "$container" /usr/local/bin/etcdctl endpoint health >/dev/null 2>&1 
   restore_die "throwaway etcd did not become healthy"
 
 if [ -n "$OUTPUT_DIR" ]; then
+  if [ -d "$OUTPUT_DIR" ] && find "$OUTPUT_DIR" -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then
+    restore_die "--output-dir must be empty; refusing to mix reviewed and newly extracted files"
+  fi
   mkdir -p "$OUTPUT_DIR"
   manifest_dir="$(cd "$OUTPUT_DIR" && pwd)"
 else
@@ -165,9 +191,3 @@ else
   echo "DRY_RUN preview used temporary manifests; pass --output-dir to retain them"
 fi
 restore_print_dry_run
-
-if [ "$APPLY" -eq 1 ]; then
-  [ "${DRY_RUN:-0}" != "1" ] || restore_die "--apply is unavailable in DRY_RUN mode"
-  kubectl --context "$TARGET_CONTEXT" apply -f "$manifest_dir"
-  echo "applied sanitized manifests only to context $TARGET_CONTEXT"
-fi

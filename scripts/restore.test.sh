@@ -82,6 +82,9 @@ if [[ " $* " == *" get objectstores.barmancloud.cnpg.io "* ]]; then
 JSON
   exit 0
 fi
+if [[ " $* " == *" apply -f "* ]]; then
+  exit 0
+fi
 exit 1
 EOF
 
@@ -131,6 +134,29 @@ run_dry() {
 
 run_dry env DRY_RUN=1 "$HERE/restore-etcd.sh"
 ok "etcd DRY_RUN restores locally, extracts a CR, and does not mutate Kubernetes/S3"
+
+mkdir "$TMP/reviewed"
+cat >"$TMP/reviewed/app.json" <<'JSON'
+{"apiVersion":"app.bex.co/v1alpha1","kind":"App","metadata":{"name":"fixture-app","namespace":"default"},"spec":{"image":"example.invalid/fixture"}}
+JSON
+: >"$RESTORE_TEST_CALLS"
+"$HERE/restore-etcd.sh" --apply-dir "$TMP/reviewed" \
+  --target-context restore-fixture --confirm APPLY-restore-fixture >/dev/null
+[ "$(grep -c '^kubectl .* apply -f ' "$RESTORE_TEST_CALLS")" -eq 1 ] || \
+  fail "reviewed etcd apply did not apply exactly one validated file"
+ok "etcd apply phase validates and applies only reviewed JSON files"
+
+cat >"$TMP/reviewed/unsafe.json" <<'JSON'
+{"apiVersion":"app.bex.co/v1alpha1","kind":"App","metadata":{"name":"unsafe"},"spec":{},"status":{"phase":"Running"}}
+JSON
+: >"$RESTORE_TEST_CALLS"
+if "$HERE/restore-etcd.sh" --apply-dir "$TMP/reviewed" \
+  --target-context restore-fixture --confirm APPLY-restore-fixture \
+  >"$TMP/output" 2>"$TMP/error"; then
+  fail "unsafe reviewed manifest was accepted"
+fi
+[ ! -s "$RESTORE_TEST_CALLS" ] || fail "unsafe reviewed directory was partially applied"
+ok "etcd apply phase validates the full directory before any write"
 
 run_dry env DRY_RUN=1 "$HERE/restore-openbao.sh" \
   --target-namespace restore-bao-test --verify-path tenants/data/fixture

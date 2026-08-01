@@ -20,7 +20,7 @@ graph LR
   cron -->|upload + prune, keep 7| bucket
   bucket[("Hetzner Object Storage<br/>(external, openbao-snapshots/)")]
 
-  subgraph "disaster recovery — manual runbook"
+  subgraph "disaster recovery — operator-triggered restore script"
     op@{ shape: tri, label: "human operator" }
   end
   op -->|"fetch snapshot"| bucket
@@ -128,57 +128,32 @@ For a rehearsal outside a real node roll, delete exactly one non-leader member p
 
 ## Restore
 
-A Raft snapshot restore overwrites the live store with the snapshot's contents. The snapshot is sealed with the **master key from when it was taken** — so after restore, OpenBao unseals with the **same** unseal keys already in `.env` (`bao-init.sh` never rotates them). Restore onto a running, unsealed OpenBao:
-
-**Same-instance restore** (live OpenBao intact, same PVC, same master key — e.g. data corruption or runaway write):
+A Raft snapshot is sealed with the **master key from when it was taken**. The supported executable path always restores into a new `restore-*` namespace and unseals the result with the original keys. Production keeps those keys only in GitHub Actions secrets, so use the manual workflow:
 
 ```sh
-# 1. fetch + unpack the latest snapshot
-aws --endpoint-url "$TF_STATE_ENDPOINT" s3 cp \
-  "s3://$TF_STATE_BUCKET/openbao-snapshots/<latest>.snap.gz" . && gunzip <latest>.snap.gz
-
-# 2. reach OpenBao and authenticate as root (BAO_ROOT_TOKEN from .env)
-kubectl -n secrets port-forward service/openbao 8200:8200 &
-export BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN="$BAO_ROOT_TOKEN"
-
-# 3. restore — the store (and all tenant secrets) is replaced by the snapshot
-#    The master key hasn't changed (same instance), so no --force is needed.
-bao operator raft snapshot restore <latest>.snap
+gh workflow run openbao-restore-drill.yml \
+  -f target_namespace=restore-bao-incident \
+  -f confirm=restore-bao-incident
 ```
 
-**Fresh-node restore** (new PVC / new pod — Raft data gone, different master key):
-
-Do NOT run `bao-init.sh` before restoring: it writes NEW unseal keys to `.env`, making the snapshot (sealed with the old keys) unrecoverable. Instead:
+An operator with separately custodied keys can run the same implementation directly:
 
 ```sh
-# 1. Let Argo bring up a freshly initialized OpenBao (it auto-inits with new keys).
-#    Note the NEW root token for the API call in step 4.
-kubectl -n secrets exec openbao-0 -- \
-  bao operator init -key-shares=1 -key-threshold=1 -format=json > /tmp/fresh-init.json
-NEW_ROOT_TOKEN=$(jq -r .root_token /tmp/fresh-init.json)
-NEW_UNSEAL_KEY=$(jq -r .unseal_keys_b64[0] /tmp/fresh-init.json)
-bao operator unseal "$NEW_UNSEAL_KEY"   # unseal with new keys
-
-# 2. fetch + unpack the snapshot
-aws --endpoint-url "$TF_STATE_ENDPOINT" s3 cp \
-  "s3://$TF_STATE_BUCKET/openbao-snapshots/<latest>.snap.gz" . && gunzip <latest>.snap.gz
-
-# 3. reach OpenBao
-kubectl -n secrets port-forward service/openbao 8200:8200 &
-export BAO_ADDR=http://127.0.0.1:8200
-
-# 4. force-restore (bypasses master-key hash check — needed when instance has
-#    a different master key than the snapshot's)
-export BAO_TOKEN="$NEW_ROOT_TOKEN"
-bao operator raft snapshot restore -force <latest>.snap
-
-# 5. restart the OpenBao pod so it reloads from the restored Raft log
-kubectl -n secrets rollout restart statefulset/openbao
-
-# 6. unseal with the OLD .env keys (the restored data is sealed with the original master key)
-#    Keep old .env; do NOT let bao-init.sh overwrite it.
-export BAO_TOKEN="$BAO_ROOT_TOKEN"   # original root token from .env
-bao operator unseal "$BAO_UNSEAL_KEY_1"   # original unseal key(s) from .env
+DRY_RUN=1 scripts/restore-openbao.sh \
+  --target-namespace restore-bao-incident --verify-path tenants/data/<known-path>
+scripts/restore-openbao.sh \
+  --target-namespace restore-bao-incident --verify-path tenants/data/<known-path> \
+  --confirm restore-bao-incident --teardown-on-success
 ```
+
+The script checks/downloads the snapshot, creates a one-node throwaway with a new PVC, initializes and unseals only that new target, force-restores with the fresh target token, restarts, unseals with the three **old** keys, and verifies the known `tenants/` path without printing its data. Credential values travel by environment/request stdin, never argv. The 2026-07-31 production workflow drilled this complete path and verified target teardown plus live-marker cleanup; see [the all-store drill](drills/2026-07-31-scripted-restore-e2e.md).
+
+The following same-instance explanation is retained only for incident theory. `restore-openbao.sh --live` rejects the request: an executable tool must never overwrite production in place.
+
+**Same-instance theory:** when the live PVC and master key are intact, OpenBao accepts a non-force snapshot restore after root authentication. That operation replaces every live secret immediately and has no isolation/verification boundary, so bex provides no executable shortcut. Treat it as an exceptional incident cutover requiring a separate change plan.
+
+**Fresh-node mechanism** (implemented by `restore-openbao.sh`; new PVC / new pod — Raft data gone, different master key):
+
+Do NOT run `bao-init.sh` against the recovery target: it writes keys to the operator's `.env` and can overwrite the original custody material. The script stores its disposable fresh credentials only in a protected temporary directory. The fresh token authorizes force-restore because the empty target begins with a different master key; after restart, only the original snapshot's keys/token are valid. That key transition is why both credential sets are short-lived in memory and never placed in argv.
 
 > **Tested 2026-07-14 (w7/m29 drill):** Fresh-node path executed against two local Docker containers. Key findings: (1) `--force` is required for fresh-node restore; plain `snapshot restore` returns `could not verify hash file`. (2) A pod restart is needed after `snapshot restore -force` so the Raft state is reloaded. (3) After restart, unseal with the ORIGINAL `.env` keys — the new instance's keys no longer work because the master key was replaced by the snapshot. Full record in [ADR031-platform-data-backup.md](ADR031-platform-data-backup.md) §Drill records.

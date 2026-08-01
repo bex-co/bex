@@ -2,7 +2,7 @@
 
 **Why this exists:** on the single-node prod cluster, App CRs are the only state not reproducible from git — the platform itself is reconciled by Argo, but `kubectl get apps.app.bex.co` lives only in the control-plane node's etcd, on local disk, with no HA. A node rebuild loses every user deployment. Until the control-plane Postgres ([ADR003-control-plane.md](ADR003-control-plane.md), w1/m2) becomes the source of truth, a nightly etcd snapshot shipped off-node is the recovery story.
 
-Only Argo CD and etcd are long-running; the backup itself is a pod that exists for a few seconds a night, the Secret is inert config it reads, and the entire restore column is a manual runbook — nothing is deployed for it until a human runs it:
+Only Argo CD and etcd are long-running; the backup itself is a pod that exists for a few seconds a night, the Secret is inert config it reads, and recovery is operator-triggered through `scripts/restore-etcd.sh` — nothing is deployed for it until a human runs the script:
 
 ```mermaid
 graph LR
@@ -20,7 +20,7 @@ graph LR
   cron -->|upload + prune, keep 7| bucket
   bucket[("Hetzner Object Storage<br/>(external, etcd-snapshots/)")]
 
-  subgraph "disaster recovery — manual runbook, any docker host"
+  subgraph "disaster recovery — operator-triggered script, any docker host"
     op@{ shape: tri, label: "human operator" }
     tmp["throwaway etcd container"]
   end
@@ -68,40 +68,27 @@ Two paths. Prefer A — everything except App CRs is better rebuilt from git tha
 
 ### A. Selective re-apply onto a fresh cluster (recommended, tested)
 
-Reprovision the cluster the normal way (Cluster API + Argo bootstrap — the platform converges from git), then recover the user state from the snapshot with a throwaway local etcd. Custom resources are stored as plain JSON in etcd, so no cluster surgery is needed:
+Reprovision the cluster the normal way (Cluster API + Argo bootstrap — the platform converges from git), then run the executable Path A:
 
 ```sh
-# 1. fetch + unpack the latest snapshot
-aws --endpoint-url "$TF_STATE_ENDPOINT" s3 cp \
-  "s3://$TF_STATE_BUCKET/etcd-snapshots/<latest>.db.gz" . && gunzip <latest>.db.gz
-
-# 2. boot a throwaway etcd from it — use the cluster's actual etcd image
-#    (check with: kubectl -n kube-system get pod etcd-<node> -o jsonpath='{.spec.containers[0].image}')
-#    etcdutl is in 3.6.x+ images; it is NOT in 3.5.15-0. The restore step requires
-#    etcdutl, so even if the CronJob uses 3.5.15-0 for the snapshot, use the cluster's
-#    actual image (e.g. 3.6.8-0) for the restore:
-ETCD_IMAGE=registry.k8s.io/etcd:3.6.8-0   # replace with your cluster's actual image
-docker run --rm -v "$PWD":/data --entrypoint /usr/local/bin/etcdutl "$ETCD_IMAGE" \
-  snapshot restore /data/<latest>.db --data-dir /data/restored
-docker run -d --name etcd-restore -v "$PWD":/data --entrypoint /usr/local/bin/etcd "$ETCD_IMAGE" \
-  --data-dir /data/restored
-
-# 3. list and extract the App CRs (JSON), re-apply to the new cluster
-docker exec etcd-restore /usr/local/bin/etcdctl get /registry/app.bex.co --prefix --keys-only
-docker exec etcd-restore /usr/local/bin/etcdctl get /registry/app.bex.co/apps/<ns>/<name> \
-  --print-value-only \
-  | jq 'del(.metadata.uid, .metadata.resourceVersion, .metadata.creationTimestamp,
-            .metadata.managedFields, .metadata.finalizers, .status)' \
-  | kubectl apply -f -
-
-docker rm -f etcd-restore
+DRY_RUN=1 scripts/restore-etcd.sh
+scripts/restore-etcd.sh --output-dir /secure/recovered-crs
 ```
 
-The operator reconciles each re-applied App back to Running (build-from-git Apps rebuild; `spec.image` Apps redeploy directly). Repeat step 3 for `/registry/app.bex.co/databases/…` if Database CRs exist.
+The script selects the latest snapshot by default, checks gzip and `etcdutl snapshot status`, restores it into an ephemeral local Docker etcd, extracts App/Database/KeyValue values, removes Kubernetes server metadata/finalizers/status, and emits one reviewable JSON manifest per CR. Its cleanup trap removes the container and restored data. `DRY_RUN=1` still performs those read-only/local checks so it can list the actual extractable resources; it never writes Kubernetes or S3.
+
+Applying the reviewed manifests is a separate gate. The target kube context must begin `restore-`, and the confirmation token must repeat it:
+
+```sh
+scripts/restore-etcd.sh --apply-dir /secure/recovered-crs \
+  --target-context restore-new-cluster --confirm APPLY-restore-new-cluster
+```
+
+The operator reconciles each re-applied App back to Running (build-from-git Apps rebuild; `spec.image` Apps redeploy directly). `scripts/restore-etcd.sh --help` documents snapshot/image/prefix selection. The production scripted drill and timing are in [the 2026-07-31 all-store record](drills/2026-07-31-scripted-restore-e2e.md).
 
 ### B. Full etcd restore in place
 
-For same-node recovery (disk wipe, etcd corruption) where `/etc/kubernetes/pki` still exists — a full restore brings back **all** cluster state, so only do this when the node identity/PKI is unchanged:
+This rare, node-identity-dependent path remains prose-only: `restore-etcd.sh` explicitly rejects it. For same-node recovery (disk wipe, etcd corruption) where `/etc/kubernetes/pki` still exists — a full restore brings back **all** cluster state, so only do this when the node identity/PKI is unchanged:
 
 ```sh
 # on the control-plane node
