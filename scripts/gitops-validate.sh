@@ -693,6 +693,23 @@ fi
 # embedded in prometheus.yaml's Helm values (serverFiles.alerting_rules.yml).
 # Extract it and run promtool check + unit tests (deploy/gitops/base/rules/) so a
 # broken expression or regressed age-math/ratio fails CI, not prod.
+echo "==> platform CNPG WAL scrape stamps namespace + cluster on primaries"
+platform_cnpg_scrape="$(yq -N '
+  .spec.source.helm.values | from_yaml |
+  .serverFiles."prometheus.yml".scrape_configs[] |
+  select(.job_name == "cnpg-platform-db") |
+  [(.kubernetes_sd_configs[0].namespaces.names | sort | join(",")),
+   (.relabel_configs[] | select(.target_label == "namespace") | .source_labels | join(",")),
+   (.relabel_configs[] | select(.target_label == "cnpg_io_cluster") | .source_labels | join(",")),
+   (.relabel_configs[] | select(.action == "keep" and .regex == "primary") | .source_labels | join(","))] |
+  join("|")
+' deploy/gitops/base/prometheus.yaml)"
+expected_platform_cnpg_scrape='auth,bex-system|__meta_kubernetes_namespace|__meta_kubernetes_pod_label_cnpg_io_cluster|__meta_kubernetes_pod_label_role'
+if [ "$platform_cnpg_scrape" != "$expected_platform_cnpg_scrape" ]; then
+  echo "FAIL: cnpg-platform-db scrape label contract is '$platform_cnpg_scrape' (want '$expected_platform_cnpg_scrape')" >&2
+  fail=1
+fi
+
 if command -v promtool >/dev/null 2>&1; then
   echo "==> promtool check + test rules (extracted from prometheus.yaml)"
   # helm `values:` is a block-scalar string — from_yaml re-parses it in-process so

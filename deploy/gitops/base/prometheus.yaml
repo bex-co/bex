@@ -401,7 +401,7 @@ spec:
                     replacement: ${1}:9187
                   - source_labels: [__meta_kubernetes_pod_name]
                     target_label: pod
-                  - source_labels: [__meta_kubernetes_pod_namespace]
+                  - source_labels: [__meta_kubernetes_namespace]
                     target_label: namespace
                   - source_labels: [__meta_kubernetes_pod_label_cnpg_io_cluster]
                     target_label: cnpg_io_cluster
