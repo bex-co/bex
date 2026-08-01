@@ -398,7 +398,10 @@ function HeaderFacts({ service }: { service: ServiceView }) {
         <div key={fact.label} className="flex items-center gap-1.5">
           {i > 0 ? <span aria-hidden="true">·</span> : null}
           <dt>{fact.label}</dt>
-          <dd className="text-foreground font-medium tabular-nums">
+          <dd
+            className="text-foreground font-medium tabular-nums"
+            suppressHydrationWarning
+          >
             {fact.value}
           </dd>
         </div>
