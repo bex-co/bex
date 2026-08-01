@@ -73,6 +73,81 @@ func TestObservedImagePullFailureIsImmediateAndGenerationScoped(t *testing.T) {
 	}
 }
 
+// TestBuildEndedStatus pins the build-outcome table (w7/m66): where the deploy
+// has reached decides whether the build is over and with what status.
+func TestBuildEndedStatus(t *testing.T) {
+	cases := []struct{ name, current, next, want string }{
+		{"created, still building", DeployCreated, "", ""},
+		{"queued, still building", DeployQueued, "", ""},
+		{"build in progress", DeployBuildInProgress, "", ""},
+		{"build failed", DeployBuildInProgress, DeployBuildFailed, EventStatusFailed},
+		{"advanced to pre-deploy", DeployBuildInProgress, DeployPreDeployInProgress, EventStatusSucceeded},
+		{"advanced to update", DeployQueued, DeployUpdateInProgress, EventStatusSucceeded},
+		{"fast path straight to live", DeployCreated, DeployLive, EventStatusSucceeded},
+		{"pre-deploy failure ⇒ build still succeeded", DeployBuildInProgress, DeployPreDeployFailed, EventStatusSucceeded},
+		{"update failure ⇒ build still succeeded", DeployUpdateInProgress, DeployUpdateFailed, EventStatusSucceeded},
+		{"canceled during build", DeployBuildInProgress, DeployCanceled, EventStatusCanceled},
+		{"canceled after build", DeployUpdateInProgress, DeployCanceled, EventStatusSucceeded},
+	}
+	for _, c := range cases {
+		if got := buildEndedStatus(c.current, c.next); got != c.want {
+			t.Errorf("%s: buildEndedStatus(%q, %q) = %q, want %q", c.name, c.current, c.next, got, c.want)
+		}
+	}
+}
+
+// TestBuildLifecycleFacts proves build_started rides the deploy's creation time
+// and build_ended appears (with an outcome) only once the build is over.
+func TestBuildLifecycleFacts(t *testing.T) {
+	created := time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC)
+	open := Deploy{ID: "dep-1", AppID: "srv-1", Image: "reg/x:1", Status: DeployBuildInProgress, CreatedAt: created}
+
+	building := buildLifecycleFacts(open, "")
+	if len(building) != 1 || building[0].Type != EventFactBuildStarted ||
+		building[0].SourceKey != "deploy:dep-1:build_started" || !building[0].At.Equal(created) ||
+		building[0].Image != "reg/x:1" {
+		t.Fatalf("still-building facts = %+v, want a single build_started at created_at", building)
+	}
+
+	failed := buildLifecycleFacts(open, DeployBuildFailed)
+	if len(failed) != 2 || failed[1].Type != EventFactBuildEnded ||
+		failed[1].SourceKey != "deploy:dep-1:build_ended" || failed[1].Status != EventStatusFailed {
+		t.Fatalf("failed-build facts = %+v, want build_started + build_ended(failed)", failed)
+	}
+}
+
+// TestPreDeployLifecycleFacts proves the pair rides status.preDeploy: nothing
+// without a step, started+ended (with the CR's stamps and outcome) with one.
+func TestPreDeployLifecycleFacts(t *testing.T) {
+	open := Deploy{ID: "dep-1", AppID: "srv-1"}
+
+	if facts := preDeployLifecycleFacts(open, &appv1alpha1.App{}); facts != nil {
+		t.Fatalf("no pre-deploy step should emit nothing, got %+v", facts)
+	}
+
+	started, finished := "2026-07-31T10:00:00Z", "2026-07-31T10:01:00Z"
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Generation: 3},
+		Status: appv1alpha1.AppStatus{
+			ReleaseGeneration: 3,
+			PreDeploy: &appv1alpha1.PreDeployStatus{
+				Generation: 3, Status: appv1alpha1.PreDeploySucceeded,
+				StartedAt: started, FinishedAt: finished,
+			},
+		},
+	}
+	facts := preDeployLifecycleFacts(open, app)
+	if len(facts) != 2 || facts[0].Type != EventFactPreDeployStarted ||
+		facts[1].Type != EventFactPreDeployEnded || facts[1].Status != EventStatusSucceeded {
+		t.Fatalf("succeeded pre-deploy facts = %+v, want started + ended(succeeded)", facts)
+	}
+	wantStart, _ := time.Parse(time.RFC3339, started)
+	wantFinish, _ := time.Parse(time.RFC3339, finished)
+	if !facts[0].At.Equal(wantStart) || !facts[1].At.Equal(wantFinish) {
+		t.Errorf("pre-deploy fact times = %s / %s, want %s / %s", facts[0].At, facts[1].At, wantStart, wantFinish)
+	}
+}
+
 func TestObservedServiceStateTreatsConcreteOpenDeployFailureAsInstanceFailure(t *testing.T) {
 	app := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Generation: 4},

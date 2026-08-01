@@ -74,7 +74,10 @@ type renderDetails struct {
 	DeployID        string         `json:"deployId,omitempty"`
 	DeployStatus    string         `json:"deployStatus,omitempty"`
 	PreDeployStatus string         `json:"preDeployStatus,omitempty"` // bex extra (w1/m33): the deploy's pre-deploy step outcome
-	Trigger         *renderTrigger `json:"trigger,omitempty"`
+	// Status is the terminal outcome of a lifecycle-step event (w7/m66):
+	// build_ended / pre_deploy_ended / job_run_ended carry succeeded|failed|canceled.
+	Status  string         `json:"status,omitempty"`
+	Trigger *renderTrigger `json:"trigger,omitempty"`
 	// Deploy enrichment for dashboard (w1/m47)
 	Image           string `json:"image,omitempty"`
 	CommitID        string `json:"commitId,omitempty"`
@@ -121,6 +124,7 @@ func toRenderEvent(e Event) renderEvent {
 		DeployID:        e.Details.DeployID,
 		DeployStatus:    e.Details.DeployStatus,
 		PreDeployStatus: e.Details.PreDeployStatus,
+		Status:          e.Details.Status,
 		Image:           e.Details.Image,
 		CommitID:        e.Details.CommitID,
 		CommitMessage:   e.Details.CommitMessage,

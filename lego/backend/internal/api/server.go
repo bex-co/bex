@@ -620,7 +620,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		GitHub:        gh,
 		RegistryCreds: rc,
 		Webhooks:      &webhooks.Service{Base: base, Store: d.WebhookStore},
-		Jobs:          &jobs.Service{Base: base, Store: d.JobStore},
+		Jobs:          &jobs.Service{Base: base, Store: d.JobStore, EventFacts: d.EventFacts},
 		Onboard:       d.Onboard,
 		Usage:         d.Usage,
 		Audit:         d.Audit,

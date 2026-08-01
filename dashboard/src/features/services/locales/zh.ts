@@ -3033,6 +3033,30 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "任务已取消",
     description: "Service activity type: one-off job canceled",
   },
+  "services.eventsTypeJobRunEnded": {
+    message: "任务已结束",
+    description: "Service activity type: one-off job finished",
+  },
+  "services.eventsTypeBuildStarted": {
+    message: "构建已开始",
+    description: "Service activity type: image build started",
+  },
+  "services.eventsTypeBuildEnded": {
+    message: "构建已结束",
+    description: "Service activity type: image build finished",
+  },
+  "services.eventsTypePreDeployStarted": {
+    message: "预部署已开始",
+    description: "Service activity type: pre-deploy command started",
+  },
+  "services.eventsTypePreDeployEnded": {
+    message: "预部署已结束",
+    description: "Service activity type: pre-deploy command finished",
+  },
+  "services.eventsTypeBranchDeleted": {
+    message: "分支已删除",
+    description: "Service activity type: tracked Git branch deleted",
+  },
   "services.eventsTypeMaintenanceModeChanged": {
     message: "维护模式配置已更改",
     description: "Service activity type: maintenance mode setting changed",
@@ -3052,6 +3076,22 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.eventsBranchChange": {
     message: "分支 {from} → {to}",
     description: "跟踪分支变化摘要",
+  },
+  "services.eventsBranchDeleted": {
+    message: "已删除分支 {branch} — 自动部署已关闭",
+    description: "已删除的跟踪分支摘要",
+  },
+  "services.eventsStatus.succeeded": {
+    message: "成功",
+    description: "Lifecycle-step outcome badge: succeeded",
+  },
+  "services.eventsStatus.failed": {
+    message: "失败",
+    description: "Lifecycle-step outcome badge: failed",
+  },
+  "services.eventsStatus.canceled": {
+    message: "已取消",
+    description: "Lifecycle-step outcome badge: canceled",
   },
   "services.eventsReason.image_pull_backoff": {
     message: "运行时无法拉取配置的镜像。",

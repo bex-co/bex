@@ -749,6 +749,23 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 	if inserted, err := s.InsertServiceEventFact(ctx, fact); err != nil || inserted {
 		t.Fatalf("retry event fact = (%v, %v), want idempotent no-op", inserted, err)
 	}
+	// A lifecycle-step fact carries its outcome in the checked status column
+	// (w7/m66) — insert one and read it back to prove the column round-trips.
+	// Filtered reads below all scope to commit_ignored/verbs/phases, so this
+	// extra fact never perturbs their counts.
+	buildFact := ServiceEventFact{
+		SourceKey: "deploy:dep-1:build_ended", AppID: app.ID,
+		Type: EventFactBuildEnded, At: base.Add(700 * time.Millisecond),
+		DeployID: "dep-1", Status: EventStatusFailed,
+	}
+	if inserted, err := s.InsertServiceEventFact(ctx, buildFact); err != nil || !inserted {
+		t.Fatalf("insert build_ended fact: %v", err)
+	}
+	buildOnly, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID,
+		ServiceEventFilter{FactTypes: []string{string(EventFactBuildEnded)}})
+	if err != nil || len(buildOnly) != 1 || buildOnly[0].FactStatus != EventStatusFailed {
+		t.Fatalf("build_ended round-trip = %+v (err %v), want status=failed", buildOnly, err)
+	}
 	factTypes := []string{string(EventFactCommitIgnored)}
 
 	all, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{Verbs: verbs, Phases: phases, FactTypes: factTypes})

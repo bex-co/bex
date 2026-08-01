@@ -26,6 +26,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -60,6 +61,12 @@ type JobStore interface {
 type Service struct {
 	*core.Base
 	Store JobStore
+	// EventFacts records the observed job_run_ended fact when a one-off job
+	// finishes (w7/m66) — the completion beat Render shows, which is neither an
+	// API write (job_started/job_canceled ride audit rows) nor a deploy row. nil
+	// ⇒ no fact (store-off / feature-off, byte-identical). Idempotent by
+	// source_key, so re-observing a finished job never double-records.
+	EventFacts store.EventFactWriter
 }
 
 // JobView is the presentation projection of a store.Job: the Render-shaped
@@ -148,9 +155,10 @@ func (s *Service) List(ctx context.Context, serviceID string, filter ListFilter)
 	}
 	// Sync status from the cluster for non-terminal jobs so the list stays
 	// fresh without a separate background reconciler.
+	appID := store.ManagedAppID(a.Labels)
 	for i, j := range jobs {
 		if j.Status == store.JobPending || j.Status == store.JobRunning {
-			jobs[i] = s.syncStatus(ctx, j)
+			jobs[i] = s.syncStatus(ctx, appID, j)
 		}
 	}
 	out := make([]JobView, len(jobs))
@@ -199,6 +207,7 @@ func (s *Service) Create(ctx context.Context, serviceID, startCommand, planID st
 		j.Status = store.JobFailed
 		now := s.Now()
 		j.FinishedAt = &now
+		s.recordJobRunEnded(ctx, store.ManagedAppID(a.Labels), j)
 	}
 
 	return view(j), nil
@@ -225,7 +234,7 @@ func (s *Service) Get(ctx context.Context, serviceID, jobID string) (JobView, er
 		return JobView{}, err
 	}
 	if j.Status == store.JobPending || j.Status == store.JobRunning {
-		j = s.syncStatus(ctx, j)
+		j = s.syncStatus(ctx, store.ManagedAppID(a.Labels), j)
 	}
 	return view(j), nil
 }
@@ -316,9 +325,11 @@ func (s *Service) createK8sJob(ctx context.Context, jobID, namespace, image, sta
 }
 
 // syncStatus reads the Kubernetes Job's status and updates the DB record if it
-// has progressed. It swallows all errors: status sync is best-effort, and
-// a temporary cluster outage must not fail a job list/get call.
-func (s *Service) syncStatus(ctx context.Context, j store.Job) store.Job {
+// has progressed, recording a job_run_ended fact (w7/m66) when it reaches a
+// finished state. It swallows all errors: status sync is best-effort, and a
+// temporary cluster outage must not fail a job list/get call. appID keys the
+// completion fact ("" for a hand-applied service ⇒ no fact).
+func (s *Service) syncStatus(ctx context.Context, appID string, j store.Job) store.Job {
 	var kj batchv1.Job
 	// The Job was created in its App's namespace (createK8sJob, a.Namespace) — the
 	// per-tenant `<ws>` namespace under ADR043 — so read it back from there, not
@@ -331,6 +342,7 @@ func (s *Service) syncStatus(ctx context.Context, j store.Job) store.Job {
 		if j.Status == store.JobPending || j.Status == store.JobRunning {
 			updated, err := s.Store.UpdateJobStatus(ctx, j.ID, store.JobFailed)
 			if err == nil {
+				s.recordJobRunEnded(ctx, appID, updated)
 				return updated
 			}
 		}
@@ -345,7 +357,43 @@ func (s *Service) syncStatus(ctx context.Context, j store.Job) store.Job {
 	if err != nil {
 		return j
 	}
+	s.recordJobRunEnded(ctx, appID, updated)
 	return updated
+}
+
+// recordJobRunEnded appends the observed job_run_ended fact when a one-off job
+// finishes succeeded or failed — the completion beat that, unlike Create/Cancel,
+// is not an authorized API write. A canceled job keeps its job_canceled audit
+// event and records no run-ended fact. Idempotent by source_key, so re-observing
+// a finished job (or a Create-failure that races the same close) never
+// double-records. Best-effort: a store error is logged, never surfaced.
+func (s *Service) recordJobRunEnded(ctx context.Context, appID string, j store.Job) {
+	if s.EventFacts == nil || appID == "" {
+		return
+	}
+	var status string
+	switch j.Status {
+	case store.JobSucceeded:
+		status = store.EventStatusSucceeded
+	case store.JobFailed:
+		status = store.EventStatusFailed
+	default:
+		return
+	}
+	at := s.Now().UTC()
+	if j.FinishedAt != nil {
+		at = j.FinishedAt.UTC()
+	}
+	fact := store.ServiceEventFact{
+		SourceKey: "job:" + j.ID + ":run_ended",
+		AppID:     appID,
+		Type:      store.EventFactJobRunEnded,
+		At:        at,
+		Status:    status,
+	}
+	if _, err := s.EventFacts.InsertServiceEventFact(ctx, fact); err != nil {
+		log.Printf("events: record job run ended for %s: %v", j.ID, err)
+	}
 }
 
 // k8sJobStatus maps a Kubernetes Job's conditions to a Render job status.

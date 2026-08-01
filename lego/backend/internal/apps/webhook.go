@@ -85,6 +85,7 @@ func (h *GitWebhook) verify(sig string, body []byte) bool {
 type pushEvent struct {
 	Ref         string `json:"ref"` // e.g. refs/heads/main
 	After       string `json:"after"`
+	Deleted     bool   `json:"deleted"` // true when this push deleted the branch (git push --delete)
 	DeliveryKey string `json:"-"`
 	Repository  struct {
 		CloneURL string `json:"clone_url"`
@@ -103,6 +104,23 @@ type pushEvent struct {
 		Removed  []string `json:"removed"`
 		Modified []string `json:"modified"`
 	} `json:"commits"`
+}
+
+// deleteEvent is the slice of GitHub's `delete` webhook payload the webhook needs
+// (w7/m66): a branch (or tag) was deleted through the UI or API. GitHub delivers
+// git-push deletions as a `push` with deleted=true (handled in ServeHTTP) and
+// UI/API deletions as this separate `delete` event — a distinct type the app must
+// also subscribe to (docs/ADR026-github-integration.md). ref is the plain branch
+// name here, not a refs/heads/ ref.
+type deleteEvent struct {
+	Ref        string `json:"ref"`
+	RefType    string `json:"ref_type"` // "branch" | "tag"; only branch deletions matter
+	Repository struct {
+		CloneURL string `json:"clone_url"`
+		SSHURL   string `json:"ssh_url"`
+		HTMLURL  string `json:"html_url"`
+		URL      string `json:"url"`
+	} `json:"repository"`
 }
 
 // commitInfo lifts the payload's head commit into the deploy row's provenance
@@ -150,10 +168,16 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	// The GitHub App's one app-wide webhook also delivers lifecycle events
 	// (ping on setup, installation/installation_repositories on grant changes).
-	// They're validly signed, so don't 401 them — just no-op with 200. An absent
-	// event header (Gitea, or a manual GitHub push webhook) is treated as a push,
-	// preserving the pre-App behavior byte-for-byte.
-	if event := r.Header.Get("X-GitHub-Event"); event != "" && event != "push" {
+	// They're validly signed, so don't 401 them — just no-op with 200. A branch
+	// deletion arrives as its own `delete` event (w7/m66); an absent event header
+	// (Gitea, or a manual GitHub push webhook) is treated as a push, preserving
+	// the pre-App behavior byte-for-byte.
+	event := r.Header.Get("X-GitHub-Event")
+	if event == "delete" {
+		h.serveDelete(w, r, body)
+		return
+	}
+	if event != "" && event != "push" {
 		core.WriteJSON(w, http.StatusOK, map[string]string{"ignored": event})
 		return
 	}
@@ -162,18 +186,131 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		core.WriteErrStatus(w, http.StatusBadRequest, "malformed push payload")
 		return
 	}
-	ev.DeliveryKey = r.Header.Get("X-GitHub-Delivery")
-	if ev.DeliveryKey == "" {
-		digest := sha256.Sum256(body)
-		ev.DeliveryKey = hex.EncodeToString(digest[:])
-	}
+	ev.DeliveryKey = deliveryKey(r, body)
 	branch := strings.TrimPrefix(ev.Ref, "refs/heads/")
+	// A branch-delete push (git push --delete: deleted=true, or an all-zero
+	// `after`) carries no commit to build — record branch_deleted and disable
+	// auto-deploy for services tracking it rather than attempting a redeploy.
+	if ev.Deleted || isZeroSHA(ev.After) {
+		urls := []string{ev.Repository.CloneURL, ev.Repository.SSHURL, ev.Repository.HTMLURL, ev.Repository.URL}
+		h.writeBranchDeleted(r.Context(), w, urls, branch, ev.DeliveryKey)
+		return
+	}
 	redeployed, err := h.redeployMatching(r.Context(), ev, branch)
 	if err != nil {
 		core.WriteErr(w, err)
 		return
 	}
 	core.WriteJSON(w, http.StatusOK, map[string]any{"redeployed": redeployed})
+}
+
+// serveDelete handles GitHub's `delete` event — a UI/API branch (or tag)
+// deletion. Only branch deletions produce a branch_deleted event; a tag deletion
+// is a signed no-op.
+func (h *GitWebhook) serveDelete(w http.ResponseWriter, r *http.Request, body []byte) {
+	var ev deleteEvent
+	if err := json.Unmarshal(body, &ev); err != nil {
+		core.WriteErrStatus(w, http.StatusBadRequest, "malformed delete payload")
+		return
+	}
+	if ev.RefType != "branch" {
+		core.WriteJSON(w, http.StatusOK, map[string]string{"ignored": "delete " + ev.RefType})
+		return
+	}
+	branch := strings.TrimPrefix(ev.Ref, "refs/heads/")
+	urls := []string{ev.Repository.CloneURL, ev.Repository.SSHURL, ev.Repository.HTMLURL, ev.Repository.URL}
+	h.writeBranchDeleted(r.Context(), w, urls, branch, deliveryKey(r, body))
+}
+
+// writeBranchDeleted records branch_deleted for every matching service and
+// writes the shared `{branchDeleted: [...]}` response — the one tail both the
+// `delete` event and the push-with-deleted path funnel through.
+func (h *GitWebhook) writeBranchDeleted(ctx context.Context, w http.ResponseWriter, urls []string, branch, deliveryKey string) {
+	deleted, err := h.recordBranchDeleted(ctx, urls, branch, deliveryKey)
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	core.WriteJSON(w, http.StatusOK, map[string]any{"branchDeleted": deleted})
+}
+
+// deliveryKey is the delivery's stable identity for fact idempotency: GitHub's
+// X-GitHub-Delivery header, or a body hash for a host (Gitea) that omits it.
+func deliveryKey(r *http.Request, body []byte) string {
+	if k := r.Header.Get("X-GitHub-Delivery"); k != "" {
+		return k
+	}
+	digest := sha256.Sum256(body)
+	return hex.EncodeToString(digest[:])
+}
+
+// isZeroSHA reports whether sha is git's all-zero object id, which a push
+// carries in `after` when it deletes the branch. Empty is not a delete.
+func isZeroSHA(sha string) bool {
+	if sha == "" {
+		return false
+	}
+	return strings.Trim(sha, "0") == ""
+}
+
+// recordBranchDeleted records a branch_deleted event for every App tracking the
+// deleted branch on the pushed repository, and disables its auto-deploy — the
+// branch it built from is gone, so Render (and bex) stop auto-deploying it. It
+// reads/writes through the raw client like redeployMatching: the HMAC signature
+// already authorized this call. Returns the affected service names.
+func (h *GitWebhook) recordBranchDeleted(ctx context.Context, urls []string, branch, deliveryKey string) ([]string, error) {
+	if branch == "" {
+		return []string{}, nil
+	}
+	var list appv1alpha1.AppList
+	if err := h.Svc.Client.List(ctx, &list, client.InNamespace(h.Svc.Namespace)); err != nil {
+		return nil, err
+	}
+	affected := []string{}
+	for i := range list.Items {
+		a := &list.Items[i]
+		if a.Spec.Repo == "" || !repoURLsMatch(a.Spec.Repo, urls...) || !branchMatches(a.Spec.Branch, branch) {
+			continue
+		}
+		h.recordBranchDeletedFact(ctx, a, branch, deliveryKey)
+		if a.Spec.AutoDeploy {
+			if err := h.disableAutoDeploy(ctx, a); err != nil {
+				log.Printf("webhook: disable auto-deploy for %s after branch delete: %v", a.Name, err)
+			}
+		}
+		affected = append(affected, a.Name)
+	}
+	return affected, nil
+}
+
+// recordBranchDeletedFact appends the closed branch_deleted fact — the deleted
+// branch name in branch_from, no commit, no value. Idempotent by delivery+app.
+func (h *GitWebhook) recordBranchDeletedFact(ctx context.Context, app *appv1alpha1.App, branch, deliveryKey string) {
+	if h.Svc.EventFacts == nil {
+		return
+	}
+	appID := managedAppID(app)
+	if appID == "" {
+		return
+	}
+	fact := store.ServiceEventFact{
+		SourceKey:  fmt.Sprintf("git:%s:%s:branch_deleted", deliveryKey, appID),
+		AppID:      appID,
+		Type:       store.EventFactBranchDeleted,
+		At:         h.Svc.Now().UTC(),
+		BranchFrom: branch,
+	}
+	if _, err := h.Svc.EventFacts.InsertServiceEventFact(ctx, fact); err != nil {
+		log.Printf("events: record branch delete for %s: %v", appID, err)
+	}
+}
+
+// disableAutoDeploy clears spec.autoDeploy on the App — a direct CR patch, the
+// same field SetAutoDeploy owns (not projection-owned, so it survives resync).
+func (h *GitWebhook) disableAutoDeploy(ctx context.Context, app *appv1alpha1.App) error {
+	patch := client.MergeFrom(app.DeepCopy())
+	app.Spec.AutoDeploy = false
+	return h.Svc.Client.Patch(ctx, app, patch)
 }
 
 // redeployMatching lists every App and redeploys those whose spec.repo matches
@@ -264,11 +401,18 @@ func (h *GitWebhook) recordCommitIgnored(ctx context.Context, app *appv1alpha1.A
 // comparing against every URL form the payload carries (clone/ssh/html/api),
 // each canonicalized so an https clone URL matches a ".git"-suffixed spec.
 func repoMatches(specRepo string, ev pushEvent) bool {
+	return repoURLsMatch(specRepo, ev.Repository.CloneURL, ev.Repository.SSHURL, ev.Repository.HTMLURL, ev.Repository.URL)
+}
+
+// repoURLsMatch reports whether specRepo names any of the given repository URL
+// forms, each canonicalized so an https clone URL matches a ".git"-suffixed spec.
+// Shared by the push (repoMatches) and delete (recordBranchDeleted) paths.
+func repoURLsMatch(specRepo string, urls ...string) bool {
 	want := core.CanonicalRepo(specRepo)
 	if want == "" {
 		return false
 	}
-	for _, u := range []string{ev.Repository.CloneURL, ev.Repository.SSHURL, ev.Repository.HTMLURL, ev.Repository.URL} {
+	for _, u := range urls {
 		if u != "" && core.CanonicalRepo(u) == want {
 			return true
 		}

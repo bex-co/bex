@@ -85,6 +85,30 @@ const enMetrics: Record<string, TranslationEntry> = {
     description:
       "Chart event-marker label: a deploy finished with an unrecognized status",
   },
+  "metrics.eventBuildStarted": {
+    message: "Build started",
+    description: "Chart event-marker label: an image build began",
+  },
+  "metrics.eventBuildEnded": {
+    message: "Build ended",
+    description: "Chart event-marker label: an image build finished",
+  },
+  "metrics.eventPreDeployStarted": {
+    message: "Pre-deploy started",
+    description: "Chart event-marker label: the pre-deploy command began",
+  },
+  "metrics.eventPreDeployEnded": {
+    message: "Pre-deploy ended",
+    description: "Chart event-marker label: the pre-deploy command finished",
+  },
+  "metrics.eventJobRunEnded": {
+    message: "Job ended",
+    description: "Chart event-marker label: a one-off job finished",
+  },
+  "metrics.eventBranchDeleted": {
+    message: "Branch deleted",
+    description: "Chart event-marker label: the tracked Git branch was deleted",
+  },
   "metrics.eventServerRestarted": {
     message: "Server restarted",
     description: "Chart event-marker label: the service was restarted",

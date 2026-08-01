@@ -207,6 +207,121 @@ func TestIgnoredCommitFactIsTypedAndDeliveryIdempotent(t *testing.T) {
 	}
 }
 
+// TestWebhookBranchDeleteRecordsFactAndDisablesAutoDeploy proves w7/m66's
+// branch_deleted: a `delete` event for a tracked branch records the typed fact
+// once (idempotent across a delivery retry) and disables the service's
+// auto-deploy — the branch it built from is gone.
+func TestWebhookBranchDeleteRecordsFactAndDisablesAutoDeploy(t *testing.T) {
+	const secret, repo = "s3cr3t", "https://github.com/x/mono"
+	app := autoDeployApp("api", repo)
+	app.Labels = map[string]string{
+		store.LabelManagedBy: store.ManagedByValue,
+		store.LabelAppID:     "srv-api",
+	}
+	svc, cl := newService(nil, app)
+	writer := &recordingFactWriter{}
+	svc.EventFacts = writer
+	h := &GitWebhook{Svc: svc, Secret: secret}
+
+	body, err := json.Marshal(map[string]any{
+		"ref":        "main",
+		"ref_type":   "branch",
+		"repository": map[string]string{"clone_url": repo},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	send := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest("POST", "/v1/webhooks/git", strings.NewReader(string(body)))
+		req.Header.Set("X-Hub-Signature-256", sign(secret, body))
+		req.Header.Set("X-GitHub-Event", "delete")
+		req.Header.Set("X-GitHub-Delivery", "del-1")
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec
+	}
+	for i := range 2 { // deliver twice: the fact must be idempotent
+		if rec := send(); rec.Code != http.StatusOK {
+			t.Fatalf("delivery %d => 200, got %d: %s", i, rec.Code, rec.Body)
+		}
+	}
+	if len(writer.facts) != 1 {
+		t.Fatalf("fact count = %d, want 1 across delivery retry", len(writer.facts))
+	}
+	for _, fact := range writer.facts {
+		if fact.Type != store.EventFactBranchDeleted || fact.BranchFrom != "main" {
+			t.Fatalf("branch_deleted fact = %+v", fact)
+		}
+	}
+	if getApp(t, cl, "api").Spec.AutoDeploy {
+		t.Error("branch delete must disable auto-deploy for a service tracking the deleted branch")
+	}
+}
+
+// TestWebhookBranchDeleteVariants covers the push-with-deleted signal (git push
+// --delete) and the tag-delete no-op.
+func TestWebhookBranchDeleteVariants(t *testing.T) {
+	const secret, repo = "s3cr3t", "https://github.com/x/mono"
+
+	t.Run("push with deleted=true records the fact", func(t *testing.T) {
+		app := autoDeployApp("api", repo)
+		app.Labels = map[string]string{store.LabelManagedBy: store.ManagedByValue, store.LabelAppID: "srv-api"}
+		svc, cl := newService(nil, app)
+		writer := &recordingFactWriter{}
+		svc.EventFacts = writer
+		h := &GitWebhook{Svc: svc, Secret: secret}
+
+		body, _ := json.Marshal(map[string]any{
+			"ref":        "refs/heads/main",
+			"deleted":    true,
+			"after":      "0000000000000000000000000000000000000000",
+			"repository": map[string]string{"clone_url": repo},
+		})
+		req := httptest.NewRequest("POST", "/v1/webhooks/git", strings.NewReader(string(body)))
+		req.Header.Set("X-Hub-Signature-256", sign(secret, body))
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("=> 200, got %d: %s", rec.Code, rec.Body)
+		}
+		if len(writer.facts) != 1 {
+			t.Fatalf("fact count = %d, want 1", len(writer.facts))
+		}
+		if getApp(t, cl, "api").Spec.AutoDeploy {
+			t.Error("push --delete of the tracked branch must disable auto-deploy")
+		}
+	})
+
+	t.Run("tag delete is a no-op", func(t *testing.T) {
+		app := autoDeployApp("api", repo)
+		app.Labels = map[string]string{store.LabelManagedBy: store.ManagedByValue, store.LabelAppID: "srv-api"}
+		svc, cl := newService(nil, app)
+		writer := &recordingFactWriter{}
+		svc.EventFacts = writer
+		h := &GitWebhook{Svc: svc, Secret: secret}
+
+		body, _ := json.Marshal(map[string]any{
+			"ref":        "v1.0.0",
+			"ref_type":   "tag",
+			"repository": map[string]string{"clone_url": repo},
+		})
+		req := httptest.NewRequest("POST", "/v1/webhooks/git", strings.NewReader(string(body)))
+		req.Header.Set("X-Hub-Signature-256", sign(secret, body))
+		req.Header.Set("X-GitHub-Event", "delete")
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("=> 200, got %d: %s", rec.Code, rec.Body)
+		}
+		if len(writer.facts) != 0 {
+			t.Fatalf("tag delete recorded %d facts, want 0", len(writer.facts))
+		}
+		if !getApp(t, cl, "api").Spec.AutoDeploy {
+			t.Error("tag delete must not touch auto-deploy")
+		}
+	})
+}
+
 func TestCommitSkipPhrases(t *testing.T) {
 	for _, message := range []string{"release [skip render]", "[RENDER SKIP] docs"} {
 		if !commitHasSkipPhrase(message) {

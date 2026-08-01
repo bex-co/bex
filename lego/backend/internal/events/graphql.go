@@ -58,6 +58,9 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// dashboard's Events tab shows it to tell a migration failure apart from a
 		// health-check failure. Empty when no pre-deploy step ran.
 		"preDeployStatus": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.PreDeployStatus })},
+		// status is a lifecycle-step event's terminal outcome (w7/m66):
+		// build_ended / pre_deploy_ended / job_run_ended → succeeded|failed|canceled.
+		"status": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.Status })},
 		// Deploy enrichment for dashboard Events view (w1/m47): image, commit info, timing
 		"image":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.Image })},
 		"commitId":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.CommitID })},

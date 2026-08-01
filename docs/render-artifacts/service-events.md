@@ -63,7 +63,7 @@ The service feed remains one projection, not nine bespoke emitters:
 | `audit_events` | accepted API intent/configuration | immutable audit id |
 | `service_event_facts` | observed status and signed-Git decisions | producer-supplied stable `source_key` primary key |
 
-`service_event_facts` is deliberately closed: a checked nine-type discriminator, checked public reason codes, and dedicated deploy/image/instance/count/branch/commit columns. It has no details JSON, generic message, or value column. The operator remains database-free; it exposes only typed autoscaling status on the App CR. bex-api's control-plane reconciler records observed phase/readiness/autoscaling edges and advances its phase/readiness checkpoint in the same transaction.
+`service_event_facts` is deliberately closed: a checked fifteen-type discriminator (w7/m66 added the deploy-lifecycle kinds below), checked public reason codes, a checked `status` column (`succeeded|failed|canceled`), and dedicated deploy/image/instance/count/branch/commit columns. It has no details JSON, generic message, or value column. The operator remains database-free; it exposes only typed autoscaling status on the App CR. bex-api's control-plane reconciler records observed phase/readiness/autoscaling edges and advances its phase/readiness checkpoint in the same transaction.
 
 Facts retain two timestamps for two different contracts. `at` is the original occurrence time used by REST, GraphQL, MCP, dashboard, Metrics, and webhook payloads. `recorded_at` is insertion time used only by the outbound worker's durable watermark. This prevents a delayed operator observation with an older `at` from falling behind an already-advanced webhook cursor.
 
@@ -74,6 +74,25 @@ Every surface derives the same `evt-…` id from the same source key:
 - MCP `list_service_events`: the REST envelope inside `{events:[…]}`.
 - Events and Metrics: explicit-range consumers of the GraphQL feed.
 - Outbound webhooks: the same fact source and derived id; thin signed payloads remain value-free.
+
+## Deploy-lifecycle events (w7/m66)
+
+The 2026-07-18 capture above covered the 31 labels of one supplied dashboard filter. Render's full event taxonomy is larger, and its timeline shows the build and pre-deploy beats as **distinct entries** rather than folding them into the deploy pair. w7/m66 closes that gap for the beats bex has a durable source for — the same `service_event_facts` path, extended with a checked `status` column:
+
+| Render timeline entry | bex wire type | Source | Detail |
+| --- | --- | --- | --- |
+| Build started | `build_started` | control-plane reconciler observing a repo/Dockerfile-backed deploy's BuildKit build phase (ADR034) | deploy id, image |
+| Build ended | `build_ended` | same, once the deploy leaves the build phase | `details.status` = `succeeded`\|`failed`\|`canceled` |
+| Pre-deploy started | `pre_deploy_started` | reconciler observing `App.status.preDeploy` (w1/m33), start stamp | deploy id |
+| Pre-deploy ended | `pre_deploy_ended` | same, terminal state | `details.status` = `succeeded`\|`failed` (in addition to `preDeployStatus` still on `deploy_ended`) |
+| Job run ended | `job_run_ended` | `internal/jobs` syncing a one-off job to a finished state | `details.status` = `succeeded`\|`failed` (alongside the existing `job_started`/`job_canceled`) |
+| Branch deleted | `branch_deleted` | the GitHub webhook's branch-delete signal (`push` with `deleted:true`, or the `delete` event) — auto-deploy is disabled | deleted branch in `branchFrom` |
+
+Image-backed services (no build phase) emit no `build_*`; services with no pre-deploy command emit no `pre_deploy_*`; a canceled job keeps `job_canceled` and records no `job_run_ended`. Each fact is idempotent by `source_key` (`deploy:<id>:build_started`, `job:<id>:run_ended`, `git:<delivery>:<app>:branch_deleted`), so re-observing across resyncs never double-records. To catch branch deletions made through the GitHub UI (not `git push --delete`), the self-hosted GitHub App must also subscribe to the `delete` event ([docs/ADR026-github-integration.md](../ADR026-github-integration.md)).
+
+### Still non-goals (honest, not faked)
+
+No durable bex source exists for these, so they are omitted rather than invented: `disk_*` (no persistent disks), `artifact_*`, `server_hardware_failure`, provider `maintenance_started`/`maintenance_ended`, `pipeline_minutes_exhausted` (no pipeline-minute billing), `zero_downtime_redeploy_*`, `initial_deploy_hook_started`/`_ended` (preview-only), and every preview-environment/workflow event (rejected product anti-goals). The tenant-facing `maintenance_mode_*` toggle remains the one maintenance concept bex does record.
 
 ## Verification
 

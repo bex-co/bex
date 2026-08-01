@@ -198,6 +198,42 @@ func TestEventSurfaceParity(t *testing.T) {
 	}
 }
 
+// TestLifecycleFactStatusAcrossSurfaces proves a deploy-lifecycle fact's status
+// (w7/m66: build_ended / pre_deploy_ended / job_run_ended) surfaces identically
+// on all three adapters as details.status.
+func TestLifecycleFactStatusAcrossSurfaces(t *testing.T) {
+	at := time.Date(2026, 7, 31, 12, 0, 0, 0, time.UTC)
+	fake := &fakeEventStore{rows: []store.ServiceEventRow{{
+		Key: "fact:deploy:dep-1:build_ended", At: at, Source: store.EventSourceFact,
+		FactType: string(store.EventFactBuildEnded), FactStatus: "failed", DeployID: "dep-1",
+	}}}
+	base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
+	h, srv := serverWith(t, base, Deps{EventStore: fake})
+
+	res := do(t, h, "GET", "/v1/services/web/events?startTime=2026-07-01T00:00:00Z", testToken, "")
+	var rest []restEvent
+	if err := json.Unmarshal(res.Body.Bytes(), &rest); err != nil || len(rest) != 1 {
+		t.Fatalf("REST events = %s (err %v)", res.Body.String(), err)
+	}
+	if rest[0].Event.Type != events.TypeBuildEnded || rest[0].Event.Details["status"] != "failed" {
+		t.Errorf("REST build_ended details = %+v, want type=build_ended status=failed", rest[0].Event)
+	}
+
+	gqlData := gql(t, h, `{ serviceEvents(serviceId: "web", startTime: "2026-07-01T00:00:00Z") { type details { status } } }`)
+	gqlList, ok := gqlData["serviceEvents"].([]any)
+	if !ok || len(gqlList) != 1 {
+		t.Fatalf("GraphQL serviceEvents = %v", gqlData["serviceEvents"])
+	}
+	if g := gqlList[0].(map[string]any)["details"].(map[string]any); g["status"] != "failed" {
+		t.Errorf("GraphQL status = %v, want failed", g["status"])
+	}
+
+	mcpEvents := callListServiceEvents(t, srv, map[string]any{"serviceId": "web", "startTime": "2026-07-01T00:00:00Z"})
+	if len(mcpEvents) != 1 || mcpEvents[0].Event.Details["status"] != "failed" {
+		t.Errorf("MCP build_ended details = %+v, want status=failed", mcpEvents)
+	}
+}
+
 // TestEventsNeverCarryValues is the DoD's redaction clause: a planted secret
 // value cannot appear on ANY surface.
 //

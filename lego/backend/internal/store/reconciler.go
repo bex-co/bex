@@ -326,6 +326,10 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	}
 
 	status := observedDeployStatus(open, cur, r.deployTimedOut(d, open))
+	// Build and pre-deploy beats surface as distinct timeline events (w7/m66),
+	// derived from the same observed state — emitted before the no-transition
+	// early return so a still-building or still-pre-deploying deploy is recorded.
+	r.recordLifecycleFacts(ctx, d, open, cur, status)
 	if status == "" {
 		return
 	}
@@ -375,6 +379,145 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 			NotificationsToSend: cur.Spec.NotificationsToSend,
 		})
 	}
+}
+
+// recordLifecycleFacts emits the build and pre-deploy beats Render shows as
+// distinct timeline entries (w7/m66), derived from the same observed App/deploy
+// state recordDeploy already reads: build_started/build_ended for a repo-backed
+// deploy, pre_deploy_started/pre_deploy_ended for a deploy whose current release
+// runs a pre-deploy step. Every fact is idempotent by source_key, so re-observing
+// the same phase across resyncs is a no-op; an image-backed deploy (no build
+// phase) and a deploy with no pre-deploy step each emit neither. newStatus is the
+// deploy status observedDeployStatus resolved this pass ("" when nothing moved).
+func (r *Reconciler) recordLifecycleFacts(ctx context.Context, d DesiredApp, open Deploy, cur *appv1alpha1.App, newStatus string) {
+	var facts []ServiceEventFact
+	if d.Repo != "" {
+		facts = append(facts, buildLifecycleFacts(open, newStatus)...)
+	}
+	facts = append(facts, preDeployLifecycleFacts(open, cur)...)
+	for _, fact := range facts {
+		if _, err := r.Store.InsertServiceEventFact(ctx, fact); err != nil {
+			log.Printf("controlplane: record lifecycle fact %s: %v", fact.SourceKey, err)
+		}
+	}
+}
+
+// buildLifecycleFacts derives a repo-backed deploy's build_started and (once the
+// build is over) build_ended facts from the deploy row's phase. The BuildKit Job
+// is dispatched when the deploy row opens, so build_started rides open.CreatedAt;
+// build_ended's outcome is read from where the deploy has reached — a build phase
+// means still building (no ended fact yet), any later phase means the build
+// succeeded, build_failed means it failed, and a cancel while still building
+// means it was canceled.
+func buildLifecycleFacts(open Deploy, newStatus string) []ServiceEventFact {
+	facts := []ServiceEventFact{{
+		SourceKey: "deploy:" + open.ID + ":build_started",
+		AppID:     open.AppID,
+		Type:      EventFactBuildStarted,
+		At:        open.CreatedAt,
+		DeployID:  open.ID,
+		Image:     open.Image,
+	}}
+	if outcome := buildEndedStatus(open.Status, newStatus); outcome != "" {
+		facts = append(facts, ServiceEventFact{
+			SourceKey: "deploy:" + open.ID + ":build_ended",
+			AppID:     open.AppID,
+			Type:      EventFactBuildEnded,
+			At:        time.Now().UTC(),
+			DeployID:  open.ID,
+			Image:     open.Image,
+			Status:    outcome,
+		})
+	}
+	return facts
+}
+
+// buildEndedStatus reports the outcome to stamp on a repo-backed deploy's
+// build_ended fact, or "" while the build is still running. eff is where the
+// deploy has reached this pass: the just-observed status, or the row's stored
+// status when nothing transitioned.
+func buildEndedStatus(current, newStatus string) string {
+	eff := newStatus
+	if eff == "" {
+		eff = current
+	}
+	switch eff {
+	case DeployBuildFailed:
+		return EventStatusFailed
+	case DeployCanceled:
+		if isBuildPhase(current) {
+			return EventStatusCanceled
+		}
+		return EventStatusSucceeded // build had finished before the cancel landed
+	case DeployPreDeployInProgress, DeployPreDeployFailed,
+		DeployUpdateInProgress, DeployUpdateFailed, DeployLive, DeployDeactivated:
+		return EventStatusSucceeded
+	default: // DeployCreated, DeployQueued, DeployBuildInProgress — still building
+		return ""
+	}
+}
+
+func isBuildPhase(status string) bool {
+	return status == DeployCreated || status == DeployQueued || status == DeployBuildInProgress
+}
+
+// preDeployLifecycleFacts derives pre_deploy_started and pre_deploy_ended for a
+// deploy whose current release runs a pre-deploy step. It reads the same
+// status.preDeploy the reconciler projects onto the deploy row (preDeployStatusFor)
+// plus its RFC3339 start/finish stamps, so the events line up with the deploy
+// record. A deploy with no pre-deploy step (preDeployStatusFor == "") emits
+// neither. The started fact is emitted alongside a terminal outcome so the pair
+// still appears when a fast resync only ever samples the finished state.
+func preDeployLifecycleFacts(open Deploy, cur *appv1alpha1.App) []ServiceEventFact {
+	pds := preDeployStatusFor(cur)
+	if pds == "" {
+		return nil
+	}
+	started, finished := preDeployTimes(cur)
+	facts := []ServiceEventFact{{
+		SourceKey: "deploy:" + open.ID + ":pre_deploy_started",
+		AppID:     open.AppID,
+		Type:      EventFactPreDeployStarted,
+		At:        started,
+		DeployID:  open.ID,
+	}}
+	switch pds {
+	case PreDeploySucceeded:
+		facts = append(facts, preDeployEndedFact(open, finished, EventStatusSucceeded))
+	case PreDeployFailed:
+		facts = append(facts, preDeployEndedFact(open, finished, EventStatusFailed))
+	}
+	return facts
+}
+
+func preDeployEndedFact(open Deploy, at time.Time, status string) ServiceEventFact {
+	return ServiceEventFact{
+		SourceKey: "deploy:" + open.ID + ":pre_deploy_ended",
+		AppID:     open.AppID,
+		Type:      EventFactPreDeployEnded,
+		At:        at,
+		DeployID:  open.ID,
+		Status:    status,
+	}
+}
+
+// preDeployTimes lifts the CR's status.preDeploy RFC3339 start/finish stamps for
+// the pre-deploy facts, falling back to now for an absent/unparseable value so a
+// fact always carries a sortable timestamp.
+func preDeployTimes(app *appv1alpha1.App) (started, finished time.Time) {
+	now := time.Now().UTC()
+	started, finished = now, now
+	pd := app.Status.PreDeploy
+	if pd == nil {
+		return started, finished
+	}
+	if t, err := time.Parse(time.RFC3339Nano, pd.StartedAt); err == nil {
+		started = t.UTC()
+	}
+	if t, err := time.Parse(time.RFC3339Nano, pd.FinishedAt); err == nil {
+		finished = t.UTC()
+	}
+	return started, finished
 }
 
 // observedImagePullFailure turns the operator's current-generation diagnosis
@@ -681,6 +824,17 @@ func preDeployStatusFor(app *appv1alpha1.App) string {
 // fallback-create) gets there first, the other recognizes the CR by its
 // LabelAppID rather than re-creating it under a different name.
 func CRName(tenant, app string) string { return core.CRName(tenant, app) }
+
+// ManagedAppID returns the control-plane app id a projected App CR's labels
+// carry, or "" when the labels don't prove bex-controlplane ownership (a
+// hand-applied CR with no Postgres source row to key a fact/row on). One helper
+// so every feature that reads the app id off a CR does it the same way.
+func ManagedAppID(labels map[string]string) string {
+	if labels[LabelManagedBy] != ManagedByValue {
+		return ""
+	}
+	return labels[LabelAppID]
+}
 
 // stampLabels ensures cur carries the projection's labels (managed-by, app-id,
 // tenant-id, public name), returning whether any changed. Called on both
