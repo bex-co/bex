@@ -47,8 +47,10 @@ describe("ServiceEventFilter", () => {
     await user.click(screen.getByRole("checkbox", { name: "All events" }));
     await user.click(screen.getByRole("checkbox", { name: "Deploy" }));
 
+    // The Deploy group carries the full deploy lifecycle (w7/m66 added
+    // build/pre-deploy/job-run-ended): 12 types.
     expect(
-      screen.getByRole("button", { name: /Filter events \(7\)/ }),
+      screen.getByRole("button", { name: /Filter events \(12\)/ }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("checkbox", { name: "Deploy started" }),

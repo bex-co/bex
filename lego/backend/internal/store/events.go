@@ -119,6 +119,11 @@ type ServiceEventRow struct {
 	BranchFrom string
 	BranchTo   string
 	CommitURL  string
+	// FactStatus is a lifecycle-step fact's terminal outcome (build_ended,
+	// pre_deploy_ended, job_run_ended): succeeded|failed|canceled, or "" for the
+	// started/observed kinds. A distinct column from the deploy-arm Status above,
+	// which carries a deploy row's terminal status (w7/m66).
+	FactStatus string
 }
 
 // AutoDeployFilter constrains the auto_deploy_enabled column on the audit arm.
@@ -230,7 +235,8 @@ WITH feed AS (
            NULL::integer                       AS fact_to_count,
            ''::text                            AS branch_from,
            ''::text                            AS branch_to,
-           ''::text                            AS commit_url
+           ''::text                            AS commit_url,
+           ''::text                            AS fact_status
     FROM deploys d
     WHERE d.app_id = $1 AND '` + EventPhaseStarted + `' = ANY($5)
   UNION ALL
@@ -263,6 +269,7 @@ WITH feed AS (
            ''::text,
            NULL::integer,
            NULL::integer,
+           ''::text,
            ''::text,
            ''::text,
            ''::text
@@ -298,6 +305,7 @@ WITH feed AS (
            ''::text,
            NULL::integer,
            NULL::integer,
+           ''::text,
            ''::text,
            ''::text,
            ''::text
@@ -342,7 +350,8 @@ WITH feed AS (
            f.to_count,
            f.branch_from,
            f.branch_to,
-           f.commit_url
+           f.commit_url,
+           f.status
     FROM service_event_facts f
     WHERE f.app_id = $1 AND f.fact_type = ANY($12)
 )
@@ -351,7 +360,7 @@ SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, ve
        autoscaling_min_from, autoscaling_max_from, autoscaling_min_to, autoscaling_max_to,
        auto_deploy_enabled, image, commit_id, commit_message, started_at, finished_at,
        fact_type, reason_code, instance_id, fact_from_count, fact_to_count,
-       branch_from, branch_to, commit_url
+       branch_from, branch_to, commit_url, fact_status
 FROM feed
 WHERE ($6::timestamptz IS NULL OR at >= $6)
   AND ($7::timestamptz IS NULL OR at <= $7)
@@ -426,6 +435,6 @@ func scanServiceEventRow(row pgx.Row) (ServiceEventRow, error) {
 		&r.AutoscalingMinFrom, &r.AutoscalingMaxFrom, &r.AutoscalingMinTo, &r.AutoscalingMaxTo,
 		&r.AutoDeployEnabled, &r.Image, &r.CommitID, &r.CommitMessage, &r.StartedAt, &r.FinishedAt,
 		&r.FactType, &r.ReasonCode, &r.InstanceID, &r.FromCount, &r.ToCount,
-		&r.BranchFrom, &r.BranchTo, &r.CommitURL)
+		&r.BranchFrom, &r.BranchTo, &r.CommitURL, &r.FactStatus)
 	return r, err
 }

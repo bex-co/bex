@@ -3086,6 +3086,30 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Job canceled",
     description: "Service activity type: one-off job canceled",
   },
+  "services.eventsTypeJobRunEnded": {
+    message: "Job ended",
+    description: "Service activity type: one-off job finished",
+  },
+  "services.eventsTypeBuildStarted": {
+    message: "Build started",
+    description: "Service activity type: image build started",
+  },
+  "services.eventsTypeBuildEnded": {
+    message: "Build ended",
+    description: "Service activity type: image build finished",
+  },
+  "services.eventsTypePreDeployStarted": {
+    message: "Pre-deploy started",
+    description: "Service activity type: pre-deploy command started",
+  },
+  "services.eventsTypePreDeployEnded": {
+    message: "Pre-deploy ended",
+    description: "Service activity type: pre-deploy command finished",
+  },
+  "services.eventsTypeBranchDeleted": {
+    message: "Branch deleted",
+    description: "Service activity type: tracked Git branch deleted",
+  },
   "services.eventsTypeMaintenanceModeChanged": {
     message: "Maintenance mode config changed",
     description: "Service activity type: maintenance mode setting changed",
@@ -3105,6 +3129,22 @@ const enServices: Record<string, TranslationEntry> = {
   "services.eventsBranchChange": {
     message: "Branch {from} → {to}",
     description: "Tracked branch from/to summary",
+  },
+  "services.eventsBranchDeleted": {
+    message: "Deleted branch {branch} — auto-deploy disabled",
+    description: "Deleted tracked branch summary",
+  },
+  "services.eventsStatus.succeeded": {
+    message: "Succeeded",
+    description: "Lifecycle-step outcome badge: succeeded",
+  },
+  "services.eventsStatus.failed": {
+    message: "Failed",
+    description: "Lifecycle-step outcome badge: failed",
+  },
+  "services.eventsStatus.canceled": {
+    message: "Canceled",
+    description: "Lifecycle-step outcome badge: canceled",
   },
   "services.eventsReason.image_pull_backoff": {
     message: "The runtime could not pull the configured image.",

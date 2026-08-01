@@ -85,6 +85,30 @@ const zhMetrics: Record<string, TranslationEntry> = {
     description:
       "Chart event-marker label: a deploy finished with an unrecognized status",
   },
+  "metrics.eventBuildStarted": {
+    message: "构建已开始",
+    description: "Chart event-marker label: an image build began",
+  },
+  "metrics.eventBuildEnded": {
+    message: "构建已结束",
+    description: "Chart event-marker label: an image build finished",
+  },
+  "metrics.eventPreDeployStarted": {
+    message: "预部署已开始",
+    description: "Chart event-marker label: the pre-deploy command began",
+  },
+  "metrics.eventPreDeployEnded": {
+    message: "预部署已结束",
+    description: "Chart event-marker label: the pre-deploy command finished",
+  },
+  "metrics.eventJobRunEnded": {
+    message: "任务已结束",
+    description: "Chart event-marker label: a one-off job finished",
+  },
+  "metrics.eventBranchDeleted": {
+    message: "分支已删除",
+    description: "Chart event-marker label: the tracked Git branch was deleted",
+  },
   "metrics.eventServerRestarted": {
     message: "服务已重启",
     description: "Chart event-marker label: the service was restarted",

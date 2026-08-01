@@ -37,9 +37,19 @@ const (
 	EventFactServerFailed       ServiceEventFactType = "server_failed"
 	EventFactServerAvailable    ServiceEventFactType = "server_available"
 	EventFactBranchChanged      ServiceEventFactType = "branch_changed"
+	EventFactBranchDeleted      ServiceEventFactType = "branch_deleted"
 	EventFactCommitIgnored      ServiceEventFactType = "commit_ignored"
 	EventFactAutoscalingStarted ServiceEventFactType = "autoscaling_started"
 	EventFactAutoscalingEnded   ServiceEventFactType = "autoscaling_ended"
+	// Deploy-lifecycle facts (w7/m66): the build, pre-deploy, and one-off-job
+	// beats Render shows as distinct timeline entries. The *_ended kinds carry a
+	// closed Status (succeeded|failed|canceled); the operator observes them
+	// through the same control-plane reconciler path image_pull_failed rides.
+	EventFactBuildStarted     ServiceEventFactType = "build_started"
+	EventFactBuildEnded       ServiceEventFactType = "build_ended"
+	EventFactPreDeployStarted ServiceEventFactType = "pre_deploy_started"
+	EventFactPreDeployEnded   ServiceEventFactType = "pre_deploy_ended"
+	EventFactJobRunEnded      ServiceEventFactType = "job_run_ended"
 )
 
 var serviceEventFactTypes = map[ServiceEventFactType]bool{
@@ -49,9 +59,31 @@ var serviceEventFactTypes = map[ServiceEventFactType]bool{
 	EventFactServerFailed:       true,
 	EventFactServerAvailable:    true,
 	EventFactBranchChanged:      true,
+	EventFactBranchDeleted:      true,
 	EventFactCommitIgnored:      true,
 	EventFactAutoscalingStarted: true,
 	EventFactAutoscalingEnded:   true,
+	EventFactBuildStarted:       true,
+	EventFactBuildEnded:         true,
+	EventFactPreDeployStarted:   true,
+	EventFactPreDeployEnded:     true,
+	EventFactJobRunEnded:        true,
+}
+
+// Closed lifecycle-step outcomes for a *_ended fact's Status column — the same
+// structural discipline as reason_code: a step outcome is never an arbitrary
+// string. Mirror service_event_facts' status CHECK (migration 0056).
+const (
+	EventStatusSucceeded = "succeeded"
+	EventStatusFailed    = "failed"
+	EventStatusCanceled  = "canceled"
+)
+
+var serviceEventStatuses = map[string]bool{
+	"":                   true,
+	EventStatusSucceeded: true,
+	EventStatusFailed:    true,
+	EventStatusCanceled:  true,
 }
 
 const (
@@ -88,6 +120,10 @@ type ServiceEventFact struct {
 	BranchTo   string
 	CommitID   string
 	CommitURL  string
+	// Status is the terminal outcome of a lifecycle-step fact (build_ended,
+	// pre_deploy_ended, job_run_ended): one of EventStatus* or "" for the
+	// started/observed kinds that have no outcome. Closed set (w7/m66).
+	Status string
 }
 
 // EventFactWriter is the narrow producer seam used by apps and webhook code.
@@ -101,6 +137,9 @@ func validateServiceEventFact(f ServiceEventFact) error {
 	}
 	if !serviceEventReasonCodes[f.ReasonCode] {
 		return fmt.Errorf("invalid service event reason code %q", f.ReasonCode)
+	}
+	if !serviceEventStatuses[f.Status] {
+		return fmt.Errorf("invalid service event status %q", f.Status)
 	}
 	return nil
 }
@@ -117,7 +156,7 @@ func (s *PGStore) InsertServiceEventFact(ctx context.Context, fact ServiceEventF
 	tag, err := s.Pool.Exec(ctx, insertServiceEventFactSQL,
 		fact.SourceKey, fact.AppID, fact.Type, fact.At, fact.DeployID, fact.Image,
 		fact.ReasonCode, fact.InstanceID, fact.FromCount, fact.ToCount,
-		fact.BranchFrom, fact.BranchTo, fact.CommitID, fact.CommitURL)
+		fact.BranchFrom, fact.BranchTo, fact.CommitID, fact.CommitURL, fact.Status)
 	if err != nil {
 		return false, classify("service event fact", err)
 	}
@@ -127,8 +166,8 @@ func (s *PGStore) InsertServiceEventFact(ctx context.Context, fact ServiceEventF
 const insertServiceEventFactSQL = `
 INSERT INTO service_event_facts (
     source_key, app_id, fact_type, at, deploy_id, image, reason_code,
-    instance_id, from_count, to_count, branch_from, branch_to, commit_id, commit_url
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+    instance_id, from_count, to_count, branch_from, branch_to, commit_id, commit_url, status
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 ON CONFLICT (source_key) DO NOTHING`
 
 // ObservedServiceState is the small level-triggered snapshot the control-plane
@@ -198,7 +237,7 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 			if _, err := tx.Exec(ctx, insertServiceEventFactSQL,
 				fact.SourceKey, fact.AppID, fact.Type, fact.At, fact.DeployID, fact.Image,
 				fact.ReasonCode, fact.InstanceID, fact.FromCount, fact.ToCount,
-				fact.BranchFrom, fact.BranchTo, fact.CommitID, fact.CommitURL); err != nil {
+				fact.BranchFrom, fact.BranchTo, fact.CommitID, fact.CommitURL, fact.Status); err != nil {
 				return err
 			}
 			inserted = append(inserted, fact)

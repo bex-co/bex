@@ -83,11 +83,33 @@ limitations under the License.
 // maintenance_mode_to. An env-var write is therefore visible as "alice changed
 // env vars at 03:12" and cannot be anything more, however the feed is queried.
 //
+// # Deploy-lifecycle facts (w7/m66)
+//
+// The build, pre-deploy, and one-off-job beats Render shows as distinct timeline
+// entries are observed control-plane facts on the same service_event_facts path
+// image_pull_failed rides — no faking, a durable source each:
+//
+//	build_started / build_ended            reconciler observing a repo-backed
+//	                                       deploy's BuildKit build phase (ADR034);
+//	                                       build_ended.details.status is
+//	                                       succeeded|failed|canceled
+//	pre_deploy_started / pre_deploy_ended  reconciler observing status.preDeploy
+//	                                       (w1/m33); the ended details.status is
+//	                                       succeeded|failed (in addition to the
+//	                                       preDeployStatus still on deploy_ended)
+//	job_run_ended                          internal/jobs observing a one-off job
+//	                                       finishing (details.status
+//	                                       succeeded|failed) — alongside the
+//	                                       existing job_started/job_canceled
+//	branch_deleted                         the GitHub webhook's branch-delete
+//	                                       signal (push deleted=true, or the
+//	                                       `delete` event); auto-deploy is disabled
+//
 // # Omissions (honest, not faked)
 //
-//   - build_started/build_ended, provider hardware/maintenance, billing,
-//     workflow, preview-environment, persistent-disk, and mutable edge-cache
-//     events have no accepted bex mechanism or durable source.
+//   - provider hardware/maintenance, billing, workflow, preview-environment,
+//     persistent-disk, and mutable edge-cache events have no accepted bex
+//     mechanism or durable source.
 //     (maintenance_* now has a source — see the maintenance-mode types above —
 //     but only for the tenant-facing toggle this feed's apps.SetMaintenanceMode
 //     records; Render's platform-scheduled infra-maintenance concept, if its
@@ -135,9 +157,19 @@ const (
 	TypeServerFailed             = "server_failed"
 	TypeServerAvailable          = "server_available"
 	TypeBranchChanged            = "branch_changed"
+	TypeBranchDeleted            = "branch_deleted"
 	TypeCommitIgnored            = "commit_ignored"
 	TypeAutoscalingStarted       = "autoscaling_started"
 	TypeAutoscalingEnded         = "autoscaling_ended"
+	// Deploy-lifecycle facts (w7/m66): the build, pre-deploy, and one-off-job
+	// beats Render shows as distinct timeline entries. The *_ended types carry a
+	// details.status (succeeded|failed|canceled); observed via the control-plane
+	// reconciler + jobs sync, not an API write.
+	TypeBuildStarted     = "build_started"
+	TypeBuildEnded       = "build_ended"
+	TypePreDeployStarted = "pre_deploy_started"
+	TypePreDeployEnded   = "pre_deploy_ended"
+	TypeJobRunEnded      = "job_run_ended"
 )
 
 // bex-named types — real writes Render's vocabulary has no name for. Named in
@@ -251,9 +283,15 @@ var (
 		TypeServerFailed,
 		TypeServerAvailable,
 		TypeBranchChanged,
+		TypeBranchDeleted,
 		TypeCommitIgnored,
 		TypeAutoscalingStarted,
 		TypeAutoscalingEnded,
+		TypeBuildStarted,
+		TypeBuildEnded,
+		TypePreDeployStarted,
+		TypePreDeployEnded,
+		TypeJobRunEnded,
 	}
 )
 
@@ -283,8 +321,10 @@ func pushDown(eventType string) (verbs, phases, factTypes []string, autoDeploy s
 	case TypeAutoDeployChanged:
 		return []string{core.AuditVerbSetAutoDeploy}, nil, nil, store.AutoDeployFilterChanged
 	case TypeImagePullFailed, TypeServiceSuspended, TypeServiceResumed,
-		TypeServerFailed, TypeServerAvailable, TypeBranchChanged,
-		TypeCommitIgnored, TypeAutoscalingStarted, TypeAutoscalingEnded:
+		TypeServerFailed, TypeServerAvailable, TypeBranchChanged, TypeBranchDeleted,
+		TypeCommitIgnored, TypeAutoscalingStarted, TypeAutoscalingEnded,
+		TypeBuildStarted, TypeBuildEnded, TypePreDeployStarted, TypePreDeployEnded,
+		TypeJobRunEnded:
 		return nil, nil, []string{eventType}, store.AutoDeployFilterNone
 	}
 	for _, verb := range allVerbs {
@@ -327,7 +367,11 @@ type Details struct {
 	// | "succeeded" | "failed"; empty when no pre-deploy step ran. deploy_ended
 	// only. Distinguishes a migration failure from a health-check failure.
 	PreDeployStatus string
-	Trigger         *Trigger // deploy_started only
+	// Status is a lifecycle-step fact's terminal outcome (w7/m66): build_ended /
+	// pre_deploy_ended / job_run_ended carry succeeded|failed|canceled; empty for
+	// the started/observed kinds and every other type.
+	Status  string
+	Trigger *Trigger // deploy_started only
 	// Deploy details enriched for dashboard (w1/m47): deployed image, commit info, timing
 	Image         string     // container image URI; empty for non-deploy events
 	CommitID      string     // git revision; empty for non-deploy events
@@ -567,6 +611,7 @@ func view(r store.ServiceEventRow, service string) Event {
 		ev.Details.BranchFrom = r.BranchFrom
 		ev.Details.BranchTo = r.BranchTo
 		ev.Details.CommitURL = r.CommitURL
+		ev.Details.Status = r.FactStatus
 	}
 	return ev
 }

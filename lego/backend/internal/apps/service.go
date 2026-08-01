@@ -160,10 +160,10 @@ type Service struct {
 // Every App has a stable public app-id, including store-less API creates; only
 // the managed-by label proves that the id names a Postgres source row.
 func managedAppID(a *appv1alpha1.App) string {
-	if a == nil || a.Labels[store.LabelManagedBy] != store.ManagedByValue {
+	if a == nil {
 		return ""
 	}
-	return a.Labels[store.LabelAppID]
+	return store.ManagedAppID(a.Labels)
 }
 
 // AppSecretsEraser clears per-app secrets from the external store on service

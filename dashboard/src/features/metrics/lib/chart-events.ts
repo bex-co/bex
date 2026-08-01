@@ -17,6 +17,12 @@ export type ChartEventLabelKey =
   | "metrics.eventDeployFailed"
   | "metrics.eventDeployCanceled"
   | "metrics.eventDeployEnded"
+  | "metrics.eventBuildStarted"
+  | "metrics.eventBuildEnded"
+  | "metrics.eventPreDeployStarted"
+  | "metrics.eventPreDeployEnded"
+  | "metrics.eventJobRunEnded"
+  | "metrics.eventBranchDeleted"
   | "metrics.eventServerRestarted"
   | "metrics.eventSuspended"
   | "metrics.eventResumed"
@@ -77,6 +83,13 @@ export function toChartEventMarkers(
   return markers.sort((a, b) => a.time - b.time);
 }
 
+/** A lifecycle-step fact's status (w7/m66) → a marker kind for its color. */
+function lifecycleKind(status: string): ChartEventKind {
+  if (status === "succeeded") return "success";
+  if (status === "failed") return "failure";
+  return "info"; // canceled / unknown
+}
+
 /** The kind + label for one event — the timeline's taxonomy, Render's styling. */
 function describeEvent(
   event: ServiceEventView,
@@ -88,6 +101,27 @@ function describeEvent(
   switch (type) {
     case "deploy_started":
       return { kind: "start", labelKey: "metrics.eventDeployStarted" };
+    case "build_started":
+      return { kind: "start", labelKey: "metrics.eventBuildStarted" };
+    case "pre_deploy_started":
+      return { kind: "start", labelKey: "metrics.eventPreDeployStarted" };
+    case "build_ended":
+      return {
+        kind: lifecycleKind(event.details?.status ?? ""),
+        labelKey: "metrics.eventBuildEnded",
+      };
+    case "pre_deploy_ended":
+      return {
+        kind: lifecycleKind(event.details?.status ?? ""),
+        labelKey: "metrics.eventPreDeployEnded",
+      };
+    case "job_run_ended":
+      return {
+        kind: lifecycleKind(event.details?.status ?? ""),
+        labelKey: "metrics.eventJobRunEnded",
+      };
+    case "branch_deleted":
+      return { kind: "info", labelKey: "metrics.eventBranchDeleted" };
     case "deploy_ended": {
       const status = event.details?.deployStatus ?? "";
       if (SUCCEEDED_DEPLOY_STATUSES.has(status)) {

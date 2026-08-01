@@ -3,14 +3,18 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Activity,
   AlertCircle,
+  Ban,
   CheckCircle2,
   CircleDot,
+  GitBranch,
+  Hammer,
   ListFilter,
   PauseCircle,
   PlayCircle,
   RefreshCcw,
   Rocket,
   Scale,
+  Terminal,
   XCircle,
 } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -76,10 +80,31 @@ function triggerKey(trigger: TriggerFlags): string | null {
   return null;
 }
 
-function EventIcon({ type, status }: { type: string; status: string }) {
+function EventIcon({
+  type,
+  status,
+  factStatus,
+}: {
+  type: string;
+  status: string;
+  factStatus: string;
+}) {
   const iconProps = { className: "size-4", "aria-hidden": true } as const;
 
   if (type === "deploy_started") return <Rocket {...iconProps} />;
+  if (type === "build_started") return <Hammer {...iconProps} />;
+  if (type === "pre_deploy_started") return <Terminal {...iconProps} />;
+  // Lifecycle-step endings (w7/m66) render by their outcome: check / cross / ban.
+  if (
+    type === "build_ended" ||
+    type === "pre_deploy_ended" ||
+    type === "job_run_ended"
+  ) {
+    if (factStatus === "failed") return <XCircle {...iconProps} />;
+    if (factStatus === "canceled") return <Ban {...iconProps} />;
+    return <CheckCircle2 {...iconProps} />;
+  }
+  if (type === "branch_deleted") return <GitBranch {...iconProps} />;
   if (type === "image_pull_failed" || type === "server_failed") {
     return <XCircle {...iconProps} />;
   }
@@ -112,21 +137,43 @@ function EventIcon({ type, status }: { type: string; status: string }) {
   return <CircleDot {...iconProps} />;
 }
 
-function eventIconClass(type: string, status: string): string {
+function eventIconClass(
+  type: string,
+  status: string,
+  factStatus: string,
+): string {
   if (
     status === "update_failed" ||
+    factStatus === "failed" ||
     type === "image_pull_failed" ||
     type === "server_failed"
   ) {
     return "bg-destructive/10 text-destructive";
   }
-  if (type === "deploy_ended" && status === "live") {
+  if (
+    factStatus === "succeeded" ||
+    (type === "deploy_ended" && status === "live")
+  ) {
     return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
   }
-  if (type === "deploy_started") {
+  if (
+    type === "deploy_started" ||
+    type === "build_started" ||
+    type === "pre_deploy_started"
+  ) {
     return "bg-primary/10 text-primary";
   }
   return "bg-muted text-muted-foreground";
+}
+
+// A lifecycle-step fact's status (w7/m66) → a Badge variant. succeeded reads as
+// the default (accent), failed as destructive, canceled as a muted outline.
+function lifecycleStatusVariant(
+  status: string,
+): "default" | "destructive" | "outline" {
+  if (status === "failed") return "destructive";
+  if (status === "canceled") return "outline";
+  return "default";
 }
 
 export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
@@ -276,6 +323,7 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
                   <EventSummary
                     type={event.type ?? ""}
                     status={status}
+                    factStatus={details?.status ?? ""}
                     trigger={trigger}
                     deployId={deployId}
                     actor={details?.actor || details?.triggeredByUser || ""}
@@ -366,6 +414,7 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
 function EventSummary({
   type,
   status,
+  factStatus,
   trigger,
   deployId,
   actor,
@@ -387,6 +436,7 @@ function EventSummary({
 }: {
   type: string;
   status: string;
+  factStatus: string;
   trigger: string | null;
   deployId: string;
   actor: string;
@@ -421,9 +471,9 @@ function EventSummary({
   return (
     <div className="flex min-w-0 items-start gap-3">
       <div
-        className={`flex size-9 shrink-0 items-center justify-center rounded-full ${eventIconClass(type, status)}`}
+        className={`flex size-9 shrink-0 items-center justify-center rounded-full ${eventIconClass(type, status, factStatus)}`}
       >
-        <EventIcon type={type} status={status} />
+        <EventIcon type={type} status={status} factStatus={factStatus} />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
@@ -433,6 +483,16 @@ function EventSummary({
           {isDeploy && status ? (
             <Badge variant={statusVariant(status)}>
               {t(statusKey(status) as Parameters<typeof t>[0])}
+            </Badge>
+          ) : null}
+          {/* Lifecycle-step outcome (w7/m66): build/pre-deploy/job endings. */}
+          {factStatus ? (
+            <Badge variant={lifecycleStatusVariant(factStatus)}>
+              {t(
+                `services.eventsStatus.${factStatus}` as Parameters<
+                  typeof t
+                >[0],
+              )}
             </Badge>
           ) : null}
         </div>
@@ -500,6 +560,11 @@ function EventSummary({
               from: branchFrom,
               to: branchTo,
             })}
+          </p>
+        ) : null}
+        {type === "branch_deleted" && branchFrom ? (
+          <p className="text-muted-foreground mt-2 text-xs">
+            {t("services.eventsBranchDeleted", { branch: branchFrom })}
           </p>
         ) : null}
         {type === "commit_ignored" && commitId ? (
