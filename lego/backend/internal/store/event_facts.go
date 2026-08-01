@@ -72,7 +72,7 @@ var serviceEventFactTypes = map[ServiceEventFactType]bool{
 
 // Closed lifecycle-step outcomes for a *_ended fact's Status column — the same
 // structural discipline as reason_code: a step outcome is never an arbitrary
-// string. Mirror service_event_facts' status CHECK (migration 0056).
+// string. Mirror service_event_facts' status CHECK (migration 0057).
 const (
 	EventStatusSucceeded = "succeeded"
 	EventStatusFailed    = "failed"
