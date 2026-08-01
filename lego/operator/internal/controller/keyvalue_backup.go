@@ -1,0 +1,289 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package controller
+
+import (
+	"context"
+	"crypto/sha256"
+	"fmt"
+	"strings"
+	"time"
+
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	"github.com/bex-co/bex/lego/operator/internal/publish"
+	"github.com/bex-co/bex/lego/types/tiers"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
+
+const (
+	kvFinalizer                   = "app.bex.co/kv-finalizer"
+	annotKVBackupPurgeComplete    = "app.bex.co/kv-backup-purge-complete"
+	keyValueBackupComponent       = "keyvalue-backup"
+	keyValueBackupPurgeComponent  = "keyvalue-backup-purge"
+	keyValueBackupRetention       = 7
+	keyValueBackupDeadlineSeconds = int64(15 * time.Minute / time.Second)
+)
+
+func keyValueBackupsEnabled(plan tiers.ValkeyTier, store BackupStore) bool {
+	return plan.ID != tiers.Valkey.Default().ID && store.configured()
+}
+
+func keyValueBackupName(name string) string {
+	const prefix = "kvbak-"
+	candidate := prefix + name
+	if len(candidate) <= 63 {
+		return candidate
+	}
+	sum := sha256.Sum256([]byte(name))
+	return fmt.Sprintf("%s%.43s-%x", prefix, name, sum[:4])
+}
+
+// keyValueBackupSchedule spreads tenant snapshots across 03:20–03:39 UTC.
+// The resource id makes the choice stable across reconciles and restarts.
+func keyValueBackupSchedule(name string) string {
+	sum := sha256.Sum256([]byte(name))
+	return fmt.Sprintf("%d 3 * * *", 20+int(sum[0])%20)
+}
+
+func keyValueBackupLabels(kv *appv1alpha1.KeyValue, component string) map[string]string {
+	labels := map[string]string{
+		labelKeyValue:             kv.Name,
+		"app.bex.co/component":    component,
+		"app.bex.co/keyvalue-uid": string(kv.UID),
+	}
+	if workspace := kv.Labels[labelWorkspace]; workspace != "" {
+		labels[labelWorkspace] = workspace
+	}
+	return labels
+}
+
+func (r *KeyValueReconciler) reconcileKeyValueBackup(
+	ctx context.Context,
+	kv *appv1alpha1.KeyValue,
+	plan tiers.ValkeyTier,
+	authSecretName string,
+) error {
+	name := keyValueBackupName(kv.Name)
+	if !keyValueBackupsEnabled(plan, r.Backup) {
+		cron := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: kv.Namespace}}
+		if err := r.Delete(ctx, cron); err != nil && !apierrors.IsNotFound(err) {
+			return fmt.Errorf("delete disabled KeyValue backup CronJob: %w", err)
+		}
+		return nil
+	}
+
+	cron := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: kv.Namespace}}
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, cron, func() error {
+		cron.Labels = keyValueBackupLabels(kv, keyValueBackupComponent)
+		cron.Spec = r.keyValueBackupCronJobSpec(kv, authSecretName)
+		return controllerutil.SetControllerReference(kv, cron, r.Scheme)
+	})
+	return err
+}
+
+func (r *KeyValueReconciler) keyValueBackupCronJobSpec(kv *appv1alpha1.KeyValue, authSecretName string) batchv1.CronJobSpec {
+	failedHistory := int32(3)
+	successfulHistory := int32(3)
+	backoff := int32(2)
+	startingDeadline := int64(time.Hour / time.Second)
+	timeZone := "Etc/UTC"
+	labels := keyValueBackupLabels(kv, keyValueBackupComponent)
+	volumeMount := corev1.VolumeMount{Name: "backup", MountPath: "/backup"}
+
+	return batchv1.CronJobSpec{
+		Schedule:                   keyValueBackupSchedule(kv.Name),
+		TimeZone:                   &timeZone,
+		ConcurrencyPolicy:          batchv1.ForbidConcurrent,
+		Suspend:                    ptr(kv.Spec.Suspended),
+		StartingDeadlineSeconds:    &startingDeadline,
+		FailedJobsHistoryLimit:     &failedHistory,
+		SuccessfulJobsHistoryLimit: &successfulHistory,
+		JobTemplate: batchv1.JobTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{Labels: labels},
+			Spec: batchv1.JobSpec{
+				BackoffLimit:          &backoff,
+				ActiveDeadlineSeconds: ptr(keyValueBackupDeadlineSeconds),
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{Labels: labels},
+					Spec: corev1.PodSpec{
+						RestartPolicy:                corev1.RestartPolicyNever,
+						AutomountServiceAccountToken: ptr(false),
+						InitContainers: []corev1.Container{
+							{
+								Name:    "snapshot",
+								Image:   valkeyImage(kv.Spec.Version),
+								Command: []string{"/bin/sh", "-ceu"},
+								Args: []string{`rm -f /backup/dump.rdb
+valkey-cli -h "${VALKEY_HOST}" -p "6379" --rdb /backup/dump.rdb
+test -s /backup/dump.rdb`},
+								Env: []corev1.EnvVar{
+									{Name: "VALKEY_HOST", Value: kv.Name},
+									{Name: "REDISCLI_AUTH", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{Name: authSecretName}, Key: "password",
+									}}},
+								},
+								Resources:       guaranteedResources("100m", "128Mi"),
+								SecurityContext: tenantSecCtx(),
+								VolumeMounts:    []corev1.VolumeMount{volumeMount},
+							},
+							{
+								Name:            "compress",
+								Image:           "busybox:1.37",
+								Command:         []string{"gzip", "-9", "/backup/dump.rdb"},
+								Resources:       guaranteedResources("10m", "32Mi"),
+								SecurityContext: tenantSecCtx(),
+								VolumeMounts:    []corev1.VolumeMount{volumeMount},
+							},
+						},
+						Containers: []corev1.Container{{
+							Name:    "upload",
+							Image:   publish.DefaultAWSCLIImage,
+							Command: []string{"/bin/bash", "-ceu"},
+							Args: []string{fmt.Sprintf(`retain=%d
+aws configure set default.s3.addressing_style path
+timestamp="$(date -u +%%Y-%%m-%%dT%%H:%%M:%%SZ)"
+prefix="${DESTINATION%%/}/${KEYVALUE}/"
+aws --endpoint-url "${ENDPOINT}" s3 cp /backup/dump.rdb.gz "${prefix}${timestamp}.rdb.gz"
+aws --endpoint-url "${ENDPOINT}" s3 ls "${prefix}" \
+  | awk '{print $NF}' \
+  | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z[.]rdb[.]gz$' \
+  | sort \
+  | head -n "-${retain}" \
+  | while IFS= read -r old; do
+      aws --endpoint-url "${ENDPOINT}" s3 rm "${prefix}${old}"
+    done`, keyValueBackupRetention)},
+							Env: []corev1.EnvVar{
+								{Name: "DESTINATION", Value: strings.TrimRight(r.Backup.DestinationPath, "/")},
+								{Name: "ENDPOINT", Value: r.Backup.EndpointURL},
+								{Name: "KEYVALUE", Value: kv.Name},
+							},
+							EnvFrom: []corev1.EnvFromSource{{SecretRef: &corev1.SecretEnvSource{
+								LocalObjectReference: corev1.LocalObjectReference{Name: r.Backup.S3Secret},
+							}}},
+							Resources:       guaranteedResources("50m", "128Mi"),
+							SecurityContext: tenantSecCtx(),
+							VolumeMounts:    []corev1.VolumeMount{volumeMount},
+						}},
+						Volumes: []corev1.Volume{{Name: "backup", VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						}}},
+					},
+				},
+			},
+		},
+	}
+}
+
+func (r *KeyValueReconciler) handleKeyValueDeletion(ctx context.Context, kv *appv1alpha1.KeyValue) (result ctrl.Result, err error) {
+	if !controllerutil.ContainsFinalizer(kv, kvFinalizer) {
+		return result, nil
+	}
+
+	cron := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: keyValueBackupName(kv.Name), Namespace: kv.Namespace}}
+	if gone, err := deleteAndWait(ctx, r.Client, cron); err != nil {
+		return result, fmt.Errorf("delete KeyValue backup CronJob: %w", err)
+	} else if !gone {
+		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+	}
+
+	jobsGone, err := r.deleteKeyValueBackupJobs(ctx, kv)
+	if err != nil {
+		return result, err
+	}
+	if !jobsGone {
+		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+	}
+
+	if r.Backup.configured() {
+		done, err := reconcileCleanupJob(ctx, r.Client, kv, r.keyValueBackupPurgeJob(kv), annotKVBackupPurgeComplete)
+		if err != nil {
+			return result, err
+		}
+		if !done {
+			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+		}
+	}
+
+	controllerutil.RemoveFinalizer(kv, kvFinalizer)
+	if err := r.Update(ctx, kv); err != nil {
+		return result, err
+	}
+	return result, nil
+}
+
+func (r *KeyValueReconciler) deleteKeyValueBackupJobs(ctx context.Context, kv *appv1alpha1.KeyValue) (bool, error) {
+	var jobs batchv1.JobList
+	if err := r.List(ctx, &jobs, client.InNamespace(kv.Namespace), client.MatchingLabels{
+		labelKeyValue:          kv.Name,
+		"app.bex.co/component": keyValueBackupComponent,
+	}); err != nil {
+		return false, fmt.Errorf("list KeyValue backup Jobs: %w", err)
+	}
+	for idx := range jobs.Items {
+		job := &jobs.Items[idx]
+		if job.DeletionTimestamp.IsZero() {
+			if err := r.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil && !apierrors.IsNotFound(err) {
+				return false, fmt.Errorf("delete KeyValue backup Job %s: %w", job.Name, err)
+			}
+		}
+	}
+	return len(jobs.Items) == 0, nil
+}
+
+func (r *KeyValueReconciler) keyValueBackupPurgeJob(kv *appv1alpha1.KeyValue) *batchv1.Job {
+	backoff := int32(3)
+	name := cleanupJobName("purge-kv-", kv.Name, kv.UID)
+	labels := keyValueBackupLabels(kv, keyValueBackupPurgeComponent)
+	return &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: kv.Namespace, Labels: labels},
+		Spec: batchv1.JobSpec{
+			BackoffLimit:          &backoff,
+			ActiveDeadlineSeconds: ptr(keyValueBackupDeadlineSeconds),
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: labels},
+				Spec: corev1.PodSpec{
+					RestartPolicy:                corev1.RestartPolicyNever,
+					AutomountServiceAccountToken: ptr(false),
+					Containers: []corev1.Container{{
+						Name:    "purge",
+						Image:   publish.DefaultAWSCLIImage,
+						Command: []string{"/bin/bash", "-ceu"},
+						Args: []string{`aws configure set default.s3.addressing_style path
+aws --endpoint-url "${ENDPOINT}" s3 rm "${DESTINATION%/}/${KEYVALUE}/" --recursive`},
+						Env: []corev1.EnvVar{
+							{Name: "DESTINATION", Value: strings.TrimRight(r.Backup.DestinationPath, "/")},
+							{Name: "ENDPOINT", Value: r.Backup.EndpointURL},
+							{Name: "KEYVALUE", Value: kv.Name},
+						},
+						EnvFrom: []corev1.EnvFromSource{{SecretRef: &corev1.SecretEnvSource{
+							LocalObjectReference: corev1.LocalObjectReference{Name: r.Backup.S3Secret},
+						}}},
+						Resources:       guaranteedResources("50m", "128Mi"),
+						SecurityContext: tenantSecCtx(),
+					}},
+				},
+			},
+		},
+	}
+}

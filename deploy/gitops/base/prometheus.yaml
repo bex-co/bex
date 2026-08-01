@@ -712,13 +712,23 @@ spec:
 
                   - alert: BackupCronJobStale
                     expr: |
-                      (time() - kube_cronjob_status_last_successful_time{cronjob=~"etcd-backup|openbao-backup"}) > (26 * 3600)
+                      (
+                        (time() - kube_cronjob_status_last_successful_time{cronjob=~"etcd-backup|openbao-backup|kvbak-.*"}) > (26 * 3600)
+                        or
+                        (
+                          (time() - kube_cronjob_created{cronjob=~"etcd-backup|openbao-backup|kvbak-.*"}) > (26 * 3600)
+                          unless on(namespace, cronjob)
+                            kube_cronjob_status_last_successful_time{cronjob=~"etcd-backup|openbao-backup|kvbak-.*"}
+                        )
+                      )
+                      and on(namespace, cronjob)
+                        (kube_cronjob_spec_suspend{cronjob=~"etcd-backup|openbao-backup|kvbak-.*"} == 0)
                     for: 0m
                     labels:
                       severity: critical
                     annotations:
                       summary: "Backup {{ $labels.namespace }}/{{ $labels.cronjob }} has not succeeded in >26h"
-                      description: "The nightly {{ $labels.cronjob }} last succeeded over 26h ago — silent backup rot is unrecoverable data loss. Debug: kubectl -n {{ $labels.namespace }} get cronjob {{ $labels.cronjob }}; kubectl -n {{ $labels.namespace }} get jobs -l batch.kubernetes.io/cronjob-name={{ $labels.cronjob }}. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md, docs/ADR031-platform-data-backup.md"
+                      description: "The nightly {{ $labels.cronjob }} has no successful backup in over 26h — silent backup rot is unrecoverable data loss. Debug: kubectl -n {{ $labels.namespace }} get cronjob {{ $labels.cronjob }}; kubectl -n {{ $labels.namespace }} get jobs -l batch.kubernetes.io/cronjob-name={{ $labels.cronjob }}. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md, docs/ADR021-keyvalue-management.md, docs/ADR031-platform-data-backup.md"
 
                   # Plugin-backed WAL archiver staleness for every platform DB —
                   # the path CronJobStale cannot see (continuous WAL uses

@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"strings"
 	"time"
@@ -947,11 +946,7 @@ func (r *DatabaseReconciler) dbBackupPurgeJob(db *appv1alpha1.Database) *batchv1
 	deadline := int64((15 * time.Minute) / time.Second)
 	backoff := int32(3)
 	base := strings.TrimRight(r.Backup.DestinationPath, "/")
-	sum := sha256.Sum256([]byte(db.UID))
-	jobName := fmt.Sprintf("purge-db-%s-%x", db.Name, sum[:4])
-	if len(jobName) > 63 {
-		jobName = fmt.Sprintf("purge-db-%.42s-%x", db.Name, sum[:6])
-	}
+	jobName := cleanupJobName("purge-db-", db.Name, db.UID)
 	labels := map[string]string{
 		"app.bex.co/database":     db.Name,
 		"app.bex.co/database-uid": string(db.UID),
