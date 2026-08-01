@@ -180,6 +180,40 @@ func TestEstimateStarterOneMonth(t *testing.T) {
 	}
 }
 
+func TestEstimatePaidTierMonthlyPricesMatchCatalog(t *testing.T) {
+	tests := []struct {
+		name         string
+		tier         string
+		resourceKind string
+		want         string
+	}{
+		{"service starter", "starter", store.ResourceKindService, "4.90"},
+		{"service standard", "standard", store.ResourceKindService, "17.50"},
+		{"service pro", "pro", store.ResourceKindService, "59.50"},
+		{"service pro plus", "pro-plus", store.ResourceKindService, "122.50"},
+		{"service pro max", "pro-max", store.ResourceKindService, "157.50"},
+		{"service pro ultra", "pro-ultra", store.ResourceKindService, "315.00"},
+		{"postgres basic 256mb", "basic-256mb", store.ResourceKindPostgres, "4.90"},
+		{"postgres basic 1gb", "basic-1gb", store.ResourceKindPostgres, "14.00"},
+		{"key value starter", "starter", store.ResourceKindKeyValue, "7.00"},
+		{"key value standard", "standard", store.ResourceKindKeyValue, "21.00"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			est := Default.Estimate([]store.UsageSummaryRow{{
+				Kind:         store.UsageKindInstanceSeconds,
+				Tier:         tt.tier,
+				ResourceKind: tt.resourceKind,
+				Total:        2628000,
+			}})
+			if est.TotalUSD != tt.want {
+				t.Fatalf("730-hour monthly price = %s, want %s", est.TotalUSD, tt.want)
+			}
+		})
+	}
+}
+
 func TestEstimateOneBandwidthGigabyte(t *testing.T) {
 	// 1 GiB at $0.015/GiB rounds to $0.02.
 	rows := []store.UsageSummaryRow{

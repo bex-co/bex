@@ -24,49 +24,49 @@ compute:
   - tier: free
     usdPerSecond: 0.0
   - tier: starter
-    usdPerSecond: 0.000001864554   # $4.90/mo  (Render $7.00 × 0.70)
+    usdPerSecond: 0.000001864535768645   # $4.90/mo  (Render $7.00 × 0.70)
   - tier: standard
-    usdPerSecond: 0.000006658363   # $17.50/mo (Render $25.00 × 0.70)
+    usdPerSecond: 0.000006659056316591   # $17.50/mo (Render $25.00 × 0.70)
   - tier: pro
-    usdPerSecond: 0.000022643435   # $59.50/mo (Render $85.00 × 0.70)
+    usdPerSecond: 0.000022640791476408   # $59.50/mo (Render $85.00 × 0.70)
   - tier: pro-plus
-    usdPerSecond: 0.000046616482   # $122.50/mo (Render $175.00 × 0.70)
+    usdPerSecond: 0.000046613394216134   # $122.50/mo (Render $175.00 × 0.70)
   - tier: pro-max
-    usdPerSecond: 0.000059936332   # $157.50/mo (Render $225.00 × 0.70)
+    usdPerSecond: 0.000059931506849315   # $157.50/mo (Render $225.00 × 0.70)
   - tier: pro-ultra
-    usdPerSecond: 0.000119872664   # $315.00/mo (Render $450.00 × 0.70)
+    usdPerSecond: 0.000119863013698630   # $315.00/mo (Render $450.00 × 0.70)
 
 # instance_seconds rates for managed Postgres (Database CR)
 postgres:
   - tier: free
     usdPerSecond: 0.0
   - tier: basic-256mb
-    usdPerSecond: 0.000001864554   # $4.90/mo  (Render $7.00 × 0.70)
+    usdPerSecond: 0.000001864535768645   # $4.90/mo  (Render $7.00 × 0.70)
   - tier: basic-1gb
-    usdPerSecond: 0.000005326725   # $14.00/mo (Render $20.00 × 0.70)
+    usdPerSecond: 0.000005327245053272   # $14.00/mo (Render $20.00 × 0.70)
 
 # instance_seconds rates for managed Key Value / Valkey (KeyValue CR)
 keyvalue:
   - tier: free
     usdPerSecond: 0.0
   - tier: starter
-    usdPerSecond: 0.000002663649   # $7.00/mo  (Render $10.00 × 0.70)
+    usdPerSecond: 0.000002663622526636   # $7.00/mo  (Render $10.00 × 0.70)
   - tier: standard
-    usdPerSecond: 0.000007990948   # $21.00/mo (Render $30.00 × 0.70)
+    usdPerSecond: 0.000007990867579909   # $21.00/mo (Render $30.00 × 0.70)
 
 # Composed public outbound egress_bytes rate: $0.015/GiB
 # (Render's current $0.15/GB × 0.10 = 90% off; bex's transparent meter uses
 # binary GiB, preserving its existing byte basis).
 bandwidth:
-  usdPerByte: 0.000000000013969839   # $0.015 / 1,073,741,824 bytes
+  usdPerByte: 0.000000000013969838619232177734375   # $0.015 / 1,073,741,824 bytes
 
 # build_seconds rate: $0.0035/min (Render $0.005/min × 0.70 = 30% off)
 build:
-  usdPerSecond: 0.000058333333   # $0.0035 / 60 s
+  usdPerSecond: 0.000058333333333333333333333333   # $0.0035 / 60 s
 
 # storage_gb_seconds rate: $0.21/GB-month (Render Postgres $0.30 × 0.70).
 # One pricing month is 730 h = 2,628,000 seconds. Render has no separate Key
 # Value storage line; bex deliberately applies the same transparent rate to
 # actual used PVC bytes for both managed datastore kinds.
 storage:
-  usdPerGBSecond: 0.000000079908676   # $0.21 / 2,628,000 GB-seconds
+  usdPerGBSecond: 0.000000079908675799086757990868   # $0.21 / 2,628,000 GB-seconds

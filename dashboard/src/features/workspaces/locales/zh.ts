@@ -29,9 +29,9 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     message: "Hobby",
     description: "Workspace plan card name",
   },
-  "workspaces.planHobbyPrice": {
-    message: "免费",
-    description: "Workspace plan card price",
+  "workspaces.planHobbyBilling": {
+    message: "无工作区费用",
+    description: "Workspace plan card billing label",
   },
   "workspaces.planHobbyDescription": {
     message: "1 名成员，最多 25 个服务，每位用户最多 5 个 Hobby 工作区。",
@@ -41,9 +41,9 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     message: "Pro",
     description: "Workspace plan card name",
   },
-  "workspaces.planProPrice": {
-    message: "$25/月",
-    description: "Workspace plan card price",
+  "workspaces.planProBilling": {
+    message: "无工作区费用",
+    description: "Workspace plan card billing label",
   },
   "workspaces.planProDescription": {
     message: "成员和服务数量不限。",
@@ -53,9 +53,9 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     message: "Scale",
     description: "Workspace plan card name",
   },
-  "workspaces.planScalePrice": {
-    message: "$499/月",
-    description: "Workspace plan card price",
+  "workspaces.planScaleBilling": {
+    message: "无工作区费用",
+    description: "Workspace plan card billing label",
   },
   "workspaces.planScaleDescription": {
     message: "成员和服务数量不限，支持更多角色。",
@@ -65,13 +65,17 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     message: "Enterprise",
     description: "Workspace plan card name",
   },
-  "workspaces.planEnterprisePrice": {
-    message: "定制",
-    description: "Workspace plan card price",
+  "workspaces.planEnterpriseBilling": {
+    message: "定制条款",
+    description: "Workspace plan card billing label",
   },
   "workspaces.planEnterpriseDescription": {
     message: "定制额度与支持。",
     description: "Workspace plan card description",
+  },
+  "workspaces.planUsageBillingNote": {
+    message: "服务和数据存储用量按资源层级另行计费。",
+    description: "Billing note below the workspace plan picker",
   },
   "workspaces.createTitle": {
     message: "创建工作区",

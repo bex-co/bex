@@ -32,19 +32,26 @@ export function workspaceDeleteConfirmation(name: string): string {
 }
 
 /**
- * The Render flat-rate lineup (verified 2026-07-08, .pm/w6/RESEARCH-workspaces.md
- * finding 1 + 4): Hobby is free and capped (1 member, 25 services, 5
- * workspaces/user); Pro/Scale/Enterprise lift every cap and add a flat monthly
- * fee. Kept in sync by hand with the backend catalog (store.WorkspacePlans) —
- * this module has no schema-introspection path to the Go constants.
+ * The bex workspace capability lineup mirrors Render's plan ids (verified
+ * 2026-07-08, .pm/w6/RESEARCH-workspaces.md finding 1 + 4): Hobby is capped
+ * (1 member, 25 services, 5 workspaces/user); Pro/Scale/Enterprise lift caps
+ * and add roles. Unlike Render, bex bills resource-tier usage rather than flat
+ * workspace subscriptions (ADR040, ADR046). Kept in sync by hand with the
+ * backend catalog (store.WorkspacePlans) — this module has no schema-
+ * introspection path to the Go constants.
  */
-export const WORKSPACE_PLAN_IDS = ["hobby", "pro", "scale", "enterprise"] as const;
+export const WORKSPACE_PLAN_IDS = [
+  "hobby",
+  "pro",
+  "scale",
+  "enterprise",
+] as const;
 export type WorkspacePlanId = (typeof WORKSPACE_PLAN_IDS)[number];
 
 export interface WorkspacePlanCatalogEntry {
   id: WorkspacePlanId;
   nameKey: string;
-  priceKey: string;
+  billingKey: string;
   descriptionKey: string;
 }
 
@@ -52,25 +59,25 @@ export const WORKSPACE_PLAN_CATALOG: WorkspacePlanCatalogEntry[] = [
   {
     id: "hobby",
     nameKey: "workspaces.planHobbyName",
-    priceKey: "workspaces.planHobbyPrice",
+    billingKey: "workspaces.planHobbyBilling",
     descriptionKey: "workspaces.planHobbyDescription",
   },
   {
     id: "pro",
     nameKey: "workspaces.planProName",
-    priceKey: "workspaces.planProPrice",
+    billingKey: "workspaces.planProBilling",
     descriptionKey: "workspaces.planProDescription",
   },
   {
     id: "scale",
     nameKey: "workspaces.planScaleName",
-    priceKey: "workspaces.planScalePrice",
+    billingKey: "workspaces.planScaleBilling",
     descriptionKey: "workspaces.planScaleDescription",
   },
   {
     id: "enterprise",
     nameKey: "workspaces.planEnterpriseName",
-    priceKey: "workspaces.planEnterprisePrice",
+    billingKey: "workspaces.planEnterpriseBilling",
     descriptionKey: "workspaces.planEnterpriseDescription",
   },
 ];
