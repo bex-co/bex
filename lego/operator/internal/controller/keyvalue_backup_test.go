@@ -100,6 +100,10 @@ func TestKeyValueBackupCronJobSpec(t *testing.T) {
 	if len(upload.EnvFrom) != 1 || upload.EnvFrom[0].SecretRef.Name != testKeyValueBackupStore.S3Secret {
 		t.Fatalf("uploader credential source = %#v", upload.EnvFrom)
 	}
+	if len(upload.Env) < 2 || upload.Env[0].Name != "HOME" || upload.Env[0].Value != "/tmp" ||
+		upload.Env[1].Name != "AWS_EC2_METADATA_DISABLED" || upload.Env[1].Value != "true" {
+		t.Fatalf("uploader writable AWS config contract = %#v", upload.Env)
+	}
 	for _, container := range append(append([]corev1.Container{}, pod.InitContainers...), pod.Containers...) {
 		security := container.SecurityContext
 		if security == nil || security.AllowPrivilegeEscalation == nil || *security.AllowPrivilegeEscalation ||
@@ -319,5 +323,15 @@ func TestKeyValueDeletionRetainsFinalizerWhenPurgeFails(t *testing.T) {
 	}
 	if !controllerutil.ContainsFinalizer(current, kvFinalizer) {
 		t.Fatal("failed purge released the KeyValue finalizer")
+	}
+}
+
+func TestKeyValueBackupPurgeUsesWritableAWSConfigHome(t *testing.T) {
+	kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "red-kv-purge-home", Namespace: "default", UID: "kv-purge-home-uid"}}
+	r := &KeyValueReconciler{Backup: testKeyValueBackupStore}
+	env := r.keyValueBackupPurgeJob(kv).Spec.Template.Spec.Containers[0].Env
+	if len(env) < 2 || env[0].Name != "HOME" || env[0].Value != "/tmp" ||
+		env[1].Name != "AWS_EC2_METADATA_DISABLED" || env[1].Value != "true" {
+		t.Fatalf("purge writable AWS config contract = %#v", env)
 	}
 }

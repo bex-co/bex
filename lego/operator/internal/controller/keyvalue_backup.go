@@ -174,6 +174,8 @@ aws --endpoint-url "${ENDPOINT}" s3 ls "${prefix}" \
       aws --endpoint-url "${ENDPOINT}" s3 rm "${prefix}${old}"
     done`, keyValueBackupRetention)},
 							Env: []corev1.EnvVar{
+								{Name: "HOME", Value: "/tmp"},
+								{Name: "AWS_EC2_METADATA_DISABLED", Value: "true"},
 								{Name: "DESTINATION", Value: strings.TrimRight(r.Backup.DestinationPath, "/")},
 								{Name: "ENDPOINT", Value: r.Backup.EndpointURL},
 								{Name: "KEYVALUE", Value: kv.Name},
@@ -272,6 +274,8 @@ func (r *KeyValueReconciler) keyValueBackupPurgeJob(kv *appv1alpha1.KeyValue) *b
 						Args: []string{`aws configure set default.s3.addressing_style path
 aws --endpoint-url "${ENDPOINT}" s3 rm "${DESTINATION%/}/${KEYVALUE}/" --recursive`},
 						Env: []corev1.EnvVar{
+							{Name: "HOME", Value: "/tmp"},
+							{Name: "AWS_EC2_METADATA_DISABLED", Value: "true"},
 							{Name: "DESTINATION", Value: strings.TrimRight(r.Backup.DestinationPath, "/")},
 							{Name: "ENDPOINT", Value: r.Backup.EndpointURL},
 							{Name: "KEYVALUE", Value: kv.Name},
