@@ -187,6 +187,31 @@
     0 1px 3px 0 rgb(0 0 0 / 0.1),
     0 1px 2px -1px rgb(0 0 0 / 0.1); /* shadow-sm */
 }
+
+/* Account settings uses Ory's multi-card settings layout inside the dashboard
+   content column. Let those cards fill the same column as the native settings
+   panels, then match the page's 16px card rhythm instead of Ory's standalone
+   page spacing and bottom padding. */
+.account-settings-flow > div {
+  gap: 1rem;
+  padding-bottom: 0;
+}
+.account-settings-flow form[data-testid^="ory/screen/settings/group/"] {
+  max-width: none;
+  padding-inline: 0;
+}
+.account-settings-flow
+  form[data-testid^="ory/screen/settings/group/"]
+  > div:first-child {
+  gap: 1.5rem;
+  padding: 1.5rem;
+}
+.account-settings-flow
+  form[data-testid^="ory/screen/settings/group/"]
+  > div:last-child {
+  min-height: 4rem;
+  padding: 1rem 1.5rem;
+}
 @media (min-width: 640px) {
   .ory-elements [data-testid="ory/card"] {
     padding: 2rem; /* sm:p-8 */

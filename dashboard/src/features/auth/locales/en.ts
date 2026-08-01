@@ -38,8 +38,37 @@ const enAuth: Record<string, TranslationEntry> = {
     description: "Account settings page heading",
   },
   "auth.settingsSubtitle": {
-    message: "Manage your account profile, password, and two-factor security.",
+    message: "Manage your identity, integrations, access, and security.",
     description: "Account settings page subheading",
+  },
+  "auth.settingsNavigation": {
+    message: "Settings sections",
+    description: "Accessible label for the settings page section navigation",
+  },
+  "auth.accountSection": {
+    message: "Account",
+    description: "Settings page account section heading and navigation label",
+  },
+  "auth.accountSectionSubtitle": {
+    message: "Update your profile, password, and two-factor authentication.",
+    description: "Settings page account section description",
+  },
+  "auth.integrationsSection": {
+    message: "Integrations",
+    description:
+      "Settings page integrations section heading and navigation label",
+  },
+  "auth.integrationsSectionSubtitle": {
+    message: "Connect source control and private image registries.",
+    description: "Settings page integrations section description",
+  },
+  "auth.accessSection": {
+    message: "Access credentials",
+    description: "Settings page access section heading and navigation label",
+  },
+  "auth.accessSectionSubtitle": {
+    message: "Manage programmatic access and SSH identities.",
+    description: "Settings page access section description",
   },
   "auth.securityComplianceSection": {
     message: "Security & Compliance",

@@ -28,6 +28,7 @@ export function SecurityComplianceSection() {
 
   return (
     <SettingsSection
+      id="security"
       title={t("auth.securityComplianceSection")}
       description={t("auth.securityComplianceSectionSubtitle")}
     >
