@@ -1,17 +1,18 @@
 # Platform data-backup policy
 
-**Why this exists:** bex has six stores holding state that is not recoverable from git alone: etcd, OpenBao, the control-plane database, and the three auth databases. High availability protects each database from a node failure, not correlated storage loss. This document is the consolidated policy and restore runbook for all six — the single place to check when something is on fire.
+**Why this exists:** bex has six platform stores plus tenant datastores holding state that is not recoverable from git alone: etcd, OpenBao, the control-plane database, the three auth databases, tenant Postgres, and managed Key Value. High availability protects a database from a node failure, not correlated storage loss. This document is the consolidated policy and restore runbook — the single place to check when something is on fire.
 
 | store | what it holds | backup mechanism | schedule | retention | restore mechanism | last verified |
 | --- | --- | --- | --- | --- | --- | --- |
 | **etcd** | App/Database/KeyValue CRs (user deployments) | CronJob `kube-system/etcd-backup` → `etcd-snapshots/` in `bex-tfstate` | 03:15 UTC daily | 7 snapshots (rolling) | Docker throwaway etcd → `kubectl apply` extracted CRs | 2026-07-14 (CAPD 2-node, w7/m29) |
 | **OpenBao** | All tenant env-var secrets | CronJob `secrets/openbao-backup` → `openbao-snapshots/` in `bex-tfstate` | 03:45 UTC daily | 7 snapshots (rolling) | `bao operator raft snapshot restore [-force]` onto running unsealed OpenBao | 2026-07-14 (Docker, fresh-node path, w7/m29) |
+| **paid KeyValue** | Tenant Valkey data for every non-Free managed Key Value | Operator-owned `kvbak-<id>` CronJob → `keyvalue/<id>/<RFC3339-UTC>.rdb.gz` in `bex-tfstate` | One stable per-id slot from 03:20–03:39 UTC daily | 7 snapshots (rolling) | Fresh PVC: seed RDB with AOF off → verify → enable/rewrite AOF → restart | 2026-07-31 (production backup/restore/delete, w7/m68) |
 | **bex-db** | Workspaces, members, audit log, usage, API keys, deploy history | Barman Cloud plugin → ObjectStore `bex-system/bex-db` → `bex-db/` in `bex-tfstate` + continuous WAL | 04:00 UTC daily (full base backup via plugin `ScheduledBackup`); WAL archiving is continuous | 7 days of base backups + WAL (ObjectStore retention) | CNPG `bootstrap.recovery` through the plugin ObjectStore into a throwaway cluster | 2026-07-28 (production plugin PITR, w1/m56) |
 | **kratos-db** | User identities, credentials, verification/recovery state | Barman Cloud plugin → ObjectStore `auth/auth-dbs`, server `kratos-db-pg18` → `auth-dbs/kratos-db-pg18/` + continuous WAL | 04:15 UTC daily base backup; WAL continuous | 7 days of base backups + WAL | CNPG `bootstrap.recovery` through `auth/auth-dbs` into a throwaway cluster | 2026-07-31 (production restore, w7/m67) |
 | **hydra-db** | OAuth clients, grants, consent, access/refresh-token state | Barman Cloud plugin → ObjectStore `auth/auth-dbs`, server `hydra-db-pg18` → `auth-dbs/hydra-db-pg18/` + continuous WAL | 04:30 UTC daily base backup; WAL continuous | 7 days of base backups + WAL | Same plugin recovery shape as kratos-db | 2026-07-31 (production backup + WAL verification, w7/m67) |
 | **openfga-db** | Authorization stores, models, and tuples | Barman Cloud plugin → ObjectStore `auth/auth-dbs`, server `openfga-db-pg18` → `auth-dbs/openfga-db-pg18/` + continuous WAL | 04:45 UTC daily base backup; WAL continuous | 7 days of base backups + WAL | Same plugin recovery shape as kratos-db | 2026-07-31 (production backup + WAL verification, w7/m67) |
 
-All six use the same Wasabi/Hetzner Object Storage bucket (`bex-tfstate`) under separate store/server prefixes. Credentials come from out-of-band Secrets (never in git), following the same pattern as `etcd-backup-s3` / `openbao-backup-s3`.
+The platform stores and paid KeyValue backups use the same Wasabi/Hetzner Object Storage bucket (`bex-tfstate`) under separate store/server prefixes. Credentials come from out-of-band Secrets (never in git), following the same pattern as `etcd-backup-s3` / `openbao-backup-s3`. Free KeyValue instances are deliberately PVC-only and have no off-cluster recovery point.
 
 ## Barman Cloud plugin
 
@@ -36,12 +37,14 @@ graph LR
   subgraph cluster["app cluster (Hetzner)"]
     etcd-cron["CronJob etcd-backup<br/>03:15 UTC"]
     bao-cron["CronJob openbao-backup<br/>03:45 UTC"]
+    kv-cron["Paid KeyValue CronJobs<br/>03:20–03:39 UTC"]
     cnpg-sched["ScheduledBackup bex-db-nightly<br/>04:00 UTC + continuous WAL"]
     auth-sched["Auth DB ScheduledBackups<br/>04:15 / 04:30 / 04:45 UTC + continuous WAL"]
   end
-  bucket[("bex-tfstate<br/>etcd-snapshots/<br/>openbao-snapshots/<br/>bex-db/<br/>auth-dbs/")]
+  bucket[("bex-tfstate<br/>etcd-snapshots/<br/>openbao-snapshots/<br/>keyvalue/&lt;id&gt;/<br/>bex-db/<br/>auth-dbs/")]
   etcd-cron --> bucket
   bao-cron --> bucket
+  kv-cron --> bucket
   cnpg-sched --> bucket
   auth-sched --> bucket
   op@{ shape: tri, label: "human operator" }
@@ -129,6 +132,22 @@ kubectl -n auth get backup
 
 Artifacts live under `s3://bex-tfstate/auth-dbs/<cluster>-pg<major>/{base,wals}/`. The production clusters were PostgreSQL 18 when this policy shipped, so the active server names are `kratos-db-pg18`, `hydra-db-pg18`, and `openfga-db-pg18`.
 
+### Paid KeyValue
+
+The production operator config sets the non-secret `BEX_KV_BACKUP_DESTINATION=s3://bex-tfstate/keyvalue`, Wasabi endpoint, and Secret name `bex-kv-backup-s3`. Provision the credential in the apps namespace from the backup-plane identity without committing or printing it:
+
+```sh
+source .env && kubectl -n default create secret generic bex-kv-backup-s3 \
+  --from-literal=AWS_ACCESS_KEY_ID="$TF_STATE_ACCESS_KEY" \
+  --from-literal=AWS_SECRET_ACCESS_KEY="$TF_STATE_SECRET_KEY"
+```
+
+All three settings are required. With any unset, the operator adds no backup CronJob or finalizer to new KeyValue resources. With the contract complete, every non-Free instance gets `kvbak-<id>`; Free receives none. Verify names and schedules without reading either Secret value:
+
+```sh
+kubectl -n default get cronjob -l app.bex.co/component=keyvalue-backup
+```
+
 ## Restore runbooks
 
 ### etcd restore
@@ -211,9 +230,25 @@ Use the same new-Cluster-only recovery shape as `bex-db`, in the `auth` namespac
 
 Before recovery, capture a known row without putting personal data in the drill record. For Kratos, verify an existing `identities.id`; for Hydra or OpenFGA, choose the equivalent stable primary-key row. Recover to a distinctly named Cluster, query the known row, and delete the Cluster plus every generated PVC/PV, Pod, Service, and Secret when verification completes. The credential-free production example, exact timings, and cleanup proof are in [the 2026-07-31 auth DB restore drill](drills/2026-07-31-auth-dbs-restore.md).
 
+### KeyValue restore
+
+KeyValue backups are coherent RDB snapshots, not PITR. Select the newest object (RFC3339 names sort chronologically), download and gunzip it, and validate it with the matching Valkey image's `valkey-check-rdb`. Restore only into a fresh PVC or an otherwise proven-empty data directory:
+
+1. Create a throwaway PVC and seed the object as `/data/dump.rdb`; ensure no `appendonlydir/` or other AOF file exists.
+2. Start the throwaway Valkey with `appendonly no`, the source version, and a throwaway password.
+3. Verify a known marker key. A successful `PING` alone proves only that Valkey started, not that the snapshot loaded.
+4. Change the managed workload back to `appendonly yes`, run `BGREWRITEAOF`, wait for it to finish, and restart.
+5. Verify the marker again after restart, then delete the throwaway StatefulSet, Service, PVC, and Secret.
+
+Valkey prefers an existing AOF over `dump.rdb`; seeding the RDB beside a surviving append-only directory silently restores the wrong dataset. The fresh-volume rule is therefore a safety invariant, not cleanup advice. [ADR021](ADR021-keyvalue-management.md) owns the mechanism details; [the production drill](drills/2026-07-31-keyvalue-restore.md) records the exact evidence.
+
 > **CNPG 1.31+ readiness:** PASS. The active Clusters, ScheduledBackups, on-demand Backup example, and recovery examples use the Barman Cloud plugin. The 2026-07-28 production drill restored tenant and control-plane data at explicit PITR targets, and the 2026-07-31 production drill restored Kratos from its new auth archive. The historical 2026-07-14 drill below used CNPG's former fields; do not copy that record as a current manifest.
 
 ## Drill records
+
+### Paid KeyValue backup, AOF-aware restore, and delete purge — 2026-07-31 (w7/m68, production)
+
+A paid throwaway KeyValue captured a marker through eight manually triggered CronJob runs. The eighth run deleted exactly the oldest object, the bucket retained the newest seven, and the newest RDB passed Valkey checksum validation. A fresh-PVC restore loaded the marker with AOF disabled for the seed; after AOF was enabled and rewritten, the marker survived a workload restart. Deleting the source removed its CronJob, backup/purge Jobs and Pods, StatefulSet, PVC/PV, Secrets, and complete `keyvalue/<id>/` prefix. See [2026-07-31-keyvalue-restore.md](drills/2026-07-31-keyvalue-restore.md).
 
 ### Auth database Barman Cloud restore — 2026-07-31 (w7/m67, production)
 
@@ -294,7 +329,7 @@ Fresh plugin backups and explicit point-in-time restores passed for both a dispo
 
 ## Alerting
 
-- **`BackupCronJobStale`** (prometheus.yaml `bex` group): fires if `etcd-backup` or `openbao-backup` CronJobs have not succeeded in >26h. Severity: critical.
+- **`BackupCronJobStale`** (prometheus.yaml `bex` group): fires if active `etcd-backup`, `openbao-backup`, or `kvbak-*` CronJobs have no success in >26h, including never-successful CronJobs older than 26h. Deliberately suspended KeyValue CronJobs are excluded. Severity: critical.
 - **`PlatformDatabaseBackupStale`** (prometheus.yaml `bex` group): one alert instance per `bex-db`, `kratos-db`, `hydra-db`, or `openfga-db` if its Barman Cloud plugin-backed WAL archiver (`cnpg_pg_stat_archiver_last_archived_time` from the primary-only `cnpg-platform-db` scrape) has not archived in >26h. The scrape stamps namespace and cluster labels from Kubernetes discovery. Debugging starts with `pg_stat_archiver`, the cluster's ObjectStore, the `barman-cloud` deployment and instance-sidecar logs; credential presence is checked without printing Secret data. Severity: critical.
 
 ## Re-drill cadence
@@ -303,4 +338,5 @@ Fresh plugin backups and explicit point-in-time restores passed for both a dispo
 | --- | --- | --- | --- |
 | etcd | 2026-07-14 | Annually or after any control-plane topology change | Path A tested; topology changes the recovery surface |
 | OpenBao | 2026-07-14 | Annually | Raft restore is idempotent and low-risk; fresh-node path now verified |
+| paid KeyValue | 2026-07-31 | Annually or after Valkey major/image or snapshot-job changes | Snapshot recovery is AOF-sensitive; re-drill any load-order or image change |
 | bex-db | 2026-07-28 | Annually or after a CNPG/plugin major upgrade or backup-transport change | Production plugin base backup + explicit PITR restore verified; re-drill when the recovery surface changes |

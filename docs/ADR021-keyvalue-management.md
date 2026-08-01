@@ -17,6 +17,7 @@ flowchart LR
   kv["KeyValue resource<br/>(control plane · plan/version/storage)"] --> sts["Valkey StatefulSet<br/>(tenant namespace · 1 replica)"]
   sts --> svc["headless Service<br/>(ClusterIP None, in-cluster)"]
   sts --> pvc["PVC<br/>(appendonly data)"]
+  sts -. "paid plans: coherent RDB" .-> backup["CronJob kvbak-&lt;id&gt;<br/>nightly gzip → object storage"]
   sts --> auth["immutable auth Secret<br/>(password authority)"]
   auth --> sec["immutable connection Secret<br/>(URI projection)"]
   svc --> appx["tenant App<br/>uses INTERNAL url"]
@@ -63,15 +64,27 @@ Growth targets the real StatefulSet PVC, `data-<red-id>-0`, rather than trying t
 
 Shrink intent is rejected as `StorageShrinkRejected` without changing the PVC. Rollout health is evaluated independently: the StatefulSet must have observed its current generation, `currentRevision` must equal `updateRevision`, and the desired current-revision Pod must be Ready. Thus old available replicas cannot hide either a failed plan rollout or pending expansion. When a spelling-divergent tier is added (`pro_plus`), the family gains a `renderPlan` field like `compute`.
 
-### 5. Lifecycle (create → connect → delete)
+### 5. Paid-plan off-cluster backups and AOF-aware restore
+
+The operator gives every non-Free plan a deterministic `kvbak-<id>` CronJob when all three `BEX_KV_BACKUP_DESTINATION`, `BEX_KV_BACKUP_ENDPOINT`, and `BEX_KV_BACKUP_S3_SECRET` settings are present. Any missing setting disables the feature: a new reconcile adds no backup CronJob or finalizer. Production uses `s3://bex-tfstate/keyvalue`, the Wasabi endpoint, and the out-of-band `default/bex-kv-backup-s3` Secret (`AWS_ACCESS_KEY_ID` plus `AWS_SECRET_ACCESS_KEY`). Free plans remain PVC-only and receive no CronJob.
+
+Each instance hashes its immutable `red-` id into a stable slot from 03:20–03:39 UTC, avoiding a fleet-wide snapshot spike. The job authenticates through `REDISCLI_AUTH` from the immutable `<id>-auth` Secret and runs `valkey-cli --rdb` over the private Service. That replication-protocol request produces a coherent RDB without copying a live `dump.rdb` or granting `pods/exec`. A second stage gzips it; the credentialed uploader writes `keyvalue/<id>/<RFC3339-UTC>.rdb.gz` and retains the lexicographically newest seven. Suspended stores keep their CronJob but set `spec.suspend: true`, so intentional hibernation neither runs nor pages.
+
+This is snapshot recovery, **not PITR**. The paid-plan RPO is the nightly cadence (at most roughly one day plus job delay); writes after the latest successful RDB can be lost. Free-plan durability is only the live PVC and may be lost with that volume or cluster. `BackupCronJobStale` pages when an active CronJob has no success for more than 26 hours, including a CronJob that never succeeded.
+
+Deletion is fail-closed while backups are configured. The KeyValue finalizer first removes the CronJob and every labeled backup Job, then a durable terminal Job recursively deletes `keyvalue/<id>/`; only a proven successful purge releases the resource. If backups are disabled, the finalizer never gets added to new resources and any historical finalizer releases without wedging deletion.
+
+RDB restore must account for AOF precedence: when Valkey starts with an existing append-only directory, it loads AOF instead of `dump.rdb`. Always restore into a **fresh PVC** (or a proven-empty data directory), seed the selected object as `/data/dump.rdb`, and start once with `appendonly no`. Verify a known key, switch the managed workload back to `appendonly yes`, run `BGREWRITEAOF`, restart, and verify the key again. Never seed an RDB beside surviving AOF files and assume it was loaded. The production drill and timings are recorded in [the 2026-07-31 KeyValue restore drill](drills/2026-07-31-keyvalue-restore.md).
+
+### 6. Lifecycle (create → connect → delete)
 
 1. **Create** `KeyValue{name, plan, version, storage}`.
 2. **Provision** → the operator creates the StatefulSet (Valkey `--requirepass <generated> --appendonly yes`, PVC for AOF data), the headless Service, the immutable `<id>-auth` authority, and the immutable `<id>` connection projection. The password is generated once on first reconcile and is not a user-rotatable setting. A legacy connection Secret seeds the authority during migration, preserving the running password.
 3. **Prove rollout consistency** → the Pod template carries the one-way SHA-256 credential revision. `status.credentialRevision` advances only when the current StatefulSet revision and Pod are Ready; no credential value enters status, Events, or logs.
 4. **Surface connection info** → REST/GraphQL reads the authority only while phase is Ready and its hash matches `status.credentialRevision`; otherwise it returns conflict. The dashboard therefore cannot reveal credentials from a split rollout. MCP exposes KeyValue metadata but no credential-read tool.
-5. **Delete** → deleting the `KeyValue` garbage-collects the StatefulSet, Service, PVC, both Secrets, and public Certificate/Secret. The proxy removes the route from its watched table.
+5. **Delete** → for a previously backed-up store, the finalizer stops backup work and purges `keyvalue/<id>/`; deleting the `KeyValue` then garbage-collects the StatefulSet, Service, PVC, both Secrets, and public Certificate/Secret. The proxy removes the route from its watched table.
 
-### 6. Identity and rename (stable `red-` id + mutable name, w9/m6)
+### 7. Identity and rename (stable `red-` id + mutable name, w9/m6)
 
 Identity and display name are separate, exactly as managed Postgres shipped in w9/m3 (ADR009 §Rename and legacy migration):
 
@@ -89,7 +102,7 @@ Ship only what fits the current single node — single-instance plans differing 
 
 ## Consequences
 
-- Deferred to post-MVP: HA/replication (a Valkey replica/sentinel needs a ≥3-node worker pool), eviction/scale-to-zero for free-tier stores, and overage billing. Public TLS and outbound response metering are implemented.
+- Deferred to post-MVP: HA/replication (a Valkey replica/sentinel needs a ≥3-node worker pool), eviction/scale-to-zero for free-tier stores, and overage billing. Public TLS, outbound response metering, and paid-plan nightly off-cluster RDB backups are implemented. Free remains explicitly PVC-only.
 - The REST/GraphQL/MCP surface (`list_key_value` / `get_key_value` / `create_key_value` + `/v1/key-value` CRUD/connection-info/suspend/resume + GraphQL `keyValue*`) shipped in w2/m7 on top of this mechanism; the dashboard shipped in w5/m12. The retired bex-only `list_key_value_instances` alias is no longer registered.
 - **Version-change parity assessment (2026-07-16, w8/m16): no upgrade verb.** Render's official `keyValuePATCHInput` and legacy `redisPATCHInput` schemas list only `name`, `plan`, `maxmemoryPolicy`, `persistenceMode`, and `ipAllowList`; neither accepts `version`. Render's Key Value documentation likewise documents plan upgrades and states that new instances run Valkey 8 while legacy instances remain on Redis 6 without version updates. Therefore bex's create-time-only `spec.version` matches the absence of a Render version-change contract; no mirror milestone is warranted. Reassess only if Render adds a version field or explicit upgrade flow.
 
@@ -98,4 +111,5 @@ Ship only what fits the current single node — single-instance plans differing 
 - **bex verification:** apply a `KeyValue` CR → Valkey StatefulSet + headless Service + credentials Secret created, tier-sized → connect via the **internal** URL from an in-cluster pod → with `spec.public`, `BEX_KV_DOMAIN`, and `BEX_CLUSTER_ISSUER`, observe the Certificate, TLS port, and public proxy route → connect with an ordinary `rediss://` client and verify its peer certificate is Valkey's certificate → delete the `KeyValue` → all owned objects gone. Controller and proxy tests pin creation, migration cleanup, allowlists, end-to-end TLS pass-through, and backend→client-only accounting.
 - **Grow-only storage verification (w2/m60):** envtest binds a 1 GiB PVC on an expandable StorageClass, changes intent to 5 GiB, observes the real PVC request become 5 GiB while `Ready=false`, advances capacity and the current StatefulSet revision, and then observes `StorageReady=true`/`Ready=true`. Unit cases prove shrink and a non-expandable StorageClass leave the PVC unchanged with actionable conditions, and an old revision cannot satisfy readiness.
 - **Credential consistency verification (w2/m61):** envtest proves both Secrets are immutable, direct auth mutation is rejected by the API server, the StatefulSet reads the authority and carries its revision, and Ready is gated on the current Pod revision. Backend tests prove a mismatched revision returns a non-leaking conflict rather than any connection string.
+- **Backup/restore verification (w7/m68):** unit and envtest coverage pins env/plan gating, coherent `--rdb` capture, keep-seven upload behavior, suspend handling, finalizer ordering, retry-on-purge-failure, and disabled-mode deletion. Production created eight snapshots for a paid throwaway instance, observed the oldest pruned and exactly seven retained, checksum-validated the newest RDB, restored its marker into a fresh PVC with AOF disabled for the seed, enabled and rewrote AOF, and verified the marker after restart. Deleting the source then proved its CronJob, Jobs/Pods, PVC/PV, Secrets, and S3 prefix were all absent.
 - **Official CLI verification:** `scripts/cli-compat.sh kv-cli-verify` provisions a disposable source-restricted public store and drives the unmodified official Render CLI under an automated PTY by both opaque id and display name. The 2026-07-18 production run passed `PING`, `SET`, exact `GET`, `DEL`, and all cleanup assertions through the real DNS/LB/SNI edge; see the [sanitized acceptance evidence](../.pm/w2/m57/evidence/2026-07-18-kv-cli-acceptance.md).
