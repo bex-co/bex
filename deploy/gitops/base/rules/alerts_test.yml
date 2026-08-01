@@ -260,36 +260,78 @@ tests:
               summary: "Key Value outbound accounting is unavailable"
               description: "The public Key Value proxy meter is missing or unhealthy. Public Key Value usage windows must fail rather than undercount. Debug: kubectl -n bex-system get pods -l app.bex.co/component=kv-sni-proxy -o wide"
 
-  # BexDbBackupStale: WAL archiver age math — fires at >26h, not at 25h.
+  # PlatformDatabaseBackupStale: WAL archiver age math — one alert instance per
+  # platform database, firing at >26h but not for recent archive activity.
   # cnpg_pg_stat_archiver_last_archived_time is a Unix timestamp (seconds);
   # at eval_time=30m time()=1800, so series value encodes the last-archived epoch.
-  - name: bex-db WAL archiver staleness age math
+  - name: platform database WAL archiver staleness fans out by cluster
     interval: 1m
     input_series:
       # stale: age = 1800 - (-95400) = 97200s = exactly 27h → fire
-      - series: 'cnpg_pg_stat_archiver_last_archived_time{namespace="bex-system", pod="bex-db-1"}'
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db", namespace="bex-system", cnpg_io_cluster="bex-db", pod="bex-db-1"}'
+        values: "-95400x60"
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db", namespace="auth", cnpg_io_cluster="kratos-db", pod="kratos-db-1"}'
+        values: "-95400x60"
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db", namespace="auth", cnpg_io_cluster="hydra-db", pod="hydra-db-1"}'
+        values: "-95400x60"
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db", namespace="auth", cnpg_io_cluster="openfga-db", pod="openfga-db-1"}'
         values: "-95400x60"
     alert_rule_test:
       - eval_time: 30m
-        alertname: BexDbBackupStale
+        alertname: PlatformDatabaseBackupStale
         exp_alerts:
           - exp_labels:
+              cnpg_io_cluster: bex-db
+              job: cnpg-platform-db
               severity: critical
               namespace: bex-system
               pod: bex-db-1
             exp_annotations:
-              summary: "bex-db WAL archiving stalled (>26h since last archive)"
-              description: "bex-db's Barman Cloud plugin has not shipped a WAL segment in >26h — control-plane PITR data is at risk. Debug: inspect pg_stat_archiver, ObjectStore bex-system/bex-db, the barman-cloud deployment and sidecar logs, then verify Secret bex-db-backup-s3 exists without printing it. Runbook: docs/ADR031-platform-data-backup.md"
+              summary: "bex-system/bex-db WAL archiving stalled (>26h)"
+              description: "bex-system/bex-db has not archived a WAL segment in >26h — platform recovery data is at risk. Debug: inspect pg_stat_archiver, the cluster's Barman ObjectStore, the barman-cloud deployment and sidecar logs, then verify the referenced Secret exists without printing it. Runbook: docs/ADR031-platform-data-backup.md"
+          - exp_labels:
+              cnpg_io_cluster: kratos-db
+              job: cnpg-platform-db
+              severity: critical
+              namespace: auth
+              pod: kratos-db-1
+            exp_annotations:
+              summary: "auth/kratos-db WAL archiving stalled (>26h)"
+              description: "auth/kratos-db has not archived a WAL segment in >26h — platform recovery data is at risk. Debug: inspect pg_stat_archiver, the cluster's Barman ObjectStore, the barman-cloud deployment and sidecar logs, then verify the referenced Secret exists without printing it. Runbook: docs/ADR031-platform-data-backup.md"
+          - exp_labels:
+              cnpg_io_cluster: hydra-db
+              job: cnpg-platform-db
+              severity: critical
+              namespace: auth
+              pod: hydra-db-1
+            exp_annotations:
+              summary: "auth/hydra-db WAL archiving stalled (>26h)"
+              description: "auth/hydra-db has not archived a WAL segment in >26h — platform recovery data is at risk. Debug: inspect pg_stat_archiver, the cluster's Barman ObjectStore, the barman-cloud deployment and sidecar logs, then verify the referenced Secret exists without printing it. Runbook: docs/ADR031-platform-data-backup.md"
+          - exp_labels:
+              cnpg_io_cluster: openfga-db
+              job: cnpg-platform-db
+              severity: critical
+              namespace: auth
+              pod: openfga-db-1
+            exp_annotations:
+              summary: "auth/openfga-db WAL archiving stalled (>26h)"
+              description: "auth/openfga-db has not archived a WAL segment in >26h — platform recovery data is at risk. Debug: inspect pg_stat_archiver, the cluster's Barman ObjectStore, the barman-cloud deployment and sidecar logs, then verify the referenced Secret exists without printing it. Runbook: docs/ADR031-platform-data-backup.md"
 
-  - name: bex-db WAL archiver not stale
+  - name: platform database WAL archiver activity is healthy
     interval: 1m
     input_series:
       # recent: age = 1800 - (-1800) = 3600s = 1h — well under 26h → NOT fire
-      - series: 'cnpg_pg_stat_archiver_last_archived_time{namespace="bex-system", pod="bex-db-1"}'
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db", namespace="bex-system", cnpg_io_cluster="bex-db", pod="bex-db-1"}'
+        values: "-1800x60"
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db", namespace="auth", cnpg_io_cluster="kratos-db", pod="kratos-db-1"}'
+        values: "-1800x60"
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db", namespace="auth", cnpg_io_cluster="hydra-db", pod="hydra-db-1"}'
+        values: "-1800x60"
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db", namespace="auth", cnpg_io_cluster="openfga-db", pod="openfga-db-1"}'
         values: "-1800x60"
     alert_rule_test:
       - eval_time: 30m
-        alertname: BexDbBackupStale
+        alertname: PlatformDatabaseBackupStale
         exp_alerts: []
 
   # BackupCronJobStale: age math must fire at >26h, NOT at 25h.

@@ -192,7 +192,7 @@ fi
 
 # Barman Cloud is vendored for the same reproducibility reason as kpack. Pin
 # the upstream bytes, controller placement/image, CRD + TLS resources, and the
-# two credential-reference-only ObjectStores. These checks deliberately inspect
+# three credential-reference-only ObjectStores. These checks deliberately inspect
 # only Secret names/key names; no credential data is present or decoded.
 echo "==> vendored Barman Cloud Plugin v0.13.0 + ObjectStore contracts"
 BARMAN_ASSET="deploy/gitops/charts/barman-cloud-plugin/upstream/manifest-0.13.0.yaml"
@@ -231,6 +231,7 @@ done
 
 objectstores_render="$(kubectl kustomize deploy/gitops/charts/barman-cloud-objectstores)"
 for expected in \
+  'auth|auth-dbs|s3://bex-tfstate/auth-dbs|https://s3.eu-central-2.wasabisys.com|7d|auth-dbs-backup-s3|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY' \
   'bex-system|bex-db|s3://bex-tfstate/bex-db|https://s3.eu-central-2.wasabisys.com|7d|bex-db-backup-s3|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY' \
   'default|bex-tenant-postgres|s3://bex-tfstate/postgres|https://s3.eu-central-2.wasabisys.com|30d|bex-db-backup-s3|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY'; do
   namespace="${expected%%|*}"
@@ -270,6 +271,14 @@ if kubectl kustomize deploy/gitops/overlays/local | yq -e \
   echo "FAIL: local overlay must omit credential-backed ObjectStores" >&2
   fail=1
 fi
+
+# Every checked-in CNPG Cluster must continuously archive through the supported
+# plugin. The guard resolves each namespaced ObjectStore reference and rejects a
+# duplicate destination/serverName pair; its synthetic fixtures prove both the
+# red and green paths so a future refactor cannot turn the scan into a no-op.
+echo "==> every GitOps CNPG Cluster has a unique Barman Cloud archive identity"
+bash scripts/cnpg-backup-guard.sh || fail=1
+bash scripts/cnpg-backup-guard.sh --self-test || fail=1
 
 # Physical tenant backups and the operator's logical-export/purge jobs must
 # address the same transport. The values are non-secret; credential bytes remain

@@ -1,0 +1,27 @@
+# Shared backup transport for the three auth databases. Each Cluster supplies a
+# distinct per-major serverName, so one credential/config surface retains
+# isolated WAL and base-backup archives. The referenced Secret is provisioned
+# out of band in auth; credential bytes never enter Git.
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: auth-dbs
+  namespace: auth
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  configuration:
+    destinationPath: s3://bex-tfstate/auth-dbs
+    endpointURL: https://s3.eu-central-2.wasabisys.com
+    s3Credentials:
+      accessKeyId:
+        name: auth-dbs-backup-s3
+        key: AWS_ACCESS_KEY_ID
+      secretAccessKey:
+        name: auth-dbs-backup-s3
+        key: AWS_SECRET_ACCESS_KEY
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+  retentionPolicy: 7d
