@@ -68,11 +68,14 @@ jobs:
           marker_metadata_path=tenants/metadata/w7-m69-restore-drill
           backup_job="m69-openbao-${GITHUB_RUN_ID}"
           pf_pid=""
+          marker_created=0
           token_config() { printf 'header = "X-Vault-Token: %s"\n' "$BAO_ROOT_TOKEN"; }
           cleanup() {
             set +e
-            token_config | curl -fsS --config - -X DELETE \
-              "http://127.0.0.1:38260/v1/$marker_metadata_path" >/dev/null
+            if [ "$marker_created" -eq 1 ]; then
+              token_config | curl -fsS --config - -X DELETE \
+                "http://127.0.0.1:38260/v1/$marker_metadata_path" >/dev/null
+            fi
             if [ -n "$pf_pid" ]; then
               kill "$pf_pid" 2>/dev/null || true
               wait "$pf_pid" 2>/dev/null || true
@@ -95,6 +98,7 @@ jobs:
           token_config | curl -fsS --config - -X POST \
             --data-binary '{"data":{"marker":"w7-m69-20260801"}}' \
             "http://127.0.0.1:38260/v1/$marker_path" >/dev/null
+          marker_created=1
           token_config | curl -fsS --config - \
             "http://127.0.0.1:38260/v1/$marker_path" >/dev/null
 
@@ -110,6 +114,14 @@ jobs:
             --verify-path "$marker_path" \
             --confirm "$TARGET_NAMESPACE" \
             --teardown-on-success
+
+          token_config | curl -fsS --config - -X DELETE \
+            "http://127.0.0.1:38260/v1/$marker_metadata_path" >/dev/null
+          status="$(token_config | curl -sS --config - -o /dev/null -w '%{http_code}' \
+            "http://127.0.0.1:38260/v1/$marker_path")"
+          [ "$status" = 404 ] || { echo "live marker cleanup verification failed" >&2; exit 1; }
+          marker_created=0
+          echo "live OpenBao marker deletion verified"
 
           kubectl -n secrets get statefulset openbao \
             -o custom-columns=NAME:.metadata.name,READY:.status.readyReplicas,REPLICAS:.status.replicas
