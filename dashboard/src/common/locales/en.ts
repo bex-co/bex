@@ -88,6 +88,10 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "Documentation",
     description: "Topbar help-menu link to bex documentation",
   },
+  "common.topbarCliGuide": {
+    message: "CLI guide",
+    description: "Topbar help-menu link to the bex CLI guide",
+  },
   "common.topbarRepository": {
     message: "GitHub repository",
     description: "Topbar help-menu link to the bex source repository",

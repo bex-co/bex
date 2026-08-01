@@ -87,6 +87,10 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "文档",
     description: "Topbar help-menu link to bex documentation",
   },
+  "common.topbarCliGuide": {
+    message: "CLI 指南",
+    description: "Topbar help-menu link to the bex CLI guide",
+  },
   "common.topbarRepository": {
     message: "GitHub 仓库",
     description: "Topbar help-menu link to the bex source repository",

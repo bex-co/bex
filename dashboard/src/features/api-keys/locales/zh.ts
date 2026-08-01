@@ -10,6 +10,10 @@ const zhApiKeys: Record<string, TranslationEntry> = {
       "供脚本和智能体使用的机器凭证。整个工作区共享——任何有密钥管理权限的人都能看到这里的所有密钥，而不仅仅是自己创建的。",
     description: "Settings API Keys section card description",
   },
+  "apiKeys.cliGuide": {
+    message: "设置 CLI。",
+    description: "Link from the API Keys card to the bex CLI setup guide",
+  },
   "apiKeys.colName": {
     message: "名称",
     description: "API Keys table column header",
@@ -24,7 +28,8 @@ const zhApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.colLastUsed": {
     message: "最近使用",
-    description: "API Keys table column header — when a token for the key was last used",
+    description:
+      "API Keys table column header — when a token for the key was last used",
   },
   "apiKeys.neverUsed": {
     message: "从未使用",

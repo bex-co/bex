@@ -11,6 +11,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DashboardBreadcrumbs } from "../dashboard-breadcrumbs";
 import { GlobalSearch } from "../global-search";
+import { HelpMenu } from "../dashboard-header";
 import type { ServiceView } from "@/features/services/types";
 
 const mocks = vi.hoisted(() => ({
@@ -172,6 +173,23 @@ beforeEach(() => {
 });
 
 describe("dashboard topbar navigation", () => {
+  it("links to the bex docs and CLI guide", async () => {
+    const user = userEvent.setup();
+    render(<HelpMenu />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Help and resources" }),
+    );
+
+    expect(
+      await screen.findByRole("menuitem", { name: "Documentation" }),
+    ).toHaveAttribute("href", "https://bex.co/docs");
+    expect(screen.getByRole("menuitem", { name: "CLI guide" })).toHaveAttribute(
+      "href",
+      "https://bex.co/docs/cli",
+    );
+  });
+
   it("shows a switchable project / environment / service hierarchy", async () => {
     const user = userEvent.setup();
     const router = buildRouter(
