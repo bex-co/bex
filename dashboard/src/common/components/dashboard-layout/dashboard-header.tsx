@@ -1,4 +1,4 @@
-import { CircleHelp, Github, Library } from "lucide-react";
+import { CircleHelp, Github, Library, SquareTerminal } from "lucide-react";
 import { Authenticated } from "@/common/components/authenticated";
 import { UserNav } from "@/common/components/user-nav.tsx";
 import { Button } from "@/common/components/ui/button";
@@ -44,7 +44,7 @@ export function DashboardHeader() {
   );
 }
 
-function HelpMenu() {
+export function HelpMenu() {
   const { t } = useTranslations();
   return (
     <DropdownMenu>
@@ -60,13 +60,15 @@ function HelpMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem asChild>
-          <a
-            href="https://github.com/bex-co/bex/tree/main/docs"
-            target="_blank"
-            rel="noreferrer"
-          >
+          <a href="https://bex.co/docs" target="_blank" rel="noreferrer">
             <Library />
             {t("common.topbarDocumentation")}
+          </a>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <a href="https://bex.co/docs/cli" target="_blank" rel="noreferrer">
+            <SquareTerminal />
+            {t("common.topbarCliGuide")}
           </a>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

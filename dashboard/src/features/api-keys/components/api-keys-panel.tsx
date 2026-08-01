@@ -58,7 +58,17 @@ export function ApiKeysPanel() {
     <Card>
       <CardHeader>
         <CardTitle>{t("apiKeys.title")}</CardTitle>
-        <CardDescription>{t("apiKeys.description")}</CardDescription>
+        <CardDescription>
+          {t("apiKeys.description")}{" "}
+          <a
+            className="underline underline-offset-4 hover:text-foreground"
+            href="https://bex.co/docs/cli"
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t("apiKeys.cliGuide")}
+          </a>
+        </CardDescription>
         <CardAction>
           <CreateApiKeyDialog onCreated={() => void refetch()} />
         </CardAction>

@@ -32,10 +32,30 @@ beforeEach(() => {
 });
 
 describe("ApiKeysPanel", () => {
+  it("links API key setup to the CLI guide", () => {
+    render(<ApiKeysPanel />);
+
+    expect(
+      screen.getByRole("link", { name: "Set up the CLI." }),
+    ).toHaveAttribute("href", "https://bex.co/docs/cli");
+  });
+
   it("lists the workspace's keys (w4/m8/t002)", () => {
     apiKeysState.keys = [
-      { id: "key-1", name: "deploy-agent", createdAt: null, createdBy: null, lastUsedAt: null },
-      { id: "key-2", name: "ci-bot", createdAt: null, createdBy: null, lastUsedAt: null },
+      {
+        id: "key-1",
+        name: "deploy-agent",
+        createdAt: null,
+        createdBy: null,
+        lastUsedAt: null,
+      },
+      {
+        id: "key-2",
+        name: "ci-bot",
+        createdAt: null,
+        createdBy: null,
+        lastUsedAt: null,
+      },
     ];
     render(<ApiKeysPanel />);
 
@@ -62,14 +82,24 @@ describe("ApiKeysPanel", () => {
   });
 
   it("a failed revoke does not refetch — the key stays listed (t006)", async () => {
-    apiKeysState.keys = [{ id: "key-1", name: "deploy-agent", createdAt: null, createdBy: null, lastUsedAt: null }];
+    apiKeysState.keys = [
+      {
+        id: "key-1",
+        name: "deploy-agent",
+        createdAt: null,
+        createdBy: null,
+        lastUsedAt: null,
+      },
+    ];
     revoke.mockResolvedValue(false);
     const user = userEvent.setup();
     render(<ApiKeysPanel />);
 
     await user.click(screen.getByRole("button", { name: "Revoke" }));
     const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getAllByRole("button", { name: "Revoke" })[0]);
+    await user.click(
+      within(dialog).getAllByRole("button", { name: "Revoke" })[0],
+    );
 
     expect(revoke).toHaveBeenCalledWith("key-1", "deploy-agent");
     expect(refetch).not.toHaveBeenCalled();
@@ -77,14 +107,24 @@ describe("ApiKeysPanel", () => {
   });
 
   it("a successful revoke refetches the list", async () => {
-    apiKeysState.keys = [{ id: "key-1", name: "deploy-agent", createdAt: null, createdBy: null, lastUsedAt: null }];
+    apiKeysState.keys = [
+      {
+        id: "key-1",
+        name: "deploy-agent",
+        createdAt: null,
+        createdBy: null,
+        lastUsedAt: null,
+      },
+    ];
     revoke.mockResolvedValue(true);
     const user = userEvent.setup();
     render(<ApiKeysPanel />);
 
     await user.click(screen.getByRole("button", { name: "Revoke" }));
     const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getAllByRole("button", { name: "Revoke" })[0]);
+    await user.click(
+      within(dialog).getAllByRole("button", { name: "Revoke" })[0],
+    );
 
     expect(refetch).toHaveBeenCalled();
   });

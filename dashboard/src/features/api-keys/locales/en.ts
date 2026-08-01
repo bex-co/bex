@@ -10,6 +10,10 @@ const enApiKeys: Record<string, TranslationEntry> = {
       "Machine credentials for scripts and agents. Shared across the workspace — anyone who can manage keys sees every key here, not just their own.",
     description: "Settings API Keys section card description",
   },
+  "apiKeys.cliGuide": {
+    message: "Set up the CLI.",
+    description: "Link from the API Keys card to the bex CLI setup guide",
+  },
   "apiKeys.colName": {
     message: "Name",
     description: "API Keys table column header",
@@ -24,7 +28,8 @@ const enApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.colLastUsed": {
     message: "Last used",
-    description: "API Keys table column header — when a token for the key was last used",
+    description:
+      "API Keys table column header — when a token for the key was last used",
   },
   "apiKeys.neverUsed": {
     message: "Never",
