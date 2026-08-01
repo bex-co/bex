@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/common/providers/theme-provider";
 import { Toaster } from "@/common/components/ui/sonner";
 import { VisualViewportHeight } from "@/common/providers/visual-viewport-height";
 import { WorkspaceProvider } from "@/features/workspaces/context";
+import { PaymentRequiredProvider } from "@/features/usage/context/payment-required";
 import { useTranslations } from "@/common/hooks/use-translations";
 import i18n from "@/i18n/init";
 
@@ -66,7 +67,7 @@ export const RootProvider = ({
           initialWorkspaceId={initialWorkspaceId}
           onWorkspaceChange={onWorkspaceChange}
         >
-          {children}
+          <PaymentRequiredProvider>{children}</PaymentRequiredProvider>
         </WorkspaceProvider>
         <VisualViewportHeight />
         <OryToaster />

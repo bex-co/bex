@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/billing"
@@ -40,4 +41,25 @@ func stripeBillingGate(getenv func(string) string, now time.Time) (secret string
 		epoch = parsed.UTC()
 	}
 	return secret, epoch, true, nil
+}
+
+// paymentMethodGate validates the fail-closed configuration before any server
+// wiring. Enforcement needs both hosted Checkout (Stripe key) and the local
+// marker store (control-plane DB); enabling only one side would brick every
+// paid create with no possible recovery path.
+func paymentMethodGate(getenv func(string) string) (bool, error) {
+	value := strings.TrimSpace(getenv("BEX_REQUIRE_PAYMENT_METHOD"))
+	if value == "" || value == "0" {
+		return false, nil
+	}
+	if value != "1" {
+		return false, fmt.Errorf("BEX_REQUIRE_PAYMENT_METHOD must be 1 when enabled (got %q)", value)
+	}
+	if getenv("BEX_STRIPE_SECRET_KEY") == "" {
+		return false, fmt.Errorf("BEX_REQUIRE_PAYMENT_METHOD=1 requires BEX_STRIPE_SECRET_KEY so a refused workspace can add a payment method")
+	}
+	if getenv("BEX_CP_DB_URI") == "" {
+		return false, fmt.Errorf("BEX_REQUIRE_PAYMENT_METHOD=1 requires BEX_CP_DB_URI for the webhook-stamped payment marker")
+	}
+	return true, nil
 }

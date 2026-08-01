@@ -292,6 +292,23 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "无法打开 Stripe 账单门户，请重试。",
     description: "Toast after Portal session creation fails",
   },
+  "usage.paymentRequiredTitle": {
+    message: "添加付款方式以继续",
+    description: "Just-in-time paid-intent onboarding dialog title",
+  },
+  "usage.paymentRequiredDescription": {
+    message:
+      "此付费方案需要付款方式。请在新标签页中完成 Stripe Checkout；准备就绪后，此操作将自动继续。",
+    description: "Just-in-time paid-intent onboarding explanation",
+  },
+  "usage.paymentRequiredRetrying": {
+    message: "已找到付款方式，正在重试操作…",
+    description: "Status while resuming the interrupted paid mutation",
+  },
+  "usage.paymentRequiredCancel": {
+    message: "取消",
+    description: "Cancel just-in-time payment onboarding",
+  },
 };
 
 export default zhUsage;

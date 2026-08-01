@@ -263,6 +263,15 @@ func (c *StripeClient) CompleteCheckoutSession(ctx context.Context, eventSession
 	if _, err := c.sc.Subscriptions.Update(subscription.ID, subscriptionUpdate); err != nil {
 		return fmt.Errorf("stripe: bind Subscription default payment method: %w", err)
 	}
+	// The verified webhook is the sole enforcement-snapshot writer. A failed
+	// stamp fails webhook processing so Stripe retries; acknowledging here while
+	// the local gate remained false would strand a paid-intent request even
+	// though the provider defaults were successfully bound.
+	if c.state != nil {
+		if err := c.state.SetPaymentMethodBound(ctx, workspaceID, time.Now().UTC()); err != nil {
+			return fmt.Errorf("stripe: persist payment-method binding for %s: %w", workspaceID, err)
+		}
+	}
 	return nil
 }
 

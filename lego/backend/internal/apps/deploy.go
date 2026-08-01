@@ -471,6 +471,9 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 	if err := s.validateBlueprintServices(st); err != nil {
 		return StackResult{}, err
 	}
+	if err := s.requireStackPaymentMethod(ctx, st); err != nil {
+		return StackResult{}, err
+	}
 	// Pre-flight the env-groups + env-vars seams BEFORE any write (all-or-nothing):
 	// a manifest that uses envVarGroups/fromGroup or sync:false/generateValue but
 	// whose backing store isn't wired is rejected here, as is an unknown fromGroup
@@ -629,6 +632,34 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 		s.upsertBlueprint(ctx, req)
 	}
 	return res, nil
+}
+
+func (s *Service) requireStackPaymentMethod(ctx context.Context, st parsedStack) error {
+	if !stackHasPaidPlan(st) {
+		return nil
+	}
+	tenantID, _ := s.Tenant(ctx)
+	return s.RequirePaymentMethod(ctx, tenantID)
+}
+
+func stackHasPaidPlan(st parsedStack) bool {
+	for _, service := range st.services {
+		tier, err := normalizeTierOrPlan(service.req.Plan)
+		if err == nil && core.PaidPlan(tier) {
+			return true
+		}
+	}
+	for _, database := range st.databases {
+		if core.PaidPlan(database.spec.Plan) {
+			return true
+		}
+	}
+	for _, keyValue := range st.keyValues {
+		if core.PaidPlan(keyValue.spec.Plan) {
+			return true
+		}
+	}
+	return false
 }
 
 // validateBlueprintServices runs the ordinary create boundary over every

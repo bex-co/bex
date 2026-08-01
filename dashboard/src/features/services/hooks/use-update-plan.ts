@@ -3,6 +3,8 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { UpdateServicePlanDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
+import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 
 export interface UseUpdatePlanResult {
   /** Fires updateServicePlan; resolves true on success (toasted either way). */
@@ -24,22 +26,24 @@ export function useUpdatePlan(): UseUpdatePlanResult {
   const { t } = useTranslations();
   const [mutate] = useMutation(UpdateServicePlanDocument);
   const [busy, setBusy] = useState(false);
+  const paymentGate = usePaymentRequiredGate();
 
   const updatePlan = useCallback(
     async (id: string, plan: string, displayName: string) => {
       setBusy(true);
       try {
-        await mutate({ variables: { id, plan } });
+        await paymentGate.run(() => mutate({ variables: { id, plan } }));
         toast.success(t("services.planPickerSuccess", { name: displayName }));
         return true;
-      } catch {
+      } catch (error) {
+        if (isPaymentOnboardingCancelled(error)) return false;
         toast.error(t("services.planPickerError"));
         return false;
       } finally {
         setBusy(false);
       }
     },
-    [mutate, t],
+    [mutate, paymentGate, t],
   );
 
   return { updatePlan, busy };

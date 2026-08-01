@@ -45,11 +45,13 @@ func TestS3OriginCheckVerifiesSignedListAccess(t *testing.T) {
 			t.Errorf("unexpected S3 check request: %s %s", r.Method, r.URL.String())
 		}
 		w.Header().Set("Content-Type", "application/xml")
-		fmt.Fprint(w, `<?xml version="1.0" encoding="UTF-8"?>
+		if _, err := fmt.Fprint(w, `<?xml version="1.0" encoding="UTF-8"?>
 <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
   <Name>bex-static</Name><KeyCount>1</KeyCount><MaxKeys>1</MaxKeys><IsTruncated>false</IsTruncated>
   <Contents><Key>site/rev-1/index.html</Key><Size>5</Size></Contents>
-</ListBucketResult>`)
+</ListBucketResult>`); err != nil {
+			t.Errorf("write S3 list response: %v", err)
+		}
 	}))
 	t.Cleanup(server.Close)
 
@@ -74,14 +76,18 @@ func TestS3OriginCheckFailsClosedWhenObjectReadIsDenied(t *testing.T) {
 		w.Header().Set("Content-Type", "application/xml")
 		if r.Method == http.MethodHead {
 			w.WriteHeader(http.StatusForbidden)
-			fmt.Fprint(w, `<Error><Code>AccessDenied</Code><Message>denied</Message></Error>`)
+			if _, err := fmt.Fprint(w, `<Error><Code>AccessDenied</Code><Message>denied</Message></Error>`); err != nil {
+				t.Errorf("write S3 denial response: %v", err)
+			}
 			return
 		}
-		fmt.Fprint(w, `<?xml version="1.0" encoding="UTF-8"?>
+		if _, err := fmt.Fprint(w, `<?xml version="1.0" encoding="UTF-8"?>
 <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
   <Name>bex-static</Name><KeyCount>1</KeyCount><MaxKeys>1</MaxKeys><IsTruncated>false</IsTruncated>
   <Contents><Key>site/rev-1/index.html</Key><Size>5</Size></Contents>
-</ListBucketResult>`)
+</ListBucketResult>`); err != nil {
+			t.Errorf("write S3 list response: %v", err)
+		}
 	}))
 	t.Cleanup(server.Close)
 
@@ -102,7 +108,9 @@ func TestS3OriginCheckFailsClosedOnDeniedCredential(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/xml")
 		w.WriteHeader(http.StatusForbidden)
-		fmt.Fprint(w, `<Error><Code>AccessDenied</Code><Message>denied</Message></Error>`)
+		if _, err := fmt.Fprint(w, `<Error><Code>AccessDenied</Code><Message>denied</Message></Error>`); err != nil {
+			t.Errorf("write S3 denial response: %v", err)
+		}
 	}))
 	t.Cleanup(server.Close)
 

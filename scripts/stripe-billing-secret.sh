@@ -5,6 +5,7 @@
 #
 # Values come from the environment or the repo-local, gitignored .env:
 #   BEX_STRIPE_SECRET_KEY       dedicated rk_test_*/rk_live_* runtime key
+#   BEX_REQUIRE_PAYMENT_METHOD  1 enables ADR046 paid-intent gating (default 0)
 #   BEX_STRIPE_WEBHOOK_SECRET  whsec_* for /v1/webhooks/stripe
 #   BEX_STRIPE_EPOCH           explicit RFC3339 billing-start floor (required)
 #   BEX_STRIPE_SEAL_HOURS      rewrite horizon (default 48)
@@ -74,6 +75,7 @@ esac
 
 BEX_STRIPE_SEAL_HOURS="${BEX_STRIPE_SEAL_HOURS:-48}"
 BEX_STRIPE_COMP_COUPON_ID="${BEX_STRIPE_COMP_COUPON_ID:-bex-comp-100}"
+BEX_REQUIRE_PAYMENT_METHOD="${BEX_REQUIRE_PAYMENT_METHOD:-0}"
 BEX_STRIPE_DUNNING_ENABLED="${BEX_STRIPE_DUNNING_ENABLED:-0}"
 BEX_STRIPE_GRACE_PERIOD="${BEX_STRIPE_GRACE_PERIOD:-168h}"
 BEX_STRIPE_RECONCILE_INTERVAL="${BEX_STRIPE_RECONCILE_INTERVAL:-5m}"
@@ -83,6 +85,10 @@ esac
 case "$BEX_STRIPE_DUNNING_ENABLED" in
   0|1) ;;
   *) echo "error: BEX_STRIPE_DUNNING_ENABLED must be 0 or 1" >&2; exit 1 ;;
+esac
+case "$BEX_REQUIRE_PAYMENT_METHOD" in
+  0|1) ;;
+  *) echo "error: BEX_REQUIRE_PAYMENT_METHOD must be 0 or 1" >&2; exit 1 ;;
 esac
 if [ "$BEX_STRIPE_DUNNING_ENABLED" = 1 ] && [ "$stripe_mode" != test ]; then
   echo "error: Stripe dunning is test-mode only at w7/m52; refusing rk_live_*" >&2
@@ -162,8 +168,8 @@ if [ "${DRY_RUN:-0}" = "1" ]; then
   optional_keys=""
   [ -n "${BEX_STRIPE_PORTAL_CONFIGURATION_ID:-}" ] && optional_keys="$optional_keys BEX_STRIPE_PORTAL_CONFIGURATION_ID"
   [ -n "${BEX_STRIPE_TAX_CODE:-}" ] && optional_keys="$optional_keys BEX_STRIPE_TAX_CODE BEX_STRIPE_TAX_BEHAVIOR"
-  echo "would apply Secret $namespace/$secret_name (keys: BEX_STRIPE_SECRET_KEY BEX_STRIPE_WEBHOOK_SECRET BEX_STRIPE_EPOCH BEX_STRIPE_SEAL_HOURS BEX_STRIPE_COMP_COUPON_ID BEX_STRIPE_DUNNING_ENABLED BEX_STRIPE_GRACE_PERIOD BEX_STRIPE_RECONCILE_INTERVAL$optional_keys)"
-  echo "mode=$stripe_mode epoch=$BEX_STRIPE_EPOCH seal_hours=$BEX_STRIPE_SEAL_HOURS coupon=$BEX_STRIPE_COMP_COUPON_ID dunning=$BEX_STRIPE_DUNNING_ENABLED grace=$BEX_STRIPE_GRACE_PERIOD reconcile=$BEX_STRIPE_RECONCILE_INTERVAL tax_configured=$([ -n "${BEX_STRIPE_TAX_CODE:-}" ] && echo true || echo false)"
+  echo "would apply Secret $namespace/$secret_name (keys: BEX_STRIPE_SECRET_KEY BEX_REQUIRE_PAYMENT_METHOD BEX_STRIPE_WEBHOOK_SECRET BEX_STRIPE_EPOCH BEX_STRIPE_SEAL_HOURS BEX_STRIPE_COMP_COUPON_ID BEX_STRIPE_DUNNING_ENABLED BEX_STRIPE_GRACE_PERIOD BEX_STRIPE_RECONCILE_INTERVAL$optional_keys)"
+  echo "mode=$stripe_mode epoch=$BEX_STRIPE_EPOCH seal_hours=$BEX_STRIPE_SEAL_HOURS coupon=$BEX_STRIPE_COMP_COUPON_ID payment_gate=$BEX_REQUIRE_PAYMENT_METHOD dunning=$BEX_STRIPE_DUNNING_ENABLED grace=$BEX_STRIPE_GRACE_PERIOD reconcile=$BEX_STRIPE_RECONCILE_INTERVAL tax_configured=$([ -n "${BEX_STRIPE_TAX_CODE:-}" ] && echo true || echo false)"
   exit 0
 fi
 
@@ -180,6 +186,7 @@ trap cleanup EXIT
 
 {
   printf 'BEX_STRIPE_SECRET_KEY=%s\n' "$BEX_STRIPE_SECRET_KEY"
+  printf 'BEX_REQUIRE_PAYMENT_METHOD=%s\n' "$BEX_REQUIRE_PAYMENT_METHOD"
   printf 'BEX_STRIPE_WEBHOOK_SECRET=%s\n' "$BEX_STRIPE_WEBHOOK_SECRET"
   printf 'BEX_STRIPE_EPOCH=%s\n' "$BEX_STRIPE_EPOCH"
   printf 'BEX_STRIPE_SEAL_HOURS=%s\n' "$BEX_STRIPE_SEAL_HOURS"

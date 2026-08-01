@@ -57,6 +57,43 @@ func TestStripeBillingGateDefaultsAndParsesEpoch(t *testing.T) {
 	}
 }
 
+func TestPaymentMethodGateDisabledIsByteCompatible(t *testing.T) {
+	for _, value := range []string{"", "0"} {
+		enabled, err := paymentMethodGate(envGetter(map[string]string{"BEX_REQUIRE_PAYMENT_METHOD": value}))
+		if err != nil || enabled {
+			t.Fatalf("value %q = enabled %v err %v, want disabled", value, enabled, err)
+		}
+	}
+}
+
+func TestPaymentMethodGateRequiresStripeAndControlPlaneStore(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		env  map[string]string
+		want string
+	}{
+		{name: "invalid value", env: map[string]string{"BEX_REQUIRE_PAYMENT_METHOD": "true"}, want: "must be 1"},
+		{name: "missing Stripe", env: map[string]string{"BEX_REQUIRE_PAYMENT_METHOD": "1", "BEX_CP_DB_URI": "postgres://db"}, want: "BEX_STRIPE_SECRET_KEY"},
+		{name: "missing database", env: map[string]string{"BEX_REQUIRE_PAYMENT_METHOD": "1", "BEX_STRIPE_SECRET_KEY": "rk_test"}, want: "BEX_CP_DB_URI"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			enabled, err := paymentMethodGate(envGetter(tc.env))
+			if enabled || err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("enabled=%v err=%v, want error containing %q", enabled, err, tc.want)
+			}
+		})
+	}
+
+	enabled, err := paymentMethodGate(envGetter(map[string]string{
+		"BEX_REQUIRE_PAYMENT_METHOD": "1",
+		"BEX_STRIPE_SECRET_KEY":      "rk_test",
+		"BEX_CP_DB_URI":              "postgres://db",
+	}))
+	if err != nil || !enabled {
+		t.Fatalf("fully configured = enabled %v err %v", enabled, err)
+	}
+}
+
 func envGetter(values map[string]string) func(string) string {
 	return func(key string) string { return values[key] }
 }

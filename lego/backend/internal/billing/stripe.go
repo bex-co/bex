@@ -106,6 +106,7 @@ type StripeConfig struct {
 type BillingStateStore interface {
 	UpsertBillingProviderMapping(context.Context, store.BillingProviderMapping) error
 	EnsureBillingLifecycle(context.Context, string) (store.BillingLifecycle, error)
+	SetPaymentMethodBound(context.Context, string, time.Time) error
 }
 
 // compile-time check: the Stripe sink satisfies the emitter's Ingester seam,

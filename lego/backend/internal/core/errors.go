@@ -89,6 +89,10 @@ var (
 	// ErrBillingEnforced blocks new billable work and tenant-driven resumes
 	// while the durable dunning lifecycle owns reversible suspension.
 	ErrBillingEnforced = errors.New("workspace billing enforcement is active")
+	// ErrPaymentRequired blocks a paid-tier create or plan change until the
+	// workspace has completed hosted payment-method setup. It is distinct from
+	// dunning enforcement: free-tier and non-plan mutations remain available.
+	ErrPaymentRequired = errors.New("payment method required")
 	// ErrAuditUnavailable is returned by the audit-log read verb when the
 	// control-plane store isn't wired (BEX_CP_DB_URI unset); adapters surface it
 	// as 503 — omitted, not faked (the deploy-history/env-vars precedent).
@@ -216,4 +220,18 @@ func NewNotFoundError(code, msg string, params map[string]any) *CodedError {
 // that the resource's current state makes unsafe.
 func NewConflictError(code, msg string, params map[string]any) *CodedError {
 	return &CodedError{Code: code, Params: params, sentinel: ErrConflict, msg: msg}
+}
+
+const PaymentRequiredMessage = "Payment information is required for paid plans. Call create_billing_checkout_session to add a payment method, then retry."
+
+// NewPaymentRequiredError is the one cross-surface refusal for paid intent.
+// graphql-go projects Code into extensions.code, REST maps the wrapped
+// sentinel to 402, and MCP reports the actionable message unchanged.
+func NewPaymentRequiredError() *CodedError {
+	return &CodedError{
+		Code:     "PAYMENT_REQUIRED",
+		Params:   map[string]any{"checkoutTool": "create_billing_checkout_session"},
+		sentinel: ErrPaymentRequired,
+		msg:      PaymentRequiredMessage,
+	}
 }

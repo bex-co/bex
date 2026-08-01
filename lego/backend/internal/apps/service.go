@@ -1466,6 +1466,11 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		stampEnvironmentMembership(a, environment)
 		return s.view(a), nil
 	}
+	if core.PaidPlan(desired.Tier) {
+		if err := s.RequirePaymentMethod(ctx, tenantID); err != nil {
+			return AppView{}, err
+		}
+	}
 	if err := s.RequireBillingMutation(ctx, tenantID); err != nil {
 		return AppView{}, err
 	}
@@ -2511,14 +2516,19 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 	if err != nil {
 		return AppView{}, err
 	}
-	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
-		return AppView{}, err
-	}
 	t, ok := tiers.Compute.ByRenderPlan(plan)
 	if !ok {
 		return AppView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
 	}
 	tier := t.ID
+	if core.PaidPlan(tier) {
+		if err := s.RequirePaymentMethod(ctx, a.Labels[core.LabelTenant]); err != nil {
+			return AppView{}, err
+		}
+	}
+	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
+		return AppView{}, err
+	}
 	if tier == "free" && a.Spec.MaintenanceMode != nil && a.Spec.MaintenanceMode.Enabled {
 		return AppView{}, fmt.Errorf("%w: disable maintenance mode before changing to the free plan", core.ErrBadRequest)
 	}

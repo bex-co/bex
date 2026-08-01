@@ -298,6 +298,23 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Could not open the Stripe billing portal. Try again.",
     description: "Toast after Portal session creation fails",
   },
+  "usage.paymentRequiredTitle": {
+    message: "Add a payment method to continue",
+    description: "Just-in-time paid-intent onboarding dialog title",
+  },
+  "usage.paymentRequiredDescription": {
+    message:
+      "This paid plan needs a payment method. Complete Stripe Checkout in the new tab; this action will resume automatically when it is ready.",
+    description: "Just-in-time paid-intent onboarding explanation",
+  },
+  "usage.paymentRequiredRetrying": {
+    message: "Payment method found. Retrying your action…",
+    description: "Status while resuming the interrupted paid mutation",
+  },
+  "usage.paymentRequiredCancel": {
+    message: "Cancel",
+    description: "Cancel just-in-time payment onboarding",
+  },
 };
 
 export default enUsage;

@@ -5,6 +5,8 @@ import { CreateKeyValueDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { graphQLErrorMessage } from "@/common/lib/graphql-error";
+import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
+import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 
 /** The create form's collected values (Render's `/new/redis` subset bex serves). */
 export interface CreateKeyValueInput {
@@ -47,6 +49,7 @@ export function useCreateKeyValue(): UseCreateKeyValueResult {
   const [mutate] = useMutation(CreateKeyValueDocument);
   const [busy, setBusy] = useState(false);
   const [capLimit, setCapLimit] = useState<string | null>(null);
+  const paymentGate = usePaymentRequiredGate();
 
   const create = useCallback(
     async (input: CreateKeyValueInput) => {
@@ -57,23 +60,26 @@ export function useCreateKeyValue(): UseCreateKeyValueResult {
       setBusy(true);
       setCapLimit(null);
       try {
-        const res = await mutate({
-          variables: {
-            name: input.name,
-            ownerId: currentWorkspaceId,
-            environmentId: input.environmentId,
-            plan: input.plan || undefined,
-            version: input.version || undefined,
-            public: input.public,
-            maxmemoryPolicy: input.maxmemoryPolicy || undefined,
-            persistenceMode: input.persistenceMode || undefined,
-          },
-        });
+        const res = await paymentGate.run(() =>
+          mutate({
+            variables: {
+              name: input.name,
+              ownerId: currentWorkspaceId,
+              environmentId: input.environmentId,
+              plan: input.plan || undefined,
+              version: input.version || undefined,
+              public: input.public,
+              maxmemoryPolicy: input.maxmemoryPolicy || undefined,
+              persistenceMode: input.persistenceMode || undefined,
+            },
+          }),
+        );
         const id = res.data?.createKeyValue?.id;
         if (!id) throw new Error("createKeyValue returned no id");
         toast.success(t("keyvalue.createSuccess", { name: input.name }));
         return id;
       } catch (err) {
+        if (isPaymentOnboardingCancelled(err)) return null;
         const msg = graphQLErrorMessage(err) ?? "";
         if (msg.toLowerCase().includes("workspace is limited")) {
           setCapLimit(msg);
@@ -85,7 +91,7 @@ export function useCreateKeyValue(): UseCreateKeyValueResult {
         setBusy(false);
       }
     },
-    [mutate, t, currentWorkspaceId],
+    [mutate, paymentGate, t, currentWorkspaceId],
   );
 
   return { create, busy, capLimit };

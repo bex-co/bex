@@ -289,6 +289,16 @@ func (s *Service) SyncBlueprint(ctx context.Context, id, ownerID, bexYAML, confi
 		return SyncBlueprintResult{}, err
 	}
 	if bexYAML != "" {
+		parsed, parseErr := parseStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: bexYAML})
+		if parseErr != nil {
+			return SyncBlueprintResult{}, parseErr
+		}
+		// Sync historically persists a replacement manifest before applying it.
+		// Run the paid-intent guard before that write so an intercepted request is
+		// genuinely resumable and leaves the stored Blueprint unchanged.
+		if err := s.requireStackPaymentMethod(ctx, parsed); err != nil {
+			return SyncBlueprintResult{}, err
+		}
 		b.Manifest = bexYAML
 		b, err = s.Blueprints.UpsertBlueprint(ctx, b)
 		if err != nil {

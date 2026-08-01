@@ -34,8 +34,9 @@ import (
 // --- fakes -------------------------------------------------------------------
 
 type selCall struct {
-	floor, sealBefore time.Time
-	limit             int
+	floor, sealBefore    time.Time
+	limit                int
+	requirePaymentMethod bool
 }
 
 type fakeEmitterStore struct {
@@ -49,8 +50,8 @@ type fakeEmitterStore struct {
 	quarantineErr   error
 }
 
-func (f *fakeEmitterStore) SelectUnemittedUsage(_ context.Context, floor, sealBefore time.Time, limit int) ([]store.HourlyRow, error) {
-	f.selCalls = append(f.selCalls, selCall{floor, sealBefore, limit})
+func (f *fakeEmitterStore) SelectUnemittedUsage(_ context.Context, floor, sealBefore time.Time, limit int, requirePaymentMethod bool) ([]store.HourlyRow, error) {
+	f.selCalls = append(f.selCalls, selCall{floor, sealBefore, limit, requirePaymentMethod})
 	if len(f.queue) == 0 {
 		return nil, nil
 	}
@@ -81,7 +82,7 @@ func (f *fakeEmitterStore) QuarantineOldUsageAttempts(_ context.Context, _, _ ti
 	return f.quarantineCount, f.quarantineErr
 }
 
-func (f *fakeEmitterStore) BillingExportStats(_ context.Context, _, _, _ time.Time) (store.BillingExportStats, error) {
+func (f *fakeEmitterStore) BillingExportStats(_ context.Context, _, _, _ time.Time, _ bool) (store.BillingExportStats, error) {
 	return store.BillingExportStats{}, nil
 }
 
@@ -250,6 +251,43 @@ func TestEmitOnceFloorAndSealHorizon(t *testing.T) {
 	}
 	if wantSeal := now.Add(-DefaultSealHours); !c.sealBefore.Equal(wantSeal) {
 		t.Errorf("sealBefore = %s, want %s (now − 48h)", c.sealBefore, wantSeal)
+	}
+	if c.requirePaymentMethod {
+		t.Error("default emitter unexpectedly enabled payment-method withholding")
+	}
+}
+
+func TestEmitOnceThreadsPaymentMethodGateToDurableOutboxRead(t *testing.T) {
+	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
+	st := &fakeEmitterStore{}
+	e := newEmitter(st, &fakeIngester{}, now)
+	e.RequirePaymentMethod = true
+	e.emitOnce(context.Background())
+	if len(st.selCalls) != 1 || !st.selCalls[0].requirePaymentMethod {
+		t.Fatalf("SelectUnemittedUsage calls = %+v, want gated read", st.selCalls)
+	}
+}
+
+func TestEmitOnceWithheldWorkspaceMakesNoStripeCallsThenShipsAfterBinding(t *testing.T) {
+	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
+	sealed := row("tea-cardless", "srv-1", "instance_seconds", "starter", "service", 3600, now.Add(-72*time.Hour))
+	// The store's real-Postgres test proves the first empty selection is the
+	// cardless marker filter and the second selection follows marker binding.
+	// Here the emitter boundary proves that an empty gated selection cannot
+	// reach any Customer, Subscription, or meter-event provider call.
+	st := &fakeEmitterStore{queue: [][]store.HourlyRow{nil, {sealed}}}
+	ing := &fakeIngester{}
+	e := newEmitter(st, ing, now)
+	e.RequirePaymentMethod = true
+
+	e.emitOnce(context.Background())
+	if len(ing.ensured) != 0 || len(ing.contracted) != 0 || len(ing.allEvents()) != 0 || st.stampedCount() != 0 {
+		t.Fatalf("withheld pass reached Stripe: customers=%v contracts=%v events=%v stamped=%d", ing.ensured, ing.contracted, ing.allEvents(), st.stampedCount())
+	}
+
+	e.emitOnce(context.Background())
+	if len(ing.ensured) != 1 || len(ing.contracted) != 1 || len(ing.allEvents()) != 1 || st.stampedCount() != 1 {
+		t.Fatalf("post-bind pass did not ship once: customers=%v contracts=%v events=%v stamped=%d", ing.ensured, ing.contracted, ing.allEvents(), st.stampedCount())
 	}
 }
 

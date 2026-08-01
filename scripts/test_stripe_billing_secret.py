@@ -10,7 +10,7 @@ SCRIPT = Path(__file__).with_name("stripe-billing-secret.sh")
 
 
 class StripeBillingSecretTest(unittest.TestCase):
-    def run_secret(self, reconcile):
+    def run_secret(self, reconcile, require_payment_method=None):
         env = os.environ.copy()
         env.update(
             {
@@ -24,6 +24,8 @@ class StripeBillingSecretTest(unittest.TestCase):
                 "DRY_RUN": "1",
             }
         )
+        if require_payment_method is not None:
+            env["BEX_REQUIRE_PAYMENT_METHOD"] = require_payment_method
         return subprocess.run(
             ["bash", str(SCRIPT)],
             capture_output=True,
@@ -45,6 +47,21 @@ class StripeBillingSecretTest(unittest.TestCase):
                 self.assertIn(f"reconcile={value}", result.stdout)
                 self.assertNotIn("rk_test_offline_fixture", result.stdout + result.stderr)
                 self.assertNotIn("whsec_offline_fixture", result.stdout + result.stderr)
+
+    def test_payment_gate_defaults_off_and_accepts_explicit_opt_in(self):
+        default = self.run_secret("1m")
+        self.assertEqual(0, default.returncode, default.stderr)
+        self.assertIn("payment_gate=0", default.stdout)
+        self.assertIn("BEX_REQUIRE_PAYMENT_METHOD", default.stdout)
+
+        enabled = self.run_secret("1m", "1")
+        self.assertEqual(0, enabled.returncode, enabled.stderr)
+        self.assertIn("payment_gate=1", enabled.stdout)
+
+    def test_payment_gate_rejects_unknown_value(self):
+        result = self.run_secret("1m", "true")
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("BEX_REQUIRE_PAYMENT_METHOD must be 0 or 1", result.stderr)
 
     def test_live_key_is_refused_without_separate_opt_in(self):
         env = os.environ.copy()

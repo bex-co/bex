@@ -5,6 +5,8 @@ import { CreateServiceDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { graphQLErrorMessage } from "@/common/lib/graphql-error";
+import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
+import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 
 export interface EnvVarEntry {
   key: string;
@@ -89,6 +91,7 @@ export function useCreateService(): UseCreateServiceResult {
   const [mutate, { loading: busy }] = useMutation(CreateServiceDocument);
   const [capLimit, setCapLimit] = useState<string | null>(null);
   const [nameConflict, setNameConflict] = useState(false);
+  const paymentGate = usePaymentRequiredGate();
 
   const create = useCallback(
     async (input: CreateServiceInput) => {
@@ -99,33 +102,35 @@ export function useCreateService(): UseCreateServiceResult {
       setCapLimit(null);
       setNameConflict(false);
       try {
-        const res = await mutate({
-          variables: {
-            name: input.name,
-            ownerId: currentWorkspaceId,
-            type: input.type,
-            environmentId: input.environmentId,
-            repo: input.repo,
-            image: input.image,
-            registryCredentialId: input.registryCredentialId,
-            branch: input.branch,
-            rootDir: input.rootDir,
-            runtime: input.runtime,
-            buildCommand: input.buildCommand,
-            startCommand: input.startCommand,
-            dockerfilePath: input.dockerfilePath,
-            buildFilter: input.buildFilter,
-            plan: input.plan,
-            autoDeploy: input.autoDeploy,
-            schedule: input.schedule,
-            command: input.command,
-            publishPath: input.publishPath,
-            envVars: input.envVars?.length ? input.envVars : undefined,
-            secretFiles: input.secretFiles?.length
-              ? input.secretFiles
-              : undefined,
-          },
-        });
+        const res = await paymentGate.run(() =>
+          mutate({
+            variables: {
+              name: input.name,
+              ownerId: currentWorkspaceId,
+              type: input.type,
+              environmentId: input.environmentId,
+              repo: input.repo,
+              image: input.image,
+              registryCredentialId: input.registryCredentialId,
+              branch: input.branch,
+              rootDir: input.rootDir,
+              runtime: input.runtime,
+              buildCommand: input.buildCommand,
+              startCommand: input.startCommand,
+              dockerfilePath: input.dockerfilePath,
+              buildFilter: input.buildFilter,
+              plan: input.plan,
+              autoDeploy: input.autoDeploy,
+              schedule: input.schedule,
+              command: input.command,
+              publishPath: input.publishPath,
+              envVars: input.envVars?.length ? input.envVars : undefined,
+              secretFiles: input.secretFiles?.length
+                ? input.secretFiles
+                : undefined,
+            },
+          }),
+        );
         const svc = res.data?.createService;
         const id = svc?.id;
         if (!id) throw new Error("createService returned no id");
@@ -133,6 +138,7 @@ export function useCreateService(): UseCreateServiceResult {
         toast.success(t("services.createSuccess", { name: input.name }));
         return { id, deployId };
       } catch (err) {
+        if (isPaymentOnboardingCancelled(err)) return null;
         // "workspace is limited to N services" — surface inline with upgrade CTA
         // rather than a toast that leaves the user with nowhere to go (w7/m9).
         // "name ... is already in use" (w4/m19) — a raced duplicate the
@@ -148,7 +154,7 @@ export function useCreateService(): UseCreateServiceResult {
         return null;
       }
     },
-    [mutate, t, currentWorkspaceId],
+    [mutate, paymentGate, t, currentWorkspaceId],
   );
 
   const clearNameConflict = useCallback(() => setNameConflict(false), []);

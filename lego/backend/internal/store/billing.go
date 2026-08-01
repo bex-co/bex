@@ -18,9 +18,74 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
+
+// PaymentEligibility is the local paid-intent/export snapshot for one
+// workspace. Excluded and comped are explicit operator exemptions; Bound is
+// stamped only by the verified checkout.session.completed path (ADR046).
+type PaymentEligibility struct {
+	Bound    bool
+	Excluded bool
+	Comped   bool
+}
+
+func (p PaymentEligibility) AllowsPaidIntent() bool {
+	return p.Bound || p.Excluded || p.Comped
+}
+
+// SetPaymentMethodBound stamps the marker monotonically. Replayed Stripe
+// webhooks retain the first successful bind timestamp, so the operation is
+// idempotent and never moves the enforcement snapshot backwards or forwards.
+func (s *PGStore) SetPaymentMethodBound(ctx context.Context, workspaceID string, at time.Time) error {
+	tag, err := s.Pool.Exec(ctx, `
+		UPDATE billing_provider_mappings
+		SET payment_method_bound_at = COALESCE(payment_method_bound_at, $2),
+		    updated_at = now()
+		WHERE workspace_id = $1`, workspaceID, at.UTC())
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// PaymentMethodBound is the narrow marker accessor. An unknown or unstamped
+// workspace returns false rather than leaking whether a tenant exists.
+func (s *PGStore) PaymentMethodBound(ctx context.Context, workspaceID string) (bool, error) {
+	var bound bool
+	err := s.Pool.QueryRow(ctx, `
+		SELECT payment_method_bound_at IS NOT NULL
+		FROM billing_provider_mappings
+		WHERE workspace_id = $1`, workspaceID).Scan(&bound)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return bound, err
+}
+
+// PaymentEligibility reads the marker and both billing exemptions in one
+// local SELECT. The tenant row is authoritative, so a workspace that has not
+// entered Checkout yet still returns an unstamped (not missing) snapshot.
+func (s *PGStore) PaymentEligibility(ctx context.Context, workspaceID string) (PaymentEligibility, error) {
+	var eligibility PaymentEligibility
+	err := s.Pool.QueryRow(ctx, `
+		SELECT m.payment_method_bound_at IS NOT NULL,
+		       t.billing_excluded, t.billing_comped
+		FROM tenants t
+		LEFT JOIN billing_provider_mappings m ON m.workspace_id = t.id
+		WHERE t.id = $1`, workspaceID).Scan(&eligibility.Bound, &eligibility.Excluded, &eligibility.Comped)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return PaymentEligibility{}, ErrNotFound
+	}
+	return eligibility, err
+}
 
 // SelectUnemittedUsage returns up to limit sealed usage_hourly rows that have
 // not yet shipped to Stripe — the billing outbox read
@@ -30,18 +95,20 @@ import (
 // workspace is not billing_excluded. Oldest first, so batches ship in order and
 // the loop makes forward progress. The JOIN filters excluded tenants at the
 // source: an excluded workspace's rows are never even considered for export.
-func (s *PGStore) SelectUnemittedUsage(ctx context.Context, floor, sealBefore time.Time, limit int) ([]HourlyRow, error) {
+func (s *PGStore) SelectUnemittedUsage(ctx context.Context, floor, sealBefore time.Time, limit int, requirePaymentMethod bool) ([]HourlyRow, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT u.workspace_id, u.service_id, u.kind, u.tier, u.resource_kind, u.window_start, u.quantity
 		FROM usage_hourly u
 		JOIN tenants t ON t.id = u.workspace_id
+		LEFT JOIN billing_provider_mappings m ON m.workspace_id = u.workspace_id
 		WHERE u.billing_export_state = 'pending'
 		  AND u.window_start >= $1
 		  AND u.window_start <  $2
 		  AND t.billing_excluded = false
+		  AND ($4 = false OR t.billing_comped OR m.payment_method_bound_at IS NOT NULL)
 		ORDER BY u.window_start
 		LIMIT $3`,
-		floor, sealBefore, limit)
+		floor, sealBefore, limit, requirePaymentMethod)
 	if err != nil {
 		return nil, err
 	}
@@ -75,10 +142,11 @@ type UsageExportReject struct {
 
 // BillingExportStats is the low-cardinality snapshot exported to Prometheus.
 type BillingExportStats struct {
-	PendingRows      int64
-	OldestPendingAge time.Duration
-	RejectedRows     int64
-	AmbiguousRows    int64
+	PendingRows        int64
+	OldestPendingAge   time.Duration
+	RejectedRows       int64
+	AmbiguousRows      int64
+	WithheldWorkspaces int64
 }
 
 // MarkUsageAttempted durably records the deterministic identifier before any
@@ -219,7 +287,7 @@ func (s *PGStore) QuarantineOldUsageAttempts(ctx context.Context, before, at tim
 	return tag.RowsAffected(), nil
 }
 
-func (s *PGStore) BillingExportStats(ctx context.Context, floor, sealBefore, now time.Time) (BillingExportStats, error) {
+func (s *PGStore) BillingExportStats(ctx context.Context, floor, sealBefore, now time.Time, requirePaymentMethod bool) (BillingExportStats, error) {
 	var stats BillingExportStats
 	var ageSeconds float64
 	err := s.Pool.QueryRow(ctx, `
@@ -227,9 +295,17 @@ func (s *PGStore) BillingExportStats(ctx context.Context, floor, sealBefore, now
 		       COALESCE(EXTRACT(EPOCH FROM ($1 - (min(u.window_start) FILTER (
 		           WHERE u.billing_export_state='pending' AND u.window_start >= $2 AND u.window_start < $3 AND NOT t.billing_excluded)))), 0),
 		       (SELECT count(*) FROM billing_export_issues WHERE resolved_at IS NULL AND issue_kind='permanent_reject'),
-		       (SELECT count(*) FROM billing_export_issues WHERE resolved_at IS NULL AND issue_kind='stamp_ambiguity')
-		FROM usage_hourly u JOIN tenants t ON t.id=u.workspace_id`,
-		now.UTC(), floor.UTC(), sealBefore.UTC()).Scan(&stats.PendingRows, &ageSeconds, &stats.RejectedRows, &stats.AmbiguousRows)
+		       (SELECT count(*) FROM billing_export_issues WHERE resolved_at IS NULL AND issue_kind='stamp_ambiguity'),
+		       count(DISTINCT u.workspace_id) FILTER (
+		           WHERE $4 AND u.billing_export_state='pending'
+		             AND u.window_start >= $2 AND u.window_start < $3
+		             AND NOT t.billing_excluded AND NOT t.billing_comped
+		             AND m.payment_method_bound_at IS NULL)
+		FROM usage_hourly u
+		JOIN tenants t ON t.id=u.workspace_id
+		LEFT JOIN billing_provider_mappings m ON m.workspace_id=u.workspace_id`,
+		now.UTC(), floor.UTC(), sealBefore.UTC(), requirePaymentMethod).Scan(
+		&stats.PendingRows, &ageSeconds, &stats.RejectedRows, &stats.AmbiguousRows, &stats.WithheldWorkspaces)
 	stats.OldestPendingAge = time.Duration(ageSeconds * float64(time.Second))
 	return stats, err
 }

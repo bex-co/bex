@@ -32,6 +32,7 @@ import (
 	"github.com/stripe/stripe-go/v86/webhook"
 
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // stripeStub is a path-routed http.RoundTripper returning canned Stripe JSON.
@@ -107,6 +108,25 @@ func newStripeTest(t *testing.T, route func(method, path string) (int, string)) 
 		t.Fatal("NewStripe returned nil for a non-empty key")
 	}
 	return c, stub
+}
+
+type billingStateStoreFake struct {
+	boundWorkspaces []string
+	boundAt         []time.Time
+}
+
+func (f *billingStateStoreFake) UpsertBillingProviderMapping(context.Context, store.BillingProviderMapping) error {
+	return nil
+}
+
+func (f *billingStateStoreFake) EnsureBillingLifecycle(_ context.Context, workspaceID string) (store.BillingLifecycle, error) {
+	return store.BillingLifecycle{WorkspaceID: workspaceID}, nil
+}
+
+func (f *billingStateStoreFake) SetPaymentMethodBound(_ context.Context, workspaceID string, at time.Time) error {
+	f.boundWorkspaces = append(f.boundWorkspaces, workspaceID)
+	f.boundAt = append(f.boundAt, at)
+	return nil
 }
 
 func TestNewStripeDisabledWhenKeyUnset(t *testing.T) {
@@ -601,6 +621,8 @@ func TestStripeCompleteCheckoutSessionBindsDefaultsIdempotently(t *testing.T) {
 		}
 	})
 	c.storeCustomer("tea-a", "cus_1")
+	state := &billingStateStoreFake{}
+	c.state = state
 	c.taxCode = "txcd_confirmed"
 	c.taxBehavior = "exclusive"
 	c.priceIDs = []string{"price_tax_ready"}
@@ -622,6 +644,14 @@ func TestStripeCompleteCheckoutSessionBindsDefaultsIdempotently(t *testing.T) {
 	for _, req := range subscriptionUpdates {
 		if !strings.Contains(req.body, "default_payment_method=pm_1") || !strings.Contains(req.body, "automatic_tax[enabled]=true") || req.header.Get("Idempotency-Key") != "bex-payment-subscription-cs_test_1" {
 			t.Errorf("Subscription update = body:%s idempotency:%s", req.body, req.header.Get("Idempotency-Key"))
+		}
+	}
+	if len(state.boundWorkspaces) != 2 || state.boundWorkspaces[0] != "tea-a" || state.boundWorkspaces[1] != "tea-a" {
+		t.Fatalf("payment marker stamps = %#v, want two idempotent tea-a stamps", state.boundWorkspaces)
+	}
+	for i, at := range state.boundAt {
+		if at.IsZero() {
+			t.Fatalf("payment marker stamp %d is zero", i)
 		}
 	}
 }
