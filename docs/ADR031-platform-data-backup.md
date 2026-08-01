@@ -1,29 +1,35 @@
 # Platform data-backup policy
 
-**Why this exists:** bex has three stores holding state that is not recoverable from git alone. Two had backups before this ADR; one (`bex-db`) had none at all. This document is the consolidated policy and restore runbook for all three — the single place to check when something is on fire.
+**Why this exists:** bex has six stores holding state that is not recoverable from git alone: etcd, OpenBao, the control-plane database, and the three auth databases. High availability protects each database from a node failure, not correlated storage loss. This document is the consolidated policy and restore runbook for all six — the single place to check when something is on fire.
 
 | store | what it holds | backup mechanism | schedule | retention | restore mechanism | last verified |
 | --- | --- | --- | --- | --- | --- | --- |
 | **etcd** | App/Database/KeyValue CRs (user deployments) | CronJob `kube-system/etcd-backup` → `etcd-snapshots/` in `bex-tfstate` | 03:15 UTC daily | 7 snapshots (rolling) | Docker throwaway etcd → `kubectl apply` extracted CRs | 2026-07-14 (CAPD 2-node, w7/m29) |
 | **OpenBao** | All tenant env-var secrets | CronJob `secrets/openbao-backup` → `openbao-snapshots/` in `bex-tfstate` | 03:45 UTC daily | 7 snapshots (rolling) | `bao operator raft snapshot restore [-force]` onto running unsealed OpenBao | 2026-07-14 (Docker, fresh-node path, w7/m29) |
 | **bex-db** | Workspaces, members, audit log, usage, API keys, deploy history | Barman Cloud plugin → ObjectStore `bex-system/bex-db` → `bex-db/` in `bex-tfstate` + continuous WAL | 04:00 UTC daily (full base backup via plugin `ScheduledBackup`); WAL archiving is continuous | 7 days of base backups + WAL (ObjectStore retention) | CNPG `bootstrap.recovery` through the plugin ObjectStore into a throwaway cluster | 2026-07-28 (production plugin PITR, w1/m56) |
+| **kratos-db** | User identities, credentials, verification/recovery state | Barman Cloud plugin → ObjectStore `auth/auth-dbs`, server `kratos-db-pg18` → `auth-dbs/kratos-db-pg18/` + continuous WAL | 04:15 UTC daily base backup; WAL continuous | 7 days of base backups + WAL | CNPG `bootstrap.recovery` through `auth/auth-dbs` into a throwaway cluster | 2026-07-31 (production restore, w7/m67) |
+| **hydra-db** | OAuth clients, grants, consent, access/refresh-token state | Barman Cloud plugin → ObjectStore `auth/auth-dbs`, server `hydra-db-pg18` → `auth-dbs/hydra-db-pg18/` + continuous WAL | 04:30 UTC daily base backup; WAL continuous | 7 days of base backups + WAL | Same plugin recovery shape as kratos-db | 2026-07-31 (production backup + WAL verification, w7/m67) |
+| **openfga-db** | Authorization stores, models, and tuples | Barman Cloud plugin → ObjectStore `auth/auth-dbs`, server `openfga-db-pg18` → `auth-dbs/openfga-db-pg18/` + continuous WAL | 04:45 UTC daily base backup; WAL continuous | 7 days of base backups + WAL | Same plugin recovery shape as kratos-db | 2026-07-31 (production backup + WAL verification, w7/m67) |
 
-All three use the same Wasabi/Hetzner Object Storage bucket (`bex-tfstate`) under separate prefixes. Credentials come from out-of-band Secrets (never in git), following the same pattern as `etcd-backup-s3` / `openbao-backup-s3`.
+All six use the same Wasabi/Hetzner Object Storage bucket (`bex-tfstate`) under separate store/server prefixes. Credentials come from out-of-band Secrets (never in git), following the same pattern as `etcd-backup-s3` / `openbao-backup-s3`.
 
 ## Barman Cloud plugin
 
 The supported CNPG-I backup path is the [Barman Cloud Plugin](https://cloudnative-pg.io/plugin-barman-cloud/docs/intro/). bex vendors the exact upstream `v0.13.0` installation manifest (SHA-256 pinned in `deploy/gitops/charts/barman-cloud-plugin/README.md`) and installs it beside the CloudNativePG operator in `cnpg-system`; cert-manager supplies the client/server TLS certificates. The plugin controller runs on the platform pool, while its data-plane sidecar follows each CNPG instance pod's existing placement.
 
-Two GitOps-managed `ObjectStore` resources preserve the pre-migration transport contract without containing credential bytes:
+Three GitOps-managed `ObjectStore` resources preserve the transport contracts without containing credential bytes:
 
 | ObjectStore | destination | retention | credential reference |
 | --- | --- | --- | --- |
 | `bex-system/bex-db` | `s3://bex-tfstate/bex-db` | 7d | `bex-system/bex-db-backup-s3` |
 | `default/bex-tenant-postgres` | `s3://bex-tfstate/postgres` | 30d | `default/bex-db-backup-s3` |
+| `auth/auth-dbs` | `s3://bex-tfstate/auth-dbs` | 7d | `auth/auth-dbs-backup-s3` |
 
-Both references require only `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`; those Secrets remain provisioned out of band. Tenant clusters share the transport definition but pass their immutable per-database/per-major archive identity as the plugin's `serverName` parameter. This keeps one credential/config surface while preserving archive isolation.
+All three references require only `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`; those Secrets remain provisioned out of band. Tenant and auth clusters share transport definitions but pass immutable per-database/per-major archive identities as the plugin's `serverName` parameter. This keeps one credential/config surface per retention/custody policy while preserving archive isolation.
 
-The migration was deliberately staged: the plugin and ObjectStores landed first, then tenant Clusters and `bex-db` switched atomically to `barman-cloud.cloudnative-pg.io`. Fresh backup/PITR/restore drills passed for both paths on 2026-07-28, after which the native implementation and compatibility checks were removed. Current manifests, validation, alerts, and runbook examples use only the plugin contract; the 2026-07-14 drill record below retains the former field names solely as historical evidence of what that drill exercised.
+New platform database archives use `serverName: <cluster>-pg<major>` (for example, `kratos-db-pg18`). A PostgreSQL major upgrade creates a new system identifier and WAL history, so the upgrade must atomically advance this suffix rather than append incompatible WAL to the old archive identity. `bex-db` retains the older plain `serverName: bex-db` because that production archive predates the convention; changing it without a major upgrade would strand its current PITR history.
+
+The migration was deliberately staged: the plugin and ObjectStores landed first, then tenant Clusters and `bex-db` switched atomically to `barman-cloud.cloudnative-pg.io`. Fresh backup/PITR/restore drills passed for both paths on 2026-07-28, after which the native implementation and compatibility checks were removed. The three auth Clusters joined the same plugin path on 2026-07-31; all three completed fresh backups and a representative Kratos restore passed. Current manifests, validation, alerts, and runbook examples use only the plugin contract; the 2026-07-14 drill record below retains the former field names solely as historical evidence of what that drill exercised.
 
 ```mermaid
 graph LR
@@ -31,11 +37,13 @@ graph LR
     etcd-cron["CronJob etcd-backup<br/>03:15 UTC"]
     bao-cron["CronJob openbao-backup<br/>03:45 UTC"]
     cnpg-sched["ScheduledBackup bex-db-nightly<br/>04:00 UTC + continuous WAL"]
+    auth-sched["Auth DB ScheduledBackups<br/>04:15 / 04:30 / 04:45 UTC + continuous WAL"]
   end
-  bucket[("bex-tfstate<br/>etcd-snapshots/<br/>openbao-snapshots/<br/>bex-db/")]
+  bucket[("bex-tfstate<br/>etcd-snapshots/<br/>openbao-snapshots/<br/>bex-db/<br/>auth-dbs/")]
   etcd-cron --> bucket
   bao-cron --> bucket
   cnpg-sched --> bucket
+  auth-sched --> bucket
   op@{ shape: tri, label: "human operator" }
   op -->|"restore runbook (below)"| cluster
   op -->|"fetch snapshot/backup"| bucket
@@ -100,6 +108,26 @@ Two out-of-band steps — the same trust boundary as etcd/openbao:
    ```
 
 **Note on `endpointURL`:** `deploy/gitops/charts/barman-cloud-objectstores/bex-db.yaml` has `endpointURL: https://s3.eu-central-2.wasabisys.com`. Update the ObjectStore to match `$TF_STATE_ENDPOINT` if the cluster uses a different provider (Hetzner: `https://fsn1.your-objectstorage.com`).
+
+### Auth databases
+
+The shared `auth/auth-dbs` ObjectStore references one out-of-band Secret. Provision it from the same backup-plane credentials used by the other critical stores; never commit or print them:
+
+```sh
+source .env && kubectl -n auth create secret generic auth-dbs-backup-s3 \
+  --from-literal=AWS_ACCESS_KEY_ID="$TF_STATE_ACCESS_KEY" \
+  --from-literal=AWS_SECRET_ACCESS_KEY="$TF_STATE_SECRET_KEY"
+```
+
+After Argo syncs `barman-cloud-objectstores` and `auth-dbs`, verify all three Clusters report `ContinuousArchiving=True` and each nightly schedule exists:
+
+```sh
+kubectl -n auth get cluster kratos-db hydra-db openfga-db
+kubectl -n auth get scheduledbackup kratos-db-nightly hydra-db-nightly openfga-db-nightly
+kubectl -n auth get backup
+```
+
+Artifacts live under `s3://bex-tfstate/auth-dbs/<cluster>-pg<major>/{base,wals}/`. The production clusters were PostgreSQL 18 when this policy shipped, so the active server names are `kratos-db-pg18`, `hydra-db-pg18`, and `openfga-db-pg18`.
 
 ## Restore runbooks
 
@@ -177,9 +205,19 @@ kubectl -n bex-system delete cluster bex-db-recover
 
 For a full cutover (live `bex-db` is destroyed): repeat the above, then rename `bex-db-recover` → `bex-db` in the GitOps chart (or Argo force-sync after removing the existing Cluster) and update `bex-db-app` Secret to match the new cluster's credentials.
 
-> **CNPG 1.31+ readiness:** PASS. The active Cluster, ScheduledBackup, on-demand Backup example, and recovery example use the Barman Cloud plugin, and the 2026-07-28 production drill restored both tenant and control-plane data at explicit PITR targets. The historical 2026-07-14 drill below used CNPG's former fields; do not copy that record as a current manifest.
+### Auth database restore
+
+Use the same new-Cluster-only recovery shape as `bex-db`, in the `auth` namespace. Set `bootstrap.recovery.source` to an `externalClusters` entry whose plugin parameters reference `barmanObjectName: auth-dbs` and the source's exact per-major `serverName`. Never add a backup plugin block pointing the throwaway recovery Cluster at the source server name: recovery reads that archive, while a live archiver must always have its own empty identity.
+
+Before recovery, capture a known row without putting personal data in the drill record. For Kratos, verify an existing `identities.id`; for Hydra or OpenFGA, choose the equivalent stable primary-key row. Recover to a distinctly named Cluster, query the known row, and delete the Cluster plus every generated PVC/PV, Pod, Service, and Secret when verification completes. The credential-free production example, exact timings, and cleanup proof are in [the 2026-07-31 auth DB restore drill](drills/2026-07-31-auth-dbs-restore.md).
+
+> **CNPG 1.31+ readiness:** PASS. The active Clusters, ScheduledBackups, on-demand Backup example, and recovery examples use the Barman Cloud plugin. The 2026-07-28 production drill restored tenant and control-plane data at explicit PITR targets, and the 2026-07-31 production drill restored Kratos from its new auth archive. The historical 2026-07-14 drill below used CNPG's former fields; do not copy that record as a current manifest.
 
 ## Drill records
+
+### Auth database Barman Cloud restore — 2026-07-31 (w7/m67, production)
+
+All three auth clusters completed plugin base backups and continuously archived WAL under unique `*-pg18` server names. `kratos-db` restored from the bucket alone into a new one-instance Cluster in 62 seconds; a known identity was present exactly once, 35 total identities were present, and all throwaway compute/storage resources were deleted. Kratos, Hydra, OpenFGA, and all three source clusters stayed fully Ready. See [2026-07-31-auth-dbs-restore.md](drills/2026-07-31-auth-dbs-restore.md).
 
 ### Barman Cloud plugin PITR — 2026-07-28 (w1/m56, production)
 
@@ -257,7 +295,7 @@ Fresh plugin backups and explicit point-in-time restores passed for both a dispo
 ## Alerting
 
 - **`BackupCronJobStale`** (prometheus.yaml `bex` group): fires if `etcd-backup` or `openbao-backup` CronJobs have not succeeded in >26h. Severity: critical.
-- **`BexDbBackupStale`** (prometheus.yaml `bex` group): fires if the Barman Cloud plugin-backed WAL archiver (`cnpg_pg_stat_archiver_last_archived_time` from the `cnpg-bex-db` scrape) has not archived in >26h. Debugging starts with `pg_stat_archiver`, `ObjectStore/bex-db`, the `barman-cloud` deployment and instance-sidecar logs; credential presence is checked without printing Secret data. Severity: critical.
+- **`PlatformDatabaseBackupStale`** (prometheus.yaml `bex` group): one alert instance per `bex-db`, `kratos-db`, `hydra-db`, or `openfga-db` if its Barman Cloud plugin-backed WAL archiver (`cnpg_pg_stat_archiver_last_archived_time` from the primary-only `cnpg-platform-db` scrape) has not archived in >26h. The scrape stamps namespace and cluster labels from Kubernetes discovery. Debugging starts with `pg_stat_archiver`, the cluster's ObjectStore, the `barman-cloud` deployment and instance-sidecar logs; credential presence is checked without printing Secret data. Severity: critical.
 
 ## Re-drill cadence
 
