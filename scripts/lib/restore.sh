@@ -16,8 +16,7 @@ restore_require_command() {
 
 restore_load_dotenv() {
   local repo_root="$1"
-  [ "${RESTORE_SKIP_DOTENV:-0}" != "1" ] || return 0
-  if [ -f "$repo_root/.env" ]; then
+  if [ "${RESTORE_SKIP_DOTENV:-0}" != "1" ] && [ -f "$repo_root/.env" ]; then
     set -a
     # Repository-local, gitignored operator config.
     # shellcheck disable=SC1091

@@ -100,6 +100,14 @@ export RESTORE_TEST_ARCHIVE="$TMP/valid.gz"
 
 # shellcheck source=scripts/lib/restore.sh
 source "$HERE/lib/restore.sh"
+unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+export TF_STATE_ACCESS_KEY=fake-access
+export TF_STATE_SECRET_KEY=fake-secret
+restore_load_dotenv "$TMP"
+if [ "$AWS_ACCESS_KEY_ID" != fake-access ] || [ "$AWS_SECRET_ACCESS_KEY" != fake-secret ]; then
+  fail "TF_STATE credential aliasing with RESTORE_SKIP_DOTENV=1"
+fi
+ok "environment-only TF_STATE credentials map to AWS CLI names"
 latest="$(restore_latest_s3_uri s3://fixture/fixture/ .rdb.gz)"
 [ "$latest" = 's3://fixture/fixture/2026-08-01T03:00:00Z.rdb.gz' ] || \
   fail "latest snapshot selection"
