@@ -207,6 +207,11 @@ func TestKeyValuePlanChangeReconcile(t *testing.T) {
 	if amt := sts.Spec.Template.Spec.AutomountServiceAccountToken; amt == nil || *amt {
 		t.Error("Valkey pod must not automount the ServiceAccount token")
 	}
+	podSecurity := sts.Spec.Template.Spec.SecurityContext
+	if podSecurity == nil || podSecurity.FSGroup == nil || *podSecurity.FSGroup != valkeyRunAsGroup ||
+		podSecurity.FSGroupChangePolicy == nil || *podSecurity.FSGroupChangePolicy != corev1.FSGroupChangeOnRootMismatch {
+		t.Errorf("Valkey PVC group contract = %#v, want fsGroup %d with OnRootMismatch", podSecurity, valkeyRunAsGroup)
+	}
 	for _, c := range sts.Spec.Template.Spec.Containers {
 		sc := c.SecurityContext
 		if sc == nil {
@@ -220,6 +225,10 @@ func TestKeyValuePlanChangeReconcile(t *testing.T) {
 		}
 		if sc.SeccompProfile == nil || sc.SeccompProfile.Type != corev1.SeccompProfileTypeRuntimeDefault {
 			t.Errorf("container %q: seccomp must be RuntimeDefault", c.Name)
+		}
+		if c.Name == "valkey" && (sc.RunAsNonRoot == nil || !*sc.RunAsNonRoot || sc.RunAsUser == nil || *sc.RunAsUser != valkeyRunAsUser ||
+			sc.RunAsGroup == nil || *sc.RunAsGroup != valkeyRunAsGroup) {
+			t.Errorf("Valkey runtime identity = %#v, want non-root %d:%d", sc, valkeyRunAsUser, valkeyRunAsGroup)
 		}
 	}
 

@@ -62,6 +62,10 @@ const (
 	kvTLSPort = 6380
 	// kvDataPath is where Valkey writes its AOF data inside the container.
 	kvDataPath = "/data"
+	// The uid/gid baked into the official valkey image. Running directly as this
+	// account avoids its root entrypoint's CAP_CHOWN requirement on fresh PVCs.
+	valkeyRunAsUser  = int64(999)
+	valkeyRunAsGroup = int64(1000)
 	// kvDefaultImage is the Valkey image used when spec.version is empty.
 	kvDefaultImage = "valkey/valkey:8-alpine"
 	// kvExporterPort / kvExporterImage back the redis_exporter metrics sidecar
@@ -110,6 +114,14 @@ func valkeyImage(version string) string {
 // guaranteedResources helper (requests == limits).
 func kvResources(plan tiers.ValkeyTier) corev1.ResourceRequirements {
 	return guaranteedResources(plan.CPU, plan.Memory)
+}
+
+func valkeySecCtx() *corev1.SecurityContext {
+	security := tenantSecCtx()
+	security.RunAsNonRoot = ptr(true)
+	security.RunAsUser = ptr(valkeyRunAsUser)
+	security.RunAsGroup = ptr(valkeyRunAsGroup)
+	return security
 }
 
 // kvExporterResources is the fixed, tiny footprint for the redis_exporter
@@ -475,6 +487,10 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		// drop ALL caps, no privilege escalation, RuntimeDefault seccomp, and no
 		// ServiceAccount token mounted (Valkey never talks to the apiserver).
 		sts.Spec.Template.Spec.AutomountServiceAccountToken = ptr(false)
+		sts.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+			FSGroup:             ptr(valkeyRunAsGroup),
+			FSGroupChangePolicy: ptr(corev1.FSGroupChangeOnRootMismatch),
+		}
 		sts.Spec.Template.Spec.Containers = []corev1.Container{{
 			Name:  "valkey",
 			Image: valkeyImage(kv.Spec.Version),
@@ -484,7 +500,7 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			Ports:           serverPorts,
 			Env:             []corev1.EnvVar{passwordEnv},
 			Resources:       kvResources(plan),
-			SecurityContext: tenantSecCtx(),
+			SecurityContext: valkeySecCtx(),
 			VolumeMounts:    append([]corev1.VolumeMount{{Name: "data", MountPath: kvDataPath}}, serverMounts...),
 			ReadinessProbe: &corev1.Probe{ProbeHandler: corev1.ProbeHandler{
 				TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt(kvPort)},
