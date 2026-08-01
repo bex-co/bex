@@ -1,19 +1,19 @@
 # w7 · m68 — Tenant KeyValue off-cluster backups: nightly RDB snapshots to S3 for paid plans
 
-**Worker:** worker7 **Goal:** paid-plan Valkey instances stop being PVC-only — a nightly RDB snapshot lands in S3 with pruned retention, purged on delete, with a drilled AOF-aware restore path. **Status:** todo
+**Worker:** worker7 **Goal:** paid-plan Valkey instances stop being PVC-only — a nightly RDB snapshot lands in S3 with pruned retention, purged on delete, with a drilled AOF-aware restore path. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                     | est | depends_on |
 | ---- | ------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Env contract `BEX_KV_BACKUP_*` + docs/`.env.example` sync                  | 30m | —          |
-| t002 | Operator: plan-gated nightly backup CronJob per KeyValue instance          | 60m | t001       |
-| t003 | Delete teardown: purge `keyvalue/<id>/` S3 prefix + owned CronJob         | 45m | t002       |
-| t004 | Backup staleness alert for KeyValue backup CronJobs                        | 30m | t002       |
-| t005 | AOF-aware restore runbook + drill; amend ADR021 + ADR031                   | 60m | t002       |
-| t006 | Simplify                                                                   | 20m | t005       |
-| t007 | Test coverage: envtest gating/teardown + snapshot-job behavior             | 60m | t005       |
-| t008 | Closeout                                                                   | 15m | t007       |
+| t001 | Env contract `BEX_KV_BACKUP_*` + docs/`.env.example` sync — **DONE**                  | 30m | —          |
+| t002 | Operator: plan-gated nightly backup CronJob per KeyValue instance — **DONE**          | 60m | t001       |
+| t003 | Delete teardown: purge `keyvalue/<id>/` S3 prefix + owned CronJob — **DONE**         | 45m | t002       |
+| t004 | Backup staleness alert for KeyValue backup CronJobs — **DONE**                        | 30m | t002       |
+| t005 | AOF-aware restore runbook + drill; amend ADR021 + ADR031 — **DONE**                   | 60m | t002       |
+| t006 | Simplify — **DONE**                                                                   | 20m | t005       |
+| t007 | Test coverage: envtest gating/teardown + snapshot-job behavior — **DONE**             | 60m | t005       |
+| t008 | Closeout — **DONE**                                                                   | 15m | t007       |
 
 ## Definition of done
 
