@@ -9,6 +9,8 @@ import {
   protectedConfirmationFromError,
   type ProtectedActionResult,
 } from "@/features/services/lib/protected-confirmation";
+import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
+import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 
 export type BlueprintSyncActionResult =
   | { status: "success"; result: SyncBlueprintResult | null }
@@ -27,6 +29,7 @@ export function useSyncBlueprint(): UseSyncBlueprintResult {
   const { currentWorkspaceId } = useWorkspace();
   const [mutate] = useMutation(SyncBlueprintDocument);
   const [busy, setBusy] = useState(false);
+  const paymentGate = usePaymentRequiredGate();
 
   const sync = useCallback(
     async (
@@ -35,17 +38,20 @@ export function useSyncBlueprint(): UseSyncBlueprintResult {
     ): Promise<BlueprintSyncActionResult> => {
       setBusy(true);
       try {
-        const res = await mutate({
-          variables: {
-            id,
-            ownerId: currentWorkspaceId,
-            confirm: confirmation,
-          },
-        });
+        const res = await paymentGate.run(() =>
+          mutate({
+            variables: {
+              id,
+              ownerId: currentWorkspaceId,
+              confirm: confirmation,
+            },
+          }),
+        );
         const result = res.data?.syncBlueprint ?? null;
         toast.success(t("blueprints.syncSuccess"));
         return { status: "success", result };
       } catch (err) {
+        if (isPaymentOnboardingCancelled(err)) return { status: "error" };
         const requiredConfirmation = protectedConfirmationFromError(err);
         if (requiredConfirmation) {
           return {
@@ -59,7 +65,7 @@ export function useSyncBlueprint(): UseSyncBlueprintResult {
         setBusy(false);
       }
     },
-    [mutate, t, currentWorkspaceId],
+    [mutate, paymentGate, t, currentWorkspaceId],
   );
 
   return { sync, busy };

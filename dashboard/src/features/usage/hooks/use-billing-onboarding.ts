@@ -60,6 +60,13 @@ export interface UseBillingOnboardingResult {
   portalBusy: boolean;
   openCheckout: () => Promise<void>;
   openPortal: () => Promise<void>;
+  refetch: () => Promise<unknown>;
+}
+
+export interface UseBillingOnboardingOptions {
+  active?: boolean;
+  pollInterval?: number;
+  checkoutTarget?: "same-tab" | "new-tab";
 }
 
 function billingReturnURL(state?: "success" | "cancelled"): string {
@@ -68,15 +75,19 @@ function billingReturnURL(state?: "success" | "cancelled"): string {
   return url.toString();
 }
 
-export function useBillingOnboarding(): UseBillingOnboardingResult {
+export function useBillingOnboarding({
+  active = true,
+  pollInterval = 15_000,
+  checkoutTarget = "same-tab",
+}: UseBillingOnboardingOptions = {}): UseBillingOnboardingResult {
   const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
   const resolved = currentWorkspaceId != null;
-  const { data, loading, error } = useQuery(BillingReadinessDocument, {
+  const { data, loading, error, refetch } = useQuery(BillingReadinessDocument, {
     variables: { workspaceId: currentWorkspaceId ?? "" },
-    skip: !resolved,
+    skip: !active || !resolved,
     fetchPolicy: "cache-and-network",
-    pollInterval: 15_000,
+    pollInterval: active ? pollInterval : 0,
     errorPolicy: "all",
   });
   const [createCheckout] = useMutation(CreateBillingCheckoutSessionDocument, {
@@ -121,6 +132,13 @@ export function useBillingOnboarding(): UseBillingOnboardingResult {
 
   const openCheckout = useCallback(async () => {
     if (!currentWorkspaceId) return;
+    // Preserve the click's user activation while the GraphQL request is in
+    // flight. Browsers commonly block a tab first opened after the await.
+    const checkoutWindow =
+      checkoutTarget === "new-tab"
+        ? window.open("about:blank", "_blank")
+        : null;
+    if (checkoutWindow) checkoutWindow.opener = null;
     setCheckoutBusy(true);
     try {
       const result = await createCheckout({
@@ -132,12 +150,19 @@ export function useBillingOnboarding(): UseBillingOnboardingResult {
       });
       const url = result.data?.createBillingCheckoutSession?.url;
       if (!url) throw new Error("Checkout returned no hosted URL");
-      window.location.assign(url);
+      if (checkoutTarget === "new-tab") {
+        if (checkoutWindow) checkoutWindow.location.assign(url);
+        else window.location.assign(url);
+        setCheckoutBusy(false);
+      } else {
+        window.location.assign(url);
+      }
     } catch {
+      checkoutWindow?.close();
       toast.error(t("usage.billingCheckoutError"));
       setCheckoutBusy(false);
     }
-  }, [createCheckout, currentWorkspaceId, t]);
+  }, [checkoutTarget, createCheckout, currentWorkspaceId, t]);
 
   const openPortal = useCallback(async () => {
     if (!currentWorkspaceId) return;
@@ -160,11 +185,12 @@ export function useBillingOnboarding(): UseBillingOnboardingResult {
 
   return {
     readiness,
-    loading: !resolved || loading,
+    loading: active && (!resolved || loading),
     error,
     checkoutBusy,
     portalBusy,
     openCheckout,
     openPortal,
+    refetch,
   };
 }

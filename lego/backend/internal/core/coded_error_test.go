@@ -17,7 +17,10 @@ limitations under the License.
 package core
 
 import (
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -55,5 +58,36 @@ func TestPlainErrDoesNotImplementExtendedError(t *testing.T) {
 	}
 	if _, ok := Err("plain").(extendedError); ok {
 		t.Error("constErr unexpectedly implements ExtendedError")
+	}
+}
+
+func TestPaymentRequiredCrossSurfaceEnvelope(t *testing.T) {
+	err := NewPaymentRequiredError()
+	if !errors.Is(err, ErrPaymentRequired) {
+		t.Fatal("payment error does not wrap ErrPaymentRequired")
+	}
+	if err.Error() != PaymentRequiredMessage {
+		t.Fatalf("message = %q", err.Error())
+	}
+	ext := err.Extensions()
+	if ext["code"] != "PAYMENT_REQUIRED" || ext["checkoutTool"] != "create_billing_checkout_session" {
+		t.Fatalf("GraphQL/MCP extensions = %#v", ext)
+	}
+
+	rec := httptest.NewRecorder()
+	WriteErr(rec, err)
+	if rec.Code != http.StatusPaymentRequired {
+		t.Fatalf("REST status = %d, want 402", rec.Code)
+	}
+	var body map[string]any
+	if decodeErr := json.Unmarshal(rec.Body.Bytes(), &body); decodeErr != nil {
+		t.Fatal(decodeErr)
+	}
+	if body["id"] != "payment_required" || body["code"] != "PAYMENT_REQUIRED" || body["message"] != PaymentRequiredMessage {
+		t.Fatalf("REST body = %#v", body)
+	}
+	params, ok := body["params"].(map[string]any)
+	if !ok || params["checkoutTool"] != "create_billing_checkout_session" {
+		t.Fatalf("REST params = %#v", body["params"])
 	}
 }

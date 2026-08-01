@@ -152,7 +152,7 @@ func TestStripeSandboxEndToEnd(t *testing.T) {
 		portalVerified = true
 	}
 
-	remaining, err := st.SelectUnemittedUsage(ctx, emitter.floor(now), now.Add(-emitter.SealHours), 10)
+	remaining, err := st.SelectUnemittedUsage(ctx, emitter.floor(now), now.Add(-emitter.SealHours), 10, false)
 	if err != nil {
 		t.Fatalf("read sandbox outbox after emit: %v", err)
 	}

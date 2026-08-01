@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
-import { planLimitExtensions } from "@/common/lib/graphql-error";
+import {
+  hasGraphQLErrorCode,
+  planLimitExtensions,
+} from "@/common/lib/graphql-error";
 
 /**
  * Build the kind of error Apollo throws when a GraphQL mutation returns errors.
@@ -44,5 +47,25 @@ describe("planLimitExtensions", () => {
   it("coerces missing params to safe defaults", () => {
     const err = gqlError({ code: "PLAN_LIMIT" });
     expect(planLimitExtensions(err)).toEqual({ plan: "", limit: 0 });
+  });
+});
+
+describe("hasGraphQLErrorCode", () => {
+  it("matches a structured code in any combined GraphQL error", () => {
+    expect(
+      hasGraphQLErrorCode(
+        gqlError({ code: "PAYMENT_REQUIRED" }),
+        "PAYMENT_REQUIRED",
+      ),
+    ).toBe(true);
+  });
+
+  it("does not key off error-message text", () => {
+    expect(
+      hasGraphQLErrorCode(new Error("PAYMENT_REQUIRED"), "PAYMENT_REQUIRED"),
+    ).toBe(false);
+    expect(
+      hasGraphQLErrorCode(gqlError({ code: "FORBIDDEN" }), "PAYMENT_REQUIRED"),
+    ).toBe(false);
   });
 });

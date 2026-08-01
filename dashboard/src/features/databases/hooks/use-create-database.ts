@@ -5,6 +5,8 @@ import { CreateDatabaseDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { graphQLErrorMessage } from "@/common/lib/graphql-error";
+import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
+import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 
 /** The create form's collected values (Render's create-form subset bex serves). */
 export interface CreateDatabaseInput {
@@ -49,6 +51,7 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
   const [mutate] = useMutation(CreateDatabaseDocument);
   const [busy, setBusy] = useState(false);
   const [capLimit, setCapLimit] = useState<string | null>(null);
+  const paymentGate = usePaymentRequiredGate();
 
   const create = useCallback(
     async (input: CreateDatabaseInput) => {
@@ -59,24 +62,27 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
       setBusy(true);
       setCapLimit(null);
       try {
-        const res = await mutate({
-          variables: {
-            name: input.name,
-            databaseName: input.databaseName || undefined,
-            databaseUser: input.databaseUser || undefined,
-            ownerId: currentWorkspaceId,
-            environmentId: input.environmentId,
-            plan: input.plan || undefined,
-            version: input.version || undefined,
-            diskSizeGB: input.diskSizeGB > 0 ? input.diskSizeGB : undefined,
-            public: input.public,
-          },
-        });
+        const res = await paymentGate.run(() =>
+          mutate({
+            variables: {
+              name: input.name,
+              databaseName: input.databaseName || undefined,
+              databaseUser: input.databaseUser || undefined,
+              ownerId: currentWorkspaceId,
+              environmentId: input.environmentId,
+              plan: input.plan || undefined,
+              version: input.version || undefined,
+              diskSizeGB: input.diskSizeGB > 0 ? input.diskSizeGB : undefined,
+              public: input.public,
+            },
+          }),
+        );
         const id = res.data?.createDatabase?.id;
         if (!id) throw new Error("createDatabase returned no id");
         toast.success(t("databases.createSuccess", { name: input.name }));
         return id;
       } catch (err) {
+        if (isPaymentOnboardingCancelled(err)) return null;
         const msg = graphQLErrorMessage(err) ?? "";
         if (msg.toLowerCase().includes("workspace is limited")) {
           setCapLimit(msg);
@@ -88,7 +94,7 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
         setBusy(false);
       }
     },
-    [mutate, t, currentWorkspaceId],
+    [mutate, paymentGate, t, currentWorkspaceId],
   );
 
   return { create, busy, capLimit };

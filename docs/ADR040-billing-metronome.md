@@ -52,13 +52,15 @@ The m47 outbox remains:
 
 1. roll usage into `usage_hourly`;
 2. wait for the rewrite horizon (`BEX_STRIPE_SEAL_HOURS`, default 48 hours);
-3. select non-excluded `pending` rows at or after `max(BEX_STRIPE_EPOCH, now − 34 days)`;
+3. select non-excluded `pending` rows at or after `max(BEX_STRIPE_EPOCH, now − 34 days)`; when ADR046's gate is enabled, also require a webhook-stamped payment method or Mode-B comp;
 4. ensure the Customer and Subscription;
 5. persist the deterministic identifier, meter name, and immutable first-attempt timestamp before any provider call;
 6. send one Stripe meter event per paid row; and
 7. atomically stamp accepted rows `emitted`, hold permanent rejects, and leave retryable outcomes `pending`.
 
 The 34-day cap stays inside Stripe's 35-calendar-day past-timestamp limit and prevents first enable from billing unbounded history. A future timestamp is never manufactured.
+
+Under [ADR046](ADR046-payment-onboarding-and-paid-gating.md), cardless rows remain pending rather than being stamped or treated as errors. That prevents `ensureBillingSetup` from creating a Customer/Subscription for drive-by free workspaces; once the marker binds, still-in-horizon rows enter the ordinary idempotent path on the next pass. Mode-A exclusion and Mode-B rated-but-free comp behavior are unchanged.
 
 The meter-event `identifier` is the SHA-256 hash of normalized resource kind, service id, meter kind, tier, and UTC hour. Stripe enforces identifier uniqueness within a rolling 24-hour period. Because the emitter retries hourly, an ordinary crash between event acceptance and the local stamp is deduplicated. This is a bounded provider guarantee, not mathematically strict exactly-once delivery. `billing_export_attempted_at` therefore never moves: once an unstamped attempt exceeds 24 hours, the row becomes `ambiguous`, a durable `stamp_ambiguity` issue is created, and automatic replay stops. An operator must compare the local row with Stripe meter summaries and invoice lines, then explicitly `mark_repaired` or `acknowledge`; ambiguity can never use the automatic `retry` action.
 
@@ -165,6 +167,7 @@ Rollback is non-destructive: remove `BEX_STRIPE_SECRET_KEY` and `BEX_STRIPE_WEBH
 - `pricing.yaml` now has two deliberate consumers: advisory estimates and Stripe catalog setup. Stripe invoices remain authoritative.
 - The operator and CRD contract remain unchanged.
 - Payment-method onboarding and Customer Portal access are Stripe-hosted and API-operable across all bex surfaces. Tax remains deliberately unconfigured until the operator supplies the legal/business inputs and same-mode registration. Test-mode non-payment now converges through a durable, reversible lifecycle; live enforcement and eventual termination remain product decisions.
+- With ADR046 enforcement enabled, Customer/Subscription provisioning and meter export wait for a bound payment method (or Mode-B comp), while up to 34 days of sealed pending usage remains eligible for later backfill.
 
 ## Render parity
 

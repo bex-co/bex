@@ -239,6 +239,8 @@ func WriteErr(w http.ResponseWriter, err error) {
 		code = http.StatusForbidden
 	case errors.Is(err, ErrConflict), errors.Is(err, ErrBillingEnforced):
 		code = http.StatusConflict
+	case errors.Is(err, ErrPaymentRequired):
+		code = http.StatusPaymentRequired
 	}
 	msg := err.Error()
 	var ce *CodedError
@@ -278,6 +280,8 @@ func statusErrID(code int) string {
 		return "method_not_allowed"
 	case http.StatusConflict:
 		return "conflict"
+	case http.StatusPaymentRequired:
+		return "payment_required"
 	case http.StatusRequestEntityTooLarge:
 		return "payload_too_large"
 	case http.StatusTooManyRequests:

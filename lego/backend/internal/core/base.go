@@ -80,6 +80,13 @@ type BillingMutationGate interface {
 	CheckBillingMutationAllowed(context.Context, string) error
 }
 
+// PaymentGate is the local, provider-neutral paid-intent seam. Feature
+// packages depend only on this core interface; internal/billing implements it
+// over the webhook-stamped control-plane marker.
+type PaymentGate interface {
+	RequirePaymentMethod(context.Context, string) error
+}
+
 // The relations feature verbs require, matching deploy/gitops/authz/model.fga
 // (Render's workspace roles). Each check targets the caller's workspace —
 // workspace:tea-<id> when the control-plane store resolves the caller to a
@@ -247,6 +254,9 @@ type Base struct {
 	// Billing gates only explicitly billable feature mutations. Reads and
 	// payment/Portal recovery remain available while enforcement is active.
 	Billing BillingMutationGate
+	// Payment gates only mutations whose target tier is non-free. nil preserves
+	// the pre-ADR046 behavior exactly (BEX_REQUIRE_PAYMENT_METHOD unset).
+	Payment PaymentGate
 	// TenantNamespaces mirrors store.Reconciler.TenantNamespaces
 	// (BEX_TENANT_NAMESPACES, ADR043): when true each workspace's App CRs (and
 	// their replica pods, clone/pull Secrets) live in that workspace's own
@@ -292,6 +302,16 @@ func (b *Base) RequireBillingMutation(ctx context.Context, workspaceID string) e
 		return nil
 	}
 	return b.Billing.CheckBillingMutationAllowed(ctx, workspaceID)
+}
+
+// RequirePaymentMethod consults the injected local marker gate. A configured
+// gate also sees an unexpectedly unresolved workspace and fails closed; the
+// store-off compatibility path remains byte-identical because its gate is nil.
+func (b *Base) RequirePaymentMethod(ctx context.Context, workspaceID string) error {
+	if b == nil || b.Payment == nil {
+		return nil
+	}
+	return b.Payment.RequirePaymentMethod(ctx, workspaceID)
 }
 
 // Now returns the (injectable) current time.

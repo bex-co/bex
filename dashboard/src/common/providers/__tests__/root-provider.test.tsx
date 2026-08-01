@@ -9,6 +9,10 @@ import { RootProvider } from "@/common/providers/root-provider";
 vi.mock("@/features/workspaces/context", () => ({
   WorkspaceProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
+vi.mock("@/features/usage/context/payment-required", () => ({
+  PaymentRequiredProvider: ({ children }: { children: React.ReactNode }) =>
+    children,
+}));
 
 /**
  * Stands in for Ory Elements' `DefaultToast`, which calls `useIntl()` and is

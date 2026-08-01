@@ -7,6 +7,14 @@ export function graphQLErrorMessage(err: unknown): string | null {
   return null;
 }
 
+/** True when any GraphQL error in Apollo's combined response has code. */
+export function hasGraphQLErrorCode(err: unknown, code: string): boolean {
+  return (
+    CombinedGraphQLErrors.is(err) &&
+    err.errors.some((item) => item.extensions?.["code"] === code)
+  );
+}
+
 /**
  * Extracts PLAN_LIMIT error params from a GraphQL error's extensions field.
  * Returns the structured params when the first error carries code "PLAN_LIMIT";

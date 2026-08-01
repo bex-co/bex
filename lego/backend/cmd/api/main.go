@@ -118,6 +118,10 @@ const drainWindow = 15 * time.Second
 
 func main() {
 	ctx := ctrl.SetupSignalHandler()
+	requirePaymentMethod, err := paymentMethodGate(os.Getenv)
+	if err != nil {
+		log.Fatalf("bex-api: %v", err)
+	}
 	metricRegistry := prometheus.NewRegistry()
 	metricRegistry.MustRegister(prometheus.NewGoCollector(), prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
 	billingMetrics := billing.NewMetrics(metricRegistry)
@@ -447,6 +451,9 @@ func main() {
 			usageSvc.Billing = stripeClient
 			deps.Billing = stripeClient
 			deps.BillingState = st
+			if requirePaymentMethod {
+				base.Payment = &billing.PaymentGate{Store: st}
+			}
 			stripeBillingAdmin = &billing.Admin{Store: st, Provider: stripeClient}
 			// Workspace-delete Stripe teardown (w1/m61): cancel the workspace's
 			// metered Subscription when its workspace is deleted (keeping the Customer
@@ -459,6 +466,7 @@ func main() {
 			emitter := billing.NewEmitter(st, stripeClient)
 			emitter.Metrics = billingMetrics
 			emitter.Epoch = billingEpoch
+			emitter.RequirePaymentMethod = requirePaymentMethod
 			if v := os.Getenv("BEX_STRIPE_SEAL_HOURS"); v != "" {
 				if n, err := strconv.Atoi(v); err == nil && n >= 1 {
 					emitter.SealHours = time.Duration(n) * time.Hour

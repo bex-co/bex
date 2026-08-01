@@ -58,6 +58,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
   - [x] `jobs cancel <serviceID> <jobID>` — cancels a running job
 - [x] **`keyvalues`** (alias `kv`) — manage Render Key Value instances
   - [x] `keyvalues create` — nested owner/options, opaque `red-<xid>` id, underscore `maxmemoryPolicy`
+    - [x] payment-required failures remain an ordinary Render API error (HTTP 402 with `id`/`message`); the actionable message names `create_billing_checkout_session`, so the unmodified client does not receive an undecodable body
     - [x] `--name`
     - [x] `--plan <free|starter|standard|pro|pro_plus>`
     - [~] `--region` — accepted but echoes `local-capd` (single fixed region)
@@ -97,6 +98,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
   - [x] `--task-run-id <ids>` — accepted as a filter
 - [x] **`postgres`** (alias `pg`) — manage Render Postgres databases
   - [x] `postgres create` — id/name/ipAllowList wire shape correct (description persists)
+    - [x] payment-required failures use the same CLI-decodable 402 envelope as Service and Key Value creates
     - [x] `--name`
     - [x] `--plan <free|basic_*|pro_*|accelerated_*>`
     - [~] `--region <frankfurt|ohio|oregon|singapore|virginia>` — accepted; platform-stamped `local-capd`
@@ -133,7 +135,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
 - [x] **`services`** — list services and datastores; bare `services` lists them
   - [x] `-e, --environment-ids <ids>` — filter list by environment IDs
   - [x] `--include-previews` — accepted list flag
-  - [x] `services create` — returns the `{service,deployId}` record; raw `dashboardUrl` is `…/<type>/<srv-id>` (`/web/`, `/cron/`, `/static/`)
+  - [x] `services create` — returns the `{service,deployId}` record; raw `dashboardUrl` is `…/<type>/<srv-id>` (`/web/`, `/cron/`, `/static/`); a cardless paid create uses Render's declared 402 `error` schema and keeps the checkout instruction in `message`
     - [x] `--name`
     - [x] `--type` — `web_service`, `cron_job`, `static_site` all accepted
     - [x] `--runtime` — round-trips (build not exercised in dev-9)

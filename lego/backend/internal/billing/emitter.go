@@ -78,11 +78,11 @@ func ClampSealHours(configured, catchupWindow time.Duration) time.Duration {
 // EmitterStore is the slice of internal/store the emitter needs: the billing
 // outbox read + stamp. *store.PGStore satisfies it.
 type EmitterStore interface {
-	SelectUnemittedUsage(ctx context.Context, floor, sealBefore time.Time, limit int) ([]store.HourlyRow, error)
+	SelectUnemittedUsage(ctx context.Context, floor, sealBefore time.Time, limit int, requirePaymentMethod bool) ([]store.HourlyRow, error)
 	MarkUsageAttempted(ctx context.Context, attempts []store.UsageExportAttempt, at time.Time) error
 	RecordUsageExportResult(ctx context.Context, accepted []store.UsageExportAttempt, rejected []store.UsageExportReject, at time.Time) error
 	QuarantineOldUsageAttempts(ctx context.Context, before, at time.Time) (int64, error)
-	BillingExportStats(ctx context.Context, floor, sealBefore, now time.Time) (store.BillingExportStats, error)
+	BillingExportStats(ctx context.Context, floor, sealBefore, now time.Time, requirePaymentMethod bool) (store.BillingExportStats, error)
 }
 
 // Emitter is the seal-then-emit loop (ADR040 §3–5): it ships each sealed,
@@ -100,6 +100,9 @@ type Emitter struct {
 	Interval   time.Duration
 	BatchLimit int
 	Metrics    *Metrics
+	// RequirePaymentMethod withholds card-less, non-comped workspaces at the
+	// durable outbox read. False preserves the pre-ADR046 export path exactly.
+	RequirePaymentMethod bool
 
 	now     func() time.Time
 	gapOnce sync.Once
@@ -174,7 +177,7 @@ func (e *Emitter) emitOnce(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
-		rows, err := e.Store.SelectUnemittedUsage(ctx, floor, sealBefore, e.BatchLimit)
+		rows, err := e.Store.SelectUnemittedUsage(ctx, floor, sealBefore, e.BatchLimit, e.RequirePaymentMethod)
 		if err != nil {
 			log.Printf("billing: select unemitted usage: %v", err)
 			return
@@ -281,13 +284,16 @@ func (e *Emitter) refreshMetrics(ctx context.Context, now time.Time) {
 	if e.Metrics == nil {
 		return
 	}
-	stats, err := e.Store.BillingExportStats(ctx, e.floor(now), now.Add(-e.SealHours), now)
+	stats, err := e.Store.BillingExportStats(ctx, e.floor(now), now.Add(-e.SealHours), now, e.RequirePaymentMethod)
 	if err != nil {
 		e.Metrics.Operation("outbox_snapshot", "error")
 		return
 	}
 	e.Metrics.SetExportStats(stats)
 	e.Metrics.Operation("outbox_snapshot", "success")
+	if stats.WithheldWorkspaces > 0 {
+		log.Printf("billing: withheld sealed usage for %d workspace(s) awaiting a payment method", stats.WithheldWorkspaces)
+	}
 }
 
 // ensureBillingSetup provisions a workspace's Stripe billing before its usage

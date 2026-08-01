@@ -266,7 +266,7 @@ func TestPGStoreBillingOutbox(t *testing.T) {
 	floor := now.Add(-34 * 24 * time.Hour) // billing.BackfillHorizon; below `sealed`, above `belowFloor`
 	sealBefore := now.Add(-48 * time.Hour)
 
-	rows, err := s.SelectUnemittedUsage(ctx, floor, sealBefore, 100)
+	rows, err := s.SelectUnemittedUsage(ctx, floor, sealBefore, 100, false)
 	if err != nil {
 		t.Fatalf("select unemitted: %v", err)
 	}
@@ -281,7 +281,7 @@ func TestPGStoreBillingOutbox(t *testing.T) {
 	if err := s.MarkUsageEmitted(ctx, rows, now); err != nil {
 		t.Fatalf("mark emitted: %v", err)
 	}
-	again, err := s.SelectUnemittedUsage(ctx, floor, sealBefore, 100)
+	again, err := s.SelectUnemittedUsage(ctx, floor, sealBefore, 100, false)
 	if err != nil {
 		t.Fatalf("re-select: %v", err)
 	}
@@ -291,6 +291,131 @@ func TestPGStoreBillingOutbox(t *testing.T) {
 	// Re-stamping the same rows is a harmless no-op (crash-recovery safety).
 	if err := s.MarkUsageEmitted(ctx, rows, now); err != nil {
 		t.Fatalf("re-mark emitted (idempotent): %v", err)
+	}
+}
+
+func TestPGStorePaymentMarkerWithholdsThenBackfillsSealedUsage(t *testing.T) {
+	s, ctx := newBillingTestStore(t)
+	cardless, err := s.CreateTenant(ctx, "cardless", "hobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	comped, err := s.CreateTenant(ctx, "comped", "hobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.SetBillingException(ctx, comped.ID, BillingComped, true, "ops", "test exemption", time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	excluded, err := s.CreateTenant(ctx, "excluded-marker", "hobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.SetTenantBillingExcluded(ctx, excluded.ID, true, "ops", time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+
+	now := time.Now().UTC().Truncate(time.Hour)
+	sealed := now.Add(-72 * time.Hour)
+	belowFloor := now.Add(-40 * 24 * time.Hour)
+	for _, workspaceID := range []string{cardless.ID, comped.ID, excluded.ID} {
+		if err := s.UpsertUsageHourly(ctx, HourlyRow{
+			WorkspaceID:  workspaceID,
+			ServiceID:    "srv-" + workspaceID,
+			Kind:         UsageKindInstanceSeconds,
+			Tier:         "starter",
+			ResourceKind: ResourceKindService,
+			WindowStart:  sealed,
+			Quantity:     3600,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.UpsertUsageHourly(ctx, HourlyRow{
+		WorkspaceID:  cardless.ID,
+		ServiceID:    "srv-old-cardless",
+		Kind:         UsageKindInstanceSeconds,
+		Tier:         "starter",
+		ResourceKind: ResourceKindService,
+		WindowStart:  belowFloor,
+		Quantity:     1800,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	floor, sealBefore := now.Add(-34*24*time.Hour), now.Add(-48*time.Hour)
+
+	// Gate off is the exact pre-ADR046 path: cardless and comped usage are both
+	// eligible, while the existing structural exclusion remains excluded.
+	rows, err := s.SelectUnemittedUsage(ctx, floor, sealBefore, 100, false)
+	if err != nil || len(rows) != 2 {
+		t.Fatalf("gate-off rows = %+v err=%v, want cardless + comped", rows, err)
+	}
+
+	rows, err = s.SelectUnemittedUsage(ctx, floor, sealBefore, 100, true)
+	if err != nil || len(rows) != 1 || rows[0].WorkspaceID != comped.ID {
+		t.Fatalf("gate-on rows = %+v err=%v, want only comped", rows, err)
+	}
+	stats, err := s.BillingExportStats(ctx, floor, sealBefore, now, true)
+	if err != nil || stats.WithheldWorkspaces != 1 {
+		t.Fatalf("withheld stats = %+v err=%v, want one workspace", stats, err)
+	}
+
+	cardlessEligibility, err := s.PaymentEligibility(ctx, cardless.ID)
+	if err != nil || cardlessEligibility.AllowsPaidIntent() {
+		t.Fatalf("cardless eligibility = %+v err=%v", cardlessEligibility, err)
+	}
+	compedEligibility, err := s.PaymentEligibility(ctx, comped.ID)
+	if err != nil || !compedEligibility.Comped || !compedEligibility.AllowsPaidIntent() {
+		t.Fatalf("comped eligibility = %+v err=%v", compedEligibility, err)
+	}
+	excludedEligibility, err := s.PaymentEligibility(ctx, excluded.ID)
+	if err != nil || !excludedEligibility.Excluded || !excludedEligibility.AllowsPaidIntent() {
+		t.Fatalf("excluded eligibility = %+v err=%v", excludedEligibility, err)
+	}
+
+	if err := s.UpsertBillingProviderMapping(ctx, BillingProviderMapping{WorkspaceID: cardless.ID, CustomerID: "cus_cardless", SubscriptionID: "sub_cardless"}); err != nil {
+		t.Fatal(err)
+	}
+	bound, err := s.PaymentMethodBound(ctx, cardless.ID)
+	if err != nil || bound {
+		t.Fatalf("unstamped mapping bound=%v err=%v", bound, err)
+	}
+	bound, err = s.PaymentMethodBound(ctx, "tea-unknown")
+	if err != nil || bound {
+		t.Fatalf("unknown mapping bound=%v err=%v", bound, err)
+	}
+	firstBound := now.Add(-time.Minute)
+	if err := s.SetPaymentMethodBound(ctx, cardless.ID, firstBound); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPaymentMethodBound(ctx, cardless.ID, now); err != nil {
+		t.Fatal(err)
+	}
+	var persisted time.Time
+	if err := s.Pool.QueryRow(ctx, `SELECT payment_method_bound_at FROM billing_provider_mappings WHERE workspace_id=$1`, cardless.ID).Scan(&persisted); err != nil {
+		t.Fatal(err)
+	}
+	if !persisted.Equal(firstBound) {
+		t.Fatalf("replayed marker moved from %s to %s", firstBound, persisted)
+	}
+
+	rows, err = s.SelectUnemittedUsage(ctx, floor, sealBefore, 100, true)
+	if err != nil || len(rows) != 2 {
+		t.Fatalf("post-bind backfill rows = %+v err=%v, want cardless + comped", rows, err)
+	}
+	var oldRowPending bool
+	if err := s.Pool.QueryRow(ctx, `
+		SELECT billing_export_state = 'pending'
+		FROM usage_hourly
+		WHERE workspace_id=$1 AND service_id='srv-old-cardless'`, cardless.ID).Scan(&oldRowPending); err != nil {
+		t.Fatal(err)
+	}
+	if !oldRowPending {
+		t.Fatal("below-floor cardless row unexpectedly left pending state")
+	}
+	stats, err = s.BillingExportStats(ctx, floor, sealBefore, now, true)
+	if err != nil || stats.WithheldWorkspaces != 0 {
+		t.Fatalf("post-bind withheld stats = %+v err=%v", stats, err)
 	}
 }
 
@@ -377,7 +502,7 @@ func TestPGStoreBillingExportRejectAmbiguityAndAuditedRepair(t *testing.T) {
 	if err != nil || count != 1 {
 		t.Fatalf("quarantine count=%d err=%v", count, err)
 	}
-	stats, err := s.BillingExportStats(ctx, now.Add(-34*24*time.Hour), now.Add(-48*time.Hour), now)
+	stats, err := s.BillingExportStats(ctx, now.Add(-34*24*time.Hour), now.Add(-48*time.Hour), now, false)
 	if err != nil || stats.AmbiguousRows != 1 {
 		t.Fatalf("stats=%+v err=%v", stats, err)
 	}
@@ -445,7 +570,7 @@ func TestPGStoreBillingExportRejectAmbiguityAndAuditedRepair(t *testing.T) {
 	if err := s.Pool.QueryRow(ctx, `SELECT count(*) FROM audit_events WHERE workspace_id=$1 AND verb='billing.ResolveExportIssue'`, tenant.ID).Scan(&auditCount); err != nil || auditCount != 2 {
 		t.Fatalf("audit count=%d err=%v", auditCount, err)
 	}
-	stats, err = s.BillingExportStats(ctx, now.Add(-34*24*time.Hour), now.Add(-48*time.Hour), now.Add(4*time.Minute))
+	stats, err = s.BillingExportStats(ctx, now.Add(-34*24*time.Hour), now.Add(-48*time.Hour), now.Add(4*time.Minute), false)
 	if err != nil || stats.RejectedRows != 0 || stats.AmbiguousRows != 0 {
 		t.Fatalf("resolved issue stats=%+v err=%v", stats, err)
 	}

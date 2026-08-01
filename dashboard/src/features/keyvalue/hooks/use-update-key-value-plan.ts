@@ -3,9 +3,15 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { UpdateKeyValuePlanDocument } from "@/features/keyvalue/api/operations";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
+import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 
 export interface UseUpdateKeyValuePlanResult {
-  updatePlan: (id: string, plan: string, displayName: string) => Promise<boolean>;
+  updatePlan: (
+    id: string,
+    plan: string,
+    displayName: string,
+  ) => Promise<boolean>;
   busy: boolean;
 }
 
@@ -13,22 +19,24 @@ export function useUpdateKeyValuePlan(): UseUpdateKeyValuePlanResult {
   const { t } = useTranslations();
   const [mutate] = useMutation(UpdateKeyValuePlanDocument);
   const [busy, setBusy] = useState(false);
+  const paymentGate = usePaymentRequiredGate();
 
   const updatePlan = useCallback(
     async (id: string, plan: string, displayName: string) => {
       setBusy(true);
       try {
-        await mutate({ variables: { id, plan } });
+        await paymentGate.run(() => mutate({ variables: { id, plan } }));
         toast.success(t("keyvalue.planPickerSuccess", { name: displayName }));
         return true;
-      } catch {
+      } catch (error) {
+        if (isPaymentOnboardingCancelled(error)) return false;
         toast.error(t("keyvalue.planPickerError"));
         return false;
       } finally {
         setBusy(false);
       }
     },
-    [mutate, t],
+    [mutate, paymentGate, t],
   );
 
   return { updatePlan, busy };

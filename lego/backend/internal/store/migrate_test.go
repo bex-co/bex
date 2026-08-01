@@ -282,6 +282,68 @@ func TestEnvironmentAllowListMigrationNormalizesLegacyRows(t *testing.T) {
 	}
 }
 
+// TestPaymentMethodBoundMigrationAppliesAndRollsBack verifies the isolated
+// ADR046 schema change in both directions against real Postgres.
+func TestPaymentMethodBoundMigrationAppliesAndRollsBack(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer pool.Close()
+
+	up, err := migrationsFS.ReadFile("migrations/0058_payment_method_bound.up.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	down, err := migrationsFS.ReadFile("migrations/0058_payment_method_bound.down.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `
+		CREATE SCHEMA migration_0058_payment_marker;
+		SET LOCAL search_path TO migration_0058_payment_marker;
+		CREATE TABLE billing_provider_mappings (workspace_id text PRIMARY KEY);
+	`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, string(up)); err != nil {
+		t.Fatalf("apply migration 0058: %v", err)
+	}
+	var exists bool
+	if err := tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM information_schema.columns
+			WHERE table_schema='migration_0058_payment_marker'
+			  AND table_name='billing_provider_mappings'
+			  AND column_name='payment_method_bound_at'
+			  AND data_type='timestamp with time zone'
+		)`).Scan(&exists); err != nil || !exists {
+		t.Fatalf("column after up exists=%v err=%v", exists, err)
+	}
+	if _, err := tx.Exec(ctx, string(down)); err != nil {
+		t.Fatalf("roll back migration 0058: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM information_schema.columns
+			WHERE table_schema='migration_0058_payment_marker'
+			  AND table_name='billing_provider_mappings'
+			  AND column_name='payment_method_bound_at'
+		)`).Scan(&exists); err != nil || exists {
+		t.Fatalf("column after down exists=%v err=%v", exists, err)
+	}
+}
+
 // TestMigrationNumbersAreUnique guards against a bug class that has bitten
 // this migrations directory repeatedly: golang-migrate keys a migration off
 // its leading NNNN_ number, so two files sharing one is at best a refused
