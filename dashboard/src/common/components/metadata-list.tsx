@@ -45,7 +45,9 @@ export function MetadataList({ title, rows, lead }: MetadataListProps) {
               className="flex justify-between gap-4 border-b pb-2 last:border-0 sm:last:border-b"
             >
               <dt className="text-sm text-muted-foreground">{row.label}</dt>
-              <dd className="min-w-0 text-sm font-medium">{row.value}</dd>
+              <dd className="min-w-0 text-sm font-medium" suppressHydrationWarning>
+                {row.value}
+              </dd>
             </div>
           ))}
         </dl>
