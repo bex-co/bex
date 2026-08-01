@@ -339,25 +339,33 @@ func main() {
 		if rv, ok := authzChecker.(workspaces.WorkspaceRevoker); ok {
 			deps.WorkspaceRevoker = rv
 		}
-		// Out-of-cascade teardown (w6/m4/t005): a deleted workspace's OpenBao
-		// secrets and managed Databases/KeyValue stores live outside the tenant
-		// row's FK cascade, so Delete runs these after the row is gone. Order
-		// doesn't matter — each purger only touches its own resource type.
-		//
-		// apps.WorkspacePurger (w6/m11, live-verification finding): an App
-		// created through the public REST/GraphQL/MCP surface carries
-		// core.LabelTenant only, never store.LabelManagedBy, so the row-backed
-		// cascade + reconciler prune that tears down *row-backed* Apps on
-		// workspace delete never sees it — it would otherwise survive forever,
-		// still running and permanently unreachable (its tenant is gone, so
-		// core.Base's tenant gate forbids everyone, including its creator).
-		// Redundant-but-harmless for row-backed Apps the reconciler already
-		// pruned (delete of an already-gone object is a no-op).
-		deps.WorkspacePurgers = []workspaces.WorkspacePurger{
+		// Out-of-cascade teardown (w6/m4/t005, w1/m61): a deleted workspace's
+		// OpenBao secrets, env groups, managed Databases/KeyValue stores, sandboxes
+		// (appended in the OpenSandbox block below), and Stripe subscription
+		// (appended in the billing block below) live outside the tenant row's FK
+		// cascade. Delete runs these PRE-cascade — while the tenant row still
+		// exists — so a purger failure is retryable (the row and its confirmation
+		// phrase survive) and the sandbox/Stripe purgers can still read the ids the
+		// cascade is about to drop. The secrets purger must also run here, before
+		// the App CRs are torn down: it enumerates them to find their OpenBao paths.
+		deps.WorkspacePreCascadePurgers = []workspaces.WorkspacePurger{
 			&secrets.WorkspacePurger{Service: &secrets.Service{Base: base, Store: deps.Secrets}},
 			&envgroups.WorkspacePurger{Service: &envgroups.Service{Base: base, Store: deps.Secrets}},
 			&postgres.WorkspacePurger{Service: &postgres.Service{Base: base}},
 			&keyvalue.WorkspacePurger{Service: &keyvalue.Service{Base: base}},
+		}
+		// apps.WorkspacePurger (w6/m11, live-verification finding) runs POST-cascade
+		// (w1/m61): an App created through the public REST/GraphQL/MCP surface
+		// carries core.LabelTenant only, never store.LabelManagedBy, so the
+		// row-backed cascade + reconciler prune that tears down *row-backed* Apps on
+		// workspace delete never sees it — it would otherwise survive forever, still
+		// running and permanently unreachable (its tenant is gone, so core.Base's
+		// tenant gate forbids everyone, including its creator). It must run AFTER the
+		// row cascade: purging App CRs while their apps rows still exist would let
+		// the projector immediately re-create them. Redundant-but-harmless for
+		// row-backed Apps the reconciler already pruned (delete of an already-gone
+		// object is a no-op).
+		deps.WorkspacePostCascadePurgers = []workspaces.WorkspacePurger{
 			&apps.WorkspacePurger{Service: &apps.Service{Base: base}},
 		}
 
@@ -440,6 +448,13 @@ func main() {
 			deps.Billing = stripeClient
 			deps.BillingState = st
 			stripeBillingAdmin = &billing.Admin{Store: st, Provider: stripeClient}
+			// Workspace-delete Stripe teardown (w1/m61): cancel the workspace's
+			// metered Subscription when its workspace is deleted (keeping the Customer
+			// for invoice history). Pre-cascade, so the billing_provider_mappings row
+			// still resolves the subscription id. Only wired when Stripe is enabled —
+			// byte-identical to before m61 otherwise.
+			deps.WorkspacePreCascadePurgers = append(deps.WorkspacePreCascadePurgers,
+				&billing.WorkspacePurger{Canceller: stripeClient})
 
 			emitter := billing.NewEmitter(st, stripeClient)
 			emitter.Metrics = billingMetrics
@@ -592,6 +607,14 @@ func main() {
 		// (st nil), Keys stays nil and OpenSandbox must run single-tenant.
 		if st != nil {
 			deps.SandboxKeys = sandboxKeyProvider{st}
+			// Workspace-delete sandbox teardown (w1/m61): stop the workspace's
+			// running OpenSandbox sandboxes before the tenant row (and its sandbox
+			// key, migration 0056) cascade away. It joins the PRE-cascade purgers so
+			// the key still resolves; st satisfies sandbox.PurgeKeyLookup (lookup-only,
+			// never minting). Only meaningful with the store on (workspace delete
+			// needs it) and the client wired — both true in this branch.
+			deps.WorkspacePreCascadePurgers = append(deps.WorkspacePreCascadePurgers,
+				&sandbox.WorkspacePurger{Client: deps.SandboxClient, Keys: st})
 		}
 	}
 	// Browser Web Shell (docs/ADR035-ssh.md § Browser Web Shell): the HMAC key

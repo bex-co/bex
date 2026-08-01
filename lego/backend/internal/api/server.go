@@ -262,7 +262,13 @@ type Deps struct {
 	WorkspaceGranter workspaces.WorkspaceGranter
 	WorkspaceRevoker workspaces.WorkspaceRevoker
 	WorkspaceKick    func()
-	WorkspacePurgers []workspaces.WorkspacePurger
+	// WorkspacePreCascadePurgers run in workspaces.Service.Delete BEFORE the
+	// tenant row is dropped (retry-safe teardown of secrets, env groups,
+	// Databases/KeyValues, sandboxes, Stripe); WorkspacePostCascadePurgers run
+	// after it (the App CRs, which the projector would otherwise resurrect). See
+	// workspaces.WorkspacePurger.
+	WorkspacePreCascadePurgers  []workspaces.WorkspacePurger
+	WorkspacePostCascadePurgers []workspaces.WorkspacePurger
 	// Workspace members & roles (w4/m12): the same control-plane store + OpenFGA
 	// role grant/revoke sides, plus the invite Mailer and the dashboard origin the
 	// invite email links to. Store nil (BEX_CP_DB_URI unset) => the member verbs
@@ -373,13 +379,14 @@ func hostOf(rawURL string) string {
 // set the HTTP config fields (CORSOrigin/HydraAdminURL/KratosURL) on the result.
 func NewServer(base *core.Base, d Deps) *Server {
 	workspaceSvc := &workspaces.Service{
-		Base:       base,
-		Store:      d.WorkspaceStore,
-		Granter:    d.WorkspaceGranter,
-		Revoker:    d.WorkspaceRevoker,
-		Kick:       d.WorkspaceKick,
-		Purgers:    d.WorkspacePurgers,
-		Identities: d.Identities,
+		Base:               base,
+		Store:              d.WorkspaceStore,
+		Granter:            d.WorkspaceGranter,
+		Revoker:            d.WorkspaceRevoker,
+		Kick:               d.WorkspaceKick,
+		PreCascadePurgers:  d.WorkspacePreCascadePurgers,
+		PostCascadePurgers: d.WorkspacePostCascadePurgers,
+		Identities:         d.Identities,
 		// APIKeys satisfies workspaces.KeyOwnerReader structurally (KeyOwner has
 		// the identical signature) — no adapter, and no cache: the lookup runs at
 		// most once per GET /v1/users (cold path), only for API-key callers.

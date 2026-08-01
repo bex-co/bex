@@ -72,6 +72,30 @@ func (s *PGStore) SandboxKeyForWorkspace(ctx context.Context, workspaceID string
 	return out, nil
 }
 
+// SandboxKeyLookup returns the workspace's existing OpenSandbox tenant key
+// WITHOUT minting one (unlike SandboxKeyForWorkspace) — the workspace-delete
+// purger (w1/m61) uses it to find the key that enumerates + terminates the
+// workspace's sandboxes. found=false means no key was ever minted, which the
+// purger reads as "no sandbox was ever created" (the first create is what mints
+// the key), so there is nothing to tear down. It never writes, so it is safe to
+// call during teardown without resurrecting a key the cascade is about to drop.
+func (s *PGStore) SandboxKeyLookup(ctx context.Context, workspaceID string) (string, bool, error) {
+	if workspaceID == "" {
+		return "", false, nil
+	}
+	var key string
+	err := s.Pool.QueryRow(ctx,
+		`SELECT api_key FROM sandbox_tenant_keys WHERE workspace_id = $1`, workspaceID,
+	).Scan(&key)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return key, true, nil
+}
+
 // WorkspaceForSandboxKey resolves an OpenSandbox tenant key to its workspace id,
 // returning ErrNotFound for an unknown key — which the tenant-lookup endpoint
 // maps to the 401 the OpenSandbox HTTP tenant provider expects (invalid key).
