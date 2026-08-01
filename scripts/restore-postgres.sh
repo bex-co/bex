@@ -73,12 +73,13 @@ if [ -n "$TEARDOWN" ]; then
   exit 0
 fi
 
-for pair in \
-  "source namespace:$SOURCE_NAMESPACE" "source cluster:$SOURCE_CLUSTER" \
-  "object store:$OBJECT_STORE" "server name:$SERVER_NAME" \
-  "target namespace:$TARGET_NAMESPACE" "database:$DATABASE" "query:$QUERY"; do
-  [ -n "${pair#*:}" ] || restore_die "missing --${pair%%:*}"
-done
+[ -n "$SOURCE_NAMESPACE" ] || restore_die "missing --source-namespace"
+[ -n "$SOURCE_CLUSTER" ] || restore_die "missing --source-cluster"
+[ -n "$OBJECT_STORE" ] || restore_die "missing --object-store"
+[ -n "$SERVER_NAME" ] || restore_die "missing --server-name"
+[ -n "$TARGET_NAMESPACE" ] || restore_die "missing --target-namespace"
+[ -n "$DATABASE" ] || restore_die "missing --database"
+[ -n "$QUERY" ] || restore_die "missing --query"
 restore_validate_dns_label "$SOURCE_NAMESPACE" "source namespace"
 restore_validate_dns_label "$SOURCE_CLUSTER" "source cluster"
 restore_validate_dns_label "$OBJECT_STORE" "object store"

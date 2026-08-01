@@ -1,20 +1,20 @@
 # w7 · m69 — Scripted backup restore: executable recovery for every ADR031 store, verified end to end
 
-**Worker:** worker7 **Goal:** recovery stops being a prose runbook — every backed-up store has a parameterized restore script with safety rails, and one full end-to-end exercise (fresh backup → scripted restore → data verification → teardown) proves each script works against real prod backups. **Status:** todo
+**Worker:** worker7 **Goal:** recovery stops being a prose runbook — every backed-up store has a parameterized restore script with safety rails, and one full end-to-end exercise (fresh backup → scripted restore → data verification → teardown) proves each script works against real prod backups. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                      | est | depends_on             |
 | ---- | -------------------------------------------------------------------------- | --- | ---------------------- |
-| t001 | `scripts/restore-etcd.sh` — scripted ADR011 Path A                          | 60m | —                      |
-| t002 | `scripts/restore-openbao.sh` — scripted ADR015 restore (both paths)         | 45m | —                      |
-| t003 | `scripts/restore-postgres.sh` — generic CNPG recovery-cluster driver        | 60m | —                      |
-| t004 | `scripts/restore-keyvalue.sh` — AOF-aware RDB seed restore                  | 45m | —                      |
-| t005 | End-to-end drill: backup → scripted restore → verify → teardown, all stores | 90m | t001, t002, t003, t004 |
-| t006 | Amend ADR031: script contract + runbooks point at scripts                   | 30m | t005                   |
-| t007 | Simplify                                                                    | 20m | t006                   |
-| t008 | Test coverage: shellcheck gate + DRY_RUN self-tests                         | 45m | t006                   |
-| t009 | Closeout                                                                    | 15m | t008                   |
+| t001 | `scripts/restore-etcd.sh` — scripted ADR011 Path A — **DONE**                       | 60m | —                      |
+| t002 | `scripts/restore-openbao.sh` — scripted ADR015 throwaway restore — **DONE**         | 45m | —                      |
+| t003 | `scripts/restore-postgres.sh` — generic CNPG recovery-cluster driver — **DONE**     | 60m | —                      |
+| t004 | `scripts/restore-keyvalue.sh` — AOF-aware RDB seed restore — **DONE**                | 45m | —                      |
+| t005 | End-to-end drill: backup → scripted restore → verify → teardown, all stores — DONE | 90m | t001, t002, t003, t004 |
+| t006 | Amend ADR031: script contract + runbooks point at scripts — **DONE**                | 30m | t005                   |
+| t007 | Simplify — **DONE**                                                                 | 20m | t006                   |
+| t008 | Test coverage: shellcheck gate + DRY_RUN self-tests — **DONE**                      | 45m | t006                   |
+| t009 | Closeout — **DONE**                                                                 | 15m | t008                   |
 
 ## Definition of done
 

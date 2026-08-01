@@ -4,13 +4,14 @@
 
 | store | what it holds | backup mechanism | schedule | retention | restore mechanism | last verified |
 | --- | --- | --- | --- | --- | --- | --- |
-| **etcd** | App/Database/KeyValue CRs (user deployments) | CronJob `kube-system/etcd-backup` → `etcd-snapshots/` in `bex-tfstate` | 03:15 UTC daily | 7 snapshots (rolling) | Docker throwaway etcd → `kubectl apply` extracted CRs | 2026-07-14 (CAPD 2-node, w7/m29) |
-| **OpenBao** | All tenant env-var secrets | CronJob `secrets/openbao-backup` → `openbao-snapshots/` in `bex-tfstate` | 03:45 UTC daily | 7 snapshots (rolling) | `bao operator raft snapshot restore [-force]` onto running unsealed OpenBao | 2026-07-14 (Docker, fresh-node path, w7/m29) |
-| **paid KeyValue** | Tenant Valkey data for every non-Free managed Key Value | Operator-owned `kvbak-<id>` CronJob → `keyvalue/<id>/<RFC3339-UTC>.rdb.gz` in `bex-tfstate` | One stable per-id slot from 03:20–03:39 UTC daily | 7 snapshots (rolling) | Fresh PVC: seed RDB with AOF off → verify → enable/rewrite AOF → restart | 2026-07-31 (production backup/restore/delete, w7/m68) |
-| **bex-db** | Workspaces, members, audit log, usage, API keys, deploy history | Barman Cloud plugin → ObjectStore `bex-system/bex-db` → `bex-db/` in `bex-tfstate` + continuous WAL | 04:00 UTC daily (full base backup via plugin `ScheduledBackup`); WAL archiving is continuous | 7 days of base backups + WAL (ObjectStore retention) | CNPG `bootstrap.recovery` through the plugin ObjectStore into a throwaway cluster | 2026-07-28 (production plugin PITR, w1/m56) |
-| **kratos-db** | User identities, credentials, verification/recovery state | Barman Cloud plugin → ObjectStore `auth/auth-dbs`, server `kratos-db-pg18` → `auth-dbs/kratos-db-pg18/` + continuous WAL | 04:15 UTC daily base backup; WAL continuous | 7 days of base backups + WAL | CNPG `bootstrap.recovery` through `auth/auth-dbs` into a throwaway cluster | 2026-07-31 (production restore, w7/m67) |
-| **hydra-db** | OAuth clients, grants, consent, access/refresh-token state | Barman Cloud plugin → ObjectStore `auth/auth-dbs`, server `hydra-db-pg18` → `auth-dbs/hydra-db-pg18/` + continuous WAL | 04:30 UTC daily base backup; WAL continuous | 7 days of base backups + WAL | Same plugin recovery shape as kratos-db | 2026-07-31 (production backup + WAL verification, w7/m67) |
-| **openfga-db** | Authorization stores, models, and tuples | Barman Cloud plugin → ObjectStore `auth/auth-dbs`, server `openfga-db-pg18` → `auth-dbs/openfga-db-pg18/` + continuous WAL | 04:45 UTC daily base backup; WAL continuous | 7 days of base backups + WAL | Same plugin recovery shape as kratos-db | 2026-07-31 (production backup + WAL verification, w7/m67) |
+| **etcd** | App/Database/KeyValue CRs (user deployments) | CronJob `kube-system/etcd-backup` → `etcd-snapshots/` in `bex-tfstate` | 03:15 UTC daily | 7 snapshots (rolling) | `scripts/restore-etcd.sh` → local throwaway etcd → sanitized CR manifests | 2026-07-31 (production scripted extraction, w7/m69) |
+| **OpenBao** | All tenant env-var secrets | CronJob `secrets/openbao-backup` → `openbao-snapshots/` in `bex-tfstate` | 03:45 UTC daily | 7 snapshots (rolling) | `scripts/restore-openbao.sh` → force-restore into a new isolated Raft target | 2026-07-31 (production scripted restore, w7/m69) |
+| **paid KeyValue** | Tenant Valkey data for every non-Free managed Key Value | Operator-owned `kvbak-<id>` CronJob → `keyvalue/<id>/<RFC3339-UTC>.rdb.gz` in `bex-tfstate` | One stable per-id slot from 03:20–03:39 UTC daily | 7 snapshots (rolling) | `scripts/restore-keyvalue.sh` → fresh PVC, AOF-safe seed/rewrite/restart | 2026-07-31 (production scripted restore, w7/m69) |
+| **tenant Postgres** | Tenant-managed relational data | Barman Cloud plugin → ObjectStore `default/bex-tenant-postgres`, one `serverName` per Database/major + continuous WAL | Daily base backup per backed-up Database; WAL continuous | 30 days of base backups + WAL | `scripts/restore-postgres.sh` → cloned ObjectStore contract and new recovery Cluster | 2026-07-31 (production scripted restore, PostgreSQL 16, w7/m69) |
+| **bex-db** | Workspaces, members, audit log, usage, API keys, deploy history | Barman Cloud plugin → ObjectStore `bex-system/bex-db` → `bex-db/` in `bex-tfstate` + continuous WAL | 04:00 UTC daily (full base backup via plugin `ScheduledBackup`); WAL archiving is continuous | 7 days of base backups + WAL (ObjectStore retention) | `scripts/restore-postgres.sh` → new recovery Cluster | 2026-07-31 (production scripted marker restore, w7/m69) |
+| **kratos-db** | User identities, credentials, verification/recovery state | Barman Cloud plugin → ObjectStore `auth/auth-dbs`, server `kratos-db-pg18` → `auth-dbs/kratos-db-pg18/` + continuous WAL | 04:15 UTC daily base backup; WAL continuous | 7 days of base backups + WAL | `scripts/restore-postgres.sh` → new recovery Cluster | 2026-07-31 (production scripted aggregate verification, w7/m69) |
+| **hydra-db** | OAuth clients, grants, consent, access/refresh-token state | Barman Cloud plugin → ObjectStore `auth/auth-dbs`, server `hydra-db-pg18` → `auth-dbs/hydra-db-pg18/` + continuous WAL | 04:30 UTC daily base backup; WAL continuous | 7 days of base backups + WAL | `scripts/restore-postgres.sh`, same parameter shape as Kratos | 2026-07-31 (production backup + WAL verification, w7/m67) |
+| **openfga-db** | Authorization stores, models, and tuples | Barman Cloud plugin → ObjectStore `auth/auth-dbs`, server `openfga-db-pg18` → `auth-dbs/openfga-db-pg18/` + continuous WAL | 04:45 UTC daily base backup; WAL continuous | 7 days of base backups + WAL | `scripts/restore-postgres.sh`, same parameter shape as Kratos | 2026-07-31 (production backup + WAL verification, w7/m67) |
 
 The platform stores and paid KeyValue backups use the same Wasabi/Hetzner Object Storage bucket (`bex-tfstate`) under separate store/server prefixes. Credentials come from out-of-band Secrets (never in git), following the same pattern as `etcd-backup-s3` / `openbao-backup-s3`. Free KeyValue instances are deliberately PVC-only and have no off-cluster recovery point.
 
@@ -48,7 +49,7 @@ graph LR
   cnpg-sched --> bucket
   auth-sched --> bucket
   op@{ shape: tri, label: "human operator" }
-  op -->|"restore runbook (below)"| cluster
+  op -->|"scripts/restore-*.sh"| cluster
   op -->|"fetch snapshot/backup"| bucket
 ```
 
@@ -150,101 +151,111 @@ kubectl -n default get cronjob -l app.bex.co/component=keyvalue-backup
 
 ## Restore runbooks
 
+The four `scripts/restore-*.sh` programs are the executable recovery truth; the prose here explains why each step exists. They share one contract:
+
+- `DRY_RUN=1` may read the backup inventory, download and integrity-check a snapshot, inspect a local throwaway, and render the intended Kubernetes objects, but it never mutates Kubernetes or object storage.
+- Kubernetes recovery targets must be new namespaces named `restore-*`. A real run requires `--confirm <that-exact-namespace>`; teardown verifies the namespace carries `bex.co/restore-target=true` before deleting it and waits for its absence.
+- No script has an in-place/live restore mode. Production cutover is a separate, human-reviewed incident step after the recovered target is verified.
+- Credential values come from environment, gitignored `.env`, or copied Secret streams; they never appear in output or argv. Verification query/path/key results are suppressed.
+- A script change must re-earn a live drill record. CI supplies the complementary hermetic gate: ShellCheck plus PATH-shimmed `DRY_RUN`, corrupt-input, latest-selection, and bad-parameter tests.
+
+ADR031 already owns the platform data-protection topic, so w7/m69 amended this ADR instead of creating a duplicate restore ADR. The all-store production evidence is [the 2026-07-31 scripted restore drill](drills/2026-07-31-scripted-restore-e2e.md).
+
+Recovery remains deliberately human-initiated—there is no automatic disaster failover or cutover—but it is no longer prose-transcribed. Snapshot selection, integrity checks, isolated target construction, data verification, and teardown are committed and tested code.
+
 ### etcd restore
 
-See [ADR011-etcd-backup-restore.md](ADR011-etcd-backup-restore.md) §Restore (Path A — selective re-apply onto a fresh cluster — recommended).
+Run ADR011 Path A through the script. The default is read-only against S3 and uses only an ephemeral local Docker etcd; persisting manifests is explicit. Applying them requires a separately provisioned kube context whose name begins `restore-` and a second confirmation token:
+
+```sh
+DRY_RUN=1 scripts/restore-etcd.sh
+scripts/restore-etcd.sh --output-dir /secure/recovered-crs
+# After reviewing the files and provisioning a fresh cluster/context:
+scripts/restore-etcd.sh --apply-dir /secure/recovered-crs \
+  --target-context restore-new-cluster --confirm APPLY-restore-new-cluster
+```
+
+See [ADR011-etcd-backup-restore.md](ADR011-etcd-backup-restore.md) §Restore for why selective CR re-apply is preferred over full node-state recovery. ADR011 Path B remains an unscripted, node-identity-dependent emergency procedure.
 
 ### OpenBao restore
 
-See [ADR015-openbao-backup-restore.md](ADR015-openbao-backup-restore.md) §Restore. The snapshot is sealed with the master key from when it was taken — unseal with the **same** `.env` unseal keys (`BAO_ROOT_TOKEN` / the Shamir unseal keys). Do NOT re-run `bao-init.sh` before restoring (it would write NEW keys).
+OpenBao's original Shamir keys live only in the masked GitHub secrets, so production uses the manual workflow; local/custodied-key operators can invoke the same script directly:
+
+```sh
+gh workflow run openbao-restore-drill.yml \
+  -f target_namespace=restore-bao-incident \
+  -f confirm=restore-bao-incident
+
+# Equivalent direct preview/run when the four BAO_* values are in env/.env:
+DRY_RUN=1 scripts/restore-openbao.sh \
+  --target-namespace restore-bao-incident --verify-path tenants/data/<known-path>
+scripts/restore-openbao.sh \
+  --target-namespace restore-bao-incident --verify-path tenants/data/<known-path> \
+  --confirm restore-bao-incident --teardown-on-success
+```
+
+The script creates a new one-member Raft target, initializes only that target, uses the target token for `snapshot-force`, restarts, unseals with the **original** keys, verifies a known `tenants/` path without printing it, and optionally tears down. It rejects `--live`/same-instance requests. See [ADR015](ADR015-openbao-backup-restore.md) for the master-key explanation.
 
 ### bex-db restore
 
-CNPG recovers `bex-db` by bootstrapping a new `Cluster` through the Barman Cloud plugin and the existing `bex-system/bex-db` ObjectStore. Never restore in-place onto the live `bex-db` — always recover to a throwaway cluster first, verify a known row survives, then cut over.
+CNPG recovery for `bex-db`, tenant Databases, and auth databases is one parameterized script. It clones the source ObjectStore and only its referenced credentials into a new namespace, creates a one-instance recovery Cluster without a backup/WAL-writer plugin, waits for Ready, runs a suppressed verification query, and optionally tears down:
 
 ```sh
-# 0. Note a known identifiable row before recovery (so you can verify afterward).
-#    Use -U postgres (superuser) inside the pod — peer auth as 'bex' is not configured.
-kubectl -n bex-system exec bex-db-1 -c postgres -- psql -U postgres -d bex -c \
-  "SELECT id, name FROM workspaces ORDER BY created_at DESC LIMIT 1;"
-# Record: id=<UUID>, name=<workspace-name>
+DRY_RUN=1 scripts/restore-postgres.sh \
+  --source-namespace bex-system --source-cluster bex-db \
+  --object-store bex-db --server-name bex-db \
+  --target-namespace restore-pg-bex-db \
+  --database bex --query 'SELECT count(*) FROM schema_migrations' --expect 1
 
-# 1. Find the latest successful backup.
-#    Barman stores artifacts under <destinationPath>/<serverName>/ (serverName = cluster name).
-#    Actual layout: s3://bex-tfstate/bex-db/bex-db/base/YYYYMMDDTHHMMSS/backup.info
-source .env
-aws --endpoint-url "$TF_STATE_ENDPOINT" s3 ls "s3://$TF_STATE_BUCKET/bex-db/bex-db/base/" --recursive \
-  | grep "backup.info" | sort | tail -1
-# WAL segments are at: s3://bex-tfstate/bex-db/bex-db/wals/
-
-# 2. Apply a throwaway recovery cluster.
-kubectl -n bex-system apply -f - <<'EOF'
-apiVersion: postgresql.cnpg.io/v1
-kind: Cluster
-metadata:
-  name: bex-db-recover
-  namespace: bex-system
-  annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-spec:
-  instances: 1
-  affinity:
-    nodeSelector:
-      bex.co/pool: platform
-    tolerations:
-      - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
-  storage:
-    size: 5Gi
-    storageClass: hcloud-volumes
-  resources:
-    requests: { cpu: 100m, memory: 256Mi }
-    limits: { cpu: "1", memory: 1Gi }
-  bootstrap:
-    recovery:
-      source: bex-db
-  externalClusters:
-    - name: bex-db
-      plugin:
-        name: barman-cloud.cloudnative-pg.io
-        parameters:
-          barmanObjectName: bex-db
-          serverName: bex-db
-EOF
-kubectl -n bex-system get cluster bex-db-recover -w
-# phase → Cluster in healthy state
-
-# 3. Verify the known row is present.
-kubectl -n bex-system exec bex-db-recover-1 -c postgres -- psql -U postgres -d bex -c \
-  "SELECT id, name FROM workspaces WHERE id = '<UUID>';"
-# Must return the row recorded in step 0.
-
-# 4. Tear down the recovery cluster (once verified, or promote it if cutting over).
-kubectl -n bex-system delete cluster bex-db-recover
+scripts/restore-postgres.sh \
+  --source-namespace bex-system --source-cluster bex-db \
+  --object-store bex-db --server-name bex-db \
+  --target-namespace restore-pg-bex-db \
+  --database bex --query '<known-row count query>' --expect 1 \
+  --confirm restore-pg-bex-db --teardown-on-success
 ```
 
-For a full cutover (live `bex-db` is destroyed): repeat the above, then rename `bex-db-recover` → `bex-db` in the GitOps chart (or Argo force-sync after removing the existing Cluster) and update `bex-db-app` Secret to match the new cluster's credentials.
+Add `--target-time <RFC3339>` for PITR; the script renders CNPG's `bootstrap.recovery.recoveryTarget.targetTime`. Never put personal data in the query or drill record. For a full cutover after verification, deliberately update the GitOps Cluster/connection Secret to the recovered authority; the restore script never performs cutover.
 
 ### Auth database restore
 
-Use the same new-Cluster-only recovery shape as `bex-db`, in the `auth` namespace. Set `bootstrap.recovery.source` to an `externalClusters` entry whose plugin parameters reference `barmanObjectName: auth-dbs` and the source's exact per-major `serverName`. Never add a backup plugin block pointing the throwaway recovery Cluster at the source server name: recovery reads that archive, while a live archiver must always have its own empty identity.
+Use the same script with `--source-namespace auth`, `--object-store auth-dbs`, and the exact per-major server name:
 
-Before recovery, capture a known row without putting personal data in the drill record. For Kratos, verify an existing `identities.id`; for Hydra or OpenFGA, choose the equivalent stable primary-key row. Recover to a distinctly named Cluster, query the known row, and delete the Cluster plus every generated PVC/PV, Pod, Service, and Secret when verification completes. The credential-free production example, exact timings, and cleanup proof are in [the 2026-07-31 auth DB restore drill](drills/2026-07-31-auth-dbs-restore.md).
+```sh
+scripts/restore-postgres.sh \
+  --source-namespace auth --source-cluster kratos-db \
+  --object-store auth-dbs --server-name kratos-db-pg18 \
+  --target-namespace restore-pg-kratos \
+  --database kratos --query 'SELECT count(*) FROM identities' --expect <captured-count> \
+  --confirm restore-pg-kratos --teardown-on-success
+```
+
+The same shape covers Hydra and OpenFGA. It deliberately omits a backup plugin on the recovery Cluster, so the throwaway cannot write to the source archive identity.
 
 ### KeyValue restore
 
-KeyValue backups are coherent RDB snapshots, not PITR. Select the newest object (RFC3339 names sort chronologically), download and gunzip it, and validate it with the matching Valkey image's `valkey-check-rdb`. Restore only into a fresh PVC or an otherwise proven-empty data directory:
+The KeyValue script selects the lexicographically newest RFC3339 RDB by default, checks gzip plus `valkey-check-rdb`, requires a new PVC, refuses surviving AOF paths, boots with AOF off, verifies a known key, enables/rewrites AOF, rolls the target, and verifies again:
 
-1. Create a throwaway PVC and seed the object as `/data/dump.rdb`; ensure no `appendonlydir/` or other AOF file exists.
-2. Start the throwaway Valkey with `appendonly no`, the source version, and a throwaway password.
-3. Verify a known marker key. A successful `PING` alone proves only that Valkey started, not that the snapshot loaded.
-4. Change the managed workload back to `appendonly yes`, run `BGREWRITEAOF`, wait for it to finish, and restart.
-5. Verify the marker again after restart, then delete the throwaway StatefulSet, Service, PVC, and Secret.
+```sh
+DRY_RUN=1 scripts/restore-keyvalue.sh \
+  --id red-<id> --target-namespace restore-kv-incident \
+  --verify-key '<known-key>' --expect '<known-value>'
 
-Valkey prefers an existing AOF over `dump.rdb`; seeding the RDB beside a surviving append-only directory silently restores the wrong dataset. The fresh-volume rule is therefore a safety invariant, not cleanup advice. [ADR021](ADR021-keyvalue-management.md) owns the mechanism details; [the production drill](drills/2026-07-31-keyvalue-restore.md) records the exact evidence.
+scripts/restore-keyvalue.sh \
+  --id red-<id> --target-namespace restore-kv-incident \
+  --verify-key '<known-key>' --expect '<known-value>' \
+  --confirm restore-kv-incident --teardown-on-success
+```
+
+KeyValue backups are snapshots, not PITR. Valkey prefers an existing AOF over `dump.rdb`; the script's fresh-volume rule is therefore a safety invariant, not cleanup advice. [ADR021](ADR021-keyvalue-management.md) owns the mechanism details.
 
 > **CNPG 1.31+ readiness:** PASS. The active Clusters, ScheduledBackups, on-demand Backup example, and recovery examples use the Barman Cloud plugin. The 2026-07-28 production drill restored tenant and control-plane data at explicit PITR targets, and the 2026-07-31 production drill restored Kratos from its new auth archive. The historical 2026-07-14 drill below used CNPG's former fields; do not copy that record as a current manifest.
 
 ## Drill records
+
+### Scripted all-store restore — 2026-07-31 (w7/m69, production)
+
+Fresh backups and `scripts/restore-*.sh` passed for etcd, OpenBao, `bex-db`, a PostgreSQL 16 tenant Database, Kratos, and a paid Valkey 8 KeyValue. Marker-based freshness passed for `bex-db`, tenant Postgres, OpenBao, and KeyValue; auth verification used only an aggregate count. Every recovery target was new, every target/source drill resource was removed, the tenant Postgres and KeyValue object prefixes were empty after source finalization, and the platform ended healthy. See [2026-07-31-scripted-restore-e2e.md](drills/2026-07-31-scripted-restore-e2e.md).
 
 ### Paid KeyValue backup, AOF-aware restore, and delete purge — 2026-07-31 (w7/m68, production)
 
@@ -336,7 +347,8 @@ Fresh plugin backups and explicit point-in-time restores passed for both a dispo
 
 | store | last drilled | next drill trigger | reason |
 | --- | --- | --- | --- |
-| etcd | 2026-07-14 | Annually or after any control-plane topology change | Path A tested; topology changes the recovery surface |
-| OpenBao | 2026-07-14 | Annually | Raft restore is idempotent and low-risk; fresh-node path now verified |
-| paid KeyValue | 2026-07-31 | Annually or after Valkey major/image or snapshot-job changes | Snapshot recovery is AOF-sensitive; re-drill any load-order or image change |
-| bex-db | 2026-07-28 | Annually or after a CNPG/plugin major upgrade or backup-transport change | Production plugin base backup + explicit PITR restore verified; re-drill when the recovery surface changes |
+| etcd | 2026-07-31 | Annually or after any control-plane topology/script change | Scripted Path A tested against a fresh production snapshot |
+| OpenBao | 2026-07-31 | Annually or after an OpenBao/image/script change | Scripted fresh-node force-restore and original-key unseal verified in production |
+| paid KeyValue | 2026-07-31 | Annually or after Valkey major/image, snapshot-job, or restore-script changes | Snapshot recovery is AOF-sensitive; re-drill any load-order or transfer change |
+| tenant Postgres | 2026-07-31 | Annually or after a CNPG/plugin major or restore-script change | PostgreSQL 16 marker restored through the shared ObjectStore driver |
+| bex-db/auth DBs | 2026-07-31 | Annually or after a CNPG/plugin major, backup-transport, or restore-script change | Fresh production archives recovered through the generic driver |
