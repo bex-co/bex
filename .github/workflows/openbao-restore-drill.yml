@@ -1,0 +1,115 @@
+name: OpenBao restore drill (manual)
+
+# OpenBao's Shamir keys intentionally exist only in GitHub Actions secrets, not
+# on operator laptops. This manual workflow is therefore the production runner
+# for scripts/restore-openbao.sh. It writes one disposable marker, takes a fresh
+# snapshot, restores only into a restore-* namespace, verifies, and tears down.
+on:
+  workflow_dispatch:
+    inputs:
+      target_namespace:
+        description: Throwaway namespace (must start restore-)
+        required: true
+        default: restore-bao-manual
+        type: string
+      confirm:
+        description: Retype the exact target namespace to authorize mutations
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openbao-production-restore-drill
+  cancel-in-progress: false
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+
+      - name: Fetch production kubeconfig
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          BEX_SSH_PRIVATE_KEY: ${{ secrets.BEX_SSH_PRIVATE_KEY }}
+        run: |
+          install -m700 -d ~/.ssh
+          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" >~/.ssh/id_bex
+          chmod 600 ~/.ssh/id_bex
+          bash scripts/fetch-app-kubeconfig.sh "$RUNNER_TEMP/app.kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/app.kubeconfig" >>"$GITHUB_ENV"
+
+      - name: Fresh snapshot, scripted restore, verification, teardown
+        env:
+          TARGET_NAMESPACE: ${{ inputs.target_namespace }}
+          CONFIRM: ${{ inputs.confirm }}
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          TF_STATE_ENDPOINT: ${{ secrets.TF_STATE_ENDPOINT }}
+          TF_STATE_REGION: ${{ secrets.TF_STATE_REGION }}
+          TF_STATE_ACCESS_KEY: ${{ secrets.TF_STATE_ACCESS_KEY }}
+          TF_STATE_SECRET_KEY: ${{ secrets.TF_STATE_SECRET_KEY }}
+          BAO_UNSEAL_KEY_1: ${{ secrets.BAO_UNSEAL_KEY_1 }}
+          BAO_UNSEAL_KEY_2: ${{ secrets.BAO_UNSEAL_KEY_2 }}
+          BAO_UNSEAL_KEY_3: ${{ secrets.BAO_UNSEAL_KEY_3 }}
+          BAO_ROOT_TOKEN: ${{ secrets.BAO_ROOT_TOKEN }}
+          RESTORE_SKIP_DOTENV: "1"
+        run: |
+          set -euo pipefail
+          [[ "$TARGET_NAMESPACE" =~ ^restore-[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] \
+            || { echo "target_namespace must be a restore-* DNS label" >&2; exit 1; }
+          [ "$CONFIRM" = "$TARGET_NAMESPACE" ] \
+            || { echo "confirm must exactly match target_namespace" >&2; exit 1; }
+
+          marker_path=tenants/data/w7-m69-restore-drill
+          marker_metadata_path=tenants/metadata/w7-m69-restore-drill
+          backup_job="m69-openbao-${GITHUB_RUN_ID}"
+          pf_pid=""
+          token_config() { printf 'header = "X-Vault-Token: %s"\n' "$BAO_ROOT_TOKEN"; }
+          cleanup() {
+            set +e
+            token_config | curl -fsS --config - -X DELETE \
+              "http://127.0.0.1:38260/v1/$marker_metadata_path" >/dev/null
+            if [ -n "$pf_pid" ]; then
+              kill "$pf_pid" 2>/dev/null || true
+              wait "$pf_pid" 2>/dev/null || true
+            fi
+            kubectl -n secrets delete job "$backup_job" --ignore-not-found --wait=true >/dev/null
+          }
+          trap cleanup EXIT
+
+          kubectl -n secrets wait --for=jsonpath='{.status.phase}'=Running \
+            pod/openbao-0 --timeout=5m >/dev/null
+          kubectl -n secrets port-forward pod/openbao-0 38260:8200 \
+            >"$RUNNER_TEMP/openbao-source-port-forward.log" 2>&1 &
+          pf_pid="$!"
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:38260/v1/sys/seal-status >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:38260/v1/sys/seal-status >/dev/null
+
+          token_config | curl -fsS --config - -X POST \
+            --data-binary '{"data":{"marker":"w7-m69-20260801"}}' \
+            "http://127.0.0.1:38260/v1/$marker_path" >/dev/null
+          token_config | curl -fsS --config - \
+            "http://127.0.0.1:38260/v1/$marker_path" >/dev/null
+
+          kubectl -n secrets delete job "$backup_job" --ignore-not-found --wait=true >/dev/null
+          backup_started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          kubectl -n secrets create job --from=cronjob/openbao-backup "$backup_job" >/dev/null
+          kubectl -n secrets wait --for=condition=Complete "job/$backup_job" --timeout=10m >/dev/null
+          backup_finished="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "fresh OpenBao backup completed: $backup_started -> $backup_finished"
+
+          scripts/restore-openbao.sh \
+            --target-namespace "$TARGET_NAMESPACE" \
+            --verify-path "$marker_path" \
+            --confirm "$TARGET_NAMESPACE" \
+            --teardown-on-success
+
+          kubectl -n secrets get statefulset openbao \
+            -o custom-columns=NAME:.metadata.name,READY:.status.readyReplicas,REPLICAS:.status.replicas
