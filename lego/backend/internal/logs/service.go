@@ -417,10 +417,10 @@ func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry
 	}
 	if s.History != nil {
 		// Durable history: the unfiltered tail-N read is a limit-only query.
-		entries, err := s.History(ctx, s.Namespace, LogQuery{App: app.Name, Limit: tail}.normalized())
+		entries, err := s.History(ctx, app.Namespace, LogQuery{App: app.Name, Limit: tail}.normalized())
 		return setLogResource(entries, resource), err
 	}
-	entries, err := s.collectPodLogs(ctx, LogQuery{App: app.Name}, tail)
+	entries, err := s.collectPodLogs(ctx, app.Namespace, LogQuery{App: app.Name}, tail)
 	return setLogResource(entries, resource), err
 }
 
@@ -447,6 +447,11 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	// which may be tenant-prefixed. The public name/srv-id is only an API
 	// address and must not leak into the Kubernetes label selector.
 	q.App = app.Name
+	// The App CR is in hand — its namespace is the per-tenant `<ws>` namespace
+	// under ADR043 (BEX_TENANT_NAMESPACES), where its pods and Loki streams also
+	// live; use it directly rather than the shared s.Namespace, exactly as the
+	// metrics feature does. In shared-namespace mode app.Namespace == s.Namespace.
+	appNS := app.Namespace
 	if err := q.validate(); err != nil {
 		return nil, err
 	}
@@ -465,7 +470,7 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	if s.History != nil {
 		// The store applies every filter (labels + line) server-side and returns
 		// oldest-first, capped at q.Limit.
-		entries, err := s.History(ctx, s.Namespace, q)
+		entries, err := s.History(ctx, appNS, q)
 		if err != nil {
 			return nil, err
 		}
@@ -475,7 +480,7 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	if q.needsStore() {
 		return nil, core.ErrLogStoreUnavailable
 	}
-	entries, err := s.collectPodLogs(ctx, q, q.Limit)
+	entries, err := s.collectPodLogs(ctx, appNS, q, q.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -630,7 +635,9 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 	if s.LabelValues == nil {
 		return nil, core.ErrLogStoreUnavailable
 	}
-	values, err := s.LabelValues(ctx, s.Namespace, label, q.normalized())
+	// app.Namespace is the App's `<ws>` namespace under ADR043 (see QueryLogs);
+	// the discoverable stream labels live there, not in the shared s.Namespace.
+	values, err := s.LabelValues(ctx, app.Namespace, label, q.normalized())
 	if err != nil {
 		return nil, err
 	}
@@ -760,7 +767,9 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 		wg.Add(1)
 		go func(pod string) {
 			defer wg.Done()
-			s.streamPodLogs(ctx, q.App, pod, ch)
+			// app.Namespace: the pods stream from their `<ws>` namespace under
+			// ADR043, the same namespace appPodNames selected them in.
+			s.streamPodLogs(ctx, app.Namespace, q.App, pod, ch)
 		}(pods[i])
 	}
 	go func() { wg.Wait(); close(ch) }()
@@ -953,14 +962,14 @@ func setLogEntryResource(entry *LogEntry, resource string) {
 // collectPodLogs reads up to tail lines from every replica of an App the query's
 // `instance` filter admits, tagged and timestamp-sorted. Shared by Logs (MCP) and
 // QueryLogs (REST/GraphQL).
-func (s *Service) collectPodLogs(ctx context.Context, q LogQuery, tail int64) ([]LogEntry, error) {
+func (s *Service) collectPodLogs(ctx context.Context, namespace string, q LogQuery, tail int64) ([]LogEntry, error) {
 	pods, err := s.appPodNames(ctx, q)
 	if err != nil {
 		return nil, err
 	}
 	var out []LogEntry
 	for _, pod := range pods {
-		entries, err := s.readPodLogs(ctx, q.App, pod, tail)
+		entries, err := s.readPodLogs(ctx, namespace, q.App, pod, tail)
 		if err != nil {
 			return nil, err
 		}
@@ -1033,8 +1042,8 @@ func (s *Service) appPodNames(ctx context.Context, q LogQuery) ([]string, error)
 	return out, nil
 }
 
-func (s *Service) readPodLogs(ctx context.Context, service, pod string, tail int64) ([]LogEntry, error) {
-	return s.readContainerLogs(ctx, s.Namespace, service, pod, core.AppContainer, tail)
+func (s *Service) readPodLogs(ctx context.Context, namespace, service, pod string, tail int64) ([]LogEntry, error) {
+	return s.readContainerLogs(ctx, namespace, service, pod, core.AppContainer, tail)
 }
 
 // readContainerLogs reads up to tail lines from one pod's container, tagged with
@@ -1090,8 +1099,8 @@ func (s *Service) collectPreDeployLogs(ctx context.Context, q LogQuery) ([]LogEn
 
 // streamPodLogs follows one pod's log into ch until ctx ends or the stream
 // closes. A replica going away ends its stream without failing the subscription.
-func (s *Service) streamPodLogs(ctx context.Context, service, pod string, ch chan<- LogEntry) {
-	s.streamContainerLogs(ctx, s.Namespace, service, pod, core.AppContainer, LogTypeApp, ch, nil)
+func (s *Service) streamPodLogs(ctx context.Context, namespace, service, pod string, ch chan<- LogEntry) {
+	s.streamContainerLogs(ctx, namespace, service, pod, core.AppContainer, LogTypeApp, ch, nil)
 }
 
 func (s *Service) streamContainerLogs(ctx context.Context, namespace, service, pod, container, logType string, ch chan<- LogEntry, opened *atomic.Bool) {
