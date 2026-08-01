@@ -263,7 +263,7 @@ func (h *GitWebhook) recordBranchDeleted(ctx context.Context, urls []string, bra
 		return []string{}, nil
 	}
 	var list appv1alpha1.AppList
-	if err := h.Svc.Client.List(ctx, &list, client.InNamespace(h.Svc.Namespace)); err != nil {
+	if err := h.Svc.Client.List(ctx, &list, h.Svc.AppListScope()...); err != nil {
 		return nil, err
 	}
 	affected := []string{}
@@ -319,7 +319,7 @@ func (h *GitWebhook) disableAutoDeploy(ctx context.Context, app *appv1alpha1.App
 // signature already authorized this call.
 func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch string) ([]string, error) {
 	var list appv1alpha1.AppList
-	if err := h.Svc.Client.List(ctx, &list, client.InNamespace(h.Svc.Namespace)); err != nil {
+	if err := h.Svc.Client.List(ctx, &list, h.Svc.AppListScope()...); err != nil {
 		return nil, err
 	}
 	paths := ev.changedPaths()
@@ -346,7 +346,7 @@ func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch 
 			h.recordCommitIgnored(ctx, a, ev, store.EventReasonBuildFilter)
 			continue
 		}
-		if _, err := h.Svc.redeploy(ctx, a.Name, ev.commitInfo()); err != nil {
+		if _, err := h.Svc.redeployFetched(ctx, a, ev.commitInfo()); err != nil {
 			// Log but do not propagate: a 5xx response causes the git host to
 			// retry the delivery, re-triggering redeploy on apps that were already
 			// bumped (each retry stamps a new spec.restartedAt, incrementing the
