@@ -2269,6 +2269,15 @@ func (s *Service) redeploy(ctx context.Context, name string, commit store.Commit
 	if err != nil {
 		return AppView{}, err
 	}
+	return s.redeployFetched(ctx, a, commit)
+}
+
+// redeployFetched applies a signed-webhook redeploy to an App the caller has
+// already resolved. Besides avoiding a redundant API lookup, this preserves the
+// App's tenant namespace: webhook matching lists cluster-wide when ADR043 is on,
+// while an identity-less name lookup would otherwise fall back to the shared
+// BEX_API_NAMESPACE and miss the matched App.
+func (s *Service) redeployFetched(ctx context.Context, a *appv1alpha1.App, commit store.CommitInfo) (AppView, error) {
 	appID := managedAppID(a)
 	// A rollback of a repo-backed App installs the selected deploy's resolved
 	// image as a temporary override. Push-to-deploy is a source build, so clear
@@ -2323,11 +2332,11 @@ func (s *Service) redeploy(ctx context.Context, name string, commit store.Commit
 			// The reconciler's superseded-row cancel is the backstop for the
 			// open row this row would have replaced.
 			if _, err := s.Store.CreateDeploy(ctx, appID, store.TriggerNewCommit, a.Spec.Image, releaseGeneration, commit); err != nil {
-				log.Printf("webhook: recording redeploy of %s: %v", name, err)
+				log.Printf("webhook: recording redeploy of %s: %v", a.Name, err)
 			}
 		}
 	}
-	s.notifyDeployStarted(ctx, a, name)
+	s.notifyDeployStarted(ctx, a, a.Name)
 	return v, nil
 }
 

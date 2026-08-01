@@ -24,6 +24,7 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -82,6 +83,64 @@ func TestList_TenantNamespaceMode(t *testing.T) {
 	}
 	if len(got) != 1 || got[0].Name != "agentmarketcap-1" || got[0].OwnerID != testWS {
 		t.Fatalf("tenant-ns List = %+v, want one app agentmarketcap-1 owned by %s", got, testWS)
+	}
+}
+
+// TestWebhookRedeploy_TenantNamespaceMode reproduces the production failure in
+// which GitHub received 200 {"redeployed":[]} for an auto-deploy App projected
+// outside BEX_API_NAMESPACE. The signed webhook must list across tenant
+// namespaces and patch the exact App it matched instead of re-fetching its CR
+// name from the shared namespace.
+func TestWebhookRedeploy_TenantNamespaceMode(t *testing.T) {
+	const repo = "https://github.com/bex-co/eden-cms-v2"
+	app := tenantNSApp("eden-cms-v2", testWS, "srv-1")
+	app.Spec = appv1alpha1.AppSpec{Repo: repo, Branch: "main", AutoDeploy: true}
+	cl := fakeClient(app)
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", TenantNamespaces: true}}
+	h := &GitWebhook{Svc: svc, Secret: "shh"}
+
+	redeployed, err := h.redeployMatching(context.Background(), newPush(repo, []string{"docs/cli.md"}), "main")
+	if err != nil {
+		t.Fatalf("redeployMatching: %v", err)
+	}
+	if !contains(redeployed, app.Name) {
+		t.Fatalf("tenant App was not redeployed: got %v, want %s", redeployed, app.Name)
+	}
+
+	var got appv1alpha1.App
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: testWS, Name: app.Name}, &got); err != nil {
+		t.Fatalf("get tenant App: %v", err)
+	}
+	if got.Spec.RestartedAt == "" {
+		t.Error("tenant App restart timestamp was not bumped")
+	}
+}
+
+// TestWebhookBranchDelete_TenantNamespaceMode keeps the sibling delete path in
+// sync: deleting a tracked branch must find the tenant App and disable its
+// auto-deploy even though no matching App exists in the shared namespace.
+func TestWebhookBranchDelete_TenantNamespaceMode(t *testing.T) {
+	const repo = "https://github.com/bex-co/eden-cms-v2"
+	app := tenantNSApp("eden-cms-v2", testWS, "srv-1")
+	app.Spec = appv1alpha1.AppSpec{Repo: repo, Branch: "main", AutoDeploy: true}
+	cl := fakeClient(app)
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", TenantNamespaces: true}}
+	h := &GitWebhook{Svc: svc, Secret: "shh"}
+
+	affected, err := h.recordBranchDeleted(context.Background(), []string{repo}, "main", "delivery-1")
+	if err != nil {
+		t.Fatalf("recordBranchDeleted: %v", err)
+	}
+	if !contains(affected, app.Name) {
+		t.Fatalf("tenant App was not affected: got %v, want %s", affected, app.Name)
+	}
+
+	var got appv1alpha1.App
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: testWS, Name: app.Name}, &got); err != nil {
+		t.Fatalf("get tenant App: %v", err)
+	}
+	if got.Spec.AutoDeploy {
+		t.Error("tenant App auto-deploy remained enabled after tracked branch deletion")
 	}
 }
 
