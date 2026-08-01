@@ -344,11 +344,31 @@ func main() {
 		os.Exit(1)
 	}
 
+	kvBackupDestination := envOr("BEX_KV_BACKUP_DESTINATION", "")
+	kvBackupEndpoint := envOr("BEX_KV_BACKUP_ENDPOINT", "")
+	kvBackupSecret := envOr("BEX_KV_BACKUP_S3_SECRET", "")
+	configuredKVBackupFields := 0
+	for _, value := range []string{kvBackupDestination, kvBackupEndpoint, kvBackupSecret} {
+		if value != "" {
+			configuredKVBackupFields++
+		}
+	}
+	if configuredKVBackupFields > 0 && configuredKVBackupFields < 3 {
+		setupLog.Info("KeyValue backups disabled: BEX_KV_BACKUP_* contract is incomplete",
+			"destinationConfigured", kvBackupDestination != "",
+			"endpointConfigured", kvBackupEndpoint != "",
+			"secretNameConfigured", kvBackupSecret != "")
+	}
 	if err := (&controller.KeyValueReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
 		KvDomain:      envOr("BEX_KV_DOMAIN", ""),
 		ClusterIssuer: envOr("BEX_CLUSTER_ISSUER", ""),
+		Backup: controller.BackupStore{
+			DestinationPath: kvBackupDestination,
+			EndpointURL:     kvBackupEndpoint,
+			S3Secret:        kvBackupSecret,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "keyvalue")
 		os.Exit(1)

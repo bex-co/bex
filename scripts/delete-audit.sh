@@ -24,7 +24,8 @@
 #     - no CNPG Cluster CR named <name> in the apps namespace
 #     - no backup-purge Job/Pod remains after its durable terminal result
 #   KV:
-#     - KeyValue CR, StatefulSet, PVC, and both immutable Secrets are absent
+#     - KeyValue CR, StatefulSet, PVC, both immutable Secrets, backup CronJob,
+#       backup/purge Jobs and Pods, and S3 prefix are absent
 #
 # Usage:
 #   bash scripts/delete-audit.sh [--app NAME] [--static NAME] [--db NAME] [--kv NAME]
@@ -36,6 +37,7 @@
 #   BEX_OPENBAO_URL   — OpenBao base URL (e.g. http://bao.bex-system.svc:8200)
 #   BAO_TOKEN         — OpenBao root/admin token
 #   BEX_STATIC_S3_BUCKET / BEX_STATIC_S3_ENDPOINT — for S3 audit
+#   BEX_KV_BACKUP_DESTINATION / BEX_KV_BACKUP_ENDPOINT — for KeyValue S3 audit
 #   AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY — for S3 audit
 #
 # Exit 0: all checks pass. Non-zero: which check failed is printed to stderr.
@@ -55,6 +57,8 @@ REGISTRY="${BEX_REGISTRY:-}"
 BAO_URL="${BEX_OPENBAO_URL:-}"
 STATIC_BUCKET="${BEX_STATIC_S3_BUCKET:-}"
 STATIC_ENDPOINT="${BEX_STATIC_S3_ENDPOINT:-}"
+KV_BACKUP_DESTINATION="${BEX_KV_BACKUP_DESTINATION:-}"
+KV_BACKUP_ENDPOINT="${BEX_KV_BACKUP_ENDPOINT:-}"
 REGISTRY_URL="$REGISTRY"
 if [ -n "$REGISTRY_URL" ] && [[ "$REGISTRY_URL" != http://* ]] && [[ "$REGISTRY_URL" != https://* ]]; then
   REGISTRY_URL="http://$REGISTRY_URL"
@@ -283,7 +287,7 @@ audit_kv() {
 
   # PVCs — the StatefulSetPersistentVolumeClaimRetentionPolicy (WhenDeleted=Delete)
   # should have removed them with the StatefulSet.
-  cnt=$(kubectl get pvc -n "$APPS_NS" -l "app.bex.co/name=$name" \
+  cnt=$(kubectl get pvc -n "$APPS_NS" -l "app.bex.co/keyvalue=$name" \
     --ignore-not-found -o name 2>/dev/null | wc -l | tr -d ' ')
   if [ "$cnt" = "0" ]; then
     ok "no PVCs for KeyValue $name in $APPS_NS"
@@ -310,6 +314,30 @@ audit_kv() {
       fail "KeyValue Secret $secret_name still exists in $APPS_NS"
     fi
   done
+
+  local component kind
+  for component in keyvalue-backup keyvalue-backup-purge; do
+    for kind in cronjobs jobs pods; do
+      cnt=$(k8s_count "$APPS_NS" "$kind" "app.bex.co/keyvalue=$name,app.bex.co/component=$component")
+      if [ "$cnt" = "0" ]; then
+        ok "no $component $kind remain for $name"
+      else
+        fail "$cnt $component $kind remain for $name"
+      fi
+    done
+  done
+
+  if [ -n "$KV_BACKUP_DESTINATION" ] && [ -n "$KV_BACKUP_ENDPOINT" ] && command -v aws >/dev/null 2>&1; then
+    local prefix="${KV_BACKUP_DESTINATION%/}/$name/"
+    cnt=$(aws s3 ls "$prefix" --recursive --endpoint-url "$KV_BACKUP_ENDPOINT" 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$cnt" = "0" ]; then
+      ok "no KeyValue backup objects under $prefix"
+    else
+      fail "$cnt KeyValue backup object(s) remain under $prefix"
+    fi
+  else
+    skip "KeyValue S3 check ($name) — backup endpoint/destination or aws CLI not configured"
+  fi
 }
 
 # ---- main ----

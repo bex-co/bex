@@ -291,10 +291,13 @@ tenant_backup_env="$(yq -N '
   [.env[] |
     select(.name == "BEX_DB_BACKUP_DESTINATION" or
            .name == "BEX_DB_BACKUP_ENDPOINT" or
-           .name == "BEX_DB_BACKUP_S3_SECRET") |
+           .name == "BEX_DB_BACKUP_S3_SECRET" or
+           .name == "BEX_KV_BACKUP_DESTINATION" or
+           .name == "BEX_KV_BACKUP_ENDPOINT" or
+           .name == "BEX_KV_BACKUP_S3_SECRET") |
     .name + "=" + .value] | sort | join("|")' \
   - <<<"$prod_operator_render" | tr -d '\n')"
-expected_tenant_backup_env='BEX_DB_BACKUP_DESTINATION=s3://bex-tfstate/postgres|BEX_DB_BACKUP_ENDPOINT=https://s3.eu-central-2.wasabisys.com|BEX_DB_BACKUP_S3_SECRET=bex-db-backup-s3'
+expected_tenant_backup_env='BEX_DB_BACKUP_DESTINATION=s3://bex-tfstate/postgres|BEX_DB_BACKUP_ENDPOINT=https://s3.eu-central-2.wasabisys.com|BEX_DB_BACKUP_S3_SECRET=bex-db-backup-s3|BEX_KV_BACKUP_DESTINATION=s3://bex-tfstate/keyvalue|BEX_KV_BACKUP_ENDPOINT=https://s3.eu-central-2.wasabisys.com|BEX_KV_BACKUP_S3_SECRET=bex-kv-backup-s3'
 if [ "$tenant_backup_env" != "$expected_tenant_backup_env" ]; then
   echo "FAIL: prod tenant backup env contract is '$tenant_backup_env' (want '$expected_tenant_backup_env')" >&2
   fail=1
@@ -304,8 +307,11 @@ if kubectl kustomize lego/operator/config/default | yq -e '
   .spec.template.spec.containers[] | select(.name == "manager") |
   .env[] | select(.name == "BEX_DB_BACKUP_DESTINATION" or
                   .name == "BEX_DB_BACKUP_ENDPOINT" or
-                  .name == "BEX_DB_BACKUP_S3_SECRET")' - >/dev/null 2>&1; then
-  echo "FAIL: default/local operator config must leave tenant backups disabled without ObjectStores" >&2
+                  .name == "BEX_DB_BACKUP_S3_SECRET" or
+                  .name == "BEX_KV_BACKUP_DESTINATION" or
+                  .name == "BEX_KV_BACKUP_ENDPOINT" or
+                  .name == "BEX_KV_BACKUP_S3_SECRET")' - >/dev/null 2>&1; then
+  echo "FAIL: default/local operator config must leave tenant datastore backups disabled" >&2
   fail=1
 fi
 

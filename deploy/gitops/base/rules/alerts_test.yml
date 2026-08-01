@@ -124,9 +124,17 @@ tests:
       - { eval_time: 20m, alertname: BillingExportAmbiguity, exp_alerts: [] }
       - { eval_time: 20m, alertname: BillingLocalStampFailure, exp_alerts: [] }
       - { eval_time: 20m, alertname: BillingProviderDuplicate, exp_alerts: [] }
-      - { eval_time: 20m, alertname: BillingInvoiceReadDegraded, exp_alerts: [] }
+      - {
+          eval_time: 20m,
+          alertname: BillingInvoiceReadDegraded,
+          exp_alerts: [],
+        }
       - { eval_time: 20m, alertname: BillingWebhookDrift, exp_alerts: [] }
-      - { eval_time: 20m, alertname: BillingProvisioningFailure, exp_alerts: [] }
+      - {
+          eval_time: 20m,
+          alertname: BillingProvisioningFailure,
+          exp_alerts: [],
+        }
 
   - name: missing tenant-node egress meter target
     interval: 1m
@@ -344,9 +352,13 @@ tests:
       # etcd-backup: age = 1800 - (-88200) = 90000s = exactly 25h -> NOT fire.
       - series: 'kube_cronjob_status_last_successful_time{cronjob="etcd-backup", namespace="kube-system"}'
         values: "-88200x60"
+      - series: 'kube_cronjob_spec_suspend{cronjob="etcd-backup", namespace="kube-system"}'
+        values: "0x60"
       # openbao-backup: age = 1800 - (-95400) = 97200s = exactly 27h -> fire.
       - series: 'kube_cronjob_status_last_successful_time{cronjob="openbao-backup", namespace="secrets"}'
         values: "-95400x60"
+      - series: 'kube_cronjob_spec_suspend{cronjob="openbao-backup", namespace="secrets"}'
+        values: "0x60"
     alert_rule_test:
       - eval_time: 30m
         alertname: BackupCronJobStale
@@ -357,7 +369,37 @@ tests:
               namespace: secrets
             exp_annotations:
               summary: "Backup secrets/openbao-backup has not succeeded in >26h"
-              description: "The nightly openbao-backup last succeeded over 26h ago — silent backup rot is unrecoverable data loss. Debug: kubectl -n secrets get cronjob openbao-backup; kubectl -n secrets get jobs -l batch.kubernetes.io/cronjob-name=openbao-backup. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md, docs/ADR031-platform-data-backup.md"
+              description: "The nightly openbao-backup has no successful backup in over 26h — silent backup rot is unrecoverable data loss. Debug: kubectl -n secrets get cronjob openbao-backup; kubectl -n secrets get jobs -l batch.kubernetes.io/cronjob-name=openbao-backup. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md, docs/ADR021-keyvalue-management.md, docs/ADR031-platform-data-backup.md"
+
+  - name: KeyValue backup staleness includes never-successful and excludes suspended
+    interval: 1m
+    input_series:
+      # 27h old and never successful: the created-time branch must fire.
+      - series: 'kube_cronjob_created{cronjob="kvbak-red-never", namespace="default"}'
+        values: "-95400x60"
+      - series: 'kube_cronjob_spec_suspend{cronjob="kvbak-red-never", namespace="default"}'
+        values: "0x60"
+      # Equally stale but deliberately suspended: must remain quiet.
+      - series: 'kube_cronjob_status_last_successful_time{cronjob="kvbak-red-suspended", namespace="default"}'
+        values: "-95400x60"
+      - series: 'kube_cronjob_spec_suspend{cronjob="kvbak-red-suspended", namespace="default"}'
+        values: "1x60"
+      # Active and recent: must remain quiet.
+      - series: 'kube_cronjob_status_last_successful_time{cronjob="kvbak-red-healthy", namespace="default"}'
+        values: "-1800x60"
+      - series: 'kube_cronjob_spec_suspend{cronjob="kvbak-red-healthy", namespace="default"}'
+        values: "0x60"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: BackupCronJobStale
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              cronjob: kvbak-red-never
+              namespace: default
+            exp_annotations:
+              summary: "Backup default/kvbak-red-never has not succeeded in >26h"
+              description: "The nightly kvbak-red-never has no successful backup in over 26h — silent backup rot is unrecoverable data loss. Debug: kubectl -n default get cronjob kvbak-red-never; kubectl -n default get jobs -l batch.kubernetes.io/cronjob-name=kvbak-red-never. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md, docs/ADR021-keyvalue-management.md, docs/ADR031-platform-data-backup.md"
 
   # TraefikHigh5xxRate: a tiny denominator (1 request total) must NOT fire even at
   # 100% 5xx — the traffic floor guards against alerting on noise.

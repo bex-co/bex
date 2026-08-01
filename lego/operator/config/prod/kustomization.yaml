@@ -37,6 +37,24 @@ patches:
         value:
           name: BEX_DB_BACKUP_S3_SECRET
           value: bex-db-backup-s3
+      # Paid KeyValue plans take coherent remote RDB snapshots, then upload and
+      # prune under the dedicated keyvalue/ prefix. The Secret is provisioned
+      # out of band in the apps namespace; local/default stays disabled.
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_KV_BACKUP_DESTINATION
+          value: s3://bex-tfstate/keyvalue
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_KV_BACKUP_ENDPOINT
+          value: https://s3.eu-central-2.wasabisys.com
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_KV_BACKUP_S3_SECRET
+          value: bex-kv-backup-s3
   - target:
       group: apps
       version: v1

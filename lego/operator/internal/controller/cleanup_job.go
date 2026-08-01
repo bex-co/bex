@@ -18,14 +18,30 @@ package controller
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// cleanupJobName derives a stable DNS-label name for a parent's terminal Job.
+// Long resource names use a wider UID hash while remaining within Kubernetes'
+// 63-byte Job-name limit.
+func cleanupJobName(prefix, parentName string, parentUID types.UID) string {
+	sum := sha256.Sum256([]byte(parentUID))
+	name := fmt.Sprintf("%s%s-%x", prefix, parentName, sum[:4])
+	if len(name) <= 63 {
+		return name
+	}
+	suffix := fmt.Sprintf("-%x", sum[:6])
+	maxParentLength := 63 - len(prefix) - len(suffix)
+	return prefix + parentName[:min(len(parentName), maxParentLength)] + suffix
+}
 
 // reconcileCleanupJob runs a persisted terminal Job state machine. The parent
 // annotation is written only after JobComplete, then the Job and every labeled
@@ -37,7 +53,7 @@ func reconcileCleanupJob(ctx context.Context, cl client.Client, parent client.Ob
 		key := client.ObjectKeyFromObject(job)
 		if err := cl.Get(ctx, key, &current); err == nil {
 			if current.DeletionTimestamp.IsZero() {
-				if err := cl.Delete(ctx, &current, client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil && !apierrors.IsNotFound(err) {
+				if err := cl.Delete(ctx, &current, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !apierrors.IsNotFound(err) {
 					return false, fmt.Errorf("delete completed cleanup Job %s: %w", current.Name, err)
 				}
 			}
@@ -76,7 +92,7 @@ func reconcileCleanupJob(ctx context.Context, cl client.Client, parent client.Ob
 	if cleanupJobCondition(&current, batchv1.JobFailed) {
 		message := cleanupJobFailureMessage(&current)
 		if current.DeletionTimestamp.IsZero() {
-			if err := cl.Delete(ctx, &current, client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil && !apierrors.IsNotFound(err) {
+			if err := cl.Delete(ctx, &current, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !apierrors.IsNotFound(err) {
 				return false, fmt.Errorf("cleanup Job %s failed (%s) and could not be deleted: %w", current.Name, message, err)
 			}
 		}
@@ -105,6 +121,9 @@ func cleanupJobOwnedByParent(job *batchv1.Job, parent client.Object) bool {
 	}
 	if databaseUID := job.Labels["app.bex.co/database-uid"]; databaseUID != "" {
 		return databaseUID == uid
+	}
+	if keyValueUID := job.Labels["app.bex.co/keyvalue-uid"]; keyValueUID != "" {
+		return keyValueUID == uid
 	}
 	return false
 }

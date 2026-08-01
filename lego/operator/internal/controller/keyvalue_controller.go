@@ -27,6 +27,7 @@ import (
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -199,6 +200,9 @@ func secretDataEqual(left, right map[string][]byte) bool {
 type KeyValueReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	// Backup is the non-secret object-store contract for paid-plan RDB
+	// snapshots. All fields are required; an incomplete contract is disabled.
+	Backup BackupStore
 	// KvDomain is the wildcard base for external endpoints, e.g. "kv.bex.co".
 	// Empty => public KeyValues get no external route.
 	KvDomain string
@@ -336,13 +340,21 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if err := r.Get(ctx, req.NamespacedName, &kv); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	// Deletion: the StatefulSet, Service, Secret, and any route are owned by the
-	// KeyValue, so they are garbage-collected automatically via owner refs.
 	if !kv.DeletionTimestamp.IsZero() {
-		return ctrl.Result{}, nil
+		return r.handleKeyValueDeletion(ctx, &kv)
 	}
 
 	plan, requestedStorageGB := resolveKVPlan(kv.Spec)
+	backupEnabled := keyValueBackupsEnabled(plan, r.Backup)
+	// Only a KeyValue that can write backups needs the purge finalizer. This
+	// keeps the fully-disabled path byte-identical while retaining cleanup after
+	// a paid store is later downgraded to Free.
+	if backupEnabled && controllerutil.AddFinalizer(&kv, kvFinalizer) {
+		if err := r.Update(ctx, &kv); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
 	sts, storageGB, result, done, err := r.keyValueStorageIntent(ctx, &kv, requestedStorageGB)
 	if done || err != nil {
 		return result, err
@@ -496,6 +508,10 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return controllerutil.SetControllerReference(&kv, sts, r.Scheme)
 	}); err != nil {
 		return r.kvFail(ctx, &kv, "StatefulSetFailed", err)
+	}
+
+	if err := r.reconcileKeyValueBackup(ctx, &kv, plan, authSecretName); err != nil {
+		return r.kvFail(ctx, &kv, "BackupCronJobFailed", err)
 	}
 
 	// --- optional external SNI endpoint via the metered Key Value front door ---
@@ -807,8 +823,9 @@ func (r *KeyValueReconciler) kvFail(ctx context.Context, kv *appv1alpha1.KeyValu
 // watch because cert-manager owns its issuance lifecycle.
 func (r *KeyValueReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appv1alpha1.KeyValue{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&appv1alpha1.KeyValue{}, builder.WithPredicates(generationDeletionOrFinalizerPredicate{})).
 		Owns(&appsv1.StatefulSet{}, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
+		Owns(&batchv1.CronJob{}, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		Watches(&corev1.PersistentVolumeClaim{}, handler.EnqueueRequestsFromMapFunc(keyValuePVCRequests),
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		Watches(&corev1.Pod{}, handler.EnqueueRequestsFromMapFunc(keyValuePodRequests),
