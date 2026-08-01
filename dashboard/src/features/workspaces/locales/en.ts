@@ -29,9 +29,9 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     message: "Hobby",
     description: "Workspace plan card name",
   },
-  "workspaces.planHobbyPrice": {
-    message: "Free",
-    description: "Workspace plan card price",
+  "workspaces.planHobbyBilling": {
+    message: "No workspace fee",
+    description: "Workspace plan card billing label",
   },
   "workspaces.planHobbyDescription": {
     message: "1 member, up to 25 services, 5 Hobby workspaces per user.",
@@ -41,9 +41,9 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     message: "Pro",
     description: "Workspace plan card name",
   },
-  "workspaces.planProPrice": {
-    message: "$25/mo",
-    description: "Workspace plan card price",
+  "workspaces.planProBilling": {
+    message: "No workspace fee",
+    description: "Workspace plan card billing label",
   },
   "workspaces.planProDescription": {
     message: "Unlimited members and services.",
@@ -53,9 +53,9 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     message: "Scale",
     description: "Workspace plan card name",
   },
-  "workspaces.planScalePrice": {
-    message: "$499/mo",
-    description: "Workspace plan card price",
+  "workspaces.planScaleBilling": {
+    message: "No workspace fee",
+    description: "Workspace plan card billing label",
   },
   "workspaces.planScaleDescription": {
     message: "Unlimited members and services, extra roles.",
@@ -65,13 +65,18 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     message: "Enterprise",
     description: "Workspace plan card name",
   },
-  "workspaces.planEnterprisePrice": {
-    message: "Custom",
-    description: "Workspace plan card price",
+  "workspaces.planEnterpriseBilling": {
+    message: "Custom terms",
+    description: "Workspace plan card billing label",
   },
   "workspaces.planEnterpriseDescription": {
     message: "Custom limits and support.",
     description: "Workspace plan card description",
+  },
+  "workspaces.planUsageBillingNote": {
+    message:
+      "Service and datastore usage is billed separately by resource tier.",
+    description: "Billing note below the workspace plan picker",
   },
   "workspaces.createTitle": {
     message: "Create a workspace",

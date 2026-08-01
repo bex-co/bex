@@ -47,6 +47,38 @@ class StripeBillingSetupTest(unittest.TestCase):
         self.assertIn("storage_gb_hours", names)
         self.assertFalse(any(name.endswith(".free") for name in names))
 
+    def test_pricing_catalog_rates_match_published_units(self):
+        dimensions = {name: cents for name, _, cents in SETUP.parse_pricing()}
+        month_seconds = Decimal(730 * 60 * 60)
+        monthly = {
+            "instance_seconds.service.starter": "4.90",
+            "instance_seconds.service.standard": "17.50",
+            "instance_seconds.service.pro": "59.50",
+            "instance_seconds.service.pro-plus": "122.50",
+            "instance_seconds.service.pro-max": "157.50",
+            "instance_seconds.service.pro-ultra": "315.00",
+            "instance_seconds.postgres.basic-256mb": "4.90",
+            "instance_seconds.postgres.basic-1gb": "14.00",
+            "instance_seconds.key_value.starter": "7.00",
+            "instance_seconds.key_value.standard": "21.00",
+        }
+        for name, want in monthly.items():
+            with self.subTest(name=name):
+                dollars = dimensions[name] * month_seconds / Decimal(100)
+                self.assertEqual(Decimal(want), dollars.quantize(Decimal("0.01")))
+
+        self.assertEqual(Decimal("1.5"), dimensions["egress_gib"])
+        build_dollars_per_minute = dimensions["build_seconds"] * Decimal(60) / Decimal(100)
+        self.assertEqual(
+            Decimal("0.0035"),
+            build_dollars_per_minute.quantize(Decimal("0.0001")),
+        )
+        storage_dollars_per_month = dimensions["storage_gb_hours"] * Decimal(730) / Decimal(100)
+        self.assertEqual(
+            Decimal("0.21"),
+            storage_dollars_per_month.quantize(Decimal("0.01")),
+        )
+
     def test_existing_matching_price_is_reused(self):
         price = {
             "id": "price_1",
