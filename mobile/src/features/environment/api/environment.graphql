@@ -1,0 +1,39 @@
+query MobileEnvVarKeys($serviceId: String!) {
+  service(id: $serviceId) {
+    id
+    envVarKeys {
+      id
+      key
+      revision
+    }
+  }
+}
+
+query MobileRevealEnvVar($serviceId: String!, $key: String!) {
+  service(id: $serviceId) {
+    id
+    envVar(key: $key) {
+      id
+      key
+      value
+      revision
+    }
+  }
+}
+
+mutation MobilePatchSingleEnvVar(
+  $serviceId: String!
+  $key: String!
+  $value: String!
+  $revision: String!
+) {
+  patchServiceEnvironment(
+    serviceId: $serviceId
+    envVars: [{ key: $key, value: $value }]
+    saveMode: "deploy"
+    expectedEnvRevision: $revision
+  ) {
+    envVarKeys
+    rolledOut
+  }
+}

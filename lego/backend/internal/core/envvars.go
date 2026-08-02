@@ -28,6 +28,12 @@ type EnvVar struct {
 	ID    string
 	Key   string
 	Value string
+	// Revision is the opaque whole-environment revision observed with this
+	// value. Every key returned by one masked list carries the same revision;
+	// the single-key reveal carries the revision of the map it read. Callers
+	// may echo it into the one-key CAS mutation without learning the backend's
+	// native KV version.
+	Revision string
 }
 
 // EnvVarReader is the seam apps' Service GraphQL type uses to nest a service's

@@ -486,6 +486,7 @@ export type EnvVar = {
   __typename: 'EnvVar';
   id: Maybe<Scalars['String']['output']>;
   key: Maybe<Scalars['String']['output']>;
+  revision: Maybe<Scalars['String']['output']>;
   value: Maybe<Scalars['String']['output']>;
 };
 
@@ -1279,6 +1280,7 @@ export type MutationMarkPushNotificationReadArgs = {
 
 export type MutationPatchServiceEnvironmentArgs = {
   envVars?: InputMaybe<Array<EnvironmentEnvVarPatchInput>>;
+  expectedEnvRevision?: InputMaybe<Scalars['String']['input']>;
   saveMode: Scalars['String']['input'];
   secretFiles?: InputMaybe<Array<EnvironmentSecretFilePatchInput>>;
   serviceId: Scalars['String']['input'];

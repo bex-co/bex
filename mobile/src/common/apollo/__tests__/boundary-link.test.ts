@@ -1,6 +1,6 @@
 import { ApolloLink, type OperationVariables } from "@apollo/client";
 import { Observable } from "rxjs";
-import { createBoundaryLink } from "../boundary-link";
+import { combineAbortSignals, createBoundaryLink } from "../boundary-link";
 import { DataBoundary } from "../data-boundary";
 
 describe("boundary Apollo link", () => {
@@ -34,5 +34,36 @@ describe("boundary Apollo link", () => {
     expect(values).toEqual([{ data: { workspace: "tea-old" } }]);
     const fetchOptions = context.fetchOptions as { signal: AbortSignal };
     expect(fetchOptions.signal.aborted).toBe(true);
+  });
+});
+
+describe("combineAbortSignals", () => {
+  it("preserves both the caller timeout and identity boundary", () => {
+    const caller = new AbortController();
+    const boundary = new AbortController();
+    const callerCombined = combineAbortSignals(caller.signal, boundary.signal);
+    caller.abort();
+    expect(callerCombined.signal.aborted).toBe(true);
+
+    const nextCaller = new AbortController();
+    const nextBoundary = new AbortController();
+    const boundaryCombined = combineAbortSignals(
+      nextCaller.signal,
+      nextBoundary.signal,
+    );
+    nextBoundary.abort();
+    expect(boundaryCombined.signal.aborted).toBe(true);
+  });
+
+  it("detaches both upstream listeners when an operation completes", () => {
+    const caller = new AbortController();
+    const boundary = new AbortController();
+    const combined = combineAbortSignals(caller.signal, boundary.signal);
+
+    combined.cleanup();
+    caller.abort();
+    boundary.abort();
+
+    expect(combined.signal.aborted).toBe(false);
   });
 });

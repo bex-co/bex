@@ -27,6 +27,7 @@ package secrets
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -44,7 +45,10 @@ import (
 // EnvVarView is the Render-shaped env-var wire object ({key, value}, Render's
 // serviceEnvVar) the REST adapter uses. The GraphQL surface renders the neutral
 // core.EnvVar ({id,key,value}) nested under a Service instead — REST tracks
-// Render's public API, GraphQL the dashboard.
+// Render's public API, GraphQL the dashboard. Revision is an additive bex
+// extension: version-aware stores attach the same opaque whole-map token to
+// every sensitive REST/MCP read so those adapters can use the same optional CAS
+// patch as GraphQL. Legacy stores omit it.
 //
 // Generate is Render's generateValue (w8/m10): when true and Value is empty, the
 // write verb mints a cryptographically random value server-side (core.GenerateValue,
@@ -56,6 +60,7 @@ type EnvVarView struct {
 	Key      string `json:"key"`
 	Value    string `json:"value"`
 	Generate bool   `json:"generateValue,omitempty"`
+	Revision string `json:"revision,omitempty"`
 }
 
 // EnvVarWrite is the mutually exclusive value-or-generate input accepted by a
@@ -131,20 +136,79 @@ func (s *Service) readMap(ctx context.Context, path string) (map[string]string, 
 // stable response (Render's GET /v1/services/{id}/env-vars). Reading secret
 // values is sensitive, gated like connection strings (RelCanViewSensitive).
 func (s *Service) ListEnvVars(ctx context.Context, service string) ([]EnvVarView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, service)
-	if err != nil {
-		return nil, err // ErrNotFound for unknown services, exactly like Get
-	}
-	service = storeServiceName(a, service)
-	ctx = withTenant(ctx, storeTenant(a))
-	if s.Store == nil {
-		return nil, core.ErrSecretsUnavailable
-	}
-	env, err := s.readMap(ctx, envPath(service))
+	env, revision, err := s.readAuthorizedEnvMap(ctx, service)
 	if err != nil {
 		return nil, err
 	}
-	return envVarViews(env), nil
+	return envVarViews(env, revision), nil
+}
+
+// readAuthorizedEnvMap is the one sensitive-read boundary for the masked list,
+// explicit single-key reveal, and the legacy REST list/get verbs. A versioned
+// store returns one opaque whole-map revision alongside the snapshot; legacy
+// SecretKV implementations keep returning an empty revision so old callers and
+// test doubles remain compatible.
+func (s *Service) readAuthorizedEnvMap(ctx context.Context, service string) (map[string]string, string, error) {
+	a, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, service)
+	if err != nil {
+		return nil, "", err // ErrNotFound for unknown services, exactly like Get
+	}
+	service = storeServiceName(a, service)
+	tenant := storeTenant(a)
+	ctx = withTenant(ctx, tenant)
+	if s.Store == nil {
+		return nil, "", core.ErrSecretsUnavailable
+	}
+	versioned, ok := s.Store.(core.VersionedSecretKV)
+	if !ok {
+		env, err := s.readMap(ctx, envPath(service))
+		if err != nil {
+			return nil, "", err
+		}
+		return env, "", nil
+	}
+	return s.readVersionedEnvMap(ctx, tenant, envPath(service), versioned)
+}
+
+// readVersionedEnvMap preserves readMap's lazy tenant migration without first
+// performing an unsanitized SecretKV.Get. Every current-tenant response comes
+// from one atomic versioned snapshot, and every OpenBao/transport failure is
+// collapsed before it can expose a mount URL or logical path.
+func (s *Service) readVersionedEnvMap(ctx context.Context, tenant, path string, versioned core.VersionedSecretKV) (map[string]string, string, error) {
+	snapshot, err := versioned.GetVersioned(ctx, path)
+	if err != nil {
+		return nil, "", envSourceUnavailable()
+	}
+	if len(snapshot.Data) > 0 || tenant == baoTenant {
+		return snapshot.Data, encodeEnvRevision(snapshot.Version), nil
+	}
+
+	legacy, err := versioned.GetVersioned(withTenant(ctx, baoTenant), path)
+	if err != nil {
+		return nil, "", envSourceUnavailable()
+	}
+	if len(legacy.Data) == 0 {
+		return snapshot.Data, encodeEnvRevision(snapshot.Version), nil
+	}
+	newVersion, err := versioned.PutCAS(ctx, path, legacy.Data, snapshot.Version)
+	if err != nil {
+		if !errors.Is(err, core.ErrConflict) {
+			return nil, "", envSourceUnavailable()
+		}
+		// Another current-tenant writer won migration or wrote a newer map.
+		// Return its atomic snapshot instead of exposing the CAS/store error.
+		winner, winnerErr := versioned.GetVersioned(ctx, path)
+		if winnerErr != nil {
+			return nil, "", envSourceUnavailable()
+		}
+		return winner.Data, encodeEnvRevision(winner.Version), nil
+	}
+	_ = s.Store.Delete(withTenant(ctx, baoTenant), path)
+	return cloneStringMap(legacy.Data), encodeEnvRevision(newVersion), nil
+}
+
+func envSourceUnavailable() error {
+	return fmt.Errorf("%w: environment source is unavailable", core.ErrSecretsUnavailable)
 }
 
 // ListEnvVarsPage returns a stable keyset page of a service's environment
@@ -175,16 +239,7 @@ func (s *Service) ListEnvVarsPage(ctx context.Context, service, after string, li
 // GetEnvVar returns a single variable (Render's GET .../env-vars/{key}), the bare
 // {key,value}. Unknown service or key => core.ErrNotFound. Sensitive read.
 func (s *Service) GetEnvVar(ctx context.Context, service, key string) (EnvVarView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, service)
-	if err != nil {
-		return EnvVarView{}, err
-	}
-	service = storeServiceName(a, service)
-	ctx = withTenant(ctx, storeTenant(a))
-	if s.Store == nil {
-		return EnvVarView{}, core.ErrSecretsUnavailable
-	}
-	env, err := s.readMap(ctx, envPath(service))
+	env, revision, err := s.readAuthorizedEnvMap(ctx, service)
 	if err != nil {
 		return EnvVarView{}, err
 	}
@@ -192,7 +247,7 @@ func (s *Service) GetEnvVar(ctx context.Context, service, key string) (EnvVarVie
 	if !ok {
 		return EnvVarView{}, core.ErrNotFound
 	}
-	return EnvVarView{Key: key, Value: v}, nil
+	return EnvVarView{Key: key, Value: v, Revision: revision}, nil
 }
 
 // SetEnvVars replaces a service's whole env set (Render's PUT semantics) and
@@ -228,7 +283,7 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	if err := s.materializeEnv(ctx, a, env); err != nil {
 		return nil, err
 	}
-	return envVarViews(env), nil
+	return envVarViews(env, ""), nil
 }
 
 // resolveValue applies Render's generateValue semantics to one env-var write:
@@ -371,24 +426,29 @@ func (s *Service) SeedEnvVars(ctx context.Context, service string, literals map[
 // EnvVarKeys lists a service's env-var keys only (value empty), the Render
 // dashboard shape (`service{ envVarKeys{ id key } }`). id == key.
 func (s *Service) EnvVarKeys(ctx context.Context, service string) ([]core.EnvVar, error) {
-	vars, err := s.ListEnvVars(ctx, service)
+	env, revision, err := s.readAuthorizedEnvMap(ctx, service)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]core.EnvVar, 0, len(vars))
-	for _, v := range vars {
-		out = append(out, core.EnvVar{ID: v.Key, Key: v.Key}) // keys only; value fetched on demand
+	keys := core.SortedKeys(env)
+	out := make([]core.EnvVar, 0, len(keys))
+	for _, key := range keys {
+		out = append(out, core.EnvVar{ID: key, Key: key, Revision: revision}) // keys only; value fetched on demand
 	}
 	return out, nil
 }
 
 // EnvVarValue reads one variable's value (the dashboard's "Show secret").
 func (s *Service) EnvVarValue(ctx context.Context, service, key string) (core.EnvVar, error) {
-	v, err := s.GetEnvVar(ctx, service, key)
+	env, revision, err := s.readAuthorizedEnvMap(ctx, service)
 	if err != nil {
 		return core.EnvVar{}, err
 	}
-	return core.EnvVar{ID: v.Key, Key: v.Key, Value: v.Value}, nil
+	value, ok := env[key]
+	if !ok {
+		return core.EnvVar{}, core.ErrNotFound
+	}
+	return core.EnvVar{ID: key, Key: key, Value: value, Revision: revision}, nil
 }
 
 // storeMap writes the whole map to the source of truth at path, deleting the path
@@ -401,10 +461,10 @@ func (s *Service) storeMap(ctx context.Context, path string, data map[string]str
 }
 
 // envVarViews renders an env map as a key-sorted slice.
-func envVarViews(env map[string]string) []EnvVarView {
+func envVarViews(env map[string]string, revision string) []EnvVarView {
 	out := make([]EnvVarView, 0, len(env))
 	for k, v := range env {
-		out = append(out, EnvVarView{Key: k, Value: v})
+		out = append(out, EnvVarView{Key: k, Value: v, Revision: revision})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
 	return out

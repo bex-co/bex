@@ -11,4 +11,4 @@
 - [ ] **m5** — Push channel + notification hygiene (11 tasks) ← from ADR048 D2 + gap 1/3
 - [ ] **m6** — Phase-1 agent mission control (9 tasks) ← from ADR048 M2 + ADR047 phase 1
 - [ ] **m7** — Live agent attach and needs-decision steering (9 tasks) ← from ADR048 M3 + ADR047 phase 2
-- [ ] **m8** — Tier-2 mobile quick actions (8 tasks) ← from ADR048 D3
+- [ ] **m8** — Tier-2 mobile quick actions (9 tasks) ← from ADR048 D3

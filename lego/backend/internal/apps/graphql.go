@@ -506,16 +506,20 @@ var nameAvailabilityGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// envVarGQLType renders the kernel's neutral core.EnvVar ({id,key,value}), the
+// envVarGQLType renders the kernel's neutral core.EnvVar
+// ({id,key,value,revision}), the
 // object Render's dashboard nests under a service. bex has no separate id (the
 // key is unique within a service), so id == key; the keys-only list leaves value
-// empty (values are fetched per-key via envVar(key)).
+// empty (values are fetched per-key via envVar(key)). Revision is an opaque
+// whole-environment CAS token: every item in one masked list and the explicit
+// reveal carry the revision of the coherent map they observed.
 var envVarGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "EnvVar",
 	Fields: graphql.Fields{
-		"id":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v core.EnvVar) any { return v.ID })},
-		"key":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v core.EnvVar) any { return v.Key })},
-		"value": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v core.EnvVar) any { return v.Value })},
+		"id":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v core.EnvVar) any { return v.ID })},
+		"key":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v core.EnvVar) any { return v.Key })},
+		"value":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v core.EnvVar) any { return v.Value })},
+		"revision": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v core.EnvVar) any { return v.Revision })},
 	},
 })
 

@@ -10,6 +10,7 @@ export const MOBILE_SAFE_ACTIONS = [
   "resume-database",
   "suspend-key-value",
   "resume-key-value",
+  "update-environment-variable",
 ] as const;
 
 export type MobileSafeActionId = (typeof MOBILE_SAFE_ACTIONS)[number];
@@ -28,6 +29,7 @@ const targetByAction: Record<MobileSafeActionId, SafeActionTargetKind> = {
   "resume-database": "database",
   "suspend-key-value": "key-value",
   "resume-key-value": "key-value",
+  "update-environment-variable": "service",
 };
 
 export interface SafeActionDefinition<

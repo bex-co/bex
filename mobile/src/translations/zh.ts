@@ -79,6 +79,57 @@ export const zh = {
     partialError: "部分服务证据无法刷新。当前显示的数据可能已过期。",
     loadError: "无法加载服务证据。",
   },
+  environment: {
+    title: "环境变量",
+    description:
+      "仅可操作现有键。值在您逐个显示前始终被遮盖，显示后的值也只保存在内存中。",
+    loading: "正在加载环境变量键",
+    empty: "此服务没有可用的环境变量键。",
+    masked: "已遮盖的值",
+    reveal: "显示",
+    hide: "隐藏",
+    revealKey: "显示环境变量 %{key}",
+    hideKey: "隐藏环境变量 %{key}",
+    valueFor: "环境变量 %{key} 的值",
+    cancelEdit: "取消环境变量编辑",
+    review: "检查更新",
+    reviewSave: "检查环境变量 %{key} 的更新",
+    confirmTitle: "确认环境变量更新",
+    confirmMessage:
+      "请确认此服务和键。此处特意不显示变量值，应用也不会自动重试此更新。",
+    updateAction: "更新现有环境变量",
+    confirm: "更新并部署",
+    saving: "正在更新…",
+    saved: "现有变量已更新并请求了滚动部署。已清除显示过的值。",
+    savedNoRollout: "服务器已接受现有值。内容未变化，因此未请求滚动部署。",
+    committedRefreshUnavailable:
+      "更新已提交，但无法获取刷新的遮盖状态。成功刷新前不能再次显示或更新。",
+    revealUnavailable:
+      "请求结束前未能显示该值。应用未保留任何值；请刷新后重试。",
+    refreshRequired: "必须成功刷新遮盖状态后，才能继续显示或更新。",
+    refresh: "刷新遮盖状态",
+    refreshing: "正在刷新…",
+    errors: {
+      "authorization-denied": "您无权查看或更新此环境变量。",
+      "update-restored": "更新失败，之前的环境已恢复。请刷新后再试。",
+      "revision-conflict":
+        "此环境在变量显示后已发生变化。键列表已刷新；请重新显示该变量后再编辑。",
+      "revision-invalid": "环境版本无效。键列表已刷新；请重新显示该变量。",
+      "revision-unavailable":
+        "服务器未为每个键返回同一个完整版本。显示和更新功能已停用。",
+      "secrets-unavailable": "环境变量来源未配置或当前不可用。",
+      "source-failed": "无法读取或更新来源值。应用不会假定操作成功。",
+      "projection-failed":
+        "来源更新无法投射到服务。服务器状态已刷新；应用不会假定操作成功。",
+      "compensation-failed":
+        "更新失败，服务器也无法完全确认已恢复。再次尝试前请刷新服务器状态。",
+      "timeout-unknown":
+        "响应超时，更新可能已经提交。服务器状态已刷新；任何新更新前请重新显示该变量。",
+      "not-found": "该变量已不存在。已刷新遮盖的键列表。",
+      failed:
+        "环境变量操作失败。应用不会假定操作成功，并已清除所有显示过的值。",
+    },
+  },
   metrics: {
     title: "指标快照",
     window: "最近一小时 · 每 30 秒刷新",
@@ -238,6 +289,7 @@ export const zh = {
     },
   },
   common: {
+    cancel: "取消",
     notFoundTitle: "此页面不存在",
     backToStatus: "返回状态",
     seeAll: "查看全部",
