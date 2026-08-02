@@ -1285,7 +1285,7 @@ sandbox_bind_roles="$(yq -N \
   'select(.kind == "ClusterRole" and .metadata.name == "bex-api-namespaces") |
     .rules[] | select(.verbs[]? == "bind") | .resourceNames[]' \
   deploy/gitops/base/bex-api-namespace-rbac.yaml | sort)"
-expected_sandbox_bind_roles=$'bex-tenant-api\nbex-tenant-operator\nbex-tenant-sandbox-controller\nbex-tenant-sandbox-server\nbex-tenant-ssh-gateway'
+expected_sandbox_bind_roles=$'bex-operator-snapshot-pull\nbex-tenant-api\nbex-tenant-operator\nbex-tenant-sandbox-controller\nbex-tenant-sandbox-server\nbex-tenant-ssh-gateway'
 [ "$sandbox_bind_roles" = "$expected_sandbox_bind_roles" ] \
   || { echo "FAIL: namespace reconciler bind allowlist is '$sandbox_bind_roles'" >&2; fail=1; }
 namespace_rolebinding_verbs="$(yq -N \
