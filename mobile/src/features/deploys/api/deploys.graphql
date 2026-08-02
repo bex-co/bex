@@ -1,0 +1,19 @@
+query MobileDeployHistory($serviceId: String!, $cursor: String, $limit: Int) {
+  deploys(serviceId: $serviceId, cursor: $cursor, limit: $limit) {
+    id
+    serviceId
+    status
+    trigger
+    image
+    rollbackOf
+    commitId
+    commitMessage
+    commitCreatedAt
+    createdAt
+    updatedAt
+    startedAt
+    finishedAt
+    preDeployStatus
+    failureReason
+  }
+}

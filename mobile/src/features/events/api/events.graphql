@@ -1,0 +1,28 @@
+query MobileServiceEvents($serviceId: String!, $cursor: String, $limit: Int) {
+  serviceEvents(serviceId: $serviceId, cursor: $cursor, limit: $limit) {
+    id
+    type
+    timestamp
+    cursor
+    details {
+      deployId
+      deployStatus
+      preDeployStatus
+      status
+      actor
+      triggeredByUser
+      image
+      commitId
+      commitMessage
+      startedAt
+      finishedAt
+      reasonCode
+      instanceId
+      fromCount
+      toCount
+      branchFrom
+      branchTo
+      commitUrl
+    }
+  }
+}

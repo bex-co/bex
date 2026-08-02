@@ -1,0 +1,16 @@
+query MobileServiceSupervision($id: String!) {
+  service(id: $id) {
+    id
+    name
+    displayName
+    type
+    runtime
+    phase
+    suspended
+    replicas
+    revision
+    region
+    latestDeployId
+    updatedAt
+  }
+}
