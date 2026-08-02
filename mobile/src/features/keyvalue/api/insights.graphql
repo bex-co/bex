@@ -1,0 +1,68 @@
+# Mobile's Key Value incident snapshot deliberately uses only the existing
+# read-only datastore metric surface. The immutable red- id is the resource
+# identity; no connection strings, allow-list, eviction/persistence settings,
+# plan catalog, or administrative fields are requested.
+query MobileKeyValueInsights($id: String!) {
+  disk: datastoreMetrics(
+    query: { kind: "keyvalue", resource: $id, name: "DISK", resolution: 120 }
+  ) {
+    unit
+    labels {
+      field
+      value
+    }
+    values {
+      time
+      value
+    }
+  }
+  diskCapacity: datastoreMetrics(
+    query: {
+      kind: "keyvalue"
+      resource: $id
+      name: "DISK_CAPACITY"
+      resolution: 120
+    }
+  ) {
+    unit
+    labels {
+      field
+      value
+    }
+    values {
+      time
+      value
+    }
+  }
+  memory: datastoreMetrics(
+    query: { kind: "keyvalue", resource: $id, name: "MEMORY", resolution: 120 }
+  ) {
+    unit
+    labels {
+      field
+      value
+    }
+    values {
+      time
+      value
+    }
+  }
+  connections: datastoreMetrics(
+    query: {
+      kind: "keyvalue"
+      resource: $id
+      name: "CONNECTIONS"
+      resolution: 120
+    }
+  ) {
+    unit
+    labels {
+      field
+      value
+    }
+    values {
+      time
+      value
+    }
+  }
+}
