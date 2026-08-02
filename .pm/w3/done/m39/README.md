@@ -1,19 +1,19 @@
 # w3 · m39 — Agent-sessions API: lifecycle, OpenFGA, tickets (ADR047 D3)
 
-**Worker:** worker3 **Goal:** `POST /v1/agent-sessions` (+ list/get/cancel, GraphQL/MCP twins) creates an authorized agent session — OpenFGA-checked, recorded in the control plane, wired to sandbox create/resume, with an HMAC session ticket minted on the web-shell pattern for the coming attach path. **Status:** todo
+**Worker:** worker3 **Goal:** `POST /v1/agent-sessions` (+ list/get/cancel, GraphQL/MCP twins) creates an authorized agent session — OpenFGA-checked, recorded in the control plane, wired to sandbox create/resume, with an HMAC session ticket minted on the web-shell pattern for the coming attach path. **Status:** **DONE** 2026-08-02 — shipped in `7f2505fb` (authorized session lifecycle: store + `ags` id kind, first-class `agent_session` OpenFGA object, REST `/v1/agent-sessions` create/list/get/cancel with resume via `resumeSessionId`, GraphQL `createAgentSession`/`resumeAgentSession`/`cancelAgentSession` + queries, MCP `spawn_/list_/get_/resume_/cancel_agent_session`, 90s HMAC attach ticket with subject+session+pod+workspace claims and the shared single-use nonce table) plus `3e5447f6` (session egress) and `88cea007` (credential broker, m38 overlap). Cross-workspace denial proven at the tuple layer (`TestCrossWorkspaceSessionDeniedByTuple`, cross-workspace REST sweep); backend suite + `make lint-backend` green 2026-08-02; bex-extension entry recorded in ADR018 § bex ahead of Render.
 
 ## Tasks (in order)
 
 | id   | title                                                                                    | est | depends_on |
 | ---- | ----------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Control-plane `agent_sessions` table + store                                              | 45m | —          |
-| t002 | OpenFGA first-class agent-session tuples                                                  | 30m | t001       |
-| t003 | REST `POST/GET /v1/agent-sessions` + cancel, GraphQL/MCP twins, sandbox create/resume wiring | 90m | t002    |
-| t004 | HMAC session ticket mint (web-shell pattern: DB nonce, subject+pod+workspace claims)      | 45m | t003       |
-| t005 | Render parity: cross-surface consistency (REST/GraphQL/MCP fields, errors, `ea` naming)   | 30m | t004       |
-| t006 | Simplify pass over the session feature                                                    | 20m | t005       |
-| t007 | Test coverage: authz, lifecycle, ticket claims, cross-workspace isolation                 | 45m | t005       |
-| t008 | Closeout                                                                                  | 10m | t007       |
+| t001 | Control-plane `agent_sessions` table + store                                              | 45m | —          | — **DONE** |
+| t002 | OpenFGA first-class agent-session tuples                                                  | 30m | t001       | — **DONE** |
+| t003 | REST `POST/GET /v1/agent-sessions` + cancel, GraphQL/MCP twins, sandbox create/resume wiring | 90m | t002    | — **DONE** |
+| t004 | HMAC session ticket mint (web-shell pattern: DB nonce, subject+pod+workspace claims)      | 45m | t003       | — **DONE** |
+| t005 | Render parity: cross-surface consistency (REST/GraphQL/MCP fields, errors, `ea` naming)   | 30m | t004       | — **DONE** |
+| t006 | Simplify pass over the session feature                                                    | 20m | t005       | — **DONE** |
+| t007 | Test coverage: authz, lifecycle, ticket claims, cross-workspace isolation                 | 45m | t005       | — **DONE** |
+| t008 | Closeout                                                                                  | 10m | t007       | — **DONE** |
 
 ## Definition of done
 
