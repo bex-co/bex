@@ -1,13 +1,16 @@
 import { Link, Stack } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useTheme } from "@/common/theme";
+import { fontSizes, fontWeights, space, useTheme } from "@/common/theme";
 
 export default function NotFound() {
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+    >
       <Stack.Screen options={{ title: t("common.notFoundTitle") }} />
       <Text style={[styles.title, { color: theme.foreground }]}>
         {t("common.notFoundTitle")}
@@ -15,7 +18,7 @@ export default function NotFound() {
       <Link href="/" style={[styles.link, { color: theme.primary }]}>
         {t("common.backToStatus")}
       </Link>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -24,8 +27,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
+    gap: space.md,
   },
-  title: { fontSize: 20, fontWeight: "600" },
-  link: { fontSize: 16 },
+  title: { fontSize: fontSizes.xl, fontWeight: fontWeights.medium },
+  link: { fontSize: fontSizes.lg },
 });

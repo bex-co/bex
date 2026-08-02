@@ -138,7 +138,7 @@ function inviteContent(
     return {
       title: t("invite.acceptedTitle"),
       body: t("invite.acceptedBody", {
-        workspace: state.workspace.name ?? state.workspace.id,
+        workspace: state.workspace.name || state.workspace.id,
       }),
       action: t("invite.openWorkspace"),
     };

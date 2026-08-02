@@ -1,3 +1,5 @@
+import type { ColorTheme } from "@/types/theme-props";
+
 export type ResourceKind = "service" | "database" | "keyValue";
 
 export type ResourceStatusItem = {
@@ -78,6 +80,18 @@ export function filterResourceGroups(
     })),
     ungrouped: grouped.ungrouped.filter((resource) => resource.kind === kind),
   };
+}
+
+export function statusToneColor(
+  status: string,
+  theme: Pick<ColorTheme, "success" | "warning" | "error" | "mutedForeground">,
+): string {
+  return {
+    success: theme.success,
+    warning: theme.warning,
+    error: theme.error,
+    muted: theme.mutedForeground,
+  }[statusTone(status)];
 }
 
 export function statusTone(

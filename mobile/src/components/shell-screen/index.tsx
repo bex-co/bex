@@ -4,8 +4,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useTheme } from "@/common/theme";
-import { gutter, space } from "@/common/theme";
-import { AppDrawerButton } from "@/components/app-drawer";
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
 
@@ -14,15 +12,15 @@ export function ShellScreen({
   bodyKey,
   badgeKey,
   icon,
-  menu = false,
+  header,
   children,
 }: {
   titleKey: string;
   bodyKey: string;
   badgeKey?: string;
   icon: IconName;
-  /** Show the shared drawer trigger — set on top-level tab screens. */
-  menu?: boolean;
+  /** Rendered inside the safe area above the content — e.g. a `TopBar`. */
+  header?: ReactNode;
   children?: ReactNode;
 }) {
   const { t } = useTranslations();
@@ -30,11 +28,7 @@ export function ShellScreen({
   const { width } = useWindowDimensions();
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
-      {menu ? (
-        <View style={styles.header}>
-          <AppDrawerButton />
-        </View>
-      ) : null}
+      {header}
       <View style={[styles.content, { maxWidth: Math.min(width - 32, 680) }]}>
         <View style={[styles.icon, { backgroundColor: theme.primaryMuted }]}>
           <Ionicons name={icon} size={28} color={theme.primary} />
@@ -64,12 +58,6 @@ export function ShellScreen({
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: gutter,
-    paddingTop: space.xs,
-  },
   content: {
     flex: 1,
     alignSelf: "center",
