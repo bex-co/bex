@@ -369,10 +369,20 @@ func TestTenantRoleBindingsStampedPerNamespace(t *testing.T) {
 		gwRB.Subjects[0].Name != "bex-ssh-gateway" || gwRB.Subjects[0].Namespace != "bex-system" {
 		t.Errorf("sandbox ssh-gateway binding missing/wrong: ok=%v ref=%+v subjects=%+v", ok, gwRB.RoleRef, gwRB.Subjects)
 	}
+	// Snapshot resume-pull minting (w3/m42): the operator gets get+create on
+	// Secrets ONLY through this per-sandbox-namespace binding.
+	snapRB, ok := binding(sandbox, "bex-operator-snapshot-pull")
+	if !ok || snapRB.RoleRef.Name != "bex-operator-snapshot-pull" || len(snapRB.Subjects) != 1 ||
+		snapRB.Subjects[0].Name != "bex-controller-manager" || snapRB.Subjects[0].Namespace != "bex-system" {
+		t.Errorf("sandbox snapshot-pull binding missing/wrong: ok=%v ref=%+v subjects=%+v", ok, snapRB.RoleRef, snapRB.Subjects)
+	}
 	for _, name := range []string{"bex-tenant-operator", "bex-tenant-api"} {
 		if _, ok := binding(sandbox, name); ok {
 			t.Errorf("sandbox must NOT bind %s", name)
 		}
+	}
+	if _, ok := binding(host, "bex-operator-snapshot-pull"); ok {
+		t.Error("hosting must NOT bind bex-operator-snapshot-pull")
 	}
 	// The hosting namespace must NOT bind the sandbox-server role.
 	if _, ok := binding(host, "bex-tenant-sandbox-server"); ok {
