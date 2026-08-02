@@ -1,13 +1,6 @@
-import { useEffect } from "react";
-import { StyleSheet, ViewStyle } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated, StyleSheet, ViewStyle } from "react-native";
 import { useTheme } from "@/common/theme";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  withSequence,
-} from "react-native-reanimated";
 
 const styles = StyleSheet.create({
   light: {
@@ -41,24 +34,26 @@ export const LoadingTile = (props: LoadingTileProps) => {
     ...(width && { width }),
   };
 
-  const opacity = useSharedValue(1);
+  const opacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(0.5, { duration: 300 }),
-        withTiming(1, { duration: 300 }),
-      ),
-      -1,
-      true,
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, {
+          toValue: 0.5,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]),
     );
+    animation.start();
+    return () => animation.stop();
   }, [opacity]);
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: opacity.value,
-    };
-  });
 
   return (
     <Animated.View
@@ -67,7 +62,7 @@ export const LoadingTile = (props: LoadingTileProps) => {
         dynamicStyles,
         theme === "dark" ? styles.dark : styles.light,
         style,
-        animatedStyle,
+        { opacity },
       ]}
     />
   );

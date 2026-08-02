@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
+  Animated,
   View,
   Text,
   StyleSheet,
@@ -9,15 +10,6 @@ import {
   Modal,
   useWindowDimensions,
 } from "react-native";
-import Animated, {
-  ReduceMotion,
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  runOnJS,
-  useAnimatedScrollHandler,
-  useAnimatedRef,
-} from "react-native-reanimated";
 import { headerActionStyle, useTheme } from "@/common/theme";
 import { ColorTheme } from "@/types/theme-props";
 
@@ -41,8 +33,6 @@ type PickerProps = {
   confirmButtonText?: string;
   cancelButtonText?: string;
 };
-
-const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 
 const getStyles = (theme: ColorTheme) =>
   StyleSheet.create({
@@ -151,10 +141,9 @@ export const Picker: React.FC<PickerProps> = ({
   const styles = getStyles(theme);
   const { height: screenHeight } = useWindowDimensions();
 
-  const translateY = useSharedValue(screenHeight);
-  const scrollY = useSharedValue(0);
-  const overlayOpacity = useSharedValue(0);
-  const scrollViewRef = useAnimatedRef<ScrollView>();
+  const translateY = useRef(new Animated.Value(screenHeight)).current;
+  const scrollY = useRef(0);
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
 
   const selectedIndex = useMemo(() => {
     if (!selectedValue) return 0;
@@ -165,48 +154,55 @@ export const Picker: React.FC<PickerProps> = ({
   const initialScrollY = selectedIndex * ITEM_HEIGHT;
 
   const showModal = useCallback(() => {
-    const timing = { duration: 300, reduceMotion: ReduceMotion.System };
-    overlayOpacity.value = withTiming(1, timing);
-    translateY.value = withTiming(0, timing);
-  }, [translateY, overlayOpacity]);
+    translateY.stopAnimation();
+    overlayOpacity.stopAnimation();
+    translateY.setValue(screenHeight);
+    overlayOpacity.setValue(0);
+    Animated.parallel([
+      Animated.timing(overlayOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [overlayOpacity, screenHeight, translateY]);
 
   const hideModal = useCallback(() => {
-    const timing = { duration: 300, reduceMotion: ReduceMotion.System };
-    overlayOpacity.value = withTiming(0, timing);
-    translateY.value = withTiming(screenHeight, timing, () => {
-      runOnJS(onCancel)();
+    Animated.parallel([
+      Animated.timing(overlayOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: screenHeight,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (finished) onCancel();
     });
   }, [onCancel, overlayOpacity, screenHeight, translateY]);
 
   useEffect(() => {
     if (visible) {
+      scrollY.current = initialScrollY;
       showModal();
-    } else {
-      hideModal();
     }
-  }, [visible, showModal, hideModal]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
-
-  const overlayAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: overlayOpacity.value,
-  }));
-
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
+  }, [initialScrollY, showModal, visible]);
 
   const handleDone = useCallback(() => {
     if (items.length === 0) return;
-    const currentIndex = Math.round(scrollY.value / ITEM_HEIGHT);
+    const currentIndex = Math.round(scrollY.current / ITEM_HEIGHT);
     const clampedIndex = Math.max(0, Math.min(currentIndex, items.length - 1));
     onSelect(items[clampedIndex]);
     hideModal();
-  }, [scrollY, items, onSelect, hideModal]);
+  }, [items, onSelect, hideModal]);
 
   const handleCancel = useCallback(() => {
     hideModal();
@@ -261,7 +257,7 @@ export const Picker: React.FC<PickerProps> = ({
       onRequestClose={handleCancel}
     >
       <Animated.View
-        style={[styles.overlay, overlayAnimatedStyle]}
+        style={[styles.overlay, { opacity: overlayOpacity }]}
         accessibilityViewIsModal
       >
         <Pressable
@@ -270,7 +266,9 @@ export const Picker: React.FC<PickerProps> = ({
           accessibilityRole="button"
           accessibilityLabel={cancelButtonText}
         />
-        <Animated.View style={[styles.modalContainer, animatedStyle]}>
+        <Animated.View
+          style={[styles.modalContainer, { transform: [{ translateY }] }]}
+        >
           <View style={styles.header}>
             <TouchableOpacity
               testID="picker-cancel"
@@ -296,13 +294,14 @@ export const Picker: React.FC<PickerProps> = ({
           <View style={styles.wheelContainer}>
             <View style={styles.selectionIndicator} />
 
-            <AnimatedScrollView
-              ref={scrollViewRef}
+            <ScrollView
               style={styles.wheel}
               showsVerticalScrollIndicator={false}
               snapToInterval={ITEM_HEIGHT}
               decelerationRate="fast"
-              onScroll={scrollHandler}
+              onScroll={(event) => {
+                scrollY.current = event.nativeEvent.contentOffset.y;
+              }}
               scrollEventThrottle={16}
               contentOffset={{ x: 0, y: initialScrollY }}
             >
@@ -310,7 +309,7 @@ export const Picker: React.FC<PickerProps> = ({
               <View style={{ height: (WHEEL_HEIGHT - ITEM_HEIGHT) / 2 }} />
               {items.map(renderItem)}
               <View style={{ height: (WHEEL_HEIGHT - ITEM_HEIGHT) / 2 }} />
-            </AnimatedScrollView>
+            </ScrollView>
 
             {/* Fade gradients for better UX */}
             <View style={[styles.fadeGradient, styles.fadeGradientTop]} />
