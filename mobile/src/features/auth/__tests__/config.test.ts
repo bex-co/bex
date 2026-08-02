@@ -1,4 +1,5 @@
 import {
+  DEFAULT_OAUTH_AUDIENCE,
   MOBILE_CLIENT_ID,
   MOBILE_REDIRECT_URI,
   readMobileConfig,
@@ -10,6 +11,7 @@ describe("mobile auth configuration", () => {
     expect(config.oauthClientId).toBe(MOBILE_CLIENT_ID);
     expect(config.oauthRedirectUri).toBe(MOBILE_REDIRECT_URI);
     expect(config.graphqlUrl).toBe("https://api.bex.co/graphql");
+    expect(config.oauthAudience).toBe(DEFAULT_OAUTH_AUDIENCE);
   });
 
   it("allows plain HTTP only for local development", () => {
@@ -18,6 +20,9 @@ describe("mobile auth configuration", () => {
       EXPO_PUBLIC_BEX_OAUTH_ISSUER: "http://localhost:4444",
     };
     expect(readMobileConfig(env, true).apiOrigin).toBe("http://127.0.0.1:8090");
+    expect(readMobileConfig(env, true).oauthAudience).toBe(
+      "http://127.0.0.1:8090/mcp",
+    );
     expect(() => readMobileConfig(env, false)).toThrow(/HTTPS/);
   });
 
@@ -31,5 +36,16 @@ describe("mobile auth configuration", () => {
         readMobileConfig({ EXPO_PUBLIC_BEX_API_URL: value }, false),
       ).toThrow();
     }
+  });
+
+  it("preserves the canonical OAuth resource path", () => {
+    expect(
+      readMobileConfig(
+        {
+          EXPO_PUBLIC_BEX_OAUTH_AUDIENCE: "https://api.example.test/mcp/",
+        },
+        false,
+      ).oauthAudience,
+    ).toBe("https://api.example.test/mcp");
   });
 });

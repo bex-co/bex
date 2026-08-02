@@ -18,6 +18,7 @@ export class SessionManager {
   private current: StoredSession | null = null;
   private listeners = new Set<Listener>();
   private refreshPromise?: Promise<StoredSession>;
+  private establishPromise?: Promise<void>;
   private explicitSignOutHooks = new Set<ExplicitSignOutHook>();
 
   constructor(
@@ -89,6 +90,30 @@ export class SessionManager {
 
   async signIn(): Promise<void> {
     const tokens = await this.transport.authorize();
+    await this.establishSession(tokens);
+  }
+
+  async completeSignIn(redirectUrl: string): Promise<void> {
+    const tokens = await this.transport.completeAuthorization(redirectUrl);
+    await this.establishSession(tokens);
+  }
+
+  private async establishSession(tokens: OAuthTokenSet): Promise<void> {
+    // The active AuthSession and Expo Router can both observe the same native
+    // callback. They intentionally converge here; persist and publish it once.
+    this.establishPromise ??= this.persistNewSession(tokens).finally(() => {
+      this.establishPromise = undefined;
+    });
+    await this.establishPromise;
+  }
+
+  private async persistNewSession(tokens: OAuthTokenSet): Promise<void> {
+    if (
+      this.current?.accessToken === tokens.accessToken &&
+      this.state.status === "signedIn"
+    ) {
+      return;
+    }
     const session = this.toStored(tokens, this.newSessionId());
     try {
       await this.storage.save(session);

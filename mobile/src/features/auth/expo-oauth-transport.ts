@@ -12,12 +12,20 @@ import {
 import { getRandomBytes } from "expo-crypto";
 import { AuthFailure } from "./errors";
 import { mobileConfig, type MobileConfig } from "./config";
+import { SecurePendingOAuthStorage } from "./secure-storage";
 import {
   authResponseFailure,
-  isExactAuthRedirect,
   validateIdTokenCorrelation,
+  validatePendingOAuthCallback,
 } from "./session-validation";
-import type { OAuthTokenSet, OAuthTransport } from "./types";
+import type {
+  OAuthTokenSet,
+  OAuthTransport,
+  PendingOAuthAuthorization,
+  PendingOAuthStorage,
+} from "./types";
+
+const AUTHORIZATION_MAX_AGE_MS = 10 * 60 * 1000;
 
 function randomHex(bytes = 24): string {
   return Array.from(getRandomBytes(bytes), (value) =>
@@ -95,8 +103,16 @@ function oauthErrorCode(error: unknown): string | undefined {
 
 export class ExpoOAuthTransport implements OAuthTransport {
   private discovery?: Promise<DiscoveryDocument>;
+  private completion?: {
+    redirectUrl: string;
+    result: Promise<OAuthTokenSet>;
+  };
 
-  constructor(private readonly config = mobileConfig) {}
+  constructor(
+    private readonly config = mobileConfig,
+    private readonly pendingStorage: PendingOAuthStorage = new SecurePendingOAuthStorage(),
+    private readonly now: () => number = Date.now,
+  ) {}
 
   private async discover(): Promise<DiscoveryDocument> {
     this.discovery ??= fetchDiscoveryAsync(this.config.oauthIssuer).then(
@@ -128,6 +144,7 @@ export class ExpoOAuthTransport implements OAuthTransport {
   async authorize(): Promise<OAuthTokenSet> {
     const discovery = await this.discover();
     const nonce = randomHex();
+    const state = randomHex();
     const request = new AuthRequest({
       clientId: this.config.oauthClientId,
       redirectUri: this.config.oauthRedirectUri,
@@ -135,20 +152,75 @@ export class ExpoOAuthTransport implements OAuthTransport {
       scopes: ["openid", "offline_access"],
       usePKCE: true,
       codeChallengeMethod: CodeChallengeMethod.S256,
+      state,
       extraParams: { nonce, audience: this.config.oauthAudience },
     });
-    const result = await request.promptAsync(discovery);
+    const authorizationUrl = await request.makeAuthUrlAsync(discovery);
+    if (!request.codeVerifier) throw new AuthFailure("unavailable");
+    const pending: PendingOAuthAuthorization = {
+      version: 1,
+      issuer: this.config.oauthIssuer,
+      clientId: this.config.oauthClientId,
+      redirectUri: this.config.oauthRedirectUri,
+      state: request.state,
+      codeVerifier: request.codeVerifier,
+      nonce,
+      createdAt: this.now(),
+    };
+    this.completion = undefined;
+    await this.pendingStorage.save(pending);
+
+    let result: Awaited<ReturnType<AuthRequest["promptAsync"]>>;
+    try {
+      result = await request.promptAsync(discovery, { url: authorizationUrl });
+    } catch (error) {
+      await this.clearPendingIfStateMatches(request.state);
+      throw error;
+    }
     const resultFailure = authResponseFailure(
       result.type,
       "error" in result ? result.error?.code : undefined,
     );
-    if (resultFailure) throw new AuthFailure(resultFailure);
-    if (result.type !== "success") throw new AuthFailure("unavailable");
-    if (!isExactAuthRedirect(result.url, this.config.oauthRedirectUri)) {
-      throw new AuthFailure("invalid_redirect");
+    if (resultFailure) {
+      await this.clearPendingIfStateMatches(request.state);
+      throw new AuthFailure(resultFailure);
     }
-    const code = result.params.code;
-    if (!code || !request.codeVerifier) throw new AuthFailure("replay");
+    if (result.type !== "success") {
+      await this.clearPendingIfStateMatches(request.state);
+      throw new AuthFailure("unavailable");
+    }
+    return this.completeAuthorization(result.url);
+  }
+
+  completeAuthorization(redirectUrl: string): Promise<OAuthTokenSet> {
+    if (this.completion?.redirectUrl === redirectUrl) {
+      return this.completion.result;
+    }
+    const result = this.exchangeRedirect(redirectUrl);
+    this.completion = { redirectUrl, result };
+    return result;
+  }
+
+  private async exchangeRedirect(redirectUrl: string): Promise<OAuthTokenSet> {
+    const pending = await this.pendingStorage.load();
+    if (!pending) throw new AuthFailure("replay");
+    const callback = validatePendingOAuthCallback(
+      redirectUrl,
+      pending,
+      this.now(),
+      AUTHORIZATION_MAX_AGE_MS,
+    );
+    if (!callback.ok) {
+      // A mismatched deep link must not destroy a legitimate request. Expired,
+      // malformed-but-bound, and provider-error callbacks are terminal.
+      if (callback.consumePending) {
+        await this.pendingStorage.clear().catch(() => undefined);
+      }
+      throw new AuthFailure(callback.failure);
+    }
+    const code = callback.code;
+
+    const discovery = await this.discover();
     let token: TokenResponse;
     try {
       token = await exchangeCodeAsync(
@@ -156,7 +228,7 @@ export class ExpoOAuthTransport implements OAuthTransport {
           clientId: this.config.oauthClientId,
           code,
           redirectUri: this.config.oauthRedirectUri,
-          extraParams: { code_verifier: request.codeVerifier },
+          extraParams: { code_verifier: pending.codeVerifier },
         },
         discovery,
       );
@@ -164,20 +236,31 @@ export class ExpoOAuthTransport implements OAuthTransport {
       throw new AuthFailure(
         oauthErrorCode(error) === "invalid_grant" ? "replay" : "unavailable",
       );
+    } finally {
+      // Authorization codes are single-use. Retaining their verifier after an
+      // attempted exchange only enlarges the replay window.
+      await this.pendingStorage.clear().catch(() => undefined);
     }
     if (!token.idToken) throw new AuthFailure("invalid_response");
     try {
       validateIdTokenCorrelation(token.idToken, {
         issuer: this.config.oauthIssuer,
         clientId: this.config.oauthClientId,
-        nonce,
-        now: Math.floor(Date.now() / 1000),
+        nonce: pending.nonce,
+        now: Math.floor(this.now() / 1000),
       });
     } catch {
       throw new AuthFailure("invalid_response");
     }
     const subject = await this.subjectFor(token, discovery);
     return normalizeTokenResponse(token, subject);
+  }
+
+  private async clearPendingIfStateMatches(state: string): Promise<void> {
+    const pending = await this.pendingStorage.load().catch(() => null);
+    if (pending?.state === state) {
+      await this.pendingStorage.clear().catch(() => undefined);
+    }
   }
 
   async refresh(refreshToken: string): Promise<OAuthTokenSet> {
