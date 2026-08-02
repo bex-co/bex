@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { KeyValueDocument } from "@/graphql/definitions";
+import { RESOURCE_POLL_INTERVAL_MS } from "@/common/lib/polling";
 import { toKeyValueView, isConverging } from "@/features/keyvalue/lib/status";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
@@ -30,12 +31,12 @@ export function useKeyValue(id: string): UseKeyValueResult {
     [data],
   );
 
-  // Poll until we know the store is settled: while it hasn't loaded yet, or
-  // while it's still creating. Once available/unavailable, stop.
+  // Poll fast until we know the store is settled: while it hasn't loaded yet,
+  // or while it's still creating. Once available/unavailable, fall back to the
+  // baseline cadence so out-of-band changes still show up.
   const converging = keyValue ? isConverging(keyValue) : true;
   useEffect(() => {
-    if (converging) startPolling(3000);
-    else stopPolling();
+    startPolling(converging ? 3000 : RESOURCE_POLL_INTERVAL_MS);
     return () => stopPolling();
   }, [converging, startPolling, stopPolling]);
 

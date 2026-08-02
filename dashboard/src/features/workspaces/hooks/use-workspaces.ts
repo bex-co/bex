@@ -4,6 +4,10 @@ import {
   WorkspacesDocument,
   type WorkspacesQuery,
 } from "@/graphql/definitions";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import { useIsAuthenticated } from "@/common/hooks/use-is-authenticated";
 import type { WorkspaceView } from "@/features/workspaces/types";
 
@@ -46,6 +50,8 @@ export function useWorkspaces(): UseWorkspacesResult {
     skip: !authenticated,
     fetchPolicy: "cache-first",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
   const workspaces = useMemo(() => toWorkspaceViews(data?.workspaces), [data]);

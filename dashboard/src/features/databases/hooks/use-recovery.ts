@@ -9,6 +9,10 @@ import {
   type DatabaseBackup,
   type DatabaseExport,
 } from "@/features/databases/api/operations";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import { useTranslations } from "@/common/hooks/use-translations";
 
 export interface BackupItem {
@@ -81,6 +85,8 @@ export function useRecovery(id: string) {
     variables: { id },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
   const raw = infoQuery.data?.databaseRecoveryInfo;
   const enabled = raw?.enabled ?? false;
@@ -118,11 +124,9 @@ export function useRecovery(id: string) {
   );
 
   useEffect(() => {
-    if (exportInProgress) {
-      startPolling(5_000);
-    } else {
-      stopPolling();
-    }
+    // Fast while an export is running, baseline cadence otherwise so the list
+    // still reflects exports started elsewhere.
+    startPolling(exportInProgress ? 5_000 : RESOURCE_POLL_INTERVAL_MS);
     return stopPolling;
   }, [exportInProgress, startPolling, stopPolling]);
 

@@ -1,5 +1,9 @@
 import { useQuery } from "@apollo/client/react";
 import { GitConnectionDocument } from "@/graphql/definitions";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 
 export interface GitConnectionView {
   connected: boolean;
@@ -26,6 +30,8 @@ export function useGitConnection(): UseGitConnectionResult {
   const { data, loading, error, refetch } = useQuery(GitConnectionDocument, {
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
   const raw = data?.gitConnection;

@@ -1,6 +1,10 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { EnvironmentsDocument } from "@/graphql/definitions";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 
 export interface EnvironmentIPAllowListEntry {
   cidrBlock: string;
@@ -45,6 +49,8 @@ export function useEnvironments(
     skip: !resolved,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
   const environments = useMemo((): EnvironmentView[] => {

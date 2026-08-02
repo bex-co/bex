@@ -4,6 +4,10 @@ import {
   WebhookEndpointDocument,
   type WebhookEndpointQuery,
 } from "@/graphql/definitions";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
@@ -49,6 +53,8 @@ export function useWebhook(id: string): UseWebhookResult {
     // second request solely because both the head and page need the endpoint.
     fetchPolicy: "cache-first",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
   const endpoint = useMemo(() => toView(data?.webhookEndpoint), [data]);

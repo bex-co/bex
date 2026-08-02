@@ -1,6 +1,10 @@
 import { useCallback } from "react";
 import { useQuery } from "@apollo/client/react";
 import { ServerDocument } from "@/graphql/definitions";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import { toServiceView } from "@/features/services/lib/status";
 import type { ServiceView } from "@/features/services/types";
 
@@ -28,6 +32,8 @@ export function useServer(id: string): UseServerResult {
     variables: { id },
     fetchPolicy: "cache-first",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
   const service = data?.server ? toServiceView(data.server) : null;

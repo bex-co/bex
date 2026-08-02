@@ -1,5 +1,9 @@
 import { useQuery } from "@apollo/client/react";
 import { DeploysDocument } from "@/graphql/definitions";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 
 export interface LatestDeploySummary {
   id: string;
@@ -22,6 +26,8 @@ export function useLatestDeploy(serviceId: string): UseLatestDeployResult {
     variables: { serviceId, limit: 1 },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
   const first = data?.deploys?.find((deploy) => !!deploy?.id);
 

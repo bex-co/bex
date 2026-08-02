@@ -1,5 +1,9 @@
 import { useQuery } from "@apollo/client/react";
 import { RegistryCredentialDocument } from "@/graphql/definitions";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import type { RegistryCredentialView } from "@/features/registry-credentials/types";
 
 export interface UseRegistryCredentialResult {
@@ -19,6 +23,8 @@ export function useRegistryCredential(id: string): UseRegistryCredentialResult {
   const { data, loading, error } = useQuery(RegistryCredentialDocument, {
     variables: { id },
     fetchPolicy: "cache-and-network",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
   const raw = data?.registryCredential;
   const credential: RegistryCredentialView | null =

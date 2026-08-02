@@ -6,6 +6,10 @@ import {
   DeleteSshKeyDocument,
   SshKeysDocument,
 } from "@/graphql/definitions";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { SSHKeyView } from "@/features/ssh-keys/types";
 
@@ -14,6 +18,8 @@ export function useSSHKeys() {
   const { data, loading, error, refetch } = useQuery(SshKeysDocument, {
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
   const [createMutation] = useMutation(CreateSshKeyDocument);
   const [deleteMutation] = useMutation(DeleteSshKeyDocument);

@@ -7,6 +7,10 @@ import {
   DeleteCustomDomainDocument,
   VerifyCustomDomainDocument,
 } from "@/graphql/definitions";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   pairedSibling,
@@ -93,6 +97,8 @@ export function useCustomDomains(serviceId: string): UseCustomDomainsResult {
     variables: { id: serviceId },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
   const refetchDomains = useCallback(async () => {

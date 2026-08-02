@@ -1,6 +1,10 @@
 import { useCallback, useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { ServicesDocument } from "@/graphql/definitions";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import { toServiceViews } from "@/features/services/lib/status";
 import type { ServiceView } from "@/features/services/types";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
@@ -30,6 +34,8 @@ export function useServices(): UseServicesResult {
     skip: !resolved,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
   // Memoized on Apollo's `data` identity (stable between poll ticks / unrelated
@@ -42,5 +48,10 @@ export function useServices(): UseServicesResult {
     return toServiceViews(res.data?.services);
   }, [refetch]);
 
-  return { services, loading: !resolved || loading, error, refetch: refetchViews };
+  return {
+    services,
+    loading: !resolved || loading,
+    error,
+    refetch: refetchViews,
+  };
 }

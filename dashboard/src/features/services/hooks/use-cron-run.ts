@@ -1,5 +1,9 @@
 import { useQuery } from "@apollo/client/react";
 import { CronJobRunDocument } from "@/graphql/definitions";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import type { CronRunView } from "@/features/services/types";
 
 export interface UseCronRunResult {
@@ -23,6 +27,8 @@ export function useCronRun(
     variables: { serviceId, runId: runId ?? "" },
     skip: !runId,
     fetchPolicy: "cache-and-network",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
   const raw = data?.cronJobRun;
   const run: CronRunView | null =

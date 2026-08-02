@@ -1,6 +1,10 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { ProjectsDocument } from "@/graphql/definitions";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export interface ProjectView {
@@ -32,6 +36,8 @@ export function useProjects(): UseProjectsResult {
     skip: !resolved,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
   const projects = useMemo((): ProjectView[] => {
