@@ -19,6 +19,8 @@
 #   build_seconds    → per-second                        event=build_seconds
 #   storage_gb_seconds → re-based to per-GB-hour         event=storage_gb_hours
 #                      value = gb_seconds/3600, price = usdPerGBSecond×3600×100
+#   sandbox_compute_seconds → milli-vCPU-equivalent sec  event=sandbox_compute_seconds
+#                      value = weighted seconds, price = usdPerWeightedSecond×100
 #
 # The billing client (internal/billing/stripe.go) composes the identical
 # event_names + re-bases the same way — the two must agree.
@@ -77,7 +79,7 @@ def parse_pricing():
             if key == "tier":
                 tier = val
                 continue
-            if key not in ("usdPerSecond", "usdPerByte", "usdPerGBSecond"):
+            if key not in ("usdPerSecond", "usdPerByte", "usdPerGBSecond", "usdPerWeightedSecond"):
                 continue  # skip version:, etc.
             rate = dec(val)
             rk = {"compute": "service", "postgres": "postgres", "keyvalue": "key_value"}.get(section)
@@ -92,6 +94,8 @@ def parse_pricing():
                 dims.append(("build_seconds", "bex build_seconds", q12(rate * 100)))
             elif section == "storage":
                 dims.append(("storage_gb_hours", "bex storage (per GB-hour)", q12(rate * SECONDS_PER_HOUR * 100)))
+            elif section == "sandbox":
+                dims.append(("sandbox_compute_seconds", "bex sandbox compute (weighted second)", q12(rate * 100)))
     return dims
 
 

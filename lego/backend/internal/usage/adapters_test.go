@@ -275,8 +275,9 @@ func TestGraphQLAdapterAuthzDenied(t *testing.T) {
 }
 
 // seedMixedStore creates a store pre-populated with one App service row, one
-// Database row, and one KeyValue row — all in workspace "tea-mix" in July 2026.
-// Used to verify that all three resource kinds surface across adapters.
+// Database row, one KeyValue row, and one sandbox row — all in workspace
+// "tea-mix" in July 2026. Used to verify that every resource kind surfaces
+// identically across adapters.
 func seedMixedStore() *memUsageStore {
 	appRow := store.App{ID: "srv-mix", TenantID: "tea-mix", Name: "webapi", Tier: "starter"}
 	st := newMemUsageStore(appRow)
@@ -311,6 +312,12 @@ func seedMixedStore() *memUsageStore {
 		Kind:         store.UsageKindStorageGBSeconds,
 		WindowStart:  window, Quantity: 2628000,
 	})
+	_ = st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+		WorkspaceID: "tea-mix", ServiceID: "os-1",
+		ResourceKind: store.ResourceKindSandbox,
+		Kind:         store.UsageKindSandboxComputeSeconds, Tier: "starter",
+		WindowStart: window, Quantity: 1990800,
+	})
 	return st
 }
 
@@ -323,7 +330,7 @@ func entriesByResource(entries []usageServiceEntry) map[string]usageServiceEntry
 }
 
 // TestResourceKindSurfacesAcrossAdapters verifies that REST, GraphQL, and MCP
-// return identical App, Database, and KeyValue entries — the t004 DoD.
+// return identical App, Database, KeyValue, and sandbox entries — the t004 DoD.
 func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 	svc := svcWithTenant(seedMixedStore(), "tea-mix")
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user:alice"})
@@ -342,8 +349,8 @@ func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&restResp); err != nil {
 		t.Fatalf("REST decode: %v", err)
 	}
-	if len(restResp.Services) != 3 {
-		t.Fatalf("REST: expected 3 services (app+db+kv), got %d", len(restResp.Services))
+	if len(restResp.Services) != 4 {
+		t.Fatalf("REST: expected 4 resources (app+db+kv+sandbox), got %d", len(restResp.Services))
 	}
 	restKinds := map[string]string{}
 	for _, svcEntry := range restResp.Services {
@@ -357,6 +364,9 @@ func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 	}
 	if restKinds["mykv"] != store.ResourceKindKeyValue {
 		t.Errorf("REST: mykv resourceKind: want %q, got %q", store.ResourceKindKeyValue, restKinds["mykv"])
+	}
+	if restKinds["os-1"] != store.ResourceKindSandbox {
+		t.Errorf("REST: os-1 resourceKind: want %q, got %q", store.ResourceKindSandbox, restKinds["os-1"])
 	}
 	restNames := map[string]string{}
 	for _, svcEntry := range restResp.Services {
@@ -384,8 +394,8 @@ func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 	data := gql.Data.(map[string]any)
 	usageData := data["usage"].(map[string]any)
 	gqlServices := usageData["services"].([]any)
-	if len(gqlServices) != 3 {
-		t.Fatalf("GraphQL: expected 3 services, got %d", len(gqlServices))
+	if len(gqlServices) != 4 {
+		t.Fatalf("GraphQL: expected 4 resources, got %d", len(gqlServices))
 	}
 	gqlEntries := make([]usageServiceEntry, 0, len(gqlServices))
 	for _, raw := range gqlServices {
@@ -548,7 +558,7 @@ func TestGraphQLPeriodInResponse(t *testing.T) {
 
 // TestRESTAdapterEstimatedCostPresent verifies that the REST response includes a
 // non-zero estimatedCost when there is billable usage (seedMixedStore has
-// service + postgres + key_value rows with known ResourceKind).
+// service + postgres + key_value + sandbox rows with known ResourceKind).
 func TestRESTAdapterEstimatedCostPresent(t *testing.T) {
 	svc := svcWithTenant(seedMixedStore(), "tea-mix")
 	mux := http.NewServeMux()
@@ -575,8 +585,8 @@ func TestRESTAdapterEstimatedCostPresent(t *testing.T) {
 	if resp.EstimatedCost.Meters == nil {
 		t.Error("estimatedCost.meters is nil; want non-nil slice")
 	}
-	if len(resp.EstimatedCost.Meters) != 5 {
-		t.Errorf("estimatedCost.meters: want 5, got %d", len(resp.EstimatedCost.Meters))
+	if len(resp.EstimatedCost.Meters) != 6 {
+		t.Errorf("estimatedCost.meters: want 6, got %d", len(resp.EstimatedCost.Meters))
 	}
 }
 
@@ -612,8 +622,8 @@ func TestGraphQLAdapterEstimatedCostPresent(t *testing.T) {
 		t.Errorf("estimatedCost.totalUsd: expected non-zero, got %q", totalUsd)
 	}
 	meters, _ := ec["meters"].([]any)
-	if len(meters) != 5 {
-		t.Errorf("estimatedCost.meters: want 5, got %d", len(meters))
+	if len(meters) != 6 {
+		t.Errorf("estimatedCost.meters: want 6, got %d", len(meters))
 	}
 }
 

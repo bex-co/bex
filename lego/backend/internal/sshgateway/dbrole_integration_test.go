@@ -58,6 +58,7 @@ const gatewayTestRole = "bex_ssh_gw_test"
 var sensitiveTables = []string{
 	"stripe_billing_events", // billing / money
 	"usage_hourly",          // metering / money
+	"sandbox_meter_states",  // metering cursor / tenant sandbox inventory
 	"registry_credentials",  // tenant registry secrets
 	"git_connections",       // tenant git credentials
 	"apps",                  // workspace resource data

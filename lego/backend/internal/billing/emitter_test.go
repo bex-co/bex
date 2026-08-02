@@ -270,7 +270,7 @@ func TestEmitOnceThreadsPaymentMethodGateToDurableOutboxRead(t *testing.T) {
 
 func TestEmitOnceWithheldWorkspaceMakesNoStripeCallsThenShipsAfterBinding(t *testing.T) {
 	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
-	sealed := row("tea-cardless", "srv-1", "instance_seconds", "starter", "service", 3600, now.Add(-72*time.Hour))
+	sealed := row("tea-cardless", "os-1", store.UsageKindSandboxComputeSeconds, "starter", store.ResourceKindSandbox, 1990800, now.Add(-72*time.Hour))
 	// The store's real-Postgres test proves the first empty selection is the
 	// cardless marker filter and the second selection follows marker binding.
 	// Here the emitter boundary proves that an empty gated selection cannot
@@ -288,6 +288,9 @@ func TestEmitOnceWithheldWorkspaceMakesNoStripeCallsThenShipsAfterBinding(t *tes
 	e.emitOnce(context.Background())
 	if len(ing.ensured) != 1 || len(ing.contracted) != 1 || len(ing.allEvents()) != 1 || st.stampedCount() != 1 {
 		t.Fatalf("post-bind pass did not ship once: customers=%v contracts=%v events=%v stamped=%d", ing.ensured, ing.contracted, ing.allEvents(), st.stampedCount())
+	}
+	if event := ing.allEvents()[0]; event.EventType != store.UsageKindSandboxComputeSeconds || event.Properties["value"] != "1990800" {
+		t.Fatalf("sandbox meter event = %+v", event)
 	}
 }
 

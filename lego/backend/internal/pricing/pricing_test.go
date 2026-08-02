@@ -56,11 +56,24 @@ func TestBillableMeterNamesMatchesStripeCatalog(t *testing.T) {
 		"instance_seconds.service.pro-ultra",
 		"instance_seconds.service.standard",
 		"instance_seconds.service.starter",
+		"sandbox_compute_seconds",
 		"storage_gb_hours",
 	}
 	got := Default.BillableMeterNames()
 	if fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("BillableMeterNames = %v, want %v", got, want)
+	}
+}
+
+func TestEstimateSandboxComputeUsesWeightedSecondRate(t *testing.T) {
+	// 553 units/second is the default 500m/512Mi sandbox shape. One hour
+	// should rate at the AgentCore reference cost for 0.5 vCPU + 0.5 GiB.
+	est := Default.Estimate([]store.UsageSummaryRow{{
+		Kind: store.UsageKindSandboxComputeSeconds, ResourceKind: store.ResourceKindSandbox,
+		Total: 553 * 3600,
+	}})
+	if est.TotalUSD != "0.05" || len(est.Meters) != 1 || est.Meters[0].Kind != store.UsageKindSandboxComputeSeconds {
+		t.Fatalf("sandbox estimate = %+v, want one $0.05 meter", est)
 	}
 }
 

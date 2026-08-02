@@ -28,6 +28,10 @@ const (
 	UsageKindEgressBytes      = "egress_bytes"
 	UsageKindBuildSeconds     = "build_seconds"
 	UsageKindStorageGBSeconds = "storage_gb_seconds"
+	// UsageKindSandboxComputeSeconds is measured in milli-vCPU-equivalent
+	// seconds. Memory is folded into the weight at the AgentCore reference
+	// ratio ($0.00945/GB-hour ÷ $0.0895/vCPU-hour); see ADR047 D6.
+	UsageKindSandboxComputeSeconds = "sandbox_compute_seconds"
 )
 
 // NormalizeResourceKind preserves the pre-resource-kind behavior for callers
@@ -46,6 +50,7 @@ const (
 	ResourceKindService  = "service"   // App (web/worker/cron/static)
 	ResourceKindPostgres = "postgres"  // Database CR → CNPG Cluster
 	ResourceKindKeyValue = "key_value" // KeyValue CR → Valkey StatefulSet
+	ResourceKindSandbox  = "sandbox"   // hosted OpenSandbox execution environment
 )
 
 // HourlyRow is one window of usage for one resource + meter kind.
