@@ -187,7 +187,7 @@ func (c *Creds) ensureSnapshotZotConfigEntry(ctx context.Context, namespace, zot
 		}
 		patch := sec.DeepCopy()
 		patch.Data["config.json"] = updated
-		if err := c.Client.Patch(ctx, patch, client.MergeFrom(&sec)); err != nil {
+		if err := c.Client.Patch(ctx, patch, client.MergeFromWithOptions(&sec, client.MergeFromWithOptimisticLock{})); err != nil {
 			if apierrors.IsConflict(err) {
 				continue
 			}
@@ -222,7 +222,7 @@ func (c *Creds) removeSnapshotZotConfigEntry(ctx context.Context, namespace stri
 		}
 		patch := sec.DeepCopy()
 		patch.Data["config.json"] = updated
-		if err := c.Client.Patch(ctx, patch, client.MergeFrom(&sec)); err != nil {
+		if err := c.Client.Patch(ctx, patch, client.MergeFromWithOptions(&sec, client.MergeFromWithOptimisticLock{})); err != nil {
 			if apierrors.IsConflict(err) {
 				continue
 			}

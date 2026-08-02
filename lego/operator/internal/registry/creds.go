@@ -280,7 +280,7 @@ func (c *Creds) ensureHTPasswdEntry(ctx context.Context, username, password stri
 			patch.Data = map[string][]byte{}
 		}
 		patch.Data["htpasswd"] = updated
-		if err := c.Client.Patch(ctx, patch, client.MergeFrom(&sec)); err != nil {
+		if err := c.Client.Patch(ctx, patch, client.MergeFromWithOptions(&sec, client.MergeFromWithOptimisticLock{})); err != nil {
 			if apierrors.IsConflict(err) {
 				continue
 			}
@@ -312,7 +312,7 @@ func (c *Creds) replaceHTPasswdEntry(ctx context.Context, username, password str
 			patch.Data = map[string][]byte{}
 		}
 		patch.Data["htpasswd"] = updated
-		if err := c.Client.Patch(ctx, patch, client.MergeFrom(&sec)); err != nil {
+		if err := c.Client.Patch(ctx, patch, client.MergeFromWithOptions(&sec, client.MergeFromWithOptimisticLock{})); err != nil {
 			if apierrors.IsConflict(err) {
 				continue
 			}
@@ -342,7 +342,7 @@ func (c *Creds) removeHTPasswdEntry(ctx context.Context, username string) error 
 
 		patch := sec.DeepCopy()
 		patch.Data["htpasswd"] = removeHTPasswdLine(existing, username)
-		if err := c.Client.Patch(ctx, patch, client.MergeFrom(&sec)); err != nil {
+		if err := c.Client.Patch(ctx, patch, client.MergeFromWithOptions(&sec, client.MergeFromWithOptimisticLock{})); err != nil {
 			if apierrors.IsConflict(err) {
 				continue
 			}
@@ -423,7 +423,7 @@ func (c *Creds) ensureZotConfigEntry(ctx context.Context, appName, zotUser strin
 		}
 		patch := sec.DeepCopy()
 		patch.Data["config.json"] = updated
-		if err := c.Client.Patch(ctx, patch, client.MergeFrom(&sec)); err != nil {
+		if err := c.Client.Patch(ctx, patch, client.MergeFromWithOptions(&sec, client.MergeFromWithOptimisticLock{})); err != nil {
 			if apierrors.IsConflict(err) {
 				continue
 			}
@@ -457,7 +457,7 @@ func (c *Creds) removeZotConfigEntry(ctx context.Context, appName string) error 
 		}
 		patch := sec.DeepCopy()
 		patch.Data["config.json"] = updated
-		if err := c.Client.Patch(ctx, patch, client.MergeFrom(&sec)); err != nil {
+		if err := c.Client.Patch(ctx, patch, client.MergeFromWithOptions(&sec, client.MergeFromWithOptimisticLock{})); err != nil {
 			if apierrors.IsConflict(err) {
 				continue
 			}
