@@ -160,6 +160,15 @@ export type Blueprint = {
   updatedAt: Maybe<Scalars['String']['output']>;
 };
 
+export type BlueprintPreview = {
+  __typename: 'BlueprintPreview';
+  commitId: Maybe<Scalars['String']['output']>;
+  error: Maybe<Scalars['String']['output']>;
+  found: Maybe<Scalars['Boolean']['output']>;
+  manifest: Maybe<Scalars['String']['output']>;
+  validation: Maybe<BlueprintValidation>;
+};
+
 export type BlueprintResource = {
   __typename: 'BlueprintResource';
   id: Maybe<Scalars['String']['output']>;
@@ -1834,6 +1843,7 @@ export type Query = {
   auditLogs: Maybe<Array<Maybe<AuditLog>>>;
   autoscalingConfig: Maybe<Autoscaling>;
   blueprint: Maybe<Blueprint>;
+  blueprintPreview: Maybe<BlueprintPreview>;
   blueprintSyncs: Maybe<Array<Maybe<BlueprintSync>>>;
   blueprints: Maybe<Array<Maybe<Blueprint>>>;
   cronJobRun: Maybe<CronRun>;
@@ -1944,6 +1954,14 @@ export type QueryAutoscalingConfigArgs = {
 export type QueryBlueprintArgs = {
   id: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryBlueprintPreviewArgs = {
+  branch: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  path?: InputMaybe<Scalars['String']['input']>;
+  repo: Scalars['String']['input'];
 };
 
 
