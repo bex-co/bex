@@ -85,6 +85,7 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 		return EnvironmentPatchResult{}, err
 	}
 	service = storeServiceName(a, service)
+	ctx = withTenant(ctx, storeTenant(a))
 	if s.Store == nil {
 		return EnvironmentPatchResult{}, core.ErrSecretsUnavailable
 	}
@@ -92,11 +93,11 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 		return EnvironmentPatchResult{}, fmt.Errorf("%w: saveMode must be %q or %q", core.ErrBadRequest, SaveModeOnly, SaveModeDeploy)
 	}
 
-	oldEnv, err := s.Store.Get(ctx, envPath(service))
+	oldEnv, err := s.readMap(ctx, envPath(service))
 	if err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	oldFiles, err := s.Store.Get(ctx, filesPath(service))
+	oldFiles, err := s.readMap(ctx, filesPath(service))
 	if err != nil {
 		return EnvironmentPatchResult{}, err
 	}

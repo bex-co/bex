@@ -59,27 +59,44 @@ func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) e
 		return err
 	}
 	for i := range apps.Items {
-		name := apps.Items[i].Name
-		if err := p.Store.Delete(ctx, envPath(name)); err != nil {
-			return err
-		}
-		if err := p.Store.Delete(ctx, filesPath(name)); err != nil {
+		if err := p.purgeAppSecrets(ctx, &apps.Items[i]); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// PurgeApp deletes the OpenBao env-var and secret-file paths for a single named
-// app — the per-app complement to PurgeWorkspace, called on individual service
-// deletion so secrets don't linger after the App CR is gone. Idempotent: nil
-// Store or absent paths are no-ops.
-func (p *WorkspacePurger) PurgeApp(ctx context.Context, name string) error {
-	if p.Store == nil {
+// PurgeApp deletes the OpenBao env-var and secret-file paths for a single App —
+// the per-app complement to PurgeWorkspace, called on individual service deletion
+// so secrets don't linger after the App CR is gone. It resolves the public service
+// name (core.LabelServiceName) and workspace (core.LabelTenant) from the App
+// itself, NOT metadata.name — a store-managed App's metadata.name is the
+// tenant-prefixed CRName, while the live values are keyed by the public name
+// (w7/m70 F15: purging a.Name left the real paths behind). Idempotent: nil Store
+// or absent paths are no-ops.
+func (p *WorkspacePurger) PurgeApp(ctx context.Context, a *appv1alpha1.App) error {
+	if p.Store == nil || a == nil {
 		return nil
 	}
-	if err := p.Store.Delete(ctx, envPath(name)); err != nil {
-		return err
+	return p.purgeAppSecrets(ctx, a)
+}
+
+// purgeAppSecrets deletes one App's env-var and secret-file maps from both the
+// tenant-scoped path (w7/m70) and the legacy single-tenant (baoTenant) path, so a
+// delete cleans up regardless of whether the lazy migrator (readMap) has run yet.
+// The public name resolves through storeServiceName; the tenant through
+// storeTenant — matching the write path exactly.
+func (p *WorkspacePurger) purgeAppSecrets(ctx context.Context, a *appv1alpha1.App) error {
+	name := storeServiceName(a, a.Name)
+	tenantCtx := withTenant(ctx, storeTenant(a))
+	legacyCtx := withTenant(ctx, baoTenant)
+	for _, path := range []string{envPath(name), filesPath(name)} {
+		if err := p.Store.Delete(tenantCtx, path); err != nil {
+			return err
+		}
+		if err := p.Store.Delete(legacyCtx, path); err != nil {
+			return err
+		}
 	}
-	return p.Store.Delete(ctx, filesPath(name))
+	return nil
 }
