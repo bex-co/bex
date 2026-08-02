@@ -67,6 +67,47 @@ describe("mobile usage glance", () => {
     expect(buildUsageGlance({ summary: null }).state).toBe("unknown");
   });
 
+  it("requires genuine empty or explicit zero evidence for healthy empty", () => {
+    expect(
+      buildUsageGlance({
+        summary: {
+          coverage: { state: "complete" },
+          services: [{ rows: [] }],
+        },
+      }).state,
+    ).toBe("healthy-empty");
+    for (const services of [
+      undefined,
+      [{ rows: [{ kind: "egress_bytes", total: null }] }],
+      [
+        {
+          rows: [
+            { kind: "egress_bytes", total: 0 },
+            { kind: "build_seconds", total: null },
+          ],
+        },
+      ],
+    ]) {
+      const glance = buildUsageGlance({
+        summary: { coverage: { state: "complete" }, services },
+      });
+      expect(glance.state).toBe("complete");
+    }
+  });
+
+  it("never upgrades partial or unknown zero totals to complete", () => {
+    for (const coverage of ["partial", "mystery"]) {
+      const glance = buildUsageGlance({
+        summary: {
+          coverage: { state: coverage },
+          services: [{ rows: [{ kind: "instance_seconds", total: 0 }] }],
+        },
+      });
+      expect(glance.state).toBe(coverage === "partial" ? "partial" : "unknown");
+      expect(glance.totals).toEqual([{ kind: "instance_seconds", total: 0 }]);
+    }
+  });
+
   it("retains explicit zero but never invents it from missing totals", () => {
     const totals = aggregateTotals([
       {

@@ -21,6 +21,7 @@ class FakeTransport implements CronActionTransport {
   runCalls: string[] = [];
   cancelCalls: string[][] = [];
   runPromise?: Promise<CronMutationResult>;
+  cancelPromise?: Promise<CronMutationResult>;
   runError?: unknown;
 
   async run(serviceId: string): Promise<CronMutationResult> {
@@ -31,7 +32,7 @@ class FakeTransport implements CronActionTransport {
 
   async cancel(serviceId: string, runId: string): Promise<CronMutationResult> {
     this.cancelCalls.push([serviceId, runId]);
-    return { run: { id: runId, status: "canceled" } };
+    return this.cancelPromise ?? { run: { id: runId, status: "canceled" } };
   }
 }
 
@@ -149,6 +150,41 @@ describe("CronActionController", () => {
       serviceSuspended: false,
       target,
     });
+    expect(transport.cancelCalls).toEqual([["srv-cron", "crr-current"]]);
+  });
+
+  it("single-flights duplicate cancel confirmations and rejects a changed-target replay", async () => {
+    const transport = new FakeTransport();
+    let resolve: Resolve = () => undefined;
+    transport.cancelPromise = new Promise((done) => {
+      resolve = done;
+    });
+    const subject = new CronActionController(transport);
+    const target = cronRun("crr-current", "running");
+    const request: CronActionRequest = {
+      requestId: "confirm-cancel-one",
+      action: "cancel",
+      serviceId: "srv-cron",
+      serviceSuspended: false,
+      target,
+    };
+
+    const first = subject.execute(request);
+    const duplicate = subject.execute({
+      ...request,
+      requestId: "confirm-cancel-two",
+    });
+    const changedTarget = await subject.execute({
+      ...request,
+      target: cronRun("crr-other", "running"),
+    });
+    expect(changedTarget.outcome).toBe("rejected");
+    expect(transport.cancelCalls).toEqual([["srv-cron", "crr-current"]]);
+
+    resolve({ run: { id: target.id, status: "canceled" } });
+    expect((await first).outcome).toBe("accepted");
+    expect((await duplicate).deduplicated).toBe(true);
+    await subject.execute(request);
     expect(transport.cancelCalls).toEqual([["srv-cron", "crr-current"]]);
   });
 
@@ -291,6 +327,54 @@ describe("CronActionController", () => {
         [cronRun("crr-scheduled", "running"), ...before],
       ),
     ).toBe(false);
+  });
+
+  it("requires the exact run and terminal phase before cancel converges", () => {
+    const target = cronRun("crr-target", "running");
+    const request: CronActionRequest = {
+      requestId: "confirm-cancel-phase",
+      action: "cancel",
+      serviceId: "srv-cron",
+      serviceSuspended: false,
+      target,
+    };
+    const accepted = {
+      outcome: "accepted" as const,
+      action: "cancel" as const,
+      runId: target.id,
+      status: "canceled",
+      deduplicated: false,
+    };
+
+    expect(cronActionObserved(request, accepted, [target])).toBe(false);
+    expect(
+      cronActionObserved(request, accepted, [
+        target,
+        cronRun("crr-other", "canceled"),
+      ]),
+    ).toBe(false);
+    expect(
+      cronActionObserved(request, accepted, [cronRun(target.id, "canceled")]),
+    ).toBe(true);
+  });
+
+  it("requires the accepted run id before run-now converges", () => {
+    const request = runRequest("confirm-run-phase");
+    const accepted = {
+      outcome: "accepted" as const,
+      action: "run" as const,
+      runId: "crr-manual",
+      status: "pending",
+      deduplicated: false,
+    };
+    expect(
+      cronActionObserved(request, accepted, [
+        cronRun("crr-scheduled", "running"),
+      ]),
+    ).toBe(false);
+    expect(
+      cronActionObserved(request, accepted, [cronRun("crr-manual", "pending")]),
+    ).toBe(true);
   });
 
   it("polls authoritative history to convergence and times out honestly", async () => {

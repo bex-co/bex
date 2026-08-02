@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLinkingURL } from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ActivityIndicator,
@@ -20,7 +21,10 @@ import {
 import { useAuth } from "@/features/auth/auth-provider";
 import { useInvite } from "./invite-provider";
 import type { InviteFlowState } from "./invite-controller";
-import { bootstrapInviteLink } from "./invite-link-bootstrap";
+import {
+  bootstrapInviteLink,
+  verifiedInviteToken,
+} from "./invite-link-bootstrap";
 
 export function InviteScreen() {
   const { t } = useTranslations();
@@ -28,22 +32,27 @@ export function InviteScreen() {
   const { width } = useWindowDimensions();
   const router = useRouter();
   const params = useLocalSearchParams<{ invite?: string | string[] }>();
+  const linkingURL = useLinkingURL();
   const { state: auth, signIn } = useAuth();
   const invite = useInvite();
-  const captured = useRef(false);
+  const captured = useRef<string | string[] | undefined>(undefined);
   const [signingIn, setSigningIn] = useState(false);
   const [signInFailed, setSignInFailed] = useState(false);
 
   useEffect(() => {
-    if (captured.current || params.invite === undefined) return;
-    captured.current = true;
+    if (params.invite === undefined) {
+      captured.current = undefined;
+      return;
+    }
+    if (captured.current === params.invite) return;
+    captured.current = params.invite;
     const value = params.invite;
     void bootstrapInviteLink(
-      value,
+      verifiedInviteToken(linkingURL, value),
       () => router.replace("/invite"),
       invite.capture,
     ).catch(() => undefined);
-  }, [invite, params.invite, router]);
+  }, [invite.capture, linkingURL, params.invite, router]);
 
   const content = inviteContent(invite.state, auth.status, signInFailed, t);
   const busy =

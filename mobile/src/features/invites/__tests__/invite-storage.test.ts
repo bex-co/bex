@@ -15,7 +15,8 @@ const options = {
 class SecretStorage implements InviteSecretStorage {
   value: string | null = null;
   available = true;
-  calls: Array<{ method: string; key: string; options: unknown }> = [];
+  setError: Error | null = null;
+  calls: { method: string; key: string; options: unknown }[] = [];
   async isAvailableAsync() {
     return this.available;
   }
@@ -25,6 +26,7 @@ class SecretStorage implements InviteSecretStorage {
   }
   async setItemAsync(key: string, value: string, options?: unknown) {
     this.calls.push({ method: "set", key, options });
+    if (this.setError) throw this.setError;
     this.value = value;
   }
   async deleteItemAsync(key: string, options?: unknown) {
@@ -52,6 +54,11 @@ describe("invite device-only storage", () => {
     const secret = new SecretStorage();
     const store = new SecureInviteStore(secret, options);
     await store.save({ version: 1, token, subject: null });
+    expect(JSON.parse(secret.value ?? "null")).toEqual({
+      version: 1,
+      token,
+      subject: null,
+    });
     expect(await store.load()).toEqual({ version: 1, token, subject: null });
     await store.clear();
     expect(secret.calls.map((call) => call.method)).toEqual([
@@ -83,6 +90,26 @@ describe("invite device-only storage", () => {
       failed = true;
     }
     expect(failed).toBe(true);
-    expect(secret.value).toBe(null);
+    expect(secret.value === null).toBe(true);
+  });
+
+  it("clears an older bearer when replacement storage fails", async () => {
+    const secret = new SecretStorage();
+    secret.value = JSON.stringify({ version: 1, token, subject: "identity-a" });
+    secret.setError = new Error("write denied");
+    const store = new SecureInviteStore(secret, options);
+    let failed = false;
+    try {
+      await store.save({
+        version: 1,
+        token: "abcdef0123456789abcdef0123456789",
+        subject: "identity-b",
+      });
+    } catch {
+      failed = true;
+    }
+    expect(failed).toBe(true);
+    expect(secret.value === null).toBe(true);
+    expect(secret.calls.map((call) => call.method)).toEqual(["set", "delete"]);
   });
 });

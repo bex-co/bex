@@ -43,6 +43,24 @@ describe("EnvironmentSecretSession", () => {
     session.clear();
     expect(observed).toEqual(["old", "new", null]);
   });
+
+  it("copies revealed plaintext and cannot resurrect it after a boundary clear", () => {
+    const session = new EnvironmentSecretSession();
+    const source = {
+      serviceId: "srv-one",
+      key: "TOKEN",
+      value: "original-secret",
+      revision: "evr1_one",
+    };
+    session.reveal(source);
+    source.value = "mutated-outside-session";
+    expect(session.value()?.value).toBe("original-secret");
+    expect(Object.isFrozen(session.value())).toBe(true);
+
+    session.clear();
+    session.edit("must-not-resurrect");
+    expect(session.value()).toBe(null);
+  });
 });
 
 describe("environment edit intent", () => {
@@ -66,5 +84,8 @@ describe("environment edit intent", () => {
     expect(confirmed.revision).toBe("evr1_one");
     expect(confirmed.action.target.label).toBe("api · TOKEN");
     expect(confirmed.action.target.label.includes(confirmed.value)).toBe(false);
+    expect(JSON.stringify(confirmed.action).includes(confirmed.value)).toBe(
+      false,
+    );
   });
 });

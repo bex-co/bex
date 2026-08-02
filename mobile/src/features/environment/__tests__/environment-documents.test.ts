@@ -68,8 +68,30 @@ describe("mobile environment GraphQL inventory", () => {
     expect(mutations.map((item) => item.name?.value)).toEqual([
       "MobilePatchSingleEnvVar",
     ]);
+    expect(
+      mutations[0]?.variableDefinitions?.map((item) => ({
+        name: item.variable.name.value,
+        required: item.type.kind === Kind.NON_NULL_TYPE,
+      })),
+    ).toEqual([
+      { name: "serviceId", required: true },
+      { name: "key", required: true },
+      { name: "value", required: true },
+      { name: "revision", required: true },
+    ]);
     expect(source).toContain("expectedEnvRevision: $revision");
     expect(source).toContain("envVars: [{ key: $key, value: $value }]");
+    expect(source).toContain('saveMode: "deploy"');
+    const responseFields: string[] = [];
+    visit(mutations[0]!, {
+      Field: (node) => void responseFields.push(node.name.value),
+    });
+    expect(responseFields).toEqual([
+      "patchServiceEnvironment",
+      "envVarKeys",
+      "rolledOut",
+    ]);
+    expect(responseFields.includes("value")).toBe(false);
     for (const forbidden of [
       "deleteEnvVar",
       "setEnvVars",
