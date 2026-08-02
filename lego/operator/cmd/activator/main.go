@@ -32,6 +32,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -54,6 +55,19 @@ const (
 	customPageTimeout = 5 * time.Second
 	customPageMaxSize = 1 << 20 // 1 MiB
 	maxRedirects      = 5
+
+	// Public-server timeouts bound slow-header/slowloris connections so a trickle
+	// client cannot hold a goroutine/fd open (codex-security #21).
+	readHeaderTimeout = 10 * time.Second
+	readTimeout       = 30 * time.Second
+	writeTimeout      = 30 * time.Second
+	idleTimeout       = 60 * time.Second
+	maxHeaderBytes    = 1 << 20 // 1 MiB
+
+	// hostCacheRefresh is how often the host→App index is rebuilt. Steady-state
+	// requests then resolve from the cache (O(1)) instead of a cluster-wide App
+	// List + linear scan per request (codex-security #7).
+	hostCacheRefresh = 5 * time.Second
 )
 
 var scheme = runtime.NewScheme()
@@ -78,16 +92,31 @@ func main() {
 		addr = v
 	}
 
-	http.Handle("/", newHandler(c, log))
+	// Build + prime the host→App index once (background-refreshed) so a request
+	// flood resolves from memory instead of a cluster-wide App List + linear scan
+	// per request (codex-security #7).
+	cache := newHostCache(c, log)
+	cache.refreshOnce(context.Background())
+	go cache.run(context.Background())
+
+	http.Handle("/", newHandler(c, cache, log))
 
 	log.Info("listening", "addr", addr)
-	if err := http.ListenAndServe(addr, nil); err != nil {
+	srv := &http.Server{
+		Addr:              addr,
+		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
+		MaxHeaderBytes:    maxHeaderBytes,
+	}
+	if err := srv.ListenAndServe(); err != nil {
 		fmt.Fprintf(os.Stderr, "activator: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func newHandler(c client.Client, log logr.Logger) http.Handler {
+func newHandler(c client.Client, cache *hostCache, log logr.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/healthz" {
 			w.WriteHeader(http.StatusOK)
@@ -96,13 +125,8 @@ func newHandler(c client.Client, log logr.Logger) http.Handler {
 
 		host := requestHost(r.Host)
 		ctx := r.Context()
-		app, err := findAppByHost(ctx, c, host)
-		if err != nil {
-			log.Error(err, "listing apps", "host", host)
-			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
-			return
-		}
-		if app == nil {
+		app, ok := cache.lookup(host)
+		if !ok {
 			log.Info("no routed app found for host", "host", host)
 			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
 			return
@@ -315,20 +339,64 @@ func requestHost(value string) string {
 	return strings.ToLower(strings.TrimSuffix(value, "."))
 }
 
-// findAppByHost returns the first App whose status URL matches the given host,
-// or nil if none is found (not an error — the host may not be a bex app).
-func findAppByHost(ctx context.Context, c client.Client, host string) (*appv1alpha1.App, error) {
+// hostCache is a periodically-refreshed host→App index that lets the public
+// handler route a request with an O(1) map lookup instead of a cluster-wide App
+// List + linear scan per request (codex-security #7). A background refresher
+// rebuilds the map every hostCacheRefresh; a failed refresh keeps serving the
+// last good map rather than emptying it. New/changed hosts are visible within one
+// refresh interval of when the activator started.
+type hostCache struct {
+	client client.Client
+	log    logr.Logger
+	mu     sync.RWMutex
+	byHost map[string]*appv1alpha1.App
+}
+
+func newHostCache(c client.Client, log logr.Logger) *hostCache {
+	return &hostCache{client: c, log: log, byHost: map[string]*appv1alpha1.App{}}
+}
+
+// refreshOnce rebuilds the host→App map from one cluster-wide List. On error it
+// leaves the existing map in place (stale-but-useful) and logs.
+func (h *hostCache) refreshOnce(ctx context.Context) {
 	var list appv1alpha1.AppList
-	if err := c.List(ctx, &list); err != nil {
-		return nil, err
+	if err := h.client.List(ctx, &list); err != nil {
+		h.log.Error(err, "refreshing app host cache")
+		return
 	}
+	next := make(map[string]*appv1alpha1.App, len(list.Items))
 	for i := range list.Items {
 		app := &list.Items[i]
-		if _, ok := appHosts(app)[requestHost(host)]; ok {
-			return app, nil
+		for host := range appHosts(app) {
+			next[host] = app
 		}
 	}
-	return nil, nil
+	h.mu.Lock()
+	h.byHost = next
+	h.mu.Unlock()
+}
+
+// run refreshes the index on a ticker until ctx is cancelled.
+func (h *hostCache) run(ctx context.Context) {
+	t := time.NewTicker(hostCacheRefresh)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			h.refreshOnce(ctx)
+		}
+	}
+}
+
+// lookup returns the App that owns host (canonicalized), or ok=false. It never
+// hits the API — the public request path is List-free (codex-security #7).
+func (h *hostCache) lookup(host string) (*appv1alpha1.App, bool) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	app, ok := h.byHost[requestHost(host)]
+	return app, ok
 }
 
 const maintenancePage = `<!DOCTYPE html>

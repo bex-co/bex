@@ -62,6 +62,10 @@ const (
 	defaultAddr        = ":5432"
 	defaultMetricsAddr = ":9092"
 	dialTimeout        = 10 * time.Second
+	// handshakeTimeout bounds the PROXY/TLS preamble so a slow- or no-byte
+	// connection cannot pin a goroutine + file descriptor indefinitely (the
+	// sibling kv-sni-proxy sets the same control). Cleared once SNI is resolved.
+	handshakeTimeout = 10 * time.Second
 )
 
 var scheme = runtime.NewScheme()
@@ -347,6 +351,10 @@ func handleConn(
 	},
 ) {
 	defer func() { _ = conn.Close() }()
+	// Bound the handshake reads (PROXY preamble + SSLRequest peek + TLS
+	// ClientHello) so a slowloris connection can't hold this goroutine and fd
+	// open (codex-security #2). Cleared once SNI is resolved, before relay.
+	_ = conn.SetReadDeadline(time.Now().Add(handshakeTimeout))
 	reader := bufio.NewReader(conn)
 	source, err := sniproxy.ReadProxySource(reader, conn.RemoteAddr(), trustedProxyCIDRs)
 	if err != nil {
@@ -394,6 +402,9 @@ func handleConn(
 		log.Info("no SNI in ClientHello", "err", err)
 		return
 	}
+	// Handshake consumed — clear the deadline so backend reads/relaying are
+	// governed only by the upstream proxy's own timeouts, not this bound.
+	_ = conn.SetReadDeadline(time.Time{})
 
 	route, ok := router.resolve(sni, source)
 	if !ok {

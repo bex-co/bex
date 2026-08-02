@@ -45,6 +45,15 @@ import (
 // ErrNotFound is what an Origin returns when the requested key does not exist.
 var ErrNotFound = errors.New("staticserver: object not found")
 
+// ErrObjectTooLarge is what an Origin returns when a tenant-controlled object
+// exceeds maxOriginObjectBytes, so a single oversized asset can't be allocated
+// whole and OOM the shared single-replica server (codex-security #10).
+var ErrObjectTooLarge = errors.New("staticserver: object too large")
+
+// maxOriginObjectBytes bounds a single origin object read into memory. Generous
+// for real static assets, far below the pod memory budget.
+const maxOriginObjectBytes = 32 << 20 // 32 MiB
+
 // Object is a fetched origin object.
 type Object struct {
 	Body        []byte
@@ -128,6 +137,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+	} else if errors.Is(err, ErrObjectTooLarge) {
+		http.Error(w, "object too large", http.StatusRequestEntityTooLarge)
+		return
 	} else if err != nil {
 		http.Error(w, "origin error", http.StatusBadGateway)
 		return
@@ -304,8 +316,16 @@ func cacheControl(servedPath string) string {
 	}
 }
 
-// drain fully reads and closes an origin body (used by the S3 origin).
+// drain fully reads and closes an origin body (used by the S3 origin), bounded by
+// maxOriginObjectBytes so a tenant object can't force an unbounded allocation.
 func drain(rc io.ReadCloser) ([]byte, error) {
 	defer func() { _ = rc.Close() }()
-	return io.ReadAll(rc)
+	b, err := io.ReadAll(io.LimitReader(rc, maxOriginObjectBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(b) > maxOriginObjectBytes {
+		return nil, ErrObjectTooLarge
+	}
+	return b, nil
 }

@@ -99,6 +99,12 @@ func (o *S3Origin) Get(ctx context.Context, key string) (Object, error) {
 		}
 		return Object{}, fmt.Errorf("staticserver: get %q: %w", key, err)
 	}
+	// Reject up front when the origin reports a size beyond the bound, before
+	// allocating; drain enforces the same cap defensively (codex-security #10).
+	if out.ContentLength != nil && *out.ContentLength > maxOriginObjectBytes {
+		_ = out.Body.Close()
+		return Object{}, ErrObjectTooLarge
+	}
 	body, err := drain(out.Body)
 	if err != nil {
 		return Object{}, fmt.Errorf("staticserver: read %q: %w", key, err)

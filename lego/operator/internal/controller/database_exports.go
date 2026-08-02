@@ -25,6 +25,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -33,7 +34,14 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-const exportWorkVolume = "export-work"
+const (
+	exportWorkVolume = "export-work"
+	// maxConcurrentExportsPerDB bounds simultaneous active pg_dump Jobs per Database
+	// so a tenant cannot fan out unbounded long-running exports (codex-security #13).
+	maxConcurrentExportsPerDB = 3
+	// exportWorkVolumeSize bounds the disk-backed work volume each pg_dump Job uses.
+	exportWorkVolumeSize = 20 * (1 << 30) // 20 GiB
+)
 
 // reconcileExports projects append-only Database.spec.exports requests into
 // Jobs and reports an honest lifecycle in Database.status.exports. It returns
@@ -114,6 +122,16 @@ func (r *DatabaseReconciler) reconcileExportJob(
 	if err := r.Get(ctx, key, job); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return err
+		}
+		// Bound concurrent pg_dump Jobs per Database so a tenant can't fan out
+		// unbounded long-running exports (codex-security #13). Defer this one
+		// until a slot frees; its status stays Created and the requeue retries.
+		active, err := r.countActiveExportJobs(ctx, db)
+		if err != nil {
+			return err
+		}
+		if active >= maxConcurrentExportsPerDB {
+			return nil
 		}
 		job = exportJob(db, request, r.Backup)
 		if err := controllerutil.SetControllerReference(db, job, r.Scheme); err != nil {
@@ -261,7 +279,9 @@ func exportJob(db *appv1alpha1.Database, request appv1alpha1.DatabaseExportReque
 				ObjectMeta: metav1.ObjectMeta{Labels: labels},
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
-					Volumes:       []corev1.Volume{{Name: exportWorkVolume, VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}},
+					Volumes: []corev1.Volume{{Name: exportWorkVolume, VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{
+						SizeLimit: resource.NewQuantity(exportWorkVolumeSize, resource.BinarySI),
+					}}}},
 					InitContainers: []corev1.Container{{
 						Name:            "pg-dump",
 						Image:           "ghcr.io/cloudnative-pg/postgresql:" + version,
@@ -359,6 +379,31 @@ func exportLabels(db *appv1alpha1.Database, exportID string) map[string]string {
 		labels[labelWorkspace] = workspace
 	}
 	return labels
+}
+
+// countActiveExportJobs reports how many non-terminal pg_dump export Jobs exist
+// for db — the long-running dumps, not the short expire-cleanup Jobs (excluded by
+// name). Used to cap per-Database concurrency (codex-security #13).
+func (r *DatabaseReconciler) countActiveExportJobs(ctx context.Context, db *appv1alpha1.Database) (int, error) {
+	var jobs batchv1.JobList
+	if err := r.List(ctx, &jobs, client.InNamespace(db.Namespace), client.MatchingLabels{logicalExportDBLabel: db.Name}); err != nil {
+		return 0, err
+	}
+	active := 0
+	for i := range jobs.Items {
+		j := &jobs.Items[i]
+		if strings.HasPrefix(j.Name, "postgres-export-expire-") {
+			continue
+		}
+		if exportJobComplete(j) {
+			continue
+		}
+		if _, failed := exportJobFailure(j); failed {
+			continue
+		}
+		active++
+	}
+	return active, nil
 }
 
 func exportJobComplete(job *batchv1.Job) bool {

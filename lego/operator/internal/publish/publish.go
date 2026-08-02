@@ -277,7 +277,7 @@ func PublishJob(o Options) *batchv1.Job {
 		ImagePullSecrets: pullSecrets,
 		Volumes: []corev1.Volume{{
 			Name:         outVolume,
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: mustSizeLimit(publishEmptyDirLimit)}},
 		}},
 		InitContainers: []corev1.Container{stage},
 		Containers: []corev1.Container{{
@@ -397,17 +397,35 @@ cp -a . ` + outMount + `/`
 	}
 }
 
+// Ephemeral-storage bounds for the publish Job (codex-security #3): tenant-
+// controlled static output fills a disk-backed emptyDir with no SizeLimit and the
+// containers carried only CPU/memory. Sized down — copy + sync is light; the build
+// Job carries the larger bound.
+const (
+	publishEphemeralRequest = "1Gi"
+	publishEphemeralLimit   = "2Gi"
+	publishEmptyDirLimit    = "2Gi"
+)
+
+// mustSizeLimit parses s into a *resource.Quantity for an emptyDir SizeLimit.
+func mustSizeLimit(s string) *resource.Quantity {
+	q := resource.MustParse(s)
+	return &q
+}
+
 // modestResources bounds the publish Job so a large upload can't starve the node
 // (the same spirit as the build Job's limits, sized down — copy + sync is light).
 func modestResources() corev1.ResourceRequirements {
 	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse("100m"),
-			corev1.ResourceMemory: resource.MustParse("128Mi"),
+			corev1.ResourceCPU:              resource.MustParse("100m"),
+			corev1.ResourceMemory:           resource.MustParse("128Mi"),
+			corev1.ResourceEphemeralStorage: resource.MustParse(publishEphemeralRequest),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse("1"),
-			corev1.ResourceMemory: resource.MustParse("512Mi"),
+			corev1.ResourceCPU:              resource.MustParse("1"),
+			corev1.ResourceMemory:           resource.MustParse("512Mi"),
+			corev1.ResourceEphemeralStorage: resource.MustParse(publishEphemeralLimit),
 		},
 	}
 }

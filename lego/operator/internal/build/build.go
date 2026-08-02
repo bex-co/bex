@@ -83,7 +83,27 @@ const (
 	buildMemoryRequest = "7Gi"
 	buildCPULimit      = "2"
 	buildMemoryLimit   = "8G"
+
+	// Ephemeral-storage bounds (codex-security #3): tenant-controlled build output
+	// fills disk-backed emptyDirs that had no SizeLimit, and the containers carried
+	// only CPU/memory limits — a malicious repo/Dockerfile/image could fill the
+	// node and evict co-tenant workloads. buildkit + clone are the heavy writers
+	// (source + OCI archive); push/sign are read-mostly copy steps (light).
+	buildEphemeralRequest = "10Gi"
+	buildEphemeralLimit   = "12Gi"
+	lightEphemeralRequest = "1Gi"
+	lightEphemeralLimit   = "2Gi"
+
+	// emptyDirSizeLimit bounds each tenant-controlled disk-backed volume.
+	emptyDirSizeLimit = "12Gi"
 )
+
+// mustSizeLimit parses s into a *resource.Quantity for an emptyDir SizeLimit
+// (Kubernetes wants a pointer; resource.MustParse returns a value).
+func mustSizeLimit(s string) *resource.Quantity {
+	q := resource.MustParse(s)
+	return &q
+}
 
 // pollInterval is how often Build re-reads the Job while waiting for it.
 const pollInterval = 3 * time.Second
@@ -367,8 +387,8 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	ttl := int32(3600)  // reap the finished Job after an hour
 
 	volumes := []corev1.Volume{
-		{Name: "source", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
-		{Name: "output", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+		{Name: "source", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: mustSizeLimit(emptyDirSizeLimit)}}},
+		{Name: "output", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: mustSizeLimit(emptyDirSizeLimit)}}},
 	}
 	if o.PushSecret != "" {
 		volumes = append(volumes, corev1.Volume{
@@ -385,7 +405,7 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	if o.Builder == BuilderNative {
 		volumes = append(volumes, corev1.Volume{
 			Name:         "native-build",
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: mustSizeLimit(emptyDirSizeLimit)}},
 		})
 		if o.RuntimeEnvSecret != "" {
 			volumes = append(volumes, corev1.Volume{
@@ -429,12 +449,14 @@ func BuildJob(o Options, image string) *batchv1.Job {
 		},
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse(buildCPURequest),
-				corev1.ResourceMemory: resource.MustParse(buildMemoryRequest),
+				corev1.ResourceCPU:              resource.MustParse(buildCPURequest),
+				corev1.ResourceMemory:           resource.MustParse(buildMemoryRequest),
+				corev1.ResourceEphemeralStorage: resource.MustParse(buildEphemeralRequest),
 			},
 			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse(buildCPULimit),
-				corev1.ResourceMemory: resource.MustParse(buildMemoryLimit),
+				corev1.ResourceCPU:              resource.MustParse(buildCPULimit),
+				corev1.ResourceMemory:           resource.MustParse(buildMemoryLimit),
+				corev1.ResourceEphemeralStorage: resource.MustParse(buildEphemeralLimit),
 			},
 		},
 	}
@@ -459,12 +481,14 @@ func BuildJob(o Options, image string) *batchv1.Job {
 		SecurityContext: restrictedContainerSecurityContext(),
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("100m"),
-				corev1.ResourceMemory: resource.MustParse("128Mi"),
+				corev1.ResourceCPU:              resource.MustParse("100m"),
+				corev1.ResourceMemory:           resource.MustParse("128Mi"),
+				corev1.ResourceEphemeralStorage: resource.MustParse(lightEphemeralRequest),
 			},
 			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("1"),
-				corev1.ResourceMemory: resource.MustParse("512Mi"),
+				corev1.ResourceCPU:              resource.MustParse("1"),
+				corev1.ResourceMemory:           resource.MustParse("512Mi"),
+				corev1.ResourceEphemeralStorage: resource.MustParse(lightEphemeralLimit),
 			},
 		},
 	}
@@ -511,12 +535,14 @@ func BuildJob(o Options, image string) *batchv1.Job {
 			SecurityContext: restrictedContainerSecurityContext(),
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("100m"),
-					corev1.ResourceMemory: resource.MustParse("128Mi"),
+					corev1.ResourceCPU:              resource.MustParse("100m"),
+					corev1.ResourceMemory:           resource.MustParse("128Mi"),
+					corev1.ResourceEphemeralStorage: resource.MustParse(lightEphemeralRequest),
 				},
 				Limits: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("1"),
-					corev1.ResourceMemory: resource.MustParse("512Mi"),
+					corev1.ResourceCPU:              resource.MustParse("1"),
+					corev1.ResourceMemory:           resource.MustParse("512Mi"),
+					corev1.ResourceEphemeralStorage: resource.MustParse(lightEphemeralLimit),
 				},
 			},
 		}
@@ -597,12 +623,14 @@ rm -rf .git`},
 		SecurityContext: restrictedContainerSecurityContext(),
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("50m"),
-				corev1.ResourceMemory: resource.MustParse("64Mi"),
+				corev1.ResourceCPU:              resource.MustParse("50m"),
+				corev1.ResourceMemory:           resource.MustParse("64Mi"),
+				corev1.ResourceEphemeralStorage: resource.MustParse(buildEphemeralRequest),
 			},
 			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("500m"),
-				corev1.ResourceMemory: resource.MustParse("256Mi"),
+				corev1.ResourceCPU:              resource.MustParse("500m"),
+				corev1.ResourceMemory:           resource.MustParse("256Mi"),
+				corev1.ResourceEphemeralStorage: resource.MustParse(buildEphemeralLimit),
 			},
 		},
 	}
