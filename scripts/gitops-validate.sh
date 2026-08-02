@@ -1433,7 +1433,8 @@ for required in \
   'bash scripts/opensandbox-server-secret.sh' \
   'wait for OpenSandbox control plane' \
   'BEX_EXPECTED_OPENSANDBOX_IMAGE' \
-  'BEX_EXPECTED_OPENSANDBOX_CONTROLLER_IMAGE' \
+  'OPENSANDBOX_CONTROLLER_TAG: v0.2.0-bex-snapjobns' \
+  'BEX_EXPECTED_OPENSANDBOX_CONTROLLER_IMAGE: ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:${{ env.OPENSANDBOX_CONTROLLER_TAG }}@${{ steps.build_opensandbox_controller.outputs.digest }}' \
   'rollout restart' \
   'for deployment in opensandbox-controller-manager opensandbox-server' \
   '.status.availableReplicas'; do
