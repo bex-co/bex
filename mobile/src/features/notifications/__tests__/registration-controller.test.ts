@@ -32,7 +32,7 @@ class Subscriptions implements DeviceSubscriptionClient {
   unregisterError?: Error;
   async list() {
     this.calls.push("list");
-    return { available: this.available, subscriptions: [] };
+    return { available: this.available };
   }
   async register(input: { deviceId: string }) {
     this.calls.push(`register:${input.deviceId}`);
