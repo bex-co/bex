@@ -177,6 +177,7 @@ var callerScopedRoutes = map[string]bool{
 	"POST /v1/invites/accept":         true, // redeems by the CALLER's own identity
 	"POST /v1/blueprints":             true, // creates a new git-connected blueprint; workspace from request context (w2/m62)
 	"POST /v1/blueprints/validate":    true, // validates a posted manifest, no resource
+	"POST /v1/blueprints/preview":     true, // dry-run fetch+validate; workspace from request context, no resource
 	"PATCH /v1/notification-settings": true, // the caller's own notification prefs
 	// Logs + metrics — the resource is named in the ?resource= query string, not
 	// the path; the QueryLogs/GetMetrics verbs (t001) authorize it via GetApp.

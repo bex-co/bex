@@ -440,6 +440,13 @@ type syncBlueprintArgs struct {
 	Confirm string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned by a protected-environment error when the sync overrides an existing service"`
 }
 
+// previewBlueprintArgs is preview_blueprint's input.
+type previewBlueprintArgs struct {
+	Repo   string `json:"repo" jsonschema:"Git repo URL (https://github.com/org/repo)"`
+	Branch string `json:"branch" jsonschema:"branch holding the bex.yml"`
+	Path   string `json:"path,omitempty" jsonschema:"path to bex.yml within the repo (default bex.yml)"`
+}
+
 // createBlueprintArgs is create_blueprint's input (w2/m62).
 type createBlueprintArgs struct {
 	Repo    string `json:"repo" jsonschema:"Git repo URL (https://github.com/org/repo)"`
@@ -1229,6 +1236,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in validateBlueprintArgs) (*mcp.CallToolResult, BlueprintValidation, error) {
 		v, err := s.ValidateBlueprint(ctx, core.NamedWorkspace(ctx), in.BexYAML)
 		return nil, v, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "preview_blueprint",
+		Description: "Fetch a repo's bex.yml and dry-run validate it WITHOUT creating anything — the pre-flight for create_blueprint. Returns {found, manifest?, commitId?, error?, validation?: {valid, errors, plan}}; a missing file reports found=false with the fetch error instead of failing. bex extension.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in previewBlueprintArgs) (*mcp.CallToolResult, BlueprintPreview, error) {
+		p, err := s.PreviewBlueprint(ctx, core.NamedWorkspace(ctx), in.Repo, in.Branch, in.Path)
+		return nil, p, err
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{

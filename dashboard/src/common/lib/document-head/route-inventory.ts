@@ -28,6 +28,7 @@ export const ROUTE_HEAD_INVENTORY: Record<
     "auth.sign-up.tsx",
     "auth.verification.tsx",
     "blueprints.$blueprintId.tsx",
+    "blueprints.new.tsx",
     "blueprints.tsx",
     "databases.$databaseId.tsx",
     "env-groups.tsx",

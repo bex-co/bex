@@ -35,6 +35,9 @@ export function NewResourceMenu() {
         <DropdownMenuItem asChild>
           <Link to="/keyvalue/new">{t("keyvalue.createTitle")}</Link>
         </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/blueprints/new">{t("blueprints.createTitle")}</Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link to="/" search={{ new: "project" }}>

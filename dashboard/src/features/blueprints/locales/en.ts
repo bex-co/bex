@@ -42,35 +42,46 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.createTitle": {
     message: "New Blueprint Instance",
-    description: "New Blueprint dialog/page title",
+    description: "New Blueprint page title",
   },
-  "blueprints.createRepoLabel": {
-    message: "Repository URL",
-    description: "New Blueprint dialog — repo URL input label",
+  "blueprints.createDescription": {
+    message:
+      "Connect a repository containing a bex.yml to create and sync a full stack of services.",
+    description: "New Blueprint page subtitle under the title",
   },
-  "blueprints.createRepoPlaceholder": {
-    message: "https://github.com/org/repo",
-    description: "New Blueprint dialog — repo URL input placeholder",
+  "blueprints.createSourceTitle": {
+    message: "Connect a repository",
+    description:
+      "New Blueprint page — heading above the GitHub/Public Git source tabs (Render parity)",
   },
   "blueprints.createBranchLabel": {
     message: "Branch",
-    description: "New Blueprint dialog — branch input label",
+    description: "New Blueprint page — branch combobox label",
   },
   "blueprints.createBranchPlaceholder": {
     message: "main",
-    description: "New Blueprint dialog — branch input placeholder",
+    description: "New Blueprint page — branch combobox placeholder",
+  },
+  "blueprints.createBranchHint": {
+    message: "The repository branch with the bex.yml file.",
+    description: "New Blueprint page — branch field helper text",
   },
   "blueprints.createPathLabel": {
-    message: "Manifest path",
-    description: "New Blueprint dialog — bex.yml path input label",
+    message: "Blueprint path",
+    description: "New Blueprint page — bex.yml path input label",
   },
   "blueprints.createPathPlaceholder": {
     message: "bex.yml",
-    description: "New Blueprint dialog — manifest path placeholder",
+    description: "New Blueprint page — manifest path placeholder",
+  },
+  "blueprints.createPathHint": {
+    message:
+      "The path to the Blueprint file in your repo (e.g. infra/bex.yml). Defaults to bex.yml at the root of your repository.",
+    description: "New Blueprint page — manifest path helper text",
   },
   "blueprints.createNameLabel": {
-    message: "Name (optional)",
-    description: "New Blueprint dialog — optional name input label",
+    message: "Blueprint Name",
+    description: "New Blueprint page — name input label",
   },
   "blueprints.createAction": {
     message: "Deploy Blueprint",
@@ -87,6 +98,72 @@ const enBlueprints: Record<string, TranslationEntry> = {
   "blueprints.createError": {
     message: "Blueprint creation failed",
     description: "Toast shown when createBlueprint returns an error",
+  },
+  // --- Pre-create review (Render's "Review Blueprint configurations") ---
+  "blueprints.previewTitle": {
+    message: "Review Blueprint configuration",
+    description:
+      "New Blueprint page — heading of the pre-create fetch + validate section",
+  },
+  "blueprints.previewSelectSource": {
+    message:
+      "Select a repository and branch to review its Blueprint file before deploying.",
+    description: "Review section placeholder before a source is chosen",
+  },
+  "blueprints.previewLoading": {
+    message: "Fetching {path} from your repository…",
+    description: "Review section loading text while the manifest is fetched",
+  },
+  "blueprints.previewNotFoundTitle": {
+    message: "Blueprint file not found",
+    description: "Review section error title when the manifest fetch fails",
+  },
+  "blueprints.previewNotFoundBody": {
+    message: "Blueprint file {path} not found on {branch} branch.",
+    description:
+      "Review section fallback error body when the backend returns no message",
+  },
+  "blueprints.previewRetry": {
+    message: "Retry",
+    description: "Review section retry button after a failed manifest fetch",
+  },
+  "blueprints.previewInvalid": {
+    message: "Blueprint file has errors",
+    description:
+      "Review section error title when the fetched manifest fails validation",
+  },
+  "blueprints.previewValid": {
+    message: "Blueprint file parsed successfully — {count} resources to sync.",
+    description:
+      "Review section success line, with the plan's total resource count",
+  },
+  "blueprints.previewServices": {
+    message: "Services",
+    description: "Review section plan group label — services in the manifest",
+  },
+  "blueprints.previewDatabases": {
+    message: "Databases",
+    description: "Review section plan group label — databases in the manifest",
+  },
+  "blueprints.previewKeyValue": {
+    message: "Key Value",
+    description:
+      "Review section plan group label — key-value instances in the manifest",
+  },
+  "blueprints.previewEnvGroups": {
+    message: "Environment Groups",
+    description: "Review section plan group label — env groups in the manifest",
+  },
+  "blueprints.previewAutoSyncNote": {
+    message:
+      "All future updates to your Blueprint file on this branch will be synced automatically. You can pause auto-sync after creation.",
+    description:
+      "Review section note about auto-sync being enabled by default (Render parity)",
+  },
+  "blueprints.previewError": {
+    message: "Couldn't load the Blueprint preview.",
+    description:
+      "Review section error shown when the preview query itself fails (network)",
   },
   // --- Empty state ---
   "blueprints.emptyTitle": {

@@ -45,14 +45,6 @@ vi.mock("@/features/blueprints/hooks/use-sync-blueprint", () => ({
   useSyncBlueprint: () => ({ sync, busy: false }),
 }));
 
-// --- create hook stub ---
-vi.mock("@/features/blueprints/hooks/use-create-blueprint", () => ({
-  useCreateBlueprint: () => ({
-    create: vi.fn(async () => ({ status: "error" })),
-    busy: false,
-  }),
-}));
-
 // --- validate hook stub (used by ValidatePanel inside detail page) ---
 vi.mock("@/features/blueprints/hooks/use-validate-blueprint", () => ({
   useValidateBlueprint: () => ({
@@ -105,12 +97,18 @@ function renderBlueprintsPage() {
     path: "/blueprints",
     component: BlueprintsPage,
   });
+  const newRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/blueprints/new",
+    component: () => <div>new blueprint page</div>,
+  });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([route]),
+    routeTree: rootRoute.addChildren([route, newRoute]),
     history: createMemoryHistory({ initialEntries: ["/blueprints"] }),
     context: { client: {} as never, session: null },
   });
-  return render(<RouterProvider router={router} />);
+  render(<RouterProvider router={router} />);
+  return router;
 }
 
 function renderDetailPage(blueprintId = "blp-abc123") {
@@ -183,6 +181,17 @@ describe("BlueprintsPage (list)", () => {
       await screen.findByText("Couldn't load blueprints"),
     ).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("navigates to the New Blueprint page (Render-parity create flow)", async () => {
+    const router = renderBlueprintsPage();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "New Blueprint" }),
+    );
+
+    expect(await screen.findByText("new blueprint page")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/blueprints/new");
   });
 });
 
