@@ -120,7 +120,7 @@ spec:
             - name: sandbox-exec
               containerPort: 8081
               protocol: TCP
-            - name: agent-credential
+            - name: agent-creds
               containerPort: 8082
               protocol: TCP
           readinessProbe:

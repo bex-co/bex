@@ -31,7 +31,7 @@ spec:
       protocol: TCP
     # Agent-session credential helper → gateway. Cluster-internal only: there is
     # no edge Ingress; Cilium admits only sandbox-regime source identities.
-    - name: agent-credential
+    - name: agent-creds
       port: 8082
-      targetPort: agent-credential
+      targetPort: agent-creds
       protocol: TCP
