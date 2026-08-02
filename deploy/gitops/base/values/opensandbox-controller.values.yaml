@@ -2,7 +2,8 @@
 # reviewed multi-architecture index digests; tags remain only as human-readable
 # version context. deploy.yml now builds/signs/scans the carried m42 controller
 # patch, but this bootstrap commit deliberately keeps the live controller on the
-# known-good upstream digest until that first build yields an immutable digest.
+# known-good upstream digest until that first build yields an immutable digest;
+# activation is a separate digest-pinning ship after that build succeeds.
 controller:
   image:
     tag: v0.2.0@sha256:a9a5f73c1785ebd955336ffa313973a35c1a1b662cb7afc4ea82d92021b3532a
