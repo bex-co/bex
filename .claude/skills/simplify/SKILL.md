@@ -3,6 +3,7 @@ name: simplify
 description: >-
   Review the changed code for reuse, simplification, efficiency, and altitude cleanups, then apply the fixes. Quality only — it does not hunt for bugs; use /code-review for that.
 
+
 allowed-tools: Bash(git diff:*), Bash(git status:*), Read, Edit, Write
 ---
 
