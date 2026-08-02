@@ -1340,7 +1340,7 @@ for required_guard in \
   "variables.target.metadata.name == variables.target.roleRef.name" \
   "variables.target.roleRef.name == 'bex-tenant-operator'" \
   "variables.target.roleRef.name == 'bex-tenant-sandbox-server'" \
-  "variables.target.roleRef.name in ['bex-tenant-sandbox-server', 'bex-tenant-sandbox-controller', 'bex-tenant-ssh-gateway']" \
+  "variables.target.roleRef.name in ['bex-tenant-sandbox-server', 'bex-tenant-sandbox-controller', 'bex-tenant-ssh-gateway', 'bex-operator-snapshot-pull']" \
   "variables.target.subjects[0].name == 'opensandbox-controller-manager'"; do
   grep -qF "$required_guard" deploy/gitops/base/bex-api-namespace-admission.yaml \
     || { echo "FAIL: NamespaceReconciler admission guard lost: $required_guard" >&2; fail=1; }

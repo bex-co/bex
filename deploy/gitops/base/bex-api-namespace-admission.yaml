@@ -160,12 +160,12 @@ spec:
     - expression: >-
         request.resource.resource != 'rolebindings' ||
         (request.operation == 'DELETE' ?
-          variables.target.metadata.name in ['bex-tenant-operator', 'bex-tenant-api', 'bex-tenant-ssh-gateway', 'bex-tenant-sandbox-server', 'bex-tenant-sandbox-controller'] :
+          variables.target.metadata.name in ['bex-tenant-operator', 'bex-tenant-api', 'bex-tenant-ssh-gateway', 'bex-tenant-sandbox-server', 'bex-tenant-sandbox-controller', 'bex-operator-snapshot-pull'] :
           (variables.exactRoleBinding &&
            ((variables.regime == 'hosting' &&
             variables.target.roleRef.name in ['bex-tenant-operator', 'bex-tenant-api', 'bex-tenant-ssh-gateway']) ||
             (variables.regime == 'sandbox' &&
-             variables.target.roleRef.name in ['bex-tenant-sandbox-server', 'bex-tenant-sandbox-controller', 'bex-tenant-ssh-gateway']))))
+             variables.target.roleRef.name in ['bex-tenant-sandbox-server', 'bex-tenant-sandbox-controller', 'bex-tenant-ssh-gateway', 'bex-operator-snapshot-pull']))))
       reason: Forbidden
       message: bex-api may create or update only exact regime bindings and delete only known managed projections
 ---
