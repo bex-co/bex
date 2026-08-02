@@ -87,15 +87,20 @@ const (
 	// Ephemeral-storage bounds (codex-security #3): tenant-controlled build output
 	// fills disk-backed emptyDirs that had no SizeLimit, and the containers carried
 	// only CPU/memory limits — a malicious repo/Dockerfile/image could fill the
-	// node and evict co-tenant workloads. buildkit + clone are the heavy writers
-	// (source + OCI archive); push/sign are read-mostly copy steps (light).
+	// node and evict co-tenant workloads. Render cancels builds above 16 GB of disk
+	// use, so use the exact decimal limit for the build workspace and every phase
+	// that mounts it. In particular, kubelet charges the read-only OCI archive to
+	// Skopeo while it pushes; its old light-container limit evicted valid images
+	// larger than 2 GiB. Signing does not mount the archive and stays lightweight.
 	buildEphemeralRequest = "10Gi"
-	buildEphemeralLimit   = "12Gi"
+	buildEphemeralLimit   = "16G"
+	pushEphemeralRequest  = "1Gi"
+	pushEphemeralLimit    = "16G"
 	lightEphemeralRequest = "1Gi"
 	lightEphemeralLimit   = "2Gi"
 
 	// emptyDirSizeLimit bounds each tenant-controlled disk-backed volume.
-	emptyDirSizeLimit = "12Gi"
+	emptyDirSizeLimit = "16G"
 )
 
 // mustSizeLimit parses s into a *resource.Quantity for an emptyDir SizeLimit
@@ -483,12 +488,12 @@ func BuildJob(o Options, image string) *batchv1.Job {
 			Requests: corev1.ResourceList{
 				corev1.ResourceCPU:              resource.MustParse("100m"),
 				corev1.ResourceMemory:           resource.MustParse("128Mi"),
-				corev1.ResourceEphemeralStorage: resource.MustParse(lightEphemeralRequest),
+				corev1.ResourceEphemeralStorage: resource.MustParse(pushEphemeralRequest),
 			},
 			Limits: corev1.ResourceList{
 				corev1.ResourceCPU:              resource.MustParse("1"),
 				corev1.ResourceMemory:           resource.MustParse("512Mi"),
-				corev1.ResourceEphemeralStorage: resource.MustParse(lightEphemeralLimit),
+				corev1.ResourceEphemeralStorage: resource.MustParse(pushEphemeralLimit),
 			},
 		},
 	}

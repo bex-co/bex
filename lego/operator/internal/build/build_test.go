@@ -488,7 +488,8 @@ func envValue(envs []corev1.EnvVar, name string) string {
 }
 
 func TestBuildJobResourceLimits(t *testing.T) {
-	c := containerByName(BuildJob(opts(), opts().ImageRef()).Spec.Template.Spec.InitContainers, "buildkit")
+	pod := BuildJob(opts(), opts().ImageRef()).Spec.Template.Spec
+	c := containerByName(pod.InitContainers, "buildkit")
 	r, l := c.Resources.Requests, c.Resources.Limits
 	if got := r.Cpu().String(); got != buildCPURequest {
 		t.Errorf("build Job cpu request = %s, want %s", got, buildCPURequest)
@@ -501,6 +502,41 @@ func TestBuildJobResourceLimits(t *testing.T) {
 	}
 	if got := l.Memory().String(); got != buildMemoryLimit {
 		t.Errorf("build Job memory limit = %s, want %s", got, buildMemoryLimit)
+	}
+	if got := r.StorageEphemeral().String(); got != buildEphemeralRequest {
+		t.Errorf("build Job ephemeral-storage request = %s, want %s", got, buildEphemeralRequest)
+	}
+	if got := l.StorageEphemeral().String(); got != buildEphemeralLimit {
+		t.Errorf("build Job ephemeral-storage limit = %s, want %s", got, buildEphemeralLimit)
+	}
+
+	push := containerByName(pod.Containers, "push")
+	if got := push.Resources.Requests.StorageEphemeral().String(); got != pushEphemeralRequest {
+		t.Errorf("push ephemeral-storage request = %s, want %s", got, pushEphemeralRequest)
+	}
+	if got := push.Resources.Limits.StorageEphemeral().String(); got != pushEphemeralLimit {
+		t.Errorf("push ephemeral-storage limit = %s, want %s", got, pushEphemeralLimit)
+	}
+	for _, name := range []string{"source", "output"} {
+		volume := volByName(pod.Volumes, name)
+		if volume == nil || volume.EmptyDir == nil || volume.EmptyDir.SizeLimit == nil {
+			t.Fatalf("%s volume is missing its emptyDir size limit", name)
+		}
+		if got := volume.EmptyDir.SizeLimit.String(); got != emptyDirSizeLimit {
+			t.Errorf("%s emptyDir size limit = %s, want %s", name, got, emptyDirSizeLimit)
+		}
+	}
+
+	signedOpts := opts()
+	signedOpts.SignKeySecret = "bex-tenant-cosign"
+	signed := BuildJob(signedOpts, signedOpts.ImageRef()).Spec.Template.Spec
+	signedPush := containerByName(signed.InitContainers, "push")
+	signer := containerByName(signed.Containers, "sign")
+	if got := signedPush.Resources.Limits.StorageEphemeral().String(); got != pushEphemeralLimit {
+		t.Errorf("signed push ephemeral-storage limit = %s, want %s", got, pushEphemeralLimit)
+	}
+	if got := signer.Resources.Limits.StorageEphemeral().String(); got != lightEphemeralLimit {
+		t.Errorf("sign ephemeral-storage limit = %s, want lightweight %s", got, lightEphemeralLimit)
 	}
 }
 
