@@ -8,7 +8,7 @@
 #   - the write-back guard (never pin images built from stale production inputs).
 #
 # "Deploy-triggering" = any change under the production-input path filter,
-# EXCLUDING the three generated image-digest fields — a preceding run's [skip ci]
+# EXCLUDING the four generated image-digest fields — a preceding run's [skip ci]
 # digest write-back is NOT a supersession. This filter must match the one the
 # write-back guard has always used.
 #
@@ -29,14 +29,15 @@ if ! git fetch --no-tags origin main >/dev/null 2>&1; then
   exit 2
 fi
 
-# The production-input path filter, minus the three generated digest files (a
+# The production-input path filter, minus the four generated digest files (a
 # preceding run's [skip ci] pin must not read as a supersession). Kept identical
 # to the write-back guard.
 git diff --quiet "$SHA" origin/main -- \
   lego dashboard deploy/opensandbox deploy/gitops .github/workflows/deploy.yml \
   ':(exclude)deploy/gitops/base/bex.yaml' \
   ':(exclude)deploy/gitops/base/dashboard.yaml' \
-  ':(exclude)deploy/opensandbox/kustomization.yaml'
+  ':(exclude)deploy/opensandbox/kustomization.yaml' \
+  ':(exclude)deploy/gitops/base/values/opensandbox-controller.values.yaml'
 case "$?" in
   0)
     exit 1 # no drift beyond generated digests → current

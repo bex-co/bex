@@ -28,6 +28,9 @@ seed() { # create a file at $1 with content $2, committing under a fresh dir tre
 # Base commit carries one file in a filtered path; push it as origin/main.
 seed lego/app/main.go "package app // v1" "base"
 seed deploy/gitops/base/bex.yaml $'images:\n  - controller=ghcr.io/x@sha256:'"$(printf 'a%.0s' {1..64})" "base bex.yaml"
+seed deploy/gitops/base/values/opensandbox-controller.values.yaml \
+  $'controller:\n  image:\n    repository: ghcr.io/x/controller\n    tag: v0.2.0-bex-snapjobns@sha256:'"$(printf 'a%.0s' {1..64})" \
+  "base OpenSandbox controller values"
 git push -q origin main
 BASE="$(git rev-parse HEAD)"
 
@@ -64,6 +67,10 @@ run_case "superseded: deploy.yml change" 0 advance .github/workflows/deploy.yml 
 # a preceding run's generated digest write-back (bex.yaml digest only) → exit 1
 run_case "generated digest only (excluded)" 1 advance deploy/gitops/base/bex.yaml \
   $'images:\n  - controller=ghcr.io/x@sha256:'"$(printf 'b%.0s' {1..64})"
+# the patched controller's generated digest write-back is excluded too
+run_case "generated controller digest only (excluded)" 1 advance \
+  deploy/gitops/base/values/opensandbox-controller.values.yaml \
+  $'controller:\n  image:\n    repository: ghcr.io/x/controller\n    tag: v0.2.0-bex-snapjobns@sha256:'"$(printf 'b%.0s' {1..64})"
 # a non-deploy-triggering change (docs) → exit 1
 run_case "non-triggering (docs)" 1 advance docs/notes.md "hello"
 

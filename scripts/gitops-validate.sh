@@ -1212,22 +1212,17 @@ opensandbox_controller_render="$(helm template opensandbox-controller \
 controller_image="$(yq -N \
   'select(.kind == "Deployment" and .metadata.name == "opensandbox-controller-manager") |
     .spec.template.spec.containers[0].image' - <<<"$opensandbox_controller_render" | tr -d '\n')"
-# The bootstrap stays on the known-good upstream digest until CI has produced
-# the carried m42 image once. A follow-up activation commit pins that real digest.
-[ "$controller_image" = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/controller:v0.2.0@sha256:a9a5f73c1785ebd955336ffa313973a35c1a1b662cb7afc4ea82d92021b3532a" ] \
-  || { echo "FAIL: OpenSandbox bootstrap controller image is '$controller_image'" >&2; fail=1; }
+[ "$controller_image" = "ghcr.io/bex-co/opensandbox-controller:v0.2.0-bex-snapjobns@sha256:ee083a9a88f0c2f189970015050ec8d078954f88130f94c9f404761f3c1757b9" ] \
+  || { echo "FAIL: OpenSandbox patched controller image is '$controller_image'" >&2; fail=1; }
 controller_args="$(yq -N \
   'select(.kind == "Deployment" and .metadata.name == "opensandbox-controller-manager") |
     .spec.template.spec.containers[0].args[]' - <<<"$opensandbox_controller_render")"
 for required in \
-  '--image-committer-image=sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/image-committer:v0.1.0@sha256:d72cce22ff1ea248e86620e945b7cf12615db74c8a8402fcc01dbfa4a09e7442'; do
+  '--image-committer-image=sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/image-committer:v0.1.0@sha256:d72cce22ff1ea248e86620e945b7cf12615db74c8a8402fcc01dbfa4a09e7442' \
+  '--snapshot-job-namespace=opensandbox-snapshot'; do
   grep -qFx -- "$required" <<<"$controller_args" \
     || { echo "FAIL: production OpenSandbox controller lost: $required" >&2; fail=1; }
 done
-if grep -qFx -- '--snapshot-job-namespace=opensandbox-snapshot' <<<"$controller_args"; then
-  echo "FAIL: bootstrap enabled the patched snapshot job namespace before pinning its image" >&2
-  fail=1
-fi
 if grep -Eq '^--snapshot-(registry|registry-insecure|push-secret)|^--resume-pull-secret' <<<"$controller_args"; then
   echo "FAIL: production OpenSandbox controller enabled unavailable snapshot transport/credentials" >&2
   fail=1
@@ -1410,16 +1405,19 @@ fi
 for required in \
   'build-args: OPENSANDBOX_SERVER_VERSION=0.2.2' \
   '${{ env.OPENSANDBOX_IMAGE }}@${{ steps.build_opensandbox.outputs.digest }}' \
+  '${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}@${{ steps.build_opensandbox_controller.outputs.digest }}' \
   'group: bex-production-deploy' \
   'bash scripts/deploy-superseded.sh "$GITHUB_SHA"' \
   'refusing stale digest write-back' \
   '[[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]' \
   'grep -qF "digest: ${OPENSANDBOX_DIGEST}"' \
+  'grep -qF "tag: v0.2.0-bex-snapjobns@${CONTROLLER_DIGEST}"' \
   'deploy/opensandbox/kustomization.yaml' \
   'git push origin HEAD:main' \
   'bash scripts/opensandbox-server-secret.sh' \
   'wait for OpenSandbox control plane' \
   'BEX_EXPECTED_OPENSANDBOX_IMAGE' \
+  'BEX_EXPECTED_OPENSANDBOX_CONTROLLER_IMAGE' \
   'rollout restart' \
   'for deployment in opensandbox-controller-manager opensandbox-server' \
   '.status.availableReplicas'; do

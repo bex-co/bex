@@ -32,7 +32,7 @@ permissions:
   id-token: write # w6/m6 t002: keyless cosign signing (GitHub Actions OIDC identity)
 
 # Digest write-back and the subsequent Argo rollout are one production
-# transaction. Queue main pushes so two runs cannot race their three image
+# transaction. Queue main pushes so two runs cannot race their four image
 # digests or deploy an older commit after a newer one.
 concurrency:
   group: bex-production-deploy
@@ -319,6 +319,7 @@ jobs:
           OP_DIGEST: ${{ steps.build_operator.outputs.digest }}
           DASH_DIGEST: ${{ steps.build_dashboard.outputs.digest }}
           OPENSANDBOX_DIGEST: ${{ steps.build_opensandbox.outputs.digest }}
+          CONTROLLER_DIGEST: ${{ steps.build_opensandbox_controller.outputs.digest }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -327,7 +328,7 @@ jobs:
           # event to newer production source/manifests: the newer queued run
           # must build and pin its own digests. A preceding run can legitimately
           # finish its [skip ci] digest write-back after this event was created,
-          # so scripts/deploy-superseded.sh permits only the three generated image
+          # so scripts/deploy-superseded.sh permits only the four generated image
           # fields to differ; every other production-input change is a supersession.
           # When superseded (the pre-check job could not catch a commit that landed
           # DURING this build), conclude NEUTRAL: flag the rollout steps below to
@@ -357,6 +358,8 @@ jobs:
                   r"(?m)^(\s+- dashboard=[^@\n]+@sha256:)[0-9a-f]{64}$",
               "deploy/opensandbox/kustomization.yaml":
                   r"(?m)(^  - name: opensandbox-server\n    newName: [^\n]+\n    digest: sha256:)[0-9a-f]{64}$",
+              "deploy/gitops/base/values/opensandbox-controller.values.yaml":
+                  r"(?m)^(\s+tag: v0\.2\.0-bex-snapjobns@sha256:)[0-9a-f]{64}$",
           }
 
           def normalized(revision, path, pattern):
@@ -376,7 +379,7 @@ jobs:
                   )
           PY
           git rebase origin/main
-          for digest in "$OP_DIGEST" "$DASH_DIGEST" "$OPENSANDBOX_DIGEST"; do
+          for digest in "$OP_DIGEST" "$DASH_DIGEST" "$OPENSANDBOX_DIGEST" "$CONTROLLER_DIGEST"; do
             if ! [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
               echo "build emitted an invalid image digest" >&2
               exit 1
@@ -399,13 +402,27 @@ jobs:
               raise SystemExit("expected exactly one opensandbox-server image override")
           path.write_text(rendered)
           PY
+          python3 - "${CONTROLLER_DIGEST}" <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          path = Path("deploy/gitops/base/values/opensandbox-controller.values.yaml")
+          text = path.read_text()
+          pattern = r"(?m)^(\s+tag: v0\.2\.0-bex-snapjobns@)sha256:[0-9a-f]{64}$"
+          rendered, count = re.subn(pattern, rf"\g<1>{sys.argv[1]}", text)
+          if count != 1:
+              raise SystemExit("expected exactly one OpenSandbox controller digest")
+          path.write_text(rendered)
+          PY
           grep -qF "controller=${IMAGE}@${OP_DIGEST}" deploy/gitops/base/bex.yaml
           grep -qF "dashboard=${DASHBOARD_IMAGE}@${DASH_DIGEST}" deploy/gitops/base/dashboard.yaml
           grep -qF "digest: ${OPENSANDBOX_DIGEST}" deploy/opensandbox/kustomization.yaml
-          if git diff --quiet -- deploy/gitops/base/bex.yaml deploy/gitops/base/dashboard.yaml deploy/opensandbox/kustomization.yaml; then
+          grep -qF "tag: v0.2.0-bex-snapjobns@${CONTROLLER_DIGEST}" deploy/gitops/base/values/opensandbox-controller.values.yaml
+          if git diff --quiet -- deploy/gitops/base/bex.yaml deploy/gitops/base/dashboard.yaml deploy/opensandbox/kustomization.yaml deploy/gitops/base/values/opensandbox-controller.values.yaml; then
             echo "digests already pinned — nothing to write back"
           else
-            git add deploy/gitops/base/bex.yaml deploy/gitops/base/dashboard.yaml deploy/opensandbox/kustomization.yaml
+            git add deploy/gitops/base/bex.yaml deploy/gitops/base/dashboard.yaml deploy/opensandbox/kustomization.yaml deploy/gitops/base/values/opensandbox-controller.values.yaml
             git commit -m "chore(deploy): pin platform images to ${GITHUB_SHA::12} [skip ci]"
             git push origin HEAD:main
           fi
@@ -483,16 +500,26 @@ jobs:
         timeout-minutes: 12
         env:
           BEX_EXPECTED_OPENSANDBOX_IMAGE: ${{ env.OPENSANDBOX_IMAGE }}@${{ steps.build_opensandbox.outputs.digest }}
+          BEX_EXPECTED_OPENSANDBOX_CONTROLLER_IMAGE: ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}@${{ steps.build_opensandbox_controller.outputs.digest }}
         run: |
           deadline=$((SECONDS + 600))
           actual=""
+          controller_actual=""
           while ((SECONDS < deadline)); do
             actual="$(kubectl -n opensandbox-system get deployment opensandbox-server -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)"
-            [ "$actual" = "$BEX_EXPECTED_OPENSANDBOX_IMAGE" ] && break
+            controller_actual="$(kubectl -n opensandbox-system get deployment opensandbox-controller-manager -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)"
+            [ "$actual" = "$BEX_EXPECTED_OPENSANDBOX_IMAGE" ] \
+              && [ "$controller_actual" = "$BEX_EXPECTED_OPENSANDBOX_CONTROLLER_IMAGE" ] \
+              && break
             sleep 5
           done
           if [ "$actual" != "$BEX_EXPECTED_OPENSANDBOX_IMAGE" ]; then
             echo "opensandbox-server image is ${actual:-missing}, want $BEX_EXPECTED_OPENSANDBOX_IMAGE" >&2
+            kubectl -n argocd get applications
+            exit 1
+          fi
+          if [ "$controller_actual" != "$BEX_EXPECTED_OPENSANDBOX_CONTROLLER_IMAGE" ]; then
+            echo "opensandbox-controller image is ${controller_actual:-missing}, want $BEX_EXPECTED_OPENSANDBOX_CONTROLLER_IMAGE" >&2
             kubectl -n argocd get applications
             exit 1
           fi
