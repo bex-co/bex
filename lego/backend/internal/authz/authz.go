@@ -168,6 +168,18 @@ func (o *openfgaChecker) GrantWorkspaceRole(ctx context.Context, tenantID, subje
 	return o.writeTuple(ctx, false, tupleKey{User: subject, Relation: relation, Object: "workspace:" + tenantID})
 }
 
+// GrantAgentSessionWorkspace makes an agent session a first-class OpenFGA
+// object. Every session decision derives through this parent tuple; no caller
+// tuple is copied onto the session, so later workspace role changes take effect
+// without rewriting every session (ADR047 gap 6 / w3/m39).
+func (o *openfgaChecker) GrantAgentSessionWorkspace(ctx context.Context, sessionID, workspaceID string) error {
+	return o.writeTuple(ctx, false, tupleKey{
+		User:     "workspace:" + workspaceID,
+		Relation: "workspace",
+		Object:   "agent_session:" + sessionID,
+	})
+}
+
 // RevokeWorkspaceMember removes a subject's membership tuple from a workspace —
 // the delete side of both workspace teardown (workspaces.WorkspaceRevoker) and
 // API-key revoke (w1/m9: the bound client stops authorizing, subject to

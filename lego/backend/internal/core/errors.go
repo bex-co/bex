@@ -66,6 +66,11 @@ var (
 	// OpenSandbox lifecycle client isn't wired (BEX_OPENSANDBOX_URL unset);
 	// adapters surface it as 503 (pillar 5, ADR042/w3/m32).
 	ErrSandboxesUnavailable = errors.New("sandbox runtime not configured")
+	// ErrAgentSessionsUnavailable is returned when any required session control
+	// plane dependency is absent: Postgres, OpenSandbox, ticket signer, or the
+	// browser-reachable gateway origin. A partially configured session cannot be
+	// created safely, so the feature fails closed as one unit.
+	ErrAgentSessionsUnavailable = errors.New("agent sessions not configured")
 	// ErrBadRequest is returned for invalid caller input (adapters map it to 400).
 	ErrBadRequest = errors.New("bad request")
 	// ErrForbidden is returned when the caller lacks the permission a verb requires

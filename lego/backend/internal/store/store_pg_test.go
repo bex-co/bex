@@ -97,9 +97,40 @@ func TestPGStore(t *testing.T) {
 	assertServiceEvents(ctx, t, s, ten, app)
 	assertWorkspaceLifecycle(ctx, t, s, pool)
 	assertRegistryCredentials(ctx, t, s, ten)
+	assertAgentSessions(ctx, t, s, ten)
 	assertProjectsAndEnvironments(ctx, t, s, pool, ten, app)
 	assertWebhooks(ctx, t, s, pool, ten, app)
 	assertDeleteCascades(ctx, t, s, pool, app)
+}
+
+func assertAgentSessions(ctx context.Context, t *testing.T, s *PGStore, tenant Tenant) {
+	t.Helper()
+	record, err := s.CreateAgentSession(ctx, AgentSession{
+		WorkspaceID: tenant.ID, Repo: "bex-co/example", Branch: "main",
+		AgentConfig: []byte(`{"agent":"codex","task":"test"}`),
+	})
+	if err != nil {
+		t.Fatalf("create agent session: %v", err)
+	}
+	if kind, ok := ids.KindOf(record.ID); !ok || kind != ids.AgentSession || record.Phase != "creating" {
+		t.Fatalf("agent session id/phase = %q/%q", record.ID, record.Phase)
+	}
+	record, err = s.SetAgentSessionLifecycle(ctx, record.ID, "sandbox-1", "running", "running", false)
+	if err != nil || record.SandboxID != "sandbox-1" || record.Phase != "running" {
+		t.Fatalf("bind agent sandbox = %+v err=%v", record, err)
+	}
+	got, err := s.GetAgentSession(ctx, record.ID)
+	if err != nil || got.WorkspaceID != tenant.ID || got.Repo != "bex-co/example" {
+		t.Fatalf("get agent session = %+v err=%v", got, err)
+	}
+	listed, err := s.ListAgentSessions(ctx, tenant.ID)
+	if err != nil || len(listed) != 1 || listed[0].ID != record.ID {
+		t.Fatalf("list agent sessions = %+v err=%v", listed, err)
+	}
+	record, err = s.SetAgentSessionLifecycle(ctx, record.ID, "", "canceled", "canceled", true)
+	if err != nil || record.CanceledAt == nil {
+		t.Fatalf("cancel agent session = %+v err=%v", record, err)
+	}
 }
 
 // assertConcurrentDeployTriggers proves the App-row lock and partial unique

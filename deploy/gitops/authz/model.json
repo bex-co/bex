@@ -455,6 +455,47 @@
         }
       },
       "type": "api_key"
+    },
+    {
+      "metadata": {
+        "relations": {
+          "can_operate": {},
+          "can_view": {},
+          "workspace": {
+            "directly_related_user_types": [
+              {
+                "type": "workspace"
+              }
+            ]
+          }
+        }
+      },
+      "relations": {
+        "can_operate": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "can_operate"
+            },
+            "tupleset": {
+              "relation": "workspace"
+            }
+          }
+        },
+        "can_view": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "can_view"
+            },
+            "tupleset": {
+              "relation": "workspace"
+            }
+          }
+        },
+        "workspace": {
+          "this": {}
+        }
+      },
+      "type": "agent_session"
     }
   ]
 }

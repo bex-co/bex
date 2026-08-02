@@ -131,3 +131,34 @@ func TestGrantWorkspaceAdmin(t *testing.T) {
 		t.Errorf("expected one membership tuple write, got %d", wrote.Load())
 	}
 }
+
+func TestGrantAgentSessionWorkspaceWritesFirstClassParentTuple(t *testing.T) {
+	var got tupleKey
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/stores":
+			_, _ = fmt.Fprint(w, `{"stores":[{"id":"store-1","name":"bex"}]}`)
+		case "/stores/store-1/write":
+			var in writeRequest
+			_ = json.NewDecoder(r.Body).Decode(&in)
+			if in.Writes != nil && len(in.Writes.TupleKeys) == 1 {
+				got = in.Writes.TupleKeys[0]
+			}
+			_, _ = fmt.Fprint(w, `{}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	writer := NewOpenFGAChecker(srv.URL, "").(interface {
+		GrantAgentSessionWorkspace(context.Context, string, string) error
+	})
+	if err := writer.GrantAgentSessionWorkspace(context.Background(), "ags-1", "tea-a"); err != nil {
+		t.Fatal(err)
+	}
+	want := tupleKey{User: "workspace:tea-a", Relation: "workspace", Object: "agent_session:ags-1"}
+	if got != want {
+		t.Fatalf("tuple = %+v, want %+v", got, want)
+	}
+}

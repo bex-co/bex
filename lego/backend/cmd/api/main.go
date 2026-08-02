@@ -48,6 +48,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsessions"
 	"github.com/bex-co/bex/lego/backend/internal/api"
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
@@ -324,6 +325,10 @@ func main() {
 		deps.BlueprintsStore = st    // blueprint registry (w2/m15): auto-upserted on deploy, list+sync read it
 		deps.WebhookStore = st       // outbound webhooks (w3/m11): endpoint CRUD + delivery history; the worker below delivers
 		deps.JobStore = st           // one-off jobs (Render's /services/{id}/jobs): job CRUD + k8s Job tracking
+		deps.AgentSessionStore = st  // ADR047 D3: durable agent-session lifecycle
+		if writer, ok := authzChecker.(agentsessions.TupleWriter); ok {
+			deps.AgentSessionTuples = writer
+		}
 
 		// Audit log (w4/m10): *store.PGStore structurally satisfies
 		// core.AuditSink, so every write verb's Authorize/AuthorizeOn call
@@ -586,8 +591,10 @@ func main() {
 	// wired as they land; for now a single default "base" template.
 	if osURL := os.Getenv("BEX_OPENSANDBOX_URL"); osURL != "" {
 		deps.SandboxClient = sandbox.NewClient(osURL)
+		baseSandboxImage := envOr("BEX_SANDBOX_IMAGE", "docker.io/library/alpine:3")
 		deps.SandboxTemplates = map[string]sandbox.Template{
-			"base": {Image: envOr("BEX_SANDBOX_IMAGE", "docker.io/library/alpine:3"), Entrypoint: []string{"sleep", "infinity"}, CPU: "500m", Memory: "512Mi"},
+			"base":  {Image: baseSandboxImage, Entrypoint: []string{"sleep", "infinity"}, CPU: "500m", Memory: "512Mi"},
+			"agent": {Image: envOr("BEX_AGENT_SESSION_IMAGE", baseSandboxImage), Entrypoint: []string{"sleep", "infinity"}, CPU: "500m", Memory: "512Mi"},
 		}
 		deps.SandboxDefaultPlan = sandbox.PlanStarter
 		// The Render CLI's `ea sandbox create` sends no template (no such flag), so
@@ -631,8 +638,13 @@ func main() {
 	// `ssh` is unaffected.
 	if secret := os.Getenv("BEX_SHELL_TICKET_SECRET"); secret != "" {
 		deps.ShellTicketSecret = []byte(secret)
+		// Agent attach deliberately reuses the Browser Web Shell trust key and
+		// DB-backed nonce design. The claims are a distinct ticket type and bind
+		// the session sandbox pod/workspace instead of a service instance.
+		deps.AgentSessionTicketSecret = []byte(secret)
 	}
 	deps.ShellWSURL = os.Getenv("BEX_SHELL_WS_URL")
+	deps.AgentSessionGatewayURL = os.Getenv("BEX_AGENT_SESSION_GATEWAY_URL")
 
 	// Per-workspace resource caps (w7/m9): 0 (unset) = unlimited, byte-identical.
 	// Render-Hobby defaults: BEX_MAX_SERVICES=25, BEX_MAX_POSTGRES=1, BEX_MAX_KEYVALUES=1.
