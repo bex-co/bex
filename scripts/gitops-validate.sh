@@ -1241,7 +1241,7 @@ for required in \
   '--snapshot-registry-insecure=true' \
   '--snapshot-push-secret=bex-snapshot-push' \
   '--resume-pull-secret=bex-snapshot-pull' \
-  '--containerd-socket-path=/run/k3s/containerd/containerd.sock'; do
+  '--containerd-socket-path=/run/containerd/containerd.sock'; do
   grep -qFx -- "$required" <<<"$controller_args" \
     || { echo "FAIL: production OpenSandbox controller lost: $required" >&2; fail=1; }
 done

@@ -20,5 +20,7 @@ controller:
     registryInsecure: true
     snapshotPushSecret: bex-snapshot-push
     resumePullSecret: bex-snapshot-pull
-    # k3s nodes expose containerd at the k3s-specific socket path.
-    containerdSocketPath: /run/k3s/containerd/containerd.sock
+    # This k3s build serves containerd at the standard socket path (verified on
+    # a live sandbox node, w3/m42: /run/k3s/... does NOT exist there — kubelet
+    # hostPath-created an empty dir at the misconfigured path).
+    containerdSocketPath: /run/containerd/containerd.sock
