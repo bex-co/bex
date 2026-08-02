@@ -1224,8 +1224,13 @@ opensandbox_controller_render="$(helm template opensandbox-controller \
 controller_image="$(yq -N \
   'select(.kind == "Deployment" and .metadata.name == "opensandbox-controller-manager") |
     .spec.template.spec.containers[0].image' - <<<"$opensandbox_controller_render" | tr -d '\n')"
-[ "$controller_image" = "ghcr.io/bex-co/opensandbox-controller:v0.2.0-bex-snapjobns@sha256:ee083a9a88f0c2f189970015050ec8d078954f88130f94c9f404761f3c1757b9" ] \
-  || { echo "FAIL: OpenSandbox patched controller image is '$controller_image'" >&2; fail=1; }
+# The deploy workflow rebuilds and pins this patched controller by digest on
+# every rollout, so validate the trusted repository/tag and immutable shape.
+if ! grep -Eq '^ghcr\.io/bex-co/opensandbox-controller:v0\.2\.0-bex-snapjobns@sha256:[0-9a-f]{64}$' \
+    <<<"$controller_image"; then
+  echo "FAIL: OpenSandbox patched controller image is '$controller_image'" >&2
+  fail=1
+fi
 controller_args="$(yq -N \
   'select(.kind == "Deployment" and .metadata.name == "opensandbox-controller-manager") |
     .spec.template.spec.containers[0].args[]' - <<<"$opensandbox_controller_render")"
@@ -1713,9 +1718,9 @@ metadata_fallback="$(yq -N '
   echo "FAIL: static-server must disable AWS metadata credential fallback" >&2
   fail=1
 }
-if rg -n 'BEX_STATIC_S3_SECRET|name: static-s3$' \
+if grep -R -nE 'BEX_STATIC_S3_SECRET|name: static-s3$' \
     lego/operator/cmd lego/operator/internal/publish >/dev/null || \
-   rg -n 'name: static-s3$' lego/operator/config >/dev/null; then
+   grep -R -nE 'name: static-s3$' lego/operator/config >/dev/null; then
   echo "FAIL: legacy shared static S3 Secret contract remains in runtime code/config" >&2
   fail=1
 fi
