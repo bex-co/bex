@@ -1,6 +1,6 @@
 # Picker Component
 
-A customizable picker component built with react-native-reanimated2 and native ScrollView that displays a modal from the bottom with a wheel picker interface.
+A customizable picker component built with React Native Animated and ScrollView that displays a modal from the bottom with a wheel picker interface.
 
 ## Features
 
@@ -86,7 +86,7 @@ The component automatically adapts to your app's theme using the `useTheme` hook
 
 ## Technical Details
 
-- **Animation**: Uses react-native-reanimated2 for smooth 60fps animations
+- **Animation**: Uses React Native Animated with the native driver for smooth 60fps animations
 - **ScrollView**: Native ScrollView with snap-to-interval for precise item selection
 - **Performance**: Optimized with useCallback and useMemo for smooth scrolling
 - **Accessibility**: Proper touch targets and keyboard navigation support

@@ -1,10 +1,5 @@
-import { View as RNView } from "react-native";
-import { useEffect } from "react";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-} from "react-native-reanimated";
+import { Animated, View as RNView } from "react-native";
+import { useEffect, useRef } from "react";
 import { useTheme } from "@/common/theme";
 import { useThemeStyle } from "@/common/hooks/use-theme-style";
 
@@ -19,7 +14,9 @@ export const Progress = ({
   height = 3,
   duration = 500,
 }: ProgressProps) => {
-  const percentValue = useSharedValue(percent);
+  const percentValue = useRef(
+    new Animated.Value(Math.min(Math.max(percent, 0), 100)),
+  ).current;
   const theme = useTheme().colorTheme;
   const styles = useThemeStyle(() => ({
     container: {
@@ -28,16 +25,23 @@ export const Progress = ({
       width: "100%",
     },
   }));
-  const animatedStyle = useAnimatedStyle(() => ({
-    width: `${Math.min(percentValue.value, 100)}%`,
+  const animatedStyle = {
+    width: percentValue.interpolate({
+      inputRange: [0, 100],
+      outputRange: ["0%", "100%"],
+      extrapolate: "clamp",
+    }),
     backgroundColor: theme.primary,
     height: height,
-  }));
+  };
 
   useEffect(() => {
-    percentValue.value = withTiming(percent, { duration });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [percent]);
+    Animated.timing(percentValue, {
+      toValue: Math.min(Math.max(percent, 0), 100),
+      duration,
+      useNativeDriver: false,
+    }).start();
+  }, [duration, percent, percentValue]);
 
   return (
     <RNView style={styles.container}>

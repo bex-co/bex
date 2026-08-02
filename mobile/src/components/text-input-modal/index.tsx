@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
+  Animated,
   View,
   Text,
   StyleSheet,
@@ -8,11 +9,6 @@ import {
   Modal,
   TextInput,
 } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-} from "react-native-reanimated";
 import { useTheme } from "@/common/theme";
 import { ColorTheme } from "@/types/theme-props";
 
@@ -125,27 +121,31 @@ export const TextInputModal: React.FC<TextInputModalProps> = ({
   const theme = useTheme().colorTheme;
   const styles = getStyles(theme);
   const [inputText, setInputText] = useState("");
-  const opacity = useSharedValue(0);
-  const scale = useSharedValue(0.9);
+  const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.9)).current;
 
   useEffect(() => {
     if (visible) {
       setInputText("");
-      opacity.value = withTiming(1, { duration: 200 });
-      scale.value = withTiming(1, { duration: 200 });
+      opacity.setValue(0);
+      scale.setValue(0.9);
+      Animated.parallel([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scale, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
     } else {
-      opacity.value = withTiming(0, { duration: 150 });
-      scale.value = withTiming(0.9, { duration: 150 });
+      opacity.setValue(0);
+      scale.setValue(0.9);
     }
-  }, [visible]);
-
-  const overlayAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-  }));
-
-  const modalAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  }, [opacity, scale, visible]);
 
   const handleConfirm = () => {
     if (validateInput && !validateInput(inputText)) {
@@ -165,12 +165,14 @@ export const TextInputModal: React.FC<TextInputModalProps> = ({
       animationType="none"
       onRequestClose={onCancel}
     >
-      <Animated.View style={[styles.overlay, overlayAnimatedStyle]}>
+      <Animated.View style={[styles.overlay, { opacity }]}>
         <Pressable
           style={StyleSheet.absoluteFill}
           onPress={onCancel}
         ></Pressable>
-        <Animated.View style={[styles.modalContainer, modalAnimatedStyle]}>
+        <Animated.View
+          style={[styles.modalContainer, { transform: [{ scale }] }]}
+        >
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
             {message && <Text style={styles.message}>{message}</Text>}
