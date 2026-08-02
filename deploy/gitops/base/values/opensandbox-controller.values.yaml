@@ -1,6 +1,8 @@
 # Exact controller config the MVP verified. The image references include the
 # reviewed multi-architecture index digests; tags remain only as human-readable
-# version context. Snapshot pause/resume is blocked separately by ADR042 D5.
+# version context. deploy.yml now builds/signs/scans the carried m42 controller
+# patch, but this bootstrap commit deliberately keeps the live controller on the
+# known-good upstream digest until that first build yields an immutable digest.
 controller:
   image:
     tag: v0.2.0@sha256:a9a5f73c1785ebd955336ffa313973a35c1a1b662cb7afc4ea82d92021b3532a
@@ -15,4 +17,4 @@ controller:
     registryInsecure: true                  # true only for the local insecure Zot; false in prod
     imageCommitterImage: "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/image-committer:v0.1.0@sha256:d72cce22ff1ea248e86620e945b7cf12615db74c8a8402fcc01dbfa4a09e7442"
     # snapshotPushSecret / resumePullSecret stay empty in production while the
-    # baseline-PSS commit path is disabled; future enablement needs a fresh review.
+    # snapshot transport and patched controller activation remain disabled.

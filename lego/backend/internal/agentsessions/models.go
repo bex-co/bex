@@ -36,10 +36,11 @@ const (
 // fire-and-forget prompt, and Template selects a platform-registered agent
 // sandbox image (never an arbitrary image supplied by a tenant).
 type AgentConfig struct {
-	Agent    string `json:"agent"`
-	Model    string `json:"model,omitempty"`
-	Task     string `json:"task"`
-	Template string `json:"template,omitempty"`
+	Agent         string `json:"agent"`
+	Model         string `json:"model,omitempty"`
+	ModelEndpoint string `json:"modelEndpoint,omitempty"`
+	Task          string `json:"task"`
+	Template      string `json:"template,omitempty"`
 }
 
 type CreateRequest struct {
@@ -48,6 +49,7 @@ type CreateRequest struct {
 	Repo            string      `json:"repo,omitempty"`
 	Branch          string      `json:"branch,omitempty"`
 	AgentConfig     AgentConfig `json:"agentConfig,omitempty"`
+	EgressAllowlist []string    `json:"egressAllowlist,omitempty"`
 }
 
 // View is byte-for-byte the same domain shape projected by REST, GraphQL, and

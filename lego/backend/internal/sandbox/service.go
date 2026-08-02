@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -39,6 +40,8 @@ const (
 	metadataRegime        = "app.bex.co/regime"
 	metadataSandboxRegime = "sandbox"
 	metadataAgentSession  = "bex.co/agent-session"
+	metadataEgressAllow   = "bex.co/agent-session-egress-allowlist"
+	metadataModelEndpoint = "bex.co/agent-session-model-endpoint"
 	minSandboxTimeout     = 60
 	maxSandboxTimeout     = 86400
 )
@@ -63,6 +66,16 @@ type Template struct {
 	Memory     string
 }
 
+// SessionEgress is the network-mechanism seam used by the agent-session
+// lifecycle (ADR047 D5). Implementations must install setup policy before Pod
+// creation, make the setup→agent transition one-way, and leave the structural
+// sandbox default-deny in place during cleanup.
+type SessionEgress interface {
+	PrepareSetup(ctx context.Context, namespace, sessionID, modelEndpoint string, extra []string) error
+	TransitionToAgent(ctx context.Context, namespace, sessionID, modelEndpoint string, extra []string) error
+	Delete(ctx context.Context, namespace, sessionID string) error
+}
+
 // Service is the authorized sandbox feature. It is stateless: the per-workspace
 // tenant key scopes OpenSandbox's own list to the workspace, so OpenSandbox is
 // the source of truth and bex keeps no sandbox table (ADR042 D4). Client nil =>
@@ -82,6 +95,10 @@ type Service struct {
 	// Meter records durable lifecycle observations. nil keeps the pre-metering
 	// path byte-identical for store-off deployments.
 	Meter *Meter
+	// SessionEgress is required only for agent-session lifecycle mechanics.
+	// Ordinary Render
+	// sandboxes retain the m35 compatibility policy when it is nil.
+	SessionEgress SessionEgress
 }
 
 // CreateRequest is the caller's create input. OwnerID binds the workspace (as
@@ -372,10 +389,13 @@ func NewAgentSessionLifecycle(service *Service) *AgentSessionLifecycle {
 // check. It preserves every reserved sandbox hardening stamp and adds the
 // durable session id, without re-checking can_create (session creation is
 // intentionally can_operate per ADR047 D3).
-func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, workspaceID, template, sessionID string) (Sandbox, error) {
+func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, workspaceID, template, sessionID, modelEndpoint string, egressAllowlist []string) (Sandbox, error) {
 	s := l.service
 	if !s.enabled() {
 		return Sandbox{}, core.ErrSandboxesUnavailable
+	}
+	if s.SessionEgress == nil {
+		return Sandbox{}, core.ErrAgentSessionsUnavailable
 	}
 	if workspaceID == "" || sessionID == "" {
 		return Sandbox{}, fmt.Errorf("%w: workspace and agent session id are required", core.ErrBadRequest)
@@ -391,9 +411,50 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 	if plan == "" {
 		plan = PlanStarter
 	}
+	allowJSON, err := json.Marshal(egressAllowlist)
+	if err != nil {
+		return Sandbox{}, fmt.Errorf("encode agent session egress allowlist: %w", err)
+	}
+	namespace := workspaceID + "-sandbox"
+	if err := s.SessionEgress.PrepareSetup(ctx, namespace, sessionID, modelEndpoint, egressAllowlist); err != nil {
+		return Sandbox{}, err
+	}
 	policy := &NetworkPolicy{Default: NetworkPolicyDenyAll}
-	return s.createResolved(ctx, workspaceID, tmpl, plan, "", 0, policy,
-		map[string]string{metadataAgentSession: sessionID})
+	sb, err := s.createResolved(ctx, workspaceID, tmpl, plan, "", 0, policy, map[string]string{
+		metadataAgentSession:  sessionID,
+		metadataEgressAllow:   string(allowJSON),
+		metadataModelEndpoint: modelEndpoint,
+	})
+	if err != nil {
+		if cleanupErr := s.SessionEgress.Delete(ctx, namespace, sessionID); cleanupErr != nil {
+			return Sandbox{}, errors.Join(err, fmt.Errorf("rollback session egress policy: %w", cleanupErr))
+		}
+		return Sandbox{}, err
+	}
+	return sb, nil
+}
+
+// EnterAgentSessionPhase narrows one exact session sandbox from setup registry
+// access to its immutable agent baseline. Durable sandbox metadata, rather than
+// transition-call input, supplies the model endpoint and tenant widening.
+func (l *AgentSessionLifecycle) EnterAgentSessionPhase(ctx context.Context, workspaceID, sessionID, sandboxID string) error {
+	s := l.service
+	if s.SessionEgress == nil {
+		return core.ErrAgentSessionsUnavailable
+	}
+	key, err := s.agentSessionKey(ctx, workspaceID)
+	if err != nil {
+		return err
+	}
+	raw, err := s.agentSessionSandbox(ctx, key, workspaceID, sessionID, sandboxID)
+	if err != nil {
+		return err
+	}
+	var extra []string
+	if err := json.Unmarshal([]byte(raw.Metadata[metadataEgressAllow]), &extra); err != nil {
+		return fmt.Errorf("agent session egress metadata is invalid: %w", err)
+	}
+	return s.SessionEgress.TransitionToAgent(ctx, workspaceID+"-sandbox", sessionID, raw.Metadata[metadataModelEndpoint], extra)
 }
 
 // ResumeAgentSessionSandbox resumes only a fully hardened sandbox stamped for
@@ -433,6 +494,9 @@ func (l *AgentSessionLifecycle) CancelAgentSessionSandbox(ctx context.Context, w
 			// Already absent is the desired terminal state. A mismatched/foreign
 			// object is also deliberately indistinguishable from absent and is
 			// never touched; the authorized durable session may still converge.
+			if s.SessionEgress != nil {
+				return s.SessionEgress.Delete(ctx, workspaceID+"-sandbox", sessionID)
+			}
 			return nil
 		}
 		return err
@@ -443,6 +507,11 @@ func (l *AgentSessionLifecycle) CancelAgentSessionSandbox(ctx context.Context, w
 	}
 	raw.Status.State = string(StatusTerminated)
 	s.Meter.Observe(ctx, raw)
+	if s.SessionEgress != nil {
+		if err := s.SessionEgress.Delete(ctx, workspaceID+"-sandbox", sessionID); err != nil {
+			return fmt.Errorf("delete terminated session egress policy: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -577,5 +646,12 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Stat
 	}
 	raw.Status.State = string(phase)
 	s.Meter.Observe(ctx, raw)
+	if phase == StatusTerminated && s.SessionEgress != nil {
+		if sessionID := raw.Metadata[metadataAgentSession]; sessionID != "" {
+			if err := s.SessionEgress.Delete(ctx, ws+"-sandbox", sessionID); err != nil {
+				return fmt.Errorf("delete terminated session egress policy: %w", err)
+			}
+		}
+	}
 	return nil
 }

@@ -122,6 +122,30 @@ A session ends (or checkpoints) by pushing its `bex-agent/*` branch with the ses
 
 The `<ws>-sandbox` default-deny NetworkPolicy stays. Baseline allowlist for the agent phase: GitHub (clone/push via the helper) and the model API endpoint only; setup phase may open package registries. Tenants may widen per session with an explicit allowlist (Codex pattern). When a metering LLM proxy exists (D6 phase 2), the model-API allowlist narrows to the proxy — one mechanism then provides token metering **and** the exfiltration choke point.
 
+Wave-1 implementation (w3/m40): `internal/sessionegress` creates one
+namespaced `CiliumNetworkPolicy` keyed by the immutable `bex.co/agent-session`
+Pod identity before OpenSandbox creates the Pod. Setup admits the fixed package
+registry catalog (`BEX_AGENT_SETUP_REGISTRIES` can replace the defaults),
+GitHub, the HTTPS model endpoint derived from that session's selected
+agent/provider config, the identity-authenticated gateway credential hop, and
+validated exact tenant hostnames. The one-way transition updates that same policy to remove package
+registries; the allowlist hash must remain unchanged. The clusterwide
+`sandbox-egress-default-deny` contains only structural node, API, metadata, and
+private/rebinding denies, while its former positive rules moved to a legacy
+policy that explicitly excludes agent-session Pods. Thus policy creation,
+transition, and deletion never remove the underlying deny. API-server admission
+confines bex-api's dynamic Cilium authority to canonical `<ws>-sandbox`
+namespaces and rejects CIDR/entity, wildcard, broad-selector, and non-TLS public
+rules. Tenant entries are exact public DNS names only; invalid, duplicate,
+private, wildcard, URL-shaped, or excessive entries return the named
+`AGENT_SESSION_EGRESS_ALLOWLIST_INVALID` 400.
+
+The D6 phase-2 proxy is a required narrowing, not an optional alternative:
+once it exists, the session agent/provider resolver must return only that proxy
+endpoint and direct vendor model endpoints must disappear from newly rendered
+policies. The proxy then owns vendor selection and token metering behind the
+single egress choke point.
+
 ### D6 — Billing: two meters, quota + overage — explicitly no per-request meter
 
 Two new ADR023 meter kinds through the existing sealed-outbox → Stripe pipeline, gated by ADR046's `PaymentGate`:

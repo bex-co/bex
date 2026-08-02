@@ -112,10 +112,13 @@ spec:
         - 169.254.0.0/16
         - fe80::/10
 ---
-# Sandbox egress posture (w3/m35): every OpenSandbox workload is labeled
-# app.bex.co/regime=sandbox by both bex create metadata and the BatchSandbox
-# template. Cilium enforces this outside the gVisor guest; no iptables/nftables
-# sidecar runs inside the sandbox network namespace.
+# Structural sandbox egress posture (w3/m35, phase split w3/m40): every
+# OpenSandbox workload is labeled app.bex.co/regime=sandbox by both bex create
+# metadata and the BatchSandbox template. This policy carries only the denies
+# that must survive every phase. Positive FQDN rules live either in the legacy
+# policy below or in one namespaced per-session CiliumNetworkPolicy rendered by
+# bex-api. Keeping the structural deny separate prevents a dynamic allow from
+# accidentally replacing the node/metadata/private-network guard.
 apiVersion: cilium.io/v2
 kind: CiliumClusterwideNetworkPolicy
 metadata:
@@ -124,6 +127,48 @@ spec:
   endpointSelector:
     matchLabels:
       app.bex.co/regime: sandbox
+  enableDefaultDeny:
+    egress: true
+  egressDeny:
+    - toEntities:
+        - host
+        - remote-node
+        - kube-apiserver
+    - toCIDR:
+        - 169.254.0.0/16
+        - fe80::/10
+    # toFQDNs learns IPs from approved DNS answers. Deny private HTTPS targets
+    # explicitly so a poisoned/rebound approved name cannot turn that cache into
+    # a Pod, Service, node, or private-network allow. DNS itself is admitted only
+    # by the exact CoreDNS endpoint rule in the applicable positive policy.
+    - toCIDR:
+        - 10.0.0.0/8
+        - 100.64.0.0/10
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+        - fc00::/7
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+---
+# Compatibility allowlist for ordinary hosted sandboxes created before the
+# coding-agent session product (m35's verified posture). Agent-session pods are
+# explicitly excluded: their setup/agent rules are rendered per session so a
+# tenant allowlist cannot affect any sibling sandbox in the workspace.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: sandbox-egress-legacy-allowlist
+spec:
+  endpointSelector:
+    matchLabels:
+      app.bex.co/regime: sandbox
+    matchExpressions:
+      - key: bex.co/agent-session
+        operator: DoesNotExist
+  enableDefaultDeny:
+    egress: true
   egress:
     # DNS is L7-filtered: only names that can subsequently be reached may be
     # queried, so attacker-controlled labels cannot become a DNS tunnel.
@@ -172,28 +217,6 @@ spec:
             - files.pythonhosted.org
             - api.anthropic.com
             - api.openai.com
-  egressDeny:
-    - toEntities:
-        - host
-        - remote-node
-        - kube-apiserver
-    - toCIDR:
-        - 169.254.0.0/16
-        - fe80::/10
-    # toFQDNs learns IPs from approved DNS answers. Deny private HTTPS targets
-    # explicitly so a poisoned/rebound approved name cannot turn that cache into
-    # a Pod, Service, node, or private-network allow. DNS itself remains the one
-    # CoreDNS:53 endpoint rule above.
-    - toCIDR:
-        - 10.0.0.0/8
-        - 100.64.0.0/10
-        - 172.16.0.0/12
-        - 192.168.0.0/16
-        - fc00::/7
-      toPorts:
-        - ports:
-            - port: "443"
-              protocol: TCP
 ---
 # Execd is the only inbound path to a sandbox Pod. Kubernetes NetworkPolicy
 # cannot match a ServiceAccount, so this identity check must stay Cilium-native:

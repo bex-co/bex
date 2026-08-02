@@ -1,8 +1,28 @@
-# Production snapshot transport is deliberately disabled. The upstream commit
-# Job requires a hostPath containerd socket and is rejected by the sandbox
-# namespace's baseline PSS (ADR042 D5); supplying a registry or credential would
-# only create dormant secret-bearing authority for an unavailable feature.
+# Production snapshot transport stays disabled pending w3/m42 t002. The carried
+# snapshot-job-namespace patch is built by CI first, then activated only after a
+# real immutable digest exists; never point Argo at a placeholder digest.
+#
+# To enable (t002, in order):
+#   1. push credential: bash scripts/snapshot-registry-secrets.sh (out-of-band;
+#      creates opensandbox-snapshot/bex-snapshot-push — bex-builder already has
+#      the Zot adminPolicy, no ACL change needed);
+#   2. resume-pull scoping: the controller injects resumePullSecret into the
+#      recreated pod's imagePullSecrets, which is namespace-local — it must be
+#      minted per `<ws>-sandbox` namespace (a shared read credential would let
+#      tenants pull each other's snapshot rootfs). Design + review in t002
+#      before flipping this on;
+#   3. then set here: registry: zot.bex-registry.svc:5000/snapshots,
+#      registryInsecure: true (in-cluster Zot is HTTP; WireGuard node
+#      encryption is the transport mitigation, w7/008),
+#      snapshotPushSecret: bex-snapshot-push, resumePullSecret: <per-ws name>.
+#
+# Enabling the push side alone would make pause succeed while resume fails
+# (image pull denied) — strictly worse than pause failing fast — so the flip is
+# atomic with the resume-pull piece.
 controller:
   snapshot:
     registry: ""
     registryInsecure: false
+    # k3s nodes expose containerd at the k3s-specific socket path; correct (and
+    # inert while the transport above is disabled) for the commit Jobs' mount.
+    containerdSocketPath: /run/k3s/containerd/containerd.sock

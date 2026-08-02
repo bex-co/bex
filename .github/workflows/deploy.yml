@@ -42,6 +42,7 @@ env:
   IMAGE: ghcr.io/bex-co/bex-operator
   DASHBOARD_IMAGE: ghcr.io/bex-co/bex-dashboard
   OPENSANDBOX_IMAGE: ghcr.io/bex-co/opensandbox-server
+  OPENSANDBOX_CONTROLLER_IMAGE: ghcr.io/bex-co/opensandbox-controller
 
 jobs:
   # --- gates: all three test suites must pass before any image is built or deployed ---
@@ -179,6 +180,22 @@ jobs:
             ${{ env.OPENSANDBOX_IMAGE }}:${{ github.sha }}
             ${{ env.OPENSANDBOX_IMAGE }}:0.2.2
 
+      # --- 1c'. build the patched OpenSandbox controller image (w3/m42) ---
+      # Upstream at a pinned commit plus the carried snapshot-job-namespace
+      # patch (deploy/opensandbox/patches/), which moves the privileged
+      # commit/unpause Jobs out of the tenant sandbox namespaces (ADR042 D5).
+      # Retire this step when an upstream release ships the flag.
+      - id: build_opensandbox_controller
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: deploy/opensandbox
+          file: deploy/opensandbox/controller.Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:${{ github.sha }}
+            ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:v0.2.0-bex-snapjobns
+
       # --- 1d. supply chain: cosign sign + SBOM every pushed image (w6/m6 t002) ---
       # Keyless Sigstore signing (the workflow's own GitHub Actions OIDC identity,
       # recorded in the Rekor transparency log — no signing key to custody) plus an
@@ -204,6 +221,7 @@ jobs:
             ${{ env.IMAGE }}@${{ steps.build_operator.outputs.digest }}
             ${{ env.DASHBOARD_IMAGE }}@${{ steps.build_dashboard.outputs.digest }}
             ${{ env.OPENSANDBOX_IMAGE }}@${{ steps.build_opensandbox.outputs.digest }}
+            ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}@${{ steps.build_opensandbox_controller.outputs.digest }}
         run: |
           for ref in $REFS; do
             cosign sign --yes "$ref"
@@ -266,6 +284,24 @@ jobs:
         name: CVE scan — OpenSandbox server CRITICAL (gate)
         with:
           image-ref: '${{ env.OPENSANDBOX_IMAGE }}@${{ steps.build_opensandbox.outputs.digest }}'
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: CRITICAL
+
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        name: CVE scan — OpenSandbox controller HIGH+CRITICAL (report)
+        with:
+          image-ref: '${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}@${{ steps.build_opensandbox_controller.outputs.digest }}'
+          format: table
+          exit-code: '0'
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        name: CVE scan — OpenSandbox controller CRITICAL (gate)
+        with:
+          image-ref: '${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}@${{ steps.build_opensandbox_controller.outputs.digest }}'
           format: table
           exit-code: '1'
           ignore-unfixed: true

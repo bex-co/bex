@@ -175,3 +175,128 @@ metadata:
 spec:
   policyName: bex-api-tenant-namespace-objects
   validationActions: [Deny, Audit]
+---
+# The session-egress writer needs dynamic namespaced CiliumNetworkPolicies, but
+# its ServiceAccount is cluster-scoped because tenant namespace names are
+# dynamic. Constrain the authority to canonical `<ws>-sandbox` namespaces and
+# to the exact per-session DNS/FQDN/SNI/gateway policy grammar. In particular,
+# no CIDR/entity rule, wildcard FQDN, arbitrary endpoint, plaintext public port,
+# or broad endpoint selector is admissible even if bex-api is compromised.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: bex-api-session-egress
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["cilium.io"]
+        apiVersions: ["v2"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["ciliumnetworkpolicies"]
+  matchConditions:
+    - name: bex-api-service-account
+      expression: >-
+        request.userInfo.username == 'system:serviceaccount:bex-system:bex-api'
+  variables:
+    - name: target
+      expression: >-
+        object != null ? object : oldObject
+    - name: session
+      expression: >-
+        variables.target.metadata.?labels['bex.co/agent-session'].orValue('')
+    - name: model
+      expression: >-
+        variables.target.metadata.?annotations['bex.co/model-endpoint'].orValue('')
+    - name: canonicalNamespace
+      expression: >-
+        namespaceObject != null &&
+        namespaceObject.metadata.?labels['app.kubernetes.io/managed-by'].orValue('') == 'bex-controlplane' &&
+        namespaceObject.metadata.?labels['app.kubernetes.io/part-of'].orValue('') == 'bex' &&
+        namespaceObject.metadata.?labels['app.bex.co/regime'].orValue('') == 'sandbox' &&
+        namespaceObject.metadata.?labels['app.bex.co/workspace'].orValue('').matches('^tea-[0-9a-v]{20}$') &&
+        namespaceObject.metadata.name == namespaceObject.metadata.labels['app.bex.co/workspace'] + '-sandbox'
+  validations:
+    - expression: variables.canonicalNamespace
+      reason: Forbidden
+      message: session egress policies are confined to canonical bex-managed sandbox namespaces
+    - expression: >-
+        variables.target.metadata.name.matches('^agent-session-egress-[a-f0-9]{16}$') &&
+        variables.target.metadata.?labels['app.kubernetes.io/managed-by'].orValue('') == 'bex-session-egress' &&
+        variables.session.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$') && size(variables.session) <= 63 &&
+        variables.target.metadata.?annotations['bex.co/egress-phase'].orValue('') in ['setup', 'agent'] &&
+        size(variables.model) <= 253 &&
+        variables.model.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)+$') &&
+        !variables.model.endsWith('.localhost') && !variables.model.endsWith('.local') &&
+        !variables.model.endsWith('.internal') && !variables.model.endsWith('.cluster.local') &&
+        has(variables.target.spec.endpointSelector.matchLabels) &&
+        size(variables.target.spec.endpointSelector.matchLabels) == 1 &&
+        variables.target.spec.endpointSelector.matchLabels['bex.co/agent-session'] == variables.session &&
+        !has(variables.target.spec.endpointSelector.matchExpressions)
+      reason: Forbidden
+      message: session egress policy identity or exact endpoint selector is invalid
+    - expression: >-
+        has(variables.target.spec.egress) && size(variables.target.spec.egress) == 3 &&
+        !has(variables.target.spec.egressDeny) &&
+        variables.target.spec.egress.all(rule,
+          !has(rule.toCIDR) && !has(rule.toCIDRSet) && !has(rule.toEntities) && !has(rule.toServices) &&
+          ((has(rule.toFQDNs) && !has(rule.toEndpoints)) || (has(rule.toEndpoints) && !has(rule.toFQDNs))))
+      reason: Forbidden
+      message: session egress policies may contain only exact FQDN or approved endpoint rules
+    - expression: >-
+        variables.target.spec.egress.filter(rule, has(rule.toFQDNs)).size() == 1 &&
+        variables.target.spec.egress.filter(rule, has(rule.toFQDNs)).all(rule,
+          rule.toFQDNs.size() > 0 &&
+          rule.toFQDNs.all(fqdn, has(fqdn.matchName) && !has(fqdn.matchPattern) &&
+            size(fqdn.matchName) <= 253 &&
+            fqdn.matchName.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)+$') &&
+            !fqdn.matchName.endsWith('.localhost') && !fqdn.matchName.endsWith('.local') &&
+            !fqdn.matchName.endsWith('.internal') && !fqdn.matchName.endsWith('.cluster.local')) &&
+          has(rule.toPorts) && rule.toPorts.size() == 1 &&
+          rule.toPorts[0].ports.size() == 1 &&
+          rule.toPorts[0].ports[0].port == '443' && rule.toPorts[0].ports[0].protocol == 'TCP' &&
+          has(rule.toPorts[0].serverNames) && rule.toPorts[0].serverNames.size() == rule.toFQDNs.size() &&
+          rule.toPorts[0].serverNames.all(name, size(name) <= 253 &&
+            name.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)+$') &&
+            !name.endsWith('.localhost') && !name.endsWith('.local') &&
+            !name.endsWith('.internal') && !name.endsWith('.cluster.local')) &&
+          rule.toFQDNs.exists(fqdn, fqdn.matchName == variables.model) &&
+          rule.toFQDNs.all(fqdn, rule.toPorts[0].serverNames.exists(name, name == fqdn.matchName)) &&
+          rule.toPorts[0].serverNames.all(name, rule.toFQDNs.exists(fqdn, fqdn.matchName == name)))
+      reason: Forbidden
+      message: public session egress must use exact DNS names with matching TLS SNI on TCP 443
+    - expression: >-
+        variables.target.spec.egress.filter(rule, has(rule.toEndpoints)).size() == 2 &&
+        variables.target.spec.egress.filter(rule, has(rule.toEndpoints)).all(rule,
+          rule.toEndpoints.size() == 1 && has(rule.toPorts) && rule.toPorts.size() == 1 &&
+          rule.toPorts[0].ports.size() == 1 &&
+          ((rule.toPorts[0].ports[0].port == '53' && rule.toPorts[0].ports[0].protocol == 'ANY' &&
+            rule.toEndpoints[0].matchLabels['k8s:io.kubernetes.pod.namespace'] == 'kube-system' &&
+            rule.toEndpoints[0].matchLabels['k8s:k8s-app'] == 'kube-dns' &&
+            size(rule.toEndpoints[0].matchLabels) == 2 && has(rule.toPorts[0].rules.dns) &&
+            rule.toPorts[0].rules.dns.size() > 0 &&
+            rule.toPorts[0].rules.dns.all(name, has(name.matchName) && !has(name.matchPattern) &&
+              (name.matchName == 'bex-ssh-gateway.bex-system.svc.cluster.local' ||
+               variables.target.spec.egress.exists(public, has(public.toFQDNs) &&
+                 public.toFQDNs.exists(fqdn, fqdn.matchName == name.matchName)))) &&
+            variables.target.spec.egress.filter(public, has(public.toFQDNs)).all(public,
+              public.toFQDNs.all(fqdn, rule.toPorts[0].rules.dns.exists(name, name.matchName == fqdn.matchName)))) ||
+           (rule.toPorts[0].ports[0].port == '8082' && rule.toPorts[0].ports[0].protocol == 'TCP' &&
+            rule.toEndpoints[0].matchLabels['k8s:io.kubernetes.pod.namespace'] == 'bex-system' &&
+            rule.toEndpoints[0].matchLabels['k8s:io.cilium.k8s.policy.serviceaccount'] == 'bex-ssh-gateway' &&
+            rule.toEndpoints[0].matchLabels['k8s:app.kubernetes.io/name'] == 'bex-ssh-gateway' &&
+            size(rule.toEndpoints[0].matchLabels) == 3 && !has(rule.toPorts[0].rules))))
+      reason: Forbidden
+      message: endpoint session egress is limited to filtered CoreDNS and the gateway credential hop
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: bex-api-session-egress
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  policyName: bex-api-session-egress
+  validationActions: [Deny, Audit]

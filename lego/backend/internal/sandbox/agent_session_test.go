@@ -36,16 +36,22 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 
 	svc := &Service{Base: &core.Base{}, Client: NewClient(upstream.URL), DefaultPlan: PlanStarter,
 		Templates: map[string]Template{"agent": {Image: "bex/agent:1", Entrypoint: []string{"driver"}}}}
+	eg := &fakeSessionEgress{}
+	svc.SessionEgress = eg
 	lifecycle := NewAgentSessionLifecycle(svc)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "alice", Method: "session"})
-	created, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session")
+	created, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session", "https://api.openai.com/v1", []string{"docs.example.com"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if created.ID != "sandbox-1" || create.Metadata[metadataOwner] != "alice" || create.Metadata[metadataWorkspace] != "tea-a" ||
 		create.Metadata[metadataRegime] != metadataSandboxRegime || create.Metadata[metadataNetworkPolicy] != string(NetworkPolicyDenyAll) ||
-		create.Metadata[metadataAgentSession] != "ags-session" {
+		create.Metadata[metadataAgentSession] != "ags-session" || create.Metadata[metadataModelEndpoint] != "https://api.openai.com/v1" ||
+		create.Metadata[metadataEgressAllow] != `["docs.example.com"]` {
 		t.Fatalf("reserved metadata = %#v", create.Metadata)
+	}
+	if err := lifecycle.EnterAgentSessionPhase(ctx, "tea-a", "ags-session", "sandbox-1"); err != nil {
+		t.Fatal(err)
 	}
 	if err := lifecycle.ResumeAgentSessionSandbox(ctx, "tea-a", "ags-session", "sandbox-1"); err != nil {
 		t.Fatal(err)
@@ -53,7 +59,10 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 	if err := lifecycle.CancelAgentSessionSandbox(ctx, "tea-a", "ags-session", "sandbox-1"); err != nil {
 		t.Fatal(err)
 	}
-	if len(calls) != 5 { // create, get+resume, get+delete
+	if len(calls) != 6 { // create, get+transition, get+resume, get+delete
 		t.Fatalf("lifecycle calls = %v", calls)
+	}
+	if len(eg.calls) != 3 || eg.calls[0].op != "setup" || eg.calls[1].op != "agent" || eg.calls[2].op != "delete" {
+		t.Fatalf("egress lifecycle = %#v", eg.calls)
 	}
 }
