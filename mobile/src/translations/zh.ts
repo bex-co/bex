@@ -340,6 +340,45 @@ export const zh = {
     retry: "重试",
     signOut: "退出登录",
   },
+  invite: {
+    title: "工作区邀请",
+    loading: "正在将此邀请安全地保存在本设备上。",
+    signInBody:
+      "请在系统浏览器中登录，然后返回此处查看邀请。此链接可让你选择的账户加入工作区，不要求账户邮箱与受邀邮箱一致。",
+    signIn: "登录并查看",
+    signInError: "登录未完成。邀请仍安全保存在本设备上，你可以重试。",
+    readyBody:
+      "接受后，当前 bex 账户将通过此一次性链接加入指定工作区。直接接受不会核对受邀邮箱地址。",
+    accept: "接受邀请",
+    accepting: "正在接受一次性邀请。请保持应用开启。",
+    retryTitle: "尚未确认邀请结果",
+    retry: "再次尝试接受",
+    retryable: {
+      transport:
+        "响应在 bex 确认结果前中断。邀请仍安全保存在本设备上；联网后请明确重试。",
+      unavailable:
+        "bex 暂时不可用。邀请仍安全保存在本设备上；联网后请明确重试。",
+    },
+    acceptedTitle: "已接受邀请",
+    acceptedBody: "你已加入 %{workspace}。",
+    refreshFailed:
+      "邀请已接受，但无法刷新工作区列表。重新打开“状态”时会再次刷新。",
+    openWorkspace: "打开状态",
+    failedTitle: "邀请不可用",
+    empty: "此路由没有待处理的邀请。",
+    failures: {
+      invalid: "此邀请链接无效或已不存在。",
+      expired: "此邀请已过期。请让工作区管理员重新发送。",
+      "already-accepted": "此一次性邀请已被接受。",
+      "plan-limit":
+        "工作区当前套餐或席位限制无法接受此邀请。请让管理员解决后重新发送邀请。",
+      authorization: "当前账户无权接受此邀请。",
+      "subject-changed":
+        "登录账户已更改，因此已清除保存的邀请。请为预期账户重新打开原始链接。",
+      failed: "bex 拒绝了此邀请。应用不会假定成员关系已建立。",
+      storage: "此设备无法安全保存或清除邀请。应用不会尝试接受。",
+    },
+  },
   workspace: {
     current: "工作区",
     choose: "选择工作区",

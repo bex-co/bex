@@ -196,16 +196,16 @@ func (f *fakeStore) AcceptInviteByToken(_ context.Context, token, subject string
 		}
 		switch {
 		case inv.AcceptedAt != nil:
-			return store.Invite{}, fmt.Errorf("invite already accepted: %w", store.ErrConflict)
+			return store.Invite{}, store.ErrInviteAlreadyAccepted
 		case time.Now().After(inv.ExpiresAt):
-			return store.Invite{}, fmt.Errorf("invite expired: %w", store.ErrConflict)
+			return store.Invite{}, store.ErrInviteExpired
 		}
 		if !store.RoleAllowedOnPlan(f.tenant.Plan, inv.Role) {
-			return store.Invite{}, fmt.Errorf("plan cannot seat this invite: %w", store.ErrConflict)
+			return store.Invite{}, store.ErrInvitePlanLimit
 		}
 		if lim := store.LimitsFor(f.tenant.Plan).MaxMembers; lim > 0 {
 			if _, already := f.members[subject]; !already && len(f.members) >= lim {
-				return store.Invite{}, fmt.Errorf("plan cannot seat this invite: %w", store.ErrConflict)
+				return store.Invite{}, store.ErrInvitePlanLimit
 			}
 		}
 		f.members[subject] = store.TenantMember{TenantID: inv.TenantID, Subject: subject, Role: inv.Role, CreatedAt: time.Unix(2, 0)}
@@ -271,7 +271,7 @@ func TestInviteMessageTextByteParity(t *testing.T) {
 	linked := &Service{InviteBaseURL: "https://dash.example/"}
 	wantLinked := "You've been invited to join the \"Acme\" workspace on bex as a developer.\n\n" +
 		"Sign up or log in with new@example.com to accept:\n" +
-		"https://dash.example/auth/sign-up?invite=tok123\n\n" +
+		"https://dash.example/invite?invite=tok123\n\n" +
 		"This invitation expires on 2026-01-02 15:04 UTC.\n"
 	if got := linked.inviteMessage(inv, tenant).Text(); got != wantLinked {
 		t.Errorf("linked invite text drift:\n got %q\nwant %q", got, wantLinked)
@@ -285,7 +285,7 @@ func TestInviteMessageTextByteParity(t *testing.T) {
 		t.Errorf("linkless invite text drift:\n got %q\nwant %q", got, wantLinkless)
 	}
 
-	if html := linked.inviteMessage(inv, tenant).HTML(); !strings.Contains(html, "https://dash.example/auth/sign-up?invite=tok123") {
+	if html := linked.inviteMessage(inv, tenant).HTML(); !strings.Contains(html, "https://dash.example/invite?invite=tok123") {
 		t.Error("HTML invite missing the redeemable link")
 	}
 }

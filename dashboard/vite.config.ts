@@ -357,7 +357,29 @@ export default defineConfig(({ mode }) => {
         },
       }),
       viteReact(),
-      nitro({ routeRules: { "/**": { headers: securityHeaders } } }),
+      nitro({
+        plugins: ["./server/plugins/mobile-association-content-type.ts"],
+        routeRules: {
+          "/**": { headers: securityHeaders },
+          // Apple rejects an extensionless association document served as the
+          // dashboard's HTML fallback. Exact rules keep both verification
+          // resources JSON while preserving the global hardening headers.
+          "/.well-known/apple-app-site-association": {
+            headers: {
+              ...securityHeaders,
+              "Content-Type": "application/json; charset=utf-8",
+              "Cache-Control": "public, max-age=300",
+            },
+          },
+          "/.well-known/assetlinks.json": {
+            headers: {
+              ...securityHeaders,
+              "Content-Type": "application/json; charset=utf-8",
+              "Cache-Control": "public, max-age=300",
+            },
+          },
+        },
+      }),
     ],
     ssr: {
       // @ory/elements-react ships extensionless relative imports

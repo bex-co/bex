@@ -22,6 +22,7 @@ import enEnvGroups from "@/features/env-groups/locales/en";
 import enWebhooks from "@/features/webhooks/locales/en";
 import enDeploys from "@/features/deploys/locales/en";
 import enSSHKeys from "@/features/ssh-keys/locales/en";
+import enInvites from "@/features/invites/locales/en";
 import zhCommon from "@/common/locales/zh";
 import zhAuth from "@/features/auth/locales/zh";
 import zhLogs from "@/features/logs/locales/zh";
@@ -46,6 +47,7 @@ import zhEnvGroups from "@/features/env-groups/locales/zh";
 import zhWebhooks from "@/features/webhooks/locales/zh";
 import zhDeploys from "@/features/deploys/locales/zh";
 import zhSSHKeys from "@/features/ssh-keys/locales/zh";
+import zhInvites from "@/features/invites/locales/zh";
 import type { SupportedLanguage, TranslationEntry } from "./config";
 
 export type { SupportedLanguage, TranslationEntry } from "./config";
@@ -96,6 +98,7 @@ export const en: Record<string, string> = {
   ...extractMessages(enWebhooks),
   ...extractMessages(enDeploys),
   ...extractMessages(enSSHKeys),
+  ...extractMessages(enInvites),
 };
 
 export const zh: Record<string, string> = {
@@ -123,6 +126,7 @@ export const zh: Record<string, string> = {
   ...extractMessages(zhWebhooks),
   ...extractMessages(zhDeploys),
   ...extractMessages(zhSSHKeys),
+  ...extractMessages(zhInvites),
 };
 
 export const resources: Record<

@@ -165,6 +165,8 @@ jobs:
             VITE_SSR_API_URL=http://bex-api.bex-system.svc:8090/graphql
             VITE_KRATOS_PUBLIC_URL=https://auth.bex.co
             VITE_KRATOS_SSR_URL=http://kratos-public.auth.svc:80
+            BEX_MOBILE_APPLE_TEAM_ID=${{ vars.BEX_MOBILE_APPLE_TEAM_ID }}
+            BEX_MOBILE_ANDROID_SHA256_CERT_FINGERPRINTS=${{ vars.BEX_MOBILE_ANDROID_SHA256_CERT_FINGERPRINTS }}
           tags: |
             ${{ env.DASHBOARD_IMAGE }}:${{ github.sha }}
             ${{ env.DASHBOARD_IMAGE }}:latest

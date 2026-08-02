@@ -199,11 +199,11 @@ func TestAcceptInviteNamedRefusals(t *testing.T) {
 	st.seedMember("admin-1", "admin")
 	s := svc(st, newFakeGranter(), nil, nil)
 
-	if _, err := s.AcceptInvite(ctxWith("someone"), "no-such-token"); !errors.Is(err, core.ErrNotFound) {
-		t.Errorf("unknown token: %v, want ErrNotFound", err)
+	if _, err := s.AcceptInvite(ctxWith("someone"), "no-such-token"); !errors.Is(err, core.ErrNotFound) || codedErrorCode(err) != InviteErrorInvalid {
+		t.Errorf("unknown token: %v code=%q, want ErrNotFound/%s", err, codedErrorCode(err), InviteErrorInvalid)
 	}
-	if _, err := s.AcceptInvite(ctxWith("someone"), "  "); !errors.Is(err, core.ErrBadRequest) {
-		t.Errorf("blank token: %v, want ErrBadRequest", err)
+	if _, err := s.AcceptInvite(ctxWith("someone"), "  "); !errors.Is(err, core.ErrBadRequest) || codedErrorCode(err) != InviteErrorInvalid {
+		t.Errorf("blank token: %v code=%q, want ErrBadRequest/%s", err, codedErrorCode(err), InviteErrorInvalid)
 	}
 
 	inv, err := s.Invite(ctxWith("admin-1"), "tea-1", "twice@example.com", "developer")
@@ -214,8 +214,8 @@ func TestAcceptInviteNamedRefusals(t *testing.T) {
 	if _, err := s.AcceptInvite(ctxWith("first"), token); err != nil {
 		t.Fatalf("first accept: %v", err)
 	}
-	if _, err := s.AcceptInvite(ctxWith("second"), token); !errors.Is(err, core.ErrBadRequest) {
-		t.Errorf("second accept: %v, want ErrBadRequest (already accepted)", err)
+	if _, err := s.AcceptInvite(ctxWith("second"), token); !errors.Is(err, core.ErrBadRequest) || codedErrorCode(err) != InviteErrorAlreadyAccepted {
+		t.Errorf("second accept: %v code=%q, want %s", err, codedErrorCode(err), InviteErrorAlreadyAccepted)
 	}
 }
 
@@ -227,8 +227,48 @@ func TestAcceptInviteExpiredTokenRefused(t *testing.T) {
 		ID: "inv-old", TenantID: "tea-1", Email: "old@example.com", Role: "developer",
 		Token: "tok-old", ExpiresAt: time.Now().Add(-time.Minute),
 	}
-	if _, err := s.AcceptInvite(ctxWith("someone"), "tok-old"); !errors.Is(err, core.ErrBadRequest) {
-		t.Errorf("expired token: %v, want ErrBadRequest", err)
+	if _, err := s.AcceptInvite(ctxWith("someone"), "tok-old"); !errors.Is(err, core.ErrBadRequest) || codedErrorCode(err) != InviteErrorExpired {
+		t.Errorf("expired token: %v code=%q, want %s", err, codedErrorCode(err), InviteErrorExpired)
+	}
+}
+
+func TestAcceptInvitePlanRefusalHasStableCode(t *testing.T) {
+	st := newFakeStore(store.PlanHobby)
+	st.seedMember("admin-1", "admin")
+	st.invites["inv-full"] = store.Invite{
+		ID: "inv-full", TenantID: "tea-1", Email: "second@example.com", Role: "admin",
+		Token: "tok-full", ExpiresAt: time.Now().Add(time.Hour),
+	}
+	_, err := svc(st, newFakeGranter(), nil, nil).AcceptInvite(ctxWith("second"), "tok-full")
+	if !errors.Is(err, core.ErrBadRequest) || codedErrorCode(err) != InviteErrorPlanLimit {
+		t.Fatalf("plan refusal: %v code=%q, want %s", err, codedErrorCode(err), InviteErrorPlanLimit)
+	}
+}
+
+func codedErrorCode(err error) string {
+	var coded *core.CodedError
+	if errors.As(err, &coded) {
+		return coded.Code
+	}
+	return ""
+}
+
+func TestAcceptInviteGraphQLPublishesStableCode(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	s := svc(st, newFakeGranter(), nil, nil)
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: s.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: s.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := graphql.Do(graphql.Params{
+		Schema: schema, RequestString: `mutation { acceptWorkspaceInvite(token: "missing") { workspaceId } }`, Context: ctxWith("someone"),
+	})
+	if len(result.Errors) != 1 || result.Errors[0].Extensions["code"] != InviteErrorInvalid {
+		t.Fatalf("GraphQL invite error = %+v, want code %s", result.Errors, InviteErrorInvalid)
 	}
 }
 

@@ -34,6 +34,7 @@ export const ROUTE_HEAD_INVENTORY: Record<
     "env-groups.tsx",
     "env-groups_.$groupId.tsx",
     "index.tsx",
+    "invite.tsx",
     "keyvalue.$keyValueId.tsx",
     "keyvalue.new.tsx",
     "new.workspace.tsx",
