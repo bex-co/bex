@@ -162,7 +162,7 @@ func TestAgentSessionPolicyPrecedesSandboxCreateAndTransitionUsesDurableAllowlis
 	})
 	svc.SessionEgress = eg
 	lifecycle := NewAgentSessionLifecycle(svc)
-	_, err := lifecycle.CreateAgentSessionSandbox(callerCtx(), "tea-a", "node", "ags-one", "bex-co/example", "bex-agent/session-test", "https://models.example.com/v1", []string{"docs.example.com"})
+	_, err := lifecycle.CreateAgentSessionSandbox(callerCtx(), "tea-a", "node", "ags-one", "bex-co/example", "bex-agent/session-test", "https://models.example.com/v1", "", []string{"docs.example.com"})
 	if err != nil {
 		t.Fatalf("CreateAgentSessionSandbox: %v", err)
 	}
@@ -183,7 +183,7 @@ func TestAgentSessionCreateRollsPolicyBackOnSandboxFailure(t *testing.T) {
 		http.Error(w, "boom", http.StatusBadGateway)
 	})
 	svc.SessionEgress = eg
-	_, err := NewAgentSessionLifecycle(svc).CreateAgentSessionSandbox(callerCtx(), "tea-a", "node", "ags-one", "bex-co/example", "bex-agent/session-test", "https://models.example.com/v1", nil)
+	_, err := NewAgentSessionLifecycle(svc).CreateAgentSessionSandbox(callerCtx(), "tea-a", "node", "ags-one", "bex-co/example", "bex-agent/session-test", "https://models.example.com/v1", "", nil)
 	if err == nil {
 		t.Fatal("CreateAgentSessionSandbox succeeded against failed upstream")
 	}

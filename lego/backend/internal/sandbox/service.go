@@ -322,10 +322,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Sandbox, error
 		return Sandbox{}, fmt.Errorf("%w: unknown template %q", core.ErrBadRequest, name)
 	}
 	ws := s.workspaceID(ctx)
-	return s.createResolved(ctx, ws, name, tmpl, plan, req.Region, req.TimeoutSeconds, policy, nil)
+	return s.createResolved(ctx, ws, name, tmpl, plan, req.Region, req.TimeoutSeconds, policy, nil, nil)
 }
 
-func (s *Service) createResolved(ctx context.Context, workspace, template string, tmpl Template, plan Plan, region string, timeout int, policy *NetworkPolicy, extraMetadata map[string]string) (Sandbox, error) {
+func (s *Service) createResolved(ctx context.Context, workspace, template string, tmpl Template, plan Plan, region string, timeout int, policy *NetworkPolicy, env, extraMetadata map[string]string) (Sandbox, error) {
 	cpu, mem := tmpl.CPU, tmpl.Memory
 	if cpu == "" {
 		cpu = "500m"
@@ -355,7 +355,7 @@ func (s *Service) createResolved(ctx context.Context, workspace, template string
 	for k, v := range extraMetadata {
 		metadata[k] = v
 	}
-	raw, err := s.Client.Create(ctx, key, tmpl.Image, entry, cpu, mem, timeout, nil, metadata)
+	raw, err := s.Client.Create(ctx, key, tmpl.Image, entry, cpu, mem, timeout, env, metadata)
 	if err != nil {
 		return Sandbox{}, err
 	}
@@ -388,12 +388,18 @@ func NewAgentSessionLifecycle(service *Service) *AgentSessionLifecycle {
 	return &AgentSessionLifecycle{service: service}
 }
 
+// ModelAPIKeyEnvVar is the exact env var name the agent-image driver reads its
+// BYO model provider credential from (lego/agent-image/driver/src/config.mjs,
+// ADR047 D7). The tenant secret's OpenBao value must be stored under this same
+// key so the fetch-to-injection path needs no translation.
+const ModelAPIKeyEnvVar = "BEX_AGENT_MODEL_API_KEY"
+
 // CreateAgentSessionSandbox is the narrow trusted lifecycle seam used by the
 // agent-sessions feature after it has performed the first-class session FGA
 // check. It preserves every reserved sandbox hardening stamp and adds the
 // durable session id, without re-checking can_create (session creation is
 // intentionally can_operate per ADR047 D3).
-func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, workspaceID, template, sessionID, repository, branch, modelEndpoint string, egressAllowlist []string) (Sandbox, error) {
+func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, workspaceID, template, sessionID, repository, branch, modelEndpoint, modelAPIKey string, egressAllowlist []string) (Sandbox, error) {
 	s := l.service
 	if !s.enabled() {
 		return Sandbox{}, core.ErrSandboxesUnavailable
@@ -430,7 +436,18 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 	policy := &NetworkPolicy{Default: NetworkPolicyDenyAll}
 	bindings[metadataEgressAllow] = string(allowJSON)
 	bindings[metadataModelEndpoint] = modelEndpoint
-	sb, err := s.createResolved(ctx, workspaceID, template, tmpl, plan, "", 0, policy, bindings)
+	// The BYO model key (ADR047 D7) is pod-spec env, set once at create and never
+	// echoed back by OpenSandbox's create response nor stamped into bindings/
+	// metadata — metadata lands in status reads and audit, which must never carry
+	// a secret. Resume needs no re-injection: OpenSandbox resumes the SAME pod
+	// (its k8s-level env persists independent of the rootfs snapshot the
+	// pre-snapshot hook scrubs), so create-time injection covers the session's
+	// whole lifetime.
+	var env map[string]string
+	if modelAPIKey != "" {
+		env = map[string]string{ModelAPIKeyEnvVar: modelAPIKey}
+	}
+	sb, err := s.createResolved(ctx, workspaceID, template, tmpl, plan, "", 0, policy, env, bindings)
 	if err != nil {
 		if cleanupErr := s.SessionEgress.Delete(ctx, namespace, sessionID); cleanupErr != nil {
 			return Sandbox{}, errors.Join(err, fmt.Errorf("rollback session egress policy: %w", cleanupErr))

@@ -50,10 +50,27 @@ type TupleWriter interface {
 }
 
 type SandboxLifecycle interface {
-	CreateAgentSessionSandbox(context.Context, string, string, string, string, string, string, []string) (sandbox.Sandbox, error)
+	CreateAgentSessionSandbox(context.Context, string, string, string, string, string, string, string, []string) (sandbox.Sandbox, error)
 	EnterAgentSessionPhase(context.Context, string, string, string) error
 	ResumeAgentSessionSandbox(context.Context, string, string, string) error
 	CancelAgentSessionSandbox(context.Context, string, string, string) error
+}
+
+// modelKeySecretPath is the OpenBao KV v2 path a workspace's BYO agent-session
+// model provider key is stored at (ADR047 D7). core.SecretKV's concrete store
+// only tenant-scopes a path via an unexported context key private to the
+// secrets package (internal/secrets's withTenant) — envgroups, a different
+// package sharing this same store, works around that by baking its own opaque
+// unguessable id (envg-<xid>) directly into the path instead of relying on
+// that mechanism, and this follows the identical precedent: workspaceID
+// (tea-<xid>) is exactly as opaque and unguessable, so folding it into the
+// path achieves the same per-workspace isolation. v1 provisioning is
+// operator/manual (`bao kv put`) — no REST/GraphQL/MCP surface exists yet to
+// let a tenant self-serve this, matching m37's explicit no-API-surface scope.
+// The stored map's one key is sandbox.ModelAPIKeyEnvVar so the fetch needs no
+// name translation before landing in the sandbox pod's env.
+func modelKeySecretPath(workspaceID string) string {
+	return "agent-sessions/" + workspaceID + "/model-key"
 }
 
 type Service struct {
@@ -63,6 +80,29 @@ type Service struct {
 	Sandbox      SandboxLifecycle
 	TicketSecret []byte
 	GatewayURL   string
+	// ModelKeys, when set (BEX_OPENBAO_URL wired), sources each workspace's BYO
+	// agent-session model provider key at session-create time (ADR047 D7). nil
+	// => sessions start with no model key (byte-identical to before this field
+	// existed) — a missing/never-provisioned key is not an error, since the key
+	// is optional per workspace.
+	ModelKeys core.SecretKV
+}
+
+// modelAPIKey best-effort reads the workspace's BYO model key. A missing path
+// returns "" (core.SecretKV.Get's documented not-found behavior), which is the
+// common case until a workspace provisions one — never an error. A genuine
+// OpenBao failure DOES fail the create: silently starting a keyless session
+// when the store is actually reachable-but-erroring would waste a sandbox the
+// agent can never authenticate from, with no signal to the caller why.
+func (s *Service) modelAPIKey(ctx context.Context, workspaceID string) (string, error) {
+	if s.ModelKeys == nil {
+		return "", nil
+	}
+	data, err := s.ModelKeys.Get(ctx, modelKeySecretPath(workspaceID))
+	if err != nil {
+		return "", fmt.Errorf("%w: read agent session model key: %v", core.ErrSecretsUnavailable, err)
+	}
+	return data[sandbox.ModelAPIKeyEnvVar], nil
 }
 
 func (s *Service) enabled() bool {
@@ -136,6 +176,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if !ok {
 		return View{}, core.ErrForbidden
 	}
+	modelAPIKey, err := s.modelAPIKey(ctx, workspaceID)
+	if err != nil {
+		return View{}, err
+	}
 	config, err := json.Marshal(req.AgentConfig)
 	if err != nil {
 		return View{}, err
@@ -156,7 +200,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		return View{}, fmt.Errorf("%w: establish agent session authorization: %v", core.ErrAuthzUnavailable, err)
 	}
 	template := strings.TrimSpace(req.AgentConfig.Template)
-	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, workspaceID, template, record.ID, record.Repo, record.Branch, modelEndpoint, egressAllowlist)
+	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, workspaceID, template, record.ID, record.Repo, record.Branch, modelEndpoint, modelAPIKey, egressAllowlist)
 	if err != nil {
 		_, _ = s.Store.SetAgentSessionLifecycle(ctx, record.ID, "", PhaseFailed, "sandbox create failed", false)
 		return View{}, err

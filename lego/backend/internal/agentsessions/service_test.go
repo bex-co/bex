@@ -121,15 +121,16 @@ func (r resolver) IsMember(_ context.Context, id core.Identity, workspace string
 
 type fakeLifecycle struct {
 	created, entered, resumed, canceled int
-	modelEndpoint                       string
+	modelEndpoint, modelAPIKey          string
 	egressAllowlist                     []string
 	repository, branch                  string
 }
 
-func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, _, _, _, repository, branch, modelEndpoint string, egressAllowlist []string) (sandbox.Sandbox, error) {
+func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, _, _, _, repository, branch, modelEndpoint, modelAPIKey string, egressAllowlist []string) (sandbox.Sandbox, error) {
 	f.created++
 	f.repository, f.branch = repository, branch
 	f.modelEndpoint = modelEndpoint
+	f.modelAPIKey = modelAPIKey
 	f.egressAllowlist = append([]string(nil), egressAllowlist...)
 	return sandbox.Sandbox{ID: "sandbox-1", Status: sandbox.StatusRunning}, nil
 }
@@ -158,6 +159,24 @@ func fixture() (*Service, *fakeStore, *fakeFGA, *fakeLifecycle) {
 func caller(subject string) context.Context {
 	return core.WithIdentity(context.Background(), core.Identity{Subject: subject, Method: "session"})
 }
+
+// fakeModelKeys is a minimal core.SecretKV for pinning the BYO model-key fetch
+// (ADR047 D7): Get on a workspace with no stored key returns an empty map (the
+// interface's documented not-found contract), never an error.
+type fakeModelKeys struct {
+	data map[string]map[string]string // path -> KV
+	err  error
+}
+
+func (f *fakeModelKeys) Get(_ context.Context, path string) (map[string]string, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.data[path], nil
+}
+func (f *fakeModelKeys) Put(context.Context, string, map[string]string) error { return nil }
+func (f *fakeModelKeys) Delete(context.Context, string) error                 { return nil }
+func (f *fakeModelKeys) List(context.Context, string) ([]string, error)       { return nil, nil }
 
 func createInput() CreateRequest {
 	return CreateRequest{OwnerID: "tea-a", Repo: "bex-co/example", Branch: "bex-agent/session-test", AgentConfig: AgentConfig{Agent: "codex", Model: "gpt-5", ModelEndpoint: "https://api.openai.com/v1", Task: "fix the tests"}, EgressAllowlist: []string{"docs.example.com"}}
@@ -212,6 +231,54 @@ func TestLifecycleTicketClaimsAndFirstClassAuthorization(t *testing.T) {
 	again, err := svc.Cancel(caller("alice"), created.ID)
 	if err != nil || again.Phase != PhaseCanceled || lifecycle.canceled != 1 {
 		t.Fatalf("idempotent cancel = %+v err=%v lifecycle=%+v", again, err, lifecycle)
+	}
+}
+
+// TestCreateInjectsWorkspaceScopedModelKey pins ADR047 D7: a workspace's BYO
+// model key is fetched from a workspace-scoped OpenBao path at session-create
+// time and threaded through to the sandbox lifecycle — and a DIFFERENT
+// workspace's key at the same logical path never leaks across, proving the
+// path really is workspace-scoped (internal/sandbox's ModelAPIKeyEnvVar
+// convention, service.go's modelKeySecretPath).
+func TestCreateInjectsWorkspaceScopedModelKey(t *testing.T) {
+	svc, _, _, lifecycle := fixture()
+	svc.ModelKeys = &fakeModelKeys{data: map[string]map[string]string{
+		modelKeySecretPath("tea-a"): {sandbox.ModelAPIKeyEnvVar: "sk-tea-a-secret"},
+		modelKeySecretPath("tea-b"): {sandbox.ModelAPIKeyEnvVar: "sk-tea-b-secret"},
+	}}
+	if _, err := svc.Create(caller("alice"), createInput()); err != nil {
+		t.Fatal(err)
+	}
+	if lifecycle.modelAPIKey != "sk-tea-a-secret" {
+		t.Fatalf("modelAPIKey = %q, want tea-a's own key (not tea-b's, not empty)", lifecycle.modelAPIKey)
+	}
+}
+
+// TestCreateWithNoProvisionedModelKeyStartsAnyway pins the common case: most
+// workspaces have not provisioned a BYO key yet, and that must never block
+// session creation — only a genuine store error should.
+func TestCreateWithNoProvisionedModelKeyStartsAnyway(t *testing.T) {
+	svc, _, _, lifecycle := fixture()
+	svc.ModelKeys = &fakeModelKeys{data: map[string]map[string]string{}}
+	if _, err := svc.Create(caller("alice"), createInput()); err != nil {
+		t.Fatal(err)
+	}
+	if lifecycle.modelAPIKey != "" {
+		t.Fatalf("modelAPIKey = %q, want empty (nothing provisioned)", lifecycle.modelAPIKey)
+	}
+}
+
+// TestCreateFailsClosedOnModelKeyStoreError proves a genuine OpenBao failure
+// refuses the create rather than silently starting a keyless session the
+// agent could never authenticate from.
+func TestCreateFailsClosedOnModelKeyStoreError(t *testing.T) {
+	svc, _, _, lifecycle := fixture()
+	svc.ModelKeys = &fakeModelKeys{err: errors.New("openbao unreachable")}
+	if _, err := svc.Create(caller("alice"), createInput()); !errors.Is(err, core.ErrSecretsUnavailable) {
+		t.Fatalf("create with a broken model-key store = %v, want ErrSecretsUnavailable", err)
+	}
+	if lifecycle.created != 0 {
+		t.Fatal("sandbox was created despite the model-key store failing")
 	}
 }
 
