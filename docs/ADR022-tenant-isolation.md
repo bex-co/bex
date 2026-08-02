@@ -1,8 +1,8 @@
 # Tenant isolation: east-west network enforcement
 
-> ⚠️ **DEPRECATED tenant-boundary mechanism (2026-07-27) — superseded by [ADR043: per-tenant namespace isolation](ADR043-tenant-namespace-isolation.md).** The [§Mechanism choice](#mechanism-choice) decision below ("Option B": a **shared apps namespace + label-scoped per-App NetworkPolicies** as the tenant boundary) is deprecated in favor of namespace-per-workspace. The implemented policies remain in production until ADR043 is implemented. **The rest of this doc is retained** — the Cilium node/cloud-metadata `egressDeny` (w7/m4), platform-side lockdown (t004), registry access control (w7/m8), and tenant container hardening (w7/m2) move _into_ the per-tenant namespace model; only the label-scoped boundary primitive is superseded. See ADR043 for the reversal rationale and its point-by-point engagement of this doc's objections to namespace-per-workspace.
+> ⚠️ **DEPRECATED tenant-boundary mechanism (2026-07-27) — superseded by [ADR043: per-tenant namespace isolation](ADR043-tenant-namespace-isolation.md).** The [§Mechanism choice](#mechanism-choice) decision below ("Option B": a **shared apps namespace + label-scoped per-App NetworkPolicies** as the tenant boundary) is deprecated in favor of namespace-per-workspace. **Removed, not just deprecated**: w3/m34 (2026-08-01) deleted the operator's per-App NetworkPolicy construction entirely once the fleet was fully migrated — the mechanism below is historical record, not live behavior. **The rest of this doc is retained** — the Cilium node/cloud-metadata `egressDeny` (w7/m4), platform-side lockdown (t004), registry access control (w7/m8), and tenant container hardening (w7/m2) moved _into_ the per-tenant namespace model; only the label-scoped boundary primitive is superseded. See ADR043 for the reversal rationale and its point-by-point engagement of this doc's objections to namespace-per-workspace.
 
-**Status:** implemented (w7/m1); tenant-boundary mechanism deprecated 2026-07-27 — see the banner above and [ADR043](ADR043-tenant-namespace-isolation.md).
+**Status:** implemented (w7/m1); tenant-boundary mechanism deprecated 2026-07-27 and removed 2026-08-01 (w3/m34) — see the banner above and [ADR043](ADR043-tenant-namespace-isolation.md).
 
 ## Threat model
 
@@ -30,11 +30,11 @@ Two options were evaluated:
 
 Each workspace gets its own namespace; NetworkPolicies operate at the namespace boundary (the CNI's native unit). Pros: clean namespace-level quota and PSS; easy `networkPolicy.ingress.namespaceSelector`. Cons: major projector churn (every App CR moves namespace on first-login); URL/metrics/logs blast radius (bex-api namespace-scopes its watch); doubles operational surface without delivering a meaningfully stronger boundary than Option B for the threat above (kernel still shared). Deferred: if isolation demands grow beyond network, the next tier is microVM (Kata/Firecracker) — see [DO_NOT_DO.md](../.pm/DO_NOT_DO.md) isolation ladder.
 
-### Option B — Label-scoped NetworkPolicies in a shared apps namespace ✓
+### Option B — Label-scoped NetworkPolicies in a shared apps namespace ✓ (superseded — see ADR043)
 
-A per-App `networking.k8s.io/v1` NetworkPolicy in the shared apps namespace (`BEX_CP_APPS_NAMESPACE`, default `default`) selects its app's pods by `app.bex.co/app` and uses `app.bex.co/workspace` label selectors for same-workspace allow rules.
+A per-App `networking.k8s.io/v1` NetworkPolicy in the shared apps namespace (`BEX_CP_APPS_NAMESPACE`, default `default`) selected its app's pods by `app.bex.co/app` and used `app.bex.co/workspace` label selectors for same-workspace allow rules.
 
-**Chosen: Option B.** The projector already stamps tenant ids on App CRs; the operator can propagate a workspace label to pod templates with one additional line. No namespace changes, no URL/metrics/logs blast radius, no projector churn. The workspace label doubles as the cross-workspace deny selector — an app in workspace `tea-abc` can only reach other pods that also carry `app.bex.co/workspace: tea-abc`.
+**Chosen: Option B** (at the time). The projector already stamped tenant ids on App CRs; the operator propagated a workspace label to pod templates with one additional line. No namespace changes, no URL/metrics/logs blast radius, no projector churn. The workspace label doubled as the cross-workspace deny selector — an app in workspace `tea-abc` could only reach other pods that also carried `app.bex.co/workspace: tea-abc`. **Superseded by ADR043** (per-tenant namespaces); this mechanism no longer runs.
 
 ## Policy dialect
 

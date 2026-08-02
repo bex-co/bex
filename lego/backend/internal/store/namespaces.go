@@ -35,19 +35,18 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// Per-tenant namespace isolation (ADR043, w3/m31 t001). A workspace maps to a
-// hosting namespace `<ws>` and, when sandboxes are enabled (pillar 5, m32), a
-// `<ws>-sandbox` namespace. The NamespaceReconciler is the lifecycle mechanism:
-// it is level-triggered exactly like the App Reconciler — a full resync plus a
-// Kick after workspace writes — so the set of tenant namespaces is a rebuildable
-// projection of the `tenants` table, never imperative drift.
-//
-// This is the FOUNDATION only: t001 provisions each namespace with its identity
-// labels, a base ResourceQuota/LimitRange, and a default-deny NetworkPolicy.
-// Placing workloads into `<ws>` (t002), per-`<ws>` RBAC (t003), plan-tier quota
-// values (t004), and the same-workspace/platform NetworkPolicy allows (t005)
-// build on top of what this creates. Gated off by default (BEX_TENANT_NAMESPACES
-// unset in cmd/api) so production is byte-identical until a cluster opts in.
+// Per-tenant namespace isolation (ADR043). A workspace maps unconditionally to
+// a hosting namespace `<ws>` and a `<ws>-sandbox` namespace (pillar 5, m32).
+// The NamespaceReconciler is the lifecycle mechanism: it is level-triggered
+// exactly like the App Reconciler — a full resync plus a Kick after workspace
+// writes — so the set of tenant namespaces is a rebuildable projection of the
+// `tenants` table, never imperative drift. Every namespace gets its identity
+// labels, a plan-scaled ResourceQuota/LimitRange, and a default-deny
+// NetworkPolicy; App workloads land in `<ws>`, per-`<ws>` RBAC binds there,
+// and same-workspace/platform NetworkPolicy allows apply on top. The
+// transitional BEX_TENANT_NAMESPACES/BEX_TENANT_SANDBOX_NAMESPACES rollout
+// gates that used to make this opt-in were retired in w3/m34 once the fleet
+// was fully migrated.
 const (
 	// RegimeLabel distinguishes a workspace's hosting namespace from its sandbox
 	// namespace (ADR043 D2 — both untrusted, opposite default network postures).
@@ -61,6 +60,13 @@ const (
 	sandboxSuffix = "-sandbox"
 
 	defaultNamespaceResync = 60 * time.Second
+
+	// AppsQuotaCountKey is the per-namespace ResourceQuota count key that
+	// enforces the per-workspace service cap (ADR043 D3), replacing the
+	// retired BEX_MAX_SERVICES app-code check. Exported so the create path
+	// (internal/apps) can map a quota-exceeded admission error back onto the
+	// Render-shaped cap message (core.QuotaCapError).
+	AppsQuotaCountKey = "count/apps.app.bex.co"
 )
 
 // WorkspaceNamespace is the hosting namespace name for a workspace id. The
@@ -77,9 +83,6 @@ type NamespaceReconciler struct {
 	Client client.Client
 	Store  Store
 	Resync time.Duration
-	// Sandboxes, when true, also provisions and prunes each workspace's
-	// `<ws>-sandbox` namespace (pillar 5 / m32). Off keeps hosting-only.
-	Sandboxes bool
 
 	kick chan struct{}
 }
@@ -133,21 +136,12 @@ func (r *NamespaceReconciler) ReconcileOnce(ctx context.Context) error {
 	var errs []error
 	for _, t := range tenants {
 		desired[WorkspaceNamespace(t.ID)] = true
-		// A live workspace's <ws>-sandbox namespace is a prune candidate ONLY when
-		// the workspace itself is gone — never merely because sandboxes are toggled
-		// off (ADR045 Finding 6, w7/m62). Flipping BEX_TENANT_SANDBOX_NAMESPACES off
-		// must not reap a live workspace's sandbox namespace (and its running
-		// sandboxes), so it is always "desired"; the toggle governs only whether we
-		// CREATE/converge it below (create-only). Workspace deletion still prunes
-		// both namespaces, whatever the toggle.
 		desired[SandboxNamespace(t.ID)] = true
 		if err := r.ensureNamespace(ctx, t, RegimeHosting); err != nil {
 			errs = append(errs, fmt.Errorf("workspace %s hosting namespace: %w", t.ID, err))
 		}
-		if r.Sandboxes {
-			if err := r.ensureNamespace(ctx, t, RegimeSandbox); err != nil {
-				errs = append(errs, fmt.Errorf("workspace %s sandbox namespace: %w", t.ID, err))
-			}
+		if err := r.ensureNamespace(ctx, t, RegimeSandbox); err != nil {
+			errs = append(errs, fmt.Errorf("workspace %s sandbox namespace: %w", t.ID, err))
 		}
 	}
 	if err := r.pruneOrphans(ctx, desired); err != nil {
@@ -361,13 +355,16 @@ func baseResourceQuota(namespace string, t Tenant) *corev1.ResourceQuota {
 
 // quotaForPlan maps a workspace plan to aggregate resource caps: compute/pod
 // ceilings, per-resource object counts, and the storage/PVC/LoadBalancer axis
-// (ADR045 Finding 4, w7/m59). The count/<resource> caps push the per-workspace
-// service/Postgres/Key Value limits (the app-code BEX_MAX_* counters) down to the
-// API server, where a create past the cap is rejected by admission and cannot be
-// bypassed by an application bug (ADR043 D3, t004). The free tier mirrors Render's
-// Hobby anchors (25 services, 1 Postgres, 1 Key Value); paid plans get a generous
-// ceiling. Enforced only for CRs that land in the namespace — i.e. once t002's
-// per-tenant projection is enabled.
+// (ADR045 Finding 4, w7/m59). The count/<resource> caps (QuotaCapsForPlan) are
+// what enforces the per-workspace service limit at the API server, where a
+// create past the cap is rejected by admission and cannot be bypassed by an
+// application bug (ADR043 D3) — the app-code BEX_MAX_SERVICES/_POSTGRES/
+// _KEYVALUES counters this replaced were retired in w3/m34. The free tier
+// mirrors Render's Hobby anchors (25 services, 1 Postgres, 1 Key Value); paid
+// plans get a generous ceiling. Only Apps land in this namespace (Databases/
+// KeyValues stay in the shared apps namespace, ADR043), so the
+// count/databases.app.bex.co and count/keyvalues.app.bex.co caps here are not
+// currently enforced against any object that lands in `<ws>`.
 //
 // requests.storage + persistentvolumeclaims bound aggregate tenant disk so an
 // autoscaling PVC (the CNPG Postgres disk-autoscaler grows PVCs automatically)
@@ -384,14 +381,13 @@ func baseResourceQuota(namespace string, t Tenant) *corev1.ResourceQuota {
 func quotaForPlan(plan string) corev1.ResourceList {
 	// Paid default (mirrors the retired shared tenant-apps-quota, per tenant).
 	cpuReq, memReq, cpuLim, memLim, pods, jobs := "50", "100Gi", "100", "200Gi", "500", "250"
-	apps, dbs, kvs := "100", "25", "25"
 	storage, pvcs := "5Ti", "200"
 	switch plan {
-	case "", "free":
+	case PlanHobby, "", "free":
 		cpuReq, memReq, cpuLim, memLim, pods, jobs = "2", "4Gi", "4", "8Gi", "50", "25"
-		apps, dbs, kvs = "25", "1", "1" // Render Hobby anchors (root CLAUDE.md)
 		storage, pvcs = "20Gi", "4"
 	}
+	caps := QuotaCapsForPlan(plan)
 	return corev1.ResourceList{
 		corev1.ResourceRequestsCPU:            resource.MustParse(cpuReq),
 		corev1.ResourceRequestsMemory:         resource.MustParse(memReq),
@@ -403,9 +399,9 @@ func quotaForPlan(plan string) corev1.ResourceList {
 		corev1.ResourceServicesLoadBalancers:  resource.MustParse("0"),
 		corev1.ResourceServicesNodePorts:      resource.MustParse("0"),
 		"count/jobs.batch":                    resource.MustParse(jobs),
-		"count/apps.app.bex.co":               resource.MustParse(apps),
-		"count/databases.app.bex.co":          resource.MustParse(dbs),
-		"count/keyvalues.app.bex.co":          resource.MustParse(kvs),
+		AppsQuotaCountKey:                     *resource.NewQuantity(caps.Services, resource.DecimalSI),
+		"count/databases.app.bex.co":          *resource.NewQuantity(caps.Postgres, resource.DecimalSI),
+		"count/keyvalues.app.bex.co":          *resource.NewQuantity(caps.KeyValues, resource.DecimalSI),
 	}
 }
 

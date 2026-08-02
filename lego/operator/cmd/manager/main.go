@@ -277,11 +277,6 @@ func main() {
 		RegistryPushSecret:      os.Getenv("BEX_REGISTRY_PUSH_SECRET"),
 		RegistryPullSecret:      os.Getenv("BEX_REGISTRY_PULL_SECRET"),
 		RegistryBuildPullSecret: os.Getenv("BEX_REGISTRY_BUILD_PULL_SECRET"),
-		// Per-tenant namespace isolation (ADR043, m31 t005): when set (matching
-		// bex-api's BEX_TENANT_NAMESPACES), the `<ws>` namespace policies are the
-		// tenant boundary, so the operator stops stamping redundant per-App
-		// NetworkPolicies and cleans up any it left. Unset => byte-identical.
-		TenantNamespaces: os.Getenv("BEX_TENANT_NAMESPACES") != "",
 	}
 	// Build-namespace pull credential for build-plane Jobs (the static-site publish
 	// Job) that pull the just-built tenant image from Zot. The per-App/shared tenant

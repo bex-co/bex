@@ -91,15 +91,6 @@ type Service struct {
 	// email/name through the same Identities lookup. Nil => machine callers keep
 	// the earliest-admin-email fallback alone.
 	KeyOwners KeyOwnerReader
-	// MaxServices, MaxPostgres, MaxKeyValues, when positive, are the effective
-	// per-workspace resource caps injected from the composition root (w7/m9):
-	// the same values apps.Service/postgres.Service/keyvalue.Service enforce at
-	// create time. 0 = unlimited. ResourceLimits surfaces these alongside the
-	// current count so every surface can show "3/5 services" without a separate
-	// query.
-	MaxServices  int
-	MaxPostgres  int
-	MaxKeyValues int
 }
 
 // WorkspaceStore is the slice of the source of truth this feature writes
@@ -842,13 +833,16 @@ type ResourceLimitsView struct {
 	KeyValues ResourceCapView `json:"keyValues"`
 }
 
-// ResourceLimits returns the workspace's current resource usage vs. the
-// operator-configured caps (w7/m9) — the "3/5 services" visibility surface.
-// It authorizes can_view on the named workspace (same gate as GetWorkspace),
-// then counts App/Database/KeyValue CRs labelled with the workspace's tenant
-// id. Limits come from the runtime caps (MaxServices/MaxPostgres/MaxKeyValues),
-// 0 = unlimited. When the k8s client is nil (authz-sweep / store-off tests),
-// counts are zero but limits are still returned — the call never 500s.
+// ResourceLimits returns the workspace's current resource usage vs. its
+// plan's caps (w7/m9) — the "3/5 services" visibility surface. It authorizes
+// can_view on the named workspace (same gate as GetWorkspace), then counts
+// App/Database/KeyValue CRs labelled with the workspace's tenant id. Limits
+// come from store.QuotaCapsForPlan(ws.Plan) — the same per-workspace object
+// counts the per-namespace ResourceQuota enforces at the API server (ADR043
+// D3; the app-code MaxServices/MaxPostgres/MaxKeyValues caps this used to
+// read were retired in w3/m34). When the k8s client is nil (authz-sweep /
+// store-off tests), counts are zero but limits are still returned — the call
+// never 500s.
 func (s *Service) ResourceLimits(ctx context.Context, ownerID string) (ResourceLimitsView, error) {
 	ws, err := s.GetWorkspace(ctx, ownerID)
 	if err != nil {
@@ -856,10 +850,11 @@ func (s *Service) ResourceLimits(ctx context.Context, ownerID string) (ResourceL
 	}
 	tenantID := ws.ID
 
+	caps := store.QuotaCapsForPlan(ws.Plan)
 	out := ResourceLimitsView{
-		Services:  ResourceCapView{Limit: s.MaxServices},
-		Postgres:  ResourceCapView{Limit: s.MaxPostgres},
-		KeyValues: ResourceCapView{Limit: s.MaxKeyValues},
+		Services:  ResourceCapView{Limit: int(caps.Services)},
+		Postgres:  ResourceCapView{Limit: int(caps.Postgres)},
+		KeyValues: ResourceCapView{Limit: int(caps.KeyValues)},
 	}
 	if s.Client == nil {
 		return out, nil

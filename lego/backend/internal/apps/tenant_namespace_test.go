@@ -30,12 +30,12 @@ import (
 )
 
 // tenant_namespace_test.go is the regression guard for the ADR043 per-tenant
-// namespace read-path bug: once BEX_TENANT_NAMESPACES was enabled the projector
-// moved every store-managed App CR into its workspace's own `<ws>` namespace
-// (== the workspace id), but bex-api's App-CR reads still listed only the shared
-// BEX_API_NAMESPACE ("default"), so `services(ownerId=…)` came back empty and the
-// dashboard showed no services for any workspace. These tests pin the fix: with
-// core.Base.TenantNamespaces set, App-CR reads resolve into the tenant namespace.
+// namespace read-path bug: the projector moves every store-managed App CR into
+// its workspace's own `<ws>` namespace (== the workspace id), but bex-api's
+// App-CR reads used to list only the shared BEX_API_NAMESPACE ("default"), so
+// `services(ownerId=…)` came back empty and the dashboard showed no services
+// for any workspace. These tests pin the fix: App-CR reads resolve into the
+// tenant namespace.
 
 const testWS = "tea-d98210cbbpdc73dcrkvg"
 
@@ -60,23 +60,13 @@ func tenantNSApp(svc, ws, appID string) *appv1alpha1.App {
 }
 
 // TestList_TenantNamespaceMode is the direct reproduction of the prod incident:
-// an App projected into `<ws>` is invisible to a shared-namespace List but
-// surfaces once TenantNamespaces is on.
+// an App projected into `<ws>` must be found by List even though it is not in
+// the shared b.Namespace.
 func TestList_TenantNamespaceMode(t *testing.T) {
 	app := tenantNSApp("agentmarketcap-1", testWS, "srv-1")
 	cl := fakeClient(app)
 
-	// The bug: a shared-namespace Service scoped to "default" finds nothing,
-	// because the App lives only in the `<ws>` namespace.
-	shared := &Service{Base: &core.Base{Client: cl, Namespace: "default", Authz: &fakeChecker{allow: true}}}
-	if got, err := shared.List(ctxAs("user-a"), testWS); err != nil {
-		t.Fatalf("shared List: %v", err)
-	} else if len(got) != 0 {
-		t.Fatalf("shared-namespace List unexpectedly found %d apps in default; the App lives only in %s", len(got), testWS)
-	}
-
-	// The fix: with per-tenant namespaces, List resolves into the `<ws>` namespace.
-	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", TenantNamespaces: true, Authz: &fakeChecker{allow: true}}}
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Authz: &fakeChecker{allow: true}}}
 	got, err := svc.List(ctxAs("user-a"), testWS)
 	if err != nil {
 		t.Fatalf("tenant-ns List: %v", err)
@@ -96,7 +86,7 @@ func TestWebhookRedeploy_TenantNamespaceMode(t *testing.T) {
 	app := tenantNSApp("eden-cms-v2", testWS, "srv-1")
 	app.Spec = appv1alpha1.AppSpec{Repo: repo, Branch: "main", AutoDeploy: true}
 	cl := fakeClient(app)
-	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", TenantNamespaces: true}}
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}}
 	h := &GitWebhook{Svc: svc, Secret: "shh"}
 
 	redeployed, _, err := h.redeployMatching(context.Background(), newPush(repo, []string{"docs/cli.md"}), "main")
@@ -124,7 +114,7 @@ func TestWebhookBranchDelete_TenantNamespaceMode(t *testing.T) {
 	app := tenantNSApp("eden-cms-v2", testWS, "srv-1")
 	app.Spec = appv1alpha1.AppSpec{Repo: repo, Branch: "main", AutoDeploy: true}
 	cl := fakeClient(app)
-	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", TenantNamespaces: true}}
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}}
 	h := &GitWebhook{Svc: svc, Secret: "shh"}
 
 	affected, err := h.recordBranchDeleted(context.Background(), []string{repo}, "main", "delivery-1")
@@ -149,7 +139,7 @@ func TestWebhookBranchDelete_TenantNamespaceMode(t *testing.T) {
 // through the store, and must still scope into that workspace's namespace.
 func TestList_TenantNamespaceMode_CallerDefaultWorkspace(t *testing.T) {
 	cl := fakeClient(tenantNSApp("web", testWS, "srv-1"), tenantNSApp("api", "tea-other", "srv-2"))
-	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", TenantNamespaces: true,
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default",
 		Workspace: fakeWorkspace{"user-a": testWS},
 		Authz:     &fakeChecker{allow: true}}}
 
@@ -167,7 +157,7 @@ func TestList_TenantNamespaceMode_CallerDefaultWorkspace(t *testing.T) {
 // its Render srv- id (cluster-wide unique) and by its bare service name.
 func TestAuthorizeApp_TenantNamespaceMode(t *testing.T) {
 	cl := fakeClient(tenantNSApp("agentmarketcap-1", testWS, "srv-1"))
-	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", TenantNamespaces: true,
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default",
 		Workspace: fakeWorkspace{"user-a": testWS},
 		Authz:     &fakeChecker{allow: true}}}
 
@@ -199,7 +189,7 @@ func TestAppPods_TenantNamespaceMode(t *testing.T) {
 		Labels:    map[string]string{core.PodLabelApp: crName},
 	}}
 	cl := fakeClient(tenantNSApp("agentmarketcap-1", testWS, "srv-1"), pod)
-	base := &core.Base{Client: cl, Namespace: "default", TenantNamespaces: true}
+	base := &core.Base{Client: cl, Namespace: "default"}
 
 	pods, err := base.AppPods(context.Background(), crName)
 	if err != nil {
@@ -212,40 +202,31 @@ func TestAppPods_TenantNamespaceMode(t *testing.T) {
 
 // TestAppNamespaceByName pins the name→namespace resolver the metrics resource
 // funnel uses when it holds only the app name: it finds the App's `<ws>`
-// namespace on, is the shared namespace off, and falls back (never errors) for a
-// missing App so a metrics query just yields empty series.
+// namespace, and falls back (never errors) for a missing App so a metrics
+// query just yields empty series.
 func TestAppNamespaceByName(t *testing.T) {
 	crName := core.CRName(testWS, "web")
 	cl := fakeClient(tenantNSApp("web", testWS, "srv-1"))
 
-	on := &core.Base{Client: cl, Namespace: "default", TenantNamespaces: true}
-	if got := on.AppNamespaceByName(context.Background(), crName); got != testWS {
-		t.Errorf("on: AppNamespaceByName(%s) = %q, want %s", crName, got, testWS)
+	base := &core.Base{Client: cl, Namespace: "default"}
+	if got := base.AppNamespaceByName(context.Background(), crName); got != testWS {
+		t.Errorf("AppNamespaceByName(%s) = %q, want %s", crName, got, testWS)
 	}
-	if got := on.AppNamespaceByName(context.Background(), "does-not-exist"); got != "default" {
+	if got := base.AppNamespaceByName(context.Background(), "does-not-exist"); got != "default" {
 		t.Errorf("missing App must fall back to shared namespace, got %q", got)
-	}
-
-	off := &core.Base{Client: cl, Namespace: "default"}
-	if got := off.AppNamespaceByName(context.Background(), crName); got != "default" {
-		t.Errorf("off: AppNamespaceByName = %q, want default (no cluster-wide lookup)", got)
 	}
 }
 
-// TestAppNamespace pins the resolver both modes turn on.
+// TestAppNamespace pins the resolver.
 func TestAppNamespace(t *testing.T) {
-	off := &core.Base{Namespace: "default"}
-	if got := off.AppNamespace(testWS); got != "default" {
-		t.Errorf("TenantNamespaces off: AppNamespace(%s) = %q, want default", testWS, got)
+	base := &core.Base{Namespace: "default"}
+	if got := base.AppNamespace(testWS); got != testWS {
+		t.Errorf("AppNamespace(%s) = %q, want %s", testWS, got, testWS)
 	}
-	on := &core.Base{Namespace: "default", TenantNamespaces: true}
-	if got := on.AppNamespace(testWS); got != testWS {
-		t.Errorf("TenantNamespaces on: AppNamespace(%s) = %q, want %s", testWS, got, testWS)
-	}
-	if got := on.AppNamespace(""); got != "default" {
+	if got := base.AppNamespace(""); got != "default" {
 		t.Errorf("empty tenant must map to shared namespace, got %q", got)
 	}
-	if got := on.AppNamespace(core.DefaultTenant); got != "default" {
+	if got := base.AppNamespace(core.DefaultTenant); got != "default" {
 		t.Errorf("default tenant must map to shared namespace, got %q", got)
 	}
 }

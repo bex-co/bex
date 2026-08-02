@@ -540,17 +540,19 @@ All limits are env-tunable; `BEX_RATE_LIMIT=0` disables rate limiting entirely (
 
 **Note:** bex-api is currently single-replica; the per-caller token-bucket is in-process. In a multi-replica deployment each replica has its own map, so the effective per-caller budget is `BEX_RATE_LIMIT × replicas` — a distributed counter (Redis token bucket) is the follow-up when bex-api scales out.
 
-## Per-workspace resource caps (w7/m9)
+## Per-workspace resource caps (w7/m9, retired to ResourceQuota in w3/m34)
 
-Creation caps prevent a single workspace from monopolising the platform. They are enforced in the service layer (before the CR is written) and apply identically across REST, GraphQL, and MCP — no per-surface special cases.
+Creation caps prevent a single workspace from monopolising the platform. Through w3/m34, the **service cap only** is enforced by the per-namespace Kubernetes `ResourceQuota` each workspace's `<ws>` namespace carries (`count/apps.app.bex.co`, ADR043 D3, `store.QuotaCapsForPlan`) — a create past the plan's service count is rejected by the API server, not app code, and cannot be bypassed by an application bug. `apps.mapServiceCapError` translates that admission rejection back into the same Render-shaped message the app-code check used to return, so REST/GraphQL/MCP callers see no difference:
 
-**Error shape when a cap is exceeded:**
+**Error shape when the service cap is exceeded:**
 
-- REST: `HTTP 400 Bad Request` — `{"id":"bad_request","message":"workspace is limited to N <resource>s; delete an existing one to create another"}`
+- REST: `HTTP 400 Bad Request` — `{"id":"bad_request","message":"workspace is limited to N services; delete an existing service to create another"}`
 - GraphQL: `{"data":null,"errors":[{"message":"workspace is limited to …","extensions":{"code":"BAD_REQUEST"}}]}`
 - MCP: tool result `{isError:true, content:[{type:"text",text:"workspace is limited to …"}]}`
 
-The cap is per-workspace (tenant-scoped): workspace B can always create even when workspace A is at its limit. When the workspace resolver is off (`BEX_CP_DB_URI` unset), caps are skipped — byte-identical to the store-off legacy mode.
+The cap is per-workspace (tenant-scoped): workspace B can always create even when workspace A is at its limit.
+
+**Known gap — Postgres and Key Value are currently uncapped.** The app-code `BEX_MAX_POSTGRES`/`BEX_MAX_KEYVALUES` checks were deleted alongside `BEX_MAX_SERVICES` in w3/m34, on the premise that the per-namespace `ResourceQuota`'s `count/databases.app.bex.co`/`count/keyvalues.app.bex.co` dimensions would replace them — but managed Postgres/KeyValue CRs are **not** namespaced under ADR043 (they stay in the shared apps namespace, `BEX_API_NAMESPACE`), so those quota dimensions are never actually charged. A workspace may currently create unlimited Postgres/Key Value instances. Tracked as a follow-up (`.pm` inbox) to either namespace those resource kinds too or restore app-code enforcement for them specifically.
 
 **Build concurrency cap (operator, w7/m9):**
 
@@ -562,11 +564,11 @@ The operator applies three build-concurrency controls:
 - **Global App workers:** `BEX_APP_RECONCILE_WORKERS` controls how many independent App reconciles may run concurrently (default `1`). Because a source build waits synchronously inside its App reconcile, values above one are what actually allow multiple Build Jobs to run in parallel. Production sets `2`.
 - **Per-workspace concurrent-build cap:** if `BEX_MAX_CONCURRENT_BUILDS > 0` and the workspace already has that many active build Jobs, the reconcile loop requeues with `BuildQueued` phase and retries after 30 s. The new build starts as soon as a slot opens. This current list-then-create gate is best-effort under concurrent reconciles; ADR034 records the atomic-admission requirement for strict enforcement at larger scale.
 
-| Cap | Render anchor | Env var | Unset / `0` behavior |
+| Cap | Render anchor | Mechanism | Unset / `0` behavior |
 | --- | --- | --- | --- |
-| Services per workspace | 25 (Hobby) | `BEX_MAX_SERVICES` | unlimited |
-| Postgres instances per workspace | 1 (Hobby) | `BEX_MAX_POSTGRES` | unlimited |
-| Key-Value instances per workspace | 1 (Hobby) | `BEX_MAX_KEYVALUES` | unlimited |
+| Services per workspace | 25 (Hobby) | per-namespace `ResourceQuota` (`count/apps.app.bex.co`, plan-tier `store.QuotaCapsForPlan`) | n/a — always enforced |
+| Postgres instances per workspace | 1 (Hobby) | **none (known gap, see above)** | n/a — currently unlimited |
+| Key-Value instances per workspace | 1 (Hobby) | **none (known gap, see above)** | n/a — currently unlimited |
 | Concurrent App reconcile workers | — (bex extension) | `BEX_APP_RECONCILE_WORKERS` | default `1` (values below 1 also use `1`) |
 | Concurrent build Jobs per workspace | — (bex extension) | `BEX_MAX_CONCURRENT_BUILDS` | unlimited |
 

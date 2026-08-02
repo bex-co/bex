@@ -59,10 +59,6 @@ type Service struct {
 	// Environments is the shared create-time assignment resolver used by all
 	// three resource kinds.
 	Environments core.EnvironmentResolver
-	// MaxKeyValues, when positive, caps how many key-value instances a workspace
-	// may own. 0 = unlimited (the default; byte-identical to before). Only
-	// enforced when the caller's tenant is resolvable (w7/m9).
-	MaxKeyValues int
 	// KeyValueLogs is the production query seam for typed red- resources. The
 	// compatibility adapters (REST/GraphQL/MCP) call QueryKeyValueLogs, which
 	// delegates here; the logs feature wires it via api/server.go. nil with no
@@ -391,18 +387,6 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 		environment, err = s.Environments.ResolveForCreate(ctx, req.EnvironmentID, tenantID)
 		if err != nil {
 			return KeyValueView{}, fmt.Errorf("resolving environment: %w", err)
-		}
-	}
-	// Per-workspace key-value cap (w7/m9).
-	if s.MaxKeyValues > 0 {
-		if tenantOK {
-			var existing appv1alpha1.KeyValueList
-			if listErr := s.ListByTenant(ctx, &existing, tenantID); listErr != nil {
-				return KeyValueView{}, fmt.Errorf("checking key-value cap: %w", listErr)
-			}
-			if len(existing.Items) >= s.MaxKeyValues {
-				return KeyValueView{}, fmt.Errorf("%w: workspace is limited to %d key-value instances; delete an existing one to create another", core.ErrBadRequest, s.MaxKeyValues)
-			}
 		}
 	}
 	kv := &appv1alpha1.KeyValue{

@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -673,55 +672,6 @@ func newTenantService(ws core.WorkspaceResolver, dbs ...*appv1alpha1.Database) (
 	_ = appv1alpha1.AddToScheme(scheme)
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
 	return &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}}, cl
-}
-
-func tenantDB(name, tenantID string) *appv1alpha1.Database {
-	return &appv1alpha1.Database{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: "default",
-			Labels:    map[string]string{core.LabelTenant: tenantID},
-		},
-	}
-}
-
-// TestPostgresCapEnforcement verifies that the (N+1)th Postgres create is
-// refused with ErrBadRequest while a second workspace can still create.
-func TestPostgresCapEnforcement(t *testing.T) {
-	ws := fakeWorkspace{"user-a": "tea-a", "user-b": "tea-b"}
-	ctx := func(subject string) context.Context {
-		return core.WithIdentity(context.Background(), core.Identity{Subject: subject, Method: "session"})
-	}
-
-	// tea-a has one instance (at cap=1); tea-b has none.
-	svc, _ := newTenantService(ws, tenantDB("pg-1", "tea-a"))
-	svc.MaxPostgres = 1
-
-	// tea-a is at cap.
-	if _, err := svc.CreatePostgres(ctx("user-a"), CreatePostgresRequest{Name: "pg-new", Plan: "free"}); err == nil {
-		t.Fatal("create at cap: want ErrBadRequest, got nil")
-	} else if !errors.Is(err, core.ErrBadRequest) {
-		t.Errorf("create at cap: got %v, want ErrBadRequest", err)
-	}
-
-	// tea-b has zero instances — can still create despite tea-a being at cap.
-	if _, err := svc.CreatePostgres(ctx("user-b"), CreatePostgresRequest{Name: "pg-b1", Plan: "free"}); err != nil {
-		t.Errorf("second workspace create: %v, want success", err)
-	}
-
-	// MaxPostgres=0: unlimited.
-	svc2, _ := newTenantService(ws, tenantDB("pg-1", "tea-a"))
-	svc2.MaxPostgres = 0
-	if _, err := svc2.CreatePostgres(ctx("user-a"), CreatePostgresRequest{Name: "pg-2", Plan: "free"}); err != nil {
-		t.Errorf("unlimited cap: %v, want success", err)
-	}
-
-	// Store off (no Workspace resolver): cap is skipped.
-	svc3, _ := newService(tenantDB("pg-1", "tea-a"))
-	svc3.MaxPostgres = 1
-	if _, err := svc3.CreatePostgres(context.Background(), CreatePostgresRequest{Name: "pg-2", Plan: "free"}); err != nil {
-		t.Errorf("store-off cap: %v, want success (no workspace to count against)", err)
-	}
 }
 
 func TestRESTSetPostgresPlan(t *testing.T) {

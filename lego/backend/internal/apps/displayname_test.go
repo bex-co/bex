@@ -76,7 +76,7 @@ func TestSetDisplayNameSetClearAndIdentityInvariant(t *testing.T) {
 
 func TestSetDisplayNameRejectsNonMemberWithoutMutation(t *testing.T) {
 	app := displayNameApp("other")
-	app.Labels = map[string]string{core.LabelTenant: "tea-b"}
+	app.Labels = map[string]string{core.LabelTenant: "tea-b", core.LabelServiceName: "other"}
 	svc, cl := newTenantService(fakeWorkspace{"identity-a": "tea-a"}, app)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 

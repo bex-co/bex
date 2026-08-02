@@ -106,10 +106,15 @@ func TestAuthorizeStoreOffTargetsDefaultWorkspaceUnchanged(t *testing.T) {
 	}
 }
 
+// sampleApp mirrors what apps.Service actually stamps on create: a real App
+// always carries LabelServiceName alongside LabelTenant (internal/apps/service.go),
+// which is what lets GetApp's cluster-wide by-name fallback find it under
+// per-tenant namespaces (ADR043) — the Namespace field here is deliberately
+// NOT the tenant's `<ws>` namespace, proving that fallback doesn't depend on it.
 func sampleApp(name, tenantID string) *appv1alpha1.App {
 	a := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"}}
 	if tenantID != "" {
-		a.Labels = map[string]string{LabelTenant: tenantID}
+		a.Labels = map[string]string{LabelTenant: tenantID, LabelServiceName: name}
 	}
 	return a
 }
@@ -161,8 +166,13 @@ func TestGetAppStoreOffIgnoresLabelsUnchanged(t *testing.T) {
 func TestGetAppUnlabeledAppIsForbiddenToEveryTenant(t *testing.T) {
 	// An App with no tenant label (e.g. hand-applied, or a pre-m9 CR) resolves
 	// its label to "", which never matches a real tenant id — forbidden, not a
-	// silent leak to whichever caller asks first.
-	cl := fakeAppClient(sampleApp("web", ""))
+	// silent leak to whichever caller asks first. Placed in the caller's own
+	// `<ws>` namespace (a plausible hand-apply target) so the by-name lookup
+	// reaches it and exercises AuthorizeLabeled's no-label rule, not GetApp's
+	// namespace resolution.
+	app := sampleApp("web", "")
+	app.Namespace = "tea-a"
+	cl := fakeAppClient(app)
 	b := &Base{Client: cl, Namespace: "default", Workspace: fakeWorkspace{"identity-a": "tea-a"}}
 	ctx := WithIdentity(context.Background(), Identity{Subject: "identity-a", Method: "session"})
 

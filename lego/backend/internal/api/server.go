@@ -337,13 +337,6 @@ type Deps struct {
 	// `Secrets` field above (same OpenBao instance the env-vars feature uses).
 	RegistryCredsStore registrycreds.CredentialStore
 
-	// Per-workspace resource caps (w7/m9). 0 = unlimited (default; byte-identical
-	// to before). Only enforced when the caller's tenant is resolvable (store on +
-	// bound caller). Render-Hobby-anchored defaults set via BEX_MAX_SERVICES (25),
-	// BEX_MAX_POSTGRES (1), BEX_MAX_KEYVALUES (1).
-	MaxServices  int
-	MaxPostgres  int
-	MaxKeyValues int
 	// NotificationsStore, when set (the control-plane store is wired), backs
 	// the deploy-notification settings verbs (w3/m9). nil => those verbs
 	// report core.ErrNotificationsUnavailable (503). Delivery reuses Mailer
@@ -404,10 +397,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		// APIKeys satisfies workspaces.KeyOwnerReader structurally (KeyOwner has
 		// the identical signature) — no adapter, and no cache: the lookup runs at
 		// most once per GET /v1/users (cold path), only for API-key callers.
-		KeyOwners:    d.APIKeys,
-		MaxServices:  d.MaxServices,
-		MaxPostgres:  d.MaxPostgres,
-		MaxKeyValues: d.MaxKeyValues,
+		KeyOwners: d.APIKeys,
 	}
 	resourceMetadata := resourcemeta.Config{Region: d.Region, DashboardBaseURL: d.DashboardURL}
 	// The GitHub-connect service is also the apps deploy path's clone-token seam
@@ -466,7 +456,6 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Base:         base,
 		Protection:   protectionStore,
 		ExportSigner: exportSigner,
-		MaxPostgres:  d.MaxPostgres,
 		Owners:       workspaceSvc,
 		Metadata:     resourceMetadata,
 		PodLogs:      d.PodLogs,
@@ -494,7 +483,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		}
 		return out, nil
 	}
-	kv := &keyvalue.Service{Base: base, Protection: protectionStore, MaxKeyValues: d.MaxKeyValues, Owners: workspaceSvc, Metadata: resourceMetadata}
+	kv := &keyvalue.Service{Base: base, Protection: protectionStore, Owners: workspaceSvc, Metadata: resourceMetadata}
 	kv.PodLogs = d.PodLogs
 	kv.KeyValueLogs = func(ctx context.Context, name string, q keyvalue.KeyValueLogQuery) ([]keyvalue.KeyValueLogEntry, error) {
 		entries, err := logSvc.QueryLogs(ctx, logs.LogQuery{
@@ -581,7 +570,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	}
 	sandboxSvc := sandboxService(base, d)
 	srv := &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, SecretFileSeeder: secretFileSeeder, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
+		Apps: &apps.Service{Base: base, Store: d.Store, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, SecretFileSeeder: secretFileSeeder, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
 		Logs: logSvc,
 		Metrics: &metrics.Service{
 			Base:                       base,

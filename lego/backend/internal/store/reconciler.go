@@ -130,10 +130,9 @@ type DeployNotifier interface {
 // It is level-triggered — a full resync every Resync plus a Kick after API
 // writes — so etcd stays a rebuildable projection of Postgres.
 type Reconciler struct {
-	Client    client.Client
-	Store     Store
-	Namespace string        // namespace the App CRs are projected into
-	Resync    time.Duration // full-resync interval
+	Client client.Client
+	Store  Store
+	Resync time.Duration // full-resync interval
 	// DeployGateTimeout bounds how long a deploy may stay open before
 	// recordDeploy closes it as failed even though the CR's phase never
 	// reached Failed on its own (see defaultDeployGateTimeout).
@@ -153,34 +152,19 @@ type Reconciler struct {
 	// (notifications feature off / store off).
 	DeployNotifier DeployNotifier
 
-	// TenantNamespaces, when true, projects each App CR into its workspace's
-	// per-tenant hosting namespace (WorkspaceNamespace(d.TenantID)) instead of
-	// the single shared r.Namespace (ADR043, w3/m31 t002). Off (default) is
-	// byte-identical to the shared-namespace projection. Enabling it only
-	// affects where NEWLY created CRs land — CRs already in the shared namespace
-	// are updated in place, never moved (moving existing workloads is the
-	// no-downtime migration, t006). Gated behind BEX_TENANT_NAMESPACES in
-	// cmd/api alongside the NamespaceReconciler that provisions those namespaces.
-	TenantNamespaces bool
-
 	kick chan struct{}
 }
 
-// namespaceFor returns the namespace an App row projects into: its workspace's
-// hosting namespace when per-tenant namespaces are enabled, else the shared
-// projection namespace (byte-identical to the pre-m31 behavior).
-func (r *Reconciler) namespaceFor(d DesiredApp) string {
-	if r.TenantNamespaces {
-		return WorkspaceNamespace(d.TenantID)
-	}
-	return r.Namespace
+// namespaceFor returns the namespace an App row projects into: its
+// workspace's per-tenant hosting namespace (ADR043).
+func namespaceFor(d DesiredApp) string {
+	return WorkspaceNamespace(d.TenantID)
 }
 
-func NewReconciler(cl client.Client, store Store, namespace string) *Reconciler {
+func NewReconciler(cl client.Client, store Store) *Reconciler {
 	return &Reconciler{
 		Client:               cl,
 		Store:                store,
-		Namespace:            namespace,
 		Resync:               defaultResyncPeriod,
 		DeployGateTimeout:    defaultDeployGateTimeout,
 		BuildGateTimeout:     defaultBuildGateTimeout,
@@ -224,17 +208,12 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("list desired apps: %w", err)
 	}
-	// With per-tenant namespaces the managed CRs are spread across every `<ws>`
-	// namespace, so the list must be cluster-wide (still filtered to our
-	// managed-by label); the shared-namespace path keeps its single-namespace
-	// list. The byID index keys on the unique app-id label either way, so
-	// create/update/delete matching is namespace-agnostic.
-	listOpts := []client.ListOption{client.MatchingLabels{LabelManagedBy: ManagedByValue}}
-	if !r.TenantNamespaces {
-		listOpts = append(listOpts, client.InNamespace(r.Namespace))
-	}
+	// The managed CRs are spread across every `<ws>` namespace (ADR043), so the
+	// list must be cluster-wide (still filtered to our managed-by label). The
+	// byID index keys on the unique app-id label, so create/update/delete
+	// matching is namespace-agnostic.
 	var existing appv1alpha1.AppList
-	if err := r.Client.List(ctx, &existing, listOpts...); err != nil {
+	if err := r.Client.List(ctx, &existing, client.MatchingLabels{LabelManagedBy: ManagedByValue}); err != nil {
 		return fmt.Errorf("list App CRs: %w", err)
 	}
 	byID := make(map[string]*appv1alpha1.App, len(existing.Items))
@@ -878,7 +857,7 @@ func stampLabels(cur *appv1alpha1.App, d DesiredApp) bool {
 // private repo authenticates without a separate API trigger. Minting errors are
 // soft (logged, CR still created) so a GitHub outage never blocks projection.
 func (r *Reconciler) projectApp(ctx context.Context, d DesiredApp) *appv1alpha1.App {
-	ns := r.namespaceFor(d)
+	ns := namespaceFor(d)
 	a := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      CRName(d.TenantID, d.Name),

@@ -76,21 +76,6 @@ spec:
               value: fsn1
             - name: BEX_API_NAMESPACE # Apps live in the default namespace
               value: default
-            # Per-tenant namespace isolation (ADR043, w3/m31): runs the
-            # NamespaceReconciler (provisions a <ws> namespace per workspace with
-            # base quota/limitrange/NetworkPolicy + RoleBindings) and projects
-            # NEW App CRs into <ws>. Existing default-namespace apps are updated
-            # in place, never moved (migration is scripts/migrate-tenant-namespaces.sh).
-            - name: BEX_TENANT_NAMESPACES
-              value: "1"
-            # Per-tenant `<ws>-sandbox` regime namespaces (ADR043/ADR042, m32 t006):
-            # the NamespaceReconciler also provisions a `<ws>-sandbox` namespace per
-            # workspace (default-deny + DNS/same-namespace allows + the OpenSandbox
-            # server RoleBinding), which is the isolation target the multi-tenant
-            # OpenSandbox server scopes each workspace's sandboxes into. Unset =>
-            # sandboxes share one namespace (single-tenant regime).
-            - name: BEX_TENANT_SANDBOX_NAMESPACES
-              value: "1"
             # Hosted agent sandboxes (pillar 5, ADR042/w3/m32): point bex-api at
             # the in-cluster OpenSandbox lifecycle server so `render ea sandbox`
             # (the /v1/sandboxes REST/GraphQL/MCP surface) works. Sandboxes run

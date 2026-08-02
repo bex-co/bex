@@ -64,7 +64,7 @@ func TestPaidIntentGuardCoversServiceCreatePlanAndBlueprintBeforeWrites(t *testi
 
 	t.Run("plan change", func(t *testing.T) {
 		app := &appv1alpha1.App{
-			ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Labels: map[string]string{core.LabelTenant: "tea-a"}},
+			ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Labels: map[string]string{core.LabelTenant: "tea-a", core.LabelServiceName: "web"}},
 			Spec:       appv1alpha1.AppSpec{Image: "nginx:alpine", Tier: "free"},
 		}
 		svc, _ := newTenantService(fakeWorkspace{"identity-a": "tea-a"}, app)

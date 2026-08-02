@@ -448,9 +448,8 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	// address and must not leak into the Kubernetes label selector.
 	q.App = app.Name
 	// The App CR is in hand — its namespace is the per-tenant `<ws>` namespace
-	// under ADR043 (BEX_TENANT_NAMESPACES), where its pods and Loki streams also
-	// live; use it directly rather than the shared s.Namespace, exactly as the
-	// metrics feature does. In shared-namespace mode app.Namespace == s.Namespace.
+	// (ADR043), where its pods and Loki streams also live; use it directly
+	// rather than the shared s.Namespace, exactly as the metrics feature does.
 	appNS := app.Namespace
 	if err := q.validate(); err != nil {
 		return nil, err

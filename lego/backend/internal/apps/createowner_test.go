@@ -88,10 +88,10 @@ func createdApp(t *testing.T, s *Service, name string) *appv1alpha1.App {
 func createdTenantApp(t *testing.T, s *Service, tenantID, name string) *appv1alpha1.App {
 	t.Helper()
 	var a appv1alpha1.App
-	if err := s.Client.Get(context.Background(), client.ObjectKey{Namespace: s.Namespace, Name: core.CRName(tenantID, name)}, &a); err == nil {
+	if err := s.Client.Get(context.Background(), client.ObjectKey{Namespace: tenantID, Name: core.CRName(tenantID, name)}, &a); err == nil {
 		return &a
 	}
-	if err := s.Client.Get(context.Background(), client.ObjectKey{Namespace: s.Namespace, Name: name}, &a); err == nil && a.Labels[core.LabelTenant] == tenantID {
+	if err := s.Client.Get(context.Background(), client.ObjectKey{Namespace: tenantID, Name: name}, &a); err == nil && a.Labels[core.LabelTenant] == tenantID {
 		return &a
 	}
 	t.Fatalf("reading back %s/%s: not found under either object-naming scheme", tenantID, name)

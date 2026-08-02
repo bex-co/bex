@@ -34,7 +34,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-func newTestNamespaceReconciler(t *testing.T, sandboxes bool) (*NamespaceReconciler, *memStore, client.Client) {
+func newTestNamespaceReconciler(t *testing.T) (*NamespaceReconciler, *memStore, client.Client) {
 	t.Helper()
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
@@ -43,13 +43,12 @@ func newTestNamespaceReconciler(t *testing.T, sandboxes bool) (*NamespaceReconci
 	cl := fake.NewClientBuilder().WithScheme(scheme).Build()
 	store := newMemStore()
 	r := NewNamespaceReconciler(cl, store)
-	r.Sandboxes = sandboxes
 	return r, store, cl
 }
 
 func TestReconcileProvisionsHostingNamespaceWithBaseObjects(t *testing.T) {
 	ctx := context.Background()
-	r, store, cl := newTestNamespaceReconciler(t, false)
+	r, store, cl := newTestNamespaceReconciler(t)
 	tn, err := store.CreateTenant(ctx, "acme", "free")
 	if err != nil {
 		t.Fatal(err)
@@ -98,7 +97,7 @@ func TestReconcileProvisionsHostingNamespaceWithBaseObjects(t *testing.T) {
 
 func TestHostingNamespaceGetsAllowPoliciesSandboxSealed(t *testing.T) {
 	ctx := context.Background()
-	r, store, cl := newTestNamespaceReconciler(t, true) // both regimes
+	r, store, cl := newTestNamespaceReconciler(t)
 	tn, _ := store.CreateTenant(ctx, "acme", "free")
 	if err := r.ReconcileOnce(ctx); err != nil {
 		t.Fatal(err)
@@ -130,7 +129,7 @@ func TestHostingNamespaceGetsAllowPoliciesSandboxSealed(t *testing.T) {
 
 func TestSandboxReconcilePrunesLegacyBroadPolicies(t *testing.T) {
 	ctx := context.Background()
-	r, store, cl := newTestNamespaceReconciler(t, true)
+	r, store, cl := newTestNamespaceReconciler(t)
 	tn, _ := store.CreateTenant(ctx, "acme", "free")
 	if err := r.ReconcileOnce(ctx); err != nil {
 		t.Fatal(err)
@@ -168,51 +167,16 @@ func TestSandboxReconcilePrunesLegacyBroadPolicies(t *testing.T) {
 	}
 }
 
-// TestSandboxNamespaceSurvivesToggleOffButPrunesOnWorkspaceDelete is w7/m62 t002
-// (ADR045 Finding 6): flipping BEX_TENANT_SANDBOX_NAMESPACES off must NOT reap a
-// live workspace's <ws>-sandbox namespace — the prune keys on workspace existence,
-// not the config toggle. Workspace deletion still prunes both namespaces.
-func TestSandboxNamespaceSurvivesToggleOffButPrunesOnWorkspaceDelete(t *testing.T) {
-	ctx := context.Background()
-	// Start with sandboxes ON so both namespaces are provisioned.
-	r, store, cl := newTestNamespaceReconciler(t, true)
-	tn, _ := store.CreateTenant(ctx, "acme", "free")
-	if err := r.ReconcileOnce(ctx); err != nil {
-		t.Fatal(err)
-	}
-	sandboxNS := SandboxNamespace(tn.ID)
-	var ns corev1.Namespace
-	if err := cl.Get(ctx, client.ObjectKey{Name: sandboxNS}, &ns); err != nil {
-		t.Fatalf("sandbox namespace not provisioned: %v", err)
-	}
-
-	// Operator rolls BEX_TENANT_SANDBOX_NAMESPACES OFF. The workspace is still live.
-	r.Sandboxes = false
-	if err := r.ReconcileOnce(ctx); err != nil {
-		t.Fatal(err)
-	}
-	if err := cl.Get(ctx, client.ObjectKey{Name: sandboxNS}, &ns); err != nil {
-		t.Fatalf("toggle-off reaped a live workspace's sandbox namespace: %v — prune must key on workspace existence, not the toggle", err)
-	}
-
-	// Now delete the workspace: both namespaces must be pruned regardless of the toggle.
-	delete(store.tenants, tn.ID)
-	if err := r.ReconcileOnce(ctx); err != nil {
-		t.Fatal(err)
-	}
-	if err := cl.Get(ctx, client.ObjectKey{Name: sandboxNS}, &ns); !apierrors.IsNotFound(err) {
-		t.Errorf("sandbox namespace survived workspace deletion: %v", err)
-	}
-	if err := cl.Get(ctx, client.ObjectKey{Name: WorkspaceNamespace(tn.ID)}, &ns); !apierrors.IsNotFound(err) {
-		t.Errorf("hosting namespace survived workspace deletion: %v", err)
-	}
-}
-
 func TestResourceQuotaCarriesPlanScopedObjectCounts(t *testing.T) {
 	ctx := context.Background()
-	r, store, cl := newTestNamespaceReconciler(t, false)
-	// Free plan → Render Hobby anchors (25 services, 1 Postgres, 1 Key Value).
-	free, _ := store.CreateTenant(ctx, "hobby", "free")
+	r, store, cl := newTestNamespaceReconciler(t)
+	// Legacy "free" alias → Render Hobby anchors (25 services, 1 Postgres, 1 Key Value).
+	free, _ := store.CreateTenant(ctx, "hobby-legacy", "free")
+	// The real stored plan name every workspace actually gets (NormalizePlan
+	// never persists "free" — this is the exact case that regressed silently
+	// before QuotaCapsForPlan existed: quotaForPlan used to match only "",
+	// "free", so every real Hobby workspace fell through to the paid ceiling).
+	hobby, _ := store.CreateTenant(ctx, "hobby", "hobby")
 	// Paid plan → generous ceiling.
 	paid, _ := store.CreateTenant(ctx, "team", "pro")
 	if err := r.ReconcileOnce(ctx); err != nil {
@@ -237,6 +201,12 @@ func TestResourceQuotaCarriesPlanScopedObjectCounts(t *testing.T) {
 	if got := countCap(free.ID, "count/databases.app.bex.co"); got != 1 {
 		t.Errorf("free databases cap = %d, want 1", got)
 	}
+	if got := countCap(hobby.ID, "count/apps.app.bex.co"); got != 25 {
+		t.Errorf("hobby apps cap = %d, want 25", got)
+	}
+	if got := countCap(hobby.ID, "count/databases.app.bex.co"); got != 1 {
+		t.Errorf("hobby databases cap = %d, want 1", got)
+	}
 	if got := countCap(paid.ID, "count/apps.app.bex.co"); got != 100 {
 		t.Errorf("paid apps cap = %d, want 100", got)
 	}
@@ -248,7 +218,7 @@ func TestResourceQuotaCarriesPlanScopedObjectCounts(t *testing.T) {
 // Services. A dropped dimension turns this red.
 func TestResourceQuotaCarriesStoragePVCandLBCaps(t *testing.T) {
 	ctx := context.Background()
-	r, store, cl := newTestNamespaceReconciler(t, false)
+	r, store, cl := newTestNamespaceReconciler(t)
 	free, _ := store.CreateTenant(ctx, "hobby", "free")
 	paid, _ := store.CreateTenant(ctx, "team", "pro")
 	if err := r.ReconcileOnce(ctx); err != nil {
@@ -301,7 +271,7 @@ func TestResourceQuotaCarriesStoragePVCandLBCaps(t *testing.T) {
 // create-only reconcile would leave old namespaces uncapped, turning this red).
 func TestResourceQuotaConvergesExistingNamespaceToNewShape(t *testing.T) {
 	ctx := context.Background()
-	r, store, cl := newTestNamespaceReconciler(t, false)
+	r, store, cl := newTestNamespaceReconciler(t)
 	tn, _ := store.CreateTenant(ctx, "legacy", "free")
 
 	// Seed a managed quota in the pre-m59 shape (pods only, no storage axis).
@@ -341,7 +311,7 @@ func TestResourceQuotaConvergesExistingNamespaceToNewShape(t *testing.T) {
 
 func TestTenantRoleBindingsStampedPerNamespace(t *testing.T) {
 	ctx := context.Background()
-	r, store, cl := newTestNamespaceReconciler(t, true) // both regimes
+	r, store, cl := newTestNamespaceReconciler(t)
 	tn, _ := store.CreateTenant(ctx, "acme", "free")
 	if err := r.ReconcileOnce(ctx); err != nil {
 		t.Fatal(err)
@@ -415,7 +385,7 @@ func TestTenantRoleBindingsStampedPerNamespace(t *testing.T) {
 
 func TestSandboxReconcilePrunesLegacyOperatorBinding(t *testing.T) {
 	ctx := context.Background()
-	r, store, cl := newTestNamespaceReconciler(t, true)
+	r, store, cl := newTestNamespaceReconciler(t)
 	tn, _ := store.CreateTenant(ctx, "acme", "free")
 	if err := r.ReconcileOnce(ctx); err != nil {
 		t.Fatal(err)
@@ -444,26 +414,20 @@ func TestSandboxReconcilePrunesLegacyOperatorBinding(t *testing.T) {
 	}
 }
 
-func TestReconcileProvisionsSandboxNamespaceOnlyWhenEnabled(t *testing.T) {
+// TestReconcileAlwaysProvisionsSandboxNamespace proves the hosting and sandbox
+// namespaces are provisioned together, unconditionally (the transitional
+// Sandboxes toggle was retired in w3/m34 once BEX_TENANT_SANDBOX_NAMESPACES
+// was always on in production).
+func TestReconcileAlwaysProvisionsSandboxNamespace(t *testing.T) {
 	ctx := context.Background()
-	r, store, cl := newTestNamespaceReconciler(t, false)
+	r, store, cl := newTestNamespaceReconciler(t)
 	tn, _ := store.CreateTenant(ctx, "acme", "free")
 	if err := r.ReconcileOnce(ctx); err != nil {
 		t.Fatal(err)
 	}
 	var ns corev1.Namespace
-	err := cl.Get(ctx, client.ObjectKey{Name: SandboxNamespace(tn.ID)}, &ns)
-	if !apierrors.IsNotFound(err) {
-		t.Fatalf("sandbox namespace should not exist when disabled, got err=%v", err)
-	}
-
-	// Enable sandboxes and re-reconcile: now both regimes exist.
-	r.Sandboxes = true
-	if err := r.ReconcileOnce(ctx); err != nil {
-		t.Fatal(err)
-	}
 	if err := cl.Get(ctx, client.ObjectKey{Name: SandboxNamespace(tn.ID)}, &ns); err != nil {
-		t.Fatalf("sandbox namespace missing after enable: %v", err)
+		t.Fatalf("sandbox namespace missing: %v", err)
 	}
 	if ns.Labels[RegimeLabel] != RegimeSandbox {
 		t.Errorf("regime = %q, want sandbox", ns.Labels[RegimeLabel])
@@ -472,7 +436,7 @@ func TestReconcileProvisionsSandboxNamespaceOnlyWhenEnabled(t *testing.T) {
 
 func TestReconcileIsIdempotent(t *testing.T) {
 	ctx := context.Background()
-	r, store, cl := newTestNamespaceReconciler(t, true)
+	r, store, cl := newTestNamespaceReconciler(t)
 	store.CreateTenant(ctx, "acme", "pro")
 	for i := 0; i < 3; i++ {
 		if err := r.ReconcileOnce(ctx); err != nil {
@@ -490,7 +454,7 @@ func TestReconcileIsIdempotent(t *testing.T) {
 
 func TestReconcilePrunesNamespacesForDeletedWorkspace(t *testing.T) {
 	ctx := context.Background()
-	r, store, cl := newTestNamespaceReconciler(t, true)
+	r, store, cl := newTestNamespaceReconciler(t)
 	tn, _ := store.CreateTenant(ctx, "acme", "free")
 	if err := r.ReconcileOnce(ctx); err != nil {
 		t.Fatal(err)
@@ -514,7 +478,7 @@ func TestReconcilePrunesNamespacesForDeletedWorkspace(t *testing.T) {
 
 func TestPruneNeverTouchesUnmanagedNamespaces(t *testing.T) {
 	ctx := context.Background()
-	r, store, cl := newTestNamespaceReconciler(t, false)
+	r, store, cl := newTestNamespaceReconciler(t)
 	// A platform namespace with no managed-by label must survive prune even
 	// though it maps to no workspace.
 	platform := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "bex-system"}}
@@ -533,7 +497,7 @@ func TestPruneNeverTouchesUnmanagedNamespaces(t *testing.T) {
 
 func TestApplyObjectRefusesToClobberUnmanaged(t *testing.T) {
 	ctx := context.Background()
-	r, store, cl := newTestNamespaceReconciler(t, false)
+	r, store, cl := newTestNamespaceReconciler(t)
 	tn, _ := store.CreateTenant(ctx, "acme", "free")
 	// Pre-create the hosting namespace WITHOUT the managed-by label — a
 	// pre-existing object the reconciler must not overwrite.

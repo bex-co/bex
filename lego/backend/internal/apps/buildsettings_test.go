@@ -109,7 +109,7 @@ func TestSetCommandsClearsNativeStartCommand(t *testing.T) {
 
 func TestBuildSettingSettersRejectUnauthorizedCaller(t *testing.T) {
 	app := dockerRepoApp("other")
-	app.Labels = map[string]string{core.LabelTenant: "tea-b"}
+	app.Labels = map[string]string{core.LabelTenant: "tea-b", core.LabelServiceName: "other"}
 	svc, cl := newTenantService(fakeWorkspace{"identity-a": "tea-a"}, app)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 	command := "bin/forbidden"

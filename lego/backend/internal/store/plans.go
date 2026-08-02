@@ -82,6 +82,34 @@ func LimitsFor(plan string) PlanLimits {
 	}
 }
 
+// QuotaCaps are a plan's per-workspace object-count ceilings for
+// Services/Postgres/KeyValues — the same numbers the per-namespace
+// ResourceQuota (quotaForPlan, namespaces.go) enforces at the API server in
+// place of the retired BEX_MAX_SERVICES/_POSTGRES/_KEYVALUES app-code caps
+// (ADR043 D3). One source of truth so enforcement and the "3/5 services"
+// display surface (workspaces.Service.ResourceLimits) can't drift apart.
+type QuotaCaps struct {
+	Services  int64
+	Postgres  int64
+	KeyValues int64
+}
+
+// QuotaCapsForPlan returns plan's object-count ceilings. Matches on PlanHobby
+// (plus "" and "free" for legacy/test rows created before plan normalization)
+// so every real Hobby workspace — whose stored plan is always "hobby" via
+// NormalizePlan — gets the intended Render-Hobby-anchored ceiling rather than
+// silently falling through to the generous paid default. Services reuses
+// LimitsFor(PlanHobby).MaxServices — the same Render-Hobby-anchor number —
+// rather than a second hardcoded literal, so the two catalogs can't drift.
+func QuotaCapsForPlan(plan string) QuotaCaps {
+	switch plan {
+	case PlanHobby, "", "free":
+		return QuotaCaps{Services: int64(LimitsFor(PlanHobby).MaxServices), Postgres: 1, KeyValues: 1}
+	default: // pro, scale, enterprise, and any future higher tier
+		return QuotaCaps{Services: 100, Postgres: 25, KeyValues: 25}
+	}
+}
+
 // RoleAllowedOnPlan reports whether role is assignable on plan — the single
 // predicate members.guardPlanRole (invite/change-role) and workspaces.ChangePlan's
 // downgrade guard both consult, mirroring CanAddMember's shape below.

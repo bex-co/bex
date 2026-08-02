@@ -45,7 +45,7 @@ func newTestReconciler(t *testing.T) (*Reconciler, *memStore, client.Client) {
 	}
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&appv1alpha1.App{}).Build()
 	store := newMemStore()
-	return NewReconciler(cl, store, "default"), store, cl
+	return NewReconciler(cl, store), store, cl
 }
 
 func TestObservedImagePullFailureIsImmediateAndGenerationScoped(t *testing.T) {
@@ -173,10 +173,12 @@ func TestObservedServiceStateTreatsConcreteOpenDeployFailureAsInstanceFailure(t 
 
 // getApp fetches the one public-name "web" CR every test projects. The object
 // name intentionally uses the immutable tenant id, not the mutable tenant name.
+// Cluster-wide (not InNamespace("default")): App CRs project into their
+// workspace's own `<ws>` namespace (ADR043), not a shared namespace.
 func getApp(t *testing.T, cl client.Client) *appv1alpha1.App {
 	t.Helper()
 	var apps appv1alpha1.AppList
-	if err := cl.List(context.Background(), &apps, client.InNamespace("default"), client.MatchingLabels{core.LabelServiceName: "web"}); err != nil {
+	if err := cl.List(context.Background(), &apps, client.MatchingLabels{core.LabelServiceName: "web"}); err != nil {
 		t.Fatalf("list App web: %v", err)
 	}
 	if len(apps.Items) != 1 {
@@ -209,7 +211,7 @@ func TestReconcileCreatesAppCR(t *testing.T) {
 }
 
 func TestProjectAppUsesTenantIDNotMutableTenantName(t *testing.T) {
-	rec := &Reconciler{Namespace: "default"}
+	rec := &Reconciler{}
 	d := DesiredApp{App: App{TenantID: "tea-stable", Name: "web"}, TenantName: "renamed-workspace"}
 	app := rec.projectApp(context.Background(), d)
 	if app.Name != "tea-stable-web" {
@@ -330,10 +332,9 @@ func TestReconcileStampsWorkspaceLabel(t *testing.T) {
 	}
 }
 
-func TestTenantNamespacesProjectAppsIntoWorkspaceNamespace(t *testing.T) {
+func TestReconcileProjectsAppsIntoWorkspaceNamespace(t *testing.T) {
 	ctx := context.Background()
 	rec, store, cl := newTestReconciler(t)
-	rec.TenantNamespaces = true // t002: project into <ws>, not the shared ns
 	ten, _ := store.CreateTenant(ctx, "acme", "free")
 	store.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"}) //nolint:errcheck
 
@@ -363,21 +364,6 @@ func TestTenantNamespacesProjectAppsIntoWorkspaceNamespace(t *testing.T) {
 	}
 	if len(apps.Items) != 1 {
 		t.Fatalf("App count after resync = %d, want 1 (no duplicate)", len(apps.Items))
-	}
-}
-
-func TestSharedNamespaceProjectionIsUnchangedWhenGateOff(t *testing.T) {
-	ctx := context.Background()
-	rec, store, cl := newTestReconciler(t) // TenantNamespaces defaults false
-	ten, _ := store.CreateTenant(ctx, "acme", "free")
-	store.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"}) //nolint:errcheck
-	if err := rec.ReconcileOnce(ctx); err != nil {
-		t.Fatalf("reconcile: %v", err)
-	}
-	// Byte-identical to pre-m31: the App lands in the shared "default" namespace.
-	app := getApp(t, cl)
-	if app.Namespace != "default" {
-		t.Errorf("App namespace = %q, want default (gate off must be unchanged)", app.Namespace)
 	}
 }
 
@@ -466,10 +452,10 @@ func TestReconcileWorkspaceLabelDistinct(t *testing.T) {
 	}
 
 	var appA, appB appv1alpha1.App
-	if err := cl.Get(ctx, types.NamespacedName{Namespace: "default", Name: core.CRName(tenA.ID, "web")}, &appA); err != nil {
+	if err := cl.Get(ctx, types.NamespacedName{Namespace: WorkspaceNamespace(tenA.ID), Name: core.CRName(tenA.ID, "web")}, &appA); err != nil {
 		t.Fatalf("get alpha web: %v", err)
 	}
-	if err := cl.Get(ctx, types.NamespacedName{Namespace: "default", Name: core.CRName(tenB.ID, "api")}, &appB); err != nil {
+	if err := cl.Get(ctx, types.NamespacedName{Namespace: WorkspaceNamespace(tenB.ID), Name: core.CRName(tenB.ID, "api")}, &appB); err != nil {
 		t.Fatalf("get beta api: %v", err)
 	}
 	wsA := appA.Labels[LabelWorkspace]
@@ -988,7 +974,7 @@ func TestFailureReasonFor(t *testing.T) {
 }
 
 func TestDeployTimedOutUsesPhaseSpecificBudgets(t *testing.T) {
-	rec := NewReconciler(nil, nil, "default")
+	rec := NewReconciler(nil, nil)
 	now := time.Now()
 
 	tests := []struct {

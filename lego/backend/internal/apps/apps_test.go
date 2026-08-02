@@ -76,11 +76,16 @@ func getApp(t *testing.T, cl client.Client, name string) *appv1alpha1.App {
 
 // getTenantApp fetches an App CR created for tenantID by its public name:
 // core.CRName(tenantID, name) is the collision-free object name a
-// tenant-scoped create stamps (w4/m19) — plain getApp only still works for a
-// tenant-less (store-off) create.
+// tenant-scoped create stamps (w4/m19), landed in the workspace's own `<ws>`
+// namespace (== tenantID, ADR043) — plain getApp only still works for a
+// tenant-less (store-off) create, which stays in "default".
 func getTenantApp(t *testing.T, cl client.Client, tenantID, name string) *appv1alpha1.App {
 	t.Helper()
-	return getApp(t, cl, core.CRName(tenantID, name))
+	var a appv1alpha1.App
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: tenantID, Name: core.CRName(tenantID, name)}, &a); err != nil {
+		t.Fatalf("get %s/%s: %v", tenantID, name, err)
+	}
+	return &a
 }
 
 // --- Read + write verbs ---
@@ -369,9 +374,16 @@ func (f fakeWorkspace) IsMember(_ context.Context, id core.Identity, tenantID st
 	return ok && tid == tenantID, nil
 }
 
+// tenantApp mirrors what a store-managed create actually produces under
+// per-tenant namespaces (ADR043): the App lives in its own workspace's `<ws>`
+// namespace (== tenantID, store.WorkspaceNamespace) and carries LabelServiceName
+// alongside LabelTenant (service.go's createNewApp) — both are load-bearing:
+// List scopes InNamespace(tenantID), while GetApp's cluster-wide by-name
+// fallback keys on LabelServiceName regardless of namespace.
 func tenantApp(name, tenantID string) *appv1alpha1.App {
 	a := sampleApp(name)
-	a.Labels = map[string]string{core.LabelTenant: tenantID}
+	a.Namespace = tenantID
+	a.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelServiceName: name}
 	return a
 }
 
@@ -472,8 +484,15 @@ func TestCreateRepoBackedIsAcceptedNotLive(t *testing.T) {
 
 func TestStoreOffListAndGetIgnoreTenantLabelsUnchanged(t *testing.T) {
 	// Workspace nil (store off): byte-identical to before tenant onboarding —
-	// every App in the namespace is visible regardless of label.
-	svc, _ := newService(nil, tenantApp("web", "tea-a"), tenantApp("other", "tea-b"))
+	// every App in the namespace is visible regardless of label. Store-off
+	// deployments have no NamespaceReconciler/per-tenant namespaces at all, so
+	// (unlike tenantApp) these fixtures stay in the shared "default" namespace
+	// a store-off apps.Service actually creates into.
+	web := sampleApp("web")
+	web.Labels = map[string]string{core.LabelTenant: "tea-a"}
+	other := sampleApp("other")
+	other.Labels = map[string]string{core.LabelTenant: "tea-b"}
+	svc, _ := newService(nil, web, other)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 
 	list, err := svc.List(ctx, "")
@@ -1606,61 +1625,6 @@ func TestGraphQLInstanceTypes(t *testing.T) {
 	first := list[0].(map[string]any)
 	if first["id"] != "free" || first["name"] != "Free" {
 		t.Errorf("first entry = %+v, want id=free name=Free (ladder order)", first)
-	}
-}
-
-// --- Per-workspace service cap (w7/m9) ---
-
-// TestServiceCapEnforcement verifies that the (N+1)th create is refused with
-// ErrBadRequest while a second workspace can still create (fairness boundary,
-// not a global cap). Redeploys of existing services bypass the cap — they do
-// not consume a new slot.
-func TestServiceCapEnforcement(t *testing.T) {
-	ws := fakeWorkspace{"user-a": "tea-a", "user-b": "tea-b"}
-	ctx := func(subject string) context.Context {
-		return core.WithIdentity(context.Background(), core.Identity{Subject: subject, Method: "session"})
-	}
-
-	// Two workspaces share the same namespace, each already at cap (2).
-	svc, _ := newTenantService(ws,
-		tenantApp("a1", "tea-a"), tenantApp("a2", "tea-a"),
-		tenantApp("b1", "tea-b"),
-	)
-	svc.MaxServices = 2
-
-	// tea-a is at cap — next create must be refused.
-	if _, err := svc.create(ctx("user-a"), CreateRequest{Name: "a3", Image: "img:1"}); err == nil {
-		t.Fatal("create at cap: want ErrBadRequest, got nil")
-	} else if !errors.Is(err, core.ErrBadRequest) {
-		t.Errorf("create at cap: got %v, want ErrBadRequest", err)
-	}
-
-	// tea-b has one service, so it can still create (fairness — not a global cap).
-	if _, err := svc.create(ctx("user-b"), CreateRequest{Name: "b2", Image: "img:1"}); err != nil {
-		t.Errorf("second workspace create: %v, want success (separate cap)", err)
-	}
-
-	// Unset cap (MaxServices=0): unlimited — same two apps, extra create succeeds.
-	svc2, _ := newTenantService(ws, tenantApp("x1", "tea-a"), tenantApp("x2", "tea-a"))
-	svc2.MaxServices = 0
-	if _, err := svc2.create(ctx("user-a"), CreateRequest{Name: "x3", Image: "img:1"}); err != nil {
-		t.Errorf("unlimited cap: %v, want success", err)
-	}
-
-	// Store off (no Workspace resolver): cap is skipped even when MaxServices > 0.
-	svc3, _ := newService(nil, tenantApp("y1", "tea-a"), tenantApp("y2", "tea-a"))
-	svc3.MaxServices = 2
-	if _, err := svc3.create(context.Background(), CreateRequest{Name: "y3", Image: "img:1"}); err != nil {
-		t.Errorf("store-off cap: %v, want success (no workspace to count against)", err)
-	}
-
-	// Create on an existing name is a conflict, not the cap — the existence
-	// check runs first, so it's ErrConflict even at (or over) cap, never
-	// ErrBadRequest and never a silent redeploy (w4/m19).
-	svc4, _ := newTenantService(ws, tenantApp("a1", "tea-a"), tenantApp("a2", "tea-a"))
-	svc4.MaxServices = 2
-	if _, err := svc4.create(ctx("user-a"), CreateRequest{Name: "a1", Image: "img:2"}); !errors.Is(err, core.ErrConflict) {
-		t.Errorf("create on existing name at cap: got %v, want ErrConflict", err)
 	}
 }
 

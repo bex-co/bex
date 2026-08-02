@@ -12,8 +12,9 @@
 # in bex-api-namespace-admission.yaml additionally reject this ServiceAccount's
 # writes outside canonical bex-managed tenant namespaces and exact RoleBindings.
 # The deliberate omission of cluster-wide `secrets` from bex-api (ADR028,
-# guarded by scripts/gitops-validate.sh) is untouched. Inert until
-# BEX_TENANT_NAMESPACES is set (the reconciler doesn't run otherwise).
+# guarded by scripts/gitops-validate.sh) is untouched. The NamespaceReconciler
+# runs unconditionally whenever the control-plane store is wired (BEX_CP_DB_URI)
+# — the transitional BEX_TENANT_NAMESPACES gate was retired in w3/m34.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:

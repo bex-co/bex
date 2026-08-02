@@ -44,7 +44,9 @@ func metadataResources(ownerID string) (*appv1alpha1.App, *appv1alpha1.Database,
 	labels := map[string]string{core.LabelTenant: ownerID, core.LabelWorkspace: ownerID}
 	app := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "svc-metadata", Namespace: "default", CreationTimestamp: created,
+			// App CRs live in their own per-tenant namespace (ADR043); Database/KeyValue
+			// stay in the shared namespace.
+			Name: "svc-metadata", Namespace: ownerID, CreationTimestamp: created,
 			Labels: map[string]string{
 				core.LabelTenant: ownerID, core.LabelWorkspace: ownerID,
 				core.LabelAppID: "srv-metadata00000000000", core.LabelServiceName: "svc-metadata",
