@@ -596,7 +596,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		AgentSessions: &agentsessions.Service{
 			Base: base, Store: d.AgentSessionStore, Tuples: d.AgentSessionTuples,
 			Sandbox: sandbox.NewAgentSessionLifecycle(sandboxSvc), TicketSecret: d.AgentSessionTicketSecret,
-			GatewayURL: d.AgentSessionGatewayURL,
+			GatewayURL: d.AgentSessionGatewayURL, ModelKeys: d.Secrets,
 		},
 		Postgres:  pg,
 		KeyValue:  kv,
