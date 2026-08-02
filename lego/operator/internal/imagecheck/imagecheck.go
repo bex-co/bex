@@ -42,6 +42,22 @@ import (
 // base64-encoded DER ECDSA signature created by cosign sign --key.
 const cosignSigAnnotation = "dev.cosignproject.cosign/signature"
 
+// cosignPayload is the relevant subset of cosign's Simple Signing payload JSON.
+// The critical identity + image digest are bound to the admitted image
+// (codex-security #8): without this check a registry writer can reattach a
+// previously valid signed payload under another image's signature tag, and the
+// admission webhook would accept altered bytes that were never signed.
+type cosignPayload struct {
+	Critical struct {
+		Identity struct {
+			DockerReference string `json:"docker-reference"`
+		} `json:"identity"`
+		Image struct {
+			DockerManifestDigest string `json:"docker-manifest-digest"`
+		} `json:"image"`
+	} `json:"critical"`
+}
+
 // Verifier verifies cosign private-key signatures on OCI images.
 // It is safe for concurrent use.
 type Verifier struct {
@@ -115,7 +131,15 @@ func (v *Verifier) Verify(ctx context.Context, imageRef string) error {
 			lastErr = err
 			continue
 		}
-		return nil // at least one valid signature found
+		// Cryptographic validity alone is not enough: bind the signed payload's
+		// subject (manifest digest + docker-reference) to the image being admitted,
+		// so a registry writer cannot replay a valid signature onto a different
+		// image (codex-security #8).
+		if err := v.verifyPayloadBinding(payload, host, repo, digest); err != nil {
+			lastErr = err
+			continue
+		}
+		return nil // at least one valid, bound signature found
 	}
 	if lastErr != nil {
 		return fmt.Errorf("imagecheck: no valid signature for %q: %w", imageRef, lastErr)
@@ -320,6 +344,27 @@ func (v *Verifier) verifyECDSA(sig, payload []byte) error {
 	hash := sha256.Sum256(payload)
 	if !ecdsa.VerifyASN1(v.pub, hash[:], sig) {
 		return fmt.Errorf("ECDSA signature verification failed")
+	}
+	return nil
+}
+
+// verifyPayloadBinding parses the signed Simple Signing payload and requires its
+// subject to exactly match the image being admitted: critical.image.docker-
+// manifest-digest == the resolved image digest, and critical.identity.docker-
+// reference == host/repository. This is what stops a valid signature from being
+// replayed onto a different image (codex-security #8).
+func (v *Verifier) verifyPayloadBinding(payload []byte, host, repo, digest string) error {
+	var p cosignPayload
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return fmt.Errorf("parse cosign payload: %w", err)
+	}
+	if p.Critical.Image.DockerManifestDigest != digest {
+		return fmt.Errorf("signed payload digest %q does not match image digest %q",
+			p.Critical.Image.DockerManifestDigest, digest)
+	}
+	if want := host + "/" + repo; p.Critical.Identity.DockerReference != want {
+		return fmt.Errorf("signed payload reference %q does not match image reference %q",
+			p.Critical.Identity.DockerReference, want)
 	}
 	return nil
 }
