@@ -99,7 +99,7 @@ func TestWebhookRedeploy_TenantNamespaceMode(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", TenantNamespaces: true}}
 	h := &GitWebhook{Svc: svc, Secret: "shh"}
 
-	redeployed, err := h.redeployMatching(context.Background(), newPush(repo, []string{"docs/cli.md"}), "main")
+	redeployed, _, err := h.redeployMatching(context.Background(), newPush(repo, []string{"docs/cli.md"}), "main")
 	if err != nil {
 		t.Fatalf("redeployMatching: %v", err)
 	}

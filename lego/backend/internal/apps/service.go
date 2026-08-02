@@ -127,6 +127,11 @@ type Service struct {
 	// list/sync verbs. nil => list/sync return ErrBlueprintsUnavailable; validate
 	// is always available (stateless).
 	Blueprints BlueprintStore
+	// GitFetcher, when set (the GitHub App is wired), fetches the bex.yml manifest
+	// from a Git repository so CreateBlueprint and SyncBlueprint can pull the
+	// latest file without a local clone (w2/m62 — Git-connected Blueprints). nil
+	// => create and sync fall back to the supplied/stored manifest.
+	GitFetcher BlueprintFetcher
 	// BlueprintGroups resolves/creates Render Blueprint projects and
 	// environments by name for projects[].environments[] manifests.
 	BlueprintGroups BlueprintGroupingStore

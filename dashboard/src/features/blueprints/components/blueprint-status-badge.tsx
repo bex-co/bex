@@ -8,15 +8,24 @@ interface BlueprintStatusBadgeProps {
 export function BlueprintStatusBadge({ status }: BlueprintStatusBadgeProps) {
   const { t } = useTranslations();
 
-  const variant =
-    status === "active"
-      ? ("default" as const)
-      : ("secondary" as const);
+  type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
+  const variantMap: Record<string, BadgeVariant> = {
+    active: "default",
+    in_sync: "default",
+    syncing: "secondary",
+    error: "destructive",
+    paused: "outline",
+  };
+  const labelMap: Record<string, string> = {
+    active: t("blueprints.statusActive"),
+    in_sync: t("blueprints.statusInSync"),
+    syncing: t("blueprints.statusSyncing"),
+    error: t("blueprints.statusError"),
+    paused: t("blueprints.statusPaused"),
+  };
 
-  const label =
-    status === "active"
-      ? t("blueprints.statusActive")
-      : t("blueprints.statusUnknown", { status });
+  const variant = variantMap[status] ?? "secondary";
+  const label = labelMap[status] ?? t("blueprints.statusUnknown", { status });
 
   return <Badge variant={variant}>{label}</Badge>;
 }

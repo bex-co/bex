@@ -16,10 +16,9 @@ limitations under the License.
 
 package apps
 
-// blueprint.go adds the /blueprints surface (w2/m15): validate · list · sync.
-// Blueprints are bex.yml stack sources — repo+branch+manifest records created
-// automatically when deploy is called with a repo. The validate verb is
-// stateless (no store); list/sync require the control-plane store.
+// blueprint.go: Git-connected Blueprints (w2/m62, extends w2/m15 + w2/m41).
+// Full surface: validate · create · list · get · sync (recorded) · list-syncs ·
+// update · disconnect. Auto-sync on push is in webhook.go.
 
 import (
 	"context"
@@ -31,9 +30,12 @@ import (
 	"strings"
 	"time"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
-	"sigs.k8s.io/yaml"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // BlueprintStore is the persistence interface blueprints need.
@@ -41,28 +43,61 @@ import (
 type BlueprintStore interface {
 	UpsertBlueprint(ctx context.Context, b store.Blueprint) (store.Blueprint, error)
 	GetBlueprint(ctx context.Context, id, tenantID string) (store.Blueprint, error)
+	GetBlueprintByRepo(ctx context.Context, tenantID, repo, branch string) (store.Blueprint, error)
 	ListBlueprints(ctx context.Context, tenantID string) ([]store.Blueprint, error)
+	UpdateBlueprint(ctx context.Context, id, tenantID string, name *string, autoSync *bool, path *string, status *string, lastSyncAt *time.Time) (store.Blueprint, error)
+	DisconnectBlueprint(ctx context.Context, id, tenantID string) error
+	InsertBlueprintSync(ctx context.Context, run store.BlueprintSync) (store.BlueprintSync, error)
+	UpdateBlueprintSync(ctx context.Context, id, state string, completedAt *time.Time) (store.BlueprintSync, error)
+	ListBlueprintSyncs(ctx context.Context, blueprintID, cursor string, limit int) ([]store.BlueprintSync, error)
 }
 
-// ErrBlueprintsUnavailable is returned when the control-plane store is not wired
-// (BEX_CP_DB_URI unset). Validate is always available; list/sync need the store.
+// BlueprintFetcher fetches a blueprint file from its Git repository. The
+// github.Service.BlueprintFileFetcher() adapter satisfies it. nil on
+// apps.Service (s.GitFetcher) ⇒ create/sync cannot pull-from-repo.
+type BlueprintFetcher interface {
+	FetchBlueprintFile(ctx context.Context, workspaceID, repoURL, branch, filePath string) (contents, commitSHA string, err error)
+}
+
+// ErrBlueprintsUnavailable is returned when the control-plane store is not wired.
 var ErrBlueprintsUnavailable = errors.New("blueprints store not configured (BEX_CP_DB_URI required)")
+
+// ErrBlueprintFetchUnavailable is returned when no GitFetcher is configured.
+var ErrBlueprintFetchUnavailable = errors.New("blueprint file fetch unavailable (GitHub App not configured)")
 
 // BlueprintView is the API shape for a blueprint — all three surfaces return this.
 type BlueprintView struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Repo      string    `json:"repo"`
-	Branch    string    `json:"branch"`
-	Manifest  string    `json:"manifest"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID        string              `json:"id"`
+	Name      string              `json:"name"`
+	Repo      string              `json:"repo"`
+	Branch    string              `json:"branch"`
+	Path      string              `json:"path"`
+	AutoSync  bool                `json:"autoSync"`
+	Manifest  string              `json:"manifest"`
+	Status    string              `json:"status"`
+	LastSync  *string             `json:"lastSync,omitempty"`
+	Resources []BlueprintResource `json:"resources,omitempty"`
+	CreatedAt time.Time           `json:"createdAt"`
+	UpdatedAt time.Time           `json:"updatedAt"`
 }
 
-// BlueprintValidationError is Render's validation-error shape. Error is always
-// present; line/column/path are best-effort source locations and remain absent
-// when the YAML decoder cannot identify one precisely.
+// BlueprintResource is one managed resource returned on by-id reads.
+type BlueprintResource struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+// BlueprintSyncView is the API shape for a sync run.
+type BlueprintSyncView struct {
+	ID          string  `json:"id"`
+	CommitID    string  `json:"commitId,omitempty"`
+	State       string  `json:"state"`
+	StartedAt   string  `json:"startedAt"`
+	CompletedAt *string `json:"completedAt,omitempty"`
+}
+
+// BlueprintValidationError is Render's validation-error shape.
 type BlueprintValidationError struct {
 	Error  string  `json:"error"`
 	Line   *int    `json:"line,omitempty"`
@@ -70,35 +105,48 @@ type BlueprintValidationError struct {
 	Path   *string `json:"path,omitempty"`
 }
 
-// BlueprintValidationPlan is Render's dry-run resource summary for a Blueprint
-// dry-run: services, managed Postgres databases, key-value stores, and env groups.
+// BlueprintValidationPlan is Render's dry-run resource summary.
 type BlueprintValidationPlan struct {
-	Services     []string `json:"services,omitempty"`
-	Databases    []string `json:"databases,omitempty"`
-	KeyValue     []string `json:"keyValue,omitempty"`
-	EnvGroups    []string `json:"envGroups,omitempty"`
-	TotalActions int      `json:"totalActions"`
+	Services      []string `json:"services,omitempty"`
+	Databases     []string `json:"databases,omitempty"`
+	KeyValue      []string `json:"keyValue,omitempty"`
+	EnvGroups     []string `json:"envGroups,omitempty"`
+	SyncFalseVars []string `json:"syncFalseVars,omitempty"`
+	TotalActions  int      `json:"totalActions"`
 }
 
-// BlueprintValidation is the result of a dry-run validate — no storage, no
-// apply. Its JSON representation matches Render's ValidateBlueprintResponse so
-// the official CLI can decode it directly.
+// BlueprintValidation is the result of a dry-run validate.
 type BlueprintValidation struct {
 	Valid  bool                       `json:"valid"`
 	Errors []BlueprintValidationError `json:"errors,omitempty"`
 	Plan   *BlueprintValidationPlan   `json:"plan,omitempty"`
 }
 
-// SyncBlueprintResult is the result of a sync: the updated blueprint metadata
-// plus the full stack result (services + databases converged by re-apply).
+// SyncBlueprintResult is returned by sync and create.
 type SyncBlueprintResult struct {
 	Blueprint BlueprintView `json:"blueprint"`
 	Stack     StackResult   `json:"stack"`
 }
 
+// CreateBlueprintRequest is the input to CreateBlueprint.
+type CreateBlueprintRequest struct {
+	Repo         string
+	Branch       string
+	Path         string            // defaults to bex.yml
+	Name         string            // defaults to repo basename
+	EnvVarValues map[string]string // values for sync:false env vars
+	Confirm      string
+}
+
+// UpdateBlueprintRequest is the partial-update input to UpdateBlueprint.
+type UpdateBlueprintRequest struct {
+	Name     *string
+	AutoSync *bool
+	Path     *string
+}
+
 // ValidateBlueprint parses a bex.yml and returns per-entry errors without
-// applying anything (stateless: no store, no k8s writes). ownerID is Render's
-// workspace selector; empty resolves to the caller's default. Requires can_view.
+// applying anything (stateless: no store, no k8s writes). Requires can_view.
 func (s *Service) ValidateBlueprint(ctx context.Context, ownerID, bexYAML string) (BlueprintValidation, error) {
 	if ownerID != "" {
 		ctx = core.WithWorkspace(ctx, ownerID)
@@ -111,7 +159,7 @@ func (s *Service) ValidateBlueprint(ctx context.Context, ownerID, bexYAML string
 		err = s.validateBlueprintServices(st)
 	}
 	if err == nil {
-		plan := blueprintValidationPlan(st)
+		plan := blueprintValidationPlan(bexYAML, st)
 		return BlueprintValidation{Valid: true, Plan: &plan}, nil
 	}
 	if !errors.Is(err, core.ErrBadRequest) {
@@ -124,7 +172,504 @@ func (s *Service) ValidateBlueprint(ctx context.Context, ownerID, bexYAML string
 	return BlueprintValidation{Errors: []BlueprintValidationError{blueprintValidationError(bexYAML, msg)}}, nil
 }
 
-func blueprintValidationPlan(st parsedStack) BlueprintValidationPlan {
+// CreateBlueprint creates a new Git-connected Blueprint instance by fetching
+// the manifest from Git, validating it, applying the stack, and recording an
+// initial sync run.
+func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req CreateBlueprintRequest) (BlueprintView, error) {
+	if ownerID != "" {
+		ctx = core.WithWorkspace(ctx, ownerID)
+	}
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return BlueprintView{}, err
+	}
+	if s.Blueprints == nil {
+		return BlueprintView{}, ErrBlueprintsUnavailable
+	}
+	if req.Repo == "" || req.Branch == "" {
+		return BlueprintView{}, fmt.Errorf("%w: repo and branch are required", core.ErrBadRequest)
+	}
+	if req.Path == "" {
+		req.Path = "bex.yml"
+	}
+	if req.Name == "" {
+		req.Name = repoName(req.Repo)
+	}
+	tenantID := s.resolveTenantID(ctx)
+
+	if s.GitFetcher == nil {
+		return BlueprintView{}, ErrBlueprintFetchUnavailable
+	}
+	contents, commitSHA, err := s.GitFetcher.FetchBlueprintFile(ctx, tenantID, req.Repo, req.Branch, req.Path)
+	if err != nil {
+		return BlueprintView{}, fmt.Errorf("blueprint fetch: %w", err)
+	}
+
+	parsed, parseErr := parseStack(DeployRequest{Repo: req.Repo, Branch: req.Branch, Manifest: contents})
+	if parseErr != nil {
+		return BlueprintView{}, parseErr
+	}
+	if err := s.requireStackPaymentMethod(ctx, parsed); err != nil {
+		return BlueprintView{}, err
+	}
+
+	now := s.Now().UTC()
+	b, err := s.Blueprints.UpsertBlueprint(ctx, store.Blueprint{
+		TenantID: tenantID,
+		Name:     req.Name,
+		Repo:     req.Repo,
+		Branch:   req.Branch,
+		Path:     req.Path,
+		AutoSync: true,
+		Manifest: contents,
+		Status:   store.BlueprintStatusSyncing,
+	})
+	if err != nil {
+		return BlueprintView{}, err
+	}
+
+	run, _ := s.Blueprints.InsertBlueprintSync(ctx, store.BlueprintSync{
+		BlueprintID: b.ID,
+		CommitID:    commitSHA,
+		State:       store.BlueprintSyncStateRunning,
+		StartedAt:   now,
+	})
+
+	_, applyErr := s.deployStack(ctx, DeployRequest{
+		Repo:     req.Repo,
+		Branch:   req.Branch,
+		Manifest: contents,
+		Confirm:  req.Confirm,
+	})
+
+	finalStatus := store.BlueprintStatusInSync
+	syncState := store.BlueprintSyncStateSuccess
+	if applyErr != nil {
+		finalStatus = store.BlueprintStatusError
+		syncState = store.BlueprintSyncStateError
+	}
+	completedAt := s.Now().UTC()
+	if updated, updErr := s.Blueprints.UpdateBlueprint(ctx, b.ID, tenantID, nil, nil, nil, &finalStatus, &completedAt); updErr == nil {
+		b = updated
+	}
+	if run.ID != "" {
+		_, _ = s.Blueprints.UpdateBlueprintSync(ctx, run.ID, syncState, &completedAt)
+	}
+	if applyErr != nil {
+		return BlueprintView{}, applyErr
+	}
+	v := toBlueprintView(b)
+	v.Resources = s.resolveBlueprintResources(ctx, b)
+	return v, nil
+}
+
+// GetBlueprintByID returns a single blueprint by its opaque id.
+func (s *Service) GetBlueprintByID(ctx context.Context, bpID, ownerID string) (BlueprintView, error) {
+	if ownerID != "" {
+		ctx = core.WithWorkspace(ctx, ownerID)
+	}
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return BlueprintView{}, err
+	}
+	if s.Blueprints == nil {
+		return BlueprintView{}, ErrBlueprintsUnavailable
+	}
+	tenantID := s.resolveTenantID(ctx)
+	b, err := s.Blueprints.GetBlueprint(ctx, bpID, tenantID)
+	if err != nil {
+		return BlueprintView{}, err
+	}
+	v := toBlueprintView(b)
+	v.Resources = s.resolveBlueprintResources(ctx, b)
+	return v, nil
+}
+
+// GetBlueprint is an alias for GetBlueprintByID.
+func (s *Service) GetBlueprint(ctx context.Context, bpID, ownerID string) (BlueprintView, error) {
+	return s.GetBlueprintByID(ctx, bpID, ownerID)
+}
+
+// ListBlueprints returns all non-disconnected blueprints for a workspace.
+func (s *Service) ListBlueprints(ctx context.Context, ownerID string) ([]BlueprintView, error) {
+	if ownerID != "" {
+		ctx = core.WithWorkspace(ctx, ownerID)
+	}
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return nil, err
+	}
+	if s.Blueprints == nil {
+		return nil, ErrBlueprintsUnavailable
+	}
+	tenantID := s.resolveTenantID(ctx)
+	if tenantID == "" {
+		return []BlueprintView{}, nil
+	}
+	bs, err := s.Blueprints.ListBlueprints(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	views := make([]BlueprintView, len(bs))
+	for i, b := range bs {
+		views[i] = toBlueprintView(b)
+	}
+	return views, nil
+}
+
+// SyncBlueprint re-applies the blueprint by id.
+func (s *Service) SyncBlueprint(ctx context.Context, bpID, ownerID, bexYAML, confirm string) (SyncBlueprintResult, error) {
+	if ownerID != "" {
+		ctx = core.WithWorkspace(ctx, ownerID)
+	}
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return SyncBlueprintResult{}, err
+	}
+	if s.Blueprints == nil {
+		return SyncBlueprintResult{}, ErrBlueprintsUnavailable
+	}
+	tenantID := s.resolveTenantID(ctx)
+	b, err := s.Blueprints.GetBlueprint(ctx, bpID, tenantID)
+	if err != nil {
+		return SyncBlueprintResult{}, err
+	}
+	return s.runSync(ctx, b, bexYAML, confirm)
+}
+
+// runSync is the shared sync engine: records a run, pulls-from-repo or uses
+// the supplied/stored manifest, applies the stack, and stamps status + lastSyncAt.
+func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confirm string) (SyncBlueprintResult, error) {
+	tenantID := b.TenantID
+	now := s.Now().UTC()
+	var commitSHA string
+
+	if bexYAML != "" {
+		parsed, parseErr := parseStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: bexYAML})
+		if parseErr != nil {
+			return SyncBlueprintResult{}, parseErr
+		}
+		if err := s.requireStackPaymentMethod(ctx, parsed); err != nil {
+			return SyncBlueprintResult{}, err
+		}
+		updated, err := s.Blueprints.UpsertBlueprint(ctx, store.Blueprint{
+			ID:       b.ID,
+			TenantID: tenantID,
+			Name:     b.Name,
+			Repo:     b.Repo,
+			Branch:   b.Branch,
+			Path:     b.Path,
+			AutoSync: b.AutoSync,
+			Manifest: bexYAML,
+			Status:   store.BlueprintStatusSyncing,
+		})
+		if err != nil {
+			return SyncBlueprintResult{}, err
+		}
+		b = updated
+	} else if s.GitFetcher != nil && b.Repo != "" {
+		if contents, sha, fetchErr := s.GitFetcher.FetchBlueprintFile(ctx, tenantID, b.Repo, b.Branch, b.Path); fetchErr == nil {
+			commitSHA = sha
+			if parsed, parseErr := parseStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: contents}); parseErr == nil {
+				if pmErr := s.requireStackPaymentMethod(ctx, parsed); pmErr != nil {
+					return SyncBlueprintResult{}, pmErr
+				}
+				if updated, err := s.Blueprints.UpsertBlueprint(ctx, store.Blueprint{
+					ID:       b.ID,
+					TenantID: tenantID,
+					Name:     b.Name,
+					Repo:     b.Repo,
+					Branch:   b.Branch,
+					Path:     b.Path,
+					AutoSync: b.AutoSync,
+					Manifest: contents,
+					Status:   store.BlueprintStatusSyncing,
+				}); err == nil {
+					b = updated
+				}
+			}
+		}
+	}
+
+	if b.Status != store.BlueprintStatusSyncing {
+		syncingStatus := store.BlueprintStatusSyncing
+		if updated, err := s.Blueprints.UpdateBlueprint(ctx, b.ID, tenantID, nil, nil, nil, &syncingStatus, nil); err == nil {
+			b = updated
+		}
+	}
+
+	run, _ := s.Blueprints.InsertBlueprintSync(ctx, store.BlueprintSync{
+		BlueprintID: b.ID,
+		CommitID:    commitSHA,
+		State:       store.BlueprintSyncStateRunning,
+		StartedAt:   now,
+	})
+
+	stack, applyErr := s.deployStack(ctx, DeployRequest{
+		Repo:     b.Repo,
+		Branch:   b.Branch,
+		Manifest: b.Manifest,
+		Confirm:  confirm,
+	})
+
+	finalStatus := store.BlueprintStatusInSync
+	syncState := store.BlueprintSyncStateSuccess
+	if applyErr != nil {
+		finalStatus = store.BlueprintStatusError
+		syncState = store.BlueprintSyncStateError
+		if !b.AutoSync {
+			finalStatus = store.BlueprintStatusPaused
+		}
+	}
+	completedAt := s.Now().UTC()
+	if updated, updErr := s.Blueprints.UpdateBlueprint(ctx, b.ID, tenantID, nil, nil, nil, &finalStatus, &completedAt); updErr == nil {
+		b = updated
+	}
+	if run.ID != "" {
+		_, _ = s.Blueprints.UpdateBlueprintSync(ctx, run.ID, syncState, &completedAt)
+	}
+	if applyErr != nil {
+		return SyncBlueprintResult{}, applyErr
+	}
+	return SyncBlueprintResult{Blueprint: toBlueprintView(b), Stack: stack}, nil
+}
+
+// triggerBlueprintSync is called by the push-webhook auto-sync path
+// (webhook.go). Errors are intentionally dropped (webhook already responded).
+func (s *Service) triggerBlueprintSync(ctx context.Context, tenantID, repo, branch string) {
+	if s.Blueprints == nil {
+		return
+	}
+	b, err := s.Blueprints.GetBlueprintByRepo(ctx, tenantID, repo, branch)
+	if err != nil || !b.AutoSync {
+		return
+	}
+	bgCtx := context.Background()
+	_, _ = s.runSync(bgCtx, b, "", "")
+}
+
+// ListBlueprintSyncs returns recorded sync runs for a blueprint, newest first.
+func (s *Service) ListBlueprintSyncs(ctx context.Context, bpID, ownerID, cursor string, limit int) ([]BlueprintSyncView, error) {
+	if ownerID != "" {
+		ctx = core.WithWorkspace(ctx, ownerID)
+	}
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return nil, err
+	}
+	if s.Blueprints == nil {
+		return nil, ErrBlueprintsUnavailable
+	}
+	tenantID := s.resolveTenantID(ctx)
+	if _, err := s.Blueprints.GetBlueprint(ctx, bpID, tenantID); err != nil {
+		return nil, err
+	}
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	runs, err := s.Blueprints.ListBlueprintSyncs(ctx, bpID, cursor, limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]BlueprintSyncView, len(runs))
+	for i, r := range runs {
+		out[i] = toBlueprintSyncView(r)
+	}
+	return out, nil
+}
+
+// UpdateBlueprint applies a partial update to name/autoSync/path.
+func (s *Service) UpdateBlueprint(ctx context.Context, bpID, ownerID string, req UpdateBlueprintRequest) (BlueprintView, error) {
+	if ownerID != "" {
+		ctx = core.WithWorkspace(ctx, ownerID)
+	}
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return BlueprintView{}, err
+	}
+	if s.Blueprints == nil {
+		return BlueprintView{}, ErrBlueprintsUnavailable
+	}
+	if req.Name == nil && req.AutoSync == nil && req.Path == nil {
+		return BlueprintView{}, fmt.Errorf("%w: at least one of name/autoSync/path must be provided", core.ErrBadRequest)
+	}
+	if req.Name != nil && *req.Name == "" {
+		return BlueprintView{}, fmt.Errorf("%w: name cannot be empty", core.ErrBadRequest)
+	}
+	if req.Path != nil && *req.Path == "" {
+		return BlueprintView{}, fmt.Errorf("%w: path cannot be empty", core.ErrBadRequest)
+	}
+	tenantID := s.resolveTenantID(ctx)
+	b, err := s.Blueprints.GetBlueprint(ctx, bpID, tenantID)
+	if err != nil {
+		return BlueprintView{}, err
+	}
+	var newStatus *string
+	if req.AutoSync != nil && !*req.AutoSync && b.Status != store.BlueprintStatusPaused {
+		st := store.BlueprintStatusPaused
+		newStatus = &st
+	}
+	if req.AutoSync != nil && *req.AutoSync && b.Status == store.BlueprintStatusPaused {
+		st := store.BlueprintStatusInSync
+		newStatus = &st
+	}
+	updated, err := s.Blueprints.UpdateBlueprint(ctx, bpID, tenantID, req.Name, req.AutoSync, req.Path, newStatus, nil)
+	if err != nil {
+		return BlueprintView{}, err
+	}
+	return toBlueprintView(updated), nil
+}
+
+// DisconnectBlueprint stops syncing and hides the blueprint from the workspace.
+// Resources remain untouched (Render semantics).
+func (s *Service) DisconnectBlueprint(ctx context.Context, bpID, ownerID string) error {
+	if ownerID != "" {
+		ctx = core.WithWorkspace(ctx, ownerID)
+	}
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return err
+	}
+	if s.Blueprints == nil {
+		return ErrBlueprintsUnavailable
+	}
+	tenantID := s.resolveTenantID(ctx)
+	return s.Blueprints.DisconnectBlueprint(ctx, bpID, tenantID)
+}
+
+// upsertBlueprint auto-registers a blueprint row after a successful deployStack
+// call. Called from deploy.go when req.Repo is non-empty.
+func (s *Service) upsertBlueprint(ctx context.Context, req DeployRequest) {
+	if s.Blueprints == nil || req.Repo == "" {
+		return
+	}
+	tenantID := s.resolveTenantID(ctx)
+	if tenantID == "" {
+		return
+	}
+	branch := req.Branch
+	if branch == "" {
+		branch = "main"
+	}
+	_, _ = s.Blueprints.UpsertBlueprint(ctx, store.Blueprint{
+		TenantID: tenantID,
+		Name:     repoName(req.Repo),
+		Repo:     req.Repo,
+		Branch:   branch,
+		Path:     "bex.yml",
+		AutoSync: true,
+		Manifest: req.Manifest,
+		Status:   store.BlueprintStatusInSync,
+	})
+}
+
+// resolveTenantID returns the effective tenant id.
+// An explicitly named workspace in the context wins; otherwise the caller's
+// default is resolved through the store (Workspace). When the store is off
+// (Workspace == nil), only an explicitly named workspace is available.
+func (s *Service) resolveTenantID(ctx context.Context) string {
+	if named, ok := core.WorkspaceFrom(ctx); ok && named != "" {
+		return named
+	}
+	if s.Workspace == nil {
+		return ""
+	}
+	id, ok := core.IdentityFrom(ctx)
+	if !ok {
+		return ""
+	}
+	tenantID, _ := s.Workspace.Tenant(ctx, id)
+	return tenantID
+}
+
+// resolveBlueprintResources resolves the manifest's declared resources to their
+// current live App / Database CRs within the workspace.
+func (s *Service) resolveBlueprintResources(ctx context.Context, b store.Blueprint) []BlueprintResource {
+	if b.Manifest == "" || s.Client == nil {
+		return nil
+	}
+	var m bexManifest
+	if err := yaml.Unmarshal([]byte(b.Manifest), &m); err != nil {
+		return nil
+	}
+	if len(m.Services) == 0 && len(m.Databases) == 0 {
+		return nil
+	}
+
+	tenantID := b.TenantID
+	ns := s.AppNamespace(tenantID)
+	opts := []client.ListOption{
+		client.InNamespace(ns),
+		client.MatchingLabels{core.LabelTenant: tenantID},
+	}
+
+	var appList appv1alpha1.AppList
+	appByName := map[string]*appv1alpha1.App{}
+	if err := s.Client.List(ctx, &appList, opts...); err == nil {
+		for i := range appList.Items {
+			a := &appList.Items[i]
+			appByName[a.Name] = a
+		}
+	}
+
+	var dbList appv1alpha1.DatabaseList
+	dbByName := map[string]*appv1alpha1.Database{}
+	if err := s.Client.List(ctx, &dbList, opts...); err == nil {
+		for i := range dbList.Items {
+			d := &dbList.Items[i]
+			dbByName[d.Name] = d
+		}
+	}
+
+	var resources []BlueprintResource
+	for _, svc := range m.Services {
+		if svc.Name == "" {
+			continue
+		}
+		a, ok := appByName[svc.Name]
+		if !ok {
+			continue
+		}
+		resourceID := store.ManagedAppID(a.Labels)
+		if resourceID == "" {
+			resourceID = a.Name
+		}
+		resources = append(resources, BlueprintResource{
+			ID:   resourceID,
+			Name: svc.Name,
+			Type: blueprintServiceRenderType(svc),
+		})
+	}
+	for _, db := range m.Databases {
+		if db.Name == "" {
+			continue
+		}
+		if _, ok := dbByName[db.Name]; !ok {
+			continue
+		}
+		resources = append(resources, BlueprintResource{
+			ID:   db.Name,
+			Name: db.Name,
+			Type: "postgres",
+		})
+	}
+	return resources
+}
+
+func blueprintServiceRenderType(svc bexService) string {
+	switch svc.Type {
+	case "pserv", "private_service":
+		return "private_service"
+	case "worker", "background_worker":
+		return "background_worker"
+	case "cron", "cron_job":
+		return "cron_job"
+	case "static_site":
+		return "static_site"
+	case "keyvalue", "redis":
+		return "key_value"
+	}
+	if svc.Runtime == "static" {
+		return "static_site"
+	}
+	return "web_service"
+}
+
+// blueprintValidationPlan builds the resource-summary for a validate call.
+func blueprintValidationPlan(manifest string, st parsedStack) BlueprintValidationPlan {
 	plan := BlueprintValidationPlan{
 		Services:  make([]string, 0, len(st.services)),
 		Databases: make([]string, 0, len(st.databases)),
@@ -143,8 +688,29 @@ func blueprintValidationPlan(st parsedStack) BlueprintValidationPlan {
 	for _, group := range st.envGroups {
 		plan.EnvGroups = append(plan.EnvGroups, group.name)
 	}
+	plan.SyncFalseVars = extractSyncFalseVars(manifest)
 	plan.TotalActions = len(plan.Services) + len(plan.Databases) + len(plan.KeyValue) + len(plan.EnvGroups)
 	return plan
+}
+
+// extractSyncFalseVars returns env-var names declared with sync:false in the
+// manifest so the dashboard can prompt the user at create time.
+func extractSyncFalseVars(manifest string) []string {
+	var m bexManifest
+	if err := yaml.Unmarshal([]byte(manifest), &m); err != nil {
+		return nil
+	}
+	seen := map[string]bool{}
+	var names []string
+	for _, svc := range m.Services {
+		for _, ev := range svc.EnvVars {
+			if ev.Sync != nil && !*ev.Sync && ev.Key != "" && !seen[ev.Key] {
+				seen[ev.Key] = true
+				names = append(names, ev.Key)
+			}
+		}
+	}
+	return names
 }
 
 var yamlLineRE = regexp.MustCompile(`(?i)\bline\s+(\d+)\b`)
@@ -162,16 +728,12 @@ func blueprintValidationError(manifest, message string) BlueprintValidationError
 	return out
 }
 
-// blueprintErrorPath supplies the optional Render path for semantic errors the
-// shared parser can associate with a named entry. Syntax errors already carry a
-// decoder line; an uncertain path is omitted rather than fabricated.
 func blueprintErrorPath(manifest, message string) string {
 	var parsed bexManifest
 	if err := yaml.Unmarshal([]byte(manifest), &parsed); err != nil {
 		return ""
 	}
-	services := parsed.Services
-	for i, svc := range services {
+	for i, svc := range parsed.Services {
 		if svc.Name == "" {
 			if strings.Contains(message, "service entry is missing its name") {
 				return fmt.Sprintf("services[%d].name", i)
@@ -219,184 +781,46 @@ func blueprintErrorField(message string) string {
 	return ""
 }
 
-// GetBlueprintByID returns a single blueprint by its opaque id, scoped to the
-// caller's workspace (prevents cross-workspace reads). ownerID is optional.
-func (s *Service) GetBlueprintByID(ctx context.Context, id, ownerID string) (BlueprintView, error) {
-	if ownerID != "" {
-		ctx = core.WithWorkspace(ctx, ownerID)
-	}
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return BlueprintView{}, err
-	}
-	if s.Blueprints == nil {
-		return BlueprintView{}, ErrBlueprintsUnavailable
-	}
-	tenantID := s.resolveTenantID(ctx)
-	b, err := s.Blueprints.GetBlueprint(ctx, id, tenantID)
-	if err != nil {
-		return BlueprintView{}, err
-	}
-	return toBlueprintView(b), nil
-}
-
-// ListBlueprints returns all active blueprints for a workspace, newest first.
-// ownerID is optional (Render's ownerId): empty resolves to the caller's default
-// workspace (the same contract apps.List has).
-func (s *Service) ListBlueprints(ctx context.Context, ownerID string) ([]BlueprintView, error) {
-	if ownerID != "" {
-		ctx = core.WithWorkspace(ctx, ownerID)
-	}
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return nil, err
-	}
-	if s.Blueprints == nil {
-		return nil, ErrBlueprintsUnavailable
-	}
-	tenantID := s.resolveTenantID(ctx)
-	if tenantID == "" {
-		return []BlueprintView{}, nil
-	}
-	bs, err := s.Blueprints.ListBlueprints(ctx, tenantID)
-	if err != nil {
-		return nil, err
-	}
-	views := make([]BlueprintView, len(bs))
-	for i, b := range bs {
-		views[i] = toBlueprintView(b)
-	}
-	return views, nil
-}
-
-// SyncBlueprint re-applies the stored blueprint by id, optionally replacing its
-// manifest first. Idempotent: an unchanged bex.yml is a no-op re-apply.
-// ownerID scopes the fetch to the caller's workspace (prevents cross-workspace
-// sync). If bexYAML is non-empty the stored manifest is replaced before apply.
-// confirm carries the exact protected-environment phrase for an existing
-// service override; empty preserves the ordinary unprotected path.
-func (s *Service) SyncBlueprint(ctx context.Context, id, ownerID, bexYAML, confirm string) (SyncBlueprintResult, error) {
-	if ownerID != "" {
-		ctx = core.WithWorkspace(ctx, ownerID)
-	}
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
-		return SyncBlueprintResult{}, err
-	}
-	if s.Blueprints == nil {
-		return SyncBlueprintResult{}, ErrBlueprintsUnavailable
-	}
-	tenantID := s.resolveTenantID(ctx)
-	b, err := s.Blueprints.GetBlueprint(ctx, id, tenantID)
-	if err != nil {
-		return SyncBlueprintResult{}, err
-	}
-	if bexYAML != "" {
-		parsed, parseErr := parseStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: bexYAML})
-		if parseErr != nil {
-			return SyncBlueprintResult{}, parseErr
-		}
-		// Sync historically persists a replacement manifest before applying it.
-		// Run the paid-intent guard before that write so an intercepted request is
-		// genuinely resumable and leaves the stored Blueprint unchanged.
-		if err := s.requireStackPaymentMethod(ctx, parsed); err != nil {
-			return SyncBlueprintResult{}, err
-		}
-		b.Manifest = bexYAML
-		b, err = s.Blueprints.UpsertBlueprint(ctx, b)
-		if err != nil {
-			return SyncBlueprintResult{}, err
-		}
-	}
-	stack, err := s.deployStack(ctx, DeployRequest{
-		Repo:     b.Repo,
-		Branch:   b.Branch,
-		Manifest: b.Manifest,
-		Confirm:  confirm,
-	})
-	if err != nil {
-		return SyncBlueprintResult{}, err
-	}
-	return SyncBlueprintResult{Blueprint: toBlueprintView(b), Stack: stack}, nil
-}
-
-// upsertBlueprint persists a blueprint row after a successful deployStack call
-// (called from deployStack when Blueprints store is set and req.Repo is non-empty).
-// Errors are logged but not surfaced — the deploy already succeeded.
-func (s *Service) upsertBlueprint(ctx context.Context, req DeployRequest) {
-	if s.Blueprints == nil || req.Repo == "" {
-		return
-	}
-	tenantID := s.resolveTenantID(ctx)
-	if tenantID == "" {
-		return
-	}
-	branch := req.Branch
-	if branch == "" {
-		branch = "main"
-	}
-	name := repoName(req.Repo)
-	_, _ = s.Blueprints.UpsertBlueprint(ctx, store.Blueprint{
-		TenantID: tenantID,
-		Name:     name,
-		Repo:     req.Repo,
-		Branch:   branch,
-		Manifest: req.Manifest,
-		Status:   "active",
-	})
-}
-
-// resolveTenantID returns the effective tenant id after Authorize has already
-// validated workspace membership. It mirrors resolveWorkspace's precedence:
-// an explicitly named workspace wins; otherwise the caller's default resolves.
-func (s *Service) resolveTenantID(ctx context.Context) string {
-	if named, ok := core.WorkspaceFrom(ctx); ok && named != "" {
-		return named
-	}
-	if s.Workspace == nil {
-		return ""
-	}
-	id, ok := core.IdentityFrom(ctx)
-	if !ok {
-		return ""
-	}
-	tenantID, _ := s.Workspace.Tenant(ctx, id)
-	return tenantID
-}
-
-// repoName extracts a human-friendly name from a repo URL — the last path
-// component, stripping the ".git" suffix if present.
+// repoName extracts a human-friendly name from a repo URL.
 func repoName(repo string) string {
 	base := path.Base(strings.TrimRight(repo, "/"))
 	return strings.TrimSuffix(base, ".git")
 }
 
-// GetBlueprint returns a single blueprint by id, scoped to the caller's workspace.
-// ownerID is optional — empty resolves to the caller's default workspace.
-func (s *Service) GetBlueprint(ctx context.Context, id, ownerID string) (BlueprintView, error) {
-	if ownerID != "" {
-		ctx = core.WithWorkspace(ctx, ownerID)
-	}
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return BlueprintView{}, err
-	}
-	if s.Blueprints == nil {
-		return BlueprintView{}, ErrBlueprintsUnavailable
-	}
-	tenantID := s.resolveTenantID(ctx)
-	b, err := s.Blueprints.GetBlueprint(ctx, id, tenantID)
-	if err != nil {
-		return BlueprintView{}, err
-	}
-	return toBlueprintView(b), nil
-}
-
 func toBlueprintView(b store.Blueprint) BlueprintView {
-	return BlueprintView{
+	status := b.Status
+	if status == "active" {
+		status = store.BlueprintStatusInSync
+	}
+	v := BlueprintView{
 		ID:        b.ID,
 		Name:      b.Name,
 		Repo:      b.Repo,
 		Branch:    b.Branch,
+		Path:      b.Path,
+		AutoSync:  b.AutoSync,
 		Manifest:  b.Manifest,
-		Status:    b.Status,
+		Status:    status,
 		CreatedAt: b.CreatedAt,
 		UpdatedAt: b.UpdatedAt,
 	}
+	if b.LastSyncAt != nil {
+		s := b.LastSyncAt.UTC().Format(time.RFC3339)
+		v.LastSync = &s
+	}
+	return v
+}
+
+func toBlueprintSyncView(r store.BlueprintSync) BlueprintSyncView {
+	v := BlueprintSyncView{
+		ID:        r.ID,
+		CommitID:  r.CommitID,
+		State:     r.State,
+		StartedAt: r.StartedAt.UTC().Format(time.RFC3339),
+	}
+	if r.CompletedAt != nil {
+		s := r.CompletedAt.UTC().Format(time.RFC3339)
+		v.CompletedAt = &s
+	}
+	return v
 }

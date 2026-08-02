@@ -298,3 +298,11 @@ func (f *fakeGitHubAPIClient) RepoAccessible(context.Context, string, string, st
 func (f *fakeGitHubAPIClient) GetCommit(context.Context, string, string, string, string) (github.Commit, error) {
 	return github.Commit{}, nil
 }
+
+func (f *fakeGitHubAPIClient) GetFileContents(context.Context, string, string, string, string, string) (github.FileContents, error) {
+	return github.FileContents{}, nil
+}
+
+func (f *fakeGitHubAPIClient) GetRepoCommitSHA(context.Context, string, string, string, string) (string, error) {
+	return "", nil
+}

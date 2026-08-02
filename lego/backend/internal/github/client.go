@@ -395,6 +395,72 @@ func (c *Client) ListBranches(ctx context.Context, installationID int64, owner, 
 	return branches, nil
 }
 
+// FileContents is the decoded content of a repository file (w2/m62 — blueprint
+// manifest fetch). CommitSHA is the branch HEAD at the time of the fetch.
+type FileContents struct {
+	Contents string
+	CommitSHA string
+}
+
+// GetFileContents fetches the raw contents of path at ref in owner/repo using
+// the supplied installation access token (GitHub GET /repos/{owner}/{repo}/contents/{path}).
+// Returns ErrNotFound when the file does not exist; any other non-2xx is an *APIError.
+// The response body is bounded to 1 MiB (same as render.yaml in practice).
+func (c *Client) GetFileContents(ctx context.Context, token, owner, repo, path, ref string) (FileContents, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/contents/%s?ref=%s", c.baseURL, owner, repo, neturl.PathEscape(path), neturl.QueryEscape(ref))
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return FileContents{}, err
+	}
+	req.Header.Set("Authorization", "token "+token)
+	// Ask for the raw file directly — avoids base64 decoding.
+	req.Header.Set("Accept", "application/vnd.github.raw+json")
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return FileContents{}, fmt.Errorf("github: get file: %w", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if resp.StatusCode == http.StatusNotFound {
+		return FileContents{}, fmt.Errorf("github: file %q not found at ref %q: %w", path, ref, &APIError{Status: resp.StatusCode})
+	}
+	if resp.StatusCode != http.StatusOK {
+		return FileContents{}, &APIError{Status: resp.StatusCode, Body: string(body)}
+	}
+	return FileContents{Contents: string(body), CommitSHA: resp.Header.Get("X-GitHub-File-Sha")}, nil
+}
+
+// GetRepoCommitSHA resolves the HEAD commit SHA for a branch using the branch
+// info endpoint. Used by the blueprint fetcher to stamp the commitID on each
+// sync run when we already hold the file contents.
+func (c *Client) GetRepoCommitSHA(ctx context.Context, token, owner, repo, branch string) (string, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/branches/%s", c.baseURL, owner, repo, neturl.PathEscape(branch))
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "token "+token)
+	req.Header.Set("Accept", acceptHeader)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("github: get branch: %w", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if resp.StatusCode != http.StatusOK {
+		return "", &APIError{Status: resp.StatusCode, Body: string(body)}
+	}
+	var out struct {
+		Commit struct {
+			SHA string `json:"sha"`
+		} `json:"commit"`
+	}
+	if err := json.Unmarshal(body, &out); err != nil {
+		return "", fmt.Errorf("github: decode branch response: %w", err)
+	}
+	return out.Commit.SHA, nil
+}
+
 // nextLink extracts the rel="next" URL from a GitHub `Link` header, or "".
 func nextLink(header string) string {
 	if header == "" {

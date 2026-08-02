@@ -24,6 +24,7 @@ import (
 	"mime"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1337,9 +1338,38 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, toRenderHeaders(app.Headers))
 	}
 
-	// Blueprint routes (w2/m15 + w2/m41): validate · list · get-by-id · sync.
+	// Blueprint routes (w2/m15 + w2/m41 + w2/m62): validate · create · list ·
+	// get-by-id · sync · list-syncs · update · disconnect.
 	// POST /v1/blueprints/validate is registered before POST /v1/blueprints/{id}/sync
 	// — Go 1.22+ ServeMux resolves the more specific (literal) path first.
+	mux.HandleFunc("POST /v1/blueprints", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Repo         string            `json:"repo"`
+			Branch       string            `json:"branch"`
+			Path         string            `json:"path"`
+			Name         string            `json:"name"`
+			OwnerID      string            `json:"ownerId"`
+			EnvVarValues map[string]string `json:"envVarValues"`
+			Confirm      string            `json:"confirm"`
+		}
+		if err := core.DecodeJSON(r, &body); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		view, err := s.CreateBlueprint(r.Context(), body.OwnerID, CreateBlueprintRequest{
+			Repo:         body.Repo,
+			Branch:       body.Branch,
+			Path:         body.Path,
+			Name:         body.Name,
+			EnvVarValues: body.EnvVarValues,
+			Confirm:      body.Confirm,
+		})
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusCreated, view)
+	})
 	mux.HandleFunc("GET /v1/blueprints/{id}", func(w http.ResponseWriter, r *http.Request) {
 		ownerID := r.URL.Query().Get("ownerId")
 		view, err := s.GetBlueprintByID(r.Context(), r.PathValue("id"), ownerID)
@@ -1348,6 +1378,47 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, view)
+	})
+	mux.HandleFunc("PATCH /v1/blueprints/{id}", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Name     *string `json:"name"`
+			AutoSync *bool   `json:"autoSync"`
+			Path     *string `json:"path"`
+			OwnerID  string  `json:"ownerId"`
+		}
+		if err := core.DecodeJSON(r, &body); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		view, err := s.UpdateBlueprint(r.Context(), r.PathValue("id"), body.OwnerID, UpdateBlueprintRequest{
+			Name:     body.Name,
+			AutoSync: body.AutoSync,
+			Path:     body.Path,
+		})
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, view)
+	})
+	mux.HandleFunc("DELETE /v1/blueprints/{id}", func(w http.ResponseWriter, r *http.Request) {
+		ownerID := r.URL.Query().Get("ownerId")
+		if err := s.DisconnectBlueprint(r.Context(), r.PathValue("id"), ownerID); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.HandleFunc("GET /v1/blueprints/{id}/syncs", func(w http.ResponseWriter, r *http.Request) {
+		ownerID := r.URL.Query().Get("ownerId")
+		cursor := r.URL.Query().Get("cursor")
+		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+		runs, err := s.ListBlueprintSyncs(r.Context(), r.PathValue("id"), ownerID, cursor, limit)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, runs)
 	})
 	mux.HandleFunc("POST /v1/blueprints/validate", func(w http.ResponseWriter, r *http.Request) {
 		ownerID, bexYAML, err := decodeBlueprintValidationRequest(w, r)

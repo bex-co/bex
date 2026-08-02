@@ -110,6 +110,14 @@ func (c *fakeClient) GetCommit(_ context.Context, token, owner, repo, ref string
 	return c.commit, nil
 }
 
+func (c *fakeClient) GetFileContents(_ context.Context, _, _, _, _, _ string) (FileContents, error) {
+	return FileContents{}, nil
+}
+
+func (c *fakeClient) GetRepoCommitSHA(_ context.Context, _, _, _, _ string) (string, error) {
+	return "", nil
+}
+
 // allowChecker allows exactly the relations in its set.
 type allowChecker map[string]bool
 

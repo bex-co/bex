@@ -13,6 +13,15 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
+import { Switch } from "@/common/components/ui/switch";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/common/components/ui/table";
 import { CardSkeleton } from "@/common/components/detail-skeletons";
 import {
   AlertDialog,
@@ -28,6 +37,9 @@ import { BlueprintStatusBadge } from "@/features/blueprints/components/blueprint
 import { ValidatePanel } from "@/features/blueprints/components/validate-panel";
 import { useBlueprint } from "@/features/blueprints/hooks/use-blueprint";
 import { useSyncBlueprint } from "@/features/blueprints/hooks/use-sync-blueprint";
+import { useUpdateBlueprint } from "@/features/blueprints/hooks/use-update-blueprint";
+import { useDisconnectBlueprint } from "@/features/blueprints/hooks/use-disconnect-blueprint";
+import { useBlueprintSyncs } from "@/features/blueprints/hooks/use-blueprint-syncs";
 import { formatRelativeAge } from "@/features/services/lib/format";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 import { protectedServiceName } from "@/features/services/lib/protected-confirmation";
@@ -42,10 +54,6 @@ import {
 
 export const Route = createFileRoute("/blueprints/$blueprintId")({
   component: BlueprintDetailPage,
-  // The page doubles as its own pending state at 0ms: it renders full
-  // chrome + its skeleton stack while its Apollo read loads (tolerating the
-  // absent loaderData), so the title-loader wait shows the real frame
-  // instead of the router-level blank that used to flash white.
   pendingComponent: BlueprintDetailPage,
   pendingMs: 0,
   beforeLoad: requireAuth(),
@@ -78,15 +86,19 @@ export function BlueprintDetailPage() {
   const { t } = useTranslations();
   const router = useRouter();
   const { blueprint, loading, error, refetch } = useBlueprint(blueprintId);
-  const { sync, busy } = useSyncBlueprint();
+  const { sync, busy: syncBusy } = useSyncBlueprint();
+  const { update, busy: updateBusy } = useUpdateBlueprint();
+  const { disconnect, busy: disconnectBusy } = useDisconnectBlueprint();
+  const { syncs } = useBlueprintSyncs(blueprintId);
+
   const [confirming, setConfirming] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
   const [protectedConfirmation, setProtectedConfirmation] = useState<
     string | null
   >(null);
 
-  // A dead id redirects home (w9/m55); a failed query stays put on the inline
-  // error state so an outage never masquerades as a deleted blueprint. A
-  // roll-window loader failure re-runs once (w1/m52) so the title recovers.
+  const busy = syncBusy || updateBusy || disconnectBusy;
+
   useNotFoundRedirect(!loading && !blueprint && !error);
   useLoaderErrorRetry(Route.useLoaderData(), blueprintId);
   const showError = !loading && !blueprint && !!error;
@@ -104,6 +116,19 @@ export function BlueprintDetailPage() {
     }
   }
 
+  async function handleAutoSyncToggle(value: boolean) {
+    await update(blueprintId, { autoSync: value });
+    void router.invalidate();
+  }
+
+  async function handleDisconnect() {
+    setDisconnecting(false);
+    const ok = await disconnect(blueprintId);
+    if (ok) {
+      void router.navigate({ to: "/blueprints" });
+    }
+  }
+
   return (
     <DashboardLayout>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6">
@@ -116,9 +141,23 @@ export function BlueprintDetailPage() {
           ) : null}
         </div>
         {blueprint ? (
-          <Button size="sm" onClick={() => setConfirming(true)} disabled={busy}>
-            {t("blueprints.syncButton")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => setConfirming(true)}
+              disabled={busy}
+            >
+              {t("blueprints.syncButton")}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setDisconnecting(true)}
+              disabled={busy}
+            >
+              {t("blueprints.disconnectButton")}
+            </Button>
+          </div>
         ) : null}
       </div>
 
@@ -133,7 +172,7 @@ export function BlueprintDetailPage() {
                   <CardTitle className="text-base">{blueprint.name}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
+                  <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
                     <div>
                       <dt className="text-muted-foreground">
                         {t("blueprints.metaRepo")}
@@ -145,6 +184,34 @@ export function BlueprintDetailPage() {
                         {t("blueprints.metaBranch")}
                       </dt>
                       <dd className="font-medium">{blueprint.branch}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">
+                        {t("blueprints.metaPath")}
+                      </dt>
+                      <dd className="font-mono font-medium">
+                        {blueprint.path || "bex.yml"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">
+                        {t("blueprints.metaAutoSync")}
+                      </dt>
+                      <dd className="flex items-center gap-2 font-medium">
+                        <Switch
+                          checked={blueprint.autoSync}
+                          onCheckedChange={(v) =>
+                            void handleAutoSyncToggle(v)
+                          }
+                          disabled={busy}
+                          aria-label={t("blueprints.metaAutoSync")}
+                        />
+                        <span>
+                          {blueprint.autoSync
+                            ? t("blueprints.autoSyncOn")
+                            : t("blueprints.autoSyncOff")}
+                        </span>
+                      </dd>
                     </div>
                     <div>
                       <dt className="text-muted-foreground">
@@ -161,12 +228,98 @@ export function BlueprintDetailPage() {
                         {t("blueprints.metaUpdated")}
                       </dt>
                       <dd className="font-medium">
-                        {blueprint.updatedAt
-                          ? formatRelativeAge(blueprint.updatedAt)
+                        {blueprint.lastSync
+                          ? formatRelativeAge(blueprint.lastSync)
                           : "—"}
                       </dd>
                     </div>
                   </dl>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">
+                    {t("blueprints.resourcesTitle")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {blueprint.resources && blueprint.resources.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{t("blueprints.colName")}</TableHead>
+                          <TableHead>Type</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {blueprint.resources.map((r) => (
+                          <TableRow key={r.id}>
+                            <TableCell className="font-medium">
+                              {r.name}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground capitalize">
+                              {r.type.replace(/_/g, " ")}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      {t("blueprints.resourcesEmpty")}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">
+                    {t("blueprints.syncHistoryTitle")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {syncs.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{t("blueprints.syncColCommit")}</TableHead>
+                          <TableHead>{t("blueprints.syncColState")}</TableHead>
+                          <TableHead>{t("blueprints.syncColStarted")}</TableHead>
+                          <TableHead>
+                            {t("blueprints.syncColCompleted")}
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {syncs.map((run) => (
+                          <TableRow key={run.id}>
+                            <TableCell className="font-mono text-xs">
+                              {run.commitId ? run.commitId.slice(0, 8) : "—"}
+                            </TableCell>
+                            <TableCell>
+                              <BlueprintStatusBadge status={run.state} />
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {run.startedAt
+                                ? formatRelativeAge(run.startedAt)
+                                : "—"}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {run.completedAt
+                                ? formatRelativeAge(run.completedAt)
+                                : "—"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      {t("blueprints.syncHistoryEmpty")}
+                    </p>
+                  )}
                 </CardContent>
               </Card>
 
@@ -187,6 +340,8 @@ export function BlueprintDetailPage() {
             </>
           ) : (
             <>
+              <CardSkeleton rows={4} />
+              <CardSkeleton rows={3} />
               <CardSkeleton rows={3} />
               <CardSkeleton rows={6} />
               <CardSkeleton rows={2} />
@@ -214,6 +369,30 @@ export function BlueprintDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={disconnecting} onOpenChange={setDisconnecting}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("blueprints.disconnectTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("blueprints.disconnectBody")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {t("blueprints.disconnectCancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void handleDisconnect()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("blueprints.disconnectAction")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <ProtectedConfirmationDialog
         key={protectedConfirmation ? `open:${protectedConfirmation}` : "closed"}
         open={protectedConfirmation !== null}
@@ -224,7 +403,7 @@ export function BlueprintDetailPage() {
         }
         requiredConfirmation={protectedConfirmation ?? ""}
         actionLabel={t("blueprints.syncConfirmAction")}
-        busy={busy}
+        busy={syncBusy}
         onOpenChange={(open) => !open && setProtectedConfirmation(null)}
         onConfirm={async (confirmation) => {
           await handleSync(confirmation);

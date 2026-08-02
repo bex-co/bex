@@ -196,10 +196,23 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.writeBranchDeleted(r.Context(), w, urls, branch, ev.DeliveryKey)
 		return
 	}
-	redeployed, err := h.redeployMatching(r.Context(), ev, branch)
+	redeployed, tenants, err := h.redeployMatching(r.Context(), ev, branch)
 	if err != nil {
 		core.WriteErr(w, err)
 		return
+	}
+	// Trigger blueprint auto-sync for workspaces whose apps share this repo.
+	// Runs in a goroutine so the webhook response is not blocked.
+	if h.Svc.Blueprints != nil && len(tenants) > 0 {
+		repo := ev.Repository.CloneURL
+		if repo == "" {
+			repo = ev.Repository.HTMLURL
+		}
+		go func() {
+			for tenantID := range tenants {
+				h.Svc.triggerBlueprintSync(context.Background(), tenantID, repo, branch)
+			}
+		}()
 	}
 	core.WriteJSON(w, http.StatusOK, map[string]any{"redeployed": redeployed})
 }
@@ -316,22 +329,31 @@ func (h *GitWebhook) disableAutoDeploy(ctx context.Context, app *appv1alpha1.App
 // redeployMatching lists every App and redeploys those whose spec.repo matches
 // the pushed repository and whose tracked branch matches the pushed ref. It
 // reads/writes through the raw client (not the authorized List/verbs): the HMAC
-// signature already authorized this call.
-func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch string) ([]string, error) {
+// signature already authorized this call. It also returns a set of tenant IDs
+// whose Apps share this repo (used for blueprint auto-sync post-response).
+func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch string) (redeployed []string, tenants map[string]struct{}, err error) {
 	var list appv1alpha1.AppList
 	if err := h.Svc.Client.List(ctx, &list, h.Svc.AppListScope()...); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	paths := ev.changedPaths()
-	redeployed := []string{}
+	redeployed = []string{}
+	tenants = map[string]struct{}{}
 	for i := range list.Items {
 		a := &list.Items[i]
+		if a.Spec.Repo == "" || !repoMatches(a.Spec.Repo, ev) {
+			continue
+		}
+		// Collect tenant IDs for all apps sharing this repo (for blueprint auto-sync).
+		if t := a.Labels[core.LabelTenant]; t != "" {
+			tenants[t] = struct{}{}
+		}
 		// autoDeploy gates push-triggered redeploys (Render's autoDeploy: no):
 		// an App that opted out is never bumped by a push, only by an explicit deploy.
 		if !a.Spec.AutoDeploy {
 			continue
 		}
-		if a.Spec.Repo == "" || !repoMatches(a.Spec.Repo, ev) || !branchMatches(a.Spec.Branch, branch) {
+		if !branchMatches(a.Spec.Branch, branch) {
 			continue
 		}
 		if commitHasSkipPhrase(ev.HeadCommit.Message) {
@@ -358,7 +380,7 @@ func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch 
 		}
 		redeployed = append(redeployed, a.Name)
 	}
-	return redeployed, nil
+	return redeployed, tenants, nil
 }
 
 func commitHasSkipPhrase(message string) bool {

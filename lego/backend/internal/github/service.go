@@ -19,6 +19,7 @@ package github
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -47,6 +48,8 @@ type APIClient interface {
 	MintInstallationToken(ctx context.Context, installationID int64) (InstallationToken, error)
 	RepoAccessible(ctx context.Context, token, owner, repo string) (bool, error)
 	GetCommit(ctx context.Context, token, owner, repo, ref string) (Commit, error)
+	GetFileContents(ctx context.Context, token, owner, repo, path, ref string) (FileContents, error)
+	GetRepoCommitSHA(ctx context.Context, token, owner, repo, branch string) (string, error)
 }
 
 // Service manages a workspace's GitHub App connection and lists its repos over
@@ -420,6 +423,63 @@ func (s *Service) connectedView(c store.GitConnection) Connection {
 		CreatedAt:      c.CreatedAt.UTC().Format(time.RFC3339),
 		InstallURL:     s.installURL(),
 	}
+}
+
+// blueprintFetcher adapts Service to the apps.BlueprintFetcher seam (w2/m62).
+// Not an exported verb — only the deploy path logic calls it, not end-users.
+type blueprintFetcher struct{ s *Service }
+
+// FetchBlueprintFile fetches the blueprint file at repo+branch+path using the
+// workspace's GitHub connection (if available) or an anonymous fetch for public
+// repos. Returns the contents and the head commit SHA, or an error.
+func (f blueprintFetcher) FetchBlueprintFile(ctx context.Context, workspaceID, repoURL, branch, filePath string) (string, string, error) {
+	return f.s.fetchBlueprintFile(ctx, workspaceID, repoURL, branch, filePath)
+}
+
+// BlueprintFileFetcher returns the blueprint-file-fetch seam wired in the
+// composition root onto apps.Service.
+func (s *Service) BlueprintFileFetcher() blueprintFetcher { return blueprintFetcher{s} }
+
+func (s *Service) fetchBlueprintFile(ctx context.Context, workspaceID, repoURL, branch, filePath string) (string, string, error) {
+	owner, repo, ok := ownerRepo(repoURL)
+	if !ok {
+		return "", "", fmt.Errorf("%w: repo URL %q is not an owner/repo URL", core.ErrBadRequest, repoURL)
+	}
+	var token string
+	if s.configured() {
+		row, err := s.Store.GetGitConnection(ctx, workspaceID)
+		if err != nil && !errors.Is(err, store.ErrNotFound) {
+			return "", "", err
+		}
+		if err == nil {
+			tok, err := s.GitHub.MintInstallationToken(ctx, row.InstallationID)
+			if err != nil {
+				return "", "", err
+			}
+			token = tok.Token
+		}
+	}
+	if token == "" {
+		// Anonymous fetch for public repos — re-use the client's base URL.
+		if s.GitHub == nil {
+			return "", "", fmt.Errorf("%w: GitHub App not configured; cannot fetch blueprint file from %q", core.ErrBadRequest, repoURL)
+		}
+	}
+	// Use the GitHub raw-content endpoint.
+	fc, err := s.GitHub.GetFileContents(ctx, token, owner, repo, filePath, branch)
+	if err != nil {
+		return "", "", err
+	}
+	// GetRepoCommitSHA gives us the true HEAD SHA (the raw-content response
+	// does not carry it reliably for the repo HEAD).
+	sha, shaErr := s.GitHub.GetRepoCommitSHA(ctx, token, owner, repo, branch)
+	if shaErr != nil {
+		sha = "" // best-effort; don't fail the fetch over missing provenance
+	}
+	if sha == "" {
+		sha = fc.CommitSHA // fall back to the blob SHA if HEAD is unavailable
+	}
+	return fc.Contents, sha, nil
 }
 
 // mapGitHubErr turns a GitHub client error into a clean bex error: a 4xx (e.g. a
