@@ -1,4 +1,8 @@
-import { adaptMetricSeries, formatMetricValue } from "../series";
+import {
+  adaptMetricSeries,
+  formatMetricValue,
+  newestMetricTimestamp,
+} from "../series";
 
 describe("mobile metric snapshots", () => {
   it("sorts irregular points, totals aligned instances, and keeps resets", () => {
@@ -51,5 +55,26 @@ describe("mobile metric snapshots", () => {
     expect(formatMetricValue(snapshot.unit, snapshot.current ?? 0)).toBe(
       "1.0 KiB",
     );
+  });
+
+  it("selects the newest real observation across sparse snapshots", () => {
+    const older = adaptMetricSeries([
+      {
+        unit: "count",
+        labels: null,
+        values: [{ time: "2026-01-01T00:00:00Z", value: 1 }],
+      },
+    ]);
+    const newer = adaptMetricSeries([
+      {
+        unit: "count",
+        labels: null,
+        values: [{ time: "2026-01-01T00:01:00Z", value: 2 }],
+      },
+    ]);
+    expect(newestMetricTimestamp([older, newer])).toBe(
+      "2026-01-01T00:01:00.000Z",
+    );
+    expect(newestMetricTimestamp([adaptMetricSeries([])])).toBe(null);
   });
 });

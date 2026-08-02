@@ -11,7 +11,6 @@ export type CronActionRequest = {
   action: CronAction;
   serviceId: string;
   serviceSuspended: boolean;
-  before: readonly CronRunSummary[];
   target?: CronRunSummary;
 };
 
@@ -49,14 +48,18 @@ type RequestRecord = {
   promise: Promise<CronActionResult>;
 };
 
+type ActiveRequest = {
+  promise: Promise<CronActionResult>;
+  abort: AbortController;
+};
+
 /**
  * Suppresses replay by confirmation identity and single-flights two matching
  * confirmations. A transport ambiguity is never retried by this controller.
  */
 export class CronActionController {
   private readonly requests = new Map<string, RequestRecord>();
-  private readonly inFlight = new Map<string, Promise<CronActionResult>>();
-  private readonly aborts = new Map<string, AbortController>();
+  private readonly active = new Map<string, ActiveRequest>();
   private readonly refreshBlockedServices = new Set<string>();
 
   constructor(
@@ -90,9 +93,9 @@ export class CronActionController {
       return promise;
     }
 
-    const active = this.inFlight.get(fingerprint);
+    const active = this.active.get(fingerprint);
     if (active) {
-      const promise = active.then((result) => ({
+      const promise = active.promise.then((result) => ({
         ...result,
         deduplicated: true,
       }));
@@ -101,7 +104,6 @@ export class CronActionController {
     }
 
     const abort = new AbortController();
-    this.aborts.set(fingerprint, abort);
     const timeout = setTimeout(
       () => abort.abort(),
       Math.max(1, this.timeoutMs),
@@ -109,21 +111,19 @@ export class CronActionController {
     let promise: Promise<CronActionResult>;
     promise = this.perform(request, abort.signal).finally(() => {
       clearTimeout(timeout);
-      if (this.inFlight.get(fingerprint) === promise) {
-        this.inFlight.delete(fingerprint);
-        this.aborts.delete(fingerprint);
+      if (this.active.get(fingerprint)?.promise === promise) {
+        this.active.delete(fingerprint);
       }
     });
-    this.inFlight.set(fingerprint, promise);
+    this.active.set(fingerprint, { promise, abort });
     this.requests.set(request.requestId, { fingerprint, promise });
     return promise;
   }
 
   clear(): void {
-    for (const abort of this.aborts.values()) abort.abort();
+    for (const request of this.active.values()) request.abort.abort();
     this.requests.clear();
-    this.inFlight.clear();
-    this.aborts.clear();
+    this.active.clear();
     this.refreshBlockedServices.clear();
   }
 
@@ -174,11 +174,12 @@ export class CronActionController {
         deduplicated: false,
       };
     } catch (error) {
-      if (isDeterministicRejection(error)) {
-        const refreshRequired = conflictLike(error);
+      const facts = errorFacts(error);
+      if (isDeterministicRejection(facts)) {
+        const refreshRequired = conflictLike(facts);
         if (refreshRequired)
           this.requireAuthoritativeRefresh(request.serviceId);
-        const normalizedError = conflictLike(error)
+        const normalizedError = refreshRequired
           ? Object.assign(
               new Error("cron action was rejected by current server state"),
               {
@@ -313,10 +314,12 @@ function rejected(
   };
 }
 
-function errorFacts(error: unknown): {
+type CronErrorFacts = {
   statuses: Set<number>;
   codes: Set<string>;
-} {
+};
+
+function errorFacts(error: unknown): CronErrorFacts {
   const statuses = new Set<number>();
   const codes = new Set<string>();
   const seen = new Set<unknown>();
@@ -348,8 +351,7 @@ function errorFacts(error: unknown): {
   return { statuses, codes };
 }
 
-function conflictLike(error: unknown): boolean {
-  const { codes } = errorFacts(error);
+function conflictLike({ codes }: CronErrorFacts): boolean {
   return (
     codes.has("CRON_SUSPENDED") ||
     codes.has("CRON_RUN_NOT_FOUND") ||
@@ -358,8 +360,10 @@ function conflictLike(error: unknown): boolean {
   );
 }
 
-function isDeterministicRejection(error: unknown): boolean {
-  const { statuses, codes } = errorFacts(error);
+function isDeterministicRejection({
+  statuses,
+  codes,
+}: CronErrorFacts): boolean {
   return (
     statuses.has(400) ||
     statuses.has(401) ||

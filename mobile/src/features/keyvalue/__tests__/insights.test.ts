@@ -57,12 +57,11 @@ describe("Key Value mobile read-only insights", () => {
         },
       ],
     };
-    expect(keyValueMetricFailure(error, "memory", false)).toBe("unavailable");
-    expect(keyValueMetricFailure(error, "connections", false)).toBe(null);
-    expect(keyValueMetricFailure(error, "memory", true)).toBe("unavailable");
-    expect(
-      keyValueMetricFailure(new Error("network failed"), "memory", true),
-    ).toBe("error");
+    expect(keyValueMetricFailure(error, "memory")).toBe("unavailable");
+    expect(keyValueMetricFailure(error, "connections")).toBe(null);
+    expect(keyValueMetricFailure(new Error("network failed"), "memory")).toBe(
+      "error",
+    );
   });
 
   it("queries only the four safe read-only metric aliases", () => {

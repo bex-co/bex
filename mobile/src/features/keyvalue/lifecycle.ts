@@ -1,5 +1,8 @@
 import {
-  isLifecycleSuspended,
+  datastoreLifecycleTransition,
+  datastoreSuspensionConverged,
+} from "../resources/datastore-lifecycle";
+import {
   protectedConfirmationFromError,
   type LifecycleCapability,
   type LifecycleRunResult,
@@ -25,18 +28,18 @@ export type KeyValueLifecycleControllerOptions = {
   maxPolls?: number;
 };
 
-const ACTIONABLE_STATUSES = new Set(["available", "unavailable"]);
-
 export function keyValueLifecycleCapabilities(
   resource: KeyValueLifecycleResource,
 ): LifecycleCapability<KeyValueLifecycleAction>[] {
-  if (isLifecycleSuspended(resource.suspended)) {
-    return resource.status.toLowerCase() === "deleting"
-      ? []
-      : [{ action: "resume", requiresConfirmation: false }];
-  }
-  if (!ACTIONABLE_STATUSES.has(resource.status.toLowerCase())) return [];
-  return [{ action: "suspend", requiresConfirmation: true }];
+  const transition = datastoreLifecycleTransition(resource);
+  return transition
+    ? [
+        {
+          action: transition,
+          requiresConfirmation: transition === "suspend",
+        },
+      ]
+    : [];
 }
 
 export class KeyValueLifecycleController {
@@ -100,12 +103,9 @@ export class KeyValueLifecycleController {
       let latest: KeyValueLifecycleResource | null = null;
       for (let poll = 0; poll < this.maxPolls; poll += 1) {
         latest = await this.options.refresh(resource.id);
-        const converged =
-          latest &&
-          (action === "suspend"
-            ? isLifecycleSuspended(latest.suspended)
-            : !isLifecycleSuspended(latest.suspended));
-        if (latest && converged) return { status: "success", resource: latest };
+        if (latest && datastoreSuspensionConverged(action, latest.suspended)) {
+          return { status: "success", resource: latest };
+        }
         if (poll < this.maxPolls - 1) await this.wait();
       }
       return { status: "timeout", resource: latest };

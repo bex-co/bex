@@ -3,6 +3,7 @@ import path from "path";
 import { parse, visit } from "graphql";
 import {
   compactPostgresTableInsights,
+  mergePostgresInsightState,
   postgresInsightFailure,
   postgresInsightState,
   summarizePostgresProcesses,
@@ -73,6 +74,21 @@ describe("Postgres mobile insights", () => {
       "transport-error",
     );
     expect(postgresInsightFailure(null)).toBe(null);
+  });
+
+  it("preserves composite insight-state precedence", () => {
+    const cases = [
+      ["source-unavailable", "loading", "source-unavailable"],
+      ["source-unavailable", "current", "degraded"],
+      ["source-unavailable", "transport-error", "transport-error"],
+      ["empty", "current", "degraded"],
+      ["empty", "stale", "empty"],
+      ["stale", "current", "stale"],
+    ] as const;
+    for (const [left, right, expected] of cases) {
+      expect(mergePostgresInsightState(left, right)).toBe(expected);
+      expect(mergePostgresInsightState(right, left)).toBe(expected);
+    }
   });
 
   it("summarizes processes without retaining query text or database users", () => {

@@ -93,8 +93,6 @@ export const CronRunsCard = forwardRef<
     () => composeCronRunPages(firstPage, extraRuns),
     [extraRuns, firstPage],
   );
-  const runsRef = useRef(runs);
-  runsRef.current = runs;
   const suspendedRef = useRef(suspended);
   suspendedRef.current = suspended;
 
@@ -294,7 +292,6 @@ export const CronRunsCard = forwardRef<
             action: "run",
             serviceId,
             serviceSuspended: isLifecycleSuspended(suspendedRef.current),
-            before: runsRef.current,
           }),
       });
     }
@@ -310,7 +307,6 @@ export const CronRunsCard = forwardRef<
             action: "cancel",
             serviceId,
             serviceSuspended: isLifecycleSuspended(suspendedRef.current),
-            before: runsRef.current,
             target: activeRun,
           }),
       });

@@ -24,7 +24,6 @@ type InviteContextValue = {
   state: InviteFlowState;
   capture: (value: unknown) => Promise<boolean>;
   accept: () => Promise<void>;
-  clear: () => Promise<void>;
 };
 
 const InviteContext = createContext<InviteContextValue | null>(null);
@@ -64,10 +63,9 @@ export function InviteProvider({ children }: { children: ReactNode }) {
   const accept = useCallback(async () => {
     if (subject) await controller.accept(subject);
   }, [controller, subject]);
-  const clear = useCallback(() => controller.clear(), [controller]);
   const value = useMemo(
-    () => ({ state, capture, accept, clear }),
-    [accept, capture, clear, state],
+    () => ({ state, capture, accept }),
+    [accept, capture, state],
   );
   return (
     <InviteContext.Provider value={value}>{children}</InviteContext.Provider>

@@ -24,9 +24,12 @@ import {
 import {
   adaptMetricSeries,
   formatMetricValue,
+  newestMetricTimestamp,
 } from "@/features/metrics/series";
 import {
   compactPostgresTableInsights,
+  isPostgresInsightFailure,
+  mergePostgresInsightState,
   POSTGRES_INSIGHT_STALE_AFTER_MS,
   postgresInsightFailure,
   postgresInsightState,
@@ -111,7 +114,9 @@ export const PostgresInsightsCard = forwardRef<
     capacityHasData,
     capacity.error,
     capacity.networkStatus,
-    newestMetricTimestamp([disk, diskCapacity, connections]),
+    timestampMilliseconds(
+      newestMetricTimestamp([disk, diskCapacity, connections]),
+    ),
   );
   const processSummary = useMemo(
     () => summarizePostgresProcesses(processes.data?.databaseProcesses),
@@ -125,8 +130,12 @@ export const PostgresInsightsCard = forwardRef<
       ),
     [sizes.data?.databaseSizes?.tables, scans.data?.databaseTableScans],
   );
-  const connectionState = mergeInsightState(sizesState, processesState);
-  const capacitySectionState = mergeInsightState(capacityState, sizesState);
+  const connectionState = mergePostgresInsightState(sizesState, processesState);
+  const capacitySectionState = mergePostgresInsightState(
+    capacityState,
+    sizesState,
+  );
+  const tablesState = mergePostgresInsightState(sizesState, scansState);
 
   return (
     <DashboardCard title={t("postgresInsights.title")}>
@@ -165,7 +174,7 @@ export const PostgresInsightsCard = forwardRef<
         title={t("postgresInsights.processes")}
         state={processesState}
       >
-        {isInsightFailure(processesState) ? null : (
+        {isPostgresInsightFailure(processesState) ? null : (
           <>
             <InsightRow
               label={t("postgresInsights.activeProcesses")}
@@ -189,10 +198,7 @@ export const PostgresInsightsCard = forwardRef<
         )}
       </InsightSection>
 
-      <InsightSection
-        title={t("postgresInsights.tables")}
-        state={mergeInsightState(sizesState, scansState)}
-      >
+      <InsightSection title={t("postgresInsights.tables")} state={tablesState}>
         {tables.length ? (
           tables.map((table) => (
             <View
@@ -217,9 +223,7 @@ export const PostgresInsightsCard = forwardRef<
               </Text>
             </View>
           ))
-        ) : isInsightFailure(
-            mergeInsightState(sizesState, scansState),
-          ) ? null : (
+        ) : isPostgresInsightFailure(tablesState) ? null : (
           <Text style={[styles.note, { color: theme.mutedForeground }]}>
             {t("postgresInsights.noTableData")}
           </Text>
@@ -240,7 +244,7 @@ function InsightSection({
 }) {
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
-  const stateColor = isInsightFailure(state)
+  const stateColor = isPostgresInsightFailure(state)
     ? theme.error
     : state === "degraded" || state === "stale"
       ? theme.warning
@@ -255,7 +259,7 @@ function InsightSection({
           {t(`postgresInsights.state.${state}`)}
         </Text>
       </View>
-      {isInsightFailure(state) ? (
+      {isPostgresInsightFailure(state) ? (
         <Text
           accessibilityRole="alert"
           style={[styles.note, { color: stateColor }]}
@@ -326,46 +330,10 @@ function usePostgresInsightState(
   });
 }
 
-function mergeInsightState(
-  left: PostgresInsightState,
-  right: PostgresInsightState,
-): PostgresInsightState {
-  if (isInsightFailure(left) && isInsightFailure(right)) {
-    return left === "transport-error" || right === "transport-error"
-      ? "transport-error"
-      : "source-unavailable";
-  }
-  if (isInsightFailure(left) || isInsightFailure(right)) {
-    const other = isInsightFailure(left) ? right : left;
-    return other === "loading"
-      ? isInsightFailure(left)
-        ? left
-        : right
-      : "degraded";
-  }
-  if (left === "degraded" || right === "degraded") return "degraded";
-  if (left === "empty" || right === "empty") {
-    return left === "current" || right === "current" ? "degraded" : "empty";
-  }
-  if (left === "stale" || right === "stale") return "stale";
-  if (left === "current" || right === "current") return "current";
-  return "loading";
-}
-
-function isInsightFailure(
-  state: PostgresInsightState,
-): state is "source-unavailable" | "transport-error" {
-  return state === "source-unavailable" || state === "transport-error";
-}
-
-function newestMetricTimestamp(
-  snapshots: Array<{ points: Array<{ timestamp: string }> }>,
-): number | null {
-  const timestamps = snapshots
-    .flatMap((snapshot) => snapshot.points)
-    .map((point) => Date.parse(point.timestamp))
-    .filter(Number.isFinite);
-  return timestamps.length ? Math.max(...timestamps) : null;
+function timestampMilliseconds(timestamp: string | null): number | null {
+  if (!timestamp) return null;
+  const milliseconds = Date.parse(timestamp);
+  return Number.isFinite(milliseconds) ? milliseconds : null;
 }
 
 function formatMetric(unit: string, value: number | null): string {

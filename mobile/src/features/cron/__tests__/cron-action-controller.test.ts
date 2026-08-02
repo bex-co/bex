@@ -35,15 +35,11 @@ class FakeTransport implements CronActionTransport {
   }
 }
 
-const runRequest = (
-  requestId: string,
-  before: CronRunSummary[] = [],
-): CronActionRequest => ({
+const runRequest = (requestId: string): CronActionRequest => ({
   requestId,
   action: "run",
   serviceId: "srv-cron",
   serviceSuspended: false,
-  before,
 });
 
 describe("CronActionController", () => {
@@ -66,13 +62,47 @@ describe("CronActionController", () => {
     expect(transport.runCalls).toEqual(["srv-cron"]);
   });
 
-  it("allows run-now during an active run because the server replaces it", async () => {
+  it("allows run-now while unsuspended because the server replaces an active run", async () => {
     const transport = new FakeTransport();
     const result = await new CronActionController(transport).execute(
-      runRequest("confirm-replace", [cronRun("crr-active", "running")]),
+      runRequest("confirm-replace"),
     );
     expect(result.outcome).toBe("accepted");
     expect(transport.runCalls).toEqual(["srv-cron"]);
+  });
+
+  it("walks a nested deterministic error only once", async () => {
+    const transport = new FakeTransport();
+    let codeReads = 0;
+    transport.runError = {
+      extensions: {
+        get code() {
+          codeReads += 1;
+          return "CRON_SUSPENDED";
+        },
+      },
+    };
+    const result = await new CronActionController(transport).execute(
+      runRequest("confirm-coded-error"),
+    );
+    expect(result.outcome).toBe("rejected");
+    expect(codeReads).toBe(1);
+  });
+
+  it("clear aborts active work and releases its confirmation record", async () => {
+    const transport = new FakeTransport();
+    transport.runPromise = new Promise(() => undefined);
+    const subject = new CronActionController(transport);
+    const first = subject.execute(runRequest("confirm-clear"));
+    subject.clear();
+    expect((await first).outcome).toBe("unknown");
+
+    subject.markAuthoritativelyRefreshed("srv-cron");
+    transport.runPromise = undefined;
+    expect((await subject.execute(runRequest("confirm-clear"))).outcome).toBe(
+      "accepted",
+    );
+    expect(transport.runCalls).toEqual(["srv-cron", "srv-cron"]);
   });
 
   it("blocks suspended run-now and terminal cancel without sending", async () => {
@@ -87,7 +117,6 @@ describe("CronActionController", () => {
       action: "cancel",
       serviceId: "srv-cron",
       serviceSuspended: false,
-      before: [],
       target: cronRun("crr-done", "successful"),
     });
     expect(suspended.outcome).toBe("rejected");
@@ -104,7 +133,6 @@ describe("CronActionController", () => {
       action: "cancel",
       serviceId: "srv-cron",
       serviceSuspended: true,
-      before: [target],
       target,
     });
     expect(result.outcome).toBe("accepted");
@@ -119,7 +147,6 @@ describe("CronActionController", () => {
       action: "cancel",
       serviceId: "srv-cron",
       serviceSuspended: false,
-      before: [target],
       target,
     });
     expect(transport.cancelCalls).toEqual([["srv-cron", "crr-current"]]);
@@ -249,9 +276,8 @@ describe("CronActionController", () => {
   });
 
   it("does not misattribute an unrelated scheduled run to an ambiguous run-now", () => {
-    const request = runRequest("confirm-ambiguous", [
-      cronRun("crr-before", "successful"),
-    ]);
+    const request = runRequest("confirm-ambiguous");
+    const before = [cronRun("crr-before", "successful")];
     expect(
       cronActionObserved(
         request,
@@ -262,7 +288,7 @@ describe("CronActionController", () => {
           refreshRequired: true,
           deduplicated: false,
         },
-        [cronRun("crr-scheduled", "running"), ...request.before],
+        [cronRun("crr-scheduled", "running"), ...before],
       ),
     ).toBe(false);
   });

@@ -11,7 +11,7 @@ import { fontSizes, fontWeights, space, useTheme } from "@/common/theme";
 import { DashboardCard } from "@/components/dashboard-card";
 import {
   formatMetricValue,
-  type MetricSnapshot,
+  newestMetricTimestamp,
 } from "@/features/metrics/series";
 import { MobileKeyValueInsightsDocument } from "@/generated-graphql";
 import {
@@ -71,16 +71,8 @@ export const KeyValueInsightsCard = forwardRef<
           : theme.mutedForeground;
   const refreshing = query.networkStatus === NetworkStatus.refetch;
   const data = query.data;
-  const diskFailure = keyValueMetricFailure(
-    query.error,
-    "disk",
-    data?.disk != null,
-  );
-  const capacityFailure = keyValueMetricFailure(
-    query.error,
-    "diskCapacity",
-    data?.diskCapacity != null,
-  );
+  const diskFailure = keyValueMetricFailure(query.error, "disk");
+  const capacityFailure = keyValueMetricFailure(query.error, "diskCapacity");
   const storageFailure =
     diskFailure === "unavailable" || capacityFailure === "unavailable"
       ? "unavailable"
@@ -117,32 +109,27 @@ export const KeyValueInsightsCard = forwardRef<
         snapshot={snapshot.disk}
         failure={storageFailure}
         value={storageValue(snapshot)}
-        freshnessAt={newestTimestamp([snapshot.disk, snapshot.diskCapacity])}
+        freshnessAt={newestMetricTimestamp([
+          snapshot.disk,
+          snapshot.diskCapacity,
+        ])}
         partial={snapshot.disk.partial || snapshot.diskCapacity.partial}
         loading={query.loading && !data}
       />
       <InsightRow
         title={t("keyValueInsights.memory")}
         snapshot={snapshot.memory}
-        failure={keyValueMetricFailure(
-          query.error,
-          "memory",
-          data?.memory != null,
-        )}
+        failure={keyValueMetricFailure(query.error, "memory")}
         value={metricValue(snapshot.memory)}
-        freshnessAt={newestTimestamp([snapshot.memory])}
+        freshnessAt={newestMetricTimestamp([snapshot.memory])}
         loading={query.loading && !data}
       />
       <InsightRow
         title={t("keyValueInsights.connections")}
         snapshot={snapshot.connections}
-        failure={keyValueMetricFailure(
-          query.error,
-          "connections",
-          data?.connections != null,
-        )}
+        failure={keyValueMetricFailure(query.error, "connections")}
         value={metricValue(snapshot.connections)}
-        freshnessAt={newestTimestamp([snapshot.connections])}
+        freshnessAt={newestMetricTimestamp([snapshot.connections])}
         loading={query.loading && !data}
       />
     </DashboardCard>
@@ -250,16 +237,6 @@ function storageValue(
       ? ""
       : ` (${snapshot.diskUsedPercent.toFixed(1)}%)`;
   return `${used} / ${capacity}${percent}`;
-}
-
-function newestTimestamp(snapshots: readonly MetricSnapshot[]): string | null {
-  return (
-    snapshots
-      .flatMap((snapshot) => snapshot.points.map((point) => point.timestamp))
-      .filter((timestamp) => Number.isFinite(Date.parse(timestamp)))
-      .sort((left, right) => Date.parse(left) - Date.parse(right))
-      .at(-1) ?? null
-  );
 }
 
 const styles = StyleSheet.create({

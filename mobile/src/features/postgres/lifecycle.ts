@@ -1,5 +1,8 @@
 import {
-  isLifecycleSuspended,
+  datastoreLifecycleTransition,
+  datastoreSuspensionConverged,
+} from "../resources/datastore-lifecycle";
+import {
   protectedConfirmationFromError,
   type LifecycleCapability,
   type LifecycleRunResult,
@@ -26,21 +29,19 @@ export type PostgresLifecycleControllerOptions = {
   maxPolls?: number;
 };
 
-const ACTIONABLE_STATUSES = new Set(["available", "unavailable"]);
-
 export function postgresLifecycleCapabilities(
   resource: PostgresLifecycleResource,
 ): LifecycleCapability<PostgresLifecycleAction>[] {
-  if (isLifecycleSuspended(resource.suspended)) {
-    return resource.status.toLowerCase() === "deleting"
-      ? []
-      : [{ action: "resume", requiresConfirmation: false }];
+  const transition = datastoreLifecycleTransition(resource);
+  if (transition === "resume") {
+    return [{ action: "resume", requiresConfirmation: false }];
   }
-  if (!ACTIONABLE_STATUSES.has(resource.status.toLowerCase())) return [];
-  return [
-    { action: "suspend", requiresConfirmation: true },
-    { action: "restart", requiresConfirmation: true },
-  ];
+  return transition === "suspend"
+    ? [
+        { action: "suspend", requiresConfirmation: true },
+        { action: "restart", requiresConfirmation: true },
+      ]
+    : [];
 }
 
 export class PostgresLifecycleController {
@@ -118,7 +119,7 @@ export class PostgresLifecycleController {
       let latest: PostgresLifecycleResource | null = null;
       for (let poll = 0; poll < this.maxPolls; poll += 1) {
         latest = await this.options.refresh(resource.id);
-        if (latest && postgresConverged(action, latest)) {
+        if (latest && datastoreSuspensionConverged(action, latest.suspended)) {
           return { status: "success", resource: latest };
         }
         if (poll < this.maxPolls - 1) await this.wait();
@@ -130,13 +131,4 @@ export class PostgresLifecycleController {
       this.pending.delete(resource.id);
     }
   }
-}
-
-function postgresConverged(
-  action: PostgresLifecycleAction,
-  resource: PostgresLifecycleResource,
-): boolean {
-  if (action === "suspend") return isLifecycleSuspended(resource.suspended);
-  if (action === "resume") return !isLifecycleSuspended(resource.suspended);
-  return false;
 }

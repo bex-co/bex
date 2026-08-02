@@ -67,6 +67,19 @@ export function adaptMetricSeries(
   };
 }
 
+export function newestMetricTimestamp(
+  snapshots: readonly Pick<MetricSnapshot, "points">[],
+): string | null {
+  let newest: { timestamp: string; time: number } | null = null;
+  for (const point of snapshots.flatMap((snapshot) => snapshot.points)) {
+    const time = Date.parse(point.timestamp);
+    if (Number.isFinite(time) && (!newest || time > newest.time)) {
+      newest = { timestamp: point.timestamp, time };
+    }
+  }
+  return newest?.timestamp ?? null;
+}
+
 export function formatMetricValue(unit: string, value: number): string {
   switch (unit) {
     case "cpu":

@@ -1,4 +1,8 @@
-import { parseInviteToken, parseStoredInvite } from "../invite-token";
+import {
+  isValidInviteSubject,
+  parseInviteToken,
+  parseStoredInvite,
+} from "../invite-token";
 
 const token = "0123456789abcdef0123456789abcdef";
 
@@ -32,5 +36,14 @@ describe("invite bearer validation", () => {
     ).toBe(null);
     expect(parseStoredInvite({ version: 2, token, subject: null })).toBe(null);
     expect(parseStoredInvite({ version: 1, token, subject: "" })).toBe(null);
+  });
+
+  it("uses one exact subject predicate for capture and persisted envelopes", () => {
+    expect(isValidInviteSubject(null)).toBe(true);
+    expect(isValidInviteSubject("identity-a")).toBe(true);
+    expect(isValidInviteSubject("")).toBe(false);
+    expect(isValidInviteSubject("a".repeat(257))).toBe(false);
+    expect(isValidInviteSubject("identity\nother")).toBe(false);
+    expect(isValidInviteSubject(["identity-a"])).toBe(false);
   });
 });
