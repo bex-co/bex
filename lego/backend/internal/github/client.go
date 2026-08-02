@@ -143,19 +143,60 @@ func (c *Client) appJWT() (string, error) {
 }
 
 // MintInstallationToken exchanges the app JWT for a 1h installation access
-// token for the given installation.
+// token for the given installation. The existing deploy/list/commit path needs
+// all installation repositories but remains explicitly read-only even though
+// the App itself now holds contents:write for agent sessions.
 func (c *Client) MintInstallationToken(ctx context.Context, installationID int64) (InstallationToken, error) {
+	return c.mintInstallationToken(ctx, installationID, struct {
+		Permissions map[string]string `json:"permissions"`
+	}{Permissions: map[string]string{"contents": "read", "metadata": "read"}})
+}
+
+// MintSessionInstallationToken mints the least-privilege Git credential used by
+// one agent session. GitHub's request accepts repository NAMES (the installation
+// itself fixes the owner), so callers must separately bind owner/account before
+// reaching this method. Contents write includes clone/fetch read access and push;
+// metadata stays read-only. The token expires after GitHub's fixed one-hour TTL.
+func (c *Client) MintSessionInstallationToken(ctx context.Context, installationID int64, repository string) (InstallationToken, error) {
+	repository = strings.TrimSpace(repository)
+	if repository == "" || strings.Contains(repository, "/") {
+		return InstallationToken{}, fmt.Errorf("github: repository name is required")
+	}
+	return c.mintInstallationToken(ctx, installationID, struct {
+		Repositories []string          `json:"repositories"`
+		Permissions  map[string]string `json:"permissions"`
+	}{
+		Repositories: []string{repository},
+		Permissions: map[string]string{
+			"contents": "write",
+			"metadata": "read",
+		},
+	})
+}
+
+func (c *Client) mintInstallationToken(ctx context.Context, installationID int64, payload any) (InstallationToken, error) {
 	appTok, err := c.appJWT()
 	if err != nil {
 		return InstallationToken{}, err
 	}
 	url := fmt.Sprintf("%s/app/installations/%d/access_tokens", c.baseURL, installationID)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(nil))
+	var requestBody io.Reader
+	if payload != nil {
+		raw, err := json.Marshal(payload)
+		if err != nil {
+			return InstallationToken{}, err
+		}
+		requestBody = bytes.NewReader(raw)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, requestBody)
 	if err != nil {
 		return InstallationToken{}, err
 	}
 	req.Header.Set("Authorization", "Bearer "+appTok)
 	req.Header.Set("Accept", acceptHeader)
+	if payload != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return InstallationToken{}, fmt.Errorf("github: mint token: %w", err)

@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
@@ -49,7 +50,7 @@ type TupleWriter interface {
 }
 
 type SandboxLifecycle interface {
-	CreateAgentSessionSandbox(context.Context, string, string, string, string, []string) (sandbox.Sandbox, error)
+	CreateAgentSessionSandbox(context.Context, string, string, string, string, string, string, []string) (sandbox.Sandbox, error)
 	EnterAgentSessionPhase(context.Context, string, string, string) error
 	ResumeAgentSessionSandbox(context.Context, string, string, string) error
 	CancelAgentSessionSandbox(context.Context, string, string, string) error
@@ -82,7 +83,7 @@ func validateSessionID(value string) error {
 	return nil
 }
 
-func validateCreate(req CreateRequest) error {
+func validateCreate(req *CreateRequest) error {
 	if strings.TrimSpace(req.Repo) == "" || strings.TrimSpace(req.AgentConfig.Agent) == "" || strings.TrimSpace(req.AgentConfig.Task) == "" {
 		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "repo, agentConfig.agent, and agentConfig.task are required", nil)
 	}
@@ -92,6 +93,16 @@ func validateCreate(req CreateRequest) error {
 	if len(req.Repo) > 2048 || len(req.Branch) > 255 || len(req.AgentConfig.Agent) > 128 || len(req.AgentConfig.Model) > 255 || len(req.AgentConfig.ModelEndpoint) > 2048 || len(req.AgentConfig.Task) > 100_000 || len(req.AgentConfig.Template) > 128 {
 		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "agent session input exceeds its size limit", nil)
 	}
+	repository, err := agentsession.NormalizeRepository(req.Repo)
+	if err != nil {
+		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "repo must identify a GitHub owner/repository", map[string]any{"field": "repo"})
+	}
+	branch := strings.TrimSpace(req.Branch)
+	if err := agentsession.ValidateBranch(branch); err != nil {
+		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "branch must start with bex-agent/", map[string]any{"field": "branch"})
+	}
+	req.Repo = repository
+	req.Branch = branch
 	return nil
 }
 
@@ -113,7 +124,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if !s.ticketEnabled() {
 		return View{}, core.ErrAgentSessionsUnavailable
 	}
-	if err := validateCreate(req); err != nil {
+	if err := validateCreate(&req); err != nil {
 		return View{}, err
 	}
 	modelEndpoint, egressAllowlist, err := createEgress(req.AgentConfig, req.EgressAllowlist)
@@ -131,8 +142,8 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	}
 	record, err := s.Store.CreateAgentSession(ctx, store.AgentSession{
 		WorkspaceID: workspaceID,
-		Repo:        strings.TrimSpace(req.Repo),
-		Branch:      strings.TrimSpace(req.Branch),
+		Repo:        req.Repo,
+		Branch:      req.Branch,
 		AgentConfig: config,
 	})
 	if err != nil {
@@ -145,7 +156,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		return View{}, fmt.Errorf("%w: establish agent session authorization: %v", core.ErrAuthzUnavailable, err)
 	}
 	template := strings.TrimSpace(req.AgentConfig.Template)
-	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, workspaceID, template, record.ID, modelEndpoint, egressAllowlist)
+	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, workspaceID, template, record.ID, record.Repo, record.Branch, modelEndpoint, egressAllowlist)
 	if err != nil {
 		_, _ = s.Store.SetAgentSessionLifecycle(ctx, record.ID, "", PhaseFailed, "sandbox create failed", false)
 		return View{}, err

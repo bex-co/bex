@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
@@ -39,7 +40,7 @@ const (
 	metadataComputeWeight = "bex.co/compute-weight-milli"
 	metadataRegime        = "app.bex.co/regime"
 	metadataSandboxRegime = "sandbox"
-	metadataAgentSession  = "bex.co/agent-session"
+	metadataAgentSession  = agentsession.LabelSession
 	metadataEgressAllow   = "bex.co/agent-session-egress-allowlist"
 	metadataModelEndpoint = "bex.co/agent-session-model-endpoint"
 	minSandboxTimeout     = 60
@@ -389,7 +390,7 @@ func NewAgentSessionLifecycle(service *Service) *AgentSessionLifecycle {
 // check. It preserves every reserved sandbox hardening stamp and adds the
 // durable session id, without re-checking can_create (session creation is
 // intentionally can_operate per ADR047 D3).
-func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, workspaceID, template, sessionID, modelEndpoint string, egressAllowlist []string) (Sandbox, error) {
+func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, workspaceID, template, sessionID, repository, branch, modelEndpoint string, egressAllowlist []string) (Sandbox, error) {
 	s := l.service
 	if !s.enabled() {
 		return Sandbox{}, core.ErrSandboxesUnavailable
@@ -411,6 +412,10 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 	if plan == "" {
 		plan = PlanStarter
 	}
+	bindings, err := agentsession.BindingLabels(sessionID, repository, branch)
+	if err != nil {
+		return Sandbox{}, fmt.Errorf("%w: invalid agent session binding: %v", core.ErrBadRequest, err)
+	}
 	allowJSON, err := json.Marshal(egressAllowlist)
 	if err != nil {
 		return Sandbox{}, fmt.Errorf("encode agent session egress allowlist: %w", err)
@@ -420,11 +425,9 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 		return Sandbox{}, err
 	}
 	policy := &NetworkPolicy{Default: NetworkPolicyDenyAll}
-	sb, err := s.createResolved(ctx, workspaceID, tmpl, plan, "", 0, policy, map[string]string{
-		metadataAgentSession:  sessionID,
-		metadataEgressAllow:   string(allowJSON),
-		metadataModelEndpoint: modelEndpoint,
-	})
+	bindings[metadataEgressAllow] = string(allowJSON)
+	bindings[metadataModelEndpoint] = modelEndpoint
+	sb, err := s.createResolved(ctx, workspaceID, tmpl, plan, "", 0, policy, bindings)
 	if err != nil {
 		if cleanupErr := s.SessionEgress.Delete(ctx, namespace, sessionID); cleanupErr != nil {
 			return Sandbox{}, errors.Join(err, fmt.Errorf("rollback session egress policy: %w", cleanupErr))
@@ -615,17 +618,33 @@ func (s *Service) Terminate(ctx context.Context, id string) error {
 	return s.lifecycle(ctx, core.RelCanCreate, id, StatusTerminated, s.clientTerminate)
 }
 
-func (s *Service) clientSuspend(ctx context.Context, key, id string) error {
-	return s.Client.Suspend(ctx, key, id)
+func (s *Service) clientSuspend(ctx context.Context, key string, raw osSandbox) error {
+	// Agent sessions are the only sandbox class carrying this binding. Fail the
+	// snapshot closed unless the image's hygiene hook runs successfully through
+	// the already-authorized gateway exec boundary. Generic EA sandboxes retain
+	// byte-identical suspend behavior.
+	if raw.Metadata[agentsession.LabelSession] != "" {
+		result, err := s.ExecBuffered(ctx, ExecRequest{
+			OwnerID: raw.Metadata[metadataWorkspace], SandboxID: raw.ID,
+			Command: "/usr/local/bin/bex-pre-snapshot",
+		})
+		if err != nil {
+			return fmt.Errorf("pre-snapshot credential scrub: %w", err)
+		}
+		if result.ExitCode != 0 {
+			return fmt.Errorf("pre-snapshot credential scrub failed with exit code %d", result.ExitCode)
+		}
+	}
+	return s.Client.Suspend(ctx, key, raw.ID)
 }
-func (s *Service) clientResume(ctx context.Context, key, id string) error {
-	return s.Client.Resume(ctx, key, id)
+func (s *Service) clientResume(ctx context.Context, key string, raw osSandbox) error {
+	return s.Client.Resume(ctx, key, raw.ID)
 }
-func (s *Service) clientTerminate(ctx context.Context, key, id string) error {
-	return s.Client.Terminate(ctx, key, id)
+func (s *Service) clientTerminate(ctx context.Context, key string, raw osSandbox) error {
+	return s.Client.Terminate(ctx, key, raw.ID)
 }
 
-func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Status, op func(ctx context.Context, key, id string) error) error {
+func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Status, op func(context.Context, string, osSandbox) error) error {
 	if err := s.Authorize(ctx, relation); err != nil {
 		return err
 	}
@@ -641,7 +660,7 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Stat
 	if err != nil {
 		return err
 	}
-	if err := op(ctx, key, id); err != nil {
+	if err := op(ctx, key, raw); err != nil {
 		return err
 	}
 	raw.Status.State = string(phase)

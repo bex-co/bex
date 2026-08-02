@@ -9,6 +9,7 @@ on:
     branches: [main]
     paths:
       - "lego/backend/**"
+      - "lego/agent-image/**"
       - "lego/types/**"
       - "scripts/stripe-billing-*.sh"
       - "scripts/stripe_billing_*.py"
@@ -18,6 +19,7 @@ on:
   pull_request:
     paths:
       - "lego/backend/**"
+      - "lego/agent-image/**"
       - "lego/types/**"
       - "scripts/stripe-billing-*.sh"
       - "scripts/stripe_billing_*.py"
@@ -93,6 +95,10 @@ jobs:
         # package test binaries so those resets cannot erase another package's
         # live rows; tests within each package remain normally parallelizable.
         run: go test -p 1 ./...
+      - name: test agent credential snapshot scrub
+        run: bash lego/agent-image/credential-scrub-test.sh
+      - name: verify live agent credential image and rootfs resume contract
+        run: bash lego/agent-image/credential-e2e-test.sh
       - name: test Stripe billing operations (offline guards + reconciliation)
         run: >-
           python3 -m unittest

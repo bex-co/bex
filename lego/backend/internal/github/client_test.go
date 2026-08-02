@@ -21,6 +21,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"net/http"
@@ -115,6 +116,16 @@ func TestMintInstallationToken(t *testing.T) {
 		if err != nil {
 			t.Errorf("app jwt invalid: %v", err)
 		}
+		var body struct {
+			Repositories []string          `json:"repositories"`
+			Permissions  map[string]string `json:"permissions"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if len(body.Repositories) != 0 || body.Permissions["contents"] != "read" || body.Permissions["metadata"] != "read" {
+			t.Fatalf("ordinary token must remain read-only across the installation: %+v", body)
+		}
 		w.WriteHeader(http.StatusCreated)
 		fmt.Fprint(w, `{"token":"ghs_abc","expires_at":"2026-07-11T13:00:00Z"}`)
 	}))
@@ -133,6 +144,38 @@ func TestMintInstallationToken(t *testing.T) {
 	want := time.Date(2026, 7, 11, 13, 0, 0, 0, time.UTC)
 	if !tok.ExpiresAt.Equal(want) {
 		t.Errorf("expiresAt = %v, want %v", tok.ExpiresAt, want)
+	}
+}
+
+func TestMintSessionInstallationTokenNarrowsRepositoryAndPermissions(t *testing.T) {
+	keyPEM, _ := testKeyPEM(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/app/installations/42/access_tokens" || r.Header.Get("Content-Type") != "application/json" {
+			t.Fatalf("request path=%q content-type=%q", r.URL.Path, r.Header.Get("Content-Type"))
+		}
+		var body struct {
+			Repositories []string          `json:"repositories"`
+			Permissions  map[string]string `json:"permissions"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if len(body.Repositories) != 1 || body.Repositories[0] != "repo" || body.Permissions["contents"] != "write" || body.Permissions["metadata"] != "read" || len(body.Permissions) != 2 {
+			t.Fatalf("scoped token body = %+v", body)
+		}
+		w.WriteHeader(http.StatusCreated)
+		fmt.Fprint(w, `{"token":"ghs_scoped","expires_at":"2026-08-01T13:00:00Z"}`)
+	}))
+	defer server.Close()
+
+	client, _ := NewClient(Config{AppID: "1", PrivateKey: keyPEM, Slug: "bex"})
+	client.baseURL = server.URL
+	token, err := client.MintSessionInstallationToken(context.Background(), 42, "repo")
+	if err != nil || token.Token != "ghs_scoped" {
+		t.Fatalf("MintSessionInstallationToken token=%+v err=%v", token, err)
+	}
+	if _, err := client.MintSessionInstallationToken(context.Background(), 42, "owner/repo"); err == nil {
+		t.Fatal("repository owner must not reach GitHub's name-only narrowing field")
 	}
 }
 
