@@ -1,6 +1,6 @@
 # ADR048 — Mobile: the dashboard on the phone
 
-**Status:** Proposed · market research + dashboard-surface inventory 2026-08-01. Not yet scheduled. Depends on ADR047 (agent sessions) for its differentiating tier; the supervision tier stands alone.
+**Status:** Accepted · market research + dashboard-surface inventory 2026-08-01; native delivery amendment accepted 2026-08-02 and scheduled as w11. Depends on ADR047 (agent sessions) for its differentiating tier; the supervision tier stands alone.
 
 ---
 
@@ -69,18 +69,19 @@ Single env-var quick view/edit (bulk import stays desktop); cron run-now/cancel/
 
 Service creation wizard, the settings surface (build config, health checks, domains + DNS verification, IP allow-lists, deploy hooks), blueprint authoring/sync, environment/project topology, env-group management, webhook endpoint configuration, registry credentials, autoscaling configuration, database parameter overrides, workspace/billing administration, API/SSH key management. Low-frequency, high-parameter, consequence-heavy — the phone adds risk, not ease; every exemplar draws the same line. **Destructive verbs stay off mobile entirely** (delete service/database/workspace, PITR, failover) — the Claude Code no-bypass-permissions-on-mobile posture. The urgent slice of the settings long tail is eventually covered by the agent (Railway pattern), not by porting screens.
 
-### D5 — Delivery vehicle: PWA first, native on triggers
+### D5 — Delivery vehicle: first-party Expo native client; responsive web remains complementary
 
-**v0 is the existing dashboard, responsive + installable + web push.** Vercel validates the strategy outright; Cursor launched mobile agents as a PWA. The work is a responsive pass over the Tier-1 routes (TanStack Start/shadcn are amenable), a mobile navigation shell, a web-push service worker, and a bex-api push channel driven by the same event plumbing behind outbound webhooks. No app-store cycle gates ADR047 phase 1.
+The 2026-08-02 implementation directive deliberately fires the native trigger early: bex ships a first-party Expo Router client under `mobile/`, seeded from a mature native codebase but stripped to bex-owned configuration and supervision primitives. Native is the primary mobile product vehicle for w11 because push reliability, OS-protected credential storage, background agent/deploy notifications, and the eventual Live Activities/widgets surface are central rather than speculative. The market evidence above still constrains the _product shape_: native does not turn the phone into a configuration dashboard.
 
-**Native (wrapper) when three triggers fire:** (a) agent sessions are live and notification engagement proves out; (b) iOS Live Activities for build/deploy/agent progress + home-screen widgets are wanted — the genuinely native-only Vercelios feature set; (c) paid-plan volume justifies app-store presence and review overhead.
+This is a real native API client, not a WebView wrapper. It uses the system browser for authentication and typed bex-api calls for product data. The existing dashboard keeps its Kratos HttpOnly-cookie architecture and remains the desktop/configuration surface. A responsive/installable PWA and web push remain valid complementary work, especially for self-hosters who do not distribute a custom binary, but they no longer gate the native supervision milestones. App-store release automation, Live Activities, and widgets stay trigger-gated; building the client does not assert that those distribution investments are already justified.
 
 ### D6 — Phasing
 
-1. **M1 — Supervise (PWA):** responsive Tier-1 routes, web push for deploy + crash events, one-tap restart/rollback/cancel.
-2. **M2 — Delegate:** ADR047 phase-1 Sessions tab (create task → push → PR link + evidence). Thin surface; can land with ADR047 phase 1 itself.
-3. **M3 — Steer:** ADR047 phase-2 live chat attach, needs-decision push, env-var quick edit, cron/datastore Tier-2 verbs.
-4. **M4 — Go native:** wrapper app, Live Activities, widgets, urgency-tiered push with DND override for critical.
+1. **Foundation (w11/m1–m2):** sanitized Expo shell, system-browser OAuth Authorization Code + PKCE, OS-secure session storage, typed bex-api access, workspace isolation, and accessible navigation.
+2. **Supervise (w11/m3–m5):** status/deploys/events/logs/metrics, safe one-tap operations, and urgency/working-hours-aware native push.
+3. **Delegate (w11/m6):** ADR047 phase-1 Sessions tab (create task → push → PR link + evidence); it remains gated on the backend phase.
+4. **Steer + Tier 2 (w11/m7–m8):** ADR047 phase-2 live attach and needs-decision steering, then the explicitly bounded env-var/cron/datastore/usage/invite fast follows.
+5. **Native-only distribution triggers:** Live Activities, widgets, and store/release automation are held until engagement and paid-plan volume justify them.
 
 ---
 
@@ -90,12 +91,12 @@ Service creation wizard, the settings surface (build config, health checks, doma
 2. **Responsive debt** — the dashboard is desktop-first today; the Tier-1 routes need a deliberate mobile pass (navigation shell, touch targets, log viewer virtualization on small viewports).
 3. **Notification hygiene is scope, not polish** — urgency tiers, per-service granularity (exists), working-hours scheduling; GitHub's lesson is that skipping this burns users immediately.
 4. **The differentiator is hostage to ADR047's schedule** — M2/M3 track it; M1 stands alone and is independently valuable (RenDeploy proves people pay for just that).
-5. **Auth on mobile browsers** — Kratos session cookies + the PWA install flow need verification on iOS Safari (ITP) before committing to web push there; iOS web push requires the installed-PWA context.
+5. **Native auth is a public-client boundary** — w11/m2 registers one secretless Hydra client and follows [RFC 8252](https://www.rfc-editor.org/rfc/rfc8252.html): system browser, exact reverse-domain redirect, Authorization Code + PKCE S256, short-lived audience-bound access tokens, rotating refresh tokens, and OS-protected storage. WebView login, embedded client secrets, AsyncStorage tokens, and dashboard-auth changes are forbidden. PWA cookie/ITP verification remains separate work if web push is later pursued.
 6. **Destructive-verb policy** (D4) should be enforced server-side eventually (e.g. an OpenFGA condition or client-attestation), not just by UI omission — carried as an open question, acceptable as UI-only in v0.
 
 ## Alternatives considered
 
-- **Native app first** — rejected for v0: app-store cycles gate iteration, Vercel/Cursor prove PWA credibility, and the native-only wins (Live Activities, widgets) are M4 triggers, not launch requirements.
+- **PWA-only v0** — was the original decision and remains architecturally credible, but was superseded by the explicit 2026-08-02 Expo implementation directive. The useful constraint survives: app-store release ceremony and native-only embellishments do not gate the API/client milestones.
 - **Port the full dashboard responsively** — rejected: the settings surface is where mobile adds risk over ease; every exemplar (GitHub, Railway, Cursor, Codex, Claude Code) explicitly scopes mobile to supervision + approval + delegation.
 - **Replit-style creation-first mobile** (build new services from a phone) — deferred, not rejected: the service-creation wizard stays desktop for now; the ADR047 agent path is bex's creation-shaped mobile story and subsumes it (prompt → running code → PR) without porting the wizard.
 - **Third-party-client strategy** (publish API, let a RenDeploy-alike emerge) — rejected as a strategy (fine as a side effect): the agent-session differentiator and the push channel are first-party assets, and the paid third-party clients existing at all is evidence the first-party gap is a churn risk.

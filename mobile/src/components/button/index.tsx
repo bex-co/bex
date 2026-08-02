@@ -20,6 +20,8 @@ type ButtonProps = {
   children: React.ReactNode;
   loading?: boolean;
   onPress?: () => void;
+  disabled?: boolean;
+  accessibilityLabel?: string;
 };
 
 const getButtonStyles = (theme: ColorTheme) => {
@@ -100,7 +102,10 @@ export const Button = (props: ButtonProps) => {
     <Pressable
       style={pressableStyle}
       onPress={props.onPress}
-      pointerEvents={props.onPress ? "auto" : "none"}
+      disabled={props.disabled || !props.onPress}
+      accessibilityRole="button"
+      accessibilityLabel={props.accessibilityLabel}
+      accessibilityState={{ disabled: props.disabled || !props.onPress }}
     >
       {props.loading ? (
         <ActivityIndicator

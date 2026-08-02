@@ -5,11 +5,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Dimensions,
   Pressable,
   Modal,
+  useWindowDimensions,
 } from "react-native";
 import Animated, {
+  ReduceMotion,
   useSharedValue,
   useAnimatedStyle,
   withTiming,
@@ -20,7 +21,6 @@ import Animated, {
 import { headerActionStyle, useTheme } from "@/common/theme";
 import { ColorTheme } from "@/types/theme-props";
 
-const { height: screenHeight } = Dimensions.get("window");
 const ITEM_HEIGHT = 50;
 const VISIBLE_ITEMS = 5;
 const WHEEL_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
@@ -149,6 +149,7 @@ export const Picker: React.FC<PickerProps> = ({
 }) => {
   const theme = useTheme().colorTheme;
   const styles = getStyles(theme);
+  const { height: screenHeight } = useWindowDimensions();
 
   const translateY = useSharedValue(screenHeight);
   const scrollY = useSharedValue(0);
@@ -164,16 +165,18 @@ export const Picker: React.FC<PickerProps> = ({
   const initialScrollY = selectedIndex * ITEM_HEIGHT;
 
   const showModal = useCallback(() => {
-    overlayOpacity.value = withTiming(1, { duration: 300 });
-    translateY.value = withTiming(0, { duration: 300 });
+    const timing = { duration: 300, reduceMotion: ReduceMotion.System };
+    overlayOpacity.value = withTiming(1, timing);
+    translateY.value = withTiming(0, timing);
   }, [translateY, overlayOpacity]);
 
   const hideModal = useCallback(() => {
-    overlayOpacity.value = withTiming(0, { duration: 300 });
-    translateY.value = withTiming(screenHeight, { duration: 300 }, () => {
+    const timing = { duration: 300, reduceMotion: ReduceMotion.System };
+    overlayOpacity.value = withTiming(0, timing);
+    translateY.value = withTiming(screenHeight, timing, () => {
       runOnJS(onCancel)();
     });
-  }, [translateY, overlayOpacity, onCancel]);
+  }, [onCancel, overlayOpacity, screenHeight, translateY]);
 
   useEffect(() => {
     if (visible) {
@@ -198,6 +201,7 @@ export const Picker: React.FC<PickerProps> = ({
   });
 
   const handleDone = useCallback(() => {
+    if (items.length === 0) return;
     const currentIndex = Math.round(scrollY.value / ITEM_HEIGHT);
     const clampedIndex = Math.max(0, Math.min(currentIndex, items.length - 1));
     onSelect(items[clampedIndex]);
@@ -211,12 +215,19 @@ export const Picker: React.FC<PickerProps> = ({
   const renderItem = useCallback(
     (item: PickerItem) => {
       const isSelected = item.value === selectedValue;
-      // const isSelected = Math.round(scrollY.value / ITEM_HEIGHT) === index;
       return (
         <View
           key={item.value}
           testID={`picker-item-${item.value || "empty"}`}
           style={styles.wheelItem}
+          accessible
+          accessibilityRole="radio"
+          accessibilityLabel={item.label}
+          accessibilityState={{ selected: isSelected }}
+          onAccessibilityTap={() => {
+            onSelect(item);
+            hideModal();
+          }}
         >
           {item.icon}
           <Text
@@ -231,6 +242,8 @@ export const Picker: React.FC<PickerProps> = ({
       );
     },
     [
+      hideModal,
+      onSelect,
       styles.wheelItemText,
       styles.selectedItemText,
       styles.wheelItem,
@@ -247,15 +260,35 @@ export const Picker: React.FC<PickerProps> = ({
       animationType="none"
       onRequestClose={handleCancel}
     >
-      <Animated.View style={[styles.overlay, overlayAnimatedStyle]}>
-        <Pressable style={styles.mask} onPress={handleCancel}></Pressable>
+      <Animated.View
+        style={[styles.overlay, overlayAnimatedStyle]}
+        accessibilityViewIsModal
+      >
+        <Pressable
+          style={styles.mask}
+          onPress={handleCancel}
+          accessibilityRole="button"
+          accessibilityLabel={cancelButtonText}
+        />
         <Animated.View style={[styles.modalContainer, animatedStyle]}>
           <View style={styles.header}>
-            <TouchableOpacity testID="picker-cancel" onPress={handleCancel}>
+            <TouchableOpacity
+              testID="picker-cancel"
+              onPress={handleCancel}
+              accessibilityRole="button"
+              accessibilityLabel={cancelButtonText}
+            >
               <Text style={styles.cancelButton}>{cancelButtonText}</Text>
             </TouchableOpacity>
             <Text style={styles.title}>{title}</Text>
-            <TouchableOpacity testID="picker-confirm" onPress={handleDone}>
+            <TouchableOpacity
+              testID="picker-confirm"
+              onPress={handleDone}
+              disabled={items.length === 0}
+              accessibilityRole="button"
+              accessibilityLabel={confirmButtonText}
+              accessibilityState={{ disabled: items.length === 0 }}
+            >
               <Text style={styles.doneButton}>{confirmButtonText}</Text>
             </TouchableOpacity>
           </View>

@@ -5,7 +5,7 @@
 ## Milestones
 
 - [x] **m1** — Seed and sanitize the Expo mobile foundation (8 tasks) — **DONE 2026-08-02** ← from user request + source-mobile agent audit
-- [ ] **m2** — Secure native shell: auth, API, workspace, navigation (9 tasks) ← from ADR048 D5 reconciliation
+- [x] **m2** — Secure native shell: auth, API, workspace, navigation (9 tasks) — **DONE 2026-08-02** ← from ADR048 D5 reconciliation
 - [ ] **m3** — Read-only mobile supervision (9 tasks) ← from ADR048 D2 / M1
 - [ ] **m4** — Safe one-tap operations (8 tasks) ← from ADR048 D2 / M1
 - [ ] **m5** — Push channel + notification hygiene (11 tasks) ← from ADR048 D2 + gap 1/3

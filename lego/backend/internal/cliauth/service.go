@@ -36,8 +36,11 @@ const (
 	// RenderCLIClientID is hard-coded by render-oss/cli. It is one permanent,
 	// secretless platform client, never a tenant-created bex API key.
 	RenderCLIClientID = "429024F5E608930E2A65EF92591A25CC"
-	deviceGrantType   = "urn:ietf:params:oauth:grant-type:device_code"
-	maxUpstreamBody   = 1 << 20
+	// MobileClientID is the permanent, secretless first-party native client
+	// provisioned by scripts/auth-bootstrap-client.sh (ADR012 §8b).
+	MobileClientID  = "bex-mobile"
+	deviceGrantType = "urn:ietf:params:oauth:grant-type:device_code"
+	maxUpstreamBody = 1 << 20
 )
 
 // APIKeyRevoker is the existing machine-key self-revocation path. Keeping this
@@ -125,7 +128,7 @@ func (s *Service) revoke(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch {
-	case id.ClientID == RenderCLIClientID && id.Human:
+	case isPlatformHumanClient(id.ClientID) && id.Human:
 		// /v1/oauth/revoke is a Render-shaped REST endpoint, not a token
 		// endpoint — every failure branch speaks the one Render error dialect
 		// via core.WriteErr (w9/m38, w9/008), not the OAuth {"error"} body the
@@ -136,7 +139,7 @@ func (s *Service) revoke(w http.ResponseWriter, r *http.Request) {
 		}
 		q := url.Values{
 			"subject": {id.Subject},
-			"client":  {RenderCLIClientID},
+			"client":  {id.ClientID},
 		}
 		if err := core.DoJSON(r.Context(), s.client, http.MethodDelete,
 			s.adminURL+"/admin/oauth2/auth/sessions/consent?"+q.Encode(), "", nil,
@@ -162,6 +165,10 @@ func (s *Service) revoke(w http.ResponseWriter, r *http.Request) {
 		s.invalidate(token, id)
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func isPlatformHumanClient(clientID string) bool {
+	return clientID == RenderCLIClientID || clientID == MobileClientID
 }
 
 func (s *Service) deviceGrant(w http.ResponseWriter, r *http.Request) {

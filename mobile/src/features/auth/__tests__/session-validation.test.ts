@@ -1,0 +1,109 @@
+import {
+  authResponseFailure,
+  isExactAuthRedirect,
+  parseStoredSession,
+  validateIdTokenCorrelation,
+} from "../session-validation";
+
+function encoded(value: unknown): string {
+  return Buffer.from(JSON.stringify(value)).toString("base64url");
+}
+
+function idToken(claims: Record<string, unknown>): string {
+  return `${encoded({ alg: "RS256" })}.${encoded(claims)}.signature`;
+}
+
+describe("native auth response validation", () => {
+  const expected = {
+    issuer: "https://oauth.bex.co",
+    clientId: "bex-mobile",
+    nonce: "nonce-a",
+    now: 100,
+  };
+
+  it("binds issuer, audience, nonce, and expiration", () => {
+    validateIdTokenCorrelation(
+      idToken({
+        iss: expected.issuer,
+        aud: expected.clientId,
+        nonce: expected.nonce,
+        exp: 101,
+      }),
+      expected,
+    );
+    for (const claims of [
+      {
+        iss: "https://attacker.test",
+        aud: expected.clientId,
+        nonce: expected.nonce,
+        exp: 101,
+      },
+      {
+        iss: expected.issuer,
+        aud: [expected.clientId, "other-client"],
+        azp: "other-client",
+        nonce: expected.nonce,
+        exp: 101,
+      },
+      {
+        iss: expected.issuer,
+        aud: expected.clientId,
+        nonce: "replayed",
+        exp: 101,
+      },
+      {
+        iss: expected.issuer,
+        aud: expected.clientId,
+        nonce: expected.nonce,
+        exp: 99,
+      },
+    ]) {
+      expect(() =>
+        validateIdTokenCorrelation(idToken(claims), expected),
+      ).toThrow();
+    }
+  });
+
+  it("classifies state mismatch as replay instead of a retryable error", () => {
+    expect(authResponseFailure("error", "state_mismatch")).toBe("replay");
+    expect(authResponseFailure("cancel")).toBe("cancelled");
+    expect(authResponseFailure("success")).toBe(null);
+  });
+
+  it("accepts only the byte-exact registered callback base", () => {
+    const redirect = "co.bex.mobile:/oauth2redirect";
+    expect(
+      isExactAuthRedirect(`${redirect}?code=abc&state=state`, redirect),
+    ).toBe(true);
+    expect(isExactAuthRedirect("bex://oauth2redirect?code=abc", redirect)).toBe(
+      false,
+    );
+    expect(isExactAuthRedirect(`${redirect}/attacker?code=abc`, redirect)).toBe(
+      false,
+    );
+  });
+
+  it("rejects stored sessions from another issuer or client", () => {
+    const session = {
+      version: 1 as const,
+      sessionId: "session-123456789",
+      subject: "identity-a",
+      issuer: expected.issuer,
+      clientId: expected.clientId,
+      accessToken: "access",
+      refreshToken: "refresh",
+      expiresAt: 10_000,
+      scope: "openid offline_access",
+    };
+    expect(parseStoredSession(session, expected)).toEqual(session);
+    expect(
+      parseStoredSession(
+        { ...session, issuer: "https://attacker.test" },
+        expected,
+      ),
+    ).toBe(null);
+    expect(
+      parseStoredSession({ ...session, clientId: "other" }, expected),
+    ).toBe(null);
+  });
+});

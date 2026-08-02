@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Seed both permanent platform OAuth2 clients: the confidential `bex-bootstrap`
-# machine client and the secretless public client hard-coded by the official
-# Render CLI. Neither is a tenant-created API key. Idempotent: re-running resets
-# both clients to their intended grants without minting a Render CLI secret.
+# Seed the permanent platform OAuth2 clients: confidential `bex-bootstrap`, the
+# secretless public client hard-coded by the official Render CLI, and the
+# secretless first-party `bex-mobile` native client. None is a tenant-created
+# API key. Idempotent: re-running resets every client to its intended grants
+# without minting a public-client secret.
 #
-# The Render CLI client is always upserted through the admin REST API (curl),
-# never the in-pod `hydra` CLI: it carries per-client token lifespans, which the
-# hydra CLI has no flags for — and `hydra update client` PUTs a full replacement,
-# so an exec-path upsert would silently wipe the lifespans on every re-run.
+# The public clients are always upserted through the admin REST API (curl),
+# never the in-pod `hydra` CLI: they carry fields the CLI cannot express, and
+# `hydra update client` PUTs a full replacement that would silently wipe them.
 #
 # The secret comes from BEX_BOOTSTRAP_CLIENT_SECRET in .env (gitignored) or the
 # environment (CI: GitHub Actions secret). Values are never printed.
@@ -21,6 +21,8 @@ cd "$(dirname "$0")/.."
 
 CLIENT_ID=bex-bootstrap
 RENDER_CLI_CLIENT_ID=429024F5E608930E2A65EF92591A25CC
+MOBILE_CLIENT_ID=bex-mobile
+MOBILE_REDIRECT_URI=co.bex.mobile:/oauth2redirect
 DEVICE_GRANT=urn:ietf:params:oauth:grant-type:device_code
 NS="${BEX_AUTH_NAMESPACE:-auth}"
 PF_PID=""
@@ -184,5 +186,37 @@ if ! curl -sf "$REST_ADMIN/admin/clients/$RENDER_CLI_CLIENT_ID" \
   echo "error: $RENDER_CLI_CLIENT_ID lifespans did not round-trip (hydra too old for per-client lifespans?)" >&2
   exit 1
 fi
+
+# ---- First-party native mobile client (ADR012 §8b) -------------------------
+# A store-distributed app cannot keep a client secret. The reverse-domain
+# private-use redirect is exact and single-slash per RFC 8252; PKCE S256 is
+# required on every authorization by the dashboard consent gate.
+mobile_body="$(printf '{"client_id":"%s","client_name":"bex mobile (first-party native)","grant_types":["authorization_code","refresh_token"],"response_types":["code"],"redirect_uris":["%s"],"scope":"openid offline_access","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":true,"metadata":{"bex.co/platform-client":true}}' \
+  "$MOBILE_CLIENT_ID" "$MOBILE_REDIRECT_URI")"
+mobile_code="$(printf '%s' "$mobile_body" | curl -s -o /dev/null -w '%{http_code}' -X PUT \
+  -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients/$MOBILE_CLIENT_ID")"
+if [ "$mobile_code" = "404" ]; then
+  mobile_code="$(printf '%s' "$mobile_body" | curl -s -o /dev/null -w '%{http_code}' -X POST \
+    -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients")"
+  [ "$mobile_code" = "201" ] || { echo "error: creating $MOBILE_CLIENT_ID failed (HTTP $mobile_code)" >&2; exit 1; }
+  echo "created OAuth2 client $MOBILE_CLIENT_ID"
+elif [ "$mobile_code" = "200" ]; then
+  echo "updated OAuth2 client $MOBILE_CLIENT_ID"
+else
+  echo "error: upserting $MOBILE_CLIENT_ID failed (HTTP $mobile_code)" >&2
+  exit 1
+fi
+
+# Hydra ignores unknown JSON fields, so assert the redirect and public-client
+# posture round-trip instead of trusting the PUT status alone.
+mobile_stored="$(curl -sf "$REST_ADMIN/admin/clients/$MOBILE_CLIENT_ID")"
+printf '%s' "$mobile_stored" | grep -Fq "\"$MOBILE_REDIRECT_URI\"" || {
+  echo "error: $MOBILE_CLIENT_ID redirect URI did not round-trip" >&2
+  exit 1
+}
+printf '%s' "$mobile_stored" | grep -Fq '"token_endpoint_auth_method":"none"' || {
+  echo "error: $MOBILE_CLIENT_ID is not a public client" >&2
+  exit 1
+}
 
 echo "token: POST <hydra-public>/oauth2/token  grant_type=client_credentials&client_id=$CLIENT_ID&client_secret=***"
