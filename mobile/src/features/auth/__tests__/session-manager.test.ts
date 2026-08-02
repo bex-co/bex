@@ -13,7 +13,7 @@ const config: MobileConfig = {
   graphqlUrl: "https://api.bex.co/graphql",
   oauthIssuer: "https://oauth.bex.co",
   oauthClientId: "bex-mobile",
-  oauthAudience: "https://api.bex.co",
+  oauthAudience: "https://api.bex.co/mcp",
   oauthRedirectUri: "co.bex.mobile:/oauth2redirect",
 };
 
@@ -53,6 +53,9 @@ class FakeTransport implements OAuthTransport {
   refreshCalls = 0;
   revokeCalls = 0;
   async authorize() {
+    return this.authorizeResult;
+  }
+  async completeAuthorization() {
     return this.authorizeResult;
   }
   async refresh() {
@@ -101,6 +104,20 @@ describe("SessionManager", () => {
     expect(second).toBe("access-b");
     expect(transport.refreshCalls).toBe(1);
     expect(storage.value?.accessToken).toBe("access-b");
+  });
+
+  it("establishes a session from a native OAuth callback", async () => {
+    const storage = new MemoryStorage();
+    const transport = new FakeTransport();
+    const subject = manager(storage, transport, () => 0);
+    await subject.restore();
+
+    await subject.completeSignIn(
+      "co.bex.mobile:/oauth2redirect?code=one-time&state=bound",
+    );
+
+    expect(subject.getState().status).toBe("signedIn");
+    expect(storage.value?.accessToken).toBe("access-a");
   });
 
   it("clears a replayed or revoked refresh chain", async () => {

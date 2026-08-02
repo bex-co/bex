@@ -1,4 +1,5 @@
-import type { StoredSession } from "./types";
+import type { PendingOAuthAuthorization, StoredSession } from "./types";
+import type { AuthFailureCode } from "./errors";
 
 type IdTokenClaims = {
   iss?: unknown;
@@ -83,6 +84,73 @@ export function parseStoredSession(
   return session as StoredSession;
 }
 
+export function parsePendingOAuthAuthorization(
+  raw: unknown,
+  expected: { issuer: string; clientId: string; redirectUri: string },
+): PendingOAuthAuthorization | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const pending = raw as Partial<PendingOAuthAuthorization>;
+  if (
+    pending.version !== 1 ||
+    pending.issuer !== expected.issuer ||
+    pending.clientId !== expected.clientId ||
+    pending.redirectUri !== expected.redirectUri ||
+    typeof pending.state !== "string" ||
+    pending.state.length < 16 ||
+    typeof pending.codeVerifier !== "string" ||
+    pending.codeVerifier.length < 43 ||
+    typeof pending.nonce !== "string" ||
+    pending.nonce.length < 16 ||
+    typeof pending.createdAt !== "number" ||
+    !Number.isFinite(pending.createdAt)
+  ) {
+    return null;
+  }
+  return pending as PendingOAuthAuthorization;
+}
+
 export function isExactAuthRedirect(url: string, redirectUri: string): boolean {
   return url === redirectUri || url.startsWith(`${redirectUri}?`);
+}
+
+export type PendingOAuthCallbackResult =
+  | { ok: true; code: string }
+  | {
+      ok: false;
+      failure: AuthFailureCode;
+      consumePending: boolean;
+    };
+
+export function validatePendingOAuthCallback(
+  redirectUrl: string,
+  pending: PendingOAuthAuthorization,
+  now: number,
+  maxAgeMs: number,
+): PendingOAuthCallbackResult {
+  if (!isExactAuthRedirect(redirectUrl, pending.redirectUri)) {
+    return {
+      ok: false,
+      failure: "invalid_redirect",
+      consumePending: false,
+    };
+  }
+  if (pending.createdAt > now || now - pending.createdAt > maxAgeMs) {
+    return { ok: false, failure: "replay", consumePending: true };
+  }
+  const callback = new URL(redirectUrl);
+  const returnedState = callback.searchParams.get("state");
+  if (!returnedState || returnedState !== pending.state) {
+    return { ok: false, failure: "replay", consumePending: false };
+  }
+  const oauthError = callback.searchParams.get("error");
+  if (oauthError) {
+    return {
+      ok: false,
+      failure: oauthError === "access_denied" ? "cancelled" : "unavailable",
+      consumePending: true,
+    };
+  }
+  const code = callback.searchParams.get("code");
+  if (!code) return { ok: false, failure: "replay", consumePending: true };
+  return { ok: true, code };
 }

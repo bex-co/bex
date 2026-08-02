@@ -340,6 +340,8 @@ export const zh = {
     signInBody: "请在系统浏览器中继续。应用无法查看您的密码或多因素认证响应。",
     signInAction: "安全地继续",
     signInError: "登录未完成。请检查网络连接后重试。",
+    callbackTitle: "正在完成登录",
+    callbackBody: "正在安全保存会话并打开 bex。",
     expiredTitle: "会话需要网络连接",
     expiredBody: "离线期间访问令牌已过期。重新连接后可安全刷新。",
     retry: "重试",

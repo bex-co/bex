@@ -363,6 +363,8 @@ export const en = {
     signInAction: "Continue securely",
     signInError:
       "Sign-in did not complete. Check your connection and try again.",
+    callbackTitle: "Finishing sign-in",
+    callbackBody: "Securing your session and opening bex.",
     expiredTitle: "Session needs a connection",
     expiredBody:
       "Your access token expired while bex was offline. Reconnect to refresh it safely.",

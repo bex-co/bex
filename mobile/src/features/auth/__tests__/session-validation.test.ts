@@ -1,8 +1,10 @@
 import {
   authResponseFailure,
   isExactAuthRedirect,
+  parsePendingOAuthAuthorization,
   parseStoredSession,
   validateIdTokenCorrelation,
+  validatePendingOAuthCallback,
 } from "../session-validation";
 
 function encoded(value: unknown): string {
@@ -105,5 +107,73 @@ describe("native auth response validation", () => {
     expect(
       parseStoredSession({ ...session, clientId: "other" }, expected),
     ).toBe(null);
+  });
+
+  it("accepts only bound, well-formed pending PKCE state", () => {
+    const pending = {
+      version: 1 as const,
+      issuer: expected.issuer,
+      clientId: expected.clientId,
+      redirectUri: "co.bex.mobile:/oauth2redirect",
+      state: "state-1234567890",
+      codeVerifier: "v".repeat(43),
+      nonce: "nonce-1234567890",
+      createdAt: 100,
+    };
+    const binding = {
+      issuer: expected.issuer,
+      clientId: expected.clientId,
+      redirectUri: pending.redirectUri,
+    };
+    expect(parsePendingOAuthAuthorization(pending, binding)).toEqual(pending);
+    expect(
+      parsePendingOAuthAuthorization(
+        { ...pending, redirectUri: "bex:/oauth2redirect" },
+        binding,
+      ),
+    ).toBe(null);
+    expect(
+      parsePendingOAuthAuthorization(
+        { ...pending, codeVerifier: "too-short" },
+        binding,
+      ),
+    ).toBe(null);
+  });
+
+  it("accepts one fresh, exactly bound native authorization callback", () => {
+    const pending = {
+      version: 1 as const,
+      issuer: expected.issuer,
+      clientId: expected.clientId,
+      redirectUri: "co.bex.mobile:/oauth2redirect",
+      state: "state-1234567890",
+      codeVerifier: "v".repeat(43),
+      nonce: "nonce-1234567890",
+      createdAt: 100,
+    };
+    expect(
+      validatePendingOAuthCallback(
+        `${pending.redirectUri}?code=one-time&state=${pending.state}`,
+        pending,
+        200,
+        1_000,
+      ),
+    ).toEqual({ ok: true, code: "one-time" });
+    expect(
+      validatePendingOAuthCallback(
+        `${pending.redirectUri}?code=attacker&state=wrong`,
+        pending,
+        200,
+        1_000,
+      ),
+    ).toEqual({ ok: false, failure: "replay", consumePending: false });
+    expect(
+      validatePendingOAuthCallback(
+        `${pending.redirectUri}?code=late&state=${pending.state}`,
+        pending,
+        1_101,
+        1_000,
+      ),
+    ).toEqual({ ok: false, failure: "replay", consumePending: true });
   });
 });

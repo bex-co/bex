@@ -23,6 +23,7 @@ CLIENT_ID=bex-bootstrap
 RENDER_CLI_CLIENT_ID=429024F5E608930E2A65EF92591A25CC
 MOBILE_CLIENT_ID=bex-mobile
 MOBILE_REDIRECT_URI=co.bex.mobile:/oauth2redirect
+MOBILE_AUDIENCE="${BEX_OAUTH_RESOURCE:-https://api.bex.co/mcp}"
 DEVICE_GRANT=urn:ietf:params:oauth:grant-type:device_code
 NS="${BEX_AUTH_NAMESPACE:-auth}"
 PF_PID=""
@@ -191,8 +192,8 @@ fi
 # A store-distributed app cannot keep a client secret. The reverse-domain
 # private-use redirect is exact and single-slash per RFC 8252; PKCE S256 is
 # required on every authorization by the dashboard consent gate.
-mobile_body="$(printf '{"client_id":"%s","client_name":"bex mobile (first-party native)","grant_types":["authorization_code","refresh_token"],"response_types":["code"],"redirect_uris":["%s"],"scope":"openid offline_access","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":true,"metadata":{"bex.co/platform-client":true}}' \
-  "$MOBILE_CLIENT_ID" "$MOBILE_REDIRECT_URI")"
+mobile_body="$(printf '{"client_id":"%s","client_name":"bex mobile (first-party native)","grant_types":["authorization_code","refresh_token"],"response_types":["code"],"redirect_uris":["%s"],"audience":["%s"],"scope":"openid offline_access","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":true,"metadata":{"bex.co/platform-client":true}}' \
+  "$MOBILE_CLIENT_ID" "$MOBILE_REDIRECT_URI" "$MOBILE_AUDIENCE")"
 mobile_code="$(printf '%s' "$mobile_body" | curl -s -o /dev/null -w '%{http_code}' -X PUT \
   -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients/$MOBILE_CLIENT_ID")"
 if [ "$mobile_code" = "404" ]; then
@@ -216,6 +217,10 @@ printf '%s' "$mobile_stored" | grep -Fq "\"$MOBILE_REDIRECT_URI\"" || {
 }
 printf '%s' "$mobile_stored" | grep -Fq '"token_endpoint_auth_method":"none"' || {
   echo "error: $MOBILE_CLIENT_ID is not a public client" >&2
+  exit 1
+}
+printf '%s' "$mobile_stored" | grep -Fq "\"$MOBILE_AUDIENCE\"" || {
+  echo "error: $MOBILE_CLIENT_ID audience did not round-trip" >&2
   exit 1
 }
 

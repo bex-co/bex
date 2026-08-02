@@ -30,6 +30,7 @@ export const authManager = new SessionManager(
 type AuthContextValue = {
   state: AuthState;
   signIn: () => Promise<void>;
+  completeSignIn: (redirectUrl: string) => Promise<void>;
   signOut: () => Promise<void>;
   retryRestore: () => Promise<void>;
 };
@@ -44,11 +45,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return unsubscribe;
   }, []);
   const signIn = useCallback(() => authManager.signIn(), []);
+  const completeSignIn = useCallback(
+    (redirectUrl: string) => authManager.completeSignIn(redirectUrl),
+    [],
+  );
   const signOut = useCallback(() => authManager.signOut(), []);
   const retryRestore = useCallback(() => authManager.restore(), []);
   const value = useMemo(
-    () => ({ state, signIn, signOut, retryRestore }),
-    [retryRestore, signIn, signOut, state],
+    () => ({ state, signIn, completeSignIn, signOut, retryRestore }),
+    [completeSignIn, retryRestore, signIn, signOut, state],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
