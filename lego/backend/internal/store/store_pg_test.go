@@ -18,8 +18,10 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
+	"reflect"
 	"regexp"
 	"strings"
 	"sync"
@@ -2251,6 +2253,28 @@ func TestNotificationSettings(t *testing.T) {
 		}
 	}
 
+	// Native push policy extends this same row. Updating it preserves bob's
+	// existing email booleans, and a later email update preserves the JSONB
+	// document in turn.
+	pushPolicy := json.RawMessage(`{"enabled":false,"events":[],"minimumUrgency":"important","timeZone":"UTC","workingHours":[],"quietHours":[],"maxDeferralSeconds":3600,"serviceOverrides":[]}`)
+	pushRow, err := s.UpsertNotificationPushPolicy(ctx, ten.ID, "bob", pushPolicy)
+	if err != nil {
+		t.Fatalf("upsert push policy: %v", err)
+	}
+	if pushRow.DeployStarted || pushRow.DeploySucceeded || !pushRow.DeployFailed {
+		t.Fatalf("push upsert changed email settings: %+v", pushRow)
+	}
+	var wantPush, gotPush any
+	if err := json.Unmarshal(pushPolicy, &wantPush); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(pushRow.PushPolicy, &gotPush); err != nil {
+		t.Fatalf("stored push policy: %v", err)
+	}
+	if !reflect.DeepEqual(gotPush, wantPush) {
+		t.Fatalf("stored push policy = %s, want %s", pushRow.PushPolicy, pushPolicy)
+	}
+
 	// A second upsert updates the same row (unique index), not a duplicate.
 	if _, err := s.UpsertNotificationSettings(ctx, ten.ID, "bob", true, true, false); err != nil {
 		t.Fatalf("re-upsert: %v", err)
@@ -2264,6 +2288,11 @@ func TestNotificationSettings(t *testing.T) {
 	}
 	if got, err := s.GetNotificationSettings(ctx, ten.ID, "bob"); err != nil || !got.DeployStarted || !got.DeploySucceeded || got.DeployFailed {
 		t.Errorf("get after re-upsert = %+v (%v), want (true,true,false)", got, err)
+	} else {
+		var afterEmail any
+		if err := json.Unmarshal(got.PushPolicy, &afterEmail); err != nil || !reflect.DeepEqual(afterEmail, wantPush) {
+			t.Errorf("email update changed push policy = %s (%v)", got.PushPolicy, err)
+		}
 	}
 
 	// Deleting the workspace cascades its notification_settings rows.

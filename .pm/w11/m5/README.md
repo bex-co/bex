@@ -1,6 +1,6 @@
 # w11 · m5 — Push channel + notification hygiene
 
-**Worker:** worker11 **Goal:** make push the mobile anchor with authorized durable device subscriptions, event-driven delivery, urgency and working-hours policy, safe deep links, and observable retry/pruning behavior. **Status:** todo
+**Worker:** worker11 **Goal:** make push the mobile anchor with authorized durable device subscriptions, event-driven delivery, urgency and working-hours policy, safe deep links, and observable retry/pruning behavior. **Status:** todo (t001–t006 done; t007 physical-device qualification blocked)
 
 ## Gating
 
@@ -10,12 +10,12 @@ Starts after `w11/m2/t009`; may run in parallel with m3/m4. Reuse the existing n
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Add the durable authorized device-subscription store and service core | 60m | w11/m2/t009 |
-| t002 | Add the provider-neutral push transport and credential configuration | 60m | t001 |
-| t003 | Project deploy, crash, and cron events into idempotent push jobs | 60m | t002 |
-| t004 | Implement urgency, per-service filters, timezone, and working hours | 60m | t003 |
-| t005 | Add native permission, token registration, inbox, badge, and deep links | 60m | t004 |
-| t006 | Add retry, stale-token pruning, audit, metrics, and privacy controls | 45m | t005 |
+| t001 | Add the durable authorized device-subscription store and service core — **DONE** | 60m | w11/m2/t009 |
+| t002 | Add the provider-neutral push transport and credential configuration — **DONE** | 60m | t001 |
+| t003 | Project deploy, crash, and cron events into idempotent push jobs — **DONE** | 60m | t002 |
+| t004 | Implement urgency, per-service filters, timezone, and working hours — **DONE** | 60m | t003 |
+| t005 | Add native permission, token registration, inbox, badge, and deep links — **DONE** | 60m | t004 |
+| t006 | Add retry, stale-token pruning, audit, metrics, and privacy controls — **DONE** | 45m | t005 |
 | t007 | Verify delivery, quiet hours, and deep links on real devices | 60m | t006 |
 | t008 | Render parity | 30m | t007 |
 | t009 | Simplify | 20m | t008 |

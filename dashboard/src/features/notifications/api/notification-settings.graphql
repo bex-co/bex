@@ -25,3 +25,61 @@ mutation UpdateNotificationSettings(
     deployFailed
   }
 }
+
+# bex-native mobile push extension. It remains caller-scoped like the email
+# settings above, but uses a separate typed projection so Render-compatible
+# email fields remain byte-compatible.
+query PushNotificationSettings {
+  pushNotificationsAvailable
+  pushNotificationSettings {
+    enabled
+    events
+    minimumUrgency
+    timeZone
+    workingHours {
+      weekdays
+      start
+      end
+    }
+    quietHours {
+      weekdays
+      start
+      end
+    }
+    maxDeferralSeconds
+    serviceOverrides {
+      serviceId
+      enabled
+      events
+      minimumUrgency
+    }
+  }
+}
+
+mutation UpdatePushNotificationSettings(
+  $settings: PushNotificationSettingsInput!
+) {
+  updatePushNotificationSettings(settings: $settings) {
+    enabled
+    events
+    minimumUrgency
+    timeZone
+    workingHours {
+      weekdays
+      start
+      end
+    }
+    quietHours {
+      weekdays
+      start
+      end
+    }
+    maxDeferralSeconds
+    serviceOverrides {
+      serviceId
+      enabled
+      events
+      minimumUrgency
+    }
+  }
+}

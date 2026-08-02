@@ -18,10 +18,12 @@ package notifications
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -45,12 +47,19 @@ func (f fakeWorkspace) IsMember(_ context.Context, id core.Identity, tenantID st
 
 // fakeStore is an in-memory NotificationsStore.
 type fakeStore struct {
+	mu         sync.Mutex
 	rows       map[[2]string]store.NotificationSettings // (tenant, subject) -> row
 	recipients map[string][]store.NotifyRecipient       // tenant -> recipients
+	devices    map[[3]string]store.DevicePushSubscription
+	push       map[[2]string][]store.PushNotification
 }
 
 func newFakeStore() *fakeStore {
-	return &fakeStore{rows: map[[2]string]store.NotificationSettings{}, recipients: map[string][]store.NotifyRecipient{}}
+	return &fakeStore{
+		rows: map[[2]string]store.NotificationSettings{}, recipients: map[string][]store.NotifyRecipient{},
+		devices: map[[3]string]store.DevicePushSubscription{},
+		push:    map[[2]string][]store.PushNotification{},
+	}
 }
 
 func (f *fakeStore) GetNotificationSettings(_ context.Context, tenantID, subject string) (store.NotificationSettings, error) {
@@ -62,13 +71,122 @@ func (f *fakeStore) GetNotificationSettings(_ context.Context, tenantID, subject
 }
 
 func (f *fakeStore) UpsertNotificationSettings(_ context.Context, tenantID, subject string, deployStarted, deploySucceeded, deployFailed bool) (store.NotificationSettings, error) {
-	row := store.NotificationSettings{ID: "ntf-fake", TenantID: tenantID, Subject: subject, DeployStarted: deployStarted, DeploySucceeded: deploySucceeded, DeployFailed: deployFailed}
+	row := f.rows[[2]string{tenantID, subject}]
+	row.ID, row.TenantID, row.Subject = "ntf-fake", tenantID, subject
+	row.DeployStarted, row.DeploySucceeded, row.DeployFailed = deployStarted, deploySucceeded, deployFailed
+	f.rows[[2]string{tenantID, subject}] = row
+	return row, nil
+}
+
+func (f *fakeStore) UpsertNotificationPushPolicy(_ context.Context, tenantID, subject string, policy json.RawMessage) (store.NotificationSettings, error) {
+	row, existed := f.rows[[2]string{tenantID, subject}]
+	row.ID, row.TenantID, row.Subject = "ntf-fake", tenantID, subject
+	if !existed {
+		row.DeployFailed = true
+	}
+	row.PushPolicy = append(json.RawMessage(nil), policy...)
 	f.rows[[2]string{tenantID, subject}] = row
 	return row, nil
 }
 
 func (f *fakeStore) ListNotifyRecipients(_ context.Context, tenantID string) ([]store.NotifyRecipient, error) {
 	return f.recipients[tenantID], nil
+}
+
+func (f *fakeStore) UpsertDevicePushSubscription(_ context.Context, sub store.DevicePushSubscription) (store.DevicePushSubscription, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	now := time.Now().UTC()
+	for key, other := range f.devices {
+		if other.Provider == sub.Provider && other.Token == sub.Token && key != [3]string{sub.TenantID, sub.Subject, sub.DeviceID} {
+			delete(f.devices, key)
+		}
+	}
+	key := [3]string{sub.TenantID, sub.Subject, sub.DeviceID}
+	if old, ok := f.devices[key]; ok {
+		sub.CreatedAt = old.CreatedAt
+	} else {
+		sub.CreatedAt = now
+	}
+	sub.UpdatedAt, sub.LastRegisteredAt = now, now
+	f.devices[key] = sub
+	return sub, nil
+}
+
+func (f *fakeStore) ListOwnDevicePushSubscriptions(_ context.Context, tenantID, subject string) ([]store.DevicePushSubscription, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []store.DevicePushSubscription
+	for key, sub := range f.devices {
+		if key[0] == tenantID && key[1] == subject {
+			sub.Token = "" // the production own-list projection never reads it
+			out = append(out, sub)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeStore) RevokeDevicePushSubscription(_ context.Context, tenantID, subject, deviceID string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	key := [3]string{tenantID, subject, deviceID}
+	if _, ok := f.devices[key]; !ok {
+		return false, nil
+	}
+	delete(f.devices, key)
+	return true, nil
+}
+
+func (f *fakeStore) RevokeAllDevicePushSubscriptions(_ context.Context, tenantID, subject string) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var count int64
+	for key := range f.devices {
+		if key[0] == tenantID && key[1] == subject {
+			delete(f.devices, key)
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (f *fakeStore) ListOwnPushNotifications(_ context.Context, tenantID, subject string, limit int) ([]store.PushNotification, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	rows := f.push[[2]string{tenantID, subject}]
+	if limit < len(rows) {
+		rows = rows[:limit]
+	}
+	return append([]store.PushNotification(nil), rows...), nil
+}
+
+func (f *fakeStore) MarkOwnPushNotificationRead(_ context.Context, tenantID, subject, eventID string, at time.Time) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	key := [2]string{tenantID, subject}
+	for i := range f.push[key] {
+		if f.push[key][i].EventID != eventID {
+			continue
+		}
+		if f.push[key][i].ReadAt == nil {
+			readAt := at
+			f.push[key][i].ReadAt = &readAt
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+func (f *fakeStore) CountUnreadPushNotifications(_ context.Context, tenantID, subject string) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var count int64
+	for _, row := range f.push[[2]string{tenantID, subject}] {
+		if row.ReadAt == nil {
+			count++
+		}
+	}
+	return count, nil
 }
 
 // fakeMailer records every send. body holds the plain-text part (the existing

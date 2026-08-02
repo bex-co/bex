@@ -117,6 +117,10 @@ var (
 	// when the control-plane store isn't wired (BEX_CP_DB_URI unset); adapters
 	// surface it as 503 (w3/m9, the deploy-history precedent).
 	ErrNotificationsUnavailable = errors.New("notification settings store not configured")
+	// ErrPushUnavailable is returned when a caller attempts to register a push
+	// destination while the server transport is deliberately disabled. Reading
+	// notification preferences and supervision remains available.
+	ErrPushUnavailable = errors.New("mobile push transport not configured")
 	// ErrRegistryCredentialsUnavailable is returned by the registry-credentials
 	// verbs when the control-plane store (BEX_CP_DB_URI) or the secret store
 	// (BEX_OPENBAO_URL) isn't wired — either is required, since a credential's

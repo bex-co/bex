@@ -29,17 +29,20 @@ package notifications
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/url"
 	"path"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/email"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -50,7 +53,15 @@ import (
 type NotificationsStore interface {
 	GetNotificationSettings(ctx context.Context, tenantID, subject string) (store.NotificationSettings, error)
 	UpsertNotificationSettings(ctx context.Context, tenantID, subject string, deployStarted, deploySucceeded, deployFailed bool) (store.NotificationSettings, error)
+	UpsertNotificationPushPolicy(ctx context.Context, tenantID, subject string, policy json.RawMessage) (store.NotificationSettings, error)
 	ListNotifyRecipients(ctx context.Context, tenantID string) ([]store.NotifyRecipient, error)
+	UpsertDevicePushSubscription(ctx context.Context, sub store.DevicePushSubscription) (store.DevicePushSubscription, error)
+	ListOwnDevicePushSubscriptions(ctx context.Context, tenantID, subject string) ([]store.DevicePushSubscription, error)
+	RevokeDevicePushSubscription(ctx context.Context, tenantID, subject, deviceID string) (bool, error)
+	RevokeAllDevicePushSubscriptions(ctx context.Context, tenantID, subject string) (int64, error)
+	ListOwnPushNotifications(ctx context.Context, tenantID, subject string, limit int) ([]store.PushNotification, error)
+	MarkOwnPushNotificationRead(ctx context.Context, tenantID, subject, eventID string, at time.Time) (bool, error)
+	CountUnreadPushNotifications(ctx context.Context, tenantID, subject string) (int64, error)
 }
 
 // Mailer delivers an email with a plain-text body and an optional HTML
@@ -87,6 +98,23 @@ type Service struct {
 	// the deploy email (w7/m44); empty ⇒ the link is omitted, honest-omit like
 	// the invite email's link.
 	DashboardBaseURL string
+	// PushAvailable reflects validated server transport composition; it carries
+	// no provider or credential detail.
+	PushAvailable *bool
+}
+
+// IsPushAvailable reports validated server composition without provider or
+// credential detail. A nil field keeps direct unit-test/embedded construction
+// backward compatible; the production composition root always supplies it.
+func (s *Service) IsPushAvailable(ctx context.Context) (bool, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return false, err
+	}
+	return s.Store != nil && s.pushTransportAvailable(), nil
+}
+
+func (s *Service) pushTransportAvailable() bool {
+	return s.PushAvailable == nil || *s.PushAvailable
 }
 
 // BillingNotifier is the asynchronous m52 lifecycle sink. It is deliberately
@@ -236,6 +264,348 @@ func (s *Service) UpdateSettings(ctx context.Context, deployStarted, deploySucce
 		return SettingsView{}, err
 	}
 	return toView(row), nil
+}
+
+const (
+	maxPushPolicyRanges    = 32
+	maxPushPolicyOverrides = 100
+	maxPushTimeZoneBytes   = 64
+)
+
+// PushClockRangeView is one local wall-clock interval. Weekdays use the closed
+// lowercase vocabulary sunday..saturday; Start/End use HH:MM. An end earlier
+// than its start crosses midnight, matching DeliveryClockRange.
+type PushClockRangeView struct {
+	Weekdays []string `json:"weekdays"`
+	Start    string   `json:"start"`
+	End      string   `json:"end"`
+}
+
+// PushServiceOverrideView overrides push delivery for exactly one service.
+// Nil scalars and a nil Events pointer inherit the workspace-wide values. A
+// non-nil empty Events list is an exact filter that disables every event.
+type PushServiceOverrideView struct {
+	ServiceID      string           `json:"serviceId"`
+	Enabled        *bool            `json:"enabled,omitempty"`
+	Events         *[]DeliveryEvent `json:"events,omitempty"`
+	MinimumUrgency *DeliveryUrgency `json:"minimumUrgency,omitempty"`
+}
+
+// PushSettingsView is the typed public projection stored in the existing
+// notification_settings row. MaxDeferralSeconds is bounded by
+// MaximumDeliveryDeferral and avoids a transport-specific duration syntax.
+type PushSettingsView struct {
+	Enabled            bool                      `json:"enabled"`
+	Events             []DeliveryEvent           `json:"events"`
+	MinimumUrgency     DeliveryUrgency           `json:"minimumUrgency"`
+	TimeZone           string                    `json:"timeZone"`
+	WorkingHours       []PushClockRangeView      `json:"workingHours"`
+	QuietHours         []PushClockRangeView      `json:"quietHours"`
+	MaxDeferralSeconds int                       `json:"maxDeferralSeconds"`
+	ServiceOverrides   []PushServiceOverrideView `json:"serviceOverrides"`
+}
+
+var defaultPushSettings = PushSettingsView{
+	Enabled: true,
+	Events: []DeliveryEvent{
+		DeliveryEventDeployFailed,
+		DeliveryEventServerFailed,
+		DeliveryEventCronFailed,
+	},
+	MinimumUrgency:     DeliveryUrgencyImportant,
+	TimeZone:           "UTC",
+	WorkingHours:       []PushClockRangeView{},
+	QuietHours:         []PushClockRangeView{},
+	MaxDeferralSeconds: int((8 * time.Hour) / time.Second),
+	ServiceOverrides:   []PushServiceOverrideView{},
+}
+
+var orderedDeliveryEvents = []DeliveryEvent{
+	DeliveryEventDeployStarted,
+	DeliveryEventDeploySucceeded,
+	DeliveryEventDeployFailed,
+	DeliveryEventServerFailed,
+	DeliveryEventCronFailed,
+	DeliveryEventUsageThreshold,
+	DeliveryEventAgentNeedsDecision,
+	DeliveryEventAgentPRReady,
+}
+
+var orderedWeekdays = []struct {
+	name string
+	day  time.Weekday
+}{
+	{"sunday", time.Sunday},
+	{"monday", time.Monday},
+	{"tuesday", time.Tuesday},
+	{"wednesday", time.Wednesday},
+	{"thursday", time.Thursday},
+	{"friday", time.Friday},
+	{"saturday", time.Saturday},
+}
+
+// GetPushSettings returns only the caller's push policy. It deliberately has a
+// separate method/surface from the byte-compatible deploy-email settings.
+func (s *Service) GetPushSettings(ctx context.Context) (PushSettingsView, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return PushSettingsView{}, err
+	}
+	if s.Store == nil {
+		return PushSettingsView{}, core.ErrNotificationsUnavailable
+	}
+	tenantID, ok := s.Base.Tenant(ctx)
+	if !ok {
+		return clonePushSettings(defaultPushSettings), nil
+	}
+	identity, ok := core.IdentityFrom(ctx)
+	if !ok {
+		return clonePushSettings(defaultPushSettings), nil
+	}
+	row, err := s.Store.GetNotificationSettings(ctx, tenantID, identity.Subject)
+	if errors.Is(err, store.ErrNotFound) {
+		return clonePushSettings(defaultPushSettings), nil
+	}
+	if err != nil {
+		return PushSettingsView{}, err
+	}
+	if len(row.PushPolicy) == 0 {
+		return clonePushSettings(defaultPushSettings), nil
+	}
+	var view PushSettingsView
+	if err := json.Unmarshal(row.PushPolicy, &view); err != nil {
+		return PushSettingsView{}, fmt.Errorf("notification push policy: %w", err)
+	}
+	return normalizePushSettings(view)
+}
+
+// UpdatePushSettings replaces the caller's own complete push policy after
+// normalization and validation against the same evaluator the worker uses.
+func (s *Service) UpdatePushSettings(ctx context.Context, requested PushSettingsView) (PushSettingsView, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return PushSettingsView{}, err
+	}
+	if s.Store == nil {
+		return PushSettingsView{}, core.ErrNotificationsUnavailable
+	}
+	tenantID, ok := s.Base.Tenant(ctx)
+	if !ok {
+		return PushSettingsView{}, fmt.Errorf("%w: no workspace to save push preferences in", core.ErrBadRequest)
+	}
+	identity, ok := core.IdentityFrom(ctx)
+	if !ok {
+		return PushSettingsView{}, core.ErrForbidden
+	}
+	normalized, err := normalizePushSettings(requested)
+	if err != nil {
+		return PushSettingsView{}, err
+	}
+	encoded, err := json.Marshal(normalized)
+	if err != nil {
+		return PushSettingsView{}, fmt.Errorf("notification push policy: %w", err)
+	}
+	row, err := s.Store.UpsertNotificationPushPolicy(ctx, tenantID, identity.Subject, encoded)
+	if err != nil {
+		return PushSettingsView{}, err
+	}
+	var persisted PushSettingsView
+	if err := json.Unmarshal(row.PushPolicy, &persisted); err != nil {
+		return PushSettingsView{}, fmt.Errorf("notification push policy: %w", err)
+	}
+	return normalizePushSettings(persisted)
+}
+
+func normalizePushSettings(view PushSettingsView) (PushSettingsView, error) {
+	view.TimeZone = strings.TrimSpace(view.TimeZone)
+	if len(view.TimeZone) == 0 || len(view.TimeZone) > maxPushTimeZoneBytes || strings.ContainsRune(view.TimeZone, '\x00') {
+		return PushSettingsView{}, badPushPolicy("timeZone must be between 1 and %d bytes", maxPushTimeZoneBytes)
+	}
+	if view.MaxDeferralSeconds <= 0 || view.MaxDeferralSeconds > int(MaximumDeliveryDeferral/time.Second) {
+		return PushSettingsView{}, badPushPolicy("maxDeferralSeconds must be within (0,%d]", int(MaximumDeliveryDeferral/time.Second))
+	}
+	events, err := normalizeDeliveryEventList(view.Events)
+	if err != nil {
+		return PushSettingsView{}, err
+	}
+	view.Events = events
+	if len(view.WorkingHours) > maxPushPolicyRanges || len(view.QuietHours) > maxPushPolicyRanges {
+		return PushSettingsView{}, badPushPolicy("workingHours and quietHours may contain at most %d ranges each", maxPushPolicyRanges)
+	}
+	view.WorkingHours, err = normalizeClockRangeViews(view.WorkingHours)
+	if err != nil {
+		return PushSettingsView{}, err
+	}
+	view.QuietHours, err = normalizeClockRangeViews(view.QuietHours)
+	if err != nil {
+		return PushSettingsView{}, err
+	}
+	if len(view.ServiceOverrides) > maxPushPolicyOverrides {
+		return PushSettingsView{}, badPushPolicy("serviceOverrides may contain at most %d entries", maxPushPolicyOverrides)
+	}
+	seenServices := make(map[string]bool, len(view.ServiceOverrides))
+	for index := range view.ServiceOverrides {
+		override := &view.ServiceOverrides[index]
+		override.ServiceID = strings.TrimSpace(override.ServiceID)
+		kind, ok := ids.KindOf(override.ServiceID)
+		if !ok || kind != ids.Service {
+			return PushSettingsView{}, badPushPolicy("serviceOverrides[%d].serviceId must be an opaque srv- id", index)
+		}
+		if seenServices[override.ServiceID] {
+			return PushSettingsView{}, badPushPolicy("serviceOverrides repeats serviceId %q", override.ServiceID)
+		}
+		seenServices[override.ServiceID] = true
+		if override.MinimumUrgency != nil && !validDeliveryUrgency(*override.MinimumUrgency) {
+			return PushSettingsView{}, badPushPolicy("serviceOverrides[%d].minimumUrgency is invalid", index)
+		}
+		if override.Events != nil {
+			normalized, eventErr := normalizeDeliveryEventList(*override.Events)
+			if eventErr != nil {
+				return PushSettingsView{}, eventErr
+			}
+			override.Events = &normalized
+		}
+		if override.Enabled == nil && override.Events == nil && override.MinimumUrgency == nil {
+			return PushSettingsView{}, badPushPolicy("serviceOverrides[%d] has no override fields", index)
+		}
+	}
+	sort.Slice(view.ServiceOverrides, func(i, j int) bool { return view.ServiceOverrides[i].ServiceID < view.ServiceOverrides[j].ServiceID })
+
+	policy, err := view.deliveryPolicy()
+	if err != nil {
+		return PushSettingsView{}, err
+	}
+	_, err = (DeliveryPolicyEvaluator{Now: func() time.Time { return time.Date(2026, 1, 15, 12, 0, 0, 0, time.UTC) }}).Evaluate(policy, DeliveryInput{
+		Channel: DeliveryChannelPush, Event: DeliveryEventDeployFailed, Urgency: DeliveryUrgencyCritical,
+		WorkspaceID: "tea-policy", EventWorkspaceID: "tea-policy", Subject: "policy-validator", WorkspaceRole: DeliveryRoleViewer,
+	})
+	if err != nil {
+		return PushSettingsView{}, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
+	}
+	return view, nil
+}
+
+func (view PushSettingsView) deliveryPolicy() (DeliveryPolicy, error) {
+	events := make(map[DeliveryEvent]bool, len(orderedDeliveryEvents))
+	for _, event := range orderedDeliveryEvents {
+		events[event] = false
+	}
+	for _, event := range view.Events {
+		events[event] = true
+	}
+	working, err := deliveryClockRanges(view.WorkingHours)
+	if err != nil {
+		return DeliveryPolicy{}, err
+	}
+	quiet, err := deliveryClockRanges(view.QuietHours)
+	if err != nil {
+		return DeliveryPolicy{}, err
+	}
+	policy := DeliveryPolicy{
+		Channels: map[DeliveryChannel]DeliveryChannelPolicy{DeliveryChannelPush: {
+			Enabled: view.Enabled, Events: events, MinimumUrgency: view.MinimumUrgency,
+		}},
+		Services: map[string]DeliveryServiceOverride{},
+		Schedule: DeliverySchedule{
+			TimeZone: view.TimeZone, WorkingHours: working, QuietHours: quiet,
+			MaxDeferral: time.Duration(view.MaxDeferralSeconds) * time.Second,
+		},
+	}
+	for _, item := range view.ServiceOverrides {
+		eventOverrides := map[DeliveryEvent]bool(nil)
+		if item.Events != nil {
+			eventOverrides = make(map[DeliveryEvent]bool, len(orderedDeliveryEvents))
+			selected := make(map[DeliveryEvent]bool, len(*item.Events))
+			for _, event := range *item.Events {
+				selected[event] = true
+			}
+			for _, event := range orderedDeliveryEvents {
+				eventOverrides[event] = selected[event]
+			}
+		}
+		policy.Services[item.ServiceID] = DeliveryServiceOverride{Channels: map[DeliveryChannel]DeliveryChannelOverride{
+			DeliveryChannelPush: {Enabled: item.Enabled, Events: eventOverrides, MinimumUrgency: item.MinimumUrgency},
+		}}
+	}
+	return policy, nil
+}
+
+func normalizeDeliveryEventList(events []DeliveryEvent) ([]DeliveryEvent, error) {
+	if len(events) > len(orderedDeliveryEvents) {
+		return nil, badPushPolicy("events may contain at most %d entries", len(orderedDeliveryEvents))
+	}
+	selected := make(map[DeliveryEvent]bool, len(events))
+	for _, event := range events {
+		if !validDeliveryEvent(event) {
+			return nil, badPushPolicy("unknown event %q", event)
+		}
+		selected[event] = true
+	}
+	result := make([]DeliveryEvent, 0, len(selected))
+	for _, event := range orderedDeliveryEvents {
+		if selected[event] {
+			result = append(result, event)
+		}
+	}
+	return result, nil
+}
+
+func normalizeClockRangeViews(ranges []PushClockRangeView) ([]PushClockRangeView, error) {
+	result := make([]PushClockRangeView, len(ranges))
+	for i, item := range ranges {
+		item.Start = strings.TrimSpace(item.Start)
+		item.End = strings.TrimSpace(item.End)
+		seen := map[string]bool{}
+		for _, raw := range item.Weekdays {
+			day := strings.ToLower(strings.TrimSpace(raw))
+			if _, ok := weekdayNumber(day); !ok {
+				return nil, badPushPolicy("clock range %d has invalid weekday %q", i, raw)
+			}
+			seen[day] = true
+		}
+		item.Weekdays = item.Weekdays[:0]
+		for _, day := range orderedWeekdays {
+			if seen[day.name] {
+				item.Weekdays = append(item.Weekdays, day.name)
+			}
+		}
+		result[i] = item
+	}
+	return result, nil
+}
+
+func deliveryClockRanges(views []PushClockRangeView) ([]DeliveryClockRange, error) {
+	ranges := make([]DeliveryClockRange, 0, len(views))
+	for _, view := range views {
+		weekdays := make([]time.Weekday, 0, len(view.Weekdays))
+		for _, name := range view.Weekdays {
+			weekday, ok := weekdayNumber(name)
+			if !ok {
+				return nil, badPushPolicy("invalid weekday %q", name)
+			}
+			weekdays = append(weekdays, weekday)
+		}
+		ranges = append(ranges, DeliveryClockRange{Weekdays: weekdays, Start: view.Start, End: view.End})
+	}
+	return ranges, nil
+}
+
+func weekdayNumber(name string) (time.Weekday, bool) {
+	for _, weekday := range orderedWeekdays {
+		if weekday.name == name {
+			return weekday.day, true
+		}
+	}
+	return 0, false
+}
+
+func clonePushSettings(source PushSettingsView) PushSettingsView {
+	encoded, _ := json.Marshal(source)
+	var clone PushSettingsView
+	_ = json.Unmarshal(encoded, &clone)
+	return clone
+}
+
+func badPushPolicy(format string, args ...any) error {
+	return fmt.Errorf("%w: push notification settings: %s", core.ErrBadRequest, fmt.Sprintf(format, args...))
 }
 
 // deployMailKind selects the recipient preference and email copy for one

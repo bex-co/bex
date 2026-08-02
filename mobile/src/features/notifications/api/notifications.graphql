@@ -1,0 +1,55 @@
+query MobileNotificationDeviceSubscriptions {
+  pushNotificationsAvailable
+  notificationDeviceSubscriptions {
+    deviceId
+    provider
+    platform
+    preferenceRef
+    createdAt
+    updatedAt
+    lastRegisteredAt
+  }
+}
+
+mutation MobileRegisterNotificationDeviceSubscription(
+  $deviceId: String!
+  $provider: String!
+  $platform: String!
+  $token: String!
+) {
+  registerNotificationDeviceSubscription(
+    deviceId: $deviceId
+    provider: $provider
+    platform: $platform
+    token: $token
+  ) {
+    deviceId
+    provider
+    platform
+    preferenceRef
+    createdAt
+    updatedAt
+    lastRegisteredAt
+  }
+}
+
+mutation MobileUnregisterNotificationDeviceSubscription($deviceId: String!) {
+  unregisterNotificationDeviceSubscription(deviceId: $deviceId)
+}
+
+query MobileNotificationInbox($limit: Int!) {
+  notificationInbox(limit: $limit) {
+    id
+    event
+    title
+    body
+    deepLink
+    occurredAt
+    readAt
+  }
+  unreadPushNotificationCount
+}
+
+mutation MobileMarkPushNotificationRead($id: String!) {
+  markPushNotificationRead(id: $id)
+}

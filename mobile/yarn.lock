@@ -2914,6 +2914,11 @@ babel-preset-expo@~57.0.5:
     babel-plugin-transform-flow-enums "^0.0.2"
     debug "^4.3.4"
 
+badgin@^1.1.5:
+  version "1.2.3"
+  resolved "https://registry.yarnpkg.com/badgin/-/badgin-1.2.3.tgz#994b5f519827d7d5422224825b2c8faea2bc43ad"
+  integrity sha512-NQGA7LcfCpSzIbGRbkgjgdWkjy7HI+Th5VLxTJfW5EeaAf3fnS+xWQaQOCYiny+q6QSvxqoSO04vCx+4u++EJw==
+
 balanced-match@^1.0.0:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/balanced-match/-/balanced-match-1.0.2.tgz#e83e3a7e3f300b34cb9d87f615fa0cbf357690ee"
@@ -4193,6 +4198,17 @@ expo-modules-jsi@~57.0.4:
   version "57.0.4"
   resolved "https://registry.yarnpkg.com/expo-modules-jsi/-/expo-modules-jsi-57.0.4.tgz#5d607faf0fa8e295955ad63ab003a0db9664281f"
   integrity sha512-vt7FyqUqqFXiRVnBqYD7y+GSPTgeua5Ocoy0+SYt+RSHkZEA2Fyop7If3g1TYDzQObYybPRo7TG2Rle1XLaWFw==
+
+expo-notifications@~57.0.8:
+  version "57.0.8"
+  resolved "https://registry.yarnpkg.com/expo-notifications/-/expo-notifications-57.0.8.tgz#c1a289aba46d2f70b665b9eeafe3730554702341"
+  integrity sha512-9pTNFMB9vk7MmULRSq7SD2nBRXhIh7IYAOSAFzFIYna6csJKdzeuKikjuUwP5KZYwxejoaN2BYBBqdLKaUpT/w==
+  dependencies:
+    "@expo/image-utils" "^0.11.4"
+    abort-controller "^3.0.0"
+    badgin "^1.1.5"
+    expo-application "~57.0.2"
+    expo-constants "~57.0.8"
 
 expo-router@~57.0.4:
   version "57.0.9"

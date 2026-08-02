@@ -66,6 +66,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/notifications"
+	pushtransport "github.com/bex-co/bex/lego/backend/internal/notifications/push"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
@@ -138,9 +139,18 @@ func main() {
 	if err != nil {
 		log.Fatalf("bex-api: %v", err)
 	}
+	mobilePush, err := pushtransport.New(pushtransport.Config{
+		Provider: os.Getenv("BEX_PUSH_PROVIDER"), AccessToken: os.Getenv("BEX_EXPO_PUSH_ACCESS_TOKEN"),
+		Endpoint: os.Getenv("BEX_EXPO_PUSH_URL"),
+	})
+	if err != nil {
+		log.Fatalf("bex-api: push config: %v", err)
+	}
 	metricRegistry := prometheus.NewRegistry()
 	metricRegistry.MustRegister(prometheus.NewGoCollector(), prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
 	billingMetrics := billing.NewMetrics(metricRegistry)
+	pushMetrics := notifications.NewPushMetrics(metricRegistry)
+	pushMetrics.SetEnabled(mobilePush != nil)
 
 	scheme := runtime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
@@ -167,6 +177,7 @@ func main() {
 	ready := &serve.Readiness{}
 
 	deps := api.Deps{
+		PushAvailable: mobilePush != nil,
 		// BEX_BASE_DOMAIN names custom-domain DNS targets `<app>.<base>` (docs/ADR005-custom-domain.md);
 		// unset falls back to deriving the platform host from an App's status URLs.
 		BaseDomain: os.Getenv("BEX_BASE_DOMAIN"),
@@ -733,6 +744,16 @@ func main() {
 		}
 		whWorker := &webhooks.Worker{Store: st, Mailer: deps.Mailer, Emails: srv.Notifications.Identities, Backoff: backoff}
 		go whWorker.Run(ctx)
+	}
+	// Native push (ADR048 D2): only an explicitly configured, startup-validated
+	// transport starts the event consumer. With config absent there is no client,
+	// no worker, no feed advancement, and no provider network traffic.
+	if st != nil && mobilePush != nil {
+		pushWorker := &notifications.PushWorker{
+			Store: st, Sender: notifications.PushTransportSender{Transport: mobilePush},
+			Receipts: mobilePush, Metrics: pushMetrics, Evidence: notifications.PushEvidenceLogger{},
+		}
+		go pushWorker.Run(ctx)
 	}
 	srv.CORSOrigin = os.Getenv("BEX_API_CORS_ORIGIN")
 	srv.HydraAdminURL = hydraAdminURL

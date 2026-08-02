@@ -9,12 +9,16 @@ import type {
 } from "./types";
 
 type Listener = (state: AuthState) => void;
+type ExplicitSignOutHook = (
+  session: StoredSession | null,
+) => Promise<void> | void;
 
 export class SessionManager {
   private state: AuthState = { status: "loading" };
   private current: StoredSession | null = null;
   private listeners = new Set<Listener>();
   private refreshPromise?: Promise<StoredSession>;
+  private explicitSignOutHooks = new Set<ExplicitSignOutHook>();
 
   constructor(
     private readonly storage: AuthStorage,
@@ -29,6 +33,11 @@ export class SessionManager {
     this.listeners.add(listener);
     listener(this.state);
     return () => this.listeners.delete(listener);
+  }
+
+  registerExplicitSignOutHook(hook: ExplicitSignOutHook): () => void {
+    this.explicitSignOutHooks.add(hook);
+    return () => this.explicitSignOutHooks.delete(hook);
   }
 
   getState(): AuthState {
@@ -138,11 +147,14 @@ export class SessionManager {
 
   async signOut(): Promise<void> {
     const current = this.current;
+    const featureCleanup = [...this.explicitSignOutHooks].map((hook) =>
+      Promise.resolve(hook(current)).catch(() => undefined),
+    );
     const revoke = current
       ? this.transport.revoke(current.accessToken).catch(() => undefined)
       : Promise.resolve();
     await this.clearLocalSession();
-    await revoke;
+    await Promise.all([revoke, ...featureCleanup]);
   }
 
   private async clearLocalSession(): Promise<void> {

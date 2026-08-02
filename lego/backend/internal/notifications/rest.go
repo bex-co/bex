@@ -18,6 +18,7 @@ package notifications
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -29,6 +30,31 @@ import (
 
 // RegisterREST mounts the notification-settings endpoints on the shared mux.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
+	mux.HandleFunc("GET /v1/notifications", func(w http.ResponseWriter, r *http.Request) {
+		limit := defaultNotificationInboxLimit
+		if r.URL.Query().Has("limit") {
+			var err error
+			limit, err = strconv.Atoi(r.URL.Query().Get("limit"))
+			if err != nil || limit < 1 || limit > maxNotificationInboxLimit {
+				core.WriteErr(w, core.ErrBadRequest)
+				return
+			}
+		}
+		items, err := s.ListNotificationInbox(r.Context(), limit)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, items)
+	})
+	mux.HandleFunc("POST /v1/notifications/{id}/read", func(w http.ResponseWriter, r *http.Request) {
+		read, err := s.MarkPushNotificationRead(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, map[string]bool{"read": read})
+	})
 	mux.HandleFunc("GET /v1/notification-settings", func(w http.ResponseWriter, r *http.Request) {
 		v, err := s.GetSettings(r.Context())
 		if err != nil {
@@ -49,5 +75,71 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, v)
+	})
+	mux.HandleFunc("GET /v1/notification-settings/push", func(w http.ResponseWriter, r *http.Request) {
+		v, err := s.GetPushSettings(r.Context())
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, v)
+	})
+	mux.HandleFunc("GET /v1/notification-settings/push/availability", func(w http.ResponseWriter, r *http.Request) {
+		available, err := s.IsPushAvailable(r.Context())
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, map[string]bool{"available": available})
+	})
+	mux.HandleFunc("PATCH /v1/notification-settings/push", func(w http.ResponseWriter, r *http.Request) {
+		var req PushSettingsView
+		if err := core.DecodeJSON(r, &req); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		v, err := s.UpdatePushSettings(r.Context(), req)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, v)
+	})
+	mux.HandleFunc("GET /v1/notification-device-subscriptions", func(w http.ResponseWriter, r *http.Request) {
+		v, err := s.ListDeviceSubscriptions(r.Context())
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, v)
+	})
+	mux.HandleFunc("POST /v1/notification-device-subscriptions", func(w http.ResponseWriter, r *http.Request) {
+		var req RegisterDeviceInput
+		if err := core.DecodeJSON(r, &req); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		v, err := s.RegisterDeviceSubscription(r.Context(), req)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusCreated, v)
+	})
+	mux.HandleFunc("DELETE /v1/notification-device-subscriptions", func(w http.ResponseWriter, r *http.Request) {
+		count, err := s.RevokeDeviceSubscriptions(r.Context())
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, map[string]int64{"revoked": count})
+	})
+	mux.HandleFunc("DELETE /v1/notification-device-subscriptions/{deviceId}", func(w http.ResponseWriter, r *http.Request) {
+		changed, err := s.UnregisterDeviceSubscription(r.Context(), r.PathValue("deviceId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, map[string]bool{"revoked": changed})
 	})
 }

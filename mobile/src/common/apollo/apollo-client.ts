@@ -15,6 +15,7 @@ import { dataBoundary } from "./data-boundary";
 import { isRetryableNetworkError, isUnauthorized } from "./error-policy";
 
 const authLink = new SetContextLink(async (context) => {
+  if (context.headers?.authorization) return context;
   const accessToken = await authManager.getAccessToken();
   return {
     headers: {
@@ -25,7 +26,11 @@ const authLink = new SetContextLink(async (context) => {
 });
 
 const refreshLink = new ErrorLink(({ error, operation, forward }) => {
-  if (!isUnauthorized(error) || operation.getContext().authRetried === true) {
+  if (
+    !isUnauthorized(error) ||
+    operation.getContext().authRetried === true ||
+    operation.getContext().skipAuthRefresh === true
+  ) {
     return;
   }
   operation.setContext({ authRetried: true });

@@ -135,6 +135,14 @@ var callerScopedVerbs = map[string]bool{
 	// workspace (tenantNames(ctx)); `name` is a candidate string, never a lookup
 	// into another workspace's resource.
 	"apps.Service.NameAvailable": true,
+	// Capability probe — returns only whether the caller's server has a push
+	// transport; it accepts no resource/workspace argument.
+	"notifications.Service.IsPushAvailable": true,
+	// Durable push inbox verbs derive tenant + subject from the authenticated
+	// caller; an exact event id is constrained inside that same scope.
+	"notifications.Service.ListNotificationInbox":       true,
+	"notifications.Service.UnreadPushNotificationCount": true,
+	"notifications.Service.MarkPushNotificationRead":    true,
 }
 
 func TestCrossWorkspaceServiceVerbMatrix(t *testing.T) {

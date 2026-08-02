@@ -7,6 +7,7 @@ import { LanguageProvider } from "./language-provider";
 import { AuthProvider } from "@/features/auth/auth-provider";
 import { BexApolloProvider } from "@/common/apollo/apollo-provider";
 import { NetworkStateProvider } from "@/common/apollo/network-state";
+import { NotificationsProvider } from "@/features/notifications/notifications-provider";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -16,7 +17,9 @@ export function Providers({ children }: { children: ReactNode }) {
           <ThemeProvider>
             <NetworkStateProvider>
               <AuthProvider>
-                <BexApolloProvider>{children}</BexApolloProvider>
+                <BexApolloProvider>
+                  <NotificationsProvider>{children}</NotificationsProvider>
+                </BexApolloProvider>
               </AuthProvider>
             </NetworkStateProvider>
           </ThemeProvider>

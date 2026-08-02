@@ -17,7 +17,10 @@ const config: CodegenConfig = {
   documents: ["src/**/*.graphql"],
   generates: {
     "src/generated-graphql/index.ts": {
-      plugins: ["typescript", "typescript-operations", "typed-document-node"],
+      // typescript-operations v6 emits the schema enums/input objects used by
+      // documents. Running the full typescript schema plugin in this same file
+      // would emit those names twice as soon as a query selects an enum.
+      plugins: ["typescript-operations", "typed-document-node"],
       config: {
         avoidOptionals: { field: true, inputValue: false },
         defaultScalarType: "unknown",

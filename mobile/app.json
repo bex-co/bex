@@ -49,6 +49,13 @@
         }
       ],
       "expo-localization",
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "bex-alerts",
+          "color": "#16a34a"
+        }
+      ],
       "expo-router",
       "expo-status-bar",
       ["expo-secure-store", { "configureAndroidBackup": true }],
