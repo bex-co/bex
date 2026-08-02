@@ -93,3 +93,13 @@ type api_key
     define workspace: [workspace]
     define can_view: can_view from workspace
     define can_manage: can_manage_keys from workspace
+
+# Cloud coding-agent sessions are first-class authorization objects (ADR047
+# gap 6). The sole direct tuple is workspace:<id> workspace
+# agent_session:<id>; every decision is inherited from that parent, so callers
+# cannot reach a session merely by knowing its id or by passing ownerId.
+type agent_session
+  relations
+    define workspace: [workspace]
+    define can_view: can_view from workspace
+    define can_operate: can_operate from workspace

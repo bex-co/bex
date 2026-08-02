@@ -35,6 +35,7 @@ import (
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsessions"
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/audit"
@@ -82,6 +83,7 @@ type Server struct {
 	APIKeys       *apikeys.Service
 	SSHKeys       *sshkeys.Service
 	Sandbox       *sandbox.Service
+	AgentSessions *agentsessions.Service
 	Postgres      *postgres.Service
 	KeyValue      *keyvalue.Service
 	Secrets       *secrets.Service
@@ -214,6 +216,14 @@ type Deps struct {
 	// SandboxExec wires `render ea sandbox exec` (w3/m33) — bex-api authorizes and
 	// reverse-proxies the SSE from the isolated gateway; nil => the exec verb 503s.
 	SandboxExec *sandbox.ExecConfig
+	// Agent sessions are durable control-plane resources that delegate runtime
+	// mechanism to SandboxClient. All five dependencies are mandatory: the DB
+	// row, first-class OpenFGA tuple writer, sandbox lifecycle, HMAC signer, and
+	// browser-reachable gateway origin form one fail-closed feature.
+	AgentSessionStore        agentsessions.Store
+	AgentSessionTuples       agentsessions.TupleWriter
+	AgentSessionTicketSecret []byte
+	AgentSessionGatewayURL   string
 	// SSHHost is the public gateway hostname advertised through Render's
 	// serviceDetails.sshAddress field. Empty disables SSH address advertising.
 	SSHHost string
@@ -565,6 +575,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		// ConfigMap is necessary, but the backing key feature must be live too.
 		sshHost = d.SSHHost
 	}
+	sandboxSvc := sandboxService(base, d)
 	srv := &Server{
 		Apps: &apps.Service{Base: base, Store: d.Store, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, SecretFileSeeder: secretFileSeeder, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
 		Logs: logSvc,
@@ -581,9 +592,14 @@ func NewServer(base *core.Base, d Deps) *Server {
 			ReplicationLag:             d.ReplicationLag,
 			KeyValueStats:              d.KeyValueStats,
 		},
-		APIKeys:   &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder},
-		SSHKeys:   &sshkeys.Service{Base: base, Store: d.SSHKeysStore},
-		Sandbox:   sandboxService(base, d),
+		APIKeys: &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder},
+		SSHKeys: &sshkeys.Service{Base: base, Store: d.SSHKeysStore},
+		Sandbox: sandboxSvc,
+		AgentSessions: &agentsessions.Service{
+			Base: base, Store: d.AgentSessionStore, Tuples: d.AgentSessionTuples,
+			Sandbox: sandbox.NewAgentSessionLifecycle(sandboxSvc), TicketSecret: d.AgentSessionTicketSecret,
+			GatewayURL: d.AgentSessionGatewayURL,
+		},
 		Postgres:  pg,
 		KeyValue:  kv,
 		Secrets:   secretsSvc,
@@ -712,6 +728,9 @@ func (s *Server) features() []any {
 	}
 	if s.Sandbox != nil {
 		out = append(out, s.Sandbox)
+	}
+	if s.AgentSessions != nil {
+		out = append(out, s.AgentSessions)
 	}
 	if s.Postgres != nil {
 		out = append(out, s.Postgres)

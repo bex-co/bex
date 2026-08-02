@@ -342,6 +342,13 @@ spec:
                   optional: true
             - name: BEX_SHELL_WS_URL
               value: wss://ssh.bex.co/shell
+            # Agent-session attach handoff (ADR047 D3 / w3/m39). The API mints
+            # a distinct subject+session+sandbox-pod+workspace ticket with the
+            # same HMAC key and shared-DB nonce design, then returns this origin;
+            # the wave-2 gateway proxy consumes it. bex-api never connects to
+            # the sandbox driver's network path.
+            - name: BEX_AGENT_SESSION_GATEWAY_URL
+              value: wss://ssh.bex.co/agent-sessions
             # `render ea sandbox exec` (w3/m33): bex-api authorizes can_operate and
             # signs a ticket, then reverse-proxies the SSE stream from the isolated
             # SSH gateway (which alone holds pods/exec, Option A). The secret must

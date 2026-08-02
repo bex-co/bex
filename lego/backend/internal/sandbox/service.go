@@ -37,6 +37,7 @@ const (
 	metadataTimeout       = "bex.co/timeout-seconds"
 	metadataRegime        = "app.bex.co/regime"
 	metadataSandboxRegime = "sandbox"
+	metadataAgentSession  = "bex.co/agent-session"
 	minSandboxTimeout     = 60
 	maxSandboxTimeout     = 86400
 )
@@ -298,6 +299,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Sandbox, error
 		return Sandbox{}, err
 	}
 	ws := s.workspaceID(ctx)
+	return s.createResolved(ctx, key, ws, tmpl, plan, req.Region, req.TimeoutSeconds, policy, nil)
+}
+
+func (s *Service) createResolved(ctx context.Context, key, workspace string, tmpl Template, plan Plan, region string, timeout int, policy *NetworkPolicy, extraMetadata map[string]string) (Sandbox, error) {
 	cpu, mem := tmpl.CPU, tmpl.Memory
 	if cpu == "" {
 		cpu = "500m"
@@ -309,8 +314,11 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if len(entry) == 0 {
 		entry = []string{"sleep", "infinity"}
 	}
-	metadata := sandboxMetadata(ctx, ws, plan, req.Region, req.TimeoutSeconds, policy)
-	raw, err := s.Client.Create(ctx, key, tmpl.Image, entry, cpu, mem, req.TimeoutSeconds, nil, metadata)
+	metadata := sandboxMetadata(ctx, workspace, plan, region, timeout, policy)
+	for k, v := range extraMetadata {
+		metadata[k] = v
+	}
+	raw, err := s.Client.Create(ctx, key, tmpl.Image, entry, cpu, mem, timeout, nil, metadata)
 	if err != nil {
 		return Sandbox{}, err
 	}
@@ -326,7 +334,117 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if raw.Image.URI == "" {
 		raw.Image.URI = tmpl.Image
 	}
-	return sandboxFromOpenSandbox(raw, ws), nil
+	return sandboxFromOpenSandbox(raw, workspace), nil
+}
+
+// AgentSessionLifecycle is intentionally separate from Service's public API
+// verb method set. Its caller (agentsessions.Service) owns authorization and
+// audit; exposing these mechanics as sandbox verbs would create a second policy
+// entry point and make the repository's verb guard correctly reject them.
+type AgentSessionLifecycle struct{ service *Service }
+
+func NewAgentSessionLifecycle(service *Service) *AgentSessionLifecycle {
+	if service == nil {
+		return nil
+	}
+	return &AgentSessionLifecycle{service: service}
+}
+
+// CreateAgentSessionSandbox is the narrow trusted lifecycle seam used by the
+// agent-sessions feature after it has performed the first-class session FGA
+// check. It preserves every reserved sandbox hardening stamp and adds the
+// durable session id, without re-checking can_create (session creation is
+// intentionally can_operate per ADR047 D3).
+func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, workspaceID, template, sessionID string) (Sandbox, error) {
+	s := l.service
+	if !s.enabled() {
+		return Sandbox{}, core.ErrSandboxesUnavailable
+	}
+	if workspaceID == "" || sessionID == "" {
+		return Sandbox{}, fmt.Errorf("%w: workspace and agent session id are required", core.ErrBadRequest)
+	}
+	if template == "" {
+		template = "agent"
+	}
+	tmpl, ok := s.Templates[template]
+	if !ok {
+		return Sandbox{}, fmt.Errorf("%w: unknown agent sandbox template %q", core.ErrBadRequest, template)
+	}
+	key := ""
+	var err error
+	if s.Keys != nil {
+		key, err = s.Keys.WorkspaceKey(ctx, workspaceID)
+		if err != nil {
+			return Sandbox{}, err
+		}
+	}
+	plan := s.DefaultPlan
+	if plan == "" {
+		plan = PlanStarter
+	}
+	policy := &NetworkPolicy{Default: NetworkPolicyDenyAll}
+	return s.createResolved(ctx, key, workspaceID, tmpl, plan, "", 0, policy,
+		map[string]string{metadataAgentSession: sessionID})
+}
+
+// ResumeAgentSessionSandbox resumes only a fully hardened sandbox stamped for
+// this exact durable session. Workspace membership is not used as a substitute
+// authorization decision here; the caller feature already checked
+// agent_session:<id> in OpenFGA and this seam only enforces target integrity.
+func (l *AgentSessionLifecycle) ResumeAgentSessionSandbox(ctx context.Context, workspaceID, sessionID, sandboxID string) error {
+	s := l.service
+	key, err := s.agentSessionKey(ctx, workspaceID)
+	if err != nil {
+		return err
+	}
+	if _, err := s.agentSessionSandbox(ctx, key, workspaceID, sessionID, sandboxID); err != nil {
+		return err
+	}
+	return s.Client.Resume(ctx, key, sandboxID)
+}
+
+// CancelAgentSessionSandbox terminates the exact session sandbox. OpenSandbox's
+// terminate is idempotent, so a retry can safely converge a canceling record.
+func (l *AgentSessionLifecycle) CancelAgentSessionSandbox(ctx context.Context, workspaceID, sessionID, sandboxID string) error {
+	s := l.service
+	key, err := s.agentSessionKey(ctx, workspaceID)
+	if err != nil {
+		return err
+	}
+	if _, err := s.agentSessionSandbox(ctx, key, workspaceID, sessionID, sandboxID); err != nil {
+		if errors.Is(err, core.ErrNotFound) {
+			// Already absent is the desired terminal state. A mismatched/foreign
+			// object is also deliberately indistinguishable from absent and is
+			// never touched; the authorized durable session may still converge.
+			return nil
+		}
+		return err
+	}
+	return s.Client.Terminate(ctx, key, sandboxID)
+}
+
+func (s *Service) agentSessionKey(ctx context.Context, workspaceID string) (string, error) {
+	if !s.enabled() {
+		return "", core.ErrSandboxesUnavailable
+	}
+	if s.Keys == nil {
+		return "", nil
+	}
+	return s.Keys.WorkspaceKey(ctx, workspaceID)
+}
+
+func (s *Service) agentSessionSandbox(ctx context.Context, key, workspaceID, sessionID, sandboxID string) (osSandbox, error) {
+	raw, err := s.Client.Get(ctx, key, sandboxID)
+	if err != nil {
+		if errors.Is(err, errOpenSandboxNotFound) {
+			return osSandbox{}, sandboxNotFound(sandboxID)
+		}
+		return osSandbox{}, err
+	}
+	if !validOwnedSandbox(raw, workspaceID) || raw.Metadata[metadataAgentSession] != sessionID {
+		return osSandbox{}, sandboxNotFound(sandboxID)
+	}
+	return raw, nil
 }
 
 // List returns the caller's workspace's sandboxes (tenant-key-scoped).

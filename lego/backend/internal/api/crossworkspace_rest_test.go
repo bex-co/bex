@@ -148,6 +148,7 @@ var callerScopedRoutes = map[string]bool{
 	"GET /v1/webhooks":              true,
 	"GET /v1/webhooks/event-types":  true,
 	"GET /v1/sandboxes":             true,
+	"GET /v1/agent-sessions":        true,
 	"GET /v1/owners":                true,
 	"GET /v1/blueprints":            true,
 	"GET /v1/usage":                 true,
@@ -171,6 +172,7 @@ var callerScopedRoutes = map[string]bool{
 	"POST /v1/webhooks":               true,
 	"POST /v1/ssh-keys":               true,
 	"POST /v1/sandboxes":              true,
+	"POST /v1/agent-sessions":         true,
 	"POST /v1/git/connect":            true,
 	"POST /v1/invites/accept":         true, // redeems by the CALLER's own identity
 	"POST /v1/blueprints":             true, // creates a new git-connected blueprint; workspace from request context (w2/m62)
