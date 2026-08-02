@@ -1,0 +1,14 @@
+# w11 — Mobile supervision & agent mission control (worker11)
+
+**Worker:** worker11 Created from the 2026-08-02 user request to seed `mobile/` from the mature Beancount Expo client and implement ADR048's supervision-first, agent-differentiated phone experience. Ordered foundation → secure client → supervision → safe actions/push → agent delegation/attach → Tier 2; native-only store features remain trigger-gated.
+
+## Milestones
+
+- [x] **m1** — Seed and sanitize the Expo mobile foundation (8 tasks) — **DONE 2026-08-02** ← from user request + source-mobile agent audit
+- [ ] **m2** — Secure native shell: auth, API, workspace, navigation (9 tasks) ← from ADR048 D5 reconciliation
+- [ ] **m3** — Read-only mobile supervision (9 tasks) ← from ADR048 D2 / M1
+- [ ] **m4** — Safe one-tap operations (8 tasks) ← from ADR048 D2 / M1
+- [ ] **m5** — Push channel + notification hygiene (11 tasks) ← from ADR048 D2 + gap 1/3
+- [ ] **m6** — Phase-1 agent mission control (9 tasks) ← from ADR048 M2 + ADR047 phase 1
+- [ ] **m7** — Live agent attach and needs-decision steering (9 tasks) ← from ADR048 M3 + ADR047 phase 2
+- [ ] **m8** — Tier-2 mobile quick actions (8 tasks) ← from ADR048 D3
