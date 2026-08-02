@@ -242,6 +242,14 @@ type CronRunView struct {
 	Status     string `json:"status"` // pending | successful | unsuccessful | canceled
 }
 
+// Stable machine-readable cron action failures. REST exposes these in `code`,
+// GraphQL in `extensions.code`, and the MCP adapter prefixes them to error text.
+const (
+	CronErrorSuspended   = "CRON_SUSPENDED"
+	CronErrorRunNotFound = "CRON_RUN_NOT_FOUND"
+	CronErrorRunTerminal = "CRON_RUN_TERMINAL"
+)
+
 // ServiceInstanceView is Render's complete public service-instance shape. It
 // deliberately carries no Pod name, namespace, node, IP, phase, labels, or
 // container state: Kubernetes is the mechanism behind the two-field contract,
@@ -2373,7 +2381,11 @@ func (s *Service) TriggerCronRun(ctx context.Context, name string) (CronRunView,
 		return CronRunView{}, fmt.Errorf("%w: service %q is not a cron_job", core.ErrBadRequest, name)
 	}
 	if a.Spec.Suspended {
-		return CronRunView{}, fmt.Errorf("%w: cron job %q is suspended", core.ErrConflict, name)
+		return CronRunView{}, core.NewConflictError(
+			CronErrorSuspended,
+			fmt.Sprintf("cron job %q is suspended", name),
+			map[string]any{"serviceId": name},
+		)
 	}
 	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
 		return CronRunView{}, err
@@ -2426,7 +2438,7 @@ func (s *Service) GetCronRun(ctx context.Context, name, runID string) (CronRunVi
 		return CronRunView{}, err
 	}
 	if a.Spec.Type != appv1alpha1.TypeCronJob {
-		return CronRunView{}, core.ErrNotFound
+		return CronRunView{}, cronRunNotFound(runID)
 	}
 	return cronRunByID(a.Status.Runs, runID)
 }
@@ -2442,7 +2454,7 @@ func (s *Service) CancelCronRun(ctx context.Context, name, runID string) (CronRu
 		return CronRunView{}, err
 	}
 	if a.Spec.Type != appv1alpha1.TypeCronJob {
-		return CronRunView{}, core.ErrNotFound
+		return CronRunView{}, cronRunNotFound(runID)
 	}
 	run, err := cronRunByID(a.Status.Runs, runID)
 	if err != nil {
@@ -2474,7 +2486,11 @@ func (s *Service) CancelCurrentCronRun(ctx context.Context, name string) (CronRu
 
 func (s *Service) cancelCronRunFetched(ctx context.Context, a *appv1alpha1.App, run CronRunView) (CronRunView, error) {
 	if run.Status != "pending" {
-		return CronRunView{}, fmt.Errorf("%w: cron run %q is already %s", core.ErrConflict, run.ID, run.Status)
+		return CronRunView{}, core.NewConflictError(
+			CronErrorRunTerminal,
+			fmt.Sprintf("cron run %q is already %s", run.ID, run.Status),
+			map[string]any{"runId": run.ID, "status": run.Status},
+		)
 	}
 	now := s.Now().UTC().Format(time.RFC3339Nano)
 	if _, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
@@ -2489,7 +2505,7 @@ func (s *Service) cancelCronRunFetched(ctx context.Context, a *appv1alpha1.App, 
 
 func cronRunByID(runs []appv1alpha1.CronRun, runID string) (CronRunView, error) {
 	if kind, ok := ids.KindOf(runID); !ok || kind != ids.CronRun {
-		return CronRunView{}, core.ErrNotFound
+		return CronRunView{}, cronRunNotFound(runID)
 	}
 	for _, raw := range runs {
 		run := cronRunView(raw)
@@ -2497,7 +2513,15 @@ func cronRunByID(runs []appv1alpha1.CronRun, runID string) (CronRunView, error) 
 			return run, nil
 		}
 	}
-	return CronRunView{}, core.ErrNotFound
+	return CronRunView{}, cronRunNotFound(runID)
+}
+
+func cronRunNotFound(runID string) error {
+	return core.NewNotFoundError(
+		CronErrorRunNotFound,
+		fmt.Sprintf("cron run %q was not found", runID),
+		map[string]any{"runId": runID},
+	)
 }
 
 // Suspend parks the App (spec.suspended = true): scaled to 0, host/certs kept.

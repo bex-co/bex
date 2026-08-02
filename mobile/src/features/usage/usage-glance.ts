@@ -40,6 +40,8 @@ export type UsageGlance = {
 };
 
 const MAX_DEGRADED_SOURCES = 8;
+const MAX_DEGRADED_SOURCE_LENGTH = 48;
+const SAFE_DEGRADED_SOURCE = /^[a-z0-9][a-z0-9._:-]*$/i;
 
 /**
  * Converts the API payload into honest mobile display state. In particular,
@@ -143,7 +145,13 @@ function normalizeDegradedSources(
   const normalized = new Set<string>();
   for (const value of values ?? []) {
     const source = value?.trim();
-    if (!source) continue;
+    if (
+      !source ||
+      source.length > MAX_DEGRADED_SOURCE_LENGTH ||
+      !SAFE_DEGRADED_SOURCE.test(source)
+    ) {
+      continue;
+    }
     normalized.add(source);
   }
   return [...normalized]

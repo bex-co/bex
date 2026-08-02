@@ -251,14 +251,16 @@ export const zh = {
     tableSummary:
       "%{size} · 顺序 %{sequential} · 索引 %{index} · 死元组 %{dead}",
     noTableData: "未返回表观测数据。",
-    unavailable: "此洞察数据源当前不可用。",
+    sourceUnavailable: "此洞察数据源尚未配置。",
+    transportError: "此洞察请求无法连接服务器。",
     state: {
       loading: "检查中",
       empty: "无观测数据",
       current: "当前",
       stale: "已过期",
       degraded: "部分可用",
-      unavailable: "不可用",
+      "source-unavailable": "数据源不可用",
+      "transport-error": "连接错误",
     },
     connectionState: {
       loading: "正在检查数据库响应…",
@@ -266,7 +268,8 @@ export const zh = {
       current: "数据库已响应",
       stale: "上次响应已过期",
       degraded: "仅完成部分检查",
-      unavailable: "数据库检查不可用",
+      "source-unavailable": "数据库洞察数据源不可用",
+      "transport-error": "数据库检查无法连接服务器",
     },
   },
   keyValueInsights: {
@@ -313,6 +316,8 @@ export const zh = {
     },
     feedback: {
       success: "服务器已接受该操作。应用将继续从服务器刷新最新状态。",
+      acceptedUnverified:
+        "服务器已接受该操作，但此 API 无法证明重启已经完成。请继续检查当前状态。",
       authorizationDenied: "您无权执行此操作。应用不会假定操作成功。",
       conflict: "资源状态已改变，因此未发送操作。请刷新后重新检查。",
       timeoutUnknown:

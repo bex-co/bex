@@ -33,6 +33,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/mail"
 	"strings"
@@ -87,6 +88,10 @@ type Service struct {
 	Mailer Mailer
 	// InviteTTL overrides DefaultInviteTTL (tests). Zero => DefaultInviteTTL.
 	InviteTTL time.Duration
+	// InviteRandom supplies entropy for the 128-bit direct-accept capability.
+	// Nil uses crypto/rand.Reader. Tests may inject a deterministic or failing
+	// reader; production callers should leave this nil.
+	InviteRandom io.Reader
 	// InviteBaseURL is the dashboard origin the invite email links to (e.g.
 	// https://dashboard.bex.co). Empty => the email carries instructions without a
 	// deep link (acceptance is by email match regardless).
@@ -389,8 +394,12 @@ func (s *Service) Invite(ctx context.Context, workspaceID, email, role string) (
 		)
 	}
 
+	token, err := s.newInviteToken()
+	if err != nil {
+		return InviteView{}, err
+	}
 	inviter, _ := core.IdentityFrom(ctx)
-	inv, err := s.Store.CreateInvite(ctx, workspaceID, email, role, newToken(), inviter.Subject, s.Now().Add(s.inviteTTL()))
+	inv, err := s.Store.CreateInvite(ctx, workspaceID, email, role, token, inviter.Subject, s.Now().Add(s.inviteTTL()))
 	if err != nil {
 		return InviteView{}, mapStoreErr(err)
 	}
@@ -417,9 +426,13 @@ func (s *Service) ResendInvite(ctx context.Context, workspaceID, inviteID string
 	if s.Store == nil {
 		return InviteView{}, ErrMembersUnavailable
 	}
+	token, err := s.newInviteToken()
+	if err != nil {
+		return InviteView{}, err
+	}
 	// Refresh first: the tenant row is only needed for the email body, so a 404
 	// invite (accepted/unknown/cross-workspace) doesn't pay a wasted read.
-	inv, err := s.Store.RefreshInvite(ctx, workspaceID, inviteID, newToken(), s.Now().Add(s.inviteTTL()))
+	inv, err := s.Store.RefreshInvite(ctx, workspaceID, inviteID, token, s.Now().Add(s.inviteTTL()))
 	if err != nil {
 		return InviteView{}, mapStoreErr(err)
 	}
@@ -652,13 +665,19 @@ func (s *Service) inviteTTL() time.Duration {
 	return DefaultInviteTTL
 }
 
-// newToken mints an unguessable invite token (128 bits, hex). rand.Read from
-// crypto/rand never fails on the platforms bex runs; a read error degrades to an
-// empty token rather than panicking (acceptance is by email match regardless).
-func newToken() string {
+// newInviteToken mints an unguessable invite token (128 bits, hex). Entropy
+// failure and short reads are fatal before CreateInvite/RefreshInvite: a blank
+// or partially random bearer capability must never be stored or emailed.
+func (s *Service) newInviteToken() (string, error) {
+	reader := s.InviteRandom
+	if reader == nil {
+		reader = rand.Reader
+	}
 	var b [16]byte
-	_, _ = rand.Read(b[:])
-	return hex.EncodeToString(b[:])
+	if _, err := io.ReadFull(reader, b[:]); err != nil {
+		return "", fmt.Errorf("mint invite capability: %w", err)
+	}
+	return hex.EncodeToString(b[:]), nil
 }
 
 // mapStoreErr translates the store's error taxonomy into the kernel sentinels the

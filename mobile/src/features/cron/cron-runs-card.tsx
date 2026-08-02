@@ -18,6 +18,7 @@ import {
 } from "@/components/safe-action";
 import { formatTimestamp } from "@/common/format-util";
 import { dataBoundary } from "@/common/apollo/data-boundary";
+import { hasAuthoritativeCurrentEvidence } from "@/common/apollo/authoritative-evidence";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { fonts, fontSizes, fontWeights, space, useTheme } from "@/common/theme";
 import {
@@ -53,10 +54,11 @@ export const CronRunsCard = forwardRef<
     serviceId: string;
     serviceLabel: string;
     suspended: boolean | string | null;
+    serviceEvidenceCurrent: boolean;
     onOpenLogs: () => void;
   }
 >(function CronRunsCard(
-  { serviceId, serviceLabel, suspended, onOpenLogs },
+  { serviceId, serviceLabel, suspended, serviceEvidenceCurrent, onOpenLogs },
   ref,
 ) {
   const { t, language } = useTranslations();
@@ -274,7 +276,12 @@ export const CronRunsCard = forwardRef<
 
   const activeRun = currentCronRun(runs);
   const actionOptions: MobileActionOption[] = [];
-  if (!refreshRequired) {
+  const historyEvidenceCurrent = hasAuthoritativeCurrentEvidence({
+    networkStatus: query.networkStatus,
+    error: query.error,
+    hasData: query.data !== undefined,
+  });
+  if (!refreshRequired && historyEvidenceCurrent && serviceEvidenceCurrent) {
     if (!isLifecycleSuspended(suspended)) {
       actionOptions.push({
         key: "cron:run",

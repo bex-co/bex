@@ -101,6 +101,20 @@ describe("safe actions", () => {
     expect(result.canRetry).toBe(false);
   });
 
+  it("keeps accepted but unverifiable work distinct from success", async () => {
+    const executor = new SafeActionExecutor();
+    const intent = confirmSafeAction(
+      createSafeActionIntent(restart, target, identity),
+    );
+    const result = await executor.execute(intent, async () => ({
+      data: "accepted",
+      feedback: "accepted-unverified",
+    }));
+    expect(result.status).toBe("partial");
+    expect(result.feedback).toBe("accepted-unverified");
+    expect(result.canRetry).toBe(false);
+  });
+
   it("classifies nested authorization, conflict, timeout, and audit errors", () => {
     expect(
       classifySafeActionFailure({

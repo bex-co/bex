@@ -5,6 +5,7 @@ export type SafeActionAuditStatus =
 
 export interface SafeActionServerResult<Data> {
   data: Data;
+  feedback?: "accepted-unverified";
   audit?: {
     status: Exclude<SafeActionAuditStatus, "not-reported">;
     eventId?: string;
@@ -24,6 +25,7 @@ export type SafeActionOperation<Data> = (
 
 export type SafeActionFeedback =
   | "success"
+  | "accepted-unverified"
   | "authorization-denied"
   | "conflict"
   | "timeout-unknown"
@@ -40,6 +42,14 @@ export type SafeActionOutcome<Data> =
       retryIdentity: string;
       auditStatus: "recorded" | "not-reported";
       auditEventId?: string;
+      canRetry: false;
+    }
+  | {
+      status: "partial";
+      feedback: "accepted-unverified";
+      data: Data;
+      retryIdentity: string;
+      auditStatus: "not-reported";
       canRetry: false;
     }
   | {
@@ -132,7 +142,10 @@ function codeMatches(codes: Set<string>, pattern: RegExp): boolean {
 
 export function classifySafeActionFailure(
   error: unknown,
-): Exclude<SafeActionFeedback, "success" | "audit-pending" | "canceled"> {
+): Exclude<
+  SafeActionFeedback,
+  "success" | "accepted-unverified" | "audit-pending" | "canceled"
+> {
   const facts = collectErrorFacts(error);
   if (
     facts.statuses.has(401) ||
@@ -249,6 +262,16 @@ export class SafeActionExecutor {
           status: "canceled",
           feedback: "canceled",
           retryIdentity: intent.retryIdentity,
+          canRetry: false,
+        };
+      }
+      if (result.feedback === "accepted-unverified") {
+        return {
+          status: "partial",
+          feedback: "accepted-unverified",
+          data: result.data,
+          retryIdentity: intent.retryIdentity,
+          auditStatus: "not-reported",
           canRetry: false,
         };
       }

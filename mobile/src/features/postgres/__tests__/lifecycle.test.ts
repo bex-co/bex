@@ -65,6 +65,31 @@ describe("Postgres mobile lifecycle domain", () => {
     ).toBe("success");
   });
 
+  it("reports restart acceptance without inventing convergence", async () => {
+    const current = database();
+    let refreshes = 0;
+    const controller = new PostgresLifecycleController({
+      mutate: {
+        suspend: async () => undefined,
+        resume: async () => undefined,
+        restart: async () => undefined,
+      },
+      refresh: async () => {
+        refreshes += 1;
+        return current;
+      },
+      wait: async () => undefined,
+      maxPolls: 3,
+    });
+    const result = await controller.run({
+      action: "restart",
+      resource: current,
+      confirmed: true,
+    });
+    expect(result.status).toBe("accepted_unverified");
+    expect(refreshes).toBe(1);
+  });
+
   it("keeps its GraphQL surface to the exact three lifecycle operations", () => {
     const document = fs.readFileSync(
       path.resolve(

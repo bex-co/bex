@@ -104,7 +104,12 @@ describe("mobile usage glance", () => {
   });
 
   it("preserves future meter totals and bounds untrusted source annotations", () => {
-    const sources = Array.from({ length: 20 }, (_, index) => `source-${index}`);
+    const sources = [
+      ...Array.from({ length: 20 }, (_, index) => `source-${index}`),
+      "provider returned selector={tenant=secret}",
+      "line\nbreak",
+      "x".repeat(49),
+    ];
     const glance = buildUsageGlance({
       summary: {
         coverage: { state: "mystery", degradedSources: sources },
@@ -114,6 +119,13 @@ describe("mobile usage glance", () => {
     expect(glance.state).toBe("unknown");
     expect(glance.totals).toEqual([{ kind: "future_meter", total: 12.5 }]);
     expect(glance.degradedSources.length).toBe(8);
+    for (const unsafe of [
+      "provider returned selector={tenant=secret}",
+      "line\nbreak",
+      "x".repeat(49),
+    ]) {
+      expect(glance.degradedSources.includes(unsafe)).toBe(false);
+    }
   });
 
   it("formats natural meter units without billing or price semantics", () => {

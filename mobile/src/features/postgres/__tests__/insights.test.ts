@@ -3,23 +3,24 @@ import path from "path";
 import { parse, visit } from "graphql";
 import {
   compactPostgresTableInsights,
+  postgresInsightFailure,
   postgresInsightState,
   summarizePostgresProcesses,
 } from "../insights";
 
 describe("Postgres mobile insights", () => {
-  it("distinguishes empty, stale, degraded, and unavailable observations", () => {
+  it("distinguishes empty, stale, degraded, and failed observations", () => {
     expect(
       postgresInsightState({
         hasData: false,
-        hasError: false,
+        failure: null,
         observedAt: null,
       }),
     ).toBe("loading");
     expect(
       postgresInsightState({
         hasData: true,
-        hasError: false,
+        failure: null,
         observedAt: 1_000,
         now: 65_999,
         staleAfterMs: 65_000,
@@ -28,7 +29,7 @@ describe("Postgres mobile insights", () => {
     expect(
       postgresInsightState({
         hasData: true,
-        hasError: false,
+        failure: null,
         observedAt: 1_000,
         now: 66_000,
         staleAfterMs: 65_000,
@@ -37,17 +38,41 @@ describe("Postgres mobile insights", () => {
     expect(
       postgresInsightState({
         hasData: true,
-        hasError: true,
+        failure: "transport-error",
         observedAt: 1_000,
       }),
     ).toBe("degraded");
     expect(
       postgresInsightState({
         hasData: false,
-        hasError: true,
+        failure: "transport-error",
         observedAt: null,
       }),
-    ).toBe("unavailable");
+    ).toBe("transport-error");
+    expect(
+      postgresInsightState({
+        hasData: false,
+        failure: "source-unavailable",
+        observedAt: null,
+      }),
+    ).toBe("source-unavailable");
+  });
+
+  it("distinguishes the stable missing-source signal from transport errors", () => {
+    expect(
+      postgresInsightFailure(
+        new Error("metrics source not configured: prometheus disabled"),
+      ),
+    ).toBe("source-unavailable");
+    expect(
+      postgresInsightFailure({
+        graphQLErrors: [{ extensions: { code: "METRICS_UNAVAILABLE" } }],
+      }),
+    ).toBe("source-unavailable");
+    expect(postgresInsightFailure(new Error("Network request failed"))).toBe(
+      "transport-error",
+    );
+    expect(postgresInsightFailure(null)).toBe(null);
   });
 
   it("summarizes processes without retaining query text or database users", () => {

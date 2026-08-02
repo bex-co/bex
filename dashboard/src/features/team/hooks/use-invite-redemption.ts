@@ -3,8 +3,12 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { AcceptWorkspaceInviteDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { INVITE_TOKEN_STORAGE_KEY } from "@/common/lib/invite-token";
+import {
+  retainPendingInviteToken,
+  takePendingInviteToken,
+} from "@/common/lib/invite-token";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { classifyInviteRedemptionError } from "./invite-redemption-error";
 
 /**
  * Redeems a pending invite token once the caller is authenticated (w1/m33):
@@ -23,30 +27,36 @@ export function useInviteRedemption() {
 
   useEffect(() => {
     if (attempted.current || typeof window === "undefined") return;
-    const fromURL = new URLSearchParams(window.location.search).get("invite");
-    const token =
-      fromURL ?? window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY);
+    const token = takePendingInviteToken();
     if (!token) return;
     attempted.current = true;
-    window.sessionStorage.removeItem(INVITE_TOKEN_STORAGE_KEY);
     void (async () => {
+      let data;
       try {
-        const { data } = await acceptMut({ variables: { token } });
-        const name =
-          data?.acceptWorkspaceInvite?.workspaceName ||
-          data?.acceptWorkspaceInvite?.workspaceId ||
-          "";
-        toast.success(t("team.inviteAccepted", { workspace: name }));
-        await refetch();
+        ({ data } = await acceptMut({ variables: { token } }));
       } catch (e) {
-        const msg = e instanceof Error ? e.message.toLowerCase() : "";
+        const failure = classifyInviteRedemptionError(e);
+        if (failure === "ambiguous") retainPendingInviteToken(token);
         toast.error(
-          msg.includes("already accepted")
+          failure === "already-accepted"
             ? t("team.inviteAcceptedAlready")
-            : msg.includes("expired")
+            : failure === "expired"
               ? t("team.inviteAcceptExpired")
               : t("team.inviteAcceptError"),
         );
+        return;
+      }
+
+      const name =
+        data?.acceptWorkspaceInvite?.workspaceName ||
+        data?.acceptWorkspaceInvite?.workspaceId ||
+        "";
+      toast.success(t("team.inviteAccepted", { workspace: name }));
+      try {
+        await refetch();
+      } catch {
+        // The mutation committed. A failed switcher refresh must not restore a
+        // now-spent capability and accidentally submit it a second time.
       }
     })();
   }, [acceptMut, refetch, t]);

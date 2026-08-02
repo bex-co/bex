@@ -72,8 +72,8 @@ mutation RevokeWorkspaceInvite($workspaceId: String!, $inviteId: String!) {
   revokeWorkspaceInvite(workspaceId: $workspaceId, inviteId: $inviteId)
 }
 
-# Resend a pending invite (w1/m33): fresh email, refreshed expiry, same id and
-# token — no revoke + re-invite churn.
+# Resend a pending invite (w1/m33): fresh email, refreshed expiry, same id, and
+# a rotated token that invalidates the prior email — no revoke + re-invite churn.
 mutation ResendWorkspaceInvite($workspaceId: String!, $inviteId: String!) {
   resendWorkspaceInvite(workspaceId: $workspaceId, inviteId: $inviteId) {
     id

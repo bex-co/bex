@@ -264,14 +264,16 @@ export const en = {
     tables: "Table scan signals",
     tableSummary: "%{size} · seq %{sequential} · idx %{index} · dead %{dead}",
     noTableData: "No table observations were returned.",
-    unavailable: "This insight source is currently unavailable.",
+    sourceUnavailable: "This insight source is not configured.",
+    transportError: "This insight request could not reach the server.",
     state: {
       loading: "Checking",
       empty: "No observations",
       current: "Current",
       stale: "Stale",
       degraded: "Partial",
-      unavailable: "Unavailable",
+      "source-unavailable": "Source unavailable",
+      "transport-error": "Connection error",
     },
     connectionState: {
       loading: "Checking database response…",
@@ -279,7 +281,8 @@ export const en = {
       current: "Database responded",
       stale: "Last response is stale",
       degraded: "Only part of the check completed",
-      unavailable: "Database check unavailable",
+      "source-unavailable": "Database insight source unavailable",
+      "transport-error": "Database check could not reach the server",
     },
   },
   keyValueInsights: {
@@ -329,6 +332,8 @@ export const en = {
     feedback: {
       success:
         "The server accepted the action. Updated state will continue to refresh from the server.",
+      acceptedUnverified:
+        "The server accepted the action, but this API cannot prove that the restart completed. Continue checking current state.",
       authorizationDenied:
         "You are not authorized to perform this action. No success was assumed.",
       conflict:

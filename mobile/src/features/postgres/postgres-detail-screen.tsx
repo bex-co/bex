@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { NetworkStatus } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
+import { hasAuthoritativeCurrentEvidence } from "@/common/apollo/authoritative-evidence";
 import {
   defineSafeAction,
   mobileLifecycleResult,
@@ -72,33 +73,39 @@ export function PostgresDetailScreen({ databaseId }: { databaseId: string }) {
 
   const database = query.data?.database;
   const resource = database?.id ? postgresResource(database) : null;
-  const options: MobileActionOption[] = resource
-    ? postgresLifecycleCapabilities(resource).map((capability) => {
-        const definition =
-          capability.action === "restart"
-            ? restartDatabase
-            : capability.action === "suspend"
-              ? suspendDatabase
-              : resumeDatabase;
-        return {
-          key: capability.action,
-          definition,
-          target: {
-            kind: "database" as const,
-            id: resource.id,
-            label: resource.name,
-          },
-          label: t(`safeActions.actions.${capability.action}Database`),
-          run: (serverConfirmation?: string) =>
-            runPostgresAction(
-              controllerRef.current!,
-              capability.action,
-              resource,
-              serverConfirmation,
-            ),
-        };
-      })
-    : [];
+  const hasCurrentEvidence = hasAuthoritativeCurrentEvidence({
+    networkStatus: query.networkStatus,
+    error: query.error,
+    hasData: Boolean(resource),
+  });
+  const options: MobileActionOption[] =
+    resource && hasCurrentEvidence
+      ? postgresLifecycleCapabilities(resource).map((capability) => {
+          const definition =
+            capability.action === "restart"
+              ? restartDatabase
+              : capability.action === "suspend"
+                ? suspendDatabase
+                : resumeDatabase;
+          return {
+            key: capability.action,
+            definition,
+            target: {
+              kind: "database" as const,
+              id: resource.id,
+              label: resource.name,
+            },
+            label: t(`safeActions.actions.${capability.action}Database`),
+            run: (serverConfirmation?: string) =>
+              runPostgresAction(
+                controllerRef.current!,
+                capability.action,
+                resource,
+                serverConfirmation,
+              ),
+          };
+        })
+      : [];
 
   const status = resource
     ? resource.suspended === "suspended"

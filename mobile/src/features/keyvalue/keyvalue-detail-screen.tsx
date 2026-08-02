@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { NetworkStatus } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
+import { hasAuthoritativeCurrentEvidence } from "@/common/apollo/authoritative-evidence";
 import {
   defineSafeAction,
   mobileLifecycleResult,
@@ -66,29 +67,35 @@ export function KeyValueDetailScreen({ keyValueId }: { keyValueId: string }) {
 
   const keyValue = query.data?.keyValue;
   const resource = keyValue?.id ? keyValueResource(keyValue) : null;
-  const options: MobileActionOption[] = resource
-    ? keyValueLifecycleCapabilities(resource).map((capability) => {
-        const definition =
-          capability.action === "suspend" ? suspendKeyValue : resumeKeyValue;
-        return {
-          key: capability.action,
-          definition,
-          target: {
-            kind: "key-value" as const,
-            id: resource.id,
-            label: resource.name,
-          },
-          label: t(`safeActions.actions.${capability.action}KeyValue`),
-          run: (serverConfirmation?: string) =>
-            runKeyValueAction(
-              controllerRef.current!,
-              capability.action,
-              resource,
-              serverConfirmation,
-            ),
-        };
-      })
-    : [];
+  const hasCurrentEvidence = hasAuthoritativeCurrentEvidence({
+    networkStatus: query.networkStatus,
+    error: query.error,
+    hasData: Boolean(resource),
+  });
+  const options: MobileActionOption[] =
+    resource && hasCurrentEvidence
+      ? keyValueLifecycleCapabilities(resource).map((capability) => {
+          const definition =
+            capability.action === "suspend" ? suspendKeyValue : resumeKeyValue;
+          return {
+            key: capability.action,
+            definition,
+            target: {
+              kind: "key-value" as const,
+              id: resource.id,
+              label: resource.name,
+            },
+            label: t(`safeActions.actions.${capability.action}KeyValue`),
+            run: (serverConfirmation?: string) =>
+              runKeyValueAction(
+                controllerRef.current!,
+                capability.action,
+                resource,
+                serverConfirmation,
+              ),
+          };
+        })
+      : [];
 
   const status = resource
     ? resource.suspended === "suspended"

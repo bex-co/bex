@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -26,6 +27,16 @@ import (
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
+
+// cronMCPError keeps Core's stable action code visible when the MCP SDK turns
+// an error into text. REST and GraphQL retain the same code structurally.
+func cronMCPError(err error) error {
+	var coded *core.CodedError
+	if errors.As(err, &coded) {
+		return fmt.Errorf("%s: %w", coded.Code, err)
+	}
+	return err
+}
 
 // mcp.go is the MCP fragment for services. Tool names track Render's official
 // MCP server (render-oss/render-mcp-server): list_services / get_service are 1:1;
@@ -712,7 +723,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Trigger a one-off run of a cron job now, canceling an active run first like Render. Returns the deterministic pending run. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, renderCronJobRun, error) {
 		run, err := s.TriggerCronRun(ctx, in.ServiceID)
-		return nil, toRenderCronJobRun(run), err
+		return nil, toRenderCronJobRun(run), cronMCPError(err)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -742,7 +753,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "bex extension: get one cron job run by its crr- id.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in cronJobRunArgs) (*mcp.CallToolResult, renderCronJobRun, error) {
 		run, err := s.GetCronRun(ctx, in.ServiceID, in.RunID)
-		return nil, toRenderCronJobRun(run), err
+		return nil, toRenderCronJobRun(run), cronMCPError(err)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -750,7 +761,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "bex extension: cancel one pending cron job run by crr- id. The operator terminates its Kubernetes Job; a terminal run returns a conflict instead of silently succeeding.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in cronJobRunArgs) (*mcp.CallToolResult, renderCronJobRun, error) {
 		run, err := s.CancelCronRun(ctx, in.ServiceID, in.RunID)
-		return nil, toRenderCronJobRun(run), err
+		return nil, toRenderCronJobRun(run), cronMCPError(err)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{

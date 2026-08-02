@@ -1,20 +1,67 @@
 export const POSTGRES_INSIGHT_STALE_AFTER_MS = 65_000;
 
+export type PostgresInsightFailure =
+  "source-unavailable" | "transport-error" | null;
+
 export type PostgresInsightState =
-  "loading" | "empty" | "current" | "stale" | "degraded" | "unavailable";
+  | "loading"
+  | "empty"
+  | "current"
+  | "stale"
+  | "degraded"
+  | Exclude<PostgresInsightFailure, null>;
 
 export function postgresInsightState(input: {
   hasData: boolean;
-  hasError: boolean;
+  failure: PostgresInsightFailure;
   observedAt: number | null;
   now?: number;
   staleAfterMs?: number;
 }): PostgresInsightState {
-  if (input.hasError) return input.hasData ? "degraded" : "unavailable";
+  if (input.failure) return input.hasData ? "degraded" : input.failure;
   if (!input.hasData || input.observedAt == null) return "loading";
   const now = input.now ?? Date.now();
   const staleAfterMs = input.staleAfterMs ?? POSTGRES_INSIGHT_STALE_AFTER_MS;
   return now - input.observedAt >= staleAfterMs ? "stale" : "current";
+}
+
+/** Keeps the stable backend absence signal distinct from network failures. */
+export function postgresInsightFailure(error: unknown): PostgresInsightFailure {
+  if (!error) return null;
+  const messages = new Set<string>();
+  const codes = new Set<string>();
+  const seen = new Set<unknown>();
+  const visit = (value: unknown) => {
+    if (!value || typeof value !== "object" || seen.has(value)) return;
+    seen.add(value);
+    const record = value as Record<string, unknown>;
+    if (typeof record.message === "string") {
+      messages.add(record.message.trim().toLowerCase());
+    }
+    if (typeof record.code === "string") {
+      codes.add(record.code.trim().toUpperCase());
+    }
+    for (const nested of [
+      record.cause,
+      record.networkError,
+      record.graphQLErrors,
+      record.errors,
+      record.extensions,
+    ]) {
+      if (Array.isArray(nested)) nested.forEach(visit);
+      else visit(nested);
+    }
+  };
+  visit(error);
+  if (
+    codes.has("METRICS_UNAVAILABLE") ||
+    [...messages].some((message) =>
+      message.startsWith("metrics source not configured"),
+    )
+  ) {
+    return "source-unavailable";
+  }
+  return "transport-error";
 }
 
 export type PostgresProcessRow = {
