@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import {
   RouterProvider,
   createRouter,
@@ -322,6 +322,67 @@ beforeEach(() => {
 });
 
 describe("ServiceSettingsPage", () => {
+  it("links every visible repo-backed web-service section in page order", async () => {
+    serverState.service = svc({
+      repo: "https://github.com/acme/app",
+      runtime: "node",
+      builder: "native",
+    });
+    renderSettings();
+
+    const navigation = await screen.findByRole("navigation", {
+      name: "Settings sections",
+    });
+    const links = within(navigation).getAllByRole("link");
+    const hrefs = links.map((link) => link.getAttribute("href"));
+
+    expect(hrefs).toEqual([
+      "#general",
+      "#build",
+      "#domains",
+      "#networking",
+      "#notifications",
+      "#health-checks",
+      "#maintenance",
+      "#suspend",
+      "#danger-zone",
+    ]);
+    for (const href of hrefs) {
+      expect(document.getElementById(href!.slice(1))).toBeInTheDocument();
+    }
+  });
+
+  it("keeps the section navigation free of unavailable cron-service links", async () => {
+    serverState.service = svc({
+      type: "cron_job",
+      url: null,
+      repo: null,
+      schedule: "*/15 * * * *",
+      command: "npm run send-nightly-report",
+    });
+    renderSettings();
+
+    const navigation = await screen.findByRole("navigation", {
+      name: "Settings sections",
+    });
+    const hrefs = within(navigation)
+      .getAllByRole("link")
+      .map((link) => link.getAttribute("href"));
+
+    expect(hrefs).toEqual([
+      "#general",
+      "#deploy",
+      "#registry-credential",
+      "#notifications",
+      "#deploy-hook",
+      "#suspend",
+      "#danger-zone",
+    ]);
+    for (const href of hrefs) {
+      expect(document.getElementById(href!.slice(1))).toBeInTheDocument();
+    }
+  });
+
   it("shows the mutable Service Name while making the immutable id explicit", async () => {
     serverState.service = svc({
       id: "stable-service-id",
@@ -345,15 +406,23 @@ describe("ServiceSettingsPage", () => {
     serverState.service = svc({ type: "web_service" });
     renderSettings();
 
-    expect(await screen.findByText("Custom Domains")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Custom Domains", { selector: ":not(a)" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Idle timeout")).toBeInTheDocument();
     // Manual instance count lives on the Scaling tab beside autoscaling
     // (w7/m43 — Render's placement; supersedes the w5/m16 Settings stepper).
     expect(screen.queryByText("Instance count")).not.toBeInTheDocument();
     expect(screen.getByText("Max shutdown delay")).toBeInTheDocument();
-    expect(screen.getByText("Deploy Hook")).toBeInTheDocument();
-    expect(screen.getByText("Maintenance Mode")).toBeInTheDocument();
-    expect(screen.queryByText("Deploy")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Deploy Hook", { selector: ":not(a)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Maintenance Mode", { selector: ":not(a)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Deploy", { selector: ":not(a)" }),
+    ).not.toBeInTheDocument();
   });
 
   // Settings IA alignment with Render's section layout (w5/m52).
@@ -361,7 +430,9 @@ describe("ServiceSettingsPage", () => {
     serverState.service = svc({ region: "fsn1" });
     renderSettings();
 
-    expect(await screen.findByText("General")).toBeInTheDocument();
+    expect(
+      await screen.findByText("General", { selector: ":not(a)" }),
+    ).toBeInTheDocument();
     const region = screen.getByRole("textbox", { name: "Region" });
     expect(region).toHaveValue("fsn1");
     expect(region).toBeDisabled();
@@ -371,7 +442,7 @@ describe("ServiceSettingsPage", () => {
     serverState.service = svc({ region: null });
     renderSettings();
 
-    await screen.findByText("General");
+    await screen.findByText("General", { selector: ":not(a)" });
     expect(
       screen.queryByRole("textbox", { name: "Region" }),
     ).not.toBeInTheDocument();
@@ -385,17 +456,25 @@ describe("ServiceSettingsPage", () => {
     });
     renderSettings();
 
-    expect(await screen.findByText("Build")).toBeInTheDocument();
-    expect(screen.getByText("Deploy")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Build", { selector: ":not(a)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Deploy", { selector: ":not(a)" }),
+    ).toBeInTheDocument();
     // Deploy Hook is embedded in the Deploy card (not a standalone card).
-    expect(screen.getByText("Deploy Hook")).toBeInTheDocument();
+    expect(
+      screen.getByText("Deploy Hook", { selector: ":not(a)" }),
+    ).toBeInTheDocument();
   });
 
   it("folds the Platform Subdomain toggle into the Custom Domains card", async () => {
     serverState.service = svc({ type: "web_service" });
     renderSettings();
 
-    expect(await screen.findByText("Custom Domains")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Custom Domains", { selector: ":not(a)" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Platform Subdomain")).toBeInTheDocument();
   });
 
@@ -406,7 +485,9 @@ describe("ServiceSettingsPage", () => {
     expect(await screen.findByText("Idle timeout")).toBeInTheDocument();
     expect(screen.queryByText("Instance count")).not.toBeInTheDocument();
     expect(screen.getByText("Max shutdown delay")).toBeInTheDocument();
-    expect(screen.queryByText("Maintenance Mode")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Maintenance Mode", { selector: ":not(a)" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a Deploy section (schedule + command), hides Custom Domains, Idle timeout, and instance count for a cron job", async () => {
@@ -418,14 +499,18 @@ describe("ServiceSettingsPage", () => {
     });
     renderSettings();
 
-    expect(await screen.findByText("Deploy")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Deploy", { selector: ":not(a)" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Schedule" })).toHaveValue(
       "*/15 * * * *",
     );
     expect(screen.getByRole("textbox", { name: "Command" })).toHaveValue(
       "npm run send-nightly-report",
     );
-    expect(screen.queryByText("Custom Domains")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Custom Domains", { selector: ":not(a)" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("Idle timeout")).not.toBeInTheDocument();
     expect(screen.queryByText("Instance count")).not.toBeInTheDocument();
     expect(screen.queryByText("Max shutdown delay")).not.toBeInTheDocument();
@@ -447,8 +532,12 @@ describe("ServiceSettingsPage", () => {
     renderSettings();
 
     // Both the cron Deploy section (schedule/command) and Build & Deploy render.
-    expect(await screen.findByText("Deploy")).toBeInTheDocument();
-    expect(screen.getByText("Build")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Deploy", { selector: ":not(a)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Build", { selector: ":not(a)" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Auto-Deploy")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Source" })).toHaveValue(
       "https://github.com/acme/reports",
@@ -472,7 +561,9 @@ describe("ServiceSettingsPage", () => {
     });
     renderSettings();
 
-    expect(await screen.findByText("Build")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Build", { selector: ":not(a)" }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Docker Command")).not.toBeInTheDocument();
     expect(screen.queryByText("Dockerfile Path")).not.toBeInTheDocument();
   });
@@ -488,7 +579,9 @@ describe("ServiceSettingsPage", () => {
     });
     renderSettings();
 
-    expect(await screen.findByText("Static Site")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Static Site", { selector: ":not(a)" }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Instance Type")).not.toBeInTheDocument();
   });
 
@@ -532,8 +625,12 @@ describe("ServiceSettingsPage", () => {
     });
     renderSettings();
 
-    expect(await screen.findByText("Deploy")).toBeInTheDocument();
-    expect(screen.queryByText("Build")).not.toBeInTheDocument();
+    expect(
+      await screen.findByText("Deploy", { selector: ":not(a)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Build", { selector: ":not(a)" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("Auto-Deploy")).not.toBeInTheDocument();
   });
 
@@ -545,7 +642,9 @@ describe("ServiceSettingsPage", () => {
     renderSettings();
 
     expect(
-      await screen.findByText("Image registry credential"),
+      await screen.findByText("Image registry credential", {
+        selector: ":not(a)",
+      }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("combobox", { name: "Registry credential" }),
@@ -561,7 +660,9 @@ describe("ServiceSettingsPage", () => {
     renderSettings();
 
     expect(
-      await screen.findByText("Image registry credential"),
+      await screen.findByText("Image registry credential", {
+        selector: ":not(a)",
+      }),
     ).toBeInTheDocument();
   });
 
@@ -573,9 +674,11 @@ describe("ServiceSettingsPage", () => {
     });
     renderSettings();
 
-    await screen.findByText("Build");
+    await screen.findByText("Build", { selector: ":not(a)" });
     expect(
-      screen.queryByText("Image registry credential"),
+      screen.queryByText("Image registry credential", {
+        selector: ":not(a)",
+      }),
     ).not.toBeInTheDocument();
   });
 
@@ -588,7 +691,7 @@ describe("ServiceSettingsPage", () => {
     });
     renderSettings();
 
-    await screen.findByText("Build");
+    await screen.findByText("Build", { selector: ":not(a)" });
     expect(screen.getByRole("textbox", { name: "Build Command" })).toHaveValue(
       "yarn build",
     );
@@ -603,7 +706,7 @@ describe("ServiceSettingsPage", () => {
     });
     renderSettings();
 
-    await screen.findByText("Build");
+    await screen.findByText("Build", { selector: ":not(a)" });
     expect(
       screen.queryByRole("textbox", { name: "Build Command" }),
     ).not.toBeInTheDocument();

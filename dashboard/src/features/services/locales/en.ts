@@ -914,6 +914,10 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Settings",
     description: "Service-detail nav item (settings tab)",
   },
+  "services.settingsNavigation": {
+    message: "Settings sections",
+    description: "Accessible label for the service settings section navigation",
+  },
   "services.settingsDescription": {
     message:
       "Configure this service's name, instance size, and other settings.",
