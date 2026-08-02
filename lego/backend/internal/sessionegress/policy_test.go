@@ -14,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -102,6 +103,64 @@ func TestPolicyPhaseSplitAndExactBaseline(t *testing.T) {
 	port := gateway["toPorts"].([]any)[0].(map[string]any)["ports"].([]any)[0].(map[string]any)["port"]
 	if endpoint["k8s:io.cilium.k8s.policy.serviceaccount"] != "bex-ssh-gateway" || endpoint["k8s:io.kubernetes.pod.namespace"] != "bex-system" || port != "8082" {
 		t.Fatalf("credential gateway rule = %#v port=%v", endpoint, port)
+	}
+}
+
+// The per-session policy is purely additive on top of the clusterwide
+// sandbox-egress-default-deny (node/metadata/private-network) floor. A render
+// that ever emitted a toCIDR, toEntities, wildcard matchPattern, or broad
+// endpoint selector could open a path the structural deny cannot re-close, so
+// every rendered profile — setup, agent baseline, and agent+widened — must
+// contain only the three exact allow shapes and never a floor-lifting escape.
+func TestEveryRenderedProfileIsAdditiveOnlyAndPreservesTheDenyFloor(t *testing.T) {
+	m := &Manager{}
+	cases := []struct {
+		name  string
+		phase Phase
+		extra []string
+	}{
+		{"setup", PhaseSetup, []string{"docs.example.com"}},
+		{"agent baseline", PhaseAgent, nil},
+		{"agent widened", PhaseAgent, []string{"docs.example.com"}},
+	}
+	for _, tc := range cases {
+		obj, err := m.policy("tea-test-sandbox", "ags-test", tc.phase, "https://models.example.com/v1", tc.extra)
+		if err != nil {
+			t.Fatalf("%s policy: %v", tc.name, err)
+		}
+		// The endpoint selector must pin exactly one immutable session identity —
+		// never a broad or empty selector that would attach the allow to siblings.
+		selector, _, _ := unstructured.NestedStringMap(obj.Object, "spec", "endpointSelector", "matchLabels")
+		if len(selector) != 1 || selector[SessionLabel] != "ags-test" {
+			t.Errorf("%s endpoint selector = %#v, want exactly the session identity", tc.name, selector)
+		}
+		rules, _, _ := unstructured.NestedSlice(obj.Object, "spec", "egress")
+		if len(rules) != 3 {
+			t.Fatalf("%s egress = %d rules, want exactly dns+fqdn+gateway", tc.name, len(rules))
+		}
+		// No rendered rule may carry a floor-lifting primitive. toFQDNs/toEndpoints
+		// (the additive DNS/FQDN/gateway shapes) are the only admitted keys.
+		for i, raw := range rules {
+			rule := raw.(map[string]any)
+			for _, forbidden := range []string{"toCIDR", "toCIDRSet", "toEntities", "toGroups", "toRequires", "toServices"} {
+				if _, present := rule[forbidden]; present {
+					t.Errorf("%s egress rule %d contains floor-lifting key %q", tc.name, i, forbidden)
+				}
+			}
+		}
+		// No FQDN entry may be a wildcard: exact names only keep a tenant from
+		// widening beyond a single validated destination.
+		for _, name := range fqdnNames(t, obj) {
+			if name == "" || name == "*" || strings.ContainsAny(name, "*?") {
+				t.Errorf("%s rendered a wildcard/empty FQDN %q", tc.name, name)
+			}
+		}
+		// enableDefaultDeny must never be flipped off on the per-session policy —
+		// that structural posture belongs to the clusterwide floor, and a false
+		// here would opt the endpoint out of default-deny entirely.
+		if _, present, _ := unstructured.NestedFieldNoCopy(obj.Object, "spec", "enableDefaultDeny"); present {
+			t.Errorf("%s per-session policy set enableDefaultDeny; the floor owns that posture", tc.name)
+		}
 	}
 }
 

@@ -27,6 +27,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
@@ -422,7 +423,7 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 	if err != nil {
 		return Sandbox{}, fmt.Errorf("encode agent session egress allowlist: %w", err)
 	}
-	namespace := workspaceID + "-sandbox"
+	namespace := store.SandboxNamespace(workspaceID)
 	if err := s.SessionEgress.PrepareSetup(ctx, namespace, sessionID, modelEndpoint, egressAllowlist); err != nil {
 		return Sandbox{}, err
 	}
@@ -459,7 +460,7 @@ func (l *AgentSessionLifecycle) EnterAgentSessionPhase(ctx context.Context, work
 	if err := json.Unmarshal([]byte(raw.Metadata[metadataEgressAllow]), &extra); err != nil {
 		return fmt.Errorf("agent session egress metadata is invalid: %w", err)
 	}
-	return s.SessionEgress.TransitionToAgent(ctx, workspaceID+"-sandbox", sessionID, raw.Metadata[metadataModelEndpoint], extra)
+	return s.SessionEgress.TransitionToAgent(ctx, store.SandboxNamespace(workspaceID), sessionID, raw.Metadata[metadataModelEndpoint], extra)
 }
 
 // ResumeAgentSessionSandbox resumes only a fully hardened sandbox stamped for
@@ -500,7 +501,7 @@ func (l *AgentSessionLifecycle) CancelAgentSessionSandbox(ctx context.Context, w
 			// object is also deliberately indistinguishable from absent and is
 			// never touched; the authorized durable session may still converge.
 			if s.SessionEgress != nil {
-				return s.SessionEgress.Delete(ctx, workspaceID+"-sandbox", sessionID)
+				return s.SessionEgress.Delete(ctx, store.SandboxNamespace(workspaceID), sessionID)
 			}
 			return nil
 		}
@@ -513,7 +514,7 @@ func (l *AgentSessionLifecycle) CancelAgentSessionSandbox(ctx context.Context, w
 	raw.Status.State = string(StatusTerminated)
 	s.Meter.Observe(ctx, raw)
 	if s.SessionEgress != nil {
-		if err := s.SessionEgress.Delete(ctx, workspaceID+"-sandbox", sessionID); err != nil {
+		if err := s.SessionEgress.Delete(ctx, store.SandboxNamespace(workspaceID), sessionID); err != nil {
 			return fmt.Errorf("delete terminated session egress policy: %w", err)
 		}
 	}
@@ -669,7 +670,7 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Stat
 	s.Meter.Observe(ctx, raw)
 	if phase == StatusTerminated && s.SessionEgress != nil {
 		if sessionID := raw.Metadata[metadataAgentSession]; sessionID != "" {
-			if err := s.SessionEgress.Delete(ctx, ws+"-sandbox", sessionID); err != nil {
+			if err := s.SessionEgress.Delete(ctx, store.SandboxNamespace(ws), sessionID); err != nil {
 				return fmt.Errorf("delete terminated session egress policy: %w", err)
 			}
 		}
