@@ -45,6 +45,14 @@ vi.mock("@/features/blueprints/hooks/use-sync-blueprint", () => ({
   useSyncBlueprint: () => ({ sync, busy: false }),
 }));
 
+// --- create hook stub ---
+vi.mock("@/features/blueprints/hooks/use-create-blueprint", () => ({
+  useCreateBlueprint: () => ({
+    create: vi.fn(async () => ({ status: "error" })),
+    busy: false,
+  }),
+}));
+
 // --- validate hook stub (used by ValidatePanel inside detail page) ---
 vi.mock("@/features/blueprints/hooks/use-validate-blueprint", () => ({
   useValidateBlueprint: () => ({
@@ -54,14 +62,36 @@ vi.mock("@/features/blueprints/hooks/use-validate-blueprint", () => ({
   }),
 }));
 
+// --- update hook stub ---
+vi.mock("@/features/blueprints/hooks/use-update-blueprint", () => ({
+  useUpdateBlueprint: () => ({ update: vi.fn(async () => null), busy: false }),
+}));
+
+// --- disconnect hook stub ---
+vi.mock("@/features/blueprints/hooks/use-disconnect-blueprint", () => ({
+  useDisconnectBlueprint: () => ({
+    disconnect: vi.fn(async () => true),
+    busy: false,
+  }),
+}));
+
+// --- syncs hook stub ---
+vi.mock("@/features/blueprints/hooks/use-blueprint-syncs", () => ({
+  useBlueprintSyncs: () => ({ syncs: [], loading: false, error: undefined }),
+}));
+
 function bp(overrides: Partial<BlueprintView> = {}): BlueprintView {
   return {
     id: "blp-abc123",
     name: "hello-go",
     repo: "https://github.com/example/hello-go",
     branch: "main",
+    path: "bex.yml",
+    autoSync: true,
     manifest: "services:\n  - name: api\n    type: web_service",
     status: "active",
+    lastSync: null,
+    resources: null,
     createdAt: "2026-07-01T00:00:00Z",
     updatedAt: "2026-07-13T00:00:00Z",
     ...overrides,

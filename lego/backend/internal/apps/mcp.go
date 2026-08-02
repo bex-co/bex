@@ -440,6 +440,45 @@ type syncBlueprintArgs struct {
 	Confirm string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned by a protected-environment error when the sync overrides an existing service"`
 }
 
+// createBlueprintArgs is create_blueprint's input (w2/m62).
+type createBlueprintArgs struct {
+	Repo    string `json:"repo" jsonschema:"Git repo URL (https://github.com/org/repo)"`
+	Branch  string `json:"branch" jsonschema:"branch to track"`
+	Path    string `json:"path,omitempty" jsonschema:"path to bex.yml within the repo (default bex.yml)"`
+	Name    string `json:"name,omitempty" jsonschema:"human-readable name (default: repo basename)"`
+	Confirm string `json:"confirm,omitempty" jsonschema:"confirmation phrase for protected-environment overrides"`
+}
+
+// listBlueprintSyncsArgs is list_blueprint_syncs's input (w2/m62).
+type listBlueprintSyncsArgs struct {
+	ID     string `json:"id" jsonschema:"blueprint id (blp-…)"`
+	Cursor string `json:"cursor,omitempty" jsonschema:"opaque cursor from a prior call for pagination"`
+	Limit  int    `json:"limit,omitempty" jsonschema:"max runs to return (1–100, default 20)"`
+}
+
+// listBlueprintSyncsResult wraps the array.
+type listBlueprintSyncsResult struct {
+	Syncs []BlueprintSyncView `json:"syncs"`
+}
+
+// updateBlueprintArgs is update_blueprint's input (w2/m62).
+type updateBlueprintArgs struct {
+	ID       string  `json:"id" jsonschema:"blueprint id (blp-…)"`
+	Name     *string `json:"name,omitempty" jsonschema:"new display name"`
+	AutoSync *bool   `json:"autoSync,omitempty" jsonschema:"enable or disable auto-sync on push"`
+	Path     *string `json:"path,omitempty" jsonschema:"new bex.yml path within the repo"`
+}
+
+// disconnectedBlueprintResult is disconnect_blueprint's output.
+type disconnectedBlueprintResult struct {
+	Disconnected bool `json:"disconnected" jsonschema:"true when the blueprint was disconnected"`
+}
+
+// disconnectBlueprintArgs is disconnect_blueprint's input (w2/m62).
+type disconnectBlueprintArgs struct {
+	ID string `json:"id" jsonschema:"blueprint id (blp-…) to disconnect"`
+}
+
 // autoscalingArgs is set_autoscaling's input — mirrors Render's PUT
 // /v1/services/{id}/autoscaling request body (minInstances / maxInstances /
 // targetCPUPercent / targetMemoryPercent).
@@ -1183,7 +1222,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, toRenderService(app), nil
 	})
 
-	// Blueprint verbs (w2/m15 + w2/m41): validate_bex_yml · list_blueprints · get_blueprint · sync_blueprint.
+	// Blueprint verbs (w2/m15 + w2/m41 + w2/m62).
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "validate_bex_yml",
 		Description: "Dry-run parse a bex.yml (render.yaml Blueprint) and return structured per-entry errors plus a resource plan without applying anything — the safe pre-flight check before a deploy call. Returns {valid, errors: [{error, line?, column?, path?}], plan?}. Requires no store; always available. bex extension (pillar 4 agent safety).",
@@ -1193,8 +1232,22 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "create_blueprint",
+		Description: "Create a Git-connected Blueprint by fetching the bex.yml from a repo, validating, and applying the full stack. Returns the new blueprint and deployed resources. The repo must be accessible via the workspace's GitHub connection or be public. bex extension (w2/m62).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createBlueprintArgs) (*mcp.CallToolResult, BlueprintView, error) {
+		view, err := s.CreateBlueprint(ctx, core.NamedWorkspace(ctx), CreateBlueprintRequest{
+			Repo:    in.Repo,
+			Branch:  in.Branch,
+			Path:    in.Path,
+			Name:    in.Name,
+			Confirm: in.Confirm,
+		})
+		return nil, view, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_blueprints",
-		Description: "List known bex.yml stack sources (blueprints) for a workspace. Blueprints are auto-registered on the first deploy call that includes a repo+bexYaml. Returns {blueprints: [{id, name, repo, branch, status, createdAt, updatedAt}]}. bex extension.",
+		Description: "List Git-connected Blueprint instances for a workspace. Returns {blueprints: [{id, name, repo, branch, path, autoSync, status, lastSync, createdAt, updatedAt}]}. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listBlueprintsArgs) (*mcp.CallToolResult, listBlueprintsResult, error) {
 		views, err := s.ListBlueprints(ctx, core.NamedWorkspace(ctx))
 		return nil, listBlueprintsResult{Blueprints: views}, err
@@ -1202,18 +1255,46 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_blueprint",
-		Description: "Get a single blueprint by its id. Returns {id, name, repo, branch, status, createdAt, updatedAt}. bex extension.",
+		Description: "Get a single blueprint by its id, including managed resources (id/name/type). bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getBlueprintArgs) (*mcp.CallToolResult, BlueprintView, error) {
 		view, err := s.GetBlueprintByID(ctx, in.ID, core.NamedWorkspace(ctx))
 		return nil, view, err
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "list_blueprint_syncs",
+		Description: "List sync run history for a blueprint, newest first. Each run records state (running/success/error), commitId, startedAt, and completedAt. bex extension (w2/m62).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listBlueprintSyncsArgs) (*mcp.CallToolResult, listBlueprintSyncsResult, error) {
+		syncs, err := s.ListBlueprintSyncs(ctx, in.ID, core.NamedWorkspace(ctx), in.Cursor, in.Limit)
+		return nil, listBlueprintSyncsResult{Syncs: syncs}, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "sync_blueprint",
-		Description: "Re-apply a stored blueprint idempotently — same all-or-nothing semantics as deploy, but sourced from the stored manifest. If bex_yaml is provided, the stored manifest is replaced before re-apply. Returns {blueprint, stack: {services, databases}}. Use validate_bex_yml first to catch errors with no side effects. bex extension (pillar 4, validate-then-deploy flow).",
+		Description: "Re-apply a blueprint by pulling the latest bex.yml from its Git repo (or from the stored manifest if no fetcher is configured). Records a sync run. Returns {blueprint, stack: {services, databases}}. bex extension (pillar 4, validate-then-deploy flow).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in syncBlueprintArgs) (*mcp.CallToolResult, SyncBlueprintResult, error) {
 		res, err := s.SyncBlueprint(ctx, in.ID, core.NamedWorkspace(ctx), in.BexYAML, in.Confirm)
 		return nil, res, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "update_blueprint",
+		Description: "Update a blueprint's name, autoSync flag, or bex.yml path. Setting autoSync=false pauses auto-sync on push; true re-enables it. bex extension (w2/m62).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateBlueprintArgs) (*mcp.CallToolResult, BlueprintView, error) {
+		view, err := s.UpdateBlueprint(ctx, in.ID, core.NamedWorkspace(ctx), UpdateBlueprintRequest{
+			Name:     in.Name,
+			AutoSync: in.AutoSync,
+			Path:     in.Path,
+		})
+		return nil, view, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "disconnect_blueprint",
+		Description: "Disconnect a Blueprint from its Git repo: stops auto-sync on push and hides it from list_blueprints. Resources created by the blueprint remain untouched. bex extension (w2/m62).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in disconnectBlueprintArgs) (*mcp.CallToolResult, disconnectedBlueprintResult, error) {
+		err := s.DisconnectBlueprint(ctx, in.ID, core.NamedWorkspace(ctx))
+		return nil, disconnectedBlueprintResult{Disconnected: err == nil}, err
 	})
 }
 

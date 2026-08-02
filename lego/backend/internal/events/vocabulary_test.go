@@ -128,6 +128,9 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 	} {
 		excusedVerbs[verb] = "w6/m17 seam collapse newly targets it; not yet given an event type"
 	}
+	// apps.CreateBlueprint calls deployStack, which in turn calls AuthorizeApp for each resource
+	// it applies — the target is per-resource inside the stack apply, not the blueprint itself.
+	excusedVerbs["apps.CreateBlueprint"] = "w2/m62: targets via deployStack → AuthorizeApp per resource; blueprint create has no per-service event type yet"
 
 	// Every sibling feature package, ENUMERATED rather than listed: a literal list
 	// of today's four would leave the guard blind to the fifth — the day `postgres`

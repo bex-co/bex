@@ -631,7 +631,29 @@ func secretFileContentResolve(p graphql.ResolveParams) (any, error) {
 	return r.SecretFileContent(p.Context, a.Name, p.Args["name"].(string))
 }
 
-// blueprintGQLType is the GraphQL shape for a BlueprintView (w2/m15).
+// blueprintResourceGQLType is the GraphQL shape for a BlueprintResource (w2/m62).
+var blueprintResourceGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BlueprintResource",
+	Fields: graphql.Fields{
+		"id":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r BlueprintResource) any { return r.ID })},
+		"name": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r BlueprintResource) any { return r.Name })},
+		"type": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r BlueprintResource) any { return r.Type })},
+	},
+})
+
+// blueprintSyncGQLType is the GraphQL shape for a BlueprintSyncView (w2/m62).
+var blueprintSyncGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BlueprintSync",
+	Fields: graphql.Fields{
+		"id":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r BlueprintSyncView) any { return r.ID })},
+		"commitId":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r BlueprintSyncView) any { return r.CommitID })},
+		"state":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r BlueprintSyncView) any { return r.State })},
+		"startedAt":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r BlueprintSyncView) any { return r.StartedAt })},
+		"completedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r BlueprintSyncView) any { return r.CompletedAt })},
+	},
+})
+
+// blueprintGQLType is the GraphQL shape for a BlueprintView (w2/m15 + w2/m62).
 var blueprintGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Blueprint",
 	Fields: graphql.Fields{
@@ -639,8 +661,12 @@ var blueprintGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"name":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Name })},
 		"repo":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Repo })},
 		"branch":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Branch })},
+		"path":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Path })},
+		"autoSync":  &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.AutoSync })},
 		"manifest":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Manifest })},
 		"status":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Status })},
+		"lastSync":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.LastSync })},
+		"resources": &graphql.Field{Type: graphql.NewList(blueprintResourceGQLType), Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Resources })},
 		"createdAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.CreatedAt })},
 		"updatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.UpdatedAt })},
 	},
@@ -909,6 +935,21 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ValidateBlueprint(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["bexYaml"].(string))
+			},
+		},
+		// blueprintSyncs: sync run history for a blueprint (w2/m62).
+		"blueprintSyncs": &graphql.Field{
+			Type: graphql.NewList(blueprintSyncGQLType),
+			Args: graphql.FieldConfigArgument{
+				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"cursor":  &graphql.ArgumentConfig{Type: graphql.String},
+				"limit":   &graphql.ArgumentConfig{Type: graphql.Int},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				limit, _ := p.Args["limit"].(int)
+				return s.ListBlueprintSyncs(p.Context, p.Args["id"].(string),
+					gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "cursor"), limit)
 			},
 		},
 	}
@@ -1523,7 +1564,28 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return err == nil, err
 			},
 		},
-		// syncBlueprint: re-apply a stored blueprint idempotently (w2/m15).
+		// createBlueprint: create a Git-connected Blueprint from a repo (w2/m62).
+		"createBlueprint": &graphql.Field{
+			Type: blueprintGQLType,
+			Args: graphql.FieldConfigArgument{
+				"repo":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"branch":  &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"path":    &graphql.ArgumentConfig{Type: graphql.String},
+				"name":    &graphql.ArgumentConfig{Type: graphql.String},
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"confirm": &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.CreateBlueprint(p.Context, gqlutil.Str(p.Args, "ownerId"), CreateBlueprintRequest{
+					Repo:    p.Args["repo"].(string),
+					Branch:  p.Args["branch"].(string),
+					Path:    gqlutil.Str(p.Args, "path"),
+					Name:    gqlutil.Str(p.Args, "name"),
+					Confirm: gqlutil.Str(p.Args, "confirm"),
+				})
+			},
+		},
+		// syncBlueprint: re-apply a stored blueprint idempotently (w2/m15 + w2/m62).
 		// If bexYaml is provided, the stored manifest is replaced before re-apply.
 		"syncBlueprint": &graphql.Field{
 			Type: syncBlueprintResultGQLType,
@@ -1536,6 +1598,47 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SyncBlueprint(p.Context, p.Args["id"].(string),
 					gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "bexYaml"), gqlutil.Str(p.Args, "confirm"))
+			},
+		},
+		// updateBlueprint: PATCH name/autoSync/path (w2/m62).
+		"updateBlueprint": &graphql.Field{
+			Type: blueprintGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":       &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name":     &graphql.ArgumentConfig{Type: graphql.String},
+				"autoSync": &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"path":     &graphql.ArgumentConfig{Type: graphql.String},
+				"ownerId":  &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				var name, bpPath *string
+				var autoSync *bool
+				if v, ok := p.Args["name"].(string); ok {
+					name = &v
+				}
+				if v, ok := p.Args["path"].(string); ok {
+					bpPath = &v
+				}
+				if v, ok := p.Args["autoSync"].(bool); ok {
+					autoSync = &v
+				}
+				return s.UpdateBlueprint(p.Context, p.Args["id"].(string), gqlutil.Str(p.Args, "ownerId"), UpdateBlueprintRequest{
+					Name:     name,
+					AutoSync: autoSync,
+					Path:     bpPath,
+				})
+			},
+		},
+		// disconnectBlueprint: stop syncing + hide; resources remain (w2/m62).
+		"disconnectBlueprint": &graphql.Field{
+			Type: graphql.Boolean,
+			Args: graphql.FieldConfigArgument{
+				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				err := s.DisconnectBlueprint(p.Context, p.Args["id"].(string), gqlutil.Str(p.Args, "ownerId"))
+				return err == nil, err
 			},
 		},
 	}

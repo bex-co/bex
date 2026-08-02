@@ -167,6 +167,14 @@ func (callbackGitHubClient) GetCommit(context.Context, string, string, string, s
 	return github.Commit{}, nil
 }
 
+func (callbackGitHubClient) GetFileContents(context.Context, string, string, string, string, string) (github.FileContents, error) {
+	return github.FileContents{}, nil
+}
+
+func (callbackGitHubClient) GetRepoCommitSHA(context.Context, string, string, string, string) (string, error) {
+	return "", nil
+}
+
 type callbackGitHubStore struct {
 	connections map[string]store.GitConnection
 }

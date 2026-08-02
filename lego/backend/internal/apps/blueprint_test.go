@@ -30,6 +30,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/graphql-go/graphql"
 
@@ -76,14 +77,74 @@ func (f *fakeBlueprintStore) GetBlueprint(_ context.Context, id, tenantID string
 	return b, nil
 }
 
+func (f *fakeBlueprintStore) GetBlueprintByRepo(_ context.Context, tenantID, repo, branch string) (store.Blueprint, error) {
+	for _, b := range f.blueprints {
+		if b.TenantID == tenantID && b.Repo == repo && b.Branch == branch {
+			return b, nil
+		}
+	}
+	return store.Blueprint{}, fmt.Errorf("blueprint: %w", store.ErrNotFound)
+}
+
 func (f *fakeBlueprintStore) ListBlueprints(_ context.Context, tenantID string) ([]store.Blueprint, error) {
 	var out []store.Blueprint
 	for _, b := range f.blueprints {
-		if b.TenantID == tenantID && b.Status == "active" {
+		if b.TenantID == tenantID && b.Status != "disconnected" {
 			out = append(out, b)
 		}
 	}
 	return out, nil
+}
+
+func (f *fakeBlueprintStore) UpdateBlueprint(_ context.Context, id, tenantID string, name *string, autoSync *bool, bpPath *string, status *string, lastSyncAt *time.Time) (store.Blueprint, error) {
+	b, ok := f.blueprints[id]
+	if !ok || b.TenantID != tenantID {
+		return store.Blueprint{}, fmt.Errorf("blueprint: %w", store.ErrNotFound)
+	}
+	if name != nil {
+		b.Name = *name
+	}
+	if autoSync != nil {
+		b.AutoSync = *autoSync
+	}
+	if bpPath != nil {
+		b.Path = *bpPath
+	}
+	if status != nil {
+		b.Status = *status
+	}
+	if lastSyncAt != nil {
+		b.LastSyncAt = lastSyncAt
+	}
+	f.blueprints[id] = b
+	return b, nil
+}
+
+func (f *fakeBlueprintStore) DisconnectBlueprint(_ context.Context, id, tenantID string) error {
+	b, ok := f.blueprints[id]
+	if !ok || b.TenantID != tenantID {
+		return fmt.Errorf("blueprint: %w", store.ErrNotFound)
+	}
+	b.Status = "disconnected"
+	b.AutoSync = false
+	f.blueprints[id] = b
+	return nil
+}
+
+func (f *fakeBlueprintStore) InsertBlueprintSync(_ context.Context, run store.BlueprintSync) (store.BlueprintSync, error) {
+	if run.ID == "" {
+		run.ID = fmt.Sprintf("bsr-fake-%d", len(f.blueprints))
+	}
+	return run, nil
+}
+
+func (f *fakeBlueprintStore) UpdateBlueprintSync(_ context.Context, id, state string, completedAt *time.Time) (store.BlueprintSync, error) {
+	return store.BlueprintSync{ID: id, State: state, CompletedAt: completedAt}, nil
+}
+
+func (f *fakeBlueprintStore) ListBlueprintSyncs(_ context.Context, blueprintID, _ string, limit int) ([]store.BlueprintSync, error) {
+	_ = blueprintID
+	return nil, nil
 }
 
 // --- helpers ---
