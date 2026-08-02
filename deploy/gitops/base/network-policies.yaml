@@ -159,6 +159,13 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: bex-build
+    # Sandbox snapshot commit Jobs (w3/m42, ADR042 D5) push rootfs snapshot
+    # images from the dedicated privileged namespace; tenant sandbox pods
+    # themselves stay blocked (they live in `<ws>-sandbox`, not here).
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: opensandbox-snapshot
 
 ---
 # Kubelet image pulls reach zot FROM THE NODE (host/remote-node identity, not a
