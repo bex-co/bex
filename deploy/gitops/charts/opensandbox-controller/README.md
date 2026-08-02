@@ -81,6 +81,9 @@ kubectl delete crd sandboxsnapshots.sandbox.opensandbox.io
 | `controller.snapshot.registryInsecure` | Use insecure registry mode for snapshot pushes | `false` |
 | `controller.snapshot.snapshotPushSecret` | Secret name used by commit Jobs to push snapshots | `""` |
 | `controller.snapshot.resumePullSecret` | Secret name injected into resumed sandboxes for image pulls | `""` |
+| `controller.snapshot.jobNamespace` | Dedicated privileged namespace for commit/unpause Jobs (bex carried patch, w3/m42); empty = upstream same-namespace behavior | `""` |
+| `controller.snapshot.jobNamespaceCreate` | Create the jobNamespace (privileged PSS labels + Job-scoped Role/RoleBinding) with the chart | `true` |
+| `controller.snapshot.containerdSocketPath` | Node containerd socket path for the Jobs' hostPath mount (k3s: `/run/k3s/containerd/containerd.sock`) | `""` |
 | `controller.leaderElection.enabled` | Enable leader election | `true` |
 | `controller.nodeSelector` | Node labels for pod assignment | `{}` |
 | `controller.tolerations` | Tolerations for pod assignment | `[]` |

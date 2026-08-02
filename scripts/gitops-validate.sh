@@ -903,15 +903,29 @@ if [ -f "$EGRESS" ]; then
   [ "$sandbox_selector" = "sandbox" ] \
     || { echo "FAIL: sandbox egress policy must select app.bex.co/regime=sandbox" >&2; fail=1; }
 
+  structural_positive_rules="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-default-deny") |
+      ((.spec.egress // []) | length)' "$EGRESS" | tr -d '\n')"
+  [ "$structural_positive_rules" = "0" ] \
+    || { echo "FAIL: structural sandbox default-deny regained positive egress rules" >&2; fail=1; }
+
+  legacy_selector="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-legacy-allowlist") |
+      [.spec.endpointSelector.matchLabels."app.bex.co/regime",
+       (.spec.endpointSelector.matchExpressions[] | select(.key == "bex.co/agent-session") | .operator)] | join(":")' \
+    "$EGRESS" | tr -d '\n')"
+  [ "$legacy_selector" = "sandbox:DoesNotExist" ] \
+    || { echo "FAIL: legacy sandbox egress policy does not exclude agent sessions: '$legacy_selector'" >&2; fail=1; }
+
   expected_sandbox_names=$'api.anthropic.com\napi.github.com\napi.openai.com\nfiles.pythonhosted.org\ngithub.com\nobjects.githubusercontent.com\npypi.org\nraw.githubusercontent.com\nregistry.npmjs.org'
   dns_names="$(yq -N \
-    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-default-deny") |
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-legacy-allowlist") |
       .spec.egress[].toPorts[]?.rules.dns[]?.matchName' "$EGRESS" | sort)"
   fqdn_names="$(yq -N \
-    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-default-deny") |
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-legacy-allowlist") |
       .spec.egress[].toFQDNs[]?.matchName' "$EGRESS" | sort)"
   sni_names="$(yq -N \
-    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-default-deny") |
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-legacy-allowlist") |
       .spec.egress[].toPorts[]?.serverNames[]?' "$EGRESS" | sort)"
   for surface in dns_names fqdn_names sni_names; do
     actual="${!surface}"
@@ -919,7 +933,8 @@ if [ -f "$EGRESS" ]; then
       || { echo "FAIL: sandbox $surface allowlist drifted: $actual" >&2; fail=1; }
   done
   if yq -e \
-    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-default-deny") |
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and
+      (.metadata.name == "sandbox-egress-default-deny" or .metadata.name == "sandbox-egress-legacy-allowlist")) |
       .. | select(tag == "!!str" and (test("\\*") or . == "world" or . == "0.0.0.0/0"))' \
     "$EGRESS" >/dev/null 2>&1; then
     echo "FAIL: sandbox egress policy contains a wildcard/world/public-CIDR allow" >&2
@@ -1002,6 +1017,7 @@ if [ -f "$EGRESS" ]; then
   local_cilium="$(kubectl kustomize deploy/gitops/overlays/local | yq -N \
     'select(.kind == "CiliumClusterwideNetworkPolicy" and
       (.metadata.name == "sandbox-egress-default-deny" or
+       .metadata.name == "sandbox-egress-legacy-allowlist" or
        .metadata.name == "sandbox-execd-ingress" or
        .metadata.name == "opensandbox-server-ingress" or
        .metadata.name == "sandbox-exec-gateway-ingress" or
@@ -1173,9 +1189,10 @@ opensandbox_controller_render="$(helm template opensandbox-controller \
 controller_image="$(yq -N \
   'select(.kind == "Deployment" and .metadata.name == "opensandbox-controller-manager") |
     .spec.template.spec.containers[0].image' - <<<"$opensandbox_controller_render" | tr -d '\n')"
-expected_controller_image='sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/controller:v0.2.0@sha256:a9a5f73c1785ebd955336ffa313973a35c1a1b662cb7afc4ea82d92021b3532a'
-[ "$controller_image" = "$expected_controller_image" ] \
-  || { echo "FAIL: OpenSandbox controller image is '$controller_image'" >&2; fail=1; }
+# The bootstrap stays on the known-good upstream digest until CI has produced
+# the carried m42 image once. A follow-up activation commit pins that real digest.
+[ "$controller_image" = "opensandbox/controller:v0.2.0@sha256:a9a5f73c1785ebd955336ffa313973a35c1a1b662cb7afc4ea82d92021b3532a" ] \
+  || { echo "FAIL: OpenSandbox bootstrap controller image is '$controller_image'" >&2; fail=1; }
 controller_args="$(yq -N \
   'select(.kind == "Deployment" and .metadata.name == "opensandbox-controller-manager") |
     .spec.template.spec.containers[0].args[]' - <<<"$opensandbox_controller_render")"
@@ -1184,6 +1201,10 @@ for required in \
   grep -qFx -- "$required" <<<"$controller_args" \
     || { echo "FAIL: production OpenSandbox controller lost: $required" >&2; fail=1; }
 done
+if grep -qFx -- '--snapshot-job-namespace=opensandbox-snapshot' <<<"$controller_args"; then
+  echo "FAIL: bootstrap enabled the patched snapshot job namespace before pinning its image" >&2
+  fail=1
+fi
 if grep -Eq '^--snapshot-(registry|registry-insecure|push-secret)|^--resume-pull-secret' <<<"$controller_args"; then
   echo "FAIL: production OpenSandbox controller enabled unavailable snapshot transport/credentials" >&2
   fail=1
@@ -1237,19 +1258,20 @@ namespace_object_verbs="$(yq -N \
     .rules[] | select(.verbs[]? != "bind") |
     [(.resources | sort | join("+")), (.verbs | sort | join(","))] | join(":")' \
   deploy/gitops/base/bex-api-namespace-rbac.yaml | sed '/^$/d' | sort)"
-expected_namespace_object_verbs=$'limitranges+resourcequotas:create,get,update\nnamespaces:create,delete,get,list,update\nnetworkpolicies:create,delete,get,list,update\nrolebindings:create,delete,get,list,update'
+expected_namespace_object_verbs=$'ciliumnetworkpolicies:create,delete,get,update\nlimitranges+resourcequotas:create,get,update\nnamespaces:create,delete,get,list,update\nnetworkpolicies:create,delete,get,list,update\nrolebindings:create,delete,get,list,update'
 [ "$namespace_object_verbs" = "$expected_namespace_object_verbs" ] \
   || { echo "FAIL: namespace reconciler object verbs drifted: '$namespace_object_verbs'" >&2; fail=1; }
 namespace_admission_render="$(kubectl kustomize deploy/gitops/base | yq \
   'select((.kind == "ValidatingAdmissionPolicy" or .kind == "ValidatingAdmissionPolicyBinding") and
-    (.metadata.name == "bex-api-tenant-namespaces" or .metadata.name == "bex-api-tenant-namespace-objects"))')"
+    (.metadata.name == "bex-api-tenant-namespaces" or .metadata.name == "bex-api-tenant-namespace-objects" or
+     .metadata.name == "bex-api-session-egress"))')"
 namespace_admission_objects="$(yq -N \
   '[.kind, .metadata.name,
     (.metadata.annotations."argocd.argoproj.io/sync-wave" // ""),
     (.spec.failurePolicy // ""),
     ((.spec.validationActions // []) | join(","))] | join(":")' \
   - <<<"$namespace_admission_render" | sort)"
-expected_namespace_admission_objects=$'ValidatingAdmissionPolicy:bex-api-tenant-namespace-objects:-3:Fail:\nValidatingAdmissionPolicy:bex-api-tenant-namespaces:-3:Fail:\nValidatingAdmissionPolicyBinding:bex-api-tenant-namespace-objects:-2::Deny,Audit\nValidatingAdmissionPolicyBinding:bex-api-tenant-namespaces:-2::Deny,Audit'
+expected_namespace_admission_objects=$'ValidatingAdmissionPolicy:bex-api-session-egress:-3:Fail:\nValidatingAdmissionPolicy:bex-api-tenant-namespace-objects:-3:Fail:\nValidatingAdmissionPolicy:bex-api-tenant-namespaces:-3:Fail:\nValidatingAdmissionPolicyBinding:bex-api-session-egress:-2::Deny,Audit\nValidatingAdmissionPolicyBinding:bex-api-tenant-namespace-objects:-2::Deny,Audit\nValidatingAdmissionPolicyBinding:bex-api-tenant-namespaces:-2::Deny,Audit'
 [ "$namespace_admission_objects" = "$expected_namespace_admission_objects" ] \
   || { echo "FAIL: namespace admission policy/binding shape drifted" >&2; fail=1; }
 namespace_rbac_waves="$(yq -N \
@@ -1267,6 +1289,11 @@ for required_guard in \
   "request.resource.resource != 'networkpolicies'" \
   "variables.target.metadata.name == 'default-deny'" \
   "variables.target.metadata.name in ['allow-same-namespace', 'allow-dns-egress', 'allow-opensandbox-server-execd']" \
+  "variables.target.metadata.name.matches('^agent-session-egress-[a-f0-9]{16}$')" \
+  "annotations['bex.co/model-endpoint']" \
+  "!has(rule.toCIDR) && !has(rule.toCIDRSet) && !has(rule.toEntities)" \
+  "rule.toPorts[0].ports[0].port == '443'" \
+  "rule.toPorts[0].ports[0].port == '8082'" \
   "request.resource.resource != 'rolebindings'" \
   "request.operation == 'DELETE'" \
   "variables.target.metadata.name == variables.target.roleRef.name" \
@@ -1415,6 +1442,13 @@ for required_probe in \
   'hardening resource' \
   'enable-l7-proxy' \
   'unique DNS-exfiltration query' \
+  'setup-phase package registry' \
+  'agent-phase package registry' \
+  'agent-phase tenant allowlisted destination' \
+  'agent-phase non-allowlisted destination' \
+  'agent-phase same-workspace cross-sandbox isolation' \
+  'session egress admission allowed a public CIDR escape hatch' \
+  'bex-api-session-egress' \
   'Hubble drops do not contain the unique denied DNS-exfiltration query' \
   'unix:///var/run/cilium/hubble.sock' \
   'hubble observe'; do

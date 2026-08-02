@@ -55,6 +55,31 @@ func (adminChecker) Check(_ context.Context, subject, relation, _ string) (bool,
 	return true, nil
 }
 
+type egressCall struct {
+	op, namespace, session, modelEndpoint string
+	extra                                 []string
+}
+
+type fakeSessionEgress struct {
+	calls []egressCall
+	err   error
+}
+
+func (f *fakeSessionEgress) PrepareSetup(_ context.Context, namespace, session, modelEndpoint string, extra []string) error {
+	f.calls = append(f.calls, egressCall{op: "setup", namespace: namespace, session: session, modelEndpoint: modelEndpoint, extra: append([]string(nil), extra...)})
+	return f.err
+}
+
+func (f *fakeSessionEgress) TransitionToAgent(_ context.Context, namespace, session, modelEndpoint string, extra []string) error {
+	f.calls = append(f.calls, egressCall{op: "agent", namespace: namespace, session: session, modelEndpoint: modelEndpoint, extra: append([]string(nil), extra...)})
+	return f.err
+}
+
+func (f *fakeSessionEgress) Delete(_ context.Context, namespace, session string) error {
+	f.calls = append(f.calls, egressCall{op: "delete", namespace: namespace, session: session})
+	return f.err
+}
+
 func stubServer(t *testing.T, handler http.HandlerFunc) *Service {
 	t.Helper()
 	srv := httptest.NewServer(handler)
@@ -109,6 +134,60 @@ func TestCreateUsesTemplateImageAndEchoesPlan(t *testing.T) {
 	}
 	if sb.NetworkPolicy == nil || sb.NetworkPolicy.Default != NetworkPolicyDenyAll {
 		t.Errorf("effective network policy = %#v, want deny-all", sb.NetworkPolicy)
+	}
+}
+
+func TestAgentSessionPolicyPrecedesSandboxCreateAndTransitionUsesDurableAllowlist(t *testing.T) {
+	var got createRequest
+	eg := &fakeSessionEgress{}
+	created := false
+	svc := stubServer(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			if len(eg.calls) != 1 || eg.calls[0].op != "setup" {
+				t.Errorf("OpenSandbox create happened before setup policy: %#v", eg.calls)
+			}
+			created = true
+			if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+				t.Fatalf("decode create: %v", err)
+			}
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"id":"os-agent","status":{"state":"Running"}}`))
+		case http.MethodGet:
+			_, _ = w.Write([]byte(`{"id":"os-agent","metadata":{"bex.co/owner":"id-a","bex.co/workspace":"tea-a","bex.co/network-policy":"deny-all","app.bex.co/regime":"sandbox","bex.co/agent-session":"ags-one","bex.co/agent-session-model-endpoint":"https://models.example.com/v1","bex.co/agent-session-egress-allowlist":"[\"docs.example.com\"]"},"status":{"state":"Running"}}`))
+		default:
+			http.NotFound(w, r)
+		}
+	})
+	svc.SessionEgress = eg
+	lifecycle := NewAgentSessionLifecycle(svc)
+	_, err := lifecycle.CreateAgentSessionSandbox(callerCtx(), "tea-a", "node", "ags-one", "https://models.example.com/v1", []string{"docs.example.com"})
+	if err != nil {
+		t.Fatalf("CreateAgentSessionSandbox: %v", err)
+	}
+	if !created || got.Metadata[metadataAgentSession] != "ags-one" || got.Metadata[metadataModelEndpoint] != "https://models.example.com/v1" || got.Metadata[metadataEgressAllow] != `["docs.example.com"]` {
+		t.Fatalf("agent session metadata = %#v", got.Metadata)
+	}
+	if err := lifecycle.EnterAgentSessionPhase(callerCtx(), "tea-a", "ags-one", "os-agent"); err != nil {
+		t.Fatalf("EnterAgentSessionPhase: %v", err)
+	}
+	if len(eg.calls) != 2 || eg.calls[1].op != "agent" || eg.calls[1].modelEndpoint != "https://models.example.com/v1" || len(eg.calls[1].extra) != 1 || eg.calls[1].extra[0] != "docs.example.com" {
+		t.Fatalf("egress calls = %#v", eg.calls)
+	}
+}
+
+func TestAgentSessionCreateRollsPolicyBackOnSandboxFailure(t *testing.T) {
+	eg := &fakeSessionEgress{}
+	svc := stubServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "boom", http.StatusBadGateway)
+	})
+	svc.SessionEgress = eg
+	_, err := NewAgentSessionLifecycle(svc).CreateAgentSessionSandbox(callerCtx(), "tea-a", "node", "ags-one", "https://models.example.com/v1", nil)
+	if err == nil {
+		t.Fatal("CreateAgentSessionSandbox succeeded against failed upstream")
+	}
+	if len(eg.calls) != 2 || eg.calls[0].op != "setup" || eg.calls[1].op != "delete" {
+		t.Fatalf("egress calls = %#v, want setup then rollback delete", eg.calls)
 	}
 }
 

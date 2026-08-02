@@ -69,6 +69,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/serve"
+	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
 	"github.com/bex-co/bex/lego/backend/internal/webhooks"
@@ -600,6 +601,16 @@ func main() {
 		// The Render CLI's `ea sandbox create` sends no template (no such flag), so
 		// an empty template resolves to this registered default (w3/m32 t009).
 		deps.SandboxDefaultTemplate = "base"
+		// Agent-session egress (ADR047 D5): policy is installed before sandbox
+		// creation. The registry catalog is platform config; the model endpoint is
+		// selected per session by its agent/provider config and validated at create.
+		egress, err := sessionegress.NewManager(cl, sessionegress.Config{
+			SetupRegistryDomains: sessionegress.RegistryConfig(os.Getenv("BEX_AGENT_SETUP_REGISTRIES")),
+		})
+		if err != nil {
+			log.Fatalf("bex-api: %v", err)
+		}
+		deps.SandboxSessionEgress = egress
 		// `render ea sandbox exec` (m33): bex-api authorizes can_operate and mints a
 		// signed ticket, then reverse-proxies the SSE stream from the isolated SSH
 		// gateway (which alone holds pods/exec, Option A). Both the shared HMAC

@@ -1,0 +1,64 @@
+{{- /*
+Dedicated namespace for the privileged snapshot commit/unpause Jobs (bex
+carried patch: --snapshot-job-namespace, w3/m42 / ADR042 D5). The Jobs
+hostPath-mount the node containerd socket and run as root, so this namespace
+enforces PodSecurity "privileged" — which is exactly why they are confined
+here instead of the tenant sandbox namespaces (PodSecurity "baseline").
+Only the controller's ServiceAccount can create workloads here (Role below);
+nothing else runs in this namespace.
+*/ -}}
+{{- if and .Values.controller.snapshot.jobNamespace .Values.controller.snapshot.jobNamespaceCreate }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.controller.snapshot.jobNamespace }}
+  labels:
+    {{- include "opensandbox.labels" . | nindent 4 }}
+    app.kubernetes.io/component: snapshot-jobs
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+---
+# Least-privilege grant for the snapshot Jobs: the controller manages Jobs and
+# reads their pods (commit results ride pod termination messages) here — and
+# only here; its ClusterRole stays read-only (bex m35 hardening).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: opensandbox-snapshot-jobs
+  namespace: {{ .Values.controller.snapshot.jobNamespace }}
+  labels:
+    {{- include "opensandbox.labels" . | nindent 4 }}
+    app.kubernetes.io/component: snapshot-jobs
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["jobs/status"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: opensandbox-snapshot-jobs
+  namespace: {{ .Values.controller.snapshot.jobNamespace }}
+  labels:
+    {{- include "opensandbox.labels" . | nindent 4 }}
+    app.kubernetes.io/component: snapshot-jobs
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: opensandbox-snapshot-jobs
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "opensandbox.serviceAccountName" . }}
+    namespace: {{ include "opensandbox.namespace" . }}
+{{- end }}

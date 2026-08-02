@@ -120,12 +120,20 @@ func (r resolver) IsMember(_ context.Context, id core.Identity, workspace string
 }
 
 type fakeLifecycle struct {
-	created, resumed, canceled int
+	created, entered, resumed, canceled int
+	modelEndpoint                       string
+	egressAllowlist                     []string
 }
 
-func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, _, _, _ string) (sandbox.Sandbox, error) {
+func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, _, _, _ string, modelEndpoint string, egressAllowlist []string) (sandbox.Sandbox, error) {
 	f.created++
+	f.modelEndpoint = modelEndpoint
+	f.egressAllowlist = append([]string(nil), egressAllowlist...)
 	return sandbox.Sandbox{ID: "sandbox-1", Status: sandbox.StatusRunning}, nil
+}
+func (f *fakeLifecycle) EnterAgentSessionPhase(context.Context, string, string, string) error {
+	f.entered++
+	return nil
 }
 func (f *fakeLifecycle) ResumeAgentSessionSandbox(context.Context, string, string, string) error {
 	f.resumed++
@@ -150,7 +158,7 @@ func caller(subject string) context.Context {
 }
 
 func createInput() CreateRequest {
-	return CreateRequest{OwnerID: "tea-a", Repo: "bex-co/example", Branch: "main", AgentConfig: AgentConfig{Agent: "codex", Model: "gpt-5", Task: "fix the tests"}}
+	return CreateRequest{OwnerID: "tea-a", Repo: "bex-co/example", Branch: "main", AgentConfig: AgentConfig{Agent: "codex", Model: "gpt-5", ModelEndpoint: "https://api.openai.com/v1", Task: "fix the tests"}, EgressAllowlist: []string{"docs.example.com"}}
 }
 
 func TestLifecycleTicketClaimsAndFirstClassAuthorization(t *testing.T) {
@@ -159,7 +167,7 @@ func TestLifecycleTicketClaimsAndFirstClassAuthorization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if created.Phase != PhaseRunning || created.SandboxID != "sandbox-1" || lifecycle.created != 1 || fga.parents[created.ID] != "tea-a" {
+	if created.Phase != PhaseRunning || created.SandboxID != "sandbox-1" || lifecycle.created != 1 || lifecycle.entered != 1 || lifecycle.modelEndpoint != "https://api.openai.com/v1" || !reflect.DeepEqual(lifecycle.egressAllowlist, []string{"docs.example.com"}) || fga.parents[created.ID] != "tea-a" {
 		t.Fatalf("create = %+v, parents=%v lifecycle=%+v", created, fga.parents, lifecycle)
 	}
 	claims, err := agentsessionticket.Verify(svc.TicketSecret, created.Ticket, st.now)
@@ -265,7 +273,7 @@ func TestRESTGraphQLMCPCreateParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := graphql.Do(graphql.Params{Schema: schema, Context: caller("alice"), RequestString: `mutation { createAgentSession(ownerId:"tea-a", repo:"bex-co/example", branch:"main", agentConfig:{agent:"codex",model:"gpt-5",task:"fix the tests"}) { id ownerId repo branch agentConfig { agent model task template } sandboxId phase status ticket url expiresAt } }`})
+	result := graphql.Do(graphql.Params{Schema: schema, Context: caller("alice"), RequestString: `mutation { createAgentSession(ownerId:"tea-a", repo:"bex-co/example", branch:"main", agentConfig:{agent:"codex",model:"gpt-5",modelEndpoint:"https://api.openai.com/v1",task:"fix the tests"}, egressAllowlist:["docs.example.com"]) { id ownerId repo branch agentConfig { agent model modelEndpoint task template } sandboxId phase status ticket url expiresAt } }`})
 	if len(result.Errors) != 0 {
 		t.Fatalf("GraphQL errors = %#v", result.Errors)
 	}
@@ -292,7 +300,8 @@ func TestRESTGraphQLMCPCreateParity(t *testing.T) {
 	defer client.Close()
 	mcpResult, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "spawn_agent_session", Arguments: map[string]any{
 		"ownerId": "tea-a", "repo": "bex-co/example", "branch": "main",
-		"agentConfig": map[string]any{"agent": "codex", "model": "gpt-5", "task": "fix the tests"},
+		"agentConfig":     map[string]any{"agent": "codex", "model": "gpt-5", "modelEndpoint": "https://api.openai.com/v1", "task": "fix the tests"},
+		"egressAllowlist": []any{"docs.example.com"},
 	}})
 	if err != nil || mcpResult.IsError {
 		t.Fatalf("MCP = %+v err=%v", mcpResult, err)

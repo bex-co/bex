@@ -217,6 +217,9 @@ type Deps struct {
 	// SandboxExec wires `render ea sandbox exec` (w3/m33) — bex-api authorizes and
 	// reverse-proxies the SSE from the isolated gateway; nil => the exec verb 503s.
 	SandboxExec *sandbox.ExecConfig
+	// SandboxSessionEgress renders the namespaced Cilium policy before an agent
+	// session sandbox starts and narrows it at the setup→agent boundary.
+	SandboxSessionEgress sandbox.SessionEgress
 	// Agent sessions are durable control-plane resources that delegate runtime
 	// mechanism to SandboxClient. All five dependencies are mandatory: the DB
 	// row, first-class OpenFGA tuple writer, sandbox lifecycle, HMAC signer, and
@@ -708,6 +711,7 @@ func sandboxService(base *core.Base, d Deps) *sandbox.Service {
 		DefaultTemplate: d.SandboxDefaultTemplate,
 		Exec:            d.SandboxExec,
 		Meter:           d.SandboxMeter,
+		SessionEgress:   d.SandboxSessionEgress,
 	}
 }
 

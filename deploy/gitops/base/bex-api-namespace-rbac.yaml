@@ -36,6 +36,13 @@ rules:
   - apiGroups: ["networking.k8s.io"]
     resources: ["networkpolicies"]
     verbs: ["get", "list", "create", "update", "delete"]
+  # Per-agent-session FQDN/SNI policy (ADR047 D5, w3/m40). Kubernetes RBAC
+  # cannot scope this ClusterRole to dynamic `<ws>-sandbox` namespaces; the
+  # bex-api-session-egress ValidatingAdmissionPolicy confines both namespace
+  # and policy shape at the API server.
+  - apiGroups: ["cilium.io"]
+    resources: ["ciliumnetworkpolicies"]
+    verbs: ["get", "create", "update", "delete"]
   # The per-`<ws>` RoleBindings (t003). Creating a RoleBinding that references a
   # ClusterRole requires either holding that role's rules or `bind` on it; the
   # bind grant below satisfies the RBAC escalation-prevention check without

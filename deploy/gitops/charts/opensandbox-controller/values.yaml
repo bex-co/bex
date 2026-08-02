@@ -58,6 +58,23 @@ controller:
     snapshotPushSecret: ""
     # -- Secret name injected into resumed sandboxes for pulling snapshot images.
     resumePullSecret: ""
+    # -- Namespace the privileged commit/unpause Jobs run in instead of each
+    # SandboxSnapshot's own namespace (bex carried patch
+    # deploy/opensandbox/patches/controller-snapshot-job-namespace.patch, w3/m42).
+    # The Jobs hostPath-mount the node containerd socket, which the tenant
+    # sandbox namespaces' PodSecurity "baseline" forbids (ADR042 D5); one
+    # dedicated privileged namespace keeps the tenant floor intact. Empty
+    # preserves upstream same-namespace behavior. snapshotPushSecret must exist
+    # in this namespace when both are set.
+    jobNamespace: ""
+    # -- Manage (create) the jobNamespace with privileged PodSecurity labels
+    # plus the controller's Job/pod Role there. Disable to bring your own.
+    jobNamespaceCreate: true
+    # -- Node containerd socket path the commit/unpause Jobs hostPath-mount
+    # (upstream --containerd-socket-path). Empty uses the upstream default
+    # /var/run/containerd/containerd.sock; k3s nodes need
+    # /run/k3s/containerd/containerd.sock.
+    containerdSocketPath: ""
 
   # -- Enable leader election for controller manager
   leaderElection:

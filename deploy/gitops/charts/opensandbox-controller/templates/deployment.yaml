@@ -76,6 +76,12 @@ spec:
         {{- if .Values.controller.snapshot.resumePullSecret }}
         - --resume-pull-secret={{ .Values.controller.snapshot.resumePullSecret }}
         {{- end }}
+        {{- if .Values.controller.snapshot.jobNamespace }}
+        - --snapshot-job-namespace={{ .Values.controller.snapshot.jobNamespace }}
+        {{- end }}
+        {{- if .Values.controller.snapshot.containerdSocketPath }}
+        - --containerd-socket-path={{ .Values.controller.snapshot.containerdSocketPath }}
+        {{- end }}
         ports:
         - name: health
           containerPort: 8081

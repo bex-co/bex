@@ -52,6 +52,8 @@ execd_spoof_pod="${run_id}-execd-spoof"
 execd_allowed_pod="${run_id}-execd-allowed"
 controller_probe_pod="${run_id}-controller"
 peer_service="${run_id}-peer"
+session_policy="agent-session-egress-0000000000000040"
+session_label="${run_id}-agent-session"
 
 sandbox_a_id=""
 sandbox_b_id=""
@@ -101,6 +103,7 @@ cleanup() {
   kubectl -n opensandbox-system delete pod "$execd_allowed_pod" --ignore-not-found --wait=false >/dev/null 2>&1
   kubectl -n opensandbox-system delete pod "$controller_probe_pod" --ignore-not-found --wait=false >/dev/null 2>&1
   kubectl -n "$namespace_a" delete service "$peer_service" --ignore-not-found >/dev/null 2>&1
+  kubectl -n "$namespace_a" delete ciliumnetworkpolicy "$session_policy" --ignore-not-found >/dev/null 2>&1
   [ -n "$cr_a" ] && kubectl -n "$namespace_a" delete batchsandbox "$cr_a" --ignore-not-found --wait=false >/dev/null 2>&1
   [ -n "$cr_b" ] && kubectl -n "$namespace_a" delete batchsandbox "$cr_b" --ignore-not-found --wait=false >/dev/null 2>&1
   [ -n "$cr_c" ] && kubectl -n "$namespace_b" delete batchsandbox "$cr_c" --ignore-not-found --wait=false >/dev/null 2>&1
@@ -135,6 +138,7 @@ preflight_cluster() {
 
   for resource in \
     ciliumclusterwidenetworkpolicy/sandbox-egress-default-deny \
+    ciliumclusterwidenetworkpolicy/sandbox-egress-legacy-allowlist \
     ciliumclusterwidenetworkpolicy/sandbox-execd-ingress \
     ciliumclusterwidenetworkpolicy/opensandbox-server-ingress \
     ciliumclusterwidenetworkpolicy/sandbox-exec-gateway-ingress \
@@ -145,7 +149,9 @@ preflight_cluster() {
     validatingadmissionpolicy/bex-api-tenant-namespaces \
     validatingadmissionpolicybinding/bex-api-tenant-namespaces \
     validatingadmissionpolicy/bex-api-tenant-namespace-objects \
-    validatingadmissionpolicybinding/bex-api-tenant-namespace-objects; do
+    validatingadmissionpolicybinding/bex-api-tenant-namespace-objects \
+    validatingadmissionpolicy/bex-api-session-egress \
+    validatingadmissionpolicybinding/bex-api-session-egress; do
     kubectl get "$resource" >/dev/null 2>&1 \
       || fail "required hardening resource $resource is not deployed"
   done
@@ -208,6 +214,8 @@ preflight_cluster() {
     || fail "isolated SSH gateway lacks its sandbox-namespace pods/exec grant"
   [ "$(kubectl auth can-i create pods --subresource=exec -n opensandbox-system --as "$gateway_as")" = no ] \
     || fail "isolated SSH gateway has pods/exec authority in opensandbox-system"
+  [ "$(kubectl auth can-i create ciliumnetworkpolicies.cilium.io -n "$namespace_a" --as "$bex_api_as")" = yes ] \
+    || fail "bex-api lacks the admission-confined per-session Cilium policy grant"
 
   for deployment in opensandbox-server opensandbox-controller-manager; do
     kubectl -n opensandbox-system get deployment "$deployment" -o json | jq -e '
@@ -457,6 +465,113 @@ approved_ip="$(exec_a /tmp/m35-netprobe resolve api.github.com | tail -1)"
 expect_denied "approved destination by literal IP/wrong SNI" exec_a /tmp/m35-netprobe tls "$approved_ip" 443 example.com
 expect_allowed "learned approved public IP with approved SNI" exec_a /tmp/m35-netprobe tls "$approved_ip" 443 api.github.com
 expect_denied "private Kubernetes API target with approved SNI" exec_a /tmp/m35-netprobe tls "$api_server_ip" 443 api.github.com
+
+echo "==> verify agent-session setup/agent egress phase split"
+render_session_policy() {
+  local phase="$1" include_registry="$2" registry_dns="" registry_fqdn="" registry_sni=""
+  if [ "$include_registry" = true ]; then
+    registry_dns='              - matchName: registry.npmjs.org'
+    registry_fqdn='        - matchName: registry.npmjs.org'
+    registry_sni='            - registry.npmjs.org'
+  fi
+  cat <<YAML
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: $session_policy
+  namespace: $namespace_a
+  labels:
+    app.kubernetes.io/managed-by: bex-session-egress
+    bex.co/agent-session: $session_label
+  annotations:
+    bex.co/egress-phase: $phase
+    bex.co/model-endpoint: api.github.com
+    bex.co/egress-allowlist: '["example.com"]'
+    bex.co/egress-allowlist-hash: 100680ad546ce6a577f42f52df33b4cf1f2459085590b33bd215076c513b1782
+spec:
+  endpointSelector:
+    matchLabels:
+      bex.co/agent-session: $session_label
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchName: api.github.com
+              - matchName: example.com
+              - matchName: bex-ssh-gateway.bex-system.svc.cluster.local
+$registry_dns
+    - toFQDNs:
+        - matchName: api.github.com
+        - matchName: example.com
+$registry_fqdn
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+          serverNames:
+            - api.github.com
+            - example.com
+$registry_sni
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: bex-system
+            k8s:io.cilium.k8s.policy.serviceaccount: bex-ssh-gateway
+            k8s:app.kubernetes.io/name: bex-ssh-gateway
+      toPorts:
+        - ports:
+            - port: "8082"
+              protocol: TCP
+YAML
+}
+
+# The exact writer shape must pass the bex-api admission boundary, while a CIDR
+# escape hatch must fail even in dry-run. Apply the real fixture as cluster
+# admin, then label the Pod so it atomically leaves the legacy allowlist.
+render_session_policy setup true \
+  | kubectl create --dry-run=server --as "$bex_api_as" -f - >/dev/null \
+  || fail "bex-api admission rejected the exact session egress policy"
+if render_session_policy setup true \
+  | yq '.spec.egress += [{"toCIDR":["0.0.0.0/0"]}]' - \
+  | kubectl create --dry-run=server --as "$bex_api_as" -f - >"$fixture_dir/session-cidr-deny.txt" 2>&1; then
+  fail "session egress admission allowed a public CIDR escape hatch"
+fi
+grep -Eq 'Forbidden|exact FQDN or approved endpoint rules' "$fixture_dir/session-cidr-deny.txt" \
+  || fail "session CIDR policy failed without admission-boundary evidence"
+render_session_policy setup true | kubectl apply -f - >/dev/null
+kubectl -n "$namespace_a" label pod "$pod_a" "bex.co/agent-session=$session_label" --overwrite >/dev/null
+
+expect_eventually() {
+  local mode="$1" name="$2"
+  shift 2
+  local deadline=$((SECONDS + 90))
+  while ((SECONDS < deadline)); do
+    if "$@" >/dev/null 2>&1; then
+      [ "$mode" = allowed ] && { pass "$name allowed"; return; }
+    else
+      [ "$mode" = denied ] && { pass "$name denied"; return; }
+    fi
+    sleep 3
+  done
+  fail "$name did not become $mode"
+}
+expect_eventually allowed "setup-phase package registry" exec_a /tmp/m35-netprobe tls registry.npmjs.org 443 registry.npmjs.org
+expect_eventually allowed "tenant allowlisted destination" exec_a /tmp/m35-netprobe tls example.com 443 example.com
+expect_eventually denied "setup-phase non-allowlisted destination" exec_a /tmp/m35-netprobe tls www.github.com 443 www.github.com
+
+render_session_policy agent false | kubectl apply -f - >/dev/null
+expect_eventually denied "agent-phase package registry" exec_a /tmp/m35-netprobe tls registry.npmjs.org 443 registry.npmjs.org
+expect_eventually allowed "agent-phase GitHub baseline" exec_a /tmp/m35-netprobe tls api.github.com 443 api.github.com
+expect_eventually allowed "agent-phase tenant allowlisted destination" exec_a /tmp/m35-netprobe tls example.com 443 example.com
+expect_eventually denied "agent-phase non-allowlisted destination" exec_a /tmp/m35-netprobe tls www.github.com 443 www.github.com
+expect_denied "agent-phase same-workspace cross-sandbox isolation" exec_a /tmp/m35-netprobe tcp "$pod_b_ip" 44772
+pass "setup registries narrow to the exact agent baseline plus immutable tenant widening"
 
 kubectl -n bex-system run "$platform_pod" --image "$python_image" --restart Never \
   --labels "app.kubernetes.io/name=bex-api" \

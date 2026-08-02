@@ -49,7 +49,8 @@ type TupleWriter interface {
 }
 
 type SandboxLifecycle interface {
-	CreateAgentSessionSandbox(context.Context, string, string, string) (sandbox.Sandbox, error)
+	CreateAgentSessionSandbox(context.Context, string, string, string, string, []string) (sandbox.Sandbox, error)
+	EnterAgentSessionPhase(context.Context, string, string, string) error
 	ResumeAgentSessionSandbox(context.Context, string, string, string) error
 	CancelAgentSessionSandbox(context.Context, string, string, string) error
 }
@@ -88,7 +89,7 @@ func validateCreate(req CreateRequest) error {
 	if strings.TrimSpace(req.Branch) == "" {
 		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "branch is required", map[string]any{"field": "branch"})
 	}
-	if len(req.Repo) > 2048 || len(req.Branch) > 255 || len(req.AgentConfig.Agent) > 128 || len(req.AgentConfig.Model) > 255 || len(req.AgentConfig.Task) > 100_000 || len(req.AgentConfig.Template) > 128 {
+	if len(req.Repo) > 2048 || len(req.Branch) > 255 || len(req.AgentConfig.Agent) > 128 || len(req.AgentConfig.Model) > 255 || len(req.AgentConfig.ModelEndpoint) > 2048 || len(req.AgentConfig.Task) > 100_000 || len(req.AgentConfig.Template) > 128 {
 		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "agent session input exceeds its size limit", nil)
 	}
 	return nil
@@ -115,6 +116,11 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err := validateCreate(req); err != nil {
 		return View{}, err
 	}
+	modelEndpoint, egressAllowlist, err := createEgress(req.AgentConfig, req.EgressAllowlist)
+	if err != nil {
+		return View{}, err
+	}
+	req.AgentConfig.ModelEndpoint = modelEndpoint
 	workspaceID, ok := s.Tenant(ctx)
 	if !ok {
 		return View{}, core.ErrForbidden
@@ -139,9 +145,14 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		return View{}, fmt.Errorf("%w: establish agent session authorization: %v", core.ErrAuthzUnavailable, err)
 	}
 	template := strings.TrimSpace(req.AgentConfig.Template)
-	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, workspaceID, template, record.ID)
+	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, workspaceID, template, record.ID, modelEndpoint, egressAllowlist)
 	if err != nil {
 		_, _ = s.Store.SetAgentSessionLifecycle(ctx, record.ID, "", PhaseFailed, "sandbox create failed", false)
+		return View{}, err
+	}
+	if err := s.Sandbox.EnterAgentSessionPhase(ctx, workspaceID, record.ID, sb.ID); err != nil {
+		_ = s.Sandbox.CancelAgentSessionSandbox(ctx, workspaceID, record.ID, sb.ID)
+		_, _ = s.Store.SetAgentSessionLifecycle(ctx, record.ID, sb.ID, PhaseFailed, "egress phase transition failed", false)
 		return View{}, err
 	}
 	phase := PhaseCreating

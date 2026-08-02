@@ -11,20 +11,22 @@ import (
 var agentConfigGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSessionConfig",
 	Fields: graphql.Fields{
-		"agent":    &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v AgentConfig) any { return v.Agent })},
-		"model":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v AgentConfig) any { return v.Model })},
-		"task":     &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v AgentConfig) any { return v.Task })},
-		"template": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v AgentConfig) any { return v.Template })},
+		"agent":         &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v AgentConfig) any { return v.Agent })},
+		"model":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v AgentConfig) any { return v.Model })},
+		"modelEndpoint": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v AgentConfig) any { return v.ModelEndpoint })},
+		"task":          &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v AgentConfig) any { return v.Task })},
+		"template":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v AgentConfig) any { return v.Template })},
 	},
 })
 
 var agentConfigGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 	Name: "AgentSessionConfigInput",
 	Fields: graphql.InputObjectConfigFieldMap{
-		"agent":    &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
-		"model":    &graphql.InputObjectFieldConfig{Type: graphql.String},
-		"task":     &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
-		"template": &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"agent":         &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"model":         &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"modelEndpoint": &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"task":          &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"template":      &graphql.InputObjectFieldConfig{Type: graphql.String},
 	},
 })
 
@@ -67,7 +69,18 @@ func stringArg(args map[string]any, key string) string {
 
 func configArg(args map[string]any) AgentConfig {
 	raw, _ := args["agentConfig"].(map[string]any)
-	return AgentConfig{Agent: stringArg(raw, "agent"), Model: stringArg(raw, "model"), Task: stringArg(raw, "task"), Template: stringArg(raw, "template")}
+	return AgentConfig{Agent: stringArg(raw, "agent"), Model: stringArg(raw, "model"), ModelEndpoint: stringArg(raw, "modelEndpoint"), Task: stringArg(raw, "task"), Template: stringArg(raw, "template")}
+}
+
+func stringListArg(args map[string]any, key string) []string {
+	raw, _ := args[key].([]any)
+	out := make([]string, 0, len(raw))
+	for _, item := range raw {
+		if value, ok := item.(string); ok {
+			out = append(out, value)
+		}
+	}
+	return out
 }
 
 func (s *Service) GraphQLQuery() graphql.Fields {
@@ -91,13 +104,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createAgentSession": &graphql.Field{
 			Type: agentSessionGQLType,
 			Args: graphql.FieldConfigArgument{
-				"ownerId":     &graphql.ArgumentConfig{Type: graphql.String},
-				"repo":        &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"branch":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"agentConfig": &graphql.ArgumentConfig{Type: graphql.NewNonNull(agentConfigGQLInput)},
+				"ownerId":         &graphql.ArgumentConfig{Type: graphql.String},
+				"repo":            &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"branch":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"agentConfig":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(agentConfigGQLInput)},
+				"egressAllowlist": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String))},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Create(p.Context, CreateRequest{OwnerID: stringArg(p.Args, "ownerId"), Repo: stringArg(p.Args, "repo"), Branch: stringArg(p.Args, "branch"), AgentConfig: configArg(p.Args)})
+				return s.Create(p.Context, CreateRequest{OwnerID: stringArg(p.Args, "ownerId"), Repo: stringArg(p.Args, "repo"), Branch: stringArg(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: stringListArg(p.Args, "egressAllowlist")})
 			},
 		},
 		"resumeAgentSession": &graphql.Field{Type: agentSessionGQLType, Args: idArg, Resolve: func(p graphql.ResolveParams) (any, error) {
