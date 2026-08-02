@@ -23,6 +23,8 @@ set -euo pipefail
 #                                  target workspace (never echoed)
 #   KUBECONFIG=/path/…             app-cluster kubeconfig (read-only ops used)
 # Optional:
+#   BEX_OWNER_ID=tea-…             explicit workspace id for the sandbox verbs
+#                                  (defaults to the bearer's workspace)
 #   BEX_SNAPSHOT_JOB_NS=opensandbox-snapshot   dedicated commit-Job namespace
 #   BEX_PAUSE_TIMEOUT=300          seconds to wait for pause/resume phases
 #
@@ -48,7 +50,9 @@ timeout="${BEX_PAUSE_TIMEOUT:-300}"
 marker="m42-$(date +%s)-$RANDOM"
 
 api() { # METHOD PATH [JSON_BODY] — bearer never appears in argv (config via stdin)
-  local method="$1" path="$2" body="${3:-}"
+  local method="$1" path="$2" body="${3:-}" sep='?'
+  case "$path" in *\?*) sep='&' ;; esac
+  [ -n "${BEX_OWNER_ID:-}" ] && path="$path${sep}ownerId=$BEX_OWNER_ID"
   curl -fsS -X "$method" "$BEX_API_URL$path" \
     --config <(printf 'header = "Authorization: Bearer %s"\n' "$BEX_BEARER") \
     -H 'Content-Type: application/json' ${body:+--data "$body"}

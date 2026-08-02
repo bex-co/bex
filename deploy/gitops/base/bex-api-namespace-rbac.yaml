@@ -59,6 +59,10 @@ rules:
       - bex-tenant-ssh-gateway
       - bex-tenant-sandbox-server
       - bex-tenant-sandbox-controller
+      # w3/m42: the operator's per-sandbox-namespace snapshot resume-pull
+      # Secret grant (get+create) — bound by the NamespaceReconciler, admitted
+      # by the exactRoleBinding allowlist in bex-api-namespace-admission.yaml.
+      - bex-operator-snapshot-pull
     verbs: ["bind"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
