@@ -12,22 +12,12 @@ import type { RemoteNotificationInboxItem } from "./inbox-store";
 export class ApolloNotificationSubscriptionClient implements DeviceSubscriptionClient {
   constructor(private readonly client: ApolloClient) {}
 
-  async list(): Promise<{
-    available: boolean;
-    subscriptions: Array<{ deviceId: string }>;
-  }> {
+  async list(): Promise<{ available: boolean }> {
     const result = await this.client.query({
       query: MobileNotificationDeviceSubscriptionsDocument,
       fetchPolicy: "network-only",
     });
-    return {
-      available: result.data?.pushNotificationsAvailable === true,
-      subscriptions: (
-        result.data?.notificationDeviceSubscriptions ?? []
-      ).flatMap((subscription) =>
-        subscription?.deviceId ? [{ deviceId: subscription.deviceId }] : [],
-      ),
-    };
+    return { available: result.data?.pushNotificationsAvailable === true };
   }
 
   async register(input: {

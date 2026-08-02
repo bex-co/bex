@@ -20,10 +20,9 @@ export interface NotificationNativeAdapter {
 }
 
 export interface DeviceSubscriptionClient {
-  list(): Promise<{
-    available: boolean;
-    subscriptions: Array<{ deviceId: string }>;
-  }>;
+  /** Reports whether the server has push delivery configured (availability
+   * gate). The registered-device list is not consumed by the client. */
+  list(): Promise<{ available: boolean }>;
   register(input: {
     deviceId: string;
     provider: "expo";

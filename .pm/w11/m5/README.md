@@ -1,6 +1,6 @@
 # w11 · m5 — Push channel + notification hygiene
 
-**Worker:** worker11 **Goal:** make push the mobile anchor with authorized durable device subscriptions, event-driven delivery, urgency and working-hours policy, safe deep links, and observable retry/pruning behavior. **Status:** todo (t001–t006, t008, t010 done; t007 physical-device qualification blocked — no signed device / production Apple Team ID / Android fingerprints available; t009 `/simplify` has no fresh diff since the m5 code shipped in prior commits; t011 closeout blocked on t007's real-device evidence)
+**Worker:** worker11 **Goal:** make push the mobile anchor with authorized durable device subscriptions, event-driven delivery, urgency and working-hours policy, safe deep links, and observable retry/pruning behavior. **Status:** todo (t001–t006, t008–t010 done — every non-device task complete; t007 blocked on signed physical iOS/Android devices + production Apple Team ID / Android fingerprints not available in this environment; t011 closeout gated on t007's real-device evidence. t009 `/simplify` reviewed all named notification files: applied the one clearly-safe conflict-free win (dropped the mobile `DeviceSubscriptionClient.list()` unused `subscriptions` array, tightening the client contract), and deferred the backend efficiency/altitude findings — policy-compile caching, `ResolvePushServiceID` per-batch memoization, error-classification extraction — because they touch `push_worker.go`, active `w3/m41` territory, on a security-sensitive tested delivery engine, so they belong to that owner's review, not a behavior-preserving drive-by pass.)
 
 ## Gating
 
@@ -18,7 +18,7 @@ Starts after `w11/m2/t009`; may run in parallel with m3/m4. Reuse the existing n
 | t006 | Add retry, stale-token pruning, audit, metrics, and privacy controls — **DONE** | 45m | t005 |
 | t007 | Verify delivery, quiet hours, and deep links on real devices | 60m | t006 |
 | t008 | Render parity — **DONE** | 30m | t007 |
-| t009 | Simplify | 20m | t008 |
+| t009 | Simplify — **DONE** | 20m | t008 |
 | t010 | Test coverage — **DONE** | 60m | t008 |
 | t011 | Closeout | 10m | t010 |
 
