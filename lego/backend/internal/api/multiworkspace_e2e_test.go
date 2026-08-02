@@ -153,7 +153,7 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 	appTenantOf := func(t *testing.T, tenantID, name string) string {
 		t.Helper()
 		var a appv1alpha1.App
-		if err := cl.Get(ctx, k8sKey(core.CRName(tenantID, name)), &a); err != nil {
+		if err := cl.Get(ctx, k8sKey(tenantID, name), &a); err != nil {
 			t.Fatalf("App %s/%s: %v", tenantID, name, err)
 		}
 		return a.Labels[core.LabelTenant]
@@ -204,7 +204,7 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 		t.Errorf("POST ownerId=echo (not dana's): %d %s, want 403", rec.Code, rec.Body.String())
 	}
 	var stray appv1alpha1.App
-	if err := cl.Get(ctx, k8sKey(core.CRName(wsE.ID, stolen)), &stray); err == nil {
+	if err := cl.Get(ctx, k8sKey(wsE.ID, stolen), &stray); err == nil {
 		t.Errorf("the refused create still wrote an App, labeled %q — it must write nothing", stray.Labels[core.LabelTenant])
 	}
 
@@ -220,7 +220,7 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 		t.Errorf("carl (viewer of bravo, admin of charlie) DELETE bravo-web: %d %s, want 403 — a role must not leak across workspaces",
 			rec.Code, rec.Body.String())
 	}
-	if err := cl.Get(ctx, k8sKey(core.CRName(wsB.ID, bravoWeb)), &stray); err != nil {
+	if err := cl.Get(ctx, k8sKey(wsB.ID, bravoWeb), &stray); err != nil {
 		t.Errorf("bravo-web was deleted by a viewer: %v", err)
 	}
 	// ...and he cannot read its env vars either (can_view_sensitive: developer+).
@@ -353,7 +353,7 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 	}
 
 	// Neither lower rung's denied mutation actually deleted the service.
-	if err := cl.Get(ctx, k8sKey(core.CRName(wsB.ID, bravoWeb)), &stray); err != nil {
+	if err := cl.Get(ctx, k8sKey(wsB.ID, bravoWeb), &stray); err != nil {
 		t.Errorf("bravo-web was deleted by a contributor/billing member: %v", err)
 	}
 
@@ -416,9 +416,12 @@ func (e2eBillingProvider) CreatePortalSession(_ context.Context, _ string, _ bil
 	return billing.HostedSession{URL: "https://billing.stripe.test/portal"}, nil
 }
 
-// k8sKey is the fake apiserver's object key for an App in the test namespace.
-func k8sKey(name string) client.ObjectKey {
-	return client.ObjectKey{Namespace: "default", Name: name}
+// k8sKey is the fake apiserver's object key for a store-managed App: object-
+// named core.CRName(tenantID, name), living in the tenant's own `<ws>`
+// namespace (ADR043) — store.WorkspaceNamespace is the identity function, so
+// that namespace is the tenant id itself.
+func k8sKey(tenantID, name string) client.ObjectKey {
+	return client.ObjectKey{Namespace: tenantID, Name: core.CRName(tenantID, name)}
 }
 
 // e2eCall drives mux's REST router as `subject` (the auth middleware's job —
