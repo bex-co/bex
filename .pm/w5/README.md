@@ -79,6 +79,7 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- **`035.md`** (open, **HELD until w3/m41 lands**) — dashboard agent-session UI (`useChat` + AI Elements over the gateway SSE), ADR047 wave 2; head start against a mocked AI SDK UI-message stream is allowed, full promotion waits for the w3/m41 gate + `w3/009` (gateway proxy).
 - **`028.md`** (open) — deferred live browser walk for w5/m58's Host/Path metrics filters: the implementation is CI-verified, but the live filtered-series + store-unavailable walk was infra-blocked in-session (dev-5 unraisable — missing CNPG CRDs + no Loki). ~15m against the deployed prod dashboard post-ship; closes the last m58 DoD item.
 - **`029.md`** (open) — deferred live browser walk for w5/m60's three dashboard dead-ends (cron Trigger Run/detail, notify-on-fail override, registry-credential edit): CI-verified, live walk infra-blocked in-session (same dev-5 block). ~20m against the deployed dashboard post-ship; closes the last m60 DoD item.
 - _(`030.md` **DONE 2026-07-30**, moved to `done/`) — the datastore Logs viewers (Postgres + Key Value) now use the shared `RangeSelect` (the m56 range ladder + Custom picker) via a shared `datastore-log-range` helper (window-based hooks), replacing the private 1h/6h/24h enum; unused range-preset locale keys removed._
