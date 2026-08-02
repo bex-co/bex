@@ -128,6 +128,19 @@ type SyncBlueprintResult struct {
 	Stack     StackResult   `json:"stack"`
 }
 
+// BlueprintPreview is the pre-create dry-run result: the manifest fetched from
+// Git plus its validation. A fetch failure (file missing, bad branch) is
+// reported in Error with Found=false rather than as a verb error, so the
+// dashboard can render Render's "Blueprint file not found on branch" + Retry
+// state instead of a toast.
+type BlueprintPreview struct {
+	Found      bool                 `json:"found"`
+	Manifest   string               `json:"manifest,omitempty"`
+	CommitID   string               `json:"commitId,omitempty"`
+	Error      string               `json:"error,omitempty"`
+	Validation *BlueprintValidation `json:"validation,omitempty"`
+}
+
 // CreateBlueprintRequest is the input to CreateBlueprint.
 type CreateBlueprintRequest struct {
 	Repo         string
@@ -154,7 +167,14 @@ func (s *Service) ValidateBlueprint(ctx context.Context, ownerID, bexYAML string
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return BlueprintValidation{}, err
 	}
-	st, err := parseStack(DeployRequest{Manifest: bexYAML})
+	return s.blueprintValidationFor("", "", bexYAML)
+}
+
+// blueprintValidationFor is the stateless dry-run core shared by
+// ValidateBlueprint and PreviewBlueprint. repo/branch feed the same parse a
+// create would run; both empty for a manifest-only validate.
+func (s *Service) blueprintValidationFor(repo, branch, bexYAML string) (BlueprintValidation, error) {
+	st, err := parseStack(DeployRequest{Repo: repo, Branch: branch, Manifest: bexYAML})
 	if err == nil {
 		err = s.validateBlueprintServices(st)
 	}
@@ -170,6 +190,41 @@ func (s *Service) ValidateBlueprint(ctx context.Context, ownerID, bexYAML string
 		msg = after
 	}
 	return BlueprintValidation{Errors: []BlueprintValidationError{blueprintValidationError(bexYAML, msg)}}, nil
+}
+
+// PreviewBlueprint fetches repo/branch/path from Git and dry-run validates the
+// manifest without creating or applying anything — Render's pre-create
+// "Review Blueprint configurations" step. Requires can_view.
+func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, filePath string) (BlueprintPreview, error) {
+	if ownerID != "" {
+		ctx = core.WithWorkspace(ctx, ownerID)
+	}
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return BlueprintPreview{}, err
+	}
+	if repo == "" || branch == "" {
+		return BlueprintPreview{}, fmt.Errorf("%w: repo and branch are required", core.ErrBadRequest)
+	}
+	if filePath == "" {
+		filePath = "bex.yml"
+	}
+	if s.GitFetcher == nil {
+		return BlueprintPreview{}, ErrBlueprintFetchUnavailable
+	}
+	tenantID := s.resolveTenantID(ctx)
+	contents, commitSHA, err := s.GitFetcher.FetchBlueprintFile(ctx, tenantID, repo, branch, filePath)
+	if err != nil {
+		msg := err.Error()
+		if after, ok := strings.CutPrefix(msg, "bad request: "); ok {
+			msg = after
+		}
+		return BlueprintPreview{Error: msg}, nil
+	}
+	validation, err := s.blueprintValidationFor(repo, branch, contents)
+	if err != nil {
+		return BlueprintPreview{}, err
+	}
+	return BlueprintPreview{Found: true, Manifest: contents, CommitID: commitSHA, Validation: &validation}, nil
 }
 
 // CreateBlueprint creates a new Git-connected Blueprint instance by fetching

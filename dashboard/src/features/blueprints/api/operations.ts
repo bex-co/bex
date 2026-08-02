@@ -9,6 +9,7 @@ import type {
   BlueprintView,
   BlueprintSyncView,
   BlueprintValidationResult,
+  BlueprintPreviewResult,
   SyncBlueprintResult,
 } from "@/features/blueprints/types";
 
@@ -104,6 +105,49 @@ export const ValidateBlueprintDocument = gql`
 ` as unknown as TypedDocumentNode<
   ValidateBlueprintQuery,
   ValidateBlueprintQueryVars
+>;
+
+export interface BlueprintPreviewQueryVars {
+  repo: string;
+  branch: string;
+  path?: string | null;
+  ownerId?: string | null;
+}
+export interface BlueprintPreviewQuery {
+  blueprintPreview: BlueprintPreviewResult | null;
+}
+export const BlueprintPreviewDocument = gql`
+  query BlueprintPreview(
+    $repo: String!
+    $branch: String!
+    $path: String
+    $ownerId: String
+  ) {
+    blueprintPreview(
+      repo: $repo
+      branch: $branch
+      path: $path
+      ownerId: $ownerId
+    ) {
+      found
+      commitId
+      error
+      validation {
+        valid
+        errors
+        plan {
+          services
+          databases
+          keyValue
+          envGroups
+          totalActions
+        }
+      }
+    }
+  }
+` as unknown as TypedDocumentNode<
+  BlueprintPreviewQuery,
+  BlueprintPreviewQueryVars
 >;
 
 // --- mutations ---

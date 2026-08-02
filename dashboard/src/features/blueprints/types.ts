@@ -32,6 +32,27 @@ export interface BlueprintValidationResult {
   errors: string[];
 }
 
+export interface BlueprintPreviewPlan {
+  services: string[] | null;
+  databases: string[] | null;
+  keyValue: string[] | null;
+  envGroups: string[] | null;
+  totalActions: number | null;
+}
+
+export interface BlueprintPreviewValidation {
+  valid: boolean | null;
+  errors: string[] | null;
+  plan: BlueprintPreviewPlan | null;
+}
+
+export interface BlueprintPreviewResult {
+  found: boolean | null;
+  commitId: string | null;
+  error: string | null;
+  validation: BlueprintPreviewValidation | null;
+}
+
 export interface SyncBlueprintResult {
   blueprint: BlueprintView | null;
   services: Array<{ id: string; name: string } | null> | null;

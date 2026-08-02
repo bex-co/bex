@@ -1433,6 +1433,24 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, v)
 	})
+	mux.HandleFunc("POST /v1/blueprints/preview", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Repo    string `json:"repo"`
+			Branch  string `json:"branch"`
+			Path    string `json:"path"`
+			OwnerID string `json:"ownerId"`
+		}
+		if err := core.DecodeJSON(r, &body); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		p, err := s.PreviewBlueprint(r.Context(), body.OwnerID, body.Repo, body.Branch, body.Path)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, p)
+	})
 	mux.HandleFunc("GET /v1/blueprints", func(w http.ResponseWriter, r *http.Request) {
 		ownerID := r.URL.Query().Get("ownerId")
 		views, err := s.ListBlueprints(r.Context(), ownerID)

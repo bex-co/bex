@@ -224,6 +224,113 @@ func TestValidateBlueprintStateless(t *testing.T) {
 	}
 }
 
+// --- PreviewBlueprint ---
+
+// fakeBlueprintFetcher returns canned contents/sha or an error.
+type fakeBlueprintFetcher struct {
+	contents string
+	sha      string
+	err      error
+}
+
+func (f fakeBlueprintFetcher) FetchBlueprintFile(context.Context, string, string, string, string) (string, string, error) {
+	return f.contents, f.sha, f.err
+}
+
+func TestPreviewBlueprintFound(t *testing.T) {
+	svc := &Service{
+		Base:       &core.Base{Client: fakeClient(), Namespace: "default"},
+		GitFetcher: fakeBlueprintFetcher{contents: stackManifest, sha: "abc1234"},
+	}
+	p, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", "")
+	if err != nil {
+		t.Fatalf("PreviewBlueprint: %v", err)
+	}
+	if !p.Found || p.Manifest != stackManifest || p.CommitID != "abc1234" || p.Error != "" {
+		t.Errorf("found preview: got %+v", p)
+	}
+	if p.Validation == nil || !p.Validation.Valid || p.Validation.Plan == nil || p.Validation.Plan.TotalActions != 4 {
+		t.Errorf("found preview: want valid validation with plan, got %+v", p.Validation)
+	}
+}
+
+func TestPreviewBlueprintInvalidManifest(t *testing.T) {
+	svc := &Service{
+		Base:       &core.Base{Client: fakeClient(), Namespace: "default"},
+		GitFetcher: fakeBlueprintFetcher{contents: "services:\n  - name: \"\"\n    type: web\n"},
+	}
+	p, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", "bex.yml")
+	if err != nil {
+		t.Fatalf("PreviewBlueprint(invalid): %v", err)
+	}
+	if !p.Found || p.Validation == nil || p.Validation.Valid || len(p.Validation.Errors) == 0 {
+		t.Errorf("invalid manifest: want found with validation errors, got %+v", p)
+	}
+}
+
+func TestPreviewBlueprintFetchErrorIsNotFound(t *testing.T) {
+	svc := &Service{
+		Base:       &core.Base{Client: fakeClient(), Namespace: "default"},
+		GitFetcher: fakeBlueprintFetcher{err: fmt.Errorf("bad request: bex.yml not found on main")},
+	}
+	p, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", "")
+	if err != nil {
+		t.Fatalf("PreviewBlueprint(fetch error): want soft error, got %v", err)
+	}
+	if p.Found || p.Error != "bex.yml not found on main" || p.Validation != nil {
+		t.Errorf("fetch error: want Found=false with message, got %+v", p)
+	}
+}
+
+func TestPreviewBlueprintRequiresRepoAndBranch(t *testing.T) {
+	svc := &Service{
+		Base:       &core.Base{Client: fakeClient(), Namespace: "default"},
+		GitFetcher: fakeBlueprintFetcher{},
+	}
+	if _, err := svc.PreviewBlueprint(context.Background(), "", "", "main", ""); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("missing repo: want ErrBadRequest, got %v", err)
+	}
+	if _, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "", ""); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("missing branch: want ErrBadRequest, got %v", err)
+	}
+}
+
+func TestPreviewBlueprintNoFetcher(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	if _, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", ""); !errors.Is(err, ErrBlueprintFetchUnavailable) {
+		t.Errorf("nil fetcher: want ErrBlueprintFetchUnavailable, got %v", err)
+	}
+}
+
+func TestPreviewBlueprintGraphQL(t *testing.T) {
+	svc := &Service{
+		Base:       &core.Base{Client: fakeClient(), Namespace: "default"},
+		GitFetcher: fakeBlueprintFetcher{contents: stackManifest, sha: "abc1234"},
+	}
+	schema := blueprintSchema(t, svc)
+	res := graphql.Do(graphql.Params{
+		Schema: schema,
+		RequestString: `query {
+			blueprintPreview(repo: "https://github.com/a/app", branch: "main") {
+				found commitId error
+				validation { valid plan { services databases totalActions } }
+			}
+		}`,
+		Context: context.Background(),
+	})
+	if len(res.Errors) > 0 {
+		t.Fatalf("graphql errors: %v", res.Errors)
+	}
+	data := res.Data.(map[string]any)["blueprintPreview"].(map[string]any)
+	if data["found"] != true || data["commitId"] != "abc1234" {
+		t.Errorf("graphql preview: got %+v", data)
+	}
+	validation, _ := data["validation"].(map[string]any)
+	if validation == nil || validation["valid"] != true {
+		t.Errorf("graphql preview validation: got %+v", validation)
+	}
+}
+
 // --- ListBlueprints ---
 
 func TestListBlueprintsNoStore(t *testing.T) {

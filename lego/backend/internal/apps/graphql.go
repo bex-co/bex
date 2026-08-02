@@ -716,6 +716,24 @@ var blueprintValidationGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// blueprintPreviewGQLType is the GraphQL shape for a BlueprintPreview — the
+// pre-create fetch + dry-run behind the dashboard's Review step.
+var blueprintPreviewGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BlueprintPreview",
+	Fields: graphql.Fields{
+		"found":    &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(p BlueprintPreview) any { return p.Found })},
+		"manifest": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p BlueprintPreview) any { return p.Manifest })},
+		"commitId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p BlueprintPreview) any { return p.CommitID })},
+		"error":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p BlueprintPreview) any { return p.Error })},
+		"validation": &graphql.Field{Type: blueprintValidationGQLType, Resolve: gqlutil.Field(func(p BlueprintPreview) any {
+			if p.Validation == nil {
+				return nil
+			}
+			return *p.Validation
+		})},
+	},
+})
+
 // syncBlueprintResultGQLType is the GraphQL shape for SyncBlueprintResult.
 var syncBlueprintResultGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "SyncBlueprintResult",
@@ -935,6 +953,21 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ValidateBlueprint(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["bexYaml"].(string))
+			},
+		},
+		// blueprintPreview: fetch a repo's bex.yml and dry-run validate it before
+		// any create — the dashboard's Render-parity Review step.
+		"blueprintPreview": &graphql.Field{
+			Type: blueprintPreviewGQLType,
+			Args: graphql.FieldConfigArgument{
+				"repo":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"branch":  &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"path":    &graphql.ArgumentConfig{Type: graphql.String},
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.PreviewBlueprint(p.Context, gqlutil.Str(p.Args, "ownerId"),
+					p.Args["repo"].(string), p.Args["branch"].(string), gqlutil.Str(p.Args, "path"))
 			},
 		},
 		// blueprintSyncs: sync run history for a blueprint (w2/m62).

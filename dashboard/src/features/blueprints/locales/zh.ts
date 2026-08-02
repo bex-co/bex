@@ -42,35 +42,45 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.createTitle": {
     message: "新建蓝图实例",
-    description: "New Blueprint dialog/page title",
+    description: "New Blueprint page title",
   },
-  "blueprints.createRepoLabel": {
-    message: "仓库 URL",
-    description: "New Blueprint dialog — repo URL input label",
+  "blueprints.createDescription": {
+    message: "连接一个包含 bex.yml 的仓库，创建并同步整套服务堆栈。",
+    description: "New Blueprint page subtitle under the title",
   },
-  "blueprints.createRepoPlaceholder": {
-    message: "https://github.com/org/repo",
-    description: "New Blueprint dialog — repo URL input placeholder",
+  "blueprints.createSourceTitle": {
+    message: "连接仓库",
+    description:
+      "New Blueprint page — heading above the GitHub/Public Git source tabs (Render parity)",
   },
   "blueprints.createBranchLabel": {
     message: "分支",
-    description: "New Blueprint dialog — branch input label",
+    description: "New Blueprint page — branch combobox label",
   },
   "blueprints.createBranchPlaceholder": {
     message: "main",
-    description: "New Blueprint dialog — branch input placeholder",
+    description: "New Blueprint page — branch combobox placeholder",
+  },
+  "blueprints.createBranchHint": {
+    message: "包含 bex.yml 文件的仓库分支。",
+    description: "New Blueprint page — branch field helper text",
   },
   "blueprints.createPathLabel": {
-    message: "清单路径",
-    description: "New Blueprint dialog — bex.yml path input label",
+    message: "蓝图路径",
+    description: "New Blueprint page — bex.yml path input label",
   },
   "blueprints.createPathPlaceholder": {
     message: "bex.yml",
-    description: "New Blueprint dialog — manifest path placeholder",
+    description: "New Blueprint page — manifest path placeholder",
+  },
+  "blueprints.createPathHint": {
+    message:
+      "蓝图文件在仓库中的路径（例如 infra/bex.yml）。默认为仓库根目录下的 bex.yml。",
+    description: "New Blueprint page — manifest path helper text",
   },
   "blueprints.createNameLabel": {
-    message: "名称（可选）",
-    description: "New Blueprint dialog — optional name input label",
+    message: "蓝图名称",
+    description: "New Blueprint page — name input label",
   },
   "blueprints.createAction": {
     message: "部署蓝图",
@@ -87,6 +97,71 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   "blueprints.createError": {
     message: "蓝图创建失败",
     description: "Toast shown when createBlueprint returns an error",
+  },
+  // --- Pre-create review (Render's "Review Blueprint configurations") ---
+  "blueprints.previewTitle": {
+    message: "预览蓝图配置",
+    description:
+      "New Blueprint page — heading of the pre-create fetch + validate section",
+  },
+  "blueprints.previewSelectSource": {
+    message: "选择仓库与分支后，可在部署前预览蓝图文件。",
+    description: "Review section placeholder before a source is chosen",
+  },
+  "blueprints.previewLoading": {
+    message: "正在从仓库获取 {path}…",
+    description: "Review section loading text while the manifest is fetched",
+  },
+  "blueprints.previewNotFoundTitle": {
+    message: "未找到蓝图文件",
+    description: "Review section error title when the manifest fetch fails",
+  },
+  "blueprints.previewNotFoundBody": {
+    message: "在 {branch} 分支上未找到蓝图文件 {path}。",
+    description:
+      "Review section fallback error body when the backend returns no message",
+  },
+  "blueprints.previewRetry": {
+    message: "重试",
+    description: "Review section retry button after a failed manifest fetch",
+  },
+  "blueprints.previewInvalid": {
+    message: "蓝图文件存在错误",
+    description:
+      "Review section error title when the fetched manifest fails validation",
+  },
+  "blueprints.previewValid": {
+    message: "蓝图文件解析成功 — 将同步 {count} 个资源。",
+    description:
+      "Review section success line, with the plan's total resource count",
+  },
+  "blueprints.previewServices": {
+    message: "服务",
+    description: "Review section plan group label — services in the manifest",
+  },
+  "blueprints.previewDatabases": {
+    message: "数据库",
+    description: "Review section plan group label — databases in the manifest",
+  },
+  "blueprints.previewKeyValue": {
+    message: "键值存储",
+    description:
+      "Review section plan group label — key-value instances in the manifest",
+  },
+  "blueprints.previewEnvGroups": {
+    message: "环境变量组",
+    description: "Review section plan group label — env groups in the manifest",
+  },
+  "blueprints.previewAutoSyncNote": {
+    message:
+      "此后该分支上蓝图文件的所有更新都会自动同步。创建后可暂停自动同步。",
+    description:
+      "Review section note about auto-sync being enabled by default (Render parity)",
+  },
+  "blueprints.previewError": {
+    message: "无法加载蓝图预览。",
+    description:
+      "Review section error shown when the preview query itself fails (network)",
   },
   // --- Empty state ---
   "blueprints.emptyTitle": {
