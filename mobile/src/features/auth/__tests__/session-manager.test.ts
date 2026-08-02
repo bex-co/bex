@@ -256,4 +256,30 @@ describe("SessionManager", () => {
     release();
     await pending;
   });
+
+  it("starts feature cleanup with the current token without delaying local logout", async () => {
+    const storage = new MemoryStorage();
+    const transport = new FakeTransport();
+    const subject = manager(storage, transport, () => 0);
+    await subject.signIn();
+    let release = () => {};
+    const cleanupGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let cleanupToken: string | null = null;
+    subject.registerExplicitSignOutHook(async (session) => {
+      cleanupToken = session?.accessToken ?? null;
+      await cleanupGate;
+    });
+
+    const pending = subject.signOut();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(String(cleanupToken)).toBe("access-a");
+    expect(subject.getState().status).toBe("signedOut");
+    expect(storage.value).toBe(null);
+    release();
+    await pending;
+  });
 });

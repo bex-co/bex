@@ -136,49 +136,56 @@ var publicRoutes = map[string]bool{
 // a classification decision rather than silent omission.
 var callerScopedRoutes = map[string]bool{
 	// Collection lists — scoped to the caller's own workspace (or identity).
-	"GET /v1/services":              true,
-	"GET /v1/postgres":              true,
-	"GET /v1/key-value":             true,
-	"GET /v1/env-groups":            true,
-	"GET /v1/environments":          true,
-	"GET /v1/projects":              true,
-	"GET /v1/registrycredentials":   true,
-	"GET /v1/ssh-keys":              true,
-	"GET /v1/api-keys":              true,
-	"GET /v1/webhooks":              true,
-	"GET /v1/webhooks/event-types":  true,
-	"GET /v1/sandboxes":             true,
-	"GET /v1/agent-sessions":        true,
-	"GET /v1/owners":                true,
-	"GET /v1/blueprints":            true,
-	"GET /v1/usage":                 true,
-	"GET /v1/users":                 true,
-	"GET /v1/repos":                 true,
-	"GET /v1/notification-settings": true,
-	"GET /v1/git/connection":        true,
+	"GET /v1/services":                                true,
+	"GET /v1/postgres":                                true,
+	"GET /v1/key-value":                               true,
+	"GET /v1/env-groups":                              true,
+	"GET /v1/environments":                            true,
+	"GET /v1/projects":                                true,
+	"GET /v1/registrycredentials":                     true,
+	"GET /v1/ssh-keys":                                true,
+	"GET /v1/api-keys":                                true,
+	"GET /v1/webhooks":                                true,
+	"GET /v1/webhooks/event-types":                    true,
+	"GET /v1/sandboxes":                               true,
+	"GET /v1/agent-sessions":                          true,
+	"GET /v1/owners":                                  true,
+	"GET /v1/blueprints":                              true,
+	"GET /v1/usage":                                   true,
+	"GET /v1/users":                                   true,
+	"GET /v1/repos":                                   true,
+	"GET /v1/notification-settings":                   true,
+	"GET /v1/notification-settings/push":              true,
+	"GET /v1/notification-settings/push/availability": true, // caller-scoped feature capability; no resource id
+	"GET /v1/notifications":                           true, // caller's own tenant + subject are derived from auth context
+	"GET /v1/notification-device-subscriptions":       true, // caller's own workspace + subject; no owner path arg
+	"GET /v1/git/connection":                          true,
 	// The caller's own workspace git connection — no resource in the path.
 	"DELETE /v1/git/connection": true,
 	// Creates — the new resource's workspace comes from the request context
 	// (ownerId / caller default), not a path; a create naming a non-member
 	// workspace is refused in the t004 E2E.
-	"POST /v1/services":               true,
-	"POST /v1/postgres":               true,
-	"POST /v1/key-value":              true,
-	"POST /v1/env-groups":             true,
-	"POST /v1/environments":           true,
-	"POST /v1/projects":               true,
-	"POST /v1/registrycredentials":    true,
-	"POST /v1/api-keys":               true,
-	"POST /v1/webhooks":               true,
-	"POST /v1/ssh-keys":               true,
-	"POST /v1/sandboxes":              true,
-	"POST /v1/agent-sessions":         true,
-	"POST /v1/git/connect":            true,
-	"POST /v1/invites/accept":         true, // redeems by the CALLER's own identity
-	"POST /v1/blueprints":             true, // creates a new git-connected blueprint; workspace from request context (w2/m62)
-	"POST /v1/blueprints/validate":    true, // validates a posted manifest, no resource
-	"POST /v1/blueprints/preview":     true, // dry-run fetch+validate; workspace from request context, no resource
-	"PATCH /v1/notification-settings": true, // the caller's own notification prefs
+	"POST /v1/services":                            true,
+	"POST /v1/postgres":                            true,
+	"POST /v1/key-value":                           true,
+	"POST /v1/env-groups":                          true,
+	"POST /v1/environments":                        true,
+	"POST /v1/projects":                            true,
+	"POST /v1/registrycredentials":                 true,
+	"POST /v1/api-keys":                            true,
+	"POST /v1/webhooks":                            true,
+	"POST /v1/ssh-keys":                            true,
+	"POST /v1/sandboxes":                           true,
+	"POST /v1/agent-sessions":                      true,
+	"POST /v1/git/connect":                         true,
+	"POST /v1/invites/accept":                      true, // redeems by the CALLER's own identity
+	"POST /v1/notification-device-subscriptions":   true, // registers only the caller's own device capability
+	"POST /v1/blueprints":                          true, // creates a new git-connected blueprint; workspace from request context (w2/m62)
+	"POST /v1/blueprints/validate":                 true, // validates a posted manifest, no resource
+	"POST /v1/blueprints/preview":                  true, // dry-run fetch+validate; workspace from request context, no resource
+	"PATCH /v1/notification-settings":              true, // the caller's own notification prefs
+	"PATCH /v1/notification-settings/push":         true, // caller's own push policy; workspace and subject come from auth context
+	"DELETE /v1/notification-device-subscriptions": true, // revokes only the caller's own devices
 	// Logs + metrics — the resource is named in the ?resource= query string, not
 	// the path; the QueryLogs/GetMetrics verbs (t001) authorize it via GetApp.
 	"GET /v1/logs":                    true,

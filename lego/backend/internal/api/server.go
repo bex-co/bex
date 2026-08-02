@@ -344,6 +344,10 @@ type Deps struct {
 	// notifications.Mailer structurally) — nil Mailer leaves NotifyDeploy a
 	// silent no-op, same degrade-quietly shape as invite delivery.
 	NotificationsStore notifications.NotificationsStore
+	// PushAvailable is true only when an explicitly configured transport passed
+	// startup validation. It lets clients distinguish permission denial from a
+	// server-disabled channel without exposing provider configuration.
+	PushAvailable bool
 	// ProjectsStore, when set (the control-plane store is wired), backs the
 	// project grouping verbs (w1/m31). nil => those verbs report
 	// projects.ErrProjectsUnavailable (503).
@@ -560,6 +564,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Mailer:           d.Mailer,
 		Identities:       identityEmailLookup{d.Identities},
 		DashboardBaseURL: d.DashboardURL,
+		PushAvailable:    &d.PushAvailable,
 	}
 	sshHost := ""
 	if d.SSHKeysStore != nil {

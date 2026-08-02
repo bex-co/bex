@@ -230,6 +230,7 @@ func WriteErr(w http.ResponseWriter, err error) {
 		errors.Is(err, ErrUsageUnavailable), errors.Is(err, ErrBillingUnavailable), errors.Is(err, ErrDeploysUnavailable),
 		errors.Is(err, ErrAuditUnavailable), errors.Is(err, ErrGitHubUnavailable),
 		errors.Is(err, ErrEventsUnavailable), errors.Is(err, ErrRegistryCredentialsUnavailable),
+		errors.Is(err, ErrNotificationsUnavailable), errors.Is(err, ErrPushUnavailable),
 		errors.Is(err, ErrWebhooksUnavailable), errors.Is(err, ErrLogoutUnavailable),
 		errors.Is(err, ErrShellUnavailable), errors.Is(err, ErrSandboxesUnavailable),
 		errors.Is(err, ErrAgentSessionsUnavailable):

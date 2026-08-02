@@ -5,6 +5,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { HapticTab } from "@/components/haptic-tab";
 import { AuthStateScreen } from "@/features/auth/auth-screen";
 import { useAuth } from "@/features/auth/auth-provider";
+import { useNotifications } from "@/features/notifications/notifications-provider";
 import {
   useWorkspace,
   WorkspaceProvider,
@@ -14,6 +15,7 @@ function WorkspaceTabs() {
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
   const { status, offline, switching, retry } = useWorkspace();
+  const { unread } = useNotifications();
   if (status === "loading" || switching) {
     return (
       <AuthStateScreen
@@ -82,6 +84,16 @@ function WorkspaceTabs() {
           title: t("navigation.sessions"),
           tabBarIcon: ({ color }) => (
             <Ionicons name="sparkles" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          title: t("navigation.notifications"),
+          tabBarBadge: unread > 0 ? unread : undefined,
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="notifications" size={24} color={color} />
           ),
         }}
       />

@@ -28,6 +28,7 @@ const allowedRoutes = [
   "(app)/databases/[databaseId].tsx",
   "(app)/index.tsx",
   "(app)/key-values/[keyValueId].tsx",
+  "(app)/notifications.tsx",
   "(app)/services/[serviceId].tsx",
   "(app)/services/[serviceId]/logs.tsx",
   "(app)/sessions.tsx",
@@ -51,6 +52,9 @@ const allowedMutationNames = new Set([
   "MobileResumePostgres",
   "MobileSuspendKeyValue",
   "MobileResumeKeyValue",
+  "MobileRegisterNotificationDeviceSubscription",
+  "MobileUnregisterNotificationDeviceSubscription",
+  "MobileMarkPushNotificationRead",
 ]);
 const allowedMutationDocuments = new Set(
   [...allowedMutationNames].map((name) => `${name}Document`),

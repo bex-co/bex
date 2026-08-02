@@ -8,6 +8,7 @@ export type MobileConfig = {
   oauthClientId: string;
   oauthAudience: string;
   oauthRedirectUri: string;
+  easProjectId?: string | null;
 };
 
 type Environment = Record<string, string | undefined>;
@@ -63,6 +64,7 @@ export function readMobileConfig(
     oauthClientId,
     oauthAudience,
     oauthRedirectUri: MOBILE_REDIRECT_URI,
+    easProjectId: env.EXPO_PUBLIC_EAS_PROJECT_ID?.trim() || null,
   };
 }
 

@@ -145,6 +145,10 @@ var callerScopedGQLFields = map[string]bool{
 	// Static vocabularies / stubs — return a fixed list, read no resource.
 	"Query.webhookEventTypes":            true, // the webhook event-type vocabulary
 	"Query.metricsPathFilterSuggestions": true, // bex stub: always an empty path list
+	"Query.pushNotificationsAvailable":   true, // caller-scoped transport capability, no resource argument
+	"Query.notificationInbox":            true, // caller's own tenant + subject are derived from auth context
+	"Query.unreadPushNotificationCount":  true, // caller's own tenant + subject are derived from auth context
+	"Mutation.markPushNotificationRead":  true, // exact id is constrained inside the caller-derived tenant + subject scope
 }
 
 func TestCrossWorkspaceGraphQLMatrix(t *testing.T) {

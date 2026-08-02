@@ -238,6 +238,22 @@ spec:
                   name: bex-stripe
                   key: BEX_STRIPE_RECONCILE_INTERVAL
                   optional: true
+            # Native push (ADR048 D2): all values arrive atomically in the
+            # out-of-band bex-push Secret. Every reference is optional, so a
+            # cluster with no Secret constructs no transport and makes no Expo
+            # network calls. The installer/runbook owns safe token rotation.
+            - name: BEX_PUSH_PROVIDER
+              valueFrom:
+                secretKeyRef:
+                  name: bex-push
+                  key: BEX_PUSH_PROVIDER
+                  optional: true
+            - name: BEX_EXPO_PUSH_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: bex-push
+                  key: BEX_EXPO_PUSH_ACCESS_TOKEN
+                  optional: true
             # REQUIRED once BEX_CP_DB_URI is set: the internal tenant API (:8091)
             # grants workspace-admin and cross-tenant writes, so bex-api refuses
             # to start with an empty BEX_CP_TOKEN (w1/m53 requireCPAuth — the token

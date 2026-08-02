@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
@@ -28,14 +29,15 @@ import (
 // with no row is not "opted out" — internal/notifications.Service applies the
 // failure-only default when GetNotificationSettings returns ErrNotFound.
 type NotificationSettings struct {
-	ID              string    `json:"id"`
-	TenantID        string    `json:"tenantId"`
-	Subject         string    `json:"subject"`
-	DeployStarted   bool      `json:"deployStarted"`
-	DeploySucceeded bool      `json:"deploySucceeded"`
-	DeployFailed    bool      `json:"deployFailed"`
-	CreatedAt       time.Time `json:"createdAt"`
-	UpdatedAt       time.Time `json:"updatedAt"`
+	ID              string          `json:"id"`
+	TenantID        string          `json:"tenantId"`
+	Subject         string          `json:"subject"`
+	DeployStarted   bool            `json:"deployStarted"`
+	DeploySucceeded bool            `json:"deploySucceeded"`
+	DeployFailed    bool            `json:"deployFailed"`
+	PushPolicy      json.RawMessage `json:"-"`
+	CreatedAt       time.Time       `json:"createdAt"`
+	UpdatedAt       time.Time       `json:"updatedAt"`
 }
 
 // NotifyRecipient is one workspace member's resolved deploy-notification
@@ -57,10 +59,10 @@ type NotifyRecipient struct {
 func (s *PGStore) GetNotificationSettings(ctx context.Context, tenantID, subject string) (NotificationSettings, error) {
 	var n NotificationSettings
 	err := s.Pool.QueryRow(ctx, `
-		SELECT id, tenant_id, subject, deploy_started, deploy_succeeded, deploy_failed, created_at, updated_at
+		SELECT id, tenant_id, subject, deploy_started, deploy_succeeded, deploy_failed, push_policy, created_at, updated_at
 		FROM notification_settings WHERE tenant_id = $1 AND subject = $2`,
 		tenantID, subject,
-	).Scan(&n.ID, &n.TenantID, &n.Subject, &n.DeployStarted, &n.DeploySucceeded, &n.DeployFailed, &n.CreatedAt, &n.UpdatedAt)
+	).Scan(&n.ID, &n.TenantID, &n.Subject, &n.DeployStarted, &n.DeploySucceeded, &n.DeployFailed, &n.PushPolicy, &n.CreatedAt, &n.UpdatedAt)
 	if err != nil {
 		return NotificationSettings{}, classify("notification settings", err)
 	}
@@ -80,11 +82,32 @@ func (s *PGStore) UpsertNotificationSettings(ctx context.Context, tenantID, subj
 			    deploy_succeeded = EXCLUDED.deploy_succeeded,
 			    deploy_failed    = EXCLUDED.deploy_failed,
 			    updated_at       = now()
-		RETURNING id, created_at, updated_at`,
+		RETURNING id, push_policy, created_at, updated_at`,
 		ids.New(ids.Notification), tenantID, subject, deployStarted, deploySucceeded, deployFailed,
-	).Scan(&n.ID, &n.CreatedAt, &n.UpdatedAt)
+	).Scan(&n.ID, &n.PushPolicy, &n.CreatedAt, &n.UpdatedAt)
 	if err != nil {
 		return NotificationSettings{}, classify("notification settings", err)
+	}
+	return n, nil
+}
+
+// UpsertNotificationPushPolicy replaces only the caller's native-push policy.
+// On first write it creates the same existing notification_settings row with
+// the established failure-only email defaults; later writes leave every email
+// preference byte-for-byte unchanged.
+func (s *PGStore) UpsertNotificationPushPolicy(ctx context.Context, tenantID, subject string, policy json.RawMessage) (NotificationSettings, error) {
+	var n NotificationSettings
+	err := s.Pool.QueryRow(ctx, `
+		INSERT INTO notification_settings (id, tenant_id, subject, deploy_started, deploy_succeeded, deploy_failed, push_policy)
+		VALUES ($1, $2, $3, false, false, true, $4)
+		ON CONFLICT (tenant_id, subject) DO UPDATE
+			SET push_policy = EXCLUDED.push_policy,
+			    updated_at  = now()
+		RETURNING id, tenant_id, subject, deploy_started, deploy_succeeded, deploy_failed, push_policy, created_at, updated_at`,
+		ids.New(ids.Notification), tenantID, subject, policy,
+	).Scan(&n.ID, &n.TenantID, &n.Subject, &n.DeployStarted, &n.DeploySucceeded, &n.DeployFailed, &n.PushPolicy, &n.CreatedAt, &n.UpdatedAt)
+	if err != nil {
+		return NotificationSettings{}, classify("notification push policy", err)
 	}
 	return n, nil
 }

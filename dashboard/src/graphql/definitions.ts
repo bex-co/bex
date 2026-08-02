@@ -22,6 +22,41 @@ export type AcceptedWorkspaceInvite = {
   workspaceName: Maybe<Scalars['String']['output']>;
 };
 
+export type AgentSession = {
+  __typename: 'AgentSession';
+  agentConfig: AgentSessionConfig;
+  branch: Scalars['String']['output'];
+  canceledAt: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['String']['output'];
+  expiresAt: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  ownerId: Scalars['String']['output'];
+  phase: Scalars['String']['output'];
+  repo: Scalars['String']['output'];
+  sandboxId: Maybe<Scalars['String']['output']>;
+  status: Scalars['String']['output'];
+  ticket: Maybe<Scalars['String']['output']>;
+  updatedAt: Scalars['String']['output'];
+  url: Maybe<Scalars['String']['output']>;
+};
+
+export type AgentSessionConfig = {
+  __typename: 'AgentSessionConfig';
+  agent: Scalars['String']['output'];
+  model: Maybe<Scalars['String']['output']>;
+  modelEndpoint: Maybe<Scalars['String']['output']>;
+  task: Scalars['String']['output'];
+  template: Maybe<Scalars['String']['output']>;
+};
+
+export type AgentSessionConfigInput = {
+  agent: Scalars['String']['input'];
+  model?: InputMaybe<Scalars['String']['input']>;
+  modelEndpoint?: InputMaybe<Scalars['String']['input']>;
+  task: Scalars['String']['input'];
+  template?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type ApiKey = {
   __typename: 'ApiKey';
   createdAt: Maybe<Scalars['String']['output']>;
@@ -112,14 +147,43 @@ export type BillingTaxReadiness = {
 
 export type Blueprint = {
   __typename: 'Blueprint';
+  autoSync: Maybe<Scalars['Boolean']['output']>;
   branch: Maybe<Scalars['String']['output']>;
   createdAt: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
+  lastSync: Maybe<Scalars['String']['output']>;
   manifest: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
+  path: Maybe<Scalars['String']['output']>;
   repo: Maybe<Scalars['String']['output']>;
+  resources: Maybe<Array<Maybe<BlueprintResource>>>;
   status: Maybe<Scalars['String']['output']>;
   updatedAt: Maybe<Scalars['String']['output']>;
+};
+
+export type BlueprintPreview = {
+  __typename: 'BlueprintPreview';
+  commitId: Maybe<Scalars['String']['output']>;
+  error: Maybe<Scalars['String']['output']>;
+  found: Maybe<Scalars['Boolean']['output']>;
+  manifest: Maybe<Scalars['String']['output']>;
+  validation: Maybe<BlueprintValidation>;
+};
+
+export type BlueprintResource = {
+  __typename: 'BlueprintResource';
+  id: Maybe<Scalars['String']['output']>;
+  name: Maybe<Scalars['String']['output']>;
+  type: Maybe<Scalars['String']['output']>;
+};
+
+export type BlueprintSync = {
+  __typename: 'BlueprintSync';
+  commitId: Maybe<Scalars['String']['output']>;
+  completedAt: Maybe<Scalars['String']['output']>;
+  id: Maybe<Scalars['String']['output']>;
+  startedAt: Maybe<Scalars['String']['output']>;
+  state: Maybe<Scalars['String']['output']>;
 };
 
 export type BlueprintValidation = {
@@ -696,15 +760,18 @@ export type Mutation = {
   __typename: 'Mutation';
   acceptWorkspaceInvite: Maybe<AcceptedWorkspaceInvite>;
   addCustomDomain: Maybe<CustomDomain>;
+  cancelAgentSession: Maybe<AgentSession>;
   cancelCronJobRun: Maybe<CronRun>;
   cancelDeploy: Maybe<Deploy>;
   cancelJob: Maybe<Job>;
   changeWorkspaceMemberRole: Maybe<WorkspaceMember>;
   changeWorkspacePlan: Maybe<Workspace>;
   connectGit: Maybe<GitConnection>;
+  createAgentSession: Maybe<AgentSession>;
   createApiKey: Maybe<ApiKey>;
   createBillingCheckoutSession: Maybe<BillingHostedSession>;
   createBillingPortalSession: Maybe<BillingHostedSession>;
+  createBlueprint: Maybe<Blueprint>;
   createDatabase: Maybe<Database>;
   createDatabaseExport: Maybe<DatabaseExport>;
   createDatabaseUser: Maybe<DatabaseUserWithPassword>;
@@ -736,14 +803,17 @@ export type Mutation = {
   deleteWebhookEndpoint: Maybe<Scalars['Boolean']['output']>;
   deleteWorkspace: Maybe<Scalars['String']['output']>;
   disableAutoscaling: Maybe<Scalars['Boolean']['output']>;
+  disconnectBlueprint: Maybe<Scalars['Boolean']['output']>;
   disconnectGit: Maybe<Scalars['Boolean']['output']>;
   executeDatabaseQuery: Maybe<DatabaseQueryResult>;
   failoverDatabase: Maybe<Scalars['Boolean']['output']>;
   inviteWorkspaceMember: Maybe<WorkspaceInvite>;
   linkEnvGroup: Maybe<Scalars['Boolean']['output']>;
+  markPushNotificationRead: Scalars['Boolean']['output'];
   patchServiceEnvironment: EnvironmentPatchResult;
   recoverDatabase: Maybe<Database>;
   regenerateDeployHook: Maybe<DeployHook>;
+  registerNotificationDeviceSubscription: Maybe<NotificationDeviceSubscription>;
   removeWorkspaceMember: Maybe<Scalars['String']['output']>;
   renameDatabase: Maybe<Database>;
   renameEnvGroup: Maybe<EnvGroup>;
@@ -754,10 +824,12 @@ export type Mutation = {
   resendWorkspaceInvite: Maybe<WorkspaceInvite>;
   restartDatabase: Maybe<Database>;
   restartServer: Maybe<Deploy>;
+  resumeAgentSession: Maybe<AgentSession>;
   resumeDatabase: Maybe<Database>;
   resumeKeyValue: Maybe<KeyValue>;
   resumeService: Maybe<Service>;
   revokeApiKey: Maybe<Scalars['Boolean']['output']>;
+  revokeNotificationDeviceSubscriptions: Maybe<Scalars['Int']['output']>;
   revokeWorkspaceInvite: Maybe<Scalars['String']['output']>;
   rollbackService: Maybe<Deploy>;
   runCronJob: Maybe<CronRun>;
@@ -810,6 +882,8 @@ export type Mutation = {
   syncBlueprint: Maybe<SyncBlueprintResult>;
   triggerDeploy: Maybe<Deploy>;
   unlinkEnvGroup: Maybe<Scalars['Boolean']['output']>;
+  unregisterNotificationDeviceSubscription: Maybe<Scalars['Boolean']['output']>;
+  updateBlueprint: Maybe<Blueprint>;
   updateCronJob: Maybe<Service>;
   updateDatabaseDiskAutoscaling: Maybe<Database>;
   updateDatabasePlan: Maybe<Database>;
@@ -817,6 +891,7 @@ export type Mutation = {
   updateEnvironment: Maybe<Environment>;
   updateKeyValuePlan: Maybe<KeyValue>;
   updateNotificationSettings: Maybe<NotificationSettings>;
+  updatePushNotificationSettings: Maybe<PushNotificationSettings>;
   updateRegistryCredential: Maybe<RegistryCredential>;
   updateServicePlan: Maybe<Service>;
   updateWebhookEndpoint: Maybe<WebhookEndpoint>;
@@ -832,6 +907,11 @@ export type MutationAcceptWorkspaceInviteArgs = {
 export type MutationAddCustomDomainArgs = {
   id: Scalars['String']['input'];
   name: Scalars['String']['input'];
+};
+
+
+export type MutationCancelAgentSessionArgs = {
+  id: Scalars['String']['input'];
 };
 
 
@@ -871,6 +951,15 @@ export type MutationConnectGitArgs = {
 };
 
 
+export type MutationCreateAgentSessionArgs = {
+  agentConfig: AgentSessionConfigInput;
+  branch: Scalars['String']['input'];
+  egressAllowlist?: InputMaybe<Array<Scalars['String']['input']>>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  repo: Scalars['String']['input'];
+};
+
+
 export type MutationCreateApiKeyArgs = {
   name: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
@@ -887,6 +976,16 @@ export type MutationCreateBillingCheckoutSessionArgs = {
 export type MutationCreateBillingPortalSessionArgs = {
   returnUrl: Scalars['String']['input'];
   workspaceId: Scalars['String']['input'];
+};
+
+
+export type MutationCreateBlueprintArgs = {
+  branch: Scalars['String']['input'];
+  confirm?: InputMaybe<Scalars['String']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  path?: InputMaybe<Scalars['String']['input']>;
+  repo: Scalars['String']['input'];
 };
 
 
@@ -1137,6 +1236,12 @@ export type MutationDisableAutoscalingArgs = {
 };
 
 
+export type MutationDisconnectBlueprintArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationDisconnectGitArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
@@ -1167,6 +1272,11 @@ export type MutationLinkEnvGroupArgs = {
 };
 
 
+export type MutationMarkPushNotificationReadArgs = {
+  id: Scalars['String']['input'];
+};
+
+
 export type MutationPatchServiceEnvironmentArgs = {
   envVars?: InputMaybe<Array<EnvironmentEnvVarPatchInput>>;
   saveMode: Scalars['String']['input'];
@@ -1186,6 +1296,14 @@ export type MutationRecoverDatabaseArgs = {
 
 export type MutationRegenerateDeployHookArgs = {
   serviceId: Scalars['String']['input'];
+};
+
+
+export type MutationRegisterNotificationDeviceSubscriptionArgs = {
+  deviceId: Scalars['String']['input'];
+  platform: Scalars['String']['input'];
+  provider: Scalars['String']['input'];
+  token: Scalars['String']['input'];
 };
 
 
@@ -1246,6 +1364,11 @@ export type MutationRestartDatabaseArgs = {
 
 export type MutationRestartServerArgs = {
   serviceId: Scalars['String']['input'];
+};
+
+
+export type MutationResumeAgentSessionArgs = {
+  id: Scalars['String']['input'];
 };
 
 
@@ -1601,6 +1724,20 @@ export type MutationUnlinkEnvGroupArgs = {
 };
 
 
+export type MutationUnregisterNotificationDeviceSubscriptionArgs = {
+  deviceId: Scalars['String']['input'];
+};
+
+
+export type MutationUpdateBlueprintArgs = {
+  autoSync?: InputMaybe<Scalars['Boolean']['input']>;
+  id: Scalars['String']['input'];
+  name?: InputMaybe<Scalars['String']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  path?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationUpdateCronJobArgs = {
   command?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
@@ -1651,6 +1788,11 @@ export type MutationUpdateNotificationSettingsArgs = {
 };
 
 
+export type MutationUpdatePushNotificationSettingsArgs = {
+  settings: PushNotificationSettingsInput;
+};
+
+
 export type MutationUpdateRegistryCredentialArgs = {
   authToken?: InputMaybe<Scalars['String']['input']>;
   expiresAt?: InputMaybe<Scalars['String']['input']>;
@@ -1688,6 +1830,17 @@ export type NameAvailability = {
   suggestion: Maybe<Scalars['String']['output']>;
 };
 
+export type NotificationDeviceSubscription = {
+  __typename: 'NotificationDeviceSubscription';
+  createdAt: Maybe<Scalars['String']['output']>;
+  deviceId: Maybe<Scalars['String']['output']>;
+  lastRegisteredAt: Maybe<Scalars['String']['output']>;
+  platform: Maybe<Scalars['String']['output']>;
+  preferenceRef: Maybe<Scalars['String']['output']>;
+  provider: Maybe<Scalars['String']['output']>;
+  updatedAt: Maybe<Scalars['String']['output']>;
+};
+
 export type NotificationSettings = {
   __typename: 'NotificationSettings';
   deployFailed: Maybe<Scalars['Boolean']['output']>;
@@ -1722,12 +1875,109 @@ export type Project = {
   serviceIds: Maybe<Array<Maybe<Scalars['String']['output']>>>;
 };
 
+export type PushNotification = {
+  __typename: 'PushNotification';
+  body: Scalars['String']['output'];
+  createdAt: Scalars['String']['output'];
+  deepLink: Scalars['String']['output'];
+  event: PushNotificationEvent;
+  id: Scalars['String']['output'];
+  occurredAt: Scalars['String']['output'];
+  readAt: Maybe<Scalars['String']['output']>;
+  resourceId: Scalars['String']['output'];
+  resourceKind: Scalars['String']['output'];
+  title: Scalars['String']['output'];
+  urgency: PushNotificationUrgency;
+};
+
+export type PushNotificationClockRange = {
+  __typename: 'PushNotificationClockRange';
+  end: Scalars['String']['output'];
+  start: Scalars['String']['output'];
+  weekdays: Array<PushNotificationWeekday>;
+};
+
+export type PushNotificationClockRangeInput = {
+  end: Scalars['String']['input'];
+  start: Scalars['String']['input'];
+  weekdays: Array<PushNotificationWeekday>;
+};
+
+export enum PushNotificationEvent {
+  AgentNeedsDecision = 'AGENT_NEEDS_DECISION',
+  AgentPrReady = 'AGENT_PR_READY',
+  CronFailed = 'CRON_FAILED',
+  DeployFailed = 'DEPLOY_FAILED',
+  DeployStarted = 'DEPLOY_STARTED',
+  DeploySucceeded = 'DEPLOY_SUCCEEDED',
+  ServerFailed = 'SERVER_FAILED',
+  UsageThreshold = 'USAGE_THRESHOLD'
+}
+
+export type PushNotificationServiceOverride = {
+  __typename: 'PushNotificationServiceOverride';
+  enabled: Maybe<Scalars['Boolean']['output']>;
+  events: Maybe<Array<PushNotificationEvent>>;
+  minimumUrgency: Maybe<PushNotificationUrgency>;
+  serviceId: Scalars['String']['output'];
+};
+
+export type PushNotificationServiceOverrideInput = {
+  enabled?: InputMaybe<Scalars['Boolean']['input']>;
+  events?: InputMaybe<Array<PushNotificationEvent>>;
+  minimumUrgency?: InputMaybe<PushNotificationUrgency>;
+  serviceId: Scalars['String']['input'];
+};
+
+export type PushNotificationSettings = {
+  __typename: 'PushNotificationSettings';
+  enabled: Scalars['Boolean']['output'];
+  events: Array<PushNotificationEvent>;
+  maxDeferralSeconds: Scalars['Int']['output'];
+  minimumUrgency: PushNotificationUrgency;
+  quietHours: Array<PushNotificationClockRange>;
+  serviceOverrides: Array<PushNotificationServiceOverride>;
+  timeZone: Scalars['String']['output'];
+  workingHours: Array<PushNotificationClockRange>;
+};
+
+export type PushNotificationSettingsInput = {
+  enabled: Scalars['Boolean']['input'];
+  events: Array<PushNotificationEvent>;
+  maxDeferralSeconds: Scalars['Int']['input'];
+  minimumUrgency: PushNotificationUrgency;
+  quietHours: Array<PushNotificationClockRangeInput>;
+  serviceOverrides: Array<PushNotificationServiceOverrideInput>;
+  timeZone: Scalars['String']['input'];
+  workingHours: Array<PushNotificationClockRangeInput>;
+};
+
+export enum PushNotificationUrgency {
+  Critical = 'CRITICAL',
+  Important = 'IMPORTANT',
+  Routine = 'ROUTINE'
+}
+
+export enum PushNotificationWeekday {
+  Friday = 'FRIDAY',
+  Monday = 'MONDAY',
+  Saturday = 'SATURDAY',
+  Sunday = 'SUNDAY',
+  Thursday = 'THURSDAY',
+  Tuesday = 'TUESDAY',
+  Wednesday = 'WEDNESDAY'
+}
+
 export type Query = {
   __typename: 'Query';
+  agentSession: Maybe<AgentSession>;
+  agentSessions: Array<AgentSession>;
   apiKeys: Maybe<Array<Maybe<ApiKey>>>;
   auditLogs: Maybe<Array<Maybe<AuditLog>>>;
   autoscalingConfig: Maybe<Autoscaling>;
   blueprint: Maybe<Blueprint>;
+  blueprintPreview: Maybe<BlueprintPreview>;
+  blueprintSyncs: Maybe<Array<Maybe<BlueprintSync>>>;
   blueprints: Maybe<Array<Maybe<Blueprint>>>;
   cronJobRun: Maybe<CronRun>;
   cronJobRuns: Maybe<Array<Maybe<CronRun>>>;
@@ -1774,9 +2024,13 @@ export type Query = {
   metricsFilters: Maybe<MetricsFiltersResult>;
   metricsPathFilterSuggestions: Maybe<MetricsPathFilterSuggestions>;
   monthToDateBandwidth: Maybe<MonthToDateBandwidth>;
+  notificationDeviceSubscriptions: Maybe<Array<Maybe<NotificationDeviceSubscription>>>;
+  notificationInbox: Array<PushNotification>;
   notificationSettings: Maybe<NotificationSettings>;
   project: Maybe<Project>;
   projects: Maybe<Array<Maybe<Project>>>;
+  pushNotificationSettings: Maybe<PushNotificationSettings>;
+  pushNotificationsAvailable: Scalars['Boolean']['output'];
   registryCredential: Maybe<RegistryCredential>;
   registryCredentials: Maybe<Array<Maybe<RegistryCredential>>>;
   repoBranches: Maybe<Array<Maybe<Scalars['String']['output']>>>;
@@ -1789,6 +2043,7 @@ export type Query = {
   serviceNameAvailable: Maybe<NameAvailability>;
   services: Maybe<Array<Maybe<Service>>>;
   sshKeys: Maybe<Array<Maybe<SshKey>>>;
+  unreadPushNotificationCount: Scalars['Int']['output'];
   usage: Maybe<UsageSummary>;
   validateBlueprint: Maybe<BlueprintValidation>;
   webhookDeliveries: Maybe<Array<Maybe<WebhookDelivery>>>;
@@ -1801,6 +2056,16 @@ export type Query = {
   workspaceMembers: Maybe<Array<Maybe<WorkspaceMember>>>;
   workspaceSeatUsage: Maybe<WorkspaceSeatUsage>;
   workspaces: Maybe<Array<Maybe<Workspace>>>;
+};
+
+
+export type QueryAgentSessionArgs = {
+  id: Scalars['String']['input'];
+};
+
+
+export type QueryAgentSessionsArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1826,6 +2091,22 @@ export type QueryAutoscalingConfigArgs = {
 
 export type QueryBlueprintArgs = {
   id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryBlueprintPreviewArgs = {
+  branch: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  path?: InputMaybe<Scalars['String']['input']>;
+  repo: Scalars['String']['input'];
+};
+
+
+export type QueryBlueprintSyncsArgs = {
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  id: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['Int']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -2111,6 +2392,11 @@ export type QueryMetricsPathFilterSuggestionsArgs = {
 
 export type QueryMonthToDateBandwidthArgs = {
   resourceId: Scalars['String']['input'];
+};
+
+
+export type QueryNotificationInboxArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -3299,6 +3585,18 @@ export type UpdateNotificationSettingsMutationVariables = Exact<{
 
 export type UpdateNotificationSettingsMutation = { updateNotificationSettings: { __typename: 'NotificationSettings', deployStarted: boolean | null, deploySucceeded: boolean | null, deployFailed: boolean | null } | null };
 
+export type PushNotificationSettingsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type PushNotificationSettingsQuery = { pushNotificationsAvailable: boolean, pushNotificationSettings: { __typename: 'PushNotificationSettings', enabled: boolean, events: Array<PushNotificationEvent>, minimumUrgency: PushNotificationUrgency, timeZone: string, maxDeferralSeconds: number, workingHours: Array<{ __typename: 'PushNotificationClockRange', weekdays: Array<PushNotificationWeekday>, start: string, end: string }>, quietHours: Array<{ __typename: 'PushNotificationClockRange', weekdays: Array<PushNotificationWeekday>, start: string, end: string }>, serviceOverrides: Array<{ __typename: 'PushNotificationServiceOverride', serviceId: string, enabled: boolean | null, events: Array<PushNotificationEvent> | null, minimumUrgency: PushNotificationUrgency | null }> } | null };
+
+export type UpdatePushNotificationSettingsMutationVariables = Exact<{
+  settings: PushNotificationSettingsInput;
+}>;
+
+
+export type UpdatePushNotificationSettingsMutation = { updatePushNotificationSettings: { __typename: 'PushNotificationSettings', enabled: boolean, events: Array<PushNotificationEvent>, minimumUrgency: PushNotificationUrgency, timeZone: string, maxDeferralSeconds: number, workingHours: Array<{ __typename: 'PushNotificationClockRange', weekdays: Array<PushNotificationWeekday>, start: string, end: string }>, quietHours: Array<{ __typename: 'PushNotificationClockRange', weekdays: Array<PushNotificationWeekday>, start: string, end: string }>, serviceOverrides: Array<{ __typename: 'PushNotificationServiceOverride', serviceId: string, enabled: boolean | null, events: Array<PushNotificationEvent> | null, minimumUrgency: PushNotificationUrgency | null }> } | null };
+
 export type ProjectFieldsFragment = { __typename: 'Project', id: string | null, name: string | null, ownerId: string | null, createdAt: string | null, serviceIds: Array<string | null> | null, databaseIds: Array<string | null> | null, keyValueIds: Array<string | null> | null };
 
 export type ProjectsQueryVariables = Exact<{
@@ -4223,6 +4521,8 @@ export const MetricsPathFilterSuggestionsDocument = {"kind":"Document","definiti
 export const DatastoreMetricsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"DatastoreMetrics"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"query"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DatastoreMetricsQueryInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"datastoreMetrics"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"query"},"value":{"kind":"Variable","name":{"kind":"Name","value":"query"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"unit"}},{"kind":"Field","name":{"kind":"Name","value":"labels"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"field"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}},{"kind":"Field","name":{"kind":"Name","value":"values"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"time"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}}]}}]}}]} as unknown as DocumentNode<DatastoreMetricsQuery, DatastoreMetricsQueryVariables>;
 export const NotificationSettingsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"NotificationSettings"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"notificationSettings"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deployStarted"}},{"kind":"Field","name":{"kind":"Name","value":"deploySucceeded"}},{"kind":"Field","name":{"kind":"Name","value":"deployFailed"}}]}}]}}]} as unknown as DocumentNode<NotificationSettingsQuery, NotificationSettingsQueryVariables>;
 export const UpdateNotificationSettingsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateNotificationSettings"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"deployStarted"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"deploySucceeded"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"deployFailed"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateNotificationSettings"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"deployStarted"},"value":{"kind":"Variable","name":{"kind":"Name","value":"deployStarted"}}},{"kind":"Argument","name":{"kind":"Name","value":"deploySucceeded"},"value":{"kind":"Variable","name":{"kind":"Name","value":"deploySucceeded"}}},{"kind":"Argument","name":{"kind":"Name","value":"deployFailed"},"value":{"kind":"Variable","name":{"kind":"Name","value":"deployFailed"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deployStarted"}},{"kind":"Field","name":{"kind":"Name","value":"deploySucceeded"}},{"kind":"Field","name":{"kind":"Name","value":"deployFailed"}}]}}]}}]} as unknown as DocumentNode<UpdateNotificationSettingsMutation, UpdateNotificationSettingsMutationVariables>;
+export const PushNotificationSettingsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"PushNotificationSettings"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pushNotificationsAvailable"}},{"kind":"Field","name":{"kind":"Name","value":"pushNotificationSettings"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"events"}},{"kind":"Field","name":{"kind":"Name","value":"minimumUrgency"}},{"kind":"Field","name":{"kind":"Name","value":"timeZone"}},{"kind":"Field","name":{"kind":"Name","value":"workingHours"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"weekdays"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"quietHours"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"weekdays"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"maxDeferralSeconds"}},{"kind":"Field","name":{"kind":"Name","value":"serviceOverrides"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"serviceId"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"events"}},{"kind":"Field","name":{"kind":"Name","value":"minimumUrgency"}}]}}]}}]}}]} as unknown as DocumentNode<PushNotificationSettingsQuery, PushNotificationSettingsQueryVariables>;
+export const UpdatePushNotificationSettingsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdatePushNotificationSettings"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"settings"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"PushNotificationSettingsInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updatePushNotificationSettings"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"settings"},"value":{"kind":"Variable","name":{"kind":"Name","value":"settings"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"events"}},{"kind":"Field","name":{"kind":"Name","value":"minimumUrgency"}},{"kind":"Field","name":{"kind":"Name","value":"timeZone"}},{"kind":"Field","name":{"kind":"Name","value":"workingHours"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"weekdays"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"quietHours"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"weekdays"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"maxDeferralSeconds"}},{"kind":"Field","name":{"kind":"Name","value":"serviceOverrides"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"serviceId"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"events"}},{"kind":"Field","name":{"kind":"Name","value":"minimumUrgency"}}]}}]}}]}}]} as unknown as DocumentNode<UpdatePushNotificationSettingsMutation, UpdatePushNotificationSettingsMutationVariables>;
 export const ProjectsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Projects"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"projects"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"ProjectFields"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"ProjectFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Project"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"ownerId"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"serviceIds"}},{"kind":"Field","name":{"kind":"Name","value":"databaseIds"}},{"kind":"Field","name":{"kind":"Name","value":"keyValueIds"}}]}}]} as unknown as DocumentNode<ProjectsQuery, ProjectsQueryVariables>;
 export const CreateProjectDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateProject"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createProject"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}},{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"ProjectFields"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"ProjectFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Project"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"ownerId"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"serviceIds"}},{"kind":"Field","name":{"kind":"Name","value":"databaseIds"}},{"kind":"Field","name":{"kind":"Name","value":"keyValueIds"}}]}}]} as unknown as DocumentNode<CreateProjectMutation, CreateProjectMutationVariables>;
 export const RenameProjectDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RenameProject"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"renameProject"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"ProjectFields"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"ProjectFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Project"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"ownerId"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"serviceIds"}},{"kind":"Field","name":{"kind":"Name","value":"databaseIds"}},{"kind":"Field","name":{"kind":"Name","value":"keyValueIds"}}]}}]} as unknown as DocumentNode<RenameProjectMutation, RenameProjectMutationVariables>;
