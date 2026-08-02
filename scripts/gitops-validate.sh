@@ -1236,14 +1236,20 @@ controller_args="$(yq -N \
     .spec.template.spec.containers[0].args[]' - <<<"$opensandbox_controller_render")"
 for required in \
   '--image-committer-image=sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/image-committer:v0.1.0@sha256:d72cce22ff1ea248e86620e945b7cf12615db74c8a8402fcc01dbfa4a09e7442' \
-  '--snapshot-job-namespace=opensandbox-snapshot'; do
+  '--snapshot-job-namespace=opensandbox-snapshot' \
+  '--snapshot-registry=zot.bex-registry.svc:5000/snapshots' \
+  '--snapshot-registry-insecure=true' \
+  '--snapshot-push-secret=bex-snapshot-push' \
+  '--resume-pull-secret=bex-snapshot-pull' \
+  '--containerd-socket-path=/run/k3s/containerd/containerd.sock'; do
   grep -qFx -- "$required" <<<"$controller_args" \
     || { echo "FAIL: production OpenSandbox controller lost: $required" >&2; fail=1; }
 done
-if grep -Eq '^--snapshot-(registry|registry-insecure|push-secret)|^--resume-pull-secret' <<<"$controller_args"; then
-  echo "FAIL: production OpenSandbox controller enabled unavailable snapshot transport/credentials" >&2
-  fail=1
-fi
+# w3/m42 t002: snapshot transport is ENABLED with per-workspace scoping — the
+# push credential lives only in the privileged job namespace and each tenant's
+# resume-pull Secret is minted per `<ws>-sandbox` by the operator
+# (SandboxNamespaceRegistryReconciler). The resume secret name must stay in
+# lockstep with registry.SnapshotPullSecretName.
 controller_cluster_verbs="$(yq -N \
   'select(.kind == "ClusterRole") | .rules[].verbs[]' - <<<"$opensandbox_controller_render" | sort -u | paste -sd, -)"
 [ "$controller_cluster_verbs" = "get,list,watch" ] \

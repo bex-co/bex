@@ -1,28 +1,24 @@
-# Production snapshot transport stays disabled pending w3/m42 t002. The carried
-# snapshot-job-namespace patch is active at an immutable, CI-maintained digest;
-# the transport and credential flip below remains a separate atomic change.
-#
-# To enable (t002, in order):
-#   1. push credential: bash scripts/snapshot-registry-secrets.sh (out-of-band;
-#      creates opensandbox-snapshot/bex-snapshot-push — bex-builder already has
-#      the Zot adminPolicy, no ACL change needed);
-#   2. resume-pull scoping: the controller injects resumePullSecret into the
-#      recreated pod's imagePullSecrets, which is namespace-local — it must be
-#      minted per `<ws>-sandbox` namespace (a shared read credential would let
-#      tenants pull each other's snapshot rootfs). Design + review in t002
-#      before flipping this on;
-#   3. then set here: registry: zot.bex-registry.svc:5000/snapshots,
-#      registryInsecure: true (in-cluster Zot is HTTP; WireGuard node
-#      encryption is the transport mitigation, w7/008),
-#      snapshotPushSecret: bex-snapshot-push, resumePullSecret: <per-ws name>.
-#
-# Enabling the push side alone would make pause succeed while resume fails
-# (image pull denied) — strictly worse than pause failing fast — so the flip is
-# atomic with the resume-pull piece.
+# Production snapshot transport — ENABLED (w3/m42 t002, ADR042 D5).
+# The full chain is live: the patched controller (immutable CI-maintained
+# digest, base values) runs commit/unpause Jobs in the dedicated
+# `opensandbox-snapshot` namespace (privileged PSS) and nests snapshot repos
+# per tenant namespace (`snapshots/<ws>-sandbox/…`). Credentials:
+#   - push: `opensandbox-snapshot/bex-snapshot-push` (out-of-band,
+#     scripts/snapshot-registry-secrets.sh — bex-builder holds Zot's
+#     adminPolicy, so no ACL change);
+#   - resume-pull: the operator mints per-workspace `bex-snapshot-pull`
+#     Secrets into every `app.bex.co/regime=sandbox` namespace, each backed by
+#     a read-only `snap-<ns>` Zot user scoped to `snapshots/<ns>/**`
+#     (SandboxNamespaceRegistryReconciler, gated on BEX_REGISTRY_NS) — a
+#     shared read credential would allow cross-tenant snapshot-rootfs pulls,
+#     so the transport flip is atomic with that per-workspace minting.
+# registryInsecure: the in-cluster Zot is HTTP; Cilium WireGuard node
+# encryption is the transport mitigation (w7/008).
 controller:
   snapshot:
-    registry: ""
-    registryInsecure: false
-    # k3s nodes expose containerd at the k3s-specific socket path; correct (and
-    # inert while the transport above is disabled) for the commit Jobs' mount.
+    registry: zot.bex-registry.svc:5000/snapshots
+    registryInsecure: true
+    snapshotPushSecret: bex-snapshot-push
+    resumePullSecret: bex-snapshot-pull
+    # k3s nodes expose containerd at the k3s-specific socket path.
     containerdSocketPath: /run/k3s/containerd/containerd.sock

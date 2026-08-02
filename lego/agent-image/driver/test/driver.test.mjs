@@ -158,6 +158,87 @@ for (const loadSession of [false, true]) {
   });
 }
 
+// w3/m42 t003 — resume after hibernation: a restarted driver on a restored
+// rootfs adopts the prior turn's persisted ACP session id and re-attaches via
+// session/load only when the agent advertises loadSession.
+for (const loadSession of [false, true]) {
+  test(`rootfs-persisted session id is adopted after resume (loadSession=${loadSession})`, async () => {
+    const config = await tempConfig();
+    await writeFile(
+      config.statusPath,
+      `${JSON.stringify({ state: "succeeded", sessionId: "prior-session", resume: "new" })}\n`,
+    );
+    const callLog = path.join(config.root, "calls.log");
+    config.agentEnv = {
+      ACP_FIXTURE_LOAD_SESSION: loadSession ? "1" : "0",
+      ACP_FIXTURE_LOG: callLog,
+    };
+    const result = await runHeadlessTurn(
+      config,
+      manager(config),
+      new UIMessageStreamHub(),
+    );
+    const calls = (await readFile(callLog, "utf8")).trim().split("\n");
+    assert.equal(calls.includes("session/load"), loadSession);
+    assert.equal(result.resume, loadSession ? "loaded" : "unsupported");
+    assert.equal(result.resumedFrom, "rootfs");
+    const persisted = JSON.parse(await readFile(config.statusPath, "utf8"));
+    assert.equal(persisted.resumedFrom, "rootfs");
+  });
+}
+
+test("environment session id takes precedence over the rootfs status file", async () => {
+  const config = await tempConfig({ existingSessionId: "env-session" });
+  await writeFile(
+    config.statusPath,
+    `${JSON.stringify({ state: "succeeded", sessionId: "stale-rootfs-session" })}\n`,
+  );
+  config.agentEnv = { ACP_FIXTURE_LOAD_SESSION: "1" };
+  const result = await runHeadlessTurn(
+    config,
+    manager(config),
+    new UIMessageStreamHub(),
+  );
+  assert.equal(result.resume, "loaded");
+  assert.equal(result.resumedFrom, "env");
+  assert.equal(config.existingSessionId, "env-session");
+});
+
+test("a failed prior turn adopts nothing and starts a fresh session", async () => {
+  const config = await tempConfig();
+  await writeFile(
+    config.statusPath,
+    `${JSON.stringify({ state: "failed", error: "boom" })}\n`,
+  );
+  const callLog = path.join(config.root, "calls.log");
+  config.agentEnv = {
+    ACP_FIXTURE_LOAD_SESSION: "1",
+    ACP_FIXTURE_LOG: callLog,
+  };
+  const result = await runHeadlessTurn(
+    config,
+    manager(config),
+    new UIMessageStreamHub(),
+  );
+  const calls = (await readFile(callLog, "utf8")).trim().split("\n");
+  assert.equal(calls.includes("session/new"), true);
+  assert.equal(calls.includes("session/load"), false);
+  assert.equal(result.resume, "new");
+  assert.equal(result.resumedFrom, undefined);
+});
+
+test("a corrupt status file adopts nothing", async () => {
+  const config = await tempConfig();
+  await writeFile(config.statusPath, "not-json{");
+  const result = await runHeadlessTurn(
+    config,
+    manager(config),
+    new UIMessageStreamHub(),
+  );
+  assert.equal(result.resume, "new");
+  assert.equal(result.resumedFrom, undefined);
+});
+
 test("agent crash becomes a failed status instead of hanging", async () => {
   const config = await tempConfig({ agentEnv: { ACP_FIXTURE_CRASH: "1" } });
   await assert.rejects(
