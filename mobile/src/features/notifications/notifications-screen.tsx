@@ -7,6 +7,7 @@ import {
 } from "react-native";
 import { Button } from "@/components/button";
 import { DashboardScrollView } from "@/components/dashboard-scroll-view";
+import { AppDrawerButton } from "@/components/app-drawer";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   fontSizes,
@@ -24,7 +25,8 @@ export function NotificationInboxScreen() {
   const { state, items, unread, enable, disable, markAllRead, open } =
     useNotifications();
   const styles = StyleSheet.create({
-    content: { paddingTop: gutter, paddingBottom: gutter * 2, gap: space.md },
+    content: { paddingTop: space.sm, paddingBottom: gutter * 2, gap: space.md },
+    titleRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
     title: {
       color: theme.foreground,
       fontSize: fontSizes.xxl,
@@ -96,7 +98,10 @@ export function NotificationInboxScreen() {
       onRefresh={() => undefined}
       contentContainerStyle={styles.content}
     >
-      <Text style={styles.title}>{t("notifications.title")}</Text>
+      <View style={styles.titleRow}>
+        <AppDrawerButton />
+        <Text style={styles.title}>{t("notifications.title")}</Text>
+      </View>
       <Text style={styles.body}>{t("notifications.body")}</Text>
       <View style={styles.card}>
         <View style={styles.row}>

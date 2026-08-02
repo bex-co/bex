@@ -10,6 +10,7 @@ import {
   useWorkspace,
   WorkspaceProvider,
 } from "@/features/workspaces/workspace-provider";
+import { AppDrawerProvider } from "@/components/app-drawer";
 
 function WorkspaceTabs() {
   const { t } = useTranslations();
@@ -120,7 +121,9 @@ export default function AppLayout() {
   if (state.status !== "signedIn") return <Redirect href="/sign-in" />;
   return (
     <WorkspaceProvider>
-      <WorkspaceTabs />
+      <AppDrawerProvider>
+        <WorkspaceTabs />
+      </AppDrawerProvider>
     </WorkspaceProvider>
   );
 }

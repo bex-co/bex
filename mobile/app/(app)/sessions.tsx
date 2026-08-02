@@ -7,6 +7,7 @@ export default function SessionsScreen() {
       bodyKey="sessions.body"
       badgeKey="sessions.gated"
       icon="sparkles"
+      menu
     />
   );
 }
