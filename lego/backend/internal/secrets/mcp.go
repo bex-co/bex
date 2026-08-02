@@ -18,8 +18,12 @@ package secrets
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // mcp.go is the env-vars MCP fragment (Render's official MCP has no env-var
@@ -85,10 +89,22 @@ type deleteSecretFileResult struct {
 }
 
 type patchEnvironmentArgs struct {
-	ServiceID   string            `json:"serviceId" jsonschema:"the service id (bex App name)"`
-	EnvVars     []EnvVarPatch     `json:"envVars,omitempty" jsonschema:"sparse environment-variable set, generate, or delete operations"`
-	SecretFiles []SecretFilePatch `json:"secretFiles,omitempty" jsonschema:"sparse secret-file set or delete operations"`
-	SaveMode    SaveMode          `json:"saveMode" jsonschema:"save_only projects configuration without a rollout; deploy rolls exactly once"`
+	ServiceID           string            `json:"serviceId" jsonschema:"the service id (bex App name)"`
+	EnvVars             []EnvVarPatch     `json:"envVars,omitempty" jsonschema:"sparse environment-variable set, generate, or delete operations"`
+	SecretFiles         []SecretFilePatch `json:"secretFiles,omitempty" jsonschema:"sparse secret-file set or delete operations"`
+	SaveMode            SaveMode          `json:"saveMode" jsonschema:"save_only projects configuration without a rollout; deploy rolls exactly once"`
+	ExpectedEnvRevision *string           `json:"expectedEnvRevision,omitempty" jsonschema:"optional opaque revision from list_env_vars or get_env_var; when set, exactly one ordinary env value update is allowed"`
+}
+
+// environmentMCPError keeps the same stable domain code visible when the MCP
+// SDK serializes an error to text. REST exposes code and GraphQL exposes
+// extensions.code; without this wrapper MCP would retain only Error().
+func environmentMCPError(err error) error {
+	var coded *core.CodedError
+	if errors.As(err, &coded) {
+		return fmt.Errorf("%s: %w", coded.Code, err)
+	}
+	return err
 }
 
 // RegisterMCP adds the env-var tools to the shared MCP server.
@@ -97,8 +113,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "patch_service_environment",
 		Description: "Apply one sparse env-var and secret-file patch without returning secret material; save_only causes no rollout and deploy rolls the service once.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in patchEnvironmentArgs) (*mcp.CallToolResult, EnvironmentPatchResult, error) {
-		result, err := s.PatchEnvironment(ctx, in.ServiceID, EnvironmentPatch{EnvVars: in.EnvVars, SecretFiles: in.SecretFiles, SaveMode: in.SaveMode})
-		return nil, result, err
+		result, err := s.PatchEnvironment(ctx, in.ServiceID, EnvironmentPatch{EnvVars: in.EnvVars, SecretFiles: in.SecretFiles, SaveMode: in.SaveMode, ExpectedEnvRevision: in.ExpectedEnvRevision})
+		return nil, result, environmentMCPError(err)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{

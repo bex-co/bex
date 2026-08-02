@@ -30,6 +30,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -38,8 +39,82 @@ import (
 
 type patchCountingClient struct {
 	client.Client
-	patches int
-	fail    error
+	patches         int
+	fail            error
+	secretGets      int
+	beforeSecretGet func()
+}
+
+type versionedFakeSecretStore struct {
+	*fakeSecretStore
+	versions    map[string]uint64
+	afterCAS    func(path string, version uint64)
+	reads       []string
+	casCalls    int
+	failCASCall int
+}
+
+type versionedTenantFakeSecretStore struct {
+	*tenantFakeSecretStore
+	versions map[string]uint64
+}
+
+func newVersionedTenantFakeSecretStore() *versionedTenantFakeSecretStore {
+	return &versionedTenantFakeSecretStore{tenantFakeSecretStore: newTenantFakeSecretStore(), versions: map[string]uint64{}}
+}
+
+func (f *versionedTenantFakeSecretStore) GetVersioned(ctx context.Context, path string) (core.SecretKVSnapshot, error) {
+	data, err := f.Get(ctx, path)
+	return core.SecretKVSnapshot{Data: data, Version: f.versions[f.key(ctx, path)]}, err
+}
+
+func (f *versionedTenantFakeSecretStore) PutCAS(ctx context.Context, path string, data map[string]string, expectedVersion uint64) (uint64, error) {
+	key := f.key(ctx, path)
+	if f.versions[key] != expectedVersion {
+		return 0, core.ErrConflict
+	}
+	if err := f.Put(ctx, path, data); err != nil {
+		return 0, err
+	}
+	f.versions[key]++
+	return f.versions[key], nil
+}
+
+func newVersionedFakeSecretStore() *versionedFakeSecretStore {
+	return &versionedFakeSecretStore{
+		fakeSecretStore: newFakeSecretStore(),
+		versions:        map[string]uint64{},
+	}
+}
+
+func (f *versionedFakeSecretStore) GetVersioned(ctx context.Context, path string) (core.SecretKVSnapshot, error) {
+	data, err := f.Get(ctx, path)
+	return core.SecretKVSnapshot{Data: data, Version: f.versions[path]}, err
+}
+
+func (f *versionedFakeSecretStore) Get(ctx context.Context, path string) (map[string]string, error) {
+	f.reads = append(f.reads, path)
+	return f.fakeSecretStore.Get(ctx, path)
+}
+
+func (f *versionedFakeSecretStore) PutCAS(ctx context.Context, path string, data map[string]string, expectedVersion uint64) (uint64, error) {
+	f.casCalls++
+	if f.failCASCall == f.casCalls {
+		return 0, errors.New("injected /openbao/private/path failed-writer-secret")
+	}
+	if f.versions[path] != expectedVersion {
+		return 0, core.ErrConflict
+	}
+	if err := f.Put(ctx, path, data); err != nil {
+		return 0, err
+	}
+	f.versions[path]++
+	version := f.versions[path]
+	if hook := f.afterCAS; hook != nil {
+		f.afterCAS = nil
+		hook(path, version)
+	}
+	return version, nil
 }
 
 func (c *patchCountingClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
@@ -48,6 +123,18 @@ func (c *patchCountingClient) Patch(ctx context.Context, obj client.Object, patc
 		return c.fail
 	}
 	return c.Client.Patch(ctx, obj, patch, opts...)
+}
+
+func (c *patchCountingClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+	if _, ok := obj.(*corev1.Secret); ok && key.Name == "web-env" {
+		c.secretGets++
+		if c.secretGets == 2 && c.beforeSecretGet != nil {
+			hook := c.beforeSecretGet
+			c.beforeSecretGet = nil
+			hook()
+		}
+	}
+	return c.Client.Get(ctx, key, obj, opts...)
 }
 
 func TestPatchEnvironmentMixedSaveOnlyPreservesOmittedSecrets(t *testing.T) {
@@ -210,6 +297,346 @@ func TestPatchEnvironmentValidatesBeforeWritingAndDoesNotLeakValues(t *testing.T
 	}
 }
 
+func TestEnvVarRevisionIsCoherentAndMasked(t *testing.T) {
+	store := newVersionedFakeSecretStore()
+	store.m[envPath("web")] = map[string]string{"A": "one-secret", "B": "two-secret"}
+	svc := newService(store, sampleApp("web"))
+
+	keys, err := svc.EnvVarKeys(context.Background(), "web")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(keys) != 2 || keys[0].Value != "" || keys[1].Value != "" || keys[0].Revision == "" || keys[0].Revision != keys[1].Revision {
+		t.Fatalf("masked keys did not share one revision: %#v", keys)
+	}
+	if len(store.reads) != 1 || store.reads[0] != envPath("web") {
+		t.Fatalf("versioned current-tenant read was not atomic/single: %v", store.reads)
+	}
+	revealed, err := svc.EnvVarValue(context.Background(), "web", "A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if revealed.Value != "one-secret" || revealed.Revision != keys[0].Revision {
+		t.Fatalf("reveal did not use the coherent map revision: %#v", revealed)
+	}
+	views, err := svc.ListEnvVars(context.Background(), "web")
+	if err != nil || len(views) != 2 || views[0].Revision != keys[0].Revision || views[1].Revision != keys[0].Revision {
+		t.Fatalf("REST/MCP list revisions = %#v, %v", views, err)
+	}
+	view, err := svc.GetEnvVar(context.Background(), "web", "A")
+	if err != nil || view.Revision != keys[0].Revision || view.Value != "one-secret" {
+		t.Fatalf("REST/MCP reveal revision = %#v, %v", view, err)
+	}
+	encoded, _ := json.Marshal(keys)
+	if strings.Contains(string(encoded), "one-secret") || strings.Contains(string(encoded), "two-secret") {
+		t.Fatalf("masked list leaked values: %s", encoded)
+	}
+}
+
+func TestVersionedEnvReadMigratesTenantAndSanitizesStoreFailures(t *testing.T) {
+	path := envPath("web")
+	store := newVersionedTenantFakeSecretStore()
+	legacyCtx := withTenant(context.Background(), baoTenant)
+	if err := store.Put(legacyCtx, path, map[string]string{"TOKEN": "legacy-secret"}); err != nil {
+		t.Fatal(err)
+	}
+	svc := newService(store, tenantApp("web", "tea-a"))
+	keys, err := svc.EnvVarKeys(context.Background(), "web")
+	if err != nil || len(keys) != 1 || keys[0].Revision != encodeEnvRevision(1) {
+		t.Fatalf("versioned migration read = %#v, %v", keys, err)
+	}
+	if store.m["tea-a/"+path]["TOKEN"] != "legacy-secret" {
+		t.Fatalf("tenant migration missing: %#v", store.m)
+	}
+	if _, remains := store.m[baoTenant+"/"+path]; remains {
+		t.Fatalf("legacy tenant copy remained: %#v", store.m)
+	}
+
+	leaky := newVersionedFakeSecretStore()
+	leaky.failGet = errors.New("GET https://bao.invalid/v1/secret/data/tenants/tea-private/services/web/env?token=revision-secret")
+	_, err = newService(leaky, sampleApp("web")).EnvVarKeys(context.Background(), "web")
+	if !errors.Is(err, core.ErrSecretsUnavailable) {
+		t.Fatalf("versioned read error = %v", err)
+	}
+	for _, material := range []string{"https://bao.invalid", "tea-private", "services/web/env", "revision-secret"} {
+		if strings.Contains(err.Error(), material) {
+			t.Fatalf("versioned read leaked %q: %v", material, err)
+		}
+	}
+}
+
+func TestPatchEnvironmentCASAllowsOneWinnerAndDoesNotLeakConflict(t *testing.T) {
+	store := newVersionedFakeSecretStore()
+	store.m[envPath("web")] = map[string]string{"TOKEN": "old-secret"}
+	baseClient := fakeClient(sampleApp("web"))
+	counting := &patchCountingClient{Client: baseClient}
+	svc := &Service{Base: &core.Base{Client: counting, Namespace: "default", Clock: fixedNow}, Store: store}
+	observed, err := svc.EnvVarValue(context.Background(), "web", "TOKEN")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	winner := EnvironmentPatch{
+		SaveMode:            SaveModeDeploy,
+		EnvVars:             []EnvVarPatch{{Key: "TOKEN", Value: "winner-secret"}},
+		ExpectedEnvRevision: &observed.Revision,
+	}
+	result, err := svc.PatchEnvironment(context.Background(), "web", winner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.RolledOut || counting.patches != 1 || store.m[envPath("web")]["TOKEN"] != "winner-secret" {
+		t.Fatalf("winner result=%#v patches=%d store=%#v", result, counting.patches, store.m)
+	}
+	projection := getSecret(t, counting, "web-env")
+	if projection.Annotations[envProjectionRevisionAnnotation] != encodeEnvRevision(1) {
+		t.Fatalf("projection owner annotation = %#v", projection.Annotations)
+	}
+	for _, path := range store.reads {
+		if path == filesPath("web") {
+			t.Fatalf("CAS path read secret files: %v", store.reads)
+		}
+	}
+	restartedAt := getApp(t, counting, "web").Spec.RestartedAt
+
+	loser := winner
+	loser.EnvVars = []EnvVarPatch{{Key: "TOKEN", Value: "loser-secret"}}
+	_, err = svc.PatchEnvironment(context.Background(), "web", loser)
+	var coded *core.CodedError
+	if !errors.Is(err, core.ErrConflict) || !errors.As(err, &coded) || coded.Code != "ENVIRONMENT_REVISION_CONFLICT" {
+		t.Fatalf("stale save error = %#v", err)
+	}
+	for _, material := range []string{"TOKEN", "old-secret", "winner-secret", "loser-secret", observed.Revision} {
+		if strings.Contains(err.Error(), material) {
+			t.Fatalf("conflict leaked %q: %v", material, err)
+		}
+	}
+	if store.m[envPath("web")]["TOKEN"] != "winner-secret" || counting.patches != 1 || getApp(t, counting, "web").Spec.RestartedAt != restartedAt {
+		t.Fatalf("stale save changed winner: store=%#v patches=%d", store.m, counting.patches)
+	}
+}
+
+func TestPatchEnvironmentCASRejectsWideOrInvalidWrites(t *testing.T) {
+	store := newVersionedFakeSecretStore()
+	store.m[envPath("web")] = map[string]string{"TOKEN": "old-secret"}
+	svc := newService(store, sampleApp("web"))
+	revision := encodeEnvRevision(0)
+	tests := []EnvironmentPatch{
+		{SaveMode: SaveModeOnly, ExpectedEnvRevision: &revision},
+		{SaveMode: SaveModeOnly, ExpectedEnvRevision: &revision, EnvVars: []EnvVarPatch{{Key: "A", Value: "one"}, {Key: "B", Value: "two"}}},
+		{SaveMode: SaveModeOnly, ExpectedEnvRevision: &revision, EnvVars: []EnvVarPatch{{Key: "A", Value: "one"}}, SecretFiles: []SecretFilePatch{{Name: "x", Content: "secret"}}},
+		{SaveMode: SaveModeOnly, ExpectedEnvRevision: &revision, EnvVars: []EnvVarPatch{{Key: "A", FromKey: "TOKEN"}}},
+		{SaveMode: SaveModeOnly, ExpectedEnvRevision: &revision, EnvVars: []EnvVarPatch{{Key: "TOKEN", Delete: true}}},
+		{SaveMode: SaveModeOnly, ExpectedEnvRevision: &revision, EnvVars: []EnvVarPatch{{Key: "TOKEN", GenerateValue: true}}},
+	}
+	for i, patch := range tests {
+		_, err := svc.PatchEnvironment(context.Background(), "web", patch)
+		var coded *core.CodedError
+		if !errors.Is(err, core.ErrBadRequest) || !errors.As(err, &coded) || coded.Code != "INVALID_ENVIRONMENT_CAS_PATCH" {
+			t.Fatalf("case %d error = %#v", i, err)
+		}
+	}
+	malformed := "not-a-revision-secret"
+	_, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
+		SaveMode: SaveModeOnly, ExpectedEnvRevision: &malformed,
+		EnvVars: []EnvVarPatch{{Key: "TOKEN", Value: "must-not-write"}},
+	})
+	var coded *core.CodedError
+	if !errors.Is(err, core.ErrBadRequest) || !errors.As(err, &coded) || coded.Code != "ENVIRONMENT_REVISION_INVALID" || strings.Contains(err.Error(), malformed) {
+		t.Fatalf("malformed revision error = %#v", err)
+	}
+	if store.m[envPath("web")]["TOKEN"] != "old-secret" || store.versions[envPath("web")] != 0 {
+		t.Fatalf("invalid writes mutated store: data=%#v version=%d", store.m, store.versions[envPath("web")])
+	}
+
+	_, err = svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
+		SaveMode: SaveModeDeploy, ExpectedEnvRevision: &revision,
+		EnvVars: []EnvVarPatch{{Key: "MISSING", Value: "must-not-create"}},
+	})
+	if !errors.Is(err, core.ErrNotFound) || !errors.As(err, &coded) || coded.Code != "ENVIRONMENT_VARIABLE_NOT_FOUND" {
+		t.Fatalf("missing-key CAS error = %#v", err)
+	}
+	_, invalidErr := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
+		SaveMode: SaveModeDeploy, ExpectedEnvRevision: &revision,
+		EnvVars: []EnvVarPatch{{Key: "not valid", Value: "must-not-write"}},
+	})
+	if !errors.Is(invalidErr, core.ErrBadRequest) || !errors.As(invalidErr, &coded) || coded.Code != "ENVIRONMENT_VARIABLE_INVALID" {
+		t.Fatalf("invalid-key CAS error = %#v", invalidErr)
+	}
+	if store.versions[envPath("web")] != 0 || store.m[envPath("web")]["TOKEN"] != "old-secret" {
+		t.Fatalf("missing/invalid key mutated source: data=%#v version=%d", store.m, store.versions[envPath("web")])
+	}
+	var projection corev1.Secret
+	if projectionErr := svc.Client.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web-env"}, &projection); !apierrors.IsNotFound(projectionErr) {
+		t.Fatalf("missing/invalid key wrote projection: %v", projectionErr)
+	}
+
+	legacy := newService(newFakeSecretStore(), sampleApp("legacy"))
+	_, err = legacy.PatchEnvironment(context.Background(), "legacy", EnvironmentPatch{
+		SaveMode: SaveModeOnly, ExpectedEnvRevision: &revision,
+		EnvVars: []EnvVarPatch{{Key: "TOKEN", Value: "x"}},
+	})
+	if !errors.Is(err, core.ErrSecretsUnavailable) {
+		t.Fatalf("legacy CAS error = %v", err)
+	}
+}
+
+func TestPatchEnvironmentCASCompensationDoesNotOverwriteNewerWinner(t *testing.T) {
+	store := newVersionedFakeSecretStore()
+	store.m[envPath("web")] = map[string]string{"TOKEN": "before-secret"}
+	revision := encodeEnvRevision(0)
+	store.afterCAS = func(path string, version uint64) {
+		if _, err := store.PutCAS(context.Background(), path, map[string]string{"TOKEN": "concurrent-winner"}, version); err != nil {
+			t.Fatalf("inject concurrent winner: %v", err)
+		}
+	}
+	failing := &patchCountingClient{Client: fakeClient(sampleApp("web")), fail: errors.New("injected App patch failure")}
+	svc := &Service{Base: &core.Base{Client: failing, Namespace: "default", Clock: fixedNow}, Store: store}
+
+	_, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
+		SaveMode: SaveModeDeploy, ExpectedEnvRevision: &revision,
+		EnvVars: []EnvVarPatch{{Key: "TOKEN", Value: "failed-writer-secret"}},
+	})
+	if !errors.Is(err, core.ErrConflict) || store.m[envPath("web")]["TOKEN"] != "concurrent-winner" {
+		t.Fatalf("compensation overwrote winner: err=%v store=%#v", err, store.m)
+	}
+	for _, material := range []string{"TOKEN", "before-secret", "failed-writer-secret", "concurrent-winner", revision} {
+		if strings.Contains(err.Error(), material) {
+			t.Fatalf("compensation error leaked %q: %v", material, err)
+		}
+	}
+}
+
+func TestPatchEnvironmentCASCompensationRestoresOwnedCreateAndUpdate(t *testing.T) {
+	for _, existingProjection := range []bool{false, true} {
+		name := "created"
+		if existingProjection {
+			name = "updated"
+		}
+		t.Run(name, func(t *testing.T) {
+			store := newVersionedFakeSecretStore()
+			store.m[envPath("web")] = map[string]string{"TOKEN": "before-secret"}
+			revision := encodeEnvRevision(0)
+			app := sampleApp("web")
+			objects := []client.Object{app}
+			if existingProjection {
+				app.Spec.EnvFromSecret = "web-env"
+				objects = append(objects, &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "web-env", Namespace: "default", UID: "old-uid", Annotations: map[string]string{envProjectionRevisionAnnotation: revision}},
+					Type:       corev1.SecretTypeOpaque,
+					Data:       map[string][]byte{"TOKEN": []byte("before-secret")},
+				})
+			}
+			failing := &patchCountingClient{Client: fakeClient(objects...), fail: errors.New("injected /sensitive/request/path")}
+			svc := &Service{Base: &core.Base{Client: failing, Namespace: "default", Clock: fixedNow}, Store: store}
+
+			_, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
+				SaveMode: SaveModeDeploy, ExpectedEnvRevision: &revision,
+				EnvVars: []EnvVarPatch{{Key: "TOKEN", Value: "failed-writer-secret"}},
+			})
+			var coded *core.CodedError
+			if !errors.Is(err, core.ErrConflict) || !errors.As(err, &coded) || coded.Code != "ENVIRONMENT_UPDATE_RESTORED" {
+				t.Fatalf("compensated error = %v", err)
+			}
+			if store.m[envPath("web")]["TOKEN"] != "before-secret" || store.versions[envPath("web")] != 2 {
+				t.Fatalf("source was not restored: data=%#v version=%d", store.m, store.versions[envPath("web")])
+			}
+			var projection corev1.Secret
+			getErr := failing.Client.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web-env"}, &projection)
+			if !existingProjection {
+				if !apierrors.IsNotFound(getErr) {
+					t.Fatalf("owned create was not deleted: %v", getErr)
+				}
+				return
+			}
+			if getErr != nil || string(projection.Data["TOKEN"]) != "before-secret" || projection.Annotations[envProjectionRevisionAnnotation] != encodeEnvRevision(2) {
+				t.Fatalf("owned update was not restored: err=%v data=%q annotations=%#v", getErr, projection.Data["TOKEN"], projection.Annotations)
+			}
+		})
+	}
+}
+
+func TestPatchEnvironmentCASCompensationFailureIsCodedAndRedacted(t *testing.T) {
+	store := newVersionedFakeSecretStore()
+	store.m[envPath("web")] = map[string]string{"TOKEN": "before-secret"}
+	store.failCASCall = 2 // initial write succeeds; source restoration fails
+	revision := encodeEnvRevision(0)
+	failing := &patchCountingClient{Client: fakeClient(sampleApp("web")), fail: errors.New("injected App /private/path failure")}
+	svc := &Service{Base: &core.Base{Client: failing, Namespace: "default", Clock: fixedNow}, Store: store}
+
+	_, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
+		SaveMode: SaveModeDeploy, ExpectedEnvRevision: &revision,
+		EnvVars: []EnvVarPatch{{Key: "TOKEN", Value: "failed-writer-secret"}},
+	})
+	var coded *core.CodedError
+	if !errors.Is(err, core.ErrConflict) || !errors.As(err, &coded) || coded.Code != "ENVIRONMENT_RESTORATION_FAILED" {
+		t.Fatalf("restoration failure = %#v", err)
+	}
+	for _, material := range []string{"TOKEN", "before-secret", "failed-writer-secret", "/openbao/private/path", "/private/path", revision} {
+		if strings.Contains(err.Error(), material) {
+			t.Fatalf("restoration failure leaked %q: %v", material, err)
+		}
+	}
+}
+
+func TestPatchEnvironmentCASRollbackDoesNotClobberProjectionLandedAfterSourceRestore(t *testing.T) {
+	store := newVersionedFakeSecretStore()
+	store.m[envPath("web")] = map[string]string{"TOKEN": "before-secret"}
+	revision := encodeEnvRevision(0)
+	app := sampleApp("web")
+	app.Spec.EnvFromSecret = "web-env"
+	existing := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "web-env",
+			Namespace:   "default",
+			UID:         "original-projection-uid",
+			Annotations: map[string]string{envProjectionRevisionAnnotation: revision},
+		},
+		Type: corev1.SecretTypeOpaque,
+		Data: map[string][]byte{"TOKEN": []byte("before-secret")},
+	}
+	baseClient := fakeClient(app, existing)
+	failing := &patchCountingClient{Client: baseClient, fail: errors.New("injected App patch failure")}
+	failing.beforeSecretGet = func() {
+		restoredVersion := store.versions[envPath("web")]
+		winnerVersion, err := store.PutCAS(context.Background(), envPath("web"), map[string]string{"TOKEN": "concurrent-winner"}, restoredVersion)
+		if err != nil {
+			t.Fatalf("write newer source: %v", err)
+		}
+		var current corev1.Secret
+		if err := baseClient.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web-env"}, &current); err != nil {
+			t.Fatalf("get projection for newer writer: %v", err)
+		}
+		current.Data = map[string][]byte{"TOKEN": []byte("concurrent-winner")}
+		current.Annotations[envProjectionRevisionAnnotation] = encodeEnvRevision(winnerVersion)
+		if err := baseClient.Update(context.Background(), &current); err != nil {
+			t.Fatalf("land newer projection: %v", err)
+		}
+	}
+	svc := &Service{Base: &core.Base{Client: failing, Namespace: "default", Clock: fixedNow}, Store: store}
+
+	_, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
+		SaveMode: SaveModeDeploy, ExpectedEnvRevision: &revision,
+		EnvVars: []EnvVarPatch{{Key: "TOKEN", Value: "failed-writer-secret"}},
+	})
+	var coded *core.CodedError
+	if !errors.Is(err, core.ErrConflict) || !errors.As(err, &coded) || coded.Code != "ENVIRONMENT_REVISION_CONFLICT" {
+		t.Fatalf("rollback ownership error = %#v", err)
+	}
+	if store.m[envPath("web")]["TOKEN"] != "concurrent-winner" {
+		t.Fatalf("source winner overwritten: %#v", store.m)
+	}
+	projection := getSecret(t, baseClient, "web-env")
+	if string(projection.Data["TOKEN"]) != "concurrent-winner" || projection.Annotations[envProjectionRevisionAnnotation] != encodeEnvRevision(3) {
+		t.Fatalf("projection winner overwritten: data=%q annotations=%#v", projection.Data["TOKEN"], projection.Annotations)
+	}
+	for _, material := range []string{"TOKEN", "before-secret", "failed-writer-secret", "concurrent-winner", revision} {
+		if strings.Contains(err.Error(), material) {
+			t.Fatalf("rollback error leaked %q: %v", material, err)
+		}
+	}
+}
+
 func TestPatchEnvironmentCompensatesStoreAndProjectionsWhenAppPatchFails(t *testing.T) {
 	store := newFakeSecretStore()
 	store.m[envPath("web")] = map[string]string{"OLD": "env-before"}
@@ -273,11 +700,13 @@ func TestPatchEnvironmentAdaptersShareTheContract(t *testing.T) {
 	})
 
 	t.Run("GraphQL", func(t *testing.T) {
-		store := newFakeSecretStore()
+		store := newVersionedFakeSecretStore()
+		store.m[envPath("web")] = map[string]string{"TOKEN": "before-secret"}
 		svc := newService(store, sampleApp("web"))
 		field := svc.GraphQLMutation()["patchServiceEnvironment"]
+		revision := encodeEnvRevision(0)
 		value, err := field.Resolve(graphql.ResolveParams{Context: context.Background(), Args: map[string]any{
-			"serviceId": "web", "saveMode": "deploy",
+			"serviceId": "web", "saveMode": "deploy", "expectedEnvRevision": revision,
 			"envVars": []any{map[string]any{"key": "TOKEN", "value": "graphql-secret"}},
 		}})
 		if err != nil {
@@ -289,11 +718,27 @@ func TestPatchEnvironmentAdaptersShareTheContract(t *testing.T) {
 		}
 	})
 
+	t.Run("REST CAS", func(t *testing.T) {
+		store := newVersionedFakeSecretStore()
+		store.m[envPath("web")] = map[string]string{"TOKEN": "before-secret"}
+		svc := newService(store, sampleApp("web"))
+		revision := encodeEnvRevision(0)
+		response := serveREST(svc, http.MethodPatch, "/v1/services/web/environment", `{"saveMode":"deploy","expectedEnvRevision":"`+revision+`","envVars":[{"key":"TOKEN","value":"rest-cas-secret"}]}`)
+		if response.Code != http.StatusOK || store.m[envPath("web")]["TOKEN"] != "rest-cas-secret" {
+			t.Fatalf("REST CAS = %d: %s store=%#v", response.Code, response.Body.String(), store.m)
+		}
+		if strings.Contains(response.Body.String(), "rest-cas-secret") {
+			t.Fatalf("REST CAS leaked value: %s", response.Body.String())
+		}
+	})
+
 	t.Run("MCP", func(t *testing.T) {
-		store := newFakeSecretStore()
+		store := newVersionedFakeSecretStore()
+		store.m[envPath("web")] = map[string]string{"TOKEN": "before-secret"}
 		cs := mcpSession(t, newService(store, sampleApp("web")))
+		revision := encodeEnvRevision(0)
 		res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "patch_service_environment", Arguments: map[string]any{
-			"serviceId": "web", "saveMode": "save_only",
+			"serviceId": "web", "saveMode": "save_only", "expectedEnvRevision": revision,
 			"envVars": []map[string]any{{"key": "TOKEN", "value": "mcp-secret"}},
 		}})
 		if err != nil || res.IsError {
@@ -302,6 +747,97 @@ func TestPatchEnvironmentAdaptersShareTheContract(t *testing.T) {
 		encoded, _ := json.Marshal(res.StructuredContent)
 		if strings.Contains(string(encoded), "mcp-secret") || store.m[envPath("web")]["TOKEN"] != "mcp-secret" {
 			t.Fatalf("MCP result/store = %s / %#v", encoded, store.m)
+		}
+	})
+
+	t.Run("coded update-only refusal parity", func(t *testing.T) {
+		revision := encodeEnvRevision(0)
+		graphqlStore := newVersionedFakeSecretStore()
+		graphqlSvc := newService(graphqlStore, sampleApp("web"))
+		_, gqlErr := graphqlSvc.GraphQLMutation()["patchServiceEnvironment"].Resolve(graphql.ResolveParams{Context: context.Background(), Args: map[string]any{
+			"serviceId": "web", "saveMode": "deploy", "expectedEnvRevision": revision,
+			"envVars": []any{map[string]any{"key": "TOKEN", "value": "must-not-create"}},
+		}})
+		var gqlCoded *core.CodedError
+		if !errors.As(gqlErr, &gqlCoded) || gqlCoded.Code != "ENVIRONMENT_VARIABLE_NOT_FOUND" {
+			t.Fatalf("GraphQL refusal = %#v", gqlErr)
+		}
+
+		restStore := newVersionedFakeSecretStore()
+		restResponse := serveREST(newService(restStore, sampleApp("web")), http.MethodPatch, "/v1/services/web/environment", `{"saveMode":"deploy","expectedEnvRevision":"`+revision+`","envVars":[{"key":"TOKEN","value":"must-not-create"}]}`)
+		var restBody map[string]any
+		_ = json.Unmarshal(restResponse.Body.Bytes(), &restBody)
+		if restResponse.Code != http.StatusNotFound || restBody["code"] != "ENVIRONMENT_VARIABLE_NOT_FOUND" {
+			t.Fatalf("REST refusal = %d %s", restResponse.Code, restResponse.Body.String())
+		}
+
+		mcpStore := newVersionedFakeSecretStore()
+		cs := mcpSession(t, newService(mcpStore, sampleApp("web")))
+		mcpResult, mcpErr := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "patch_service_environment", Arguments: map[string]any{
+			"serviceId": "web", "saveMode": "deploy", "expectedEnvRevision": revision,
+			"envVars": []map[string]any{{"key": "TOKEN", "value": "must-not-create"}},
+		}})
+		encoded, _ := json.Marshal(mcpResult)
+		if mcpErr == nil && (mcpResult == nil || !mcpResult.IsError) {
+			t.Fatalf("MCP refusal unexpectedly succeeded: %s", encoded)
+		}
+		if !strings.Contains(string(encoded), "ENVIRONMENT_VARIABLE_NOT_FOUND") && (mcpErr == nil || !strings.Contains(mcpErr.Error(), "ENVIRONMENT_VARIABLE_NOT_FOUND")) {
+			t.Fatalf("MCP refusal lost code: err=%v result=%s", mcpErr, encoded)
+		}
+		for _, store := range []*versionedFakeSecretStore{graphqlStore, restStore, mcpStore} {
+			if store.versions[envPath("web")] != 0 || len(store.m[envPath("web")]) != 0 {
+				t.Fatalf("update-only refusal wrote source: %#v", store.m)
+			}
+		}
+	})
+}
+
+func TestPatchEnvironmentCompensationCodesAreVisibleAndRedactedAcrossAdapters(t *testing.T) {
+	revision := encodeEnvRevision(0)
+
+	t.Run("REST restored", func(t *testing.T) {
+		store := newVersionedFakeSecretStore()
+		store.m[envPath("web")] = map[string]string{"TOKEN": "before-secret"}
+		failing := &patchCountingClient{Client: fakeClient(sampleApp("web")), fail: errors.New("injected /private/app/path failure")}
+		svc := &Service{Base: &core.Base{Client: failing, Namespace: "default", Clock: fixedNow}, Store: store}
+		response := serveREST(svc, http.MethodPatch, "/v1/services/web/environment", `{"saveMode":"deploy","expectedEnvRevision":"`+revision+`","envVars":[{"key":"TOKEN","value":"failed-writer-secret"}]}`)
+		var body map[string]any
+		_ = json.Unmarshal(response.Body.Bytes(), &body)
+		if response.Code != http.StatusConflict || body["code"] != "ENVIRONMENT_UPDATE_RESTORED" {
+			t.Fatalf("REST restored outcome = %d %s", response.Code, response.Body.String())
+		}
+		for _, material := range []string{"TOKEN", "before-secret", "failed-writer-secret", "/private/app/path", revision} {
+			if strings.Contains(response.Body.String(), material) {
+				t.Fatalf("REST restored outcome leaked %q: %s", material, response.Body.String())
+			}
+		}
+	})
+
+	t.Run("MCP restoration failed", func(t *testing.T) {
+		store := newVersionedFakeSecretStore()
+		store.m[envPath("web")] = map[string]string{"TOKEN": "before-secret"}
+		store.failCASCall = 2
+		failing := &patchCountingClient{Client: fakeClient(sampleApp("web")), fail: errors.New("injected /private/app/path failure")}
+		svc := &Service{Base: &core.Base{Client: failing, Namespace: "default", Clock: fixedNow}, Store: store}
+		result, err := mcpSession(t, svc).CallTool(context.Background(), &mcp.CallToolParams{Name: "patch_service_environment", Arguments: map[string]any{
+			"serviceId": "web", "saveMode": "deploy", "expectedEnvRevision": revision,
+			"envVars": []map[string]any{{"key": "TOKEN", "value": "failed-writer-secret"}},
+		}})
+		encoded, _ := json.Marshal(result)
+		if err == nil && (result == nil || !result.IsError) {
+			t.Fatalf("MCP restoration failure unexpectedly succeeded: %s", encoded)
+		}
+		combined := string(encoded)
+		if err != nil {
+			combined += err.Error()
+		}
+		if !strings.Contains(combined, "ENVIRONMENT_RESTORATION_FAILED") {
+			t.Fatalf("MCP restoration failure lost code: err=%v result=%s", err, encoded)
+		}
+		for _, material := range []string{"TOKEN", "before-secret", "failed-writer-secret", "/openbao/private/path", "/private/app/path", revision} {
+			if strings.Contains(combined, material) {
+				t.Fatalf("MCP restoration failure leaked %q: %s", material, combined)
+			}
 		}
 	})
 }

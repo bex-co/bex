@@ -52,6 +52,7 @@ const allowedMutationNames = new Set([
   "MobileResumePostgres",
   "MobileSuspendKeyValue",
   "MobileResumeKeyValue",
+  "MobilePatchSingleEnvVar",
   "MobileRegisterNotificationDeviceSubscription",
   "MobileUnregisterNotificationDeviceSubscription",
   "MobileMarkPushNotificationRead",

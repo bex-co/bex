@@ -37,3 +37,25 @@ type SecretKV interface {
 	Delete(ctx context.Context, path string) error
 	List(ctx context.Context, path string) ([]string, error)
 }
+
+// SecretKVSnapshot is one atomic read from a versioned secret backend. Version
+// is backend metadata only: callers expose it through an opaque token rather
+// than treating it as authorization or user-visible state.
+type SecretKVSnapshot struct {
+	Data    map[string]string
+	Version uint64
+}
+
+// VersionedSecretKV is the optional optimistic-concurrency capability of a
+// SecretKV. The base interface deliberately remains unchanged so features that
+// do not need compare-and-set (and their fakes) keep their existing contract.
+//
+// PutCAS replaces the whole map only when expectedVersion is still current and
+// returns the newly-created version. A stale expectation must wrap ErrConflict;
+// no implementation may put paths, keys, values, or version numbers in the
+// returned error.
+type VersionedSecretKV interface {
+	SecretKV
+	GetVersioned(ctx context.Context, path string) (SecretKVSnapshot, error)
+	PutCAS(ctx context.Context, path string, data map[string]string, expectedVersion uint64) (uint64, error)
+}

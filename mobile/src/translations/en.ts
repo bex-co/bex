@@ -81,6 +81,66 @@ export const en = {
       "Some service evidence could not refresh. Visible data may be stale.",
     loadError: "Service evidence could not be loaded.",
   },
+  environment: {
+    title: "Environment variables",
+    description:
+      "Existing keys only. Values stay masked until you reveal one, and revealed values are kept in memory only.",
+    loading: "Loading environment variable keys",
+    empty: "No environment variable keys are available for this service.",
+    masked: "Masked value",
+    reveal: "Reveal",
+    hide: "Hide",
+    revealKey: "Reveal environment variable %{key}",
+    hideKey: "Hide environment variable %{key}",
+    valueFor: "Value for environment variable %{key}",
+    cancelEdit: "Cancel environment variable edit",
+    review: "Review update",
+    reviewSave: "Review update for environment variable %{key}",
+    confirmTitle: "Confirm environment update",
+    confirmMessage:
+      "Confirm this exact service and key. The value is intentionally not shown here, and the app will not retry this update automatically.",
+    updateAction: "Update existing environment variable",
+    confirm: "Update and deploy",
+    saving: "Updating…",
+    saved:
+      "The existing variable was updated and a rollout was requested. The revealed value has been cleared.",
+    savedNoRollout:
+      "The server accepted the existing value. Nothing changed, so no rollout was requested.",
+    committedRefreshUnavailable:
+      "The update committed, but refreshed masked state is unavailable. Refresh successfully before revealing or updating again.",
+    revealUnavailable:
+      "The value could not be revealed before the request ended. No value was retained; refresh and try again.",
+    refreshRequired:
+      "A successful masked refresh is required before reveal or update can resume.",
+    refresh: "Refresh masked state",
+    refreshing: "Refreshing…",
+    errors: {
+      "authorization-denied":
+        "You are not authorized to view or update this environment variable.",
+      "update-restored":
+        "The update failed, and the previous environment was restored. Refresh before trying again.",
+      "revision-conflict":
+        "This environment changed after it was revealed. Keys were refreshed; reveal the variable again before editing.",
+      "revision-invalid":
+        "The environment revision is invalid. Keys were refreshed; reveal the variable again.",
+      "revision-unavailable":
+        "The server did not return one coherent revision for every key. Reveal and update are disabled.",
+      "secrets-unavailable":
+        "The environment variable source is not configured or is currently unavailable.",
+      "source-failed":
+        "The source value could not be read or updated. No success was assumed.",
+      "projection-failed":
+        "The source update could not be projected to the service. Server state was refreshed; no success was assumed.",
+      "compensation-failed":
+        "The update failed and the server could not fully confirm restoration. Refresh server state before trying again.",
+      "timeout-unknown":
+        "The response timed out and may have committed. Server state was refreshed; reveal the variable again before any new update.",
+      "not-found":
+        "That variable no longer exists. The masked key list was refreshed.",
+      failed:
+        "The environment operation failed. No success was assumed and any revealed value was cleared.",
+    },
+  },
   metrics: {
     title: "Metrics snapshot",
     window: "Last hour · refreshes every 30 seconds",
@@ -253,6 +313,7 @@ export const en = {
     },
   },
   common: {
+    cancel: "Cancel",
     notFoundTitle: "This screen does not exist",
     backToStatus: "Back to Status",
     seeAll: "See all",

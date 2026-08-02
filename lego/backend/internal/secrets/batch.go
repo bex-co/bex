@@ -23,8 +23,12 @@ import (
 	"sort"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -36,8 +40,9 @@ import (
 type SaveMode string
 
 const (
-	SaveModeOnly   SaveMode = "save_only"
-	SaveModeDeploy SaveMode = "deploy"
+	SaveModeOnly                    SaveMode = "save_only"
+	SaveModeDeploy                  SaveMode = "deploy"
+	envProjectionRevisionAnnotation          = "app.bex.co/env-source-revision"
 )
 
 // EnvVarPatch is one explicit mutation in a service environment draft. Omitted
@@ -61,9 +66,10 @@ type SecretFilePatch struct {
 
 // EnvironmentPatch applies env-var and secret-file changes as one logical save.
 type EnvironmentPatch struct {
-	EnvVars     []EnvVarPatch     `json:"envVars,omitempty"`
-	SecretFiles []SecretFilePatch `json:"secretFiles,omitempty"`
-	SaveMode    SaveMode          `json:"saveMode"`
+	EnvVars             []EnvVarPatch     `json:"envVars,omitempty"`
+	SecretFiles         []SecretFilePatch `json:"secretFiles,omitempty"`
+	SaveMode            SaveMode          `json:"saveMode"`
+	ExpectedEnvRevision *string           `json:"expectedEnvRevision,omitempty"`
 }
 
 // EnvironmentPatchResult deliberately contains names only. Generated or
@@ -93,31 +99,86 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 		return EnvironmentPatchResult{}, fmt.Errorf("%w: saveMode must be %q or %q", core.ErrBadRequest, SaveModeOnly, SaveModeDeploy)
 	}
 
-	oldEnv, err := s.readMap(ctx, envPath(service))
-	if err != nil {
-		return EnvironmentPatchResult{}, err
+	var (
+		oldEnv          map[string]string
+		expectedVersion uint64
+		versionedStore  core.VersionedSecretKV
+		casMode         = patch.ExpectedEnvRevision != nil
+	)
+	if casMode {
+		if err := validateCASPatch(patch); err != nil {
+			return EnvironmentPatchResult{}, err
+		}
+		expectedVersion, err = decodeEnvRevision(*patch.ExpectedEnvRevision)
+		if err != nil {
+			return EnvironmentPatchResult{}, core.NewBadRequestError(
+				"ENVIRONMENT_REVISION_INVALID",
+				"expectedEnvRevision is invalid",
+				nil,
+			)
+		}
+		var ok bool
+		versionedStore, ok = s.Store.(core.VersionedSecretKV)
+		if !ok {
+			return EnvironmentPatchResult{}, fmt.Errorf("%w: environment revisions require a versioned secret store", core.ErrSecretsUnavailable)
+		}
+		snapshot, snapshotErr := versionedStore.GetVersioned(ctx, envPath(service))
+		if snapshotErr != nil {
+			return EnvironmentPatchResult{}, envSourceUnavailable()
+		}
+		oldEnv = snapshot.Data
+		if snapshot.Version != expectedVersion {
+			return EnvironmentPatchResult{}, envRevisionConflict()
+		}
+		if _, exists := oldEnv[strings.TrimSpace(patch.EnvVars[0].Key)]; !exists {
+			return EnvironmentPatchResult{}, core.NewNotFoundError(
+				"ENVIRONMENT_VARIABLE_NOT_FOUND",
+				"environment variable was not found",
+				nil,
+			)
+		}
+	} else {
+		oldEnv, err = s.readMap(ctx, envPath(service))
+		if err != nil {
+			return EnvironmentPatchResult{}, err
+		}
 	}
-	oldFiles, err := s.readMap(ctx, filesPath(service))
-	if err != nil {
-		return EnvironmentPatchResult{}, err
+	oldFiles := map[string]string{}
+	if !casMode {
+		oldFiles, err = s.readMap(ctx, filesPath(service))
+		if err != nil {
+			return EnvironmentPatchResult{}, err
+		}
 	}
 	env := cloneStringMap(oldEnv)
 	files := cloneStringMap(oldFiles)
 	if err := applyEnvPatch(env, patch.EnvVars); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	if err := applyFilePatch(files, patch.SecretFiles); err != nil {
-		return EnvironmentPatchResult{}, err
+	if !casMode {
+		if err := applyFilePatch(files, patch.SecretFiles); err != nil {
+			return EnvironmentPatchResult{}, err
+		}
 	}
 
 	envChanged := !equalStringMaps(oldEnv, env)
 	filesChanged := !equalStringMaps(oldFiles, files)
 	result := environmentPatchResult(env, files, false)
-	if !envChanged && !filesChanged {
+	if !casMode && !envChanged && !filesChanged {
 		return result, nil
 	}
 
-	if envChanged {
+	var casWriteVersion *uint64
+	if casMode {
+		newVersion, putErr := versionedStore.PutCAS(ctx, envPath(service), env, expectedVersion)
+		if putErr != nil {
+			if errors.Is(putErr, core.ErrConflict) {
+				return EnvironmentPatchResult{}, envRevisionConflict()
+			}
+			return EnvironmentPatchResult{}, envSourceUnavailable()
+		}
+		casWriteVersion = &newVersion
+	} else if envChanged {
 		if err := s.storeMap(ctx, envPath(service), env); err != nil {
 			return EnvironmentPatchResult{}, err
 		}
@@ -127,17 +188,38 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 			return EnvironmentPatchResult{}, errors.Join(err, s.restoreSourceMaps(ctx, service, oldEnv, oldFiles, envChanged, false))
 		}
 	}
+	// A compare-and-set of an unchanged value still advances the opaque
+	// revision, which is what makes two submissions from one observed revision
+	// resolve to exactly one success and one conflict. Claim the derived Secret
+	// for that new source version as well, but do not persist an App change or
+	// roll pods because the effective environment did not change.
+	if !envChanged && !filesChanged {
+		if casWriteVersion != nil {
+			originalApp := a.DeepCopy()
+			projection, projectionErr := s.projectCASEnv(ctx, service, a, env, *casWriteVersion)
+			if projectionErr != nil {
+				return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, service, originalApp, oldEnv, oldFiles, false, false, casWriteVersion, projection, projectionErr)
+			}
+		}
+		return result, nil
+	}
 
 	originalApp := a.DeepCopy()
 	base := client.MergeFrom(a.DeepCopy())
+	var casProjection casEnvProjection
 	if envChanged {
-		if err := s.projectEnv(ctx, a, env); err != nil {
-			return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, service, originalApp, oldEnv, oldFiles, envChanged, filesChanged, err)
+		if casWriteVersion != nil {
+			casProjection, err = s.projectCASEnv(ctx, service, a, env, *casWriteVersion)
+		} else {
+			err = s.projectEnv(ctx, a, env)
+		}
+		if err != nil {
+			return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, service, originalApp, oldEnv, oldFiles, envChanged, filesChanged, casWriteVersion, casProjection, err)
 		}
 	}
 	if filesChanged {
 		if err := s.projectFiles(ctx, a, files); err != nil {
-			return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, service, originalApp, oldEnv, oldFiles, envChanged, filesChanged, err)
+			return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, service, originalApp, oldEnv, oldFiles, envChanged, filesChanged, casWriteVersion, casProjection, err)
 		}
 	}
 	rolledOut := patch.SaveMode == SaveModeDeploy
@@ -151,9 +233,174 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 		return environmentPatchResult(env, files, false), nil
 	}
 	if err := s.Client.Patch(ctx, a, base); err != nil {
-		return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, service, originalApp, oldEnv, oldFiles, envChanged, filesChanged, err)
+		return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, service, originalApp, oldEnv, oldFiles, envChanged, filesChanged, casWriteVersion, casProjection, err)
 	}
 	return environmentPatchResult(env, files, rolledOut), nil
+}
+
+// validateCASPatch keeps the revision-aware surface deliberately narrow: one
+// ordinary key/value assignment and no file, rename, delete, or generation
+// operation. Legacy callers that omit ExpectedEnvRevision retain the complete
+// sparse batch contract above.
+func validateCASPatch(patch EnvironmentPatch) error {
+	if len(patch.EnvVars) != 1 || len(patch.SecretFiles) != 0 {
+		return core.NewBadRequestError(
+			"INVALID_ENVIRONMENT_CAS_PATCH",
+			"expectedEnvRevision requires exactly one environment variable update and no secret files",
+			nil,
+		)
+	}
+	write := patch.EnvVars[0]
+	if !core.ValidEnvKey(strings.TrimSpace(write.Key)) {
+		return core.NewBadRequestError(
+			"ENVIRONMENT_VARIABLE_INVALID",
+			"environment variable key is invalid",
+			nil,
+		)
+	}
+	if strings.TrimSpace(write.FromKey) != "" || write.Delete || write.GenerateValue {
+		return core.NewBadRequestError(
+			"INVALID_ENVIRONMENT_CAS_PATCH",
+			"expectedEnvRevision supports only an ordinary environment variable value update",
+			nil,
+		)
+	}
+	return nil
+}
+
+func envRevisionConflict() error {
+	return core.NewConflictError(
+		"ENVIRONMENT_REVISION_CONFLICT",
+		"the service environment changed; refresh it before saving again",
+		nil,
+	)
+}
+
+func envUpdateRestored() error {
+	return core.NewConflictError(
+		"ENVIRONMENT_UPDATE_RESTORED",
+		"the environment update failed and its previous state was restored",
+		nil,
+	)
+}
+
+func envRestorationFailed() error {
+	return core.NewConflictError(
+		"ENVIRONMENT_RESTORATION_FAILED",
+		"the environment update failed and could not be safely restored; refresh before retrying",
+		nil,
+	)
+}
+
+// casEnvProjection records whether the revision-owned projection replaced an
+// existing Secret or created a new one. Compensation uses that distinction only
+// after proving that OwnerVersion still owns the current object.
+type casEnvProjection struct {
+	OwnerVersion  uint64
+	ExistedBefore bool
+}
+
+// projectCASEnv publishes a version-owned derived Secret. The source version is
+// checked immediately before Kubernetes mutation, and the Secret's native
+// resourceVersion/UID make a concurrent update or delete lose safely instead of
+// overwriting a newer projection.
+func (s *Service) projectCASEnv(ctx context.Context, service string, a *appv1alpha1.App, env map[string]string, ownerVersion uint64) (casEnvProjection, error) {
+	ownership := casEnvProjection{OwnerVersion: ownerVersion}
+	versioned, ok := s.Store.(core.VersionedSecretKV)
+	if !ok {
+		return ownership, core.ErrSecretsUnavailable
+	}
+	snapshot, err := versioned.GetVersioned(ctx, envPath(service))
+	if err != nil {
+		return ownership, safeCASProjectionError(err)
+	}
+	if snapshot.Version != ownerVersion || !equalStringMaps(snapshot.Data, env) {
+		return ownership, envRevisionConflict()
+	}
+
+	name := envSecretName(a.Name)
+	sec := &corev1.Secret{}
+	err = s.Client.Get(ctx, client.ObjectKey{Namespace: a.Namespace, Name: name}, sec)
+	if apierrors.IsNotFound(err) {
+		sec = &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			Name:        name,
+			Namespace:   a.Namespace,
+			Annotations: map[string]string{envProjectionRevisionAnnotation: encodeEnvRevision(ownerVersion)},
+		}}
+		sec.Type = corev1.SecretTypeOpaque
+		sec.Data = envBytes(env)
+		if ownerErr := controllerutil.SetControllerReference(a, sec, s.Client.Scheme()); ownerErr != nil {
+			return ownership, safeCASProjectionError(ownerErr)
+		}
+		if createErr := s.Client.Create(ctx, sec); createErr != nil {
+			return ownership, safeCASProjectionError(createErr)
+		}
+		a.Spec.EnvFromSecret = name
+		return ownership, nil
+	}
+	if err != nil {
+		return ownership, safeCASProjectionError(err)
+	}
+	ownership.ExistedBefore = true
+	if current := sec.Annotations[envProjectionRevisionAnnotation]; current != "" {
+		currentVersion, decodeErr := decodeEnvRevision(current)
+		if decodeErr != nil || currentVersion > ownerVersion {
+			return ownership, envRevisionConflict()
+		}
+		if currentVersion == ownerVersion {
+			if !equalSecretData(sec.Data, env) {
+				return ownership, envRevisionConflict()
+			}
+			a.Spec.EnvFromSecret = name
+			return ownership, nil
+		}
+	}
+	if sec.Annotations == nil {
+		sec.Annotations = map[string]string{}
+	}
+	sec.Annotations[envProjectionRevisionAnnotation] = encodeEnvRevision(ownerVersion)
+	sec.Type = corev1.SecretTypeOpaque
+	sec.Data = envBytes(env)
+	if ownerErr := controllerutil.SetControllerReference(a, sec, s.Client.Scheme()); ownerErr != nil {
+		return ownership, safeCASProjectionError(ownerErr)
+	}
+	// Update carries the exact UID and resourceVersion read above. Kubernetes
+	// refuses it if the object was replaced or changed after our ownership check.
+	if updateErr := s.Client.Update(ctx, sec); updateErr != nil {
+		return ownership, safeCASProjectionError(updateErr)
+	}
+	a.Spec.EnvFromSecret = name
+	return ownership, nil
+}
+
+func safeCASProjectionError(err error) error {
+	if apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err) || errors.Is(err, core.ErrConflict) {
+		return envRevisionConflict()
+	}
+	// Kubernetes and transport errors can contain object names or request paths.
+	// The revision-aware mobile surface returns a constant public failure instead.
+	return errors.New("environment projection is unavailable")
+}
+
+func envBytes(env map[string]string) map[string][]byte {
+	out := make(map[string][]byte, len(env))
+	for key, value := range env {
+		out[key] = []byte(value)
+	}
+	return out
+}
+
+func equalSecretData(data map[string][]byte, env map[string]string) bool {
+	if len(data) != len(env) {
+		return false
+	}
+	for key, value := range env {
+		stored, ok := data[key]
+		if !ok || string(stored) != value {
+			return false
+		}
+	}
+	return true
 }
 
 // stagePendingProjectionReferences keeps a save-only write metadata-only when
@@ -301,7 +548,10 @@ func applyFilePatch(files map[string]string, writes []SecretFilePatch) error {
 	return nil
 }
 
-func (s *Service) compensateEnvironment(ctx context.Context, service string, originalApp *appv1alpha1.App, oldEnv, oldFiles map[string]string, envChanged, filesChanged bool, cause error) error {
+func (s *Service) compensateEnvironment(ctx context.Context, service string, originalApp *appv1alpha1.App, oldEnv, oldFiles map[string]string, envChanged, filesChanged bool, casWriteVersion *uint64, casProjection casEnvProjection, cause error) error {
+	if casWriteVersion != nil {
+		return s.compensateCASEnvironment(ctx, service, originalApp, oldEnv, *casWriteVersion, casProjection, cause)
+	}
 	var compensation []error
 	if err := s.restoreSourceMaps(ctx, service, oldEnv, oldFiles, envChanged, filesChanged); err != nil {
 		compensation = append(compensation, fmt.Errorf("restore secret store: %w", err))
@@ -326,6 +576,69 @@ func (s *Service) compensateEnvironment(ctx context.Context, service string, ori
 		}
 	}
 	return errors.Join(append([]error{cause}, compensation...)...)
+}
+
+// compensateCASEnvironment restores source first, then rolls the projection
+// back only while the failed write's exact revision still owns it. A conflict
+// returns the coded error directly (rather than errors.Join) so graphql-go keeps
+// extensions.code and no underlying store/Kubernetes detail crosses the API.
+func (s *Service) compensateCASEnvironment(ctx context.Context, service string, originalApp *appv1alpha1.App, oldEnv map[string]string, casWriteVersion uint64, projection casEnvProjection, _ error) error {
+	versioned, ok := s.Store.(core.VersionedSecretKV)
+	if !ok {
+		return envRestorationFailed()
+	}
+	restoredVersion, err := versioned.PutCAS(ctx, envPath(service), oldEnv, casWriteVersion)
+	if err != nil {
+		if errors.Is(err, core.ErrConflict) {
+			return envRevisionConflict()
+		}
+		return envRestorationFailed()
+	}
+	if err := s.rollbackCASEnvProjection(ctx, originalApp, oldEnv, restoredVersion, projection); err != nil {
+		if errors.Is(err, core.ErrConflict) {
+			return envRevisionConflict()
+		}
+		return envRestorationFailed()
+	}
+	return envUpdateRestored()
+}
+
+func (s *Service) rollbackCASEnvProjection(ctx context.Context, originalApp *appv1alpha1.App, oldEnv map[string]string, restoredVersion uint64, projection casEnvProjection) error {
+	name := envSecretName(originalApp.Name)
+	sec := &corev1.Secret{}
+	err := s.Client.Get(ctx, client.ObjectKey{Namespace: originalApp.Namespace, Name: name}, sec)
+	if apierrors.IsNotFound(err) {
+		if projection.ExistedBefore {
+			return envRevisionConflict()
+		}
+		return nil
+	}
+	if err != nil {
+		return safeCASProjectionError(err)
+	}
+	if sec.Annotations[envProjectionRevisionAnnotation] != encodeEnvRevision(projection.OwnerVersion) {
+		return envRevisionConflict()
+	}
+	if !projection.ExistedBefore {
+		uid, resourceVersion := sec.UID, sec.ResourceVersion
+		// UID prevents deleting a same-name replacement; resourceVersion prevents
+		// deleting an object a newer writer updated after the ownership check.
+		if err := s.Client.Delete(ctx, sec, client.Preconditions{UID: &uid, ResourceVersion: &resourceVersion}); err != nil {
+			return safeCASProjectionError(err)
+		}
+		return nil
+	}
+	if sec.Annotations == nil {
+		sec.Annotations = map[string]string{}
+	}
+	sec.Annotations[envProjectionRevisionAnnotation] = encodeEnvRevision(restoredVersion)
+	sec.Type = corev1.SecretTypeOpaque
+	sec.Data = envBytes(oldEnv)
+	// Update is conditional on the exact UID/resourceVersion returned by Get.
+	if err := s.Client.Update(ctx, sec); err != nil {
+		return safeCASProjectionError(err)
+	}
+	return nil
 }
 
 func (s *Service) restoreSourceMaps(ctx context.Context, service string, oldEnv, oldFiles map[string]string, envChanged, filesChanged bool) error {

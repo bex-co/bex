@@ -91,6 +91,28 @@ type openBaoStore struct {
 	tokenExp time.Time
 }
 
+// versionedStoreError keeps the implementation detail carried by OpenBao and
+// net/http errors out of API-visible text. In particular, those errors normally
+// include the complete request URL, which contains the tenant and logical secret
+// path. Unwrap preserves errors.Is/errors.As behavior for context, transport, and
+// HTTP-status handling without making that detail part of Error().
+type versionedStoreError struct {
+	action string
+	cause  error
+}
+
+func (e *versionedStoreError) Error() string {
+	return "openbao versioned secret " + e.action + " failed"
+}
+func (e *versionedStoreError) Unwrap() error { return e.cause }
+
+func sanitizeVersionedStoreError(action string, err error) error {
+	if err == nil {
+		return nil
+	}
+	return &versionedStoreError{action: action, cause: err}
+}
+
 // NewOpenBaoStore returns the production core.SecretKV talking to the
 // cluster-internal OpenBao at addr. The ServiceAccount token used to log in is
 // the pod's projected token by default; BEX_OPENBAO_JWT_PATH overrides that path
@@ -144,10 +166,74 @@ func (s *openBaoStore) Get(ctx context.Context, path string) (map[string]string,
 	return out.Data.Data, nil
 }
 
+// GetVersioned atomically reads a KV-v2 value and its current version. An
+// absent key has version zero, matching OpenBao's CAS=0 create-only contract.
+// The version remains backend metadata; callers encode it before exposing it.
+func (s *openBaoStore) GetVersioned(ctx context.Context, path string) (core.SecretKVSnapshot, error) {
+	var out struct {
+		Data struct {
+			Data     map[string]string `json:"data"`
+			Metadata struct {
+				Version uint64 `json:"version"`
+			} `json:"metadata"`
+		} `json:"data"`
+	}
+	err := s.kv(ctx, http.MethodGet, s.dataURL(ctx, path), nil, &out)
+	var se *core.HTTPStatusError
+	if errors.As(err, &se) && se.Code == http.StatusNotFound {
+		return core.SecretKVSnapshot{Data: map[string]string{}}, nil
+	}
+	if err != nil {
+		return core.SecretKVSnapshot{}, sanitizeVersionedStoreError("read", err)
+	}
+	if out.Data.Metadata.Version == 0 {
+		return core.SecretKVSnapshot{}, core.Err("openbao versioned read returned no version")
+	}
+	if out.Data.Data == nil {
+		out.Data.Data = map[string]string{}
+	}
+	return core.SecretKVSnapshot{Data: out.Data.Data, Version: out.Data.Metadata.Version}, nil
+}
+
 // Put replaces the whole map at path.
 func (s *openBaoStore) Put(ctx context.Context, path string, data map[string]string) error {
 	body, _ := json.Marshal(map[string]any{"data": data})
 	return s.kv(ctx, http.MethodPost, s.dataURL(ctx, path), body, nil)
+}
+
+// PutCAS replaces the whole KV-v2 value only when expectedVersion is current.
+// OpenBao reports a failed check-and-set as 400 (some compatible frontends use
+// 409); both become the shared conflict sentinel with a fixed, value-free
+// message. The response body is never read on failure, preserving do's
+// structural redaction guarantee.
+func (s *openBaoStore) PutCAS(ctx context.Context, path string, data map[string]string, expectedVersion uint64) (uint64, error) {
+	body, _ := json.Marshal(struct {
+		Options struct {
+			CAS uint64 `json:"cas"`
+		} `json:"options"`
+		Data map[string]string `json:"data"`
+	}{
+		Options: struct {
+			CAS uint64 `json:"cas"`
+		}{CAS: expectedVersion},
+		Data: data,
+	})
+	var out struct {
+		Data struct {
+			Version uint64 `json:"version"`
+		} `json:"data"`
+	}
+	if err := s.kv(ctx, http.MethodPost, s.dataURL(ctx, path), body, &out); err != nil {
+		var se *core.HTTPStatusError
+		if errors.As(err, &se) && (se.Code == http.StatusBadRequest || se.Code == http.StatusConflict) {
+			return 0, fmt.Errorf("%w: secret changed; refresh before saving", core.ErrConflict)
+		}
+		return 0, sanitizeVersionedStoreError("write", err)
+	}
+	if out.Data.Version == 0 {
+		return 0, core.Err("openbao compare-and-set returned no version")
+	}
+	return out.Data.Version, nil
 }
 
 // Delete removes the path (and all its versions); an already-absent path is a no-op.
@@ -278,5 +364,9 @@ func (s *openBaoStore) do(ctx context.Context, method, url, token string, body [
 	return nil
 }
 
-// compile-time guard: the store satisfies the shared core.SecretKV seam.
-var _ core.SecretKV = (*openBaoStore)(nil)
+// Compile-time guards: the store preserves the original seam and additionally
+// offers optimistic concurrency to callers that opt into it.
+var (
+	_ core.SecretKV          = (*openBaoStore)(nil)
+	_ core.VersionedSecretKV = (*openBaoStore)(nil)
+)

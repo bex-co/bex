@@ -120,6 +120,9 @@ var environmentPatchResultGQLType = graphql.NewObject(graphql.ObjectConfig{
 
 func environmentPatchFromArgs(p graphql.ResolveParams) EnvironmentPatch {
 	patch := EnvironmentPatch{SaveMode: SaveMode(p.Args["saveMode"].(string))}
+	if revision, ok := p.Args["expectedEnvRevision"].(string); ok {
+		patch.ExpectedEnvRevision = &revision
+	}
 	if raw, ok := p.Args["envVars"].([]any); ok {
 		for _, item := range raw {
 			m, _ := item.(map[string]any)
@@ -211,10 +214,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"patchServiceEnvironment": &graphql.Field{
 			Type: graphql.NewNonNull(environmentPatchResultGQLType),
 			Args: graphql.FieldConfigArgument{
-				"serviceId":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"envVars":     &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(envVarPatchGQLType))},
-				"secretFiles": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(secretFilePatchGQLType))},
-				"saveMode":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"serviceId":           &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"envVars":             &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(envVarPatchGQLType))},
+				"secretFiles":         &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(secretFilePatchGQLType))},
+				"saveMode":            &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"expectedEnvRevision": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.PatchEnvironment(p.Context, p.Args["serviceId"].(string), environmentPatchFromArgs(p))
