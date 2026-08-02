@@ -251,10 +251,12 @@ func (s *PGStore) EnqueuePushNotifications(ctx context.Context, items []PushNoti
 			n.OccurredAt, n.DeliverAt)
 		for _, deviceID := range item.DeviceIDs {
 			batch.Queue(`
-				INSERT INTO push_deliveries (tenant_id, subject, device_id, source_event_key)
-				VALUES ($1,$2,$3,$4)
+				INSERT INTO push_deliveries (
+					tenant_id, subject, device_id, source_event_key, next_attempt_at
+				)
+				VALUES ($1,$2,$3,$4,$5)
 				ON CONFLICT (tenant_id, subject, device_id, source_event_key) DO NOTHING`,
-				n.TenantID, n.Subject, deviceID, n.SourceEventKey)
+				n.TenantID, n.Subject, deviceID, n.SourceEventKey, n.DeliverAt)
 		}
 	}
 	// Never let a stale concurrent dispatcher move the durable cursor backward.
