@@ -3,7 +3,7 @@ import { useNavigate, useRouter } from "@tanstack/react-router";
 import { LogOut, Loader2, CheckCircle } from "lucide-react";
 import { createFrontendApi } from "@/common/lib/ory/frontend";
 import { invalidateSessionCache } from "@/common/server-fn/session";
-import { createApolloCsrClient } from "@/common/apollo/factory.client";
+import { getClient } from "@/common/apollo/client";
 import { EMPTY_LOGIN_SEARCH } from "@/common/lib/auth/auth";
 import { useTranslations } from "@/common/hooks/use-translations";
 
@@ -39,7 +39,7 @@ export default function LogoutPage() {
         // singleton that survives logout, so without this the next account to
         // log in could read the previous one's cached workspaces/resources
         // (codex-security #24).
-        void createApolloCsrClient().clearStore();
+        void getClient().clearStore();
         await router.invalidate();
         void navigate({
           to: "/auth/login",
