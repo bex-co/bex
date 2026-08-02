@@ -18,6 +18,23 @@ package main
 
 import "testing"
 
+func TestSandboxTemplateRegistryIncludesPluggableAgentDriver(t *testing.T) {
+	templates := sandboxTemplateRegistry("alpine:3", "agent:test")
+	agent, ok := templates["agent"]
+	if !ok {
+		t.Fatal("agent template is not registered")
+	}
+	if agent.Image != "agent:test" || len(agent.Entrypoint) != 1 || agent.Entrypoint[0] != "bex-agent-driver" {
+		t.Fatalf("agent template = %+v", agent)
+	}
+	if agent.CPU != "2" || agent.Memory != "4Gi" {
+		t.Fatalf("agent resource limits = %s/%s, want 2/4Gi", agent.CPU, agent.Memory)
+	}
+	if base := templates["base"]; base.Image != "alpine:3" {
+		t.Fatalf("base template image = %q", base.Image)
+	}
+}
+
 // requireCPAuth is the w1/m53 fail-closed gate on the internal control-plane
 // API (:8091): an empty BEX_CP_TOKEN must abort startup unless the explicit
 // local-dev override is set.

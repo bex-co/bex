@@ -253,6 +253,29 @@ spec:
             - port: "44772"
               protocol: TCP
 ---
+# ADR047 D3: the in-sandbox agent driver exposes its AI SDK UI-message SSE and
+# raw-ACP WebSocket on one local HTTP port. The isolated gateway is the only
+# network identity allowed to reach it; tenant Pods, peer sandboxes, platform
+# default ServiceAccounts, the world, and the node remain outside this allow.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: sandbox-agent-driver-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      app.bex.co/regime: sandbox
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: bex-system
+            k8s:io.cilium.k8s.policy.serviceaccount: bex-ssh-gateway
+            k8s:app.kubernetes.io/name: bex-ssh-gateway
+      toPorts:
+        - ports:
+            - port: "8787"
+              protocol: TCP
+---
 # Authenticate the lifecycle API's one inbound caller by Cilium identity, not a
 # user-spoofable Kubernetes Pod label alone. bex-api is the only ServiceAccount
 # admitted on TCP 8077; tenant, sandbox, and other bex-system Pods stay denied.

@@ -1,13 +1,13 @@
 # w3 · m37 — Agent template image + in-sandbox session driver (ADR047 D1/D3/D7)
 
-**Worker:** worker3 **Goal:** a sandbox created from a new agent template image runs a headless coding task on a checked-out repo and produces commits, driven by an in-sandbox session driver (Vercel AI SDK + pinned `@mcpc/acp-ai-provider`) that fronts any ACP agent over stdio. **Status:** todo
+**Worker:** worker3 **Goal:** a sandbox created from a new agent template image runs a headless coding task on a checked-out repo and produces commits, driven by an in-sandbox session driver (Vercel AI SDK + pinned `@mcpc-tech/acp-ai-provider`) that fronts any ACP agent over stdio. **Status:** todo
 
 ## Tasks (in order)
 
 | id   | title                                                                                                | est | depends_on             |
 | ---- | ---------------------------------------------------------------------------------------------------- | --- | ---------------------- |
 | t001 | Agent template image: git + toolchains + pluggable agent binaries (`command`/`args` config)          | 60m | —                      |
-| t002 | Session driver: Node + AI SDK + pinned `@mcpc/acp-ai-provider`, stdio spawn, headless one-turn mode  | 90m | t001                   |
+| t002 | Session driver: Node + AI SDK + pinned `@mcpc-tech/acp-ai-provider`, stdio spawn, headless one-turn mode | 90m | t001                   |
 | t003 | Driver listeners: SSE UI-message stream + raw-ACP WebSocket (gateway-only ingress assumption)        | 60m | t002                   |
 | t004 | BYO model API key injection at session start (OpenBao-sourced), scrubbed pre-snapshot                | 45m | t002                   |
 | t005 | Vendor-test the provider: `existingSessionId`→`session/load`, `loadSession` probe, raw chunks        | 60m | t002                   |
@@ -22,7 +22,7 @@
 - The driver spawns the ACP agent over stdio via `createACPProvider`, runs a headless one-`streamText`-turn task against a pre-cloned repo inside a sandbox on the existing w3/m32 substrate, and the agent's commits land in the sandbox worktree — demonstrated end-to-end on the prod or dev-3 substrate.
 - The driver exposes the two ADR047 D3 listeners (SSE AI SDK UI-message stream with `includeRawChunks: true`; raw-ACP JSON-RPC WebSocket) bound so only gateway-originated ingress can reach them.
 - A tenant-supplied model API key (D7 BYO) is injected at session start from OpenBao (ADR013 pattern) and never written into a rootfs snapshot (scrub verified).
-- `@mcpc/acp-ai-provider` is version-pinned with vendor tests covering session persistence (`persistSession`/`existingSessionId` → `session/load` only when `loadSession` is advertised) and raw-chunk passthrough, running in CI.
+- `@mcpc-tech/acp-ai-provider` is version-pinned with vendor tests covering session persistence (`persistSession`/`existingSessionId` → `session/load` only when `loadSession` is advertised) and raw-chunk passthrough, running in CI.
 - `docs/ADR047-cloud-coding-agent-sessions.md` is `Status: Accepted`.
 
 ## Source + Goal linkage

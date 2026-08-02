@@ -8,7 +8,7 @@
 #   - the write-back guard (never pin images built from stale production inputs).
 #
 # "Deploy-triggering" = any change under the production-input path filter,
-# EXCLUDING the four generated image-digest fields — a preceding run's [skip ci]
+# EXCLUDING the five generated image-digest fields — a preceding run's [skip ci]
 # digest write-back is NOT a supersession. This filter must match the one the
 # write-back guard has always used.
 #
@@ -29,18 +29,20 @@ if ! git fetch --no-tags origin main >/dev/null 2>&1; then
   exit 2
 fi
 
-# The production-input path filter, minus the four generated digest files (a
-# preceding run's [skip ci] pin must not read as a supersession). Kept identical
-# to the write-back guard.
+# First compare every production input except the five files that contain one
+# generated digest each. The second pass below compares those files after
+# replacing only their generated field, so a real manifest change is never
+# hidden by a whole-file exclusion.
 git diff --quiet "$SHA" origin/main -- \
   lego dashboard deploy/opensandbox deploy/gitops .github/workflows/deploy.yml \
   ':(exclude)deploy/gitops/base/bex.yaml' \
   ':(exclude)deploy/gitops/base/dashboard.yaml' \
   ':(exclude)deploy/opensandbox/kustomization.yaml' \
-  ':(exclude)deploy/gitops/base/values/opensandbox-controller.values.yaml'
-case "$?" in
+  ':(exclude)deploy/gitops/base/values/opensandbox-controller.values.yaml' \
+  ':(exclude)lego/operator/config/api/deployment.yaml'
+diff_rc=$?
+case "$diff_rc" in
   0)
-    exit 1 # no drift beyond generated digests → current
     ;;
   1)
     echo "superseded by newer production inputs on origin/main ($(git rev-parse --short origin/main)); this run's images will not be built/pinned"
@@ -48,6 +50,65 @@ case "$?" in
     ;;
   *)
     echo "deploy-superseded: git diff failed" >&2
+    exit 2
+    ;;
+esac
+
+python3 - "$SHA" origin/main <<'PY'
+import re
+import subprocess
+import sys
+
+revisions = sys.argv[1:]
+generated = {
+    "deploy/gitops/base/bex.yaml":
+        r"(?m)^(\s+- controller=[^@\n]+@sha256:)[0-9a-f]{64}$",
+    "deploy/gitops/base/dashboard.yaml":
+        r"(?m)^(\s+- dashboard=[^@\n]+@sha256:)[0-9a-f]{64}$",
+    "deploy/opensandbox/kustomization.yaml":
+        r"(?m)(^  - name: opensandbox-server\n    newName: [^\n]+\n    digest: sha256:)[0-9a-f]{64}$",
+    "deploy/gitops/base/values/opensandbox-controller.values.yaml":
+        r"(?m)^(\s+tag: v0\.2\.0-bex-snapjobns@sha256:)[0-9a-f]{64}$",
+    "lego/operator/config/api/deployment.yaml":
+        r"(?m)^(\s+value: ghcr.io/bex-co/bex-agent-sandbox)(?::[^@\s]+|@sha256:[0-9a-f]{64})$",
+}
+
+
+def normalized(revision, path, pattern):
+    try:
+        text = subprocess.check_output(
+            ["git", "show", f"{revision}:{path}"], text=True, stderr=subprocess.DEVNULL
+        )
+    except subprocess.CalledProcessError as error:
+        raise RuntimeError(f"could not read {path} at {revision}") from error
+    rendered, count = re.subn(pattern, r"\g<1><generated>", text)
+    if count != 1:
+        raise RuntimeError(f"expected exactly one generated digest field in {path}")
+    return rendered
+
+
+try:
+    changed = any(
+        normalized(revisions[0], path, pattern)
+        != normalized(revisions[1], path, pattern)
+        for path, pattern in generated.items()
+    )
+except RuntimeError as error:
+    print(f"deploy-superseded: {error}", file=sys.stderr)
+    raise SystemExit(2)
+
+raise SystemExit(1 if changed else 0)
+PY
+generated_rc=$?
+case "$generated_rc" in
+  0)
+    exit 1 # no drift beyond the five generated digest fields → current
+    ;;
+  1)
+    echo "superseded by a substantive generated-file change on origin/main ($(git rev-parse --short origin/main)); this run's images will not be built/pinned"
+    exit 0
+    ;;
+  *)
     exit 2
     ;;
 esac

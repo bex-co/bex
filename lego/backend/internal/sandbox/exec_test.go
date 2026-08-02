@@ -147,6 +147,28 @@ func TestExecBufferedParsesSSE(t *testing.T) {
 	}
 }
 
+func TestExecBufferedFailsClosedWithoutExitEvent(t *testing.T) {
+	secret := []byte("exec-secret")
+	gw := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, err := sandboxexec.Verify(secret, r.Header.Get(sandboxexec.TicketHeader), time.Now()); err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write([]byte("event: output\ndata: {\"stream\":\"stdout\",\"data\":\"partial\"}\n\n"))
+	}))
+	t.Cleanup(gw.Close)
+	svc := &Service{
+		Base:   &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
+		Client: execSandboxClient(t, "id-a"),
+		Exec:   &ExecConfig{Secret: secret, GatewayURL: gw.URL, Client: gw.Client()},
+	}
+	_, err := svc.ExecBuffered(callerCtx(), ExecRequest{OwnerID: "tea-a", SandboxID: "os-1", Command: "echo hi"})
+	if !errors.Is(err, core.ErrSandboxesUnavailable) {
+		t.Fatalf("truncated buffered exec = %v, want ErrSandboxesUnavailable", err)
+	}
+}
+
 func TestExecEnforcesOwnerAndWorkspaceAdminOverride(t *testing.T) {
 	secret := []byte("exec-secret")
 	gatewayCalls := 0

@@ -1,7 +1,7 @@
 name: test (backend)
 
-# Run the backend test suite on every push/PR touching lego/backend or lego/types,
-# and as a reusable workflow called by deploy.yml to gate the build+push+deploy job.
+# Run the backend and agent-driver suites on every relevant push/PR, and as a
+# reusable workflow called by deploy.yml to gate the build+push+deploy job.
 # Integration tests gated on BEX_TEST_DB_URI / BEX_TEST_OPENFGA_URL run against real
 # ephemeral service containers (postgres:17 + openfga/openfga in-memory).
 on:
@@ -11,6 +11,7 @@ on:
       - "lego/backend/**"
       - "lego/agent-image/**"
       - "lego/types/**"
+      - "lego/agent-image/**"
       - "scripts/stripe-billing-*.sh"
       - "scripts/stripe_billing_*.py"
       - "scripts/test_stripe_billing_*.py"
@@ -21,6 +22,7 @@ on:
       - "lego/backend/**"
       - "lego/agent-image/**"
       - "lego/types/**"
+      - "lego/agent-image/**"
       - "scripts/stripe-billing-*.sh"
       - "scripts/stripe_billing_*.py"
       - "scripts/test_stripe_billing_*.py"
@@ -50,6 +52,14 @@ jobs:
         with:
           go-version-file: lego/backend/go.mod
           cache-dependency-path: lego/backend/go.sum
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: lego/agent-image/driver/package-lock.json
+      - name: test agent session driver (ACP spawn, streams, resume gate, scrub)
+        working-directory: lego/agent-image/driver
+        run: npm ci --ignore-scripts && npm test
       # OpenFGA runs as a step, not a `services:` container: its image entrypoint
       # is the bare binary and the HTTP server only starts under the `run`
       # subcommand — which a services: block can't supply, so a service container
