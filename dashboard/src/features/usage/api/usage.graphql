@@ -1,7 +1,9 @@
 # Workspace-scoped usage (bex extension, no Render equivalent).
-# Four kinds: instance_seconds (compute), egress_bytes (bandwidth),
-# build_seconds (CI/build), and storage_gb_seconds (managed datastore storage).
-# resourceKind distinguishes App services from managed Postgres/KeyValue instances.
+# Five kinds: instance_seconds (compute), egress_bytes (bandwidth),
+# build_seconds (CI/build), storage_gb_seconds (managed datastore storage), and
+# sandbox_compute_seconds (weighted hosted-sandbox compute).
+# resourceKind distinguishes App services, managed Postgres/KeyValue instances,
+# and hosted sandboxes.
 # period: optional calendar month YYYY-MM; defaults to the current month.
 # ownerId: workspace to query (w6/m18); the dashboard always sends the
 # switcher's selection so multi-workspace callers see the right workspace's

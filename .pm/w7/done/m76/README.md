@@ -1,19 +1,19 @@
 # w7 · m76 — Sandbox compute metering: `sandbox_compute_seconds` (ADR047 D6)
 
-**Worker:** worker7 **Goal:** sandboxes stop being bex's one unmetered resource — per-second, vCPU/GB-weighted sandbox compute flows through the existing `usage_hourly` → sealed-outbox → Stripe pipeline, gated by the ADR046 PaymentGate, and shows up on the usage surface. **Status:** todo
+**Worker:** worker7 **Goal:** sandboxes stop being bex's one unmetered resource — per-second, vCPU/GB-weighted sandbox compute flows through the existing `usage_hourly` → sealed-outbox → Stripe pipeline, gated by the ADR046 PaymentGate, and shows up on the usage surface. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                | est | depends_on |
 | ---- | -------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | New meter kind + emitter: sandbox lifecycle → `usage_hourly` (weighted, hibernation-excluded) | 90m | —    |
-| t002 | `pricing.yaml` + Stripe catalog entry (`scripts/stripe-billing-setup.py`)               | 30m | t001       |
-| t003 | PaymentGate coverage for sandbox create (ADR046 paid intent)                            | 45m | t001       |
-| t004 | Usage surface: sandbox rows in `GET /v1/usage` + GraphQL/MCP                            | 30m | t001       |
-| t005 | Render parity: usage-surface consistency across REST/GraphQL/MCP                        | 30m | t002, t003, t004 |
-| t006 | Simplify pass over the metering code                                                    | 20m | t005       |
-| t007 | Test coverage: accrual windows, hibernation exclusion, gate, seal/export                | 45m | t005       |
-| t008 | Closeout                                                                                | 10m | t007       |
+| t001 | New meter kind + emitter: sandbox lifecycle → `usage_hourly` (weighted, hibernation-excluded) — **DONE** | 90m | —                |
+| t002 | `pricing.yaml` + Stripe catalog entry (`scripts/stripe-billing-setup.py`) — **DONE**                          | 30m | t001             |
+| t003 | PaymentGate coverage for sandbox create (ADR046 paid intent) — **DONE**                                       | 45m | t001             |
+| t004 | Usage surface: sandbox rows in `GET /v1/usage` + GraphQL/MCP — **DONE**                                       | 30m | t001             |
+| t005 | Render parity: usage-surface consistency across REST/GraphQL/MCP — **DONE**                                   | 30m | t002, t003, t004 |
+| t006 | Simplify pass over the metering code — **DONE**                                                               | 20m | t005             |
+| t007 | Test coverage: accrual windows, hibernation exclusion, gate, seal/export — **DONE**                           | 45m | t005             |
+| t008 | Closeout — **DONE**                                                                                           | 10m | t007             |
 
 ## Definition of done
 

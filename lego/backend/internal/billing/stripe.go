@@ -389,6 +389,11 @@ func stripeMeterEvent(e Event) (eventName, value string, skip bool) {
 		return "storage_gb_hours", scaleDown(e.Properties["value"], secondsPerHour), false
 	case store.UsageKindBuildSeconds:
 		return "build_seconds", e.Properties["value"], false
+	case store.UsageKindSandboxComputeSeconds:
+		if _, ok := billableMeterNames[store.UsageKindSandboxComputeSeconds]; !ok {
+			return "", "", true
+		}
+		return store.UsageKindSandboxComputeSeconds, e.Properties["value"], false
 	default:
 		return e.EventType, e.Properties["value"], false
 	}

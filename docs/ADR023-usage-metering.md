@@ -2,7 +2,7 @@
 
 bex records month-to-date resource consumption per workspace and exposes it over REST, GraphQL, and MCP so any client — curl, the dashboard, or an MCP agent — can read the same numbers (pillar 1: API-first; pillar 3: agents as operators).
 
-## Four meters
+## Five meters
 
 | Meter | Unit | Source |
 | --- | --- | --- |
@@ -10,6 +10,7 @@ bex records month-to-date resource consumption per workspace and exposes it over
 | `egress_bytes` | bytes | loss-detecting sum of exact App HTTP + WebSocket + direct-public sources, or the public datastore proxy response source |
 | `build_seconds` | seconds | k8s build-Job `completionTime − startTime` for Jobs whose completion falls in the window |
 | `storage_gb_seconds` | decimal GB-seconds | average `kubelet_volume_stats_used_bytes` over the window × window seconds, summed across a datastore's PVCs |
+| `sandbox_compute_seconds` | milli-vCPU-equivalent seconds | OpenSandbox lifecycle phase × shape; CPU millicores plus memory GiB folded at the AgentCore `$0.00945/GB-hour ÷ $0.0895/vCPU-hour` reference ratio; only `running` intervals accrue |
 
 The first three meters match Render's compute, bandwidth, and pipeline-minute dimensions. Storage adds the separately-priced Postgres dimension while remaining API-first. Render charges provisioned Postgres capacity; bex meters actual used PVC bytes, so the rate is comparable but the usage basis is deliberately more usage-sensitive. Render has no separate Key Value storage line; bex exposes the same storage meter for Valkey because it also owns a persistent volume.
 
@@ -71,22 +72,25 @@ This design intentionally owns the accounting datapath instead of scraping a CNI
 
 ## Meter applicability by resource kind
 
-The rollup loop emits meters for three resource kinds. Not every meter applies to every kind:
+The rollup loop emits meters for four resource kinds. Not every meter applies to every kind:
 
-| Meter | App service (`service`) | Managed Postgres (`postgres`) | Managed Key Value (`key_value`) |
-| --- | --- | --- | --- |
-| `instance_seconds` | ✅ ReplicaSet pods (`<name>-[a-z0-9]+-[a-z0-9]{5}`) | ✅ CNPG stateful pods (`<name>-[0-9]+`) | ✅ Valkey stateful pods (`<name>-[0-9]+`) |
-| `egress_bytes` | ✅ exact HTTP router + WebSocket downstream + direct-public composition | ✅ public proxy response bytes; private is explicit zero | ✅ public proxy response bytes; private is explicit zero |
-| `build_seconds` | ✅ CNB build Job `completionTime − startTime` | — no build step | — no build step |
-| `storage_gb_seconds` | — stateless App storage is not a supported product surface | ✅ CNPG PVCs (`<name>-<n>`) | ✅ Valkey PVC (`data-<name>-<n>`) |
+| Meter | App service (`service`) | Managed Postgres (`postgres`) | Managed Key Value (`key_value`) | Hosted sandbox (`sandbox`) |
+| --- | --- | --- | --- | --- |
+| `instance_seconds` | ✅ ReplicaSet pods (`<name>-[a-z0-9]+-[a-z0-9]{5}`) | ✅ CNPG stateful pods (`<name>-[0-9]+`) | ✅ Valkey stateful pods (`<name>-[0-9]+`) | — separate weighted meter |
+| `egress_bytes` | ✅ exact HTTP router + WebSocket downstream + direct-public composition | ✅ public proxy response bytes; private is explicit zero | ✅ public proxy response bytes; private is explicit zero | — not yet metered |
+| `build_seconds` | ✅ CNB build Job `completionTime − startTime` | — no build step | — no build step | — no build step |
+| `storage_gb_seconds` | — stateless App storage is not a supported product surface | ✅ CNPG PVCs (`<name>-<n>`) | ✅ Valkey PVC (`data-<name>-<n>`) | — rootfs storage not priced |
+| `sandbox_compute_seconds` | — | — | — | ✅ durable OpenSandbox phase cursor × weighted shape |
 
-Each row in `usage_hourly` and `usage_monthly` carries a `resource_kind` column (`DEFAULT 'service'`, migration `0015_usage_resource_kind.up.sql`) so the REST/GraphQL/MCP surfaces can distinguish App compute from managed-datastore compute. The column is backward-compatible: rows written before the migration surface as `"service"`. Migration `0021_usage_resource_identity.up.sql` also makes `resource_kind` part of each table's primary key because a `Database` and `KeyValue` CR may legally share a Kubernetes name; their usage remains separate even when `service_id`, meter, tier, and window are identical.
+Each row in `usage_hourly` and `usage_monthly` carries a `resource_kind` column (`DEFAULT 'service'`, migration `0015_usage_resource_kind.up.sql`) so the REST/GraphQL/MCP surfaces can distinguish App compute, managed-datastore compute, and hosted sandboxes (`"sandbox"`). The column is backward-compatible: rows written before the migration surface as `"service"`. Migration `0021_usage_resource_identity.up.sql` also makes `resource_kind` part of each table's primary key because different resource kinds may legally share a name; their usage remains separate even when `service_id`, meter, tier, and window are identical.
 
 Migration `0022_usage_storage_kind.up.sql` extends both row-oriented tables' `kind` constraint with `storage_gb_seconds`. Existing rows need no rewrite: absence of a storage row means no previously-recorded storage usage, while successful zero-byte Prometheus queries persist an explicit zero row.
 
 ## How it works
 
 An hourly rollup loop (`usage.Service.Run`) writes rows to the `usage_hourly` table (migration `0006_usage.up.sql`) whenever both `BEX_CP_DB_URI` (the control-plane store) and `BEX_PROM_URL` (Prometheus) are set. Each row is keyed on `(resource_kind, service_id, kind, tier, window_start)` and is idempotent: re-processing a window (`ON CONFLICT … DO UPDATE`) never double-counts. On startup and every hourly pass, the loop catches up missed windows bounded to the last 48 hours.
+
+Sandbox compute is the non-Prometheus exception (migration `0059_sandbox_compute_meter`): a 30-second tenant-scoped OpenSandbox poll plus immediate create/pause/resume/terminate observations advance a durable `(workspace_id, sandbox_id)` phase cursor. Advancing the cursor and adding the prior `running` interval to hour-split `usage_hourly` rows happen in one transaction; an equal or older replay is a no-op. Suspended, creating, resuming, errored, and terminated intervals add zero. A failed upstream list advances nothing, while a sandbox missing from a successful complete list closes its final interval. Sandboxes created before the shape metadata existed are not retroactively charged.
 
 ### Successful zeroes and gap-free per-resource meter cursors
 

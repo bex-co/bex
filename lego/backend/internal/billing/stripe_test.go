@@ -250,6 +250,7 @@ func TestStripeMeterEventMapping(t *testing.T) {
 		{"storage re-based to GB-hours", Event{EventType: "storage_gb_seconds", Properties: map[string]string{"value": "7200"}}, "storage_gb_hours", "2", false},
 		{"storage rounded to Stripe precision", Event{EventType: "storage_gb_seconds", Properties: map[string]string{"value": "1"}}, "storage_gb_hours", "0.000277777778", false},
 		{"build unchanged", Event{EventType: "build_seconds", Properties: map[string]string{"value": "120"}}, "build_seconds", "120", false},
+		{"sandbox weighted seconds unchanged", Event{EventType: "sandbox_compute_seconds", Properties: map[string]string{"value": "1990800"}}, "sandbox_compute_seconds", "1990800", false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

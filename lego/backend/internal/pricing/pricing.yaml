@@ -8,6 +8,7 @@
 #   egress_bytes     → bandwidth.usdPerByte
 #   build_seconds    → build.usdPerSecond
 #   storage_gb_seconds → storage.usdPerGBSecond
+#   sandbox_compute_seconds → sandbox.usdPerWeightedSecond
 #
 # Derivation for per-second rates:
 #   bex_monthly = render_monthly × discount
@@ -70,3 +71,10 @@ build:
 # actual used PVC bytes for both managed datastore kinds.
 storage:
   usdPerGBSecond: 0.000000079908675799086757990868   # $0.21 / 2,628,000 GB-seconds
+
+# sandbox_compute_seconds uses milli-vCPU-equivalent seconds. The sandbox
+# meter folds memory into the quantity at the AgentCore reference ratio
+# ($0.00945/GB-hour ÷ $0.0895/vCPU-hour), so this one rate is the AgentCore CPU
+# reference divided by 3,600 seconds and 1,000 milli-vCPU per vCPU.
+sandbox:
+  usdPerWeightedSecond: 0.000000024861111111111111111111   # $0.0895 / 3,600 / 1,000

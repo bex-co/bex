@@ -26,7 +26,7 @@ python3 scripts/stripe-billing-setup.py \
 
 It reads `pricing.yaml` and creates or validates:
 
-- 13 active usage meters and 13 monthly metered Prices;
+- 14 active usage meters and 14 monthly metered Prices;
 - a Product for each newly created Price;
 - the perpetual 100%-off coupon `bex-comp-100`;
 - deactivation of superseded kind-level shadow meters;
@@ -39,7 +39,7 @@ The lookup/event names are:
 - `instance_seconds.service.{starter,standard,pro,pro-plus,pro-max,pro-ultra}`;
 - `instance_seconds.postgres.{basic-256mb,basic-1gb}`;
 - `instance_seconds.key_value.{starter,standard}`;
-- `egress_gib`, `build_seconds`, and `storage_gb_hours`.
+- `egress_gib`, `build_seconds`, `storage_gb_hours`, and `sandbox_compute_seconds` (one unit is one milli-vCPU-equivalent second; memory is folded into the quantity at ADR047's AgentCore reference ratio).
 
 Free tiers have no paid meter. Bytes are rebased to GiB and storage GB-seconds to GB-hours so the decimal Price fits Stripe's supported precision.
 
@@ -188,11 +188,11 @@ scripts/stripe-billing-reconcile.sh report tea-... \
 scripts/stripe-billing-reconcile.sh issues
 ```
 
-The report lists `instance_seconds.<resource_kind>.<tier>`, `egress_gib`, `build_seconds`, and `storage_gb_hours` separately and exits non-zero for mismatches, rejected/ambiguous rows, duplicate local transaction ids, or duplicate rated lines. It refuses `rk_live_*`/`sk_live_*`, never passes a key on the process command line, and never prints a key or webhook secret.
+The report lists `instance_seconds.<resource_kind>.<tier>`, `egress_gib`, `build_seconds`, `storage_gb_hours`, and `sandbox_compute_seconds` separately and exits non-zero for mismatches, rejected/ambiguous rows, duplicate local transaction ids, or duplicate rated lines. It refuses `rk_live_*`/`sk_live_*`, never passes a key on the process command line, and never prints a key or webhook secret.
 
 Stripe permits at most 12 decimal places in a meter-event value. bex therefore normalizes each bytes→GiB and GB-seconds→GB-hours event independently with exact rational arithmetic and half-up rounding to 12 places; reconciliation applies the identical per-event rule before summing. Do not aggregate unrounded values first. Stripe invoice-line `quantity` is an integer presentation even when the underlying meter aggregate is decimal, so the harness separately proves the decimal meter summary and recomputes the rounded cent `amount` from `pricing.unit_amount_decimal`.
 
-An invoice preview embeds only its first page of lines (10 in the current API). The harness follows the preview's `lines.url`, paginates every line, and expands each Price before comparing lookup key, quantity, rate, amount, and currency. Reading only `preview.lines.data` produces a false missing-line result for bex's 13-price contract.
+An invoice preview embeds only its first page of lines (10 in the current API). The harness follows the preview's `lines.url`, paginates every line, and expands each Price before comparing lookup key, quantity, rate, amount, and currency. Reading only `preview.lines.data` produces a false missing-line result for bex's 14-price contract.
 
 Repair is explicitly dry-run-first:
 
@@ -264,7 +264,7 @@ The second run must reuse every object. Then create a **live** restricted key an
 
 Before deploying:
 
-1. Compare all 13 live lookup keys and rates with `pricing.yaml`.
+1. Compare all 14 live lookup keys and rates with `pricing.yaml`.
 2. Confirm `bex-comp-100` is valid, perpetual, and exactly 100% off.
 3. Confirm the webhook URL, API version, and exact ten-event allowlist from §3.
 4. Confirm Stripe's account-level invoice, retry/dunning, and email settings.

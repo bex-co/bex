@@ -55,6 +55,7 @@ type Sheet struct {
 	bandwidth float64            // $/byte for egress_bytes
 	build     float64            // $/second for build_seconds
 	storage   float64            // $/GB-second for storage_gb_seconds
+	sandbox   float64            // $/milli-vCPU-equivalent-second for sandbox_compute_seconds
 }
 
 // BillableMeterNames returns the Stripe lookup/event names represented by this
@@ -62,7 +63,7 @@ type Sheet struct {
 // due and therefore no Stripe meter or subscription item exists. The stable
 // lexical order makes catalog validation and tests deterministic.
 func (s *Sheet) BillableMeterNames() []string {
-	names := make([]string, 0, len(s.compute)+len(s.postgres)+len(s.keyvalue)+3)
+	names := make([]string, 0, len(s.compute)+len(s.postgres)+len(s.keyvalue)+4)
 	appendTiers := func(resourceKind string, tiers map[string]float64) {
 		for tier, rate := range tiers {
 			if rate > 0 {
@@ -82,6 +83,9 @@ func (s *Sheet) BillableMeterNames() []string {
 	if s.storage > 0 {
 		names = append(names, "storage_gb_hours")
 	}
+	if s.sandbox > 0 {
+		names = append(names, store.UsageKindSandboxComputeSeconds)
+	}
 	sort.Strings(names)
 	return names
 }
@@ -99,13 +103,13 @@ type EstimatedCost struct {
 
 // MeterEstimate is one meter dimension's contribution to the estimated total.
 type MeterEstimate struct {
-	// Kind is "instance_seconds", "egress_bytes", "build_seconds", or
-	// "storage_gb_seconds".
+	// Kind is "instance_seconds", "egress_bytes", "build_seconds",
+	// "storage_gb_seconds", or "sandbox_compute_seconds".
 	Kind string `json:"kind"`
 	// Tier is the plan/tier id for instance_seconds meters; empty for flat-rate
 	// meters (egress_bytes, build_seconds, storage_gb_seconds).
 	Tier string `json:"tier,omitempty"`
-	// ResourceKind is "service", "postgres", or "key_value".
+	// ResourceKind is "service", "postgres", "key_value", or "sandbox".
 	ResourceKind string `json:"resourceKind,omitempty"`
 	// CostUSD is the estimated dollar cost for this meter, formatted to cents.
 	CostUSD string `json:"costUsd"`
@@ -173,6 +177,10 @@ func (s *Sheet) rateFor(kind, tier, resourceKind string) float64 {
 		if resourceKind == store.ResourceKindPostgres || resourceKind == store.ResourceKindKeyValue {
 			return s.storage
 		}
+	case store.UsageKindSandboxComputeSeconds:
+		if resourceKind == store.ResourceKindSandbox {
+			return s.sandbox
+		}
 	}
 	return 0
 }
@@ -207,6 +215,9 @@ type sheetFile struct {
 	Storage struct {
 		USDPerGBSecond float64 `json:"usdPerGBSecond"`
 	} `json:"storage"`
+	Sandbox struct {
+		USDPerWeightedSecond float64 `json:"usdPerWeightedSecond"`
+	} `json:"sandbox"`
 }
 
 func mustLoad(raw []byte) *Sheet {
@@ -232,6 +243,7 @@ func parseSheet(raw []byte) (*Sheet, error) {
 		bandwidth: f.Bandwidth.USDPerByte,
 		build:     f.Build.USDPerSecond,
 		storage:   f.Storage.USDPerGBSecond,
+		sandbox:   f.Sandbox.USDPerWeightedSecond,
 	}
 	for _, e := range f.Compute {
 		if e.Tier == "" {

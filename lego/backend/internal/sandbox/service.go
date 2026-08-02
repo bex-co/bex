@@ -35,6 +35,7 @@ const (
 	metadataPlan          = "bex.co/plan"
 	metadataRegion        = "bex.co/region"
 	metadataTimeout       = "bex.co/timeout-seconds"
+	metadataComputeWeight = "bex.co/compute-weight-milli"
 	metadataRegime        = "app.bex.co/regime"
 	metadataSandboxRegime = "sandbox"
 	metadataAgentSession  = "bex.co/agent-session"
@@ -78,6 +79,9 @@ type Service struct {
 	DefaultTemplate string
 	// Exec wires `render ea sandbox exec` (w3/m33); nil => the exec verb 503s.
 	Exec *ExecConfig
+	// Meter records durable lifecycle observations. nil keeps the pre-metering
+	// path byte-identical for store-off deployments.
+	Meter *Meter
 }
 
 // CreateRequest is the caller's create input. OwnerID binds the workspace (as
@@ -168,7 +172,7 @@ func (s *Service) workspaceID(ctx context.Context) string {
 	return core.DefaultTenant
 }
 
-func sandboxMetadata(ctx context.Context, workspace string, plan Plan, region string, timeout int, policy *NetworkPolicy) map[string]string {
+func sandboxMetadata(ctx context.Context, workspace string, plan Plan, region string, timeout int, policy *NetworkPolicy, weight int64) map[string]string {
 	metadata := map[string]string{
 		metadataOwner:         ownerID(ctx),
 		metadataWorkspace:     workspace,
@@ -176,6 +180,7 @@ func sandboxMetadata(ctx context.Context, workspace string, plan Plan, region st
 		metadataPlan:          string(plan),
 		metadataTimeout:       strconv.Itoa(timeout),
 		metadataRegime:        metadataSandboxRegime,
+		metadataComputeWeight: strconv.FormatInt(weight, 10),
 	}
 	if region != "" {
 		metadata[metadataRegion] = region
@@ -239,6 +244,7 @@ func (s *Service) ownedSandbox(ctx context.Context, key, workspace, id string) (
 	if !allowed {
 		return osSandbox{}, sandboxNotFound(id)
 	}
+	s.Meter.Observe(ctx, raw)
 	return raw, nil
 }
 
@@ -294,15 +300,11 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if !ok {
 		return Sandbox{}, fmt.Errorf("%w: unknown template %q", core.ErrBadRequest, name)
 	}
-	key, err := s.workspaceKey(ctx)
-	if err != nil {
-		return Sandbox{}, err
-	}
 	ws := s.workspaceID(ctx)
-	return s.createResolved(ctx, key, ws, tmpl, plan, req.Region, req.TimeoutSeconds, policy, nil)
+	return s.createResolved(ctx, ws, tmpl, plan, req.Region, req.TimeoutSeconds, policy, nil)
 }
 
-func (s *Service) createResolved(ctx context.Context, key, workspace string, tmpl Template, plan Plan, region string, timeout int, policy *NetworkPolicy, extraMetadata map[string]string) (Sandbox, error) {
+func (s *Service) createResolved(ctx context.Context, workspace string, tmpl Template, plan Plan, region string, timeout int, policy *NetworkPolicy, extraMetadata map[string]string) (Sandbox, error) {
 	cpu, mem := tmpl.CPU, tmpl.Memory
 	if cpu == "" {
 		cpu = "500m"
@@ -310,11 +312,25 @@ func (s *Service) createResolved(ctx context.Context, key, workspace string, tmp
 	if mem == "" {
 		mem = "512Mi"
 	}
+	weight, err := computeWeightMilli(cpu, mem)
+	if err != nil {
+		return Sandbox{}, fmt.Errorf("sandbox template resources: %w", err)
+	}
+	if err := s.RequirePaymentMethod(ctx, workspace); err != nil {
+		return Sandbox{}, err
+	}
+	key := ""
+	if s.Keys != nil {
+		key, err = s.Keys.WorkspaceKey(ctx, workspace)
+		if err != nil {
+			return Sandbox{}, err
+		}
+	}
 	entry := tmpl.Entrypoint
 	if len(entry) == 0 {
 		entry = []string{"sleep", "infinity"}
 	}
-	metadata := sandboxMetadata(ctx, workspace, plan, region, timeout, policy)
+	metadata := sandboxMetadata(ctx, workspace, plan, region, timeout, policy, weight)
 	for k, v := range extraMetadata {
 		metadata[k] = v
 	}
@@ -334,6 +350,7 @@ func (s *Service) createResolved(ctx context.Context, key, workspace string, tmp
 	if raw.Image.URI == "" {
 		raw.Image.URI = tmpl.Image
 	}
+	s.Meter.Observe(ctx, raw)
 	return sandboxFromOpenSandbox(raw, workspace), nil
 }
 
@@ -370,20 +387,12 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 	if !ok {
 		return Sandbox{}, fmt.Errorf("%w: unknown agent sandbox template %q", core.ErrBadRequest, template)
 	}
-	key := ""
-	var err error
-	if s.Keys != nil {
-		key, err = s.Keys.WorkspaceKey(ctx, workspaceID)
-		if err != nil {
-			return Sandbox{}, err
-		}
-	}
 	plan := s.DefaultPlan
 	if plan == "" {
 		plan = PlanStarter
 	}
 	policy := &NetworkPolicy{Default: NetworkPolicyDenyAll}
-	return s.createResolved(ctx, key, workspaceID, tmpl, plan, "", 0, policy,
+	return s.createResolved(ctx, workspaceID, tmpl, plan, "", 0, policy,
 		map[string]string{metadataAgentSession: sessionID})
 }
 
@@ -397,10 +406,17 @@ func (l *AgentSessionLifecycle) ResumeAgentSessionSandbox(ctx context.Context, w
 	if err != nil {
 		return err
 	}
-	if _, err := s.agentSessionSandbox(ctx, key, workspaceID, sessionID, sandboxID); err != nil {
+	raw, err := s.agentSessionSandbox(ctx, key, workspaceID, sessionID, sandboxID)
+	if err != nil {
 		return err
 	}
-	return s.Client.Resume(ctx, key, sandboxID)
+	s.Meter.Observe(ctx, raw)
+	if err := s.Client.Resume(ctx, key, sandboxID); err != nil {
+		return err
+	}
+	raw.Status.State = string(StatusResuming)
+	s.Meter.Observe(ctx, raw)
+	return nil
 }
 
 // CancelAgentSessionSandbox terminates the exact session sandbox. OpenSandbox's
@@ -411,7 +427,8 @@ func (l *AgentSessionLifecycle) CancelAgentSessionSandbox(ctx context.Context, w
 	if err != nil {
 		return err
 	}
-	if _, err := s.agentSessionSandbox(ctx, key, workspaceID, sessionID, sandboxID); err != nil {
+	raw, err := s.agentSessionSandbox(ctx, key, workspaceID, sessionID, sandboxID)
+	if err != nil {
 		if errors.Is(err, core.ErrNotFound) {
 			// Already absent is the desired terminal state. A mismatched/foreign
 			// object is also deliberately indistinguishable from absent and is
@@ -420,7 +437,13 @@ func (l *AgentSessionLifecycle) CancelAgentSessionSandbox(ctx context.Context, w
 		}
 		return err
 	}
-	return s.Client.Terminate(ctx, key, sandboxID)
+	s.Meter.Observe(ctx, raw)
+	if err := s.Client.Terminate(ctx, key, sandboxID); err != nil {
+		return err
+	}
+	raw.Status.State = string(StatusTerminated)
+	s.Meter.Observe(ctx, raw)
+	return nil
 }
 
 func (s *Service) agentSessionKey(ctx context.Context, workspaceID string) (string, error) {
@@ -514,13 +537,13 @@ func (s *Service) Get(ctx context.Context, id string) (Sandbox, error) {
 // Suspend/Resume/Terminate are the lifecycle verbs; suspend/resume need operate,
 // terminate needs create (delete) — matching the other resource features.
 func (s *Service) Suspend(ctx context.Context, id string) error {
-	return s.lifecycle(ctx, core.RelCanOperate, id, s.clientSuspend)
+	return s.lifecycle(ctx, core.RelCanOperate, id, StatusSuspended, s.clientSuspend)
 }
 func (s *Service) Resume(ctx context.Context, id string) error {
-	return s.lifecycle(ctx, core.RelCanOperate, id, s.clientResume)
+	return s.lifecycle(ctx, core.RelCanOperate, id, StatusResuming, s.clientResume)
 }
 func (s *Service) Terminate(ctx context.Context, id string) error {
-	return s.lifecycle(ctx, core.RelCanCreate, id, s.clientTerminate)
+	return s.lifecycle(ctx, core.RelCanCreate, id, StatusTerminated, s.clientTerminate)
 }
 
 func (s *Service) clientSuspend(ctx context.Context, key, id string) error {
@@ -533,7 +556,7 @@ func (s *Service) clientTerminate(ctx context.Context, key, id string) error {
 	return s.Client.Terminate(ctx, key, id)
 }
 
-func (s *Service) lifecycle(ctx context.Context, relation, id string, op func(ctx context.Context, key, id string) error) error {
+func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Status, op func(ctx context.Context, key, id string) error) error {
 	if err := s.Authorize(ctx, relation); err != nil {
 		return err
 	}
@@ -545,8 +568,14 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, op func(ct
 		return err
 	}
 	ws := s.workspaceID(ctx)
-	if _, err := s.ownedSandbox(ctx, key, ws, id); err != nil {
+	raw, err := s.ownedSandbox(ctx, key, ws, id)
+	if err != nil {
 		return err
 	}
-	return op(ctx, key, id)
+	if err := op(ctx, key, id); err != nil {
+		return err
+	}
+	raw.Status.State = string(phase)
+	s.Meter.Observe(ctx, raw)
+	return nil
 }

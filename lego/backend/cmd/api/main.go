@@ -622,6 +622,8 @@ func main() {
 		// (st nil), Keys stays nil and OpenSandbox must run single-tenant.
 		if st != nil {
 			deps.SandboxKeys = sandboxKeyProvider{st}
+			deps.SandboxMeter = &sandbox.Meter{Client: deps.SandboxClient, Store: st}
+			go deps.SandboxMeter.Run(ctx)
 			// Workspace-delete sandbox teardown (w1/m61): stop the workspace's
 			// running OpenSandbox sandboxes before the tenant row (and its sandbox
 			// key, migration 0056) cascade away. It joins the PRE-cascade purgers so

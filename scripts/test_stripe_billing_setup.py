@@ -38,13 +38,14 @@ class StripeBillingSetupTest(unittest.TestCase):
     def test_pricing_catalog_has_expected_paid_dimensions(self):
         dimensions = SETUP.parse_pricing()
         names = {name for name, _, _ in dimensions}
-        self.assertEqual(13, len(dimensions))
+        self.assertEqual(14, len(dimensions))
         self.assertIn("instance_seconds.service.starter", names)
         self.assertIn("instance_seconds.postgres.basic-1gb", names)
         self.assertIn("instance_seconds.key_value.standard", names)
         self.assertIn("egress_gib", names)
         self.assertIn("build_seconds", names)
         self.assertIn("storage_gb_hours", names)
+        self.assertIn("sandbox_compute_seconds", names)
         self.assertFalse(any(name.endswith(".free") for name in names))
 
     def test_pricing_catalog_rates_match_published_units(self):
@@ -77,6 +78,13 @@ class StripeBillingSetupTest(unittest.TestCase):
         self.assertEqual(
             Decimal("0.21"),
             storage_dollars_per_month.quantize(Decimal("0.01")),
+        )
+        sandbox_dollars_per_vcpu_hour = (
+            dimensions["sandbox_compute_seconds"] * Decimal(1000 * 3600) / Decimal(100)
+        )
+        self.assertEqual(
+            Decimal("0.0895"),
+            sandbox_dollars_per_vcpu_hour.quantize(Decimal("0.0001")),
         )
 
     def test_existing_matching_price_is_reused(self):

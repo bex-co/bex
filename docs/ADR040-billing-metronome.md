@@ -26,6 +26,7 @@ The architecture keeps three responsibilities separate:
 - `egress_gib`, rebased from bytes;
 - `build_seconds`;
 - `storage_gb_hours`, rebased from GB-seconds;
+- `sandbox_compute_seconds`, measured in milli-vCPU-equivalent seconds with memory already folded into the quantity at ADR047's AgentCore reference ratio;
 - a stable perpetual 100%-off coupon, `bex-comp-100`.
 
 Free and unknown tiers produce no paid meter event. The setup script validates existing meter mappings and Price currency, cadence, meter, and amount before reusing them; catalog drift fails closed. Runtime subscription provisioning independently resolves the complete set of active Price lookup keys and refuses to create a partial contract.
