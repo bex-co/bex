@@ -1,0 +1,132 @@
+import {
+  isLifecycleSuspended,
+  protectedConfirmationFromError,
+  type LifecycleCapability,
+  type LifecycleRunResult,
+} from "../services/lifecycle";
+
+export type PostgresLifecycleAction = "suspend" | "resume" | "restart";
+
+export type PostgresLifecycleResource = {
+  id: string;
+  name: string;
+  status: string;
+  suspended: boolean | string | null;
+  updatedAt?: string | null;
+};
+
+export type PostgresLifecycleControllerOptions = {
+  mutate: {
+    suspend: (id: string, confirmation?: string) => Promise<void>;
+    resume: (id: string) => Promise<void>;
+    restart: (id: string) => Promise<void>;
+  };
+  refresh: (id: string) => Promise<PostgresLifecycleResource | null>;
+  wait?: () => Promise<void>;
+  maxPolls?: number;
+};
+
+const ACTIONABLE_STATUSES = new Set(["available", "unavailable"]);
+
+export function postgresLifecycleCapabilities(
+  resource: PostgresLifecycleResource,
+): LifecycleCapability<PostgresLifecycleAction>[] {
+  if (isLifecycleSuspended(resource.suspended)) {
+    return resource.status.toLowerCase() === "deleting"
+      ? []
+      : [{ action: "resume", requiresConfirmation: false }];
+  }
+  if (!ACTIONABLE_STATUSES.has(resource.status.toLowerCase())) return [];
+  return [
+    { action: "suspend", requiresConfirmation: true },
+    { action: "restart", requiresConfirmation: true },
+  ];
+}
+
+export class PostgresLifecycleController {
+  private readonly pending = new Map<string, PostgresLifecycleAction>();
+  private readonly wait: () => Promise<void>;
+  private readonly maxPolls: number;
+
+  constructor(private readonly options: PostgresLifecycleControllerOptions) {
+    this.wait =
+      options.wait ??
+      (() => new Promise((resolve) => setTimeout(resolve, 2_500)));
+    this.maxPolls = Math.max(1, options.maxPolls ?? 12);
+  }
+
+  pendingAction(id: string): PostgresLifecycleAction | null {
+    return this.pending.get(id) ?? null;
+  }
+
+  async run(input: {
+    action: PostgresLifecycleAction;
+    resource: PostgresLifecycleResource;
+    confirmed: boolean;
+    serverConfirmation?: string;
+  }): Promise<
+    LifecycleRunResult<PostgresLifecycleResource, PostgresLifecycleAction>
+  > {
+    const { action, resource } = input;
+    const active = this.pending.get(resource.id);
+    if (active) return { status: "busy", action: active };
+    const capability = postgresLifecycleCapabilities(resource).find(
+      (candidate) => candidate.action === action,
+    );
+    if (!capability) return { status: "not_allowed", reason: "state" };
+    if (capability.requiresConfirmation && !input.confirmed) {
+      return { status: "confirmation_required", source: "device" };
+    }
+
+    this.pending.set(resource.id, action);
+    try {
+      try {
+        if (action === "suspend") {
+          await this.options.mutate.suspend(
+            resource.id,
+            input.serverConfirmation,
+          );
+        } else if (action === "resume") {
+          await this.options.mutate.resume(resource.id);
+        } else {
+          await this.options.mutate.restart(resource.id);
+        }
+      } catch (error) {
+        const confirmation = protectedConfirmationFromError(error);
+        if (confirmation && input.serverConfirmation !== confirmation) {
+          return {
+            status: "confirmation_required",
+            source: "server",
+            confirmation,
+          };
+        }
+        return { status: "error", error };
+      }
+
+      let latest: PostgresLifecycleResource | null = null;
+      for (let poll = 0; poll < this.maxPolls; poll += 1) {
+        latest = await this.options.refresh(resource.id);
+        if (latest && postgresConverged(action, latest)) {
+          return { status: "success", resource: latest };
+        }
+        if (poll < this.maxPolls - 1) await this.wait();
+      }
+      return { status: "timeout", resource: latest };
+    } catch (error) {
+      return { status: "error", error };
+    } finally {
+      this.pending.delete(resource.id);
+    }
+  }
+}
+
+function postgresConverged(
+  action: PostgresLifecycleAction,
+  resource: PostgresLifecycleResource,
+): boolean {
+  if (action === "suspend") return isLifecycleSuspended(resource.suspended);
+  if (action === "resume") return !isLifecycleSuspended(resource.suspended);
+  // The current GraphQL view exposes no restart generation/condition. A fresh
+  // authorized read can confirm the accepted resource, but not the CNPG bounce.
+  return ACTIONABLE_STATUSES.has(resource.status.toLowerCase());
+}

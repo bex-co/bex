@@ -1,0 +1,26 @@
+mutation MobileSuspendService($id: String!, $confirm: String) {
+  suspendService(id: $id, confirm: $confirm) {
+    id
+    suspended
+    phase
+    updatedAt
+  }
+}
+
+mutation MobileResumeService($id: String!) {
+  resumeService(id: $id) {
+    id
+    suspended
+    phase
+    updatedAt
+  }
+}
+
+mutation MobileRestartService($serviceId: String!) {
+  restartServer(serviceId: $serviceId) {
+    id
+    serviceId
+    status
+    createdAt
+  }
+}

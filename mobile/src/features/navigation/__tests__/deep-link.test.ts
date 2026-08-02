@@ -1,4 +1,9 @@
-import { validAgentSessionDeepLink, validServiceDeepLink } from "../deep-link";
+import {
+  validAgentSessionDeepLink,
+  validDatabaseDeepLink,
+  validKeyValueDeepLink,
+  validServiceDeepLink,
+} from "../deep-link";
 
 describe("native deep links", () => {
   it("accepts only canonical opaque service IDs", () => {
@@ -11,5 +16,12 @@ describe("native deep links", () => {
     expect(validAgentSessionDeepLink("ags-abc123")).toBe(true);
     expect(validAgentSessionDeepLink("srv-abc123")).toBe(false);
     expect(validAgentSessionDeepLink("ags-ABC123")).toBe(false);
+  });
+
+  it("accepts only canonical datastore IDs", () => {
+    expect(validDatabaseDeepLink("dpg-abc123")).toBe(true);
+    expect(validDatabaseDeepLink("red-abc123")).toBe(false);
+    expect(validKeyValueDeepLink("red-abc123")).toBe(true);
+    expect(validKeyValueDeepLink("red-../other")).toBe(false);
   });
 });

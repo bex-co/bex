@@ -1,0 +1,30 @@
+query MobileKeyValueLifecycle($id: String!) {
+  keyValue(id: $id) {
+    id
+    name
+    status
+    suspended
+    version
+    plan
+    region
+    updatedAt
+  }
+}
+
+mutation MobileSuspendKeyValue($id: String!, $confirm: String) {
+  suspendKeyValue(id: $id, confirm: $confirm) {
+    id
+    suspended
+    status
+    updatedAt
+  }
+}
+
+mutation MobileResumeKeyValue($id: String!) {
+  resumeKeyValue(id: $id) {
+    id
+    suspended
+    status
+    updatedAt
+  }
+}
