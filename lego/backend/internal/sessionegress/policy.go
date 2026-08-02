@@ -124,7 +124,7 @@ func ExtraDestinations(entries []string) ([]string, error) {
 			return nil, invalidAllowlist("ip_literal", raw, "IP literals are not supported")
 		case len(validation.IsDNS1123Subdomain(host)) != 0 || !strings.Contains(host, "."):
 			return nil, invalidAllowlist("not_a_hostname", raw, "destination must be a valid multi-label DNS hostname")
-		case host == "localhost" || strings.HasSuffix(host, ".localhost") || strings.HasSuffix(host, ".local") || strings.HasSuffix(host, ".internal") || strings.HasSuffix(host, ".cluster.local"):
+		case privateOrClusterHost(host):
 			return nil, invalidAllowlist("private_name", raw, "private and cluster-local destinations cannot be allowlisted")
 		}
 		if _, exists := seen[host]; exists {
@@ -157,8 +157,28 @@ func (c Config) normalized() (Config, error) {
 	return c, nil
 }
 
+// setupRegistryDomains returns the platform setup-only registry catalog. A
+// Manager built through NewManager already holds the validated, normalized list;
+// a zero-value Manager (used in rendering tests) falls back to the curated
+// default so the setup phase is never emptied by an unset config. Reading the
+// stored value avoids re-validating the static catalog on every render (m40/t005).
+func (m *Manager) setupRegistryDomains() []string {
+	if len(m.Config.SetupRegistryDomains) == 0 {
+		return registryDomains
+	}
+	return m.Config.SetupRegistryDomains
+}
+
 // ModelEndpointHost validates one per-session provider endpoint and returns the
 // exact public DNS host the Cilium policy must admit.
+//
+// ADR047 D5/D6 forward note: the model endpoint is deliberately derived per
+// session from the caller's selected agent/provider, never a global constant.
+// When the wave-2 metering LLM proxy (D6 phase 2) ships, the provider resolver
+// must return only that single in-cluster proxy endpoint, so direct vendor model
+// hosts disappear from newly rendered policies — one egress choke point then owns
+// both token metering and exfiltration containment. No change is needed here: a
+// narrower resolved endpoint simply renders a narrower baseline.
 func ModelEndpointHost(raw string) (string, error) {
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
@@ -168,12 +188,23 @@ func ModelEndpointHost(raw string) (string, error) {
 		return "", core.NewBadRequestError("AGENT_SESSION_MODEL_ENDPOINT_INVALID", "modelEndpoint must use HTTPS port 443", nil)
 	}
 	modelHost := strings.ToLower(u.Hostname())
-	if net.ParseIP(modelHost) != nil || len(validation.IsDNS1123Subdomain(modelHost)) != 0 || !strings.Contains(modelHost, ".") ||
-		strings.HasSuffix(modelHost, ".localhost") || strings.HasSuffix(modelHost, ".local") ||
-		strings.HasSuffix(modelHost, ".internal") || strings.HasSuffix(modelHost, ".cluster.local") {
+	if net.ParseIP(modelHost) != nil || len(validation.IsDNS1123Subdomain(modelHost)) != 0 ||
+		!strings.Contains(modelHost, ".") || privateOrClusterHost(modelHost) {
 		return "", core.NewBadRequestError("AGENT_SESSION_MODEL_ENDPOINT_INVALID", "modelEndpoint must use a DNS hostname", nil)
 	}
 	return modelHost, nil
+}
+
+// privateOrClusterHost reports whether host is a loopback or cluster-local name
+// that must never enter a tenant egress allowlist or be used as a model
+// endpoint. Both validators share this reserved-suffix set so it lives in one
+// place and cannot drift (m40/t005).
+func privateOrClusterHost(host string) bool {
+	return host == "localhost" ||
+		strings.HasSuffix(host, ".localhost") ||
+		strings.HasSuffix(host, ".local") ||
+		strings.HasSuffix(host, ".internal") ||
+		strings.HasSuffix(host, ".cluster.local")
 }
 
 // PrepareSetup installs the setup posture before the sandbox is created. It is
@@ -255,10 +286,6 @@ func (m *Manager) Delete(ctx context.Context, namespace, sessionID string) error
 }
 
 func (m *Manager) policy(namespace, sessionID string, phase Phase, modelEndpoint string, extra []string) (*unstructured.Unstructured, error) {
-	config, err := m.Config.normalized()
-	if err != nil {
-		return nil, err
-	}
 	modelHost, err := ModelEndpointHost(modelEndpoint)
 	if err != nil {
 		return nil, err
@@ -277,7 +304,7 @@ func (m *Manager) policy(namespace, sessionID string, phase Phase, modelEndpoint
 	domains := append([]string{}, githubDomains...)
 	domains = append(domains, modelHost)
 	if phase == PhaseSetup {
-		domains = append(domains, config.SetupRegistryDomains...)
+		domains = append(domains, m.setupRegistryDomains()...)
 	}
 	domains = append(domains, extra...)
 	domains = uniqueSorted(domains)
@@ -314,11 +341,17 @@ func (m *Manager) policy(namespace, sessionID string, phase Phase, modelEndpoint
 	return obj, nil
 }
 
-func dnsRule(domains []string) map[string]any {
+// matchNames renders a domain list as Cilium's `{"matchName": <domain>}` form,
+// shared by the L7 DNS filter and the toFQDNs allow.
+func matchNames(domains []string) []any {
 	names := make([]any, 0, len(domains))
 	for _, domain := range domains {
 		names = append(names, map[string]any{"matchName": domain})
 	}
+	return names
+}
+
+func dnsRule(domains []string) map[string]any {
 	return map[string]any{
 		"toEndpoints": []any{map[string]any{"matchLabels": map[string]any{
 			"k8s:io.kubernetes.pod.namespace": "kube-system",
@@ -326,20 +359,18 @@ func dnsRule(domains []string) map[string]any {
 		}}},
 		"toPorts": []any{map[string]any{
 			"ports": []any{map[string]any{"port": "53", "protocol": "ANY"}},
-			"rules": map[string]any{"dns": names},
+			"rules": map[string]any{"dns": matchNames(domains)},
 		}},
 	}
 }
 
 func fqdnRule(domains []string) map[string]any {
-	fqdns := make([]any, 0, len(domains))
 	servers := make([]any, 0, len(domains))
 	for _, domain := range domains {
-		fqdns = append(fqdns, map[string]any{"matchName": domain})
 		servers = append(servers, domain)
 	}
 	return map[string]any{
-		"toFQDNs": fqdns,
+		"toFQDNs": matchNames(domains),
 		"toPorts": []any{map[string]any{
 			"ports":       []any{map[string]any{"port": "443", "protocol": "TCP"}},
 			"serverNames": servers,

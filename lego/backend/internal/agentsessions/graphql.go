@@ -72,17 +72,6 @@ func configArg(args map[string]any) AgentConfig {
 	return AgentConfig{Agent: stringArg(raw, "agent"), Model: stringArg(raw, "model"), ModelEndpoint: stringArg(raw, "modelEndpoint"), Task: stringArg(raw, "task"), Template: stringArg(raw, "template")}
 }
 
-func stringListArg(args map[string]any, key string) []string {
-	raw, _ := args[key].([]any)
-	out := make([]string, 0, len(raw))
-	for _, item := range raw {
-		if value, ok := item.(string); ok {
-			out = append(out, value)
-		}
-	}
-	return out
-}
-
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"agentSessions": &graphql.Field{
@@ -111,7 +100,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"egressAllowlist": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String))},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Create(p.Context, CreateRequest{OwnerID: stringArg(p.Args, "ownerId"), Repo: stringArg(p.Args, "repo"), Branch: stringArg(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: stringListArg(p.Args, "egressAllowlist")})
+				return s.Create(p.Context, CreateRequest{OwnerID: stringArg(p.Args, "ownerId"), Repo: stringArg(p.Args, "repo"), Branch: stringArg(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"])})
 			},
 		},
 		"resumeAgentSession": &graphql.Field{Type: agentSessionGQLType, Args: idArg, Resolve: func(p graphql.ResolveParams) (any, error) {

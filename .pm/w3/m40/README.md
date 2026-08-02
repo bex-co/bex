@@ -1,17 +1,17 @@
 # w3 · m40 — Session egress: phase-split default-deny + per-session allowlist (ADR047 D5)
 
-**Worker:** worker3 **Goal:** agent-session sandboxes keep the `<ws>-sandbox` default-deny posture with a Codex-style phase split — setup may reach package registries, the agent phase reaches only GitHub + the model endpoint (+ the gateway credential hop) — and tenants can widen per session with an explicit allowlist. **Status:** todo
+**Worker:** worker3 **Goal:** agent-session sandboxes keep the `<ws>-sandbox` default-deny posture with a Codex-style phase split — setup may reach package registries, the agent phase reaches only GitHub + the model endpoint (+ the gateway credential hop) — and tenants can widen per session with an explicit allowlist. **Status:** in progress — implementation, simplify, and unit/gitops verification complete (t001–t003, t005, t006); the operator-gated live-substrate run (t004) and closeout (t007) remain, blocked on access to the production gVisor+Cilium cluster.
 
 ## Tasks (in order)
 
 | id   | title                                                                          | est | depends_on |
 | ---- | ------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Setup-phase vs agent-phase policy split (registries open during setup only)     | 60m | —          |
-| t002 | Baseline agent-phase allowlist: GitHub + model endpoint + gateway credential hop | 45m | t001       |
-| t003 | Per-session tenant allowlist widening (API field → policy)                      | 60m | t002       |
+| t001 | Setup-phase vs agent-phase policy split (registries open during setup only) — **DONE**     | 60m | —          |
+| t002 | Baseline agent-phase allowlist: GitHub + model endpoint + gateway credential hop — **DONE** | 45m | t001       |
+| t003 | Per-session tenant allowlist widening (API field → policy) — **DONE**                      | 60m | t002       |
 | t004 | Live verification on the gVisor substrate (extend verify-sandbox-isolation-live) | 45m | t003       |
-| t005 | Simplify pass over the egress-policy code                                       | 20m | t004       |
-| t006 | Test coverage: phase transitions, allowlist rendering, deny defaults            | 45m | t004       |
+| t005 | Simplify pass over the egress-policy code — **DONE**                                       | 20m | t004       |
+| t006 | Test coverage: phase transitions, allowlist rendering, deny defaults — **DONE**            | 45m | t004       |
 | t007 | Closeout                                                                        | 10m | t006       |
 
 ## Definition of done
@@ -21,6 +21,14 @@
 - The session create surface (w3/m39) accepts an explicit per-session egress allowlist (Codex pattern) that renders into per-sandbox policy; unknown/invalid entries are a named 400, never silently ignored.
 - `scripts/verify-sandbox-isolation-live.sh` (or a session-specific sibling) proves on the live substrate: setup-phase registry reachability, agent-phase denial of a non-allowlisted destination, allowlisted-destination reachability, and cross-sandbox isolation unchanged.
 - ADR047 D5 note recorded: when the wave-2 metering LLM proxy exists, the model-endpoint allowlist narrows to the proxy.
+
+## Implementation status (2026-08-02)
+
+- **Mechanism (t001–t003):** `lego/backend/internal/sessionegress` renders one namespaced per-session `CiliumNetworkPolicy` keyed by the immutable `bex.co/agent-session` identity, with a one-way setup→agent transition (setup admits the curated/`BEX_AGENT_SETUP_REGISTRIES` package catalog; agent narrows to GitHub + the per-session model endpoint + the in-cluster gateway credential hop). Tenant widening is exact-public-DNS only, `AGENT_SESSION_EGRESS_ALLOWLIST_INVALID` 400 on invalid/duplicate/private/wildcard/URL/excess entries. Wired through `sandbox.AgentSessionLifecycle` and the `agentsessions` create surface (REST/GraphQL/MCP `egressAllowlist`). Platform-side: `deploy/gitops/base/tenant-node-egress.yaml` keeps the structural clusterwide `sandbox-egress-default-deny` and moves positive rules to `sandbox-egress-legacy-allowlist` (which excludes agent-session Pods); `bex-api-session-egress` admission confines bex-api's dynamic Cilium authority.
+- **t002 forward note:** ADR047 D5/D6 proxy-narrowing note added to `sessionegress/policy.go` (`ModelEndpointHost`) — when the wave-2 metering LLM proxy ships, the provider resolver returns only that proxy endpoint.
+- **t006 tests:** `sessionegress/policy_test.go` (phase split, one-way transition + allowlist/endpoint immutability, provider→FQDN via `agentsessions/egress_test.go`, invalid-entry 400s, and a new golden-shape test asserting every rendered profile is additive-only and never carries a CIDR/entity/wildcard/broad-selector escape that could lift the deny floor). `go test ./...` green, `make lint-backend` 0 issues.
+- **t005 simplify:** applied — reuse `gqlutil.StringList` + `store.SandboxNamespace`, shared `privateOrClusterHost` reject list across both validators, dropped per-render re-validation of the static registry catalog, and a shared `matchNames` renderer. Declined (recorded follow-up): collapsing the CNP-annotation vs sandbox-metadata dual state by having `TransitionToAgent` load endpoint+allowlist from the persisted setup policy — a redesign of the security-critical immutability seam, out of scope for a behavior-preserving pass.
+- **t004/t007 outstanding:** the live-substrate checks already exist in `scripts/verify-sandbox-isolation.sh` (setup-registry reachability, agent-phase denial, baseline + tenant-widened reachability, cross-sandbox isolation), driven by the `verify-sandbox-isolation-live.sh` disposable-fixture wrapper. The RUN + evidence capture is **operator-gated** and requires the production gVisor+Cilium substrate (the local `kind-bex-mgmt` context has no `gvisor` RuntimeClass or Cilium CRDs). Per t004, this "stays operator-run like m35." Closeout (t007) holds until that run passes and evidence is recorded.
 
 ## Source + Goal linkage
 
