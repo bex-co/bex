@@ -55,7 +55,14 @@ type usageResponse struct {
 	EstimatedCost pricing.EstimatedCost `json:"estimatedCost"`
 	// Billing is the real Stripe cost + invoices (m48/m50); omitted (null) when
 	// estimate-only — no contract, comped/excluded, billing off, or degraded.
-	Billing *billing.Billing `json:"billing,omitempty"`
+	Billing  *billing.Billing `json:"billing,omitempty"`
+	Coverage usageCoverage    `json:"coverage"`
+}
+
+type usageCoverage struct {
+	State           string   `json:"state"`
+	Through         string   `json:"through,omitempty"`
+	DegradedSources []string `json:"degradedSources"`
 }
 
 // RegisterREST mounts the usage REST endpoint on the shared mux. ownerId
@@ -86,12 +93,23 @@ func toUsageResponse(sum Summary) usageResponse {
 		}
 		svcs = append(svcs, usageServiceEntry{ServiceID: svc.ServiceID, ServiceName: svc.ServiceName, ResourceKind: svc.ResourceKind, Rows: rows})
 	}
+	coverage := usageCoverage{State: sum.Coverage.State, DegradedSources: append([]string(nil), sum.Coverage.DegradedSources...)}
+	if coverage.State == "" {
+		coverage.State = CoverageUnknown
+	}
+	if coverage.DegradedSources == nil {
+		coverage.DegradedSources = []string{}
+	}
+	if !sum.Coverage.Through.IsZero() {
+		coverage.Through = sum.Coverage.Through.UTC().Format(time.RFC3339)
+	}
 	return usageResponse{
 		WorkspaceID:   sum.WorkspaceID,
 		Period:        period,
 		Services:      svcs,
 		EstimatedCost: sum.EstimatedCost,
 		Billing:       sum.Billing,
+		Coverage:      coverage,
 	}
 }
 

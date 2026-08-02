@@ -472,6 +472,18 @@ func (m *memStore) UpsertUsageHourly(_ context.Context, row HourlyRow) error {
 	return nil
 }
 
+func (m *memStore) RecordUsageSourceHealth(_ context.Context, _ []UsageSourceRecord) error {
+	return nil
+}
+
+func (m *memStore) ReconcileUsageSourceStreams(_ context.Context, _ []UsageResourceRef, _ time.Time) error {
+	return nil
+}
+
+func (m *memStore) CurrentUsageCoverage(_ context.Context, _ string, _ time.Time) (UsageCoverage, error) {
+	return UsageCoverage{}, nil
+}
+
 func (m *memStore) LatestUsageWindow(_ context.Context, resourceKind, serviceID, kind string) (time.Time, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

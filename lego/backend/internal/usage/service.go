@@ -53,6 +53,9 @@ import (
 type UsageStore interface {
 	ListApps(ctx context.Context) ([]store.App, error)
 	UpsertUsageHourly(ctx context.Context, row store.HourlyRow) error
+	RecordUsageSourceHealth(ctx context.Context, records []store.UsageSourceRecord) error
+	ReconcileUsageSourceStreams(ctx context.Context, active []store.UsageResourceRef, through time.Time) error
+	CurrentUsageCoverage(ctx context.Context, workspaceID string, now time.Time) (store.UsageCoverage, error)
 	LatestUsageWindow(ctx context.Context, resourceKind, serviceID, kind string) (time.Time, error)
 	UsageMonthToDate(ctx context.Context, workspaceID string, now time.Time) ([]store.UsageSummaryRow, error)
 	CompactUsage(ctx context.Context, before time.Time) (store.UsageCompaction, error)
@@ -122,7 +125,23 @@ type Summary struct {
 	// Billing is the real Stripe-computed cost + finalized invoices (m48/m50).
 	// nil ⇒ estimate-only: no contract, comped/excluded, billing off, or a
 	// degraded Stripe read — clients show EstimatedCost alone.
-	Billing *billing.Billing
+	Billing  *billing.Billing
+	Coverage Coverage
+}
+
+const (
+	CoverageComplete = "complete"
+	CoveragePartial  = "partial"
+	CoverageUnknown  = "unknown"
+)
+
+// Coverage describes the evidence behind current-month totals. Through is the
+// common end of every active source stream's contiguous hourly prefix. It is
+// zero for unknown evidence and never inferred for historical periods.
+type Coverage struct {
+	State           string
+	Through         time.Time
+	DegradedSources []string
 }
 
 // ServiceUsage is one service's contribution to the workspace's month-to-date
@@ -169,6 +188,22 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 	sum.Period = now.Format("2006-01")
 	sum.EstimatedCost = pricing.Default.Estimate(rows)
 	sum.Billing = s.readBilling(ctx, tenantID, now)
+	sum.Coverage = Coverage{State: CoverageUnknown, DegradedSources: []string{}}
+	current := s.Now().UTC()
+	if now.Year() == current.Year() && now.Month() == current.Month() {
+		evidence, err := s.Store.CurrentUsageCoverage(ctx, tenantID, current)
+		if err != nil {
+			return Summary{}, fmt.Errorf("usage coverage: %w", err)
+		}
+		if evidence.Known {
+			sum.Coverage.State = CoveragePartial
+			if evidence.Complete {
+				sum.Coverage.State = CoverageComplete
+			}
+			sum.Coverage.Through = evidence.Through
+			sum.Coverage.DegradedSources = append([]string(nil), evidence.DegradedSources...)
+		}
+	}
 	return sum, nil
 }
 
@@ -366,13 +401,14 @@ func (s *Service) compact(ctx context.Context) {
 
 // datastoreEntry holds the metering attributes for one Database or KeyValue CR.
 type datastoreEntry struct {
-	ID       string // immutable CR name (== service_id in usage rows)
-	Name     string // immutable data-plane name used in Prometheus selectors
-	Display  string // required mutable user-facing spec.name
-	TenantID string // from core.LabelTenant
-	Plan     string // Spec.Plan (== tier in usage rows)
-	Kind     string // store.ResourceKindPostgres or store.ResourceKindKeyValue
-	Public   bool   // whether the public proxy source applies
+	ID        string // immutable CR name (== service_id in usage rows)
+	Name      string // immutable data-plane name used in Prometheus selectors
+	Display   string // required mutable user-facing spec.name
+	TenantID  string // from core.LabelTenant
+	Plan      string // Spec.Plan (== tier in usage rows)
+	Kind      string // store.ResourceKindPostgres or store.ResourceKindKeyValue
+	Public    bool   // whether the public proxy source applies
+	CreatedAt time.Time
 }
 
 // listDatastores returns all tenant-owned Database and KeyValue CRs in the
@@ -393,13 +429,14 @@ func (s *Service) listDatastores(ctx context.Context) ([]datastoreEntry, error) 
 			continue
 		}
 		out = append(out, datastoreEntry{
-			ID:       d.Name,
-			Name:     d.Name,
-			Display:  d.Spec.Name,
-			TenantID: tenantID,
-			Plan:     d.Spec.Plan,
-			Kind:     store.ResourceKindPostgres,
-			Public:   d.Spec.Public,
+			ID:        d.Name,
+			Name:      d.Name,
+			Display:   d.Spec.Name,
+			TenantID:  tenantID,
+			Plan:      d.Spec.Plan,
+			Kind:      store.ResourceKindPostgres,
+			Public:    d.Spec.Public,
+			CreatedAt: d.CreationTimestamp.Time,
 		})
 	}
 	var kvs appv1alpha1.KeyValueList
@@ -412,13 +449,14 @@ func (s *Service) listDatastores(ctx context.Context) ([]datastoreEntry, error) 
 			continue
 		}
 		out = append(out, datastoreEntry{
-			ID:       kv.Name,
-			Name:     kv.Name,
-			Display:  kv.Spec.Name,
-			TenantID: tenantID,
-			Plan:     kv.Spec.Plan,
-			Kind:     store.ResourceKindKeyValue,
-			Public:   kv.Spec.Public,
+			ID:        kv.Name,
+			Name:      kv.Name,
+			Display:   kv.Spec.Name,
+			TenantID:  tenantID,
+			Plan:      kv.Spec.Plan,
+			Kind:      store.ResourceKindKeyValue,
+			Public:    kv.Spec.Public,
+			CreatedAt: kv.CreationTimestamp.Time,
 		})
 	}
 	return out, nil
@@ -456,17 +494,25 @@ func (s *Service) processDatastoreMeterWindow(ctx context.Context, ds datastoreE
 	end := window.Add(time.Hour)
 	var quantity int64
 	var ok bool
+	var health []store.UsageSourceObservation
+	expectedFrom := usageExpectedFrom(ds.CreatedAt)
 	switch kind {
 	case store.UsageKindInstanceSeconds:
 		quantity, ok = s.queryInstanceSecondsStateful(ctx, ds.Name, s.Namespace, window, end)
+		health = oneSourceHealth(store.UsageSourceInstance, ok, expectedFrom)
 	case store.UsageKindStorageGBSeconds:
 		quantity, ok = s.queryStorageGBSeconds(ctx, ds, window, end)
+		health = oneSourceHealth(store.UsageSourceStorage, ok, expectedFrom)
 	case store.UsageKindEgressBytes:
-		quantity, ok = s.queryDatastoreEgressBytes(ctx, ds, window, end)
+		quantity, health, ok = s.queryDatastoreEgressBytesEvidence(ctx, ds, window, end)
+		for i := range health {
+			health[i].ExpectedFrom = expectedFrom
+		}
 	default:
 		return false
 	}
 	if !ok {
+		s.recordSourceHealth(ctx, ds.TenantID, ds.Kind, ds.ID, kind, window, health)
 		return false
 	}
 	tier := ""
@@ -476,6 +522,7 @@ func (s *Service) processDatastoreMeterWindow(ctx context.Context, ds datastoreE
 	if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
 		WorkspaceID: ds.TenantID, ServiceID: ds.ID, ResourceKind: ds.Kind,
 		Kind: kind, Tier: tier, WindowStart: window, Quantity: quantity,
+		SourceHealth: health,
 	}); err != nil {
 		log.Printf("usage: upsert %s datastore %s: %v", kind, ds.ID, err)
 		return false
@@ -534,10 +581,12 @@ func (s *Service) catchUp(ctx context.Context) {
 	datastores, err := s.listDatastores(ctx)
 	if err != nil {
 		log.Printf("usage: catch-up: list datastores: %v", err)
+		return
 	}
 	for _, ds := range datastores {
-		s.catchUpDatastoreThrough(ctx, ds, now.Truncate(time.Hour).Add(-time.Hour))
+		s.catchUpDatastoreThrough(ctx, ds, last)
 	}
+	s.reconcileSourceInventory(ctx, apps, datastores, last.Add(time.Hour))
 }
 
 // rollup processes the window that just closed (the hour ending at t).
@@ -554,12 +603,27 @@ func (s *Service) rollup(ctx context.Context, t time.Time) {
 	datastores, err := s.listDatastores(ctx)
 	if err != nil {
 		log.Printf("usage: rollup: list datastores: %v", err)
+		return
 	}
 	for _, ds := range datastores {
 		s.catchUpDatastoreThrough(ctx, ds, window)
 	}
+	s.reconcileSourceInventory(ctx, apps, datastores, window.Add(time.Hour))
 	log.Printf("usage: rolled up window %s for %d services + %d datastores",
 		window.Format(time.RFC3339), len(apps), len(datastores))
+}
+
+func (s *Service) reconcileSourceInventory(ctx context.Context, apps []store.App, datastores []datastoreEntry, through time.Time) {
+	active := make([]store.UsageResourceRef, 0, len(apps)+len(datastores))
+	for _, app := range apps {
+		active = append(active, store.UsageResourceRef{ResourceKind: store.ResourceKindService, ServiceID: app.ID})
+	}
+	for _, ds := range datastores {
+		active = append(active, store.UsageResourceRef{ResourceKind: ds.Kind, ServiceID: ds.ID})
+	}
+	if err := s.Store.ReconcileUsageSourceStreams(ctx, active, through); err != nil {
+		log.Printf("usage: reconcile source inventory through %s: %v", through.Format(time.RFC3339), err)
+	}
 }
 
 var appMeterKinds = [...]string{
@@ -654,21 +718,29 @@ func (s *Service) processAppMeterWindowResult(ctx context.Context, app store.App
 	end := window.Add(time.Hour)
 	var quantity int64
 	var ok bool
+	var health []store.UsageSourceObservation
+	expectedFrom := usageExpectedFrom(app.CreatedAt)
 	switch kind {
 	case store.UsageKindInstanceSeconds:
 		// The App's pods live in its per-tenant namespace under ADR043, so the
 		// cAdvisor `namespace=` matcher must target AppNamespace(app.TenantID), not
 		// the shared namespace (which after the migration holds none of its pods).
 		quantity, ok = s.queryInstanceSeconds(ctx, app.Name, s.AppNamespace(app.TenantID), window, end)
+		health = oneSourceHealth(store.UsageSourceInstance, ok, expectedFrom)
 	case store.UsageKindEgressBytes:
-		quantity, ok = s.queryEgressBytes(ctx, app, window, end)
+		quantity, health, ok = s.queryEgressBytesEvidence(ctx, app, window, end)
+		for i := range health {
+			health[i].ExpectedFrom = expectedFrom
+		}
 	case store.UsageKindBuildSeconds:
 		quantity, ok = s.queryBuildSeconds(ctx, app.Name, window, end)
+		health = oneSourceHealth(store.UsageSourceBuild, ok, expectedFrom)
 	default:
 		log.Printf("usage: unknown App meter %q for %s", kind, app.ID)
 		return appMeterWindowSourceUnavailable
 	}
 	if !ok {
+		s.recordSourceHealth(ctx, app.TenantID, store.ResourceKindService, app.ID, kind, window, health)
 		return appMeterWindowSourceUnavailable
 	}
 	tier := ""
@@ -683,11 +755,40 @@ func (s *Service) processAppMeterWindowResult(ctx context.Context, app store.App
 		Tier:         tier,
 		WindowStart:  window,
 		Quantity:     quantity,
+		SourceHealth: health,
 	}); err != nil {
 		log.Printf("usage: upsert %s %s: %v", kind, app.ID, err)
 		return appMeterWindowStoreFailure
 	}
 	return appMeterWindowSuccess
+}
+
+func usageExpectedFrom(created time.Time) time.Time {
+	if created.IsZero() {
+		return time.Unix(0, 0).UTC()
+	}
+	return created.UTC().Truncate(time.Hour)
+}
+
+func oneSourceHealth(source string, healthy bool, expectedFrom time.Time) []store.UsageSourceObservation {
+	state := store.UsageSourceHealthy
+	if !healthy {
+		state = store.UsageSourceUnavailable
+	}
+	return []store.UsageSourceObservation{{Source: source, State: state, ExpectedFrom: expectedFrom}}
+}
+
+func (s *Service) recordSourceHealth(ctx context.Context, workspaceID, resourceKind, serviceID, kind string, window time.Time, observations []store.UsageSourceObservation) {
+	records := make([]store.UsageSourceRecord, 0, len(observations))
+	for _, observation := range observations {
+		records = append(records, store.UsageSourceRecord{
+			WorkspaceID: workspaceID, ResourceKind: resourceKind, ServiceID: serviceID,
+			Kind: kind, WindowStart: window, UsageSourceObservation: observation,
+		})
+	}
+	if err := s.Store.RecordUsageSourceHealth(ctx, records); err != nil {
+		log.Printf("usage: record %s source health for %s: %v", kind, serviceID, err)
+	}
 }
 
 // --- t002: Prometheus rollup queries ---
@@ -776,8 +877,13 @@ func (s *Service) queryInstanceSecondsByMatcher(ctx context.Context, matchers st
 // bytes. Static sites have no tenant pod, so direct is explicit N/A. A failed
 // required source or health signal rejects the whole sum.
 func (s *Service) queryEgressBytes(ctx context.Context, app store.App, start, end time.Time) (int64, bool) {
-	if s.PromBase == "" || s.Client == nil {
-		return 0, false
+	quantity, _, ok := s.queryEgressBytesEvidence(ctx, app, start, end)
+	return quantity, ok
+}
+
+func (s *Service) queryEgressBytesEvidence(ctx context.Context, app store.App, start, end time.Time) (int64, []store.UsageSourceObservation, bool) {
+	if s.Client == nil {
+		return 0, unavailableAppEgressSources(false), false
 	}
 	// Resolve the App CR by its unique app-id across every workspace: per-tenant
 	// namespaces (ADR043) scatter the CRs across `<ws>` namespaces, so this must
@@ -785,23 +891,58 @@ func (s *Service) queryEgressBytes(ctx context.Context, app store.App, start, en
 	var projected appv1alpha1.AppList
 	if err := s.Client.List(ctx, &projected, client.MatchingLabels{store.LabelAppID: app.ID}); err != nil {
 		log.Printf("usage: egress_bytes resolve App CR for %s: %v", app.ID, err)
-		return 0, false
+		return 0, unavailableAppEgressSources(false), false
 	}
 	if len(projected.Items) != 1 {
 		log.Printf("usage: egress_bytes resolve App CR for %s: found %d projected Apps", app.ID, len(projected.Items))
-		return 0, false
+		return 0, unavailableAppEgressSources(false), false
 	}
+	direct := projected.Items[0].Spec.Type != appv1alpha1.TypeStaticSite
 	routers, err := s.TraefikRouterNames(ctx, &projected.Items[0])
 	if err != nil {
 		log.Printf("usage: egress_bytes resolve routers for %s: %v", app.ID, err)
-		return 0, false
+		return 0, unavailableAppEgressSources(false), false
 	}
-	direct := projected.Items[0].Spec.Type != appv1alpha1.TypeStaticSite
-	return s.queryEgressSources(ctx, app.ID, egressquery.App(app.ID, routers, direct), start, end)
+	specs := egressquery.App(app.ID, routers, direct)
+	if len(specs) == 0 {
+		// A private/no-router static site has explicit healthy zero egress; it is
+		// not missing evidence merely because no public counter applies.
+		return 0, []store.UsageSourceObservation{{Source: store.UsageSourceHTTP, State: store.UsageSourceHealthy}}, true
+	}
+	if s.PromBase == "" {
+		observations := make([]store.UsageSourceObservation, 0, len(specs))
+		for _, spec := range specs {
+			observations = append(observations, store.UsageSourceObservation{Source: string(spec.Source), State: store.UsageSourceUnavailable})
+		}
+		return 0, observations, false
+	}
+	return s.queryEgressSourcesEvidence(ctx, app.ID, specs, start, end)
+}
+
+func unavailableAppEgressSources(direct bool) []store.UsageSourceObservation {
+	out := []store.UsageSourceObservation{{Source: store.UsageSourceHTTP, State: store.UsageSourceUnavailable}}
+	if direct {
+		out = append(out,
+			store.UsageSourceObservation{Source: store.UsageSourceWebSocket, State: store.UsageSourceUnavailable},
+			store.UsageSourceObservation{Source: store.UsageSourceDirect, State: store.UsageSourceUnavailable})
+	}
+	return out
 }
 
 func (s *Service) queryDatastoreEgressBytes(ctx context.Context, ds datastoreEntry, start, end time.Time) (int64, bool) {
-	return s.queryEgressSources(ctx, ds.ID, egressquery.Datastore(ds.ID, ds.Kind, ds.Public), start, end)
+	quantity, _, ok := s.queryDatastoreEgressBytesEvidence(ctx, ds, start, end)
+	return quantity, ok
+}
+
+func (s *Service) queryDatastoreEgressBytesEvidence(ctx context.Context, ds datastoreEntry, start, end time.Time) (int64, []store.UsageSourceObservation, bool) {
+	source := store.UsageSourcePostgres
+	if ds.Kind == store.ResourceKindKeyValue {
+		source = store.UsageSourceKeyValue
+	}
+	if !ds.Public {
+		return 0, []store.UsageSourceObservation{{Source: source, State: store.UsageSourceHealthy}}, true
+	}
+	return s.queryEgressSourcesEvidence(ctx, ds.ID, egressquery.Datastore(ds.ID, ds.Kind, true), start, end)
 }
 
 // queryEgressSources sums the hour's egress across sources with PER-SOURCE
@@ -814,8 +955,13 @@ func (s *Service) queryDatastoreEgressBytes(ctx context.Context, ds datastoreEnt
 // 2026 under the old any-source-defers rule, w1/034). All sources skipped
 // still records a successful zero — the gap-free cursor advances.
 func (s *Service) queryEgressSources(ctx context.Context, resourceID string, specs []egressquery.Spec, start, end time.Time) (int64, bool) {
+	quantity, _, ok := s.queryEgressSourcesEvidence(ctx, resourceID, specs, start, end)
+	return quantity, ok
+}
+
+func (s *Service) queryEgressSourcesEvidence(ctx context.Context, resourceID string, specs []egressquery.Spec, start, end time.Time) (int64, []store.UsageSourceObservation, bool) {
 	if len(specs) == 0 {
-		return 0, true
+		return 0, nil, true
 	}
 	seconds := int64(end.Sub(start) / time.Second)
 	type result struct {
@@ -842,22 +988,28 @@ func (s *Service) queryEgressSources(ctx context.Context, resourceID string, spe
 	}
 	var total float64
 	deferred := false
+	observations := make([]store.UsageSourceObservation, 0, len(specs))
 	for range specs {
 		result := <-results
+		state := store.UsageSourceHealthy
 		switch {
 		case result.err != nil:
 			log.Printf("usage: egress_bytes source %s for %s: %v (hour deferred)", result.source, resourceID, result.err)
 			deferred = true
+			state = store.UsageSourceUnavailable
 		case result.skipped:
 			log.Printf("usage: egress_bytes source %s for %s unhealthy in [%s, %s): skipped this hour", result.source, resourceID, start.Format(time.RFC3339), end.Format(time.RFC3339))
+			state = store.UsageSourceDegraded
 		default:
 			total += result.value
 		}
+		observations = append(observations, store.UsageSourceObservation{Source: string(result.source), State: state})
 	}
+	sort.Slice(observations, func(i, j int) bool { return observations[i].Source < observations[j].Source })
 	if deferred {
-		return 0, false
+		return 0, observations, false
 	}
-	return int64(math.Round(total)), true
+	return int64(math.Round(total)), observations, true
 }
 
 // --- t004: build-Job duration metering ---

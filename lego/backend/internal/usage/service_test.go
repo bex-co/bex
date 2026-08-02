@@ -46,13 +46,27 @@ import (
 // --- in-memory store stub ---
 
 type memUsageStore struct {
-	mu       sync.Mutex
-	apps     []store.App
-	rows     map[usageKey]store.HourlyRow
-	monthly  map[monthKey]monthlyVal
-	latestBy map[string]time.Time // resourceKind/serviceID/kind -> latest window_start
-	compacts []time.Time          // boundaries CompactUsage was called with
-	upsert   func(store.HourlyRow) error
+	mu          sync.Mutex
+	apps        []store.App
+	rows        map[usageKey]store.HourlyRow
+	monthly     map[monthKey]monthlyVal
+	latestBy    map[string]time.Time // resourceKind/serviceID/kind -> latest window_start
+	compacts    []time.Time          // boundaries CompactUsage was called with
+	upsert      func(store.HourlyRow) error
+	coverage    store.UsageCoverage
+	coverageErr error
+}
+
+func (m *memUsageStore) RecordUsageSourceHealth(_ context.Context, _ []store.UsageSourceRecord) error {
+	return nil
+}
+
+func (m *memUsageStore) ReconcileUsageSourceStreams(_ context.Context, _ []store.UsageResourceRef, _ time.Time) error {
+	return nil
+}
+
+func (m *memUsageStore) CurrentUsageCoverage(_ context.Context, _ string, _ time.Time) (store.UsageCoverage, error) {
+	return m.coverage, m.coverageErr
 }
 
 type usageKey struct {
@@ -79,6 +93,33 @@ func newMemUsageStore(apps ...store.App) *memUsageStore {
 		rows:     map[usageKey]store.HourlyRow{},
 		monthly:  map[monthKey]monthlyVal{},
 		latestBy: map[string]time.Time{},
+	}
+}
+
+func TestUnavailableAppEgressSourcesRespectApplicability(t *testing.T) {
+	static := unavailableAppEgressSources(false)
+	if len(static) != 1 || static[0].Source != store.UsageSourceHTTP || static[0].State != store.UsageSourceUnavailable {
+		t.Fatalf("static/unknown source witness: %+v", static)
+	}
+	service := unavailableAppEgressSources(true)
+	if len(service) != 3 || service[0].Source != store.UsageSourceHTTP ||
+		service[1].Source != store.UsageSourceWebSocket || service[2].Source != store.UsageSourceDirect {
+		t.Fatalf("service source universe: %+v", service)
+	}
+}
+
+func TestEgressQuerySourcesMatchPersistedVocabulary(t *testing.T) {
+	cases := []struct{ got, want string }{
+		{string(egressquery.HTTP), store.UsageSourceHTTP},
+		{string(egressquery.WebSocket), store.UsageSourceWebSocket},
+		{string(egressquery.Direct), store.UsageSourceDirect},
+		{string(egressquery.Postgres), store.UsageSourcePostgres},
+		{string(egressquery.KeyValue), store.UsageSourceKeyValue},
+	}
+	for _, tc := range cases {
+		if tc.got != tc.want {
+			t.Errorf("egress source %q does not match persisted %q", tc.got, tc.want)
+		}
 	}
 }
 

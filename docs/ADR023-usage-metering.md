@@ -146,6 +146,11 @@ Response:
 {
   "workspaceId": "tea-abc123",
   "period": "2026-07",
+  "coverage": {
+    "state": "partial",
+    "through": "2026-07-18T14:00:00Z",
+    "degradedSources": ["direct"]
+  },
   "services": [
     {
       "serviceId": "srv-xyz456",
@@ -172,6 +177,10 @@ Response:
 
 `tier` is omitted on the JSON response when it is the empty string (non-compute meters). `resourceKind` identifies the resource type (`"service"`, `"postgres"`, `"key_value"`). `services` is always a JSON array (never `null`). `serviceName` is the resource's user-facing display name, resolved best-effort at read time (Apps from the control-plane store, datastores from their CR spec); it is omitted when the resource no longer exists — presenters fall back to `serviceId`.
 
+For the current calendar month, `coverage` reports the evidence behind the totals rather than changing or hiding them. `complete` means every expected hourly source stream is explicitly healthy through the latest closed UTC hour. `partial` means a source is degraded/unavailable, begins late, contains an internal gap, or has not caught up; `through` is the end of the common contiguous healthy prefix and `degradedSources` is a sorted, bounded public vocabulary (`instance`, `build`, `storage`, `http`, `websocket`, `direct`, `postgres`, `key_value`, `sandbox`, with `other` as the overflow sentinel). `unknown` means no post-contract source evidence exists; legacy usage rows are never promoted to healthy evidence. An empty totals result with `complete` is therefore a proved healthy empty result, while a store/query failure remains unavailable. Historical periods always report `unknown` because compacted or legacy consumption cannot establish hourly completeness.
+
+The evidence is durable in `usage_source_streams` plus `usage_source_health`. Successful quantity and health writes are one transaction, including explicit zeroes; a failed multi-source attempt records its full applicable source set atomically as unavailable and a successful retry replaces those states. Each stream starts from the resource's real creation hour, never its first observation. Deleted-resource streams receive a finite expected end and stop constraining the live watermark only after their own expected range is fully evidenced. Source-health rows age out with the same hot-window compaction boundary as hourly usage. Sandbox compute currently uses its separate durable lifecycle cursor; any current-month sandbox total conservatively forces otherwise-known coverage to `partial` with source `sandbox`.
+
 ### GraphQL
 
 ```graphql
@@ -179,6 +188,11 @@ query Usage($period: String) {
   usage(period: $period) {
     workspaceId
     period
+    coverage {
+      state
+      through
+      degradedSources
+    }
     services {
       serviceId
       serviceName

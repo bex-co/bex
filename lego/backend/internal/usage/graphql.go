@@ -17,6 +17,8 @@ limitations under the License.
 package usage
 
 import (
+	"time"
+
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/billing"
@@ -70,6 +72,30 @@ var estimatedCostGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var usageCoverageGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "UsageCoverage",
+	Fields: graphql.Fields{
+		"state": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(c Coverage) any {
+			if c.State == "" {
+				return CoverageUnknown
+			}
+			return c.State
+		})},
+		"through": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(c Coverage) any {
+			if c.Through.IsZero() {
+				return nil
+			}
+			return c.Through.UTC().Format(time.RFC3339)
+		})},
+		"degradedSources": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Resolve: gqlutil.Field(func(c Coverage) any {
+			if c.DegradedSources == nil {
+				return []string{}
+			}
+			return c.DegradedSources
+		})},
+	},
+})
+
 // billingAmountGQLType and invoiceGQLType mirror billing.Amount / billing.Invoice
 // (the same fields the REST/MCP JSON carries) so the three surfaces stay
 // identical (ADR006 one-core/thin-adapters).
@@ -116,6 +142,7 @@ var usageSummaryGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"period":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Summary) any { return s.Period })},
 		"services":      &graphql.Field{Type: graphql.NewList(serviceUsageGQLType), Resolve: gqlutil.Field(func(s Summary) any { return s.Services })},
 		"estimatedCost": &graphql.Field{Type: estimatedCostGQLType, Resolve: gqlutil.Field(func(s Summary) any { return s.EstimatedCost })},
+		"coverage":      &graphql.Field{Type: graphql.NewNonNull(usageCoverageGQLType), Resolve: gqlutil.Field(func(s Summary) any { return s.Coverage })},
 		// billing is the real Stripe cost/invoices (m48/m50); null ⇒ estimate-only.
 		"billing": &graphql.Field{Type: billingGQLType, Resolve: gqlutil.Field(func(s Summary) any {
 			if s.Billing == nil {

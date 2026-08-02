@@ -1,0 +1,18 @@
+# Minimal read-only mobile usage glance. Cost, billing, invoices, checkout,
+# portal, tax, and plan configuration deliberately remain off this surface.
+query MobileUsageGlance($ownerId: String!) {
+  usage(ownerId: $ownerId) {
+    period
+    coverage {
+      state
+      through
+      degradedSources
+    }
+    services {
+      rows {
+        kind
+        total
+      }
+    }
+  }
+}

@@ -39,6 +39,30 @@ export const en = {
     title: "Status",
     body: "Resource health and latest deploys.",
   },
+  usageGlance: {
+    title: "Month-to-date usage",
+    states: {
+      complete: "Complete evidence",
+      partial: "Partial evidence",
+      unknown: "Coverage unknown",
+      unavailable: "Unavailable",
+      "healthy-empty": "Complete · no usage",
+    },
+    meters: {
+      instance_seconds: "Runtime",
+      egress_bytes: "Outbound bandwidth",
+      build_seconds: "Build time",
+      storage_gb_seconds: "Datastore storage",
+      sandbox_compute_seconds: "Agent compute",
+    },
+    empty: "Complete evidence reports no non-zero usage.",
+    noEvidence: "No usage totals are available; coverage is not proven.",
+    through: "Common evidence through %{time}",
+    degraded: "Degraded sources: %{sources}",
+    refreshUnavailable:
+      "Refresh is unavailable. Showing the last received totals.",
+    loading: "Loading month-to-date usage…",
+  },
   activity: {
     title: "Activity",
     body: "Choose a service to inspect deploys, events, metrics, and read-only live logs.",
