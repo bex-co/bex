@@ -3,9 +3,11 @@ import {
   classifyInviteAcceptanceError,
   type AcceptedWorkspace,
   type InviteAcceptanceClient,
+  type InviteFlowState,
 } from "../invite-controller";
 import type { InviteStore } from "../invite-storage";
 import type { StoredInvite } from "../invite-token";
+import { verifiedInviteToken } from "../invite-link-bootstrap";
 
 const token = "0123456789abcdef0123456789abcdef";
 const accepted: AcceptedWorkspace = {
@@ -51,7 +53,7 @@ function setup(timeoutMs = 15_000) {
   const client = new Client();
   let refreshes = 0;
   let refreshError: Error | null = null;
-  const states: string[] = [];
+  const states: InviteFlowState[] = [];
   const controller = new InviteFlowController(
     store,
     client,
@@ -59,7 +61,7 @@ function setup(timeoutMs = 15_000) {
       refreshes += 1;
       if (refreshError) throw refreshError;
     },
-    (state) => states.push(state.status),
+    (state) => states.push(state),
     timeoutMs,
   );
   return {
@@ -96,6 +98,60 @@ describe("native invite flow", () => {
     expect(controller.getState()).toEqual({
       status: "terminal",
       failure: "subject-changed",
+    });
+  });
+
+  it("rejects malformed capture and invalid subjects before persistence", async () => {
+    for (const [value, subject] of [
+      [`https://evil.example/invite?invite=${token}`, null],
+      [[token], null],
+      [token, ""],
+      [token, "identity\nother"],
+      [token, "a".repeat(257)],
+    ] as const) {
+      const { controller, store, client } = setup();
+      await controller.bootstrap(null);
+      expect(await controller.capture(value, subject)).toBe(false);
+      expect(store.value).toBe(null);
+      expect(store.saves).toBe(0);
+      expect(client.calls).toBe(0);
+      expect(controller.getState()).toEqual({
+        status: "terminal",
+        failure: "invalid",
+      });
+    }
+  });
+
+  it("cannot redeem a subject-bound bearer as another subject", async () => {
+    const { controller, store, client } = setup();
+    await controller.bootstrap("identity-a");
+    await controller.capture(token, "identity-a");
+
+    await controller.accept("identity-b");
+
+    expect(client.calls).toBe(0);
+    expect(store.value === null).toBe(true);
+    expect(controller.getState()).toEqual({
+      status: "terminal",
+      failure: "subject-changed",
+    });
+  });
+
+  it("invalid source verification clears an existing pending bearer", async () => {
+    const { controller, store, client } = setup();
+    store.value = { version: 1, token, subject: "identity-a" };
+    await controller.bootstrap("identity-a");
+    const unverified = verifiedInviteToken(
+      `bex://invite?invite=${token}`,
+      token,
+    );
+
+    expect(await controller.capture(unverified, "identity-a")).toBe(false);
+    expect(store.value === null).toBe(true);
+    expect(client.calls).toBe(0);
+    expect(controller.getState()).toEqual({
+      status: "terminal",
+      failure: "invalid",
     });
   });
 
@@ -165,6 +221,19 @@ describe("native invite flow", () => {
       expect(controller.getState().status).toBe("retryable");
       expect(client.calls).toBe(1);
     }
+  });
+
+  it("never publishes the bearer in any flow state", async () => {
+    const { controller, client, states } = setup();
+    await controller.bootstrap("identity-a");
+    await controller.capture(token, "identity-a");
+    client.result = Promise.reject({ networkError: { statusCode: 503 } });
+    await controller.accept("identity-a");
+
+    expect(states.length > 0).toBe(true);
+    expect(states.some((state) => JSON.stringify(state).includes(token))).toBe(
+      false,
+    );
   });
 
   it("bounds a hung request without automatic replay", async () => {

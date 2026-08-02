@@ -63,7 +63,7 @@ export function buildUsageGlance(input: {
   const coverage = input.summary?.coverage;
   const reported = normalizeCoverageState(coverage?.state);
   const state: UsageCoverageState = input.summary
-    ? reported === "complete" && totals.every((row) => row.total === 0)
+    ? reported === "complete" && hasHealthyEmptyEvidence(input.summary.services)
       ? "healthy-empty"
       : reported
     : input.unavailable
@@ -78,6 +78,28 @@ export function buildUsageGlance(input: {
     degradedSources: normalizeDegradedSources(coverage?.degradedSources),
     totals,
   };
+}
+
+function hasHealthyEmptyEvidence(
+  services: readonly (ServiceUsageWire | null)[] | null | undefined,
+): boolean {
+  if (!services) return false;
+  for (const service of services) {
+    if (!service?.rows) return false;
+    for (const row of service.rows) {
+      const kind = row?.kind?.trim();
+      const total = row?.total;
+      if (
+        !kind ||
+        typeof total !== "number" ||
+        !Number.isFinite(total) ||
+        total !== 0
+      ) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 export function aggregateTotals(

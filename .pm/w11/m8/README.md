@@ -1,6 +1,6 @@
 # w11 · m8 — Tier-2 mobile quick actions
 
-**Worker:** worker11 **Goal:** add ADR048's narrow fast-follow conveniences—single env-var edit, cron controls, datastore companion views, usage glance, and invite acceptance—without importing desktop bulk/admin/configuration surfaces. **Status:** todo (t001–t006 and t009 done; t007 actionable; closeout shares m5/t007's signed-device gate)
+**Worker:** worker11 **Goal:** add ADR048's narrow fast-follow conveniences—single env-var edit, cron controls, datastore companion views, usage glance, and invite acceptance—without importing desktop bulk/admin/configuration surfaces. **Status:** todo (t001–t007 and t009 done; t008 waits on m5/t007's signed-device gate)
 
 ## Gating
 
@@ -17,7 +17,7 @@ Start after `w11/m3/t009` and `w11/m4/t008`; independent of agent milestones.
 | t009 | Add secure invite-link acceptance and verification plumbing — **DONE** | 90m | t004 |
 | t005 | Audit Tier-2 scope exclusions and Render parity — **DONE** | 30m | t009 |
 | t006 | Simplify — **DONE** | 20m | t005 |
-| t007 | Test coverage | 60m | t005 |
+| t007 | Test coverage — **DONE** | 60m | t005 |
 | t008 | Closeout | 10m | t007, w11/m5/t007 |
 
 ## Definition of done

@@ -19,6 +19,9 @@ describe("Key Value mobile read-only insights", () => {
       keyValueConnectionHealth({ status: "available", suspended: "suspended" }),
     ).toBe("suspended");
     expect(
+      keyValueConnectionHealth({ status: "available", suspended: true }),
+    ).toBe("suspended");
+    expect(
       keyValueConnectionHealth({ status: "creating", suspended: false }),
     ).toBe("creating");
     expect(
@@ -45,6 +48,18 @@ describe("Key Value mobile read-only insights", () => {
       diskCapacity: [],
     });
     expect(absent.diskUsedPercent).toBe(null);
+    expect(
+      buildKeyValueInsightSnapshot({
+        disk: [series("bytes", [["2026-08-02T10:00:00Z", 25]])],
+        diskCapacity: [series("bytes", [["2026-08-02T10:00:00Z", 0]])],
+      }).diskUsedPercent,
+    ).toBe(null);
+    expect(
+      buildKeyValueInsightSnapshot({
+        disk: [series("bytes", [["2026-08-02T10:00:00Z", -1]])],
+        diskCapacity: [series("bytes", [["2026-08-02T10:00:00Z", 100]])],
+      }).diskUsedPercent,
+    ).toBe(null);
     expect(buildKeyValueInsightSnapshot(undefined).latestAt).toBe(null);
   });
 
@@ -59,9 +74,16 @@ describe("Key Value mobile read-only insights", () => {
     };
     expect(keyValueMetricFailure(error, "memory")).toBe("unavailable");
     expect(keyValueMetricFailure(error, "connections")).toBe(null);
-    expect(keyValueMetricFailure(new Error("network failed"), "memory")).toBe(
-      "error",
-    );
+    for (const alias of [
+      "disk",
+      "diskCapacity",
+      "memory",
+      "connections",
+    ] as const) {
+      expect(keyValueMetricFailure(new Error("network failed"), alias)).toBe(
+        "error",
+      );
+    }
   });
 
   it("queries only the four safe read-only metric aliases", () => {

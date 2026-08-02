@@ -18,7 +18,13 @@ export function postgresInsightState(input: {
   staleAfterMs?: number;
 }): PostgresInsightState {
   if (input.failure) return input.hasData ? "degraded" : input.failure;
-  if (!input.hasData || input.observedAt == null) return "loading";
+  if (
+    !input.hasData ||
+    input.observedAt == null ||
+    !Number.isFinite(input.observedAt)
+  ) {
+    return "loading";
+  }
   const now = input.now ?? Date.now();
   const staleAfterMs = input.staleAfterMs ?? POSTGRES_INSIGHT_STALE_AFTER_MS;
   return now - input.observedAt >= staleAfterMs ? "stale" : "current";

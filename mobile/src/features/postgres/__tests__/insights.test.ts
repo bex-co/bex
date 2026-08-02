@@ -57,6 +57,22 @@ describe("Postgres mobile insights", () => {
         observedAt: null,
       }),
     ).toBe("source-unavailable");
+    expect(
+      postgresInsightState({
+        hasData: true,
+        failure: "source-unavailable",
+        observedAt: 1_000,
+      }),
+    ).toBe("degraded");
+    for (const observedAt of [Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(
+        postgresInsightState({
+          hasData: true,
+          failure: null,
+          observedAt,
+        }),
+      ).toBe("loading");
+    }
   });
 
   it("distinguishes the stable missing-source signal from transport errors", () => {
@@ -152,6 +168,27 @@ describe("Postgres mobile insights", () => {
       key: "public.size_only",
       label: "public.size_only",
       sizePretty: "1 MB",
+      seqScans: null,
+      indexScans: null,
+      deadRows: null,
+    });
+    expect(
+      compactPostgresTableInsights(
+        [],
+        [
+          {
+            schema: "public",
+            name: "invalid_counters",
+            seqScans: -1,
+            indexScans: Number.NaN,
+            deadRows: null,
+          },
+        ],
+      )[0],
+    ).toEqual({
+      key: "public.invalid_counters",
+      label: "public.invalid_counters",
+      sizePretty: null,
       seqScans: null,
       indexScans: null,
       deadRows: null,

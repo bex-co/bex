@@ -28,4 +28,18 @@ describe("EnvironmentOperationGuard", () => {
     expect(environmentTimeoutError().name).toBe("TimeoutError");
     lease.finish();
   });
+
+  it("never lets a stale lease become current or finish a newer operation", () => {
+    const guard = new EnvironmentOperationGuard();
+    const stale = guard.begin("reveal", 60_000);
+    guard.invalidate();
+    const current = guard.begin("reveal", 60_000);
+
+    stale.finish();
+    expect(stale.isCurrent()).toBe(false);
+    expect(current.isCurrent()).toBe(true);
+    expect(guard.hasActive("reveal")).toBe(true);
+    current.finish();
+    expect(guard.hasActive("reveal")).toBe(false);
+  });
 });

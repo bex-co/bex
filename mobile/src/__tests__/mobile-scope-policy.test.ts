@@ -147,6 +147,35 @@ const allowedDirectWriteMethods = new Set([
   "src/features/auth/expo-oauth-transport.ts:POST",
 ]);
 
+// Independent deny floor: updating the positive inventory must not silently
+// admit desktop/admin/destructive controls into the native app.
+const forbiddenRouteSegment =
+  /(?:^|[/.-])(?:new|settings|billing|invoice|checkout|portal|shell|backup|recovery|failover|parameter|allow-?list|env-?group|secret-?file)(?:[/.-]|$)/i;
+const forbiddenMutationControl =
+  /(?:delete|remove|destroy|failover|restore|recover|upgrade|create(?:service|database|keyvalue|workspace|project)|change.*plan|set.*(?:parameter|allowlist)|envgroup|secretfile|billing|checkout|portal|payment|invoice|tax)/i;
+const forbiddenSensitiveFields = new Set([
+  "billing",
+  "checkout",
+  "connectionInfo",
+  "connectionString",
+  "databaseConnectionInfo",
+  "databaseTopQueries",
+  "databaseUsers",
+  "estimatedCost",
+  "externalConnectionString",
+  "internalConnectionString",
+  "invoices",
+  "ipAllowList",
+  "parameterOverrides",
+  "password",
+  "paymentMethod",
+  "portal",
+  "query",
+  "recoveryInfo",
+  "sql",
+  "tax",
+]);
+
 interface ProductWriteInventory {
   actionIds: string[];
   mutationDocuments: string[];
@@ -258,6 +287,45 @@ function graphqlOperationInventory(): Record<string, string> {
   return Object.fromEntries(Object.entries(operations).sort());
 }
 
+function forbiddenRoutes(routes: readonly string[]): string[] {
+  return routes.filter((route) => forbiddenRouteSegment.test(route)).sort();
+}
+
+function forbiddenGraphqlControls(sources: readonly string[]): string[] {
+  const found = new Set<string>();
+  for (const source of sources) {
+    for (const definition of parse(source).definitions) {
+      if (definition.kind !== Kind.OPERATION_DEFINITION) continue;
+      if (definition.operation === "mutation") {
+        for (const selection of definition.selectionSet.selections) {
+          if (
+            selection.kind === Kind.FIELD &&
+            forbiddenMutationControl.test(selection.name.value)
+          ) {
+            found.add(`mutation:${selection.name.value}`);
+          }
+        }
+      }
+      visit(definition, {
+        Field: (node) => {
+          if (forbiddenSensitiveFields.has(node.name.value)) {
+            found.add(`field:${node.name.value}`);
+          }
+        },
+      });
+    }
+  }
+  return [...found].sort();
+}
+
+function graphqlSources(): string[] {
+  return productionRoots.flatMap((root) =>
+    sourceFiles(root, [".graphql"]).map((file) =>
+      fs.readFileSync(file, "utf8"),
+    ),
+  );
+}
+
 describe("ADR048 mobile scope", () => {
   it("exposes only supervision and approved platform entry routes", () => {
     expect(routeFiles).toEqual(allowedRoutes);
@@ -307,5 +375,35 @@ describe("ADR048 mobile scope", () => {
         .map(([name]) => name)
         .sort(),
     ).toEqual([...allowedMutationNames].sort());
+  });
+
+  it("independently denies desktop, admin, and destructive routes", () => {
+    expect(forbiddenRoutes(routeFiles)).toEqual([]);
+    expect(
+      forbiddenRoutes([
+        "(app)/services/[serviceId].tsx",
+        "(app)/billing.tsx",
+        "(app)/databases/[databaseId]/recovery.tsx",
+        "(app)/services/new.tsx",
+      ]),
+    ).toEqual([
+      "(app)/billing.tsx",
+      "(app)/databases/[databaseId]/recovery.tsx",
+      "(app)/services/new.tsx",
+    ]);
+  });
+
+  it("independently denies sensitive and destructive GraphQL controls", () => {
+    expect(forbiddenGraphqlControls(graphqlSources())).toEqual([]);
+    expect(
+      forbiddenGraphqlControls([
+        'mutation MobileDeleteService { deleteService(id: "srv-one") }',
+        'query MobileConnectionLeak { databaseConnectionInfo(id: "dpg-one") { password } }',
+      ]),
+    ).toEqual([
+      "field:databaseConnectionInfo",
+      "field:password",
+      "mutation:deleteService",
+    ]);
   });
 });
