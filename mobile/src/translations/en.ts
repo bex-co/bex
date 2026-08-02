@@ -89,6 +89,60 @@ export const en = {
       job_run_ended: "Job run finished",
     },
   },
+  datastores: {
+    overview: "Current state",
+    postgres: "Postgres",
+    keyValue: "Key Value",
+    plan: "Plan",
+    region: "Region",
+    id: "Resource ID",
+    loadError:
+      "This datastore could not refresh. Visible state may be stale; pull down to try again.",
+  },
+  safeActions: {
+    cardTitle: "Safe actions",
+    title: "Confirm action",
+    message:
+      "Confirm this exact action and target. The app will not retry a mutation automatically.",
+    serverConfirmation:
+      "This protected resource requires a second confirmation. Server phrase: %{confirmation}",
+    confirm: "Confirm",
+    cancel: "Cancel",
+    pending: "Sending…",
+    noneAvailable: "No safe action is available in the current state.",
+    dismiss: "Dismiss",
+    refreshFirst: "Refresh first",
+    actions: {
+      triggerDeploy: "Deploy latest",
+      cancelDeploy: "Cancel active deploy",
+      rollbackDeploy: "Rollback deploy",
+      restartService: "Restart service",
+      suspendService: "Suspend service",
+      resumeService: "Resume service",
+      restartDatabase: "Restart Postgres",
+      suspendDatabase: "Suspend Postgres",
+      resumeDatabase: "Resume Postgres",
+      suspendKeyValue: "Suspend Key Value",
+      resumeKeyValue: "Resume Key Value",
+    },
+    feedback: {
+      success:
+        "The server accepted the action. Updated state will continue to refresh from the server.",
+      authorizationDenied:
+        "You are not authorized to perform this action. No success was assumed.",
+      conflict:
+        "The resource state changed, so the action was not sent. Refresh and review it again.",
+      timeoutUnknown:
+        "The response timed out and may have committed. Refresh server state before creating another confirmation.",
+      auditPending:
+        "The action committed, but its audit result is still pending.",
+      auditUnavailable:
+        "The action result is incomplete because audit state is unavailable.",
+      failed:
+        "The action failed. Current server state was not changed locally.",
+      canceled: "The pending action was canceled locally.",
+    },
+  },
   sessions: {
     title: "Agent sessions",
     body: "Assign and supervise coding-agent work from your phone.",

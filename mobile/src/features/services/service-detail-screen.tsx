@@ -39,6 +39,8 @@ import {
   type TimelineItem,
 } from "@/features/events/timeline";
 import { statusTone } from "@/features/resources/resource-groups";
+import { ServiceActionsCard } from "./service-actions-card";
+import type { ServiceLifecycleResource } from "./lifecycle";
 
 const PAGE_SIZE = 20;
 type DeployNode = NonNullable<
@@ -230,7 +232,46 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
             />
           </DashboardCard>
         ) : service ? (
-          <ServiceIdentityCard service={service} />
+          <>
+            <ServiceIdentityCard service={service} />
+            {service.id ? (
+              <ServiceActionsCard
+                service={serviceLifecycleResource(service)}
+                deploys={deploys.flatMap((deploy) =>
+                  deploy.id
+                    ? [
+                        {
+                          id: deploy.id,
+                          status: deploy.status ?? "unknown",
+                          rollbackOf: deploy.rollbackOf,
+                        },
+                      ]
+                    : [],
+                )}
+                refreshService={async () => {
+                  const result = await serviceQuery.refetch();
+                  const refreshed = result.data?.service;
+                  return refreshed?.id
+                    ? serviceLifecycleResource(refreshed)
+                    : null;
+                }}
+                refreshDeploys={async () => {
+                  const result = await deployQuery.refetch();
+                  return (result.data?.deploys ?? []).flatMap((deploy) =>
+                    deploy?.id
+                      ? [
+                          {
+                            id: deploy.id,
+                            status: deploy.status ?? "unknown",
+                            rollbackOf: deploy.rollbackOf,
+                          },
+                        ]
+                      : [],
+                  );
+                }}
+              />
+            ) : null}
+          </>
         ) : null}
 
         <MetricSnapshots resourceId={serviceId} />
@@ -274,6 +315,21 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
       </DashboardScrollView>
     </SafeAreaView>
   );
+}
+
+function serviceLifecycleResource(
+  service: NonNullable<MobileServiceSupervisionQuery["service"]>,
+): ServiceLifecycleResource {
+  return {
+    id: service.id ?? "",
+    name: service.displayName ?? service.name ?? service.id ?? "Service",
+    type: service.type ?? service.runtime ?? "unknown",
+    phase: service.phase ?? "unknown",
+    suspended: service.suspended,
+    updatedAt: service.updatedAt,
+    revision: service.revision,
+    latestDeployId: service.latestDeployId,
+  };
 }
 
 function ServiceIdentityCard({

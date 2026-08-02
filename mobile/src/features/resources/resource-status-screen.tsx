@@ -337,7 +337,13 @@ function ResourceRow({ resource }: { resource: ResourceStatusItem }) {
         : tone === "error"
           ? theme.error
           : theme.mutedForeground;
-  const canOpen = resource.kind === "service";
+  const canOpen = true;
+  const href =
+    resource.kind === "service"
+      ? `/services/${encodeURIComponent(resource.id)}`
+      : resource.kind === "database"
+        ? `/databases/${encodeURIComponent(resource.id)}`
+        : `/key-values/${encodeURIComponent(resource.id)}`;
   return (
     <Pressable
       disabled={!canOpen}
@@ -347,11 +353,7 @@ function ResourceRow({ resource }: { resource: ResourceStatusItem }) {
         type: resource.type,
         status: resource.status,
       })}
-      onPress={
-        canOpen
-          ? () => router.push(`/services/${encodeURIComponent(resource.id)}`)
-          : undefined
-      }
+      onPress={() => router.push(href)}
       style={({ pressed }) => [
         styles.resourceRow,
         { borderTopColor: theme.border, opacity: pressed ? 0.65 : 1 },

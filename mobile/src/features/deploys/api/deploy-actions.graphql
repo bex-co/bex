@@ -1,0 +1,30 @@
+mutation MobileTriggerDeploy($serviceId: String!) {
+  triggerDeploy(serviceId: $serviceId) {
+    id
+    serviceId
+    status
+    trigger
+    createdAt
+  }
+}
+
+mutation MobileCancelDeploy($serviceId: String!, $deployId: String!) {
+  cancelDeploy(serviceId: $serviceId, deployId: $deployId) {
+    id
+    serviceId
+    status
+    updatedAt
+    finishedAt
+  }
+}
+
+mutation MobileRollbackService($serviceId: String!, $deployId: String!) {
+  rollbackService(serviceId: $serviceId, deployId: $deployId) {
+    id
+    serviceId
+    status
+    trigger
+    rollbackOf
+    createdAt
+  }
+}

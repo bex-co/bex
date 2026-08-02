@@ -1,0 +1,39 @@
+query MobilePostgresLifecycle($id: String!) {
+  database(id: $id) {
+    id
+    name
+    status
+    suspended
+    version
+    plan
+    region
+    updatedAt
+  }
+}
+
+mutation MobileSuspendPostgres($id: String!, $confirm: String) {
+  suspendDatabase(id: $id, confirm: $confirm) {
+    id
+    suspended
+    status
+    updatedAt
+  }
+}
+
+mutation MobileResumePostgres($id: String!) {
+  resumeDatabase(id: $id) {
+    id
+    suspended
+    status
+    updatedAt
+  }
+}
+
+mutation MobileRestartPostgres($id: String!) {
+  restartDatabase(id: $id) {
+    id
+    suspended
+    status
+    updatedAt
+  }
+}
