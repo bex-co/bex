@@ -1191,7 +1191,7 @@ controller_image="$(yq -N \
     .spec.template.spec.containers[0].image' - <<<"$opensandbox_controller_render" | tr -d '\n')"
 # The bootstrap stays on the known-good upstream digest until CI has produced
 # the carried m42 image once. A follow-up activation commit pins that real digest.
-[ "$controller_image" = "opensandbox/controller:v0.2.0@sha256:a9a5f73c1785ebd955336ffa313973a35c1a1b662cb7afc4ea82d92021b3532a" ] \
+[ "$controller_image" = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/controller:v0.2.0@sha256:a9a5f73c1785ebd955336ffa313973a35c1a1b662cb7afc4ea82d92021b3532a" ] \
   || { echo "FAIL: OpenSandbox bootstrap controller image is '$controller_image'" >&2; fail=1; }
 controller_args="$(yq -N \
   'select(.kind == "Deployment" and .metadata.name == "opensandbox-controller-manager") |
