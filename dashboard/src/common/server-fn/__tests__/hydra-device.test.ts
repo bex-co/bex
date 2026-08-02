@@ -1,5 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// fetchSession is mocked so the device handler's session check is deterministic:
+// by default no session (the unauthenticated pairing path the existing cases
+// exercise), overridden per-test for the confirmation gate (codex-security #9).
+const fetchSessionMock = vi.fn();
+vi.mock("@/common/server-fn/session", () => ({
+  fetchSession: (...args: unknown[]) => fetchSessionMock(...args),
+}));
+
 import {
+  handleDeviceConfirm,
   handleDeviceVerification,
   RENDER_CLI_CLIENT_ID,
 } from "@/common/server-fn/hydra-device";
@@ -11,6 +21,8 @@ const PUBLIC = "https://oauth.bex.co";
 beforeEach(() => {
   process.env.HYDRA_ADMIN_URL = ADMIN;
   process.env.HYDRA_PUBLIC_URL = PUBLIC;
+  fetchSessionMock.mockReset();
+  fetchSessionMock.mockResolvedValue({ session: null }); // unauthenticated by default
 });
 
 afterEach(() => {
@@ -110,5 +122,74 @@ describe("handleDeviceVerification", () => {
       ),
     );
     expect(unavailable.status).toBe(502);
+  });
+
+  it("renders a confirmation page for a signed-in caller instead of pairing silently (codex-security #9)", async () => {
+    fetchSessionMock.mockResolvedValue({
+      session: { id: "session-abc", active: true, identity: { id: "id-1" } },
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const response = await handleDeviceVerification(
+      new Request(
+        `${DASHBOARD}/auth/device?user_code=ABCDEF&device_challenge=challenge-1`,
+      ),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/html");
+    const body = await response.text();
+    expect(body).toContain("Authorize the bex CLI");
+    expect(body).toContain("ABCDEF");
+    // The grant is NOT paired on the silent GET — no admin accept call.
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("handleDeviceConfirm", () => {
+  it("pairs the grant after a same-origin, session-bound POST", async () => {
+    fetchSessionMock.mockResolvedValue({
+      session: { id: "session-abc", active: true, identity: { id: "id-1" } },
+    });
+    const calls: { url: string; init?: RequestInit }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
+        calls.push({ url: String(input), init });
+        return new Response(
+          JSON.stringify({
+            redirect_to: `${PUBLIC}/oauth2/device/verify?device_verifier=v&client_id=${RENDER_CLI_CLIENT_ID}`,
+          }),
+          { status: 200 },
+        );
+      }),
+    );
+    const form = new FormData();
+    form.set("user_code", "ABCDEF");
+    form.set("device_challenge", "challenge-1");
+    const response = await handleDeviceConfirm(
+      new Request(`${DASHBOARD}/auth/device`, {
+        method: "POST",
+        body: form,
+        headers: { origin: DASHBOARD },
+      }),
+    );
+    expect(response.status).toBe(302);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].init?.method).toBe("PUT");
+  });
+
+  it("refuses a cross-site or session-less confirmation", async () => {
+    fetchSessionMock.mockResolvedValue({ session: null });
+    const form = new FormData();
+    form.set("user_code", "ABCDEF");
+    form.set("device_challenge", "challenge-1");
+    const noSession = await handleDeviceConfirm(
+      new Request(`${DASHBOARD}/auth/device`, {
+        method: "POST",
+        body: form,
+        headers: { origin: DASHBOARD },
+      }),
+    );
+    expect(noSession.status).toBe(403);
   });
 });

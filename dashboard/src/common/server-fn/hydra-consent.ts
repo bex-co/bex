@@ -260,6 +260,12 @@ export async function handleConsent(
  * call. Only Hydra-returned `redirect_to` values are ever redirected to — no
  * caller-supplied URL is honored anywhere in this file.
  */
+// CONSENT_BODY_MAX bounds a consent-decision body. The decision form carries
+// only a challenge + decision + csrf token, so anything larger is abuse; capping
+// it before request.formData() allocates stops a non-browser client from OOM-ing
+// the dashboard pod (codex-security #11).
+const CONSENT_BODY_MAX = 1 << 16; // 64 KiB
+
 export async function handleConsentDecision(
   request: Request,
 ): Promise<Response> {
@@ -268,6 +274,18 @@ export async function handleConsentDecision(
 
   if (!isSameOrigin(request, url)) {
     return refuse("consent refused: cross-site decision");
+  }
+
+  // Authenticate before buffering the body: an unauthenticated request is
+  // refused before request.formData() allocates anything (codex-security #11).
+  const { session } = await sessionFor(request);
+  if (!session) return refuse("consent refused: no session");
+
+  // Bound the body before buffering: the consent decision is a tiny form, so a
+  // declared size beyond the cap is rejected up front.
+  const contentLength = Number(request.headers.get("content-length") ?? 0);
+  if (!Number.isFinite(contentLength) || contentLength > CONSENT_BODY_MAX) {
+    return new Response("consent decision too large", { status: 413 });
   }
 
   const form = await request.formData();
@@ -287,8 +305,6 @@ export async function handleConsentDecision(
     return new Response("consent provider not configured", { status: 503 });
   }
 
-  const { session } = await sessionFor(request);
-  if (!session) return refuse("consent refused: no session");
   if (!csrfTokenMatches(csrfToken, consentChallenge, session.id)) {
     return refuse("consent refused: bad csrf token");
   }
