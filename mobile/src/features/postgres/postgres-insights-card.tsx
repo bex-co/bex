@@ -28,6 +28,7 @@ import {
 import {
   compactPostgresTableInsights,
   POSTGRES_INSIGHT_STALE_AFTER_MS,
+  postgresInsightFailure,
   postgresInsightState,
   summarizePostgresProcesses,
   type PostgresInsightState,
@@ -80,17 +81,17 @@ export const PostgresInsightsCard = forwardRef<
   );
   const sizesState = usePostgresInsightState(
     sizes.data?.databaseSizes != null,
-    Boolean(sizes.error),
+    sizes.error,
     sizes.networkStatus,
   );
   const processesState = usePostgresInsightState(
     processes.data?.databaseProcesses != null,
-    Boolean(processes.error),
+    processes.error,
     processes.networkStatus,
   );
   const scansState = usePostgresInsightState(
     scans.data?.databaseTableScans != null,
-    Boolean(scans.error),
+    scans.error,
     scans.networkStatus,
   );
 
@@ -108,7 +109,7 @@ export const PostgresInsightsCard = forwardRef<
   );
   const capacityState = usePostgresInsightState(
     capacityHasData,
-    Boolean(capacity.error),
+    capacity.error,
     capacity.networkStatus,
     newestMetricTimestamp([disk, diskCapacity, connections]),
   );
@@ -164,7 +165,7 @@ export const PostgresInsightsCard = forwardRef<
         title={t("postgresInsights.processes")}
         state={processesState}
       >
-        {processesState === "unavailable" ? null : (
+        {isInsightFailure(processesState) ? null : (
           <>
             <InsightRow
               label={t("postgresInsights.activeProcesses")}
@@ -216,8 +217,9 @@ export const PostgresInsightsCard = forwardRef<
               </Text>
             </View>
           ))
-        ) : mergeInsightState(sizesState, scansState) ===
-          "unavailable" ? null : (
+        ) : isInsightFailure(
+            mergeInsightState(sizesState, scansState),
+          ) ? null : (
           <Text style={[styles.note, { color: theme.mutedForeground }]}>
             {t("postgresInsights.noTableData")}
           </Text>
@@ -238,12 +240,11 @@ function InsightSection({
 }) {
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
-  const stateColor =
-    state === "unavailable"
-      ? theme.error
-      : state === "degraded" || state === "stale"
-        ? theme.warning
-        : theme.mutedForeground;
+  const stateColor = isInsightFailure(state)
+    ? theme.error
+    : state === "degraded" || state === "stale"
+      ? theme.warning
+      : theme.mutedForeground;
   return (
     <View style={[styles.section, { borderTopColor: theme.border }]}>
       <View style={styles.sectionHeader}>
@@ -254,12 +255,16 @@ function InsightSection({
           {t(`postgresInsights.state.${state}`)}
         </Text>
       </View>
-      {state === "unavailable" ? (
+      {isInsightFailure(state) ? (
         <Text
           accessibilityRole="alert"
           style={[styles.note, { color: stateColor }]}
         >
-          {t("postgresInsights.unavailable")}
+          {t(
+            state === "source-unavailable"
+              ? "postgresInsights.sourceUnavailable"
+              : "postgresInsights.transportError",
+          )}
         </Text>
       ) : (
         children
@@ -284,21 +289,22 @@ function InsightRow({ label, value }: { label: string; value: string }) {
 
 function usePostgresInsightState(
   hasData: boolean,
-  hasError: boolean,
+  error: unknown,
   networkStatus: NetworkStatus,
   sourceObservedAt?: number | null,
 ): PostgresInsightState {
+  const failure = postgresInsightFailure(error);
   const [receivedAt, setReceivedAt] = useState<number | null>(null);
   useEffect(() => {
     if (
       sourceObservedAt === undefined &&
       hasData &&
       networkStatus === NetworkStatus.ready &&
-      !hasError
+      !failure
     ) {
       setReceivedAt(Date.now());
     }
-  }, [hasData, hasError, networkStatus, sourceObservedAt]);
+  }, [failure, hasData, networkStatus, sourceObservedAt]);
   const observedAt =
     sourceObservedAt === undefined ? receivedAt : sourceObservedAt;
   const freshness = useFreshness(observedAt, {
@@ -307,14 +313,14 @@ function usePostgresInsightState(
   if (
     sourceObservedAt === null &&
     hasData &&
-    !hasError &&
+    !failure &&
     networkStatus === NetworkStatus.ready
   ) {
     return "empty";
   }
   return postgresInsightState({
     hasData,
-    hasError,
+    failure,
     observedAt,
     now: observedAt == null ? undefined : observedAt + (freshness.ageMs ?? 0),
   });
@@ -324,8 +330,19 @@ function mergeInsightState(
   left: PostgresInsightState,
   right: PostgresInsightState,
 ): PostgresInsightState {
-  if (left === "unavailable" && right === "unavailable") return "unavailable";
-  if (left === "unavailable" || right === "unavailable") return "degraded";
+  if (isInsightFailure(left) && isInsightFailure(right)) {
+    return left === "transport-error" || right === "transport-error"
+      ? "transport-error"
+      : "source-unavailable";
+  }
+  if (isInsightFailure(left) || isInsightFailure(right)) {
+    const other = isInsightFailure(left) ? right : left;
+    return other === "loading"
+      ? isInsightFailure(left)
+        ? left
+        : right
+      : "degraded";
+  }
   if (left === "degraded" || right === "degraded") return "degraded";
   if (left === "empty" || right === "empty") {
     return left === "current" || right === "current" ? "degraded" : "empty";
@@ -333,6 +350,12 @@ function mergeInsightState(
   if (left === "stale" || right === "stale") return "stale";
   if (left === "current" || right === "current") return "current";
   return "loading";
+}
+
+function isInsightFailure(
+  state: PostgresInsightState,
+): state is "source-unavailable" | "transport-error" {
+  return state === "source-unavailable" || state === "transport-error";
 }
 
 function newestMetricTimestamp(

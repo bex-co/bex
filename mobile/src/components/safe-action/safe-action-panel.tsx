@@ -19,6 +19,7 @@ import {
 
 export type MobileActionRunResult =
   | { status: "success" }
+  | { status: "accepted_unverified" }
   | {
       status: "confirmation_required";
       source: "server";
@@ -98,6 +99,8 @@ export function SafeActionPanel({
             case "success":
             case "confirmation_required":
               return { data: result };
+            case "accepted_unverified":
+              return { data: result, feedback: "accepted-unverified" };
             case "timeout":
               throw Object.assign(new Error("action state remains unknown"), {
                 name: "TimeoutError",
@@ -133,6 +136,7 @@ export function SafeActionPanel({
 
   const messages: SafeActionFeedbackMessages = {
     success: t("safeActions.feedback.success"),
+    "accepted-unverified": t("safeActions.feedback.acceptedUnverified"),
     "authorization-denied": t("safeActions.feedback.authorizationDenied"),
     conflict: t("safeActions.feedback.conflict"),
     "timeout-unknown": t("safeActions.feedback.timeoutUnknown"),

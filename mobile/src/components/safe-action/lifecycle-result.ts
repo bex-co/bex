@@ -2,6 +2,7 @@ import type { MobileActionRunResult } from "./safe-action-panel";
 
 export type SafeLifecycleResult =
   | { status: "success" }
+  | { status: "accepted_unverified" }
   | { status: "busy" }
   | { status: "not_allowed" }
   | {
@@ -18,6 +19,8 @@ export function mobileLifecycleResult(
   switch (result.status) {
     case "success":
       return { status: "success" };
+    case "accepted_unverified":
+      return { status: "accepted_unverified" };
     case "busy":
     case "not_allowed":
       return { status: result.status };

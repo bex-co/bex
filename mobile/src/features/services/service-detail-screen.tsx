@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { NetworkStatus } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import { router } from "expo-router";
 import {
@@ -295,6 +296,10 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
                 serviceId={service.id}
                 serviceLabel={service.displayName ?? service.name ?? service.id}
                 suspended={service.suspended}
+                serviceEvidenceCurrent={
+                  serviceQuery.networkStatus === NetworkStatus.ready &&
+                  !serviceQuery.error
+                }
                 onOpenLogs={() =>
                   router.push(
                     `/services/${encodeURIComponent(service.id!)}/logs`,

@@ -91,3 +91,26 @@ func TestPaymentRequiredCrossSurfaceEnvelope(t *testing.T) {
 		t.Fatalf("REST params = %#v", body["params"])
 	}
 }
+
+func TestBillingEnforcedCrossSurfaceEnvelope(t *testing.T) {
+	err := NewBillingEnforcedError()
+	if !errors.Is(err, ErrBillingEnforced) {
+		t.Fatal("billing enforcement error does not wrap ErrBillingEnforced")
+	}
+	if err.Error() != BillingEnforcedMessage || err.Extensions()["code"] != BillingErrorEnforced {
+		t.Fatalf("billing enforcement error = %q extensions=%#v", err.Error(), err.Extensions())
+	}
+
+	rec := httptest.NewRecorder()
+	WriteErr(rec, err)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("REST status = %d, want 409", rec.Code)
+	}
+	var body map[string]any
+	if decodeErr := json.Unmarshal(rec.Body.Bytes(), &body); decodeErr != nil {
+		t.Fatal(decodeErr)
+	}
+	if body["id"] != "conflict" || body["code"] != BillingErrorEnforced || body["message"] != BillingEnforcedMessage {
+		t.Fatalf("REST body = %#v", body)
+	}
+}

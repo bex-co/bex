@@ -22,10 +22,12 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -360,5 +362,153 @@ func TestCronRunGraphQLAndMCPAdapters(t *testing.T) {
 	mcpCancel := call("cancel_cron_job_run", map[string]any{"serviceId": "nightly", "runId": mcpFirst["id"]})
 	if mcpCancel["status"] != "canceled" {
 		t.Fatalf("MCP cancel = %v", mcpCancel)
+	}
+}
+
+func callAppsMCPError(t *testing.T, svc *Service, name string, args map[string]any) string {
+	t.Helper()
+	server := mcp.NewServer(&mcp.Implementation{Name: "cron-error-test", Version: "0"}, nil)
+	svc.RegisterMCP(server)
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	if _, err := server.Connect(ctx, serverTransport, nil); err != nil {
+		t.Fatal(err)
+	}
+	client, err := mcp.NewClient(&mcp.Implementation{Name: "cron-error-test", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+	result, err := client.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result == nil || !result.IsError || len(result.Content) != 1 {
+		t.Fatalf("MCP %s result = %#v, want one error", name, result)
+	}
+	content, ok := result.Content[0].(*mcp.TextContent)
+	if !ok {
+		t.Fatalf("MCP %s error content = %T, want text", name, result.Content[0])
+	}
+	return content.Text
+}
+
+func TestCronActionErrorCodesMatchRESTGraphQLAndMCP(t *testing.T) {
+	unknownRunID := "crr-00000000000000000000"
+	terminalRunID := ids.Derive(ids.CronRun, "nightly-run-ok")
+	tests := []struct {
+		name       string
+		service    func() *Service
+		restMethod string
+		restPath   string
+		gql        string
+		mcpTool    string
+		mcpArgs    map[string]any
+		wantStatus int
+		wantCode   string
+	}{
+		{
+			name: "suspended",
+			service: func() *Service {
+				app := cronWithRuns("nightly")
+				app.Spec.Suspended = true
+				svc, _ := newService(nil, app)
+				return svc
+			},
+			restMethod: http.MethodPost,
+			restPath:   "/v1/cron-jobs/nightly/runs",
+			gql:        `mutation { runCronJob(id:"nightly") { id } }`,
+			mcpTool:    "run_cron_job",
+			mcpArgs:    map[string]any{"serviceId": "nightly"},
+			wantStatus: http.StatusConflict,
+			wantCode:   CronErrorSuspended,
+		},
+		{
+			name: "run not found",
+			service: func() *Service {
+				svc, _ := newService(nil, cronWithRuns("nightly"))
+				return svc
+			},
+			restMethod: http.MethodGet,
+			restPath:   "/v1/cron-jobs/nightly/runs/" + unknownRunID,
+			gql:        `{ cronJobRun(serviceId:"nightly", runId:"` + unknownRunID + `") { id } }`,
+			mcpTool:    "get_cron_job_run",
+			mcpArgs:    map[string]any{"serviceId": "nightly", "runId": unknownRunID},
+			wantStatus: http.StatusNotFound,
+			wantCode:   CronErrorRunNotFound,
+		},
+		{
+			name: "terminal run",
+			service: func() *Service {
+				svc, _ := newService(nil, cronWithRuns("nightly"))
+				return svc
+			},
+			restMethod: http.MethodPost,
+			restPath:   "/v1/cron-jobs/nightly/runs/" + terminalRunID + "/cancel",
+			gql:        `mutation { cancelCronJobRun(serviceId:"nightly", runId:"` + terminalRunID + `") { id } }`,
+			mcpTool:    "cancel_cron_job_run",
+			mcpArgs:    map[string]any{"serviceId": "nightly", "runId": terminalRunID},
+			wantStatus: http.StatusConflict,
+			wantCode:   CronErrorRunTerminal,
+		},
+		{
+			name: "billing enforcement",
+			service: func() *Service {
+				app := cronWithRuns("nightly")
+				app.Labels = map[string]string{core.LabelTenant: "tea-billing"}
+				svc, _ := newService(nil, app)
+				svc.Billing = &cronBillingGate{err: core.ErrBillingEnforced}
+				return svc
+			},
+			restMethod: http.MethodPost,
+			restPath:   "/v1/cron-jobs/nightly/runs",
+			gql:        `mutation { runCronJob(id:"nightly") { id } }`,
+			mcpTool:    "run_cron_job",
+			mcpArgs:    map[string]any{"serviceId": "nightly"},
+			wantStatus: http.StatusConflict,
+			wantCode:   core.BillingErrorEnforced,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name+" REST", func(t *testing.T) {
+			svc := tt.service()
+			mux := http.NewServeMux()
+			svc.RegisterREST(mux)
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, httptest.NewRequest(tt.restMethod, tt.restPath, nil))
+			if rec.Code != tt.wantStatus {
+				t.Fatalf("status=%d body=%s, want %d", rec.Code, rec.Body.String(), tt.wantStatus)
+			}
+			var body map[string]any
+			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+				t.Fatal(err)
+			}
+			if body["code"] != tt.wantCode {
+				t.Fatalf("body=%#v, want code %s", body, tt.wantCode)
+			}
+		})
+
+		t.Run(tt.name+" GraphQL", func(t *testing.T) {
+			svc := tt.service()
+			schema, err := graphql.NewSchema(graphql.SchemaConfig{
+				Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+				Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: tt.gql})
+			if len(res.Errors) != 1 || res.Errors[0].Extensions["code"] != tt.wantCode {
+				t.Fatalf("errors=%#v, want code %s", res.Errors, tt.wantCode)
+			}
+		})
+
+		t.Run(tt.name+" MCP", func(t *testing.T) {
+			text := callAppsMCPError(t, tt.service(), tt.mcpTool, tt.mcpArgs)
+			if !strings.Contains(text, tt.wantCode) {
+				t.Fatalf("MCP error=%q, want code %s", text, tt.wantCode)
+			}
+		})
 	}
 }

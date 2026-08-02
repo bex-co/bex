@@ -20,10 +20,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"testing/iotest"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -347,6 +349,68 @@ func TestInviteRecordsRowAndMails(t *testing.T) {
 	}
 	if len(st.invites) != 1 {
 		t.Errorf("invite row not recorded: %d", len(st.invites))
+	}
+}
+
+func TestInviteEntropyFailureHasNoRowOrEmail(t *testing.T) {
+	entropyErr := errors.New("entropy unavailable")
+	tests := []struct {
+		name   string
+		reader io.Reader
+		want   error
+	}{
+		{name: "read error", reader: iotest.ErrReader(entropyErr), want: entropyErr},
+		{name: "short read", reader: strings.NewReader("short"), want: io.ErrUnexpectedEOF},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			st := newFakeStore(store.PlanPro)
+			st.seedMember("admin-1", "admin")
+			mailer := &fakeMailer{}
+			s := svc(st, newFakeGranter(), mailer, nil)
+			s.InviteRandom = tt.reader
+
+			_, err := s.Invite(ctxWith("admin-1"), "tea-1", "new@example.com", "developer")
+			if !errors.Is(err, tt.want) {
+				t.Fatalf("Invite error = %v, want %v", err, tt.want)
+			}
+			if len(st.invites) != 0 || mailer.calls != 0 {
+				t.Fatalf("entropy failure wrote invites=%d mail calls=%d", len(st.invites), mailer.calls)
+			}
+		})
+	}
+}
+
+func TestResendInviteEntropyFailureKeepsRowAndSendsNoEmail(t *testing.T) {
+	entropyErr := errors.New("entropy unavailable")
+	tests := []struct {
+		name   string
+		reader io.Reader
+		want   error
+	}{
+		{name: "read error", reader: iotest.ErrReader(entropyErr), want: entropyErr},
+		{name: "short read", reader: strings.NewReader("short"), want: io.ErrUnexpectedEOF},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			st := newFakeStore(store.PlanPro)
+			st.seedMember("admin-1", "admin")
+			expires := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
+			original := store.Invite{ID: "inv-1", TenantID: "tea-1", Email: "new@example.com", Role: "developer", Token: "original-token", ExpiresAt: expires}
+			st.invites[original.ID] = original
+			mailer := &fakeMailer{}
+			s := svc(st, newFakeGranter(), mailer, nil)
+			s.InviteRandom = tt.reader
+
+			_, err := s.ResendInvite(ctxWith("admin-1"), "tea-1", original.ID)
+			if !errors.Is(err, tt.want) {
+				t.Fatalf("ResendInvite error = %v, want %v", err, tt.want)
+			}
+			got := st.invites[original.ID]
+			if got.Token != original.Token || !got.ExpiresAt.Equal(original.ExpiresAt) || mailer.calls != 0 {
+				t.Fatalf("entropy failure changed row=%+v or sent mail calls=%d", got, mailer.calls)
+			}
+		})
 	}
 }
 

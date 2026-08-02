@@ -180,7 +180,7 @@ export class CronActionController {
           this.requireAuthoritativeRefresh(request.serviceId);
         const normalizedError = conflictLike(error)
           ? Object.assign(
-              new Error(errorFacts(error).text || "cron conflict"),
+              new Error("cron action was rejected by current server state"),
               {
                 statusCode: 409,
                 cause: error,
@@ -313,22 +313,22 @@ function rejected(
   };
 }
 
-function errorFacts(error: unknown): { statuses: Set<number>; text: string } {
+function errorFacts(error: unknown): {
+  statuses: Set<number>;
+  codes: Set<string>;
+} {
   const statuses = new Set<number>();
-  const text: string[] = [];
+  const codes = new Set<string>();
   const seen = new Set<unknown>();
   const visit = (value: unknown) => {
     if (!value || typeof value !== "object" || seen.has(value)) return;
     seen.add(value);
     const record = value as Record<string, unknown>;
-    if (typeof record.message === "string") {
-      text.push(record.message.toLowerCase());
-    }
     for (const candidate of [record.statusCode, record.status, record.code]) {
       if (typeof candidate === "number") statuses.add(candidate);
       if (typeof candidate === "string") {
         if (/^\d{3}$/.test(candidate)) statuses.add(Number(candidate));
-        else text.push(candidate.toLowerCase());
+        else codes.add(candidate.toUpperCase());
       }
     }
     for (const nested of [
@@ -345,30 +345,33 @@ function errorFacts(error: unknown): { statuses: Set<number>; text: string } {
     }
   };
   visit(error);
-  return { statuses, text: text.join(" ") };
+  return { statuses, codes };
 }
 
 function conflictLike(error: unknown): boolean {
-  const { statuses, text } = errorFacts(error);
+  const { codes } = errorFacts(error);
   return (
-    statuses.has(404) ||
-    statuses.has(409) ||
-    /not found|conflict|terminal|workspace billing enforcement is active/.test(
-      text,
-    )
+    codes.has("CRON_SUSPENDED") ||
+    codes.has("CRON_RUN_NOT_FOUND") ||
+    codes.has("CRON_RUN_TERMINAL") ||
+    codes.has("BILLING_ENFORCED")
   );
 }
 
 function isDeterministicRejection(error: unknown): boolean {
-  const { statuses, text } = errorFacts(error);
+  const { statuses, codes } = errorFacts(error);
   return (
     statuses.has(400) ||
     statuses.has(401) ||
+    statuses.has(402) ||
     statuses.has(403) ||
-    statuses.has(404) ||
-    statuses.has(409) ||
-    /bad request|unauthorized|not authorized|forbidden|not found|conflict|terminal|suspended|workspace billing enforcement is active/.test(
-      text,
-    )
+    codes.has("BAD_USER_INPUT") ||
+    codes.has("UNAUTHENTICATED") ||
+    codes.has("FORBIDDEN") ||
+    codes.has("CRON_SUSPENDED") ||
+    codes.has("CRON_RUN_NOT_FOUND") ||
+    codes.has("CRON_RUN_TERMINAL") ||
+    codes.has("BILLING_ENFORCED") ||
+    codes.has("PAYMENT_REQUIRED")
   );
 }

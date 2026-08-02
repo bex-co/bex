@@ -233,6 +233,23 @@ func NewConflictError(code, msg string, params map[string]any) *CodedError {
 
 const PaymentRequiredMessage = "Payment information is required for paid plans. Call create_billing_checkout_session to add a payment method, then retry."
 
+const (
+	BillingErrorEnforced   = "BILLING_ENFORCED"
+	BillingEnforcedMessage = "workspace billing enforcement is active"
+)
+
+// NewBillingEnforcedError is the stable cross-surface refusal for mutations
+// blocked by the durable billing-enforcement lifecycle. It is deliberately
+// distinct from PAYMENT_REQUIRED: enforcement is a 409 state conflict, while
+// paid-intent onboarding is a 402 missing-payment-method refusal.
+func NewBillingEnforcedError() *CodedError {
+	return &CodedError{
+		Code:     BillingErrorEnforced,
+		sentinel: ErrBillingEnforced,
+		msg:      BillingEnforcedMessage,
+	}
+}
+
 // NewPaymentRequiredError is the one cross-surface refusal for paid intent.
 // graphql-go projects Code into extensions.code, REST maps the wrapped
 // sentinel to 402, and MCP reports the actionable message unchanged.

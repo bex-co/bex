@@ -9,7 +9,52 @@ export function validInviteToken(value: unknown): value is string {
   return typeof value === "string" && INVITE_TOKEN_PATTERN.test(value);
 }
 
+/** Return only an exact invite capability; never coerce an arbitrary value. */
+export function parseInviteToken(value: unknown): string | null {
+  return validInviteToken(value) ? value : null;
+}
+
 export type InviteCapture = "none" | "stored" | "invalid" | "unavailable";
+
+function scrubInviteFromURL(url: URL, scrubAll = false) {
+  if (scrubAll) {
+    window.history.replaceState(window.history.state, "", url.pathname);
+    return;
+  }
+
+  url.searchParams.delete("invite");
+  window.history.replaceState(
+    window.history.state,
+    "",
+    `${url.pathname}${url.search}${url.hash}`,
+  );
+}
+
+function clearPendingInviteToken(): boolean {
+  try {
+    window.sessionStorage.removeItem(INVITE_TOKEN_STORAGE_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Replace a pending capability without allowing a failed write to expose an
+ * older capability to the next authenticated session.
+ */
+function replacePendingInviteToken(token: string): boolean {
+  if (!clearPendingInviteToken()) return false;
+  try {
+    window.sessionStorage.setItem(INVITE_TOKEN_STORAGE_KEY, token);
+    return true;
+  } catch {
+    // Quota/security failures can occur after removeItem succeeded. Clear once
+    // more in case a non-standard Storage implementation partially wrote.
+    clearPendingInviteToken();
+    return false;
+  }
+}
 
 /**
  * Validate and capture exactly one `invite` query value, then scrub it from
@@ -30,29 +75,52 @@ export function stashInviteTokenFromURL(options?: {
   const values = url.searchParams.getAll("invite");
   if (values.length === 0) return "none";
 
-  const token = values.length === 1 ? values[0] : null;
-  let result: InviteCapture = "invalid";
-  try {
-    if (validInviteToken(token)) {
-      window.sessionStorage.setItem(INVITE_TOKEN_STORAGE_KEY, token);
-      result = "stored";
-    } else {
-      window.sessionStorage.removeItem(INVITE_TOKEN_STORAGE_KEY);
-    }
-  } catch {
-    // Storage denial must not leave a bearer capability in the address bar.
-    result = "unavailable";
+  const token = parseInviteToken(values.length === 1 ? values[0] : null);
+
+  // Remove the bearer from browser history before touching fallible storage.
+  scrubInviteFromURL(url, options?.scrubAll);
+
+  if (!token) {
+    return clearPendingInviteToken() ? "invalid" : "unavailable";
+  }
+  return replacePendingInviteToken(token) ? "stored" : "unavailable";
+}
+
+/**
+ * Consume one pending capability for authenticated redemption. A present URL
+ * parameter always wins: malformed or duplicate parameters are rejected and
+ * may not fall back to an older stored token. The URL is scrubbed synchronously
+ * before any storage access.
+ */
+export function takePendingInviteToken(): string | null {
+  if (typeof window === "undefined") return null;
+
+  const url = new URL(window.location.href);
+  const values = url.searchParams.getAll("invite");
+  if (values.length > 0) {
+    scrubInviteFromURL(url);
+    if (!clearPendingInviteToken()) return null;
+    return parseInviteToken(values.length === 1 ? values[0] : null);
   }
 
-  if (options?.scrubAll) {
-    window.history.replaceState(window.history.state, "", url.pathname);
-  } else {
-    url.searchParams.delete("invite");
-    window.history.replaceState(
-      window.history.state,
-      "",
-      `${url.pathname}${url.search}${url.hash}`,
-    );
+  let stored: string | null;
+  try {
+    stored = window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY);
+  } catch {
+    clearPendingInviteToken();
+    return null;
   }
-  return result;
+  if (!clearPendingInviteToken()) return null;
+  return parseInviteToken(stored);
+}
+
+/** Retain an exact capability only for an explicit retry after ambiguity. */
+export function retainPendingInviteToken(token: unknown): boolean {
+  if (typeof window === "undefined") return false;
+  const parsed = parseInviteToken(token);
+  if (!parsed) {
+    clearPendingInviteToken();
+    return false;
+  }
+  return replacePendingInviteToken(parsed);
 }

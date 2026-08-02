@@ -158,13 +158,75 @@ describe("CronActionController", () => {
 
   it("maps billing enforcement to a deterministic conflict", async () => {
     const transport = new FakeTransport();
-    transport.runError = new Error("workspace billing enforcement is active");
+    transport.runError = {
+      graphQLErrors: [{ extensions: { code: "BILLING_ENFORCED" } }],
+    };
     const result = await new CronActionController(transport).execute(
       runRequest("confirm-billing"),
     );
     expect(result.outcome).toBe("rejected");
     if (result.outcome === "rejected") {
       expect((result.error as { statusCode?: number }).statusCode).toBe(409);
+    }
+  });
+
+  it("uses exact cron codes and never error prose for deterministic outcomes", async () => {
+    for (const code of [
+      "CRON_SUSPENDED",
+      "CRON_RUN_NOT_FOUND",
+      "CRON_RUN_TERMINAL",
+      "BILLING_ENFORCED",
+    ]) {
+      const transport = new FakeTransport();
+      transport.runError = { extensions: { code } };
+      const result = await new CronActionController(transport).execute(
+        runRequest(`confirm-${code}`),
+      );
+      expect(result.outcome).toBe("rejected");
+      if (result.outcome === "rejected") {
+        expect(result.refreshRequired).toBe(true);
+        expect((result.error as { statusCode?: number }).statusCode).toBe(409);
+      }
+    }
+
+    const transport = new FakeTransport();
+    transport.runError = new Error(
+      "forbidden terminal suspended workspace billing enforcement is active",
+    );
+    const arbitrary = await new CronActionController(transport).execute(
+      runRequest("confirm-arbitrary-prose"),
+    );
+    expect(arbitrary.outcome).toBe("unknown");
+  });
+
+  it("keeps payment required deterministic but separate from cron conflicts", async () => {
+    const transport = new FakeTransport();
+    transport.runError = { extensions: { code: "PAYMENT_REQUIRED" } };
+    const result = await new CronActionController(transport).execute(
+      runRequest("confirm-payment-required"),
+    );
+    expect(result.outcome).toBe("rejected");
+    if (result.outcome === "rejected") {
+      expect(result.refreshRequired).toBe(false);
+      expect((result.error as { statusCode?: number }).statusCode).toBe(
+        undefined,
+      );
+    }
+  });
+
+  it("keeps transport-level 404 and 409 outcomes ambiguous without exact codes", async () => {
+    for (const statusCode of [404, 409]) {
+      const transport = new FakeTransport();
+      transport.runError = Object.assign(new Error("transport response"), {
+        statusCode,
+      });
+      const result = await new CronActionController(transport).execute(
+        runRequest(`confirm-raw-${statusCode}`),
+      );
+      expect(result.outcome).toBe("unknown");
+      if (result.outcome === "unknown") {
+        expect(result.refreshRequired).toBe(true);
+      }
     }
   });
 

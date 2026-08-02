@@ -18,6 +18,7 @@ export type LifecycleCapability<Action extends string> = {
 
 export type LifecycleRunResult<Resource, Action extends string> =
   | { status: "success"; resource: Resource }
+  | { status: "accepted_unverified"; resource: Resource | null }
   | { status: "busy"; action: Action }
   | { status: "not_allowed"; reason: "state" | "type" }
   | {

@@ -18,6 +18,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -283,7 +284,17 @@ func (b *Base) RequireBillingMutation(ctx context.Context, workspaceID string) e
 	if b == nil || b.Billing == nil || workspaceID == "" || workspaceID == DefaultTenant {
 		return nil
 	}
-	return b.Billing.CheckBillingMutationAllowed(ctx, workspaceID)
+	err := b.Billing.CheckBillingMutationAllowed(ctx, workspaceID)
+	if !errors.Is(err, ErrBillingEnforced) {
+		return err
+	}
+	// Preserve an already-coded gate implementation; normalize the store's
+	// historical plain sentinel so every caller gets the same transport code.
+	var coded *CodedError
+	if errors.As(err, &coded) {
+		return err
+	}
+	return NewBillingEnforcedError()
 }
 
 // RequirePaymentMethod consults the injected local marker gate. A configured

@@ -103,6 +103,18 @@ export class PostgresLifecycleController {
         return { status: "error", error };
       }
 
+      if (action === "restart") {
+        // The mutation proves acceptance, but the current view exposes no
+        // restart generation or CNPG condition that can prove the bounce.
+        let latest: PostgresLifecycleResource | null = null;
+        try {
+          latest = await this.options.refresh(resource.id);
+        } catch {
+          // Acceptance remains known when this best-effort refresh is absent.
+        }
+        return { status: "accepted_unverified", resource: latest };
+      }
+
       let latest: PostgresLifecycleResource | null = null;
       for (let poll = 0; poll < this.maxPolls; poll += 1) {
         latest = await this.options.refresh(resource.id);
@@ -126,7 +138,5 @@ function postgresConverged(
 ): boolean {
   if (action === "suspend") return isLifecycleSuspended(resource.suspended);
   if (action === "resume") return !isLifecycleSuspended(resource.suspended);
-  // The current GraphQL view exposes no restart generation/condition. A fresh
-  // authorized read can confirm the accepted resource, but not the CNPG bounce.
-  return ACTIONABLE_STATUSES.has(resource.status.toLowerCase());
+  return false;
 }

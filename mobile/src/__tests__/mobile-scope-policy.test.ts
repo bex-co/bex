@@ -1,10 +1,13 @@
 import fs from "fs";
 import path from "path";
 import ts from "typescript";
-import { Kind, parse } from "graphql";
+import { Kind, parse, visit } from "graphql";
 import { MOBILE_SAFE_ACTIONS } from "../components/safe-action/registry";
 
+const srcRoot = path.resolve(process.cwd(), "src");
 const routeRoot = path.resolve(process.cwd(), "app");
+const productionRoots = [srcRoot, routeRoot];
+const sourceExtensions = [".ts", ".tsx", ".js", ".jsx"] as const;
 
 function sourceFiles(root: string, extensions: readonly string[]): string[] {
   return fs
@@ -18,7 +21,7 @@ function sourceFiles(root: string, extensions: readonly string[]): string[] {
     .map((entry) => path.join(root, entry));
 }
 
-const routeFiles = sourceFiles(routeRoot, [".tsx"])
+const routeFiles = sourceFiles(routeRoot, sourceExtensions)
   .map((file) => path.relative(routeRoot, file))
   .sort();
 
@@ -65,10 +68,96 @@ const allowedMutationDocuments = new Set(
   [...allowedMutationNames].map((name) => `${name}Document`),
 );
 
+// name -> operation kind | sorted variables | sorted selected field names.
+// Any new read, write, argument surface, or selected field needs an explicit
+// supervision-scope review instead of entering mobile through codegen silently.
+const allowedGraphqlOperations: Record<string, string> = {
+  MobileAcceptWorkspaceInvite:
+    "mutation|token|acceptWorkspaceInvite,role,workspaceId,workspaceName",
+  MobileCancelCronRun:
+    "mutation|runId,serviceId|cancelCronJobRun,finishedAt,id,startedAt,status",
+  MobileCancelDeploy:
+    "mutation|deployId,serviceId|cancelDeploy,finishedAt,id,serviceId,status,updatedAt",
+  MobileCronRuns:
+    "query|cursor,limit,serviceId|cronJobRuns,finishedAt,id,startedAt,status",
+  MobileDeployHistory:
+    "query|cursor,limit,serviceId|commitCreatedAt,commitId,commitMessage,createdAt,deploys,failureReason,finishedAt,id,image,preDeployStatus,rollbackOf,serviceId,startedAt,status,trigger,updatedAt",
+  MobileEnvVarKeys: "query|serviceId|envVarKeys,id,key,revision,service",
+  MobileKeyValueInsights:
+    "query|id|datastoreMetrics,field,labels,time,unit,value,values",
+  MobileKeyValueLifecycle:
+    "query|id|id,keyValue,name,plan,region,status,suspended,updatedAt,version",
+  MobileMarkPushNotificationRead: "mutation|id|markPushNotificationRead",
+  MobileMetricSnapshot:
+    "query|name,resourceId|field,labels,metrics,time,unit,value,values",
+  MobileNotificationDeviceSubscriptions:
+    "query||createdAt,deviceId,lastRegisteredAt,notificationDeviceSubscriptions,platform,preferenceRef,provider,pushNotificationsAvailable,updatedAt",
+  MobileNotificationInbox:
+    "query|limit|body,deepLink,event,id,notificationInbox,occurredAt,readAt,title,unreadPushNotificationCount",
+  MobilePatchSingleEnvVar:
+    "mutation|key,revision,serviceId,value|envVarKeys,patchServiceEnvironment,rolledOut",
+  MobilePostgresCapacity:
+    "query|id|datastoreMetrics,field,labels,time,unit,value,values",
+  MobilePostgresLifecycle:
+    "query|id|database,id,name,plan,region,status,suspended,updatedAt,version",
+  MobilePostgresProcesses:
+    "query|id|databaseProcesses,durationSeconds,state,waitEventType",
+  MobilePostgresSizes:
+    "query|id|database,databaseSizes,name,schema,sizePretty,tables",
+  MobilePostgresTableScans:
+    "query|id|databaseTableScans,deadRows,indexScans,name,schema,seqScans",
+  MobileRegisterNotificationDeviceSubscription:
+    "mutation|deviceId,platform,provider,token|createdAt,deviceId,lastRegisteredAt,platform,preferenceRef,provider,registerNotificationDeviceSubscription,updatedAt",
+  MobileResourceStatus:
+    "query|ownerId|databaseIds,databases,displayName,id,keyValueIds,keyValues,latestDeployId,name,phase,projectId,projects,runtime,serviceIds,services,status,suspended,type,updatedAt,version",
+  MobileRestartPostgres:
+    "mutation|id|id,restartDatabase,status,suspended,updatedAt",
+  MobileRestartService:
+    "mutation|serviceId|createdAt,id,restartServer,serviceId,status",
+  MobileResumeKeyValue:
+    "mutation|id|id,resumeKeyValue,status,suspended,updatedAt",
+  MobileResumePostgres:
+    "mutation|id|id,resumeDatabase,status,suspended,updatedAt",
+  MobileResumeService: "mutation|id|id,phase,resumeService,suspended,updatedAt",
+  MobileRevealEnvVar:
+    "query|key,serviceId|envVar,id,key,revision,service,value",
+  MobileRollbackService:
+    "mutation|deployId,serviceId|createdAt,id,rollbackOf,rollbackService,serviceId,status,trigger",
+  MobileRunCronJob: "mutation|id|finishedAt,id,runCronJob,startedAt,status",
+  MobileServiceEvents:
+    "query|cursor,limit,serviceId|actor,branchFrom,branchTo,commitId,commitMessage,commitUrl,cursor,deployId,deployStatus,details,finishedAt,fromCount,id,image,instanceId,preDeployStatus,reasonCode,serviceEvents,startedAt,status,timestamp,toCount,triggeredByUser,type",
+  MobileServiceSupervision:
+    "query|id|displayName,id,latestDeployId,name,phase,region,replicas,revision,runtime,service,suspended,type,updatedAt",
+  MobileSuspendKeyValue:
+    "mutation|confirm,id|id,status,suspendKeyValue,suspended,updatedAt",
+  MobileSuspendPostgres:
+    "mutation|confirm,id|id,status,suspendDatabase,suspended,updatedAt",
+  MobileSuspendService:
+    "mutation|confirm,id|id,phase,suspendService,suspended,updatedAt",
+  MobileTriggerDeploy:
+    "mutation|serviceId|createdAt,id,serviceId,status,trigger,triggerDeploy",
+  MobileUnregisterNotificationDeviceSubscription:
+    "mutation|deviceId|unregisterNotificationDeviceSubscription",
+  MobileUsageGlance:
+    "query|ownerId|coverage,degradedSources,kind,period,rows,services,state,through,total,usage",
+  MobileWorkspaces: "query||createdAt,id,name,plan,role,workspaces",
+};
+
+const allowedDirectWriteMethods = new Set([
+  "src/features/auth/expo-oauth-transport.ts:POST",
+]);
+
 interface ProductWriteInventory {
   actionIds: string[];
   mutationDocuments: string[];
   directWriteMethods: string[];
+}
+
+function scriptKind(file: string): ts.ScriptKind {
+  if (file.endsWith(".tsx")) return ts.ScriptKind.TSX;
+  if (file.endsWith(".jsx")) return ts.ScriptKind.JSX;
+  if (file.endsWith(".js")) return ts.ScriptKind.JS;
+  return ts.ScriptKind.TS;
 }
 
 function productWriteInventory(): ProductWriteInventory {
@@ -77,19 +166,16 @@ function productWriteInventory(): ProductWriteInventory {
     mutationDocuments: [],
     directWriteMethods: [],
   };
-  const roots = [path.resolve(process.cwd(), "src/features"), routeRoot];
-  for (const root of roots) {
-    for (const file of sourceFiles(root, [".ts", ".tsx"])) {
-      if (file.includes(`${path.sep}features${path.sep}auth${path.sep}`))
-        continue;
+  for (const root of productionRoots) {
+    for (const file of sourceFiles(root, sourceExtensions)) {
       const source = ts.createSourceFile(
         file,
         fs.readFileSync(file, "utf8"),
         ts.ScriptTarget.Latest,
         true,
-        file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+        scriptKind(file),
       );
-      const visit = (node: ts.Node) => {
+      const inspect = (node: ts.Node) => {
         if (
           ts.isCallExpression(node) &&
           ts.isIdentifier(node.expression) &&
@@ -136,24 +222,40 @@ function productWriteInventory(): ProductWriteInventory {
             `${path.relative(process.cwd(), file)}:${node.initializer.text.toUpperCase()}`,
           );
         }
-        ts.forEachChild(node, visit);
+        ts.forEachChild(node, inspect);
       };
-      visit(source);
+      inspect(source);
     }
   }
   return inventory;
 }
 
-function graphqlMutations(): string[] {
-  const featureRoot = path.resolve(process.cwd(), "src/features");
-  return sourceFiles(featureRoot, [".graphql"]).flatMap((file) =>
-    parse(fs.readFileSync(file, "utf8")).definitions.flatMap((definition) =>
-      definition.kind === Kind.OPERATION_DEFINITION &&
-      definition.operation === "mutation"
-        ? [definition.name?.value ?? "<anonymous-mutation>"]
-        : [],
-    ),
-  );
+function graphqlOperationInventory(): Record<string, string> {
+  const operations: Record<string, string> = {};
+  for (const root of productionRoots) {
+    for (const file of sourceFiles(root, [".graphql"])) {
+      for (const definition of parse(fs.readFileSync(file, "utf8"))
+        .definitions) {
+        if (definition.kind !== Kind.OPERATION_DEFINITION) continue;
+        const name = definition.name?.value ?? "<anonymous-operation>";
+        if (operations[name])
+          throw new Error(`duplicate GraphQL operation: ${name}`);
+        const fields: string[] = [];
+        visit(definition, {
+          Field: (node) => void fields.push(node.name.value),
+        });
+        const variables = (definition.variableDefinitions ?? [])
+          .map((variable) => variable.variable.name.value)
+          .sort();
+        operations[name] = `${definition.operation}|${variables.join(",")}|${[
+          ...new Set(fields),
+        ]
+          .sort()
+          .join(",")}`;
+      }
+    }
+  }
+  return Object.fromEntries(Object.entries(operations).sort());
 }
 
 describe("ADR048 mobile scope", () => {
@@ -163,16 +265,8 @@ describe("ADR048 mobile scope", () => {
 
   it("keeps credentials out of ordinary storage and diagnostics", () => {
     const authRoot = path.resolve(process.cwd(), "src/features/auth");
-    const authText = fs
-      .readdirSync(authRoot, { recursive: true })
-      .filter(
-        (entry) =>
-          String(entry).endsWith(".ts") || String(entry).endsWith(".tsx"),
-      )
-      .filter((entry) => !String(entry).includes("__tests__"))
-      .map((entry) =>
-        fs.readFileSync(path.join(authRoot, String(entry)), "utf8"),
-      )
+    const authText = sourceFiles(authRoot, sourceExtensions)
+      .map((file) => fs.readFileSync(file, "utf8"))
       .join("\n");
     expect(authText).not.toContain("AsyncStorage");
     expect(authText).not.toContain("console.");
@@ -180,7 +274,7 @@ describe("ADR048 mobile scope", () => {
     expect(authText).not.toContain("clientSecret");
   });
 
-  it("registers only the exact safe action and mutation inventory", () => {
+  it("registers only the exact safe-action and mutation inventory", () => {
     const inventory = productWriteInventory();
     const allowedActionIds = new Set<string>(MOBILE_SAFE_ACTIONS);
     expect(
@@ -194,11 +288,24 @@ describe("ADR048 mobile scope", () => {
         (document) => !allowedMutationDocuments.has(document),
       ),
     ).toEqual([]);
-    expect([...new Set(graphqlMutations())].sort()).toEqual(
-      [...allowedMutationNames].sort(),
+    expect(
+      inventory.directWriteMethods.filter(
+        (write) => !allowedDirectWriteMethods.has(write),
+      ),
+    ).toEqual([]);
+    expect([...new Set(inventory.directWriteMethods)].sort()).toEqual(
+      [...allowedDirectWriteMethods].sort(),
     );
-    // Product writes must pass through typed GraphQL + defineSafeAction. Auth's
-    // OAuth transport is excluded above; harmless prose/tests are never scanned.
-    expect(inventory.directWriteMethods).toEqual([]);
+  });
+
+  it("allowlists every GraphQL operation, variable, and selected field", () => {
+    const operations = graphqlOperationInventory();
+    expect(operations).toEqual(allowedGraphqlOperations);
+    expect(
+      Object.entries(operations)
+        .filter(([, signature]) => signature.startsWith("mutation|"))
+        .map(([name]) => name)
+        .sort(),
+    ).toEqual([...allowedMutationNames].sort());
   });
 });
