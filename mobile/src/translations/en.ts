@@ -364,6 +364,49 @@ export const en = {
     retry: "Try again",
     signOut: "Sign out",
   },
+  invite: {
+    title: "Workspace invitation",
+    loading: "Securing this invitation on your device.",
+    signInBody:
+      "Sign in in your system browser, then return here to review the invitation. The link can join the account you choose, regardless of its email address.",
+    signIn: "Sign in to review",
+    signInError:
+      "Sign-in did not complete. The invitation remains secured on this device so you can try again.",
+    readyBody:
+      "Accepting grants your current bex account access to the workspace identified by this single-use link. The invited email address is not checked for this direct acceptance.",
+    accept: "Accept invitation",
+    accepting: "Accepting this invitation once. Keep the app open.",
+    retryTitle: "Invitation not confirmed",
+    retry: "Try accepting again",
+    retryable: {
+      transport:
+        "The response ended before bex could confirm the result. The invitation remains secured; retry explicitly when connected.",
+      unavailable:
+        "bex is temporarily unavailable. The invitation remains secured; retry explicitly when connected.",
+    },
+    acceptedTitle: "Invitation accepted",
+    acceptedBody: "You joined %{workspace}.",
+    refreshFailed:
+      "The invitation was accepted, but the workspace list could not refresh. Reopening Status will retry it.",
+    openWorkspace: "Open Status",
+    failedTitle: "Invitation unavailable",
+    empty: "This route does not contain a pending invitation.",
+    failures: {
+      invalid: "This invitation link is invalid or no longer exists.",
+      expired:
+        "This invitation has expired. Ask a workspace admin to resend it.",
+      "already-accepted": "This single-use invitation was already accepted.",
+      "plan-limit":
+        "The workspace's current plan or seat limit cannot accept this invitation. Ask an admin to resolve it and resend the invitation.",
+      authorization:
+        "Your current account is not authorized to accept this invitation.",
+      "subject-changed":
+        "The signed-in account changed, so the stored invitation was cleared. Open the original link again for the intended account.",
+      failed: "bex refused this invitation. No membership was assumed.",
+      storage:
+        "This device could not secure or clear the invitation. The app will not attempt acceptance.",
+    },
+  },
   workspace: {
     current: "Workspace",
     choose: "Choose workspace",

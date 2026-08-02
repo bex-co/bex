@@ -29,6 +29,15 @@ ENV VITE_KRATOS_PUBLIC_URL=$VITE_KRATOS_PUBLIC_URL
 ARG VITE_KRATOS_SSR_URL
 ENV VITE_KRATOS_SSR_URL=$VITE_KRATOS_SSR_URL
 
+# Public signing identities for verified mobile invitation links. Both are
+# optional together: absent keeps the association documents valid but disabled;
+# a partial or malformed configuration fails the build. These values identify
+# signing certificates and are not credentials.
+ARG BEX_MOBILE_APPLE_TEAM_ID
+ENV BEX_MOBILE_APPLE_TEAM_ID=$BEX_MOBILE_APPLE_TEAM_ID
+ARG BEX_MOBILE_ANDROID_SHA256_CERT_FINGERPRINTS
+ENV BEX_MOBILE_ANDROID_SHA256_CERT_FINGERPRINTS=$BEX_MOBILE_ANDROID_SHA256_CERT_FINGERPRINTS
+
 # Build the application (produces .output/)
 RUN yarn build
 

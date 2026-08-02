@@ -36,6 +36,7 @@ const allowedRoutes = [
   "+not-found.tsx",
   "_layout.tsx",
   "index.tsx",
+  "invite.tsx",
   "oauth2redirect.tsx",
   "sign-in.tsx",
 ].sort();
@@ -58,6 +59,7 @@ const allowedMutationNames = new Set([
   "MobileRegisterNotificationDeviceSubscription",
   "MobileUnregisterNotificationDeviceSubscription",
   "MobileMarkPushNotificationRead",
+  "MobileAcceptWorkspaceInvite",
 ]);
 const allowedMutationDocuments = new Set(
   [...allowedMutationNames].map((name) => `${name}Document`),
@@ -155,7 +157,7 @@ function graphqlMutations(): string[] {
 }
 
 describe("ADR048 mobile scope", () => {
-  it("exposes only the supervision tabs at the app root", () => {
+  it("exposes only supervision and approved platform entry routes", () => {
     expect(routeFiles).toEqual(allowedRoutes);
   });
 

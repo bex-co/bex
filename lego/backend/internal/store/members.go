@@ -28,6 +28,15 @@ import (
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
+// Stable direct-invite redemption causes. Each wraps ErrConflict so existing
+// REST/MCP status semantics remain unchanged while callers can classify the
+// refusal without parsing human prose.
+var (
+	ErrInviteAlreadyAccepted = fmt.Errorf("invite already accepted: %w", ErrConflict)
+	ErrInviteExpired         = fmt.Errorf("invite expired: %w", ErrConflict)
+	ErrInvitePlanLimit       = fmt.Errorf("workspace plan cannot seat invite: %w", ErrConflict)
+)
+
 // members.go is the write side of workspace membership the w4/m12 team surface
 // drives: role changes and removals on existing tenant_members rows, and the
 // tenant_invites lifecycle (an email is invited, then redeemed into a
@@ -340,16 +349,16 @@ func (s *PGStore) AcceptInviteByToken(ctx context.Context, token, subject string
 		}
 		switch {
 		case inv.AcceptedAt != nil:
-			return fmt.Errorf("invite already accepted: %w", ErrConflict)
+			return ErrInviteAlreadyAccepted
 		case time.Now().After(inv.ExpiresAt):
-			return fmt.Errorf("invite expired: %w", ErrConflict)
+			return ErrInviteExpired
 		}
 		ok, err := planAllowsJoin(ctx, tx, inv, subject)
 		if err != nil {
 			return err
 		}
 		if !ok {
-			return fmt.Errorf("the workspace's current plan cannot seat this invite; upgrade the workspace and retry: %w", ErrConflict)
+			return ErrInvitePlanLimit
 		}
 		if err := redeemInvite(ctx, tx, inv, subject); err != nil {
 			return err

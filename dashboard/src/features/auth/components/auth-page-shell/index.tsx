@@ -30,9 +30,10 @@ export function AuthPageShell({
   features,
   children,
 }: AuthPageShellProps) {
-  // An invite email lands on /auth/sign-up?invite=<token> (w1/m33) — stash the
-  // token so it survives the Kratos sign-up/login round-trip; the
-  // authenticated layout redeems it (useInviteRedemption).
+  // The dedicated /invite route normally stashes and scrubs the bearer before
+  // arriving here. Keep accepting the old /auth/*?invite= link shape during
+  // rollout; the shared helper now validates and removes it from browser
+  // history before the Kratos round-trip.
   useEffect(() => {
     stashInviteTokenFromURL();
   }, []);

@@ -56,6 +56,16 @@ const DefaultInviteTTL = 7 * 24 * time.Hour
 // (bex-api without BEX_CP_DB_URI); adapters surface it as 503.
 var ErrMembersUnavailable = errors.New("workspace members store not configured")
 
+// Stable GraphQL extensions.code values for direct invite redemption. Mobile
+// uses these to clear terminal bearer capabilities while retaining only
+// retryable transport failures; human error strings are not an API.
+const (
+	InviteErrorInvalid         = "INVITE_INVALID"
+	InviteErrorExpired         = "INVITE_EXPIRED"
+	InviteErrorAlreadyAccepted = "INVITE_ALREADY_ACCEPTED"
+	InviteErrorPlanLimit       = "INVITE_PLAN_LIMIT"
+)
+
 // Service holds the membership logic once. It embeds *core.Base for the
 // authorization gate + caller Identity and writes through the Postgres source of
 // truth (Store) with OpenFGA membership kept in lockstep (Granter/Revoker). The
@@ -437,7 +447,7 @@ func (s *Service) AcceptInvite(ctx context.Context, token string) (AcceptedInvit
 		return AcceptedInviteView{}, ErrMembersUnavailable
 	}
 	if strings.TrimSpace(token) == "" {
-		return AcceptedInviteView{}, fmt.Errorf("%w: missing invite token", core.ErrBadRequest)
+		return AcceptedInviteView{}, core.NewBadRequestError(InviteErrorInvalid, "missing invite token", nil)
 	}
 	id, ok := core.IdentityFrom(ctx)
 	if !ok {
@@ -445,7 +455,7 @@ func (s *Service) AcceptInvite(ctx context.Context, token string) (AcceptedInvit
 	}
 	inv, err := s.Store.AcceptInviteByToken(ctx, token, id.Subject)
 	if err != nil {
-		return AcceptedInviteView{}, mapStoreErr(err)
+		return AcceptedInviteView{}, mapAcceptInviteErr(err)
 	}
 	if err := s.grantRole(ctx, inv.TenantID, "user:"+id.Subject, inv.Role); err != nil {
 		// Row is the source of truth; the tuple is re-driven on the next login
@@ -458,6 +468,21 @@ func (s *Service) AcceptInvite(ctx context.Context, token string) (AcceptedInvit
 		view.WorkspaceName = tenant.Name
 	}
 	return view, nil
+}
+
+func mapAcceptInviteErr(err error) error {
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		return core.NewNotFoundError(InviteErrorInvalid, "invite token is invalid", nil)
+	case errors.Is(err, store.ErrInviteAlreadyAccepted):
+		return core.NewBadRequestError(InviteErrorAlreadyAccepted, "invite has already been accepted", nil)
+	case errors.Is(err, store.ErrInviteExpired):
+		return core.NewBadRequestError(InviteErrorExpired, "invite has expired", nil)
+	case errors.Is(err, store.ErrInvitePlanLimit):
+		return core.NewBadRequestError(InviteErrorPlanLimit, "the workspace plan cannot seat this invite", nil)
+	default:
+		return mapStoreErr(err)
+	}
 }
 
 // recordAccepted writes the members.AcceptInvite audit row for a token

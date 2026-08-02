@@ -12,13 +12,28 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "co.bex.mobile",
+      "associatedDomains": ["applinks:dashboard.bex.co"],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "co.bex.mobile",
-      "permissions": []
+      "permissions": [],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "dashboard.bex.co",
+              "path": "/invite"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "plugins": [
       [

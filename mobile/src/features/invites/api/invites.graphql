@@ -1,0 +1,9 @@
+# The native invite surface can only redeem a bearer capability for the
+# current identity. Member administration and invite inspection stay desktop.
+mutation MobileAcceptWorkspaceInvite($token: String!) {
+  acceptWorkspaceInvite(token: $token) {
+    workspaceId
+    workspaceName
+    role
+  }
+}

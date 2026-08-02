@@ -66,7 +66,7 @@ func (s *Service) inviteMessage(inv store.Invite, tenant store.Tenant) email.Mes
 		m.CTA = &email.CTA{
 			Lead:  fmt.Sprintf("Sign up or log in with %s to accept", inv.Email),
 			Label: "Accept invitation",
-			URL:   fmt.Sprintf("%s/auth/sign-up?invite=%s", base, inv.Token),
+			URL:   fmt.Sprintf("%s/invite?invite=%s", base, inv.Token),
 		}
 	} else {
 		m.Paragraphs = append(m.Paragraphs,
