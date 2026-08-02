@@ -43,6 +43,7 @@ env:
   DASHBOARD_IMAGE: ghcr.io/bex-co/bex-dashboard
   OPENSANDBOX_IMAGE: ghcr.io/bex-co/opensandbox-server
   OPENSANDBOX_CONTROLLER_IMAGE: ghcr.io/bex-co/opensandbox-controller
+  OPENSANDBOX_CONTROLLER_TAG: v0.2.0-bex-snapjobns
   AGENT_SANDBOX_IMAGE: ghcr.io/bex-co/bex-agent-sandbox
 
 jobs:
@@ -538,7 +539,10 @@ jobs:
         timeout-minutes: 12
         env:
           BEX_EXPECTED_OPENSANDBOX_IMAGE: ${{ env.OPENSANDBOX_IMAGE }}@${{ steps.build_opensandbox.outputs.digest }}
-          BEX_EXPECTED_OPENSANDBOX_CONTROLLER_IMAGE: ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}@${{ steps.build_opensandbox_controller.outputs.digest }}
+          # The upstream Helm chart always renders repository:tag, even when
+          # the tag carries an immutable digest. Kubernetes preserves that
+          # human-readable tag in the Deployment image string.
+          BEX_EXPECTED_OPENSANDBOX_CONTROLLER_IMAGE: ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:${{ env.OPENSANDBOX_CONTROLLER_TAG }}@${{ steps.build_opensandbox_controller.outputs.digest }}
         run: |
           deadline=$((SECONDS + 600))
           actual=""
