@@ -1,0 +1,6 @@
+package-lock.json
+package.json
+.github
+__generated__
+src/generated-graphql
+src/common/graphql/queries

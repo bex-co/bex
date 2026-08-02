@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "bex",
+    "slug": "bex-mobile",
+    "scheme": "bex",
+    "version": "0.1.0",
+    "platforms": ["ios", "android"],
+    "orientation": "default",
+    "userInterfaceStyle": "automatic",
+    "icon": "./src/assets/images/icon.png",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "co.bex.mobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "co.bex.mobile",
+      "permissions": []
+    },
+    "plugins": [
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./src/assets/fonts/JetBrainsMono-Regular.ttf",
+            "./src/assets/fonts/JetBrainsMono-Medium.ttf"
+          ]
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./src/assets/images/icon.png",
+          "resizeMode": "contain",
+          "imageWidth": 160,
+          "backgroundColor": "#f8faf8",
+          "dark": {
+            "backgroundColor": "#111411"
+          }
+        }
+      ],
+      ["expo-asset", { "assets": ["./src/assets"] }],
+      "expo-localization",
+      "expo-router",
+      "expo-status-bar"
+    ]
+  }
+}
