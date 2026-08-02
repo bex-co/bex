@@ -318,6 +318,24 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Per-workspace sandbox snapshot resume-pull credentials (w3/m42 t002,
+	// ADR042 D5): active alongside the per-App registry credentials whenever
+	// BEX_REGISTRY_NS enables Zot credential management. Each namespace the
+	// control plane labels app.bex.co/regime=sandbox gets a read-only Zot user
+	// scoped to its own "snapshots/<ns>/**" repositories plus the in-namespace
+	// bex-snapshot-pull Secret the OpenSandbox controller's
+	// --resume-pull-secret flag references.
+	if appReconciler.PerAppRegistry != nil {
+		if err := (&controller.SandboxNamespaceRegistryReconciler{
+			Client:   uncachedClient,
+			Scheme:   mgr.GetScheme(),
+			Registry: appReconciler.PerAppRegistry,
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "Failed to create controller", "controller", "sandboxnamespaceregistry")
+			os.Exit(1)
+		}
+	}
+
 	databaseReconciler := &controller.DatabaseReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { appendFile, mkdir, rename, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { streamText } from "ai";
 import { createSessionProvider } from "./acp.mjs";
@@ -59,8 +59,38 @@ function rawUIMessagePart(part) {
   return { type: "data-acp", data };
 }
 
+// A resumed sandbox restarts the driver on the restored rootfs, where the
+// previous turn's status file still carries the agent's ACP session id (the
+// agent's own on-disk session state survives rootfs snapshots — ADR047 D3).
+// Adopt that id as existingSessionId when the environment supplies none, so
+// the provider can attempt session/load; acp.mjs still gates the attempt on
+// the agent advertising loadSession, and a missing, corrupt, or
+// non-succeeded status file adopts nothing — the turn starts a fresh session.
+// Returns the provenance of the session id: "env", "rootfs", or "".
+export async function adoptPersistedSession(config) {
+  if (config.existingSessionId) return "env";
+  let persisted;
+  try {
+    persisted = JSON.parse(await readFile(config.statusPath, "utf8"));
+  } catch {
+    return "";
+  }
+  if (
+    persisted?.state === "succeeded" &&
+    typeof persisted.sessionId === "string" &&
+    persisted.sessionId !== ""
+  ) {
+    config.existingSessionId = persisted.sessionId;
+    return "rootfs";
+  }
+  return "";
+}
+
 export async function runHeadlessTurn(config, credentialManager, hub) {
   if (!config.prompt) throw new Error("BEX_AGENT_PROMPT is required for a headless turn");
+  // Read the prior turn's persisted identity BEFORE the running-state write
+  // below replaces the status file.
+  const resumedFrom = await adoptPersistedSession(config);
   await writeStatus(config.statusPath, { state: "running" });
 
   let provider;
@@ -114,6 +144,7 @@ export async function runHeadlessTurn(config, credentialManager, hub) {
       state: "succeeded",
       sessionId: provider.getSessionId(),
       resume: created.resume,
+      ...(resumedFrom ? { resumedFrom } : {}),
       scrubbedFiles: scrubbed.length,
     };
     await writeStatus(config.statusPath, status);

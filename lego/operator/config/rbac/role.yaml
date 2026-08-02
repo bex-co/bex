@@ -15,21 +15,22 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - namespaces
+  - pods
+  - resourcequotas
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - persistentvolumeclaims
   verbs:
   - get
   - list
   - patch
   - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  - resourcequotas
-  verbs:
-  - get
-  - list
   - watch
 - apiGroups:
   - ""
