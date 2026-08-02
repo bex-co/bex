@@ -332,7 +332,12 @@ func entriesByResource(entries []usageServiceEntry) map[string]usageServiceEntry
 // TestResourceKindSurfacesAcrossAdapters verifies that REST, GraphQL, and MCP
 // return identical App, Database, KeyValue, and sandbox entries — the t004 DoD.
 func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
-	svc := svcWithTenant(seedMixedStore(), "tea-mix")
+	st := seedMixedStore()
+	st.coverage = store.UsageCoverage{
+		Known: true, Through: time.Date(2026, 7, 15, 11, 0, 0, 0, time.UTC),
+		DegradedSources: []string{store.UsageSourceDirect, store.UsageSourceHTTP},
+	}
+	svc := svcWithTenant(st, "tea-mix")
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user:alice"})
 
 	// REST
@@ -385,7 +390,7 @@ func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 	}
 	gql := graphql.Do(graphql.Params{
 		Schema:        schema,
-		RequestString: `{ usage { services { serviceId serviceName resourceKind rows { kind tier total } } } }`,
+		RequestString: `{ usage { coverage { state through degradedSources } services { serviceId serviceName resourceKind rows { kind tier total } } } }`,
 		Context:       ctx,
 	})
 	if len(gql.Errors) > 0 {
@@ -393,6 +398,11 @@ func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 	}
 	data := gql.Data.(map[string]any)
 	usageData := data["usage"].(map[string]any)
+	gqlCoverage := usageData["coverage"].(map[string]any)
+	if gqlCoverage["state"] != restResp.Coverage.State || gqlCoverage["through"] != restResp.Coverage.Through ||
+		!reflect.DeepEqual(gqlCoverage["degradedSources"], []any{"direct", "http"}) {
+		t.Fatalf("GraphQL coverage differs from REST: REST=%+v GraphQL=%+v", restResp.Coverage, gqlCoverage)
+	}
 	gqlServices := usageData["services"].([]any)
 	if len(gqlServices) != 4 {
 		t.Fatalf("GraphQL: expected 4 resources, got %d", len(gqlServices))
@@ -446,6 +456,28 @@ func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 	}
 	if got := entriesByResource(mcpResp.Services); !reflect.DeepEqual(got, wantEntries) {
 		t.Errorf("MCP entries differ from REST:\nREST: %+v\nMCP: %+v", wantEntries, got)
+	}
+	if !reflect.DeepEqual(mcpResp.Coverage, restResp.Coverage) {
+		t.Errorf("MCP coverage differs from REST: REST=%+v MCP=%+v", restResp.Coverage, mcpResp.Coverage)
+	}
+}
+
+func TestHistoricalUsageCoverageIsAlwaysUnknown(t *testing.T) {
+	st := seedStore()
+	st.coverage = store.UsageCoverage{Known: true, Complete: true, Through: time.Date(2026, 7, 15, 11, 0, 0, 0, time.UTC)}
+	svc := svcWithTenant(st, "tea-001")
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	req := httptest.NewRequest("GET", "/v1/usage?period=2026-06", nil)
+	req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "user:alice"}))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	var response usageResponse
+	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Coverage.State != CoverageUnknown || response.Coverage.Through != "" || len(response.Coverage.DegradedSources) != 0 {
+		t.Fatalf("historical coverage inferred: %+v", response.Coverage)
 	}
 }
 

@@ -347,6 +347,14 @@ type Store interface {
 	// UPDATE) — the write path for the metering loop (w8/m1). Re-processing
 	// the same window is safe.
 	UpsertUsageHourly(ctx context.Context, row HourlyRow) error
+	// RecordUsageSourceHealth persists explicit source evidence for a window
+	// that could not produce a usage row. Missing evidence remains unknown.
+	RecordUsageSourceHealth(ctx context.Context, records []UsageSourceRecord) error
+	// ReconcileUsageSourceStreams closes streams for resources no longer in the
+	// collector inventory, without deleting their current-month evidence.
+	ReconcileUsageSourceStreams(ctx context.Context, active []UsageResourceRef, through time.Time) error
+	// CurrentUsageCoverage aggregates explicit current-month source evidence.
+	CurrentUsageCoverage(ctx context.Context, workspaceID string, now time.Time) (UsageCoverage, error)
 	// LatestUsageWindow returns the most-recent window_start for one resource
 	// and meter kind so each meter can catch up independently after a restart.
 	// Returns zero time when no matching rows exist yet.

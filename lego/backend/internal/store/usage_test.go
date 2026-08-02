@@ -18,9 +18,129 @@ package store
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 )
+
+func coverageStream(source string, expected time.Time, windows map[time.Time]string) *usageCoverageStream {
+	return &usageCoverageStream{Source: source, ExpectedFrom: expected, Windows: windows}
+}
+
+func TestAggregateUsageCoverageRequiresExplicitEvidence(t *testing.T) {
+	month := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	if got := aggregateUsageCoverage(nil, nil, month, month.Add(3*time.Hour), false); got.Known {
+		t.Fatalf("legacy/no evidence became known: %+v", got)
+	}
+
+	streams := map[string]*usageCoverageStream{
+		"instance": coverageStream(UsageSourceInstance, month, map[time.Time]string{
+			month: UsageSourceHealthy, month.Add(time.Hour): UsageSourceHealthy, month.Add(2 * time.Hour): UsageSourceHealthy,
+		}),
+	}
+	got := aggregateUsageCoverage(streams, []string{"instance"}, month, month.Add(3*time.Hour), false)
+	if !got.Known || !got.Complete || !got.Through.Equal(month.Add(3*time.Hour)) || len(got.DegradedSources) != 0 {
+		t.Fatalf("healthy contiguous evidence: %+v", got)
+	}
+}
+
+func TestAggregateUsageCoverageStopsAtFirstGap(t *testing.T) {
+	month := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	streams := map[string]*usageCoverageStream{
+		"instance": coverageStream(UsageSourceInstance, month, map[time.Time]string{
+			month: UsageSourceHealthy, month.Add(2 * time.Hour): UsageSourceHealthy,
+		}),
+		"build": coverageStream(UsageSourceBuild, month, map[time.Time]string{
+			month: UsageSourceHealthy, month.Add(time.Hour): UsageSourceHealthy, month.Add(2 * time.Hour): UsageSourceHealthy,
+		}),
+	}
+	got := aggregateUsageCoverage(streams, []string{"instance", "build"}, month, month.Add(3*time.Hour), false)
+	if !got.Known || got.Complete || !got.Through.Equal(month.Add(time.Hour)) {
+		t.Fatalf("internal gap was hidden by later MAX: %+v", got)
+	}
+}
+
+func TestAggregateUsageCoverageDegradedAndAbsentStreamsArePartial(t *testing.T) {
+	month := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	streams := map[string]*usageCoverageStream{
+		"http": coverageStream(UsageSourceHTTP, month, map[time.Time]string{
+			month: UsageSourceDegraded, month.Add(time.Hour): UsageSourceHealthy,
+		}),
+		"direct": coverageStream(UsageSourceDirect, month, map[time.Time]string{}),
+	}
+	got := aggregateUsageCoverage(streams, []string{"http", "direct"}, month, month.Add(2*time.Hour), false)
+	if !got.Known || got.Complete || !got.Through.Equal(month) || !slices.Equal(got.DegradedSources, []string{UsageSourceHTTP}) {
+		t.Fatalf("degraded/absent evidence: %+v", got)
+	}
+}
+
+func TestAggregateUsageCoverageEndedStreamDoesNotDragWatermark(t *testing.T) {
+	month := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	endedAt := month.Add(time.Hour)
+	ended := coverageStream(UsageSourceBuild, month, map[time.Time]string{month: UsageSourceHealthy})
+	ended.ExpectedThrough = &endedAt
+	active := coverageStream(UsageSourceInstance, month, map[time.Time]string{
+		month: UsageSourceHealthy, month.Add(time.Hour): UsageSourceHealthy, month.Add(2 * time.Hour): UsageSourceHealthy,
+	})
+	got := aggregateUsageCoverage(map[string]*usageCoverageStream{"ended": ended, "active": active}, []string{"ended", "active"}, month, month.Add(3*time.Hour), false)
+	if !got.Complete || !got.Through.Equal(month.Add(3*time.Hour)) {
+		t.Fatalf("completed ended stream dragged coverage: %+v", got)
+	}
+
+	ended.ExpectedThrough = ptrTime(month.Add(2 * time.Hour))
+	got = aggregateUsageCoverage(map[string]*usageCoverageStream{"ended": ended, "active": active}, []string{"ended", "active"}, month, month.Add(3*time.Hour), false)
+	if got.Complete || !got.Through.Equal(month.Add(time.Hour)) {
+		t.Fatalf("uncertain deleted tail should constrain through to its first gap: %+v", got)
+	}
+}
+
+func TestAggregateUsageCoverageEndedDegradationConstrainsThrough(t *testing.T) {
+	month := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	endedAt := month.Add(2 * time.Hour)
+	ended := coverageStream(UsageSourceHTTP, month, map[time.Time]string{
+		month: UsageSourceHealthy, month.Add(time.Hour): UsageSourceDegraded,
+	})
+	ended.ExpectedThrough = &endedAt
+	got := aggregateUsageCoverage(map[string]*usageCoverageStream{"ended": ended}, []string{"ended"}, month, month.Add(4*time.Hour), false)
+	if got.Complete || !got.Through.Equal(month.Add(time.Hour)) || !slices.Equal(got.DegradedSources, []string{UsageSourceHTTP}) {
+		t.Fatalf("ended degradation was hidden: %+v", got)
+	}
+}
+
+func TestAggregateUsageCoverageSandboxAndBoundedDiagnostics(t *testing.T) {
+	month := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	sources := []string{UsageSourceInstance, UsageSourceBuild, UsageSourceStorage, UsageSourceHTTP,
+		UsageSourceWebSocket, UsageSourceDirect, UsageSourcePostgres, UsageSourceKeyValue}
+	streams := map[string]*usageCoverageStream{}
+	order := make([]string, 0, len(sources))
+	for _, source := range sources {
+		streams[source] = coverageStream(source, month, map[time.Time]string{month: UsageSourceDegraded})
+		order = append(order, source)
+	}
+	got := aggregateUsageCoverage(streams, order, month, month.Add(time.Hour), true)
+	if got.Complete {
+		t.Fatalf("sandbox total was certified complete: %+v", got)
+	}
+	if len(got.DegradedSources) != 8 || got.DegradedSources[7] != "other" {
+		t.Fatalf("degraded source bound/sentinel: %+v", got.DegradedSources)
+	}
+}
+
+func TestUsageSourceVocabularyIsClosed(t *testing.T) {
+	for _, source := range []string{UsageSourceInstance, UsageSourceBuild, UsageSourceStorage, UsageSourceHTTP,
+		UsageSourceWebSocket, UsageSourceDirect, UsageSourcePostgres, UsageSourceKeyValue} {
+		if !validUsageSource(source) {
+			t.Errorf("expected valid source %q", source)
+		}
+	}
+	for _, source := range []string{"", "sandbox", "promql{tenant=secret}"} {
+		if validUsageSource(source) {
+			t.Errorf("unexpected persisted source %q", source)
+		}
+	}
+}
+
+func ptrTime(value time.Time) *time.Time { return &value }
 
 // TestMemStoreUsageIdempotent verifies the in-memory Store's UpsertUsageHourly
 // is truly idempotent — a second upsert for the same (service, kind, tier,

@@ -18,7 +18,12 @@ package store
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"sort"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // UsageKind names the metering dimensions. storage_gb_seconds is the average
@@ -32,6 +37,29 @@ const (
 	// seconds. Memory is folded into the weight at the AgentCore reference
 	// ratio ($0.00945/GB-hour ÷ $0.0895/vCPU-hour); see ADR047 D6.
 	UsageKindSandboxComputeSeconds = "sandbox_compute_seconds"
+)
+
+// Usage source-health vocabulary. Keep this closed and presentation-safe: the
+// values are returned to clients when a current-month total is partial, so
+// they must never contain provider errors, metric selectors, or tenant data.
+const (
+	UsageSourceInstance  = "instance"
+	UsageSourceBuild     = "build"
+	UsageSourceStorage   = "storage"
+	UsageSourceHTTP      = "http"
+	UsageSourceWebSocket = "websocket"
+	UsageSourceDirect    = "direct"
+	UsageSourcePostgres  = "postgres"
+	UsageSourceKeyValue  = "key_value"
+	// UsageSourceSandbox is response-only for now: sandbox compute uses its
+	// own durable lifecycle cursor rather than usage.Service's hourly source
+	// observations, so any current-month sandbox total conservatively degrades
+	// otherwise-known workspace coverage.
+	UsageSourceSandbox = "sandbox"
+
+	UsageSourceHealthy     = "healthy"
+	UsageSourceDegraded    = "degraded"
+	UsageSourceUnavailable = "unavailable"
 )
 
 // NormalizeResourceKind preserves the pre-resource-kind behavior for callers
@@ -62,6 +90,46 @@ type HourlyRow struct {
 	ResourceKind string    // ResourceKindService / ResourceKindPostgres / ResourceKindKeyValue
 	WindowStart  time.Time // truncated to the hour (UTC)
 	Quantity     int64
+	// SourceHealth is durable evidence for this exact window. nil means the
+	// caller has no modern coverage evidence (not healthy by default).
+	SourceHealth []UsageSourceObservation
+}
+
+// UsageSourceObservation is one source's accounting health for an hourly
+// usage row. ExpectedFrom is the earliest hour the resource was expected to
+// contribute; it prevents a mid-month migration from blessing legacy gaps.
+type UsageSourceObservation struct {
+	Source       string
+	State        string
+	ExpectedFrom time.Time
+}
+
+// UsageSourceRecord persists health when no usage row can be written (for
+// example a transport error). It makes partial evidence explicit instead of
+// relying on a missing row, which remains unknown/legacy.
+type UsageSourceRecord struct {
+	WorkspaceID  string
+	ResourceKind string
+	ServiceID    string
+	Kind         string
+	WindowStart  time.Time
+	UsageSourceObservation
+}
+
+// UsageResourceRef is the current collector inventory. Reconciliation closes
+// streams for deleted resources so they do not hold the common watermark back
+// forever; their historical health rows remain intact.
+type UsageResourceRef struct {
+	ResourceKind string `json:"resourceKind"`
+	ServiceID    string `json:"serviceId"`
+}
+
+// UsageCoverage is the store's current-month evidence aggregate.
+type UsageCoverage struct {
+	Known           bool
+	Complete        bool
+	Through         time.Time
+	DegradedSources []string
 }
 
 // UsageSummaryRow is one resource/meter-kind/tier aggregate as returned by
@@ -87,13 +155,269 @@ type UsageCompaction struct {
 // The ON CONFLICT … DO UPDATE makes the rollup loop idempotent.
 func (s *PGStore) UpsertUsageHourly(ctx context.Context, row HourlyRow) error {
 	rk := NormalizeResourceKind(row.ResourceKind)
-	_, err := s.Pool.Exec(ctx, `
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err = tx.Exec(ctx, `
 		INSERT INTO usage_hourly (workspace_id, service_id, kind, tier, resource_kind, window_start, quantity)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (resource_kind, service_id, kind, tier, window_start)
 		DO UPDATE SET quantity = EXCLUDED.quantity`,
-		row.WorkspaceID, row.ServiceID, row.Kind, row.Tier, rk, row.WindowStart, row.Quantity)
+		row.WorkspaceID, row.ServiceID, row.Kind, row.Tier, rk, row.WindowStart, row.Quantity); err != nil {
+		return err
+	}
+	for _, observation := range row.SourceHealth {
+		if err = upsertUsageSourceObservation(ctx, tx, UsageSourceRecord{
+			WorkspaceID: row.WorkspaceID, ResourceKind: rk, ServiceID: row.ServiceID,
+			Kind: row.Kind, WindowStart: row.WindowStart, UsageSourceObservation: observation,
+		}); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+type usageSourceExecer interface {
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+}
+
+func upsertUsageSourceObservation(ctx context.Context, exec usageSourceExecer, record UsageSourceRecord) error {
+	if !validUsageSource(record.Source) || !validUsageSourceState(record.State) {
+		return fmt.Errorf("invalid usage source health")
+	}
+	rk := NormalizeResourceKind(record.ResourceKind)
+	expectedFrom := record.ExpectedFrom.UTC().Truncate(time.Hour)
+	if expectedFrom.IsZero() {
+		expectedFrom = record.WindowStart.UTC().Truncate(time.Hour)
+	}
+	if _, err := exec.Exec(ctx, `
+		INSERT INTO usage_source_streams
+			(workspace_id, resource_kind, service_id, kind, source, expected_from, expected_through)
+		VALUES ($1, $2, $3, $4, $5, $6, NULL)
+		ON CONFLICT (resource_kind, service_id, kind, source) DO UPDATE
+		SET workspace_id = EXCLUDED.workspace_id,
+		    expected_from = LEAST(usage_source_streams.expected_from, EXCLUDED.expected_from),
+		    expected_through = NULL`,
+		record.WorkspaceID, rk, record.ServiceID, record.Kind, record.Source, expectedFrom); err != nil {
+		return err
+	}
+	_, err := exec.Exec(ctx, `
+		INSERT INTO usage_source_health
+			(workspace_id, resource_kind, service_id, kind, source, window_start, state)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (resource_kind, service_id, kind, source, window_start) DO UPDATE
+		SET workspace_id = EXCLUDED.workspace_id, state = EXCLUDED.state`,
+		record.WorkspaceID, rk, record.ServiceID, record.Kind, record.Source,
+		record.WindowStart.UTC().Truncate(time.Hour), record.State)
 	return err
+}
+
+func validUsageSource(source string) bool {
+	switch source {
+	case UsageSourceInstance, UsageSourceBuild, UsageSourceStorage, UsageSourceHTTP,
+		UsageSourceWebSocket, UsageSourceDirect, UsageSourcePostgres, UsageSourceKeyValue:
+		return true
+	default:
+		return false
+	}
+}
+
+func validUsageSourceState(state string) bool {
+	return state == UsageSourceHealthy || state == UsageSourceDegraded || state == UsageSourceUnavailable
+}
+
+// RecordUsageSourceHealth records an explicit degraded/unavailable attempt
+// when no usage row can be committed. A later retry overwrites the state for
+// the same source-window and reopens a stream closed by inventory reconciliation.
+func (s *PGStore) RecordUsageSourceHealth(ctx context.Context, records []UsageSourceRecord) error {
+	if len(records) == 0 {
+		return nil
+	}
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	for _, record := range records {
+		if err := upsertUsageSourceObservation(ctx, tx, record); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+// ReconcileUsageSourceStreams closes open streams whose resource has left the
+// collector inventory. The observed health rows are retained for the rest of
+// the month; only the stream's expected range becomes finite.
+func (s *PGStore) ReconcileUsageSourceStreams(ctx context.Context, active []UsageResourceRef, through time.Time) error {
+	encoded, err := json.Marshal(active)
+	if err != nil {
+		return err
+	}
+	_, err = s.Pool.Exec(ctx, `
+		UPDATE usage_source_streams AS stream
+		SET expected_through = $2
+		WHERE expected_through IS NULL
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM jsonb_to_recordset($1::jsonb) AS active("resourceKind" text, "serviceId" text)
+			WHERE active."resourceKind" = stream.resource_kind
+			  AND active."serviceId" = stream.service_id
+		  )`, string(encoded), through.UTC().Truncate(time.Hour))
+	return err
+}
+
+type usageCoverageStream struct {
+	ResourceKind    string
+	ServiceID       string
+	Kind            string
+	Source          string
+	ExpectedFrom    time.Time
+	ExpectedThrough *time.Time
+	Windows         map[time.Time]string
+}
+
+// CurrentUsageCoverage aggregates only explicit source-health evidence. It
+// intentionally cannot infer health from legacy usage rows or monthly totals.
+func (s *PGStore) CurrentUsageCoverage(ctx context.Context, workspaceID string, now time.Time) (UsageCoverage, error) {
+	now = now.UTC()
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	latestClosed := now.Truncate(time.Hour)
+	rows, err := s.Pool.Query(ctx, `
+		SELECT stream.resource_kind, stream.service_id, stream.kind, stream.source,
+		       stream.expected_from, stream.expected_through,
+		       health.window_start, health.state
+		FROM usage_source_streams AS stream
+		LEFT JOIN usage_source_health AS health
+		  ON health.resource_kind = stream.resource_kind
+		 AND health.service_id = stream.service_id
+		 AND health.kind = stream.kind
+		 AND health.source = stream.source
+		 AND health.window_start >= $2
+		 AND health.window_start < $3
+		WHERE stream.workspace_id = $1
+		  AND stream.expected_from < $3
+		  AND (stream.expected_through IS NULL OR stream.expected_through > $2)
+		ORDER BY stream.resource_kind, stream.service_id, stream.kind, stream.source,
+		         health.window_start`,
+		workspaceID, monthStart, latestClosed)
+	if err != nil {
+		return UsageCoverage{}, err
+	}
+	defer rows.Close()
+	streamByKey := map[string]*usageCoverageStream{}
+	var streamOrder []string
+	for rows.Next() {
+		var resourceKind, serviceID, kind, source string
+		var expectedFrom time.Time
+		var expectedThrough, window *time.Time
+		var state *string
+		if err := rows.Scan(&resourceKind, &serviceID, &kind, &source, &expectedFrom,
+			&expectedThrough, &window, &state); err != nil {
+			return UsageCoverage{}, err
+		}
+		key := resourceKind + "\x00" + serviceID + "\x00" + kind + "\x00" + source
+		stream := streamByKey[key]
+		if stream == nil {
+			stream = &usageCoverageStream{
+				ResourceKind: resourceKind, ServiceID: serviceID, Kind: kind,
+				Source: source, ExpectedFrom: expectedFrom, ExpectedThrough: expectedThrough,
+				Windows: map[time.Time]string{},
+			}
+			streamByKey[key] = stream
+			streamOrder = append(streamOrder, key)
+		}
+		if window != nil && state != nil {
+			stream.Windows[window.UTC().Truncate(time.Hour)] = *state
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return UsageCoverage{}, err
+	}
+	var sandboxTotals bool
+	if err := s.Pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM usage_hourly
+			WHERE workspace_id = $1 AND resource_kind = 'sandbox'
+			  AND window_start >= $2 AND window_start < $3
+		)`, workspaceID, monthStart, latestClosed).Scan(&sandboxTotals); err != nil {
+		return UsageCoverage{}, err
+	}
+	return aggregateUsageCoverage(streamByKey, streamOrder, monthStart, latestClosed, sandboxTotals), nil
+}
+
+func aggregateUsageCoverage(streamByKey map[string]*usageCoverageStream, streamOrder []string, monthStart, latestClosed time.Time, sandboxTotals bool) UsageCoverage {
+	if len(streamOrder) == 0 {
+		return UsageCoverage{}
+	}
+	coverage := UsageCoverage{Known: true, Complete: true, Through: latestClosed}
+	degraded := map[string]struct{}{}
+	if sandboxTotals {
+		coverage.Complete = false
+		degraded[UsageSourceSandbox] = struct{}{}
+	}
+	activeStreams := 0
+	for _, key := range streamOrder {
+		stream := streamByKey[key]
+		expectedStart := stream.ExpectedFrom.UTC().Truncate(time.Hour)
+		if expectedStart.Before(monthStart) {
+			expectedStart = monthStart
+		}
+		target := latestClosed
+		if stream.ExpectedThrough != nil && stream.ExpectedThrough.Before(target) {
+			target = stream.ExpectedThrough.UTC().Truncate(time.Hour)
+		}
+		observedThrough := expectedStart
+		streamHealthy := true
+		for observedThrough.Before(target) {
+			state, exists := stream.Windows[observedThrough]
+			if !exists {
+				break
+			}
+			if state != UsageSourceHealthy {
+				streamHealthy = false
+				degraded[stream.Source] = struct{}{}
+				break
+			}
+			observedThrough = observedThrough.Add(time.Hour)
+		}
+		// Preserve degradation after an earlier gap too: the watermark stops at
+		// the gap, but later evidence remains useful diagnostic data.
+		for _, state := range stream.Windows {
+			if state != UsageSourceHealthy {
+				streamHealthy = false
+				degraded[stream.Source] = struct{}{}
+			}
+		}
+		if observedThrough.Before(target) || !streamHealthy {
+			coverage.Complete = false
+		}
+		if stream.ExpectedThrough == nil || observedThrough.Before(target) || !streamHealthy {
+			activeStreams++
+			if observedThrough.Before(coverage.Through) {
+				coverage.Through = observedThrough
+			}
+		}
+	}
+	if activeStreams == 0 {
+		// Every stream ended. If their finite expected ranges are sound, the
+		// workspace is a healthy empty current inventory through the last closed
+		// hour; otherwise it remains partial but no stale stream drags `through`.
+		coverage.Through = latestClosed
+	}
+	for source := range degraded {
+		coverage.DegradedSources = append(coverage.DegradedSources, source)
+	}
+	sort.Strings(coverage.DegradedSources)
+	if len(coverage.DegradedSources) > 7 {
+		coverage.DegradedSources = append(coverage.DegradedSources[:7], "other")
+	}
+	if coverage.Through.Before(monthStart) {
+		coverage.Through = time.Time{}
+	}
+	return coverage
 }
 
 // LatestUsageWindow returns the most recent window_start for one resource and
@@ -165,7 +489,13 @@ func (s *PGStore) UsageMonthToDate(ctx context.Context, workspaceID string, now 
 func (s *PGStore) CompactUsage(ctx context.Context, before time.Time) (UsageCompaction, error) {
 	var res UsageCompaction
 	err := s.Pool.QueryRow(ctx, `
-		WITH purged AS (
+		WITH purged_health AS (
+			DELETE FROM usage_source_health
+			WHERE window_start < $1
+		), purged_streams AS (
+			DELETE FROM usage_source_streams
+			WHERE expected_through IS NOT NULL AND expected_through <= $1
+		), purged AS (
 			DELETE FROM usage_hourly
 			WHERE window_start < $1
 			RETURNING workspace_id, service_id, kind, tier, resource_kind, window_start, quantity

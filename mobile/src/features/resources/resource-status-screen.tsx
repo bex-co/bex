@@ -30,8 +30,15 @@ import {
   space,
   useTheme,
 } from "@/common/theme";
-import { MobileResourceStatusDocument } from "@/generated-graphql";
+import {
+  MobileResourceStatusDocument,
+  MobileUsageGlanceDocument,
+} from "@/generated-graphql";
 import { useAuth } from "@/features/auth/auth-provider";
+import {
+  UsageGlanceCard,
+  type UsageGlanceCopy,
+} from "@/features/usage/usage-glance-card";
 import {
   buildResourceGroups,
   filterResourceGroups,
@@ -72,9 +79,20 @@ export function ResourceStatusScreen({
       pollInterval: recoveryAvailable(recoveryEnvironment) ? 30_000 : 0,
     },
   );
+  const usageQuery = useQuery(MobileUsageGlanceDocument, {
+    variables: { ownerId: selected?.id ?? "" },
+    skip: !selected || activityOnly,
+    fetchPolicy: "cache-and-network",
+    errorPolicy: "all",
+    notifyOnNetworkStatusChange: true,
+    pollInterval: recoveryAvailable(recoveryEnvironment) ? 60_000 : 0,
+  });
   const recovery = useRecovery({
     attempt: async () => {
-      await refetch();
+      await Promise.all([
+        refetch(),
+        activityOnly || !selected ? Promise.resolve() : usageQuery.refetch(),
+      ]);
     },
   });
   const freshness = useFreshness(freshAt, { staleAfterMs: 65_000 });
@@ -173,11 +191,43 @@ export function ResourceStatusScreen({
     grouped.ungrouped.length;
   const initialLoading = loading && !data;
   const refreshing = networkStatus === NetworkStatus.refetch;
+  const usageCopy = useMemo<UsageGlanceCopy>(
+    () => ({
+      title: t("usageGlance.title"),
+      states: {
+        complete: t("usageGlance.states.complete"),
+        partial: t("usageGlance.states.partial"),
+        unknown: t("usageGlance.states.unknown"),
+        unavailable: t("usageGlance.states.unavailable"),
+        "healthy-empty": t("usageGlance.states.healthy-empty"),
+      },
+      meterLabels: {
+        instance_seconds: t("usageGlance.meters.instance_seconds"),
+        egress_bytes: t("usageGlance.meters.egress_bytes"),
+        build_seconds: t("usageGlance.meters.build_seconds"),
+        storage_gb_seconds: t("usageGlance.meters.storage_gb_seconds"),
+        sandbox_compute_seconds: t(
+          "usageGlance.meters.sandbox_compute_seconds",
+        ),
+      },
+      empty: t("usageGlance.empty"),
+      noEvidence: t("usageGlance.noEvidence"),
+      through: (timestamp) =>
+        t("usageGlance.through", {
+          time: formatTimestamp(timestamp, language),
+        }),
+      degraded: (sources) => t("usageGlance.degraded", { sources }),
+      refreshUnavailable: t("usageGlance.refreshUnavailable"),
+    }),
+    [language, t],
+  );
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
       <DashboardScrollView
-        refreshing={refreshing}
+        refreshing={
+          refreshing || usageQuery.networkStatus === NetworkStatus.refetch
+        }
         onRefresh={() => void recovery.manualRetry()}
         contentContainerStyle={styles.content}
       >
@@ -206,6 +256,22 @@ export function ResourceStatusScreen({
           </Pressable>
         </View>
         <WorkspaceSwitcher />
+        {!activityOnly ? (
+          usageQuery.loading && !usageQuery.data && !usageQuery.previousData ? (
+            <DashboardCard title={t("usageGlance.title")}>
+              <ActivityIndicator
+                accessibilityLabel={t("usageGlance.loading")}
+                color={theme.primary}
+              />
+            </DashboardCard>
+          ) : (
+            <UsageGlanceCard
+              summary={usageQuery.data?.usage ?? usageQuery.previousData?.usage}
+              unavailable={Boolean(usageQuery.error)}
+              copy={usageCopy}
+            />
+          )
+        ) : null}
         {!activityOnly ? (
           <View
             accessibilityRole="tablist"
