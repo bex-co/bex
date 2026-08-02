@@ -2,7 +2,7 @@
   "expo": {
     "name": "bex",
     "slug": "bex-mobile",
-    "scheme": "bex",
+    "scheme": ["bex", "co.bex.mobile"],
     "version": "0.1.0",
     "platforms": ["ios", "android"],
     "orientation": "default",
@@ -42,10 +42,17 @@
           }
         }
       ],
-      ["expo-asset", { "assets": ["./src/assets"] }],
+      [
+        "expo-asset",
+        {
+          "assets": ["./src/assets"]
+        }
+      ],
       "expo-localization",
       "expo-router",
-      "expo-status-bar"
+      "expo-status-bar",
+      ["expo-secure-store", { "configureAndroidBackup": true }],
+      "expo-web-browser"
     ]
   }
 }

@@ -5,10 +5,14 @@ on:
     branches: [main]
     paths:
       - "mobile/**"
+      - "lego/backend/internal/**/graphql.go"
+      - "lego/backend/internal/api/schema_dump_test.go"
       - ".github/workflows/mobile-test.yml"
   pull_request:
     paths:
       - "mobile/**"
+      - "lego/backend/internal/**/graphql.go"
+      - "lego/backend/internal/api/schema_dump_test.go"
       - ".github/workflows/mobile-test.yml"
 
 permissions:
@@ -22,11 +26,18 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: lego/backend/go.mod
+          cache-dependency-path: lego/backend/go.sum
       - name: enable corepack
         run: corepack enable
       - name: install dependencies
         working-directory: mobile
         run: yarn install --frozen-lockfile
+      - name: verify GraphQL types match the backend schema
+        working-directory: mobile
+        run: yarn codegen:backend && git diff --exit-code -- src/generated-graphql
       - name: format, typecheck, lint, unit tests, Expo config
         working-directory: mobile
         run: yarn test

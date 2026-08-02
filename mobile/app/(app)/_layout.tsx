@@ -1,12 +1,50 @@
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/common/theme";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { HapticTab } from "@/components/haptic-tab";
+import { AuthStateScreen } from "@/features/auth/auth-screen";
+import { useAuth } from "@/features/auth/auth-provider";
+import {
+  useWorkspace,
+  WorkspaceProvider,
+} from "@/features/workspaces/workspace-provider";
 
-export default function AppLayout() {
+function WorkspaceTabs() {
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
+  const { status, offline, switching, retry } = useWorkspace();
+  if (status === "loading" || switching) {
+    return (
+      <AuthStateScreen
+        titleKey={
+          switching ? "workspace.switchingTitle" : "workspace.loadingTitle"
+        }
+        bodyKey={
+          switching ? "workspace.switchingBody" : "workspace.loadingBody"
+        }
+        busy
+      />
+    );
+  }
+  if (status === "error") {
+    return (
+      <AuthStateScreen
+        titleKey={offline ? "workspace.offlineTitle" : "workspace.errorTitle"}
+        bodyKey={offline ? "workspace.offlineBody" : "workspace.errorBody"}
+        actionKey="auth.retry"
+        onAction={() => void retry().catch(() => undefined)}
+      />
+    );
+  }
+  if (status === "empty") {
+    return (
+      <AuthStateScreen
+        titleKey="workspace.emptyTitle"
+        bodyKey="workspace.emptyBody"
+      />
+    );
+  }
   return (
     <Tabs
       screenOptions={{
@@ -47,6 +85,27 @@ export default function AppLayout() {
           ),
         }}
       />
+      <Tabs.Screen name="services/[serviceId]" options={{ href: null }} />
+      <Tabs.Screen name="sessions/[sessionId]" options={{ href: null }} />
     </Tabs>
+  );
+}
+
+export default function AppLayout() {
+  const { state } = useAuth();
+  if (state.status === "loading") {
+    return (
+      <AuthStateScreen
+        titleKey="auth.loadingTitle"
+        bodyKey="auth.loadingBody"
+        busy
+      />
+    );
+  }
+  if (state.status !== "signedIn") return <Redirect href="/sign-in" />;
+  return (
+    <WorkspaceProvider>
+      <WorkspaceTabs />
+    </WorkspaceProvider>
   );
 }

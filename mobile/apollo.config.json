@@ -1,0 +1,9 @@
+{
+  "client": {
+    "service": {
+      "name": "bex-api",
+      "url": "https://api.bex.co/graphql"
+    },
+    "includes": ["src/**/*.graphql"]
+  }
+}

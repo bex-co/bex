@@ -7,7 +7,7 @@ export type SupportedLanguage = "en" | "zh";
 type LanguageContextValue = {
   language: SupportedLanguage;
   setLanguage: (language: SupportedLanguage) => void;
-  t: (key: string) => string;
+  t: (key: string, options?: Record<string, unknown>) => string;
 };
 
 export const LanguageContext = createContext<LanguageContextValue>({
@@ -23,7 +23,12 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     i18n.enableFallback = true;
     i18n.defaultLocale = "en";
     i18n.locale = language;
-    return { language, setLanguage, t: (key: string) => i18n.t(key) };
+    return {
+      language,
+      setLanguage,
+      t: (key: string, options?: Record<string, unknown>) =>
+        i18n.t(key, options),
+    };
   }, [language]);
   return (
     <LanguageContext.Provider value={value}>

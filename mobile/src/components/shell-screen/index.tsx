@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
@@ -12,11 +12,13 @@ export function ShellScreen({
   bodyKey,
   badgeKey,
   icon,
+  children,
 }: {
   titleKey: string;
   bodyKey: string;
   badgeKey?: string;
   icon: IconName;
+  children?: ReactNode;
 }) {
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
@@ -44,6 +46,7 @@ export function ShellScreen({
             {t(badgeKey)}
           </Text>
         ) : null}
+        {children}
       </View>
     </SafeAreaView>
   );

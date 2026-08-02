@@ -126,36 +126,40 @@ func (f *fakeRevoker) RevokeAPIKey(_ context.Context, _ string, id string) error
 	return f.err
 }
 
-func TestLogoutRevokesHumanConsentChainAndKeepsSharedClient(t *testing.T) {
-	var subject, client string
-	admin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodDelete || r.URL.Path != "/admin/oauth2/auth/sessions/consent" {
-			t.Fatalf("unexpected admin request %s %s", r.Method, r.URL.Path)
-		}
-		subject, client = r.URL.Query().Get("subject"), r.URL.Query().Get("client")
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	defer admin.Close()
+func TestLogoutRevokesPlatformHumanConsentChainAndKeepsSharedClient(t *testing.T) {
+	for _, clientID := range []string{RenderCLIClientID, MobileClientID} {
+		t.Run(clientID, func(t *testing.T) {
+			var subject, client string
+			admin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodDelete || r.URL.Path != "/admin/oauth2/auth/sessions/consent" {
+					t.Fatalf("unexpected admin request %s %s", r.Method, r.URL.Path)
+				}
+				subject, client = r.URL.Query().Get("subject"), r.URL.Query().Get("client")
+				w.WriteHeader(http.StatusNoContent)
+			}))
+			defer admin.Close()
 
-	invalidated := ""
-	var invalidatedIdentity core.Identity
-	svc := New("", admin.URL, nil, func(token string, identity core.Identity) {
-		invalidated = token
-		invalidatedIdentity = identity
-	})
-	h := http.HandlerFunc(svc.revoke)
-	id := core.Identity{Subject: "kratos-user-a", Method: "oauth2", ClientID: RenderCLIClientID, Human: true}
-	req := httptest.NewRequest(http.MethodPost, "/v1/oauth/revoke", nil)
-	req.Header.Set("Authorization", "Bearer access-a")
-	req = req.WithContext(core.WithIdentity(req.Context(), id))
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
+			invalidated := ""
+			var invalidatedIdentity core.Identity
+			svc := New("", admin.URL, nil, func(token string, identity core.Identity) {
+				invalidated = token
+				invalidatedIdentity = identity
+			})
+			h := http.HandlerFunc(svc.revoke)
+			id := core.Identity{Subject: "kratos-user-a", Method: "oauth2", ClientID: clientID, Human: true}
+			req := httptest.NewRequest(http.MethodPost, "/v1/oauth/revoke", nil)
+			req.Header.Set("Authorization", "Bearer access-a")
+			req = req.WithContext(core.WithIdentity(req.Context(), id))
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusNoContent {
-		t.Fatalf("revoke => %d %s", rec.Code, rec.Body.String())
-	}
-	if subject != "kratos-user-a" || client != RenderCLIClientID || invalidated != "access-a" || invalidatedIdentity != id {
-		t.Fatalf("subject=%q client=%q invalidated=%q identity=%+v", subject, client, invalidated, invalidatedIdentity)
+			if rec.Code != http.StatusNoContent {
+				t.Fatalf("revoke => %d %s", rec.Code, rec.Body.String())
+			}
+			if subject != "kratos-user-a" || client != clientID || invalidated != "access-a" || invalidatedIdentity != id {
+				t.Fatalf("subject=%q client=%q invalidated=%q identity=%+v", subject, client, invalidated, invalidatedIdentity)
+			}
+		})
 	}
 }
 
@@ -245,7 +249,7 @@ func countingUpstream(t *testing.T, calls *atomic.Int32) *httptest.Server {
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"device_code": "device-1", "user_code": "ABCDEF",
 			"verification_uri": "https://dashboard.bex.co/auth/device",
-			"expires_in":        600, "interval": 5,
+			"expires_in":       600, "interval": 5,
 		})
 	}))
 	t.Cleanup(srv.Close)

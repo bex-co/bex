@@ -1,0 +1,9 @@
+query MobileWorkspaces {
+  workspaces {
+    id
+    name
+    plan
+    role
+    createdAt
+  }
+}

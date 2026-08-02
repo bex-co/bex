@@ -4,13 +4,22 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider } from "./theme-provider";
 import { LanguageProvider } from "./language-provider";
+import { AuthProvider } from "@/features/auth/auth-provider";
+import { BexApolloProvider } from "@/common/apollo/apollo-provider";
+import { NetworkStateProvider } from "@/common/apollo/network-state";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <GestureHandlerRootView style={styles.fill}>
       <SafeAreaProvider>
         <LanguageProvider>
-          <ThemeProvider>{children}</ThemeProvider>
+          <ThemeProvider>
+            <NetworkStateProvider>
+              <AuthProvider>
+                <BexApolloProvider>{children}</BexApolloProvider>
+              </AuthProvider>
+            </NetworkStateProvider>
+          </ThemeProvider>
         </LanguageProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
