@@ -36,46 +36,36 @@ import (
 )
 
 // fakeRegistry builds a minimal httptest.Server that simulates the OCI
-// Distribution API endpoints needed for cosign signature verification.
+// Distribution API endpoints needed for cosign signature verification. The
+// payload + signature are set after the server starts (setSignedPayload) so the
+// signed docker-reference can carry the server's real host — the binding check
+// (codex-security #8) compares it against the image reference being verified.
 type fakeRegistry struct {
-	srv *httptest.Server
-	// Host is the "host:port" portion of the server URL.
-	Host string
+	srv           *httptest.Server
+	Host          string
+	repo          string
+	imageDigest   string
+	omitSigTag    bool
+	payload       []byte
+	payloadDigest string
+	sigB64        string
 }
 
-type registryOptions struct {
-	repo         string
-	imageDigest  string // sha256:...
-	payloadBytes []byte // the simplesigning JSON blob
-	sigBytes     []byte // DER-encoded ECDSA signature over SHA256(payloadBytes)
-	// omitSigTag causes the .sig manifest endpoint to return 404.
-	omitSigTag bool
-	// badSig replaces the layer annotation with an invalid signature.
-	badSig bool
-}
-
-func newFakeRegistry(t *testing.T, o registryOptions) *fakeRegistry {
+func newFakeRegistry(t *testing.T, repo, imageDigest string, omitSigTag bool) *fakeRegistry {
 	t.Helper()
-	payloadDigest := fmt.Sprintf("sha256:%x", sha256.Sum256(o.payloadBytes))
-	sigTag := strings.ReplaceAll(o.imageDigest, ":", "-") + ".sig"
-	sigB64 := base64.StdEncoding.EncodeToString(o.sigBytes)
-	if o.badSig {
-		sigB64 = base64.StdEncoding.EncodeToString([]byte("invalidsig"))
-	}
-
+	r := &fakeRegistry{repo: repo, imageDigest: imageDigest, omitSigTag: omitSigTag}
+	sigTag := strings.ReplaceAll(imageDigest, ":", "-") + ".sig"
 	mux := http.NewServeMux()
 
-	// Resolve tag → digest
-	mux.HandleFunc("/v2/"+o.repo+"/manifests/latest", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/v2/"+repo+"/manifests/latest", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
-		w.Header().Set("Docker-Content-Digest", o.imageDigest)
+		w.Header().Set("Docker-Content-Digest", r.imageDigest)
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, `{"schemaVersion":2}`) //nolint:errcheck
 	})
 
-	// Signature manifest
-	mux.HandleFunc("/v2/"+o.repo+"/manifests/"+sigTag, func(w http.ResponseWriter, r *http.Request) {
-		if o.omitSigTag {
+	mux.HandleFunc("/v2/"+repo+"/manifests/"+sigTag, func(w http.ResponseWriter, req *http.Request) {
+		if r.omitSigTag {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -84,10 +74,10 @@ func newFakeRegistry(t *testing.T, o registryOptions) *fakeRegistry {
 			"layers": []map[string]any{
 				{
 					"mediaType": "application/vnd.dev.cosign.simplesigning.v1+json",
-					"digest":    payloadDigest,
-					"size":      len(o.payloadBytes),
+					"digest":    r.payloadDigest,
+					"size":      len(r.payload),
 					"annotations": map[string]string{
-						"dev.cosignproject.cosign/signature": sigB64,
+						"dev.cosignproject.cosign/signature": r.sigB64,
 					},
 				},
 			},
@@ -97,18 +87,65 @@ func newFakeRegistry(t *testing.T, o registryOptions) *fakeRegistry {
 		json.NewEncoder(w).Encode(manifest) //nolint:errcheck
 	})
 
-	// Payload blob
-	mux.HandleFunc("/v2/"+o.repo+"/blobs/"+payloadDigest, func(w http.ResponseWriter, r *http.Request) {
+	// Single payload blob regardless of the requested digest.
+	mux.HandleFunc("/v2/"+repo+"/blobs/", func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write(o.payloadBytes) //nolint:errcheck
+		w.Write(r.payload) //nolint:errcheck
 	})
 
-	srv := httptest.NewServer(mux)
-	t.Cleanup(srv.Close)
-	return &fakeRegistry{
-		srv:  srv,
-		Host: strings.TrimPrefix(srv.URL, "http://"),
+	r.srv = httptest.NewServer(mux)
+	t.Cleanup(r.srv.Close)
+	r.Host = strings.TrimPrefix(r.srv.URL, "http://")
+	return r
+}
+
+// setSignedPayload builds + signs a Simple Signing payload claiming (ref, digest)
+// for this registry's repo. Empty ref/digest default to the registry's real
+// host/repo and imageDigest — the values a correctly-signed image carries. badSig
+// stores an invalid signature instead (for the invalid-signature negative).
+func (r *fakeRegistry) setSignedPayload(t *testing.T, priv *ecdsa.PrivateKey, digest, ref string, badSig bool) {
+	t.Helper()
+	if ref == "" {
+		ref = r.Host + "/" + r.repo
 	}
+	if digest == "" {
+		digest = r.imageDigest
+	}
+	type critical struct {
+		Identity struct {
+			DockerReference string `json:"docker-reference"`
+		} `json:"identity"`
+		Image struct {
+			DockerManifestDigest string `json:"docker-manifest-digest"`
+		} `json:"image"`
+		Type string `json:"type"`
+	}
+	pl := struct {
+		Critical critical `json:"critical"`
+		Optional any      `json:"optional"`
+	}{
+		Critical: func() critical {
+			c := critical{Type: "cosign container image signature"}
+			c.Identity.DockerReference = ref
+			c.Image.DockerManifestDigest = digest
+			return c
+		}(),
+	}
+	var err error
+	if r.payload, err = json.Marshal(pl); err != nil {
+		t.Fatalf("marshal payload: %v", err)
+	}
+	r.payloadDigest = fmt.Sprintf("sha256:%x", sha256.Sum256(r.payload))
+	if badSig {
+		r.sigB64 = base64.StdEncoding.EncodeToString([]byte("invalidsig"))
+		return
+	}
+	h := sha256.Sum256(r.payload)
+	sig, err := ecdsa.SignASN1(rand.Reader, priv, h[:])
+	if err != nil {
+		t.Fatalf("sign: %v", err)
+	}
+	r.sigB64 = base64.StdEncoding.EncodeToString(sig)
 }
 
 // generateKey returns a test ECDSA P-256 key pair and its PEM-encoded public key.
@@ -122,32 +159,13 @@ func generateKey(t *testing.T) (*ecdsa.PrivateKey, []byte) {
 	if err != nil {
 		t.Fatalf("marshal public key: %v", err)
 	}
-	pubPEM := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der})
-	return priv, pubPEM
-}
-
-// sign returns a DER ECDSA signature over SHA256(payload).
-func sign(t *testing.T, priv *ecdsa.PrivateKey, payload []byte) []byte {
-	t.Helper()
-	h := sha256.Sum256(payload)
-	sig, err := ecdsa.SignASN1(rand.Reader, priv, h[:])
-	if err != nil {
-		t.Fatalf("sign: %v", err)
-	}
-	return sig
+	return priv, pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der})
 }
 
 func TestVerify_ValidSignature(t *testing.T) {
 	priv, pubPEM := generateKey(t)
-	payload := []byte(`{"critical":{"identity":{"docker-reference":"zot/myapp"},"image":{"docker-manifest-digest":"sha256:deadbeef"},"type":"cosign container image signature"},"optional":null}`)
-	sig := sign(t, priv, payload)
-
-	reg := newFakeRegistry(t, registryOptions{
-		repo:         "myapp",
-		imageDigest:  "sha256:deadbeef",
-		payloadBytes: payload,
-		sigBytes:     sig,
-	})
+	reg := newFakeRegistry(t, "myapp", "sha256:deadbeef", false)
+	reg.setSignedPayload(t, priv, "", "", false)
 
 	v, err := imagecheck.NewVerifier(pubPEM, "http", "")
 	if err != nil {
@@ -160,139 +178,110 @@ func TestVerify_ValidSignature(t *testing.T) {
 
 func TestVerify_MissingSignatureTag(t *testing.T) {
 	_, pubPEM := generateKey(t)
-	reg := newFakeRegistry(t, registryOptions{
-		repo:         "myapp",
-		imageDigest:  "sha256:deadbeef",
-		payloadBytes: []byte("{}"),
-		sigBytes:     []byte("unused"),
-		omitSigTag:   true,
-	})
+	reg := newFakeRegistry(t, "myapp", "sha256:deadbeef", true)
+	priv, _ := generateKey(t)
+	reg.setSignedPayload(t, priv, "", "", false)
 
 	v, err := imagecheck.NewVerifier(pubPEM, "http", "")
 	if err != nil {
 		t.Fatalf("NewVerifier: %v", err)
 	}
-	err = v.Verify(context.Background(), reg.Host+"/myapp:latest")
-	if err == nil {
+	if err := v.Verify(context.Background(), reg.Host+"/myapp:latest"); err == nil {
 		t.Error("expected error for missing signature tag, got nil")
 	}
 }
 
 func TestVerify_InvalidSignature(t *testing.T) {
-	_, pubPEM := generateKey(t)
-	payload := []byte(`{"critical":{"image":{"docker-manifest-digest":"sha256:deadbeef"}}}`)
-	reg := newFakeRegistry(t, registryOptions{
-		repo:         "myapp",
-		imageDigest:  "sha256:deadbeef",
-		payloadBytes: payload,
-		sigBytes:     []byte("not-a-real-sig"),
-		badSig:       true,
-	})
+	priv, pubPEM := generateKey(t)
+	reg := newFakeRegistry(t, "myapp", "sha256:deadbeef", false)
+	reg.setSignedPayload(t, priv, "", "", true) // badSig
 
 	v, err := imagecheck.NewVerifier(pubPEM, "http", "")
 	if err != nil {
 		t.Fatalf("NewVerifier: %v", err)
 	}
-	err = v.Verify(context.Background(), reg.Host+"/myapp:latest")
-	if err == nil {
+	if err := v.Verify(context.Background(), reg.Host+"/myapp:latest"); err == nil {
 		t.Error("expected error for invalid signature, got nil")
 	}
 }
 
 func TestVerify_WrongKey(t *testing.T) {
 	priv, _ := generateKey(t)
-	_, otherPubPEM := generateKey(t) // verifier uses a different key
-
-	payload := []byte(`{"payload":"test"}`)
-	sig := sign(t, priv, payload)
-
-	reg := newFakeRegistry(t, registryOptions{
-		repo:         "myapp",
-		imageDigest:  "sha256:deadbeef",
-		payloadBytes: payload,
-		sigBytes:     sig,
-	})
+	_, otherPubPEM := generateKey(t)
+	reg := newFakeRegistry(t, "myapp", "sha256:deadbeef", false)
+	reg.setSignedPayload(t, priv, "", "", false) // signed by priv, verified by other
 
 	v, err := imagecheck.NewVerifier(otherPubPEM, "http", "")
 	if err != nil {
 		t.Fatalf("NewVerifier: %v", err)
 	}
-	err = v.Verify(context.Background(), reg.Host+"/myapp:latest")
-	if err == nil {
+	if err := v.Verify(context.Background(), reg.Host+"/myapp:latest"); err == nil {
 		t.Error("expected error when using wrong public key, got nil")
 	}
 }
 
 func TestVerify_DigestReference(t *testing.T) {
 	priv, pubPEM := generateKey(t)
-	payload := []byte(`{"critical":{"image":{"docker-manifest-digest":"sha256:deadbeef"}}}`)
-	sig := sign(t, priv, payload)
-
-	reg := newFakeRegistry(t, registryOptions{
-		repo:         "myapp",
-		imageDigest:  "sha256:deadbeef",
-		payloadBytes: payload,
-		sigBytes:     sig,
-	})
+	reg := newFakeRegistry(t, "myapp", "sha256:deadbeef", false)
+	reg.setSignedPayload(t, priv, "", "", false)
 
 	v, err := imagecheck.NewVerifier(pubPEM, "http", "")
 	if err != nil {
 		t.Fatalf("NewVerifier: %v", err)
 	}
-	// Use digest-pinned reference; no resolve step should be needed.
+	// Digest-pinned reference; no resolve step should be needed.
 	if err := v.Verify(context.Background(), reg.Host+"/myapp@sha256:deadbeef"); err != nil {
 		t.Errorf("Verify with digest ref: %v", err)
 	}
 }
 
 func TestVerify_SubPath(t *testing.T) {
-	// Verify that images with org/name repository paths (multiple path components)
-	// are handled correctly.
 	priv, pubPEM := generateKey(t)
-	payload := []byte(`{"critical":{"image":{"docker-manifest-digest":"sha256:aabbcc"}}}`)
-	sig := sign(t, priv, payload)
-
-	// Build a fake registry server manually (newFakeRegistry only supports simple
-	// single-component repo names via its path pattern).
-	imageDigest := "sha256:aabbcc"
-	sigTag := strings.ReplaceAll(imageDigest, ":", "-") + ".sig"
-	payloadDigest := fmt.Sprintf("sha256:%x", sha256.Sum256(payload))
-	sigB64 := base64.StdEncoding.EncodeToString(sig)
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/v2/org/name/manifests/latest", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Docker-Content-Digest", imageDigest)
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `{"schemaVersion":2}`) //nolint:errcheck
-	})
-	mux.HandleFunc("/v2/org/name/manifests/"+sigTag, func(w http.ResponseWriter, r *http.Request) {
-		manifest := map[string]any{
-			"layers": []map[string]any{
-				{
-					"digest": payloadDigest,
-					"annotations": map[string]string{
-						"dev.cosignproject.cosign/signature": sigB64,
-					},
-				},
-			},
-		}
-		w.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
-		json.NewEncoder(w).Encode(manifest) //nolint:errcheck
-	})
-	mux.HandleFunc("/v2/org/name/blobs/"+payloadDigest, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(payload) //nolint:errcheck
-	})
-
-	srv := httptest.NewServer(mux)
-	t.Cleanup(srv.Close)
-	host := strings.TrimPrefix(srv.URL, "http://")
+	reg := newFakeRegistry(t, "org/name", "sha256:aabbcc", false)
+	reg.setSignedPayload(t, priv, "", "", false)
 
 	v, err := imagecheck.NewVerifier(pubPEM, "http", "")
 	if err != nil {
 		t.Fatalf("NewVerifier: %v", err)
 	}
-	if err := v.Verify(context.Background(), host+"/org/name:latest"); err != nil {
+	if err := v.Verify(context.Background(), reg.Host+"/org/name:latest"); err != nil {
 		t.Errorf("Verify with sub-path repo: %v", err)
+	}
+}
+
+// TestVerify_PayloadDigestMismatch is the codex-security #8 regression: a
+// cryptographically valid signature over a payload that claims a DIFFERENT
+// manifest digest must be rejected, so a registry writer can't replay a valid
+// signature onto another image's signature tag.
+func TestVerify_PayloadDigestMismatch(t *testing.T) {
+	priv, pubPEM := generateKey(t)
+	reg := newFakeRegistry(t, "myapp", "sha256:deadbeef", false)
+	reg.setSignedPayload(t, priv, "sha256:different-digest", "", false) // valid sig, wrong digest
+
+	v, err := imagecheck.NewVerifier(pubPEM, "http", "")
+	if err != nil {
+		t.Fatalf("NewVerifier: %v", err)
+	}
+	err = v.Verify(context.Background(), reg.Host+"/myapp:latest")
+	if err == nil || !strings.Contains(err.Error(), "does not match image digest") {
+		t.Fatalf("expected digest-binding error, got %v", err)
+	}
+}
+
+// TestVerify_PayloadReferenceMismatch is the codex-security #8 regression: a
+// valid signature whose payload names a different repository must be rejected.
+func TestVerify_PayloadReferenceMismatch(t *testing.T) {
+	priv, pubPEM := generateKey(t)
+	reg := newFakeRegistry(t, "myapp", "sha256:deadbeef", false)
+	reg.setSignedPayload(t, priv, "", "evil.example/other", false) // valid sig, wrong repo
+
+	v, err := imagecheck.NewVerifier(pubPEM, "http", "")
+	if err != nil {
+		t.Fatalf("NewVerifier: %v", err)
+	}
+	err = v.Verify(context.Background(), reg.Host+"/myapp:latest")
+	if err == nil || !strings.Contains(err.Error(), "does not match image reference") {
+		t.Fatalf("expected reference-binding error, got %v", err)
 	}
 }
 
@@ -328,8 +317,6 @@ func TestNewVerifier_InvalidPEM(t *testing.T) {
 }
 
 func TestNewVerifier_NonECKey(t *testing.T) {
-	// Encode an RSA public key DER block with an EC PEM header to trigger the
-	// "expected EC public key" check via a mis-typed PEM.
 	badPEM := pem.EncodeToMemory(&pem.Block{
 		Type:  "PUBLIC KEY",
 		Bytes: []byte("not-real-DER"),

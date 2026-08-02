@@ -569,6 +569,19 @@ func (r *AppReconciler) resolveBuiltDigest(ctx context.Context, app *appv1alpha1
 	return registry.ResolveDigest(ctx, nil, r.Registry, repo, tag, username, password)
 }
 
+// pullPolicyFor sets the kubelet pull behavior to the image reference's
+// immutability: a digest-pinned reference (image@sha256:…) is immutable so
+// IfNotPresent suffices, but a mutable tag — the pinBuiltImage fallback when the
+// registry is unreachable from the operator — MUST Always-pull, or a node can
+// reuse a previous App lifetime's cached gen-N tag and run stale code
+// (codex-security #29).
+func pullPolicyFor(image string) corev1.PullPolicy {
+	if strings.Contains(image, "@") {
+		return corev1.PullIfNotPresent
+	}
+	return corev1.PullAlways
+}
+
 // directStaticPublish reports whether the App takes the no-build static publish
 // path (w9/010): a repo-backed static_site whose spec declares no build input
 // at all — no prebuilt image, no Dockerfile path, no build command, no native
@@ -1128,6 +1141,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		container := corev1.Container{
 			Name:            "app",
 			Image:           image,
+			ImagePullPolicy: pullPolicyFor(image),
 			Env:             appEnv(app, port),
 			EnvFrom:         envFromSources(app),
 			Ports:           ports,
