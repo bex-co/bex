@@ -28,6 +28,10 @@ import { ServiceNetworkingPanel } from "@/features/services/components/service-n
 import { MaintenanceModeSection } from "@/features/services/components/maintenance-mode-section";
 import { RegistryCredentialSection } from "@/features/services/components/registry-credential-section";
 import {
+  ServiceSettingsNavigation,
+  type ServiceSettingsSection,
+} from "@/features/services/components/service-settings-navigation";
+import {
   isCron,
   isStaticSite,
   isWebService,
@@ -66,244 +70,302 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
     (!service?.runtime && service?.builder === "dockerfile");
   const registryCredentialEligible =
     service != null && !staticSite && (!service.repo || dockerBuild);
+  const navigationSections: ServiceSettingsSection[] = ["general"];
+  if (cron) navigationSections.push("deploy");
+  if (service?.repo) navigationSections.push("build");
+  if (staticSite && service) navigationSections.push("static-site");
+  if (!cron) navigationSections.push("domains", "networking");
+  if (registryCredentialEligible)
+    navigationSections.push("registry-credential");
+  navigationSections.push("notifications");
+  if (!cron && !worker && !staticSite) navigationSections.push("health-checks");
+  if (service && isWebService(service)) navigationSections.push("maintenance");
+  if (cron || !service?.repo) navigationSections.push("deploy-hook");
+  if (service) {
+    navigationSections.push(service.suspended ? "resume" : "suspend");
+    navigationSections.push("danger-zone");
+  }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("services.generalTitle")}</CardTitle>
-          <CardDescription>{t("services.settingsDescription")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!service && loading ? (
-            <FieldRowsSkeleton rows={4} />
-          ) : (
-            <div className="space-y-6">
-              <DisplayNameRow
-                serviceId={serviceId}
-                displayName={service?.displayName}
-                name={service?.name}
-                onChanged={() => void router.invalidate()}
-              />
-              {/* Region: read-only platform placement (Render's General row),
+    <div className="service-settings-layout grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
+      <ServiceSettingsNavigation
+        sections={navigationSections}
+        className="sticky top-0 z-20 -mx-4 border-y bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 lg:top-6 lg:col-start-2 lg:row-start-1 lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none"
+      />
+
+      <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
+        <section id="general" className="scroll-mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("services.generalTitle")}</CardTitle>
+              <CardDescription>
+                {t("services.settingsDescription")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!service && loading ? (
+                <FieldRowsSkeleton rows={4} />
+              ) : (
+                <div className="space-y-6">
+                  <DisplayNameRow
+                    serviceId={serviceId}
+                    displayName={service?.displayName}
+                    name={service?.name}
+                    onChanged={() => void router.invalidate()}
+                  />
+                  {/* Region: read-only platform placement (Render's General row),
                   projected from BEX_REGION (w1/m53). Hidden when the install
                   sets no region — never inferred. Permanently disabled (no
                   pencil): region is installation-stamped, not tenant-editable.
                   A static_site is region-agnostic — it serves from the object
                   store via the shared static-server (docs/ADR029-static-sites.md),
                   so Render's static Settings omits Region entirely (w5/m57/t003). */}
-              {service?.region && !staticSite && (
-                <EditableFieldRow
-                  label={t("services.regionLabel")}
-                  hint={t("services.regionHint")}
-                  value={service.region}
-                  editLabel={t("services.regionLabel")}
-                  disabled
-                  onSave={async () => false}
-                />
-              )}
-              {/* A static_site has no instance type — it serves from the object
+                  {service?.region && !staticSite && (
+                    <EditableFieldRow
+                      label={t("services.regionLabel")}
+                      hint={t("services.regionHint")}
+                      value={service.region}
+                      editLabel={t("services.regionLabel")}
+                      disabled
+                      onSave={async () => false}
+                    />
+                  )}
+                  {/* A static_site has no instance type — it serves from the object
                   store, not a sized pod (Render shows no Instance Type for
                   static sites; w5/m48/t004). The Plan tab is gated the same way. */}
-              {!staticSite && (
-                <InstanceTypeRow
-                  serviceId={serviceId}
-                  plan={service?.plan ?? null}
-                />
-              )}
-              {/* Idle timeout only applies to running-container services — a
+                  {!staticSite && (
+                    <InstanceTypeRow
+                      serviceId={serviceId}
+                      plan={service?.plan ?? null}
+                    />
+                  )}
+                  {/* Idle timeout only applies to running-container services — a
                   cron_job has no idle traffic to sleep on, and a static_site
                   serves from the object store with no pod to hibernate
                   (Render parity, w5/m11, w1/m21). Manual instance count lives
                   on the Scaling tab beside autoscaling (w7/m43 — Render's
                   placement; supersedes the w5/m16 Settings stepper). */}
-              {!cron && !staticSite && (
-                <>
-                  <IdleTimeoutRow
-                    serviceId={serviceId}
-                    plan={service?.plan ?? null}
-                    idleTTLSeconds={service?.idleTTLSeconds ?? 0}
-                  />
-                  {service && supportsMaxShutdownDelay(service) && (
-                    <MaxShutdownDelayRow
-                      serviceId={serviceId}
-                      maxShutdownDelaySeconds={service.maxShutdownDelaySeconds}
-                      onChanged={() => void refetch()}
-                    />
+                  {!cron && !staticSite && (
+                    <>
+                      <IdleTimeoutRow
+                        serviceId={serviceId}
+                        plan={service?.plan ?? null}
+                        idleTTLSeconds={service?.idleTTLSeconds ?? 0}
+                      />
+                      {service && supportsMaxShutdownDelay(service) && (
+                        <MaxShutdownDelayRow
+                          serviceId={serviceId}
+                          maxShutdownDelaySeconds={
+                            service.maxShutdownDelaySeconds
+                          }
+                          onChanged={() => void refetch()}
+                        />
+                      )}
+                    </>
                   )}
-                </>
+                </div>
               )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </section>
 
-      {cron ? (
-        <>
-          <CronDeploySection
-            serviceId={serviceId}
-            schedule={service?.schedule ?? null}
-            command={service?.command ?? null}
-          />
-          {/* A git-sourced cron job still builds from a repo, so it keeps the
-              Build & Deploy section — Root Directory + the Auto Deploy toggle,
-              whose setAutoDeploy path is type-agnostic (w2/m9, w5/010). An
-              image-backed cron has nothing to build, so it renders neither.
-              Build Command / Log Stream stay deferred (ADR018 cron row). */}
-          {service?.repo && (
-            <BuildDeploySection
+        {cron ? (
+          <>
+            <section id="deploy" className="scroll-mt-6">
+              <CronDeploySection
+                serviceId={serviceId}
+                schedule={service?.schedule ?? null}
+                command={service?.command ?? null}
+              />
+            </section>
+            {/* A git-sourced cron job still builds from a repo, so it keeps the
+                Build & Deploy section — Root Directory + the Auto Deploy toggle,
+                whose setAutoDeploy path is type-agnostic (w2/m9, w5/010). An
+                image-backed cron has nothing to build, so it renders neither.
+                Build Command / Log Stream stay deferred (ADR018 cron row). */}
+            {service?.repo && (
+              <section id="build" className="scroll-mt-6 space-y-6">
+                <BuildDeploySection
+                  serviceId={serviceId}
+                  repo={service.repo}
+                  branch={service.branch}
+                  rootDir={service.rootDir}
+                  runtime={service.runtime}
+                  builder={service.builder}
+                  startCommand={service.startCommand}
+                  dockerfilePath={service.dockerfilePath}
+                  buildFilter={service.buildFilter}
+                  autoDeploy={service.autoDeploy ?? false}
+                  preDeployCommand={service.preDeployCommand}
+                  // A cron_job runs its own Command; the pre-deploy step doesn't
+                  // apply (the backend rejects it), so hide the field here.
+                  showPreDeployCommand={false}
+                  showStartCommand={false}
+                  showDockerfilePath={false}
+                  // Cron's deploy concerns live in its own Deploy (Schedule/Command)
+                  // section, so no separate Deploy card — Auto-Deploy folds into
+                  // Build and the Deploy Hook stays a standalone card below (w5/m52).
+                  showDeployCard={false}
+                />
+              </section>
+            )}
+          </>
+        ) : (
+          <>
+            {service?.repo && (
+              <section id="build" className="scroll-mt-6 space-y-6">
+                <BuildDeploySection
+                  serviceId={serviceId}
+                  repo={service.repo}
+                  branch={service.branch}
+                  rootDir={service.rootDir}
+                  runtime={service.runtime}
+                  builder={service.builder}
+                  buildCommand={service.buildCommand}
+                  startCommand={service.startCommand}
+                  dockerfilePath={service.dockerfilePath}
+                  buildFilter={service.buildFilter}
+                  autoDeploy={service.autoDeploy ?? false}
+                  preDeployCommand={service.preDeployCommand}
+                  // Pre-Deploy Command applies to web/private/worker; a static_site
+                  // has no running container, so hide the field for it (w1/m33).
+                  showPreDeployCommand={!staticSite}
+                  // Build Command shows for every native build — static sites (w7/m41)
+                  // and native-runtime web/private/worker services (w5/m51). A
+                  // Dockerfile build shows Dockerfile Path instead.
+                  showBuildCommand={!dockerBuild}
+                  showStartCommand={!staticSite}
+                  showDockerfilePath={!staticSite}
+                />
+              </section>
+            )}
+            {staticSite && service && (
+              <section id="static-site" className="scroll-mt-6">
+                <StaticSiteSection
+                  serviceId={serviceId}
+                  service={service}
+                  refetch={refetch}
+                />
+              </section>
+            )}
+            {/* Custom Domains, with the platform-subdomain toggle folded in at the
+                bottom of the card (Render parity, w5/m52). */}
+            <section id="domains" className="scroll-mt-6">
+              <CustomDomainsSection
+                serviceId={serviceId}
+                subdomain={{
+                  url: service?.url ?? null,
+                  renderSubdomainPolicy: service?.renderSubdomainPolicy,
+                }}
+              />
+            </section>
+            {/* Networking (w7/m32): inbound IP allowlist — web_service and
+                static_site only (both have a public Ingress). */}
+            <section id="networking" className="scroll-mt-6">
+              <ServiceNetworkingPanel
+                serviceId={serviceId}
+                currentAllowList={service?.ipAllowListEntries}
+                onSaved={refetch}
+              />
+            </section>
+          </>
+        )}
+
+        {registryCredentialEligible ? (
+          <section id="registry-credential" className="scroll-mt-6">
+            <RegistryCredentialSection
+              key={serviceId}
               serviceId={serviceId}
-              repo={service.repo}
-              branch={service.branch}
-              rootDir={service.rootDir}
-              runtime={service.runtime}
-              builder={service.builder}
-              startCommand={service.startCommand}
-              dockerfilePath={service.dockerfilePath}
-              buildFilter={service.buildFilter}
-              autoDeploy={service.autoDeploy ?? false}
-              preDeployCommand={service.preDeployCommand}
-              // A cron_job runs its own Command; the pre-deploy step doesn't
-              // apply (the backend rejects it), so hide the field here.
-              showPreDeployCommand={false}
-              showStartCommand={false}
-              showDockerfilePath={false}
-              // Cron's deploy concerns live in its own Deploy (Schedule/Command)
-              // section, so no separate Deploy card — Auto-Deploy folds into
-              // Build and the Deploy Hook stays a standalone card below (w5/m52).
-              showDeployCard={false}
+              registryCredentialId={service.registryCredentialId}
+              onChanged={() => void refetch()}
             />
-          )}
-        </>
-      ) : (
-        <>
-          {service?.repo && (
-            <BuildDeploySection
+          </section>
+        ) : null}
+
+        {/* Notifications (w4/m21): the per-service deploy-failure override applies
+            to every service type (Render places it at the service level, not
+            gated by type), so it renders outside the cron/else branches above. */}
+        <section id="notifications" className="scroll-mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("services.settingsNotificationsTitle")}</CardTitle>
+              <CardDescription>
+                {t("services.settingsNotificationsDescription")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ServiceNotificationsRow
+                serviceId={serviceId}
+                notificationsToSend={service?.notificationsToSend}
+              />
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Health Checks (Render places this section after Notifications, w5/m52):
+            the HTTP path bex polls before routing traffic. web_service /
+            private_service only — never cron/worker/static (no HTTP readiness). */}
+        {!cron && !worker && !staticSite && (
+          <section id="health-checks" className="scroll-mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("services.settingsHealthChecksTitle")}</CardTitle>
+                <CardDescription>
+                  {t("services.settingsHealthChecksDescription")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <HealthCheckPathRow
+                  serviceId={serviceId}
+                  healthCheckPath={service?.healthCheckPath}
+                />
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
+        {/* Maintenance Mode (w1/m37): web_service only, matching the backend's
+            requireWebService guard. */}
+        {service && isWebService(service) && (
+          <section id="maintenance" className="scroll-mt-6">
+            <MaintenanceModeSection
               serviceId={serviceId}
-              repo={service.repo}
-              branch={service.branch}
-              rootDir={service.rootDir}
-              runtime={service.runtime}
-              builder={service.builder}
-              buildCommand={service.buildCommand}
-              startCommand={service.startCommand}
-              dockerfilePath={service.dockerfilePath}
-              buildFilter={service.buildFilter}
-              autoDeploy={service.autoDeploy ?? false}
-              preDeployCommand={service.preDeployCommand}
-              // Pre-Deploy Command applies to web/private/worker; a static_site
-              // has no running container, so hide the field for it (w1/m33).
-              showPreDeployCommand={!staticSite}
-              // Build Command shows for every native build — static sites (w7/m41)
-              // and native-runtime web/private/worker services (w5/m51). A
-              // Dockerfile build shows Dockerfile Path instead.
-              showBuildCommand={!dockerBuild}
-              showStartCommand={!staticSite}
-              showDockerfilePath={!staticSite}
+              serviceName={service.name}
+              plan={service.plan}
+              maintenanceMode={service.maintenanceMode}
             />
-          )}
-          {staticSite && service && (
-            <StaticSiteSection
-              serviceId={serviceId}
+          </section>
+        )}
+
+        {/* Deploy Hook: embedded inside the Deploy card for a repo-backed
+            non-cron service (w5/m52). It stays a standalone card only when there's
+            no Deploy card to hold it — a cron_job or an image-backed service. */}
+        {(cron || !service?.repo) && (
+          <section id="deploy-hook" className="scroll-mt-6">
+            <DeployHookSection serviceId={serviceId} />
+          </section>
+        )}
+
+        {/* Suspend / Resume: mirrors Render's bottom-of-settings placement.
+            Only once the service has loaded so we know its suspended state. */}
+        {service && (
+          <section id="suspend" className="scroll-mt-6">
+            <SuspendServiceCard
               service={service}
-              refetch={refetch}
+              pending={pending?.id === service.id ? pending.action : null}
+              onRun={run}
             />
-          )}
-          {/* Custom Domains, with the platform-subdomain toggle folded in at the
-              bottom of the card (Render parity, w5/m52). */}
-          <CustomDomainsSection
-            serviceId={serviceId}
-            subdomain={{
-              url: service?.url ?? null,
-              renderSubdomainPolicy: service?.renderSubdomainPolicy,
-            }}
-          />
-          {/* Networking (w7/m32): inbound IP allowlist — web_service and
-              static_site only (both have a public Ingress). */}
-          <ServiceNetworkingPanel
-            serviceId={serviceId}
-            currentAllowList={service?.ipAllowListEntries}
-            onSaved={refetch}
-          />
-        </>
-      )}
+          </section>
+        )}
 
-      {registryCredentialEligible ? (
-        <RegistryCredentialSection
-          key={serviceId}
-          serviceId={serviceId}
-          registryCredentialId={service.registryCredentialId}
-          onChanged={() => void refetch()}
-        />
-      ) : null}
-
-      {/* Notifications (w4/m21): the per-service deploy-failure override applies
-          to every service type (Render places it at the service level, not
-          gated by type), so it renders outside the cron/else branches above. */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("services.settingsNotificationsTitle")}</CardTitle>
-          <CardDescription>
-            {t("services.settingsNotificationsDescription")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ServiceNotificationsRow
-            serviceId={serviceId}
-            notificationsToSend={service?.notificationsToSend}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Health Checks (Render places this section after Notifications, w5/m52):
-          the HTTP path bex polls before routing traffic. web_service /
-          private_service only — never cron/worker/static (no HTTP readiness). */}
-      {!cron && !worker && !staticSite && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("services.settingsHealthChecksTitle")}</CardTitle>
-            <CardDescription>
-              {t("services.settingsHealthChecksDescription")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <HealthCheckPathRow
-              serviceId={serviceId}
-              healthCheckPath={service?.healthCheckPath}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Maintenance Mode (w1/m37): web_service only, matching the backend's
-          requireWebService guard. */}
-      {service && isWebService(service) && (
-        <MaintenanceModeSection
-          serviceId={serviceId}
-          serviceName={service.name}
-          plan={service.plan}
-          maintenanceMode={service.maintenanceMode}
-        />
-      )}
-
-      {/* Deploy Hook: embedded inside the Deploy card for a repo-backed
-          non-cron service (w5/m52). It stays a standalone card only when there's
-          no Deploy card to hold it — a cron_job or an image-backed service. */}
-      {(cron || !service?.repo) && <DeployHookSection serviceId={serviceId} />}
-
-      {/* Suspend / Resume: mirrors Render's bottom-of-settings placement.
-          Only once the service has loaded so we know its suspended state. */}
-      {service && (
-        <SuspendServiceCard
-          service={service}
-          pending={pending?.id === service.id ? pending.action : null}
-          onRun={run}
-        />
-      )}
-
-      {/* Danger zone: type-to-confirm delete (every service type). Only once the
-          service has loaded — the confirm matches against its immutable id. */}
-      {service && <DeleteServiceCard service={service} />}
+        {/* Danger zone: type-to-confirm delete (every service type). Only once the
+            service has loaded — the confirm matches against its immutable id. */}
+        {service && (
+          <section id="danger-zone" className="scroll-mt-6">
+            <DeleteServiceCard service={service} />
+          </section>
+        )}
+      </div>
     </div>
   );
 }

@@ -106,7 +106,10 @@ export function ServiceDetailLayout({
             <ServiceDetailHeaderSkeleton name={serviceId} />
           )}
           <div className="p-4 sm:p-6">
-            <div className="mx-auto w-full max-w-4xl space-y-6">
+            {/* Detail tabs stay at the established 4xl width; the long Settings
+                page opts into a 6xl shell so its right rail doesn't compress
+                the existing form cards. */}
+            <div className="mx-auto w-full max-w-4xl space-y-6 has-[>.service-settings-layout]:max-w-6xl">
               <Outlet />
             </div>
           </div>

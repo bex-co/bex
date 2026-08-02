@@ -900,6 +900,10 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "设置",
     description: "Service-detail nav item (settings tab)",
   },
+  "services.settingsNavigation": {
+    message: "设置区块",
+    description: "Accessible label for the service settings section navigation",
+  },
   "services.settingsDescription": {
     message: "配置该服务的名称、实例规格及其他设置。",
     description: "Settings tab card description",
