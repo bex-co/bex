@@ -142,6 +142,7 @@ preflight_cluster() {
     ciliumclusterwidenetworkpolicy/sandbox-execd-ingress \
     ciliumclusterwidenetworkpolicy/opensandbox-server-ingress \
     ciliumclusterwidenetworkpolicy/sandbox-exec-gateway-ingress \
+    ciliumclusterwidenetworkpolicy/agent-credential-gateway-ingress \
     ciliumclusterwidenetworkpolicy/opensandbox-server-egress \
     ciliumclusterwidenetworkpolicy/opensandbox-controller-egress \
     validatingadmissionpolicy/bex-sandbox-pods \

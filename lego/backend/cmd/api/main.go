@@ -48,6 +48,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/agentsessions"
 	"github.com/bex-co/bex/lego/backend/internal/api"
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
@@ -229,8 +230,10 @@ func main() {
 	// zero-config push-to-deploy. Wired only when all three BEX_GITHUB_APP_* vars
 	// are set (and the key parses) — else the git-connect verbs 503. The store
 	// half (git_connections) is wired inside the BEX_CP_DB_URI block below.
+	var ghClient *github.Client
 	if appID, key, slug := os.Getenv("BEX_GITHUB_APP_ID"), os.Getenv("BEX_GITHUB_APP_PRIVATE_KEY"), os.Getenv("BEX_GITHUB_APP_SLUG"); appID != "" && key != "" && slug != "" {
-		ghClient, err := github.NewClient(github.Config{AppID: appID, PrivateKey: key, Slug: slug})
+		var err error
+		ghClient, err = github.NewClient(github.Config{AppID: appID, PrivateKey: key, Slug: slug})
 		if err != nil {
 			log.Fatalf("bex-api: github app config: %v", err)
 		}
@@ -545,6 +548,15 @@ func main() {
 		internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: cpToken, Grant: granter, Billing: stripeBillingAdmin, BillingOperations: st, SandboxTenants: st}
 		internalRoot := http.NewServeMux()
 		internalRoot.Handle("GET /metrics", promhttp.HandlerFor(metricRegistry, promhttp.HandlerOpts{}))
+		// ADR047 D2: a gateway-authenticated, internal-only mint verb. The same
+		// sandbox-exec HMAC secret is reused with protocol domain separation; the
+		// route is not mounted on :8090 and never enters the public surface.
+		if secret := os.Getenv("BEX_SANDBOX_EXEC_SECRET"); secret != "" {
+			internalRoot.Handle(agentsession.InternalMintPath, &agentsession.Handler{
+				Secret: []byte(secret),
+				Minter: &agentsession.Minter{GitHub: ghClient, Connections: st, Audit: st},
+			})
+		}
 		internalRoot.Handle("/", internal.Handler())
 		cpAddr := envOr("BEX_CP_ADDR", ":8091")
 		cpSrv := &http.Server{

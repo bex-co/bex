@@ -38,6 +38,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/api"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/authz"
@@ -120,6 +121,14 @@ func main() {
 		MaxSessions:       intEnv("BEX_SSH_MAX_SESSIONS", 100),
 		MaxPerIdentity:    intEnv("BEX_SSH_MAX_SESSIONS_PER_IDENTITY", 5),
 	}
+	if secret := os.Getenv("BEX_SANDBOX_EXEC_SECRET"); secret != "" {
+		apiURL := envOr("BEX_AGENT_CREDENTIAL_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalMintPath)
+		gateway.AgentCredential = &sshgateway.AgentCredentialConfig{
+			Pods:  sshgateway.KubeSessionPodResolver{Client: clientset},
+			API:   &agentsession.Client{URL: apiURL, Secret: []byte(secret)},
+			Audit: st,
+		}
+	}
 	addr := envOr("BEX_SSH_ADDR", ":2222")
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -197,6 +206,33 @@ func main() {
 			_ = execServer.Shutdown(shutdownCtx)
 		}()
 		log.Printf("sandbox exec listening on %s", execAddr)
+	}
+
+	// Agent-session credential listener (ADR047 D2). Sandboxes call this one
+	// directly; Cilium admits only sandbox-regime Pods, then the handler resolves
+	// the TCP source IP back to a Pod and checks its immutable session bindings.
+	// It has no Ingress and is distinct from browser/SSH/sandbox-exec listeners.
+	if gateway.AgentCredentialEnabled() {
+		credentialMux := http.NewServeMux()
+		credentialMux.Handle("POST "+agentsession.GatewayPath, gateway.AgentCredentialHandler())
+		credentialMux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+		credentialServer := &http.Server{Handler: credentialMux, ReadHeaderTimeout: 5 * time.Second}
+		credentialAddr := envOr("BEX_AGENT_CREDENTIAL_ADDR", ":8082")
+		credentialListener, err := net.Listen("tcp", credentialAddr)
+		if err != nil {
+			log.Fatalf("ssh gateway: agent credential listen %s: %v", credentialAddr, err)
+		}
+		go func() {
+			if err := credentialServer.Serve(credentialListener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				stop()
+			}
+		}()
+		defer func() {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = credentialServer.Shutdown(shutdownCtx)
+		}()
+		log.Printf("agent credential broker listening on %s", credentialAddr)
 	}
 	log.Printf("ssh gateway listening on %s", addr)
 	if err := gateway.Serve(ctx, listener); err != nil && !errors.Is(err, context.Canceled) {

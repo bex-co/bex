@@ -443,12 +443,13 @@ if [ "$ssh_namespace" != 'default' ] || [ "$ssh_namespaced_rules" != $'app.bex.c
   echo "FAIL: SSH gateway tenant Role must remain default-only App/pod get/list + pods/exec create" >&2
   fail=1
 fi
-# Traefik reaches the gateway on 2222 (native SSH) + 8080 (Browser Web Shell
-# WebSocket, w2/m55); monitoring scrapes 9090. Enumerate every port per rule so a
-# stray added port can't slip past a ports[0]-only check.
-ssh_ingress="$(yq -N '.spec.ingress[] | [.from[0].namespaceSelector.matchLabels."kubernetes.io/metadata.name", (.ports | map(.port | tostring) | join(","))] | join(":")' lego/operator/config/ssh/networkpolicy.yaml)"
-if [ "$ssh_ingress" != $'traefik:2222,8080\nmonitoring:9090' ]; then
-  echo "FAIL: SSH gateway ingress must remain Traefik SSH+shell + monitoring metrics only" >&2
+# Traefik reaches 2222 (native SSH) + 8080 (Browser Web Shell); monitoring
+# scrapes 9090; sandbox-regime namespaces reach only ADR047's source-Pod-bound
+# credential listener on 8082. Enumerate every port per rule so a stray added
+# port can't slip past a ports[0]-only check.
+ssh_ingress="$(yq -N '.spec.ingress[] | [(.from[0].namespaceSelector.matchLabels."kubernetes.io/metadata.name" // .from[0].namespaceSelector.matchLabels."app.bex.co/regime"), (.ports | map(.port | tostring) | join(","))] | join(":")' lego/operator/config/ssh/networkpolicy.yaml)"
+if [ "$ssh_ingress" != $'traefik:2222,8080\nmonitoring:9090\nsandbox:8082' ]; then
+  echo "FAIL: SSH gateway ingress must remain Traefik SSH+shell + monitoring metrics + sandbox credential refresh only" >&2
   fail=1
 fi
 ssh_rendered="$(kubectl kustomize lego/operator/config/default)"
@@ -918,6 +919,7 @@ if [ -f "$EGRESS" ]; then
     || { echo "FAIL: legacy sandbox egress policy does not exclude agent sessions: '$legacy_selector'" >&2; fail=1; }
 
   expected_sandbox_names=$'api.anthropic.com\napi.github.com\napi.openai.com\nfiles.pythonhosted.org\ngithub.com\nobjects.githubusercontent.com\npypi.org\nraw.githubusercontent.com\nregistry.npmjs.org'
+  expected_sandbox_dns_names=$'api.anthropic.com\napi.github.com\napi.openai.com\nbex-ssh-gateway.bex-system.svc.cluster.local\nfiles.pythonhosted.org\ngithub.com\nobjects.githubusercontent.com\npypi.org\nraw.githubusercontent.com\nregistry.npmjs.org'
   dns_names="$(yq -N \
     'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-legacy-allowlist") |
       .spec.egress[].toPorts[]?.rules.dns[]?.matchName' "$EGRESS" | sort)"
@@ -927,7 +929,9 @@ if [ -f "$EGRESS" ]; then
   sni_names="$(yq -N \
     'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-legacy-allowlist") |
       .spec.egress[].toPorts[]?.serverNames[]?' "$EGRESS" | sort)"
-  for surface in dns_names fqdn_names sni_names; do
+  [ "$dns_names" = "$expected_sandbox_dns_names" ] \
+    || { echo "FAIL: sandbox dns_names allowlist drifted: $dns_names" >&2; fail=1; }
+  for surface in fqdn_names sni_names; do
     actual="${!surface}"
     [ "$actual" = "$expected_sandbox_names" ] \
       || { echo "FAIL: sandbox $surface allowlist drifted: $actual" >&2; fail=1; }
@@ -997,6 +1001,24 @@ if [ -f "$EGRESS" ]; then
   [ "$exec_gateway_deny_keys" = $'k8s:app.kubernetes.io/name\nk8s:io.cilium.k8s.policy.serviceaccount\nk8s:io.kubernetes.pod.namespace' ] \
     || { echo "FAIL: sandbox exec-gateway deny complement drifted: '$exec_gateway_deny_keys'" >&2; fail=1; }
 
+  credential_gateway_ingress="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "agent-credential-gateway-ingress") |
+      [.spec.endpointSelector.matchLabels."k8s:io.kubernetes.pod.namespace",
+       .spec.endpointSelector.matchLabels."k8s:io.cilium.k8s.policy.serviceaccount",
+       .spec.endpointSelector.matchLabels."k8s:app.kubernetes.io/name",
+       (.spec.ingressDeny | length | tostring),
+       .spec.ingress[0].fromEndpoints[0].matchLabels."app.bex.co/regime",
+       .spec.ingress[0].toPorts[0].ports[0].protocol,
+       .spec.ingress[0].toPorts[0].ports[0].port] | join(":")' \
+    "$EGRESS" | tr -d '\n')"
+  [ "$credential_gateway_ingress" = "bex-system:bex-ssh-gateway:bex-ssh-gateway:2:sandbox:TCP:8082" ] \
+    || { echo "FAIL: agent credential-gateway ingress identity is '$credential_gateway_ingress'" >&2; fail=1; }
+  credential_gateway_deny_key="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "agent-credential-gateway-ingress") |
+      .spec.ingressDeny[].fromEndpoints[]?.matchExpressions[]?.key' "$EGRESS" | tr -d '\n')"
+  [ "$credential_gateway_deny_key" = "app.bex.co/regime" ] \
+    || { echo "FAIL: agent credential-gateway deny complement drifted: '$credential_gateway_deny_key'" >&2; fail=1; }
+
   server_selector="$(yq -N \
     'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-server-egress") |
       [.spec.endpointSelector.matchLabels."k8s:io.kubernetes.pod.namespace",
@@ -1021,6 +1043,7 @@ if [ -f "$EGRESS" ]; then
        .metadata.name == "sandbox-execd-ingress" or
        .metadata.name == "opensandbox-server-ingress" or
        .metadata.name == "sandbox-exec-gateway-ingress" or
+       .metadata.name == "agent-credential-gateway-ingress" or
        .metadata.name == "opensandbox-server-egress" or
        .metadata.name == "opensandbox-controller-egress")) |
       .metadata.name' - | tr '\n' ' ')"

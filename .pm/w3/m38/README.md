@@ -1,16 +1,16 @@
 # w3 · m38 — Per-session repo credentials: gateway-refreshed token, branch-confined (ADR047 D2)
 
-**Worker:** worker3 **Goal:** agent sessions push to tenant repos with per-session GitHub App installation tokens that never land on disk in the sandbox — fetched on demand through a gateway-proxied credential helper, refreshed past the 1h TTL, and server-side confined to `bex-agent/*` branches. **Status:** todo
+**Worker:** worker3 **Goal:** agent sessions push to tenant repos with per-session GitHub App installation tokens that never land on disk in the sandbox — fetched on demand through a gateway-proxied credential helper, refreshed past the 1h TTL, and server-side confined to `bex-agent/*` branches. **Status:** todo (t001–t005 done; t006 awaits CI; t007 awaits m39/m42/m41's production OpenSandbox proof)
 
 ## Tasks (in order)
 
 | id   | title                                                                                              | est | depends_on |
 | ---- | -------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | bex-api mint verb: per-session installation token, repo-scoped `contents:write`, `bex-agent/*` confinement | 60m | —    |
-| t002 | Gateway internal refresh endpoint (proxied authorized re-mint), audit-logged                        | 45m | t001       |
-| t003 | In-sandbox git credential helper (fetch-on-demand, never on disk) + image integration contract      | 45m | t002       |
-| t004 | Snapshot hygiene: scrub credentials + tenant key pre-snapshot; re-fetch on resume                   | 30m | t003       |
-| t005 | Simplify pass over the credential path                                                             | 20m | t004       |
+| t001 | bex-api mint verb: per-session installation token, repo-scoped `contents:write`, `bex-agent/*` confinement — **DONE** | 60m | —    |
+| t002 | Gateway internal refresh endpoint (proxied authorized re-mint), audit-logged — **DONE**             | 45m | t001       |
+| t003 | In-sandbox git credential helper (fetch-on-demand, never on disk) + image integration contract — **DONE** | 45m | t002       |
+| t004 | Snapshot hygiene: scrub credentials + tenant key pre-snapshot; re-fetch on resume — **DONE**        | 30m | t003       |
+| t005 | Simplify pass over the credential path — **DONE**                                                  | 20m | t004       |
 | t006 | Test coverage: mint scoping, refresh authz, helper behavior, scrub                                  | 45m | t004       |
 | t007 | Closeout                                                                                           | 10m | t006       |
 

@@ -1,0 +1,44 @@
+#!/bin/sh
+set -eu
+
+# Root override exists solely for the hermetic scrub test. Production uses the
+# real root. Keep the target set explicit: deleting arbitrary files whose content
+# merely resembles a token could destroy a tenant's checked-out source tree.
+scrub_root="${BEX_SCRUB_ROOT:-}"
+scrub_home="${BEX_SCRUB_HOME:-/home/bex}"
+
+credential_files="
+${scrub_home}/.git-credentials
+${scrub_home}/.config/git/credentials
+${scrub_home}/.cache/git/credential/socket
+/run/bex-agent/credentials.env
+/run/bex-agent/opensandbox-api-key
+/tmp/bex-agent-credentials
+/tmp/git-credential-cache/socket
+"
+
+for relative in $credential_files; do
+  target="${scrub_root}${relative}"
+  if [ -d "$target" ]; then
+    find "$target" -depth -type f -delete
+    find "$target" -depth -type d -empty -delete
+  else
+    rm -f -- "$target"
+  fi
+done
+
+# Git's optional credential-cache daemon holds values in RAM behind a Unix
+# socket. The image does not configure it, but stop a tenant-added instance
+# before snapshotting as belt-and-suspenders hygiene.
+if [ -z "$scrub_root" ] && command -v git >/dev/null 2>&1; then
+  git credential-cache exit >/dev/null 2>&1 || true
+fi
+
+# Fail closed when an enumerated persistence location survived (permissions,
+# unexpected file type, etc.). The snapshot caller must not proceed on failure.
+for relative in $credential_files; do
+  if [ -e "${scrub_root}${relative}" ]; then
+    echo "credential material remains in an enumerated snapshot path" >&2
+    exit 1
+  fi
+done

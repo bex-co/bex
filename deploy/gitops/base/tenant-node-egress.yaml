@@ -191,6 +191,19 @@ spec:
               - matchName: files.pythonhosted.org
               - matchName: api.anthropic.com
               - matchName: api.openai.com
+              - matchName: bex-ssh-gateway.bex-system.svc.cluster.local
+    # ADR047 D2: the only private-service egress an agent sandbox needs is its
+    # pod-authenticated credential refresh hop. The destination identity is the
+    # isolated gateway, not an arbitrary cluster CIDR.
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: bex-system
+            k8s:io.cilium.k8s.policy.serviceaccount: bex-ssh-gateway
+            k8s:app.kubernetes.io/name: bex-ssh-gateway
+      toPorts:
+        - ports:
+            - port: "8082"
+              protocol: TCP
     # toFQDNs supplies the L3 allow; TLS SNI keeps a literal-IP connection from
     # riding an IP learned through an approved DNS response.
     - toFQDNs:
@@ -324,6 +337,46 @@ spec:
       toPorts:
         - ports:
             - port: "8081"
+              protocol: TCP
+---
+# Agent credential refresh is cluster-internal and sandbox-originated. Network
+# identity is the first gate; the gateway then maps the direct source IP to a Pod
+# and verifies its session/repository/branch label digests before minting.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: agent-credential-gateway-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:io.kubernetes.pod.namespace: bex-system
+      k8s:io.cilium.k8s.policy.serviceaccount: bex-ssh-gateway
+      k8s:app.kubernetes.io/name: bex-ssh-gateway
+  ingressDeny:
+    - fromEndpoints:
+        - matchExpressions:
+            - key: app.bex.co/regime
+              operator: NotIn
+              values: [sandbox]
+      toPorts:
+        - ports:
+            - port: "8082"
+              protocol: TCP
+    - fromEntities:
+        - world
+        - host
+        - remote-node
+      toPorts:
+        - ports:
+            - port: "8082"
+              protocol: TCP
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.bex.co/regime: sandbox
+      toPorts:
+        - ports:
+            - port: "8082"
               protocol: TCP
 ---
 # A lifecycle-server compromise must not turn its control-plane bearer into an

@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
@@ -40,14 +41,19 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 	svc.SessionEgress = eg
 	lifecycle := NewAgentSessionLifecycle(svc)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "alice", Method: "session"})
-	created, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session", "https://api.openai.com/v1", []string{"docs.example.com"})
+	created, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session", "bex-co/example", "bex-agent/session-test", "https://api.openai.com/v1", []string{"docs.example.com"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bindings, err := agentsession.BindingLabels("ags-session", "bex-co/example", "bex-agent/session-test")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if created.ID != "sandbox-1" || create.Metadata[metadataOwner] != "alice" || create.Metadata[metadataWorkspace] != "tea-a" ||
 		create.Metadata[metadataRegime] != metadataSandboxRegime || create.Metadata[metadataNetworkPolicy] != string(NetworkPolicyDenyAll) ||
 		create.Metadata[metadataAgentSession] != "ags-session" || create.Metadata[metadataModelEndpoint] != "https://api.openai.com/v1" ||
-		create.Metadata[metadataEgressAllow] != `["docs.example.com"]` {
+		create.Metadata[metadataEgressAllow] != `["docs.example.com"]` || create.Metadata[agentsession.LabelRepository] != bindings[agentsession.LabelRepository] ||
+		create.Metadata[agentsession.LabelBranch] != bindings[agentsession.LabelBranch] {
 		t.Fatalf("reserved metadata = %#v", create.Metadata)
 	}
 	if err := lifecycle.EnterAgentSessionPhase(ctx, "tea-a", "ags-session", "sandbox-1"); err != nil {

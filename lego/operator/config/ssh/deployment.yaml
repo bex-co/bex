@@ -99,6 +99,14 @@ spec:
                   name: bex-sandbox-exec
                   key: secret
                   optional: true
+            # Agent-session Git credential broker (ADR047 D2). This listener is
+            # reached only by sandbox-regime Pods; it authenticates their source
+            # Pod and HMAC-proxies a scoped mint to bex-api's :8091 route. Reuses
+            # BEX_SANDBOX_EXEC_SECRET with a domain-separated signature.
+            - name: BEX_AGENT_CREDENTIAL_ADDR
+              value: ":8082"
+            - name: BEX_AGENT_CREDENTIAL_API_URL
+              value: http://bex-api.bex-system.svc:8091/v1/agent-session-credentials
           ports:
             - name: ssh
               containerPort: 2222
@@ -111,6 +119,9 @@ spec:
               protocol: TCP
             - name: sandbox-exec
               containerPort: 8081
+              protocol: TCP
+            - name: agent-credential
+              containerPort: 8082
               protocol: TCP
           readinessProbe:
             httpGet:

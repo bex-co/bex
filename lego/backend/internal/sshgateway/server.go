@@ -79,6 +79,12 @@ type Server struct {
 	// pods/exec stays confined to this process; bex-api reverse-proxies the SSE.
 	SandboxExecSecret []byte
 
+	// AgentCredential enables the pod-bound git credential broker
+	// (agent_credential.go, ADR047 D2). It is a separate internal listener: a
+	// sandbox reaches it directly, the gateway authenticates the source Pod, and
+	// only then does the gateway make an HMAC-authenticated mint call to bex-api.
+	AgentCredential *AgentCredentialConfig
+
 	HandshakeTimeout time.Duration
 	SessionTimeout   time.Duration
 	MaxSessions      int
