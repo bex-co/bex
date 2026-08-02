@@ -14,7 +14,7 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     description: "Switcher menu item linking to /workspace/settings",
   },
   "workspaces.switcherNew": {
-    message: "+ New Workspace",
+    message: "New Workspace",
     description: "Switcher menu item linking to /new/workspace",
   },
   "workspaces.newTitle": {

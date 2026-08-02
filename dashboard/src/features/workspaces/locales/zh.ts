@@ -14,7 +14,7 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     description: "Switcher menu item linking to /workspace/settings",
   },
   "workspaces.switcherNew": {
-    message: "+ 新建工作区",
+    message: "新建工作区",
     description: "Switcher menu item linking to /new/workspace",
   },
   "workspaces.newTitle": {

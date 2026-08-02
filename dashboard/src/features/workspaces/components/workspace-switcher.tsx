@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Building2, Check, ChevronsUpDown, Plus, Settings } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, Settings } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,8 +14,36 @@ import {
   SidebarMenuItem,
 } from "@/common/components/ui/sidebar.tsx";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { cn } from "@/common/lib/utils/utils.ts";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+
+/**
+ * A small rounded tile showing the workspace's first letter — the switcher's
+ * per-workspace identity mark. It replaces a generic building glyph (which was
+ * identical for every workspace) so the trigger and the list rows are scannable
+ * at a glance, and it's the one visual the trigger and dropdown rows share.
+ */
+function WorkspaceInitial({
+  name,
+  className,
+}: {
+  name: string;
+  className?: string;
+}) {
+  const initial = name.trim().charAt(0).toUpperCase() || "?";
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "flex aspect-square items-center justify-center rounded-md bg-primary/10 text-[0.7rem] font-semibold text-primary",
+        className,
+      )}
+    >
+      {initial}
+    </span>
+  );
+}
 
 /**
  * The dropdown at the top of the left pane (Render's own placement, captured
@@ -44,11 +72,14 @@ export function WorkspaceSwitcher() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
-              <Building2 className="size-4 shrink-0" />
+              <WorkspaceInitial
+                name={currentWorkspace?.name ?? "?"}
+                className="size-5 shrink-0"
+              />
               <span className="truncate font-medium">
                 {currentWorkspace?.name ?? t("workspaces.switcherEmpty")}
               </span>
-              <ChevronsUpDown className="ml-auto size-4 opacity-50" />
+              <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -62,9 +93,13 @@ export function WorkspaceSwitcher() {
               <DropdownMenuItem
                 key={w.id}
                 onSelect={() => setCurrentWorkspaceId(w.id)}
+                className="gap-2"
               >
+                <WorkspaceInitial name={w.name} className="size-5 shrink-0" />
                 <span className="flex-1 truncate">{w.name}</span>
-                {w.id === currentWorkspace?.id && <Check className="size-4" />}
+                {w.id === currentWorkspace?.id && (
+                  <Check className="size-4 shrink-0" />
+                )}
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
