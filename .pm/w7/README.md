@@ -68,9 +68,26 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 - [x] **m68** — Tenant KeyValue off-cluster backups: nightly RDB snapshots to S3 for paid plans (8 tasks) ← from the same 2026-07-31 audit (ADR021 §Consequences defers backup; last tenant-data store with zero off-cluster copy; rides w7/m12's teardown-purge and the `BEX_DB_BACKUP_*` env-gating patterns); lower-priority residuals filed as `015` (cross-region replication) + `016` (RPO/RTO + re-drill cadence) — **DONE 2026-07-31**: every paid KeyValue now gets a staggered coherent nightly RDB in S3 with keep-seven retention and fail-closed delete purge; production created eight snapshots, restored a marker into a fresh PVC through the AOF transition/restart, and proved zero Kubernetes/S3 leftovers
 - [x] **m69** — Scripted backup restore: executable recovery for every ADR031 store, verified end to end (9 tasks) ← from user request 2026-07-31 (`/pm m69` — restore scripts + ADR + a real backup→restore→verify exercise); closes ADR031's "all restores manual (runbook-driven)" consequence; disjoint from m67/m68's ship-time drills (those prove the backup mechanisms once; m69 makes recovery executable and proves the full loop with scripts only), and its timings seed `016`'s RPO/RTO table — **DONE 2026-07-31**: four safety-gated scripts shipped; fresh production etcd/OpenBao/bex-db/tenant-Postgres/Kratos/KeyValue backups restored and verified; all throwaways, drill sources, and deleted-store object prefixes reached zero leftovers
 
+- [ ] **m70** — OpenBao cross-workspace secret isolation: tenant-key env/secret-file paths + fix purge-name mismatch (6 tasks) ← from codex-security scan `codex-security-bex-azfRGv` 2026-08-01 (finding #1 **high** + #15 med — `baoTenant="default"` hard-coded, storage key omits workspace identity; the scan's only HIGH, a real authenticated cross-workspace secret read/overwrite)
+- [ ] **m71** — Shared build-namespace Secret ownership: ownership-check the clone/registry mirror + the finalizer delete loop (5 tasks) ← from codex-security scan (#5 + #14 med — App-controlled names overwrite/destroy foreign Secrets in `bex-build` with no ownership check)
+- [ ] **m72** — Public-surface availability & resource-exhaustion hardening: pg-sni handshake deadline, activator host→App cache, static-server LimitReader, exports cap, activator HTTP timeouts, build ephemeral-storage (9 tasks) ← from codex-security scan (#2,#7,#10,#13,#21,#3)
+- [ ] **m73** — Tenant-image signature & digest integrity: bind cosign payload to digest/repository + fail-closed digest resolution (5 tasks) ← from codex-security scan (#8 med + #29 low — undermines the w7/m11 admission gate)
+- [ ] **m74** — Dashboard auth & session-boundary hardening: device-grant confirmation, consent body cap, Apollo clear on logout, sandbox-exec cross-replica nonce (7 tasks) ← from codex-security scan (#9,#11,#24,#30)
+- [ ] **m75** — CI & infrastructure supply-chain pinning: snapshot.yml input-injection fix + pin gVisor/Argo-manifest/Argo-charts/k3s (8 tasks) ← from codex-security scan (#16 med — the immediately exploitable one — + #18,#19,#20,#27 low)
+
 ## Inbox
 
 - `008.md` — Registry in-cluster TLS residual (ADR022 §225–227): Zot HTTP-only, build-push creds cross the cluster net in plaintext; largely mitigated by shipped Cilium WireGuard node encryption (cross-node only). Defense-in-depth, weak why-now — record, don't build until a driver appears.
+- `015.md` — Cross-region backup replication: every backup copy lives in one Wasabi region; promotion candidate (provider/cost decision), lower priority than m67/m68.
+- `016.md` — RPO/RTO objectives + recurring re-drill cadence (ADR031): doc-only, waits on m67/m68 landing.
+- `017.md`–`022.md` — codex-security scan `codex-security-bex-azfRGv` 2026-08-01 **accepted / optional** residuals (the 8 BY-DESIGN findings not materialized as milestones; full triage + 6 milestones m70–m75 above):
+  - `017.md` — #23 ssh-gateway DB role table-wide grants (w7/m56 intentional); optional RLS defense-in-depth.
+  - `018.md` — #25 OpenFGA-absent fail-open default; optional fail-closed flip (prod runs OpenFGA on).
+  - `019.md` — #26 unverified-invite-email default off; optional fail-closed flip (prod flag on).
+  - `020.md` — #6 day-to-day operator `jobs.create` cluster-wide (w7/m37 intentional); optional serviceAccountName VAP.
+  - `021.md` — #12 `onbex.co` not on PSL → tenant cookie tossing; **owner-waived 2026-07-30**, track to closure (PSL at eligibility or per-tenant suffix).
+  - `022.md` — #17 + #22 unpinned dev-tooling npx (mermaid, Playwright MCP); dev-only, optional pin.
+  - (#28 invite-link auto-redeem is token-capability **by design** — Render/GitHub parity — no action, not filed.)
 
 > `014.md` (billing verbs gate on `can_manage`, not `can_manage_billing` — the m61 sweep's finding) promoted to **`w1/m60`** 2026-07-31 (user picked Option 1, align to Render; w7 drained, w1 adopted it m57-style); note moved to `done/`.
 
