@@ -1,6 +1,6 @@
 # w11 · m8 — Tier-2 mobile quick actions
 
-**Worker:** worker11 **Goal:** add ADR048's narrow fast-follow conveniences—single env-var edit, cron controls, datastore companion views, usage glance, and invite acceptance—without importing desktop bulk/admin/configuration surfaces. **Status:** todo (t001 done; t002 actionable)
+**Worker:** worker11 **Goal:** add ADR048's narrow fast-follow conveniences—single env-var edit, cron controls, datastore companion views, usage glance, and invite acceptance—without importing desktop bulk/admin/configuration surfaces. **Status:** todo (t001–t002 done; t003 actionable)
 
 ## Gating
 
@@ -11,7 +11,7 @@ Start after `w11/m3/t009` and `w11/m4/t008`; independent of agent milestones.
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | Add one-at-a-time env-var quick view/edit — **DONE** | 60m | w11/m3/t009, w11/m4/t008 |
-| t002 | Add cron history, run-now, and cancel controls | 60m | t001 |
+| t002 | Add cron history, run-now, and cancel controls — **DONE** | 60m | t001 |
 | t003 | Add Postgres/Key Value status and read-only insights | 60m | t002 |
 | t004 | Add honest usage and month-to-date glance | 90m | t003 |
 | t009 | Add verified invite-link acceptance | 90m | t004 |

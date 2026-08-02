@@ -1,0 +1,26 @@
+query MobileCronRuns($serviceId: String!, $cursor: String, $limit: Int) {
+  cronJobRuns(serviceId: $serviceId, cursor: $cursor, limit: $limit) {
+    id
+    status
+    startedAt
+    finishedAt
+  }
+}
+
+mutation MobileRunCronJob($id: String!) {
+  runCronJob(id: $id) {
+    id
+    status
+    startedAt
+    finishedAt
+  }
+}
+
+mutation MobileCancelCronRun($serviceId: String!, $runId: String!) {
+  cancelCronJobRun(serviceId: $serviceId, runId: $runId) {
+    id
+    status
+    startedAt
+    finishedAt
+  }
+}

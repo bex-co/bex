@@ -1,0 +1,240 @@
+import {
+  CronActionController,
+  awaitCronActionObservation,
+  cronActionObserved,
+  type CronActionRequest,
+  type CronActionTransport,
+  type CronMutationResult,
+} from "../cron-action-controller";
+import type { CronRunSummary } from "../cron-history";
+
+type Resolve = (result: CronMutationResult) => void;
+
+const cronRun = (id: string, status: string): CronRunSummary => ({
+  id,
+  status,
+  startedAt: null,
+  finishedAt: null,
+});
+
+class FakeTransport implements CronActionTransport {
+  runCalls: string[] = [];
+  cancelCalls: string[][] = [];
+  runPromise?: Promise<CronMutationResult>;
+  runError?: unknown;
+
+  async run(serviceId: string): Promise<CronMutationResult> {
+    this.runCalls.push(serviceId);
+    if (this.runError) throw this.runError;
+    return this.runPromise ?? { run: { id: "crr-new", status: "pending" } };
+  }
+
+  async cancel(serviceId: string, runId: string): Promise<CronMutationResult> {
+    this.cancelCalls.push([serviceId, runId]);
+    return { run: { id: runId, status: "canceled" } };
+  }
+}
+
+const runRequest = (
+  requestId: string,
+  before: CronRunSummary[] = [],
+): CronActionRequest => ({
+  requestId,
+  action: "run",
+  serviceId: "srv-cron",
+  serviceSuspended: false,
+  before,
+});
+
+describe("CronActionController", () => {
+  it("single-flights double taps and never replays one confirmation", async () => {
+    const transport = new FakeTransport();
+    let resolve: Resolve = () => undefined;
+    transport.runPromise = new Promise((done) => {
+      resolve = done;
+    });
+    const subject = new CronActionController(transport);
+    const first = subject.execute(runRequest("confirm-one"));
+    const replay = subject.execute(runRequest("confirm-one"));
+    const doubleTap = subject.execute(runRequest("confirm-two"));
+    expect(first === replay).toBe(true);
+    expect(transport.runCalls).toEqual(["srv-cron"]);
+    resolve({ run: { id: "crr-new", status: "pending" } });
+    expect((await doubleTap).deduplicated).toBe(true);
+    await first;
+    await subject.execute(runRequest("confirm-one"));
+    expect(transport.runCalls).toEqual(["srv-cron"]);
+  });
+
+  it("allows run-now during an active run because the server replaces it", async () => {
+    const transport = new FakeTransport();
+    const result = await new CronActionController(transport).execute(
+      runRequest("confirm-replace", [cronRun("crr-active", "running")]),
+    );
+    expect(result.outcome).toBe("accepted");
+    expect(transport.runCalls).toEqual(["srv-cron"]);
+  });
+
+  it("blocks suspended run-now and terminal cancel without sending", async () => {
+    const transport = new FakeTransport();
+    const subject = new CronActionController(transport);
+    const suspended = await subject.execute({
+      ...runRequest("confirm-suspended"),
+      serviceSuspended: true,
+    });
+    const terminal = await subject.execute({
+      requestId: "confirm-terminal",
+      action: "cancel",
+      serviceId: "srv-cron",
+      serviceSuspended: false,
+      before: [],
+      target: cronRun("crr-done", "successful"),
+    });
+    expect(suspended.outcome).toBe("rejected");
+    expect(terminal.outcome).toBe("rejected");
+    expect(transport.runCalls).toEqual([]);
+    expect(transport.cancelCalls).toEqual([]);
+  });
+
+  it("still permits canceling an active run after the service is suspended", async () => {
+    const transport = new FakeTransport();
+    const target = cronRun("crr-active", "running");
+    const result = await new CronActionController(transport).execute({
+      requestId: "confirm-suspended-cancel",
+      action: "cancel",
+      serviceId: "srv-cron",
+      serviceSuspended: true,
+      before: [target],
+      target,
+    });
+    expect(result.outcome).toBe("accepted");
+    expect(transport.cancelCalls).toEqual([["srv-cron", "crr-active"]]);
+  });
+
+  it("passes only the service id and current opaque run id to cancel", async () => {
+    const transport = new FakeTransport();
+    const target = cronRun("crr-current", "pending");
+    await new CronActionController(transport).execute({
+      requestId: "confirm-cancel",
+      action: "cancel",
+      serviceId: "srv-cron",
+      serviceSuspended: false,
+      before: [target],
+      target,
+    });
+    expect(transport.cancelCalls).toEqual([["srv-cron", "crr-current"]]);
+  });
+
+  it("keeps an ambiguous timeout unknown and does not retry it", async () => {
+    const transport = new FakeTransport();
+    transport.runError = Object.assign(new Error("gateway timeout"), {
+      name: "TimeoutError",
+    });
+    const subject = new CronActionController(transport);
+    const request = runRequest("confirm-timeout");
+    const result = await subject.execute(request);
+    expect(result.outcome).toBe("unknown");
+    if (result.outcome === "unknown") {
+      expect(result.refreshRequired).toBe(true);
+    }
+    await subject.execute(request);
+    expect(transport.runCalls).toEqual(["srv-cron"]);
+    const blocked = await subject.execute(runRequest("confirm-after-timeout"));
+    expect(blocked.outcome).toBe("rejected");
+    expect(transport.runCalls).toEqual(["srv-cron"]);
+    subject.markAuthoritativelyRefreshed("srv-cron");
+    await subject.execute(runRequest("confirm-after-refresh"));
+    expect(transport.runCalls).toEqual(["srv-cron", "srv-cron"]);
+  });
+
+  it("bounds a hung transport and reports an unknown outcome", async () => {
+    const transport = new FakeTransport();
+    transport.runPromise = new Promise(() => undefined);
+    const result = await new CronActionController(transport, 1).execute(
+      runRequest("confirm-hung"),
+    );
+    expect(result.outcome).toBe("unknown");
+  });
+
+  it("maps billing enforcement to a deterministic conflict", async () => {
+    const transport = new FakeTransport();
+    transport.runError = new Error("workspace billing enforcement is active");
+    const result = await new CronActionController(transport).execute(
+      runRequest("confirm-billing"),
+    );
+    expect(result.outcome).toBe("rejected");
+    if (result.outcome === "rejected") {
+      expect((result.error as { statusCode?: number }).statusCode).toBe(409);
+    }
+  });
+
+  it("keeps authorization refusal deterministic", async () => {
+    const transport = new FakeTransport();
+    transport.runError = {
+      message: "GraphQL request failed",
+      graphQLErrors: [
+        {
+          message: "caller is not authorized",
+          extensions: { code: "FORBIDDEN" },
+        },
+      ],
+    };
+    const result = await new CronActionController(transport).execute(
+      runRequest("confirm-forbidden"),
+    );
+    expect(result.outcome).toBe("rejected");
+    expect(transport.runCalls).toEqual(["srv-cron"]);
+  });
+
+  it("does not misattribute an unrelated scheduled run to an ambiguous run-now", () => {
+    const request = runRequest("confirm-ambiguous", [
+      cronRun("crr-before", "successful"),
+    ]);
+    expect(
+      cronActionObserved(
+        request,
+        {
+          outcome: "unknown",
+          action: "run",
+          error: new Error("network"),
+          refreshRequired: true,
+          deduplicated: false,
+        },
+        [cronRun("crr-scheduled", "running"), ...request.before],
+      ),
+    ).toBe(false);
+  });
+
+  it("polls authoritative history to convergence and times out honestly", async () => {
+    const request = runRequest("confirm-poll");
+    const accepted = {
+      outcome: "accepted" as const,
+      action: "run" as const,
+      runId: "crr-new",
+      status: "pending",
+      deduplicated: false,
+    };
+    let refreshes = 0;
+    const converged = await awaitCronActionObservation({
+      request,
+      result: accepted,
+      refresh: async () => {
+        refreshes += 1;
+        return refreshes === 2 ? [cronRun("crr-new", "pending")] : [];
+      },
+      wait: async () => undefined,
+      maxPolls: 3,
+    });
+    expect(converged.observed).toBe(true);
+    expect(refreshes).toBe(2);
+
+    const timedOut = await awaitCronActionObservation({
+      request,
+      result: accepted,
+      refresh: async () => [],
+      wait: async () => undefined,
+      maxPolls: 2,
+    });
+    expect(timedOut.observed).toBe(false);
+  });
+});

@@ -27,11 +27,39 @@ import (
 
 	"github.com/graphql-go/graphql"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
+
+type cronBillingGate struct {
+	calls []string
+	err   error
+}
+
+func (g *cronBillingGate) CheckBillingMutationAllowed(_ context.Context, workspaceID string) error {
+	g.calls = append(g.calls, workspaceID)
+	return g.err
+}
+
+type cronAuthzCounter struct{ calls int }
+
+func (c *cronAuthzCounter) Check(_ context.Context, _, _, _ string) (bool, error) {
+	c.calls++
+	return true, nil
+}
+
+type cronPatchCountingClient struct {
+	client.Client
+	patches int
+}
+
+func (c *cronPatchCountingClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+	c.patches++
+	return c.Client.Patch(ctx, obj, patch, opts...)
+}
 
 func cronWithRuns(name string) *appv1alpha1.App {
 	return &appv1alpha1.App{
@@ -119,7 +147,9 @@ func TestCancelCronRunRecordsIntentAndRejectsTerminal(t *testing.T) {
 
 func TestTriggerCronRunReturnsPendingRunAndCancelsActive(t *testing.T) {
 	fixed := time.Date(2026, 7, 14, 12, 5, 0, 0, time.UTC)
-	svc, cl := newService(nil, cronWithRuns("nightly"))
+	svc, _ := newService(nil, cronWithRuns("nightly"))
+	cl := &cronPatchCountingClient{Client: svc.Client}
+	svc.Client = cl
 	svc.Clock = func() time.Time { return fixed }
 	run, err := svc.TriggerCronRun(context.Background(), "nightly")
 	if err != nil {
@@ -130,8 +160,102 @@ func TestTriggerCronRunReturnsPendingRunAndCancelsActive(t *testing.T) {
 		t.Fatalf("trigger run = %+v", run)
 	}
 	app := getApp(t, cl, "nightly")
-	if app.Spec.RunAt != fixed.Format(time.RFC3339Nano) || app.Spec.CancelRun == nil || app.Spec.CancelRun.Name != "nightly-run-live" {
+	wantRequestedAt := fixed.Format(time.RFC3339Nano)
+	if app.Spec.RunAt != wantRequestedAt || app.Spec.CancelRun == nil || app.Spec.CancelRun.Name != "nightly-run-live" || app.Spec.CancelRun.RequestedAt != wantRequestedAt {
 		t.Fatalf("trigger intent = runAt %q cancel %+v", app.Spec.RunAt, app.Spec.CancelRun)
+	}
+	if cl.patches != 1 {
+		t.Fatalf("active cancel-and-replace used %d Kubernetes patches, want 1", cl.patches)
+	}
+}
+
+func TestTriggerCronRunRejectsSuspendedWithoutWritingIntent(t *testing.T) {
+	app := cronWithRuns("nightly")
+	app.Spec.Suspended = true
+	app.Spec.RunAt = "2026-07-14T11:59:00Z"
+	app.Spec.CancelRun = &appv1alpha1.CronRunCancellation{
+		Name:        "nightly-prior-run",
+		RequestedAt: "2026-07-14T11:59:01Z",
+	}
+
+	svc, _ := newService(nil, app)
+	cl := &cronPatchCountingClient{Client: svc.Client}
+	svc.Client = cl
+	authz := &cronAuthzCounter{}
+	billing := &cronBillingGate{err: core.ErrBillingEnforced}
+	svc.Authz = authz
+	svc.Billing = billing
+	svc.Clock = func() time.Time { return time.Date(2026, 7, 14, 12, 5, 0, 0, time.UTC) }
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "cron-operator", Method: "session"})
+	if _, err := svc.TriggerCronRun(ctx, "nightly"); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("trigger suspended cron = %v, want conflict", err)
+	}
+	if authz.calls != 1 {
+		t.Fatalf("suspended trigger authorization calls = %d, want 1", authz.calls)
+	}
+	if len(billing.calls) != 0 {
+		t.Fatalf("suspended trigger consulted billing gate: %v", billing.calls)
+	}
+	if cl.patches != 0 {
+		t.Fatalf("suspended trigger used %d Kubernetes patches, want 0", cl.patches)
+	}
+
+	got := getApp(t, cl, "nightly")
+	if got.Spec.RunAt != "2026-07-14T11:59:00Z" {
+		t.Fatalf("suspended trigger changed runAt to %q", got.Spec.RunAt)
+	}
+	if got.Spec.CancelRun == nil || got.Spec.CancelRun.Name != "nightly-prior-run" || got.Spec.CancelRun.RequestedAt != "2026-07-14T11:59:01Z" {
+		t.Fatalf("suspended trigger changed cancel intent to %+v", got.Spec.CancelRun)
+	}
+}
+
+func TestCronRunBillingEnforcementRejectsGraphQLTriggerWithoutWriteButAllowsCancel(t *testing.T) {
+	app := cronWithRuns("nightly")
+	app.Labels = map[string]string{core.LabelTenant: "tea-billing"}
+	svc, _ := newService(nil, app)
+	cl := &cronPatchCountingClient{Client: svc.Client}
+	svc.Client = cl
+	billing := &cronBillingGate{err: core.ErrBillingEnforced}
+	svc.Billing = billing
+
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := graphql.Do(graphql.Params{
+		Schema:        schema,
+		Context:       context.Background(),
+		RequestString: `mutation { runCronJob(id:"nightly") { id status } }`,
+	})
+	if len(res.Errors) != 1 || res.Errors[0].Message != core.ErrBillingEnforced.Error() {
+		t.Fatalf("billing-enforced run errors = %+v, want exact %q", res.Errors, core.ErrBillingEnforced.Error())
+	}
+	if len(billing.calls) != 1 || billing.calls[0] != "tea-billing" {
+		t.Fatalf("run billing calls = %v, want [tea-billing]", billing.calls)
+	}
+	if cl.patches != 0 {
+		t.Fatalf("billing-enforced run used %d Kubernetes patches, want 0", cl.patches)
+	}
+	got := getApp(t, cl, "nightly")
+	if got.Spec.RunAt != "" || got.Spec.CancelRun != nil {
+		t.Fatalf("billing-enforced run wrote intent: runAt=%q cancel=%+v", got.Spec.RunAt, got.Spec.CancelRun)
+	}
+
+	runs, err := svc.ListCronRuns(context.Background(), "nightly", "", 1)
+	if err != nil || len(runs) != 1 {
+		t.Fatalf("list active run: runs=%+v err=%v", runs, err)
+	}
+	if _, err := svc.CancelCronRun(context.Background(), "nightly", runs[0].ID); err != nil {
+		t.Fatalf("cancel under billing enforcement: %v", err)
+	}
+	if len(billing.calls) != 1 {
+		t.Fatalf("cancel consulted billing gate: %v", billing.calls)
+	}
+	if cl.patches != 1 {
+		t.Fatalf("cancel under billing enforcement used %d patches, want 1", cl.patches)
 	}
 }
 

@@ -11,11 +11,13 @@ export const MOBILE_SAFE_ACTIONS = [
   "suspend-key-value",
   "resume-key-value",
   "update-environment-variable",
+  "run-cron-job",
+  "cancel-cron-run",
 ] as const;
 
 export type MobileSafeActionId = (typeof MOBILE_SAFE_ACTIONS)[number];
 export type SafeActionTargetKind =
-  "service" | "deploy" | "database" | "key-value";
+  "service" | "deploy" | "database" | "key-value" | "cron-run";
 
 const targetByAction: Record<MobileSafeActionId, SafeActionTargetKind> = {
   "trigger-deploy": "service",
@@ -30,6 +32,8 @@ const targetByAction: Record<MobileSafeActionId, SafeActionTargetKind> = {
   "suspend-key-value": "key-value",
   "resume-key-value": "key-value",
   "update-environment-variable": "service",
+  "run-cron-job": "service",
+  "cancel-cron-run": "cron-run",
 };
 
 export interface SafeActionDefinition<

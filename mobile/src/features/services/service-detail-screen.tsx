@@ -31,6 +31,10 @@ import {
 } from "@/generated-graphql";
 import { MetricSnapshots } from "@/features/metrics/metric-snapshots";
 import {
+  CronRunsCard,
+  type CronRunsCardHandle,
+} from "@/features/cron/cron-runs-card";
+import {
   EnvironmentCard,
   type EnvironmentCardHandle,
 } from "@/features/environment/environment-card";
@@ -59,6 +63,7 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
   const theme = useTheme().colorTheme;
   const recoveryEnvironment = useRecoveryEnvironment();
   const environmentRef = useRef<EnvironmentCardHandle>(null);
+  const cronRunsRef = useRef<CronRunsCardHandle>(null);
   const pollInterval = recoveryAvailable(recoveryEnvironment) ? 30_000 : 0;
   const serviceQuery = useQuery(MobileServiceSupervisionDocument, {
     variables: { id: serviceId },
@@ -88,6 +93,7 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
         deployQuery.refetch(),
         eventQuery.refetch(),
         environmentRef.current?.refresh() ?? Promise.resolve(),
+        cronRunsRef.current?.refresh() ?? Promise.resolve(),
       ]);
     },
   });
@@ -280,6 +286,20 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
                       : [],
                   );
                 }}
+              />
+            ) : null}
+            {service.id && service.type?.toLowerCase() === "cron_job" ? (
+              <CronRunsCard
+                key={service.id}
+                ref={cronRunsRef}
+                serviceId={service.id}
+                serviceLabel={service.displayName ?? service.name ?? service.id}
+                suspended={service.suspended}
+                onOpenLogs={() =>
+                  router.push(
+                    `/services/${encodeURIComponent(service.id!)}/logs`,
+                  )
+                }
               />
             ) : null}
           </>

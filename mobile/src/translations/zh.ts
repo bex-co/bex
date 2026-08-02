@@ -130,6 +130,40 @@ export const zh = {
         "环境变量操作失败。应用不会假定操作成功，并已清除所有显示过的值。",
     },
   },
+  cron: {
+    title: "定时任务运行记录",
+    description:
+      "服务器返回的近期运行及时间信息。立即运行会替换当前进行中的运行。",
+    runNow: "立即运行",
+    cancelCurrent: "取消当前运行",
+    suspended: "此服务暂停期间无法立即运行，但仍可取消已经进行中的运行。",
+    refreshRequired:
+      "上一个操作可能已经提交。成功刷新运行记录后才能确认另一个操作。",
+    refresh: "刷新运行记录",
+    refreshing: "正在刷新…",
+    loadError: "无法加载定时任务运行记录。",
+    empty: "还没有定时任务运行记录。",
+    loadMore: "加载更早的运行",
+    openLogs: "打开常规服务日志",
+    started: "开始：%{time}",
+    finished: "结束：%{time}",
+    duration: "耗时：%{duration}",
+    notStarted: "未报告",
+    status: {
+      pending: "等待中",
+      running: "运行中",
+      successful: "成功",
+      failed: "失败",
+      canceled: "已取消",
+      unknown: "未知",
+    },
+    feedback: {
+      ambiguous:
+        "响应结束时没有确认结果。请先刷新运行记录，再检查并确认另一个操作。",
+      convergenceTimeout:
+        "服务器已接受操作，但轮询结束前运行记录仍未收敛。执行另一个操作前请刷新记录。",
+    },
+  },
   metrics: {
     title: "指标快照",
     window: "最近一小时 · 每 30 秒刷新",

@@ -48,8 +48,10 @@ function mobileRetryIdentity(): string {
 /** Shared confirmation, single-flight, and honest-result surface for m4. */
 export function SafeActionPanel({
   options,
+  feedbackMessages,
 }: {
   options: MobileActionOption[];
+  feedbackMessages?: Partial<SafeActionFeedbackMessages>;
 }) {
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
@@ -138,6 +140,7 @@ export function SafeActionPanel({
     "audit-unavailable": t("safeActions.feedback.auditUnavailable"),
     failed: t("safeActions.feedback.failed"),
     canceled: t("safeActions.feedback.canceled"),
+    ...feedbackMessages,
   };
 
   return (
