@@ -19,7 +19,7 @@ spec:
   source:
     repoURL: https://kubernetes-sigs.github.io/metrics-server
     chart: metrics-server
-    targetRevision: "3.12.*" # pin minor; metrics-server serves metrics.k8s.io/v1beta1
+    targetRevision: "3.12.2" # pinned exact (codex-security #20); serves metrics.k8s.io/v1beta1
     helm:
       values: |
         args:

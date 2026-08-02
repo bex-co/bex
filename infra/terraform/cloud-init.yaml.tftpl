@@ -4,4 +4,8 @@
 # brings its own ingress/gateway; this node only needs to host CAPI controllers.
 runcmd:
   - PUBIP=$(curl -s --max-time 5 http://169.254.169.254/hetzner/v1/metadata/public-ipv4)
-  - curl -sfL https://get.k3s.io | INSTALL_K3S_CHANNEL=${k3s_channel} sh -s - --disable traefik --write-kubeconfig-mode 644 --tls-san "$PUBIP"
+  # INSTALL_K3S_VERSION pins the k3s binary to an immutable release instead of
+  # the mutable "stable" channel (codex-security #27). The installer script itself
+  # (get.k3s.io) is still fetched over HTTPS; pinning the version makes the
+  # installed binary deterministic.
+  - curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=${k3s_version} sh -s - --disable traefik --write-kubeconfig-mode 644 --tls-san "$PUBIP"

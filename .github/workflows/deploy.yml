@@ -392,7 +392,7 @@ jobs:
         run: |
           kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
           kubectl apply --server-side --force-conflicts -n argocd \
-            -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+            -f https://raw.githubusercontent.com/argoproj/argo-cd/v3.4.6/manifests/install.yaml
           # w1/m19 t003: Argo CD itself rides the platform pool (upstream install
           # carries no scheduling; patching here keeps us on the stock manifest).
           # Idempotent: re-patching the same values causes no rollout.

@@ -203,9 +203,12 @@ spec:
       - mkdir -p /etc/containerd
       - containerd config default > /etc/containerd/config.toml
       - sed -i  "s/SystemdCgroup = false/SystemdCgroup = true/" /etc/containerd/config.toml
-      - ARCH=$(uname -m); GVURL="https://storage.googleapis.com/gvisor/releases/release/latest/${ARCH}";
-        cd /tmp && wget -q ${GVURL}/runsc ${GVURL}/containerd-shim-runsc-v1 && chmod
-        a+rx runsc containerd-shim-runsc-v1 && cp runsc containerd-shim-runsc-v1 /usr/local/bin/
+      - ARCH=$(uname -m); GVURL="https://storage.googleapis.com/gvisor/releases/release-20260622.0/${ARCH}";
+        cd /tmp && wget -q ${GVURL}/runsc ${GVURL}/runsc.sha256 ${GVURL}/containerd-shim-runsc-v1
+        ${GVURL}/containerd-shim-runsc-v1.sha256 && test "$(sha256sum runsc | awk '{print $1}')"
+        = "$(awk '{print $1}' runsc.sha256)" && test "$(sha256sum containerd-shim-runsc-v1 |
+        awk '{print $1}')" = "$(awk '{print $1}' containerd-shim-runsc-v1.sha256)" && chmod a+rx runsc
+        containerd-shim-runsc-v1 && cp runsc containerd-shim-runsc-v1 /usr/local/bin/
       - printf '\n[plugins.'"'"'io.containerd.cri.v1.runtime'"'"'.containerd.runtimes.runsc]\n  runtime_type
         = '"'"'io.containerd.runsc.v1'"'"'\n' >> /etc/containerd/config.toml
       - grep -q runtimes.runsc /etc/containerd/config.toml

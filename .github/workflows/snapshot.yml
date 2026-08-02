@@ -38,8 +38,21 @@ jobs:
     env:
       HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
       IMAGE_NAME: ${{ inputs.image_name }}
+      # Funneled through env (like IMAGE_NAME) and regex-guarded below so a
+      # quote in the input can't break out of the run: scripts (codex-security #16).
+      KUBERNETES_VERSION: ${{ inputs.kubernetes_version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: validate workflow inputs (no shell injection)
+        # kubernetes_version is interpolated into packer -var strings; restrict it
+        # to a strict x.y.z semver so a collaborator who can dispatch the workflow
+        # can't inject shell that reads/exfiltrates HCLOUD_TOKEN (codex-security #16).
+        run: |
+          if ! [[ "${KUBERNETES_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::kubernetes_version must be a strict x.y.z semver; got: ${KUBERNETES_VERSION}"
+            exit 1
+          fi
 
       - name: install packer
         uses: hashicorp/setup-packer@ce93c3c08a6c2ff2275bf4b54ff0d9a75f6c9789 # v3.4.0
@@ -51,14 +64,14 @@ jobs:
         run: |
           packer init .
           packer validate \
-            -var "kubernetes_version=${{ inputs.kubernetes_version }}" \
+            -var "kubernetes_version=${KUBERNETES_VERSION}" \
             -var "image_name=${IMAGE_NAME}" .
 
       - name: packer build (creates the bex-worker snapshot)
         working-directory: infra/packer
         run: |
           packer build \
-            -var "kubernetes_version=${{ inputs.kubernetes_version }}" \
+            -var "kubernetes_version=${KUBERNETES_VERSION}" \
             -var "image_name=${IMAGE_NAME}" .
 
       # CAPH treats two images with the same caph-image-name as an ambiguity; it
@@ -85,6 +98,6 @@ jobs:
 
       - name: summary
         run: |
-          echo "Baked the ${IMAGE_NAME} snapshot (k8s ${{ inputs.kubernetes_version }})."
+          echo "Baked the ${IMAGE_NAME} snapshot (k8s ${KUBERNETES_VERSION})."
           echo "Next: verify it provisions ONE worker (infra/packer/README.md runbook),"
           echo "then apply the CAPH overlay to roll the pools onto imageName: bex-worker."

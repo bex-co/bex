@@ -90,7 +90,7 @@ spec:
   source:
     repoURL: https://grafana.github.io/helm-charts
     chart: alloy
-    targetRevision: "1.*" # pin minor; the DaemonSet ships pod logs to Loki
+    targetRevision: "1.3.1" # pinned exact (codex-security #20); the DaemonSet ships pod logs to Loki
     helm:
       releaseName: log-shipper
       values: |
