@@ -33,7 +33,7 @@ spec:
   source:
     repoURL: https://grafana.github.io/helm-charts
     chart: loki
-    targetRevision: "6.*" # pin minor; the SingleBinary deployment mode serves /loki/api/v1/query_range
+    targetRevision: "6.55.0" # pinned exact (codex-security #20); SingleBinary serves /loki/api/v1/query_range
     helm:
       releaseName: loki
       values: |

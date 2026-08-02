@@ -45,6 +45,12 @@ variable "k3s_channel" {
   default     = "stable"
 }
 
+variable "k3s_version" {
+  description = "Pinned k3s release for the single-node management bootstrap (codex-security #27). Takes precedence over the channel — the installer installs exactly this version."
+  type        = string
+  default     = "v1.34.9+k3s1"
+}
+
 variable "network_cidr" {
   description = "Private network CIDR for the bootstrap cluster (the app cluster has its own CAPH-owned network)."
   type        = string

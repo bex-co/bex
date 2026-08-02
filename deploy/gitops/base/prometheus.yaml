@@ -51,7 +51,7 @@ spec:
   source:
     repoURL: https://prometheus-community.github.io/helm-charts
     chart: prometheus
-    targetRevision: "25.*" # pin minor; server subchart serves /api/v1/query_range
+    targetRevision: "25.27.0" # pinned exact (codex-security #20); server subchart serves /api/v1/query_range
     helm:
       releaseName: prometheus
       values: |

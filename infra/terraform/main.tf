@@ -69,6 +69,7 @@ resource "hcloud_server" "bootstrap" {
 
   user_data = templatefile("${path.module}/cloud-init.yaml.tftpl", {
     k3s_channel = var.k3s_channel
+    k3s_version = var.k3s_version
   })
 
   network {
