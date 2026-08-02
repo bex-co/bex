@@ -57,11 +57,11 @@ func TestMaintenanceHandlerDoesNotWakeOrMutateWorkload(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "bex-system"},
 		Spec:       appsv1.DeploymentSpec{Replicas: &zero},
 	}
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, dep).Build()
+	cache, cl := primedHostCache(t, app, dep)
 
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "https://web.onbex.co/arbitrary/path", strings.NewReader("ignored"))
-	newHandler(cl, logr.Discard()).ServeHTTP(rr, req)
+	newHandler(cl, cache, logr.Discard()).ServeHTTP(rr, req)
 	if rr.Code != http.StatusServiceUnavailable || !strings.Contains(rr.Body.String(), "currently under maintenance") {
 		t.Fatalf("response = %d %q", rr.Code, rr.Body.String())
 	}
@@ -126,12 +126,12 @@ func TestWakeHandlerNegotiatesContentAndAlwaysWakes(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "sleeping", Namespace: "bex-system"},
 				Spec:       appsv1.DeploymentSpec{Replicas: &zero},
 			}
-			cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, dep).Build()
+			cache, cl := primedHostCache(t, app, dep)
 
 			req := httptest.NewRequest(http.MethodGet, "https://sleeping.onbex.co/ready", nil)
 			req.Header.Set("Accept", tc.accept)
 			rr := httptest.NewRecorder()
-			newHandler(cl, logr.Discard()).ServeHTTP(rr, req)
+			newHandler(cl, cache, logr.Discard()).ServeHTTP(rr, req)
 
 			if rr.Code != http.StatusServiceUnavailable || rr.Header().Get("Retry-After") != "5" {
 				t.Fatalf("response = %d, Retry-After %q", rr.Code, rr.Header().Get("Retry-After"))
@@ -187,8 +187,8 @@ func TestWakeHTMLHeadHasNoBody(t *testing.T) {
 
 func TestMaintenanceHandlerCoversPlatformAndCustomHostsOnEveryMethod(t *testing.T) {
 	app := maintenanceApp("")
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).Build()
-	handler := newHandler(cl, logr.Discard())
+	cache, cl := primedHostCache(t, app)
+	handler := newHandler(cl, cache, logr.Discard())
 
 	for _, tc := range []struct {
 		host   string
@@ -324,16 +324,30 @@ func TestMaintenanceRedirectPolicyRejectsSelfAndLongChains(t *testing.T) {
 	}
 }
 
-func TestFindAppByHostCoversSpecAndStatusHosts(t *testing.T) {
+func TestHostCacheCoversSpecAndStatusHosts(t *testing.T) {
 	app := maintenanceApp("")
 	app.Spec.Host = "legacy.example.com"
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).Build()
+	cache, _ := primedHostCache(t, app)
 	for _, host := range []string{"web.onbex.co", "custom.example.com", "legacy.example.com"} {
-		got, err := findAppByHost(context.Background(), cl, host)
-		if err != nil || got == nil || got.Name != "web" {
-			t.Fatalf("findAppByHost(%q) = %+v, %v", host, got, err)
+		got, ok := cache.lookup(host)
+		if !ok || got == nil || got.Name != "web" {
+			t.Fatalf("cache.lookup(%q) = %+v, ok=%v", host, got, ok)
 		}
 	}
+	// An unknown host does not resolve, and lookup never hits the API.
+	if got, ok := cache.lookup("unknown.example.com"); ok || got != nil {
+		t.Fatalf("cache.lookup(unknown) = %+v, ok=%v; want not found", got, ok)
+	}
+}
+
+// primedHostCache builds a hostCache over a fake client preloaded with objs and
+// refreshes it once, mirroring how main primes the cache before serving.
+func primedHostCache(t *testing.T, objs ...client.Object) (*hostCache, client.Client) {
+	t.Helper()
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
+	cache := newHostCache(cl, logr.Discard())
+	cache.refreshOnce(context.Background())
+	return cache, cl
 }
 
 func clientKey(name string) client.ObjectKey {
