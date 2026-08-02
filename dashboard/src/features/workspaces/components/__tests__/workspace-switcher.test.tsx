@@ -69,7 +69,7 @@ describe("WorkspaceSwitcher", () => {
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/workspace/settings" });
 
     await user.click(screen.getByRole("button", { name: /acme-hq/ }));
-    await user.click(await screen.findByRole("menuitem", { name: "+ New Workspace" }));
+    await user.click(await screen.findByRole("menuitem", { name: "New Workspace" }));
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/new/workspace" });
   });
 });
