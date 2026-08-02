@@ -601,6 +601,11 @@ func tenantRoleBindings(namespace, regime string) []*rbacv1.RoleBinding {
 			// for running-instance SSH, now bound in the sandbox regime too so
 			// pods/exec stays confined to the gateway (never bex-api, Option A).
 			tenantRoleBinding(namespace, "bex-tenant-ssh-gateway", sshGatewaySA),
+			// Sandbox hibernation resume-pull (w3/m42 t002, ADR042 D5): the
+			// operator's SandboxNamespaceRegistryReconciler mints the per-workspace
+			// `bex-snapshot-pull` Secret here — get+create only, namespace-scoped
+			// through this binding, never cluster-wide.
+			tenantRoleBinding(namespace, "bex-operator-snapshot-pull", operatorSA),
 		}
 	default:
 		return nil

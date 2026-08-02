@@ -129,7 +129,10 @@ spec:
           variables.target.subjects[0].namespace == 'opensandbox-system') ||
          (variables.target.roleRef.name == 'bex-tenant-sandbox-controller' &&
           variables.target.subjects[0].name == 'opensandbox-controller-manager' &&
-          variables.target.subjects[0].namespace == 'opensandbox-system'))
+          variables.target.subjects[0].namespace == 'opensandbox-system') ||
+         (variables.target.roleRef.name == 'bex-operator-snapshot-pull' &&
+          variables.target.subjects[0].name == 'bex-controller-manager' &&
+          variables.target.subjects[0].namespace == 'bex-system'))
   validations:
     - expression: variables.canonicalNamespace
       reason: Forbidden

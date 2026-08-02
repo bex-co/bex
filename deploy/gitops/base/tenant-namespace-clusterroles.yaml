@@ -85,6 +85,21 @@ rules:
 # registry credential flags are deliberately unset. This role is never bound in
 # credential-bearing opensandbox-system: Pod creation there would implicitly
 # permit mounting Secrets even without a direct Secrets RBAC verb.
+# Sandbox hibernation resume-pull minting (w3/m42 t002, ADR042 D5): the
+# operator's SandboxNamespaceRegistryReconciler creates the per-workspace
+# `bex-snapshot-pull` dockerconfigjson Secret in each sandbox namespace (the
+# OpenSandbox controller's --resume-pull-secret reference). get+create only —
+# rotation or repair is a deliberate future extension, and the grant exists
+# solely through per-sandbox-namespace RoleBindings (never cluster-wide).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: bex-operator-snapshot-pull
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create"]
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
