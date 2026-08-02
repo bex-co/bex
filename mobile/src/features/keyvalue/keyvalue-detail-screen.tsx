@@ -104,7 +104,7 @@ export function KeyValueDetailScreen({ keyValueId }: { keyValueId: string }) {
     : t("resources.unknownStatus");
   return (
     <DatastoreDetailLayout
-      title={resource?.name ?? t("datastores.keyValue")}
+      title={resource?.name || t("datastores.keyValue")}
       subtitle={
         keyValue?.version
           ? `Valkey ${keyValue.version}`
@@ -148,8 +148,8 @@ function keyValueResource(resource: {
 }): KeyValueLifecycleResource {
   return {
     id: resource.id ?? "",
-    name: resource.name ?? resource.id ?? "Key Value",
-    status: resource.status ?? "unknown",
+    name: resource.name || resource.id || "Key Value",
+    status: resource.status || "unknown",
     suspended: resource.suspended ?? null,
     updatedAt: resource.updatedAt,
   };

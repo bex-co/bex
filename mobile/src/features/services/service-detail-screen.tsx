@@ -2,17 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { NetworkStatus } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import { router } from "expo-router";
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { DashboardCard } from "@/components/dashboard-card";
 import { DashboardScrollView } from "@/components/dashboard-scroll-view";
+import { DetailHeader } from "@/components/detail-header";
 import { Button } from "@/components/button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
@@ -20,7 +15,7 @@ import {
   useRecoveryEnvironment,
 } from "@/common/hooks/use-recovery";
 import { recoveryAvailable } from "@/common/hooks/recovery-coordinator";
-import { formatTimestamp } from "@/common/format-util";
+import { formatTimestamp, humanizeToken } from "@/common/format-util";
 import { fonts, fontSizes, fontWeights, space, useTheme } from "@/common/theme";
 import {
   MobileDeployHistoryDocument,
@@ -47,7 +42,8 @@ import {
   type TimelineEvent,
   type TimelineItem,
 } from "@/features/events/timeline";
-import { statusTone } from "@/features/resources/resource-groups";
+import { statusToneColor } from "@/features/resources/resource-groups";
+import { StatusBadge } from "@/features/resources/status-badge";
 import { ServiceActionsCard } from "./service-actions-card";
 import type { ServiceLifecycleResource } from "./lifecycle";
 
@@ -138,6 +134,7 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
     [deploys, events],
   );
   const service = serviceQuery.data?.service;
+  const serviceName = service?.displayName || service?.name;
   const initialLoading =
     (serviceQuery.loading || deployQuery.loading || eventQuery.loading) &&
     !service &&
@@ -204,25 +201,12 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
         onRefresh={() => void recovery.manualRetry()}
         contentContainerStyle={styles.content}
       >
-        <View style={styles.header}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("common.backToStatus")}
-            hitSlop={12}
-            onPress={() => router.back()}
-            style={styles.back}
-          >
-            <Ionicons name="chevron-back" size={26} color={theme.primary} />
-          </Pressable>
-          <View style={styles.headerCopy}>
-            <Text style={[styles.title, { color: theme.foreground }]}>
-              {service?.displayName ?? service?.name ?? t("service.title")}
-            </Text>
-            <Text style={[styles.subtitle, { color: theme.mutedForeground }]}>
-              {service?.type ?? service?.runtime ?? t("resources.service")}
-            </Text>
-          </View>
-        </View>
+        <DetailHeader
+          title={serviceName || t("service.title")}
+          subtitle={humanizeToken(
+            service?.type || service?.runtime || t("resources.service"),
+          )}
+        />
 
         {anyError ? (
           <View
@@ -250,7 +234,7 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
             <EnvironmentCard
               ref={environmentRef}
               serviceId={serviceId}
-              serviceLabel={service.displayName ?? service.name ?? serviceId}
+              serviceLabel={serviceName || serviceId}
             />
             {service.id ? (
               <ServiceActionsCard
@@ -294,7 +278,7 @@ export function ServiceDetailScreen({ serviceId }: { serviceId: string }) {
                 key={service.id}
                 ref={cronRunsRef}
                 serviceId={service.id}
-                serviceLabel={service.displayName ?? service.name ?? service.id}
+                serviceLabel={serviceName || service.id}
                 suspended={service.suspended}
                 serviceEvidenceCurrent={
                   serviceQuery.networkStatus === NetworkStatus.ready &&
@@ -358,9 +342,9 @@ function serviceLifecycleResource(
 ): ServiceLifecycleResource {
   return {
     id: service.id ?? "",
-    name: service.displayName ?? service.name ?? service.id ?? "Service",
-    type: service.type ?? service.runtime ?? "unknown",
-    phase: service.phase ?? "unknown",
+    name: service.displayName || service.name || service.id || "Service",
+    type: service.type || service.runtime || "unknown",
+    phase: service.phase || "unknown",
     suspended: service.suspended,
     updatedAt: service.updatedAt,
     revision: service.revision,
@@ -374,25 +358,14 @@ function ServiceIdentityCard({
   service: NonNullable<MobileServiceSupervisionQuery["service"]>;
 }) {
   const { t } = useTranslations();
-  const theme = useTheme().colorTheme;
   const status =
     service.suspended === "suspended"
       ? "suspended"
-      : (service.phase ?? t("resources.unknownStatus"));
-  const tone = statusTone(status);
-  const color =
-    tone === "success"
-      ? theme.success
-      : tone === "warning"
-        ? theme.warning
-        : tone === "error"
-          ? theme.error
-          : theme.mutedForeground;
+      : service.phase || t("resources.unknownStatus");
   return (
     <DashboardCard title={t("service.overview")}>
       <View style={styles.identityStatus}>
-        <View style={[styles.statusDot, { backgroundColor: color }]} />
-        <Text style={[styles.identityStatusText, { color }]}>{status}</Text>
+        <StatusBadge status={status} />
       </View>
       <Detail label={t("service.region")} value={service.region} />
       <Detail
@@ -473,8 +446,13 @@ function TimelineRow({ item }: { item: TimelineItem }) {
             {title}
           </Text>
           {status ? (
-            <Text style={[styles.timelineStatus, { color: theme.primary }]}>
-              {status}
+            <Text
+              style={[
+                styles.timelineStatus,
+                { color: statusToneColor(status, theme) },
+              ]}
+            >
+              {humanizeToken(status)}
             </Text>
           ) : null}
         </View>
@@ -534,29 +512,9 @@ function eventTransition(
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   content: { paddingTop: space.lg, paddingBottom: space.xxl },
-  header: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  back: {
-    width: 40,
-    minHeight: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerCopy: { flex: 1 },
-  title: { fontSize: fontSizes.xxl, fontWeight: "700" },
-  subtitle: { fontSize: fontSizes.sm, marginTop: space.xs },
   notice: { borderWidth: 1, borderRadius: space.sm, padding: space.md },
   initialLoader: { minHeight: 120 },
-  identityStatus: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.sm,
-    paddingBottom: space.md,
-  },
-  statusDot: { width: 10, height: 10, borderRadius: 5 },
-  identityStatusText: {
-    fontSize: fontSizes.lg,
-    fontWeight: fontWeights.medium,
-  },
+  identityStatus: { paddingBottom: space.md },
   detail: {
     flexDirection: "row",
     gap: space.md,

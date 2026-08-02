@@ -1,7 +1,9 @@
 ---
 name: simplify
 description: >-
-  Review changed files for code reuse, quality, and efficiency, then fix worthwhile issues. Use when the user invokes /simplify or asks for cleanup, deduplication, or a focused code-quality pass over the current change.
+  Review the changed code for reuse, simplification, efficiency, and altitude cleanups, then apply the fixes. Quality only — it does not hunt for bugs; use /code-review for that.
+
+allowed-tools: Bash(git diff:*), Bash(git status:*), Read, Edit, Write
 ---
 
 # Simplify: Code Review and Cleanup
@@ -10,11 +12,11 @@ Review all changed files for reuse, quality, and efficiency. Fix any issues foun
 
 ## Phase 1: Identify Changes
 
-Run `git status --short` first so untracked files are included. Then run `git diff` (or `git diff HEAD` if there are staged changes) to see tracked changes, and inspect the relevant untracked files. If there are no git changes, review the most recently modified files that the user mentioned or that you edited earlier in this conversation.
+Run `git diff` (or `git diff HEAD` if there are staged changes) to see what changed. If there are no git changes, review the most recently modified files that the user mentioned or that you edited earlier in this conversation.
 
 ## Phase 2: Launch Three Review Agents in Parallel
 
-Use the available agent-delegation tool (`${AGENT_TOOL_NAME}` where the host provides it) to launch all three agents concurrently in a single message. Pass each agent the full diff so it has the complete context.
+Use the Agent tool to launch all three agents concurrently in a single message. Pass each agent the full diff so it has the complete context.
 
 ### Agent 1: Code Reuse Review
 

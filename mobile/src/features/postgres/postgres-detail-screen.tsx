@@ -114,7 +114,7 @@ export function PostgresDetailScreen({ databaseId }: { databaseId: string }) {
     : t("resources.unknownStatus");
   return (
     <DatastoreDetailLayout
-      title={resource?.name ?? t("datastores.postgres")}
+      title={resource?.name || t("datastores.postgres")}
       subtitle={
         database?.version
           ? `PostgreSQL ${database.version}`
@@ -153,8 +153,8 @@ function postgresResource(resource: {
 }): PostgresLifecycleResource {
   return {
     id: resource.id ?? "",
-    name: resource.name ?? resource.id ?? "Postgres",
-    status: resource.status ?? "unknown",
+    name: resource.name || resource.id || "Postgres",
+    status: resource.status || "unknown",
     suspended: resource.suspended ?? null,
     updatedAt: resource.updatedAt,
   };

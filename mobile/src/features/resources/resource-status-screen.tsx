@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { DashboardCard } from "@/components/dashboard-card";
 import { DashboardScrollView } from "@/components/dashboard-scroll-view";
-import { AppDrawerButton } from "@/components/app-drawer";
+import { TopBar } from "@/components/top-bar";
 import { useWorkspace } from "@/features/workspaces/workspace-provider";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useFreshness } from "@/common/hooks/freshness";
@@ -22,7 +22,7 @@ import {
   useRecoveryEnvironment,
 } from "@/common/hooks/use-recovery";
 import { recoveryAvailable } from "@/common/hooks/recovery-coordinator";
-import { formatTimestamp } from "@/common/format-util";
+import { formatTimestamp, humanizeToken } from "@/common/format-util";
 import {
   fontSizes,
   fontWeights,
@@ -41,10 +41,10 @@ import {
 import {
   buildResourceGroups,
   filterResourceGroups,
-  statusTone,
   type ResourceKind,
   type ResourceStatusItem,
 } from "./resource-groups";
+import { StatusBadge } from "./status-badge";
 
 const filters: (ResourceKind | "all")[] = [
   "all",
@@ -106,13 +106,14 @@ export function ResourceStatusScreen({
           ? [
               {
                 id: service.id,
-                name: service.displayName ?? service.name ?? service.id,
+                // "||" not "??": the API returns empty strings for unset names.
+                name: service.displayName || service.name || service.id,
                 kind: "service" as const,
-                type: service.type ?? service.runtime ?? t("resources.service"),
+                type: service.type || service.runtime || t("resources.service"),
                 status:
                   service.suspended === "suspended"
                     ? "suspended"
-                    : (service.phase ?? t("resources.unknownStatus")),
+                    : service.phase || t("resources.unknownStatus"),
                 latestDeployId: service.latestDeployId ?? null,
                 projectId: service.projectId ?? null,
                 updatedAt: service.updatedAt ?? null,
@@ -126,7 +127,7 @@ export function ResourceStatusScreen({
           ? [
               {
                 id: database.id,
-                name: database.name ?? database.id,
+                name: database.name || database.id,
                 kind: "database" as const,
                 type: database.version
                   ? `PostgreSQL ${database.version}`
@@ -148,7 +149,7 @@ export function ResourceStatusScreen({
           ? [
               {
                 id: keyValue.id,
-                name: keyValue.name ?? keyValue.id,
+                name: keyValue.name || keyValue.id,
                 kind: "keyValue" as const,
                 type: keyValue.version
                   ? `Valkey ${keyValue.version}`
@@ -169,7 +170,7 @@ export function ResourceStatusScreen({
         ? [
             {
               id: project.id,
-              name: project.name ?? project.id,
+              name: project.name || project.id,
               serviceIds: project.serviceIds,
               databaseIds: project.databaseIds,
               keyValueIds: project.keyValueIds,
@@ -222,6 +223,12 @@ export function ResourceStatusScreen({
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+      <TopBar
+        title={t(activityOnly ? "activity.title" : "status.title")}
+        right={
+          loading && data ? <ActivityIndicator color={theme.primary} /> : null
+        }
+      />
       <DashboardScrollView
         refreshing={
           refreshing || usageQuery.networkStatus === NetworkStatus.refetch
@@ -229,22 +236,13 @@ export function ResourceStatusScreen({
         onRefresh={() => void recovery.manualRetry()}
         contentContainerStyle={styles.content}
       >
-        <View style={styles.titleRow}>
-          <AppDrawerButton />
-          <View style={styles.titleCopy}>
-            <Text style={[styles.title, { color: theme.foreground }]}>
-              {t(activityOnly ? "activity.title" : "status.title")}
-            </Text>
-            <Text style={[styles.freshness, { color: theme.mutedForeground }]}>
-              {freshAt
-                ? `${t(freshness.label)} · ${t("resources.updatedAt", {
-                    time: formatTimestamp(freshAt.toISOString(), language),
-                  })}`
-                : t(freshness.label)}
-            </Text>
-          </View>
-          {loading && data ? <ActivityIndicator color={theme.primary} /> : null}
-        </View>
+        <Text style={[styles.freshness, { color: theme.mutedForeground }]}>
+          {freshAt
+            ? `${t(freshness.label)} · ${t("resources.updatedAt", {
+                time: formatTimestamp(freshAt.toISOString(), language),
+              })}`
+            : t(freshness.label)}
+        </Text>
         {!activityOnly ? (
           usageQuery.loading && !usageQuery.data && !usageQuery.previousData ? (
             <DashboardCard title={t("usageGlance.title")}>
@@ -383,15 +381,6 @@ function ResourceGroupCard({
 function ResourceRow({ resource }: { resource: ResourceStatusItem }) {
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
-  const tone = statusTone(resource.status);
-  const toneColor =
-    tone === "success"
-      ? theme.success
-      : tone === "warning"
-        ? theme.warning
-        : tone === "error"
-          ? theme.error
-          : theme.mutedForeground;
   const canOpen = true;
   const href =
     resource.kind === "service"
@@ -428,11 +417,17 @@ function ResourceRow({ resource }: { resource: ResourceStatusItem }) {
         />
       </View>
       <View style={styles.resourceCopy}>
-        <Text style={[styles.resourceName, { color: theme.foreground }]}>
+        <Text
+          numberOfLines={1}
+          style={[styles.resourceName, { color: theme.foreground }]}
+        >
           {resource.name}
         </Text>
-        <Text style={[styles.meta, { color: theme.mutedForeground }]}>
-          {resource.type}
+        <Text
+          numberOfLines={1}
+          style={[styles.meta, { color: theme.mutedForeground }]}
+        >
+          {humanizeToken(resource.type)}
         </Text>
         {resource.latestDeployId ? (
           <Text
@@ -444,10 +439,7 @@ function ResourceRow({ resource }: { resource: ResourceStatusItem }) {
         ) : null}
       </View>
       <View style={styles.statusColumn}>
-        <View style={[styles.dot, { backgroundColor: toneColor }]} />
-        <Text style={[styles.statusText, { color: toneColor }]}>
-          {resource.status}
-        </Text>
+        <StatusBadge status={resource.status} compact />
         {canOpen ? (
           <Ionicons
             name="chevron-forward"
@@ -462,11 +454,8 @@ function ResourceRow({ resource }: { resource: ResourceStatusItem }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  content: { paddingTop: space.lg, paddingBottom: space.xxl },
-  titleRow: { flexDirection: "row", alignItems: "center", gap: space.md },
-  titleCopy: { flex: 1 },
-  title: { fontSize: fontSizes.display, fontWeight: "700" },
-  freshness: { fontSize: fontSizes.sm, marginTop: space.xs },
+  content: { paddingTop: space.sm, paddingBottom: space.xxl },
+  freshness: { fontSize: fontSizes.sm, marginBottom: space.md },
   activityHint: { lineHeight: 22 },
   filters: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
   filter: {
@@ -514,6 +503,4 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     gap: space.xs,
   },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontSize: fontSizes.sm, flexShrink: 1 },
 });
