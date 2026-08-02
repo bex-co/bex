@@ -1,3 +1,6 @@
+import { fetchSession } from "@/common/server-fn/session";
+import { isSameOrigin } from "@/common/server-fn/same-origin";
+
 const RENDER_CLI_CLIENT_ID = "429024F5E608930E2A65EF92591A25CC";
 
 function hydraURLs(): { admin: string; public: string } | null {
@@ -13,13 +16,35 @@ function error(message: string, status: number): Response {
   });
 }
 
+function htmlEscape(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => {
+    switch (c) {
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case '"':
+        return "&quot;";
+      default:
+        return "&#39;";
+    }
+  });
+}
+
 /**
  * Bridge Hydra's RFC 8628 browser verification sequence. The first visit (the
  * verification_uri_complete opened by the CLI) sends the user_code to Hydra's
  * public verifier so Hydra can set its CSRF cookie and mint a device_challenge.
- * Hydra redirects back here with that challenge; the server accepts the
- * user-code pairing through the cluster-private admin API and follows Hydra's
- * redirect into the existing Kratos login + Hydra consent flow.
+ * Hydra redirects back here with that challenge.
+ *
+ * codex-security #9: when the caller is already signed in, the server does NOT
+ * pair the grant (and let the trusted client's consent auto-accept) silently —
+ * it renders an explicit "authorize this device?" confirmation first. Only a
+ * same-origin, session-bound POST (handleDeviceConfirm) calls accept. An
+ * unauthenticated visitor still pairs and is bounced through login, so the grant
+ * is never completed silently on a signed-in victim's session.
  */
 export async function handleDeviceVerification(
   request: Request,
@@ -39,6 +64,43 @@ export async function handleDeviceVerification(
     return Response.redirect(verify.toString(), 302);
   }
 
+  const { session } = await fetchSession(request.headers.get("cookie") ?? "");
+  if (session) {
+    return deviceConfirmationPage(requestURL.origin, userCode, challenge);
+  }
+  return acceptDevicePairing(hydra, userCode, challenge);
+}
+
+/**
+ * The confirmation POST (same-origin, session-bound). A signed-in user has
+ * clicked "Authorize"; pair the grant and continue into the consent flow.
+ */
+export async function handleDeviceConfirm(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  if (!isSameOrigin(request, url)) {
+    return error("device confirmation refused: cross-site", 403);
+  }
+  const { session } = await fetchSession(request.headers.get("cookie") ?? "");
+  if (!session) return error("device confirmation refused: no session", 403);
+
+  const form = await request.formData();
+  const userCode = String(form.get("user_code") ?? "").trim();
+  const challenge = String(form.get("device_challenge") ?? "").trim();
+  if (!userCode || !challenge) return error("missing device code", 400);
+
+  const hydra = hydraURLs();
+  if (!hydra) return error("device authorization not configured", 503);
+  return acceptDevicePairing(hydra, userCode, challenge);
+}
+
+/** acceptDevicePairing PUTs the user_code/challenge to Hydra's admin API and
+ * follows its redirect into the login + consent flow, refusing an unexpected
+ * client. Shared by the unauthenticated GET path and the confirmed POST. */
+async function acceptDevicePairing(
+  hydra: { admin: string; public: string },
+  userCode: string,
+  challenge: string,
+): Promise<Response> {
   let response: Response;
   try {
     const accept = new URL(
@@ -83,6 +145,53 @@ export async function handleDeviceVerification(
   }
 
   return Response.redirect(redirect.toString(), 302);
+}
+
+/** deviceConfirmationPage renders a same-origin confirmation interstitial. The
+ * hidden form POSTs the user_code + device_challenge back to /auth/device; the
+ * POST handler verifies same-origin + an authenticated session before pairing
+ * (codex-security #9). */
+function deviceConfirmationPage(
+  origin: string,
+  userCode: string,
+  challenge: string,
+): Response {
+  const safeCode = htmlEscape(userCode);
+  const safeChallenge = htmlEscape(challenge);
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Authorize device — bex</title>
+  <style>
+    body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;
+      background:#111827;color:#f9fafb}
+    main{max-width:28rem;padding:2rem;text-align:center}
+    h1{font-size:1.5rem;margin-bottom:.5rem}p{color:#d1d5db;line-height:1.6}
+    .code{font-family:ui-monospace,monospace;background:#1f2937;padding:.25rem .5rem;border-radius:.375rem;
+      letter-spacing:.1em;margin:.25rem 0}
+    form{margin-top:1.5rem;display:flex;gap:.75rem;justify-content:center}
+    button{background:#6366f1;color:#fff;border:0;border-radius:.5rem;padding:.6rem 1.25rem;font-weight:600;cursor:pointer}
+    a{color:#9ca3af;text-decoration:underline}
+  </style>
+</head>
+<body><main>
+  <h1>Authorize the bex CLI?</h1>
+  <p>A device is requesting access to your bex account. Confirm the code matches what your CLI displayed:</p>
+  <p class="code">${safeCode}</p>
+  <p><small>Only authorize this if you started the request.</small></p>
+  <form method="POST" action="${htmlEscape(origin)}/auth/device">
+    <input type="hidden" name="user_code" value="${safeCode}">
+    <input type="hidden" name="device_challenge" value="${safeChallenge}">
+    <button type="submit">Authorize device</button>
+    <a href="/">Cancel</a>
+  </form>
+</main></body>
+</html>`;
+  return new Response(html, {
+    headers: { "content-type": "text/html; charset=utf-8" },
+  });
 }
 
 export { RENDER_CLI_CLIENT_ID };

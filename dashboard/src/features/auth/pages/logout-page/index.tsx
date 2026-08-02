@@ -3,6 +3,7 @@ import { useNavigate, useRouter } from "@tanstack/react-router";
 import { LogOut, Loader2, CheckCircle } from "lucide-react";
 import { createFrontendApi } from "@/common/lib/ory/frontend";
 import { invalidateSessionCache } from "@/common/server-fn/session";
+import { createApolloCsrClient } from "@/common/apollo/factory.client";
 import { EMPTY_LOGIN_SEARCH } from "@/common/lib/auth/auth";
 import { useTranslations } from "@/common/hooks/use-translations";
 
@@ -34,6 +35,11 @@ export default function LogoutPage() {
         console.error("Logout failed:", error);
       } finally {
         invalidateSessionCache();
+        // Drop cached account-scoped data — the CSR Apollo client is a module
+        // singleton that survives logout, so without this the next account to
+        // log in could read the previous one's cached workspaces/resources
+        // (codex-security #24).
+        void createApolloCsrClient().clearStore();
         await router.invalidate();
         void navigate({
           to: "/auth/login",

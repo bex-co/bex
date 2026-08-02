@@ -64,7 +64,7 @@ func (s *Server) serveSandboxExec(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid ticket", http.StatusUnauthorized)
 		return
 	}
-	if !s.consumeSandboxNonce(claims.Nonce, time.Unix(claims.ExpiresAt, 0), time.Now()) {
+	if !s.consumeSandboxNonce(r.Context(), claims.Nonce, time.Unix(claims.ExpiresAt, 0), time.Now()) {
 		s.Metrics.authentication("rejected_key")
 		http.Error(w, "ticket already used", http.StatusUnauthorized)
 		return
@@ -161,17 +161,17 @@ func (s *sseStream) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-// consumeSandboxNonce enforces best-effort single-use of a sandbox-exec ticket
-// within this process. The ticket is short-lived and minted per-exec, so the
-// in-memory guard plus the signed expiry bound replay; unlike the Browser Web
-// Shell it needs no cross-replica DB claim (an exec is a one-shot command, not a
-// long-lived terminal, and the gateway holds no sandbox session state).
-func (s *Server) consumeSandboxNonce(nonce string, exp, now time.Time) bool {
+// consumeSandboxNonce enforces single-use of a sandbox-exec ticket. The
+// in-memory guard is a fast first line, but the gateway runs multiple replicas,
+// so the authoritative single-use claim is an atomic Store.ClaimShellNonce — the
+// same mechanism the Browser Web Shell uses — otherwise a captured live ticket
+// replayed against a different replica passes both in-memory maps and runs the
+// signed command twice (codex-security #30).
+func (s *Server) consumeSandboxNonce(ctx context.Context, nonce string, exp, now time.Time) bool {
 	if nonce == "" {
 		return false
 	}
 	s.usedMu.Lock()
-	defer s.usedMu.Unlock()
 	if s.usedNonces == nil {
 		s.usedNonces = map[string]time.Time{}
 	}
@@ -181,8 +181,24 @@ func (s *Server) consumeSandboxNonce(nonce string, exp, now time.Time) bool {
 		}
 	}
 	if _, seen := s.usedNonces[nonce]; seen {
+		s.usedMu.Unlock()
 		return false
 	}
 	s.usedNonces[nonce] = exp
-	return true
+	s.usedMu.Unlock()
+
+	if s.Store == nil {
+		// No durable store configured: best-effort in-memory only (no
+		// cross-replica protection). Logged so the gap is visible.
+		log.Printf("sandbox exec nonce: store unavailable, cross-replica replay not prevented")
+		return true
+	}
+	claimCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	claimed, err := s.Store.ClaimShellNonce(claimCtx, nonce, exp)
+	if err != nil {
+		log.Printf("sandbox exec nonce claim failed: %v", err)
+		return false
+	}
+	return claimed
 }

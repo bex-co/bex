@@ -432,7 +432,9 @@ describe("handleConsentDecision (POST)", () => {
       decisionReq({ ...approve, decision: "maybe" }),
     );
     expect(res.status).toBe(400);
-    expect(calls).toHaveLength(0);
+    // A malformed decision reaches no consent accept/reject/lookup — only the
+    // session whoami (now fetched before the body is buffered, codex-security #11).
+    expect(calls.filter((c) => c.url.includes("/consent/"))).toHaveLength(0);
   });
 
   it("bounces back to the consent page with a visible error when Hydra's accept fails", async () => {
