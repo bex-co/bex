@@ -1,6 +1,6 @@
 # w11 · m5 — Push channel + notification hygiene
 
-**Worker:** worker11 **Goal:** make push the mobile anchor with authorized durable device subscriptions, event-driven delivery, urgency and working-hours policy, safe deep links, and observable retry/pruning behavior. **Status:** todo (t001–t006 done; t007 physical-device qualification blocked)
+**Worker:** worker11 **Goal:** make push the mobile anchor with authorized durable device subscriptions, event-driven delivery, urgency and working-hours policy, safe deep links, and observable retry/pruning behavior. **Status:** todo (t001–t006, t008, t010 done; t007 physical-device qualification blocked — no signed device / production Apple Team ID / Android fingerprints available; t009 `/simplify` has no fresh diff since the m5 code shipped in prior commits; t011 closeout blocked on t007's real-device evidence)
 
 ## Gating
 
@@ -17,9 +17,9 @@ Starts after `w11/m2/t009`; may run in parallel with m3/m4. Reuse the existing n
 | t005 | Add native permission, token registration, inbox, badge, and deep links — **DONE** | 60m | t004 |
 | t006 | Add retry, stale-token pruning, audit, metrics, and privacy controls — **DONE** | 45m | t005 |
 | t007 | Verify delivery, quiet hours, and deep links on real devices | 60m | t006 |
-| t008 | Render parity | 30m | t007 |
+| t008 | Render parity — **DONE** | 30m | t007 |
 | t009 | Simplify | 20m | t008 |
-| t010 | Test coverage | 60m | t008 |
+| t010 | Test coverage — **DONE** | 60m | t008 |
 | t011 | Closeout | 10m | t010 |
 
 ## Definition of done
