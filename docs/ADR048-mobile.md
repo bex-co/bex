@@ -97,12 +97,25 @@ The 2026-08-02 implementation directive deliberately fires the native trigger ea
 
 This is a real native API client, not a WebView wrapper. It uses the system browser for authentication and typed bex-api calls for product data. The existing dashboard keeps its Kratos HttpOnly-cookie architecture and remains the desktop/configuration surface. A responsive/installable PWA and web push remain valid complementary work, especially for self-hosters who do not distribute a custom binary, but they no longer gate the native supervision milestones. App-store release automation, Live Activities, and widgets stay trigger-gated; building the client does not assert that those distribution investments are already justified.
 
+### D7 — Global side drawer: workspace switcher, personal status, logout
+
+w11/m9 makes workspace and account context reachable from every authenticated tab and nested detail route through one branded side drawer, replacing the Status-page-only `WorkspaceSwitcher` and the single logout icon. This is a **native navigation treatment, not a Render-API-parity requirement**: Render ships no official mobile app (D1), so drawer placement and gestures cannot be a parity obligation. The data the drawer consumes stays on the existing, already-reviewed platform contracts:
+
+- **Workspaces** come from the existing GraphQL `workspaces` projection (`MobileWorkspaces`: `id/name/plan/role`), unchanged. Selection remains **client context** routed through m2's fail-closed `switchWorkspace` → `resetWorkspaceBoundary` boundary — it is not a new mutation, and a switch never exposes the target workspace before the boundary reset resolves.
+- **Personal status** comes from Render's intentionally REST-only `GET /v1/users` (`{name,email}`), read with a bounded, `authManager`-authenticated client that refreshes once on 401 and keeps name/email in memory only (never AsyncStorage/logs/analytics). No GraphQL/MCP current-user twin is added — the endpoint's documented REST-only decision (docs/ADR006-bex-api.md) remains correct, and the mobile OAuth scopes stay `openid offline_access` (no `profile`/`email` scope change).
+- **Logout** reuses m2's local-first `SessionManager.signOut()` (best-effort revoke/cleanup after local teardown), now gated behind a native confirmation and a double-submit guard.
+
+**Provenance.** The reveal-drawer architecture is adapted from the Beancount Expo client's `ledger-drawer` (provider-hosted single instance, stationary menu layer, content slides to reveal, `PanResponder` edge-open/leftward-close, `BackHandler`, `horizontal-swipe-owner` deference). bex re-themes it, drops the ledger/analytics domain, adds reduced-motion + safe-area + screen-reader handling, and swaps the ledger list for the workspace list plus a personal footer. It deliberately does **not** adopt Expo Router SDK 57's Drawer navigator (which would add Reanimated/Worklets and a route-tree migration): the drawer carries context and account actions, not peer destination routes.
+
+**No forbidden surface.** The drawer adds no desktop configuration, service creation, or destructive verb (D4) — only workspace switching (existing), an identity read, and logout (existing). `src/__tests__/mobile-scope-policy.test.ts` still holds the route/action/GraphQL vocabulary. Interaction evidence: `mobile/e2e/m9-side-drawer.md`.
+
 ### D6 — Phasing
 
 1. **Foundation (w11/m1–m2):** sanitized Expo shell, system-browser OAuth Authorization Code + PKCE, OS-secure session storage, typed bex-api access, workspace isolation, and accessible navigation.
 2. **Supervise (w11/m3–m5):** status/deploys/events/logs/metrics, safe one-tap operations, and urgency/working-hours-aware native push.
 3. **Delegate (w11/m6):** ADR047 phase-1 Sessions tab (create task → push → PR link + evidence); it remains gated on the backend phase.
 4. **Steer + Tier 2 (w11/m7–m8):** ADR047 phase-2 live attach and needs-decision steering, then the explicitly bounded env-var/cron/datastore/usage/invite fast follows.
+   - **Global side drawer (w11/m9):** one branded drawer for workspace switching, personal status (`GET /v1/users`), and confirmed logout, reachable from every authenticated route (D7).
 5. **Native-only distribution triggers:** Live Activities, widgets, and store/release automation are held until engagement and paid-plan volume justify them.
 
 ---

@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { DashboardCard } from "@/components/dashboard-card";
 import { DashboardScrollView } from "@/components/dashboard-scroll-view";
-import { WorkspaceSwitcher } from "@/features/workspaces/workspace-switcher";
+import { AppDrawerButton } from "@/components/app-drawer";
 import { useWorkspace } from "@/features/workspaces/workspace-provider";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useFreshness } from "@/common/hooks/freshness";
@@ -34,7 +34,6 @@ import {
   MobileResourceStatusDocument,
   MobileUsageGlanceDocument,
 } from "@/generated-graphql";
-import { useAuth } from "@/features/auth/auth-provider";
 import {
   UsageGlanceCard,
   type UsageGlanceCopy,
@@ -61,7 +60,6 @@ export function ResourceStatusScreen({
 }) {
   const { t, language } = useTranslations();
   const theme = useTheme().colorTheme;
-  const { signOut } = useAuth();
   const { selected } = useWorkspace();
   const recoveryEnvironment = useRecoveryEnvironment();
   const [filter, setFilter] = useState<ResourceKind | "all">(
@@ -232,6 +230,7 @@ export function ResourceStatusScreen({
         contentContainerStyle={styles.content}
       >
         <View style={styles.titleRow}>
+          <AppDrawerButton />
           <View style={styles.titleCopy}>
             <Text style={[styles.title, { color: theme.foreground }]}>
               {t(activityOnly ? "activity.title" : "status.title")}
@@ -245,17 +244,7 @@ export function ResourceStatusScreen({
             </Text>
           </View>
           {loading && data ? <ActivityIndicator color={theme.primary} /> : null}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("auth.signOut")}
-            hitSlop={10}
-            onPress={() => void signOut().catch(() => undefined)}
-            style={styles.signOut}
-          >
-            <Ionicons name="log-out-outline" size={24} color={theme.primary} />
-          </Pressable>
         </View>
-        <WorkspaceSwitcher />
         {!activityOnly ? (
           usageQuery.loading && !usageQuery.data && !usageQuery.previousData ? (
             <DashboardCard title={t("usageGlance.title")}>
@@ -476,12 +465,6 @@ const styles = StyleSheet.create({
   content: { paddingTop: space.lg, paddingBottom: space.xxl },
   titleRow: { flexDirection: "row", alignItems: "center", gap: space.md },
   titleCopy: { flex: 1 },
-  signOut: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   title: { fontSize: fontSizes.display, fontWeight: "700" },
   freshness: { fontSize: fontSizes.sm, marginTop: space.xs },
   activityHint: { lineHeight: 22 },
