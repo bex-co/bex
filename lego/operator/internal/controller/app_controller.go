@@ -911,8 +911,19 @@ func (r *AppReconciler) copyCloneSecret(ctx context.Context, app *appv1alpha1.Ap
 	if err := buildClient.Get(ctx, client.ObjectKey{Namespace: srcNS, Name: name}, &src); err != nil {
 		return err
 	}
+	identity := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
+		Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
 	dst := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: dstNS}}
 	_, err := controllerutil.CreateOrUpdate(ctx, buildClient, dst, func() error {
+		// A tenant-controlled spec field names the destination, so a same-named
+		// Secret belonging to another App (or the platform) may already occupy it.
+		// Refuse to overwrite a foreign owner rather than clobbering its bytes under
+		// the operator's build-namespace Secret CRUD (codex-security #14).
+		if dst.UID != "" {
+			if err := identity.CheckOwner(dst); err != nil {
+				return err
+			}
+		}
 		dst.Type = src.Type
 		dst.Data = src.Data
 		dst.Labels = artifactLabels(app, "copied-secret")
@@ -3129,7 +3140,10 @@ func (r *AppReconciler) reclaimAppExecution(ctx context.Context, app *appv1alpha
 	}
 	if namespace != app.Namespace {
 		for _, name := range r.knownBuildSecretNames(app) {
-			done, deleteErr := deleteAndWait(ctx, cl, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}})
+			// Delete only a Secret this App owns; a same-named foreign/platform
+			// Secret in the shared build namespace must survive the finalizer
+			// (codex-security #5 — the loop used to delete by name, no owner check).
+			done, deleteErr := deleteOwnedSecret(ctx, cl, namespace, name, identity)
 			pending = pending || !done
 			if deleteErr != nil {
 				errs = append(errs, fmt.Errorf("delete copied build Secret %s: %w", name, deleteErr))
@@ -3145,6 +3159,33 @@ func (r *AppReconciler) reclaimAppExecution(ctx context.Context, app *appv1alpha
 		pending = pending || !done
 	}
 	return pending, errors.Join(errs...)
+}
+
+// deleteOwnedSecret deletes a Secret at namespace/name only if it belongs to the
+// given App identity (the artifactLabels UID). A foreign or platform Secret that
+// happens to share the App-controlled name is left untouched. NotFound and
+// not-owned are both "done" (true, nothing to wait on); false means a delete was
+// issued and the caller should requeue to observe it settle — the same semantics
+// as deleteAndWait, plus the ownership gate the finalizer loop lacked
+// (codex-security #5).
+func deleteOwnedSecret(ctx context.Context, cl client.Client, namespace, name string, identity execution.ArtifactIdentity) (bool, error) {
+	sec := &corev1.Secret{}
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, sec); err != nil {
+		if apierrors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
+	}
+	if !identity.Owns(sec) {
+		return true, nil // not ours — leave a foreign/platform Secret intact
+	}
+	if !sec.GetDeletionTimestamp().IsZero() {
+		return false, nil
+	}
+	if err := cl.Delete(ctx, sec); err != nil && !apierrors.IsNotFound(err) {
+		return false, err
+	}
+	return false, nil
 }
 
 func (r *AppReconciler) reclaimAppExternalArtifacts(ctx context.Context, app *appv1alpha1.App, namespace string, cl client.Client) (bool, error) {
