@@ -1,6 +1,6 @@
 # bex
 
-**The open-source Render alternative — AI-native.**
+**The open-source Render alternative — AI-native agentic cloud to build and host.**
 
 Push a Git repo (or a prebuilt image), get a running HTTPS service at `<name>.onbex.co` — on machines you own. bex runs identically as a local Docker mock and on Hetzner; only the infrastructure provider overlay changes. Built so AI agents can deploy and operate apps as first-class users, not an afterthought.
 
