@@ -12,6 +12,7 @@ RUN cd backend && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/git-
 FROM node:22-bookworm-slim
 
 ARG CLAUDE_CODE_ACP_VERSION=0.16.2
+ARG NPM_VERSION=11.19.0
 
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
@@ -28,7 +29,8 @@ RUN apt-get update \
 COPY --from=credential-helper /usr/local/go /usr/local/go
 ENV PATH="/usr/local/go/bin:${PATH}"
 
-RUN npm install --global --ignore-scripts "@zed-industries/claude-code-acp@${CLAUDE_CODE_ACP_VERSION}" \
+RUN npm install --global --ignore-scripts "npm@${NPM_VERSION}" \
+    && npm install --global --ignore-scripts "@zed-industries/claude-code-acp@${CLAUDE_CODE_ACP_VERSION}" \
     && npm cache clean --force
 
 WORKDIR /opt/bex-agent-driver
