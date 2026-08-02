@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import type { ReactNode } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -28,6 +29,7 @@ export function DatastoreDetailLayout({
   refreshing,
   onRefresh,
   options,
+  children,
 }: {
   title: string;
   subtitle: string;
@@ -42,6 +44,7 @@ export function DatastoreDetailLayout({
   refreshing: boolean;
   onRefresh: () => void;
   options: MobileActionOption[];
+  children?: ReactNode;
 }) {
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
@@ -123,6 +126,7 @@ export function DatastoreDetailLayout({
                 </View>
               ))}
             </DashboardCard>
+            {children}
             <DashboardCard title={t("safeActions.cardTitle")}>
               <SafeActionPanel options={options} />
             </DashboardCard>

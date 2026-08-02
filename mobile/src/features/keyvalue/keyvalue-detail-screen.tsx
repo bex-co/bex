@@ -20,6 +20,10 @@ import {
   type KeyValueLifecycleAction,
   type KeyValueLifecycleResource,
 } from "./lifecycle";
+import {
+  KeyValueInsightsCard,
+  type KeyValueInsightsCardHandle,
+} from "./keyvalue-insights-card";
 
 const suspendKeyValue = defineSafeAction("suspend-key-value", "key-value");
 const resumeKeyValue = defineSafeAction("resume-key-value", "key-value");
@@ -38,6 +42,7 @@ export function KeyValueDetailScreen({ keyValueId }: { keyValueId: string }) {
   mutationsRef.current = { suspend, resume };
   const queryRef = useRef(query);
   queryRef.current = query;
+  const insightsRef = useRef<KeyValueInsightsCardHandle>(null);
   const controllerRef = useRef<KeyValueLifecycleController | null>(null);
   if (!controllerRef.current) {
     controllerRef.current = new KeyValueLifecycleController({
@@ -107,9 +112,23 @@ export function KeyValueDetailScreen({ keyValueId }: { keyValueId: string }) {
       loading={query.loading && !keyValue}
       error={Boolean(query.error)}
       refreshing={query.networkStatus === NetworkStatus.refetch}
-      onRefresh={() => void query.refetch()}
+      onRefresh={() =>
+        void Promise.all([
+          query.refetch(),
+          insightsRef.current?.refresh() ?? Promise.resolve(),
+        ])
+      }
       options={options}
-    />
+    >
+      {keyValue?.id ? (
+        <KeyValueInsightsCard
+          ref={insightsRef}
+          resourceId={keyValue.id}
+          status={keyValue.status}
+          suspended={keyValue.suspended}
+        />
+      ) : null}
+    </DatastoreDetailLayout>
   );
 }
 

@@ -1,0 +1,82 @@
+query MobilePostgresCapacity($id: String!) {
+  disk: datastoreMetrics(
+    query: { kind: "DATABASE", resource: $id, name: "DISK", resolution: 120 }
+  ) {
+    unit
+    labels {
+      field
+      value
+    }
+    values {
+      time
+      value
+    }
+  }
+  capacity: datastoreMetrics(
+    query: {
+      kind: "DATABASE"
+      resource: $id
+      name: "DISK_CAPACITY"
+      resolution: 120
+    }
+  ) {
+    unit
+    labels {
+      field
+      value
+    }
+    values {
+      time
+      value
+    }
+  }
+  connections: datastoreMetrics(
+    query: {
+      kind: "DATABASE"
+      resource: $id
+      name: "DB_CONNECTIONS"
+      resolution: 120
+    }
+  ) {
+    unit
+    labels {
+      field
+      value
+    }
+    values {
+      time
+      value
+    }
+  }
+}
+
+query MobilePostgresSizes($id: String!) {
+  databaseSizes(id: $id) {
+    database {
+      sizePretty
+    }
+    tables {
+      schema
+      name
+      sizePretty
+    }
+  }
+}
+
+query MobilePostgresProcesses($id: String!) {
+  databaseProcesses(id: $id) {
+    state
+    waitEventType
+    durationSeconds
+  }
+}
+
+query MobilePostgresTableScans($id: String!) {
+  databaseTableScans(id: $id) {
+    schema
+    name
+    seqScans
+    indexScans
+    deadRows
+  }
+}

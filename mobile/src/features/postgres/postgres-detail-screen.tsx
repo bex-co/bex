@@ -21,6 +21,10 @@ import {
   type PostgresLifecycleAction,
   type PostgresLifecycleResource,
 } from "./lifecycle";
+import {
+  PostgresInsightsCard,
+  type PostgresInsightsCardHandle,
+} from "./postgres-insights-card";
 
 const restartDatabase = defineSafeAction("restart-database", "database");
 const suspendDatabase = defineSafeAction("suspend-database", "database");
@@ -41,6 +45,7 @@ export function PostgresDetailScreen({ databaseId }: { databaseId: string }) {
   mutationsRef.current = { suspend, resume, restart };
   const queryRef = useRef(query);
   queryRef.current = query;
+  const insightsRef = useRef<PostgresInsightsCardHandle>(null);
   const controllerRef = useRef<PostgresLifecycleController | null>(null);
   if (!controllerRef.current) {
     controllerRef.current = new PostgresLifecycleController({
@@ -117,9 +122,18 @@ export function PostgresDetailScreen({ databaseId }: { databaseId: string }) {
       loading={query.loading && !database}
       error={Boolean(query.error)}
       refreshing={query.networkStatus === NetworkStatus.refetch}
-      onRefresh={() => void query.refetch()}
+      onRefresh={() =>
+        void Promise.all([
+          query.refetch(),
+          insightsRef.current?.refresh() ?? Promise.resolve(),
+        ])
+      }
       options={options}
-    />
+    >
+      {database?.id ? (
+        <PostgresInsightsCard ref={insightsRef} databaseId={database.id} />
+      ) : null}
+    </DatastoreDetailLayout>
   );
 }
 
