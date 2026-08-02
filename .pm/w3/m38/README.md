@@ -1,6 +1,6 @@
 # w3 · m38 — Per-session repo credentials: gateway-refreshed token, branch-confined (ADR047 D2)
 
-**Worker:** worker3 **Goal:** agent sessions push to tenant repos with per-session GitHub App installation tokens that never land on disk in the sandbox — fetched on demand through a gateway-proxied credential helper, refreshed past the 1h TTL, and server-side confined to `bex-agent/*` branches. **Status:** todo (t001–t005 done; t006 awaits CI; t007 awaits m39/m42/m41's production OpenSandbox proof)
+**Worker:** worker3 **Goal:** agent sessions push to tenant repos with per-session GitHub App installation tokens that never land on disk in the sandbox — fetched on demand through a gateway-proxied credential helper, refreshed past the 1h TTL, and server-side confined to `bex-agent/*` branches. **Status:** todo (t001–t006 done; t007 awaits m39/m42/m41's production OpenSandbox proof)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | In-sandbox git credential helper (fetch-on-demand, never on disk) + image integration contract — **DONE** | 45m | t002       |
 | t004 | Snapshot hygiene: scrub credentials + tenant key pre-snapshot; re-fetch on resume — **DONE**        | 30m | t003       |
 | t005 | Simplify pass over the credential path — **DONE**                                                  | 20m | t004       |
-| t006 | Test coverage: mint scoping, refresh authz, helper behavior, scrub                                  | 45m | t004       |
+| t006 | Test coverage: mint scoping, refresh authz, helper behavior, scrub — **DONE**                       | 45m | t004       |
 | t007 | Closeout                                                                                           | 10m | t006       |
 
 ## Definition of done
