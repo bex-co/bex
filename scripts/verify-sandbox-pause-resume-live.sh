@@ -83,9 +83,13 @@ wait_status() { # want-status
 wait_status running || fail "sandbox never reached running" \
   "kubectl get pods -A -l batch-sandbox.sandbox.opensandbox.io/name --show-labels | tail -5"
 
+# The marker must live on the container ROOTFS: gVisor mounts /tmp as an
+# internal tmpfs, which no rootfs snapshot can capture by design (and the
+# sandbox nodes run runsc with overlay2=none so rootfs writes reach the
+# committable host rw layer — infra sandbox-pool bootstrap, w3/m42).
 echo "==> write marker state inside the sandbox"
 api POST "/v1/sandboxes/$sandbox_id/exec" \
-  "$(jq -cn --arg m "$marker" '{command: ("echo " + $m + " > /tmp/m42-marker")}')" >/dev/null
+  "$(jq -cn --arg m "$marker" '{command: ("echo " + $m + " > /root/m42-marker")}')" >/dev/null
 
 echo "==> pause (rootfs snapshot)"
 api POST "/v1/sandboxes/$sandbox_id/pause" >/dev/null
@@ -107,7 +111,7 @@ api POST "/v1/sandboxes/$sandbox_id/resume" >/dev/null
 wait_status running || fail "resume did not reach running — check resume-pull credentials" \
   "kubectl get pods -A -l batch-sandbox.sandbox.opensandbox.io/name -o wide | tail -5" \
   "kubectl get events -A --field-selector reason=Failed --sort-by=.lastTimestamp | tail -10"
-readback="$(api POST "/v1/sandboxes/$sandbox_id/exec" '{"command":"cat /tmp/m42-marker"}' | tr -d '\r')"
+readback="$(api POST "/v1/sandboxes/$sandbox_id/exec" '{"command":"cat /root/m42-marker"}' | tr -d '\r')"
 grep -qF "$marker" <<<"$readback" \
   || fail "marker not present after resume — rootfs did not survive the round-trip" \
     "printf '%s\n' \"\$readback\" | tail -5"

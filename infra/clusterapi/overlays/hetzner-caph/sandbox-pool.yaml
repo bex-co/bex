@@ -209,9 +209,19 @@ spec:
         = "$(awk '{print $1}' runsc.sha256)" && test "$(sha256sum containerd-shim-runsc-v1 |
         awk '{print $1}')" = "$(awk '{print $1}' containerd-shim-runsc-v1.sha256)" && chmod a+rx runsc
         containerd-shim-runsc-v1 && cp runsc containerd-shim-runsc-v1 /usr/local/bin/
+      # w3/m42 (ADR042 D5): disable runsc's default memory-backed rootfs
+      # overlay. With the overlay on, tenant filesystem writes live only inside
+      # the gVisor sandbox and never reach the host containerd rw layer, so the
+      # snapshot commit Job captures a pristine rootfs and pause/resume loses
+      # all work. overlay2=none writes through the gofer to the real rw layer —
+      # slower FS I/O, correct hibernation.
+      - printf '[runsc_config]\n  overlay2 = "none"\n' > /etc/containerd/runsc.toml
       - printf '\n[plugins.'"'"'io.containerd.cri.v1.runtime'"'"'.containerd.runtimes.runsc]\n  runtime_type
-        = '"'"'io.containerd.runsc.v1'"'"'\n' >> /etc/containerd/config.toml
+        = '"'"'io.containerd.runsc.v1'"'"'\n[plugins.'"'"'io.containerd.cri.v1.runtime'"'"'.containerd.runtimes.runsc.options]\n  TypeUrl
+        = '"'"'io.containerd.runsc.v1.options'"'"'\n  ConfigPath = '"'"'/etc/containerd/runsc.toml'"'"'\n'
+        >> /etc/containerd/config.toml
       - grep -q runtimes.runsc /etc/containerd/config.toml
+      - grep -q runsc.toml /etc/containerd/config.toml
       - mkdir -p /etc/containerd/certs.d/zot.bex-registry.svc:5000 /etc/containerd/certs.d/zot.local:5000
       - printf 'server = "http://127.0.0.1:30500"\n[host."http://127.0.0.1:30500"]\n  skip_verify
         = true\n  capabilities = ["pull", "resolve"]\n' > /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml
