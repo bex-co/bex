@@ -1,6 +1,6 @@
 # Production snapshot transport stays disabled pending w3/m42 t002. The carried
-# snapshot-job-namespace patch is built by CI first, then activated only after a
-# real immutable digest exists; never point Argo at a placeholder digest.
+# snapshot-job-namespace patch is active at an immutable, CI-maintained digest;
+# the transport and credential flip below remains a separate atomic change.
 #
 # To enable (t002, in order):
 #   1. push credential: bash scripts/snapshot-registry-secrets.sh (out-of-band;

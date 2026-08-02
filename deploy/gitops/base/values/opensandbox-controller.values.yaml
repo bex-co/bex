@@ -1,18 +1,18 @@
-# Exact controller config the MVP verified. The image references include the
-# reviewed multi-architecture index digests; tags remain only as human-readable
-# version context. deploy.yml now builds/signs/scans the carried m42 controller
-# patch, but this bootstrap commit deliberately keeps the live controller on the
-# known-good upstream digest until that first build yields an immutable digest;
-# activation is a separate digest-pinning ship after that build succeeds.
+# Exact controller config the MVP verified. Image references are immutable;
+# tags remain only as human-readable version context. CI builds, signs, scans,
+# and digest-pins the carried m42 controller patch on every production deploy.
 controller:
   image:
-    tag: v0.2.0@sha256:a9a5f73c1785ebd955336ffa313973a35c1a1b662cb7afc4ea82d92021b3532a
+    repository: ghcr.io/bex-co/opensandbox-controller
+    tag: v0.2.0-bex-snapjobns@sha256:ee083a9a88f0c2f189970015050ec8d078954f88130f94c9f404761f3c1757b9
   # w1/m19 t003: platform pool
   nodeSelector:
     bex.co/pool: platform
   tolerations:
     - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
   snapshot:
+    # Privileged commit/unpause Jobs run outside tenant baseline-PSS namespaces.
+    jobNamespace: opensandbox-snapshot
     # OCI registry prefix for rootfs snapshots. Use a cluster-reachable, pinned address.
     registry: "127.0.0.1:5050/snapshots"   # OrbStack-local; on Hetzner use the in-cluster Zot service + TLS
     registryInsecure: true                  # true only for the local insecure Zot; false in prod
