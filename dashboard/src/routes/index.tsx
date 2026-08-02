@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { translatedTitleHead } from "@/common/lib/document-head";
+import { RESOURCE_POLL_INTERVAL_MS } from "@/common/lib/polling";
 import { Plus } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
@@ -118,16 +119,19 @@ export function HomePage() {
     [keyValues],
   );
 
-  // Poll while a just-created database/key-value is still provisioning, so it
-  // converges to Available on its own.
+  // Poll fast while a just-created database/key-value is still provisioning,
+  // so it converges to Available on its own; fall back to the baseline cadence
+  // once settled so the overview keeps reflecting out-of-band changes.
   useEffect(() => {
-    if (databaseStats.creating > 0) startDatabasePolling(3000);
-    else stopDatabasePolling();
+    startDatabasePolling(
+      databaseStats.creating > 0 ? 3000 : RESOURCE_POLL_INTERVAL_MS,
+    );
     return () => stopDatabasePolling();
   }, [databaseStats.creating, startDatabasePolling, stopDatabasePolling]);
   useEffect(() => {
-    if (keyValueStats.creating > 0) startKeyValuePolling(3000);
-    else stopKeyValuePolling();
+    startKeyValuePolling(
+      keyValueStats.creating > 0 ? 3000 : RESOURCE_POLL_INTERVAL_MS,
+    );
     return () => stopKeyValuePolling();
   }, [keyValueStats.creating, startKeyValuePolling, stopKeyValuePolling]);
 

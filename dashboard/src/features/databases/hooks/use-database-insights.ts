@@ -25,10 +25,13 @@ import {
   type ParameterInput,
 } from "@/features/databases/api/operations";
 import { graphQLErrorMessage } from "@/common/lib/graphql-error";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 
 export type SaveParametersResult =
-  | { ok: true }
-  | { ok: false; error: string | null };
+  { ok: true } | { ok: false; error: string | null };
 
 /**
  * Returns all five insight datasets for a managed-Postgres database.
@@ -41,21 +44,29 @@ export function useDatabaseInsights(id: string) {
     variables: { id },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
   const topQueries = useQuery(DatabaseTopQueriesDocument, {
     variables: { id },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
   const sizes = useQuery(DatabaseSizesDocument, {
     variables: { id },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
   const tableScans = useQuery(DatabaseTableScansDocument, {
     variables: { id },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
   const parameterOverrides = useQuery(DatabaseParameterOverridesDocument, {
     variables: { id },

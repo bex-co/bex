@@ -1,5 +1,9 @@
 import { useQuery } from "@apollo/client/react";
 import { ServiceInstancesDocument } from "@/graphql/definitions";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 
 export interface ServiceInstance {
   id: string;
@@ -17,6 +21,8 @@ export function useServiceInstances(id: string) {
     variables: { id },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
   const instances: ServiceInstance[] = (data?.serviceInstances ?? [])

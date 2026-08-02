@@ -6,6 +6,10 @@ import {
   type WorkspaceMembersQuery,
   type WorkspaceInvitesQuery,
 } from "@/graphql/definitions";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import type {
   MemberView,
   InviteView,
@@ -69,12 +73,16 @@ export function useTeam(workspaceId: string | null): UseTeamResult {
     skip,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
   const invitesQ = useQuery(WorkspaceInvitesDocument, {
     variables,
     skip,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
   const members = useMemo(

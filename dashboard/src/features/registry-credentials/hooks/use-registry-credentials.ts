@@ -4,6 +4,10 @@ import {
   RegistryCredentialsDocument,
   type RegistryCredentialsQuery,
 } from "@/graphql/definitions";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import type { RegistryCredentialView } from "@/features/registry-credentials/types";
 
 type RawCredential = NonNullable<
@@ -42,13 +46,15 @@ export interface UseRegistryCredentialsResult {
 export function useRegistryCredentials(): UseRegistryCredentialsResult {
   const { data, loading, error, refetch } = useQuery(
     RegistryCredentialsDocument,
-    { fetchPolicy: "cache-and-network", errorPolicy: "all" },
+    {
+      fetchPolicy: "cache-and-network",
+      errorPolicy: "all",
+      pollInterval: RESOURCE_POLL_INTERVAL_MS,
+      skipPollAttempt: skipPollWhenHidden,
+    },
   );
 
-  const credentials = useMemo(
-    () => toViews(data?.registryCredentials),
-    [data],
-  );
+  const credentials = useMemo(() => toViews(data?.registryCredentials), [data]);
 
   return { credentials, loading, error, refetch };
 }

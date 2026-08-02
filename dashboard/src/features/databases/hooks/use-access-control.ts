@@ -10,6 +10,10 @@ import {
   DatabasePooledConnectionDocument,
   type IpAllowListEntry,
 } from "@/features/databases/api/operations";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import { useTranslations } from "@/common/hooks/use-translations";
 
 export interface PooledStrings {
@@ -32,11 +36,15 @@ export function useAccessControl(id: string) {
     variables: { id },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
   const usersQuery = useQuery(DatabaseUsersDocument, {
     variables: { id },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
   const [setAllowListMut, { loading: savingAllowList }] = useMutation(
     SetDatabaseIpAllowListDocument,

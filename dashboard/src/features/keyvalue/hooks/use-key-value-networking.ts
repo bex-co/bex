@@ -6,6 +6,10 @@ import {
   SetKeyValueIpAllowListDocument,
   type IpAllowListEntry,
 } from "@/features/keyvalue/api/operations";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import { useTranslations } from "@/common/hooks/use-translations";
 
 /**
@@ -21,6 +25,8 @@ export function useKeyValueNetworking(id: string) {
     variables: { id },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
   const [setAllowListMut, { loading: savingAllowList }] = useMutation(
     SetKeyValueIpAllowListDocument,

@@ -1,6 +1,10 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { KeyValuesDocument } from "@/graphql/definitions";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import { toKeyValueViews } from "@/features/keyvalue/lib/status";
 import type { KeyValueView } from "@/features/keyvalue/types";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
@@ -35,6 +39,8 @@ export function useKeyValues(): UseKeyValuesResult {
       skip: !resolved,
       fetchPolicy: "cache-and-network",
       errorPolicy: "all",
+      pollInterval: RESOURCE_POLL_INTERVAL_MS,
+      skipPollAttempt: skipPollWhenHidden,
     },
   );
 

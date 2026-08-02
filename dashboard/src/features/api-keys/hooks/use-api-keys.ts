@@ -1,6 +1,10 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { ApiKeysDocument, type ApiKeysQuery } from "@/graphql/definitions";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import type { ApiKeyView } from "@/features/api-keys/types";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
@@ -43,6 +47,8 @@ export function useApiKeys(): UseApiKeysResult {
     skip: !resolved,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
   const keys = useMemo(() => toApiKeyViews(data?.apiKeys), [data]);

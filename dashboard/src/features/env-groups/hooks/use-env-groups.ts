@@ -17,6 +17,10 @@ import {
   SetEnvGroupVarsDocument,
   UnlinkEnvGroupDocument,
 } from "@/graphql/definitions";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { EnvGroupQuery, EnvGroupsQuery } from "@/graphql/definitions";
@@ -78,6 +82,8 @@ export function useEnvGroups(): UseEnvGroupsResult {
     skip: !resolved,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
   const refetchGroups = useCallback(async () => {
@@ -106,6 +112,8 @@ export function useEnvGroup(id: string): UseEnvGroupResult {
     variables: { id },
     fetchPolicy: "cache-first",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
   const refetchGroup = useCallback(async () => {

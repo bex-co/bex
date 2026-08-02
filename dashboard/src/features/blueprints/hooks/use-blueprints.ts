@@ -4,6 +4,10 @@ import {
   BlueprintsDocument,
 } from "@/features/blueprints/api/operations";
 import type { BlueprintView } from "@/features/blueprints/types";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export interface UseBlueprintsResult {
@@ -21,6 +25,8 @@ export function useBlueprints(): UseBlueprintsResult {
     skip: !resolved,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
   const blueprints = useMemo(
