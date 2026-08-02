@@ -80,9 +80,10 @@ func TestKubernetesEnforcerPreservesDataAndOnlyRecoversOwnedIntent(t *testing.T)
 	labels := map[string]string{core.LabelTenant: "tea-a"}
 	managedLabels := map[string]string{core.LabelTenant: "tea-a", store.LabelManagedBy: store.ManagedByValue, store.LabelAppID: "srv-running"}
 	objects := []client.Object{
-		&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "running", Namespace: "apps", Labels: managedLabels}},
-		&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "user-suspended", Namespace: "apps", Labels: labels}, Spec: appv1alpha1.AppSpec{Suspended: true}},
-		&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "static", Namespace: "apps", Labels: labels}, Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeStaticSite}},
+		// App CRs live in their own per-tenant namespace (ADR043); Database/KeyValue stay in the shared "apps" namespace.
+		&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "running", Namespace: "tea-a", Labels: managedLabels}},
+		&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "user-suspended", Namespace: "tea-a", Labels: labels}, Spec: appv1alpha1.AppSpec{Suspended: true}},
+		&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "static", Namespace: "tea-a", Labels: labels}, Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeStaticSite}},
 		&appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: "db", Namespace: "apps", Labels: labels}},
 		&appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "cache", Namespace: "apps", Labels: labels}, Spec: appv1alpha1.KeyValueSpec{Suspended: true}},
 	}
@@ -99,7 +100,7 @@ func TestKubernetesEnforcerPreservesDataAndOnlyRecoversOwnedIntent(t *testing.T)
 	assertApp := func(name string, suspended bool, marker string) *appv1alpha1.App {
 		t.Helper()
 		var got appv1alpha1.App
-		if err := cl.Get(ctx, client.ObjectKey{Namespace: "apps", Name: name}, &got); err != nil {
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: "tea-a", Name: name}, &got); err != nil {
 			t.Fatal(err)
 		}
 		if got.Spec.Suspended != suspended || got.Annotations[BillingEnforcementAnnotation] != marker {

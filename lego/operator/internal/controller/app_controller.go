@@ -197,16 +197,6 @@ type AppReconciler struct {
 	StaticServerNamespace string
 	// StaticServerPort is the static-server Service port (default 8080).
 	StaticServerPort int
-	// TenantNamespaces reports that per-tenant namespace isolation is active
-	// (ADR043, BEX_TENANT_NAMESPACES on bex-api's NamespaceReconciler). When set,
-	// each workspace runs in its own `<ws>` namespace whose default-deny +
-	// same-namespace/DNS/Traefik/internet-egress NetworkPolicies (stamped by the
-	// control plane) ARE the tenant boundary, so the operator's legacy per-App
-	// label-scoped policies (ADR022 Option B) are redundant: reconcileNetworkPolicy
-	// deletes any it previously created and skips creating new ones (m31 t005).
-	// Unset => the pre-ADR043 shared-namespace behavior (per-App policies), so
-	// clusters that have not opted into namespace isolation are byte-identical.
-	TenantNamespaces bool
 	// TenantSignKeySecret names a Secret (in the build namespace, keys
 	// "cosign.key"+"cosign.password") that enables tenant-image signing in the
 	// in-cluster build Job (w6/006). Empty => tenant images unsigned (the default).
@@ -1194,10 +1184,8 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		return r.fail(ctx, app, "DeployFailed", err)
 	}
 
-	// Reconcile the per-App NetworkPolicy (docs/ADR022-tenant-isolation.md). Only when
-	// the App carries a workspace label — legacy/hand-applied Apps run without
-	// a policy (consistent with prior behavior). Workers get a policy too: they
-	// need egress to same-workspace services even though they expose no port.
+	// Clean up any per-App NetworkPolicy a pre-ADR043 reconcile left behind
+	// (docs/ADR022-tenant-isolation.md, superseded) — see reconcileNetworkPolicy.
 	if err := r.reconcileNetworkPolicy(ctx, app); err != nil {
 		return r.fail(ctx, app, "NetworkPolicyFailed", err)
 	}
@@ -2880,119 +2868,20 @@ func (r *AppReconciler) failPreDeploy(ctx context.Context, app *appv1alpha1.App,
 	return res, true, ferr
 }
 
-// reconcileNetworkPolicy creates or updates the per-App NetworkPolicy that
-// enforces tenant isolation (docs/ADR022-tenant-isolation.md §per-app-networkpolicy).
-// The policy is skipped for Apps without the workspace label (legacy/hand-applied
-// Apps) — they communicate freely, consistent with prior behavior.
-//
-// Policy shape:
-//   - Ingress: allow from same-scope pods + from the traefik namespace
-//   - Egress: allow DNS (kube-system :53), same-scope pods/services,
-//     and the public internet (not RFC1918/CGNAT — blocks in-cluster platforms)
-//
-// "same-scope" is same-workspace pods (labelWorkspace) normally, but when the
-// App carries labelNetworkIsolation (w6/m19 protected-environment ACLs:
-// networkIsolationEnabled=true on its Environment — internal/environments'
-// setAppEnvironmentLabel stamps/clears it) it narrows to same-environment
-// pods (labelNetworkIsolation) instead — denying traffic between that
-// environment's Apps and everything else in the workspace, not just outside
-// it. DNS, Traefik ingress, and public-internet egress are unaffected either
-// way; those are infrastructural, not "other Apps".
+// reconcileNetworkPolicy deletes any per-App NetworkPolicy a pre-ADR043
+// reconcile may have left behind (docs/ADR022-tenant-isolation.md's Option B,
+// superseded by ADR043). Per-tenant namespace isolation is unconditional
+// (ADR043): the workspace's `<ws>` namespace default-deny + allow policies
+// (control-plane NamespaceReconciler) are the tenant boundary, so a per-App
+// label-scoped policy is redundant — the namespace, not a label, is the
+// boundary now. The transitional TenantNamespaces gate that made this
+// conditional was retired in w3/m34 once every cluster had migrated.
 func (r *AppReconciler) reconcileNetworkPolicy(ctx context.Context, app *appv1alpha1.App) error {
-	ws := app.Labels[labelWorkspace]
 	np := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-	if r.TenantNamespaces {
-		// Per-tenant namespace isolation is active (ADR043, m31 t005): the
-		// workspace's `<ws>` namespace default-deny + allow policies (control-plane
-		// NamespaceReconciler) are the boundary, so this per-App label-scoped policy
-		// is redundant. Delete any we previously created and skip — the namespace,
-		// not a label, is now the tenant boundary.
-		if err := r.Delete(ctx, np); err != nil && !apierrors.IsNotFound(err) {
-			return err
-		}
-		return nil
+	if err := r.Delete(ctx, np); err != nil && !apierrors.IsNotFound(err) {
+		return err
 	}
-	if ws == "" {
-		// No workspace label: remove any stale NetworkPolicy we may have left from
-		// a prior reconcile that had the label, then skip.
-		if err := r.Delete(ctx, np); err != nil && !apierrors.IsNotFound(err) {
-			return err
-		}
-		return nil
-	}
-	scopeSelector := map[string]string{labelWorkspace: ws}
-	if env := app.Labels[labelNetworkIsolation]; env != "" {
-		scopeSelector = map[string]string{labelNetworkIsolation: env}
-	}
-
-	udpProto := corev1.ProtocolUDP
-	tcpProto := corev1.ProtocolTCP
-	dnsPort := intstr.FromInt(53)
-	ingressClass := networkingv1.PolicyTypeIngress
-	egressClass := networkingv1.PolicyTypeEgress
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, np, func() error {
-		np.Spec = networkingv1.NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{
-				MatchLabels: map[string]string{labelApp: app.Name},
-			},
-			PolicyTypes: []networkingv1.PolicyType{ingressClass, egressClass},
-			Ingress: []networkingv1.NetworkPolicyIngressRule{
-				{
-					From: []networkingv1.NetworkPolicyPeer{
-						// same-scope pods (private services)
-						{PodSelector: &metav1.LabelSelector{
-							MatchLabels: scopeSelector,
-						}},
-						// Traefik ingress controller
-						{NamespaceSelector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{"kubernetes.io/metadata.name": "traefik"},
-						}},
-					},
-				},
-			},
-			Egress: []networkingv1.NetworkPolicyEgressRule{
-				// DNS
-				{
-					Ports: []networkingv1.NetworkPolicyPort{
-						{Protocol: &udpProto, Port: &dnsPort},
-						{Protocol: &tcpProto, Port: &dnsPort},
-					},
-					To: []networkingv1.NetworkPolicyPeer{
-						{NamespaceSelector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{"kubernetes.io/metadata.name": "kube-system"},
-						}},
-					},
-				},
-				// same-scope pods and services
-				{
-					To: []networkingv1.NetworkPolicyPeer{
-						{PodSelector: &metav1.LabelSelector{
-							MatchLabels: scopeSelector,
-						}},
-					},
-				},
-				// public internet, minus RFC1918/CGNAT (in-cluster platforms) and
-				// link-local 169.254.0.0/16 (cloud-metadata SSRF path; also
-				// egressDeny-ed by the platform CNP — docs/ADR022-tenant-isolation.md)
-				{
-					To: []networkingv1.NetworkPolicyPeer{
-						{IPBlock: &networkingv1.IPBlock{
-							CIDR: "0.0.0.0/0",
-							Except: []string{
-								"10.0.0.0/8",
-								"172.16.0.0/12",
-								"192.168.0.0/16",
-								"100.64.0.0/10",
-								"169.254.0.0/16",
-							},
-						}},
-					},
-				},
-			},
-		}
-		return controllerutil.SetControllerReference(app, np, r.Scheme)
-	})
-	return err
+	return nil
 }
 
 // reconcileExecutionNetworkPolicy adds the one dynamic egress edge a static

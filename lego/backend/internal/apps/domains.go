@@ -297,11 +297,9 @@ func errDomainInUse() error {
 // name from the rejection.
 func (s *Service) hostClaimedElsewhere(ctx context.Context, appName, host string) (bool, error) {
 	// A host is unique across the whole platform, and Apps are spread across
-	// per-tenant namespaces (ADR043), so the collision sweep must be cluster-wide
-	// (AppListScope) — a shared-namespace list would let two workspaces claim the
-	// same host after the migration.
+	// per-tenant namespaces (ADR043), so the collision sweep must be cluster-wide.
 	var list appv1alpha1.AppList
-	if err := s.Client.List(ctx, &list, s.AppListScope()...); err != nil {
+	if err := s.Client.List(ctx, &list); err != nil {
 		return false, err
 	}
 	for i := range list.Items {

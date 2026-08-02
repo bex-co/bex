@@ -9,8 +9,9 @@
 # omits Secrets so a compromised operator cannot read platform credentials).
 #
 # A ClusterRole grants nothing on its own — it is inert until a RoleBinding
-# references it. With BEX_TENANT_NAMESPACES unset (no RoleBindings stamped),
-# these are dead weight and production behavior is unchanged.
+# references it. The NamespaceReconciler stamps those RoleBindings
+# unconditionally whenever the control-plane store is wired (BEX_CP_DB_URI) —
+# the transitional BEX_TENANT_NAMESPACES gate was retired in w3/m34.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:

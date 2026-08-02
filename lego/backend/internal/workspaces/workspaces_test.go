@@ -821,14 +821,14 @@ func TestChangePlan_AdminOnly(t *testing.T) {
 
 // --- ResourceLimits (w7/m9) ------------------------------------------------
 
-func TestResourceLimits_ReturnsLimitsAndZeroCounts(t *testing.T) {
-	// Without a k8s client, Used counts are zero but limits from Max* fields
-	// must be returned unchanged.
+func TestResourceLimits_ReturnsPlanLimitsAndZeroCounts(t *testing.T) {
+	// Without a k8s client, Used counts are zero but Limit reflects the
+	// workspace's plan (store.QuotaCapsForPlan) — the same numbers the
+	// per-namespace ResourceQuota enforces at the API server (ADR043 D3,
+	// w3/m34), replacing the retired MaxServices/MaxPostgres/MaxKeyValues
+	// app-code fields this test used to set directly.
 	st := newFakeStore()
 	svc := allowSvc(st, &fakeGranter{}, nil, nil)
-	svc.MaxServices = 5
-	svc.MaxPostgres = 1
-	svc.MaxKeyValues = 2
 
 	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
 
@@ -836,29 +836,28 @@ func TestResourceLimits_ReturnsLimitsAndZeroCounts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResourceLimits: %v", err)
 	}
-	if limits.Services.Limit != 5 || limits.Services.Used != 0 {
-		t.Errorf("services = %+v, want {Used:0, Limit:5}", limits.Services)
+	if limits.Services.Limit != 25 || limits.Services.Used != 0 {
+		t.Errorf("services = %+v, want {Used:0, Limit:25}", limits.Services)
 	}
 	if limits.Postgres.Limit != 1 || limits.Postgres.Used != 0 {
 		t.Errorf("postgres = %+v, want {Used:0, Limit:1}", limits.Postgres)
 	}
-	if limits.KeyValues.Limit != 2 || limits.KeyValues.Used != 0 {
-		t.Errorf("keyValues = %+v, want {Used:0, Limit:2}", limits.KeyValues)
+	if limits.KeyValues.Limit != 1 || limits.KeyValues.Used != 0 {
+		t.Errorf("keyValues = %+v, want {Used:0, Limit:1}", limits.KeyValues)
 	}
 }
 
-func TestResourceLimits_ZeroLimitMeansUnlimited(t *testing.T) {
+func TestResourceLimits_PaidPlanGetsTheGenerousCeiling(t *testing.T) {
 	st := newFakeStore()
 	svc := allowSvc(st, &fakeGranter{}, nil, nil)
-	// MaxServices/Postgres/KeyValues all 0 = unlimited
 
 	w, _ := svc.Create(ctxAs("user-a"), "acme", "pro")
 	limits, err := svc.ResourceLimits(ctxAs("user-a"), w.ID)
 	if err != nil {
 		t.Fatalf("ResourceLimits: %v", err)
 	}
-	if limits.Services.Limit != 0 || limits.Postgres.Limit != 0 || limits.KeyValues.Limit != 0 {
-		t.Errorf("want unlimited (0), got %+v", limits)
+	if limits.Services.Limit != 100 || limits.Postgres.Limit != 25 || limits.KeyValues.Limit != 25 {
+		t.Errorf("want the paid ceiling (100/25/25), got %+v", limits)
 	}
 }
 

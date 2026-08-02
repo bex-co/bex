@@ -115,13 +115,6 @@ type Service struct {
 	// milliseconds instead of on the next resync period. nil => no nudge (store off
 	// or tests).
 	Kick func()
-	// MaxServices, when positive, caps how many services a workspace may own.
-	// Enforced on new-service creates only (not redeploys of existing services).
-	// 0 = unlimited (the default; byte-identical to before). Only enforced when
-	// the caller's tenant is resolvable (store on + bound caller) — a store-off
-	// operator or an unbound caller skips the check, consistent with the
-	// per-workspace design (w7/m9).
-	MaxServices int
 	// Blueprints, when set (the control-plane store is wired), persists blueprint
 	// rows (w2/m15): auto-upserted on every repo-backed deploy, and queried by the
 	// list/sync verbs. nil => list/sync return ErrBlueprintsUnavailable; validate
@@ -1524,27 +1517,6 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		}
 		return cause
 	}
-	// Per-workspace service cap (w7/m9): count before creating so the (N+1)th
-	// service is refused across all three surfaces. Counted against tenantID —
-	// the workspace this create TARGETS (w6/m14's ownerId), not whichever one
-	// the caller happens to resolve to, so naming a workspace charges its cap
-	// and not another's. Skipped when cap is 0 (unlimited) or the caller has no
-	// resolved tenant (store off / unbound).
-	if s.MaxServices > 0 && tenantID != "" {
-		var existing appv1alpha1.AppList
-		// App-scoped, per-tenant-namespace-aware count (not core.ListByTenant,
-		// whose shared b.Namespace still serves the DB/KeyValue/Secret purge that
-		// did NOT move to per-tenant namespaces): Apps for tenantID live in
-		// AppNamespace(tenantID) under per-tenant isolation (ADR043).
-		if listErr := s.Client.List(ctx, &existing,
-			client.InNamespace(s.AppNamespace(tenantID)),
-			client.MatchingLabels{core.LabelTenant: tenantID}); listErr != nil {
-			return AppView{}, fmt.Errorf("checking service cap: %w", listErr)
-		}
-		if len(existing.Items) >= s.MaxServices {
-			return AppView{}, fmt.Errorf("%w: workspace is limited to %d services; delete an existing service to create another", core.ErrBadRequest, s.MaxServices)
-		}
-	}
 	if tenantID != "" {
 		// LabelServiceName is what lets GetApp find this App from one of the
 		// caller's OTHER workspaces by its public name (w4/m19) — metadata.Name
@@ -1792,6 +1764,23 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 	return v, nil
 }
 
+// mapServiceCapError translates a per-namespace ResourceQuota rejection of an
+// App CR create (the count/apps.app.bex.co cap that replaced the app-code
+// BEX_MAX_SERVICES check, ADR043 D3, w3/m34) into the same Render-shaped cap
+// error the deleted check used to return (docs/ADR006-bex-api.md § Per-
+// workspace resource caps), so create-past-cap stays a 400 with a readable
+// message instead of a raw Kubernetes admission error leaking through as a 500.
+// Any other error (including an unrelated Forbidden) passes through unchanged.
+func mapServiceCapError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if mapped, ok := core.QuotaCapError(err, store.AppsQuotaCountKey, "service"); ok {
+		return mapped
+	}
+	return err
+}
+
 // writeNewApp makes create-time secret files visible to the very first pod.
 // The projection Secret and App reference are prepared before the App exists;
 // after Kubernetes assigns the App UID, Commit adopts the Secret. Every failure
@@ -1806,7 +1795,7 @@ func (s *Service) writeNewApp(ctx context.Context, publicName string, a *appv1al
 		return err
 	}
 	if len(files) == 0 {
-		return s.Client.Create(ctx, a)
+		return mapServiceCapError(s.Client.Create(ctx, a))
 	}
 	if s.SecretFileSeeder == nil {
 		return core.ErrSecretsUnavailable
@@ -1821,7 +1810,7 @@ func (s *Service) writeNewApp(ctx context.Context, publicName string, a *appv1al
 		return cause
 	}
 	if err := s.Client.Create(ctx, a); err != nil {
-		return abort(err)
+		return abort(mapServiceCapError(err))
 	}
 	if err := s.SecretFileSeeder.CommitSecretFiles(ctx, publicName, a); err != nil {
 		cause := fmt.Errorf("commit secret files: %w", err)

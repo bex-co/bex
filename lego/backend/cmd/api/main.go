@@ -146,16 +146,6 @@ func main() {
 	}
 
 	base := &core.Base{Client: cl, Namespace: envOr("BEX_API_NAMESPACE", "default")}
-	// Per-tenant namespace isolation (ADR043): resolve App-CR reads/writes and pod
-	// lookups into each workspace's own `<ws>` namespace, mirroring the projector's
-	// rec.TenantNamespaces below. Gated on the store being wired (the flag needs
-	// BEX_CP_DB_URI, and only store-managed Apps are ever projected into per-tenant
-	// namespaces) so store-off deployments stay byte-identical on the shared
-	// namespace. Set here at base creation — before any feature service captures
-	// the shared *core.Base — so every surface sees it.
-	if os.Getenv("BEX_TENANT_NAMESPACES") != "" && os.Getenv("BEX_CP_DB_URI") != "" {
-		base.TenantNamespaces = true
-	}
 
 	// One readiness flag for the whole pod (w1/m52): the public server's
 	// /readyz answers 200 until SIGTERM, then 503 while both servers keep
@@ -303,7 +293,7 @@ func main() {
 		}
 
 		st = store.NewPGStore(pool)
-		rec = store.NewReconciler(cl, st, appsNS)
+		rec = store.NewReconciler(cl, st)
 		if d := os.Getenv("BEX_CP_RESYNC"); d != "" {
 			v, err := time.ParseDuration(d)
 			if err != nil {
@@ -503,7 +493,7 @@ func main() {
 					log.Fatalf("bex-api: BEX_STRIPE_RECONCILE_INTERVAL must be a duration >= 1m: %v", err)
 				}
 				lifecycle = &billing.Lifecycle{Store: st, GracePeriod: grace, ExpectedLivemode: false}
-				enforcer := &billing.KubernetesEnforcer{Client: cl, Store: st, Namespace: envOr("BEX_CP_APPS_NAMESPACE", base.Namespace), TenantNamespaces: base.TenantNamespaces}
+				enforcer := &billing.KubernetesEnforcer{Client: cl, Store: st, Namespace: envOr("BEX_CP_APPS_NAMESPACE", base.Namespace)}
 				stripeLifecycleWorker = &billing.Worker{Store: st, Enforcer: enforcer}
 				stripeLifecycleReconciler = &billing.Reconciler{Store: st, Provider: stripeClient, GracePeriod: grace, Interval: reconcileEvery, Metrics: billingMetrics}
 				log.Printf("bex-api Stripe test-mode dunning enabled (grace %s, reconcile %s)", grace, reconcileEvery)
@@ -566,7 +556,7 @@ func main() {
 			ReadTimeout:       30 * time.Second,
 			WriteTimeout:      30 * time.Second,
 		}
-		log.Printf("bex-api control plane (source of truth) on %s (projecting Apps into %q)", cpAddr, appsNS)
+		log.Printf("bex-api control plane (source of truth) on %s (Apps project into per-tenant <ws> namespaces; Databases/KeyValues stay in %q)", cpAddr, appsNS)
 		go func() {
 			// Same serve-then-graceful-shutdown pattern as the public server
 			// below: on SIGTERM (ctx cancelled) the internal API drains instead
@@ -671,12 +661,6 @@ func main() {
 	deps.ShellWSURL = os.Getenv("BEX_SHELL_WS_URL")
 	deps.AgentSessionGatewayURL = os.Getenv("BEX_AGENT_SESSION_GATEWAY_URL")
 
-	// Per-workspace resource caps (w7/m9): 0 (unset) = unlimited, byte-identical.
-	// Render-Hobby defaults: BEX_MAX_SERVICES=25, BEX_MAX_POSTGRES=1, BEX_MAX_KEYVALUES=1.
-	deps.MaxServices, _ = strconv.Atoi(os.Getenv("BEX_MAX_SERVICES"))
-	deps.MaxPostgres, _ = strconv.Atoi(os.Getenv("BEX_MAX_POSTGRES"))
-	deps.MaxKeyValues, _ = strconv.Atoi(os.Getenv("BEX_MAX_KEYVALUES"))
-
 	srv := api.NewServer(base, deps)
 	if stripeLifecycleWorker != nil {
 		stripeLifecycleWorker.Notifier = notifications.BillingNotifier{Service: srv.Notifications}
@@ -706,40 +690,21 @@ func main() {
 		// before the first reconcile pass.
 		rec.DeployNotifier = srv.Notifications
 
-		// Per-tenant namespace isolation (ADR043, w3/m31). Gated behind
-		// BEX_TENANT_NAMESPACES so production stays byte-identical until a cluster
-		// opts in: set => the control plane also provisions a `<ws>` (and, with
-		// BEX_TENANT_SANDBOX_NAMESPACES, `<ws>-sandbox`) namespace per workspace
-		// with base ResourceQuota/LimitRange/default-deny NetworkPolicy, and prunes
-		// them for deleted workspaces. Unset => no NamespaceReconciler runs and the
-		// workspace lifecycle is unchanged.
-		//
-		// rec.TenantNamespaces MUST be set BEFORE go rec.Run below: the projector
-		// goroutine reads it on every pass, and setting it after Run started is a
-		// data race the goroutine may never observe (it left projection on the
-		// shared namespace on a live cluster — the unit test set it pre-Run and so
-		// missed this).
-		var nsRec *store.NamespaceReconciler
-		if os.Getenv("BEX_TENANT_NAMESPACES") != "" {
-			// Project newly created App CRs into their workspace's `<ws>`
-			// namespace (t002). Existing CRs in the shared namespace are updated
-			// in place, never moved — migration is a separate step (t006).
-			rec.TenantNamespaces = true
-			nsRec = store.NewNamespaceReconciler(cl, st)
-			nsRec.Sandboxes = os.Getenv("BEX_TENANT_SANDBOX_NAMESPACES") != ""
-			// Kick BOTH reconcilers on workspace create/delete for the same
-			// low-latency reason the projector is kicked on app writes: the
-			// projector prunes the deleted workspace's orphaned App CRs, the
-			// namespace reconciler provisions/prunes its `<ws>` namespace(s).
-			srv.Workspaces.Kick = func() {
-				rec.Kick()
-				nsRec.Kick()
-			}
+		// Per-tenant namespace isolation (ADR043): whenever the store is wired the
+		// control plane also provisions each workspace's `<ws>` and `<ws>-sandbox`
+		// namespaces with base ResourceQuota/LimitRange/default-deny NetworkPolicy,
+		// and prunes them for deleted workspaces. App CRs project into `<ws>`.
+		nsRec := store.NewNamespaceReconciler(cl, st)
+		// Kick BOTH reconcilers on workspace create/delete for the same
+		// low-latency reason the projector is kicked on app writes: the
+		// projector prunes the deleted workspace's orphaned App CRs, the
+		// namespace reconciler provisions/prunes its `<ws>` namespace(s).
+		srv.Workspaces.Kick = func() {
+			rec.Kick()
+			nsRec.Kick()
 		}
 		go rec.Run(ctx)
-		if nsRec != nil {
-			go nsRec.Run(ctx)
-		}
+		go nsRec.Run(ctx)
 	}
 	// Outbound event webhooks (w3/m11): the delivery worker tails the composed
 	// event feed (deploys + audit_events + service_event_facts — the same rows the events feed reads)

@@ -69,10 +69,6 @@ type Service struct {
 	// ListExports verb has passed can_view_sensitive. Production wires the
 	// Kubernetes Secret-backed S3 signer; tests can replace it.
 	ExportSigner ExportURLSigner
-	// MaxPostgres, when positive, caps how many Postgres instances a workspace
-	// may own. 0 = unlimited (the default; byte-identical to before). Only
-	// enforced when the caller's tenant is resolvable (w7/m9).
-	MaxPostgres int
 	// DatabaseLogs is the production query seam for canonical dpg- resources. The
 	// API composition root wires it to the generic durable logs service so the
 	// dedicated compatibility endpoints and Render's /logs surface share one
@@ -478,18 +474,6 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 		environment, err = s.Environments.ResolveForCreate(ctx, req.EnvironmentID, tenantID)
 		if err != nil {
 			return PostgresView{}, fmt.Errorf("resolving environment: %w", err)
-		}
-	}
-	// Per-workspace Postgres cap (w7/m9).
-	if s.MaxPostgres > 0 {
-		if tenantOK {
-			var existing appv1alpha1.DatabaseList
-			if listErr := s.ListByTenant(ctx, &existing, tenantID); listErr != nil {
-				return PostgresView{}, fmt.Errorf("checking postgres cap: %w", listErr)
-			}
-			if len(existing.Items) >= s.MaxPostgres {
-				return PostgresView{}, fmt.Errorf("%w: workspace is limited to %d Postgres instances; delete an existing one to create another", core.ErrBadRequest, s.MaxPostgres)
-			}
 		}
 	}
 	crReplicas := make([]appv1alpha1.DatabaseReadReplica, 0, len(req.ReadReplicas))

@@ -83,7 +83,7 @@ func TestLiveAcceptance(t *testing.T) {
 		t.Fatalf("kube client: %v", err)
 	}
 
-	rec := store.NewReconciler(cl, st, "default")
+	rec := store.NewReconciler(cl, st)
 	rec.DeployGateTimeout = 6 * time.Second // short so the broken-image case doesn't take 3 real minutes
 
 	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}, Store: st}

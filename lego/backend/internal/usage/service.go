@@ -780,12 +780,10 @@ func (s *Service) queryEgressBytes(ctx context.Context, app store.App, start, en
 		return 0, false
 	}
 	// Resolve the App CR by its unique app-id across every workspace: per-tenant
-	// namespaces (ADR043) scatter the CRs across `<ws>` namespaces, so a shared-
-	// namespace list would resolve zero and silently undercount egress (billing).
+	// namespaces (ADR043) scatter the CRs across `<ws>` namespaces, so this must
+	// list cluster-wide, never scoped to a single namespace.
 	var projected appv1alpha1.AppList
-	if err := s.Client.List(ctx, &projected,
-		append(s.AppListScope(), client.MatchingLabels{store.LabelAppID: app.ID})...,
-	); err != nil {
+	if err := s.Client.List(ctx, &projected, client.MatchingLabels{store.LabelAppID: app.ID}); err != nil {
 		log.Printf("usage: egress_bytes resolve App CR for %s: %v", app.ID, err)
 		return 0, false
 	}

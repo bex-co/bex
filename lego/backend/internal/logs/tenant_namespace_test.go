@@ -30,12 +30,12 @@ import (
 )
 
 // tenant_namespace_test.go is the regression guard for the ADR043 per-tenant
-// namespace LOG read-path bug (w3/m36): once BEX_TENANT_NAMESPACES was enabled
-// the projector moved every App CR — and so its pods and Loki streams — into the
-// workspace's own `<ws>` namespace (== the workspace id), but the logs feature
-// kept querying the shared BEX_API_NAMESPACE ("default"). The LogQL selector
-// became `{namespace="default", app=…}`, which matches nothing, so the dashboard
-// Logs tab was always empty for every tenant service. The metrics sibling was
+// namespace LOG read-path bug (w3/m36): the projector moves every App CR — and
+// so its pods and Loki streams — into the workspace's own `<ws>` namespace
+// (== the workspace id), but the logs feature used to keep querying the shared
+// BEX_API_NAMESPACE ("default"). The LogQL selector became
+// `{namespace="default", app=…}`, which matches nothing, so the dashboard Logs
+// tab was always empty for every tenant service. The metrics sibling was
 // already fixed (internal/metrics uses app.Namespace); these tests pin the logs
 // fix: every log read path resolves into the App's own namespace.
 
@@ -87,37 +87,18 @@ func capturingPodLogs(ns *string) PodLogSource {
 // (Loki) read for a tenant service must query the App's `<ws>` namespace, never
 // the shared BEX_API_NAMESPACE — otherwise the stream selector matches nothing.
 func TestQueryLogs_TenantNamespace_History(t *testing.T) {
-	t.Run("tenant namespaces on -> App's <ws> namespace", func(t *testing.T) {
-		var gotNS string
-		cl := fakeClientWith(logTenantNSApp("web", logTestWS, "srv-1"))
-		svc := &Service{
-			Base:    &core.Base{Client: cl, Namespace: "default", TenantNamespaces: true},
-			History: capturingHistory(&gotNS),
-		}
-		if _, err := svc.QueryLogs(context.Background(), LogQuery{App: "srv-1"}); err != nil {
-			t.Fatalf("QueryLogs: %v", err)
-		}
-		if gotNS != logTestWS {
-			t.Fatalf("history queried namespace %q, want the App's <ws> namespace %q", gotNS, logTestWS)
-		}
-	})
-
-	t.Run("shared namespace off -> BEX_API_NAMESPACE (byte-identical)", func(t *testing.T) {
-		var gotNS string
-		app := sampleApp("web") // in "default"
-		app.Labels = map[string]string{core.LabelAppID: "srv-1"}
-		cl := fakeClientWith(app)
-		svc := &Service{
-			Base:    &core.Base{Client: cl, Namespace: "default"},
-			History: capturingHistory(&gotNS),
-		}
-		if _, err := svc.QueryLogs(context.Background(), LogQuery{App: "srv-1"}); err != nil {
-			t.Fatalf("QueryLogs: %v", err)
-		}
-		if gotNS != "default" {
-			t.Fatalf("shared-namespace history queried %q, want default", gotNS)
-		}
-	})
+	var gotNS string
+	cl := fakeClientWith(logTenantNSApp("web", logTestWS, "srv-1"))
+	svc := &Service{
+		Base:    &core.Base{Client: cl, Namespace: "default"},
+		History: capturingHistory(&gotNS),
+	}
+	if _, err := svc.QueryLogs(context.Background(), LogQuery{App: "srv-1"}); err != nil {
+		t.Fatalf("QueryLogs: %v", err)
+	}
+	if gotNS != logTestWS {
+		t.Fatalf("history queried namespace %q, want the App's <ws> namespace %q", gotNS, logTestWS)
+	}
 }
 
 // TestLogs_TenantNamespace_History pins the MCP convenience read (Logs) on the
@@ -126,7 +107,7 @@ func TestLogs_TenantNamespace_History(t *testing.T) {
 	var gotNS string
 	cl := fakeClientWith(logTenantNSApp("web", logTestWS, "srv-1"))
 	svc := &Service{
-		Base:    &core.Base{Client: cl, Namespace: "default", TenantNamespaces: true},
+		Base:    &core.Base{Client: cl, Namespace: "default"},
 		History: capturingHistory(&gotNS),
 	}
 	if _, err := svc.Logs(context.Background(), "srv-1", 0); err != nil {
@@ -142,7 +123,7 @@ func TestLogLabelValues_TenantNamespace(t *testing.T) {
 	var gotNS string
 	cl := fakeClientWith(logTenantNSApp("web", logTestWS, "srv-1"))
 	svc := &Service{
-		Base:        &core.Base{Client: cl, Namespace: "default", TenantNamespaces: true},
+		Base:        &core.Base{Client: cl, Namespace: "default"},
 		LabelValues: capturingLabelValues(&gotNS),
 	}
 	if _, err := svc.LogLabelValues(context.Background(), LabelLevel, LogQuery{App: "srv-1"}); err != nil {
@@ -166,7 +147,7 @@ func TestQueryLogs_TenantNamespace_PodLogFallback(t *testing.T) {
 	var gotNS string
 	cl := fakeClientWith(logTenantNSApp("web", logTestWS, "srv-1"), pod)
 	svc := &Service{
-		Base:    &core.Base{Client: cl, Namespace: "default", TenantNamespaces: true},
+		Base:    &core.Base{Client: cl, Namespace: "default"},
 		PodLogs: capturingPodLogs(&gotNS), // no History => live pod-log fallback
 	}
 	if _, err := svc.QueryLogs(context.Background(), LogQuery{App: "srv-1"}); err != nil {

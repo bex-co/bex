@@ -424,7 +424,7 @@ func TestDeployStackFromServiceHostResolvesToTheSlug(t *testing.T) {
 	if apiSlug == "" || apiSlug == "api" {
 		t.Fatalf("api slug = %q, want a store-managed slug distinct from the bare name", apiSlug)
 	}
-	web := getApp(t, cl, "tea-a-web")
+	web := getTenantApp(t, cl, "tea-a", "web")
 	if h := findEnv(t, web.Spec.Env, "API_HOST"); h.Value != apiSlug {
 		t.Errorf("fromService host = %q, want the sibling's slug %q", h.Value, apiSlug)
 	}
@@ -437,7 +437,7 @@ func TestDeployStackFromServiceHostResolvesToTheSlug(t *testing.T) {
 	if _, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Manifest: stackManifest}); err != nil {
 		t.Fatalf("second DeployStack: %v", err)
 	}
-	web = getApp(t, cl, "tea-a-web")
+	web = getTenantApp(t, cl, "tea-a", "web")
 	seen := 0
 	for _, env := range web.Spec.Env {
 		if env.Name == "API_HOST" {

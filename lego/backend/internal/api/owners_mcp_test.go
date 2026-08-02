@@ -194,7 +194,8 @@ func TestMCP_CreateDuplicateNameErrors(t *testing.T) {
 // field/filter reads.
 func appWithOwnerLabel(name, ownerID string) *appv1alpha1.App {
 	a := sampleApp(name)
-	a.Labels = map[string]string{core.LabelTenant: ownerID}
+	a.Namespace = ownerID
+	a.Labels = map[string]string{core.LabelTenant: ownerID, core.LabelServiceName: name}
 	return a
 }
 
@@ -240,8 +241,10 @@ func TestMCP_CreateLandsInExplicitWorkspace(t *testing.T) {
 func appTenant(t *testing.T, cl client.Client, name string) string {
 	t.Helper()
 	var list appv1alpha1.AppList
+	// Cluster-wide: with per-tenant namespaces (ADR043) the create lands the App
+	// in its own workspace namespace, not a namespace this helper knows in advance.
 	if err := cl.List(context.Background(), &list,
-		client.InNamespace("default"), client.MatchingLabels{core.LabelServiceName: name}); err != nil {
+		client.MatchingLabels{core.LabelServiceName: name}); err != nil {
 		t.Fatalf("list Apps named %s: %v", name, err)
 	}
 	if len(list.Items) != 1 {

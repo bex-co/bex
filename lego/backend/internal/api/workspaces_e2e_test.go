@@ -120,7 +120,7 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 
 	// --- fake apiserver + reconciler so App-CR teardown is observable ---
 	cl := fakeClient()
-	rec := store.NewReconciler(cl, st, "default")
+	rec := store.NewReconciler(cl, st)
 	base := &core.Base{Client: cl, Namespace: "default", Authz: checker}
 
 	srv := NewServer(base, Deps{

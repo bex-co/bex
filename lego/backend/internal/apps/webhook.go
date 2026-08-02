@@ -276,7 +276,7 @@ func (h *GitWebhook) recordBranchDeleted(ctx context.Context, urls []string, bra
 		return []string{}, nil
 	}
 	var list appv1alpha1.AppList
-	if err := h.Svc.Client.List(ctx, &list, h.Svc.AppListScope()...); err != nil {
+	if err := h.Svc.Client.List(ctx, &list); err != nil {
 		return nil, err
 	}
 	affected := []string{}
@@ -333,7 +333,7 @@ func (h *GitWebhook) disableAutoDeploy(ctx context.Context, app *appv1alpha1.App
 // whose Apps share this repo (used for blueprint auto-sync post-response).
 func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch string) (redeployed []string, tenants map[string]struct{}, err error) {
 	var list appv1alpha1.AppList
-	if err := h.Svc.Client.List(ctx, &list, h.Svc.AppListScope()...); err != nil {
+	if err := h.Svc.Client.List(ctx, &list); err != nil {
 		return nil, nil, err
 	}
 	paths := ev.changedPaths()

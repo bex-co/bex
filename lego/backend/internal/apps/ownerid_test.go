@@ -51,7 +51,12 @@ func ctxAs(subject string) context.Context {
 }
 
 func TestList_OwnerIDFieldFromLabel(t *testing.T) {
-	cl := fakeClient(tenantApp("web", "tea-1"), sampleApp("hand-applied"))
+	// No Workspace resolver (store-off-like): List scopes to the shared
+	// "default" namespace unfiltered, so both fixtures must live there too —
+	// unlike tenantApp, which places an App in its own `<ws>` namespace.
+	web := sampleApp("web")
+	web.Labels = map[string]string{core.LabelTenant: "tea-1"}
+	cl := fakeClient(web, sampleApp("hand-applied"))
 	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}}
 
 	list, err := svc.List(ctxAs("user-a"), "")

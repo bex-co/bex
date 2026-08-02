@@ -51,19 +51,14 @@ type KubernetesEnforcer struct {
 	Client    client.Client
 	Store     EnforcementStore
 	Namespace string
-	// TenantNamespaces mirrors core.Base.TenantNamespaces (BEX_TENANT_NAMESPACES,
-	// ADR043): when set, App CRs live in their workspace's own `<ws>` namespace, so
-	// the enforcer must suspend/recover them there. Databases and KeyValues did NOT
-	// move — they stay in e.Namespace regardless.
-	TenantNamespaces bool
-	Clock            func() time.Time
+	Clock     func() time.Time
 }
 
-// appNamespace is where a workspace's App CRs live: its own `<ws>` namespace under
-// per-tenant isolation (ADR043), else the shared e.Namespace. Only Apps moved;
-// Databases/KeyValues always use e.Namespace.
+// appNamespace is where a workspace's App CRs live: its own `<ws>` namespace
+// under per-tenant isolation (ADR043). Databases/KeyValues always use
+// e.Namespace — they did not move.
 func (e *KubernetesEnforcer) appNamespace(workspaceID string) string {
-	if e.TenantNamespaces && workspaceID != "" {
+	if workspaceID != "" {
 		return workspaceID
 	}
 	return e.Namespace

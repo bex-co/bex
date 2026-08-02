@@ -1290,7 +1290,7 @@ func (s *Service) deleteSecret(ctx context.Context, name string) error {
 // pods (all in that one namespace) resolve them via envFrom / projected volumes.
 // The group's workspace is the one the verb resolved into ctx (core.WithWorkspace
 // + s.Tenant), the same resolution every env-group verb authorizes against.
-// Empty tenant (store off) or TenantNamespaces off => the shared s.Namespace.
+// Empty tenant (store off / unbound caller) => the shared s.Namespace.
 func (s *Service) envGroupNamespace(ctx context.Context) string {
 	tenantID, _ := s.Tenant(ctx)
 	return s.AppNamespace(tenantID)

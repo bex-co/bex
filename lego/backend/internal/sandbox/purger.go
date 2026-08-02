@@ -34,10 +34,10 @@ type PurgeKeyLookup interface {
 // workspaces), closing a w1/m61 gap: a deleted workspace's running sandboxes
 // were never stopped through the API. It runs PRE-cascade in workspaces.Delete
 // because it needs the workspace's tenant key, which the tenant-row cascade
-// drops. The `<ws>-sandbox` namespace prune (when BEX_TENANT_SANDBOX_NAMESPACES
-// is on) eventually reaps the pods at the Kubernetes layer, but that path is
-// best-effort and config-gated; terminating through OpenSandbox is the always-on
-// clean shutdown and also clears the OpenSandbox control plane's own records.
+// drops. The `<ws>-sandbox` namespace prune eventually reaps the pods at the
+// Kubernetes layer too, but that path is best-effort; terminating through
+// OpenSandbox is the always-on clean shutdown and also clears the OpenSandbox
+// control plane's own records.
 type WorkspacePurger struct {
 	Client *Client
 	Keys   PurgeKeyLookup

@@ -182,7 +182,12 @@ func TestAuthorizeAppNotFoundIsNotFoundForAnAuthorizedCaller(t *testing.T) {
 }
 
 func TestAuthorizeAppUnlabeledAppIsForbiddenToEveryWorkspace(t *testing.T) {
-	cl := fakeAppClient(sampleApp("web", ""))
+	// Placed in the caller's own `<ws>` namespace (a plausible hand-apply
+	// target) so the by-name lookup reaches it and exercises AuthorizeLabeled's
+	// no-label rule, not GetApp's namespace resolution.
+	app := sampleApp("web", "")
+	app.Namespace = "tea-a"
+	cl := fakeAppClient(app)
 	b := &Base{Client: cl, Namespace: "default", Workspace: fakeWorkspace{"identity-a": "tea-a"}, Authz: &fakeAllowChecker{}}
 	ctx := WithIdentity(context.Background(), Identity{Subject: "identity-a", Method: "session"})
 

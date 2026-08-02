@@ -26,7 +26,7 @@ import (
 
 func tenantApp(name, tenantID string) *appv1alpha1.App {
 	a := sampleApp(name)
-	a.Labels = map[string]string{core.LabelTenant: tenantID}
+	a.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelServiceName: name}
 	return a
 }
 

@@ -165,12 +165,11 @@ func (s *Service) appForDeployHookToken(ctx context.Context, token string) (*app
 	if !validDeployHookToken(token) {
 		return nil, core.ErrNotFound
 	}
-	// Identity-less token sweep across every workspace: with per-tenant
-	// namespaces (ADR043) the App CRs are spread across `<ws>` namespaces, so this
-	// lists cluster-wide (AppListScope) rather than only the shared namespace,
-	// which after the migration holds none of them.
+	// Identity-less token sweep across every workspace: App CRs are spread
+	// across each workspace's own `<ws>` namespace (ADR043), so this lists
+	// cluster-wide rather than scoping to any single namespace.
 	var list appv1alpha1.AppList
-	if err := s.Client.List(ctx, &list, s.AppListScope()...); err != nil {
+	if err := s.Client.List(ctx, &list); err != nil {
 		return nil, err
 	}
 	for i := range list.Items {
