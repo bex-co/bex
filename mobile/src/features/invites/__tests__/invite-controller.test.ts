@@ -82,7 +82,7 @@ describe("native invite flow", () => {
     expect(store.value?.subject).toBe(null);
     expect(client.calls).toBe(0);
 
-    await controller.syncSubject("identity-a");
+    await controller.bootstrap("identity-a");
     expect(store.value?.subject).toBe("identity-a");
     expect(controller.getState().status).toBe("ready");
     expect(JSON.stringify(controller.getState()).includes(token)).toBe(false);

@@ -1,4 +1,8 @@
-import { parseInviteToken, type StoredInvite } from "./invite-token";
+import {
+  isValidInviteSubject,
+  parseInviteToken,
+  type StoredInvite,
+} from "./invite-token";
 import type { InviteStore } from "./invite-storage";
 
 export type AcceptedWorkspace = {
@@ -63,7 +67,7 @@ export class InviteFlowController {
   async capture(value: unknown, subject: string | null): Promise<boolean> {
     await this.ensureLoaded();
     const token = parseInviteToken(value);
-    if (!token || !validSubject(subject)) {
+    if (!token || !isValidInviteSubject(subject)) {
       await this.discard({ status: "terminal", failure: "invalid" });
       return false;
     }
@@ -81,11 +85,6 @@ export class InviteFlowController {
     }
   }
 
-  async syncSubject(subject: string): Promise<void> {
-    await this.ensureLoaded();
-    await this.bindSubject(subject);
-  }
-
   accept(subject: string): Promise<void> {
     if (this.acceptance) return this.acceptance;
     const promise = this.performAccept(subject).finally(() => {
@@ -96,10 +95,7 @@ export class InviteFlowController {
   }
 
   async clear(): Promise<void> {
-    this.generation += 1;
-    this.abort?.abort();
-    this.abort = undefined;
-    this.pending = null;
+    this.invalidatePending();
     this.setState({ status: "empty" });
     await this.store.clear();
   }
@@ -124,7 +120,7 @@ export class InviteFlowController {
 
   private async bindSubject(subject: string | null): Promise<void> {
     if (!this.pending || subject === null) return;
-    if (!validSubject(subject)) {
+    if (!isValidInviteSubject(subject)) {
       await this.discard({ status: "terminal", failure: "subject-changed" });
       return;
     }
@@ -196,16 +192,20 @@ export class InviteFlowController {
   }
 
   private async discard(state: InviteFlowState): Promise<void> {
-    this.generation += 1;
-    this.abort?.abort();
-    this.abort = undefined;
-    this.pending = null;
+    this.invalidatePending();
     try {
       await this.store.clear();
       this.setState(state);
     } catch {
       this.setState({ status: "terminal", failure: "storage" });
     }
+  }
+
+  private invalidatePending(): void {
+    this.generation += 1;
+    this.abort?.abort();
+    this.abort = undefined;
+    this.pending = null;
   }
 
   private setState(state: InviteFlowState): void {
@@ -251,15 +251,6 @@ export function classifyInviteAcceptanceError(
     return "unavailable";
   }
   return "failed";
-}
-
-function validSubject(subject: string | null): boolean {
-  return (
-    subject === null ||
-    (subject.length > 0 &&
-      subject.length <= 256 &&
-      !/[\u0000-\u001f\u007f]/.test(subject))
-  );
 }
 
 function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {

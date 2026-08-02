@@ -1,7 +1,6 @@
 export const POSTGRES_INSIGHT_STALE_AFTER_MS = 65_000;
 
-export type PostgresInsightFailure =
-  "source-unavailable" | "transport-error" | null;
+export type PostgresInsightFailure = "source-unavailable" | "transport-error";
 
 export type PostgresInsightState =
   | "loading"
@@ -9,11 +8,11 @@ export type PostgresInsightState =
   | "current"
   | "stale"
   | "degraded"
-  | Exclude<PostgresInsightFailure, null>;
+  | PostgresInsightFailure;
 
 export function postgresInsightState(input: {
   hasData: boolean;
-  failure: PostgresInsightFailure;
+  failure: PostgresInsightFailure | null;
   observedAt: number | null;
   now?: number;
   staleAfterMs?: number;
@@ -26,7 +25,9 @@ export function postgresInsightState(input: {
 }
 
 /** Keeps the stable backend absence signal distinct from network failures. */
-export function postgresInsightFailure(error: unknown): PostgresInsightFailure {
+export function postgresInsightFailure(
+  error: unknown,
+): PostgresInsightFailure | null {
   if (!error) return null;
   const messages = new Set<string>();
   const codes = new Set<string>();
@@ -62,6 +63,38 @@ export function postgresInsightFailure(error: unknown): PostgresInsightFailure {
     return "source-unavailable";
   }
   return "transport-error";
+}
+
+export function isPostgresInsightFailure(
+  state: PostgresInsightState,
+): state is PostgresInsightFailure {
+  return state === "source-unavailable" || state === "transport-error";
+}
+
+export function mergePostgresInsightState(
+  left: PostgresInsightState,
+  right: PostgresInsightState,
+): PostgresInsightState {
+  if (isPostgresInsightFailure(left) && isPostgresInsightFailure(right)) {
+    return left === "transport-error" || right === "transport-error"
+      ? "transport-error"
+      : "source-unavailable";
+  }
+  if (isPostgresInsightFailure(left) || isPostgresInsightFailure(right)) {
+    const other = isPostgresInsightFailure(left) ? right : left;
+    return other === "loading"
+      ? isPostgresInsightFailure(left)
+        ? left
+        : right
+      : "degraded";
+  }
+  if (left === "degraded" || right === "degraded") return "degraded";
+  if (left === "empty" || right === "empty") {
+    return left === "current" || right === "current" ? "degraded" : "empty";
+  }
+  if (left === "stale" || right === "stale") return "stale";
+  if (left === "current" || right === "current") return "current";
+  return "loading";
 }
 
 export type PostgresProcessRow = {

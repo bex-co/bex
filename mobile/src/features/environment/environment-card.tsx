@@ -162,8 +162,7 @@ export const EnvironmentCard = forwardRef<
     [refreshMaskedList, session],
   );
 
-  useEffect(() => session.subscribe(setRevealed), [session]);
-  useEffect(() => {
+  const resetBoundaryState = useCallback(() => {
     operations.invalidate();
     session.clear();
     setIntent(null);
@@ -174,22 +173,15 @@ export const EnvironmentCard = forwardRef<
     commitAwaitingRefreshRef.current = false;
     setMaskedRefreshRequired(false);
     Keyboard.dismiss();
-  }, [operations, serviceId, session]);
+  }, [operations, session]);
+
+  useEffect(() => session.subscribe(setRevealed), [session]);
+  useEffect(() => {
+    resetBoundaryState();
+  }, [resetBoundaryState, serviceId]);
   useEffect(
-    () =>
-      dataBoundary.registerResetHandler(() => {
-        operations.invalidate();
-        session.clear();
-        setIntent(null);
-        setFeedback(null);
-        setRevealLoading(null);
-        setSaving(false);
-        savingRef.current = false;
-        commitAwaitingRefreshRef.current = false;
-        setMaskedRefreshRequired(false);
-        Keyboard.dismiss();
-      }),
-    [operations, session],
+    () => dataBoundary.registerResetHandler(resetBoundaryState),
+    [resetBoundaryState],
   );
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {

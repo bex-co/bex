@@ -9,7 +9,6 @@ export type UsageCoverageWire = {
 
 export type UsageRowWire = {
   kind?: string | null;
-  tier?: string | null;
   total?: number | null;
 };
 
@@ -42,6 +41,13 @@ export type UsageGlance = {
 const MAX_DEGRADED_SOURCES = 8;
 const MAX_DEGRADED_SOURCE_LENGTH = 48;
 const SAFE_DEGRADED_SOURCE = /^[a-z0-9][a-z0-9._:-]*$/i;
+const METER_ORDER: readonly string[] = [
+  "instance_seconds",
+  "egress_bytes",
+  "build_seconds",
+  "storage_gb_seconds",
+  "sandbox_compute_seconds",
+];
 
 /**
  * Converts the API payload into honest mobile display state. In particular,
@@ -160,15 +166,8 @@ function normalizeDegradedSources(
 }
 
 function meterOrder(kind: string): number {
-  const order = [
-    "instance_seconds",
-    "egress_bytes",
-    "build_seconds",
-    "storage_gb_seconds",
-    "sandbox_compute_seconds",
-  ];
-  const index = order.indexOf(kind);
-  return index < 0 ? order.length : index;
+  const index = METER_ORDER.indexOf(kind);
+  return index < 0 ? METER_ORDER.length : index;
 }
 
 function formatBytes(value: number): string {

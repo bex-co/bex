@@ -1,5 +1,6 @@
 import {
   adaptMetricSeries,
+  newestMetricTimestamp,
   type MetricSnapshot,
   type MetricWireSeries,
 } from "../metrics/series";
@@ -52,10 +53,6 @@ export function buildKeyValueInsightSnapshot(
   const diskCapacity = adaptMetricSeries(raw?.diskCapacity);
   const memory = adaptMetricSeries(raw?.memory);
   const connections = adaptMetricSeries(raw?.connections);
-  const timestamps = [disk, diskCapacity, memory, connections]
-    .flatMap((metric) => metric.points.map((point) => point.timestamp))
-    .filter((timestamp) => Number.isFinite(Date.parse(timestamp)))
-    .sort((left, right) => Date.parse(left) - Date.parse(right));
   const used = disk.current;
   const capacity = diskCapacity.current;
   const diskUsedPercent =
@@ -72,7 +69,7 @@ export function buildKeyValueInsightSnapshot(
     diskCapacity,
     memory,
     connections,
-    latestAt: timestamps.at(-1) ?? null,
+    latestAt: newestMetricTimestamp([disk, diskCapacity, memory, connections]),
     diskUsedPercent,
   };
 }
@@ -86,7 +83,6 @@ export function buildKeyValueInsightSnapshot(
 export function keyValueMetricFailure(
   error: unknown,
   alias: KeyValueInsightMetric,
-  _hasPayload: boolean,
 ): KeyValueMetricFailure {
   if (error == null) return null;
   const errors = nestedGraphQLErrors(error);

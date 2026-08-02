@@ -50,8 +50,7 @@ export class SecureInviteStore implements InviteStore {
       return invite;
     } catch (error) {
       if (error instanceof InviteStorageError) throw error;
-      await this.clear().catch(() => undefined);
-      throw new InviteStorageError();
+      return this.clearAndThrow();
     }
   }
 
@@ -64,8 +63,7 @@ export class SecureInviteStore implements InviteStore {
         this.options,
       );
     } catch {
-      await this.clear().catch(() => undefined);
-      throw new InviteStorageError();
+      return this.clearAndThrow();
     }
   }
 
@@ -77,5 +75,10 @@ export class SecureInviteStore implements InviteStore {
     if (!(await this.storage.isAvailableAsync())) {
       throw new InviteStorageError();
     }
+  }
+
+  private async clearAndThrow(): Promise<never> {
+    await this.clear().catch(() => undefined);
+    throw new InviteStorageError();
   }
 }
