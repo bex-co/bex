@@ -1,0 +1,19 @@
+query MobileMetricSnapshot($resourceId: String!, $name: String!) {
+  metrics(
+    query: {
+      filters: [{ field: "RESOURCE", values: [$resourceId] }]
+      name: $name
+      resolution: 120
+    }
+  ) {
+    unit
+    labels {
+      field
+      value
+    }
+    values {
+      time
+      value
+    }
+  }
+}

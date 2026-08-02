@@ -1,11 +1,5 @@
-import { ShellScreen } from "@/components/shell-screen";
+import { ResourceStatusScreen } from "@/features/resources/resource-status-screen";
 
 export default function ActivityScreen() {
-  return (
-    <ShellScreen
-      titleKey="activity.title"
-      bodyKey="activity.body"
-      icon="list"
-    />
-  );
+  return <ResourceStatusScreen activityOnly />;
 }

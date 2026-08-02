@@ -86,6 +86,7 @@ function WorkspaceTabs() {
         }}
       />
       <Tabs.Screen name="services/[serviceId]" options={{ href: null }} />
+      <Tabs.Screen name="services/[serviceId]/logs" options={{ href: null }} />
       <Tabs.Screen name="sessions/[sessionId]" options={{ href: null }} />
     </Tabs>
   );

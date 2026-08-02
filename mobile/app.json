@@ -45,7 +45,7 @@
       [
         "expo-asset",
         {
-          "assets": ["./src/assets"]
+          "assets": ["./src/assets/images/icon.png"]
         }
       ],
       "expo-localization",

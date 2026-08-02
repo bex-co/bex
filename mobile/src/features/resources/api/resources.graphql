@@ -1,0 +1,39 @@
+query MobileResourceStatus($ownerId: String!) {
+  projects(ownerId: $ownerId) {
+    id
+    name
+    serviceIds
+    databaseIds
+    keyValueIds
+  }
+  services(ownerId: $ownerId) {
+    id
+    name
+    displayName
+    type
+    runtime
+    phase
+    suspended
+    latestDeployId
+    projectId
+    updatedAt
+  }
+  databases(ownerId: $ownerId) {
+    id
+    name
+    status
+    suspended
+    version
+    projectId
+    updatedAt
+  }
+  keyValues(ownerId: $ownerId) {
+    id
+    name
+    status
+    suspended
+    version
+    projectId
+    updatedAt
+  }
+}
