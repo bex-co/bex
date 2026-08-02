@@ -61,11 +61,15 @@ The mechanism-facing status vocabulary is `Running` / `Succeeded` / `Failed` / `
 
 The run handlers also remain available as `/v1/services/{id}/runs` subresources. The retired public `/v1/apps` family is not registered.
 
+Run-now is one atomic backend intent, not a client-composed cancel followed by trigger. When history contains an active run, the same App patch sets `spec.cancelRun` for that exact Job and advances `spec.runAt`; the operator completes foreground deletion before materializing the replacement, so at-most-one remains true. A suspended cron rejects run-now with 409 after authorization but before billing or any patch, leaving both intent fields unchanged. Billing enforcement may reject run-now, while cancellation remains available so an already-running task can still be stopped.
+
 **GraphQL**: `updateCronJob`, `runCronJob`, `cancelCronJobRun`, and queries `cronJobRuns(serviceId,cursor,limit)` / `cronJobRun(serviceId,runId)`, all returning `CronRun { id status startedAt finishedAt }`; `Service.lastSuccessfulRunAt` mirrors the REST cron detail.
 
 **MCP**: `create_cron_job` (tracks Render's official create tool), plus the bex extensions `run_cron_job`, `list_cron_job_runs`, `get_cron_job_run`, `cancel_cron_job_run`, and `update_cron_job` (Render's official MCP ships only a non-functional `update_cron_job` stub that says "use the dashboard/API").
 
 **Dashboard**: the cron Settings tab edits Schedule + Command; the Events page reads the cursor-paged run API and can cancel a pending row.
+
+**Mobile** (w11/m8): the service companion card deliberately selects only opaque run id, normalized status, and start/finish timestamps. It cursor-pages history, links to the existing general service-log screen, and exposes confirmed run-now plus current-run cancel. It never selects the backing Job name, schedule, command, shell, or configuration mutations. Run-now stays available during an active run because the server owns cancel-and-replace, but is absent while suspended; cancel remains available for an active run even after suspension. Mutations are single-flighted and time-bounded, accepted outcomes poll exact-id history to convergence, and ambiguous outcomes lock both actions until a successful authoritative history refresh. Identity, workspace, service, and unmount boundaries abort or invalidate late results.
 
 ## Run object (Render contract, pinned)
 

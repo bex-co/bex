@@ -2372,6 +2372,9 @@ func (s *Service) TriggerCronRun(ctx context.Context, name string) (CronRunView,
 	if a.Spec.Type != appv1alpha1.TypeCronJob {
 		return CronRunView{}, fmt.Errorf("%w: service %q is not a cron_job", core.ErrBadRequest, name)
 	}
+	if a.Spec.Suspended {
+		return CronRunView{}, fmt.Errorf("%w: cron job %q is suspended", core.ErrConflict, name)
+	}
 	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
 		return CronRunView{}, err
 	}

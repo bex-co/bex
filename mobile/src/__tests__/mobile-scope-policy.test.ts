@@ -53,6 +53,8 @@ const allowedMutationNames = new Set([
   "MobileSuspendKeyValue",
   "MobileResumeKeyValue",
   "MobilePatchSingleEnvVar",
+  "MobileRunCronJob",
+  "MobileCancelCronRun",
   "MobileRegisterNotificationDeviceSubscription",
   "MobileUnregisterNotificationDeviceSubscription",
   "MobileMarkPushNotificationRead",

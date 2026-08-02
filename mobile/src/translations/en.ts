@@ -141,6 +141,41 @@ export const en = {
         "The environment operation failed. No success was assumed and any revealed value was cleared.",
     },
   },
+  cron: {
+    title: "Cron run history",
+    description:
+      "Recent runs and timing from the server. Run now replaces any currently active run.",
+    runNow: "Run now",
+    cancelCurrent: "Cancel current run",
+    suspended:
+      "Run now is unavailable while this service is suspended. An already-active run can still be canceled.",
+    refreshRequired:
+      "The previous action may have committed. Refresh history successfully before confirming another action.",
+    refresh: "Refresh run history",
+    refreshing: "Refreshing…",
+    loadError: "Cron run history could not be loaded.",
+    empty: "No cron runs yet.",
+    loadMore: "Load earlier runs",
+    openLogs: "Open general service logs",
+    started: "Started: %{time}",
+    finished: "Finished: %{time}",
+    duration: "Duration: %{duration}",
+    notStarted: "not reported",
+    status: {
+      pending: "Pending",
+      running: "Running",
+      successful: "Successful",
+      failed: "Failed",
+      canceled: "Canceled",
+      unknown: "Unknown",
+    },
+    feedback: {
+      ambiguous:
+        "The response ended without a confirmed result. Refresh run history before reviewing and confirming another action.",
+      convergenceTimeout:
+        "The server accepted the action, but run history did not converge before polling ended. Refresh history before another action.",
+    },
+  },
   metrics: {
     title: "Metrics snapshot",
     window: "Last hour · refreshes every 30 seconds",
