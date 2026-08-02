@@ -41,10 +41,37 @@ import (
 const (
 	baoRole      = "bex-api" // scripts/bao-k8s-auth.sh role bound to the bex-api SA
 	baoMount     = "tenants" // KV v2 mount (docs/ADR013-secrets.md §4)
-	baoTenant    = "default" // single tenant until w1/m2 (mirrors authz DefaultWorkspace)
+	baoTenant    = "default" // legacy single-tenant root; the ctx tenant (w7/m70) overrides it
 	baoJWTPath   = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 	baoRenewSkew = 30 * time.Second // re-login this long before the lease expires
 )
+
+// tenantCtxKey carries the workspace (tenant) id that scopes an OpenBao path. The
+// secrets feature sets it per-request from the App's core.LabelTenant (w7/m70),
+// so two same-named services in different workspaces resolve to disjoint KV paths
+// (tenants/data/<tenant>/services/<name>/…). A request that does not set it — the
+// env-groups feature, the legacy read path — falls back to baoTenant, preserving
+// the pre-w7/m70 single-tenant layout (byte-identical for env-groups, which never
+// sets the key).
+type tenantCtxKey struct{}
+
+// withTenant returns ctx annotated with the owning workspace so the store prefixes
+// every KV path with it. tenant "" is normalized to baoTenant.
+func withTenant(ctx context.Context, tenant string) context.Context {
+	if tenant == "" {
+		tenant = baoTenant
+	}
+	return context.WithValue(ctx, tenantCtxKey{}, tenant)
+}
+
+// tenantFromCtx returns the request's workspace id, defaulting to baoTenant when
+// unset (env-groups, the lazy-migrator's legacy read, store-level tests).
+func tenantFromCtx(ctx context.Context) string {
+	if v, ok := ctx.Value(tenantCtxKey{}).(string); v != "" && ok {
+		return v
+	}
+	return baoTenant
+}
 
 // openBaoStore implements core.SecretKV over OpenBao's KV v2 engine,
 // authenticating as the bex-api ServiceAccount via the Kubernetes auth method
@@ -56,7 +83,6 @@ type openBaoStore struct {
 	addr    string // BEX_OPENBAO_URL, e.g. http://openbao.secrets.svc:8200
 	role    string
 	mount   string
-	tenant  string
 	jwtPath string
 	client  *http.Client
 
@@ -79,7 +105,6 @@ func NewOpenBaoStore(addr string) core.SecretKV {
 		addr:    strings.TrimSuffix(addr, "/"),
 		role:    baoRole,
 		mount:   baoMount,
-		tenant:  baoTenant,
 		jwtPath: jwtPath,
 		client:  &http.Client{Timeout: 10 * time.Second, Transport: core.OryTransport},
 	}
@@ -87,13 +112,14 @@ func NewOpenBaoStore(addr string) core.SecretKV {
 
 // dataURL / metadataURL are KV v2's split paths: values live under data/, whole-
 // path deletion + listing under metadata/. path is the caller's logical key (e.g.
-// "services/web/env"); the mount + tenant prefix (docs/ADR013-secrets.md §4) are added here.
-func (s *openBaoStore) dataURL(path string) string {
-	return fmt.Sprintf("%s/v1/%s/data/%s/%s", s.addr, s.mount, s.tenant, path)
+// "services/web/env"); the mount + the request's workspace-tenant prefix
+// (docs/ADR013-secrets.md §4, w7/m70) are added here.
+func (s *openBaoStore) dataURL(ctx context.Context, path string) string {
+	return fmt.Sprintf("%s/v1/%s/data/%s/%s", s.addr, s.mount, tenantFromCtx(ctx), path)
 }
 
-func (s *openBaoStore) metadataURL(path string) string {
-	return fmt.Sprintf("%s/v1/%s/metadata/%s/%s", s.addr, s.mount, s.tenant, path)
+func (s *openBaoStore) metadataURL(ctx context.Context, path string) string {
+	return fmt.Sprintf("%s/v1/%s/metadata/%s/%s", s.addr, s.mount, tenantFromCtx(ctx), path)
 }
 
 // Get returns the map stored at path, or an empty map when it was never written or
@@ -104,7 +130,7 @@ func (s *openBaoStore) Get(ctx context.Context, path string) (map[string]string,
 			Data map[string]string `json:"data"`
 		} `json:"data"`
 	}
-	err := s.kv(ctx, http.MethodGet, s.dataURL(path), nil, &out)
+	err := s.kv(ctx, http.MethodGet, s.dataURL(ctx, path), nil, &out)
 	var se *core.HTTPStatusError
 	if errors.As(err, &se) && se.Code == http.StatusNotFound {
 		return map[string]string{}, nil
@@ -121,12 +147,12 @@ func (s *openBaoStore) Get(ctx context.Context, path string) (map[string]string,
 // Put replaces the whole map at path.
 func (s *openBaoStore) Put(ctx context.Context, path string, data map[string]string) error {
 	body, _ := json.Marshal(map[string]any{"data": data})
-	return s.kv(ctx, http.MethodPost, s.dataURL(path), body, nil)
+	return s.kv(ctx, http.MethodPost, s.dataURL(ctx, path), body, nil)
 }
 
 // Delete removes the path (and all its versions); an already-absent path is a no-op.
 func (s *openBaoStore) Delete(ctx context.Context, path string) error {
-	err := s.kv(ctx, http.MethodDelete, s.metadataURL(path), nil, nil)
+	err := s.kv(ctx, http.MethodDelete, s.metadataURL(ctx, path), nil, nil)
 	var se *core.HTTPStatusError
 	if errors.As(err, &se) && se.Code == http.StatusNotFound {
 		return nil
@@ -143,7 +169,7 @@ func (s *openBaoStore) List(ctx context.Context, path string) ([]string, error) 
 			Keys []string `json:"keys"`
 		} `json:"data"`
 	}
-	err := s.kv(ctx, http.MethodGet, s.metadataURL(path)+"?list=true", nil, &out)
+	err := s.kv(ctx, http.MethodGet, s.metadataURL(ctx, path)+"?list=true", nil, &out)
 	var se *core.HTTPStatusError
 	if errors.As(err, &se) && se.Code == http.StatusNotFound {
 		return nil, nil

@@ -169,7 +169,7 @@ func managedAppID(a *appv1alpha1.App) string {
 // AppSecretsEraser clears per-app secrets from the external store on service
 // delete. Satisfied structurally by *secrets.WorkspacePurger.
 type AppSecretsEraser interface {
-	PurgeApp(ctx context.Context, name string) error
+	PurgeApp(ctx context.Context, a *appv1alpha1.App) error
 }
 
 // SecretFileSeeder is the narrow create-time seam onto the secrets feature.
@@ -1872,7 +1872,7 @@ func (s *Service) Delete(ctx context.Context, name string) error {
 	// Purge OpenBao env-var and secret-file paths — not owned by the App CR, so
 	// they don't cascade with the CR delete and would otherwise linger forever.
 	if s.SecretsEraser != nil {
-		if err := s.SecretsEraser.PurgeApp(ctx, a.Name); err != nil {
+		if err := s.SecretsEraser.PurgeApp(ctx, a); err != nil {
 			return fmt.Errorf("purge app secrets: %w", err)
 		}
 	}

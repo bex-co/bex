@@ -62,10 +62,11 @@ func (s *Service) ListSecretFiles(ctx context.Context, service string) ([]Secret
 		return nil, err
 	}
 	service = storeServiceName(a, service)
+	ctx = withTenant(ctx, storeTenant(a))
 	if s.Store == nil {
 		return nil, core.ErrSecretsUnavailable
 	}
-	files, err := s.Store.Get(ctx, filesPath(service))
+	files, err := s.readMap(ctx, filesPath(service))
 	if err != nil {
 		return nil, err
 	}
@@ -112,10 +113,11 @@ func (s *Service) GetSecretFile(ctx context.Context, service, name string) (Secr
 		return SecretFileView{}, err
 	}
 	service = storeServiceName(a, service)
+	ctx = withTenant(ctx, storeTenant(a))
 	if s.Store == nil {
 		return SecretFileView{}, core.ErrSecretsUnavailable
 	}
-	files, err := s.Store.Get(ctx, filesPath(service))
+	files, err := s.readMap(ctx, filesPath(service))
 	if err != nil {
 		return SecretFileView{}, err
 	}
@@ -135,6 +137,7 @@ func (s *Service) SetSecretFile(ctx context.Context, service, name, content stri
 	if err != nil {
 		return SecretFileView{}, err
 	}
+	ctx = withTenant(ctx, storeTenant(a))
 	if s.Store == nil {
 		return SecretFileView{}, core.ErrSecretsUnavailable
 	}
@@ -143,7 +146,7 @@ func (s *Service) SetSecretFile(ctx context.Context, service, name, content stri
 		// Name only in the error — never the content.
 		return SecretFileView{}, fmt.Errorf("%w: invalid secret file name %q", core.ErrBadRequest, name)
 	}
-	files, err := s.Store.Get(ctx, filesPath(service))
+	files, err := s.readMap(ctx, filesPath(service))
 	if err != nil {
 		return SecretFileView{}, err
 	}
@@ -167,6 +170,7 @@ func (s *Service) SeedSecretFiles(ctx context.Context, service string, initial [
 		return err
 	}
 	service = storeServiceName(a, service)
+	ctx = withTenant(ctx, storeTenant(a))
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}
@@ -179,7 +183,7 @@ func (s *Service) SeedSecretFiles(ctx context.Context, service string, initial [
 			return fmt.Errorf("%w: invalid secret file name %q", core.ErrBadRequest, initial[i].Name)
 		}
 	}
-	files, err := s.Store.Get(ctx, filesPath(service))
+	files, err := s.readMap(ctx, filesPath(service))
 	if err != nil {
 		return err
 	}
@@ -206,6 +210,7 @@ func (s *Service) prepareSecretFiles(ctx context.Context, service string, a *app
 		return core.ErrSecretsUnavailable
 	}
 	service = storeServiceName(a, service)
+	ctx = withTenant(ctx, storeTenant(a))
 	files := make(map[string]string, len(initial))
 	for _, f := range initial {
 		name := strings.TrimSpace(f.Name)
@@ -268,9 +273,11 @@ func (s *Service) abortSecretFiles(ctx context.Context, service string, a *appv1
 		return core.ErrSecretsUnavailable
 	}
 	service = storeServiceName(a, service)
+	ctx = withTenant(ctx, storeTenant(a))
 	return errors.Join(
 		s.deleteSecret(ctx, a.Namespace, filesSecretName(a.Name)),
 		s.Store.Delete(ctx, filesPath(service)),
+		s.Store.Delete(withTenant(ctx, baoTenant), filesPath(service)),
 	)
 }
 
@@ -311,10 +318,11 @@ func (s *Service) DeleteSecretFile(ctx context.Context, service, name string) er
 		return err
 	}
 	service = storeServiceName(a, service)
+	ctx = withTenant(ctx, storeTenant(a))
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}
-	files, err := s.Store.Get(ctx, filesPath(service))
+	files, err := s.readMap(ctx, filesPath(service))
 	if err != nil {
 		return err
 	}

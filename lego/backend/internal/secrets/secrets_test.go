@@ -677,7 +677,7 @@ func newOpenBaoStoreForTest(t *testing.T, addr string) *openBaoStore {
 		t.Fatal(err)
 	}
 	return &openBaoStore{
-		addr: addr, role: baoRole, mount: baoMount, tenant: baoTenant,
+		addr: addr, role: baoRole, mount: baoMount,
 		jwtPath: jwt, client: &http.Client{Timeout: 5 * time.Second},
 	}
 }

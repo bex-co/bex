@@ -83,7 +83,7 @@ func TestWorkspacePurger_PurgeApp_DeletesBothPaths(t *testing.T) {
 	}
 	purger := &WorkspacePurger{Service: svc}
 
-	if err := purger.PurgeApp(context.Background(), "web"); err != nil {
+	if err := purger.PurgeApp(context.Background(), tenantApp("web", "tea-a")); err != nil {
 		t.Fatalf("PurgeApp: %v", err)
 	}
 
@@ -104,7 +104,7 @@ func TestWorkspacePurger_PurgeApp_NilStoreIsANoOp(t *testing.T) {
 	svc := newService(nil, tenantApp("web", "tea-a"))
 	purger := &WorkspacePurger{Service: svc}
 
-	if err := purger.PurgeApp(context.Background(), "web"); err != nil {
+	if err := purger.PurgeApp(context.Background(), tenantApp("web", "tea-a")); err != nil {
 		t.Fatalf("PurgeApp with secrets disabled should be a no-op, got: %v", err)
 	}
 }
@@ -117,10 +117,10 @@ func TestWorkspacePurger_PurgeApp_IdempotentOnSecondCall(t *testing.T) {
 	}
 	purger := &WorkspacePurger{Service: svc}
 
-	if err := purger.PurgeApp(context.Background(), "web"); err != nil {
+	if err := purger.PurgeApp(context.Background(), tenantApp("web", "tea-a")); err != nil {
 		t.Fatalf("first PurgeApp: %v", err)
 	}
-	if err := purger.PurgeApp(context.Background(), "web"); err != nil {
+	if err := purger.PurgeApp(context.Background(), tenantApp("web", "tea-a")); err != nil {
 		t.Fatalf("second PurgeApp (already-gone) should be a no-op, got: %v", err)
 	}
 }

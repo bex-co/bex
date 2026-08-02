@@ -88,6 +88,45 @@ func storeServiceName(a *appv1alpha1.App, fallback string) string {
 	return fallback
 }
 
+// storeTenant returns the App's workspace (tenant) id for keying its OpenBao paths
+// (w7/m70). Every CRD-projected and store-managed App carries core.LabelTenant; the
+// baoTenant default only covers a degenerate labelless App.
+func storeTenant(a *appv1alpha1.App) string {
+	if t := a.Labels[core.LabelTenant]; t != "" {
+		return t
+	}
+	return baoTenant
+}
+
+// readMap fetches the map at path under the request's tenant, lazily migrating
+// pre-w7/m70 data on first access: if the tenant-scoped path is empty but the
+// legacy single-tenant (baoTenant) path still holds this service's old data, it is
+// copied forward and the legacy path is deleted. Writes always target the
+// tenant-scoped path, so this fallback reads only THIS service's own pre-migration
+// location — never another workspace's. Idempotent: a second read finds the tenant
+// path populated and skips the legacy probe.
+func (s *Service) readMap(ctx context.Context, path string) (map[string]string, error) {
+	cur, err := s.Store.Get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	if len(cur) > 0 {
+		return cur, nil
+	}
+	legacy, err := s.Store.Get(withTenant(ctx, baoTenant), path)
+	if err != nil {
+		return nil, err
+	}
+	if len(legacy) == 0 {
+		return map[string]string{}, nil
+	}
+	if err := s.Store.Put(ctx, path, legacy); err != nil {
+		return nil, err
+	}
+	_ = s.Store.Delete(withTenant(ctx, baoTenant), path) // best-effort; a lingering copy is harmless
+	return legacy, nil
+}
+
 // ListEnvVars returns a service's environment variables, sorted by key for a
 // stable response (Render's GET /v1/services/{id}/env-vars). Reading secret
 // values is sensitive, gated like connection strings (RelCanViewSensitive).
@@ -97,10 +136,11 @@ func (s *Service) ListEnvVars(ctx context.Context, service string) ([]EnvVarView
 		return nil, err // ErrNotFound for unknown services, exactly like Get
 	}
 	service = storeServiceName(a, service)
+	ctx = withTenant(ctx, storeTenant(a))
 	if s.Store == nil {
 		return nil, core.ErrSecretsUnavailable
 	}
-	env, err := s.Store.Get(ctx, envPath(service))
+	env, err := s.readMap(ctx, envPath(service))
 	if err != nil {
 		return nil, err
 	}
@@ -140,10 +180,11 @@ func (s *Service) GetEnvVar(ctx context.Context, service, key string) (EnvVarVie
 		return EnvVarView{}, err
 	}
 	service = storeServiceName(a, service)
+	ctx = withTenant(ctx, storeTenant(a))
 	if s.Store == nil {
 		return EnvVarView{}, core.ErrSecretsUnavailable
 	}
-	env, err := s.Store.Get(ctx, envPath(service))
+	env, err := s.readMap(ctx, envPath(service))
 	if err != nil {
 		return EnvVarView{}, err
 	}
@@ -164,6 +205,7 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 		return nil, err
 	}
 	service = storeServiceName(a, service)
+	ctx = withTenant(ctx, storeTenant(a))
 	if s.Store == nil {
 		return nil, core.ErrSecretsUnavailable
 	}
@@ -212,6 +254,7 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 		return EnvVarView{}, err
 	}
 	service = storeServiceName(a, service)
+	ctx = withTenant(ctx, storeTenant(a))
 	if s.Store == nil {
 		return EnvVarView{}, core.ErrSecretsUnavailable
 	}
@@ -223,7 +266,7 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 	if err != nil {
 		return EnvVarView{}, err
 	}
-	env, err := s.Store.Get(ctx, envPath(service))
+	env, err := s.readMap(ctx, envPath(service))
 	if err != nil {
 		return EnvVarView{}, err
 	}
@@ -245,14 +288,16 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 		return err
 	}
 	service = storeServiceName(a, service)
+	ctx = withTenant(ctx, storeTenant(a))
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}
-	env, err := s.Store.Get(ctx, envPath(service))
+	env, err := s.readMap(ctx, envPath(service))
 	if err != nil {
 		return err
 	}
 	service = storeServiceName(a, service)
+	ctx = withTenant(ctx, storeTenant(a))
 	if _, ok := env[key]; !ok {
 		return core.ErrNotFound
 	}
@@ -280,7 +325,7 @@ func (s *Service) SeedEnvVars(ctx context.Context, service string, literals map[
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}
-	env, err := s.Store.Get(ctx, envPath(service))
+	env, err := s.readMap(ctx, envPath(service))
 	if err != nil {
 		return err
 	}
