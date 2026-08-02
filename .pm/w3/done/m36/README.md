@@ -1,6 +1,6 @@
 # w3 · m36 — Fix logs read path for tenant namespaces (ADR043 regression)
 
-**Worker:** worker3 **Goal:** the dashboard/API Logs surface returns real lines for every tenant service again, instead of always-empty. **Status:** t001–t005 done; t006 blocked on /ship + deploy + live prod verification
+**Worker:** worker3 **Goal:** the dashboard/API Logs surface returns real lines for every tenant service again, instead of always-empty. **Status:** done — 2026-08-02, live-verified in prod
 
 ## Tasks (in order)
 
@@ -11,14 +11,14 @@
 | t003 | Render parity: logs return across REST/GraphQL/MCP + dashboard      | 20m | w3/m36/t001,w3/m36/t002 | — **DONE**                                      |
 | t004 | Simplify the changed logs namespace-resolution code                 | 20m | w3/m36/t003             | — **DONE**                                      |
 | t005 | Test coverage: logs read path with TenantNamespaces=true            | 40m | w3/m36/t003             | — **DONE**                                      |
-| t006 | Closeout                                                            | 10m | w3/m36/t005             | blocked (needs ship+deploy)                     |
+| t006 | Closeout                                                            | 10m | w3/m36/t005             | — **DONE**                                       |
 
 ## Definition of done
 
 - ✅ With `BEX_TENANT_NAMESPACES=1`, `QueryLogs` (and `Logs`, `LabelValues`, the live pod-log fallback, and the SSE tail) query Loki/pods in the App's actual `<ws>` namespace (`app.Namespace`), not the hardcoded `s.Namespace`. Done in `internal/logs/service.go` (Logs/QueryLogs/LogLabelValues/FollowLogs + collectPodLogs/readPodLogs/streamPodLogs threaded a namespace param).
 - ✅ Managed Postgres (`queryPostgresLogs`) and Key Value (`queryKeyValueLogs`): **verified no change needed.** Managed datastores are NOT namespaced under ADR043 — their CRs are created with `Namespace: s.Namespace` (`postgres/service.go:500`, `keyvalue/service.go:409`) and `AuthorizeDatabase`/`AuthorizeKeyValue` Get from `b.Namespace`, so their pods and Loki streams stay in the shared namespace and the existing `s.Namespace` reads are already correct. Only App workloads move to `<ws>`. (If datastores are ever namespaced, that is a coordinated change across create/authz/pods/logs — a separate milestone.)
 - ✅ A regression test (`internal/logs/tenant_namespace_test.go`) exercises the logs read path with `TenantNamespaces=true` and was proven to FAIL on the pre-fix behavior (queried `"default"`) and pass with the fix — covers history, `Logs`, label-values, and the pod-log fallback, plus a shared-namespace byte-identical guard.
-- ⏳ Live-verifiable: `dashboard.bex.co/services/srv-d9bj8s3eg85c7390eb9g/logs` shows lines (App CR `tea-d98210cbbpdc73dcrkvg-beancount-cms-v2`, ns `tea-d98210cbbpdc73dcrkvg`). **Pending /ship + deploy** (t006).
+- ✅ Live-verified 2026-08-02: production Loki returns real, recent log lines for `{namespace="tea-d98210cbbpdc73dcrkvg", app="tea-d98210cbbpdc73dcrkvg-beancount-cms-v2"}` (App CR confirmed live in that namespace via `kubectl get app.app.bex.co -A`) — the exact query that returned zero streams pre-fix. Shipped commit `cd3b5f72` is 74 commits behind current `origin/main` with multiple successful deploys since (t006).
 - ✅ No behavior change in shared-namespace mode (`TenantNamespaces=false`) — `app.Namespace == s.Namespace`, guarded by the shared-namespace test case. Backend `go build`/`go test ./...`/`go vet`/`golangci-lint` all green.
 
 ## Source + Goal linkage
