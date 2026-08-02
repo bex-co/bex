@@ -28,9 +28,16 @@ seed() { # create a file at $1 with content $2, committing under a fresh dir tre
 # Base commit carries one file in a filtered path; push it as origin/main.
 seed lego/app/main.go "package app // v1" "base"
 seed deploy/gitops/base/bex.yaml $'images:\n  - controller=ghcr.io/x@sha256:'"$(printf 'a%.0s' {1..64})" "base bex.yaml"
+seed deploy/gitops/base/dashboard.yaml $'images:\n  - dashboard=ghcr.io/x@sha256:'"$(printf 'a%.0s' {1..64})" "base dashboard.yaml"
+seed deploy/opensandbox/kustomization.yaml \
+  $'images:\n  - name: opensandbox-server\n    newName: ghcr.io/x\n    digest: sha256:'"$(printf 'a%.0s' {1..64})" \
+  "base opensandbox kustomization"
 seed deploy/gitops/base/values/opensandbox-controller.values.yaml \
   $'controller:\n  image:\n    repository: ghcr.io/x/controller\n    tag: v0.2.0-bex-snapjobns@sha256:'"$(printf 'a%.0s' {1..64})" \
   "base OpenSandbox controller values"
+seed lego/operator/config/api/deployment.yaml \
+  "  value: ghcr.io/bex-co/bex-agent-sandbox@sha256:$(printf 'c%.0s' {1..64})" \
+  "base agent image"
 git push -q origin main
 BASE="$(git rev-parse HEAD)"
 
@@ -40,12 +47,14 @@ run_case() {
   local label="$1" want="$2"; shift 2
   git push -qf origin "$BASE":main # reset origin/main to the base
   "$@"                              # case body advances origin/main (or not)
+  local output
   set +e
-  "$SCRIPT" "$BASE" >/dev/null 2>&1
+  output="$("$SCRIPT" "$BASE" 2>&1)"
   local got=$?
   set -e
   if [ "$got" -ne "$want" ]; then
     echo "FAIL: $label — exit $got, want $want" >&2
+    [ -z "$output" ] || echo "$output" >&2
     fails=$((fails + 1))
   else
     echo "ok: $label (exit $got)"
@@ -71,6 +80,10 @@ run_case "generated digest only (excluded)" 1 advance deploy/gitops/base/bex.yam
 run_case "generated controller digest only (excluded)" 1 advance \
   deploy/gitops/base/values/opensandbox-controller.values.yaml \
   $'controller:\n  image:\n    repository: ghcr.io/x/controller\n    tag: v0.2.0-bex-snapjobns@sha256:'"$(printf 'b%.0s' {1..64})"
+run_case "generated agent digest only (excluded)" 1 advance lego/operator/config/api/deployment.yaml \
+  "  value: ghcr.io/bex-co/bex-agent-sandbox@sha256:$(printf 'd%.0s' {1..64})"
+run_case "agent manifest drift beyond digest" 0 advance lego/operator/config/api/deployment.yaml \
+  $'replicas: 2\n  value: ghcr.io/bex-co/bex-agent-sandbox@sha256:'"$(printf 'd%.0s' {1..64})"
 # a non-deploy-triggering change (docs) → exit 1
 run_case "non-triggering (docs)" 1 advance docs/notes.md "hello"
 

@@ -38,6 +38,7 @@ const (
 	metadataRegion        = "bex.co/region"
 	metadataTimeout       = "bex.co/timeout-seconds"
 	metadataComputeWeight = "bex.co/compute-weight-milli"
+	metadataTemplate      = "bex.co/template"
 	metadataRegime        = "app.bex.co/regime"
 	metadataSandboxRegime = "sandbox"
 	metadataAgentSession  = agentsession.LabelSession
@@ -190,13 +191,14 @@ func (s *Service) workspaceID(ctx context.Context) string {
 	return core.DefaultTenant
 }
 
-func sandboxMetadata(ctx context.Context, workspace string, plan Plan, region string, timeout int, policy *NetworkPolicy, weight int64) map[string]string {
+func sandboxMetadata(ctx context.Context, workspace, template string, plan Plan, region string, timeout int, policy *NetworkPolicy, weight int64) map[string]string {
 	metadata := map[string]string{
 		metadataOwner:         ownerID(ctx),
 		metadataWorkspace:     workspace,
 		metadataNetworkPolicy: string(policy.Default),
 		metadataPlan:          string(plan),
 		metadataTimeout:       strconv.Itoa(timeout),
+		metadataTemplate:      template,
 		metadataRegime:        metadataSandboxRegime,
 		metadataComputeWeight: strconv.FormatInt(weight, 10),
 	}
@@ -319,10 +321,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Sandbox, error
 		return Sandbox{}, fmt.Errorf("%w: unknown template %q", core.ErrBadRequest, name)
 	}
 	ws := s.workspaceID(ctx)
-	return s.createResolved(ctx, ws, tmpl, plan, req.Region, req.TimeoutSeconds, policy, nil)
+	return s.createResolved(ctx, ws, name, tmpl, plan, req.Region, req.TimeoutSeconds, policy, nil)
 }
 
-func (s *Service) createResolved(ctx context.Context, workspace string, tmpl Template, plan Plan, region string, timeout int, policy *NetworkPolicy, extraMetadata map[string]string) (Sandbox, error) {
+func (s *Service) createResolved(ctx context.Context, workspace, template string, tmpl Template, plan Plan, region string, timeout int, policy *NetworkPolicy, extraMetadata map[string]string) (Sandbox, error) {
 	cpu, mem := tmpl.CPU, tmpl.Memory
 	if cpu == "" {
 		cpu = "500m"
@@ -348,7 +350,7 @@ func (s *Service) createResolved(ctx context.Context, workspace string, tmpl Tem
 	if len(entry) == 0 {
 		entry = []string{"sleep", "infinity"}
 	}
-	metadata := sandboxMetadata(ctx, workspace, plan, region, timeout, policy, weight)
+	metadata := sandboxMetadata(ctx, workspace, template, plan, region, timeout, policy, weight)
 	for k, v := range extraMetadata {
 		metadata[k] = v
 	}
@@ -427,7 +429,7 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 	policy := &NetworkPolicy{Default: NetworkPolicyDenyAll}
 	bindings[metadataEgressAllow] = string(allowJSON)
 	bindings[metadataModelEndpoint] = modelEndpoint
-	sb, err := s.createResolved(ctx, workspaceID, tmpl, plan, "", 0, policy, bindings)
+	sb, err := s.createResolved(ctx, workspaceID, template, tmpl, plan, "", 0, policy, bindings)
 	if err != nil {
 		if cleanupErr := s.SessionEgress.Delete(ctx, namespace, sessionID); cleanupErr != nil {
 			return Sandbox{}, errors.Join(err, fmt.Errorf("rollback session egress policy: %w", cleanupErr))

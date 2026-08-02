@@ -198,6 +198,7 @@ func (s *Service) ExecBuffered(ctx context.Context, req ExecRequest) (ExecResult
 	defer func() { _ = resp.Body.Close() }()
 
 	var out ExecResult
+	exitSeen := false
 	sc := bufio.NewScanner(resp.Body)
 	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
 	event := ""
@@ -225,8 +226,10 @@ func (s *Service) ExecBuffered(ctx context.Context, req ExecRequest) (ExecResult
 				var ev struct {
 					ExitCode int `json:"exitCode"`
 				}
-				_ = json.Unmarshal([]byte(payload), &ev)
-				out.ExitCode = ev.ExitCode
+				if json.Unmarshal([]byte(payload), &ev) == nil {
+					out.ExitCode = ev.ExitCode
+					exitSeen = true
+				}
 			case "error":
 				var ev struct {
 					Error string `json:"error"`
@@ -236,6 +239,12 @@ func (s *Service) ExecBuffered(ctx context.Context, req ExecRequest) (ExecResult
 				}
 			}
 		}
+	}
+	if err := sc.Err(); err != nil {
+		return out, fmt.Errorf("%w: sandbox exec stream failed: %v", core.ErrSandboxesUnavailable, err)
+	}
+	if !exitSeen {
+		return out, fmt.Errorf("%w: sandbox exec stream ended without an exit event", core.ErrSandboxesUnavailable)
 	}
 	return out, nil
 }

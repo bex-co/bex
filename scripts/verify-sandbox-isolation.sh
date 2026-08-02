@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# A caller may supply the paid-verification credential as one environment entry,
+# but no verifier subprocess should inherit it. Keep only a non-exported shell
+# copy; the authorized ACP turn receives that copy over stdin below.
+live_agent_model_api_key="${BEX_LIVE_AGENT_MODEL_API_KEY:-}"
+unset BEX_LIVE_AGENT_MODEL_API_KEY
+
 # Adversarial verification for ADR042 / w3/m35. This intentionally uses the
 # public sandbox API to create real OpenSandbox resources, then executes probes
 # inside their gVisor workload containers with kubectl. It requires a
@@ -11,6 +17,13 @@ set -euo pipefail
 #   BEX_WS_A_MEMBER_TOKEN  different ordinary member B in BEX_WORKSPACE_A
 #   BEX_WS_A_ADMIN_TOKEN   explicit admin in BEX_WORKSPACE_A
 #   BEX_WS_B_OWNER_TOKEN   ordinary member in BEX_WORKSPACE_B
+#
+# Set BEX_VERIFY_AGENT_DRIVER=1 after deploying w3/m37 to add a fourth sandbox
+# from the `agent` template. That leg proves the real image's headless ACP turn,
+# raw WebSocket bridge, and port-8787 gateway-only identity policy.
+# BEX_VERIFY_AGENT_MODEL=1 additionally authorizes one paid turn with the bundled
+# agent and requires BEX_LIVE_AGENT_MODEL_API_KEY. The key enters kubectl exec on
+# stdin, never argv or a file; source it from the tenant's approved OpenBao path.
 #
 # No credential is printed. Every API-created sandbox and Kubernetes fixture is
 # removed by the EXIT trap, including on a failed assertion.
@@ -44,10 +57,32 @@ namespace_a="${BEX_WORKSPACE_A}-sandbox"
 namespace_b="${BEX_WORKSPACE_B}-sandbox"
 run_id="m35-$(date -u +%Y%m%d%H%M%S)-$$"
 started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+verify_agent_driver="${BEX_VERIFY_AGENT_DRIVER:-0}"
+verify_agent_model="${BEX_VERIFY_AGENT_MODEL:-0}"
+case "$verify_agent_driver" in
+  0 | 1) ;;
+  *) echo "error: BEX_VERIFY_AGENT_DRIVER must be 0 or 1" >&2; exit 2 ;;
+esac
+case "$verify_agent_model" in
+  0 | 1) ;;
+  *) echo "error: BEX_VERIFY_AGENT_MODEL must be 0 or 1" >&2; exit 2 ;;
+esac
+if [ "$verify_agent_model" = 1 ]; then
+  [ "$verify_agent_driver" = 1 ] \
+    || { echo "error: BEX_VERIFY_AGENT_MODEL=1 requires BEX_VERIFY_AGENT_DRIVER=1" >&2; exit 2; }
+  [ -n "$live_agent_model_api_key" ] \
+    || { echo "error: set BEX_LIVE_AGENT_MODEL_API_KEY from the approved tenant secret" >&2; exit 2; }
+  if [[ "$live_agent_model_api_key" == *$'\n'* || "$live_agent_model_api_key" == *$'\r'* ]]; then
+    echo "error: BEX_LIVE_AGENT_MODEL_API_KEY must be a single line" >&2
+    exit 2
+  fi
+fi
 fixture_dir="$(mktemp -d)"
 hosting_pod="${run_id}-hosting"
 platform_pod="${run_id}-platform"
 platform_allowed_pod="${run_id}-platform-allowed"
+gateway_spoof_pod="${run_id}-gateway-spoof"
+gateway_allowed_pod="${run_id}-gateway-allowed"
 execd_spoof_pod="${run_id}-execd-spoof"
 execd_allowed_pod="${run_id}-execd-allowed"
 controller_probe_pod="${run_id}-controller"
@@ -58,9 +93,11 @@ session_label="${run_id}-agent-session"
 sandbox_a_id=""
 sandbox_b_id=""
 sandbox_c_id=""
+sandbox_agent_id=""
 cr_a=""
 cr_b=""
 cr_c=""
+cr_agent=""
 hubble_agent_pod=""
 fixtures_started=false
 
@@ -96,9 +133,12 @@ cleanup() {
   [ -n "$sandbox_a_id" ] && api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$sandbox_a_id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-a.json" >/dev/null
   [ -n "$sandbox_b_id" ] && api_call "$fixture_dir/member-b.curl" POST "/v1/sandboxes/$sandbox_b_id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-b.json" >/dev/null
   [ -n "$sandbox_c_id" ] && api_call "$fixture_dir/owner-c.curl" POST "/v1/sandboxes/$sandbox_c_id/terminate?ownerId=$BEX_WORKSPACE_B" "$fixture_dir/cleanup-c.json" >/dev/null
+  [ -n "$sandbox_agent_id" ] && api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$sandbox_agent_id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-agent.json" >/dev/null
   kubectl -n "$BEX_WORKSPACE_A" delete pod "$hosting_pod" --ignore-not-found --wait=false >/dev/null 2>&1
   kubectl -n bex-system delete pod "$platform_pod" --ignore-not-found --wait=false >/dev/null 2>&1
   kubectl -n bex-system delete pod "$platform_allowed_pod" --ignore-not-found --wait=false >/dev/null 2>&1
+  kubectl -n bex-system delete pod "$gateway_spoof_pod" --ignore-not-found --wait=false >/dev/null 2>&1
+  kubectl -n bex-system delete pod "$gateway_allowed_pod" --ignore-not-found --wait=false >/dev/null 2>&1
   kubectl -n opensandbox-system delete pod "$execd_spoof_pod" --ignore-not-found --wait=false >/dev/null 2>&1
   kubectl -n opensandbox-system delete pod "$execd_allowed_pod" --ignore-not-found --wait=false >/dev/null 2>&1
   kubectl -n opensandbox-system delete pod "$controller_probe_pod" --ignore-not-found --wait=false >/dev/null 2>&1
@@ -107,6 +147,7 @@ cleanup() {
   [ -n "$cr_a" ] && kubectl -n "$namespace_a" delete batchsandbox "$cr_a" --ignore-not-found --wait=false >/dev/null 2>&1
   [ -n "$cr_b" ] && kubectl -n "$namespace_a" delete batchsandbox "$cr_b" --ignore-not-found --wait=false >/dev/null 2>&1
   [ -n "$cr_c" ] && kubectl -n "$namespace_b" delete batchsandbox "$cr_c" --ignore-not-found --wait=false >/dev/null 2>&1
+  [ -n "$cr_agent" ] && kubectl -n "$namespace_a" delete batchsandbox "$cr_agent" --ignore-not-found --wait=false >/dev/null 2>&1
   rm -rf "$fixture_dir"
 }
 trap cleanup EXIT
@@ -140,6 +181,7 @@ preflight_cluster() {
     ciliumclusterwidenetworkpolicy/sandbox-egress-default-deny \
     ciliumclusterwidenetworkpolicy/sandbox-egress-legacy-allowlist \
     ciliumclusterwidenetworkpolicy/sandbox-execd-ingress \
+    ciliumclusterwidenetworkpolicy/sandbox-agent-driver-ingress \
     ciliumclusterwidenetworkpolicy/opensandbox-server-ingress \
     ciliumclusterwidenetworkpolicy/sandbox-exec-gateway-ingress \
     ciliumclusterwidenetworkpolicy/agent-credential-gateway-ingress \
@@ -277,6 +319,14 @@ fi
 sandbox_a_id="$(create_sandbox "$fixture_dir/owner-a.curl" "$BEX_WORKSPACE_A" "$fixture_dir/sandbox-a.json")"
 sandbox_b_id="$(create_sandbox "$fixture_dir/member-b.curl" "$BEX_WORKSPACE_A" "$fixture_dir/sandbox-b.json")"
 sandbox_c_id="$(create_sandbox "$fixture_dir/owner-c.curl" "$BEX_WORKSPACE_B" "$fixture_dir/sandbox-c.json")"
+if [ "$verify_agent_driver" = 1 ]; then
+  expect_status 201 "$fixture_dir/owner-a.curl" POST "/v1/sandboxes" "$fixture_dir/sandbox-agent.json" \
+    --header 'Content-Type: application/json' \
+    --data "{\"ownerId\":\"$BEX_WORKSPACE_A\",\"template\":\"agent\",\"plan\":\"starter\",\"networkPolicy\":{\"default\":\"deny-all\"}}"
+  sandbox_agent_id="$(jq -er '.id' "$fixture_dir/sandbox-agent.json")"
+  [ "$(jq -r '.image' "$fixture_dir/sandbox-agent.json")" != "" ] \
+    || fail "agent template create returned no resolved image"
+fi
 owner_a="$(jq -er '.owner' "$fixture_dir/sandbox-a.json")"
 owner_b="$(jq -er '.owner' "$fixture_dir/sandbox-b.json")"
 [ "$owner_a" != "$owner_b" ] || fail "the two workspace-A identities resolved to the same sandbox owner"
@@ -305,22 +355,28 @@ jq -e --arg a "$sandbox_a_id" --arg b "$sandbox_b_id" \
 pass "owner isolation fails closed and can_manage is the sole override"
 
 find_batchsandbox() {
-  local namespace="$1" id="$2" owner="$3"
+  local namespace="$1" id="$2" owner="$3" template="$4"
   if kubectl -n "$namespace" get batchsandbox "$id" >/dev/null 2>&1; then
     printf '%s\n' "$id"
     return
   fi
   kubectl -n "$namespace" get batchsandboxes -o json | jq -er \
-    --arg owner "$owner" --arg since "$started_at" '
+    --arg owner "$owner" --arg template "$template" --arg since "$started_at" '
       [.items[] |
-       select(.metadata.labels["bex.co/owner"] == $owner and .metadata.creationTimestamp >= $since)] |
+       select(.metadata.labels["bex.co/owner"] == $owner and
+              .metadata.labels["bex.co/template"] == $template and
+              .metadata.creationTimestamp >= $since)] |
       sort_by(.metadata.creationTimestamp) | last | .metadata.name'
 }
 
-cr_a="$(find_batchsandbox "$namespace_a" "$sandbox_a_id" "$owner_a")"
-cr_b="$(find_batchsandbox "$namespace_a" "$sandbox_b_id" "$owner_b")"
+cr_a="$(find_batchsandbox "$namespace_a" "$sandbox_a_id" "$owner_a" base)"
+cr_b="$(find_batchsandbox "$namespace_a" "$sandbox_b_id" "$owner_b" base)"
 owner_c="$(jq -er '.owner' "$fixture_dir/sandbox-c.json")"
-cr_c="$(find_batchsandbox "$namespace_b" "$sandbox_c_id" "$owner_c")"
+cr_c="$(find_batchsandbox "$namespace_b" "$sandbox_c_id" "$owner_c" base)"
+if [ "$verify_agent_driver" = 1 ]; then
+  owner_agent="$(jq -er '.owner' "$fixture_dir/sandbox-agent.json")"
+  cr_agent="$(find_batchsandbox "$namespace_a" "$sandbox_agent_id" "$owner_agent" agent)"
+fi
 
 find_ready_pod() {
   local namespace="$1" cr="$2" deadline=$((SECONDS + 300)) pod=""
@@ -339,6 +395,10 @@ find_ready_pod() {
 pod_a="$(find_ready_pod "$namespace_a" "$cr_a")" || fail "sandbox A never reached Ready"
 pod_b="$(find_ready_pod "$namespace_a" "$cr_b")" || fail "sandbox B never reached Ready"
 pod_c="$(find_ready_pod "$namespace_b" "$cr_c")" || fail "sandbox C never reached Ready"
+if [ "$verify_agent_driver" = 1 ]; then
+  pod_agent="$(find_ready_pod "$namespace_a" "$cr_agent")" \
+    || fail "agent sandbox never reached Ready"
+fi
 
 workload_container() {
   kubectl -n "$1" get pod "$2" -o json | jq -er '
@@ -346,6 +406,9 @@ workload_container() {
 }
 container_a="$(workload_container "$namespace_a" "$pod_a")"
 container_b="$(workload_container "$namespace_a" "$pod_b")"
+if [ "$verify_agent_driver" = 1 ]; then
+  container_agent="$(workload_container "$namespace_a" "$pod_agent")"
+fi
 sandbox_node="$(kubectl -n "$namespace_a" get pod "$pod_a" -o jsonpath='{.spec.nodeName}')"
 sandbox_arch="$(kubectl get node "$sandbox_node" -o jsonpath='{.status.nodeInfo.architecture}')"
 case "$sandbox_arch" in
@@ -359,7 +422,11 @@ kubectl -n "$namespace_a" exec -i "$pod_a" -c "$container_a" -- /bin/sh -c \
   'umask 077; /bin/busybox cat > /tmp/m35-netprobe && chmod 700 /tmp/m35-netprobe' \
   <"$probe_binary" || fail "could not install the network probe in the attacker sandbox"
 
-for tuple in "$namespace_a:$pod_a:$container_a" "$namespace_a:$pod_b:$container_b"; do
+sandbox_workloads=("$namespace_a:$pod_a:$container_a" "$namespace_a:$pod_b:$container_b")
+if [ "$verify_agent_driver" = 1 ]; then
+  sandbox_workloads+=("$namespace_a:$pod_agent:$container_agent")
+fi
+for tuple in "${sandbox_workloads[@]}"; do
   IFS=: read -r ns pod container <<<"$tuple"
   pod_json="$(kubectl -n "$ns" get pod "$pod" -o json)"
   runtime="$(jq -r '.spec.runtimeClassName' <<<"$pod_json")"
@@ -426,6 +493,9 @@ expect_allowed() {
 pod_a_ip="$(kubectl -n "$namespace_a" get pod "$pod_a" -o jsonpath='{.status.podIP}')"
 pod_b_ip="$(kubectl -n "$namespace_a" get pod "$pod_b" -o jsonpath='{.status.podIP}')"
 pod_c_ip="$(kubectl -n "$namespace_b" get pod "$pod_c" -o jsonpath='{.status.podIP}')"
+if [ "$verify_agent_driver" = 1 ]; then
+  pod_agent_ip="$(kubectl -n "$namespace_a" get pod "$pod_agent" -o jsonpath='{.status.podIP}')"
+fi
 lifecycle_ip="$(kubectl -n opensandbox-system get service opensandbox-server -o jsonpath='{.spec.clusterIP}')"
 bex_cp_ip="$(kubectl -n bex-system get service bex-api -o jsonpath='{.spec.clusterIP}')"
 exec_gateway_ip="$(kubectl -n bex-system get service bex-ssh-gateway -o jsonpath='{.spec.clusterIP}')"
@@ -445,6 +515,133 @@ expect_denied "same-workspace peer Pod user port" exec_a /tmp/m35-netprobe tcp "
 expect_denied "same-workspace peer Service" exec_a /tmp/m35-netprobe tcp "$peer_service_ip" 18080
 
 python_image='python:3.12.13-slim-trixie@sha256:cab2dbf575e971934a81e4622f5aba17aa7929719bd7e31033a3a83b97fd0464'
+if [ "$verify_agent_driver" = 1 ]; then
+  echo "==> verify the m37 agent image and gateway-only driver listeners"
+  driver_ready=false
+  for _ in $(seq 1 60); do
+    if kubectl -n "$namespace_a" exec "$pod_agent" -c "$container_agent" -- \
+      curl -fsS http://127.0.0.1:8787/healthz >/dev/null 2>&1; then
+      driver_ready=true
+      break
+    fi
+    sleep 2
+  done
+  [ "$driver_ready" = true ] || fail "agent driver never became healthy on loopback"
+  expect_denied "peer sandbox to agent driver" \
+    exec_a /tmp/m35-netprobe tcp "$pod_agent_ip" 8787
+
+  kubectl -n bex-system run "$gateway_spoof_pod" --image "$python_image" --restart Never \
+    --labels "app.kubernetes.io/name=bex-ssh-gateway" \
+    --overrides='{"spec":{"automountServiceAccountToken":false,"securityContext":{"runAsNonRoot":true,"runAsUser":10001,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"'"$gateway_spoof_pod"'","image":"'"$python_image"'","command":["sleep","300"],"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}}]}}' >/dev/null
+  kubectl -n bex-system wait --for=condition=Ready "pod/$gateway_spoof_pod" --timeout=180s >/dev/null
+  expect_denied "gateway label spoof on the default ServiceAccount to agent driver" \
+    kubectl -n bex-system exec "$gateway_spoof_pod" -- \
+      python3 -c "$python_tcp_probe" "$pod_agent_ip" 8787
+
+  kubectl -n bex-system run "$gateway_allowed_pod" --image "$python_image" --restart Never \
+    --labels "app.kubernetes.io/name=bex-ssh-gateway" \
+    --overrides='{"spec":{"serviceAccountName":"bex-ssh-gateway","automountServiceAccountToken":false,"securityContext":{"runAsNonRoot":true,"runAsUser":10001,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"'"$gateway_allowed_pod"'","image":"'"$python_image"'","command":["sleep","300"],"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}}]}}' >/dev/null
+  kubectl -n bex-system wait --for=condition=Ready "pod/$gateway_allowed_pod" --timeout=180s >/dev/null
+  expect_allowed "gateway workload identity to agent driver health endpoint" \
+    kubectl -n bex-system exec "$gateway_allowed_pod" -- python3 -c \
+      'import json,sys,urllib.request; data=json.load(urllib.request.urlopen(sys.argv[1],timeout=10)); assert data["ok"] is True' \
+      "http://$pod_agent_ip:8787/healthz"
+  expect_allowed "gateway workload identity to agent driver UI-message SSE endpoint" \
+    kubectl -n bex-system exec "$gateway_allowed_pod" -- python3 -c \
+      'import sys,urllib.request; r=urllib.request.urlopen(sys.argv[1],timeout=10); assert r.status == 200; assert r.headers.get("content-type", "").startswith("text/event-stream"); assert r.headers.get("x-vercel-ai-ui-message-stream") == "v1"; r.close()' \
+      "http://$pod_agent_ip:8787/stream"
+  agent_name="$(kubectl -n bex-system exec -i "$gateway_allowed_pod" -- \
+    python3 - "$pod_agent_ip" 8787 <scripts/m37-acp-ws-probe.py)" \
+    || fail "raw ACP WebSocket initialize through the gateway identity failed"
+  [ -n "$agent_name" ] || fail "raw ACP WebSocket initialize returned no agent name"
+
+  kubectl -n "$namespace_a" exec -i "$pod_agent" -c "$container_agent" -- \
+    /bin/sh -c 'umask 077; cat > /tmp/m37-acp-agent.mjs' \
+    <lego/agent-image/driver/fixtures/acp-agent.mjs \
+    || fail "could not install the hermetic ACP fixture in the agent sandbox"
+  if ! kubectl -n "$namespace_a" exec -i "$pod_agent" -c "$container_agent" -- \
+    /bin/sh -s >"$fixture_dir/agent-turn.log" 2>&1 <<'AGENT_TURN'
+set -eu
+cd /workspace
+git init -q
+git config user.name "bex live verifier"
+git config user.email "bex-live-verifier@example.invalid"
+printf 'm37 live substrate proof\n' > README.md
+git add README.md
+git commit -q -m initial
+mkdir -p .m37-proof
+printf '%s\n' 'test-model-key-never-log' > .m37-proof/credential-cache
+export BEX_AGENT_COMMAND=node
+export BEX_AGENT_ARGS='["/tmp/m37-acp-agent.mjs"]'
+export BEX_AGENT_PROMPT='Implement the requested change and commit it.'
+export BEX_AGENT_ENV_JSON='{"ACP_FIXTURE_COMMIT_REPO":"/workspace","ACP_FIXTURE_REQUIRE_MODEL_KEY":"1"}'
+export BEX_AGENT_MODEL_API_KEY='test-model-key-never-log'
+export BEX_AGENT_LISTEN_HOST=127.0.0.1
+export BEX_AGENT_LISTEN_PORT=8788
+export BEX_AGENT_STATUS_FILE=/workspace/.m37-proof/status.json
+export BEX_AGENT_SESSION_LOG=/workspace/.m37-proof/session.jsonl
+export BEX_AGENT_EXIT_AFTER_TURN=1
+bex-agent-driver
+grep -q '"state":"succeeded"' .m37-proof/status.json
+grep -q '"type":"data-acp"' .m37-proof/session.jsonl
+test "$(git log -1 --format=%s)" = 'agent: complete task'
+leak_report=/workspace/.m37-proof/leaks
+find /workspace /home/bex /tmp /var/tmp /var/log/bex-agent /var/run/bex-agent \
+  -type f -readable -exec grep -a -l -F -- 'test-model-key-never-log' {} + \
+  > "$leak_report" 2>/dev/null || true
+test ! -s "$leak_report"
+grep -q '\[REDACTED\]' .m37-proof/credential-cache
+AGENT_TURN
+  then
+    fail "headless ACP turn failed inside the real agent sandbox (see $fixture_dir/agent-turn.log)"
+  fi
+  if [ "$verify_agent_model" = 1 ]; then
+    echo "==> run one explicitly authorized model-authenticated ACP turn"
+    if ! printf '%s\n' "$live_agent_model_api_key" | \
+      kubectl -n "$namespace_a" exec -i "$pod_agent" -c "$container_agent" -- \
+        /bin/sh -c '
+set -eu
+IFS= read -r BEX_AGENT_MODEL_API_KEY
+test -n "$BEX_AGENT_MODEL_API_KEY"
+export BEX_AGENT_MODEL_API_KEY
+repo=/workspace/.m37-real-model-proof
+mkdir -p "$repo"
+cd "$repo"
+git init -q
+git config user.name "bex live model verifier"
+git config user.email "bex-live-model-verifier@example.invalid"
+printf "real model substrate proof\n" > README.md
+git add README.md
+git commit -q -m initial
+export BEX_AGENT_COMMAND=claude-code-acp
+export BEX_AGENT_ARGS="[]"
+export BEX_AGENT_CWD="$repo"
+export BEX_AGENT_PROMPT="Create model-authenticated.txt containing exactly model authenticated, then commit all changes with message agent: real model proof."
+export BEX_AGENT_LISTEN_HOST=127.0.0.1
+export BEX_AGENT_LISTEN_PORT=8789
+export BEX_AGENT_STATUS_FILE="$repo/.proof/status.json"
+export BEX_AGENT_SESSION_LOG="$repo/.proof/session.jsonl"
+export BEX_AGENT_TURN_TIMEOUT_MS=900000
+export BEX_AGENT_EXIT_AFTER_TURN=1
+bex-agent-driver
+grep -q "\"state\":\"succeeded\"" .proof/status.json
+test -f model-authenticated.txt
+test "$(git log -1 --format=%s)" = "agent: real model proof"
+leak_report="$repo/.proof/model-key-leaks"
+find /workspace /home/bex /tmp /var/tmp /var/log/bex-agent /var/run/bex-agent \
+  -type f -readable -exec grep -a -l -F -- "$BEX_AGENT_MODEL_API_KEY" {} + \
+  > "$leak_report" 2>/dev/null || true
+test ! -s "$leak_report"
+unset BEX_AGENT_MODEL_API_KEY
+' >"$fixture_dir/agent-model-turn.log" 2>&1; then
+      fail "model-authenticated ACP turn failed inside the real agent sandbox"
+    fi
+    live_agent_model_api_key=""
+    pass "tenant model credential authenticated the bundled ACP agent and was scrubbed"
+  fi
+  pass "agent template committed a headless turn; gateway SSE/ACP ingress is identity-scoped"
+fi
+
 kubectl -n "$BEX_WORKSPACE_A" run "$hosting_pod" --image "$python_image" --restart Never \
   --labels "app.bex.co/m35-fixture=$run_id" --command -- python3 -m http.server 18081 >/dev/null
 kubectl -n "$BEX_WORKSPACE_A" wait --for=condition=Ready "pod/$hosting_pod" --timeout=180s >/dev/null

@@ -15,6 +15,11 @@ set -euo pipefail
 #   BEX_API_URL=https://api.example.com
 #   KUBECONFIG=/path/to/app-cluster-admin.kubeconfig
 #
+# Optional after deploying w3/m37:
+#   BEX_VERIFY_AGENT_DRIVER=1
+#   BEX_VERIFY_AGENT_MODEL=1
+#   BEX_LIVE_AGENT_MODEL_API_KEY=<load from tenants/<ws>/agent-model-keys/<provider>>
+#
 # Cluster defaults can be overridden for non-production installations:
 #   BEX_AUTH_NAMESPACE=auth
 #   BEX_API_NAMESPACE=bex-system
@@ -316,6 +321,9 @@ BEX_WS_A_OWNER_TOKEN="$token_owner_a" \
 BEX_WS_A_MEMBER_TOKEN="$token_member_b" \
 BEX_WS_A_ADMIN_TOKEN="$token_admin_a" \
 BEX_WS_B_OWNER_TOKEN="$token_owner_b" \
+BEX_VERIFY_AGENT_DRIVER="${BEX_VERIFY_AGENT_DRIVER:-0}" \
+BEX_VERIFY_AGENT_MODEL="${BEX_VERIFY_AGENT_MODEL:-0}" \
+BEX_LIVE_AGENT_MODEL_API_KEY="${BEX_LIVE_AGENT_MODEL_API_KEY:-}" \
   bash scripts/verify-sandbox-isolation.sh
 
 echo "PASS: disposable principals/workspaces provisioned, matrix passed, cleanup armed"

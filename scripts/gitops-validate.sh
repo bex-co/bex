@@ -966,6 +966,18 @@ if [ -f "$EGRESS" ]; then
   [ "$sandbox_execd_ingress" = "sandbox:opensandbox-system:opensandbox-server:opensandbox-server:TCP:44772" ] \
     || { echo "FAIL: sandbox execd ingress identity is '$sandbox_execd_ingress'" >&2; fail=1; }
 
+  agent_driver_ingress="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-agent-driver-ingress") |
+      [.spec.endpointSelector.matchLabels."app.bex.co/regime",
+       .spec.ingress[0].fromEndpoints[0].matchLabels."k8s:io.kubernetes.pod.namespace",
+       .spec.ingress[0].fromEndpoints[0].matchLabels."k8s:io.cilium.k8s.policy.serviceaccount",
+       .spec.ingress[0].fromEndpoints[0].matchLabels."k8s:app.kubernetes.io/name",
+       .spec.ingress[0].toPorts[0].ports[0].protocol,
+       .spec.ingress[0].toPorts[0].ports[0].port] | join(":")' \
+    "$EGRESS" | tr -d '\n')"
+  [ "$agent_driver_ingress" = "sandbox:bex-system:bex-ssh-gateway:bex-ssh-gateway:TCP:8787" ] \
+    || { echo "FAIL: agent-driver ingress identity is '$agent_driver_ingress'" >&2; fail=1; }
+
   server_ingress="$(yq -N \
     'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-server-ingress") |
       [.spec.endpointSelector.matchLabels."k8s:io.kubernetes.pod.namespace",
@@ -1406,6 +1418,10 @@ for required in \
   'build-args: OPENSANDBOX_SERVER_VERSION=0.2.2' \
   '${{ env.OPENSANDBOX_IMAGE }}@${{ steps.build_opensandbox.outputs.digest }}' \
   '${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}@${{ steps.build_opensandbox_controller.outputs.digest }}' \
+  'file: lego/agent-image/Dockerfile' \
+  '${{ env.AGENT_SANDBOX_IMAGE }}@${{ steps.build_agent_sandbox.outputs.digest }}' \
+  'AGENT_DIGEST: ${{ steps.build_agent_sandbox.outputs.digest }}' \
+  'grep -qF "value: ${AGENT_SANDBOX_IMAGE}@${AGENT_DIGEST}"' \
   'group: bex-production-deploy' \
   'bash scripts/deploy-superseded.sh "$GITHUB_SHA"' \
   'refusing stale digest write-back' \
@@ -1434,6 +1450,8 @@ grep -qF '"path":"/data/api_key"' scripts/opensandbox-server-secret.sh \
   || { echo "FAIL: OpenSandbox Secret convergence no longer removes the legacy shared api_key" >&2; fail=1; }
 bash -n scripts/verify-sandbox-isolation.sh \
   || { echo "FAIL: verify-sandbox-isolation.sh is not valid shell" >&2; fail=1; }
+python3 -c 'compile(open("scripts/m37-acp-ws-probe.py", encoding="utf-8").read(), "scripts/m37-acp-ws-probe.py", "exec")' \
+  || { echo "FAIL: m37-acp-ws-probe.py is not valid Python" >&2; fail=1; }
 for required_probe in \
   'api.github.com' \
   '169.254.169.254' \
@@ -1475,6 +1493,22 @@ for required_probe in \
   'hubble observe'; do
   grep -qF "$required_probe" scripts/verify-sandbox-isolation.sh \
     || { echo "FAIL: sandbox isolation verifier lost probe: $required_probe" >&2; fail=1; }
+done
+for required_agent_probe in \
+  'BEX_VERIFY_AGENT_DRIVER' \
+  'BEX_VERIFY_AGENT_MODEL' \
+  '\"template\":\"agent\"' \
+  'peer sandbox to agent driver' \
+  'gateway label spoof on the default ServiceAccount to agent driver' \
+  'gateway workload identity to agent driver health endpoint' \
+  'gateway workload identity to agent driver UI-message SSE endpoint' \
+  'm37-acp-ws-probe.py' \
+  'agent: complete task' \
+  'agent: real model proof' \
+  'test-model-key-never-log' \
+  'agent template committed a headless turn'; do
+  grep -qF "$required_agent_probe" scripts/verify-sandbox-isolation.sh \
+    || { echo "FAIL: sandbox isolation verifier lost m37 probe: $required_agent_probe" >&2; fail=1; }
 done
 
 # Untrusted-execution boundary (w2/m59, ADR039 O-01/O-02). These assertions are

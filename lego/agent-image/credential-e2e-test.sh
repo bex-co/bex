@@ -60,6 +60,18 @@ session_env=(
 
 docker run --name "$agent_container" --network "$network" "${session_env[@]}" \
   --entrypoint /bin/sh "$agent_image" -ec '
+    bex-agent-driver >/tmp/bex-agent-driver.log 2>&1 &
+    driver_pid=$!
+    trap "kill $driver_pid >/dev/null 2>&1 || true" EXIT
+    ready=0
+    for _ in $(seq 1 50); do
+      if curl -fsS http://127.0.0.1:8787/healthz >/dev/null 2>&1; then
+        ready=1
+        break
+      fi
+      sleep 0.1
+    done
+    test "$ready" = 1
     git clone https://github.com/octo/repo.git work
     cd work
     git config user.name "bex agent"

@@ -1,0 +1,21 @@
+{
+  "name": "@bex/agent-session-driver",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "bex-agent-driver": "src/main.mjs"
+  },
+  "scripts": {
+    "test": "node --test --test-concurrency=1"
+  },
+  "dependencies": {
+    "@agentclientprotocol/sdk": "0.14.1",
+    "@mcpc-tech/acp-ai-provider": "0.2.9",
+    "ai": "6.0.237",
+    "ws": "8.21.1"
+  }
+}

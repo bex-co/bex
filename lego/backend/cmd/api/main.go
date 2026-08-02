@@ -85,6 +85,19 @@ func envOr(k, def string) string {
 	return def
 }
 
+func sandboxTemplateRegistry(baseImage, agentImage string) map[string]sandbox.Template {
+	return map[string]sandbox.Template{
+		"base": {
+			Image: baseImage, Entrypoint: []string{"sleep", "infinity"},
+			CPU: "500m", Memory: "512Mi",
+		},
+		"agent": {
+			Image: agentImage, Entrypoint: []string{"bex-agent-driver"},
+			CPU: "2", Memory: "4Gi",
+		},
+	}
+}
+
 // requireCPAuth fails closed for the internal control-plane API (:8091): it
 // grants workspace-admin and cross-tenant writes, so an empty BEX_CP_TOKEN
 // (no bearer gate) must abort startup rather than silently serve open. The
@@ -594,11 +607,10 @@ func main() {
 	// wired as they land; for now a single default "base" template.
 	if osURL := os.Getenv("BEX_OPENSANDBOX_URL"); osURL != "" {
 		deps.SandboxClient = sandbox.NewClient(osURL)
-		baseSandboxImage := envOr("BEX_SANDBOX_IMAGE", "docker.io/library/alpine:3")
-		deps.SandboxTemplates = map[string]sandbox.Template{
-			"base":  {Image: baseSandboxImage, Entrypoint: []string{"sleep", "infinity"}, CPU: "500m", Memory: "512Mi"},
-			"agent": {Image: envOr("BEX_AGENT_SESSION_IMAGE", baseSandboxImage), Entrypoint: []string{"sleep", "infinity"}, CPU: "500m", Memory: "512Mi"},
-		}
+		deps.SandboxTemplates = sandboxTemplateRegistry(
+			envOr("BEX_SANDBOX_IMAGE", "docker.io/library/alpine:3"),
+			envOr("BEX_AGENT_SESSION_IMAGE", "ghcr.io/bex-co/bex-agent-sandbox:latest"),
+		)
 		deps.SandboxDefaultPlan = sandbox.PlanStarter
 		// The Render CLI's `ea sandbox create` sends no template (no such flag), so
 		// an empty template resolves to this registered default (w3/m32 t009).

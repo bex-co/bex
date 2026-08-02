@@ -24,6 +24,13 @@
 !backend/internal/pricing/pricing.yaml
 !backend/internal/api/openapi/render-public-api-1.json
 
-# The separate agent-template Dockerfile copies its credential hygiene hooks.
+# ADR047's separate agent-template Dockerfile shares this root context so it can
+# copy the credential helper/hygiene hooks and pinned production driver package;
+# tests and fixtures are not copied into the production image.
 !agent-image/
-!agent-image/**
+!agent-image/bex-pre-snapshot
+!agent-image/driver/
+!agent-image/driver/src/
+!agent-image/driver/src/*.mjs
+!agent-image/driver/package.json
+!agent-image/driver/package-lock.json

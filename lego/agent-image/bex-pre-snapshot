@@ -7,6 +7,16 @@ set -eu
 scrub_root="${BEX_SCRUB_ROOT:-}"
 scrub_home="${BEX_SCRUB_HOME:-/home/bex}"
 
+# Production agent sessions run the driver on loopback. Ask it to scrub the
+# exact model credential from its configured persisted roots and forget the
+# in-memory copy before touching the enumerated Git credential locations below.
+# The root override is reserved for the hermetic filesystem-only unit test.
+if [ -z "$scrub_root" ]; then
+  curl --fail --silent --show-error --request POST \
+    "${BEX_AGENT_DRIVER_SCRUB_URL:-http://127.0.0.1:8787/snapshot/scrub}" \
+    >/dev/null
+fi
+
 credential_files="
 ${scrub_home}/.git-credentials
 ${scrub_home}/.config/git/credentials

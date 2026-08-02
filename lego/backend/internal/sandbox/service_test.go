@@ -129,7 +129,8 @@ func TestCreateUsesTemplateImageAndEchoesPlan(t *testing.T) {
 		t.Errorf("create image = %q, want node:20", got.Image.URI)
 	}
 	if got.Metadata[metadataOwner] != "id-a" || got.Metadata[metadataWorkspace] != "tea-a" ||
-		got.Metadata[metadataNetworkPolicy] != string(NetworkPolicyDenyAll) || got.Metadata[metadataRegime] != metadataSandboxRegime {
+		got.Metadata[metadataNetworkPolicy] != string(NetworkPolicyDenyAll) || got.Metadata[metadataTemplate] != "node" ||
+		got.Metadata[metadataRegime] != metadataSandboxRegime {
 		t.Errorf("security metadata = %#v", got.Metadata)
 	}
 	if sb.NetworkPolicy == nil || sb.NetworkPolicy.Default != NetworkPolicyDenyAll {
