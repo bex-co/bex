@@ -85,7 +85,7 @@ Two ways, same field write:
 curl -X POST -H "Authorization: Bearer $TOKEN" https://api.bex.co/v1/services/eden-cms-v2/restart
 ```
 
-**These verbs do not belong in `bex.yml`**: the manifest declares how the app runs (repo config); restart/suspend are runtime intent with no home in git.
+**These verbs do not belong in `render.yaml`**: the manifest declares how the app runs (repo config); restart/suspend are runtime intent with no home in git.
 
 ## Alternatives considered
 

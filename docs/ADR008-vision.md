@@ -13,7 +13,7 @@ The next wave of deployments won't be typed by humans. Agents already scaffold a
 A PaaS built for agents must be:
 
 - **API-first** — every action a human can take is an API call. No dashboard-only features, ever.
-- **Deterministic** — declarative intent (`App` CRs, `bex.yml`) in, converged state out. An agent can retry, diff, and reason about it.
+- **Deterministic** — declarative intent (`App` CRs, `render.yaml`) in, converged state out. An agent can retry, diff, and reason about it.
 - **Machine-readable** — state is structured (`phase` / `revision` / `url`), not prose in a web page.
 
 Render compatibility is part of the same thesis: agents (and their toolchains) already know Render's API shapes. bex speaks them, so existing tooling and habits transfer instead of restarting from zero.
@@ -25,7 +25,7 @@ Render compatibility is part of the same thesis: agents (and their toolchains) a
 | 1 | **Render-compatible REST + GraphQL** — `bex-api` serves Render's `/v1/services` shapes (verified against Render's OpenAPI spec) and its dashboard GraphQL ([ADR006-bex-api.md](ADR006-bex-api.md)) | ✅ shipped |
 | 2 | **Agent-readable state** — `App` CR `status.phase` / `status.revision` / `status.url`; `kubectl get apps.app.bex.co` is the dashboard. Treated as a stable contract | ✅ shipped |
 | 3 | **MCP server** — the bex-api verbs (list / get / restart / suspend / resume / plan-change / logs / metrics / env-vars / api-keys) exposed over MCP (`/mcp` + a stdio mode); by design just another thin adapter over the same core ([ADR006-bex-api.md](ADR006-bex-api.md)) | ✅ shipped |
-| 4 | **Deploy-from-chat** — one API call takes a repo + `bex.yml` to a live URL, so "deploy this" is a single agent action (needs the control plane, [ADR003-control-plane.md](ADR003-control-plane.md)) | 🔜 planned |
+| 4 | **Deploy-from-chat** — one API call takes a repo + `render.yaml` to a live URL, so "deploy this" is a single agent action (needs the control plane, [ADR003-control-plane.md](ADR003-control-plane.md)) | 🔜 planned |
 | 5 | **E2B-compatible sandboxes** — the opensandbox runtime's real pause/resume as hosted execution environments for agents, with idle sandboxes hibernated ("sleep = free") | 🔜 planned |
 
 Pillars 1–3 mean an agent can already operate bex today natively — MCP, `curl`, or `kubectl`. Pillars 4–5 close the loop from "operate" to "create".
