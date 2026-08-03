@@ -1,6 +1,6 @@
 # ADR049 — `render.yaml` is bex's Blueprint contract
 
-**Status:** Accepted 2026-08-02; implementation handed to `w1/m63`.
+**Status:** Accepted 2026-08-02; implemented and production-verified by `w1/m63` on 2026-08-03.
 
 ---
 
