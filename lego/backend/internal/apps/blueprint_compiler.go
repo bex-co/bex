@@ -177,6 +177,7 @@ func blueprintCapabilityProblemsAt(value any, path []string, locations map[strin
 	}
 	var problems []BlueprintSourceProblem
 	problems = append(problems, blueprintPrebuiltImageProblems(object, path, locations, context)...)
+	problems = append(problems, blueprintServiceRuntimeProblems(object, path, locations, context)...)
 	for field, child := range object {
 		fieldPath := append(append([]string(nil), path...), field)
 		pointer := renderSchemaPointer(fieldPath)
@@ -204,6 +205,60 @@ func blueprintCapabilityProblemsAt(value any, path []string, locations map[strin
 		problems = append(problems, blueprintCapabilityProblemsAt(child, fieldPath, locations, registry, childContext)...)
 	}
 	return problems
+}
+
+// blueprintServiceRuntimeProblems covers fields whose meaning depends on a
+// selected build strategy. The registry classifies the field as translated
+// because native runtimes implement it; this check prevents a Dockerfile or
+// prebuilt-image service from retaining the field without an effect.
+func blueprintServiceRuntimeProblems(object map[string]any, path []string, locations map[string]BlueprintSourceLocation, context blueprintCapabilityContext) []BlueprintSourceProblem {
+	if context.kind != blueprintCapabilityServer && context.kind != blueprintCapabilityCron && context.kind != blueprintCapabilityStatic {
+		return nil
+	}
+	runtime, _ := object["runtime"].(string)
+	runtime = strings.ToLower(strings.TrimSpace(runtime))
+	_, hasImage := object["image"]
+	var problems []BlueprintSourceProblem
+	for _, rule := range []struct {
+		field   string
+		invalid bool
+		message string
+	}{
+		{
+			field:   "buildCommand",
+			invalid: !hasImage && !blueprintNativeRuntime(runtime),
+			message: "buildCommand requires a native runtime (elixir, go, node, python, ruby, or rust); bex does not run it for Dockerfile or prebuilt-image services",
+		},
+		{
+			field:   "dockerCommand",
+			invalid: runtime != "docker",
+			message: "dockerCommand requires runtime: docker",
+		},
+	} {
+		if _, declared := object[rule.field]; !declared || !rule.invalid {
+			continue
+		}
+		fieldPath := append(append([]string(nil), path...), rule.field)
+		pointer := renderSchemaPointer(fieldPath)
+		location := lookupBlueprintLocation(pointer, locations)
+		problems = append(problems, BlueprintSourceProblem{
+			Code:    "BLUEPRINT_CAPABILITY_INCOMPATIBLE",
+			Path:    pointer,
+			Message: rule.message,
+			Line:    location.Line,
+			Column:  location.Column,
+		})
+	}
+	return problems
+}
+
+func blueprintNativeRuntime(runtime string) bool {
+	switch runtime {
+	case "elixir", "go", "node", "python", "ruby", "rust":
+		return true
+	default:
+		return false
+	}
 }
 
 // blueprintPrebuiltImageProblems rejects source-build settings on a service
