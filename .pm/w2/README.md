@@ -1,6 +1,6 @@
-# w2 — AI-native surface (worker2)
+# w2 — project workstream (worker2)
 
-**Worker:** worker2 The vision's differentiator (`docs/ADR008-vision.md` pillars 3–5), owned by no workstream today. w1 builds the platform/control-plane; w2 makes it _native_ for agents. Ordered by dependency: MCP first (thin adapter, no new backend), then deploy-from-chat (needs w1's control plane + in-cluster builds), then hosted sandboxes.
+**Worker:** worker2. This is a general-purpose bex workstream. It may take work anywhere in the project; the milestones below are scheduled work and historical records, not a permanent purpose, specialty, or ownership boundary.
 
 ## Local dev environment
 

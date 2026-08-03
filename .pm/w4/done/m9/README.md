@@ -27,7 +27,7 @@
 ## Source + Goal linkage
 
 - **Source:** promoted from inbox note `w4/001` (→ `done/005.md`; originally deferred from the reverted, never-committed dashboard-as-OAuth2-client attempt of 2026-07-07) + user directive 2026-07-07: "reuse the existing dashboard/auth module — Kratos login for the dashboard itself, and third-party clients like the Claude Code agent via OAuth 2.1". Research basis: Kratos native `oauth2_provider` integration (Kratos accepts Hydra login challenges itself); IETF `draft-ietf-oauth-browser-based-apps`; Ory guidance (first-party = Kratos sessions, Hydra = third-party/machine); MCP authorization spec (OAuth 2.1 + DCR + RFC 9728).
-- **Goal linkage:** w4 MISSION-IAM (identity for bex) × `docs/ADR008-vision.md` pillars 3–5 (agent-native): agents become first-class OAuth clients instead of holders of hand-minted API keys. Reuses m1 (Hydra+Kratos live) and m2 (introspection live).
+- **Goal linkage:** Identity and OAuth for bex × `docs/ADR008-vision.md` pillars 3–5 (agent-native): agents become first-class OAuth clients instead of holders of hand-minted API keys. Reuses m1 (Hydra+Kratos live) and m2 (introspection live).
 - **Expected outcome:** a Claude-Code-shaped MCP client can self-register (DCR), send its user through bex's own login page once, and call bex-api with a user-consented Bearer token — while the dashboard's own auth remains byte-identical Kratos sessions.
 - **Why now:** the MCP server (w2/m1) is live but every agent needs a manually provisioned API key; the MCP authorization spec standardizes exactly this flow; the substrate (m1/m2) is deployed; and the reverted first attempt already produced the design research — the corrected path is cheap and unblocks w2's agent story.
 

@@ -15,7 +15,7 @@ allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(cat:*)
 
 | Level | Path | Meaning | Effort |
 | --- | --- | --- | --- |
-| Workstream | `wN/` (`w1`, `w2`, `w3`, …) | a themed track / "worker" roadmap; `README.md` + inbox notes | — |
+| Workstream | `wN/` (`w1`, `w2`, `w3`, …) | a general-purpose worker queue; `README.md` + inbox notes | — |
 | Inbox note | `wN/NNN.md` (`w1/005.md`) | one idea or a **sub-hour** unit of work, plain markdown | ≤ ~1h |
 | Milestone | `wN/mN/` (`m1`, `m2`, …) | a shippable chunk: `README.md` + task files | **> ~1h**, multiple tasks |
 | Task | `wN/mN/tNNN.md` | a single unit | tens of minutes |
@@ -23,6 +23,7 @@ allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(cat:*)
 ## Rules (enforce every time)
 
 - **Respect the anti-goals.** Read `.pm/DO_NOT_DO.md` before proposing or materializing work. Do not create milestones/tasks that conflict with it.
+- **Workers are general-purpose.** Every `wN` may take work anywhere in the bex project. Workstream placement records scheduling and history, not a permanent mission, specialty, component boundary, or ownership claim. Do not assign themes or missions to workstreams, and do not use prior milestones to reject otherwise appropriate work.
 - **Sizing rule.** A milestone must be **> ~1 hour of work across more than one task**. If a chunk is ≤ ~1h (tens of minutes, a task or two), do **NOT** create an `mN/` directory — record it as a loose inbox note `wN/NNN.md`. Tasks take tens of minutes; milestones take hours.
 - **IDs must match the path.** A task's `id: wN/mN/tNNN` frontmatter must equal the directory it lives in. Never create a milestone dir whose path disagrees with the IDs inside it (the existing `w2/m1`-holds-`w1/m1`-IDs drift is the anti-example — if you touch it, flag/repair, don't copy it).
 - **Keep status in sync** across all three places it lives: the workstream `README.md` milestone checkbox, the milestone `README.md` `**Status:**` line + the `— DONE` marker in the task table, and each task's `status:` frontmatter.
@@ -52,9 +53,9 @@ Read the tree (`find .pm -type f -name '*.md'`, skipping `done/`) and `.pm/DO_NO
 
 Touch no files.
 
-### `new workstream <title>`
+### `new workstream`
 
-Create the next free `wN/` with `README.md` from the workstream template below.
+Create the next free `wN/` with a role-neutral `README.md` from the workstream template below.
 
 ### `add <wN> <idea…>`
 
@@ -85,9 +86,9 @@ Show the intended moves before mutating if the user passed `DRY_RUN=1`.
 ### Workstream `README.md`
 
 ```markdown
-# wN — <roadmap title> (<worker>)
+# wN — project workstream (<worker>)
 
-**Worker:** <worker> <one-line provenance / ordering rationale>
+**Worker:** <worker>. This is a general-purpose bex workstream. It may take work anywhere in the project; the milestones below are scheduled work and historical records, not a permanent purpose, specialty, or ownership boundary.
 
 ## Milestones
 

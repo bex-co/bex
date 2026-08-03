@@ -1,6 +1,6 @@
-# w1 — bex platform roadmap (worker1)
+# w1 — project workstream (worker1)
 
-**Worker:** worker1 Converted from the `.tmp/` backlog (items 001–010) on 2026-07-02. Ordered roughly by priority/dependency: de-risk the live system, build the source-of-truth control plane, then the elastic/cost machinery, then pipeline, isolation, and hardening.
+**Worker:** worker1. This is a general-purpose bex workstream. It may take work anywhere in the project; the milestones below are scheduled work and historical records, not a permanent purpose, specialty, or ownership boundary.
 
 ## Local dev environment
 

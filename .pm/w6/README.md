@@ -1,6 +1,6 @@
-# w6 — Workspaces: Render workspace lifecycle parity (worker6)
+# w6 — project workstream (worker6)
 
-**Worker:** worker6 Created 2026-07-08 from user request + deep-research report ([RESEARCH-workspaces.md](RESEARCH-workspaces.md)). w1/m9 mints the tenant substrate (one auto-created workspace per identity, OpenFGA enforced); w6 makes workspaces a real product surface: user-initiated lifecycle (create/rename/delete, multi-workspace per user, plan limits), the Render `owners` read API + MCP workspace tools, and the dashboard flows (`/new/workspace`, switcher, settings). Composes with existing authn (Kratos/Hydra), authz (OpenFGA `workspace:tea-<id>`), and the control-plane Postgres — no parallel workspace store. Ordered by dependency: model + verbs → API surface → dashboard UX.
+**Worker:** worker6. This is a general-purpose bex workstream. It may take work anywhere in the project; the milestones below are scheduled work and historical records, not a permanent purpose, specialty, or ownership boundary.
 
 ## Local dev environment
 

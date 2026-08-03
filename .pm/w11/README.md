@@ -1,6 +1,6 @@
-# w11 — Mobile supervision & agent mission control (worker11)
+# w11 — project workstream (worker11)
 
-**Worker:** worker11 Created from the 2026-08-02 user request to seed `mobile/` from the mature Beancount Expo client and implement ADR048's supervision-first, agent-differentiated phone experience. Ordered foundation → secure client → supervision → safe actions/push → agent delegation/attach → Tier 2; native-only store features remain trigger-gated.
+**Worker:** worker11. This is a general-purpose bex workstream. It may take work anywhere in the project; the milestones below are scheduled work and historical records, not a permanent purpose, specialty, or ownership boundary.
 
 ## Milestones
 
