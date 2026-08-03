@@ -144,13 +144,14 @@ type BlueprintValidationError struct {
 // does not resolve the caller's current resources, so TotalActions is the
 // number of declared resources—not a create/update/no-op diff.
 type BlueprintValidationPlan struct {
-	Mode          string   `json:"mode"`
-	Services      []string `json:"services,omitempty"`
-	Databases     []string `json:"databases,omitempty"`
-	KeyValue      []string `json:"keyValue,omitempty"`
-	EnvGroups     []string `json:"envGroups,omitempty"`
-	SyncFalseVars []string `json:"syncFalseVars,omitempty"`
-	TotalActions  int      `json:"totalActions"`
+	Mode          string                `json:"mode"`
+	Services      []string              `json:"services,omitempty"`
+	Databases     []string              `json:"databases,omitempty"`
+	KeyValue      []string              `json:"keyValue,omitempty"`
+	EnvGroups     []string              `json:"envGroups,omitempty"`
+	SyncFalseVars []string              `json:"syncFalseVars,omitempty"`
+	TotalActions  int                   `json:"totalActions"`
+	Actions       []BlueprintPlanAction `json:"actions,omitempty"`
 }
 
 // BlueprintValidation is the result of a dry-run validate.
@@ -206,13 +207,13 @@ func (s *Service) ValidateBlueprint(ctx context.Context, ownerID, bexYAML string
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return BlueprintValidation{}, err
 	}
-	return s.blueprintValidationFor("", "", bexYAML)
+	return s.blueprintValidationFor(ctx, "", "", bexYAML)
 }
 
 // blueprintValidationFor is the stateless dry-run core shared by
 // ValidateBlueprint and PreviewBlueprint. repo/branch feed the same parse a
 // create would run; both empty for a manifest-only validate.
-func (s *Service) blueprintValidationFor(repo, branch, bexYAML string) (BlueprintValidation, error) {
+func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexYAML string) (BlueprintValidation, error) {
 	source, ir, problems := CompileBlueprintIR(bexYAML)
 	if len(problems) > 0 {
 		return BlueprintValidation{Errors: blueprintCompilerValidationErrors(problems)}, nil
@@ -223,6 +224,17 @@ func (s *Service) blueprintValidationFor(repo, branch, bexYAML string) (Blueprin
 	}
 	if err == nil {
 		plan := blueprintValidationPlanFromIR(ir, st)
+		if actionPlan, available, planErr := s.blueprintActionPlan(ctx, ir, st); planErr != nil {
+			if !errors.Is(planErr, core.ErrBadRequest) {
+				return BlueprintValidation{}, planErr
+			}
+			msg := strings.TrimPrefix(planErr.Error(), "bad request: ")
+			return BlueprintValidation{Errors: []BlueprintValidationError{blueprintValidationError(ir, msg)}}, nil
+		} else if available {
+			plan.Mode = "current_state"
+			plan.Actions = actionPlan.Actions
+			plan.TotalActions = len(actionPlan.Actions)
+		}
 		return BlueprintValidation{Valid: true, Plan: &plan}, nil
 	}
 	if !errors.Is(err, core.ErrBadRequest) {
@@ -298,7 +310,7 @@ func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, f
 		}
 		return BlueprintPreview{Error: msg}, nil
 	}
-	validation, err := s.blueprintValidationFor(repo, branch, contents)
+	validation, err := s.blueprintValidationFor(ctx, repo, branch, contents)
 	if err != nil {
 		return BlueprintPreview{}, err
 	}
@@ -345,6 +357,9 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 		return BlueprintView{}, parseErr
 	}
 	if err := s.requireStackPaymentMethod(ctx, parsed); err != nil {
+		return BlueprintView{}, err
+	}
+	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed); err != nil {
 		return BlueprintView{}, err
 	}
 
@@ -474,11 +489,14 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 	var prepared *parsedStack
 
 	if bexYAML != "" {
-		parsed, _, parseErr := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: bexYAML})
+		parsed, ir, parseErr := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: bexYAML})
 		if parseErr != nil {
 			return SyncBlueprintResult{}, parseErr
 		}
 		if err := s.requireStackPaymentMethod(ctx, parsed); err != nil {
+			return SyncBlueprintResult{}, err
+		}
+		if _, _, err := s.blueprintActionPlan(ctx, ir, parsed); err != nil {
 			return SyncBlueprintResult{}, err
 		}
 		updated, err := s.Blueprints.UpsertBlueprint(ctx, store.Blueprint{
@@ -500,9 +518,12 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 	} else if s.GitFetcher != nil && b.Repo != "" {
 		if contents, sha, fetchErr := s.GitFetcher.FetchBlueprintFile(ctx, tenantID, b.Repo, b.Branch, b.Path); fetchErr == nil {
 			commitSHA = sha
-			if parsed, _, parseErr := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: contents}); parseErr == nil {
+			if parsed, ir, parseErr := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: contents}); parseErr == nil {
 				if pmErr := s.requireStackPaymentMethod(ctx, parsed); pmErr != nil {
 					return SyncBlueprintResult{}, pmErr
+				}
+				if _, _, planErr := s.blueprintActionPlan(ctx, ir, parsed); planErr != nil {
+					return SyncBlueprintResult{}, planErr
 				}
 				if updated, err := s.Blueprints.UpsertBlueprint(ctx, store.Blueprint{
 					ID:       b.ID,

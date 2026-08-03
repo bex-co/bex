@@ -97,24 +97,24 @@ const (
 // omits values: plan output must remain safe for `value`, generated env vars,
 // and secret references.
 type BlueprintFieldChange struct {
-	Path string
+	Path string `json:"path"`
 }
 
 // BlueprintPlanAction is a deterministic authorized-current-state decision.
 type BlueprintPlanAction struct {
-	Operation     BlueprintPlanOperation
-	Kind          BlueprintResourceKind
-	Name          string
-	SourcePath    string
-	ResourceID    string
-	ChangedFields []BlueprintFieldChange
-	Message       string
+	Operation     BlueprintPlanOperation `json:"operation"`
+	Kind          BlueprintResourceKind  `json:"kind"`
+	Name          string                 `json:"name"`
+	SourcePath    string                 `json:"sourcePath"`
+	ResourceID    string                 `json:"resourceId,omitempty"`
+	ChangedFields []BlueprintFieldChange `json:"changedFields,omitempty"`
+	Message       string                 `json:"message,omitempty"`
 }
 
 // BlueprintPlan is the shared planning result. It is intentionally distinct
 // from the older declaration-count validation summary.
 type BlueprintPlan struct {
-	Actions []BlueprintPlanAction
+	Actions []BlueprintPlanAction `json:"actions"`
 }
 
 // BlueprintCurrentResource is the non-secret readable snapshot required for
@@ -130,6 +130,16 @@ type BlueprintCurrentResource struct {
 // tests and feature-specific planners can supply a minimal authorized view.
 type BlueprintStateResolver interface {
 	ResolveBlueprintResource(context.Context, BlueprintResourceKind, string) (BlueprintCurrentResource, bool, error)
+}
+
+// BlueprintActionResolver is an optional richer resolver. It lets a
+// production planner reuse the same presence-aware policies that execution
+// uses, rather than comparing raw YAML field names to unrelated CRD names.
+// The generic resolver remains useful for pure IR tests and callers with a
+// canonical field snapshot.
+type BlueprintActionResolver interface {
+	BlueprintStateResolver
+	PlanBlueprintResource(context.Context, BlueprintResourceIR, BlueprintCurrentResource, bool) (BlueprintPlanAction, error)
 }
 
 // NormalizeBlueprintIR turns a compiler-validated source tree into all root,
@@ -268,6 +278,23 @@ func PlanBlueprintIR(ctx context.Context, ir BlueprintIR, resolver BlueprintStat
 		current, exists, err := resolver.ResolveBlueprintResource(ctx, resource.Kind, resource.Name)
 		if err != nil {
 			return BlueprintPlan{}, fmt.Errorf("resolve %s %q: %w", resource.Kind, resource.Name, err)
+		}
+		if actionResolver, ok := resolver.(BlueprintActionResolver); ok {
+			action, err := actionResolver.PlanBlueprintResource(ctx, resource, current, exists)
+			if err != nil {
+				return BlueprintPlan{}, fmt.Errorf("plan %s %q: %w", resource.Kind, resource.Name, err)
+			}
+			if action.Kind == "" {
+				action.Kind = resource.Kind
+			}
+			if action.Name == "" {
+				action.Name = resource.Name
+			}
+			if action.SourcePath == "" {
+				action.SourcePath = resource.SourcePath
+			}
+			plan.Actions = append(plan.Actions, action)
+			continue
 		}
 		action := BlueprintPlanAction{Kind: resource.Kind, Name: resource.Name, SourcePath: resource.SourcePath}
 		if !exists {
