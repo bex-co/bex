@@ -161,9 +161,9 @@ func TestValidateBlueprintAcceptsAllFiveForms(t *testing.T) {
 }
 
 // TestValidateFiveFormsCrossSurface asserts the five w1/m35 forms validate
-// identically on every surface (t007): REST, GraphQL, and the core verb the MCP
-// validate_bex_yml tool calls all route through the one ValidateBlueprint →
-// parseStack core, so no surface can drift on which fields it accepts.
+// identically on every surface: REST, GraphQL, and the actual MCP tool. Each
+// adapter must delegate to the same strict compiler rather than merely share a
+// convenient Go helper in a unit test.
 func TestValidateFiveFormsCrossSurface(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
 
@@ -191,6 +191,46 @@ func TestValidateFiveFormsCrossSurface(t *testing.T) {
 	gv := res.Data.(map[string]any)["validateBlueprint"].(map[string]any)
 	if gv["valid"] != true {
 		t.Errorf("GraphQL validate: want valid=true, got %+v", gv)
+	}
+
+	call, cleanup := appsMCPClient(t, svc)
+	defer cleanup()
+	mcpResult := call("validate_bex_yml", map[string]any{"bexYaml": fiveFieldManifest})
+	if mcpResult["valid"] != true {
+		t.Errorf("MCP validate: want valid=true, got %+v", mcpResult)
+	}
+
+	const unsupported = `services:
+  - name: api
+    type: web
+    runtime: image
+    image: {url: nginx:1}
+    autoDeployTrigger: checksPass
+`
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(fmt.Sprintf(`{"bexYaml":%q}`, unsupported))))
+	if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil {
+		t.Fatalf("REST unsupported unmarshal: %v", err)
+	}
+	if rest.Valid || len(rest.Errors) != 1 || rest.Errors[0].Code != "BLUEPRINT_CAPABILITY_UNSUPPORTED" || rest.Errors[0].Path == nil || *rest.Errors[0].Path != "services[0].autoDeployTrigger" {
+		t.Errorf("REST unsupported result = %+v", rest)
+	}
+	q = fmt.Sprintf(`{ validateBlueprint(bexYaml: %q) { valid errorDetails { code path } } }`, unsupported)
+	res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: q})
+	if len(res.Errors) > 0 {
+		t.Fatalf("GraphQL unsupported: %v", res.Errors)
+	}
+	gv = res.Data.(map[string]any)["validateBlueprint"].(map[string]any)
+	details, _ := gv["errorDetails"].([]any)
+	if gv["valid"] != false || len(details) != 1 || details[0].(map[string]any)["code"] != "BLUEPRINT_CAPABILITY_UNSUPPORTED" || details[0].(map[string]any)["path"] != "services[0].autoDeployTrigger" {
+		t.Errorf("GraphQL unsupported result = %+v", gv)
+	}
+	mcpResult = call("validate_bex_yml", map[string]any{"bexYaml": unsupported})
+	mcpErrors, _ := mcpResult["errors"].([]any)
+	if mcpResult["valid"] != false || len(mcpErrors) != 1 {
+		t.Errorf("MCP unsupported result = %+v", mcpResult)
+	} else if detail, _ := mcpErrors[0].(map[string]any); detail["code"] != "BLUEPRINT_CAPABILITY_UNSUPPORTED" || detail["path"] != "services[0].autoDeployTrigger" {
+		t.Errorf("MCP unsupported detail = %+v", detail)
 	}
 }
 

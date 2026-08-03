@@ -305,6 +305,16 @@ func blueprintPrebuiltImageProblems(object map[string]any, path []string, locati
 		if _, declared := object[sourceField.blueprintName]; !declared {
 			continue
 		}
+		// Only the two otherwise-supported trigger values are a prebuilt-image
+		// incompatibility. checksPass and an invalid enum already have a more
+		// specific registry/schema diagnosis at this same path; emitting both
+		// would make one edit look like two independently actionable errors.
+		if sourceField.blueprintName == "autoDeployTrigger" {
+			trigger, _ := object[sourceField.blueprintName].(string)
+			if trigger != "commit" && trigger != "off" {
+				continue
+			}
+		}
 		fieldPath := append(append([]string(nil), path...), sourceField.blueprintName)
 		pointer := renderSchemaPointer(fieldPath)
 		location := lookupBlueprintLocation(pointer, locations)
