@@ -514,6 +514,13 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	podSpec.SecurityContext.FSGroup = ptr(int64(0))
 	annotations := map[string]string{
 		"container.apparmor.security.beta.kubernetes.io/buildkit": "unconfined",
+		// The tenant-burst node pool scales from zero for exactly this Job and its
+		// aggressive scale-down-unneeded-time (5m, infra/clusterapi/autoscaler-values.yaml)
+		// is otherwise free to reclaim the node mid-build: BackoffLimit is 1, so a
+		// killed buildkit container fails the whole build outright rather than
+		// retrying (observed in production — a build pod evicted by cluster-autoscaler
+		// every few minutes until BackoffLimitExceeded, with no application-code fault).
+		"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
 	}
 	// Tenant-image signing (w6/006): when a signing key Secret is configured, the
 	// build+push moves to an initContainer and a cosign container signs the pushed
