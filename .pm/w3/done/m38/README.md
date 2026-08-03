@@ -1,6 +1,6 @@
 # w3 · m38 — Per-session repo credentials: gateway-refreshed token, branch-confined (ADR047 D2)
 
-**Worker:** worker3 **Goal:** agent sessions push to tenant repos with per-session GitHub App installation tokens that never land on disk in the sandbox — fetched on demand through a gateway-proxied credential helper, refreshed past the 1h TTL, and server-side confined to `bex-agent/*` branches. **Status:** todo (t001–t006 done; t007 awaits m39/m42/m41's production OpenSandbox proof)
+**Worker:** worker3 **Goal:** agent sessions push to tenant repos with per-session GitHub App installation tokens that never land on disk in the sandbox — fetched on demand through a gateway-proxied credential helper, refreshed past the 1h TTL, and server-side confined to `bex-agent/*` branches. **Status:** done — closed 2026-08-03. DoD verified: `lego/agent-image/credential-e2e-test.sh` PASSED (clone/push/fetch via the helper, >1h token refresh across a logical-clock advance, snapshot/resume with re-fetch, zero token material at rest on either rootfs), and the production OpenSandbox proof the closeout awaited landed — w3/m42's live pause/resume verification plus the m40 54-check live matrix whose agent leg committed a real headless turn on prod with gateway-identity-scoped driver ingress.
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Snapshot hygiene: scrub credentials + tenant key pre-snapshot; re-fetch on resume — **DONE**        | 30m | t003       |
 | t005 | Simplify pass over the credential path — **DONE**                                                  | 20m | t004       |
 | t006 | Test coverage: mint scoping, refresh authz, helper behavior, scrub — **DONE**                       | 45m | t004       |
-| t007 | Closeout                                                                                           | 10m | t006       |
+| t007 | Closeout                                                                                           | 10m | t006       | — **DONE**
 
 ## Definition of done
 

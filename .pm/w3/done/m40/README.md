@@ -1,6 +1,6 @@
 # w3 · m40 — Session egress: phase-split default-deny + per-session allowlist (ADR047 D5)
 
-**Worker:** worker3 **Goal:** agent-session sandboxes keep the `<ws>-sandbox` default-deny posture with a Codex-style phase split — setup may reach package registries, the agent phase reaches only GitHub + the model endpoint (+ the gateway credential hop) — and tenants can widen per session with an explicit allowlist. **Status:** in progress — implementation, simplify, and unit/gitops verification complete (t001–t003, t005, t006); the operator-gated live-substrate run (t004) and closeout (t007) remain, blocked on access to the production gVisor+Cilium cluster.
+**Worker:** worker3 **Goal:** agent-session sandboxes keep the `<ws>-sandbox` default-deny posture with a Codex-style phase split — setup may reach package registries, the agent phase reaches only GitHub + the model endpoint (+ the gateway credential hop) — and tenants can widen per session with an explicit allowlist. **Status:** done — live verification PASSED 2026-08-03 on the prod gVisor/Cilium substrate: 54-check matrix (`scripts/verify-sandbox-isolation-live.sh` with BEX_VERIFY_AGENT_DRIVER=1) green — setup/agent egress phase split, gateway-only driver listener identity scoping, per-session allowlist, and all pre-existing isolation checks. Fixture fixes en route (billing-exclude disposable workspaces for the ADR046 gate; workspace A on the pro tier because the hobby sandbox quota admits only two concurrent sandboxes and the agent leg needs a third; policy-stamp readiness wait). Live finding recorded as `w3/011.md`: quota-denied sandbox creation surfaces as an opaque 502 after bex-api's 30s client timeout instead of a quota error.
 
 ## Tasks (in order)
 
@@ -9,9 +9,9 @@
 | t001 | Setup-phase vs agent-phase policy split (registries open during setup only) — **DONE**     | 60m | —          |
 | t002 | Baseline agent-phase allowlist: GitHub + model endpoint + gateway credential hop — **DONE** | 45m | t001       |
 | t003 | Per-session tenant allowlist widening (API field → policy) — **DONE**                      | 60m | t002       |
-| t004 | Live verification on the gVisor substrate (extend verify-sandbox-isolation-live) | 45m | t003       |
-| t005 | Simplify pass over the egress-policy code — **DONE**                                       | 20m | t004       |
-| t006 | Test coverage: phase transitions, allowlist rendering, deny defaults — **DONE**            | 45m | t004       |
+| t004 | Live verification on the gVisor substrate (extend verify-sandbox-isolation-live) | 45m | t003       | — **DONE**
+| t005 | Simplify pass over the egress-policy code — **DONE**                                       | 20m | t004       | — **DONE**
+| t006 | Test coverage: phase transitions, allowlist rendering, deny defaults — **DONE**            | 45m | t004       | — **DONE**
 | t007 | Closeout                                                                        | 10m | t006       |
 
 ## Definition of done

@@ -256,10 +256,17 @@ fga_tuple_written=true
 bootstrap_token="$(token_for "$bootstrap_client" "$bootstrap_secret" bootstrap)"
 write_auth_config "$bootstrap_token" "$fixture_dir/bootstrap.curl"
 
+# Workspace A is created on the paid "pro" tier: the matrix holds three
+# concurrent sandboxes there when the agent-driver leg runs, and the hobby
+# sandbox-namespace ResourceQuota (limits 4 CPU / 8 Gi = two sandboxes) cannot
+# admit a third — the pod sticks in quota-denied Pending until bex-api's 30s
+# client timeout surfaces as an opaque 502. The billing exclusion below keeps
+# the paid tier from requiring a real payment method. Workspace B stays hobby
+# (one sandbox).
 echo "==> create two disposable workspaces through the public GraphQL surface"
 create_query='mutation($name:String!,$plan:String){createWorkspace(name:$name,plan:$plan){id name plan role}}'
 graphql_call "$fixture_dir/bootstrap.curl" "$create_query" \
-  "$(jq -nc --arg name "$workspace_name_a" '{name:$name,plan:"hobby"}')" \
+  "$(jq -nc --arg name "$workspace_name_a" '{name:$name,plan:"pro"}')" \
   "$fixture_dir/workspace-a.json"
 workspace_a="$(jq -er '.data.createWorkspace.id' "$fixture_dir/workspace-a.json")"
 graphql_call "$fixture_dir/bootstrap.curl" "$create_query" \
@@ -294,12 +301,46 @@ token_member_b="$(token_for "$key_member_b" "$secret_member_b" member-b)"
 token_admin_a="$(token_for "$key_admin_a" "$secret_admin_a" admin-a)"
 token_owner_b="$(token_for "$key_owner_b" "$secret_owner_b" owner-b)"
 
+# Sandbox creation is payment-gated (ADR046 + w7/m76): mark both disposable
+# workspaces billing-excluded through the admin-only control-plane internal
+# API — the operator-owned exemption ADR040 §7 defines for exactly this kind
+# of non-billable fixture. The workspaces are deleted by the EXIT trap, so no
+# lasting exemption survives the run.
+echo "==> billing-exclude the disposable workspaces (ADR046 paid-intent gate)"
+cp_port="$(free_port)"
+kubectl -n "$api_namespace" port-forward deploy/bex-api "$cp_port:8091" \
+  >"$fixture_dir/cp-forward.log" 2>&1 &
+forward_pids+=("$!")
+cp_token="$(kubectl -n "$api_namespace" get secret bex-control-plane -o 'jsonpath={.data.token}' | base64 -d)"
+[ -n "$cp_token" ] || fail "control-plane internal API token is empty"
+printf 'header = "Authorization: Bearer %s"\n' "$cp_token" >"$fixture_dir/cp.curl"
+chmod 600 "$fixture_dir/cp.curl"
+cp_ready=false
+for _ in $(seq 1 30); do
+  # Any HTTP status proves the forward is up; the PATCH below is the real call.
+  if [ "$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$cp_port/" 2>/dev/null)" != 000 ]; then
+    cp_ready=true
+    break
+  fi
+  sleep 1
+done
+[ "$cp_ready" = true ] || fail "control-plane internal API forward did not become ready"
+for workspace in "$workspace_a" "$workspace_b"; do
+  code="$(jq -nc '{excluded:true,actor:"sandbox-isolation-live-verify"}' \
+    | curl -sS --config "$fixture_dir/cp.curl" --output "$fixture_dir/exclude-$workspace.json" \
+        --write-out '%{http_code}' -X PATCH -H 'Content-Type: application/json' \
+        --data-binary @- "http://127.0.0.1:$cp_port/v1/tenants/$workspace/billing-excluded")"
+  [ "$code" = 200 ] || fail "billing-excluding disposable workspace $workspace returned HTTP $code"
+done
+
 echo "==> wait for NamespaceReconciler sandbox regimes"
 namespaces_ready=false
 for _ in $(seq 1 120); do
   if kubectl get namespace "$workspace_a-sandbox" "$workspace_b-sandbox" >/dev/null 2>&1 \
     && kubectl -n "$workspace_a-sandbox" get rolebinding bex-tenant-sandbox-server >/dev/null 2>&1 \
-    && kubectl -n "$workspace_b-sandbox" get rolebinding bex-tenant-sandbox-server >/dev/null 2>&1; then
+    && kubectl -n "$workspace_b-sandbox" get rolebinding bex-tenant-sandbox-server >/dev/null 2>&1 \
+    && kubectl -n "$workspace_a-sandbox" get networkpolicy default-deny >/dev/null 2>&1 \
+    && kubectl -n "$workspace_b-sandbox" get networkpolicy default-deny >/dev/null 2>&1; then
     namespaces_ready=true
     break
   fi
