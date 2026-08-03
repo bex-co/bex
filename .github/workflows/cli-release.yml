@@ -1,0 +1,47 @@
+name: release (bex CLI)
+
+on:
+  push:
+    tags: ["bex-cli/v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: cli/go.mod
+          cache-dependency-path: cli/go.sum
+      - name: validate upstream import pin
+        run: bash scripts/bex-cli-validate.sh
+      - name: test launcher
+        working-directory: cli
+        run: go test ./...
+      - name: test Bex device-flow adapter
+        working-directory: lego/backend
+        run: go test ./internal/cliauth ./internal/api
+      - name: build release candidates
+        run: bash scripts/bex-cli-build.sh dist/build
+      - name: build archives
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          mkdir -p dist
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+            os="${target%/*}"
+            arch="${target#*/}"
+            artifact="bex-${VERSION#bex-cli/v}-${os}-${arch}"
+            mkdir -p "dist/$artifact"
+            cp "dist/build/bex-${os}-${arch}" "dist/$artifact/bex"
+            tar -C dist -czf "dist/$artifact.tar.gz" "$artifact"
+          done
+          (cd dist && sha256sum *.tar.gz > checksums.txt)
+      - name: publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" dist/*.tar.gz dist/checksums.txt --title "bex CLI ${TAG#bex-cli/v}" --generate-notes

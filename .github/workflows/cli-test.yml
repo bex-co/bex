@@ -1,0 +1,46 @@
+name: test (bex CLI)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "cli/**"
+      - "scripts/bex-cli-*.sh"
+      - "docs/bex-cli.md"
+      - "docs/cli-compatibility-checklist.md"
+      - ".github/workflows/cli-test.yml"
+  pull_request:
+    paths:
+      - "cli/**"
+      - "scripts/bex-cli-*.sh"
+      - "docs/bex-cli.md"
+      - "docs/cli-compatibility-checklist.md"
+      - ".github/workflows/cli-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: cli/go.mod
+          cache-dependency-path: cli/go.sum
+      - name: validate upstream import pin
+        run: bash scripts/bex-cli-validate.sh
+      - name: test launcher
+        working-directory: cli
+        run: go test ./...
+      # The launcher test contains a complete local device-grant → token →
+      # forced refresh → revoke lifecycle. These backend packages verify the
+      # complementary Bex adapter still accepts the upstream Render CLI wire
+      # shape. The browser/Hydra verifier remains an explicit release gate in
+      # scripts/bex-cli-auth-e2e.sh because it needs disposable credentials.
+      - name: test Bex device-flow adapter
+        working-directory: lego/backend
+        run: go test ./internal/cliauth ./internal/api
+      - name: build release candidates
+        run: bash scripts/bex-cli-build.sh dist

@@ -51,6 +51,18 @@ kubectl patch apps.app.bex.co whoami --type merge -p '{"spec":{"replicas":6}}'
 
 **Deploy to Hetzner:** same bex, different provider — swap `infra/clusterapi/overlays/local-capd` → `…/hetzner-caph`. See [infra/README.md](infra/README.md).
 
+## CLI
+
+The native `bex` command imports the upstream Render CLI command implementation while defaulting to Bex's API and an isolated `~/.bex/cli.yaml` credential store. When a `bex-cli/v*` release is available, download the matching GitHub-release archive, verify its `checksums.txt`, and put `bex` on `PATH`. From a checkout:
+
+```bash
+cd cli
+go build -o ../bin/bex .
+../bin/bex login
+```
+
+Installation, CI token handling, supported `BEX_*` variables, and the intentional remaining Render branding are documented in [docs/bex-cli.md](docs/bex-cli.md).
+
 ## The `App` resource
 
 ```yaml

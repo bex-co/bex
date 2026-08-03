@@ -30,5 +30,6 @@ echo "== http checks =="
 curl -s -o /dev/null -w "  kratos   (:$KRATOS_PUBLIC_PORT): %{http_code}\n" "http://localhost:$KRATOS_PUBLIC_PORT/health/alive" || true
 curl -s -o /dev/null -w "  kratos-adm(:$KRATOS_ADMIN_PORT): %{http_code}\n" "http://localhost:$KRATOS_ADMIN_PORT/admin/health/alive" || true
 curl -s -o /dev/null -w "  hydra    (:$HYDRA_ADMIN_PORT):   %{http_code}\n" "http://localhost:$HYDRA_ADMIN_PORT/health/ready" || true
+curl -s -o /dev/null -w "  hydra-pub(:$HYDRA_PUBLIC_PORT):   %{http_code}\n" "http://localhost:$HYDRA_PUBLIC_PORT/health/ready" || true
 curl -s -o /dev/null -w "  bex-api  (:$BEX_API_PORT):       %{http_code}\n" "http://localhost:$BEX_API_PORT/healthz" || true
 curl -s -o /dev/null -w "  dashboard(:$DASHBOARD_PORT):     %{http_code}\n" "http://localhost:$DASHBOARD_PORT/" || true

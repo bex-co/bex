@@ -114,9 +114,14 @@ echo "==> port-forwards (self-healing)"
 forward kratos kratos-public "$KRATOS_PUBLIC_PORT:80"
 forward kratos-admin kratos-admin "$KRATOS_ADMIN_PORT:80"
 forward hydra hydra-admin "$HYDRA_ADMIN_PORT:4445"
+forward hydra-public hydra-public "$HYDRA_PUBLIC_PORT:4444"
 forward mailpit mailpit "$MAILPIT_HTTP_PORT:8025"
 forward bex-db bex-db-rw "$BEX_DB_PORT:5432"
 sleep 3
+
+echo "==> permanent platform OAuth2 clients (machine bootstrap + Render CLI)"
+export BEX_BOOTSTRAP_CLIENT_SECRET="${BEX_BOOTSTRAP_CLIENT_SECRET:-dev-9-bootstrap-secret}"
+HYDRA_ADMIN_URL="http://localhost:$HYDRA_ADMIN_PORT" bash scripts/auth-bootstrap-client.sh >/dev/null
 
 echo "==> building bex-api"
 (cd lego/backend && go build -o "../../$ENVDIR/bin/bex-api" ./cmd/api)
@@ -133,6 +138,8 @@ hostDsn() {
 
 echo "==> starting bex-api on :$BEX_API_PORT (namespace $DEV_NS)"
 kill_if_running "$ENVDIR/.pids/bex-api.pid"
+# The internal control-plane listener is loopback-only in this disposable dev
+# harness. Production must supply BEX_CP_TOKEN instead.
 api_started=0
 for attempt in $(seq 1 5); do
   nohup env \
@@ -146,8 +153,10 @@ for attempt in $(seq 1 5); do
     BEX_KRATOS_URL="http://localhost:$KRATOS_PUBLIC_PORT" \
     BEX_KRATOS_ADMIN_URL="http://localhost:$KRATOS_ADMIN_PORT" \
     BEX_HYDRA_ADMIN_URL="http://localhost:$HYDRA_ADMIN_PORT" \
+    BEX_OAUTH_ISSUER="http://localhost:$HYDRA_PUBLIC_PORT" \
     BEX_CP_DB_URI="$(hostDsn bex-db bex "$BEX_DB_PORT")" \
     BEX_CP_APPS_NAMESPACE="$DEV_NS" \
+    BEX_CP_INSECURE=1 \
     BEX_BASE_DOMAIN="onbex.co" \
     "./$ENVDIR/bin/bex-api" > "$ENVDIR/logs/bex-api.log" 2>&1 & echo $! > "$ENVDIR/.pids/bex-api.pid"
   sleep 3
@@ -169,10 +178,11 @@ echo "dev-9 (workstream w9) is up:"
 echo "  kubeconfig:  $KUBECONFIG_FILE (KUBECONFIG=\$PWD/$KUBECONFIG_FILE kubectl -n $DEV_NS get keyvalues.app.bex.co)"
 echo "  kratos:      http://localhost:$KRATOS_PUBLIC_PORT (admin: http://localhost:$KRATOS_ADMIN_PORT)"
 echo "  hydra admin: http://localhost:$HYDRA_ADMIN_PORT"
+echo "  hydra public:http://localhost:$HYDRA_PUBLIC_PORT"
 echo "  mailpit UI:  http://localhost:$MAILPIT_HTTP_PORT"
 echo "  bex-api:     http://localhost:$BEX_API_PORT (log: $ENVDIR/logs/bex-api.log)"
 echo
 echo "start the dashboard against it:"
-echo "  cd dashboard && VITE_API_URL=http://localhost:$BEX_API_PORT/graphql VITE_KRATOS_PUBLIC_URL=http://localhost:$KRATOS_PUBLIC_PORT yarn dev --port $DASHBOARD_PORT"
+echo "  cd dashboard && HYDRA_ADMIN_URL=http://localhost:$HYDRA_ADMIN_PORT HYDRA_PUBLIC_URL=http://localhost:$HYDRA_PUBLIC_PORT VITE_API_URL=http://localhost:$BEX_API_PORT/graphql VITE_KRATOS_PUBLIC_URL=http://localhost:$KRATOS_PUBLIC_PORT VITE_KRATOS_SSR_URL=http://localhost:$KRATOS_PUBLIC_PORT yarn dev --port $DASHBOARD_PORT"
 echo
 echo "status: bash $ENVDIR/status.sh   |   tear down: bash $ENVDIR/down.sh"

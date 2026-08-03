@@ -27,6 +27,9 @@ kratos:
       default_browser_return_url: http://localhost:50090/
       allowed_return_urls:
         - http://localhost:50090
+        # Hydra's device verifier resumes here after Kratos completes a browser
+        # login. This port is dev-9's isolated Hydra public forward.
+        - http://localhost:58090
       methods:
         webauthn:
           config:
