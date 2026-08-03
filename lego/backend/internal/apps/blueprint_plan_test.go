@@ -18,10 +18,36 @@ package apps
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
+
+func TestSpecFromCreateRejectsIgnoredPrebuiltImageInputs(t *testing.T) {
+	falseValue := false
+	for _, tc := range []struct {
+		name  string
+		input CreateRequest
+		field string
+	}{
+		{name: "repo", input: CreateRequest{Repo: "https://github.com/bex-co/api"}, field: "repo"},
+		{name: "branch", input: CreateRequest{Branch: "main"}, field: "branch"},
+		{name: "root directory", input: CreateRequest{RootDir: "cmd/api"}, field: "rootDirectory"},
+		{name: "build filter", input: CreateRequest{BuildFilter: &BuildFilterView{}}, field: "buildFilter"},
+		{name: "build command", input: CreateRequest{BuildCommand: "go build ./cmd/api"}, field: "buildCommand"},
+		{name: "dockerfile path", input: CreateRequest{DockerfilePath: "Dockerfile"}, field: "dockerfilePath"},
+		{name: "auto deploy", input: CreateRequest{AutoDeploy: &falseValue}, field: "autoDeploy"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.input.Name = "api"
+			tc.input.Image = "nginx:1.27"
+			if _, err := specFromCreate(tc.input); err == nil || !strings.Contains(err.Error(), tc.field) {
+				t.Fatalf("specFromCreate(%+v) = %v, want %s incompatibility", tc.input, err, tc.field)
+			}
+		})
+	}
+}
 
 func TestApplyBlueprintServiceSpecOmissionAndExplicitValues(t *testing.T) {
 	t.Parallel()

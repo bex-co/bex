@@ -1311,7 +1311,7 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 		repo = overrides.repo // the explicit deploy target wins over the manifest
 	}
 	branch := a.Branch
-	if overrides.branch != "" {
+	if overrides.branch != "" && a.Image == nil {
 		branch = overrides.branch
 	}
 	svcType, err := manifestType(a.Type, a.Runtime)

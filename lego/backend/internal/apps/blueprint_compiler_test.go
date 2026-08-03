@@ -44,6 +44,46 @@ func TestBlueprintCompilerAcceptsReviewedRenderBlueprint(t *testing.T) {
 	}
 }
 
+func TestBlueprintCompilerRejectsPrebuiltImageBuildInputsAtTheirSourcePaths(t *testing.T) {
+	_, problems := CompileBlueprintSource(`
+services:
+  - type: web
+    name: api
+    runtime: image
+    image: {url: nginx:1.27}
+    repo: https://github.com/bex-co/api
+    branch: main
+    rootDir: cmd/api
+    buildFilter: {paths: [cmd/api/**]}
+    buildCommand: go build ./cmd/api
+    dockerfilePath: Dockerfile
+    autoDeploy: false
+    autoDeployTrigger: off
+`)
+	want := map[string]bool{
+		"#/services/0/repo":              false,
+		"#/services/0/branch":            false,
+		"#/services/0/rootDir":           false,
+		"#/services/0/buildFilter":       false,
+		"#/services/0/buildCommand":      false,
+		"#/services/0/dockerfilePath":    false,
+		"#/services/0/autoDeploy":        false,
+		"#/services/0/autoDeployTrigger": false,
+	}
+	for _, problem := range problems {
+		if problem.Code == "BLUEPRINT_CAPABILITY_INCOMPATIBLE" {
+			if _, ok := want[problem.Path]; ok {
+				want[problem.Path] = true
+			}
+		}
+	}
+	for path, found := range want {
+		if !found {
+			t.Errorf("missing prebuilt-image incompatibility at %s: %+v", path, problems)
+		}
+	}
+}
+
 func TestBlueprintCompilerRejectsDuplicateKeysBeforeSchema(t *testing.T) {
 	_, problems := CompileBlueprintSource(`
 services: []
