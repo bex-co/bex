@@ -212,7 +212,7 @@ func blueprintCapabilityProblemsAt(value any, path []string, locations map[strin
 // because native runtimes implement it; this check prevents a Dockerfile or
 // prebuilt-image service from retaining the field without an effect.
 func blueprintServiceRuntimeProblems(object map[string]any, path []string, locations map[string]BlueprintSourceLocation, context blueprintCapabilityContext) []BlueprintSourceProblem {
-	if context.kind != blueprintCapabilityServer && context.kind != blueprintCapabilityCron && context.kind != blueprintCapabilityStatic {
+	if context.kind != blueprintCapabilityServer && context.kind != blueprintCapabilityCron {
 		return nil
 	}
 	runtime, _ := object["runtime"].(string)
