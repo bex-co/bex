@@ -119,6 +119,12 @@ spec:
               value: ":8083"
             - name: BEX_AGENT_SESSION_DRIVER_PORT
               value: "8787"
+            # The stream endpoint publishes on api.bex.co but the dashboard calls
+            # it cross-subdomain (dashboard.bex.co); the gateway must echo CORS
+            # for that origin or the browser blocks the stream. Same value as
+            # bex-api's BEX_API_CORS_ORIGIN.
+            - name: BEX_API_CORS_ORIGIN
+              value: https://dashboard.bex.co
           ports:
             - name: ssh
               containerPort: 2222

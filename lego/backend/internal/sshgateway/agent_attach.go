@@ -118,6 +118,13 @@ type AgentAttachConfig struct {
 	DriverPort int
 	HTTPClient *http.Client
 	Now        func() time.Time
+	// AllowedOrigins is the browser origin allowlist for CORS. The endpoint
+	// publishes under the api origin but is consumed cross-subdomain by the
+	// dashboard (dashboard.bex.co -> api.bex.co), so the gateway must echo the
+	// matched Origin and expose the v1 marker or the browser blocks the stream.
+	// Reuse bex-api's BEX_API_CORS_ORIGIN value. Empty => no CORS headers
+	// (same-origin / curl only).
+	AllowedOrigins []string
 }
 
 func (s *Server) AgentAttachEnabled() bool {
@@ -158,6 +165,14 @@ func (c *AgentAttachConfig) httpClient() *http.Client {
 func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 	if !s.AgentAttachEnabled() {
 		http.Error(w, "agent session attach not configured", http.StatusServiceUnavailable)
+		return
+	}
+	// CORS + preflight run before the ticket check: a browser's preflight carries
+	// no ticket, and the actual GET/POST response must expose the v1 marker to the
+	// cross-origin dashboard or the stream is unreadable.
+	s.applyAgentAttachCORS(w, r)
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	if r.Method != http.MethodGet && r.Method != http.MethodPost {
@@ -367,6 +382,33 @@ func readSSEData(r *bufio.Reader) (string, bool, error) {
 		// Ignore comment/heartbeat/other field lines (`:` keep-alives, `event:`).
 		if err == io.EOF {
 			return "", false, io.EOF
+		}
+	}
+}
+
+// applyAgentAttachCORS mirrors bex-api's withCORS (internal/api/auth.go): echo a
+// matched Origin, allow the ticket + content-type request headers, expose the
+// v1 marker to the reader, and allow credentials (the AI SDK transport may send
+// credentials:'include'; the gateway still ignores cookies and trusts only the
+// ticket). Empty allowlist => no CORS headers (curl / same-origin).
+func (s *Server) applyAgentAttachCORS(w http.ResponseWriter, r *http.Request) {
+	allowed := s.AgentAttach.AllowedOrigins
+	if len(allowed) == 0 {
+		return
+	}
+	w.Header().Add("Vary", "Origin")
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return
+	}
+	for _, o := range allowed {
+		if o == origin {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", AgentAttachTicketHeader+", Content-Type")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Expose-Headers", uiMessageStreamHeader)
+			return
 		}
 	}
 }
