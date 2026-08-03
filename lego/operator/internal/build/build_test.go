@@ -88,6 +88,12 @@ func TestBuildJobShape(t *testing.T) {
 	if pod.NodeSelector["bex.co/pool"] != "tenant" {
 		t.Errorf("node selector = %v, want tenant pool", pod.NodeSelector)
 	}
+	// The tenant-burst pool scales from zero for exactly this Job and reclaims
+	// nodes after 5m of low utilization; without this the node can be deleted
+	// mid-build (BackoffLimit 1 means that fails the build outright).
+	if j.Spec.Template.Annotations["cluster-autoscaler.kubernetes.io/safe-to-evict"] != "false" {
+		t.Errorf("build pod must opt out of cluster-autoscaler eviction, annotations = %v", j.Spec.Template.Annotations)
+	}
 	if got := contNames(pod.InitContainers); strings.Join(got, ",") != "clone,buildkit" {
 		t.Fatalf("init containers = %v, want clone,buildkit", got)
 	}
