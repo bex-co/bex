@@ -1082,40 +1082,58 @@
     },
     "#/definitions/runtime/enum": {
       "\"docker\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseService",
+        "fixture": "internal/apps/blueprint_plan_test.go:TestParseBlueprintServiceMapsDockerAndStaticFields",
+        "reason": "maps to the App runtime contract"
       },
       "\"elixir\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseService",
+        "fixture": "internal/apps/stack_test.go:TestParseStackProjectsServicesAndDatabases",
+        "reason": "maps to the App runtime contract"
       },
       "\"go\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseService",
+        "fixture": "internal/apps/stack_test.go:TestParseStackProjectsServicesAndDatabases",
+        "reason": "maps to the App runtime contract"
       },
       "\"image\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseService",
+        "fixture": "internal/apps/blueprint_compiler_test.go:TestBlueprintCompilerAcceptsReviewedRenderBlueprint",
+        "reason": "maps to the App prebuilt-image runtime"
       },
       "\"node\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseService",
+        "fixture": "internal/apps/stack_test.go:TestParseStackProjectsServicesAndDatabases",
+        "reason": "maps to the App runtime contract"
       },
       "\"python\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseService",
+        "fixture": "internal/apps/stack_test.go:TestParseStackProjectsServicesAndDatabases",
+        "reason": "maps to the App runtime contract"
       },
       "\"ruby\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseService",
+        "fixture": "internal/apps/stack_test.go:TestParseStackProjectsServicesAndDatabases",
+        "reason": "maps to the App runtime contract"
       },
       "\"rust\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseService",
+        "fixture": "internal/apps/stack_test.go:TestParseStackProjectsServicesAndDatabases",
+        "reason": "maps to the App runtime contract"
       },
       "\"static\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseService",
+        "fixture": "internal/apps/blueprint_plan_test.go:TestParseBlueprintServiceMapsDockerAndStaticFields",
+        "reason": "maps web runtime static to the App static-site type"
       }
     },
     "#/definitions/serverService/properties/renderSubdomainPolicy/enum": {
