@@ -36,6 +36,7 @@ CLI_USER_A_PASSWORD="${CLI_USER_A_PASSWORD:-render-cli-a-password-123!}"
 CLI_USER_B_EMAIL="${CLI_USER_B_EMAIL:-render-cli-b@bex.test}"
 CLI_USER_B_PASSWORD="${CLI_USER_B_PASSWORD:-render-cli-b-password-123!}"
 RENDER_BIN="${RENDER_BIN:-}"
+RENDER_CLI_DIR="${RENDER_CLI_DIR:-}"
 TMP="$(mktemp -d)"
 LOGIN_PIDS=()
 
@@ -82,11 +83,12 @@ is_local_url() {
 }
 
 if [ -z "$RENDER_BIN" ]; then
-  [ -d cli ] || fail "./cli checkout is missing"
-  actual_commit="$(git -C cli rev-parse --short HEAD)"
+  [ -n "$RENDER_CLI_DIR" ] || fail "set RENDER_BIN to an unmodified official Render CLI binary, or set RENDER_CLI_DIR to its pinned source checkout (the repository's ./cli is bex)"
+  [ -d "$RENDER_CLI_DIR" ] || fail "RENDER_CLI_DIR is not a directory: $RENDER_CLI_DIR"
+  actual_commit="$(git -C "$RENDER_CLI_DIR" rev-parse --short HEAD)"
   [ "$actual_commit" = "$EXPECTED_CLI_COMMIT" ] || fail "official CLI is $actual_commit, want $EXPECTED_CLI_COMMIT"
   RENDER_BIN="$TMP/render"
-  (cd cli && go build -o "$RENDER_BIN" .)
+  (cd "$RENDER_CLI_DIR" && go build -o "$RENDER_BIN" .)
 fi
 RENDER_BIN="$(cd "$(dirname "$RENDER_BIN")" && pwd)/$(basename "$RENDER_BIN")"
 [ -x "$RENDER_BIN" ] || fail "RENDER_BIN is not executable"
@@ -134,8 +136,9 @@ login_user() { # label email password config-path
   done
   [ -n "${url:-}" ] || fail "CLI login $label did not print a device verification URL"
 
-  NODE_PATH="$PLAYWRIGHT_NODE_MODULES" node scripts/render-cli-auth-browser.cjs \
-    "$url" "$email" "$password" >/dev/null
+  printf '%s\0%s\0' "$email" "$password" | \
+    NODE_PATH="$PLAYWRIGHT_NODE_MODULES" node scripts/render-cli-auth-browser.cjs \
+      "$url" >/dev/null
   wait_for_file "$status"
   wait "$pid" || true
   if [ "$(cat "$status")" != "0" ]; then

@@ -8,12 +8,20 @@
  */
 const { chromium } = require("playwright-core");
 
-const [, , verificationURL, email, password] = process.argv;
-if (!verificationURL || !email || !password) {
-  console.error(
-    "usage: render-cli-auth-browser.cjs <verification-url> <email> <password>",
-  );
+const [, , verificationURL] = process.argv;
+if (!verificationURL) {
+  console.error("usage: render-cli-auth-browser.cjs <verification-url>");
   process.exit(2);
+}
+
+async function credentialsFromStdin() {
+  const chunks = [];
+  for await (const chunk of process.stdin) chunks.push(chunk);
+  const [email, password, end] = Buffer.concat(chunks).toString().split("\0");
+  if (!email || !password || end !== "") {
+    throw new Error("expected NUL-delimited email and password on standard input");
+  }
+  return { email, password };
 }
 
 const executablePath =
@@ -23,6 +31,7 @@ const executablePath =
     : undefined);
 
 (async () => {
+  const { email, password } = await credentialsFromStdin();
   const browser = await chromium.launch({
     executablePath,
     headless: process.env.HEADED !== "1",
@@ -30,16 +39,41 @@ const executablePath =
   try {
     const context = await browser.newContext();
     const page = await context.newPage();
+    if (process.env.DEBUG_BROWSER === "1") {
+      page.on("response", (response) => {
+        const url = new URL(response.url());
+        if (
+          url.hostname === "localhost" &&
+          (url.pathname.startsWith("/oauth2/") ||
+            url.pathname.startsWith("/auth/") ||
+            url.pathname.startsWith("/self-service/"))
+        ) {
+          console.error(`response: ${response.status()} ${url.pathname}`);
+        }
+      });
+    }
     await page.goto(verificationURL, { waitUntil: "domcontentloaded" });
 
-    await page.waitForURL(/\/auth\/login(?:\?|$)/, { timeout: 30_000 });
     if (process.env.DEBUG_BROWSER === "1") {
       await page.waitForTimeout(2_000);
-      console.error(`browser url: ${page.url()}`);
+      console.error(`browser path: ${new URL(page.url()).pathname}`);
       console.error(
         `inputs: ${JSON.stringify(await page.locator("input").evaluateAll((nodes) => nodes.map((node) => ({ name: node.getAttribute("name"), type: node.getAttribute("type") }))))}`,
       );
-      console.error(`body: ${(await page.locator("body").innerText()).slice(0, 1_000)}`);
+    }
+    await page.waitForURL(/\/auth\/login(?:\?|$)/, { timeout: 30_000 });
+    if (process.env.DEBUG_BROWSER === "1") {
+      await page.waitForTimeout(2_000);
+      console.error(`login path: ${new URL(page.url()).pathname}`);
+      const loginInputs = await page
+        .locator("input")
+        .evaluateAll((nodes) =>
+          nodes.map((node) => ({
+            name: node.getAttribute("name"),
+            type: node.getAttribute("type"),
+          })),
+        );
+      console.error(`login inputs: ${JSON.stringify(loginInputs)}`);
     }
     await page.locator('input[name="identifier"]').fill(email);
     await page.locator('input[name="password"]').fill(password);
@@ -64,7 +98,7 @@ const executablePath =
       state: "visible",
       timeout: 10_000,
     });
-    console.log(`authorized ${email}`);
+    console.log("authorized browser session");
   } finally {
     await browser.close();
   }

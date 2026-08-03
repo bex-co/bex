@@ -11,6 +11,9 @@ hydra:
   config:
     urls:
       self:
-        issuer: http://localhost:57090
+        issuer: http://localhost:58090
       login: http://localhost:50090/auth/login
       consent: http://localhost:50090/auth/consent
+      device:
+        verification: http://localhost:50090/auth/device
+        success: http://localhost:50090/auth/device/success
