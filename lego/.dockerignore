@@ -27,11 +27,14 @@
 
 # ADR047's separate agent-template Dockerfile shares this root context so it can
 # copy the credential helper/hygiene hooks and pinned production driver package;
-# tests and fixtures are not copied into the production image.
+# tests and fixtures are not copied into the production image. The driver is
+# TypeScript, compiled in its own build stage, so the build context needs the
+# .ts sources + tsconfig.json (not dist/, which is a fresh build artifact).
 !agent-image/
 !agent-image/bex-pre-snapshot
 !agent-image/driver/
 !agent-image/driver/src/
-!agent-image/driver/src/*.mjs
+!agent-image/driver/src/*.ts
+!agent-image/driver/tsconfig.json
 !agent-image/driver/package.json
 !agent-image/driver/package-lock.json

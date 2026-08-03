@@ -15,11 +15,21 @@
  */
 
 import { lstat, open, opendir, readFile, writeFile } from "node:fs/promises";
+import type { Stats } from "node:fs";
+import type { AgentDriverConfig } from "./config.js";
 
 const maxScannedFileBytes = 32 * 1024 * 1024;
 const scanChunkBytes = 64 * 1024;
 
-function processCouldWrite(info) {
+export interface CredentialManager {
+  agentEnvironment(): Record<string, string>;
+  scrubPersistedState(roots?: string[]): Promise<string[]>;
+  forget(): void;
+  redact(value: unknown): string;
+  configured(): boolean;
+}
+
+function processCouldWrite(info: Stats): boolean {
   const uid = process.getuid?.();
   if (uid === 0 || (uid !== undefined && info.uid === uid)) return true;
   const groups = new Set(process.getgroups?.() || []);
@@ -27,7 +37,11 @@ function processCouldWrite(info) {
   return (info.mode & 0o002) !== 0;
 }
 
-function ignoreInaccessibleImmutablePath(target, info, error) {
+function ignoreInaccessibleImmutablePath(
+  target: string,
+  info: Stats,
+  error: NodeJS.ErrnoException,
+): boolean {
   if (error.code !== "EACCES" && error.code !== "EPERM") return false;
   if (processCouldWrite(info)) {
     throw new Error(`cannot inspect agent-writable persisted path: ${target}`);
@@ -35,8 +49,8 @@ function ignoreInaccessibleImmutablePath(target, info, error) {
   return true;
 }
 
-function replaceAll(data, needle, replacement) {
-  const chunks = [];
+function replaceAll(data: Buffer, needle: Buffer, replacement: Buffer): Buffer {
+  const chunks: Buffer[] = [];
   let cursor = 0;
   for (;;) {
     const index = data.indexOf(needle, cursor);
@@ -48,7 +62,7 @@ function replaceAll(data, needle, replacement) {
   return Buffer.concat(chunks);
 }
 
-async function largeFileContains(target, needle) {
+async function largeFileContains(target: string, needle: Buffer): Promise<boolean> {
   const file = await open(target, "r");
   const buffer = Buffer.allocUnsafe(scanChunkBytes);
   let tail = Buffer.alloc(0);
@@ -66,12 +80,16 @@ async function largeFileContains(target, needle) {
   }
 }
 
-async function scrubPath(target, needle, findings) {
-  let info;
+async function scrubPath(
+  target: string,
+  needle: Buffer,
+  findings: string[],
+): Promise<void> {
+  let info: Stats;
   try {
     info = await lstat(target);
   } catch (error) {
-    if (error.code === "ENOENT") return;
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
     throw error;
   }
   if (info.isSymbolicLink()) return;
@@ -80,7 +98,7 @@ async function scrubPath(target, needle, findings) {
     try {
       dir = await opendir(target);
     } catch (error) {
-      if (ignoreInaccessibleImmutablePath(target, info, error)) return;
+      if (ignoreInaccessibleImmutablePath(target, info, error as NodeJS.ErrnoException)) return;
       throw error;
     }
     for await (const entry of dir) {
@@ -90,11 +108,11 @@ async function scrubPath(target, needle, findings) {
   }
   if (!info.isFile()) return;
   if (info.size > maxScannedFileBytes) {
-    let containsCredential;
+    let containsCredential: boolean;
     try {
       containsCredential = await largeFileContains(target, needle);
     } catch (error) {
-      if (ignoreInaccessibleImmutablePath(target, info, error)) return;
+      if (ignoreInaccessibleImmutablePath(target, info, error as NodeJS.ErrnoException)) return;
       throw error;
     }
     if (containsCredential) {
@@ -105,11 +123,11 @@ async function scrubPath(target, needle, findings) {
     return;
   }
 
-  let data;
+  let data: Buffer;
   try {
     data = await readFile(target);
   } catch (error) {
-    if (ignoreInaccessibleImmutablePath(target, info, error)) return;
+    if (ignoreInaccessibleImmutablePath(target, info, error as NodeJS.ErrnoException)) return;
     throw error;
   }
   if (!data.includes(needle)) return;
@@ -118,7 +136,10 @@ async function scrubPath(target, needle, findings) {
   findings.push(target);
 }
 
-export function createCredentialManager(config, env = process.env) {
+export function createCredentialManager(
+  config: AgentDriverConfig,
+  env: NodeJS.ProcessEnv = process.env,
+): CredentialManager {
   let secret = config.modelCredential || "";
   const credentialEnvName = config.credentialEnvName;
 
@@ -135,7 +156,7 @@ export function createCredentialManager(config, env = process.env) {
 
     async scrubPersistedState(roots = config.scrubRoots) {
       if (!secret) return [];
-      const findings = [];
+      const findings: string[] = [];
       const needle = Buffer.from(secret);
       for (const root of roots) await scrubPath(root, needle, findings);
       return findings;
@@ -145,7 +166,7 @@ export function createCredentialManager(config, env = process.env) {
       secret = "";
     },
 
-    redact(value) {
+    redact(value: unknown) {
       const text = String(value);
       return secret ? text.split(secret).join("[REDACTED]") : text;
     },

@@ -7,15 +7,23 @@
     "node": ">=22"
   },
   "bin": {
-    "bex-agent-driver": "src/main.mjs"
+    "bex-agent-driver": "dist/main.js"
   },
   "scripts": {
-    "test": "node --test --test-concurrency=1"
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test --import tsx --test-concurrency=1 \"test/**/*.test.ts\""
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "0.14.1",
     "@mcpc-tech/acp-ai-provider": "0.2.9",
     "ai": "6.0.237",
     "ws": "8.21.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.29",
+    "@types/ws": "8.18.1",
+    "tsx": "4.19.3",
+    "typescript": "5.9.3"
   }
 }

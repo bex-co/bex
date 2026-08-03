@@ -16,15 +16,45 @@
 
 import path from "node:path";
 
+export interface AgentDriverConfig {
+  command: string;
+  args: string[];
+  cwd: string;
+  prompt: string;
+  // Delivery (ADR047 D4): the branch the driver commits + pushes, the repo it
+  // clones when the workspace is empty, the PR base branch, and the delivery
+  // toggle. Deliver defaults off so a bare `run one turn` stays unchanged.
+  branch: string;
+  repoUrl: string;
+  baseBranch: string;
+  deliver: boolean;
+  gitName: string;
+  gitEmail: string;
+  existingSessionId: string;
+  persistSession: boolean;
+  listenHost: string;
+  listenPort: number;
+  sessionLogPath: string;
+  statusPath: string;
+  exitAfterTurn: boolean;
+  turnTimeoutMs: number;
+  credentialEnvName: string;
+  modelCredential: string;
+  agentEnv: Record<string, string>;
+  scrubRoots: string[];
+}
+
 const envNamePattern = /^[A-Z_][A-Z0-9_]*$/;
 
-function jsonArray(value, name) {
+function jsonArray(value: string | undefined, name: string): string[] {
   if (!value) return [];
-  let parsed;
+  let parsed: unknown;
   try {
     parsed = JSON.parse(value);
   } catch (error) {
-    throw new Error(`${name} must be a JSON array: ${error.message}`);
+    throw new Error(
+      `${name} must be a JSON array: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
   if (
     !Array.isArray(parsed) ||
@@ -35,13 +65,18 @@ function jsonArray(value, name) {
   return parsed;
 }
 
-function jsonObject(value, name) {
+function jsonObject(
+  value: string | undefined,
+  name: string,
+): Record<string, string> {
   if (!value) return {};
-  let parsed;
+  let parsed: unknown;
   try {
     parsed = JSON.parse(value);
   } catch (error) {
-    throw new Error(`${name} must be a JSON object: ${error.message}`);
+    throw new Error(
+      `${name} must be a JSON object: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
   if (
     parsed === null ||
@@ -51,10 +86,10 @@ function jsonObject(value, name) {
   ) {
     throw new Error(`${name} must be a JSON object with string values`);
   }
-  return parsed;
+  return parsed as Record<string, string>;
 }
 
-function positivePort(value) {
+function positivePort(value: string | undefined): number {
   const port = Number(value || 8787);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error("BEX_AGENT_LISTEN_PORT must be an integer from 1 to 65535");
@@ -62,7 +97,7 @@ function positivePort(value) {
   return port;
 }
 
-function positiveMilliseconds(value) {
+function positiveMilliseconds(value: string | undefined): number {
   const milliseconds = Number(value || 4 * 60 * 60 * 1000);
   if (!Number.isInteger(milliseconds) || milliseconds < 1) {
     throw new Error("BEX_AGENT_TURN_TIMEOUT_MS must be a positive integer");
@@ -70,7 +105,9 @@ function positiveMilliseconds(value) {
   return milliseconds;
 }
 
-export function loadConfig(env = process.env) {
+export function loadConfig(
+  env: NodeJS.ProcessEnv = process.env,
+): AgentDriverConfig {
   const cwd = path.resolve(env.BEX_AGENT_CWD || "/workspace");
   const sessionLogPath =
     env.BEX_AGENT_SESSION_LOG || "/var/log/bex-agent/session.jsonl";
@@ -101,9 +138,6 @@ export function loadConfig(env = process.env) {
     args: jsonArray(env.BEX_AGENT_ARGS, "BEX_AGENT_ARGS"),
     cwd,
     prompt: env.BEX_AGENT_PROMPT || "",
-    // Delivery (ADR047 D4): the branch the driver commits + pushes, the repo it
-    // clones when the workspace is empty, the PR base branch, and the delivery
-    // toggle. Deliver defaults off so a bare `run one turn` stays unchanged.
     branch: env.BEX_AGENT_BRANCH || "",
     repoUrl: env.BEX_AGENT_REPO_URL || "",
     baseBranch: env.BEX_AGENT_BASE_BRANCH || "",

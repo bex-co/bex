@@ -14,12 +14,30 @@
  * limitations under the License.
  */
 
-import http from "node:http";
+import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import readline from "node:readline";
-import { WebSocket, WebSocketServer } from "ws";
-import { spawnRawACP } from "./acp.mjs";
+import { WebSocket, WebSocketServer, type RawData } from "ws";
+import { spawnRawACP } from "./acp.js";
+import type { AgentDriverConfig } from "./config.js";
+import type { CredentialManager } from "./credentials.js";
+import type { UIMessageStreamHub, UIMessagePart } from "./stream-hub.js";
 
-function streamHeaders(response) {
+export type RunTurn = (
+  prompt: string,
+  onPart: (part: UIMessagePart) => void,
+) => Promise<unknown>;
+
+export interface DriverServerOptions {
+  runTurn?: RunTurn;
+}
+
+export interface DriverServer {
+  server: http.Server;
+  address: ReturnType<http.Server["address"]>;
+  close(): Promise<void>;
+}
+
+function streamHeaders(response: ServerResponse): void {
   response.writeHead(200, {
     "content-type": "text/event-stream",
     "cache-control": "no-cache, no-transform",
@@ -29,17 +47,20 @@ function streamHeaders(response) {
   response.flushHeaders();
 }
 
-function isLoopback(address) {
+function isLoopback(address: string | undefined): boolean {
   return address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1";
 }
 
-async function readJSONBody(request, limit = 1 << 20) {
-  const chunks = [];
+async function readJSONBody(
+  request: IncomingMessage,
+  limit = 1 << 20,
+): Promise<Record<string, unknown>> {
+  const chunks: Buffer[] = [];
   let size = 0;
   for await (const chunk of request) {
-    size += chunk.length;
+    size += (chunk as Buffer).length;
     if (size > limit) throw new Error("request body too large");
-    chunks.push(chunk);
+    chunks.push(chunk as Buffer);
   }
   if (chunks.length === 0) return {};
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
@@ -48,24 +69,31 @@ async function readJSONBody(request, limit = 1 << 20) {
 // promptFromBody extracts a turn's prompt from either a bare {prompt} or the
 // Vercel AI SDK sendMessages body {messages:[...]} — the last user message's
 // text parts, joined. useChat posts the latter; a plain client posts the former.
-function promptFromBody(body) {
+function promptFromBody(body: Record<string, unknown>): string {
   if (typeof body?.prompt === "string" && body.prompt.trim()) return body.prompt;
   const messages = Array.isArray(body?.messages) ? body.messages : [];
   for (let i = messages.length - 1; i >= 0; i -= 1) {
-    const message = messages[i];
+    const message = messages[i] as Record<string, unknown> | undefined;
     if (message?.role !== "user") continue;
     if (typeof message.content === "string" && message.content.trim()) return message.content;
     const parts = Array.isArray(message.parts) ? message.parts : [];
     const text = parts
-      .filter((part) => part?.type === "text" && typeof part.text === "string")
-      .map((part) => part.text)
+      .filter(
+        (part: Record<string, unknown>) =>
+          part?.type === "text" && typeof part.text === "string",
+      )
+      .map((part: Record<string, unknown>) => part.text as string)
       .join("");
     if (text.trim()) return text;
   }
   return "";
 }
 
-function bridgeACP(socket, config, credentialManager) {
+function bridgeACP(
+  socket: WebSocket,
+  config: AgentDriverConfig,
+  credentialManager: CredentialManager,
+): void {
   const child = spawnRawACP(config, credentialManager.agentEnvironment());
   const lines = readline.createInterface({ input: child.stdout });
 
@@ -74,7 +102,7 @@ function bridgeACP(socket, config, credentialManager) {
       socket.send(credentialManager.redact(line));
     }
   });
-  child.stderr.on("data", (chunk) => {
+  child.stderr.on("data", (chunk: Buffer) => {
     // Agent diagnostics stay local to the sandbox and never enter ACP framing.
     process.stderr.write(credentialManager.redact(chunk.toString()));
   });
@@ -84,7 +112,7 @@ function bridgeACP(socket, config, credentialManager) {
       socket.close(code === 0 ? 1000 : 1011, `agent exited ${code}`);
     }
   });
-  socket.on("message", (data, binary) => {
+  socket.on("message", (data: RawData, binary: boolean) => {
     if (binary) {
       socket.close(1003, "ACP transport accepts JSON text only");
       return;
@@ -104,7 +132,12 @@ function bridgeACP(socket, config, credentialManager) {
   });
 }
 
-export async function startDriverServer(config, credentialManager, hub, options = {}) {
+export async function startDriverServer(
+  config: AgentDriverConfig,
+  credentialManager: CredentialManager,
+  hub: UIMessageStreamHub,
+  options: DriverServerOptions = {},
+): Promise<DriverServer> {
   // runTurn (ADR047 D9 t004) runs one live prompt turn on the persistent
   // session, mirroring its parts to the given sink; when unset, POST /turn 501s
   // (the fire-and-forget path serves only GET /stream). turnInFlight enforces
@@ -112,7 +145,7 @@ export async function startDriverServer(config, credentialManager, hub, options 
   const runTurn = options.runTurn;
   let turnInFlight = false;
   const server = http.createServer((request, response) => {
-    const url = new URL(request.url, "http://bex-agent-driver.invalid");
+    const url = new URL(request.url || "/", "http://bex-agent-driver.invalid");
     if (request.method === "GET" && url.pathname === "/healthz") {
       response.writeHead(200, { "content-type": "application/json" });
       response.end('{"ok":true}\n');
@@ -155,7 +188,7 @@ export async function startDriverServer(config, credentialManager, hub, options 
           if (!response.headersSent) {
             response.writeHead(500, { "content-type": "application/json" });
             response.end(
-              `${JSON.stringify({ error: credentialManager.redact(error.message) })}\n`,
+              `${JSON.stringify({ error: credentialManager.redact(error instanceof Error ? error.message : String(error)) })}\n`,
             );
           } else {
             response.end("data: [DONE]\n\n");
@@ -181,7 +214,7 @@ export async function startDriverServer(config, credentialManager, hub, options 
         })
         .catch((error) => {
           response.writeHead(500, { "content-type": "application/json" });
-          response.end(`${JSON.stringify({ error: error.message })}\n`);
+          response.end(`${JSON.stringify({ error: error instanceof Error ? error.message : String(error) })}\n`);
         });
       return;
     }
@@ -190,7 +223,7 @@ export async function startDriverServer(config, credentialManager, hub, options 
   });
   const sockets = new WebSocketServer({ noServer: true });
   server.on("upgrade", (request, socket, head) => {
-    const url = new URL(request.url, "http://bex-agent-driver.invalid");
+    const url = new URL(request.url || "/", "http://bex-agent-driver.invalid");
     if (url.pathname !== "/acp") {
       socket.destroy();
       return;
@@ -199,9 +232,9 @@ export async function startDriverServer(config, credentialManager, hub, options 
       sockets.emit("connection", websocket, request);
     });
   });
-  sockets.on("connection", (socket) => bridgeACP(socket, config, credentialManager));
+  sockets.on("connection", (socket: WebSocket) => bridgeACP(socket, config, credentialManager));
 
-  await new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
     server.listen(config.listenPort, config.listenHost, resolve);
   });
@@ -210,8 +243,8 @@ export async function startDriverServer(config, credentialManager, hub, options 
     address: server.address(),
     async close() {
       for (const socket of sockets.clients) socket.terminate();
-      await new Promise((resolve) => sockets.close(resolve));
-      await new Promise((resolve, reject) =>
+      await new Promise<void>((resolve) => sockets.close(() => resolve()));
+      await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),
       );
     },
