@@ -1,6 +1,6 @@
-# w10 — Roadmap capacity (worker10)
+# w10 — project workstream (worker10)
 
-**Worker:** worker10 Reserved 2026-07-15 as an empty workstream for future `/pm` scheduling; milestones will be added only when their scope and goal linkage are known.
+**Worker:** worker10. This is a general-purpose bex workstream. It may take work anywhere in the project; the milestones below are scheduled work and historical records, not a permanent purpose, specialty, or ownership boundary.
 
 ## Local dev environment
 

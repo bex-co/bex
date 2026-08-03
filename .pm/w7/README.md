@@ -1,6 +1,6 @@
-# w7 — Tenant isolation & security hardening (worker7)
+# w7 — project workstream (worker7)
 
-**Worker:** worker7 Created 2026-07-09 from `/pm-brainstorm for w7` (take 2). Executes GOAL.md V0 #7 ("Security review") as work, and is the re-scope of tenant isolation the w1/m6 removal anticipated (`DO_NOT_DO.md` ladder: namespace tier → microVM, never vcluster). w1/m9 closes the API-layer front door (OpenFGA); w7 closes the runtime side doors verified open on 2026-07-09: a flat pod network (all tenant Apps in one namespace, zero tenant NetworkPolicies), no Pod Security/quota enforcement (tenant pods can run privileged and carry SA tokens), and a public API with no rate limiting. Ordered by hole size: network isolation first, then workload hardening, then API abuse limits; sequence alongside/after w1/m9, before real tenants exist to migrate.
+**Worker:** worker7. This is a general-purpose bex workstream. It may take work anywhere in the project; the milestones below are scheduled work and historical records, not a permanent purpose, specialty, or ownership boundary.
 
 ## Local dev environment
 

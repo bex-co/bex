@@ -1,6 +1,6 @@
-# w5 — Dashboard UI (worker5)
+# w5 — project workstream (worker5)
 
-**Worker:** worker5 Scaffolds bex's human-facing dashboard: the client `bex-api`'s GraphQL adapter was already built to serve (`docs/ADR006-bex-api.md` calls it "Render dashboard compatible"). Ordered: stand up an empty, rebranded app shell first so a later milestone can wire it to `bex-api`'s queries/mutations without inheriting beancount's domain code.
+**Worker:** worker5. This is a general-purpose bex workstream. It may take work anywhere in the project; the milestones below are scheduled work and historical records, not a permanent purpose, specialty, or ownership boundary.
 
 ## Local dev environment
 
