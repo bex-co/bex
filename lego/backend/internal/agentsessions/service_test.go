@@ -293,6 +293,56 @@ func TestLifecycleTicketClaimsAndFirstClassAuthorization(t *testing.T) {
 	}
 }
 
+// TestAttachTicketMintsWithoutChangingLifecycle pins the w3/m43 reconnect verb
+// (ADR047 D9 target API shape): AttachTicket re-mints a fresh, distinct ticket
+// bound to the same session/sandbox without advancing the phase, fails closed
+// before a sandbox exists, denies cross-workspace callers, and 503s when the
+// gateway is unconfigured.
+func TestAttachTicketMintsWithoutChangingLifecycle(t *testing.T) {
+	svc, st, _, lifecycle := fixture()
+	created, err := svc.Create(caller("alice"), createInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeCreated, beforeEntered := lifecycle.created, lifecycle.entered
+
+	attached, err := svc.AttachTicket(caller("alice"), created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if attached.Phase != PhaseRunning || attached.Ticket == "" || attached.Ticket == created.Ticket {
+		t.Fatalf("attach did not mint a fresh ticket without a lifecycle change: %+v", attached)
+	}
+	if lifecycle.created != beforeCreated || lifecycle.entered != beforeEntered {
+		t.Fatalf("attach touched the sandbox lifecycle: %+v", lifecycle)
+	}
+	claims, err := agentsessionticket.Verify(svc.TicketSecret, attached.Ticket, st.now)
+	if err != nil || claims.SessionID != created.ID || claims.SandboxID != "sandbox-1" || claims.Subject != "alice" {
+		t.Fatalf("attach ticket claims = %+v err=%v", claims, err)
+	}
+
+	// A session with no sandbox yet is not attachable.
+	pending, err := st.CreateAgentSession(caller("alice"), store.AgentSession{WorkspaceID: "tea-a", Repo: "bex-co/example", Branch: "bex-agent/x", AgentConfig: []byte(`{}`)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc.Tuples.GrantAgentSessionWorkspace(caller("alice"), pending.ID, "tea-a")
+	if _, err := svc.AttachTicket(caller("alice"), pending.ID); !isCode(err, "AGENT_SESSION_NOT_ATTACHABLE") {
+		t.Fatalf("attach to sandbox-less session = %v, want AGENT_SESSION_NOT_ATTACHABLE", err)
+	}
+
+	// Cross-workspace caller is denied by the first-class tuple.
+	if _, err := svc.AttachTicket(caller("bob"), created.ID); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("cross-workspace attach = %v, want forbidden", err)
+	}
+
+	// Gateway unconfigured => 503 on the mint verb, like create/resume/steer.
+	svc.GatewayURL = ""
+	if _, err := svc.AttachTicket(caller("alice"), created.ID); !errors.Is(err, core.ErrAgentSessionsUnavailable) {
+		t.Fatalf("attach with no gateway = %v, want unavailable", err)
+	}
+}
+
 // TestCreateInjectsWorkspaceScopedModelKey pins ADR047 D7: a workspace's BYO
 // model key is fetched from a workspace-scoped OpenBao path at session-create
 // time and threaded through to the sandbox lifecycle — and a DIFFERENT

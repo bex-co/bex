@@ -129,6 +129,19 @@ func main() {
 			Audit: st,
 		}
 	}
+	// Agent-session conversation transport (ADR047 D9). Shares the web-shell
+	// ticket secret (BEX_SHELL_TICKET_SECRET): bex-api mints agent-session
+	// tickets under the same key. The gateway dials the in-sandbox driver's
+	// stream port directly (the sandbox NetworkPolicy admits only gateway
+	// ingress) and tees the UI-message stream into the durable transcript.
+	if secret := os.Getenv("BEX_SHELL_TICKET_SECRET"); secret != "" {
+		gateway.AgentAttach = &sshgateway.AgentAttachConfig{
+			Store:      st,
+			Pods:       sshgateway.KubePodIPResolver{Client: clientset},
+			Secret:     []byte(secret),
+			DriverPort: intEnv("BEX_AGENT_SESSION_DRIVER_PORT", 8787),
+		}
+	}
 	addr := envOr("BEX_SSH_ADDR", ":2222")
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -233,6 +246,33 @@ func main() {
 			_ = credentialServer.Shutdown(shutdownCtx)
 		}()
 		log.Printf("agent credential broker listening on %s", credentialAddr)
+	}
+	// Agent-session conversation listener (ADR047 D9, w3/m43). Browser-facing via
+	// the platform edge, which path-routes api.bex.co/v1/agent-sessions/{id}/stream
+	// to this listener (t006). Started only when BEX_SHELL_TICKET_SECRET is set.
+	// Both GET (attach: replay + live) and POST (live prompt turn) mount here.
+	if gateway.AgentAttachEnabled() {
+		attachMux := http.NewServeMux()
+		attachMux.Handle("GET /v1/agent-sessions/{id}/stream", gateway.AgentAttachHandler())
+		attachMux.Handle("POST /v1/agent-sessions/{id}/stream", gateway.AgentAttachHandler())
+		attachMux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+		attachServer := &http.Server{Handler: attachMux, ReadHeaderTimeout: 5 * time.Second}
+		attachAddr := envOr("BEX_AGENT_ATTACH_ADDR", ":8083")
+		attachListener, err := net.Listen("tcp", attachAddr)
+		if err != nil {
+			log.Fatalf("ssh gateway: agent attach listen %s: %v", attachAddr, err)
+		}
+		go func() {
+			if err := attachServer.Serve(attachListener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				stop()
+			}
+		}()
+		defer func() {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = attachServer.Shutdown(shutdownCtx)
+		}()
+		log.Printf("agent session attach listening on %s", attachAddr)
 	}
 	log.Printf("ssh gateway listening on %s", addr)
 	if err := gateway.Serve(ctx, listener); err != nil && !errors.Is(err, context.Canceled) {

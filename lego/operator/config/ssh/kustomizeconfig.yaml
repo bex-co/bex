@@ -3,3 +3,7 @@ nameReference:
     fieldSpecs:
       - kind: IngressRouteTCP
         path: spec/routes/services/name
+      # The agent-session attach IngressRoute (HTTP) also names the gateway
+      # Service, so the namePrefix rewrite must reach it too.
+      - kind: IngressRoute
+        path: spec/routes/services/name

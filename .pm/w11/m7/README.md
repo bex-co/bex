@@ -4,7 +4,7 @@
 
 ## Gating
 
-Hard gate: `w11/m6/t009` plus promotion and completion of `.pm/w3/009.md` (gateway proxy + transcript store). Consume that protocol/storage contract and coordinate with `.pm/w5/035.md`; this milestone owns only the mobile client and mobile push integration.
+Hard gate: `w11/m6/t009` plus completion of `w3/m43` (the promoted gateway proxy + transcript store — the ADR047 § D9 target-API conversation endpoint). Consume that protocol/storage contract and coordinate with the dashboard consumer `w1/m64` (the promoted `w5/035`); this milestone owns only the mobile client and mobile push integration.
 
 ## Tasks (in order)
 

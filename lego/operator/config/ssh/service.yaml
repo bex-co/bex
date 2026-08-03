@@ -35,3 +35,11 @@ spec:
       port: 8082
       targetPort: agent-creds
       protocol: TCP
+    # Agent-session conversation transport (ADR047 D9). Browser-facing via the
+    # edge: Traefik terminates TLS on api.bex.co and path-routes
+    # /v1/agent-sessions/{id}/stream here (ingressroute-agent-attach.yaml). The
+    # listener runs only when the shared BEX_SHELL_TICKET_SECRET is installed.
+    - name: agent-attach
+      port: 8083
+      targetPort: agent-attach
+      protocol: TCP

@@ -85,6 +85,13 @@ type Server struct {
 	// only then does the gateway make an HMAC-authenticated mint call to bex-api.
 	AgentCredential *AgentCredentialConfig
 
+	// AgentAttach enables the agent-session conversation transport
+	// (agent_attach.go, ADR047 D9): ticket-authenticated SSE replay + live splice
+	// of the in-sandbox driver stream, teed into the durable transcript. Its
+	// Secret must equal bex-api's agent-session ticket secret
+	// (BEX_SHELL_TICKET_SECRET). nil/empty => the listener is not started.
+	AgentAttach *AgentAttachConfig
+
 	HandshakeTimeout time.Duration
 	SessionTimeout   time.Duration
 	MaxSessions      int

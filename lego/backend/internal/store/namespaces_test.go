@@ -115,15 +115,35 @@ func TestHostingNamespaceGetsAllowPoliciesSandboxSealed(t *testing.T) {
 	}
 
 	sandbox := SandboxNamespace(tn.ID)
-	// Every sandbox is its own trust domain. Only default-deny is native; Cilium
-	// supplies exact-SA execd ingress plus narrowed DNS/FQDN egress.
-	if !has(sandbox, "default-deny") {
-		t.Error("sandbox namespace missing default-deny")
+	// Every sandbox is its own trust domain. default-deny is native; the ONLY
+	// sanctioned allow is the narrow gateway→driver ingress (ADR047 D9, w3/m43),
+	// admitting just bex-system to the driver's stream port. Cilium supplies the
+	// narrowed DNS/FQDN egress.
+	for _, name := range []string{"default-deny", "allow-gateway-driver-ingress"} {
+		if !has(sandbox, name) {
+			t.Errorf("sandbox namespace missing policy %s", name)
+		}
 	}
 	for _, name := range []string{"allow-same-namespace", "allow-dns-egress", "allow-traefik-ingress", "allow-internet-egress", "allow-opensandbox-server-execd"} {
 		if has(sandbox, name) {
 			t.Errorf("sandbox namespace must NOT have %s (per-sandbox boundary)", name)
 		}
+	}
+
+	// The gateway-ingress policy is exactly one narrow rule: ingress only, from
+	// bex-system, to the driver port — never a broad open.
+	var gw networkingv1.NetworkPolicy
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: sandbox, Name: "allow-gateway-driver-ingress"}, &gw); err != nil {
+		t.Fatalf("gateway-driver ingress policy: %v", err)
+	}
+	if len(gw.Spec.PolicyTypes) != 1 || gw.Spec.PolicyTypes[0] != networkingv1.PolicyTypeIngress {
+		t.Errorf("gateway ingress policy must be ingress-only, got %v", gw.Spec.PolicyTypes)
+	}
+	if len(gw.Spec.Ingress) != 1 || len(gw.Spec.Ingress[0].Ports) != 1 || gw.Spec.Ingress[0].Ports[0].Port.IntValue() != 8787 {
+		t.Errorf("gateway ingress must admit only the driver port 8787, got %+v", gw.Spec.Ingress)
+	}
+	if len(gw.Spec.Ingress[0].From) != 1 || gw.Spec.Ingress[0].From[0].NamespaceSelector.MatchLabels["kubernetes.io/metadata.name"] != "bex-system" {
+		t.Errorf("gateway ingress must admit only bex-system, got %+v", gw.Spec.Ingress[0].From)
 	}
 }
 

@@ -141,6 +141,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"resumeAgentSession": &graphql.Field{Type: agentSessionGQLType, Args: idArg, Resolve: func(p graphql.ResolveParams) (any, error) {
 			return s.Resume(p.Context, stringArg(p.Args, "id"))
 		}},
+		"attachAgentSession": &graphql.Field{Type: agentSessionGQLType, Args: idArg, Resolve: func(p graphql.ResolveParams) (any, error) {
+			return s.AttachTicket(p.Context, stringArg(p.Args, "id"))
+		}},
 		"cancelAgentSession": &graphql.Field{Type: agentSessionGQLType, Args: idArg, Resolve: func(p graphql.ResolveParams) (any, error) {
 			return s.Cancel(p.Context, stringArg(p.Args, "id"))
 		}},
