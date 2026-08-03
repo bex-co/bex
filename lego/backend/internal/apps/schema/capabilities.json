@@ -201,68 +201,98 @@
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/envVarFromDatabase/properties/fromDatabase": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/stack_test.go:TestParseStackDefersFromDatabaseUntilStableIDIsKnown",
+      "reason": "defers the typed database-secret reference until the target ID is known"
     },
     "#/definitions/envVarFromDatabase/properties/key": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/stack_test.go:TestParseStackDefersFromDatabaseUntilStableIDIsKnown",
+      "reason": "becomes the stable environment-variable key"
     },
     "#/definitions/envVarFromDatabase/properties/fromDatabase/properties/name": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/stack_test.go:TestParseStackDefersFromDatabaseUntilStableIDIsKnown",
+      "reason": "identifies the same-stack or authorized existing database"
     },
     "#/definitions/envVarFromDatabase/properties/fromDatabase/properties/property": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/stack_test.go:TestParseStackDefersFromDatabaseUntilStableIDIsKnown",
+      "reason": "selects a documented key from the managed database connection Secret"
     },
     "#/definitions/envVarFromGroup/properties/fromGroup": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseService",
+      "fixture": "internal/apps/blueprint_env_test.go:TestDeployStackAppliesEnvGroupsLinksAndSeeds",
+      "reason": "links the declared or authorized existing environment group"
     },
     "#/definitions/envVarFromKeyValue/properties/generateValue": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseService",
+      "fixture": "internal/apps/blueprint_env_test.go:TestDeployStackAppliesEnvGroupsLinksAndSeeds",
+      "reason": "seeds a generated value once through the mutable env-vars adapter"
     },
     "#/definitions/envVarFromKeyValue/properties/key": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseService",
+      "fixture": "internal/apps/blueprint_env_test.go:TestDeployStackAppliesEnvGroupsLinksAndSeeds",
+      "reason": "becomes the stable environment-variable key"
     },
     "#/definitions/envVarFromKeyValue/properties/previewValue": {
       "state": "unsupported",
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/envVarFromKeyValue/properties/sync": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseService",
+      "fixture": "internal/apps/blueprint_env_test.go:TestDeployStackAppliesEnvGroupsLinksAndSeeds",
+      "reason": "sync:false values are seeded once and remain outside later Blueprint syncs"
     },
     "#/definitions/envVarFromKeyValue/properties/value": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseService",
+      "fixture": "internal/apps/blueprint_env_test.go:TestDeployStackAppliesEnvGroupsLinksAndSeeds",
+      "reason": "maps to a literal or seed value according to the declared env form"
     },
     "#/definitions/envVarFromService/properties/fromService": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/stack_test.go:TestDeployStackFromServiceHostResolvesToTheSlug",
+      "reason": "resolves an authorized sibling service or Key Value reference"
     },
     "#/definitions/envVarFromService/properties/key": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/stack_test.go:TestDeployStackFromServiceHostResolvesToTheSlug",
+      "reason": "becomes the stable environment-variable key"
     },
     "#/definitions/envVarFromService/properties/fromService/properties/envVarKey": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_env_test.go:TestParseStackClassifiesEnvGroupsAndSeeds",
+      "reason": "copies a parse-time-known sibling environment value"
     },
     "#/definitions/envVarFromService/properties/fromService/properties/name": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/stack_test.go:TestDeployStackFromServiceHostResolvesToTheSlug",
+      "reason": "identifies the same-stack or authorized existing target"
     },
     "#/definitions/envVarFromService/properties/fromService/properties/property": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/stack_test.go:TestDeployStackFromServiceHostResolvesToTheSlug",
+      "reason": "selects a supported service address or Key Value credential property"
     },
     "#/definitions/envVarFromService/properties/fromService/properties/type": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/stack_test.go:TestDeployStackResolvesExistingWorkspaceDatabaseAndKeyValueRefs",
+      "reason": "selects the Key Value reference adapter when declared"
     },
     "#/definitions/envVarGroup/properties/envVars": {
       "state": "translated",
