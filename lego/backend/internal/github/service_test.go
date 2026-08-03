@@ -117,6 +117,9 @@ func (c *fakeClient) GetFileContents(_ context.Context, _, _, _, _, _ string) (F
 func (c *fakeClient) GetRepoCommitSHA(_ context.Context, _, _, _, _ string) (string, error) {
 	return "", nil
 }
+func (c *fakeClient) OpenDraftPullRequest(_ context.Context, _ int64, _, _, _, _, _, _ string) (PullRequest, error) {
+	return PullRequest{}, nil
+}
 
 // allowChecker allows exactly the relations in its set.
 type allowChecker map[string]bool

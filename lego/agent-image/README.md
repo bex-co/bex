@@ -22,8 +22,13 @@ Agent choice is configuration, not image logic:
 | --- | --- |
 | `BEX_AGENT_COMMAND` | ACP agent executable (default `claude-code-acp`) |
 | `BEX_AGENT_ARGS` | JSON string array of arguments |
-| `BEX_AGENT_CWD` | pre-cloned repository (default `/workspace`) |
+| `BEX_AGENT_CWD` | working directory / repository checkout (default `/workspace`) |
 | `BEX_AGENT_PROMPT` | starts one headless `streamText` turn when non-empty |
+| `BEX_AGENT_DELIVER` | `1` runs the delivery step (ADR047 D4): setup-phase clone of the session branch, then commit + push after the turn; requires `BEX_AGENT_BRANCH` |
+| `BEX_AGENT_BRANCH` | the `bex-agent/*` branch the driver commits + pushes |
+| `BEX_AGENT_REPO_URL` | HTTPS clone URL used when the workspace is empty (setup phase) |
+| `BEX_AGENT_BASE_BRANCH` | PR base branch (default: the origin default branch) |
+| `BEX_AGENT_GIT_NAME` / `BEX_AGENT_GIT_EMAIL` | commit author identity (defaults `bex agent` / `agent@bex.co`) |
 | `BEX_AGENT_EXISTING_SESSION_ID` | resume candidate, gated by an ACP `loadSession` probe |
 | `BEX_AGENT_ENV_JSON` | non-secret string-to-string child environment |
 | `BEX_AGENT_MODEL_API_KEY` | ephemeral OpenBao-sourced key consumed by the driver |
@@ -33,6 +38,10 @@ Agent choice is configuration, not image logic:
 | `BEX_AGENT_TURN_TIMEOUT_MS` | hard headless-turn bound (default four hours) |
 | `BEX_AGENT_SCRUB_ROOTS` | comma-separated persisted roots checked for the exact model credential before snapshot |
 | `BEX_AGENT_EXIT_AFTER_TURN` | `1` exits after the one headless turn; otherwise listeners stay |
+
+## Delivery (ADR047 D4)
+
+When `BEX_AGENT_DELIVER=1`, the driver owns the completion path so delivery is deterministic and enforced outside the agent (the Copilot model). Before the turn it checks out the session branch (cloning `BEX_AGENT_REPO_URL` when the workspace is empty). After the turn it stages the working tree, commits with an author derived from the prompt, and pushes `BEX_AGENT_BRANCH` through the `bex` credential helper, then extracts a bounded, redacted evidence digest (command log + test-output tails + a trailing output window, all size-capped with explicit truncation marking) from the session log. All of this lands in the status file — `delivery{branch,baseBranch,headSha,pushed,commits,changedFiles}` and `evidence{commandLog,testOutput,outputTail,truncated}` — which bex-api's Completer reads through the gateway exec boundary to open the draft PR. A push failure fails the turn (status `failed`), never hangs. `delivery.test.mjs` locks clone/commit/push, the no-change no-op, and the evidence bounds against a hermetic local origin.
 
 The `@mcpc-tech/acp-ai-provider` and AI SDK versions are exact pins in `driver/package.json`. The driver probes `initialize.agentCapabilities` before passing an existing session id because provider 0.2.9 otherwise calls `session/load` unconditionally.
 

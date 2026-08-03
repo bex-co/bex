@@ -48,4 +48,19 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, view)
 	})
+	mux.HandleFunc("POST /v1/agent-sessions/{id}/steer", func(w http.ResponseWriter, r *http.Request) {
+		var req SteerRequest
+		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
+		if err := core.DecodeJSON(r, &req); err != nil {
+			core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		req.SessionID = r.PathValue("id")
+		view, err := s.Steer(r.Context(), req)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, view)
+	})
 }

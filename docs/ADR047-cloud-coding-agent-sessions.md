@@ -1,6 +1,6 @@
 # ADR047 — Managed cloud coding-agent sessions
 
-**Status:** Accepted; D3 agent-session control-plane API shipped in w3/m39 (2026-08-01). The gateway attach proxy/transcript path remains phase 2. Deep-research and the in-sandbox AI SDK driver amendment were completed 2026-08-01. Engages the `.pm/DO_NOT_DO.md` "Hosted Claude Code inside sandbox" deferral — this ADR re-opens that item as a phased product.
+**Status:** Accepted; D3 agent-session control-plane API shipped in w3/m39 (2026-08-01). **D4 delivery (draft PR + evidence) and D8 phase-1 steering shipped in w3/m41 (2026-08-02):** the sandbox driver commits + pushes the `bex-agent/*` branch and captures bounded evidence; a bex-api background Completer reads the driver status file through the gateway exec boundary, opens a draft PR via the GitHub App, and records head SHA + PR URL + evidence on the session; a steering turn re-dispatches a fresh sandbox on the same branch and updates the same PR. The gateway attach proxy/transcript path (live attach, token metering) remains phase 2. Deep-research and the in-sandbox AI SDK driver amendment were completed 2026-08-01. Engages the `.pm/DO_NOT_DO.md` "Hosted Claude Code inside sandbox" deferral — this ADR re-opens that item as a phased product.
 
 ---
 
@@ -122,6 +122,8 @@ The OpenSandbox tenant API key is platform-side and is never injected into an ag
 
 A session ends (or checkpoints) by pushing its `bex-agent/*` branch with the session token and opening a **draft PR** via the GitHub App from bex-api. The session record attaches Codex-style verifiable evidence — command log, test output tails — sourced from the transcript. Steering channels: new ACP prompt turns on an attached session (phase 2), and a PR-comment loop (webhook → resume session) as a follow-on.
 
+**Shipped completion mechanism (w3/m41).** Delivery is deterministic and enforced outside the agent (the Copilot model): after the headless turn, the **sandbox driver** stages the working tree, commits, pushes the `bex-agent/*` branch through the m38 credential helper, and writes the head SHA + a bounded evidence extract into its machine-readable status file. A **bex-api background Completer** polls each running session's status file through the existing gateway sandbox-exec boundary (a trusted system seam — no per-tick tenant authorization, since it acts only on durable sessions the platform owns; bex-api still never holds `pods/exec`), and on a pushed successful turn opens (or idempotently reuses) the **draft PR** via the GitHub App, records `headSha`/`prUrl`/`prNumber`/`evidence` on the session, and tears the sandbox down. A failed turn, a lost sandbox, or a failed PR-open becomes a `failed` session with a named reason — never a hang. **Phase-1 steering** (D8) re-dispatches a fresh sandbox on the same branch with the new prompt (a new prompt cannot ride the original sandbox until live attach exists); the Completer then updates the same draft PR, and `turns` + `deliveryMode` record the multi-turn history. Live E2E is proven by `scripts/agent-session-verify.sh`.
+
 ### D5 — Egress: default-deny with per-session opt-in
 
 The `<ws>-sandbox` default-deny NetworkPolicy stays. Baseline allowlist for the agent phase: GitHub (clone/push via the helper) and the model API endpoint only; setup phase may open package registries. Tenants may widen per session with an explicit allowlist (Codex pattern). When a metering LLM proxy exists (D6 phase 2), the model-API allowlist narrows to the proxy — one mechanism then provides token metering **and** the exfiltration choke point.
@@ -145,7 +147,7 @@ v1 is **bring-your-own-API-key**: the tenant supplies their model credential (st
 
 ### D8 — Phasing
 
-- **Phase 1 — fire-and-forget** (Copilot shape, no interactive attach): `POST /v1/agent-sessions` → the same D3 session driver runs the task headless (one `streamText` turn, no client stream) → draft PR + evidence. Needs only D1/D2/D4/D5 + the compute meter. Steering = new prompt turns that resume the sandbox.
+- **Phase 1 — fire-and-forget** (Copilot shape, no interactive attach): `POST /v1/agent-sessions` → the same D3 session driver runs the task headless (one `streamText` turn, no client stream) → draft PR + evidence. Needs only D1/D2/D4/D5 + the compute meter. Steering = new prompt turns that re-dispatch the sandbox on the same branch. **Shipped in w3/m41** (delivery, evidence, steering, live E2E; the compute meter is D6/w7 follow-on).
 - **Phase 2 — live attach**: the gateway session proxy + transcript tee/replay, dashboard session UI on `useChat`/AI Elements (integration, not protocol work), token metering via the LLM proxy.
 - **Phase 2+ — native ACP IDE attach**: the driver's raw-ACP WebSocket listener proxied through the same ticket path, for Zed-class clients.
 

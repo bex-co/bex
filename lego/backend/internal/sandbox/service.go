@@ -399,7 +399,7 @@ const ModelAPIKeyEnvVar = "BEX_AGENT_MODEL_API_KEY"
 // check. It preserves every reserved sandbox hardening stamp and adds the
 // durable session id, without re-checking can_create (session creation is
 // intentionally can_operate per ADR047 D3).
-func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, workspaceID, template, sessionID, repository, branch, modelEndpoint, modelAPIKey string, egressAllowlist []string) (Sandbox, error) {
+func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, workspaceID, template, sessionID, repository, branch, modelEndpoint, modelAPIKey string, egressAllowlist []string, driverEnv map[string]string) (Sandbox, error) {
 	s := l.service
 	if !s.enabled() {
 		return Sandbox{}, core.ErrSandboxesUnavailable
@@ -436,16 +436,25 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 	policy := &NetworkPolicy{Default: NetworkPolicyDenyAll}
 	bindings[metadataEgressAllow] = string(allowJSON)
 	bindings[metadataModelEndpoint] = modelEndpoint
-	// The BYO model key (ADR047 D7) is pod-spec env, set once at create and never
-	// echoed back by OpenSandbox's create response nor stamped into bindings/
-	// metadata — metadata lands in status reads and audit, which must never carry
-	// a secret. Resume needs no re-injection: OpenSandbox resumes the SAME pod
-	// (its k8s-level env persists independent of the rootfs snapshot the
-	// pre-snapshot hook scrubs), so create-time injection covers the session's
-	// whole lifetime.
+	// driverEnv carries the non-secret run env (prompt, agent, branch, repo,
+	// delivery toggle — ADR047 D4). The BYO model key (ADR047 D7) is pod-spec env
+	// too, but is never echoed back by OpenSandbox's create response nor stamped
+	// into bindings/metadata — metadata lands in status reads and audit, which
+	// must never carry a secret. Resume needs no re-injection: OpenSandbox resumes
+	// the SAME pod (its k8s-level env persists independent of the rootfs snapshot
+	// the pre-snapshot hook scrubs), so create-time injection covers the whole
+	// session lifetime.
+	// Keep env nil (omitted from the create request) when neither driver env nor
+	// a model key is present, so the no-config path stays byte-identical.
 	var env map[string]string
-	if modelAPIKey != "" {
-		env = map[string]string{ModelAPIKeyEnvVar: modelAPIKey}
+	if len(driverEnv) > 0 || modelAPIKey != "" {
+		env = map[string]string{}
+		for k, v := range driverEnv {
+			env[k] = v
+		}
+		if modelAPIKey != "" {
+			env[ModelAPIKeyEnvVar] = modelAPIKey
+		}
 	}
 	sb, err := s.createResolved(ctx, workspaceID, template, tmpl, plan, "", 0, policy, env, bindings)
 	if err != nil {
@@ -536,6 +545,41 @@ func (l *AgentSessionLifecycle) CancelAgentSessionSandbox(ctx context.Context, w
 		}
 	}
 	return nil
+}
+
+// agentSessionStatusPath is the driver's machine-readable status file inside the
+// sandbox (BEX_AGENT_STATUS_FILE default, lego/agent-image/driver/src/config.mjs).
+const agentSessionStatusPath = "/var/run/bex-agent/status.json"
+
+// ReadSessionStatus returns the raw driver status-file contents from the exact
+// session sandbox through the gateway exec boundary — the trusted completion
+// signal the agent-sessions Completer polls (ADR047 D4). It re-validates the
+// sandbox binding but intentionally performs no user-facing authorization: its
+// only caller is a system loop that already owns the durable session. Empty
+// output means the file is not present yet (the headless turn is still running).
+func (l *AgentSessionLifecycle) ReadSessionStatus(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error) {
+	s := l.service
+	if !s.enabled() || !s.execEnabled() {
+		return "", core.ErrSandboxesUnavailable
+	}
+	key, err := s.agentSessionKey(ctx, workspaceID)
+	if err != nil {
+		return "", err
+	}
+	if _, err := s.agentSessionSandbox(ctx, key, workspaceID, sessionID, sandboxID); err != nil {
+		return "", err
+	}
+	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID,
+		[]string{"/bin/sh", "-c", "cat " + agentSessionStatusPath + " 2>/dev/null || true"})
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	result, err := bufferExec(resp)
+	if err != nil {
+		return "", err
+	}
+	return result.Stdout, nil
 }
 
 func (s *Service) agentSessionKey(ctx context.Context, workspaceID string) (string, error) {

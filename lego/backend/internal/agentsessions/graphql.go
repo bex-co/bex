@@ -32,6 +32,18 @@ var agentConfigGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 
 func gqlTime(t time.Time) string { return t.UTC().Format(time.RFC3339Nano) }
 
+var evidenceGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentSessionEvidence",
+	Fields: graphql.Fields{
+		"commandLog":   &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Resolve: gqlutil.Field(func(v Evidence) any { return v.CommandLog })},
+		"testOutput":   &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Resolve: gqlutil.Field(func(v Evidence) any { return v.TestOutput })},
+		"outputTail":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Evidence) any { return v.OutputTail })},
+		"changedFiles": &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Resolve: gqlutil.Field(func(v Evidence) any { return v.ChangedFiles })},
+		"commits":      &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v Evidence) any { return v.Commits })},
+		"truncated":    &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v Evidence) any { return v.Truncated })},
+	},
+})
+
 var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSession",
 	Fields: graphql.Fields{
@@ -43,8 +55,20 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"sandboxId":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v View) any { return v.SandboxID })},
 		"phase":       &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v View) any { return v.Phase })},
 		"status":      &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v View) any { return v.Status })},
-		"createdAt":   &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v View) any { return gqlTime(v.CreatedAt) })},
-		"updatedAt":   &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v View) any { return gqlTime(v.UpdatedAt) })},
+		"headSha":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v View) any { return v.HeadSHA })},
+		"prUrl":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v View) any { return v.PRURL })},
+		"prNumber":    &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v View) any { return v.PRNumber })},
+		"evidence": &graphql.Field{Type: evidenceGQLType, Resolve: gqlutil.Field(func(v View) any {
+			if v.Evidence == nil {
+				return nil
+			}
+			return *v.Evidence
+		})},
+		"turns":         &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v View) any { return v.Turns })},
+		"deliveryMode":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v View) any { return v.DeliveryMode })},
+		"failureReason": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v View) any { return v.FailureReason })},
+		"createdAt":     &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v View) any { return gqlTime(v.CreatedAt) })},
+		"updatedAt":     &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v View) any { return gqlTime(v.UpdatedAt) })},
 		"canceledAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v View) any {
 			if v.CanceledAt == nil {
 				return nil
@@ -101,6 +125,17 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Create(p.Context, CreateRequest{OwnerID: stringArg(p.Args, "ownerId"), Repo: stringArg(p.Args, "repo"), Branch: stringArg(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"])})
+			},
+		},
+		"steerAgentSession": &graphql.Field{
+			Type: agentSessionGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":              &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"prompt":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"egressAllowlist": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String))},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Steer(p.Context, SteerRequest{SessionID: stringArg(p.Args, "id"), Prompt: stringArg(p.Args, "prompt"), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"])})
 			},
 		},
 		"resumeAgentSession": &graphql.Field{Type: agentSessionGQLType, Args: idArg, Resolve: func(p graphql.ResolveParams) (any, error) {

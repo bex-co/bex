@@ -50,6 +50,7 @@ type APIClient interface {
 	GetCommit(ctx context.Context, token, owner, repo, ref string) (Commit, error)
 	GetFileContents(ctx context.Context, token, owner, repo, path, ref string) (FileContents, error)
 	GetRepoCommitSHA(ctx context.Context, token, owner, repo, branch string) (string, error)
+	OpenDraftPullRequest(ctx context.Context, installationID int64, owner, repo, head, base, title, body string) (PullRequest, error)
 }
 
 // Service manages a workspace's GitHub App connection and lists its repos over

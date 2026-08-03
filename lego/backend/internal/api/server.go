@@ -84,24 +84,28 @@ type Server struct {
 	SSHKeys       *sshkeys.Service
 	Sandbox       *sandbox.Service
 	AgentSessions *agentsessions.Service
-	Postgres      *postgres.Service
-	KeyValue      *keyvalue.Service
-	Secrets       *secrets.Service
-	EnvGroups     *envgroups.Service
-	Workspaces    *workspaces.Service
-	Members       *members.Service
-	Billing       *billing.Service
-	Usage         *usage.Service
-	Deploys       *deploys.Service
-	Events        *events.Service
-	Audit         *audit.Service
-	GitHub        *github.Service
-	Notifications *notifications.Service
-	Projects      *projects.Service
-	Environments  *environments.Service
-	RegistryCreds *registrycreds.Service
-	Webhooks      *webhooks.Service
-	Jobs          *jobs.Service
+	// AgentSessionCompleter is the trusted background loop that finalizes
+	// fire-and-forget agent sessions (ADR047 D4, w3/m41). nil (or its deps
+	// unwired) ⇒ the loop is a no-op; main.go starts it with the serve context.
+	AgentSessionCompleter *agentsessions.Completer
+	Postgres              *postgres.Service
+	KeyValue              *keyvalue.Service
+	Secrets               *secrets.Service
+	EnvGroups             *envgroups.Service
+	Workspaces            *workspaces.Service
+	Members               *members.Service
+	Billing               *billing.Service
+	Usage                 *usage.Service
+	Deploys               *deploys.Service
+	Events                *events.Service
+	Audit                 *audit.Service
+	GitHub                *github.Service
+	Notifications         *notifications.Service
+	Projects              *projects.Service
+	Environments          *environments.Service
+	RegistryCreds         *registrycreds.Service
+	Webhooks              *webhooks.Service
+	Jobs                  *jobs.Service
 	// StripeWebhook is the signature-verifying public billing callback. It is
 	// nil unless BEX_STRIPE_WEBHOOK_SECRET is configured.
 	StripeWebhook http.Handler
@@ -574,6 +578,12 @@ func NewServer(base *core.Base, d Deps) *Server {
 		sshHost = d.SSHHost
 	}
 	sandboxSvc := sandboxService(base, d)
+	// Keep the agent-session lifecycle a genuine nil interface when OpenSandbox is
+	// off, so enabled() checks are honest instead of holding a typed-nil pointer.
+	var agentLifecycle agentsessions.SandboxLifecycle
+	if sandboxSvc != nil {
+		agentLifecycle = sandbox.NewAgentSessionLifecycle(sandboxSvc)
+	}
 	srv := &Server{
 		Apps: &apps.Service{Base: base, Store: d.Store, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, SecretFileSeeder: secretFileSeeder, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
 		Logs: logSvc,
@@ -595,8 +605,12 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Sandbox: sandboxSvc,
 		AgentSessions: &agentsessions.Service{
 			Base: base, Store: d.AgentSessionStore, Tuples: d.AgentSessionTuples,
-			Sandbox: sandbox.NewAgentSessionLifecycle(sandboxSvc), TicketSecret: d.AgentSessionTicketSecret,
+			Sandbox: agentLifecycle, TicketSecret: d.AgentSessionTicketSecret,
 			GatewayURL: d.AgentSessionGatewayURL, ModelKeys: d.Secrets,
+		},
+		AgentSessionCompleter: &agentsessions.Completer{
+			Store: d.AgentSessionStore, Sandbox: agentLifecycle,
+			GitHub: d.GitHubClient, Connections: d.GitHubStore, APIPublicURL: d.DeployHookBaseURL,
 		},
 		Postgres:  pg,
 		KeyValue:  kv,

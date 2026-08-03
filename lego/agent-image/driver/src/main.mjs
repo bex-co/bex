@@ -17,6 +17,7 @@
 
 import { createCredentialManager } from "./credentials.mjs";
 import { loadConfig } from "./config.mjs";
+import { ensureRepo } from "./delivery.mjs";
 import { runHeadlessTurn } from "./session.mjs";
 import { startDriverServer } from "./server.mjs";
 import { UIMessageStreamHub } from "./stream-hub.mjs";
@@ -42,6 +43,10 @@ async function main() {
 
   if (!config.prompt) return;
   try {
+    // Setup phase: check out the session branch (cloning when the workspace is
+    // empty) before the agent runs. Package-registry egress is open here; the
+    // agent phase then narrows it (ADR047 D5).
+    if (config.deliver) await ensureRepo(config);
     await runHeadlessTurn(config, credentials, hub);
     if (config.exitAfterTurn) await shutdown();
   } catch (error) {

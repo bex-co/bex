@@ -1,6 +1,6 @@
 # w3 · m41 — Phase-1 fire-and-forget: session → draft PR + evidence (ADR047 D4/D8)
 
-**Worker:** worker3 **Goal:** the phase-1 product moment — a tenant fires `POST /v1/agent-sessions` and gets back a draft PR on their repo with Codex-style verifiable evidence, steerable by a follow-up prompt turn; live-verified end to end on the real substrate. **Status:** todo
+**Worker:** worker3 **Goal:** the phase-1 product moment — a tenant fires `POST /v1/agent-sessions` and gets back a draft PR on their repo with Codex-style verifiable evidence, steerable by a follow-up prompt turn; live-verified end to end on the real substrate. **Status:** implementation complete + locally verified (backend suite + driver tests + lint green); **awaiting the operator live E2E run** (`scripts/agent-session-verify.sh` on prod) to satisfy the DoD and close (t004 run + t008).
 
 ## Gating
 
@@ -10,14 +10,14 @@ Integration milestone — do **not** start until **w3/m37** (driver + image), **
 
 | id   | title                                                                     | est | depends_on |
 | ---- | --------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Completion flow: push `bex-agent/*` branch, open draft PR via the GitHub App | 60m | —          |
-| t002 | Evidence capture: command log / test-output tails into the session record    | 45m | t001       |
-| t003 | Steering v1: new prompt turn resumes the session sandbox                     | 60m | t001       |
-| t004 | Live E2E verification script (`scripts/agent-session-verify.sh`) on prod     | 90m | t002, t003 |
-| t005 | Render parity: session result fields consistent across REST/GraphQL/MCP      | 30m | t004       |
-| t006 | Simplify pass over the completion/steering code                              | 20m | t005       |
-| t007 | Test coverage: completion, PR open, evidence, steering, failure paths        | 45m | t005       |
-| t008 | Closeout                                                                     | 10m | t007       |
+| t001 | Completion flow: push `bex-agent/*` branch, open draft PR via the GitHub App | 60m | — — **DONE** |
+| t002 | Evidence capture: command log / test-output tails into the session record    | 45m | t001 — **DONE** |
+| t003 | Steering v1: new prompt turn resumes the session sandbox                     | 60m | t001 — **DONE** |
+| t004 | Live E2E verification script (`scripts/agent-session-verify.sh`) on prod     | 90m | t002, t003 — script authored; **live prod run pending operator** |
+| t005 | Render parity: session result fields consistent across REST/GraphQL/MCP      | 30m | t004 — **DONE** |
+| t006 | Simplify pass over the completion/steering code                              | 20m | t005 — **DONE** |
+| t007 | Test coverage: completion, PR open, evidence, steering, failure paths        | 45m | t005 — **DONE** |
+| t008 | Closeout                                                                     | 10m | t007 — blocked on the live E2E run |
 
 ## Definition of done
 
