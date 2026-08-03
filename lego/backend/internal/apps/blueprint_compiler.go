@@ -73,7 +73,8 @@ func CompileBlueprintSource(manifest string) (*BlueprintSource, []BlueprintSourc
 	if len(problems) > 0 {
 		return source, sortBlueprintSourceProblems(problems)
 	}
-	if _, err := RenderBlueprintCapabilityRegistry(); err != nil {
+	registry, err := RenderBlueprintCapabilityRegistry()
+	if err != nil {
 		return source, []BlueprintSourceProblem{{
 			Code:    "BLUEPRINT_SCHEMA_UNAVAILABLE",
 			Path:    "#",
@@ -91,7 +92,7 @@ func CompileBlueprintSource(manifest string) (*BlueprintSource, []BlueprintSourc
 	if err := schema.Validate(source.Value); err != nil {
 		problems = append(problems, blueprintSchemaProblems(err, source.Locations)...)
 	}
-	problems = append(problems, blueprintCapabilityProblems(source.Value, nil, source.Locations)...)
+	problems = append(problems, blueprintCapabilityProblems(source.Value, nil, source.Locations, registry)...)
 	return source, sortBlueprintSourceProblems(problems)
 }
 
@@ -111,14 +112,14 @@ func blueprintSourceProblemsError(problems []BlueprintSourceProblem) error {
 // schema intentionally permits but bex cannot represent truthfully. Keeping
 // this immediately after schema validation means every caller fails before a
 // state lookup or write, with the source path that needs changing.
-func blueprintCapabilityProblems(value any, path []string, locations map[string]BlueprintSourceLocation) []BlueprintSourceProblem {
+func blueprintCapabilityProblems(value any, path []string, locations map[string]BlueprintSourceLocation, registry *BlueprintCapabilityRegistry) []BlueprintSourceProblem {
 	object, ok := value.(map[string]any)
 	if !ok {
 		switch child := value.(type) {
 		case []any:
 			var problems []BlueprintSourceProblem
 			for index, item := range child {
-				problems = append(problems, blueprintCapabilityProblems(item, append(path, strconv.Itoa(index)), locations)...)
+				problems = append(problems, blueprintCapabilityProblems(item, append(path, strconv.Itoa(index)), locations, registry)...)
 			}
 			return problems
 		}
@@ -136,28 +137,76 @@ func blueprintCapabilityProblems(value any, path []string, locations map[string]
 		case "builder":
 			problem(field, "BLUEPRINT_EXTENSION_REQUIRED", "bex build strategy must be written as x-bex.builder; builder is not a Render Blueprint field")
 		case "region":
+			if !blueprintCapabilityUnsupported(registry, "#/definitions/serverService/properties/region", "#/definitions/cronService/properties/region", "#/definitions/staticService/properties/region", "#/definitions/database/properties/region", "#/definitions/redisServer/properties/region") {
+				break
+			}
 			problem(field, "BLUEPRINT_CAPABILITY_UNSUPPORTED", "per-resource region placement is not available on bex")
 		case "disk":
+			if !blueprintCapabilityUnsupported(registry, "#/definitions/serverService/properties/disk") {
+				break
+			}
 			problem(field, "BLUEPRINT_CAPABILITY_UNSUPPORTED", "persistent service disks are not available on bex")
 		case "dockerContext":
+			if !blueprintCapabilityUnsupported(registry, "#/definitions/serverService/properties/dockerContext", "#/definitions/cronService/properties/dockerContext") {
+				break
+			}
 			problem(field, "BLUEPRINT_CAPABILITY_UNSUPPORTED", "dockerContext is not available on bex because its build-context semantics cannot be represented exactly")
 		case "registryCredential", "creds":
+			if !blueprintCapabilityUnsupported(registry, "#/definitions/serverService/properties/registryCredential", "#/definitions/cronService/properties/registryCredential", "#/definitions/image/properties/creds", "#/definitions/registryCredential/properties/fromRegistryCreds") {
+				break
+			}
 			problem(field, "BLUEPRINT_CAPABILITY_UNSUPPORTED", "Blueprint registry credentials are not available on bex; bind an authorized registry credential through the service API")
 		case "previews", "previewsEnabled", "previewsExpireAfterDays", "previewPlan", "previewDiskSizeGB", "pullRequestPreviewsEnabled":
+			if !blueprintCapabilityUnsupported(registry,
+				"#/allOf/1/properties/previews", "#/allOf/1/properties/previewsEnabled", "#/allOf/1/properties/previewsExpireAfterDays",
+				"#/definitions/serverService/properties/previews", "#/definitions/serverService/properties/previewPlan", "#/definitions/serverService/properties/pullRequestPreviewsEnabled",
+				"#/definitions/staticService/properties/previews", "#/definitions/staticService/properties/pullRequestPreviewsEnabled",
+				"#/definitions/database/properties/previewPlan", "#/definitions/database/properties/previewDiskSizeGB", "#/definitions/redisServer/properties/previewPlan",
+			) {
+				break
+			}
 			problem(field, "BLUEPRINT_CAPABILITY_UNSUPPORTED", "preview environments are not available on bex")
 		case "previewValue":
+			if !blueprintCapabilityUnsupported(registry, "#/definitions/envVarFromKeyValue/properties/previewValue") {
+				break
+			}
 			problem(field, "BLUEPRINT_CAPABILITY_UNSUPPORTED", "previewValue is not available on bex because preview environments are not available")
 		case "autoDeployTrigger":
-			if trigger, _ := child.(string); trigger == "checksPass" {
+			if trigger, _ := child.(string); trigger == "checksPass" && blueprintEnumCapabilityUnsupported(registry, "#/definitions/autoDeployTrigger/enum", `"checksPass"`) {
 				problem(field, "BLUEPRINT_CAPABILITY_UNSUPPORTED", "autoDeployTrigger: checksPass requires CI-check gating, which is not available on bex")
 			}
 		}
 		if field == "x-bex" {
 			continue // local extension vocabulary is validated by its own schema.
 		}
-		problems = append(problems, blueprintCapabilityProblems(child, append(path, field), locations)...)
+		problems = append(problems, blueprintCapabilityProblems(child, append(path, field), locations, registry)...)
 	}
 	return problems
+}
+
+// blueprintCapabilityUnsupported makes reviewed registry state authoritative
+// for a refusal. A field can occur in several schema definitions; it remains
+// unavailable only while every applicable definition is classified unsupported.
+// Per-resource handlers refine these candidates as their equivalence work lands.
+func blueprintCapabilityUnsupported(registry *BlueprintCapabilityRegistry, pointers ...string) bool {
+	if registry == nil || len(pointers) == 0 {
+		return false
+	}
+	for _, pointer := range pointers {
+		capability, ok := registry.Fields[pointer]
+		if !ok || capability.State != BlueprintCapabilityUnsupported {
+			return false
+		}
+	}
+	return true
+}
+
+func blueprintEnumCapabilityUnsupported(registry *BlueprintCapabilityRegistry, pointer, encodedValue string) bool {
+	if registry == nil {
+		return false
+	}
+	capability, ok := registry.EnumValues[pointer][encodedValue]
+	return ok && capability.State == BlueprintCapabilityUnsupported
 }
 
 func parseBlueprintSource(manifest string) (*BlueprintSource, []BlueprintSourceProblem) {
