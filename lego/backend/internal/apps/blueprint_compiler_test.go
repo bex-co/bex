@@ -159,6 +159,53 @@ services:
 	}
 }
 
+func TestBlueprintCompilerEnforcesCapabilityRegistryAtNestedPaths(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		manifest string
+		path     string
+	}{
+		"image registry credential": {
+			manifest: `services:
+  - type: web
+    name: api
+    runtime: image
+    image: {url: nginx:1.27, creds: private-registry}
+`,
+			path: "#/services/0/image/creds",
+		},
+		"persistent disk": {
+			manifest: `services:
+  - type: web
+    name: api
+    runtime: image
+    image: {url: nginx:1.27}
+    disk: {name: data, mountPath: /data, sizeGB: 10}
+`,
+			path: "#/services/0/disk",
+		},
+		"nested database region": {
+			manifest: `projects:
+  - name: product
+    environments:
+      - name: production
+        databases:
+          - name: data
+            region: oregon
+`,
+			path: "#/projects/0/environments/0/databases/0/region",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, problems := CompileBlueprintSource(tc.manifest)
+			problem := findBlueprintProblem(problems, "BLUEPRINT_CAPABILITY_UNSUPPORTED")
+			if problem == nil || problem.Path != tc.path {
+				t.Fatalf("CompileBlueprintSource() problems = %+v, want unsupported path %s", problems, tc.path)
+			}
+		})
+	}
+}
+
 func TestBlueprintCapabilityStateControlsRuntimeRefusal(t *testing.T) {
 	t.Parallel()
 	unsupported := &BlueprintCapabilityRegistry{Fields: map[string]BlueprintCapability{
@@ -180,23 +227,21 @@ func TestBlueprintCapabilityStateControlsRuntimeRefusal(t *testing.T) {
 	}
 }
 
-func TestBlueprintResourceDefinitionUsesDeclarationKind(t *testing.T) {
+func TestBlueprintServiceCapabilityContextUsesDeclarationKind(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		value map[string]any
-		path  []string
 		want  string
 	}{
-		{name: "database", value: map[string]any{}, path: []string{"databases", "0"}, want: "database"},
-		{name: "key value", value: map[string]any{"type": "keyvalue"}, path: []string{"services", "0"}, want: "redisServer"},
-		{name: "cron", value: map[string]any{"type": "cron"}, path: []string{"services", "0"}, want: "cronService"},
-		{name: "static", value: map[string]any{"runtime": "static"}, path: []string{"services", "0"}, want: "staticService"},
-		{name: "server", value: map[string]any{"type": "web"}, path: []string{"services", "0"}, want: "serverService"},
+		{name: "key value", value: map[string]any{"type": "keyvalue"}, want: "redisServer"},
+		{name: "cron", value: map[string]any{"type": "cron"}, want: "cronService"},
+		{name: "static", value: map[string]any{"runtime": "static"}, want: "staticService"},
+		{name: "server", value: map[string]any{"type": "web"}, want: "serverService"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := blueprintResourceDefinition(tc.value, tc.path); got != tc.want {
-				t.Errorf("blueprintResourceDefinition() = %q, want %q", got, tc.want)
+			if got := string(blueprintServiceCapabilityContext(tc.value).kind); got != tc.want {
+				t.Errorf("blueprintServiceCapabilityContext() = %q, want %q", got, tc.want)
 			}
 		})
 	}

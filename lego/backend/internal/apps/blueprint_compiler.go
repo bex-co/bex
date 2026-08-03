@@ -113,105 +113,376 @@ func blueprintSourceProblemsError(problems []BlueprintSourceProblem) error {
 // this immediately after schema validation means every caller fails before a
 // state lookup or write, with the source path that needs changing.
 func blueprintCapabilityProblems(value any, path []string, locations map[string]BlueprintSourceLocation, registry *BlueprintCapabilityRegistry) []BlueprintSourceProblem {
+	return blueprintCapabilityProblemsAt(value, path, locations, registry, blueprintCapabilityContext{kind: blueprintCapabilityRoot})
+}
+
+// blueprintCapabilityContext identifies the reviewed schema object currently
+// being visited. It is deliberately independent of the Go decoder structs: a
+// field must pass this gate before an adapter is allowed to approximate it.
+// base is used for inline schema objects whose registry entries are not a
+// named definition (for example serverService.scaling).
+type blueprintCapabilityContext struct {
+	kind blueprintCapabilityKind
+	base string
+}
+
+type blueprintCapabilityKind string
+
+const (
+	blueprintCapabilityRoot               blueprintCapabilityKind = "root"
+	blueprintCapabilityResources          blueprintCapabilityKind = "resources"
+	blueprintCapabilityProject            blueprintCapabilityKind = "project"
+	blueprintCapabilityEnvironment        blueprintCapabilityKind = "environment"
+	blueprintCapabilityServices           blueprintCapabilityKind = "services"
+	blueprintCapabilityServer             blueprintCapabilityKind = "serverService"
+	blueprintCapabilityCron               blueprintCapabilityKind = "cronService"
+	blueprintCapabilityStatic             blueprintCapabilityKind = "staticService"
+	blueprintCapabilityDatabase           blueprintCapabilityKind = "database"
+	blueprintCapabilityKeyValue           blueprintCapabilityKind = "redisServer"
+	blueprintCapabilityEnvGroup           blueprintCapabilityKind = "envVarGroup"
+	blueprintCapabilityEnvKeyValue        blueprintCapabilityKind = "envVarFromKeyValue"
+	blueprintCapabilityEnvDatabase        blueprintCapabilityKind = "envVarFromDatabase"
+	blueprintCapabilityEnvService         blueprintCapabilityKind = "envVarFromService"
+	blueprintCapabilityEnvGroupReference  blueprintCapabilityKind = "envVarFromGroup"
+	blueprintCapabilityImage              blueprintCapabilityKind = "image"
+	blueprintCapabilityRegistryCredential blueprintCapabilityKind = "registryCredential"
+	blueprintCapabilityBuildFilter        blueprintCapabilityKind = "buildFilter"
+	blueprintCapabilityDisk               blueprintCapabilityKind = "disk"
+	blueprintCapabilityIPAllowList        blueprintCapabilityKind = "ipAllowList"
+	blueprintCapabilityReadReplica        blueprintCapabilityKind = "readReplica"
+	blueprintCapabilityHeader             blueprintCapabilityKind = "header"
+	blueprintCapabilityRoute              blueprintCapabilityKind = "route"
+	blueprintCapabilityRootPreviews       blueprintCapabilityKind = "rootPreviews"
+	blueprintCapabilityServicePreviews    blueprintCapabilityKind = "servicePreviews"
+	blueprintCapabilityStaticPreviews     blueprintCapabilityKind = "staticServicePreviews"
+)
+
+func blueprintCapabilityProblemsAt(value any, path []string, locations map[string]BlueprintSourceLocation, registry *BlueprintCapabilityRegistry, context blueprintCapabilityContext) []BlueprintSourceProblem {
+	if list, ok := value.([]any); ok {
+		var problems []BlueprintSourceProblem
+		for index, item := range list {
+			itemContext := context
+			if context.kind == blueprintCapabilityServices {
+				itemContext = blueprintServiceCapabilityContext(item)
+			} else if context.kind == blueprintCapabilityEnvKeyValue || context.kind == blueprintCapabilityEnvDatabase || context.kind == blueprintCapabilityEnvService || context.kind == blueprintCapabilityEnvGroupReference {
+				itemContext = blueprintEnvVarCapabilityContext(item)
+			}
+			problems = append(problems, blueprintCapabilityProblemsAt(item, append(path, strconv.Itoa(index)), locations, registry, itemContext)...)
+		}
+		return problems
+	}
 	object, ok := value.(map[string]any)
 	if !ok {
-		switch child := value.(type) {
-		case []any:
-			var problems []BlueprintSourceProblem
-			for index, item := range child {
-				problems = append(problems, blueprintCapabilityProblems(item, append(path, strconv.Itoa(index)), locations, registry)...)
-			}
-			return problems
-		}
 		return nil
 	}
 	var problems []BlueprintSourceProblem
-	problem := func(field, code, message string) {
+	for field, child := range object {
 		fieldPath := append(append([]string(nil), path...), field)
 		pointer := renderSchemaPointer(fieldPath)
 		location := lookupBlueprintLocation(pointer, locations)
-		problems = append(problems, BlueprintSourceProblem{Code: code, Path: pointer, Message: message, Line: location.Line, Column: location.Column})
-	}
-	for field, child := range object {
-		switch field {
-		case "builder":
-			problem(field, "BLUEPRINT_EXTENSION_REQUIRED", "bex build strategy must be written as x-bex.builder; builder is not a Render Blueprint field")
-		case "region":
-			if !blueprintResourceCapabilityUnsupported(registry, object, path, field) {
-				break
-			}
-			problem(field, "BLUEPRINT_CAPABILITY_UNSUPPORTED", "per-resource region placement is not available on bex")
-		case "disk":
-			if !blueprintResourceCapabilityUnsupported(registry, object, path, field) {
-				break
-			}
-			problem(field, "BLUEPRINT_CAPABILITY_UNSUPPORTED", "persistent service disks are not available on bex")
-		case "dockerContext":
-			if !blueprintResourceCapabilityUnsupported(registry, object, path, field) {
-				break
-			}
-			problem(field, "BLUEPRINT_CAPABILITY_UNSUPPORTED", "dockerContext is not available on bex because its build-context semantics cannot be represented exactly")
-		case "registryCredential", "creds":
-			if !blueprintCapabilityUnsupported(registry, "#/definitions/serverService/properties/registryCredential", "#/definitions/cronService/properties/registryCredential", "#/definitions/image/properties/creds", "#/definitions/registryCredential/properties/fromRegistryCreds") {
-				break
-			}
-			problem(field, "BLUEPRINT_CAPABILITY_UNSUPPORTED", "Blueprint registry credentials are not available on bex; bind an authorized registry credential through the service API")
-		case "previews", "previewsEnabled", "previewsExpireAfterDays", "previewPlan", "previewDiskSizeGB", "pullRequestPreviewsEnabled":
-			if !blueprintCapabilityUnsupported(registry,
-				"#/allOf/1/properties/previews", "#/allOf/1/properties/previewsEnabled", "#/allOf/1/properties/previewsExpireAfterDays",
-				"#/definitions/serverService/properties/previews", "#/definitions/serverService/properties/previewPlan", "#/definitions/serverService/properties/pullRequestPreviewsEnabled",
-				"#/definitions/staticService/properties/previews", "#/definitions/staticService/properties/pullRequestPreviewsEnabled",
-				"#/definitions/database/properties/previewPlan", "#/definitions/database/properties/previewDiskSizeGB", "#/definitions/redisServer/properties/previewPlan",
-			) {
-				break
-			}
-			problem(field, "BLUEPRINT_CAPABILITY_UNSUPPORTED", "preview environments are not available on bex")
-		case "previewValue":
-			if !blueprintCapabilityUnsupported(registry, "#/definitions/envVarFromKeyValue/properties/previewValue") {
-				break
-			}
-			problem(field, "BLUEPRINT_CAPABILITY_UNSUPPORTED", "previewValue is not available on bex because preview environments are not available")
-		case "autoDeployTrigger":
-			if trigger, _ := child.(string); trigger == "checksPass" && blueprintEnumCapabilityUnsupported(registry, "#/definitions/autoDeployTrigger/enum", `"checksPass"`) {
-				problem(field, "BLUEPRINT_CAPABILITY_UNSUPPORTED", "autoDeployTrigger: checksPass requires CI-check gating, which is not available on bex")
-			}
+		problem := func(code, message string) {
+			problems = append(problems, BlueprintSourceProblem{Code: code, Path: pointer, Message: message, Line: location.Line, Column: location.Column})
+		}
+		if field == "builder" {
+			problem("BLUEPRINT_EXTENSION_REQUIRED", "bex build strategy must be written as x-bex.builder; builder is not a Render Blueprint field")
+			continue
 		}
 		if field == "x-bex" {
 			continue // local extension vocabulary is validated by its own schema.
 		}
-		problems = append(problems, blueprintCapabilityProblems(child, append(path, field), locations, registry)...)
+		capabilityPointer := blueprintFieldCapabilityPointer(context, field)
+		if blueprintCapabilityUnsupported(registry, capabilityPointer) {
+			problem("BLUEPRINT_CAPABILITY_UNSUPPORTED", blueprintUnsupportedCapabilityMessage(field, capabilityPointer))
+			continue
+		}
+		if enumPointer := blueprintFieldEnumCapabilityPointer(context, field); enumPointer != "" && blueprintEnumCapabilityUnsupported(registry, enumPointer, blueprintEncodedValue(child)) {
+			problem("BLUEPRINT_CAPABILITY_UNSUPPORTED", blueprintUnsupportedEnumMessage(field, enumPointer))
+			continue
+		}
+		childContext := blueprintChildCapabilityContext(context, field, child)
+		problems = append(problems, blueprintCapabilityProblemsAt(child, fieldPath, locations, registry, childContext)...)
 	}
 	return problems
 }
 
-func blueprintResourceCapabilityUnsupported(registry *BlueprintCapabilityRegistry, object map[string]any, path []string, field string) bool {
-	definition := blueprintResourceDefinition(object, path)
-	if definition == "" {
-		return false
+func blueprintFieldCapabilityPointer(context blueprintCapabilityContext, field string) string {
+	if context.base != "" {
+		return context.base + "/properties/" + field
 	}
-	return blueprintCapabilityUnsupported(registry, "#/definitions/"+definition+"/properties/"+field)
+	switch context.kind {
+	case blueprintCapabilityRoot:
+		switch field {
+		case "services", "databases", "envVarGroups":
+			return "#/definitions/resources/properties/" + field
+		case "previews", "previewsEnabled", "previewsExpireAfterDays", "projects", "ungrouped", "version":
+			return "#/allOf/1/properties/" + field
+		}
+	case blueprintCapabilityResources:
+		return "#/definitions/resources/properties/" + field
+	case blueprintCapabilityEnvironment:
+		switch field {
+		case "services", "databases", "envVarGroups":
+			return "#/definitions/resources/properties/" + field
+		default:
+			return "#/definitions/environment/allOf/1/properties/" + field
+		}
+	case blueprintCapabilityIPAllowList:
+		return "#/definitions/ipAllowList/items/properties/" + field
+	}
+	if context.kind == "" {
+		return ""
+	}
+	return "#/definitions/" + string(context.kind) + "/properties/" + field
 }
 
-func blueprintResourceDefinition(object map[string]any, path []string) string {
-	for _, part := range path {
-		if part == "databases" {
-			return "database"
-		}
+func blueprintChildCapabilityContext(context blueprintCapabilityContext, field string, child any) blueprintCapabilityContext {
+	if context.base != "" {
+		return blueprintCapabilityContext{base: context.base + "/properties/" + field}
 	}
-	serviceType, _ := object["type"].(string)
+	switch context.kind {
+	case blueprintCapabilityRoot:
+		switch field {
+		case "services":
+			return blueprintCapabilityContext{kind: blueprintCapabilityServices}
+		case "databases":
+			return blueprintCapabilityContext{kind: blueprintCapabilityDatabase}
+		case "envVarGroups":
+			return blueprintCapabilityContext{kind: blueprintCapabilityEnvGroup}
+		case "ungrouped":
+			return blueprintCapabilityContext{kind: blueprintCapabilityResources}
+		case "projects":
+			return blueprintCapabilityContext{kind: blueprintCapabilityProject}
+		case "previews":
+			return blueprintCapabilityContext{kind: blueprintCapabilityRootPreviews}
+		}
+	case blueprintCapabilityResources:
+		switch field {
+		case "services":
+			return blueprintCapabilityContext{kind: blueprintCapabilityServices}
+		case "databases":
+			return blueprintCapabilityContext{kind: blueprintCapabilityDatabase}
+		case "envVarGroups":
+			return blueprintCapabilityContext{kind: blueprintCapabilityEnvGroup}
+		}
+	case blueprintCapabilityProject:
+		if field == "environments" {
+			return blueprintCapabilityContext{kind: blueprintCapabilityEnvironment}
+		}
+	case blueprintCapabilityEnvironment:
+		switch field {
+		case "services":
+			return blueprintCapabilityContext{kind: blueprintCapabilityServices}
+		case "databases":
+			return blueprintCapabilityContext{kind: blueprintCapabilityDatabase}
+		case "envVarGroups":
+			return blueprintCapabilityContext{kind: blueprintCapabilityEnvGroup}
+		case "networking", "permissions":
+			return blueprintCapabilityContext{base: "#/definitions/environment/allOf/1/properties/" + field}
+		}
+	case blueprintCapabilityServer, blueprintCapabilityCron, blueprintCapabilityStatic:
+		switch field {
+		case "image":
+			return blueprintCapabilityContext{kind: blueprintCapabilityImage}
+		case "registryCredential":
+			return blueprintCapabilityContext{kind: blueprintCapabilityRegistryCredential}
+		case "envVars":
+			return blueprintCapabilityContext{kind: blueprintCapabilityEnvKeyValue}
+		case "buildFilter":
+			return blueprintCapabilityContext{kind: blueprintCapabilityBuildFilter}
+		case "disk":
+			return blueprintCapabilityContext{kind: blueprintCapabilityDisk}
+		case "ipAllowList":
+			return blueprintCapabilityContext{kind: blueprintCapabilityIPAllowList}
+		case "previews":
+			if context.kind == blueprintCapabilityStatic {
+				return blueprintCapabilityContext{kind: blueprintCapabilityStaticPreviews}
+			}
+			return blueprintCapabilityContext{kind: blueprintCapabilityServicePreviews}
+		case "scaling", "maintenanceMode":
+			return blueprintCapabilityContext{base: "#/definitions/" + string(context.kind) + "/properties/" + field}
+		case "headers":
+			return blueprintCapabilityContext{kind: blueprintCapabilityHeader}
+		case "routes":
+			return blueprintCapabilityContext{kind: blueprintCapabilityRoute}
+		}
+	case blueprintCapabilityDatabase:
+		switch field {
+		case "ipAllowList":
+			return blueprintCapabilityContext{kind: blueprintCapabilityIPAllowList}
+		case "readReplicas":
+			return blueprintCapabilityContext{kind: blueprintCapabilityReadReplica}
+		case "highAvailability":
+			return blueprintCapabilityContext{base: "#/definitions/database/properties/highAvailability"}
+		}
+	case blueprintCapabilityKeyValue:
+		if field == "ipAllowList" {
+			return blueprintCapabilityContext{kind: blueprintCapabilityIPAllowList}
+		}
+	case blueprintCapabilityEnvGroup:
+		if field == "envVars" {
+			return blueprintCapabilityContext{kind: blueprintCapabilityEnvKeyValue}
+		}
+	case blueprintCapabilityEnvKeyValue, blueprintCapabilityEnvDatabase, blueprintCapabilityEnvService, blueprintCapabilityEnvGroupReference:
+		switch field {
+		case "fromDatabase":
+			return blueprintCapabilityContext{base: "#/definitions/envVarFromDatabase/properties/fromDatabase"}
+		case "fromService":
+			return blueprintCapabilityContext{base: "#/definitions/envVarFromService/properties/fromService"}
+		}
+	case blueprintCapabilityRootPreviews, blueprintCapabilityServicePreviews, blueprintCapabilityStaticPreviews:
+		return blueprintCapabilityContext{}
+	}
+	return blueprintCapabilityContext{}
+}
+
+func blueprintServiceCapabilityContext(value any) blueprintCapabilityContext {
+	if services, ok := value.([]any); ok && len(services) > 0 {
+		return blueprintServiceCapabilityContext(services[0])
+	}
+	service, _ := value.(map[string]any)
+	serviceType, _ := service["type"].(string)
 	switch serviceType {
 	case "keyvalue", "redis":
-		return "redisServer"
+		return blueprintCapabilityContext{kind: blueprintCapabilityKeyValue}
 	case "cron":
-		return "cronService"
+		return blueprintCapabilityContext{kind: blueprintCapabilityCron}
 	}
-	if runtime, _ := object["runtime"].(string); runtime == "static" {
-		return "staticService"
+	if runtime, _ := service["runtime"].(string); runtime == "static" {
+		return blueprintCapabilityContext{kind: blueprintCapabilityStatic}
 	}
-	if len(path) > 0 {
-		return "serverService"
+	return blueprintCapabilityContext{kind: blueprintCapabilityServer}
+}
+
+func blueprintEnvVarCapabilityContext(value any) blueprintCapabilityContext {
+	entry, _ := value.(map[string]any)
+	switch {
+	case entry["fromDatabase"] != nil:
+		return blueprintCapabilityContext{kind: blueprintCapabilityEnvDatabase}
+	case entry["fromService"] != nil:
+		return blueprintCapabilityContext{kind: blueprintCapabilityEnvService}
+	case entry["fromGroup"] != nil:
+		return blueprintCapabilityContext{kind: blueprintCapabilityEnvGroupReference}
+	default:
+		return blueprintCapabilityContext{kind: blueprintCapabilityEnvKeyValue}
+	}
+}
+
+func blueprintFieldEnumCapabilityPointer(context blueprintCapabilityContext, field string) string {
+	if context.base != "" {
+		switch context.base {
+		case "#/definitions/environment/allOf/1/properties/networking":
+			if field == "isolation" {
+				return context.base + "/properties/isolation/enum"
+			}
+		case "#/definitions/environment/allOf/1/properties/permissions":
+			if field == "protection" {
+				return context.base + "/properties/protection/enum"
+			}
+		case "#/definitions/envVarFromDatabase/properties/fromDatabase":
+			if field == "property" {
+				return "#/definitions/databaseEnvVarProperty/enum"
+			}
+		case "#/definitions/envVarFromService/properties/fromService":
+			if field == "property" {
+				return "#/definitions/serviceEnvVarProperty/enum"
+			}
+			if field == "type" {
+				return "#/definitions/serviceType/enum"
+			}
+		}
+	}
+	switch context.kind {
+	case blueprintCapabilityServer:
+		switch field {
+		case "type", "renderSubdomainPolicy":
+			return "#/definitions/serverService/properties/" + field + "/enum"
+		case "runtime":
+			return "#/definitions/runtime/enum"
+		case "autoDeployTrigger":
+			return "#/definitions/autoDeployTrigger/enum"
+		case "plan":
+			return "#/definitions/plan/enum"
+		}
+	case blueprintCapabilityCron:
+		switch field {
+		case "runtime":
+			return "#/definitions/runtime/enum"
+		case "autoDeployTrigger":
+			return "#/definitions/autoDeployTrigger/enum"
+		case "plan":
+			return "#/definitions/plan/enum"
+		}
+	case blueprintCapabilityStatic:
+		switch field {
+		case "renderSubdomainPolicy":
+			return "#/definitions/staticService/properties/renderSubdomainPolicy/enum"
+		case "autoDeployTrigger":
+			return "#/definitions/autoDeployTrigger/enum"
+		}
+	case blueprintCapabilityDatabase:
+		switch field {
+		case "plan":
+			return "#/definitions/plan/enum"
+		case "postgresMajorVersion":
+			return "#/definitions/database/properties/postgresMajorVersion/enum"
+		case "connectionPool":
+			return "#/definitions/connectionPool/enum"
+		case "region":
+			return "#/definitions/region/enum"
+		}
+	case blueprintCapabilityKeyValue:
+		switch field {
+		case "type", "maxmemoryPolicy", "persistenceMode":
+			return "#/definitions/redisServer/properties/" + field + "/enum"
+		case "plan":
+			return "#/definitions/plan/enum"
+		case "region":
+			return "#/definitions/region/enum"
+		}
+	case blueprintCapabilityRoute:
+		if field == "type" {
+			return "#/definitions/route/properties/type/enum"
+		}
+	case blueprintCapabilityRootPreviews, blueprintCapabilityServicePreviews, blueprintCapabilityStaticPreviews:
+		if field == "generation" {
+			return "#/definitions/previewsGeneration/enum"
+		}
 	}
 	return ""
+}
+
+func blueprintEncodedValue(value any) string {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return ""
+	}
+	return string(encoded)
+}
+
+func blueprintUnsupportedCapabilityMessage(field, pointer string) string {
+	switch pointer {
+	case "#/definitions/serverService/properties/disk":
+		return "persistent service disks are not available on bex"
+	case "#/definitions/serverService/properties/dockerContext", "#/definitions/cronService/properties/dockerContext":
+		return "dockerContext is not available on bex because its build-context semantics cannot be represented exactly"
+	case "#/definitions/serverService/properties/registryCredential", "#/definitions/cronService/properties/registryCredential", "#/definitions/image/properties/creds", "#/definitions/registryCredential/properties/fromRegistryCreds":
+		return "Blueprint registry credentials are not available on bex; bind an authorized registry credential through the service API"
+	case "#/allOf/1/properties/previews", "#/allOf/1/properties/previewsEnabled", "#/allOf/1/properties/previewsExpireAfterDays", "#/definitions/serverService/properties/previews", "#/definitions/serverService/properties/previewPlan", "#/definitions/serverService/properties/pullRequestPreviewsEnabled", "#/definitions/staticService/properties/previews", "#/definitions/staticService/properties/pullRequestPreviewsEnabled", "#/definitions/database/properties/previewPlan", "#/definitions/database/properties/previewDiskSizeGB", "#/definitions/redisServer/properties/previewPlan":
+		return "preview environments are not available on bex"
+	case "#/definitions/envVarFromKeyValue/properties/previewValue":
+		return "previewValue is not available on bex because preview environments are not available"
+	case "#/definitions/serverService/properties/region", "#/definitions/cronService/properties/region", "#/definitions/database/properties/region", "#/definitions/redisServer/properties/region":
+		return "per-resource region placement is not available on bex"
+	default:
+		return fmt.Sprintf("%s is not available on bex", field)
+	}
+}
+
+func blueprintUnsupportedEnumMessage(field, pointer string) string {
+	if pointer == "#/definitions/autoDeployTrigger/enum" {
+		return "autoDeployTrigger: checksPass requires CI-check gating, which is not available on bex"
+	}
+	return fmt.Sprintf("%s uses an unsupported Render Blueprint value", field)
 }
 
 // blueprintCapabilityUnsupported makes reviewed registry state authoritative
