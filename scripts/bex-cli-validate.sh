@@ -17,22 +17,22 @@ fail() {
 }
 
 [ -f "$PIN_RECORD" ] || fail "missing $PIN_RECORD"
-rg -Fq "**Render release:** \`$EXPECTED_RELEASE\`" "$PIN_RECORD" \
+grep -Fq "**Render release:** \`$EXPECTED_RELEASE\`" "$PIN_RECORD" \
   || fail "pin record must name Render release $EXPECTED_RELEASE"
-rg -Fq "**Upstream commit:** \`$EXPECTED_COMMIT\`" "$PIN_RECORD" \
+grep -Fq "**Upstream commit:** \`$EXPECTED_COMMIT\`" "$PIN_RECORD" \
   || fail "pin record must name upstream commit $EXPECTED_COMMIT"
-rg -Fq "**Go module version:** \`$EXPECTED_VERSION\`" "$PIN_RECORD" \
+grep -Fq "**Go module version:** \`$EXPECTED_VERSION\`" "$PIN_RECORD" \
   || fail "pin record must name Go module version $EXPECTED_VERSION"
-rg -Fq "readonly upstream_version=${EXPECTED_RELEASE#v}" scripts/bex-cli-build.sh \
+grep -Fq "readonly upstream_version=${EXPECTED_RELEASE#v}" scripts/bex-cli-build.sh \
   || fail "build script must embed upstream version ${EXPECTED_RELEASE#v}"
 
 actual_version="$(cd cli && go list -m -f '{{.Version}}' "$UPSTREAM_MODULE")"
 [ "$actual_version" = "$EXPECTED_VERSION" ] \
   || fail "$UPSTREAM_MODULE version is $actual_version, want $EXPECTED_VERSION; update $PIN_RECORD and review compatibility"
 
-rg -Fq '"github.com/render-oss/cli/cmd"' cli/main.go \
+grep -Fq '"github.com/render-oss/cli/cmd"' cli/main.go \
   || fail "cli/main.go no longer imports upstream cmd package"
-if find cli -type f -path '*/cmd/*' -print -quit | rg -q .; then
+if find cli -type f -path '*/cmd/*' -print -quit | grep -q .; then
   fail "cli contains a copied cmd tree; keep command implementation upstream"
 fi
 
