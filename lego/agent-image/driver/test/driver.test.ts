@@ -29,16 +29,20 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { WebSocket } from "ws";
-import { loadConfig } from "../src/config.mjs";
-import { createCredentialManager } from "../src/credentials.mjs";
-import { runHeadlessTurn } from "../src/session.mjs";
-import { startDriverServer } from "../src/server.mjs";
-import { UIMessageStreamHub } from "../src/stream-hub.mjs";
+import { loadConfig, type AgentDriverConfig } from "../src/config.js";
+import { createCredentialManager, type CredentialManager } from "../src/credentials.js";
+import { runHeadlessTurn } from "../src/session.js";
+import { startDriverServer } from "../src/server.js";
+import { UIMessageStreamHub } from "../src/stream-hub.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fixture = path.join(here, "..", "fixtures", "acp-agent.mjs");
 
-async function tempConfig(overrides = {}) {
+type TestConfig = AgentDriverConfig & { root: string };
+
+async function tempConfig(
+  overrides: Partial<TestConfig> = {},
+): Promise<TestConfig> {
   const root = await mkdtemp(path.join(tmpdir(), "bex-agent-driver-"));
   const workspace = path.join(root, "workspace");
   await mkdir(workspace);
@@ -47,6 +51,12 @@ async function tempConfig(overrides = {}) {
     args: [fixture],
     cwd: workspace,
     prompt: "Make the requested change and commit it.",
+    branch: "",
+    repoUrl: "",
+    baseBranch: "",
+    deliver: false,
+    gitName: "bex agent",
+    gitEmail: "agent@bex.co",
     existingSessionId: "",
     persistSession: true,
     listenHost: "127.0.0.1",
@@ -64,7 +74,7 @@ async function tempConfig(overrides = {}) {
   };
 }
 
-function manager(config) {
+function manager(config: AgentDriverConfig): CredentialManager {
   return createCredentialManager(config, {});
 }
 
@@ -269,7 +279,7 @@ test("SSE replays the standard UI-message stream and headless needs no client", 
   try {
     await runHeadlessTurn(config, credentials, hub);
     const response = await fetch(
-      `http://127.0.0.1:${listener.address.port}/stream`,
+      `http://127.0.0.1:${(listener.address as { port: number }).port}/stream`,
     );
     assert.equal(response.headers.get("x-vercel-ai-ui-message-stream"), "v1");
     const body = await response.text();
@@ -284,11 +294,11 @@ test("POST /turn runs a live turn, streams its parts, and single-flights", async
   const config = await tempConfig();
   const credentials = manager(config);
   const hub = new UIMessageStreamHub();
-  const runTurn = (prompt, onPart) =>
+  const runTurn = (prompt: string, onPart: (part: Record<string, unknown>) => void) =>
     runHeadlessTurn(config, credentials, hub, { prompt, closeHub: false, onPart });
   const listener = await startDriverServer(config, credentials, hub, { runTurn });
   try {
-    const turnURL = `http://127.0.0.1:${listener.address.port}/turn`;
+    const turnURL = `http://127.0.0.1:${(listener.address as { port: number }).port}/turn`;
 
     // A missing prompt is a 400.
     const empty = await fetch(turnURL, {
@@ -335,9 +345,9 @@ test("raw ACP WebSocket round-trips initialize to agent stdio", async () => {
     new UIMessageStreamHub(),
   );
   try {
-    const response = await new Promise((resolve, reject) => {
+    const response = await new Promise<Record<string, any>>((resolve, reject) => {
       const socket = new WebSocket(
-        `ws://127.0.0.1:${listener.address.port}/acp`,
+        `ws://127.0.0.1:${(listener.address as { port: number }).port}/acp`,
       );
       socket.once("error", reject);
       socket.once("open", () => {
@@ -366,7 +376,7 @@ test("snapshot scrub removes an injected key from persisted files and parent env
   const config = await tempConfig();
   const leaked = path.join(config.cwd, "accidental-agent-cache");
   await writeFile(leaked, `prefix ${config.modelCredential} suffix`);
-  const env = {
+  const env: NodeJS.ProcessEnv = {
     BEX_AGENT_MODEL_API_KEY: config.modelCredential,
     ANTHROPIC_API_KEY: config.modelCredential,
   };
@@ -439,7 +449,7 @@ test("loopback snapshot hook scrubs persisted key material and forgets it", asyn
   );
   try {
     const response = await fetch(
-      `http://127.0.0.1:${listener.address.port}/snapshot/scrub`,
+      `http://127.0.0.1:${(listener.address as { port: number }).port}/snapshot/scrub`,
       { method: "POST" },
     );
     assert.equal(response.status, 200);

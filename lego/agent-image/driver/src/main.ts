@@ -15,21 +15,21 @@
  * limitations under the License.
  */
 
-import { createCredentialManager } from "./credentials.mjs";
-import { loadConfig } from "./config.mjs";
-import { ensureRepo } from "./delivery.mjs";
-import { runHeadlessTurn } from "./session.mjs";
-import { startDriverServer } from "./server.mjs";
-import { UIMessageStreamHub } from "./stream-hub.mjs";
+import { createCredentialManager } from "./credentials.js";
+import { loadConfig } from "./config.js";
+import { ensureRepo } from "./delivery.js";
+import { runHeadlessTurn } from "./session.js";
+import { startDriverServer } from "./server.js";
+import { UIMessageStreamHub } from "./stream-hub.js";
 
-async function main() {
+async function main(): Promise<void> {
   const config = loadConfig();
   const credentials = createCredentialManager(config);
   const hub = new UIMessageStreamHub();
   // Live prompt turns (ADR047 D9): a POST /turn runs another turn on the same
   // session, keeping the UI-message stream open. The fire-and-forget path below
   // still runs its single headless turn and closes the stream.
-  const runTurn = (prompt, onPart) =>
+  const runTurn = (prompt: string, onPart: (part: Record<string, unknown>) => void) =>
     runHeadlessTurn(config, credentials, hub, { prompt, closeHub: false, onPart });
   const listener = await startDriverServer(config, credentials, hub, { runTurn });
 

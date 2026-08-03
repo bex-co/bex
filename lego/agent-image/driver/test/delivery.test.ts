@@ -20,9 +20,9 @@ import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { deliverBranch, ensureRepo, extractEvidence } from "../src/delivery.mjs";
+import { deliverBranch, ensureRepo, extractEvidence, type DeliveryConfig } from "../src/delivery.js";
 
-function git(cwd, args) {
+function git(cwd: string, args: string[]): string {
   return execFileSync("git", args, { cwd }).toString().trim();
 }
 
@@ -45,7 +45,10 @@ async function bareRemote() {
   return { root, remote };
 }
 
-function baseConfig(cwd, overrides = {}) {
+function baseConfig(
+  cwd: string,
+  overrides: Partial<DeliveryConfig & { repoUrl: string }> = {},
+): DeliveryConfig & { repoUrl: string } {
   return {
     cwd,
     branch: "bex-agent/session-1",
@@ -53,7 +56,7 @@ function baseConfig(cwd, overrides = {}) {
     prompt: "Fix the failing test\nand tidy up",
     gitName: "bex agent",
     gitEmail: "agent@bex.co",
-    sessionLogPath: path.join(cwd, "..", "session.jsonl"),
+    repoUrl: "",
     ...overrides,
   };
 }
@@ -120,7 +123,7 @@ test("extractEvidence pulls a bounded command log, test output, and tail", async
 test("extractEvidence marks truncation when caps drop content", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "bex-agent-evidence-"));
   const log = path.join(root, "session.jsonl");
-  const many = [];
+  const many: string[] = [];
   for (let i = 0; i < 100; i++) {
     many.push(JSON.stringify({ part: { type: "data-acp", data: { command: `cmd-${i}` } } }));
   }

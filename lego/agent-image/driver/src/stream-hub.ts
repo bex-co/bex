@@ -14,23 +14,27 @@
  * limitations under the License.
  */
 
-function frame(value) {
+import type { ServerResponse } from "node:http";
+
+export type UIMessagePart = Record<string, unknown>;
+
+function frame(value: unknown): string {
   return `data: ${JSON.stringify(value)}\n\n`;
 }
 
 export class UIMessageStreamHub {
-  #history = [];
-  #clients = new Set();
+  #history: UIMessagePart[] = [];
+  #clients = new Set<ServerResponse>();
   #closed = false;
 
-  publish(part) {
+  publish(part: UIMessagePart): void {
     if (this.#closed) throw new Error("UI message stream is already closed");
     this.#history.push(part);
     const data = frame(part);
     for (const response of this.#clients) response.write(data);
   }
 
-  attach(response) {
+  attach(response: ServerResponse): () => void {
     for (const part of this.#history) response.write(frame(part));
     if (this.#closed) {
       response.end("data: [DONE]\n\n");
@@ -42,14 +46,14 @@ export class UIMessageStreamHub {
     return detach;
   }
 
-  close() {
+  close(): void {
     if (this.#closed) return;
     this.#closed = true;
     for (const response of this.#clients) response.end("data: [DONE]\n\n");
     this.#clients.clear();
   }
 
-  get history() {
+  get history(): UIMessagePart[] {
     return [...this.#history];
   }
 }

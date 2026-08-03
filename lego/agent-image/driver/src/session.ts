@@ -17,35 +17,56 @@
 import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { streamText } from "ai";
-import { createSessionProvider } from "./acp.mjs";
-import { deliverBranch, extractEvidence } from "./delivery.mjs";
+import { createSessionProvider, type ACPProvider, type SessionProvider } from "./acp.js";
+import { deliverBranch, extractEvidence, type DeliveryResult, type EvidenceResult } from "./delivery.js";
+import type { AgentDriverConfig } from "./config.js";
+import type { CredentialManager } from "./credentials.js";
+import type { UIMessageStreamHub, UIMessagePart } from "./stream-hub.js";
 
-async function ensureParent(filename) {
+interface RunTurnOptions {
+  prompt?: string;
+  closeHub?: boolean;
+  onPart?: (part: UIMessagePart) => void;
+}
+
+interface StatusRecord {
+  state: "running" | "succeeded" | "failed";
+  [key: string]: unknown;
+}
+
+export interface TurnResult extends StatusRecord {
+  state: "succeeded";
+  sessionId: string | null;
+  resume: SessionProvider["resume"];
+  usage: unknown;
+}
+
+async function ensureParent(filename: string): Promise<void> {
   await mkdir(path.dirname(filename), { recursive: true });
 }
 
-async function writeStatus(filename, status) {
+async function writeStatus(filename: string, status: StatusRecord): Promise<void> {
   await ensureParent(filename);
   const temporary = `${filename}.tmp`;
   await writeFile(temporary, `${JSON.stringify(status)}\n`, { mode: 0o600 });
   await rename(temporary, filename);
 }
 
-async function logPart(filename, part, credentialManager) {
+async function logPart(
+  filename: string,
+  part: UIMessagePart,
+  credentialManager: CredentialManager,
+): Promise<void> {
   await ensureParent(filename);
   const record = JSON.stringify({
     at: new Date().toISOString(),
     type: "ui-message",
     part,
   });
-  await appendFile(
-    filename,
-    `${credentialManager.redact(record)}\n`,
-    { mode: 0o600 },
-  );
+  await appendFile(filename, `${credentialManager.redact(record)}\n`, { mode: 0o600 });
 }
 
-function rawUIMessagePart(part) {
+function rawUIMessagePart(part: { rawValue: unknown }): UIMessagePart {
   let data = part.rawValue;
   if (typeof data === "string") {
     try {
@@ -64,13 +85,15 @@ function rawUIMessagePart(part) {
 // previous turn's status file still carries the agent's ACP session id (the
 // agent's own on-disk session state survives rootfs snapshots — ADR047 D3).
 // Adopt that id as existingSessionId when the environment supplies none, so
-// the provider can attempt session/load; acp.mjs still gates the attempt on
+// the provider can attempt session/load; acp.ts still gates the attempt on
 // the agent advertising loadSession, and a missing, corrupt, or
 // non-succeeded status file adopts nothing — the turn starts a fresh session.
 // Returns the provenance of the session id: "env", "rootfs", or "".
-export async function adoptPersistedSession(config) {
+export async function adoptPersistedSession(
+  config: AgentDriverConfig,
+): Promise<"env" | "rootfs" | ""> {
   if (config.existingSessionId) return "env";
-  let persisted;
+  let persisted: { state?: string; sessionId?: string } | undefined;
   try {
     persisted = JSON.parse(await readFile(config.statusPath, "utf8"));
   } catch {
@@ -95,12 +118,17 @@ export async function adoptPersistedSession(config) {
 //     GET /stream watchers receive [DONE])
 //   - onPart mirrors each published part to an extra sink (the POST /turn
 //     response) in addition to the hub's fan-out to attached GET clients
-export async function runHeadlessTurn(config, credentialManager, hub, options = {}) {
+export async function runHeadlessTurn(
+  config: AgentDriverConfig,
+  credentialManager: CredentialManager,
+  hub: UIMessageStreamHub,
+  options: RunTurnOptions = {},
+): Promise<TurnResult> {
   const prompt = options.prompt ?? config.prompt;
   const closeHub = options.closeHub ?? true;
   const onPart = options.onPart;
   if (!prompt) throw new Error("BEX_AGENT_PROMPT is required for a headless turn");
-  const publish = (part) => {
+  const publish = (part: UIMessagePart) => {
     hub.publish(part);
     if (onPart) onPart(part);
   };
@@ -109,10 +137,10 @@ export async function runHeadlessTurn(config, credentialManager, hub, options = 
   const resumedFrom = await adoptPersistedSession(config);
   await writeStatus(config.statusPath, { state: "running" });
 
-  let provider;
+  let provider: ACPProvider | undefined;
   const turnAbort = new AbortController();
-  let rejectDeadline;
-  const deadline = new Promise((_, reject) => {
+  let rejectDeadline!: (error: Error) => void;
+  const deadline = new Promise<never>((_, reject) => {
     rejectDeadline = reject;
   });
   const turnTimer = setTimeout(() => {
@@ -121,8 +149,8 @@ export async function runHeadlessTurn(config, credentialManager, hub, options = 
     rejectDeadline(error);
   }, config.turnTimeoutMs);
   try {
-    let created;
-    let result;
+    let created: SessionProvider | undefined;
+    let result: ReturnType<typeof streamText> | undefined;
     const execute = async () => {
       created = await createSessionProvider(
         config,
@@ -137,15 +165,15 @@ export async function runHeadlessTurn(config, credentialManager, hub, options = 
       });
 
       const consumeUI = async () => {
-        for await (const part of result.toUIMessageStream()) {
-          publish(part);
-          await logPart(config.sessionLogPath, part, credentialManager);
+        for await (const part of result!.toUIMessageStream()) {
+          publish(part as UIMessagePart);
+          await logPart(config.sessionLogPath, part as UIMessagePart, credentialManager);
         }
       };
       const consumeRaw = async () => {
-        for await (const part of result.fullStream) {
+        for await (const part of result!.fullStream) {
           if (part.type !== "raw") continue;
-          const uiPart = rawUIMessagePart(part);
+          const uiPart = rawUIMessagePart(part as unknown as { rawValue: unknown });
           publish(uiPart);
           await logPart(config.sessionLogPath, uiPart, credentialManager);
         }
@@ -159,20 +187,20 @@ export async function runHeadlessTurn(config, credentialManager, hub, options = 
     // from the redacted session log — both BEFORE scrubbing so the commit
     // captures the real working tree. A delivery (push) failure throws here and
     // is recorded as a failed turn, never a hang (ADR047 D4).
-    const delivery = config.deliver ? await deliverBranch(config) : null;
-    const evidence = await extractEvidence(config);
+    const delivery: DeliveryResult | null = config.deliver ? await deliverBranch(config) : null;
+    const evidence: EvidenceResult = await extractEvidence(config);
     const scrubbed = await credentialManager.scrubPersistedState();
-    const status = {
+    const status: StatusRecord = {
       state: "succeeded",
-      sessionId: provider.getSessionId(),
-      resume: created.resume,
+      sessionId: provider!.getSessionId(),
+      resume: created!.resume,
       ...(resumedFrom ? { resumedFrom } : {}),
       ...(delivery ? { delivery } : {}),
       evidence,
       scrubbedFiles: scrubbed.length,
     };
     await writeStatus(config.statusPath, status);
-    return { ...status, usage: await result.usage };
+    return { ...status, usage: await result!.usage } as TurnResult;
   } catch (error) {
     if (closeHub) hub.close();
     await writeStatus(config.statusPath, {

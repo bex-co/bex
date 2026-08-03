@@ -33,12 +33,43 @@ const MAX_OUTPUT_TAIL = 8000;
 const MAX_LINE_LEN = 2000;
 const MAX_WALK_DEPTH = 8;
 
-async function git(cwd, args) {
+export interface DeliveryConfig {
+  cwd: string;
+  branch: string;
+  baseBranch: string;
+  prompt: string;
+  gitName: string;
+  gitEmail: string;
+}
+
+export interface DeliveryResult {
+  branch: string;
+  baseBranch: string;
+  headSha: string;
+  pushed: boolean;
+  commits: number;
+  changedFiles: string[];
+}
+
+export interface EvidenceResult {
+  commandLog: string[];
+  testOutput: string[];
+  outputTail: string;
+  truncated: boolean;
+}
+
+interface EvidenceAccumulator {
+  commands: string[];
+  tests: string[];
+  text: string;
+}
+
+async function git(cwd: string, args: string[]): Promise<string> {
   const { stdout } = await run("git", args, { cwd, maxBuffer: 32 * 1024 * 1024 });
   return stdout.trim();
 }
 
-async function isGitRepo(cwd) {
+async function isGitRepo(cwd: string): Promise<boolean> {
   try {
     await git(cwd, ["rev-parse", "--is-inside-work-tree"]);
     return true;
@@ -47,7 +78,7 @@ async function isGitRepo(cwd) {
   }
 }
 
-async function detectBaseBranch(cwd, fallback) {
+async function detectBaseBranch(cwd: string, fallback: string): Promise<string> {
   if (fallback) return fallback;
   try {
     const ref = await git(cwd, ["symbolic-ref", "--short", "refs/remotes/origin/HEAD"]);
@@ -61,7 +92,9 @@ async function detectBaseBranch(cwd, fallback) {
 // workspace is left alone; an empty one is cloned and switched to the branch
 // (created from the default when it does not exist remotely). Clone/fetch use
 // the system-wide bex Git credential helper.
-export async function ensureRepo(config) {
+export async function ensureRepo(
+  config: DeliveryConfig & { repoUrl: string },
+): Promise<void> {
   if (await isGitRepo(config.cwd)) return;
   if (!config.repoUrl) {
     throw new Error("workspace is not a git repository and BEX_AGENT_REPO_URL is unset");
@@ -75,7 +108,7 @@ export async function ensureRepo(config) {
   }
 }
 
-function commitMessage(config) {
+function commitMessage(config: DeliveryConfig): string {
   const first = String(config.prompt || "").split("\n")[0].trim();
   const subject = first ? first.slice(0, 72) : "agent session update";
   return `bex agent: ${subject}\n\nDelivered by bex cloud coding-agent session.`;
@@ -84,14 +117,14 @@ function commitMessage(config) {
 // deliverBranch stages, commits, and pushes the session branch, returning the
 // delivery record the Completer consumes. A turn that produced no change pushes
 // nothing (pushed:false) — an honest no-op, not an error.
-export async function deliverBranch(config) {
+export async function deliverBranch(config: DeliveryConfig): Promise<DeliveryResult> {
   const cwd = config.cwd;
   const base = await detectBaseBranch(cwd, config.baseBranch);
   // Stay on the session branch without disturbing the agent's working-tree edits.
   await git(cwd, ["checkout", "-B", config.branch]);
   await git(cwd, ["add", "-A"]);
   const status = await git(cwd, ["status", "--porcelain"]);
-  let changedFiles = [];
+  let changedFiles: string[] = [];
   if (status) {
     changedFiles = (await git(cwd, ["diff", "--cached", "--name-only"]))
       .split("\n")
@@ -122,7 +155,7 @@ export async function deliverBranch(config) {
   return { branch: config.branch, baseBranch: base, headSha, pushed, commits, changedFiles };
 }
 
-function pushLine(list, value, marker) {
+function pushLine(list: string[], value: unknown, marker: { truncated: boolean }): void {
   const text = String(value);
   if (text.length > MAX_LINE_LEN) {
     list.push(text.slice(0, MAX_LINE_LEN));
@@ -136,54 +169,63 @@ function pushLine(list, value, marker) {
 // assume a specific provider schema, only that commands live under
 // command/commandLine (or a tool-call title) and terminal output under
 // output/stdout/stderr — a forward-compatible, honest extraction.
-function collectEvidence(node, acc, depth = 0) {
+function collectEvidence(node: unknown, acc: EvidenceAccumulator, depth = 0): void {
   if (node == null || depth > MAX_WALK_DEPTH || typeof node !== "object") return;
   if (Array.isArray(node)) {
     for (const item of node) collectEvidence(item, acc, depth + 1);
     return;
   }
+  const record = node as Record<string, unknown>;
   for (const key of ["command", "commandLine"]) {
-    if (typeof node[key] === "string" && node[key].trim()) acc.commands.push(node[key]);
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) acc.commands.push(value);
   }
-  if (node.sessionUpdate === "tool_call" && typeof node.title === "string" && !node.command) {
-    acc.commands.push(node.title);
+  if (
+    record.sessionUpdate === "tool_call" &&
+    typeof record.title === "string" &&
+    !record.command
+  ) {
+    acc.commands.push(record.title);
   }
   for (const key of ["output", "stdout", "stderr"]) {
-    if (typeof node[key] === "string" && node[key].trim()) acc.tests.push(node[key]);
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) acc.tests.push(value);
   }
-  if (node.type === "text" && typeof node.text === "string") acc.text += node.text;
-  for (const value of Object.values(node)) collectEvidence(value, acc, depth + 1);
+  if (record.type === "text" && typeof record.text === "string") acc.text += record.text;
+  for (const value of Object.values(record)) collectEvidence(value, acc, depth + 1);
 }
 
 // extractEvidence reads the redacted session log and returns the bounded,
 // Codex-style evidence extract (command log + test-output tails + a trailing
 // output window). Every cap that drops content sets truncated explicitly.
-export async function extractEvidence(config) {
+export async function extractEvidence(config: {
+  sessionLogPath: string;
+}): Promise<EvidenceResult> {
   let raw = "";
   try {
     raw = await readFile(config.sessionLogPath, "utf8");
   } catch {
     raw = "";
   }
-  const acc = { commands: [], tests: [], text: "" };
+  const acc: EvidenceAccumulator = { commands: [], tests: [], text: "" };
   for (const line of raw.split("\n")) {
     if (!line.trim()) continue;
-    let record;
+    let record: { part?: unknown } | unknown;
     try {
       record = JSON.parse(line);
     } catch {
       continue;
     }
-    collectEvidence(record.part ?? record, acc);
+    collectEvidence((record as { part?: unknown })?.part ?? record, acc);
   }
 
   const marker = { truncated: false };
-  const commandLog = [];
+  const commandLog: string[] = [];
   for (const command of acc.commands.slice(0, MAX_COMMANDS)) pushLine(commandLog, command, marker);
   if (acc.commands.length > MAX_COMMANDS) marker.truncated = true;
 
   const testTail = acc.tests.slice(-MAX_TEST_LINES);
-  const testOutput = [];
+  const testOutput: string[] = [];
   for (const line of testTail) pushLine(testOutput, line, marker);
   if (acc.tests.length > MAX_TEST_LINES) marker.truncated = true;
 

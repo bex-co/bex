@@ -9,6 +9,17 @@ RUN cd backend && go mod download
 COPY backend/ ./backend/
 RUN cd backend && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/git-credential-bex ./cmd/git-credential-bex
 
+# The driver is TypeScript; this stage compiles it to plain JS so devDependencies
+# (typescript) never reach the runtime image below.
+FROM node:22-bookworm-slim AS driver-build
+
+WORKDIR /opt/bex-agent-driver
+COPY agent-image/driver/package.json agent-image/driver/package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY agent-image/driver/tsconfig.json ./
+COPY agent-image/driver/src ./src
+RUN npm run build
+
 FROM node:22-bookworm-slim
 
 ARG CLAUDE_CODE_ACP_VERSION=0.16.2
@@ -37,9 +48,9 @@ WORKDIR /opt/bex-agent-driver
 COPY agent-image/driver/package.json agent-image/driver/package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts \
     && npm cache clean --force
-COPY agent-image/driver/src ./src
-RUN chmod 0755 src/main.mjs \
-    && ln -s /opt/bex-agent-driver/src/main.mjs /usr/local/bin/bex-agent-driver
+COPY --from=driver-build /opt/bex-agent-driver/dist ./dist
+RUN chmod 0755 dist/main.js \
+    && ln -s /opt/bex-agent-driver/dist/main.js /usr/local/bin/bex-agent-driver
 
 COPY --from=credential-helper /out/git-credential-bex /usr/local/bin/git-credential-bex
 COPY --chmod=0755 agent-image/bex-pre-snapshot /usr/local/bin/bex-pre-snapshot

@@ -14,15 +14,29 @@
  * limitations under the License.
  */
 
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcessByStdio, type SpawnOptionsWithStdioTuple, type StdioPipe } from "node:child_process";
 import readline from "node:readline";
-import { PROTOCOL_VERSION } from "@agentclientprotocol/sdk";
-import { createACPProvider } from "@mcpc-tech/acp-ai-provider";
+import type { Readable, Writable } from "node:stream";
+import { PROTOCOL_VERSION, type AgentCapabilities } from "@agentclientprotocol/sdk";
+import { createACPProvider, type ACPProvider } from "@mcpc-tech/acp-ai-provider";
+import type { AgentDriverConfig } from "./config.js";
+
+export type { ACPProvider };
 
 const probeTimeoutMs = 10_000;
 const maximumConnectTimeoutMs = 60_000;
 
-function processOptions(config, agentEnv) {
+export type ACPChildProcess = ChildProcessByStdio<Writable, Readable, Readable>;
+
+export interface SessionProvider {
+  provider: ACPProvider;
+  resume: "new" | "loaded" | "unsupported";
+}
+
+function processOptions(
+  config: AgentDriverConfig,
+  agentEnv: Record<string, string>,
+): SpawnOptionsWithStdioTuple<StdioPipe, StdioPipe, StdioPipe> {
   return {
     cwd: config.cwd,
     env: { ...process.env, ...agentEnv },
@@ -30,11 +44,18 @@ function processOptions(config, agentEnv) {
   };
 }
 
-export async function probeAgentCapabilities(config, agentEnv) {
-  const child = spawn(config.command, config.args, processOptions(config, agentEnv));
+export async function probeAgentCapabilities(
+  config: AgentDriverConfig,
+  agentEnv: Record<string, string>,
+): Promise<AgentCapabilities> {
+  const child: ACPChildProcess = spawn(
+    config.command,
+    config.args,
+    processOptions(config, agentEnv),
+  );
   const lines = readline.createInterface({ input: child.stdout });
-  const stderr = [];
-  child.stderr.on("data", (chunk) => stderr.push(chunk.toString()));
+  const stderr: string[] = [];
+  child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk.toString()));
 
   const request = {
     jsonrpc: "2.0",
@@ -51,7 +72,7 @@ export async function probeAgentCapabilities(config, agentEnv) {
   };
 
   try {
-    return await new Promise((resolve, reject) => {
+    return await new Promise<AgentCapabilities>((resolve, reject) => {
       const timer = setTimeout(() => {
         reject(new Error(`ACP capability probe timed out after ${probeTimeoutMs}ms`));
       }, probeTimeoutMs);
@@ -70,7 +91,7 @@ export async function probeAgentCapabilities(config, agentEnv) {
         );
       });
       lines.on("line", (line) => {
-        let message;
+        let message: Record<string, unknown>;
         try {
           message = JSON.parse(line);
         } catch {
@@ -82,7 +103,8 @@ export async function probeAgentCapabilities(config, agentEnv) {
           reject(new Error(`ACP initialize failed: ${JSON.stringify(message.error)}`));
           return;
         }
-        resolve(message.result?.agentCapabilities || {});
+        const result = message.result as { agentCapabilities?: AgentCapabilities } | undefined;
+        resolve(result?.agentCapabilities || {});
       });
       child.stdin.write(`${JSON.stringify(request)}\n`);
     });
@@ -92,9 +114,12 @@ export async function probeAgentCapabilities(config, agentEnv) {
   }
 }
 
-export async function createSessionProvider(config, agentEnv) {
-  let existingSessionId;
-  let resume = "new";
+export async function createSessionProvider(
+  config: AgentDriverConfig,
+  agentEnv: Record<string, string>,
+): Promise<SessionProvider> {
+  let existingSessionId: string | undefined;
+  let resume: SessionProvider["resume"] = "new";
   if (config.existingSessionId) {
     const capabilities = await probeAgentCapabilities(config, agentEnv);
     if (capabilities.loadSession === true) {
@@ -116,7 +141,7 @@ export async function createSessionProvider(config, agentEnv) {
   // Spawn before the caller drops its copy of the model credential. Session
   // creation remains lazy, but the already-running child owns the only env copy.
   const connectTimeoutMs = Math.min(config.turnTimeoutMs, maximumConnectTimeoutMs);
-  let timer;
+  let timer: NodeJS.Timeout | undefined;
   try {
     await Promise.race([
       provider.connect(),
@@ -137,6 +162,9 @@ export async function createSessionProvider(config, agentEnv) {
   return { provider, resume };
 }
 
-export function spawnRawACP(config, agentEnv) {
+export function spawnRawACP(
+  config: AgentDriverConfig,
+  agentEnv: Record<string, string>,
+): ACPChildProcess {
   return spawn(config.command, config.args, processOptions(config, agentEnv));
 }
