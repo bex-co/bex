@@ -250,6 +250,23 @@ services:
 	}
 }
 
+func TestValidateBlueprintRejectsFieldsTheTargetServiceKindCannotApply(t *testing.T) {
+	svc, _ := newService(nil)
+	validation, err := svc.ValidateBlueprint(context.Background(), "", `services:
+  - type: worker
+    name: queue
+    runtime: image
+    image: {url: nginx:1.27}
+    ipAllowList: [{source: 192.0.2.0/24}]
+`)
+	if err != nil {
+		t.Fatalf("ValidateBlueprint: %v", err)
+	}
+	if validation.Valid || len(validation.Errors) != 1 || validation.Errors[0].Path == nil || *validation.Errors[0].Path != "services[0].ipAllowList" {
+		t.Fatalf("worker ipAllowList validation = %+v", validation)
+	}
+}
+
 func TestValidateBlueprintSyntaxErrorIncludesLine(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
 	const bad = "services:\n  - name: web\n    envVars: [\n"

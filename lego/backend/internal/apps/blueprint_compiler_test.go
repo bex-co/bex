@@ -195,6 +195,35 @@ func TestBlueprintCompilerEnforcesCapabilityRegistryAtNestedPaths(t *testing.T) 
 `,
 			path: "#/projects/0/environments/0/databases/0/region",
 		},
+		"unsupported postgres version": {
+			manifest: `databases:
+  - name: data
+    postgresMajorVersion: "12"
+`,
+			path: "#/databases/0/postgresMajorVersion",
+		},
+		"cron pre-deploy command": {
+			manifest: `services:
+  - type: cron
+    name: nightly
+    runtime: image
+    image: {url: nginx:1.27}
+    schedule: "0 0 * * *"
+    preDeployCommand: ./migrate
+`,
+			path: "#/services/0/preDeployCommand",
+		},
+		"static pre-deploy command": {
+			manifest: `services:
+  - type: web
+    name: site
+    runtime: static
+    repo: https://github.com/bex/site
+    staticPublishPath: dist
+    preDeployCommand: ./migrate
+`,
+			path: "#/services/0/preDeployCommand",
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, problems := CompileBlueprintSource(tc.manifest)

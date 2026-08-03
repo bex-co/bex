@@ -1321,8 +1321,17 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 	// Only a web service is exposed; private/worker/cron/static have no ingress,
 	// so a manifest that lists domains for one is a mistake worth catching here
 	// with a manifest-shaped message.
-	if svcType != appv1alpha1.TypeWebService && (len(a.Domains) > 0 || a.Domain != "") {
+	if svcType != appv1alpha1.TypeWebService && svcType != appv1alpha1.TypeStaticSite && (len(a.Domains) > 0 || a.Domain != "") {
 		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: %s has no ingress and cannot list domains", core.ErrBadRequest, a.Name)
+	}
+	if a.RenderSubdomainPolicy != "" && svcType != appv1alpha1.TypeWebService && svcType != appv1alpha1.TypeStaticSite {
+		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q renderSubdomainPolicy applies only to web services and static sites", core.ErrBadRequest, a.Name)
+	}
+	if len(a.IPAllowList) > 0 && svcType != appv1alpha1.TypeWebService && svcType != appv1alpha1.TypeStaticSite {
+		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q ipAllowList applies only to web services and static sites", core.ErrBadRequest, a.Name)
+	}
+	if a.Scaling != nil && svcType == appv1alpha1.TypeBackgroundWorker {
+		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q scaling is not available on background workers", core.ErrBadRequest, a.Name)
 	}
 	hosts := a.Domains
 	if len(hosts) == 0 && a.Domain != "" {

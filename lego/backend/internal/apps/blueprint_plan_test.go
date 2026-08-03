@@ -227,15 +227,22 @@ func TestParseBlueprintServiceMapsDockerAndStaticFields(t *testing.T) {
 	}
 	static, _, err := parseService(blueprintParseOverrides{}, bexService{
 		Name: "site", Type: "web", Runtime: "static", Repo: "https://example.test/site.git", StaticPublishPath: "dist",
+		Domains:               []string{"site.example.test"},
 		RenderSubdomainPolicy: "disabled",
 		Routes:                []StaticRouteView{{Type: "rewrite", Source: "/*", Destination: "/index.html"}},
 		Headers:               []StaticHeaderView{{Path: "/*", Name: "X-Frame-Options", Value: "DENY"}},
 	})
-	if err != nil || static.SubdomainPolicy != "disabled" || len(static.Routes) != 1 || len(static.Headers) != 1 {
+	if err != nil || static.SubdomainPolicy != "disabled" || len(static.Hosts) != 1 || len(static.Routes) != 1 || len(static.Headers) != 1 {
 		t.Fatalf("static fields = %#v, err %v", static, err)
 	}
 	if _, _, err := parseService(blueprintParseOverrides{}, bexService{Name: "api", Type: "web", Runtime: "image", Image: &bexImage{URL: "nginx:1"}, DockerCommand: "bad"}); err == nil {
 		t.Fatal("dockerCommand outside docker runtime was accepted")
+	}
+	if _, _, err := parseService(blueprintParseOverrides{}, bexService{Name: "worker", Type: "worker", Runtime: "image", Image: &bexImage{URL: "nginx:1"}, IPAllowList: []bexIPEntry{{Source: "192.0.2.0/24"}}}); err == nil {
+		t.Fatal("worker ipAllowList was accepted even though it has no ingress")
+	}
+	if _, _, err := parseService(blueprintParseOverrides{}, bexService{Name: "worker", Type: "worker", Runtime: "image", Image: &bexImage{URL: "nginx:1"}, Scaling: &bexScaling{MinInstances: 1, MaxInstances: 2}}); err == nil {
+		t.Fatal("worker scaling was accepted even though the controller does not autoscale workers")
 	}
 }
 

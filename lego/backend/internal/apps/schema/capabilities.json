@@ -119,10 +119,8 @@
       "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/preDeployCommand": {
-      "state": "translated",
-      "handler": "parseCompiledStack",
-      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
-      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
+      "state": "unsupported",
+      "reason": "cron jobs do not run the App pre-deploy phase, so accepting this command would silently ignore it"
     },
     "#/definitions/cronService/properties/region": {
       "state": "unsupported",
@@ -859,10 +857,8 @@
       "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/preDeployCommand": {
-      "state": "translated",
-      "handler": "parseCompiledStack",
-      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
-      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
+      "state": "unsupported",
+      "reason": "static sites do not run the App pre-deploy phase, so accepting this command would silently ignore it"
     },
     "#/definitions/staticService/properties/previews": {
       "state": "unsupported",
@@ -954,22 +950,16 @@
     },
     "#/definitions/database/properties/postgresMajorVersion/enum": {
       "\"10\"": {
-        "state": "translated",
-        "handler": "parseCompiledStack",
-        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
-        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+        "state": "unsupported",
+        "reason": "bex supports PostgreSQL 13 through 18; lower upstream versions cannot be provisioned"
       },
       "\"11\"": {
-        "state": "translated",
-        "handler": "parseCompiledStack",
-        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
-        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+        "state": "unsupported",
+        "reason": "bex supports PostgreSQL 13 through 18; lower upstream versions cannot be provisioned"
       },
       "\"12\"": {
-        "state": "translated",
-        "handler": "parseCompiledStack",
-        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
-        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+        "state": "unsupported",
+        "reason": "bex supports PostgreSQL 13 through 18; lower upstream versions cannot be provisioned"
       },
       "\"13\"": {
         "state": "translated",
