@@ -1,6 +1,6 @@
 # w1 · m63 — `render.yaml` parity: one strict, presence-aware Blueprint compiler
 
-**Worker:** worker1 **Goal:** make a Render Blueprint produce equivalent bex behavior or a precise pre-write refusal—never a successful silent no-op—through one pinned-schema compiler shared by every surface. **Status:** in progress (t001–t003 done; implementation and closeout verification underway)
+**Worker:** worker1 **Goal:** make a Render Blueprint produce equivalent bex behavior or a precise pre-write refusal—never a successful silent no-op—through one pinned-schema compiler shared by every surface. **Status:** done (2026-08-03; deployed production verification complete)
 
 ## Tasks (in order)
 
@@ -9,19 +9,19 @@
 | t001 | Pin Render's schema and create the exhaustive capability registry + drift check | 50m | — | — **DONE** |
 | t002 | Strict YAML AST/schema front end with duplicate-key, unknown-field, and source-location errors | 60m | t001 | — **DONE** |
 | t003 | Presence-aware normalized IR + authorized current-state action planner | 60m | t002 | — **DONE** |
-| t004 | Service create/sync semantics: defaults, omission, explicit empty, scaling, and env preservation | 60m | t003 | — |
-| t005 | Postgres + Key Value create/sync semantics: defaults, omission, explicit empty, and plan spellings | 50m | t003 | — |
-| t006 | Close App adapter gaps: Docker command/context, subdomain policy, static rules, registry credentials | 60m | t003 | — |
-| t007 | Close datastore adapter gaps: storage autoscaling, PgBouncer, and pooled references | 45m | t003 | — |
-| t008 | Complete grouping, reference, and `sync: false` semantics across every resource location | 60m | t003 | — |
-| t009 | Fail-closed unsupported/deprecated fields and move bex-only `builder` under `x-bex` | 45m | t002 | — |
-| t010 | Render-compatible validation wire contract: 10 MB, multi-error results, and honest plans | 50m | t003, t008, t009 | — |
-| t011 | Make `render.yaml` canonical; migrate stored paths/copy/examples with an unambiguous `bex.yml` fallback | 45m | t009, t010 | — |
-| t012 | Route every Blueprint entrypoint through the compiler; retire the shell compiler and repair resource inventory/docs | 60m | t004, t005, t006, t007, t008, t010, t011 | — |
-| t013 | Render parity check across REST/GraphQL/MCP/dashboard/official CLI | 40m | t012 | — |
-| t014 | Simplify pass over the Blueprint compiler and adapters | 30m | t013 | — |
-| t015 | Test coverage: schema exhaustiveness, conformance corpus, sync semantics, and cross-entrypoint invariance | 60m | t013, t014 | — |
-| t016 | Closeout | 15m | t015 | — |
+| t004 | Service create/sync semantics: defaults, omission, explicit empty, scaling, and env preservation | 60m | t003 | — **DONE** |
+| t005 | Postgres + Key Value create/sync semantics: defaults, omission, explicit empty, and plan spellings | 50m | t003 | — **DONE** |
+| t006 | Close App adapter gaps: Docker command/context, subdomain policy, static rules, registry credentials | 60m | t003 | — **DONE** |
+| t007 | Close datastore adapter gaps: storage autoscaling, PgBouncer, and pooled references | 45m | t003 | — **DONE** |
+| t008 | Complete grouping, reference, and `sync: false` semantics across every resource location | 60m | t003 | — **DONE** |
+| t009 | Fail-closed unsupported/deprecated fields and move bex-only `builder` under `x-bex` | 45m | t002 | — **DONE** |
+| t010 | Render-compatible validation wire contract: 10 MB, multi-error results, and honest plans | 50m | t003, t008, t009 | — **DONE** |
+| t011 | Make `render.yaml` canonical; migrate stored paths/copy/examples with an unambiguous `bex.yml` fallback | 45m | t009, t010 | — **DONE** |
+| t012 | Route every Blueprint entrypoint through the compiler; retire the shell compiler and repair resource inventory/docs | 60m | t004, t005, t006, t007, t008, t010, t011 | — **DONE** |
+| t013 | Render parity check across REST/GraphQL/MCP/dashboard/official CLI | 40m | t012 | — **DONE** |
+| t014 | Simplify pass over the Blueprint compiler and adapters | 30m | t013 | — **DONE** |
+| t015 | Test coverage: schema exhaustiveness, conformance corpus, sync semantics, and cross-entrypoint invariance | 60m | t013, t014 | — **DONE** |
+| t016 | Closeout | 15m | t015 | — **DONE** |
 
 ## Definition of done
 
