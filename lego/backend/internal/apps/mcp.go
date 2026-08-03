@@ -461,11 +461,12 @@ type previewBlueprintArgs struct {
 
 // createBlueprintArgs is create_blueprint's input (w2/m62).
 type createBlueprintArgs struct {
-	Repo    string `json:"repo" jsonschema:"Git repo URL (https://github.com/org/repo)"`
-	Branch  string `json:"branch" jsonschema:"branch to track"`
-	Path    string `json:"path,omitempty" jsonschema:"path to a Blueprint within the repo (default render.yaml)"`
-	Name    string `json:"name,omitempty" jsonschema:"human-readable name (default: repo basename)"`
-	Confirm string `json:"confirm,omitempty" jsonschema:"confirmation phrase for protected-environment overrides"`
+	Repo         string            `json:"repo" jsonschema:"Git repo URL (https://github.com/org/repo)"`
+	Branch       string            `json:"branch" jsonschema:"branch to track"`
+	Path         string            `json:"path,omitempty" jsonschema:"path to a Blueprint within the repo (default render.yaml)"`
+	Name         string            `json:"name,omitempty" jsonschema:"human-readable name (default: repo basename)"`
+	EnvVarValues map[string]string `json:"envVarValues,omitempty" jsonschema:"values for sync:false Blueprint env-var prompts; never returned"`
+	Confirm      string            `json:"confirm,omitempty" jsonschema:"confirmation phrase for protected-environment overrides"`
 }
 
 // listBlueprintSyncsArgs is list_blueprint_syncs's input (w2/m62).
@@ -1263,11 +1264,12 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Create a Git-connected Blueprint by fetching render.yaml from a repo, validating, and applying the full stack. bex.yml is a filename-only alias; if both files exist, specify path explicitly. Returns the new blueprint and deployed resources. The repo must be accessible via the workspace's GitHub connection or be public. bex extension (w2/m62).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createBlueprintArgs) (*mcp.CallToolResult, BlueprintView, error) {
 		view, err := s.CreateBlueprint(ctx, core.NamedWorkspace(ctx), CreateBlueprintRequest{
-			Repo:    in.Repo,
-			Branch:  in.Branch,
-			Path:    in.Path,
-			Name:    in.Name,
-			Confirm: in.Confirm,
+			Repo:         in.Repo,
+			Branch:       in.Branch,
+			Path:         in.Path,
+			Name:         in.Name,
+			EnvVarValues: in.EnvVarValues,
+			Confirm:      in.Confirm,
 		})
 		return nil, view, err
 	})

@@ -957,6 +957,25 @@ func TestDeployStackInitialHookMarkedRanWhenPreDeploySucceeds(t *testing.T) {
 	}
 }
 
+func TestDeployStackUpdatesPendingInitialDeployHook(t *testing.T) {
+	svc, cl := newService(nil)
+	ctx := context.Background()
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: hookManifest}); err != nil {
+		t.Fatalf("first DeployStack: %v", err)
+	}
+	updatedManifest := strings.Replace(hookManifest, "npm run db:setup", "npm run db:prepare", 1)
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: updatedManifest}); err != nil {
+		t.Fatalf("update pending initial hook: %v", err)
+	}
+	app := getApp(t, cl, "web")
+	if app.Spec.PreDeployCommand != "npm run db:prepare" {
+		t.Errorf("preDeployCommand = %q, want updated pending hook", app.Spec.PreDeployCommand)
+	}
+	if app.Annotations[initialDeployHookAnnotation] != "npm run db:prepare" {
+		t.Errorf("initial hook annotation = %q, want updated pending hook", app.Annotations[initialDeployHookAnnotation])
+	}
+}
+
 // TestDeployStackInitialHookSkippedWhenAlreadyRan verifies that once the
 // ran-once annotation is set, subsequent syncs never re-apply the hook.
 func TestDeployStackInitialHookSkippedWhenAlreadyRan(t *testing.T) {

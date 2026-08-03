@@ -133,6 +133,14 @@ var maintenanceModeInputType = graphql.NewInputObject(graphql.InputObjectConfig{
 	},
 })
 
+var blueprintEnvVarValueInputType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "BlueprintEnvVarValueInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"key":   &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"value": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+	},
+})
+
 // gqlMaintenanceModeInput parses a MaintenanceModeInput argument into the
 // neutral view. Returns nil when the argument is absent, so create leaves
 // maintenanceMode unset (disabled) — same absence convention as
@@ -144,6 +152,34 @@ func gqlMaintenanceModeInput(args map[string]any, key string) *MaintenanceModeVi
 	}
 	enabled, _ := m["enabled"].(bool)
 	return &MaintenanceModeView{Enabled: enabled, URI: gqlutil.Str(m, "uri")}
+}
+
+// blueprintEnvVarValues decodes GraphQL's list representation into the neutral
+// request map used by REST and MCP. A list is necessary because GraphQL has no
+// input-map type. Duplicate prompt keys are rejected rather than making a
+// secret's winner depend on input ordering.
+func blueprintEnvVarValues(raw any) (map[string]string, error) {
+	entries, ok := raw.([]any)
+	if !ok || len(entries) == 0 {
+		return nil, nil
+	}
+	values := make(map[string]string, len(entries))
+	for _, rawEntry := range entries {
+		entry, ok := rawEntry.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("%w: envVarValues entries must contain key and value", core.ErrBadRequest)
+		}
+		key, _ := entry["key"].(string)
+		value, _ := entry["value"].(string)
+		if key == "" {
+			return nil, fmt.Errorf("%w: envVarValues key is required", core.ErrBadRequest)
+		}
+		if _, duplicate := values[key]; duplicate {
+			return nil, fmt.Errorf("%w: envVarValues contains duplicate key %q", core.ErrBadRequest, key)
+		}
+		values[key] = value
+	}
+	return values, nil
 }
 
 // gqlBuildFilterInput parses a BuildFilterInput argument into the neutral view
@@ -1608,20 +1644,26 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createBlueprint": &graphql.Field{
 			Type: blueprintGQLType,
 			Args: graphql.FieldConfigArgument{
-				"repo":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"branch":  &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"path":    &graphql.ArgumentConfig{Type: graphql.String},
-				"name":    &graphql.ArgumentConfig{Type: graphql.String},
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
-				"confirm": &graphql.ArgumentConfig{Type: graphql.String},
+				"repo":         &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"branch":       &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"path":         &graphql.ArgumentConfig{Type: graphql.String},
+				"name":         &graphql.ArgumentConfig{Type: graphql.String},
+				"ownerId":      &graphql.ArgumentConfig{Type: graphql.String},
+				"envVarValues": &graphql.ArgumentConfig{Type: graphql.NewList(blueprintEnvVarValueInputType)},
+				"confirm":      &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
+				values, err := blueprintEnvVarValues(p.Args["envVarValues"])
+				if err != nil {
+					return nil, err
+				}
 				return s.CreateBlueprint(p.Context, gqlutil.Str(p.Args, "ownerId"), CreateBlueprintRequest{
-					Repo:    p.Args["repo"].(string),
-					Branch:  p.Args["branch"].(string),
-					Path:    gqlutil.Str(p.Args, "path"),
-					Name:    gqlutil.Str(p.Args, "name"),
-					Confirm: gqlutil.Str(p.Args, "confirm"),
+					Repo:         p.Args["repo"].(string),
+					Branch:       p.Args["branch"].(string),
+					Path:         gqlutil.Str(p.Args, "path"),
+					Name:         gqlutil.Str(p.Args, "name"),
+					EnvVarValues: values,
+					Confirm:      gqlutil.Str(p.Args, "confirm"),
 				})
 			},
 		},
