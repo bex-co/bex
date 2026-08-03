@@ -26,6 +26,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -136,10 +137,11 @@ func main() {
 	// ingress) and tees the UI-message stream into the durable transcript.
 	if secret := os.Getenv("BEX_SHELL_TICKET_SECRET"); secret != "" {
 		gateway.AgentAttach = &sshgateway.AgentAttachConfig{
-			Store:      st,
-			Pods:       sshgateway.KubePodIPResolver{Client: clientset},
-			Secret:     []byte(secret),
-			DriverPort: intEnv("BEX_AGENT_SESSION_DRIVER_PORT", 8787),
+			Store:          st,
+			Pods:           sshgateway.KubePodIPResolver{Client: clientset},
+			Secret:         []byte(secret),
+			DriverPort:     intEnv("BEX_AGENT_SESSION_DRIVER_PORT", 8787),
+			AllowedOrigins: splitCSV(os.Getenv("BEX_API_CORS_ORIGIN")),
 		}
 	}
 	addr := envOr("BEX_SSH_ADDR", ":2222")
@@ -255,6 +257,9 @@ func main() {
 		attachMux := http.NewServeMux()
 		attachMux.Handle("GET /v1/agent-sessions/{id}/stream", gateway.AgentAttachHandler())
 		attachMux.Handle("POST /v1/agent-sessions/{id}/stream", gateway.AgentAttachHandler())
+		// OPTIONS reaches the same handler so the CORS preflight is answered (the
+		// cross-origin dashboard sends one before the ticketed GET/POST).
+		attachMux.Handle("OPTIONS /v1/agent-sessions/{id}/stream", gateway.AgentAttachHandler())
 		attachMux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
 		attachServer := &http.Server{Handler: attachMux, ReadHeaderTimeout: 5 * time.Second}
 		attachAddr := envOr("BEX_AGENT_ATTACH_ADDR", ":8083")
@@ -330,6 +335,18 @@ func durationEnv(name string, fallback time.Duration) time.Duration {
 		log.Fatalf("ssh gateway: %s must be a positive duration", name)
 	}
 	return duration
+}
+
+// splitCSV parses a comma-separated env value (e.g. BEX_API_CORS_ORIGIN) into a
+// trimmed, non-empty list. Empty input => nil (no CORS origins).
+func splitCSV(value string) []string {
+	var out []string
+	for _, part := range strings.Split(value, ",") {
+		if part = strings.TrimSpace(part); part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
 }
 
 func intEnv(name string, fallback int) int {

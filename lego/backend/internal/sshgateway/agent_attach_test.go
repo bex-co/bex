@@ -135,7 +135,8 @@ func newAttachGateway(store AgentAttachStore, pods PodIPResolver, secret []byte,
 		SessionTimeout: time.Minute,
 		AgentAttach: &AgentAttachConfig{
 			Store: store, Pods: pods, Secret: secret, DriverPort: port,
-			Now: func() time.Time { return time.Unix(1_800_000_000, 0) },
+			AllowedOrigins: []string{"https://dashboard.bex.co"},
+			Now:            func() time.Time { return time.Unix(1_800_000_000, 0) },
 		},
 	}
 }
@@ -287,6 +288,76 @@ func TestAgentAttachRejectsBadTicketReplayAndMismatch(t *testing.T) {
 	}
 	if code := do(tok); code != http.StatusUnauthorized {
 		t.Errorf("replay = %d, want 401", code)
+	}
+}
+
+// TestAgentAttachCORS pins the cross-origin contract the dashboard depends on
+// (dashboard.bex.co -> api.bex.co): the OPTIONS preflight is answered 204 with
+// the echoed origin + allowed ticket header, and the actual stream response
+// exposes the v1 marker. Without this the browser blocks the stream even though
+// curl works — the gap a live prod probe caught.
+func TestAgentAttachCORS(t *testing.T) {
+	secret := []byte("shell-ticket-secret")
+	session := "ags-000000000000000000009"
+	st := newFakeAttachStore()
+	_ = st.AppendAgentSessionTranscript(context.Background(), session, []store.AgentSessionTranscriptPart{
+		{Seq: 0, Part: []byte(`{"type":"start"}`)},
+	})
+	gw := newAttachGateway(st, fixedPodIP{err: fmt.Errorf("terminal")}, secret, 8787)
+	srv := httptest.NewServer(gw.AgentAttachHandler())
+	defer srv.Close()
+	origin := "https://dashboard.bex.co"
+
+	// Preflight: 204, echoed origin, ticket header allowed, credentials allowed.
+	pre, _ := http.NewRequest(http.MethodOptions, srv.URL, nil)
+	pre.Header.Set("Origin", origin)
+	pre.Header.Set("Access-Control-Request-Method", "GET")
+	pre.Header.Set("Access-Control-Request-Headers", AgentAttachTicketHeader)
+	presp, err := http.DefaultClient.Do(pre)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer presp.Body.Close()
+	if presp.StatusCode != http.StatusNoContent {
+		t.Fatalf("preflight status = %d, want 204", presp.StatusCode)
+	}
+	if presp.Header.Get("Access-Control-Allow-Origin") != origin {
+		t.Fatalf("preflight allow-origin = %q, want %q", presp.Header.Get("Access-Control-Allow-Origin"), origin)
+	}
+	if !strings.Contains(presp.Header.Get("Access-Control-Allow-Headers"), AgentAttachTicketHeader) {
+		t.Fatalf("preflight does not allow the ticket header: %q", presp.Header.Get("Access-Control-Allow-Headers"))
+	}
+	if presp.Header.Get("Access-Control-Allow-Credentials") != "true" {
+		t.Fatalf("preflight missing allow-credentials")
+	}
+
+	// Actual GET: echoed origin + the v1 marker exposed to the reader.
+	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	req.Header.Set("Origin", origin)
+	req.Header.Set(AgentAttachTicketHeader, attachTicket(t, secret, session))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.Header.Get("Access-Control-Allow-Origin") != origin {
+		t.Fatalf("stream allow-origin = %q, want %q", resp.Header.Get("Access-Control-Allow-Origin"), origin)
+	}
+	if !strings.Contains(resp.Header.Get("Access-Control-Expose-Headers"), uiMessageStreamHeader) {
+		t.Fatalf("stream does not expose the v1 marker: %q", resp.Header.Get("Access-Control-Expose-Headers"))
+	}
+
+	// A disallowed origin gets no allow-origin header (fails closed in the browser).
+	bad, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	bad.Header.Set("Origin", "https://evil.example.com")
+	bad.Header.Set(AgentAttachTicketHeader, attachTicket(t, secret, session))
+	bresp, err := http.DefaultClient.Do(bad)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer bresp.Body.Close()
+	if bresp.Header.Get("Access-Control-Allow-Origin") != "" {
+		t.Fatalf("disallowed origin got allow-origin %q", bresp.Header.Get("Access-Control-Allow-Origin"))
 	}
 }
 
