@@ -82,6 +82,42 @@ services:
 			t.Errorf("missing prebuilt-image incompatibility at %s: %+v", path, problems)
 		}
 	}
+	for _, problem := range problems {
+		if problem.Path == "#/services/0/buildCommand" && problem.Code == "BLUEPRINT_CAPABILITY_INCOMPATIBLE" && !strings.Contains(problem.Message, "prebuilt image services") {
+			t.Fatalf("buildCommand should have exactly the prebuilt-image diagnosis, got %+v", problems)
+		}
+	}
+}
+
+func TestBlueprintCompilerRejectsRuntimeIncompatibleBuildCommands(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		manifest string
+		path     string
+	}{
+		{
+			name: "Dockerfile build command",
+			manifest: `services:
+  - {type: web, name: api, runtime: docker, repo: https://github.com/bex-co/api, buildCommand: go build ./cmd/api}
+`,
+			path: "#/services/0/buildCommand",
+		},
+		{
+			name: "image docker command",
+			manifest: `services:
+  - {type: web, name: api, runtime: image, image: {url: nginx:1.27}, dockerCommand: nginx -g 'daemon off;'}
+`,
+			path: "#/services/0/dockerCommand",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, problems := CompileBlueprintSource(tc.manifest)
+			problem := findBlueprintProblem(problems, "BLUEPRINT_CAPABILITY_INCOMPATIBLE")
+			if problem == nil || problem.Path != tc.path {
+				t.Fatalf("CompileBlueprintSource() problems = %+v, want incompatibility at %s", problems, tc.path)
+			}
+		})
+	}
 }
 
 func TestBlueprintCompilerRejectsDuplicateKeysBeforeSchema(t *testing.T) {

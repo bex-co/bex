@@ -308,16 +308,16 @@ func TestRedeployNeverTouchesMaintenanceMode(t *testing.T) {
 	app.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true, URI: "https://status.example.com/m"}
 	svc, cl := newService(nil, app)
 
-	// A manifest that changes a create-owned field (buildCommand), so the
+	// A manifest that changes a create-owned build field (rootDir), so the
 	// idempotent-upsert path actually reaches applyCreateToSpec instead of
 	// short-circuiting as a no-op.
-	manifest := "services:\n  - name: web\n    type: web\n    runtime: docker\n    repo: https://github.com/x/mono\n    plan: starter\n    buildCommand: make build\n"
+	manifest := "services:\n  - name: web\n    type: web\n    runtime: docker\n    repo: https://github.com/x/mono\n    plan: starter\n    rootDir: cmd/web\n"
 	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
 		t.Fatalf("DeployStack (redeploy): %v", err)
 	}
 	got := getApp(t, cl, "web")
-	if got.Spec.BuildCommand != "make build" {
-		t.Fatalf("redeploy did not apply — buildCommand = %q, want the manifest to have actually re-applied", got.Spec.BuildCommand)
+	if got.Spec.RootDir != "cmd/web" {
+		t.Fatalf("redeploy did not apply — rootDir = %q, want the manifest to have actually re-applied", got.Spec.RootDir)
 	}
 	if got.Spec.MaintenanceMode == nil || !got.Spec.MaintenanceMode.Enabled || got.Spec.MaintenanceMode.URI != "https://status.example.com/m" {
 		t.Errorf("redeploy must not touch spec.maintenanceMode, got %+v", got.Spec.MaintenanceMode)
