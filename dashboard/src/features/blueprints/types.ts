@@ -33,11 +33,23 @@ export interface BlueprintValidationResult {
 }
 
 export interface BlueprintPreviewPlan {
+  mode: string | null;
   services: string[] | null;
   databases: string[] | null;
   keyValue: string[] | null;
   envGroups: string[] | null;
   totalActions: number | null;
+  actions: BlueprintPlanAction[] | null;
+}
+
+export interface BlueprintPlanAction {
+  operation: string;
+  kind: string;
+  name: string;
+  sourcePath: string;
+  resourceId: string | null;
+  changedFields: Array<{ path: string }> | null;
+  message: string | null;
 }
 
 export interface BlueprintPreviewValidation {
