@@ -137,17 +137,17 @@ func blueprintCapabilityProblems(value any, path []string, locations map[string]
 		case "builder":
 			problem(field, "BLUEPRINT_EXTENSION_REQUIRED", "bex build strategy must be written as x-bex.builder; builder is not a Render Blueprint field")
 		case "region":
-			if !blueprintCapabilityUnsupported(registry, "#/definitions/serverService/properties/region", "#/definitions/cronService/properties/region", "#/definitions/staticService/properties/region", "#/definitions/database/properties/region", "#/definitions/redisServer/properties/region") {
+			if !blueprintResourceCapabilityUnsupported(registry, object, path, field) {
 				break
 			}
 			problem(field, "BLUEPRINT_CAPABILITY_UNSUPPORTED", "per-resource region placement is not available on bex")
 		case "disk":
-			if !blueprintCapabilityUnsupported(registry, "#/definitions/serverService/properties/disk") {
+			if !blueprintResourceCapabilityUnsupported(registry, object, path, field) {
 				break
 			}
 			problem(field, "BLUEPRINT_CAPABILITY_UNSUPPORTED", "persistent service disks are not available on bex")
 		case "dockerContext":
-			if !blueprintCapabilityUnsupported(registry, "#/definitions/serverService/properties/dockerContext", "#/definitions/cronService/properties/dockerContext") {
+			if !blueprintResourceCapabilityUnsupported(registry, object, path, field) {
 				break
 			}
 			problem(field, "BLUEPRINT_CAPABILITY_UNSUPPORTED", "dockerContext is not available on bex because its build-context semantics cannot be represented exactly")
@@ -182,6 +182,36 @@ func blueprintCapabilityProblems(value any, path []string, locations map[string]
 		problems = append(problems, blueprintCapabilityProblems(child, append(path, field), locations, registry)...)
 	}
 	return problems
+}
+
+func blueprintResourceCapabilityUnsupported(registry *BlueprintCapabilityRegistry, object map[string]any, path []string, field string) bool {
+	definition := blueprintResourceDefinition(object, path)
+	if definition == "" {
+		return false
+	}
+	return blueprintCapabilityUnsupported(registry, "#/definitions/"+definition+"/properties/"+field)
+}
+
+func blueprintResourceDefinition(object map[string]any, path []string) string {
+	for _, part := range path {
+		if part == "databases" {
+			return "database"
+		}
+	}
+	serviceType, _ := object["type"].(string)
+	switch serviceType {
+	case "keyvalue", "redis":
+		return "redisServer"
+	case "cron":
+		return "cronService"
+	}
+	if runtime, _ := object["runtime"].(string); runtime == "static" {
+		return "staticService"
+	}
+	if len(path) > 0 {
+		return "serverService"
+	}
+	return ""
 }
 
 // blueprintCapabilityUnsupported makes reviewed registry state authoritative

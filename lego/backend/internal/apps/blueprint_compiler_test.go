@@ -180,6 +180,28 @@ func TestBlueprintCapabilityStateControlsRuntimeRefusal(t *testing.T) {
 	}
 }
 
+func TestBlueprintResourceDefinitionUsesDeclarationKind(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name  string
+		value map[string]any
+		path  []string
+		want  string
+	}{
+		{name: "database", value: map[string]any{}, path: []string{"databases", "0"}, want: "database"},
+		{name: "key value", value: map[string]any{"type": "keyvalue"}, path: []string{"services", "0"}, want: "redisServer"},
+		{name: "cron", value: map[string]any{"type": "cron"}, path: []string{"services", "0"}, want: "cronService"},
+		{name: "static", value: map[string]any{"runtime": "static"}, path: []string{"services", "0"}, want: "staticService"},
+		{name: "server", value: map[string]any{"type": "web"}, path: []string{"services", "0"}, want: "serverService"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := blueprintResourceDefinition(tc.value, tc.path); got != tc.want {
+				t.Errorf("blueprintResourceDefinition() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestBlueprintCompilerRejectsPreviewFieldsEvenWhenFalseOrEmpty(t *testing.T) {
 	t.Parallel()
 	for name, manifest := range map[string]string{
