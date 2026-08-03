@@ -1154,16 +1154,22 @@
     },
     "#/definitions/serverService/properties/type/enum": {
       "\"web\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "manifestType",
+        "fixture": "internal/apps/stack_test.go:TestParseStackProjectsServicesAndDatabases",
+        "reason": "maps to the App web-service workload type"
       },
       "\"worker\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "manifestType",
+        "fixture": "internal/apps/stack_test.go:TestParseStackProjectsServicesAndDatabases",
+        "reason": "maps to the App background-worker workload type"
       },
       "\"pserv\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "manifestType",
+        "fixture": "internal/apps/stack_test.go:TestParseStackProjectsServicesAndDatabases",
+        "reason": "maps to the App private-service workload type"
       }
     },
     "#/definitions/serviceEnvVarProperty/enum": {
