@@ -1042,12 +1042,16 @@
     },
     "#/definitions/redisServer/properties/type/enum": {
       "\"keyvalue\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseKeyValue",
+        "fixture": "internal/apps/stack_test.go:TestDeployStackKeyValueProvisionedAndValidationPlan",
+        "reason": "maps to the managed Key Value resource"
       },
       "\"redis\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "deprecated",
+        "handler": "parseKeyValue",
+        "fixture": "internal/apps/stack_test.go:TestDeployStackKeyValueProvisionedAndValidationPlan",
+        "reason": "Render's legacy redis spelling normalizes to the managed Key Value resource"
       }
     },
     "#/definitions/region/enum": {
