@@ -187,8 +187,53 @@ func TestValidateBlueprintValidYAML(t *testing.T) {
 	if v.Plan == nil || len(v.Plan.Services) != 3 || len(v.Plan.Databases) != 1 || v.Plan.TotalActions != 4 {
 		t.Errorf("valid manifest: unexpected plan: %+v", v.Plan)
 	}
-	if v.Plan != nil && v.Plan.Mode != "structural" {
-		t.Errorf("validation plan mode = %q, want structural", v.Plan.Mode)
+	if v.Plan != nil && v.Plan.Mode != "current_state" {
+		t.Errorf("validation plan mode = %q, want current_state", v.Plan.Mode)
+	}
+	if v.Plan == nil || len(v.Plan.Actions) != 4 {
+		t.Errorf("validation action plan = %+v, want four create actions", v.Plan)
+	} else {
+		for _, action := range v.Plan.Actions {
+			if action.Operation != BlueprintPlanCreate {
+				t.Errorf("action = %+v, want create", action)
+			}
+		}
+	}
+}
+
+func TestValidateBlueprintCurrentStateActionPlan(t *testing.T) {
+	existing := sampleApp("web")
+	existing.Spec.Image = "nginx:1"
+	existing.Spec.Type = appv1alpha1.TypeWebService
+	existing.Spec.Runtime = "image"
+	svc := &Service{Base: &core.Base{Client: fakeClient(existing), Namespace: "default"}}
+	manifest := `services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx:1}
+`
+	validation, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	if err != nil || !validation.Valid || validation.Plan == nil {
+		t.Fatalf("ValidateBlueprint(noop): validation=%+v err=%v", validation, err)
+	}
+	if validation.Plan.Mode != "current_state" || len(validation.Plan.Actions) != 1 || validation.Plan.Actions[0].Operation != BlueprintPlanNoop {
+		t.Fatalf("noop action plan = %+v", validation.Plan)
+	}
+
+	manifest = strings.Replace(manifest, "nginx:1", "nginx:2", 1)
+	validation, err = svc.ValidateBlueprint(context.Background(), "", manifest)
+	if err != nil || !validation.Valid || validation.Plan == nil {
+		t.Fatalf("ValidateBlueprint(update): validation=%+v err=%v", validation, err)
+	}
+	action := validation.Plan.Actions[0]
+	if action.Operation != BlueprintPlanUpdate || action.ResourceID != "web" {
+		t.Fatalf("update action = %+v", action)
+	}
+	for _, change := range action.ChangedFields {
+		if change.Path == "nginx:2" {
+			t.Fatal("current-state plan leaked a manifest value")
+		}
 	}
 }
 
@@ -810,6 +855,12 @@ func TestRESTValidateBlueprint(t *testing.T) {
 	if !out.Valid {
 		t.Errorf("validate valid manifest: want valid=true, got %+v", out)
 	}
+	if out.Plan == nil || out.Plan.Mode != "current_state" || len(out.Plan.Actions) != 4 {
+		t.Errorf("REST validation action plan = %+v, want four current-state actions", out.Plan)
+	}
+	if !strings.Contains(rec.Body.String(), `"operation"`) || strings.Contains(rec.Body.String(), `"Operation"`) {
+		t.Errorf("REST action plan did not use lower-camel wire fields: %s", rec.Body.String())
+	}
 }
 
 func TestRESTDeployBlueprintUsesStackCore(t *testing.T) {
@@ -992,7 +1043,7 @@ func TestGraphQLValidateBlueprint(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
 	schema := blueprintSchema(t, svc)
 
-	q := fmt.Sprintf(`{ validateBlueprint(bexYaml: %q) { valid errors plan { mode services databases totalActions } } }`, stackManifest)
+	q := fmt.Sprintf(`{ validateBlueprint(bexYaml: %q) { valid errors plan { mode services databases totalActions actions { operation kind name sourcePath } } } }`, stackManifest)
 	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: q})
 	if len(res.Errors) > 0 {
 		t.Fatalf("validateBlueprint: %v", res.Errors)
@@ -1005,8 +1056,11 @@ func TestGraphQLValidateBlueprint(t *testing.T) {
 	if plan["totalActions"] != 4 {
 		t.Errorf("validateBlueprint plan = %+v, want totalActions=4", plan)
 	}
-	if plan["mode"] != "structural" {
-		t.Errorf("validateBlueprint plan = %+v, want mode=structural", plan)
+	if plan["mode"] != "current_state" {
+		t.Errorf("validateBlueprint plan = %+v, want mode=current_state", plan)
+	}
+	if actions, ok := plan["actions"].([]any); !ok || len(actions) != 4 {
+		t.Errorf("validateBlueprint plan actions = %#v, want four actions", plan["actions"])
 	}
 }
 

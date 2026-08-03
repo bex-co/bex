@@ -502,8 +502,11 @@ func (s *Service) DeployStack(ctx context.Context, req DeployRequest) (StackResu
 // deployStack is the unauthorized core; DeployStack authorizes once before
 // parsing and applying the stack.
 func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResult, error) {
-	st, _, err := compileStack(req)
+	st, ir, err := compileStack(req)
 	if err != nil {
+		return StackResult{}, err
+	}
+	if _, _, err := s.blueprintActionPlan(ctx, ir, st); err != nil {
 		return StackResult{}, err
 	}
 	return s.deployParsedStack(ctx, req, st)

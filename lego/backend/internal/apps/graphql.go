@@ -732,6 +732,27 @@ var blueprintValidationPlanGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"keyValue":     &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.KeyValue })},
 		"envGroups":    &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.EnvGroups })},
 		"totalActions": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.TotalActions })},
+		"actions":      &graphql.Field{Type: graphql.NewList(blueprintPlanActionGQLType), Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.Actions })},
+	},
+})
+
+var blueprintPlanFieldChangeGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BlueprintPlanFieldChange",
+	Fields: graphql.Fields{
+		"path": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(c BlueprintFieldChange) any { return c.Path })},
+	},
+})
+
+var blueprintPlanActionGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BlueprintPlanAction",
+	Fields: graphql.Fields{
+		"operation":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a BlueprintPlanAction) any { return a.Operation })},
+		"kind":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a BlueprintPlanAction) any { return a.Kind })},
+		"name":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a BlueprintPlanAction) any { return a.Name })},
+		"sourcePath":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a BlueprintPlanAction) any { return a.SourcePath })},
+		"resourceId":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a BlueprintPlanAction) any { return a.ResourceID })},
+		"changedFields": &graphql.Field{Type: graphql.NewList(blueprintPlanFieldChangeGQLType), Resolve: gqlutil.Field(func(a BlueprintPlanAction) any { return a.ChangedFields })},
+		"message":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a BlueprintPlanAction) any { return a.Message })},
 	},
 })
 
