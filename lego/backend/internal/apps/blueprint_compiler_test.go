@@ -159,6 +159,27 @@ services:
 	}
 }
 
+func TestBlueprintCapabilityStateControlsRuntimeRefusal(t *testing.T) {
+	t.Parallel()
+	unsupported := &BlueprintCapabilityRegistry{Fields: map[string]BlueprintCapability{
+		"#/definitions/serverService/properties/disk": {State: BlueprintCapabilityUnsupported},
+	}}
+	if !blueprintCapabilityUnsupported(unsupported, "#/definitions/serverService/properties/disk") {
+		t.Fatal("unsupported registry field did not refuse the capability")
+	}
+	unsupported.Fields["#/definitions/serverService/properties/disk"] = BlueprintCapability{State: BlueprintCapabilityTranslated}
+	if blueprintCapabilityUnsupported(unsupported, "#/definitions/serverService/properties/disk") {
+		t.Fatal("translated registry field still refused the capability")
+	}
+
+	enums := &BlueprintCapabilityRegistry{EnumValues: map[string]map[string]BlueprintCapability{
+		"#/definitions/autoDeployTrigger/enum": {`"checksPass"`: {State: BlueprintCapabilityUnsupported}},
+	}}
+	if !blueprintEnumCapabilityUnsupported(enums, "#/definitions/autoDeployTrigger/enum", `"checksPass"`) {
+		t.Fatal("unsupported enum did not refuse the capability")
+	}
+}
+
 func TestBlueprintCompilerRejectsPreviewFieldsEvenWhenFalseOrEmpty(t *testing.T) {
 	t.Parallel()
 	for name, manifest := range map[string]string{
