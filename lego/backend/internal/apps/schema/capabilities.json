@@ -353,8 +353,10 @@
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/image/properties/url": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseService",
+      "fixture": "internal/apps/blueprint_compiler_test.go:TestBlueprintCompilerAcceptsReviewedRenderBlueprint",
+      "reason": "maps the Render image URL to the App prebuilt-image source"
     },
     "#/definitions/ipAllowList/items/properties/description": {
       "state": "unsupported",
