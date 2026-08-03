@@ -26,7 +26,12 @@ async function main() {
   const config = loadConfig();
   const credentials = createCredentialManager(config);
   const hub = new UIMessageStreamHub();
-  const listener = await startDriverServer(config, credentials, hub);
+  // Live prompt turns (ADR047 D9): a POST /turn runs another turn on the same
+  // session, keeping the UI-message stream open. The fire-and-forget path below
+  // still runs its single headless turn and closes the stream.
+  const runTurn = (prompt, onPart) =>
+    runHeadlessTurn(config, credentials, hub, { prompt, closeHub: false, onPart });
+  const listener = await startDriverServer(config, credentials, hub, { runTurn });
 
   const shutdown = async () => {
     await credentials.scrubPersistedState();

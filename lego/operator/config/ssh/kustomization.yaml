@@ -4,6 +4,7 @@ resources:
   - service.yaml
   - ingressroutetcp.yaml
   - ingress-shell.yaml
+  - ingressroute-agent-attach.yaml
   - networkpolicy.yaml
   - pdb.yaml
 

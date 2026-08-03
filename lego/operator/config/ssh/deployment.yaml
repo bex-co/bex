@@ -107,6 +107,18 @@ spec:
               value: ":8082"
             - name: BEX_AGENT_CREDENTIAL_API_URL
               value: http://bex-api.bex-system.svc:8091/v1/agent-session-credentials
+            # Agent-session conversation transport (ADR047 D9, w3/m43). A
+            # browser-facing plain-HTTP SSE listener Traefik terminates TLS onto:
+            # the edge path-routes api.bex.co/v1/agent-sessions/{id}/stream here
+            # (ingressroute-agent-attach.yaml). The gateway verifies the
+            # agent-session ticket (reusing BEX_SHELL_TICKET_SECRET, so the
+            # listener starts only when that shared secret is installed) and dials
+            # the in-sandbox driver's stream port directly. Distinct from the Web
+            # Shell (:8080) so their routing/limits stay independent.
+            - name: BEX_AGENT_ATTACH_ADDR
+              value: ":8083"
+            - name: BEX_AGENT_SESSION_DRIVER_PORT
+              value: "8787"
           ports:
             - name: ssh
               containerPort: 2222
@@ -122,6 +134,9 @@ spec:
               protocol: TCP
             - name: agent-creds
               containerPort: 8082
+              protocol: TCP
+            - name: agent-attach
+              containerPort: 8083
               protocol: TCP
           readinessProbe:
             httpGet:

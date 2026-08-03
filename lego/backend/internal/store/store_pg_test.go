@@ -154,9 +154,102 @@ func assertAgentSessions(ctx context.Context, t *testing.T, s *PGStore, tenant T
 		t.Fatalf("completed session still listed as running = %+v err=%v", none, err)
 	}
 
+	assertAgentSessionTranscripts(ctx, t, s, tenant, record.ID)
+
 	record, err = s.SetAgentSessionLifecycle(ctx, record.ID, "", "canceled", "canceled", true)
 	if err != nil || record.CanceledAt == nil {
 		t.Fatalf("cancel agent session = %+v err=%v", record, err)
+	}
+}
+
+// assertAgentSessionTranscripts proves the w3/m43 transcript store: ordered
+// append + replay, cross-replica/re-attach idempotency (same seq is a no-op, not
+// a duplicate), the max-seq cursor, retention pruning, and cascade with the
+// session row.
+func assertAgentSessionTranscripts(ctx context.Context, t *testing.T, s *PGStore, tenant Tenant, sessionID string) {
+	t.Helper()
+
+	// Empty transcript: no max seq, empty replay.
+	if _, ok, err := s.AgentSessionTranscriptMaxSeq(ctx, sessionID); err != nil || ok {
+		t.Fatalf("empty transcript max seq: ok=%v err=%v", ok, err)
+	}
+	if parts, err := s.AgentSessionTranscript(ctx, sessionID, -1); err != nil || len(parts) != 0 {
+		t.Fatalf("empty transcript replay = %+v err=%v", parts, err)
+	}
+
+	first := []AgentSessionTranscriptPart{
+		{Seq: 0, Turn: 1, Part: []byte(`{"type":"start"}`)},
+		{Seq: 1, Turn: 1, Part: []byte(`{"type":"text-delta","delta":"hi"}`)},
+		{Seq: 2, Turn: 1, Part: []byte(`{"type":"data-acp","data":{"kind":"plan"}}`)},
+	}
+	if err := s.AppendAgentSessionTranscript(ctx, sessionID, first); err != nil {
+		t.Fatalf("append transcript: %v", err)
+	}
+	// Re-teeing the SAME parts (another replica / a re-attach re-reading the
+	// driver's replayed history) must be a no-op, never a duplicate.
+	if err := s.AppendAgentSessionTranscript(ctx, sessionID, first); err != nil {
+		t.Fatalf("idempotent re-append: %v", err)
+	}
+	maxSeq, ok, err := s.AgentSessionTranscriptMaxSeq(ctx, sessionID)
+	if err != nil || !ok || maxSeq != 2 {
+		t.Fatalf("max seq after append = %d ok=%v err=%v", maxSeq, ok, err)
+	}
+	full, err := s.AgentSessionTranscript(ctx, sessionID, -1)
+	if err != nil || len(full) != 3 {
+		t.Fatalf("full replay = %d parts err=%v (dedup failed if 6)", len(full), err)
+	}
+	if full[0].Seq != 0 || full[2].Seq != 2 || string(full[1].Part) != `{"type":"text-delta","delta":"hi"}` {
+		t.Fatalf("replay order/verbatim wrong: %+v", full)
+	}
+
+	// The gateway resumes its live tee strictly after the stored max: append
+	// seq 3+ and read only the tail via the cursor.
+	if err := s.AppendAgentSessionTranscript(ctx, sessionID, []AgentSessionTranscriptPart{
+		{Seq: 3, Turn: 2, Part: []byte(`{"type":"finish"}`)},
+	}); err != nil {
+		t.Fatalf("append tail: %v", err)
+	}
+	tail, err := s.AgentSessionTranscript(ctx, sessionID, maxSeq)
+	if err != nil || len(tail) != 1 || tail[0].Seq != 3 || tail[0].Turn != 2 {
+		t.Fatalf("cursor tail = %+v err=%v", tail, err)
+	}
+
+	// Retention prune removes aged parts; a future cutoff clears all four.
+	if n, err := s.PruneAgentSessionTranscripts(ctx, time.Now().Add(-time.Hour)); err != nil || n != 0 {
+		t.Fatalf("prune (nothing aged) = %d err=%v", n, err)
+	}
+	if n, err := s.PruneAgentSessionTranscripts(ctx, time.Now().Add(time.Hour)); err != nil || n != 4 {
+		t.Fatalf("prune (all) = %d err=%v", n, err)
+	}
+	if parts, err := s.AgentSessionTranscript(ctx, sessionID, -1); err != nil || len(parts) != 0 {
+		t.Fatalf("post-prune replay = %+v err=%v", parts, err)
+	}
+
+	// Cascade: a transcript on a throwaway session vanishes with the session row.
+	throwaway, err := s.CreateAgentSession(ctx, AgentSession{
+		WorkspaceID: tenant.ID, Repo: "bex-co/example", Branch: "main",
+		AgentConfig: []byte(`{"agent":"codex","task":"cascade"}`),
+	})
+	if err != nil {
+		t.Fatalf("create cascade session: %v", err)
+	}
+	if err := s.AppendAgentSessionTranscript(ctx, throwaway.ID, []AgentSessionTranscriptPart{
+		{Seq: 0, Turn: 1, Part: []byte(`{"type":"start"}`)},
+	}); err != nil {
+		t.Fatalf("append cascade transcript: %v", err)
+	}
+	if err := s.DeleteAgentSession(ctx, throwaway.ID); err != nil {
+		t.Fatalf("delete cascade session: %v", err)
+	}
+	if parts, err := s.AgentSessionTranscript(ctx, throwaway.ID, -1); err != nil || len(parts) != 0 {
+		t.Fatalf("transcript survived session delete = %+v err=%v", parts, err)
+	}
+
+	// A part referencing a nonexistent session fails closed (FK → not found).
+	if err := s.AppendAgentSessionTranscript(ctx, "ags-doesnotexist000000000", []AgentSessionTranscriptPart{
+		{Seq: 0, Turn: 1, Part: []byte(`{"type":"start"}`)},
+	}); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("append to missing session err = %v, want ErrNotFound", err)
 	}
 }
 

@@ -453,9 +453,45 @@ func allowNetworkPolicies(namespace, regime string) []*networkingv1.NetworkPolic
 			internetEgressNetworkPolicy(namespace),
 		}
 	case RegimeSandbox:
-		return nil
+		// Sandboxes stay default-deny except for one narrow ingress: the isolated
+		// gateway (bex-system) dials the in-sandbox agent-session driver's stream
+		// port directly to reverse-proxy the conversation stream (ADR047 D9, w3/m43).
+		// This is the single sanctioned inbound path — the gateway is the sole
+		// session ingress. Egress remains governed by the cluster-wide Cilium
+		// policy (sessionegress); nothing else may reach a sandbox pod.
+		return []*networkingv1.NetworkPolicy{
+			gatewayDriverIngressNetworkPolicy(namespace),
+		}
 	}
 	return nil
+}
+
+// agentDriverPort is the in-sandbox driver's UI-message-stream HTTP port
+// (lego/agent-image/driver/src/config.mjs BEX_AGENT_LISTEN_PORT default; the
+// gateway's BEX_AGENT_SESSION_DRIVER_PORT must match). The gateway is the only
+// admitted caller.
+const agentDriverPort = 8787
+
+// gatewayDriverIngressNetworkPolicy admits ONLY the bex-system gateway to the
+// sandbox driver's stream port, keeping the sandbox otherwise default-deny.
+func gatewayDriverIngressNetworkPolicy(namespace string) *networkingv1.NetworkPolicy {
+	tcp := corev1.ProtocolTCP
+	port := intstr.FromInt32(agentDriverPort)
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: npMeta(namespace, "allow-gateway-driver-ingress"),
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{{
+				Ports: []networkingv1.NetworkPolicyPort{{Protocol: &tcp, Port: &port}},
+				From: []networkingv1.NetworkPolicyPeer{{
+					NamespaceSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{"kubernetes.io/metadata.name": platformNamespace},
+					},
+				}},
+			}},
+		},
+	}
 }
 
 func npMeta(namespace, name string) metav1.ObjectMeta {

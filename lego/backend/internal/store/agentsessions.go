@@ -27,6 +27,18 @@ import (
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
+// AgentSessionTranscriptPart is one durable UI-message-stream part (ADR047 D9,
+// w3/m43). Seq is the driver's emission ordinal on the /stream the gateway
+// proxies (0-based, stable across replays and replicas); Turn is the session
+// turn the part belongs to; Part is the verbatim `data:` payload — the exact
+// bytes forwarded to a Vercel AI SDK client.
+type AgentSessionTranscriptPart struct {
+	Seq       int64
+	Turn      int
+	Part      json.RawMessage
+	CreatedAt time.Time
+}
+
 // AgentSession is the durable control-plane record for one cloud coding-agent
 // task (ADR047 D3). AgentConfig is kept as JSON because the driver-specific
 // knobs evolve independently of the lifecycle contract; callers validate its
@@ -191,6 +203,92 @@ func nullableJSON(v json.RawMessage) any {
 		return nil
 	}
 	return []byte(v)
+}
+
+// AppendAgentSessionTranscript idempotently persists teed transcript parts
+// (ADR047 D9). The append is keyed by the driver's emission ordinal
+// (session_id, seq), so re-teeing the same part — from another gateway replica
+// or a re-attach that re-reads the driver's replayed history — is a no-op via
+// ON CONFLICT DO NOTHING, never a duplicate. A missing session (its row cascaded
+// away) surfaces as ErrNotFound rather than a silent FK error.
+func (s *PGStore) AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []AgentSessionTranscriptPart) error {
+	if len(parts) == 0 {
+		return nil
+	}
+	batch := &pgx.Batch{}
+	for _, p := range parts {
+		// part is a text column (verbatim bytes, not canonicalized jsonb): bind it
+		// as a string so pgx never re-encodes it as bytea.
+		part := string(p.Part)
+		if part == "" {
+			part = "null"
+		}
+		batch.Queue(`
+			INSERT INTO agent_session_transcripts (session_id, seq, turn, part)
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (session_id, seq) DO NOTHING`, sessionID, p.Seq, p.Turn, part)
+	}
+	results := s.Pool.SendBatch(ctx, batch)
+	defer func() { _ = results.Close() }()
+	for range parts {
+		if _, err := results.Exec(); err != nil {
+			return classify("agent session transcript", err)
+		}
+	}
+	return nil
+}
+
+// AgentSessionTranscript returns a session's stored parts in emission order,
+// strictly after afterSeq (pass -1 for the whole transcript). It is the replay
+// source for reattach and for terminal-session history (ADR047 D9): it reads
+// the durable store, never the sandbox, so it works after the sandbox is gone.
+func (s *PGStore) AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64) ([]AgentSessionTranscriptPart, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT seq, turn, part, created_at
+		FROM agent_session_transcripts
+		WHERE session_id=$1 AND seq > $2
+		ORDER BY seq ASC`, sessionID, afterSeq)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]AgentSessionTranscriptPart, 0)
+	for rows.Next() {
+		var p AgentSessionTranscriptPart
+		if err := rows.Scan(&p.Seq, &p.Turn, &p.Part, &p.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// AgentSessionTranscriptMaxSeq returns the highest stored seq for a session and
+// whether any part exists. The gateway uses it to skip driver-replayed parts it
+// has already persisted, so its live tee resumes exactly where the store ends.
+func (s *PGStore) AgentSessionTranscriptMaxSeq(ctx context.Context, sessionID string) (int64, bool, error) {
+	var maxSeq *int64
+	if err := s.Pool.QueryRow(ctx,
+		`SELECT max(seq) FROM agent_session_transcripts WHERE session_id=$1`, sessionID).Scan(&maxSeq); err != nil {
+		return 0, false, err
+	}
+	if maxSeq == nil {
+		return -1, false, nil
+	}
+	return *maxSeq, true, nil
+}
+
+// PruneAgentSessionTranscripts deletes parts older than the cutoff, returning
+// the number removed. It rides the same daily retention sweep as audit data
+// (BEX_AUDIT_RETENTION_DAYS lineage); the ON DELETE CASCADE already clears a
+// deleted session's parts, so this only bounds long-lived sessions' history.
+func (s *PGStore) PruneAgentSessionTranscripts(ctx context.Context, before time.Time) (int64, error) {
+	tag, err := s.Pool.Exec(ctx,
+		`DELETE FROM agent_session_transcripts WHERE created_at < $1`, before)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
 }
 
 // DeleteAgentSession removes a row whose first-class OpenFGA parent tuple could

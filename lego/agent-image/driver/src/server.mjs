@@ -33,6 +33,38 @@ function isLoopback(address) {
   return address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1";
 }
 
+async function readJSONBody(request, limit = 1 << 20) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > limit) throw new Error("request body too large");
+    chunks.push(chunk);
+  }
+  if (chunks.length === 0) return {};
+  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+}
+
+// promptFromBody extracts a turn's prompt from either a bare {prompt} or the
+// Vercel AI SDK sendMessages body {messages:[...]} — the last user message's
+// text parts, joined. useChat posts the latter; a plain client posts the former.
+function promptFromBody(body) {
+  if (typeof body?.prompt === "string" && body.prompt.trim()) return body.prompt;
+  const messages = Array.isArray(body?.messages) ? body.messages : [];
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i];
+    if (message?.role !== "user") continue;
+    if (typeof message.content === "string" && message.content.trim()) return message.content;
+    const parts = Array.isArray(message.parts) ? message.parts : [];
+    const text = parts
+      .filter((part) => part?.type === "text" && typeof part.text === "string")
+      .map((part) => part.text)
+      .join("");
+    if (text.trim()) return text;
+  }
+  return "";
+}
+
 function bridgeACP(socket, config, credentialManager) {
   const child = spawnRawACP(config, credentialManager.agentEnvironment());
   const lines = readline.createInterface({ input: child.stdout });
@@ -72,7 +104,13 @@ function bridgeACP(socket, config, credentialManager) {
   });
 }
 
-export async function startDriverServer(config, credentialManager, hub) {
+export async function startDriverServer(config, credentialManager, hub, options = {}) {
+  // runTurn (ADR047 D9 t004) runs one live prompt turn on the persistent
+  // session, mirroring its parts to the given sink; when unset, POST /turn 501s
+  // (the fire-and-forget path serves only GET /stream). turnInFlight enforces
+  // single-flight: the agent runs one turn at a time.
+  const runTurn = options.runTurn;
+  let turnInFlight = false;
   const server = http.createServer((request, response) => {
     const url = new URL(request.url, "http://bex-agent-driver.invalid");
     if (request.method === "GET" && url.pathname === "/healthz") {
@@ -83,6 +121,49 @@ export async function startDriverServer(config, credentialManager, hub) {
     if (request.method === "GET" && url.pathname === "/stream") {
       streamHeaders(response);
       hub.attach(response);
+      return;
+    }
+    if (request.method === "POST" && url.pathname === "/turn") {
+      if (!runTurn) {
+        response.writeHead(501, { "content-type": "application/json" });
+        response.end('{"error":"live turns not enabled"}\n');
+        return;
+      }
+      if (turnInFlight) {
+        response.writeHead(409, { "content-type": "application/json" });
+        response.end('{"error":"a turn is already running"}\n');
+        return;
+      }
+      turnInFlight = true;
+      void (async () => {
+        try {
+          const body = await readJSONBody(request);
+          const prompt = promptFromBody(body);
+          if (!prompt.trim()) {
+            response.writeHead(400, { "content-type": "application/json" });
+            response.end('{"error":"prompt is required"}\n');
+            return;
+          }
+          streamHeaders(response);
+          // The turn publishes to the hub (attached GET clients) and mirrors
+          // each part onto THIS response so the gateway tees and forwards it.
+          await runTurn(prompt, (part) => {
+            response.write(`data: ${JSON.stringify(part)}\n\n`);
+          });
+          response.end("data: [DONE]\n\n");
+        } catch (error) {
+          if (!response.headersSent) {
+            response.writeHead(500, { "content-type": "application/json" });
+            response.end(
+              `${JSON.stringify({ error: credentialManager.redact(error.message) })}\n`,
+            );
+          } else {
+            response.end("data: [DONE]\n\n");
+          }
+        } finally {
+          turnInFlight = false;
+        }
+      })();
       return;
     }
     if (request.method === "POST" && url.pathname === "/snapshot/scrub") {

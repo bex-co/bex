@@ -464,6 +464,36 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	return s.withTicket(ctx, record)
 }
 
+// AttachTicket mints a fresh attach ticket for an already-started session
+// without changing its lifecycle (ADR047 D9 target API shape). It closes the
+// reconnect gap: create/resume/steer mint at dispatch time, but a page reload
+// or a stream drop on a running session — or opening a terminal session's
+// transcript replay — needs a ticket too, and those verbs don't fire again. The
+// ticket carries the same 90s TTL + single-use nonce + subject/session/pod/
+// namespace claims, so the gateway authorizes reattach and terminal replay
+// identically to a first connect. A session that never started a sandbox has
+// nothing to attach to.
+func (s *Service) AttachTicket(ctx context.Context, sessionID string) (View, error) {
+	if err := s.AuthorizeOn(ctx, core.RelCanOperate, sessionObject(sessionID)); err != nil {
+		return View{}, err
+	}
+	if !s.enabled() || !s.ticketEnabled() {
+		return View{}, core.ErrAgentSessionsUnavailable
+	}
+	if err := validateSessionID(sessionID); err != nil {
+		return View{}, err
+	}
+	record, err := s.Store.GetAgentSession(ctx, sessionID)
+	if err != nil {
+		return View{}, mapStoreError(sessionID, err)
+	}
+	if record.SandboxID == "" {
+		return View{}, core.NewConflictError("AGENT_SESSION_NOT_ATTACHABLE",
+			"agent session has not started a sandbox yet", map[string]any{"phase": record.Phase})
+	}
+	return s.withTicket(ctx, record)
+}
+
 func (s *Service) withTicket(ctx context.Context, record store.AgentSession) (View, error) {
 	identity, ok := core.IdentityFrom(ctx)
 	if !ok || identity.Subject == "" {

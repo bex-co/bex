@@ -280,6 +280,53 @@ test("SSE replays the standard UI-message stream and headless needs no client", 
   }
 });
 
+test("POST /turn runs a live turn, streams its parts, and single-flights", async () => {
+  const config = await tempConfig();
+  const credentials = manager(config);
+  const hub = new UIMessageStreamHub();
+  const runTurn = (prompt, onPart) =>
+    runHeadlessTurn(config, credentials, hub, { prompt, closeHub: false, onPart });
+  const listener = await startDriverServer(config, credentials, hub, { runTurn });
+  try {
+    const turnURL = `http://127.0.0.1:${listener.address.port}/turn`;
+
+    // A missing prompt is a 400.
+    const empty = await fetch(turnURL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
+    assert.equal(empty.status, 400);
+    await empty.text();
+
+    // A live turn streams UI-message parts (incl. the mapped data-acp part) and
+    // terminates with [DONE]; the hub is NOT closed, so the session stays live.
+    const response = await fetch(turnURL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ messages: [{ role: "user", parts: [{ type: "text", text: "make the change" }] }] }),
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("x-vercel-ai-ui-message-stream"), "v1");
+    const body = await response.text();
+    assert.match(body, /data: .*"type":"data-acp"/);
+    assert.match(body, /data: \[DONE\]/);
+
+    // The same parts reached the hub's history (attached GET clients see them),
+    // and the stream is still open for another turn.
+    assert.ok(hub.history.some((part) => part.type === "data-acp"));
+    const second = await fetch(turnURL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ prompt: "another turn" }),
+    });
+    assert.equal(second.status, 200);
+    await second.text();
+  } finally {
+    await listener.close();
+  }
+});
+
 test("raw ACP WebSocket round-trips initialize to agent stdio", async () => {
   const config = await tempConfig();
   const listener = await startDriverServer(

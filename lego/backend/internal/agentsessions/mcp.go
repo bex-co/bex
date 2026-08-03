@@ -60,6 +60,11 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			out, err := s.Resume(ctx, in.ID)
 			return nil, out, toolError(err)
 		})
+	mcp.AddTool(server, &mcp.Tool{Name: "attach_agent_session", Description: "Mint a fresh attach ticket for a started cloud coding-agent session to (re)connect to its live or replayed conversation stream, without changing its lifecycle."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
+			out, err := s.AttachTicket(ctx, in.ID)
+			return nil, out, toolError(err)
+		})
 	mcp.AddTool(server, &mcp.Tool{Name: "cancel_agent_session", Description: "Cancel a cloud coding-agent session and terminate its sandbox."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Cancel(ctx, in.ID)

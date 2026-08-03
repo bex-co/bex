@@ -87,8 +87,23 @@ export async function adoptPersistedSession(config) {
   return "";
 }
 
-export async function runHeadlessTurn(config, credentialManager, hub) {
-  if (!config.prompt) throw new Error("BEX_AGENT_PROMPT is required for a headless turn");
+// runHeadlessTurn runs one agent turn. options let a live turn (ADR047 D9 t004)
+// reuse the identical timeout/delivery/evidence/scrub machinery:
+//   - prompt   overrides config.prompt (the steering prompt on a POST /turn)
+//   - closeHub false keeps the UI-message stream open so the session accepts
+//     further turns and later attachers (a fire-and-forget turn closes it so
+//     GET /stream watchers receive [DONE])
+//   - onPart mirrors each published part to an extra sink (the POST /turn
+//     response) in addition to the hub's fan-out to attached GET clients
+export async function runHeadlessTurn(config, credentialManager, hub, options = {}) {
+  const prompt = options.prompt ?? config.prompt;
+  const closeHub = options.closeHub ?? true;
+  const onPart = options.onPart;
+  if (!prompt) throw new Error("BEX_AGENT_PROMPT is required for a headless turn");
+  const publish = (part) => {
+    hub.publish(part);
+    if (onPart) onPart(part);
+  };
   // Read the prior turn's persisted identity BEFORE the running-state write
   // below replaces the status file.
   const resumedFrom = await adoptPersistedSession(config);
@@ -116,14 +131,14 @@ export async function runHeadlessTurn(config, credentialManager, hub) {
       provider = created.provider;
       result = streamText({
         model: provider.languageModel(),
-        prompt: config.prompt,
+        prompt,
         abortSignal: turnAbort.signal,
         includeRawChunks: true,
       });
 
       const consumeUI = async () => {
         for await (const part of result.toUIMessageStream()) {
-          hub.publish(part);
+          publish(part);
           await logPart(config.sessionLogPath, part, credentialManager);
         }
       };
@@ -131,14 +146,14 @@ export async function runHeadlessTurn(config, credentialManager, hub) {
         for await (const part of result.fullStream) {
           if (part.type !== "raw") continue;
           const uiPart = rawUIMessagePart(part);
-          hub.publish(uiPart);
+          publish(uiPart);
           await logPart(config.sessionLogPath, uiPart, credentialManager);
         }
       };
       await Promise.all([consumeUI(), consumeRaw()]);
     };
     await Promise.race([execute(), deadline]);
-    hub.close();
+    if (closeHub) hub.close();
 
     // Deliver the agent's work as a pushed branch, then extract bounded evidence
     // from the redacted session log — both BEFORE scrubbing so the commit
@@ -159,7 +174,7 @@ export async function runHeadlessTurn(config, credentialManager, hub) {
     await writeStatus(config.statusPath, status);
     return { ...status, usage: await result.usage };
   } catch (error) {
-    hub.close();
+    if (closeHub) hub.close();
     await writeStatus(config.statusPath, {
       state: "failed",
       error: credentialManager.redact(

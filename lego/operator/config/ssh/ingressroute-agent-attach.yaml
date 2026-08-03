@@ -1,0 +1,42 @@
+# Agent-session conversation endpoint edge route (ADR047 D9 "Target API shape",
+# w3/m43). The conversation stream publishes under the PRIMARY API origin —
+# api.bex.co/v1/agent-sessions/{id}/stream — so an external Vercel AI SDK client
+# (useChat) and the dashboard use one origin with no CORS second origin. But the
+# BYTES are served by the isolated gateway process (which alone may connect into
+# a tenant sandbox), not bex-api: a Traefik IngressRoute with a PathRegexp
+# matcher and a higher priority than bex-api's catch-all `/` Ingress splits just
+# this sub-path off to the gateway, while every other /v1/agent-sessions/* verb
+# (list/get/cancel/steer/attach-ticket) stays on bex-api.
+#
+# Documented exception (ADR047 D9): this is the one place a path under the api
+# origin is NOT served by the bex-api process. The gateway ignores any Kratos
+# cookie on this path — the agent-session ticket is the sole credential — and
+# preserves the `x-vercel-ai-ui-message-stream: v1` marker end to end.
+#
+# A neutral dedicated origin (e.g. attach.bex.co) is the recorded fallback if
+# per-path splitting on one host proves operationally troublesome.
+#
+# The route can exist ahead of activation: the gateway's attach listener starts,
+# and the ticket verbs stop 503ing, only once the shared bex-shell-ticket Secret
+# is installed (scripts/shell-ticket-secret.sh) — the same gate as the Web Shell.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: agent-session-attach
+  namespace: system
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      # Win over bex-api's PathPrefix(`/`) Ingress: Traefik ranks by rule
+      # length/specificity, and this explicit priority guarantees the split.
+      priority: 1000
+      match: Host(`api.bex.co`) && PathRegexp(`^/v1/agent-sessions/[^/]+/stream$`)
+      services:
+        - name: ssh-gateway # kustomize rewrites to bex-ssh-gateway (namePrefix)
+          port: 8083
+  tls:
+    # cert-manager already provisions this Secret from the bex-api Ingress
+    # (config/api/ingress.yaml) for the same host; reuse it.
+    secretName: bex-api-tls
