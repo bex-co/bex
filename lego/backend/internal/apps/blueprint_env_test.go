@@ -124,6 +124,8 @@ envVarGroups:
       - {key: GROUP_SECRET, generateValue: true}
 services:
   - name: web
+    type: web
+    runtime: image
     image: {url: web:1}
     envVars:
       - {fromGroup: shared}
@@ -134,6 +136,7 @@ services:
       - {key: DB_PASS, fromService: {name: api, type: pserv, envVarKey: ROOT_PASS}}
   - name: api
     type: pserv
+    runtime: image
     image: {url: api:1}
     envVars:
       - {key: ROOT_PASS, value: supersecret}
@@ -280,7 +283,7 @@ func TestDeployStackFromGroupPreexistingGroup(t *testing.T) {
 	// the workspace links fine (no envVarGroups block needed).
 	groups := newFakeEnvGroups("platform-config")
 	svc, _ := newBlueprintEnvService(groups, &fakeSeeder{})
-	m := "services:\n  - {name: web, image: {url: web:1}, envVars: [{fromGroup: platform-config}]}\n"
+	m := "services:\n  - {name: web, type: web, runtime: image, image: {url: web:1}, envVars: [{fromGroup: platform-config}]}\n"
 	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: m}); err != nil {
 		t.Fatalf("DeployStack: %v", err)
 	}
@@ -294,7 +297,7 @@ func TestDeployStackFromGroupPreexistingGroup(t *testing.T) {
 func TestDeployStackUnknownFromGroupCreatesNothing(t *testing.T) {
 	groups := newFakeEnvGroups() // no pre-existing groups
 	svc, cl := newBlueprintEnvService(groups, &fakeSeeder{})
-	m := "services:\n  - {name: web, image: {url: web:1}, envVars: [{fromGroup: ghost}]}\n"
+	m := "services:\n  - {name: web, type: web, runtime: image, image: {url: web:1}, envVars: [{fromGroup: ghost}]}\n"
 	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: m}); err == nil || !strings.Contains(err.Error(), "ghost") {
 		t.Fatalf("unknown fromGroup => error naming it, got %v", err)
 	}
@@ -304,7 +307,7 @@ func TestDeployStackUnknownFromGroupCreatesNothing(t *testing.T) {
 func TestDeployStackEnvGroupsWithoutSeamRejected(t *testing.T) {
 	// envVarGroups used but the env-groups seam is unavailable (OpenBao off).
 	svc, cl := newBlueprintEnvService(nil, &fakeSeeder{})
-	m := "envVarGroups:\n  - {name: g, envVars: [{key: K, value: v}]}\nservices:\n  - {name: web, image: {url: web:1}}\n"
+	m := "envVarGroups:\n  - {name: g, envVars: [{key: K, value: v}]}\nservices:\n  - {name: web, type: web, runtime: image, image: {url: web:1}}\n"
 	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: m}); err == nil || !strings.Contains(err.Error(), "unavailable") {
 		t.Fatalf("envVarGroups without seam => unavailable error, got %v", err)
 	}
@@ -314,7 +317,7 @@ func TestDeployStackEnvGroupsWithoutSeamRejected(t *testing.T) {
 func TestDeployStackSeedWithoutSeamRejected(t *testing.T) {
 	// generateValue used but the env-vars seam is unavailable (OpenBao off).
 	svc, cl := newBlueprintEnvService(newFakeEnvGroups(), nil)
-	m := "services:\n  - {name: web, image: {url: web:1}, envVars: [{key: S, generateValue: true}]}\n"
+	m := "services:\n  - {name: web, type: web, runtime: image, image: {url: web:1}, envVars: [{key: S, generateValue: true}]}\n"
 	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: m}); err == nil || !strings.Contains(err.Error(), "unavailable") {
 		t.Fatalf("generateValue without seam => unavailable error, got %v", err)
 	}
@@ -341,6 +344,8 @@ projects:
       - name: production
         services:
           - name: web
+            type: web
+            runtime: image
             image: {url: web:1}
         envVarGroups:
           - name: prod-config

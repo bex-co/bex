@@ -1,4 +1,4 @@
-# bex.yml — cron_job example: bex runs this as a Kubernetes CronJob on the
+# render.yaml — cron_job example: bex runs this as a Kubernetes CronJob on the
 # declared schedule. No port, no Deployment, no Ingress — just periodic work.
 # Check logs via `bex logs cron-demo` after each run.
 services:

@@ -2,7 +2,7 @@
 # Register a customer's custom domain as a Cloudflare for SaaS "custom hostname",
 # so the (proxied) Cloudflare edge accepts traffic for it, issues/renews its edge
 # certificate, and forwards to bex. Companion to adding the domain to the app's
-# bex.yml `domains:` list (then scripts/app-apply.sh) — the operator side needs
+# render.yaml `domains:` list (then scripts/app-apply.sh) — the operator side needs
 # both: CF admits the hostname at the edge, the Ingress rule routes it inside.
 #
 # One-time zone prereqs (Cloudflare dashboard, once ever):
@@ -35,5 +35,5 @@ curl -fsS -X POST "${auth[@]}" "$api" \
   --data "{\"hostname\":\"$domain\",\"ssl\":{\"method\":\"http\",\"type\":\"dv\"}}" |
   yq -p=json -o=yaml '.result | {"hostname": .hostname, "status": .status, "ssl": .ssl.status}'
 
-echo "next: add $domain to the app's bex.yml domains: and run scripts/app-apply.sh" >&2
+echo "next: add $domain to the app's render.yaml domains: and run scripts/app-apply.sh" >&2
 echo "      (activates once the customer's CNAME resolves; --status to check)" >&2

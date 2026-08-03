@@ -18,8 +18,10 @@ package apps
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"strconv"
 	"strings"
@@ -27,7 +29,6 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/yaml"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
@@ -49,13 +50,13 @@ const (
 )
 
 // deploy.go is the deploy-from-chat mapper (pillar 4): it turns a repo + a
-// Render Blueprint-shaped bex.yml into a stack of CreateRequests + Database specs and
+// Render Blueprint-shaped render.yaml into a stack of CreateRequests + Database specs and
 // rides Core.Create, so "deploy this repo (web + worker + postgres)" is one agent
 // call — no bespoke deploy endpoint (t001 amended 2026-07-08; multi-service form
 // w1/m24). The single-service field mapping mirrors scripts/app-apply.sh, the
-// reference bex.yml → CR projection.
+// reference render.yaml → CR projection.
 //
-// A bex.yml carries the Render Blueprint shape: top-level `services:` +
+// A render.yaml carries the Render Blueprint shape: top-level `services:` +
 // `databases:` + `envVarGroups:`. All validation is all-or-nothing: one invalid entry rejects
 // the whole apply with a per-entry error before any resource is written (w1/m24
 // DoD). Re-applying an unchanged file is a per-resource idempotent no-op — no
@@ -71,7 +72,7 @@ const (
 // narrow seams (EnvGroupApplier, EnvSeeder), engaged only when a manifest uses
 // those forms.
 
-// DeployRequest is the deploy-from-chat input: a git repo plus its bex.yml
+// DeployRequest is the deploy-from-chat input: a git repo plus its render.yaml
 // (render.yaml-shaped manifest). Repo/Branch, when set, override the manifest's
 // per-service repo/branch — an agent that already knows the checkout it is
 // deploying need not duplicate it in the file.
@@ -95,7 +96,7 @@ type DeployRequest struct {
 }
 
 // EnvGroupApplier is the blueprint apply path's seam onto the env-groups feature
-// (*envgroups.Service satisfies it structurally): materialize a bex.yml's
+// (*envgroups.Service satisfies it structurally): materialize a render.yaml's
 // envVarGroups: by name and link them to services via fromGroup. Kept to the three
 // methods the apply path needs so apps never imports envgroups.
 type EnvGroupApplier interface {
@@ -160,7 +161,8 @@ type StackKeyValueView struct {
 
 // --- manifest shape (render.yaml Blueprint vocabulary) ---
 
-// bexManifest is the render.yaml-shaped bex.yml. Services may be declared under
+// bexManifest is the legacy Go type used to adapt compiler-validated render.yaml
+// source. Services may be declared under
 // the Blueprint key `services:`; databases live under `databases:`; env groups under
 // `envVarGroups:` (materialized by name at apply, w1/m35).
 type bexManifest struct {
@@ -220,17 +222,25 @@ type bexService struct {
 	Repo    string    `json:"repo"`
 	Branch  string    `json:"branch"`
 	Image   *bexImage `json:"image,omitempty"` // render.yaml image: {url}
-	Builder string    `json:"builder"`         // bex builder (auto|buildpack|dockerfile)
-	RootDir string    `json:"rootDir"`
+	// Builder is deliberately retained only to issue a migration error. New
+	// Blueprint build strategies live under x-bex.builder so an official Render
+	// field can never be mistaken for a bex extension.
+	Builder string        `json:"builder"`
+	XBex    *bexExtension `json:"x-bex,omitempty"`
+	RootDir string        `json:"rootDir"`
 	// BuildFilter is render.yaml's Build Filters (paths/ignoredPaths globs) — the
 	// same {paths, ignoredPaths} shape every surface uses (BuildFilterView).
 	BuildFilter             *BuildFilterView    `json:"buildFilter"`
 	BuildCommand            string              `json:"buildCommand"`
 	StartCommand            string              `json:"startCommand"`
+	DockerCommand           string              `json:"dockerCommand"`
 	DockerfilePath          string              `json:"dockerfilePath"` // Render's Dockerfile Path, relative to rootDir; docker runtime only
-	NumInstances            int32               `json:"numInstances"`   // render.yaml manual instance count
+	Routes                  []StaticRouteView   `json:"routes"`
+	Headers                 []StaticHeaderView  `json:"headers"`
+	NumInstances            int32               `json:"numInstances"` // render.yaml manual instance count
 	HealthCheckPath         string              `json:"healthCheckPath"`
 	Domains                 []string            `json:"domains"`
+	Domain                  string              `json:"domain"`                  // deprecated single-domain spelling
 	Schedule                string              `json:"schedule"`                // cron expression, required when type is cron
 	MaxShutdownDelaySeconds *int32              `json:"maxShutdownDelaySeconds"` // Render's graceful SIGTERM window (1-300; default 30)
 	PreDeployCommand        string              `json:"preDeployCommand"`        // render.yaml Pre-Deploy Command (spec.preDeployCommand)
@@ -239,11 +249,14 @@ type bexService struct {
 	MaintenanceMode         *bexMaintenanceMode `json:"maintenanceMode"`         // Render: paid web services only; uri optional
 	AutoDeploy              *bool               `json:"autoDeploy"`              // deprecated render.yaml bool; nil => default
 	AutoDeployTrigger       string              `json:"autoDeployTrigger"`       // render.yaml: commit|checksPass|off
-	StaticPublishPath       string              `json:"staticPublishPath"`       // render.yaml static-site publish dir
+	RenderSubdomainPolicy   string              `json:"renderSubdomainPolicy"`
+	StaticPublishPath       string              `json:"staticPublishPath"` // render.yaml static-site publish dir
 	EnvVars                 []bexEnvVar         `json:"envVars"`
 	IPAllowList             []bexIPEntry        `json:"ipAllowList"`
 	MaxmemoryPolicy         string              `json:"maxmemoryPolicy"`
 	PersistenceMode         string              `json:"persistenceMode"`
+	PreviewPlan             string              `json:"previewPlan"`
+	PullRequestPreviews     *bool               `json:"pullRequestPreviewsEnabled"`
 	// Neither field exists in Render's Blueprint service schema. Keeping them
 	// explicit lets bex reject the common create-body/Blueprint mix-up by name
 	// instead of silently dropping it.
@@ -269,7 +282,12 @@ type bexScaling struct {
 
 // bexImage is render.yaml's `image: {url, creds}` — bex honors just the url.
 type bexImage struct {
-	URL string `json:"url"`
+	URL   string `json:"url"`
+	Creds string `json:"creds"`
+}
+
+type bexExtension struct {
+	Builder string `json:"builder"`
 }
 
 // bexDatabase is one entry in databases:. Field names follow render.yaml; bex
@@ -277,16 +295,21 @@ type bexImage struct {
 // highAvailability plus the create-time physical databaseName/user. region and
 // storageAutoscalingEnabled remain documented omissions.
 type bexDatabase struct {
-	Name                 string                            `json:"name"`
-	DatabaseName         string                            `json:"databaseName"`
-	User                 string                            `json:"user"`
-	Plan                 string                            `json:"plan"`
-	DiskSizeGB           int32                             `json:"diskSizeGB"`
-	PostgresMajorVersion string                            `json:"postgresMajorVersion"`
-	IPAllowList          []bexIPEntry                      `json:"ipAllowList"`
-	ReadReplicas         []appv1alpha1.DatabaseReadReplica `json:"readReplicas"`
-	HighAvailability     *bexHA                            `json:"highAvailability"`
-	EnvironmentID        string                            `json:"environmentId"`
+	Name                      string                            `json:"name"`
+	DatabaseName              string                            `json:"databaseName"`
+	User                      string                            `json:"user"`
+	Plan                      string                            `json:"plan"`
+	DiskSizeGB                int32                             `json:"diskSizeGB"`
+	StorageAutoscalingEnabled *bool                             `json:"storageAutoscalingEnabled"`
+	ConnectionPool            string                            `json:"connectionPool"`
+	PostgresMajorVersion      string                            `json:"postgresMajorVersion"`
+	IPAllowList               []bexIPEntry                      `json:"ipAllowList"`
+	ReadReplicas              []appv1alpha1.DatabaseReadReplica `json:"readReplicas"`
+	HighAvailability          *bexHA                            `json:"highAvailability"`
+	Region                    string                            `json:"region"`
+	PreviewPlan               string                            `json:"previewPlan"`
+	PreviewDiskSizeGB         *int32                            `json:"previewDiskSizeGB"`
+	EnvironmentID             string                            `json:"environmentId"`
 }
 
 // bexIPEntry is one CIDR in render.yaml's ipAllowList: [{source, description}].
@@ -332,7 +355,7 @@ type bexFromRef struct {
 
 // --- the parsed stack (validated, env fully resolved) ---
 
-// parsedStack is the all-or-nothing-validated projection of a bex.yml: an
+// parsedStack is the all-or-nothing-validated projection of a render.yaml: an
 // ordered env-group, database, then service set, ready to apply. Same-file
 // cross-resource references are validated here; the ones whose value depends
 // on an applied resource (fromDatabase secret names, fromService host slugs)
@@ -368,6 +391,7 @@ type parsedEnvGroup struct {
 // once into the mutable env store (never spec.Env, so a dashboard edit wins).
 type parsedService struct {
 	req           CreateRequest
+	fields        map[string]BlueprintField
 	databaseRefs  []bexEnvVar       // resolved after database IDs are known
 	kvRefs        []bexEnvVar       // resolved after keyvalue CR names are known
 	hostRefs      []hostRef         // fromService host/hostport — resolved after sibling slugs are known
@@ -379,7 +403,7 @@ type parsedService struct {
 }
 
 // hostRef is a deferred fromService host/hostport reference: the env key, the
-// sibling bex.yml name it targets, that sibling's effective port (declared or
+// sibling render.yaml name it targets, that sibling's effective port (declared or
 // the 3000 default — known at parse), and whether the literal is host-only or
 // host:port. The hostname half is the sibling's slug, minted at create, so
 // resolution happens at apply (docs/ADR041-service-addresses.md D3).
@@ -402,6 +426,7 @@ func (ref hostRef) env(slug string) appv1alpha1.EnvVar {
 type parsedDatabase struct {
 	name      string
 	spec      appv1alpha1.DatabaseSpec
+	fields    map[string]BlueprintField
 	grouping  string
 	ungrouped bool
 }
@@ -409,6 +434,7 @@ type parsedDatabase struct {
 type parsedKeyValue struct {
 	name      string
 	spec      appv1alpha1.KeyValueSpec
+	fields    map[string]BlueprintField
 	grouping  string
 	ungrouped bool
 }
@@ -422,12 +448,13 @@ func blueprintGroupingKey(projectName, environmentName string) string {
 // docs/ADR009-postgresql-management.md documents: username, password, dbname,
 // host, port, uri).
 var dbPropertyKey = map[string]string{
-	"connectionString": "uri",
-	"host":             "host",
-	"port":             "port",
-	"user":             "username",
-	"password":         "password",
-	"database":         "dbname",
+	"connectionString":     "uri",
+	"connectionPoolString": "uri",
+	"host":                 "host",
+	"port":                 "port",
+	"user":                 "username",
+	"password":             "password",
+	"database":             "dbname",
 }
 
 // serviceRefProperty is the set of fromService properties bex honors for a
@@ -449,7 +476,7 @@ var kvPropertyKey = map[string]string{
 	"password":         "password",
 }
 
-// DeployStack applies a whole bex.yml in one call: databases first (dependents
+// DeployStack applies a whole render.yaml in one call: databases first (dependents
 // reference them via fromDatabase), then services, each as an idempotent upsert.
 // All validation runs in parseStack before any write — one invalid entry rejects
 // the whole apply with a per-entry error, nothing partially created.
@@ -474,6 +501,10 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 	if err := s.requireStackPaymentMethod(ctx, st); err != nil {
 		return StackResult{}, err
 	}
+	databaseIDs, kvCRNames, err := s.resolveExistingBlueprintReferences(ctx, st)
+	if err != nil {
+		return StackResult{}, err
+	}
 	// Pre-flight the env-groups + env-vars seams BEFORE any write (all-or-nothing):
 	// a manifest that uses envVarGroups/fromGroup or sync:false/generateValue but
 	// whose backing store isn't wired is rejected here, as is an unknown fromGroup
@@ -490,8 +521,6 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 	// context seam Delete/Suspend's REST/GraphQL/MCP adapters use.
 	ctx = withConfirm(ctx, req.Confirm)
 	res := StackResult{}
-	databaseIDs := make(map[string]string, len(st.databases))
-	kvCRNames := make(map[string]string, len(st.keyValues))
 	// Env groups first: a service's fromGroup links one, which needs the group
 	// (and its projection Secret) to exist before the service is patched.
 	for _, g := range st.envGroups {
@@ -552,8 +581,9 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 	// deferred: services whose host refs pointed at a not-yet-created sibling
 	// on this first apply; patched with the resolved env after the loop.
 	type deferredService struct {
-		req  CreateRequest
-		refs []hostRef
+		req    CreateRequest
+		fields map[string]BlueprintField
+		refs   []hostRef
 	}
 	var deferred []deferredService
 	for _, svc := range st.services {
@@ -589,13 +619,13 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 		} else if svc.ungrouped {
 			svc.req.EnvironmentSpecified = true
 		}
-		v, err := s.applyCreate(ctx, svc.req)
+		v, err := s.applyBlueprintCreate(ctx, svc.req, svc.fields)
 		if err != nil {
 			return res, err
 		}
 		serviceSlugs[svc.req.Name] = v.Slug
 		if len(laterRefs) > 0 {
-			deferred = append(deferred, deferredService{req: svc.req, refs: laterRefs})
+			deferred = append(deferred, deferredService{req: svc.req, fields: svc.fields, refs: laterRefs})
 		}
 		// Link fromGroup groups (idempotent) and seed sync:false/generateValue vars
 		// (seed-once) now that the service exists.
@@ -621,7 +651,7 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 			}
 			d.req.Env = append(d.req.Env, ref.env(slug))
 		}
-		if _, err := s.applyCreate(ctx, d.req); err != nil {
+		if _, err := s.applyBlueprintCreate(ctx, d.req, d.fields); err != nil {
 			return res, err
 		}
 	}
@@ -632,6 +662,99 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 		s.upsertBlueprint(ctx, req)
 	}
 	return res, nil
+}
+
+// resolveExistingBlueprintReferences provides the one allowed cross-declaration
+// lookup: a database or Key Value target not declared in this Blueprint may be
+// named only when it resolves uniquely inside the caller's workspace. It runs
+// before group or resource writes and yields only CR/Secret identities, never a
+// credential value. Service envVarKey copying remains same-file-only because
+// its source value is intentionally not a generally readable resource field.
+func (s *Service) resolveExistingBlueprintReferences(ctx context.Context, st parsedStack) (map[string]string, map[string]string, error) {
+	databaseIDs := make(map[string]string, len(st.databases))
+	keyValueIDs := make(map[string]string, len(st.keyValues))
+	declaredDatabases := make(map[string]bool, len(st.databases))
+	declaredKeyValues := make(map[string]bool, len(st.keyValues))
+	for _, database := range st.databases {
+		declaredDatabases[database.name] = true
+	}
+	for _, keyValue := range st.keyValues {
+		declaredKeyValues[keyValue.name] = true
+	}
+
+	neededDatabases := map[string]bool{}
+	neededKeyValues := map[string]bool{}
+	for _, service := range st.services {
+		for _, ref := range service.databaseRefs {
+			if ref.FromDatabase != nil && !declaredDatabases[ref.FromDatabase.Name] {
+				neededDatabases[ref.FromDatabase.Name] = true
+			}
+		}
+		for _, ref := range service.kvRefs {
+			if ref.FromService != nil && !declaredKeyValues[ref.FromService.Name] {
+				neededKeyValues[ref.FromService.Name] = true
+			}
+		}
+	}
+	if len(neededDatabases) == 0 && len(neededKeyValues) == 0 {
+		return databaseIDs, keyValueIDs, nil
+	}
+
+	tenantID, scoped := s.Tenant(ctx)
+	if len(neededDatabases) > 0 {
+		var databases appv1alpha1.DatabaseList
+		if err := s.Client.List(ctx, &databases, client.InNamespace(s.Namespace)); err != nil {
+			return nil, nil, err
+		}
+		for name := range neededDatabases {
+			var found *appv1alpha1.Database
+			for index := range databases.Items {
+				candidate := &databases.Items[index]
+				if scoped && candidate.Labels[core.LabelTenant] != tenantID || candidate.Spec.Name != name {
+					continue
+				}
+				if found != nil {
+					return nil, nil, fmt.Errorf("%w: fromDatabase reference %q is ambiguous in this workspace", core.ErrConflict, name)
+				}
+				found = candidate
+			}
+			if found == nil {
+				return nil, nil, fmt.Errorf("%w: fromDatabase references unknown database %q in this workspace", core.ErrBadRequest, name)
+			}
+			databaseIDs[name] = found.Name
+			for _, service := range st.services {
+				for _, ref := range service.databaseRefs {
+					if ref.FromDatabase != nil && ref.FromDatabase.Name == name && ref.FromDatabase.Property == "connectionPoolString" && !found.Spec.Pooler {
+						return nil, nil, fmt.Errorf("%w: service %q: fromDatabase connectionPoolString requires database %q connectionPool: pgbouncer", core.ErrBadRequest, service.req.Name, name)
+					}
+				}
+			}
+		}
+	}
+	if len(neededKeyValues) > 0 {
+		var keyValues appv1alpha1.KeyValueList
+		if err := s.Client.List(ctx, &keyValues, client.InNamespace(s.Namespace)); err != nil {
+			return nil, nil, err
+		}
+		for name := range neededKeyValues {
+			var found *appv1alpha1.KeyValue
+			for index := range keyValues.Items {
+				candidate := &keyValues.Items[index]
+				if scoped && candidate.Labels[core.LabelTenant] != tenantID || candidate.Spec.Name != name {
+					continue
+				}
+				if found != nil {
+					return nil, nil, fmt.Errorf("%w: fromService Key Value reference %q is ambiguous in this workspace", core.ErrConflict, name)
+				}
+				found = candidate
+			}
+			if found == nil {
+				return nil, nil, fmt.Errorf("%w: fromService references unknown Key Value %q in this workspace", core.ErrBadRequest, name)
+			}
+			keyValueIDs[name] = found.Name
+		}
+	}
+	return databaseIDs, keyValueIDs, nil
 }
 
 func (s *Service) requireStackPaymentMethod(ctx context.Context, st parsedStack) error {
@@ -776,10 +899,10 @@ func (s *Service) preflightBlueprintEnv(ctx context.Context, st parsedStack) err
 		}
 	}
 	if usesGroups && s.EnvGroups == nil {
-		return fmt.Errorf("%w: bex.yml uses envVarGroups/fromGroup but env groups are unavailable (OpenBao not configured)", core.ErrBadRequest)
+		return fmt.Errorf("%w: render.yaml uses envVarGroups/fromGroup but env groups are unavailable (OpenBao not configured)", core.ErrBadRequest)
 	}
 	if usesSeed && s.EnvSeeder == nil {
-		return fmt.Errorf("%w: bex.yml uses sync:false/generateValue but the env-vars store is unavailable (OpenBao not configured)", core.ErrBadRequest)
+		return fmt.Errorf("%w: render.yaml uses sync:false/generateValue but the env-vars store is unavailable (OpenBao not configured)", core.ErrBadRequest)
 	}
 	if len(groupLinks) == 0 {
 		return nil
@@ -804,18 +927,24 @@ func (s *Service) preflightBlueprintEnv(ctx context.Context, st parsedStack) err
 	return nil
 }
 
-// parseStack parses + fully validates + env-resolves a bex.yml into the ordered
+// parseStack parses + fully validates + env-resolves a render.yaml into the ordered
 // resource set, with no writes and no cluster access — the all-or-nothing gate.
 // Every per-entry problem is reported with the offending name so the caller can
 // list it; the whole parse fails on the first error (w1/m24 DoD: nothing
 // half-created).
 func parseStack(req DeployRequest) (parsedStack, error) {
-	if err := validateBlueprintDialect(req.Manifest); err != nil {
-		return parsedStack{}, err
+	source, sourceProblems := CompileBlueprintSource(req.Manifest)
+	if len(sourceProblems) > 0 {
+		return parsedStack{}, blueprintSourceProblemsError(sourceProblems)
 	}
-	var m bexManifest
-	if err := yaml.Unmarshal([]byte(req.Manifest), &m); err != nil {
-		return parsedStack{}, fmt.Errorf("%w: bex.yml is not valid YAML: %v", core.ErrBadRequest, err)
+	ir, irProblems := NormalizeBlueprintIR(source)
+	if len(irProblems) > 0 {
+		return parsedStack{}, blueprintSourceProblemsError(irProblems)
+	}
+	fieldsByResource := blueprintFieldsByResource(ir)
+	m, err := decodeCompiledBlueprintManifest(source)
+	if err != nil {
+		return parsedStack{}, err
 	}
 	type serviceDecl struct {
 		value     bexService
@@ -904,7 +1033,7 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 		}
 	}
 	if len(services) == 0 && len(databases) == 0 && len(envGroups) == 0 {
-		return parsedStack{}, fmt.Errorf("%w: bex.yml must define at least one service, database, env group, or project environment resource", core.ErrBadRequest)
+		return parsedStack{}, fmt.Errorf("%w: render.yaml must define at least one service, database, env group, or project environment resource", core.ErrBadRequest)
 	}
 
 	// Env groups first (validated + name-deduped); a service's fromGroup links one.
@@ -925,6 +1054,7 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 	// Databases next into the stack (and into the name index services reference).
 	names := make(map[string]bool, len(services)+len(databases))
 	databaseNames := make(map[string]bool, len(databases))
+	databasePoolers := make(map[string]bool, len(databases))
 	kvStackNames := make(map[string]bool)
 	for _, d := range databases {
 		ds, err := parseDatabase(d.value)
@@ -932,12 +1062,14 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 			return parsedStack{}, err
 		}
 		if names[ds.name] {
-			return parsedStack{}, fmt.Errorf("%w: duplicate name %q — every service and database name in a bex.yml must be unique", core.ErrBadRequest, ds.name)
+			return parsedStack{}, fmt.Errorf("%w: duplicate name %q — every service and database name in a render.yaml must be unique", core.ErrBadRequest, ds.name)
 		}
 		names[ds.name] = true
 		databaseNames[ds.name] = true
+		databasePoolers[ds.name] = ds.spec.Pooler
 		ds.grouping = d.grouping
 		ds.ungrouped = d.ungrouped
+		ds.fields = fieldsByResource[BlueprintResourcePostgres][ds.name]
 		st.databases = append(st.databases, ds)
 	}
 
@@ -965,12 +1097,13 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 				return parsedStack{}, err
 			}
 			if names[kv.name] {
-				return parsedStack{}, fmt.Errorf("%w: duplicate name %q — every service and database name in a bex.yml must be unique", core.ErrBadRequest, kv.name)
+				return parsedStack{}, fmt.Errorf("%w: duplicate name %q — every service and database name in a render.yaml must be unique", core.ErrBadRequest, kv.name)
 			}
 			names[kv.name] = true
 			kvStackNames[kv.name] = true
 			kv.grouping = a.grouping
 			kv.ungrouped = a.ungrouped
+			kv.fields = fieldsByResource[BlueprintResourceKeyValue][kv.name]
 			st.keyValues = append(st.keyValues, kv)
 			continue
 		}
@@ -979,11 +1112,11 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 			return parsedStack{}, err
 		}
 		if names[req.Name] {
-			return parsedStack{}, fmt.Errorf("%w: duplicate name %q — every service and database name in a bex.yml must be unique", core.ErrBadRequest, req.Name)
+			return parsedStack{}, fmt.Errorf("%w: duplicate name %q — every service and database name in a render.yaml must be unique", core.ErrBadRequest, req.Name)
 		}
 		names[req.Name] = true
 		pendings = append(pendings, pending{
-			svc:     parsedService{req: req, groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, grouping: a.grouping, ungrouped: a.ungrouped},
+			svc:     parsedService{req: req, fields: blueprintServiceFields(fieldsByResource[BlueprintResourceService][req.Name]), groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, grouping: a.grouping, ungrouped: a.ungrouped},
 			refVars: se.refVars,
 		})
 		serviceKnownEnv[req.Name] = se.known
@@ -1003,22 +1136,20 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 		svc := p.svc
 		for _, r := range p.refVars {
 			if r.FromDatabase != nil {
-				if !databaseNames[r.FromDatabase.Name] {
-					return parsedStack{}, fmt.Errorf("%w: service %q: fromDatabase references unknown database %q (declare it under databases: in the same file)", core.ErrBadRequest, svc.req.Name, r.FromDatabase.Name)
+				if databaseNames[r.FromDatabase.Name] && r.FromDatabase.Property == "connectionPoolString" && !databasePoolers[r.FromDatabase.Name] {
+					return parsedStack{}, fmt.Errorf("%w: service %q: fromDatabase connectionPoolString requires database %q connectionPool: pgbouncer", core.ErrBadRequest, svc.req.Name, r.FromDatabase.Name)
 				}
 				svc.databaseRefs = append(svc.databaseRefs, r)
 				continue
 			}
 			if r.FromService != nil && (r.FromService.Type == "keyvalue" || r.FromService.Type == "redis") {
-				if !kvStackNames[r.FromService.Name] {
-					return parsedStack{}, fmt.Errorf("%w: service %q: fromService references unknown key value %q (declare it under services: with type: keyvalue in the same file)", core.ErrBadRequest, svc.req.Name, r.FromService.Name)
-				}
 				svc.kvRefs = append(svc.kvRefs, r)
 				continue
 			}
 			// One target-existence check for every remaining fromService form
 			// (host/hostport/port/envVarKey), so the message lives in one place.
-			if r.FromService != nil && !names[r.FromService.Name] {
+			allowExistingServiceHost := r.FromService != nil && r.FromService.EnvVarKey == "" && r.FromService.Property == "host"
+			if r.FromService != nil && !names[r.FromService.Name] && !allowExistingServiceHost {
 				return parsedStack{}, fmt.Errorf("%w: service %q: fromService references unknown service %q (declare it under services: in the same file)", core.ErrBadRequest, svc.req.Name, r.FromService.Name)
 			}
 			// host/hostport inject the sibling's slug — minted at create (w4/m19),
@@ -1028,7 +1159,7 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 			if r.FromService != nil && r.FromService.EnvVarKey == "" &&
 				(r.FromService.Property == "host" || r.FromService.Property == "hostport") {
 				port, addressable := servicePorts[r.FromService.Name]
-				if !addressable && r.FromService.Property == "host" {
+				if !addressable && r.FromService.Property == "host" && names[r.FromService.Name] {
 					return parsedStack{}, fmt.Errorf("%w: service %q: fromService host references %q which has no network address (only web/private services are addressable)", core.ErrBadRequest, svc.req.Name, r.FromService.Name)
 				}
 				svc.hostRefs = append(svc.hostRefs, hostRef{
@@ -1048,68 +1179,55 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 	return st, nil
 }
 
-// validateBlueprintDialect rejects bex's retired manifest spellings before the
-// typed YAML decode. The messages name the canonical Render replacement instead
-// of allowing yaml.Unmarshal to silently discard unknown fields.
-func validateBlueprintDialect(manifest string) error {
-	var root map[string]any
-	if err := yaml.Unmarshal([]byte(manifest), &root); err != nil {
-		return nil // parseStack reports the canonical malformed-YAML error below.
+// decodeCompiledBlueprintManifest is a temporary typed-adapter boundary for
+// the existing create request mappers. It never reparses the submitted YAML:
+// source.Value is the strict compiler's JSON-compatible AST, so the only
+// remaining decode cannot reintroduce aliases, duplicate keys, implicit YAML
+// scalars, or ignored source fields.
+func decodeCompiledBlueprintManifest(source *BlueprintSource) (bexManifest, error) {
+	if source == nil {
+		return bexManifest{}, fmt.Errorf("%w: Blueprint source is required", core.ErrBadRequest)
 	}
-	if _, ok := root["apps"]; ok {
-		return fmt.Errorf("%w: top-level apps is retired; rename it to services", core.ErrBadRequest)
+	canonicalJSON, err := json.Marshal(source.Value)
+	if err != nil {
+		return bexManifest{}, fmt.Errorf("%w: encode compiled Blueprint: %v", core.ErrBadRequest, err)
 	}
-	return validateBlueprintServiceNodes(root)
+	var manifest bexManifest
+	if err := json.Unmarshal(canonicalJSON, &manifest); err != nil {
+		return bexManifest{}, fmt.Errorf("%w: decode compiled Blueprint: %v", core.ErrBadRequest, err)
+	}
+	return manifest, nil
 }
 
-func validateBlueprintServiceNodes(node any) error {
-	switch value := node.(type) {
-	case map[string]any:
-		if rawServices, ok := value["services"]; ok {
-			if services, ok := rawServices.([]any); ok {
-				for _, rawService := range services {
-					service, ok := rawService.(map[string]any)
-					if !ok {
-						continue
-					}
-					name, _ := service["name"].(string)
-					if name == "" {
-						name = "<unnamed>"
-					}
-					for _, retired := range []struct{ field, replacement string }{
-						{"tier", "plan"},
-						{"replicas", "numInstances"},
-						{"imagePath", "image: {url: ...}"},
-						{"publishPath", "staticPublishPath"},
-					} {
-						if _, present := service[retired.field]; present {
-							return fmt.Errorf("%w: service %q uses retired Blueprint field %q; use %s", core.ErrBadRequest, name, retired.field, retired.replacement)
-						}
-					}
-					if _, present := service["port"]; present {
-						return fmt.Errorf("%w: service %q uses retired Blueprint field %q; remove it and listen on the platform-provided PORT", core.ErrBadRequest, name, "port")
-					}
-					if image, present := service["image"]; present {
-						if _, bare := image.(string); bare {
-							return fmt.Errorf("%w: service %q uses a bare image string; use image: {url: ...}", core.ErrBadRequest, name)
-						}
-					}
-				}
-			}
+func blueprintFieldsByResource(ir BlueprintIR) map[BlueprintResourceKind]map[string]map[string]BlueprintField {
+	byKind := make(map[BlueprintResourceKind]map[string]map[string]BlueprintField)
+	for _, resource := range ir.Resources {
+		byName := byKind[resource.Kind]
+		if byName == nil {
+			byName = map[string]map[string]BlueprintField{}
+			byKind[resource.Kind] = byName
 		}
-		for _, child := range value {
-			if err := validateBlueprintServiceNodes(child); err != nil {
-				return err
-			}
-		}
-	case []any:
-		for _, child := range value {
-			if err := validateBlueprintServiceNodes(child); err != nil {
-				return err
+		byName[resource.Name] = resource.Fields
+	}
+	return byKind
+}
+
+// blueprintServiceFields maps the local extension's build strategy onto the
+// AppSpec field it controls while retaining the source field's presence. The
+// compiler has already constrained x-bex.builder to the extension vocabulary.
+func blueprintServiceFields(fields map[string]BlueprintField) map[string]BlueprintField {
+	if fields == nil {
+		return nil
+	}
+	result := maps.Clone(fields)
+	if extension, ok := fields["x-bex"]; ok {
+		if values, ok := extension.Value.(map[string]any); ok {
+			if _, declared := values["builder"]; declared {
+				result["builder"] = extension
 			}
 		}
 	}
-	return nil
+	return result
 }
 
 // parseEnvGroup validates one envVarGroups[] entry and classifies its vars into
@@ -1167,6 +1285,12 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, e
 	if len(a.SecretFiles) > 0 {
 		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q uses secretFiles, which Render's Blueprint schema does not support; use createService secretFiles or the secret-files API", core.ErrBadRequest, a.Name)
 	}
+	if a.Builder != "" {
+		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q uses retired Blueprint field builder; move it to x-bex.builder", core.ErrBadRequest, a.Name)
+	}
+	if a.Image != nil && a.Image.Creds != "" {
+		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q image.creds is unsupported; bind an authorized registry credential through the service API", core.ErrBadRequest, a.Name)
+	}
 	repo := a.Repo
 	if dep.Repo != "" && a.Image == nil {
 		repo = dep.Repo // the explicit deploy target wins over the manifest
@@ -1182,8 +1306,12 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, e
 	// Only a web service is exposed; private/worker/cron/static have no ingress,
 	// so a manifest that lists domains for one is a mistake worth catching here
 	// with a manifest-shaped message.
-	if svcType != appv1alpha1.TypeWebService && len(a.Domains) > 0 {
+	if svcType != appv1alpha1.TypeWebService && (len(a.Domains) > 0 || a.Domain != "") {
 		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: %s has no ingress and cannot list domains", core.ErrBadRequest, a.Name)
+	}
+	hosts := a.Domains
+	if len(hosts) == 0 && a.Domain != "" {
+		hosts = []string{a.Domain}
 	}
 
 	plan := a.Plan
@@ -1212,9 +1340,22 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, e
 	if strings.EqualFold(runtime, "static") {
 		runtime = "" // static is represented by the service type, not an App runtime
 	}
+	startCommand := a.StartCommand
+	if a.DockerCommand != "" {
+		if !strings.EqualFold(a.Runtime, "docker") {
+			return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q dockerCommand requires runtime: docker", core.ErrBadRequest, a.Name)
+		}
+		if startCommand != "" {
+			return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q cannot set both dockerCommand and startCommand", core.ErrBadRequest, a.Name)
+		}
+		startCommand = a.DockerCommand
+	}
 
 	autoDeploy := a.AutoDeploy
 	if a.AutoDeployTrigger != "" {
+		if a.AutoDeployTrigger == "checksPass" {
+			return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q autoDeployTrigger checksPass is unsupported because bex has no CI-check gating", core.ErrBadRequest, a.Name)
+		}
 		autoDeploy = triggerToAutoDeploy(a.AutoDeployTrigger)
 	}
 
@@ -1278,10 +1419,10 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, e
 		Repo:                    repo,
 		Image:                   image,
 		Branch:                  branch,
-		Builder:                 a.Builder,
+		Builder:                 extensionBuilder(a.XBex),
 		Runtime:                 runtime,
 		BuildCommand:            a.BuildCommand,
-		StartCommand:            a.StartCommand,
+		StartCommand:            startCommand,
 		RootDir:                 a.RootDir,
 		BuildFilter:             a.BuildFilter,
 		DockerfilePath:          a.DockerfilePath,
@@ -1290,7 +1431,7 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, e
 		Plan:                    plan,
 		HealthCheckPath:         a.HealthCheckPath,
 		Env:                     literal,
-		Hosts:                   a.Domains,
+		Hosts:                   hosts,
 		AutoDeploy:              autoDeploy,
 		PreDeployCommand:        a.PreDeployCommand,
 		InitialDeployHook:       strings.TrimSpace(a.InitialDeployHook),
@@ -1299,6 +1440,9 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, e
 		MaxShutdownDelaySeconds: a.MaxShutdownDelaySeconds,
 		Autoscaling:             scalingToAutoscalingRequest(a.Scaling),
 		IPAllowList:             allowList,
+		SubdomainPolicy:         a.RenderSubdomainPolicy,
+		Routes:                  a.Routes,
+		Headers:                 a.Headers,
 	}, se, nil
 }
 
@@ -1317,6 +1461,13 @@ func scalingToAutoscalingRequest(s *bexScaling) *SetAutoscalingRequest {
 	}
 }
 
+func extensionBuilder(extension *bexExtension) string {
+	if extension == nil {
+		return ""
+	}
+	return extension.Builder
+}
+
 // parseDatabase maps one databases[] entry onto a DatabaseSpec. Names are
 // validated when applied (specFromCreate's sibling for DBs); plan/ipAllowList
 // are validated here against the bex catalog.
@@ -1330,6 +1481,16 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 	if d.EnvironmentID != "" {
 		return parsedDatabase{}, fmt.Errorf("%w: database %q uses environmentId, which is a create-API field, not a Render Blueprint field; nest the database under projects[].environments[].databases instead", core.ErrBadRequest, d.Name)
 	}
+	for _, unsupported := range []string{"region", "previewPlan", "previewDiskSizeGB"} {
+		present := map[string]bool{
+			"region":            d.Region != "",
+			"previewPlan":       d.PreviewPlan != "",
+			"previewDiskSizeGB": d.PreviewDiskSizeGB != nil,
+		}[unsupported]
+		if present {
+			return parsedDatabase{}, fmt.Errorf("%w: database %q field %q is unsupported because bex has no preview environments or per-resource region placement", core.ErrBadRequest, d.Name, unsupported)
+		}
+	}
 	if d.DatabaseName != "" && !appv1alpha1.ValidPostgresIdentifier(d.DatabaseName) {
 		return parsedDatabase{}, fmt.Errorf("%w: database %q databaseName must start with a lowercase letter or underscore, contain only lowercase letters, digits, and underscores, and be at most 63 bytes", core.ErrBadRequest, d.Name)
 	}
@@ -1337,10 +1498,14 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 		return parsedDatabase{}, fmt.Errorf("%w: database %q user must start with a lowercase letter or underscore, contain only lowercase letters, digits, and underscores, and be at most 63 bytes", core.ErrBadRequest, d.Name)
 	}
 	plan := d.Plan
-	if plan != "" {
-		if _, ok := tiers.Postgres.ByID(plan); !ok {
-			return parsedDatabase{}, fmt.Errorf("%w: database %q plan %q is not a bex Postgres plan (one of %s)", core.ErrBadRequest, d.Name, plan, strings.Join(tiers.Postgres.IDs(), "|"))
-		}
+	// Render's current Blueprint default is a paid basic-256mb instance. This
+	// is intentionally a create default; a presence-aware sync leaves an
+	// existing database plan unchanged when plan is omitted.
+	if plan == "" {
+		plan = "basic-256mb"
+	}
+	if _, ok := tiers.Postgres.ByID(plan); !ok {
+		return parsedDatabase{}, fmt.Errorf("%w: database %q plan %q is not a supported Render Postgres plan (one of %s)", core.ErrBadRequest, d.Name, plan, strings.Join(tiers.Postgres.IDs(), "|"))
 	}
 	var allow []appv1alpha1.IPAllowEntry
 	for _, e := range d.IPAllowList {
@@ -1358,6 +1523,10 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 		}
 	}
 	ha := d.HighAvailability != nil && d.HighAvailability.Enabled
+	if d.ConnectionPool != "" && d.ConnectionPool != "none" && d.ConnectionPool != "pgbouncer" {
+		return parsedDatabase{}, fmt.Errorf("%w: database %q connectionPool must be pgbouncer or none", core.ErrBadRequest, d.Name)
+	}
+	diskAutoscaling := d.StorageAutoscalingEnabled != nil && *d.StorageAutoscalingEnabled
 	spec := appv1alpha1.DatabaseSpec{
 		Name:             d.Name,
 		DatabaseName:     d.DatabaseName,
@@ -1365,6 +1534,8 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 		Plan:             plan,
 		Version:          d.PostgresMajorVersion,
 		StorageGB:        d.DiskSizeGB,
+		DiskAutoscaling:  diskAutoscaling,
+		Pooler:           d.ConnectionPool == "pgbouncer",
 		IPAllowList:      allow,
 		ReadReplicas:     d.ReadReplicas,
 		HighAvailability: ha,
@@ -1484,11 +1655,15 @@ func resolveDatabaseRef(e bexEnvVar, databaseIDs map[string]string) (appv1alpha1
 	if databaseID == "" {
 		return appv1alpha1.EnvVar{}, fmt.Errorf("fromDatabase references unresolved database %q", ref.Name)
 	}
+	secretName := databaseID + "-app"
+	if ref.Property == "connectionPoolString" {
+		secretName = databaseID + "-pooler-app"
+	}
 	return appv1alpha1.EnvVar{
 		Name: e.Key,
 		ValueFrom: &appv1alpha1.EnvVarSource{
 			SecretKeyRef: &appv1alpha1.SecretKeySelector{
-				Name: databaseID + "-app",
+				Name: secretName,
 				Key:  dbPropertyKey[ref.Property],
 			},
 		},
@@ -1598,6 +1773,18 @@ func triggerToAutoDeploy(trigger string) *bool {
 // actually changed. An unchanged re-apply is a true no-op: zero spec diff, zero
 // new deploy records, no clone-token churn (w1/m24 DoD).
 func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, error) {
+	return s.applyCreateWithFields(ctx, req, nil)
+}
+
+// applyBlueprintCreate applies a compiled Blueprint service. Unlike the
+// interactive create surface, a Blueprint retains source-field presence, so
+// an omitted field can preserve an existing value (except buildFilter, whose
+// documented omission semantics clear it).
+func (s *Service) applyBlueprintCreate(ctx context.Context, req CreateRequest, fields map[string]BlueprintField) (AppView, error) {
+	return s.applyCreateWithFields(ctx, req, fields)
+}
+
+func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, fields map[string]BlueprintField) (AppView, error) {
 	desired, err := specFromCreate(req)
 	if err != nil {
 		return AppView{}, err
@@ -1639,13 +1826,13 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 		}
 	}
 	final := existing.DeepCopy()
-	applyCreateToSpec(&final.Spec, desired)
+	applyBlueprintServiceSpec(&final.Spec, desired, fields)
 	if final.Spec.MaintenanceMode != nil {
 		if err := s.validateMaintenanceMode(final, maintenanceModeView(final.Spec.MaintenanceMode)); err != nil {
 			return AppView{}, err
 		}
 	}
-	specChanged := createOwnedSpecChanged(existing.Spec, desired)
+	specChanged := !reflect.DeepEqual(final.Spec, existing.Spec)
 	var assignment core.EnvironmentAssignment
 	environmentChanged := false
 	if req.EnvironmentSpecified {
@@ -1676,12 +1863,11 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 	if err := s.requireUnprotected(ctx, existing, "deploy"); err != nil {
 		return AppView{}, err
 	}
-	maintenanceOnly := specChanged && createOwnedSpecChangedOnlyByMaintenance(existing.Spec, desired)
+	maintenanceOnly := specChanged && serviceSpecChangedOnlyByMaintenance(existing.Spec, final.Spec)
 	if maintenanceOnly && !environmentChanged {
-		return s.ConfigureMaintenanceMode(ctx, req.Name, maintenanceModeView(desired.MaintenanceMode))
+		return s.ConfigureMaintenanceMode(ctx, req.Name, maintenanceModeView(final.Spec.MaintenanceMode))
 	}
-	maintenanceChanged := desired.MaintenanceMode != nil &&
-		!reflect.DeepEqual(existing.Spec.MaintenanceMode, desired.MaintenanceMode)
+	maintenanceChanged := !reflect.DeepEqual(existing.Spec.MaintenanceMode, final.Spec.MaintenanceMode)
 	var currentMaintenance *appv1alpha1.MaintenanceModeSpec
 	if existing.Spec.MaintenanceMode != nil {
 		currentMaintenance = existing.Spec.MaintenanceMode.DeepCopy()
@@ -1693,7 +1879,7 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 			existing.Annotations = map[string]string{}
 		}
 		existing.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(existing.Generation+1, 10)
-		applyCreateToSpec(&existing.Spec, desired)
+		applyBlueprintServiceSpec(&existing.Spec, desired, fields)
 		if maintenanceChanged {
 			existing.Spec.MaintenanceMode = currentMaintenance
 		}
@@ -1765,7 +1951,7 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 		s.Kick()
 	}
 	if maintenanceChanged {
-		return s.ConfigureMaintenanceMode(ctx, req.Name, maintenanceModeView(desired.MaintenanceMode))
+		return s.ConfigureMaintenanceMode(ctx, req.Name, maintenanceModeView(final.Spec.MaintenanceMode))
 	}
 	return s.view(existing), nil
 }
@@ -1778,6 +1964,24 @@ func createOwnedSpecChangedOnlyByMaintenance(cur, want appv1alpha1.AppSpec) bool
 	}
 	probe.MaintenanceMode = cur.MaintenanceMode
 	return reflect.DeepEqual(probe, cur)
+}
+
+func serviceSpecChangedOnlyByMaintenance(cur, want appv1alpha1.AppSpec) bool {
+	if reflect.DeepEqual(cur.MaintenanceMode, want.MaintenanceMode) {
+		return false
+	}
+	probe := want.DeepCopy()
+	probe.MaintenanceMode = cur.MaintenanceMode
+	return reflect.DeepEqual(*probe, cur)
+}
+
+func applyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec, fields map[string]BlueprintField) bool {
+	if fields == nil {
+		before := *dst.DeepCopy()
+		applyCreateToSpec(dst, want)
+		return !reflect.DeepEqual(before, *dst)
+	}
+	return ApplyBlueprintServiceSpec(dst, want, fields)
 }
 
 // createOwnedSpecChanged reports whether applying `want`'s create-owned fields
@@ -1801,6 +2005,11 @@ func databaseOwnedSpecChanged(cur, want appv1alpha1.DatabaseSpec) bool {
 	return !reflect.DeepEqual(probe, cur)
 }
 
+func blueprintDatabaseSpecChanged(cur, want appv1alpha1.DatabaseSpec, fields map[string]BlueprintField) (bool, error) {
+	probe := cur
+	return ApplyBlueprintDatabaseSpec(&probe, want, fields)
+}
+
 // keyValueOwnedSpecChanged is the KeyValue analogue. Blueprint re-apply owns
 // only the fields its schema can declare and must not clear lifecycle state
 // such as Suspended or fields managed by another API.
@@ -1808,6 +2017,11 @@ func keyValueOwnedSpecChanged(cur, want appv1alpha1.KeyValueSpec) bool {
 	probe := cur
 	applyKeyValueSpec(&probe, want)
 	return !reflect.DeepEqual(probe, cur)
+}
+
+func blueprintKeyValueSpecChanged(cur, want appv1alpha1.KeyValueSpec, fields map[string]BlueprintField) bool {
+	probe := cur
+	return ApplyBlueprintKeyValueSpec(&probe, want, fields)
 }
 
 // applyDatabase is the stack path's idempotent Database upsert: create when
@@ -1841,7 +2055,7 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 		if db.spec.DatabaseUser != "" && db.spec.DatabaseUser != existing.Spec.EffectiveDatabaseUser(existing.Name) {
 			return StackDatabaseView{}, fmt.Errorf("%w: database %q user is immutable after creation", core.ErrBadRequest, db.name)
 		}
-		if db.spec.StorageGB > 0 {
+		if _, diskSizeDeclared := db.fields["diskSizeGB"]; diskSizeDeclared {
 			plan, ok := tiers.Postgres.ByID(existing.Spec.Plan)
 			if !ok {
 				plan = tiers.Postgres.Default()
@@ -1851,7 +2065,10 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 				return StackDatabaseView{}, fmt.Errorf("%w: database %q storage is grow-only: requested %d GB is below the allocated %d GB", core.ErrBadRequest, db.name, db.spec.StorageGB, allocated)
 			}
 		}
-		specChanged := databaseOwnedSpecChanged(existing.Spec, db.spec)
+		specChanged, err := blueprintDatabaseSpecChanged(existing.Spec, db.spec, db.fields)
+		if err != nil {
+			return StackDatabaseView{}, fmt.Errorf("%w: database %q %v", core.ErrBadRequest, db.name, err)
+		}
 		groupingSpecified := db.grouping != "" || db.ungrouped
 		groupingChanged := groupingSpecified && (existing.Labels[core.LabelEnvironment] != assignment.ID || existing.Labels[core.LabelProject] != assignment.ProjectID)
 		if !specChanged && !groupingChanged {
@@ -1859,7 +2076,9 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 		}
 		base := client.MergeFrom(existing.DeepCopy())
 		if specChanged {
-			applyDatabaseSpec(&existing.Spec, db.spec)
+			if _, err := ApplyBlueprintDatabaseSpec(&existing.Spec, db.spec, db.fields); err != nil {
+				return StackDatabaseView{}, fmt.Errorf("%w: database %q %v", core.ErrBadRequest, db.name, err)
+			}
 		}
 		if groupingChanged {
 			if existing.Labels == nil {
@@ -1918,7 +2137,7 @@ func applyGroupingLabels(labels map[string]string, assignment core.EnvironmentAs
 func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignment core.EnvironmentAssignment) (StackKeyValueView, error) {
 	// Resolve an existing store by its mutable DISPLAY name within the workspace,
 	// not by metadata.name — a store now carries an opaque red- id, so a re-apply
-	// of the same bex.yml entry must match on the user-facing name (w9/m6,
+	// of the same render.yaml entry must match on the user-facing name (w9/m6,
 	// mirroring applyDatabase).
 	var keyValues appv1alpha1.KeyValueList
 	if err := s.Client.List(ctx, &keyValues, client.InNamespace(s.Namespace)); err != nil {
@@ -1940,7 +2159,7 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 		existing = candidate
 	}
 	if existing != nil {
-		specChanged := keyValueOwnedSpecChanged(existing.Spec, kv.spec)
+		specChanged := blueprintKeyValueSpecChanged(existing.Spec, kv.spec, kv.fields)
 		groupingSpecified := kv.grouping != "" || kv.ungrouped
 		groupingChanged := groupingSpecified && (existing.Labels[core.LabelEnvironment] != assignment.ID || existing.Labels[core.LabelProject] != assignment.ProjectID)
 		if !specChanged && !groupingChanged {
@@ -1948,7 +2167,7 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 		}
 		base := client.MergeFrom(existing.DeepCopy())
 		if specChanged {
-			applyKeyValueSpec(&existing.Spec, kv.spec)
+			ApplyBlueprintKeyValueSpec(&existing.Spec, kv.spec, kv.fields)
 		}
 		if groupingChanged {
 			if existing.Labels == nil {
@@ -1989,7 +2208,7 @@ func stackKeyValueView(kv *appv1alpha1.KeyValue) StackKeyValueView {
 }
 
 // applyDatabaseSpec copies the Blueprint-owned Database fields onto dst (the set
-// a bex.yml databases[] entry can carry). Fields owned by other verbs (users,
+// a render.yaml databases[] entry can carry). Fields owned by other verbs (users,
 // recovery, suspended, restartedAt, failoverAt) are left untouched, mirroring
 // applyCreateToSpec's discipline.
 func applyDatabaseSpec(dst *appv1alpha1.DatabaseSpec, want appv1alpha1.DatabaseSpec) {

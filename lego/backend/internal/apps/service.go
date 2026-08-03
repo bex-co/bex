@@ -120,7 +120,7 @@ type Service struct {
 	// list/sync verbs. nil => list/sync return ErrBlueprintsUnavailable; validate
 	// is always available (stateless).
 	Blueprints BlueprintStore
-	// GitFetcher, when set (the GitHub App is wired), fetches the bex.yml manifest
+	// GitFetcher, when set (the GitHub App is wired), fetches the render.yaml manifest
 	// from a Git repository so CreateBlueprint and SyncBlueprint can pull the
 	// latest file without a local clone (w2/m62 — Git-connected Blueprints). nil
 	// => create and sync fall back to the supplied/stored manifest.
@@ -133,13 +133,13 @@ type Service struct {
 	// (they are purged on workspace delete via WorkspacePurger). Satisfied
 	// structurally by *secrets.WorkspacePurger so apps never imports secrets.
 	SecretsEraser AppSecretsEraser
-	// EnvGroups, when set (OpenBao is wired), materializes a bex.yml's
+	// EnvGroups, when set (OpenBao is wired), materializes a render.yaml's
 	// envVarGroups: and links them to services via fromGroup (w1/m35), riding the
 	// env-groups feature through a narrow seam. nil => a manifest using
 	// envVarGroups/fromGroup is rejected before any write (env groups unavailable),
 	// never silently dropped.
 	EnvGroups EnvGroupApplier
-	// EnvSeeder, when set (OpenBao is wired), seeds a bex.yml's sync:false and
+	// EnvSeeder, when set (OpenBao is wired), seeds a render.yaml's sync:false and
 	// generateValue vars into the mutable env-vars store SEED-ONCE (w1/m35), so a
 	// later dashboard edit wins and a re-sync never overwrites/re-mints. nil => a
 	// manifest using those forms is rejected before any write.
@@ -1234,7 +1234,7 @@ func readyCurrentAppPod(pod *corev1.Pod, activeImage, activeRevision string) boo
 }
 
 // CreateRequest is the neutral create-or-update input the three surfaces (and
-// the bex.yml deploy mapper) share — Render's create body projected onto the
+// the render.yaml deploy mapper) share — Render's create body projected onto the
 // App CR spec. One of Repo/Image is required. Zero values fall back to the
 // platform defaults the operator would apply (branch main, port 3000, one
 // replica, the catalog's default tier). Plan accepts either Render's spelling
@@ -1383,7 +1383,7 @@ func stampEnvironmentMembership(a *appv1alpha1.App, environment core.Environment
 
 // Create writes the App CR for a new service, or updates it in place when one
 // of the same name already exists — the same verb "deploy this" rides (Deploy
-// maps a repo + bex.yml onto a CreateRequest, docs/ADR006-bex-api.md). Repeating the
+// maps a repo + render.yaml onto a CreateRequest, docs/ADR006-bex-api.md). Repeating the
 // call for an existing service is a redeploy, not a duplicate: the spec fields
 // the request carries are re-applied and spec.restartedAt is bumped, so a
 // repo-backed App re-runs its build-from-git. Intent only — the operator

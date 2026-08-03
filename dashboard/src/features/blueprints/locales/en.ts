@@ -46,7 +46,7 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.createDescription": {
     message:
-      "Connect a repository containing a bex.yml to create and sync a full stack of services.",
+      "Connect a repository containing a render.yaml Blueprint to create and sync a full stack of services.",
     description: "New Blueprint page subtitle under the title",
   },
   "blueprints.createSourceTitle": {
@@ -63,20 +63,20 @@ const enBlueprints: Record<string, TranslationEntry> = {
     description: "New Blueprint page — branch combobox placeholder",
   },
   "blueprints.createBranchHint": {
-    message: "The repository branch with the bex.yml file.",
+    message: "The repository branch with the render.yaml file.",
     description: "New Blueprint page — branch field helper text",
   },
   "blueprints.createPathLabel": {
     message: "Blueprint path",
-    description: "New Blueprint page — bex.yml path input label",
+    description: "New Blueprint page — render.yaml path input label",
   },
   "blueprints.createPathPlaceholder": {
-    message: "bex.yml",
+    message: "render.yaml",
     description: "New Blueprint page — manifest path placeholder",
   },
   "blueprints.createPathHint": {
     message:
-      "The path to the Blueprint file in your repo (e.g. infra/bex.yml). Defaults to bex.yml at the root of your repository.",
+      "The path to the Blueprint file in your repo (e.g. infra/render.yaml). Defaults to render.yaml at the root of your repository.",
     description: "New Blueprint page — manifest path helper text",
   },
   "blueprints.createNameLabel": {
@@ -172,7 +172,7 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.emptyBody": {
     message:
-      "Blueprints auto-register whenever you deploy a repo-backed bex.yml. Once deployed, your stack appears here and you can sync or validate it.",
+      "Blueprints auto-register whenever you deploy a repo-backed render.yaml. Once deployed, your stack appears here and you can sync or validate it.",
     description:
       "Blueprints list empty-state body explaining auto-registration",
   },
@@ -225,7 +225,7 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.metaPath": {
     message: "Manifest path",
-    description: "Blueprint detail metadata label — path to bex.yml in repo",
+    description: "Blueprint detail metadata label — path to render.yaml in repo",
   },
   "blueprints.metaAutoSync": {
     message: "Auto-sync",
@@ -254,7 +254,7 @@ const enBlueprints: Record<string, TranslationEntry> = {
       "Blueprint detail section heading listing services/databases managed by this blueprint",
   },
   "blueprints.resourcesEmpty": {
-    message: "No resources yet — sync the blueprint to apply your bex.yml.",
+    message: "No resources yet — sync the Blueprint to apply your render.yaml.",
     description: "Blueprint managed-resources empty state",
   },
   // --- Sync history ---
@@ -283,7 +283,7 @@ const enBlueprints: Record<string, TranslationEntry> = {
     description: "Sync history table column — sync run completion time",
   },
   "blueprints.manifestTitle": {
-    message: "bex.yml manifest",
+    message: "render.yaml manifest",
     description: "Blueprint detail section heading for the stored manifest",
   },
   // --- Sync action ---
@@ -297,7 +297,7 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.syncConfirmBody": {
     message:
-      "This re-applies the stored bex.yml to your workspace. The apply is idempotent — resources that already match the manifest are not replaced.",
+      "This re-applies the stored render.yaml to your workspace. The apply is idempotent — resources that already match the manifest are not replaced.",
     description: "Sync confirm dialog description",
   },
   "blueprints.syncConfirmAction": {

@@ -11,7 +11,7 @@ Push a Git repo (or a prebuilt image), get a running HTTPS service at `<name>.on
 ## Why bex
 
 - **Own your PaaS.** Render's developer experience — deploy-from-git, custom domains + TLS, suspend/resume — on your own hardware, Apache-2.0.
-- **Drop-in familiar.** `bex.yml` is `render.yaml`-shaped, and `bex-api` speaks Render's REST and GraphQL, verified against Render's OpenAPI spec ([docs/ADR006-bex-api.md](docs/ADR006-bex-api.md)). How far the compatibility actually goes — every Render capability × REST/GraphQL/MCP/UI, with evidence — is the parity ledger ([docs/ADR018-render-parity.md](docs/ADR018-render-parity.md)).
+- **Drop-in familiar.** `render.yaml` is the Blueprint contract (`bex.yml` is a deprecated filename-only alias), and `bex-api` speaks Render's REST and GraphQL, verified against Render's OpenAPI spec ([docs/ADR006-bex-api.md](docs/ADR006-bex-api.md)). How far the compatibility actually goes — every Render capability × REST/GraphQL/MCP/UI, with evidence — is the parity ledger ([docs/ADR018-render-parity.md](docs/ADR018-render-parity.md)).
 - **Built for agents.** Every action is an API call or a Kubernetes CR; state is machine-readable (`phase` / `revision` / `url`). No dashboard-only actions. See the mission and roadmap in [docs/ADR008-vision.md](docs/ADR008-vision.md).
 
 ## Quickstart: local mock (machines = Docker containers)
@@ -63,7 +63,7 @@ spec:
   replicas: 2 # pods bin-pack across machines
 ```
 
-`kubectl get apps.app.bex.co` shows phase / revision / url. Prefer Render-style config? `scripts/app-apply.sh <bex.yml>` applies a `render.yaml`-shaped `bex.yml` as an App CR (`DRY_RUN=1` to preview).
+`kubectl get apps.app.bex.co` shows phase / revision / url. Prefer Render-style config? `scripts/app-apply.sh <render.yaml>` is a thin authenticated Blueprint API client (`DRY_RUN=1` validates without deploying); set `BEX_API_URL` and `BEX_API_TOKEN` first.
 
 ## bex vs Render
 

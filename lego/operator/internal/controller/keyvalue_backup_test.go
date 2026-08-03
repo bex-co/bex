@@ -58,32 +58,42 @@ func keyValueBackupTestScheme(t *testing.T) *runtime.Scheme {
 	return scheme
 }
 
-func TestKeyValueBackupCronJobSpec(t *testing.T) {
-	kv := &appv1alpha1.KeyValue{
-		ObjectMeta: metav1.ObjectMeta{Name: "red-paid-kv", Namespace: "default", UID: "paid-kv-uid"},
-		Spec:       appv1alpha1.KeyValueSpec{Plan: "starter", Version: "8"},
-	}
-	r := &KeyValueReconciler{Backup: testKeyValueBackupStore}
-	spec := r.keyValueBackupCronJobSpec(kv, "red-paid-kv-auth")
-
+func assertKeyValueBackupSchedule(t *testing.T, spec *batchv1.CronJob) {
+	t.Helper()
 	var minute, hour int
-	if _, err := fmt.Sscanf(spec.Schedule, "%d %d * * *", &minute, &hour); err != nil || hour != 3 || minute < 20 || minute > 39 {
-		t.Fatalf("schedule = %q, want a stable 03:20-03:39 UTC slot", spec.Schedule)
+	if _, err := fmt.Sscanf(spec.Spec.Schedule, "%d %d * * *", &minute, &hour); err != nil || hour != 3 || minute < 20 || minute > 39 {
+		t.Fatalf("schedule = %q, want a stable 03:20-03:39 UTC slot", spec.Spec.Schedule)
 	}
-	if spec.TimeZone == nil || *spec.TimeZone != "Etc/UTC" || spec.ConcurrencyPolicy != batchv1.ForbidConcurrent {
-		t.Fatalf("cron timing contract = zone %v concurrency %q", spec.TimeZone, spec.ConcurrencyPolicy)
+	if spec.Spec.TimeZone == nil || *spec.Spec.TimeZone != "Etc/UTC" || spec.Spec.ConcurrencyPolicy != batchv1.ForbidConcurrent {
+		t.Fatalf("cron timing contract = zone %v concurrency %q", spec.Spec.TimeZone, spec.Spec.ConcurrencyPolicy)
 	}
-	if spec.Suspend == nil || *spec.Suspend {
+	if spec.Spec.Suspend == nil || *spec.Spec.Suspend {
 		t.Fatal("running paid KeyValue backup CronJob is unexpectedly suspended")
 	}
-	pod := spec.JobTemplate.Spec.Template.Spec
+}
+
+func assertKeyValueBackupPod(t *testing.T, pod corev1.PodSpec) {
+	t.Helper()
 	if pod.AutomountServiceAccountToken == nil || *pod.AutomountServiceAccountToken {
 		t.Fatal("backup pod must not mount a ServiceAccount token")
 	}
 	if len(pod.InitContainers) != 2 || len(pod.Containers) != 1 {
 		t.Fatalf("backup stages = %d init + %d main, want snapshot/compress/upload", len(pod.InitContainers), len(pod.Containers))
 	}
-	snapshot := pod.InitContainers[0]
+	assertKeyValueSnapshot(t, pod.InitContainers[0])
+	assertKeyValueUpload(t, pod.Containers[0])
+	for _, container := range append(append([]corev1.Container{}, pod.InitContainers...), pod.Containers...) {
+		security := container.SecurityContext
+		if security == nil || security.AllowPrivilegeEscalation == nil || *security.AllowPrivilegeEscalation ||
+			security.Capabilities == nil || len(security.Capabilities.Drop) == 0 || security.Capabilities.Drop[0] != "ALL" ||
+			security.SeccompProfile == nil || security.SeccompProfile.Type != corev1.SeccompProfileTypeRuntimeDefault {
+			t.Errorf("container %s lost the platform hardening baseline: %#v", container.Name, security)
+		}
+	}
+}
+
+func assertKeyValueSnapshot(t *testing.T, snapshot corev1.Container) {
+	t.Helper()
 	if !strings.Contains(snapshot.Args[0], "valkey-cli") || !strings.Contains(snapshot.Args[0], "--rdb /backup/dump.rdb") {
 		t.Fatalf("snapshot command does not request a coherent remote RDB: %q", snapshot.Args[0])
 	}
@@ -91,7 +101,10 @@ func TestKeyValueBackupCronJobSpec(t *testing.T) {
 		snapshot.Env[1].ValueFrom.SecretKeyRef.Name != "red-paid-kv-auth" {
 		t.Fatalf("snapshot authentication must use REDISCLI_AUTH from the authority Secret: %#v", snapshot.Env)
 	}
-	upload := pod.Containers[0]
+}
+
+func assertKeyValueUpload(t *testing.T, upload corev1.Container) {
+	t.Helper()
 	for _, required := range []string{"retain=7", "rdb.gz", `head -n "-${retain}"`, "aws --endpoint-url"} {
 		if !strings.Contains(upload.Args[0], required) {
 			t.Errorf("upload command lacks %q: %s", required, upload.Args[0])
@@ -104,14 +117,19 @@ func TestKeyValueBackupCronJobSpec(t *testing.T) {
 		upload.Env[1].Name != "AWS_EC2_METADATA_DISABLED" || upload.Env[1].Value != "true" {
 		t.Fatalf("uploader writable AWS config contract = %#v", upload.Env)
 	}
-	for _, container := range append(append([]corev1.Container{}, pod.InitContainers...), pod.Containers...) {
-		security := container.SecurityContext
-		if security == nil || security.AllowPrivilegeEscalation == nil || *security.AllowPrivilegeEscalation ||
-			security.Capabilities == nil || len(security.Capabilities.Drop) == 0 || security.Capabilities.Drop[0] != "ALL" ||
-			security.SeccompProfile == nil || security.SeccompProfile.Type != corev1.SeccompProfileTypeRuntimeDefault {
-			t.Errorf("container %s lost the platform hardening baseline: %#v", container.Name, security)
-		}
+}
+
+func TestKeyValueBackupCronJobSpec(t *testing.T) {
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "red-paid-kv", Namespace: "default", UID: "paid-kv-uid"},
+		Spec:       appv1alpha1.KeyValueSpec{Plan: "starter", Version: "8"},
 	}
+	r := &KeyValueReconciler{Backup: testKeyValueBackupStore}
+	spec := r.keyValueBackupCronJobSpec(kv, "red-paid-kv-auth")
+
+	cron := &batchv1.CronJob{Spec: spec}
+	assertKeyValueBackupSchedule(t, cron)
+	assertKeyValueBackupPod(t, cron.Spec.JobTemplate.Spec.Template.Spec)
 
 	kv.Spec.Suspended = true
 	suspended := r.keyValueBackupCronJobSpec(kv, "red-paid-kv-auth")

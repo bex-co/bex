@@ -1,4 +1,4 @@
-# bex.yml — Python (Flask) hello-world web service.
+# render.yaml — Python (Flask) hello-world web service.
 # Replace repo/rootDir with your own checkout; bex builds from the Dockerfile and
 # returns a live https URL. A git push redeploys automatically via the push webhook.
 services:

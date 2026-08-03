@@ -401,20 +401,20 @@ func toSecretFiles(in []secretFileArg) []core.SecretFile {
 	return files
 }
 
-// deployArgs is the deploy tool's input: a repo + its bex.yml. Deploy-from-chat
+// deployArgs is the deploy tool's input: a repo + its render.yaml Blueprint. Deploy-from-chat
 // is create with a manifest — one agent call takes code (one service or a whole
 // stack) to live URLs.
 type deployArgs struct {
 	Repo    string `json:"repo,omitempty" jsonschema:"git repository URL to deploy (overrides the repo in bexYaml, if any)"`
 	Branch  string `json:"branch,omitempty" jsonschema:"branch to deploy (overrides the branch in bexYaml, if any)"`
-	BexYAML string `json:"bexYaml" jsonschema:"the project's bex.yml — a render.yaml Blueprint manifest. May declare a whole stack: services: (web/worker/cron) + databases:, wired by fromDatabase env references. One call converges all of it; validation is all-or-nothing; re-applying an unchanged file is a no-op"`
+	BexYAML string `json:"bexYaml" jsonschema:"the project's render.yaml Blueprint manifest. May declare a whole stack: services: (web/worker/cron) + databases:, wired by fromDatabase env references. One call converges all of it; validation is all-or-nothing; re-applying an unchanged file is a no-op"`
 	Confirm string `json:"confirm,omitempty" jsonschema:"required only when this call would change an EXISTING service that belongs to a protectedStatus=protected Environment (w6/m19): the exact phrase from the error message of a first, unconfirmed call"`
 }
 
-// renderStack is the deploy tool's result for a multi-resource bex.yml: the
+// renderStack is the deploy tool's result for a multi-resource render.yaml: the
 // services + databases one deploy call created (databases applied first, then
 // services — dependents reference databases via fromDatabase). A single-service
-// bex.yml returns a one-element services list and no databases. Poll each
+// render.yaml returns a one-element services list and no databases. Poll each
 // service to a live URL via get_service; poll databases via get_postgres.
 type renderStack struct {
 	Services  []renderService     `json:"services"`
@@ -427,9 +427,10 @@ func toRenderStack(res StackResult) renderStack {
 	return renderStack{Services: toRenderServices(res.Services), Databases: res.Databases, KeyValues: res.KeyValues}
 }
 
-// validateBlueprintArgs is validate_bex_yml's input (w2/m15).
+// validateBlueprintArgs is validate_bex_yml's input; the wire name remains
+// compatible while the Blueprint filename contract is render.yaml.
 type validateBlueprintArgs struct {
-	BexYAML string `json:"bexYaml" jsonschema:"the bex.yml content to validate (render.yaml Blueprint shape); parsed and checked for per-entry errors with no apply"`
+	BexYAML string `json:"bexYaml" jsonschema:"the render.yaml content to validate; parsed and checked for per-entry errors with no apply (the wire field name is retained for compatibility)"`
 }
 
 type listBlueprintsArgs struct{}
@@ -447,22 +448,22 @@ type getBlueprintArgs struct {
 // syncBlueprintArgs is sync_blueprint's input (w2/m15).
 type syncBlueprintArgs struct {
 	ID      string `json:"id" jsonschema:"the blueprint id (blp-…), as returned by list_blueprints or a prior deploy call"`
-	BexYAML string `json:"bexYaml,omitempty" jsonschema:"optional updated bex.yml to store and apply; omit to re-apply the stored manifest unchanged"`
+	BexYAML string `json:"bexYaml,omitempty" jsonschema:"optional updated render.yaml content to store and apply; omit to re-apply the stored manifest unchanged"`
 	Confirm string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned by a protected-environment error when the sync overrides an existing service"`
 }
 
 // previewBlueprintArgs is preview_blueprint's input.
 type previewBlueprintArgs struct {
 	Repo   string `json:"repo" jsonschema:"Git repo URL (https://github.com/org/repo)"`
-	Branch string `json:"branch" jsonschema:"branch holding the bex.yml"`
-	Path   string `json:"path,omitempty" jsonschema:"path to bex.yml within the repo (default bex.yml)"`
+	Branch string `json:"branch" jsonschema:"branch holding render.yaml"`
+	Path   string `json:"path,omitempty" jsonschema:"path to a Blueprint within the repo (default render.yaml)"`
 }
 
 // createBlueprintArgs is create_blueprint's input (w2/m62).
 type createBlueprintArgs struct {
 	Repo    string `json:"repo" jsonschema:"Git repo URL (https://github.com/org/repo)"`
 	Branch  string `json:"branch" jsonschema:"branch to track"`
-	Path    string `json:"path,omitempty" jsonschema:"path to bex.yml within the repo (default bex.yml)"`
+	Path    string `json:"path,omitempty" jsonschema:"path to a Blueprint within the repo (default render.yaml)"`
 	Name    string `json:"name,omitempty" jsonschema:"human-readable name (default: repo basename)"`
 	Confirm string `json:"confirm,omitempty" jsonschema:"confirmation phrase for protected-environment overrides"`
 }
@@ -484,7 +485,7 @@ type updateBlueprintArgs struct {
 	ID       string  `json:"id" jsonschema:"blueprint id (blp-…)"`
 	Name     *string `json:"name,omitempty" jsonschema:"new display name"`
 	AutoSync *bool   `json:"autoSync,omitempty" jsonschema:"enable or disable auto-sync on push"`
-	Path     *string `json:"path,omitempty" jsonschema:"new bex.yml path within the repo"`
+	Path     *string `json:"path,omitempty" jsonschema:"new Blueprint path within the repo"`
 }
 
 // disconnectedBlueprintResult is disconnect_blueprint's output.
@@ -777,7 +778,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "deploy",
-		Description: "Deploy a project from a git repo and its bex.yml (render.yaml Blueprint) in one call. A bex.yml may declare a whole stack — several services (web/worker/cron) plus managed databases, wired by fromDatabase env references — and one call converges all of it, databases first. Validation is all-or-nothing: one invalid entry rejects the whole deploy. Re-applying an unchanged bex.yml is an idempotent no-op (changed services redeploy, unchanged ones don't). Returns the services (poll each to a live url via get_service) and databases (poll via get_postgres). A change to an EXISTING service that belongs to a protectedStatus=protected Environment (w6/m19) requires confirm — retry with the phrase from the error message. bex extension (pillar 4, deploy-from-chat at stack scale).",
+		Description: "Deploy a project from a git repo and render.yaml content in one call. A Blueprint may declare a whole stack — several services (web/worker/cron) plus managed databases, wired by fromDatabase env references — and one call converges all of it, databases first. Validation is all-or-nothing: one invalid entry rejects the whole deploy. Re-applying unchanged content is an idempotent no-op (changed services redeploy, unchanged ones don't). Returns the services (poll each to a live url via get_service) and databases (poll via get_postgres). A change to an EXISTING service that belongs to a protectedStatus=protected Environment (w6/m19) requires confirm — retry with the phrase from the error message. bex extension (pillar 4, deploy-from-chat at stack scale).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in deployArgs) (*mcp.CallToolResult, renderStack, error) {
 		res, err := s.DeployStack(ctx, DeployRequest{Repo: in.Repo, Branch: in.Branch, Manifest: in.BexYAML, Confirm: in.Confirm})
 		if err != nil {
@@ -1243,7 +1244,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	// Blueprint verbs (w2/m15 + w2/m41 + w2/m62).
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "validate_bex_yml",
-		Description: "Dry-run parse a bex.yml (render.yaml Blueprint) and return structured per-entry errors plus a resource plan without applying anything — the safe pre-flight check before a deploy call. Returns {valid, errors: [{error, line?, column?, path?}], plan?}. Requires no store; always available. bex extension (pillar 4 agent safety).",
+		Description: "Dry-run parse a render.yaml Blueprint and return structured per-entry errors plus a resource plan without applying anything — the safe pre-flight check before a deploy call. bex.yml remains a filename-only alias. Returns {valid, errors: [{code?, error, line?, column?, path?}], plan?}. Requires no store; always available. bex extension (pillar 4 agent safety).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in validateBlueprintArgs) (*mcp.CallToolResult, BlueprintValidation, error) {
 		v, err := s.ValidateBlueprint(ctx, core.NamedWorkspace(ctx), in.BexYAML)
 		return nil, v, err
@@ -1251,7 +1252,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "preview_blueprint",
-		Description: "Fetch a repo's bex.yml and dry-run validate it WITHOUT creating anything — the pre-flight for create_blueprint. Returns {found, manifest?, commitId?, error?, validation?: {valid, errors, plan}}; a missing file reports found=false with the fetch error instead of failing. bex extension.",
+		Description: "Fetch a repo's render.yaml and dry-run validate it WITHOUT creating anything — the pre-flight for create_blueprint. Empty path discovers render.yaml first, then the legacy bex.yml alias (with a warning); both files require an explicit path. Returns {found, manifest?, commitId?, warning?, error?, validation?: {valid, errors, plan}}; a missing file reports found=false with the fetch error instead of failing. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in previewBlueprintArgs) (*mcp.CallToolResult, BlueprintPreview, error) {
 		p, err := s.PreviewBlueprint(ctx, core.NamedWorkspace(ctx), in.Repo, in.Branch, in.Path)
 		return nil, p, err
@@ -1259,7 +1260,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_blueprint",
-		Description: "Create a Git-connected Blueprint by fetching the bex.yml from a repo, validating, and applying the full stack. Returns the new blueprint and deployed resources. The repo must be accessible via the workspace's GitHub connection or be public. bex extension (w2/m62).",
+		Description: "Create a Git-connected Blueprint by fetching render.yaml from a repo, validating, and applying the full stack. bex.yml is a filename-only alias; if both files exist, specify path explicitly. Returns the new blueprint and deployed resources. The repo must be accessible via the workspace's GitHub connection or be public. bex extension (w2/m62).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createBlueprintArgs) (*mcp.CallToolResult, BlueprintView, error) {
 		view, err := s.CreateBlueprint(ctx, core.NamedWorkspace(ctx), CreateBlueprintRequest{
 			Repo:    in.Repo,
@@ -1297,7 +1298,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "sync_blueprint",
-		Description: "Re-apply a blueprint by pulling the latest bex.yml from its Git repo (or from the stored manifest if no fetcher is configured). Records a sync run. Returns {blueprint, stack: {services, databases}}. bex extension (pillar 4, validate-then-deploy flow).",
+		Description: "Re-apply a Blueprint by pulling the latest render.yaml from its Git repo (or from the stored manifest if no fetcher is configured). Records a sync run. Returns {blueprint, stack: {services, databases}}. bex extension (pillar 4, validate-then-deploy flow).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in syncBlueprintArgs) (*mcp.CallToolResult, SyncBlueprintResult, error) {
 		res, err := s.SyncBlueprint(ctx, in.ID, core.NamedWorkspace(ctx), in.BexYAML, in.Confirm)
 		return nil, res, err
@@ -1305,7 +1306,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "update_blueprint",
-		Description: "Update a blueprint's name, autoSync flag, or bex.yml path. Setting autoSync=false pauses auto-sync on push; true re-enables it. bex extension (w2/m62).",
+		Description: "Update a Blueprint's name, autoSync flag, or render.yaml path. Setting autoSync=false pauses auto-sync on push; true re-enables it. bex extension (w2/m62).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateBlueprintArgs) (*mcp.CallToolResult, BlueprintView, error) {
 		view, err := s.UpdateBlueprint(ctx, in.ID, core.NamedWorkspace(ctx), UpdateBlueprintRequest{
 			Name:     in.Name,

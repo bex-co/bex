@@ -56,9 +56,9 @@ services:
       - key: DB_PASSWORD
         fromDatabase: {name: db, property: password}
       - key: API_HOST
-        fromService: {name: api, property: host}
+        fromService: {name: api, type: pserv, property: host}
       - key: API_PORT
-        fromService: {name: api, property: port}
+        fromService: {name: api, type: pserv, property: port}
   - name: api
     type: pserv
     runtime: image
@@ -140,6 +140,7 @@ func TestParseStackScalingBlockPopulatesAutoscaling(t *testing.T) {
 services:
   - name: web
     type: web
+    runtime: image
     image: {url: nginx:1}
     scaling:
       minInstances: 2
@@ -183,6 +184,7 @@ func TestParseStackScalingBlockValidation(t *testing.T) {
 services:
   - name: web
     type: web
+    runtime: image
     image: {url: nginx:1}
     scaling:
       minInstances: 1
@@ -263,8 +265,8 @@ func TestParseStackDefersFromServiceHostUntilSlugIsKnown(t *testing.T) {
 func TestParseStackRejectsDuplicateNames(t *testing.T) {
 	dup := `
 services:
-  - {name: web, image: {url: a}}
-  - {name: web, image: {url: b}}
+  - {name: web, type: web, runtime: image, image: {url: a}}
+  - {name: web, type: web, runtime: image, image: {url: b}}
 `
 	_, err := parseStack(DeployRequest{Manifest: dup})
 	if err == nil || !strings.Contains(err.Error(), `duplicate name "web"`) {
@@ -272,33 +274,43 @@ services:
 	}
 }
 
-func TestParseStackRejectsUnknownFromDatabase(t *testing.T) {
+func TestParseStackDefersExternalFromDatabaseResolution(t *testing.T) {
 	bad := `
 services:
   - name: web
+    type: web
+    runtime: image
     image: {url: x}
     envVars:
       - key: DATABASE_URL
         fromDatabase: {name: ghost, property: connectionString}
 `
-	_, err := parseStack(DeployRequest{Manifest: bad})
-	if err == nil || !strings.Contains(err.Error(), "ghost") {
-		t.Errorf("unknown fromDatabase => error naming the offender, got %v", err)
+	st, err := parseStack(DeployRequest{Manifest: bad})
+	if err != nil {
+		t.Fatalf("parseStack should defer authorized workspace lookup: %v", err)
+	}
+	if got := findSvc(t, st, "web").databaseRefs[0].FromDatabase.Name; got != "ghost" {
+		t.Fatalf("deferred fromDatabase target = %q, want ghost", got)
 	}
 }
 
-func TestParseStackRejectsUnknownFromService(t *testing.T) {
+func TestParseStackDefersPotentialExistingServiceHost(t *testing.T) {
 	bad := `
 services:
   - name: web
+    type: web
+    runtime: image
     image: {url: x}
     envVars:
       - key: H
-        fromService: {name: ghost, property: host}
+        fromService: {name: ghost, type: web, property: host}
 `
-	_, err := parseStack(DeployRequest{Manifest: bad})
-	if err == nil || !strings.Contains(err.Error(), "ghost") {
-		t.Errorf("unknown fromService => error naming the offender, got %v", err)
+	st, err := parseStack(DeployRequest{Manifest: bad})
+	if err != nil {
+		t.Fatalf("parseStack should defer authorized workspace lookup: %v", err)
+	}
+	if got := findSvc(t, st, "web").hostRefs[0].target; got != "ghost" {
+		t.Fatalf("deferred service target = %q, want ghost", got)
 	}
 }
 
@@ -326,18 +338,22 @@ func TestParseStackRejectsBadEnvForms(t *testing.T) {
 
 func TestParseStackRejectsRetiredBlueprintDialect(t *testing.T) {
 	cases := map[string]string{
-		"apps":        "apps: [{name: web, image: {url: x}}]",
-		"tier":        "services: [{name: web, tier: free}]",
-		"replicas":    "services: [{name: web, replicas: 2}]",
-		"port":        "services: [{name: web, port: 8080}]",
-		"imagePath":   "services: [{name: web, imagePath: nginx:1}]",
-		"publishPath": "services: [{name: web, publishPath: dist}]",
-		"bare image":  "services: [{name: web, image: nginx:1}]",
+		"apps":        "apps: [{name: web, type: web, runtime: image, image: {url: x}}]",
+		"tier":        "services: [{name: web, type: web, runtime: image, image: {url: x}, tier: free}]",
+		"replicas":    "services: [{name: web, type: web, runtime: image, image: {url: x}, replicas: 2}]",
+		"port":        "services: [{name: web, type: web, runtime: image, image: {url: x}, port: 8080}]",
+		"imagePath":   "services: [{name: web, type: web, runtime: image, imagePath: nginx:1}]",
+		"publishPath": "services: [{name: web, type: web, runtime: image, image: {url: x}, publishPath: dist}]",
+		"bare image":  "services: [{name: web, type: web, runtime: image, image: nginx:1}]",
 	}
 	for name, manifest := range cases {
 		t.Run(name, func(t *testing.T) {
 			_, err := parseStack(DeployRequest{Manifest: manifest})
-			if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), name) {
+			needle := name
+			if name == "bare image" {
+				needle = "image"
+			}
+			if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), needle) {
 				t.Fatalf("retired %s => actionable ErrBadRequest, got %v", name, err)
 			}
 		})
@@ -350,10 +366,12 @@ func TestParseStackRejectsFromServiceToPortlessService(t *testing.T) {
 	bad := `
 services:
   - name: web
+    type: web
+    runtime: image
     image: {url: x}
     envVars:
-      - {key: H, fromService: {name: w, property: host}}
-  - {name: w, type: worker, image: {url: "w:1"}}
+      - {key: H, fromService: {name: w, type: worker, property: host}}
+  - {name: w, type: worker, runtime: image, image: {url: "w:1"}}
 `
 	_, err := parseStack(DeployRequest{Manifest: bad})
 	if err == nil || !strings.Contains(err.Error(), "no network address") {
@@ -400,6 +418,106 @@ func TestDeployStackAppliesDatabasesFirstThenServices(t *testing.T) {
 	// fromService host literal stays byte-identical to the pre-m57 behavior.
 	if h := findEnv(t, getApp(t, cl, "web").Spec.Env, "API_HOST"); h.Value != "api" {
 		t.Errorf("legacy fromService host = %q, want the bare name api", h.Value)
+	}
+}
+
+func TestDeployStackResolvesExistingWorkspaceDatabaseAndKeyValueRefs(t *testing.T) {
+	svc, cl := newService(nil)
+	ctx := context.Background()
+	database := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-existing", Namespace: "default"},
+		Spec:       appv1alpha1.DatabaseSpec{Name: "shared"},
+	}
+	keyValue := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "red-existing", Namespace: "default"},
+		Spec:       appv1alpha1.KeyValueSpec{Name: "cache"},
+	}
+	if err := cl.Create(ctx, database); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Create(ctx, keyValue); err != nil {
+		t.Fatal(err)
+	}
+	manifest := `
+services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx:1.27}
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: {name: shared, property: connectionString}
+      - key: CACHE_URL
+        fromService: {name: cache, type: keyvalue, property: connectionString}
+`
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	env := getApp(t, cl, "web").Spec.Env
+	if got := findEnv(t, env, "DATABASE_URL").ValueFrom.SecretKeyRef.Name; got != "dpg-existing-app" {
+		t.Errorf("DATABASE_URL secret = %q, want dpg-existing-app", got)
+	}
+	if got := findEnv(t, env, "CACHE_URL").ValueFrom.SecretKeyRef.Name; got != "red-existing" {
+		t.Errorf("CACHE_URL secret = %q, want red-existing", got)
+	}
+}
+
+func TestDeployStackResolvesExistingWorkspaceServiceHostRef(t *testing.T) {
+	svc, cl := newService(nil)
+	ctx := context.Background()
+	api := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "api", Namespace: "default"},
+		Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypePrivateService, Image: "nginx:1.27"},
+	}
+	if err := cl.Create(ctx, api); err != nil {
+		t.Fatal(err)
+	}
+	manifest := `
+services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx:1.27}
+    envVars:
+      - key: API_HOST
+        fromService: {name: api, type: pserv, property: host}
+`
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	if got := findEnv(t, getApp(t, cl, "web").Spec.Env, "API_HOST").Value; got != "api" {
+		t.Errorf("existing API_HOST = %q, want api", got)
+	}
+}
+
+func TestDeployStackRejectsForeignExistingReferenceBeforeWrite(t *testing.T) {
+	svc, cl := newTenantService(fakeWorkspace{"identity-a": "tea-a"})
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+	foreign := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-foreign", Namespace: "default", Labels: map[string]string{core.LabelTenant: "tea-other"}},
+		Spec:       appv1alpha1.DatabaseSpec{Name: "shared"},
+	}
+	if err := cl.Create(ctx, foreign); err != nil {
+		t.Fatal(err)
+	}
+	manifest := `services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx:1.27}
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: {name: shared, property: connectionString}`
+	_, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Manifest: manifest})
+	if err == nil || !strings.Contains(err.Error(), "unknown database") {
+		t.Fatalf("foreign reference error = %v", err)
+	}
+	var apps appv1alpha1.AppList
+	if err := cl.List(ctx, &apps); err != nil {
+		t.Fatal(err)
+	}
+	if len(apps.Items) != 0 {
+		t.Fatalf("foreign reference created Apps: %+v", apps.Items)
 	}
 }
 
@@ -590,7 +708,7 @@ func TestDeployStackChangedServiceRedeploys(t *testing.T) {
 	existing.Spec.Image = "old:1"
 	svc, cl := newService(rec, existing)
 
-	changed := "services:\n  - {name: web, image: {url: new:1}}\n"
+	changed := "services:\n  - {name: web, type: web, runtime: image, image: {url: new:1}}\n"
 	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: changed}); err != nil {
 		t.Fatalf("DeployStack: %v", err)
 	}
@@ -618,7 +736,7 @@ func TestDeployStackPreservesNonOwnedFieldsOnReapply(t *testing.T) {
 	existing := sampleApp("web")
 	existing.Spec.EnvFromSecret = "web-env"
 	svc, cl := newService(nil, existing)
-	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: "services:\n  - {name: web, image: {url: x}}"}); err != nil {
+	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: "services:\n  - {name: web, type: web, runtime: image, image: {url: x}}"}); err != nil {
 		t.Fatalf("DeployStack: %v", err)
 	}
 	if got := getApp(t, cl, "web").Spec.EnvFromSecret; got != "web-env" {
@@ -626,16 +744,47 @@ func TestDeployStackPreservesNonOwnedFieldsOnReapply(t *testing.T) {
 	}
 }
 
+func TestDeployStackUsesSourcePresenceForExistingServiceSync(t *testing.T) {
+	// A Blueprint update owns only fields declared in its source. In particular,
+	// it must not reset an interactive repo/branch/rootDir edit merely because
+	// this deploy changes the image; buildFilter is Render's documented
+	// exception and clears when omitted.
+	existing := sampleApp("web")
+	existing.Spec.Image = "old:1"
+	existing.Spec.Repo = "https://github.com/example/interactive.git"
+	existing.Spec.Branch = "release"
+	existing.Spec.RootDir = "cmd/api"
+	existing.Spec.BuildFilter = &appv1alpha1.BuildFilterSpec{Paths: []string{"api/**"}}
+	svc, cl := newService(nil, existing)
+
+	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: "services:\n  - {name: web, type: web, runtime: image, image: {url: new:1}}\n"}); err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	got := getApp(t, cl, "web").Spec
+	if got.Image != "new:1" {
+		t.Errorf("image = %q, want new:1", got.Image)
+	}
+	if got.Repo != existing.Spec.Repo || got.Branch != existing.Spec.Branch || got.RootDir != existing.Spec.RootDir {
+		t.Errorf("omitted fields changed: repo=%q branch=%q rootDir=%q", got.Repo, got.Branch, got.RootDir)
+	}
+	if got.BuildFilter != nil {
+		t.Errorf("omitted buildFilter = %#v, want nil", got.BuildFilter)
+	}
+}
+
 // --- keyvalue Blueprint tests (w2/m41) ---
 
 // kvManifest is a minimal stack with one keyvalue store and a web service that
-// references it via fromService (connectionString + host + port + password).
+// references it via fromService (connectionString + host + port).
 const kvManifest = `
 services:
   - name: cache
     type: redis
+    ipAllowList: []
     plan: free
   - name: web
+    type: web
+    runtime: image
     image: {url: nginx}
     envVars:
       - key: REDIS_URL
@@ -644,8 +793,6 @@ services:
         fromService: {name: cache, type: redis, property: host}
       - key: REDIS_PORT
         fromService: {name: cache, type: redis, property: port}
-      - key: REDIS_PASS
-        fromService: {name: cache, type: redis, property: password}
 `
 
 func TestDeployStackKeyValueProvisionedAndValidationPlan(t *testing.T) {
@@ -667,7 +814,7 @@ func TestDeployStackKeyValueProvisionedAndValidationPlan(t *testing.T) {
 	if err := cl.Get(ctx, key(kvID), &kv); err != nil {
 		t.Fatalf("keyvalue %s not created: %v", kvID, err)
 	}
-	// The web service must have 4 SecretKeyRef env vars pointing at the KV secret.
+	// The web service must have 3 SecretKeyRef env vars pointing at the KV secret.
 	app := getApp(t, cl, "web")
 	for _, tc := range []struct {
 		key  string
@@ -676,7 +823,6 @@ func TestDeployStackKeyValueProvisionedAndValidationPlan(t *testing.T) {
 		{"REDIS_URL", "uri"},
 		{"REDIS_HOST", "host"},
 		{"REDIS_PORT", "port"},
-		{"REDIS_PASS", "password"},
 	} {
 		e := findEnv(t, app.Spec.Env, tc.key)
 		if e.ValueFrom == nil || e.ValueFrom.SecretKeyRef == nil {
@@ -708,6 +854,8 @@ func TestDeployStackFromServiceKeyValueUnknownTarget(t *testing.T) {
 	manifest := `
 services:
   - name: web
+    type: web
+    runtime: image
     image: {url: nginx}
     envVars:
       - key: REDIS_URL
@@ -723,9 +871,9 @@ services:
 func TestDeployStackFromServiceKeyValueInvalidProperty(t *testing.T) {
 	bad := []string{
 		// no property
-		"services:\n  - name: cache\n    type: redis\n    plan: free\n  - name: web\n    image: {url: x}\n    envVars:\n      - {key: K, fromService: {name: cache, type: redis}}\n",
+		"services:\n  - name: cache\n    type: redis\n    ipAllowList: []\n    plan: free\n  - name: web\n    type: web\n    runtime: image\n    image: {url: x}\n    envVars:\n      - {key: K, fromService: {name: cache, type: redis}}\n",
 		// unsupported property
-		"services:\n  - name: cache\n    type: redis\n    plan: free\n  - name: web\n    image: {url: x}\n    envVars:\n      - {key: K, fromService: {name: cache, type: redis, property: user}}\n",
+		"services:\n  - name: cache\n    type: redis\n    ipAllowList: []\n    plan: free\n  - name: web\n    type: web\n    runtime: image\n    image: {url: x}\n    envVars:\n      - {key: K, fromService: {name: cache, type: redis, property: user}}\n",
 	}
 	for _, m := range bad {
 		svc, _ := newService(nil)
@@ -740,6 +888,8 @@ func TestDeployStackFromServiceKeyValueInvalidProperty(t *testing.T) {
 const hookManifest = `
 services:
   - name: web
+    type: web
+    runtime: image
     image: {url: nginx:1.26}
     initialDeployHook: npm run db:setup
     preDeployCommand: npm run db:migrate

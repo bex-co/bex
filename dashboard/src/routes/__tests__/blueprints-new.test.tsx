@@ -223,7 +223,7 @@ describe("NewBlueprintPage", () => {
     expect(create).toHaveBeenCalledWith(
       "https://github.com/acme/hello-go.git",
       "main",
-      "bex.yml",
+      "render.yaml",
       "hello-go",
       undefined,
     );
@@ -249,7 +249,7 @@ describe("NewBlueprintPage", () => {
     expect(create).toHaveBeenCalledWith(
       "https://github.com/acme/public-app",
       "main",
-      "bex.yml",
+      "render.yaml",
       "public-app",
       undefined,
     );

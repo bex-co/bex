@@ -33,9 +33,12 @@ import (
 	"time"
 
 	"github.com/graphql-go/graphql"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // --- fake store ---
@@ -184,6 +187,9 @@ func TestValidateBlueprintValidYAML(t *testing.T) {
 	if v.Plan == nil || len(v.Plan.Services) != 3 || len(v.Plan.Databases) != 1 || v.Plan.TotalActions != 4 {
 		t.Errorf("valid manifest: unexpected plan: %+v", v.Plan)
 	}
+	if v.Plan != nil && v.Plan.Mode != "structural" {
+		t.Errorf("validation plan mode = %q, want structural", v.Plan.Mode)
+	}
 }
 
 func TestValidateBlueprintBadYAML(t *testing.T) {
@@ -191,6 +197,7 @@ func TestValidateBlueprintBadYAML(t *testing.T) {
 	const bad = `services:
   - name: ""
     type: web
+    runtime: image
 `
 	v, err := svc.ValidateBlueprint(context.Background(), "", bad)
 	if err != nil {
@@ -201,6 +208,45 @@ func TestValidateBlueprintBadYAML(t *testing.T) {
 	}
 	if v.Errors[0].Error == "" || v.Errors[0].Path == nil || *v.Errors[0].Path != "services[0].name" {
 		t.Errorf("invalid manifest: want a structured services[0].name error, got %+v", v.Errors)
+	}
+}
+
+func TestValidateBlueprintRejectsUnknownSourceField(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	validation, err := svc.ValidateBlueprint(context.Background(), "", `
+services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx}
+    typoThatWouldPreviouslyBeIgnored: true
+`)
+	if err != nil {
+		t.Fatalf("ValidateBlueprint: %v", err)
+	}
+	if validation.Valid || len(validation.Errors) != 1 || !strings.Contains(validation.Errors[0].Error, "typoThatWouldPreviouslyBeIgnored") {
+		t.Fatalf("unknown field validation = %+v", validation)
+	}
+	if validation.Errors[0].Path == nil || *validation.Errors[0].Path != "services[0].typoThatWouldPreviouslyBeIgnored" {
+		t.Fatalf("unknown field path = %+v", validation.Errors[0])
+	}
+}
+
+func TestValidateBlueprintRejectsUnknownNestedSourceField(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	validation, err := svc.ValidateBlueprint(context.Background(), "", `
+services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx}
+    scaling: {minInstances: 1, typo: true}
+`)
+	if err != nil {
+		t.Fatalf("ValidateBlueprint: %v", err)
+	}
+	if validation.Valid || len(validation.Errors) != 1 || validation.Errors[0].Path == nil || *validation.Errors[0].Path != "services[0].scaling.typo" {
+		t.Fatalf("nested unknown validation = %+v", validation)
 	}
 }
 
@@ -216,11 +262,109 @@ func TestValidateBlueprintSyntaxErrorIncludesLine(t *testing.T) {
 	}
 }
 
+func TestDecodeBlueprintValidationRequestAllowsTenMiBFileOnly(t *testing.T) {
+	t.Parallel()
+	requestFor := func(contents []byte) *http.Request {
+		t.Helper()
+		var body bytes.Buffer
+		writer := multipart.NewWriter(&body)
+		if err := writer.WriteField("ownerId", "tea-test"); err != nil {
+			t.Fatal(err)
+		}
+		part, err := writer.CreateFormFile("file", "render.yaml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := part.Write(contents); err != nil {
+			t.Fatal(err)
+		}
+		if err := writer.Close(); err != nil {
+			t.Fatal(err)
+		}
+		req := httptest.NewRequest(http.MethodPost, "/v1/blueprints/validate", &body)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		return req
+	}
+
+	valid := bytes.Repeat([]byte{'x'}, maxBlueprintValidationFileBytes)
+	owner, contents, err := decodeBlueprintValidationRequest(httptest.NewRecorder(), requestFor(valid))
+	if err != nil || owner != "tea-test" || len(contents) != len(valid) {
+		t.Fatalf("10 MiB file = owner %q bytes %d err %v", owner, len(contents), err)
+	}
+	_, _, err = decodeBlueprintValidationRequest(httptest.NewRecorder(), requestFor(append(valid, 'x')))
+	if err == nil || !strings.Contains(err.Error(), "10 MiB") {
+		t.Fatalf("10 MiB + 1 file error = %v", err)
+	}
+}
+
 func TestValidateBlueprintStateless(t *testing.T) {
 	// validate must not touch the store — Blueprints=nil must not panic.
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}, Blueprints: nil}
 	if _, err := svc.ValidateBlueprint(context.Background(), "", stackManifest); err != nil {
 		t.Fatalf("ValidateBlueprint with nil store: %v", err)
+	}
+}
+
+func TestExtractSyncFalseVarsUsesNormalizedAllLocationIR(t *testing.T) {
+	t.Parallel()
+	manifest := `
+services:
+  - name: root
+    envVars: [{key: ROOT_SECRET, sync: false}]
+ungrouped:
+  services:
+    - name: ungrouped
+      envVars: [{key: UNGROUPED_SECRET, sync: false}]
+projects:
+  - name: app
+    environments:
+      - name: prod
+        services:
+          - name: nested
+            envVars: [{key: NESTED_SECRET, sync: false}]
+`
+	if got, want := strings.Join(extractSyncFalseVars(manifest), ","), "NESTED_SECRET,ROOT_SECRET,UNGROUPED_SECRET"; got != want {
+		t.Fatalf("sync:false vars = %q, want %q", got, want)
+	}
+}
+
+func TestResolveBlueprintResourcesUsesNormalizedAllLocationIR(t *testing.T) {
+	t.Parallel()
+	labels := map[string]string{core.LabelTenant: "tea-test"}
+	objects := []client.Object{
+		&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "root", Namespace: "tea-test", Labels: labels}},
+		&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "nested", Namespace: "tea-test", Labels: labels}},
+		&appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: "dpg-orders", Namespace: "tea-test", Labels: labels}, Spec: appv1alpha1.DatabaseSpec{Name: "orders"}},
+		&appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "red-cache", Namespace: "tea-test", Labels: labels}, Spec: appv1alpha1.KeyValueSpec{Name: "cache"}},
+	}
+	svc := &Service{Base: &core.Base{Client: fakeClient(objects...), Namespace: "default"}}
+	manifest := `
+services:
+  - name: root
+ungrouped:
+  databases:
+    - name: orders
+projects:
+  - name: app
+    environments:
+      - name: prod
+        services:
+          - name: nested
+          - name: cache
+            type: keyvalue
+`
+	resources := svc.resolveBlueprintResources(context.Background(), store.Blueprint{TenantID: "tea-test", Manifest: manifest})
+	if got, want := len(resources), 4; got != want {
+		t.Fatalf("resource inventory = %#v, want %d resources", resources, want)
+	}
+	got := map[string]string{}
+	for _, resource := range resources {
+		got[resource.Name] = resource.Type
+	}
+	for name, wantType := range map[string]string{"root": "web_service", "nested": "web_service", "orders": "postgres", "cache": "key_value"} {
+		if got[name] != wantType {
+			t.Errorf("resource %q type = %q, want %q", name, got[name], wantType)
+		}
 	}
 }
 
@@ -231,9 +375,20 @@ type fakeBlueprintFetcher struct {
 	contents string
 	sha      string
 	err      error
+	path     string
 }
 
-func (f fakeBlueprintFetcher) FetchBlueprintFile(context.Context, string, string, string, string) (string, string, error) {
+func (f fakeBlueprintFetcher) FetchBlueprintFile(_ context.Context, _ string, _ string, _ string, filePath string) (string, string, error) {
+	if f.err != nil {
+		return "", "", f.err
+	}
+	expectedPath := f.path
+	if expectedPath == "" {
+		expectedPath = CanonicalBlueprintFilename
+	}
+	if filePath != expectedPath {
+		return "", "", fmt.Errorf("bad request: %s not found on main", filePath)
+	}
 	return f.contents, f.sha, f.err
 }
 
@@ -254,10 +409,60 @@ func TestPreviewBlueprintFound(t *testing.T) {
 	}
 }
 
+type blueprintFilesFetcher map[string]string
+
+func (f blueprintFilesFetcher) FetchBlueprintFile(_ context.Context, _ string, _ string, _ string, filePath string) (string, string, error) {
+	contents, ok := f[filePath]
+	if !ok {
+		return "", "", fmt.Errorf("bad request: %s not found on main", filePath)
+	}
+	return contents, "abc1234", nil
+}
+
+func TestBlueprintFilenameDiscovery(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	for name, test := range map[string]struct {
+		files    blueprintFilesFetcher
+		explicit string
+		wantPath string
+		wantErr  error
+	}{
+		"canonical":       {files: blueprintFilesFetcher{CanonicalBlueprintFilename: "canonical"}, wantPath: CanonicalBlueprintFilename},
+		"legacy fallback": {files: blueprintFilesFetcher{LegacyBlueprintFilename: "legacy"}, wantPath: LegacyBlueprintFilename},
+		"explicit legacy": {files: blueprintFilesFetcher{CanonicalBlueprintFilename: "canonical", LegacyBlueprintFilename: "legacy"}, explicit: LegacyBlueprintFilename, wantPath: LegacyBlueprintFilename},
+		"ambiguous":       {files: blueprintFilesFetcher{CanonicalBlueprintFilename: "canonical", LegacyBlueprintFilename: "legacy"}, wantErr: ErrBlueprintFilenameAmbiguous},
+	} {
+		t.Run(name, func(t *testing.T) {
+			contents, _, path, err := discoverBlueprintFile(ctx, test.files, "tea-test", "https://github.com/a/app", "main", test.explicit)
+			if !errors.Is(err, test.wantErr) {
+				t.Fatalf("discover error = %v, want %v", err, test.wantErr)
+			}
+			if err == nil && (path != test.wantPath || contents == "") {
+				t.Fatalf("discover = contents %q path %q, want path %q", contents, path, test.wantPath)
+			}
+		})
+	}
+}
+
+func TestPreviewBlueprintWarnsOnImplicitLegacyFilenameFallback(t *testing.T) {
+	svc := &Service{
+		Base:       &core.Base{Client: fakeClient(), Namespace: "default"},
+		GitFetcher: blueprintFilesFetcher{LegacyBlueprintFilename: stackManifest},
+	}
+	preview, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", "")
+	if err != nil {
+		t.Fatalf("PreviewBlueprint: %v", err)
+	}
+	if !preview.Found || preview.Warning == "" || !strings.Contains(preview.Warning, CanonicalBlueprintFilename) {
+		t.Fatalf("legacy fallback preview = %+v, want a render.yaml migration warning", preview)
+	}
+}
+
 func TestPreviewBlueprintInvalidManifest(t *testing.T) {
 	svc := &Service{
 		Base:       &core.Base{Client: fakeClient(), Namespace: "default"},
-		GitFetcher: fakeBlueprintFetcher{contents: "services:\n  - name: \"\"\n    type: web\n"},
+		GitFetcher: fakeBlueprintFetcher{path: LegacyBlueprintFilename, contents: "services:\n  - name: \"\"\n    type: web\n"},
 	}
 	p, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", "bex.yml")
 	if err != nil {
@@ -436,6 +641,7 @@ func TestSyncBlueprintReplacesManifest(t *testing.T) {
 services:
   - name: freshsvc
     type: web
+    runtime: image
     image: {url: "nginx:latest"}
 `
 	res, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", newManifest, "")
@@ -522,6 +728,25 @@ func TestRESTValidateBlueprint(t *testing.T) {
 	}
 	if !out.Valid {
 		t.Errorf("validate valid manifest: want valid=true, got %+v", out)
+	}
+}
+
+func TestRESTDeployBlueprintUsesStackCore(t *testing.T) {
+	svc, _ := newService(nil)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	body := fmt.Sprintf(`{"bexYaml":%q}`, stackManifest)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/deploy", strings.NewReader(body)))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("deploy Blueprint => 200, got %d: %s", rec.Code, rec.Body)
+	}
+	var result StackResult
+	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
+		t.Fatalf("unmarshal deploy result: %v", err)
+	}
+	if len(result.Services) != 3 || len(result.Databases) != 1 {
+		t.Fatalf("deploy result = %+v, want the full stack", result)
 	}
 }
 
@@ -686,7 +911,7 @@ func TestGraphQLValidateBlueprint(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
 	schema := blueprintSchema(t, svc)
 
-	q := fmt.Sprintf(`{ validateBlueprint(bexYaml: %q) { valid errors plan { services databases totalActions } } }`, stackManifest)
+	q := fmt.Sprintf(`{ validateBlueprint(bexYaml: %q) { valid errors plan { mode services databases totalActions } } }`, stackManifest)
 	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: q})
 	if len(res.Errors) > 0 {
 		t.Fatalf("validateBlueprint: %v", res.Errors)
@@ -699,13 +924,16 @@ func TestGraphQLValidateBlueprint(t *testing.T) {
 	if plan["totalActions"] != 4 {
 		t.Errorf("validateBlueprint plan = %+v, want totalActions=4", plan)
 	}
+	if plan["mode"] != "structural" {
+		t.Errorf("validateBlueprint plan = %+v, want mode=structural", plan)
+	}
 }
 
 func TestGraphQLValidateBlueprintPreservesStringErrorsAndAddsDetails(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
 	schema := blueprintSchema(t, svc)
 
-	q := `{ validateBlueprint(bexYaml: "services:\n  - name: \"\"\n") { valid errors errorDetails { error path } } }`
+	q := `{ validateBlueprint(bexYaml: "services:\n  - name: \"\"\n    type: web\n    runtime: image\n") { valid errors errorDetails { error path } } }`
 	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: q})
 	if len(res.Errors) > 0 {
 		t.Fatalf("validateBlueprint: %v", res.Errors)

@@ -49,7 +49,7 @@ export function useCreateBlueprint(): UseCreateBlueprintResult {
             variables: {
               repo,
               branch,
-              path: path || "bex.yml",
+              path: path || "render.yaml",
               name: name || undefined,
               confirm: confirmation,
               ownerId: currentWorkspaceId,

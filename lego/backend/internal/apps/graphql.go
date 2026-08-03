@@ -679,6 +679,7 @@ var blueprintGQLType = graphql.NewObject(graphql.ObjectConfig{
 var blueprintValidationErrorGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BlueprintValidationError",
 	Fields: graphql.Fields{
+		"code":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e BlueprintValidationError) any { return e.Code })},
 		"error":  &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(e BlueprintValidationError) any { return e.Error })},
 		"line":   &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(e BlueprintValidationError) any { return e.Line })},
 		"column": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(e BlueprintValidationError) any { return e.Column })},
@@ -689,6 +690,7 @@ var blueprintValidationErrorGQLType = graphql.NewObject(graphql.ObjectConfig{
 var blueprintValidationPlanGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BlueprintValidationPlan",
 	Fields: graphql.Fields{
+		"mode":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.Mode })},
 		"services":     &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.Services })},
 		"databases":    &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.Databases })},
 		"keyValue":     &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.KeyValue })},
@@ -728,6 +730,7 @@ var blueprintPreviewGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"found":    &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(p BlueprintPreview) any { return p.Found })},
 		"manifest": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p BlueprintPreview) any { return p.Manifest })},
 		"commitId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p BlueprintPreview) any { return p.CommitID })},
+		"warning":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p BlueprintPreview) any { return p.Warning })},
 		"error":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p BlueprintPreview) any { return p.Error })},
 		"validation": &graphql.Field{Type: blueprintValidationGQLType, Resolve: gqlutil.Field(func(p BlueprintPreview) any {
 			if p.Validation == nil {
@@ -927,7 +930,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return s.GetDomain(p.Context, p.Args["id"].(string), p.Args["name"].(string))
 			},
 		},
-		// blueprints: list known bex.yml stack sources for a workspace (w2/m15).
+		// blueprints: list known render.yaml stack sources for a workspace (w2/m15).
 		"blueprints": &graphql.Field{
 			Type: graphql.NewList(blueprintGQLType),
 			Args: graphql.FieldConfigArgument{
@@ -948,7 +951,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return s.GetBlueprint(p.Context, p.Args["id"].(string), gqlutil.Str(p.Args, "ownerId"))
 			},
 		},
-		// validateBlueprint: dry-run parse a bex.yml — per-entry errors, no apply (w2/m15).
+		// validateBlueprint: dry-run parse render.yaml content — per-entry errors, no apply (w2/m15).
 		"validateBlueprint": &graphql.Field{
 			Type: blueprintValidationGQLType,
 			Args: graphql.FieldConfigArgument{
@@ -959,7 +962,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return s.ValidateBlueprint(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["bexYaml"].(string))
 			},
 		},
-		// blueprintPreview: fetch a repo's bex.yml and dry-run validate it before
+		// blueprintPreview: fetch a repo's render.yaml and dry-run validate it before
 		// any create — the dashboard's Render-parity Review step.
 		"blueprintPreview": &graphql.Field{
 			Type: blueprintPreviewGQLType,

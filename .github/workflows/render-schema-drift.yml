@@ -1,0 +1,17 @@
+name: Render Blueprint schema drift
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  render-blueprint-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Compare Render's published schema with the reviewed pin
+        run: scripts/render-schema-drift.sh

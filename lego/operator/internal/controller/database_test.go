@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -84,6 +85,39 @@ var testStore = BackupStore{
 	DestinationPath: "s3://bex-tfstate/postgres",
 	EndpointURL:     "https://s3.eu-central-2.wasabisys.com",
 	S3Secret:        "pg-backup-s3",
+}
+
+func TestPoolerConnectionSecretProjectsCNPGCredentials(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-orders", Namespace: "tenant-a"},
+		Status:     appv1alpha1.DatabaseStatus{PoolerHost: "dpg-orders-pooler.tenant-a.svc"},
+	}
+	source := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-orders-app", Namespace: "tenant-a"},
+		Data: map[string][]byte{
+			"username": []byte("orders_user"), "password": []byte("secret"), "dbname": []byte("orders"),
+		},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(db, source).Build()
+	r := &DatabaseReconciler{Client: cl, Scheme: scheme}
+	ready, err := r.reconcilePoolerConnectionSecret(context.Background(), db)
+	if err != nil || !ready {
+		t.Fatalf("reconcilePoolerConnectionSecret = ready %v err %v", ready, err)
+	}
+	pooled := &corev1.Secret{}
+	if err := cl.Get(context.Background(), types.NamespacedName{Name: "dpg-orders-pooler-app", Namespace: "tenant-a"}, pooled); err != nil {
+		t.Fatalf("pooler Secret: %v", err)
+	}
+	if got, want := string(pooled.Data["uri"]), "postgresql://orders_user:secret@dpg-orders-pooler.tenant-a.svc:5432/orders"; got != want {
+		t.Errorf("pooler URI = %q, want %q", got, want)
+	}
 }
 
 func TestResolvePlan(t *testing.T) {

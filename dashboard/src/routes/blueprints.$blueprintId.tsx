@@ -190,7 +190,7 @@ export function BlueprintDetailPage() {
                         {t("blueprints.metaPath")}
                       </dt>
                       <dd className="font-mono font-medium">
-                        {blueprint.path || "bex.yml"}
+                        {blueprint.path || "render.yaml"}
                       </dd>
                     </div>
                     <div>
@@ -200,9 +200,7 @@ export function BlueprintDetailPage() {
                       <dd className="flex items-center gap-2 font-medium">
                         <Switch
                           checked={blueprint.autoSync}
-                          onCheckedChange={(v) =>
-                            void handleAutoSyncToggle(v)
-                          }
+                          onCheckedChange={(v) => void handleAutoSyncToggle(v)}
                           disabled={busy}
                           aria-label={t("blueprints.metaAutoSync")}
                         />
@@ -286,7 +284,9 @@ export function BlueprintDetailPage() {
                         <TableRow>
                           <TableHead>{t("blueprints.syncColCommit")}</TableHead>
                           <TableHead>{t("blueprints.syncColState")}</TableHead>
-                          <TableHead>{t("blueprints.syncColStarted")}</TableHead>
+                          <TableHead>
+                            {t("blueprints.syncColStarted")}
+                          </TableHead>
                           <TableHead>
                             {t("blueprints.syncColCompleted")}
                           </TableHead>

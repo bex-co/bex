@@ -1,5 +1,5 @@
 // stack-demo: a tiny web + worker stack that reads a managed Postgres via the
-// DATABASE_URL injected by bex.yml's fromDatabase reference (w1/m24). The same
+// DATABASE_URL injected by render.yaml's fromDatabase reference (w1/m24). The same
 // image serves both roles: ROLE=web (the default) runs the HTTP server, which
 // answers GET / with a real SELECT 1 through DATABASE_URL; ROLE=worker runs a
 // heartbeat loop pinging the same database. bex background workers run the
@@ -29,7 +29,7 @@ func main() {
 
 // db opens the managed-Postgres connection bex injected from the database's CNPG
 // connection Secret (DATABASE_URL is a secretRef — its value never appears in
-// bex.yml or the App spec).
+// render.yaml or the App spec).
 func db() (*sql.DB, error) {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
