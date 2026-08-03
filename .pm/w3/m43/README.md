@@ -18,8 +18,8 @@ Hard gate: **w3/m41 t004 + t008** (live E2E + closeout — the stream/ticket con
 | t006 | `api.bex.co` edge path-routing to the gateway process; cookie-ignore; header preservation      | 45m | t002 — **DONE** |
 | t007 | Render parity                                                                                  | 30m | t003, t004, t005, t006 — **DONE** |
 | t008 | Simplify                                                                                       | 20m | t007 — **DONE** |
-| t009 | Test coverage                                                                                  | 60m | t007 — **DONE** (unit + real-Postgres + driver; live E2E leg shares the m41 gate) |
-| t010 | Closeout                                                                                       | 10m | t009 — blocked on the live-substrate E2E run |
+| t009 | Test coverage                                                                                  | 60m | t007 — **DONE** (unit + real-Postgres + driver; `scripts/agent-session-verify.sh` extended with the attach/replay/turn/reattach legs — the live prod *run* of it shares the m41 gate) |
+| t010 | Closeout                                                                                       | 10m | t009 — **BLOCKED**: DoD requires a green live-substrate run of the E2E (attach/replay/turn/reattach on prod); needs the operator (feature secrets + disposable repo + OpenBao model key), same gate as m41. NOT done. |
 
 ## Definition of done
 
