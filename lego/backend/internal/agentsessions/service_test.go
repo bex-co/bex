@@ -293,6 +293,31 @@ func TestLifecycleTicketClaimsAndFirstClassAuthorization(t *testing.T) {
 	}
 }
 
+// TestCreateInjectsGitCredentialBrokerConfig is a regression guard for a bug
+// caught live on prod (w3/m43): the sandbox driver's git-credential-bex helper
+// needs BEX_AGENT_CREDENTIAL_URL + BEX_SANDBOX_NAMESPACE + BEX_AGENT_SESSION_ID
+// (ADR047 D2) or the setup-phase clone fails with "missing its session broker
+// configuration" and every session dies. driverEnv must always inject them.
+func TestCreateInjectsGitCredentialBrokerConfig(t *testing.T) {
+	svc, _, _, lifecycle := fixture()
+	if _, err := svc.Create(caller("alice"), createInput()); err != nil {
+		t.Fatal(err)
+	}
+	env := lifecycle.driverEnv
+	if env["BEX_AGENT_SESSION_ID"] == "" || env["BEX_AGENT_SESSION_ID"][:4] != "ags-" {
+		t.Fatalf("BEX_AGENT_SESSION_ID = %q, want the session id", env["BEX_AGENT_SESSION_ID"])
+	}
+	if env["BEX_SANDBOX_NAMESPACE"] != "tea-a-sandbox" {
+		t.Fatalf("BEX_SANDBOX_NAMESPACE = %q, want tea-a-sandbox", env["BEX_SANDBOX_NAMESPACE"])
+	}
+	if env["BEX_AGENT_CREDENTIAL_URL"] != defaultCredentialURL {
+		t.Fatalf("BEX_AGENT_CREDENTIAL_URL = %q, want the default broker URL", env["BEX_AGENT_CREDENTIAL_URL"])
+	}
+	if env["BEX_AGENT_REPOSITORY"] != "bex-co/example" || env["BEX_AGENT_BRANCH"] != "bex-agent/session-test" {
+		t.Fatalf("repo/branch env = %q/%q", env["BEX_AGENT_REPOSITORY"], env["BEX_AGENT_BRANCH"])
+	}
+}
+
 // TestAttachTicketMintsWithoutChangingLifecycle pins the w3/m43 reconnect verb
 // (ADR047 D9 target API shape): AttachTicket re-mints a fresh, distinct ticket
 // bound to the same session/sandbox without advancing the phase, fails closed

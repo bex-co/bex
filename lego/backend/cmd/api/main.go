@@ -683,6 +683,9 @@ func main() {
 	}
 	deps.ShellWSURL = os.Getenv("BEX_SHELL_WS_URL")
 	deps.AgentSessionGatewayURL = os.Getenv("BEX_AGENT_SESSION_GATEWAY_URL")
+	// Optional override of the in-cluster gateway git-credential broker URL the
+	// sandbox helper calls (ADR047 D2); empty => the default internal gateway URL.
+	deps.AgentCredentialURL = os.Getenv("BEX_AGENT_CREDENTIAL_URL")
 
 	srv := api.NewServer(base, deps)
 	// The agent-session Completer finalizes fire-and-forget sessions: it opens the
