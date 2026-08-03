@@ -20,6 +20,10 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -47,6 +51,51 @@ func TestRenderBlueprintCapabilityRegistryExhaustive(t *testing.T) {
 	}
 	if !json.Valid(bexBlueprintExtensionSchemaSource) {
 		t.Fatal("x-bex extension schema is not JSON")
+	}
+}
+
+func TestRenderBlueprintCapabilityRegistryFixturesExist(t *testing.T) {
+	registry, err := RenderBlueprintCapabilityRegistry()
+	if err != nil {
+		t.Fatalf("RenderBlueprintCapabilityRegistry(): %v", err)
+	}
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("resolve test source path")
+	}
+	backendRoot := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", ".."))
+	fixtures := map[string]struct{}{}
+	for _, capability := range registry.Fields {
+		if capability.State != BlueprintCapabilityUnsupported {
+			fixtures[capability.Fixture] = struct{}{}
+		}
+	}
+	for _, values := range registry.EnumValues {
+		for _, capability := range values {
+			if capability.State != BlueprintCapabilityUnsupported {
+				fixtures[capability.Fixture] = struct{}{}
+			}
+		}
+	}
+	ordered := make([]string, 0, len(fixtures))
+	for fixture := range fixtures {
+		ordered = append(ordered, fixture)
+	}
+	sort.Strings(ordered)
+	for _, fixture := range ordered {
+		path, testName, ok := strings.Cut(fixture, ":")
+		if !ok || path == "" || testName == "" || filepath.IsAbs(path) {
+			t.Errorf("invalid capability fixture %q", fixture)
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(backendRoot, filepath.Clean(path)))
+		if err != nil {
+			t.Errorf("read capability fixture %q: %v", fixture, err)
+			continue
+		}
+		if !strings.Contains(string(data), "func "+testName+"(") {
+			t.Errorf("capability fixture %q has no test function %s", fixture, testName)
+		}
 	}
 }
 
