@@ -55,7 +55,7 @@ type TupleWriter interface {
 
 type SandboxLifecycle interface {
 	CreateAgentSessionSandbox(ctx context.Context, workspaceID, template, sessionID, repository, branch, modelEndpoint, modelAPIKey string, egressAllowlist []string, driverEnv map[string]string) (sandbox.Sandbox, error)
-	EnterAgentSessionPhase(context.Context, string, string, string) error
+	EnterAgentSessionPhase(ctx context.Context, workspaceID, sessionID, sandboxID, modelEndpoint string, egressAllowlist []string) error
 	ResumeAgentSessionSandbox(context.Context, string, string, string) error
 	CancelAgentSessionSandbox(context.Context, string, string, string) error
 	ReadSessionStatus(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error)
@@ -239,7 +239,7 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, templ
 		_, _ = s.Store.SetAgentSessionLifecycle(ctx, record.ID, "", PhaseFailed, "sandbox create failed", false)
 		return store.AgentSession{}, err
 	}
-	if err := s.Sandbox.EnterAgentSessionPhase(ctx, ws, record.ID, sb.ID); err != nil {
+	if err := s.Sandbox.EnterAgentSessionPhase(ctx, ws, record.ID, sb.ID, modelEndpoint, egressAllowlist); err != nil {
 		_ = s.Sandbox.CancelAgentSessionSandbox(ctx, ws, record.ID, sb.ID)
 		_, _ = s.Store.SetAgentSessionLifecycle(ctx, record.ID, sb.ID, PhaseFailed, "egress phase transition failed", false)
 		return store.AgentSession{}, err

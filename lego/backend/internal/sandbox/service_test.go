@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 type fakeWorkspace map[string]string
@@ -166,10 +167,18 @@ func TestAgentSessionPolicyPrecedesSandboxCreateAndTransitionUsesDurableAllowlis
 	if err != nil {
 		t.Fatalf("CreateAgentSessionSandbox: %v", err)
 	}
-	if !created || got.Metadata[metadataAgentSession] != "ags-one" || got.Metadata[metadataModelEndpoint] != "https://models.example.com/v1" || got.Metadata[metadataEgressAllow] != `["docs.example.com"]` {
+	if !created || got.Metadata[metadataAgentSession] != "ags-one" {
 		t.Fatalf("agent session metadata = %#v", got.Metadata)
 	}
-	if err := lifecycle.EnterAgentSessionPhase(callerCtx(), "tea-a", "ags-one", "os-agent"); err != nil {
+	// The model endpoint (URL) and egress allowlist (JSON) are NOT stamped as
+	// metadata — they are label-invalid and would be rejected by real OpenSandbox
+	// (w3/m43, caught live on prod). Every metadata value must be a valid label.
+	for k, v := range got.Metadata {
+		if len(validation.IsValidLabelValue(v)) != 0 {
+			t.Fatalf("sandbox metadata %q=%q is not a valid k8s label value", k, v)
+		}
+	}
+	if err := lifecycle.EnterAgentSessionPhase(callerCtx(), "tea-a", "ags-one", "os-agent", "https://models.example.com/v1", []string{"docs.example.com"}); err != nil {
 		t.Fatalf("EnterAgentSessionPhase: %v", err)
 	}
 	if len(eg.calls) != 2 || eg.calls[1].op != "agent" || eg.calls[1].modelEndpoint != "https://models.example.com/v1" || len(eg.calls[1].extra) != 1 || eg.calls[1].extra[0] != "docs.example.com" {

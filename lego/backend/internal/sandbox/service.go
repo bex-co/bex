@@ -20,7 +20,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -43,8 +42,6 @@ const (
 	metadataRegime        = "app.bex.co/regime"
 	metadataSandboxRegime = "sandbox"
 	metadataAgentSession  = agentsession.LabelSession
-	metadataEgressAllow   = "bex.co/agent-session-egress-allowlist"
-	metadataModelEndpoint = "bex.co/agent-session-model-endpoint"
 	minSandboxTimeout     = 60
 	maxSandboxTimeout     = 86400
 )
@@ -425,17 +422,18 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 	if err != nil {
 		return Sandbox{}, fmt.Errorf("%w: invalid agent session binding: %v", core.ErrBadRequest, err)
 	}
-	allowJSON, err := json.Marshal(egressAllowlist)
-	if err != nil {
-		return Sandbox{}, fmt.Errorf("encode agent session egress allowlist: %w", err)
-	}
 	namespace := store.SandboxNamespace(workspaceID)
 	if err := s.SessionEgress.PrepareSetup(ctx, namespace, sessionID, modelEndpoint, egressAllowlist); err != nil {
 		return Sandbox{}, err
 	}
 	policy := &NetworkPolicy{Default: NetworkPolicyDenyAll}
-	bindings[metadataEgressAllow] = string(allowJSON)
-	bindings[metadataModelEndpoint] = modelEndpoint
+	// The egress allowlist (a JSON array) and model endpoint (a URL) are NOT
+	// stamped as sandbox metadata: OpenSandbox persists metadata as Kubernetes
+	// labels, and `[]`/`https://…` are invalid label values (a `[]` empty
+	// allowlist is rejected outright — caught live on prod, w3/m43). The phase
+	// transition instead receives both values directly from the caller
+	// (EnterAgentSessionPhase), which already holds them, so nothing needs to
+	// round-trip through a label.
 	// driverEnv carries the non-secret run env (prompt, agent, branch, repo,
 	// delivery toggle — ADR047 D4). The BYO model key (ADR047 D7) is pod-spec env
 	// too, but is never echoed back by OpenSandbox's create response nor stamped
@@ -469,7 +467,7 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 // EnterAgentSessionPhase narrows one exact session sandbox from setup registry
 // access to its immutable agent baseline. Durable sandbox metadata, rather than
 // transition-call input, supplies the model endpoint and tenant widening.
-func (l *AgentSessionLifecycle) EnterAgentSessionPhase(ctx context.Context, workspaceID, sessionID, sandboxID string) error {
+func (l *AgentSessionLifecycle) EnterAgentSessionPhase(ctx context.Context, workspaceID, sessionID, sandboxID, modelEndpoint string, egressAllowlist []string) error {
 	s := l.service
 	if s.SessionEgress == nil {
 		return core.ErrAgentSessionsUnavailable
@@ -478,15 +476,13 @@ func (l *AgentSessionLifecycle) EnterAgentSessionPhase(ctx context.Context, work
 	if err != nil {
 		return err
 	}
-	raw, err := s.agentSessionSandbox(ctx, key, workspaceID, sessionID, sandboxID)
-	if err != nil {
+	// Re-validate that the sandbox is the exact one bound to this session before
+	// narrowing its egress (target integrity), but take the model endpoint and
+	// allowlist from the caller — they are not (and cannot be) stored as labels.
+	if _, err := s.agentSessionSandbox(ctx, key, workspaceID, sessionID, sandboxID); err != nil {
 		return err
 	}
-	var extra []string
-	if err := json.Unmarshal([]byte(raw.Metadata[metadataEgressAllow]), &extra); err != nil {
-		return fmt.Errorf("agent session egress metadata is invalid: %w", err)
-	}
-	return s.SessionEgress.TransitionToAgent(ctx, store.SandboxNamespace(workspaceID), sessionID, raw.Metadata[metadataModelEndpoint], extra)
+	return s.SessionEgress.TransitionToAgent(ctx, store.SandboxNamespace(workspaceID), sessionID, modelEndpoint, egressAllowlist)
 }
 
 // ResumeAgentSessionSandbox resumes only a fully hardened sandbox stamped for

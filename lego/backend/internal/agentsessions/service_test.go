@@ -190,7 +190,7 @@ func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, _, _, _, re
 	f.driverEnv = driverEnv
 	return sandbox.Sandbox{ID: fmt.Sprintf("sandbox-%d", f.sandboxSeq), Status: sandbox.StatusRunning}, nil
 }
-func (f *fakeLifecycle) EnterAgentSessionPhase(context.Context, string, string, string) error {
+func (f *fakeLifecycle) EnterAgentSessionPhase(_ context.Context, _, _, _, _ string, _ []string) error {
 	f.entered++
 	return nil
 }
