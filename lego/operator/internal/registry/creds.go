@@ -90,6 +90,7 @@ var ErrConflictRequeue = fmt.Errorf("persistent write conflict: requeue required
 const (
 	zotHTPasswdPath = "/secret/htpasswd"
 	zotHTTPPort     = "5000"
+	zotActionRead   = "read"
 	// platformBuilderRepository is the shared kpack ClusterBuilder image. Every
 	// authenticated App build must be able to pull it, but only bex-builder may
 	// create, update, or delete it (through the global adminPolicy).
@@ -603,7 +604,7 @@ func zotConfigHasRepoWritePolicy(configJSON []byte, repo, user string) bool {
 	if len(users) != 1 || users[0] != user {
 		return false
 	}
-	for _, action := range []string{"read", "create", "update", "delete"} {
+	for _, action := range []string{zotActionRead, "create", "update", "delete"} {
 		if !containsString(actions, action) {
 			return false
 		}
@@ -628,7 +629,7 @@ func zotConfigHasBuilderAdminPolicy(configJSON []byte) bool {
 	if !containsString(users, "bex-builder") {
 		return false
 	}
-	for _, action := range []string{"read", "create", "update", "delete"} {
+	for _, action := range []string{zotActionRead, "create", "update", "delete"} {
 		if !containsString(actions, action) {
 			return false
 		}
@@ -646,7 +647,7 @@ func zotConfigHasPlatformBuilderReadPolicy(configJSON []byte) bool {
 		return false
 	}
 	actions, _ := raw["defaultPolicy"].([]any)
-	return len(actions) == 1 && actions[0] == "read"
+	return len(actions) == 1 && actions[0] == zotActionRead
 }
 
 // ensureZotBuilderAdminPolicy migrates an existing Zot config to the global
@@ -672,7 +673,7 @@ func ensureZotBuilderAdminPolicy(configJSON []byte) ([]byte, error) {
 	}
 	accessControl["adminPolicy"] = map[string]any{
 		"users":   []any{"bex-builder"},
-		"actions": []any{"read", "create", "update", "delete"},
+		"actions": []any{zotActionRead, "create", "update", "delete"},
 	}
 	return json.Marshal(data)
 }
@@ -691,7 +692,7 @@ func ensureZotPlatformBuilderReadPolicy(configJSON []byte) ([]byte, error) {
 	}
 	repos := zotReposMap(data)
 	repos[platformBuilderRepository] = map[string]any{
-		"defaultPolicy": []any{"read"},
+		"defaultPolicy": []any{zotActionRead},
 	}
 	return json.Marshal(data)
 }
@@ -748,7 +749,7 @@ func addZotACLEntry(configJSON []byte, repo, zotUser string) ([]byte, error) {
 		"policies": []any{
 			map[string]any{
 				"users":   []any{zotUser},
-				"actions": []any{"read", "create", "update", "delete"},
+				"actions": []any{zotActionRead, "create", "update", "delete"},
 			},
 		},
 	}
@@ -910,18 +911,18 @@ func (c *Creds) baseZotConfig() []byte {
 						Policies: []policy{
 							{
 								Users:   []string{"bex-builder"},
-								Actions: []string{"read", "create", "update", "delete"},
+								Actions: []string{zotActionRead, "create", "update", "delete"},
 							},
 						},
 						DefaultPolicy: []string{},
 					},
 					platformBuilderRepository: {
-						DefaultPolicy: []string{"read"},
+						DefaultPolicy: []string{zotActionRead},
 					},
 				},
 				AdminPolicy: policy{
 					Users:   []string{"bex-builder"},
-					Actions: []string{"read", "create", "update", "delete"},
+					Actions: []string{zotActionRead, "create", "update", "delete"},
 				},
 			},
 		},

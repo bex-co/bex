@@ -249,7 +249,7 @@ func addZotReadOnlyACLEntry(configJSON []byte, repo, zotUser string) ([]byte, er
 		"policies": []any{
 			map[string]any{
 				"users":   []any{zotUser},
-				"actions": []any{"read"},
+				"actions": []any{zotActionRead},
 			},
 		},
 	}
@@ -270,5 +270,5 @@ func zotConfigHasRepoReadOnlyPolicy(configJSON []byte, repo, zotUser string) boo
 	policy, _ := policies[0].(map[string]any)
 	users, _ := policy["users"].([]any)
 	actions, _ := policy["actions"].([]any)
-	return containsString(users, zotUser) && len(actions) == 1 && actions[0] == "read"
+	return containsString(users, zotUser) && len(actions) == 1 && actions[0] == zotActionRead
 }
