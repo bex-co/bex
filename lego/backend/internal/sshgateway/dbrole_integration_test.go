@@ -170,6 +170,14 @@ func TestGatewayScopedRoleAllowsOwnSurfaceDeniesTheRest(t *testing.T) {
 		t.Errorf("audit Record denied under scoped role: %v", err)
 	}
 
+	// The agent-session transcript surface (ADR047 D9, w3/m43): the attach
+	// listener SELECTs (replay + max-seq) and INSERTs (tee) agent_session_transcripts.
+	// Both must be permitted for the scoped role, or the stream returns
+	// "transcript unavailable" (caught live on prod).
+	if _, _, err := st.AgentSessionTranscriptMaxSeq(ctx, "ags-nope000000000000000"); permDenied(err) {
+		t.Errorf("transcript SELECT denied under scoped role: %v", err)
+	}
+
 	// --- DENY: sensitive tables are refused by Postgres ----------------------
 	for _, table := range sensitiveTables {
 		_, err := scoped.Exec(ctx, "SELECT 1 FROM "+table+" LIMIT 1")

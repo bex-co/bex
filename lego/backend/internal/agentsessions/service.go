@@ -99,6 +99,9 @@ type Service struct {
 	Sandbox      SandboxLifecycle
 	TicketSecret []byte
 	GatewayURL   string
+	// CredentialURL is the in-cluster gateway git-credential broker endpoint the
+	// sandbox's helper calls (ADR047 D2). Empty => defaultCredentialURL.
+	CredentialURL string
 	// ModelKeys, when set (BEX_OPENBAO_URL wired), sources each workspace's BYO
 	// agent-session model provider key at session-create time (ADR047 D7). nil
 	// => sessions start with no model key (byte-identical to before this field
@@ -218,7 +221,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		_ = s.Store.DeleteAgentSession(ctx, record.ID)
 		return View{}, fmt.Errorf("%w: establish agent session authorization: %v", core.ErrAuthzUnavailable, err)
 	}
-	env := driverEnv(req.AgentConfig, record.Repo, record.Branch)
+	env := driverEnv(req.AgentConfig, record.Repo, record.Branch, record.ID, store.SandboxNamespace(record.WorkspaceID), s.credentialURL())
 	record, err = s.dispatch(ctx, record, strings.TrimSpace(req.AgentConfig.Template), modelEndpoint, modelAPIKey, egressAllowlist, env, "")
 	if err != nil {
 		return View{}, err
@@ -387,11 +390,28 @@ func agentCommand(agent string) string {
 	}
 }
 
+// defaultCredentialURL is the in-cluster gateway git-credential broker endpoint
+// (ADR047 D2). The sandbox's git-credential-bex helper POSTs here; the gateway
+// authenticates the source Pod and HMAC-proxies a scoped token mint to bex-api.
+const defaultCredentialURL = "http://bex-ssh-gateway.bex-system.svc:8082" + agentsession.GatewayPath
+
+func (s *Service) credentialURL() string {
+	if strings.TrimSpace(s.CredentialURL) != "" {
+		return s.CredentialURL
+	}
+	return defaultCredentialURL
+}
+
 // driverEnv renders the non-secret environment the sandbox driver reads to run
 // one headless delivery turn (lego/agent-image/driver). The BYO model key is
 // NOT here: it is sourced from OpenBao and injected as pod-spec env by the
-// sandbox lifecycle (ADR047 D7), so no secret flows through this map.
-func driverEnv(config AgentConfig, repo, branch string) map[string]string {
+// sandbox lifecycle (ADR047 D7), so no secret flows through this map. The
+// git-credential-bex vars (ADR047 D2) ARE here: without them the setup-phase
+// clone cannot authenticate and every session dies with "missing its session
+// broker configuration" (caught live on prod, w3/m43). They carry no secret —
+// only the session's non-secret identity + the internal broker URL; the token
+// is minted on demand through the gateway and never lands on disk.
+func driverEnv(config AgentConfig, repo, branch, sessionID, namespace, credentialURL string) map[string]string {
 	return map[string]string{
 		"BEX_AGENT_COMMAND":         agentCommand(config.Agent),
 		"BEX_AGENT_PROMPT":          config.Task,
@@ -399,6 +419,10 @@ func driverEnv(config AgentConfig, repo, branch string) map[string]string {
 		"BEX_AGENT_REPO_URL":        "https://github.com/" + repo + ".git",
 		"BEX_AGENT_DELIVER":         "1",
 		"BEX_AGENT_EXIT_AFTER_TURN": "0",
+		"BEX_AGENT_CREDENTIAL_URL":  credentialURL,
+		"BEX_SANDBOX_NAMESPACE":     namespace,
+		"BEX_AGENT_SESSION_ID":      sessionID,
+		"BEX_AGENT_REPOSITORY":      repo,
 	}
 }
 
@@ -455,7 +479,7 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
-	env := driverEnv(config, record.Repo, record.Branch)
+	env := driverEnv(config, record.Repo, record.Branch, record.ID, store.SandboxNamespace(record.WorkspaceID), s.credentialURL())
 	env["BEX_AGENT_PROMPT"] = prompt // the steering prompt overrides the original task
 	record, err = s.dispatch(ctx, record, strings.TrimSpace(config.Template), modelEndpoint, modelAPIKey, egressAllowlist, env, DeliveryRedispatch)
 	if err != nil {

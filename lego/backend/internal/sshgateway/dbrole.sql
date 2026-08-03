@@ -32,3 +32,11 @@ GRANT SELECT, INSERT, DELETE ON shell_ticket_nonces TO __ROLE__;
 -- The authorization audit trail (core.Base.Audit -> PGStore.Record). Append-only:
 -- INSERT alone, no read of others' audit history.
 GRANT INSERT ON audit_events TO __ROLE__;
+
+-- The agent-session conversation transcript (ADR047 D9, w3/m43): the attach
+-- listener replays stored parts (AgentSessionTranscript + AgentSessionTranscript-
+-- MaxSeq, SELECT) and tees live parts (AppendAgentSessionTranscript, INSERT ...
+-- ON CONFLICT DO NOTHING). No UPDATE/DELETE — retention pruning is bex-api's, not
+-- the gateway's, so a stolen gateway credential can neither rewrite nor purge a
+-- transcript.
+GRANT SELECT, INSERT ON agent_session_transcripts TO __ROLE__;
