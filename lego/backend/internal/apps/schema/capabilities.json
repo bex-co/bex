@@ -265,32 +265,46 @@
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/envVarGroup/properties/envVars": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_env_test.go:TestValidateBlueprintAcceptsEnvironmentScopedEnvGroup",
+      "reason": "normalized and applied through the workspace env-group adapter"
     },
     "#/definitions/envVarGroup/properties/name": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_env_test.go:TestValidateBlueprintAcceptsEnvironmentScopedEnvGroup",
+      "reason": "used as the stable env-group name by the workspace adapter"
     },
     "#/definitions/environment/allOf/1/properties/name": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/create_payload_test.go:TestDeployStackUsesCanonicalBlueprintEnvironmentNesting",
+      "reason": "normalized into the workspace Environment identity"
     },
     "#/definitions/environment/allOf/1/properties/networking": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/create_payload_test.go:TestDeployStackUsesCanonicalBlueprintEnvironmentNesting",
+      "reason": "normalized into the Environment network-isolation policy"
     },
     "#/definitions/environment/allOf/1/properties/permissions": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/create_payload_test.go:TestDeployStackUsesCanonicalBlueprintEnvironmentNesting",
+      "reason": "normalized into the Environment protection policy"
     },
     "#/definitions/environment/allOf/1/properties/networking/properties/isolation": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/create_payload_test.go:TestDeployStackUsesCanonicalBlueprintEnvironmentNesting",
+      "reason": "sets the Environment network-isolation policy"
     },
     "#/definitions/environment/allOf/1/properties/permissions/properties/protection": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/create_payload_test.go:TestDeployStackUsesCanonicalBlueprintEnvironmentNesting",
+      "reason": "sets the Environment protection policy"
     },
     "#/definitions/header/properties/name": {
       "state": "unsupported",
@@ -321,12 +335,16 @@
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/project/properties/environments": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "NormalizeBlueprintIR",
+      "fixture": "internal/apps/blueprint_ir_test.go:TestNormalizeBlueprintIRPreservesPresenceAndGrouping",
+      "reason": "normalizes every environment-scoped declaration"
     },
     "#/definitions/project/properties/name": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "NormalizeBlueprintIR",
+      "fixture": "internal/apps/blueprint_ir_test.go:TestNormalizeBlueprintIRPreservesPresenceAndGrouping",
+      "reason": "normalizes the stable Project identity"
     },
     "#/definitions/readReplica/properties/name": {
       "state": "unsupported",
@@ -373,16 +391,22 @@
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/resources/properties/databases": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "NormalizeBlueprintIR",
+      "fixture": "internal/apps/blueprint_ir_test.go:TestNormalizeBlueprintIRPreservesPresenceAndGrouping",
+      "reason": "normalizes root, ungrouped, and environment-scoped databases"
     },
     "#/definitions/resources/properties/envVarGroups": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "NormalizeBlueprintIR",
+      "fixture": "internal/apps/blueprint_ir_test.go:TestNormalizeBlueprintIRPreservesPresenceAndGrouping",
+      "reason": "normalizes root, ungrouped, and environment-scoped env groups"
     },
     "#/definitions/resources/properties/services": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "NormalizeBlueprintIR",
+      "fixture": "internal/apps/blueprint_ir_test.go:TestNormalizeBlueprintIRPreservesPresenceAndGrouping",
+      "reason": "normalizes root, ungrouped, and environment-scoped services"
     },
     "#/definitions/rootPreviews/properties/expireAfterDays": {
       "state": "unsupported",
@@ -760,22 +784,30 @@
     },
     "#/definitions/environment/allOf/1/properties/networking/properties/isolation/enum": {
       "\"enabled\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/create_payload_test.go:TestDeployStackUsesCanonicalBlueprintEnvironmentNesting",
+        "reason": "maps to the Environment network-isolation policy"
       },
       "\"disabled\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/create_payload_test.go:TestDeployStackUsesCanonicalBlueprintEnvironmentNesting",
+        "reason": "maps to the Environment network-isolation policy"
       }
     },
     "#/definitions/environment/allOf/1/properties/permissions/properties/protection/enum": {
       "\"enabled\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/create_payload_test.go:TestDeployStackUsesCanonicalBlueprintEnvironmentNesting",
+        "reason": "maps to the Environment protection policy"
       },
       "\"disabled\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/create_payload_test.go:TestDeployStackUsesCanonicalBlueprintEnvironmentNesting",
+        "reason": "maps to the Environment protection policy"
       }
     },
     "#/definitions/plan/enum": {
