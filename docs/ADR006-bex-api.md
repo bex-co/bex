@@ -146,7 +146,7 @@ Render's create-service JSON and Blueprint YAML are different contracts. `secret
 | render.yaml field | bex | note |
 | --- | :-: | --- |
 | root `services`, `databases`, `envVarGroups` | ✅ | canonical ungrouped root stack lists; `apps:` is rejected |
-| `projects[].environments[]`, `ungrouped` | ✅ | canonical Render grouping; nested services, databases, and Key Value entries get project/environment membership on their first write; nested env-var groups are rejected until their association path is implemented |
+| `projects[].environments[]`, `ungrouped` | ✅ | canonical Render grouping; nested services, databases, Key Value entries, and env-var groups get project/environment membership on their first write |
 | service `name`, `type` (`web`/`pserv`/`worker`/`cron`), `runtime: static` | ✅ | `type`+`runtime` map to the App serviceType (`pserv`→private, `web`+`static`→static_site) |
 | `repo`, `branch`, `rootDir`, `healthCheckPath`, `schedule`, `domains` | ✅ | 1:1 (build-from-git + custom domains) |
 | `plan`, `numInstances` | ✅ | canonical render.yaml spellings; `tier`/`replicas` are rejected |
@@ -157,17 +157,17 @@ Render's create-service JSON and Blueprint YAML are different contracts. `secret
 | `envVars: {key, fromService}` (host/port/hostport) | ✅ | → literal |
 | `databases`: `name`/`plan`/`diskSizeGB`/`postgresMajorVersion`/`ipAllowList`/`readReplicas`/`highAvailability` | ✅ | → Database CR spec |
 | service `type: keyvalue` / `redis` | ✅ | → KeyValue CR spec; may be root, environment-scoped, or ungrouped |
-| `autoDeployTrigger` | ✅ | `commit`/`checksPass`→on, `off`→off |
-| `preDeployCommand` | ✅ | → `App.spec.preDeployCommand` (w1/m33): a command run to completion against the new revision's image before it serves traffic; a non-zero exit fails the deploy and leaves the previous revision live |
+| `autoDeployTrigger` | ◐ | `commit`→on and `off`→off; `checksPass` is explicitly rejected because bex has no CI-check gate |
+| `preDeployCommand` | ◐ | → `App.spec.preDeployCommand` for web/private/worker services; explicitly rejected for cron jobs and static sites, which have no pre-deploy phase |
 | `buildFilter` (`paths`/`ignoredPaths`) | ✅ | → `App.spec.buildFilter` (w1/m34): Render's Build Filters — repository-root-relative globs gating git-push auto-deploys (empty `paths` = every path; `ignoredPaths` wins over `paths`); malformed globs rejected at parse |
 | `maintenanceMode: {enabled, uri?}` | ✅ | → `App.spec.maintenanceMode` (w1/m37), paid web services only; omitted `uri` means the default page; omission of the whole field preserves an API/dashboard edit on re-sync |
 | `envVarGroups:` + `envVars: {fromGroup}` | ✅ | → bex env groups (w1/m35): a group block materializes an m16 env group by name (create/reconcile; `generateValue` mints once); a keyless `{fromGroup: <name>}` links all of the group's vars. Needs OpenBao |
 | `generateValue`, `sync: false` | ✅ | → seeded SEED-ONCE into the mutable env-vars store (w1/m35), never `spec.env`, so a dashboard edit wins and re-`sync` neither overwrites nor re-mints. `generateValue` = base64 256-bit (Render's shape). Needs OpenBao |
 | `fromService.envVarKey` | ✅ | → copies a sibling service's declared var by value (w1/m35, same-file resolution) |
-| keyvalue `fromService`, generated-value copy across services | ✖ | rejected — a keyvalue `fromService` connection and copying a not-yet-minted `generateValue`/reference across services need cross-service secret plumbing (documented omission) |
+| keyvalue `fromService`, generated-value copy across services | ◐ | Key Value `fromService` resolves to an authorized SecretRef for `connectionString`/`host`/`port`/`password`; copying a not-yet-minted `generateValue`/reference across services remains explicitly rejected |
 | `maxShutdownDelaySeconds` | ✅ | (w10/m2) → `App.spec.maxShutdownDelaySeconds`, same 1–300 validation as REST/GraphQL/MCP (w6/m25); closes the Blueprint parser omission this row previously recorded |
 | Postgres `databaseName`, `user` | ✅ | create-time physical database/owner identity; validated with the same contract as REST/GraphQL/MCP and immutable after creation |
-| `region`, `disk`, `scaling`, `previews`, `renderSubdomainPolicy`, `initialDeployHook`, `registryCredential`, `buildCommand`, `startCommand` | — | ignored (bex has no equivalent; not honored, not faked). Blueprint `initialDeployHook` is Render's one-time post-first-deploy **shell command**, not the secret Deploy Hook URL described below. |
+| capability registry and conditional fields | ◐ | the pinned [capability registry](../lego/backend/internal/apps/schema/capabilities.json) is authoritative. Persistent service disks, previews, per-resource regions, Docker build context, Blueprint registry credentials, `previewValue`, and `checksPass` are field-specific pre-write refusals. `scaling`, `ipAllowList`, and `renderSubdomainPolicy` are accepted only for service kinds the operator applies; unsupported kind/field combinations are rejected rather than stored as no-ops. `initialDeployHook` runs once on first deploy; `buildCommand` and `startCommand` use the normal build/runtime contract. |
 | sync-delete of removed entries | ✖ | documented divergence — bex v1 does not delete resources absent from the file |
 | direct service `environmentId`, `secretFiles` | ✖ | rejected: these belong to Render's create-service body, not its Blueprint service schema; use `projects[].environments[]` for membership |
 | `previews` (PR preview environments) | ✖ | non-goal (explicitly rejected, [DO_NOT_DO](../.pm/DO_NOT_DO.md)) |
