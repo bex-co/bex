@@ -25,7 +25,7 @@ Six decisions. Directory layout follows the repo's function-based convention (li
 
 ### D1 — Multi-node Kubernetes-runtime substrate (replace the single-host toy)
 
-Deploy `opensandbox-server` (the Python lifecycle API) **in-cluster** as a Deployment + Service + ConfigMap (cluster-portable TOML) + PVC (sqlite store) + ServiceAccount/Role in `opensandbox-system`, talking to the already-installed BatchSandbox controller. A `server.Dockerfile` packages the PyPI package into an image (no official image exists today). The cluster TOML drops the hardcoded `kubeconfig_path` (in-cluster ServiceAccount), bind-mounts the BatchSandbox template as a ConfigMap, and sets `[runtime] type=kubernetes workload_provider=batchsandbox`. `BEX_OPENSANDBOX_URL` becomes `http://<svc>.opensandbox-system.svc:<port>`. Production does not pass the controller any snapshot registry or credential flags: pause is unavailable under D5's baseline-PSS constraint, and dormant snapshot credentials would expand authority without providing a working feature. The server's own 0.2.2 config model has no `[snapshot]` block; writing one into its TOML would be silently ignored rather than configuring the controller.
+Deploy `opensandbox-server` (the Python lifecycle API) **in-cluster** as a Deployment + Service + ConfigMap (cluster-portable TOML) + PVC (sqlite store) + ServiceAccount/Role in `opensandbox-system`, talking to the already-installed BatchSandbox controller. A `server.Dockerfile` packages the PyPI package into an image (no official image exists today). The cluster TOML drops the hardcoded `kubeconfig_path` (in-cluster ServiceAccount), bind-mounts the BatchSandbox template as a ConfigMap, and sets `[runtime] type=kubernetes workload_provider=batchsandbox`. `BEX_OPENSANDBOX_URL` becomes `http://<svc>.opensandbox-system.svc:<port>`. The controller (not the server) now receives the snapshot registry + credential flags once the carried patch confines the commit Job to `opensandbox-snapshot` (D5, resolved w3/m42); the server's own 0.2.2 config model still has no `[snapshot]` block, so snapshot wiring lives on the controller values, not the server TOML.
 
 ### D2 — bex-api is the synchronous sandbox gateway; surface = Render CLI `ea sandbox`
 
@@ -97,7 +97,7 @@ The k8s BatchSandbox pause/resume commits the rootfs to an OCI image and recreat
 
 ### D6 — Validate on real containerd-CRI, not the OrbStack mock
 
-The BatchSandbox snapshot path does **not** work on `scripts/mock-cluster.sh` (OrbStack/cri-dockerd), and that local cluster has neither Cilium nor runsc. Security validation therefore needs a real containerd-CRI+Cilium+gVisor node. The DoD loop is create → execute adversarial probes → stop/delete under gVisor; pause/resume remains separately blocked by D5's baseline-PSS conflict.
+The BatchSandbox snapshot path does **not** work on `scripts/mock-cluster.sh` (OrbStack/cri-dockerd), and that local cluster has neither Cilium nor runsc. Security validation therefore needs a real containerd-CRI+Cilium+gVisor node. The DoD loop is create → execute adversarial probes → stop/delete under gVisor; pause/resume is verified separately on the prod gVisor substrate (D5, resolved w3/m42) since the OrbStack mock lacks the containerd-CRI + runsc `--overlay2=none` prerequisites the snapshot commit needs.
 
 ## Architecture
 
@@ -131,7 +131,7 @@ flowchart TB
   osserver --> ctrl
   sbx -->|"managed by"| ctrl
   ctrl -->|"maintains"| pool
-  ctrl -.->|"pause path blocked by baseline PSS (D5)"| zot
+  ctrl -->|"pause: commit rootfs (Job in opensandbox-snapshot, D5 resolved)"| zot
   sbx -->|"resume: pull rootfs — v1 rootfs-only, no memory"| zot
   sbx -.->|"✗ blocked — anti-lateral-movement"| osserver
 ```
