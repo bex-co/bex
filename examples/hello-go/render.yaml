@@ -1,4 +1,4 @@
-# bex.yml — the render.yaml-shaped manifest for deploy-from-chat (pillar 4).
+# render.yaml — the manifest for deploy-from-chat (pillar 4).
 # Deploy in one call: give an agent the repo + this file via the MCP `deploy`
 # tool (or POST it to /v1/services). The operator builds from git (Dockerfile
 # here), runs it, and returns a live https URL. A signed git push then

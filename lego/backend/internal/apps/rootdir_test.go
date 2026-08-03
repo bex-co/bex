@@ -109,7 +109,7 @@ func TestMCPCreateCronJobThreadsRootDir(t *testing.T) {
 
 func TestDeployManifestThreadsRootDir(t *testing.T) {
 	svc, cl := newService(nil)
-	manifest := "services:\n  - name: hello\n    repo: https://github.com/x/mono\n    rootDir: services/hello\n"
+	manifest := "services:\n  - name: hello\n    type: web\n    runtime: docker\n    repo: https://github.com/x/mono\n    rootDir: services/hello\n"
 	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
 		t.Fatalf("DeployStack: %v", err)
 	}

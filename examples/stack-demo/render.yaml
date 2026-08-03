@@ -1,4 +1,4 @@
-# bex.yml — a render.yaml Blueprint stack (w1/m24). One deploy call converges
+# render.yaml — a Blueprint stack (w1/m24). One deploy call converges
 # all three: the postgres database first, then the web service and the worker,
 # wired by the fromDatabase env reference (resolved to a secretRef into the
 # database's CNPG connection Secret — the credential never appears here).

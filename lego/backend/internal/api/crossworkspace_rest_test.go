@@ -186,6 +186,7 @@ var callerScopedRoutes = map[string]bool{
 	"PATCH /v1/notification-settings":              true, // the caller's own notification prefs
 	"PATCH /v1/notification-settings/push":         true, // caller's own push policy; workspace and subject come from auth context
 	"DELETE /v1/notification-device-subscriptions": true, // revokes only the caller's own devices
+	"POST /v1/blueprints/deploy":                   true, // applies a posted Blueprint in the caller-scoped ownerId workspace
 	// Logs + metrics — the resource is named in the ?resource= query string, not
 	// the path; the QueryLogs/GetMetrics verbs (t001) authorize it via GetApp.
 	"GET /v1/logs":                    true,

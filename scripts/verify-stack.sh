@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# verify-stack.sh — w1/m24 acceptance: prove the multi-service bex.yml story on a
+# verify-stack.sh — w1/m24 acceptance: prove the multi-service render.yaml story on a
 # live cluster. One apply of examples/stack-demo (web + worker + postgres) must
 # converge all three, the web service must answer a real DB-backed response, and
 # re-applying must be a no-op (no restart, no new deploy record).
 #
-# Usage: bash scripts/verify-stack.sh [bex.yml-path]
-# Requires: kubectl (respects $KUBECONFIG), curl. Stand up a cluster first with
+# Usage: BEX_API_URL=... BEX_API_TOKEN=... bash scripts/verify-stack.sh [render.yaml-path]
+# Requires: kubectl (respects $KUBECONFIG), curl, and the bex-api credentials used
 # `bash scripts/mock-cluster.sh` (local) or point KUBECONFIG at a dev cluster
 # with the operator running.
 #
@@ -14,7 +14,7 @@
 # contracts (all-or-nothing, idempotency, no-plaintext) without a cluster.
 set -euo pipefail
 
-manifest="${1:-examples/stack-demo/bex.yml}"
+manifest="${1:-examples/stack-demo/render.yaml}"
 ns="${BEX_NAMESPACE:-default}"
 web="web"; worker="worker"; db="db"
 

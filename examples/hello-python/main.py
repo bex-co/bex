@@ -1,4 +1,4 @@
-# hello-python: a minimal Flask web service. MESSAGE is overridable via bex.yml
+# hello-python: a minimal Flask web service. MESSAGE is overridable via render.yaml
 # envVars so a redeploy changes the response; PORT is injected by the platform.
 import os
 from flask import Flask

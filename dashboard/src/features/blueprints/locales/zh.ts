@@ -45,7 +45,7 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description: "New Blueprint page title",
   },
   "blueprints.createDescription": {
-    message: "连接一个包含 bex.yml 的仓库，创建并同步整套服务堆栈。",
+    message: "连接一个包含 render.yaml 的仓库，创建并同步整套服务堆栈。",
     description: "New Blueprint page subtitle under the title",
   },
   "blueprints.createSourceTitle": {
@@ -62,20 +62,20 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description: "New Blueprint page — branch combobox placeholder",
   },
   "blueprints.createBranchHint": {
-    message: "包含 bex.yml 文件的仓库分支。",
+    message: "包含 render.yaml 文件的仓库分支。",
     description: "New Blueprint page — branch field helper text",
   },
   "blueprints.createPathLabel": {
     message: "蓝图路径",
-    description: "New Blueprint page — bex.yml path input label",
+    description: "New Blueprint page — render.yaml path input label",
   },
   "blueprints.createPathPlaceholder": {
-    message: "bex.yml",
+    message: "render.yaml",
     description: "New Blueprint page — manifest path placeholder",
   },
   "blueprints.createPathHint": {
     message:
-      "蓝图文件在仓库中的路径（例如 infra/bex.yml）。默认为仓库根目录下的 bex.yml。",
+      "蓝图文件在仓库中的路径（例如 infra/render.yaml）。默认为仓库根目录下的 render.yaml。",
     description: "New Blueprint page — manifest path helper text",
   },
   "blueprints.createNameLabel": {
@@ -170,7 +170,7 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.emptyBody": {
     message:
-      "每次部署含仓库来源的 bex.yml 时，蓝图将自动注册。部署完成后，您的堆栈将显示在此处，您可以对其进行同步或验证。",
+      "每次部署含仓库来源的 render.yaml 时，蓝图将自动注册。部署完成后，您的堆栈将显示在此处，您可以对其进行同步或验证。",
     description:
       "Blueprints list empty-state body explaining auto-registration",
   },
@@ -223,7 +223,7 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.metaPath": {
     message: "清单路径",
-    description: "Blueprint detail metadata label — path to bex.yml in repo",
+    description: "Blueprint detail metadata label — path to render.yaml in repo",
   },
   "blueprints.metaAutoSync": {
     message: "自动同步",
@@ -252,7 +252,7 @@ const zhBlueprints: Record<string, TranslationEntry> = {
       "Blueprint detail section heading listing services/databases managed by this blueprint",
   },
   "blueprints.resourcesEmpty": {
-    message: "暂无资源——请同步蓝图以应用您的 bex.yml。",
+    message: "暂无资源——请同步蓝图以应用您的 render.yaml。",
     description: "Blueprint managed-resources empty state",
   },
   // --- Sync history ---
@@ -281,7 +281,7 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description: "Sync history table column — sync run completion time",
   },
   "blueprints.manifestTitle": {
-    message: "bex.yml 清单",
+    message: "render.yaml 清单",
     description: "Blueprint detail section heading for the stored manifest",
   },
   // --- Sync action ---
@@ -295,7 +295,7 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.syncConfirmBody": {
     message:
-      "此操作将把存储的 bex.yml 重新应用到您的工作空间。应用是幂等的——已与清单匹配的资源不会被替换。",
+      "此操作将把存储的 render.yaml 重新应用到您的工作空间。应用是幂等的——已与清单匹配的资源不会被替换。",
     description: "Sync confirm dialog description",
   },
   "blueprints.syncConfirmAction": {
@@ -334,7 +334,8 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description: "Disconnect confirm dialog title",
   },
   "blueprints.disconnectBody": {
-    message: "此操作将停止推送时自动同步，并从列表中移除蓝图。已部署的资源不受影响。",
+    message:
+      "此操作将停止推送时自动同步，并从列表中移除蓝图。已部署的资源不受影响。",
     description: "Disconnect confirm dialog description",
   },
   "blueprints.disconnectAction": {

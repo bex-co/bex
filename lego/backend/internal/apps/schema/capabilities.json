@@ -1,0 +1,1143 @@
+{
+  "version": 1,
+  "schema": {
+    "source": "https://render.com/schema/render.yaml.json",
+    "retrievedAt": "2026-08-02",
+    "sha256": "665539cb0c191856ba38d292b985a963880bb69b030d666e5fe7788e78e7e696"
+  },
+  "fields": {
+    "#/allOf/1/properties/previews": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/allOf/1/properties/previewsEnabled": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/allOf/1/properties/previewsExpireAfterDays": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/allOf/1/properties/projects": {
+      "state": "translated",
+      "handler": "NormalizeBlueprintIR",
+      "fixture": "internal/apps/create_payload_test.go:TestDeployStackUsesCanonicalBlueprintEnvironmentNesting",
+      "reason": "normalized into workspace-scoped Project and Environment apply actions"
+    },
+    "#/allOf/1/properties/ungrouped": {
+      "state": "translated",
+      "handler": "NormalizeBlueprintIR",
+      "fixture": "internal/apps/blueprint_ir_test.go",
+      "reason": "normalized into resources with an explicit empty environment assignment"
+    },
+    "#/allOf/1/properties/version": {
+      "state": "equivalent",
+      "handler": "CompileBlueprintSource",
+      "fixture": "internal/apps/blueprint_compiler_test.go:TestBlueprintCompilerAcceptsRootVersionAsGrammarMetadata",
+      "reason": "validated Render Blueprint grammar metadata with no deploy-state effect"
+    },
+    "#/definitions/buildFilter/properties/ignoredPaths": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/buildFilter/properties/paths": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/autoDeploy": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/autoDeployTrigger": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/branch": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/buildCommand": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/buildFilter": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/dockerCommand": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/dockerContext": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/dockerfilePath": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/envVars": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/image": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/name": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/plan": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/preDeployCommand": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/region": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/registryCredential": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/repo": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/rootDir": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/runtime": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/schedule": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/startCommand": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/cronService/properties/type": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/database/properties/connectionPool": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/database/properties/databaseName": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/database/properties/diskSizeGB": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/database/properties/highAvailability": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/database/properties/ipAllowList": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/database/properties/name": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/database/properties/plan": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/database/properties/postgresMajorVersion": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/database/properties/previewDiskSizeGB": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/database/properties/previewPlan": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/database/properties/readReplicas": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/database/properties/region": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/database/properties/storageAutoscalingEnabled": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/database/properties/user": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/database/properties/highAvailability/properties/enabled": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/disk/properties/mountPath": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/disk/properties/name": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/disk/properties/sizeGB": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/envVarFromDatabase/properties/fromDatabase": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/envVarFromDatabase/properties/key": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/envVarFromDatabase/properties/fromDatabase/properties/name": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/envVarFromDatabase/properties/fromDatabase/properties/property": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/envVarFromGroup/properties/fromGroup": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/envVarFromKeyValue/properties/generateValue": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/envVarFromKeyValue/properties/key": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/envVarFromKeyValue/properties/previewValue": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/envVarFromKeyValue/properties/sync": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/envVarFromKeyValue/properties/value": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/envVarFromService/properties/fromService": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/envVarFromService/properties/key": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/envVarFromService/properties/fromService/properties/envVarKey": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/envVarFromService/properties/fromService/properties/name": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/envVarFromService/properties/fromService/properties/property": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/envVarFromService/properties/fromService/properties/type": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/envVarGroup/properties/envVars": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/envVarGroup/properties/name": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/environment/allOf/1/properties/name": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/environment/allOf/1/properties/networking": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/environment/allOf/1/properties/permissions": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/environment/allOf/1/properties/networking/properties/isolation": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/environment/allOf/1/properties/permissions/properties/protection": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/header/properties/name": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/header/properties/path": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/header/properties/value": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/image/properties/creds": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/image/properties/url": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/ipAllowList/items/properties/description": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/ipAllowList/items/properties/source": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/project/properties/environments": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/project/properties/name": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/readReplica/properties/name": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/redisServer/properties/ipAllowList": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/redisServer/properties/maxmemoryPolicy": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/redisServer/properties/name": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/redisServer/properties/persistenceMode": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/redisServer/properties/plan": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/redisServer/properties/previewPlan": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/redisServer/properties/region": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/redisServer/properties/type": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/registryCredential/properties/fromRegistryCreds": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/registryCredential/properties/fromRegistryCreds/properties/name": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/resources/properties/databases": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/resources/properties/envVarGroups": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/resources/properties/services": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/rootPreviews/properties/expireAfterDays": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/rootPreviews/properties/generation": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/route/properties/destination": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/route/properties/source": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/route/properties/type": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/autoDeploy": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/autoDeployTrigger": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/branch": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/buildCommand": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/buildFilter": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/disk": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/dockerCommand": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/dockerContext": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/dockerfilePath": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/domain": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/domains": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/envVars": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/healthCheckPath": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/image": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/initialDeployHook": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/ipAllowList": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/maintenanceMode": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/maxShutdownDelaySeconds": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/name": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/numInstances": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/plan": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/preDeployCommand": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/previewPlan": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/previews": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/pullRequestPreviewsEnabled": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/region": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/registryCredential": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/renderSubdomainPolicy": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/repo": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/rootDir": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/runtime": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/scaling": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/startCommand": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/type": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/maintenanceMode/properties/enabled": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/maintenanceMode/properties/uri": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/scaling/properties/maxInstances": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/scaling/properties/minInstances": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/scaling/properties/targetCPUPercent": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/serverService/properties/scaling/properties/targetMemoryPercent": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/servicePreviews/properties/generation": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/servicePreviews/properties/numInstances": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/servicePreviews/properties/plan": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/autoDeploy": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/autoDeployTrigger": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/branch": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/buildCommand": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/buildFilter": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/domain": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/domains": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/envVars": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/headers": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/ipAllowList": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/name": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/preDeployCommand": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/previews": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/pullRequestPreviewsEnabled": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/renderSubdomainPolicy": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/repo": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/rootDir": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/routes": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/runtime": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/staticPublishPath": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticService/properties/type": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    },
+    "#/definitions/staticServicePreviews/properties/generation": {
+      "state": "unsupported",
+      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+    }
+  },
+  "enumValues": {
+    "#/definitions/autoDeployTrigger/enum": {
+      "\"off\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"commit\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"checksPass\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      }
+    },
+    "#/definitions/connectionPool/enum": {
+      "\"pgbouncer\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"none\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      }
+    },
+    "#/definitions/database/properties/postgresMajorVersion/enum": {
+      "\"10\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"11\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"12\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"13\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"14\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"15\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"16\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"17\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"18\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      }
+    },
+    "#/definitions/databaseEnvVarProperty/enum": {
+      "\"connectionString\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"connectionPoolString\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"host\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"port\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"user\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"password\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"database\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      }
+    },
+    "#/definitions/environment/allOf/1/properties/networking/properties/isolation/enum": {
+      "\"enabled\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"disabled\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      }
+    },
+    "#/definitions/environment/allOf/1/properties/permissions/properties/protection/enum": {
+      "\"enabled\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"disabled\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      }
+    },
+    "#/definitions/plan/enum": {
+      "\"free\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"starter\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"standard\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"pro\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"pro plus\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"pro max\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"pro ultra\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"basic-256mb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"basic-1gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"basic-4gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"pro-4gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"pro-8gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"pro-16gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"pro-32gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"pro-64gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"pro-128gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"pro-192gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"pro-256gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"pro-384gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"pro-512gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"accelerated-16gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"accelerated-32gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"accelerated-64gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"accelerated-128gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"accelerated-256gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"accelerated-384gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"accelerated-512gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"accelerated-768gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"accelerated-1024gb\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      }
+    },
+    "#/definitions/previewsGeneration/enum": {
+      "\"automatic\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"manual\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"off\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      }
+    },
+    "#/definitions/redisServer/properties/maxmemoryPolicy/enum": {
+      "\"allkeys-lru\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"volatile-lru\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"allkeys-lfu\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"volatile-lfu\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"allkeys-random\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"volatile-random\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"volatile-ttl\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"noeviction\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      }
+    },
+    "#/definitions/redisServer/properties/persistenceMode/enum": {
+      "\"journal-snapshot\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"snapshot\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"off\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      }
+    },
+    "#/definitions/redisServer/properties/type/enum": {
+      "\"keyvalue\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"redis\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      }
+    },
+    "#/definitions/region/enum": {
+      "\"oregon\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"ohio\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"frankfurt\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"singapore\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"virginia\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      }
+    },
+    "#/definitions/route/properties/type/enum": {
+      "\"redirect\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"rewrite\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      }
+    },
+    "#/definitions/runtime/enum": {
+      "\"docker\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"elixir\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"go\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"image\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"node\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"python\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"ruby\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"rust\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"static\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      }
+    },
+    "#/definitions/serverService/properties/renderSubdomainPolicy/enum": {
+      "\"enabled\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"disabled\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      }
+    },
+    "#/definitions/serverService/properties/type/enum": {
+      "\"web\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"worker\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"pserv\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      }
+    },
+    "#/definitions/serviceEnvVarProperty/enum": {
+      "\"host\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"port\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"hostport\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"connectionString\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      }
+    },
+    "#/definitions/serviceType/enum": {
+      "\"web\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"cron\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"worker\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"pserv\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"static\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"dpg\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"job\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"redis\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"keyvalue\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      }
+    },
+    "#/definitions/staticService/properties/renderSubdomainPolicy/enum": {
+      "\"enabled\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      },
+      "\"disabled\"": {
+        "state": "unsupported",
+        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      }
+    }
+  },
+  "extensions": {
+    "x-bex": {
+      "state": "extension",
+      "schema": "schema/x-bex.schema.json",
+      "allowedAt": [
+        "root",
+        "service"
+      ],
+      "reason": "bex-only capability namespace; never a Render parity claim"
+    }
+  }
+}

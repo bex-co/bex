@@ -81,7 +81,7 @@ export function NewBlueprintPage() {
   const [name, setName] = useState("");
   const [nameEdited, setNameEdited] = useState(false);
   const [branch, setBranch] = useState("");
-  const [path, setPath] = useState("bex.yml");
+  const [path, setPath] = useState("render.yaml");
   const [protectedConfirmation, setProtectedConfirmation] = useState<
     string | null
   >(null);
@@ -149,7 +149,7 @@ export function NewBlueprintPage() {
     const result = await create(
       sourceRepo,
       branch.trim(),
-      path.trim() || "bex.yml",
+      path.trim() || "render.yaml",
       name.trim(),
       confirmation,
     );
@@ -391,7 +391,9 @@ export function NewBlueprintPage() {
                 ) : previewLoading ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="size-4 animate-spin" />
-                    {t("blueprints.previewLoading", { path: path || "bex.yml" })}
+                    {t("blueprints.previewLoading", {
+                      path: path || "render.yaml",
+                    })}
                   </div>
                 ) : preview && !preview.found ? (
                   <Alert variant="destructive">
@@ -402,7 +404,7 @@ export function NewBlueprintPage() {
                       <span>
                         {preview.error ||
                           t("blueprints.previewNotFoundBody", {
-                            path: path || "bex.yml",
+                            path: path || "render.yaml",
                             branch,
                           })}
                       </span>

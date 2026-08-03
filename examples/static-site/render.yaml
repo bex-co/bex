@@ -1,4 +1,4 @@
-# bex.yml — static_site example: no Dockerfile and no build command needed —
+# render.yaml — static_site example: no Dockerfile and no build command needed —
 # bex clones the repo and publishes rootDir/staticPublishPath as-is to object storage
 # (w9/010, Render parity), serving it through the shared static-server at a
 # https URL (docs/ADR029-static-sites.md). Declaring a dockerfilePath, a

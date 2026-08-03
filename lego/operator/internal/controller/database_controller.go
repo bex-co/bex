@@ -560,16 +560,13 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	// --- PgBouncer Pooler when requested ---
-	if db.Spec.Pooler {
-		if err := upsertOwned(ctx, r.Client, r.Scheme, &db, cnpgPoolerGVK, db.Name+"-pooler", poolerSpec(db.Name)); err != nil {
-			return r.dbFail(ctx, &db, "PoolerFailed", err)
-		}
-		db.Status.PoolerHost = fmt.Sprintf("%s-pooler.%s.svc", db.Name, db.Namespace)
-	} else {
-		if err := deleteOwned(ctx, r.Client, &db, cnpgPoolerGVK, db.Name+"-pooler"); err != nil {
-			return r.dbFail(ctx, &db, "PoolerCleanupFailed", err)
-		}
-		db.Status.PoolerHost = ""
+	if poolerRequeue, err := r.reconcilePooler(ctx, &db); err != nil {
+		return r.dbFail(ctx, &db, "PoolerFailed", err)
+	} else if poolerRequeue {
+		// CNPG creates source credentials after accepting its bootstrap spec.
+		// Keep retrying until the derived Secret exists; consumers can never
+		// observe a plaintext pooler URL in a Blueprint.
+		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 	}
 
 	// --- external SNI endpoint status (rw + pooler + read replicas) ---
@@ -600,6 +597,67 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	return r.reconcileDatabaseReadiness(ctx, &db, cluster, desiredInstances, backupEnabled, targetBackupServerName, soonerRequeue(exportRequeue, diskRequeue))
+}
+
+// reconcilePooler creates/removes the owned CNPG Pooler and its derived
+// connection Secret. Its boolean result means the source Secret is not ready
+// yet and reconciliation should retry.
+func (r *DatabaseReconciler) reconcilePooler(ctx context.Context, db *appv1alpha1.Database) (bool, error) {
+	if !db.Spec.Pooler {
+		if err := deleteOwned(ctx, r.Client, db, cnpgPoolerGVK, db.Name+"-pooler"); err != nil {
+			return false, fmt.Errorf("remove pooler: %w", err)
+		}
+		if err := r.deletePoolerConnectionSecret(ctx, db); err != nil {
+			return false, fmt.Errorf("remove pooler credentials: %w", err)
+		}
+		db.Status.PoolerHost = ""
+		return false, nil
+	}
+	if err := upsertOwned(ctx, r.Client, r.Scheme, db, cnpgPoolerGVK, db.Name+"-pooler", poolerSpec(db.Name)); err != nil {
+		return false, fmt.Errorf("create pooler: %w", err)
+	}
+	db.Status.PoolerHost = fmt.Sprintf("%s-pooler.%s.svc", db.Name, db.Namespace)
+	ready, err := r.reconcilePoolerConnectionSecret(ctx, db)
+	if err != nil {
+		return false, fmt.Errorf("project pooler credentials: %w", err)
+	}
+	return !ready, nil
+}
+
+// reconcilePoolerConnectionSecret projects CNPG's rotating application
+// credentials into a second Secret whose URI targets the owned PgBouncer
+// Service. A Blueprint fromDatabase.connectionPoolString can therefore remain
+// a normal SecretKeyRef rather than injecting a password-bearing URL into an
+// App spec. The source Secret is never mutated.
+func (r *DatabaseReconciler) reconcilePoolerConnectionSecret(ctx context.Context, db *appv1alpha1.Database) (bool, error) {
+	source := &corev1.Secret{}
+	if err := r.Get(ctx, client.ObjectKey{Namespace: db.Namespace, Name: db.Name + "-app"}, source); err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	username, password, databaseName := source.Data["username"], source.Data["password"], source.Data["dbname"]
+	if len(username) == 0 || len(password) == 0 || len(databaseName) == 0 {
+		return false, fmt.Errorf("CNPG application Secret %q lacks username, password, or dbname", source.Name)
+	}
+	target := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: db.Name + "-pooler-app", Namespace: db.Namespace}}
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, target, func() error {
+		target.Type = corev1.SecretTypeOpaque
+		target.Data = map[string][]byte{
+			"uri": fmt.Appendf(nil, "postgresql://%s:%s@%s:5432/%s", username, password, db.Status.PoolerHost, databaseName),
+		}
+		return controllerutil.SetControllerReference(db, target, r.Scheme)
+	})
+	return err == nil, err
+}
+
+func (r *DatabaseReconciler) deletePoolerConnectionSecret(ctx context.Context, db *appv1alpha1.Database) error {
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: db.Name + "-pooler-app", Namespace: db.Namespace}}
+	if err := r.Delete(ctx, secret); err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+	return nil
 }
 
 // reconcileDatabaseReadiness maps CNPG's status-only lifecycle onto the public

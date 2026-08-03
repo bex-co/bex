@@ -171,6 +171,43 @@ func TestKvResources(t *testing.T) {
 	}
 }
 
+func assertValkeyPodHardening(t *testing.T, sts *appsv1.StatefulSet) {
+	t.Helper()
+	pod := sts.Spec.Template.Spec
+	if amt := pod.AutomountServiceAccountToken; amt == nil || *amt {
+		t.Error("Valkey pod must not automount the ServiceAccount token")
+	}
+	security := pod.SecurityContext
+	if security == nil || security.FSGroup == nil || *security.FSGroup != valkeyRunAsGroup ||
+		security.FSGroupChangePolicy == nil || *security.FSGroupChangePolicy != corev1.FSGroupChangeOnRootMismatch {
+		t.Errorf("Valkey PVC group contract = %#v, want fsGroup %d with OnRootMismatch", security, valkeyRunAsGroup)
+	}
+	for _, container := range pod.Containers {
+		assertValkeyContainerHardening(t, container)
+	}
+}
+
+func assertValkeyContainerHardening(t *testing.T, container corev1.Container) {
+	t.Helper()
+	security := container.SecurityContext
+	if security == nil {
+		t.Fatalf("container %q has no SecurityContext", container.Name)
+	}
+	if security.AllowPrivilegeEscalation == nil || *security.AllowPrivilegeEscalation {
+		t.Errorf("container %q: AllowPrivilegeEscalation must be false", container.Name)
+	}
+	if security.Capabilities == nil || len(security.Capabilities.Drop) == 0 || security.Capabilities.Drop[0] != "ALL" {
+		t.Errorf("container %q: must drop ALL capabilities", container.Name)
+	}
+	if security.SeccompProfile == nil || security.SeccompProfile.Type != corev1.SeccompProfileTypeRuntimeDefault {
+		t.Errorf("container %q: seccomp must be RuntimeDefault", container.Name)
+	}
+	if container.Name == "valkey" && (security.RunAsNonRoot == nil || !*security.RunAsNonRoot || security.RunAsUser == nil || *security.RunAsUser != valkeyRunAsUser ||
+		security.RunAsGroup == nil || *security.RunAsGroup != valkeyRunAsGroup) {
+		t.Errorf("Valkey runtime identity = %#v, want non-root %d:%d", security, valkeyRunAsUser, valkeyRunAsGroup)
+	}
+}
+
 // TestKeyValuePlanChangeReconcile confirms that updating spec.plan on an
 // existing KeyValue CR results in the StatefulSet container resources being
 // updated on the very next reconcile — the "plan/version bump rolls" contract
@@ -204,33 +241,7 @@ func TestKeyValuePlanChangeReconcile(t *testing.T) {
 	}
 
 	// w1/m53: the managed Valkey pod is hardened like tenant Deployments.
-	if amt := sts.Spec.Template.Spec.AutomountServiceAccountToken; amt == nil || *amt {
-		t.Error("Valkey pod must not automount the ServiceAccount token")
-	}
-	podSecurity := sts.Spec.Template.Spec.SecurityContext
-	if podSecurity == nil || podSecurity.FSGroup == nil || *podSecurity.FSGroup != valkeyRunAsGroup ||
-		podSecurity.FSGroupChangePolicy == nil || *podSecurity.FSGroupChangePolicy != corev1.FSGroupChangeOnRootMismatch {
-		t.Errorf("Valkey PVC group contract = %#v, want fsGroup %d with OnRootMismatch", podSecurity, valkeyRunAsGroup)
-	}
-	for _, c := range sts.Spec.Template.Spec.Containers {
-		sc := c.SecurityContext
-		if sc == nil {
-			t.Fatalf("container %q has no SecurityContext", c.Name)
-		}
-		if sc.AllowPrivilegeEscalation == nil || *sc.AllowPrivilegeEscalation {
-			t.Errorf("container %q: AllowPrivilegeEscalation must be false", c.Name)
-		}
-		if sc.Capabilities == nil || len(sc.Capabilities.Drop) == 0 || sc.Capabilities.Drop[0] != "ALL" {
-			t.Errorf("container %q: must drop ALL capabilities", c.Name)
-		}
-		if sc.SeccompProfile == nil || sc.SeccompProfile.Type != corev1.SeccompProfileTypeRuntimeDefault {
-			t.Errorf("container %q: seccomp must be RuntimeDefault", c.Name)
-		}
-		if c.Name == "valkey" && (sc.RunAsNonRoot == nil || !*sc.RunAsNonRoot || sc.RunAsUser == nil || *sc.RunAsUser != valkeyRunAsUser ||
-			sc.RunAsGroup == nil || *sc.RunAsGroup != valkeyRunAsGroup) {
-			t.Errorf("Valkey runtime identity = %#v, want non-root %d:%d", sc, valkeyRunAsUser, valkeyRunAsGroup)
-		}
-	}
+	assertValkeyPodHardening(t, &sts)
 
 	// Patch spec.plan to "standard" and reconcile again.
 	if err := cl.Get(ctx, nn, kv); err != nil {

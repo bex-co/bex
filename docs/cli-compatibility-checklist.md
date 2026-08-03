@@ -224,8 +224,8 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
 
 ## Management
 
-- [x] **`blueprints`** — manage Blueprints (infrastructure as code)
-  - [x] `blueprints validate <render.yaml>` — accepts the multipart request, returns `{plan,valid:true}`
+- [~] **`blueprints`** — manage Blueprints (infrastructure as code)
+  - [~] `blueprints validate <render.yaml>` — the unmodified v2.21.0 CLI successfully decoded a valid `hello-go/render.yaml` response from `api.bex.co` on 2026-08-02, but that deployed endpoint incorrectly accepted `autoDeployTrigger: checksPass`. The local strict compiler rejects it; deploy m63 before claiming CLI conformance.
 - [x] **`environments <projectID>`** — decodes the RC15 cursor envelope into real values; unknown project fails not-found
 - [x] **`projects`** — lists projects in the active workspace
 

@@ -1,5 +1,5 @@
 // hello-node: answers 200 OK on every GET. MESSAGE and PORT are platform-injected;
-// MESSAGE is overridable via bex.yml envVars so a redeploy changes the response visibly.
+// MESSAGE is overridable via render.yaml envVars so a redeploy changes the response visibly.
 const http = require('http')
 
 const message = process.env.MESSAGE || 'hello from bex'

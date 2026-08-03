@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bex.co/schema/render-x-bex.json",
+  "title": "bex Blueprint extensions",
+  "description": "Extensions accepted only under x-bex; these fields are not Render Blueprint compatibility claims.",
+  "type": "object",
+  "properties": {
+    "builder": {
+      "type": "string",
+      "enum": ["auto", "buildpack", "dockerfile"],
+      "description": "bex build strategy extension."
+    }
+  },
+  "additionalProperties": false
+}

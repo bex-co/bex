@@ -230,6 +230,7 @@ func TestDeployStackMapsDockerfilePathAndStartCommand(t *testing.T) {
 	manifest := `
 services:
   - name: hello-docker
+    type: web
     repo: https://github.com/bex/hello
     runtime: docker
     dockerfilePath: docker/Dockerfile.prod

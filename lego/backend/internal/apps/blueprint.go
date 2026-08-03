@@ -31,7 +31,6 @@ import (
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/yaml"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -64,6 +63,41 @@ var ErrBlueprintsUnavailable = errors.New("blueprints store not configured (BEX_
 
 // ErrBlueprintFetchUnavailable is returned when no GitFetcher is configured.
 var ErrBlueprintFetchUnavailable = errors.New("blueprint file fetch unavailable (GitHub App not configured)")
+
+// ErrBlueprintFilenameAmbiguous is returned only for implicit discovery when a
+// repository contains both the canonical and legacy filename. Requiring a path
+// avoids choosing a manifest based on a filename accident.
+var ErrBlueprintFilenameAmbiguous = errors.New("both render.yaml and legacy bex.yml exist; specify the Blueprint path explicitly")
+
+// CanonicalBlueprintFilename is the public discovery default. LegacyBexYAML is
+// retained only as an identical-grammar discovery fallback and for existing
+// explicit records; it is never a second dialect.
+const (
+	CanonicalBlueprintFilename = "render.yaml"
+	LegacyBlueprintFilename    = "bex.yml"
+)
+
+// discoverBlueprintFile implements ADR049's filename rule. An explicit path is
+// fetched as-is. For an implicit request, render.yaml wins only when the
+// legacy alias is absent; legacy alone remains compatible; both are an error.
+func discoverBlueprintFile(ctx context.Context, fetcher BlueprintFetcher, workspaceID, repo, branch, explicitPath string) (contents, commitSHA, filePath string, err error) {
+	if explicitPath != "" {
+		contents, commitSHA, err = fetcher.FetchBlueprintFile(ctx, workspaceID, repo, branch, explicitPath)
+		return contents, commitSHA, explicitPath, err
+	}
+	canonicalContents, canonicalSHA, canonicalErr := fetcher.FetchBlueprintFile(ctx, workspaceID, repo, branch, CanonicalBlueprintFilename)
+	legacyContents, legacySHA, legacyErr := fetcher.FetchBlueprintFile(ctx, workspaceID, repo, branch, LegacyBlueprintFilename)
+	switch {
+	case canonicalErr == nil && legacyErr == nil:
+		return "", "", "", ErrBlueprintFilenameAmbiguous
+	case canonicalErr == nil:
+		return canonicalContents, canonicalSHA, CanonicalBlueprintFilename, nil
+	case legacyErr == nil:
+		return legacyContents, legacySHA, LegacyBlueprintFilename, nil
+	default:
+		return "", "", "", canonicalErr
+	}
+}
 
 // BlueprintView is the API shape for a blueprint — all three surfaces return this.
 type BlueprintView struct {
@@ -99,14 +133,18 @@ type BlueprintSyncView struct {
 
 // BlueprintValidationError is Render's validation-error shape.
 type BlueprintValidationError struct {
+	Code   string  `json:"code,omitempty"`
 	Error  string  `json:"error"`
 	Line   *int    `json:"line,omitempty"`
 	Column *int    `json:"column,omitempty"`
 	Path   *string `json:"path,omitempty"`
 }
 
-// BlueprintValidationPlan is Render's dry-run resource summary.
+// BlueprintValidationPlan is a declaration-only dry-run summary. Validation
+// does not resolve the caller's current resources, so TotalActions is the
+// number of declared resources—not a create/update/no-op diff.
 type BlueprintValidationPlan struct {
+	Mode          string   `json:"mode"`
 	Services      []string `json:"services,omitempty"`
 	Databases     []string `json:"databases,omitempty"`
 	KeyValue      []string `json:"keyValue,omitempty"`
@@ -137,6 +175,7 @@ type BlueprintPreview struct {
 	Found      bool                 `json:"found"`
 	Manifest   string               `json:"manifest,omitempty"`
 	CommitID   string               `json:"commitId,omitempty"`
+	Warning    string               `json:"warning,omitempty"`
 	Error      string               `json:"error,omitempty"`
 	Validation *BlueprintValidation `json:"validation,omitempty"`
 }
@@ -145,7 +184,7 @@ type BlueprintPreview struct {
 type CreateBlueprintRequest struct {
 	Repo         string
 	Branch       string
-	Path         string            // defaults to bex.yml
+	Path         string            // defaults to render.yaml
 	Name         string            // defaults to repo basename
 	EnvVarValues map[string]string // values for sync:false env vars
 	Confirm      string
@@ -158,7 +197,7 @@ type UpdateBlueprintRequest struct {
 	Path     *string
 }
 
-// ValidateBlueprint parses a bex.yml and returns per-entry errors without
+// ValidateBlueprint parses a Render Blueprint and returns per-entry errors without
 // applying anything (stateless: no store, no k8s writes). Requires can_view.
 func (s *Service) ValidateBlueprint(ctx context.Context, ownerID, bexYAML string) (BlueprintValidation, error) {
 	if ownerID != "" {
@@ -174,6 +213,13 @@ func (s *Service) ValidateBlueprint(ctx context.Context, ownerID, bexYAML string
 // ValidateBlueprint and PreviewBlueprint. repo/branch feed the same parse a
 // create would run; both empty for a manifest-only validate.
 func (s *Service) blueprintValidationFor(repo, branch, bexYAML string) (BlueprintValidation, error) {
+	source, problems := CompileBlueprintSource(bexYAML)
+	if len(problems) > 0 {
+		return BlueprintValidation{Errors: blueprintCompilerValidationErrors(problems)}, nil
+	}
+	if _, problems := NormalizeBlueprintIR(source); len(problems) > 0 {
+		return BlueprintValidation{Errors: blueprintCompilerValidationErrors(problems)}, nil
+	}
 	st, err := parseStack(DeployRequest{Repo: repo, Branch: branch, Manifest: bexYAML})
 	if err == nil {
 		err = s.validateBlueprintServices(st)
@@ -189,7 +235,45 @@ func (s *Service) blueprintValidationFor(repo, branch, bexYAML string) (Blueprin
 	if after, ok := strings.CutPrefix(msg, "bad request: "); ok {
 		msg = after
 	}
-	return BlueprintValidation{Errors: []BlueprintValidationError{blueprintValidationError(bexYAML, msg)}}, nil
+	return BlueprintValidation{Errors: []BlueprintValidationError{blueprintValidationError(source, msg)}}, nil
+}
+
+func blueprintCompilerValidationErrors(problems []BlueprintSourceProblem) []BlueprintValidationError {
+	errors := make([]BlueprintValidationError, 0, len(problems))
+	for _, problem := range problems {
+		path := blueprintDisplayPath(problem.Path)
+		entry := BlueprintValidationError{Code: problem.Code, Error: problem.Message, Path: &path}
+		if problem.Line > 0 {
+			line := problem.Line
+			entry.Line = &line
+		}
+		if problem.Column > 0 {
+			column := problem.Column
+			entry.Column = &column
+		}
+		errors = append(errors, entry)
+	}
+	return errors
+}
+
+func blueprintDisplayPath(pointer string) string {
+	if pointer == "" || pointer == "#" {
+		return ""
+	}
+	pointer = strings.TrimPrefix(pointer, "#/")
+	var path string
+	for _, segment := range strings.Split(pointer, "/") {
+		segment = strings.ReplaceAll(strings.ReplaceAll(segment, "~1", "/"), "~0", "~")
+		if _, err := strconv.Atoi(segment); err == nil {
+			path += "[" + segment + "]"
+			continue
+		}
+		if path != "" {
+			path += "."
+		}
+		path += segment
+	}
+	return path
 }
 
 // PreviewBlueprint fetches repo/branch/path from Git and dry-run validates the
@@ -205,14 +289,11 @@ func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, f
 	if repo == "" || branch == "" {
 		return BlueprintPreview{}, fmt.Errorf("%w: repo and branch are required", core.ErrBadRequest)
 	}
-	if filePath == "" {
-		filePath = "bex.yml"
-	}
 	if s.GitFetcher == nil {
 		return BlueprintPreview{}, ErrBlueprintFetchUnavailable
 	}
 	tenantID := s.resolveTenantID(ctx)
-	contents, commitSHA, err := s.GitFetcher.FetchBlueprintFile(ctx, tenantID, repo, branch, filePath)
+	contents, commitSHA, discoveredPath, err := discoverBlueprintFile(ctx, s.GitFetcher, tenantID, repo, branch, filePath)
 	if err != nil {
 		msg := err.Error()
 		if after, ok := strings.CutPrefix(msg, "bad request: "); ok {
@@ -224,7 +305,11 @@ func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, f
 	if err != nil {
 		return BlueprintPreview{}, err
 	}
-	return BlueprintPreview{Found: true, Manifest: contents, CommitID: commitSHA, Validation: &validation}, nil
+	preview := BlueprintPreview{Found: true, Manifest: contents, CommitID: commitSHA, Validation: &validation}
+	if filePath == "" && discoveredPath == LegacyBlueprintFilename {
+		preview.Warning = "bex.yml is a deprecated filename-only alias; rename it to render.yaml"
+	}
+	return preview, nil
 }
 
 // CreateBlueprint creates a new Git-connected Blueprint instance by fetching
@@ -243,9 +328,6 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	if req.Repo == "" || req.Branch == "" {
 		return BlueprintView{}, fmt.Errorf("%w: repo and branch are required", core.ErrBadRequest)
 	}
-	if req.Path == "" {
-		req.Path = "bex.yml"
-	}
 	if req.Name == "" {
 		req.Name = repoName(req.Repo)
 	}
@@ -254,10 +336,11 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	if s.GitFetcher == nil {
 		return BlueprintView{}, ErrBlueprintFetchUnavailable
 	}
-	contents, commitSHA, err := s.GitFetcher.FetchBlueprintFile(ctx, tenantID, req.Repo, req.Branch, req.Path)
+	contents, commitSHA, discoveredPath, err := discoverBlueprintFile(ctx, s.GitFetcher, tenantID, req.Repo, req.Branch, req.Path)
 	if err != nil {
 		return BlueprintView{}, fmt.Errorf("blueprint fetch: %w", err)
 	}
+	req.Path = discoveredPath
 
 	parsed, parseErr := parseStack(DeployRequest{Repo: req.Repo, Branch: req.Branch, Manifest: contents})
 	if parseErr != nil {
@@ -604,7 +687,7 @@ func (s *Service) upsertBlueprint(ctx context.Context, req DeployRequest) {
 		Name:     repoName(req.Repo),
 		Repo:     req.Repo,
 		Branch:   branch,
-		Path:     "bex.yml",
+		Path:     CanonicalBlueprintFilename,
 		AutoSync: true,
 		Manifest: req.Manifest,
 		Status:   store.BlueprintStatusInSync,
@@ -636,11 +719,12 @@ func (s *Service) resolveBlueprintResources(ctx context.Context, b store.Bluepri
 	if b.Manifest == "" || s.Client == nil {
 		return nil
 	}
-	var m bexManifest
-	if err := yaml.Unmarshal([]byte(b.Manifest), &m); err != nil {
+	source, sourceProblems := parseBlueprintSource(b.Manifest)
+	if len(sourceProblems) > 0 {
 		return nil
 	}
-	if len(m.Services) == 0 && len(m.Databases) == 0 {
+	ir, irProblems := NormalizeBlueprintIR(source)
+	if len(irProblems) > 0 || len(ir.Resources) == 0 {
 		return nil
 	}
 
@@ -665,60 +749,61 @@ func (s *Service) resolveBlueprintResources(ctx context.Context, b store.Bluepri
 	if err := s.Client.List(ctx, &dbList, opts...); err == nil {
 		for i := range dbList.Items {
 			d := &dbList.Items[i]
-			dbByName[d.Name] = d
+			dbByName[d.Spec.Name] = d
+		}
+	}
+	var keyValueList appv1alpha1.KeyValueList
+	keyValueByName := map[string]*appv1alpha1.KeyValue{}
+	if err := s.Client.List(ctx, &keyValueList, opts...); err == nil {
+		for i := range keyValueList.Items {
+			kv := &keyValueList.Items[i]
+			keyValueByName[kv.Spec.Name] = kv
 		}
 	}
 
 	var resources []BlueprintResource
-	for _, svc := range m.Services {
-		if svc.Name == "" {
-			continue
+	for _, resource := range ir.Resources {
+		switch resource.Kind {
+		case BlueprintResourceService:
+			a, ok := appByName[resource.Name]
+			if !ok {
+				continue
+			}
+			resourceID := store.ManagedAppID(a.Labels)
+			if resourceID == "" {
+				resourceID = a.Name
+			}
+			resources = append(resources, BlueprintResource{ID: resourceID, Name: resource.Name, Type: blueprintIRServiceRenderType(resource)})
+		case BlueprintResourcePostgres:
+			d, ok := dbByName[resource.Name]
+			if !ok {
+				continue
+			}
+			resources = append(resources, BlueprintResource{ID: d.Name, Name: resource.Name, Type: "postgres"})
+		case BlueprintResourceKeyValue:
+			kv, ok := keyValueByName[resource.Name]
+			if !ok {
+				continue
+			}
+			resources = append(resources, BlueprintResource{ID: kv.Name, Name: resource.Name, Type: "key_value"})
 		}
-		a, ok := appByName[svc.Name]
-		if !ok {
-			continue
-		}
-		resourceID := store.ManagedAppID(a.Labels)
-		if resourceID == "" {
-			resourceID = a.Name
-		}
-		resources = append(resources, BlueprintResource{
-			ID:   resourceID,
-			Name: svc.Name,
-			Type: blueprintServiceRenderType(svc),
-		})
-	}
-	for _, db := range m.Databases {
-		if db.Name == "" {
-			continue
-		}
-		if _, ok := dbByName[db.Name]; !ok {
-			continue
-		}
-		resources = append(resources, BlueprintResource{
-			ID:   db.Name,
-			Name: db.Name,
-			Type: "postgres",
-		})
 	}
 	return resources
 }
 
-func blueprintServiceRenderType(svc bexService) string {
-	switch svc.Type {
+func blueprintIRServiceRenderType(resource BlueprintResourceIR) string {
+	serviceType, _ := resource.Fields["type"].Value.(string)
+	runtime, _ := resource.Fields["runtime"].Value.(string)
+	if runtime == "static" {
+		return "static_site"
+	}
+	switch serviceType {
 	case "pserv", "private_service":
 		return "private_service"
 	case "worker", "background_worker":
 		return "background_worker"
 	case "cron", "cron_job":
 		return "cron_job"
-	case "static_site":
-		return "static_site"
-	case "keyvalue", "redis":
-		return "key_value"
-	}
-	if svc.Runtime == "static" {
-		return "static_site"
 	}
 	return "web_service"
 }
@@ -726,6 +811,7 @@ func blueprintServiceRenderType(svc bexService) string {
 // blueprintValidationPlan builds the resource-summary for a validate call.
 func blueprintValidationPlan(manifest string, st parsedStack) BlueprintValidationPlan {
 	plan := BlueprintValidationPlan{
+		Mode:      "structural",
 		Services:  make([]string, 0, len(st.services)),
 		Databases: make([]string, 0, len(st.databases)),
 		KeyValue:  make([]string, 0, len(st.keyValues)),
@@ -751,74 +837,63 @@ func blueprintValidationPlan(manifest string, st parsedStack) BlueprintValidatio
 // extractSyncFalseVars returns env-var names declared with sync:false in the
 // manifest so the dashboard can prompt the user at create time.
 func extractSyncFalseVars(manifest string) []string {
-	var m bexManifest
-	if err := yaml.Unmarshal([]byte(manifest), &m); err != nil {
+	source, sourceProblems := parseBlueprintSource(manifest)
+	if len(sourceProblems) > 0 {
+		return nil
+	}
+	ir, irProblems := NormalizeBlueprintIR(source)
+	if len(irProblems) > 0 {
 		return nil
 	}
 	seen := map[string]bool{}
 	var names []string
-	for _, svc := range m.Services {
-		for _, ev := range svc.EnvVars {
-			if ev.Sync != nil && !*ev.Sync && ev.Key != "" && !seen[ev.Key] {
-				seen[ev.Key] = true
-				names = append(names, ev.Key)
+	for _, resource := range ir.Resources {
+		if resource.Kind != BlueprintResourceService {
+			continue
+		}
+		envVars, _ := resource.Fields["envVars"].Value.([]any)
+		for _, rawEnv := range envVars {
+			env, _ := rawEnv.(map[string]any)
+			key, _ := env["key"].(string)
+			sync, declared := env["sync"].(bool)
+			if declared && !sync && key != "" && !seen[key] {
+				seen[key] = true
+				names = append(names, key)
 			}
 		}
 	}
 	return names
 }
 
-var yamlLineRE = regexp.MustCompile(`(?i)\bline\s+(\d+)\b`)
+var (
+	yamlLineRE              = regexp.MustCompile(`(?i)\bline\s+(\d+)\b`)
+	unknownBlueprintFieldRE = regexp.MustCompile(`^(.+) contains unknown field "([^"]+)"$`)
+)
 
-func blueprintValidationError(manifest, message string) BlueprintValidationError {
+func blueprintValidationError(source *BlueprintSource, message string) BlueprintValidationError {
 	out := BlueprintValidationError{Error: message}
 	if match := yamlLineRE.FindStringSubmatch(message); len(match) == 2 {
 		if line, err := strconv.Atoi(match[1]); err == nil && line > 0 {
 			out.Line = &line
 		}
 	}
-	if fieldPath := blueprintErrorPath(manifest, message); fieldPath != "" {
+	if fieldPath := blueprintErrorPath(source, message); fieldPath != "" {
 		out.Path = &fieldPath
 	}
 	return out
 }
 
-func blueprintErrorPath(manifest, message string) string {
-	var parsed bexManifest
-	if err := yaml.Unmarshal([]byte(manifest), &parsed); err != nil {
+func blueprintErrorPath(source *BlueprintSource, message string) string {
+	if match := unknownBlueprintFieldRE.FindStringSubmatch(message); len(match) == 3 {
+		return match[1] + "." + match[2]
+	}
+	ir, problems := NormalizeBlueprintIR(source)
+	if len(problems) > 0 {
 		return ""
 	}
-	for i, svc := range parsed.Services {
-		if svc.Name == "" {
-			if strings.Contains(message, "service entry is missing its name") {
-				return fmt.Sprintf("services[%d].name", i)
-			}
-			continue
-		}
-		if strings.Contains(message, fmt.Sprintf("%q", svc.Name)) || strings.Contains(message, svc.Name+" ") {
-			return fmt.Sprintf("services[%d]%s", i, blueprintErrorField(message))
-		}
-	}
-	for i, db := range parsed.Databases {
-		if db.Name == "" {
-			if strings.Contains(message, "database entry is missing its name") {
-				return fmt.Sprintf("databases[%d].name", i)
-			}
-			continue
-		}
-		if strings.Contains(message, fmt.Sprintf("%q", db.Name)) || strings.Contains(message, db.Name+" ") {
-			return fmt.Sprintf("databases[%d]%s", i, blueprintErrorField(message))
-		}
-	}
-	for i, group := range parsed.EnvVarGroups {
-		if group.Name == "" {
-			if strings.Contains(message, "envVarGroups entry is missing its name") {
-				return fmt.Sprintf("envVarGroups[%d].name", i)
-			}
-			continue
-		}
-		if strings.Contains(message, fmt.Sprintf("%q", group.Name)) || strings.Contains(message, group.Name+" ") {
-			return fmt.Sprintf("envVarGroups[%d]%s", i, blueprintErrorField(message))
+	for _, resource := range ir.Resources {
+		if strings.Contains(message, fmt.Sprintf("%q", resource.Name)) || strings.Contains(message, resource.Name+" ") {
+			return blueprintDisplayPath(resource.SourcePath) + blueprintErrorField(message)
 		}
 	}
 	return ""

@@ -201,7 +201,7 @@ func TestMCPSetBuildFilter(t *testing.T) {
 
 func TestDeployManifestThreadsBuildFilter(t *testing.T) {
 	svc, cl := newService(nil)
-	manifest := "services:\n  - name: hello\n    repo: https://github.com/x/mono\n    buildFilter:\n      paths:\n        - src/**\n      ignoredPaths:\n        - docs/**\n"
+	manifest := "services:\n  - name: hello\n    type: web\n    runtime: docker\n    repo: https://github.com/x/mono\n    buildFilter:\n      paths:\n        - src/**\n      ignoredPaths:\n        - docs/**\n"
 	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
 		t.Fatalf("DeployStack: %v", err)
 	}

@@ -1433,6 +1433,27 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, v)
 	})
+	mux.HandleFunc("POST /v1/blueprints/deploy", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			OwnerID string `json:"ownerId"`
+			Repo    string `json:"repo"`
+			Branch  string `json:"branch"`
+			BexYAML string `json:"bexYaml"`
+			Confirm string `json:"confirm"`
+		}
+		if err := core.DecodeJSON(r, &body); err != nil || strings.TrimSpace(body.BexYAML) == "" {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		result, err := s.DeployStack(r.Context(), DeployRequest{
+			OwnerID: body.OwnerID, Repo: body.Repo, Branch: body.Branch, Manifest: body.BexYAML, Confirm: body.Confirm,
+		})
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, result)
+	})
 	mux.HandleFunc("POST /v1/blueprints/preview", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Repo    string `json:"repo"`
@@ -1555,7 +1576,13 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("PUT "+base+"/{id}/headers", putHeaders)
 }
 
-const maxBlueprintValidationBodyBytes = 2 << 20
+// Render permits a Blueprint file of up to 10 MiB. The multipart envelope gets
+// a small separate allowance; the file itself is checked after decoding so a
+// valid 10 MiB upload is not rejected merely for its MIME headers.
+const (
+	maxBlueprintValidationFileBytes = 10 << 20
+	maxBlueprintValidationBodyBytes = maxBlueprintValidationFileBytes + (1 << 20)
+)
 
 // decodeBlueprintValidationRequest accepts Render's multipart contract used by
 // the official CLI (ownerId field + file part), while retaining bex's original
@@ -1583,9 +1610,9 @@ func decodeBlueprintValidationRequest(w http.ResponseWriter, r *http.Request) (o
 		return body.OwnerID, body.BexYAML, nil
 	}
 
-	// The global request-body guard defaults to the same 2 MiB. Keep a local
-	// bound too because feature-level tests and embedders can mount this router
-	// without the composition root's middleware.
+	// Keep a local bound because feature-level tests and embedders can mount this
+	// router without the composition root's middleware. It is intentionally the
+	// Blueprint-specific file/envelope cap, not the stricter global API default.
 	r.Body = http.MaxBytesReader(w, r.Body, maxBlueprintValidationBodyBytes)
 	if err := r.ParseMultipartForm(maxBlueprintValidationBodyBytes); err != nil {
 		return "", "", err
@@ -1605,6 +1632,9 @@ func decodeBlueprintValidationRequest(w http.ResponseWriter, r *http.Request) (o
 	content, err := io.ReadAll(file)
 	if err != nil || len(content) == 0 {
 		return "", "", core.ErrBadRequest
+	}
+	if len(content) > maxBlueprintValidationFileBytes {
+		return "", "", fmt.Errorf("Blueprint file exceeds the 10 MiB validation limit")
 	}
 	return ownerID, string(content), nil
 }
