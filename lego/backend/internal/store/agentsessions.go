@@ -32,26 +32,36 @@ import (
 // knobs evolve independently of the lifecycle contract; callers validate its
 // public shape before persistence.
 type AgentSession struct {
-	ID          string
-	WorkspaceID string
-	Repo        string
-	Branch      string
-	AgentConfig json.RawMessage
-	SandboxID   string
-	Phase       string
-	Status      string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	CanceledAt  *time.Time
+	ID            string
+	WorkspaceID   string
+	Repo          string
+	Branch        string
+	AgentConfig   json.RawMessage
+	SandboxID     string
+	Phase         string
+	Status        string
+	HeadSHA       string
+	PRURL         string
+	PRNumber      int
+	Evidence      json.RawMessage
+	Turns         int
+	DeliveryMode  string
+	FailureReason string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	CanceledAt    *time.Time
 }
 
 const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandbox_id,
-	phase, status, created_at, updated_at, canceled_at`
+	phase, status, head_sha, pr_url, pr_number, evidence, turns, delivery_mode,
+	failure_reason, created_at, updated_at, canceled_at`
 
 func scanAgentSession(row pgx.Row) (AgentSession, error) {
 	var s AgentSession
 	err := row.Scan(&s.ID, &s.WorkspaceID, &s.Repo, &s.Branch, &s.AgentConfig,
-		&s.SandboxID, &s.Phase, &s.Status, &s.CreatedAt, &s.UpdatedAt, &s.CanceledAt)
+		&s.SandboxID, &s.Phase, &s.Status, &s.HeadSHA, &s.PRURL, &s.PRNumber,
+		&s.Evidence, &s.Turns, &s.DeliveryMode, &s.FailureReason,
+		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt)
 	return s, err
 }
 
@@ -114,6 +124,73 @@ func (s *PGStore) SetAgentSessionLifecycle(ctx context.Context, id, sandboxID, p
 		return AgentSession{}, classify("agent session", err)
 	}
 	return out, nil
+}
+
+// ListAgentSessionsByPhases returns every session across all workspaces in any
+// of the given phases, oldest first. It powers the trusted background Completer
+// loop (ADR047 D4) that finalizes running sessions; it performs no authorization
+// and must never be reachable from a tenant-facing verb.
+func (s *PGStore) ListAgentSessionsByPhases(ctx context.Context, phases []string) ([]AgentSession, error) {
+	rows, err := s.Pool.Query(ctx, `SELECT `+agentSessionColumns+`
+		FROM agent_sessions WHERE phase = ANY($1) ORDER BY updated_at ASC, id ASC`, phases)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]AgentSession, 0)
+	for rows.Next() {
+		v, err := scanAgentSession(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, rows.Err()
+}
+
+// RecordAgentSessionDispatch stamps a newly dispatched turn: it advances the
+// phase/status, adopts a fresh sandbox id when re-dispatched, records the
+// delivery mode ("resume" or "redispatch"), and increments the turn counter.
+func (s *PGStore) RecordAgentSessionDispatch(ctx context.Context, id, sandboxID, phase, status, deliveryMode string) (AgentSession, error) {
+	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
+		UPDATE agent_sessions
+		SET sandbox_id = CASE WHEN $2 <> '' THEN $2 ELSE sandbox_id END,
+		    phase=$3, status=$4, delivery_mode=$5, turns=turns+1, updated_at=now()
+		WHERE id=$1
+		RETURNING `+agentSessionColumns, id, sandboxID, phase, status, deliveryMode))
+	if err != nil {
+		return AgentSession{}, classify("agent session", err)
+	}
+	return out, nil
+}
+
+// FinalizeAgentSession records a terminal turn outcome. On success it stores the
+// pushed head SHA, the opened draft PR, and the bounded evidence extract; on
+// failure it stores a named reason. Evidence is left untouched when nil so a
+// failure does not erase a prior successful turn's evidence.
+func (s *PGStore) FinalizeAgentSession(ctx context.Context, id, phase, headSHA, prURL string, prNumber int, evidence json.RawMessage, failureReason string) (AgentSession, error) {
+	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
+		UPDATE agent_sessions
+		SET phase=$2, status=$3,
+		    head_sha = CASE WHEN $4 <> '' THEN $4 ELSE head_sha END,
+		    pr_url   = CASE WHEN $5 <> '' THEN $5 ELSE pr_url END,
+		    pr_number = CASE WHEN $6 <> 0 THEN $6 ELSE pr_number END,
+		    evidence = CASE WHEN $7::jsonb IS NOT NULL THEN $7::jsonb ELSE evidence END,
+		    failure_reason=$8, updated_at=now()
+		WHERE id=$1
+		RETURNING `+agentSessionColumns,
+		id, phase, phase, headSHA, prURL, prNumber, nullableJSON(evidence), failureReason))
+	if err != nil {
+		return AgentSession{}, classify("agent session", err)
+	}
+	return out, nil
+}
+
+func nullableJSON(v json.RawMessage) any {
+	if len(v) == 0 {
+		return nil
+	}
+	return []byte(v)
 }
 
 // DeleteAgentSession removes a row whose first-class OpenFGA parent tuple could

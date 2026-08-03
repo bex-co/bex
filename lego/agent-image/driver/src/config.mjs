@@ -83,6 +83,9 @@ export function loadConfig(env = process.env) {
       "BEX_AGENT_MODEL_API_KEY_ENV must be a valid environment variable name",
     );
   }
+  if (env.BEX_AGENT_DELIVER === "1" && !(env.BEX_AGENT_BRANCH || "")) {
+    throw new Error("BEX_AGENT_DELIVER=1 requires BEX_AGENT_BRANCH");
+  }
   const agentEnv = jsonObject(env.BEX_AGENT_ENV_JSON, "BEX_AGENT_ENV_JSON");
   if (
     Object.hasOwn(agentEnv, "BEX_AGENT_MODEL_API_KEY") ||
@@ -98,6 +101,15 @@ export function loadConfig(env = process.env) {
     args: jsonArray(env.BEX_AGENT_ARGS, "BEX_AGENT_ARGS"),
     cwd,
     prompt: env.BEX_AGENT_PROMPT || "",
+    // Delivery (ADR047 D4): the branch the driver commits + pushes, the repo it
+    // clones when the workspace is empty, the PR base branch, and the delivery
+    // toggle. Deliver defaults off so a bare `run one turn` stays unchanged.
+    branch: env.BEX_AGENT_BRANCH || "",
+    repoUrl: env.BEX_AGENT_REPO_URL || "",
+    baseBranch: env.BEX_AGENT_BASE_BRANCH || "",
+    deliver: env.BEX_AGENT_DELIVER === "1",
+    gitName: env.BEX_AGENT_GIT_NAME || "bex agent",
+    gitEmail: env.BEX_AGENT_GIT_EMAIL || "agent@bex.co",
     existingSessionId: env.BEX_AGENT_EXISTING_SESSION_ID || "",
     persistSession: env.BEX_AGENT_PERSIST_SESSION !== "0",
     listenHost: env.BEX_AGENT_LISTEN_HOST || "0.0.0.0",

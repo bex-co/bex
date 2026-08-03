@@ -27,6 +27,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/github"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -38,7 +39,10 @@ type Store interface {
 	CreateAgentSession(context.Context, store.AgentSession) (store.AgentSession, error)
 	GetAgentSession(context.Context, string) (store.AgentSession, error)
 	ListAgentSessions(context.Context, string) ([]store.AgentSession, error)
+	ListAgentSessionsByPhases(context.Context, []string) ([]store.AgentSession, error)
 	SetAgentSessionLifecycle(context.Context, string, string, string, string, bool) (store.AgentSession, error)
+	RecordAgentSessionDispatch(context.Context, string, string, string, string, string) (store.AgentSession, error)
+	FinalizeAgentSession(context.Context, string, string, string, string, int, json.RawMessage, string) (store.AgentSession, error)
 	DeleteAgentSession(context.Context, string) error
 }
 
@@ -50,10 +54,25 @@ type TupleWriter interface {
 }
 
 type SandboxLifecycle interface {
-	CreateAgentSessionSandbox(context.Context, string, string, string, string, string, string, string, []string) (sandbox.Sandbox, error)
+	CreateAgentSessionSandbox(ctx context.Context, workspaceID, template, sessionID, repository, branch, modelEndpoint, modelAPIKey string, egressAllowlist []string, driverEnv map[string]string) (sandbox.Sandbox, error)
 	EnterAgentSessionPhase(context.Context, string, string, string) error
 	ResumeAgentSessionSandbox(context.Context, string, string, string) error
 	CancelAgentSessionSandbox(context.Context, string, string, string) error
+	ReadSessionStatus(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error)
+}
+
+// PullRequestOpener opens (or idempotently reuses) the session's draft PR. The
+// production GitHub App client satisfies it; keeping the seam here lets the
+// completion tests stub GitHub at the client boundary (ADR047 D4).
+type PullRequestOpener interface {
+	OpenDraftPullRequest(ctx context.Context, installationID int64, owner, repo, head, base, title, body string) (github.PullRequest, error)
+}
+
+// ConnectionStore resolves a workspace's GitHub App installation, so the
+// Completer can open a PR under the same account the session token was minted
+// for (ADR026/ADR047 D2).
+type ConnectionStore interface {
+	GetGitConnection(context.Context, string) (store.GitConnection, error)
 }
 
 // modelKeySecretPath is the OpenBao KV v2 path a workspace's BYO agent-session
@@ -199,29 +218,42 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		_ = s.Store.DeleteAgentSession(ctx, record.ID)
 		return View{}, fmt.Errorf("%w: establish agent session authorization: %v", core.ErrAuthzUnavailable, err)
 	}
-	template := strings.TrimSpace(req.AgentConfig.Template)
-	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, workspaceID, template, record.ID, record.Repo, record.Branch, modelEndpoint, modelAPIKey, egressAllowlist)
+	env := driverEnv(req.AgentConfig, record.Repo, record.Branch)
+	record, err = s.dispatch(ctx, record, strings.TrimSpace(req.AgentConfig.Template), modelEndpoint, modelAPIKey, egressAllowlist, env, "")
 	if err != nil {
-		_, _ = s.Store.SetAgentSessionLifecycle(ctx, record.ID, "", PhaseFailed, "sandbox create failed", false)
 		return View{}, err
 	}
-	if err := s.Sandbox.EnterAgentSessionPhase(ctx, workspaceID, record.ID, sb.ID); err != nil {
-		_ = s.Sandbox.CancelAgentSessionSandbox(ctx, workspaceID, record.ID, sb.ID)
+	return s.withTicket(ctx, record)
+}
+
+// dispatch starts (or re-starts) the session's sandbox, transitions it into the
+// agent egress phase, and records the new turn. On any failure it marks the
+// session failed and returns the error; a store failure after the sandbox is up
+// best-effort terminates it (a sandbox without a durable binding is unmanageable).
+// Shared by the initial Create and by Steer's re-dispatch so their rollback
+// semantics stay in lock-step.
+func (s *Service) dispatch(ctx context.Context, record store.AgentSession, template, modelEndpoint, modelAPIKey string, egressAllowlist []string, env map[string]string, deliveryMode string) (store.AgentSession, error) {
+	ws := record.WorkspaceID
+	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, ws, template, record.ID, record.Repo, record.Branch, modelEndpoint, modelAPIKey, egressAllowlist, env)
+	if err != nil {
+		_, _ = s.Store.SetAgentSessionLifecycle(ctx, record.ID, "", PhaseFailed, "sandbox create failed", false)
+		return store.AgentSession{}, err
+	}
+	if err := s.Sandbox.EnterAgentSessionPhase(ctx, ws, record.ID, sb.ID); err != nil {
+		_ = s.Sandbox.CancelAgentSessionSandbox(ctx, ws, record.ID, sb.ID)
 		_, _ = s.Store.SetAgentSessionLifecycle(ctx, record.ID, sb.ID, PhaseFailed, "egress phase transition failed", false)
-		return View{}, err
+		return store.AgentSession{}, err
 	}
 	phase := PhaseCreating
 	if sb.Status == sandbox.StatusRunning {
 		phase = PhaseRunning
 	}
-	record, err = s.Store.SetAgentSessionLifecycle(ctx, record.ID, sb.ID, phase, string(sb.Status), false)
+	record, err = s.Store.RecordAgentSessionDispatch(ctx, record.ID, sb.ID, phase, string(sb.Status), deliveryMode)
 	if err != nil {
-		// A sandbox without a durable binding is unsafe and unmanageable. Best
-		// effort termination contains it; the original store failure is returned.
-		_ = s.Sandbox.CancelAgentSessionSandbox(ctx, workspaceID, record.ID, sb.ID)
-		return View{}, mapStoreError(record.ID, err)
+		_ = s.Sandbox.CancelAgentSessionSandbox(ctx, ws, record.ID, sb.ID)
+		return store.AgentSession{}, mapStoreError(record.ID, err)
 	}
-	return s.withTicket(ctx, record)
+	return record, nil
 }
 
 func (s *Service) List(ctx context.Context, ownerID string) ([]View, error) {
@@ -338,6 +370,100 @@ func (s *Service) Cancel(ctx context.Context, sessionID string) (View, error) {
 	return viewOf(record)
 }
 
+// agentCommand maps a public agent selector to its installed ACP adapter
+// command inside the image. A short name maps to its adapter binary; anything
+// else passes through so an operator can register a new adapter without a code
+// change (the image, not this map, is the security boundary).
+func agentCommand(agent string) string {
+	switch strings.ToLower(strings.TrimSpace(agent)) {
+	case "claude", "claude-code", "claude-code-acp":
+		return "claude-code-acp"
+	case "gemini", "gemini-cli":
+		return "gemini"
+	case "codex", "codex-acp":
+		return "codex-acp"
+	default:
+		return agent
+	}
+}
+
+// driverEnv renders the non-secret environment the sandbox driver reads to run
+// one headless delivery turn (lego/agent-image/driver). The BYO model key is
+// NOT here: it is sourced from OpenBao and injected as pod-spec env by the
+// sandbox lifecycle (ADR047 D7), so no secret flows through this map.
+func driverEnv(config AgentConfig, repo, branch string) map[string]string {
+	return map[string]string{
+		"BEX_AGENT_COMMAND":         agentCommand(config.Agent),
+		"BEX_AGENT_PROMPT":          config.Task,
+		"BEX_AGENT_BRANCH":          branch,
+		"BEX_AGENT_REPO_URL":        "https://github.com/" + repo + ".git",
+		"BEX_AGENT_DELIVER":         "1",
+		"BEX_AGENT_EXIT_AFTER_TURN": "0",
+	}
+}
+
+// Steer runs a follow-up prompt turn on an existing session (ADR047 D8 phase 1,
+// ADR047 D8 phase 1). In phase 1 a new prompt cannot ride the original sandbox — its
+// prompt env is fixed at creation and there is no live attach yet — so steering
+// re-dispatches a fresh sandbox that re-clones the same bex-agent/* branch and
+// runs the new prompt; the Completer then updates the same draft PR. The
+// delivery mode is recorded on the row.
+func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
+	if err := s.AuthorizeOn(ctx, core.RelCanOperate, sessionObject(req.SessionID)); err != nil {
+		return View{}, err
+	}
+	if !s.enabled() || !s.ticketEnabled() {
+		return View{}, core.ErrAgentSessionsUnavailable
+	}
+	if err := validateSessionID(req.SessionID); err != nil {
+		return View{}, err
+	}
+	prompt := strings.TrimSpace(req.Prompt)
+	if prompt == "" || len(prompt) > 100_000 {
+		return View{}, core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "prompt is required", map[string]any{"field": "prompt"})
+	}
+	record, err := s.Store.GetAgentSession(ctx, req.SessionID)
+	if err != nil {
+		return View{}, mapStoreError(req.SessionID, err)
+	}
+	switch record.Phase {
+	case PhaseCanceled, PhaseCanceling:
+		return View{}, core.NewConflictError("AGENT_SESSION_NOT_STEERABLE", "a canceled agent session cannot be steered", map[string]any{"phase": record.Phase})
+	case PhaseCreating, PhaseRunning, PhaseResuming, PhaseRedispatching:
+		return View{}, core.NewConflictError("AGENT_SESSION_TURN_IN_FLIGHT", "a turn is already running; wait for it to finish before steering", map[string]any{"phase": record.Phase})
+	}
+	config, err := decodeAgentConfig(record)
+	if err != nil {
+		return View{}, err
+	}
+	modelEndpoint, egressAllowlist, err := createEgress(config, req.EgressAllowlist)
+	if err != nil {
+		return View{}, err
+	}
+	config.ModelEndpoint = modelEndpoint
+	if _, err := s.Store.SetAgentSessionLifecycle(ctx, record.ID, "", PhaseRedispatching, "redispatching", false); err != nil {
+		return View{}, mapStoreError(record.ID, err)
+	}
+	// Tear the previous turn's sandbox down (idempotent) before re-dispatching.
+	if record.SandboxID != "" {
+		if err := s.Sandbox.CancelAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, record.SandboxID); err != nil {
+			_, _ = s.Store.SetAgentSessionLifecycle(ctx, record.ID, "", PhaseFailed, "steer teardown failed", false)
+			return View{}, err
+		}
+	}
+	modelAPIKey, err := s.modelAPIKey(ctx, record.WorkspaceID)
+	if err != nil {
+		return View{}, err
+	}
+	env := driverEnv(config, record.Repo, record.Branch)
+	env["BEX_AGENT_PROMPT"] = prompt // the steering prompt overrides the original task
+	record, err = s.dispatch(ctx, record, strings.TrimSpace(config.Template), modelEndpoint, modelAPIKey, egressAllowlist, env, DeliveryRedispatch)
+	if err != nil {
+		return View{}, err
+	}
+	return s.withTicket(ctx, record)
+}
+
 func (s *Service) withTicket(ctx context.Context, record store.AgentSession) (View, error) {
 	identity, ok := core.IdentityFrom(ctx)
 	if !ok || identity.Subject == "" {
@@ -361,13 +487,32 @@ func (s *Service) withTicket(ctx context.Context, record store.AgentSession) (Vi
 	return view, nil
 }
 
-func viewOf(record store.AgentSession) (View, error) {
+// decodeAgentConfig is the one place the persisted config JSON is parsed.
+func decodeAgentConfig(record store.AgentSession) (AgentConfig, error) {
 	var config AgentConfig
 	if err := json.Unmarshal(record.AgentConfig, &config); err != nil {
-		return View{}, fmt.Errorf("decode persisted agent config: %w", err)
+		return AgentConfig{}, fmt.Errorf("decode persisted agent config: %w", err)
+	}
+	return config, nil
+}
+
+func viewOf(record store.AgentSession) (View, error) {
+	config, err := decodeAgentConfig(record)
+	if err != nil {
+		return View{}, err
+	}
+	var evidence *Evidence
+	if len(record.Evidence) > 0 && string(record.Evidence) != "{}" {
+		var e Evidence
+		if err := json.Unmarshal(record.Evidence, &e); err != nil {
+			return View{}, fmt.Errorf("decode persisted evidence: %w", err)
+		}
+		evidence = &e
 	}
 	return View{ID: record.ID, OwnerID: record.WorkspaceID, Repo: record.Repo, Branch: record.Branch,
 		AgentConfig: config, SandboxID: record.SandboxID, Phase: record.Phase, Status: record.Status,
+		HeadSHA: record.HeadSHA, PRURL: record.PRURL, PRNumber: record.PRNumber, Evidence: evidence,
+		Turns: record.Turns, DeliveryMode: record.DeliveryMode, FailureReason: record.FailureReason,
 		CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt, CanceledAt: record.CanceledAt}, nil
 }
 

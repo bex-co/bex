@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -70,6 +71,55 @@ func (f *fakeStore) SetAgentSessionLifecycle(_ context.Context, id, sandboxID, p
 	f.rows[id] = row
 	return row, nil
 }
+func (f *fakeStore) ListAgentSessionsByPhases(_ context.Context, phases []string) ([]store.AgentSession, error) {
+	want := map[string]bool{}
+	for _, p := range phases {
+		want[p] = true
+	}
+	out := []store.AgentSession{}
+	for _, row := range f.rows {
+		if want[row.Phase] {
+			out = append(out, row)
+		}
+	}
+	return out, nil
+}
+func (f *fakeStore) RecordAgentSessionDispatch(_ context.Context, id, sandboxID, phase, status, deliveryMode string) (store.AgentSession, error) {
+	row, ok := f.rows[id]
+	if !ok {
+		return store.AgentSession{}, store.ErrNotFound
+	}
+	if sandboxID != "" {
+		row.SandboxID = sandboxID
+	}
+	row.Phase, row.Status, row.DeliveryMode = phase, status, deliveryMode
+	row.Turns++
+	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
+	f.rows[id] = row
+	return row, nil
+}
+func (f *fakeStore) FinalizeAgentSession(_ context.Context, id, phase, headSHA, prURL string, prNumber int, evidence json.RawMessage, failureReason string) (store.AgentSession, error) {
+	row, ok := f.rows[id]
+	if !ok {
+		return store.AgentSession{}, store.ErrNotFound
+	}
+	row.Phase, row.Status, row.FailureReason = phase, phase, failureReason
+	if headSHA != "" {
+		row.HeadSHA = headSHA
+	}
+	if prURL != "" {
+		row.PRURL = prURL
+	}
+	if prNumber != 0 {
+		row.PRNumber = prNumber
+	}
+	if evidence != nil {
+		row.Evidence = evidence
+	}
+	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
+	f.rows[id] = row
+	return row, nil
+}
 func (f *fakeStore) DeleteAgentSession(_ context.Context, id string) error {
 	delete(f.rows, id)
 	return nil
@@ -124,15 +174,21 @@ type fakeLifecycle struct {
 	modelEndpoint, modelAPIKey          string
 	egressAllowlist                     []string
 	repository, branch                  string
+	driverEnv                           map[string]string
+	sandboxSeq                          int
+	status                              string
+	statusErr                           error
 }
 
-func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, _, _, _, repository, branch, modelEndpoint, modelAPIKey string, egressAllowlist []string) (sandbox.Sandbox, error) {
+func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, _, _, _, repository, branch, modelEndpoint, modelAPIKey string, egressAllowlist []string, driverEnv map[string]string) (sandbox.Sandbox, error) {
 	f.created++
+	f.sandboxSeq++
 	f.repository, f.branch = repository, branch
 	f.modelEndpoint = modelEndpoint
 	f.modelAPIKey = modelAPIKey
 	f.egressAllowlist = append([]string(nil), egressAllowlist...)
-	return sandbox.Sandbox{ID: "sandbox-1", Status: sandbox.StatusRunning}, nil
+	f.driverEnv = driverEnv
+	return sandbox.Sandbox{ID: fmt.Sprintf("sandbox-%d", f.sandboxSeq), Status: sandbox.StatusRunning}, nil
 }
 func (f *fakeLifecycle) EnterAgentSessionPhase(context.Context, string, string, string) error {
 	f.entered++
@@ -145,6 +201,9 @@ func (f *fakeLifecycle) ResumeAgentSessionSandbox(context.Context, string, strin
 func (f *fakeLifecycle) CancelAgentSessionSandbox(context.Context, string, string, string) error {
 	f.canceled++
 	return nil
+}
+func (f *fakeLifecycle) ReadSessionStatus(context.Context, string, string, string) (string, error) {
+	return f.status, f.statusErr
 }
 
 func fixture() (*Service, *fakeStore, *fakeFGA, *fakeLifecycle) {

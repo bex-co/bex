@@ -18,6 +18,12 @@ type idArgs struct {
 	ID string `json:"id"`
 }
 
+type steerArgs struct {
+	ID              string   `json:"id"`
+	Prompt          string   `json:"prompt"`
+	EgressAllowlist []string `json:"egressAllowlist,omitempty"`
+}
+
 type listResult struct {
 	AgentSessions []View `json:"agentSessions"`
 }
@@ -57,6 +63,11 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 	mcp.AddTool(server, &mcp.Tool{Name: "cancel_agent_session", Description: "Cancel a cloud coding-agent session and terminate its sandbox."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Cancel(ctx, in.ID)
+			return nil, out, toolError(err)
+		})
+	mcp.AddTool(server, &mcp.Tool{Name: "steer_agent_session", Description: "Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch and updates the same draft PR."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in steerArgs) (*mcp.CallToolResult, View, error) {
+			out, err := s.Steer(ctx, SteerRequest{SessionID: in.ID, Prompt: in.Prompt, EgressAllowlist: in.EgressAllowlist})
 			return nil, out, toolError(err)
 		})
 }

@@ -18,6 +18,7 @@ import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises
 import path from "node:path";
 import { streamText } from "ai";
 import { createSessionProvider } from "./acp.mjs";
+import { deliverBranch, extractEvidence } from "./delivery.mjs";
 
 async function ensureParent(filename) {
   await mkdir(path.dirname(filename), { recursive: true });
@@ -139,12 +140,20 @@ export async function runHeadlessTurn(config, credentialManager, hub) {
     await Promise.race([execute(), deadline]);
     hub.close();
 
+    // Deliver the agent's work as a pushed branch, then extract bounded evidence
+    // from the redacted session log — both BEFORE scrubbing so the commit
+    // captures the real working tree. A delivery (push) failure throws here and
+    // is recorded as a failed turn, never a hang (ADR047 D4).
+    const delivery = config.deliver ? await deliverBranch(config) : null;
+    const evidence = await extractEvidence(config);
     const scrubbed = await credentialManager.scrubPersistedState();
     const status = {
       state: "succeeded",
       sessionId: provider.getSessionId(),
       resume: created.resume,
       ...(resumedFrom ? { resumedFrom } : {}),
+      ...(delivery ? { delivery } : {}),
+      evidence,
       scrubbedFiles: scrubbed.length,
     };
     await writeStatus(config.statusPath, status);

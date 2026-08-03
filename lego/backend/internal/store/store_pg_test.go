@@ -129,6 +129,31 @@ func assertAgentSessions(ctx context.Context, t *testing.T, s *PGStore, tenant T
 	if err != nil || len(listed) != 1 || listed[0].ID != record.ID {
 		t.Fatalf("list agent sessions = %+v err=%v", listed, err)
 	}
+
+	// w3/m41 delivery surface: a dispatch bumps the turn counter and delivery
+	// mode; ListAgentSessionsByPhases finds the running turn; Finalize records the
+	// completed result + evidence and is queryable back.
+	record, err = s.RecordAgentSessionDispatch(ctx, record.ID, "sandbox-2", "running", "running", "redispatch")
+	if err != nil || record.SandboxID != "sandbox-2" || record.Turns != 1 || record.DeliveryMode != "redispatch" {
+		t.Fatalf("dispatch agent session = %+v err=%v", record, err)
+	}
+	running, err := s.ListAgentSessionsByPhases(ctx, []string{"running", "creating"})
+	if err != nil || len(running) != 1 || running[0].ID != record.ID {
+		t.Fatalf("list-by-phases = %+v err=%v", running, err)
+	}
+	record, err = s.FinalizeAgentSession(ctx, record.ID, "completed", "abc123",
+		"https://github.com/bex-co/example/pull/7", 7, []byte(`{"commandLog":["go test"]}`), "")
+	if err != nil || record.Phase != "completed" || record.HeadSHA != "abc123" || record.PRNumber != 7 {
+		t.Fatalf("finalize agent session = %+v err=%v", record, err)
+	}
+	got, err = s.GetAgentSession(ctx, record.ID)
+	if err != nil || got.PRURL == "" || string(got.Evidence) == "{}" || got.Turns != 1 {
+		t.Fatalf("finalized read-back = %+v err=%v", got, err)
+	}
+	if none, err := s.ListAgentSessionsByPhases(ctx, []string{"running"}); err != nil || len(none) != 0 {
+		t.Fatalf("completed session still listed as running = %+v err=%v", none, err)
+	}
+
 	record, err = s.SetAgentSessionLifecycle(ctx, record.ID, "", "canceled", "canceled", true)
 	if err != nil || record.CanceledAt == nil {
 		t.Fatalf("cancel agent session = %+v err=%v", record, err)

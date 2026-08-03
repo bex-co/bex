@@ -306,3 +306,6 @@ func (f *fakeGitHubAPIClient) GetFileContents(context.Context, string, string, s
 func (f *fakeGitHubAPIClient) GetRepoCommitSHA(context.Context, string, string, string, string) (string, error) {
 	return "", nil
 }
+func (f *fakeGitHubAPIClient) OpenDraftPullRequest(context.Context, int64, string, string, string, string, string, string) (github.PullRequest, error) {
+	return github.PullRequest{}, nil
+}

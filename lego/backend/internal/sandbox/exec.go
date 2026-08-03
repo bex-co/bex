@@ -87,6 +87,14 @@ func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Respo
 	if _, err := s.ownedSandbox(ctx, key, ws, req.SandboxID); err != nil {
 		return nil, err
 	}
+	return s.mintAndDial(ctx, ws, req.SandboxID, []string{"/bin/sh", "-c", req.Command})
+}
+
+// mintAndDial signs an exec ticket binding the exact pod/namespace/command and
+// opens the gateway SSE stream. It performs NO authorization or ownership check
+// — every caller (dialGateway for the public verb, ReadSessionStatus for the
+// trusted Completer) must gate the exact sandbox before calling it.
+func (s *Service) mintAndDial(ctx context.Context, ws, sandboxID string, command []string) (*http.Response, error) {
 	subject := ""
 	if idn, ok := core.IdentityFrom(ctx); ok {
 		subject = idn.Subject
@@ -102,9 +110,9 @@ func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Respo
 	// to a pod that does not exist in this namespace.
 	ticket, err := sandboxexec.Mint(s.Exec.Secret, sandboxexec.Claims{
 		Subject:   subject,
-		SandboxID: req.SandboxID,
+		SandboxID: sandboxID,
 		Namespace: ws + "-sandbox",
-		Command:   []string{"/bin/sh", "-c", req.Command},
+		Command:   command,
 		Workspace: ws,
 		IssuedAt:  now.Unix(),
 		ExpiresAt: now.Add(ttl).Unix(),
@@ -196,7 +204,12 @@ func (s *Service) ExecBuffered(ctx context.Context, req ExecRequest) (ExecResult
 		return ExecResult{}, err
 	}
 	defer func() { _ = resp.Body.Close() }()
+	return bufferExec(resp)
+}
 
+// bufferExec drains one gateway SSE exec response into a collected result. It is
+// shared by the public MCP verb and the trusted session-status read.
+func bufferExec(resp *http.Response) (ExecResult, error) {
 	var out ExecResult
 	exitSeen := false
 	sc := bufio.NewScanner(resp.Body)

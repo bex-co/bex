@@ -41,7 +41,7 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 	svc.SessionEgress = eg
 	lifecycle := NewAgentSessionLifecycle(svc)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "alice", Method: "session"})
-	created, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session", "bex-co/example", "bex-agent/session-test", "https://api.openai.com/v1", "sk-tenant-secret", []string{"docs.example.com"})
+	created, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session", "bex-co/example", "bex-agent/session-test", "https://api.openai.com/v1", "sk-tenant-secret", []string{"docs.example.com"}, map[string]string{"BEX_AGENT_PROMPT": "do it"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestAgentSessionLifecycleSendsNoEnvWithoutAModelKey(t *testing.T) {
 	svc.SessionEgress = &fakeSessionEgress{}
 	lifecycle := NewAgentSessionLifecycle(svc)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "alice", Method: "session"})
-	if _, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session", "bex-co/example", "bex-agent/session-test", "https://api.openai.com/v1", "", nil); err != nil {
+	if _, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session", "bex-co/example", "bex-agent/session-test", "https://api.openai.com/v1", "", nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	if create.Env != nil {
