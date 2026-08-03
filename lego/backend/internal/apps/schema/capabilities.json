@@ -467,12 +467,16 @@
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/serverService/properties/branch": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseService",
+      "fixture": "internal/apps/stack_test.go:TestParseStackProjectsServicesAndDatabases",
+      "reason": "maps to the App source branch with deploy-request override precedence"
     },
     "#/definitions/serverService/properties/buildCommand": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseService",
+      "fixture": "internal/apps/stack_test.go:TestParseStackProjectsServicesAndDatabases",
+      "reason": "maps to the App build command"
     },
     "#/definitions/serverService/properties/buildFilter": {
       "state": "unsupported",
@@ -511,8 +515,10 @@
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/serverService/properties/image": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseService",
+      "fixture": "internal/apps/blueprint_compiler_test.go:TestBlueprintCompilerAcceptsReviewedRenderBlueprint",
+      "reason": "maps the image URL to the App prebuilt-image source"
     },
     "#/definitions/serverService/properties/initialDeployHook": {
       "state": "unsupported",
@@ -531,16 +537,20 @@
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/serverService/properties/name": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "equivalent",
+      "handler": "parseService",
+      "fixture": "internal/apps/stack_test.go:TestParseStackProjectsServicesAndDatabases",
+      "reason": "becomes the stable service name"
     },
     "#/definitions/serverService/properties/numInstances": {
       "state": "unsupported",
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/serverService/properties/plan": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseService",
+      "fixture": "internal/apps/stack_test.go:TestParseStackProjectsServicesAndDatabases",
+      "reason": "maps Render plan spelling to the internal service tier"
     },
     "#/definitions/serverService/properties/preDeployCommand": {
       "state": "unsupported",
@@ -571,28 +581,36 @@
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/serverService/properties/repo": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "equivalent",
+      "handler": "parseService",
+      "fixture": "internal/apps/stack_test.go:TestParseStackProjectsServicesAndDatabases",
+      "reason": "maps to the App source repository"
     },
     "#/definitions/serverService/properties/rootDir": {
       "state": "unsupported",
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/serverService/properties/runtime": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseService",
+      "fixture": "internal/apps/stack_test.go:TestParseStackProjectsServicesAndDatabases",
+      "reason": "maps to the App runtime selection"
     },
     "#/definitions/serverService/properties/scaling": {
       "state": "unsupported",
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/serverService/properties/startCommand": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "equivalent",
+      "handler": "parseService",
+      "fixture": "internal/apps/stack_test.go:TestParseStackProjectsServicesAndDatabases",
+      "reason": "maps to the App start command"
     },
     "#/definitions/serverService/properties/type": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseService",
+      "fixture": "internal/apps/stack_test.go:TestParseStackProjectsServicesAndDatabases",
+      "reason": "maps Render service type to the App workload type"
     },
     "#/definitions/serverService/properties/maintenanceMode/properties/enabled": {
       "state": "unsupported",
