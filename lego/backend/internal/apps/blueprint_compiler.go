@@ -176,6 +176,7 @@ func blueprintCapabilityProblemsAt(value any, path []string, locations map[strin
 		return nil
 	}
 	var problems []BlueprintSourceProblem
+	problems = append(problems, blueprintPrebuiltImageProblems(object, path, locations, context)...)
 	for field, child := range object {
 		fieldPath := append(append([]string(nil), path...), field)
 		pointer := renderSchemaPointer(fieldPath)
@@ -201,6 +202,42 @@ func blueprintCapabilityProblemsAt(value any, path []string, locations map[strin
 		}
 		childContext := blueprintChildCapabilityContext(context, field, child)
 		problems = append(problems, blueprintCapabilityProblemsAt(child, fieldPath, locations, registry, childContext)...)
+	}
+	return problems
+}
+
+// blueprintPrebuiltImageProblems rejects source-build settings on a service
+// that supplies a prebuilt image. The App controller intentionally skips all
+// build and git-push behavior for such a service, so retaining these settings
+// in the CR would make a successful Blueprint apply a silent no-op.
+func blueprintPrebuiltImageProblems(object map[string]any, path []string, locations map[string]BlueprintSourceLocation, context blueprintCapabilityContext) []BlueprintSourceProblem {
+	if context.kind != blueprintCapabilityServer && context.kind != blueprintCapabilityCron && context.kind != blueprintCapabilityStatic {
+		return nil
+	}
+	runtime, _ := object["runtime"].(string)
+	_, hasImage := object["image"]
+	if !hasImage && !strings.EqualFold(runtime, "image") {
+		return nil
+	}
+	problems := make([]BlueprintSourceProblem, 0, 8)
+	for _, field := range []string{"repo", "branch", "rootDir", "buildFilter", "buildCommand", "dockerfilePath", "autoDeploy", "autoDeployTrigger"} {
+		if _, declared := object[field]; !declared {
+			continue
+		}
+		fieldPath := append(append([]string(nil), path...), field)
+		pointer := renderSchemaPointer(fieldPath)
+		location := lookupBlueprintLocation(pointer, locations)
+		message := "prebuilt image services cannot use " + field + "; remove it or deploy from repo instead"
+		if field == "repo" {
+			message = "a service cannot declare both image and repo; remove repo or deploy from repo instead"
+		}
+		problems = append(problems, BlueprintSourceProblem{
+			Code:    "BLUEPRINT_CAPABILITY_INCOMPATIBLE",
+			Path:    pointer,
+			Message: message,
+			Line:    location.Line,
+			Column:  location.Column,
+		})
 	}
 	return problems
 }

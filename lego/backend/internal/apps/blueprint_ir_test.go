@@ -37,8 +37,8 @@ ungrouped:
   services:
     - type: web
       name: public
-      runtime: image
-      image: {url: nginx:1.27}
+      runtime: docker
+      repo: https://github.com/bex-co/public
       autoDeploy: false
 projects:
   - name: app

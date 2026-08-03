@@ -1895,6 +1895,24 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if req.Repo == "" && req.Image == "" {
 		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: one of repo or image is required", core.ErrBadRequest)
 	}
+	if req.Image != "" {
+		for _, input := range []struct {
+			name     string
+			declared bool
+		}{
+			{name: "repo", declared: req.Repo != ""},
+			{name: "branch", declared: req.Branch != ""},
+			{name: "rootDirectory", declared: req.RootDir != ""},
+			{name: "buildFilter", declared: req.BuildFilter != nil},
+			{name: "buildCommand", declared: req.BuildCommand != ""},
+			{name: "dockerfilePath", declared: req.DockerfilePath != ""},
+			{name: "autoDeploy", declared: req.AutoDeploy != nil},
+		} {
+			if input.declared {
+				return appv1alpha1.AppSpec{}, fmt.Errorf("%w: prebuilt image services cannot declare %s; remove it or deploy from repo instead", core.ErrBadRequest, input.name)
+			}
+		}
+	}
 	// Build-from-git inputs are validated at the API boundary (w6/m6 t003) so the
 	// operator never forwards an unchecked repo/branch/rootDirectory into the
 	// BuildKit context string. A bare image deploy skips these (no build).
