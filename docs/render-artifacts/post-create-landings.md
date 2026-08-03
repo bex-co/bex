@@ -67,7 +67,7 @@ The dashboard hooks must treat a missing required id as a failed create. Falling
 
 | Resource | Current dashboard behavior | Classification |
 | --- | --- | --- |
-| Blueprint | `/blueprints` lists registered Blueprints and detail pages read, validate, and sync. A Blueprint is auto-registered when a deploy includes a repo plus `bex.yml`. | Not a post-create landing defect because no direct Create Blueprint action exists. A dedicated creation/import UI would be separately sized feature work. |
+| Blueprint | `/blueprints` lists and details Git-connected Blueprints; `/blueprints/new` provides the repo, branch, `render.yaml` path, validation, and create flow. A Blueprint can also be auto-registered when a deploy includes a repo plus a manifest. | Create lands on the Blueprint detail page, where validation, sync, auto-sync, and history are available. |
 | Preview / workflow / task / one-off-job resources | No dashboard create action | Deliberate non-goals in `.pm/DO_NOT_DO.md`, not omissions from this contract. |
 
 ## Automated and browser evidence

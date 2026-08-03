@@ -730,6 +730,7 @@ func TestSyncBlueprintReappliesManifest(t *testing.T) {
 		TenantID: "tea-a",
 		Repo:     "https://github.com/a/app",
 		Branch:   "main",
+		Path:     CanonicalBlueprintFilename,
 		Manifest: stackManifest,
 		Status:   "active",
 		Name:     "app",
@@ -746,6 +747,49 @@ func TestSyncBlueprintReappliesManifest(t *testing.T) {
 	}
 	if len(res.Stack.Services) == 0 {
 		t.Errorf("SyncBlueprint: stack.services empty, expected stack to be deployed")
+	}
+}
+
+func TestSyncBlueprintDoesNotApplyStoredManifestAfterInvalidGitUpdate(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	fs := newFakeBlueprintStore(store.Blueprint{
+		ID:       "blp-1",
+		TenantID: "tea-a",
+		Repo:     "https://github.com/a/app",
+		Branch:   "main",
+		Path:     CanonicalBlueprintFilename,
+		Manifest: stackManifest,
+		Status:   "active",
+		Name:     "app",
+	})
+	client := fakeClient()
+	svc := &Service{
+		Base:       &core.Base{Client: client, Namespace: "default", Workspace: ws},
+		Blueprints: fs,
+		GitFetcher: fakeBlueprintFetcher{contents: `
+services:
+  - name: app
+    type: web
+    runtime: image
+    image: {url: nginx:latest}
+    autoDeployTrigger: checksPass
+`},
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
+
+	_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", "")
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("SyncBlueprint invalid fetched manifest: want ErrBadRequest, got %v", err)
+	}
+	if stored := fs.blueprints["blp-1"]; stored.Manifest != stackManifest || stored.Status != "active" {
+		t.Errorf("invalid fetched manifest mutated stored blueprint: %+v", stored)
+	}
+	var apps appv1alpha1.AppList
+	if err := client.List(ctx, &apps); err != nil {
+		t.Fatalf("list apps: %v", err)
+	}
+	if len(apps.Items) != 0 {
+		t.Errorf("invalid fetched manifest applied stored blueprint: got %d Apps", len(apps.Items))
 	}
 }
 
