@@ -37,64 +37,92 @@
       "reason": "validated Render Blueprint grammar metadata with no deploy-state effect"
     },
     "#/definitions/buildFilter/properties/ignoredPaths": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/buildFilter/properties/paths": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/autoDeploy": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/autoDeployTrigger": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/branch": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/buildCommand": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/buildFilter": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/dockerCommand": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/dockerContext": {
       "state": "unsupported",
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/cronService/properties/dockerfilePath": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/envVars": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/image": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/name": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/plan": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/preDeployCommand": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/region": {
       "state": "unsupported",
@@ -105,60 +133,88 @@
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/cronService/properties/repo": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/rootDir": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/runtime": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/schedule": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/startCommand": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/type": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/database/properties/connectionPool": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/database/properties/databaseName": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/database/properties/diskSizeGB": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/database/properties/highAvailability": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/database/properties/ipAllowList": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/database/properties/name": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/database/properties/plan": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/database/properties/postgresMajorVersion": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/database/properties/previewDiskSizeGB": {
       "state": "unsupported",
@@ -169,24 +225,32 @@
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/database/properties/readReplicas": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/database/properties/region": {
       "state": "unsupported",
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/database/properties/storageAutoscalingEnabled": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/database/properties/user": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/database/properties/highAvailability/properties/enabled": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/disk/properties/mountPath": {
       "state": "unsupported",
@@ -337,16 +401,22 @@
       "reason": "sets the Environment protection policy"
     },
     "#/definitions/header/properties/name": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/header/properties/path": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/header/properties/value": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/image/properties/creds": {
       "state": "unsupported",
@@ -359,12 +429,16 @@
       "reason": "maps the Render image URL to the App prebuilt-image source"
     },
     "#/definitions/ipAllowList/items/properties/description": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/ipAllowList/items/properties/source": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/project/properties/environments": {
       "state": "translated",
@@ -379,28 +453,40 @@
       "reason": "normalizes the stable Project identity"
     },
     "#/definitions/readReplica/properties/name": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/redisServer/properties/ipAllowList": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/redisServer/properties/maxmemoryPolicy": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/redisServer/properties/name": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/redisServer/properties/persistenceMode": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/redisServer/properties/plan": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/redisServer/properties/previewPlan": {
       "state": "unsupported",
@@ -411,8 +497,10 @@
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/redisServer/properties/type": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/registryCredential/properties/fromRegistryCreds": {
       "state": "unsupported",
@@ -449,24 +537,34 @@
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/route/properties/destination": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/route/properties/source": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/route/properties/type": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/autoDeploy": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/autoDeployTrigger": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/branch": {
       "state": "translated",
@@ -481,40 +579,54 @@
       "reason": "maps to the App build command"
     },
     "#/definitions/serverService/properties/buildFilter": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/disk": {
       "state": "unsupported",
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/serverService/properties/dockerCommand": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/dockerContext": {
       "state": "unsupported",
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/serverService/properties/dockerfilePath": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/domain": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/domains": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/envVars": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/healthCheckPath": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/image": {
       "state": "translated",
@@ -523,20 +635,28 @@
       "reason": "maps the image URL to the App prebuilt-image source"
     },
     "#/definitions/serverService/properties/initialDeployHook": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/ipAllowList": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/maintenanceMode": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/maxShutdownDelaySeconds": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/name": {
       "state": "equivalent",
@@ -545,8 +665,10 @@
       "reason": "becomes the stable service name"
     },
     "#/definitions/serverService/properties/numInstances": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/plan": {
       "state": "translated",
@@ -555,8 +677,10 @@
       "reason": "maps Render plan spelling to the internal service tier"
     },
     "#/definitions/serverService/properties/preDeployCommand": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/previewPlan": {
       "state": "unsupported",
@@ -579,8 +703,10 @@
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/serverService/properties/renderSubdomainPolicy": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/repo": {
       "state": "equivalent",
@@ -589,8 +715,10 @@
       "reason": "maps to the App source repository"
     },
     "#/definitions/serverService/properties/rootDir": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/runtime": {
       "state": "translated",
@@ -599,8 +727,10 @@
       "reason": "maps to the App runtime selection"
     },
     "#/definitions/serverService/properties/scaling": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/startCommand": {
       "state": "equivalent",
@@ -615,28 +745,40 @@
       "reason": "maps Render service type to the App workload type"
     },
     "#/definitions/serverService/properties/maintenanceMode/properties/enabled": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/maintenanceMode/properties/uri": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/scaling/properties/maxInstances": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/scaling/properties/minInstances": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/scaling/properties/targetCPUPercent": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/scaling/properties/targetMemoryPercent": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/servicePreviews/properties/generation": {
       "state": "unsupported",
@@ -651,52 +793,76 @@
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/staticService/properties/autoDeploy": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/autoDeployTrigger": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/branch": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/buildCommand": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/buildFilter": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/domain": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/domains": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/envVars": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/headers": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/ipAllowList": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/name": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/preDeployCommand": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/previews": {
       "state": "unsupported",
@@ -707,32 +873,46 @@
       "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
     },
     "#/definitions/staticService/properties/renderSubdomainPolicy": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/repo": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/rootDir": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/routes": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/runtime": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/staticPublishPath": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/type": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticServicePreviews/properties/generation": {
       "state": "unsupported",
@@ -742,12 +922,16 @@
   "enumValues": {
     "#/definitions/autoDeployTrigger/enum": {
       "\"off\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseService",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "maps to disabled automatic deploys"
       },
       "\"commit\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseService",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "maps to commit-triggered automatic deploys"
       },
       "\"checksPass\"": {
         "state": "unsupported",
@@ -756,80 +940,116 @@
     },
     "#/definitions/connectionPool/enum": {
       "\"pgbouncer\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"none\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       }
     },
     "#/definitions/database/properties/postgresMajorVersion/enum": {
       "\"10\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"11\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"12\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"13\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"14\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"15\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"16\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"17\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"18\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       }
     },
     "#/definitions/databaseEnvVarProperty/enum": {
       "\"connectionString\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"connectionPoolString\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"host\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"port\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"user\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"password\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"database\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       }
     },
     "#/definitions/environment/allOf/1/properties/networking/properties/isolation/enum": {
@@ -862,120 +1082,178 @@
     },
     "#/definitions/plan/enum": {
       "\"free\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"starter\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"standard\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"pro\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"pro plus\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"pro max\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"pro ultra\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"basic-256mb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"basic-1gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"basic-4gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"pro-4gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"pro-8gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"pro-16gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"pro-32gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"pro-64gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"pro-128gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"pro-192gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"pro-256gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"pro-384gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"pro-512gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"accelerated-16gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"accelerated-32gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"accelerated-64gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"accelerated-128gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"accelerated-256gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"accelerated-384gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"accelerated-512gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"accelerated-768gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"accelerated-1024gb\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       }
     },
     "#/definitions/previewsGeneration/enum": {
@@ -994,50 +1272,72 @@
     },
     "#/definitions/redisServer/properties/maxmemoryPolicy/enum": {
       "\"allkeys-lru\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"volatile-lru\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"allkeys-lfu\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"volatile-lfu\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"allkeys-random\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"volatile-random\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"volatile-ttl\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"noeviction\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       }
     },
     "#/definitions/redisServer/properties/persistenceMode/enum": {
       "\"journal-snapshot\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"snapshot\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"off\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       }
     },
     "#/definitions/redisServer/properties/type/enum": {
@@ -1078,12 +1378,16 @@
     },
     "#/definitions/route/properties/type/enum": {
       "\"redirect\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"rewrite\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       }
     },
     "#/definitions/runtime/enum": {
@@ -1144,12 +1448,16 @@
     },
     "#/definitions/serverService/properties/renderSubdomainPolicy/enum": {
       "\"enabled\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"disabled\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       }
     },
     "#/definitions/serverService/properties/type/enum": {
@@ -1174,42 +1482,60 @@
     },
     "#/definitions/serviceEnvVarProperty/enum": {
       "\"host\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"port\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"hostport\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"connectionString\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       }
     },
     "#/definitions/serviceType/enum": {
       "\"web\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/stack_test.go:TestDeployStackFromServiceHostResolvesToTheSlug",
+        "reason": "the reference adapter resolves the declared service kind before applying"
       },
       "\"cron\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/stack_test.go:TestDeployStackFromServiceHostResolvesToTheSlug",
+        "reason": "the reference adapter resolves the declared service kind before applying"
       },
       "\"worker\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/stack_test.go:TestDeployStackFromServiceHostResolvesToTheSlug",
+        "reason": "the reference adapter resolves the declared service kind before applying"
       },
       "\"pserv\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/stack_test.go:TestDeployStackFromServiceHostResolvesToTheSlug",
+        "reason": "the reference adapter resolves the declared service kind before applying"
       },
       "\"static\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/stack_test.go:TestDeployStackFromServiceHostResolvesToTheSlug",
+        "reason": "the reference adapter resolves the declared service kind before applying"
       },
       "\"dpg\"": {
         "state": "unsupported",
@@ -1220,22 +1546,30 @@
         "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
       },
       "\"redis\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/stack_test.go:TestDeployStackFromServiceHostResolvesToTheSlug",
+        "reason": "the reference adapter resolves the declared service kind before applying"
       },
       "\"keyvalue\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/stack_test.go:TestDeployStackFromServiceHostResolvesToTheSlug",
+        "reason": "the reference adapter resolves the declared service kind before applying"
       }
     },
     "#/definitions/staticService/properties/renderSubdomainPolicy/enum": {
       "\"enabled\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"disabled\"": {
-        "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       }
     }
   },
