@@ -78,7 +78,12 @@ export interface BlueprintSyncsQuery {
   blueprintSyncs: Array<BlueprintSyncView | null> | null;
 }
 export const BlueprintSyncsDocument = gql`
-  query BlueprintSyncs($id: String!, $ownerId: String, $cursor: String, $limit: Int) {
+  query BlueprintSyncs(
+    $id: String!
+    $ownerId: String
+    $cursor: String
+    $limit: Int
+  ) {
     blueprintSyncs(id: $id, ownerId: $ownerId, cursor: $cursor, limit: $limit) {
       id
       commitId
@@ -136,11 +141,23 @@ export const BlueprintPreviewDocument = gql`
         valid
         errors
         plan {
+          mode
           services
           databases
           keyValue
           envGroups
           totalActions
+          actions {
+            operation
+            kind
+            name
+            sourcePath
+            resourceId
+            changedFields {
+              path
+            }
+            message
+          }
         }
       }
     }

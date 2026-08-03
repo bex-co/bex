@@ -204,11 +204,29 @@ export type BlueprintValidationError = {
 
 export type BlueprintValidationPlan = {
   __typename: 'BlueprintValidationPlan';
+	actions: Maybe<Array<Maybe<BlueprintPlanAction>>>;
   databases: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   envGroups: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   keyValue: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+	mode: Maybe<Scalars['String']['output']>;
   services: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   totalActions: Maybe<Scalars['Int']['output']>;
+};
+
+export type BlueprintPlanAction = {
+	__typename: 'BlueprintPlanAction';
+	changedFields: Maybe<Array<Maybe<BlueprintPlanFieldChange>>>;
+	kind: Maybe<Scalars['String']['output']>;
+	message: Maybe<Scalars['String']['output']>;
+	name: Maybe<Scalars['String']['output']>;
+	operation: Maybe<Scalars['String']['output']>;
+	resourceId: Maybe<Scalars['String']['output']>;
+	sourcePath: Maybe<Scalars['String']['output']>;
+};
+
+export type BlueprintPlanFieldChange = {
+	__typename: 'BlueprintPlanFieldChange';
+	path: Maybe<Scalars['String']['output']>;
 };
 
 export type BuildFilter = {
