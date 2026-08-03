@@ -388,3 +388,20 @@ func TestMigrationNumbersAreUnique(t *testing.T) {
 		t.Fatal("no migration files found — the embed pattern or directory is broken")
 	}
 }
+
+func TestBlueprintPathDefaultMigrationUsesCanonicalRenderFilename(t *testing.T) {
+	up, err := migrationsFS.ReadFile("migrations/0067_blueprint_render_yaml_default.up.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(up), "ALTER COLUMN path SET DEFAULT 'render.yaml'") {
+		t.Fatalf("Blueprint path migration = %q, want render.yaml default", up)
+	}
+	down, err := migrationsFS.ReadFile("migrations/0067_blueprint_render_yaml_default.down.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(down), "ALTER COLUMN path SET DEFAULT 'bex.yml'") {
+		t.Fatalf("Blueprint path down migration = %q, want legacy default restoration", down)
+	}
+}
