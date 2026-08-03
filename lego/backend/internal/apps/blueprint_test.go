@@ -305,15 +305,21 @@ func TestValidateBlueprintStateless(t *testing.T) {
 	}
 }
 
-func TestExtractSyncFalseVarsUsesNormalizedAllLocationIR(t *testing.T) {
+func TestSyncFalseVarsUsesNormalizedAllLocationIR(t *testing.T) {
 	t.Parallel()
 	manifest := `
 services:
   - name: root
+    type: web
+    runtime: image
+    image: {url: nginx}
     envVars: [{key: ROOT_SECRET, sync: false}]
 ungrouped:
   services:
     - name: ungrouped
+      type: web
+      runtime: image
+      image: {url: nginx}
       envVars: [{key: UNGROUPED_SECRET, sync: false}]
 projects:
   - name: app
@@ -321,10 +327,60 @@ projects:
       - name: prod
         services:
           - name: nested
+            type: web
+            runtime: image
+            image: {url: nginx}
             envVars: [{key: NESTED_SECRET, sync: false}]
 `
-	if got, want := strings.Join(extractSyncFalseVars(manifest), ","), "NESTED_SECRET,ROOT_SECRET,UNGROUPED_SECRET"; got != want {
+	_, ir, problems := CompileBlueprintIR(manifest)
+	if len(problems) > 0 {
+		t.Fatalf("CompileBlueprintIR() problems = %#v", problems)
+	}
+	if got, want := strings.Join(syncFalseVarsFromBlueprintIR(ir), ","), "NESTED_SECRET,ROOT_SECRET,UNGROUPED_SECRET"; got != want {
 		t.Fatalf("sync:false vars = %q, want %q", got, want)
+	}
+}
+
+func TestValidateBlueprintBuildsPlanFromCompiledNestedIR(t *testing.T) {
+	t.Parallel()
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	manifest := `
+services:
+  - name: root
+    type: web
+    runtime: image
+    image: {url: nginx}
+    envVars: [{key: ROOT_SECRET, sync: false}]
+ungrouped:
+  services:
+    - name: ungrouped
+      type: web
+      runtime: image
+      image: {url: nginx}
+      envVars: [{key: UNGROUPED_SECRET, sync: false}]
+projects:
+  - name: app
+    environments:
+      - name: prod
+        services:
+          - name: nested
+            type: web
+            runtime: image
+            image: {url: nginx}
+            envVars: [{key: NESTED_SECRET, sync: false}]
+`
+	validation, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	if err != nil {
+		t.Fatalf("ValidateBlueprint: %v", err)
+	}
+	if !validation.Valid || validation.Plan == nil {
+		t.Fatalf("validation = %#v, want a valid structural plan", validation)
+	}
+	if got, want := strings.Join(validation.Plan.Services, ","), "root,ungrouped,nested"; got != want {
+		t.Errorf("plan services = %q, want %q", got, want)
+	}
+	if got, want := strings.Join(validation.Plan.SyncFalseVars, ","), "NESTED_SECRET,ROOT_SECRET,UNGROUPED_SECRET"; got != want {
+		t.Errorf("plan sync:false vars = %q, want %q", got, want)
 	}
 }
 
@@ -341,6 +397,8 @@ func TestResolveBlueprintResourcesUsesNormalizedAllLocationIR(t *testing.T) {
 	manifest := `
 services:
   - name: root
+    type: web
+    runtime: docker
 ungrouped:
   databases:
     - name: orders
@@ -350,9 +408,15 @@ projects:
       - name: prod
         services:
           - name: nested
+            type: web
+            runtime: docker
           - name: cache
             type: keyvalue
+            ipAllowList: []
 `
+	if _, problems := CompileBlueprintSource(manifest); len(problems) > 0 {
+		t.Fatalf("strict compiler rejected inventory fixture: %#v", problems)
+	}
 	resources := svc.resolveBlueprintResources(context.Background(), store.Blueprint{TenantID: "tea-test", Manifest: manifest})
 	if got, want := len(resources), 4; got != want {
 		t.Fatalf("resource inventory = %#v, want %d resources", resources, want)

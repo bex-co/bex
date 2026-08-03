@@ -381,7 +381,7 @@ func TestMCPSetIPAllowListRejectsConflictingForms(t *testing.T) {
 }
 
 func TestBlueprintServicePreservesIPAllowListDescription(t *testing.T) {
-	req, _, err := parseService(DeployRequest{}, bexService{
+	req, _, err := parseService(blueprintParseOverrides{}, bexService{
 		Name: "blueprint-web",
 		Type: "web",
 		IPAllowList: []bexIPEntry{{

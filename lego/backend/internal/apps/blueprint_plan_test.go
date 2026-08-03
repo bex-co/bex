@@ -219,13 +219,13 @@ func TestApplyBlueprintKeyValueSpecPresence(t *testing.T) {
 
 func TestParseBlueprintServiceMapsDockerAndStaticFields(t *testing.T) {
 	t.Parallel()
-	docker, _, err := parseService(DeployRequest{}, bexService{
+	docker, _, err := parseService(blueprintParseOverrides{}, bexService{
 		Name: "api", Type: "web", Runtime: "docker", Repo: "https://example.test/api.git", DockerCommand: "./serve",
 	})
 	if err != nil || docker.StartCommand != "./serve" {
 		t.Fatalf("docker command = %#v, err %v", docker, err)
 	}
-	static, _, err := parseService(DeployRequest{}, bexService{
+	static, _, err := parseService(blueprintParseOverrides{}, bexService{
 		Name: "site", Type: "web", Runtime: "static", Repo: "https://example.test/site.git", StaticPublishPath: "dist",
 		RenderSubdomainPolicy: "disabled",
 		Routes:                []StaticRouteView{{Type: "rewrite", Source: "/*", Destination: "/index.html"}},
@@ -234,26 +234,26 @@ func TestParseBlueprintServiceMapsDockerAndStaticFields(t *testing.T) {
 	if err != nil || static.SubdomainPolicy != "disabled" || len(static.Routes) != 1 || len(static.Headers) != 1 {
 		t.Fatalf("static fields = %#v, err %v", static, err)
 	}
-	if _, _, err := parseService(DeployRequest{}, bexService{Name: "api", Type: "web", Runtime: "image", Image: &bexImage{URL: "nginx:1"}, DockerCommand: "bad"}); err == nil {
+	if _, _, err := parseService(blueprintParseOverrides{}, bexService{Name: "api", Type: "web", Runtime: "image", Image: &bexImage{URL: "nginx:1"}, DockerCommand: "bad"}); err == nil {
 		t.Fatal("dockerCommand outside docker runtime was accepted")
 	}
 }
 
 func TestParseBlueprintServiceRejectsUnsupportedFieldsAndUsesXBexBuilder(t *testing.T) {
 	t.Parallel()
-	parsed, _, err := parseService(DeployRequest{}, bexService{
+	parsed, _, err := parseService(blueprintParseOverrides{}, bexService{
 		Name: "api", Type: "web", Runtime: "docker", Repo: "https://example.test/api.git",
 		XBex: &bexExtension{Builder: "dockerfile"},
 	})
 	if err != nil || parsed.Builder != "dockerfile" {
 		t.Fatalf("x-bex.builder = %q, err %v", parsed.Builder, err)
 	}
-	if _, _, err := parseService(DeployRequest{}, bexService{
+	if _, _, err := parseService(blueprintParseOverrides{}, bexService{
 		Name: "api", Type: "web", Runtime: "docker", Repo: "https://example.test/api.git", Builder: "dockerfile",
 	}); err == nil {
 		t.Fatal("unnamespaced builder was accepted")
 	}
-	if _, _, err := parseService(DeployRequest{}, bexService{
+	if _, _, err := parseService(blueprintParseOverrides{}, bexService{
 		Name: "api", Type: "web", Runtime: "docker", Repo: "https://example.test/api.git", AutoDeployTrigger: "checksPass",
 	}); err == nil {
 		t.Fatal("checksPass was accepted")
@@ -262,7 +262,7 @@ func TestParseBlueprintServiceRejectsUnsupportedFieldsAndUsesXBexBuilder(t *test
 
 func TestParseBlueprintServiceTranslatesDeprecatedDomain(t *testing.T) {
 	t.Parallel()
-	parsed, _, err := parseService(DeployRequest{}, bexService{
+	parsed, _, err := parseService(blueprintParseOverrides{}, bexService{
 		Name: "api", Type: "web", Runtime: "docker", Repo: "https://example.test/api.git", Domain: "api.example.test",
 	})
 	if err != nil || !reflect.DeepEqual(parsed.Hosts, []string{"api.example.test"}) {

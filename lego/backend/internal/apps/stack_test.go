@@ -841,7 +841,7 @@ func TestDeployStackKeyValueProvisionedAndValidationPlan(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseStack: %v", err)
 	}
-	plan := blueprintValidationPlan("", st)
+	plan := blueprintValidationPlanFromIR(BlueprintIR{}, st)
 	if len(plan.KeyValue) != 1 || plan.KeyValue[0] != "cache" {
 		t.Errorf("plan.KeyValue = %v, want [cache]", plan.KeyValue)
 	}
