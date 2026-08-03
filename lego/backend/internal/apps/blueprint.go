@@ -213,19 +213,16 @@ func (s *Service) ValidateBlueprint(ctx context.Context, ownerID, bexYAML string
 // ValidateBlueprint and PreviewBlueprint. repo/branch feed the same parse a
 // create would run; both empty for a manifest-only validate.
 func (s *Service) blueprintValidationFor(repo, branch, bexYAML string) (BlueprintValidation, error) {
-	source, problems := CompileBlueprintSource(bexYAML)
+	source, ir, problems := CompileBlueprintIR(bexYAML)
 	if len(problems) > 0 {
 		return BlueprintValidation{Errors: blueprintCompilerValidationErrors(problems)}, nil
 	}
-	if _, problems := NormalizeBlueprintIR(source); len(problems) > 0 {
-		return BlueprintValidation{Errors: blueprintCompilerValidationErrors(problems)}, nil
-	}
-	st, err := parseStack(DeployRequest{Repo: repo, Branch: branch, Manifest: bexYAML})
+	st, err := parseCompiledStack(blueprintParseOverrides{repo: repo, branch: branch}, source, ir)
 	if err == nil {
 		err = s.validateBlueprintServices(st)
 	}
 	if err == nil {
-		plan := blueprintValidationPlan(bexYAML, st)
+		plan := blueprintValidationPlanFromIR(ir, st)
 		return BlueprintValidation{Valid: true, Plan: &plan}, nil
 	}
 	if !errors.Is(err, core.ErrBadRequest) {
@@ -235,7 +232,7 @@ func (s *Service) blueprintValidationFor(repo, branch, bexYAML string) (Blueprin
 	if after, ok := strings.CutPrefix(msg, "bad request: "); ok {
 		msg = after
 	}
-	return BlueprintValidation{Errors: []BlueprintValidationError{blueprintValidationError(source, msg)}}, nil
+	return BlueprintValidation{Errors: []BlueprintValidationError{blueprintValidationError(ir, msg)}}, nil
 }
 
 func blueprintCompilerValidationErrors(problems []BlueprintSourceProblem) []BlueprintValidationError {
@@ -719,12 +716,8 @@ func (s *Service) resolveBlueprintResources(ctx context.Context, b store.Bluepri
 	if b.Manifest == "" || s.Client == nil {
 		return nil
 	}
-	source, sourceProblems := parseBlueprintSource(b.Manifest)
-	if len(sourceProblems) > 0 {
-		return nil
-	}
-	ir, irProblems := NormalizeBlueprintIR(source)
-	if len(irProblems) > 0 || len(ir.Resources) == 0 {
+	_, ir, problems := CompileBlueprintIR(b.Manifest)
+	if len(problems) > 0 || len(ir.Resources) == 0 {
 		return nil
 	}
 
@@ -808,8 +801,12 @@ func blueprintIRServiceRenderType(resource BlueprintResourceIR) string {
 	return "web_service"
 }
 
-// blueprintValidationPlan builds the resource-summary for a validate call.
-func blueprintValidationPlan(manifest string, st parsedStack) BlueprintValidationPlan {
+// blueprintValidationPlanFromIR builds the structural validation summary from
+// the exact normalized declarations that were compiled for this request. It
+// deliberately does not touch the raw manifest: this prevents a second YAML
+// parse from disagreeing with the strict compiler on aliases, duplicate keys,
+// scalar types, or nested resource placement.
+func blueprintValidationPlanFromIR(ir BlueprintIR, st parsedStack) BlueprintValidationPlan {
 	plan := BlueprintValidationPlan{
 		Mode:      "structural",
 		Services:  make([]string, 0, len(st.services)),
@@ -829,22 +826,12 @@ func blueprintValidationPlan(manifest string, st parsedStack) BlueprintValidatio
 	for _, group := range st.envGroups {
 		plan.EnvGroups = append(plan.EnvGroups, group.name)
 	}
-	plan.SyncFalseVars = extractSyncFalseVars(manifest)
+	plan.SyncFalseVars = syncFalseVarsFromBlueprintIR(ir)
 	plan.TotalActions = len(plan.Services) + len(plan.Databases) + len(plan.KeyValue) + len(plan.EnvGroups)
 	return plan
 }
 
-// extractSyncFalseVars returns env-var names declared with sync:false in the
-// manifest so the dashboard can prompt the user at create time.
-func extractSyncFalseVars(manifest string) []string {
-	source, sourceProblems := parseBlueprintSource(manifest)
-	if len(sourceProblems) > 0 {
-		return nil
-	}
-	ir, irProblems := NormalizeBlueprintIR(source)
-	if len(irProblems) > 0 {
-		return nil
-	}
+func syncFalseVarsFromBlueprintIR(ir BlueprintIR) []string {
 	seen := map[string]bool{}
 	var names []string
 	for _, resource := range ir.Resources {
@@ -870,26 +857,22 @@ var (
 	unknownBlueprintFieldRE = regexp.MustCompile(`^(.+) contains unknown field "([^"]+)"$`)
 )
 
-func blueprintValidationError(source *BlueprintSource, message string) BlueprintValidationError {
+func blueprintValidationError(ir BlueprintIR, message string) BlueprintValidationError {
 	out := BlueprintValidationError{Error: message}
 	if match := yamlLineRE.FindStringSubmatch(message); len(match) == 2 {
 		if line, err := strconv.Atoi(match[1]); err == nil && line > 0 {
 			out.Line = &line
 		}
 	}
-	if fieldPath := blueprintErrorPath(source, message); fieldPath != "" {
+	if fieldPath := blueprintErrorPath(ir, message); fieldPath != "" {
 		out.Path = &fieldPath
 	}
 	return out
 }
 
-func blueprintErrorPath(source *BlueprintSource, message string) string {
+func blueprintErrorPath(ir BlueprintIR, message string) string {
 	if match := unknownBlueprintFieldRE.FindStringSubmatch(message); len(match) == 3 {
 		return match[1] + "." + match[2]
-	}
-	ir, problems := NormalizeBlueprintIR(source)
-	if len(problems) > 0 {
-		return ""
 	}
 	for _, resource := range ir.Resources {
 		if strings.Contains(message, fmt.Sprintf("%q", resource.Name)) || strings.Contains(message, resource.Name+" ") {

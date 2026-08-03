@@ -195,6 +195,21 @@ func NormalizeBlueprintIR(source *BlueprintSource) (BlueprintIR, []BlueprintSour
 	return ir, sortBlueprintSourceProblems(problems)
 }
 
+// CompileBlueprintIR is the canonical Blueprint intake boundary. It preserves
+// source locations while returning the normalized resource view required by
+// every downstream adapter.
+func CompileBlueprintIR(manifest string) (*BlueprintSource, BlueprintIR, []BlueprintSourceProblem) {
+	source, problems := CompileBlueprintSource(manifest)
+	if len(problems) > 0 {
+		return source, BlueprintIR{}, problems
+	}
+	ir, problems := NormalizeBlueprintIR(source)
+	if len(problems) > 0 {
+		return source, BlueprintIR{}, problems
+	}
+	return source, ir, nil
+}
+
 func normalizeBlueprintResourceLists(ir *BlueprintIR, problems *[]BlueprintSourceProblem, source *BlueprintSource, container map[string]any, basePath []string, project, environment string, ungrouped bool) {
 	for _, declaration := range []struct {
 		Field string

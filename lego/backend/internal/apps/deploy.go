@@ -457,13 +457,19 @@ var dbPropertyKey = map[string]string{
 	"database":             "dbname",
 }
 
+const (
+	serviceRefPropertyHost     = "host"
+	serviceRefPropertyPort     = "port"
+	serviceRefPropertyHostPort = "hostport"
+)
+
 // serviceRefProperty is the set of fromService properties bex honors for a
 // web/private service (host/port/hostport), resolved to literal env values:
 // port at parse (the platform default); host/hostport at apply, injecting
 // the sibling's slug — the hostname the operator's slug-named Service makes
 // resolvable in-cluster (docs/ADR041-service-addresses.md D3, w9/m57).
 var serviceRefProperty = map[string]bool{
-	"host": true, "port": true, "hostport": true,
+	serviceRefPropertyHost: true, serviceRefPropertyPort: true, serviceRefPropertyHostPort: true,
 }
 
 // kvPropertyKey maps a render.yaml fromService (type:keyvalue/redis) property to
@@ -933,14 +939,23 @@ func (s *Service) preflightBlueprintEnv(ctx context.Context, st parsedStack) err
 // list it; the whole parse fails on the first error (w1/m24 DoD: nothing
 // half-created).
 func parseStack(req DeployRequest) (parsedStack, error) {
-	source, sourceProblems := CompileBlueprintSource(req.Manifest)
-	if len(sourceProblems) > 0 {
-		return parsedStack{}, blueprintSourceProblemsError(sourceProblems)
+	source, ir, problems := CompileBlueprintIR(req.Manifest)
+	if len(problems) > 0 {
+		return parsedStack{}, blueprintSourceProblemsError(problems)
 	}
-	ir, irProblems := NormalizeBlueprintIR(source)
-	if len(irProblems) > 0 {
-		return parsedStack{}, blueprintSourceProblemsError(irProblems)
-	}
+	return parseCompiledStack(blueprintParseOverrides{repo: req.Repo, branch: req.Branch}, source, ir)
+}
+
+type blueprintParseOverrides struct {
+	repo   string
+	branch string
+}
+
+// parseCompiledStack is the typed adapter boundary after the one strict
+// Blueprint compiler pass. Callers that already own a compiled source/IR (such
+// as validation) use this directly so no later helper can parse the submitted
+// YAML again with different semantics.
+func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSource, ir BlueprintIR) (parsedStack, error) {
 	fieldsByResource := blueprintFieldsByResource(ir)
 	m, err := decodeCompiledBlueprintManifest(source)
 	if err != nil {
@@ -1107,7 +1122,7 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 			st.keyValues = append(st.keyValues, kv)
 			continue
 		}
-		req, se, err := parseService(req, a.value)
+		req, se, err := parseService(overrides, a.value)
 		if err != nil {
 			return parsedStack{}, err
 		}
@@ -1148,7 +1163,7 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 			}
 			// One target-existence check for every remaining fromService form
 			// (host/hostport/port/envVarKey), so the message lives in one place.
-			allowExistingServiceHost := r.FromService != nil && r.FromService.EnvVarKey == "" && r.FromService.Property == "host"
+			allowExistingServiceHost := r.FromService != nil && r.FromService.EnvVarKey == "" && r.FromService.Property == serviceRefPropertyHost
 			if r.FromService != nil && !names[r.FromService.Name] && !allowExistingServiceHost {
 				return parsedStack{}, fmt.Errorf("%w: service %q: fromService references unknown service %q (declare it under services: in the same file)", core.ErrBadRequest, svc.req.Name, r.FromService.Name)
 			}
@@ -1157,14 +1172,14 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 			// Addressability is validated here, all-or-nothing; the port half is
 			// already known and resolved into the ref now.
 			if r.FromService != nil && r.FromService.EnvVarKey == "" &&
-				(r.FromService.Property == "host" || r.FromService.Property == "hostport") {
+				(r.FromService.Property == serviceRefPropertyHost || r.FromService.Property == serviceRefPropertyHostPort) {
 				port, addressable := servicePorts[r.FromService.Name]
-				if !addressable && r.FromService.Property == "host" && names[r.FromService.Name] {
+				if !addressable && r.FromService.Property == serviceRefPropertyHost && names[r.FromService.Name] {
 					return parsedStack{}, fmt.Errorf("%w: service %q: fromService host references %q which has no network address (only web/private services are addressable)", core.ErrBadRequest, svc.req.Name, r.FromService.Name)
 				}
 				svc.hostRefs = append(svc.hostRefs, hostRef{
 					key: r.Key, target: r.FromService.Name, port: port,
-					hostport: r.FromService.Property == "hostport",
+					hostport: r.FromService.Property == serviceRefPropertyHostPort,
 				})
 				continue
 			}
@@ -1275,7 +1290,7 @@ type serviceEnv struct {
 // parseService maps one services[] entry onto a CreateRequest (with repo/branch
 // overrides applied) plus its classified env (serviceEnv). Structural validation
 // (type, schedule, plan, private+domains) happens here.
-func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, error) {
+func parseService(overrides blueprintParseOverrides, a bexService) (CreateRequest, serviceEnv, error) {
 	if a.Name == "" {
 		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: a service entry is missing its name", core.ErrBadRequest)
 	}
@@ -1292,12 +1307,12 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, e
 		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q image.creds is unsupported; bind an authorized registry credential through the service API", core.ErrBadRequest, a.Name)
 	}
 	repo := a.Repo
-	if dep.Repo != "" && a.Image == nil {
-		repo = dep.Repo // the explicit deploy target wins over the manifest
+	if overrides.repo != "" && a.Image == nil {
+		repo = overrides.repo // the explicit deploy target wins over the manifest
 	}
 	branch := a.Branch
-	if dep.Branch != "" {
-		branch = dep.Branch
+	if overrides.branch != "" {
+		branch = overrides.branch
 	}
 	svcType, err := manifestType(a.Type, a.Runtime)
 	if err != nil {
