@@ -339,7 +339,8 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	}
 	req.Path = discoveredPath
 
-	parsed, parseErr := parseStack(DeployRequest{Repo: req.Repo, Branch: req.Branch, Manifest: contents})
+	prepareReq := DeployRequest{Repo: req.Repo, Branch: req.Branch, Manifest: contents, EnvVarValues: req.EnvVarValues}
+	parsed, ir, parseErr := compileStack(prepareReq)
 	if parseErr != nil {
 		return BlueprintView{}, parseErr
 	}
@@ -369,12 +370,8 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 		StartedAt:   now,
 	})
 
-	_, applyErr := s.deployStack(ctx, DeployRequest{
-		Repo:     req.Repo,
-		Branch:   req.Branch,
-		Manifest: contents,
-		Confirm:  req.Confirm,
-	})
+	prepareReq.Confirm = req.Confirm
+	_, applyErr := s.deployParsedStack(ctx, prepareReq, parsed)
 
 	finalStatus := store.BlueprintStatusInSync
 	syncState := store.BlueprintSyncStateSuccess
@@ -393,7 +390,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 		return BlueprintView{}, applyErr
 	}
 	v := toBlueprintView(b)
-	v.Resources = s.resolveBlueprintResources(ctx, b)
+	v.Resources = s.resolveBlueprintResourcesFromIR(ctx, b, ir)
 	return v, nil
 }
 
@@ -474,9 +471,10 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 	tenantID := b.TenantID
 	now := s.Now().UTC()
 	var commitSHA string
+	var prepared *parsedStack
 
 	if bexYAML != "" {
-		parsed, parseErr := parseStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: bexYAML})
+		parsed, _, parseErr := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: bexYAML})
 		if parseErr != nil {
 			return SyncBlueprintResult{}, parseErr
 		}
@@ -498,10 +496,11 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 			return SyncBlueprintResult{}, err
 		}
 		b = updated
+		prepared = &parsed
 	} else if s.GitFetcher != nil && b.Repo != "" {
 		if contents, sha, fetchErr := s.GitFetcher.FetchBlueprintFile(ctx, tenantID, b.Repo, b.Branch, b.Path); fetchErr == nil {
 			commitSHA = sha
-			if parsed, parseErr := parseStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: contents}); parseErr == nil {
+			if parsed, _, parseErr := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: contents}); parseErr == nil {
 				if pmErr := s.requireStackPaymentMethod(ctx, parsed); pmErr != nil {
 					return SyncBlueprintResult{}, pmErr
 				}
@@ -517,6 +516,7 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 					Status:   store.BlueprintStatusSyncing,
 				}); err == nil {
 					b = updated
+					prepared = &parsed
 				}
 			}
 		}
@@ -536,12 +536,19 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		StartedAt:   now,
 	})
 
-	stack, applyErr := s.deployStack(ctx, DeployRequest{
+	deployReq := DeployRequest{
 		Repo:     b.Repo,
 		Branch:   b.Branch,
 		Manifest: b.Manifest,
 		Confirm:  confirm,
-	})
+	}
+	var stack StackResult
+	var applyErr error
+	if prepared != nil {
+		stack, applyErr = s.deployParsedStack(ctx, deployReq, *prepared)
+	} else {
+		stack, applyErr = s.deployStack(ctx, deployReq)
+	}
 
 	finalStatus := store.BlueprintStatusInSync
 	syncState := store.BlueprintSyncStateSuccess
@@ -718,6 +725,13 @@ func (s *Service) resolveBlueprintResources(ctx context.Context, b store.Bluepri
 	}
 	_, ir, problems := CompileBlueprintIR(b.Manifest)
 	if len(problems) > 0 || len(ir.Resources) == 0 {
+		return nil
+	}
+	return s.resolveBlueprintResourcesFromIR(ctx, b, ir)
+}
+
+func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.Blueprint, ir BlueprintIR) []BlueprintResource {
+	if s.Client == nil || len(ir.Resources) == 0 {
 		return nil
 	}
 

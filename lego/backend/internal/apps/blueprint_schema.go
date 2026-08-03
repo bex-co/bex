@@ -54,14 +54,38 @@ const (
 	BlueprintCapabilityExtension   BlueprintCapabilityState = "extension"
 )
 
+// BlueprintCapabilityHandler is a checked identifier for the canonical stage
+// that implements an accepted Blueprint construct. Registry entries are not
+// free-form audit prose: startup rejects a handler that is not part of this
+// compiler/apply pipeline.
+type BlueprintCapabilityHandler string
+
+const (
+	blueprintHandlerCompileSource BlueprintCapabilityHandler = "CompileBlueprintSource"
+	blueprintHandlerNormalizeIR   BlueprintCapabilityHandler = "NormalizeBlueprintIR"
+	blueprintHandlerManifestType  BlueprintCapabilityHandler = "manifestType"
+	blueprintHandlerParseStack    BlueprintCapabilityHandler = "parseCompiledStack"
+	blueprintHandlerParseKeyValue BlueprintCapabilityHandler = "parseKeyValue"
+	blueprintHandlerParseService  BlueprintCapabilityHandler = "parseService"
+)
+
+var blueprintCapabilityHandlers = map[BlueprintCapabilityHandler]struct{}{
+	blueprintHandlerCompileSource: {},
+	blueprintHandlerNormalizeIR:   {},
+	blueprintHandlerManifestType:  {},
+	blueprintHandlerParseStack:    {},
+	blueprintHandlerParseKeyValue: {},
+	blueprintHandlerParseService:  {},
+}
+
 // BlueprintCapability is deliberately small. The registry is the canonical
 // field-by-field ledger; implementation tasks replace conservative
 // unsupported entries with the handler and fixture that prove equivalence.
 type BlueprintCapability struct {
-	State   BlueprintCapabilityState `json:"state"`
-	Handler string                   `json:"handler,omitempty"`
-	Fixture string                   `json:"fixture,omitempty"`
-	Reason  string                   `json:"reason"`
+	State   BlueprintCapabilityState   `json:"state"`
+	Handler BlueprintCapabilityHandler `json:"handler,omitempty"`
+	Fixture string                     `json:"fixture,omitempty"`
+	Reason  string                     `json:"reason"`
 }
 
 type blueprintCapabilitySchema struct {
@@ -218,6 +242,11 @@ func validateBlueprintCapability(pointer string, capability BlueprintCapability)
 	}
 	if capability.State != BlueprintCapabilityUnsupported && (capability.Handler == "" || capability.Fixture == "") {
 		return fmt.Errorf("Render Blueprint capability registry has no handler/fixture evidence for %s", pointer)
+	}
+	if capability.Handler != "" {
+		if _, ok := blueprintCapabilityHandlers[capability.Handler]; !ok {
+			return fmt.Errorf("Render Blueprint capability registry has unknown handler %q for %s", capability.Handler, pointer)
+		}
 	}
 	return nil
 }

@@ -86,6 +86,10 @@ type DeployRequest struct {
 	Repo     string
 	Branch   string
 	Manifest string
+	// EnvVarValues supplies sync:false values collected by an interactive
+	// Blueprint create flow. They are never included in a validation plan or an
+	// App spec; apply seeds them once into the mutable env store.
+	EnvVarValues map[string]string
 	// Confirm, when set, arms a direct-deploy-override on an EXISTING member
 	// service of a protectedStatus=protected Environment (w6/m19,
 	// apps/protection.go's requireUnprotected) — the phrase
@@ -398,6 +402,7 @@ type parsedService struct {
 	groupLinks    []string          // fromGroup names to link after create
 	seedLiterals  map[string]string // sync:false literals, seeded once
 	seedGenerates []string          // generateValue keys, minted + seeded once
+	promptKeys    []string          // sync:false keys without a manifest value
 	grouping      string
 	ungrouped     bool
 }
@@ -497,10 +502,17 @@ func (s *Service) DeployStack(ctx context.Context, req DeployRequest) (StackResu
 // deployStack is the unauthorized core; DeployStack authorizes once before
 // parsing and applying the stack.
 func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResult, error) {
-	st, err := parseStack(req)
+	st, _, err := compileStack(req)
 	if err != nil {
 		return StackResult{}, err
 	}
+	return s.deployParsedStack(ctx, req, st)
+}
+
+// deployParsedStack applies the exact validated stack produced by compileStack.
+// It is deliberately separate from deployStack for flows (Blueprint create and
+// sync) that must preflight before recording state, then apply that same result.
+func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st parsedStack) (StackResult, error) {
 	if err := s.validateBlueprintServices(st); err != nil {
 		return StackResult{}, err
 	}
@@ -939,16 +951,55 @@ func (s *Service) preflightBlueprintEnv(ctx context.Context, st parsedStack) err
 // list it; the whole parse fails on the first error (w1/m24 DoD: nothing
 // half-created).
 func parseStack(req DeployRequest) (parsedStack, error) {
+	st, _, err := compileStack(req)
+	return st, err
+}
+
+// compileStack is the single strict source-to-apply preparation boundary. It
+// returns both views so callers needing resource inventory never recompile a
+// manifest that has already passed the canonical compiler.
+func compileStack(req DeployRequest) (parsedStack, BlueprintIR, error) {
 	source, ir, problems := CompileBlueprintIR(req.Manifest)
 	if len(problems) > 0 {
-		return parsedStack{}, blueprintSourceProblemsError(problems)
+		return parsedStack{}, BlueprintIR{}, blueprintSourceProblemsError(problems)
 	}
-	return parseCompiledStack(blueprintParseOverrides{repo: req.Repo, branch: req.Branch}, source, ir)
+	st, err := parseCompiledStack(blueprintParseOverrides{repo: req.Repo, branch: req.Branch, envVarValues: req.EnvVarValues}, source, ir)
+	if err != nil {
+		return parsedStack{}, BlueprintIR{}, err
+	}
+	if err := validateBlueprintEnvVarValues(st, req.EnvVarValues); err != nil {
+		return parsedStack{}, BlueprintIR{}, err
+	}
+	return st, ir, nil
+}
+
+// validateBlueprintEnvVarValues rejects values that do not name a sync:false
+// prompt before any write. parseService has already attached matching values to
+// its seed-once work; validation deliberately never reports the supplied values.
+func validateBlueprintEnvVarValues(st parsedStack, values map[string]string) error {
+	if len(values) == 0 {
+		return nil
+	}
+	matched := make(map[string]bool, len(values))
+	for _, svc := range st.services {
+		for _, key := range svc.promptKeys {
+			if _, ok := values[key]; ok {
+				matched[key] = true
+			}
+		}
+	}
+	for key := range values {
+		if !matched[key] {
+			return fmt.Errorf("%w: envVarValues contains %q, which is not a sync:false Blueprint prompt", core.ErrBadRequest, key)
+		}
+	}
+	return nil
 }
 
 type blueprintParseOverrides struct {
-	repo   string
-	branch string
+	repo         string
+	branch       string
+	envVarValues map[string]string
 }
 
 // parseCompiledStack is the typed adapter boundary after the one strict
@@ -1131,7 +1182,7 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 		}
 		names[req.Name] = true
 		pendings = append(pendings, pending{
-			svc:     parsedService{req: req, fields: blueprintServiceFields(fieldsByResource[BlueprintResourceService][req.Name]), groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, grouping: a.grouping, ungrouped: a.ungrouped},
+			svc:     parsedService{req: req, fields: blueprintServiceFields(fieldsByResource[BlueprintResourceService][req.Name]), groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, promptKeys: se.promptKeys, grouping: a.grouping, ungrouped: a.ungrouped},
 			refVars: se.refVars,
 		})
 		serviceKnownEnv[req.Name] = se.known
@@ -1284,6 +1335,7 @@ type serviceEnv struct {
 	groupLinks    []string          // fromGroup names to link after create
 	seedLiterals  map[string]string // sync:false literals, seeded once into the mutable env store
 	seedGenerates []string          // generateValue keys, minted + seeded once
+	promptKeys    []string          // sync:false keys with no manifest value
 	known         map[string]string // this service's parse-time-known env (for a sibling's fromService.envVarKey)
 }
 
@@ -1377,10 +1429,11 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 
 	autoDeploy := a.AutoDeploy
 	if a.AutoDeployTrigger != "" {
-		if a.AutoDeployTrigger == "checksPass" {
-			return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q autoDeployTrigger checksPass is unsupported because bex has no CI-check gating", core.ErrBadRequest, a.Name)
+		var err error
+		autoDeploy, err = parseTrigger(a.AutoDeployTrigger)
+		if err != nil {
+			return CreateRequest{}, serviceEnv{}, fmt.Errorf("service %q: %w", a.Name, err)
 		}
-		autoDeploy = triggerToAutoDeploy(a.AutoDeployTrigger)
 	}
 
 	// Classify each env var (all-or-nothing: a bad form rejects the whole apply).
@@ -1408,11 +1461,17 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 		case e.GenerateValue:
 			se.seedGenerates = append(se.seedGenerates, e.Key)
 		case e.Sync != nil && !*e.Sync:
-			// sync:false with no value: nothing to seed (bex has no dashboard
-			// prompt) — accepted, sync-exempt, the user sets it via the env-vars API.
+			// A literal seeds immediately; an omitted value is a create-time prompt
+			// that DeployRequest.EnvVarValues may seed exactly once.
 			if e.Value != "" {
 				se.seedLiterals[e.Key] = e.Value
 				se.known[e.Key] = e.Value
+			} else {
+				se.promptKeys = append(se.promptKeys, e.Key)
+				if value, ok := overrides.envVarValues[e.Key]; ok {
+					se.seedLiterals[e.Key] = value
+					se.known[e.Key] = value
+				}
 			}
 		default:
 			literal = append(literal, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
@@ -1776,21 +1835,6 @@ func manifestType(t, runtime string) (string, error) {
 	}
 }
 
-// triggerToAutoDeploy maps render.yaml's autoDeployTrigger to the spec.autoDeploy
-// bool: commit/checksPass => true, off => false.
-func triggerToAutoDeploy(trigger string) *bool {
-	switch trigger {
-	case "off":
-		b := false
-		return &b
-	case "commit", "checksPass":
-		b := true
-		return &b
-	default:
-		return nil
-	}
-}
-
 // applyCreate is the stack path's idempotent service upsert: create when absent,
 // else re-apply the request's owned fields and — unlike the interactive Create
 // path — only bump restartedAt (and open a deploy record) when something
@@ -1849,6 +1893,9 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 			desired.PreDeployCommand = req.InitialDeployHook
 		}
 	}
+	initialHookChanged := req.InitialDeployHook != "" &&
+		existing.Annotations[initialDeployHookRanAnnotation] == "" &&
+		existing.Annotations[initialDeployHookAnnotation] != req.InitialDeployHook
 	final := existing.DeepCopy()
 	applyBlueprintServiceSpec(&final.Spec, desired, fields)
 	if final.Spec.MaintenanceMode != nil {
@@ -1875,7 +1922,7 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 	}
 	// Idempotent update: short-circuit when both create-owned spec and explicit
 	// Blueprint grouping already match and no ran-once annotation needs writing.
-	if !specChanged && !environmentChanged && !markHookRan {
+	if !specChanged && !environmentChanged && !markHookRan && !initialHookChanged {
 		return s.view(existing), nil
 	}
 	// A real change to an EXISTING service via the stack-apply path is the
@@ -1907,6 +1954,12 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 		if maintenanceChanged {
 			existing.Spec.MaintenanceMode = currentMaintenance
 		}
+	}
+	if initialHookChanged {
+		if existing.Annotations == nil {
+			existing.Annotations = map[string]string{}
+		}
+		existing.Annotations[initialDeployHookAnnotation] = req.InitialDeployHook
 	}
 	if environmentChanged {
 		if existing.Labels == nil {

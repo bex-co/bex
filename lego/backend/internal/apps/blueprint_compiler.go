@@ -261,6 +261,32 @@ func blueprintNativeRuntime(runtime string) bool {
 	}
 }
 
+type prebuiltImageSourceField struct {
+	blueprintName string
+	createName    string
+}
+
+// prebuiltImageSourceFields is the shared policy for settings that only have
+// meaning while a service builds from Git. The Blueprint compiler reports every
+// declared field; the direct create API checks the subset it exposes.
+var prebuiltImageSourceFields = []prebuiltImageSourceField{
+	{blueprintName: "repo", createName: "repo"},
+	{blueprintName: "branch", createName: "branch"},
+	{blueprintName: "rootDir", createName: "rootDirectory"},
+	{blueprintName: "buildFilter", createName: "buildFilter"},
+	{blueprintName: "buildCommand", createName: "buildCommand"},
+	{blueprintName: "dockerfilePath", createName: "dockerfilePath"},
+	{blueprintName: "autoDeploy", createName: "autoDeploy"},
+	{blueprintName: "autoDeployTrigger"},
+}
+
+func prebuiltImageSourceFieldMessage(field string) string {
+	if field == "repo" {
+		return "a service cannot declare both image and repo; remove repo or deploy from repo instead"
+	}
+	return "prebuilt image services cannot declare " + field + "; remove it or deploy from repo instead"
+}
+
 // blueprintPrebuiltImageProblems rejects source-build settings on a service
 // that supplies a prebuilt image. The App controller intentionally skips all
 // build and git-push behavior for such a service, so retaining these settings
@@ -274,22 +300,18 @@ func blueprintPrebuiltImageProblems(object map[string]any, path []string, locati
 	if !hasImage && !strings.EqualFold(runtime, "image") {
 		return nil
 	}
-	problems := make([]BlueprintSourceProblem, 0, 8)
-	for _, field := range []string{"repo", "branch", "rootDir", "buildFilter", "buildCommand", "dockerfilePath", "autoDeploy", "autoDeployTrigger"} {
-		if _, declared := object[field]; !declared {
+	problems := make([]BlueprintSourceProblem, 0, len(prebuiltImageSourceFields))
+	for _, sourceField := range prebuiltImageSourceFields {
+		if _, declared := object[sourceField.blueprintName]; !declared {
 			continue
 		}
-		fieldPath := append(append([]string(nil), path...), field)
+		fieldPath := append(append([]string(nil), path...), sourceField.blueprintName)
 		pointer := renderSchemaPointer(fieldPath)
 		location := lookupBlueprintLocation(pointer, locations)
-		message := "prebuilt image services cannot use " + field + "; remove it or deploy from repo instead"
-		if field == "repo" {
-			message = "a service cannot declare both image and repo; remove repo or deploy from repo instead"
-		}
 		problems = append(problems, BlueprintSourceProblem{
 			Code:    "BLUEPRINT_CAPABILITY_INCOMPATIBLE",
 			Path:    pointer,
-			Message: message,
+			Message: prebuiltImageSourceFieldMessage(sourceField.blueprintName),
 			Line:    location.Line,
 			Column:  location.Column,
 		})
@@ -428,9 +450,6 @@ func blueprintChildCapabilityContext(context blueprintCapabilityContext, field s
 }
 
 func blueprintServiceCapabilityContext(value any) blueprintCapabilityContext {
-	if services, ok := value.([]any); ok && len(services) > 0 {
-		return blueprintServiceCapabilityContext(services[0])
-	}
 	service, _ := value.(map[string]any)
 	serviceType, _ := service["type"].(string)
 	switch serviceType {

@@ -117,6 +117,17 @@ func TestRenderBlueprintCapabilityRegistryRejectsMissingField(t *testing.T) {
 	}
 }
 
+func TestRenderBlueprintCapabilityRegistryRejectsUnknownHandler(t *testing.T) {
+	registry := decodeCapabilityRegistry(t)
+	capability := registry.Fields["#/definitions/database/properties/name"]
+	capability.Handler = "inventedHandler"
+	registry.Fields["#/definitions/database/properties/name"] = capability
+	err := validateRenderBlueprintCapabilityRegistry(renderBlueprintSchemaSource, &registry)
+	if err == nil || !strings.Contains(err.Error(), "unknown handler") {
+		t.Fatalf("unknown-handler error = %v", err)
+	}
+}
+
 func TestRenderBlueprintCapabilityRegistryRejectsUnclassifiedUpstreamEnum(t *testing.T) {
 	var document map[string]any
 	if err := json.Unmarshal(renderBlueprintSchemaSource, &document); err != nil {

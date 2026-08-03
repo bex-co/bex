@@ -1896,20 +1896,18 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: one of repo or image is required", core.ErrBadRequest)
 	}
 	if req.Image != "" {
-		for _, input := range []struct {
-			name     string
-			declared bool
-		}{
-			{name: "repo", declared: req.Repo != ""},
-			{name: "branch", declared: req.Branch != ""},
-			{name: "rootDirectory", declared: req.RootDir != ""},
-			{name: "buildFilter", declared: req.BuildFilter != nil},
-			{name: "buildCommand", declared: req.BuildCommand != ""},
-			{name: "dockerfilePath", declared: req.DockerfilePath != ""},
-			{name: "autoDeploy", declared: req.AutoDeploy != nil},
-		} {
-			if input.declared {
-				return appv1alpha1.AppSpec{}, fmt.Errorf("%w: prebuilt image services cannot declare %s; remove it or deploy from repo instead", core.ErrBadRequest, input.name)
+		declared := map[string]bool{
+			"repo":           req.Repo != "",
+			"branch":         req.Branch != "",
+			"rootDirectory":  req.RootDir != "",
+			"buildFilter":    req.BuildFilter != nil,
+			"buildCommand":   req.BuildCommand != "",
+			"dockerfilePath": req.DockerfilePath != "",
+			"autoDeploy":     req.AutoDeploy != nil,
+		}
+		for _, sourceField := range prebuiltImageSourceFields {
+			if sourceField.createName != "" && declared[sourceField.createName] {
+				return appv1alpha1.AppSpec{}, fmt.Errorf("%w: %s", core.ErrBadRequest, prebuiltImageSourceFieldMessage(sourceField.createName))
 			}
 		}
 	}
@@ -2002,7 +2000,10 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 			return appv1alpha1.AppSpec{}, fmt.Errorf("%w: runtime image requires image and no repo", core.ErrBadRequest)
 		}
 		builder = "auto"
-	case "elixir", "go", "node", "python", "ruby", "rust":
+	default:
+		if !blueprintNativeRuntime(runtime) {
+			return appv1alpha1.AppSpec{}, fmt.Errorf("%w: unsupported runtime %q", core.ErrBadRequest, runtime)
+		}
 		if req.Repo == "" {
 			return appv1alpha1.AppSpec{}, fmt.Errorf("%w: native runtime %s requires repo", core.ErrBadRequest, runtime)
 		}
@@ -2010,8 +2011,6 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 			return appv1alpha1.AppSpec{}, fmt.Errorf("%w: native runtime %s requires buildCommand and startCommand", core.ErrBadRequest, runtime)
 		}
 		builder = "native"
-	default:
-		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: unsupported runtime %q", core.ErrBadRequest, runtime)
 	}
 	// AutoDeploy: default on for a repo-backed service (a push should redeploy,
 	// Render's default), off for an image-backed one (no repo to rebuild from).

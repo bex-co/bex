@@ -278,6 +278,45 @@ func TestDeployStackAppliesEnvGroupsLinksAndSeeds(t *testing.T) {
 	}
 }
 
+func TestDeployStackSeedsSuppliedSyncFalsePrompt(t *testing.T) {
+	groups := newFakeEnvGroups()
+	seeder := &fakeSeeder{}
+	svc, cl := newBlueprintEnvService(groups, seeder)
+
+	if _, err := svc.DeployStack(context.Background(), DeployRequest{
+		Manifest:     fiveFieldManifest,
+		EnvVarValues: map[string]string{"PROMPTED": "from-request"},
+	}); err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	var webSeed *seedCall
+	for i := range seeder.seeds {
+		if seeder.seeds[i].service == "web" {
+			webSeed = &seeder.seeds[i]
+		}
+	}
+	if webSeed == nil || webSeed.literals["PROMPTED"] != "from-request" {
+		t.Fatalf("prompt value was not seeded: %+v", webSeed)
+	}
+	for _, env := range getApp(t, cl, "web").Spec.Env {
+		if env.Name == "PROMPTED" {
+			t.Fatal("prompt value leaked into the App spec instead of the mutable env store")
+		}
+	}
+}
+
+func TestDeployStackRejectsUnknownSuppliedPrompt(t *testing.T) {
+	svc, cl := newBlueprintEnvService(newFakeEnvGroups(), &fakeSeeder{})
+	_, err := svc.DeployStack(context.Background(), DeployRequest{
+		Manifest:     fiveFieldManifest,
+		EnvVarValues: map[string]string{"NOT_A_PROMPT": "value"},
+	})
+	if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "NOT_A_PROMPT") {
+		t.Fatalf("unknown supplied prompt error = %v", err)
+	}
+	assertNoApps(t, cl)
+}
+
 func TestDeployStackFromGroupPreexistingGroup(t *testing.T) {
 	// A fromGroup referencing a group that is NOT declared in-file but pre-exists in
 	// the workspace links fine (no envVarGroups block needed).
