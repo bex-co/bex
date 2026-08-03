@@ -518,28 +518,32 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 	} else if s.GitFetcher != nil && b.Repo != "" {
 		if contents, sha, fetchErr := s.GitFetcher.FetchBlueprintFile(ctx, tenantID, b.Repo, b.Branch, b.Path); fetchErr == nil {
 			commitSHA = sha
-			if parsed, ir, parseErr := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: contents}); parseErr == nil {
-				if pmErr := s.requireStackPaymentMethod(ctx, parsed); pmErr != nil {
-					return SyncBlueprintResult{}, pmErr
-				}
-				if _, _, planErr := s.blueprintActionPlan(ctx, ir, parsed); planErr != nil {
-					return SyncBlueprintResult{}, planErr
-				}
-				if updated, err := s.Blueprints.UpsertBlueprint(ctx, store.Blueprint{
-					ID:       b.ID,
-					TenantID: tenantID,
-					Name:     b.Name,
-					Repo:     b.Repo,
-					Branch:   b.Branch,
-					Path:     b.Path,
-					AutoSync: b.AutoSync,
-					Manifest: contents,
-					Status:   store.BlueprintStatusSyncing,
-				}); err == nil {
-					b = updated
-					prepared = &parsed
-				}
+			parsed, ir, parseErr := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: contents})
+			if parseErr != nil {
+				return SyncBlueprintResult{}, parseErr
 			}
+			if pmErr := s.requireStackPaymentMethod(ctx, parsed); pmErr != nil {
+				return SyncBlueprintResult{}, pmErr
+			}
+			if _, _, planErr := s.blueprintActionPlan(ctx, ir, parsed); planErr != nil {
+				return SyncBlueprintResult{}, planErr
+			}
+			updated, err := s.Blueprints.UpsertBlueprint(ctx, store.Blueprint{
+				ID:       b.ID,
+				TenantID: tenantID,
+				Name:     b.Name,
+				Repo:     b.Repo,
+				Branch:   b.Branch,
+				Path:     b.Path,
+				AutoSync: b.AutoSync,
+				Manifest: contents,
+				Status:   store.BlueprintStatusSyncing,
+			})
+			if err != nil {
+				return SyncBlueprintResult{}, err
+			}
+			b = updated
+			prepared = &parsed
 		}
 	}
 
