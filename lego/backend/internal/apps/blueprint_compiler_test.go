@@ -159,6 +159,42 @@ services:
 	}
 }
 
+func TestBlueprintCompilerRejectsPreviewFieldsEvenWhenFalseOrEmpty(t *testing.T) {
+	t.Parallel()
+	for name, manifest := range map[string]string{
+		"service preview plan": `services:
+  - name: api
+    type: web
+    runtime: image
+    image: {url: nginx}
+    previewPlan: free
+`,
+		"key-value preview plan": `services:
+  - name: cache
+    type: keyvalue
+    previewPlan: free
+`,
+		"preview toggle false": `services:
+  - name: api
+    type: web
+    runtime: image
+    image: {url: nginx}
+    pullRequestPreviewsEnabled: false
+`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, problems := CompileBlueprintSource(manifest)
+			problem := findBlueprintProblem(problems, "BLUEPRINT_CAPABILITY_UNSUPPORTED")
+			if problem == nil {
+				t.Fatalf("CompileBlueprintSource() problems = %#v, want preview capability refusal", problems)
+			}
+			if problem.Path == "" || problem.Line == 0 || problem.Column == 0 {
+				t.Errorf("preview refusal = %#v, want source path and location", problem)
+			}
+		})
+	}
+}
+
 func TestBlueprintCompilerAcceptsRootVersionAsGrammarMetadata(t *testing.T) {
 	_, problems := CompileBlueprintSource(`
 version: "1"

@@ -23,7 +23,7 @@ import (
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
-// Blueprint is a row of `blueprints` — a workspace-scoped bex.yml stack source.
+// Blueprint is a row of `blueprints` — a workspace-scoped render.yaml stack source.
 // Created automatically when deploy is called with a repo+manifest; sync
 // re-applies the stored manifest (optionally replacing it first).
 // w2/m62: path/AutoSync/LastSyncAt added for Git-connected instance semantics.
@@ -65,11 +65,11 @@ const (
 // Blueprint status constants (Render's vocabulary). The legacy 'active' value
 // stored in pre-m62 rows is mapped to 'in_sync' at the service layer.
 const (
-	BlueprintStatusCreated  = "created"
-	BlueprintStatusPaused   = "paused"
-	BlueprintStatusInSync   = "in_sync"
-	BlueprintStatusSyncing  = "syncing"
-	BlueprintStatusError    = "error"
+	BlueprintStatusCreated = "created"
+	BlueprintStatusPaused  = "paused"
+	BlueprintStatusInSync  = "in_sync"
+	BlueprintStatusSyncing = "syncing"
+	BlueprintStatusError   = "error"
 )
 
 // UpsertBlueprint creates a blueprint or updates its fields when (tenant_id,
@@ -80,7 +80,7 @@ func (s *PGStore) UpsertBlueprint(ctx context.Context, b Blueprint) (Blueprint, 
 		b.ID = ids.New(ids.Blueprint)
 	}
 	if b.Path == "" {
-		b.Path = "bex.yml"
+		b.Path = "render.yaml"
 	}
 	var out Blueprint
 	err := s.Pool.QueryRow(ctx, `
@@ -246,7 +246,12 @@ func (s *PGStore) ListBlueprintSyncs(ctx context.Context, blueprintID, cursor st
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
-	var rows interface{ Next() bool; Scan(...any) error; Close(); Err() error }
+	var rows interface {
+		Next() bool
+		Scan(...any) error
+		Close()
+		Err() error
+	}
 	var err error
 	if cursor == "" {
 		rows, err = s.Pool.Query(ctx,
