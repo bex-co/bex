@@ -10,6 +10,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
@@ -51,10 +52,19 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 	}
 	if created.ID != "sandbox-1" || create.Metadata[metadataOwner] != "alice" || create.Metadata[metadataWorkspace] != "tea-a" ||
 		create.Metadata[metadataRegime] != metadataSandboxRegime || create.Metadata[metadataNetworkPolicy] != string(NetworkPolicyDenyAll) ||
-		create.Metadata[metadataAgentSession] != "ags-session" || create.Metadata[metadataModelEndpoint] != "https://api.openai.com/v1" ||
-		create.Metadata[metadataEgressAllow] != `["docs.example.com"]` || create.Metadata[agentsession.LabelRepository] != bindings[agentsession.LabelRepository] ||
+		create.Metadata[metadataAgentSession] != "ags-session" || create.Metadata[agentsession.LabelRepository] != bindings[agentsession.LabelRepository] ||
 		create.Metadata[agentsession.LabelBranch] != bindings[agentsession.LabelBranch] {
 		t.Fatalf("reserved metadata = %#v", create.Metadata)
+	}
+	// Regression guard (w3/m43, caught live on prod): OpenSandbox persists
+	// metadata as Kubernetes LABELS, so no value may contain a label-invalid
+	// character. The egress allowlist (JSON) and model endpoint (URL) used to be
+	// stamped here as `[]`/`https://…` and were rejected by real OpenSandbox with
+	// SANDBOX::INVALID_METADATA_LABEL; they must not reappear in metadata.
+	for k, v := range create.Metadata {
+		if len(validation.IsValidLabelValue(v)) != 0 {
+			t.Fatalf("sandbox metadata %q=%q is not a valid k8s label value", k, v)
+		}
 	}
 	// The BYO model key (ADR047 D7) is pod-spec env only — never metadata, which
 	// surfaces in status reads and audit.
@@ -66,7 +76,7 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 			t.Fatal("model key leaked into sandbox metadata")
 		}
 	}
-	if err := lifecycle.EnterAgentSessionPhase(ctx, "tea-a", "ags-session", "sandbox-1"); err != nil {
+	if err := lifecycle.EnterAgentSessionPhase(ctx, "tea-a", "ags-session", "sandbox-1", "https://api.openai.com/v1", []string{"docs.example.com"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := lifecycle.ResumeAgentSessionSandbox(ctx, "tea-a", "ags-session", "sandbox-1"); err != nil {
