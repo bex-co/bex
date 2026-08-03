@@ -793,6 +793,103 @@ services:
 	}
 }
 
+// TestBlueprintCoreEntrypointsRefuseUnsupportedManifestBeforeWrites keeps the
+// strict compiler as the one boundary for every core Blueprint route. REST,
+// GraphQL, and MCP exercise ValidateBlueprint in TestValidateFiveFormsCrossSurface;
+// this test covers the remaining preview/create/deploy/manual-sync/Git-sync
+// routes and asserts that none can fall back to an older manifest or mutate.
+func TestBlueprintCoreEntrypointsRefuseUnsupportedManifestBeforeWrites(t *testing.T) {
+	const unsupported = `services:
+  - name: app
+    type: web
+    runtime: image
+    image: {url: nginx:latest}
+    autoDeployTrigger: checksPass
+`
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	fs := newFakeBlueprintStore(store.Blueprint{
+		ID:       "blp-1",
+		TenantID: "tea-a",
+		Name:     "app",
+		Repo:     "https://github.com/a/app",
+		Branch:   "main",
+		Path:     CanonicalBlueprintFilename,
+		Manifest: stackManifest,
+		Status:   "active",
+	})
+	client := fakeClient()
+	svc := &Service{
+		Base:       &core.Base{Client: client, Namespace: "default", Workspace: ws},
+		Blueprints: fs,
+		GitFetcher: fakeBlueprintFetcher{contents: unsupported, sha: "invalid-sha"},
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
+
+	validation, err := svc.ValidateBlueprint(ctx, "tea-a", unsupported)
+	if err != nil || validation.Valid || len(validation.Errors) != 1 || validation.Errors[0].Code != "BLUEPRINT_CAPABILITY_UNSUPPORTED" {
+		t.Fatalf("ValidateBlueprint unsupported = %+v, %v", validation, err)
+	}
+	preview, err := svc.PreviewBlueprint(ctx, "tea-a", "https://github.com/a/app", "main", "")
+	if err != nil || !preview.Found || preview.Validation == nil || preview.Validation.Valid {
+		t.Fatalf("PreviewBlueprint unsupported = %+v, %v", preview, err)
+	}
+
+	cases := []struct {
+		name string
+		run  func() error
+	}{
+		{
+			name: "deploy",
+			run: func() error {
+				_, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Repo: "https://github.com/a/app", Branch: "main", Manifest: unsupported})
+				return err
+			},
+		},
+		{
+			name: "create",
+			run: func() error {
+				_, err := svc.CreateBlueprint(ctx, "tea-a", CreateBlueprintRequest{Repo: "https://github.com/a/app", Branch: "main"})
+				return err
+			},
+		},
+		{
+			name: "manual sync",
+			run: func() error {
+				_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", unsupported, "")
+				return err
+			},
+		},
+		{
+			name: "Git sync",
+			run: func() error {
+				_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", "")
+				return err
+			},
+		},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			if err := test.run(); !errors.Is(err, core.ErrBadRequest) {
+				t.Fatalf("%s accepted unsupported Blueprint: %v", test.name, err)
+			}
+		})
+	}
+
+	if stored := fs.blueprints["blp-1"]; stored.Manifest != stackManifest || stored.Status != "active" {
+		t.Errorf("unsupported Blueprint mutated stored record: %+v", stored)
+	}
+	if len(fs.blueprints) != 1 {
+		t.Errorf("unsupported Blueprint created a record: %d stored", len(fs.blueprints))
+	}
+	var apps appv1alpha1.AppList
+	if err := client.List(ctx, &apps); err != nil {
+		t.Fatalf("list apps: %v", err)
+	}
+	if len(apps.Items) != 0 {
+		t.Errorf("unsupported Blueprint created %d Apps", len(apps.Items))
+	}
+}
+
 func TestSyncBlueprintReplacesManifest(t *testing.T) {
 	ws := fakeWorkspace{"user-a": "tea-a"}
 	fs := newFakeBlueprintStore(store.Blueprint{
