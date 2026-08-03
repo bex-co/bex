@@ -300,6 +300,17 @@ func TestBlueprintCompilerEnforcesCapabilityRegistryAtNestedPaths(t *testing.T) 
 `,
 			path: "#/services/0/preDeployCommand",
 		},
+		"static build command": {
+			manifest: `services:
+  - type: web
+    name: site
+    runtime: static
+    repo: https://github.com/bex/site
+    staticPublishPath: dist
+    buildCommand: npm run build
+`,
+			path: "#/services/0/buildCommand",
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, problems := CompileBlueprintSource(tc.manifest)

@@ -809,10 +809,8 @@
       "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/buildCommand": {
-      "state": "translated",
-      "handler": "parseCompiledStack",
-      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
-      "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
+      "state": "unsupported",
+      "reason": "static-site builds do not execute Render's buildCommand contract; reject until an observable adapter exists"
     },
     "#/definitions/staticService/properties/buildFilter": {
       "state": "translated",
