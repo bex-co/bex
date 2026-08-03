@@ -76,7 +76,7 @@ var (
 	// RegistryCredential is a bex-chosen prefix — Render's own id spelling for
 	// this resource isn't confirmed against a live capture (w2/m14).
 	RegistryCredential = Kind{prefix: "rgc", desc: "external image registry credential"}
-	Blueprint          = Kind{prefix: "blp", desc: "blueprint (bex.yml stack source)"} // w2/m15
+	Blueprint          = Kind{prefix: "blp", desc: "blueprint (render.yaml stack source)"} // w2/m15
 	// Environment is a named subset of a Project's services (e.g. staging/
 	// production) — the second half of w1/m31's grouping feature, layered on
 	// afterward. "env" (not "evg" — that's the pre-existing, unrelated EnvGroup

@@ -89,7 +89,7 @@ kubectl patch app my-app --type merge \
 
 This is the actual "deploy". The spec change bumps `metadata.generation` — **required**, because the controller watches with `GenerationChangedPredicate`: generation-changing updates are delivered to the reconciler (the reconcile itself is level-triggered and deliberately has no early-return — it re-applies desired state on every pass). The operator then classifies the change by artifact/release identity; changing `spec.image` changes both and therefore rewrites the owned Deployment's image. The default RollingUpdate starts the new pod **before** terminating the old one, so the single node serves without a gap. A pod joins the Service's endpoints (and receives traffic) only once its **`ReadinessProbe`** passes — an HTTP `GET` of `spec.healthCheckPath` on the container port (a 2xx/3xx makes a pod ready; a failure keeps it out of rotation until it recovers). Empty `healthCheckPath` defaults to `/`. Workers and cron jobs expose no HTTP port, so they carry no probe.
 
-Preferred over a raw patch: declare the App in the project's `bex.yml` and apply that (see below) — same effect, but the spec lives in the app repo.
+Preferred over a raw patch: declare the App in the project's `render.yaml` and apply that (see below) — same effect, but the spec lives in the app repo.
 
 ### ⑤ Watch the rollout — _laptop_
 
@@ -107,12 +107,12 @@ curl -s https://my-app.<node-ip>.sslip.io/ | grep -i '<something only in the new
 
 Grep for content that **only exists in the new build** — a 200 alone can't distinguish new pod from old.
 
-## `bex.yml` — declaring the App in its own repo
+## `render.yaml` — declaring the App in its own repo
 
-Rather than hand-writing `kubectl patch`, a project can carry a `bex.yml` at its root (render.yaml-style) declaring how it runs on bex:
+Rather than hand-writing `kubectl patch`, a project can carry a `render.yaml` at its root declaring how it runs on bex. `bex.yml` remains a deprecated filename-only alias:
 
 ```yaml
-# bex.yml
+# render.yaml
 services:
   - name: my-app
     type: web # public; use pserv for a private service
@@ -130,7 +130,7 @@ services:
       - www.customer.com # rest -> App.spec.hosts (each gets its own TLS cert)
 ```
 
-`envVars` are **literal, non-secret** configuration: they map to `App.spec.env` and are set on the container in order, with the operator-owned `PORT` always appended last so a user variable can never shadow it. `PORT` aside, an App received no configuration at all before this. **The container must listen on `$PORT`** (the platform default is 3000) — bex routes and health-checks that port, and unlike Render there is no listening-port auto-detection; Blueprint `port` is not accepted. Tenant containers also **cannot bind ports below 1024** (all Linux capabilities are dropped, [ADR022-tenant-isolation.md](ADR022-tenant-isolation.md)), so a stock image that defaults to `:80` (nginx, httpd, whoami) must be pointed at a high port. A rollout stuck on either mistake surfaces the diagnosis on the failed deploy itself: the operator inspects crash-looping/unpullable pods and stamps an actionable message that closes the deploy as its `failureReason` (w9/011, REST/GraphQL/MCP + the dashboard's deploy page). **Credentials** (a database URL, an API key) don't belong in `bex.yml` — set them through the env-vars API ([ADR006-bex-api.md](ADR006-bex-api.md#env-vars--tenant-secrets-render-env-vars-compatible)), which stores them in OpenBao and materializes a `<name>-env` Secret consumed via `App.spec.envFromSecret` ([ADR013-secrets.md](ADR013-secrets.md#product-usage-w4m6-the-env-vars-api)).
+`envVars` are **literal, non-secret** configuration: they map to `App.spec.env` and are set on the container in order, with the operator-owned `PORT` always appended last so a user variable can never shadow it. `PORT` aside, an App received no configuration at all before this. **The container must listen on `$PORT`** (the platform default is 3000) — bex routes and health-checks that port, and unlike Render there is no listening-port auto-detection; Blueprint `port` is not accepted. Tenant containers also **cannot bind ports below 1024** (all Linux capabilities are dropped, [ADR022-tenant-isolation.md](ADR022-tenant-isolation.md)), so a stock image that defaults to `:80` (nginx, httpd, whoami) must be pointed at a high port. A rollout stuck on either mistake surfaces the diagnosis on the failed deploy itself: the operator inspects crash-looping/unpullable pods and stamps an actionable message that closes the deploy as its `failureReason` (w9/011, REST/GraphQL/MCP + the dashboard's deploy page). **Credentials** (a database URL, an API key) don't belong in `render.yaml` — set them through the env-vars API ([ADR006-bex-api.md](ADR006-bex-api.md#env-vars--tenant-secrets-render-env-vars-compatible)), which stores them in OpenBao and materializes a `<name>-env` Secret consumed via `App.spec.envFromSecret` ([ADR013-secrets.md](ADR013-secrets.md#product-usage-w4m6-the-env-vars-api)).
 
 Like render.yaml, **the service `type` decides exposure** — a `web` service is public by definition and its platform hostname is mandatory (there is no opt-out flag); `pserv` services are reachable only in-cluster at `<name>.<namespace>.svc:<port>`.
 
@@ -139,7 +139,7 @@ The workload type is immutable after creation. Render's [Blueprint specification
 Apply it from the bex repo — this renders each `.services[]` entry into an App CR and `kubectl apply`s it (respects `$KUBECONFIG`; `DRY_RUN=1` prints the CRs instead):
 
 ```sh
-scripts/app-apply.sh <project-dir | path/to/bex.yml>
+scripts/app-apply.sh <project-dir | path/to/render.yaml>
 ```
 
 Changing `domains[0]` and re-applying is how an App moves to a real domain: the operator rewrites the Ingress to the new host and cert-manager issues a fresh certificate for it (DNS for the host must already point at the edge, or sit behind a proxy such as Cloudflare that forwards HTTP to it — otherwise the ACME HTTP-01 challenge cannot pass). Additional entries serve the App at extra hostnames — typically customers' custom domains CNAME'd to the platform hostname; see [ADR005-custom-domain.md](ADR005-custom-domain.md) for that flow (edge registration + per-host cert isolation).
