@@ -27,7 +27,7 @@
     "#/allOf/1/properties/ungrouped": {
       "state": "translated",
       "handler": "NormalizeBlueprintIR",
-      "fixture": "internal/apps/blueprint_ir_test.go",
+      "fixture": "internal/apps/blueprint_ir_test.go:TestNormalizeBlueprintIRPreservesPresenceAndGrouping",
       "reason": "normalized into resources with an explicit empty environment assignment"
     },
     "#/allOf/1/properties/version": {
