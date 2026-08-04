@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -60,6 +61,10 @@ func (m *Minter) Mint(ctx context.Context, req MintRequest) (response MintRespon
 		outcome := core.AuditAllowed
 		if err != nil {
 			outcome = core.AuditDenied
+			// Log the failure reason (the token is never in the error) — the mint
+			// was previously silent, which hid a GitHub-permission failure behind an
+			// opaque 502 during the w3/m43 live E2E. Never logs the token.
+			log.Printf("agent-session credential mint denied (session=%s repo=%s): %v", req.SessionID, auditRepository, err)
 		}
 		core.RecordAuditEvent(ctx, m.Audit, core.AuditEvent{
 			Caller: req.PodName, CallerMethod: "sandbox", Verb: AuditVerbMintCredential,
