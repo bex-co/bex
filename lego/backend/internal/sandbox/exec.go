@@ -57,6 +57,12 @@ type ExecRequest struct {
 	Command   string
 }
 
+// systemExecSubject is the ticket subject the trusted Completer's status read
+// mints under (it has no caller identity). The gateway requires a non-empty
+// subject and uses it only for per-caller concurrency scoping + metrics — never
+// for authorization — so a stable sentinel is correct and self-describing.
+const systemExecSubject = "system:agent-session-completer"
+
 func (s *Service) execEnabled() bool {
 	return s.Exec != nil && len(s.Exec.Secret) > 0 && s.Exec.GatewayURL != ""
 }
@@ -95,8 +101,13 @@ func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Respo
 // — every caller (dialGateway for the public verb, ReadSessionStatus for the
 // trusted Completer) must gate the exact sandbox before calling it.
 func (s *Service) mintAndDial(ctx context.Context, ws, sandboxID string, command []string) (*http.Response, error) {
-	subject := ""
-	if idn, ok := core.IdentityFrom(ctx); ok {
+	// A caller-facing exec (dialGateway) always carries an identity; the trusted
+	// Completer's status read runs in a system loop with none. The gateway rejects
+	// an empty-subject ticket as malformed (sandboxexec.Verify), so fall back to a
+	// stable system subject — otherwise every completer status read 401s and the
+	// session strands in `running` forever (w3/m43 live E2E).
+	subject := systemExecSubject
+	if idn, ok := core.IdentityFrom(ctx); ok && idn.Subject != "" {
 		subject = idn.Subject
 	}
 	ttl := s.Exec.TTL

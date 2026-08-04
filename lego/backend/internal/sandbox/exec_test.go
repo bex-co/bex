@@ -25,6 +25,9 @@ import (
 	"testing"
 	"time"
 
+	"context"
+
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
 )
@@ -208,5 +211,60 @@ func TestExecEnforcesOwnerAndWorkspaceAdminOverride(t *testing.T) {
 	}
 	if gatewayCalls != 1 {
 		t.Fatalf("workspace-admin exec reached gateway %d time(s), want 1", gatewayCalls)
+	}
+}
+
+// The Completer reads a session's driver status file through the gateway exec
+// boundary from a system loop with NO caller identity. The gateway rejects an
+// empty-subject ticket as malformed (sandboxexec.Verify), so mintAndDial must
+// fall back to a stable system subject — otherwise every status read 401s and
+// the session strands in `running` forever (the w3/m43 live-E2E failure).
+func TestReadSessionStatusMintsSystemSubjectWithoutIdentity(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/sandboxes/os-agent" {
+			_ = json.NewEncoder(w).Encode(osSandbox{ID: "os-agent", Metadata: map[string]string{
+				metadataOwner: "id-a", metadataWorkspace: "tea-a", metadataRegime: metadataSandboxRegime,
+				metadataNetworkPolicy: string(NetworkPolicyDenyAll), agentsession.LabelSession: "ags-one",
+			}})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer upstream.Close()
+
+	secret := []byte("exec-secret")
+	var gotSubject string
+	gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claims, err := sandboxexec.Verify(secret, r.Header.Get(sandboxexec.TicketHeader), time.Now())
+		if err != nil {
+			// This is exactly what the pre-fix empty subject produced: reject as the
+			// gateway does, so the test fails loudly on regression.
+			http.Error(w, "invalid ticket", http.StatusUnauthorized)
+			return
+		}
+		gotSubject = claims.Subject
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write([]byte("event: output\ndata: {\"stream\":\"stdout\",\"data\":\"{\\\"state\\\":\\\"succeeded\\\"}\"}\n\n"))
+		_, _ = w.Write([]byte("event: exit\ndata: {\"exitCode\":0}\n\n"))
+	}))
+	defer gateway.Close()
+
+	service := &Service{
+		Base:   &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
+		Client: NewClient(upstream.URL),
+		Exec:   &ExecConfig{Secret: secret, GatewayURL: gateway.URL, Client: gateway.Client()},
+	}
+	lifecycle := &AgentSessionLifecycle{service: service}
+
+	// context.Background() carries NO identity — the Completer's exact situation.
+	raw, err := lifecycle.ReadSessionStatus(context.Background(), "tea-a", "ags-one", "os-agent")
+	if err != nil {
+		t.Fatalf("ReadSessionStatus without identity: %v", err)
+	}
+	if !strings.Contains(raw, `"state":"succeeded"`) {
+		t.Fatalf("status content = %q, want the succeeded status", raw)
+	}
+	if gotSubject != systemExecSubject {
+		t.Fatalf("ticket subject = %q, want the system sentinel %q", gotSubject, systemExecSubject)
 	}
 }
