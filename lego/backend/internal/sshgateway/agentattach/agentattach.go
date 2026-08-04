@@ -14,7 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sshgateway
+// Package agentattach is the agent-session conversation transport of the
+// isolated SSH gateway (ADR047 D9, w3/m43). bex-api authorizes can_operate on
+// the session and mints a signed agent-session ticket (agentsessionticket,
+// the web-shell nonce pattern) binding the exact pod/namespace/session; the
+// browser's Vercel AI SDK client (useChat) connects to THIS endpoint with
+// that ticket. The gateway verifies + single-use-claims the ticket, then:
+//
+//   - GET  /v1/agent-sessions/{id}/stream — replays the durable transcript, then
+//     splices the live driver stream, teeing new parts into the store. A terminal
+//     session (its pod gone) replays the stored transcript and closes with
+//     `[DONE]`. This replay mode IS the transcript-read API.
+//   - POST /v1/agent-sessions/{id}/stream — forwards a live prompt turn to the
+//     driver and streams the turn's parts back (w3/m43 t004).
+//
+// Byte-transparent forwarding is a contract, not a convenience (ADR047 D3): the
+// gateway preserves the `x-vercel-ai-ui-message-stream: v1` marker and the exact
+// `data:` payload bytes end to end — it never re-encodes, filters, reorders, or
+// injects stream parts. Its only additions are authentication, the transcript
+// tee, and replay-then-live splicing. Cookies on this path are ignored: the
+// ticket is the sole credential (the endpoint publishes under the api.bex.co
+// origin via edge path-routing, so a Kratos cookie will arrive).
+package agentattach
 
 import (
 	"bufio"
@@ -32,35 +53,14 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// The agent-session conversation transport (ADR047 D9, w3/m43). bex-api
-// authorizes can_operate on the session and mints a signed agent-session ticket
-// (agentsessionticket, the web-shell nonce pattern) binding the exact
-// pod/namespace/session; the browser's Vercel AI SDK client (useChat) connects
-// to THIS endpoint with that ticket. The gateway verifies + single-use-claims
-// the ticket, then:
-//
-//   - GET  /v1/agent-sessions/{id}/stream — replays the durable transcript, then
-//     splices the live driver stream, teeing new parts into the store. A terminal
-//     session (its pod gone) replays the stored transcript and closes with
-//     `[DONE]`. This replay mode IS the transcript-read API.
-//   - POST /v1/agent-sessions/{id}/stream — forwards a live prompt turn to the
-//     driver and streams the turn's parts back (w3/m43 t004).
-//
-// Byte-transparent forwarding is a contract, not a convenience (ADR047 D3): the
-// gateway preserves the `x-vercel-ai-ui-message-stream: v1` marker and the exact
-// `data:` payload bytes end to end — it never re-encodes, filters, reorders, or
-// injects stream parts. Its only additions are authentication, the transcript
-// tee, and replay-then-live splicing. Cookies on this path are ignored: the
-// ticket is the sole credential (the endpoint publishes under the api.bex.co
-// origin via edge path-routing, so a Kratos cookie will arrive).
-
-// AgentAttachTicketHeader carries the signed agent-session ticket. It is a
-// header, never a URL parameter, so the credential stays out of proxy/access
-// logs (the web-shell subprotocol precedent, applied to plain-HTTP SSE).
-const AgentAttachTicketHeader = "X-Bex-Agent-Ticket"
+// TicketHeader carries the signed agent-session ticket. It is a header, never
+// a URL parameter, so the credential stays out of proxy/access logs (the
+// web-shell subprotocol precedent, applied to plain-HTTP SSE).
+const TicketHeader = "X-Bex-Agent-Ticket"
 
 const defaultDriverPort = 8787
 
@@ -71,17 +71,17 @@ const uiMessageStreamHeader = "x-vercel-ai-ui-message-stream"
 // (agentsessions.validateCreate); 256 KB leaves headroom for message framing.
 const maxAgentTurnRequest = 256 << 10
 
-// AgentAttachStore is the gateway's narrow transcript authority: read the
-// durable transcript for replay, append teed parts idempotently, and claim the
-// ticket nonce for single use across replicas. It reads/writes only
-// agent_session_transcripts and shell_ticket_nonces — no session-row access is
-// needed (a terminal session is detected by the driver being unreachable), so
-// the least-privilege bex_ssh_gateway role gains only those two grants.
-type AgentAttachStore interface {
+// Store is the transport's narrow transcript authority: read the durable
+// transcript for replay and append teed parts idempotently. It reads/writes
+// only agent_session_transcripts — no session-row access is needed (a
+// terminal session is detected by the driver being unreachable), so the
+// least-privilege bex_ssh_gateway role gains only that grant. (The ticket
+// nonce claim reaches shell_ticket_nonces through the injected
+// sshgateway.NonceGuard.)
+type Store interface {
 	AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64) ([]store.AgentSessionTranscriptPart, error)
 	AgentSessionTranscriptMaxSeq(ctx context.Context, sessionID string) (int64, bool, error)
 	AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []store.AgentSessionTranscriptPart) error
-	ClaimShellNonce(ctx context.Context, nonce string, expiresAt time.Time) (bool, error)
 }
 
 // PodIPResolver maps a claimed pod (namespace + name from the verified ticket)
@@ -108,13 +108,17 @@ func (r KubePodIPResolver) PodIP(ctx context.Context, namespace, podName string)
 	return pod.Status.PodIP, nil
 }
 
-// AgentAttachConfig enables the agent-session conversation transport. Secret
-// must equal bex-api's agent-session ticket secret (BEX_SHELL_TICKET_SECRET);
-// empty => the listener is not started (feature off, byte-identical default).
-type AgentAttachConfig struct {
-	Store      AgentAttachStore
+// Server is the agent-session attach handler. Share Limits and Nonces (and
+// Metrics) with the other gateway transports so session caps and ticket
+// single-use hold process-wide, not per feature.
+type Server struct {
+	// Secret must equal bex-api's agent-session ticket secret
+	// (BEX_SHELL_TICKET_SECRET); empty => the transport is disabled and every
+	// request is refused with 503.
+	Secret []byte
+
+	Store      Store
 	Pods       PodIPResolver
-	Secret     []byte
 	DriverPort int
 	HTTPClient *http.Client
 	Now        func() time.Time
@@ -125,37 +129,55 @@ type AgentAttachConfig struct {
 	// Reuse bex-api's BEX_API_CORS_ORIGIN value. Empty => no CORS headers
 	// (same-origin / curl only).
 	AllowedOrigins []string
+
+	Metrics *sshgateway.Metrics
+	Limits  *sshgateway.SessionLimiter
+	Nonces  *sshgateway.NonceGuard
+
+	SessionTimeout time.Duration
 }
 
-func (s *Server) AgentAttachEnabled() bool {
-	return s.AgentAttach != nil && len(s.AgentAttach.Secret) > 0 &&
-		s.AgentAttach.Store != nil && s.AgentAttach.Pods != nil
+func (s *Server) defaults() {
+	if s.SessionTimeout <= 0 {
+		s.SessionTimeout = 4 * time.Hour
+	}
+	if s.Limits == nil {
+		s.Limits = sshgateway.NewSessionLimiter(0, 0)
+	}
+	if s.Nonces == nil {
+		s.Nonces = &sshgateway.NonceGuard{}
+	}
 }
 
-// AgentAttachHandler serves both GET (attach: replay + live) and POST (live
-// prompt turn). Mount it on the api-origin path the edge routes to the gateway.
-func (s *Server) AgentAttachHandler() http.Handler {
+// Enabled reports whether the agent-session attach transport is configured.
+func (s *Server) Enabled() bool {
+	return len(s.Secret) > 0 && s.Store != nil && s.Pods != nil
+}
+
+// Handler serves both GET (attach: replay + live) and POST (live prompt
+// turn). Mount it on the api-origin path the edge routes to the gateway.
+func (s *Server) Handler() http.Handler {
 	s.defaults()
 	return http.HandlerFunc(s.serveAgentAttach)
 }
 
-func (c *AgentAttachConfig) now() time.Time {
-	if c.Now != nil {
-		return c.Now()
+func (s *Server) now() time.Time {
+	if s.Now != nil {
+		return s.Now()
 	}
 	return time.Now()
 }
 
-func (c *AgentAttachConfig) driverPort() int {
-	if c.DriverPort > 0 {
-		return c.DriverPort
+func (s *Server) driverPort() int {
+	if s.DriverPort > 0 {
+		return s.DriverPort
 	}
 	return defaultDriverPort
 }
 
-func (c *AgentAttachConfig) httpClient() *http.Client {
-	if c.HTTPClient != nil {
-		return c.HTTPClient
+func (s *Server) httpClient() *http.Client {
+	if s.HTTPClient != nil {
+		return s.HTTPClient
 	}
 	// No client-side timeout: the request context (bounded by SessionTimeout)
 	// governs the long-lived stream; a Client.Timeout would truncate it.
@@ -163,14 +185,14 @@ func (c *AgentAttachConfig) httpClient() *http.Client {
 }
 
 func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
-	if !s.AgentAttachEnabled() {
+	if !s.Enabled() {
 		http.Error(w, "agent session attach not configured", http.StatusServiceUnavailable)
 		return
 	}
 	// CORS + preflight run before the ticket check: a browser's preflight carries
 	// no ticket, and the actual GET/POST response must expose the v1 marker to the
 	// cross-origin dashboard or the stream is unreadable.
-	s.applyAgentAttachCORS(w, r)
+	s.applyCORS(w, r)
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -184,10 +206,9 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
 		return
 	}
-	cfg := s.AgentAttach
-	claims, err := agentsessionticket.Verify(cfg.Secret, r.Header.Get(AgentAttachTicketHeader), cfg.now())
+	claims, err := agentsessionticket.Verify(s.Secret, r.Header.Get(TicketHeader), s.now())
 	if err != nil {
-		s.Metrics.authentication("rejected_key")
+		s.Metrics.Authentication("rejected_key")
 		http.Error(w, "invalid ticket", http.StatusUnauthorized)
 		return
 	}
@@ -198,25 +219,25 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "ticket/session mismatch", http.StatusForbidden)
 		return
 	}
-	if !s.consumeAgentAttachNonce(r.Context(), claims.Nonce, time.Unix(claims.ExpiresAt, 0), cfg.now()) {
-		s.Metrics.authentication("rejected_key")
+	if !s.Nonces.Consume(r.Context(), claims.Nonce, time.Unix(claims.ExpiresAt, 0), s.now()) {
+		s.Metrics.Authentication("rejected_key")
 		http.Error(w, "ticket already used", http.StatusUnauthorized)
 		return
 	}
-	if acquired, scope := s.acquire(claims.Subject); !acquired {
-		s.Metrics.limitRejected(scope)
+	if acquired, scope := s.Limits.Acquire(claims.Subject); !acquired {
+		s.Metrics.LimitRejected(scope)
 		http.Error(w, "session limit reached", http.StatusTooManyRequests)
 		return
 	}
-	defer s.release(claims.Subject)
-	s.Metrics.authentication("accepted")
+	defer s.Limits.Release(claims.Subject)
+	s.Metrics.Authentication("accepted")
 
 	ctx, cancel := context.WithTimeout(r.Context(), s.SessionTimeout)
 	defer cancel()
 
-	podIP, ipErr := cfg.Pods.PodIP(ctx, claims.Namespace, claims.Pod)
+	podIP, ipErr := s.Pods.PodIP(ctx, claims.Namespace, claims.Pod)
 
-	sse := s.startAgentSSE(w, flusher)
+	sse := startAgentSSE(w, flusher)
 
 	if r.Method == http.MethodPost {
 		if ipErr != nil {
@@ -224,17 +245,17 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 			sse.errorAndDone("session is not live")
 			return
 		}
-		s.forwardAgentTurn(ctx, sse, cfg, podIP, claims.SessionID, r.Body)
+		s.forwardAgentTurn(ctx, sse, podIP, claims.SessionID, r.Body)
 		return
 	}
-	s.streamAgentAttach(ctx, sse, cfg, podIP, ipErr, claims.SessionID)
+	s.streamAgentAttach(ctx, sse, podIP, ipErr, claims.SessionID)
 }
 
 // streamAgentAttach replays the durable transcript to the client, then — if the
 // driver is reachable — splices the live driver stream and tees new parts into
 // the store. A terminal/gone session (ipErr) replays and closes with `[DONE]`.
-func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, cfg *AgentAttachConfig, podIP string, ipErr error, sessionID string) {
-	stored, err := cfg.Store.AgentSessionTranscript(ctx, sessionID, -1)
+func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, podIP string, ipErr error, sessionID string) {
+	stored, err := s.Store.AgentSessionTranscript(ctx, sessionID, -1)
 	if err != nil {
 		log.Printf("agent attach: transcript replay failed (session=%s): %v", sessionID, err)
 		sse.errorAndDone("transcript unavailable")
@@ -250,7 +271,7 @@ func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, cfg *Agen
 		sse.done()
 		return
 	}
-	if err := s.spliceDriverStream(ctx, sse, cfg, podIP, sessionID, replayedMax); err != nil {
+	if err := s.spliceDriverStream(ctx, sse, podIP, sessionID, replayedMax); err != nil {
 		log.Printf("agent attach: live splice ended (session=%s): %v", sessionID, err)
 	}
 	sse.done()
@@ -262,13 +283,13 @@ func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, cfg *Agen
 // already sent. The ordinal-keyed idempotent append means re-reading the
 // driver's replayed history (across reconnects/replicas) never duplicates a
 // stored part.
-func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, cfg *AgentAttachConfig, podIP, sessionID string, replayedMax int64) error {
-	url := fmt.Sprintf("http://%s/stream", net.JoinHostPort(podIP, strconv.Itoa(cfg.driverPort())))
+func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, sessionID string, replayedMax int64) error {
+	url := fmt.Sprintf("http://%s/stream", net.JoinHostPort(podIP, strconv.Itoa(s.driverPort())))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return err
 	}
-	resp, err := cfg.httpClient().Do(req)
+	resp, err := s.httpClient().Do(req)
 	if err != nil {
 		return err
 	}
@@ -293,7 +314,7 @@ func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, cfg *Age
 		ordinal++
 		// Tee every part (idempotent on the driver-ordinal key); forward to the
 		// client only the parts replay did not already deliver.
-		if err := cfg.Store.AppendAgentSessionTranscript(ctx, sessionID, []store.AgentSessionTranscriptPart{
+		if err := s.Store.AppendAgentSessionTranscript(ctx, sessionID, []store.AgentSessionTranscriptPart{
 			{Seq: ordinal, Part: []byte(payload)},
 		}); err != nil {
 			log.Printf("agent attach: tee failed (session=%s seq=%d): %v", sessionID, ordinal, err)
@@ -307,20 +328,20 @@ func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, cfg *Age
 // forwardAgentTurn posts a live prompt turn to the driver and streams the turn's
 // parts back to the client, teeing them into the transcript after the current
 // stored max so a concurrently attached GET client sees the turn too (w3/m43 t004).
-func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, cfg *AgentAttachConfig, podIP, sessionID string, body io.Reader) {
-	base, _, err := cfg.Store.AgentSessionTranscriptMaxSeq(ctx, sessionID)
+func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, sessionID string, body io.Reader) {
+	base, _, err := s.Store.AgentSessionTranscriptMaxSeq(ctx, sessionID)
 	if err != nil {
 		sse.errorAndDone("transcript unavailable")
 		return
 	}
-	url := fmt.Sprintf("http://%s/turn", net.JoinHostPort(podIP, strconv.Itoa(cfg.driverPort())))
+	url := fmt.Sprintf("http://%s/turn", net.JoinHostPort(podIP, strconv.Itoa(s.driverPort())))
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, io.LimitReader(body, maxAgentTurnRequest))
 	if err != nil {
 		sse.errorAndDone("turn dispatch failed")
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := cfg.httpClient().Do(req)
+	resp, err := s.httpClient().Do(req)
 	if err != nil {
 		sse.errorAndDone("turn dispatch failed")
 		return
@@ -341,7 +362,7 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, cfg *Agent
 			continue
 		}
 		ordinal++
-		if err := cfg.Store.AppendAgentSessionTranscript(ctx, sessionID, []store.AgentSessionTranscriptPart{
+		if err := s.Store.AppendAgentSessionTranscript(ctx, sessionID, []store.AgentSessionTranscriptPart{
 			{Seq: ordinal, Part: []byte(payload)},
 		}); err != nil {
 			log.Printf("agent turn: tee failed (session=%s seq=%d): %v", sessionID, ordinal, err)
@@ -386,13 +407,13 @@ func readSSEData(r *bufio.Reader) (string, bool, error) {
 	}
 }
 
-// applyAgentAttachCORS mirrors bex-api's withCORS (internal/api/auth.go): echo a
-// matched Origin, allow the ticket + content-type request headers, expose the
-// v1 marker to the reader, and allow credentials (the AI SDK transport may send
+// applyCORS mirrors bex-api's withCORS (internal/api/auth.go): echo a matched
+// Origin, allow the ticket + content-type request headers, expose the v1
+// marker to the reader, and allow credentials (the AI SDK transport may send
 // credentials:'include'; the gateway still ignores cookies and trusts only the
 // ticket). Empty allowlist => no CORS headers (curl / same-origin).
-func (s *Server) applyAgentAttachCORS(w http.ResponseWriter, r *http.Request) {
-	allowed := s.AgentAttach.AllowedOrigins
+func (s *Server) applyCORS(w http.ResponseWriter, r *http.Request) {
+	allowed := s.AllowedOrigins
 	if len(allowed) == 0 {
 		return
 	}
@@ -405,7 +426,7 @@ func (s *Server) applyAgentAttachCORS(w http.ResponseWriter, r *http.Request) {
 		if o == origin {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", AgentAttachTicketHeader+", Content-Type")
+			w.Header().Set("Access-Control-Allow-Headers", TicketHeader+", Content-Type")
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Expose-Headers", uiMessageStreamHeader)
 			return
@@ -420,7 +441,7 @@ type agentSSE struct {
 	flusher http.Flusher
 }
 
-func (s *Server) startAgentSSE(w http.ResponseWriter, flusher http.Flusher) *agentSSE {
+func startAgentSSE(w http.ResponseWriter, flusher http.Flusher) *agentSSE {
 	// Ignore any cookies on this path (the ticket is the sole credential) and
 	// preserve the v1 marker end to end.
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -452,38 +473,4 @@ func (a *agentSSE) done() {
 func (a *agentSSE) errorAndDone(message string) {
 	a.frame(fmt.Sprintf(`{"type":"error","errorText":%q}`, message))
 	a.done()
-}
-
-// consumeAgentAttachNonce enforces single-use of an attach ticket across
-// replicas, mirroring the sandbox-exec guard: an in-memory fast path plus the
-// authoritative shared-store claim (a reconnect always mints a fresh ticket, so
-// single-use never blocks a legitimate reattach).
-func (s *Server) consumeAgentAttachNonce(ctx context.Context, nonce string, exp, now time.Time) bool {
-	if nonce == "" {
-		return false
-	}
-	s.usedMu.Lock()
-	if s.usedNonces == nil {
-		s.usedNonces = map[string]time.Time{}
-	}
-	for n, e := range s.usedNonces {
-		if now.After(e) {
-			delete(s.usedNonces, n)
-		}
-	}
-	if _, seen := s.usedNonces[nonce]; seen {
-		s.usedMu.Unlock()
-		return false
-	}
-	s.usedNonces[nonce] = exp
-	s.usedMu.Unlock()
-
-	claimCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-	claimed, err := s.AgentAttach.Store.ClaimShellNonce(claimCtx, nonce, exp)
-	if err != nil {
-		log.Printf("agent attach nonce claim failed: %v", err)
-		return false
-	}
-	return claimed
 }

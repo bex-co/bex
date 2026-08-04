@@ -45,6 +45,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/authz"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentattach"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentcred"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/nativessh"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/sandboxsse"
@@ -167,14 +168,16 @@ func main() {
 	// tickets under the same key. The gateway dials the in-sandbox driver's
 	// stream port directly (the sandbox NetworkPolicy admits only gateway
 	// ingress) and tees the UI-message stream into the durable transcript.
-	if secret := os.Getenv("BEX_SHELL_TICKET_SECRET"); secret != "" {
-		gateway.AgentAttach = &sshgateway.AgentAttachConfig{
-			Store:          st,
-			Pods:           sshgateway.KubePodIPResolver{Client: clientset},
-			Secret:         []byte(secret),
-			DriverPort:     intEnv("BEX_AGENT_SESSION_DRIVER_PORT", 8787),
-			AllowedOrigins: splitCSV(os.Getenv("BEX_API_CORS_ORIGIN")),
-		}
+	attach := &agentattach.Server{
+		Secret:         []byte(os.Getenv("BEX_SHELL_TICKET_SECRET")),
+		Store:          st,
+		Pods:           agentattach.KubePodIPResolver{Client: clientset},
+		DriverPort:     intEnv("BEX_AGENT_SESSION_DRIVER_PORT", 8787),
+		AllowedOrigins: splitCSV(os.Getenv("BEX_API_CORS_ORIGIN")),
+		Metrics:        metrics,
+		Limits:         limits,
+		Nonces:         nonces,
+		SessionTimeout: sessionTimeout,
 	}
 	addr := envOr("BEX_SSH_ADDR", ":2222")
 	listener, err := net.Listen("tcp", addr)
@@ -285,13 +288,13 @@ func main() {
 	// the platform edge, which path-routes api.bex.co/v1/agent-sessions/{id}/stream
 	// to this listener (t006). Started only when BEX_SHELL_TICKET_SECRET is set.
 	// Both GET (attach: replay + live) and POST (live prompt turn) mount here.
-	if gateway.AgentAttachEnabled() {
+	if attach.Enabled() {
 		attachMux := http.NewServeMux()
-		attachMux.Handle("GET /v1/agent-sessions/{id}/stream", gateway.AgentAttachHandler())
-		attachMux.Handle("POST /v1/agent-sessions/{id}/stream", gateway.AgentAttachHandler())
+		attachMux.Handle("GET /v1/agent-sessions/{id}/stream", attach.Handler())
+		attachMux.Handle("POST /v1/agent-sessions/{id}/stream", attach.Handler())
 		// OPTIONS reaches the same handler so the CORS preflight is answered (the
 		// cross-origin dashboard sends one before the ticketed GET/POST).
-		attachMux.Handle("OPTIONS /v1/agent-sessions/{id}/stream", gateway.AgentAttachHandler())
+		attachMux.Handle("OPTIONS /v1/agent-sessions/{id}/stream", attach.Handler())
 		attachMux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
 		attachServer := &http.Server{Handler: attachMux, ReadHeaderTimeout: 5 * time.Second}
 		attachAddr := envOr("BEX_AGENT_ATTACH_ADDR", ":8083")

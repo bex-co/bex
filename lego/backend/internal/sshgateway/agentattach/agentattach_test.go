@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sshgateway
+package agentattach
 
 import (
 	"context"
@@ -33,11 +33,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// fakeAttachStore is an in-memory AgentAttachStore: an ordered transcript keyed
-// by (session, seq) with idempotent append, plus a single-use nonce claim.
+// fakeAttachStore is an in-memory transcript Store (ordered parts keyed by
+// (session, seq) with idempotent append) plus a single-use nonce claim, so it
+// also backs the test's NonceGuard.
 type fakeAttachStore struct {
 	mu     sync.Mutex
 	parts  map[string]map[int64]store.AgentSessionTranscriptPart
@@ -127,17 +129,15 @@ func fakeDriver(history []string) (*httptest.Server, string, int) {
 	return srv, host, port
 }
 
-func newAttachGateway(store AgentAttachStore, pods PodIPResolver, secret []byte, port int) *Server {
+func newAttachGateway(st *fakeAttachStore, pods PodIPResolver, secret []byte, port int) *Server {
 	return &Server{
-		Metrics:        NewMetrics(prometheus.NewRegistry()),
-		MaxSessions:    100,
-		MaxPerIdentity: 5,
+		Secret: secret, Store: st, Pods: pods, DriverPort: port,
+		AllowedOrigins: []string{"https://dashboard.bex.co"},
+		Now:            func() time.Time { return time.Unix(1_800_000_000, 0) },
+		Metrics:        sshgateway.NewMetrics(prometheus.NewRegistry()),
+		Limits:         sshgateway.NewSessionLimiter(100, 5),
+		Nonces:         &sshgateway.NonceGuard{Store: st},
 		SessionTimeout: time.Minute,
-		AgentAttach: &AgentAttachConfig{
-			Store: store, Pods: pods, Secret: secret, DriverPort: port,
-			AllowedOrigins: []string{"https://dashboard.bex.co"},
-			Now:            func() time.Time { return time.Unix(1_800_000_000, 0) },
-		},
 	}
 }
 
@@ -179,11 +179,11 @@ func TestAgentAttachReplaysThenSplicesLiveAndTees(t *testing.T) {
 	defer driver.Close()
 
 	gw := newAttachGateway(st, fixedPodIP{ip: host}, secret, port)
-	srv := httptest.NewServer(gw.AgentAttachHandler())
+	srv := httptest.NewServer(gw.Handler())
 	defer srv.Close()
 
 	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
-	req.Header.Set(AgentAttachTicketHeader, attachTicket(t, secret, session))
+	req.Header.Set(TicketHeader, attachTicket(t, secret, session))
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -226,11 +226,11 @@ func TestAgentAttachTerminalSessionReplaysThenDone(t *testing.T) {
 	})
 	// No live pod: the terminal-session history path.
 	gw := newAttachGateway(st, fixedPodIP{err: fmt.Errorf("pod gone")}, secret, 8787)
-	srv := httptest.NewServer(gw.AgentAttachHandler())
+	srv := httptest.NewServer(gw.Handler())
 	defer srv.Close()
 
 	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
-	req.Header.Set(AgentAttachTicketHeader, attachTicket(t, secret, session))
+	req.Header.Set(TicketHeader, attachTicket(t, secret, session))
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -253,13 +253,13 @@ func TestAgentAttachRejectsBadTicketReplayAndMismatch(t *testing.T) {
 	driver, host, port := fakeDriver(nil)
 	defer driver.Close()
 	gw := newAttachGateway(st, fixedPodIP{ip: host}, secret, port)
-	srv := httptest.NewServer(gw.AgentAttachHandler())
+	srv := httptest.NewServer(gw.Handler())
 	defer srv.Close()
 
 	do := func(ticket string) int {
 		req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
 		if ticket != "" {
-			req.Header.Set(AgentAttachTicketHeader, ticket)
+			req.Header.Set(TicketHeader, ticket)
 		}
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
@@ -304,7 +304,7 @@ func TestAgentAttachCORS(t *testing.T) {
 		{Seq: 0, Part: []byte(`{"type":"start"}`)},
 	})
 	gw := newAttachGateway(st, fixedPodIP{err: fmt.Errorf("terminal")}, secret, 8787)
-	srv := httptest.NewServer(gw.AgentAttachHandler())
+	srv := httptest.NewServer(gw.Handler())
 	defer srv.Close()
 	origin := "https://dashboard.bex.co"
 
@@ -312,7 +312,7 @@ func TestAgentAttachCORS(t *testing.T) {
 	pre, _ := http.NewRequest(http.MethodOptions, srv.URL, nil)
 	pre.Header.Set("Origin", origin)
 	pre.Header.Set("Access-Control-Request-Method", "GET")
-	pre.Header.Set("Access-Control-Request-Headers", AgentAttachTicketHeader)
+	pre.Header.Set("Access-Control-Request-Headers", TicketHeader)
 	presp, err := http.DefaultClient.Do(pre)
 	if err != nil {
 		t.Fatal(err)
@@ -324,7 +324,7 @@ func TestAgentAttachCORS(t *testing.T) {
 	if presp.Header.Get("Access-Control-Allow-Origin") != origin {
 		t.Fatalf("preflight allow-origin = %q, want %q", presp.Header.Get("Access-Control-Allow-Origin"), origin)
 	}
-	if !strings.Contains(presp.Header.Get("Access-Control-Allow-Headers"), AgentAttachTicketHeader) {
+	if !strings.Contains(presp.Header.Get("Access-Control-Allow-Headers"), TicketHeader) {
 		t.Fatalf("preflight does not allow the ticket header: %q", presp.Header.Get("Access-Control-Allow-Headers"))
 	}
 	if presp.Header.Get("Access-Control-Allow-Credentials") != "true" {
@@ -334,7 +334,7 @@ func TestAgentAttachCORS(t *testing.T) {
 	// Actual GET: echoed origin + the v1 marker exposed to the reader.
 	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
 	req.Header.Set("Origin", origin)
-	req.Header.Set(AgentAttachTicketHeader, attachTicket(t, secret, session))
+	req.Header.Set(TicketHeader, attachTicket(t, secret, session))
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -350,7 +350,7 @@ func TestAgentAttachCORS(t *testing.T) {
 	// A disallowed origin gets no allow-origin header (fails closed in the browser).
 	bad, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
 	bad.Header.Set("Origin", "https://evil.example.com")
-	bad.Header.Set(AgentAttachTicketHeader, attachTicket(t, secret, session))
+	bad.Header.Set(TicketHeader, attachTicket(t, secret, session))
 	bresp, err := http.DefaultClient.Do(bad)
 	if err != nil {
 		t.Fatal(err)
@@ -362,8 +362,8 @@ func TestAgentAttachCORS(t *testing.T) {
 }
 
 func TestAgentAttachDisabledWhenNoSecret(t *testing.T) {
-	gw := &Server{Metrics: NewMetrics(prometheus.NewRegistry())}
-	srv := httptest.NewServer(gw.AgentAttachHandler())
+	gw := &Server{Metrics: sshgateway.NewMetrics(prometheus.NewRegistry())}
+	srv := httptest.NewServer(gw.Handler())
 	defer srv.Close()
 	resp, err := http.Get(srv.URL)
 	if err != nil {
