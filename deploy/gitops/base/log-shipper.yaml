@@ -41,10 +41,15 @@
 # per discovered pod — with NO node scope on `discovery.kubernetes "pods"`, each
 # replica discovers and tails EVERY pod cluster-wide, so a line ships once per
 # node (N×, N = node count), not once. Fed by `K8S_NODE_NAME` — a downward-API
-# env var (fieldRef spec.nodeName) the alloy chart ALREADY injects into every
-# replica unconditionally (containers/_agent.yaml, "Default used by some Alloy
-# components"), so no extraEnv addition of our own is needed — the
-# `selectors { field = "spec.nodeName=..." }` field selector on the shared pods
+# env var (fieldRef spec.nodeName) we inject ourselves via `alloy.extraEnv`
+# below. (History: this used to rely on the alloy chart injecting K8S_NODE_NAME
+# unconditionally, but pinning the chart to 1.3.1 — codex-security #20, commit
+# 29031c59 — moved to a chart that injects only HOSTNAME, NOT K8S_NODE_NAME. With
+# the var empty the field selector collapsed to `spec.nodeName=`, which matches
+# no scheduled pods, so discovery found nothing and ALL log shipping silently
+# stopped cluster-wide 2026-08-02. Injecting it explicitly makes the config
+# chart-version-independent.) The `selectors { field = "spec.nodeName=..." }`
+# field selector on the shared pods
 # discovery, below, reads it via sys.env() so each replica only ever sees pods
 # scheduled on its own node — filtered server-side at the apiserver, not by a
 # client-side relabel `keep` (cheaper: no wasted List/Watch bandwidth on other
@@ -103,6 +108,15 @@ spec:
           tolerations:
             - operator: Exists
         alloy:
+          # Node scoping (see NODE SCOPING note above) reads K8S_NODE_NAME via
+          # sys.env() in the discovery.kubernetes field selector. Inject it
+          # ourselves from the downward API rather than relying on a chart
+          # default — chart 1.3.1 injects only HOSTNAME, not K8S_NODE_NAME.
+          extraEnv:
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
           # Static River config: discover pods -> bounded tenant/platform log
           # pipelines -> label -> push.
           configMap:
