@@ -118,10 +118,13 @@ restore_latest_s3_uri() {
   listing="$(restore_aws "${RESTORE_S3_ARGS[@]}" s3api list-objects-v2 \
     --bucket "$RESTORE_S3_BUCKET" --prefix "$RESTORE_S3_KEY" \
     --query 'Contents[].Key' --output text)"
+  # Accept both the plain gz object and its ADR050 age-encrypted variant so a
+  # single restore path spans the pre/post-encryption transition.
   latest="$(printf '%s\n' "$listing" | tr '\t' '\n' | \
-    awk -v prefix="$RESTORE_S3_KEY" -v suffix="$suffix" '
+    awk -v prefix="$RESTORE_S3_KEY" -v suffix="$suffix" -v age="$suffix.age" '
       NF && $0 != "None" && index($0, prefix) == 1 &&
-      substr($0, length($0) - length(suffix) + 1) == suffix' | \
+      (substr($0, length($0) - length(suffix) + 1) == suffix ||
+       substr($0, length($0) - length(age) + 1) == age)' | \
     LC_ALL=C sort | tail -1 || true)"
   [ -n "$latest" ] || restore_die "no $suffix snapshots found below $prefix_uri"
   printf 's3://%s/%s\n' "$RESTORE_S3_BUCKET" "$latest"
@@ -133,8 +136,8 @@ restore_resolve_snapshot() {
     resolved="$(restore_latest_s3_uri "$prefix_uri" "$suffix")"
   else
     restore_parse_s3_uri "$requested"
-    [[ "$RESTORE_S3_KEY" == *"$suffix" ]] || \
-      restore_die "snapshot must end in $suffix"
+    [[ "$RESTORE_S3_KEY" == *"$suffix" || "$RESTORE_S3_KEY" == *"$suffix.age" ]] || \
+      restore_die "snapshot must end in $suffix (optionally .age)"
     resolved="$requested"
   fi
   export RESTORE_SNAPSHOT_URI="$resolved"
@@ -152,6 +155,60 @@ restore_gunzip_checked() {
   gzip -t "$archive" || restore_die "snapshot gzip integrity check failed"
   gzip -dc "$archive" >"$destination"
   [ -s "$destination" ] || restore_die "snapshot decompressed to an empty file"
+}
+
+# restore_prefer_reader_credential <store> — when a per-store reader credential
+# is present (BEX_BACKUP_READER_<STORE>_ACCESS_KEY_ID/_SECRET_ACCESS_KEY, recorded
+# in .env by scripts/backup-s3-credentials.sh, ADR050 §3), use it for object-store
+# reads instead of the shared TF_STATE_* root key. Unset ⇒ no-op (TF_STATE
+# fallback, byte-identical to pre-ADR050). The writer credential is never used
+# for restore.
+restore_prefer_reader_credential() {
+  local store="$1" up akv skv ak sk
+  up="$(printf '%s' "$store" | tr 'a-z-' 'A-Z_')"
+  akv="BEX_BACKUP_READER_${up}_ACCESS_KEY_ID"
+  skv="BEX_BACKUP_READER_${up}_SECRET_ACCESS_KEY"
+  ak="${!akv:-}"
+  sk="${!skv:-}"
+  if [ -n "$ak" ] && [ -n "$sk" ]; then
+    export AWS_ACCESS_KEY_ID="$ak"
+    export AWS_SECRET_ACCESS_KEY="$sk"
+  fi
+}
+
+# restore_decrypt_if_age <resolved-uri> <fetched-file> <gz-destination> — reverse
+# the ADR050 Tier A client-side age layer. When the resolved object ends in .age,
+# decrypt with AGE_BACKUP_PRIVATE_KEY (env/.env) into the gz destination the
+# gunzip step expects; otherwise the fetched bytes ARE the gz and are moved into
+# place unchanged (byte-identical to pre-ADR050). A local `age` binary is used
+# when present; otherwise RESTORE_AGE_IMAGE must name a pinned image whose
+# entrypoint is age. The private key never enters argv (a mode-0600 keyfile).
+restore_decrypt_if_age() {
+  local uri="$1" fetched="$2" destination="$3" dir keyfile
+  if [[ "$uri" != *.age ]]; then
+    [ "$fetched" = "$destination" ] || mv -f "$fetched" "$destination"
+    return
+  fi
+  [ -n "${AGE_BACKUP_PRIVATE_KEY:-}" ] || \
+    restore_die "AGE_BACKUP_PRIVATE_KEY is required to decrypt an .age snapshot (set it in .env)"
+  dir="$(cd "$(dirname "$destination")" && pwd)"
+  keyfile="$dir/.age-restore-key"
+  ( umask 077; printf '%s\n' "$AGE_BACKUP_PRIVATE_KEY" >"$keyfile" )
+  if command -v age >/dev/null 2>&1; then
+    command age -d -i "$keyfile" -o "$destination" "$fetched" \
+      || { rm -f "$keyfile"; restore_die "age decryption failed"; }
+  elif [ -n "${RESTORE_AGE_IMAGE:-}" ]; then
+    restore_require_command docker
+    docker run --rm -v "$dir:/work" "$RESTORE_AGE_IMAGE" \
+      -d -i "/work/$(basename "$keyfile")" \
+      -o "/work/$(basename "$destination")" "/work/$(basename "$fetched")" \
+      || { rm -f "$keyfile"; restore_die "age decryption failed"; }
+  else
+    rm -f "$keyfile"
+    restore_die "no local 'age' binary and RESTORE_AGE_IMAGE unset; install age or set RESTORE_AGE_IMAGE to decrypt .age snapshots"
+  fi
+  rm -f "$keyfile"
+  [ -s "$destination" ] || restore_die "age decryption produced an empty file"
 }
 
 restore_create_namespace() {

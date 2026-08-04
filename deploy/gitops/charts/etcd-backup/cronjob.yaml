@@ -15,6 +15,9 @@
 #    stacked-etcd image when kubeadm still selects an older 3.5 patch.
 #  - Credentials come from the `etcd-backup-s3` Secret (NOT in git), created
 #    once per cluster from .env — exact command in the runbook.
+#  - Optional client-side encryption (ADR050 Tier A): the `encrypt` init step
+#    age-encrypts the snapshot before upload when the OPTIONAL bex-backup-age
+#    ConfigMap provides AGE_PUBLIC_KEY; unset ⇒ plain .gz upload (unchanged).
 #  - aws-cli pinned <2.23: newer CLIs send CRC64 checksums many S3-compatibles
 #    reject (same quirk as `skip_s3_checksum` in infra/terraform/versions.tf).
 apiVersion: batch/v1
@@ -65,6 +68,32 @@ spec:
               volumeMounts:
                 - name: backup
                   mountPath: /backup
+            # ADR050 Tier A: client-side age encryption between compress and upload.
+            # Opt-in — runs only when AGE_PUBLIC_KEY is supplied by the OPTIONAL
+            # bex-backup-age ConfigMap in this namespace (key AGE_PUBLIC_KEY, the
+            # committed public half; the private key stays out-of-band in .env/CI,
+            # ADR050 §1). Unset/absent ConfigMap ⇒ pass-through, byte-identical to
+            # the pre-ADR050 plain .gz upload. age is installed at runtime only
+            # when encryption is enabled (swap for a pinned age image if runtime
+            # apk egress is undesirable).
+            - name: encrypt
+              image: alpine:3.21
+              command: ["/bin/sh", "-ceu"]
+              args:
+                - |
+                  if [ -n "${AGE_PUBLIC_KEY:-}" ]; then
+                    apk add --no-cache age >/dev/null
+                    age -r "$AGE_PUBLIC_KEY" \
+                      -o /backup/etcd-snapshot.db.gz.age /backup/etcd-snapshot.db.gz
+                    rm -f /backup/etcd-snapshot.db.gz
+                  fi
+              envFrom:
+                - configMapRef:
+                    name: bex-backup-age
+                    optional: true
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
           containers:
             - name: upload
               image: amazon/aws-cli:2.22.35
@@ -74,11 +103,19 @@ spec:
                   retain=7 # rolling window: keep the newest N snapshots
                   aws configure set default.s3.addressing_style path
                   ts="$(date -u +%Y%m%d-%H%M%S)"
+                  # Upload whichever artifact the encrypt step produced; the remote
+                  # suffix follows suit (.db.gz.age when encrypted, .db.gz when not).
+                  if [ -f /backup/etcd-snapshot.db.gz.age ]; then
+                    src=/backup/etcd-snapshot.db.gz.age; suffix=db.gz.age
+                  else
+                    src=/backup/etcd-snapshot.db.gz; suffix=db.gz
+                  fi
                   aws --endpoint-url "$S3_ENDPOINT" s3 cp \
-                    /backup/etcd-snapshot.db.gz \
-                    "s3://$S3_BUCKET/etcd-snapshots/etcd-$ts.db.gz"
+                    "$src" "s3://$S3_BUCKET/etcd-snapshots/etcd-$ts.$suffix"
+                  # Retention keeps the newest N across both suffixes, so plain
+                  # snapshots from before encryption age out normally.
                   aws --endpoint-url "$S3_ENDPOINT" s3 ls "s3://$S3_BUCKET/etcd-snapshots/" \
-                    | awk '{print $NF}' | grep '^etcd-.*\.db\.gz$' | sort | head -n "-$retain" \
+                    | awk '{print $NF}' | grep -E '^etcd-.*\.db\.gz(\.age)?$' | sort | head -n "-$retain" \
                     | while read -r old; do
                         aws --endpoint-url "$S3_ENDPOINT" s3 rm "s3://$S3_BUCKET/etcd-snapshots/$old"
                       done

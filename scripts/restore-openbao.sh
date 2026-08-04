@@ -71,6 +71,7 @@ restore_require_throwaway_namespace "$TARGET_NAMESPACE"
 [[ "$IMAGE" =~ ^[A-Za-z0-9./:@_-]+$ ]] || restore_die "invalid OpenBao image"
 
 restore_load_dotenv "$REPO_ROOT"
+restore_prefer_reader_credential openbao
 bucket="${RESTORE_S3_BUCKET_NAME:-${TF_STATE_BUCKET:-}}"
 [ -n "$bucket" ] || restore_die "TF_STATE_BUCKET (or RESTORE_S3_BUCKET_NAME) is required"
 restore_resolve_snapshot "$SNAPSHOT" "s3://$bucket/openbao-snapshots/" ".snap.gz"
@@ -86,9 +87,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
+download="$scratch/download"
 archive="$scratch/snapshot.snap.gz"
 snapshot_file="$scratch/snapshot.snap"
-restore_fetch_snapshot "$RESTORE_SNAPSHOT_URI" "$archive"
+restore_fetch_snapshot "$RESTORE_SNAPSHOT_URI" "$download"
+restore_decrypt_if_age "$RESTORE_SNAPSHOT_URI" "$download" "$archive"
 restore_gunzip_checked "$archive" "$snapshot_file"
 
 render_target() {
@@ -201,6 +204,10 @@ EOF
 echo "OpenBao recovery plan"
 echo "  source: $RESTORE_SNAPSHOT_URI"
 echo "  target: $TARGET_NAMESPACE/openbao-0 (new namespace and new PVC only)"
+# ADR050 §Recovery flow: OpenBao restore is three secrets deep, applied in order.
+echo "  secrets (in order): reader S3 credential (fetch) -> AGE_BACKUP_PRIVATE_KEY"
+echo "                      (unwrap the .age transport layer, if encrypted) ->"
+echo "                      original BAO_UNSEAL_KEY_1/2/3 (unseal the restored Raft)"
 echo "  transition: new init -> fresh unseal -> snapshot-force -> restart -> OLD-key unseal -> tenants/ verification"
 echo "  verification path and all key/token values are suppressed"
 render_target

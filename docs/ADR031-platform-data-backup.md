@@ -17,6 +17,17 @@
 
 The platform stores and paid KeyValue backups use the same Wasabi/Hetzner Object Storage bucket (`bex-tfstate`) under separate store/server prefixes. Credentials come from out-of-band Secrets (never in git), following the same pattern as `etcd-backup-s3` / `openbao-backup-s3`. Free KeyValue instances are deliberately PVC-only and have no off-cluster recovery point.
 
+## Encryption + credential scoping (ADR050)
+
+[ADR050-encrypted-platform-backups.md](ADR050-encrypted-platform-backups.md) adds two orthogonal protections over everything above; both are **opt-in** (unset ⇒ byte-identical to the pre-ADR050 behavior described in this doc):
+
+- **Tier A — client-side `age` encryption** for the three pipelines bex controls directly (etcd, OpenBao, paid KeyValue). Each backup Job gains an `encrypt` step between `compress` and `upload`, age-encrypting to a committed **public** key so the S3 object (`*.gz.age`) is unreadable without the out-of-band private key. Enable per pipeline:
+  - etcd / OpenBao (static CronJobs): create the optional `bex-backup-age` ConfigMap (key `AGE_PUBLIC_KEY`) in `kube-system` and `secrets` respectively.
+  - paid KeyValue (operator-templated Job): set the operator env `BEX_BACKUP_AGE_PUBLIC_KEY`.
+  - The private half is `AGE_BACKUP_PRIVATE_KEY` in `.env`/GitHub Actions (custodied like the OpenBao unseal keys); `scripts/restore-*.sh` source it to decrypt. OpenBao's Raft snapshot is already encrypted at rest, so its `age` layer is transport-only — a full OpenBao restore chains three secrets in order: reader S3 credential → `AGE_BACKUP_PRIVATE_KEY` → original `BAO_UNSEAL_KEY_1/2/3`.
+- **Tier B — provider SSE** (`encryption: AES256`) on the three Barman `ObjectStore` CRs, since bex does not control that upload pipeline. This is explicitly weaker (SSE decrypts transparently on an authenticated `GetObject`); the write-only credential below is what protects Tier B confidentiality against a leaked credential.
+- **Write-only, per-store credentials** replace the shared `TF_STATE_*` root key in every backup Secret. `scripts/backup-s3-credentials.sh` (`provision`/`verify`/`revoke-legacy`, mirroring `static-s3-credentials.sh`) mints a `<store>-backup-writer` IAM identity (Put/Delete/List, **no** Get) per prefix for the Jobs, and a `<store>-backup-reader` (Get/List) recorded in `.env` and used **only** by the restore scripts. `restore-postgres.sh` builds the recovery Cluster's credential Secret from the reader identity rather than cloning the (now write-only) source Secret. Policies live in `infra/wasabi/backup-{writer,reader}-policy.json`.
+
 ## Barman Cloud plugin
 
 The supported CNPG-I backup path is the [Barman Cloud Plugin](https://cloudnative-pg.io/plugin-barman-cloud/docs/intro/). bex vendors the exact upstream `v0.13.0` installation manifest (SHA-256 pinned in `deploy/gitops/charts/barman-cloud-plugin/README.md`) and installs it beside the CloudNativePG operator in `cnpg-system`; cert-manager supplies the client/server TLS certificates. The plugin controller runs on the platform pool, while its data-plane sidecar follows each CNPG instance pod's existing placement.
@@ -354,3 +365,5 @@ Fresh plugin backups and explicit point-in-time restores passed for both a dispo
 | paid KeyValue | 2026-07-31 | Annually or after Valkey major/image, snapshot-job, or restore-script changes | Snapshot recovery is AOF-sensitive; re-drill any load-order or transfer change |
 | tenant Postgres | 2026-07-31 | Annually or after a CNPG/plugin major or restore-script change | PostgreSQL 16 marker restored through the shared ObjectStore driver |
 | bex-db/auth DBs | 2026-07-31 | Annually or after a CNPG/plugin major, backup-transport, or restore-script change | Fresh production archives recovered through the generic driver |
+
+Once [ADR050](ADR050-encrypted-platform-backups.md) encryption/credential-scoping is enabled, every Tier A (etcd/OpenBao/KeyValue) re-drill must prove **decrypt-then-restore** (not just restore), and every store's re-drill must run against its **write-only writer credential** for the backup and its **read-only reader credential** for the restore — enabling either is itself a re-drill trigger.

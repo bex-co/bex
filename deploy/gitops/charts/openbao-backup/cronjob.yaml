@@ -12,8 +12,11 @@
 #  - Authenticates to OpenBao via the Kubernetes auth method (role `bao-snapshot`,
 #    policy = read on sys/storage/raft/snapshot only) — set up idempotently by
 #    scripts/bao-k8s-auth.sh. No root token, no static secret.
-#  - Snapshot is ALREADY encrypted (OpenBao encrypts at rest); the S3 copy needs
-#    no extra crypto, but the bucket should still be private.
+#  - Snapshot is ALREADY encrypted (OpenBao encrypts at rest). ADR050 Tier A adds
+#    an OPTIONAL client-side age TRANSPORT layer on top (the `encrypt` init step,
+#    gated on the bex-backup-age ConfigMap's AGE_PUBLIC_KEY) so the S3 object is
+#    also unreadable without the out-of-band private key; unset ⇒ unchanged. Keep
+#    the bucket private regardless.
 #  - Credentials come from the `openbao-backup-s3` Secret (NOT in git), created
 #    once per cluster from .env — exact command in the runbook.
 #  - aws-cli pinned < 2.23: newer CLIs send CRC64 checksums many S3-compatibles
@@ -67,6 +70,28 @@ spec:
               volumeMounts:
                 - name: backup
                   mountPath: /backup
+            # ADR050 Tier A: a TRANSPORT-encryption layer added on top of OpenBao's
+            # own at-rest encryption (the Raft snapshot is already sealed with the
+            # master key). Opt-in via the OPTIONAL bex-backup-age ConfigMap's
+            # AGE_PUBLIC_KEY; unset ⇒ pass-through, byte-identical to before.
+            - name: encrypt
+              image: alpine:3.21
+              command: ["/bin/sh", "-ceu"]
+              args:
+                - |
+                  if [ -n "${AGE_PUBLIC_KEY:-}" ]; then
+                    apk add --no-cache age >/dev/null
+                    age -r "$AGE_PUBLIC_KEY" \
+                      -o /backup/openbao-snapshot.snap.gz.age /backup/openbao-snapshot.snap.gz
+                    rm -f /backup/openbao-snapshot.snap.gz
+                  fi
+              envFrom:
+                - configMapRef:
+                    name: bex-backup-age
+                    optional: true
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
           containers:
             - name: upload
               image: amazon/aws-cli:2.22.35
@@ -76,11 +101,15 @@ spec:
                   retain=7 # rolling window: keep the newest N snapshots
                   aws configure set default.s3.addressing_style path
                   ts="$(date -u +%Y%m%d-%H%M%S)"
+                  if [ -f /backup/openbao-snapshot.snap.gz.age ]; then
+                    src=/backup/openbao-snapshot.snap.gz.age; suffix=snap.gz.age
+                  else
+                    src=/backup/openbao-snapshot.snap.gz; suffix=snap.gz
+                  fi
                   aws --endpoint-url "$S3_ENDPOINT" s3 cp \
-                    /backup/openbao-snapshot.snap.gz \
-                    "s3://$S3_BUCKET/openbao-snapshots/openbao-$ts.snap.gz"
+                    "$src" "s3://$S3_BUCKET/openbao-snapshots/openbao-$ts.$suffix"
                   aws --endpoint-url "$S3_ENDPOINT" s3 ls "s3://$S3_BUCKET/openbao-snapshots/" \
-                    | awk '{print $NF}' | grep '^openbao-.*\.snap\.gz$' | sort | head -n "-$retain" \
+                    | awk '{print $NF}' | grep -E '^openbao-.*\.snap\.gz(\.age)?$' | sort | head -n "-$retain" \
                     | while read -r old; do
                         aws --endpoint-url "$S3_ENDPOINT" s3 rm "s3://$S3_BUCKET/openbao-snapshots/$old"
                       done

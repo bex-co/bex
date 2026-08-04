@@ -96,6 +96,7 @@ done
 [[ "$IMAGE" =~ ^[A-Za-z0-9./:@_-]+$ ]] || restore_die "invalid etcd image"
 
 restore_load_dotenv "$REPO_ROOT"
+restore_prefer_reader_credential etcd
 bucket="${RESTORE_S3_BUCKET_NAME:-${TF_STATE_BUCKET:-}}"
 [ -n "$bucket" ] || restore_die "TF_STATE_BUCKET (or RESTORE_S3_BUCKET_NAME) is required"
 restore_resolve_snapshot "$SNAPSHOT" "s3://$bucket/etcd-snapshots/" ".db.gz"
@@ -112,9 +113,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
+download="$scratch/download"
 archive="$scratch/snapshot.db.gz"
 snapshot_file="$scratch/snapshot.db"
-restore_fetch_snapshot "$RESTORE_SNAPSHOT_URI" "$archive"
+restore_fetch_snapshot "$RESTORE_SNAPSHOT_URI" "$download"
+restore_decrypt_if_age "$RESTORE_SNAPSHOT_URI" "$download" "$archive"
 restore_gunzip_checked "$archive" "$snapshot_file"
 docker run --rm -v "$scratch:/work:ro" --entrypoint /usr/local/bin/etcdutl "$IMAGE" \
   snapshot status /work/snapshot.db -w json >/dev/null || \

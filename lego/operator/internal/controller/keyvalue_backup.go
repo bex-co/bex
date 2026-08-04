@@ -43,6 +43,12 @@ const (
 	keyValueBackupPurgeComponent  = "keyvalue-backup-purge"
 	keyValueBackupRetention       = 7
 	keyValueBackupDeadlineSeconds = int64(15 * time.Minute / time.Second)
+	// keyValueBackupAgeImage installs the age binary at runtime for the ADR050
+	// Tier A encrypt step. Alpine (already trusted as alpine/git elsewhere) keeps
+	// the trust surface off a third-party age image; swap for a pinned age image
+	// if runtime apk egress is undesirable. Only pulled/used when encryption is
+	// enabled (BackupStore.AgePublicKey set).
+	keyValueBackupAgeImage = "alpine:3.21"
 )
 
 func keyValueBackupsEnabled(plan tiers.ValkeyTier, store BackupStore) bool {
@@ -111,6 +117,59 @@ func (r *KeyValueReconciler) keyValueBackupCronJobSpec(kv *appv1alpha1.KeyValue,
 	labels := keyValueBackupLabels(kv, keyValueBackupComponent)
 	volumeMount := corev1.VolumeMount{Name: "backup", MountPath: "/backup"}
 
+	// ADR050 Tier A: age-encrypt the RDB before upload when a public key is
+	// configured. The encrypt step slots between compress and upload; the object
+	// suffix follows (.rdb.gz.age when encrypted, .rdb.gz when not).
+	encrypt := r.Backup.AgePublicKey != ""
+	uploadSuffix := "rdb.gz"
+	uploadSource := "/backup/dump.rdb.gz"
+	if encrypt {
+		uploadSuffix = "rdb.gz.age"
+		uploadSource = "/backup/dump.rdb.gz.age"
+	}
+
+	initContainers := []corev1.Container{
+		{
+			Name:    "snapshot",
+			Image:   valkeyImage(kv.Spec.Version),
+			Command: []string{"/bin/sh", "-ceu"},
+			Args: []string{`rm -f /backup/dump.rdb
+valkey-cli -h "${VALKEY_HOST}" -p "6379" --rdb /backup/dump.rdb
+test -s /backup/dump.rdb`},
+			Env: []corev1.EnvVar{
+				{Name: "VALKEY_HOST", Value: kv.Name},
+				{Name: "REDISCLI_AUTH", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: authSecretName}, Key: "password",
+				}}},
+			},
+			Resources:       guaranteedResources("100m", "128Mi"),
+			SecurityContext: tenantSecCtx(),
+			VolumeMounts:    []corev1.VolumeMount{volumeMount},
+		},
+		{
+			Name:            "compress",
+			Image:           "busybox:1.37",
+			Command:         []string{"gzip", "-9", "/backup/dump.rdb"},
+			Resources:       guaranteedResources("10m", "32Mi"),
+			SecurityContext: tenantSecCtx(),
+			VolumeMounts:    []corev1.VolumeMount{volumeMount},
+		},
+	}
+	if encrypt {
+		initContainers = append(initContainers, corev1.Container{
+			Name:    "encrypt",
+			Image:   keyValueBackupAgeImage,
+			Command: []string{"/bin/sh", "-ceu"},
+			Args: []string{`apk add --no-cache age >/dev/null
+age -r "${AGE_PUBLIC_KEY}" -o /backup/dump.rdb.gz.age /backup/dump.rdb.gz
+rm -f /backup/dump.rdb.gz`},
+			Env:             []corev1.EnvVar{{Name: "AGE_PUBLIC_KEY", Value: r.Backup.AgePublicKey}},
+			Resources:       guaranteedResources("50m", "64Mi"),
+			SecurityContext: tenantSecCtx(),
+			VolumeMounts:    []corev1.VolumeMount{volumeMount},
+		})
+	}
+
 	return batchv1.CronJobSpec{
 		Schedule:                   keyValueBackupSchedule(kv.Name),
 		TimeZone:                   &timeZone,
@@ -129,33 +188,7 @@ func (r *KeyValueReconciler) keyValueBackupCronJobSpec(kv *appv1alpha1.KeyValue,
 					Spec: corev1.PodSpec{
 						RestartPolicy:                corev1.RestartPolicyNever,
 						AutomountServiceAccountToken: ptr(false),
-						InitContainers: []corev1.Container{
-							{
-								Name:    "snapshot",
-								Image:   valkeyImage(kv.Spec.Version),
-								Command: []string{"/bin/sh", "-ceu"},
-								Args: []string{`rm -f /backup/dump.rdb
-valkey-cli -h "${VALKEY_HOST}" -p "6379" --rdb /backup/dump.rdb
-test -s /backup/dump.rdb`},
-								Env: []corev1.EnvVar{
-									{Name: "VALKEY_HOST", Value: kv.Name},
-									{Name: "REDISCLI_AUTH", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{Name: authSecretName}, Key: "password",
-									}}},
-								},
-								Resources:       guaranteedResources("100m", "128Mi"),
-								SecurityContext: tenantSecCtx(),
-								VolumeMounts:    []corev1.VolumeMount{volumeMount},
-							},
-							{
-								Name:            "compress",
-								Image:           "busybox:1.37",
-								Command:         []string{"gzip", "-9", "/backup/dump.rdb"},
-								Resources:       guaranteedResources("10m", "32Mi"),
-								SecurityContext: tenantSecCtx(),
-								VolumeMounts:    []corev1.VolumeMount{volumeMount},
-							},
-						},
+						InitContainers:               initContainers,
 						Containers: []corev1.Container{{
 							Name:    "upload",
 							Image:   publish.DefaultAWSCLIImage,
@@ -164,15 +197,15 @@ test -s /backup/dump.rdb`},
 aws configure set default.s3.addressing_style path
 timestamp="$(date -u +%%Y-%%m-%%dT%%H:%%M:%%SZ)"
 prefix="${DESTINATION%%/}/${KEYVALUE}/"
-aws --endpoint-url "${ENDPOINT}" s3 cp /backup/dump.rdb.gz "${prefix}${timestamp}.rdb.gz"
+aws --endpoint-url "${ENDPOINT}" s3 cp %s "${prefix}${timestamp}.%s"
 aws --endpoint-url "${ENDPOINT}" s3 ls "${prefix}" \
   | awk '{print $NF}' \
-  | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z[.]rdb[.]gz$' \
+  | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z[.]rdb[.]gz([.]age)?$' \
   | sort \
   | head -n "-${retain}" \
   | while IFS= read -r old; do
       aws --endpoint-url "${ENDPOINT}" s3 rm "${prefix}${old}"
-    done`, keyValueBackupRetention)},
+    done`, keyValueBackupRetention, uploadSource, uploadSuffix)},
 							Env: []corev1.EnvVar{
 								{Name: "HOME", Value: "/tmp"},
 								{Name: "AWS_EC2_METADATA_DISABLED", Value: "true"},

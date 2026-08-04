@@ -29,6 +29,11 @@ if [[ " $* " == *" s3api list-objects-v2 "* ]]; then
     'openbao-snapshots/openbao-2026-07-31T03:00:00Z.snap.gz' \
     'openbao-snapshots/openbao-2026-08-01T03:00:00Z.snap.gz'
   printf '%s\n' 'keyvalue/red-fixture/2026-08-01T03:00:00Z.rdb.gz'
+  # ADR050: an age-encrypted object under an isolated prefix, so the pre-existing
+  # plain-object selections above are unaffected.
+  printf '%s\t%s\n' \
+    'agefix/2026-07-31T03:00:00Z.rdb.gz' \
+    'agefix/2026-08-01T03:00:00Z.rdb.gz.age'
   exit 0
 fi
 if [[ " $* " == *" s3 cp "* ]]; then
@@ -88,7 +93,25 @@ fi
 exit 1
 EOF
 
-chmod +x "$FAKE/aws" "$FAKE/docker" "$FAKE/kubectl"
+cat >"$FAKE/age" <<'EOF'
+#!/usr/bin/env bash
+# Fake age: records the call and "decrypts" by copying input -> output so the
+# downstream gzip integrity check runs on the real fixture bytes.
+set -euo pipefail
+printf 'age %s\n' "$*" >>"$RESTORE_TEST_CALLS"
+out=""; in=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -d) shift ;;
+    -i) shift 2 ;;
+    -o) out="$2"; shift 2 ;;
+    *) in="$1"; shift ;;
+  esac
+done
+/bin/cp "$in" "$out"
+EOF
+
+chmod +x "$FAKE/aws" "$FAKE/docker" "$FAKE/kubectl" "$FAKE/age"
 export PATH="$FAKE:$PATH"
 export RESTORE_TEST_CALLS="$TMP/calls"
 export RESTORE_SKIP_DOTENV=1
@@ -115,6 +138,24 @@ latest="$(restore_latest_s3_uri s3://fixture/fixture/ .rdb.gz)"
 [ "$latest" = 's3://fixture/fixture/2026-08-01T03:00:00Z.rdb.gz' ] || \
   fail "latest snapshot selection"
 ok "latest snapshot is selected lexicographically by RFC3339 key"
+
+# ADR050: latest selection spans plain and .age objects (transition-safe).
+age_latest="$(restore_latest_s3_uri s3://fixture/agefix/ .rdb.gz)"
+[ "$age_latest" = 's3://fixture/agefix/2026-08-01T03:00:00Z.rdb.gz.age' ] || \
+  fail "age snapshot selection: $age_latest"
+ok "latest selection picks the newest object across plain and .age suffixes"
+
+# ADR050 §3: a per-store reader credential overrides the shared root key.
+export BEX_BACKUP_READER_KEYVALUE_ACCESS_KEY_ID=reader-access
+export BEX_BACKUP_READER_KEYVALUE_SECRET_ACCESS_KEY=reader-secret
+restore_prefer_reader_credential keyvalue
+[ "$AWS_ACCESS_KEY_ID" = reader-access ] && [ "$AWS_SECRET_ACCESS_KEY" = reader-secret ] || \
+  fail "per-store reader credential did not override AWS credentials"
+restore_prefer_reader_credential bex-db  # no env for bex-db ⇒ leaves reader creds untouched
+[ "$AWS_ACCESS_KEY_ID" = reader-access ] || fail "absent reader credential must be a no-op"
+ok "per-store reader credential overrides the root key; absent one is a no-op"
+unset BEX_BACKUP_READER_KEYVALUE_ACCESS_KEY_ID BEX_BACKUP_READER_KEYVALUE_SECRET_ACCESS_KEY
+export AWS_ACCESS_KEY_ID=fake-access AWS_SECRET_ACCESS_KEY=fake-secret
 
 run_dry() {
   : >"$RESTORE_TEST_CALLS"
@@ -172,6 +213,24 @@ ok "Postgres DRY_RUN renders plugin PITR intent using read-only discovery"
 run_dry env DRY_RUN=1 "$HERE/restore-keyvalue.sh" \
   --id red-fixture --target-namespace restore-kv-test --verify-key fixture --expect value
 ok "KeyValue DRY_RUN checksum-validates the RDB and does not mutate Kubernetes/S3"
+
+# ADR050 Tier A: an explicit .age snapshot is age-decrypted before the gzip check.
+run_dry env DRY_RUN=1 AGE_BACKUP_PRIVATE_KEY=AGE-SECRET-KEY-1TESTONLY \
+  "$HERE/restore-keyvalue.sh" --id red-fixture --target-namespace restore-kv-age \
+  --verify-key fixture --expect value \
+  --snapshot s3://fixture/keyvalue/red-fixture/2026-08-01T03:00:00Z.rdb.gz.age
+grep -q '^age -d ' "$RESTORE_TEST_CALLS" || fail "age decrypt not invoked for an .age snapshot"
+ok "encrypted .age snapshot is decrypted before the integrity check"
+
+# Without the private key, an .age snapshot fails closed (no silent plaintext path).
+if env DRY_RUN=1 "$HERE/restore-keyvalue.sh" --id red-fixture \
+  --target-namespace restore-kv-age --verify-key fixture \
+  --snapshot s3://fixture/keyvalue/red-fixture/2026-08-01T03:00:00Z.rdb.gz.age \
+  >"$TMP/output" 2>"$TMP/error"; then
+  fail "an .age snapshot decrypted without AGE_BACKUP_PRIVATE_KEY"
+fi
+grep -q 'AGE_BACKUP_PRIVATE_KEY is required' "$TMP/error" || fail "missing-key failure was not specific"
+ok "an .age snapshot without the private key fails closed"
 
 printf 'not a gzip stream\n' >"$TMP/corrupt"
 export RESTORE_TEST_ARCHIVE="$TMP/corrupt"

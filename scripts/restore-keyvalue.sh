@@ -76,15 +76,18 @@ restore_require_throwaway_namespace "$TARGET_NAMESPACE"
 [[ "$IMAGE" =~ ^[A-Za-z0-9./:@_-]+$ ]] || restore_die "invalid Valkey image"
 
 restore_load_dotenv "$REPO_ROOT"
+restore_prefer_reader_credential keyvalue
 bucket="${RESTORE_S3_BUCKET_NAME:-${TF_STATE_BUCKET:-}}"
 [ -n "$bucket" ] || restore_die "TF_STATE_BUCKET (or RESTORE_S3_BUCKET_NAME) is required"
 restore_resolve_snapshot "$SNAPSHOT" "s3://$bucket/keyvalue/$ID/" ".rdb.gz"
 
 scratch="$(mktemp -d "${TMPDIR:-/tmp}/bex-kv-restore.XXXXXX")"
 trap 'rm -rf "$scratch"' EXIT
+download="$scratch/download"
 archive="$scratch/snapshot.rdb.gz"
 rdb="$scratch/dump.rdb"
-restore_fetch_snapshot "$RESTORE_SNAPSHOT_URI" "$archive"
+restore_fetch_snapshot "$RESTORE_SNAPSHOT_URI" "$download"
+restore_decrypt_if_age "$RESTORE_SNAPSHOT_URI" "$download" "$archive"
 restore_gunzip_checked "$archive" "$rdb"
 docker run --rm -v "$scratch:/restore:ro" --entrypoint /usr/local/bin/valkey-check-rdb \
   "$IMAGE" /restore/dump.rdb >/dev/null || restore_die "Valkey RDB checksum validation failed"
