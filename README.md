@@ -183,16 +183,10 @@ All product adapters are thin layers over the same Go core, so authorization, li
 
 ```mermaid
 flowchart TB
-  subgraph clients["clients · outside app cluster"]
-    direction LR
-    developer@{ shape: tri, label: "developer" }
-    dashboard["dashboard (web service)"]
-    cli["bex CLI (local client process)"]
-    agent@{ shape: tri, label: "coding agent" }
-
-    developer --> dashboard
-    developer --> cli
-  end
+  developer@{ shape: tri, label: "developer" }
+  agent@{ shape: tri, label: "coding agent" }
+  dashboard["dashboard (web service)"]
+  cli["bex CLI (local client process)"]
 
   subgraph app_cluster["app cluster"]
     api["bex-api"]
@@ -205,8 +199,8 @@ flowchart TB
     nodes["worker nodes (machines)"]
   end
 
-  %% Layout-only: GitHub's Dagre renderer otherwise places the subgraphs side by side.
-  agent ~~~ runtime
+  developer --> dashboard
+  developer --> cli
   agent -->|MCP| api
   dashboard -->|GraphQL| api
   cli -->|REST| api
