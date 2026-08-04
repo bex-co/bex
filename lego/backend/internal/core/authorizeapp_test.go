@@ -383,6 +383,81 @@ func (c denyAllButChecker) Check(_ context.Context, _, _, object string) (bool, 
 	return object == c.allowed, nil
 }
 
+// strayDuplicatePair returns two App CRs sharing one typed id and one
+// metadata.name: the canonical projection in its workspace's own namespace and
+// a stray twin in the old shared namespace (see AppInOwnWorkspaceNamespace).
+func strayDuplicatePair() (canonical, stray *appv1alpha1.App) {
+	canonical = sampleApp("tea-a-web", "tea-a")
+	canonical.Namespace = "tea-a"
+	canonical.Labels[LabelAppID] = "srv-d9dup"
+	stray = sampleApp("tea-a-web", "tea-a") // sampleApp pins Namespace to "default"
+	stray.Labels[LabelAppID] = "srv-d9dup"
+	return canonical, stray
+}
+
+// TestAuthorizeAppPrefersCanonicalNamespaceOverStrayDuplicate: when two CRs
+// carry the same LabelAppID, the one living in its own workspace's namespace
+// must win regardless of list order — a stray duplicate must never shadow the
+// live projection.
+func TestAuthorizeAppPrefersCanonicalNamespaceOverStrayDuplicate(t *testing.T) {
+	ctx := WithIdentity(context.Background(), Identity{Subject: "identity-a", Method: "session"})
+	canonical, stray := strayDuplicatePair()
+	for name, objs := range map[string][]client.Object{
+		"stray listed first": {stray, canonical},
+		"stray listed last":  {canonical, stray},
+	} {
+		t.Run(name, func(t *testing.T) {
+			b := &Base{
+				Client: fakeAppClient(objs...), Namespace: "default",
+				Workspace: fakeWorkspace{"identity-a": "tea-a"}, Authz: &fakeAllowChecker{},
+			}
+			got, err := b.AuthorizeApp(ctx, RelCanView, "srv-d9dup")
+			if err != nil {
+				t.Fatalf("AuthorizeApp: %v", err)
+			}
+			if got.Namespace != "tea-a" {
+				t.Fatalf("served the CR in namespace %q, want the canonical workspace namespace tea-a", got.Namespace)
+			}
+		})
+	}
+}
+
+// TestGetAppPrefersCanonicalNamespaceOverStrayDuplicate: same invariant on the
+// GetApp seam every read feature (logs, metrics, secrets, …) shares.
+func TestGetAppPrefersCanonicalNamespaceOverStrayDuplicate(t *testing.T) {
+	ctx := WithIdentity(context.Background(), Identity{Subject: "identity-a", Method: "session"})
+	canonical, stray := strayDuplicatePair()
+	b := &Base{
+		Client: fakeAppClient(stray, canonical), Namespace: "default",
+		Workspace: fakeWorkspace{"identity-a": "tea-a"}, Authz: &fakeAllowChecker{},
+	}
+	got, err := b.GetApp(ctx, RelCanView, "srv-d9dup")
+	if err != nil {
+		t.Fatalf("GetApp: %v", err)
+	}
+	if got.Namespace != "tea-a" {
+		t.Fatalf("served the CR in namespace %q, want tea-a", got.Namespace)
+	}
+}
+
+// TestAppNamespaceByNamePrefersCanonicalNamespace: the metrics resource-series
+// funnel resolves an App's namespace from its metadata.name alone; with a
+// stray duplicate present it must resolve to the workspace's own namespace —
+// the one Prometheus's cAdvisor series actually carry — not first match.
+func TestAppNamespaceByNamePrefersCanonicalNamespace(t *testing.T) {
+	canonical, stray := strayDuplicatePair()
+	b := &Base{Client: fakeAppClient(stray, canonical), Namespace: "bex-system"}
+	if got := b.AppNamespaceByName(context.Background(), "tea-a-web"); got != "tea-a" {
+		t.Fatalf("AppNamespaceByName = %q, want tea-a", got)
+	}
+	// A lone stray (no canonical twin) still resolves — its namespace is where
+	// its pods, if any, live; better than the b.Namespace empty-series fallback.
+	b = &Base{Client: fakeAppClient(stray), Namespace: "bex-system"}
+	if got := b.AppNamespaceByName(context.Background(), "tea-a-web"); got != "default" {
+		t.Fatalf("lone stray AppNamespaceByName = %q, want default", got)
+	}
+}
+
 // TestAuthorizeAppAuditsOnceAgainstTheResourceWorkspace: a write-relation call
 // records exactly one event, against the App's own workspace (not the
 // caller's default), target = ServiceTarget(name) — "authorize there once,

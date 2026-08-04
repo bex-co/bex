@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"time"
 
@@ -592,6 +593,7 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 		client.MatchingLabels{LabelAppID: name}); err != nil {
 		return nil, err
 	}
+	preferOwnWorkspaceNamespace(byID.Items)
 	if len(byID.Items) > 0 {
 		var lastErr error
 		for i := range byID.Items {
@@ -892,6 +894,7 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 		client.MatchingLabels{LabelAppID: name}); err != nil {
 		return nil, err
 	}
+	preferOwnWorkspaceNamespace(byID.Items)
 	if len(byID.Items) > 0 {
 		lastErr := error(ErrNotFound)
 		for i := range byID.Items {
@@ -1034,6 +1037,41 @@ func (b *Base) AppPods(ctx context.Context, app string) ([]corev1.Pod, error) {
 	return pods.Items, nil
 }
 
+// AppInOwnWorkspaceNamespace reports whether a labeled App CR lives in its own
+// workspace's namespace — the canonical placement under ADR043, where a
+// projected CR's namespace IS its workspace id (store.WorkspaceNamespace, an
+// identity mapping this predicate assumes). A CR that carries a workspace
+// label but sits elsewhere is a stray: the ADR043 migration left such
+// duplicates behind in the old shared namespace, and one of them shadowing the
+// live CR in a first-match lookup sent metrics queries to the wrong namespace.
+// An unlabeled CR (hand-applied, store-off) has no canonical namespace and is
+// never demoted. Exported for store's projector — the same rule must decide
+// "which twin is live" on both the read and write paths.
+func AppInOwnWorkspaceNamespace(a *appv1alpha1.App) bool {
+	ws := a.Labels[LabelTenant]
+	return ws == "" || a.Namespace == ws
+}
+
+// preferOwnWorkspaceNamespace stably reorders same-id App candidates so CRs in
+// their canonical ADR043 namespace come first — making every first-authorized-
+// wins loop over a LabelAppID list deterministic even when a stray duplicate
+// (same id, wrong namespace) exists. Stable: ties keep the server's order.
+func preferOwnWorkspaceNamespace(items []appv1alpha1.App) {
+	if len(items) < 2 {
+		return
+	}
+	slices.SortStableFunc(items, func(a, b appv1alpha1.App) int {
+		ca, cb := AppInOwnWorkspaceNamespace(&a), AppInOwnWorkspaceNamespace(&b)
+		switch {
+		case ca && !cb:
+			return -1
+		case cb && !ca:
+			return 1
+		}
+		return 0
+	})
+}
+
 // AppNamespaceByName resolves the namespace an App's pods and Prometheus
 // series live in from its metadata.name — for callers (e.g. the metrics
 // resource-series funnel) that hold only the name, not the App CR. It is the
@@ -1052,18 +1090,28 @@ func (b *Base) AppNamespaceByName(ctx context.Context, app string) string {
 // appNamespaceByName resolves the namespace of the App CR whose metadata.name is
 // app — AppPods/AppNamespaceByName cannot list pods cluster-wide and so must
 // first learn which workspace namespace the App (and therefore its pods)
-// lives in. Returns "" when no such App exists.
+// lives in. Returns "" when no such App exists. A name matched by two CRs
+// (a stray wrong-namespace duplicate alongside the live one — see
+// AppInOwnWorkspaceNamespace) resolves to the canonical-namespace CR, never
+// first-in-list order.
 func (b *Base) appNamespaceByName(ctx context.Context, app string) (string, error) {
 	var list appv1alpha1.AppList
 	if err := b.Client.List(ctx, &list); err != nil {
 		return "", err
 	}
+	found := ""
 	for i := range list.Items {
-		if list.Items[i].Name == app {
+		if list.Items[i].Name != app {
+			continue
+		}
+		if AppInOwnWorkspaceNamespace(&list.Items[i]) {
 			return list.Items[i].Namespace, nil
 		}
+		if found == "" {
+			found = list.Items[i].Namespace
+		}
 	}
-	return "", nil
+	return found, nil
 }
 
 // PreDeployPods lists an App's pre-deploy Job pods (the app.bex.co/predeploy

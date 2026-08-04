@@ -72,6 +72,8 @@ const (
 // WorkspaceNamespace is the hosting namespace name for a workspace id. The
 // workspace id (tea-<xid>) is already a DNS-safe label ≤63 chars (ADR020), so
 // it is used verbatim as the namespace name — the k8s object IS the tenant.
+// core.AppInOwnWorkspaceNamespace assumes this identity mapping (core cannot
+// import store); a non-identity mapping here must change that predicate too.
 func WorkspaceNamespace(workspaceID string) string { return workspaceID }
 
 // SandboxNamespace is the sandbox-regime namespace name for a workspace id.

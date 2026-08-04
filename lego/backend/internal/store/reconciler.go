@@ -218,9 +218,28 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 	}
 	byID := make(map[string]*appv1alpha1.App, len(existing.Items))
 	for i := range existing.Items {
-		if id := existing.Items[i].Labels[LabelAppID]; id != "" {
-			byID[id] = &existing.Items[i]
+		id := existing.Items[i].Labels[LabelAppID]
+		if id == "" {
+			continue
 		}
+		// Two managed CRs sharing one id means a stray duplicate exists (see
+		// core.AppInOwnWorkspaceNamespace). Index the canonical CR so spec
+		// updates and status write-back target the live projection, never
+		// last-in-list order; log the loser every pass (the nag is the point) —
+		// it is invisible to this loop's update/delete matching and needs a
+		// manual finalizer-aware removal (its name-keyed finalizer teardown
+		// would otherwise purge the LIVE twin's registry repo + credentials).
+		if cur, ok := byID[id]; ok {
+			keep, drop := &existing.Items[i], cur
+			if core.AppInOwnWorkspaceNamespace(cur) {
+				keep, drop = cur, &existing.Items[i]
+			}
+			log.Printf("controlplane: duplicate App CRs for %s: keeping %s/%s, ignoring stray %s/%s",
+				id, keep.Namespace, keep.Name, drop.Namespace, drop.Name)
+			byID[id] = keep
+			continue
+		}
+		byID[id] = &existing.Items[i]
 	}
 	// One query for every app's open deploy (not one per app in the loop
 	// below) — at most one open deploy per app in practice, so the last

@@ -312,6 +312,54 @@ func TestReconcileUpdatesOwnedFieldsOnly(t *testing.T) {
 	}
 }
 
+// TestReconcileTargetsCanonicalCRWhenAStrayDuplicateExists: when a stray
+// duplicate shares the live per-tenant projection's app-id label, the byID
+// index must pick the CR in its workspace's own namespace — not last-in-list
+// order — so spec updates and status write-back keep flowing to the live CR
+// while the stray merely gets logged (see ReconcileOnce for why it is never
+// deleted here).
+func TestReconcileTargetsCanonicalCRWhenAStrayDuplicateExists(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t)
+	ten, _ := store.CreateTenant(ctx, "acme", "free")
+	row, _ := store.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	// Plant the stray: same labels + object name, old shared namespace.
+	canonical := getApp(t, cl)
+	stray := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
+		Name: canonical.Name, Namespace: "default", Labels: canonical.Labels,
+	}, Spec: *canonical.Spec.DeepCopy()}
+	if err := cl.Create(ctx, stray); err != nil {
+		t.Fatal(err)
+	}
+
+	store.mu.Lock()
+	a := store.apps[row.ID]
+	a.Image = "img:2"
+	store.apps[row.ID] = a
+	store.mu.Unlock()
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile with stray present: %v", err)
+	}
+
+	var got appv1alpha1.App
+	if err := cl.Get(ctx, types.NamespacedName{Namespace: ten.ID, Name: canonical.Name}, &got); err != nil {
+		t.Fatalf("get canonical CR: %v", err)
+	}
+	if got.Spec.Image != "img:2" {
+		t.Errorf("canonical CR image = %q, want img:2 (update went to the stray?)", got.Spec.Image)
+	}
+	if err := cl.Get(ctx, types.NamespacedName{Namespace: "default", Name: canonical.Name}, &got); err != nil {
+		t.Fatalf("get stray CR: %v", err)
+	}
+	if got.Spec.Image != "img:1" {
+		t.Errorf("stray CR image = %q, want untouched img:1", got.Spec.Image)
+	}
+}
+
 func TestReconcileStampsWorkspaceLabel(t *testing.T) {
 	ctx := context.Background()
 	rec, store, cl := newTestReconciler(t)
