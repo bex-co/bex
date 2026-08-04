@@ -228,16 +228,186 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Couldn't start the session",
     description: "Composer — error alert title when the create fails",
   },
-  // --- Detail placeholder (t004 replaces this route's body) ---
-  "agentSessions.detailPlaceholderTitle": {
-    message: "Session detail is coming soon",
-    description:
-      "Placeholder heading on the /agents/{id} route until t004 builds the detail page",
+  // --- Detail page (t004) ---
+  "agentSessions.detailTitle": {
+    message: "Session",
+    description: "Agent-session detail page document title",
   },
-  "agentSessions.detailPlaceholderBody": {
+  "agentSessions.backToList": {
+    message: "All sessions",
+    description: "Detail page — back link to the /agents list",
+  },
+  "agentSessions.detailErrorTitle": {
+    message: "Couldn't load this session",
+    description: "Detail page — heading when the session read fails",
+  },
+  "agentSessions.conversationTitle": {
+    message: "Conversation",
+    description: "Detail page — the live conversation column card title",
+  },
+  "agentSessions.failureTitle": {
+    message: "Session failed",
+    description: "Detail page — heading over a failed session's reason",
+  },
+  // Header meta + cancel
+  "agentSessions.metaDuration": {
+    message: "Duration {duration}",
+    description: "Detail header — elapsed session wall-clock",
+  },
+  "agentSessions.metaTurns": {
+    message: "{turns} turns",
+    description: "Detail header — number of prompt turns taken",
+  },
+  "agentSessions.metaDelivery": {
+    message: "Delivery {mode}",
+    description: "Detail header — how the last turn's sandbox was obtained",
+  },
+  "agentSessions.delivery.resume": {
+    message: "resume",
+    description: "Delivery mode — the sandbox was resumed",
+  },
+  "agentSessions.delivery.redispatch": {
+    message: "redispatch",
+    description: "Delivery mode — a new sandbox was dispatched",
+  },
+  "agentSessions.cancel": {
+    message: "Cancel",
+    description: "Detail header — cancel-session button label",
+  },
+  "agentSessions.cancelDisabledCanceling": {
+    message: "Cancellation is already in progress.",
+    description: "Detail header — tooltip on the disabled cancel button",
+  },
+  "agentSessions.canceling": {
+    message: "Canceling…",
+    description: "Detail header — confirm button label while the cancel runs",
+  },
+  "agentSessions.cancelSuccess": {
+    message: "Canceling the session…",
+    description: "Detail header — toast after the cancel is accepted",
+  },
+  "agentSessions.cancelConfirmTitle": {
+    message: "Cancel this session?",
+    description: "Cancel confirm dialog title",
+  },
+  "agentSessions.cancelConfirmBody": {
     message:
-      "The live conversation, evidence, and steering controls for this session land in a follow-up. Session {id}.",
-    description: "Placeholder body on the agent-session detail route",
+      "This stops the agent. Any commits already pushed to the branch and the draft PR are preserved.",
+    description: "Cancel confirm dialog body — states pushed work is preserved",
+  },
+  "agentSessions.cancelConfirmDismiss": {
+    message: "Keep running",
+    description: "Cancel confirm dialog — dismiss button",
+  },
+  "agentSessions.cancelConfirmProceed": {
+    message: "Cancel session",
+    description: "Cancel confirm dialog — proceed button",
+  },
+  // PR card
+  "agentSessions.prCardTitle": {
+    message: "Pull request",
+    description: "Detail page — draft-PR card title",
+  },
+  "agentSessions.prCardNone": {
+    message:
+      "No pull request yet. The agent opens a draft PR once it pushes work.",
+    description: "PR card — shown before the session has opened a PR",
+  },
+  "agentSessions.prCardHeadSha": {
+    message: "Head commit",
+    description: "PR card — label for the head SHA",
+  },
+  // Evidence panel
+  "agentSessions.evidenceTitle": {
+    message: "Evidence",
+    description: "Detail page — bounded evidence card title",
+  },
+  "agentSessions.evidenceEmpty": {
+    message: "No evidence captured yet.",
+    description: "Evidence panel — empty state",
+  },
+  "agentSessions.evidenceCommits": {
+    message: "{count} commits",
+    description: "Evidence panel — commit count",
+  },
+  "agentSessions.evidenceCommandLog": {
+    message: "Command log",
+    description: "Evidence panel — command log section label",
+  },
+  "agentSessions.evidenceTestOutput": {
+    message: "Test output",
+    description: "Evidence panel — test output section label",
+  },
+  "agentSessions.evidenceOutputTail": {
+    message: "Output tail",
+    description: "Evidence panel — output tail section label",
+  },
+  "agentSessions.evidenceChangedFiles": {
+    message: "Changed files",
+    description: "Evidence panel — changed-files section label",
+  },
+  "agentSessions.evidenceTruncated": {
+    message: "Some captured output was truncated.",
+    description: "Evidence panel — honest truncation note",
+  },
+  // Steering composer
+  "agentSessions.steerTitle": {
+    message: "Steer this session",
+    description: "Steering composer card title",
+  },
+  "agentSessions.steerErrorTitle": {
+    message: "Couldn't send",
+    description: "Steering composer — inline error alert title",
+  },
+  "agentSessions.steerPlaceholderIdle": {
+    message:
+      "Send a follow-up instruction to start a new turn on the same branch.",
+    description: "Steering composer — textarea placeholder for an idle session",
+  },
+  "agentSessions.steerPlaceholderLive": {
+    message: "Send a message to steer the running agent.",
+    description: "Steering composer — textarea placeholder for a live session",
+  },
+  "agentSessions.steerHintIdle": {
+    message:
+      "This session is idle — sending redispatches a new turn on the same branch.",
+    description: "Steering composer — helper text for the redispatch route",
+  },
+  "agentSessions.steerHintLive": {
+    message: "Your message is sent as a live turn in the conversation.",
+    description: "Steering composer — helper text for the live chat route",
+  },
+  "agentSessions.steerDisabledCanceling": {
+    message:
+      "This session is being canceled. Work already pushed is preserved.",
+    description: "Steering composer — disabled reason while canceling",
+  },
+  "agentSessions.steerDisabledCanceled": {
+    message: "This session was canceled.",
+    description: "Steering composer — disabled reason once canceled",
+  },
+  "agentSessions.steerDisabledStream": {
+    message:
+      "The conversation stream is unavailable, so live steering is paused.",
+    description:
+      "Steering composer — disabled reason when the m43 stream is down",
+  },
+  "agentSessions.steerDisabledInFlight": {
+    message:
+      "A turn is in progress. Wait for it to finish before sending another.",
+    description: "Steering composer — disabled reason while a turn streams",
+  },
+  "agentSessions.steerSubmit": {
+    message: "Send",
+    description: "Steering composer — submit button label",
+  },
+  "agentSessions.steerSending": {
+    message: "Sending…",
+    description: "Steering composer — submit button label while sending",
+  },
+  "agentSessions.steerSuccess": {
+    message: "Sent — redispatching a new turn.",
+    description: "Steering composer — toast after a redispatch is accepted",
   },
   // --- Typed AGENT_SESSION_* error messages (keyed by errors.ts messageKey) ---
   "agentSessions.errors.AGENT_SESSION_INPUT_INVALID": {
@@ -290,6 +460,77 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message:
       "The egress allowlist can't be set in this session's current phase.",
     description: "Mapped message for AGENT_SESSION_EGRESS_PHASE_INVALID",
+  },
+
+  // --- Conversation column (t002) ---
+  "agentSessions.conversationLoading": {
+    message: "Loading conversation…",
+    description: "Placeholder while the client-only conversation column loads",
+  },
+  "agentSessions.conversationConnecting": {
+    message: "Connecting to the session stream…",
+    description: "Shown while the conversation stream replay is in flight",
+  },
+  "agentSessions.conversationEmpty": {
+    message: "No conversation yet.",
+    description: "Shown when a session has produced no transcript parts",
+  },
+  "agentSessions.conversationEnded": {
+    message: "Session ended.",
+    description: "Footer note under a terminal session's replayed transcript",
+  },
+  "agentSessions.conversationUnavailable": {
+    message: "The conversation stream is unavailable right now.",
+    description:
+      "Degraded-state message when the m43 stream endpoint errors or is unconfigured",
+  },
+  "agentSessions.groupThought": {
+    message: "Thought",
+    description: "Collapsible header for the agent's reasoning group",
+  },
+  "agentSessions.groupPlan": {
+    message: "Plan",
+    description: "Collapsible header for the agent's plan/task checklist group",
+  },
+  "agentSessions.groupTerminal": {
+    message: "Terminal",
+    description: "Collapsible header for a terminal-output group",
+  },
+  "agentSessions.groupCommand": {
+    message: "Command",
+    description: "Collapsible header for a command/tool-call group",
+  },
+  "agentSessions.groupDiff": {
+    message: "Diff",
+    description: "Label for a file-diff group when no path is given",
+  },
+  "agentSessions.terminalNoOutput": {
+    message: "(no output)",
+    description: "Placeholder when a terminal group has no captured output",
+  },
+  "agentSessions.toolInput": {
+    message: "Input",
+    description: "Section label for a tool call's input",
+  },
+  "agentSessions.toolOutput": {
+    message: "Output",
+    description: "Section label for a tool call's output",
+  },
+  "agentSessions.toolError": {
+    message: "Error",
+    description: "Section label for a tool call's error text",
+  },
+  "agentSessions.toolStateRunning": {
+    message: "Running",
+    description: "Badge label for a tool call awaiting output",
+  },
+  "agentSessions.toolStateDone": {
+    message: "Done",
+    description: "Badge label for a completed tool call",
+  },
+  "agentSessions.toolStateError": {
+    message: "Failed",
+    description: "Badge label for a failed tool call",
   },
 };
 
