@@ -1,132 +1,258 @@
-# bex
+<p align="center">
+  <img src="dashboard/public/logo.png" width="88" alt="bex logo">
+</p>
 
-**The open-source Render alternative — AI-native agentic cloud to build and host.**
+<h1 align="center">bex</h1>
 
-Push a Git repo (or a prebuilt image), get a running HTTPS service at `<name>.onbex.co` — on machines you own. bex runs identically as a local Docker mock and on Hetzner; only the infrastructure provider overlay changes. Built so AI agents can deploy and operate apps as first-class users, not an afterthought.
+<p align="center">
+  <strong>The open-source, AI-native alternative to Render.</strong>
+</p>
 
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE) [![deploy](https://github.com/bex-co/bex/actions/workflows/deploy.yml/badge.svg)](https://github.com/bex-co/bex/actions/workflows/deploy.yml) [![docs](https://github.com/bex-co/bex/actions/workflows/docs.yml/badge.svg)](https://github.com/bex-co/bex/actions/workflows/docs.yml)
+<p align="center">
+  Deploy from Git to HTTPS on infrastructure you own—and give developers and coding agents the same first-class control plane.
+</p>
 
-> [!WARNING] > **bex is under active development and is not yet ready for production use. APIs, configuration, and behavior may change without notice.**
+<p align="center">
+  <a href="https://github.com/bex-co/bex/stargazers"><img src="https://img.shields.io/github/stars/bex-co/bex?style=flat&logo=github" alt="GitHub stars"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="Apache 2.0 license"></a>
+  <a href="https://github.com/bex-co/bex/actions/workflows/deploy.yml"><img src="https://github.com/bex-co/bex/actions/workflows/deploy.yml/badge.svg" alt="Build and deploy status"></a>
+  <a href="https://github.com/bex-co/bex/actions/workflows/docs.yml"><img src="https://github.com/bex-co/bex/actions/workflows/docs.yml/badge.svg" alt="Documentation status"></a>
+</p>
+
+<p align="center">
+  <a href="#quickstart">Quickstart</a> ·
+  <a href="#what-ships-today">Features</a> ·
+  <a href="#see-bex-in-action">Screenshots</a> ·
+  <a href="docs/ADR002-architecture.md">Architecture</a> ·
+  <a href="docs/ADR018-render-parity.md">Render parity</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a>
+</p>
+
+<p align="center">
+  <a href="docs/assets/workspace-overview.webp"><img src="docs/assets/workspace-overview.webp" width="1200" alt="bex dashboard showing two running services in the bex.co project"></a>
+</p>
+
+> [!WARNING]
+>
+> **bex is in active development and is not ready for production workloads.** APIs and configuration can change. The core platform works and is continuously tested; use it today to explore, contribute, and help shape the project.
 
 ## Why bex
 
-- **Own your PaaS.** Render's developer experience — deploy-from-git, custom domains + TLS, suspend/resume — on your own hardware, Apache-2.0.
-- **Drop-in familiar.** `render.yaml` is the Blueprint contract (`bex.yml` is a deprecated filename-only alias), and `bex-api` speaks Render's REST and GraphQL, verified against Render's OpenAPI spec ([docs/ADR006-bex-api.md](docs/ADR006-bex-api.md)). How far the compatibility actually goes — every Render capability × REST/GraphQL/MCP/UI, with evidence — is the parity ledger ([docs/ADR018-render-parity.md](docs/ADR018-render-parity.md)).
-- **Built for agents.** Every action is an API call or a Kubernetes CR; state is machine-readable (`phase` / `revision` / `url`). No dashboard-only actions. See the mission and roadmap in [docs/ADR008-vision.md](docs/ADR008-vision.md).
+Render, Heroku, and Railway proved the experience developers want: connect a repo, get a URL, and avoid operating Kubernetes by hand. bex makes that experience open source, self-hostable, and programmable by agents.
 
-## Quickstart: local mock (machines = Docker containers)
+- **A familiar PaaS workflow.** Deploy Dockerfiles or native Go, Node.js, Python, Ruby, Rust, and Elixir projects from Git. Use Render-style `render.yaml` Blueprints and a Render-compatible CLI and API.
+- **One control plane for humans and agents.** The dashboard, REST, GraphQL, MCP, CLI, and Kubernetes resources operate the same core. There are no dashboard-only deployment actions.
+- **More than a container launcher.** Web services, private services, workers, cron jobs, static sites, managed Postgres, managed Key Value, logs, metrics, deploy history, rollbacks, domains, TLS, and SSH are already represented.
+- **Your infrastructure and your data.** Run the same Go operator against Docker-container machines locally or Hetzner machines in production-shaped clusters. The provider overlay changes; the product does not.
+- **Inspectable by design.** The platform is Apache-2.0, its intent is declarative, and its compatibility claims are tracked in an evidence-backed [Render parity ledger](docs/ADR018-render-parity.md).
 
-Prereqs: Docker (OrbStack works), Go 1.25+, `kubectl`, `kind`, `clusterctl`.
+## From repo to URL
 
-```bash
-# 1. stand up the mock substrate: kind infra cluster + Cluster API + CAPD
-#    + an app cluster whose nodes are Docker containers
-bash scripts/mock-cluster.sh            # writes infra/local/bex.kubeconfig
-export KUBECONFIG=$PWD/infra/local/bex.kubeconfig
-
-# 2. build the operator image, load it into every node, deploy it as a pod
-( cd lego/operator && make docker-build IMG=bex-operator:dev )
-docker save bex-operator:dev -o /tmp/bex-op.tar
-for n in $(kubectl get nodes -o name | sed 's|node/||'); do
-  docker cp /tmp/bex-op.tar "$n":/op.tar && docker exec "$n" ctr -n k8s.io images import /op.tar
-done
-( cd lego/operator && make deploy IMG=bex-operator:dev )   # ns bex-system, BEX_RUNTIME=kubernetes
-# local CAPD only: pin the operator to the control-plane node (see docs/ADR004-app-deployment.md)
-kubectl -n bex-system patch deploy bex-controller-manager --type merge -p \
- '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},
-  "tolerations":[{"key":"node-role.kubernetes.io/control-plane","effect":"NoSchedule"}]}}}}'
-kubectl -n bex-system rollout status deploy/bex-controller-manager
-
-# 3. deploy an App — the operator reconciles it onto the worker machines
-kubectl apply -f examples/whoami-app.yaml
-kubectl get pods -l app.bex.co/app=whoami -o wide
-
-# 4. ★ add a machine, then scale the App onto it
-bash scripts/mock-cluster.sh scale 2
-kubectl patch apps.app.bex.co whoami --type merge -p '{"spec":{"replicas":6}}'
-
-# fast dev loop (optional): run the operator from source instead of as a pod —
-# ( cd lego/operator && make install && BEX_RUNTIME=kubernetes make run )
-```
-
-**Deploy to Hetzner:** same bex, different provider — swap `infra/clusterapi/overlays/local-capd` → `…/hetzner-caph`. See [infra/README.md](infra/README.md).
-
-## CLI
-
-The native `bex` command imports the upstream Render CLI command implementation while defaulting to Bex's API and an isolated `~/.bex/cli.yaml` credential store. When a `bex-cli/v*` release is available, download the matching GitHub-release archive, verify its `checksums.txt`, and put `bex` on `PATH`. From a checkout:
-
-```bash
-cd cli
-go build -o ../bin/bex .
-../bin/bex login
-```
-
-Installation, CI token handling, supported `BEX_*` variables, and the intentional remaining Render branding are documented in [docs/bex-cli.md](docs/bex-cli.md).
-
-## The `App` resource
+Declare a service with the same `render.yaml` shape many developers and tools already understand:
 
 ```yaml
-apiVersion: app.bex.co/v1alpha1
-kind: App
-metadata: { name: whoami }
-spec:
-  image: traefik/whoami # prebuilt image; OR build from git with `repo:` + `branch:`
-  port: 80
-  replicas: 2 # pods bin-pack across machines
+services:
+  - name: api
+    type: web
+    runtime: docker
+    repo: https://github.com/your-org/your-app
+    branch: main
+    plan: free
+    healthCheckPath: /health
+
+databases:
+  - name: app-db
+    plan: free
 ```
 
-`kubectl get apps.app.bex.co` shows phase / revision / url. Prefer Render-style config? `scripts/app-apply.sh <render.yaml>` is a thin authenticated Blueprint API client (`DRY_RUN=1` validates without deploying); set `BEX_API_URL` and `BEX_API_TOKEN` first.
+The Blueprint API compiles that intent into `App` and `Database` resources. The operator builds the source, rolls out the workloads, configures routing and TLS, and reports structured status back through every interface. An agent can perform the same deployment with the MCP `deploy` tool—repo plus manifest in one call.
 
-## bex vs Render
+See the [hello-world examples](examples/) or the full [deployment contract](docs/ADR004-app-deployment.md).
 
-| Capability | bex |
+## What ships today
+
+| Area | Capabilities |
 | --- | --- |
-| Deploy from git (CNB / Dockerfile) | ✅ |
-| Custom domains + TLS | ✅ |
-| Suspend / resume / restart | ✅ |
-| REST API (Render-compatible) | ✅ lifecycle verbs, logs, metrics, env vars, API keys — create-service / deploys planned |
-| GraphQL (Render dashboard-compatible) | ✅ |
-| MCP server | ✅ `/mcp` + stdio, OAuth 2.1 ([docs/ADR006-bex-api.md](docs/ADR006-bex-api.md), connect recipe: [docs/ADR025-connect-an-agent.md](docs/ADR025-connect-an-agent.md)) |
-| Managed Postgres | ✅ Render `/v1/postgres`-compatible ([docs/ADR009-postgresql-management.md](docs/ADR009-postgresql-management.md)) |
-| Auth (API keys, sessions, roles) | ✅ Ory Hydra/Kratos + OpenFGA ([docs/ADR012-auth.md](docs/ADR012-auth.md)) |
-| Elastic machines | ✅ manual scale — autoscaler planned |
-| Postgres control plane (tenants) | ✅ built, opt-in — not yet the prod default ([docs/ADR003-control-plane.md](docs/ADR003-control-plane.md)) |
+| **Services** | Web and private services, background workers, cron jobs, static sites, Dockerfiles, native builds, health checks, pre-deploy commands, manual and policy-driven autoscaling |
+| **Data** | Managed PostgreSQL with backups/PITR, HA and read replicas; managed Valkey-compatible Key Value with persistence and backups |
+| **Operations** | Deploy history, cancel and rollback, logs and live tail, metrics, events, suspend/resume/restart, custom domains and TLS, native SSH and browser shell |
+| **Delivery** | GitHub App integration, private repositories, push-to-deploy, multi-resource Blueprints, registry credentials, outbound webhooks |
+| **Teams** | Workspaces, projects and environments, roles with OpenFGA, OAuth 2.1, API keys, audit logs, usage metering and billing integration |
+| **Agents** | Remote and stdio MCP, OAuth consent, deploy-from-chat, managed sandboxes, cloud coding-agent sessions, structured machine-readable state |
 
-## AI-native
+Some capabilities require optional backing services or explicit configuration and fail closed when unavailable. For the exact REST · GraphQL · MCP · UI status of every capability, use the [parity ledger](docs/ADR018-render-parity.md)—not this summary—as the source of truth.
 
-Today: a Render-compatible REST + GraphQL + **MCP** API ([docs/ADR006-bex-api.md](docs/ADR006-bex-api.md)) an agent can drive end-to-end with its own revocable API key, and structured state on the App CR (`status.phase`, `status.revision`, `status.url`) that agents read without scraping. Next: deploy-from-chat (repo → URL in one call) and E2B-compatible sandboxes. The thesis and roadmap live in [docs/ADR008-vision.md](docs/ADR008-vision.md).
+## See bex in action
 
-## Architecture
+<table>
+  <tr>
+    <td width="50%">
+      <strong>Deploy from Git or an image</strong><br><br>
+      <a href="docs/assets/new-web-service.webp"><img src="docs/assets/new-web-service.webp" width="100%" alt="New service form with web, private, worker, cron, and static service types"></a>
+    </td>
+    <td width="50%">
+      <strong>Follow every deploy</strong><br><br>
+      <a href="docs/assets/deploy-detail.webp"><img src="docs/assets/deploy-detail.webp" width="100%" alt="Live deploy detail with revision metadata, status timeline, rollback, and build logs"></a>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <strong>Tail and filter live logs</strong><br><br>
+      <a href="docs/assets/live-logs.webp"><img src="docs/assets/live-logs.webp" width="100%" alt="Live service logs with search, range, and filter controls"></a>
+    </td>
+    <td width="50%">
+      <strong>Correlate metrics with deploys</strong><br><br>
+      <a href="docs/assets/service-metrics.webp"><img src="docs/assets/service-metrics.webp" width="100%" alt="Service memory and CPU metrics with deployment event markers"></a>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <strong>Manage environment and secrets</strong><br><br>
+      <a href="docs/assets/environment-secrets.webp"><img src="docs/assets/environment-secrets.webp" width="100%" alt="Environment variables and secret files with save-and-deploy workflow"></a>
+    </td>
+    <td width="50%">
+      <strong>Bring a domain; get TLS</strong><br><br>
+      <a href="docs/assets/custom-domain.webp"><img src="docs/assets/custom-domain.webp" width="100%" alt="Custom-domain dialog with automatic TLS certificate issuance"></a>
+    </td>
+  </tr>
+</table>
 
-Two clusters: the **app cluster** runs the bex operator and your Apps; the **infra cluster** runs Cluster API, which provisions the app cluster's machines (Docker containers locally via CAPD, Hetzner servers via CAPH — same manifests, different overlay). The **operator** is the mechanism (reconciles `App` CRs into Deployment/Service/Ingress); the **Postgres control plane** is the intent layer (tenants/apps/domains) that writes those CRs — built into bex-api as an opt-in, [docs/ADR003-control-plane.md](docs/ADR003-control-plane.md). Two runtimes via `BEX_RUNTIME`: `kubernetes` (elastic, multi-machine) and `opensandbox` (single host, real pause/resume). Full map with diagrams: [docs/ADR002-architecture.md](docs/ADR002-architecture.md).
+## Quickstart
 
-## Layout
+This boots the production-shaped local substrate: a kind management cluster, Cluster API, and an app cluster whose machines are Docker containers.
 
-All Go lives in `lego/` — a workspace of three modules; one image, two binaries. Details: [lego/README.md](lego/README.md).
+**Prerequisites:** Docker or OrbStack, Go 1.25+, `kubectl`, `kind`, and `clusterctl`.
 
+In terminal 1:
+
+```bash
+git clone https://github.com/bex-co/bex.git
+cd bex
+
+# Provision the local Cluster API substrate.
+bash scripts/mock-cluster.sh
+export KUBECONFIG="$PWD/infra/local/bex.kubeconfig"
+
+# Install the CRDs and run the operator from source.
+cd lego/operator
+make install
+BEX_RUNTIME=kubernetes make run
 ```
-lego/            the product: ALL Go (Latin legō, "I assemble"). go.work · Dockerfile — one image, two binaries
-  types/            App/Database CRD contract (app.bex.co/v1alpha1); leaf, imports nothing
-  operator/         mechanism: cmd/manager · internal/{controller,build,runtime} · config/ · codegen (make)
-  backend/          bex-api: cmd/api · internal/{apps,logs,metrics,apikeys,postgres,secrets,store,…} —
-                    Render REST/GraphQL/MCP + authz + control-plane store
-                    dependency: operator → types ← backend  (operator never imports backend)
-dashboard/       the human-facing dashboard (TanStack Start + Apollo + shadcn), client of bex-api's GraphQL
-infra/           bex-infra: terraform/ · clusterapi/{base,overlays/{local-capd,hetzner-caph}} · local/
-deploy/          gitops/{bootstrap,base,overlays/{local,staging,prod},charts,authz} · opensandbox/ configs
-examples/        whoami-app.yaml (prebuilt) · hello-go/ (build-from-git sample)
-docs/            vision · architecture · control-plane · bex-api · connect-an-agent · render-parity ·
-                 observability · deployment · custom-domain · restart-suspend-and-resume · auth · secrets ·
-                 postgresql-management · sandboxes · etcd-backup-restore · go-and-gitops
-scripts/         mock-cluster.sh · app-apply.sh · domain-add.sh · deploy-sample.sh ·
-                 auth-*.sh + authz-model.sh (Ory/OpenFGA bootstrap) · bao-*.sh + secrets-verify.sh (OpenBao) ·
-                 gh-secrets.sh · gitops-validate.sh · up.sh + start-opensandbox*.sh (legacy single-host path)
+
+In terminal 2:
+
+```bash
+cd bex
+export KUBECONFIG="$PWD/infra/local/bex.kubeconfig"
+
+# Deploy a prebuilt image and watch it converge.
+kubectl apply -f examples/whoami-app.yaml
+kubectl get apps.app.bex.co -w
 ```
 
-## Status & roadmap
+An `App` reports the state an operator or agent needs without scraping logs:
 
-Working and verified: App CRD + reconcile, kubernetes runtime (App → Deployment → pods on machines), local CAPD mock with add/remove machine, opensandbox runtime with real pause/resume, custom domains + TLS, the full REST/GraphQL/MCP surface (lifecycle, logs, metrics, env vars, API keys, managed Postgres), auth (Hydra/Kratos/OpenFGA), the opt-in Postgres control plane, the dashboard, and a live Hetzner deployment. Tracked next — control plane on-by-default + tenant onboarding, wake activator + HMAC webhook, autoscaler wiring, in-cluster builds: [docs/ADR008-vision.md](docs/ADR008-vision.md#roadmap).
+```text
+NAME      PHASE     REVISION   URL
+whoami    Running   rev-1      http://whoami.default.svc:8080
+```
 
-## Contributing
+Then add a tenant machine and scale the workload across it:
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). This repo is agent-friendly ([CLAUDE.md](CLAUDE.md)). Licensed [Apache-2.0](LICENSE).
+```bash
+bash scripts/mock-cluster.sh scale 2
+kubectl patch apps.app.bex.co whoami --type merge -p '{"spec":{"replicas":6}}'
+kubectl get pods -l app.bex.co/app=whoami -o wide
+```
+
+The first bootstrap downloads the Kubernetes and Cluster API dependencies and can take several minutes. For a full platform deployment, start with [infra/README.md](infra/README.md); for the Go workspace and development commands, see [lego/README.md](lego/README.md).
+
+## Use the interface that fits
+
+| Interface | Best for |
+| --- | --- |
+| **Dashboard** | Human-friendly service, data, environment, team, usage, and security workflows |
+| **`bex` CLI** | Interactive operations and scripts using the upstream Render CLI command implementation ([install and compatibility notes](docs/bex-cli.md)) |
+| **REST + GraphQL** | Product integrations and custom control-plane clients |
+| **MCP** | Claude Code, Cursor, and other agents over OAuth 2.1 or a headless API key ([connect an agent](docs/ADR025-connect-an-agent.md)) |
+| **Kubernetes CRDs** | GitOps, low-level debugging, and direct operator development |
+
+All product adapters are thin layers over the same Go core, so authorization, lifecycle behavior, and resource identity do not drift by interface.
+
+## How it works
+
+```mermaid
+flowchart TB
+  subgraph clients["clients · outside app cluster"]
+    direction LR
+    developer@{ shape: tri, label: "developer" }
+    dashboard["dashboard (web service)"]
+    cli["bex CLI (local client process)"]
+    agent@{ shape: tri, label: "coding agent" }
+
+    developer --> dashboard
+    developer --> cli
+  end
+
+  subgraph app_cluster["app cluster"]
+    api["bex-api"]
+    store[(control-plane Postgres)]
+    crds["App · Database · KeyValue (Kubernetes objects)"]
+    operator["bex operator"]
+    registry["Zot registry"]
+    runtime["tenant runtime (Kubernetes workloads and routes)"]
+    capi["Cluster API controllers"]
+    nodes["worker nodes (machines)"]
+  end
+
+  %% Layout-only: GitHub's Dagre renderer otherwise places the subgraphs side by side.
+  agent ~~~ runtime
+  agent -->|MCP| api
+  dashboard -->|GraphQL| api
+  cli -->|REST| api
+  api --> store
+  api -->|projects desired state| crds
+  operator -->|watches and reconciles| crds
+  operator -->|builds and pushes images| registry
+  runtime -->|managed by| operator
+  runtime -->|pulls images| registry
+  runtime -->|runs on| nodes
+  nodes -->|provisioned by| capi
+```
+
+Arrows point from a consumer to what it depends on. `bex-api` owns durable product intent; the database-free operator turns projected Kubernetes objects into workloads; Cluster API provisions the machines beneath them; and `operator → types ← backend` remains the one-way code dependency described in the [architecture panorama](docs/ADR002-architecture.md).
+
+<details>
+<summary><strong>Repository map</strong></summary>
+
+```text
+lego/
+  types/       App, Database, and KeyValue CRD contracts
+  operator/    Kubernetes manager: reconcile, build, runtime, config
+  backend/     bex-api and the isolated SSH gateway
+dashboard/     TanStack Start + Apollo + shadcn web application
+mobile/        Expo client for safe supervision workflows
+infra/         Terraform + Cluster API: local CAPD and Hetzner CAPH
+deploy/gitops/ Argo CD platform infrastructure
+examples/      Image, Git, static, cron, and multi-resource samples
+docs/          Architecture decisions, contracts, runbooks, and evidence
+scripts/       Local-cluster, deployment, security, and verification tools
+```
+
+</details>
+
+## Project status
+
+bex is a working public alpha with a live, production-shaped architecture and broad Render compatibility. It is also a large surface area under rapid development. The project makes that tradeoff explicit:
+
+- [Vision and product thesis](docs/ADR008-vision.md)
+- [Evidence-backed Render parity and known gaps](docs/ADR018-render-parity.md)
+- [Architecture and trust boundaries](docs/ADR002-architecture.md)
+- [CLI compatibility checklist](docs/cli-compatibility-checklist.md)
+- [Contributing guide](CONTRIBUTING.md)
+
+## Help build the open cloud
+
+If you want a PaaS that agents can operate and developers can own, [star the repository](https://github.com/bex-co/bex), try the local cluster, and tell us where the experience breaks. Issues and pull requests are welcome; agent-authored contributions are welcome when the author has reviewed the diff and the tests pass.
+
+Apache-2.0 licensed. See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
