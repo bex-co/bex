@@ -23,6 +23,7 @@ import enWebhooks from "@/features/webhooks/locales/en";
 import enDeploys from "@/features/deploys/locales/en";
 import enSSHKeys from "@/features/ssh-keys/locales/en";
 import enInvites from "@/features/invites/locales/en";
+import enAgentSessions from "@/features/agent-sessions/locales/en";
 import zhCommon from "@/common/locales/zh";
 import zhAuth from "@/features/auth/locales/zh";
 import zhLogs from "@/features/logs/locales/zh";
@@ -48,6 +49,7 @@ import zhWebhooks from "@/features/webhooks/locales/zh";
 import zhDeploys from "@/features/deploys/locales/zh";
 import zhSSHKeys from "@/features/ssh-keys/locales/zh";
 import zhInvites from "@/features/invites/locales/zh";
+import zhAgentSessions from "@/features/agent-sessions/locales/zh";
 import type { SupportedLanguage, TranslationEntry } from "./config";
 
 export type { SupportedLanguage, TranslationEntry } from "./config";
@@ -99,6 +101,7 @@ export const en: Record<string, string> = {
   ...extractMessages(enDeploys),
   ...extractMessages(enSSHKeys),
   ...extractMessages(enInvites),
+  ...extractMessages(enAgentSessions),
 };
 
 export const zh: Record<string, string> = {
@@ -127,6 +130,7 @@ export const zh: Record<string, string> = {
   ...extractMessages(zhDeploys),
   ...extractMessages(zhSSHKeys),
   ...extractMessages(zhInvites),
+  ...extractMessages(zhAgentSessions),
 };
 
 export const resources: Record<

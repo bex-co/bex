@@ -1,0 +1,119 @@
+# Cloud coding-agent sessions — the control-plane metadata surface (ADR047 D9,
+# backend/internal/agentsessions/graphql.go). The dashboard polls these ops for
+# metadata (phase, PR, evidence, turns); the live conversation column is NOT
+# polled — it rides the same-origin stream endpoint (w3/m43), never GraphQL.
+#
+# Key off `phase` (creating/running/resuming/redispatching/completed/failed/
+# canceling/canceled), not the free-text `status`. The mint fields
+# (ticket/url/expiresAt) are selected ONLY on the mint ops (create/steer/resume/
+# attach) — list/get never mint ambient attach authority, so they omit them.
+
+fragment AgentSessionFields on AgentSession {
+  id
+  ownerId
+  repo
+  branch
+  agentConfig {
+    agent
+    model
+    modelEndpoint
+    task
+    template
+  }
+  sandboxId
+  phase
+  status
+  headSha
+  prUrl
+  prNumber
+  evidence {
+    commandLog
+    testOutput
+    outputTail
+    changedFiles
+    commits
+    truncated
+  }
+  turns
+  deliveryMode
+  failureReason
+  createdAt
+  updatedAt
+  canceledAt
+}
+
+# The short-lived attach ticket (+ gateway origin + expiry) the browser presents
+# to the m43 stream endpoint. Selected ONLY on the mint ops.
+fragment AgentSessionMintFields on AgentSession {
+  ticket
+  url
+  expiresAt
+}
+
+query AgentSessions($ownerId: String) {
+  agentSessions(ownerId: $ownerId) {
+    ...AgentSessionFields
+  }
+}
+
+query AgentSession($id: String!) {
+  agentSession(id: $id) {
+    ...AgentSessionFields
+  }
+}
+
+mutation CreateAgentSession(
+  $ownerId: String
+  $repo: String!
+  $branch: String!
+  $agentConfig: AgentSessionConfigInput!
+  $egressAllowlist: [String!]
+) {
+  createAgentSession(
+    ownerId: $ownerId
+    repo: $repo
+    branch: $branch
+    agentConfig: $agentConfig
+    egressAllowlist: $egressAllowlist
+  ) {
+    ...AgentSessionFields
+    ...AgentSessionMintFields
+  }
+}
+
+mutation SteerAgentSession(
+  $id: String!
+  $prompt: String!
+  $egressAllowlist: [String!]
+) {
+  steerAgentSession(
+    id: $id
+    prompt: $prompt
+    egressAllowlist: $egressAllowlist
+  ) {
+    ...AgentSessionFields
+    ...AgentSessionMintFields
+  }
+}
+
+mutation ResumeAgentSession($id: String!) {
+  resumeAgentSession(id: $id) {
+    ...AgentSessionFields
+    ...AgentSessionMintFields
+  }
+}
+
+# Reconnect mint (m43): re-issues a stream ticket for an already-running session
+# so a dropped browser can re-attach without a fresh turn (prepareReconnect...).
+mutation AttachAgentSession($id: String!) {
+  attachAgentSession(id: $id) {
+    ...AgentSessionFields
+    ...AgentSessionMintFields
+  }
+}
+
+mutation CancelAgentSession($id: String!) {
+  cancelAgentSession(id: $id) {
+    ...AgentSessionFields
+  }
+}

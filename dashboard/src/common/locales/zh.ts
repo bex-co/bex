@@ -165,6 +165,11 @@ const zhCommon: Record<string, TranslationEntry> = {
     description:
       "Sidebar nav link to the blueprints management page (IaC stacks auto-registered on deploy)",
   },
+  "common.navAgents": {
+    message: "智能体",
+    description:
+      "Sidebar nav link to the cloud coding-agent sessions page (/agents)",
+  },
   "common.navSettings": {
     message: "设置",
     description:
