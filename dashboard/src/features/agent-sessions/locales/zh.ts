@@ -519,6 +519,27 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "失败",
     description: "Badge label for a failed tool call",
   },
+  "agentSessions.activityWorking": {
+    message: "处理中…",
+    description: "Activity-group summary while any tool step is still pending",
+  },
+  "agentSessions.activityEdited": {
+    message: "已编辑 {count} 个文件",
+    description: "Activity-group summary when the turn edited files (diffs)",
+  },
+  "agentSessions.activityRan": {
+    message: "已运行 {count} 条命令",
+    description: "Activity-group summary when the turn ran commands/terminals",
+  },
+  "agentSessions.activitySteps": {
+    message: "{count} 个步骤",
+    description: "Activity-group summary fallback — the step count",
+  },
+  "agentSessions.scrollToBottom": {
+    message: "滚动到最新",
+    description:
+      "Accessible label for the floating jump-to-bottom button in the conversation column",
+  },
 };
 
 export default zhAgentSessions;

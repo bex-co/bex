@@ -1,52 +1,45 @@
-import { Fragment, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import type { ChatTransport } from "ai";
-import { AlertCircle, Loader2 } from "lucide-react";
+import {
+  AlertCircle,
+  Bot,
+  CheckCircle2,
+  ChevronDown,
+  Circle,
+  Loader2,
+} from "lucide-react";
 import {
   createAgentSessionTransport,
   type MintedTicket,
 } from "@/features/agent-sessions/lib/transport";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { CodeBlock } from "@/common/components/code-block";
+import { MarkdownRenderer } from "@/common/components/markdown-renderer";
+import { cn } from "@/common/lib/utils/utils";
 import {
-  Conversation,
-  ConversationContent,
-  Message,
-  MessageContent,
-  Response,
-  Reasoning,
-  ReasoningTrigger,
-  ReasoningContent,
-  Task,
-  TaskTrigger,
-  TaskContent,
-  TaskItem,
-  Tool,
-  ToolHeader,
-  ToolContent,
-  ToolInput,
-  ToolOutput,
-  Terminal,
-  TerminalTrigger,
-  TerminalContent,
-} from "@/common/components/ai-elements";
+  ActivityGroup,
+  type ActivityStep,
+} from "@/features/agent-sessions/components/activity-group";
+import { TypingIndicator } from "@/features/agent-sessions/components/typing-indicator";
 import {
   acpDataSchema,
   acpPartData,
   classifyAcpData,
   isToolPart,
   toolPartInfo,
+  type AcpPlanEntry,
   type AgentUIMessage,
 } from "@/features/agent-sessions/lib/acp-parts";
 
 // The live conversation column (ADR047 D9). `useChat` drives it over the m43
 // stream transport: `resume` replays the durable transcript on mount, then
 // (for a running session) live-tails; a terminal session replays and settles on
-// `[DONE]`. Each `data-acp` part and tool/reasoning UI part renders as a
-// collapsible group — the Devin "Worked / Thought" shape. This component is the
-// injectable, Apollo-free unit under test (the transport is passed in);
-// `session-conversation.tsx` is the client-only wrapper that builds the real
-// ticket-minting transport.
+// `[DONE]`. The rendering is the polished chat shape: assistant turns get a Bot
+// avatar + a markdown content column, user turns are right-aligned bubbles, and
+// consecutive tool + ACP command/terminal/diff parts fold into a single
+// collapsible activity group. This component is the injectable, Apollo-free unit
+// under test (the transport is passed in); `session-conversation.tsx` is the
+// client-only wrapper that builds the real ticket-minting transport.
 
 /**
  * The live-steering seam the detail page lifts out of this client-only module
@@ -135,6 +128,31 @@ export function SessionConversationImpl({
     return () => onChatStateChange?.(null);
   }, [onChatStateChange]);
 
+  // Auto-scroll: pin to the bottom as parts stream in, but let the user scroll
+  // up to read history — a floating button returns them to the live tail. The
+  // column scrolls within its own fixed-height card on the detail page.
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const isAutoScrollingRef = useRef(false);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+
+  useEffect(() => {
+    if (shouldAutoScroll && messagesContainerRef.current) {
+      isAutoScrollingRef.current = true;
+      messagesContainerRef.current.scrollTop =
+        messagesContainerRef.current.scrollHeight;
+      requestAnimationFrame(() => {
+        isAutoScrollingRef.current = false;
+      });
+    }
+  }, [messages, status, shouldAutoScroll]);
+
+  const handleScroll = () => {
+    if (isAutoScrollingRef.current || !messagesContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } =
+      messagesContainerRef.current;
+    setShouldAutoScroll(Math.abs(scrollHeight - scrollTop - clientHeight) < 12);
+  };
+
   if (error) {
     return (
       <div className="text-muted-foreground flex items-center gap-2 p-4 text-sm">
@@ -145,41 +163,87 @@ export function SessionConversationImpl({
   }
 
   const empty = messages.length === 0;
-  const connecting =
-    empty && (status === "submitted" || status === "streaming");
+  const isLoading = status === "submitted" || status === "streaming";
+  const connecting = empty && isLoading;
+
+  // Build the display blocks once per message so the parent can decide whether
+  // the typing indicator is due (the last turn is a user prompt or the last
+  // assistant message has no renderable content yet).
+  const rendered = messages.map((message) => ({
+    message,
+    blocks: buildBlocks(message.parts as PartLike[]),
+  }));
+  const last = rendered[rendered.length - 1];
+  const showTyping =
+    isLoading &&
+    last !== undefined &&
+    (last.message.role !== "assistant" || last.blocks.length === 0);
 
   return (
-    <Conversation className="min-h-0">
-      <ConversationContent>
-        {connecting && (
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            <Loader2 aria-hidden className="size-4 shrink-0 animate-spin" />
-            {t("agentSessions.conversationConnecting")}
-          </div>
-        )}
-        {empty && !connecting && (
-          <p className="text-muted-foreground text-sm">
-            {t("agentSessions.conversationEmpty")}
-          </p>
-        )}
-        {messages.map((message) => (
-          <Message key={message.id} from={message.role}>
-            <MessageContent from={message.role}>
-              {message.parts.map((part, index) => (
-                <Fragment key={`${message.id}-${index}`}>
-                  <PartView part={part as PartLike} />
-                </Fragment>
-              ))}
-            </MessageContent>
-          </Message>
-        ))}
-      </ConversationContent>
+    <div className="relative flex h-full min-h-0 flex-col">
+      <div
+        ref={messagesContainerRef}
+        onScroll={handleScroll}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        role="log"
+        aria-live="polite"
+      >
+        <div className="space-y-6 p-4">
+          {connecting && (
+            <div className="text-muted-foreground flex items-center gap-2 text-sm">
+              <Loader2 aria-hidden className="size-4 shrink-0 animate-spin" />
+              {t("agentSessions.conversationConnecting")}
+            </div>
+          )}
+          {empty && !connecting && (
+            <p className="text-muted-foreground text-sm">
+              {t("agentSessions.conversationEmpty")}
+            </p>
+          )}
+
+          {rendered.map(({ message, blocks }, index) => (
+            <MessageRow
+              key={message.id}
+              role={message.role}
+              blocks={blocks}
+              showCursor={isLoading && index === rendered.length - 1}
+            />
+          ))}
+
+          {showTyping && (
+            <div className="flex w-full items-start justify-start gap-3">
+              <BotAvatar />
+              <div className="border-border/50 bg-muted/60 text-muted-foreground rounded-2xl rounded-tl-md border">
+                <TypingIndicator />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {!shouldAutoScroll && !empty && (
+        <button
+          type="button"
+          onClick={() => {
+            setShouldAutoScroll(true);
+            messagesContainerRef.current?.scrollTo({
+              top: messagesContainerRef.current.scrollHeight,
+              behavior: "smooth",
+            });
+          }}
+          aria-label={t("agentSessions.scrollToBottom")}
+          className="border-border bg-background/95 hover:bg-muted absolute bottom-4 left-1/2 z-10 flex size-8 -translate-x-1/2 items-center justify-center rounded-full border shadow-md backdrop-blur transition-colors"
+        >
+          <ChevronDown className="size-4" />
+        </button>
+      )}
+
       {isTerminal && status === "ready" && !empty && (
-        <p className="text-muted-foreground border-t px-4 py-2 text-xs">
+        <p className="text-muted-foreground shrink-0 border-t px-4 py-2 text-xs">
           {t("agentSessions.conversationEnded")}
         </p>
       )}
-    </Conversation>
+    </div>
   );
 }
 
@@ -189,141 +253,238 @@ function str(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
-// Renders one message part into its transcript group. A component (not a bare
-// function) so each collapsible owns its own open state across re-renders.
-function PartView({ part }: { part: PartLike }) {
-  const { t } = useTranslations();
+// --- Display-block model ------------------------------------------------------
+// A message's parts are folded into an ordered list of blocks: markdown text, a
+// collapsible reasoning ("Thought") block, a plan checklist, and activity groups
+// that merge every run of consecutive tool + ACP command/terminal/diff parts.
 
-  if (part.type === "text") {
-    return <Response>{str(part.text)}</Response>;
-  }
+type DisplayBlock =
+  | { type: "text"; key: string; text: string }
+  | { type: "reasoning"; key: string; text: string }
+  | { type: "plan"; key: string; entries: AcpPlanEntry[] }
+  | { type: "activity"; key: string; steps: ActivityStep[] };
 
-  if (part.type === "reasoning") {
-    return (
-      <Reasoning>
-        <ReasoningTrigger>{t("agentSessions.groupThought")}</ReasoningTrigger>
-        <ReasoningContent>{str(part.text)}</ReasoningContent>
-      </Reasoning>
-    );
-  }
+function buildBlocks(parts: PartLike[]): DisplayBlock[] {
+  const blocks: DisplayBlock[] = [];
 
-  if (isToolPart(part)) {
-    const info = toolPartInfo(part);
-    return (
-      <Tool>
-        <ToolHeader
-          name={info.name}
-          state={info.state}
-          stateLabel={toolStateLabel(info.state, t)}
-        />
-        <ToolContent>
-          <ToolInput label={t("agentSessions.toolInput")} input={info.input} />
-          <ToolOutput
-            label={t("agentSessions.toolOutput")}
-            errorLabel={t("agentSessions.toolError")}
-            output={info.output}
-            errorText={info.errorText}
-          />
-        </ToolContent>
-      </Tool>
-    );
-  }
-
-  const acp = acpPartData(part);
-  if (acp !== undefined) {
-    const group = classifyAcpData(acp);
-    switch (group.kind) {
-      case "plan":
-        return (
-          <Task>
-            <TaskTrigger title={t("agentSessions.groupPlan")} />
-            <TaskContent>
-              {group.entries.map((entry, i) => (
-                <TaskItem key={i} status={entry.status}>
-                  {entry.content}
-                </TaskItem>
-              ))}
-            </TaskContent>
-          </Task>
-        );
-      case "terminal":
-        return (
-          <Terminal>
-            <TerminalTrigger>
-              {t("agentSessions.groupTerminal")}
-            </TerminalTrigger>
-            <TerminalContent>
-              {group.output ?? t("agentSessions.terminalNoOutput")}
-            </TerminalContent>
-          </Terminal>
-        );
-      case "command":
-        return (
-          <Terminal>
-            <TerminalTrigger>
-              {group.title ?? t("agentSessions.groupCommand")}
-            </TerminalTrigger>
-            <TerminalContent>
-              {group.command ?? group.title ?? ""}
-            </TerminalContent>
-          </Terminal>
-        );
-      case "diff":
-        return (
-          <div className="space-y-1">
-            <p className="text-muted-foreground text-xs font-medium">
-              {group.path ?? t("agentSessions.groupDiff")}
-            </p>
-            <CodeBlock
-              code={unifiedDiff(group.oldText, group.newText)}
-              language="diff"
-            />
-          </div>
-        );
-      default:
-        return <CodeBlock code={safeJson(group.data)} language="json" />;
+  const pushStep = (step: ActivityStep, index: number) => {
+    const prev = blocks[blocks.length - 1];
+    if (prev?.type === "activity") {
+      prev.steps.push(step);
+    } else {
+      blocks.push({
+        type: "activity",
+        key: `activity-${index}`,
+        steps: [step],
+      });
     }
-  }
+  };
 
-  // step-start and any other structural part render nothing.
-  return null;
+  parts.forEach((part, index) => {
+    if (part.type === "text") {
+      blocks.push({ type: "text", key: `text-${index}`, text: str(part.text) });
+      return;
+    }
+
+    if (part.type === "reasoning") {
+      blocks.push({
+        type: "reasoning",
+        key: `reasoning-${index}`,
+        text: str(part.text),
+      });
+      return;
+    }
+
+    const acp = acpPartData(part);
+    if (acp !== undefined) {
+      const group = classifyAcpData(acp);
+      if (group.kind === "plan") {
+        blocks.push({
+          type: "plan",
+          key: `plan-${index}`,
+          entries: group.entries,
+        });
+        return;
+      }
+      if (group.kind === "diff") {
+        pushStep(
+          {
+            kind: "diff",
+            path: group.path,
+            oldText: group.oldText,
+            newText: group.newText,
+          },
+          index,
+        );
+        return;
+      }
+      if (group.kind === "terminal") {
+        pushStep({ kind: "terminal", output: group.output }, index);
+        return;
+      }
+      if (group.kind === "command") {
+        pushStep(
+          { kind: "command", title: group.title, command: group.command },
+          index,
+        );
+        return;
+      }
+      pushStep({ kind: "unknown", data: group.data }, index);
+      return;
+    }
+
+    if (isToolPart(part)) {
+      const info = toolPartInfo(part);
+      pushStep(
+        {
+          kind: "tool",
+          name: info.name,
+          state: info.state,
+          input: info.input,
+          output: info.output,
+          errorText: info.errorText,
+        },
+        index,
+      );
+      return;
+    }
+
+    // step-start and any other structural part render nothing.
+  });
+
+  return blocks;
 }
 
-function toolStateLabel(
-  state: string,
-  t: ReturnType<typeof useTranslations>["t"],
-): string {
-  switch (state) {
-    case "input-streaming":
-    case "input-available":
-      return t("agentSessions.toolStateRunning");
-    case "output-available":
-      return t("agentSessions.toolStateDone");
-    case "output-error":
-      return t("agentSessions.toolStateError");
-    default:
-      return state;
-  }
+function BotAvatar() {
+  return (
+    <div className="shrink-0">
+      <div className="border-primary/15 bg-primary/10 flex size-8 items-center justify-center rounded-full border shadow-xs">
+        <Bot className="text-primary size-4" />
+      </div>
+    </div>
+  );
 }
 
-// unifiedDiff renders a minimal +/- diff from the ACP diff part's old/new text
-// so the CodeBlock reads like a patch without a diffing dependency.
-function unifiedDiff(oldText?: string, newText?: string): string {
-  const removed = (oldText ?? "")
-    .split("\n")
-    .filter((l) => l.length > 0)
-    .map((l) => `- ${l}`);
-  const added = (newText ?? "")
-    .split("\n")
-    .filter((l) => l.length > 0)
-    .map((l) => `+ ${l}`);
-  return [...removed, ...added].join("\n") || "(no changes)";
+function MessageRow({
+  role,
+  blocks,
+  showCursor,
+}: {
+  role: string;
+  blocks: DisplayBlock[];
+  showCursor: boolean;
+}) {
+  const isUser = role === "user";
+  // The cursor rides the final text block of the last streaming assistant turn.
+  const lastTextKey = [...blocks].reverse().find((b) => b.type === "text")?.key;
+
+  return (
+    <div
+      className={cn(
+        "animate-in fade-in flex w-full gap-3 duration-300",
+        isUser ? "justify-end pl-8" : "items-start justify-start",
+      )}
+    >
+      {!isUser && <BotAvatar />}
+      <div
+        className={cn(
+          "min-w-0 text-sm leading-7",
+          isUser
+            ? "border-border/70 bg-muted text-foreground max-w-[92%] rounded-2xl rounded-br-md border px-4 py-2.5 shadow-xs sm:max-w-md dark:bg-muted/80"
+            : "min-w-0 flex-1 pt-1",
+        )}
+      >
+        {blocks.map((block) => {
+          if (block.type === "text") {
+            return (
+              <div key={block.key} className="min-w-0">
+                <MarkdownRenderer content={block.text} />
+                {!isUser && showCursor && block.key === lastTextKey && (
+                  <span className="bg-current ml-1 inline-block h-4 w-2 animate-pulse" />
+                )}
+              </div>
+            );
+          }
+          if (block.type === "reasoning") {
+            return <ReasoningBlock key={block.key} text={block.text} />;
+          }
+          if (block.type === "plan") {
+            return <PlanBlock key={block.key} entries={block.entries} />;
+          }
+          return <ActivityGroup key={block.key} steps={block.steps} />;
+        })}
+      </div>
+    </div>
+  );
 }
 
-function safeJson(value: unknown): string {
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
+function ReasoningBlock({ text }: { text: string }) {
+  const { t } = useTranslations();
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <div className="border-border/70 bg-muted/20 my-3 overflow-hidden rounded-xl border">
+      <button
+        type="button"
+        onClick={() => setIsOpen((open) => !open)}
+        aria-expanded={isOpen}
+        className="hover:bg-muted/40 flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left transition-colors"
+      >
+        <span className="text-foreground/90 min-w-0 flex-1 truncate text-xs font-medium">
+          {t("agentSessions.groupThought")}
+        </span>
+        <ChevronDown
+          className={cn(
+            "text-muted-foreground size-3.5 shrink-0 transition-transform",
+            isOpen && "rotate-180",
+          )}
+        />
+      </button>
+      {isOpen && (
+        <div className="border-border/50 text-muted-foreground border-t px-3 py-2 text-sm">
+          <MarkdownRenderer content={text} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PlanBlock({ entries }: { entries: AcpPlanEntry[] }) {
+  const { t } = useTranslations();
+  return (
+    <div className="border-border/70 bg-muted/10 my-3 rounded-xl border px-3 py-2.5">
+      <p className="text-foreground/90 mb-2 text-xs font-medium">
+        {t("agentSessions.groupPlan")}
+      </p>
+      <ul className="space-y-1.5">
+        {entries.map((entry, i) => (
+          <li key={i} className="flex items-start gap-2 text-sm">
+            <PlanStatusIcon status={entry.status} />
+            <span
+              className={cn(
+                "min-w-0 leading-6",
+                entry.status === "completed" &&
+                  "text-muted-foreground line-through",
+              )}
+            >
+              {entry.content}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function PlanStatusIcon({ status }: { status?: string }) {
+  if (status === "completed") {
+    return <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-green-600" />;
   }
+  if (status === "in_progress") {
+    return (
+      <Loader2 className="text-primary mt-0.5 size-3.5 shrink-0 animate-spin" />
+    );
+  }
+  return (
+    <Circle className="text-muted-foreground/50 mt-0.5 size-3.5 shrink-0" />
+  );
 }
