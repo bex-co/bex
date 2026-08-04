@@ -55,6 +55,16 @@ patches:
         value:
           name: BEX_KV_BACKUP_S3_SECRET
           value: bex-kv-backup-s3
+      # ADR050 Tier A: age recipient PUBLIC key (non-secret) — makes the paid
+      # KeyValue backup Job age-encrypt each RDB before upload. The private half
+      # is out-of-band (.env/CI, AGE_BACKUP_PRIVATE_KEY); empty/removed ⇒ plain
+      # upload. The etcd/OpenBao CronJobs read the same key from the out-of-band
+      # bex-backup-age ConfigMap instead (docs/ADR050-encrypted-platform-backups.md).
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_BACKUP_AGE_PUBLIC_KEY
+          value: age1vw2pwheyy0ufvpt72pkhqrfnrx7f5sg0t3xl5key0n8ncv354pcqq8k3n7
   - target:
       group: apps
       version: v1
