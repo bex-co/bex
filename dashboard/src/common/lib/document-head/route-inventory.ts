@@ -18,8 +18,14 @@ export const ROUTE_HEAD_INVENTORY: Record<
   readonly string[]
 > = {
   content: [
-    "agents.$agentSessionId.tsx",
     "agents.tsx",
+    // MUST keep the trailing-underscore (`agents_`) flat form: `agents.tsx` is a
+    // content page with no <Outlet/>, so a nested `agents.$agentSessionId` child
+    // would render the list at /agents/{id} instead of the detail page. The
+    // underscore opts the detail route out of nesting (cf. env-groups_.$groupId).
+    // This inventory entry is the tripwire — renaming back to the nested form
+    // fails this test.
+    "agents_.$agentSessionId.tsx",
     "auth.consent.tsx",
     "auth.device.success.tsx",
     "auth.device.tsx",

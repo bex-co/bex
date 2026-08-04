@@ -32,7 +32,7 @@ import type { AgentSessionView } from "@/features/agent-sessions/types";
 // steering composer. Metadata and the conversation degrade independently — a
 // down m43 stream shows the conversation's house callout while the header/PR/
 // evidence keep rendering off polling.
-export const Route = createFileRoute("/agents/$agentSessionId")({
+export const Route = createFileRoute("/agents_/$agentSessionId")({
   component: AgentSessionDetailPage,
   // Reuse the component as its own pending state (the detail-route convention —
   // the frame doubles as its loading skeleton, no white flash). Tolerates the
