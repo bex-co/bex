@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -137,9 +138,13 @@ func (c *Completer) finalize(ctx context.Context, record store.AgentSession) {
 	raw, err := c.Sandbox.ReadSessionStatus(ctx, record.WorkspaceID, record.ID, record.SandboxID)
 	if err != nil {
 		// A lost sandbox can never finish its turn; anything else is transient and
-		// retried on the next tick.
+		// retried on the next tick. Log the transient case: a persistent read error
+		// silently strands a session in running forever (the exact failure mode the
+		// w3/m43 live E2E hit), so this loop must never be unobservable.
 		if errors.Is(err, core.ErrNotFound) {
 			c.fail(ctx, record, "sandbox terminated before completion")
+		} else {
+			log.Printf("agent-session completer: read status failed (session=%s sandbox=%s): %v", record.ID, record.SandboxID, err)
 		}
 		return
 	}
@@ -149,6 +154,7 @@ func (c *Completer) finalize(ctx context.Context, record store.AgentSession) {
 	}
 	var report statusReport
 	if err := json.Unmarshal([]byte(raw), &report); err != nil {
+		log.Printf("agent-session completer: torn/invalid status read (session=%s len=%d): %v", record.ID, len(raw), err)
 		return // a partial/torn read; try again next tick
 	}
 	switch report.State {
@@ -171,7 +177,10 @@ func (c *Completer) complete(ctx context.Context, record store.AgentSession, rep
 	// evidence) but open no PR — there is nothing to review.
 	if !report.Delivery.Pushed || report.Delivery.HeadSHA == "" {
 		if _, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted, "", "", 0, evidenceJSON, ""); err == nil {
+			log.Printf("agent-session completer: completed session=%s (no-op, nothing pushed)", record.ID)
 			c.teardown(ctx, record)
+		} else {
+			log.Printf("agent-session completer: finalize no-op failed (session=%s): %v", record.ID, err)
 		}
 		return
 	}
@@ -190,26 +199,33 @@ func (c *Completer) complete(ctx context.Context, record store.AgentSession, rep
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			c.fail(ctx, record, "workspace has no GitHub App installation to open a pull request")
+		} else {
+			log.Printf("agent-session completer: git connection lookup failed (session=%s ws=%s): %v", record.ID, record.WorkspaceID, err)
 		}
 		return // transient store error: retry next tick
 	}
 	pr, err := c.GitHub.OpenDraftPullRequest(ctx, conn.InstallationID, owner, name,
 		record.Branch, base, prTitle(record), prBody(record, report, evidence, c.APIPublicURL))
 	if err != nil {
+		log.Printf("agent-session completer: open draft PR failed (session=%s repo=%s branch=%s base=%s): %v", record.ID, record.Repo, record.Branch, base, err)
 		c.fail(ctx, record, "draft pull request could not be opened")
 		return
 	}
 	if _, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted,
 		report.Delivery.HeadSHA, pr.HTMLURL, pr.Number, evidenceJSON, ""); err != nil {
+		log.Printf("agent-session completer: finalize failed (session=%s pr=%s): %v", record.ID, pr.HTMLURL, err)
 		return // retry next tick; the sandbox stays until the row is finalized
 	}
+	log.Printf("agent-session completer: completed session=%s pr=%s head=%s", record.ID, pr.HTMLURL, report.Delivery.HeadSHA)
 	c.teardown(ctx, record)
 }
 
 func (c *Completer) fail(ctx context.Context, record store.AgentSession, reason string) {
 	if _, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseFailed, "", "", 0, nil, reason); err != nil {
+		log.Printf("agent-session completer: finalize-failed write errored (session=%s reason=%q): %v", record.ID, reason, err)
 		return
 	}
+	log.Printf("agent-session completer: failed session=%s reason=%q", record.ID, reason)
 	c.teardown(ctx, record)
 }
 
