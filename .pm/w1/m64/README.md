@@ -2,7 +2,7 @@
 
 DO NOT WORK on this until .pm/w3/m43 is done
 
-**Worker:** worker1 **Goal:** the Devin-shaped session surface — `/agents` list + composer, `/agents/$id` detail with a live conversation column — built **directly on the D9 target API**: control-plane metadata over GraphQL polling, the conversation over `useChat` + the same-origin stream endpoint (`api.bex.co/v1/agent-sessions/{id}/stream`, transcript replay + live tail). No interim transcript synthesis, no client-side prompt persistence — the stream's replay mode is the single history source. **Status:** todo (t001/t003 startable now; t002 mockable; t004 verification hard-gated on `w3/m43`)
+**Worker:** worker1 **Goal:** the Devin-shaped session surface — `/agents` list + composer, `/agents/$id` detail with a live conversation column — built **directly on the D9 target API**: control-plane metadata over GraphQL polling, the conversation over `useChat` + the same-origin stream endpoint (`api.bex.co/v1/agent-sessions/{id}/stream`, transcript replay + live tail). No interim transcript synthesis, no client-side prompt persistence — the stream's replay mode is the single history source. **Status:** in progress (t001 + t003 **DONE**). t001 — agent-sessions feature scaffold (GraphQL ops + per-feature `definitions.ts` splice, phase-aware polling hooks, typed `AGENT_SESSION_*` error mapping, `AgentSessionView` mapper). t003 — `/agents` route: sessions list (phase chips + PR badges + relative time) + sidebar nav (en/zh) + Devin-style new-session composer (task/repo/branch/agent + Advanced model/endpoint/egress) with inline typed-error mapping + 503 house callout; a minimal placeholder `/agents/$agentSessionId` route keeps links typed until t004 replaces it. `yarn typecheck && yarn lint && yarn test` green (1841 tests). **w3/m43 done ⇒ t004's live gate lifted.** Next: t002 (conversation column) → t004 (real detail).
 
 ## Gating
 
@@ -12,9 +12,9 @@ Control-plane tasks (t001, t003) consume the shipped m39/m41 GraphQL surface and
 
 | id   | title                                                                                            | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Feature scaffold: control-plane GraphQL ops + typed hooks (phase-aware polling, attach-ticket)    | 45m | —          |
+| t001 | Feature scaffold: control-plane GraphQL ops + typed hooks (phase-aware polling, attach-ticket)    | 45m | — — **DONE** |
 | t002 | Conversation column: vendor AI Elements + useChat over the same-origin stream (v6 pin, data-acp) | 60m | t001       |
-| t003 | /agents route: sessions list, sidebar nav, new-session composer with typed error mapping         | 60m | t001       |
+| t003 | /agents route: sessions list, sidebar nav, new-session composer with typed error mapping         | 60m | t001 — **DONE** |
 | t004 | /agents/$id detail: metadata header + PR/evidence cards + live conversation + steering            | 60m | t002, t003, w3/m43 |
 | t005 | Render parity                                                                                    | 30m | t004       |
 | t006 | Simplify                                                                                         | 20m | t005       |

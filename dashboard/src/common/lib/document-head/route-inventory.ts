@@ -18,6 +18,8 @@ export const ROUTE_HEAD_INVENTORY: Record<
   readonly string[]
 > = {
   content: [
+    "agents.$agentSessionId.tsx",
+    "agents.tsx",
     "auth.consent.tsx",
     "auth.device.success.tsx",
     "auth.device.tsx",
