@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -239,10 +240,16 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, templ
 	ws := record.WorkspaceID
 	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, ws, template, record.ID, record.Repo, record.Branch, modelEndpoint, modelAPIKey, egressAllowlist, env)
 	if err != nil {
+		// Log the underlying reason: dispatch failures were previously invisible
+		// (the row records only "sandbox create failed" and the 500 body is
+		// unreadable cross-origin), which hid a real create failure during the
+		// w3/m43 live E2E. Never logs the model key or any env value.
+		log.Printf("agent-session dispatch: sandbox create failed (session=%s repo=%s): %v", record.ID, record.Repo, err)
 		_, _ = s.Store.SetAgentSessionLifecycle(ctx, record.ID, "", PhaseFailed, "sandbox create failed", false)
 		return store.AgentSession{}, err
 	}
 	if err := s.Sandbox.EnterAgentSessionPhase(ctx, ws, record.ID, sb.ID, modelEndpoint, egressAllowlist); err != nil {
+		log.Printf("agent-session dispatch: egress phase transition failed (session=%s): %v", record.ID, err)
 		_ = s.Sandbox.CancelAgentSessionSandbox(ctx, ws, record.ID, sb.ID)
 		_, _ = s.Store.SetAgentSessionLifecycle(ctx, record.ID, sb.ID, PhaseFailed, "egress phase transition failed", false)
 		return store.AgentSession{}, err
