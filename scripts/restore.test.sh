@@ -149,8 +149,9 @@ ok "latest selection picks the newest object across plain and .age suffixes"
 export BEX_BACKUP_READER_KEYVALUE_ACCESS_KEY_ID=reader-access
 export BEX_BACKUP_READER_KEYVALUE_SECRET_ACCESS_KEY=reader-secret
 restore_prefer_reader_credential keyvalue
-[ "$AWS_ACCESS_KEY_ID" = reader-access ] && [ "$AWS_SECRET_ACCESS_KEY" = reader-secret ] || \
+if [ "$AWS_ACCESS_KEY_ID" != reader-access ] || [ "$AWS_SECRET_ACCESS_KEY" != reader-secret ]; then
   fail "per-store reader credential did not override AWS credentials"
+fi
 restore_prefer_reader_credential bex-db  # no env for bex-db ⇒ leaves reader creds untouched
 [ "$AWS_ACCESS_KEY_ID" = reader-access ] || fail "absent reader credential must be a no-op"
 ok "per-store reader credential overrides the root key; absent one is a no-op"
