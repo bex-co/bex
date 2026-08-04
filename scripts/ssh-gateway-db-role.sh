@@ -5,9 +5,10 @@ set -euo pipefail
 # ssh-gateway connects as (w7/m56, docs/ADR035-ssh.md §116), and publish its
 # credential to a Kubernetes Secret separate from bex-api's full-privilege
 # bex-db-app. The role's privilege surface is single-sourced from
-# lego/backend/internal/sshgateway/dbrole.sql — the SAME grants the CI test
-# (dbrole_integration_test.go) applies — so the shipped and tested boundaries
-# cannot drift. The generated password is never printed or written to disk.
+# lego/backend/internal/sshgateway/dbrole/dbrole.sql — the SAME grants the CI
+# test (dbrole_integration_test.go) applies — so the shipped and tested
+# boundaries cannot drift. The generated password is never printed or written
+# to disk.
 #
 # Two admin-connection modes (pick by env):
 #   - BEX_CP_ADMIN_URI set  -> psql connects with that URI directly (local/dev,
@@ -29,7 +30,7 @@ gateway_secret="${BEX_SSH_GATEWAY_DB_SECRET:-bex-db-ssh-gateway}"
 gateway_deploy="${BEX_SSH_GATEWAY_DEPLOYMENT:-bex-ssh-gateway}"
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-grants_sql="$script_dir/../lego/backend/internal/sshgateway/dbrole.sql"
+grants_sql="$script_dir/../lego/backend/internal/sshgateway/dbrole/dbrole.sql"
 [[ -f "$grants_sql" ]] || { echo "missing grants DDL: $grants_sql" >&2; exit 1; }
 
 for command in psql openssl; do

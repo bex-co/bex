@@ -45,6 +45,10 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/authz"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentcred"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway/nativessh"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway/sandboxsse"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway/webshell"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -110,25 +114,53 @@ func main() {
 	appService := &apps.Service{Base: base}
 
 	registry := prometheus.NewRegistry()
-	gateway := &sshgateway.Server{
+	// The metrics, session limiter, and nonce guard are each constructed ONCE
+	// and shared by every transport: the caps bound the whole process (not each
+	// feature), and an exec-ticket nonce cannot be redeemed once per feature.
+	metrics := sshgateway.NewMetrics(registry)
+	limits := sshgateway.NewSessionLimiter(
+		intEnv("BEX_SSH_MAX_SESSIONS", 100),
+		intEnv("BEX_SSH_MAX_SESSIONS_PER_IDENTITY", 5),
+	)
+	nonces := &sshgateway.NonceGuard{Store: st}
+	executor := &sshgateway.KubeExecutor{Config: restConfig, Client: clientset}
+	handshakeTimeout := durationEnv("BEX_SSH_HANDSHAKE_TIMEOUT", 10*time.Second)
+	sessionTimeout := durationEnv("BEX_SSH_SESSION_TIMEOUT", 4*time.Hour)
+
+	gateway := &nativessh.Server{
 		Store: st, Apps: appService,
-		Executor:          &sshgateway.KubeExecutor{Config: restConfig, Client: clientset},
-		Signer:            signer,
-		Metrics:           sshgateway.NewMetrics(registry),
-		TicketSecret:      []byte(os.Getenv("BEX_SHELL_TICKET_SECRET")),
-		SandboxExecSecret: []byte(os.Getenv("BEX_SANDBOX_EXEC_SECRET")),
-		HandshakeTimeout:  durationEnv("BEX_SSH_HANDSHAKE_TIMEOUT", 10*time.Second),
-		SessionTimeout:    durationEnv("BEX_SSH_SESSION_TIMEOUT", 4*time.Hour),
-		MaxSessions:       intEnv("BEX_SSH_MAX_SESSIONS", 100),
-		MaxPerIdentity:    intEnv("BEX_SSH_MAX_SESSIONS_PER_IDENTITY", 5),
+		Executor:         executor,
+		Signer:           signer,
+		Metrics:          metrics,
+		Limits:           limits,
+		HandshakeTimeout: handshakeTimeout,
+		SessionTimeout:   sessionTimeout,
 	}
+	shell := &webshell.Server{
+		TicketSecret:     []byte(os.Getenv("BEX_SHELL_TICKET_SECRET")),
+		Store:            st,
+		Apps:             appService,
+		Executor:         executor,
+		Metrics:          metrics,
+		Limits:           limits,
+		Nonces:           nonces,
+		HandshakeTimeout: handshakeTimeout,
+		SessionTimeout:   sessionTimeout,
+	}
+	sandbox := &sandboxsse.Server{
+		Secret:         []byte(os.Getenv("BEX_SANDBOX_EXEC_SECRET")),
+		Executor:       executor,
+		Metrics:        metrics,
+		Limits:         limits,
+		Nonces:         nonces,
+		SessionTimeout: sessionTimeout,
+	}
+	credentials := &agentcred.Broker{Metrics: metrics}
 	if secret := os.Getenv("BEX_SANDBOX_EXEC_SECRET"); secret != "" {
 		apiURL := envOr("BEX_AGENT_CREDENTIAL_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalMintPath)
-		gateway.AgentCredential = &sshgateway.AgentCredentialConfig{
-			Pods:  sshgateway.KubeSessionPodResolver{Client: clientset},
-			API:   &agentsession.Client{URL: apiURL, Secret: []byte(secret)},
-			Audit: st,
-		}
+		credentials.Pods = agentcred.KubeSessionPodResolver{Client: clientset}
+		credentials.API = &agentsession.Client{URL: apiURL, Secret: []byte(secret)}
+		credentials.Audit = st
 	}
 	// Agent-session conversation transport (ADR047 D9). Shares the web-shell
 	// ticket secret (BEX_SHELL_TICKET_SECRET): bex-api mints agent-session
@@ -173,9 +205,9 @@ func main() {
 	// Shell). Started only when BEX_SHELL_TICKET_SECRET is set; Traefik
 	// terminates TLS onto this plain-HTTP listener. The handler shares the
 	// gateway's session caps and content-free audit with native SSH.
-	if gateway.WebSocketEnabled() {
+	if shell.Enabled() {
 		shellMux := http.NewServeMux()
-		shellMux.Handle("GET /shell", gateway.WebSocketHandler())
+		shellMux.Handle("GET /shell", shell.Handler())
 		shellMux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
 		shellServer := &http.Server{Handler: shellMux, ReadHeaderTimeout: 5 * time.Second}
 		shellAddr := envOr("BEX_SHELL_WS_ADDR", ":8080")
@@ -200,9 +232,9 @@ func main() {
 	// (bex-api → gateway; the exec-secret HMAC is the trust) — NOT browser-facing,
 	// so it is a distinct listener from the Web Shell. Started only when
 	// BEX_SANDBOX_EXEC_SECRET is set. pods/exec stays confined here.
-	if gateway.SandboxExecEnabled() {
+	if sandbox.Enabled() {
 		execMux := http.NewServeMux()
-		execMux.Handle("POST /sandbox-exec", gateway.SandboxExecHandler())
+		execMux.Handle("POST /sandbox-exec", sandbox.Handler())
 		execMux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
 		execServer := &http.Server{Handler: execMux, ReadHeaderTimeout: 5 * time.Second}
 		execAddr := envOr("BEX_SANDBOX_EXEC_ADDR", ":8081")
@@ -227,9 +259,9 @@ func main() {
 	// directly; Cilium admits only sandbox-regime Pods, then the handler resolves
 	// the TCP source IP back to a Pod and checks its immutable session bindings.
 	// It has no Ingress and is distinct from browser/SSH/sandbox-exec listeners.
-	if gateway.AgentCredentialEnabled() {
+	if credentials.Enabled() {
 		credentialMux := http.NewServeMux()
-		credentialMux.Handle("POST "+agentsession.GatewayPath, gateway.AgentCredentialHandler())
+		credentialMux.Handle("POST "+agentsession.GatewayPath, credentials.Handler())
 		credentialMux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
 		credentialServer := &http.Server{Handler: credentialMux, ReadHeaderTimeout: 5 * time.Second}
 		credentialAddr := envOr("BEX_AGENT_CREDENTIAL_ADDR", ":8082")

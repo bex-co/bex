@@ -14,7 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sshgateway
+// Package sandboxsse is the sandbox-exec transport of the isolated SSH
+// gateway (w3/m33, docs/render-artifacts/ea-sandbox.md §exec). `render ea
+// sandbox exec` POSTs to bex-api, which authorizes can_operate on the
+// sandbox, mints a signed sandboxexec ticket binding the exact pod/namespace/
+// command, and reverse-proxies to this endpoint. The gateway verifies the
+// ticket, runs the command in the sandbox pod via one pods/exec stream, and
+// emits the Render CLI's SSE event shape: `data: {"stdout"|"stderr":"…"}`
+// output chunks then a terminal `data: {"exitCode":N}`. pods/exec stays
+// confined to the gateway process; the ticket's HMAC is the trust (only
+// bex-api holds the secret), and the signed argv means the gateway runs
+// exactly what bex-api authorized. (The name avoids colliding with
+// internal/sandboxexec, the ticket package.)
+package sandboxsse
 
 import (
 	"context"
@@ -26,30 +38,51 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 )
 
-// The sandbox-exec transport (w3/m33, docs/render-artifacts/ea-sandbox.md §exec).
-// `render ea sandbox exec` POSTs to bex-api, which authorizes can_operate on the
-// sandbox, mints a signed sandboxexec ticket binding the exact pod/namespace/
-// command, and reverse-proxies to THIS endpoint. The gateway verifies the
-// ticket, runs the command in the sandbox pod via one pods/exec stream, and
-// emits the Render CLI's SSE event shape: `data: {"stdout"|"stderr":"…"}` output
-// chunks then a terminal `data: {"exitCode":N}`. pods/exec stays confined to this
-// process; the ticket's HMAC is the trust (only bex-api holds the secret), and
-// the signed argv means the gateway runs exactly what bex-api authorized.
+// Server is the sandbox-exec SSE handler. Share Limits and Nonces (and
+// Metrics) with the other gateway transports so session caps and exec-ticket
+// single-use hold process-wide, not per feature.
+type Server struct {
+	// Secret must equal bex-api's BEX_SANDBOX_EXEC_SECRET so the gateway can
+	// verify the exec tickets bex-api mints after authorizing can_operate on a
+	// sandbox. Empty => the transport is disabled and every request is refused
+	// with 503.
+	Secret []byte
 
-// SandboxExecEnabled reports whether the sandbox-exec transport is configured.
-func (s *Server) SandboxExecEnabled() bool { return len(s.SandboxExecSecret) > 0 }
+	Executor sshgateway.Executor
+	Metrics  *sshgateway.Metrics
+	Limits   *sshgateway.SessionLimiter
+	Nonces   *sshgateway.NonceGuard
 
-// SandboxExecHandler returns the HTTP handler for the sandbox-exec SSE stream.
-// Mount it on the gateway's internal listener (reachable only from bex-api).
-func (s *Server) SandboxExecHandler() http.Handler {
+	SessionTimeout time.Duration
+}
+
+func (s *Server) defaults() {
+	if s.SessionTimeout <= 0 {
+		s.SessionTimeout = 4 * time.Hour
+	}
+	if s.Limits == nil {
+		s.Limits = sshgateway.NewSessionLimiter(0, 0)
+	}
+	if s.Nonces == nil {
+		s.Nonces = &sshgateway.NonceGuard{}
+	}
+}
+
+// Enabled reports whether the sandbox-exec transport is configured.
+func (s *Server) Enabled() bool { return len(s.Secret) > 0 }
+
+// Handler returns the HTTP handler for the sandbox-exec SSE stream. Mount it
+// on the gateway's internal listener (reachable only from bex-api).
+func (s *Server) Handler() http.Handler {
 	s.defaults()
 	return http.HandlerFunc(s.serveSandboxExec)
 }
 
 func (s *Server) serveSandboxExec(w http.ResponseWriter, r *http.Request) {
-	if !s.SandboxExecEnabled() {
+	if !s.Enabled() {
 		http.Error(w, "sandbox exec not configured", http.StatusServiceUnavailable)
 		return
 	}
@@ -58,26 +91,26 @@ func (s *Server) serveSandboxExec(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
 		return
 	}
-	claims, err := sandboxexec.Verify(s.SandboxExecSecret, r.Header.Get(sandboxexec.TicketHeader), time.Now())
+	claims, err := sandboxexec.Verify(s.Secret, r.Header.Get(sandboxexec.TicketHeader), time.Now())
 	if err != nil {
-		s.Metrics.authentication("rejected_key")
+		s.Metrics.Authentication("rejected_key")
 		http.Error(w, "invalid ticket", http.StatusUnauthorized)
 		return
 	}
-	if !s.consumeSandboxNonce(r.Context(), claims.Nonce, time.Unix(claims.ExpiresAt, 0), time.Now()) {
-		s.Metrics.authentication("rejected_key")
+	if !s.Nonces.Consume(r.Context(), claims.Nonce, time.Unix(claims.ExpiresAt, 0), time.Now()) {
+		s.Metrics.Authentication("rejected_key")
 		http.Error(w, "ticket already used", http.StatusUnauthorized)
 		return
 	}
 
 	// Cap the number of concurrent exec streams per caller, like the shell path.
-	if acquired, scope := s.acquire(claims.Subject); !acquired {
-		s.Metrics.limitRejected(scope)
+	if acquired, scope := s.Limits.Acquire(claims.Subject); !acquired {
+		s.Metrics.LimitRejected(scope)
 		http.Error(w, "session limit reached", http.StatusTooManyRequests)
 		return
 	}
-	defer s.release(claims.Subject)
-	s.Metrics.authentication("accepted")
+	defer s.Limits.Release(claims.Subject)
+	s.Metrics.Authentication("accepted")
 
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -105,7 +138,7 @@ func (s *Server) serveSandboxExec(w http.ResponseWriter, r *http.Request) {
 		sse.emit("error", errorEvent{Error: "exec failed to start in this sandbox"})
 		return
 	}
-	sse.emit("exit", exitEvent{ExitCode: clampExit(code)})
+	sse.emit("exit", exitEvent{ExitCode: sshgateway.ClampExit(code)})
 }
 
 // The Render CLI reads the SSE `event:` line to discriminate, then unmarshals the
@@ -159,46 +192,4 @@ type sseStream struct {
 func (s *sseStream) Write(p []byte) (int, error) {
 	s.sse.emit("output", outputEvent{Stream: s.kind, Data: string(p)})
 	return len(p), nil
-}
-
-// consumeSandboxNonce enforces single-use of a sandbox-exec ticket. The
-// in-memory guard is a fast first line, but the gateway runs multiple replicas,
-// so the authoritative single-use claim is an atomic Store.ClaimShellNonce — the
-// same mechanism the Browser Web Shell uses — otherwise a captured live ticket
-// replayed against a different replica passes both in-memory maps and runs the
-// signed command twice (codex-security #30).
-func (s *Server) consumeSandboxNonce(ctx context.Context, nonce string, exp, now time.Time) bool {
-	if nonce == "" {
-		return false
-	}
-	s.usedMu.Lock()
-	if s.usedNonces == nil {
-		s.usedNonces = map[string]time.Time{}
-	}
-	for n, e := range s.usedNonces {
-		if now.After(e) {
-			delete(s.usedNonces, n)
-		}
-	}
-	if _, seen := s.usedNonces[nonce]; seen {
-		s.usedMu.Unlock()
-		return false
-	}
-	s.usedNonces[nonce] = exp
-	s.usedMu.Unlock()
-
-	if s.Store == nil {
-		// No durable store configured: best-effort in-memory only (no
-		// cross-replica protection). Logged so the gap is visible.
-		log.Printf("sandbox exec nonce: store unavailable, cross-replica replay not prevented")
-		return true
-	}
-	claimCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-	claimed, err := s.Store.ClaimShellNonce(claimCtx, nonce, exp)
-	if err != nil {
-		log.Printf("sandbox exec nonce claim failed: %v", err)
-		return false
-	}
-	return claimed
 }

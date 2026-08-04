@@ -14,11 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package sshgateway authenticates registered public keys, authorizes their
-// identities against a requested App, and bridges SSH session channels to the
-// Kubernetes pods/exec API. It is deployed separately from bex-api so only
-// this process and ServiceAccount receive pods/exec permission.
-package sshgateway
+// Package nativessh is the native SSH transport of the isolated gateway: it
+// authenticates registered public keys, authorizes their identities against a
+// requested App, and bridges SSH session channels to the Kubernetes pods/exec
+// API through the shared sshgateway kernel. Share one
+// sshgateway.SessionLimiter with the sibling transports (webshell,
+// sandboxsse) so the session caps bound the process, not each feature.
+package nativessh
 
 import (
 	"context"
@@ -27,7 +29,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"sync"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -35,6 +36,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -43,47 +45,27 @@ const (
 	permissionTarget  = "bex.target"
 )
 
-// Store is the gateway's deliberately small database authority: authenticate
-// a fingerprint, write content-free session audit facts, and claim web-shell
-// ticket nonces so single-use holds across replicas (w1/042 L7).
+// Store is the native SSH transport's deliberately small database authority:
+// authenticate a fingerprint and write content-free session audit facts. (The
+// exec-ticket nonce claim lives on sshgateway.NonceStore, used only by the
+// ticketed transports.)
 type Store interface {
 	SSHKeyByFingerprint(context.Context, string) (store.SSHKey, error)
 	StartSSHSession(context.Context, store.SSHSessionAudit) error
 	EndSSHSession(context.Context, string, string, time.Time) error
-	// ClaimShellNonce atomically claims an exec-ticket nonce in the shared
-	// store — true exactly once per nonce, across every gateway replica.
-	ClaimShellNonce(context.Context, string, time.Time) (bool, error)
-}
-
-type TargetResolver interface {
-	ResolveSSHSession(context.Context, string) (apps.SSHInstanceTarget, error)
 }
 
 type Server struct {
 	Store    Store
-	Apps     TargetResolver
-	Executor Executor
+	Apps     sshgateway.TargetResolver
+	Executor sshgateway.Executor
 	Signer   ssh.Signer
-	Metrics  *Metrics
+	Metrics  *sshgateway.Metrics
 
-	// TicketSecret enables the Browser Web Shell WebSocket path (websocket.go,
-	// docs/ADR035-ssh.md § Browser Web Shell). It must equal bex-api's
-	// BEX_SHELL_TICKET_SECRET so the gateway can verify the exec tickets bex-api
-	// mints. Empty => the WebSocket listener is not started (native SSH only).
-	TicketSecret []byte
-
-	// SandboxExecSecret enables the sandbox-exec SSE path (sandbox_exec.go, w3/m33,
-	// `render ea sandbox exec`). It must equal bex-api's BEX_SANDBOX_EXEC_SECRET so
-	// the gateway can verify the exec tickets bex-api mints after authorizing
-	// can_operate on a sandbox. Empty => the sandbox-exec route 503s (feature off).
-	// pods/exec stays confined to this process; bex-api reverse-proxies the SSE.
-	SandboxExecSecret []byte
-
-	// AgentCredential enables the pod-bound git credential broker
-	// (agent_credential.go, ADR047 D2). It is a separate internal listener: a
-	// sandbox reaches it directly, the gateway authenticates the source Pod, and
-	// only then does the gateway make an HMAC-authenticated mint call to bex-api.
-	AgentCredential *AgentCredentialConfig
+	// Limits caps concurrent sessions. Share ONE limiter with the webshell and
+	// sandboxsse transports so the caps bound the process, not each feature;
+	// nil gets a private limiter with the defaults.
+	Limits *sshgateway.SessionLimiter
 
 	// AgentAttach enables the agent-session conversation transport
 	// (agent_attach.go, ADR047 D9): ticket-authenticated SSE replay + live splice
@@ -94,19 +76,6 @@ type Server struct {
 
 	HandshakeTimeout time.Duration
 	SessionTimeout   time.Duration
-	MaxSessions      int
-	MaxPerIdentity   int
-
-	mu          sync.Mutex
-	global      int
-	perIdentity map[string]int
-
-	// usedNonces is the per-process first line of the exec-ticket single-use
-	// guard: a ticket's nonce is recorded until the ticket's own expiry, so a
-	// same-replica replay never reaches the database. The authoritative,
-	// cross-replica claim is Store.ClaimShellNonce (w1/042 L7).
-	usedMu     sync.Mutex
-	usedNonces map[string]time.Time
 }
 
 func (s *Server) defaults() {
@@ -116,14 +85,8 @@ func (s *Server) defaults() {
 	if s.SessionTimeout <= 0 {
 		s.SessionTimeout = 4 * time.Hour
 	}
-	if s.MaxSessions <= 0 {
-		s.MaxSessions = 100
-	}
-	if s.MaxPerIdentity <= 0 {
-		s.MaxPerIdentity = 5
-	}
-	if s.perIdentity == nil {
-		s.perIdentity = map[string]int{}
+	if s.Limits == nil {
+		s.Limits = sshgateway.NewSessionLimiter(0, 0)
 	}
 }
 
@@ -151,7 +114,7 @@ func (s *Server) config(ctx context.Context) (*ssh.ServerConfig, error) {
 		defer cancel()
 		registered, err := s.Store.SSHKeyByFingerprint(lookupCtx, ssh.FingerprintSHA256(key))
 		if err != nil || registered.Subject == "" {
-			s.Metrics.authentication("rejected_key")
+			s.Metrics.Authentication("rejected_key")
 			return nil, errors.New("public key rejected")
 		}
 		return &ssh.Permissions{Extensions: map[string]string{permissionSubject: registered.Subject}}, nil
@@ -167,7 +130,7 @@ func (s *Server) config(ctx context.Context) (*ssh.ServerConfig, error) {
 		registered, lookupErr := s.Store.SSHKeyByFingerprint(lookupCtx, ssh.FingerprintSHA256(key))
 		lookupCancel()
 		if lookupErr != nil || registered.Subject == "" || registered.Subject != subject {
-			s.Metrics.authentication("rejected_key")
+			s.Metrics.Authentication("rejected_key")
 			return nil, errors.New("public key rejected")
 		}
 		authCtx := core.WithIdentity(ctx, core.Identity{Subject: subject, Method: "ssh"})
@@ -175,10 +138,10 @@ func (s *Server) config(ctx context.Context) (*ssh.ServerConfig, error) {
 		defer cancel()
 		target, err := s.Apps.ResolveSSHSession(authCtx, conn.User())
 		if err != nil {
-			s.Metrics.authentication("rejected_target")
+			s.Metrics.Authentication("rejected_target")
 			return nil, errors.New("public key rejected")
 		}
-		s.Metrics.authentication("accepted")
+		s.Metrics.Authentication("accepted")
 		permissions.Extensions[permissionTarget] = encodeTarget(target)
 		return permissions, nil
 	}
@@ -228,18 +191,18 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 	if err != nil {
 		return err
 	}
-	acquired, limitScope := s.acquire(subject)
+	acquired, limitScope := s.Limits.Acquire(subject)
 	if !acquired {
-		s.Metrics.limitRejected(limitScope)
+		s.Metrics.LimitRejected(limitScope)
 		return errors.New("session limit reached")
 	}
-	defer s.release(subject)
+	defer s.Limits.Release(subject)
 
 	sessionID := ids.New(ids.SSHSession)
 	started := time.Now().UTC()
-	s.Metrics.sessionStarted()
+	s.Metrics.SessionStarted()
 	result := "closed"
-	defer func() { s.Metrics.sessionEnded(result, time.Since(started)) }()
+	defer func() { s.Metrics.SessionEnded(result, time.Since(started)) }()
 	workspaceID := target.OwnerID
 	if workspaceID == "" {
 		workspaceID = core.DefaultTenant
@@ -306,30 +269,6 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 func rejectAdditionalChannels(channels <-chan ssh.NewChannel) {
 	for channel := range channels {
 		_ = channel.Reject(ssh.Prohibited, "only one session channel is allowed")
-	}
-}
-
-func (s *Server) acquire(subject string) (bool, string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.global >= s.MaxSessions {
-		return false, "global"
-	}
-	if s.perIdentity[subject] >= s.MaxPerIdentity {
-		return false, "identity"
-	}
-	s.global++
-	s.perIdentity[subject]++
-	return true, ""
-}
-
-func (s *Server) release(subject string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.global--
-	s.perIdentity[subject]--
-	if s.perIdentity[subject] == 0 {
-		delete(s.perIdentity, subject)
 	}
 }
 

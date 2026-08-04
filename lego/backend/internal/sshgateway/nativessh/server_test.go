@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sshgateway
+package nativessh
 
 import (
 	"context"
@@ -22,31 +22,17 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"errors"
-	"io"
 	"net"
-	"sync"
 	"testing"
 	"time"
 
 	"golang.org/x/crypto/ssh"
-	"k8s.io/client-go/tools/remotecommand"
 
-	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
-
-type fakeGatewayStore struct {
-	key     store.SSHKey
-	missing bool
-	mu      sync.Mutex
-	started []store.SSHSessionAudit
-	ended   []string
-	// nonces mirrors the shared shell_ticket_nonces claim (w1/042 L7); share
-	// ONE fakeGatewayStore between two Servers to model two gateway replicas.
-	nonces   map[string]bool
-	claimErr error
-}
 
 type fakeConnMetadata struct {
 	user string
@@ -63,103 +49,6 @@ type fakeAddr string
 
 func (a fakeAddr) Network() string { return "tcp" }
 func (a fakeAddr) String() string  { return string(a) }
-
-func (f *fakeGatewayStore) SSHKeyByFingerprint(context.Context, string) (store.SSHKey, error) {
-	if f.missing {
-		return store.SSHKey{}, store.ErrNotFound
-	}
-	return f.key, nil
-}
-func (f *fakeGatewayStore) StartSSHSession(_ context.Context, audit store.SSHSessionAudit) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.started = append(f.started, audit)
-	return nil
-}
-func (f *fakeGatewayStore) EndSSHSession(_ context.Context, id, result string, _ time.Time) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.ended = append(f.ended, id+":"+result)
-	return nil
-}
-func (f *fakeGatewayStore) ClaimShellNonce(_ context.Context, nonce string, _ time.Time) (bool, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.claimErr != nil {
-		return false, f.claimErr
-	}
-	if f.nonces == nil {
-		f.nonces = map[string]bool{}
-	}
-	if f.nonces[nonce] {
-		return false, nil
-	}
-	f.nonces[nonce] = true
-	return true, nil
-}
-
-type fakeResolver struct {
-	err      error
-	subject  string
-	username string
-	target   apps.SSHInstanceTarget
-}
-
-func (f *fakeResolver) ResolveSSHSession(ctx context.Context, username string) (apps.SSHInstanceTarget, error) {
-	identity, _ := core.IdentityFrom(ctx)
-	f.subject, f.username = identity.Subject, username
-	if f.err != nil {
-		return apps.SSHInstanceTarget{}, f.err
-	}
-	if f.target.ID != "" {
-		return f.target, nil
-	}
-	return apps.SSHInstanceTarget{
-		ID: "srv-abcdeabcdeabcdeabcde-pod01", ServiceID: "srv-abcdeabcdeabcdeabcde",
-		OwnerID: "tea-workspace", Namespace: "default", PodName: "web-rs-pod01", Container: core.AppContainer,
-	}, nil
-}
-
-type fakeExecutor struct {
-	command []string
-	tty     bool
-	sizes   []remotecommand.TerminalSize
-	code    int
-	err     error
-	block   bool
-	started chan struct{}
-	stopped chan error
-}
-
-func (f *fakeExecutor) Execute(ctx context.Context, _ apps.SSHInstanceTarget, command []string, tty bool, queue remotecommand.TerminalSizeQueue, _ io.Reader, stdout, _ io.Writer) (int, error) {
-	f.command = append([]string(nil), command...)
-	f.tty = tty
-	if f.started != nil {
-		select {
-		case f.started <- struct{}{}:
-		default:
-		}
-	}
-	if f.block {
-		<-ctx.Done()
-		if f.stopped != nil {
-			f.stopped <- ctx.Err()
-		}
-		return 126, ctx.Err()
-	}
-	if tty {
-		if size := queue.Next(); size != nil {
-			f.sizes = append(f.sizes, *size)
-		}
-		if size := queue.Next(); size != nil {
-			f.sizes = append(f.sizes, *size)
-		}
-	}
-	if f.err == nil {
-		_, _ = io.WriteString(stdout, "inside-app\n")
-	}
-	return f.code, f.err
-}
 
 func signer(t *testing.T) ssh.Signer {
 	t.Helper()
@@ -195,13 +84,13 @@ func rsaSigner(t *testing.T, algorithms ...string) ssh.Signer {
 	return signer
 }
 
-func startGateway(t *testing.T, st *fakeGatewayStore, resolver *fakeResolver, executor Executor, clientSigner ssh.Signer) (string, context.CancelFunc) {
+func startGateway(t *testing.T, st *gatewaytest.FakeStore, resolver *gatewaytest.FakeResolver, executor sshgateway.Executor, clientSigner ssh.Signer) (string, context.CancelFunc) {
 	return startGatewayConfigured(t, st, resolver, executor, clientSigner, nil)
 }
 
-func startGatewayConfigured(t *testing.T, st *fakeGatewayStore, resolver *fakeResolver, executor Executor, clientSigner ssh.Signer, configure func(*Server)) (string, context.CancelFunc) {
+func startGatewayConfigured(t *testing.T, st *gatewaytest.FakeStore, resolver *gatewaytest.FakeResolver, executor sshgateway.Executor, clientSigner ssh.Signer, configure func(*Server)) (string, context.CancelFunc) {
 	t.Helper()
-	st.key = store.SSHKey{Subject: "user-1", Fingerprint: ssh.FingerprintSHA256(clientSigner.PublicKey())}
+	st.Key = store.SSHKey{Subject: "user-1", Fingerprint: ssh.FingerprintSHA256(clientSigner.PublicKey())}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -225,10 +114,10 @@ func dialGateway(addr, username string, clientSigner ssh.Signer) (*ssh.Client, e
 func TestGatewayCryptographicPolicyRejectsLegacyRSASHA1(t *testing.T) {
 	clientSigner := signer(t)
 	config, err := (&Server{
-		Store: &fakeGatewayStore{key: store.SSHKey{
+		Store: &gatewaytest.FakeStore{Key: store.SSHKey{
 			Subject: "user-1", Fingerprint: ssh.FingerprintSHA256(clientSigner.PublicKey()),
 		}},
-		Apps: &fakeResolver{}, Executor: &fakeExecutor{}, Signer: signer(t),
+		Apps: &gatewaytest.FakeResolver{}, Executor: &gatewaytest.FakeExecutor{}, Signer: signer(t),
 	}).config(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -261,7 +150,7 @@ func TestGatewayAcceptsRSASHA2AndRejectsRSASHA1OnTheWire(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			clientSigner := rsaSigner(t, tc.algorithm)
-			addr, stop := startGateway(t, &fakeGatewayStore{}, &fakeResolver{}, &fakeExecutor{}, clientSigner)
+			addr, stop := startGateway(t, &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, &gatewaytest.FakeExecutor{}, clientSigner)
 			defer stop()
 			client, err := dialGateway(addr, "srv-abcdeabcdeabcdeabcde", clientSigner)
 			if client != nil {
@@ -279,12 +168,12 @@ func TestGatewayAcceptsRSASHA2AndRejectsRSASHA1OnTheWire(t *testing.T) {
 
 func TestKeyDeletedDuringHandshakeIsRecheckedBeforeTargetAuthorization(t *testing.T) {
 	clientSigner := signer(t)
-	st := &fakeGatewayStore{key: store.SSHKey{
+	st := &gatewaytest.FakeStore{Key: store.SSHKey{
 		Subject: "user-1", Fingerprint: ssh.FingerprintSHA256(clientSigner.PublicKey()),
 	}}
-	resolver := &fakeResolver{}
+	resolver := &gatewaytest.FakeResolver{}
 	config, err := (&Server{
-		Store: st, Apps: resolver, Executor: &fakeExecutor{}, Signer: signer(t),
+		Store: st, Apps: resolver, Executor: &gatewaytest.FakeExecutor{}, Signer: signer(t),
 	}).config(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -294,22 +183,22 @@ func TestKeyDeletedDuringHandshakeIsRecheckedBeforeTargetAuthorization(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	st.missing = true // deletion races after the initial offer was accepted
+	st.Missing = true // deletion races after the initial offer was accepted
 	if _, err := config.VerifiedPublicKeyCallback(metadata, clientSigner.PublicKey(), permissions, ""); err == nil {
 		t.Fatal("deleted key completed signature verification")
 	}
-	if resolver.username != "" {
-		t.Fatalf("deleted key reached target authorization for %q", resolver.username)
+	if resolver.Username != "" {
+		t.Fatalf("deleted key reached target authorization for %q", resolver.Username)
 	}
 }
 
 func TestAuthenticatedConnectionWithoutChannelTimesOutAndReleasesLimit(t *testing.T) {
 	clientSigner := signer(t)
 	addr, stop := startGatewayConfigured(
-		t, &fakeGatewayStore{}, &fakeResolver{}, &fakeExecutor{}, clientSigner,
+		t, &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, &gatewaytest.FakeExecutor{}, clientSigner,
 		func(server *Server) {
 			server.SessionTimeout = 50 * time.Millisecond
-			server.MaxSessions = 1
+			server.Limits = sshgateway.NewSessionLimiter(1, 0)
 		},
 	)
 	defer stop()
@@ -338,7 +227,7 @@ func TestAuthenticatedConnectionWithoutChannelTimesOutAndReleasesLimit(t *testin
 
 func TestGatewayExecPropagatesIdentityOutputExitAndAudit(t *testing.T) {
 	clientSigner := signer(t)
-	st, resolver, executor := &fakeGatewayStore{}, &fakeResolver{}, &fakeExecutor{code: 7}
+	st, resolver, executor := &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, &gatewaytest.FakeExecutor{Code: 7}
 	addr, stop := startGateway(t, st, resolver, executor, clientSigner)
 	defer stop()
 	client, err := dialGateway(addr, "srv-abcdeabcdeabcdeabcde", clientSigner)
@@ -355,24 +244,23 @@ func TestGatewayExecPropagatesIdentityOutputExitAndAudit(t *testing.T) {
 	if !errors.As(err, &exitErr) || exitErr.ExitStatus() != 7 {
 		t.Fatalf("exec error = %v, want SSH exit 7", err)
 	}
-	if string(output) != "inside-app\n" || resolver.subject != "user-1" || resolver.username != "srv-abcdeabcdeabcdeabcde" {
-		t.Fatalf("output/identity/target = %q %q %q", output, resolver.subject, resolver.username)
+	if string(output) != "inside-app\n" || resolver.Subject != "user-1" || resolver.Username != "srv-abcdeabcdeabcdeabcde" {
+		t.Fatalf("output/identity/target = %q %q %q", output, resolver.Subject, resolver.Username)
 	}
-	if len(executor.command) != 3 || executor.command[0] != "/bin/sh" || executor.command[2] != "printf private-command" {
-		t.Fatalf("exec command = %#v", executor.command)
+	if len(executor.Command) != 3 || executor.Command[0] != "/bin/sh" || executor.Command[2] != "printf private-command" {
+		t.Fatalf("exec command = %#v", executor.Command)
 	}
 	time.Sleep(20 * time.Millisecond)
-	st.mu.Lock()
-	defer st.mu.Unlock()
-	if len(st.started) != 1 || st.started[0].Subject != "user-1" || st.started[0].ServiceID == "" || len(st.ended) != 1 {
-		t.Fatalf("audit start/end = %+v / %+v", st.started, st.ended)
+	started, ended := st.StartedSessions(), st.EndedSessions()
+	if len(started) != 1 || started[0].Subject != "user-1" || started[0].ServiceID == "" || len(ended) != 1 {
+		t.Fatalf("audit start/end = %+v / %+v", started, ended)
 	}
 }
 
 func TestGatewayPTYResizeAndShell(t *testing.T) {
 	clientSigner := signer(t)
-	executor := &fakeExecutor{}
-	addr, stop := startGateway(t, &fakeGatewayStore{}, &fakeResolver{}, executor, clientSigner)
+	executor := &gatewaytest.FakeExecutor{}
+	addr, stop := startGateway(t, &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, executor, clientSigner)
 	defer stop()
 	client, err := dialGateway(addr, "srv-abcdeabcdeabcdeabcde-pod01", clientSigner)
 	if err != nil {
@@ -392,15 +280,15 @@ func TestGatewayPTYResizeAndShell(t *testing.T) {
 	if err := session.Wait(); err != nil {
 		t.Fatal(err)
 	}
-	if !executor.tty || len(executor.sizes) != 2 || executor.sizes[0].Width != 80 || executor.sizes[1].Width != 120 {
-		t.Fatalf("tty/sizes = %v %+v", executor.tty, executor.sizes)
+	if !executor.TTY || len(executor.Sizes) != 2 || executor.Sizes[0].Width != 80 || executor.Sizes[1].Width != 120 {
+		t.Fatalf("tty/sizes = %v %+v", executor.TTY, executor.Sizes)
 	}
 }
 
 func TestGatewayRejectsTerminalDimensionsThatWouldOverflowKubernetes(t *testing.T) {
 	clientSigner := signer(t)
-	executor := &fakeExecutor{}
-	addr, stop := startGateway(t, &fakeGatewayStore{}, &fakeResolver{}, executor, clientSigner)
+	executor := &gatewaytest.FakeExecutor{}
+	addr, stop := startGateway(t, &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, executor, clientSigner)
 	defer stop()
 	client, err := dialGateway(addr, "srv-abcdeabcdeabcdeabcde", clientSigner)
 	if err != nil {
@@ -415,15 +303,15 @@ func TestGatewayRejectsTerminalDimensionsThatWouldOverflowKubernetes(t *testing.
 	if err := session.RequestPty("xterm", 24, 70000, ssh.TerminalModes{}); err == nil {
 		t.Fatal("oversized PTY width was accepted")
 	}
-	if len(executor.command) != 0 {
-		t.Fatalf("oversized PTY reached executor: %#v", executor.command)
+	if len(executor.Command) != 0 {
+		t.Fatalf("oversized PTY reached executor: %#v", executor.Command)
 	}
 }
 
 func TestGatewayShelllessImageReturnsBoundedExit126(t *testing.T) {
 	clientSigner := signer(t)
-	executor := &fakeExecutor{err: errors.New("container exec failed: executable file not found")}
-	addr, stop := startGateway(t, &fakeGatewayStore{}, &fakeResolver{}, executor, clientSigner)
+	executor := &gatewaytest.FakeExecutor{Err: errors.New("container exec failed: executable file not found")}
+	addr, stop := startGateway(t, &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, executor, clientSigner)
 	defer stop()
 	client, err := dialGateway(addr, "srv-abcdeabcdeabcdeabcde", clientSigner)
 	if err != nil {
@@ -447,14 +335,14 @@ func TestGatewayShelllessImageReturnsBoundedExit126(t *testing.T) {
 func TestGatewayRejectsDeletedKeyForbiddenTargetAndForwarding(t *testing.T) {
 	clientSigner := signer(t)
 	for name, tc := range map[string]struct {
-		st       *fakeGatewayStore
-		resolver *fakeResolver
+		st       *gatewaytest.FakeStore
+		resolver *gatewaytest.FakeResolver
 	}{
-		"deleted key": {&fakeGatewayStore{missing: true}, &fakeResolver{}},
-		"forbidden":   {&fakeGatewayStore{}, &fakeResolver{err: core.ErrForbidden}},
+		"deleted key": {&gatewaytest.FakeStore{Missing: true}, &gatewaytest.FakeResolver{}},
+		"forbidden":   {&gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{Err: core.ErrForbidden}},
 	} {
 		t.Run(name, func(t *testing.T) {
-			addr, stop := startGateway(t, tc.st, tc.resolver, &fakeExecutor{}, clientSigner)
+			addr, stop := startGateway(t, tc.st, tc.resolver, &gatewaytest.FakeExecutor{}, clientSigner)
 			defer stop()
 			if client, err := dialGateway(addr, "srv-abcdeabcdeabcdeabcde", clientSigner); err == nil {
 				client.Close()
@@ -463,7 +351,7 @@ func TestGatewayRejectsDeletedKeyForbiddenTargetAndForwarding(t *testing.T) {
 		})
 	}
 
-	addr, stop := startGateway(t, &fakeGatewayStore{}, &fakeResolver{}, &fakeExecutor{}, clientSigner)
+	addr, stop := startGateway(t, &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, &gatewaytest.FakeExecutor{}, clientSigner)
 	defer stop()
 	client, err := dialGateway(addr, "srv-abcdeabcdeabcdeabcde", clientSigner)
 	if err != nil {
@@ -477,8 +365,8 @@ func TestGatewayRejectsDeletedKeyForbiddenTargetAndForwarding(t *testing.T) {
 
 func TestGatewayRejectsUnsupportedRequestsBeforeExec(t *testing.T) {
 	clientSigner := signer(t)
-	executor := &fakeExecutor{}
-	addr, stop := startGateway(t, &fakeGatewayStore{}, &fakeResolver{}, executor, clientSigner)
+	executor := &gatewaytest.FakeExecutor{}
+	addr, stop := startGateway(t, &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, executor, clientSigner)
 	defer stop()
 	client, err := dialGateway(addr, "srv-abcdeabcdeabcdeabcde", clientSigner)
 	if err != nil {
@@ -499,8 +387,8 @@ func TestGatewayRejectsUnsupportedRequestsBeforeExec(t *testing.T) {
 	if err != nil || string(output) != "inside-app\n" {
 		t.Fatalf("valid exec after rejected requests = %q, %v", output, err)
 	}
-	if len(executor.command) != 3 || executor.command[2] != "true" {
-		t.Fatalf("executor received unexpected command: %#v", executor.command)
+	if len(executor.Command) != 3 || executor.Command[2] != "true" {
+		t.Fatalf("executor received unexpected command: %#v", executor.Command)
 	}
 }
 
@@ -508,8 +396,8 @@ func TestGatewayRejectsSCPProtocolBeforeExec(t *testing.T) {
 	for _, command := range []string{"scp -t /tmp/file", "/usr/bin/scp -qpf /tmp/file"} {
 		t.Run(command, func(t *testing.T) {
 			clientSigner := signer(t)
-			executor := &fakeExecutor{}
-			addr, stop := startGateway(t, &fakeGatewayStore{}, &fakeResolver{}, executor, clientSigner)
+			executor := &gatewaytest.FakeExecutor{}
+			addr, stop := startGateway(t, &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, executor, clientSigner)
 			defer stop()
 			client, err := dialGateway(addr, "srv-abcdeabcdeabcdeabcde", clientSigner)
 			if err != nil {
@@ -524,8 +412,8 @@ func TestGatewayRejectsSCPProtocolBeforeExec(t *testing.T) {
 			if err := session.Run(command); err == nil {
 				t.Fatal("SCP protocol command unexpectedly accepted")
 			}
-			if executor.command != nil {
-				t.Fatalf("SCP protocol reached executor: %#v", executor.command)
+			if executor.Command != nil {
+				t.Fatalf("SCP protocol reached executor: %#v", executor.Command)
 			}
 		})
 	}
@@ -541,8 +429,8 @@ func TestSCPCommandClassifierDoesNotBlockOrdinaryShellCommands(t *testing.T) {
 
 func TestGatewayRejectsAdditionalSessionWhileFirstIsRunning(t *testing.T) {
 	clientSigner := signer(t)
-	executor := &fakeExecutor{block: true, started: make(chan struct{}, 1), stopped: make(chan error, 1)}
-	addr, stop := startGateway(t, &fakeGatewayStore{}, &fakeResolver{}, executor, clientSigner)
+	executor := &gatewaytest.FakeExecutor{Block: true, Started: make(chan struct{}, 1), Stopped: make(chan error, 1)}
+	addr, stop := startGateway(t, &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, executor, clientSigner)
 	defer stop()
 	client, err := dialGateway(addr, "srv-abcdeabcdeabcdeabcde", clientSigner)
 	if err != nil {
@@ -556,7 +444,7 @@ func TestGatewayRejectsAdditionalSessionWhileFirstIsRunning(t *testing.T) {
 		t.Fatal(err)
 	}
 	select {
-	case <-executor.started:
+	case <-executor.Started:
 	case <-time.After(time.Second):
 		t.Fatal("first exec did not start")
 	}
@@ -578,7 +466,7 @@ func TestGatewayRejectsAdditionalSessionWhileFirstIsRunning(t *testing.T) {
 	}
 	_ = client.Close()
 	select {
-	case <-executor.stopped:
+	case <-executor.Stopped:
 	case <-time.After(time.Second):
 		t.Fatal("closing the connection did not cancel the first exec")
 	}
@@ -595,8 +483,8 @@ func TestGatewayCancelsExecOnTimeoutAndDisconnect(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			clientSigner := signer(t)
-			executor := &fakeExecutor{block: true, started: make(chan struct{}, 1), stopped: make(chan error, 1)}
-			addr, stop := startGatewayConfigured(t, &fakeGatewayStore{}, &fakeResolver{}, executor, clientSigner, func(server *Server) {
+			executor := &gatewaytest.FakeExecutor{Block: true, Started: make(chan struct{}, 1), Stopped: make(chan error, 1)}
+			addr, stop := startGatewayConfigured(t, &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, executor, clientSigner, func(server *Server) {
 				server.SessionTimeout = tc.timeout
 			})
 			defer stop()
@@ -612,7 +500,7 @@ func TestGatewayCancelsExecOnTimeoutAndDisconnect(t *testing.T) {
 				t.Fatal(err)
 			}
 			select {
-			case <-executor.started:
+			case <-executor.Started:
 			case <-time.After(time.Second):
 				t.Fatal("exec did not start")
 			}
@@ -620,7 +508,7 @@ func TestGatewayCancelsExecOnTimeoutAndDisconnect(t *testing.T) {
 				_ = client.Close()
 			}
 			select {
-			case err := <-executor.stopped:
+			case err := <-executor.Stopped:
 				if err == nil {
 					t.Fatal("executor stopped without context cancellation")
 				}
@@ -629,22 +517,5 @@ func TestGatewayCancelsExecOnTimeoutAndDisconnect(t *testing.T) {
 			}
 			_ = client.Close()
 		})
-	}
-}
-
-func TestSessionLimits(t *testing.T) {
-	server := &Server{MaxSessions: 2, MaxPerIdentity: 1}
-	server.defaults()
-	a, _ := server.acquire("a")
-	aAgain, identityScope := server.acquire("a")
-	b, _ := server.acquire("b")
-	c, globalScope := server.acquire("c")
-	if !a || aAgain || identityScope != "identity" || !b || c || globalScope != "global" {
-		t.Fatal("global/per-identity limits not enforced")
-	}
-	server.release("a")
-	c, _ = server.acquire("c")
-	if !c {
-		t.Fatal("released capacity was not reusable")
 	}
 }

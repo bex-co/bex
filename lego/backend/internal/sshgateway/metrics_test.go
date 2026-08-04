@@ -27,10 +27,10 @@ import (
 func TestMetricsUseOnlyBoundedPrivacySafeLabels(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	metrics := NewMetrics(registry)
-	metrics.authentication("accepted")
-	metrics.sessionStarted()
-	metrics.sessionEnded("completed", 2*time.Second)
-	metrics.limitRejected("identity")
+	metrics.Authentication("accepted")
+	metrics.SessionStarted()
+	metrics.SessionEnded("completed", 2*time.Second)
+	metrics.LimitRejected("identity")
 
 	families, err := registry.Gather()
 	if err != nil {

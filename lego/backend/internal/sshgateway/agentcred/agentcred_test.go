@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sshgateway
+package agentcred
 
 import (
 	"bytes"
@@ -31,6 +31,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/github"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -85,24 +86,22 @@ func TestAgentCredentialGatewayBindsSourcePodAndProxiesSignedMint(t *testing.T) 
 	defer apiServer.Close()
 
 	gatewayAudit := &credentialAudit{}
-	server := &Server{
-		Metrics: NewMetrics(prometheus.NewRegistry()),
-		AgentCredential: &AgentCredentialConfig{
-			Pods: credentialPodResolver{pods: map[string]SessionPod{
-				"10.0.0.1": {Name: "sandbox-a", UID: "uid-a", Labels: credentialLabels(t, "tea-a")},
-				"10.0.0.2": {Name: "sandbox-b", UID: "uid-b", Labels: credentialLabels(t, "tea-b")},
-			}},
-			API:   &agentsession.Client{URL: apiServer.URL, Secret: secret, HTTP: apiServer.Client(), Now: func() time.Time { return fixed }},
-			Audit: gatewayAudit,
-			Now:   func() time.Time { return fixed },
-		},
+	broker := &Broker{
+		Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
+		Pods: credentialPodResolver{pods: map[string]SessionPod{
+			"10.0.0.1": {Name: "sandbox-a", UID: "uid-a", Labels: credentialLabels(t, "tea-a")},
+			"10.0.0.2": {Name: "sandbox-b", UID: "uid-b", Labels: credentialLabels(t, "tea-b")},
+		}},
+		API:   &agentsession.Client{URL: apiServer.URL, Secret: secret, HTTP: apiServer.Client(), Now: func() time.Time { return fixed }},
+		Audit: gatewayAudit,
+		Now:   func() time.Time { return fixed },
 	}
 	body, _ := json.Marshal(agentsession.MintRequest{SessionID: "ags-one", Repository: "octo/repo", Branch: "bex-agent/task-1"})
 	request := httptest.NewRequest(http.MethodPost, agentsession.GatewayPath, bytes.NewReader(body))
 	request.RemoteAddr = "10.0.0.1:43210"
 	request.Header.Set(agentsession.NamespaceHeader, "tea-a-sandbox")
 	recorder := httptest.NewRecorder()
-	server.AgentCredentialHandler().ServeHTTP(recorder, request)
+	broker.Handler().ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), "ghs_gateway_secret") || recorder.Header().Get("Cache-Control") != "no-store" {
 		t.Fatalf("gateway response status=%d headers=%v body=%q", recorder.Code, recorder.Header(), recorder.Body.String())
 	}
@@ -119,7 +118,7 @@ func TestAgentCredentialGatewayBindsSourcePodAndProxiesSignedMint(t *testing.T) 
 	request.RemoteAddr = "10.0.0.2:43210"
 	request.Header.Set(agentsession.NamespaceHeader, "tea-a-sandbox")
 	recorder = httptest.NewRecorder()
-	server.AgentCredentialHandler().ServeHTTP(recorder, request)
+	broker.Handler().ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusForbidden || gh.calls != 1 || strings.Contains(recorder.Body.String(), "ghs_gateway_secret") {
 		t.Fatalf("cross-workspace status=%d calls=%d body=%q", recorder.Code, gh.calls, recorder.Body.String())
 	}

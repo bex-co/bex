@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sshgateway
+package webshell
 
 import (
 	"encoding/json"
@@ -30,16 +30,19 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/bex-co/bex/lego/backend/internal/shellticket"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
 )
 
 var wsSecret = []byte("web-shell-gateway-secret")
 
-func newWSGateway(t *testing.T, st Store, resolver TargetResolver, exec Executor) *Server {
+func newWSGateway(t *testing.T, st *gatewaytest.FakeStore, resolver sshgateway.TargetResolver, exec sshgateway.Executor) *Server {
 	t.Helper()
 	return &Server{
 		Store: st, Apps: resolver, Executor: exec,
-		Metrics:      NewMetrics(prometheus.NewRegistry()),
+		Metrics:      sshgateway.NewMetrics(prometheus.NewRegistry()),
 		TicketSecret: wsSecret,
+		Nonces:       &sshgateway.NonceGuard{Store: st},
 	}
 }
 
@@ -71,10 +74,10 @@ func mintWS(t *testing.T, claims shellticket.Claims) string {
 }
 
 func TestWebSocketShellHappyPath(t *testing.T) {
-	st := &fakeGatewayStore{}
-	resolver := &fakeResolver{}
-	exec := &fakeExecutor{}
-	srv := httptest.NewServer(newWSGateway(t, st, resolver, exec).WebSocketHandler())
+	st := &gatewaytest.FakeStore{}
+	resolver := &gatewaytest.FakeResolver{}
+	exec := &gatewaytest.FakeExecutor{}
+	srv := httptest.NewServer(newWSGateway(t, st, resolver, exec).Handler())
 	defer srv.Close()
 
 	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
@@ -84,7 +87,7 @@ func TestWebSocketShellHappyPath(t *testing.T) {
 	}
 	defer conn.Close()
 
-	// The shared fakeExecutor reads two terminal sizes before writing output; the
+	// The shared FakeExecutor reads two terminal sizes before writing output; the
 	// browser sends the second via a resize control frame.
 	if err := conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"resize","cols":100,"rows":40}`)); err != nil {
 		t.Fatalf("write resize: %v", err)
@@ -114,23 +117,24 @@ func TestWebSocketShellHappyPath(t *testing.T) {
 	if exitCode != 0 {
 		t.Errorf("exit code = %d, want 0", exitCode)
 	}
-	if !exec.tty || len(exec.command) != 1 || exec.command[0] != "/bin/sh" {
-		t.Errorf("executor got tty=%v command=%v, want an interactive /bin/sh", exec.tty, exec.command)
+	if !exec.TTY || len(exec.Command) != 1 || exec.Command[0] != "/bin/sh" {
+		t.Errorf("executor got tty=%v command=%v, want an interactive /bin/sh", exec.TTY, exec.Command)
 	}
-	if len(exec.sizes) == 0 || exec.sizes[len(exec.sizes)-1].Width != 100 {
-		t.Errorf("resize not delivered to the exec stream: %+v", exec.sizes)
+	if len(exec.Sizes) == 0 || exec.Sizes[len(exec.Sizes)-1].Width != 100 {
+		t.Errorf("resize not delivered to the exec stream: %+v", exec.Sizes)
 	}
-	if resolver.subject != "user-1" || resolver.username != "srv-abcdeabcdeabcdeabcde" {
-		t.Errorf("resolver saw subject=%q username=%q", resolver.subject, resolver.username)
+	if resolver.Subject != "user-1" || resolver.Username != "srv-abcdeabcdeabcdeabcde" {
+		t.Errorf("resolver saw subject=%q username=%q", resolver.Subject, resolver.Username)
 	}
-	if len(st.started) != 1 || len(st.ended) != 1 || !strings.HasSuffix(st.ended[0], ":completed") {
-		t.Errorf("audit rows: started=%v ended=%v", st.started, st.ended)
+	started, ended := st.StartedSessions(), st.EndedSessions()
+	if len(started) != 1 || len(ended) != 1 || !strings.HasSuffix(ended[0], ":completed") {
+		t.Errorf("audit rows: started=%v ended=%v", started, ended)
 	}
 }
 
 func TestWebSocketPinnedInstanceUsername(t *testing.T) {
-	resolver := &fakeResolver{}
-	srv := httptest.NewServer(newWSGateway(t, &fakeGatewayStore{}, resolver, &fakeExecutor{}).WebSocketHandler())
+	resolver := &gatewaytest.FakeResolver{}
+	srv := httptest.NewServer(newWSGateway(t, &gatewaytest.FakeStore{}, resolver, &gatewaytest.FakeExecutor{}).Handler())
 	defer srv.Close()
 	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde", InstanceID: "srv-abcdeabcdeabcdeabcde-pod01"})
 	conn, _, err := dialWS(t, srv, token)
@@ -144,13 +148,13 @@ func TestWebSocketPinnedInstanceUsername(t *testing.T) {
 		}
 	}
 	conn.Close()
-	if resolver.username != "srv-abcdeabcdeabcdeabcde-pod01" {
-		t.Errorf("pinned instance username = %q, want the compound id", resolver.username)
+	if resolver.Username != "srv-abcdeabcdeabcdeabcde-pod01" {
+		t.Errorf("pinned instance username = %q, want the compound id", resolver.Username)
 	}
 }
 
 func TestWebSocketRejectsBadTickets(t *testing.T) {
-	srv := httptest.NewServer(newWSGateway(t, &fakeGatewayStore{}, &fakeResolver{}, &fakeExecutor{}).WebSocketHandler())
+	srv := httptest.NewServer(newWSGateway(t, &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, &gatewaytest.FakeExecutor{}).Handler())
 	defer srv.Close()
 
 	cases := map[string]string{
@@ -177,7 +181,7 @@ func TestWebSocketRejectsBadTickets(t *testing.T) {
 }
 
 func TestWebSocketRejectsReplayedTicket(t *testing.T) {
-	srv := httptest.NewServer(newWSGateway(t, &fakeGatewayStore{}, &fakeResolver{}, &fakeExecutor{}).WebSocketHandler())
+	srv := httptest.NewServer(newWSGateway(t, &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, &gatewaytest.FakeExecutor{}).Handler())
 	defer srv.Close()
 	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
 
@@ -201,12 +205,13 @@ func TestWebSocketRejectsReplayedTicket(t *testing.T) {
 
 // Two Servers sharing one store model two gateway replicas behind the LB
 // (w1/042 L7): a ticket redeemed on replica A must be refused on replica B —
-// the per-process map can't see across, the shared nonce claim can.
+// each replica's per-process nonce map can't see across, the shared nonce
+// claim can.
 func TestWebSocketRejectsReplayAcrossReplicas(t *testing.T) {
-	shared := &fakeGatewayStore{}
-	srvA := httptest.NewServer(newWSGateway(t, shared, &fakeResolver{}, &fakeExecutor{}).WebSocketHandler())
+	shared := &gatewaytest.FakeStore{}
+	srvA := httptest.NewServer(newWSGateway(t, shared, &gatewaytest.FakeResolver{}, &gatewaytest.FakeExecutor{}).Handler())
 	defer srvA.Close()
-	srvB := httptest.NewServer(newWSGateway(t, shared, &fakeResolver{}, &fakeExecutor{}).WebSocketHandler())
+	srvB := httptest.NewServer(newWSGateway(t, shared, &gatewaytest.FakeResolver{}, &gatewaytest.FakeExecutor{}).Handler())
 	defer srvB.Close()
 	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
 
@@ -231,8 +236,8 @@ func TestWebSocketRejectsReplayAcrossReplicas(t *testing.T) {
 // A store outage refuses tickets (fail closed) rather than quietly degrading
 // to per-replica single-use — the audit write requires the same DB anyway.
 func TestWebSocketNonceStoreErrorFailsClosed(t *testing.T) {
-	st := &fakeGatewayStore{claimErr: errors.New("db down")}
-	srv := httptest.NewServer(newWSGateway(t, st, &fakeResolver{}, &fakeExecutor{}).WebSocketHandler())
+	st := &gatewaytest.FakeStore{ClaimErr: errors.New("db down")}
+	srv := httptest.NewServer(newWSGateway(t, st, &gatewaytest.FakeResolver{}, &gatewaytest.FakeExecutor{}).Handler())
 	defer srv.Close()
 	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
 	_, resp, err := dialWS(t, srv, token)
@@ -245,8 +250,8 @@ func TestWebSocketNonceStoreErrorFailsClosed(t *testing.T) {
 // URL (w1/042 L8) — the gateway extracts it from the offer and selects only the
 // bex.shell marker in the response, so the credential is never echoed.
 func TestWebSocketTicketViaSubprotocol(t *testing.T) {
-	st := &fakeGatewayStore{}
-	srv := httptest.NewServer(newWSGateway(t, st, &fakeResolver{}, &fakeExecutor{}).WebSocketHandler())
+	st := &gatewaytest.FakeStore{}
+	srv := httptest.NewServer(newWSGateway(t, st, &gatewaytest.FakeResolver{}, &gatewaytest.FakeExecutor{}).Handler())
 	defer srv.Close()
 	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
 
@@ -268,15 +273,15 @@ func TestWebSocketTicketViaSubprotocol(t *testing.T) {
 		}
 	}
 	conn.Close()
-	if len(st.started) != 1 {
-		t.Errorf("audit rows started = %d, want 1", len(st.started))
+	if len(st.StartedSessions()) != 1 {
+		t.Errorf("audit rows started = %d, want 1", len(st.StartedSessions()))
 	}
 }
 
 // Query-string credentials are rejected even when the ticket itself is valid;
 // accepting them would put a reusable capability in the edge's logged path.
 func TestWebSocketRejectsQueryTicket(t *testing.T) {
-	srv := httptest.NewServer(newWSGateway(t, &fakeGatewayStore{}, &fakeResolver{}, &fakeExecutor{}).WebSocketHandler())
+	srv := httptest.NewServer(newWSGateway(t, &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, &gatewaytest.FakeExecutor{}).Handler())
 	defer srv.Close()
 	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
 
@@ -294,11 +299,11 @@ func TestWebSocketRejectsQueryTicket(t *testing.T) {
 }
 
 func TestWebSocketDisabledWithoutSecret(t *testing.T) {
-	gw := &Server{Store: &fakeGatewayStore{}, Apps: &fakeResolver{}, Executor: &fakeExecutor{}, Metrics: NewMetrics(prometheus.NewRegistry())}
-	if gw.WebSocketEnabled() {
-		t.Fatal("WebSocketEnabled should be false without a ticket secret")
+	gw := &Server{Store: &gatewaytest.FakeStore{}, Apps: &gatewaytest.FakeResolver{}, Executor: &gatewaytest.FakeExecutor{}, Metrics: sshgateway.NewMetrics(prometheus.NewRegistry())}
+	if gw.Enabled() {
+		t.Fatal("Enabled should be false without a ticket secret")
 	}
-	srv := httptest.NewServer(gw.WebSocketHandler())
+	srv := httptest.NewServer(gw.Handler())
 	defer srv.Close()
 	_, resp, err := dialWS(t, srv, "anything")
 	if err == nil || resp == nil || resp.StatusCode != http.StatusServiceUnavailable {
@@ -307,10 +312,10 @@ func TestWebSocketDisabledWithoutSecret(t *testing.T) {
 }
 
 func TestWebSocketPerIdentityCap(t *testing.T) {
-	exec := &fakeExecutor{block: true, started: make(chan struct{}, 1)}
-	gw := newWSGateway(t, &fakeGatewayStore{}, &fakeResolver{}, exec)
-	gw.MaxPerIdentity = 1
-	srv := httptest.NewServer(gw.WebSocketHandler())
+	exec := &gatewaytest.FakeExecutor{Block: true, Started: make(chan struct{}, 1)}
+	gw := newWSGateway(t, &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, exec)
+	gw.Limits = sshgateway.NewSessionLimiter(100, 1)
+	srv := httptest.NewServer(gw.Handler())
 	defer srv.Close()
 
 	// Session 1 holds the only per-identity slot: its exec blocks until closed.
@@ -328,7 +333,7 @@ func TestWebSocketPerIdentityCap(t *testing.T) {
 		}
 	}()
 	select {
-	case <-exec.started:
+	case <-exec.Started:
 	case <-time.After(3 * time.Second):
 		t.Fatal("session 1 never reached the exec bridge")
 	}
@@ -360,9 +365,9 @@ func TestWebSocketPerIdentityCap(t *testing.T) {
 }
 
 func TestWebSocketResolveFailureSendsErrorFrame(t *testing.T) {
-	st := &fakeGatewayStore{}
-	resolver := &fakeResolver{err: errors.New("no ready instance")}
-	srv := httptest.NewServer(newWSGateway(t, st, resolver, &fakeExecutor{}).WebSocketHandler())
+	st := &gatewaytest.FakeStore{}
+	resolver := &gatewaytest.FakeResolver{Err: errors.New("no ready instance")}
+	srv := httptest.NewServer(newWSGateway(t, st, resolver, &gatewaytest.FakeExecutor{}).Handler())
 	defer srv.Close()
 
 	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
@@ -389,7 +394,7 @@ func TestWebSocketResolveFailureSendsErrorFrame(t *testing.T) {
 		t.Error("expected an error control frame when the target cannot be resolved")
 	}
 	// A rejected target opens no session and writes no audit row.
-	if len(st.started) != 0 {
-		t.Errorf("resolve failure must not start a session: %v", st.started)
+	if started := st.StartedSessions(); len(started) != 0 {
+		t.Errorf("resolve failure must not start a session: %v", started)
 	}
 }

@@ -31,6 +31,13 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 )
 
+// Executor is the single privileged pods/exec seam shared by every transport
+// (nativessh, webshell, sandboxsse). KubeExecutor is the production
+// implementation and the only place pods/exec is actually issued.
+type Executor interface {
+	Execute(context.Context, apps.SSHInstanceTarget, []string, bool, remotecommand.TerminalSizeQueue, io.Reader, io.Writer, io.Writer) (int, error)
+}
+
 type KubeExecutor struct {
 	Config *rest.Config
 	Client kubernetes.Interface
