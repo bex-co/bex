@@ -222,10 +222,12 @@ func TestExecEnforcesOwnerAndWorkspaceAdminOverride(t *testing.T) {
 func TestReadSessionStatusMintsSystemSubjectWithoutIdentity(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet && r.URL.Path == "/sandboxes/os-agent" {
-			_ = json.NewEncoder(w).Encode(osSandbox{ID: "os-agent", Metadata: map[string]string{
+			sb := osSandbox{ID: "os-agent", Metadata: map[string]string{
 				metadataOwner: "id-a", metadataWorkspace: "tea-a", metadataRegime: metadataSandboxRegime,
 				metadataNetworkPolicy: string(NetworkPolicyDenyAll), agentsession.LabelSession: "ags-one",
-			}})
+			}}
+			sb.Status.State = "running" // a live sandbox: the status read must proceed
+			_ = json.NewEncoder(w).Encode(sb)
 			return
 		}
 		http.NotFound(w, r)
@@ -266,5 +268,44 @@ func TestReadSessionStatusMintsSystemSubjectWithoutIdentity(t *testing.T) {
 	}
 	if gotSubject != systemExecSubject {
 		t.Fatalf("ticket subject = %q, want the system sentinel %q", gotSubject, systemExecSubject)
+	}
+}
+
+// A sandbox whose OpenSandbox state is terminal/errored (its pod exited) can
+// never report a success status; ReadSessionStatus must surface NotFound so the
+// Completer finalizes the session as failed instead of exec-ing into a dead pod
+// forever (w3/m43 crash-leg stranding).
+func TestReadSessionStatusFailsClosedOnTerminalSandbox(t *testing.T) {
+	for _, state := range []string{"terminated", "Failed", "Deleted", ""} {
+		t.Run("state="+state, func(t *testing.T) {
+			upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodGet && r.URL.Path == "/sandboxes/os-agent" {
+					sb := osSandbox{ID: "os-agent", Metadata: map[string]string{
+						metadataOwner: "id-a", metadataWorkspace: "tea-a", metadataRegime: metadataSandboxRegime,
+						metadataNetworkPolicy: string(NetworkPolicyDenyAll), agentsession.LabelSession: "ags-one",
+					}}
+					sb.Status.State = state
+					_ = json.NewEncoder(w).Encode(sb)
+					return
+				}
+				http.NotFound(w, r)
+			}))
+			defer upstream.Close()
+			gateway := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+				t.Fatal("a terminal sandbox must never be exec'd")
+			}))
+			defer gateway.Close()
+
+			service := &Service{
+				Base:   &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
+				Client: NewClient(upstream.URL),
+				Exec:   &ExecConfig{Secret: []byte("s"), GatewayURL: gateway.URL, Client: gateway.Client()},
+			}
+			lifecycle := &AgentSessionLifecycle{service: service}
+			_, err := lifecycle.ReadSessionStatus(context.Background(), "tea-a", "ags-one", "os-agent")
+			if !errors.Is(err, core.ErrNotFound) {
+				t.Fatalf("terminal-state read err = %v, want ErrNotFound", err)
+			}
+		})
 	}
 }

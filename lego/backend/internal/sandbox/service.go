@@ -562,8 +562,18 @@ func (l *AgentSessionLifecycle) ReadSessionStatus(ctx context.Context, workspace
 	if err != nil {
 		return "", err
 	}
-	if _, err := s.agentSessionSandbox(ctx, key, workspaceID, sessionID, sandboxID); err != nil {
+	sb, err := s.agentSessionSandbox(ctx, key, workspaceID, sessionID, sandboxID)
+	if err != nil {
 		return "", err
+	}
+	// A sandbox whose pod has exited (a crashed/hung driver, a failed adapter
+	// start) can never report a success status, and exec-ing into the dead pod
+	// fails forever — which silently stranded the session in `running` (w3/m43
+	// live E2E, the nonexistent-adapter crash leg). Surface it as NotFound so the
+	// Completer finalizes it as a failed turn instead of retrying every tick.
+	switch mapOpenSandboxStatus(sb.Status.State) {
+	case StatusTerminated, StatusErrored:
+		return "", sandboxNotFound(sandboxID)
 	}
 	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID,
 		[]string{"/bin/sh", "-c", "cat " + agentSessionStatusPath + " 2>/dev/null || true"})

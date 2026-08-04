@@ -18,7 +18,7 @@
 import { createCredentialManager } from "./credentials.js";
 import { loadConfig } from "./config.js";
 import { ensureRepo } from "./delivery.js";
-import { runHeadlessTurn } from "./session.js";
+import { markTurnFailed, runHeadlessTurn } from "./session.js";
 import { startDriverServer } from "./server.js";
 import { UIMessageStreamHub } from "./stream-hub.js";
 
@@ -58,8 +58,27 @@ async function main(): Promise<void> {
     console.error(
       credentials.redact(error instanceof Error ? error.message : error),
     );
-    await shutdown();
-    process.exitCode = 1;
+    // Guarantee a `failed` status file even when the failure preceded the turn
+    // (e.g. the setup clone) — runHeadlessTurn already wrote one on a turn error,
+    // so this is idempotent. Scrub the model credential from the workspace now,
+    // since the success-path scrub inside runHeadlessTurn never ran.
+    try {
+      await markTurnFailed(config, credentials, error);
+    } catch {
+      /* status best-effort; do not mask the original error */
+    }
+    await credentials.scrubPersistedState();
+    credentials.forget();
+    // In fire-and-forget mode (exitAfterTurn=0) the Completer finalizes the
+    // session by reading this status file through the gateway exec boundary, so
+    // the driver must STAY ALIVE serving it — exactly as it does after a
+    // successful turn. Exiting here terminated the pod before the Completer could
+    // read the failure, stranding the session in `running` forever (w3/m43
+    // crash-leg E2E). Only tear down + exit when a one-shot turn was requested.
+    if (config.exitAfterTurn) {
+      await listener.close();
+      process.exitCode = 1;
+    }
   }
 }
 

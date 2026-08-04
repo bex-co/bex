@@ -52,6 +52,21 @@ async function writeStatus(filename: string, status: StatusRecord): Promise<void
   await rename(temporary, filename);
 }
 
+// markTurnFailed records a fatal failure that happened OUTSIDE runHeadlessTurn
+// (e.g. the setup-phase clone), so the fire-and-forget Completer reads a `failed`
+// status file instead of an absent one and finalizes the session. runHeadlessTurn
+// writes its own `failed` status on a turn error; overwriting it here is harmless.
+export async function markTurnFailed(
+  config: AgentDriverConfig,
+  credentialManager: CredentialManager,
+  error: unknown,
+): Promise<void> {
+  await writeStatus(config.statusPath, {
+    state: "failed",
+    error: credentialManager.redact(error instanceof Error ? error.message : String(error)),
+  });
+}
+
 async function logPart(
   filename: string,
   part: UIMessagePart,
