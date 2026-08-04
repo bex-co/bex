@@ -105,6 +105,17 @@ function positiveMilliseconds(value: string | undefined): number {
   return milliseconds;
 }
 
+// Anthropic OAuth tokens (minted by `claude setup-token`, prefix `sk-ant-oat`)
+// authenticate claude-code through CLAUDE_CODE_OAUTH_TOKEN (Bearer + the oauth
+// beta header), not the x-api-key ANTHROPIC_API_KEY path — which rejects them as
+// "Invalid API key". Route a BYO credential to the agent-native variable by its
+// shape when BEX_AGENT_MODEL_API_KEY_ENV isn't pinned explicitly.
+function defaultCredentialEnvName(credential: string): string {
+  return credential.startsWith("sk-ant-oat")
+    ? "CLAUDE_CODE_OAUTH_TOKEN"
+    : "ANTHROPIC_API_KEY";
+}
+
 export function loadConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): AgentDriverConfig {
@@ -113,8 +124,10 @@ export function loadConfig(
     env.BEX_AGENT_SESSION_LOG || "/var/log/bex-agent/session.jsonl";
   const statusPath =
     env.BEX_AGENT_STATUS_FILE || "/var/run/bex-agent/status.json";
+  const modelCredential = env.BEX_AGENT_MODEL_API_KEY || "";
   const credentialEnvName =
-    env.BEX_AGENT_MODEL_API_KEY_ENV || "ANTHROPIC_API_KEY";
+    env.BEX_AGENT_MODEL_API_KEY_ENV ||
+    defaultCredentialEnvName(modelCredential);
   if (!envNamePattern.test(credentialEnvName)) {
     throw new Error(
       "BEX_AGENT_MODEL_API_KEY_ENV must be a valid environment variable name",
@@ -153,7 +166,7 @@ export function loadConfig(
     exitAfterTurn: env.BEX_AGENT_EXIT_AFTER_TURN === "1",
     turnTimeoutMs: positiveMilliseconds(env.BEX_AGENT_TURN_TIMEOUT_MS),
     credentialEnvName,
-    modelCredential: env.BEX_AGENT_MODEL_API_KEY || "",
+    modelCredential,
     agentEnv,
     scrubRoots: [
       ...new Set(
