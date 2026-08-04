@@ -66,6 +66,8 @@ Shrink intent is rejected as `StorageShrinkRejected` without changing the PVC. R
 
 ### 5. Paid-plan off-cluster backups and AOF-aware restore
 
+> This CronJob's encryption and credential scoping (Tier A of [ADR050-encrypted-platform-backups.md](ADR050-encrypted-platform-backups.md)) are specified there, not here.
+
 The operator gives every non-Free plan a deterministic `kvbak-<id>` CronJob when all three `BEX_KV_BACKUP_DESTINATION`, `BEX_KV_BACKUP_ENDPOINT`, and `BEX_KV_BACKUP_S3_SECRET` settings are present. Any missing setting disables the feature: a new reconcile adds no backup CronJob or finalizer. Production uses `s3://bex-tfstate/keyvalue`, the Wasabi endpoint, and the out-of-band `default/bex-kv-backup-s3` Secret (`AWS_ACCESS_KEY_ID` plus `AWS_SECRET_ACCESS_KEY`). Free plans remain PVC-only and receive no CronJob.
 
 Each instance hashes its immutable `red-` id into a stable slot from 03:20–03:39 UTC, avoiding a fleet-wide snapshot spike. The job authenticates through `REDISCLI_AUTH` from the immutable `<id>-auth` Secret and runs `valkey-cli --rdb` over the private Service. That replication-protocol request produces a coherent RDB without copying a live `dump.rdb` or granting `pods/exec`. A second stage gzips it; the credentialed uploader writes `keyvalue/<id>/<RFC3339-UTC>.rdb.gz` and retains the lexicographically newest seven. Suspended stores keep their CronJob but set `spec.suspend: true`, so intentional hibernation neither runs nor pages.

@@ -14,6 +14,7 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m63** — Encrypted platform backups + write-scoped backup credentials (ADR050) (14 tasks) ← from `docs/ADR050-encrypted-platform-backups.md` (Proposed), handed off 2026-08-04; **no dashboard surface** — filed here at explicit user direction despite the mismatch with this workstream's theme (Render parity closing task omitted, see the milestone's Source + Goal linkage)
 - [x] **m1** — Scaffold dashboard from beancount-dashboard, stripped to sample content (7 tasks) ← from user request 2026-07-05 — done 2026-07-06, moved to `done/m1/`
 - [x] **m2** — Polish dashboard UI: beancount-style layout, remove Ory branding (7 tasks) ← from user request 2026-07-06 — done 2026-07-06, moved to `done/m2/`
 - [x] **m3** — Internationalization (i18n), including Ory Elements (8 tasks) ← from user request 2026-07-06 — done 2026-07-06, moved to `done/m3/`

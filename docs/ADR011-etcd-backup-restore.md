@@ -2,6 +2,8 @@
 
 **Why this exists:** on the single-node prod cluster, App CRs are the only state not reproducible from git — the platform itself is reconciled by Argo, but `kubectl get apps.app.bex.co` lives only in the control-plane node's etcd, on local disk, with no HA. A node rebuild loses every user deployment. Until the control-plane Postgres ([ADR003-control-plane.md](ADR003-control-plane.md), w1/m2) becomes the source of truth, a nightly etcd snapshot shipped off-node is the recovery story.
 
+> This snapshot's encryption and credential scoping (Tier A of [ADR050-encrypted-platform-backups.md](ADR050-encrypted-platform-backups.md)) are specified there, not here.
+
 Only Argo CD and etcd are long-running; the backup itself is a pod that exists for a few seconds a night, the Secret is inert config it reads, and recovery is operator-triggered through `scripts/restore-etcd.sh` — nothing is deployed for it until a human runs the script:
 
 ```mermaid

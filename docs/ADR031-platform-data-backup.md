@@ -2,6 +2,8 @@
 
 **Why this exists:** bex has six platform stores plus tenant datastores holding state that is not recoverable from git alone: etcd, OpenBao, the control-plane database, the three auth databases, tenant Postgres, and managed Key Value. High availability protects a database from a node failure, not correlated storage loss. This document is the consolidated policy and restore runbook — the single place to check when something is on fire.
 
+> Encryption-at-rest and per-store credential scoping for everything below are specified in [ADR050-encrypted-platform-backups.md](ADR050-encrypted-platform-backups.md); it modifies this policy without restating it.
+
 | store | what it holds | backup mechanism | schedule | retention | restore mechanism | last verified |
 | --- | --- | --- | --- | --- | --- | --- |
 | **etcd** | App/Database/KeyValue CRs (user deployments) | CronJob `kube-system/etcd-backup` → `etcd-snapshots/` in `bex-tfstate` | 03:15 UTC daily | 7 snapshots (rolling) | `scripts/restore-etcd.sh` → local throwaway etcd → sanitized CR manifests | 2026-07-31 (production scripted extraction, w7/m69) |
