@@ -532,6 +532,27 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Failed",
     description: "Badge label for a failed tool call",
   },
+  "agentSessions.activityWorking": {
+    message: "Working…",
+    description: "Activity-group summary while any tool step is still pending",
+  },
+  "agentSessions.activityEdited": {
+    message: "Edited {count} files",
+    description: "Activity-group summary when the turn edited files (diffs)",
+  },
+  "agentSessions.activityRan": {
+    message: "Ran {count} commands",
+    description: "Activity-group summary when the turn ran commands/terminals",
+  },
+  "agentSessions.activitySteps": {
+    message: "{count} steps",
+    description: "Activity-group summary fallback — the step count",
+  },
+  "agentSessions.scrollToBottom": {
+    message: "Scroll to latest",
+    description:
+      "Accessible label for the floating jump-to-bottom button in the conversation column",
+  },
 };
 
 export default enAgentSessions;
