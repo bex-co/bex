@@ -14,7 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sshgateway
+// Package agentcred is the pod-bound git credential broker of the isolated
+// SSH gateway (ADR047 D2). It serves a separate cluster-internal listener: a
+// sandbox reaches it directly, the gateway authenticates the source Pod by
+// resolving its TCP source IP back to exactly one Pod and checking its
+// immutable session bindings, and only then makes an HMAC-authenticated mint
+// call to bex-api. (The name avoids colliding with internal/agentcredential,
+// the in-sandbox credential helper.)
+package agentcred
 
 import (
 	"context"
@@ -32,9 +39,10 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 )
 
-const maxAgentCredentialRequest = 16 << 10
+const maxRequestBytes = 16 << 10
 
 type SessionPod struct {
 	Name   string
@@ -69,23 +77,30 @@ func (r KubeSessionPodResolver) ResolveSessionPod(ctx context.Context, namespace
 	return SessionPod{Name: pod.Name, UID: string(pod.UID), Labels: pod.Labels}, nil
 }
 
-type AgentCredentialConfig struct {
-	Pods  SessionPodResolver
-	API   *agentsession.Client
-	Audit core.AuditSink
-	Now   func() time.Time
+// Broker authenticates a sandbox Pod and proxies its credential mint to
+// bex-api.
+type Broker struct {
+	Pods    SessionPodResolver
+	API     *agentsession.Client
+	Audit   core.AuditSink
+	Metrics *sshgateway.Metrics
+	Now     func() time.Time
 }
 
-func (s *Server) AgentCredentialEnabled() bool {
-	return s.AgentCredential != nil && s.AgentCredential.Pods != nil && s.AgentCredential.API != nil
+// Enabled reports whether the credential broker is configured.
+func (b *Broker) Enabled() bool {
+	return b != nil && b.Pods != nil && b.API != nil
 }
 
-func (s *Server) AgentCredentialHandler() http.Handler {
-	return http.HandlerFunc(s.serveAgentCredential)
+// Handler returns the HTTP handler for the credential broker. Mount it on the
+// gateway's cluster-internal listener (BEX_AGENT_CREDENTIAL_ADDR); it has no
+// edge route.
+func (b *Broker) Handler() http.Handler {
+	return http.HandlerFunc(b.serveCredential)
 }
 
-func (s *Server) serveAgentCredential(w http.ResponseWriter, r *http.Request) {
-	if !s.AgentCredentialEnabled() {
+func (b *Broker) serveCredential(w http.ResponseWriter, r *http.Request) {
+	if !b.Enabled() {
 		http.Error(w, "agent credentials unavailable", http.StatusServiceUnavailable)
 		return
 	}
@@ -99,14 +114,14 @@ func (s *Server) serveAgentCredential(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	pod, err := s.AgentCredential.Pods.ResolveSessionPod(r.Context(), namespace, sourceIP)
+	pod, err := b.Pods.ResolveSessionPod(r.Context(), namespace, sourceIP)
 	if err != nil {
-		s.Metrics.authentication("rejected_key")
+		b.Metrics.Authentication("rejected_key")
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	body, err := io.ReadAll(io.LimitReader(r.Body, maxAgentCredentialRequest+1))
-	if err != nil || len(body) > maxAgentCredentialRequest {
+	body, err := io.ReadAll(io.LimitReader(r.Body, maxRequestBytes+1))
+	if err != nil || len(body) > maxRequestBytes {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -117,34 +132,34 @@ func (s *Server) serveAgentCredential(w http.ResponseWriter, r *http.Request) {
 	}
 	verified, err := agentsession.AuthorizePod(namespace, pod.Name, pod.UID, pod.Labels, req)
 	if err != nil {
-		s.Metrics.authentication("rejected_target")
+		b.Metrics.Authentication("rejected_target")
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	response, err := s.AgentCredential.API.Mint(r.Context(), verified)
+	response, err := b.API.Mint(r.Context(), verified)
 	if err != nil {
 		if errors.Is(err, agentsession.ErrForbidden) {
-			s.Metrics.authentication("rejected_target")
+			b.Metrics.Authentication("rejected_target")
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
 		http.Error(w, "credential broker unavailable", http.StatusBadGateway)
 		return
 	}
-	s.Metrics.authentication("accepted")
-	core.RecordAuditEvent(r.Context(), s.AgentCredential.Audit, core.AuditEvent{
+	b.Metrics.Authentication("accepted")
+	core.RecordAuditEvent(r.Context(), b.Audit, core.AuditEvent{
 		Caller: pod.Name, CallerMethod: "sandbox", Verb: agentsession.AuditVerbProxyCredential,
 		Resource: core.WorkspaceObject(verified.Workspace), Target: "agent-session:" + verified.SessionID,
-		TargetName: verified.Repository, Outcome: core.AuditAllowed, At: s.agentCredentialNow(),
+		TargetName: verified.Repository, Outcome: core.AuditAllowed, At: b.now(),
 	})
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(response)
 }
 
-func (s *Server) agentCredentialNow() time.Time {
-	if s.AgentCredential != nil && s.AgentCredential.Now != nil {
-		return s.AgentCredential.Now().UTC()
+func (b *Broker) now() time.Time {
+	if b.Now != nil {
+		return b.Now().UTC()
 	}
 	return time.Now().UTC()
 }

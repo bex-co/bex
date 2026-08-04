@@ -61,19 +61,19 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 	return m
 }
 
-func (m *Metrics) authentication(result string) {
+func (m *Metrics) Authentication(result string) {
 	if m != nil {
 		m.authentications.WithLabelValues(result).Inc()
 	}
 }
 
-func (m *Metrics) sessionStarted() {
+func (m *Metrics) SessionStarted() {
 	if m != nil {
 		m.activeSessions.Inc()
 	}
 }
 
-func (m *Metrics) sessionEnded(result string, elapsed time.Duration) {
+func (m *Metrics) SessionEnded(result string, elapsed time.Duration) {
 	if m != nil {
 		m.activeSessions.Dec()
 		m.sessions.WithLabelValues(result).Inc()
@@ -81,7 +81,7 @@ func (m *Metrics) sessionEnded(result string, elapsed time.Duration) {
 	}
 }
 
-func (m *Metrics) limitRejected(scope string) {
+func (m *Metrics) LimitRejected(scope string) {
 	if m != nil {
 		m.limitRejections.WithLabelValues(scope).Inc()
 	}

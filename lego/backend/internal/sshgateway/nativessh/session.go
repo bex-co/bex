@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sshgateway
+package nativessh
 
 import (
 	"context"
@@ -27,11 +27,8 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 
 	"github.com/bex-co/bex/lego/backend/internal/apps"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 )
-
-type Executor interface {
-	Execute(context.Context, apps.SSHInstanceTarget, []string, bool, remotecommand.TerminalSizeQueue, io.Reader, io.Writer, io.Writer) (int, error)
-}
 
 type ptyRequest struct {
 	Term         string
@@ -53,7 +50,7 @@ type execRequest struct {
 	Command string
 }
 
-func serveSession(ctx context.Context, channel ssh.Channel, requests <-chan *ssh.Request, executor Executor, target apps.SSHInstanceTarget) error {
+func serveSession(ctx context.Context, channel ssh.Channel, requests <-chan *ssh.Request, executor sshgateway.Executor, target apps.SSHInstanceTarget) error {
 	defer channel.Close()
 	var tty bool
 	var initial *remotecommand.TerminalSize
@@ -72,7 +69,7 @@ func serveSession(ctx context.Context, channel ssh.Channel, requests <-chan *ssh
 					continue
 				}
 				var payload ptyRequest
-				if err := ssh.Unmarshal(request.Payload, &payload); err != nil || !validTerminalSize(payload.Columns, payload.Rows) {
+				if err := ssh.Unmarshal(request.Payload, &payload); err != nil || !sshgateway.ValidTerminalSize(payload.Columns, payload.Rows) {
 					_ = request.Reply(false, nil)
 					continue
 				}
@@ -107,10 +104,10 @@ func serveSession(ctx context.Context, channel ssh.Channel, requests <-chan *ssh
 	}
 }
 
-func runExec(ctx context.Context, channel ssh.Channel, requests <-chan *ssh.Request, executor Executor, target apps.SSHInstanceTarget, command []string, tty bool, initial *remotecommand.TerminalSize) error {
+func runExec(ctx context.Context, channel ssh.Channel, requests <-chan *ssh.Request, executor sshgateway.Executor, target apps.SSHInstanceTarget, command []string, tty bool, initial *remotecommand.TerminalSize) error {
 	execCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	sizes := newSizeQueue(execCtx, initial)
+	sizes := sshgateway.NewSizeQueue(execCtx, initial)
 	go func() {
 		for request := range requests {
 			if request.Type != "window-change" || !tty {
@@ -118,11 +115,11 @@ func runExec(ctx context.Context, channel ssh.Channel, requests <-chan *ssh.Requ
 				continue
 			}
 			var payload windowChangeRequest
-			if err := ssh.Unmarshal(request.Payload, &payload); err != nil || !validTerminalSize(payload.Columns, payload.Rows) {
+			if err := ssh.Unmarshal(request.Payload, &payload); err != nil || !sshgateway.ValidTerminalSize(payload.Columns, payload.Rows) {
 				_ = request.Reply(false, nil)
 				continue
 			}
-			sizes.push(remotecommand.TerminalSize{Width: uint16(payload.Columns), Height: uint16(payload.Rows)})
+			sizes.Push(remotecommand.TerminalSize{Width: uint16(payload.Columns), Height: uint16(payload.Rows)})
 			_ = request.Reply(true, nil)
 		}
 		cancel()
@@ -143,7 +140,7 @@ func runExec(ctx context.Context, channel ssh.Channel, requests <-chan *ssh.Requ
 			code = 126
 		}
 	}
-	code = clampExit(code)
+	code = sshgateway.ClampExit(code)
 	_, sendErr := channel.SendRequest("exit-status", false, ssh.Marshal(struct{ Status uint32 }{Status: uint32(code)}))
 	if sendErr != nil {
 		return fmt.Errorf("send exit status: %w", sendErr)
@@ -179,39 +176,4 @@ func isSCPProtocolCommand(command string) bool {
 		}
 	}
 	return false
-}
-
-func validTerminalSize(columns, rows uint32) bool {
-	return columns > 0 && columns <= uint32(^uint16(0)) && rows > 0 && rows <= uint32(^uint16(0))
-}
-
-type sizeQueue struct {
-	ctx context.Context
-	ch  chan remotecommand.TerminalSize
-}
-
-func newSizeQueue(ctx context.Context, initial *remotecommand.TerminalSize) *sizeQueue {
-	q := &sizeQueue{ctx: ctx, ch: make(chan remotecommand.TerminalSize, 8)}
-	if initial != nil {
-		q.push(*initial)
-	}
-	return q
-}
-
-func (q *sizeQueue) push(size remotecommand.TerminalSize) {
-	select {
-	case q.ch <- size:
-	default:
-		// Keep resize handling bounded under a client flood. Once the executor
-		// drains the queue, later resize events can be accepted again.
-	}
-}
-
-func (q *sizeQueue) Next() *remotecommand.TerminalSize {
-	select {
-	case <-q.ctx.Done():
-		return nil
-	case size := <-q.ch:
-		return &size
-	}
 }

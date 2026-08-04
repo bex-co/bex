@@ -14,7 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sshgateway
+// Package dbrole single-sources the SSH gateway's least-privilege Postgres
+// role surface: the grant DDL both the production script
+// (scripts/ssh-gateway-db-role.sh) and the CI least-privilege proof
+// (dbrole_integration_test.go) consume.
+package dbrole
 
 import (
 	_ "embed"

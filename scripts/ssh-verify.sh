@@ -193,7 +193,7 @@ if ! pty_probe_output="$(
       BEX_TEST_SSH_PUBLIC_USER="$instance_id" \
       BEX_TEST_SSH_PRIVATE_KEY_FILE="$private_key" \
       BEX_TEST_SSH_HOST_FINGERPRINT="$observed_host_fingerprint" \
-      go test ./internal/sshgateway -run '^TestPublicGatewayPTYResize$' -count=1 2>&1
+      go test ./internal/sshgateway/nativessh -run '^TestPublicGatewayPTYResize$' -count=1 2>&1
 )"; then
   printf '%s\n' "$pty_probe_output" >&2
   fail "public PTY/resize/runtime probe"

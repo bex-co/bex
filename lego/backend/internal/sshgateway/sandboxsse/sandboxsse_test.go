@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sshgateway
+package sandboxsse
 
 import (
 	"context"
@@ -30,6 +30,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 )
 
 // echoExecutor writes to stdout/stderr and returns a fixed exit code, recording
@@ -53,10 +54,10 @@ func (e *echoExecutor) Execute(_ context.Context, target apps.SSHInstanceTarget,
 	return e.code, nil
 }
 
-func newSandboxExecGateway(exec Executor, secret []byte) *Server {
+func newSandboxExecGateway(exec sshgateway.Executor, secret []byte) *Server {
 	return &Server{
-		Executor: exec, Metrics: NewMetrics(prometheus.NewRegistry()),
-		SandboxExecSecret: secret, MaxSessions: 100, MaxPerIdentity: 5,
+		Executor: exec, Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
+		Secret: secret, Limits: sshgateway.NewSessionLimiter(100, 5),
 		SessionTimeout: time.Minute,
 	}
 }
@@ -64,7 +65,7 @@ func newSandboxExecGateway(exec Executor, secret []byte) *Server {
 func TestSandboxExecStreamsSSE(t *testing.T) {
 	secret := []byte("exec-secret")
 	exec := &echoExecutor{stdout: "hello\n", code: 0}
-	srv := httptest.NewServer(newSandboxExecGateway(exec, secret).SandboxExecHandler())
+	srv := httptest.NewServer(newSandboxExecGateway(exec, secret).Handler())
 	defer srv.Close()
 
 	tok, _ := sandboxexec.Mint(secret, sandboxexec.Claims{
@@ -99,7 +100,7 @@ func TestSandboxExecStreamsSSE(t *testing.T) {
 func TestSandboxExecRejectsBadTicketAndReplay(t *testing.T) {
 	secret := []byte("exec-secret")
 	gw := newSandboxExecGateway(&echoExecutor{stdout: "x", code: 0}, secret)
-	srv := httptest.NewServer(gw.SandboxExecHandler())
+	srv := httptest.NewServer(gw.Handler())
 	defer srv.Close()
 
 	do := func(ticket string) int {
@@ -136,7 +137,7 @@ func TestSandboxExecRejectsBadTicketAndReplay(t *testing.T) {
 }
 
 func TestSandboxExecDisabledWhenNoSecret(t *testing.T) {
-	srv := httptest.NewServer(newSandboxExecGateway(&echoExecutor{}, nil).SandboxExecHandler())
+	srv := httptest.NewServer(newSandboxExecGateway(&echoExecutor{}, nil).Handler())
 	defer srv.Close()
 	resp, _ := http.Post(srv.URL, "", nil)
 	if resp.StatusCode != http.StatusServiceUnavailable {

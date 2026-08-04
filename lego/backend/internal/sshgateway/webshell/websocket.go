@@ -14,7 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sshgateway
+// Package webshell is the Browser Web Shell transport of the isolated SSH
+// gateway (docs/ADR035-ssh.md § Browser Web Shell). A browser opens a
+// WebSocket to the gateway carrying the exec ticket bex-api minted after
+// AuthorizeApp(can_operate). The gateway verifies the ticket, re-runs
+// ResolveSSHSession (so it re-authorizes and re-selects a Ready pod itself —
+// bex-api's decision is not trusted transitively), and bridges the browser to
+// one pods/exec stream. pods/exec stays confined to the gateway process;
+// bex-api never gains it. The stream is never logged or persisted, and the
+// audit row carries no terminal content — the same boundary as native SSH.
+package webshell
 
 import (
 	"context"
@@ -34,17 +43,9 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/shellticket"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
-
-// The Browser Web Shell transport (docs/ADR035-ssh.md § Browser Web Shell). A
-// browser opens a WebSocket to the isolated gateway carrying the exec ticket
-// bex-api minted after AuthorizeApp(can_operate). The gateway verifies the
-// ticket, re-runs ResolveSSHSession (so it re-authorizes and re-selects a Ready
-// pod itself — bex-api's decision is not trusted transitively), and bridges the
-// browser to one pods/exec stream. pods/exec stays confined to this process;
-// bex-api never gains it. The stream is never logged or persisted, and the
-// audit row carries no terminal content — the same boundary as native SSH.
 
 const (
 	wsWriteWait  = 10 * time.Second
@@ -62,6 +63,49 @@ const (
 	// ticket's base64url alphabet is entirely HTTP-token-safe.
 	wsTicketPrefix = "bex.ticket."
 )
+
+// Store is the transport's audit authority: content-free session start/end
+// rows, shared with native SSH. (The nonce claim reaches the database through
+// the injected sshgateway.NonceGuard instead.)
+type Store interface {
+	StartSSHSession(context.Context, store.SSHSessionAudit) error
+	EndSSHSession(context.Context, string, string, time.Time) error
+}
+
+// Server is the Browser Web Shell handler. Share Limits and Nonces (and
+// Metrics) with the other gateway transports so session caps and exec-ticket
+// single-use hold process-wide, not per feature.
+type Server struct {
+	// TicketSecret must equal bex-api's BEX_SHELL_TICKET_SECRET so the gateway
+	// can verify the exec tickets bex-api mints. Empty => the transport is
+	// disabled and every request is refused with 503.
+	TicketSecret []byte
+
+	Store    Store
+	Apps     sshgateway.TargetResolver
+	Executor sshgateway.Executor
+	Metrics  *sshgateway.Metrics
+	Limits   *sshgateway.SessionLimiter
+	Nonces   *sshgateway.NonceGuard
+
+	HandshakeTimeout time.Duration
+	SessionTimeout   time.Duration
+}
+
+func (s *Server) defaults() {
+	if s.HandshakeTimeout <= 0 {
+		s.HandshakeTimeout = 10 * time.Second
+	}
+	if s.SessionTimeout <= 0 {
+		s.SessionTimeout = 4 * time.Hour
+	}
+	if s.Limits == nil {
+		s.Limits = sshgateway.NewSessionLimiter(0, 0)
+	}
+	if s.Nonces == nil {
+		s.Nonces = &sshgateway.NonceGuard{}
+	}
+}
 
 // wsUpgrader upgrades the shell connection. Origin is not checked: the exec
 // ticket (an unforgeable, short-lived HMAC token that only an authenticated
@@ -102,19 +146,19 @@ type serverControl struct {
 	Message string `json:"message,omitempty"` // for type=error
 }
 
-// WebSocketEnabled reports whether the Browser Web Shell transport is configured.
-func (s *Server) WebSocketEnabled() bool { return len(s.TicketSecret) > 0 }
+// Enabled reports whether the Browser Web Shell transport is configured.
+func (s *Server) Enabled() bool { return len(s.TicketSecret) > 0 }
 
-// WebSocketHandler returns the HTTP handler for the Browser Web Shell. Mount it
-// on the gateway's browser-facing listener (BEX_SHELL_WS_ADDR). It refuses every
+// Handler returns the HTTP handler for the Browser Web Shell. Mount it on the
+// gateway's browser-facing listener (BEX_SHELL_WS_ADDR). It refuses every
 // request when the transport is disabled.
-func (s *Server) WebSocketHandler() http.Handler {
+func (s *Server) Handler() http.Handler {
 	s.defaults()
 	return http.HandlerFunc(s.serveWebSocket)
 }
 
 func (s *Server) serveWebSocket(w http.ResponseWriter, r *http.Request) {
-	if !s.WebSocketEnabled() {
+	if !s.Enabled() {
 		http.Error(w, "web shell not configured", http.StatusServiceUnavailable)
 		return
 	}
@@ -125,18 +169,18 @@ func (s *Server) serveWebSocket(w http.ResponseWriter, r *http.Request) {
 	// readable control frame rather than an unreadable failed handshake.
 	token := wsTicket(r)
 	if token == "" {
-		s.Metrics.authentication("rejected_key")
+		s.Metrics.Authentication("rejected_key")
 		http.Error(w, "missing ticket", http.StatusUnauthorized)
 		return
 	}
 	claims, err := shellticket.Verify(s.TicketSecret, token, time.Now())
 	if err != nil {
-		s.Metrics.authentication("rejected_key")
+		s.Metrics.Authentication("rejected_key")
 		http.Error(w, "invalid ticket", http.StatusUnauthorized)
 		return
 	}
-	if !s.consumeTicket(r.Context(), claims, time.Now()) {
-		s.Metrics.authentication("rejected_key")
+	if !s.Nonces.Consume(r.Context(), claims.Nonce, time.Unix(claims.ExpiresAt, 0), time.Now()) {
+		s.Metrics.Authentication("rejected_key")
 		http.Error(w, "ticket already used", http.StatusUnauthorized)
 		return
 	}
@@ -159,25 +203,25 @@ func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims she
 	cancelResolve()
 	if err != nil {
 		log.Printf("web shell target resolution failed: %v", err)
-		s.Metrics.authentication("rejected_target")
+		s.Metrics.Authentication("rejected_target")
 		ws.fail("this service has no instance available for a shell right now")
 		return
 	}
 
-	acquired, limitScope := s.acquire(claims.Subject)
+	acquired, limitScope := s.Limits.Acquire(claims.Subject)
 	if !acquired {
-		s.Metrics.limitRejected(limitScope)
+		s.Metrics.LimitRejected(limitScope)
 		ws.fail("session limit reached; close another shell and try again")
 		return
 	}
-	defer s.release(claims.Subject)
-	s.Metrics.authentication("accepted")
+	defer s.Limits.Release(claims.Subject)
+	s.Metrics.Authentication("accepted")
 
 	sessionID := ids.New(ids.SSHSession)
 	started := time.Now().UTC()
-	s.Metrics.sessionStarted()
+	s.Metrics.SessionStarted()
 	result := "closed"
-	defer func() { s.Metrics.sessionEnded(result, time.Since(started)) }()
+	defer func() { s.Metrics.SessionEnded(result, time.Since(started)) }()
 	workspaceID := target.OwnerID
 	if workspaceID == "" {
 		workspaceID = core.DefaultTenant
@@ -215,9 +259,9 @@ func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims she
 // WebSocket. It returns true when the shell ran to completion (any exit code),
 // false when it could not start or the context ended. The terminal always
 // receives an exit or error control frame.
-func bridgeShell(ctx context.Context, cancel context.CancelFunc, ws *wsConn, executor Executor, target apps.SSHInstanceTarget) bool {
+func bridgeShell(ctx context.Context, cancel context.CancelFunc, ws *wsConn, executor sshgateway.Executor, target apps.SSHInstanceTarget) bool {
 	pr, pw := io.Pipe()
-	sizes := newSizeQueue(ctx, &remotecommand.TerminalSize{Width: 80, Height: 24})
+	sizes := sshgateway.NewSizeQueue(ctx, &remotecommand.TerminalSize{Width: 80, Height: 24})
 
 	// Reader goroutine: browser → stdin / resize. Cancelling ends the exec stream.
 	go func() {
@@ -241,8 +285,8 @@ func bridgeShell(ctx context.Context, cancel context.CancelFunc, ws *wsConn, exe
 				}
 			case websocket.TextMessage:
 				var ctrl clientControl
-				if json.Unmarshal(data, &ctrl) == nil && ctrl.Type == "resize" && validTerminalSize(uint32(ctrl.Cols), uint32(ctrl.Rows)) {
-					sizes.push(remotecommand.TerminalSize{Width: ctrl.Cols, Height: ctrl.Rows})
+				if json.Unmarshal(data, &ctrl) == nil && ctrl.Type == "resize" && sshgateway.ValidTerminalSize(uint32(ctrl.Cols), uint32(ctrl.Rows)) {
+					sizes.Push(remotecommand.TerminalSize{Width: ctrl.Cols, Height: ctrl.Rows})
 				}
 			}
 		}
@@ -279,55 +323,9 @@ func bridgeShell(ctx context.Context, cancel context.CancelFunc, ws *wsConn, exe
 		ws.fail("unable to start a shell in this image")
 		return false
 	}
-	_ = ws.control(serverControl{Type: "exit", Code: clampExit(code)})
+	_ = ws.control(serverControl{Type: "exit", Code: sshgateway.ClampExit(code)})
 	ws.close(websocket.CloseNormalClosure, "")
 	return true
-}
-
-// clampExit bounds a Kubernetes exit code to a byte, matching runExec.
-func clampExit(code int) int {
-	if code < 0 {
-		return 255
-	}
-	if code > 255 {
-		return 255
-	}
-	return code
-}
-
-// consumeTicket enforces single-use of an exec ticket ACROSS gateway replicas
-// (w1/042 L7): the per-process map is the cheap first line (a same-replica
-// replay never reaches the database, and expired nonces are pruned in
-// passing), then Store.ClaimShellNonce is the authoritative atomic claim —
-// INSERT … ON CONFLICT, so of N replicas presented the same ticket exactly
-// one wins. A store error refuses the ticket (fail closed): the session-audit
-// write moments later requires the same database, so a DB outage already
-// means no web shells — this adds no new availability dependency.
-func (s *Server) consumeTicket(ctx context.Context, claims shellticket.Claims, now time.Time) bool {
-	s.usedMu.Lock()
-	if s.usedNonces == nil {
-		s.usedNonces = map[string]time.Time{}
-	}
-	for nonce, exp := range s.usedNonces {
-		if now.After(exp) {
-			delete(s.usedNonces, nonce)
-		}
-	}
-	if _, seen := s.usedNonces[claims.Nonce]; seen {
-		s.usedMu.Unlock()
-		return false
-	}
-	s.usedNonces[claims.Nonce] = time.Unix(claims.ExpiresAt, 0)
-	s.usedMu.Unlock()
-
-	claimCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-	claimed, err := s.Store.ClaimShellNonce(claimCtx, claims.Nonce, time.Unix(claims.ExpiresAt, 0))
-	if err != nil {
-		log.Printf("web shell nonce claim failed: %v", err)
-		return false
-	}
-	return claimed
 }
 
 // wsConn serializes all writes to one gorilla connection (stdout frames, control

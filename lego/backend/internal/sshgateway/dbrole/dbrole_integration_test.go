@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sshgateway
+package dbrole
 
 import (
 	"context"
@@ -30,6 +30,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway/nativessh"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -186,13 +188,20 @@ func TestGatewayScopedRoleAllowsOwnSurfaceDeniesTheRest(t *testing.T) {
 		}
 	}
 
-	// --- Completeness: every Store interface method is exercised above -------
-	storeType := reflect.TypeOf((*Store)(nil)).Elem()
-	for i := 0; i < storeType.NumMethod(); i++ {
-		name := storeType.Method(i).Name
-		if !exercised[name] {
-			t.Errorf("Store method %q is not exercised under the scoped role — add it (and any grant it needs to dbrole.sql), "+
-				"so a new gateway DB dependency can't silently escape the least-privilege proof", name)
+	// --- Completeness: the gateway's whole DB surface is exercised above -----
+	// nativessh.Store (key lookup + session audit) and sshgateway.NonceStore
+	// (the ticketed transports' single-use claim) together are every database
+	// dependency the gateway process has.
+	for _, surface := range []reflect.Type{
+		reflect.TypeOf((*nativessh.Store)(nil)).Elem(),
+		reflect.TypeOf((*sshgateway.NonceStore)(nil)).Elem(),
+	} {
+		for i := 0; i < surface.NumMethod(); i++ {
+			name := surface.Method(i).Name
+			if !exercised[name] {
+				t.Errorf("%s method %q is not exercised under the scoped role — add it (and any grant it needs to dbrole.sql), "+
+					"so a new gateway DB dependency can't silently escape the least-privilege proof", surface.Name(), name)
+			}
 		}
 	}
 }
