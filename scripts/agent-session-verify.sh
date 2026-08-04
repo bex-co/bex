@@ -167,7 +167,10 @@ ok "steering produced follow-up commit ${new_head} (turns=$(jq -r '.turns' <<<"$
 # 3. Failure path A: a non-bex-agent/* branch is refused at create (mint gate).
 # ---------------------------------------------------------------------------
 bad="$(create_session "main" "should be rejected")"
-jq -e '.error and (.error|test("AGENT_SESSION_INPUT_INVALID"))' <<<"$bad" >/dev/null \
+# The refusal's machine code is in `.code` (the Render error dialect puts the
+# human sentence in `.error`); match the code, falling back to the branch-rule
+# message so either shape passes.
+jq -e '(.code == "AGENT_SESSION_INPUT_INVALID") or ((.error // "")|test("bex-agent/"))' <<<"$bad" >/dev/null \
   || fail "create on a protected branch was not refused: $bad"
 ok "non-bex-agent/* branch refused at create"
 
@@ -222,13 +225,19 @@ stream_get() {
 
 echo "-- 5. conversation API (attach / replay / turn / reattach) --"
 
+# stream_url_for SESSION_ID -> the phase-1 SSE stream endpoint. The stream is
+# published under the PRIMARY API origin (edge-routed to the isolated gateway,
+# t006); the mint's `url` field is the phase-2 raw-ACP WebSocket origin
+# (BEX_AGENT_SESSION_GATEWAY_URL, e.g. wss://ssh.bex.co/agent-sessions) and is
+# NOT the SSE base — validate it is present, but stream against the API origin.
+stream_url_for() { printf '%s/v1/agent-sessions/%s/stream' "$api_url" "$1"; }
+
 mint="$(mint_attach "$sid")"
 ticket="$(jq -r '.ticket // empty' <<<"$mint")"
-stream_base="$(jq -r '.url // empty' <<<"$mint")"
 [ -n "$ticket" ] || fail "attach-ticket returned no ticket: $mint"
-[ -n "$stream_base" ] || fail "attach-ticket returned no gateway url (BEX_AGENT_SESSION_GATEWAY_URL unset?): $mint"
-jq -e '.expiresAt' <<<"$mint" >/dev/null || fail "attach-ticket returned no expiresAt: $mint"
-stream_url="${stream_base%/}/${sid}/stream"
+jq -e '.url and .expiresAt' <<<"$mint" >/dev/null \
+  || fail "attach-ticket missing url/expiresAt (BEX_AGENT_SESSION_GATEWAY_URL unset?): $mint"
+stream_url="$(stream_url_for "$sid")"
 ok "attach-ticket minted for ${sid} (stream ${stream_url})"
 
 # 5a. Ticketless attach is rejected (the ticket is the sole credential).
@@ -236,40 +245,41 @@ noauth_code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "$stream_ur
 [ "$noauth_code" = 401 ] || [ "$noauth_code" = 403 ] || fail "ticketless stream GET returned ${noauth_code}, want 401/403"
 ok "ticketless stream GET rejected (${noauth_code})"
 
-# 5b. Attach + replay on the (terminal) completed session: the stream must carry
-# the v1 marker and terminate with [DONE] without hanging.
+# 5b. Attach + replay on the (terminal) completed session from section 1: the
+# stream must carry the v1 marker and terminate with [DONE] without hanging.
 resp5="$(stream_get "$ticket" "$stream_url" 60)"
 grep -qi '^x-vercel-ai-ui-message-stream: v1' <<<"$resp5" \
   || fail "stream missing the x-vercel-ai-ui-message-stream: v1 marker:\n$(head -20 <<<"$resp5")"
 grep -q 'data: \[DONE\]' <<<"$resp5" || fail "terminal-session stream did not terminate with [DONE]"
 ok "attach+replay: v1 marker present, stream terminated with [DONE]"
 
-# 5c. Live turn + reattach: resume the session, mint a fresh ticket, POST a turn
-# to the stream, and confirm its parts stream back; then a fresh attach must
-# replay the teed parts (proving the durable tee + reattach, no duplication).
-resumed="$(api POST "/v1/agent-sessions/${sid}/resume" "")"
-if [ "$(jq -r '.phase // "?"' <<<"$resumed")" = running ]; then
-  rticket="$(jq -r '.ticket // empty' <<<"$(mint_attach "$sid")")"
-  [ -n "$rticket" ] || fail "attach-ticket after resume returned no ticket"
-  turn_body="$(jq -n --arg p "Note the live turn in VERIFY-${stamp}.md." '{prompt:$p}')"
-  turn_out="$(curl -sS -N --max-time "$timeout_s" \
-      -H "${attach_hdr}: ${rticket}" -H "Content-Type: application/json" \
-      -d "$turn_body" "$stream_url" 2>/dev/null || true)"
-  grep -q 'data: \[DONE\]' <<<"$turn_out" || fail "live turn stream did not terminate with [DONE]"
-  grep -q '^data: {' <<<"$turn_out" || fail "live turn produced no UI-message parts"
-  ok "live turn streamed parts and terminated with [DONE]"
+# 5c. Durable tee + reattach: create a fresh session and attach to its LIVE turn
+# so the gateway tees the UI-message parts to the durable transcript; then a
+# fresh attach must replay the teed parts (store-not-memory sourcing, no
+# duplication). This is the phase-1 tee path — the transcript is populated by an
+# attach during the turn, not by resume.
+live_branch="bex-agent/verify-live-${stamp}"
+live_sid="$(jq -r '.id // empty' <<<"$(create_session "$live_branch" "Add VERIFY-live-${stamp}.md with one line and commit.")")"
+[ -n "$live_sid" ] || fail "live-attach session create returned no id"
+created_sessions+=("$live_sid")
+live_stream="$(stream_url_for "$live_sid")"
+live_ticket="$(jq -r '.ticket // empty' <<<"$(mint_attach "$live_sid")")"
+[ -n "$live_ticket" ] || fail "live-attach ticket mint returned no ticket"
+# Attach during the live turn: the stream carries real parts and terminates with
+# [DONE] when the turn ends (bounded by the turn timeout).
+live_out="$(stream_get "$live_ticket" "$live_stream" "$timeout_s")"
+grep -qi '^x-vercel-ai-ui-message-stream: v1' <<<"$live_out" || fail "live attach missing v1 marker"
+grep -q '^data: {' <<<"$live_out" || fail "live attach produced no UI-message parts"
+grep -q 'data: \[DONE\]' <<<"$live_out" || fail "live attach did not terminate with [DONE]"
+ok "live attach streamed teed parts and terminated with [DONE]"
 
-  # Reattach: the teed turn must be replayable from the durable transcript.
-  rt2="$(jq -r '.ticket // empty' <<<"$(mint_attach "$sid")")"
-  replay="$(stream_get "$rt2" "$stream_url" 60)"
-  grep -q '^data: {' <<<"$replay" || fail "reattach replayed no teed parts (transcript empty?)"
-  grep -q 'data: \[DONE\]' <<<"$replay" || fail "reattach replay did not terminate with [DONE]"
-  ok "reattach replayed the teed transcript then [DONE]"
-else
-  # A deployment without resume (idle sandbox already gone) cannot exercise the
-  # live-turn leg; the attach+replay proof above still stands. Do not silently
-  # pass the turn/reattach assertions — record the gap loudly.
-  echo "WARN: session not resumable (phase=$(jq -r '.phase // "?"' <<<"$resumed")); live-turn + reattach legs SKIPPED — rerun against a resumable session to cover them" >&2
-fi
+# Reattach: replay the teed parts from the durable transcript (session now
+# terminal, its sandbox torn down — the store is the only source).
+sleep 3
+rt2="$(jq -r '.ticket // empty' <<<"$(mint_attach "$live_sid")")"
+replay="$(stream_get "$rt2" "$live_stream" 60)"
+grep -q '^data: {' <<<"$replay" || fail "reattach replayed no teed parts (transcript empty?)"
+grep -q 'data: \[DONE\]' <<<"$replay" || fail "reattach replay did not terminate with [DONE]"
+ok "reattach replayed the teed transcript then [DONE]"
 
 echo "== ALL AGENT-SESSION CHECKS PASSED (egress-profile=${egress_profile}) =="
