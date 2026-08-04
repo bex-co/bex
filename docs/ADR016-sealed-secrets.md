@@ -11,6 +11,8 @@ graph LR
   secret --> consumer["consuming pod<br/>(operator / backup CronJob / …)"]
 ```
 
+> The public-key-in-git / private-key-out-of-band shape below is reused for the backup-encryption keypair in [ADR050-encrypted-platform-backups.md](ADR050-encrypted-platform-backups.md) §1 — there the private key never even lives in-cluster (unlike the sealed-secrets controller), since it must survive total in-cluster loss.
+
 ## Decision: Sealed Secrets, not SOPS
 
 Two standard ways to keep encrypted secrets in a GitOps repo:

@@ -94,6 +94,10 @@ As of this writing, `:22` (SSH, gated by `bex`) and `:6443`/`:443` (kube-API, ga
 - **No network second layer — by decision, not omission.** `:22`/`:6443` are reachable from `0.0.0.0/0`; protection is the credential layer only. The static source-IP firewall (w1/m7 t001) was **removed** ([.pm/DO_NOT_DO.md](../.pm/DO_NOT_DO.md), 2026-07-09): a static `allowed_ssh_cidrs` fits neither a dynamic-IP operator nor GitHub-hosted CI (dynamic egress), and `:6443` is reached _via the LB_ (`:443`) so a node-`:6443` lockdown would also have to spare the LB→node hop. Auth-only is the accepted baseline. _Follow-up (only if a second layer is wanted):_ Tailscale/WireGuard locking `:22`/`:6443` to a stable tailnet, with a tailnet-joined self-hosted CI runner — never a static CIDR.
 - **Three copies to rotate.** Any rotation must cover `.env`, GitHub Actions secrets, and the in-cluster derivations. There is no single rotation command. _Follow-up:_ a rotation checklist per credential.
 
+## Related decisions
+
+- [ADR050-encrypted-platform-backups.md](ADR050-encrypted-platform-backups.md) adds one more member to this custody model: a backup-encryption `age` keypair, whose private half joins `.env`/GitHub Actions secrets alongside `BAO_ROOT_TOKEN` and the OpenBao unseal shares, for the same reason (§Decision 3) — it must exist independent of any in-cluster store.
+
 ## Follow-ups
 
 - (If ever wanted) a network second layer via Tailscale/WireGuard, not the removed static-CIDR firewall — see [.pm/DO_NOT_DO.md](../.pm/DO_NOT_DO.md).

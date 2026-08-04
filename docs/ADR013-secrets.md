@@ -24,6 +24,8 @@ OpenBao (like Vault before it) supports several storage backends. Bex already op
 
 ### 3. Unseal strategy: Shamir secret sharing via `.env`, not auto-unseal
 
+> This custody shape — high-trust material out-of-band in `.env`/CI secrets, never in an in-cluster store — is reused for the backup-encryption private key in [ADR050-encrypted-platform-backups.md](ADR050-encrypted-platform-backups.md) §1.
+
 OpenBao encrypts everything at rest behind a master key split into Shamir shares; a freshly started (or restarted) node is **sealed** until a threshold of those shares is presented. The alternative — cloud KMS auto-unseal (AWS/GCP) — is rejected for the same reason bex's `infra/` targets Hetzner via Cluster API rather than a single hyperscaler: it would tie a self-hostable platform to a specific cloud's KMS.
 
 Instead: [scripts/bao-init.sh](../scripts/bao-init.sh) runs `bao operator init` once (5 shares / 3 threshold, the OpenBao default), capturing 3 unseal keys + the root token and writing them into `.env` (gitignored — same rule as `bex.kubeconfig`) — **never printed** to stdout or logs, mirroring `auth-secrets.sh`'s never-echo convention. Every subsequent run detects "already initialized," reads the same three keys back out of `.env`, and unseals idempotently — including after a pod restart (raft persists the encrypted data to the PVC, but the _decryption_ state is always sealed on process start; this is correct behavior, not a bug, and `scripts/bao-verify.sh` asserts it explicitly).

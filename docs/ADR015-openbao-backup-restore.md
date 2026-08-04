@@ -4,6 +4,8 @@
 
 Raft's `snapshot save` takes a point-in-time, internally-consistent copy of the **already-encrypted** store while OpenBao keeps serving — no seal, no downtime.
 
+> Because the snapshot is already encrypted, [ADR050-encrypted-platform-backups.md](ADR050-encrypted-platform-backups.md) applies only its credential-scoping half (§3) here, not its Tier A encryption step.
+
 ```mermaid
 graph LR
   subgraph cluster["app cluster (Hetzner)"]
