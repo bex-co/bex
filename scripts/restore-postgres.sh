@@ -159,14 +159,54 @@ mapfile -t credential_secrets < <(printf '%s' "$object_store_json" | jq -r '
    .spec.configuration.s3Credentials.secretAccessKey.name,
    .spec.configuration.s3Credentials.sessionToken.name] | .[]? // empty' | sort -u)
 [ "${#credential_secrets[@]}" -gt 0 ] || restore_die "ObjectStore has no referenced S3 credential Secrets"
+
+# ADR050 §Recovery flow (t009): after the write-only migration the source
+# ObjectStore's Secret can no longer GetObject, so cloning it verbatim would make
+# every restore fail closed. When a per-store reader credential is available
+# (BEX_BACKUP_READER_<STORE>_*, ADR050 §3), materialize each referenced Secret in
+# the recovery namespace from the READER credential — under the exact key names
+# the ObjectStore expects — instead of cloning. Unset ⇒ clone (byte-identical to
+# pre-ADR050, keeping dev/pre-migration and the hermetic test working).
+reader_store=""
+case "$OBJECT_STORE" in
+  bex-db) reader_store=bex-db ;;
+  bex-tenant-postgres) reader_store=tenant-postgres ;;
+  auth-dbs) reader_store=auth-dbs ;;
+esac
+reader_access=""
+reader_secret_key=""
+if [ -n "$reader_store" ]; then
+  reader_up="$(printf '%s' "$reader_store" | tr 'a-z-' 'A-Z_')"
+  reader_akv="BEX_BACKUP_READER_${reader_up}_ACCESS_KEY_ID"
+  reader_skv="BEX_BACKUP_READER_${reader_up}_SECRET_ACCESS_KEY"
+  reader_access="${!reader_akv:-}"
+  reader_secret_key="${!reader_skv:-}"
+fi
+
 for secret in "${credential_secrets[@]}"; do
-  kubectl -n "$SOURCE_NAMESPACE" get secret "$secret" -o json | jq --arg namespace "$TARGET_NAMESPACE" '
-    del(.metadata.uid, .metadata.resourceVersion, .metadata.creationTimestamp,
-        .metadata.generation, .metadata.managedFields, .metadata.ownerReferences)
-    | .metadata.namespace = $namespace
-    | .metadata.labels = ((.metadata.labels // {}) + {"bex.co/restore-target": "true"})
-    | .metadata.annotations = {}
-  ' | kubectl apply -f - >/dev/null
+  if [ -n "$reader_access" ] && [ -n "$reader_secret_key" ]; then
+    # Reader values travel through the environment into jq, never argv/stdout.
+    printf '%s' "$object_store_json" \
+      | ACCESS="$reader_access" SECRET="$reader_secret_key" jq \
+      --arg namespace "$TARGET_NAMESPACE" --arg secret "$secret" '
+      .spec.configuration.s3Credentials as $c
+      | [ (select($c.accessKeyId.name == $secret) | {($c.accessKeyId.key): env.ACCESS}),
+          (select($c.secretAccessKey.name == $secret) | {($c.secretAccessKey.key): env.SECRET}) ]
+      | add as $data
+      | {apiVersion:"v1", kind:"Secret", type:"Opaque",
+         metadata:{namespace:$namespace, name:$secret,
+                   labels:{"bex.co/restore-target":"true"}},
+         stringData:$data}' \
+      | kubectl apply -f - >/dev/null
+  else
+    kubectl -n "$SOURCE_NAMESPACE" get secret "$secret" -o json | jq --arg namespace "$TARGET_NAMESPACE" '
+      del(.metadata.uid, .metadata.resourceVersion, .metadata.creationTimestamp,
+          .metadata.generation, .metadata.managedFields, .metadata.ownerReferences)
+      | .metadata.namespace = $namespace
+      | .metadata.labels = ((.metadata.labels // {}) + {"bex.co/restore-target": "true"})
+      | .metadata.annotations = {}
+    ' | kubectl apply -f - >/dev/null
+  fi
 done
 
 printf '%s\n' "$recovery_json" | kubectl apply -f - >/dev/null

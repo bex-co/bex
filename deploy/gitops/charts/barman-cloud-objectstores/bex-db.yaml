@@ -21,6 +21,14 @@ spec:
         key: AWS_SECRET_ACCESS_KEY
     wal:
       compression: gzip
+      # SSE-S3 at rest (ADR050 Tier B): forces the x-amz-server-side-encryption
+      # header on every WAL/base-backup object. Weaker than Tier A's client-side
+      # age encryption (SSE decrypts transparently on any authenticated GET) —
+      # the write-only per-store credential (ADR050 §3) is what protects this
+      # archive against a leaked backup credential. Confirm Wasabi accepts AES256
+      # before relying on it; aws:kms needs a bucket/account default CMK.
+      encryption: AES256
     data:
       compression: gzip
+      encryption: AES256
   retentionPolicy: 7d

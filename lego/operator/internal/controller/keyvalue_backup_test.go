@@ -149,6 +149,77 @@ func TestKeyValueBackupCronJobSpec(t *testing.T) {
 	}
 }
 
+func TestKeyValueBackupEncryptStepDisabledByDefault(t *testing.T) {
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "red-plain-kv", Namespace: "default", UID: "plain-kv-uid"},
+		Spec:       appv1alpha1.KeyValueSpec{Plan: "starter", Version: "8"},
+	}
+	// testKeyValueBackupStore has no AgePublicKey ⇒ byte-identical pre-ADR050 shape.
+	r := &KeyValueReconciler{Backup: testKeyValueBackupStore}
+	pod := r.keyValueBackupCronJobSpec(kv, "red-plain-kv-auth").JobTemplate.Spec.Template.Spec
+	if len(pod.InitContainers) != 2 {
+		t.Fatalf("encryption off must keep snapshot+compress only, got %d init containers", len(pod.InitContainers))
+	}
+	for _, c := range pod.InitContainers {
+		if c.Name == "encrypt" {
+			t.Fatal("encrypt step present with no AgePublicKey configured")
+		}
+	}
+	upload := pod.Containers[0].Args[0]
+	if strings.Contains(upload, ".age") {
+		t.Fatalf("plain upload must not reference .age objects: %s", upload)
+	}
+	if !strings.Contains(upload, `s3 cp /backup/dump.rdb.gz "${prefix}${timestamp}.rdb.gz"`) {
+		t.Fatalf("plain upload lost its .rdb.gz object naming: %s", upload)
+	}
+}
+
+func TestKeyValueBackupEncryptStepWhenKeyConfigured(t *testing.T) {
+	const pubKey = "age1qqqexamplepublicrecipientkeyfortestonly000000000000000000"
+	store := testKeyValueBackupStore
+	store.AgePublicKey = pubKey
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "red-enc-kv", Namespace: "default", UID: "enc-kv-uid"},
+		Spec:       appv1alpha1.KeyValueSpec{Plan: "starter", Version: "8"},
+	}
+	r := &KeyValueReconciler{Backup: store}
+	pod := r.keyValueBackupCronJobSpec(kv, "red-enc-kv-auth").JobTemplate.Spec.Template.Spec
+
+	// The encrypt step slots between compress and upload (snapshot, compress, encrypt).
+	if len(pod.InitContainers) != 3 {
+		t.Fatalf("encryption on must add an encrypt step, got %d init containers", len(pod.InitContainers))
+	}
+	if pod.InitContainers[1].Name != "compress" || pod.InitContainers[2].Name != "encrypt" {
+		t.Fatalf("encrypt must follow compress, got order %s,%s,%s",
+			pod.InitContainers[0].Name, pod.InitContainers[1].Name, pod.InitContainers[2].Name)
+	}
+	encrypt := pod.InitContainers[2]
+	if !strings.Contains(encrypt.Args[0], `age -r "${AGE_PUBLIC_KEY}"`) ||
+		!strings.Contains(encrypt.Args[0], "/backup/dump.rdb.gz.age /backup/dump.rdb.gz") ||
+		!strings.Contains(encrypt.Args[0], "rm -f /backup/dump.rdb.gz") {
+		t.Fatalf("encrypt command is not a public-key age encrypt+cleanup: %q", encrypt.Args[0])
+	}
+	if len(encrypt.Env) != 1 || encrypt.Env[0].Name != "AGE_PUBLIC_KEY" || encrypt.Env[0].Value != pubKey {
+		t.Fatalf("encrypt must receive the recipient public key by value: %#v", encrypt.Env)
+	}
+	// The encrypt step keeps the platform hardening baseline.
+	sec := encrypt.SecurityContext
+	if sec == nil || sec.AllowPrivilegeEscalation == nil || *sec.AllowPrivilegeEscalation ||
+		sec.Capabilities == nil || len(sec.Capabilities.Drop) == 0 || sec.Capabilities.Drop[0] != "ALL" ||
+		sec.SeccompProfile == nil || sec.SeccompProfile.Type != corev1.SeccompProfileTypeRuntimeDefault {
+		t.Fatalf("encrypt container lost the hardening baseline: %#v", sec)
+	}
+
+	// The upload now ships the .age object and prunes across both suffixes.
+	upload := pod.Containers[0].Args[0]
+	if !strings.Contains(upload, `s3 cp /backup/dump.rdb.gz.age "${prefix}${timestamp}.rdb.gz.age"`) {
+		t.Fatalf("upload must ship the encrypted object: %s", upload)
+	}
+	if !strings.Contains(upload, `[.]rdb[.]gz([.]age)?$`) {
+		t.Fatalf("retention must match both plain and .age objects across the transition: %s", upload)
+	}
+}
+
 func TestKeyValueBackupPlanAndConfigurationGating(t *testing.T) {
 	free, _ := resolveKVPlan(appv1alpha1.KeyValueSpec{Plan: "free"})
 	paid, _ := resolveKVPlan(appv1alpha1.KeyValueSpec{Plan: "starter"})

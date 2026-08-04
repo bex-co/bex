@@ -22,6 +22,11 @@ spec:
         key: AWS_SECRET_ACCESS_KEY
     wal:
       compression: gzip
+      # SSE-S3 at rest (ADR050 Tier B). See bex-db.yaml for the rationale and the
+      # weaker-than-Tier-A caveat; the write-only per-store credential is the real
+      # confidentiality control here.
+      encryption: AES256
     data:
       compression: gzip
+      encryption: AES256
   retentionPolicy: 7d

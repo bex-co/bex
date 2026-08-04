@@ -1,0 +1,23 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "BackupWriterListPrefix",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": "arn:aws:s3:::__BUCKET__",
+      "Condition": { "StringLike": { "s3:prefix": ["__PREFIX__", "__PREFIX__/*"] } }
+    },
+    {
+      "Sid": "BackupWriterWriteObjects",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:AbortMultipartUpload",
+        "s3:ListMultipartUploadParts"
+      ],
+      "Resource": "arn:aws:s3:::__BUCKET__/__PREFIX__/*"
+    }
+  ]
+}

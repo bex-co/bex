@@ -107,6 +107,13 @@ type BackupStore struct {
 	// S3Secret is a Secret (Database's namespace) with AWS_ACCESS_KEY_ID and
 	// AWS_SECRET_ACCESS_KEY keys.
 	S3Secret string
+	// AgePublicKey, when non-empty, enables ADR050 Tier A client-side age
+	// encryption of the snapshot before upload. It is the recipient public key
+	// (safe to inline — the private half stays out-of-band in .env/CI); empty ⇒
+	// plain upload, byte-identical to pre-ADR050. Only the KeyValue backup path
+	// consumes it today; the Barman-backed Postgres archives use provider SSE
+	// (ADR050 Tier B) instead, so this field does not gate configured().
+	AgePublicKey string
 }
 
 // configured reports whether every field needed to project backups is present.

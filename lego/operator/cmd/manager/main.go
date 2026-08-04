@@ -381,6 +381,9 @@ func main() {
 			DestinationPath: kvBackupDestination,
 			EndpointURL:     kvBackupEndpoint,
 			S3Secret:        kvBackupSecret,
+			// ADR050 Tier A opt-in: recipient public key for client-side age
+			// encryption of KeyValue RDB snapshots. Empty ⇒ plain upload.
+			AgePublicKey: envOr("BEX_BACKUP_AGE_PUBLIC_KEY", ""),
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "keyvalue")

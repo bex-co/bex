@@ -1,6 +1,15 @@
 # w5 · m63 — Encrypted platform backups + write-scoped backup credentials (ADR050)
 
-**Worker:** worker5 **Goal:** implement `docs/ADR050-encrypted-platform-backups.md` — client-side `age` encryption for the etcd/OpenBao/KeyValue backup pipelines bex controls directly, provider-side SSE for the Barman Cloud plugin-backed Postgres stores bex doesn't, and write-only per-store S3 credentials replacing today's shared `TF_STATE_ACCESS_KEY`/`SECRET_KEY` reuse across all five backup destinations. **Status:** todo
+**Worker:** worker5 **Goal:** implement `docs/ADR050-encrypted-platform-backups.md` — client-side `age` encryption for the etcd/OpenBao/KeyValue backup pipelines bex controls directly, provider-side SSE for the Barman Cloud plugin-backed Postgres stores bex doesn't, and write-only per-store S3 credentials replacing today's shared `TF_STATE_ACCESS_KEY`/`SECRET_KEY` reuse across all five backup destinations. **Status:** code-complete; live enablement + drill pending
+
+## Implementation status (2026-08-04)
+
+All durable artifacts are implemented and locally verified (operator `go build`/`vet`/`gofmt` clean, touched controller tests + new KV encrypt tests pass, restore shellcheck clean, 15/15 hermetic restore tests pass, all edited manifests parse):
+
+- **Landed in code:** Tier A encrypt steps in `etcd-backup`/`openbao-backup` CronJobs + the operator-templated `kvbak` Job (opt-in, off by default); Tier B `encryption: AES256` on the three Barman `ObjectStore` CRs; `infra/wasabi/backup-{writer,reader}-policy.json` + `scripts/backup-s3-credentials.sh`; restore-script age-decrypt + reader-credential wiring (incl. the required `restore-postgres.sh` reader-Secret fix); `.env.example`/`gh-secrets.sh`/`BEX_BACKUP_AGE_PUBLIC_KEY` scaffolding; ADR031 + CLAUDE.md docs; ADR050 follow-ups filed as `036`/`037`/`038`.
+- **Pending an operator (cluster + Wasabi credentials — cannot be done from a dev box):** t001 real `age-keygen` into prod `.env`/CI + `bex-backup-age` ConfigMaps; t006/t007 live IAM `provision`/`verify` + writer-Secret migration + `revoke-legacy`; t010 the live encrypt→upload→fetch→decrypt→restore drill; t011's ADR050 `Proposed`→`Accepted` flip (gated on the drill).
+
+Everything is **opt-in / off by default**, so the shipped code is byte-identical to pre-ADR050 until an operator enables it — safe to merge ahead of the live enablement.
 
 ## Tasks (in order)
 
