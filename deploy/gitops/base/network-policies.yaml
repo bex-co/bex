@@ -125,6 +125,34 @@ spec:
           port: 8091
 
 ---
+# allow-ssh-gateway-to-cp-api (ADR047 D2, w3/m43): the isolated gateway's
+# git-credential broker HMAC-proxies a scoped GitHub-token mint to bex-api's
+# internal control-plane API (:8091, InternalMintPath). deny-tenant-ingress
+# default-denies bex-api ingress, so without this the gateway's mint call is
+# refused and every agent-session clone dies with a 502 broker error. Scoped
+# tightly: only the bex-ssh-gateway pod, only the CP port — it does NOT open the
+# public :8090.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ssh-gateway-to-cp-api
+  namespace: bex-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: bex-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: bex-ssh-gateway
+      ports:
+        - protocol: TCP
+          port: 8091
+
+---
 # bex-registry: zot OCI registry on :5000
 # Allowed: bex-system (operator registry administration), bex-build (scoped
 #   build/publish/pre-deploy registry access),
