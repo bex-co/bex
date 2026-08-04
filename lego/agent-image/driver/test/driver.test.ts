@@ -107,6 +107,30 @@ test("configuration keeps command and args fully data-driven", () => {
   );
 });
 
+test("model credential routes to the agent-native env var by shape", () => {
+  // An Anthropic OAuth token (`sk-ant-oat…`, from `claude setup-token`) must
+  // reach claude-code as CLAUDE_CODE_OAUTH_TOKEN — delivering it as the x-api-key
+  // ANTHROPIC_API_KEY is rejected upstream as "Invalid API key".
+  assert.equal(
+    loadConfig({ BEX_AGENT_MODEL_API_KEY: "sk-ant-oat01-abc" }).credentialEnvName,
+    "CLAUDE_CODE_OAUTH_TOKEN",
+  );
+  // A conventional API key keeps the x-api-key default.
+  assert.equal(
+    loadConfig({ BEX_AGENT_MODEL_API_KEY: "sk-ant-api03-abc" }).credentialEnvName,
+    "ANTHROPIC_API_KEY",
+  );
+  assert.equal(loadConfig({}).credentialEnvName, "ANTHROPIC_API_KEY");
+  // An explicit override always wins over shape detection.
+  assert.equal(
+    loadConfig({
+      BEX_AGENT_MODEL_API_KEY: "sk-ant-oat01-abc",
+      BEX_AGENT_MODEL_API_KEY_ENV: "GEMINI_API_KEY",
+    }).credentialEnvName,
+    "GEMINI_API_KEY",
+  );
+});
+
 test("one headless turn streams raw ACP data and commits in the worktree", async () => {
   const config = await tempConfig();
   execFileSync("git", ["init", "-q"], { cwd: config.cwd });
