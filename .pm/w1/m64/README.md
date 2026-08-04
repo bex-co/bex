@@ -13,9 +13,9 @@ Control-plane tasks (t001, t003) consume the shipped m39/m41 GraphQL surface and
 | id   | title                                                                                            | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------ | --- | ---------- |
 | t001 | Feature scaffold: control-plane GraphQL ops + typed hooks (phase-aware polling, attach-ticket)    | 45m | — — **DONE** |
-| t002 | Conversation column: vendor AI Elements + useChat over the same-origin stream (v6 pin, data-acp) | 60m | t001       |
+| t002 | Conversation column: vendor AI Elements + useChat over the same-origin stream (v6 pin, data-acp) | 60m | t001 — **DONE** |
 | t003 | /agents route: sessions list, sidebar nav, new-session composer with typed error mapping         | 60m | t001 — **DONE** |
-| t004 | /agents/$id detail: metadata header + PR/evidence cards + live conversation + steering            | 60m | t002, t003, w3/m43 |
+| t004 | /agents/$id detail: metadata header + PR/evidence cards + live conversation + steering            | 60m | t002, t003, w3/m43 — **DONE** (code; live-substrate browser walk pending prod auth) |
 | t005 | Render parity                                                                                    | 30m | t004       |
 | t006 | Simplify                                                                                         | 20m | t005       |
 | t007 | Test coverage                                                                                    | 60m | t005       |

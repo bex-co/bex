@@ -284,10 +284,20 @@ const STATIC = {
   autoDeploy: true,
   publishPath: "dist",
   routes: [
-    { __typename: "StaticRoute", type: "rewrite", source: "/*", destination: "/index.html" },
+    {
+      __typename: "StaticRoute",
+      type: "rewrite",
+      source: "/*",
+      destination: "/index.html",
+    },
   ],
   headers: [
-    { __typename: "StaticHeader", path: "/*", name: "X-Frame-Options", value: "DENY" },
+    {
+      __typename: "StaticHeader",
+      path: "/*",
+      name: "X-Frame-Options",
+      value: "DENY",
+    },
   ],
 };
 
@@ -2532,9 +2542,131 @@ function resolveGraphQL({ operationName, variables = {} }) {
       };
     case "SyncBlueprint":
       return { syncBlueprint: null };
+    case "AgentSessions":
+      return { agentSessions: agentSessionsFor(variables.ownerId) };
+    case "AgentSession": {
+      const one = agentSessionsFor().find((s) => s.id === variables.id);
+      return { agentSession: one ?? null };
+    }
     default:
       return {};
   }
+}
+
+// Mock agent sessions (ADR047 D9) so the /agents list renders populated in the
+// offline stub: one per lifecycle phase, mirroring the real m43 E2E shape
+// (completed → draft PR + evidence, a steered two-turn session, a running turn,
+// a failed turn with a reason, a canceled one). Stub-only; never a real backend.
+const agoISO = (mins) => new Date(Date.now() - mins * 60_000).toISOString();
+function agentSessionsFor(ownerId = WORKSPACE_DEFAULT) {
+  const cfg = (task, model = null) => ({
+    __typename: "AgentSessionConfig",
+    agent: "claude",
+    model,
+    modelEndpoint: null,
+    task,
+    template: null,
+  });
+  const ev = (files, commits) => ({
+    __typename: "AgentSessionEvidence",
+    commandLog: ["git status", "git add -A && git commit -m …", "git push"],
+    testOutput: [],
+    outputTail: "Done! Committed and pushed the change.",
+    changedFiles: files,
+    commits,
+    truncated: false,
+  });
+  const base = {
+    __typename: "AgentSession",
+    ownerId,
+    sandboxId: null,
+    status: "",
+    headSha: null,
+    prUrl: null,
+    prNumber: null,
+    evidence: null,
+    turns: 0,
+    deliveryMode: null,
+    failureReason: null,
+    canceledAt: null,
+  };
+  return [
+    {
+      ...base,
+      id: "ags-demo00000000000000006",
+      repo: "bex-co/bex-hello-go-live",
+      branch: "bex-agent/pr-add-healthcheck",
+      agentConfig: cfg("Add a /healthz endpoint and a unit test."),
+      phase: "completed",
+      status: "completed",
+      headSha: "56e215d4e64e30ead0c7dafd096b8fec46c26342",
+      prUrl: "https://github.com/bex-co/bex-hello-go-live/pull/6",
+      prNumber: 6,
+      evidence: ev(["healthz.go", "healthz_test.go"], 1),
+      turns: 1,
+      deliveryMode: "draft_pr",
+      createdAt: agoISO(2),
+      updatedAt: agoISO(1),
+    },
+    {
+      ...base,
+      id: "ags-demo00000000000000005",
+      repo: "bex-co/bex-hello-go-live",
+      branch: "bex-agent/verify-live-run",
+      agentConfig: cfg("Create VERIFY.md, then append a STEERED line."),
+      phase: "completed",
+      status: "completed",
+      headSha: "f327bff2b40951cac1d432e9f198592f5d000da0",
+      prUrl: "https://github.com/bex-co/bex-hello-go-live/pull/5",
+      prNumber: 5,
+      evidence: ev(["VERIFY.md"], 2),
+      turns: 2,
+      deliveryMode: "redispatch",
+      createdAt: agoISO(9),
+      updatedAt: agoISO(7),
+    },
+    {
+      ...base,
+      id: "ags-demo00000000000000004",
+      repo: "bex-co/bex-checkout-api",
+      branch: "bex-agent/refactor-cart",
+      agentConfig: cfg(
+        "Refactor the cart service to use the new pricing module.",
+      ),
+      phase: "running",
+      status: "running",
+      sandboxId: "sbx-live-0001",
+      turns: 1,
+      createdAt: agoISO(1),
+      updatedAt: agoISO(1),
+    },
+    {
+      ...base,
+      id: "ags-demo00000000000000003",
+      repo: "bex-co/bex-hello-go-live",
+      branch: "bex-agent/broken-adapter",
+      agentConfig: cfg("Wire up the metrics exporter."),
+      phase: "failed",
+      status: "failed",
+      failureReason: "agent turn failed: model endpoint unreachable",
+      turns: 1,
+      createdAt: agoISO(24),
+      updatedAt: agoISO(22),
+    },
+    {
+      ...base,
+      id: "ags-demo00000000000000002",
+      repo: "bex-co/bex-marketing-site",
+      branch: "bex-agent/copy-tweaks",
+      agentConfig: cfg("Tighten the landing-page hero copy."),
+      phase: "canceled",
+      status: "canceled",
+      turns: 0,
+      createdAt: agoISO(35),
+      updatedAt: agoISO(33),
+      canceledAt: agoISO(33),
+    },
+  ];
 }
 
 const server = createServer((req, res) => {

@@ -225,15 +225,179 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "无法开始会话",
     description: "Composer — error alert title when the create fails",
   },
-  // --- Detail placeholder (t004 replaces this route's body) ---
-  "agentSessions.detailPlaceholderTitle": {
-    message: "会话详情即将上线",
-    description:
-      "Placeholder heading on the /agents/{id} route until t004 builds the detail page",
+  // --- Detail page (t004) ---
+  "agentSessions.detailTitle": {
+    message: "会话",
+    description: "Agent-session detail page document title",
   },
-  "agentSessions.detailPlaceholderBody": {
-    message: "该会话的实时对话、证据和引导控制将在后续版本中提供。会话 {id}。",
-    description: "Placeholder body on the agent-session detail route",
+  "agentSessions.backToList": {
+    message: "所有会话",
+    description: "Detail page — back link to the /agents list",
+  },
+  "agentSessions.detailErrorTitle": {
+    message: "无法加载该会话",
+    description: "Detail page — heading when the session read fails",
+  },
+  "agentSessions.conversationTitle": {
+    message: "对话",
+    description: "Detail page — the live conversation column card title",
+  },
+  "agentSessions.failureTitle": {
+    message: "会话失败",
+    description: "Detail page — heading over a failed session's reason",
+  },
+  // Header meta + cancel
+  "agentSessions.metaDuration": {
+    message: "时长 {duration}",
+    description: "Detail header — elapsed session wall-clock",
+  },
+  "agentSessions.metaTurns": {
+    message: "{turns} 轮",
+    description: "Detail header — number of prompt turns taken",
+  },
+  "agentSessions.metaDelivery": {
+    message: "交付 {mode}",
+    description: "Detail header — how the last turn's sandbox was obtained",
+  },
+  "agentSessions.delivery.resume": {
+    message: "恢复",
+    description: "Delivery mode — the sandbox was resumed",
+  },
+  "agentSessions.delivery.redispatch": {
+    message: "重新调度",
+    description: "Delivery mode — a new sandbox was dispatched",
+  },
+  "agentSessions.cancel": {
+    message: "取消",
+    description: "Detail header — cancel-session button label",
+  },
+  "agentSessions.cancelDisabledCanceling": {
+    message: "取消已在进行中。",
+    description: "Detail header — tooltip on the disabled cancel button",
+  },
+  "agentSessions.canceling": {
+    message: "正在取消…",
+    description: "Detail header — confirm button label while the cancel runs",
+  },
+  "agentSessions.cancelSuccess": {
+    message: "正在取消会话…",
+    description: "Detail header — toast after the cancel is accepted",
+  },
+  "agentSessions.cancelConfirmTitle": {
+    message: "取消该会话？",
+    description: "Cancel confirm dialog title",
+  },
+  "agentSessions.cancelConfirmBody": {
+    message: "这将停止智能体。已推送到分支的提交和草稿 PR 都会保留。",
+    description: "Cancel confirm dialog body — states pushed work is preserved",
+  },
+  "agentSessions.cancelConfirmDismiss": {
+    message: "继续运行",
+    description: "Cancel confirm dialog — dismiss button",
+  },
+  "agentSessions.cancelConfirmProceed": {
+    message: "取消会话",
+    description: "Cancel confirm dialog — proceed button",
+  },
+  // PR card
+  "agentSessions.prCardTitle": {
+    message: "拉取请求",
+    description: "Detail page — draft-PR card title",
+  },
+  "agentSessions.prCardNone": {
+    message: "尚无拉取请求。智能体推送工作后会打开一个草稿 PR。",
+    description: "PR card — shown before the session has opened a PR",
+  },
+  "agentSessions.prCardHeadSha": {
+    message: "头部提交",
+    description: "PR card — label for the head SHA",
+  },
+  // Evidence panel
+  "agentSessions.evidenceTitle": {
+    message: "证据",
+    description: "Detail page — bounded evidence card title",
+  },
+  "agentSessions.evidenceEmpty": {
+    message: "尚未捕获证据。",
+    description: "Evidence panel — empty state",
+  },
+  "agentSessions.evidenceCommits": {
+    message: "{count} 次提交",
+    description: "Evidence panel — commit count",
+  },
+  "agentSessions.evidenceCommandLog": {
+    message: "命令日志",
+    description: "Evidence panel — command log section label",
+  },
+  "agentSessions.evidenceTestOutput": {
+    message: "测试输出",
+    description: "Evidence panel — test output section label",
+  },
+  "agentSessions.evidenceOutputTail": {
+    message: "输出末尾",
+    description: "Evidence panel — output tail section label",
+  },
+  "agentSessions.evidenceChangedFiles": {
+    message: "变更文件",
+    description: "Evidence panel — changed-files section label",
+  },
+  "agentSessions.evidenceTruncated": {
+    message: "部分捕获的输出已被截断。",
+    description: "Evidence panel — honest truncation note",
+  },
+  // Steering composer
+  "agentSessions.steerTitle": {
+    message: "引导该会话",
+    description: "Steering composer card title",
+  },
+  "agentSessions.steerErrorTitle": {
+    message: "发送失败",
+    description: "Steering composer — inline error alert title",
+  },
+  "agentSessions.steerPlaceholderIdle": {
+    message: "发送后续指令，在同一分支上开始新一轮。",
+    description: "Steering composer — textarea placeholder for an idle session",
+  },
+  "agentSessions.steerPlaceholderLive": {
+    message: "发送消息以引导正在运行的智能体。",
+    description: "Steering composer — textarea placeholder for a live session",
+  },
+  "agentSessions.steerHintIdle": {
+    message: "该会话处于空闲状态——发送将在同一分支上重新调度新一轮。",
+    description: "Steering composer — helper text for the redispatch route",
+  },
+  "agentSessions.steerHintLive": {
+    message: "你的消息将作为实时轮次发送到对话中。",
+    description: "Steering composer — helper text for the live chat route",
+  },
+  "agentSessions.steerDisabledCanceling": {
+    message: "该会话正在取消。已推送的工作会保留。",
+    description: "Steering composer — disabled reason while canceling",
+  },
+  "agentSessions.steerDisabledCanceled": {
+    message: "该会话已取消。",
+    description: "Steering composer — disabled reason once canceled",
+  },
+  "agentSessions.steerDisabledStream": {
+    message: "对话流不可用，实时引导已暂停。",
+    description:
+      "Steering composer — disabled reason when the m43 stream is down",
+  },
+  "agentSessions.steerDisabledInFlight": {
+    message: "有一轮正在进行。请等待其完成后再发送。",
+    description: "Steering composer — disabled reason while a turn streams",
+  },
+  "agentSessions.steerSubmit": {
+    message: "发送",
+    description: "Steering composer — submit button label",
+  },
+  "agentSessions.steerSending": {
+    message: "正在发送…",
+    description: "Steering composer — submit button label while sending",
+  },
+  "agentSessions.steerSuccess": {
+    message: "已发送——正在重新调度新一轮。",
+    description: "Steering composer — toast after a redispatch is accepted",
   },
   // --- Typed AGENT_SESSION_* error messages (keyed by errors.ts messageKey) ---
   "agentSessions.errors.AGENT_SESSION_INPUT_INVALID": {
@@ -283,6 +447,77 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.errors.AGENT_SESSION_EGRESS_PHASE_INVALID": {
     message: "该会话在当前阶段无法设置出站允许列表。",
     description: "Mapped message for AGENT_SESSION_EGRESS_PHASE_INVALID",
+  },
+
+  // --- Conversation column (t002) ---
+  "agentSessions.conversationLoading": {
+    message: "正在加载对话…",
+    description: "Placeholder while the client-only conversation column loads",
+  },
+  "agentSessions.conversationConnecting": {
+    message: "正在连接会话流…",
+    description: "Shown while the conversation stream replay is in flight",
+  },
+  "agentSessions.conversationEmpty": {
+    message: "暂无对话。",
+    description: "Shown when a session has produced no transcript parts",
+  },
+  "agentSessions.conversationEnded": {
+    message: "会话已结束。",
+    description: "Footer note under a terminal session's replayed transcript",
+  },
+  "agentSessions.conversationUnavailable": {
+    message: "对话流当前不可用。",
+    description:
+      "Degraded-state message when the m43 stream endpoint errors or is unconfigured",
+  },
+  "agentSessions.groupThought": {
+    message: "思考",
+    description: "Collapsible header for the agent's reasoning group",
+  },
+  "agentSessions.groupPlan": {
+    message: "计划",
+    description: "Collapsible header for the agent's plan/task checklist group",
+  },
+  "agentSessions.groupTerminal": {
+    message: "终端",
+    description: "Collapsible header for a terminal-output group",
+  },
+  "agentSessions.groupCommand": {
+    message: "命令",
+    description: "Collapsible header for a command/tool-call group",
+  },
+  "agentSessions.groupDiff": {
+    message: "差异",
+    description: "Label for a file-diff group when no path is given",
+  },
+  "agentSessions.terminalNoOutput": {
+    message: "（无输出）",
+    description: "Placeholder when a terminal group has no captured output",
+  },
+  "agentSessions.toolInput": {
+    message: "输入",
+    description: "Section label for a tool call's input",
+  },
+  "agentSessions.toolOutput": {
+    message: "输出",
+    description: "Section label for a tool call's output",
+  },
+  "agentSessions.toolError": {
+    message: "错误",
+    description: "Section label for a tool call's error text",
+  },
+  "agentSessions.toolStateRunning": {
+    message: "运行中",
+    description: "Badge label for a tool call awaiting output",
+  },
+  "agentSessions.toolStateDone": {
+    message: "完成",
+    description: "Badge label for a completed tool call",
+  },
+  "agentSessions.toolStateError": {
+    message: "失败",
+    description: "Badge label for a failed tool call",
   },
 };
 
