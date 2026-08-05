@@ -1,6 +1,15 @@
 # w5 · m63 — Encrypted platform backups + write-scoped backup credentials (ADR050)
 
-**Worker:** worker5 **Goal:** implement `docs/ADR050-encrypted-platform-backups.md` — client-side `age` encryption for the etcd/OpenBao/KeyValue backup pipelines bex controls directly, provider-side SSE for the Barman Cloud plugin-backed Postgres stores bex doesn't, and write-only per-store S3 credentials replacing today's shared `TF_STATE_ACCESS_KEY`/`SECRET_KEY` reuse across all five backup destinations. **Status:** code-complete; live enablement + drill pending
+**Worker:** worker5 **Goal:** implement `docs/ADR050-encrypted-platform-backups.md` — client-side `age` encryption for the etcd/OpenBao/KeyValue backup pipelines bex controls directly, provider-side SSE for the Barman Cloud plugin-backed Postgres stores bex doesn't, and write-only per-store S3 credentials replacing today's shared `TF_STATE_ACCESS_KEY`/`SECRET_KEY` reuse across all five backup destinations. **Status:** shipped + deployed to prod; Tier A enabled & verified for etcd/OpenBao (credential scoping deferred)
+
+## Prod enablement (2026-08-04)
+
+Shipped (deploy (bex via Argo) green) and enabled Tier A **encryption** in prod per the user's "reversible encryption only" choice:
+
+- **Tier B SSE:** live on all three ObjectStores (`encryption: AES256`), backups still `completed`.
+- **Tier A etcd + OpenBao:** enabled via the out-of-band `bex-backup-age` ConfigMap + `AGE_BACKUP_PRIVATE_KEY` in `.env`/CI; manual runs produced `*.gz.age`, and a live prod `restore-etcd.sh` drill decrypted a fresh `.age` snapshot and recovered 9 CRs. Verified end-to-end.
+- **Tier A KeyValue:** operator env `BEX_BACKUP_AGE_PUBLIC_KEY` set via gitops; the live `kvbak` CronJob reconciled to `[snapshot compress encrypt]`. A green KV backup is blocked by a **pre-existing** Valkey snapshot-connectivity failure unrelated to ADR050 — see `.pm/w5/039.md`.
+- **Deferred (operator decision):** the write-only per-store credential rotation (§3) is built but not enabled; `t006`/`t007` remain the runbook. Follow-ups `036`/`037`/`038`; new `039` for the KV snapshot issue.
 
 ## Implementation status (2026-08-04)
 
