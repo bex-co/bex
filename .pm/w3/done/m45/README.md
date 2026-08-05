@@ -1,6 +1,6 @@
 # w3 · m45 — Agent-session composer: Devin-style @-mention prompt box + sidebar polish
 
-**Worker:** worker3 **Goal:** bring the CREATE surface and the sessions sidebar up to the same Devin grade as m44's session view — the `/agents` main pane becomes one prompt box (task textarea + in-input toolbar: `@` mention picker, Configuration popover, Send), repo selection moves into a typed `@` mention picker with fuzzy filtering + readiness preview, the Advanced fields relocate into a Configuration popover, and the sessions sidebar gains search/More/human status phrases + a New-session shortcut. **Status:** t001–t008 **DONE** — prompt-box composer + @ picker (categories → @repos:/@sessions: token → fuzzy filter → readiness footer → chip) + Configuration popover + sidebar polish (search/More/human phrases/O shortcut) all render-verified end-to-end in the local loop (create → navigate → detail with the mentioned repo + auto-derived branch); local-bex stub extended (CreateAgentSession + created-session memory); parity: same create mutation payload, zero API drift; simplify: reviewed, code already tight; tests: rewritten composer suite + new sidebar suite (1918 total green). **t009 closeout pending ship/deploy.**
+**Worker:** worker3 **Goal:** bring the CREATE surface and the sessions sidebar up to the same Devin grade as m44's session view — the `/agents` main pane becomes one prompt box (task textarea + in-input toolbar: `@` mention picker, Configuration popover, Send), repo selection moves into a typed `@` mention picker with fuzzy filtering + readiness preview, the Advanced fields relocate into a Configuration popover, and the sessions sidebar gains search/More/human status phrases + a New-session shortcut. **Status:** done — shipped 265137ec, deploy green, prod-verified (prompt box + @ picker categories + sidebar status phrases live on dashboard.bex.co/agents with real data).
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | t006 | Render parity                                                                                           | 30m | t002, t003, t005       — **DONE** |
 | t007 | Simplify                                                                                                | 20m | t006                   — **DONE** |
 | t008 | Test coverage                                                                                           | 60m | t006                   — **DONE** |
-| t009 | Closeout                                                                                                | 10m | t008                   |
+| t009 | Closeout                                                                                                | 10m | t008                   — **DONE** |
 
 ## Definition of done
 
