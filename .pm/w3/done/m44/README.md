@@ -1,6 +1,6 @@
 # w3 · m44 — Agent-session UI: full-page Devin-style chat
 
-**Worker:** worker3 **Goal:** turn `/agents/$agentSessionId` from a card-grid detail page into ONE full-page chat that looks and behaves like Devin's session view — conversation is the whole main pane with a docked composer, PR inline, evidence behind a panel, sessions in a sidebar. **Status:** t001–t010 **DONE** (implementation + parity + simplify + tests); full-page Devin-style chat rendered + verified in the local dev loop. A duplicate-transcript bug from a dev double-mount was fixed (collapseDoubledParts, with a regression test). **t011 closeout pending** ship/deploy.
+**Worker:** worker3 **Goal:** turn `/agents/$agentSessionId` from a card-grid detail page into ONE full-page chat that looks and behaves like Devin's session view — conversation is the whole main pane with a docked composer, PR inline, evidence behind a panel, sessions in a sidebar. **Status:** done (implementation + parity + simplify + tests); full-page Devin-style chat rendered + verified in the local dev loop. A duplicate-transcript bug from a dev double-mount was fixed (collapseDoubledParts, with a regression test). **t011 closeout pending** ship/deploy.
 
 ## Tasks (in order)
 
@@ -16,7 +16,7 @@
 | t008 | Render parity                                                                                       | 30m | t002, t003, t004, t005, t006, t007 — **DONE** |
 | t009 | Simplify                                                                                            | 20m | t008                             — **DONE** |
 | t010 | Test coverage                                                                                       | 60m | t008                             — **DONE** |
-| t011 | Closeout                                                                                            | 10m | t010                             |
+| t011 | Closeout                                                                                            | 10m | t010                             — **DONE** |
 
 ## Definition of done
 
