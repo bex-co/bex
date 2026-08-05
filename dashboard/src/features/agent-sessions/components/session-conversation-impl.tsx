@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useChat } from "@ai-sdk/react";
 import type { ChatTransport } from "ai";
 import {
   AlertCircle,
-  Bot,
   CheckCircle2,
   ChevronDown,
   Circle,
   Loader2,
+  User,
 } from "lucide-react";
 import {
   createAgentSessionTransport,
@@ -20,6 +20,10 @@ import {
   ActivityGroup,
   type ActivityStep,
 } from "@/features/agent-sessions/components/activity-group";
+import {
+  formatApproxDuration,
+  useStreamDuration,
+} from "@/features/agent-sessions/lib/stream-duration";
 import { TypingIndicator } from "@/features/agent-sessions/components/typing-indicator";
 import {
   acpDataSchema,
@@ -30,16 +34,18 @@ import {
   type AcpPlanEntry,
   type AgentUIMessage,
 } from "@/features/agent-sessions/lib/acp-parts";
+import { collapseDoubledParts } from "@/features/agent-sessions/lib/collapse-doubled-parts";
 
 // The live conversation column (ADR047 D9). `useChat` drives it over the m43
 // stream transport: `resume` replays the durable transcript on mount, then
 // (for a running session) live-tails; a terminal session replays and settles on
-// `[DONE]`. The rendering is the polished chat shape: assistant turns get a Bot
-// avatar + a markdown content column, user turns are right-aligned bubbles, and
-// consecutive tool + ACP command/terminal/diff parts fold into a single
-// collapsible activity group. This component is the injectable, Apollo-free unit
-// under test (the transport is passed in); `session-conversation.tsx` is the
-// client-only wrapper that builds the real ticket-minting transport.
+// `[DONE]`. The rendering is the Devin chat shape: USER turns are right-aligned
+// bubbles with an avatar, AGENT turns are plain full-width prose (markdown, no
+// avatar, no bubble), and consecutive tool + ACP command/terminal/diff parts
+// fold into a single "Worked for <Ns>" activity group. This component is the
+// injectable, Apollo-free unit under test (the transport is passed in);
+// `session-conversation.tsx` is the client-only wrapper that builds the real
+// ticket-minting transport.
 
 /**
  * The live-steering seam the detail page lifts out of this client-only module
@@ -74,6 +80,18 @@ export interface SessionConversationImplProps {
    * live turn through this same `useChat` instance rather than a second one.
    */
   onChatStateChange?: (handle: ConversationChatHandle | null) => void;
+  /**
+   * Rendered inside the scroll region after the transcript (before the terminal
+   * status line) — the detail page passes the inline draft-PR card + failure
+   * callout here so they read as part of the conversation flow (t005).
+   */
+  footer?: ReactNode;
+  /**
+   * Phase-derived terminus label shown (with a settled dot) once a terminal
+   * session has replayed and settled. Defaults to the generic "Session ended."
+   * note when unset (the injectable unit tests take the default).
+   */
+  terminalLabel?: string;
 }
 
 export function SessionConversationImpl({
@@ -82,10 +100,14 @@ export function SessionConversationImpl({
   mintTicket,
   transport: injectedTransport,
   onChatStateChange,
+  footer,
+  terminalLabel,
 }: SessionConversationImplProps) {
   const { t } = useTranslations();
   // A stable transport per session: the injected one under test, else one built
-  // from the ticket minter. `useMemo` keeps `useChat` from re-subscribing.
+  // from the ticket minter. `useMemo` keeps `useChat` from re-subscribing. (A
+  // duplicated replay from a double resume GET is collapsed at render time by the
+  // content-signature dedupe below — w3/m44.)
   const transport = useMemo(() => {
     if (injectedTransport) return injectedTransport;
     if (!mintTicket) {
@@ -94,7 +116,12 @@ export function SessionConversationImpl({
       );
     }
     return createAgentSessionTransport({ sessionId, mintTicket });
-  }, [injectedTransport, mintTicket, sessionId]);
+    // Pinned to the session, NOT `mintTicket` identity: the parent recreates the
+    // minter each render (it's already memoized, so the captured one stays valid),
+    // and re-keying the transport on it re-subscribed `useChat` — a second resume
+    // GET that appended the replayed transcript twice (w3/m44).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [injectedTransport, sessionId]);
 
   const { messages, status, error, sendMessage } = useChat<AgentUIMessage>({
     id: sessionId,
@@ -169,9 +196,15 @@ export function SessionConversationImpl({
   // Build the display blocks once per message so the parent can decide whether
   // the typing indicator is due (the last turn is a user prompt or the last
   // assistant message has no renderable content yet).
+  // Collapse a duplicated replay. `resume` can fire twice on mount (a second GET
+  // replays the same transcript as a fresh-id message), which would render the
+  // whole conversation twice (w3/m44). Dedupe by a CONTENT signature that ignores
+  // volatile per-part ids (the two replays get fresh text/tool/step ids, so the
+  // raw parts differ) — the visible text plus the part-type sequence. Distinct
+  // live turns differ in text/shape, so nothing real is ever hidden.
   const rendered = messages.map((message) => ({
     message,
-    blocks: buildBlocks(message.parts as PartLike[]),
+    blocks: buildBlocks(collapseDoubledParts(message.parts as PartLike[])),
   }));
   const last = rendered[rendered.length - 1];
   const showTyping =
@@ -188,7 +221,7 @@ export function SessionConversationImpl({
         role="log"
         aria-live="polite"
       >
-        <div className="space-y-6 p-4">
+        <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
           {connecting && (
             <div className="text-muted-foreground flex items-center gap-2 text-sm">
               <Loader2 aria-hidden className="size-4 shrink-0 animate-spin" />
@@ -211,12 +244,19 @@ export function SessionConversationImpl({
           ))}
 
           {showTyping && (
-            <div className="flex w-full items-start justify-start gap-3">
-              <BotAvatar />
-              <div className="border-border/50 bg-muted/60 text-muted-foreground rounded-2xl rounded-tl-md border">
-                <TypingIndicator />
-              </div>
+            // Agent turns carry no avatar (Devin drops it) — the typing
+            // indicator sits at the prose column's left edge.
+            <div className="text-muted-foreground">
+              <TypingIndicator />
             </div>
+          )}
+
+          {footer}
+
+          {isTerminal && status === "ready" && !empty && (
+            <TerminalStatusLine
+              label={terminalLabel ?? t("agentSessions.conversationEnded")}
+            />
           )}
         </div>
       </div>
@@ -237,12 +277,21 @@ export function SessionConversationImpl({
           <ChevronDown className="size-4" />
         </button>
       )}
+    </div>
+  );
+}
 
-      {isTerminal && status === "ready" && !empty && (
-        <p className="text-muted-foreground shrink-0 border-t px-4 py-2 text-xs">
-          {t("agentSessions.conversationEnded")}
-        </p>
-      )}
+// The Devin-style transcript terminus: a settled dot + a phase-derived label
+// ("Session went to sleep" / "…ended with an error" / "…was canceled") that ends
+// a settled transcript, rendered inline at the foot of the scroll region.
+function TerminalStatusLine({ label }: { label: string }) {
+  return (
+    <div className="text-muted-foreground flex items-center gap-2 pt-2 text-xs">
+      <span
+        aria-hidden
+        className="bg-muted-foreground/50 size-2 shrink-0 rounded-full"
+      />
+      {label}
     </div>
   );
 }
@@ -355,11 +404,13 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
   return blocks;
 }
 
-function BotAvatar() {
+// The user's own avatar — Devin keeps an avatar on the right-aligned USER
+// bubble, but drops it entirely for the agent's plain-prose turns.
+function UserAvatar() {
   return (
     <div className="shrink-0">
-      <div className="border-primary/15 bg-primary/10 flex size-8 items-center justify-center rounded-full border shadow-xs">
-        <Bot className="text-primary size-4" />
+      <div className="border-border/60 bg-muted flex size-8 items-center justify-center rounded-full border shadow-xs">
+        <User className="text-muted-foreground size-4" />
       </div>
     </div>
   );
@@ -382,16 +433,17 @@ function MessageRow({
     <div
       className={cn(
         "animate-in fade-in flex w-full gap-3 duration-300",
-        isUser ? "justify-end pl-8" : "items-start justify-start",
+        // USER: right-aligned bubble + avatar. AGENT: plain full-width prose,
+        // no avatar, no bubble — the whole pane is the conversation.
+        isUser ? "justify-end pl-8" : "justify-start",
       )}
     >
-      {!isUser && <BotAvatar />}
       <div
         className={cn(
           "min-w-0 text-sm leading-7",
           isUser
             ? "border-border/70 bg-muted text-foreground max-w-[92%] rounded-2xl rounded-br-md border px-4 py-2.5 shadow-xs sm:max-w-md dark:bg-muted/80"
-            : "min-w-0 flex-1 pt-1",
+            : "min-w-0 flex-1",
         )}
       >
         {blocks.map((block) => {
@@ -406,7 +458,13 @@ function MessageRow({
             );
           }
           if (block.type === "reasoning") {
-            return <ReasoningBlock key={block.key} text={block.text} />;
+            return (
+              <ReasoningBlock
+                key={block.key}
+                text={block.text}
+                streaming={showCursor}
+              />
+            );
           }
           if (block.type === "plan") {
             return <PlanBlock key={block.key} entries={block.entries} />;
@@ -414,13 +472,29 @@ function MessageRow({
           return <ActivityGroup key={block.key} steps={block.steps} />;
         })}
       </div>
+      {isUser && <UserAvatar />}
     </div>
   );
 }
 
-function ReasoningBlock({ text }: { text: string }) {
+function ReasoningBlock({
+  text,
+  streaming,
+}: {
+  text: string;
+  streaming: boolean;
+}) {
   const { t } = useTranslations();
   const [isOpen, setIsOpen] = useState(false);
+  // Derive "Thought for <Ns>" from stream-arrival timing (see useStreamDuration);
+  // settle once the assistant turn stops streaming.
+  const durationMs = useStreamDuration(text.length, !streaming);
+  const summary =
+    durationMs >= 1000
+      ? t("agentSessions.groupThoughtFor", {
+          duration: formatApproxDuration(durationMs),
+        })
+      : t("agentSessions.groupThought");
   return (
     <div className="border-border/70 bg-muted/20 my-3 overflow-hidden rounded-xl border">
       <button
@@ -430,7 +504,7 @@ function ReasoningBlock({ text }: { text: string }) {
         className="hover:bg-muted/40 flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left transition-colors"
       >
         <span className="text-foreground/90 min-w-0 flex-1 truncate text-xs font-medium">
-          {t("agentSessions.groupThought")}
+          {summary}
         </span>
         <ChevronDown
           className={cn(

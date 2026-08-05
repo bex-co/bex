@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useState, type ComponentType } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
 import type { MintedTicket } from "@/features/agent-sessions/lib/transport";
@@ -26,12 +32,18 @@ export interface SessionConversationProps {
    * turn through this column's own `useChat` instance.
    */
   onChatStateChange?: (handle: ConversationChatHandle | null) => void;
+  /** Inline transcript footer (draft-PR card + failure callout) — see impl. */
+  footer?: ReactNode;
+  /** Phase-derived terminal status label rendered once the transcript settles. */
+  terminalLabel?: string;
 }
 
 export function SessionConversation({
   sessionId,
   isTerminal,
   onChatStateChange,
+  footer,
+  terminalLabel,
 }: SessionConversationProps) {
   const { t } = useTranslations();
   const { attach } = useAgentSessionMutations();
@@ -40,11 +52,11 @@ export function SessionConversation({
 
   useEffect(() => {
     let live = true;
-    void import("@/features/agent-sessions/components/session-conversation-impl").then(
-      (module) => {
-        if (live) setImpl(() => module.SessionConversationImpl);
-      },
-    );
+    void import(
+      "@/features/agent-sessions/components/session-conversation-impl"
+    ).then((module) => {
+      if (live) setImpl(() => module.SessionConversationImpl);
+    });
     return () => {
       live = false;
     };
@@ -75,6 +87,8 @@ export function SessionConversation({
       isTerminal={isTerminal}
       mintTicket={mintTicket}
       onChatStateChange={onChatStateChange}
+      footer={footer}
+      terminalLabel={terminalLabel}
     />
   );
 }

@@ -553,6 +553,76 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Accessible label for the floating jump-to-bottom button in the conversation column",
   },
+  // --- Full-page chat restructure (w3/m44) ---
+  "agentSessions.newSession": {
+    message: "New session",
+    description: "Sessions sidebar — start-a-new-session affordance",
+  },
+  "agentSessions.recentSessions": {
+    message: "Recent",
+    description: "Sessions sidebar — heading over the recent sessions list",
+  },
+  "agentSessions.sidebarEmpty": {
+    message: "No sessions yet",
+    description: "Sessions sidebar — empty state when the workspace has none",
+  },
+  "agentSessions.sidebarLabel": {
+    message: "Agent sessions",
+    description: "Sessions sidebar — accessible landmark label",
+  },
+  "agentSessions.evidenceToggle": {
+    message: "Evidence",
+    description: "Header — toggle that opens the evidence side panel",
+  },
+  "agentSessions.menuMore": {
+    message: "More actions",
+    description: "Header — accessible label for the '…' overflow menu",
+  },
+  "agentSessions.openPr": {
+    message: "Open pull request",
+    description: "Header overflow menu — open the draft PR in a new tab",
+  },
+  "agentSessions.groupWorkedFor": {
+    message: "Worked for {duration}",
+    description: "Activity-group summary with a derived elapsed duration",
+  },
+  "agentSessions.groupWorked": {
+    message: "Worked",
+    description:
+      "Activity-group summary when no duration could be derived (history replay)",
+  },
+  "agentSessions.groupThoughtFor": {
+    message: "Thought for {duration}",
+    description: "Reasoning-group summary with a derived elapsed duration",
+  },
+  "agentSessions.terminalStatus.completed": {
+    message: "Session went to sleep",
+    description: "Terminal transcript status line — completed session",
+  },
+  "agentSessions.terminalStatus.failed": {
+    message: "Session ended with an error",
+    description: "Terminal transcript status line — failed session",
+  },
+  "agentSessions.terminalStatus.canceled": {
+    message: "Session was canceled",
+    description: "Terminal transcript status line — canceled session",
+  },
+  "agentSessions.prInlineTitle": {
+    message: "Draft pull request",
+    description: "Inline PR card — heading",
+  },
+  "agentSessions.prBot": {
+    message: "bot",
+    description: "Inline PR card — the agent authored the PR (bot author tag)",
+  },
+  "agentSessions.prReview": {
+    message: "Review",
+    description: "Inline PR card — review/open action label",
+  },
+  "agentSessions.prDiffStat": {
+    message: "+{added} −{deleted}",
+    description: "Inline PR card — added/deleted line diff stat",
+  },
 };
 
 export default enAgentSessions;

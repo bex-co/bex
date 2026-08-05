@@ -1,7 +1,17 @@
 import { useEffect, useState } from "react";
-import { GitBranch, Loader2 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import {
+  ArrowLeft,
+  ExternalLink,
+  GitBranch,
+  GitPullRequest,
+  Loader2,
+  MoreHorizontal,
+  PanelRightOpen,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/common/components/ui/button";
+import { Badge } from "@/common/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,6 +22,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/common/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/common/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -38,11 +54,15 @@ export interface SessionDetailHeaderProps {
   session: AgentSessionView;
   /** Re-read the session once a cancel converges (the header owns no cache). */
   onCanceled?: () => void;
+  /** Opens the evidence side panel (t006) — the header's panel-toggle target. */
+  onOpenEvidence?: () => void;
 }
 
 /**
- * The detail-page header (ADR047 D9): phase chip, repo/branch, and the derived
- * meta row (duration, turns, delivery mode) plus cancel-with-confirm. The
+ * The full-page chat header (ADR047 D9, w3/m44): a compact top bar with a
+ * back-to-sessions link, the phase chip + repo title, a compact meta row
+ * (branch, ticking duration, turns), an inline draft-PR badge `#N`, the evidence
+ * panel toggle, a "…" overflow menu (open PR), and cancel-with-confirm. The
  * duration ticks live while the session is non-terminal; once terminal it pins
  * to the session's own end timestamp (via the mapper). Cancel is offered only
  * while the session can still be stopped and is disabled with a reason once
@@ -51,6 +71,7 @@ export interface SessionDetailHeaderProps {
 export function SessionDetailHeader({
   session,
   onCanceled,
+  onOpenEvidence,
 }: SessionDetailHeaderProps) {
   const { t } = useTranslations();
   const { cancel } = useAgentSessionMutations();
@@ -90,21 +111,34 @@ export function SessionDetailHeader({
   }
 
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4">
-      <div className="min-w-0 space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="bg-background/95 supports-backdrop-filter:bg-background/60 flex shrink-0 items-center gap-3 border-b px-4 py-3 backdrop-blur">
+      {/* Back to the sessions list (the sidebar handles this on wide screens,
+          but the link keeps /agents reachable on mobile where it is hidden). */}
+      <Button
+        asChild
+        size="icon"
+        variant="ghost"
+        className="shrink-0 lg:hidden"
+      >
+        <Link to="/agents" aria-label={t("agentSessions.backToList")}>
+          <ArrowLeft className="size-4" />
+        </Link>
+      </Button>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
           <AgentSessionPhaseChip phase={session.phase} />
-          <h1 className="truncate text-xl font-semibold">{session.repo}</h1>
+          <h1 className="truncate text-sm font-semibold">{session.repo}</h1>
         </div>
-        <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-          <span className="inline-flex items-center gap-1.5 font-mono text-xs">
-            <GitBranch className="size-3.5" />
+        <div className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
+          <span className="inline-flex items-center gap-1 font-mono">
+            <GitBranch className="size-3" />
             {session.branch}
           </span>
           <span>{t("agentSessions.metaDuration", { duration })}</span>
           <span>{t("agentSessions.metaTurns", { turns: session.turns })}</span>
           {session.deliveryMode ? (
-            <span>
+            <span className="hidden sm:inline">
               {t("agentSessions.metaDelivery", {
                 mode: t(`agentSessions.delivery.${session.deliveryMode}`),
               })}
@@ -112,6 +146,22 @@ export function SessionDetailHeader({
           ) : null}
         </div>
       </div>
+
+      <HeaderPrBadge session={session} />
+
+      {onOpenEvidence ? (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onOpenEvidence}
+          className="shrink-0"
+        >
+          <PanelRightOpen className="size-4" />
+          <span className="hidden sm:inline">
+            {t("agentSessions.evidenceToggle")}
+          </span>
+        </Button>
+      ) : null}
 
       {showCancel ? (
         <CancelButton
@@ -121,6 +171,29 @@ export function SessionDetailHeader({
           }
           onClick={() => setConfirmOpen(true)}
         />
+      ) : null}
+
+      {session.prUrl ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="shrink-0"
+              aria-label={t("agentSessions.menuMore")}
+            >
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <a href={session.prUrl} target="_blank" rel="noreferrer">
+                <ExternalLink className="size-4" />
+                {t("agentSessions.openPr")}
+              </a>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       ) : null}
 
       <AlertDialog
@@ -160,6 +233,33 @@ export function SessionDetailHeader({
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+/** The inline draft-PR badge `#N` — links `prUrl` in a new tab when present. */
+function HeaderPrBadge({ session }: { session: AgentSessionView }) {
+  const { t } = useTranslations();
+  if (session.prNumber == null) return null;
+  const label = t("agentSessions.prBadge", { number: session.prNumber });
+  const badge = (
+    <Badge variant="secondary" className="hidden gap-1 sm:inline-flex">
+      <GitPullRequest className="size-3.5" />
+      {label}
+    </Badge>
+  );
+  if (!session.prUrl) return badge;
+  return (
+    <a
+      href={session.prUrl}
+      target="_blank"
+      rel="noreferrer"
+      className="hidden shrink-0 sm:inline-flex"
+    >
+      <Badge variant="secondary" className="hover:bg-secondary/70 gap-1">
+        <GitPullRequest className="size-3.5" />
+        {label}
+      </Badge>
+    </a>
   );
 }
 
