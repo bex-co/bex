@@ -30,7 +30,11 @@ export function AuditEventRow({ event }: AuditEventRowProps) {
           </span>
         ) : null}
       </TableCell>
-      <TableCell className="text-sm">{event.action}</TableCell>
+      {/* nowrap so a dotted action id (e.g. `apikeys.ListAPIKeys`) never gets
+          letter-wrapped when the auto-layout table is squeezed on a narrow
+          viewport — that collapse blew rows up to hundreds of px tall. The
+          table's `overflow-x-auto` container scrolls horizontally instead. */}
+      <TableCell className="text-sm whitespace-nowrap">{event.action}</TableCell>
       <TableCell>
         {event.status === "denied" ? (
           <Badge variant="destructive">{t("audit.statusDenied")}</Badge>
