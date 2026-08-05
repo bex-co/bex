@@ -435,7 +435,7 @@ fi
 # (checked above), no pods, no pods/exec — the sensitive verbs stay namespaced
 # via the per-tenant bex-tenant-ssh-gateway binding and must never widen to
 # cluster scope.
-ssh_cluster_role_rules="$(yq -N '. | select(.kind == "ClusterRole") | .rules[] | [.apiGroups | join(","), .resources | join(","), .verbs | sort | join(",")] | join("|")' "$SSH_RBAC")"
+ssh_cluster_role_rules="$(yq -N '. | select(.kind == "ClusterRole") | .rules[] | [.apiGroups | join(","), .resources | join(","), .verbs | sort | join(",")] | join("|")' "$SSH_RBAC" | sed '/^$/d')"
 if [ -n "$ssh_cluster_role_rules" ] && [ "$ssh_cluster_role_rules" != 'app.bex.co|apps|get,list,watch' ]; then
   echo "FAIL: SSH gateway ClusterRole may grant only read-only Apps (get,list,watch); got '$ssh_cluster_role_rules'" >&2
   fail=1
