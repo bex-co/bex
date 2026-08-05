@@ -1,7 +1,53 @@
-# The SSH gateway alone may read App targets and attach to their containers in
-# the configured tenant namespace. This Role is deliberately separate from
-# bex-api's read-only pod Role: a regression adding pods/exec to the HTTP API
-# becomes visible in review and structural tests. Nothing here is cluster-wide.
+# The SSH gateway alone may read App targets and attach to their containers.
+# These grants are deliberately separate from bex-api's read-only pod Role: a
+# regression adding pods/exec to the HTTP API becomes visible in review and
+# structural tests.
+#
+# Two distinct scopes, on purpose:
+#
+#   1. Cluster-wide, READ-ONLY apps (get/list/watch) — below. The gateway
+#      resolves an incoming `srv-<id>` (native SSH username, Browser Web Shell
+#      ticket) to its App CR, which after ADR043 lives in that workspace's own
+#      `<ws>` namespace. core.AuthorizeApp / appNamespaceByName do this with an
+#      unqualified (cluster-scoped) App List by label — the same pattern bex-api
+#      uses and for the same reason (base.go: "App CRs are spread across every
+#      workspace's own namespace ... bex-api's role grants cluster-wide App list
+#      for precisely this reason"). Without this the gateway's very first
+#      authorization step fails `Forbidden ... cannot list resource "apps" ...
+#      at the cluster scope`, so EVERY shell/SSH connection fails. App specs are
+#      not secrets and carry no credentials; the sensitive verbs stay namespaced.
+#
+#   2. The sensitive verbs (pods get/list, pods/exec create) stay per-tenant-
+#      namespace ONLY, granted by the `bex-tenant-ssh-gateway` ClusterRole bound
+#      per-`<ws>` by the NamespaceReconciler (tenant-namespace-clusterroles.yaml).
+#      The gateway can attach to a container only inside a real tenant namespace,
+#      never cluster-wide.
+#
+# The legacy default-namespace Role below predates ADR043 (when tenant Apps lived
+# in `default`); it is retained as harmless and covers any App still projected to
+# `default`.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: bex-ssh-gateway-apps-read
+rules:
+  - apiGroups: ["app.bex.co"]
+    resources: ["apps"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: bex-ssh-gateway-apps-read
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: bex-ssh-gateway-apps-read
+subjects:
+  - kind: ServiceAccount
+    name: bex-ssh-gateway
+    namespace: bex-system
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:

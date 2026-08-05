@@ -427,6 +427,19 @@ if yq -N '. | select(.kind == "Role" or .kind == "ClusterRole") | .rules[]? | .r
   echo "FAIL: SSH gateway RBAC must never grant Secret access" >&2
   fail=1
 fi
+# ADR043 spread tenant Apps into per-workspace <ws> namespaces, so the gateway
+# resolves an incoming srv-<id> to its App + namespace with a CLUSTER-SCOPED App
+# List (core.AuthorizeApp / appNamespaceByName) — the same pattern and
+# justification as bex-api. That read is the gateway's ONLY permitted cluster-
+# wide grant: read-only Apps (get/list/watch) and nothing else. No Secrets
+# (checked above), no pods, no pods/exec — the sensitive verbs stay namespaced
+# via the per-tenant bex-tenant-ssh-gateway binding and must never widen to
+# cluster scope.
+ssh_cluster_role_rules="$(yq -N '. | select(.kind == "ClusterRole") | .rules[] | [.apiGroups | join(","), .resources | join(","), .verbs | sort | join(",")] | join("|")' "$SSH_RBAC")"
+if [ -n "$ssh_cluster_role_rules" ] && [ "$ssh_cluster_role_rules" != 'app.bex.co|apps|get,list,watch' ]; then
+  echo "FAIL: SSH gateway ClusterRole may grant only read-only Apps (get,list,watch); got '$ssh_cluster_role_rules'" >&2
+  fail=1
+fi
 bex_api_ingress_verbs="$(yq -N '. | select(.kind == "Role" and .metadata.name == "bex-api-apps") | .rules[] | select(.apiGroups[] == "networking.k8s.io" and .resources[] == "ingresses") | .verbs | sort | join(",")' deploy/gitops/base/bex-api-apps-rbac.yaml)"
 if [ "$bex_api_ingress_verbs" != "get,list" ]; then
   echo "FAIL: bex-api tenant Role needs exactly get,list on Ingresses for exact-router egress accounting; got '$bex_api_ingress_verbs'" >&2
@@ -434,7 +447,7 @@ if [ "$bex_api_ingress_verbs" != "get,list" ]; then
 fi
 ssh_cluster_binding="$(kubectl kustomize lego/operator/config/default | yq -N '. | select(.kind == "ClusterRoleBinding") | .subjects[]? | select(.kind == "ServiceAccount" and .name == "bex-ssh-gateway") | .name')"
 if [ -n "$ssh_cluster_binding" ]; then
-  echo "FAIL: SSH gateway must not have cluster-wide RBAC" >&2
+  echo "FAIL: SSH gateway must not have cluster-wide RBAC in its operator deployment overlay (cluster-scoped grants live only in bex-ssh-apps-rbac.yaml, policed above)" >&2
   fail=1
 fi
 ssh_namespace="$(yq -N '. | select(.kind == "Role") | .metadata.namespace' "$SSH_RBAC")"
