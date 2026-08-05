@@ -266,6 +266,10 @@ KeyValue backups are snapshots, not PITR. Valkey prefers an existing AOF over `d
 
 ## Drill records
 
+### ADR050 Tier A encryption enable + restore — 2026-08-04 (w5/m63, production)
+
+Enabled [ADR050](ADR050-encrypted-platform-backups.md) Tier A age encryption for etcd + OpenBao in prod (out-of-band `bex-backup-age` ConfigMap; private key in `.env`/CI). Manual `etcd-backup` and `openbao-backup` runs both completed on the prod nodes — the `encrypt` step (`apk add age` + `age -r`) exited 0 — and uploaded `etcd-…​.db.gz.age` / `openbao-…​.snap.gz.age`. A real `scripts/restore-etcd.sh` run then fetched the fresh `.age` object from Wasabi, decrypted it with the out-of-band private key, passed `etcdutl` status, restored into a throwaway etcd, and extracted 9 CRs (7 App, 1 Database, 1 KeyValue). Tier B SSE (`encryption: AES256`) confirmed live on all three `ObjectStore`s with backups still `completed`. KV encrypt step reconciled into the live `kvbak` CronJob but a green KV backup is blocked by a pre-existing snapshot-connectivity issue ([`.pm/w5/039.md`](../.pm/w5/039.md)). The write-only per-store credential rotation (§3) remains built-but-not-enabled.
+
 ### Scripted all-store restore — 2026-07-31 (w7/m69, production)
 
 Fresh backups and `scripts/restore-*.sh` passed for etcd, OpenBao, `bex-db`, a PostgreSQL 16 tenant Database, Kratos, and a paid Valkey 8 KeyValue. Marker-based freshness passed for `bex-db`, tenant Postgres, OpenBao, and KeyValue; auth verification used only an aggregate count. Every recovery target was new, every target/source drill resource was removed, the tenant Postgres and KeyValue object prefixes were empty after source finalization, and the platform ended healthy. See [2026-07-31-scripted-restore-e2e.md](drills/2026-07-31-scripted-restore-e2e.md).
