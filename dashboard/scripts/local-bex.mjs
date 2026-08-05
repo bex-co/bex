@@ -2548,6 +2548,45 @@ function resolveGraphQL({ operationName, variables = {} }) {
       const one = agentSessionsFor().find((s) => s.id === variables.id);
       return { agentSession: one ?? null };
     }
+    case "CreateAgentSession": {
+      // Stub-only: echo a fresh running session from the input so the offline
+      // create → navigate → detail flow works end to end (remembered in
+      // CREATED_AGENT_SESSIONS so the detail page + sidebar can read it back).
+      const cfg = variables.agentConfig ?? {};
+      const created = {
+          __typename: "AgentSession",
+          id: `ags-demo${String(Date.now()).slice(-9)}created`,
+          ownerId: variables.ownerId || WORKSPACE_DEFAULT,
+          repo: variables.repo,
+          branch: variables.branch,
+          agentConfig: {
+            __typename: "AgentSessionConfig",
+            agent: cfg.agent ?? "claude",
+            model: cfg.model ?? null,
+            modelEndpoint: cfg.modelEndpoint ?? null,
+            task: cfg.task ?? "",
+            template: cfg.template ?? null,
+          },
+          sandboxId: "sbx-created-0001",
+          phase: "running",
+          status: "running",
+          headSha: null,
+          prUrl: null,
+          prNumber: null,
+          evidence: null,
+          turns: 1,
+          deliveryMode: null,
+          failureReason: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          canceledAt: null,
+          ticket: "mock-create-ticket",
+          url: `http://localhost:${PORT}`,
+          expiresAt: new Date(Date.now() + 90_000).toISOString(),
+        };
+      CREATED_AGENT_SESSIONS.unshift(created);
+      return { createAgentSession: created };
+    }
     case "AttachAgentSession": {
       const one = agentSessionsFor().find((s) => s.id === variables.id);
       if (!one) return { attachAgentSession: null };
@@ -2570,6 +2609,9 @@ function resolveGraphQL({ operationName, variables = {} }) {
 // (completed → draft PR + evidence, a steered two-turn session, a running turn,
 // a failed turn with a reason, a canceled one). Stub-only; never a real backend.
 const agoISO = (mins) => new Date(Date.now() - mins * 60_000).toISOString();
+// Sessions created through the stub this process-lifetime (so the create →
+// navigate → detail flow works offline; lost on restart, which is fine).
+const CREATED_AGENT_SESSIONS = [];
 function agentSessionsFor(ownerId = WORKSPACE_DEFAULT) {
   const cfg = (task, model = null) => ({
     __typename: "AgentSessionConfig",
@@ -2603,6 +2645,7 @@ function agentSessionsFor(ownerId = WORKSPACE_DEFAULT) {
     canceledAt: null,
   };
   return [
+    ...CREATED_AGENT_SESSIONS,
     {
       ...base,
       id: "ags-demo00000000000000006",

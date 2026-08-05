@@ -54,7 +54,7 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.emptyBody": {
     message:
-      "Start a session below — describe a task, pick a repository and an agent, and it works the task in a cloud sandbox, then opens a draft PR.",
+      "Start a session from New session — describe a task and @-mention a repository, and the agent works it in a cloud sandbox, then opens a draft PR.",
     description: "Agent sessions list empty-state body",
   },
   // --- Phase chips ---
@@ -90,10 +90,10 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Canceled",
     description: "Agent session phase chip — session was canceled",
   },
-  // --- Composer ---
-  "agentSessions.composerTitle": {
-    message: "Start a session",
-    description: "New-session composer card title",
+  // --- Composer (w3/m45 prompt box) ---
+  "agentSessions.promptHeading": {
+    message: "What should the agent work on?",
+    description: "Centered heading over the /agents prompt-box composer",
   },
   "agentSessions.taskLabel": {
     message: "Task",
@@ -101,28 +101,69 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.taskPlaceholder": {
     message:
-      "Describe what the agent should do. Be specific — it works autonomously and opens a draft PR.",
+      "Describe a task, and @-mention a repository to scope it. Be specific — the agent works autonomously and opens a draft PR.",
     description: "Composer — task textarea placeholder",
   },
   "agentSessions.taskRequired": {
     message: "Describe the task for the agent.",
     description: "Composer — validation error when the task is empty",
   },
-  "agentSessions.repoLabel": {
-    message: "Repository",
-    description: "Composer — repository (owner/name) input label",
+  "agentSessions.mentionButton": {
+    message: "Mention a repository or session",
+    description: "Composer toolbar — accessible label of the @ mention button",
   },
-  "agentSessions.repoPlaceholder": {
-    message: "owner/name",
-    description: "Composer — repository input placeholder",
+  "agentSessions.configButton": {
+    message: "Configuration",
+    description: "Composer toolbar — the Configuration popover trigger",
   },
-  "agentSessions.repoRequired": {
-    message: "Enter a repository as owner/name.",
-    description: "Composer — validation error when the repo is empty",
+  "agentSessions.repoNudge": {
+    message: "Pick a repository with @ first.",
+    description:
+      "Inline nudge anchored at the @ button when submitting without a repo chip",
   },
-  "agentSessions.repoHint": {
-    message: "The GitHub repository the agent works against.",
-    description: "Composer — repository field helper text",
+  "agentSessions.chipRemove": {
+    message: "Remove {name}",
+    description: "Accessible label of a mention chip's remove button",
+  },
+  // --- @ mention picker (t002) ---
+  "agentSessions.mentionCategoryRepos": {
+    message: "Repositories",
+    description: "Mention picker — the repositories category row",
+  },
+  "agentSessions.mentionCategoryReposDesc": {
+    message: "Scope the session to a connected GitHub repository",
+    description: "Mention picker — repositories category one-line description",
+  },
+  "agentSessions.mentionCategorySessions": {
+    message: "Sessions",
+    description: "Mention picker — the prior-sessions category row",
+  },
+  "agentSessions.mentionCategorySessionsDesc": {
+    message: "Reference an earlier agent session as context",
+    description: "Mention picker — sessions category one-line description",
+  },
+  "agentSessions.mentionNoResults": {
+    message: "No matches",
+    description:
+      "Mention picker — empty state when the fuzzy filter matches nothing",
+  },
+  "agentSessions.mentionReposEmpty": {
+    message: "No repositories — connect GitHub in workspace settings first.",
+    description:
+      "Mention picker — empty state when no installation repos exist",
+  },
+  "agentSessions.mentionSessionsEmpty": {
+    message: "No sessions yet",
+    description:
+      "Mention picker — empty state when the workspace has no sessions",
+  },
+  "agentSessions.mentionConnected": {
+    message: "Connected via GitHub App",
+    description: "Mention picker readiness footer — the repo is app-connected",
+  },
+  "agentSessions.mentionDefaultBranch": {
+    message: "Default branch: {branch}",
+    description: "Mention picker readiness footer — the repo's default branch",
   },
   "agentSessions.branchLabel": {
     message: "Branch",
@@ -135,6 +176,11 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.branchRequired": {
     message: "Enter a working branch.",
     description: "Composer — validation error when the branch is empty",
+  },
+  "agentSessions.branchInvalid": {
+    message: "The branch must be under bex-agent/.",
+    description:
+      "Composer — validation error when the branch leaves the bex-agent/* namespace",
   },
   "agentSessions.branchHint": {
     message:
@@ -156,14 +202,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.agentCodex": {
     message: "Codex",
     description: "Composer — agent option: codex",
-  },
-  "agentSessions.advancedShow": {
-    message: "Advanced",
-    description: "Composer — toggle that expands the advanced fields",
-  },
-  "agentSessions.advancedHide": {
-    message: "Hide advanced",
-    description: "Composer — toggle that collapses the advanced fields",
   },
   "agentSessions.modelLabel": {
     message: "Model",
@@ -569,6 +607,44 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.sidebarLabel": {
     message: "Agent sessions",
     description: "Sessions sidebar — accessible landmark label",
+  },
+  // --- Sidebar polish (w3/m45 t004) ---
+  "agentSessions.sidebarSearch": {
+    message: "Search sessions",
+    description: "Sessions sidebar — search toggle + input accessible label",
+  },
+  "agentSessions.sidebarSearchPlaceholder": {
+    message: "Search sessions…",
+    description: "Sessions sidebar — search input placeholder",
+  },
+  "agentSessions.sidebarMore": {
+    message: "View all sessions",
+    description: "Sessions sidebar — More action reaching the standalone list",
+  },
+  "agentSessions.sidebarNoMatches": {
+    message: "No matching sessions",
+    description:
+      "Sessions sidebar — empty state when the search matches nothing",
+  },
+  "agentSessions.statusPhrase.prReady": {
+    message: "PR is ready",
+    description: "Sidebar status phrase — completed session with a draft PR",
+  },
+  "agentSessions.statusPhrase.working": {
+    message: "Working…",
+    description: "Sidebar status phrase — session still converging",
+  },
+  "agentSessions.statusPhrase.completed": {
+    message: "Completed",
+    description: "Sidebar status phrase — completed session without a PR",
+  },
+  "agentSessions.statusPhrase.failed": {
+    message: "Failed",
+    description: "Sidebar status phrase — failed session",
+  },
+  "agentSessions.statusPhrase.canceled": {
+    message: "Canceled",
+    description: "Sidebar status phrase — canceled (or canceling) session",
   },
   "agentSessions.evidenceToggle": {
     message: "Evidence",

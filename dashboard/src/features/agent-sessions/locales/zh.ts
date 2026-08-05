@@ -54,7 +54,7 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.emptyBody": {
     message:
-      "在下方开始一个会话——描述任务、选择仓库和智能体，它就会在云端沙箱中完成任务，并提交草稿 PR。",
+      "从「新建会话」开始——描述任务并用 @ 提及一个仓库，智能体就会在云端沙箱中完成任务，并提交草稿 PR。",
     description: "Agent sessions list empty-state body",
   },
   // --- Phase chips ---
@@ -90,38 +90,80 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "已取消",
     description: "Agent session phase chip — session was canceled",
   },
-  // --- Composer ---
-  "agentSessions.composerTitle": {
-    message: "开始会话",
-    description: "New-session composer card title",
+  // --- Composer (w3/m45 prompt box) ---
+  "agentSessions.promptHeading": {
+    message: "让智能体做点什么？",
+    description: "Centered heading over the /agents prompt-box composer",
   },
   "agentSessions.taskLabel": {
     message: "任务",
     description: "Composer — the prominent task prompt textarea label",
   },
   "agentSessions.taskPlaceholder": {
-    message: "描述智能体应完成的工作。请具体说明——它会自主工作并提交草稿 PR。",
+    message:
+      "描述一个任务，并用 @ 提及一个仓库来限定范围。请具体说明——智能体会自主工作并提交草稿 PR。",
     description: "Composer — task textarea placeholder",
   },
   "agentSessions.taskRequired": {
     message: "请描述智能体要完成的任务。",
     description: "Composer — validation error when the task is empty",
   },
-  "agentSessions.repoLabel": {
+  "agentSessions.mentionButton": {
+    message: "提及仓库或会话",
+    description: "Composer toolbar — accessible label of the @ mention button",
+  },
+  "agentSessions.configButton": {
+    message: "配置",
+    description: "Composer toolbar — the Configuration popover trigger",
+  },
+  "agentSessions.repoNudge": {
+    message: "请先用 @ 选择一个仓库。",
+    description:
+      "Inline nudge anchored at the @ button when submitting without a repo chip",
+  },
+  "agentSessions.chipRemove": {
+    message: "移除 {name}",
+    description: "Accessible label of a mention chip's remove button",
+  },
+  // --- @ mention picker (t002) ---
+  "agentSessions.mentionCategoryRepos": {
     message: "仓库",
-    description: "Composer — repository (owner/name) input label",
+    description: "Mention picker — the repositories category row",
   },
-  "agentSessions.repoPlaceholder": {
-    message: "owner/name",
-    description: "Composer — repository input placeholder",
+  "agentSessions.mentionCategoryReposDesc": {
+    message: "将会话限定到已连接的 GitHub 仓库",
+    description: "Mention picker — repositories category one-line description",
   },
-  "agentSessions.repoRequired": {
-    message: "请以 owner/name 格式输入仓库。",
-    description: "Composer — validation error when the repo is empty",
+  "agentSessions.mentionCategorySessions": {
+    message: "会话",
+    description: "Mention picker — the prior-sessions category row",
   },
-  "agentSessions.repoHint": {
-    message: "智能体将针对该 GitHub 仓库工作。",
-    description: "Composer — repository field helper text",
+  "agentSessions.mentionCategorySessionsDesc": {
+    message: "引用之前的智能体会话作为上下文",
+    description: "Mention picker — sessions category one-line description",
+  },
+  "agentSessions.mentionNoResults": {
+    message: "没有匹配项",
+    description:
+      "Mention picker — empty state when the fuzzy filter matches nothing",
+  },
+  "agentSessions.mentionReposEmpty": {
+    message: "没有仓库——请先在工作区设置中连接 GitHub。",
+    description:
+      "Mention picker — empty state when no installation repos exist",
+  },
+  "agentSessions.mentionSessionsEmpty": {
+    message: "还没有会话",
+    description:
+      "Mention picker — empty state when the workspace has no sessions",
+  },
+  "agentSessions.mentionConnected": {
+    message: "已通过 GitHub App 连接",
+    description: "Mention picker readiness footer — the repo is app-connected",
+  },
+  "agentSessions.mentionDefaultBranch": {
+    message: "默认分支：{branch}",
+    description: "Mention picker readiness footer — the repo's default branch",
   },
   "agentSessions.branchLabel": {
     message: "分支",
@@ -134,6 +176,11 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.branchRequired": {
     message: "请输入工作分支。",
     description: "Composer — validation error when the branch is empty",
+  },
+  "agentSessions.branchInvalid": {
+    message: "分支必须位于 bex-agent/ 之下。",
+    description:
+      "Composer — validation error when the branch leaves the bex-agent/* namespace",
   },
   "agentSessions.branchHint": {
     message: "智能体会提交到 bex-agent/* 分支，并从该分支提交草稿 PR。",
@@ -154,14 +201,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.agentCodex": {
     message: "Codex",
     description: "Composer — agent option: codex",
-  },
-  "agentSessions.advancedShow": {
-    message: "高级",
-    description: "Composer — toggle that expands the advanced fields",
-  },
-  "agentSessions.advancedHide": {
-    message: "收起高级",
-    description: "Composer — toggle that collapses the advanced fields",
   },
   "agentSessions.modelLabel": {
     message: "模型",
@@ -556,6 +595,44 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.sidebarLabel": {
     message: "智能体会话",
     description: "Sessions sidebar — accessible landmark label",
+  },
+  // --- Sidebar polish (w3/m45 t004) ---
+  "agentSessions.sidebarSearch": {
+    message: "搜索会话",
+    description: "Sessions sidebar — search toggle + input accessible label",
+  },
+  "agentSessions.sidebarSearchPlaceholder": {
+    message: "搜索会话…",
+    description: "Sessions sidebar — search input placeholder",
+  },
+  "agentSessions.sidebarMore": {
+    message: "查看全部会话",
+    description: "Sessions sidebar — More action reaching the standalone list",
+  },
+  "agentSessions.sidebarNoMatches": {
+    message: "没有匹配的会话",
+    description:
+      "Sessions sidebar — empty state when the search matches nothing",
+  },
+  "agentSessions.statusPhrase.prReady": {
+    message: "PR 已就绪",
+    description: "Sidebar status phrase — completed session with a draft PR",
+  },
+  "agentSessions.statusPhrase.working": {
+    message: "工作中…",
+    description: "Sidebar status phrase — session still converging",
+  },
+  "agentSessions.statusPhrase.completed": {
+    message: "已完成",
+    description: "Sidebar status phrase — completed session without a PR",
+  },
+  "agentSessions.statusPhrase.failed": {
+    message: "已失败",
+    description: "Sidebar status phrase — failed session",
+  },
+  "agentSessions.statusPhrase.canceled": {
+    message: "已取消",
+    description: "Sidebar status phrase — canceled (or canceling) session",
   },
   "agentSessions.evidenceToggle": {
     message: "证据",

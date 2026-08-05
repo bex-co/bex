@@ -106,6 +106,37 @@ export function toAgentSessionTicket(
   };
 }
 
+/** The sidebar's human status phrases (w3/m45 t004), keyed for i18n lookup. */
+export type AgentSessionStatusPhrase =
+  | "prReady"
+  | "working"
+  | "failed"
+  | "canceled"
+  | "completed";
+
+/**
+ * Phase + PR presence → the sidebar's human status phrase (Devin's "PR is
+ * ready • 1" shape): completed with a PR ⇒ `prReady`; every still-converging
+ * phase (creating/running/resuming/redispatching) ⇒ `working`; failed ⇒
+ * `failed`; canceled (and the in-flight canceling) ⇒ `canceled`; completed
+ * without a PR ⇒ `completed`. Rendered as `agentSessions.statusPhrase.<key>`.
+ */
+export function agentSessionStatusPhrase(
+  view: Pick<AgentSessionView, "phase" | "prNumber">,
+): AgentSessionStatusPhrase {
+  switch (view.phase) {
+    case "completed":
+      return view.prNumber != null ? "prReady" : "completed";
+    case "failed":
+      return "failed";
+    case "canceled":
+    case "canceling":
+      return "canceled";
+    default:
+      return "working";
+  }
+}
+
 /**
  * Elapsed session wall-clock in milliseconds: creation → the session's end
  * (canceledAt, else the last update once terminal) or → `nowMs` while it's still
