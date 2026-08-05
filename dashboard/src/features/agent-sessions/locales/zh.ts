@@ -540,6 +540,76 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Accessible label for the floating jump-to-bottom button in the conversation column",
   },
+  // --- Full-page chat restructure (w3/m44) ---
+  "agentSessions.newSession": {
+    message: "新建会话",
+    description: "Sessions sidebar — start-a-new-session affordance",
+  },
+  "agentSessions.recentSessions": {
+    message: "最近",
+    description: "Sessions sidebar — heading over the recent sessions list",
+  },
+  "agentSessions.sidebarEmpty": {
+    message: "暂无会话",
+    description: "Sessions sidebar — empty state when the workspace has none",
+  },
+  "agentSessions.sidebarLabel": {
+    message: "智能体会话",
+    description: "Sessions sidebar — accessible landmark label",
+  },
+  "agentSessions.evidenceToggle": {
+    message: "证据",
+    description: "Header — toggle that opens the evidence side panel",
+  },
+  "agentSessions.menuMore": {
+    message: "更多操作",
+    description: "Header — accessible label for the '…' overflow menu",
+  },
+  "agentSessions.openPr": {
+    message: "打开拉取请求",
+    description: "Header overflow menu — open the draft PR in a new tab",
+  },
+  "agentSessions.groupWorkedFor": {
+    message: "工作了 {duration}",
+    description: "Activity-group summary with a derived elapsed duration",
+  },
+  "agentSessions.groupWorked": {
+    message: "已工作",
+    description:
+      "Activity-group summary when no duration could be derived (history replay)",
+  },
+  "agentSessions.groupThoughtFor": {
+    message: "思考了 {duration}",
+    description: "Reasoning-group summary with a derived elapsed duration",
+  },
+  "agentSessions.terminalStatus.completed": {
+    message: "会话已休眠",
+    description: "Terminal transcript status line — completed session",
+  },
+  "agentSessions.terminalStatus.failed": {
+    message: "会话因错误结束",
+    description: "Terminal transcript status line — failed session",
+  },
+  "agentSessions.terminalStatus.canceled": {
+    message: "会话已取消",
+    description: "Terminal transcript status line — canceled session",
+  },
+  "agentSessions.prInlineTitle": {
+    message: "草稿拉取请求",
+    description: "Inline PR card — heading",
+  },
+  "agentSessions.prBot": {
+    message: "bot",
+    description: "Inline PR card — the agent authored the PR (bot author tag)",
+  },
+  "agentSessions.prReview": {
+    message: "查看",
+    description: "Inline PR card — review/open action label",
+  },
+  "agentSessions.prDiffStat": {
+    message: "+{added} −{deleted}",
+    description: "Inline PR card — added/deleted line diff stat",
+  },
 };
 
 export default zhAgentSessions;

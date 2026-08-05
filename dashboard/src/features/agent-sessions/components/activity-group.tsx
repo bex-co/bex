@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
-  Bot,
   ChevronDown,
+  Clock,
   FileDiff,
   Loader2,
   Terminal as TerminalIcon,
@@ -10,12 +10,19 @@ import {
 import { cn } from "@/common/lib/utils/utils";
 import { CodeBlock } from "@/common/components/code-block";
 import { useTranslations } from "@/common/hooks/use-translations";
+import {
+  formatApproxDuration,
+  useStreamDuration,
+} from "@/features/agent-sessions/lib/stream-duration";
 
 // One folded activity block: the consecutive tool parts and ACP
 // command/terminal/diff parts of a single assistant turn, merged into a single
-// collapsible card (the reference's "grouped activity" shape). The collapsed
-// summary row states what happened ("Working…" while any tool is pending, else
-// "Edited N files" / "Ran N commands" / "N steps"); expanding reveals each step.
+// collapsible group (Devin's "Worked for <Ns>" shape). The collapsed summary
+// states "Working…" while any tool step is pending, else "Worked for ~Ns" with a
+// derived duration (or a bare "Worked" when no duration could be derived, see
+// `useStreamDuration`). Expanding reveals the steps as a VERTICAL TIMELINE — a
+// connector line with a node per step. The derived-duration mechanism lives in
+// `lib/stream-duration.ts` (t004 — no per-part timestamps in the m43 transcript).
 
 /** One renderable step inside an activity group. */
 export type ActivityStep =
@@ -46,18 +53,17 @@ export function ActivityGroup({ steps }: { steps: ActivityStep[] }) {
   const [isOpen, setIsOpen] = useState(false);
 
   const hasPending = steps.some(isToolStepPending);
-  const diffCount = steps.filter((s) => s.kind === "diff").length;
-  const commandCount = steps.filter(
-    (s) => s.kind === "command" || s.kind === "terminal",
-  ).length;
+  // Derive the "Worked for <Ns>" duration from stream-arrival timing; freeze it
+  // once every step has settled (no tool call still pending).
+  const durationMs = useStreamDuration(steps.length, !hasPending);
 
   const summaryLabel = hasPending
     ? t("agentSessions.activityWorking")
-    : diffCount > 0
-      ? t("agentSessions.activityEdited", { count: diffCount })
-      : commandCount > 0
-        ? t("agentSessions.activityRan", { count: commandCount })
-        : t("agentSessions.activitySteps", { count: steps.length });
+    : durationMs >= 1000
+      ? t("agentSessions.groupWorkedFor", {
+          duration: formatApproxDuration(durationMs),
+        })
+      : t("agentSessions.groupWorked");
 
   return (
     <div className="bg-muted/20 border-border/70 my-3 overflow-hidden rounded-xl border">
@@ -70,7 +76,7 @@ export function ActivityGroup({ steps }: { steps: ActivityStep[] }) {
         {hasPending ? (
           <Loader2 className="text-muted-foreground size-3.5 shrink-0 animate-spin" />
         ) : (
-          <Bot className="text-muted-foreground size-3.5 shrink-0" />
+          <Clock className="text-muted-foreground size-3.5 shrink-0" />
         )}
         <span className="text-foreground/90 min-w-0 flex-1 truncate text-xs font-medium">
           {summaryLabel}
@@ -84,10 +90,20 @@ export function ActivityGroup({ steps }: { steps: ActivityStep[] }) {
       </button>
 
       {isOpen && (
-        <div className="border-border/50 space-y-2 border-t px-3 py-2">
-          {steps.map((step, i) => (
-            <ActivityStepView key={i} step={step} />
-          ))}
+        <div className="border-border/50 border-t px-3 py-3">
+          {/* Vertical timeline: a connector line down the left with a node per
+              step, the individual steps rendered in order. */}
+          <ol className="border-border/60 relative ml-1 space-y-2.5 border-l pl-4">
+            {steps.map((step, i) => (
+              <li key={i} className="relative">
+                <span
+                  aria-hidden
+                  className="bg-border ring-background absolute top-2 -left-[1.3rem] size-2 rounded-full ring-2"
+                />
+                <ActivityStepView step={step} />
+              </li>
+            ))}
+          </ol>
         </div>
       )}
     </div>

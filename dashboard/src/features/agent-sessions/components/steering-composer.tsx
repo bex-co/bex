@@ -2,18 +2,13 @@ import { useState } from "react";
 import { Loader2, SendHorizonal } from "lucide-react";
 import { toast } from "sonner";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/common/components/ui/card";
-import {
   Alert,
   AlertDescription,
   AlertTitle,
 } from "@/common/components/ui/alert";
 import { Button } from "@/common/components/ui/button";
 import { Textarea } from "@/common/components/ui/textarea";
+import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
 import {
@@ -38,8 +33,9 @@ export interface SteeringComposerProps {
 }
 
 /**
- * The single, state-routed steering composer (ADR047 § D9). One textarea, two
- * destinations decided by the session's phase:
+ * The bottom-docked chat composer (ADR047 § D9, w3/m44). One auto-growing
+ * textarea (Enter-to-send, Shift+Enter for a newline) with two destinations
+ * decided by the session's phase:
  *
  * - a **live** (running/creating/resuming/redispatching) session → the message
  *   is sent as a chat `POST` through the conversation column's own `useChat`
@@ -129,14 +125,17 @@ export function SteeringComposer({
     }
   }
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    // Enter sends; Shift+Enter inserts a newline (the chat-composer convention).
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (!submitDisabled) void onSubmit(e);
+    }
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">
-          {t("agentSessions.steerTitle")}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <div className="bg-background shrink-0 border-t">
+      <div className="mx-auto w-full max-w-3xl space-y-2 px-4 py-3">
         {submitError ? (
           <Alert variant="destructive">
             <AlertTitle>{t("agentSessions.steerErrorTitle")}</AlertTitle>
@@ -144,26 +143,34 @@ export function SteeringComposer({
           </Alert>
         ) : null}
 
-        <form onSubmit={(e) => void onSubmit(e)} className="space-y-2">
-          <Textarea
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            rows={3}
-            disabled={inputDisabled}
-            placeholder={
-              route === "redispatch"
-                ? t("agentSessions.steerPlaceholderIdle")
-                : t("agentSessions.steerPlaceholderLive")
-            }
-          />
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-muted-foreground text-xs">
-              {disabledReason ??
-                (route === "redispatch"
-                  ? t("agentSessions.steerHintIdle")
-                  : t("agentSessions.steerHintLive"))}
-            </p>
-            <Button type="submit" size="sm" disabled={submitDisabled}>
+        <form onSubmit={(e) => void onSubmit(e)}>
+          <div
+            className={cn(
+              "border-input bg-background focus-within:border-ring focus-within:ring-ring/40 flex items-end gap-2 rounded-2xl border px-3 py-2 shadow-xs transition-[color,box-shadow] focus-within:ring-[3px]",
+              inputDisabled && "opacity-70",
+            )}
+          >
+            {/* `field-sizing-content` (base Textarea) auto-grows the input to
+                fit; the max-height + overflow bound it for a long follow-up. */}
+            <Textarea
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              rows={1}
+              disabled={inputDisabled}
+              placeholder={
+                route === "redispatch"
+                  ? t("agentSessions.steerPlaceholderIdle")
+                  : t("agentSessions.steerPlaceholderLive")
+              }
+              className="max-h-[200px] min-h-0 resize-none overflow-y-auto border-0 bg-transparent p-0 py-1.5 shadow-none focus-visible:ring-0 dark:bg-transparent"
+            />
+            <Button
+              type="submit"
+              size="sm"
+              disabled={submitDisabled}
+              className="shrink-0 rounded-xl"
+            >
               {busy ? (
                 <>
                   <Loader2 className="animate-spin" />
@@ -177,8 +184,14 @@ export function SteeringComposer({
               )}
             </Button>
           </div>
+          <p className="text-muted-foreground mt-1.5 px-1 text-xs">
+            {disabledReason ??
+              (route === "redispatch"
+                ? t("agentSessions.steerHintIdle")
+                : t("agentSessions.steerHintLive"))}
+          </p>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

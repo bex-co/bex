@@ -1196,7 +1196,7 @@ function cors(req, res) {
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "Authorization, Content-Type, X-Session-Token",
+    "Authorization, Content-Type, X-Session-Token, X-Bex-Agent-Ticket",
   );
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
 }
@@ -2548,6 +2548,18 @@ function resolveGraphQL({ operationName, variables = {} }) {
       const one = agentSessionsFor().find((s) => s.id === variables.id);
       return { agentSession: one ?? null };
     }
+    case "AttachAgentSession": {
+      const one = agentSessionsFor().find((s) => s.id === variables.id);
+      if (!one) return { attachAgentSession: null };
+      return {
+        attachAgentSession: {
+          ...one,
+          ticket: "mock-attach-ticket",
+          url: `http://localhost:${PORT}`,
+          expiresAt: new Date(Date.now() + 90_000).toISOString(),
+        },
+      };
+    }
     default:
       return {};
   }
@@ -2669,12 +2681,72 @@ function agentSessionsFor(ownerId = WORKSPACE_DEFAULT) {
   ];
 }
 
+// A recorded v1 UI-message-stream transcript (ADR047 D9) the stream route
+// replays so the dashboard chat column renders a realistic conversation offline:
+// intro text → plan checklist → reasoning ("Thought") → a grouped tool/command/
+// terminal/diff activity → final text. Chunk shapes match the driver's server.ts.
+const AGENT_STREAM_TRANSCRIPT = [
+  { type: "start", messageId: "asm-1" },
+  { type: "start-step" },
+  { type: "text-start", id: "t0" },
+  {
+    type: "text-delta",
+    id: "t0",
+    delta: "I'll add a `/healthz` endpoint and a unit test, then commit.",
+  },
+  { type: "text-end", id: "t0" },
+  {
+    type: "data-acp",
+    data: {
+      type: "plan",
+      entries: [
+        { content: "Add the /healthz handler", status: "completed", priority: "high" },
+        { content: "Write a unit test", status: "completed", priority: "medium" },
+        { content: "Commit and open a draft PR", status: "in_progress", priority: "medium" },
+      ],
+    },
+  },
+  { type: "reasoning-start", id: "r1" },
+  { type: "reasoning-delta", id: "r1", delta: "The service already wires a router, " },
+  { type: "reasoning-delta", id: "r1", delta: "so I'll register the route there and add a table test." },
+  { type: "reasoning-end", id: "r1" },
+  { type: "tool-input-start", toolCallId: "c1", toolName: "acp_agent", dynamic: true },
+  { type: "tool-input-available", toolCallId: "c1", toolName: "acp_agent", input: { command: "ls" }, dynamic: true },
+  { type: "data-acp", data: { type: "command", title: "List the repo", command: "ls -la", toolKind: "execute" } },
+  { type: "data-acp", data: { type: "diff", path: "healthz.go", oldText: "", newText: "package main\n\nfunc healthz(w http.ResponseWriter, r *http.Request) {\n\tw.WriteHeader(200)\n}\n", toolCallId: "c1" } },
+  { type: "data-acp", data: { type: "terminal", terminalId: "term-1", output: "$ go test ./...\nok  \tbex-hello-go-live\t0.12s", toolCallId: "c1" } },
+  { type: "tool-output-available", toolCallId: "c1", output: { ok: true }, dynamic: true },
+  { type: "text-start", id: "t1" },
+  { type: "text-delta", id: "t1", delta: "Done! I added `/healthz` with a passing test and " },
+  { type: "text-delta", id: "t1", delta: "committed on `bex-agent/pr-add-healthcheck`." },
+  { type: "text-end", id: "t1" },
+  { type: "finish-step" },
+  { type: "finish" },
+];
+
 const server = createServer((req, res) => {
   cors(req, res);
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
   if (req.method === "OPTIONS") {
     res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  // ADR047 D9 agent-session conversation stream (w3/m43): the dashboard's
+  // useChat transport GETs this for replay (mock v1 UI-message stream). Stub-only
+  // — replays a fixed transcript so the chat column renders offline.
+  if (/^\/v1\/agent-sessions\/[^/]+\/stream$/.test(url.pathname)) {
+    res.writeHead(200, {
+      "content-type": "text/event-stream",
+      "cache-control": "no-cache, no-transform",
+      "x-vercel-ai-ui-message-stream": "v1",
+    });
+    for (const chunk of AGENT_STREAM_TRANSCRIPT) {
+      res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+    }
+    res.write("data: [DONE]\n\n");
     res.end();
     return;
   }

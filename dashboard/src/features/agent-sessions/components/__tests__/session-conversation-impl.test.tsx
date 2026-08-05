@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SessionConversationImpl } from "@/features/agent-sessions/components/session-conversation-impl";
+import { collapseDoubledParts } from "@/features/agent-sessions/lib/collapse-doubled-parts";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation-impl";
 import { createAgentSessionTransport } from "@/features/agent-sessions/lib/transport";
 import {
@@ -43,9 +44,10 @@ describe("SessionConversationImpl", () => {
     ).not.toBeInTheDocument();
 
     // The tool + diff + terminal parts fold into ONE activity group whose
-    // collapsed summary reflects the single edited file. The tool name and
-    // terminal output stay hidden until the group is expanded.
-    expect(screen.getByText("Edited 1 files")).toBeInTheDocument();
+    // collapsed summary is the Devin "Worked" label (no derived duration on a
+    // one-frame replay). The tool name and terminal output stay hidden until the
+    // group is expanded.
+    expect(screen.getByText("Worked")).toBeInTheDocument();
     expect(screen.queryByText("acp_agent")).not.toBeInTheDocument();
 
     // The final assistant text (markdown) renders.
@@ -63,9 +65,9 @@ describe("SessionConversationImpl", () => {
       screen.getByText(/The task asks me to edit the file/),
     ).toBeInTheDocument();
 
-    // Expanding the activity group reveals each step: the tool call and the
-    // folded diff.
-    await userEvent.click(screen.getByText("Edited 1 files"));
+    // Expanding the activity group reveals each step (a vertical timeline): the
+    // tool call and the folded diff.
+    await userEvent.click(screen.getByText("Worked"));
     expect(screen.getByText("acp_agent")).toBeInTheDocument();
     expect(screen.getByText(/committed by the agent/)).toBeInTheDocument();
   });
@@ -164,11 +166,12 @@ describe("SessionConversationImpl", () => {
       />,
     );
 
-    // A single activity group summarises the two commands (the tool + two ACP
-    // command parts merged). Its steps are collapsed until expanded.
-    const summary = await screen.findByText("Ran 2 commands");
+    // A single activity group folds the two commands (the tool + two ACP
+    // command parts merged) under one Devin "Worked" summary. Its steps are
+    // collapsed until expanded.
+    const summary = await screen.findByText("Worked");
     expect(summary).toBeInTheDocument();
-    expect(screen.getAllByText(/Ran \d+ commands/)).toHaveLength(1);
+    expect(screen.getAllByText("Worked")).toHaveLength(1);
     expect(screen.queryByText("search")).not.toBeInTheDocument();
 
     // Expanding reveals every folded step in the one group.
@@ -233,3 +236,51 @@ describe("SessionConversationImpl", () => {
     await waitFor(() => expect(onChatStateChange).toHaveBeenCalledWith(null));
   });
 });
+
+describe("collapseDoubledParts", () => {
+  const P = (type: string, extra: Record<string, unknown> = {}) => ({
+    type,
+    ...extra,
+  });
+  // The transcript a single replay produces.
+  const transcript = () => [
+    P("text", { id: "a", text: "Hello" }),
+    P("data-acp", { data: { type: "plan", entries: [] } }),
+    P("tool-run", { toolName: "acp_agent" }),
+    P("text", { id: "b", text: "Done" }),
+  ];
+
+  it("collapses an exact doubled transcript to a single copy", () => {
+    // A dev double-mount appends the replay twice into one message; the second
+    // copy has FRESH per-part ids, so this must dedupe id-agnostically.
+    const doubled = [
+      ...transcript(),
+      P("text", { id: "a2", text: "Hello" }),
+      P("data-acp", { data: { type: "plan", entries: [] } }),
+      P("tool-run", { toolName: "acp_agent" }),
+      P("text", { id: "b2", text: "Done" }),
+    ];
+    const result = collapseDoubledParts(doubled);
+    expect(result).toHaveLength(4);
+    expect(result.map((p) => (p as { text?: string }).text)).toEqual([
+      "Hello",
+      undefined,
+      undefined,
+      "Done",
+    ]);
+  });
+
+  it("leaves a genuine (non-mirrored) transcript untouched", () => {
+    const real = [
+      ...transcript(),
+      P("text", { id: "c", text: "A follow-up turn" }),
+      P("tool-run", { toolName: "other_tool" }),
+    ];
+    expect(collapseDoubledParts(real)).toHaveLength(real.length);
+  });
+
+  it("leaves an odd-length or short parts list untouched", () => {
+    expect(collapseDoubledParts(transcript().slice(0, 3))).toHaveLength(3);
+    expect(collapseDoubledParts([P("text", { text: "hi" })])).toHaveLength(1);
+  });
+})
