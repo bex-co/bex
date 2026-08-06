@@ -50,7 +50,11 @@ export function SidebarNavGroups({
             <SidebarMenu>
               {group.items.map((item) => (
                 <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton asChild isActive={isItemActive(item.to)}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isItemActive(item.to)}
+                    tooltip={t(item.labelKey)}
+                  >
                     <Link to={item.to} params={linkParams}>
                       {item.icon ? <item.icon /> : null}
                       <span>{t(item.labelKey)}</span>

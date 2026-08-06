@@ -43,12 +43,12 @@ export function ServiceSidebar({ serviceId }: ServiceSidebarProps) {
   const showNav = loading || service !== null;
 
   return (
-    <Sidebar collapsible="offcanvas">
+    <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarBrand />
       </SidebarHeader>
       <SidebarContent>
-        <div className="flex flex-col gap-2 px-2 pt-2 pb-1">
+        <div className="flex flex-col gap-2 px-2 pt-2 pb-1 group-data-[collapsible=icon]:hidden">
           <Link
             to="/"
             className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
