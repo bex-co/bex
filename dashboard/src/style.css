@@ -150,7 +150,16 @@
 /* Geometry: Ory's controls sit on a ~46px scale (inputs px-4 py-[13px],
    buttons p-4); this app's shadcn kit is the h-9 scale (36px, text-sm on
    md+). Keyed on Ory's stable data-testid hooks, not its compiled class
-   names. */
+   names.
+
+   Two button testid families need this: the core-flow submit buttons
+   (`DefaultButton`, `ory/form/node/button/*`) and the social/OIDC provider
+   buttons (`DefaultButtonSocial`, e.g. "Sign in with github"). The latter is
+   a <button> that carries an *input*-namespace testid
+   (`ory/form/node/input/*`) and `intent:"social"`, so without matching it
+   here it keeps Ory's default 48px `p-4`/16px scale and reads a size larger
+   than the normalized primary button next to it. The `input[...]` rules below
+   are scoped to the `input` element and never touch these <button>s. */
 .ory-elements input[data-testid^="ory/form/node/input"] {
   min-height: 2.25rem; /* h-9 */
   padding: 0.25rem 0.75rem; /* px-3 py-1 */
@@ -165,17 +174,55 @@
     font-size: 0.875rem; /* md:text-sm */
   }
 }
-.ory-elements button[data-testid^="ory/form/node/button"] {
+.ory-elements button[data-testid^="ory/form/node/button"],
+.ory-elements button[data-testid^="ory/form/node/input"] {
   min-height: 2.25rem; /* h-9 */
   padding: 0.5rem 1rem; /* px-4 py-2 */
   font-size: 0.875rem; /* text-sm */
   line-height: 1.25rem;
+  /* Ory's buttons are `flex justify-center` with no `items-center`. Combined
+     with our min-height (which adds cross-axis space the padding doesn't), the
+     label's flex item stretches and its line box lands at the top — the text
+     reads visibly high. Center it on the cross axis so the label (and the
+     social logo+label group below) sits in the vertical middle. */
+  align-items: center;
+}
+/* Social/OIDC provider buttons (DefaultButtonSocial) lay out their contents as
+   [logo][grow label][phantom spacer] with only `justify-center` and no
+   `items-center`: the logo is pinned hard-left, the label is centered by the
+   symmetric spacer, and the shorter logo isn't vertically centered against the
+   taller text line. At our compact h-9 scale that reads as a stray icon with a
+   wide gap to the text. Center the logo+label as one group (drop the label's
+   grow and the trailing spacer) and vertically center them — the conventional
+   OAuth-button look. Both extra spans only exist when a label is shown
+   (single/low-count providers); the nth-child guards no-op in the icon-only
+   many-providers layout, which has just the logo. (Vertical centering is
+   handled by the shared `align-items: center` on the geometry rule above.) */
+.ory-elements button[data-testid^="ory/form/node/input"] > span:nth-child(2) {
+  flex-grow: 0; /* label no longer stretches to fill the row */
+}
+.ory-elements button[data-testid^="ory/form/node/input"] > span:nth-child(3) {
+  display: none; /* remove the symmetry-only trailing spacer */
+}
+/* GitHub's provider logo ships as a single black-filled path with no `fill`
+   attribute (so it computes to rgb(0,0,0)) and doesn't follow the button's
+   text color — invisible on the dark-theme social button (dark card bg). The
+   GitHub mark is designed to be monochrome (black on light, white on dark), so
+   drive its fill from currentColor, which already tracks the theme via the
+   button's foreground token. Scoped to GitHub by aria-label (the provider name
+   is language-independent) so a future multi-color brand logo — e.g. Google —
+   keeps its own colors. */
+.ory-elements
+  button[data-testid^="ory/form/node/input"][aria-label*="github" i]
+  svg {
+  fill: currentColor;
 }
 /* Focus: shadcn pairs the border swap with a soft 3px ring
    (focus-visible:ring-ring/50 ring-[3px]); Ory only swaps the border. */
 .ory-elements input[data-testid^="ory/form/node/input"]:focus-visible,
 .ory-elements div:focus-within > input[data-testid^="ory/form/node/input"],
-.ory-elements button[data-testid^="ory/form/node/button"]:focus-visible {
+.ory-elements button[data-testid^="ory/form/node/button"]:focus-visible,
+.ory-elements button[data-testid^="ory/form/node/input"]:focus-visible {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
 }
 /* Card: match shadcn Card's density and shadow-sm (Ory defaults to
