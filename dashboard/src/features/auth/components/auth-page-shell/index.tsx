@@ -43,7 +43,12 @@ export function AuthPageShell({
         <LanguageSwitcher />
       </div>
       <div className="flex-1 flex items-center justify-center py-12 px-6 lg:px-8">
-        <div className="w-full max-w-md space-y-8">
+        {/* 30rem (480px) matches the Ory Elements card's own max width, so the
+            rendered <Login>/<Registration> card fills the column exactly instead
+            of overflowing a narrower max-w-md — and the loading skeleton, which
+            is w-full of this column, is the same width as the card it stands in
+            for (no width jump when the flow swaps in). */}
+        <div className="w-full max-w-[30rem] space-y-8">
           <div className="space-y-2">
             <h1 className="text-3xl font-bold text-foreground">{title}</h1>
             <p className="text-muted-foreground">{subtitle}</p>
