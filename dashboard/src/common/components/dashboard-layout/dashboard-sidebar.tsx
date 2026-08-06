@@ -79,7 +79,7 @@ export function DashboardSidebar() {
   }
 
   return (
-    <Sidebar collapsible="offcanvas">
+    <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarBrand />
       </SidebarHeader>

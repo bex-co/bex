@@ -22,21 +22,34 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/common/components/ui/tooltip.tsx";
-const SIDEBAR_COOKIE_NAME = "sidebar_state";
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-const SIDEBAR_WIDTH = "16rem";
+import {
+  clampSidebarWidth,
+  getPersistedSidebarState,
+  persistSidebarState,
+  SIDEBAR_COLLAPSE_AT_PX,
+  SIDEBAR_DEFAULT_WIDTH_PX,
+  SIDEBAR_MAX_WIDTH_PX,
+  SIDEBAR_MIN_WIDTH_PX,
+  SIDEBAR_WIDTH_ICON,
+} from "./sidebar-state.ts";
+
 const SIDEBAR_WIDTH_MOBILE = "18rem";
-const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
 type SidebarContextProps = {
   state: "expanded" | "collapsed";
   open: boolean;
   setOpen: (open: boolean) => void;
+  /** Expanded width in px (retained while collapsed). */
+  width: number;
+  /** Commit a new expanded width; also re-expands and persists. */
+  setWidth: (width: number) => void;
   openMobile: boolean;
   setOpenMobile: (open: boolean) => void;
   isMobile: boolean;
   toggleSidebar: () => void;
+  /** The `[data-slot=sidebar-wrapper]` element, for imperative resize. */
+  wrapperRef: React.RefObject<HTMLDivElement | null>;
 };
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null);
@@ -66,11 +79,33 @@ function SidebarProvider({
   // Pass isHydrated to useIsMobile
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
+
+  // Persisted collapse state + width, read isomorphically on first render so
+  // the server and the client's hydration pass agree (no flash). `null` ⇒ no
+  // cookie yet, fall back to the caller's default / the primitive default.
+  const persisted = React.useMemo(() => getPersistedSidebarState(), []);
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
-  const [_open, _setOpen] = React.useState(defaultOpen);
+  const [_open, _setOpen] = React.useState(
+    () => openProp ?? persisted?.open ?? defaultOpen,
+  );
   const open = openProp ?? _open;
+
+  // Expanded width in px (kept even while collapsed, so re-expanding restores
+  // the user's chosen width). Written via `setWidth` on a resize commit.
+  const [width, setWidthState] = React.useState(
+    () => persisted?.width ?? SIDEBAR_DEFAULT_WIDTH_PX,
+  );
+  // Kept in a ref so `setOpen` can persist the current width without listing
+  // `width` as a dependency (which would rebuild the keyboard-shortcut effect
+  // on every resize). Synced in an effect, not during render (react-hooks/refs).
+  const widthRef = React.useRef(width);
+  React.useEffect(() => {
+    widthRef.current = width;
+  }, [width]);
+
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
       const openState = typeof value === "function" ? value(open) : value;
@@ -79,13 +114,19 @@ function SidebarProvider({
       } else {
         _setOpen(openState);
       }
-
-      // This sets the cookie to keep the sidebar state (client-only).
-      if (typeof document !== "undefined") {
-        document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
-      }
+      persistSidebarState({ open: openState, width: widthRef.current });
     },
     [setOpenProp, open],
+  );
+
+  const setWidth = React.useCallback(
+    (next: number) => {
+      const clamped = clampSidebarWidth(next);
+      setWidthState(clamped);
+      if (!setOpenProp) _setOpen(true);
+      persistSidebarState({ open: true, width: clamped });
+    },
+    [setOpenProp],
   );
 
   // Helper to toggle the sidebar.
@@ -123,12 +164,25 @@ function SidebarProvider({
       state,
       open,
       setOpen,
+      width,
+      setWidth,
       isMobile,
       openMobile,
       setOpenMobile,
       toggleSidebar,
+      wrapperRef,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar],
+    [
+      state,
+      open,
+      setOpen,
+      width,
+      setWidth,
+      isMobile,
+      openMobile,
+      setOpenMobile,
+      toggleSidebar,
+    ],
   );
 
   // NOTE: suppressHydrationWarning is needed due to TanStack Router hydration issues
@@ -138,11 +192,12 @@ function SidebarProvider({
     <SidebarContext.Provider value={contextValue}>
       <TooltipProvider delayDuration={0}>
         <div
+          ref={wrapperRef}
           data-slot="sidebar-wrapper"
           suppressHydrationWarning
           style={
             {
-              "--sidebar-width": SIDEBAR_WIDTH,
+              "--sidebar-width": `${width}px`,
               "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
               ...style,
             } as React.CSSProperties
@@ -236,6 +291,8 @@ function Sidebar({
         data-slot="sidebar-gap"
         className={cn(
           "relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear",
+          // Track the pointer 1:1 while dragging (no width transition lag).
+          "group-data-[dragging=true]/sidebar-wrapper:transition-none",
           "group-data-[collapsible=offcanvas]:w-0",
           "group-data-[side=right]:rotate-180",
           variant === "floating" || variant === "inset"
@@ -247,6 +304,7 @@ function Sidebar({
         data-slot="sidebar-container"
         className={cn(
           "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex",
+          "group-data-[dragging=true]/sidebar-wrapper:transition-none",
           side === "left"
             ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
             : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
@@ -265,6 +323,9 @@ function Sidebar({
         >
           {children}
         </div>
+        {/* Drag-to-resize + collapse handle (the `collapsible="none"` case
+            already returned above, so the sidebar is always resizable here). */}
+        <SidebarRail />
       </div>
     </div>
   );
@@ -296,24 +357,143 @@ function SidebarTrigger({
   );
 }
 
-function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
-  const { toggleSidebar } = useSidebar();
+/**
+ * Draggable resize handle + collapse toggle for the sidebar's leading edge —
+ * a WAI-ARIA vertical window splitter (w2/m63, modeled on app.devin.ai):
+ *
+ * - drag to resize the expanded sidebar within [min, max]; dragging below the
+ *   snap threshold collapses to the icon rail, and dragging back out re-expands;
+ * - double-click toggles collapsed ⇄ expanded;
+ * - ArrowLeft/ArrowRight resize, Enter/Space toggle (keyboard a11y).
+ *
+ * During a drag the CSS var `--sidebar-width` is written directly on the
+ * wrapper element so the pane tracks the pointer with no per-frame React
+ * re-render; the final width is committed to state (and the cookie) on release.
+ */
+function SidebarRail({ className, ...props }: React.ComponentProps<"div">) {
+  const { open, width, setWidth, setOpen, toggleSidebar, wrapperRef } =
+    useSidebar();
+  const drag = React.useRef<{
+    pointerId: number;
+    startX: number;
+    side: "left" | "right";
+    moved: boolean;
+    previewOpen: boolean;
+    width: number;
+  } | null>(null);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+    const el = e.currentTarget;
+    const side =
+      (el.closest("[data-slot=sidebar]")?.getAttribute("data-side") as
+        | "left"
+        | "right"
+        | null) ?? "left";
+    el.setPointerCapture(e.pointerId);
+    el.dataset.dragging = "true";
+    wrapper.dataset.dragging = "true";
+    drag.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      side,
+      moved: false,
+      previewOpen: open,
+      width,
+    };
+    e.preventDefault();
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d || e.pointerId !== d.pointerId) return;
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+    const rect = wrapper.getBoundingClientRect();
+    const raw =
+      d.side === "right" ? rect.right - e.clientX : e.clientX - rect.left;
+    if (Math.abs(e.clientX - d.startX) > 3) d.moved = true;
+
+    // Below the snap threshold: preview the collapsed icon rail.
+    if (raw < SIDEBAR_COLLAPSE_AT_PX) {
+      if (d.previewOpen) {
+        d.previewOpen = false;
+        setOpen(false);
+      }
+      return;
+    }
+    const next = clampSidebarWidth(raw);
+    d.width = next;
+    if (!d.previewOpen) {
+      d.previewOpen = true;
+      setOpen(true);
+    }
+    wrapper.style.setProperty("--sidebar-width", `${next}px`);
+    e.currentTarget.setAttribute("aria-valuenow", String(next));
+  };
+
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d || e.pointerId !== d.pointerId) return;
+    drag.current = null;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    delete e.currentTarget.dataset.dragging;
+    const wrapper = wrapperRef.current;
+    if (wrapper) delete wrapper.dataset.dragging;
+    if (!d.moved) return; // a stationary click: double-click handles the toggle
+    if (d.previewOpen) {
+      setWidth(d.width);
+      wrapper?.style.setProperty("--sidebar-width", `${d.width}px`);
+    } else {
+      setOpen(false);
+      // Restore the inline var to the remembered width (`width` is unchanged by
+      // a collapse). React won't re-apply it — its tracked value is unchanged
+      // while collapsed — so the mid-drag imperative value would otherwise
+      // persist and show on the next expand.
+      wrapper?.style.setProperty("--sidebar-width", `${width}px`);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const STEP = 16;
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      if (open) setWidth(width - STEP);
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      setWidth(width + STEP);
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      toggleSidebar();
+    }
+  };
 
   return (
-    <button
+    <div
       data-sidebar="rail"
       data-slot="sidebar-rail"
-      aria-label="Toggle Sidebar"
-      tabIndex={-1}
-      onClick={toggleSidebar}
-      title="Toggle Sidebar"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize sidebar"
+      aria-valuemin={SIDEBAR_MIN_WIDTH_PX}
+      aria-valuemax={SIDEBAR_MAX_WIDTH_PX}
+      aria-valuenow={open ? width : SIDEBAR_MIN_WIDTH_PX}
+      tabIndex={0}
+      title="Drag to resize · double-click to toggle"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      onDoubleClick={toggleSidebar}
+      onKeyDown={handleKeyDown}
       className={cn(
-        "hover:after:bg-sidebar-border absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex",
-        "in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",
-        "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
-        "hover:group-data-[collapsible=offcanvas]:bg-sidebar group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full",
-        "[[data-side=left][data-collapsible=offcanvas]_&]:-right-2",
-        "[[data-side=right][data-collapsible=offcanvas]_&]:-left-2",
+        "absolute inset-y-0 -right-1 z-20 hidden w-2 cursor-col-resize touch-none select-none sm:block",
+        "[[data-side=right]_&]:right-auto [[data-side=right]_&]:-left-1",
+        "after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2 after:bg-transparent after:transition-colors after:content-['']",
+        "hover:after:bg-sidebar-border focus-visible:outline-none focus-visible:after:bg-sidebar-accent-foreground",
+        "data-[dragging=true]:after:w-0.5 data-[dragging=true]:after:bg-sidebar-accent-foreground",
         className,
       )}
       {...props}

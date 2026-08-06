@@ -21,8 +21,12 @@ import { NewResourceMenu } from "./new-resource-menu";
  * same navigation instead of rendering an empty header.
  */
 export function DashboardHeader() {
-  const { state, isMobile, openMobile } = useSidebar();
-  const showTrigger = isMobile ? !openMobile : state === "collapsed";
+  const { isMobile, openMobile } = useSidebar();
+  // Desktop always shows the icon rail (with its own toggle in the sidebar
+  // header, w2/m63), so the content-header trigger is only needed on mobile,
+  // where the sidebar is an off-canvas Sheet — show it when that Sheet is
+  // closed so there is a way to open it.
+  const showTrigger = isMobile && !openMobile;
 
   return (
     <header className="sticky top-0 z-50 h-12 shrink-0 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">

@@ -41,12 +41,12 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
     pathname === settingsPath || pathname.startsWith(`${settingsPath}/`);
 
   return (
-    <Sidebar collapsible="offcanvas">
+    <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarBrand />
       </SidebarHeader>
       <SidebarContent>
-        <div className="flex flex-col gap-2 px-2 pt-2 pb-1">
+        <div className="flex flex-col gap-2 px-2 pt-2 pb-1 group-data-[collapsible=icon]:hidden">
           {onSettings ? (
             <Link
               to="/project/$projectId"
@@ -71,7 +71,11 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={!onSettings}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={!onSettings}
+                  tooltip={t("common.navProjectOverview")}
+                >
                   <Link to="/project/$projectId" params={{ projectId }}>
                     <FolderKanban />
                     <span>{t("common.navProjectOverview")}</span>
@@ -86,7 +90,11 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={onSettings}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={onSettings}
+                  tooltip={t("common.navSettings")}
+                >
                   <Link
                     to="/project/$projectId/settings"
                     params={{ projectId }}
