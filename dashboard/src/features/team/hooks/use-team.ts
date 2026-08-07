@@ -113,7 +113,9 @@ export function useTeam(workspaceId: string | null): UseTeamResult {
     members,
     invites,
     seats,
-    loading: membersQ.loading,
+    // A skipped query reports loading:false, so an unresolved workspace would
+    // otherwise read as "loaded, zero members" and flash the empty state.
+    loading: skip || membersQ.loading,
     error: membersQ.error,
     canManage,
     refetch,

@@ -19,20 +19,13 @@ import {
 import {
   PanelCenteredState,
   PanelTableSkeleton,
+  TableActionsHead,
 } from "@/common/components/panel-states";
+import { isForbiddenError } from "@/common/lib/graphql-error";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWebhooks } from "@/features/webhooks/hooks/use-webhooks";
 import { useSetWebhookEnabled } from "@/features/webhooks/hooks/use-set-webhook-enabled";
 import { WebhookRow } from "@/features/webhooks/components/webhook-row";
-
-type ErrorKind = "forbidden" | "generic";
-
-function classifyWebhooksError(error: Error | undefined): ErrorKind | null {
-  if (!error) return null;
-  return error.message.toLowerCase().includes("forbidden")
-    ? "forbidden"
-    : "generic";
-}
 
 /**
  * Settings → Integrations → Webhooks (w3/m11): the workspace's outbound
@@ -45,15 +38,8 @@ export function WebhooksPanel() {
   const { endpoints, loading, error } = useWebhooks();
   const { setEnabled, toggling } = useSetWebhookEnabled();
 
-  const errorKind = classifyWebhooksError(error);
-  const initialLoading = loading && endpoints.length === 0 && !error;
-
-  // No refetch on toggle: the mutation's selection set (id/enabled/
-  // disabledReason) updates the normalized Apollo cache row in place; only
-  // create/delete change list membership.
-  async function handleToggle(id: string, name: string, enabled: boolean) {
-    return setEnabled(id, name, enabled);
-  }
+  const forbidden = isForbiddenError(error);
+  const initialLoading = loading && endpoints.length === 0;
 
   return (
     <Card>
@@ -70,12 +56,24 @@ export function WebhooksPanel() {
         </CardAction>
       </CardHeader>
       <CardContent>
-        {errorKind ? (
-          <StatePanel kind={errorKind} />
+        {error ? (
+          <PanelCenteredState
+            icon={forbidden ? <ShieldAlert /> : <AlertTriangle />}
+            title={t(
+              forbidden ? "webhooks.forbiddenTitle" : "webhooks.errorTitle",
+            )}
+            body={t(
+              forbidden ? "webhooks.forbiddenBody" : "webhooks.errorBody",
+            )}
+          />
         ) : initialLoading ? (
           <PanelTableSkeleton />
         ) : endpoints.length === 0 ? (
-          <EmptyState />
+          <PanelCenteredState
+            icon={<Webhook />}
+            title={t("webhooks.emptyTitle")}
+            body={t("webhooks.emptyBody")}
+          />
         ) : (
           <Table>
             <TableHeader>
@@ -83,15 +81,18 @@ export function WebhooksPanel() {
                 <TableHead>{t("webhooks.colEndpoint")}</TableHead>
                 <TableHead>{t("webhooks.colEvents")}</TableHead>
                 <TableHead>{t("webhooks.colEnabled")}</TableHead>
-                <TableHead className="sr-only text-right">actions</TableHead>
+                <TableActionsHead />
               </TableRow>
             </TableHeader>
             <TableBody>
               {endpoints.map((entry) => (
+                // No refetch on toggle: the mutation's selection set
+                // (id/enabled/disabledReason) updates the normalized Apollo
+                // cache row in place; only create/delete change membership.
                 <WebhookRow
                   key={entry.id}
                   entry={entry}
-                  onToggle={handleToggle}
+                  onToggle={setEnabled}
                   toggling={toggling === entry.id}
                 />
               ))}
@@ -100,35 +101,5 @@ export function WebhooksPanel() {
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function EmptyState() {
-  const { t } = useTranslations();
-  return (
-    <PanelCenteredState
-      icon={<Webhook />}
-      title={t("webhooks.emptyTitle")}
-      body={t("webhooks.emptyBody")}
-    />
-  );
-}
-
-function StatePanel({ kind }: { kind: ErrorKind }) {
-  const { t } = useTranslations();
-  const copy = {
-    forbidden: {
-      icon: <ShieldAlert />,
-      title: t("webhooks.forbiddenTitle"),
-      body: t("webhooks.forbiddenBody"),
-    },
-    generic: {
-      icon: <AlertTriangle />,
-      title: t("webhooks.errorTitle"),
-      body: t("webhooks.errorBody"),
-    },
-  }[kind];
-  return (
-    <PanelCenteredState icon={copy.icon} title={copy.title} body={copy.body} />
   );
 }

@@ -16,6 +16,24 @@ import { useUpdateNotificationSettings } from "@/features/notifications/hooks/us
 
 type Field = "deployStarted" | "deploySucceeded" | "deployFailed";
 
+const ROWS: Array<{ field: Field; labelKey: string; hintKey: string }> = [
+  {
+    field: "deployStarted",
+    labelKey: "notifications.deployStarted",
+    hintKey: "notifications.deployStartedHint",
+  },
+  {
+    field: "deploySucceeded",
+    labelKey: "notifications.deploySucceeded",
+    hintKey: "notifications.deploySucceededHint",
+  },
+  {
+    field: "deployFailed",
+    labelKey: "notifications.deployFailed",
+    hintKey: "notifications.deployFailedHint",
+  },
+];
+
 /**
  * Settings → Notifications (w3/m9): the caller's own deploy-email
  * preferences — start/succeed/fail on any of their workspace's services, matching
@@ -35,24 +53,6 @@ export function NotificationSettingsPanel() {
   function toggle(field: Field, value: boolean) {
     void update({ ...settings, [field]: value });
   }
-
-  const rows: Array<{ field: Field; labelKey: string; hintKey: string }> = [
-    {
-      field: "deployStarted",
-      labelKey: "notifications.deployStarted",
-      hintKey: "notifications.deployStartedHint",
-    },
-    {
-      field: "deploySucceeded",
-      labelKey: "notifications.deploySucceeded",
-      hintKey: "notifications.deploySucceededHint",
-    },
-    {
-      field: "deployFailed",
-      labelKey: "notifications.deployFailed",
-      hintKey: "notifications.deployFailedHint",
-    },
-  ];
 
   return (
     <Card>
@@ -74,7 +74,7 @@ export function NotificationSettingsPanel() {
           </div>
         ) : (
           <div className="space-y-3">
-            {rows.map(({ field, labelKey, hintKey }) => (
+            {ROWS.map(({ field, labelKey, hintKey }) => (
               <div
                 key={field}
                 className="flex items-center justify-between rounded-md border p-3"

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { KeyRound, Loader2, Plus, Trash2 } from "lucide-react";
+import { KeyRound, Loader2, Plus } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import {
   Card,
@@ -19,23 +19,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/common/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/common/components/ui/alert-dialog";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import {
   PanelCenteredState,
   PanelTableSkeleton,
+  TableActionsHead,
 } from "@/common/components/panel-states";
+import { RevokeIconButton } from "@/common/components/revoke-icon-button";
 import {
   Table,
   TableBody,
@@ -57,8 +48,8 @@ export function SSHKeysPanel() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [publicKey, setPublicKey] = useState("");
-  const valid =
-    name.trim().length > 0 && publicKeyPattern.test(publicKey.trim());
+  const keyValid = publicKeyPattern.test(publicKey.trim());
+  const valid = name.trim().length > 0 && keyValid;
 
   async function create() {
     if (!valid) return;
@@ -115,7 +106,7 @@ export function SSHKeysPanel() {
                     maxLength={16384}
                     spellCheck={false}
                   />
-                  {publicKey && !publicKeyPattern.test(publicKey.trim()) ? (
+                  {publicKey && !keyValid ? (
                     <p className="text-destructive text-sm">
                       {t("sshKeys.invalid")}
                     </p>
@@ -162,9 +153,7 @@ export function SSHKeysPanel() {
                 <TableHead>{t("sshKeys.name")}</TableHead>
                 <TableHead>{t("sshKeys.fingerprint")}</TableHead>
                 <TableHead>{t("sshKeys.created")}</TableHead>
-                <TableHead className="sr-only">
-                  {t("sshKeys.actions")}
-                </TableHead>
+                <TableActionsHead label={t("sshKeys.actions")} />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -181,42 +170,17 @@ export function SSHKeysPanel() {
                     {formatRelativeAge(key.createdAt)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          aria-label={t("sshKeys.delete")}
-                          disabled={state.busy === key.id}
-                        >
-                          {state.busy === key.id ? (
-                            <Loader2 className="animate-spin" />
-                          ) : (
-                            <Trash2 className="text-destructive" />
-                          )}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            {t("sshKeys.deleteTitle", { name: key.name })}
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            {t("sshKeys.deleteBody")}
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>
-                            {t("sshKeys.cancel")}
-                          </AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => void state.remove(key.id, key.name)}
-                          >
-                            {t("sshKeys.delete")}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <RevokeIconButton
+                      label={t("sshKeys.delete")}
+                      confirmTitle={t("sshKeys.deleteTitle", {
+                        name: key.name,
+                      })}
+                      confirmBody={t("sshKeys.deleteBody")}
+                      cancelLabel={t("sshKeys.cancel")}
+                      confirmLabel={t("sshKeys.delete")}
+                      pending={state.busy === key.id}
+                      onConfirm={() => void state.remove(key.id, key.name)}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

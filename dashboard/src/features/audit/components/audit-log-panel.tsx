@@ -22,8 +22,6 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import type { UseAuditLogResult } from "@/features/audit/hooks/use-audit-log";
 import { AuditEventRow } from "@/features/audit/components/audit-event-row";
 
-type StateKind = "unavailable" | "error";
-
 /**
  * Settings → Audit Log (w4/m14): a workspace's write-verb trail, newest-first —
  * the human-facing counterpart of w4/m10's REST/GraphQL surface. Presentational:
@@ -57,13 +55,25 @@ export function AuditLogPanel({ state }: { state: UseAuditLogResult }) {
       </CardHeader>
       <CardContent>
         {unavailable ? (
-          <StatePanel kind="unavailable" />
+          <PanelCenteredState
+            icon={<ShieldOff />}
+            title={t("audit.unavailableTitle")}
+            body={t("audit.unavailableBody")}
+          />
         ) : error ? (
-          <StatePanel kind="error" />
+          <PanelCenteredState
+            icon={<AlertTriangle />}
+            title={t("audit.errorTitle")}
+            body={t("audit.errorBody")}
+          />
         ) : loading ? (
           <PanelTableSkeleton />
         ) : events.length === 0 ? (
-          <EmptyState />
+          <PanelCenteredState
+            icon={<ScrollText />}
+            title={t("audit.emptyTitle")}
+            body={t("audit.emptyBody")}
+          />
         ) : (
           <div className="space-y-4">
             <Table>
@@ -97,35 +107,5 @@ export function AuditLogPanel({ state }: { state: UseAuditLogResult }) {
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function EmptyState() {
-  const { t } = useTranslations();
-  return (
-    <PanelCenteredState
-      icon={<ScrollText />}
-      title={t("audit.emptyTitle")}
-      body={t("audit.emptyBody")}
-    />
-  );
-}
-
-function StatePanel({ kind }: { kind: StateKind }) {
-  const { t } = useTranslations();
-  const copy = {
-    unavailable: {
-      icon: <ShieldOff />,
-      title: t("audit.unavailableTitle"),
-      body: t("audit.unavailableBody"),
-    },
-    error: {
-      icon: <AlertTriangle />,
-      title: t("audit.errorTitle"),
-      body: t("audit.errorBody"),
-    },
-  }[kind];
-  return (
-    <PanelCenteredState icon={copy.icon} title={copy.title} body={copy.body} />
   );
 }

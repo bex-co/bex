@@ -50,8 +50,8 @@ export interface UseWebhookDeliveriesResult {
  * One endpoint's delivery history, newest first, keyset-cursor paged (the
  * audit-log pattern, w4/m14): the first page via useQuery, further pages
  * appended imperatively — there's no Apollo field policy merging this list.
- * Mounted inside the per-endpoint history dialog, so all paging state is
- * naturally discarded on close.
+ * Paging state lives here, so it is naturally discarded when the endpoint's
+ * Activity tab unmounts.
  */
 export function useWebhookDeliveries(
   endpointId: string,

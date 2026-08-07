@@ -18,13 +18,13 @@ import {
 import { Button } from "@/common/components/ui/button";
 import { Badge } from "@/common/components/ui/badge";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { PanelCenteredState } from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   useEnvGroups,
   useEnvGroupMutations,
   classifyEnvGroupError,
 } from "@/features/env-groups/hooks/use-env-groups";
-import { CenteredState } from "@/features/services/components/centered-state";
 import type { EnvGroupView } from "@/features/env-groups/types";
 import { NewEnvGroupDialog } from "@/features/env-groups/components/new-env-group-dialog";
 import { useServer } from "@/features/services/hooks/use-server";
@@ -270,5 +270,7 @@ function StatePanel({
       body: t("services.envGroupsErrorBody"),
     },
   }[kind];
-  return <CenteredState icon={copy.icon} title={copy.title} body={copy.body} />;
+  return (
+    <PanelCenteredState icon={copy.icon} title={copy.title} body={copy.body} />
+  );
 }

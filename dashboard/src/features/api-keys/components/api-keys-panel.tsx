@@ -17,21 +17,14 @@ import {
 import {
   PanelCenteredState,
   PanelTableSkeleton,
+  TableActionsHead,
 } from "@/common/components/panel-states";
+import { isForbiddenError } from "@/common/lib/graphql-error";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useApiKeys } from "@/features/api-keys/hooks/use-api-keys";
 import { useRevokeApiKey } from "@/features/api-keys/hooks/use-revoke-api-key";
 import { ApiKeyRow } from "@/features/api-keys/components/api-key-row";
 import { CreateApiKeyDialog } from "@/features/api-keys/components/create-api-key-dialog";
-
-type ErrorKind = "forbidden" | "generic";
-
-function classifyApiKeysError(error: Error | undefined): ErrorKind | null {
-  if (!error) return null;
-  return error.message.toLowerCase().includes("forbidden")
-    ? "forbidden"
-    : "generic";
-}
 
 /**
  * Settings → API Keys (w4/m8): lists the workspace's bex-minted machine
@@ -45,8 +38,8 @@ export function ApiKeysPanel() {
   const { keys, loading, error, refetch } = useApiKeys();
   const { revoke, revoking } = useRevokeApiKey();
 
-  const errorKind = classifyApiKeysError(error);
-  const initialLoading = loading && keys.length === 0 && !error;
+  const forbidden = isForbiddenError(error);
+  const initialLoading = loading && keys.length === 0;
 
   async function handleRevoke(id: string, name: string) {
     const ok = await revoke(id, name);
@@ -74,12 +67,22 @@ export function ApiKeysPanel() {
         </CardAction>
       </CardHeader>
       <CardContent>
-        {errorKind ? (
-          <StatePanel kind={errorKind} />
+        {error ? (
+          <PanelCenteredState
+            icon={forbidden ? <ShieldAlert /> : <AlertTriangle />}
+            title={t(
+              forbidden ? "apiKeys.forbiddenTitle" : "apiKeys.errorTitle",
+            )}
+            body={t(forbidden ? "apiKeys.forbiddenBody" : "apiKeys.errorBody")}
+          />
         ) : initialLoading ? (
           <PanelTableSkeleton />
         ) : keys.length === 0 ? (
-          <EmptyState />
+          <PanelCenteredState
+            icon={<KeyRound />}
+            title={t("apiKeys.emptyTitle")}
+            body={t("apiKeys.emptyBody")}
+          />
         ) : (
           <Table>
             <TableHeader>
@@ -88,7 +91,7 @@ export function ApiKeysPanel() {
                 <TableHead>{t("apiKeys.colCreated")}</TableHead>
                 <TableHead>{t("apiKeys.colCreatedBy")}</TableHead>
                 <TableHead>{t("apiKeys.colLastUsed")}</TableHead>
-                <TableHead className="sr-only text-right">actions</TableHead>
+                <TableActionsHead />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -105,35 +108,5 @@ export function ApiKeysPanel() {
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function EmptyState() {
-  const { t } = useTranslations();
-  return (
-    <PanelCenteredState
-      icon={<KeyRound />}
-      title={t("apiKeys.emptyTitle")}
-      body={t("apiKeys.emptyBody")}
-    />
-  );
-}
-
-function StatePanel({ kind }: { kind: ErrorKind }) {
-  const { t } = useTranslations();
-  const copy = {
-    forbidden: {
-      icon: <ShieldAlert />,
-      title: t("apiKeys.forbiddenTitle"),
-      body: t("apiKeys.forbiddenBody"),
-    },
-    generic: {
-      icon: <AlertTriangle />,
-      title: t("apiKeys.errorTitle"),
-      body: t("apiKeys.errorBody"),
-    },
-  }[kind];
-  return (
-    <PanelCenteredState icon={copy.icon} title={copy.title} body={copy.body} />
   );
 }

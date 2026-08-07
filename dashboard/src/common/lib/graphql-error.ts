@@ -7,6 +7,15 @@ export function graphQLErrorMessage(err: unknown): string | null {
   return null;
 }
 
+/**
+ * True when an error message names an authorization denial. The backend has no
+ * stable error code for these yet, so every caller has to match the message —
+ * this is the one place that does, so the case-insensitivity can't drift.
+ */
+export function isForbiddenError(err: Error | undefined | null): boolean {
+  return err?.message.toLowerCase().includes("forbidden") ?? false;
+}
+
 /** True when any GraphQL error in Apollo's combined response has code. */
 export function hasGraphQLErrorCode(err: unknown, code: string): boolean {
   return (

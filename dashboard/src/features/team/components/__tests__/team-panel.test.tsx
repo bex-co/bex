@@ -220,7 +220,10 @@ describe("TeamPanel", () => {
     expect(screen.getByText("3 seats used")).toBeInTheDocument();
   });
 
-  it("resending a pending invite calls resendInvite and refetches (w1/m33)", async () => {
+  // No refetch assertion: resend keeps the invite id and returns the whole
+  // WorkspaceInvite selection set, so Apollo merges the refreshed expiry into
+  // the row the list already renders — a refetch would be a wasted round trip.
+  it("resending a pending invite calls resendInvite (w1/m33)", async () => {
     teamState.invites = [
       {
         id: "inv-9",
@@ -236,7 +239,7 @@ describe("TeamPanel", () => {
     await user.click(screen.getByRole("button", { name: "Resend" }));
 
     expect(resendInvite).toHaveBeenCalledWith("inv-9");
-    expect(refetch).toHaveBeenCalled();
+    expect(refetch).not.toHaveBeenCalled();
   });
 
   it("marks a member with a second factor enrolled (w1/m33)", () => {
