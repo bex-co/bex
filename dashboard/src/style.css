@@ -194,14 +194,18 @@
    taller text line. At our compact h-9 scale that reads as a stray icon with a
    wide gap to the text. Center the logo+label as one group (drop the label's
    grow and the trailing spacer) and vertically center them — the conventional
-   OAuth-button look. Both extra spans only exist when a label is shown
-   (single/low-count providers); the nth-child guards no-op in the icon-only
-   many-providers layout, which has just the logo. (Vertical centering is
-   handled by the shared `align-items: center` on the geometry rule above.) */
-.ory-elements button[data-testid^="ory/form/node/input"] > span:nth-child(2) {
+   OAuth-button look. Both spans only exist when a label is shown (single/
+   low-count providers), so these no-op in the icon-only many-providers layout.
+   Target them by class, not position: while submitting, Ory inserts an
+   absolutely-positioned <svg> Spinner as the button's 2nd child, which would
+   shift nth-child() selectors one over — hiding the label and re-showing the
+   spacer mid-load. `.grow`/`.block` are the stable classes Ory puts on the
+   label and spacer and are immune to that. (Vertical centering is handled by
+   the shared `align-items: center` on the geometry rule above.) */
+.ory-elements button[data-testid^="ory/form/node/input"] > span.grow {
   flex-grow: 0; /* label no longer stretches to fill the row */
 }
-.ory-elements button[data-testid^="ory/form/node/input"] > span:nth-child(3) {
+.ory-elements button[data-testid^="ory/form/node/input"] > span.block {
   display: none; /* remove the symmetry-only trailing spacer */
 }
 /* GitHub's provider logo ships as a single black-filled path with no `fill`
@@ -211,9 +215,13 @@
    drive its fill from currentColor, which already tracks the theme via the
    button's foreground token. Scoped to GitHub by aria-label (the provider name
    is language-independent) so a future multi-color brand logo — e.g. Google —
-   keeps its own colors. */
+   keeps its own colors. The `span svg` descendant match is deliberate: the logo
+   is nested in the icon <span>, whereas the submitting Spinner is a direct-child
+   <svg fill="none"> — restricting to `span svg` keeps this off the spinner,
+   which would otherwise get its stroke-only arc filled into a blob. */
 .ory-elements
   button[data-testid^="ory/form/node/input"][aria-label*="github" i]
+  span
   svg {
   fill: currentColor;
 }
