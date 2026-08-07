@@ -106,34 +106,43 @@ export function toAgentSessionTicket(
   };
 }
 
-/** The sidebar's human status phrases (w3/m45 t004), keyed for i18n lookup. */
-export type AgentSessionStatusPhrase =
-  | "prReady"
-  | "working"
-  | "failed"
-  | "canceled"
-  | "completed";
+/** A session's display name — its task prompt, falling back to the raw id. */
+export function sessionTitle(
+  view: Pick<AgentSessionView, "id" | "agentConfig">,
+): string {
+  return view.agentConfig.task || view.id;
+}
+
+/** The i18n keys a status phrase resolves to; the settled phases reuse the
+ *  phase chip's own copy rather than restating it. */
+export type AgentSessionStatusPhraseKey =
+  | "agentSessions.statusPhrase.prReady"
+  | "agentSessions.statusPhrase.working"
+  | "agentSessions.phase.completed"
+  | "agentSessions.phase.failed"
+  | "agentSessions.phase.canceled";
 
 /**
  * Phase + PR presence → the sidebar's human status phrase (Devin's "PR is
- * ready • 1" shape): completed with a PR ⇒ `prReady`; every still-converging
- * phase (creating/running/resuming/redispatching) ⇒ `working`; failed ⇒
- * `failed`; canceled (and the in-flight canceling) ⇒ `canceled`; completed
- * without a PR ⇒ `completed`. Rendered as `agentSessions.statusPhrase.<key>`.
+ * ready • 1" shape). The two that aren't just the phase restated: a completed
+ * session carrying a PR reads "PR is ready", and every still-converging phase
+ * (creating/running/resuming/redispatching) collapses to "Working…".
  */
-export function agentSessionStatusPhrase(
+export function agentSessionStatusPhraseKey(
   view: Pick<AgentSessionView, "phase" | "prNumber">,
-): AgentSessionStatusPhrase {
+): AgentSessionStatusPhraseKey {
   switch (view.phase) {
     case "completed":
-      return view.prNumber != null ? "prReady" : "completed";
+      return view.prNumber != null
+        ? "agentSessions.statusPhrase.prReady"
+        : "agentSessions.phase.completed";
     case "failed":
-      return "failed";
+      return "agentSessions.phase.failed";
     case "canceled":
     case "canceling":
-      return "canceled";
+      return "agentSessions.phase.canceled";
     default:
-      return "working";
+      return "agentSessions.statusPhrase.working";
   }
 }
 

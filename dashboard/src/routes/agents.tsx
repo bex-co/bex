@@ -12,16 +12,15 @@ export const Route = createFileRoute("/agents")({
   component: AgentSessionsPage,
   beforeLoad: requireAuth(),
   // `?view=list` keeps the standalone sessions table reachable (the sidebar's
-  // More/view-all target, w3/m45 t005) without a second route file.
+  // More/view-all target) without a second route file.
   validateSearch: (search: Record<string, unknown>): { view?: "list" } =>
     search.view === "list" ? { view: "list" } : {},
   head: ({ match }) => translatedTitleHead("agentSessions.pageTitle", match),
 });
 
 /**
- * The `/agents` page (ADR047 D9, reshaped in w3/m45): the m44 sessions sidebar
- * plus a main pane that is either the Devin-style centered prompt box (the
- * default — one composer, no form fields) or, under `?view=list`, the
+ * The `/agents` page (ADR047 D9): the sessions sidebar plus a main pane that is
+ * either the Devin-style centered prompt box or, under `?view=list`, the
  * standalone sessions table. Workspace scoping comes from the switcher
  * (`useAgentSessions` reads `useWorkspace()`), never the path. The composer
  * always renders — a 503/unconfigured backend shows its house callout on the
@@ -42,7 +41,6 @@ export function AgentSessionsPage() {
   );
 }
 
-/** The Devin-org-home main pane: a centered heading + the prompt box. */
 function ComposerPane() {
   const { t } = useTranslations();
   return (
@@ -62,10 +60,10 @@ function ComposerPane() {
   );
 }
 
-/** The retained standalone list (`?view=list`) — the More action's target. */
 function SessionListPane() {
   const { t } = useTranslations();
-  const { sessions, loading, error } = useAgentSessions();
+  // The sidebar renders alongside and owns the poll; this is a cache read.
+  const { sessions, loading, error } = useAgentSessions({ poll: false });
   return (
     <>
       <div className="border-b px-4 py-4 sm:px-6">

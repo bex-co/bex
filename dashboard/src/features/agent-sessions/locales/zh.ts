@@ -90,7 +90,7 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "已取消",
     description: "Agent session phase chip — session was canceled",
   },
-  // --- Composer (w3/m45 prompt box) ---
+  // --- Composer (prompt box) ---
   "agentSessions.promptHeading": {
     message: "让智能体做点什么？",
     description: "Centered heading over the /agents prompt-box composer",
@@ -103,10 +103,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message:
       "描述一个任务，并用 @ 提及一个仓库来限定范围。请具体说明——智能体会自主工作并提交草稿 PR。",
     description: "Composer — task textarea placeholder",
-  },
-  "agentSessions.taskRequired": {
-    message: "请描述智能体要完成的任务。",
-    description: "Composer — validation error when the task is empty",
   },
   "agentSessions.mentionButton": {
     message: "提及仓库或会话",
@@ -125,7 +121,7 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "移除 {name}",
     description: "Accessible label of a mention chip's remove button",
   },
-  // --- @ mention picker (t002) ---
+  // --- @ mention picker ---
   "agentSessions.mentionCategoryRepos": {
     message: "仓库",
     description: "Mention picker — the repositories category row",
@@ -169,14 +165,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "分支",
     description: "Composer — working branch input label",
   },
-  "agentSessions.branchPlaceholder": {
-    message: "bex-agent/my-task",
-    description: "Composer — branch input placeholder",
-  },
-  "agentSessions.branchRequired": {
-    message: "请输入工作分支。",
-    description: "Composer — validation error when the branch is empty",
-  },
   "agentSessions.branchInvalid": {
     message: "分支必须位于 bex-agent/ 之下。",
     description:
@@ -190,15 +178,15 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "智能体",
     description: "Composer — agent select label",
   },
-  "agentSessions.agentClaude": {
+  "agentSessions.agent.claude": {
     message: "Claude",
     description: "Composer — agent option: claude",
   },
-  "agentSessions.agentGemini": {
+  "agentSessions.agent.gemini": {
     message: "Gemini",
     description: "Composer — agent option: gemini",
   },
-  "agentSessions.agentCodex": {
+  "agentSessions.agent.codex": {
     message: "Codex",
     description: "Composer — agent option: codex",
   },
@@ -596,7 +584,7 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "智能体会话",
     description: "Sessions sidebar — accessible landmark label",
   },
-  // --- Sidebar polish (w3/m45 t004) ---
+  // --- Sidebar ---
   "agentSessions.sidebarSearch": {
     message: "搜索会话",
     description: "Sessions sidebar — search toggle + input accessible label",
@@ -621,18 +609,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.statusPhrase.working": {
     message: "工作中…",
     description: "Sidebar status phrase — session still converging",
-  },
-  "agentSessions.statusPhrase.completed": {
-    message: "已完成",
-    description: "Sidebar status phrase — completed session without a PR",
-  },
-  "agentSessions.statusPhrase.failed": {
-    message: "已失败",
-    description: "Sidebar status phrase — failed session",
-  },
-  "agentSessions.statusPhrase.canceled": {
-    message: "已取消",
-    description: "Sidebar status phrase — canceled (or canceling) session",
   },
   "agentSessions.evidenceToggle": {
     message: "证据",

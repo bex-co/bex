@@ -11,6 +11,16 @@ export const AGENT_SESSION_ACTIVE_POLL_MS = 5_000;
 /** Baseline cadence once every session has settled (out-of-band changes only). */
 export const AGENT_SESSION_IDLE_POLL_MS = 30_000;
 
+export interface UseAgentSessionsOptions {
+  /**
+   * Poll for out-of-band changes (default `true`). Pass `false` on a secondary
+   * consumer mounted alongside a polling one: every `useQuery` gets its own
+   * timer, and two timers reschedule off their own responses, so they drift
+   * apart into separate round trips instead of deduplicating.
+   */
+  poll?: boolean;
+}
+
 export interface UseAgentSessionsResult {
   sessions: AgentSessionView[];
   loading: boolean;
@@ -31,7 +41,9 @@ export interface UseAgentSessionsResult {
  * also the `!authenticated` guard — the workspace context only resolves for a
  * signed-in caller.
  */
-export function useAgentSessions(): UseAgentSessionsResult {
+export function useAgentSessions({
+  poll = true,
+}: UseAgentSessionsOptions = {}): UseAgentSessionsResult {
   const { currentWorkspaceId } = useWorkspace();
   const resolved = currentWorkspaceId != null;
   const { data, loading, error, refetch, startPolling } = useQuery(
@@ -41,7 +53,7 @@ export function useAgentSessions(): UseAgentSessionsResult {
       skip: !resolved,
       fetchPolicy: "cache-first",
       errorPolicy: "all",
-      pollInterval: AGENT_SESSION_IDLE_POLL_MS,
+      pollInterval: poll ? AGENT_SESSION_IDLE_POLL_MS : 0,
       skipPollAttempt: skipPollWhenHidden,
     },
   );
@@ -57,11 +69,11 @@ export function useAgentSessions(): UseAgentSessionsResult {
   const anyActive =
     sessions.length === 0 || sessions.some((s) => !s.isTerminal);
   useEffect(() => {
-    if (!resolved) return;
+    if (!resolved || !poll) return;
     startPolling(
       anyActive ? AGENT_SESSION_ACTIVE_POLL_MS : AGENT_SESSION_IDLE_POLL_MS,
     );
-  }, [anyActive, resolved, startPolling]);
+  }, [anyActive, resolved, poll, startPolling]);
 
   return {
     sessions,
