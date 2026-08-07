@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SessionSidebar } from "@/features/agent-sessions/components/session-sidebar";
-import { agentSessionStatusPhrase } from "@/features/agent-sessions/lib/mapper";
+import { agentSessionStatusPhraseKey } from "@/features/agent-sessions/lib/mapper";
 import type {
   AgentSessionPhase,
   AgentSessionView,
@@ -78,31 +78,32 @@ beforeEach(() => {
   sessionsState.sessions = [];
 });
 
-describe("agentSessionStatusPhrase", () => {
+describe("agentSessionStatusPhraseKey", () => {
   it("maps phase + PR presence onto the Devin-style phrase", () => {
-    expect(agentSessionStatusPhrase({ phase: "completed", prNumber: 6 })).toBe(
-      "prReady",
-    );
     expect(
-      agentSessionStatusPhrase({ phase: "completed", prNumber: null }),
-    ).toBe("completed");
-    expect(agentSessionStatusPhrase({ phase: "failed", prNumber: null })).toBe(
-      "failed",
-    );
+      agentSessionStatusPhraseKey({ phase: "completed", prNumber: 6 }),
+    ).toBe("agentSessions.statusPhrase.prReady");
+    // The settled phases reuse the phase chip's copy rather than restating it.
     expect(
-      agentSessionStatusPhrase({ phase: "canceled", prNumber: null }),
-    ).toBe("canceled");
+      agentSessionStatusPhraseKey({ phase: "completed", prNumber: null }),
+    ).toBe("agentSessions.phase.completed");
     expect(
-      agentSessionStatusPhrase({ phase: "canceling", prNumber: null }),
-    ).toBe("canceled");
+      agentSessionStatusPhraseKey({ phase: "failed", prNumber: null }),
+    ).toBe("agentSessions.phase.failed");
+    expect(
+      agentSessionStatusPhraseKey({ phase: "canceled", prNumber: null }),
+    ).toBe("agentSessions.phase.canceled");
+    expect(
+      agentSessionStatusPhraseKey({ phase: "canceling", prNumber: null }),
+    ).toBe("agentSessions.phase.canceled");
     for (const phase of [
       "running",
       "creating",
       "resuming",
       "redispatching",
     ] as const) {
-      expect(agentSessionStatusPhrase({ phase, prNumber: null })).toBe(
-        "working",
+      expect(agentSessionStatusPhraseKey({ phase, prNumber: null })).toBe(
+        "agentSessions.statusPhrase.working",
       );
     }
   });

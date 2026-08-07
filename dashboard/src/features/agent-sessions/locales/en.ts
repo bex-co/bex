@@ -90,7 +90,7 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Canceled",
     description: "Agent session phase chip — session was canceled",
   },
-  // --- Composer (w3/m45 prompt box) ---
+  // --- Composer (prompt box) ---
   "agentSessions.promptHeading": {
     message: "What should the agent work on?",
     description: "Centered heading over the /agents prompt-box composer",
@@ -103,10 +103,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message:
       "Describe a task, and @-mention a repository to scope it. Be specific — the agent works autonomously and opens a draft PR.",
     description: "Composer — task textarea placeholder",
-  },
-  "agentSessions.taskRequired": {
-    message: "Describe the task for the agent.",
-    description: "Composer — validation error when the task is empty",
   },
   "agentSessions.mentionButton": {
     message: "Mention a repository or session",
@@ -125,7 +121,7 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Remove {name}",
     description: "Accessible label of a mention chip's remove button",
   },
-  // --- @ mention picker (t002) ---
+  // --- @ mention picker ---
   "agentSessions.mentionCategoryRepos": {
     message: "Repositories",
     description: "Mention picker — the repositories category row",
@@ -169,14 +165,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Branch",
     description: "Composer — working branch input label",
   },
-  "agentSessions.branchPlaceholder": {
-    message: "bex-agent/my-task",
-    description: "Composer — branch input placeholder",
-  },
-  "agentSessions.branchRequired": {
-    message: "Enter a working branch.",
-    description: "Composer — validation error when the branch is empty",
-  },
   "agentSessions.branchInvalid": {
     message: "The branch must be under bex-agent/.",
     description:
@@ -191,15 +179,15 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Agent",
     description: "Composer — agent select label",
   },
-  "agentSessions.agentClaude": {
+  "agentSessions.agent.claude": {
     message: "Claude",
     description: "Composer — agent option: claude",
   },
-  "agentSessions.agentGemini": {
+  "agentSessions.agent.gemini": {
     message: "Gemini",
     description: "Composer — agent option: gemini",
   },
-  "agentSessions.agentCodex": {
+  "agentSessions.agent.codex": {
     message: "Codex",
     description: "Composer — agent option: codex",
   },
@@ -608,7 +596,7 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Agent sessions",
     description: "Sessions sidebar — accessible landmark label",
   },
-  // --- Sidebar polish (w3/m45 t004) ---
+  // --- Sidebar ---
   "agentSessions.sidebarSearch": {
     message: "Search sessions",
     description: "Sessions sidebar — search toggle + input accessible label",
@@ -633,18 +621,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.statusPhrase.working": {
     message: "Working…",
     description: "Sidebar status phrase — session still converging",
-  },
-  "agentSessions.statusPhrase.completed": {
-    message: "Completed",
-    description: "Sidebar status phrase — completed session without a PR",
-  },
-  "agentSessions.statusPhrase.failed": {
-    message: "Failed",
-    description: "Sidebar status phrase — failed session",
-  },
-  "agentSessions.statusPhrase.canceled": {
-    message: "Canceled",
-    description: "Sidebar status phrase — canceled (or canceling) session",
   },
   "agentSessions.evidenceToggle": {
     message: "Evidence",

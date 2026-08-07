@@ -7,7 +7,11 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSessions } from "@/features/agent-sessions/hooks/use-agent-sessions";
-import { agentSessionStatusPhrase } from "@/features/agent-sessions/lib/mapper";
+import {
+  agentSessionStatusPhraseKey,
+  sessionTitle,
+} from "@/features/agent-sessions/lib/mapper";
+import { fuzzyMatch } from "@/features/agent-sessions/lib/mention";
 import { requestAgentComposerFocus } from "@/features/agent-sessions/lib/composer-focus";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
 
@@ -25,15 +29,11 @@ function isEditableTarget(target: EventTarget | null): boolean {
 }
 
 /**
- * The left sessions rail on the `/agents*` routes (m44, polished in w3/m45
- * t004): a "New session" affordance carrying the `O` keyboard shortcut
- * (Devin's binding — a bare key so it can't collide with the app's ⌘K search
- * or ⌘B sidebar toggle, guarded to never fire while typing), plus a "Recent"
- * list with a client-side search filter and a More/view-all action reaching
- * the standalone list (`/agents?view=list`). Rows show the task title, a
- * human status phrase derived from phase + PR presence ("PR is ready" /
- * "Working…"), and the PR number as a direct GitHub link. Hidden below `lg`
- * (the header's back link and `/agents` remain the narrow-screen navigation).
+ * The left sessions rail on the `/agents*` routes. "New session" carries
+ * Devin's `O` shortcut — a bare key so it can't collide with the app's ⌘K
+ * search or ⌘B sidebar toggle, guarded to never fire while typing. Hidden
+ * below `lg`, where the header's back link and `/agents` remain the
+ * navigation.
  */
 export function SessionSidebar({ activeId }: SessionSidebarProps) {
   const { t } = useTranslations();
@@ -42,7 +42,6 @@ export function SessionSidebar({ activeId }: SessionSidebarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  // Bare `O` (no modifiers, never while typing) opens + focuses New session.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key.toLowerCase() !== "o") return;
@@ -55,14 +54,13 @@ export function SessionSidebar({ activeId }: SessionSidebarProps) {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [navigate]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return sessions;
-    return sessions.filter((s) => {
-      const title = (s.agentConfig.task || s.id).toLowerCase();
-      return title.includes(q) || s.repo.toLowerCase().includes(q);
-    });
-  }, [sessions, query]);
+  const filtered = useMemo(
+    () =>
+      sessions.filter(
+        (s) => fuzzyMatch(query, sessionTitle(s)) || fuzzyMatch(query, s.repo),
+      ),
+    [sessions, query],
+  );
 
   return (
     <aside
@@ -165,9 +163,7 @@ export function SessionSidebar({ activeId }: SessionSidebarProps) {
 /**
  * One recent-session row: the whole row navigates to the session (stretched
  * link — never a nested anchor), while the PR number is a DIRECT external
- * GitHub link layered above it (`stopPropagation` keeps the row from also
- * navigating). The status line is the human phrase from
- * `agentSessionStatusPhrase` ("PR is ready" / "Working…" / …).
+ * GitHub link layered above the stretched hit area by `z-10`.
  */
 function SessionRow({
   session,
@@ -177,9 +173,11 @@ function SessionRow({
   active: boolean;
 }) {
   const { t } = useTranslations();
-  const title = session.agentConfig.task || session.id;
-  const phrase = t(
-    `agentSessions.statusPhrase.${agentSessionStatusPhrase(session)}`,
+  const title = sessionTitle(session);
+  const pr = (
+    <>
+      <GitPullRequest className="size-3" aria-hidden />#{session.prNumber}
+    </>
   );
   return (
     <div
@@ -201,26 +199,19 @@ function SessionRow({
         </span>
       </Link>
       <span className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-xs">
-        <span>{phrase}</span>
-        {session.prNumber != null ? (
-          session.prUrl ? (
-            <a
-              href={session.prUrl}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(event) => event.stopPropagation()}
-              className="hover:text-foreground relative z-10 inline-flex items-center gap-0.5 hover:underline"
-            >
-              <GitPullRequest className="size-3" aria-hidden />#
-              {session.prNumber}
-            </a>
-          ) : (
-            <span className="inline-flex items-center gap-0.5">
-              <GitPullRequest className="size-3" aria-hidden />#
-              {session.prNumber}
-            </span>
-          )
-        ) : null}
+        <span>{t(agentSessionStatusPhraseKey(session))}</span>
+        {session.prNumber == null ? null : session.prUrl ? (
+          <a
+            href={session.prUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-foreground relative z-10 inline-flex items-center gap-0.5 hover:underline"
+          >
+            {pr}
+          </a>
+        ) : (
+          <span className="inline-flex items-center gap-0.5">{pr}</span>
+        )}
       </span>
     </div>
   );

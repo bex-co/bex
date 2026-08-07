@@ -1,15 +1,22 @@
 import { BookMarked, Bot, Check, Lock } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mentionOptionId } from "@/features/agent-sessions/lib/mention";
-import type { MentionOption } from "@/features/agent-sessions/lib/mention";
+import {
+  CATEGORY_META,
+  mentionOptionId,
+} from "@/features/agent-sessions/lib/mention";
+import type {
+  MentionCategory,
+  MentionOption,
+} from "@/features/agent-sessions/lib/mention";
+import { sessionTitle } from "@/features/agent-sessions/lib/mapper";
 
 export interface MentionPickerProps {
   /** DOM id of the listbox (aria-controls target) + per-option id base. */
   idBase: string;
   /** The already-filtered options, in render order (composer owns filtering). */
   options: MentionOption[];
-  /** Index of the keyboard-highlighted option. */
   highlight: number;
   /** Shown when `options` is empty (no source rows vs. no fuzzy matches). */
   emptyText: string;
@@ -17,16 +24,61 @@ export interface MentionPickerProps {
   onSelect: (option: MentionOption) => void;
 }
 
+const CATEGORY_ICONS: Record<MentionCategory, LucideIcon> = {
+  repos: BookMarked,
+  sessions: Bot,
+};
+
+interface OptionDescription {
+  key: string;
+  Icon: LucideIcon;
+  title: string;
+  subtitle: string;
+  isPrivate: boolean;
+}
+
+function describeOption(
+  option: MentionOption,
+  t: ReturnType<typeof useTranslations>["t"],
+): OptionDescription {
+  switch (option.kind) {
+    case "category": {
+      const meta = CATEGORY_META[option.category];
+      return {
+        key: `category:${option.category}`,
+        Icon: CATEGORY_ICONS[option.category],
+        title: t(meta.labelKey),
+        subtitle: t(meta.descKey),
+        isPrivate: false,
+      };
+    }
+    case "repo": {
+      const [owner, ...rest] = option.repo.fullName.split("/");
+      return {
+        key: `repo:${option.repo.fullName}`,
+        Icon: BookMarked,
+        title: rest.join("/") || option.repo.fullName,
+        subtitle: owner ?? "",
+        isPrivate: option.repo.private,
+      };
+    }
+    case "session":
+      return {
+        key: `session:${option.session.id}`,
+        Icon: Bot,
+        title: sessionTitle(option.session),
+        subtitle: t(`agentSessions.phase.${option.session.phase}`),
+        isPrivate: false,
+      };
+  }
+}
+
 /**
- * The two-level `@` mention popup (w3/m45 t002, Devin's picker shape): level 1
- * lists the categories (Repositories / Sessions with one-line descriptions);
- * level 2 lists that category's fuzzy-filtered items — repo rows as name +
- * owner subtitle, session rows as task title + phase. Presentation-only: the
- * composer owns the state machine (token insertion, caret tracking, filtering,
- * keyboard nav) and passes the flattened option list down. For a highlighted
- * repo, a readiness preview footer shows owner/name, the GitHub-App-connected
- * state (every row comes from the connected installation's `repos` query), and
- * the default branch.
+ * The two-level `@` mention popup (Devin's picker shape). Presentation-only:
+ * the composer owns the state machine and hands down the flattened, already
+ * filtered option list. For a highlighted repo, a readiness preview footer
+ * shows the GitHub-App-connected state (every row comes from the connected
+ * installation's `repos` query) and the default branch.
  */
 export function MentionPicker({
   idBase,
@@ -51,16 +103,19 @@ export function MentionPicker({
         {options.length === 0 ? (
           <p className="text-muted-foreground px-2 py-2 text-sm">{emptyText}</p>
         ) : (
-          options.map((option, index) => (
-            <MentionOptionRow
-              key={optionKey(option)}
-              id={mentionOptionId(idBase, index)}
-              option={option}
-              active={index === highlight}
-              onHighlight={() => onHighlight(index)}
-              onSelect={() => onSelect(option)}
-            />
-          ))
+          options.map((option, index) => {
+            const description = describeOption(option, t);
+            return (
+              <MentionOptionRow
+                key={description.key}
+                id={mentionOptionId(idBase, index)}
+                description={description}
+                active={index === highlight}
+                onHighlight={() => onHighlight(index)}
+                onSelect={() => onSelect(option)}
+              />
+            );
+          })
         )}
       </div>
 
@@ -82,70 +137,20 @@ export function MentionPicker({
   );
 }
 
-function optionKey(option: MentionOption): string {
-  switch (option.kind) {
-    case "category":
-      return `category:${option.category}`;
-    case "repo":
-      return `repo:${option.repo.fullName}`;
-    case "session":
-      return `session:${option.session.id}`;
-  }
-}
-
 function MentionOptionRow({
   id,
-  option,
+  description,
   active,
   onHighlight,
   onSelect,
 }: {
   id: string;
-  option: MentionOption;
+  description: OptionDescription;
   active: boolean;
   onHighlight: () => void;
   onSelect: () => void;
 }) {
-  const { t } = useTranslations();
-
-  let icon: React.ReactNode;
-  let title: string;
-  let subtitle: string;
-  let privateBadge = false;
-  switch (option.kind) {
-    case "category": {
-      icon =
-        option.category === "repos" ? (
-          <BookMarked className="size-4" aria-hidden />
-        ) : (
-          <Bot className="size-4" aria-hidden />
-        );
-      title =
-        option.category === "repos"
-          ? t("agentSessions.mentionCategoryRepos")
-          : t("agentSessions.mentionCategorySessions");
-      subtitle =
-        option.category === "repos"
-          ? t("agentSessions.mentionCategoryReposDesc")
-          : t("agentSessions.mentionCategorySessionsDesc");
-      break;
-    }
-    case "repo": {
-      const [owner, ...rest] = option.repo.fullName.split("/");
-      icon = <BookMarked className="size-4" aria-hidden />;
-      title = rest.join("/") || option.repo.fullName;
-      subtitle = owner ?? "";
-      privateBadge = option.repo.private;
-      break;
-    }
-    case "session": {
-      icon = <Bot className="size-4" aria-hidden />;
-      title = option.session.agentConfig.task || option.session.id;
-      subtitle = t(`agentSessions.phase.${option.session.phase}`);
-      break;
-    }
-  }
-
+  const { Icon, title, subtitle, isPrivate } = description;
   return (
     <button
       type="button"
@@ -161,11 +166,13 @@ function MentionOptionRow({
       onMouseEnter={onHighlight}
       onClick={onSelect}
     >
-      <span className="text-muted-foreground mt-0.5 shrink-0">{icon}</span>
+      <span className="text-muted-foreground mt-0.5 shrink-0">
+        <Icon className="size-4" aria-hidden />
+      </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
           <span className="truncate font-medium">{title}</span>
-          {privateBadge ? (
+          {isPrivate ? (
             <Lock
               className="text-muted-foreground size-3 shrink-0"
               aria-hidden

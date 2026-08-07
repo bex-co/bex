@@ -6,14 +6,13 @@ import {
   Minimize2,
   Settings2,
   WifiOff,
-  X,
 } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useDebounce } from "@/common/hooks/use-debounce";
 import { EmptyState } from "@/common/components/empty-state";
 import { Input } from "@/common/components/ui/input";
 import { Button } from "@/common/components/ui/button";
-import { Badge } from "@/common/components/ui/badge";
+import { RemovableChip } from "@/common/components/removable-chip";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -304,19 +303,14 @@ export function DeployLogPanel({
       </div>
       {instanceFilter ? (
         <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant="secondary" className="gap-1 pr-1">
+          <RemovableChip
+            removeLabel={t("logs.chipRemove", {
+              label: t("logs.instanceLabel"),
+            })}
+            onRemove={() => setInstanceFilter("")}
+          >
             {t("logs.instanceLabel")}: {instanceFilter}
-            <button
-              type="button"
-              aria-label={t("logs.chipRemove", {
-                label: t("logs.instanceLabel"),
-              })}
-              onClick={() => setInstanceFilter("")}
-              className="rounded-full p-0.5 hover:bg-muted-foreground/20"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </Badge>
+          </RemovableChip>
         </div>
       ) : null}
       {buildStoreUnavailable && lines.length > 0 ? (

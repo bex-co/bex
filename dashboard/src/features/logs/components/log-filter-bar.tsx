@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Search, SlidersHorizontal } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -11,6 +11,7 @@ import { Input } from "@/common/components/ui/input.tsx";
 import { Switch } from "@/common/components/ui/switch.tsx";
 import { Label } from "@/common/components/ui/label.tsx";
 import { Badge } from "@/common/components/ui/badge";
+import { RemovableChip } from "@/common/components/removable-chip";
 import {
   Popover,
   PopoverContent,
@@ -254,17 +255,13 @@ export function LogFilterBar({
           {active.map((key) => {
             const label = t(STRUCTURED_LABEL_KEYS[key]);
             return (
-              <Badge key={key} variant="secondary" className="gap-1 pr-1">
+              <RemovableChip
+                key={key}
+                removeLabel={t("logs.chipRemove", { label })}
+                onRemove={() => onChange({ [key]: "" })}
+              >
                 {label}: {filters[key]}
-                <button
-                  type="button"
-                  aria-label={t("logs.chipRemove", { label })}
-                  onClick={() => onChange({ [key]: "" })}
-                  className="rounded-full p-0.5 hover:bg-muted-foreground/20"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
+              </RemovableChip>
             );
           })}
         </div>
