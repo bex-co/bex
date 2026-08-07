@@ -20,8 +20,6 @@ import type { RegistryCredentialView } from "@/features/registry-credentials/typ
 
 export interface EditRegistryCredentialDialogProps {
   entry: RegistryCredentialView;
-  /** Called once an update succeeds (before the dialog is dismissed). */
-  onUpdated: () => void;
 }
 
 /**
@@ -30,10 +28,13 @@ export interface EditRegistryCredentialDialogProps {
  * `registryCredential` detail read; host is immutable so it's shown read-only.
  * The token field is always blank with "leave blank to keep" semantics — the
  * stored secret is never returned by the server, so it can never be echoed here.
+ *
+ * No list refetch on save: the update mutation returns the whole
+ * `RegistryCredential` selection set keyed by id, so Apollo merges it into the
+ * normalized row the list already renders.
  */
 export function EditRegistryCredentialDialog({
   entry,
-  onUpdated,
 }: EditRegistryCredentialDialogProps) {
   const { t } = useTranslations();
   const [open, setOpen] = useState(false);
@@ -57,13 +58,7 @@ export function EditRegistryCredentialDialog({
           </DialogDescription>
         </DialogHeader>
         {open ? (
-          <EditFormLoader
-            entry={entry}
-            onSaved={() => {
-              onUpdated();
-              setOpen(false);
-            }}
-          />
+          <EditFormLoader entry={entry} onSaved={() => setOpen(false)} />
         ) : null}
       </DialogContent>
     </Dialog>
@@ -87,7 +82,11 @@ function EditFormLoader({
   const { credential } = useRegistryCredential(entry.id);
   const seed = credential ?? entry;
   return (
-    <EditForm key={credential ? "detail" : "entry"} seed={seed} onSaved={onSaved} />
+    <EditForm
+      key={credential ? "detail" : "entry"}
+      seed={seed}
+      onSaved={onSaved}
+    />
   );
 }
 

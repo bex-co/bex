@@ -16,6 +16,7 @@ import {
 import {
   PanelCenteredState,
   PanelTableSkeleton,
+  TableActionsHead,
 } from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useConnectedAgents } from "@/features/connected-agents/hooks/use-connected-agents";
@@ -60,7 +61,7 @@ export function ConnectedAgentsPanel() {
                 <TableHead>{t("connectedAgents.colClient")}</TableHead>
                 <TableHead>{t("connectedAgents.colScopes")}</TableHead>
                 <TableHead>{t("connectedAgents.colGranted")}</TableHead>
-                <TableHead className="sr-only text-right">actions</TableHead>
+                <TableActionsHead />
               </TableRow>
             </TableHeader>
             <TableBody>

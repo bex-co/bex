@@ -1,10 +1,11 @@
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { TableHead } from "@/common/components/ui/table";
+import { useTranslations } from "@/common/hooks/use-translations";
 
 /**
  * Shared empty/error state for a settings-panel body — a centered icon + title +
  * body, rendered INSIDE a `CardContent` (unlike `EmptyState`, which wraps its own
- * Card). Used by the API Keys and Team panels so their empty/forbidden/error
- * states stay visually identical.
+ * Card).
  */
 export function PanelCenteredState({
   icon,
@@ -24,16 +25,30 @@ export function PanelCenteredState({
   );
 }
 
-/** Shared two-row loading skeleton for a settings-panel table body. */
-export function PanelTableSkeleton() {
+/** Shared loading skeleton for a settings-panel table body. */
+export function PanelTableSkeleton({ rows = 2 }: { rows?: number }) {
   return (
     <div className="space-y-2">
-      {[0, 1].map((i) => (
+      {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex items-center gap-4">
           <Skeleton className="h-6 w-1/3" />
           <Skeleton className="h-6 flex-1" />
         </div>
       ))}
     </div>
+  );
+}
+
+/**
+ * The header cell for a table's trailing row-actions column. Its label exists
+ * only for screen readers — sighted users infer the column from the buttons —
+ * but it is still user-visible text, so it goes through `t()` like any other.
+ */
+export function TableActionsHead({ label }: { label?: string }) {
+  const { t } = useTranslations();
+  return (
+    <TableHead className="sr-only text-right">
+      {label ?? t("common.colActions")}
+    </TableHead>
   );
 }

@@ -22,6 +22,7 @@ import { Input } from "@/common/components/ui/input";
 import {
   PanelCenteredState,
   PanelTableSkeleton,
+  TableActionsHead,
 } from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
@@ -30,6 +31,7 @@ import { useChangeRole } from "@/features/team/hooks/use-change-role";
 import { useRemoveMember } from "@/features/team/hooks/use-remove-member";
 import { useResendInvite } from "@/features/team/hooks/use-resend-invite";
 import { MemberRow } from "@/features/team/components/member-row";
+import type { Role } from "@/features/team/types";
 import { InviteMemberDialog } from "@/features/team/components/invite-member-dialog";
 
 /**
@@ -47,17 +49,19 @@ import { InviteMemberDialog } from "@/features/team/components/invite-member-dia
  */
 export function TeamPanel() {
   const { t } = useTranslations();
-  const { currentWorkspaceId: workspaceId, loading: workspaceLoading } =
-    useWorkspace();
+  const { currentWorkspaceId: workspaceId } = useWorkspace();
   const { members, invites, seats, loading, error, canManage, refetch } =
     useTeam(workspaceId);
   const { changeRole, changing } = useChangeRole(workspaceId ?? "");
-  const { removeMember, revokeInvite, removing } = useRemoveMember(workspaceId ?? "");
+  const { removeMember, revokeInvite, removing } = useRemoveMember(
+    workspaceId ?? "",
+  );
   const { resendInvite, resending } = useResendInvite(workspaceId ?? "");
   // Seats full on a LIMITED plan disables the invite entry point up front —
   // the same wall the server's cap enforces, seen before the click instead of
   // as the dialog's refusal (which stays as the recovery path).
-  const seatsFull = seats != null && seats.limit > 0 && seats.used >= seats.limit;
+  const seatsFull =
+    seats != null && seats.limit > 0 && seats.used >= seats.limit;
   const [search, setSearch] = useState("");
   const normalizedSearch = search.trim().toLocaleLowerCase();
   const filteredMembers = useMemo(
@@ -72,10 +76,9 @@ export function TeamPanel() {
     [members, normalizedSearch],
   );
 
-  const initialLoading =
-    (workspaceLoading || loading) && members.length === 0 && !error;
+  const initialLoading = loading && members.length === 0;
 
-  async function handleChangeRole(subject: string, role: Parameters<typeof changeRole>[1]) {
+  async function handleChangeRole(subject: string, role: Role) {
     if (await changeRole(subject, role)) await refetch();
   }
   async function handleRemove(subject: string) {
@@ -84,9 +87,9 @@ export function TeamPanel() {
   async function handleRevoke(inviteId: string) {
     if (await revokeInvite(inviteId)) await refetch();
   }
-  async function handleResend(inviteId: string) {
-    if (await resendInvite(inviteId)) await refetch();
-  }
+  // No refetch: the resend mutation returns the whole WorkspaceInvite keyed by
+  // id, so the refreshed expiry merges into the row the list already renders.
+  const handleResend = resendInvite;
 
   return (
     <Card>
@@ -157,7 +160,7 @@ export function TeamPanel() {
                   <TableRow>
                     <TableHead>{t("team.colMember")}</TableHead>
                     <TableHead>{t("team.colRole")}</TableHead>
-                    <TableHead className="sr-only text-right">actions</TableHead>
+                    <TableActionsHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -188,42 +191,43 @@ export function TeamPanel() {
                     <TableRow>
                       <TableHead>{t("team.colEmail")}</TableHead>
                       <TableHead>{t("team.colRole")}</TableHead>
-                      <TableHead className="sr-only text-right">actions</TableHead>
+                      <TableActionsHead />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {invites.map((invite) => (
                       <TableRow key={invite.id}>
-                        <TableCell className="break-all">{invite.email}</TableCell>
+                        <TableCell className="break-all">
+                          {invite.email}
+                        </TableCell>
                         <TableCell>
-                          <Badge variant="secondary">{t(`team.role.${invite.role}`)}</Badge>
+                          <Badge variant="secondary">
+                            {t(`team.role.${invite.role}`)}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          {(
-                            [
-                              {
-                                labelKey: "team.resendInvite",
-                                busy: resending === invite.id,
-                                onClick: handleResend,
-                              },
-                              {
-                                labelKey: "team.revokeInvite",
-                                busy: removing === invite.id,
-                                onClick: handleRevoke,
-                              },
-                            ] as const
-                          ).map(({ labelKey, busy, onClick }) => (
-                            <Button
-                              key={labelKey}
-                              variant="ghost"
-                              size="sm"
-                              disabled={busy}
-                              onClick={() => void onClick(invite.id)}
-                            >
-                              {busy ? <Loader2 className="animate-spin" /> : null}
-                              {t(labelKey)}
-                            </Button>
-                          ))}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={resending === invite.id}
+                            onClick={() => void handleResend(invite.id)}
+                          >
+                            {resending === invite.id ? (
+                              <Loader2 className="animate-spin" />
+                            ) : null}
+                            {t("team.resendInvite")}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={removing === invite.id}
+                            onClick={() => void handleRevoke(invite.id)}
+                          >
+                            {removing === invite.id ? (
+                              <Loader2 className="animate-spin" />
+                            ) : null}
+                            {t("team.revokeInvite")}
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}

@@ -18,7 +18,10 @@ import {
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Textarea } from "@/common/components/ui/textarea";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import {
+  PanelCenteredState,
+  PanelTableSkeleton,
+} from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   useSecretFileNames,
@@ -27,7 +30,6 @@ import {
   classifySecretFileError,
 } from "@/features/services/hooks/use-secret-files";
 import { SecretFileRow } from "@/features/services/components/secret-file-row";
-import { CenteredState } from "@/features/services/components/centered-state";
 import type { SecretFileName } from "@/features/services/types";
 import type { SensitiveEditorErrorKind } from "./env-vars-panel";
 
@@ -134,9 +136,9 @@ export function SecretFilesEditor({
         {errorKind ? (
           <StatePanel kind={errorKind} copy={copy} />
         ) : initialLoading ? (
-          <TableSkeleton />
+          <PanelTableSkeleton rows={3} />
         ) : names.length === 0 ? (
-          <CenteredState
+          <PanelCenteredState
             icon={<FileLock2 />}
             title={copy.emptyTitle}
             body={copy.emptyBody}
@@ -261,19 +263,6 @@ function AddFileButton({
   );
 }
 
-function TableSkeleton() {
-  return (
-    <div className="space-y-2">
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="flex items-center gap-4">
-          <Skeleton className="h-6 w-1/3" />
-          <Skeleton className="h-6 flex-1" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /** The unavailable (503) / forbidden (403) / generic error states. */
 function StatePanel({
   kind,
@@ -300,6 +289,10 @@ function StatePanel({
     },
   }[kind];
   return (
-    <CenteredState icon={state.icon} title={state.title} body={state.body} />
+    <PanelCenteredState
+      icon={state.icon}
+      title={state.title}
+      body={state.body}
+    />
   );
 }

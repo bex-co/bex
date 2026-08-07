@@ -29,6 +29,7 @@ import {
 import {
   PanelCenteredState,
   PanelTableSkeleton,
+  TableActionsHead,
 } from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useActiveSessions } from "@/features/sessions/hooks/use-active-sessions";
@@ -67,9 +68,7 @@ export function ActiveSessionsPanel() {
                 size="sm"
                 disabled={!hasOtherSessions || signingOutOthers}
               >
-                {signingOutOthers ? (
-                  <Loader2 className="animate-spin" />
-                ) : null}
+                {signingOutOthers ? <Loader2 className="animate-spin" /> : null}
                 {t("activeSessions.signOutOthers")}
               </Button>
             </AlertDialogTrigger>
@@ -116,7 +115,7 @@ export function ActiveSessionsPanel() {
                 <TableHead>{t("activeSessions.colDevice")}</TableHead>
                 <TableHead>{t("activeSessions.colLocation")}</TableHead>
                 <TableHead>{t("activeSessions.colLastActive")}</TableHead>
-                <TableHead className="sr-only text-right">actions</TableHead>
+                <TableActionsHead />
               </TableRow>
             </TableHeader>
             <TableBody>

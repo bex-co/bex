@@ -1,18 +1,6 @@
-import { Loader2, Trash2 } from "lucide-react";
 import { TableRow, TableCell } from "@/common/components/ui/table";
-import { Button } from "@/common/components/ui/button";
 import { Badge } from "@/common/components/ui/badge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/common/components/ui/alert-dialog";
+import { RevokeIconButton } from "@/common/components/revoke-icon-button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatRelativeAge } from "@/features/services/lib/format";
 import { formatDateLong } from "@/common/lib/format";
@@ -22,8 +10,6 @@ import type { RegistryCredentialView } from "@/features/registry-credentials/typ
 export interface RegistryCredentialRowProps {
   entry: RegistryCredentialView;
   onDelete: (id: string, name: string) => Promise<boolean>;
-  /** Called after an edit succeeds, so the list re-reads the updated values. */
-  onUpdated: () => void;
   /** True while this row's delete is in flight — disables its own control. */
   deleting: boolean;
 }
@@ -36,7 +22,6 @@ export interface RegistryCredentialRowProps {
 export function RegistryCredentialRow({
   entry,
   onDelete,
-  onUpdated,
   deleting,
 }: RegistryCredentialRowProps) {
   const { t } = useTranslations();
@@ -59,45 +44,18 @@ export function RegistryCredentialRow({
         {entry.createdAt ? formatRelativeAge(entry.createdAt) : "—"}
       </TableCell>
       <TableCell className="text-right whitespace-nowrap">
-        <EditRegistryCredentialDialog entry={entry} onUpdated={onUpdated} />
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label={t("registryCredentials.delete")}
-              disabled={deleting}
-            >
-              {deleting ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <Trash2 className="text-destructive" />
-              )}
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t("registryCredentials.deleteConfirmTitle", {
-                  name: entry.name,
-                })}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {t("registryCredentials.deleteConfirmBody")}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>
-                {t("registryCredentials.deleteCancel")}
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => void onDelete(entry.id, entry.name)}
-              >
-                {t("registryCredentials.delete")}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <EditRegistryCredentialDialog entry={entry} />
+        <RevokeIconButton
+          label={t("registryCredentials.delete")}
+          confirmTitle={t("registryCredentials.deleteConfirmTitle", {
+            name: entry.name,
+          })}
+          confirmBody={t("registryCredentials.deleteConfirmBody")}
+          cancelLabel={t("registryCredentials.deleteCancel")}
+          confirmLabel={t("registryCredentials.delete")}
+          pending={deleting}
+          onConfirm={() => void onDelete(entry.id, entry.name)}
+        />
       </TableCell>
     </TableRow>
   );

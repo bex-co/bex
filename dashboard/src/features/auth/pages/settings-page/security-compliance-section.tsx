@@ -34,7 +34,7 @@ export function SecurityComplianceSection() {
     >
       <ConnectedAgentsPanel />
       <ActiveSessionsPanel />
-      {audit.forbidden ? null : <AuditLogPanel state={audit} />}
+      <AuditLogPanel state={audit} />
     </SettingsSection>
   );
 }

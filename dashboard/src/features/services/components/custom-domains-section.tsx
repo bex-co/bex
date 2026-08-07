@@ -58,13 +58,13 @@ import {
 } from "@/common/components/ui/alert-dialog";
 import { Separator } from "@/common/components/ui/separator";
 import { CopyButton } from "@/common/components/copy-button";
+import { PanelCenteredState } from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   useCustomDomains,
   useCustomDomainMutations,
   type AddedDomain,
 } from "@/features/services/hooks/use-custom-domains";
-import { CenteredState } from "@/features/services/components/centered-state";
 import { PlatformSubdomainRow } from "@/features/services/components/platform-subdomain-section";
 import {
   pairedSibling,
@@ -119,7 +119,7 @@ export function CustomDomainsSection({
       </CardHeader>
       <CardContent className="space-y-6">
         {error ? (
-          <CenteredState
+          <PanelCenteredState
             icon={<AlertTriangle />}
             title={t("services.domainsErrorTitle")}
             body={t("services.domainsErrorBody")}
@@ -127,7 +127,7 @@ export function CustomDomainsSection({
         ) : initialLoading ? (
           <TableSkeleton />
         ) : domains.length === 0 ? (
-          <CenteredState
+          <PanelCenteredState
             icon={<Globe />}
             title={t("services.domainsEmptyTitle")}
             body={t("services.domainsEmptyBody")}

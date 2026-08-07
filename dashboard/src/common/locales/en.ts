@@ -266,6 +266,11 @@ const enCommon: Record<string, TranslationEntry> = {
     description:
       "Body text of a detail page's inline error state when the resource query failed",
   },
+  "common.colActions": {
+    message: "Actions",
+    description:
+      "Screen-reader-only header for a table's trailing row-actions column",
+  },
 };
 
 export default enCommon;

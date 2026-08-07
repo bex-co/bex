@@ -58,9 +58,7 @@ beforeEach(() => {
 
 async function openDialog() {
   const user = userEvent.setup();
-  render(
-    <EditRegistryCredentialDialog entry={entry} onUpdated={() => {}} />,
-  );
+  render(<EditRegistryCredentialDialog entry={entry} />);
   await user.click(screen.getByRole("button", { name: "Edit" }));
   return user;
 }
