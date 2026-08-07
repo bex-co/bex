@@ -52,13 +52,15 @@ import {
   TabsTrigger,
 } from "@/common/components/ui/tabs";
 import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
+import { isValidGitUrl } from "@/common/lib/utils/git-url";
 import { repoNameSlug, gitUrlSlug, imageSlug } from "@/common/lib/utils/slug";
 import { cn } from "@/common/lib/utils/utils";
+import { PlanCardGrid } from "@/common/components/plan-card-grid";
 import { useInstanceTypes } from "@/features/services/hooks/use-instance-types";
 import {
-  formatInstanceCPU,
-  formatInstanceMemory,
-} from "@/features/services/lib/instance-type";
+  VALID_ENV_KEY,
+  isValidSecretFileName,
+} from "@/features/services/lib/environment-draft";
 import { useCreateService } from "@/features/services/hooks/use-create-service";
 import { useServiceNameAvailability } from "@/features/services/hooks/use-service-name-availability";
 import type {
@@ -69,7 +71,6 @@ import { useRepos } from "@/features/services/hooks/use-repos";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
 import { isValidCron } from "@/features/services/lib/cron";
 import type { RepoView } from "@/features/services/hooks/use-repos";
-import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 import { generateEnvValue } from "@/features/services/lib/generate-env-value";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 import { RegistryCredentialSelect } from "@/features/services/components/registry-credential-select";
@@ -78,14 +79,6 @@ import {
   parseNewServiceSearch,
   type ServiceType,
 } from "@/features/services/lib/create-context";
-
-// A C-locale env-var name — kept in sync with backend/internal/secrets validEnvKey.
-const VALID_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
-const VALID_SECRET_FILE = /^[-._A-Za-z0-9]+$/;
-
-function isValidSecretFileName(name: string): boolean {
-  return name !== "." && name !== ".." && VALID_SECRET_FILE.test(name);
-}
 
 type SourceTab = "github" | "git" | "image";
 type NativeRuntime = "elixir" | "go" | "node" | "python" | "ruby" | "rust";
@@ -109,63 +102,24 @@ const RUNTIME_COMMANDS: Record<
   rust: { build: "cargo build --release", start: "cargo run --release" },
 };
 
+// Ladder order for the runtime picker — most-used first, `docker` last because
+// it swaps the whole build form. Deliberately not RUNTIME_COMMANDS' key order.
+const RUNTIME_DEFS: { id: GitRuntime; labelKey: string }[] = [
+  { id: "node", labelKey: "services.createRuntimeNode" },
+  { id: "python", labelKey: "services.createRuntimePython" },
+  { id: "go", labelKey: "services.createRuntimeGo" },
+  { id: "ruby", labelKey: "services.createRuntimeRuby" },
+  { id: "rust", labelKey: "services.createRuntimeRust" },
+  { id: "elixir", labelKey: "services.createRuntimeElixir" },
+  { id: "docker", labelKey: "services.createRuntimeDocker" },
+];
+
 export const Route = createFileRoute("/services/new")({
   component: NewServicePage,
   beforeLoad: requireAuth(),
   validateSearch: parseNewServiceSearch,
   head: ({ match }) => translatedTitleHead("services.createTitle", match),
 });
-
-function isValidGitUrl(url: string): boolean {
-  return /^(https?:\/\/|git@|git:\/\/)/.test(url.trim());
-}
-
-/**
- * The service-creation plan picker for the create wizard — a radio-group of
- * tier cards. Identical visual pattern to KeyValuePlanPicker but typed for
- * InstanceTypeView (service plans, not KV plans).
- */
-function ServicePlanPicker({
-  instanceTypes,
-  value,
-  onChange,
-}: {
-  instanceTypes: InstanceTypeView[];
-  value: string;
-  onChange: (id: string) => void;
-}) {
-  if (instanceTypes.length === 0) {
-    return <Skeleton className="h-20 w-full" />;
-  }
-  return (
-    <div role="radiogroup" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      {instanceTypes.map((it) => {
-        const selected = it.id === value;
-        return (
-          <button
-            key={it.id}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            onClick={() => onChange(it.id)}
-            className={cn(
-              "rounded-lg border p-3 text-left transition-colors",
-              selected
-                ? "border-primary ring-1 ring-primary"
-                : "border-border hover:border-muted-foreground/50",
-            )}
-          >
-            <div className="font-medium">{it.name}</div>
-            <div className="text-sm text-muted-foreground">
-              {formatInstanceMemory(it.memory)} RAM ·{" "}
-              {formatInstanceCPU(it.cpu)}
-            </div>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 const SERVICE_TYPE_DEFS: {
   type: ServiceType;
@@ -289,7 +243,7 @@ function EnvVarEditor({
             <span />
           </div>
           {rows.map((row, i) => {
-            const keyInvalid = row.key !== "" && !VALID_KEY.test(row.key);
+            const keyInvalid = row.key !== "" && !VALID_ENV_KEY.test(row.key);
             return (
               <div key={i} className="space-y-1">
                 <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2">
@@ -353,6 +307,18 @@ function SecretFileEditor({
 }) {
   const { t } = useTranslations();
 
+  function addRow() {
+    onChange([...rows, { name: "", content: "" }]);
+  }
+
+  function removeRow(i: number) {
+    onChange(rows.filter((_, idx) => idx !== i));
+  }
+
+  function updateRow(i: number, field: keyof SecretFileEntry, val: string) {
+    onChange(rows.map((r, idx) => (idx === i ? { ...r, [field]: val } : r)));
+  }
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -362,12 +328,7 @@ function SecretFileEditor({
             {t("services.createFieldSecretFilesHint")}
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => onChange([...rows, { name: "", content: "" }])}
-        >
+        <Button type="button" variant="outline" size="sm" onClick={addRow}>
           <Plus className="size-3.5" />
           {t("services.createFieldSecretFilesAdd")}
         </Button>
@@ -380,15 +341,7 @@ function SecretFileEditor({
               <div className="flex-1 space-y-2">
                 <Input
                   value={row.name}
-                  onChange={(event) =>
-                    onChange(
-                      rows.map((item, index) =>
-                        index === i
-                          ? { ...item, name: event.target.value }
-                          : item,
-                      ),
-                    )
-                  }
+                  onChange={(e) => updateRow(i, "name", e.target.value)}
                   placeholder={t(
                     "services.createFieldSecretFilesNamePlaceholder",
                   )}
@@ -398,15 +351,7 @@ function SecretFileEditor({
                 />
                 <Textarea
                   value={row.content}
-                  onChange={(event) =>
-                    onChange(
-                      rows.map((item, index) =>
-                        index === i
-                          ? { ...item, content: event.target.value }
-                          : item,
-                      ),
-                    )
-                  }
+                  onChange={(e) => updateRow(i, "content", e.target.value)}
                   placeholder={t(
                     "services.createFieldSecretFilesContentPlaceholder",
                   )}
@@ -418,7 +363,7 @@ function SecretFileEditor({
                 type="button"
                 variant="ghost"
                 size="icon"
-                onClick={() => onChange(rows.filter((_, index) => index !== i))}
+                onClick={() => removeRow(i)}
                 aria-label={t("services.createFieldSecretFilesRemove")}
               >
                 <Trash2 className="size-3.5" />
@@ -486,7 +431,17 @@ export function NewServicePage() {
   const showPlan = !isStaticType;
 
   const plan = planOverride ?? instanceTypes[0]?.id ?? "";
+  const isImageSource = tab === "image";
   const isGitSource = tab === "github" || tab === "git";
+  // The four build shapes the form submits. Named once here because both the
+  // field JSX below and the create() payload have to agree on them exactly —
+  // re-deriving each condition inline is how a static site ends up submitting
+  // a dockerfilePath.
+  const isBuildableGit = isGitSource && !isStaticType;
+  const isDockerBuild = isBuildableGit && runtime === "docker";
+  const isNativeBuild = isBuildableGit && runtime !== "docker";
+  const isStaticBuild = isGitSource && isStaticType;
+  const usesRegistryCredential = isImageSource || isDockerBuild;
 
   const scheduleError =
     isCronType && schedule.trim() !== "" && !isValidCron(schedule);
@@ -548,18 +503,21 @@ export function NewServicePage() {
   const sourceValid =
     (tab === "github" && selectedRepo != null) ||
     (tab === "git" && isValidGitUrl(gitUrl)) ||
-    (tab === "image" && imageVal.trim().length > 0);
+    (isImageSource && imageVal.trim().length > 0);
 
-  const envVarsValid = envVars.every(
-    (r) => r.key === "" || VALID_KEY.test(r.key),
+  // Blank rows are the editors' "add" placeholder — they never submit, so they
+  // don't block submission either. Everything else must be valid, and the same
+  // list that passes the gate is the one that goes over the wire.
+  const submittableEnvVars = envVars.filter((r) => r.key !== "");
+  const submittableSecretFiles = secretFiles.filter((f) => f.name !== "");
+  const envVarsValid = submittableEnvVars.every((r) =>
+    VALID_ENV_KEY.test(r.key),
   );
-  const secretFilesValid = secretFiles.every(
-    (file) => file.name === "" || isValidSecretFileName(file.name),
+  const secretFilesValid = submittableSecretFiles.every((f) =>
+    isValidSecretFileName(f.name),
   );
   const nativeCommandsValid =
-    !isGitSource ||
-    isStaticType ||
-    runtime === "docker" ||
+    !isNativeBuild ||
     (buildCommand.trim() !== "" &&
       (isCronType ? command.trim() !== "" : startCommand.trim() !== ""));
   const canSubmit =
@@ -599,53 +557,36 @@ export function NewServicePage() {
       image = imageVal.trim();
     }
 
-    const validEnvVars = envVars.filter(
-      (r) => r.key.trim() !== "" && VALID_KEY.test(r.key.trim()),
-    );
-    const validSecretFiles = secretFiles.filter((file) =>
-      isValidSecretFileName(file.name.trim()),
-    );
+    const hasBuildFilter =
+      buildFilterPaths.some((p) => p.trim()) ||
+      buildFilterIgnored.some((p) => p.trim());
     const result = await create({
       name,
       type: serviceType,
       environmentId: environmentId || undefined,
       repo,
       image,
-      registryCredentialId:
-        tab === "image" ||
-        (isGitSource && !isStaticType && runtime === "docker")
-          ? registryCredentialId
-          : undefined,
+      registryCredentialId: usesRegistryCredential
+        ? registryCredentialId
+        : undefined,
       branch: branchVal,
       rootDir: rootDir || undefined,
-      runtime:
-        tab === "image"
-          ? "image"
-          : isGitSource && !isStaticType
-            ? runtime
-            : undefined,
-      buildCommand: isGitSource
-        ? isStaticType
-          ? staticBuildCommand.trim() || undefined
-          : runtime !== "docker"
-            ? buildCommand.trim()
-            : undefined
+      runtime: isImageSource ? "image" : isBuildableGit ? runtime : undefined,
+      buildCommand: isStaticBuild
+        ? staticBuildCommand.trim() || undefined
+        : isNativeBuild
+          ? buildCommand.trim()
+          : undefined,
+      startCommand: isBuildableGit
+        ? isCronType
+          ? command.trim()
+          : startCommand.trim() || undefined
         : undefined,
-      startCommand:
-        isGitSource && !isStaticType
-          ? isCronType
-            ? command.trim()
-            : startCommand.trim() || undefined
-          : undefined,
-      dockerfilePath:
-        isGitSource && !isStaticType && runtime === "docker"
-          ? dockerfilePath.trim() || undefined
-          : undefined,
+      dockerfilePath: isDockerBuild
+        ? dockerfilePath.trim() || undefined
+        : undefined,
       buildFilter:
-        isGitSource &&
-        isStaticType &&
-        (buildFilterPaths.some((p) => p.trim()) ||
-          buildFilterIgnored.some((p) => p.trim()))
+        isStaticBuild && hasBuildFilter
           ? {
               paths: buildFilterPaths.map((p) => p.trim()).filter(Boolean),
               ignoredPaths: buildFilterIgnored
@@ -658,8 +599,10 @@ export function NewServicePage() {
       schedule: isCronType ? schedule.trim() || undefined : undefined,
       command: isCronType ? command.trim() || undefined : undefined,
       publishPath: isStaticType ? publishPath.trim() || undefined : undefined,
-      envVars: validEnvVars.length ? validEnvVars : undefined,
-      secretFiles: validSecretFiles.length ? validSecretFiles : undefined,
+      envVars: submittableEnvVars.length ? submittableEnvVars : undefined,
+      secretFiles: submittableSecretFiles.length
+        ? submittableSecretFiles
+        : undefined,
     });
     if (result) {
       if (result.deployId) {
@@ -695,7 +638,6 @@ export function NewServicePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Service type picker */}
               <div className="space-y-3">
                 <Label>{t("services.createTypePickerTitle")}</Label>
                 <ServiceTypePicker
@@ -704,7 +646,6 @@ export function NewServicePage() {
                 />
               </div>
 
-              {/* Source picker */}
               <div className="space-y-3">
                 <Label>{t("services.createSourceTitle")}</Label>
                 <Tabs
@@ -739,7 +680,6 @@ export function NewServicePage() {
                     </TabsTrigger>
                   </TabsList>
 
-                  {/* GitHub tab */}
                   <TabsContent value="github" className="mt-3">
                     {connectionLoading ? (
                       <Skeleton className="h-24 w-full" />
@@ -827,7 +767,6 @@ export function NewServicePage() {
                     )}
                   </TabsContent>
 
-                  {/* Public Git URL tab */}
                   <TabsContent value="git" className="mt-3">
                     <div className="space-y-2">
                       <Label htmlFor="svc-git-url">
@@ -848,7 +787,6 @@ export function NewServicePage() {
                     </div>
                   </TabsContent>
 
-                  {/* Existing Image tab */}
                   <TabsContent value="image" className="mt-3">
                     <div className="space-y-4">
                       <div className="space-y-2">
@@ -879,7 +817,6 @@ export function NewServicePage() {
                 </Tabs>
               </div>
 
-              {/* Settings */}
               <div className="space-y-4">
                 <p className="text-base font-semibold">
                   {t("services.createSettingsTitle")}
@@ -963,7 +900,7 @@ export function NewServicePage() {
                         {t("services.createFieldRootDirHint")}
                       </p>
                     </div>
-                    {!isStaticType ? (
+                    {isBuildableGit ? (
                       <>
                         <div className="space-y-2">
                           <Label htmlFor="svc-runtime">
@@ -988,31 +925,15 @@ export function NewServicePage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="node">
-                                {t("services.createRuntimeNode")}
-                              </SelectItem>
-                              <SelectItem value="python">
-                                {t("services.createRuntimePython")}
-                              </SelectItem>
-                              <SelectItem value="go">
-                                {t("services.createRuntimeGo")}
-                              </SelectItem>
-                              <SelectItem value="ruby">
-                                {t("services.createRuntimeRuby")}
-                              </SelectItem>
-                              <SelectItem value="rust">
-                                {t("services.createRuntimeRust")}
-                              </SelectItem>
-                              <SelectItem value="elixir">
-                                {t("services.createRuntimeElixir")}
-                              </SelectItem>
-                              <SelectItem value="docker">
-                                {t("services.createRuntimeDocker")}
-                              </SelectItem>
+                              {RUNTIME_DEFS.map(({ id, labelKey }) => (
+                                <SelectItem key={id} value={id}>
+                                  {t(labelKey)}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
-                        {runtime !== "docker" ? (
+                        {isNativeBuild ? (
                           <>
                             <div className="space-y-2">
                               <Label htmlFor="svc-build-command">
@@ -1097,7 +1018,6 @@ export function NewServicePage() {
                   </>
                 ) : null}
 
-                {/* Cron-specific fields */}
                 {isCronType ? (
                   <>
                     <div className="space-y-2">
@@ -1144,8 +1064,7 @@ export function NewServicePage() {
                   </>
                 ) : null}
 
-                {/* Static site build command + build filters (git source only) */}
-                {isStaticType && isGitSource ? (
+                {isStaticBuild ? (
                   <>
                     <div className="space-y-2">
                       <Label htmlFor="svc-static-build-command">
@@ -1197,7 +1116,6 @@ export function NewServicePage() {
                   </>
                 ) : null}
 
-                {/* Static site publish directory */}
                 {isStaticType ? (
                   <div className="space-y-2">
                     <Label htmlFor="svc-publish-path">
@@ -1218,7 +1136,6 @@ export function NewServicePage() {
                   </div>
                 ) : null}
 
-                {/* No public URL note for private / worker types */}
                 {showNoUrlNote ? (
                   <p className="text-sm text-muted-foreground">
                     {t("services.createNoPublicUrlNote")}
@@ -1228,11 +1145,15 @@ export function NewServicePage() {
                 {showPlan ? (
                   <div className="space-y-2">
                     <Label>{t("services.createFieldPlan")}</Label>
-                    <ServicePlanPicker
-                      instanceTypes={instanceTypes}
-                      value={plan}
-                      onChange={setPlanOverride}
-                    />
+                    {instanceTypes.length === 0 ? (
+                      <Skeleton className="h-20 w-full" />
+                    ) : (
+                      <PlanCardGrid
+                        instanceTypes={instanceTypes}
+                        value={plan}
+                        onChange={setPlanOverride}
+                      />
+                    )}
                   </div>
                 ) : null}
 

@@ -20,7 +20,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useKeyValueInstanceTypes } from "@/features/keyvalue/hooks/use-key-value-instance-types";
 import { useUpdateKeyValuePlan } from "@/features/keyvalue/hooks/use-update-key-value-plan";
-import { KeyValuePlanPicker } from "@/features/keyvalue/components/key-value-plan-picker";
+import { PlanCardGrid } from "@/common/components/plan-card-grid";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
 export interface KeyValuePlanSectionProps {
@@ -55,7 +55,7 @@ export function KeyValuePlanSection({
         <CardDescription>{t("keyvalue.planDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <KeyValuePlanPicker
+        <PlanCardGrid
           instanceTypes={instanceTypes}
           value={selected}
           onChange={setSelected}
