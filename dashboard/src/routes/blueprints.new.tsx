@@ -31,6 +31,7 @@ import {
 } from "@/common/components/ui/tabs";
 import { cn } from "@/common/lib/utils/utils";
 import { repoNameSlug, gitUrlSlug } from "@/common/lib/utils/slug";
+import { isValidGitUrl } from "@/common/lib/utils/git-url";
 import { useRepos } from "@/features/services/hooks/use-repos";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import { useRepoBranches } from "@/features/services/hooks/use-repo-branches";
@@ -47,10 +48,6 @@ export const Route = createFileRoute("/blueprints/new")({
 });
 
 type SourceTab = "github" | "git";
-
-function isValidGitUrl(url: string): boolean {
-  return /^(https?:\/\/|git@|git:\/\/)/.test(url.trim());
-}
 
 /** One named group of planned resources in the pre-create review. */
 function PlanGroup({ label, names }: { label: string; names: string[] }) {

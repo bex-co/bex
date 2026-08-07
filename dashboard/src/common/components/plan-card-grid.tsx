@@ -3,27 +3,34 @@ import {
   formatInstanceCPU,
   formatInstanceMemory,
 } from "@/features/services/lib/instance-type";
-import type { KeyValueInstanceTypeView } from "@/features/keyvalue/types";
 
-export interface KeyValuePlanPickerProps {
-  instanceTypes: KeyValueInstanceTypeView[];
+/** The subset of a catalog tier the cards render — services and Key Value both satisfy it. */
+export interface PlanCardTier {
+  id: string;
+  name: string;
+  cpu: string;
+  memory: string;
+}
+
+export interface PlanCardGridProps {
+  instanceTypes: PlanCardTier[];
   value: string;
   onChange: (id: string) => void;
 }
 
 /**
- * The create form's plan-tier cards, matching Render's captured `/new/redis`
+ * The create forms' plan-tier cards, matching Render's captured `/new/redis`
  * instance-type radio cards (docs/render-artifacts/key-value.md) — one card per
  * catalog plan, RAM + connection-style specs, current selection highlighted.
  * A plain button grid rather than a Radix RadioGroup: the codebase has no
  * radio-group primitive yet and one card-button set doesn't warrant adding the
  * dependency; `role="radio"` + `aria-checked` keep it accessible.
  */
-export function KeyValuePlanPicker({
+export function PlanCardGrid({
   instanceTypes,
   value,
   onChange,
-}: KeyValuePlanPickerProps) {
+}: PlanCardGridProps) {
   return (
     <div role="radiogroup" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       {instanceTypes.map((it) => {
@@ -44,7 +51,8 @@ export function KeyValuePlanPicker({
           >
             <div className="font-medium">{it.name}</div>
             <div className="text-sm text-muted-foreground">
-              {formatInstanceMemory(it.memory)} RAM · {formatInstanceCPU(it.cpu)}
+              {formatInstanceMemory(it.memory)} RAM ·{" "}
+              {formatInstanceCPU(it.cpu)}
             </div>
           </button>
         );

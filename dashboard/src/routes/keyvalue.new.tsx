@@ -36,7 +36,7 @@ import {
   MAXMEMORY_POLICIES,
   RECOMMENDED_MAXMEMORY_POLICY,
 } from "@/features/keyvalue/lib/labels";
-import { KeyValuePlanPicker } from "@/features/keyvalue/components/key-value-plan-picker";
+import { PlanCardGrid } from "@/common/components/plan-card-grid";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 
 // Valkey major versions bex offers, matching the KeyValue CRD's authoritative
@@ -162,7 +162,7 @@ export function NewKeyValuePage() {
 
               <div className="space-y-2">
                 <Label>{t("keyvalue.fieldPlan")}</Label>
-                <KeyValuePlanPicker
+                <PlanCardGrid
                   instanceTypes={instanceTypes}
                   value={plan}
                   onChange={setPlanOverride}
