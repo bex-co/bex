@@ -360,7 +360,25 @@ Fresh plugin backups and explicit point-in-time restores passed for both a dispo
 - **`BackupCronJobStale`** (prometheus.yaml `bex` group): fires if active `etcd-backup`, `openbao-backup`, or `kvbak-*` CronJobs have no success in >26h, including never-successful CronJobs older than 26h. Deliberately suspended KeyValue CronJobs are excluded. Severity: critical.
 - **`PlatformDatabaseBackupStale`** (prometheus.yaml `bex` group): one alert instance per `bex-db`, `kratos-db`, `hydra-db`, or `openfga-db` if its Barman Cloud plugin-backed WAL archiver (`cnpg_pg_stat_archiver_last_archived_time` from the primary-only `cnpg-platform-db` scrape) has not archived in >26h. The scrape stamps namespace and cluster labels from Kubernetes discovery. Debugging starts with `pg_stat_archiver`, the cluster's ObjectStore, the `barman-cloud` deployment and instance-sidecar logs; credential presence is checked without printing Secret data. Severity: critical.
 
+## Recovery objectives (RPO/RTO)
+
+What bex actually promises per store — internal engineering objectives, not customer SLAs. Recovery is deliberately human-initiated (no automatic failover or cutover), so total time-to-recovery = detection + operator engagement + script execution + deliberate cutover. The **RTO objective** below covers only the scripted part: from an operator with `.env` credential custody starting a `scripts/restore-*.sh` run to a verified recovery target. The **observed** column is the evidence from the drill records above.
+
+| store | RPO objective (max data loss) | basis | RTO objective (script → verified target) | observed |
+| --- | --- | --- | --- | --- |
+| **etcd** (App/Database/KeyValue CRs) | ≤ 24 h | daily 03:15 UTC snapshot, 7 rolling | ≤ 1 h to re-applied CR manifests on a healthy cluster (cluster rebuild itself is a separate procedure) | minutes — scripted extraction of 9 CRs from a fresh production snapshot (2026-07-31; decrypt-then-restore re-proven 2026-08-04) |
+| **OpenBao** (tenant env-var secrets) | ≤ 24 h | daily 03:45 UTC Raft snapshot, 7 rolling | ≤ 1 h to a restored, unsealed, verified instance | ~12 min end-to-end in the 2026-07-14 drill; scripted production restore 2026-07-31 |
+| **paid KeyValue** | ≤ 24 h — nightly snapshot only, **no PITR** | per-id RDB slot 03:20–03:39 UTC, keep 7 | ≤ 1 h to a verified fresh-PVC instance | single-session fresh-PVC restore incl. the AOF transition + workload restart (2026-07-31) |
+| **Free KeyValue** | **unbounded — PVC-only, data loss on volume loss is accepted** | no off-cluster copy by design | none | — |
+| **tenant Postgres** | ≤ ~5 min of unarchived WAL (CNPG `archive_timeout`); **PITR within 30 d** | continuous WAL + daily base backup | ≤ 1 h to a verified recovery Cluster | minutes — explicit-PITR marker restore (2026-07-28), scripted PostgreSQL 16 restore (2026-07-31) |
+| **bex-db** | ≤ ~5 min of unarchived WAL; **PITR within 7 d** | continuous WAL + 04:00 UTC base backup | ≤ 1 h to a verified recovery Cluster | minutes — PITR restore with schema/row verification (2026-07-28), scripted marker restore (2026-07-31) |
+| **auth DBs** (kratos/hydra/openfga) | ≤ ~5 min of unarchived WAL; **PITR within 7 d** | continuous WAL + 04:15/04:30/04:45 UTC base backups | ≤ 1 h to a verified recovery Cluster | 62 s to a Ready recovery Cluster (Kratos, 2026-07-31) |
+
+The nightly-snapshot RPOs hold when last night's job succeeded; the `BackupCronJobStale` / `PlatformDatabaseBackupStale` alerts (>26 h, above) bound how long a silently failing backup — and therefore a silently growing RPO — can go unnoticed. The WAL-based RPOs assume archiving is healthy, bounded by the same alert.
+
 ## Re-drill cadence
+
+**Owner:** the platform operator. **Next scheduled all-store re-drill: 2027-07-31** (annual anniversary of the scripted baseline). When that date arrives — or when any per-store trigger below fires earlier — file a `.pm` inbox note to schedule the drill; a drill that deviates from the scripts re-earns its record here.
 
 | store | last drilled | next drill trigger | reason |
 | --- | --- | --- | --- |
