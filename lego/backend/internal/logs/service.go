@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/datastorelogs"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -978,22 +979,28 @@ func (s *Service) collectPodLogs(ctx context.Context, namespace string, q LogQue
 	return out, nil
 }
 
-func (s *Service) collectDatabasePodLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
-	pods, err := s.DatabasePods(ctx, q.Database)
-	if err != nil {
-		return nil, err
-	}
+// datastore names everything the managed Postgres and Key Value pod-log reads
+// do differently: which instance, which container carries the process log, and
+// which type label the entries are stamped with.
+type datastore struct {
+	name      string
+	container string
+	kind      string
+}
+
+// collectDatastorePodLogs reads one managed datastore's logs from its pods.
+func (s *Service) collectDatastorePodLogs(ctx context.Context, q LogQuery, pods []corev1.Pod, ds datastore) ([]LogEntry, error) {
 	var out []LogEntry
 	for i := range pods {
 		if !q.keepPod(pods[i].Name) {
 			continue
 		}
-		entries, err := s.readContainerLogs(ctx, s.Namespace, q.Database, pods[i].Name, core.CNPGPostgresContainer, q.Limit)
+		entries, err := s.readContainerLogs(ctx, s.Namespace, ds.name, pods[i].Name, ds.container, q.Limit)
 		if err != nil {
 			return nil, err
 		}
 		for j := range entries {
-			entries[j].Labels[LabelType] = "postgres"
+			entries[j].Labels[LabelType] = ds.kind
 		}
 		out = append(out, entries...)
 	}
@@ -1001,27 +1008,28 @@ func (s *Service) collectDatabasePodLogs(ctx context.Context, q LogQuery) ([]Log
 	return out, nil
 }
 
+func (s *Service) collectDatabasePodLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
+	pods, err := s.DatabasePods(ctx, q.Database)
+	if err != nil {
+		return nil, err
+	}
+	return s.collectDatastorePodLogs(ctx, q, pods, datastore{
+		name:      q.Database,
+		container: core.CNPGPostgresContainer,
+		kind:      datastorelogs.KindPostgres,
+	})
+}
+
 func (s *Service) collectKeyValuePodLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
 	pods, err := s.KeyValuePods(ctx, q.KeyValue)
 	if err != nil {
 		return nil, err
 	}
-	var out []LogEntry
-	for i := range pods {
-		if !q.keepPod(pods[i].Name) {
-			continue
-		}
-		entries, err := s.readContainerLogs(ctx, s.Namespace, q.KeyValue, pods[i].Name, core.ValkeyContainer, q.Limit)
-		if err != nil {
-			return nil, err
-		}
-		for j := range entries {
-			entries[j].Labels[LabelType] = "keyvalue"
-		}
-		out = append(out, entries...)
-	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Timestamp < out[j].Timestamp })
-	return out, nil
+	return s.collectDatastorePodLogs(ctx, q, pods, datastore{
+		name:      q.KeyValue,
+		container: core.ValkeyContainer,
+		kind:      datastorelogs.KindKeyValue,
+	})
 }
 
 // appPodNames lists the App's replica names the query's `instance` filter admits
