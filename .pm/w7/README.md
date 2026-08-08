@@ -79,17 +79,15 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 ## Inbox
 
 - `023.md` — **HELD until w3/m41 lands**: LLM token-metering proxy + `agent_token_units` (ADR047 wave 2) — the only honest token-metering path (the ACP provider reports zero usage); also the D5 exfiltration choke point.
-- `008.md` — Registry in-cluster TLS residual (ADR022 §225–227): Zot HTTP-only, build-push creds cross the cluster net in plaintext; largely mitigated by shipped Cilium WireGuard node encryption (cross-node only). Defense-in-depth, weak why-now — record, don't build until a driver appears.
-- `015.md` — Cross-region backup replication: every backup copy lives in one Wasabi region; promotion candidate (provider/cost decision), lower priority than m67/m68.
-- `016.md` — RPO/RTO objectives + recurring re-drill cadence (ADR031): doc-only, waits on m67/m68 landing.
-- `017.md`–`022.md` — codex-security scan `codex-security-bex-azfRGv` 2026-08-01 **accepted / optional** residuals (the 8 BY-DESIGN findings not materialized as milestones; full triage + 6 milestones m70–m75 above):
-  - `017.md` — #23 ssh-gateway DB role table-wide grants (w7/m56 intentional); optional RLS defense-in-depth.
-  - `018.md` — #25 OpenFGA-absent fail-open default; optional fail-closed flip (prod runs OpenFGA on).
-  - `019.md` — #26 unverified-invite-email default off; optional fail-closed flip (prod flag on).
-  - `020.md` — #6 day-to-day operator `jobs.create` cluster-wide (w7/m37 intentional); optional serviceAccountName VAP.
-  - `021.md` — #12 `onbex.co` not on PSL → tenant cookie tossing; **owner-waived 2026-07-30**, track to closure (PSL at eligibility or per-tenant suffix).
-  - `022.md` — #17 + #22 unpinned dev-tooling npx (mermaid, Playwright MCP); dev-only, optional pin.
-  - (#28 invite-link auto-redeem is token-capability **by design** — Render/GitHub parity — no action, not filed.)
+
+> **Inbox cleanup 2026-08-07** — `008`/`015`–`022` all retired to `done/` (dispositions appended in each note; `023` is the sole open note):
+>
+> - `016` **done** — ADR031 gained the per-store RPO/RTO objectives table (incl. the honest Free-KeyValue statement) + a re-drill owner and concrete next-due date (2027-07-31).
+> - `022` **done** — dev-tooling npx pinned in place: `.mcp.json` → `@playwright/mcp@0.0.79`, mermaid skill → `@mermaid-js/mermaid-cli@11.16.0` (scan #17/#22 closed).
+> - `018` + `019` **obsolete** — both fail-closed flips had already shipped via `w1/m65` (F16: OpenFGA-absent refuses to start, `BEX_ALLOW_INSECURE_AUTHZ` override; F13: `BEX_REQUIRE_VERIFIED_INVITE_EMAIL` secure-by-default).
+> - `008`, `017`, `020`, `021` **parked in `.pm/FUTURE-MAYBE.md`** with their promote-triggers intact (Zot in-cluster TLS · ssh-gateway RLS · operator `jobs.create` narrowing · `onbex.co` PSL track-to-closure).
+> - `015` **merged** into FUTURE-MAYBE's existing "Off-provider/cross-region backup replica" entry (updated with the Wasabi single-region facts; trigger: first paying tenant or compliance conversation).
+> - (#28 invite-link auto-redeem stays token-capability **by design** — Render/GitHub parity — no action, never filed.)
 
 > `014.md` (billing verbs gate on `can_manage`, not `can_manage_billing` — the m61 sweep's finding) promoted to **`w1/m60`** 2026-07-31 (user picked Option 1, align to Render; w7 drained, w1 adopted it m57-style); note moved to `done/`.
 
