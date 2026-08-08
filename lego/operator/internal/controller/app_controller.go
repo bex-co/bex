@@ -1081,104 +1081,19 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		}
 	}
 
-	labels := map[string]string{labelApp: app.Name}
-	appID := app.Labels[labelAppID]
-	if appID == "" {
-		appID = app.Name
-	}
-	// Propagate the workspace label to pod templates so NetworkPolicy selectors
-	// can express "allow same-workspace" rules. The selector stays stable
-	// (labelApp only) — adding labelWorkspace here would make it immutable and
-	// break existing Deployments when the label is added later.
-	podLabels := map[string]string{
-		labelApp:      app.Name,
-		labelAppID:    appID,
-		labelRevision: releaseRevision(app),
-	}
-	if ws := app.Labels[labelWorkspace]; ws != "" {
-		podLabels[labelWorkspace] = ws
-	}
-	if r.TenantSignKeySecret != "" {
-		podLabels[execution.LabelVerifyImage] = execution.VerifyImageEnabled
-	}
-	// Same mutability rationale as labelWorkspace above: labelNetworkIsolation
-	// is only present on the App when its Environment has
-	// networkIsolationEnabled (w6/m19) — reconcileNetworkPolicy's
-	// scopeSelector needs it on the pod template to actually select these pods.
-	if env := app.Labels[labelNetworkIsolation]; env != "" {
-		podLabels[labelNetworkIsolation] = env
-	}
-
 	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, dep, func() error {
-		dep.Spec.Replicas = &replicas
-		dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: labels}
-		dep.Spec.Template.Labels = podLabels
-		// restart = roll the template (same mechanism as kubectl rollout restart,
-		// recorded in the contract). Never removed once set — removal would
-		// itself roll the pods again.
-		if app.Spec.RestartedAt != "" {
-			if dep.Spec.Template.Annotations == nil {
-				dep.Spec.Template.Annotations = map[string]string{}
-			}
-			dep.Spec.Template.Annotations["app.bex.co/restarted-at"] = app.Spec.RestartedAt
-		}
-		// A worker has no HTTP port, so it declares no container port.
-		var ports []corev1.ContainerPort
-		if !worker {
-			ports = []corev1.ContainerPort{{ContainerPort: int32(port)}}
-		}
-		container := corev1.Container{
-			Name:            "app",
-			Image:           image,
-			ImagePullPolicy: pullPolicyFor(image),
-			Env:             appEnv(app, port),
-			EnvFrom:         envFromSources(app),
-			Ports:           ports,
-			Resources:       resourcesForTier(app.Spec.Tier),
-			SecurityContext: tenantSecCtx(),
-		}
-		// StartCommand overrides the running container's entrypoint whenever the
-		// image comes from an opaque Dockerfile (or a prebuilt image) — bex has
-		// no control over that image's own ENTRYPOINT/CMD. A native-runtime or
-		// buildpack build instead bakes the command into the image's own CMD at
-		// build time, so no Deployment-level override is needed there.
-		if b := effectiveBuilder(app.Spec); b != build.BuilderNative && b != build.BuilderBuildpack && app.Spec.StartCommand != "" {
-			container.Command = []string{"/bin/sh", "-c", app.Spec.StartCommand}
-		}
-		// Health-gating: a non-worker service speaks HTTP, so gate pod
-		// readiness on GET spec.healthCheckPath — Render's health check. A
-		// 2xx/3xx (k8s' default success range) makes the pod ready and routes
-		// traffic; a failure pulls it out of the Service until it recovers.
-		// Empty defaults to "/", matching the CRD's +kubebuilder:default.
-		// Workers/cron/static_site have no HTTP port and diverge above.
-		if !worker {
-			path := app.Spec.HealthCheckPath
-			if path == "" {
-				path = "/"
-			}
-			container.ReadinessProbe = &corev1.Probe{ProbeHandler: corev1.ProbeHandler{
-				HTTPGet: &corev1.HTTPGetAction{Path: path, Port: intstr.FromInt(port)},
-			}}
-		}
-		// Secret files: one projected /etc/secrets volume (the service's own
-		// "<name>-files" + each linked env group's files). Rebuilt every reconcile
-		// so a removed source drops out cleanly.
-		dep.Spec.Template.Spec.Volumes = nil
-		if vol, mount := secretFileMounts(app); vol != nil {
-			container.VolumeMounts = []corev1.VolumeMount{*mount}
-			dep.Spec.Template.Spec.Volumes = []corev1.Volume{*vol}
-		}
-		dep.Spec.Template.Spec.Containers = []corev1.Container{container}
-		// Render's maxShutdownDelaySeconds is Kubernetes' native pod termination
-		// grace period. Keep nil when unset so existing Apps retain Kubernetes'
-		// identical 30-second default without adding a field to their pod template.
-		dep.Spec.Template.Spec.TerminationGracePeriodSeconds = terminationGracePeriodSeconds(app.Spec.MaxShutdownDelaySeconds)
-		// Authenticate kubelet pulls against the auth-enabled registry (w7/m8). nil
-		// when no pull secret is configured or the image isn't registry-hosted, so a
-		// prebuilt public image is left untouched.
-		dep.Spec.Template.Spec.ImagePullSecrets = r.imagePullSecrets(app, image)
-		dep.Spec.Template.Spec.AutomountServiceAccountToken = ptr(false)
+		applyDeploymentSpec(dep, app, deploymentParams{
+			image:       image,
+			port:        port,
+			replicas:    replicas,
+			worker:      worker,
+			verifyImage: r.TenantSignKeySecret != "",
+			// Authenticate kubelet pulls against the auth-enabled registry
+			// (w7/m8). nil when no pull secret is configured or the image isn't
+			// registry-hosted, so a prebuilt public image is left untouched.
+			pullSecrets: r.imagePullSecrets(app, image),
+		})
 		return controllerutil.SetControllerReference(app, dep, r.Scheme)
 	}); err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
@@ -1244,45 +1159,19 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// Suspended: parked at 0 replicas with Service/Ingress/TLS (and spec.replicas)
 	// all kept — resume is just scaling back. Report Hibernated and stop.
 	if app.Spec.Suspended {
-		app.Status.Phase = appv1alpha1.PhaseHibernated
-		app.Status.Image = image
-		if len(hosts) > 0 {
-			app.Status.URL = "https://" + hosts[0]
-		}
-		app.Status.ObservedGeneration = app.Generation
-		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type: "Ready", Status: metav1.ConditionFalse, Reason: "Suspended",
-			Message:            "suspended (scaled to 0; config, host and certs kept)",
-			ObservedGeneration: app.Generation,
-		})
-		if err := r.Status().Update(ctx, app); err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, nil
+		return r.hibernated(ctx, app, image, hosts, "Suspended",
+			"suspended (scaled to 0; config, host and certs kept)")
 	}
 
 	// Auto-hibernated: idle free-tier app scaled to 0, Ingress now points at the
 	// activator. The next inbound request will wake it; no further requeue needed.
 	if autoHibernating {
-		app.Status.Phase = appv1alpha1.PhaseHibernated
-		app.Status.Image = image
-		if len(hosts) > 0 {
-			app.Status.URL = "https://" + hosts[0]
+		res, err := r.hibernated(ctx, app, image, hosts, "AutoHibernated",
+			fmt.Sprintf("idle ≥%ds on free tier; wakes on next request", app.Spec.IdleTTLSeconds))
+		if err == nil {
+			logf.FromContext(ctx).Info("app auto-hibernated", "name", app.Name, "idleTTL", app.Spec.IdleTTLSeconds)
 		}
-		app.Status.ObservedGeneration = app.Generation
-		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type:   "Ready",
-			Status: metav1.ConditionFalse,
-			Reason: "AutoHibernated",
-			Message: fmt.Sprintf("idle ≥%ds on free tier; wakes on next request",
-				app.Spec.IdleTTLSeconds),
-			ObservedGeneration: app.Generation,
-		})
-		if err := r.Status().Update(ctx, app); err != nil {
-			return ctrl.Result{}, err
-		}
-		logf.FromContext(ctx).Info("app auto-hibernated", "name", app.Name, "idleTTL", app.Spec.IdleTTLSeconds)
-		return ctrl.Result{}, nil
+		return res, err
 	}
 
 	// Readiness: requeue until this Deployment revision, rather than retained
@@ -1355,6 +1244,24 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		return ctrl.Result{RequeueAfter: autoscaleInterval}, nil
 	}
 	return ctrl.Result{RequeueAfter: childHealthRequeue}, nil
+}
+
+// hibernated reports an App parked at 0 replicas with its Service, Ingress and
+// certificates intact. Manual suspension and idle auto-hibernation reach the
+// same resting state and differ only in why, so they share one terminal status
+// write rather than two that can drift apart.
+func (r *AppReconciler) hibernated(ctx context.Context, app *appv1alpha1.App, image string, hosts []string, reason, message string) (ctrl.Result, error) {
+	app.Status.Phase = appv1alpha1.PhaseHibernated
+	app.Status.Image = image
+	if len(hosts) > 0 {
+		app.Status.URL = "https://" + hosts[0]
+	}
+	app.Status.ObservedGeneration = app.Generation
+	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+		Type: "Ready", Status: metav1.ConditionFalse, Reason: reason,
+		Message: message, ObservedGeneration: app.Generation,
+	})
+	return ctrl.Result{}, r.Status().Update(ctx, app)
 }
 
 func terminationGracePeriodSeconds(seconds *int32) *int64 {
