@@ -13,25 +13,26 @@ function InviteRedemption() {
 }
 
 /**
- * Dashboard layout — persistent contextual sidebar + Render-style topbar
- * wrapping every authenticated page. The topbar supplies hierarchy, global
- * search, create, help, and account navigation regardless of the active route.
- * If sidebar is not provided, defaults to DashboardSidebar.
+ * Dashboard layout — the ONE contextual sidebar + Render-style topbar wrapping
+ * every authenticated page. The topbar supplies hierarchy, global search,
+ * create, help, and account navigation regardless of the active route.
+ *
+ * There is deliberately no `sidebar` override prop (removed in w5/m64): the
+ * rail varies by route *inside* `DashboardSidebar` — `ProjectSidebar` and
+ * `ServiceSidebar` replace the nav, the agent-sessions section augments it —
+ * so a page never supplies or renders a rail of its own. A page that renders
+ * its own `<aside>` produces two side-by-side sidebars, which is what `/agents`
+ * shipped before w5/m64; `routes/__tests__/one-rail-invariant.test.ts` guards
+ * against the regression.
  */
-export function DashboardLayout({
-  children,
-  sidebar,
-}: {
-  children?: React.ReactNode;
-  sidebar?: React.ReactNode;
-}) {
+export function DashboardLayout({ children }: { children?: React.ReactNode }) {
   return (
     <SidebarProvider>
       <Authenticated>
         <InviteRedemption />
       </Authenticated>
       <div className="flex h-(--visual-viewport-height,100vh) w-full">
-        {sidebar || <DashboardSidebar />}
+        <DashboardSidebar />
         <main className="flex flex-1 flex-col min-w-0 w-full">
           <DashboardHeader />
           {children}

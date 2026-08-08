@@ -14,6 +14,7 @@ import {
   SidebarContent,
   SidebarHeader,
 } from "@/common/components/ui/sidebar.tsx";
+import { AgentSessionsNavSection } from "./agent-sessions-nav-section";
 import { isNavItemActive } from "./nav-active";
 import { ProjectSidebar } from "./project-sidebar";
 import { ServiceSidebar } from "./service-sidebar";
@@ -88,6 +89,13 @@ export function DashboardSidebar() {
           groups={NAV_GROUPS}
           isItemActive={(to) => isNavItemActive(pathname, to)}
         />
+        {/* The contextual list slot (w5/m64). Unlike ProjectSidebar and
+            ServiceSidebar above — which REPLACE the rail for a deep hierarchy
+            and offer a back link — an agents-context section AUGMENTS the nav,
+            Devin's own shape: global nav on top, the section's working set
+            beneath. Section-scoped on purpose: sessions never follow you onto
+            Projects/Services/Settings. See ADR047 D9. */}
+        {isNavItemActive(pathname, "/agents") ? <AgentSessionsNavSection /> : null}
       </SidebarContent>
     </Sidebar>
   );

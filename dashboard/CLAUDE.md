@@ -73,6 +73,15 @@ Reused from `beancount-dashboard`'s reports/overview page and ledger-layout chro
 
 Pages/components this pattern applies to (w5/m2 scope): `features/auth/pages/{login,register,forgot-password,settings,logout}-page/index.tsx`, `routes/index.tsx`, `common/components/dashboard-layout/{index.tsx,dashboard-sidebar.tsx}`.
 
+## One rail (w5/m64)
+
+The dashboard has exactly **one** left sidebar. A route module must never render an `<aside>` or its own rail inside `DashboardLayout` — that yields two side-by-side sidebars, which is what `/agents` shipped before w5/m64. Contextual navigation is a branch **inside** `DashboardSidebar`, in one of two flavors:
+
+- **Replace** the nav (`ProjectSidebar`, `ServiceSidebar`) — deep hierarchical context, entered via a back link.
+- **Augment** it (`AgentSessionsNavSection`) — a section-scoped working-set list beneath the global nav, Devin's shape. Scope it to its own routes; it must not follow the user elsewhere.
+
+`DashboardLayout` takes no `sidebar` override prop, and `routes/__tests__/one-rail-invariant.test.ts` fails the build if a route module grows an `<aside>` or imports a `*-sidebar`. A genuinely needed second panel goes on the **right** (see the agent-session evidence/PR panel). Rationale: `docs/ADR047-cloud-coding-agent-sessions.md` § D9a.
+
 ## SSR gotcha
 
 `vite.config.ts` sets `ssr.noExternal: ["@ory/elements-react"]` — the package ships extensionless relative imports (e.g. `"./session-provider"`) that only resolve under bundler resolution, not Node's strict ESM loader. Without this, `yarn dev`/`yarn build` SSR-render any page importing `@ory/elements-react` with "Cannot find module" and silently falls back to full client rendering. Don't remove it.

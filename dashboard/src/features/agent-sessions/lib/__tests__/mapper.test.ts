@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   agentSessionDurationMs,
+  agentSessionStatusPhraseKey,
   isSteerablePhase,
   isTerminalPhase,
   toAgentSessionView,
@@ -202,5 +203,38 @@ describe("agentSessionDurationMs", () => {
   it("returns 0 when createdAt is unparseable", () => {
     const view = toAgentSessionView(wire({ createdAt: "not-a-date" }));
     expect(agentSessionDurationMs(view, startMs)).toBe(0);
+  });
+});
+
+// Moved here from the retired session-sidebar test when w5/m64 folded that
+// rail into DashboardSidebar — this asserts the mapper, not the component.
+describe("agentSessionStatusPhraseKey", () => {
+  it("maps phase + PR presence onto the Devin-style phrase", () => {
+    expect(
+      agentSessionStatusPhraseKey({ phase: "completed", prNumber: 6 }),
+    ).toBe("agentSessions.statusPhrase.prReady");
+    // The settled phases reuse the phase chip's copy rather than restating it.
+    expect(
+      agentSessionStatusPhraseKey({ phase: "completed", prNumber: null }),
+    ).toBe("agentSessions.phase.completed");
+    expect(agentSessionStatusPhraseKey({ phase: "failed", prNumber: null })).toBe(
+      "agentSessions.phase.failed",
+    );
+    expect(
+      agentSessionStatusPhraseKey({ phase: "canceled", prNumber: null }),
+    ).toBe("agentSessions.phase.canceled");
+    expect(
+      agentSessionStatusPhraseKey({ phase: "canceling", prNumber: null }),
+    ).toBe("agentSessions.phase.canceled");
+    for (const phase of [
+      "running",
+      "creating",
+      "resuming",
+      "redispatching",
+    ] as const) {
+      expect(agentSessionStatusPhraseKey({ phase, prNumber: null })).toBe(
+        "agentSessions.statusPhrase.working",
+      );
+    }
   });
 });
