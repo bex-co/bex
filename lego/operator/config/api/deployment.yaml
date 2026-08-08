@@ -86,7 +86,7 @@ spec:
             # ADR047 D1/D3: the separate `agent` sandbox template. deploy.yml
             # builds and publishes this image from lego/agent-image/.
             - name: BEX_AGENT_SESSION_IMAGE
-              value: ghcr.io/bex-co/bex-agent-sandbox@sha256:5456b7c9cb06bf77fdbebf56520a9eb65ebd93114030228b07db491d913f9adf
+              value: ghcr.io/bex-co/bex-agent-sandbox@sha256:04d9c40fb0cb68164f4cd63fd79776bd3f4a50c6e16072d549f9b3808b52fa8d
             # Auth (docs/ADR012-auth.md): OAuth2 API keys introspected at Hydra's
             # admin API; Kratos sessions for humans. No shared static token —
             # the bootstrap client is seeded by scripts/auth-bootstrap-client.sh.
