@@ -967,7 +967,7 @@ function AddVariableMenu({
 
 function EmptyCopy({ title, body }: { title: string; body: string }) {
   return (
-    <div className="py-8 text-center">
+    <div className="py-6 text-center">
       <p className="font-medium">{title}</p>
       <p className="text-muted-foreground mt-1 text-sm">{body}</p>
     </div>

@@ -198,7 +198,7 @@ export function HomePage() {
               <AlertDescription>{t("projects.errorBody")}</AlertDescription>
             </Alert>
           ) : showEmpty ? (
-            <div className="py-10 text-center">
+            <div className="py-8 text-center">
               <p className="font-medium">{t("projects.emptyTitle")}</p>
               <p className="text-sm text-muted-foreground">
                 {t("projects.emptyBody")}

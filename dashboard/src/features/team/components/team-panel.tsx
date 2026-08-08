@@ -148,7 +148,7 @@ export function TeamPanel() {
                 body={t("team.emptyBody")}
               />
             ) : filteredMembers.length === 0 ? (
-              <div className="py-8 text-center" role="status">
+              <div className="py-6 text-center" role="status">
                 <p className="font-medium">{t("team.noMatchesTitle")}</p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {t("team.noMatchesBody")}

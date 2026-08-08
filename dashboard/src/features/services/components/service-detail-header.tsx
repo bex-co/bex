@@ -88,7 +88,7 @@ export function ServiceDetailHeader({
     : null;
 
   return (
-    <div className="space-y-3 border-b px-4 py-4 sm:px-6">
+    <div className="space-y-2 border-b px-4 py-3 sm:px-6">
       <div className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase">
         <TypeIcon className="size-3.5" />
         {t(SERVICE_TYPE_LABEL[typeKey])}
@@ -149,7 +149,7 @@ export function ServiceDetailHeader({
         </div>
       </div>
 
-      <div className="space-y-1 text-sm">
+      <div className="space-y-0.5 text-sm">
         <div className="text-muted-foreground flex items-center gap-1.5">
           <span>{t("services.headerServiceId")}</span>
           <span className="text-foreground font-mono text-xs">

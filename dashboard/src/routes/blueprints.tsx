@@ -67,13 +67,13 @@ function BlueprintsListPage() {
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto w-full max-w-4xl space-y-6">
           {error && blueprints.length === 0 ? (
-            <div className="py-10 text-center">
+            <div className="py-8 text-center">
               <p className="font-medium">{t("blueprints.errorTitle")}</p>
             </div>
           ) : showSkeleton ? (
             <Skeleton className="h-40 w-full" />
           ) : blueprints.length === 0 ? (
-            <div className="py-10 text-center">
+            <div className="py-8 text-center">
               <p className="font-medium">{t("blueprints.emptyTitle")}</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {t("blueprints.emptyBody")}
