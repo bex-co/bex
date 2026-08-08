@@ -936,35 +936,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if err != nil {
 					return nil, err
 				}
-				if vs := gqlutil.Str(p.Args, "verificationStatus"); vs != "" {
-					switch vs {
-					case "pending", "verified":
-						filtered := make([]DomainView, 0, len(out))
-						for _, d := range out {
-							if d.VerificationStatus == vs {
-								filtered = append(filtered, d)
-							}
-						}
-						out = filtered
-					default:
-						return nil, fmt.Errorf("%w: unknown verificationStatus %q (want pending|verified)",
-							core.ErrBadRequest, vs)
-					}
-				}
-				if dt := gqlutil.Str(p.Args, "domainType"); dt != "" {
-					switch dt {
-					case "apex", "subdomain":
-						filtered := make([]DomainView, 0, len(out))
-						for _, d := range out {
-							if d.DomainType == dt {
-								filtered = append(filtered, d)
-							}
-						}
-						out = filtered
-					default:
-						return nil, fmt.Errorf("%w: unknown domainType %q (want apex|subdomain)",
-							core.ErrBadRequest, dt)
-					}
+				out, err = filterDomains(out, gqlutil.Str(p.Args, "verificationStatus"), gqlutil.Str(p.Args, "domainType"))
+				if err != nil {
+					return nil, err
 				}
 				cursor, cursorSet := p.Args["cursor"].(string)
 				limit, limitSet := p.Args["limit"].(int)

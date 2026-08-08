@@ -26,7 +26,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -600,21 +599,6 @@ func parseAutoDeploy(autoDeploy, trigger string) (*bool, error) {
 	return parseYesNo(autoDeploy), nil
 }
 
-// renderListParam expands Render's form-style array encoding. The generated
-// CLI sends a multi-value flag as one comma-separated value, while hand-written
-// clients commonly repeat the query key; accept both forms.
-func renderListParam(values []string) []string {
-	var out []string
-	for _, raw := range values {
-		for _, value := range strings.Split(raw, ",") {
-			if value = strings.TrimSpace(value); value != "" {
-				out = append(out, value)
-			}
-		}
-	}
-	return out
-}
-
 // RegisterREST mounts the App-lifecycle routes — Render-public-API compatible.
 // Paths, the {service, cursor} list envelope, the string suspended enum, and the
 // verb status codes (suspend/resume 202, restart 200) all match Render's OpenAPI
@@ -631,101 +615,37 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// name filters by exact name, OR'd across repeated ?name= values (Render's
 		// documented "Filter by name" — the official CLI resolves a bare
 		// name/id argument to a service id by calling this with ?name=, and
-		// requires it to narrow to exactly one match).
-		if names := renderListParam(q["name"]); len(names) > 0 {
-			filtered := make([]AppView, 0, len(apps))
-			for _, a := range apps {
-				if slices.Contains(names, a.Name) || slices.Contains(names, renderServiceName(a)) {
-					filtered = append(filtered, a)
-				}
-			}
-			apps = filtered
-		}
-		if environmentIDs := renderListParam(q["environmentId"]); len(environmentIDs) > 0 {
-			filtered := make([]AppView, 0, len(apps))
-			for _, a := range apps {
-				if slices.Contains(environmentIDs, a.EnvironmentID) {
-					filtered = append(filtered, a)
-				}
-			}
-			apps = filtered
-		}
-		// type= filters by Render's serviceType enum (w2/m52): repeated or
-		// comma-separated values are OR'd, mirroring the name/environmentId pattern.
-		if types := renderListParam(q["type"]); len(types) > 0 {
-			filtered := make([]AppView, 0, len(apps))
-			for _, a := range apps {
-				if slices.Contains(types, effectiveType(a.Type)) {
-					filtered = append(filtered, a)
-				}
-			}
-			apps = filtered
-		}
+		// requires it to narrow to exactly one match). environmentId and Render's
+		// serviceType enum (type=, w2/m52) OR the same way.
+		names := core.QueryList(q, "name")
+		environmentIDs := core.QueryList(q, "environmentId")
+		types := core.QueryList(q, "type")
 		// suspended= is Render's boolean string filter ("true"/"false"). Unknown
 		// values return a named 400; absent means unfiltered.
-		if sv := q.Get("suspended"); sv != "" {
-			if sv != "true" && sv != "false" {
-				core.WriteErr(w, fmt.Errorf("%w: suspended must be true or false", core.ErrBadRequest))
-				return
-			}
-			want := sv == "true"
-			filtered := make([]AppView, 0, len(apps))
-			for _, a := range apps {
-				if a.Suspended == want {
-					filtered = append(filtered, a)
-				}
-			}
-			apps = filtered
+		suspended, err := core.ParseEnum("suspended", q.Get("suspended"), "true", "false")
+		if err != nil {
+			core.WriteErr(w, err)
+			return
 		}
 		// Time-window filters (w2/m52): Render's createdBefore/createdAfter and
-		// updatedBefore/updatedAfter RFC3339 params. An empty/missing AppView
-		// timestamp passes the filter (legacy Apps without stored timestamps are
-		// never silently excluded — same rule as matchesTimeWindow in envgroups).
-		for _, tf := range []struct {
-			before, after, field string
-			get                  func(AppView) string
-		}{
-			{"createdBefore", "createdAfter", "createdAt", func(a AppView) string { return a.CreatedAt }},
-			{"updatedBefore", "updatedAfter", "updatedAt", func(a AppView) string { return a.UpdatedAt }},
-		} {
-			var before, after time.Time
-			if v := q.Get(tf.before); v != "" {
-				t, err := time.Parse(time.RFC3339, v)
-				if err != nil {
-					core.WriteErr(w, fmt.Errorf("%w: %s must be RFC3339", core.ErrBadRequest, tf.before))
-					return
-				}
-				before = t
-			}
-			if v := q.Get(tf.after); v != "" {
-				t, err := time.Parse(time.RFC3339, v)
-				if err != nil {
-					core.WriteErr(w, fmt.Errorf("%w: %s must be RFC3339", core.ErrBadRequest, tf.after))
-					return
-				}
-				after = t
-			}
-			if before.IsZero() && after.IsZero() {
-				continue
-			}
-			filtered := make([]AppView, 0, len(apps))
-			for _, a := range apps {
-				raw := tf.get(a)
-				if raw == "" {
-					filtered = append(filtered, a) // legacy: no timestamp → passes
-					continue
-				}
-				v, err := time.Parse(time.RFC3339, raw)
-				if err != nil {
-					filtered = append(filtered, a)
-					continue
-				}
-				if (before.IsZero() || v.Before(before)) && (after.IsZero() || v.After(after)) {
-					filtered = append(filtered, a)
-				}
-			}
-			apps = filtered
+		// updatedBefore/updatedAfter RFC3339 params.
+		created, err := core.QueryTimeWindow(q, "createdBefore", "createdAfter")
+		if err != nil {
+			core.WriteErr(w, err)
+			return
 		}
+		updated, err := core.QueryTimeWindow(q, "updatedBefore", "updatedAfter")
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		apps = core.Filter(apps, func(a AppView) bool {
+			return (len(names) == 0 || slices.Contains(names, a.Name) || slices.Contains(names, renderServiceName(a))) &&
+				(len(environmentIDs) == 0 || slices.Contains(environmentIDs, a.EnvironmentID)) &&
+				(len(types) == 0 || slices.Contains(types, effectiveType(a.Type))) &&
+				(suspended == "" || a.Suspended == (suspended == "true")) &&
+				created.Contains(a.CreatedAt) && updated.Contains(a.UpdatedAt)
+		})
 		// Render's cursor pagination (docs/render-artifacts/owners-api.md): a
 		// service's cursor is its name; `cursor`/`limit` page the result.
 		after, limit := core.PageParams(q)
@@ -1175,47 +1095,16 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		q := r.URL.Query()
-		// Filter by verificationStatus (Render: "pending" | "verified").
-		if vs := q.Get("verificationStatus"); vs != "" {
-			switch vs {
-			case "pending", "verified":
-				filtered := make([]DomainView, 0, len(domains))
-				for _, d := range domains {
-					if d.VerificationStatus == vs {
-						filtered = append(filtered, d)
-					}
-				}
-				domains = filtered
-			default:
-				core.WriteErr(w, fmt.Errorf("%w: unknown verificationStatus %q (want pending|verified)",
-					core.ErrBadRequest, vs))
-				return
-			}
-		}
-		// Filter by domainType (Render: "apex" | "subdomain").
-		if dt := q.Get("domainType"); dt != "" {
-			switch dt {
-			case "apex", "subdomain":
-				filtered := make([]DomainView, 0, len(domains))
-				for _, d := range domains {
-					if d.DomainType == dt {
-						filtered = append(filtered, d)
-					}
-				}
-				domains = filtered
-			default:
-				core.WriteErr(w, fmt.Errorf("%w: unknown domainType %q (want apex|subdomain)",
-					core.ErrBadRequest, dt))
-				return
-			}
+		domains, err = filterDomains(domains, q.Get("verificationStatus"), q.Get("domainType"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
 		}
 		// Cursor/limit pagination — cursor is the domain name, matching the per-item cursor
 		// emitted by toCustomDomainList. Pagination is applied only when either cursor or
 		// limit is explicitly provided (StablePage's "requested" flag).
 		after, limit := core.PageParams(q)
-		_, cursorRequested := q["cursor"]
-		_, limitRequested := q["limit"]
-		domains = core.StablePage(domains, after, limit, cursorRequested || limitRequested,
+		domains = core.StablePage(domains, after, limit, q.Has("cursor") || q.Has("limit"),
 			func(d DomainView) string { return d.Name })
 		core.WriteJSON(w, http.StatusOK, toCustomDomainList(domains))
 	}

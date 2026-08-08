@@ -202,25 +202,8 @@ func (s *Service) ListEnvGroupsFiltered(ctx context.Context, filter EnvGroupList
 func matchesEnvGroupFilter(group scopedMeta, filter EnvGroupListFilter) bool {
 	return (len(filter.Names) == 0 || slices.Contains(filter.Names, group.name)) &&
 		(len(filter.EnvironmentIDs) == 0 || slices.Contains(filter.EnvironmentIDs, group.environment)) &&
-		matchesTimeWindow(group.createdAt, filter.CreatedBefore, filter.CreatedAfter) &&
-		matchesTimeWindow(group.updatedAt, filter.UpdatedBefore, filter.UpdatedAfter)
-}
-
-func matchesTimeWindow(raw string, before, after time.Time) bool {
-	if before.IsZero() && after.IsZero() {
-		return true
-	}
-	// Legacy groups pre-dating w6/m24's timestamp stamping have an empty raw
-	// string. We can't place them in a time window, so we include them rather
-	// than silently dropping them — omitted data doesn't imply exclusion.
-	if raw == "" {
-		return true
-	}
-	value, err := time.Parse(time.RFC3339, raw)
-	if err != nil {
-		return false
-	}
-	return (before.IsZero() || value.Before(before)) && (after.IsZero() || value.After(after))
+		core.TimeWindow{Before: filter.CreatedBefore, After: filter.CreatedAfter}.Contains(group.createdAt) &&
+		core.TimeWindow{Before: filter.UpdatedBefore, After: filter.UpdatedAfter}.Contains(group.updatedAt)
 }
 
 // pageEnvGroups is the shared GraphQL/MCP/REST paging rule. Callers pass

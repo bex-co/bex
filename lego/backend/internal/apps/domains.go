@@ -227,6 +227,25 @@ func (s *Service) ListDomains(ctx context.Context, appName string) ([]DomainView
 	return out, nil
 }
 
+// filterDomains applies Render's two custom-domain list filters. Both are
+// optional ("" ⇒ unfiltered) and an unrecognized value is a named
+// core.ErrBadRequest. REST, GraphQL, and MCP all route through here so the
+// accepted vocabulary and its 400 cannot drift between the three surfaces.
+func filterDomains(domains []DomainView, verificationStatus, domainType string) ([]DomainView, error) {
+	status, err := core.ParseEnum("verificationStatus", verificationStatus, "pending", "verified")
+	if err != nil {
+		return nil, err
+	}
+	dtype, err := core.ParseEnum("domainType", domainType, "apex", "subdomain")
+	if err != nil {
+		return nil, err
+	}
+	return core.Filter(domains, func(d DomainView) bool {
+		return (status == "" || d.VerificationStatus == status) &&
+			(dtype == "" || d.DomainType == dtype)
+	}), nil
+}
+
 // GetDomain returns one custom domain by hostname, or core.ErrNotFound.
 func (s *Service) GetDomain(ctx context.Context, appName, hostname string) (DomainView, error) {
 	app, err := s.AuthorizeApp(ctx, core.RelCanView, appName)

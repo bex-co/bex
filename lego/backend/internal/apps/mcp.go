@@ -1094,35 +1094,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		if err != nil {
 			return nil, domainListResult{}, err
 		}
-		if vs := in.VerificationStatus; vs != "" {
-			switch vs {
-			case "pending", "verified":
-				filtered := make([]DomainView, 0, len(domains))
-				for _, d := range domains {
-					if d.VerificationStatus == vs {
-						filtered = append(filtered, d)
-					}
-				}
-				domains = filtered
-			default:
-				return nil, domainListResult{}, fmt.Errorf("%w: unknown verificationStatus %q (want pending|verified)",
-					core.ErrBadRequest, vs)
-			}
-		}
-		if dt := in.DomainType; dt != "" {
-			switch dt {
-			case "apex", "subdomain":
-				filtered := make([]DomainView, 0, len(domains))
-				for _, d := range domains {
-					if d.DomainType == dt {
-						filtered = append(filtered, d)
-					}
-				}
-				domains = filtered
-			default:
-				return nil, domainListResult{}, fmt.Errorf("%w: unknown domainType %q (want apex|subdomain)",
-					core.ErrBadRequest, dt)
-			}
+		domains, err = filterDomains(domains, in.VerificationStatus, in.DomainType)
+		if err != nil {
+			return nil, domainListResult{}, err
 		}
 		limit := in.Limit
 		if limit == 0 {

@@ -163,73 +163,29 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// documented "Filter by name" — the official CLI resolves a bare
 		// name/id argument to a key-value id by calling this with ?name=, and
 		// requires it to narrow to exactly one match).
-		if names := q["name"]; len(names) > 0 {
-			filtered := make([]KeyValueView, 0, len(out))
-			for _, kv := range out {
-				if slices.Contains(names, kv.Name) || slices.Contains(names, kv.ID) {
-					filtered = append(filtered, kv)
-				}
-			}
-			out = filtered
+		names := core.QueryList(q, "name")
+		envIDs := core.QueryList(q, "environmentId")
+		suspended, err := core.ParseEnum("suspended", q.Get("suspended"), core.RenderSuspended, core.RenderNotSuspended)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
 		}
-		if envIDs := q["environmentId"]; len(envIDs) > 0 {
-			filtered := make([]KeyValueView, 0, len(out))
-			for _, kv := range out {
-				if slices.Contains(envIDs, kv.EnvironmentID) {
-					filtered = append(filtered, kv)
-				}
-			}
-			out = filtered
+		created, err := core.QueryTimeWindow(q, "createdBefore", "createdAfter")
+		if err != nil {
+			core.WriteErr(w, err)
+			return
 		}
-		if sv := q.Get("suspended"); sv != "" {
-			if sv != core.RenderSuspended && sv != core.RenderNotSuspended {
-				core.WriteErr(w, fmt.Errorf("%w: suspended must be %q or %q", core.ErrBadRequest, core.RenderSuspended, core.RenderNotSuspended))
-				return
-			}
-			filtered := make([]KeyValueView, 0, len(out))
-			for _, kv := range out {
-				if kv.Suspended == sv {
-					filtered = append(filtered, kv)
-				}
-			}
-			out = filtered
+		updated, err := core.QueryTimeWindow(q, "updatedBefore", "updatedAfter")
+		if err != nil {
+			core.WriteErr(w, err)
+			return
 		}
-		for _, tf := range []struct {
-			param  string
-			getVal func(KeyValueView) string
-			before bool
-		}{
-			{"createdBefore", func(kv KeyValueView) string { return kv.CreatedAt }, true},
-			{"createdAfter", func(kv KeyValueView) string { return kv.CreatedAt }, false},
-			{"updatedBefore", func(kv KeyValueView) string { return kv.UpdatedAt }, true},
-			{"updatedAfter", func(kv KeyValueView) string { return kv.UpdatedAt }, false},
-		} {
-			raw := q.Get(tf.param)
-			if raw == "" {
-				continue
-			}
-			pivot, err := time.Parse(time.RFC3339, raw)
-			if err != nil {
-				core.WriteErr(w, fmt.Errorf("%w: %s must be RFC3339", core.ErrBadRequest, tf.param))
-				return
-			}
-			filtered := make([]KeyValueView, 0, len(out))
-			for _, kv := range out {
-				val := tf.getVal(kv)
-				if val == "" {
-					filtered = append(filtered, kv)
-					continue
-				}
-				t, err := time.Parse(time.RFC3339, val)
-				if err != nil {
-					continue
-				}
-				if tf.before && t.Before(pivot) || !tf.before && t.After(pivot) {
-					filtered = append(filtered, kv)
-				}
-			}
-			out = filtered
-		}
+		out = core.Filter(out, func(kv KeyValueView) bool {
+			return (len(names) == 0 || slices.Contains(names, kv.Name) || slices.Contains(names, kv.ID)) &&
+				(len(envIDs) == 0 || slices.Contains(envIDs, kv.EnvironmentID)) &&
+				(suspended == "" || kv.Suspended == suspended) &&
+				created.Contains(kv.CreatedAt) && updated.Contains(kv.UpdatedAt)
+		})
 		// Render's cursor-pagination envelope — a bare array breaks the official
 		// CLI's list decode (ListKeyValueResponse.JSON200 is *[]KeyValueWithCursor).
 		// Omission preserves the original complete-list behavior; requested pages

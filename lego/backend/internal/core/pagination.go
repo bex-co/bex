@@ -56,6 +56,62 @@ func QueryTime(q url.Values, key string) (time.Time, error) {
 	return parsed, nil
 }
 
+// TimeWindow is one Render `<field>Before`/`<field>After` list-filter range.
+// The zero value admits everything.
+type TimeWindow struct{ Before, After time.Time }
+
+// QueryTimeWindow parses one before/after RFC3339 pair — Render's
+// createdBefore/createdAfter shape — with QueryTime's named bad request.
+func QueryTimeWindow(q url.Values, beforeKey, afterKey string) (TimeWindow, error) {
+	before, err := QueryTime(q, beforeKey)
+	if err != nil {
+		return TimeWindow{}, err
+	}
+	after, err := QueryTime(q, afterKey)
+	if err != nil {
+		return TimeWindow{}, err
+	}
+	return TimeWindow{Before: before, After: after}, nil
+}
+
+// Contains reports whether an RFC3339 timestamp falls inside the window
+// (exclusive on both ends, matching Render). A timestamp this cannot place —
+// empty on records pre-dating timestamp stamping, or unparseable — is admitted
+// rather than silently dropped: omitted data does not imply exclusion (w2/m51).
+func (w TimeWindow) Contains(raw string) bool {
+	if w.Before.IsZero() && w.After.IsZero() {
+		return true
+	}
+	value, err := time.Parse(time.RFC3339, raw)
+	if err != nil {
+		return true
+	}
+	return (w.Before.IsZero() || value.Before(w.Before)) && (w.After.IsZero() || value.After(w.After))
+}
+
+// ParseEnum validates one optional list-filter enum, returning it unchanged
+// when empty (absent ⇒ unfiltered) or allowed, and a named bad request
+// otherwise. Adapters with typed arguments (GraphQL/MCP) share it with REST so
+// one vocabulary and one 400 message serve every surface.
+func ParseEnum(key, value string, allowed ...string) (string, error) {
+	if value == "" || slices.Contains(allowed, value) {
+		return value, nil
+	}
+	return "", fmt.Errorf("%w: unknown %s %q (want %s)", ErrBadRequest, key, value, strings.Join(allowed, "|"))
+}
+
+// Filter returns the items satisfying keep, in order. It allocates a new slice
+// rather than compacting in place so a caller's input is never mutated.
+func Filter[T any](items []T, keep func(T) bool) []T {
+	out := make([]T, 0, len(items))
+	for _, item := range items {
+		if keep(item) {
+			out = append(out, item)
+		}
+	}
+	return out
+}
+
 // Render's `direction` ordering enum, shared by every list endpoint that
 // honors it (logs and audit logs): backward is newest-first (the default),
 // forward starts with the oldest item in the window.
