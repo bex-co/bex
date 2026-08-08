@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -1372,6 +1373,64 @@ func TestRESTListTimeFilters(t *testing.T) {
 	}
 	if len(page) != 2 {
 		t.Errorf("empty createdAt passes time filter: got %d results, want 2", len(page))
+	}
+}
+
+// appUpdatedAt returns an App whose UpdatedAt resolves to the given timestamp,
+// so a time-window filter has something real to place.
+func appUpdatedAt(name, updatedAt string) *appv1alpha1.App {
+	a := sampleApp(name)
+	a.Annotations = map[string]string{resourcemeta.UpdatedAtAnnotation: updatedAt}
+	return a
+}
+
+func TestRESTListTimeWindowExcludes(t *testing.T) {
+	// TestRESTListTimeFilters only proves the 400s and the legacy passthrough;
+	// neither shows the window narrowing anything. Stamped services must
+	// actually fall in or out of it.
+	svc, _ := newService(nil,
+		appUpdatedAt("old", "2026-01-01T00:00:00Z"),
+		appUpdatedAt("new", "2026-12-01T00:00:00Z"),
+		sampleApp("unstamped"),
+	)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	listNames := func(query string) []string {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services"+query, nil))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET /v1/services%s = %d: %s", query, rec.Code, rec.Body.String())
+		}
+		var page []serviceWithCursor
+		if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		names := make([]string, 0, len(page))
+		for _, s := range page {
+			names = append(names, s.Service.Name)
+		}
+		slices.Sort(names)
+		return names
+	}
+
+	cases := []struct {
+		query string
+		want  []string
+	}{
+		// "unstamped" has no timestamp, so it rides along with every window.
+		{"?updatedBefore=2026-06-01T00:00:00Z", []string{"old", "unstamped"}},
+		{"?updatedAfter=2026-06-01T00:00:00Z", []string{"new", "unstamped"}},
+		{"?updatedAfter=2026-06-01T00:00:00Z&updatedBefore=2027-01-01T00:00:00Z", []string{"new", "unstamped"}},
+		{"?updatedAfter=2027-01-01T00:00:00Z", []string{"unstamped"}},
+	}
+	for _, c := range cases {
+		want := slices.Clone(c.want)
+		slices.Sort(want)
+		if got := listNames(c.query); !slices.Equal(got, want) {
+			t.Errorf("GET /v1/services%s = %v, want %v", c.query, got, want)
+		}
 	}
 }
 

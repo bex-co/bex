@@ -44,6 +44,134 @@ func TestQueryTime(t *testing.T) {
 	}
 }
 
+func TestQueryTimeWindow(t *testing.T) {
+	before := time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC)
+	after := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	got, err := QueryTimeWindow(url.Values{
+		"createdBefore": {before.Format(time.RFC3339)},
+		"createdAfter":  {after.Format(time.RFC3339)},
+	}, "createdBefore", "createdAfter")
+	if err != nil || !got.Before.Equal(before) || !got.After.Equal(after) {
+		t.Fatalf("QueryTimeWindow = %+v, %v", got, err)
+	}
+
+	// An absent pair is the zero window, not an error.
+	if got, err = QueryTimeWindow(url.Values{}, "createdBefore", "createdAfter"); err != nil || (TimeWindow{}) != got {
+		t.Fatalf("absent window = %+v, %v; want zero value", got, err)
+	}
+
+	// Either malformed bound is a bad request naming the offending key, so a
+	// caller never sees its filter silently ignored.
+	for _, key := range []string{"createdBefore", "createdAfter"} {
+		_, err := QueryTimeWindow(url.Values{key: {"yesterday"}}, "createdBefore", "createdAfter")
+		if !errors.Is(err, ErrBadRequest) || !strings.Contains(err.Error(), key) {
+			t.Errorf("%s=yesterday = %v, want a bad request naming %s", key, err, key)
+		}
+	}
+}
+
+func TestTimeWindowContains(t *testing.T) {
+	at := func(day int) time.Time { return time.Date(2026, 7, day, 0, 0, 0, 0, time.UTC) }
+	stamp := func(day int) string { return at(day).Format(time.RFC3339) }
+
+	cases := []struct {
+		name   string
+		window TimeWindow
+		raw    string
+		want   bool
+	}{
+		{"zero window admits everything", TimeWindow{}, stamp(15), true},
+		{"before excludes later", TimeWindow{Before: at(10)}, stamp(15), false},
+		{"before admits earlier", TimeWindow{Before: at(10)}, stamp(5), true},
+		{"after excludes earlier", TimeWindow{After: at(10)}, stamp(5), false},
+		{"after admits later", TimeWindow{After: at(10)}, stamp(15), true},
+		{"both bounds admit the middle", TimeWindow{Before: at(20), After: at(10)}, stamp(15), true},
+		{"both bounds exclude outside", TimeWindow{Before: at(20), After: at(10)}, stamp(25), false},
+		// Render's bounds are exclusive on both ends.
+		{"equal to before is excluded", TimeWindow{Before: at(10)}, stamp(10), false},
+		{"equal to after is excluded", TimeWindow{After: at(10)}, stamp(10), false},
+		// A timestamp the window cannot place is admitted, never silently
+		// dropped (w2/m51): records pre-dating timestamp stamping have an empty
+		// value, and a malformed one is likewise not evidence of exclusion.
+		{"empty timestamp is admitted", TimeWindow{Before: at(10)}, "", true},
+		{"unparseable timestamp is admitted", TimeWindow{Before: at(10)}, "not-a-time", true},
+		{"empty timestamp with zero window", TimeWindow{}, "", true},
+	}
+	for _, c := range cases {
+		if got := c.window.Contains(c.raw); got != c.want {
+			t.Errorf("%s: Contains(%q) = %v, want %v", c.name, c.raw, got, c.want)
+		}
+	}
+}
+
+func TestParseEnum(t *testing.T) {
+	// Absent means unfiltered, and an allowed value passes through unchanged.
+	for _, value := range []string{"", "pending", "verified"} {
+		got, err := ParseEnum("verificationStatus", value, "pending", "verified")
+		if err != nil || got != value {
+			t.Errorf("ParseEnum(%q) = (%q, %v), want (%q, nil)", value, got, err, value)
+		}
+	}
+
+	// An unrecognized value names both the parameter and the accepted
+	// vocabulary, so every surface reports the same 400.
+	_, err := ParseEnum("verificationStatus", "maybe", "pending", "verified")
+	if !errors.Is(err, ErrBadRequest) {
+		t.Fatalf("unknown value = %v, want ErrBadRequest", err)
+	}
+	for _, want := range []string{"verificationStatus", `"maybe"`, "pending|verified"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q missing %q", err, want)
+		}
+	}
+}
+
+func TestFilter(t *testing.T) {
+	items := []int{1, 2, 3, 4, 5}
+	even := func(n int) bool { return n%2 == 0 }
+
+	if got := Filter(items, even); !slices.Equal(got, []int{2, 4}) {
+		t.Errorf("Filter(even) = %v, want [2 4]", got)
+	}
+	if !slices.Equal(items, []int{1, 2, 3, 4, 5}) {
+		t.Errorf("Filter mutated its input: %v", items)
+	}
+	if got := Filter(items, func(int) bool { return true }); !slices.Equal(got, items) {
+		t.Errorf("Filter(always) = %v, want the input unchanged", got)
+	}
+	if got := Filter(items, func(int) bool { return false }); len(got) != 0 {
+		t.Errorf("Filter(never) = %v, want empty", got)
+	}
+	if got := Filter(nil, even); len(got) != 0 {
+		t.Errorf("Filter(nil) = %v, want empty", got)
+	}
+}
+
+func TestParseDirection(t *testing.T) {
+	cases := []struct {
+		direction     string
+		wantOldest    bool
+		wantBadReqest bool
+	}{
+		{"", false, false},                // absent ⇒ newest-first
+		{DirectionBackward, false, false}, // explicit newest-first
+		{DirectionForward, true, false},   // oldest-first
+		{"sideways", false, true},
+	}
+	for _, c := range cases {
+		oldestFirst, err := ParseDirection(c.direction)
+		if c.wantBadReqest {
+			if !errors.Is(err, ErrBadRequest) || !strings.Contains(err.Error(), c.direction) {
+				t.Errorf("ParseDirection(%q) = %v, want a bad request naming the value", c.direction, err)
+			}
+			continue
+		}
+		if err != nil || oldestFirst != c.wantOldest {
+			t.Errorf("ParseDirection(%q) = (%v, %v), want (%v, nil)", c.direction, oldestFirst, err, c.wantOldest)
+		}
+	}
+}
+
 func TestPageParams(t *testing.T) {
 	q := func(s string) url.Values { v, _ := url.ParseQuery(s); return v }
 	cases := []struct {

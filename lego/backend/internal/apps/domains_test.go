@@ -22,6 +22,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -1367,6 +1368,87 @@ func TestMCPListCustomDomainsFilters(t *testing.T) {
 	res := call("list_custom_domains", map[string]any{"serviceId": "web", "limit": float64(1)})
 	if _, ok := res["cursor"]; !ok || res["cursor"] == "" {
 		t.Errorf("list_custom_domains page: expected non-empty cursor, got %v", res)
+	}
+}
+
+// TestFilterDomainsComposesBothFilters: the two filters AND together, and each
+// one alone leaves the other dimension untouched. REST, GraphQL, and MCP all
+// route through filterDomains, so this pins the semantics once for all three.
+func TestFilterDomainsComposesBothFilters(t *testing.T) {
+	domains := []DomainView{
+		{Name: "apex-pending.com", DomainType: "apex", VerificationStatus: "pending"},
+		{Name: "apex-verified.com", DomainType: "apex", VerificationStatus: "verified"},
+		{Name: "www.sub-pending.com", DomainType: "subdomain", VerificationStatus: "pending"},
+		{Name: "www.sub-verified.com", DomainType: "subdomain", VerificationStatus: "verified"},
+	}
+
+	cases := []struct {
+		status, dtype string
+		want          []string
+	}{
+		{"", "", []string{"apex-pending.com", "apex-verified.com", "www.sub-pending.com", "www.sub-verified.com"}},
+		{"verified", "", []string{"apex-verified.com", "www.sub-verified.com"}},
+		{"", "apex", []string{"apex-pending.com", "apex-verified.com"}},
+		{"verified", "apex", []string{"apex-verified.com"}},
+		{"pending", "subdomain", []string{"www.sub-pending.com"}},
+	}
+	for _, c := range cases {
+		got, err := filterDomains(domains, c.status, c.dtype)
+		if err != nil {
+			t.Fatalf("filterDomains(%q, %q): %v", c.status, c.dtype, err)
+		}
+		names := make([]string, 0, len(got))
+		for _, d := range got {
+			names = append(names, d.Name)
+		}
+		if !slices.Equal(names, c.want) {
+			t.Errorf("filterDomains(%q, %q) = %v, want %v", c.status, c.dtype, names, c.want)
+		}
+	}
+
+	// Every unrecognized value is a bad request, including a correctly-spelled
+	// one in the wrong case — Render's enums are lowercase.
+	for _, bad := range []struct{ status, dtype string }{
+		{"unknown", ""}, {"VERIFIED", ""}, {"", "unknown"}, {"", "APEX"},
+	} {
+		if _, err := filterDomains(domains, bad.status, bad.dtype); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("filterDomains(%q, %q) = %v, want ErrBadRequest", bad.status, bad.dtype, err)
+		}
+	}
+}
+
+// TestMCPListCustomDomainsInvalidEnumToolError: an unrecognized filter value
+// surfaces as an MCP tool error, matching REST's 400 and GraphQL's error —
+// the rejection path is wired on all three surfaces, not just the two with
+// existing coverage.
+func TestMCPListCustomDomainsInvalidEnumToolError(t *testing.T) {
+	svc, _ := newService(nil, appWithHosts("web", "foo.com"))
+	ctx := context.Background()
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	defer cs.Close()
+
+	for _, args := range []map[string]any{
+		{"serviceId": "web", "verificationStatus": "unknown"},
+		{"serviceId": "web", "verificationStatus": "VERIFIED"},
+		{"serviceId": "web", "domainType": "unknown"},
+		{"serviceId": "web", "domainType": "APEX"},
+	} {
+		res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "list_custom_domains", Arguments: args})
+		if err != nil {
+			t.Fatalf("list_custom_domains %v: transport err=%v", args, err)
+		}
+		if !res.IsError {
+			t.Errorf("list_custom_domains %v: want a tool error, got %+v", args, res)
+		}
 	}
 }
 
