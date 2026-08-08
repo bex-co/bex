@@ -111,85 +111,32 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// documented "Filter by name" — the official CLI resolves a bare
 		// name/id argument to a database id by calling this with ?name=, and
 		// requires it to narrow to exactly one match).
-		if names := q["name"]; len(names) > 0 {
-			filtered := make([]PostgresView, 0, len(out))
-			for _, p := range out {
-				if slices.Contains(names, p.Name) || slices.Contains(names, p.ID) {
-					filtered = append(filtered, p)
-				}
-			}
-			out = filtered
-		}
-		if envIDs := q["environmentId"]; len(envIDs) > 0 {
-			filtered := make([]PostgresView, 0, len(out))
-			for _, p := range out {
-				if slices.Contains(envIDs, p.EnvironmentID) {
-					filtered = append(filtered, p)
-				}
-			}
-			out = filtered
-		}
+		names := core.QueryList(q, "name")
+		envIDs := core.QueryList(q, "environmentId")
 		// suspended= filters by Render's string enum (w2/m53). Unknown value → 400.
-		if sv := q.Get("suspended"); sv != "" {
-			if sv != core.RenderSuspended && sv != core.RenderNotSuspended {
-				core.WriteErr(w, fmt.Errorf("%w: suspended must be %q or %q", core.ErrBadRequest, core.RenderSuspended, core.RenderNotSuspended))
-				return
-			}
-			filtered := make([]PostgresView, 0, len(out))
-			for _, p := range out {
-				if p.Suspended == sv {
-					filtered = append(filtered, p)
-				}
-			}
-			out = filtered
+		suspended, err := core.ParseEnum("suspended", q.Get("suspended"), core.RenderSuspended, core.RenderNotSuspended)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
 		}
 		// Time-window filters (w2/m53): RFC3339, named 400 on malformed, empty
 		// timestamp passes (legacy DBs without stored timestamps are never excluded).
-		for _, tf := range []struct {
-			before, after string
-			get           func(PostgresView) string
-		}{
-			{"createdBefore", "createdAfter", func(p PostgresView) string { return p.CreatedAt }},
-			{"updatedBefore", "updatedAfter", func(p PostgresView) string { return p.UpdatedAt }},
-		} {
-			var before, after time.Time
-			if v := q.Get(tf.before); v != "" {
-				t, err := time.Parse(time.RFC3339, v)
-				if err != nil {
-					core.WriteErr(w, fmt.Errorf("%w: %s must be RFC3339", core.ErrBadRequest, tf.before))
-					return
-				}
-				before = t
-			}
-			if v := q.Get(tf.after); v != "" {
-				t, err := time.Parse(time.RFC3339, v)
-				if err != nil {
-					core.WriteErr(w, fmt.Errorf("%w: %s must be RFC3339", core.ErrBadRequest, tf.after))
-					return
-				}
-				after = t
-			}
-			if before.IsZero() && after.IsZero() {
-				continue
-			}
-			filtered := make([]PostgresView, 0, len(out))
-			for _, p := range out {
-				raw := tf.get(p)
-				if raw == "" {
-					filtered = append(filtered, p)
-					continue
-				}
-				v, err := time.Parse(time.RFC3339, raw)
-				if err != nil {
-					filtered = append(filtered, p)
-					continue
-				}
-				if (before.IsZero() || v.Before(before)) && (after.IsZero() || v.After(after)) {
-					filtered = append(filtered, p)
-				}
-			}
-			out = filtered
+		created, err := core.QueryTimeWindow(q, "createdBefore", "createdAfter")
+		if err != nil {
+			core.WriteErr(w, err)
+			return
 		}
+		updated, err := core.QueryTimeWindow(q, "updatedBefore", "updatedAfter")
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		out = core.Filter(out, func(p PostgresView) bool {
+			return (len(names) == 0 || slices.Contains(names, p.Name) || slices.Contains(names, p.ID)) &&
+				(len(envIDs) == 0 || slices.Contains(envIDs, p.EnvironmentID)) &&
+				(suspended == "" || p.Suspended == suspended) &&
+				created.Contains(p.CreatedAt) && updated.Contains(p.UpdatedAt)
+		})
 		// Render's cursor-pagination envelope (components.schemas.postgresWithCursor),
 		// verified against the render-oss/cli generated client: a bare array of
 		// Postgres objects breaks the official CLI's list decode. Omission of both
