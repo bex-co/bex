@@ -144,43 +144,148 @@ type ProjectView struct {
 	KeyValueIDs []string  `json:"keyValueIds"`
 }
 
-// databaseIDsForProject lists workspaceID's Databases and returns the ids of
-// the ones currently labeled with projectID. Databases unwired (s.Databases
-// nil) => empty, matching Store-unwired's ErrProjectsUnavailable degrade for
-// the feature as a whole rather than failing just this piece.
-func (s *Service) databaseIDsForProject(ctx context.Context, workspaceID, projectID string) ([]string, error) {
-	if s.Databases == nil {
-		return nil, nil
-	}
-	dbs, err := s.Databases.ListPostgres(ctx, workspaceID)
-	if err != nil {
-		return nil, err
-	}
-	var ids []string
-	for _, d := range dbs {
-		if d.ProjectID == projectID {
-			ids = append(ids, d.ID)
-		}
-	}
-	return ids, nil
+// projectResource is the only thing this feature needs to know about a
+// label-backed member CR: its id and the project it currently belongs to.
+// Reducing PostgresView/KeyValueView to this pair is what lets one grouping and
+// one membership-diff serve both kinds.
+type projectResource struct {
+	id        string
+	projectID string
 }
 
-// keyValueIDsForProject is databaseIDsForProject's KeyValue-CR counterpart.
-func (s *Service) keyValueIDsForProject(ctx context.Context, workspaceID, projectID string) ([]string, error) {
-	if s.KeyValues == nil {
-		return nil, nil
-	}
-	kvs, err := s.KeyValues.ListKeyValues(ctx, workspaceID)
+// resourceIndex is the shared shape of DatabaseIndex and KeyValueIndex — a CR
+// kind whose project membership is the core.LabelProject label rather than a
+// control-plane row (w1/m31 extension), so it is listed and re-labeled instead
+// of joined. The adapters below embed the feature-typed index, which promotes
+// SetProjectID; only the listing needs flattening.
+type resourceIndex interface {
+	list(ctx context.Context, workspaceID string) ([]projectResource, error)
+	SetProjectID(ctx context.Context, name, projectID string) error
+}
+
+type databaseResources struct{ DatabaseIndex }
+
+func (d databaseResources) list(ctx context.Context, workspaceID string) ([]projectResource, error) {
+	dbs, err := d.ListPostgres(ctx, workspaceID)
 	if err != nil {
 		return nil, err
 	}
-	var ids []string
-	for _, kv := range kvs {
-		if kv.ProjectID == projectID {
-			ids = append(ids, kv.ID)
+	out := make([]projectResource, len(dbs))
+	for i, db := range dbs {
+		out[i] = projectResource{id: db.ID, projectID: db.ProjectID}
+	}
+	return out, nil
+}
+
+type keyValueResources struct{ KeyValueIndex }
+
+func (k keyValueResources) list(ctx context.Context, workspaceID string) ([]projectResource, error) {
+	kvs, err := k.ListKeyValues(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]projectResource, len(kvs))
+	for i, kv := range kvs {
+		out[i] = projectResource{id: kv.ID, projectID: kv.ProjectID}
+	}
+	return out, nil
+}
+
+// databases/keyValues adapt the optional feature indexes, returning a nil
+// resourceIndex when that kind is unwired — read paths then resolve empty
+// (rather than failing the whole view), write paths report
+// ErrProjectsUnavailable, exactly as before.
+func (s *Service) databases() resourceIndex {
+	if s.Databases == nil {
+		return nil
+	}
+	return databaseResources{s.Databases}
+}
+
+func (s *Service) keyValues() resourceIndex {
+	if s.KeyValues == nil {
+		return nil
+	}
+	return keyValueResources{s.KeyValues}
+}
+
+// idsByProject lists every resource idx knows about in workspaceID once and
+// buckets the ids by the project each is currently labeled with. One listing
+// serves EVERY project in the workspace, which is what lets List enrich N
+// projects with a single call per resource kind instead of one per project.
+// Unlabeled resources (empty projectID) belong to no project and are dropped.
+func idsByProject(ctx context.Context, idx resourceIndex, workspaceID string) (map[string][]string, error) {
+	if idx == nil {
+		return nil, nil
+	}
+	rs, err := idx.list(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	byProject := map[string][]string{}
+	for _, r := range rs {
+		if r.projectID != "" {
+			byProject[r.projectID] = append(byProject[r.projectID], r.id)
 		}
 	}
-	return ids, nil
+	return byProject, nil
+}
+
+// authorizedProject fetches the project named by id and authorizes the caller
+// against the PROJECT'S OWN workspace, never the caller's default one — the
+// resource-scoped rule core.Base.AuthorizeApp applies to Apps
+// (../../docs/ADR012-auth.md). Every id-scoped verb here starts with it, so the
+// fetch-then-gate order — and the forbidden-not-found distinction it produces
+// for an id in another workspace — cannot drift between verbs.
+func (s *Service) authorizedProject(ctx context.Context, relation, id string) (store.Project, error) {
+	if s.Store == nil {
+		return store.Project{}, ErrProjectsUnavailable
+	}
+	p, err := s.Store.GetProject(ctx, id)
+	if err != nil {
+		return store.Project{}, mapStoreErr(err)
+	}
+	if err := s.AuthorizeOn(ctx, relation, core.WorkspaceObject(p.TenantID)); err != nil {
+		return store.Project{}, err
+	}
+	return p, nil
+}
+
+// views composes the API view of ps — projects that all belong to workspaceID —
+// resolving each one's service, database, and key-value membership. Callers
+// have already authorized; this is read enrichment only.
+func (s *Service) views(ctx context.Context, workspaceID string, ps []store.Project) ([]ProjectView, error) {
+	if len(ps) == 0 {
+		return []ProjectView{}, nil
+	}
+	dids, err := idsByProject(ctx, s.databases(), workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	kids, err := idsByProject(ctx, s.keyValues(), workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ProjectView, 0, len(ps))
+	for _, p := range ps {
+		sids, err := s.Store.ListProjectServices(ctx, p.ID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, toView(p, sids, dids[p.ID], kids[p.ID]))
+	}
+	return out, nil
+}
+
+// view is views for the single project p — the shared tail of every verb that
+// returns one project, so a mutating verb always reports the same freshly read
+// membership a plain Get would.
+func (s *Service) view(ctx context.Context, p store.Project) (ProjectView, error) {
+	vs, err := s.views(ctx, p.TenantID, []store.Project{p})
+	if err != nil {
+		return ProjectView{}, err
+	}
+	return vs[0], nil
 }
 
 // List returns all projects in a workspace, each with its current resource lists.
@@ -195,50 +300,16 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]ProjectView, 
 	if err != nil {
 		return nil, err
 	}
-	out := make([]ProjectView, 0, len(ps))
-	for _, p := range ps {
-		sids, err := s.Store.ListProjectServices(ctx, p.ID)
-		if err != nil {
-			return nil, err
-		}
-		dids, err := s.databaseIDsForProject(ctx, workspaceID, p.ID)
-		if err != nil {
-			return nil, err
-		}
-		kids, err := s.keyValueIDsForProject(ctx, workspaceID, p.ID)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, toView(p, sids, dids, kids))
-	}
-	return out, nil
+	return s.views(ctx, workspaceID, ps)
 }
 
 // Get returns a single project by id.
 func (s *Service) Get(ctx context.Context, id string) (ProjectView, error) {
-	if s.Store == nil {
-		return ProjectView{}, ErrProjectsUnavailable
-	}
-	p, err := s.Store.GetProject(ctx, id)
-	if err != nil {
-		return ProjectView{}, mapStoreErr(err)
-	}
-	if err := s.AuthorizeOn(ctx, core.RelCanView, core.WorkspaceObject(p.TenantID)); err != nil {
-		return ProjectView{}, err
-	}
-	sids, err := s.Store.ListProjectServices(ctx, p.ID)
+	p, err := s.authorizedProject(ctx, core.RelCanView, id)
 	if err != nil {
 		return ProjectView{}, err
 	}
-	dids, err := s.databaseIDsForProject(ctx, p.TenantID, p.ID)
-	if err != nil {
-		return ProjectView{}, err
-	}
-	kids, err := s.keyValueIDsForProject(ctx, p.TenantID, p.ID)
-	if err != nil {
-		return ProjectView{}, err
-	}
-	return toView(p, sids, dids, kids), nil
+	return s.view(ctx, p)
 }
 
 // Create creates a new project in the workspace named by workspaceID.
@@ -258,33 +329,15 @@ func (s *Service) Create(ctx context.Context, workspaceID, name string) (Project
 
 // Rename renames a project.
 func (s *Service) Rename(ctx context.Context, id, name string) (ProjectView, error) {
-	if s.Store == nil {
-		return ProjectView{}, ErrProjectsUnavailable
-	}
-	p, err := s.Store.GetProject(ctx, id)
+	p, err := s.authorizedProject(ctx, core.RelCanCreate, id)
 	if err != nil {
-		return ProjectView{}, mapStoreErr(err)
-	}
-	if err := s.AuthorizeOn(ctx, core.RelCanCreate, core.WorkspaceObject(p.TenantID)); err != nil {
 		return ProjectView{}, err
 	}
 	if err := s.Store.RenameProject(ctx, id, name); err != nil {
 		return ProjectView{}, mapStoreErr(err)
 	}
 	p.Name = name
-	sids, err := s.Store.ListProjectServices(ctx, p.ID)
-	if err != nil {
-		return ProjectView{}, err
-	}
-	dids, err := s.databaseIDsForProject(ctx, p.TenantID, p.ID)
-	if err != nil {
-		return ProjectView{}, err
-	}
-	kids, err := s.keyValueIDsForProject(ctx, p.TenantID, p.ID)
-	if err != nil {
-		return ProjectView{}, err
-	}
-	return toView(p, sids, dids, kids), nil
+	return s.view(ctx, p)
 }
 
 // Delete removes a project (its services' project_id is set to NULL by the DB
@@ -296,14 +349,8 @@ func (s *Service) Rename(ctx context.Context, id, name string) (ProjectView, err
 // environment (w4/m32), so a deleted project's protected/isolated
 // environments don't leave their Apps/Databases/KeyValues silently blocked.
 func (s *Service) Delete(ctx context.Context, id string) error {
-	if s.Store == nil {
-		return ErrProjectsUnavailable
-	}
-	p, err := s.Store.GetProject(ctx, id)
+	p, err := s.authorizedProject(ctx, core.RelCanCreate, id)
 	if err != nil {
-		return mapStoreErr(err)
-	}
-	if err := s.AuthorizeOn(ctx, core.RelCanCreate, core.WorkspaceObject(p.TenantID)); err != nil {
 		return err
 	}
 	if s.Environments != nil {
@@ -317,20 +364,14 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 // SetServices replaces the full list of services in a project.
 // serviceIDs are the public ids returned by list_services (normally srv-...).
 // Legacy public names remain accepted by the store during the stable-id
-// transition. A service
-// leaving the project that also carried a stale environment membership has
-// its App CR's environment-projected layer cleared too (w4/m32) — the store
+// transition. A service leaving the project that also carried a stale
+// environment membership has its App CR's environment-projected layer cleared
+// too (w4/m32) — the store
 // already NULLs apps.environment_id for it, but only a k8s Patch can clear
 // the CR spec fields that projection stamped.
 func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []string) (ProjectView, error) {
-	if s.Store == nil {
-		return ProjectView{}, ErrProjectsUnavailable
-	}
-	p, err := s.Store.GetProject(ctx, id)
+	p, err := s.authorizedProject(ctx, core.RelCanCreate, id)
 	if err != nil {
-		return ProjectView{}, mapStoreErr(err)
-	}
-	if err := s.AuthorizeOn(ctx, core.RelCanCreate, core.WorkspaceObject(p.TenantID)); err != nil {
 		return ProjectView{}, err
 	}
 	departedWithEnv, err := s.Store.SetProjectServices(ctx, id, p.TenantID, serviceIDs)
@@ -342,19 +383,7 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []strin
 			return ProjectView{}, err
 		}
 	}
-	sids, err := s.Store.ListProjectServices(ctx, id)
-	if err != nil {
-		return ProjectView{}, err
-	}
-	dids, err := s.databaseIDsForProject(ctx, p.TenantID, p.ID)
-	if err != nil {
-		return ProjectView{}, err
-	}
-	kids, err := s.keyValueIDsForProject(ctx, p.TenantID, p.ID)
-	if err != nil {
-		return ProjectView{}, err
-	}
-	return toView(p, sids, dids, kids), nil
+	return s.view(ctx, p)
 }
 
 // SetDatabases replaces the full list of managed Postgres databases in a
@@ -364,102 +393,50 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []strin
 // current label state against the wanted set and calls SetProjectID per
 // change instead of a single bulk store UPDATE.
 func (s *Service) SetDatabases(ctx context.Context, id string, databaseIDs []string) (ProjectView, error) {
-	if s.Store == nil {
-		return ProjectView{}, ErrProjectsUnavailable
-	}
-	if s.Databases == nil {
-		return ProjectView{}, ErrProjectsUnavailable
-	}
-	p, err := s.Store.GetProject(ctx, id)
-	if err != nil {
-		return ProjectView{}, mapStoreErr(err)
-	}
-	if err := s.AuthorizeOn(ctx, core.RelCanCreate, core.WorkspaceObject(p.TenantID)); err != nil {
-		return ProjectView{}, err
-	}
-	existing, err := s.Databases.ListPostgres(ctx, p.TenantID)
-	if err != nil {
-		return ProjectView{}, err
-	}
-	want := make(map[string]bool, len(databaseIDs))
-	for _, did := range databaseIDs {
-		want[did] = true
-	}
-	for _, d := range existing {
-		switch {
-		case d.ProjectID == p.ID && !want[d.ID]:
-			if err := s.Databases.SetProjectID(ctx, d.ID, ""); err != nil {
-				return ProjectView{}, err
-			}
-		case d.ProjectID != p.ID && want[d.ID]:
-			if err := s.Databases.SetProjectID(ctx, d.ID, p.ID); err != nil {
-				return ProjectView{}, err
-			}
-		}
-	}
-	sids, err := s.Store.ListProjectServices(ctx, id)
-	if err != nil {
-		return ProjectView{}, err
-	}
-	dids, err := s.databaseIDsForProject(ctx, p.TenantID, p.ID)
-	if err != nil {
-		return ProjectView{}, err
-	}
-	kids, err := s.keyValueIDsForProject(ctx, p.TenantID, p.ID)
-	if err != nil {
-		return ProjectView{}, err
-	}
-	return toView(p, sids, dids, kids), nil
+	return s.setResourceMembers(ctx, s.databases(), id, databaseIDs)
 }
 
 // SetKeyValues is SetDatabases' KeyValue-CR counterpart.
 func (s *Service) SetKeyValues(ctx context.Context, id string, keyValueIDs []string) (ProjectView, error) {
-	if s.Store == nil {
+	return s.setResourceMembers(ctx, s.keyValues(), id, keyValueIDs)
+}
+
+// setResourceMembers replaces the full membership of one label-backed resource
+// kind in a project: it diffs the wanted set against the workspace's current
+// labels and re-labels only what actually changed, so an unrelated resource is
+// never rewritten. Only relabels within the project's OWN workspace are
+// considered — the listing is scoped to p.TenantID, so an id naming a resource
+// in another workspace is simply absent from the diff and silently ignored,
+// never adopted across the tenant boundary.
+func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id string, wantIDs []string) (ProjectView, error) {
+	if s.Store == nil || idx == nil {
 		return ProjectView{}, ErrProjectsUnavailable
 	}
-	if s.KeyValues == nil {
-		return ProjectView{}, ErrProjectsUnavailable
-	}
-	p, err := s.Store.GetProject(ctx, id)
-	if err != nil {
-		return ProjectView{}, mapStoreErr(err)
-	}
-	if err := s.AuthorizeOn(ctx, core.RelCanCreate, core.WorkspaceObject(p.TenantID)); err != nil {
-		return ProjectView{}, err
-	}
-	existing, err := s.KeyValues.ListKeyValues(ctx, p.TenantID)
+	p, err := s.authorizedProject(ctx, core.RelCanCreate, id)
 	if err != nil {
 		return ProjectView{}, err
 	}
-	want := make(map[string]bool, len(keyValueIDs))
-	for _, kid := range keyValueIDs {
-		want[kid] = true
+	existing, err := idx.list(ctx, p.TenantID)
+	if err != nil {
+		return ProjectView{}, err
 	}
-	for _, kv := range existing {
+	want := make(map[string]bool, len(wantIDs))
+	for _, wid := range wantIDs {
+		want[wid] = true
+	}
+	for _, r := range existing {
 		switch {
-		case kv.ProjectID == p.ID && !want[kv.ID]:
-			if err := s.KeyValues.SetProjectID(ctx, kv.ID, ""); err != nil {
+		case r.projectID == p.ID && !want[r.id]:
+			if err := idx.SetProjectID(ctx, r.id, ""); err != nil {
 				return ProjectView{}, err
 			}
-		case kv.ProjectID != p.ID && want[kv.ID]:
-			if err := s.KeyValues.SetProjectID(ctx, kv.ID, p.ID); err != nil {
+		case r.projectID != p.ID && want[r.id]:
+			if err := idx.SetProjectID(ctx, r.id, p.ID); err != nil {
 				return ProjectView{}, err
 			}
 		}
 	}
-	sids, err := s.Store.ListProjectServices(ctx, id)
-	if err != nil {
-		return ProjectView{}, err
-	}
-	dids, err := s.databaseIDsForProject(ctx, p.TenantID, p.ID)
-	if err != nil {
-		return ProjectView{}, err
-	}
-	kids, err := s.keyValueIDsForProject(ctx, p.TenantID, p.ID)
-	if err != nil {
-		return ProjectView{}, err
-	}
-	return toView(p, sids, dids, kids), nil
+	return s.view(ctx, p)
 }
 
 func toView(p store.Project, serviceIDs, databaseIDs, keyValueIDs []string) ProjectView {
