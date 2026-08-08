@@ -2,6 +2,7 @@ import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import { Login } from "@ory/elements-react/theme";
 import { useOryFlow, clearStoredOryFlow } from "@/common/hooks/use-ory-flow";
 import { useOryConfig, oryHideCardLogo } from "@/common/lib/ory/config";
+import { safeNext } from "@/common/lib/safe-next";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { invalidateSessionCache } from "@/common/server-fn/session";
@@ -13,8 +14,12 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const router = useRouter();
   const search = useSearch({ from: "/auth/login" });
+  // `next` is attacker-controllable (it's in the URL). Normalize it to a
+  // same-origin relative path before it becomes the Ory return_to OR a
+  // navigate href — otherwise it's an open redirect (safe-next.ts).
+  const nextTarget = safeNext(search.next);
   const flow = useOryFlow("login", search.flow, {
-    returnTo: search.next || "/",
+    returnTo: nextTarget,
     loginChallenge: search.login_challenge,
     aal: search.aal,
   });
@@ -48,8 +53,8 @@ export default function LoginPage() {
             // carry a query string (the OAuth consent bounce sends
             // `/auth/consent?consent_challenge=…`), which `to` would swallow
             // into the pathname. `href` wins over `to` when set, so `to` is
-            // just the no-`next` fallback.
-            void navigate({ to: "/", href: search.next });
+            // just the fallback. `nextTarget` is already same-origin-normalized.
+            void navigate({ to: "/", href: nextTarget });
           }}
         />
       ) : (

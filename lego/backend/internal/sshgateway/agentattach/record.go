@@ -139,10 +139,14 @@ func (s *Server) recordSession(ctx context.Context, claims agentsessionticket.Cl
 	// read error before `[DONE]`/EOF returns without writing, so a retry captures
 	// the turn whole rather than leaving it partial.
 	seq := base
+	total := 0 // transcript bytes accumulated this recording
 	var parts []store.AgentSessionTranscriptPart
 	reader := bufio.NewReader(resp.Body)
 	for {
-		payload, done, err := readSSEData(reader)
+		// Bound each part (maxSSEPartBytes) and the recording total
+		// (maxSessionTranscriptBytes) so tenant-controlled driver output can't
+		// grow Postgres or the gateway without limit on this hop either (w1/m65 F10).
+		payload, done, err := readSSEData(reader, maxSSEPartBytes)
 		if err != nil && err != io.EOF {
 			return 0, err
 		}
@@ -152,6 +156,11 @@ func (s *Server) recordSession(ctx context.Context, claims agentsessionticket.Cl
 		if payload == "" {
 			continue
 		}
+		if total+len(payload) > maxSessionTranscriptBytes {
+			log.Printf("agent record: session transcript byte quota reached, truncating (session=%s)", claims.SessionID)
+			break
+		}
+		total += len(payload)
 		seq++
 		parts = append(parts, store.AgentSessionTranscriptPart{Seq: seq, Turn: claims.Turn, Part: []byte(payload)})
 	}

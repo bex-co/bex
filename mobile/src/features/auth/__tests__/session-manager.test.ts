@@ -50,6 +50,7 @@ class FakeTransport implements OAuthTransport {
   refreshError?: Error;
   revokeError?: Error;
   revokeGate?: Promise<void>;
+  refreshGate?: Promise<void>;
   refreshCalls = 0;
   revokeCalls = 0;
   async authorize() {
@@ -60,6 +61,9 @@ class FakeTransport implements OAuthTransport {
   }
   async refresh() {
     this.refreshCalls += 1;
+    // A test-controlled pause point so a sign-out can deterministically race a
+    // refresh that is parked at the token endpoint. Undefined ⇒ resolves now.
+    await this.refreshGate;
     if (this.refreshError) throw this.refreshError;
     await Promise.resolve();
     return this.refreshResult;
@@ -272,6 +276,63 @@ describe("SessionManager", () => {
     expect(storage.value).toBe(null);
     release();
     await pending;
+  });
+
+  it("does not resurrect the session when a successful refresh lands after sign-out", async () => {
+    const storage = new MemoryStorage();
+    const transport = new FakeTransport();
+    const subject = manager(storage, transport, () => 0);
+    await subject.signIn();
+
+    // Park the refresh at the token endpoint, then start it.
+    let releaseRefresh = () => {};
+    transport.refreshGate = new Promise<void>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    const pending = subject.forceRefresh().catch(() => undefined);
+    await Promise.resolve();
+    expect(transport.refreshCalls).toBe(1);
+
+    // Sign out while the refresh is in flight.
+    await subject.signOut();
+    expect(subject.getState().status).toBe("signedOut");
+    expect(storage.value).toBe(null);
+
+    // The token endpoint now succeeds — but the session it belonged to is gone,
+    // so it must NOT save tokens, restore state, or publish signedIn.
+    releaseRefresh();
+    await pending;
+
+    expect(subject.getState().status).toBe("signedOut");
+    expect(storage.value).toBe(null);
+  });
+
+  it("does not republish signed-in/expired state when a stale refresh fails after sign-out", async () => {
+    const storage = new MemoryStorage();
+    const transport = new FakeTransport();
+    const subject = manager(storage, transport, () => 0);
+    await subject.signIn();
+
+    let releaseRefresh = () => {};
+    transport.refreshGate = new Promise<void>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    // An "offline" failure would normally publish `expired` — after sign-out it
+    // must not overwrite the signed-out state.
+    transport.refreshError = new AuthFailure("offline");
+    const pending = subject.forceRefresh().catch(() => undefined);
+    await Promise.resolve();
+    expect(transport.refreshCalls).toBe(1);
+
+    await subject.signOut();
+    expect(subject.getState().status).toBe("signedOut");
+    expect(storage.value).toBe(null);
+
+    releaseRefresh();
+    await pending;
+
+    expect(subject.getState().status).toBe("signedOut");
+    expect(storage.value).toBe(null);
   });
 
   it("starts feature cleanup with the current token without delaying local logout", async () => {

@@ -173,6 +173,50 @@ func TestExecBufferedFailsClosedWithoutExitEvent(t *testing.T) {
 	}
 }
 
+// TestExecBufferedCapsCumulativeOutput pins w1/m65 F8: a command producing more
+// than maxExecOutputBytes of combined output is truncated at the cap (with
+// Truncated=true) instead of buffering unbounded output that could exhaust the
+// shared API pod. Each SSE line stays under the per-line scanner cap; it's the
+// NUMBER of lines that the fix bounds.
+func TestExecBufferedCapsCumulativeOutput(t *testing.T) {
+	secret := []byte("exec-secret")
+	chunk := strings.Repeat("x", 700_000) // < 1 MiB per SSE line; several exceed the 2 MiB cumulative cap
+	gw := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, err := sandboxexec.Verify(secret, r.Header.Get(sandboxexec.TicketHeader), time.Now()); err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		fl, _ := w.(http.Flusher)
+		for i := 0; i < 6; i++ { // 6 * 700 KB = 4.2 MB of output, well over the 2 MiB cap
+			_, _ = w.Write([]byte("event: output\ndata: {\"stream\":\"stdout\",\"data\":\"" + chunk + "\"}\n\n"))
+			if fl != nil {
+				fl.Flush()
+			}
+		}
+		_, _ = w.Write([]byte("event: exit\ndata: {\"exitCode\":0}\n\n"))
+	}))
+	defer gw.Close()
+	svc := &Service{
+		Base:   &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
+		Client: execSandboxClient(t, "id-a"),
+		Exec:   &ExecConfig{Secret: secret, GatewayURL: gw.URL, Client: gw.Client()},
+	}
+	res, err := svc.ExecBuffered(callerCtx(), ExecRequest{OwnerID: "tea-a", SandboxID: "os-1", Command: "yes"})
+	if err != nil {
+		t.Fatalf("ExecBuffered: %v", err)
+	}
+	if !res.Truncated {
+		t.Error("over-cap output must report Truncated=true")
+	}
+	if total := len(res.Stdout) + len(res.Stderr); total > maxExecOutputBytes {
+		t.Errorf("buffered output = %d bytes, exceeds cap %d", total, maxExecOutputBytes)
+	} else if total < maxExecOutputBytes/2 {
+		t.Errorf("buffered output = %d bytes, suspiciously small (cap not exercised)", total)
+	}
+}
+
 func TestExecEnforcesOwnerAndWorkspaceAdminOverride(t *testing.T) {
 	secret := []byte("exec-secret")
 	gatewayCalls := 0

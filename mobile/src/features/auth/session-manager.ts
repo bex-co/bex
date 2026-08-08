@@ -20,6 +20,13 @@ export class SessionManager {
   private refreshPromise?: Promise<StoredSession>;
   private establishPromise?: Promise<void>;
   private explicitSignOutHooks = new Set<ExplicitSignOutHook>();
+  /**
+   * Monotonic auth epoch. Bumped the instant sign-out begins clearing state, so
+   * a token refresh that started under an earlier epoch can detect that the
+   * session it belonged to is gone and refuse to resurrect it (see
+   * refreshCurrent). Never decremented.
+   */
+  private authGeneration = 0;
 
   constructor(
     private readonly storage: AuthStorage,
@@ -143,19 +150,38 @@ export class SessionManager {
   }
 
   private async refreshCurrent(): Promise<StoredSession> {
+    // Snapshot the epoch + identity this refresh belongs to. If sign-out (or a
+    // fresh sign-in) lands during any await below, `superseded()` turns true and
+    // the result is discarded — otherwise a token endpoint resolving after
+    // logout would save tokens, restore `this.current`, and re-publish
+    // `signedIn`, re-authenticating a user who signed out.
+    const generation = this.authGeneration;
     const previous = this.current;
     if (!previous) throw new AuthFailure("invalid_grant");
+    const superseded = () =>
+      this.authGeneration !== generation || this.current !== previous;
     try {
       const tokens = await this.transport.refresh(previous.refreshToken);
+      if (superseded()) return previous; // stale success — touch nothing
       if (tokens.subject !== previous.subject) {
         throw new AuthFailure("invalid_response");
       }
       const session = this.toStored(tokens, previous.sessionId);
       await this.storage.save(session);
+      if (superseded()) {
+        // Logout completed during the write — scrub the token we just persisted
+        // so it cannot outlive the session, then discard.
+        await this.storage.clear().catch(() => undefined);
+        return previous;
+      }
       this.current = session;
       this.setState({ status: "signedIn", session });
       return session;
     } catch (error) {
+      // A stale FAILURE must not clobber newer state either: after logout (or a
+      // re-login) the world moved on, so leave storage and published state as
+      // the newer path left them.
+      if (superseded()) throw error;
       const code = authFailureCode(error);
       if (
         code === "invalid_grant" ||
@@ -171,6 +197,9 @@ export class SessionManager {
   }
 
   async signOut(): Promise<void> {
+    // Invalidate any in-flight refresh BEFORE clearing state, so a token
+    // endpoint that resolves after this cannot resurrect the session.
+    this.authGeneration += 1;
     const current = this.current;
     const featureCleanup = [...this.explicitSignOutHooks].map((hook) =>
       Promise.resolve(hook(current)).catch(() => undefined),

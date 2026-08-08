@@ -195,6 +195,15 @@ func (s *callbackGitHubStore) GetGitConnection(_ context.Context, workspaceID st
 	return conn, nil
 }
 
+func (s *callbackGitHubStore) GitConnectionByInstallation(_ context.Context, installationID int64) (store.GitConnection, error) {
+	for _, c := range s.connections {
+		if c.InstallationID == installationID {
+			return c, nil
+		}
+	}
+	return store.GitConnection{}, store.ErrNotFound
+}
+
 func (s *callbackGitHubStore) DeleteGitConnection(_ context.Context, workspaceID string) error {
 	delete(s.connections, workspaceID)
 	return nil

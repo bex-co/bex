@@ -28,6 +28,7 @@ import (
 	"math/big"
 	"net"
 	"net/netip"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -154,7 +155,8 @@ func TestPublicProxyPreservesEndToEndTLSAndMetersOnlyBackendWrites(t *testing.T)
 	go func() {
 		conn, acceptErr := proxyListener.Accept()
 		if acceptErr == nil {
-			handleConn(conn, router, meter, []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")}, discardLogger{})
+			handleConn(conn, router, meter, []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
+				sniproxy.NewLimiter(0, 0), 0, 0, discardLogger{})
 		}
 		close(proxyDone)
 	}()
@@ -216,6 +218,82 @@ func TestPublicProxyPreservesEndToEndTLSAndMetersOnlyBackendWrites(t *testing.T)
 	case <-proxyDone:
 	case <-time.After(5 * time.Second):
 		t.Fatal("proxy did not finish")
+	}
+}
+
+// TestHandleConnRejectsSaturatedSourceWithoutDialing proves the per-source
+// admission (finding 6): when a client IP is already at its cap, handleConn
+// rejects the connection right after resolving the PROXY source and never dials
+// the backend.
+func TestHandleConnRejectsSaturatedSourceWithoutDialing(t *testing.T) {
+	// A backend listener that must never be dialed.
+	backendListener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = backendListener.Close() }()
+	var backendDials int64
+	go func() {
+		for {
+			conn, acceptErr := backendListener.Accept()
+			if acceptErr != nil {
+				return
+			}
+			atomic.AddInt64(&backendDials, 1)
+			_ = conn.Close()
+		}
+	}()
+
+	registry := prometheus.NewRegistry()
+	meter := sniproxy.NewByteMeter(registry, "kv_proxy", "key_value")
+	router := newRouter("kv.bex.co")
+	router.table["kv-one"] = kvRoute{ResourceID: "kv-one", Backend: backendListener.Addr().String()}
+
+	// Saturate the source's single per-source slot up front.
+	limiter := sniproxy.NewLimiter(0, 1)
+	held, ok := limiter.AcquireSource(netip.MustParseAddr("203.0.113.9"))
+	if !ok {
+		t.Fatal("pre-acquire of the source slot failed")
+	}
+	defer held()
+
+	proxyListener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = proxyListener.Close() }()
+	done := make(chan struct{})
+	go func() {
+		conn, acceptErr := proxyListener.Accept()
+		if acceptErr == nil {
+			handleConn(conn, router, meter, []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
+				limiter, time.Hour, time.Hour, discardLogger{})
+		}
+		close(done)
+	}()
+
+	client, err := net.Dial("tcp", proxyListener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = client.Close() }()
+	// The real client (203.0.113.9) is asserted through a PROXY header from the
+	// trusted immediate peer (127.0.0.1); its slot is already taken, so handleConn
+	// must reject before dialing.
+	if _, err := client.Write([]byte("PROXY TCP4 203.0.113.9 49.12.20.236 49152 6379\r\n")); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("handleConn did not return after a per-source rejection")
+	}
+	if got := atomic.LoadInt64(&backendDials); got != 0 {
+		t.Fatalf("backend dials = %d, want 0 (rejection must skip the dial)", got)
+	}
+	if got := gatheredCounter(t, registry, "bex_kv_proxy_connections_rejected_total"); got != 1 {
+		t.Fatalf("rejected(source) = %v, want 1", got)
 	}
 }
 

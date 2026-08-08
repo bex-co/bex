@@ -40,6 +40,11 @@ import (
 // defaultBaseURL is GitHub's REST API root. Overridable in tests.
 const defaultBaseURL = "https://api.github.com"
 
+// defaultOAuthBaseURL is GitHub's user-authorization (OAuth) host — where the
+// install-callback `code` is exchanged for a user token (F2). Distinct from the
+// REST API root; overridable in tests.
+const defaultOAuthBaseURL = "https://github.com"
+
 // acceptHeader is GitHub's recommended REST media type.
 const acceptHeader = "application/vnd.github+json"
 
@@ -51,17 +56,29 @@ type Config struct {
 	AppID      string // numeric GitHub App id (the JWT `iss`)
 	PrivateKey string // RSA private key, PEM (out-of-band secret)
 	Slug       string // app slug, builds the install URL
+	// ClientID / ClientSecret are the App's OAuth credentials, used ONLY to verify
+	// that the user completing an install actually administers the installation
+	// (F2, docs/ADR026-github-integration.md). Optional: both empty => the
+	// installation-admin verifier is not wired and the connect callback falls back
+	// to the unique installation->workspace binding alone. Requires the App's
+	// "Request user authorization (OAuth) during installation" setting so the
+	// callback carries a `code`.
+	ClientID     string
+	ClientSecret string
 }
 
 // Client talks to the GitHub REST API as a GitHub App. It is safe for
 // concurrent use.
 type Client struct {
-	appID      int64
-	privateKey *rsa.PrivateKey
-	slug       string
-	baseURL    string
-	httpClient *http.Client
-	now        func() time.Time
+	appID        int64
+	privateKey   *rsa.PrivateKey
+	slug         string
+	baseURL      string
+	oauthBaseURL string
+	clientID     string
+	clientSecret string
+	httpClient   *http.Client
+	now          func() time.Time
 }
 
 // NewClient parses the config (numeric app id, PEM private key) and returns a
@@ -79,13 +96,23 @@ func NewClient(cfg Config) (*Client, error) {
 		return nil, fmt.Errorf("github: invalid private key: %w", err)
 	}
 	return &Client{
-		appID:      appID,
-		privateKey: key,
-		slug:       strings.TrimSpace(cfg.Slug),
-		baseURL:    defaultBaseURL,
-		httpClient: &http.Client{Timeout: 30 * time.Second},
-		now:        time.Now,
+		appID:        appID,
+		privateKey:   key,
+		slug:         strings.TrimSpace(cfg.Slug),
+		baseURL:      defaultBaseURL,
+		oauthBaseURL: defaultOAuthBaseURL,
+		clientID:     strings.TrimSpace(cfg.ClientID),
+		clientSecret: strings.TrimSpace(cfg.ClientSecret),
+		httpClient:   &http.Client{Timeout: 30 * time.Second},
+		now:          time.Now,
 	}, nil
+}
+
+// InstallVerificationConfigured reports whether the OAuth credentials needed to
+// verify installation administration are present (F2). The composition root
+// wires the Service's Verifier only when this is true.
+func (c *Client) InstallVerificationConfigured() bool {
+	return c.clientID != "" && c.clientSecret != ""
 }
 
 // Slug is the configured app slug (used to build install URLs).
@@ -258,6 +285,104 @@ func (c *Client) GetInstallation(ctx context.Context, installationID int64) (Ins
 		return Installation{}, fmt.Errorf("github: decode installation response: %w", err)
 	}
 	return Installation{ID: out.ID, AccountLogin: out.Account.Login}, nil
+}
+
+// VerifyInstallationAdmin reports whether the GitHub user identified by the
+// install-callback OAuth `code` can actually access installationID — the
+// principal proof the connect callback needs so an App-JWT lookup is never
+// mistaken for ownership (F2). It exchanges the code for a short-lived user
+// token, then checks GET /user/installations (which lists only the installations
+// the user administers/can access). (false, nil) means the user cannot see the
+// installation — reject without persisting; a transport/decode failure is a
+// non-nil error so the caller fails closed.
+func (c *Client) VerifyInstallationAdmin(ctx context.Context, code string, installationID int64) (bool, error) {
+	if c.clientID == "" || c.clientSecret == "" {
+		return false, fmt.Errorf("github: installation-admin verification not configured")
+	}
+	if strings.TrimSpace(code) == "" {
+		return false, nil // no user-authorization code => cannot prove administration
+	}
+	token, err := c.exchangeUserCode(ctx, code)
+	if err != nil {
+		return false, err
+	}
+	if token == "" {
+		return false, nil
+	}
+	return c.userCanAccessInstallation(ctx, token, installationID)
+}
+
+// exchangeUserCode swaps an install-callback OAuth code for a user access token
+// (POST https://github.com/login/oauth/access_token). Returns "" (no error) when
+// GitHub declines the exchange with an error payload rather than a token.
+func (c *Client) exchangeUserCode(ctx context.Context, code string) (string, error) {
+	body, _ := json.Marshal(map[string]string{
+		"client_id":     c.clientID,
+		"client_secret": c.clientSecret,
+		"code":          code,
+	})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.oauthBaseURL+"/login/oauth/access_token", bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("github: exchange user code: %w", err)
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if resp.StatusCode != http.StatusOK {
+		return "", &APIError{Status: resp.StatusCode, Body: string(raw)}
+	}
+	var out struct {
+		AccessToken string `json:"access_token"`
+		Error       string `json:"error"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return "", fmt.Errorf("github: decode user token: %w", err)
+	}
+	return out.AccessToken, nil // "" when out.Error is set (GitHub declined)
+}
+
+// userCanAccessInstallation reports whether the user token's owner administers
+// installationID, paging GET /user/installations (per_page=100, Link rel=next).
+func (c *Client) userCanAccessInstallation(ctx context.Context, userToken string, installationID int64) (bool, error) {
+	url := c.baseURL + "/user/installations?per_page=100"
+	for url != "" {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return false, err
+		}
+		req.Header.Set("Authorization", "token "+userToken)
+		req.Header.Set("Accept", acceptHeader)
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			return false, fmt.Errorf("github: list user installations: %w", err)
+		}
+		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+		nextURL := nextLink(resp.Header.Get("Link"))
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return false, &APIError{Status: resp.StatusCode, Body: string(raw)}
+		}
+		var page struct {
+			Installations []struct {
+				ID int64 `json:"id"`
+			} `json:"installations"`
+		}
+		if err := json.Unmarshal(raw, &page); err != nil {
+			return false, fmt.Errorf("github: decode user installations: %w", err)
+		}
+		for _, inst := range page.Installations {
+			if inst.ID == installationID {
+				return true, nil
+			}
+		}
+		url = nextURL
+	}
+	return false, nil
 }
 
 // RepoAccessible reports whether the given installation token can reach

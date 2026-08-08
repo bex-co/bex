@@ -38,7 +38,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.37.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.44.0 // indirect
 	golang.org/x/crypto v0.53.0
-	golang.org/x/sync v0.21.0 // indirect
+	golang.org/x/sync v0.21.0
 )
 
 require (

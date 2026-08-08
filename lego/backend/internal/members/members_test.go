@@ -221,9 +221,10 @@ func (f *fakeStore) AcceptInviteByToken(_ context.Context, token, subject string
 
 // fakeGranter records grants + revokes and answers Check over its tuple set.
 type fakeGranter struct {
-	granted []string
-	revoked []string
-	tuples  map[string]bool
+	granted   []string
+	revoked   []string
+	tuples    map[string]bool
+	revokeErr error // when set, RevokeWorkspaceMember fails (still records the attempt)
 }
 
 func newFakeGranter() *fakeGranter { return &fakeGranter{tuples: map[string]bool{}} }
@@ -238,6 +239,9 @@ func (g *fakeGranter) GrantWorkspaceRole(_ context.Context, tenantID, subject, r
 
 func (g *fakeGranter) RevokeWorkspaceMember(_ context.Context, tenantID, subject, relation string) error {
 	g.revoked = append(g.revoked, key(relation, tenantID, subject))
+	if g.revokeErr != nil {
+		return g.revokeErr
+	}
 	delete(g.tuples, key(relation, tenantID, subject))
 	return nil
 }
@@ -660,6 +664,41 @@ func TestChangeRoleGrantsNewRevokesOld(t *testing.T) {
 	}
 	if len(g.revoked) != 1 || g.revoked[0] != key("viewer", "tea-1", "user:bob") {
 		t.Errorf("revoked = %v", g.revoked)
+	}
+}
+
+// TestChangeRoleSurfacesRevokeError pins w1/m65 F7: a failed revoke of the prior
+// role is now RETURNED, not silently discarded — otherwise a downgrade "succeeds"
+// while the stale higher tuple keeps authorizing (the model ORs roles).
+func TestChangeRoleSurfacesRevokeError(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	st.seedMember("bob", "developer")
+	g := newFakeGranter()
+	g.revokeErr = errors.New("openfga unreachable")
+	s := svc(st, g, nil, nil)
+	if _, err := s.ChangeRole(ctxWith("admin-1"), "tea-1", "bob", "viewer"); err == nil {
+		t.Fatal("a failed revoke of the prior role must surface an error (F7), got nil")
+	}
+}
+
+// TestChangeRoleSameRoleRepairsMissingTuple pins w1/m65 F7: when the row already
+// equals the target role but a prior partial failure left the grant tuple
+// missing, a re-issued ChangeRole (with a checker present) repairs it, instead
+// of the old blind early return that stranded the missing grant forever.
+func TestChangeRoleSameRoleRepairsMissingTuple(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	st.seedMember("bob", "developer")
+	g := newFakeGranter()
+	g.tuples[key(core.RelCanManage, "tea-1", "user:admin-1")] = true // caller authorization
+	// bob's developer tuple is deliberately MISSING (the partial-failure state).
+	s := svc(st, g, nil, g) // checker = g, so the repair can detect the missing tuple
+	if _, err := s.ChangeRole(ctxWith("admin-1"), "tea-1", "bob", "developer"); err != nil {
+		t.Fatalf("same-role repair: %v", err)
+	}
+	if !g.tuples[key("developer", "tea-1", "user:bob")] {
+		t.Error("same-role change with a checker must repair the missing grant tuple (F7)")
 	}
 }
 

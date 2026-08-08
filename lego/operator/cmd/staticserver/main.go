@@ -41,11 +41,34 @@ import (
 
 var setupLog = ctrl.Log.WithName("staticserver")
 
+const (
+	// Public-server timeouts bound slow-header/slow-read/idle connections so a
+	// trickle client cannot pin a goroutine + fd open on the shared single-replica
+	// server (finding 12). ReadHeaderTimeout caps slow request headers;
+	// WriteTimeout caps the response phase (generous so a large-but-legitimate
+	// asset over a slow link still completes); IdleTimeout caps keep-alive idle.
+	readHeaderTimeout = 10 * time.Second
+	writeTimeout      = 120 * time.Second
+	idleTimeout       = 120 * time.Second
+)
+
 func envOr(k, def string) string {
 	if v := os.Getenv(k); v != "" {
 		return v
 	}
 	return def
+}
+
+// newServer builds the static-server HTTP server with the bounding timeouts set
+// (finding 12). Extracted so the timeout wiring is unit-tested.
+func newServer(addr string, handler http.Handler) *http.Server {
+	return &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: readHeaderTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
+	}
 }
 
 func main() {
@@ -122,11 +145,7 @@ func main() {
 		mux.Handle("/", staticserver.New(resolver, origin, cacheBytes))
 	}
 
-	srv := &http.Server{
-		Addr:              addr,
-		Handler:           mux,
-		ReadHeaderTimeout: 10 * time.Second,
-	}
+	srv := newServer(addr, mux)
 	go func() {
 		<-ctx.Done()
 		shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

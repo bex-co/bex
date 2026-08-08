@@ -93,7 +93,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		if workspaceID != "" {
-			_, err = s.connectWithWorkspace(r.Context(), workspaceID, id)
+			// Browser install callback: enforce the installation-admin proof (F2)
+			// using the OAuth `code` GitHub appends when user authorization is
+			// enabled, then record against the state-authenticated workspace.
+			_, err = s.connectFromCallback(r.Context(), workspaceID, id, r.URL.Query().Get("code"))
 		} else {
 			// Backward-compatible API/agent path: auth.go attached the caller
 			// Identity, so the ordinary authorization-gated Connect still applies.

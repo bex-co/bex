@@ -258,11 +258,22 @@ func main() {
 	var ghClient *github.Client
 	if appID, key, slug := os.Getenv("BEX_GITHUB_APP_ID"), os.Getenv("BEX_GITHUB_APP_PRIVATE_KEY"), os.Getenv("BEX_GITHUB_APP_SLUG"); appID != "" && key != "" && slug != "" {
 		var err error
-		ghClient, err = github.NewClient(github.Config{AppID: appID, PrivateKey: key, Slug: slug})
+		ghClient, err = github.NewClient(github.Config{
+			AppID: appID, PrivateKey: key, Slug: slug,
+			// F2: optional OAuth credentials enable the installation-admin verifier
+			// on the browser connect callback. Both set (and the App configured to
+			// request user authorization on install) => a workspace admin can only
+			// connect an installation they actually administer.
+			ClientID:     os.Getenv("BEX_GITHUB_APP_CLIENT_ID"),
+			ClientSecret: os.Getenv("BEX_GITHUB_APP_CLIENT_SECRET"),
+		})
 		if err != nil {
 			log.Fatalf("bex-api: github app config: %v", err)
 		}
 		deps.GitHubClient = ghClient
+		if ghClient.InstallVerificationConfigured() {
+			deps.GitHubInstallVerifier = ghClient
+		}
 		// The same out-of-band private key also HMAC-signs the short-lived
 		// workspace state carried through GitHub's browser install redirect.
 		deps.GitHubStateSecret = []byte(key)
@@ -282,13 +293,20 @@ func main() {
 		authzChecker = authz.NewOpenFGAChecker(fga, os.Getenv("BEX_OPENFGA_TOKEN"))
 		base.Authz = authzChecker
 	}
-	// w1/m53: with the store on but OpenFGA off, every relation check passes
-	// (fail-open). Cross-tenant isolation still holds via membership filtering,
-	// but WITHIN a workspace roles aren't enforced — a viewer can delete services,
-	// read secrets, invite members. Safe only for single-member workspaces; warn
-	// loudly so this mode can't silently ship role-less for a real team.
+	// w1/m53 + w1/m65 F16: with the store on but OpenFGA off, checkAuthz allows
+	// every relation (fail-open). This is worse than "roles unenforced within a
+	// workspace": the explicit-workspace verbs (workspaces/members/projects) call
+	// AuthorizeOn/AuthorizeOnTarget with an arbitrary workspace object and do NOT
+	// pass through the membership-resolving WithWorkspace path, so cross-tenant
+	// isolation does NOT hold either — any authenticated caller can read/mutate
+	// another workspace. A multi-tenant API must therefore FAIL CLOSED (refuse to
+	// start) rather than warn. BEX_ALLOW_INSECURE_AUTHZ=1 is the documented
+	// single-member/local-dev override (mirrors BEX_CP_INSECURE for BEX_CP_TOKEN).
 	if base.Authz == nil && os.Getenv("BEX_CP_DB_URI") != "" && !mcpStdio() {
-		log.Printf("WARNING: BEX_OPENFGA_URL is unset while the control-plane store is on — authorization is FAIL-OPEN: every workspace member has admin-equivalent rights within their workspace. Cross-tenant isolation still holds. Set BEX_OPENFGA_URL before onboarding multi-member workspaces (docs/ADR012-auth.md).")
+		if os.Getenv("BEX_ALLOW_INSECURE_AUTHZ") != "1" {
+			log.Fatal("BEX_OPENFGA_URL is unset while the control-plane store is on (BEX_CP_DB_URI set): authorization would be FAIL-OPEN — every workspace member gets admin-equivalent rights AND explicit-workspace verbs bypass membership resolution, so cross-tenant isolation does not hold. Refusing to start a multi-tenant API without enforced authorization. Set BEX_OPENFGA_URL, or set BEX_ALLOW_INSECURE_AUTHZ=1 to override in single-member/local dev only (docs/ADR012-auth.md).")
+		}
+		log.Printf("WARNING: BEX_OPENFGA_URL is unset while the control-plane store is on and BEX_ALLOW_INSECURE_AUTHZ=1 — authorization is FAIL-OPEN (every member admin-equivalent; explicit-workspace verbs bypass membership isolation). Safe ONLY for a single-member workspace / local dev.")
 	}
 
 	// Control plane (source of truth, w1/m2): opt-in via BEX_CP_DB_URI. When set,
@@ -436,11 +454,16 @@ func main() {
 		// Login-time invite redemptions record members.AcceptInvite audit rows
 		// through the same store the feature verbs' sink writes (w1/m33).
 		tenantSvc.Audit = st
-		// w1/m53: gate login-time invite redemption on a Kratos-verified email so
-		// an attacker can't register with a victim's not-yet-signed-up invited
-		// address and claim the invite. Default off keeps deployments whose
-		// email-verification UX isn't complete working (docs/ADR024-members.md).
-		tenantSvc.RequireVerifiedInviteEmail = os.Getenv("BEX_REQUIRE_VERIFIED_INVITE_EMAIL") == "1"
+		// w1/m53 + w1/m65 F13: gate login-time invite redemption on a Kratos-verified
+		// email so an attacker can't register with a victim's not-yet-signed-up
+		// invited address and claim the invite. Secure by DEFAULT now (default true):
+		// email is an authorization key here, so ownership must be proven. The
+		// emailed ?invite=<token> bearer link still redeems regardless, so an
+		// address that genuinely can't be verified retains an explicit path. Set
+		// BEX_REQUIRE_VERIFIED_INVITE_EMAIL=0 only for local dev without a
+		// verification UX (docs/ADR024-members.md).
+		tenantSvc.RequireVerifiedInviteEmail = os.Getenv("BEX_REQUIRE_VERIFIED_INVITE_EMAIL") != "0" &&
+			!strings.EqualFold(os.Getenv("BEX_REQUIRE_VERIFIED_INVITE_EMAIL"), "false")
 		base.Workspace = tenantSvc
 		deps.Onboard = tenantSvc
 		deps.KeyBinder = tenantSvc

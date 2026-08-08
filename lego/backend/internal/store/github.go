@@ -49,6 +49,24 @@ func (s *PGStore) UpsertGitConnection(ctx context.Context, c GitConnection) (Git
 	return c, nil
 }
 
+// GitConnectionByInstallation returns the connection bound to installationID, or
+// ErrNotFound when no workspace has connected it. It backs the unique
+// installation->workspace binding (w1/m65 F2): because the App JWT can look up
+// EVERY installation of itself, a GetInstallation success is existence proof
+// only — this lookup is what lets the service reject a second workspace trying to
+// claim an installation another already owns.
+func (s *PGStore) GitConnectionByInstallation(ctx context.Context, installationID int64) (GitConnection, error) {
+	c := GitConnection{InstallationID: installationID}
+	err := s.Pool.QueryRow(ctx,
+		`SELECT workspace_id, account_login, created_at FROM git_connections WHERE installation_id = $1`,
+		installationID,
+	).Scan(&c.WorkspaceID, &c.AccountLogin, &c.CreatedAt)
+	if err != nil {
+		return GitConnection{}, classify("git connection", err)
+	}
+	return c, nil
+}
+
 // GetGitConnection returns a workspace's connection, or ErrNotFound.
 func (s *PGStore) GetGitConnection(ctx context.Context, workspaceID string) (GitConnection, error) {
 	c := GitConnection{WorkspaceID: workspaceID}

@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -88,9 +89,9 @@ type tenantService struct {
 	Audit core.AuditSink
 	// RequireVerifiedInviteEmail gates login-time invite redemption on the caller's
 	// email being Kratos-verified (BEX_REQUIRE_VERIFIED_INVITE_EMAIL, w1/m53).
-	// Default false = redeem on the raw trait email (current behavior); set true
-	// once the email-verification UX is complete so an unverified address can't
-	// claim another user's invite.
+	// Secure by DEFAULT (w1/m65 F13): true unless explicitly set to 0/false, so an
+	// unverified address can't claim another user's invite. The emailed
+	// ?invite=<token> bearer link redeems regardless of this flag.
 	RequireVerifiedInviteEmail bool
 }
 
@@ -207,8 +208,8 @@ func (t *tenantService) acceptInvites(ctx context.Context, identityID, email str
 		return
 	}
 	for _, inv := range accepted {
-		if err := t.granter.GrantWorkspaceRole(ctx, inv.TenantID, "user:"+identityID, inv.Role); err != nil {
-			log.Printf("tenancy: granting %s on workspace %s to %s: %v", inv.Role, inv.TenantID, identityID, err)
+		if err := t.reconcileInviteRole(ctx, inv.TenantID, "user:"+identityID, inv.Role); err != nil {
+			log.Printf("tenancy: reconciling %s on workspace %s to %s: %v", inv.Role, inv.TenantID, identityID, err)
 		}
 	}
 	// The caller's cached resolution (their personal workspace) stays valid — a
@@ -216,6 +217,37 @@ func (t *tenantService) acceptInvites(ctx context.Context, identityID, email str
 	// list (ListTenantsForSubject) is uncached, so the invited workspace shows
 	// immediately. Which of several workspaces is "active" is a w1/m9 concern
 	// (single-tenant resolution), not this feature's.
+}
+
+// reconcileInviteRole grants the invited role and revokes any OTHER role tuple
+// the subject already holds on the workspace, so redeeming an invite for someone
+// who is already a member at a different role leaves EXACTLY the invited role
+// (w1/m65 F7) — the OR-based model would otherwise keep the higher of the two
+// effective. Best-effort like the grant it replaces; check-before-revoke skips
+// absent tuples, and with no checker it degrades to grant-only (prior behavior).
+func (t *tenantService) reconcileInviteRole(ctx context.Context, tenantID, subject, role string) error {
+	if t.granter == nil {
+		return nil
+	}
+	if err := t.granter.GrantWorkspaceRole(ctx, tenantID, subject, role); err != nil {
+		return err
+	}
+	checker, ok := t.granter.(core.Checker)
+	if !ok {
+		return nil
+	}
+	for _, other := range members.Roles {
+		if other == role {
+			continue
+		}
+		if has, err := checker.Check(ctx, subject, other, "workspace:"+tenantID); err != nil || !has {
+			continue
+		}
+		if err := t.granter.RevokeWorkspaceMember(ctx, tenantID, subject, other); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ensureGranted makes identityID admin of workspace:tenantID unless it already

@@ -40,6 +40,7 @@ package agentattach
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -71,6 +72,25 @@ const uiMessageStreamHeader = "x-vercel-ai-ui-message-stream"
 // driver (the AI SDK sendMessages payload). The session task cap is 100 KB
 // (agentsessions.validateCreate); 256 KB leaves headroom for message framing.
 const maxAgentTurnRequest = 256 << 10
+
+// maxSSEPartBytes bounds a single serialized transcript part read from the
+// driver (w1/m65 F10). A tenant-controlled provider part larger than this is
+// refused rather than buffered without limit by the old ReadString('\n'), which
+// could allocate the whole gateway's memory on one line. Matches the
+// sandbox-exec per-line cap (1 MiB).
+const maxSSEPartBytes = 1 << 20
+
+// maxSessionTranscriptBytes caps the total transcript bytes one attach/turn
+// connection will tee into the durable store and materialize on replay (w1/m65
+// F10), bounding both gateway memory and unbounded Postgres growth from
+// tenant-controlled agent output. Because every write path enforces this cap,
+// the stored transcript can never exceed it, so replay is transitively bounded
+// too. A stream that hits the cap is stopped and settled with `[DONE]`.
+const maxSessionTranscriptBytes = 64 << 20
+
+// errPartTooLarge is returned by the bounded SSE reader when one part exceeds
+// maxSSEPartBytes; the caller ends the stream rather than buffering it.
+var errPartTooLarge = errors.New("agent attach: transcript part exceeds size limit")
 
 // Store is the transport's narrow transcript authority: read the durable
 // transcript for replay and append teed parts idempotently. It reads/writes
@@ -273,16 +293,26 @@ func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, podIP str
 		return
 	}
 	var replayedMax int64 = -1
+	var replayedBytes int
 	for _, part := range stored {
+		// Defensive replay budget (F10): the write side caps a session's stored
+		// transcript at maxSessionTranscriptBytes, so this never trips in normal
+		// operation, but a bounded replay guarantees a large transcript can't be
+		// materialized+framed without limit even if the store ever exceeds it.
+		if replayedBytes+len(part.Part) > maxSessionTranscriptBytes {
+			log.Printf("agent attach: transcript replay truncated at cap (session=%s)", sessionID)
+			break
+		}
 		sse.frame(string(part.Part))
 		replayedMax = part.Seq
+		replayedBytes += len(part.Part)
 	}
 	if ipErr != nil {
 		// No live driver: this is the terminal-session history path.
 		sse.done()
 		return
 	}
-	if err := s.spliceDriverStream(ctx, sse, podIP, sessionID, turn, replayedMax); err != nil {
+	if err := s.spliceDriverStream(ctx, sse, podIP, sessionID, turn, replayedMax, replayedBytes); err != nil {
 		log.Printf("agent attach: live splice ended (session=%s): %v", sessionID, err)
 	}
 	sse.done()
@@ -294,7 +324,7 @@ func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, podIP str
 // already sent. The ordinal-keyed idempotent append means re-reading the
 // driver's replayed history (across reconnects/replicas) never duplicates a
 // stored part.
-func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, sessionID string, turn int, replayedMax int64) error {
+func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, sessionID string, turn int, replayedMax int64, storedBytes int) error {
 	resp, err := s.dialDriverStream(ctx, podIP)
 	if err != nil {
 		return err
@@ -302,9 +332,10 @@ func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, s
 	defer func() { _ = resp.Body.Close() }()
 
 	var ordinal int64 = -1
+	total := storedBytes // transcript bytes already persisted for this session
 	reader := bufio.NewReader(resp.Body)
 	for {
-		payload, done, err := readSSEData(reader)
+		payload, done, err := readSSEData(reader, maxSSEPartBytes)
 		if err != nil {
 			if err == io.EOF {
 				return nil
@@ -317,6 +348,15 @@ func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, s
 		if payload == "" {
 			continue
 		}
+		// Per-session byte quota (F10): stop teeing+streaming once the session's
+		// stored transcript would exceed maxSessionTranscriptBytes, so tenant
+		// output can't grow Postgres or the gateway without bound. The client is
+		// settled with `[DONE]` by the caller.
+		if total+len(payload) > maxSessionTranscriptBytes {
+			log.Printf("agent attach: session transcript byte quota reached, stopping splice (session=%s)", sessionID)
+			return nil
+		}
+		total += len(payload)
 		ordinal++
 		// Tee every part (idempotent on the driver-ordinal key); forward to the
 		// client only the parts replay did not already deliver.
@@ -370,15 +410,23 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 		return
 	}
 	ordinal := base
+	turnBytes := 0
 	reader := bufio.NewReader(resp.Body)
 	for {
-		payload, done, err := readSSEData(reader)
+		payload, done, err := readSSEData(reader, maxSSEPartBytes)
 		if err != nil || done {
 			break
 		}
 		if payload == "" {
 			continue
 		}
+		// Bound a single turn's teed output (F10): a runaway driver turn can't grow
+		// the transcript or gateway memory without limit.
+		if turnBytes+len(payload) > maxSessionTranscriptBytes {
+			log.Printf("agent turn: byte quota reached, stopping turn (session=%s)", sessionID)
+			break
+		}
+		turnBytes += len(payload)
 		ordinal++
 		if err := s.Store.AppendAgentSessionTranscript(ctx, sessionID, []store.AgentSessionTranscriptPart{
 			{Seq: ordinal, Turn: turn, Part: []byte(payload)},
@@ -393,10 +441,12 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 // readSSEData reads one SSE `data:` payload from the driver framing. It returns
 // the payload, whether it was the `[DONE]` sentinel, and io.EOF at stream end.
 // The driver frames each part as a single `data: <json>\n\n` (JSON.stringify
-// never emits raw newlines), so payloads are line-oriented.
-func readSSEData(r *bufio.Reader) (string, bool, error) {
+// never emits raw newlines), so payloads are line-oriented. Each line is read
+// through a bounded reader capped at maxBytes (F10): a part larger than the cap
+// ends the stream with errPartTooLarge instead of allocating without limit.
+func readSSEData(r *bufio.Reader, maxBytes int) (string, bool, error) {
 	for {
-		line, err := r.ReadString('\n')
+		line, err := readLimitedLine(r, maxBytes)
 		if err != nil {
 			if err == io.EOF && strings.TrimSpace(line) == "" {
 				return "", false, io.EOF
@@ -421,6 +471,33 @@ func readSSEData(r *bufio.Reader) (string, bool, error) {
 		// Ignore comment/heartbeat/other field lines (`:` keep-alives, `event:`).
 		if err == io.EOF {
 			return "", false, io.EOF
+		}
+	}
+}
+
+// readLimitedLine reads one '\n'-terminated line but never buffers more than
+// maxBytes of it (F10). ReadSlice returns at most the bufio buffer size per
+// call, so a very long line without a newline is accumulated in bounded chunks;
+// the moment the accumulation would exceed maxBytes it stops and returns
+// errPartTooLarge instead of the unbounded ReadString('\n'). The returned string
+// includes the trailing newline when one was found (callers trim it).
+func readLimitedLine(r *bufio.Reader, maxBytes int) (string, error) {
+	var sb strings.Builder
+	for {
+		chunk, err := r.ReadSlice('\n')
+		if len(chunk) > 0 {
+			if sb.Len()+len(chunk) > maxBytes {
+				return "", errPartTooLarge
+			}
+			sb.Write(chunk)
+		}
+		switch err {
+		case nil:
+			return sb.String(), nil // reached the newline
+		case bufio.ErrBufferFull:
+			continue // long line, no newline yet — keep accumulating (bounded)
+		default:
+			return sb.String(), err // io.EOF or a read error
 		}
 	}
 }
