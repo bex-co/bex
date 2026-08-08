@@ -9,6 +9,8 @@ This is a sanitized production/pre-rollout capture for w7/m54. Commands used a m
 - Real Chrome harness: `onrender.com` rejected the attempted parent cookie; `onbex.co` accepted it and sent it to the sibling. Local storage and Service Workers remained origin-local on both.
 - Control-plane separation: tenant content is `*.onbex.co`; dashboard/API/auth remain `*.bex.co`.
 
+Remediation update (2026-08-08): this baseline is retained as evidence of the unsafe behavior, but the waiver is no longer the production contract. Shared `*.onbex.co` hosts are disabled; manager/static-server startup now rejects any shared hosting domain that is not a private Public Suffix, and the browser probe defaults to gating for parent-cookie rejection. Custom domains remain available.
+
 Reproduction: `PSL_EXPECTED=absent scripts/verify-static-site-security.sh repo`.
 
 ## Kubernetes route authority
@@ -77,4 +79,4 @@ The split S3 credential lifecycle also passed:
 - post-revocation manual deploy `dep-d9l81g10o6pc73aijtrg` published revision 4 with `bex-static-publish-s3`, and the platform URL still returned HTTP 200 with a 1,548-byte body;
 - the final reader/publisher positive and negative matrix passed again after revocation.
 
-The canonical PSL still lacks `onbex.co`, and the real-browser probe still demonstrates parent-cookie crossing. On 2026-07-30 the owner explicitly waived PSL inclusion and accepted this browser-domain divergence; the milestone closeout does not treat host-only/`__Host-` guidance as equivalent browser enforcement.
+The canonical PSL still lacks `onbex.co`, and this historical probe demonstrates why it cannot be used as a shared tenant suffix. The 2026-08-08 remediation supersedes the earlier waiver: production leaves `BEX_BASE_DOMAIN` unset until a dedicated private Public Suffix passes both the startup and real-browser gates. Host-only/`__Host-` guidance is defense in depth, not equivalent browser enforcement.

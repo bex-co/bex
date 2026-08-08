@@ -178,6 +178,10 @@ func (callbackGitHubClient) OpenDraftPullRequest(context.Context, int64, string,
 	return github.PullRequest{}, nil
 }
 
+func (callbackGitHubClient) VerifyInstallationAdmin(context.Context, string, int64) (bool, error) {
+	return true, nil
+}
+
 type callbackGitHubStore struct {
 	connections map[string]store.GitConnection
 }
@@ -327,10 +331,11 @@ func TestAuthGateGitHubCallbackExceptionIsExact(t *testing.T) {
 func TestGitHubBrowserCallbackThroughFullAuthStack(t *testing.T) {
 	st := &callbackGitHubStore{connections: map[string]store.GitConnection{}}
 	srv := NewServer(&core.Base{Namespace: "default"}, Deps{
-		GitHubClient:      callbackGitHubClient{},
-		GitHubStore:       st,
-		GitHubStateSecret: []byte("test-only-high-entropy-state-secret"),
-		DashboardURL:      "https://dash.bex.co",
+		GitHubClient:          callbackGitHubClient{},
+		GitHubStore:           st,
+		GitHubInstallVerifier: callbackGitHubClient{},
+		GitHubStateSecret:     []byte("test-only-high-entropy-state-secret"),
+		DashboardURL:          "https://dash.bex.co",
 	})
 	srv.HydraAdminURL = fakeHydraURL(t)
 	h, err := srv.Handler()
@@ -363,7 +368,7 @@ func TestGitHubBrowserCallbackThroughFullAuthStack(t *testing.T) {
 	// GitHub's redirect carries no Ory credential. It passes the exact auth-gate
 	// exception, verifies state in the feature, records the connection, and
 	// redirects the browser when the production dashboard URL is configured.
-	callback := httptest.NewRequest(http.MethodGet, "/v1/git/callback?installation_id=42&state="+url.QueryEscape(state), nil)
+	callback := httptest.NewRequest(http.MethodGet, "/v1/git/callback?installation_id=42&state="+url.QueryEscape(state)+"&code=oauth-code", nil)
 	callbackRec := httptest.NewRecorder()
 	h.ServeHTTP(callbackRec, callback)
 	if callbackRec.Code != http.StatusFound {
@@ -377,24 +382,21 @@ func TestGitHubBrowserCallbackThroughFullAuthStack(t *testing.T) {
 		t.Fatalf("recorded connection = %+v", got)
 	}
 
-	// The legacy API/agent callback uses its ordinary Bearer identity and omits
-	// state. DashboardURL must not turn that JSON API response into a redirect.
+	// A Bearer identity does not bypass the browser callback's state and OAuth
+	// code proofs. Clear the prior connection so any accidental write is visible.
+	delete(st.connections, core.DefaultTenant)
 	apiCallback := httptest.NewRequest(http.MethodGet, "/v1/git/callback?installation_id=42", nil)
 	apiCallback.Header.Set("Authorization", "Bearer "+testToken)
 	apiCallbackRec := httptest.NewRecorder()
 	h.ServeHTTP(apiCallbackRec, apiCallback)
-	if apiCallbackRec.Code != http.StatusOK {
-		t.Fatalf("authenticated callback status = %d, want 200; body=%s", apiCallbackRec.Code, apiCallbackRec.Body.String())
+	if apiCallbackRec.Code != http.StatusFound {
+		t.Fatalf("authenticated callback status = %d, want 302; body=%s", apiCallbackRec.Code, apiCallbackRec.Body.String())
 	}
-	var apiBody map[string]string
-	if err := json.Unmarshal(apiCallbackRec.Body.Bytes(), &apiBody); err != nil {
-		t.Fatal(err)
+	if got := apiCallbackRec.Header().Get("Location"); got != "https://dash.bex.co/settings?git_error=missing_state" {
+		t.Fatalf("authenticated callback redirect = %q", got)
 	}
-	if apiBody["status"] != "connected" {
-		t.Fatalf("authenticated callback body = %v", apiBody)
-	}
-	if got := apiCallbackRec.Header().Get("Location"); got != "" {
-		t.Fatalf("authenticated callback redirected to %q", got)
+	if len(st.connections) != 0 {
+		t.Fatalf("authenticated no-state callback recorded a connection: %+v", st.connections)
 	}
 }
 

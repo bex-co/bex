@@ -571,6 +571,42 @@ func TestBlueprintFilenameDiscovery(t *testing.T) {
 	}
 }
 
+func TestBlueprintExplicitPathAllowsOnlyBlueprintFilenames(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	files := blueprintFilesFetcher{"deploy/render.yaml": stackManifest}
+	if _, _, gotPath, err := discoverBlueprintFile(ctx, files, "tea-test", "https://github.com/a/app", "main", "deploy/render.yaml"); err != nil || gotPath != "deploy/render.yaml" {
+		t.Fatalf("approved nested Blueprint path = %q, %v", gotPath, err)
+	}
+	for _, unsafePath := range []string{".github/workflows/release.yml", ".env", "../render.yaml", "./render.yaml", `deploy\render.yaml`} {
+		if _, _, _, err := discoverBlueprintFile(ctx, files, "tea-test", "https://github.com/a/app", "main", unsafePath); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("path %q error = %v, want ErrBadRequest before repository fetch", unsafePath, err)
+		}
+	}
+}
+
+type previewRelationChecker struct{ relations []string }
+
+func (c *previewRelationChecker) Check(_ context.Context, _, relation, _ string) (bool, error) {
+	c.relations = append(c.relations, relation)
+	return relation == core.RelCanViewSensitive, nil
+}
+
+func TestPreviewBlueprintRequiresSensitiveRead(t *testing.T) {
+	checker := &previewRelationChecker{}
+	svc := &Service{
+		Base:       &core.Base{Client: fakeClient(), Namespace: "default", Authz: checker},
+		GitFetcher: fakeBlueprintFetcher{contents: stackManifest, sha: "abc1234"},
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "developer", Method: "session"})
+	if _, err := svc.PreviewBlueprint(ctx, "", "https://github.com/a/app", "main", ""); err != nil {
+		t.Fatalf("sensitive preview: %v", err)
+	}
+	if len(checker.relations) != 1 || checker.relations[0] != core.RelCanViewSensitive {
+		t.Fatalf("preview relations = %v, want only can_view_sensitive", checker.relations)
+	}
+}
+
 func TestPreviewBlueprintWarnsOnImplicitLegacyFilenameFallback(t *testing.T) {
 	svc := &Service{
 		Base:       &core.Base{Client: fakeClient(), Namespace: "default"},

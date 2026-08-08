@@ -148,44 +148,35 @@ func (s *Service) StartConnect(ctx context.Context, ownerID string) (Connection,
 	return conn, nil
 }
 
-// Connect records (or replaces) the workspace's GitHub App installation. It
-// validates the browser-supplied installation id by fetching it from GitHub
-// with the app JWT first (a forged id 404s, mapped to ErrBadRequest), then
-// upserts the connection. Admin-only.
-func (s *Service) Connect(ctx context.Context, installationID int64) (Connection, error) {
-	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
-		return Connection{}, err
-	}
-	return s.connectWithWorkspace(ctx, s.workspaceID(ctx), installationID)
-}
-
-// connectFromCallback is the browser install-callback path: when the OAuth
-// installation-admin verifier is wired (F2), it first requires the caller to
-// prove — via the callback's user-authorization `code` — that they administer
-// the installation, then records the connection. The App-JWT existence check +
-// unique binding in connectWithWorkspace still apply. Verifier unset => the code
-// is ignored and only the unique-binding gate protects the callback (the
-// documented fallback until the App enables user authorization on install).
+// connectFromCallback is the sole installation-binding path. The signed state
+// has already selected an authorized bex workspace; the GitHub user OAuth code
+// independently proves that the browser principal administers the selected
+// installation. Both proofs are mandatory. GitHub authorization codes are
+// single-use, which also prevents callback replay after a successful exchange.
 func (s *Service) connectFromCallback(ctx context.Context, workspaceID string, installationID int64, code string) (Connection, error) {
 	if !s.configured() {
 		return Connection{}, core.ErrGitHubUnavailable
 	}
-	if s.Verifier != nil {
-		ok, err := s.Verifier.VerifyInstallationAdmin(ctx, code, installationID)
-		if err != nil {
-			return Connection{}, mapGitHubErr(err)
-		}
-		if !ok {
-			return Connection{}, fmt.Errorf("%w: could not verify you administer this GitHub installation", core.ErrForbidden)
-		}
+	if s.Verifier == nil {
+		return Connection{}, core.ErrGitHubUnavailable
+	}
+	if strings.TrimSpace(code) == "" {
+		return Connection{}, fmt.Errorf("%w: GitHub user authorization code is required", core.ErrBadRequest)
+	}
+	ok, err := s.Verifier.VerifyInstallationAdmin(ctx, code, installationID)
+	if err != nil {
+		return Connection{}, mapGitHubErr(err)
+	}
+	if !ok {
+		return Connection{}, fmt.Errorf("%w: could not verify you administer this GitHub installation", core.ErrForbidden)
 	}
 	return s.connectWithWorkspace(ctx, workspaceID, installationID)
 }
 
 // connectWithWorkspace records a connection for the workspace authenticated by
 // a verified state credential. It deliberately is not an exported service verb:
-// unlike Connect it has no caller Identity to authorize, and must only be called
-// by the callback after verifyConnectState succeeds.
+// it has no caller Identity to authorize, and must only be called by the callback
+// after both verifyConnectState and the installation-admin proof succeed.
 func (s *Service) connectWithWorkspace(ctx context.Context, workspaceID string, installationID int64) (Connection, error) {
 	if !s.configured() {
 		return Connection{}, core.ErrGitHubUnavailable
@@ -204,10 +195,9 @@ func (s *Service) connectWithWorkspace(ctx context.Context, workspaceID string, 
 	// a DIFFERENT workspace cannot be re-claimed here (a re-connect by the SAME
 	// workspace is idempotent). This blocks a workspace admin from binding another
 	// tenant's installation and minting tokens for its private repositories. (A
-	// GitHub user-OAuth principal proof — verifying the initiating user administers
-	// the installation — is the complementary control; it requires enabling
-	// "Request user authorization during installation" on the App and is tracked as
-	// follow-up.)
+	// The mandatory user-OAuth proof has already established that the initiating
+	// user administers this installation; this uniqueness check independently
+	// prevents the same installation from being attached to two workspaces.)
 	if existing, lookupErr := s.Store.GitConnectionByInstallation(ctx, installationID); lookupErr == nil {
 		if existing.WorkspaceID != workspaceID {
 			return Connection{}, fmt.Errorf("%w: this GitHub installation is already connected to another workspace", core.ErrConflict)

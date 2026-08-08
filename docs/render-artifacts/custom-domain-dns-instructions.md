@@ -39,7 +39,7 @@ Render gives two options, ALIAS/ANAME preferred:
 
 ## How bex maps this (the divergences t004/t005 encode)
 
-bex serves every web App at the **platform host `<app>.<BEX_BASE_DOMAIN>`** (e.g. `<app>.onbex.co`) — the direct analogue of `<service>.onrender.com`. A tenant points their domain at that host. bex's DNS-record projection:
+When a safe shared-hosting suffix is configured, bex serves every web App at the **platform host `<app>.<BEX_BASE_DOMAIN>`** — the direct analogue of `<service>.onrender.com` — and a tenant points their domain at that host. Production has left this setting unset since 2026-08-08 because `onbex.co` is a registrable domain, not a browser-recognized private Public Suffix. Manager/static-server reject that unsafe configuration; custom-domain DNS instructions require a future suffix that passes the Public Suffix and Chrome gates in [ADR029](../ADR029-static-sites.md). With such a suffix, bex's DNS-record projection is:
 
 | Domain kind | Type | Host | Target |
 | --- | --- | --- | --- |

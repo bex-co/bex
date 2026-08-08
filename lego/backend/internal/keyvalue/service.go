@@ -292,7 +292,8 @@ func (s *Service) loadSecret(ctx context.Context, relation, name string) (*appv1
 // ListKeyValues returns every managed key-value store in the namespace,
 // optionally narrowed to a single owning workspace — Render's `ownerId`
 // list-filter contract (w6/m4/t002), mirroring postgres.Service.ListPostgres.
-// ownerID == "" lists unscoped. A non-empty ownerID names the workspace to
+// ownerID == "" resolves to the caller's default workspace when the
+// control-plane workspace resolver is enabled. A non-empty ownerID names the workspace to
 // list (core.WithWorkspace), authorized+membership-checked by the same
 // resolveWorkspace mechanism every other verb uses (w6/m17 — previously an
 // OpenFGA-only check with no IsMember) and then filters by core.LabelTenant;
@@ -302,9 +303,17 @@ func (s *Service) ListKeyValues(ctx context.Context, ownerID string) ([]KeyValue
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
+	tenantID := ownerID
+	if tenantID == "" && s.Workspace != nil {
+		var ok bool
+		tenantID, ok = s.Tenant(ctx)
+		if !ok {
+			return []KeyValueView{}, nil
+		}
+	}
 	opts := []client.ListOption{client.InNamespace(s.Namespace)}
-	if ownerID != "" {
-		opts = append(opts, client.MatchingLabels{core.LabelTenant: ownerID})
+	if tenantID != "" {
+		opts = append(opts, client.MatchingLabels{core.LabelTenant: tenantID})
 	}
 	var list appv1alpha1.KeyValueList
 	if err := s.Client.List(ctx, &list, opts...); err != nil {

@@ -166,6 +166,22 @@ func TestListPostgres_OwnerIDFilterIsolatesTenants(t *testing.T) {
 	}
 }
 
+func TestListPostgres_OmittedOwnerUsesDefaultWorkspace(t *testing.T) {
+	a := ownedDatabase("db-a", "tea-a")
+	b := ownedDatabase("db-b", "tea-b")
+	svc, _ := newService(a, b)
+	svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
+	svc.Authz = &fakeChecker{allow: true}
+
+	list, err := svc.ListPostgres(ctxAs("user-a"), "")
+	if err != nil {
+		t.Fatalf("ListPostgres(default): %v", err)
+	}
+	if len(list) != 1 || list[0].ID != "db-a" {
+		t.Fatalf("ListPostgres(default) = %+v, want only db-a", list)
+	}
+}
+
 // --- w6/m14: the fetch-by-name workspace gate ---
 
 // twoWorkspaces is a multi-workspace caller: subject -> workspaces, oldest first.

@@ -60,6 +60,9 @@ func TestDeployHookTokenIsStableOpaqueAndRotatable(t *testing.T) {
 	if app.Annotations[DeployHookTokenAnnotation] != token {
 		t.Fatalf("App annotation token = %q, want URL token", app.Annotations[DeployHookTokenAnnotation])
 	}
+	if got, want := app.Labels[DeployHookTokenDigestLabel], deployHookTokenDigest(token); got != want {
+		t.Fatalf("App token digest label = %q, want %q", got, want)
+	}
 
 	rotated, err := svc.RegenerateDeployHook(context.Background(), "web")
 	if err != nil {
@@ -74,6 +77,34 @@ func TestDeployHookTokenIsStableOpaqueAndRotatable(t *testing.T) {
 	newToken := strings.TrimPrefix(rotated.URL, "https://api.bex.co/v1/deploy-hooks/")
 	if _, err := svc.appForDeployHookToken(context.Background(), newToken); err != nil {
 		t.Fatalf("new token after rotation: %v", err)
+	}
+}
+
+func TestDeployHookDigestBackfillIndexesExistingTokens(t *testing.T) {
+	token, err := newDeployHookToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := sampleApp("web", "srv-1")
+	a.Annotations = map[string]string{DeployHookTokenAnnotation: token}
+	svc, cl := newService(newFakeStore(), a)
+
+	if _, err := svc.appForDeployHookToken(context.Background(), token); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("unindexed token lookup = %v, want ErrNotFound", err)
+	}
+	if err := BackfillDeployHookTokenDigests(context.Background(), svc.Client); err != nil {
+		t.Fatalf("backfill: %v", err)
+	}
+	if _, err := svc.appForDeployHookToken(context.Background(), token); err != nil {
+		t.Fatalf("indexed token lookup: %v", err)
+	}
+
+	var got appv1alpha1.App
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web"}, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Labels[DeployHookTokenDigestLabel] != deployHookTokenDigest(token) {
+		t.Fatalf("backfilled digest label = %q", got.Labels[DeployHookTokenDigestLabel])
 	}
 }
 

@@ -221,7 +221,7 @@ type preDeployCommandArgs struct {
 // renderSubdomainPolicy field (enabled|disabled).
 type subdomainPolicyArgs struct {
 	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	Policy    string `json:"policy" jsonschema:"enabled (platform subdomain <slug>.onbex.co is active) or disabled (platform host dropped; only custom domains serve the App)"`
+	Policy    string `json:"policy" jsonschema:"enabled (platform subdomain <slug>.<BEX_BASE_DOMAIN> is active) or disabled (platform host dropped; only custom domains serve the App)"`
 }
 
 // serviceIPAllowListArgs is set_service_ip_allow_list's input.
@@ -1061,7 +1061,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_subdomain_policy",
-		Description: "Control whether the platform subdomain (<slug>.onbex.co) is active for a web or static-site service (Render's renderSubdomainPolicy field). 'enabled' (default) keeps the platform host in the Ingress and status URL; 'disabled' drops it so only custom domains configured on the service receive traffic. Requires at least one custom domain to be already configured before disabling — otherwise the service becomes unreachable.",
+		Description: "Control whether the platform subdomain (<slug>.<BEX_BASE_DOMAIN>) is active for a web or static-site service (Render's renderSubdomainPolicy field). Shared platform hosting is available only when the operator has configured a safe Public Suffix. 'enabled' keeps that host in the Ingress and status URL; 'disabled' drops it so only custom domains configured on the service receive traffic. Requires at least one custom domain before disabling.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in subdomainPolicyArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.SetSubdomainPolicy(ctx, in.ServiceID, in.Policy)
 		if err != nil {

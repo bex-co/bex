@@ -571,6 +571,19 @@ func TestHostPathFiltersRouteToLogStore(t *testing.T) {
 	if _, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPRequests, StatusCode: "5xx"}); err != nil {
 		t.Errorf("unfiltered http_requests should succeed, got %v", err)
 	}
+	called := false
+	svc.RequestMetrics = func(context.Context, RequestMetricsRequest) ([]MetricSeries, error) {
+		called = true
+		return nil, nil
+	}
+	if _, err := svc.Metrics(context.Background(), MetricQuery{
+		App: "web", Metric: MetricHTTPRequests, StatusCode: `5xx"} or vector(1) #`,
+	}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("injected statusCode: want ErrBadRequest, got %v", err)
+	}
+	if called {
+		t.Error("invalid statusCode must be rejected before reaching a metrics backend")
+	}
 }
 
 // TestMetricsFiltersOfferNoHostPathValues: the Prometheus filter-discovery verb
@@ -869,6 +882,12 @@ func TestPromQueryFor(t *testing.T) {
 	lat := promQueryFor(RequestMetricsRequest{App: "web", Metric: MetricHTTPLatency, Resolution: 60 * time.Second, Quantile: 0.9})
 	if want := `histogram_quantile(0.9, sum(rate(traefik_service_request_duration_seconds_bucket{service=~".*web.*"}[60s])) by (le))`; lat != want {
 		t.Errorf("latency:\n got %q\nwant %q", lat, want)
+	}
+	injected := promQueryFor(RequestMetricsRequest{
+		App: "web", Metric: MetricHTTPRequests, Resolution: time.Minute, StatusCode: `5xx"} or vector(1) #`,
+	})
+	if strings.Contains(injected, "vector") || strings.Contains(injected, `code=~`) {
+		t.Errorf("defensive builder accepted invalid statusCode: %q", injected)
 	}
 	bandwidth := promQueryFor(RequestMetricsRequest{
 		Metric: MetricBandwidth, Resolution: 60 * time.Second, AppID: "srv-web", Direct: true,

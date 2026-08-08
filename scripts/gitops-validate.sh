@@ -1764,18 +1764,26 @@ if [ "$static_envfrom" != "bex-static-config:true" ]; then
   fail=1
 fi
 # Env completeness + serve-origin==publish-origin: the ConfigMap the server reads
-# must carry exactly the four origin/base-domain keys AND match the manager env
-# that dispatches the publish Job, or the server serves a different bucket/domain
-# than the operator publishes to.
+# must carry exactly the three origin keys AND match the manager env that
+# dispatches the publish Job. BEX_BASE_DOMAIN is intentionally absent until a
+# dedicated tenant-hosting suffix is registered in the Public Suffix List.
 static_cfg_kv="$(yq -N 'select(.kind == "ConfigMap" and .metadata.name == "bex-static-config") | .data | to_entries | map(.key + "=" + .value) | sort | join(",")' "$tmp/bex-operator-prod.yaml" | tr -d '\n')"
-mgr_origin_kv="$(yq -N 'select(.kind == "Deployment" and .metadata.name == "bex-controller-manager") | .spec.template.spec.containers[] | select(.name == "manager") | [.env[] | select(.name == "BEX_BASE_DOMAIN" or .name == "BEX_STATIC_S3_ENDPOINT" or .name == "BEX_STATIC_S3_BUCKET" or .name == "BEX_STATIC_S3_REGION") | .name + "=" + .value] | sort | join(",")' "$tmp/bex-operator-prod.yaml" | tr -d '\n')"
-expected_origin_kv='BEX_BASE_DOMAIN=onbex.co,BEX_STATIC_S3_BUCKET=bex-static,BEX_STATIC_S3_ENDPOINT=https://s3.eu-central-2.wasabisys.com,BEX_STATIC_S3_REGION=eu-central-2'
+mgr_origin_kv="$(yq -N 'select(.kind == "Deployment" and .metadata.name == "bex-controller-manager") | .spec.template.spec.containers[] | select(.name == "manager") | [.env[] | select(.name == "BEX_STATIC_S3_ENDPOINT" or .name == "BEX_STATIC_S3_BUCKET" or .name == "BEX_STATIC_S3_REGION") | .name + "=" + .value] | sort | join(",")' "$tmp/bex-operator-prod.yaml" | tr -d '\n')"
+expected_origin_kv='BEX_STATIC_S3_BUCKET=bex-static,BEX_STATIC_S3_ENDPOINT=https://s3.eu-central-2.wasabisys.com,BEX_STATIC_S3_REGION=eu-central-2'
 if [ "$static_cfg_kv" != "$expected_origin_kv" ]; then
   echo "FAIL: bex-static-config keys/values are '$static_cfg_kv', want '$expected_origin_kv'" >&2
   fail=1
 fi
 if [ "$static_cfg_kv" != "$mgr_origin_kv" ]; then
   echo "FAIL: static serve origin (bex-static-config) != publish origin (manager env): '$static_cfg_kv' vs '$mgr_origin_kv'" >&2
+  fail=1
+fi
+prod_shared_domain="$(
+  yq -N 'select(.kind == "Deployment" and (.metadata.name == "bex-controller-manager" or .metadata.name == "bex-api" or .metadata.name == "bex-static-server")) | .spec.template.spec.containers[].env[]? | select(.name == "BEX_BASE_DOMAIN") | .value' "$tmp/bex-operator-prod.yaml"
+  yq -N 'select(.kind == "ConfigMap" and .metadata.name == "bex-static-config") | .data.BEX_BASE_DOMAIN // ""' "$tmp/bex-operator-prod.yaml"
+)"
+if [ -n "$prod_shared_domain" ]; then
+  echo "FAIL: prod still configures unsafe shared BEX_BASE_DOMAIN values: $prod_shared_domain" >&2
   fail=1
 fi
 kubectl kustomize lego/operator/config/default >"$tmp/bex-operator-default.yaml"

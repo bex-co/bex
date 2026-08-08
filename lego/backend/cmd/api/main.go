@@ -59,6 +59,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/billing"
 	"github.com/bex-co/bex/lego/backend/internal/cliauth"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/deploys"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
@@ -250,10 +251,9 @@ func main() {
 		var err error
 		ghClient, err = github.NewClient(github.Config{
 			AppID: appID, PrivateKey: key, Slug: slug,
-			// F2: optional OAuth credentials enable the installation-admin verifier
-			// on the browser connect callback. Both set (and the App configured to
-			// request user authorization on install) => a workspace admin can only
-			// connect an installation they actually administer.
+			// F2: both OAuth credentials enable the mandatory installation-admin
+			// proof on new browser bindings. Both absent leaves existing connections
+			// usable but makes every callback fail closed; a partial pair is fatal.
 			ClientID:     os.Getenv("BEX_GITHUB_APP_CLIENT_ID"),
 			ClientSecret: os.Getenv("BEX_GITHUB_APP_CLIENT_SECRET"),
 		})
@@ -810,6 +810,13 @@ func main() {
 		return
 	}
 
+	// Deploy-hook credentials created before the digest index existed must be
+	// indexed before the public HTTP route can serve. This is the sole intentional
+	// cluster-wide migration list; requests thereafter use an exact label query.
+	if err := deploys.BackfillDeployHookTokenDigests(ctx, base.Client); err != nil {
+		log.Fatalf("bex-api: deploy-hook token index backfill: %v", err)
+	}
+
 	// Rate limiting + request caps (w7/m3). BEX_RATE_LIMIT=0 disables the limiter.
 	rpmStr := envOr("BEX_RATE_LIMIT", "500")
 	rpm, err := strconv.ParseFloat(rpmStr, 64)
@@ -851,6 +858,17 @@ func main() {
 	}
 	webhookBurst, _ := strconv.Atoi(envOr("BEX_WEBHOOK_RATE_BURST", "0"))
 	srv.WebhookRateLimiter = api.NewRateLimiter(webhookRPM, webhookBurst) // nil when rpm=0
+
+	// Deploy-hook lookup limiting is a distinct IP budget outside the auth gate.
+	// The hook's inner 6/min token bucket handles a leaked valid credential; this
+	// outer cap sheds random-token enumeration before any Kubernetes API lookup.
+	deployHookLookupRPMStr := envOr("BEX_DEPLOY_HOOK_LOOKUP_RATE_LIMIT", "60")
+	deployHookLookupRPM, err := strconv.ParseFloat(deployHookLookupRPMStr, 64)
+	if err != nil {
+		log.Fatalf("bex-api: bad BEX_DEPLOY_HOOK_LOOKUP_RATE_LIMIT %q: %v", deployHookLookupRPMStr, err)
+	}
+	deployHookLookupBurst, _ := strconv.Atoi(envOr("BEX_DEPLOY_HOOK_LOOKUP_RATE_BURST", "10"))
+	srv.DeployHookLookupRateLimiter = api.NewRateLimiter(deployHookLookupRPM, deployHookLookupBurst)
 
 	maxBody, _ := strconv.ParseInt(envOr("BEX_MAX_BODY_BYTES", "2097152"), 10, 64)
 	srv.MaxBodyBytes = maxBody

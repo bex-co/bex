@@ -35,6 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/bex-co/bex/lego/operator/internal/hostingdomain"
 	"github.com/bex-co/bex/lego/operator/internal/staticserver"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -77,6 +78,10 @@ func main() {
 	addr := envOr("BEX_STATIC_ADDR", ":8080")
 	namespace := os.Getenv("BEX_STATIC_NAMESPACE") // empty => all namespaces
 	baseDomain := os.Getenv("BEX_BASE_DOMAIN")
+	if err := hostingdomain.ValidateSharedSuffix(baseDomain); err != nil {
+		setupLog.Error(err, "unsafe shared tenant hosting suffix")
+		os.Exit(1)
+	}
 	endpoint := os.Getenv("BEX_STATIC_S3_ENDPOINT")
 	bucket := os.Getenv("BEX_STATIC_S3_BUCKET")
 	region := os.Getenv("BEX_STATIC_S3_REGION")

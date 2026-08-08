@@ -81,20 +81,16 @@ func (p *WorkspacePurger) PurgeApp(ctx context.Context, a *appv1alpha1.App) erro
 	return p.purgeAppSecrets(ctx, a)
 }
 
-// purgeAppSecrets deletes one App's env-var and secret-file maps from both the
-// tenant-scoped path (w7/m70) and the legacy single-tenant (baoTenant) path, so a
-// delete cleans up regardless of whether the lazy migrator (readMap) has run yet.
+// purgeAppSecrets deletes one App's tenant-scoped env-var and secret-file maps.
+// It must not delete a same-named legacy default-tenant path: that path has no
+// trustworthy workspace owner and is reserved for explicit operator migration.
 // The public name resolves through storeServiceName; the tenant through
 // storeTenant — matching the write path exactly.
 func (p *WorkspacePurger) purgeAppSecrets(ctx context.Context, a *appv1alpha1.App) error {
 	name := storeServiceName(a, a.Name)
 	tenantCtx := withTenant(ctx, storeTenant(a))
-	legacyCtx := withTenant(ctx, baoTenant)
 	for _, path := range []string{envPath(name), filesPath(name)} {
 		if err := p.Store.Delete(tenantCtx, path); err != nil {
-			return err
-		}
-		if err := p.Store.Delete(legacyCtx, path); err != nil {
 			return err
 		}
 	}

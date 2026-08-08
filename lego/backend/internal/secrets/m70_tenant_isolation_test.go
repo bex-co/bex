@@ -103,11 +103,10 @@ func TestOpenBaoStore_TenantScopedPaths(t *testing.T) {
 	}
 }
 
-// TestReadMap_LazilyMigratesLegacyData proves the deploy-safe migration: a read
-// under the new tenant path falls back to the pre-w7/m70 single-tenant path, copies
-// the data forward, and deletes the legacy copy — so shipping the re-keying cannot
-// orphan existing tenant secrets. Idempotent on a second read.
-func TestReadMap_LazilyMigratesLegacyData(t *testing.T) {
+// TestReadMap_DoesNotClaimAmbiguousLegacyData proves a same-named service cannot
+// acquire a legacy default-tenant value merely by reading first. Those paths
+// require an explicit ownership-backed operator migration.
+func TestReadMap_DoesNotClaimAmbiguousLegacyData(t *testing.T) {
 	store := newTenantFakeSecretStore()
 	svc := newService(store)
 
@@ -119,21 +118,40 @@ func TestReadMap_LazilyMigratesLegacyData(t *testing.T) {
 	ctx := withTenant(context.Background(), "tea-a")
 
 	got, err := svc.readMap(ctx, "services/web/env")
-	if err != nil || got["TOKEN"] != "legacy" {
-		t.Fatalf("readMap should surface legacy data: %+v err=%v", got, err)
+	if err != nil || len(got) != 0 {
+		t.Fatalf("tenant read must not surface legacy data: %+v err=%v", got, err)
 	}
-	// Migrated forward to the tenant-scoped path...
-	if store.m["tea-a/services/web/env"]["TOKEN"] != "legacy" {
-		t.Fatalf("legacy data not copied to tenant path: %+v", store.m)
+	if _, ok := store.m["tea-a/services/web/env"]; ok {
+		t.Fatalf("tenant path must not be populated from ambiguous legacy data: %+v", store.m)
 	}
-	// ...and the legacy copy is gone.
-	if _, ok := store.m["default/services/web/env"]; ok {
-		t.Fatalf("legacy path should be deleted after migration: %+v", store.m)
+	if store.m["default/services/web/env"]["TOKEN"] != "legacy" {
+		t.Fatalf("legacy path must remain for explicit migration: %+v", store.m)
 	}
-	// Second read is served from the tenant path (no legacy probe needed).
 	got2, err := svc.readMap(ctx, "services/web/env")
-	if err != nil || got2["TOKEN"] != "legacy" {
+	if err != nil || len(got2) != 0 {
 		t.Fatalf("second readMap: %+v err=%v", got2, err)
+	}
+}
+
+func TestSeedEnvVarsScopesSameNamedServicesByTenant(t *testing.T) {
+	store := newTenantFakeSecretStore()
+	svcA := newService(store, tenantApp("web", "tea-a"))
+	svcB := newService(store, tenantApp("web", "tea-b"))
+
+	if err := svcA.SeedEnvVars(context.Background(), "web", map[string]string{"TOKEN": "secret-a"}, nil); err != nil {
+		t.Fatalf("seed tea-a: %v", err)
+	}
+	if err := svcB.SeedEnvVars(context.Background(), "web", map[string]string{"TOKEN": "secret-b"}, nil); err != nil {
+		t.Fatalf("seed tea-b: %v", err)
+	}
+	if got := store.m["tea-a/services/web/env"]["TOKEN"]; got != "secret-a" {
+		t.Fatalf("tea-a TOKEN = %q", got)
+	}
+	if got := store.m["tea-b/services/web/env"]["TOKEN"]; got != "secret-b" {
+		t.Fatalf("tea-b TOKEN = %q", got)
+	}
+	if _, ok := store.m["default/services/web/env"]; ok {
+		t.Fatalf("blueprint seeding wrote the legacy shared path: %+v", store.m)
 	}
 }
 
@@ -171,9 +189,9 @@ func TestWorkspacePurger_PurgeApp_UsesPublicServiceName(t *testing.T) {
 	}
 }
 
-// TestWorkspacePurger_PurgeApp_AlsoCleansLegacyPath ensures a delete tears down
-// pre-w7/m70 data that the lazy migrator has not yet moved (belt-and-suspenders).
-func TestWorkspacePurger_PurgeApp_AlsoCleansLegacyPath(t *testing.T) {
+// TestWorkspacePurger_PurgeApp_PreservesAmbiguousLegacyPath ensures deleting
+// one tenant's same-named App cannot destroy data awaiting explicit migration.
+func TestWorkspacePurger_PurgeApp_PreservesAmbiguousLegacyPath(t *testing.T) {
 	store := newTenantFakeSecretStore()
 	a := tenantApp("web", "tea-a")
 	svc := newService(store, a)
@@ -188,7 +206,7 @@ func TestWorkspacePurger_PurgeApp_AlsoCleansLegacyPath(t *testing.T) {
 	if err := purger.PurgeApp(context.Background(), a); err != nil {
 		t.Fatalf("PurgeApp: %v", err)
 	}
-	if _, ok := store.m["default/services/web/env"]; ok {
-		t.Fatalf("legacy path should also be purged: %+v", store.m)
+	if store.m["default/services/web/env"]["TOKEN"] != "legacy" {
+		t.Fatalf("ambiguous legacy path must remain: %+v", store.m)
 	}
 }

@@ -11,18 +11,18 @@ The harness maps two sibling hosts per suffix to one loopback HTTPS server. Tena
 | Service Worker registration | origin-local | origin-local |
 | Canonical PSL exact entry | `onrender.com` present | `onbex.co` absent |
 
-This is a genuine browser-domain divergence, not a REST/GraphQL/MCP/dashboard schema gap. bex's control plane is separately safe from tenant HTML because dashboard/API/auth use `*.bex.co`, while content uses `*.onbex.co`; the Kratos `Domain=bex.co` session cannot be sent to the latter. The owner accepted the divergence on 2026-07-30 and tenant applications must use host-only/`__Host-` cookies.
+This is a genuine browser-domain divergence, not a REST/GraphQL/MCP/dashboard schema gap. The capture is retained as evidence of why `onbex.co` cannot be a shared tenant suffix. As of 2026-08-08 production leaves `BEX_BASE_DOMAIN` unset, both serving processes reject ordinary registrable domains, and custom domains remain available.
 
-Reproduce and report the current behavior without gating PSL membership:
-
-```sh
-node scripts/static-site-browser-isolation.mjs
-```
-
-Pin the future PSL-present behavior if that decision changes:
+Reproduce the historical unsafe behavior diagnostically:
 
 ```sh
-PSL_EXPECTED=present node scripts/static-site-browser-isolation.mjs
+PSL_EXPECTED=absent node scripts/static-site-browser-isolation.mjs
 ```
 
-The opt-in form fails until the browser-consumed PSL recognizes `onbex.co`. This artifact deliberately preserves that fact; closing w7/m54 does not assert that the two suffixes provide equivalent parent-cookie isolation.
+Gate a replacement suffix before enabling it:
+
+```sh
+BEX_HOSTING_SUFFIX=hosting.example node scripts/static-site-browser-isolation.mjs
+```
+
+The gate fails until the browser-consumed PSL recognizes the candidate as a private suffix and rejects its parent cookie. Runtime validation provides the matching startup gate.

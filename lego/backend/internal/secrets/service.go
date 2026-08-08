@@ -27,7 +27,6 @@ package secrets
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -103,33 +102,17 @@ func storeTenant(a *appv1alpha1.App) string {
 	return baoTenant
 }
 
-// readMap fetches the map at path under the request's tenant, lazily migrating
-// pre-w7/m70 data on first access: if the tenant-scoped path is empty but the
-// legacy single-tenant (baoTenant) path still holds this service's old data, it is
-// copied forward and the legacy path is deleted. Writes always target the
-// tenant-scoped path, so this fallback reads only THIS service's own pre-migration
-// location — never another workspace's. Idempotent: a second read finds the tenant
-// path populated and skips the legacy probe.
+// readMap fetches exactly the map under the request's tenant. Legacy
+// default-tenant data is deliberately not migrated on a tenant request: once
+// same-named services can exist in multiple workspaces, a bare
+// default/services/<name> path has no trustworthy owner. Operators must map and
+// migrate those paths out of band using control-plane ownership evidence.
 func (s *Service) readMap(ctx context.Context, path string) (map[string]string, error) {
 	cur, err := s.Store.Get(ctx, path)
 	if err != nil {
 		return nil, err
 	}
-	if len(cur) > 0 {
-		return cur, nil
-	}
-	legacy, err := s.Store.Get(withTenant(ctx, baoTenant), path)
-	if err != nil {
-		return nil, err
-	}
-	if len(legacy) == 0 {
-		return map[string]string{}, nil
-	}
-	if err := s.Store.Put(ctx, path, legacy); err != nil {
-		return nil, err
-	}
-	_ = s.Store.Delete(withTenant(ctx, baoTenant), path) // best-effort; a lingering copy is harmless
-	return legacy, nil
+	return cur, nil
 }
 
 // ListEnvVars returns a service's environment variables, sorted by key for a
@@ -154,8 +137,7 @@ func (s *Service) readAuthorizedEnvMap(ctx context.Context, service string) (map
 		return nil, "", err // ErrNotFound for unknown services, exactly like Get
 	}
 	service = storeServiceName(a, service)
-	tenant := storeTenant(a)
-	ctx = withTenant(ctx, tenant)
+	ctx = withTenant(ctx, storeTenant(a))
 	if s.Store == nil {
 		return nil, "", core.ErrSecretsUnavailable
 	}
@@ -167,44 +149,17 @@ func (s *Service) readAuthorizedEnvMap(ctx context.Context, service string) (map
 		}
 		return env, "", nil
 	}
-	return s.readVersionedEnvMap(ctx, tenant, envPath(service), versioned)
+	return s.readVersionedEnvMap(ctx, envPath(service), versioned)
 }
 
-// readVersionedEnvMap preserves readMap's lazy tenant migration without first
-// performing an unsanitized SecretKV.Get. Every current-tenant response comes
-// from one atomic versioned snapshot, and every OpenBao/transport failure is
-// collapsed before it can expose a mount URL or logical path.
-func (s *Service) readVersionedEnvMap(ctx context.Context, tenant, path string, versioned core.VersionedSecretKV) (map[string]string, string, error) {
+// readVersionedEnvMap reads one atomic snapshot from the already tenant-scoped
+// context. It never probes the ambiguous legacy default tenant.
+func (s *Service) readVersionedEnvMap(ctx context.Context, path string, versioned core.VersionedSecretKV) (map[string]string, string, error) {
 	snapshot, err := versioned.GetVersioned(ctx, path)
 	if err != nil {
 		return nil, "", envSourceUnavailable()
 	}
-	if len(snapshot.Data) > 0 || tenant == baoTenant {
-		return snapshot.Data, encodeEnvRevision(snapshot.Version), nil
-	}
-
-	legacy, err := versioned.GetVersioned(withTenant(ctx, baoTenant), path)
-	if err != nil {
-		return nil, "", envSourceUnavailable()
-	}
-	if len(legacy.Data) == 0 {
-		return snapshot.Data, encodeEnvRevision(snapshot.Version), nil
-	}
-	newVersion, err := versioned.PutCAS(ctx, path, legacy.Data, snapshot.Version)
-	if err != nil {
-		if !errors.Is(err, core.ErrConflict) {
-			return nil, "", envSourceUnavailable()
-		}
-		// Another current-tenant writer won migration or wrote a newer map.
-		// Return its atomic snapshot instead of exposing the CAS/store error.
-		winner, winnerErr := versioned.GetVersioned(ctx, path)
-		if winnerErr != nil {
-			return nil, "", envSourceUnavailable()
-		}
-		return winner.Data, encodeEnvRevision(winner.Version), nil
-	}
-	_ = s.Store.Delete(withTenant(ctx, baoTenant), path)
-	return cloneStringMap(legacy.Data), encodeEnvRevision(newVersion), nil
+	return snapshot.Data, encodeEnvRevision(snapshot.Version), nil
 }
 
 func envSourceUnavailable() error {
@@ -377,6 +332,8 @@ func (s *Service) SeedEnvVars(ctx context.Context, service string, literals map[
 	if err != nil {
 		return err
 	}
+	service = storeServiceName(a, service)
+	ctx = withTenant(ctx, storeTenant(a))
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}

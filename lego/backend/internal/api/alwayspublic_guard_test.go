@@ -114,8 +114,8 @@ var alwaysPublicInventory = map[string]string{
 	"POST /v1/token/refresh/":                   "RFC 8628 device flow; IP-keyed DeviceRateLimiter",
 	"POST /v1/webhooks/git":                     "HMAC signature; IP-keyed WebhookRateLimiter, sheds pre-HMAC (w7/m60)",
 	"POST /v1/webhooks/stripe":                  "Stripe-Signature HMAC; IP-keyed WebhookRateLimiter, sheds pre-HMAC (w7/m60)",
-	"/v1/deploy-hooks":                          "unguessable URL token; per-hook token bucket",
-	"/v1/deploy-hooks/":                         "unguessable URL token; per-hook token bucket",
+	"/v1/deploy-hooks":                          "unguessable URL token; IP-keyed pre-lookup limiter + per-hook token bucket",
+	"/v1/deploy-hooks/":                         "unguessable URL token; IP-keyed pre-lookup limiter + per-hook token bucket",
 	"GET /.well-known/oauth-protected-resource": "RFC 9728 discovery; public by spec; no credential, unmetered",
 }
 

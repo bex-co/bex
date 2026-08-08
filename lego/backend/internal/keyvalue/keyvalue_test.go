@@ -77,7 +77,7 @@ func serveREST(svc *Service, method, path, body string) *httptest.ResponseRecord
 		r = httptest.NewRequest(method, path, strings.NewReader(body))
 	}
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, r)
+	mux.ServeHTTP(rec, r.WithContext(ctxAs("user-a")))
 	return rec
 }
 

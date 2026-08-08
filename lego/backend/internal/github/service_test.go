@@ -145,13 +145,14 @@ func withIdentity(ctx context.Context) context.Context {
 
 func TestConnectRoundTrip(t *testing.T) {
 	svc := &Service{
-		Base:   &core.Base{Namespace: "default"},
-		GitHub: &fakeClient{login: "octo", repos: []Repo{{ID: 1, FullName: "octo/app", Private: true}}},
-		Store:  newFakeStore(),
+		Base:     &core.Base{Namespace: "default"},
+		GitHub:   &fakeClient{login: "octo", repos: []Repo{{ID: 1, FullName: "octo/app", Private: true}}},
+		Store:    newFakeStore(),
+		Verifier: &fakeVerifier{ok: true},
 	}
 	ctx := context.Background()
 
-	conn, err := svc.Connect(ctx, 42)
+	conn, err := svc.connectFromCallback(ctx, core.DefaultTenant, 42, "oauth-code")
 	if err != nil {
 		t.Fatalf("connect: %v", err)
 	}
@@ -201,7 +202,7 @@ func TestVerbs503WhenUnconfigured(t *testing.T) {
 	}
 	for name, svc := range cases {
 		t.Run(name, func(t *testing.T) {
-			if _, err := svc.Connect(ctx, 1); !errors.Is(err, core.ErrGitHubUnavailable) {
+			if _, err := svc.connectFromCallback(ctx, core.DefaultTenant, 1, "oauth-code"); !errors.Is(err, core.ErrGitHubUnavailable) {
 				t.Errorf("connect err = %v", err)
 			}
 			if _, err := svc.GetConnection(ctx, ""); !errors.Is(err, core.ErrGitHubUnavailable) {
@@ -219,11 +220,12 @@ func TestVerbs503WhenUnconfigured(t *testing.T) {
 
 func TestConnectForgedInstallationRejected(t *testing.T) {
 	svc := &Service{
-		Base:   &core.Base{Namespace: "default"},
-		GitHub: &fakeClient{installErr: &APIError{Status: 404, Body: "Not Found"}},
-		Store:  newFakeStore(),
+		Base:     &core.Base{Namespace: "default"},
+		GitHub:   &fakeClient{installErr: &APIError{Status: 404, Body: "Not Found"}},
+		Store:    newFakeStore(),
+		Verifier: &fakeVerifier{ok: true},
 	}
-	_, err := svc.Connect(context.Background(), 999)
+	_, err := svc.connectFromCallback(context.Background(), core.DefaultTenant, 999, "oauth-code")
 	if !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("forged installation err = %v, want ErrBadRequest", err)
 	}
@@ -233,8 +235,8 @@ func TestConnectForgedInstallationRejected(t *testing.T) {
 }
 
 func TestConnectRejectsNonPositiveID(t *testing.T) {
-	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{}, Store: newFakeStore()}
-	if _, err := svc.Connect(context.Background(), 0); !errors.Is(err, core.ErrBadRequest) {
+	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{}, Store: newFakeStore(), Verifier: &fakeVerifier{ok: true}}
+	if _, err := svc.connectFromCallback(context.Background(), core.DefaultTenant, 0, "oauth-code"); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("id 0 err = %v, want ErrBadRequest", err)
 	}
 }
@@ -332,8 +334,8 @@ func TestAuthzGatesWritesButAllowsMemberReads(t *testing.T) {
 	if _, err := svc.ListRepos(ctx, ""); err != nil {
 		t.Errorf("viewer ListRepos = %v, want ok", err)
 	}
-	if _, err := svc.Connect(ctx, 1); !errors.Is(err, core.ErrForbidden) {
-		t.Errorf("viewer Connect = %v, want Forbidden", err)
+	if _, err := svc.StartConnect(ctx, ""); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("viewer StartConnect = %v, want Forbidden", err)
 	}
 	if err := svc.Disconnect(ctx, ""); !errors.Is(err, core.ErrForbidden) {
 		t.Errorf("viewer Disconnect = %v, want Forbidden", err)
@@ -423,12 +425,12 @@ func TestCloneTokenRequiresGitHubOrigin(t *testing.T) {
 	ctx := context.Background()
 
 	for _, url := range []string{
-		"https://evil.example/octo/app",          // attacker host, granted path suffix
-		"https://evil.example/octo/app.git",      // .git form
+		"https://evil.example/octo/app",            // attacker host, granted path suffix
+		"https://evil.example/octo/app.git",        // .git form
 		"https://github.com.evil.example/octo/app", // github.com as a subdomain prefix
 		"https://github.com@evil.example/octo/app", // userinfo trick
-		"git@evil.example:octo/app.git",          // scp form, attacker host
-		"https://github.com:8443/octo/app",       // non-default port
+		"git@evil.example:octo/app.git",            // scp form, attacker host
+		"https://github.com:8443/octo/app",         // non-default port
 	} {
 		tok, ok, err := svc.cloneToken(ctx, "default", url)
 		if ok || tok != "" || err != nil {
@@ -529,12 +531,18 @@ func TestConnectFromCallbackEnforcesInstallationAdmin(t *testing.T) {
 	if fv.gotCode != "usercode" || fv.gotID != 42 {
 		t.Errorf("verifier saw code=%q id=%d, want usercode/42", fv.gotCode, fv.gotID)
 	}
+	if _, err := accept.connectFromCallback(ctx, "tea-a", 42, ""); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("missing OAuth code err = %v, want ErrBadRequest", err)
+	}
 
-	// No verifier wired => the callback still works (unique-binding fallback), code
-	// ignored.
+	// No verifier wired => binding fails closed even if GitHub can look up the
+	// installation. App-level visibility is not proof of the user's authority.
 	noVerify := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{login: "octo"}, Store: newFakeStore()}
-	if _, err := noVerify.connectFromCallback(ctx, "tea-a", 42, ""); err != nil {
-		t.Fatalf("verifier-unwired callback: %v", err)
+	if _, err := noVerify.connectFromCallback(ctx, "tea-a", 42, "usercode"); !errors.Is(err, core.ErrGitHubUnavailable) {
+		t.Fatalf("verifier-unwired callback err = %v, want ErrGitHubUnavailable", err)
+	}
+	if len(noVerify.Store.(*fakeStore).conns) != 0 {
+		t.Error("verifier-unwired callback must not persist a connection")
 	}
 }
 
@@ -595,8 +603,8 @@ func TestAuthzDenyAllForbidsEveryVerb(t *testing.T) {
 	deny := allowChecker{}
 	svc := &Service{Base: &core.Base{Namespace: "default", Authz: deny}, GitHub: &fakeClient{}, Store: newFakeStore()}
 	ctx := withIdentity(context.Background())
-	if _, err := svc.Connect(ctx, 1); !errors.Is(err, core.ErrForbidden) {
-		t.Errorf("connect = %v", err)
+	if _, err := svc.StartConnect(ctx, ""); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("start connect = %v", err)
 	}
 	if _, err := svc.GetConnection(ctx, ""); !errors.Is(err, core.ErrForbidden) {
 		t.Errorf("get = %v", err)

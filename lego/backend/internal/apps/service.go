@@ -57,7 +57,7 @@ type Service struct {
 	// The neutral AppView stays independent of nested REST owner wire shapes.
 	Owners   resourcemeta.OwnerResolver
 	Metadata resourcemeta.Config
-	// BaseDomain is the platform wildcard domain (BEX_BASE_DOMAIN, e.g. "onbex.co")
+	// BaseDomain is the PSL-safe platform wildcard domain (BEX_BASE_DOMAIN)
 	// — the same value the operator computes app URLs from. The custom-domain DNS
 	// instructions need it to name the CNAME/ALIAS target `<app>.<BaseDomain>` the
 	// tenant points their record at. Empty falls back to deriving the platform host
@@ -387,7 +387,7 @@ type AppView struct {
 	// default | none | failure | all.
 	NotificationsToSend string `json:"notificationsToSend"`
 	// RenderSubdomainPolicy is Render's renderSubdomainPolicy field
-	// (enabled|disabled): whether the platform subdomain <slug>.onbex.co is
+	// (enabled|disabled): whether the platform subdomain under BEX_BASE_DOMAIN is
 	// active for this service. "enabled" (default) keeps it; "disabled" drops
 	// it so only custom domains in spec.hosts[] serve the App. The Settings →
 	// Custom Domains section reads it and writes it via SetSubdomainPolicy.

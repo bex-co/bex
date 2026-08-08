@@ -384,7 +384,8 @@ func (s *Service) loadAppSecret(ctx context.Context, relation, name string) (*ap
 // ListPostgres returns every managed Postgres in the namespace, optionally
 // narrowed to a single owning workspace — Render's `ownerId` list-filter
 // contract (w6/m2/t004, labeling fixed by w6/m4/t001), mirroring
-// apps.Service.List. ownerID == "" lists unscoped. A non-empty ownerID names
+// apps.Service.List. ownerID == "" resolves to the caller's default workspace
+// when the control-plane workspace resolver is enabled. A non-empty ownerID names
 // the workspace to list (core.WithWorkspace), authorized+membership-checked by
 // the same resolveWorkspace mechanism every other verb uses (w6/m17 —
 // previously an OpenFGA-only check with no IsMember) and then filters by
@@ -394,11 +395,19 @@ func (s *Service) ListPostgres(ctx context.Context, ownerID string) ([]PostgresV
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
+	tenantID := ownerID
+	if tenantID == "" && s.Workspace != nil {
+		var ok bool
+		tenantID, ok = s.Tenant(ctx)
+		if !ok {
+			return []PostgresView{}, nil
+		}
+	}
 	opts := []client.ListOption{client.InNamespace(s.Namespace)}
-	if ownerID != "" {
+	if tenantID != "" {
 		// Push the scoping into the list call itself (server-side label selector)
 		// rather than fetching the whole namespace and filtering in memory.
-		opts = append(opts, client.MatchingLabels{core.LabelTenant: ownerID})
+		opts = append(opts, client.MatchingLabels{core.LabelTenant: tenantID})
 	}
 	var list appv1alpha1.DatabaseList
 	if err := s.Client.List(ctx, &list, opts...); err != nil {

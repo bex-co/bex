@@ -162,6 +162,22 @@ func TestListKeyValues_OwnerIDFilterIsolatesTenants(t *testing.T) {
 	}
 }
 
+func TestListKeyValues_OmittedOwnerUsesDefaultWorkspace(t *testing.T) {
+	a := ownedKeyValue("kv-a", "tea-a")
+	b := ownedKeyValue("kv-b", "tea-b")
+	svc, _ := newService(a, b)
+	svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
+	svc.Authz = &fakeChecker{allow: true}
+
+	list, err := svc.ListKeyValues(ctxAs("user-a"), "")
+	if err != nil {
+		t.Fatalf("ListKeyValues(default): %v", err)
+	}
+	if len(list) != 1 || list[0].ID != "kv-a" {
+		t.Fatalf("ListKeyValues(default) = %+v, want only kv-a", list)
+	}
+}
+
 // --- w6/m14: the fetch-by-name workspace gate (same hole as postgres') ---
 
 func ownedKeyValue(name, tenantID string) *appv1alpha1.KeyValue {

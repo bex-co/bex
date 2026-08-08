@@ -26,6 +26,7 @@ import (
 	"context"
 	"crypto/rsa"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -58,11 +59,10 @@ type Config struct {
 	Slug       string // app slug, builds the install URL
 	// ClientID / ClientSecret are the App's OAuth credentials, used ONLY to verify
 	// that the user completing an install actually administers the installation
-	// (F2, docs/ADR026-github-integration.md). Optional: both empty => the
-	// installation-admin verifier is not wired and the connect callback falls back
-	// to the unique installation->workspace binding alone. Requires the App's
-	// "Request user authorization (OAuth) during installation" setting so the
-	// callback carries a `code`.
+	// (F2, docs/ADR026-github-integration.md). Both empty leaves existing
+	// connection reads/deploys available but makes every new binding fail closed;
+	// exactly one set is invalid configuration. The App must enable "Request user
+	// authorization (OAuth) during installation" so the callback carries a code.
 	ClientID     string
 	ClientSecret string
 }
@@ -84,6 +84,9 @@ type Client struct {
 // NewClient parses the config (numeric app id, PEM private key) and returns a
 // ready client. It errors if any field is missing or malformed.
 func NewClient(cfg Config) (*Client, error) {
+	if (strings.TrimSpace(cfg.ClientID) == "") != (strings.TrimSpace(cfg.ClientSecret) == "") {
+		return nil, errors.New("github: OAuth client id and secret must be configured together")
+	}
 	if cfg.AppID == "" || cfg.PrivateKey == "" || cfg.Slug == "" {
 		return nil, fmt.Errorf("github: incomplete config (need app id, private key, slug)")
 	}
@@ -564,7 +567,7 @@ func (c *Client) ListBranches(ctx context.Context, installationID int64, owner, 
 // FileContents is the decoded content of a repository file (w2/m62 — blueprint
 // manifest fetch). CommitSHA is the branch HEAD at the time of the fetch.
 type FileContents struct {
-	Contents string
+	Contents  string
 	CommitSHA string
 }
 

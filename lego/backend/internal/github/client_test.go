@@ -56,6 +56,8 @@ func TestNewClientRejectsBadConfig(t *testing.T) {
 		{"missing slug", Config{AppID: "1", PrivateKey: keyPEM}},
 		{"non-numeric id", Config{AppID: "abc", PrivateKey: keyPEM, Slug: "x"}},
 		{"bad key", Config{AppID: "1", PrivateKey: "not a pem", Slug: "x"}},
+		{"OAuth client id only", Config{AppID: "1", PrivateKey: keyPEM, Slug: "x", ClientID: "client"}},
+		{"OAuth client secret only", Config{AppID: "1", PrivateKey: keyPEM, Slug: "x", ClientSecret: "secret"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -82,6 +82,10 @@ const (
 // legacy alias is absent; legacy alone remains compatible; both are an error.
 func discoverBlueprintFile(ctx context.Context, fetcher BlueprintFetcher, workspaceID, repo, branch, explicitPath string) (contents, commitSHA, filePath string, err error) {
 	if explicitPath != "" {
+		explicitPath, err = approvedBlueprintPath(explicitPath)
+		if err != nil {
+			return "", "", "", err
+		}
 		contents, commitSHA, err = fetcher.FetchBlueprintFile(ctx, workspaceID, repo, branch, explicitPath)
 		return contents, commitSHA, explicitPath, err
 	}
@@ -96,6 +100,24 @@ func discoverBlueprintFile(ctx context.Context, fetcher BlueprintFetcher, worksp
 		return legacyContents, legacySHA, LegacyBlueprintFilename, nil
 	default:
 		return "", "", "", canonicalErr
+	}
+}
+
+// approvedBlueprintPath keeps Blueprint discovery from becoming an arbitrary
+// private-repository file reader. A Blueprint may live in a subdirectory, but
+// its basename must be one of the filenames the product actually parses.
+func approvedBlueprintPath(filePath string) (string, error) {
+	filePath = strings.TrimSpace(filePath)
+	clean := path.Clean(filePath)
+	if filePath == "" || clean == "." || clean != filePath || path.IsAbs(clean) ||
+		clean == ".." || strings.HasPrefix(clean, "../") || strings.Contains(clean, `\`) {
+		return "", fmt.Errorf("%w: Blueprint path must be a clean repository-relative path", core.ErrBadRequest)
+	}
+	switch path.Base(clean) {
+	case CanonicalBlueprintFilename, LegacyBlueprintFilename:
+		return clean, nil
+	default:
+		return "", fmt.Errorf("%w: Blueprint path must end in %s or %s", core.ErrBadRequest, CanonicalBlueprintFilename, LegacyBlueprintFilename)
 	}
 }
 
@@ -287,12 +309,13 @@ func blueprintDisplayPath(pointer string) string {
 
 // PreviewBlueprint fetches repo/branch/path from Git and dry-run validates the
 // manifest without creating or applying anything — Render's pre-create
-// "Review Blueprint configurations" step. Requires can_view.
+// "Review Blueprint configurations" step. Repository contents are private
+// source material, so preview requires the sensitive-read role.
 func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, filePath string) (BlueprintPreview, error) {
 	if ownerID != "" {
 		ctx = core.WithWorkspace(ctx, ownerID)
 	}
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+	if err := s.Authorize(ctx, core.RelCanViewSensitive); err != nil {
 		return BlueprintPreview{}, err
 	}
 	if repo == "" || branch == "" {
