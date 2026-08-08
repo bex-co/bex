@@ -33,6 +33,8 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
@@ -220,90 +222,192 @@ func (p EnvironmentPatch) hasACL() bool {
 	return p.ProtectedStatus != nil || p.NetworkIsolationEnabled != nil || p.IPAllowList != nil
 }
 
-// databaseIDsByEnvironment lists workspaceID's Databases once and groups
-// their ids by current environment label — the single fetch List's loop
-// shares across every row instead of re-issuing a tenant-wide ListPostgres
-// per environment. databaseIDsForEnvironment (below) derives the
-// single-environment case from this. Databases unwired (s.Databases nil) =>
-// nil map, matching Store-unwired's ErrEnvironmentsUnavailable degrade for
-// the feature as a whole rather than failing just this piece.
-func (s *Service) databaseIDsByEnvironment(ctx context.Context, workspaceID string) (map[string][]string, error) {
+// environmentResource is the only thing this feature needs to know about a
+// member kind whose environment membership is a property of the member itself
+// — a CR label (core.LabelEnvironment) or an env group's own metadata — rather
+// than a control-plane join row: its id, and the environment it currently
+// belongs to. Reducing PostgresView/KeyValueView/EnvironmentMembership to this
+// pair is what lets one grouping and one membership-diff serve all three kinds.
+type environmentResource struct {
+	id            string
+	environmentID string
+}
+
+// resourceIndex is the shared shape of DatabaseIndex, KeyValueIndex, and
+// EnvGroupIndex: a member kind that is listed and re-stamped instead of joined.
+// join/leave carry the per-kind side effects of a membership change, so the
+// diff loop below is identical for every kind. The adapters embed the
+// feature-typed index, so only the listing and the two membership verbs need
+// writing.
+type resourceIndex interface {
+	list(ctx context.Context, workspaceID string) ([]environmentResource, error)
+	// join adds id to e — and applies whatever else membership implies for
+	// this kind.
+	join(ctx context.Context, e store.Environment, id string) error
+	// leave removes id from whatever environment it is in, undoing join.
+	leave(ctx context.Context, id string) error
+}
+
+// layeredIndex is a resourceIndex whose members also carry the environment's
+// inbound-IP layer (w4/m28) — Databases and KeyValues have a network surface of
+// their own to project onto; env groups do not, which is exactly why SetACL's
+// fan-out ranges over this narrower set.
+type layeredIndex interface {
+	resourceIndex
+	setIPLayer(ctx context.Context, id string, cidrs []string) error
+}
+
+type databaseResources struct{ DatabaseIndex }
+
+func (d databaseResources) list(ctx context.Context, workspaceID string) ([]environmentResource, error) {
+	dbs, err := d.ListPostgres(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]environmentResource, len(dbs))
+	for i, db := range dbs {
+		out[i] = environmentResource{id: db.ID, environmentID: db.EnvironmentID}
+	}
+	return out, nil
+}
+
+// join stamps the three things membership means for a Database: the
+// environment label itself, the environment's project (mirroring
+// store.SetEnvironmentServices' apps.project_id stamp — Render's model treats
+// "in an environment" as "in that project"), and the environment's inbound-IP
+// layer, which joiners inherit (w4/m28).
+func (d databaseResources) join(ctx context.Context, e store.Environment, id string) error {
+	if err := d.SetEnvironmentID(ctx, id, e.ID); err != nil {
+		return err
+	}
+	if err := d.SetProjectID(ctx, id, e.ProjectID); err != nil {
+		return err
+	}
+	return d.SetEnvironmentIPAllowList(ctx, id, core.EnvironmentLayerCIDRs(e.IPAllowList))
+}
+
+// leave drops the environment label and the environment's inbound-IP layer,
+// but deliberately NOT the project: leaving an environment doesn't unjoin its
+// project, matching store.SetEnvironmentServices' own asymmetry for services.
+func (d databaseResources) leave(ctx context.Context, id string) error {
+	if err := d.SetEnvironmentID(ctx, id, ""); err != nil {
+		return err
+	}
+	return d.SetEnvironmentIPAllowList(ctx, id, nil)
+}
+
+func (d databaseResources) setIPLayer(ctx context.Context, id string, cidrs []string) error {
+	return d.SetEnvironmentIPAllowList(ctx, id, cidrs)
+}
+
+// keyValueResources is databaseResources' KeyValue-CR counterpart.
+type keyValueResources struct{ KeyValueIndex }
+
+func (k keyValueResources) list(ctx context.Context, workspaceID string) ([]environmentResource, error) {
+	kvs, err := k.ListKeyValues(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]environmentResource, len(kvs))
+	for i, kv := range kvs {
+		out[i] = environmentResource{id: kv.ID, environmentID: kv.EnvironmentID}
+	}
+	return out, nil
+}
+
+func (k keyValueResources) join(ctx context.Context, e store.Environment, id string) error {
+	if err := k.SetEnvironmentID(ctx, id, e.ID); err != nil {
+		return err
+	}
+	if err := k.SetProjectID(ctx, id, e.ProjectID); err != nil {
+		return err
+	}
+	return k.SetEnvironmentIPAllowList(ctx, id, core.EnvironmentLayerCIDRs(e.IPAllowList))
+}
+
+func (k keyValueResources) leave(ctx context.Context, id string) error {
+	if err := k.SetEnvironmentID(ctx, id, ""); err != nil {
+		return err
+	}
+	return k.SetEnvironmentIPAllowList(ctx, id, nil)
+}
+
+func (k keyValueResources) setIPLayer(ctx context.Context, id string, cidrs []string) error {
+	return k.SetEnvironmentIPAllowList(ctx, id, cidrs)
+}
+
+// envGroupResources is the env-group member kind: membership is the whole of
+// it — no project join, and no inbound-IP layer (hence resourceIndex, not
+// layeredIndex).
+type envGroupResources struct{ EnvGroupIndex }
+
+func (g envGroupResources) list(ctx context.Context, workspaceID string) ([]environmentResource, error) {
+	groups, err := g.ListEnvironmentMemberships(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]environmentResource, len(groups))
+	for i, group := range groups {
+		out[i] = environmentResource{id: group.ID, environmentID: group.EnvironmentID}
+	}
+	return out, nil
+}
+
+func (g envGroupResources) join(ctx context.Context, e store.Environment, id string) error {
+	return g.SetEnvironmentID(ctx, id, e.ID)
+}
+
+func (g envGroupResources) leave(ctx context.Context, id string) error {
+	return g.SetEnvironmentID(ctx, id, "")
+}
+
+// databases/keyValues/envGroups adapt the optional feature indexes, returning
+// nil when that kind is unwired — read paths then resolve that kind's
+// membership empty (rather than failing the whole view), write paths report
+// ErrEnvironmentsUnavailable, matching internal/projects' own nil-degrades
+// pattern.
+func (s *Service) databases() layeredIndex {
 	if s.Databases == nil {
-		return nil, nil
+		return nil
 	}
-	dbs, err := s.Databases.ListPostgres(ctx, workspaceID)
-	if err != nil {
-		return nil, err
-	}
-	byEnv := map[string][]string{}
-	for _, d := range dbs {
-		if d.EnvironmentID != "" {
-			byEnv[d.EnvironmentID] = append(byEnv[d.EnvironmentID], d.ID)
-		}
-	}
-	return byEnv, nil
+	return databaseResources{s.Databases}
 }
 
-// keyValueIDsByEnvironment is databaseIDsByEnvironment's KeyValue-CR
-// counterpart.
-func (s *Service) keyValueIDsByEnvironment(ctx context.Context, workspaceID string) (map[string][]string, error) {
+func (s *Service) keyValues() layeredIndex {
 	if s.KeyValues == nil {
-		return nil, nil
+		return nil
 	}
-	kvs, err := s.KeyValues.ListKeyValues(ctx, workspaceID)
-	if err != nil {
-		return nil, err
-	}
-	byEnv := map[string][]string{}
-	for _, kv := range kvs {
-		if kv.EnvironmentID != "" {
-			byEnv[kv.EnvironmentID] = append(byEnv[kv.EnvironmentID], kv.ID)
-		}
-	}
-	return byEnv, nil
+	return keyValueResources{s.KeyValues}
 }
 
-// envGroupIDsByEnvironment is the env-group counterpart to the Database and
-// KeyValue membership indexes above. A nil EnvGroups seam degrades to empty
-// membership on reads, matching the other optional cross-feature indexes.
-func (s *Service) envGroupIDsByEnvironment(ctx context.Context, workspaceID string) (map[string][]string, error) {
+func (s *Service) envGroups() resourceIndex {
 	if s.EnvGroups == nil {
+		return nil
+	}
+	return envGroupResources{s.EnvGroups}
+}
+
+// idsByEnvironment lists every member idx knows about in workspaceID once and
+// buckets the ids by the environment each currently belongs to. One listing
+// serves EVERY environment in the workspace, which is what lets List enrich N
+// environments with a single call per member kind instead of one per
+// environment. Members belonging to no environment (empty environmentID) are
+// dropped.
+func idsByEnvironment(ctx context.Context, idx resourceIndex, workspaceID string) (map[string][]string, error) {
+	if idx == nil {
 		return nil, nil
 	}
-	groups, err := s.EnvGroups.ListEnvironmentMemberships(ctx, workspaceID)
+	rs, err := idx.list(ctx, workspaceID)
 	if err != nil {
 		return nil, err
 	}
 	byEnv := map[string][]string{}
-	for _, g := range groups {
-		if g.EnvironmentID != "" {
-			byEnv[g.EnvironmentID] = append(byEnv[g.EnvironmentID], g.ID)
+	for _, r := range rs {
+		if r.environmentID != "" {
+			byEnv[r.environmentID] = append(byEnv[r.environmentID], r.id)
 		}
 	}
 	return byEnv, nil
-}
-
-// databaseIDsForEnvironment returns the one environment's member Database
-// ids — mirroring internal/projects.Service.databaseIDsForProject, built on
-// top of databaseIDsByEnvironment so a single-environment call site (Get,
-// Rename, SetServices, SetACL, SetDatabases, SetKeyValues) doesn't need its
-// own tenant-wide fetch.
-func (s *Service) databaseIDsForEnvironment(ctx context.Context, workspaceID, environmentID string) ([]string, error) {
-	byEnv, err := s.databaseIDsByEnvironment(ctx, workspaceID)
-	if err != nil {
-		return nil, err
-	}
-	return byEnv[environmentID], nil
-}
-
-// keyValueIDsForEnvironment is databaseIDsForEnvironment's KeyValue-CR
-// counterpart.
-func (s *Service) keyValueIDsForEnvironment(ctx context.Context, workspaceID, environmentID string) ([]string, error) {
-	byEnv, err := s.keyValueIDsByEnvironment(ctx, workspaceID)
-	if err != nil {
-		return nil, err
-	}
-	return byEnv[environmentID], nil
 }
 
 // List returns every environment under a project, each with its current
@@ -324,15 +428,7 @@ func (s *Service) List(ctx context.Context, projectID string) ([]EnvironmentView
 	// rather than re-issuing ListPostgres/ListKeyValues per row below — every
 	// environment in this project shares the same underlying Database/KeyValue
 	// population.
-	dbsByEnv, err := s.databaseIDsByEnvironment(ctx, p.TenantID)
-	if err != nil {
-		return nil, err
-	}
-	kvsByEnv, err := s.keyValueIDsByEnvironment(ctx, p.TenantID)
-	if err != nil {
-		return nil, err
-	}
-	groupsByEnv, err := s.envGroupIDsByEnvironment(ctx, p.TenantID)
+	dbsByEnv, kvsByEnv, groupsByEnv, err := s.membersByEnvironment(ctx, p.TenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -364,7 +460,11 @@ func (s *Service) Create(ctx context.Context, projectID, name string) (Environme
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return EnvironmentView{}, err
 	}
-	return s.create(ctx, projectID, name)
+	e, err := s.create(ctx, projectID, name)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	return newView(e), nil
 }
 
 // CreateWithACL creates an environment and its optional protected-environment
@@ -392,27 +492,32 @@ func (s *Service) CreateWithACL(ctx context.Context, req CreateEnvironmentReques
 		}
 	}
 	e, err := s.create(ctx, req.ProjectID, req.Name)
-	if err != nil || !hasACL {
-		return e, err
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	if !hasACL {
+		return newView(e), nil
 	}
 	return s.applyACL(ctx, e, req.ProtectedStatus, req.NetworkIsolationEnabled, req.IPAllowList)
 }
 
 // create is the post-authorization create body shared by Create and
-// CreateWithACL.
-func (s *Service) create(ctx context.Context, projectID, name string) (EnvironmentView, error) {
+// CreateWithACL. It returns the store row rather than a view because
+// CreateWithACL's second phase (applyACL) needs the row, and because a
+// brand-new environment id cannot yet be referenced by any
+// service/database/key-value/env group — so Create composes its view with
+// newView instead of paying for view's membership fetches (matching
+// projects.Service.Create's own toView(p, nil, nil, nil)).
+func (s *Service) create(ctx context.Context, projectID, name string) (store.Environment, error) {
 	p, err := s.requireProject(ctx, core.RelCanCreate, projectID)
 	if err != nil {
-		return EnvironmentView{}, err
+		return store.Environment{}, err
 	}
 	e, err := s.Store.CreateEnvironment(ctx, p.ID, p.TenantID, name)
 	if err != nil {
-		return EnvironmentView{}, mapStoreErr(err)
+		return store.Environment{}, mapStoreErr(err)
 	}
-	// A brand-new environment id cannot yet be referenced by any
-	// service/database/key-value, so skip toFullView's membership fetches
-	// (matching projects.Service.Create's own toView(p, nil, nil, nil)).
-	return toView(e, nil, nil, nil, nil), nil
+	return e, nil
 }
 
 // Rename renames an environment.
@@ -484,7 +589,7 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 	if err := validateACL(status, allowList); err != nil {
 		return EnvironmentView{}, err
 	}
-	return s.applyACL(ctx, toView(e, nil, nil, nil, nil), status, isolated, allowList)
+	return s.applyACL(ctx, e, status, isolated, allowList)
 }
 
 // ProjectMemberClearer adapts Service to the projects feature's
@@ -589,17 +694,21 @@ func (s *Service) clearEnvironmentMembers(ctx context.Context, e store.Environme
 	if err := s.propagateIPAllowList(ctx, e.TenantID, e.ID, names, nil); err != nil {
 		return err
 	}
-	if s.EnvGroups == nil {
+	idx := s.envGroups()
+	if idx == nil {
 		return nil
 	}
-	workspaceCtx := core.WithWorkspace(ctx, e.TenantID)
-	groups, err := s.EnvGroups.ListEnvironmentMemberships(workspaceCtx, e.TenantID)
+	// Env group writes authorize against the CONTEXT workspace (unlike the
+	// Database/KeyValue seams, which resolve it from the resource's own
+	// labels), so bind the environment's own workspace before touching them.
+	ctx = core.WithWorkspace(ctx, e.TenantID)
+	groups, err := idx.list(ctx, e.TenantID)
 	if err != nil {
 		return err
 	}
 	for _, g := range groups {
-		if g.EnvironmentID == e.ID {
-			if err := s.EnvGroups.SetEnvironmentID(workspaceCtx, g.ID, ""); err != nil {
+		if g.environmentID == e.ID {
+			if err := idx.leave(ctx, g.id); err != nil {
 				return err
 			}
 		}
@@ -650,19 +759,7 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []strin
 	if err := s.applyAppAllowLists(ctx, sids, core.EnvironmentLayerCIDRs(e.IPAllowList)); err != nil {
 		return EnvironmentView{}, err
 	}
-	dids, err := s.databaseIDsForEnvironment(ctx, e.TenantID, e.ID)
-	if err != nil {
-		return EnvironmentView{}, err
-	}
-	kids, err := s.keyValueIDsForEnvironment(ctx, e.TenantID, e.ID)
-	if err != nil {
-		return EnvironmentView{}, err
-	}
-	gidsByEnv, err := s.envGroupIDsByEnvironment(ctx, e.TenantID)
-	if err != nil {
-		return EnvironmentView{}, err
-	}
-	return toView(e, sids, dids, kids, gidsByEnv[e.ID]), nil
+	return s.view(ctx, e, sids)
 }
 
 // SetDatabases replaces the full list of managed Postgres databases in an
@@ -678,94 +775,12 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []strin
 // environment does NOT clear its project membership, matching
 // store.SetEnvironmentServices' own asymmetry for services.
 func (s *Service) SetDatabases(ctx context.Context, id string, databaseIDs []string) (EnvironmentView, error) {
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
-		return EnvironmentView{}, err
-	}
-	e, err := s.requireEnvironment(ctx, core.RelCanCreate, id)
-	if err != nil {
-		return EnvironmentView{}, err
-	}
-	if s.Databases == nil {
-		return EnvironmentView{}, ErrEnvironmentsUnavailable
-	}
-	existing, err := s.Databases.ListPostgres(ctx, e.TenantID)
-	if err != nil {
-		return EnvironmentView{}, err
-	}
-	want := make(map[string]bool, len(databaseIDs))
-	for _, did := range databaseIDs {
-		want[did] = true
-	}
-	layer := core.EnvironmentLayerCIDRs(e.IPAllowList)
-	for _, d := range existing {
-		switch {
-		case d.EnvironmentID == e.ID && !want[d.ID]:
-			if err := s.Databases.SetEnvironmentID(ctx, d.ID, ""); err != nil {
-				return EnvironmentView{}, err
-			}
-			if err := s.Databases.SetEnvironmentIPAllowList(ctx, d.ID, nil); err != nil {
-				return EnvironmentView{}, err
-			}
-		case d.EnvironmentID != e.ID && want[d.ID]:
-			if err := s.Databases.SetEnvironmentID(ctx, d.ID, e.ID); err != nil {
-				return EnvironmentView{}, err
-			}
-			if err := s.Databases.SetProjectID(ctx, d.ID, e.ProjectID); err != nil {
-				return EnvironmentView{}, err
-			}
-			// Joiners inherit the environment's inbound-IP layer (w4/m28).
-			if err := s.Databases.SetEnvironmentIPAllowList(ctx, d.ID, layer); err != nil {
-				return EnvironmentView{}, err
-			}
-		}
-	}
-	return s.toFullView(ctx, e)
+	return s.setResourceMembers(ctx, s.databases(), id, databaseIDs, ignoreUnknownIDs)
 }
 
 // SetKeyValues is SetDatabases' KeyValue-CR counterpart.
 func (s *Service) SetKeyValues(ctx context.Context, id string, keyValueIDs []string) (EnvironmentView, error) {
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
-		return EnvironmentView{}, err
-	}
-	e, err := s.requireEnvironment(ctx, core.RelCanCreate, id)
-	if err != nil {
-		return EnvironmentView{}, err
-	}
-	if s.KeyValues == nil {
-		return EnvironmentView{}, ErrEnvironmentsUnavailable
-	}
-	existing, err := s.KeyValues.ListKeyValues(ctx, e.TenantID)
-	if err != nil {
-		return EnvironmentView{}, err
-	}
-	want := make(map[string]bool, len(keyValueIDs))
-	for _, kid := range keyValueIDs {
-		want[kid] = true
-	}
-	layer := core.EnvironmentLayerCIDRs(e.IPAllowList)
-	for _, kv := range existing {
-		switch {
-		case kv.EnvironmentID == e.ID && !want[kv.ID]:
-			if err := s.KeyValues.SetEnvironmentID(ctx, kv.ID, ""); err != nil {
-				return EnvironmentView{}, err
-			}
-			if err := s.KeyValues.SetEnvironmentIPAllowList(ctx, kv.ID, nil); err != nil {
-				return EnvironmentView{}, err
-			}
-		case kv.EnvironmentID != e.ID && want[kv.ID]:
-			if err := s.KeyValues.SetEnvironmentID(ctx, kv.ID, e.ID); err != nil {
-				return EnvironmentView{}, err
-			}
-			if err := s.KeyValues.SetProjectID(ctx, kv.ID, e.ProjectID); err != nil {
-				return EnvironmentView{}, err
-			}
-			// Joiners inherit the environment's inbound-IP layer (w4/m28).
-			if err := s.KeyValues.SetEnvironmentIPAllowList(ctx, kv.ID, layer); err != nil {
-				return EnvironmentView{}, err
-			}
-		}
-	}
-	return s.toFullView(ctx, e)
+	return s.setResourceMembers(ctx, s.keyValues(), id, keyValueIDs, ignoreUnknownIDs)
 }
 
 // SetEnvGroups replaces the full list of environment groups assigned to an
@@ -774,6 +789,33 @@ func (s *Service) SetKeyValues(ctx context.Context, id string, keyValueIDs []str
 // Groups already assigned to another Environment in the same workspace move in
 // one update, while groups omitted from this Environment are unassigned.
 func (s *Service) SetEnvGroups(ctx context.Context, id string, envGroupIDs []string) (EnvironmentView, error) {
+	return s.setResourceMembers(ctx, s.envGroups(), id, envGroupIDs, rejectUnknownIDs)
+}
+
+// unknownIDPolicy decides what a wanted id that the workspace listing doesn't
+// know about means — the one behavior the three Set verbs genuinely differ on.
+type unknownIDPolicy int
+
+const (
+	// ignoreUnknownIDs drops the id: the listing is scoped to the
+	// environment's own workspace, so an id naming a Database/KeyValue
+	// elsewhere is simply absent from the diff and never adopted across the
+	// tenant boundary.
+	ignoreUnknownIDs unknownIDPolicy = iota
+	// rejectUnknownIDs refuses the whole call instead, so a typo'd or foreign
+	// env group id is reported rather than silently dropped. Nothing has been
+	// written by the time the check runs, so a refusal never leaves a partial
+	// membership change behind.
+	rejectUnknownIDs
+)
+
+// setResourceMembers replaces the full membership of one member kind in an
+// environment: it diffs the wanted set against the workspace's current
+// membership and re-stamps only what actually changed, so an unrelated member
+// is never rewritten. Every per-kind difference lives in idx (what join/leave
+// imply) or in unknown (what a foreign id means); the authorize-fetch-diff
+// shape itself exists once, so it cannot drift between the three Set verbs.
+func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id string, wantIDs []string, unknown unknownIDPolicy) (EnvironmentView, error) {
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return EnvironmentView{}, err
 	}
@@ -781,38 +823,44 @@ func (s *Service) SetEnvGroups(ctx context.Context, id string, envGroupIDs []str
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	if s.EnvGroups == nil {
+	if idx == nil {
 		return EnvironmentView{}, ErrEnvironmentsUnavailable
 	}
-	workspaceCtx := core.WithWorkspace(ctx, e.TenantID)
-	groups, err := s.EnvGroups.ListEnvironmentMemberships(workspaceCtx, e.TenantID)
+	// Act inside the environment's OWN workspace: env group writes authorize
+	// against the context workspace, while the Database/KeyValue seams resolve
+	// it from the resource's own labels and are unaffected — binding it here
+	// puts all three kinds on the same resource-scoped rule.
+	ctx = core.WithWorkspace(ctx, e.TenantID)
+	existing, err := idx.list(ctx, e.TenantID)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	byID := make(map[string]envgroups.EnvironmentMembership, len(groups))
-	for _, g := range groups {
-		byID[g.ID] = g
+	known := make(map[string]bool, len(existing))
+	for _, r := range existing {
+		known[r.id] = true
 	}
-	want := make(map[string]bool, len(envGroupIDs))
-	for _, gid := range envGroupIDs {
-		if _, ok := byID[gid]; !ok {
-			return EnvironmentView{}, fmt.Errorf("%w: environment group %q does not belong to workspace %q", core.ErrForbidden, gid, e.TenantID)
+	want := make(map[string]bool, len(wantIDs))
+	for _, wid := range wantIDs {
+		if unknown == rejectUnknownIDs && !known[wid] {
+			// The typed id prefix (ADR020) already names the kind, so one
+			// message serves whichever kind opted into rejection.
+			return EnvironmentView{}, fmt.Errorf("%w: %q does not belong to workspace %q", core.ErrForbidden, wid, e.TenantID)
 		}
-		want[gid] = true
+		want[wid] = true
 	}
-	for _, g := range groups {
+	for _, r := range existing {
 		switch {
-		case g.EnvironmentID == e.ID && !want[g.ID]:
-			if err := s.EnvGroups.SetEnvironmentID(workspaceCtx, g.ID, ""); err != nil {
+		case r.environmentID == e.ID && !want[r.id]:
+			if err := idx.leave(ctx, r.id); err != nil {
 				return EnvironmentView{}, err
 			}
-		case g.EnvironmentID != e.ID && want[g.ID]:
-			if err := s.EnvGroups.SetEnvironmentID(workspaceCtx, g.ID, e.ID); err != nil {
+		case r.environmentID != e.ID && want[r.id]:
+			if err := idx.join(ctx, e, r.id); err != nil {
 				return EnvironmentView{}, err
 			}
 		}
 	}
-	return s.toFullView(workspaceCtx, e)
+	return s.toFullView(ctx, e)
 }
 
 // SetACL replaces an environment's full protected-environment ACL triple
@@ -841,21 +889,22 @@ func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networ
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	return s.applyACL(ctx, toView(e, nil, nil, nil, nil), protectedStatus, networkIsolationEnabled, ipAllowList)
+	return s.applyACL(ctx, e, protectedStatus, networkIsolationEnabled, ipAllowList)
 }
 
 // applyACL is SetACL's post-authorization body and CreateWithACL's second
-// phase. The supplied view may be freshly created (no memberships) or loaded
-// from the store; membership is re-read below before projection/fan-out.
-func (s *Service) applyACL(ctx context.Context, view EnvironmentView, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) (EnvironmentView, error) {
+// phase. e may be a freshly created row or one loaded from the store; the ACL
+// triple is written, folded into e, and then projected onto the membership
+// this re-reads.
+func (s *Service) applyACL(ctx context.Context, e store.Environment, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) (EnvironmentView, error) {
 	if ipAllowList == nil {
 		ipAllowList = []core.IPAllowListEntry{}
 	}
-	if err := s.Store.SetEnvironmentACL(ctx, view.ID, protectedStatus, networkIsolationEnabled, ipAllowList); err != nil {
+	if err := s.Store.SetEnvironmentACL(ctx, e.ID, protectedStatus, networkIsolationEnabled, ipAllowList); err != nil {
 		return EnvironmentView{}, mapStoreErr(err)
 	}
-	view.ProtectedStatus, view.NetworkIsolationEnabled, view.IPAllowList = protectedStatus, networkIsolationEnabled, ipAllowList
-	sids, err := s.Store.ListEnvironmentServices(ctx, view.ID, view.ProjectID)
+	e.ProtectedStatus, e.NetworkIsolationEnabled, e.IPAllowList = protectedStatus, networkIsolationEnabled, ipAllowList
+	sids, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
@@ -864,26 +913,13 @@ func (s *Service) applyACL(ctx context.Context, view EnvironmentView, protectedS
 	// already matches the target state, so this correctly (and cheaply)
 	// handles on->off, off->on, and unchanged alike without needing the
 	// pre-update value.
-	if err := s.applyAppEnvironmentLabels(ctx, sids, view.ID, view.NetworkIsolationEnabled); err != nil {
+	if err := s.applyAppEnvironmentLabels(ctx, sids, e.ID, e.NetworkIsolationEnabled); err != nil {
 		return EnvironmentView{}, err
 	}
-	if err := s.propagateIPAllowList(ctx, view.OwnerID, view.ID, sids, core.EnvironmentLayerCIDRs(ipAllowList)); err != nil {
+	if err := s.propagateIPAllowList(ctx, e.TenantID, e.ID, sids, core.EnvironmentLayerCIDRs(ipAllowList)); err != nil {
 		return EnvironmentView{}, err
 	}
-	dids, err := s.databaseIDsForEnvironment(ctx, view.OwnerID, view.ID)
-	if err != nil {
-		return EnvironmentView{}, err
-	}
-	kids, err := s.keyValueIDsForEnvironment(ctx, view.OwnerID, view.ID)
-	if err != nil {
-		return EnvironmentView{}, err
-	}
-	gidsByEnv, err := s.envGroupIDsByEnvironment(ctx, view.OwnerID)
-	if err != nil {
-		return EnvironmentView{}, err
-	}
-	view.ServiceIDs, view.DatabaseIDs, view.KeyValueIDs, view.EnvGroupIDs = sids, dids, kids, gidsByEnv[view.ID]
-	return view, nil
+	return s.view(ctx, e, sids)
 }
 
 // validateEnvironmentName trims and rejects an empty environment name — the
@@ -941,29 +977,50 @@ func (s *Service) requireEnvironment(ctx context.Context, relation, id string) (
 	return e, nil
 }
 
-// toFullView assembles the full member snapshot of an environment — its
-// current service, database, and key-value ids — the shape every read and
-// write verb returns (mirroring internal/projects' inline sids/dids/kids
-// fetch at each of its verbs, factored out here since environments has more
-// call sites doing the identical three-fetch).
+// membersByEnvironment resolves all three label-backed member kinds for a whole
+// workspace in one call per kind — the fetch List shares across every row, and
+// the one view (below) needs for a single environment. Kinds left unwired
+// resolve to a nil map, so their membership reads empty rather than failing the
+// view.
+func (s *Service) membersByEnvironment(ctx context.Context, workspaceID string) (databases, keyValues, envGroups map[string][]string, err error) {
+	if databases, err = idsByEnvironment(ctx, s.databases(), workspaceID); err != nil {
+		return nil, nil, nil, err
+	}
+	if keyValues, err = idsByEnvironment(ctx, s.keyValues(), workspaceID); err != nil {
+		return nil, nil, nil, err
+	}
+	if envGroups, err = idsByEnvironment(ctx, s.envGroups(), workspaceID); err != nil {
+		return nil, nil, nil, err
+	}
+	return databases, keyValues, envGroups, nil
+}
+
+// view composes the API view of e from the service membership the caller has
+// already read plus a fresh read of the three label-backed member kinds. Every
+// verb returning one environment ends here, so a mutating verb always reports
+// the same membership a plain Get would.
+func (s *Service) view(ctx context.Context, e store.Environment, serviceIDs []string) (EnvironmentView, error) {
+	dids, kids, gids, err := s.membersByEnvironment(ctx, e.TenantID)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	return toView(e, serviceIDs, dids[e.ID], kids[e.ID], gids[e.ID]), nil
+}
+
+// toFullView is view for a caller that hasn't already read the service
+// membership.
 func (s *Service) toFullView(ctx context.Context, e store.Environment) (EnvironmentView, error) {
 	sids, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	dids, err := s.databaseIDsForEnvironment(ctx, e.TenantID, e.ID)
-	if err != nil {
-		return EnvironmentView{}, err
-	}
-	kids, err := s.keyValueIDsForEnvironment(ctx, e.TenantID, e.ID)
-	if err != nil {
-		return EnvironmentView{}, err
-	}
-	gidsByEnv, err := s.envGroupIDsByEnvironment(ctx, e.TenantID)
-	if err != nil {
-		return EnvironmentView{}, err
-	}
-	return toView(e, sids, dids, kids, gidsByEnv[e.ID]), nil
+	return s.view(ctx, e, sids)
+}
+
+// newView is the memberless view of e — the shape a brand-new environment id
+// has, before anything can possibly reference it.
+func newView(e store.Environment) EnvironmentView {
+	return toView(e, nil, nil, nil, nil)
 }
 
 func toView(e store.Environment, serviceIDs, databaseIDs, keyValueIDs, envGroupIDs []string) EnvironmentView {
@@ -1016,6 +1073,42 @@ func namesLeaving(before, after []string) []string {
 	return out
 }
 
+// patchApps applies mutate to every named App CR, one merge-patch each. Every
+// App is fetched via AuthorizeApp — the same authorize-and-audit seam
+// apps.Service itself uses — so each fan-out write is individually authorized
+// (and its target individually audited), not just once at the environment
+// level. mutate reports whether it actually changed anything; an App already in
+// the wanted state is not patched. Client nil (no k8s cluster wired — unit
+// tests, or a DB-less deploy) is a no-op: the same degrade every other
+// CR-touching feature uses, never a panic on a nil client.
+func (s *Service) patchApps(ctx context.Context, names []string, mutate func(a *appv1alpha1.App) bool) error {
+	if s.Client == nil {
+		return nil
+	}
+	for _, name := range names {
+		a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
+		if err != nil {
+			// A member name with no matching App CR (a stale row, or a race
+			// with a concurrent delete) is skipped, not fatal — mirroring
+			// store.SetEnvironmentServices' own "names not found are silently
+			// skipped" convention rather than failing the whole ACL/membership
+			// change over one dangling name.
+			if errors.Is(err, core.ErrNotFound) {
+				continue
+			}
+			return err
+		}
+		before := a.DeepCopy()
+		if !mutate(a) {
+			continue
+		}
+		if err := s.Client.Patch(ctx, a, client.MergeFrom(before)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // applyAppEnvironmentLabels reconciles core.LabelNetworkIsolation on every
 // named App CR to (envID, isolated): present (= envID) when isolated, absent
 // otherwise. Callers pass ("", false) to clear unconditionally — a service
@@ -1023,57 +1116,24 @@ func namesLeaving(before, after []string) []string {
 // deleted (Delete) — or (e.ID, e.NetworkIsolationEnabled) to sync to an
 // environment's current state (SetServices' new members, SetACL's toggle).
 func (s *Service) applyAppEnvironmentLabels(ctx context.Context, names []string, envID string, isolated bool) error {
-	for _, name := range names {
-		if err := s.setAppEnvironmentLabel(ctx, name, envID, isolated); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// setAppEnvironmentLabel fetches the named App via AuthorizeApp — the same
-// authorize-and-audit seam apps.Service itself uses, so this fan-out write is
-// individually authorized (and its target individually audited) per App, not
-// just once at the environment level — then patches core.LabelNetworkIsolation
-// to match (isolated, envID) with a merge-patch. A no-op patch (label already
-// matches) is skipped. Client nil (no k8s cluster wired — unit tests, or a
-// DB-less deploy) is a no-op: the same degrade every other CR-touching
-// feature uses, never a panic on a nil client.
-func (s *Service) setAppEnvironmentLabel(ctx context.Context, name, envID string, isolated bool) error {
-	if s.Client == nil {
-		return nil
-	}
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
-	if err != nil {
-		// A member name with no matching App CR (a stale row, or a race with a
-		// concurrent delete) is skipped, not fatal — mirroring
-		// store.SetEnvironmentServices' own "names not found are silently
-		// skipped" convention rather than failing the whole ACL/membership
-		// change over one dangling name.
-		if errors.Is(err, core.ErrNotFound) {
-			return nil
-		}
-		return err
-	}
 	want := isolated && envID != ""
-	if want && a.Labels[core.LabelNetworkIsolation] == envID {
-		return nil
-	}
-	if !want {
-		if _, ok := a.Labels[core.LabelNetworkIsolation]; !ok {
-			return nil
+	return s.patchApps(ctx, names, func(a *appv1alpha1.App) bool {
+		if !want {
+			if _, ok := a.Labels[core.LabelNetworkIsolation]; !ok {
+				return false
+			}
+			delete(a.Labels, core.LabelNetworkIsolation)
+			return true
 		}
-	}
-	before := a.DeepCopy()
-	if want {
+		if a.Labels[core.LabelNetworkIsolation] == envID {
+			return false
+		}
 		if a.Labels == nil {
 			a.Labels = map[string]string{}
 		}
 		a.Labels[core.LabelNetworkIsolation] = envID
-	} else {
-		delete(a.Labels, core.LabelNetworkIsolation)
-	}
-	return s.Client.Patch(ctx, a, client.MergeFrom(before))
+		return true
+	})
 }
 
 // propagateIPAllowList fans an environment's inbound-IP layer out to every
@@ -1091,30 +1151,21 @@ func (s *Service) propagateIPAllowList(ctx context.Context, tenantID, environmen
 	if err := s.applyAppAllowLists(ctx, serviceNames, cidrs); err != nil {
 		return err
 	}
-	if s.Databases != nil {
-		dbs, err := s.Databases.ListPostgres(ctx, tenantID)
+	// Only the kinds with a network surface of their own carry the layer —
+	// env groups are members but have nothing to project onto.
+	for _, idx := range []layeredIndex{s.databases(), s.keyValues()} {
+		if idx == nil {
+			continue
+		}
+		members, err := idx.list(ctx, tenantID)
 		if err != nil {
 			return err
 		}
-		for _, d := range dbs {
-			if d.EnvironmentID != environmentID {
+		for _, m := range members {
+			if m.environmentID != environmentID {
 				continue
 			}
-			if err := s.Databases.SetEnvironmentIPAllowList(ctx, d.ID, cidrs); err != nil {
-				return err
-			}
-		}
-	}
-	if s.KeyValues != nil {
-		kvs, err := s.KeyValues.ListKeyValues(ctx, tenantID)
-		if err != nil {
-			return err
-		}
-		for _, kv := range kvs {
-			if kv.EnvironmentID != environmentID {
-				continue
-			}
-			if err := s.KeyValues.SetEnvironmentIPAllowList(ctx, kv.ID, cidrs); err != nil {
+			if err := idx.setIPLayer(ctx, m.id, cidrs); err != nil {
 				return err
 			}
 		}
@@ -1123,38 +1174,17 @@ func (s *Service) propagateIPAllowList(ctx context.Context, tenantID, environmen
 }
 
 // applyAppAllowLists fans one projected layer over a set of member Apps —
-// applyAppEnvironmentLabels' inbound-IP sibling, shared by SetServices and
-// propagateIPAllowList so the per-App loop exists once.
+// applyAppEnvironmentLabels' inbound-IP sibling (w4/m28), patching
+// spec.environmentIPAllowList to the projected layer (nil clears it). Shared by
+// SetServices and propagateIPAllowList so the per-App loop exists once.
 func (s *Service) applyAppAllowLists(ctx context.Context, names []string, cidrs []string) error {
-	for _, name := range names {
-		if err := s.setAppEnvironmentAllowList(ctx, name, cidrs); err != nil {
-			return err
+	return s.patchApps(ctx, names, func(a *appv1alpha1.App) bool {
+		if slices.Equal(a.Spec.EnvironmentIPAllowList, cidrs) {
+			return false
 		}
-	}
-	return nil
-}
-
-// setAppEnvironmentAllowList is setAppEnvironmentLabel's inbound-IP sibling
-// (w4/m28): the same individually-authorized AuthorizeApp seam, patching
-// spec.environmentIPAllowList to the projected layer (nil clears it). The
-// same nil-Client and stale-name degrades apply.
-func (s *Service) setAppEnvironmentAllowList(ctx context.Context, name string, cidrs []string) error {
-	if s.Client == nil {
-		return nil
-	}
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
-	if err != nil {
-		if errors.Is(err, core.ErrNotFound) {
-			return nil
-		}
-		return err
-	}
-	if slices.Equal(a.Spec.EnvironmentIPAllowList, cidrs) {
-		return nil
-	}
-	before := a.DeepCopy()
-	a.Spec.EnvironmentIPAllowList = cidrs
-	return s.Client.Patch(ctx, a, client.MergeFrom(before))
+		a.Spec.EnvironmentIPAllowList = cidrs
+		return true
+	})
 }
 
 func mapStoreErr(err error) error {
