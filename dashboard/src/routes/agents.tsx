@@ -45,9 +45,9 @@ function ComposerPane() {
   const { t } = useTranslations();
   return (
     <div className="flex flex-1 items-center justify-center overflow-auto p-4 sm:p-6">
-      <div className="w-full max-w-2xl space-y-6 pb-16">
+      <div className="w-full max-w-2xl space-y-4 pb-16">
         <div className="space-y-1.5 text-center">
-          <h1 className="text-2xl font-semibold">
+          <h1 className="text-xl font-semibold">
             {t("agentSessions.promptHeading")}
           </h1>
           <p className="text-muted-foreground text-sm">
@@ -66,7 +66,7 @@ function SessionListPane() {
   const { sessions, loading, error } = useAgentSessions({ poll: false });
   return (
     <>
-      <div className="border-b px-4 py-4 sm:px-6">
+      <div className="border-b px-4 py-3 sm:px-6">
         <h1 className="text-xl font-semibold">
           {t("agentSessions.pageTitle")}
         </h1>

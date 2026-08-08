@@ -135,7 +135,7 @@ export function SteeringComposer({
 
   return (
     <div className="bg-background shrink-0 border-t">
-      <div className="mx-auto w-full max-w-3xl space-y-2 px-4 py-3">
+      <div className="mx-auto w-full max-w-3xl space-y-1.5 px-4 py-2">
         {submitError ? (
           <Alert variant="destructive">
             <AlertTitle>{t("agentSessions.steerErrorTitle")}</AlertTitle>
@@ -146,7 +146,7 @@ export function SteeringComposer({
         <form onSubmit={(e) => void onSubmit(e)}>
           <div
             className={cn(
-              "border-input bg-background focus-within:border-ring focus-within:ring-ring/40 flex items-end gap-2 rounded-2xl border px-3 py-2 shadow-xs transition-[color,box-shadow] focus-within:ring-[3px]",
+              "border-input bg-background focus-within:border-ring focus-within:ring-ring/40 flex items-end gap-2 rounded-xl border px-2.5 py-1.5 shadow-xs transition-[color,box-shadow] focus-within:ring-[3px]",
               inputDisabled && "opacity-70",
             )}
           >
@@ -184,7 +184,7 @@ export function SteeringComposer({
               )}
             </Button>
           </div>
-          <p className="text-muted-foreground mt-1.5 px-1 text-xs">
+          <p className="text-muted-foreground mt-1 px-1 text-xs">
             {disabledReason ??
               (route === "redispatch"
                 ? t("agentSessions.steerHintIdle")

@@ -221,7 +221,7 @@ export function SessionConversationImpl({
         role="log"
         aria-live="polite"
       >
-        <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
+        <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-4">
           {connecting && (
             <div className="text-muted-foreground flex items-center gap-2 text-sm">
               <Loader2 aria-hidden className="size-4 shrink-0 animate-spin" />
@@ -442,7 +442,7 @@ function MessageRow({
         className={cn(
           "min-w-0 text-sm leading-7",
           isUser
-            ? "border-border/70 bg-muted text-foreground max-w-[92%] rounded-2xl rounded-br-md border px-4 py-2.5 shadow-xs sm:max-w-md dark:bg-muted/80"
+            ? "border-border/70 bg-muted text-foreground max-w-[92%] rounded-xl rounded-br-md border px-3 py-1.5 shadow-xs sm:max-w-md dark:bg-muted/80"
             : "min-w-0 flex-1",
         )}
       >
@@ -501,7 +501,7 @@ function ReasoningBlock({
         type="button"
         onClick={() => setIsOpen((open) => !open)}
         aria-expanded={isOpen}
-        className="hover:bg-muted/40 flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left transition-colors"
+        className="hover:bg-muted/40 flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left transition-colors"
       >
         <span className="text-foreground/90 min-w-0 flex-1 truncate text-xs font-medium">
           {summary}
@@ -514,7 +514,7 @@ function ReasoningBlock({
         />
       </button>
       {isOpen && (
-        <div className="border-border/50 text-muted-foreground border-t px-3 py-2 text-sm">
+        <div className="border-border/50 text-muted-foreground border-t px-2.5 py-1.5 text-sm">
           <MarkdownRenderer content={text} />
         </div>
       )}
@@ -525,11 +525,11 @@ function ReasoningBlock({
 function PlanBlock({ entries }: { entries: AcpPlanEntry[] }) {
   const { t } = useTranslations();
   return (
-    <div className="border-border/70 bg-muted/10 my-3 rounded-xl border px-3 py-2.5">
+    <div className="border-border/70 bg-muted/10 my-2 rounded-lg border px-2.5 py-1.5">
       <p className="text-foreground/90 mb-2 text-xs font-medium">
         {t("agentSessions.groupPlan")}
       </p>
-      <ul className="space-y-1.5">
+      <ul className="space-y-1">
         {entries.map((entry, i) => (
           <li key={i} className="flex items-start gap-2 text-sm">
             <PlanStatusIcon status={entry.status} />

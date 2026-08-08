@@ -111,7 +111,7 @@ export function SessionDetailHeader({
   }
 
   return (
-    <div className="bg-background/95 supports-backdrop-filter:bg-background/60 flex shrink-0 items-center gap-3 border-b px-4 py-3 backdrop-blur">
+    <div className="bg-background/95 supports-backdrop-filter:bg-background/60 flex shrink-0 items-center gap-3 border-b px-4 py-2 backdrop-blur">
       {/* Back to the sessions list (the sidebar handles this on wide screens,
           but the link keeps /agents reachable on mobile where it is hidden). */}
       <Button
@@ -140,7 +140,11 @@ export function SessionDetailHeader({
           {session.deliveryMode ? (
             <span className="hidden sm:inline">
               {t("agentSessions.metaDelivery", {
-                mode: t(`agentSessions.delivery.${session.deliveryMode}`),
+                // An unknown/future mode must render as itself, never as a raw
+                // i18n key (a stub value once leaked "agentSessions.delivery.…").
+                mode: t(`agentSessions.delivery.${session.deliveryMode}`, {
+                  defaultValue: session.deliveryMode,
+                }),
               })}
             </span>
           ) : null}

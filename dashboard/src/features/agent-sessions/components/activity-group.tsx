@@ -8,7 +8,6 @@ import {
   Wrench,
 } from "lucide-react";
 import { cn } from "@/common/lib/utils/utils";
-import { CodeBlock } from "@/common/components/code-block";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   formatApproxDuration,
@@ -66,12 +65,12 @@ export function ActivityGroup({ steps }: { steps: ActivityStep[] }) {
       : t("agentSessions.groupWorked");
 
   return (
-    <div className="bg-muted/20 border-border/70 my-3 overflow-hidden rounded-xl border">
+    <div className="bg-muted/20 border-border/70 my-2 overflow-hidden rounded-lg border">
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
         aria-expanded={isOpen}
-        className="hover:bg-muted/40 flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left transition-colors"
+        className="hover:bg-muted/40 flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left transition-colors"
       >
         {hasPending ? (
           <Loader2 className="text-muted-foreground size-3.5 shrink-0 animate-spin" />
@@ -90,10 +89,10 @@ export function ActivityGroup({ steps }: { steps: ActivityStep[] }) {
       </button>
 
       {isOpen && (
-        <div className="border-border/50 border-t px-3 py-3">
+        <div className="border-border/50 border-t px-2.5 py-2">
           {/* Vertical timeline: a connector line down the left with a node per
               step, the individual steps rendered in order. */}
-          <ol className="border-border/60 relative ml-1 space-y-2.5 border-l pl-4">
+          <ol className="border-border/60 relative ml-1 space-y-1.5 border-l pl-4">
             {steps.map((step, i) => (
               <li key={i} className="relative">
                 <span
@@ -131,10 +130,7 @@ function ActivityStepView({ step }: { step: ActivityStep }) {
         <StepLabel icon={<TerminalIcon className="text-primary/60 size-3" />}>
           {t("agentSessions.groupTerminal")}
         </StepLabel>
-        <CodeBlock
-          code={step.output ?? t("agentSessions.terminalNoOutput")}
-          language="bash"
-        />
+        <StepCode code={step.output ?? t("agentSessions.terminalNoOutput")} />
       </div>
     );
   }
@@ -145,10 +141,7 @@ function ActivityStepView({ step }: { step: ActivityStep }) {
         <StepLabel icon={<FileDiff className="text-primary/60 size-3" />}>
           {step.path ?? t("agentSessions.groupDiff")}
         </StepLabel>
-        <CodeBlock
-          code={unifiedDiff(step.oldText, step.newText)}
-          language="diff"
-        />
+        <StepCode code={unifiedDiff(step.oldText, step.newText)} />
       </div>
     );
   }
@@ -173,10 +166,10 @@ function ActivityStepView({ step }: { step: ActivityStep }) {
           </span>
         </StepShell>
         {step.input !== undefined && step.input !== null && (
-          <CodeBlock code={safeJson(step.input)} language="json" />
+          <StepCode code={safeJson(step.input)} />
         )}
         {step.output !== undefined && step.output !== null && (
-          <CodeBlock code={safeJson(step.output)} language="json" />
+          <StepCode code={safeJson(step.output)} />
         )}
         {step.errorText && (
           <p className="text-destructive text-xs">{step.errorText}</p>
@@ -185,7 +178,7 @@ function ActivityStepView({ step }: { step: ActivityStep }) {
     );
   }
 
-  return <CodeBlock code={safeJson(step.data)} language="json" />;
+  return <StepCode code={safeJson(step.data)} />;
 }
 
 // A compact single-line step row (command / tool header).
@@ -197,12 +190,23 @@ function StepShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="border-border/60 bg-background text-muted-foreground rounded-lg border px-3 py-2 font-mono text-xs">
+    <div className="border-border/60 bg-background text-muted-foreground rounded-md border px-2.5 py-1.5 font-mono text-xs">
       <div className="flex items-center gap-1.5">
         {icon}
         {children}
       </div>
     </div>
+  );
+}
+
+// A compact code body for a timeline step. The shared CodeBlock's chrome
+// (language header bar, p-4, my-4) triples a step's height; a step is context,
+// not a document, so it gets a bare scroll-capped pre instead (w3 compact pass).
+function StepCode({ code }: { code: string }) {
+  return (
+    <pre className="border-border/60 bg-background text-muted-foreground max-h-48 overflow-auto rounded-md border px-2.5 py-1.5 font-mono text-xs whitespace-pre-wrap">
+      {code}
+    </pre>
   );
 }
 
