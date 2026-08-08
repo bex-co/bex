@@ -6,7 +6,6 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSessions } from "@/features/agent-sessions/hooks/use-agent-sessions";
 import { NewSessionComposer } from "@/features/agent-sessions/components/new-session-composer";
 import { SessionList } from "@/features/agent-sessions/components/session-list";
-import { SessionSidebar } from "@/features/agent-sessions/components/session-sidebar";
 
 export const Route = createFileRoute("/agents")({
   component: AgentSessionsPage,
@@ -19,23 +18,21 @@ export const Route = createFileRoute("/agents")({
 });
 
 /**
- * The `/agents` page (ADR047 D9): the sessions sidebar plus a main pane that is
- * either the Devin-style centered prompt box or, under `?view=list`, the
- * standalone sessions table. Workspace scoping comes from the switcher
- * (`useAgentSessions` reads `useWorkspace()`), never the path. The composer
- * always renders — a 503/unconfigured backend shows its house callout on the
- * composer while the sidebar list degrades on its own.
+ * The `/agents` page (ADR047 D9): a main pane that is either the Devin-style
+ * centered prompt box or, under `?view=list`, the standalone sessions table.
+ * The sessions list lives in the ONE dashboard rail (`AgentSessionsNavSection`,
+ * w5/m64) — this page renders no sidebar of its own. Workspace scoping comes
+ * from the switcher (`useAgentSessions` reads `useWorkspace()`), never the
+ * path. The composer always renders — a 503/unconfigured backend shows its
+ * house callout on the composer while the rail's list degrades on its own.
  */
 export function AgentSessionsPage() {
   const { view } = Route.useSearch();
 
   return (
     <DashboardLayout>
-      <div className="flex min-h-0 flex-1">
-        <SessionSidebar activeId="" />
-        <div className="flex min-w-0 flex-1 flex-col">
-          {view === "list" ? <SessionListPane /> : <ComposerPane />}
-        </div>
+      <div className="flex min-w-0 min-h-0 flex-1 flex-col">
+        {view === "list" ? <SessionListPane /> : <ComposerPane />}
       </div>
     </DashboardLayout>
   );
@@ -62,7 +59,8 @@ function ComposerPane() {
 
 function SessionListPane() {
   const { t } = useTranslations();
-  // The sidebar renders alongside and owns the poll; this is a cache read.
+  // The rail's AgentSessionsNavSection renders alongside and owns the poll;
+  // this is a cache read, so only one poller is ever live on /agents.
   const { sessions, loading, error } = useAgentSessions({ poll: false });
   return (
     <>

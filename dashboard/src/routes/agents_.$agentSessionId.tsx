@@ -25,7 +25,6 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSession } from "@/features/agent-sessions/hooks/use-agent-session";
 import { SessionDetailHeader } from "@/features/agent-sessions/components/session-detail-header";
-import { SessionSidebar } from "@/features/agent-sessions/components/session-sidebar";
 import { PrCard } from "@/features/agent-sessions/components/pr-card";
 import { EvidencePanel } from "@/features/agent-sessions/components/evidence-panel";
 import { SteeringComposer } from "@/features/agent-sessions/components/steering-composer";
@@ -65,8 +64,6 @@ function AgentSessionDetailPage() {
   return (
     <DashboardLayout>
       <div className="flex min-h-0 flex-1">
-        <SessionSidebar activeId={agentSessionId} />
-
         <div className="flex min-w-0 flex-1 flex-col">
           {loading && !session ? <DetailSkeleton /> : null}
           {!loading && !session && error ? (
@@ -185,17 +182,15 @@ function EvidenceSidePanel({
   );
 }
 
-// The pending frame: layout shell + sidebar + skeleton, but deliberately NO
-// SessionConversation (no useChat/stream mount) so navigating in doesn't fire a
-// duplicate resume stream fetch before the real page mounts (w3/m44).
+// The pending frame: layout shell (the rail comes from DashboardLayout) +
+// skeleton, but deliberately NO SessionConversation (no useChat/stream mount)
+// so navigating in doesn't fire a duplicate resume stream fetch before the
+// real page mounts (w3/m44).
 function AgentSessionDetailPending() {
   return (
     <DashboardLayout>
-      <div className="flex min-h-0 flex-1">
-        <SessionSidebar activeId="" />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <DetailSkeleton />
-        </div>
+      <div className="flex min-w-0 min-h-0 flex-1 flex-col">
+        <DetailSkeleton />
       </div>
     </DashboardLayout>
   );
