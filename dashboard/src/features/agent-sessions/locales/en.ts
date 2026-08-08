@@ -546,6 +546,10 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Error",
     description: "Section label for a tool call's error text",
   },
+  "agentSessions.toolCommand": {
+    message: "Command",
+    description: "Section label for a tool call's shell command",
+  },
   "agentSessions.toolStateRunning": {
     message: "Running",
     description: "Badge label for a tool call awaiting output",

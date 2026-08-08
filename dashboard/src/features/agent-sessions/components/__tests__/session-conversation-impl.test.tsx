@@ -182,6 +182,124 @@ describe("SessionConversationImpl", () => {
     expect(screen.getByText("Show file")).toBeInTheDocument();
   });
 
+  it("collapses ACP plan snapshots to the latest and never spins after settle", async () => {
+    // ACP re-sends the whole plan on every update. Two snapshots must render ONE
+    // plan checklist showing the LATEST statuses — not a stack of stale snapshots
+    // each frozen (and, pre-fix, spinning) at its own in_progress state (ADR051).
+    const PLAN_SNAPSHOTS: UIMessageChunk[] = [
+      { type: "start", messageId: "asm-p" },
+      {
+        type: "data-acp",
+        data: {
+          type: "plan",
+          entries: [
+            { content: "Wire the handler", status: "in_progress" },
+            { content: "Open a draft PR", status: "pending" },
+          ],
+        },
+      } as UIMessageChunk,
+      {
+        type: "data-acp",
+        data: {
+          type: "plan",
+          entries: [
+            { content: "Wire the handler", status: "completed" },
+            { content: "Open a draft PR", status: "in_progress" },
+          ],
+        },
+      } as UIMessageChunk,
+      { type: "finish" },
+    ];
+    const transport = createAgentSessionTransport({
+      sessionId: "as-plan",
+      mintTicket,
+      fetch: makeFixtureFetch(PLAN_SNAPSHOTS, { terminal: true }),
+    });
+
+    const { container } = render(
+      <SessionConversationImpl
+        sessionId="as-plan"
+        isTerminal
+        transport={transport}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText("Wire the handler")).toBeInTheDocument(),
+    );
+    // ONE plan block (one "Plan" trigger, each entry once) — snapshots collapsed.
+    expect(screen.getAllByText("Plan")).toHaveLength(1);
+    expect(screen.getAllByText("Wire the handler")).toHaveLength(1);
+    expect(screen.getAllByText("Open a draft PR")).toHaveLength(1);
+
+    // Settled terminal session: no spinner anywhere (the forever-spin regression).
+    await waitFor(() =>
+      expect(screen.getByText("Session ended.")).toBeInTheDocument(),
+    );
+    expect(container.querySelector(".animate-spin")).toBeNull();
+  });
+
+  it("unwraps the opaque ACP dynamic tool instead of dumping raw JSON", async () => {
+    // The shipped provider collapses ACP tools into one dynamic tool whose input
+    // is {toolCallId, toolName, args}; a naive render dumped `{"command":"ls"}` /
+    // `{"ok":true}`. The unwrap recovers the real name + command and drops the
+    // trivial ack (ADR051 glue #2).
+    const ENVELOPE_TOOL: UIMessageChunk[] = [
+      { type: "start", messageId: "asm-e" },
+      {
+        type: "tool-input-start",
+        toolCallId: "e1",
+        toolName: "acp.acp_provider_agent_dynamic_tool",
+        dynamic: true,
+      },
+      {
+        type: "tool-input-available",
+        toolCallId: "e1",
+        toolName: "acp.acp_provider_agent_dynamic_tool",
+        input: {
+          toolCallId: "e1",
+          toolName: "bash",
+          args: { command: "ls -la" },
+        },
+        dynamic: true,
+      },
+      {
+        type: "tool-output-available",
+        toolCallId: "e1",
+        output: { ok: true },
+        dynamic: true,
+      },
+      { type: "finish" },
+    ];
+    const transport = createAgentSessionTransport({
+      sessionId: "as-tool",
+      mintTicket,
+      fetch: makeFixtureFetch(ENVELOPE_TOOL, { terminal: true }),
+    });
+
+    const { container } = render(
+      <SessionConversationImpl
+        sessionId="as-tool"
+        isTerminal
+        transport={transport}
+      />,
+    );
+
+    const summary = await screen.findByText("Worked");
+    await userEvent.click(summary);
+
+    // Real tool name recovered; the opaque wrapper name never shown.
+    expect(screen.getByText("bash")).toBeInTheDocument();
+    expect(
+      screen.queryByText("acp.acp_provider_agent_dynamic_tool"),
+    ).not.toBeInTheDocument();
+    // Command lifted to a labeled section; the trivial {ok:true} ack dropped.
+    expect(screen.getByText("Command")).toBeInTheDocument();
+    expect(container.textContent).toContain("ls -la");
+    expect(screen.queryByText("Output")).not.toBeInTheDocument();
+    expect(container.textContent).not.toContain('"ok"');
+  });
+
   it("lifts the live-steering handle via onChatStateChange", async () => {
     const onChatStateChange = vi.fn();
     const transport = createAgentSessionTransport({
@@ -283,4 +401,4 @@ describe("collapseDoubledParts", () => {
     expect(collapseDoubledParts(transcript().slice(0, 3))).toHaveLength(3);
     expect(collapseDoubledParts([P("text", { text: "hi" })])).toHaveLength(1);
   });
-})
+});
