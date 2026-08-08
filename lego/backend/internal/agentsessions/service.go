@@ -45,6 +45,11 @@ type Store interface {
 	RecordAgentSessionDispatch(context.Context, string, string, string, string, string) (store.AgentSession, error)
 	FinalizeAgentSession(context.Context, string, string, string, string, int, json.RawMessage, string) (store.AgentSession, error)
 	DeleteAgentSession(context.Context, string) error
+	// Transcript persistence (ADR051): the Completer harvests the driver's log
+	// at completion and appends it here (idempotent, keyed by session+seq).
+	AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []store.AgentSessionTranscriptPart) error
+	AgentSessionTranscriptMaxSeq(ctx context.Context, sessionID string) (int64, bool, error)
+	AgentSessionTranscriptTurnRecorded(ctx context.Context, sessionID string, turn int) (bool, error)
 }
 
 // TupleWriter establishes the resource-parent edge in OpenFGA. The production
@@ -60,9 +65,10 @@ type SandboxLifecycle interface {
 	ResumeAgentSessionSandbox(context.Context, string, string, string) error
 	CancelAgentSessionSandbox(context.Context, string, string, string) error
 	ReadSessionStatus(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error)
-	// RecordTranscript tees the finished turn's conversation into the durable
-	// transcript before teardown (ADR051); best-effort.
-	RecordTranscript(ctx context.Context, workspaceID, sessionID, sandboxID string, turn int) error
+	// ReadSessionTranscript returns the driver's redacted per-part session log
+	// (JSONL) over the same pods/exec boundary as ReadSessionStatus, so the
+	// Completer can persist the conversation before teardown (ADR051).
+	ReadSessionTranscript(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error)
 }
 
 // PullRequestOpener opens (or idempotently reuses) the session's draft PR. The

@@ -116,16 +116,6 @@ func (f *fakeAttachStore) AgentSessionTranscriptMaxSeq(_ context.Context, id str
 	return max, ok, nil
 }
 
-func (f *fakeAttachStore) AgentSessionTranscriptTurnRecorded(_ context.Context, id string, turn int) (bool, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	for _, p := range f.parts[id] {
-		if p.Turn == turn {
-			return true, nil
-		}
-	}
-	return false, nil
-}
 
 func (f *fakeAttachStore) ClaimShellNonce(_ context.Context, nonce string, _ time.Time) (bool, error) {
 	f.mu.Lock()

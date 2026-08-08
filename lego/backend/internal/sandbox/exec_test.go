@@ -19,6 +19,7 @@ package sandbox
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -28,7 +29,6 @@ import (
 	"context"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
-	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
 )
@@ -316,52 +316,63 @@ func TestReadSessionStatusMintsSystemSubjectWithoutIdentity(t *testing.T) {
 	}
 }
 
-// RecordTranscript (ADR051) mints an agent-session ticket signed with the exec
-// HMAC (binding session/pod/turn under the system subject) and POSTs the
-// gateway's recorder endpoint — the trusted Completer path, no caller identity.
-func TestRecordTranscriptMintsExecSignedTicket(t *testing.T) {
-	secret := []byte("exec-secret")
-	var got agentsessionticket.Claims
-	gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			t.Fatalf("record method = %s, want POST", r.Method)
-		}
-		c, err := agentsessionticket.Verify(secret, r.Header.Get(agentsessionticket.TicketHeader), time.Now())
-		if err != nil {
-			http.Error(w, "bad ticket", http.StatusUnauthorized)
+// ReadSessionTranscript (ADR051) harvests the driver's session log over the same
+// pods/exec boundary as ReadSessionStatus (a `tail` of the log file), under the
+// system subject with no caller identity. The Completer parses the returned JSONL.
+func TestReadSessionTranscriptHarvestsLogOverExecBoundary(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/sandboxes/os-agent" {
+			sb := osSandbox{ID: "os-agent", Metadata: map[string]string{
+				metadataOwner: "id-a", metadataWorkspace: "tea-a", metadataRegime: metadataSandboxRegime,
+				metadataNetworkPolicy: string(NetworkPolicyDenyAll), agentsession.LabelSession: "ags-one",
+			}}
+			sb.Status.State = "running"
+			_ = json.NewEncoder(w).Encode(sb)
 			return
 		}
-		got = c
-		w.WriteHeader(http.StatusOK)
+		http.NotFound(w, r)
+	}))
+	defer upstream.Close()
+
+	secret := []byte("exec-secret")
+	var gotSubject, gotCommand string
+	logLine := `{"at":"t","type":"ui-message","part":{"type":"text","text":"hi"}}`
+	gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claims, err := sandboxexec.Verify(secret, r.Header.Get(sandboxexec.TicketHeader), time.Now())
+		if err != nil {
+			http.Error(w, "invalid ticket", http.StatusUnauthorized)
+			return
+		}
+		gotSubject = claims.Subject
+		if len(claims.Command) == 3 {
+			gotCommand = claims.Command[2] // the `tail … session.jsonl` shell line
+		}
+		out, _ := json.Marshal(map[string]string{"stream": "stdout", "data": logLine + "\n"})
+		w.Header().Set("Content-Type", "text/event-stream")
+		fmt.Fprintf(w, "event: output\ndata: %s\n\n", out)
+		_, _ = w.Write([]byte("event: exit\ndata: {\"exitCode\":0}\n\n"))
 	}))
 	defer gateway.Close()
 
 	service := &Service{
-		Base:   &core.Base{Namespace: "default"},
-		Client: NewClient("http://unused"),
-		Exec:   &ExecConfig{Secret: secret, RecordURL: gateway.URL, Client: gateway.Client()},
+		Base:   &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
+		Client: NewClient(upstream.URL),
+		Exec:   &ExecConfig{Secret: secret, GatewayURL: gateway.URL, Client: gateway.Client()},
 	}
 	lifecycle := &AgentSessionLifecycle{service: service}
-	if err := lifecycle.RecordTranscript(context.Background(), "tea-a", "ags-one", "sandbox-1", 3); err != nil {
-		t.Fatalf("RecordTranscript: %v", err)
-	}
-	if got.SessionID != "ags-one" || got.Turn != 3 || got.Pod != "sandbox-1-0" ||
-		got.Namespace != "tea-a-sandbox" || got.Subject != systemExecSubject {
-		t.Fatalf("record ticket claims = %+v", got)
-	}
-}
 
-// With no recorder URL configured, recording is a best-effort no-op (never an
-// error) so the Completer's teardown is unaffected on dev/unwired deployments.
-func TestRecordTranscriptNoOpWhenUnconfigured(t *testing.T) {
-	service := &Service{
-		Base:   &core.Base{Namespace: "default"},
-		Client: NewClient("http://unused"),
-		Exec:   &ExecConfig{Secret: []byte("s")}, // no RecordURL
+	raw, err := lifecycle.ReadSessionTranscript(context.Background(), "tea-a", "ags-one", "os-agent")
+	if err != nil {
+		t.Fatalf("ReadSessionTranscript: %v", err)
 	}
-	lifecycle := &AgentSessionLifecycle{service: service}
-	if err := lifecycle.RecordTranscript(context.Background(), "tea-a", "ags-one", "sandbox-1", 1); err != nil {
-		t.Fatalf("unconfigured recorder must be a no-op, got %v", err)
+	if !strings.Contains(raw, `"text":"hi"`) {
+		t.Fatalf("harvested log = %q, want the driver log line", raw)
+	}
+	if gotSubject != systemExecSubject {
+		t.Fatalf("ticket subject = %q, want %q", gotSubject, systemExecSubject)
+	}
+	if !strings.Contains(gotCommand, agentSessionLogPath) {
+		t.Fatalf("exec command = %q, want a read of %q", gotCommand, agentSessionLogPath)
 	}
 }
 
