@@ -21,6 +21,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/base32"
 	"encoding/base64"
 	"fmt"
 	"math"
@@ -95,7 +96,10 @@ func deployHookTokenEqual(got, want string) bool {
 
 func deployHookTokenDigest(token string) string {
 	sum := sha256.Sum256([]byte(token))
-	return base64.RawURLEncoding.EncodeToString(sum[:])
+	// Kubernetes label values must begin and end with an alphanumeric byte.
+	// Unpadded base32 preserves the full digest in 52 label-safe characters;
+	// raw URL-base64 can begin with '-' or '_' and makes the App patch invalid.
+	return base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(sum[:])
 }
 
 func (s *Service) deployHookURL(token string) string {

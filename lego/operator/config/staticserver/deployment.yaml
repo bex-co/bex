@@ -46,12 +46,18 @@ spec:
           env:
             - name: BEX_STATIC_ADDR
               value: ":8080"
+            # Explicit empty value is also an SSA tombstone for production
+            # Deployments that previously carried the unsafe onbex.co value.
+            # Replace this only with a browser-recognized private Public Suffix;
+            # empty disables shared platform hosts while custom domains remain.
+            - name: BEX_BASE_DOMAIN
+              value: ""
             # Never fall back to a node/cloud metadata credential if the
             # namespace-local reader Secret is malformed.
             - name: AWS_EC2_METADATA_DISABLED
               value: "true"
-          # Object-store config (endpoint/bucket/region + base domain) comes from
-          # an optional ConfigMap; the S3 credentials come from a dedicated,
+          # Object-store config (endpoint/bucket/region) comes from an optional
+          # ConfigMap; the S3 credentials come from a dedicated,
           # bucket-scoped read-only identity. Endpoint/bucket may stay optional
           # for an intentionally disabled deployment, but once configured the
           # credential Secret is required and startup verifies ListBucket access.

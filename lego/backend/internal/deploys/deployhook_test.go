@@ -27,6 +27,7 @@ import (
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -105,6 +106,17 @@ func TestDeployHookDigestBackfillIndexesExistingTokens(t *testing.T) {
 	}
 	if got.Labels[DeployHookTokenDigestLabel] != deployHookTokenDigest(token) {
 		t.Fatalf("backfilled digest label = %q", got.Labels[DeployHookTokenDigestLabel])
+	}
+}
+
+func TestDeployHookTokenDigestIsKubernetesLabelSafe(t *testing.T) {
+	token := deployHookTokenPrefix + strings.Repeat("A", 43)
+	digest := deployHookTokenDigest(token)
+	if len(digest) != 52 {
+		t.Fatalf("digest length = %d, want full SHA-256 base32 length 52", len(digest))
+	}
+	if problems := validation.IsValidLabelValue(digest); len(problems) != 0 {
+		t.Fatalf("digest %q is not a Kubernetes label value: %v", digest, problems)
 	}
 }
 
