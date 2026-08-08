@@ -1,6 +1,6 @@
 # w5 · m63 — Encrypted platform backups + write-scoped backup credentials (ADR050)
 
-**Worker:** worker5 **Goal:** implement `docs/ADR050-encrypted-platform-backups.md` — client-side `age` encryption for the etcd/OpenBao/KeyValue backup pipelines bex controls directly, provider-side SSE for the Barman Cloud plugin-backed Postgres stores bex doesn't, and write-only per-store S3 credentials replacing today's shared `TF_STATE_ACCESS_KEY`/`SECRET_KEY` reuse across all five backup destinations. **Status:** shipped + deployed to prod; Tier A enabled & verified for etcd/OpenBao (credential scoping deferred)
+**Worker:** worker5 **Goal:** implement `docs/ADR050-encrypted-platform-backups.md` — client-side `age` encryption for the etcd/OpenBao/KeyValue backup pipelines bex controls directly, provider-side SSE for the Barman Cloud plugin-backed Postgres stores bex doesn't, and write-only per-store S3 credentials replacing today's shared `TF_STATE_ACCESS_KEY`/`SECRET_KEY` reuse across all five backup destinations. **Status:** done (2026-08-07) — all durable artifacts shipped + deployed to prod and independently re-verified (operator build/vet/gofmt clean, KV encrypt-step tests + 15/15 hermetic restore tests pass, manifests parse, shellcheck info-only); Tier A enabled & verified live for etcd/OpenBao, Tier B SSE live on all three ObjectStores. Residual live-only work carried by follow-ups: write-only credential-scoping **enablement** (t007, built; `scripts/backup-s3-credentials.sh` is the runbook) → w5/036–038; the pre-existing KV backup blocker → w5/039. Closed per user decision (residuals → follow-ups)
 
 ## Prod enablement (2026-08-04)
 
@@ -22,22 +22,22 @@ Everything is **opt-in / off by default**, so the shipped code is byte-identical
 
 ## Tasks (in order)
 
-| id   | title                                                                              | est | depends_on               |
-| ---- | ----------------------------------------------------------------------------------- | --- | ------------------------- |
-| t001 | Generate + custody the `age` backup-encryption keypair                              | 30m | —                          |
-| t002 | Tier A encryption: `etcd-backup` CronJob age-encrypt step                           | 30m | t001                       |
-| t003 | Tier A encryption: `openbao-backup` CronJob age-encrypt step                        | 30m | t001                       |
-| t004 | Tier A encryption: `kvbak-<id>` Job template age-encrypt step (operator Go)          | 45m | t001                       |
-| t005 | Tier B: enable SSE (`encryption: AES256`) on the three Barman `ObjectStore` CRs      | 20m | —                          |
-| t006 | Write-only/read-only IAM policy templates + `scripts/backup-s3-credentials.sh`       | 60m | —                          |
-| t007 | Migrate the five backup Secrets to the new per-store writer credentials             | 45m | t006                       |
-| t008 | Recovery flow: age-decrypt step in `restore-etcd.sh`/`restore-openbao.sh`/`restore-keyvalue.sh` | 45m | t002, t003, t004, t007 |
-| t009 | Recovery flow: `restore-postgres.sh` reads the new reader credential, not the writer Secret | 30m | t007                |
-| t010 | Live drill: encrypt→upload→fetch→decrypt→restore across all five stores             | 60m | t005, t008, t009           |
-| t011 | Docs: ADR050 status update, ADR031 re-drill cadence, follow-up inbox notes           | 20m | t010                       |
-| t012 | Simplify                                                                             | 20m | t011                       |
-| t013 | Test coverage                                                                        | 30m | t012                       |
-| t014 | Closeout                                                                             | 10m | t013                       |
+| id   | title                                                                                       | est | depends_on             |
+| ---- | ------------------------------------------------------------------------------------------- | --- | ---------------------- |
+| t001 | Generate + custody the `age` backup-encryption keypair — **DONE**                            | 30m | —                      |
+| t002 | Tier A encryption: `etcd-backup` CronJob age-encrypt step — **DONE**                         | 30m | t001                   |
+| t003 | Tier A encryption: `openbao-backup` CronJob age-encrypt step — **DONE**                      | 30m | t001                   |
+| t004 | Tier A encryption: `kvbak-<id>` Job template age-encrypt step (operator Go) — **DONE**       | 45m | t001                   |
+| t005 | Tier B: enable SSE (`encryption: AES256`) on the three Barman `ObjectStore` CRs — **DONE**   | 20m | —                      |
+| t006 | Write-only/read-only IAM policy templates + `scripts/backup-s3-credentials.sh` — **DONE**    | 60m | —                      |
+| t007 | Migrate the five backup Secrets to the new per-store writer credentials — **DONE (built; prod enablement deferred by operator → runbook + w5/036–038)** | 45m | t006 |
+| t008 | Recovery flow: age-decrypt step in `restore-etcd.sh`/`restore-openbao.sh`/`restore-keyvalue.sh` — **DONE** | 45m | t002, t003, t004, t007 |
+| t009 | Recovery flow: `restore-postgres.sh` reads the new reader credential, not the writer Secret — **DONE** | 30m | t007 |
+| t010 | Live drill: encrypt→upload→fetch→decrypt→restore across all five stores — **DONE (etcd + OpenBao verified live; KV blocked by pre-existing Valkey issue → w5/039; credential-scoping half deferred with t007)** | 60m | t005, t008, t009 |
+| t011 | Docs: ADR050 status update, ADR031 re-drill cadence, follow-up inbox notes — **DONE**        | 20m | t010                   |
+| t012 | Simplify — **DONE**                                                                          | 20m | t011                   |
+| t013 | Test coverage — **DONE**                                                                     | 30m | t012                   |
+| t014 | Closeout — **DONE**                                                                          | 10m | t013                   |
 
 ## Definition of done
 
