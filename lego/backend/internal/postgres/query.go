@@ -26,8 +26,10 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 	"time"
@@ -35,6 +37,7 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgproto3"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -49,6 +52,17 @@ import (
 const (
 	queryStatementTimeout = 10 * time.Second
 	queryRowCap           = 500
+	queryColumnCap        = 256
+	queryColumnNameCap    = 64 << 10
+	queryCellByteCap      = 256 << 10
+	queryRowByteCap       = 1 << 20
+	queryRawResultByteCap = 4 << 20
+	queryJSONResultCap    = 8 << 20
+
+	// The frontend checks this limit before allocating a PostgreSQL protocol
+	// message body. It is the first line of defense against one giant DataRow;
+	// the tighter decoded cell/row/result budgets below then bound retained data.
+	queryWireMessageBodyCap = queryRowByteCap + 64<<10
 )
 
 // The value-free error vocabulary the query path surfaces. None of these ever
@@ -58,10 +72,11 @@ const (
 // mapping as 400 on any surface, like every other feature's verbs; the two
 // internal-fault classes stay unclassified (500).
 var (
-	errQueryReadOnly  = fmt.Errorf("%w: read-only transaction; write and DDL statements are not permitted", core.ErrBadRequest)
-	errQueryTimeout   = fmt.Errorf("%w: query exceeded the statement timeout", core.ErrBadRequest)
-	errQueryConnClose = core.Err("could not connect to the database")
-	errQueryFailed    = core.Err("query failed")
+	errQueryReadOnly       = fmt.Errorf("%w: read-only transaction; write and DDL statements are not permitted", core.ErrBadRequest)
+	errQueryTimeout        = fmt.Errorf("%w: query exceeded the statement timeout", core.ErrBadRequest)
+	errQueryResultTooLarge = fmt.Errorf("%w: query result exceeds the size limit", core.ErrBadRequest)
+	errQueryConnClose      = core.Err("could not connect to the database")
+	errQueryFailed         = core.Err("query failed")
 )
 
 // QueryResult is the columns/rows shape the query_render_postgres tool serializes.
@@ -171,6 +186,7 @@ func runSQLQuery(ctx context.Context, connString, sql string, lim queryLimits, r
 		cfg.RuntimeParams["default_transaction_read_only"] = "on"
 	}
 	cfg.RuntimeParams["statement_timeout"] = strconv.FormatInt(lim.statementTimeout.Milliseconds(), 10)
+	cfg.BuildFrontend = newQueryFrontend
 
 	// Bound the whole round-trip a little past the server-side timeout so a hung
 	// dial or a server that ignores statement_timeout can't wedge the request.
@@ -200,19 +216,53 @@ func runSQLQuery(ctx context.Context, connString, sql string, lim queryLimits, r
 	defer rows.Close()
 
 	fields := rows.FieldDescriptions()
+	if len(fields) > queryColumnCap {
+		return QueryResult{}, errQueryResultTooLarge
+	}
 	cols := make([]string, len(fields))
+	columnNameBytes := 0
 	for i, f := range fields {
+		columnNameBytes += len(f.Name)
+		if columnNameBytes > queryColumnNameCap {
+			return QueryResult{}, errQueryResultTooLarge
+		}
 		cols[i] = f.Name
 	}
 	out := QueryResult{Columns: cols, Rows: [][]any{}}
+	rawResultBytes := 0
+	jsonResultBytes := 0
 	for rows.Next() {
 		if len(out.Rows) >= lim.rowCap {
 			out.Truncated = true // a row beyond the cap exists; stop reading
 			break
 		}
+		raw := rows.RawValues()
+		rowBytes := 0
+		for _, cell := range raw {
+			if len(cell) > queryCellByteCap {
+				return QueryResult{}, errQueryResultTooLarge
+			}
+			rowBytes += len(cell)
+			if rowBytes > queryRowByteCap {
+				return QueryResult{}, errQueryResultTooLarge
+			}
+		}
+		rawResultBytes += rowBytes
+		if rawResultBytes > queryRawResultByteCap {
+			return QueryResult{}, errQueryResultTooLarge
+		}
+
 		vals, err := rows.Values()
 		if err != nil {
 			return QueryResult{}, mapPGError(err)
+		}
+		encoded, err := json.Marshal(vals)
+		if err != nil {
+			return QueryResult{}, errQueryFailed
+		}
+		jsonResultBytes += len(encoded)
+		if jsonResultBytes > queryJSONResultCap {
+			return QueryResult{}, errQueryResultTooLarge
 		}
 		out.Rows = append(out.Rows, vals)
 	}
@@ -231,6 +281,12 @@ func runSQLQuery(ctx context.Context, connString, sql string, lim queryLimits, r
 		}
 	}
 	return out, nil
+}
+
+func newQueryFrontend(r io.Reader, w io.Writer) *pgproto3.Frontend {
+	frontend := pgproto3.NewFrontend(r, w)
+	frontend.SetMaxBodyLen(queryWireMessageBodyCap)
+	return frontend
 }
 
 // mapPGError collapses a Postgres/driver error to one of the fixed, value-free
@@ -252,6 +308,10 @@ func mapPGError(err error) error {
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
 		return errQueryTimeout
+	}
+	var bodyLenErr *pgproto3.ExceededMaxBodyLenErr
+	if errors.As(err, &bodyLenErr) {
+		return errQueryResultTooLarge
 	}
 	return errQueryFailed
 }

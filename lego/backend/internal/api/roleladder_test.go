@@ -324,10 +324,10 @@ var representativeVerbRelations = map[string]string{
 	// can_manage_keys — developer and up (workspace API keys).
 	"*apikeys.Service.CreateAPIKey": core.RelCanManageKeys,
 	// can_manage — admin only (workspace/members/git settings).
-	"*audit.Service.List":         core.RelCanManage,
-	"*members.Service.Invite":     core.RelCanManage,
-	"*members.Service.ChangeRole": core.RelCanManage,
-	"*github.Service.Connect":     core.RelCanManage,
+	"*audit.Service.List":          core.RelCanManage,
+	"*members.Service.Invite":      core.RelCanManage,
+	"*members.Service.ChangeRole":  core.RelCanManage,
+	"*github.Service.StartConnect": core.RelCanManage,
 	// can_manage_billing — billing or admin (Render's BILLING role): every billing
 	// verb funnels through billing.authorize(), so all three gate on it (w1/m60).
 	"*billing.Service.Status":   core.RelCanManageBilling,

@@ -2,22 +2,23 @@
 #
 # The shared static-server (config/staticserver/deployment.yaml) `envFrom`s this
 # ConfigMap — optionally — for its object-store origin (endpoint/bucket/region)
-# and the platform base domain it derives each static_site's host from
-# (`<subdomain>.onbex.co`). Without it the server has no origin, so it stays in
+# and, once a safe Public Suffix exists, the platform base domain it derives each
+# static_site's host from. Without the object-store values the server stays in
 # the intentional degraded-503 mode (cmd/staticserver/main.go: `configured` is
 # false when endpoint or bucket is empty).
 #
 # PROD-ONLY placement (not config/staticserver base): these are the same
-# Wasabi/onbex.co values the manager already carries inline (config/manager/
-# manager.yaml BEX_STATIC_S3_* + BEX_BASE_DOMAIN), but the static-server verifies
+# Wasabi values the manager already carries inline (config/manager/
+# manager.yaml BEX_STATIC_S3_*), but the static-server verifies
 # the read credential at startup and os.Exit(1)s on failure (s3origin Check).
 # Baking a real origin into the base would make the local CAPD static-server —
 # which has no bex-static-read-s3 Wasabi credential — CrashLoop instead of
 # serving 503. config/default (local) therefore renders NO bex-static-config and
 # the static-server stays degraded-503-but-Ready; only config/prod supplies it.
 #
-# Keep these four values in lockstep with the manager's inline BEX_STATIC_S3_*
-# and BEX_BASE_DOMAIN (the manager publishes to the same bucket the server reads).
+# Keep these three values in lockstep with the manager's inline BEX_STATIC_S3_*
+# (the manager publishes to the same bucket the server reads). BEX_BASE_DOMAIN
+# is intentionally absent until a dedicated hosting suffix is on the PSL.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -27,4 +28,3 @@ data:
   BEX_STATIC_S3_ENDPOINT: https://s3.eu-central-2.wasabisys.com
   BEX_STATIC_S3_BUCKET: bex-static
   BEX_STATIC_S3_REGION: eu-central-2
-  BEX_BASE_DOMAIN: onbex.co

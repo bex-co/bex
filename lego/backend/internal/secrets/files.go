@@ -277,7 +277,6 @@ func (s *Service) abortSecretFiles(ctx context.Context, service string, a *appv1
 	return errors.Join(
 		s.deleteSecret(ctx, a.Namespace, filesSecretName(a.Name)),
 		s.Store.Delete(ctx, filesPath(service)),
-		s.Store.Delete(withTenant(ctx, baoTenant), filesPath(service)),
 	)
 }
 

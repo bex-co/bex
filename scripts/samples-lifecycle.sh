@@ -34,7 +34,7 @@
 #                     logged into (they are then also exported to the CLI).
 #
 # Knobs:
-#   BASE_DOMAIN       app URL wildcard, default onbex.co (URL = <name>.<BASE_DOMAIN>)
+#   BASE_DOMAIN       required safe app-hosting Public Suffix (URL = <name>.<BASE_DOMAIN>)
 #   REPO / BRANCH     repo-backed create source, default https://github.com/bex-co/bex, main
 #   PLAN              instance plan for created services, default free
 #   POLL_TIMEOUT      per-leg convergence budget in seconds, default 600
@@ -64,7 +64,11 @@ cd "$(dirname "$0")/.."
 # config
 # --------------------------------------------------------------------------- #
 RENDER_BIN="${RENDER_BIN:-render}"
-BASE_DOMAIN="${BASE_DOMAIN:-onbex.co}"
+BASE_DOMAIN="${BASE_DOMAIN:-}"
+[ -n "$BASE_DOMAIN" ] || {
+  echo "error: BASE_DOMAIN is required; shared onbex.co tenant hosts are disabled" >&2
+  exit 2
+}
 REPO="${REPO:-https://github.com/bex-co/bex}"
 BRANCH="${BRANCH:-main}"
 PLAN="${PLAN:-free}"

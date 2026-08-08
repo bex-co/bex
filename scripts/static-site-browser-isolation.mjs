@@ -3,13 +3,13 @@
 //
 // No live tenant site is modified. A loopback HTTPS server is reached through
 // Chrome host mappings for two sibling hosts. The browser, not a PSL library,
-// decides whether Domain=<suffix> is legal. onrender.com is the reference;
-// onbex.co defaults to report-only after PSL membership was waived (2026-07-30).
+// decides whether Domain=<suffix> is legal. onrender.com is the reference; the
+// candidate hosting suffix defaults to onbex.co and must reject parent cookies.
 //
 // Usage:
 //   node scripts/static-site-browser-isolation.mjs
-//   PSL_EXPECTED=absent node scripts/static-site-browser-isolation.mjs # pin today's behavior
-//   PSL_EXPECTED=present node scripts/static-site-browser-isolation.mjs # opt in after any future PSL merge
+//   BEX_HOSTING_SUFFIX=hosting.example node scripts/static-site-browser-isolation.mjs
+//   PSL_EXPECTED=absent node scripts/static-site-browser-isolation.mjs # diagnostic only
 //   CHROME_BIN=/path/to/chrome node scripts/static-site-browser-isolation.mjs
 import { execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
@@ -17,9 +17,16 @@ import https from "node:https";
 import os from "node:os";
 import path from "node:path";
 
-const expected = process.env.PSL_EXPECTED ?? "report";
+const expected = process.env.PSL_EXPECTED ?? "present";
 if (!new Set(["report", "present", "absent"]).has(expected)) {
   throw new Error("PSL_EXPECTED must be report, present, or absent");
+}
+const hostingSuffix = process.env.BEX_HOSTING_SUFFIX ?? "onbex.co";
+if (
+  !/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])$/.test(hostingSuffix) ||
+  !hostingSuffix.includes(".")
+) {
+  throw new Error("BEX_HOSTING_SUFFIX must be a canonical DNS suffix");
 }
 
 const chromeCandidates = [
@@ -33,7 +40,9 @@ const chromeCandidates = [
 const chrome = chromeCandidates.find((candidate) => fs.existsSync(candidate));
 if (!chrome) throw new Error("Chrome/Chromium not found; set CHROME_BIN");
 
-const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "bex-browser-isolation-"));
+const scratch = fs.mkdtempSync(
+  path.join(os.tmpdir(), "bex-browser-isolation-"),
+);
 const cert = path.join(scratch, "cert.pem");
 const key = path.join(scratch, "key.pem");
 const profile = path.join(scratch, "chrome-profile");
@@ -69,7 +78,9 @@ const server = https.createServer(
     }
     response.setHeader("content-type", "text/html; charset=utf-8");
     response.setHeader("cache-control", "no-store");
-    response.end("<!doctype html><meta charset=utf-8><title>static-site isolation probe</title>");
+    response.end(
+      "<!doctype html><meta charset=utf-8><title>static-site isolation probe</title>",
+    );
   },
 );
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -91,7 +102,7 @@ const chromeProcess = spawn(
     "--no-sandbox",
     "--remote-debugging-port=0",
     `--user-data-dir=${profile}`,
-    "--host-resolver-rules=MAP tenant-a.onbex.co 127.0.0.1, MAP tenant-b.onbex.co 127.0.0.1, MAP tenant-a.onrender.com 127.0.0.1, MAP tenant-b.onrender.com 127.0.0.1",
+    `--host-resolver-rules=MAP tenant-a.${hostingSuffix} 127.0.0.1, MAP tenant-b.${hostingSuffix} 127.0.0.1, MAP tenant-a.onrender.com 127.0.0.1, MAP tenant-b.onrender.com 127.0.0.1`,
     "about:blank",
   ],
   { stdio: "ignore" },
@@ -105,10 +116,14 @@ async function waitForDevTools() {
   const activePort = path.join(profile, "DevToolsActivePort");
   for (let attempt = 0; attempt < 200; attempt += 1) {
     if (fs.existsSync(activePort)) {
-      const [debugPort, browserPath] = fs.readFileSync(activePort, "utf8").trim().split("\n");
+      const [debugPort, browserPath] = fs
+        .readFileSync(activePort, "utf8")
+        .trim()
+        .split("\n");
       return `ws://127.0.0.1:${debugPort}${browserPath}`;
     }
-    if (chromeProcess.exitCode !== null) throw new Error("Chrome exited before DevTools was ready");
+    if (chromeProcess.exitCode !== null)
+      throw new Error("Chrome exited before DevTools was ready");
     await delay(50);
   }
   throw new Error("Chrome DevTools did not become ready within 10 seconds");
@@ -120,7 +135,9 @@ class CDP {
     this.nextID = 1;
     this.pending = new Map();
     this.waiters = [];
-    webSocket.addEventListener("message", ({ data }) => this.onMessage(JSON.parse(data)));
+    webSocket.addEventListener("message", ({ data }) =>
+      this.onMessage(JSON.parse(data)),
+    );
   }
 
   onMessage(message) {
@@ -133,7 +150,9 @@ class CDP {
       return;
     }
     const index = this.waiters.findIndex(
-      (waiter) => waiter.method === message.method && waiter.sessionID === message.sessionId,
+      (waiter) =>
+        waiter.method === message.method &&
+        waiter.sessionID === message.sessionId,
     );
     if (index >= 0) this.waiters.splice(index, 1)[0].resolve(message.params);
   }
@@ -142,12 +161,16 @@ class CDP {
     const id = this.nextID++;
     return new Promise((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
-      this.webSocket.send(JSON.stringify({ id, method, params, sessionId: sessionID }));
+      this.webSocket.send(
+        JSON.stringify({ id, method, params, sessionId: sessionID }),
+      );
     });
   }
 
   event(method, sessionID) {
-    return new Promise((resolve) => this.waiters.push({ method, sessionID, resolve }));
+    return new Promise((resolve) =>
+      this.waiters.push({ method, sessionID, resolve }),
+    );
   }
 }
 
@@ -163,7 +186,8 @@ async function connect(url) {
 async function navigate(cdp, sessionID, url) {
   const loaded = cdp.event("Page.loadEventFired", sessionID);
   const result = await cdp.send("Page.navigate", { url }, sessionID);
-  if (result.errorText) throw new Error(`navigation failed: ${result.errorText}`);
+  if (result.errorText)
+    throw new Error(`navigation failed: ${result.errorText}`);
   await loaded;
 }
 
@@ -174,7 +198,10 @@ async function evaluate(cdp, sessionID, expression) {
     sessionID,
   );
   if (result.exceptionDetails) {
-    throw new Error(result.exceptionDetails.exception?.description ?? "browser evaluation failed");
+    throw new Error(
+      result.exceptionDetails.exception?.description ??
+        "browser evaluation failed",
+    );
   }
   return result.result.value;
 }
@@ -185,7 +212,10 @@ async function checkSuffix(cdp, suffix, wantPSL) {
     url: "about:blank",
     browserContextId,
   });
-  const { sessionId } = await cdp.send("Target.attachToTarget", { targetId, flatten: true });
+  const { sessionId } = await cdp.send("Target.attachToTarget", {
+    targetId,
+    flatten: true,
+  });
   await cdp.send("Page.enable", {}, sessionId);
   await cdp.send("Runtime.enable", {}, sessionId);
 
@@ -227,10 +257,14 @@ async function checkSuffix(cdp, suffix, wantPSL) {
         : "browser rejected the expected non-PSL cookie behavior",
     );
   }
-  if (tenantB.storage !== null) failures.push("localStorage crossed sibling origins");
-  if (tenantB.workers !== 0) failures.push("Service Worker registration crossed sibling origins");
-  if (tenantA.workers !== 1) failures.push("control Service Worker did not register on tenant A");
-  if (tenantA.origin === tenantB.origin) failures.push("sibling hosts collapsed to one origin");
+  if (tenantB.storage !== null)
+    failures.push("localStorage crossed sibling origins");
+  if (tenantB.workers !== 0)
+    failures.push("Service Worker registration crossed sibling origins");
+  if (tenantA.workers !== 1)
+    failures.push("control Service Worker did not register on tenant A");
+  if (tenantA.origin === tenantB.origin)
+    failures.push("sibling hosts collapsed to one origin");
 
   await cdp.send("Target.closeTarget", { targetId });
   await cdp.send("Target.disposeBrowserContext", { browserContextId });
@@ -252,11 +286,16 @@ try {
   cdp = await connect(await waitForDevTools());
   const renderOK = await checkSuffix(cdp, "onrender.com", true);
   const bexExpectation = expected === "report" ? null : expected === "present";
-  const bexOK = await checkSuffix(cdp, "onbex.co", bexExpectation);
+  const bexOK = await checkSuffix(cdp, hostingSuffix, bexExpectation);
   if (!renderOK || !bexOK) process.exitCode = 1;
 } finally {
   if (cdp) await cdp.send("Browser.close").catch(() => {});
-  for (let attempt = 0; attempt < 50 && chromeProcess.exitCode === null; attempt += 1) await delay(20);
+  for (
+    let attempt = 0;
+    attempt < 50 && chromeProcess.exitCode === null;
+    attempt += 1
+  )
+    await delay(20);
   if (chromeProcess.exitCode === null) chromeProcess.kill("SIGKILL");
   server.closeAllConnections();
   await new Promise((resolve) => server.close(resolve));

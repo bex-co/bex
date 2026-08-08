@@ -273,6 +273,11 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 	if err != nil {
 		return nil, err // ErrNotFound for unknown apps, exactly like Get
 	}
+	statusCode, ok := normalizeStatusCodeFilter(q.StatusCode)
+	if !ok {
+		return nil, fmt.Errorf("%w: statusCode must be a three-digit HTTP status or a class such as 5xx", core.ErrBadRequest)
+	}
+	q.StatusCode = statusCode
 	if q.Host != "" || q.Path != "" {
 		// host/path narrow request traffic only — they have no meaning for a
 		// resource metric, and bandwidth (egress L3/L7) carries no per-request

@@ -43,8 +43,12 @@ const (
 	// modes without changing the App CRD or involving the operator. Tenants never
 	// receive Kubernetes credentials; bex-api is the only public reveal surface.
 	DeployHookTokenAnnotation = "bex.co/deploy-hook-token"
-	deployHookTokenPrefix     = "dhk-"
-	deployHookTokenBytes      = 32 // 256 bits; intentionally stronger than xid
+	// DeployHookTokenDigestLabel is the non-secret lookup index for the token.
+	// A URL credential is never a label value; its SHA-256 digest lets the API
+	// server perform an exact selector instead of returning every tenant App.
+	DeployHookTokenDigestLabel = "bex.co/deploy-hook-token-digest"
+	deployHookTokenPrefix      = "dhk-"
+	deployHookTokenBytes       = 32 // 256 bits; intentionally stronger than xid
 
 	// The v1 trigger budget is fixed and per token. A two-request burst tolerates
 	// one immediate CI retry; sustained calls refill at six per minute. This is
@@ -89,6 +93,11 @@ func deployHookTokenEqual(got, want string) bool {
 	return subtle.ConstantTimeCompare([]byte(got), []byte(want)) == 1
 }
 
+func deployHookTokenDigest(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
 func (s *Service) deployHookURL(token string) string {
 	path := "/v1/deploy-hooks/" + token
 	if base := strings.TrimRight(s.DeployHookBaseURL, "/"); base != "" {
@@ -131,20 +140,29 @@ func (s *Service) RegenerateDeployHook(ctx context.Context, service string) (Dep
 // different URLs: a loser refetches and returns the winner's token.
 func (s *Service) writeDeployHookToken(ctx context.Context, a *appv1alpha1.App, rotate bool) (string, error) {
 	for range 5 {
+		var token string
 		if !rotate {
-			if token := a.Annotations[DeployHookTokenAnnotation]; validDeployHookToken(token) {
+			token = a.Annotations[DeployHookTokenAnnotation]
+			if validDeployHookToken(token) && a.Labels[DeployHookTokenDigestLabel] == deployHookTokenDigest(token) {
 				return token, nil
 			}
 		}
-		token, err := newDeployHookToken()
-		if err != nil {
-			return "", err
+		if !validDeployHookToken(token) || rotate {
+			var err error
+			token, err = newDeployHookToken()
+			if err != nil {
+				return "", err
+			}
 		}
 		base := client.MergeFromWithOptions(a.DeepCopy(), client.MergeFromWithOptimisticLock{})
 		if a.Annotations == nil {
 			a.Annotations = map[string]string{}
 		}
 		a.Annotations[DeployHookTokenAnnotation] = token
+		if a.Labels == nil {
+			a.Labels = map[string]string{}
+		}
+		a.Labels[DeployHookTokenDigestLabel] = deployHookTokenDigest(token)
 		if err := s.Client.Patch(ctx, a, base); err == nil {
 			return token, nil
 		} else if !apierrors.IsConflict(err) {
@@ -159,17 +177,60 @@ func (s *Service) writeDeployHookToken(ctx context.Context, a *appv1alpha1.App, 
 	return "", fmt.Errorf("rotate deploy-hook token: too many concurrent App updates")
 }
 
+// BackfillDeployHookTokenDigests migrates pre-index Apps before the public hook
+// route starts serving. It performs the one intentional cluster-wide list at
+// startup, then patches only Apps that already carry a valid hook credential.
+// Conflicts are retried and recompute the digest from the latest token, making
+// concurrent replicas and rotations safe.
+func BackfillDeployHookTokenDigests(ctx context.Context, cl client.Client) error {
+	var list appv1alpha1.AppList
+	if err := cl.List(ctx, &list); err != nil {
+		return fmt.Errorf("list Apps for deploy-hook index backfill: %w", err)
+	}
+	for i := range list.Items {
+		a := list.Items[i].DeepCopy()
+		for range 5 {
+			token := a.Annotations[DeployHookTokenAnnotation]
+			if !validDeployHookToken(token) {
+				break
+			}
+			digest := deployHookTokenDigest(token)
+			if a.Labels[DeployHookTokenDigestLabel] == digest {
+				break
+			}
+			base := client.MergeFromWithOptions(a.DeepCopy(), client.MergeFromWithOptimisticLock{})
+			if a.Labels == nil {
+				a.Labels = map[string]string{}
+			}
+			a.Labels[DeployHookTokenDigestLabel] = digest
+			if err := cl.Patch(ctx, a, base); err == nil {
+				break
+			} else if !apierrors.IsConflict(err) {
+				return fmt.Errorf("backfill deploy-hook index for %s/%s: %w", a.Namespace, a.Name, err)
+			}
+			if err := cl.Get(ctx, client.ObjectKeyFromObject(a), a); err != nil {
+				return fmt.Errorf("refetch App during deploy-hook index backfill: %w", err)
+			}
+		}
+		if token := a.Annotations[DeployHookTokenAnnotation]; validDeployHookToken(token) && a.Labels[DeployHookTokenDigestLabel] != deployHookTokenDigest(token) {
+			return fmt.Errorf("backfill deploy-hook index for %s/%s: too many concurrent updates", a.Namespace, a.Name)
+		}
+	}
+	return nil
+}
+
 // appForDeployHookToken resolves a credential without an identity. Unknown,
 // malformed, and stale tokens intentionally collapse to the same 404.
 func (s *Service) appForDeployHookToken(ctx context.Context, token string) (*appv1alpha1.App, error) {
 	if !validDeployHookToken(token) {
 		return nil, core.ErrNotFound
 	}
-	// Identity-less token sweep across every workspace: App CRs are spread
-	// across each workspace's own `<ws>` namespace (ADR043), so this lists
-	// cluster-wide rather than scoping to any single namespace.
+	// Apps span tenant namespaces, so the selector is cluster-scoped but indexed:
+	// the apiserver returns only the digest match rather than every tenant App.
 	var list appv1alpha1.AppList
-	if err := s.Client.List(ctx, &list); err != nil {
+	if err := s.Client.List(ctx, &list, client.MatchingLabels{
+		DeployHookTokenDigestLabel: deployHookTokenDigest(token),
+	}); err != nil {
 		return nil, err
 	}
 	for i := range list.Items {
@@ -252,11 +313,6 @@ func (s *Service) DeployHookHandler() http.Handler {
 		if token == "" { // makes direct handler tests useful outside a ServeMux
 			token = strings.TrimPrefix(r.URL.Path, "/v1/deploy-hooks/")
 		}
-		a, err := s.appForDeployHookToken(r.Context(), token)
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
 		if ok, retry := limiter.reserve(token); !ok {
 			seconds := max(1, int(math.Ceil(retry.Seconds())))
 			w.Header().Set("Retry-After", strconv.Itoa(seconds))
@@ -264,6 +320,11 @@ func (s *Service) DeployHookHandler() http.Handler {
 				"id":      "rate_limited",
 				"message": "deploy hook rate limit exceeded; see Retry-After header",
 			})
+			return
+		}
+		a, err := s.appForDeployHookToken(r.Context(), token)
+		if err != nil {
+			core.WriteErr(w, err)
 			return
 		}
 		d, err := s.triggerFetched(r.Context(), deployHookServiceName(a), a, TriggerParams{

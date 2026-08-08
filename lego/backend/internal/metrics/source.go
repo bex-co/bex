@@ -296,14 +296,34 @@ func sumRate(metric, matchers, window, by string) string {
 
 // codeMatcher turns a Render statusCode filter into a Prometheus `code` regex.
 func codeMatcher(statusCode string) string {
-	s := strings.ToLower(strings.TrimSpace(statusCode))
-	if s == "" {
+	s, ok := normalizeStatusCodeFilter(statusCode)
+	if !ok || s == "" {
 		return ""
 	}
-	if len(s) == 3 && s[1] == 'x' && s[2] == 'x' {
+	if s[1] == 'x' {
 		return string(s[0]) + ".."
 	}
 	return s
+}
+
+// normalizeStatusCodeFilter accepts only the closed Render status-filter
+// grammar. Builders also call it defensively so an adapter cannot accidentally
+// turn an unvalidated string into PromQL or LogQL syntax.
+func normalizeStatusCodeFilter(statusCode string) (string, bool) {
+	s := strings.ToLower(strings.TrimSpace(statusCode))
+	if s == "" {
+		return "", true
+	}
+	if len(s) != 3 || s[0] < '1' || s[0] > '5' {
+		return "", false
+	}
+	if s[1] == 'x' && s[2] == 'x' {
+		return s, true
+	}
+	if s[1] < '0' || s[1] > '9' || s[2] < '0' || s[2] > '9' {
+		return "", false
+	}
+	return s, true
 }
 
 // groupLabel maps a Render groupBy onto a Traefik service-metric label.

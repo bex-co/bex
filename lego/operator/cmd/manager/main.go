@@ -39,6 +39,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	"github.com/bex-co/bex/lego/operator/internal/controller"
+	"github.com/bex-co/bex/lego/operator/internal/hostingdomain"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
 	"github.com/bex-co/bex/lego/operator/internal/registry"
 	bexruntime "github.com/bex-co/bex/lego/operator/internal/runtime"
@@ -116,6 +117,11 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	baseDomain := os.Getenv("BEX_BASE_DOMAIN")
+	if err := hostingdomain.ValidateSharedSuffix(baseDomain); err != nil {
+		setupLog.Error(err, "unsafe shared tenant hosting suffix")
+		os.Exit(1)
+	}
 
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
 	// due to its vulnerabilities. More specifically, disabling http/2 will
@@ -254,7 +260,7 @@ func main() {
 		CNBBuilder:              envOr("BEX_CNB_BUILDER", "paketobuildpacks/builder-jammy-base"),
 		BuildNamespace:          os.Getenv("BEX_BUILD_NAMESPACE"),
 		Runtime:                 bexruntime.New(envOr("BEX_OPENSANDBOX_URL", "http://127.0.0.1:8077")),
-		BaseDomain:              envOr("BEX_BASE_DOMAIN", ""),
+		BaseDomain:              baseDomain,
 		ClusterIssuer:           envOr("BEX_CLUSTER_ISSUER", "letsencrypt-staging"),
 		ActivatorService:        envOr("BEX_ACTIVATOR_SERVICE", ""),
 		ActivatorPort:           activatorPort,

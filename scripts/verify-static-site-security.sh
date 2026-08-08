@@ -5,9 +5,11 @@
 #   scripts/verify-static-site-security.sh repo
 #   KUBECONFIG=... scripts/verify-static-site-security.sh live
 #
-# PSL_EXPECTED defaults to `report`: PSL membership was waived by owner decision
-# on 2026-07-30, so neither presence nor absence gates production. Use `present`
-# or `absent` to pin either state explicitly. The live mode is read-only except
+# BEX_HOSTING_SUFFIX optionally names a proposed shared tenant suffix. When it is
+# set, PSL_EXPECTED defaults to `present`, making PRIVATE-section membership and
+# real-browser parent-cookie rejection release gates. Empty means shared hosting
+# remains disabled; `absent`/`report` are diagnostic modes only. Live mode is
+# read-only except
 # for the isolated object-store probe created and deleted by
 # static-s3-credentials.sh; admission requests use server dry-run.
 set -euo pipefail
@@ -19,7 +21,8 @@ case "$MODE" in
   *) echo "usage: $0 {repo|live}" >&2; exit 2 ;;
 esac
 
-PSL_EXPECTED="${PSL_EXPECTED:-report}"
+PSL_EXPECTED="${PSL_EXPECTED:-present}"
+BEX_HOSTING_SUFFIX="${BEX_HOSTING_SUFFIX:-}"
 PSL_URL="${PSL_URL:-https://raw.githubusercontent.com/publicsuffix/list/master/public_suffix_list.dat}"
 MANAGER_IDENTITY="system:serviceaccount:bex-system:bex-controller-manager"
 
@@ -27,33 +30,40 @@ command -v curl >/dev/null || { echo "error: curl not found" >&2; exit 1; }
 command -v jq >/dev/null || { echo "error: jq not found" >&2; exit 1; }
 command -v kubectl >/dev/null || { echo "error: kubectl not found" >&2; exit 1; }
 
-psl_entry="$(curl -fsSL "$PSL_URL" | awk '$0 == "onbex.co" { print; exit }')"
-case "$PSL_EXPECTED" in
-  report)
-    if [ "$psl_entry" = "onbex.co" ]; then
-      echo "INFO  PSL: canonical list contains onbex.co (membership is not gated)"
-    else
-      echo "INFO  PSL: canonical list excludes onbex.co (membership is not gated)"
-    fi
-    ;;
-  present)
-    [ "$psl_entry" = "onbex.co" ] || {
-      echo "FAIL  PSL: canonical list does not contain onbex.co" >&2
-      exit 1
-    }
-    echo "PASS  PSL: canonical list contains onbex.co"
-    ;;
-  absent)
-    [ -z "$psl_entry" ] || {
-      echo "FAIL  PSL contract: onbex.co is now present; update the accepted contract" >&2
-      exit 1
-    }
-    echo "PASS  PSL contract: canonical list excludes onbex.co"
-    ;;
-  *) echo "error: PSL_EXPECTED must be report, present, or absent" >&2; exit 2 ;;
-esac
+if [ -z "$BEX_HOSTING_SUFFIX" ]; then
+  echo "PASS  shared tenant hosting disabled (no BEX_HOSTING_SUFFIX candidate)"
+else
+  psl_entry="$(curl -fsSL "$PSL_URL" | awk -v suffix="$BEX_HOSTING_SUFFIX" '
+    $0 == "// ===BEGIN PRIVATE DOMAINS===" { private = 1; next }
+    private && $0 == suffix { print; exit }
+  ')"
+  case "$PSL_EXPECTED" in
+    report)
+      if [ "$psl_entry" = "$BEX_HOSTING_SUFFIX" ]; then
+        echo "INFO  PSL: private section contains $BEX_HOSTING_SUFFIX (diagnostic mode)"
+      else
+        echo "INFO  PSL: private section excludes $BEX_HOSTING_SUFFIX (diagnostic mode)"
+      fi
+      ;;
+    present)
+      [ "$psl_entry" = "$BEX_HOSTING_SUFFIX" ] || {
+        echo "FAIL  PSL: private section does not contain $BEX_HOSTING_SUFFIX" >&2
+        exit 1
+      }
+      echo "PASS  PSL: private section contains $BEX_HOSTING_SUFFIX"
+      ;;
+    absent)
+      [ -z "$psl_entry" ] || {
+        echo "FAIL  diagnostic expected $BEX_HOSTING_SUFFIX to be absent" >&2
+        exit 1
+      }
+      echo "PASS  diagnostic: private section excludes $BEX_HOSTING_SUFFIX"
+      ;;
+    *) echo "error: PSL_EXPECTED must be report, present, or absent" >&2; exit 2 ;;
+  esac
 
-PSL_EXPECTED="$PSL_EXPECTED" node scripts/static-site-browser-isolation.mjs
+  BEX_HOSTING_SUFFIX="$BEX_HOSTING_SUFFIX" PSL_EXPECTED="$PSL_EXPECTED" node scripts/static-site-browser-isolation.mjs
+fi
 (cd lego/operator && go test ./internal/staticserver -run 'TestRewriteNeverFetchesAnUpstreamURL')
 
 if [ "$MODE" = "repo" ]; then

@@ -148,10 +148,10 @@ spec:
           # -> re-pulls :latest -> re-reconciles Apps with the new issuer).
           - name: BEX_CLUSTER_ISSUER
             value: letsencrypt-prod
-          # Wildcard *.onbex.co exists (Cloudflare, proxied) — Apps with
-          # spec.expose get "<name>.onbex.co" automatically.
-          - name: BEX_BASE_DOMAIN
-            value: onbex.co
+          # BEX_BASE_DOMAIN is intentionally unset: onbex.co is a registrable
+          # domain, so tenant JavaScript could set parent cookies received by a
+          # sibling tenant. Re-enable shared platform hosts only after a dedicated
+          # hosting suffix is present in the browser Public Suffix List.
           # Managed-Postgres external endpoints: Database{public:true} is exposed
           # at "<name>.db.bex.co" via Traefik TCP/SNI. Needs a DNS-only (gray-cloud)
           # wildcard *.db.bex.co -> node IP (Cloudflare can't proxy raw TCP:5432).

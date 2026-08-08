@@ -160,6 +160,11 @@ type Server struct {
 	// DeviceRateLimiter because they need the OAuth slow_down 429 dialect; a
 	// webhook sender only needs a plain 429 + Retry-After, so it reuses this one.
 	WebhookRateLimiter *RateLimiter
+	// DeployHookLookupRateLimiter is the IP-keyed outer budget for the public
+	// deploy-hook prefix. It runs before token lookup, complementing the inner
+	// per-token limiter: random well-formed credentials cannot force unbounded
+	// Kubernetes API reads or grow arbitrary token buckets. nil disables it.
+	DeployHookLookupRateLimiter *RateLimiter
 	// MaxBodyBytes, when positive, caps non-GET request bodies at this many bytes,
 	// returning 413 for oversized payloads. 0 disables the check.
 	MaxBodyBytes int64
@@ -266,7 +271,7 @@ type Deps struct {
 	// service_event_facts. nil => the feed answers core.ErrEventsUnavailable.
 	EventStore events.EventStore
 	EventFacts store.EventFactWriter
-	// BaseDomain is BEX_BASE_DOMAIN (the platform wildcard domain, e.g. "onbex.co")
+	// BaseDomain is BEX_BASE_DOMAIN (the PSL-safe platform wildcard domain)
 	// — the apps service names custom-domain DNS targets `<app>.<BaseDomain>` from it.
 	// Empty falls back to deriving the platform host from an App's status URLs.
 	BaseDomain string
@@ -333,9 +338,9 @@ type Deps struct {
 	GitHubClient      github.APIClient
 	GitHubStore       github.ConnectionStore
 	GitHubStateSecret []byte
-	// GitHubInstallVerifier, when set (the App's OAuth credentials are wired),
-	// makes the browser connect callback prove installation administration (F2).
-	// nil => the unique installation->workspace binding alone protects the callback.
+	// GitHubInstallVerifier makes the browser callback prove installation
+	// administration (F2). nil leaves existing connections available but makes
+	// every new installation binding fail closed.
 	GitHubInstallVerifier github.InstallationVerifier
 	DashboardURL          string
 
@@ -879,7 +884,7 @@ func (s *Server) rootMux() (*http.ServeMux, error) {
 	// slash still reach the hook handler's uniform 404 instead of falling through
 	// to the authenticated /v1 wildcard and becoming a distinguishing 401.
 	if s.Deploys != nil {
-		hook := s.Deploys.DeployHookHandler()
+		hook := s.deployHookLookupRateLimitMiddleware()(s.Deploys.DeployHookHandler())
 		mux.Handle("/v1/deploy-hooks", hook)
 		mux.Handle("/v1/deploy-hooks/", hook)
 	}
@@ -933,6 +938,16 @@ func (s *Server) webhookRateLimitMiddleware() func(http.Handler) http.Handler {
 		return func(h http.Handler) http.Handler { return h }
 	}
 	return s.WebhookRateLimiter.Middleware
+}
+
+// deployHookLookupRateLimitMiddleware returns the IP-keyed outer limiter for
+// deploy hooks. It wraps the complete handler so shedding happens before token
+// validation, digest-index lookup, and the inner per-token bucket.
+func (s *Server) deployHookLookupRateLimitMiddleware() func(http.Handler) http.Handler {
+	if s.DeployHookLookupRateLimiter == nil {
+		return func(h http.Handler) http.Handler { return h }
+	}
+	return s.DeployHookLookupRateLimiter.Middleware
 }
 
 func (s *Server) newAuthGate() (*oryAuth, error) {

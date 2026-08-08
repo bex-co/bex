@@ -65,13 +65,9 @@ spec:
                   optional: true
             - name: BEX_DASHBOARD_URL # trusted browser origin for callbacks, invites, and resource links
               value: https://dashboard.bex.co
-            # Platform wildcard domain, same value as the manager's (manager.yaml).
-            # Names custom-domain DNS targets AND lets the API derive a public
-            # service's URL from creation, before the first successful deploy
-            # (w5/m48 — Render shows the URL immediately; unset would leave
-            # serviceDetails.url empty until the operator writes status.url).
-            - name: BEX_BASE_DOMAIN
-              value: onbex.co
+            # BEX_BASE_DOMAIN stays unset until the tenant hosting suffix is a
+            # browser-recognized private Public Suffix. Custom domains remain
+            # available; the API must not advertise unsafe sibling origins.
             - name: BEX_REGION # explicit platform placement for Render resource metadata
               value: fsn1
             - name: BEX_API_NAMESPACE # Apps live in the default namespace
@@ -295,6 +291,20 @@ spec:
                 secretKeyRef:
                   name: bex-github-app
                   key: slug
+                  optional: true
+            # Installation binding fails closed unless GitHub's user OAuth proof
+            # is configured. Both values come from the same out-of-band Secret.
+            - name: BEX_GITHUB_APP_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: bex-github-app
+                  key: client-id
+                  optional: true
+            - name: BEX_GITHUB_APP_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bex-github-app
+                  key: client-secret
                   optional: true
             # Second accepted webhook HMAC key (w2/m9) so app-signed pushes
             # redeploy hands-free. Empty => only BEX_WEBHOOK_SECRET is accepted.

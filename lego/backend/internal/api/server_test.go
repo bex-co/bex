@@ -487,6 +487,26 @@ func TestDeployHookBypassesAuthGate(t *testing.T) {
 	}
 }
 
+func TestDeployHookLookupLimiterShedsRandomTokensBeforeLookup(t *testing.T) {
+	srv := NewServer(&core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default"}, Deps{
+		DeployStore: deployHookStore{},
+	})
+	srv.HydraAdminURL = "http://hydra.invalid"
+	srv.DeployHookLookupRateLimiter = NewRateLimiter(0.01, 1)
+	h := buildHandler(t, srv)
+
+	// Both are well-formed 256-bit credentials and use different per-token
+	// buckets. The second 429 can therefore only come from the outer IP budget.
+	firstToken := "dhk-" + strings.Repeat("A", 43)
+	secondToken := "dhk-" + strings.Repeat("B", 43)
+	if w := do(t, h, http.MethodPost, "/v1/deploy-hooks/"+firstToken, "", ""); w.Code != http.StatusNotFound {
+		t.Fatalf("first random token = %d %s, want 404", w.Code, w.Body.String())
+	}
+	if w := do(t, h, http.MethodPost, "/v1/deploy-hooks/"+secondToken, "", ""); w.Code != http.StatusTooManyRequests {
+		t.Fatalf("second random token = %d %s, want pre-lookup 429", w.Code, w.Body.String())
+	}
+}
+
 func mcpSession(t *testing.T, srv *Server) *mcp.ClientSession {
 	t.Helper()
 	ctx := context.Background()

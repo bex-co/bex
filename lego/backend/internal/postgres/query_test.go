@@ -17,10 +17,13 @@ limitations under the License.
 package postgres
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -32,6 +35,7 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,6 +74,10 @@ func TestMapPGError(t *testing.T) {
 	if got := mapPGError(context.DeadlineExceeded); !errors.Is(got, errQueryTimeout) {
 		t.Errorf("deadline => %v, want errQueryTimeout", got)
 	}
+	bodyLen := &pgproto3.ExceededMaxBodyLenErr{MaxExpectedBodyLen: 10, ActualBodyLen: 11}
+	if got := mapPGError(bodyLen); !errors.Is(got, errQueryResultTooLarge) || !errors.Is(got, core.ErrBadRequest) {
+		t.Errorf("oversized protocol body => %v, want errQueryResultTooLarge wrapping ErrBadRequest", got)
+	}
 	// Syntax error echoes a query token in .Message; the mapped error must not.
 	syn := &pgconn.PgError{Code: pgerrcode.SyntaxError, Message: `syntax error at or near "SECRETVALUE"`}
 	got := mapPGError(syn)
@@ -81,6 +89,20 @@ func TestMapPGError(t *testing.T) {
 	}
 	if !strings.Contains(got.Error(), pgerrcode.SyntaxError) {
 		t.Errorf("mapped error should carry the SQLSTATE: %q", got.Error())
+	}
+}
+
+func TestQueryFrontendRejectsOversizedMessageBeforeBodyRead(t *testing.T) {
+	// A PostgreSQL message starts with its type byte and a uint32 length that
+	// includes the four length bytes. Supply only that header: an allocation-safe
+	// frontend rejects the declared oversized body without trying to read it.
+	header := make([]byte, 5)
+	header[0] = 'D' // DataRow
+	binary.BigEndian.PutUint32(header[1:], uint32(queryWireMessageBodyCap+5))
+	_, err := newQueryFrontend(bytes.NewReader(header), io.Discard).Receive()
+	var tooLarge *pgproto3.ExceededMaxBodyLenErr
+	if !errors.As(err, &tooLarge) {
+		t.Fatalf("Receive oversized DataRow = %v, want ExceededMaxBodyLenErr", err)
 	}
 }
 
@@ -347,6 +369,20 @@ func TestQueryIntegration(t *testing.T) {
 	}
 	if capped.RowCount != 10 || !capped.Truncated {
 		t.Fatalf("cap result = %+v, want 10 rows truncated", capped)
+	}
+
+	// A single oversized value is rejected before it can be retained. A still
+	// larger DataRow is rejected by pgproto3 before allocating its message body.
+	for name, size := range map[string]int{
+		"decoded cell": queryCellByteCap + 1,
+		"wire message": queryWireMessageBodyCap + 1,
+	} {
+		t.Run(name, func(t *testing.T) {
+			query := fmt.Sprintf("SELECT repeat('x', %d)", size)
+			if _, err := runReadOnlyQuery(ctx, uri, query, queryLimits{statementTimeout: queryStatementTimeout, rowCap: queryRowCap}); !errors.Is(err, errQueryResultTooLarge) {
+				t.Fatalf("oversized result => %v, want errQueryResultTooLarge", err)
+			}
+		})
 	}
 
 	// The dashboard's explicitly confirmed write mode commits one transaction,

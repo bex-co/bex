@@ -30,10 +30,9 @@ import (
 // connection verbs are bex extensions (Render exposes repos only via its private
 // dashboard API); naming follows Render's kebab-case noun style. The callback is
 // GitHub's post-install "Setup URL" redirect target. Browser callbacks carry a
-// short-lived signed state credential instead of a dashboard cookie; API callers
-// may keep using their ordinary Bearer/session credential. In both cases the
-// installation_id is validated against GitHub before anything is recorded
-// (docs/ADR026-github-integration.md).
+// short-lived signed state credential instead of a dashboard cookie. Every
+// binding also carries GitHub's single-use user-authorization code; bearer
+// authentication alone is never an installation-ownership proof.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/git/connect", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := s.StartConnect(r.Context(), r.URL.Query().Get("ownerId"))
@@ -46,8 +45,6 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 
 	mux.HandleFunc("GET /v1/git/callback", func(w http.ResponseWriter, r *http.Request) {
 		stateToken := r.URL.Query().Get("state")
-		_, authenticated := core.IdentityFrom(r.Context())
-		browserCallback := stateToken != "" || !authenticated
 		if !s.configured() {
 			// Preserve the optional-feature contract: when GitHub or its store is
 			// off, every git-connect verb is a real 503 (never a misleading UI
@@ -57,64 +54,38 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		if r.URL.Query().Get("error") != "" {
 			err := errors.New("github did not complete the app installation")
-			if browserCallback {
-				s.writeCallbackFailure(w, r, "github_error", err)
-			} else {
-				core.WriteErr(w, core.ErrBadRequest)
-			}
+			s.writeCallbackFailure(w, r, "github_error", err)
 			return
 		}
 
-		workspaceID := ""
-		if stateToken != "" {
-			var err error
-			workspaceID, err = s.verifyConnectState(stateToken)
-			if err != nil {
-				if errors.Is(err, core.ErrGitHubUnavailable) {
-					core.WriteErr(w, err)
-					return
-				}
-				s.writeCallbackFailure(w, r, callbackStateErrorCode(err), err)
+		if stateToken == "" {
+			s.writeCallbackFailure(w, r, callbackStateErrorCode(errConnectStateMissing), errConnectStateMissing)
+			return
+		}
+		workspaceID, err := s.verifyConnectState(stateToken)
+		if err != nil {
+			if errors.Is(err, core.ErrGitHubUnavailable) {
+				core.WriteErr(w, err)
 				return
 			}
-		} else if !authenticated {
-			s.writeCallbackFailure(w, r, callbackStateErrorCode(errConnectStateMissing), errConnectStateMissing)
+			s.writeCallbackFailure(w, r, callbackStateErrorCode(err), err)
 			return
 		}
 
 		raw := r.URL.Query().Get("installation_id")
 		id, err := strconv.ParseInt(raw, 10, 64)
 		if err != nil || id <= 0 {
-			if browserCallback {
-				s.writeCallbackFailure(w, r, "invalid_installation", core.ErrBadRequest)
-			} else {
-				core.WriteErr(w, core.ErrBadRequest)
-			}
+			s.writeCallbackFailure(w, r, "invalid_installation", core.ErrBadRequest)
 			return
 		}
-		if workspaceID != "" {
-			// Browser install callback: enforce the installation-admin proof (F2)
-			// using the OAuth `code` GitHub appends when user authorization is
-			// enabled, then record against the state-authenticated workspace.
-			_, err = s.connectFromCallback(r.Context(), workspaceID, id, r.URL.Query().Get("code"))
-		} else {
-			// Backward-compatible API/agent path: auth.go attached the caller
-			// Identity, so the ordinary authorization-gated Connect still applies.
-			_, err = s.Connect(r.Context(), id)
-		}
+		_, err = s.connectFromCallback(r.Context(), workspaceID, id, r.URL.Query().Get("code"))
 		if err != nil {
-			if browserCallback {
-				s.writeCallbackFailure(w, r, callbackConnectErrorCode(err), err)
-			} else {
-				core.WriteErr(w, err)
-			}
+			s.writeCallbackFailure(w, r, callbackConnectErrorCode(err), err)
 			return
 		}
-		if browserCallback {
-			if location := s.callbackRedirect(""); location != "" {
-				redirectCallback(w, r, location)
-				return
-			}
+		if location := s.callbackRedirect(""); location != "" {
+			redirectCallback(w, r, location)
+			return
 		}
 		core.WriteJSON(w, http.StatusOK, map[string]string{"status": "connected"})
 	})

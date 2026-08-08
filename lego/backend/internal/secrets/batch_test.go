@@ -333,7 +333,7 @@ func TestEnvVarRevisionIsCoherentAndMasked(t *testing.T) {
 	}
 }
 
-func TestVersionedEnvReadMigratesTenantAndSanitizesStoreFailures(t *testing.T) {
+func TestVersionedEnvReadRefusesAmbiguousLegacyAndSanitizesStoreFailures(t *testing.T) {
 	path := envPath("web")
 	store := newVersionedTenantFakeSecretStore()
 	legacyCtx := withTenant(context.Background(), baoTenant)
@@ -342,14 +342,14 @@ func TestVersionedEnvReadMigratesTenantAndSanitizesStoreFailures(t *testing.T) {
 	}
 	svc := newService(store, tenantApp("web", "tea-a"))
 	keys, err := svc.EnvVarKeys(context.Background(), "web")
-	if err != nil || len(keys) != 1 || keys[0].Revision != encodeEnvRevision(1) {
-		t.Fatalf("versioned migration read = %#v, %v", keys, err)
+	if err != nil || len(keys) != 0 {
+		t.Fatalf("versioned tenant read exposed legacy data = %#v, %v", keys, err)
 	}
-	if store.m["tea-a/"+path]["TOKEN"] != "legacy-secret" {
-		t.Fatalf("tenant migration missing: %#v", store.m)
+	if _, exists := store.m["tea-a/"+path]; exists {
+		t.Fatalf("tenant path was populated from ambiguous legacy data: %#v", store.m)
 	}
-	if _, remains := store.m[baoTenant+"/"+path]; remains {
-		t.Fatalf("legacy tenant copy remained: %#v", store.m)
+	if store.m[baoTenant+"/"+path]["TOKEN"] != "legacy-secret" {
+		t.Fatalf("legacy tenant data must remain for explicit migration: %#v", store.m)
 	}
 
 	leaky := newVersionedFakeSecretStore()
