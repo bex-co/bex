@@ -5,6 +5,7 @@ import {
   FileDiff,
   Loader2,
   Terminal as TerminalIcon,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -13,18 +14,6 @@ import {
   useStreamDuration,
 } from "@/features/agent-sessions/lib/stream-duration";
 import { unwrapAcpTool } from "@/features/agent-sessions/lib/acp-parts";
-import {
-  Tool,
-  ToolHeader,
-  ToolContent,
-  ToolInput,
-  ToolOutput,
-} from "@/common/components/ai-elements/tool";
-import {
-  Terminal,
-  TerminalTrigger,
-  TerminalContent,
-} from "@/common/components/ai-elements/terminal";
 
 // One folded activity block: the consecutive tool parts and ACP
 // command/terminal/diff parts of a single assistant turn, merged into a single
@@ -77,12 +66,12 @@ export function ActivityGroup({ steps }: { steps: ActivityStep[] }) {
       : t("agentSessions.groupWorked");
 
   return (
-    <div className="bg-muted/20 border-border/70 my-2 overflow-hidden rounded-lg border">
+    <div className="bg-muted/20 border-border/70 my-1.5 overflow-hidden rounded-lg border">
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
         aria-expanded={isOpen}
-        className="hover:bg-muted/40 flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left transition-colors"
+        className="hover:bg-muted/40 flex w-full cursor-pointer items-center gap-2 px-2.5 py-1 text-left transition-colors"
       >
         {hasPending ? (
           <Loader2 className="text-muted-foreground size-3.5 shrink-0 animate-spin" />
@@ -101,10 +90,10 @@ export function ActivityGroup({ steps }: { steps: ActivityStep[] }) {
       </button>
 
       {isOpen && (
-        <div className="border-border/50 border-t px-2.5 py-2">
+        <div className="border-border/50 border-t px-2.5 py-1.5">
           {/* Vertical timeline: a connector line down the left with a node per
               step, the individual steps rendered in order. */}
-          <ol className="border-border/60 relative ml-1 space-y-1.5 border-l pl-4">
+          <ol className="border-border/60 relative ml-1 space-y-1 border-l pl-4">
             {steps.map((step, i) => (
               <li key={i} className="relative">
                 <span
@@ -137,15 +126,15 @@ function ActivityStepView({ step }: { step: ActivityStep }) {
   }
 
   if (step.kind === "terminal") {
-    // Vendored AI Elements terminal block (dark shell pane), open inline within
-    // the already-collapsed activity group.
     return (
-      <Terminal defaultOpen>
-        <TerminalTrigger>{t("agentSessions.groupTerminal")}</TerminalTrigger>
-        <TerminalContent>
+      <div className="space-y-1">
+        <StepLabel icon={<TerminalIcon className="text-primary/60 size-3" />}>
+          {t("agentSessions.groupTerminal")}
+        </StepLabel>
+        <pre className="max-h-40 overflow-auto rounded-md bg-[#0a0a0a] px-2.5 py-1.5 font-mono text-xs leading-relaxed whitespace-pre-wrap text-[#e5e5e5]">
           {step.output ?? t("agentSessions.terminalNoOutput")}
-        </TerminalContent>
-      </Terminal>
+        </pre>
+      </div>
     );
   }
 
@@ -162,7 +151,9 @@ function ActivityStepView({ step }: { step: ActivityStep }) {
 
   if (step.kind === "tool") {
     // unwrapAcpTool recovers the real tool name/command and drops trivial acks
-    // (see its docstring); render via the vendored AI Elements Tool, open inline.
+    // (see its docstring). Rendered as a compact single-line row: a lifted shell
+    // command sits inline (no CodeBlock chrome); only non-trivial args/output get
+    // a bare capped pre below.
     const tool = unwrapAcpTool({
       name: step.name,
       state: step.state,
@@ -170,30 +161,35 @@ function ActivityStepView({ step }: { step: ActivityStep }) {
       output: step.output,
       errorText: step.errorText,
     });
+    const running =
+      tool.state !== "output-available" && tool.state !== "output-error";
     return (
-      <Tool defaultOpen>
-        <ToolHeader
-          name={tool.name}
-          state={tool.state}
-          stateLabel={toolStateLabel(tool.state, t)}
-        />
-        <ToolContent>
-          {tool.command !== undefined ? (
-            <ToolInput
-              label={t("agentSessions.toolCommand")}
-              input={tool.command}
-            />
-          ) : (
-            <ToolInput label={t("agentSessions.toolInput")} input={tool.args} />
+      <div className="space-y-1">
+        <StepShell
+          icon={
+            running ? (
+              <Loader2 className="size-3 shrink-0 animate-spin" />
+            ) : (
+              <Wrench className="text-primary/60 size-3 shrink-0" />
+            )
+          }
+        >
+          <span className="font-semibold">{tool.name}</span>
+          {tool.command && (
+            <code className="min-w-0 truncate">{tool.command}</code>
           )}
-          <ToolOutput
-            label={t("agentSessions.toolOutput")}
-            errorLabel={t("agentSessions.toolError")}
-            output={tool.output}
-            errorText={tool.errorText}
-          />
-        </ToolContent>
-      </Tool>
+          <span className="text-muted-foreground/60 ml-auto shrink-0">
+            {toolStateLabel(tool.state, t)}
+          </span>
+        </StepShell>
+        {tool.command === undefined && tool.args !== undefined && (
+          <StepCode code={safeJson(tool.args)} />
+        )}
+        {tool.output !== undefined && <StepCode code={safeJson(tool.output)} />}
+        {tool.errorText && (
+          <p className="text-destructive text-xs">{tool.errorText}</p>
+        )}
+      </div>
     );
   }
 
@@ -209,7 +205,7 @@ function StepShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="border-border/60 bg-background text-muted-foreground rounded-md border px-2.5 py-1.5 font-mono text-xs">
+    <div className="border-border/60 bg-background text-muted-foreground rounded-md border px-2 py-1 font-mono text-xs">
       <div className="flex items-center gap-1.5">
         {icon}
         {children}
@@ -223,7 +219,7 @@ function StepShell({
 // not a document, so it gets a bare scroll-capped pre instead (w3 compact pass).
 function StepCode({ code }: { code: string }) {
   return (
-    <pre className="border-border/60 bg-background text-muted-foreground max-h-48 overflow-auto rounded-md border px-2.5 py-1.5 font-mono text-xs whitespace-pre-wrap">
+    <pre className="border-border/60 bg-background text-muted-foreground max-h-40 overflow-auto rounded-md border px-2 py-1 font-mono text-xs whitespace-pre-wrap">
       {code}
     </pre>
   );

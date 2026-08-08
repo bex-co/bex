@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { GitPullRequest, MoreHorizontal, Plus, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Link, useParams } from "@tanstack/react-router";
+import { GitPullRequest, MoreHorizontal, Search } from "lucide-react";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   SidebarGroup,
@@ -19,16 +19,7 @@ import {
   sessionTitle,
 } from "@/features/agent-sessions/lib/mapper";
 import { fuzzyMatch } from "@/features/agent-sessions/lib/mention";
-import { requestAgentComposerFocus } from "@/features/agent-sessions/lib/composer-focus";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
-
-/** True when a key event's target is an editable element (input-safe guard). */
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return (
-    target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)
-  );
-}
 
 /**
  * The agent-sessions section of the one dashboard rail (w5/m64) — Devin's
@@ -39,11 +30,11 @@ function isEditableTarget(target: EventTarget | null): boolean {
  * `/automations`/`/wiki`.
  *
  * Replaces the standalone `<aside>` w3/m45 t004 shipped, which made `/agents`
- * the only route in the dashboard rendering a second sidebar. Affordances are
- * ported verbatim: "New session" with Devin's bare `O` shortcut (guarded so it
- * never fires while typing, and bare so it can't collide with ⌘K search or ⌘B
- * sidebar toggle), search over title + repo, the More/view-all target, human
- * status phrases, and the direct GitHub PR link.
+ * the only route in the dashboard rendering a second sidebar. Affordances:
+ * search over title + repo, the More/view-all target, human status phrases, and
+ * the direct GitHub PR link. (There is no "New session" row: the global "Agents"
+ * nav item already routes to `/agents`, which is the new-session surface — a
+ * second link to the same route was redundant.)
  *
  * The whole group hides in icon mode — sessions have no meaningful icon
  * representation, which is Devin's own answer (its collapsed rail keeps nav
@@ -56,23 +47,10 @@ function isEditableTarget(target: EventTarget | null): boolean {
  */
 export function AgentSessionsNavSection() {
   const { t } = useTranslations();
-  const navigate = useNavigate();
   const { agentSessionId } = useParams({ strict: false });
   const { sessions, loading } = useAgentSessions();
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key.toLowerCase() !== "o") return;
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (isEditableTarget(event.target)) return;
-      event.preventDefault();
-      void navigate({ to: "/agents" }).then(requestAgentComposerFocus);
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [navigate]);
 
   const filtered = useMemo(
     () =>
@@ -87,24 +65,7 @@ export function AgentSessionsNavSection() {
       aria-label={t("agentSessions.sidebarLabel")}
       className="min-h-0 group-data-[collapsible=icon]:hidden"
     >
-      <SidebarMenu>
-        <SidebarMenuItem>
-          <SidebarMenuButton asChild tooltip={t("agentSessions.newSession")}>
-            <Link to="/agents">
-              <Plus />
-              <span>{t("agentSessions.newSession")}</span>
-              <kbd
-                aria-hidden
-                className="bg-sidebar-accent text-sidebar-accent-foreground ml-auto rounded px-1.5 py-0.5 font-sans text-[10px] font-medium"
-              >
-                O
-              </kbd>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      </SidebarMenu>
-
-      <div className="mt-2 flex items-center justify-between gap-1">
+      <div className="flex items-center justify-between gap-1">
         <SidebarGroupLabel className="min-w-0 flex-1">
           {t("agentSessions.recentSessions")}
         </SidebarGroupLabel>

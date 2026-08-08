@@ -52,7 +52,7 @@ export function TaskContent({
   ...props
 }: ComponentProps<typeof CollapsibleContent>) {
   return (
-    <CollapsibleContent className={cn("space-y-1", className)} {...props} />
+    <CollapsibleContent className={cn("space-y-0.5", className)} {...props} />
   );
 }
 
@@ -72,11 +72,13 @@ export function TaskItem({
         ? LoaderIcon
         : CircleIcon;
   return (
-    <div className={cn("flex items-start gap-2", className)}>
+    <div
+      className={cn("flex items-start gap-1.5 text-xs leading-5", className)}
+    >
       <Icon
         aria-hidden
         className={cn(
-          "mt-0.5 size-3.5 shrink-0",
+          "mt-0.5 size-3 shrink-0",
           status === "completed"
             ? "text-emerald-600 dark:text-emerald-400"
             : status === "in_progress"

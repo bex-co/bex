@@ -293,10 +293,9 @@ describe("SessionConversationImpl", () => {
     expect(
       screen.queryByText("acp.acp_provider_agent_dynamic_tool"),
     ).not.toBeInTheDocument();
-    // Command lifted to a labeled section; the trivial {ok:true} ack dropped.
-    expect(screen.getByText("Command")).toBeInTheDocument();
-    expect(container.textContent).toContain("ls -la");
-    expect(screen.queryByText("Output")).not.toBeInTheDocument();
+    // Command lifted inline as a compact code line; trivial {ok:true} ack dropped
+    // (no raw JSON output blob).
+    expect(screen.getByText("ls -la")).toBeInTheDocument();
     expect(container.textContent).not.toContain('"ok"');
   });
 

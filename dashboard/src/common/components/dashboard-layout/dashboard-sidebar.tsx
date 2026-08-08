@@ -84,7 +84,7 @@ export function DashboardSidebar() {
       <SidebarHeader>
         <SidebarBrand />
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="gap-0">
         <SidebarNavGroups
           groups={NAV_GROUPS}
           isItemActive={(to) => isNavItemActive(pathname, to)}
@@ -95,7 +95,9 @@ export function DashboardSidebar() {
             Devin's own shape: global nav on top, the section's working set
             beneath. Section-scoped on purpose: sessions never follow you onto
             Projects/Services/Settings. See ADR047 D9. */}
-        {isNavItemActive(pathname, "/agents") ? <AgentSessionsNavSection /> : null}
+        {isNavItemActive(pathname, "/agents") ? (
+          <AgentSessionsNavSection />
+        ) : null}
       </SidebarContent>
     </Sidebar>
   );

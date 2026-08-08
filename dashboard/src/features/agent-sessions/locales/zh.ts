@@ -534,10 +534,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "错误",
     description: "Section label for a tool call's error text",
   },
-  "agentSessions.toolCommand": {
-    message: "命令",
-    description: "Section label for a tool call's shell command",
-  },
   "agentSessions.toolStateRunning": {
     message: "运行中",
     description: "Badge label for a tool call awaiting output",
@@ -572,10 +568,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
       "Accessible label for the floating jump-to-bottom button in the conversation column",
   },
   // --- Full-page chat restructure (w3/m44) ---
-  "agentSessions.newSession": {
-    message: "新建会话",
-    description: "Sessions sidebar — start-a-new-session affordance",
-  },
   "agentSessions.recentSessions": {
     message: "最近",
     description: "Sessions sidebar — heading over the recent sessions list",
