@@ -40,6 +40,9 @@ type fakeDatabaseIndex struct {
 	mu        sync.Mutex
 	dbs       map[string]postgres.PostgresView
 	listCalls int
+	// setEnvCalls counts membership WRITES, so a test can prove the diff
+	// re-stamps only what actually changed rather than rewriting every member.
+	setEnvCalls int
 }
 
 func newDatabaseIndex() *fakeDatabaseIndex {
@@ -68,6 +71,7 @@ func (f *fakeDatabaseIndex) ListPostgres(_ context.Context, ownerID string) ([]p
 func (f *fakeDatabaseIndex) SetEnvironmentID(_ context.Context, name, environmentID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.setEnvCalls++
 	d := f.dbs[name]
 	d.EnvironmentID = environmentID
 	f.dbs[name] = d
@@ -97,10 +101,11 @@ func (f *fakeDatabaseIndex) SetEnvironmentIPAllowList(_ context.Context, name st
 
 // fakeKeyValueIndex is fakeDatabaseIndex's KeyValue-CR counterpart.
 type fakeKeyValueIndex struct {
-	envLayers map[string][]string
-	mu        sync.Mutex
-	kvs       map[string]keyvalue.KeyValueView
-	listCalls int
+	envLayers   map[string][]string
+	mu          sync.Mutex
+	kvs         map[string]keyvalue.KeyValueView
+	listCalls   int
+	setEnvCalls int
 }
 
 func newKeyValueIndex() *fakeKeyValueIndex {
@@ -129,6 +134,7 @@ func (f *fakeKeyValueIndex) ListKeyValues(_ context.Context, ownerID string) ([]
 func (f *fakeKeyValueIndex) SetEnvironmentID(_ context.Context, name, environmentID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.setEnvCalls++
 	kv := f.kvs[name]
 	kv.EnvironmentID = environmentID
 	f.kvs[name] = kv
