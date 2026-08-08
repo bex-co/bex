@@ -116,7 +116,7 @@ export function SessionList({ sessions, loading, error }: SessionListProps) {
   }
   if (error && sessions.length === 0) {
     return (
-      <div className="py-10 text-center">
+      <div className="py-8 text-center">
         <p className="font-medium">{t("agentSessions.errorTitle")}</p>
       </div>
     );

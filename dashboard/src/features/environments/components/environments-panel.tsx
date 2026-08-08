@@ -225,7 +225,7 @@ export function EnvironmentsPanel({
         />
       ) : (
         <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
+          <CardContent className="py-6 text-center text-sm text-muted-foreground">
             {t("environments.emptyBody")}
           </CardContent>
         </Card>

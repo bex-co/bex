@@ -57,7 +57,7 @@ export function InstanceTypePicker({
   if (error) {
     return (
       <Card>
-        <CardContent className="py-8 text-center">
+        <CardContent className="py-6 text-center">
           <p className="mb-1 font-medium">
             {t("services.planPickerErrorTitle")}
           </p>
