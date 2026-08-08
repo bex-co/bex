@@ -65,7 +65,7 @@ export function SessionSidebar({ activeId }: SessionSidebarProps) {
   return (
     <aside
       aria-label={t("agentSessions.sidebarLabel")}
-      className="bg-muted/20 hidden w-72 shrink-0 flex-col border-r lg:flex"
+      className="bg-muted/20 hidden w-60 shrink-0 flex-col border-r lg:flex"
     >
       <div className="border-b p-3">
         <Button asChild size="sm" className="w-full justify-start">
@@ -134,9 +134,9 @@ export function SessionSidebar({ activeId }: SessionSidebarProps) {
 
         {loading && sessions.length === 0 ? (
           <div className="space-y-1.5 p-1">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
           </div>
         ) : sessions.length === 0 ? (
           <p className="text-muted-foreground px-2 py-3 text-sm">
@@ -182,7 +182,7 @@ function SessionRow({
   return (
     <div
       className={cn(
-        "hover:bg-muted relative rounded-lg px-2 py-2 transition-colors",
+        "hover:bg-muted relative rounded-md px-2 py-1.5 transition-colors",
         active && "bg-muted",
       )}
     >

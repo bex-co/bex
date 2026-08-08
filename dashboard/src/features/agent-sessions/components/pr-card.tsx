@@ -34,7 +34,7 @@ export function PrCard({ session }: PrCardProps) {
   const commits = session.evidence?.commits ?? null;
 
   return (
-    <div className="border-border/70 bg-muted/10 my-3 rounded-xl border p-4">
+    <div className="border-border/70 bg-muted/10 my-2 rounded-lg border p-3">
       <div className="flex items-start gap-3">
         <div className="border-border/60 bg-background flex size-8 shrink-0 items-center justify-center rounded-full border">
           <GitPullRequest className="text-primary size-4" />

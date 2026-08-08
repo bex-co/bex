@@ -358,7 +358,7 @@ export function NewSessionComposer() {
             className="bg-background focus-within:border-ring relative rounded-xl border shadow-sm"
           >
             {repoChip || sessionChips.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5 px-3 pt-3">
+              <div className="flex flex-wrap gap-1.5 px-2.5 pt-2.5">
                 {repoChip ? (
                   <MentionChip
                     icon={<BookMarked className="size-3" aria-hidden />}
@@ -409,10 +409,10 @@ export function NewSessionComposer() {
                   : undefined
               }
               placeholder={t("agentSessions.taskPlaceholder")}
-              className="min-h-24 resize-none rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0 dark:bg-transparent"
+              className="min-h-16 resize-none rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0 dark:bg-transparent"
             />
 
-            <div className="flex items-center gap-1 px-2 pb-2">
+            <div className="flex items-center gap-1 px-1.5 pb-1.5">
               <div className="relative">
                 <Button
                   type="button"
