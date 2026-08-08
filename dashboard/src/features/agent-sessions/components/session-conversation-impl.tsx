@@ -1,14 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useChat } from "@ai-sdk/react";
 import type { ChatTransport } from "ai";
-import {
-  AlertCircle,
-  CheckCircle2,
-  ChevronDown,
-  Circle,
-  Loader2,
-  User,
-} from "lucide-react";
+import { AlertCircle, ChevronDown, Loader2, User } from "lucide-react";
 import {
   createAgentSessionTransport,
   type MintedTicket,
@@ -35,6 +28,17 @@ import {
   type AgentUIMessage,
 } from "@/features/agent-sessions/lib/acp-parts";
 import { collapseDoubledParts } from "@/features/agent-sessions/lib/collapse-doubled-parts";
+import {
+  Task,
+  TaskTrigger,
+  TaskContent,
+  TaskItem,
+} from "@/common/components/ai-elements/task";
+import {
+  Reasoning,
+  ReasoningTrigger,
+  ReasoningContent,
+} from "@/common/components/ai-elements/reasoning";
 
 // The live conversation column (ADR047 D9). `useChat` drives it over the m43
 // stream transport: `resume` replays the durable transcript on mount, then
@@ -240,6 +244,10 @@ export function SessionConversationImpl({
               role={message.role}
               blocks={blocks}
               showCursor={isLoading && index === rendered.length - 1}
+              // A plan is "live" only in the currently-streaming last row; every
+              // other (finished) row is settled, so a trailing in_progress entry
+              // never spins — including historical plans once a new turn streams.
+              settled={!(isLoading && index === rendered.length - 1)}
             />
           ))}
 
@@ -315,6 +323,11 @@ type DisplayBlock =
 
 function buildBlocks(parts: PartLike[]): DisplayBlock[] {
   const blocks: DisplayBlock[] = [];
+  // ACP plans are full-state SNAPSHOTS re-sent on every update, arriving as
+  // separate id-less `data-acp` parts. Render ONE plan block updated in place to
+  // the latest snapshot — never a stack of stale snapshots each frozen at its
+  // own (often in_progress) state (ADR051 glue #1).
+  let planBlock: Extract<DisplayBlock, { type: "plan" }> | null = null;
 
   const pushStep = (step: ActivityStep, index: number) => {
     const prev = blocks[blocks.length - 1];
@@ -348,11 +361,16 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
     if (acp !== undefined) {
       const group = classifyAcpData(acp);
       if (group.kind === "plan") {
-        blocks.push({
-          type: "plan",
-          key: `plan-${index}`,
-          entries: group.entries,
-        });
+        if (planBlock) {
+          planBlock.entries = group.entries; // supersede with the latest snapshot
+        } else {
+          planBlock = {
+            type: "plan",
+            key: `plan-${index}`,
+            entries: group.entries,
+          };
+          blocks.push(planBlock);
+        }
         return;
       }
       if (group.kind === "diff") {
@@ -420,10 +438,12 @@ function MessageRow({
   role,
   blocks,
   showCursor,
+  settled,
 }: {
   role: string;
   blocks: DisplayBlock[];
   showCursor: boolean;
+  settled: boolean;
 }) {
   const isUser = role === "user";
   // The cursor rides the final text block of the last streaming assistant turn.
@@ -467,7 +487,13 @@ function MessageRow({
             );
           }
           if (block.type === "plan") {
-            return <PlanBlock key={block.key} entries={block.entries} />;
+            return (
+              <PlanBlock
+                key={block.key}
+                entries={block.entries}
+                settled={settled}
+              />
+            );
           }
           return <ActivityGroup key={block.key} steps={block.steps} />;
         })}
@@ -477,6 +503,9 @@ function MessageRow({
   );
 }
 
+// The agent's chain-of-thought, rendered with the vendored AI Elements
+// `Reasoning` disclosure. Collapsed by default so a long transcript stays
+// scannable; the "Thought for <Ns>" label derives from stream-arrival timing.
 function ReasoningBlock({
   text,
   streaming,
@@ -485,9 +514,6 @@ function ReasoningBlock({
   streaming: boolean;
 }) {
   const { t } = useTranslations();
-  const [isOpen, setIsOpen] = useState(false);
-  // Derive "Thought for <Ns>" from stream-arrival timing (see useStreamDuration);
-  // settle once the assistant turn stops streaming.
   const durationMs = useStreamDuration(text.length, !streaming);
   const summary =
     durationMs >= 1000
@@ -496,69 +522,43 @@ function ReasoningBlock({
         })
       : t("agentSessions.groupThought");
   return (
-    <div className="border-border/70 bg-muted/20 my-3 overflow-hidden rounded-xl border">
-      <button
-        type="button"
-        onClick={() => setIsOpen((open) => !open)}
-        aria-expanded={isOpen}
-        className="hover:bg-muted/40 flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left transition-colors"
-      >
-        <span className="text-foreground/90 min-w-0 flex-1 truncate text-xs font-medium">
-          {summary}
-        </span>
-        <ChevronDown
-          className={cn(
-            "text-muted-foreground size-3.5 shrink-0 transition-transform",
-            isOpen && "rotate-180",
-          )}
-        />
-      </button>
-      {isOpen && (
-        <div className="border-border/50 text-muted-foreground border-t px-2.5 py-1.5 text-sm">
-          <MarkdownRenderer content={text} />
-        </div>
-      )}
-    </div>
+    <Reasoning className="my-3">
+      <ReasoningTrigger>{summary}</ReasoningTrigger>
+      <ReasoningContent>
+        <MarkdownRenderer content={text} />
+      </ReasoningContent>
+    </Reasoning>
   );
 }
 
-function PlanBlock({ entries }: { entries: AcpPlanEntry[] }) {
+// The agent's plan, rendered with the vendored AI Elements `Task` checklist.
+// Once the session has settled, a trailing `in_progress` entry drops to a
+// neutral (pending) icon instead of a live loader — ACP agents routinely end a
+// turn with the last step still in_progress, and the platform (not the agent)
+// opens the PR, so the stream never flips it to completed (ADR051 glue #1).
+function PlanBlock({
+  entries,
+  settled,
+}: {
+  entries: AcpPlanEntry[];
+  settled: boolean;
+}) {
   const { t } = useTranslations();
   return (
-    <div className="border-border/70 bg-muted/10 my-2 rounded-lg border px-2.5 py-1.5">
-      <p className="text-foreground/90 mb-2 text-xs font-medium">
-        {t("agentSessions.groupPlan")}
-      </p>
-      <ul className="space-y-1">
+    <Task defaultOpen className="my-2">
+      <TaskTrigger title={t("agentSessions.groupPlan")} />
+      <TaskContent>
         {entries.map((entry, i) => (
-          <li key={i} className="flex items-start gap-2 text-sm">
-            <PlanStatusIcon status={entry.status} />
-            <span
-              className={cn(
-                "min-w-0 leading-6",
-                entry.status === "completed" &&
-                  "text-muted-foreground line-through",
-              )}
-            >
-              {entry.content}
-            </span>
-          </li>
+          <TaskItem key={i} status={planItemStatus(entry.status, settled)}>
+            {entry.content}
+          </TaskItem>
         ))}
-      </ul>
-    </div>
+      </TaskContent>
+    </Task>
   );
 }
 
-function PlanStatusIcon({ status }: { status?: string }) {
-  if (status === "completed") {
-    return <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-green-600" />;
-  }
-  if (status === "in_progress") {
-    return (
-      <Loader2 className="text-primary mt-0.5 size-3.5 shrink-0 animate-spin" />
-    );
-  }
-  return (
-    <Circle className="text-muted-foreground/50 mt-0.5 size-3.5 shrink-0" />
-  );
+function planItemStatus(status: string | undefined, settled: boolean): string {
+  if (settled && status === "in_progress") return "pending";
+  return status ?? "pending";
 }

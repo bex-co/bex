@@ -534,6 +534,10 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "错误",
     description: "Section label for a tool call's error text",
   },
+  "agentSessions.toolCommand": {
+    message: "命令",
+    description: "Section label for a tool call's shell command",
+  },
   "agentSessions.toolStateRunning": {
     message: "运行中",
     description: "Badge label for a tool call awaiting output",

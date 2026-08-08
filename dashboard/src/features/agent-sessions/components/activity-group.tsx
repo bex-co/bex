@@ -5,7 +5,6 @@ import {
   FileDiff,
   Loader2,
   Terminal as TerminalIcon,
-  Wrench,
 } from "lucide-react";
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -13,6 +12,19 @@ import {
   formatApproxDuration,
   useStreamDuration,
 } from "@/features/agent-sessions/lib/stream-duration";
+import { unwrapAcpTool } from "@/features/agent-sessions/lib/acp-parts";
+import {
+  Tool,
+  ToolHeader,
+  ToolContent,
+  ToolInput,
+  ToolOutput,
+} from "@/common/components/ai-elements/tool";
+import {
+  Terminal,
+  TerminalTrigger,
+  TerminalContent,
+} from "@/common/components/ai-elements/terminal";
 
 // One folded activity block: the consecutive tool parts and ACP
 // command/terminal/diff parts of a single assistant turn, merged into a single
@@ -125,13 +137,15 @@ function ActivityStepView({ step }: { step: ActivityStep }) {
   }
 
   if (step.kind === "terminal") {
+    // Vendored AI Elements terminal block (dark shell pane), open inline within
+    // the already-collapsed activity group.
     return (
-      <div className="space-y-1">
-        <StepLabel icon={<TerminalIcon className="text-primary/60 size-3" />}>
-          {t("agentSessions.groupTerminal")}
-        </StepLabel>
-        <StepCode code={step.output ?? t("agentSessions.terminalNoOutput")} />
-      </div>
+      <Terminal defaultOpen>
+        <TerminalTrigger>{t("agentSessions.groupTerminal")}</TerminalTrigger>
+        <TerminalContent>
+          {step.output ?? t("agentSessions.terminalNoOutput")}
+        </TerminalContent>
+      </Terminal>
     );
   }
 
@@ -147,34 +161,39 @@ function ActivityStepView({ step }: { step: ActivityStep }) {
   }
 
   if (step.kind === "tool") {
-    const running =
-      step.state !== "output-available" && step.state !== "output-error";
+    // unwrapAcpTool recovers the real tool name/command and drops trivial acks
+    // (see its docstring); render via the vendored AI Elements Tool, open inline.
+    const tool = unwrapAcpTool({
+      name: step.name,
+      state: step.state,
+      input: step.input,
+      output: step.output,
+      errorText: step.errorText,
+    });
     return (
-      <div className="space-y-1">
-        <StepShell
-          icon={
-            running ? (
-              <Loader2 className="size-3 shrink-0 animate-spin" />
-            ) : (
-              <Wrench className="text-primary/60 size-3 shrink-0" />
-            )
-          }
-        >
-          <span className="font-semibold">{step.name}</span>
-          <span className="text-muted-foreground/70">
-            {toolStateLabel(step.state, t)}
-          </span>
-        </StepShell>
-        {step.input !== undefined && step.input !== null && (
-          <StepCode code={safeJson(step.input)} />
-        )}
-        {step.output !== undefined && step.output !== null && (
-          <StepCode code={safeJson(step.output)} />
-        )}
-        {step.errorText && (
-          <p className="text-destructive text-xs">{step.errorText}</p>
-        )}
-      </div>
+      <Tool defaultOpen>
+        <ToolHeader
+          name={tool.name}
+          state={tool.state}
+          stateLabel={toolStateLabel(tool.state, t)}
+        />
+        <ToolContent>
+          {tool.command !== undefined ? (
+            <ToolInput
+              label={t("agentSessions.toolCommand")}
+              input={tool.command}
+            />
+          ) : (
+            <ToolInput label={t("agentSessions.toolInput")} input={tool.args} />
+          )}
+          <ToolOutput
+            label={t("agentSessions.toolOutput")}
+            errorLabel={t("agentSessions.toolError")}
+            output={tool.output}
+            errorText={tool.errorText}
+          />
+        </ToolContent>
+      </Tool>
     );
   }
 
