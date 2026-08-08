@@ -169,7 +169,11 @@ func main() {
 	// stream port directly (the sandbox NetworkPolicy admits only gateway
 	// ingress) and tees the UI-message stream into the durable transcript.
 	attach := &agentattach.Server{
-		Secret:         []byte(os.Getenv("BEX_SHELL_TICKET_SECRET")),
+		Secret: []byte(os.Getenv("BEX_SHELL_TICKET_SECRET")),
+		// The headless recorder (ADR051) is authenticated by the sandbox-exec HMAC —
+		// the trusted primitive the bex-api Completer already holds — not the browser
+		// ticket key, so it mounts on the internal exec listener below, never the edge.
+		RecordSecret:   []byte(os.Getenv("BEX_SANDBOX_EXEC_SECRET")),
 		Store:          st,
 		Pods:           agentattach.KubePodIPResolver{Client: clientset},
 		DriverPort:     intEnv("BEX_AGENT_SESSION_DRIVER_PORT", 8787),
@@ -238,6 +242,13 @@ func main() {
 	if sandbox.Enabled() {
 		execMux := http.NewServeMux()
 		execMux.Handle("POST /sandbox-exec", sandbox.Handler())
+		// Headless transcript recorder (ADR051): internal-only, same exec-secret
+		// trust and listener as sandbox-exec (bex-api Completer → gateway; never the
+		// edge). It dials the driver's stream and tees the full turn into the durable
+		// transcript before teardown, so fire-and-forget sessions are not blank.
+		if attach.RecordEnabled() {
+			execMux.Handle("POST /agent-record", attach.RecordHandler())
+		}
 		execMux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
 		execServer := &http.Server{Handler: execMux, ReadHeaderTimeout: 5 * time.Second}
 		execAddr := envOr("BEX_SANDBOX_EXEC_ADDR", ":8081")

@@ -202,6 +202,16 @@ func assertAgentSessionTranscripts(ctx context.Context, t *testing.T, s *PGStore
 		t.Fatalf("replay order/verbatim wrong: %+v", full)
 	}
 
+	// The headless recorder's per-turn guard (ADR051): turn 1 now has parts; an
+	// unrecorded turn does not. This is what makes the recorder idempotent and
+	// keeps it from double-storing a turn a live viewer already teed.
+	if rec, err := s.AgentSessionTranscriptTurnRecorded(ctx, sessionID, 1); err != nil || !rec {
+		t.Fatalf("turn 1 recorded = %v err=%v, want true", rec, err)
+	}
+	if rec, err := s.AgentSessionTranscriptTurnRecorded(ctx, sessionID, 2); err != nil || rec {
+		t.Fatalf("turn 2 recorded = %v err=%v, want false (not yet appended)", rec, err)
+	}
+
 	// The gateway resumes its live tee strictly after the stored max: append
 	// seq 3+ and read only the tail via the cursor.
 	if err := s.AppendAgentSessionTranscript(ctx, sessionID, []AgentSessionTranscriptPart{
@@ -212,6 +222,10 @@ func assertAgentSessionTranscripts(ctx context.Context, t *testing.T, s *PGStore
 	tail, err := s.AgentSessionTranscript(ctx, sessionID, maxSeq)
 	if err != nil || len(tail) != 1 || tail[0].Seq != 3 || tail[0].Turn != 2 {
 		t.Fatalf("cursor tail = %+v err=%v", tail, err)
+	}
+	// Turn 2 is now recorded too — the redispatched-turn concatenation the recorder relies on.
+	if rec, err := s.AgentSessionTranscriptTurnRecorded(ctx, sessionID, 2); err != nil || !rec {
+		t.Fatalf("turn 2 recorded after tail append = %v err=%v, want true", rec, err)
 	}
 
 	// Retention prune removes aged parts; a future cutoff clears all four.

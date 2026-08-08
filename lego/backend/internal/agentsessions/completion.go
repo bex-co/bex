@@ -229,12 +229,24 @@ func (c *Completer) fail(ctx context.Context, record store.AgentSession, reason 
 	c.teardown(ctx, record)
 }
 
-// teardown terminates the finished session's sandbox and removes its egress
-// policy (idempotent). Steering re-dispatches a fresh sandbox, so a completed
-// session never needs its sandbox kept warm in phase 1.
+// teardown records the turn's conversation transcript (ADR051), then terminates
+// the finished session's sandbox and removes its egress policy (idempotent).
+// Steering re-dispatches a fresh sandbox, so a completed session never needs its
+// sandbox kept warm in phase 1.
+//
+// The transcript capture MUST happen before the sandbox is destroyed: a
+// fire-and-forget turn runs headless with no browser attached, so nothing has
+// teed its conversation yet, and the driver's in-memory history dies with the
+// pod. This is the only writer for the shipped fire-and-forget product; without
+// it every completed session replays empty ("No conversation yet."). It is
+// best-effort — a capture failure is logged but never blocks teardown, so a
+// session is never stranded waiting on its transcript.
 func (c *Completer) teardown(ctx context.Context, record store.AgentSession) {
 	if record.SandboxID == "" {
 		return
+	}
+	if err := c.Sandbox.RecordTranscript(ctx, record.WorkspaceID, record.ID, record.SandboxID, record.Turns); err != nil {
+		log.Printf("agent-session completer: transcript record failed (session=%s turn=%d): %v", record.ID, record.Turns, err)
 	}
 	_ = c.Sandbox.CancelAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, record.SandboxID)
 }

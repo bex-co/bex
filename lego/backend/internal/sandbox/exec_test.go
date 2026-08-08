@@ -28,6 +28,7 @@ import (
 	"context"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
+	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
 )
@@ -268,6 +269,55 @@ func TestReadSessionStatusMintsSystemSubjectWithoutIdentity(t *testing.T) {
 	}
 	if gotSubject != systemExecSubject {
 		t.Fatalf("ticket subject = %q, want the system sentinel %q", gotSubject, systemExecSubject)
+	}
+}
+
+// RecordTranscript (ADR051) mints an agent-session ticket signed with the exec
+// HMAC (binding session/pod/turn under the system subject) and POSTs the
+// gateway's recorder endpoint — the trusted Completer path, no caller identity.
+func TestRecordTranscriptMintsExecSignedTicket(t *testing.T) {
+	secret := []byte("exec-secret")
+	var got agentsessionticket.Claims
+	gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("record method = %s, want POST", r.Method)
+		}
+		c, err := agentsessionticket.Verify(secret, r.Header.Get(agentsessionticket.TicketHeader), time.Now())
+		if err != nil {
+			http.Error(w, "bad ticket", http.StatusUnauthorized)
+			return
+		}
+		got = c
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer gateway.Close()
+
+	service := &Service{
+		Base:   &core.Base{Namespace: "default"},
+		Client: NewClient("http://unused"),
+		Exec:   &ExecConfig{Secret: secret, RecordURL: gateway.URL, Client: gateway.Client()},
+	}
+	lifecycle := &AgentSessionLifecycle{service: service}
+	if err := lifecycle.RecordTranscript(context.Background(), "tea-a", "ags-one", "sandbox-1", 3); err != nil {
+		t.Fatalf("RecordTranscript: %v", err)
+	}
+	if got.SessionID != "ags-one" || got.Turn != 3 || got.Pod != "sandbox-1-0" ||
+		got.Namespace != "tea-a-sandbox" || got.Subject != systemExecSubject {
+		t.Fatalf("record ticket claims = %+v", got)
+	}
+}
+
+// With no recorder URL configured, recording is a best-effort no-op (never an
+// error) so the Completer's teardown is unaffected on dev/unwired deployments.
+func TestRecordTranscriptNoOpWhenUnconfigured(t *testing.T) {
+	service := &Service{
+		Base:   &core.Base{Namespace: "default"},
+		Client: NewClient("http://unused"),
+		Exec:   &ExecConfig{Secret: []byte("s")}, // no RecordURL
+	}
+	lifecycle := &AgentSessionLifecycle{service: service}
+	if err := lifecycle.RecordTranscript(context.Background(), "tea-a", "ags-one", "sandbox-1", 1); err != nil {
+		t.Fatalf("unconfigured recorder must be a no-op, got %v", err)
 	}
 }
 

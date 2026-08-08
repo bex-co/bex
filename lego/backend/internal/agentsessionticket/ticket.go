@@ -40,6 +40,12 @@ var (
 	ErrExpired   = errors.New("agent session ticket expired")
 )
 
+// TicketHeader carries a signed agent-session ticket on the transports that use
+// this claim shape (the browser attach stream and the internal headless
+// recorder). It lives here — with the claim type both sides marshal — so bex-api
+// and the gateway share one symbol instead of duplicating the literal.
+const TicketHeader = "X-Bex-Agent-Ticket"
+
 // Claims bind one authenticated subject to one durable session and one exact
 // sandbox pod in one workspace. Pod is explicit (rather than merely derivable)
 // so the gateway never interprets a caller-controlled sandbox identifier.
@@ -50,8 +56,13 @@ type Claims struct {
 	Pod       string `json:"pod"`
 	Workspace string `json:"ws"`
 	Namespace string `json:"ns"`
-	IssuedAt  int64  `json:"iat"`
-	ExpiresAt int64  `json:"exp"`
+	// Turn is the session turn this ticket is scoped to (the session's turn
+	// counter at mint time, ADR051). It is optional — omitted/zero on legacy
+	// tickets — and lets the transcript tee/recorder stamp each part with its
+	// turn so the headless recorder's per-turn idempotency guard is meaningful.
+	Turn      int   `json:"trn,omitempty"`
+	IssuedAt  int64 `json:"iat"`
+	ExpiresAt int64 `json:"exp"`
 	Nonce     string `json:"jti"`
 }
 

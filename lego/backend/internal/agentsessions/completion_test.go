@@ -99,6 +99,37 @@ func TestCompleterOpensDraftPRAndRecordsEvidence(t *testing.T) {
 	}
 }
 
+// The ADR051 fix: the Completer must capture the conversation transcript BEFORE
+// tearing the sandbox down (the driver's history dies with the pod), scoped to
+// the session's current turn.
+func TestCompleterRecordsTranscriptBeforeTeardown(t *testing.T) {
+	c, _, lc, _, _ := completerFixture(succeededStatus(true), nil)
+	c.Reconcile(context.Background())
+	if lc.recorded != 1 {
+		t.Fatalf("transcript not recorded: recorded=%d", lc.recorded)
+	}
+	if lc.recordedTurn != 1 {
+		t.Fatalf("recorded turn = %d, want 1 (the dispatched turn)", lc.recordedTurn)
+	}
+	if !lc.recordedBeforeCancel {
+		t.Fatal("transcript recorded AFTER teardown; the driver is gone by then")
+	}
+	if lc.canceled != 1 {
+		t.Fatalf("sandbox not torn down: canceled=%d", lc.canceled)
+	}
+}
+
+// Recording is best-effort: a recorder failure must not strand the session or
+// block teardown.
+func TestCompleterRecordFailureDoesNotBlockTeardown(t *testing.T) {
+	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	lc.recordErr = errors.New("recorder unreachable")
+	c.Reconcile(context.Background())
+	if st.rows[id].Phase != PhaseCompleted || lc.canceled != 1 {
+		t.Fatalf("record failure blocked finalize/teardown: phase=%s canceled=%d", st.rows[id].Phase, lc.canceled)
+	}
+}
+
 func TestCompleterNoChangeCompletesWithoutPR(t *testing.T) {
 	c, st, lc, pr, id := completerFixture(succeededStatus(false), nil)
 	c.Reconcile(context.Background())

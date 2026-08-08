@@ -588,6 +588,11 @@ func (l *AgentSessionLifecycle) ReadSessionStatus(ctx context.Context, workspace
 	return result.Stdout, nil
 }
 
+// RecordTranscript delegates to the exec-secret-signed recorder path (ADR051).
+func (l *AgentSessionLifecycle) RecordTranscript(ctx context.Context, workspaceID, sessionID, sandboxID string, turn int) error {
+	return l.service.recordTranscript(ctx, workspaceID, sessionID, sandboxID, turn)
+}
+
 func (s *Service) agentSessionKey(ctx context.Context, workspaceID string) (string, error) {
 	if !s.enabled() {
 		return "", core.ErrSandboxesUnavailable
