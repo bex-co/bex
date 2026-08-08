@@ -29,6 +29,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -347,6 +348,83 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 	return auth, ctrl.Result{}, false, nil
 }
 
+// reconcileKeyValueBackupNetworkPolicy supplies the egress the backup and purge
+// Jobs need on top of the platform-wide Cilium node/metadata egress deny
+// (deploy/gitops/base/tenant-node-egress.yaml). That CiliumNetworkPolicy selects
+// every app.bex.co/workspace-labelled pod into egress default-deny and relies on
+// each tenant workload's own operator-managed allow to restore DNS, in-namespace,
+// and internet egress — Apps get theirs from their hosting namespace's
+// namespace-wide policies. A KeyValue's Jobs carry the workspace label yet run in
+// the shared apps namespace with no such allow, so the snapshot step cannot
+// resolve the Valkey Service (DNS "Try again") and no backup ever uploads
+// (w5/039). This k8s NetworkPolicy is additive — the Cilium deny still wins for
+// the node/metadata ranges — and is a harmless no-op where a namespace-wide allow
+// already covers these pods. It is scoped to the Job pods (app.bex.co/component in
+// {keyvalue-backup, keyvalue-backup-purge}); the Valkey server pods, which never
+// dial out, keep their default-deny egress untouched.
+func (r *KeyValueReconciler) reconcileKeyValueBackupNetworkPolicy(ctx context.Context, kv *appv1alpha1.KeyValue) error {
+	udp, tcp := corev1.ProtocolUDP, corev1.ProtocolTCP
+	dnsPort := intstr.FromInt(53)
+	valkeyPort := intstr.FromInt(kvPort)
+	valkeyTLSPort := intstr.FromInt(kvTLSPort)
+	np := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: kv.Name + "-backup-egress", Namespace: kv.Namespace}}
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, np, func() error {
+		np.Spec = networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{labelKeyValue: kv.Name},
+				MatchExpressions: []metav1.LabelSelectorRequirement{{
+					Key:      "app.bex.co/component",
+					Operator: metav1.LabelSelectorOpIn,
+					Values:   []string{keyValueBackupComponent, keyValueBackupPurgeComponent},
+				}},
+			},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
+			Egress: []networkingv1.NetworkPolicyEgressRule{
+				{
+					// DNS to kube-system CoreDNS — resolve the Valkey Service + S3 host.
+					Ports: []networkingv1.NetworkPolicyPort{
+						{Protocol: &udp, Port: &dnsPort},
+						{Protocol: &tcp, Port: &dnsPort},
+					},
+					To: []networkingv1.NetworkPolicyPeer{{
+						NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{
+							"kubernetes.io/metadata.name": "kube-system",
+						}},
+					}},
+				},
+				{
+					// The snapshot step dials the Valkey Service (6379, or 6380 when
+					// public TLS is on) — a private pod IP the internet rule excludes,
+					// so it needs its own in-namespace allow to the KeyValue's pods.
+					Ports: []networkingv1.NetworkPolicyPort{
+						{Protocol: &tcp, Port: &valkeyPort},
+						{Protocol: &tcp, Port: &valkeyTLSPort},
+					},
+					To: []networkingv1.NetworkPolicyPeer{{
+						PodSelector: &metav1.LabelSelector{MatchLabels: map[string]string{labelKeyValue: kv.Name}},
+					}},
+				},
+				{
+					// Public internet minus in-cluster/private + metadata ranges: the
+					// upload/purge step reaches the object store. Mirrors the hosting-
+					// namespace internet-egress shape (ADR022/ADR043).
+					To: []networkingv1.NetworkPolicyPeer{{
+						IPBlock: &networkingv1.IPBlock{
+							CIDR: "0.0.0.0/0",
+							Except: []string{
+								"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
+								"100.64.0.0/10", "169.254.0.0/16",
+							},
+						},
+					}},
+				},
+			},
+		}
+		return controllerutil.SetControllerReference(kv, np, r.Scheme)
+	})
+	return err
+}
+
 func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var kv appv1alpha1.KeyValue
 	if err := r.Get(ctx, req.NamespacedName, &kv); err != nil {
@@ -524,6 +602,12 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return controllerutil.SetControllerReference(&kv, sts, r.Scheme)
 	}); err != nil {
 		return r.kvFail(ctx, &kv, "StatefulSetFailed", err)
+	}
+
+	// The backup/purge Jobs need egress the platform-wide Cilium node/metadata
+	// deny withholds by default — install their allow before the CronJob fires.
+	if err := r.reconcileKeyValueBackupNetworkPolicy(ctx, &kv); err != nil {
+		return r.kvFail(ctx, &kv, "BackupNetworkPolicyFailed", err)
 	}
 
 	if err := r.reconcileKeyValueBackup(ctx, &kv, plan, authSecretName); err != nil {
@@ -847,6 +931,7 @@ func (r *KeyValueReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&corev1.Pod{}, handler.EnqueueRequestsFromMapFunc(keyValuePodRequests),
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		Owns(&corev1.Service{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Owns(&networkingv1.NetworkPolicy{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		// Secret data updates do not increment metadata.generation. ResourceVersion
 		// keeps credential drift self-healing while the manager cache scopes this
 		// watch to BEX_APPS_NAMESPACE (NamespacedSecretCacheOptions).
