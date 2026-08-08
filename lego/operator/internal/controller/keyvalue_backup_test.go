@@ -25,6 +25,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -423,4 +424,84 @@ func TestKeyValueBackupPurgeUsesWritableAWSConfigHome(t *testing.T) {
 		env[1].Name != "AWS_EC2_METADATA_DISABLED" || env[1].Value != "true" {
 		t.Fatalf("purge writable AWS config contract = %#v", env)
 	}
+}
+
+// TestKeyValueBackupNetworkPolicyRestoresJobEgress pins the w5/039 fix: the
+// platform-wide Cilium node/metadata deny selects every app.bex.co/workspace pod
+// (including the backup/purge Jobs) into egress default-deny, so without this
+// operator-managed allow the snapshot step can't even resolve the Valkey Service
+// (DNS "Try again") and no KeyValue backup ever uploads.
+func TestKeyValueBackupNetworkPolicyRestoresJobEgress(t *testing.T) {
+	scheme := keyValueBackupTestScheme(t)
+	kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{
+		Name: "red-egress-kv", Namespace: "default", UID: "egress-kv-uid",
+		Labels: map[string]string{labelWorkspace: "tea-egresstest"},
+	}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv).Build()
+	r := &KeyValueReconciler{Client: cl, Scheme: scheme, Backup: testKeyValueBackupStore}
+	if err := r.reconcileKeyValueBackupNetworkPolicy(context.Background(), kv); err != nil {
+		t.Fatal(err)
+	}
+
+	np := &networkingv1.NetworkPolicy{}
+	if err := cl.Get(context.Background(), types.NamespacedName{Name: kv.Name + "-backup-egress", Namespace: kv.Namespace}, np); err != nil {
+		t.Fatalf("backup egress NetworkPolicy not created: %v", err)
+	}
+	// Egress-only: the Valkey server's ingress (client connections) must stay
+	// governed elsewhere, never restricted by this Job-scoped allow.
+	if len(np.Spec.PolicyTypes) != 1 || np.Spec.PolicyTypes[0] != networkingv1.PolicyTypeEgress {
+		t.Fatalf("policy must be egress-only, got %v", np.Spec.PolicyTypes)
+	}
+	// Scoped to the Job pods (which carry app.bex.co/component), not the Valkey
+	// server pods (which never dial out and keep their default-deny egress).
+	sel := np.Spec.PodSelector
+	if sel.MatchLabels[labelKeyValue] != kv.Name || len(sel.MatchExpressions) != 1 ||
+		sel.MatchExpressions[0].Key != "app.bex.co/component" ||
+		sel.MatchExpressions[0].Operator != metav1.LabelSelectorOpIn {
+		t.Fatalf("selector must scope to this KeyValue's backup/purge Jobs: %#v", sel)
+	}
+
+	var dns, valkey, internet bool
+	for _, rule := range np.Spec.Egress {
+		switch {
+		case len(rule.Ports) == 2 && rule.Ports[0].Port.IntValue() == 53:
+			// DNS to kube-system CoreDNS — the exact hop the 039 failure lost.
+			if len(rule.To) != 1 || rule.To[0].NamespaceSelector == nil ||
+				rule.To[0].NamespaceSelector.MatchLabels["kubernetes.io/metadata.name"] != "kube-system" {
+				t.Fatalf("DNS egress must target kube-system, got %#v", rule.To)
+			}
+			dns = true
+		case len(rule.Ports) == 2 && rule.Ports[0].Port.IntValue() == kvPort:
+			// Reach the Valkey Service pods (a private IP the internet rule excludes).
+			if len(rule.To) != 1 || rule.To[0].PodSelector == nil ||
+				rule.To[0].PodSelector.MatchLabels[labelKeyValue] != kv.Name {
+				t.Fatalf("Valkey egress must target this KeyValue's pods, got %#v", rule.To)
+			}
+			valkey = true
+		case len(rule.To) == 1 && rule.To[0].IPBlock != nil && rule.To[0].IPBlock.CIDR == "0.0.0.0/0":
+			// Object-store upload, minus in-cluster/private + metadata ranges.
+			for _, private := range []string{"10.0.0.0/8", "169.254.0.0/16"} {
+				if !containsString(rule.To[0].IPBlock.Except, private) {
+					t.Fatalf("internet egress must still except %s (metadata/private): %#v", private, rule.To[0].IPBlock.Except)
+				}
+			}
+			internet = true
+		}
+	}
+	if !dns || !valkey || !internet {
+		t.Fatalf("egress allow incomplete: dns=%v valkey=%v internet=%v", dns, valkey, internet)
+	}
+
+	if len(np.OwnerReferences) != 1 || np.OwnerReferences[0].Name != kv.Name {
+		t.Fatalf("policy must be owned by its KeyValue for GC, got %#v", np.OwnerReferences)
+	}
+}
+
+func containsString(haystack []string, needle string) bool {
+	for _, s := range haystack {
+		if s == needle {
+			return true
+		}
+	}
+	return false
 }
