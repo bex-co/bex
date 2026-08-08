@@ -588,9 +588,49 @@ func (l *AgentSessionLifecycle) ReadSessionStatus(ctx context.Context, workspace
 	return result.Stdout, nil
 }
 
-// RecordTranscript delegates to the exec-secret-signed recorder path (ADR051).
-func (l *AgentSessionLifecycle) RecordTranscript(ctx context.Context, workspaceID, sessionID, sandboxID string, turn int) error {
-	return l.service.recordTranscript(ctx, workspaceID, sessionID, sandboxID, turn)
+// agentSessionLogPath is the driver's redacted per-part conversation log inside
+// the sandbox (BEX_AGENT_SESSION_LOG default, lego/agent-image/driver/src/config.mjs).
+const agentSessionLogPath = "/var/log/bex-agent/session.jsonl"
+
+// maxTranscriptLogBytes bounds the exec payload when harvesting the log (the tail
+// is read; the parser drops a partial leading line). A turn's transcript is far
+// smaller in practice; this only guards a pathological driver.
+const maxTranscriptLogBytes = 4 << 20
+
+// ReadSessionTranscript returns the driver's session log (redacted JSONL, one
+// UI-message part per line) from the exact session sandbox through the SAME
+// gateway pods/exec boundary the Completer already uses for ReadSessionStatus
+// (ADR051). Harvesting the on-disk log rides the proven status-read path instead
+// of a separate driver-stream dial. A terminated/errored pod (its log gone with
+// it) surfaces as NotFound so the caller treats it as "nothing to capture".
+func (l *AgentSessionLifecycle) ReadSessionTranscript(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error) {
+	s := l.service
+	if !s.enabled() || !s.execEnabled() {
+		return "", core.ErrSandboxesUnavailable
+	}
+	key, err := s.agentSessionKey(ctx, workspaceID)
+	if err != nil {
+		return "", err
+	}
+	sb, err := s.agentSessionSandbox(ctx, key, workspaceID, sessionID, sandboxID)
+	if err != nil {
+		return "", err
+	}
+	switch mapOpenSandboxStatus(sb.Status.State) {
+	case StatusTerminated, StatusErrored:
+		return "", sandboxNotFound(sandboxID)
+	}
+	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID,
+		[]string{"/bin/sh", "-c", fmt.Sprintf("tail -c %d %s 2>/dev/null || true", maxTranscriptLogBytes, agentSessionLogPath)})
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	result, err := bufferExec(resp)
+	if err != nil {
+		return "", err
+	}
+	return result.Stdout, nil
 }
 
 func (s *Service) agentSessionKey(ctx context.Context, workspaceID string) (string, error) {

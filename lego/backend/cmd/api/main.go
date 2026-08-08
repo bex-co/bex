@@ -87,16 +87,6 @@ func envOr(k, def string) string {
 	return def
 }
 
-// agentRecordURL derives the gateway's headless-transcript-recorder URL from its
-// sandbox-exec URL (ADR051): both endpoints live on the same internal gateway
-// listener and differ only in the final path segment. Empty in => empty out.
-func agentRecordURL(execURL string) string {
-	if execURL == "" {
-		return ""
-	}
-	return strings.TrimSuffix(execURL, "/sandbox-exec") + "/agent-record"
-}
-
 func sandboxTemplateRegistry(baseImage, agentImage string) map[string]sandbox.Template {
 	return map[string]sandbox.Template{
 		"base": {
@@ -680,13 +670,8 @@ func main() {
 				deps.SandboxExec = &sandbox.ExecConfig{
 					Secret:     []byte(secret),
 					GatewayURL: gwURL,
-					// The headless transcript recorder (ADR051) shares the exec secret
-					// and the same internal gateway listener; its URL is the exec URL
-					// with the path swapped, so no new env var is needed. An explicit
-					// BEX_AGENT_RECORD_URL overrides it if the paths ever diverge.
-					RecordURL: envOr("BEX_AGENT_RECORD_URL", agentRecordURL(gwURL)),
-					Client:    &http.Client{}, // no timeout: the exec stream is long-lived
-					TTL:       60 * time.Second,
+					Client:     &http.Client{}, // no timeout: the exec stream is long-lived
+					TTL:        60 * time.Second,
 				}
 			}
 		}

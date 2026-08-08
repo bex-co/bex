@@ -103,9 +103,6 @@ type Store interface {
 	AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64) ([]store.AgentSessionTranscriptPart, error)
 	AgentSessionTranscriptMaxSeq(ctx context.Context, sessionID string) (int64, bool, error)
 	AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []store.AgentSessionTranscriptPart) error
-	// AgentSessionTranscriptTurnRecorded is the headless recorder's idempotency
-	// guard (ADR051): true when the given turn already has stored parts.
-	AgentSessionTranscriptTurnRecorded(ctx context.Context, sessionID string, turn int) (bool, error)
 }
 
 // PodIPResolver maps a claimed pod (namespace + name from the verified ticket)
@@ -140,13 +137,6 @@ type Server struct {
 	// (BEX_SHELL_TICKET_SECRET); empty => the transport is disabled and every
 	// request is refused with 503.
 	Secret []byte
-
-	// RecordSecret authenticates the internal, non-browser headless recorder
-	// endpoint (ADR051). It equals the sandbox-exec HMAC (BEX_SANDBOX_EXEC_SECRET)
-	// — the trusted primitive the bex-api Completer already holds — and is
-	// deliberately DISTINCT from Secret so a browser ticket can never drive the
-	// recorder and vice-versa. Empty => the recorder endpoint is disabled.
-	RecordSecret []byte
 
 	Store      Store
 	Pods       PodIPResolver

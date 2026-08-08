@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -23,13 +24,63 @@ import (
 )
 
 type fakeStore struct {
-	rows     map[string]store.AgentSession
-	getCalls int
-	now      time.Time
+	rows       map[string]store.AgentSession
+	getCalls   int
+	now        time.Time
+	transcript map[string]map[int64]store.AgentSessionTranscriptPart
 }
 
 func newFakeStore() *fakeStore {
-	return &fakeStore{rows: map[string]store.AgentSession{}, now: time.Unix(1_800_000_000, 0).UTC()}
+	return &fakeStore{
+		rows:       map[string]store.AgentSession{},
+		now:        time.Unix(1_800_000_000, 0).UTC(),
+		transcript: map[string]map[int64]store.AgentSessionTranscriptPart{},
+	}
+}
+
+func (f *fakeStore) AppendAgentSessionTranscript(_ context.Context, id string, parts []store.AgentSessionTranscriptPart) error {
+	if f.transcript[id] == nil {
+		f.transcript[id] = map[int64]store.AgentSessionTranscriptPart{}
+	}
+	for _, p := range parts {
+		if _, exists := f.transcript[id][p.Seq]; exists {
+			continue // idempotent on (session, seq)
+		}
+		f.transcript[id][p.Seq] = p
+	}
+	return nil
+}
+
+// AgentSessionTranscript is a test-only read-back (not on the Store interface):
+// returns the session's parts in seq order.
+func (f *fakeStore) AgentSessionTranscript(_ context.Context, id string, afterSeq int64) ([]store.AgentSessionTranscriptPart, error) {
+	out := make([]store.AgentSessionTranscriptPart, 0)
+	for seq, p := range f.transcript[id] {
+		if seq > afterSeq {
+			out = append(out, p)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Seq < out[j].Seq })
+	return out, nil
+}
+
+func (f *fakeStore) AgentSessionTranscriptMaxSeq(_ context.Context, id string) (int64, bool, error) {
+	max, ok := int64(-1), false
+	for seq := range f.transcript[id] {
+		if !ok || seq > max {
+			max, ok = seq, true
+		}
+	}
+	return max, ok, nil
+}
+
+func (f *fakeStore) AgentSessionTranscriptTurnRecorded(_ context.Context, id string, turn int) (bool, error) {
+	for _, p := range f.transcript[id] {
+		if p.Turn == turn {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (f *fakeStore) CreateAgentSession(_ context.Context, in store.AgentSession) (store.AgentSession, error) {
@@ -178,10 +229,10 @@ type fakeLifecycle struct {
 	sandboxSeq                          int
 	status                              string
 	statusErr                           error
-	recorded                            int
-	recordedTurn                        int
-	recordedBeforeCancel                bool
-	recordErr                           error
+	transcriptLog                       string
+	transcriptErr                       error
+	readTranscript                      int
+	readTranscriptBeforeCancel          bool
 }
 
 func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, _, _, _, repository, branch, modelEndpoint, modelAPIKey string, egressAllowlist []string, driverEnv map[string]string) (sandbox.Sandbox, error) {
@@ -209,11 +260,10 @@ func (f *fakeLifecycle) CancelAgentSessionSandbox(context.Context, string, strin
 func (f *fakeLifecycle) ReadSessionStatus(context.Context, string, string, string) (string, error) {
 	return f.status, f.statusErr
 }
-func (f *fakeLifecycle) RecordTranscript(_ context.Context, _, _, _ string, turn int) error {
-	f.recorded++
-	f.recordedTurn = turn
-	f.recordedBeforeCancel = f.canceled == 0
-	return f.recordErr
+func (f *fakeLifecycle) ReadSessionTranscript(context.Context, string, string, string) (string, error) {
+	f.readTranscript++
+	f.readTranscriptBeforeCancel = f.canceled == 0
+	return f.transcriptLog, f.transcriptErr
 }
 
 func fixture() (*Service, *fakeStore, *fakeFGA, *fakeLifecycle) {

@@ -1,6 +1,8 @@
 # ADR051 — Agent-session conversation transcript persistence
 
-**Status:** Accepted (2026-08-07); implemented in **w3/m77**. Splits the D10 "headless recorder" decision out of [ADR047](ADR047-cloud-coding-agent-sessions.md) into a dedicated ADR because transcript persistence is a distinct concern from the session lifecycle and spans three processes (driver, gateway, bex-api Completer). ADR047 D3/D9 own the **live-attach** conversation plane (shipped w3/m43); this ADR owns the **durable chat history** for the shipped **fire-and-forget** product, which the live-attach tee never captures. Backend/gateway/driver-ticket implementation + unit/real-Postgres coverage landed under w3/m77; the live-substrate leg shares the m41 operator-run gate (`scripts/agent-session-verify.sh` step 5b′ asserts a fire-and-forget session's replay is non-empty).
+**Status:** Accepted (2026-08-07); implemented in **w3/m77**, **mechanism revised 2026-08-08 (w3/m77 follow-up) to the log-harvest path** (see Decision). Splits the D10 "headless recorder" decision out of [ADR047](ADR047-cloud-coding-agent-sessions.md) into a dedicated ADR because transcript persistence is a distinct concern from the session lifecycle. ADR047 D3/D9 own the **live-attach** conversation plane (shipped w3/m43); this ADR owns the **durable chat history** for the shipped **fire-and-forget** product, which the live-attach tee never captures.
+
+> **Revision (2026-08-08).** The first w3/m77 implementation had the Completer trigger a gateway `/agent-record` endpoint that made a **separate** network dial to the driver's `:8787/stream`. That path was never verified on prod and prod sessions kept showing "No conversation yet." It is replaced by the **log-harvest** path below: the Completer reads the driver's on-disk transcript log over the **same `pods/exec` boundary it already uses for the status read** — the one proven working in prod (sessions finalize through it). The gateway `/agent-record` endpoint, its `RecordSecret`, and `BEX_AGENT_RECORD_URL` are removed. The live-attach tee (ADR047 D9) is unchanged.
 
 ---
 
@@ -51,13 +53,12 @@ flowchart TB
   cpdb[("control-plane Postgres: agent_sessions + agent_session_transcripts")]
 
   subgraph gw["isolated ssh-gateway — sole session ingress, sole pods/exec holder"]
-    exec["exec listener :8081 (reads status.json)"]
-    rec["record endpoint (HMAC, internal-only) — D10"]
+    exec["exec listener :8081 (pods/exec: reads status.json + session.jsonl)"]
     attach["attach listener :8083 (GET /stream replay + tee)"]
   end
 
   subgraph sb["&lt;ws&gt;-sandbox namespace — gVisor, default-deny"]
-    driver["session driver :8787 /stream (in-memory hub + session.jsonl)"]
+    driver["session driver (writes /var/log/bex-agent/session.jsonl; serves :8787 /stream)"]
     agent["agent binary (ACP server)"]
   end
 
@@ -68,43 +69,42 @@ flowchart TB
 
   comp -->|"1: poll status via pods/exec"| exec
   exec -->|"cat status.json"| driver
-  comp -->|"2: record before teardown"| rec
-  rec -->|"3: dial /stream, drain full replay"| driver
-  rec -->|"4: tee parts (seq-keyed, idempotent)"| cpdb
-  comp -->|"5: teardown sandbox"| driver
+  comp -->|"2: harvest transcript via pods/exec (before teardown)"| exec
+  exec -->|"tail session.jsonl"| driver
+  comp -->|"3: append parts (seq-seeded, idempotent)"| cpdb
+  comp -->|"4: teardown sandbox"| driver
 
-  chat -->|"6a: mint attach ticket"| verbs
-  chat -->|"6b: GET /stream + HMAC ticket"| attach
+  chat -->|"5a: mint attach ticket"| verbs
+  chat -->|"5b: GET /stream + HMAC ticket"| attach
   attach -->|"replay transcript (terminal session)"| cpdb
   verbs --> cpdb
-  comp --> cpdb
 ```
 
-### Mechanism
+### Mechanism (log harvest over the proven exec boundary)
 
-- **The Completer gains a record-before-teardown step** in `complete`/`fail` (`completion.go`), fired immediately before `c.teardown(...)`. It already holds everything required — the gateway boundary it uses for the status read, the workspace/session/sandbox identity that resolves the pod, and the trusted system subject — so this is one added call on a path it already walks each tick.
-- **The gateway grows an internal record endpoint**, authenticated by the existing `BEX_SANDBOX_EXEC_SECRET` HMAC and **cluster-internal only** (never edge-routed — the same trust primitive and posture as the `:8081` sandbox-exec listener). It resolves the request's pod → IP, **seeds from `AgentSessionTranscriptMaxSeq(session)`** so a redispatched turn's fresh 0-based ordinals concatenate onto prior turns instead of colliding (exactly as the live re-attach path already seeds itself), dials `:8787/stream`, and drains-and-tees the full replayed history once. Because the hub replays everything after close, one call before teardown captures the whole turn.
-- **Byte-transparent and idempotent, so it composes with the phase-2 live tee.** Reusing `spliceDriverStream` honors ADR047 D3's verbatim-forward guarantee, and the seq-keyed `ON CONFLICT DO NOTHING` means whichever writer ran, the terminal-session `GET` replay serves the same rows. When a viewer already teed the whole run live, the record step is a no-op (every seq conflicts). bex-api never gains `pods/exec`; the gateway remains the sole session ingress (unchanged ADR035 trust design).
-- **Failure is honest, never a hang.** The record step is best-effort and logged; if it fails the session still finalizes and tears down (the transcript stays empty — the pre-fix behavior — rather than stranding the row in `running`). A sandbox that was already lost (the `ErrNotFound` fail path) has no reachable driver, so that one failure mode keeps an empty transcript — the same constraint the status read already lives with.
+- **The Completer harvests-before-teardown** in `completion.go` `teardown`, immediately before `CancelAgentSessionSandbox`. It reads the driver's per-part log through **`ReadSessionTranscript`** — the exact same `mintAndDial` → gateway `:8081` `pods/exec` path it already uses each tick for `ReadSessionStatus`, just `tail`-ing `/var/log/bex-agent/session.jsonl` instead of `cat`-ing `status.json`. This is the decisive reliability choice: if a session finalizes at all, that exec path is working, so the harvest works too — no separate, unverified gateway→driver `:8787` dial.
+- **The driver already produces the source.** It writes every UI-message part to the log via `logPart` (`lego/agent-image/driver/src/session.ts`), redacted, and the log survives scrub (`credentials.ts` replaces credential bytes in place, never deletes). bex-api parses each `{…,"part":{…}}` line and keeps only the `.part` payload — the shape the `GET /stream` replay re-frames for a Vercel AI SDK client.
+- **Idempotent + seq-seeded.** The Completer skips a turn already present (`AgentSessionTranscriptTurnRecorded` — so a live-teed turn or a retry is a no-op) and seeds `seq` from `AgentSessionTranscriptMaxSeq`, so a redispatched (steered) turn concatenates onto prior turns instead of colliding. bex-api never gains `pods/exec` — the gateway alone holds it (unchanged ADR035 trust design).
+- **Failure is honest, never a hang.** The harvest is best-effort and logged; on any error the session still finalizes and tears down (empty transcript rather than a stranded `running` row). A lost sandbox (`ErrNotFound`) has no log to read — the same constraint the status read already lives with.
 
 ### No frontend change
 
-The dashboard already renders terminal-session history through this same `GET /stream` replay (`dashboard/src/features/agent-sessions`, `useChat` with `resume: true`); once the recorder populates `agent_session_transcripts`, "No conversation yet." is replaced by the real conversation with **zero client change**.
+The dashboard already renders terminal-session history through the `GET /stream` replay (`dashboard/src/features/agent-sessions`, `useChat` with `resume: true`); once the Completer populates `agent_session_transcripts`, "No conversation yet." is replaced by the real conversation with **zero client change**.
 
 ---
 
 ## Alternatives considered
 
-- **Harvest the driver's on-disk log** — a viable **lower-code** fallback. The driver already writes every part to `/var/log/bex-agent/session.jsonl` via `logPart` (`session.ts`), and it survives scrub (`credentials.ts` redacts the credential bytes **in place** and never deletes the file), so the Completer could `cat` it over the boundary it already uses for `status.json`, parse the `{at,type:"ui-message",part}` records, offset seq by `MaxSeq`, bound the size, and bulk-append. Rejected as the primary path because the log is **redacted and re-wrapped** — not the verbatim `data:` bytes ADR047 D3 promises (acceptable for terminal replay, but a documented divergence). Kept as the fallback if the recorder dial proves operationally troublesome.
-- **Driver pushes parts to the gateway** (a new driver→gateway write path): rejected — it puts untrusted tenant code on the transcript write path (the store comment deliberately keeps the driver out, `store/agentsessions.go`), and the sandbox's **sole** open in-cluster egress port is the credential broker's `:8082`, so it would have to multiplex onto that listener or widen the egress policy.
-- **Create-time recorder** (start the server-side attach at dispatch and record the whole turn live rather than once at the end): the same mechanism moved earlier; deferred as heavier for phase-1 — a long-lived per-session server-side subscriber with its own reconnection/lifecycle — when a one-shot before teardown suffices because the hub retains the full history.
-- **Completer drains the hub through a shell** (`exec … curl -s localhost:8787/stream`): works and adds no new network surface, but routes an HTTP stream awkwardly through a shell and reparses SSE server-side; the direct gateway dial is cleaner.
+- **Gateway `/agent-record` endpoint that dials the driver's `:8787/stream`** (the original w3/m77 implementation): the Completer POSTed an exec-secret-signed ticket to a new gateway route, which resolved the pod IP and reverse-proxied+teed the driver's live `/stream` replay verbatim. Its appeal was byte-exact parts (composes with the live tee). **Superseded 2026-08-08**: it introduced a second, never-prod-verified network path (gateway→driver:8787 direct dial + a new listener route + `BEX_AGENT_RECORD_URL`), and prod sessions stayed blank. The log-harvest rides the already-working status-read boundary instead. The trade-off accepted: harvested parts are **redacted and re-wrapped** (not the verbatim `data:` bytes ADR047 D3 promises) — fine for terminal replay, where the client just needs the parts.
+- **Driver pushes parts to the gateway** (a new driver→gateway write path): rejected — it puts untrusted tenant code on the transcript write path (the store comment deliberately keeps the driver out, `store/agentsessions.go`), and the sandbox's **sole** open in-cluster egress port is the credential broker's `:8082`.
+- **Create-time recorder** (record the whole turn live from dispatch): rejected as heavier — a long-lived per-session server-side subscriber with its own reconnection/lifecycle — when a one-shot harvest before teardown suffices because the driver's log is complete by then.
 
 ---
 
 ## Consequences
 
-- One added backend milestone: the Completer record step + the gateway record endpoint + a real-Postgres test that a fire-and-forget session's transcript is **non-empty** after completion (extend `scripts/agent-session-verify.sh` with a headless-then-open leg).
-- Phase-2 live attach is unaffected and now strictly additive: the live tee optimizes real-time viewing; the recorder is the universal backstop; both write the same idempotent rows.
-- Retention rides the existing audit sweep (`PruneAgentSessionTranscripts`, `BEX_AUDIT_RETENTION_DAYS` lineage) and the `ON DELETE CASCADE` with the session — unchanged by this ADR.
-- Multi-turn/redispatch sessions concatenate correctly because the recorder seeds from `AgentSessionTranscriptMaxSeq`; without that seed, each fresh sandbox's ordinals would collide with prior turns and be silently dropped.
+- The gateway `/agent-record` route, `agentattach.Server.RecordSecret`, and `BEX_AGENT_RECORD_URL` are removed; capture is a bex-api-only concern riding the existing exec boundary. No new env var and no new gateway listener/route.
+- Phase-2 live attach is unaffected: the live tee optimizes real-time viewing; the harvest is the universal backstop; both write the same idempotent `(session_id, seq)` rows, and the turn guard keeps them from double-writing.
+- Retention rides the existing audit sweep (`PruneAgentSessionTranscripts`, `BEX_AUDIT_RETENTION_DAYS` lineage) and the `ON DELETE CASCADE` with the session.
+- Multi-turn/redispatch sessions concatenate because each turn's harvest seeds from `AgentSessionTranscriptMaxSeq`; the harvest is bounded (`tail -c` + a parts cap) against a pathological driver log.
+- Residual limit: capture happens at completion, so a session whose sandbox is lost before teardown (`ErrNotFound`) has no log to harvest — that one failure mode still yields an empty transcript.

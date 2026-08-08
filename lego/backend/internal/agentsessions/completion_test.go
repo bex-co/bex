@@ -99,34 +99,72 @@ func TestCompleterOpensDraftPRAndRecordsEvidence(t *testing.T) {
 	}
 }
 
-// The ADR051 fix: the Completer must capture the conversation transcript BEFORE
-// tearing the sandbox down (the driver's history dies with the pod), scoped to
-// the session's current turn.
-func TestCompleterRecordsTranscriptBeforeTeardown(t *testing.T) {
-	c, _, lc, _, _ := completerFixture(succeededStatus(true), nil)
+// The ADR051 fix: the Completer harvests the driver's log and persists the
+// transcript BEFORE tearing the sandbox down (the log dies with the pod), scoped
+// to the session's current turn.
+func TestCompleterHarvestsTranscriptBeforeTeardown(t *testing.T) {
+	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	lc.transcriptLog = `{"at":"t","type":"ui-message","part":{"type":"text","text":"hello"}}
+{"at":"t","type":"ui-message","part":{"type":"data-acp","data":{"type":"plan"}}}`
 	c.Reconcile(context.Background())
-	if lc.recorded != 1 {
-		t.Fatalf("transcript not recorded: recorded=%d", lc.recorded)
+
+	if lc.readTranscript != 1 {
+		t.Fatalf("transcript not harvested: readTranscript=%d", lc.readTranscript)
 	}
-	if lc.recordedTurn != 1 {
-		t.Fatalf("recorded turn = %d, want 1 (the dispatched turn)", lc.recordedTurn)
-	}
-	if !lc.recordedBeforeCancel {
-		t.Fatal("transcript recorded AFTER teardown; the driver is gone by then")
+	if !lc.readTranscriptBeforeCancel {
+		t.Fatal("transcript harvested AFTER teardown; the log is gone by then")
 	}
 	if lc.canceled != 1 {
 		t.Fatalf("sandbox not torn down: canceled=%d", lc.canceled)
 	}
+	// The parsed parts landed in the durable store at turn 1, seq 0..1.
+	parts, err := st.AgentSessionTranscript(context.Background(), id, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(parts) != 2 {
+		t.Fatalf("stored %d parts, want 2 (the two log lines)", len(parts))
+	}
+	if parts[0].Seq != 0 || parts[1].Seq != 1 || parts[0].Turn != 1 {
+		t.Fatalf("parts = %+v, want seq 0,1 turn 1", parts)
+	}
+	if !strings.Contains(string(parts[0].Part), `"text":"hello"`) {
+		t.Fatalf("first part = %s, want the driver's `.part` payload", parts[0].Part)
+	}
 }
 
-// Recording is best-effort: a recorder failure must not strand the session or
-// block teardown.
-func TestCompleterRecordFailureDoesNotBlockTeardown(t *testing.T) {
+// A redispatched (steered) turn's harvest concatenates after the prior turn's
+// parts rather than colliding.
+func TestCompleterHarvestConcatenatesTurns(t *testing.T) {
 	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
-	lc.recordErr = errors.New("recorder unreachable")
+	// Pretend turn 1 was already recorded (seq 0,1).
+	_ = st.AppendAgentSessionTranscript(context.Background(), id, []store.AgentSessionTranscriptPart{
+		{Seq: 0, Turn: 1, Part: []byte(`{"type":"text","text":"t1"}`)},
+		{Seq: 1, Turn: 1, Part: []byte(`{"type":"text","text":"t1b"}`)},
+	})
+	row := st.rows[id] // this reconcile finalizes turn 2
+	row.Turns = 2
+	st.rows[id] = row
+	lc.transcriptLog = `{"part":{"type":"text","text":"t2"}}`
+	c.Reconcile(context.Background())
+
+	parts, _ := st.AgentSessionTranscript(context.Background(), id, -1)
+	if len(parts) != 3 {
+		t.Fatalf("stored %d parts, want 3 (turn 2 appended)", len(parts))
+	}
+	if parts[2].Seq != 2 || parts[2].Turn != 2 {
+		t.Fatalf("turn-2 part = %+v, want seq 2 turn 2", parts[2])
+	}
+}
+
+// Harvest is best-effort: a read failure must not strand the session or block
+// teardown.
+func TestCompleterHarvestFailureDoesNotBlockTeardown(t *testing.T) {
+	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	lc.transcriptErr = errors.New("exec unreachable")
 	c.Reconcile(context.Background())
 	if st.rows[id].Phase != PhaseCompleted || lc.canceled != 1 {
-		t.Fatalf("record failure blocked finalize/teardown: phase=%s canceled=%d", st.rows[id].Phase, lc.canceled)
+		t.Fatalf("harvest failure blocked finalize/teardown: phase=%s canceled=%d", st.rows[id].Phase, lc.canceled)
 	}
 }
 

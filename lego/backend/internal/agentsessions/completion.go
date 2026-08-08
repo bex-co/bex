@@ -229,26 +229,95 @@ func (c *Completer) fail(ctx context.Context, record store.AgentSession, reason 
 	c.teardown(ctx, record)
 }
 
-// teardown records the turn's conversation transcript (ADR051), then terminates
+// maxTranscriptParts bounds how many parts one turn's harvest persists — a
+// defense against a pathological driver log, far above any real turn.
+const maxTranscriptParts = 5000
+
+// teardown captures the turn's conversation transcript (ADR051), then terminates
 // the finished session's sandbox and removes its egress policy (idempotent).
 // Steering re-dispatches a fresh sandbox, so a completed session never needs its
 // sandbox kept warm in phase 1.
 //
-// The transcript capture MUST happen before the sandbox is destroyed: a
-// fire-and-forget turn runs headless with no browser attached, so nothing has
-// teed its conversation yet, and the driver's in-memory history dies with the
-// pod. This is the only writer for the shipped fire-and-forget product; without
-// it every completed session replays empty ("No conversation yet."). It is
-// best-effort — a capture failure is logged but never blocks teardown, so a
-// session is never stranded waiting on its transcript.
+// Capture MUST happen before the sandbox is destroyed: a fire-and-forget turn
+// runs headless with no browser attached, so nothing has teed its conversation
+// yet, and the sandbox (with the driver's log) dies on teardown. Without it every
+// completed session replays empty ("No conversation yet."). It is best-effort —
+// a failure is logged but never blocks teardown, so a session is never stranded.
 func (c *Completer) teardown(ctx context.Context, record store.AgentSession) {
 	if record.SandboxID == "" {
 		return
 	}
-	if err := c.Sandbox.RecordTranscript(ctx, record.WorkspaceID, record.ID, record.SandboxID, record.Turns); err != nil {
-		log.Printf("agent-session completer: transcript record failed (session=%s turn=%d): %v", record.ID, record.Turns, err)
-	}
+	c.captureTranscript(ctx, record)
 	_ = c.Sandbox.CancelAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, record.SandboxID)
+}
+
+// captureTranscript harvests the driver's per-part session log over the SAME
+// pods/exec boundary the Completer already uses for the status read (ADR051), and
+// appends it to the durable transcript before teardown. Riding the proven
+// status-read path — rather than a separate gateway→driver stream dial — is what
+// makes persistence reliable. Idempotent per turn (a turn a live viewer already
+// teed, or a retry, is skipped) and seq-seeded so a steered turn concatenates.
+func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSession) {
+	recorded, err := c.Store.AgentSessionTranscriptTurnRecorded(ctx, record.ID, record.Turns)
+	if err != nil {
+		log.Printf("agent-session completer: transcript turn check failed (session=%s): %v", record.ID, err)
+		return
+	}
+	if recorded {
+		return // already captured (live tee or a prior tick)
+	}
+	raw, err := c.Sandbox.ReadSessionTranscript(ctx, record.WorkspaceID, record.ID, record.SandboxID)
+	if err != nil {
+		// A gone/unreachable sandbox has no log to harvest — honest empty, not a hang.
+		if !errors.Is(err, core.ErrNotFound) {
+			log.Printf("agent-session completer: transcript read failed (session=%s): %v", record.ID, err)
+		}
+		return
+	}
+	parts := parseTranscriptLog(raw, record.Turns)
+	if len(parts) == 0 {
+		return
+	}
+	base, _, err := c.Store.AgentSessionTranscriptMaxSeq(ctx, record.ID)
+	if err != nil {
+		log.Printf("agent-session completer: transcript max-seq failed (session=%s): %v", record.ID, err)
+		return
+	}
+	for i := range parts {
+		parts[i].Seq = base + 1 + int64(i)
+	}
+	if err := c.Store.AppendAgentSessionTranscript(ctx, record.ID, parts); err != nil {
+		log.Printf("agent-session completer: transcript append failed (session=%s parts=%d): %v", record.ID, len(parts), err)
+		return
+	}
+	log.Printf("agent-session completer: captured transcript (session=%s turn=%d parts=%d)", record.ID, record.Turns, len(parts))
+}
+
+// parseTranscriptLog extracts the UI-message parts from the driver's redacted
+// JSONL log (one `{"at":…,"type":"ui-message","part":{…}}` record per line, plus
+// the raw data-acp lines). It keeps only the `.part` payload — the exact shape
+// the GET /stream replay re-frames for a Vercel AI SDK client — stamping the turn;
+// Seq is assigned by the caller. Unparseable lines (e.g. a partial leading line
+// from the byte-capped tail) are skipped.
+func parseTranscriptLog(raw string, turn int) []store.AgentSessionTranscriptPart {
+	out := make([]store.AgentSessionTranscriptPart, 0)
+	for _, line := range strings.Split(raw, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var rec struct {
+			Part json.RawMessage `json:"part"`
+		}
+		if json.Unmarshal([]byte(line), &rec) != nil || len(rec.Part) == 0 {
+			continue
+		}
+		out = append(out, store.AgentSessionTranscriptPart{Turn: turn, Part: rec.Part})
+		if len(out) >= maxTranscriptParts {
+			break
+		}
+	}
+	return out
 }
 
 func prTitle(record store.AgentSession) string {
