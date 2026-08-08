@@ -20,11 +20,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -161,5 +163,78 @@ func TestRESTListKeyValueTimeFilters(t *testing.T) {
 	got := listKVNames(t, mux, "?createdBefore=2020-01-01T00:00:00Z")
 	if len(got) != 2 {
 		t.Errorf("empty createdAt passes createdBefore filter: got %d, want 2", len(got))
+	}
+}
+
+// seedKVUpdatedAt seeds a KeyValue whose UpdatedAt resolves to the given
+// timestamp, so a time-window filter has something real to place.
+func seedKVUpdatedAt(t *testing.T, svc *Service, name, updatedAt string) {
+	t.Helper()
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        name,
+			Namespace:   "default",
+			Annotations: map[string]string{resourcemeta.UpdatedAtAnnotation: updatedAt},
+		},
+		Spec: appv1alpha1.KeyValueSpec{Name: name, Plan: "free"},
+	}
+	if err := svc.Client.Create(t.Context(), kv); err != nil {
+		t.Fatalf("seed kv %s: %v", name, err)
+	}
+}
+
+func TestRESTListKeyValueTimeWindowExcludes(t *testing.T) {
+	// The 400 and legacy-passthrough cases above never prove the window
+	// narrows anything. Stamped instances must actually fall in or out of it.
+	svc, _ := newService()
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	seedKVUpdatedAt(t, svc, "kv-old", "2026-01-01T00:00:00Z")
+	seedKVUpdatedAt(t, svc, "kv-new", "2026-12-01T00:00:00Z")
+	seedKVWithLabels(t, svc, "kv-unstamped", appv1alpha1.KeyValueSpec{Plan: "free"}, nil)
+
+	cases := []struct {
+		query string
+		want  []string
+	}{
+		// kv-unstamped has no timestamp, so it rides along with every window.
+		{"?updatedBefore=2026-06-01T00:00:00Z", []string{"kv-old", "kv-unstamped"}},
+		{"?updatedAfter=2026-06-01T00:00:00Z", []string{"kv-new", "kv-unstamped"}},
+		{"?updatedAfter=2026-06-01T00:00:00Z&updatedBefore=2027-01-01T00:00:00Z", []string{"kv-new", "kv-unstamped"}},
+		{"?updatedAfter=2027-01-01T00:00:00Z", []string{"kv-unstamped"}},
+	}
+	for _, c := range cases {
+		got := listKVNames(t, mux, c.query)
+		slices.Sort(got)
+		want := slices.Clone(c.want)
+		slices.Sort(want)
+		if !slices.Equal(got, want) {
+			t.Errorf("GET /v1/key-value%s = %v, want %v", c.query, got, want)
+		}
+	}
+}
+
+func TestRESTListKeyValueNameFilterAcceptsCommaAndRepeatedForms(t *testing.T) {
+	// Render's form-style array encoding: the official CLI sends a multi-value
+	// flag as one comma-separated value, hand-written clients repeat the key.
+	svc, _ := newService()
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	for _, name := range []string{"kv-alpha", "kv-bravo", "kv-charlie"} {
+		seedKVWithLabels(t, svc, name, appv1alpha1.KeyValueSpec{Plan: "free"}, nil)
+	}
+
+	for _, query := range []string{
+		"?name=kv-alpha,kv-bravo",
+		"?name=kv-alpha&name=kv-bravo",
+		"?name=%20kv-alpha%20,kv-bravo",
+	} {
+		got := listKVNames(t, mux, query)
+		slices.Sort(got)
+		if !slices.Equal(got, []string{"kv-alpha", "kv-bravo"}) {
+			t.Errorf("GET /v1/key-value%s = %v, want [kv-alpha kv-bravo]", query, got)
+		}
 	}
 }
