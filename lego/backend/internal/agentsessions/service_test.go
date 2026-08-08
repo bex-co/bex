@@ -178,6 +178,10 @@ type fakeLifecycle struct {
 	sandboxSeq                          int
 	status                              string
 	statusErr                           error
+	recorded                            int
+	recordedTurn                        int
+	recordedBeforeCancel                bool
+	recordErr                           error
 }
 
 func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, _, _, _, repository, branch, modelEndpoint, modelAPIKey string, egressAllowlist []string, driverEnv map[string]string) (sandbox.Sandbox, error) {
@@ -204,6 +208,12 @@ func (f *fakeLifecycle) CancelAgentSessionSandbox(context.Context, string, strin
 }
 func (f *fakeLifecycle) ReadSessionStatus(context.Context, string, string, string) (string, error) {
 	return f.status, f.statusErr
+}
+func (f *fakeLifecycle) RecordTranscript(_ context.Context, _, _, _ string, turn int) error {
+	f.recorded++
+	f.recordedTurn = turn
+	f.recordedBeforeCancel = f.canceled == 0
+	return f.recordErr
 }
 
 func fixture() (*Service, *fakeStore, *fakeFGA, *fakeLifecycle) {

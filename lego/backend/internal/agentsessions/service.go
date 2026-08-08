@@ -60,6 +60,9 @@ type SandboxLifecycle interface {
 	ResumeAgentSessionSandbox(context.Context, string, string, string) error
 	CancelAgentSessionSandbox(context.Context, string, string, string) error
 	ReadSessionStatus(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error)
+	// RecordTranscript tees the finished turn's conversation into the durable
+	// transcript before teardown (ADR051); best-effort.
+	RecordTranscript(ctx context.Context, workspaceID, sessionID, sandboxID string, turn int) error
 }
 
 // PullRequestOpener opens (or idempotently reuses) the session's draft PR. The
@@ -535,7 +538,8 @@ func (s *Service) withTicket(ctx context.Context, record store.AgentSession) (Vi
 	ticket, err := agentsessionticket.Mint(s.TicketSecret, agentsessionticket.Claims{
 		Subject: identity.Subject, SessionID: record.ID, SandboxID: record.SandboxID,
 		Pod: record.SandboxID + "-0", Workspace: record.WorkspaceID,
-		Namespace: record.WorkspaceID + "-sandbox", IssuedAt: now.Unix(), ExpiresAt: expires.Unix(),
+		Namespace: record.WorkspaceID + "-sandbox", Turn: record.Turns,
+		IssuedAt: now.Unix(), ExpiresAt: expires.Unix(),
 	})
 	if err != nil {
 		return View{}, err

@@ -59,8 +59,9 @@ import (
 
 // TicketHeader carries the signed agent-session ticket. It is a header, never
 // a URL parameter, so the credential stays out of proxy/access logs (the
-// web-shell subprotocol precedent, applied to plain-HTTP SSE).
-const TicketHeader = "X-Bex-Agent-Ticket"
+// web-shell subprotocol precedent, applied to plain-HTTP SSE). Sourced from the
+// ticket package so bex-api's recorder client and this transport share one name.
+const TicketHeader = agentsessionticket.TicketHeader
 
 const defaultDriverPort = 8787
 
@@ -82,6 +83,9 @@ type Store interface {
 	AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64) ([]store.AgentSessionTranscriptPart, error)
 	AgentSessionTranscriptMaxSeq(ctx context.Context, sessionID string) (int64, bool, error)
 	AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []store.AgentSessionTranscriptPart) error
+	// AgentSessionTranscriptTurnRecorded is the headless recorder's idempotency
+	// guard (ADR051): true when the given turn already has stored parts.
+	AgentSessionTranscriptTurnRecorded(ctx context.Context, sessionID string, turn int) (bool, error)
 }
 
 // PodIPResolver maps a claimed pod (namespace + name from the verified ticket)
@@ -116,6 +120,13 @@ type Server struct {
 	// (BEX_SHELL_TICKET_SECRET); empty => the transport is disabled and every
 	// request is refused with 503.
 	Secret []byte
+
+	// RecordSecret authenticates the internal, non-browser headless recorder
+	// endpoint (ADR051). It equals the sandbox-exec HMAC (BEX_SANDBOX_EXEC_SECRET)
+	// — the trusted primitive the bex-api Completer already holds — and is
+	// deliberately DISTINCT from Secret so a browser ticket can never drive the
+	// recorder and vice-versa. Empty => the recorder endpoint is disabled.
+	RecordSecret []byte
 
 	Store      Store
 	Pods       PodIPResolver
@@ -245,16 +256,16 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 			sse.errorAndDone("session is not live")
 			return
 		}
-		s.forwardAgentTurn(ctx, sse, podIP, claims.SessionID, r.Body)
+		s.forwardAgentTurn(ctx, sse, podIP, claims.SessionID, claims.Turn, r.Body)
 		return
 	}
-	s.streamAgentAttach(ctx, sse, podIP, ipErr, claims.SessionID)
+	s.streamAgentAttach(ctx, sse, podIP, ipErr, claims.SessionID, claims.Turn)
 }
 
 // streamAgentAttach replays the durable transcript to the client, then — if the
 // driver is reachable — splices the live driver stream and tees new parts into
 // the store. A terminal/gone session (ipErr) replays and closes with `[DONE]`.
-func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, podIP string, ipErr error, sessionID string) {
+func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, podIP string, ipErr error, sessionID string, turn int) {
 	stored, err := s.Store.AgentSessionTranscript(ctx, sessionID, -1)
 	if err != nil {
 		log.Printf("agent attach: transcript replay failed (session=%s): %v", sessionID, err)
@@ -271,7 +282,7 @@ func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, podIP str
 		sse.done()
 		return
 	}
-	if err := s.spliceDriverStream(ctx, sse, podIP, sessionID, replayedMax); err != nil {
+	if err := s.spliceDriverStream(ctx, sse, podIP, sessionID, turn, replayedMax); err != nil {
 		log.Printf("agent attach: live splice ended (session=%s): %v", sessionID, err)
 	}
 	sse.done()
@@ -283,13 +294,8 @@ func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, podIP str
 // already sent. The ordinal-keyed idempotent append means re-reading the
 // driver's replayed history (across reconnects/replicas) never duplicates a
 // stored part.
-func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, sessionID string, replayedMax int64) error {
-	url := fmt.Sprintf("http://%s/stream", net.JoinHostPort(podIP, strconv.Itoa(s.driverPort())))
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return err
-	}
-	resp, err := s.httpClient().Do(req)
+func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, sessionID string, turn int, replayedMax int64) error {
+	resp, err := s.dialDriverStream(ctx, podIP)
 	if err != nil {
 		return err
 	}
@@ -315,7 +321,7 @@ func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, s
 		// Tee every part (idempotent on the driver-ordinal key); forward to the
 		// client only the parts replay did not already deliver.
 		if err := s.Store.AppendAgentSessionTranscript(ctx, sessionID, []store.AgentSessionTranscriptPart{
-			{Seq: ordinal, Part: []byte(payload)},
+			{Seq: ordinal, Turn: turn, Part: []byte(payload)},
 		}); err != nil {
 			log.Printf("agent attach: tee failed (session=%s seq=%d): %v", sessionID, ordinal, err)
 		}
@@ -325,10 +331,22 @@ func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, s
 	}
 }
 
+// dialDriverStream opens the in-sandbox driver's GET /stream (which replays its
+// full history then goes live). Shared by the browser live-splice and the
+// headless recorder.
+func (s *Server) dialDriverStream(ctx context.Context, podIP string) (*http.Response, error) {
+	url := fmt.Sprintf("http://%s/stream", net.JoinHostPort(podIP, strconv.Itoa(s.driverPort())))
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	return s.httpClient().Do(req)
+}
+
 // forwardAgentTurn posts a live prompt turn to the driver and streams the turn's
 // parts back to the client, teeing them into the transcript after the current
 // stored max so a concurrently attached GET client sees the turn too (w3/m43 t004).
-func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, sessionID string, body io.Reader) {
+func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, sessionID string, turn int, body io.Reader) {
 	base, _, err := s.Store.AgentSessionTranscriptMaxSeq(ctx, sessionID)
 	if err != nil {
 		sse.errorAndDone("transcript unavailable")
@@ -363,7 +381,7 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 		}
 		ordinal++
 		if err := s.Store.AppendAgentSessionTranscript(ctx, sessionID, []store.AgentSessionTranscriptPart{
-			{Seq: ordinal, Part: []byte(payload)},
+			{Seq: ordinal, Turn: turn, Part: []byte(payload)},
 		}); err != nil {
 			log.Printf("agent turn: tee failed (session=%s seq=%d): %v", sessionID, ordinal, err)
 		}

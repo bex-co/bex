@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
 )
@@ -41,6 +42,11 @@ type ExecConfig struct {
 	// GatewayURL is the gateway's internal sandbox-exec endpoint
 	// (e.g. http://bex-ssh-gateway.bex-system.svc:8081/sandbox-exec).
 	GatewayURL string
+	// RecordURL is the gateway's internal headless-transcript-recorder endpoint
+	// (ADR051), on the same internal listener as GatewayURL
+	// (e.g. http://bex-ssh-gateway.bex-system.svc:8081/agent-record). Empty =>
+	// transcript recording is disabled (the Completer's capture is a no-op).
+	RecordURL string
 	// Client is the HTTP client used to stream from the gateway (no timeout —
 	// the stream is long-lived; the request context bounds it).
 	Client *http.Client
@@ -65,6 +71,10 @@ const systemExecSubject = "system:agent-session-completer"
 
 func (s *Service) execEnabled() bool {
 	return s.Exec != nil && len(s.Exec.Secret) > 0 && s.Exec.GatewayURL != ""
+}
+
+func (s *Service) recordEnabled() bool {
+	return s.Exec != nil && len(s.Exec.Secret) > 0 && s.Exec.RecordURL != ""
 }
 
 // dialGateway authorizes the caller (can_operate on the sandbox's workspace),
@@ -157,6 +167,64 @@ func (s *Service) mintAndDial(ctx context.Context, ws, sandboxID string, command
 		}
 	}
 	return resp, nil
+}
+
+// recordTranscriptTimeout bounds the synchronous recorder POST so a driver that
+// never emits `[DONE]` cannot stall the Completer's teardown (which runs serially
+// per session). A fire-and-forget turn's replay drains in seconds; this is the
+// generous ceiling, distinct from the 4h browser attach timeout.
+const recordTranscriptTimeout = 2 * time.Minute
+
+// recordTranscript mints an agent-session ticket signed with the exec HMAC and
+// POSTs the gateway's recorder endpoint (ADR051). Like ReadSessionStatus it runs
+// under the system subject with no tenant authorization, and bex-api never gains
+// pods/exec — the gateway alone dials the driver.
+func (s *Service) recordTranscript(ctx context.Context, ws, sessionID, sandboxID string, turn int) error {
+	if !s.recordEnabled() || !s.enabled() {
+		return nil // recorder unconfigured: capture is a best-effort no-op
+	}
+	if ws == "" || sessionID == "" || sandboxID == "" {
+		return fmt.Errorf("%w: workspace, session, and sandbox are required", core.ErrBadRequest)
+	}
+	ttl := s.Exec.TTL
+	if ttl <= 0 {
+		ttl = 60 * time.Second
+	}
+	now := s.Now()
+	ticket, err := agentsessionticket.Mint(s.Exec.Secret, agentsessionticket.Claims{
+		Subject:   systemExecSubject,
+		SessionID: sessionID,
+		SandboxID: sandboxID,
+		Pod:       sandboxID + "-0", // deterministic, matches the attach mint
+		Workspace: ws,
+		Namespace: ws + "-sandbox",
+		Turn:      turn,
+		IssuedAt:  now.Unix(),
+		ExpiresAt: now.Add(ttl).Unix(),
+	})
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(ctx, recordTranscriptTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.Exec.RecordURL, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set(agentsessionticket.TicketHeader, ticket)
+	client := s.Exec.Client
+	if client == nil {
+		client = http.DefaultClient
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("%w: transcript recorder unreachable", core.ErrSandboxesUnavailable)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("%w: transcript recorder returned %d", core.ErrSandboxesUnavailable, resp.StatusCode)
+	}
+	return nil
 }
 
 // StreamExec authorizes, opens the gateway stream, and copies its SSE response

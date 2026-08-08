@@ -278,6 +278,21 @@ func (s *PGStore) AgentSessionTranscriptMaxSeq(ctx context.Context, sessionID st
 	return *maxSeq, true, nil
 }
 
+// AgentSessionTranscriptTurnRecorded reports whether any transcript part is
+// already stored for a given session turn. The headless recorder (ADR051) uses
+// it as its idempotency + live-tee-overlap guard: a turn whose parts already
+// exist (a Completer retry, or a live viewer that teed the turn) is not
+// re-recorded, so the recorder never double-stores a conversation.
+func (s *PGStore) AgentSessionTranscriptTurnRecorded(ctx context.Context, sessionID string, turn int) (bool, error) {
+	var exists bool
+	if err := s.Pool.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM agent_session_transcripts WHERE session_id=$1 AND turn=$2)`,
+		sessionID, turn).Scan(&exists); err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
 // PruneAgentSessionTranscripts deletes parts older than the cutoff, returning
 // the number removed. It rides the same daily retention sweep as audit data
 // (BEX_AUDIT_RETENTION_DAYS lineage); the ON DELETE CASCADE already clears a

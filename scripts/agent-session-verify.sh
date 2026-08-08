@@ -7,7 +7,9 @@ set -euo pipefail
 #     turn produces a follow-up commit -> failure paths surface as failed
 #     sessions, never hangs.
 #   conversation API (w3/m43, ADR047 D9): mint an attach ticket -> the stream
-#     endpoint replays the transcript + terminates with [DONE] (attach+replay) ->
+#     endpoint replays the transcript + terminates with [DONE] (attach+replay);
+#     the fire-and-forget session's replay is NON-EMPTY (ADR051 headless recorder,
+#     w3/m77 — no browser attached during its run, yet the conversation persists) ->
 #     a resumed session accepts a live prompt turn whose parts stream back
 #     (turn) -> a fresh attach replays the teed parts (reattach, no dup). The
 #     stream publishes under the primary API origin and rejects a ticketless call.
@@ -268,6 +270,16 @@ grep -qi '^x-vercel-ai-ui-message-stream: v1' <<<"$resp5" \
   || fail "stream missing the x-vercel-ai-ui-message-stream: v1 marker:\n$(head -20 <<<"$resp5")"
 grep -q 'data: \[DONE\]' <<<"$resp5" || fail "terminal-session stream did not terminate with [DONE]"
 ok "attach+replay: v1 marker present, stream terminated with [DONE]"
+
+# 5b'. Headless recorder (ADR051): section 1's session ran fire-and-forget — NO
+# browser attached during its turn — yet its replay must be NON-EMPTY, because
+# the Completer recorded the driver's conversation into the durable transcript
+# before teardown. This is the exact regression that showed "No conversation
+# yet." for every completed session; pre-ADR051 this replay was empty and 5b
+# still passed (marker + [DONE] only). Assert real parts here.
+grep -q '^data: {' <<<"$resp5" \
+  || fail "fire-and-forget session replayed NO parts — headless recorder did not persist the transcript (ADR051):\n$(head -20 <<<"$resp5")"
+ok "headless recorder: fire-and-forget transcript is non-empty on replay (ADR051)"
 
 # 5c. Durable tee + reattach: create a fresh session and attach to its LIVE turn
 # so the gateway tees the UI-message parts to the durable transcript; then a
