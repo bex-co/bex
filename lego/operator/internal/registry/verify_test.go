@@ -93,27 +93,27 @@ func newVerifyFixture(t *testing.T, zot *fakeZot, grace time.Duration) (*Creds, 
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		t.Fatal(err)
 	}
-	pullSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: PullSecretName("hello"), Namespace: "default"},
-		Type:       corev1.SecretTypeDockerConfigJson,
-		Data: map[string][]byte{
-			corev1.DockerConfigJsonKey: buildDockerConfig(ZotUsername("hello"), "pw123", registryHost, ""),
-		},
-	}
-	htpasswd := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "zot-htpasswd", Namespace: "reg"},
-		Data:       map[string][]byte{"htpasswd": []byte("bex-builder:$2y$10$fakehash\n")},
-	}
-	zotPod := newZotPod()
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(pullSecret, htpasswd, zotPod).Build()
-	return &Creds{
-		Client:          cl,
+	creds := &Creds{
 		ZotNamespace:    "reg",
 		HTPasswdName:    "zot-htpasswd",
 		ConfigName:      "zot-config",
 		Registry:        registryHost,
 		ActivationGrace: grace,
-	}, cl
+	}
+	pullSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: PullSecretName("hello"), Namespace: "default"},
+		Type:       corev1.SecretTypeDockerConfigJson,
+		Data: map[string][]byte{
+			corev1.DockerConfigJsonKey: creds.dockerConfig(ZotUsername("hello"), "pw123"),
+		},
+	}
+	htpasswd := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "zot-htpasswd", Namespace: "reg"},
+		Data:       map[string][]byte{htpasswdKey: []byte("bex-builder:$2y$10$fakehash\n")},
+	}
+	zotPod := newZotPod()
+	creds.Client = fake.NewClientBuilder().WithScheme(scheme).WithObjects(pullSecret, htpasswd, zotPod).Build()
+	return creds, creds.Client
 }
 
 func newZotPod() *corev1.Pod {
@@ -221,10 +221,10 @@ func TestEnsureActiveRejectedPastGraceBouncesOnceUnderCooldown(t *testing.T) {
 		t.Fatalf("post-restart probe: active=%v err=%v; want active", active, err)
 	}
 	c.mu.Lock()
-	_, stillTracked := c.firstRejected["hello"]
+	stillAnchored := !c.apps["hello"].anchor.IsZero()
 	c.mu.Unlock()
-	if stillTracked {
-		t.Fatal("accepted credential must clear the firstRejected entry")
+	if stillAnchored {
+		t.Fatal("accepted credential must clear the rejection anchor")
 	}
 }
 

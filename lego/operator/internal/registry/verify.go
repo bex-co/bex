@@ -57,6 +57,26 @@ const (
 // defaultHTTPClient is shared by every probe when Creds.HTTPClient is nil.
 var defaultHTTPClient = boundedhttp.Shared
 
+// activation is what this process knows about one App's credential. anchor is
+// the grace clock: the moment this process wrote the credential when it did,
+// else the first rejected probe. Zero once accepted.
+type activation struct {
+	accepted bool
+	anchor   time.Time
+}
+
+// track applies mutate to appName's activation state under the lock.
+func (c *Creds) track(appName string, mutate func(*activation)) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.apps == nil {
+		c.apps = map[string]activation{}
+	}
+	state := c.apps[appName]
+	mutate(&state)
+	c.apps[appName] = state
+}
+
 // EnsureActive reports whether the running Zot accepts the App's per-App pull
 // credential. It returns (false, nil) while activation is pending — the caller
 // should requeue and try again — and a non-nil error when the probe could not
@@ -77,9 +97,9 @@ func (c *Creds) EnsureActive(ctx context.Context, appName, appNS string) (bool, 
 	log := logf.FromContext(ctx)
 
 	c.mu.Lock()
-	activated := c.activated[appName]
+	accepted := c.apps[appName].accepted
 	c.mu.Unlock()
-	if activated {
+	if accepted {
 		return true, nil
 	}
 
@@ -88,19 +108,12 @@ func (c *Creds) EnsureActive(ctx context.Context, appName, appNS string) (bool, 
 		return false, fmt.Errorf("read credential for probe: %w", err)
 	}
 
-	accepted, err := c.probe(ctx, appName, ZotUsername(appName), password)
+	ok, err := c.probe(ctx, appName, password)
 	if err != nil {
 		return false, fmt.Errorf("probe registry: %w", err)
 	}
-	if accepted {
-		c.mu.Lock()
-		if c.activated == nil {
-			c.activated = map[string]bool{}
-		}
-		c.activated[appName] = true
-		delete(c.firstRejected, appName)
-		delete(c.writtenAt, appName)
-		c.mu.Unlock()
+	if ok {
+		c.track(appName, func(a *activation) { *a = activation{accepted: true} })
 		return true, nil
 	}
 
@@ -125,13 +138,12 @@ func (c *Creds) readPassword(ctx context.Context, appName, appNS string) (string
 	if err := c.Client.Get(ctx, client.ObjectKey{Namespace: appNS, Name: PullSecretName(appName)}, &pullSec); err != nil {
 		return "", fmt.Errorf("get pull secret: %w", err)
 	}
-	return extractPassword(pullSec.Data[corev1.DockerConfigJsonKey], c.Registry, ZotUsername(appName))
+	return c.passwordFrom(pullSec.Data[corev1.DockerConfigJsonKey], ZotUsername(appName))
 }
 
 // recordRejection tracks a rejected probe and decides whether this caller
-// should bounce zot: past the activation grace (anchored to the credential
-// write when known, else the first rejected probe) and outside the global
-// bounce cooldown. All mu-guarded rejection state lives here.
+// should bounce zot: past the activation grace and outside the global bounce
+// cooldown.
 func (c *Creds) recordRejection(appName string, now time.Time) (rejectedFor time.Duration, bounce bool) {
 	grace := c.ActivationGrace
 	if grace == 0 {
@@ -142,62 +154,44 @@ func (c *Creds) recordRejection(appName string, now time.Time) (rejectedFor time
 		cooldown = defaultBounceCooldown
 	}
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	anchor, ok := c.writtenAt[appName]
-	if !ok {
-		anchor, ok = c.firstRejected[appName]
-		if !ok {
-			anchor = now
-			if c.firstRejected == nil {
-				c.firstRejected = map[string]time.Time{}
-			}
-			c.firstRejected[appName] = now
+	c.track(appName, func(a *activation) {
+		if a.anchor.IsZero() {
+			a.anchor = now
 		}
-	}
-	rejectedFor = now.Sub(anchor)
-	bounce = rejectedFor >= grace && now.Sub(c.lastBounce) >= cooldown
-	if bounce {
-		c.lastBounce = now
-	}
+		rejectedFor = now.Sub(a.anchor)
+		bounce = rejectedFor >= grace && now.Sub(c.lastBounce) >= cooldown
+		if bounce {
+			c.lastBounce = now
+		}
+	})
 	return rejectedFor, bounce
 }
 
-// recordWrite stamps the moment this process (re)wrote the App's htpasswd
-// entry and drops any stale acceptance: the running zot cannot know the new
-// credential until it restarts, so activation must be re-proven. The stamp
-// anchors the activation grace to the write instead of the first probe — for a
-// repo-backed App the build runs for minutes in between, so by probe time the
-// Secret has long propagated and a rejected credential can be bounced without
-// dead waiting.
+// recordWrite stamps the moment this process (re)wrote the App's credential and
+// drops any stale acceptance: the running zot cannot know the new credential
+// until it restarts, so activation must be re-proven. Anchoring the grace to
+// the write instead of the first probe matters for a repo-backed App, whose
+// build runs for minutes in between — by probe time the Secret has long
+// propagated, so a rejected credential can be bounced without dead waiting.
 func (c *Creds) recordWrite(appName string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.writtenAt == nil {
-		c.writtenAt = map[string]time.Time{}
-	}
-	c.writtenAt[appName] = time.Now()
-	delete(c.activated, appName)
-	delete(c.firstRejected, appName)
+	c.track(appName, func(a *activation) { *a = activation{anchor: time.Now()} })
 }
 
 // clearActivation forgets all per-App activation state (App deleted).
 func (c *Creds) clearActivation(appName string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	delete(c.activated, appName)
-	delete(c.firstRejected, appName)
-	delete(c.writtenAt, appName)
+	delete(c.apps, appName)
 }
 
-// probe asks the running zot whether it accepts the credential for the App's
-// own repository: GET /v2/<repo>/tags/list exercises both the htpasswd user
-// and (unlike a bare /v2/ ping) the per-repo ACL entry, which live in two
+// probe asks the running zot whether it accepts the App's credential for the
+// App's own repository: GET /v2/<repo>/tags/list exercises both the htpasswd
+// user and (unlike a bare /v2/ ping) the per-repo ACL entry, which live in two
 // independently propagated Secrets. 2xx and 404 (authenticated + authorized,
 // repo just not pushed yet — zot may also answer 404 for a denied repo to
 // avoid existence leaks, so 404 is not a perfect ACL proof but 401/403 are
 // definitive rejections) count as accepted.
-func (c *Creds) probe(ctx context.Context, repo, username, password string) (bool, error) {
+func (c *Creds) probe(ctx context.Context, appName, password string) (bool, error) {
 	requestCtx, cancel := boundedhttp.WithTimeout(ctx)
 	defer cancel()
 	ctx = requestCtx
@@ -209,11 +203,11 @@ func (c *Creds) probe(ctx context.Context, repo, username, password string) (boo
 	if !strings.HasPrefix(base, "http://") && !strings.HasPrefix(base, "https://") {
 		base = "http://" + base
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/v2/"+repo+"/tags/list", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/v2/"+appName+"/tags/list", nil)
 	if err != nil {
 		return false, err
 	}
-	req.SetBasicAuth(username, password)
+	req.SetBasicAuth(ZotUsername(appName), password)
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return false, err

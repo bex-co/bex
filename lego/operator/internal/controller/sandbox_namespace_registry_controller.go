@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -78,7 +79,7 @@ func (r *SandboxNamespaceRegistryReconciler) Reconcile(ctx context.Context, req 
 	}
 
 	if err := r.Registry.EnsureSnapshotCreds(ctx, ns.Name); err != nil {
-		if err == registry.ErrConflictRequeue {
+		if errors.Is(err, registry.ErrConflictRequeue) {
 			return ctrl.Result{Requeue: true}, nil
 		}
 		return ctrl.Result{}, err
