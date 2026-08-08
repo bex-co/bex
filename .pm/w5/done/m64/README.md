@@ -1,6 +1,6 @@
 # w5 · m64 — One nav rail: fold the agent-sessions sidebar into `DashboardSidebar` (Devin-consistent)
 
-**Worker:** worker5 **Goal:** `/agents` renders **one** left rail, not two. Today `agents.tsx` mounts `<DashboardLayout>` (which already renders `DashboardSidebar`) and then renders a **second** bespoke `<aside class="w-60 border-r lg:flex">` (`features/agent-sessions/components/session-sidebar.tsx`) inside the page body — the only route in the dashboard that does this. Every other contextual page (`/project/$projectId*`, `/services/$serviceId*`) swaps the rail's _contents_ **inside** `DashboardSidebar`'s own route switch. This milestone brings `/agents*` onto that same one-rail contract and shapes it per Devin: global nav **plus** a contextual `Recent` sessions section in a single `<Sidebar collapsible="icon">`. **Status:** implemented + locally verified (t001–t008 done); awaiting ship + prod walk to close (t009)
+**Worker:** worker5 **Goal:** `/agents` renders **one** left rail, not two. Today `agents.tsx` mounts `<DashboardLayout>` (which already renders `DashboardSidebar`) and then renders a **second** bespoke `<aside class="w-60 border-r lg:flex">` (`features/agent-sessions/components/session-sidebar.tsx`) inside the page body — the only route in the dashboard that does this. Every other contextual page (`/project/$projectId*`, `/services/$serviceId*`) swaps the rail's _contents_ **inside** `DashboardSidebar`'s own route switch. This milestone brings `/agents*` onto that same one-rail contract and shapes it per Devin: global nav **plus** a contextual `Recent` sessions section in a single `<Sidebar collapsible="icon">`. **Status:** done — shipped `f486653d`, deployed green in prod as an ancestor of `ca70ee6c` (run 31242352292); live prod browser walk deferred to `.pm/w5/040.md`
 
 ## Implementation status (2026-08-07)
 
@@ -28,8 +28,7 @@ Implemented and verified on the local `dev:local` + `local-bex` stack — dashbo
 | t006 | Render parity                                                                                 | 30m | t004, t005 — **DONE** |
 | t007 | Simplify                                                                                      | 30m | t006 — **DONE** |
 | t008 | Test coverage                                                                                 | 45m | t006 — **DONE** |
-| t009 | Closeout                                                                                      | 15m | t007, t008       |
-
+| t009 | Closeout                                                                                      | 15m | t007, t008       — **DONE** |
 ## Definition of done
 
 - On `/agents` and `/agents/<id>` the rendered page contains **exactly one** left rail — asserted by a test that counts sidebar landmarks in the layout, not by eyeball.
