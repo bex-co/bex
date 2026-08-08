@@ -52,6 +52,13 @@ const (
 	defaultMetricsAddr = ":9093"
 	dialTimeout        = 10 * time.Second
 	handshakeTimeout   = 10 * time.Second
+
+	// Admission + copy-loop bounds (finding 6). Non-zero, generous defaults; a
+	// value of 0 disables that dimension.
+	defaultMaxConns          = 1024      // BEX_KV_PROXY_MAX_CONNS
+	defaultMaxConnsPerSource = 128       // BEX_KV_PROXY_MAX_CONNS_PER_SOURCE
+	defaultIdleTimeout       = time.Hour // BEX_KV_PROXY_IDLE_TIMEOUT
+	defaultMaxLifetime       = 24 * time.Hour
 )
 
 var scheme = runtime.NewScheme()
@@ -196,6 +203,12 @@ func main() {
 		logger.Error(err, "invalid BEX_PROXY_PROTOCOL_TRUSTED_CIDRS")
 		os.Exit(1)
 	}
+	limiter := sniproxy.NewLimiter(
+		sniproxy.EnvInt(logger, "BEX_KV_PROXY_MAX_CONNS", defaultMaxConns),
+		sniproxy.EnvInt(logger, "BEX_KV_PROXY_MAX_CONNS_PER_SOURCE", defaultMaxConnsPerSource),
+	)
+	idleTimeout := sniproxy.EnvDuration(logger, "BEX_KV_PROXY_IDLE_TIMEOUT", defaultIdleTimeout)
+	maxLifetime := sniproxy.EnvDuration(logger, "BEX_KV_PROXY_MAX_LIFETIME", defaultMaxLifetime)
 	registry := prometheus.NewRegistry()
 	meter := sniproxy.NewByteMeter(registry, "kv_proxy", "key_value")
 	router := newRouter(domain)
@@ -247,20 +260,17 @@ func main() {
 			if err != nil {
 				logger.Error(err, "manager exited")
 			}
+			cancel() // stop Serve cleanly when the manager exits without a signal
 		}
 		_ = listener.Close()
 	}()
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			if ctx.Err() != nil {
-				return
-			}
-			logger.Error(err, "accept")
-			continue
-		}
-		go handleConn(conn, router, meter, trustedProxyCIDRs, logger)
-	}
+	// Serve admits each connection through the global cap BEFORE dispatching a
+	// handler goroutine, shedding overload at accept time (finding 6).
+	sniproxy.Serve(ctx, listener, limiter, meter, func(conn net.Conn) {
+		handleConn(conn, router, meter, trustedProxyCIDRs, limiter, idleTimeout, maxLifetime, logger)
+	}, func(err error) {
+		logger.Error(err, "accept")
+	})
 }
 
 func handleConn(
@@ -268,6 +278,8 @@ func handleConn(
 	router *kvRouter,
 	meter *sniproxy.ByteMeter,
 	trustedProxyCIDRs []netip.Prefix,
+	limiter *sniproxy.Limiter,
+	idle, maxLifetime time.Duration,
 	logger interface {
 		Info(msg string, keysAndValues ...any)
 		Error(err error, msg string, keysAndValues ...any)
@@ -281,6 +293,16 @@ func handleConn(
 		logger.Info("invalid PROXY protocol header", "err", err)
 		return
 	}
+
+	// Per-source admission (finding 6): applied after the real source is resolved
+	// and BEFORE dialing the backend, so a shed connection opens no backend dial.
+	releaseSource, ok := limiter.AcquireSource(source)
+	if !ok {
+		meter.Reject("source")
+		logger.Info("connection rejected: per-source limit reached", "source", source.String())
+		return
+	}
+	defer releaseSource()
 	record, err := sniproxy.ReadTLSRecord(reader, nil)
 	if err != nil {
 		logger.Info("TLS ClientHello read failed", "err", err)
@@ -307,7 +329,9 @@ func handleConn(
 		logger.Error(err, "forward TLS ClientHello", "resource", route.ResourceID)
 		return
 	}
-	sniproxy.CopyBidirectional(conn, backend, meter, route.ResourceID, "key_value")
+	// The idle + max-lifetime bounds stop a routed connection from idling or
+	// living forever after Valkey auth (finding 6).
+	sniproxy.CopyBidirectional(conn, backend, meter, route.ResourceID, "key_value", idle, maxLifetime)
 }
 
 func envOr(name, fallback string) string {

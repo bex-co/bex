@@ -34,6 +34,9 @@ import (
 type ConnectionStore interface {
 	UpsertGitConnection(ctx context.Context, c store.GitConnection) (store.GitConnection, error)
 	GetGitConnection(ctx context.Context, workspaceID string) (store.GitConnection, error)
+	// GitConnectionByInstallation resolves which workspace (if any) already owns
+	// an installation — the unique-binding gate (w1/m65 F2).
+	GitConnectionByInstallation(ctx context.Context, installationID int64) (store.GitConnection, error)
 	DeleteGitConnection(ctx context.Context, workspaceID string) error
 }
 
@@ -53,12 +56,24 @@ type APIClient interface {
 	OpenDraftPullRequest(ctx context.Context, installationID int64, owner, repo, head, base, title, body string) (PullRequest, error)
 }
 
+// InstallationVerifier proves the user completing a browser install actually
+// administers the installation (F2). Implemented by *Client when the App's OAuth
+// credentials are configured; nil => the connect callback relies on the unique
+// installation->workspace binding alone. Kept a narrow interface so the fake in
+// tests can drive accept/reject.
+type InstallationVerifier interface {
+	VerifyInstallationAdmin(ctx context.Context, code string, installationID int64) (bool, error)
+}
+
 // Service manages a workspace's GitHub App connection and lists its repos over
 // the injected client + store. Both seams must be present; either nil => 503.
 type Service struct {
 	*core.Base
 	GitHub APIClient       // nil => GitHub App unconfigured
 	Store  ConnectionStore // nil => control-plane store off
+	// Verifier proves installation administration on the browser connect callback
+	// (F2). nil => not configured; the unique-binding gate still applies.
+	Verifier InstallationVerifier
 	// StateSecret signs the short-lived workspace credential carried through the
 	// browser install redirect. Production reuses BEX_GITHUB_APP_PRIVATE_KEY's
 	// PEM bytes, so no second platform secret or replica-local state is needed.
@@ -144,6 +159,29 @@ func (s *Service) Connect(ctx context.Context, installationID int64) (Connection
 	return s.connectWithWorkspace(ctx, s.workspaceID(ctx), installationID)
 }
 
+// connectFromCallback is the browser install-callback path: when the OAuth
+// installation-admin verifier is wired (F2), it first requires the caller to
+// prove — via the callback's user-authorization `code` — that they administer
+// the installation, then records the connection. The App-JWT existence check +
+// unique binding in connectWithWorkspace still apply. Verifier unset => the code
+// is ignored and only the unique-binding gate protects the callback (the
+// documented fallback until the App enables user authorization on install).
+func (s *Service) connectFromCallback(ctx context.Context, workspaceID string, installationID int64, code string) (Connection, error) {
+	if !s.configured() {
+		return Connection{}, core.ErrGitHubUnavailable
+	}
+	if s.Verifier != nil {
+		ok, err := s.Verifier.VerifyInstallationAdmin(ctx, code, installationID)
+		if err != nil {
+			return Connection{}, mapGitHubErr(err)
+		}
+		if !ok {
+			return Connection{}, fmt.Errorf("%w: could not verify you administer this GitHub installation", core.ErrForbidden)
+		}
+	}
+	return s.connectWithWorkspace(ctx, workspaceID, installationID)
+}
+
 // connectWithWorkspace records a connection for the workspace authenticated by
 // a verified state credential. It deliberately is not an exported service verb:
 // unlike Connect it has no caller Identity to authorize, and must only be called
@@ -158,6 +196,24 @@ func (s *Service) connectWithWorkspace(ctx context.Context, workspaceID string, 
 	inst, err := s.GitHub.GetInstallation(ctx, installationID)
 	if err != nil {
 		return Connection{}, mapGitHubErr(err)
+	}
+	// SECURITY (w1/m65 F2): GetInstallation authenticates as the App, which can
+	// look up EVERY installation of itself — so its success proves the
+	// installation exists, NOT that the caller's workspace owns it. Enforce a
+	// unique installation->workspace binding: an installation already connected by
+	// a DIFFERENT workspace cannot be re-claimed here (a re-connect by the SAME
+	// workspace is idempotent). This blocks a workspace admin from binding another
+	// tenant's installation and minting tokens for its private repositories. (A
+	// GitHub user-OAuth principal proof — verifying the initiating user administers
+	// the installation — is the complementary control; it requires enabling
+	// "Request user authorization during installation" on the App and is tracked as
+	// follow-up.)
+	if existing, lookupErr := s.Store.GitConnectionByInstallation(ctx, installationID); lookupErr == nil {
+		if existing.WorkspaceID != workspaceID {
+			return Connection{}, fmt.Errorf("%w: this GitHub installation is already connected to another workspace", core.ErrConflict)
+		}
+	} else if !errors.Is(lookupErr, store.ErrNotFound) {
+		return Connection{}, lookupErr
 	}
 	row, err := s.Store.UpsertGitConnection(ctx, store.GitConnection{
 		WorkspaceID:    workspaceID,
@@ -318,9 +374,19 @@ func (s *Service) cloneToken(ctx context.Context, workspaceID, repoURL string) (
 	if !s.configured() {
 		return "", false, nil
 	}
-	owner, repo, ok := ownerRepo(repoURL)
+	// SECURITY (w1/m65 F1): bind the token to a verified github.com origin, not
+	// just an owner/repo path suffix. The minted installation token flows into a
+	// Secret the operator's build Job hands to git's credential helper, which
+	// sends it to whatever host the App's repo URL names. The host-agnostic
+	// ownerRepo would treat `https://evil.example/org/repo` as `org/repo` and,
+	// if the workspace's installation grants github.com/org/repo, mint a token —
+	// leaking it to evil.example. githubOwnerRepo requires an exact github.com
+	// host (userinfo and non-default ports rejected via CanonicalRepo), so a
+	// non-GitHub host never mints a token: the build then clones anonymously and
+	// no credential ever reaches the attacker origin.
+	owner, repo, ok := githubOwnerRepo(repoURL)
 	if !ok {
-		return "", false, nil // not an owner/repo URL — nothing to match against
+		return "", false, nil // not a github.com owner/repo URL — nothing to match against
 	}
 	row, err := s.Store.GetGitConnection(ctx, workspaceID)
 	if errors.Is(err, store.ErrNotFound) {

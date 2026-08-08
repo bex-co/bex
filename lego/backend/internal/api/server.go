@@ -333,7 +333,11 @@ type Deps struct {
 	GitHubClient      github.APIClient
 	GitHubStore       github.ConnectionStore
 	GitHubStateSecret []byte
-	DashboardURL      string
+	// GitHubInstallVerifier, when set (the App's OAuth credentials are wired),
+	// makes the browser connect callback prove installation administration (F2).
+	// nil => the unique installation->workspace binding alone protects the callback.
+	GitHubInstallVerifier github.InstallationVerifier
+	DashboardURL          string
 
 	// RegistryCredsStore, when set (the control-plane store is wired), backs
 	// the registry-credentials feature (w2/m14) — CRUD for a workspace's
@@ -416,6 +420,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Base:         base,
 		GitHub:       d.GitHubClient,
 		Store:        d.GitHubStore,
+		Verifier:     d.GitHubInstallVerifier,
 		StateSecret:  d.GitHubStateSecret,
 		DashboardURL: d.DashboardURL,
 	}
@@ -1019,6 +1024,16 @@ func (s *Server) graphqlHandler() http.Handler {
 			core.WriteErrStatus(w, http.StatusBadRequest, "bad request")
 			return
 		}
+		// Cost gate (w1/m65 F9): reject an over-budget document (depth / alias /
+		// field / operation count) BEFORE execution, so a single near-limit request
+		// can't be amplified into many resolver/provider calls or large allocations.
+		// Returned as a GraphQL-shaped errors response (HTTP 200), the dialect
+		// clients already handle.
+		if err := validateGraphQLComplexity(body.Query); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"errors": []map[string]any{{"message": err.Error()}}})
+			return
+		}
 		// Env-var reads nest under the apps Service type but live in the secrets
 		// feature; inject the reader so those resolvers reach it via context (the
 		// shared Service GraphQL type stays stateless — no per-server closure).
@@ -1027,6 +1042,10 @@ func (s *Server) graphqlHandler() http.Handler {
 			ctx = core.WithEnvVars(ctx, s.Secrets)
 			ctx = core.WithSecretFiles(ctx, s.Secrets)
 		}
+		// Bound execution time so a single expensive document can't tie up a
+		// resolver goroutine indefinitely (F9).
+		ctx, cancel := context.WithTimeout(ctx, gqlExecTimeout)
+		defer cancel()
 		result := graphql.Do(graphql.Params{
 			Schema:         s.schema,
 			RequestString:  body.Query,

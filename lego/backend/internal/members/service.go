@@ -470,10 +470,12 @@ func (s *Service) AcceptInvite(ctx context.Context, token string) (AcceptedInvit
 	if err != nil {
 		return AcceptedInviteView{}, mapAcceptInviteErr(err)
 	}
-	if err := s.grantRole(ctx, inv.TenantID, "user:"+id.Subject, inv.Role); err != nil {
+	if err := s.reconcileExactRole(ctx, inv.TenantID, "user:"+id.Subject, inv.Role); err != nil {
 		// Row is the source of truth; the tuple is re-driven on the next login
 		// (tenancy's ensureGranted path), same best-effort model as the email path.
-		log.Printf("members: granting %s on workspace %s to %s: %v", inv.Role, inv.TenantID, id.Subject, err)
+		// Reconcile (not bare grant) so redeeming an invite for an EXISTING member
+		// drops the prior role rather than leaving both effective (F7).
+		log.Printf("members: reconciling %s on workspace %s to %s: %v", inv.Role, inv.TenantID, id.Subject, err)
 	}
 	s.recordAccepted(ctx, inv, id)
 	view := AcceptedInviteView{WorkspaceID: inv.TenantID, Role: wireRole(inv.Role)}
@@ -535,7 +537,20 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 		return MemberView{}, mapStoreErr(err)
 	}
 	if m.Role == role {
-		return memberView(m), nil // already there — nothing to write
+		// Already at the target role in the row — but a prior partial failure may
+		// have left OpenFGA out of sync (the row was written, then the grant failed).
+		// Repair the tuple rather than skipping (F7): the old blind early return made
+		// a retry a no-op, stranding a missing grant. grantRole check-before-grants,
+		// so with a checker present it grants only if the tuple is actually missing
+		// (and revokes nothing — nothing changed); without a checker (authz off) we
+		// can't tell a missing tuple from a present one, so keep the historical
+		// no-op. No audit row — nothing changed.
+		if s.Base != nil && s.Base.Authz != nil {
+			if err := s.grantRole(ctx, workspaceID, "user:"+subject, role); err != nil {
+				return MemberView{}, err
+			}
+		}
+		return memberView(m), nil
 	}
 	tenant, err := s.Store.GetTenant(ctx, workspaceID)
 	if err != nil {
@@ -550,15 +565,19 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 	if err := s.Store.UpdateMemberRole(ctx, workspaceID, subject, role); err != nil {
 		return MemberView{}, mapStoreErr(err)
 	}
-	// Reconcile tuples: grant the new relation (idempotent via grantRole's
-	// check-before-write), then remove the old. A role UPGRADE takes effect
-	// immediately (a fresh positive check on the new relation isn't cached); a
-	// DOWNGRADE is subject to the auth gate's ≤30s positive-check TTL on the old
-	// relation, an acceptable staleness for a revoke.
+	// Grant the new relation (idempotent via grantRole's check-before-write) then
+	// revoke the OLD one, SURFACING any failure (F7 — the revoke error used to be
+	// discarded, leaving a stale higher tuple authorizing after a downgrade). A
+	// returned error is retryable: a retry re-enters via the m.Role == role branch
+	// above (the row is already updated), which repairs the grant. A role UPGRADE
+	// takes effect immediately; a DOWNGRADE is subject to the auth gate's ≤30s
+	// positive-check TTL on the old relation, an acceptable staleness for a revoke.
 	if err := s.grantRole(ctx, workspaceID, "user:"+subject, role); err != nil {
-		return MemberView{}, fmt.Errorf("workspace %s: granting role failed: %w", workspaceID, err)
+		return MemberView{}, fmt.Errorf("workspace %s: granting role %q: %w", workspaceID, role, err)
 	}
-	s.revokeRole(ctx, workspaceID, "user:"+subject, m.Role)
+	if err := s.revokeRoleErr(ctx, workspaceID, "user:"+subject, m.Role); err != nil {
+		return MemberView{}, fmt.Errorf("workspace %s: revoking prior role %q: %w", workspaceID, m.Role, err)
+	}
 	s.RecordMemberRoleChanged(ctx, workspaceID, subject, m.Role, role)
 	m.Role = role
 	return memberView(m), nil
@@ -581,10 +600,19 @@ func (s *Service) Remove(ctx context.Context, workspaceID, subject string) error
 	if err := s.guardLastAdmin(ctx, workspaceID, m.Role, ""); err != nil {
 		return err
 	}
+	// Revoke the member's role tuple BEFORE deleting the row (F7). Two reasons: the
+	// model ORs roles, so leaving the tuple keeps the removed member authorized;
+	// and revoking first leaves a fail-closed intermediate on partial failure (row
+	// present, no privilege) that a retry converges — whereas deleting the row
+	// first would strand the stale tuple a Remove retry can no longer reach (the
+	// member is gone, GetTenantMember 404s). The revoke error is now SURFACED, not
+	// discarded, so the caller can retry to convergence.
+	if err := s.revokeRoleErr(ctx, workspaceID, "user:"+subject, m.Role); err != nil {
+		return err
+	}
 	if err := s.Store.RemoveMember(ctx, workspaceID, subject); err != nil {
 		return mapStoreErr(err)
 	}
-	s.revokeRole(ctx, workspaceID, "user:"+subject, m.Role)
 	return nil
 }
 
@@ -649,13 +677,48 @@ func (s *Service) grantRole(ctx context.Context, tenantID, subject, relation str
 	return s.Granter.GrantWorkspaceRole(ctx, tenantID, subject, relation)
 }
 
-// revokeRole removes a member's role tuple, best-effort — an absent tuple is not
-// an error to OpenFGA, so this is safe to call on a role that may already be gone.
-func (s *Service) revokeRole(ctx context.Context, tenantID, subject, relation string) {
-	if s.Revoker == nil {
-		return
+// reconcileExactRole grants `role` and — when a checker is available — revokes
+// every OTHER role tuple the subject currently holds, converging OpenFGA to a
+// single role (subject is already FGA-prefixed, "user:<id>"). It backs the
+// invite-redemption paths, where the caller does NOT know the member's prior
+// role: the model ORs the five role relations, so redeeming an invite for an
+// existing member must drop the old tuple or both stay effective (w1/m65 F7).
+// Grant + revoke errors are surfaced. Without a checker (OpenFGA off) it
+// degrades to a bare grant — byte-identical to the pre-fix behavior — because
+// role existence can't be probed to revoke precisely.
+func (s *Service) reconcileExactRole(ctx context.Context, tenantID, subject, role string) error {
+	if err := s.grantRole(ctx, tenantID, subject, role); err != nil {
+		return err
 	}
-	_ = s.Revoker.RevokeWorkspaceMember(ctx, tenantID, subject, relation)
+	if s.Base == nil || s.Base.Authz == nil {
+		return nil
+	}
+	var errs []error
+	for _, other := range Roles {
+		if other == role {
+			continue
+		}
+		// Only revoke a role tuple that actually exists (check-before-revoke): keeps
+		// a no-op from masquerading as a failure and never asks OpenFGA to delete a
+		// missing tuple.
+		if ok, err := s.Base.Authz.Check(ctx, subject, other, core.WorkspaceObject(tenantID)); err != nil || !ok {
+			continue
+		}
+		if err := s.revokeRoleErr(ctx, tenantID, subject, other); err != nil {
+			errs = append(errs, fmt.Errorf("revoke %q: %w", other, err))
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// revokeRoleErr removes a member's role tuple, SURFACING the error (unlike the
+// old best-effort revoke that discarded it, w1/m65 F7). No revoker => no-op
+// success.
+func (s *Service) revokeRoleErr(ctx context.Context, tenantID, subject, relation string) error {
+	if s.Revoker == nil {
+		return nil
+	}
+	return s.Revoker.RevokeWorkspaceMember(ctx, tenantID, subject, relation)
 }
 
 func (s *Service) inviteTTL() time.Duration {

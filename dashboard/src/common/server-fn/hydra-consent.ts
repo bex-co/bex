@@ -4,6 +4,10 @@ import type { OAuth2ConsentRequest } from "@ory/client-fetch";
 import { fetchSession } from "@/common/server-fn/session";
 import type { SessionState } from "@/common/server-fn/session";
 import { isSameOrigin } from "@/common/server-fn/same-origin";
+import {
+  BodyTooLargeError,
+  readBoundedFormData,
+} from "@/common/server-fn/bounded-body";
 
 // OAuth2 consent (docs/ADR012-auth.md §7, w4/m9 + w4/m16). Hydra redirects the
 // browser here with a consent_challenge after login (which Kratos's native
@@ -281,14 +285,23 @@ export async function handleConsentDecision(
   const { session } = await sessionFor(request);
   if (!session) return refuse("consent refused: no session");
 
-  // Bound the body before buffering: the consent decision is a tiny form, so a
-  // declared size beyond the cap is rejected up front.
+  // Early fast-reject on a declared oversize, then stream-bound the real read:
+  // a chunked/HTTP-2 body omits Content-Length (a length-only guard would see 0
+  // and buffer it all), so the cap is enforced while reading (codex-security #11).
   const contentLength = Number(request.headers.get("content-length") ?? 0);
   if (!Number.isFinite(contentLength) || contentLength > CONSENT_BODY_MAX) {
     return new Response("consent decision too large", { status: 413 });
   }
 
-  const form = await request.formData();
+  let form: FormData;
+  try {
+    form = await readBoundedFormData(request, CONSENT_BODY_MAX);
+  } catch (err) {
+    if (err instanceof BodyTooLargeError) {
+      return new Response("consent decision too large", { status: 413 });
+    }
+    return new Response("malformed consent decision", { status: 400 });
+  }
   const consentChallenge = String(form.get("consent_challenge") ?? "");
   const decision = String(form.get("decision") ?? "");
   const csrfToken = String(form.get("csrf_token") ?? "");

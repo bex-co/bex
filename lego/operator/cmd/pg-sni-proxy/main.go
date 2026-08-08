@@ -66,6 +66,13 @@ const (
 	// connection cannot pin a goroutine + file descriptor indefinitely (the
 	// sibling kv-sni-proxy sets the same control). Cleared once SNI is resolved.
 	handshakeTimeout = 10 * time.Second
+
+	// Admission + copy-loop bounds (finding 6). Defaults are non-zero and
+	// generous so real connection pools are unaffected; 0 disables a dimension.
+	defaultMaxConns          = 1024      // BEX_PROXY_MAX_CONNS
+	defaultMaxConnsPerSource = 128       // BEX_PROXY_MAX_CONNS_PER_SOURCE
+	defaultIdleTimeout       = time.Hour // BEX_PROXY_IDLE_TIMEOUT
+	defaultMaxLifetime       = 24 * time.Hour
 )
 
 var scheme = runtime.NewScheme()
@@ -246,6 +253,12 @@ func main() {
 		log.Error(err, "invalid BEX_PROXY_PROTOCOL_TRUSTED_CIDRS")
 		os.Exit(1)
 	}
+	limiter := sniproxy.NewLimiter(
+		sniproxy.EnvInt(log, "BEX_PROXY_MAX_CONNS", defaultMaxConns),
+		sniproxy.EnvInt(log, "BEX_PROXY_MAX_CONNS_PER_SOURCE", defaultMaxConnsPerSource),
+	)
+	idleTimeout := sniproxy.EnvDuration(log, "BEX_PROXY_IDLE_TIMEOUT", defaultIdleTimeout)
+	maxLifetime := sniproxy.EnvDuration(log, "BEX_PROXY_MAX_LIFETIME", defaultMaxLifetime)
 
 	router := newRouter(domain)
 	registry := prometheus.NewRegistry()
@@ -310,28 +323,22 @@ func main() {
 	go func() {
 		select {
 		case <-ctx.Done():
-			_ = ln.Close()
 		case err := <-mgrErrCh:
 			if err != nil {
 				log.Error(err, "manager exited")
 			}
-			_ = ln.Close()
+			cancel() // stop Serve cleanly when the manager exits without a signal
 		}
+		_ = ln.Close()
 	}()
 
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				log.Error(err, "accept error")
-				continue
-			}
-		}
-		go handleConn(conn, router, meter, trustedProxyCIDRs, log)
-	}
+	// Serve admits each connection through the global cap BEFORE dispatching a
+	// handler goroutine, shedding overload at accept time (finding 6).
+	sniproxy.Serve(ctx, ln, limiter, meter, func(conn net.Conn) {
+		handleConn(conn, router, meter, trustedProxyCIDRs, limiter, idleTimeout, maxLifetime, log)
+	}, func(err error) {
+		log.Error(err, "accept error")
+	})
 }
 
 // handleConn handles one incoming client connection:
@@ -345,6 +352,8 @@ func handleConn(
 	router *dbRouter,
 	meter *sniproxy.ByteMeter,
 	trustedProxyCIDRs []netip.Prefix,
+	limiter *sniproxy.Limiter,
+	idle, maxLifetime time.Duration,
 	log interface {
 		Info(msg string, keysAndValues ...any)
 		Error(err error, msg string, keysAndValues ...any)
@@ -361,6 +370,17 @@ func handleConn(
 		log.Info("invalid PROXY protocol header", "err", err)
 		return
 	}
+
+	// Per-source admission (finding 6): one client IP can't monopolize the proxy.
+	// Applied here — after the real source is resolved from any PROXY header —
+	// and BEFORE dialing the backend, so a shed connection opens no backend dial.
+	releaseSource, ok := limiter.AcquireSource(source)
+	if !ok {
+		meter.Reject("source")
+		log.Info("connection rejected: per-source limit reached", "source", source.String())
+		return
+	}
+	defer releaseSource()
 
 	// Peek at the first 8 bytes to distinguish SSLRequest from direct TLS.
 	var peek [8]byte
@@ -442,6 +462,8 @@ func handleConn(
 	}
 
 	// Splice the two sides bidirectionally. The TLS session is end-to-end between
-	// the client and CNPG — the proxy never sees the plaintext.
-	sniproxy.CopyBidirectional(conn, back, meter, route.Database, "postgres")
+	// the client and CNPG — the proxy never sees the plaintext. The idle +
+	// max-lifetime bounds stop a routed connection from idling or living forever
+	// after DB auth (finding 6).
+	sniproxy.CopyBidirectional(conn, back, meter, route.Database, "postgres", idle, maxLifetime)
 }

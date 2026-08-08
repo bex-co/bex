@@ -1,8 +1,18 @@
 name: infra (terraform)
 
-# The bex infra-cluster base as IDEMPOTENT IaC — not a one-shot. PRs get a plan,
-# merges apply, a daily schedule does drift detection. Runs in CI (an ephemeral
-# runner), NEVER on a laptop. Required repo secrets:
+# The bex infra-cluster base as IDEMPOTENT IaC — not a one-shot. PRs get a
+# CREDENTIAL-LESS fmt/validate check; merges plan+apply, a daily schedule does
+# drift detection. Runs in CI (an ephemeral runner), NEVER on a laptop.
+#
+# SECURITY (w1/m65 F3): pull-request Terraform is UNTRUSTED — a same-repo branch
+# contributor could otherwise modify it to exfiltrate credentials during `plan`.
+# So the two are split: the `validate` job (pull_request) gets NO cloud token,
+# NO remote-state credential, and never runs `terraform plan` against real
+# infrastructure; the credentialed `terraform` job (push / schedule / manual)
+# runs only from reviewed main and is gated on the `production-infra` protected
+# environment, whose secrets are scoped to that job's steps.
+#
+# Required repo secrets (exposed only to the `terraform` job):
 #   HCLOUD_TOKEN          Hetzner Cloud API token
 #   BEX_SSH_PUBLIC_KEY    public key uploaded as the `bex` hcloud key
 #   TF_STATE_BUCKET       Hetzner Object Storage bucket for remote state (create once, out-of-band)
@@ -23,21 +33,55 @@ on:
 permissions:
   actions: read
   contents: read
-  pull-requests: write
 
 env:
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
-  TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
-  TF_VAR_ssh_public_key: ${{ secrets.BEX_SSH_PUBLIC_KEY }}
 
 defaults:
   run:
     working-directory: infra/terraform
 
 jobs:
-  terraform:
+  # Credential-less validation for pull requests. PR-controlled Terraform is
+  # untrusted, so this job holds no cloud token or remote-state credential and
+  # never runs `terraform plan` against real infrastructure: fmt + a
+  # backend-less validate catch structural errors, and anything that needs
+  # credentials or state runs only from reviewed main in the `terraform` job.
+  validate:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: "1.10.5"
+
+      - name: fmt
+        run: terraform fmt -check -recursive
+
+      # -backend=false: no remote-state credential is read, and no provider
+      # credential is needed — validate checks configuration + provider schemas
+      # offline, never calling the cloud API.
+      - name: init (no backend, no credentials)
+        run: terraform init -backend=false
+
+      - name: validate
+        run: terraform validate
+
+  # Credentialed plan/apply — main-branch pushes, the daily drift schedule, and
+  # manual runs only (never pull_request). Gated on the `production-infra`
+  # protected environment so the Hetzner + remote-state secrets are reachable
+  # only after that environment's protection rules pass; secrets are scoped to
+  # this job, not the workflow.
+  terraform:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: production-infra
+    env:
+      TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
+      TF_VAR_ssh_public_key: ${{ secrets.BEX_SSH_PUBLIC_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -156,8 +200,8 @@ jobs:
           SERVICES
 
       # Save one reviewed plan for every event. Push applies this exact plan
-      # after the compatibility gate below; PRs, schedules, and manual runs
-      # remain read-only.
+      # after the compatibility gate below; schedules and manual runs remain
+      # read-only.
       - name: plan
         run: terraform plan -no-color -out=tfplan
 

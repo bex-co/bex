@@ -49,6 +49,39 @@ func TestUnsafeOriginIP(t *testing.T) {
 	}
 }
 
+// TestUnsafeOriginIPRFC6598 pins the w1/m65 F15 fix: RFC 6598 shared address
+// space (100.64.0.0/10) is blocked for outbound origin dials — net.IP.IsPrivate
+// does NOT cover it — across literal, boundary, and IPv4-mapped-IPv6 forms,
+// while genuinely public 100.x addresses just outside the range stay allowed.
+func TestUnsafeOriginIPRFC6598(t *testing.T) {
+	blocked := []string{
+		"100.64.0.0",        // network (lowest in /10)
+		"100.64.0.1",        // literal
+		"100.100.50.7",      // middle
+		"100.127.255.255",   // highest in /10
+		"::ffff:100.64.0.1", // IPv4-mapped IPv6
+	}
+	for _, raw := range blocked {
+		ip := net.ParseIP(raw)
+		if ip == nil {
+			t.Fatalf("net.ParseIP(%q) = nil", raw)
+		}
+		if !netutil.UnsafeOriginIP(ip) {
+			t.Errorf("UnsafeOriginIP(%s) = false; want true (RFC 6598 must be blocked)", raw)
+		}
+	}
+	// Just outside 100.64.0.0/10 — genuinely public, must NOT be blocked.
+	for _, raw := range []string{"100.63.255.255", "100.128.0.0", "99.64.0.1", "8.8.8.8"} {
+		ip := net.ParseIP(raw)
+		if ip == nil {
+			t.Fatalf("net.ParseIP(%q) = nil", raw)
+		}
+		if netutil.UnsafeOriginIP(ip) {
+			t.Errorf("UnsafeOriginIP(%s) = true; want false (public, outside RFC 6598)", raw)
+		}
+	}
+}
+
 func TestSafeDialContextBlocksPrivateAddresses(t *testing.T) {
 	dial := netutil.SafeDialContext(5 * time.Second)
 	// Literal IP addresses are resolved locally (no DNS query) — safe for unit tests.

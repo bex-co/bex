@@ -2,6 +2,15 @@ import { Configuration, OAuth2Api } from "@ory/client-fetch";
 import type { OAuth2ConsentSession } from "@ory/client-fetch";
 import { fetchSession } from "@/common/server-fn/session";
 import { isSameOrigin } from "@/common/server-fn/same-origin";
+import {
+  BodyTooLargeError,
+  readBoundedJson,
+} from "@/common/server-fn/bounded-body";
+
+// The revoke body is a tiny { clientId } object — bound it before buffering
+// (codex-security #11): request.json() has no ceiling and Content-Length can be
+// omitted on a chunked/HTTP-2 body.
+const AGENTS_BODY_MAX = 1 << 14; // 16 KiB
 
 // Settings → Security & Compliance "Connected agents" card (docs/ADR012-auth.md
 // §7, w4/m18): everything that can currently act as the signed-in human via a
@@ -51,9 +60,7 @@ type Accumulator = {
 };
 
 /** One row per client_id: union the granted scopes, keep the latest grant date. */
-function mergeByClient(
-  sessions: OAuth2ConsentSession[],
-): ConnectedAgentView[] {
+function mergeByClient(sessions: OAuth2ConsentSession[]): ConnectedAgentView[] {
   const byClient = new Map<string, Accumulator>();
   for (const s of sessions) {
     const client = s.consent_request?.client;
@@ -108,7 +115,9 @@ export async function listConnectedAgents(request: Request): Promise<Response> {
  * invalidating all of that client's outstanding access tokens (Hydra's own
  * semantics for `revokeOAuth2ConsentSessions` with `subject` + `client`).
  */
-export async function revokeConnectedAgent(request: Request): Promise<Response> {
+export async function revokeConnectedAgent(
+  request: Request,
+): Promise<Response> {
   const url = new URL(request.url);
   if (!isSameOrigin(request, url)) {
     return new Response("revoke refused: cross-site request", { status: 403 });
@@ -119,9 +128,15 @@ export async function revokeConnectedAgent(request: Request): Promise<Response> 
 
   let clientId: string;
   try {
-    const body = (await request.json()) as { clientId?: string };
+    const body = await readBoundedJson<{ clientId?: string }>(
+      request,
+      AGENTS_BODY_MAX,
+    );
     clientId = body.clientId ?? "";
-  } catch {
+  } catch (err) {
+    if (err instanceof BodyTooLargeError) {
+      return new Response("request too large", { status: 413 });
+    }
     return new Response("malformed request", { status: 400 });
   }
   if (!clientId) return new Response("missing clientId", { status: 400 });

@@ -24,7 +24,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -337,6 +340,128 @@ func TestHostCacheCoversSpecAndStatusHosts(t *testing.T) {
 	// An unknown host does not resolve, and lookup never hits the API.
 	if got, ok := cache.lookup("unknown.example.com"); ok || got != nil {
 		t.Fatalf("cache.lookup(unknown) = %+v, ok=%v; want not found", got, ok)
+	}
+}
+
+// sleepingApp is a hibernated (replicas 0) App reachable on several hosts, so a
+// lookup for any of them resolves to the same cached object — the exact shape
+// that let the pre-fix code hand a shared *App to concurrent wake goroutines.
+func sleepingApp() (*appv1alpha1.App, *appsv1.Deployment) {
+	zero := int32(0)
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "sleeping", Namespace: "bex-system"},
+		Spec:       appv1alpha1.AppSpec{Hosts: []string{"a.onbex.co", "b.onbex.co"}},
+		Status: appv1alpha1.AppStatus{
+			URL:  "https://sleeping.onbex.co",
+			URLs: []string{"https://sleeping.onbex.co", "https://a.onbex.co", "https://b.onbex.co"},
+		},
+	}
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: "sleeping", Namespace: "bex-system"},
+		Spec:       appsv1.DeploymentSpec{Replicas: &zero},
+	}
+	return app, dep
+}
+
+// TestWakeUnderConcurrentRequestsIsRaceFree floods the same sleeping App from
+// many goroutines at once. Pre-fix, hostCache.lookup handed every request the
+// cache-owned *App and wakeApp mutated its annotations map directly, so this
+// raced ("concurrent map writes", a fatal crash of the single replica). It must
+// now run clean under -race and still wake the workload.
+func TestWakeUnderConcurrentRequestsIsRaceFree(t *testing.T) {
+	app, dep := sleepingApp()
+	cache, cl := primedHostCache(t, app, dep)
+	handler := newHandler(cl, cache, logr.Discard())
+
+	hosts := []string{"sleeping.onbex.co", "a.onbex.co", "b.onbex.co"}
+	var wg sync.WaitGroup
+	for i := range 300 {
+		host := hosts[i%len(hosts)]
+		wg.Go(func() {
+			req := httptest.NewRequest(http.MethodGet, "https://"+host+"/", nil)
+			req.Host = host
+			handler.ServeHTTP(httptest.NewRecorder(), req)
+		})
+	}
+	wg.Wait()
+
+	var gotDep appsv1.Deployment
+	if err := cl.Get(context.Background(), clientKey("sleeping"), &gotDep); err != nil {
+		t.Fatal(err)
+	}
+	if gotDep.Spec.Replicas == nil || *gotDep.Spec.Replicas != 1 {
+		t.Fatalf("wake replicas = %v, want 1", gotDep.Spec.Replicas)
+	}
+}
+
+// blockingClient counts App/Deployment patches and holds the App patch open until
+// released, so a test can force many concurrent wakes to overlap inside one
+// singleflight window and prove they coalesce into a single patch.
+type blockingClient struct {
+	client.Client
+	appPatches  int64
+	depPatches  int64
+	entered     chan struct{} // closed when the leader is inside the App patch
+	release     chan struct{} // the leader blocks here until the test closes it
+	enteredOnce sync.Once
+}
+
+func (b *blockingClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+	switch obj.(type) {
+	case *appv1alpha1.App:
+		atomic.AddInt64(&b.appPatches, 1)
+		b.enteredOnce.Do(func() { close(b.entered) })
+		<-b.release
+	case *appsv1.Deployment:
+		atomic.AddInt64(&b.depPatches, 1)
+	}
+	return b.Client.Patch(ctx, obj, patch, opts...)
+}
+
+// TestWakeCoalescesConcurrentRequestsIntoOnePatch asserts the singleflight seam:
+// N simultaneous requests to one sleeping App issue exactly one last-active patch
+// and one scale-up, not N (finding 5 — otherwise an unauthenticated flood
+// stampedes the API server).
+func TestWakeCoalescesConcurrentRequestsIntoOnePatch(t *testing.T) {
+	app, dep := sleepingApp()
+	cache, base := primedHostCache(t, app, dep)
+	bc := &blockingClient{Client: base, entered: make(chan struct{}), release: make(chan struct{})}
+	handler := newHandler(bc, cache, logr.Discard())
+
+	const n = 64
+	var reached, done sync.WaitGroup
+	reached.Add(n)
+	done.Add(n)
+	for range n {
+		go func() {
+			defer done.Done()
+			req := httptest.NewRequest(http.MethodGet, "https://sleeping.onbex.co/", nil)
+			reached.Done()
+			handler.ServeHTTP(httptest.NewRecorder(), req)
+		}()
+	}
+
+	reached.Wait() // every goroutine is about to enter the handler
+	<-bc.entered   // the leader is inside the App patch, holding the flight open
+	// The leader holds the singleflight entry open, so every other request can
+	// only join it as a waiter. A brief settle covers the sub-microsecond gap
+	// between reached.Done and singleflight.Do for the stragglers.
+	time.Sleep(100 * time.Millisecond)
+	close(bc.release) // the leader completes; waiters share its result
+	done.Wait()
+
+	if got := atomic.LoadInt64(&bc.appPatches); got != 1 {
+		t.Fatalf("app patches = %d, want exactly 1 (coalesced)", got)
+	}
+	if got := atomic.LoadInt64(&bc.depPatches); got != 1 {
+		t.Fatalf("deployment patches = %d, want exactly 1 (coalesced)", got)
+	}
+	var gotApp appv1alpha1.App
+	if err := base.Get(context.Background(), clientKey("sleeping"), &gotApp); err != nil {
+		t.Fatal(err)
+	}
+	if gotApp.Annotations[annotLastActive] == "" {
+		t.Fatal("coalesced wake did not stamp last-active")
 	}
 }
 

@@ -39,6 +39,8 @@ import (
 	"path"
 	"strings"
 
+	"golang.org/x/sync/singleflight"
+
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -49,6 +51,10 @@ var ErrNotFound = errors.New("staticserver: object not found")
 // exceeds maxOriginObjectBytes, so a single oversized asset can't be allocated
 // whole and OOM the shared single-replica server (codex-security #10).
 var ErrObjectTooLarge = errors.New("staticserver: object too large")
+
+// ErrOverloaded is returned when the origin-fetch admission gate is at capacity;
+// the handler sheds it as 503 rather than buffering unbounded misses (finding 12).
+var ErrOverloaded = errors.New("staticserver: origin fetch capacity reached")
 
 // maxOriginObjectBytes bounds a single origin object read into memory. Generous
 // for real static assets, far below the pod memory budget.
@@ -92,12 +98,23 @@ type Handler struct {
 	resolver Resolver
 	origin   Origin
 	cache    *cache
+	// group collapses concurrent misses for the same object key into one origin
+	// fetch (finding 12): a viral asset is fetched once, not once per request.
+	group singleflight.Group
+	// gate bounds concurrent origin fetches (count + in-flight bytes) so a burst
+	// of distinct misses can't buffer an unbounded amount of memory (finding 12).
+	gate *fetchGate
 }
 
 // New builds a Handler over a Resolver and Origin. cacheBytes caps the in-memory
 // object cache (0 disables caching).
 func New(resolver Resolver, origin Origin, cacheBytes int64) *Handler {
-	return &Handler{resolver: resolver, origin: origin, cache: newCache(cacheBytes)}
+	return &Handler{
+		resolver: resolver,
+		origin:   origin,
+		cache:    newCache(cacheBytes),
+		gate:     newFetchGate(defaultMaxConcurrentFetches, defaultMaxInflightBytes),
+	}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -139,6 +156,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if errors.Is(err, ErrObjectTooLarge) {
 		http.Error(w, "object too large", http.StatusRequestEntityTooLarge)
+		return
+	} else if errors.Is(err, ErrOverloaded) {
+		w.Header().Set("Retry-After", "1")
+		http.Error(w, "server busy", http.StatusServiceUnavailable)
 		return
 	} else if err != nil {
 		http.Error(w, "origin error", http.StatusBadGateway)
@@ -184,18 +205,35 @@ func (h *Handler) spaFallback(ctx context.Context, site Site, reqPath string) (O
 }
 
 // get fetches a site-relative path through the cache. A revision prefix is
-// immutable, so a cached object is never stale within a revision.
+// immutable, so a cached object is never stale within a revision. Concurrent
+// misses for the same key are collapsed into a single origin fetch (singleflight)
+// and admitted through the fetch gate, so a burst can neither stampede the origin
+// nor buffer unbounded memory (finding 12).
 func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, error) {
 	key := site.keyFor(reqPath)
 	if obj, ok := h.cache.get(key); ok {
 		return obj, nil
 	}
-	obj, err := h.origin.Get(ctx, key)
+	v, err, _ := h.group.Do(key, func() (any, error) {
+		// A prior leader for this key may have just populated the cache.
+		if obj, ok := h.cache.get(key); ok {
+			return obj, nil
+		}
+		if !h.gate.acquire() {
+			return Object{}, ErrOverloaded
+		}
+		defer h.gate.release()
+		obj, gerr := h.origin.Get(ctx, key)
+		if gerr != nil {
+			return Object{}, gerr
+		}
+		h.cache.put(key, obj)
+		return obj, nil
+	})
 	if err != nil {
 		return Object{}, err
 	}
-	h.cache.put(key, obj)
-	return obj, nil
+	return v.(Object), nil
 }
 
 type routeAction int

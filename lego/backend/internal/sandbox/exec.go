@@ -272,7 +272,20 @@ type ExecResult struct {
 	Stdout   string `json:"stdout"`
 	Stderr   string `json:"stderr"`
 	ExitCode int    `json:"exitCode"`
+	// Truncated is set when the command's combined output exceeded
+	// maxExecOutputBytes and the buffered result was cut off at the cap.
+	Truncated bool `json:"truncated,omitempty"`
 }
+
+// maxExecOutputBytes caps the combined stdout+stderr a single buffered exec
+// accumulates in the shared API process (w1/m65 F8). Each SSE line is already
+// bounded (bufferExec's scanner cap), but the number of lines is not, so an
+// authorized tenant command could otherwise grow an unbounded in-memory string
+// and exhaust the API pod. At the cap bufferExec stops reading and lets the
+// caller close the upstream stream; ExecResult.Truncated flags the cutoff. 2
+// MiB mirrors bex-api's BEX_MAX_BODY_BYTES default. Prefer StreamExec for large
+// output — the streaming path never buffers.
+const maxExecOutputBytes = 2 << 20
 
 // ExecBuffered runs one command and collects its output — the same authorize +
 // ticket + gateway path as StreamExec, but it consumes the SSE and returns the
@@ -291,6 +304,7 @@ func (s *Service) ExecBuffered(ctx context.Context, req ExecRequest) (ExecResult
 func bufferExec(resp *http.Response) (ExecResult, error) {
 	var out ExecResult
 	exitSeen := false
+	total := 0 // combined stdout+stderr bytes accumulated so far
 	sc := bufio.NewScanner(resp.Body)
 	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
 	event := ""
@@ -308,10 +322,24 @@ func bufferExec(resp *http.Response) (ExecResult, error) {
 					Data   string `json:"data"`
 				}
 				if json.Unmarshal([]byte(payload), &ev) == nil {
+					// Enforce a cumulative output budget: append only what fits, then
+					// stop reading so the caller closes the upstream stream (F8). An
+					// unbounded number of in-budget lines can no longer exhaust the pod.
+					// remaining is always > 0 here: the loop returns the moment total
+					// reaches the cap, so it never re-enters at or past it.
+					data := ev.Data
+					if remaining := maxExecOutputBytes - total; len(data) > remaining {
+						data = data[:remaining]
+						out.Truncated = true
+					}
+					total += len(data)
 					if ev.Stream == "stderr" {
-						out.Stderr += ev.Data
+						out.Stderr += data
 					} else {
-						out.Stdout += ev.Data
+						out.Stdout += data
+					}
+					if out.Truncated {
+						return out, nil
 					}
 				}
 			case "exit":

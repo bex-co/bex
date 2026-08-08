@@ -11,6 +11,7 @@ import type {
 import { createFrontendApi } from "@/common/lib/ory/frontend";
 import { oryErrorInfo } from "@/common/lib/ory/errors";
 import { KRATOS_PUBLIC_URL } from "@/common/lib/ory/config";
+import { safeNext } from "@/common/lib/safe-next";
 import { EMPTY_LOGIN_SEARCH } from "@/common/lib/auth/auth";
 
 type OryFlowMap = {
@@ -223,8 +224,14 @@ export function useOryFlow<K extends keyof OryFlowMap>(
     }
 
     const api = createFrontendApi();
+    // `returnTo` reaches here straight from the URL (`?next=`), so normalize it
+    // to a same-origin relative path before it becomes either the Kratos
+    // return_to or a navigate href — an external value is an open redirect
+    // (safe-next.ts). The absolute form handed to Kratos is thus always
+    // same-origin too.
+    const safeReturnTo = safeNext(returnTo, window.location.origin);
     const ask: FlowAsk = {
-      returnTo: new URL(returnTo, window.location.origin).toString(),
+      returnTo: new URL(safeReturnTo, window.location.origin).toString(),
       loginChallenge,
       aal,
     };
@@ -234,7 +241,7 @@ export function useOryFlow<K extends keyof OryFlowMap>(
     // carry a query string (`/auth/consent?consent_challenge=…`), which `to`
     // would swallow into the pathname.
     const goToReturnTo = () =>
-      void navigate({ to: "/", href: returnTo, replace: true });
+      void navigate({ to: "/", href: safeReturnTo, replace: true });
     const handBackToKratos = () => bootstrapViaKratos(kind, ask);
 
     async function load() {
@@ -293,7 +300,10 @@ export function useOryFlow<K extends keyof OryFlowMap>(
             // allowed_return_urls (e.g. localhost dev against an environment
             // that doesn't allowlist it) — the flow itself still works
             // without one, so retry rather than fail the page.
-            fresh = await createFlow(api, kind, { ...ask, returnTo: undefined });
+            fresh = await createFlow(api, kind, {
+              ...ask,
+              returnTo: undefined,
+            });
           } else if (loginChallenge) {
             // Stale/invalid challenge (single-use, short TTL) — the challenge
             // is advisory, never load-bearing: degrade to the ordinary page.

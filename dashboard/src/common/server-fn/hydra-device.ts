@@ -1,7 +1,16 @@
 import { fetchSession } from "@/common/server-fn/session";
 import { isSameOrigin } from "@/common/server-fn/same-origin";
+import {
+  BodyTooLargeError,
+  readBoundedFormData,
+} from "@/common/server-fn/bounded-body";
 
 const RENDER_CLI_CLIENT_ID = "429024F5E608930E2A65EF92591A25CC";
+
+// The device-confirm form carries only a user_code + device_challenge, so
+// anything past a few KiB is abuse — bound it before buffering (codex-security
+// #11): request.formData() has no ceiling and Content-Length can be omitted.
+const DEVICE_BODY_MAX = 1 << 14; // 16 KiB
 
 function hydraURLs(): { admin: string; public: string } | null {
   const admin = process.env.HYDRA_ADMIN_URL?.replace(/\/$/, "");
@@ -83,7 +92,15 @@ export async function handleDeviceConfirm(request: Request): Promise<Response> {
   const { session } = await fetchSession(request.headers.get("cookie") ?? "");
   if (!session) return error("device confirmation refused: no session", 403);
 
-  const form = await request.formData();
+  let form: FormData;
+  try {
+    form = await readBoundedFormData(request, DEVICE_BODY_MAX);
+  } catch (err) {
+    if (err instanceof BodyTooLargeError) {
+      return error("device confirmation too large", 413);
+    }
+    return error("malformed device confirmation", 400);
+  }
   const userCode = String(form.get("user_code") ?? "").trim();
   const challenge = String(form.get("device_challenge") ?? "").trim();
   if (!userCode || !challenge) return error("missing device code", 400);

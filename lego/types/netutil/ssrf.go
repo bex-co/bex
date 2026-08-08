@@ -24,13 +24,25 @@ import (
 	"time"
 )
 
+// rfc6598 is the shared (carrier-grade NAT) address space 100.64.0.0/10.
+// net.IP.IsPrivate covers RFC1918 + IPv6 ULA but NOT this special-purpose
+// range, so an explicit prefix check is required — otherwise a literal address
+// or a hostname resolving into 100.64.0.0/10 (where cluster, metadata, or
+// provider control services can live) passes the origin guard (w1/m65 F15).
+var rfc6598 = net.IPNet{IP: net.IPv4(100, 64, 0, 0), Mask: net.CIDRMask(10, 32)}
+
 // UnsafeOriginIP reports whether ip must not be dialled as an outbound webhook
-// or fetch target: loopback, private, link-local unicast/multicast, multicast,
-// and unspecified addresses are all off-limits to prevent SSRF against
-// cloud-metadata endpoints (169.254.169.254) or internal services.
+// or fetch target: loopback, private (RFC1918 + IPv6 ULA), RFC 6598 shared
+// address space, link-local unicast/multicast, multicast, and unspecified
+// addresses are all off-limits to prevent SSRF against cloud-metadata endpoints
+// (169.254.169.254) or internal services. The policy is an explicit
+// not-globally-routable deny, not merely "not IsPrivate": net.IP.IsPrivate
+// omits 100.64.0.0/10 (Contains normalizes IPv4-mapped IPv6 via To4, so a
+// mapped-form answer is caught too).
 func UnsafeOriginIP(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
-		ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified()
+	return ip.IsLoopback() || ip.IsPrivate() || rfc6598.Contains(ip) ||
+		ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
+		ip.IsMulticast() || ip.IsUnspecified()
 }
 
 // UnsafeMetadataIP is the guard for an in-cluster client that MUST still reach

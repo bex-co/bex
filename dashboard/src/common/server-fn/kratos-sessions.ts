@@ -2,6 +2,15 @@ import type { Session } from "@ory/client-fetch";
 import { createFrontendApi } from "@/common/lib/ory/frontend";
 import { fetchSession } from "@/common/server-fn/session";
 import { isSameOrigin } from "@/common/server-fn/same-origin";
+import {
+  BodyTooLargeError,
+  readBoundedJson,
+} from "@/common/server-fn/bounded-body";
+
+// The revoke body is a tiny { action, id } object — bound it before buffering
+// (codex-security #11): request.json() has no ceiling and Content-Length can be
+// omitted on a chunked/HTTP-2 body.
+const SESSIONS_BODY_MAX = 1 << 14; // 16 KiB
 
 // Settings → Security & Compliance "Active sessions" card (docs/ADR012-auth.md,
 // w4/006 folded into w4/m18): every browser session Kratos currently
@@ -73,8 +82,14 @@ export async function revokeSession(request: Request): Promise<Response> {
 
   let body: { action?: string; id?: string };
   try {
-    body = (await request.json()) as { action?: string; id?: string };
-  } catch {
+    body = await readBoundedJson<{ action?: string; id?: string }>(
+      request,
+      SESSIONS_BODY_MAX,
+    );
+  } catch (err) {
+    if (err instanceof BodyTooLargeError) {
+      return new Response("request too large", { status: 413 });
+    }
     return new Response("malformed request", { status: 400 });
   }
 

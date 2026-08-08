@@ -36,6 +36,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"golang.org/x/sync/singleflight"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -117,6 +118,7 @@ func main() {
 }
 
 func newHandler(c client.Client, cache *hostCache, log logr.Logger) http.Handler {
+	wk := newWaker(c)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/healthz" {
 			w.WriteHeader(http.StatusOK)
@@ -139,8 +141,30 @@ func newHandler(c client.Client, cache *hostCache, log logr.Logger) http.Handler
 			return
 		}
 
-		wakeApp(logf.IntoContext(ctx, log), c, app, host)
+		wk.wake(logf.IntoContext(ctx, log), app, host)
 		writeWakeResponse(w, r)
+	})
+}
+
+// waker coalesces concurrent wake requests for the same App. Every public request
+// to a sleeping service reaches wake; keying the in-flight patch by App means N
+// simultaneous requests to one hibernated service issue a single last-active
+// patch + scale-up instead of N (finding 5 — the unauthenticated flood otherwise
+// stampedes the API server). The cache hands out a private DeepCopy per request
+// (hostCache.lookup), so the leader mutates only its own copy: no shared-map
+// write, no fatal "concurrent map writes" crash of the single replica.
+type waker struct {
+	client client.Client
+	group  singleflight.Group
+}
+
+func newWaker(c client.Client) *waker { return &waker{client: c} }
+
+func (wk *waker) wake(ctx context.Context, app *appv1alpha1.App, host string) {
+	key := app.Namespace + "/" + app.Name
+	_, _, _ = wk.group.Do(key, func() (any, error) {
+		wakeApp(ctx, wk.client, app, host)
+		return nil, nil
 	})
 }
 
@@ -391,12 +415,20 @@ func (h *hostCache) run(ctx context.Context) {
 }
 
 // lookup returns the App that owns host (canonicalized), or ok=false. It never
-// hits the API — the public request path is List-free (codex-security #7).
+// hits the API — the public request path is List-free (codex-security #7). It
+// returns a private DeepCopy, never the cache-owned pointer: the wake path
+// mutates annotations, the same *App is shared across concurrent requests (an App
+// with multiple hosts resolves to one object), and refreshOnce swaps the map
+// underneath. Handing out the shared pointer let concurrent wakes race on the
+// same annotations map — a fatal "concurrent map writes" crash (finding 5).
 func (h *hostCache) lookup(host string) (*appv1alpha1.App, bool) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	app, ok := h.byHost[requestHost(host)]
-	return app, ok
+	if !ok {
+		return nil, false
+	}
+	return app.DeepCopy(), true
 }
 
 const maintenancePage = `<!DOCTYPE html>

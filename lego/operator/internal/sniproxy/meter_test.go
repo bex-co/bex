@@ -34,7 +34,7 @@ func TestCopyBidirectionalCountsOnlyBackendToClient(t *testing.T) {
 	proxyBackend, backend := net.Pipe()
 	done := make(chan struct{})
 	go func() {
-		CopyBidirectional(proxyClient, proxyBackend, meter, "dpg-one", "postgres")
+		CopyBidirectional(proxyClient, proxyBackend, meter, "dpg-one", "postgres", 0, 0)
 		close(done)
 	}()
 

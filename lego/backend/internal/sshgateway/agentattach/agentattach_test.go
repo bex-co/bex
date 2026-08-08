@@ -17,7 +17,9 @@ limitations under the License.
 package agentattach
 
 import (
+	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -36,6 +38,30 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
+
+// TestReadSSEDataBounded pins w1/m65 F10: a single SSE part larger than the cap
+// is refused with errPartTooLarge (bounded read) instead of being buffered
+// without limit by the old ReadString('\n'), while a normal part and the [DONE]
+// sentinel still parse.
+func TestReadSSEDataBounded(t *testing.T) {
+	// A normal part parses verbatim.
+	r := bufio.NewReader(strings.NewReader("data: {\"ok\":true}\n\n"))
+	payload, done, err := readSSEData(r, maxSSEPartBytes)
+	if err != nil || done || payload != `{"ok":true}` {
+		t.Fatalf("normal part = %q,%v,%v", payload, done, err)
+	}
+	// A part far larger than the supplied cap is refused with a bounded read.
+	big := "data: " + strings.Repeat("A", 8192) + "\n\n"
+	r = bufio.NewReader(strings.NewReader(big))
+	if _, _, err := readSSEData(r, 512); !errors.Is(err, errPartTooLarge) {
+		t.Fatalf("oversized part err = %v, want errPartTooLarge", err)
+	}
+	// The [DONE] sentinel is recognized.
+	r = bufio.NewReader(strings.NewReader("data: [DONE]\n\n"))
+	if _, isDone, err := readSSEData(r, maxSSEPartBytes); err != nil || !isDone {
+		t.Fatalf("done sentinel = %v,%v", isDone, err)
+	}
+}
 
 // fakeAttachStore is an in-memory transcript Store (ordered parts keyed by
 // (session, seq) with idempotent append) plus a single-use nonce claim, so it

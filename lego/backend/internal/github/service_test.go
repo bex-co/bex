@@ -46,6 +46,15 @@ func (f *fakeStore) GetGitConnection(_ context.Context, workspaceID string) (sto
 	return c, nil
 }
 
+func (f *fakeStore) GitConnectionByInstallation(_ context.Context, installationID int64) (store.GitConnection, error) {
+	for _, c := range f.conns {
+		if c.InstallationID == installationID {
+			return c, nil
+		}
+	}
+	return store.GitConnection{}, store.ErrNotFound
+}
+
 func (f *fakeStore) DeleteGitConnection(_ context.Context, workspaceID string) error {
 	if _, ok := f.conns[workspaceID]; !ok {
 		return store.ErrNotFound
@@ -397,6 +406,135 @@ func TestCloneToken(t *testing.T) {
 	failCheck := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{token: "x", repoErr: &APIError{Status: 500}}, Store: st}
 	if _, _, err := failCheck.cloneToken(ctx, "default", "https://github.com/octo/app"); err == nil {
 		t.Error("repo-access-check failure must surface an error")
+	}
+}
+
+// TestCloneTokenRequiresGitHubOrigin pins w1/m65 F1: a repo URL on a NON-github
+// host whose path suffix matches a granted owner/repo must never mint a token
+// (which the operator's build credential helper would then send to that
+// attacker host). The token is bound to a verified github.com origin.
+func TestCloneTokenRequiresGitHubOrigin(t *testing.T) {
+	st := newFakeStore()
+	st.conns["default"] = store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"}
+	// repoOK:true => if the host were honored as github.com, octo/app IS in the
+	// grant, so a token WOULD be minted. The host binding is the only thing
+	// stopping it.
+	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{token: "ghs_leak", repoOK: true}, Store: st}
+	ctx := context.Background()
+
+	for _, url := range []string{
+		"https://evil.example/octo/app",          // attacker host, granted path suffix
+		"https://evil.example/octo/app.git",      // .git form
+		"https://github.com.evil.example/octo/app", // github.com as a subdomain prefix
+		"https://github.com@evil.example/octo/app", // userinfo trick
+		"git@evil.example:octo/app.git",          // scp form, attacker host
+		"https://github.com:8443/octo/app",       // non-default port
+	} {
+		tok, ok, err := svc.cloneToken(ctx, "default", url)
+		if ok || tok != "" || err != nil {
+			t.Errorf("cloneToken(%q) = %q,%v,%v; want no token minted for a non-github.com origin", url, tok, ok, err)
+		}
+	}
+
+	// Control: the legitimate github.com URL still mints (the fix doesn't break
+	// the real path).
+	if tok, ok, err := svc.cloneToken(ctx, "default", "https://github.com/octo/app"); !ok || tok != "ghs_leak" || err != nil {
+		t.Errorf("github.com clone token = %q,%v,%v; want the minted token", tok, ok, err)
+	}
+}
+
+// TestConnectRejectsForeignInstallation pins w1/m65 F2: an installation already
+// bound to one workspace cannot be claimed by a DIFFERENT workspace (the App JWT
+// can look up every installation, so GetInstallation success is not ownership
+// proof). The second claim is refused with ErrConflict and does not mutate the
+// second workspace's connection.
+func TestConnectRejectsForeignInstallation(t *testing.T) {
+	svc := &Service{
+		Base:   &core.Base{Namespace: "default"},
+		GitHub: &fakeClient{login: "octo"},
+		Store:  newFakeStore(),
+	}
+	ctx := context.Background()
+
+	// Workspace A connects installation 42.
+	if _, err := svc.connectWithWorkspace(ctx, "tea-a", 42); err != nil {
+		t.Fatalf("first connect: %v", err)
+	}
+	// Workspace B tries to claim the same installation — refused.
+	if _, err := svc.connectWithWorkspace(ctx, "tea-b", 42); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("foreign claim err = %v, want ErrConflict", err)
+	}
+	conns := svc.Store.(*fakeStore).conns
+	if _, ok := conns["tea-b"]; ok {
+		t.Error("foreign installation claim must not persist a connection for workspace B")
+	}
+	if conns["tea-a"].InstallationID != 42 {
+		t.Errorf("workspace A connection disturbed: %+v", conns["tea-a"])
+	}
+	// Re-connecting the SAME workspace to the SAME installation stays idempotent.
+	if _, err := svc.connectWithWorkspace(ctx, "tea-a", 42); err != nil {
+		t.Fatalf("idempotent re-connect: %v", err)
+	}
+}
+
+// fakeVerifier drives the installation-admin proof in tests.
+type fakeVerifier struct {
+	ok      bool
+	err     error
+	gotCode string
+	gotID   int64
+}
+
+func (f *fakeVerifier) VerifyInstallationAdmin(_ context.Context, code string, id int64) (bool, error) {
+	f.gotCode, f.gotID = code, id
+	return f.ok, f.err
+}
+
+// TestConnectFromCallbackEnforcesInstallationAdmin pins w1/m65 F2's principal
+// proof: when the OAuth verifier is wired, the browser callback records a
+// connection only if the user proves they administer the installation. A failed
+// proof is refused (ErrForbidden) and persists nothing.
+func TestConnectFromCallbackEnforcesInstallationAdmin(t *testing.T) {
+	ctx := context.Background()
+
+	// Verifier rejects (the user does NOT administer installation 42).
+	reject := &Service{
+		Base:     &core.Base{Namespace: "default"},
+		GitHub:   &fakeClient{login: "octo"},
+		Store:    newFakeStore(),
+		Verifier: &fakeVerifier{ok: false},
+	}
+	if _, err := reject.connectFromCallback(ctx, "tea-a", 42, "usercode"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("unproven installation err = %v, want ErrForbidden", err)
+	}
+	if len(reject.Store.(*fakeStore).conns) != 0 {
+		t.Error("a failed installation-admin proof must not persist a connection")
+	}
+
+	// Verifier accepts (the user administers installation 42) — records it and
+	// forwards the exact code + installation id to the verifier.
+	fv := &fakeVerifier{ok: true}
+	accept := &Service{
+		Base:     &core.Base{Namespace: "default"},
+		GitHub:   &fakeClient{login: "octo"},
+		Store:    newFakeStore(),
+		Verifier: fv,
+	}
+	if _, err := accept.connectFromCallback(ctx, "tea-a", 42, "usercode"); err != nil {
+		t.Fatalf("proven installation connect: %v", err)
+	}
+	if accept.Store.(*fakeStore).conns["tea-a"].InstallationID != 42 {
+		t.Error("proven installation must persist the connection")
+	}
+	if fv.gotCode != "usercode" || fv.gotID != 42 {
+		t.Errorf("verifier saw code=%q id=%d, want usercode/42", fv.gotCode, fv.gotID)
+	}
+
+	// No verifier wired => the callback still works (unique-binding fallback), code
+	// ignored.
+	noVerify := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{login: "octo"}, Store: newFakeStore()}
+	if _, err := noVerify.connectFromCallback(ctx, "tea-a", 42, ""); err != nil {
+		t.Fatalf("verifier-unwired callback: %v", err)
 	}
 }
 
