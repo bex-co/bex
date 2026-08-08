@@ -42,12 +42,14 @@ export function SidebarNavGroups({
   return (
     <>
       {groups.map((group, i) => (
-        <SidebarGroup key={group.labelKey ?? i}>
+        <SidebarGroup key={group.labelKey ?? i} className="py-1">
           {group.labelKey ? (
-            <SidebarGroupLabel>{t(group.labelKey)}</SidebarGroupLabel>
+            <SidebarGroupLabel className="h-6">
+              {t(group.labelKey)}
+            </SidebarGroupLabel>
           ) : null}
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-0.5">
               {group.items.map((item) => (
                 <SidebarMenuItem key={item.to}>
                   <SidebarMenuButton

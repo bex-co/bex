@@ -546,10 +546,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Error",
     description: "Section label for a tool call's error text",
   },
-  "agentSessions.toolCommand": {
-    message: "Command",
-    description: "Section label for a tool call's shell command",
-  },
   "agentSessions.toolStateRunning": {
     message: "Running",
     description: "Badge label for a tool call awaiting output",
@@ -584,10 +580,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
       "Accessible label for the floating jump-to-bottom button in the conversation column",
   },
   // --- Full-page chat restructure (w3/m44) ---
-  "agentSessions.newSession": {
-    message: "New session",
-    description: "Sessions sidebar — start-a-new-session affordance",
-  },
   "agentSessions.recentSessions": {
     message: "Recent",
     description: "Sessions sidebar — heading over the recent sessions list",

@@ -225,7 +225,7 @@ export function SessionConversationImpl({
         role="log"
         aria-live="polite"
       >
-        <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-4">
+        <div className="mx-auto w-full max-w-3xl space-y-2.5 px-4 py-3">
           {connecting && (
             <div className="text-muted-foreground flex items-center gap-2 text-sm">
               <Loader2 aria-hidden className="size-4 shrink-0 animate-spin" />
@@ -452,7 +452,7 @@ function MessageRow({
   return (
     <div
       className={cn(
-        "animate-in fade-in flex w-full gap-3 duration-300",
+        "animate-in fade-in flex w-full gap-2 duration-300",
         // USER: right-aligned bubble + avatar. AGENT: plain full-width prose,
         // no avatar, no bubble — the whole pane is the conversation.
         isUser ? "justify-end pl-8" : "justify-start",
@@ -460,7 +460,7 @@ function MessageRow({
     >
       <div
         className={cn(
-          "min-w-0 text-sm leading-7",
+          "min-w-0 text-sm leading-6",
           isUser
             ? "border-border/70 bg-muted text-foreground max-w-[92%] rounded-xl rounded-br-md border px-3 py-1.5 shadow-xs sm:max-w-md dark:bg-muted/80"
             : "min-w-0 flex-1",
@@ -522,7 +522,7 @@ function ReasoningBlock({
         })
       : t("agentSessions.groupThought");
   return (
-    <Reasoning className="my-3">
+    <Reasoning className="my-1.5">
       <ReasoningTrigger>{summary}</ReasoningTrigger>
       <ReasoningContent>
         <MarkdownRenderer content={text} />
@@ -545,7 +545,7 @@ function PlanBlock({
 }) {
   const { t } = useTranslations();
   return (
-    <Task defaultOpen className="my-2">
+    <Task defaultOpen className="my-1.5">
       <TaskTrigger title={t("agentSessions.groupPlan")} />
       <TaskContent>
         {entries.map((entry, i) => (
