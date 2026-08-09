@@ -315,6 +315,38 @@ if kubectl kustomize lego/operator/config/default | yq -e '
   fail=1
 fi
 
+# w7/026: BEX_BASE_DOMAIN is one conceptual setting read by three separately
+# configured Deployments — the operator decides whether a platform-host Ingress
+# exists at all, bex-api decides whether the API advertises/pre-reports the URL,
+# and the static-server resolves host → site. Nothing else ties them together,
+# and divergence fails silently in both directions (an advertised URL nothing
+# serves, or a served host the API reports as null). Assert each render keeps
+# the three effective values identical; an absent env entry and an explicit ""
+# are equivalent (both disable platform hosts — the w7/m54 security posture).
+echo "==> BEX_BASE_DOMAIN agrees across operator + bex-api + static-server"
+check_base_domain_agreement() {
+  local render_name="$1" render="$2" triples
+  triples="$(yq -N '
+    select(.kind == "Deployment" and
+           (.metadata.name == "bex-controller-manager" or
+            .metadata.name == "bex-api" or
+            .metadata.name == "bex-static-server")) |
+    .metadata.name + "=" +
+    ([.spec.template.spec.containers[].env[]? | select(.name == "BEX_BASE_DOMAIN") | .value] | .[0] // "")' \
+    - <<<"$render")"
+  if [ "$(wc -l <<<"$triples" | tr -d ' ')" != 3 ]; then
+    echo "FAIL: $render_name render must contain the three BEX_BASE_DOMAIN consumers, got: $(tr '\n' ' ' <<<"$triples")" >&2
+    fail=1
+    return
+  fi
+  if [ "$(cut -d= -f2- <<<"$triples" | sort -u | wc -l | tr -d ' ')" != 1 ]; then
+    echo "FAIL: BEX_BASE_DOMAIN diverges across the $render_name render: $(tr '\n' ' ' <<<"$triples")" >&2
+    fail=1
+  fi
+}
+check_base_domain_agreement "config/prod" "$prod_operator_render"
+check_base_domain_agreement "config/default" "$(kubectl kustomize lego/operator/config/default)"
+
 # w7/m58: universal platform-pod hardening. bex-system is deliberately
 # privileged-PSS (egress-meter needs BPF/NET_ADMIN caps + hostNetwork), so there
 # is NO namespace PodSecurity backstop — the per-pod securityContext is the only

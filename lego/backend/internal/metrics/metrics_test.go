@@ -612,6 +612,47 @@ func TestMetricsFiltersOfferNoHostPathValues(t *testing.T) {
 	}
 }
 
+// TestMetricsSnapshotAndFilterDiscoveryUseAppNamespace: the metrics-server
+// snapshot fallback and the Prometheus filter-value discovery must read from
+// the App's per-tenant `<ws>` namespace (ADR043), never the shared s.Namespace
+// the Service was configured with — the migration emptied the shared namespace
+// of pods, so querying it silently returns empty series instead of an error.
+func TestMetricsSnapshotAndFilterDiscoveryUseAppNamespace(t *testing.T) {
+	const appID = "srv-nstest0000000000"
+	app := sampleApp("web")
+	app.Namespace = "ws-tenant"
+	app.Labels = map[string]string{core.LabelAppID: appID, core.LabelTenant: "ws-tenant"}
+
+	var snapNS string
+	rm := func(_ context.Context, namespace, _ string) ([]PodResourceUsage, error) {
+		snapNS = namespace
+		return []PodResourceUsage{{Pod: "web-1", CPUCores: 0.5}}, nil
+	}
+	svc := newService(rm, nil, app)
+
+	var filterNS string
+	svc.MetricsFilterValuesSource = func(_ context.Context, namespace, _, _ string) ([]string, error) {
+		filterNS = namespace
+		return []string{"200"}, nil
+	}
+
+	if _, err := svc.Metrics(context.Background(), MetricQuery{App: appID, Metric: MetricCPU}); err != nil {
+		t.Fatalf("Metrics: %v", err)
+	}
+	if snapNS != "ws-tenant" {
+		t.Errorf("snapshot source namespace = %q, want the App's %q", snapNS, "ws-tenant")
+	}
+
+	if _, err := svc.MetricsFilters(context.Background(), MetricsFiltersQuery{
+		App: appID, OutputFilters: []string{"STATUS_CODE"},
+	}); err != nil {
+		t.Fatalf("MetricsFilters: %v", err)
+	}
+	if filterNS != "ws-tenant" {
+		t.Errorf("filter-values source namespace = %q, want the App's %q", filterNS, "ws-tenant")
+	}
+}
+
 func TestBandwidthMetricResolvesExactIngressRouters(t *testing.T) {
 	var got RequestMetricsRequest
 	req := func(_ context.Context, r RequestMetricsRequest) ([]MetricSeries, error) {
