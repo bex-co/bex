@@ -86,7 +86,7 @@
     "@graphql-codegen/cli": "^6.1.0",
     "@graphql-codegen/typed-document-node": "^6.1.5",
     "@graphql-codegen/typescript": "^5.0.7",
-    "@graphql-codegen/typescript-operations": "^5.0.7",
+    "@graphql-codegen/typescript-operations": "^6.1.5",
     "@tanstack/devtools-vite": "^0.5.3",
     "@tanstack/router-cli": "1.166.41",
     "@tanstack/router-plugin": "1.167.34",
