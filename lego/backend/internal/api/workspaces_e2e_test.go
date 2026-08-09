@@ -336,8 +336,11 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 	// t002 stamps is what lets dsID's own App reach its own Valkey instance.
 	// Since w9/m6 the CR is named by its immutable red- id; "ds-kv" is the
 	// mutable display name in spec.name.
+	// The CR lands in the workspace's own hosting namespace (ADR043 D8) —
+	// resolved rather than hardcoded, so a change to the namespace scheme cannot
+	// pass this test while breaking every fromService link.
 	var kv appv1alpha1.KeyValue
-	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: kvID}, &kv); err != nil {
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: store.WorkspaceNamespace(dsID), Name: kvID}, &kv); err != nil {
 		t.Fatalf("get KeyValue CR: %v", err)
 	}
 	if kv.Spec.Name != "ds-kv" {
