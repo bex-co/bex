@@ -57,23 +57,69 @@ type GitWebhook struct {
 	Svc          *Service
 	Secret       string
 	GitHubSecret string
+	// Installations resolves a GitHub App installation id to the workspace that
+	// owns it (the unique installation→workspace binding, w1/m65 F2). When set, a
+	// GitHub-App-signed delivery is CONFINED to that workspace's Apps (codex #7): a
+	// forged app-signed event can then reach only the installation's own
+	// workspace, not another tenant's. Nil, or a manual-key delivery, stays a
+	// global match — the manual secret is a single operator-configured key with no
+	// per-repo binding (per-workspace manual secrets are the follow-up).
+	Installations InstallationResolver
+}
+
+// InstallationResolver maps a GitHub App installation id to the workspace that
+// owns it. Implemented in the composition root over the git-connection store.
+type InstallationResolver interface {
+	WorkspaceForInstallation(ctx context.Context, installationID int64) (workspaceID string, ok bool, err error)
 }
 
 // configured reports whether at least one HMAC key is set.
 func (h *GitWebhook) configured() bool { return h.Secret != "" || h.GitHubSecret != "" }
 
-// verify reports whether the signature matches under any configured key. Each
-// validSignature call is constant-time (hmac.Equal); both configured keys are
-// evaluated with no early return, so a remote timing analysis can't distinguish
-// WHICH key matched — only that at least one did (w6/004).
-func (h *GitWebhook) verify(sig string, body []byte) bool {
-	var ok byte
-	for _, secret := range []string{h.Secret, h.GitHubSecret} {
-		if secret != "" && validSignature(secret, sig, body) {
-			ok = 1
-		}
+// verifiedKey identifies which configured HMAC key accepted a delivery.
+type verifiedKey int
+
+const (
+	keyNone      verifiedKey = iota // no configured key matched
+	keyManual                       // the shared manual secret (BEX_WEBHOOK_SECRET)
+	keyGitHubApp                    // the GitHub App's app-wide secret (BEX_GITHUB_WEBHOOK_SECRET)
+)
+
+// verifyKey reports which configured key accepted the signature (keyNone if
+// neither). Each validSignature call is constant-time (hmac.Equal) and both
+// configured keys are always evaluated with no early return, so a remote timing
+// analysis can't distinguish WHICH key matched — only that at least one did
+// (w6/004). The identity is used server-side to CONFINE a GitHub App delivery to
+// its installation's workspace (codex #7); it is never exposed to the caller.
+func (h *GitWebhook) verifyKey(sig string, body []byte) verifiedKey {
+	manual := h.Secret != "" && validSignature(h.Secret, sig, body)
+	ghApp := h.GitHubSecret != "" && validSignature(h.GitHubSecret, sig, body)
+	switch {
+	case manual:
+		return keyManual
+	case ghApp:
+		return keyGitHubApp
+	default:
+		return keyNone
 	}
-	return ok == 1
+}
+
+// scopeFor returns the workspace an accepted delivery is confined to ("" = an
+// unconfined/global match) and whether to act at all. Only the GitHub App key is
+// confined: its payload carries a verifiable installation id bound to exactly one
+// workspace, so a forged app-signed event can reach only that workspace's Apps.
+// proceed=false means the delivery is validly signed but its installation maps to
+// no workspace (or the lookup failed) — act on nothing rather than fall back to a
+// global match (codex #7).
+func (h *GitWebhook) scopeFor(ctx context.Context, key verifiedKey, installationID int64) (scope string, proceed bool) {
+	if key != keyGitHubApp || h.Installations == nil || installationID == 0 {
+		return "", true // manual key, resolver unwired, or no installation id → global
+	}
+	ws, ok, err := h.Installations.WorkspaceForInstallation(ctx, installationID)
+	if err != nil || !ok || ws == "" {
+		return "", false // fail closed: an unknown/unbound installation acts on nothing
+	}
+	return ws, true
 }
 
 // pushEvent is the slice of a GitHub/Gitea push payload the webhook needs: which
@@ -87,7 +133,14 @@ type pushEvent struct {
 	After       string `json:"after"`
 	Deleted     bool   `json:"deleted"` // true when this push deleted the branch (git push --delete)
 	DeliveryKey string `json:"-"`
-	Repository  struct {
+	// Installation.ID is the GitHub App installation that delivered this event —
+	// bound to exactly one workspace (w1/m65 F2), which confines an app-signed
+	// delivery to that workspace's Apps (codex #7). Absent (0) for a manual/Gitea
+	// push webhook.
+	Installation struct {
+		ID int64 `json:"id"`
+	} `json:"installation"`
+	Repository struct {
 		CloneURL string `json:"clone_url"`
 		SSHURL   string `json:"ssh_url"`
 		HTMLURL  string `json:"html_url"`
@@ -113,8 +166,13 @@ type pushEvent struct {
 // also subscribe to (docs/ADR026-github-integration.md). ref is the plain branch
 // name here, not a refs/heads/ ref.
 type deleteEvent struct {
-	Ref        string `json:"ref"`
-	RefType    string `json:"ref_type"` // "branch" | "tag"; only branch deletions matter
+	Ref     string `json:"ref"`
+	RefType string `json:"ref_type"` // "branch" | "tag"; only branch deletions matter
+	// Installation.ID confines an app-signed branch-delete to its workspace, the
+	// same as pushEvent (codex #7).
+	Installation struct {
+		ID int64 `json:"id"`
+	} `json:"installation"`
 	Repository struct {
 		CloneURL string `json:"clone_url"`
 		SSHURL   string `json:"ssh_url"`
@@ -162,7 +220,8 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		core.WriteErrStatus(w, http.StatusBadRequest, "cannot read body")
 		return
 	}
-	if !h.verify(r.Header.Get("X-Hub-Signature-256"), body) {
+	key := h.verifyKey(r.Header.Get("X-Hub-Signature-256"), body)
+	if key == keyNone {
 		core.WriteErrStatus(w, http.StatusUnauthorized, "invalid or missing signature")
 		return
 	}
@@ -174,7 +233,7 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// the pre-App behavior byte-for-byte.
 	event := r.Header.Get("X-GitHub-Event")
 	if event == "delete" {
-		h.serveDelete(w, r, body)
+		h.serveDelete(w, r, body, key)
 		return
 	}
 	if event != "" && event != "push" {
@@ -188,15 +247,22 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	ev.DeliveryKey = deliveryKey(r, body)
 	branch := strings.TrimPrefix(ev.Ref, "refs/heads/")
+	// codex #7: confine a GitHub-App-signed delivery to its installation's
+	// workspace. proceed=false ⇒ signed but bound to no workspace ⇒ act on nothing.
+	scope, proceed := h.scopeFor(r.Context(), key, ev.Installation.ID)
+	if !proceed {
+		core.WriteJSON(w, http.StatusOK, map[string]any{"redeployed": []string{}})
+		return
+	}
 	// A branch-delete push (git push --delete: deleted=true, or an all-zero
 	// `after`) carries no commit to build — record branch_deleted and disable
 	// auto-deploy for services tracking it rather than attempting a redeploy.
 	if ev.Deleted || isZeroSHA(ev.After) {
 		urls := []string{ev.Repository.CloneURL, ev.Repository.SSHURL, ev.Repository.HTMLURL, ev.Repository.URL}
-		h.writeBranchDeleted(r.Context(), w, urls, branch, ev.DeliveryKey)
+		h.writeBranchDeleted(r.Context(), w, urls, branch, ev.DeliveryKey, scope)
 		return
 	}
-	redeployed, tenants, err := h.redeployMatching(r.Context(), ev, branch)
+	redeployed, tenants, err := h.redeployMatching(r.Context(), ev, branch, scope)
 	if err != nil {
 		core.WriteErr(w, err)
 		return
@@ -220,7 +286,7 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // serveDelete handles GitHub's `delete` event — a UI/API branch (or tag)
 // deletion. Only branch deletions produce a branch_deleted event; a tag deletion
 // is a signed no-op.
-func (h *GitWebhook) serveDelete(w http.ResponseWriter, r *http.Request, body []byte) {
+func (h *GitWebhook) serveDelete(w http.ResponseWriter, r *http.Request, body []byte, key verifiedKey) {
 	var ev deleteEvent
 	if err := json.Unmarshal(body, &ev); err != nil {
 		core.WriteErrStatus(w, http.StatusBadRequest, "malformed delete payload")
@@ -230,16 +296,22 @@ func (h *GitWebhook) serveDelete(w http.ResponseWriter, r *http.Request, body []
 		core.WriteJSON(w, http.StatusOK, map[string]string{"ignored": "delete " + ev.RefType})
 		return
 	}
+	// codex #7: confine an app-signed delete to its installation's workspace.
+	scope, proceed := h.scopeFor(r.Context(), key, ev.Installation.ID)
+	if !proceed {
+		core.WriteJSON(w, http.StatusOK, map[string]any{"branchDeleted": []string{}})
+		return
+	}
 	branch := strings.TrimPrefix(ev.Ref, "refs/heads/")
 	urls := []string{ev.Repository.CloneURL, ev.Repository.SSHURL, ev.Repository.HTMLURL, ev.Repository.URL}
-	h.writeBranchDeleted(r.Context(), w, urls, branch, deliveryKey(r, body))
+	h.writeBranchDeleted(r.Context(), w, urls, branch, deliveryKey(r, body), scope)
 }
 
 // writeBranchDeleted records branch_deleted for every matching service and
 // writes the shared `{branchDeleted: [...]}` response — the one tail both the
 // `delete` event and the push-with-deleted path funnel through.
-func (h *GitWebhook) writeBranchDeleted(ctx context.Context, w http.ResponseWriter, urls []string, branch, deliveryKey string) {
-	deleted, err := h.recordBranchDeleted(ctx, urls, branch, deliveryKey)
+func (h *GitWebhook) writeBranchDeleted(ctx context.Context, w http.ResponseWriter, urls []string, branch, deliveryKey, scope string) {
+	deleted, err := h.recordBranchDeleted(ctx, urls, branch, deliveryKey, scope)
 	if err != nil {
 		core.WriteErr(w, err)
 		return
@@ -271,7 +343,7 @@ func isZeroSHA(sha string) bool {
 // branch it built from is gone, so Render (and bex) stop auto-deploying it. It
 // reads/writes through the raw client like redeployMatching: the HMAC signature
 // already authorized this call. Returns the affected service names.
-func (h *GitWebhook) recordBranchDeleted(ctx context.Context, urls []string, branch, deliveryKey string) ([]string, error) {
+func (h *GitWebhook) recordBranchDeleted(ctx context.Context, urls []string, branch, deliveryKey, scope string) ([]string, error) {
 	if branch == "" {
 		return []string{}, nil
 	}
@@ -282,6 +354,11 @@ func (h *GitWebhook) recordBranchDeleted(ctx context.Context, urls []string, bra
 	affected := []string{}
 	for i := range list.Items {
 		a := &list.Items[i]
+		// codex #7: an app-signed delivery is confined to its installation's
+		// workspace; skip Apps outside it. scope=="" (manual key) matches all.
+		if scope != "" && a.Labels[core.LabelTenant] != scope {
+			continue
+		}
 		if a.Spec.Repo == "" || !repoURLsMatch(a.Spec.Repo, urls...) || !branchMatches(a.Spec.Branch, branch) {
 			continue
 		}
@@ -331,7 +408,7 @@ func (h *GitWebhook) disableAutoDeploy(ctx context.Context, app *appv1alpha1.App
 // reads/writes through the raw client (not the authorized List/verbs): the HMAC
 // signature already authorized this call. It also returns a set of tenant IDs
 // whose Apps share this repo (used for blueprint auto-sync post-response).
-func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch string) (redeployed []string, tenants map[string]struct{}, err error) {
+func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch, scope string) (redeployed []string, tenants map[string]struct{}, err error) {
 	var list appv1alpha1.AppList
 	if err := h.Svc.Client.List(ctx, &list); err != nil {
 		return nil, nil, err
@@ -341,6 +418,11 @@ func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch 
 	tenants = map[string]struct{}{}
 	for i := range list.Items {
 		a := &list.Items[i]
+		// codex #7: an app-signed delivery is confined to its installation's
+		// workspace; skip Apps outside it. scope=="" (manual key) matches all.
+		if scope != "" && a.Labels[core.LabelTenant] != scope {
+			continue
+		}
 		if a.Spec.Repo == "" || !repoMatches(a.Spec.Repo, ev) {
 			continue
 		}

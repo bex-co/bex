@@ -200,7 +200,13 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		return s.Resume(ctx, req.ResumeSessionID)
 	}
 	ctx = core.WithWorkspace(ctx, req.OwnerID)
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	// SECURITY (codex #1): a new session provisions a sandbox that receives the
+	// workspace's reusable BYO model key and runs attacker-chosen tasks against
+	// repo content, so creation is gated on can_create (developer and up), not the
+	// lifecycle can_operate. Operating an already-created session (resume/cancel/
+	// steer/read) stays can_operate — the credential entered the sandbox at create
+	// time, authorized by a developer.
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return View{}, err
 	}
 	if !s.enabled() {

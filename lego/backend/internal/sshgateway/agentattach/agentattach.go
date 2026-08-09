@@ -240,7 +240,7 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "ticket/session mismatch", http.StatusForbidden)
 		return
 	}
-	if !s.Nonces.Consume(r.Context(), claims.Nonce, time.Unix(claims.ExpiresAt, 0), s.now()) {
+	if !s.Nonces.Consume(r.Context(), claims.Nonce, claims.NonceExpiry(), s.now()) {
 		s.Metrics.Authentication("rejected_key")
 		http.Error(w, "ticket already used", http.StatusUnauthorized)
 		return

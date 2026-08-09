@@ -97,7 +97,7 @@ func (s *Server) serveSandboxExec(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid ticket", http.StatusUnauthorized)
 		return
 	}
-	if !s.Nonces.Consume(r.Context(), claims.Nonce, time.Unix(claims.ExpiresAt, 0), time.Now()) {
+	if !s.Nonces.Consume(r.Context(), claims.Nonce, claims.NonceExpiry(), time.Now()) {
 		s.Metrics.Authentication("rejected_key")
 		http.Error(w, "ticket already used", http.StatusUnauthorized)
 		return

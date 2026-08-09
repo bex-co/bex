@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -317,21 +318,89 @@ func (s *Service) ListBranches(ctx context.Context, ownerID, repoURL string) ([]
 	return branches, nil
 }
 
-// githubOwnerRepo extracts owner + repo from a github.com URL via the shared
-// CanonicalRepo normalizer ("host/owner/repo"); ok=false for a non-github.com
-// host or a path that isn't exactly owner/repo — the caller then degrades to
-// free-text branch entry.
+// githubOwnerRepo extracts owner + repo when repoURL is a real github.com origin.
+// ok=false for anything else, so the caller degrades to free-text branch entry
+// (ListBranches) or a public/anonymous clone with no token (cloneToken).
+//
+// SECURITY (w1/m65 F1, hardened): this is an ORIGIN-VALIDATION control, not a
+// string-comparison key, so it must not reuse core.CanonicalRepo — that
+// normalizer strips everything through the first '@' to drop scp userinfo, which
+// a crafted path like `https://evil.example/@github.com/owner/repo` abuses to
+// masquerade as github.com and mint a token the build's credential helper would
+// then send to evil.example. Instead parse the URL structurally: an HTTPS URL
+// must have Hostname exactly github.com, no userinfo, and the default port; the
+// scp form is matched against a fixed `git@github.com:` prefix. Non-HTTPS
+// schemes (ssh/git) never mint a token — those clones authenticate with keys,
+// not the x-access-token password, so an HTTP installation token is both useless
+// and a leak risk on the wrong host.
 func githubOwnerRepo(repoURL string) (owner, repo string, ok bool) {
-	const prefix = "github.com/"
-	canon := core.CanonicalRepo(repoURL)
-	if !strings.HasPrefix(canon, prefix) {
+	s := strings.TrimSpace(repoURL)
+	// scp-like syntax has no scheme: git@github.com:owner/repo(.git).
+	if !strings.Contains(s, "://") {
+		rest, found := strings.CutPrefix(s, "git@github.com:")
+		if !found {
+			return "", "", false
+		}
+		return splitOwnerRepo(rest)
+	}
+	u, err := url.Parse(s)
+	if err != nil {
 		return "", "", false
 	}
-	parts := strings.Split(strings.TrimPrefix(canon, prefix), "/")
+	switch {
+	case !strings.EqualFold(u.Scheme, "https"):
+		return "", "", false
+	case u.User != nil: // no userinfo — reject the `x@github.com` / `github.com@evil` tricks
+		return "", "", false
+	case !strings.EqualFold(u.Hostname(), "github.com"):
+		return "", "", false
+	case u.Port() != "": // only the default HTTPS port
+		return "", "", false
+	case u.RawQuery != "" || u.Fragment != "":
+		return "", "", false
+	}
+	return splitOwnerRepo(u.EscapedPath())
+}
+
+// installationResolver adapts Service to apps.InstallationResolver. Like
+// tokenSource, it is a SEPARATE type (not a Service method) on purpose: the git
+// push webhook authenticates by HMAC signature, not an Authorize call, so
+// exposing this as an exported Service verb would (rightly) trip
+// TestAuthzGuardsEveryVerb. The adapter keeps that trust boundary explicit.
+type installationResolver struct{ s *Service }
+
+// WorkspaceForInstallation resolves the workspace bound to a GitHub App
+// installation id so the git push webhook can CONFINE an app-signed delivery to
+// its installation's workspace (codex #7). ok=false (no error) when no connection
+// owns the installation or the control-plane store is off — the webhook then acts
+// on nothing rather than falling back to a cross-tenant global match.
+func (r installationResolver) WorkspaceForInstallation(ctx context.Context, installationID int64) (string, bool, error) {
+	if r.s.Store == nil {
+		return "", false, nil
+	}
+	conn, err := r.s.Store.GitConnectionByInstallation(ctx, installationID)
+	if errors.Is(err, store.ErrNotFound) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return conn.WorkspaceID, true, nil
+}
+
+// InstallationResolver returns the webhook's installation→workspace seam (wired
+// onto apps.GitWebhook in the composition root, codex #7).
+func (s *Service) InstallationResolver() installationResolver { return installationResolver{s} }
+
+// splitOwnerRepo reduces a repo path ("/owner/repo.git", "owner/repo") to its
+// exactly-two non-empty segments, lowercased; ok=false otherwise.
+func splitOwnerRepo(path string) (owner, repo string, ok bool) {
+	p := strings.TrimSuffix(strings.Trim(path, "/"), ".git")
+	parts := strings.Split(p, "/")
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 		return "", "", false
 	}
-	return parts[0], parts[1], true
+	return strings.ToLower(parts[0]), strings.ToLower(parts[1]), true
 }
 
 // tokenSource adapts the Service to apps' CloneTokenSource seam. It exists as a
@@ -364,16 +433,17 @@ func (s *Service) cloneToken(ctx context.Context, workspaceID, repoURL string) (
 	if !s.configured() {
 		return "", false, nil
 	}
-	// SECURITY (w1/m65 F1): bind the token to a verified github.com origin, not
-	// just an owner/repo path suffix. The minted installation token flows into a
-	// Secret the operator's build Job hands to git's credential helper, which
-	// sends it to whatever host the App's repo URL names. The host-agnostic
-	// ownerRepo would treat `https://evil.example/org/repo` as `org/repo` and,
-	// if the workspace's installation grants github.com/org/repo, mint a token —
-	// leaking it to evil.example. githubOwnerRepo requires an exact github.com
-	// host (userinfo and non-default ports rejected via CanonicalRepo), so a
-	// non-GitHub host never mints a token: the build then clones anonymously and
-	// no credential ever reaches the attacker origin.
+	// SECURITY (w1/m65 F1, hardened): bind the token to a structurally verified
+	// github.com origin, not just an owner/repo path suffix. The minted
+	// installation token flows into a Secret the operator's build Job hands to
+	// git's credential helper, which sends it to whatever host the App's repo URL
+	// names. githubOwnerRepo parses the URL with net/url and requires Hostname
+	// exactly github.com with no userinfo and the default port, so a crafted host
+	// (`https://evil.example/@github.com/org/repo`, `x@github.com`, a subdomain,
+	// or a non-default port) never mints a token: the build then clones
+	// anonymously and no credential reaches the attacker origin. The build's
+	// credential helper is independently host-bound (answers only for github.com)
+	// as defense in depth.
 	owner, repo, ok := githubOwnerRepo(repoURL)
 	if !ok {
 		return "", false, nil // not a github.com owner/repo URL — nothing to match against

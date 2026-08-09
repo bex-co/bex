@@ -201,7 +201,11 @@ func (f *fakeFGA) Check(_ context.Context, subject, relation, object string) (bo
 	case strings.HasPrefix(object, "agent_session:"):
 		workspace = f.parents[strings.TrimPrefix(object, "agent_session:")]
 	}
-	return relation == core.RelCanOperate && workspace != "" && f.members[subject] == workspace, nil
+	// Model a developer: holds both can_operate (resume/steer/read) and can_create
+	// (session creation, codex #1). Cross-workspace denial still rides the member
+	// match below, not the relation, so isolation tests are unaffected.
+	granted := relation == core.RelCanOperate || relation == core.RelCanCreate
+	return granted && workspace != "" && f.members[subject] == workspace, nil
 }
 func (f *fakeFGA) GrantAgentSessionWorkspace(_ context.Context, sessionID, workspaceID string) error {
 	if f.fail {

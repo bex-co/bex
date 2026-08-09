@@ -60,9 +60,9 @@ type Claims struct {
 	// counter at mint time, ADR051). It is optional — omitted/zero on legacy
 	// tickets — and lets the transcript tee/recorder stamp each part with its
 	// turn so the headless recorder's per-turn idempotency guard is meaningful.
-	Turn      int   `json:"trn,omitempty"`
-	IssuedAt  int64 `json:"iat"`
-	ExpiresAt int64 `json:"exp"`
+	Turn      int    `json:"trn,omitempty"`
+	IssuedAt  int64  `json:"iat"`
+	ExpiresAt int64  `json:"exp"`
 	Nonce     string `json:"jti"`
 }
 
@@ -113,6 +113,15 @@ func Verify(secret []byte, token string, now time.Time) (Claims, error) {
 		return Claims{}, ErrMalformed
 	}
 	return claims, nil
+}
+
+// NonceExpiry is the instant this ticket's single-use nonce may be pruned from
+// the replay guard. It matches the verifier's EFFECTIVE acceptance window
+// (ExpiresAt + clockSkew), not the raw ExpiresAt — otherwise a still-verifiable
+// ticket's nonce could be pruned and re-claimed during the skew interval,
+// defeating single-use (codex #8).
+func (c Claims) NonceExpiry() time.Time {
+	return time.Unix(c.ExpiresAt, 0).Add(clockSkew)
 }
 
 func sign(secret []byte, body string) string {

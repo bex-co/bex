@@ -1,0 +1,53 @@
+# Admission guard for bex-api's cluster-wide App (app.bex.co) mutation authority
+# (codex #4). bex-api's ClusterRole (lego/operator/config/api/rbac.yaml) can
+# create/update/patch/delete Apps in EVERY namespace, and Kubernetes RBAC cannot
+# scope that to dynamically named tenant namespaces. Without this fail-closed CEL
+# boundary a compromised bex-api Pod could plant an App in a platform namespace or
+# another tenant's namespace and drive the operator to run its image + resolve
+# that namespace's Secrets there (a confused deputy). This policy constrains the
+# bex-api ServiceAccount itself — enforced by the API server, not by trusted
+# application code — and is the admission-layer twin of the operator's own
+# AppReconciler.canonicalNamespace guard: an App is legitimate only in its own
+# `tea-<id>` workspace namespace (the control plane projects into
+# WorkspaceNamespace(id)==id and stamps the same id as app.bex.co/workspace) or
+# the bootstrap apps namespace (`default`, BEX_APPS_NAMESPACE — adjust below if
+# that is overridden). Mirrors bex-api-namespace-admission.yaml (w3/m35).
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: bex-api-app-namespaces
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["app.bex.co"]
+        apiVersions: ["v1alpha1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["apps"]
+  matchConditions:
+    - name: bex-api-service-account
+      expression: request.userInfo.username == 'system:serviceaccount:bex-system:bex-api'
+  variables:
+    - name: workspace
+      expression: object.metadata.?labels['app.bex.co/workspace'].orValue('')
+    - name: canonical
+      expression: >-
+        object.metadata.namespace == 'default' ||
+        (variables.workspace.matches('^tea-[0-9a-v]{20}$') &&
+         object.metadata.namespace == variables.workspace)
+  validations:
+    - expression: variables.canonical
+      reason: Forbidden
+      message: bex-api may create or mutate an App only in the bootstrap namespace or the App's own tea-<id> workspace namespace
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: bex-api-app-namespaces
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  policyName: bex-api-app-namespaces
+  validationActions: [Deny, Audit]

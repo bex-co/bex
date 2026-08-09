@@ -84,3 +84,30 @@ func TestNormalizeTypesAcceptsPreDeploy(t *testing.T) {
 		t.Errorf("unknown type should be core.ErrBadRequest, got %v", err)
 	}
 }
+
+// TestLiveSubscribableRejectsProducerlessTypes pins codex #3: the live tail has
+// exactly two producers (app pod stdout, build Job stdout). A subscription that
+// wants neither — predeploy (a Job-pod read, not a tail), request logs, or a
+// store-only filter — must be refused with a bounded bad request rather than
+// parking on ctx.Done() and holding one of the process-global SSE slots.
+func TestLiveSubscribableRejectsProducerlessTypes(t *testing.T) {
+	for _, q := range []LogQuery{
+		{Types: []string{LogTypePreDeploy}},
+		{Types: []string{LogTypeRequest}},
+		{Level: []string{"error"}},
+	} {
+		if err := q.liveSubscribable(); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("liveSubscribable(%+v) = %v, want ErrBadRequest", q, err)
+		}
+	}
+	// app, build, and the empty "all types" query DO have a live producer.
+	for _, q := range []LogQuery{
+		{Types: []string{LogTypeApp}},
+		{Types: []string{LogTypeBuild}},
+		{},
+	} {
+		if err := q.liveSubscribable(); err != nil {
+			t.Errorf("liveSubscribable(%+v) = %v, want nil", q, err)
+		}
+	}
+}

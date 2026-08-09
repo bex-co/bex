@@ -74,3 +74,31 @@ func TestVerifyRejectsTamperExpiryAndMissing(t *testing.T) {
 		t.Errorf("missing command err = %v, want ErrMalformed", err)
 	}
 }
+
+// TestNonceExpiryCoversVerifyWindow pins codex #8 for sandbox-exec tickets: see
+// the shellticket equivalent. The nonce must be retained at least as long as
+// Verify accepts the ticket, or a still-verifiable ticket could replay during the
+// clock-skew interval.
+func TestNonceExpiryCoversVerifyWindow(t *testing.T) {
+	secret := []byte("sekret")
+	exp := time.Unix(1_800_000_000, 0)
+	tok, err := Mint(secret, Claims{
+		Subject: "id-a", SandboxID: "os-1", Namespace: "tea-a-sandbox",
+		Command: []string{"/bin/sh", "-c", "echo hi"}, Workspace: "tea-a",
+		ExpiresAt: exp.Unix(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lastAccepted := exp.Add(clockSkew)
+	claims, err := Verify(secret, tok, lastAccepted)
+	if err != nil {
+		t.Fatalf("Verify at the last accepted instant: %v", err)
+	}
+	if claims.NonceExpiry().Before(lastAccepted) {
+		t.Fatalf("NonceExpiry %v precedes the last verifiable instant %v — replay window open", claims.NonceExpiry(), lastAccepted)
+	}
+	if _, err := Verify(secret, tok, lastAccepted.Add(time.Second)); !errors.Is(err, ErrExpired) {
+		t.Fatalf("Verify just past the window = %v, want ErrExpired", err)
+	}
+}

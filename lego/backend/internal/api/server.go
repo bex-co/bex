@@ -871,7 +871,14 @@ func (s *Server) rootMux() (*http.ServeMux, error) {
 	// the body read + HMAC verification (w7/m60).
 	webhookLimit := s.webhookRateLimitMiddleware()
 	if s.Apps != nil {
-		mux.Handle("POST /v1/webhooks/git", webhookLimit(&apps.GitWebhook{Svc: s.Apps, Secret: s.WebhookSecret, GitHubSecret: s.GitHubWebhookSecret}))
+		wh := &apps.GitWebhook{Svc: s.Apps, Secret: s.WebhookSecret, GitHubSecret: s.GitHubWebhookSecret}
+		// codex #7: confine a GitHub-App-signed delivery to its installation's
+		// workspace. Only wire the resolver when the GitHub service is present —
+		// assigning a nil *github.Service would trap a typed-nil in the interface.
+		if s.GitHub != nil {
+			wh.Installations = s.GitHub.InstallationResolver()
+		}
+		mux.Handle("POST /v1/webhooks/git", webhookLimit(wh))
 	}
 	// Stripe cannot present a bex bearer token; its timestamped HMAC signature
 	// is the route's authentication. The injected handler verifies it before

@@ -1,64 +1,83 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useRouter } from "@tanstack/react-router";
-import { LogOut, Loader2, CheckCircle } from "lucide-react";
+import { LogOut, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
 import { createFrontendApi } from "@/common/lib/ory/frontend";
 import { invalidateSessionCache } from "@/common/server-fn/session";
 import { getClient } from "@/common/apollo/client";
 import { EMPTY_LOGIN_SEARCH } from "@/common/lib/auth/auth";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { Button } from "@/common/components/ui/button";
 
 /**
  * Logout page — calls Kratos's browser logout flow (which clears the
  * `ory_kratos_session` cookie) then redirects to login.
+ *
+ * SECURITY (codex #6): the provider-side session is the real boundary, so we
+ * treat the flow as done ONLY when Kratos returns a successful response. A failed
+ * or errored logout keeps a blocking error with a retry — never a "signed out"
+ * screen or a redirect to login — because presenting success while the HttpOnly
+ * Kratos cookie is still valid would let the next user of this browser inherit
+ * the session. Local cache clearing and navigation happen only on real success.
  */
 export default function LogoutPage() {
   const navigate = useNavigate();
   const router = useRouter();
   const { t } = useTranslations();
-  const [status, setStatus] = useState<"logging-out" | "success">(
+  const [status, setStatus] = useState<"logging-out" | "success" | "error">(
     "logging-out",
   );
 
-  useEffect(() => {
-    const performLogout = async () => {
-      try {
-        setStatus("logging-out");
-        await new Promise((resolve) => setTimeout(resolve, 800));
+  const performLogout = useCallback(async () => {
+    try {
+      setStatus("logging-out");
 
-        const api = createFrontendApi();
-        const { logout_url } = await api.createBrowserLogoutFlow();
-        await fetch(logout_url, { credentials: "include" });
-
-        setStatus("success");
-        await new Promise((resolve) => setTimeout(resolve, 600));
-      } catch (error) {
-        console.error("Logout failed:", error);
-      } finally {
-        invalidateSessionCache();
-        // Drop cached account-scoped data — the CSR Apollo client is a module
-        // singleton that survives logout, so without this the next account to
-        // log in could read the previous one's cached workspaces/resources
-        // (codex-security #24).
-        void getClient().clearStore();
-        await router.invalidate();
-        void navigate({
-          to: "/auth/login",
-          search: EMPTY_LOGIN_SEARCH,
-        });
+      const api = createFrontendApi();
+      const { logout_url } = await api.createBrowserLogoutFlow();
+      const response = await fetch(logout_url, { credentials: "include" });
+      // fetch resolves on 4xx/5xx, so an unchecked response would hide a failed
+      // logout. Require a successful provider response before treating the
+      // session as ended.
+      if (!response.ok) {
+        throw new Error(`logout request failed: ${response.status}`);
       }
-    };
 
-    void performLogout();
+      // Provider session is cleared — now it is safe to drop cached
+      // account-scoped data (the CSR Apollo client is a module singleton that
+      // survives logout, so without this the next account could read the
+      // previous one's cached workspaces/resources, codex-security #24) and
+      // leave the page.
+      invalidateSessionCache();
+      void getClient().clearStore();
+      await router.invalidate();
+
+      setStatus("success");
+      void navigate({ to: "/auth/login", search: EMPTY_LOGIN_SEARCH });
+    } catch (error) {
+      console.error("Logout failed:", error);
+      setStatus("error");
+    }
   }, [navigate, router]);
+
+  useEffect(() => {
+    void performLogout();
+  }, [performLogout]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background to-muted/20">
       <div className="space-y-8">
         <div className="flex justify-center">
           <div className="relative">
-            <div className="absolute inset-0 bg-primary/20 rounded-full" />
-            <div className="relative bg-primary rounded-full p-6">
-              <LogOut className="h-12 w-12 text-primary-foreground" />
+            <div
+              className={`absolute inset-0 rounded-full ${status === "error" ? "bg-destructive/20" : "bg-primary/20"}`}
+            />
+            <div
+              className={`relative rounded-full p-6 ${status === "error" ? "bg-destructive" : "bg-primary"}`}
+            >
+              {status === "error" ? (
+                <AlertTriangle className="h-12 w-12 text-primary-foreground" />
+              ) : (
+                <LogOut className="h-12 w-12 text-primary-foreground" />
+              )}
             </div>
           </div>
         </div>
@@ -88,6 +107,19 @@ export default function LogoutPage() {
               <p className="text-muted-foreground">
                 {t("auth.loggedOutSubtitle")}
               </p>
+            </>
+          )}
+          {status === "error" && (
+            <>
+              <h1 className="text-2xl font-semibold text-destructive">
+                {t("auth.logoutFailedTitle")}
+              </h1>
+              <p className="text-muted-foreground">
+                {t("auth.logoutFailedSubtitle")}
+              </p>
+              <Button onClick={() => void performLogout()} className="mt-2">
+                {t("auth.logoutRetry")}
+              </Button>
             </>
           )}
         </div>

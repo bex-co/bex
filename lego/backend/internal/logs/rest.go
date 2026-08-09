@@ -145,6 +145,24 @@ func (s *Service) logsQuery(w http.ResponseWriter, r *http.Request) {
 //     browser EventSource and curl -N.
 //   - Anything else → NDJSON (`<JSON>\n` per line).
 func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
+	resources, q, err := parseLogParams(r)
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	q.App = resources[0] // subscribe follows a single App
+
+	// SECURITY (codex #3): reject a subscription with no live producer BEFORE
+	// acquiring a slot — a type=predeploy (or other producerless) request would
+	// otherwise park on an idle stream and hold one of the process-global SSE
+	// slots until it chose to disconnect, letting one tenant exhaust the pool.
+	if err := q.liveSubscribable(); err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+
+	// The concurrency cap is acquired only after the request parses and is
+	// confirmed streamable, so malformed or producerless requests never take a slot.
 	if s.MaxSSEConns > 0 {
 		if s.sseConns.Add(1) > s.MaxSSEConns {
 			s.sseConns.Add(-1)
@@ -155,12 +173,6 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 		}
 		defer s.sseConns.Add(-1)
 	}
-	resources, q, err := parseLogParams(r)
-	if err != nil {
-		core.WriteErr(w, err)
-		return
-	}
-	q.App = resources[0] // subscribe follows a single App
 
 	// WebSocket path: Render CLI v2+ sends an upgrade request.
 	if websocket.IsWebSocketUpgrade(r) {

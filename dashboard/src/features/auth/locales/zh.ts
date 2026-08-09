@@ -95,6 +95,18 @@ const zhAuth: Record<string, TranslationEntry> = {
     message: "正在跳转到登录页…",
     description: "Logout page subtext once logout has completed",
   },
+  "auth.logoutFailedTitle": {
+    message: "退出登录失败",
+    description: "Logout page heading when the provider logout request failed",
+  },
+  "auth.logoutFailedSubtitle": {
+    message: "无法结束您的会话，您可能仍处于登录状态，请重试。",
+    description: "Logout page subtext when the provider logout request failed",
+  },
+  "auth.logoutRetry": {
+    message: "重试",
+    description: "Logout page retry button after a failed sign-out",
+  },
   "auth.logoutTitle": {
     message: "退出登录",
     description: "Logout page document title",

@@ -620,11 +620,17 @@ func buildCloneContainer(o Options, image string) corev1.Container {
 		Name:    "clone",
 		Image:   image,
 		Command: []string{"sh", "-eu", "-c"},
+		// SECURITY: the credential helper is host-bound — it answers only when git
+		// asks for github.com credentials (the "host=" line of git's credential
+		// protocol). bex-api only mints a GIT_AUTH_TOKEN for a structurally
+		// verified github.com origin, so this is defense in depth: even if a
+		// crafted REPO caused git to connect elsewhere, the helper returns nothing
+		// and the token never leaves for a non-GitHub host.
 		Args: []string{`cd /source
 git init -q .
 git remote add origin "$REPO"
 if [ -n "${GIT_AUTH_TOKEN:-}" ]; then
-  git -c credential.helper='!f() { echo "username=x-access-token"; echo "password=$GIT_AUTH_TOKEN"; }; f' fetch -q --depth 1 origin "$REF"
+  git -c credential.helper='!f() { [ "$1" = get ] || exit 0; h=; while IFS= read -r l; do [ -z "$l" ] && break; case "$l" in host=*) h=${l#host=};; esac; done; [ "$h" = github.com ] || exit 0; echo "username=x-access-token"; echo "password=$GIT_AUTH_TOKEN"; }; f' fetch -q --depth 1 origin "$REF"
 else
   git fetch -q --depth 1 origin "$REF"
 fi
