@@ -104,7 +104,11 @@ For tenants repaired by hand on 2026-08-08, remove the hand-built reconcile arti
 | --- | --- | --- |
 | Copied `dpg-<id>-app` / `red-<id>` Secrets, with hand-patched FQDN `host` | `<ws>` | superseded by the operator-created Secret |
 | Hand-written `CiliumNetworkPolicy` (forum → keyvalue :6379, cnpg :5432) | `<ws>` | superseded by `allow-same-namespace` |
-| Hand-made Traefik `Ingress` for `<svc>.onbex.co` | `<ws>` | **leave until `w7/m78` ships** — that milestone fixes why the platform did not create it |
+| Hand-made Traefik `Ingress` for `<svc>.onbex.co` | `<ws>` | **KEEP — do not remove.** See the note below |
+
+> **Correction (2026-08-09, from `w7/m78/t001`).** Removing the hand-made Ingresses was deferred to `w7/m78` on the assumption that a fix there would make the platform recreate them. **It will not.** m78's premise was disproven: nothing failed. Production runs with `BEX_BASE_DOMAIN` unset by deliberate security decision (`w7/m54`), so a service with no custom domain has no platform host and correctly gets no Ingress.
+>
+> Those Ingresses are therefore the **only** thing routing `tianpan-forum` and `blockeden-forum` today — removing them takes both forums offline. They also re-enable exactly the sibling-cookie exposure `onbex.co` was disabled for, so leaving them is not free either. Resolving it is a product decision (attach real custom domains, which route with or without the platform subdomain — or deliberately accept the exposure and record it), not a cleanup step.
 
 **Rollback:** re-apply the artifact from the Step 2 record.
 
