@@ -1,6 +1,6 @@
 # w11 · m6 — Phase-1 agent mission control
 
-**Worker:** worker11 **Goal:** let a configured tenant create, track, steer, and cancel a fire-and-forget coding-agent session from a phone, inspect bounded evidence, receive PR-ready push, and hand deep review to GitHub Mobile. **Status:** t001–t008 implemented & verified (8 of 9 tasks; the entire product surface — backend projection, mobile list/composer/detail, push); only t009 closeout remains, hard-blocked; the gate milestones (w3/m41, w11/m5) are code-complete but their closeouts (and this milestone's t009) remain blocked on live-prod + physical-device verification unavailable in a dev environment.
+**Worker:** worker11 **Goal:** let a configured tenant create, track, steer, and cancel a fire-and-forget coding-agent session from a phone, inspect bounded evidence, receive PR-ready push, and hand deep review to GitHub Mobile. **Status:** t001–t008 implemented, verified, **shipped + deployed to prod** (`3bbe956d`, `deploy (bex via Argo)` green 2026-08-08; mobile CI green on the `4f58e455` codegen fix). 8 of 9 tasks — the entire product surface (backend projection, mobile list/composer/detail, push). Only t009 closeout remains, **hard-blocked**: its DoD needs the live phone→draft-PR/evidence/push proof and its out-of-scope forbids closing before w3/m41 + w11/m5 truly close — both gated on live-prod + physical-device verification unavailable in a dev environment. m6 therefore stays open (box unchecked) pending that operator/QA step; nothing more is implementable here.
 
 ## Implementation status (2026-08-08)
 
