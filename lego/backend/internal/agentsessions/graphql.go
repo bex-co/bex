@@ -32,6 +32,34 @@ var agentConfigGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 
 func gqlTime(t time.Time) string { return t.UTC().Format(time.RFC3339Nano) }
 
+var agentProfileGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentSessionProfile",
+	Fields: graphql.Fields{
+		"id":    &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v AgentProfile) any { return v.ID })},
+		"label": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v AgentProfile) any { return v.Label })},
+	},
+})
+
+var githubReadinessGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentSessionGitHubReadiness",
+	Fields: graphql.Fields{
+		"connected":    &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v GitHubReadinessView) any { return v.Connected })},
+		"accountLogin": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v GitHubReadinessView) any { return v.AccountLogin })},
+		"installUrl":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v GitHubReadinessView) any { return v.InstallURL })},
+	},
+})
+
+var agentCapabilitiesGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentSessionCapabilities",
+	Fields: graphql.Fields{
+		"enabled":       &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v Capabilities) any { return v.Enabled })},
+		"github":        &graphql.Field{Type: graphql.NewNonNull(githubReadinessGQLType), Resolve: gqlutil.Field(func(v Capabilities) any { return v.GitHub })},
+		"modelKeyReady": &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v Capabilities) any { return v.ModelKeyReady })},
+		"agents":        &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentProfileGQLType))), Resolve: gqlutil.Field(func(v Capabilities) any { return v.Agents })},
+		"ready":         &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v Capabilities) any { return v.Ready })},
+	},
+})
+
 var evidenceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSessionEvidence",
 	Fields: graphql.Fields{
@@ -107,6 +135,13 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Type:    agentSessionGQLType,
 			Args:    graphql.FieldConfigArgument{"id": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)}},
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.Get(p.Context, stringArg(p.Args, "id")) },
+		},
+		"agentSessionCapabilities": &graphql.Field{
+			Type: graphql.NewNonNull(agentCapabilitiesGQLType),
+			Args: graphql.FieldConfigArgument{"ownerId": &graphql.ArgumentConfig{Type: graphql.String}},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Capabilities(p.Context, stringArg(p.Args, "ownerId"))
+			},
 		},
 	}
 }

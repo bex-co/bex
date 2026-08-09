@@ -118,6 +118,19 @@ type Service struct {
 	// existed) — a missing/never-provisioned key is not an error, since the key
 	// is optional per workspace.
 	ModelKeys core.SecretKV
+	// GitHub, when set, supplies the workspace's GitHub App connection readiness
+	// for the mobile Capabilities projection (w11/m6 t001). nil => GitHub is
+	// reported not-connected with no install URL (the projection never fabricates
+	// readiness). *github.Service satisfies it; only the already-safe Connection
+	// projection is consumed, never installation tokens/ids.
+	GitHub GitHubReadiness
+}
+
+// GitHubReadiness yields a workspace's GitHub App connection as the neutral,
+// already-secret-free github.Connection (connected flag + account login +
+// install URL). It is the readiness source for the mobile Capabilities verb.
+type GitHubReadiness interface {
+	GetConnection(ctx context.Context, ownerID string) (github.Connection, error)
 }
 
 // modelAPIKey best-effort reads the workspace's BYO model key. A missing path
@@ -273,6 +286,49 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, templ
 		return store.AgentSession{}, mapStoreError(record.ID, err)
 	}
 	return record, nil
+}
+
+// Capabilities projects the workspace's mobile-safe agent-composer readiness
+// (w11/m6 t001): which agent profiles are selectable and whether GitHub and a
+// BYO model key are provisioned — never model endpoints, templates, egress,
+// installation ids, or credentials. It authorizes against the target workspace
+// first (cross-workspace callers are denied like every other verb). When the
+// feature is not wired it returns Enabled:false with empty readiness rather than
+// an error, so the phone can render a desktop-configuration callout; an unready
+// GitHub App carries its install URL as the remediation, not a phone-editable
+// secret. Ready folds both provisioning gates into a single submit signal.
+func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilities, error) {
+	ctx = core.WithWorkspace(ctx, ownerID)
+	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+		return Capabilities{}, err
+	}
+	caps := Capabilities{Enabled: s.enabled() && s.ticketEnabled()}
+	if !caps.Enabled {
+		return caps, nil
+	}
+	workspaceID, ok := s.Tenant(ctx)
+	if !ok {
+		return Capabilities{}, core.ErrForbidden
+	}
+	caps.Agents = agentProfiles()
+	key, err := s.modelAPIKey(ctx, workspaceID)
+	if err != nil {
+		return Capabilities{}, err
+	}
+	caps.ModelKeyReady = key != ""
+	if s.GitHub != nil {
+		conn, err := s.GitHub.GetConnection(ctx, workspaceID)
+		if err != nil {
+			return Capabilities{}, err
+		}
+		caps.GitHub = GitHubReadinessView{
+			Connected:    conn.Connected,
+			AccountLogin: conn.AccountLogin,
+			InstallURL:   conn.InstallURL,
+		}
+	}
+	caps.Ready = caps.GitHub.Connected && caps.ModelKeyReady
+	return caps, nil
 }
 
 func (s *Service) List(ctx context.Context, ownerID string) ([]View, error) {

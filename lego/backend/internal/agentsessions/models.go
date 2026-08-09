@@ -75,6 +75,52 @@ type AgentConfig struct {
 	Template      string `json:"template,omitempty"`
 }
 
+// AgentProfile is a selectable, secret-free agent option for the phone composer
+// (w11/m6 t001): the short ACP-adapter selector plus a human label. Model
+// endpoints, templates, and egress destinations never appear here — those stay
+// desktop configuration.
+type AgentProfile struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
+
+// GitHubReadinessView is the mobile-safe slice of a workspace's GitHub App
+// connection: whether a draft PR can be opened, the connected account login for
+// display, and — when NOT connected — the desktop install URL to remediate.
+// Installation ids and tokens never cross this projection.
+type GitHubReadinessView struct {
+	Connected    bool   `json:"connected"`
+	AccountLogin string `json:"accountLogin,omitempty"`
+	InstallURL   string `json:"installUrl,omitempty"`
+}
+
+// Capabilities is the mobile-safe composer/readiness projection (w11/m6 t001).
+// It reveals only what a phone needs to compose and gate a fire-and-forget
+// session — selectable agent profiles and readiness booleans — and deliberately
+// carries none of the raw AgentConfig secret surface (model endpoint, template,
+// egress) nor any credential. Enabled is false when the feature is not wired;
+// Ready folds the two provisioning gates (GitHub App + BYO model key) so the
+// composer can present a single submit affordance with desktop-configuration
+// callouts for whatever is missing.
+type Capabilities struct {
+	Enabled       bool                `json:"enabled"`
+	GitHub        GitHubReadinessView `json:"github"`
+	ModelKeyReady bool                `json:"modelKeyReady"`
+	Agents        []AgentProfile      `json:"agents"`
+	Ready         bool                `json:"ready"`
+}
+
+// agentProfiles is the fixed, secret-free set of selectable agents, mirroring
+// the ACP adapters agentCommand installs (claude/codex/gemini). Adding a profile
+// here is the only place a new phone-selectable agent is exposed.
+func agentProfiles() []AgentProfile {
+	return []AgentProfile{
+		{ID: "claude", Label: "Claude Code"},
+		{ID: "codex", Label: "Codex"},
+		{ID: "gemini", Label: "Gemini"},
+	}
+}
+
 type CreateRequest struct {
 	OwnerID         string      `json:"ownerId,omitempty"`
 	ResumeSessionID string      `json:"resumeSessionId,omitempty"`

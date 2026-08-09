@@ -32,6 +32,17 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, views)
 	})
+	// Literal "capabilities" segment is more specific than "{id}" in net/http's
+	// mux, so it is matched before the session-by-id route (session ids are
+	// ags-<xid>, never the literal "capabilities").
+	mux.HandleFunc("GET /v1/agent-sessions/capabilities", func(w http.ResponseWriter, r *http.Request) {
+		caps, err := s.Capabilities(r.Context(), r.URL.Query().Get("ownerId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, caps)
+	})
 	mux.HandleFunc("GET /v1/agent-sessions/{id}", func(w http.ResponseWriter, r *http.Request) {
 		view, err := s.Get(r.Context(), r.PathValue("id"))
 		if err != nil {

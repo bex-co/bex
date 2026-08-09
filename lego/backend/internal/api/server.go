@@ -618,7 +618,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Base: base, Store: d.AgentSessionStore, Tuples: d.AgentSessionTuples,
 			Sandbox: agentLifecycle, TicketSecret: d.AgentSessionTicketSecret,
 			GatewayURL: d.AgentSessionGatewayURL, CredentialURL: d.AgentCredentialURL,
-			ModelKeys: d.Secrets,
+			ModelKeys: d.Secrets, GitHub: gh,
 		},
 		AgentSessionCompleter: &agentsessions.Completer{
 			Store: d.AgentSessionStore, Sandbox: agentLifecycle,

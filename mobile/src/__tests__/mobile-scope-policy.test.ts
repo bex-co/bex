@@ -63,6 +63,8 @@ const allowedMutationNames = new Set([
   "MobileUnregisterNotificationDeviceSubscription",
   "MobileMarkPushNotificationRead",
   "MobileAcceptWorkspaceInvite",
+  "MobileCreateAgentSession",
+  "MobileCancelAgentSession",
 ]);
 const allowedMutationDocuments = new Set(
   [...allowedMutationNames].map((name) => `${name}Document`),
@@ -74,6 +76,17 @@ const allowedMutationDocuments = new Set(
 const allowedGraphqlOperations: Record<string, string> = {
   MobileAcceptWorkspaceInvite:
     "mutation|token|acceptWorkspaceInvite,role,workspaceId,workspaceName",
+  MobileAgentRepos: "query|ownerId|defaultBranch,fullName,private,repos",
+  MobileAgentSession:
+    "query|id|agentSession,branch,canceledAt,changedFiles,commandLog,commits,createdAt,deliveryMode,evidence,failureReason,headSha,id,outputTail,phase,prNumber,prUrl,repo,status,testOutput,truncated,turns,updatedAt",
+  MobileAgentSessionCapabilities:
+    "query|ownerId|accountLogin,agentSessionCapabilities,agents,connected,enabled,github,id,installUrl,label,modelKeyReady,ready",
+  MobileAgentSessions:
+    "query|ownerId|agentSessions,branch,createdAt,failureReason,id,phase,prNumber,prUrl,repo,status,updatedAt",
+  MobileCancelAgentSession:
+    "mutation|id|cancelAgentSession,canceledAt,id,phase,status",
+  MobileCreateAgentSession:
+    "mutation|agentConfig,branch,ownerId,repo|branch,createAgentSession,createdAt,id,phase,repo,status",
   MobileCancelCronRun:
     "mutation|runId,serviceId|cancelCronJobRun,finishedAt,id,startedAt,status",
   MobileCancelDeploy:

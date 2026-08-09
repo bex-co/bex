@@ -45,6 +45,7 @@ const (
 	DeliveryEventUsageThreshold     DeliveryEvent = "usage_threshold"
 	DeliveryEventAgentNeedsDecision DeliveryEvent = "agent_needs_decision"
 	DeliveryEventAgentPRReady       DeliveryEvent = "agent_pr_ready"
+	DeliveryEventAgentFailed        DeliveryEvent = "agent_failed"
 )
 
 // DeliveryUrgency controls channel filtering and schedule bypass. Critical is
@@ -402,7 +403,7 @@ func validDeliveryEvent(event DeliveryEvent) bool {
 	switch event {
 	case DeliveryEventDeployStarted, DeliveryEventDeploySucceeded, DeliveryEventDeployFailed,
 		DeliveryEventServerFailed, DeliveryEventCronFailed, DeliveryEventUsageThreshold,
-		DeliveryEventAgentNeedsDecision, DeliveryEventAgentPRReady:
+		DeliveryEventAgentNeedsDecision, DeliveryEventAgentPRReady, DeliveryEventAgentFailed:
 		return true
 	default:
 		return false

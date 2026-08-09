@@ -13,11 +13,18 @@ export const MOBILE_SAFE_ACTIONS = [
   "update-environment-variable",
   "run-cron-job",
   "cancel-cron-run",
+  "create-agent-session",
+  "cancel-agent-session",
 ] as const;
 
 export type MobileSafeActionId = (typeof MOBILE_SAFE_ACTIONS)[number];
 export type SafeActionTargetKind =
-  "service" | "deploy" | "database" | "key-value" | "cron-run";
+  | "service"
+  | "deploy"
+  | "database"
+  | "key-value"
+  | "cron-run"
+  | "agent-session";
 
 const targetByAction: Record<MobileSafeActionId, SafeActionTargetKind> = {
   "trigger-deploy": "service",
@@ -34,6 +41,8 @@ const targetByAction: Record<MobileSafeActionId, SafeActionTargetKind> = {
   "update-environment-variable": "service",
   "run-cron-job": "service",
   "cancel-cron-run": "cron-run",
+  "create-agent-session": "agent-session",
+  "cancel-agent-session": "agent-session",
 };
 
 export interface SafeActionDefinition<

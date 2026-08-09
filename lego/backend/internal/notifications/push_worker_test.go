@@ -48,12 +48,13 @@ type fakePushQueueDelivery struct {
 type fakePushWorkerStore struct {
 	mu sync.Mutex
 
-	destinations []store.ActivePushSubscription
-	events       []store.WebhookEventRow
-	serviceIDs   map[string]string
-	factStatuses map[string]string
-	watermarkAt  time.Time
-	watermarkKey string
+	destinations  []store.ActivePushSubscription
+	events        []store.WebhookEventRow
+	agentSessions []store.AgentSession
+	serviceIDs    map[string]string
+	factStatuses  map[string]string
+	watermarkAt   time.Time
+	watermarkKey  string
 
 	notifications map[string]store.PushNotification
 	deliveries    map[string]*fakePushQueueDelivery
@@ -110,6 +111,18 @@ func (f *fakePushWorkerStore) ListWebhookEvents(
 		rows = rows[:limit]
 	}
 	return rows, nil
+}
+
+func (f *fakePushWorkerStore) ListTerminalAgentSessionsForPush(_ context.Context, since time.Time) ([]store.AgentSession, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []store.AgentSession
+	for _, session := range f.agentSessions {
+		if (session.Phase == "completed" || session.Phase == "failed") && !session.UpdatedAt.Before(since) {
+			out = append(out, session)
+		}
+	}
+	return out, nil
 }
 
 func (f *fakePushWorkerStore) ResolvePushServiceID(_ context.Context, tenantID, serviceName string) (string, error) {
@@ -853,4 +866,63 @@ func TestPushWorkerAppliesStoredPolicyBeforeEnqueue(t *testing.T) {
 			t.Fatalf("malformed count=%d watermark=(%s,%q) error=%v", count(queue), queue.watermarkAt, queue.watermarkKey, err)
 		}
 	})
+}
+
+// TestPushWorkerProjectsTerminalAgentSessions pins w11/m6 t005: a terminal agent
+// session becomes one workspace-scoped push that deep-links to the session, with
+// PR-ready vs failed distinguished, deduped per (session, phase), and the feed
+// watermark left untouched.
+func TestPushWorkerProjectsTerminalAgentSessions(t *testing.T) {
+	now := time.Date(2026, time.August, 8, 12, 0, 0, 0, time.UTC)
+	at := now.Add(-time.Minute)
+	queue := newFakePushWorkerStore()
+	queue.watermarkAt = now.Add(-time.Hour)
+	queue.destinations = []store.ActivePushSubscription{{
+		TenantID: "tea-one", Subject: "alice", Role: "admin", DeviceID: "alice-ios",
+		Provider: "expo", Platform: "ios", Token: "tok", CreatedAt: now.Add(-time.Hour),
+	}}
+	queue.agentSessions = []store.AgentSession{
+		{
+			ID: "ags-c185th5c2rvvnhbfiltg", WorkspaceID: "tea-one", Repo: "org/app",
+			Phase: "completed", PRURL: "https://github.com/org/app/pull/7", PRNumber: 7, UpdatedAt: at,
+		},
+		{
+			ID: "ags-c185th5c2rvvnhbfil00", WorkspaceID: "tea-one", Repo: "org/api",
+			Phase: "failed", FailureReason: "boom", UpdatedAt: at,
+		},
+		// Another workspace with no recipient here — must never leak into tea-one.
+		{
+			ID: "ags-c185th5c2rvvnhbfil99", WorkspaceID: "tea-two", Repo: "other/x",
+			Phase: "failed", UpdatedAt: at,
+		},
+	}
+	worker := &PushWorker{Store: queue, Clock: func() time.Time { return now }}
+	if err := worker.RunOnce(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+	byResource := map[string]store.PushNotification{}
+	for _, n := range queue.notifications {
+		byResource[n.ResourceID] = n
+	}
+	if len(queue.notifications) != 2 {
+		t.Fatalf("want exactly 2 agent pushes (tea-one only), got %d: %#v", len(queue.notifications), queue.notifications)
+	}
+	pr := byResource["ags-c185th5c2rvvnhbfiltg"]
+	if pr.EventType != "agent_pr_ready" || pr.ResourceKind != "agentSession" ||
+		pr.DeepLink != "/sessions/ags-c185th5c2rvvnhbfiltg" || pr.TenantID != "tea-one" {
+		t.Fatalf("PR-ready push malformed: %#v", pr)
+	}
+	if pr.SourceEventKey != "agent:ags-c185th5c2rvvnhbfiltg:completed" {
+		t.Fatalf("collapse key = %q", pr.SourceEventKey)
+	}
+	failed := byResource["ags-c185th5c2rvvnhbfil00"]
+	if failed.EventType != "agent_failed" || failed.DeepLink != "/sessions/ags-c185th5c2rvvnhbfil00" {
+		t.Fatalf("failed push malformed: %#v", failed)
+	}
+	if _, leaked := byResource["ags-c185th5c2rvvnhbfil99"]; leaked {
+		t.Fatal("tea-two session leaked a push to tea-one's recipient")
+	}
 }

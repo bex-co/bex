@@ -55,6 +55,11 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			out, err := s.Get(ctx, in.ID)
 			return nil, out, toolError(err)
 		})
+	mcp.AddTool(server, &mcp.Tool{Name: "get_agent_session_capabilities", Description: "Report a workspace's selectable agent profiles and GitHub/model-key readiness for composing a cloud coding-agent session; never returns model endpoints, templates, egress, or credentials."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in listArgs) (*mcp.CallToolResult, Capabilities, error) {
+			out, err := s.Capabilities(ctx, in.OwnerID)
+			return nil, out, toolError(err)
+		})
 	mcp.AddTool(server, &mcp.Tool{Name: "resume_agent_session", Description: "Resume a suspended cloud coding-agent session and mint a fresh attach ticket."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Resume(ctx, in.ID)
