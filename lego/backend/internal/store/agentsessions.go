@@ -189,12 +189,20 @@ func (s *PGStore) ListTerminalAgentSessionsForPush(ctx context.Context, since ti
 // RecordAgentSessionDispatch stamps a newly dispatched turn: it advances the
 // phase/status, adopts a fresh sandbox id when re-dispatched, records the
 // delivery mode ("resume" or "redispatch"), and increments the turn counter.
+//
+// It is CAS-guarded against a session a concurrent Cancel already took terminal
+// (w2/m64): sandbox provisioning runs in the background after the create/steer
+// verb has returned, so a Cancel can land while a sandbox is still coming up. The
+// `phase NOT IN ('canceling','canceled')` guard makes the record a no-op in that
+// race — the update matches no row and returns ErrNotFound — so the caller tears
+// the just-created sandbox back down instead of resurrecting the session or
+// orphaning the sandbox.
 func (s *PGStore) RecordAgentSessionDispatch(ctx context.Context, id, sandboxID, phase, status, deliveryMode string) (AgentSession, error) {
 	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
 		UPDATE agent_sessions
 		SET sandbox_id = CASE WHEN $2 <> '' THEN $2 ELSE sandbox_id END,
 		    phase=$3, status=$4, delivery_mode=$5, turns=turns+1, updated_at=now()
-		WHERE id=$1
+		WHERE id=$1 AND phase NOT IN ('canceling', 'canceled')
 		RETURNING `+agentSessionColumns, id, sandboxID, phase, status, deliveryMode))
 	if err != nil {
 		return AgentSession{}, classify("agent session", err)

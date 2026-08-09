@@ -124,6 +124,65 @@ type Service struct {
 	// readiness). *github.Service satisfies it; only the already-safe Connection
 	// projection is consumed, never installation tokens/ids.
 	GitHub GitHubReadiness
+	// dispatchRunner runs the slow background provisioning half of create/steer/
+	// resume (w2/m64). Left nil in production => a detached goroutine, so the
+	// mutation returns before the sandbox exists; tests inject a synchronous (or
+	// gated) runner so the async lifecycle is deterministic without sleeps.
+	dispatchRunner func(func())
+}
+
+// dispatchTimeout bounds one background provisioning attempt (sandbox create +
+// egress phase, or a resume) so a hung mechanism call can never leak its
+// goroutine forever. Generous: a cold image pull + pod schedule takes minutes.
+const dispatchTimeout = 15 * time.Minute
+
+// runBackground executes the slow provisioning half detached from the request.
+// Production spawns a goroutine (the mutation has already returned); tests inject
+// dispatchRunner to run it synchronously (or gate it) for deterministic asserts.
+func (s *Service) runBackground(fn func()) {
+	if s.dispatchRunner != nil {
+		s.dispatchRunner(fn)
+		return
+	}
+	go fn()
+}
+
+// detach runs fn on a context that outlives the request — values preserved so
+// audit/tracing survive, cancellation dropped so writing the HTTP response does
+// not abort provisioning — under a hard provisioning ceiling.
+func (s *Service) detach(ctx context.Context, fn func(context.Context)) {
+	bg := context.WithoutCancel(ctx)
+	s.runBackground(func() {
+		ctx, cancel := context.WithTimeout(bg, dispatchTimeout)
+		defer cancel()
+		fn(ctx)
+	})
+}
+
+// phaseSettledOrCanceling is true for the phases a background provisioning step
+// must not overwrite: a terminal state (completed/failed/canceled) or canceling
+// (converging to canceled). Guarding on it stops a slow provision from
+// resurrecting a session a concurrent Cancel already took, or flipping a
+// user-canceled session to failed.
+func phaseSettledOrCanceling(phase string) bool {
+	switch phase {
+	case PhaseCompleted, PhaseFailed, PhaseCanceled, PhaseCanceling:
+		return true
+	}
+	return false
+}
+
+// setLifecycleIfActive advances a session's phase from the background dispatch
+// unless a concurrent cancel/complete already took it settled/canceling. The
+// read-then-write leaves a small window; the resource-safety-critical
+// resurrection path is closed airtight at the DB by RecordAgentSessionDispatch's
+// CAS, and the Completer's status watch is the backstop that reconciles any
+// residue (a phase left running for a torn-down sandbox reads NotFound and fails).
+func (s *Service) setLifecycleIfActive(ctx context.Context, id, sandboxID, phase, status string) {
+	if cur, err := s.Store.GetAgentSession(ctx, id); err == nil && phaseSettledOrCanceling(cur.Phase) {
+		return
+	}
+	_, _ = s.Store.SetAgentSessionLifecycle(ctx, id, sandboxID, phase, status, false)
 }
 
 // GitHubReadiness yields a workspace's GitHub App connection as the neutral,
@@ -195,6 +254,15 @@ func validateCreate(req *CreateRequest) error {
 // can_operate on the named workspace before persistence; resume checks the
 // first-class agent_session object directly, avoiding a caller-default-workspace
 // gate that could disagree with the resource's own parent tuple.
+//
+// Accept fast, provision async (w2/m64): everything cheap and fail-fast —
+// authorization, input validation, egress derivation, the BYO model-key read,
+// the durable row, and the OpenFGA parent tuple — runs synchronously, then the
+// caller returns immediately in the creating phase. The slow sandbox provisioning
+// (pod schedule + image pull, tens of seconds) runs in the background so the
+// dashboard can navigate to the session and render progress instead of blocking
+// the submit. No attach ticket is minted here — there is no sandbox to bind one
+// to yet; the client mints lazily via AttachTicket once a sandbox exists.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if req.ResumeSessionID != "" {
 		return s.Resume(ctx, req.ResumeSessionID)
@@ -209,10 +277,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return View{}, err
 	}
-	if !s.enabled() {
-		return View{}, core.ErrAgentSessionsUnavailable
-	}
-	if !s.ticketEnabled() {
+	if !s.enabled() || !s.ticketEnabled() {
 		return View{}, core.ErrAgentSessionsUnavailable
 	}
 	if err := validateCreate(&req); err != nil {
@@ -250,43 +315,70 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		_ = s.Store.DeleteAgentSession(ctx, record.ID)
 		return View{}, fmt.Errorf("%w: establish agent session authorization: %v", core.ErrAuthzUnavailable, err)
 	}
-	env := driverEnv(req.AgentConfig, record.Repo, record.Branch, record.ID, store.SandboxNamespace(record.WorkspaceID), s.credentialURL())
-	record, err = s.dispatch(ctx, record, strings.TrimSpace(req.AgentConfig.Template), modelEndpoint, modelAPIKey, egressAllowlist, env, "")
-	if err != nil {
-		return View{}, err
+	spec := dispatchSpec{
+		template:      strings.TrimSpace(req.AgentConfig.Template),
+		modelEndpoint: modelEndpoint,
+		modelAPIKey:   modelAPIKey,
+		egress:        egressAllowlist,
+		env:           driverEnv(req.AgentConfig, record.Repo, record.Branch, record.ID, store.SandboxNamespace(record.WorkspaceID), s.credentialURL()),
 	}
-	return s.withTicket(ctx, record)
+	s.detach(ctx, func(ctx context.Context) { s.runDispatch(ctx, record, spec) })
+	return viewOf(record)
+}
+
+// dispatchSpec is the immutable provisioning input a background turn carries from
+// its accepting verb (Create/Steer) through the run*/dispatch chain — the model
+// endpoint/key, egress allowlist, driver env, sandbox template, and delivery mode.
+type dispatchSpec struct {
+	template      string
+	modelEndpoint string
+	modelAPIKey   string
+	egress        []string
+	env           map[string]string
+	delivery      string
+}
+
+// runDispatch executes the slow sandbox-provisioning half of a create/steer turn
+// in the background and logs its outcome — it never returns to a caller. dispatch
+// owns the session's failure bookkeeping and the cancel-race convergence.
+func (s *Service) runDispatch(ctx context.Context, record store.AgentSession, spec dispatchSpec) {
+	if _, err := s.dispatch(ctx, record, spec); err != nil {
+		log.Printf("agent-session dispatch: background provisioning ended (session=%s delivery=%q): %v", record.ID, spec.delivery, err)
+	}
 }
 
 // dispatch starts (or re-starts) the session's sandbox, transitions it into the
 // agent egress phase, and records the new turn. On any failure it marks the
-// session failed and returns the error; a store failure after the sandbox is up
-// best-effort terminates it (a sandbox without a durable binding is unmanageable).
-// Shared by the initial Create and by Steer's re-dispatch so their rollback
-// semantics stay in lock-step.
-func (s *Service) dispatch(ctx context.Context, record store.AgentSession, template, modelEndpoint, modelAPIKey string, egressAllowlist []string, env map[string]string, deliveryMode string) (store.AgentSession, error) {
+// session failed (without clobbering a concurrent cancel) and returns the error;
+// a store failure after the sandbox is up best-effort terminates it (a sandbox
+// without a durable binding is unmanageable). Shared by the initial Create and by
+// Steer's re-dispatch so their rollback semantics stay in lock-step.
+func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec dispatchSpec) (store.AgentSession, error) {
 	ws := record.WorkspaceID
-	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, ws, template, record.ID, record.Repo, record.Branch, modelEndpoint, modelAPIKey, egressAllowlist, env)
+	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, ws, spec.template, record.ID, record.Repo, record.Branch, spec.modelEndpoint, spec.modelAPIKey, spec.egress, spec.env)
 	if err != nil {
 		// Log the underlying reason: dispatch failures were previously invisible
 		// (the row records only "sandbox create failed" and the 500 body is
 		// unreadable cross-origin), which hid a real create failure during the
 		// w3/m43 live E2E. Never logs the model key or any env value.
 		log.Printf("agent-session dispatch: sandbox create failed (session=%s repo=%s): %v", record.ID, record.Repo, err)
-		_, _ = s.Store.SetAgentSessionLifecycle(ctx, record.ID, "", PhaseFailed, "sandbox create failed", false)
+		s.setLifecycleIfActive(ctx, record.ID, "", PhaseFailed, "sandbox create failed")
 		return store.AgentSession{}, err
 	}
-	if err := s.Sandbox.EnterAgentSessionPhase(ctx, ws, record.ID, sb.ID, modelEndpoint, egressAllowlist); err != nil {
+	if err := s.Sandbox.EnterAgentSessionPhase(ctx, ws, record.ID, sb.ID, spec.modelEndpoint, spec.egress); err != nil {
 		log.Printf("agent-session dispatch: egress phase transition failed (session=%s): %v", record.ID, err)
 		_ = s.Sandbox.CancelAgentSessionSandbox(ctx, ws, record.ID, sb.ID)
-		_, _ = s.Store.SetAgentSessionLifecycle(ctx, record.ID, sb.ID, PhaseFailed, "egress phase transition failed", false)
+		s.setLifecycleIfActive(ctx, record.ID, sb.ID, PhaseFailed, "egress phase transition failed")
 		return store.AgentSession{}, err
 	}
 	phase := PhaseCreating
 	if sb.Status == sandbox.StatusRunning {
 		phase = PhaseRunning
 	}
-	record, err = s.Store.RecordAgentSessionDispatch(ctx, record.ID, sb.ID, phase, string(sb.Status), deliveryMode)
+	// The CAS in RecordAgentSessionDispatch (see its doc) rejects a session a
+	// concurrent Cancel already took terminal, returning ErrNotFound; we then tear
+	// the just-created sandbox back down rather than orphan it.
+	record, err = s.Store.RecordAgentSessionDispatch(ctx, record.ID, sb.ID, phase, string(sb.Status), spec.delivery)
 	if err != nil {
 		_ = s.Sandbox.CancelAgentSessionSandbox(ctx, ws, record.ID, sb.ID)
 		return store.AgentSession{}, mapStoreError(record.ID, err)
@@ -407,15 +499,22 @@ func (s *Service) Resume(ctx context.Context, sessionID string) (View, error) {
 	if err != nil {
 		return View{}, mapStoreError(sessionID, err)
 	}
+	// Accept fast: the same sandbox is woken in the background, converging to
+	// running (or failed). The client re-attaches via AttachTicket once running.
+	s.detach(ctx, func(ctx context.Context) { s.runResume(ctx, record) })
+	return viewOf(record)
+}
+
+// runResume wakes an idle session's existing sandbox in the background and
+// converges the phase. A concurrent cancel is honored: setLifecycleIfActive
+// refuses to flip a session a Cancel already took back to running.
+func (s *Service) runResume(ctx context.Context, record store.AgentSession) {
 	if err := s.Sandbox.ResumeAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, record.SandboxID); err != nil {
-		_, _ = s.Store.SetAgentSessionLifecycle(ctx, sessionID, "", PhaseFailed, "sandbox resume failed", false)
-		return View{}, err
+		log.Printf("agent-session resume: sandbox resume failed (session=%s sandbox=%s): %v", record.ID, record.SandboxID, err)
+		s.setLifecycleIfActive(ctx, record.ID, "", PhaseFailed, "sandbox resume failed")
+		return
 	}
-	record, err = s.Store.SetAgentSessionLifecycle(ctx, sessionID, "", PhaseRunning, "running", false)
-	if err != nil {
-		return View{}, mapStoreError(sessionID, err)
-	}
-	return s.withTicket(ctx, record)
+	s.setLifecycleIfActive(ctx, record.ID, "", PhaseRunning, "running")
 }
 
 func (s *Service) Cancel(ctx context.Context, sessionID string) (View, error) {
@@ -543,27 +642,46 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 		return View{}, err
 	}
 	config.ModelEndpoint = modelEndpoint
-	if _, err := s.Store.SetAgentSessionLifecycle(ctx, record.ID, "", PhaseRedispatching, "redispatching", false); err != nil {
-		return View{}, mapStoreError(record.ID, err)
-	}
-	// Tear the previous turn's sandbox down (idempotent) before re-dispatching.
-	if record.SandboxID != "" {
-		if err := s.Sandbox.CancelAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, record.SandboxID); err != nil {
-			_, _ = s.Store.SetAgentSessionLifecycle(ctx, record.ID, "", PhaseFailed, "steer teardown failed", false)
-			return View{}, err
-		}
-	}
+	// Read the BYO model key before flipping the phase so a store failure can't
+	// strand the session in redispatching.
 	modelAPIKey, err := s.modelAPIKey(ctx, record.WorkspaceID)
 	if err != nil {
 		return View{}, err
 	}
+	record, err = s.Store.SetAgentSessionLifecycle(ctx, record.ID, "", PhaseRedispatching, "redispatching", false)
+	if err != nil {
+		return View{}, mapStoreError(record.ID, err)
+	}
 	env := driverEnv(config, record.Repo, record.Branch, record.ID, store.SandboxNamespace(record.WorkspaceID), s.credentialURL())
 	env["BEX_AGENT_PROMPT"] = prompt // the steering prompt overrides the original task
-	record, err = s.dispatch(ctx, record, strings.TrimSpace(config.Template), modelEndpoint, modelAPIKey, egressAllowlist, env, DeliveryRedispatch)
-	if err != nil {
-		return View{}, err
+	spec := dispatchSpec{
+		template:      strings.TrimSpace(config.Template),
+		modelEndpoint: modelEndpoint,
+		modelAPIKey:   modelAPIKey,
+		egress:        egressAllowlist,
+		env:           env,
+		delivery:      DeliveryRedispatch,
 	}
-	return s.withTicket(ctx, record)
+	// Accept fast: tear the previous turn's sandbox down and re-dispatch a fresh
+	// one in the background. In phase 1 a new prompt can't ride the old sandbox
+	// (its prompt env is fixed at creation, no live attach yet — ADR047 D8), so the
+	// client sees redispatching immediately and the new turn streams once it
+	// attaches; the Completer updates the same draft PR.
+	s.detach(ctx, func(ctx context.Context) { s.runSteerDispatch(ctx, record, spec) })
+	return viewOf(record)
+}
+
+// runSteerDispatch tears the previous turn's sandbox down (idempotent) then
+// re-dispatches a fresh one for the steering prompt, in the background.
+func (s *Service) runSteerDispatch(ctx context.Context, record store.AgentSession, spec dispatchSpec) {
+	if record.SandboxID != "" {
+		if err := s.Sandbox.CancelAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, record.SandboxID); err != nil {
+			log.Printf("agent-session steer: teardown of previous sandbox failed (session=%s sandbox=%s): %v", record.ID, record.SandboxID, err)
+			s.setLifecycleIfActive(ctx, record.ID, "", PhaseFailed, "steer teardown failed")
+			return
+		}
+	}
+	s.runDispatch(ctx, record, spec)
 }
 
 // AttachTicket mints a fresh attach ticket for an already-started session

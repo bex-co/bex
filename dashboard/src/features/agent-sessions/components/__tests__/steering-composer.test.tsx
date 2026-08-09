@@ -156,4 +156,69 @@ describe("SteeringComposer state routing", () => {
       screen.getByText(/can't be steered in its current phase \(completed\)/),
     ).toBeInTheDocument();
   });
+
+  // w2/m64 optimistic redispatch echo.
+  it("echoes the redispatch prompt optimistically on submit", async () => {
+    const onOptimisticSteer = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <SteeringComposer
+        session={view("completed")}
+        chat={null}
+        onOptimisticSteer={onOptimisticSteer}
+      />,
+    );
+
+    await user.type(screen.getByRole("textbox"), "also update the docs");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    // The echo fires with the prompt, and it does so BEFORE the steer resolves.
+    expect(onOptimisticSteer).toHaveBeenCalledWith("also update the docs");
+    await waitFor(() => expect(steer).toHaveBeenCalled());
+    // A successful redispatch never rolls the echo back.
+    expect(onOptimisticSteer).not.toHaveBeenCalledWith(null);
+  });
+
+  it("rolls the optimistic echo back when the redispatch is rejected", async () => {
+    steer.mockRejectedValue(
+      new AgentSessionError("AGENT_SESSION_TURN_IN_FLIGHT", "server copy", {
+        phase: "redispatching",
+      }),
+    );
+    const onOptimisticSteer = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <SteeringComposer
+        session={view("completed")}
+        chat={null}
+        onOptimisticSteer={onOptimisticSteer}
+      />,
+    );
+
+    await user.type(screen.getByRole("textbox"), "go");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    // Echoed on submit, then rolled back (null) once the mutation rejects.
+    expect(onOptimisticSteer).toHaveBeenCalledWith("go");
+    await waitFor(() => expect(onOptimisticSteer).toHaveBeenCalledWith(null));
+  });
+
+  it("does not echo on the live (chat) path — useChat owns that optimism", async () => {
+    const onOptimisticSteer = vi.fn();
+    const chat = chatHandle("ready");
+    const user = userEvent.setup();
+    render(
+      <SteeringComposer
+        session={view("running")}
+        chat={chat}
+        onOptimisticSteer={onOptimisticSteer}
+      />,
+    );
+
+    await user.type(screen.getByRole("textbox"), "focus on the parser");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => expect(chat.sendMessage).toHaveBeenCalled());
+    expect(onOptimisticSteer).not.toHaveBeenCalled();
+  });
 });

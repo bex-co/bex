@@ -11,10 +11,7 @@ import { Textarea } from "@/common/components/ui/textarea";
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
-import {
-  AgentSessionError,
-  AgentSessionsUnavailableError,
-} from "@/features/agent-sessions/lib/errors";
+import { agentSessionErrorMessage } from "@/features/agent-sessions/lib/errors";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation";
 
@@ -30,6 +27,14 @@ export interface SteeringComposerProps {
   chat: ConversationChatHandle | null;
   /** Re-read the session after a redispatch converges (turns/phase change). */
   onSteered?: () => void;
+  /**
+   * Optimistic echo for the **redispatch** path (w2/m64): called with the prompt
+   * the instant a redispatch steer is submitted so the detail page can show the
+   * message immediately (the idle path has no `useChat` optimism of its own),
+   * and with `null` to roll it back if the steer is rejected synchronously. The
+   * live (chat) path is unaffected — `useChat` already appends optimistically.
+   */
+  onOptimisticSteer?: (prompt: string | null) => void;
 }
 
 /**
@@ -52,6 +57,7 @@ export function SteeringComposer({
   session,
   chat,
   onSteered,
+  onOptimisticSteer,
 }: SteeringComposerProps) {
   const { t } = useTranslations();
   const { steer } = useAgentSessionMutations();
@@ -84,21 +90,10 @@ export function SteeringComposer({
 
   const hardDisabled = isCanceling || isCanceled || liveStreamMissing;
   const busy = pending || turnInFlight;
-  const inputDisabled = hardDisabled;
   const submitDisabled = hardDisabled || busy || value.trim().length === 0;
 
   function handleError(err: unknown) {
-    if (err instanceof AgentSessionsUnavailableError) {
-      setSubmitError(t("agentSessions.unavailableBody"));
-      return;
-    }
-    if (err instanceof AgentSessionError) {
-      setSubmitError(
-        t(err.messageKey, { ...err.params, defaultValue: err.message }),
-      );
-      return;
-    }
-    setSubmitError(err instanceof Error ? err.message : String(err));
+    setSubmitError(agentSessionErrorMessage(err, t));
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -109,16 +104,24 @@ export function SteeringComposer({
     setPending(true);
     try {
       if (route === "redispatch") {
+        // Optimistically echo the prompt now — the redispatch runs fast then
+        // provisions in the background (w2/m64), so the message must appear
+        // immediately rather than after the round trip.
+        onOptimisticSteer?.(prompt);
         await steer(session.id, prompt);
         toast.success(t("agentSessions.steerSuccess"));
         onSteered?.();
       } else {
-        // Live path: append the turn to the conversation's own useChat stream.
+        // Live path: append the turn to the conversation's own useChat stream
+        // (which appends optimistically itself — no echo needed here).
         if (!chat) return;
         await chat.sendMessage(prompt);
       }
       setValue("");
     } catch (err) {
+      // A synchronous rejection (conflict/unavailable) rolls the optimistic
+      // echo back so a rejected message never lingers in the transcript.
+      if (route === "redispatch") onOptimisticSteer?.(null);
       handleError(err);
     } finally {
       setPending(false);
@@ -147,7 +150,7 @@ export function SteeringComposer({
           <div
             className={cn(
               "border-input bg-background focus-within:border-ring focus-within:ring-ring/40 flex items-end gap-2 rounded-xl border px-2.5 py-1.5 shadow-xs transition-[color,box-shadow] focus-within:ring-[3px]",
-              inputDisabled && "opacity-70",
+              hardDisabled && "opacity-70",
             )}
           >
             {/* `field-sizing-content` (base Textarea) auto-grows the input to
@@ -157,7 +160,7 @@ export function SteeringComposer({
               onChange={(e) => setValue(e.target.value)}
               onKeyDown={handleKeyDown}
               rows={1}
-              disabled={inputDisabled}
+              disabled={hardDisabled}
               placeholder={
                 route === "redispatch"
                   ? t("agentSessions.steerPlaceholderIdle")

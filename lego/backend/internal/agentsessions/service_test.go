@@ -141,6 +141,12 @@ func (f *fakeStore) RecordAgentSessionDispatch(_ context.Context, id, sandboxID,
 	if !ok {
 		return store.AgentSession{}, store.ErrNotFound
 	}
+	// Mirror the store's CAS guard: a session a concurrent Cancel already took
+	// terminal matches no row, so a racing background dispatch tears its sandbox
+	// back down instead of resurrecting the session (w2/m64).
+	if row.Phase == PhaseCanceling || row.Phase == PhaseCanceled {
+		return store.AgentSession{}, store.ErrNotFound
+	}
 	if sandboxID != "" {
 		row.SandboxID = sandboxID
 	}
@@ -238,9 +244,15 @@ type fakeLifecycle struct {
 	transcriptErr                       error
 	readTranscript                      int
 	readTranscriptBeforeCancel          bool
+	// Injected background-provisioning failures (w2/m64). createErr aborts the
+	// sandbox create (nothing is counted); resumeErr aborts a resume.
+	createErr, resumeErr error
 }
 
 func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, _, _, _, repository, branch, modelEndpoint, modelAPIKey string, egressAllowlist []string, driverEnv map[string]string) (sandbox.Sandbox, error) {
+	if f.createErr != nil {
+		return sandbox.Sandbox{}, f.createErr
+	}
 	f.created++
 	f.sandboxSeq++
 	f.repository, f.branch = repository, branch
@@ -255,6 +267,9 @@ func (f *fakeLifecycle) EnterAgentSessionPhase(_ context.Context, _, _, _, _ str
 	return nil
 }
 func (f *fakeLifecycle) ResumeAgentSessionSandbox(context.Context, string, string, string) error {
+	if f.resumeErr != nil {
+		return f.resumeErr
+	}
 	f.resumed++
 	return nil
 }
@@ -276,6 +291,10 @@ func fixture() (*Service, *fakeStore, *fakeFGA, *fakeLifecycle) {
 	svc := &Service{
 		Base:  &core.Base{Authz: fga, Workspace: resolver{fga.members}, Clock: func() time.Time { return st.now }},
 		Store: st, Tuples: fga, Sandbox: lifecycle, TicketSecret: []byte("session-secret"), GatewayURL: "wss://ssh.bex.co/agent-sessions",
+		// Run the background provisioning half synchronously so create/steer/resume
+		// side effects (sandbox lifecycle, final phase) are settled by the time the
+		// verb returns — deterministic asserts without sleeps (w2/m64).
+		dispatchRunner: func(fn func()) { fn() },
 	}
 	return svc, st, fga, lifecycle
 }
@@ -312,13 +331,37 @@ func TestLifecycleTicketClaimsAndFirstClassAuthorization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if created.Phase != PhaseRunning || created.SandboxID != "sandbox-1" || lifecycle.created != 1 || lifecycle.entered != 1 || lifecycle.modelEndpoint != "https://api.openai.com/v1" || !reflect.DeepEqual(lifecycle.egressAllowlist, []string{"docs.example.com"}) || fga.parents[created.ID] != "tea-a" {
-		t.Fatalf("create = %+v, parents=%v lifecycle=%+v", created, fga.parents, lifecycle)
+	// Create returns FAST (w2/m64): the session is accepted in its creating phase
+	// with no sandbox and no ticket yet. The parent tuple, however, must already
+	// exist — the row is not a reachable resource without it.
+	if created.Phase != PhaseCreating || created.SandboxID != "" || created.Ticket != "" || created.URL != "" {
+		t.Fatalf("create should return a fast, ticketless creating view: %+v", created)
+	}
+	if fga.parents[created.ID] != "tea-a" {
+		t.Fatalf("session parent tuple not established: parents=%v", fga.parents)
+	}
+	// The synchronous test runner has run the background provisioning by now: the
+	// sandbox exists, its binding is recorded, and the phase converged.
+	if lifecycle.created != 1 || lifecycle.entered != 1 || lifecycle.modelEndpoint != "https://api.openai.com/v1" || !reflect.DeepEqual(lifecycle.egressAllowlist, []string{"docs.example.com"}) {
+		t.Fatalf("background dispatch = lifecycle=%+v", lifecycle)
 	}
 	if lifecycle.repository != "bex-co/example" || lifecycle.branch != "bex-agent/session-test" {
 		t.Fatalf("sandbox binding = %q %q", lifecycle.repository, lifecycle.branch)
 	}
-	claims, err := agentsessionticket.Verify(svc.TicketSecret, created.Ticket, st.now)
+	provisioned, err := svc.Get(caller("alice"), created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if provisioned.SandboxID != "sandbox-1" || provisioned.Phase != PhaseRunning {
+		t.Fatalf("provisioned session = %+v", provisioned)
+	}
+
+	// The ticket is minted lazily via AttachTicket once a sandbox exists.
+	attached, err := svc.AttachTicket(caller("alice"), created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	claims, err := agentsessionticket.Verify(svc.TicketSecret, attached.Ticket, st.now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -338,13 +381,27 @@ func TestLifecycleTicketClaimsAndFirstClassAuthorization(t *testing.T) {
 	}
 	fga.parents[created.ID] = "tea-a"
 
+	// Resume returns fast in the resuming phase; the sync runner completes the
+	// wake so the sandbox is resumed and the phase converges to running.
 	resumed, err := svc.Resume(caller("alice"), created.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if lifecycle.resumed != 1 || resumed.Ticket == created.Ticket {
-		t.Fatalf("resume did not run/mint a fresh ticket: %+v", resumed)
+	if resumed.Phase != PhaseResuming || resumed.Ticket != "" {
+		t.Fatalf("resume should return a fast, ticketless resuming view: %+v", resumed)
 	}
+	if lifecycle.resumed != 1 {
+		t.Fatalf("resume did not run the sandbox: %+v", lifecycle)
+	}
+	// A fresh attach ticket after resume differs from the earlier one (fresh nonce).
+	reattached, err := svc.AttachTicket(caller("alice"), created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reattached.Ticket == "" || reattached.Ticket == attached.Ticket {
+		t.Fatalf("attach after resume did not mint a fresh ticket: %+v", reattached)
+	}
+
 	canceled, err := svc.Cancel(caller("alice"), created.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -512,11 +569,211 @@ func TestTupleWriteFailureCompensatesBeforeSandbox(t *testing.T) {
 	}
 }
 
+// TestCreateReturnsFastBeforeProvisioning pins the core w2/m64 contract: Create
+// returns the accepted (durable + authorized) session in its creating phase with
+// no sandbox and no ticket, WITHOUT having touched the sandbox lifecycle — the
+// slow provisioning is deferred to the background.
+func TestCreateReturnsFastBeforeProvisioning(t *testing.T) {
+	svc, st, fga, lc := fixture()
+	var pending []func()
+	svc.dispatchRunner = func(fn func()) { pending = append(pending, fn) }
+
+	created, err := svc.Create(caller("alice"), createInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.Phase != PhaseCreating || created.SandboxID != "" || created.Ticket != "" {
+		t.Fatalf("create should return fast in creating with no sandbox/ticket: %+v", created)
+	}
+	// Durable + authorized already, but the sandbox has NOT been provisioned yet.
+	if _, ok := st.rows[created.ID]; !ok || fga.parents[created.ID] != "tea-a" {
+		t.Fatalf("session must be persisted + authorized before returning: rows=%v parents=%v", st.rows, fga.parents)
+	}
+	if lc.created != 0 || lc.entered != 0 {
+		t.Fatalf("sandbox lifecycle ran on the request path: %+v", lc)
+	}
+	if len(pending) != 1 {
+		t.Fatalf("provisioning was not deferred to the background: %d pending", len(pending))
+	}
+
+	// Running the deferred provisioning brings the sandbox up and converges.
+	for _, fn := range pending {
+		fn()
+	}
+	if lc.created != 1 || lc.entered != 1 || st.rows[created.ID].SandboxID != "sandbox-1" {
+		t.Fatalf("background provisioning did not converge: lc=%+v row=%+v", lc, st.rows[created.ID])
+	}
+}
+
+// TestCreateCancelRaceConverges is the resource-safety guarantee: a Cancel that
+// lands while provisioning is still in flight must not leave an orphaned sandbox
+// and must not be resurrected to running by the racing dispatch (w2/m64).
+func TestCreateCancelRaceConverges(t *testing.T) {
+	svc, st, _, lc := fixture()
+	var pending []func()
+	svc.dispatchRunner = func(fn func()) { pending = append(pending, fn) }
+
+	created, err := svc.Create(caller("alice"), createInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Cancel lands BEFORE the background dispatch records a sandbox: the row has no
+	// sandbox yet, so there is nothing to tear down at cancel time.
+	canceled, err := svc.Cancel(caller("alice"), created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if canceled.Phase != PhaseCanceled || lc.canceled != 0 {
+		t.Fatalf("cancel of a not-yet-provisioned session = %+v canceled=%d", canceled, lc.canceled)
+	}
+	// Now the deferred provisioning runs. It creates a sandbox, then the CAS-guarded
+	// record finds the session canceled — so the sandbox is torn back down and the
+	// session is NOT resurrected.
+	for _, fn := range pending {
+		fn()
+	}
+	if lc.created != 1 || lc.canceled != 1 {
+		t.Fatalf("racing dispatch must create then tear down its sandbox: created=%d canceled=%d", lc.created, lc.canceled)
+	}
+	final := st.rows[created.ID]
+	if final.Phase != PhaseCanceled {
+		t.Fatalf("session resurrected by a racing dispatch: phase=%q", final.Phase)
+	}
+	if final.SandboxID != "" {
+		t.Fatalf("canceled session adopted an orphaned sandbox id %q", final.SandboxID)
+	}
+}
+
+// TestBackgroundDispatchFailureSurfacesFailedPhase proves a provisioning failure
+// is not a hung create: the session lands in failed with a named reason (w2/m64),
+// which is what the dashboard renders as the failure callout + retry.
+func TestBackgroundDispatchFailureSurfacesFailedPhase(t *testing.T) {
+	svc, st, _, lc := fixture() // synchronous runner
+	lc.createErr = errors.New("pod schedule timeout")
+
+	created, err := svc.Create(caller("alice"), createInput())
+	if err != nil {
+		t.Fatal(err) // the create itself still succeeds fast
+	}
+	failed := st.rows[created.ID]
+	if failed.Phase != PhaseFailed || failed.Status != "sandbox create failed" {
+		t.Fatalf("dispatch failure should surface a failed phase + reason: %+v", failed)
+	}
+	if lc.created != 0 {
+		t.Fatalf("no sandbox should have been recorded on a create failure: %+v", lc)
+	}
+}
+
+// TestBackgroundDispatchFailureDoesNotClobberCancel proves setLifecycleIfActive
+// preserves a user's cancel: a provisioning failure that lands after the session
+// was already canceled must not flip canceled → failed.
+func TestBackgroundDispatchFailureDoesNotClobberCancel(t *testing.T) {
+	svc, st, _, lc := fixture()
+	lc.createErr = errors.New("pod schedule timeout")
+	var pending []func()
+	svc.dispatchRunner = func(fn func()) { pending = append(pending, fn) }
+
+	created, err := svc.Create(caller("alice"), createInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Cancel(caller("alice"), created.ID); err != nil {
+		t.Fatal(err)
+	}
+	for _, fn := range pending {
+		fn() // the deferred provisioning fails now, after the cancel
+	}
+	if got := st.rows[created.ID].Phase; got != PhaseCanceled {
+		t.Fatalf("a failing dispatch clobbered the user's cancel: phase=%q", got)
+	}
+}
+
+// TestResumeReturnsFastAndSurfacesFailure pins the async Resume: it returns fast
+// in resuming, and a background wake failure surfaces as failed with a reason.
+func TestResumeReturnsFastAndSurfacesFailure(t *testing.T) {
+	svc, st, _, lc := fixture()
+	created, err := svc.Create(caller("alice"), createInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Make it idle-but-resumable, then arm a resume failure.
+	row := st.rows[created.ID]
+	row.Phase = PhaseCompleted
+	st.rows[created.ID] = row
+	lc.resumeErr = errors.New("snapshot restore failed")
+
+	resumed, err := svc.Resume(caller("alice"), created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resumed.Phase != PhaseResuming || resumed.Ticket != "" {
+		t.Fatalf("resume should return fast in resuming with no ticket: %+v", resumed)
+	}
+	if got := st.rows[created.ID]; got.Phase != PhaseFailed || got.Status != "sandbox resume failed" {
+		t.Fatalf("resume failure should surface failed + reason: %+v", got)
+	}
+}
+
+// TestSteerRejectedWhileRedispatchInFlight proves the in-flight guard holds
+// across the async boundary: once a steer has flipped the session to
+// redispatching, a second steer is rejected until the background turn settles.
+func TestSteerRejectedWhileRedispatchInFlight(t *testing.T) {
+	svc, st, _, _ := fixture()
+	created, err := svc.Create(caller("alice"), createInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := st.rows[created.ID]
+	row.Phase = PhaseCompleted
+	st.rows[created.ID] = row
+
+	// Defer provisioning so the session stays in redispatching between the two steers.
+	var pending []func()
+	svc.dispatchRunner = func(fn func()) { pending = append(pending, fn) }
+
+	if _, err := svc.Steer(caller("alice"), SteerRequest{SessionID: created.ID, Prompt: "one"}); err != nil {
+		t.Fatal(err)
+	}
+	if st.rows[created.ID].Phase != PhaseRedispatching {
+		t.Fatalf("first steer did not flip to redispatching: %q", st.rows[created.ID].Phase)
+	}
+	if _, err := svc.Steer(caller("alice"), SteerRequest{SessionID: created.ID, Prompt: "two"}); !isCode(err, "AGENT_SESSION_TURN_IN_FLIGHT") {
+		t.Fatalf("second steer while redispatching = %v, want AGENT_SESSION_TURN_IN_FLIGHT", err)
+	}
+	_ = pending
+}
+
+// TestAttachTicketNotReadyDuringProvisioning is the lazy-ticket contract: while a
+// session is still provisioning (creating, no sandbox), AttachTicket returns the
+// named, retryable NOT_ATTACHABLE — then succeeds once the sandbox is up.
+func TestAttachTicketNotReadyDuringProvisioning(t *testing.T) {
+	svc, _, _, _ := fixture()
+	var pending []func()
+	svc.dispatchRunner = func(fn func()) { pending = append(pending, fn) }
+
+	created, err := svc.Create(caller("alice"), createInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.AttachTicket(caller("alice"), created.ID); !isCode(err, "AGENT_SESSION_NOT_ATTACHABLE") {
+		t.Fatalf("attach during provisioning = %v, want AGENT_SESSION_NOT_ATTACHABLE", err)
+	}
+	for _, fn := range pending {
+		fn()
+	}
+	attached, err := svc.AttachTicket(caller("alice"), created.ID)
+	if err != nil || attached.Ticket == "" {
+		t.Fatalf("attach after provisioning = %+v err=%v, want a ticket", attached, err)
+	}
+}
+
 func TestRESTGraphQLMCPCreateParity(t *testing.T) {
 	want := createInput()
 	check := func(t *testing.T, got View) {
 		t.Helper()
-		if got.OwnerID != want.OwnerID || got.Repo != want.Repo || got.Branch != want.Branch || got.AgentConfig != want.AgentConfig || got.Phase != PhaseRunning || got.Ticket == "" || got.URL == "" {
+		// Create returns fast: the creating phase with no sandbox/ticket yet
+		// (w2/m64) — identically across REST, GraphQL, and MCP.
+		if got.OwnerID != want.OwnerID || got.Repo != want.Repo || got.Branch != want.Branch || got.AgentConfig != want.AgentConfig || got.Phase != PhaseCreating || got.SandboxID != "" || got.Ticket != "" || got.URL != "" {
 			t.Fatalf("surface view = %+v", got)
 		}
 	}
