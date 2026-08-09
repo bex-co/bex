@@ -149,6 +149,10 @@ var callerScopedRoutes = map[string]bool{
 	"GET /v1/webhooks/event-types":                    true,
 	"GET /v1/sandboxes":                               true,
 	"GET /v1/agent-sessions":                          true,
+	// Caller/workspace-scoped readiness projection (w11/m6 t001): scoped by
+	// ownerId like the list route, addresses no session by path; its own
+	// Authorize denies non-member callers (TestCapabilitiesProjection).
+	"GET /v1/agent-sessions/capabilities": true,
 	"GET /v1/owners":                                  true,
 	"GET /v1/blueprints":                              true,
 	"GET /v1/usage":                                   true,

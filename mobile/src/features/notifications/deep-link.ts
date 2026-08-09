@@ -6,6 +6,7 @@ export const notificationEvents = [
   "cron_failed",
   "agent_needs_decision",
   "agent_pr_ready",
+  "agent_failed",
 ] as const;
 
 export type NotificationEvent = (typeof notificationEvents)[number];

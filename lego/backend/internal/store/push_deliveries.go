@@ -481,21 +481,36 @@ func (s *PGStore) ReleasePushDelivery(ctx context.Context, delivery DuePushDeliv
 }
 
 func validatePushNotification(notification PushNotification) error {
-	eventTypes := map[string]bool{
+	serviceEvents := map[string]bool{
 		"deploy_started": true, "deploy_succeeded": true, "deploy_failed": true,
 		"server_failed": true, "cron_failed": true,
+	}
+	// Agent-session terminal pushes (w11/m6 t005): a bex extension keyed on the
+	// workspace, not an App — so the resource is the agent_session id and the
+	// deep link opens the session, never a service.
+	agentEvents := map[string]bool{
+		"agent_pr_ready": true, "agent_failed": true, "agent_needs_decision": true,
 	}
 	urgencies := map[string]bool{"routine": true, "important": true, "critical": true}
 	eventKind, eventOK := ids.KindOf(notification.EventID)
 	resourceKind, resourceOK := ids.KindOf(notification.ResourceID)
-	if strings.TrimSpace(notification.TenantID) == "" || strings.TrimSpace(notification.Subject) == "" ||
-		strings.TrimSpace(notification.SourceEventKey) == "" || len(notification.SourceEventKey) > 512 ||
-		!eventOK || eventKind != ids.Event || !eventTypes[notification.EventType] ||
-		len(notification.Title) < 1 || len(notification.Title) > 120 || strings.ContainsRune(notification.Title, '\x00') ||
-		len(notification.Body) < 1 || len(notification.Body) > 1024 || strings.ContainsRune(notification.Body, '\x00') ||
-		!urgencies[notification.Urgency] || notification.ResourceKind != "service" ||
-		!resourceOK || resourceKind != ids.Service || notification.DeepLink != "/services/"+notification.ResourceID ||
-		notification.OccurredAt.IsZero() || notification.DeliverAt.IsZero() {
+	common := strings.TrimSpace(notification.TenantID) != "" && strings.TrimSpace(notification.Subject) != "" &&
+		strings.TrimSpace(notification.SourceEventKey) != "" && len(notification.SourceEventKey) <= 512 &&
+		eventOK && eventKind == ids.Event &&
+		len(notification.Title) >= 1 && len(notification.Title) <= 120 && !strings.ContainsRune(notification.Title, '\x00') &&
+		len(notification.Body) >= 1 && len(notification.Body) <= 1024 && !strings.ContainsRune(notification.Body, '\x00') &&
+		urgencies[notification.Urgency] && resourceOK &&
+		!notification.OccurredAt.IsZero() && !notification.DeliverAt.IsZero()
+	valid := false
+	switch {
+	case serviceEvents[notification.EventType]:
+		valid = common && notification.ResourceKind == "service" &&
+			resourceKind == ids.Service && notification.DeepLink == "/services/"+notification.ResourceID
+	case agentEvents[notification.EventType]:
+		valid = common && notification.ResourceKind == "agentSession" &&
+			resourceKind == ids.AgentSession && notification.DeepLink == "/sessions/"+notification.ResourceID
+	}
+	if !valid {
 		return fmt.Errorf("push notification: %w", ErrInvalid)
 	}
 	return nil

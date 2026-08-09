@@ -53,6 +53,7 @@ type PushWorkerStore interface {
 	ListActivePushSubscriptions(context.Context) ([]store.ActivePushSubscription, error)
 	EnsurePushWatermark(context.Context, time.Time) (time.Time, string, error)
 	ListWebhookEvents(context.Context, time.Time, string, time.Time, []string, []string, int) ([]store.WebhookEventRow, error)
+	ListTerminalAgentSessionsForPush(context.Context, time.Time) ([]store.AgentSession, error)
 	ResolvePushServiceID(context.Context, string, string) (string, error)
 	PushFactStatus(context.Context, string) (string, error)
 	EnqueuePushNotifications(context.Context, []store.PushNotificationBatchItem, time.Time, string) error
@@ -189,6 +190,9 @@ func (w *PushWorker) RunOnce(ctx context.Context) error {
 		if err := w.dispatch(ctx, destinations); err != nil {
 			return fmt.Errorf("project push events: %w", err)
 		}
+		if err := w.dispatchAgentSessions(ctx, destinations); err != nil {
+			return fmt.Errorf("project agent-session push events: %w", err)
+		}
 	}
 	if w.Sender == nil && w.Receipts == nil {
 		w.Metrics.SetEnabled(false)
@@ -213,16 +217,16 @@ type pushRecipient struct {
 	devices []store.ActivePushSubscription
 }
 
-func (w *PushWorker) dispatch(ctx context.Context, destinations []store.ActivePushSubscription) error {
-	until := w.now().Add(-pushDispatchLag)
-	if !w.watermarkLoaded {
-		at, key, err := w.Store.EnsurePushWatermark(ctx, until)
-		if err != nil {
-			return err
-		}
-		w.watermarkAt, w.watermarkKey, w.watermarkLoaded = at, key, true
-	}
+// agentPushWindow bounds the terminal-agent-session scan: a session that goes
+// terminal is pushed within this window; re-scanning within it is idempotent via
+// the notification's source_event_key ON CONFLICT.
+const agentPushWindow = 6 * time.Hour
 
+// buildPushRecipients groups active subscriptions into per-tenant, per-subject
+// recipients with a validated role + policy — the shared input both the feed
+// dispatch and the agent-session dispatch evaluate against. Invalid role/policy
+// rows are dropped (and evidenced) and never delivered.
+func (w *PushWorker) buildPushRecipients(ctx context.Context, destinations []store.ActivePushSubscription) (map[string]map[string]*pushRecipient, []string) {
 	byTenant := make(map[string]map[string]*pushRecipient)
 	invalidRecipients := make(map[string]bool)
 	for _, destination := range destinations {
@@ -265,10 +269,140 @@ func (w *PushWorker) dispatch(ctx context.Context, destinations []store.ActivePu
 		}
 		tenants = append(tenants, tenantID)
 	}
+	sort.Strings(tenants)
+	return byTenant, tenants
+}
+
+type projectedAgentPush struct{ event, title, body, urgency string }
+
+// projectAgentSessionPush maps a terminal agent session to its push. A completed
+// session that opened a draft PR is "PR ready"; a completed one without a PR and
+// a failed one surface as a failure needing attention. Bodies carry no secret —
+// the repo name and (for PR-ready) the PR number only.
+func projectAgentSessionPush(s store.AgentSession) (projectedAgentPush, bool) {
+	switch s.Phase {
+	case "completed":
+		if s.PRURL != "" {
+			body := "Agent opened a draft PR on " + s.Repo + "."
+			if s.PRNumber > 0 {
+				body = fmt.Sprintf("Agent opened draft PR #%d on %s.", s.PRNumber, s.Repo)
+			}
+			return projectedAgentPush{
+				event: string(DeliveryEventAgentPRReady), title: "Draft PR ready",
+				body: body, urgency: string(DeliveryUrgencyImportant),
+			}, true
+		}
+		return projectedAgentPush{
+			event: string(DeliveryEventAgentFailed), title: "Agent session ended",
+			body:    "Agent session on " + s.Repo + " ended without a pull request.",
+			urgency: string(DeliveryUrgencyImportant),
+		}, true
+	case "failed":
+		return projectedAgentPush{
+			event: string(DeliveryEventAgentFailed), title: "Agent session failed",
+			body: "Agent session on " + s.Repo + " failed.", urgency: string(DeliveryUrgencyImportant),
+		}, true
+	default:
+		return projectedAgentPush{}, false
+	}
+}
+
+// dispatchAgentSessions is the agent-terminal projection (w11/m6 t005) alongside
+// the app-keyed feed dispatch: agent sessions are workspace-keyed with no App,
+// so they can't ride the webhook-events feed. It scans recent terminal sessions,
+// evaluates the SAME recipients/policy, and enqueues a session-deep-linked push
+// deduped by (session, phase). It never advances the feed watermark.
+func (w *PushWorker) dispatchAgentSessions(ctx context.Context, destinations []store.ActivePushSubscription) error {
+	if !w.watermarkLoaded {
+		return nil // the feed dispatch anchors the watermark first
+	}
+	byTenant, tenants := w.buildPushRecipients(ctx, destinations)
 	if len(tenants) == 0 {
 		return nil
 	}
-	sort.Strings(tenants)
+	tenantSet := make(map[string]bool, len(tenants))
+	for _, tenant := range tenants {
+		tenantSet[tenant] = true
+	}
+	sessions, err := w.Store.ListTerminalAgentSessionsForPush(ctx, w.now().Add(-agentPushWindow))
+	if err != nil {
+		return err
+	}
+	if len(sessions) == 0 {
+		return nil
+	}
+	decisionTime := w.now()
+	evaluator := DeliveryPolicyEvaluator{Now: func() time.Time { return decisionTime }}
+	batch := make([]store.PushNotificationBatchItem, 0)
+	for _, session := range sessions {
+		if !tenantSet[session.WorkspaceID] {
+			continue
+		}
+		projected, ok := projectAgentSessionPush(session)
+		if !ok {
+			continue
+		}
+		sourceKey := "agent:" + session.ID + ":" + session.Phase
+		for _, recipient := range byTenant[session.WorkspaceID] {
+			decision, err := evaluator.Evaluate(recipient.policy, DeliveryInput{
+				Channel: DeliveryChannelPush, Event: DeliveryEvent(projected.event),
+				Urgency: DeliveryUrgency(projected.urgency), WorkspaceID: session.WorkspaceID,
+				EventWorkspaceID: session.WorkspaceID, Subject: recipient.subject,
+				WorkspaceRole: recipient.role,
+			})
+			if err != nil {
+				return fmt.Errorf("evaluate stored push policy: %w", err)
+			}
+			if decision.Disposition == DeliveryDrop {
+				continue
+			}
+			if decision.Disposition != DeliverySend && decision.Disposition != DeliveryDefer {
+				return fmt.Errorf("evaluate stored push policy: unknown disposition %q", decision.Disposition)
+			}
+			deviceIDs := make([]string, 0, len(recipient.devices))
+			for _, device := range recipient.devices {
+				if !session.UpdatedAt.Before(device.CreatedAt) {
+					deviceIDs = append(deviceIDs, device.DeviceID)
+				}
+			}
+			if len(deviceIDs) == 0 {
+				continue
+			}
+			notificationID := ids.Derive(ids.Event, session.WorkspaceID, recipient.subject, sourceKey)
+			batch = append(batch, store.PushNotificationBatchItem{
+				Notification: store.PushNotification{
+					TenantID: session.WorkspaceID, Subject: recipient.subject,
+					SourceEventKey: sourceKey, EventID: notificationID,
+					EventType: projected.event, Title: projected.title, Body: projected.body,
+					Urgency: projected.urgency, ResourceKind: "agentSession", ResourceID: session.ID,
+					DeepLink: "/sessions/" + session.ID, OccurredAt: session.UpdatedAt, DeliverAt: decision.DeliverAt,
+				},
+				DeviceIDs: deviceIDs,
+			})
+		}
+	}
+	if len(batch) == 0 {
+		return nil
+	}
+	// Pass the CURRENT watermark: the monotonic guard makes the cursor UPDATE a
+	// no-op while the notification inserts commit (deduped by source_event_key).
+	return w.Store.EnqueuePushNotifications(ctx, batch, w.watermarkAt, w.watermarkKey)
+}
+
+func (w *PushWorker) dispatch(ctx context.Context, destinations []store.ActivePushSubscription) error {
+	until := w.now().Add(-pushDispatchLag)
+	if !w.watermarkLoaded {
+		at, key, err := w.Store.EnsurePushWatermark(ctx, until)
+		if err != nil {
+			return err
+		}
+		w.watermarkAt, w.watermarkKey, w.watermarkLoaded = at, key, true
+	}
+
+	byTenant, tenants := w.buildPushRecipients(ctx, destinations)
+	if len(tenants) == 0 {
+		return nil
+	}
 
 	for {
 		rows, err := w.Store.ListWebhookEvents(

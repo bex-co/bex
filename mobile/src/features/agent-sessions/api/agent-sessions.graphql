@@ -1,0 +1,96 @@
+query MobileAgentSessions($ownerId: String!) {
+  agentSessions(ownerId: $ownerId) {
+    id
+    repo
+    branch
+    phase
+    status
+    prNumber
+    prUrl
+    failureReason
+    createdAt
+    updatedAt
+  }
+}
+
+query MobileAgentSessionCapabilities($ownerId: String!) {
+  agentSessionCapabilities(ownerId: $ownerId) {
+    enabled
+    ready
+    modelKeyReady
+    github {
+      connected
+      accountLogin
+      installUrl
+    }
+    agents {
+      id
+      label
+    }
+  }
+}
+
+query MobileAgentRepos($ownerId: String!) {
+  repos(ownerId: $ownerId) {
+    fullName
+    defaultBranch
+    private
+  }
+}
+
+mutation MobileCreateAgentSession(
+  $ownerId: String!
+  $repo: String!
+  $branch: String!
+  $agentConfig: AgentSessionConfigInput!
+) {
+  createAgentSession(
+    ownerId: $ownerId
+    repo: $repo
+    branch: $branch
+    agentConfig: $agentConfig
+  ) {
+    id
+    repo
+    branch
+    phase
+    status
+    createdAt
+  }
+}
+
+query MobileAgentSession($id: String!) {
+  agentSession(id: $id) {
+    id
+    repo
+    branch
+    phase
+    status
+    headSha
+    prUrl
+    prNumber
+    failureReason
+    turns
+    deliveryMode
+    createdAt
+    updatedAt
+    canceledAt
+    evidence {
+      commandLog
+      testOutput
+      outputTail
+      changedFiles
+      commits
+      truncated
+    }
+  }
+}
+
+mutation MobileCancelAgentSession($id: String!) {
+  cancelAgentSession(id: $id) {
+    id
+    phase
+    status
+    canceledAt
+  }
+}

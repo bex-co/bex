@@ -18,6 +18,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/github"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -639,5 +640,90 @@ func TestViewFieldsAndCodedErrorsMatchEverySurface(t *testing.T) {
 	mcpResult, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "spawn_agent_session", Arguments: map[string]any{"ownerId": "tea-a"}})
 	if err != nil || !mcpResult.IsError || !strings.Contains(mcpResult.Content[0].(*mcp.TextContent).Text, "AGENT_SESSION_INPUT_INVALID") {
 		t.Fatalf("MCP coded error = %+v err=%v", mcpResult, err)
+	}
+}
+
+// fakeGitHub is the mobile-safe readiness source: it returns the neutral
+// github.Connection the projection consumes, never installation tokens/ids.
+type fakeGitHub struct {
+	conn map[string]github.Connection
+	err  error
+}
+
+func (f *fakeGitHub) GetConnection(_ context.Context, ownerID string) (github.Connection, error) {
+	if f.err != nil {
+		return github.Connection{}, f.err
+	}
+	return f.conn[ownerID], nil
+}
+
+// TestCapabilitiesProjection pins w11/m6 t001: the mobile composer projection
+// reveals only selectable profiles + readiness, computes Ready from both
+// provisioning gates, denies cross-workspace callers, and never carries a
+// secret field (model endpoint, template, egress, installation id).
+func TestCapabilitiesProjection(t *testing.T) {
+	svc, _, _, _ := fixture()
+	svc.GitHub = &fakeGitHub{conn: map[string]github.Connection{
+		"tea-a": {Connected: true, AccountLogin: "octo-a", InstallURL: "https://github.com/apps/bex/installations/new"},
+		"tea-b": {Connected: false, InstallURL: "https://github.com/apps/bex/installations/new"},
+	}}
+	svc.ModelKeys = &fakeModelKeys{data: map[string]map[string]string{
+		modelKeySecretPath("tea-a"): {sandbox.ModelAPIKeyEnvVar: "sk-tea-a"},
+	}}
+
+	// Fully provisioned workspace: Ready, profiles present, GitHub connected.
+	caps, err := svc.Capabilities(caller("alice"), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !caps.Enabled || !caps.Ready || !caps.ModelKeyReady || !caps.GitHub.Connected {
+		t.Fatalf("fully provisioned tea-a should be Ready: %#v", caps)
+	}
+	if caps.GitHub.AccountLogin != "octo-a" || len(caps.Agents) == 0 {
+		t.Fatalf("expected connected account + selectable agents: %#v", caps)
+	}
+
+	// Not-ready workspace: no model key + GitHub not connected => Ready false,
+	// but Enabled true and the install URL is offered as remediation.
+	capsB, err := svc.Capabilities(caller("bob"), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if capsB.Ready || capsB.ModelKeyReady || capsB.GitHub.Connected {
+		t.Fatalf("tea-b is unprovisioned; must not be Ready: %#v", capsB)
+	}
+	if !capsB.Enabled || capsB.GitHub.InstallURL == "" {
+		t.Fatalf("unready workspace must still be Enabled with an install-URL remediation: %#v", capsB)
+	}
+
+	// Cross-workspace denial: bob cannot read tea-a's capabilities.
+	if _, err := svc.Capabilities(caller("bob"), "tea-a"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("cross-workspace capabilities = %v, want ErrForbidden", err)
+	}
+
+	// No secret field ever crosses the projection.
+	raw, err := json.Marshal(caps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, secret := range []string{"modelEndpoint", "template", "egress", "installationId", "ticket", "task"} {
+		if strings.Contains(string(raw), secret) {
+			t.Fatalf("capabilities JSON leaked a secret-shaped field %q: %s", secret, raw)
+		}
+	}
+}
+
+// TestCapabilitiesUnavailableWhenNotWired: with the feature not wired (no
+// gateway), the projection reports Enabled:false rather than erroring, so the
+// phone renders a desktop-configuration callout.
+func TestCapabilitiesUnavailableWhenNotWired(t *testing.T) {
+	svc, _, _, _ := fixture()
+	svc.GatewayURL = "" // ticketEnabled() => false => feature not wired
+	caps, err := svc.Capabilities(caller("alice"), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if caps.Enabled || caps.Ready || len(caps.Agents) != 0 {
+		t.Fatalf("unwired feature must report Enabled:false with no profiles: %#v", caps)
 	}
 }

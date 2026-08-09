@@ -231,6 +231,13 @@ var callerScopedMCPTools = map[string]bool{
 	// Validates a posted bex.yml manifest string — a pure function on the input,
 	// no resource and no workspace touched.
 	"validate_bex_yml": true,
+	// Mobile-safe readiness projection (w11/m6 t001): scoped to the caller's own
+	// workspace (ownerId), which it authorizes before reading. With no owner
+	// injected it returns the caller's OWN capabilities; unlike the list verbs it
+	// returns an empty Enabled:false projection (not an error) when the feature
+	// is unwired, so the matrix sees a success — still caller-scoped, never a
+	// cross-workspace read (TestCapabilitiesProjection proves the tea-b denial).
+	"get_agent_session_capabilities": true,
 }
 
 func TestCrossWorkspaceMCPMatrix(t *testing.T) {

@@ -311,6 +311,8 @@ var defaultPushSettings = PushSettingsView{
 		DeliveryEventDeployFailed,
 		DeliveryEventServerFailed,
 		DeliveryEventCronFailed,
+		DeliveryEventAgentPRReady,
+		DeliveryEventAgentFailed,
 	},
 	MinimumUrgency:     DeliveryUrgencyImportant,
 	TimeZone:           "UTC",
@@ -329,6 +331,7 @@ var orderedDeliveryEvents = []DeliveryEvent{
 	DeliveryEventUsageThreshold,
 	DeliveryEventAgentNeedsDecision,
 	DeliveryEventAgentPRReady,
+	DeliveryEventAgentFailed,
 }
 
 var orderedWeekdays = []struct {

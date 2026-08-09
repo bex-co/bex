@@ -160,6 +160,32 @@ func (s *PGStore) ListAgentSessionsByPhases(ctx context.Context, phases []string
 	return out, rows.Err()
 }
 
+// ListTerminalAgentSessionsForPush returns completed/failed sessions updated at
+// or after `since`, across all workspaces, for the push worker's agent-terminal
+// projection (w11/m6 t005). Bounded by the recency window so the scan stays
+// cheap; dedup to one push per (session, phase) is the notification's
+// source_event_key ON CONFLICT, not this query. Like ListAgentSessionsByPhases
+// it performs no authorization and is a trusted background read only.
+func (s *PGStore) ListTerminalAgentSessionsForPush(ctx context.Context, since time.Time) ([]AgentSession, error) {
+	rows, err := s.Pool.Query(ctx, `SELECT `+agentSessionColumns+`
+		FROM agent_sessions
+		WHERE phase = ANY($1) AND updated_at >= $2
+		ORDER BY updated_at ASC, id ASC`, []string{"completed", "failed"}, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]AgentSession, 0)
+	for rows.Next() {
+		v, err := scanAgentSession(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, rows.Err()
+}
+
 // RecordAgentSessionDispatch stamps a newly dispatched turn: it advances the
 // phase/status, adopts a fresh sandbox id when re-dispatched, records the
 // delivery mode ("resume" or "redispatch"), and increments the turn counter.

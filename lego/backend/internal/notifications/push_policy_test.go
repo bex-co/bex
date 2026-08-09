@@ -46,8 +46,11 @@ func TestPushSettingsDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := PushSettingsView{
-		Enabled:        true,
-		Events:         []DeliveryEvent{DeliveryEventDeployFailed, DeliveryEventServerFailed, DeliveryEventCronFailed},
+		Enabled: true,
+		Events: []DeliveryEvent{
+			DeliveryEventDeployFailed, DeliveryEventServerFailed, DeliveryEventCronFailed,
+			DeliveryEventAgentPRReady, DeliveryEventAgentFailed,
+		},
 		MinimumUrgency: DeliveryUrgencyImportant, TimeZone: "UTC",
 		WorkingHours: []PushClockRangeView{}, QuietHours: []PushClockRangeView{},
 		MaxDeferralSeconds: 8 * 60 * 60, ServiceOverrides: []PushServiceOverrideView{},
