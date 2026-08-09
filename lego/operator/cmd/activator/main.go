@@ -137,7 +137,7 @@ func newHandler(c client.Client, cache *hostCache, log logr.Logger) http.Handler
 		// Maintenance routing is a public interstitial only. Do not touch the App,
 		// Deployment, or wake annotations: its workload remains exactly as it was.
 		if app.Spec.MaintenanceMode != nil && app.Spec.MaintenanceMode.Enabled {
-			serveMaintenance(w, r, app)
+			serveMaintenance(w, r, app, cache.claims)
 			return
 		}
 
@@ -240,8 +240,11 @@ func writeHTMLPage(w http.ResponseWriter, r *http.Request, status int, page stri
 	}
 }
 
-func serveMaintenance(w http.ResponseWriter, r *http.Request, app *appv1alpha1.App) {
-	serveMaintenanceWithFetcher(w, r, app, fetchCustomPage)
+func serveMaintenance(w http.ResponseWriter, r *http.Request, app *appv1alpha1.App, platformHost func(string) bool) {
+	fetch := func(ctx context.Context, a *appv1alpha1.App, rawURI string) (*http.Response, error) {
+		return fetchCustomPage(ctx, a, rawURI, platformHost)
+	}
+	serveMaintenanceWithFetcher(w, r, app, fetch)
 }
 
 func serveMaintenanceWithFetcher(
@@ -281,8 +284,8 @@ func serveMaintenanceWithFetcher(
 	}
 }
 
-func fetchCustomPage(ctx context.Context, app *appv1alpha1.App, rawURI string) (*http.Response, error) {
-	u, err := validateCustomPageURL(rawURI, app)
+func fetchCustomPage(ctx context.Context, app *appv1alpha1.App, rawURI string, platformHost func(string) bool) (*http.Response, error) {
+	u, err := validateCustomPageURL(rawURI, app, platformHost)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +299,7 @@ func fetchCustomPage(ctx context.Context, app *appv1alpha1.App, rawURI string) (
 	hc := &http.Client{
 		Transport:     transport,
 		Timeout:       customPageTimeout,
-		CheckRedirect: customPageRedirectPolicy(app),
+		CheckRedirect: customPageRedirectPolicy(app, platformHost),
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
@@ -306,17 +309,17 @@ func fetchCustomPage(ctx context.Context, app *appv1alpha1.App, rawURI string) (
 	return hc.Do(req)
 }
 
-func customPageRedirectPolicy(app *appv1alpha1.App) func(*http.Request, []*http.Request) error {
+func customPageRedirectPolicy(app *appv1alpha1.App, platformHost func(string) bool) func(*http.Request, []*http.Request) error {
 	return func(req *http.Request, via []*http.Request) error {
 		if len(via) > maxRedirects {
 			return errors.New("too many redirects")
 		}
-		_, err := validateCustomPageURL(req.URL.String(), app)
+		_, err := validateCustomPageURL(req.URL.String(), app, platformHost)
 		return err
 	}
 }
 
-func validateCustomPageURL(rawURI string, app *appv1alpha1.App) (*url.URL, error) {
+func validateCustomPageURL(rawURI string, app *appv1alpha1.App, platformHost func(string) bool) (*url.URL, error) {
 	u, err := url.Parse(rawURI)
 	if err != nil || u.Hostname() == "" || (u.Scheme != "http" && u.Scheme != "https") {
 		return nil, errors.New("maintenance uri must be an absolute HTTP(S) URL")
@@ -329,6 +332,14 @@ func validateCustomPageURL(rawURI string, app *appv1alpha1.App) (*url.URL, error
 		if host == owned {
 			return nil, errors.New("maintenance uri must not point to this service")
 		}
+	}
+	// Cross-service recursion guard (defense in depth — the activator does not
+	// trust backend validation): every custom-page fetch is a synchronous
+	// public request answered by this shared activator, so a URI whose host is
+	// routed to ANY App on the platform — not just this one — can close an
+	// amplifying fetch cycle between two services pointing at each other.
+	if platformHost != nil && platformHost(host) {
+		return nil, errors.New("maintenance uri must not point to a platform-routed host")
 	}
 	return u, nil
 }
@@ -412,6 +423,19 @@ func (h *hostCache) run(ctx context.Context) {
 			h.refreshOnce(ctx)
 		}
 	}
+}
+
+// claims reports whether host (canonicalized) is routed to ANY App in the
+// current host map — the platform-wide denylist the maintenance-page fetch
+// path validates against, so two services cannot point their custom
+// maintenance pages at each other through this shared activator. Unlike
+// lookup it returns no App (the fetch path only needs membership), so no
+// DeepCopy is taken.
+func (h *hostCache) claims(host string) bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	_, ok := h.byHost[requestHost(host)]
+	return ok
 }
 
 // lookup returns the App that owns host (canonicalized), or ok=false. It never

@@ -48,12 +48,16 @@ function htmlEscape(s: string): string {
  * public verifier so Hydra can set its CSRF cookie and mint a device_challenge.
  * Hydra redirects back here with that challenge.
  *
- * codex-security #9: when the caller is already signed in, the server does NOT
- * pair the grant (and let the trusted client's consent auto-accept) silently —
- * it renders an explicit "authorize this device?" confirmation first. Only a
- * same-origin, session-bound POST (handleDeviceConfirm) calls accept. An
- * unauthenticated visitor still pairs and is bounced through login, so the grant
- * is never completed silently on a signed-in victim's session.
+ * codex-security #9 + the device-code phish fix: the grant is NEVER paired on a
+ * GET, signed in or not. A signed-in caller gets an explicit "authorize this
+ * device?" confirmation first; a signed-out visitor is bounced through login
+ * with the user code + challenge preserved in the login page's same-origin
+ * `next` param (loginFirst below — the consent route's pattern), and lands on
+ * the SAME confirmation page after authenticating. Only a same-origin,
+ * session-bound POST (handleDeviceConfirm) calls accept — so the trusted CLI
+ * client's skip_consent consent auto-accept is unreachable until a human has
+ * explicitly confirmed, and an attacker who tricks a signed-out victim into
+ * opening the verification link and logging in still polls nothing.
  */
 export async function handleDeviceVerification(
   request: Request,
@@ -73,11 +77,41 @@ export async function handleDeviceVerification(
     return Response.redirect(verify.toString(), 302);
   }
 
-  const { session } = await fetchSession(request.headers.get("cookie") ?? "");
+  const { session, aal2Required } = await fetchSession(
+    request.headers.get("cookie") ?? "",
+  );
   if (session) {
     return deviceConfirmationPage(requestURL.origin, userCode, challenge);
   }
-  return acceptDevicePairing(hydra, userCode, challenge);
+  return loginFirst(requestURL, userCode, challenge, aal2Required);
+}
+
+/**
+ * Where a device verification with no usable session goes: log in, then come
+ * back. The user code + device challenge ride the login page's `next` param —
+ * the same mechanism the consent route uses for its own challenge
+ * (hydra-consent.ts `loginFirst`). No extra signed state is needed: the
+ * device_challenge is Hydra-minted, single-use, short-TTL opaque state, and the
+ * login page normalizes `next` to a same-origin relative path (safe-next.ts)
+ * before it becomes Kratos's return_to. After authenticating, the browser
+ * re-enters handleDeviceVerification above — now with a session — and gets the
+ * confirmation page; pairing still happens only via handleDeviceConfirm.
+ *
+ * A session owing a second factor is a step-up, not a sign-in, so the login
+ * page is told so outright (`aal=aal2`), exactly as the consent route does —
+ * otherwise the login page would bounce straight back here and loop.
+ */
+function loginFirst(
+  url: URL,
+  userCode: string,
+  challenge: string,
+  aal2Required: boolean,
+): Response {
+  const back = `/auth/device?user_code=${encodeURIComponent(userCode)}&device_challenge=${encodeURIComponent(challenge)}`;
+  const login = new URL("/auth/login", url.origin);
+  login.searchParams.set("next", back);
+  if (aal2Required) login.searchParams.set("aal", "aal2");
+  return Response.redirect(login.toString(), 302);
 }
 
 /**
@@ -112,7 +146,8 @@ export async function handleDeviceConfirm(request: Request): Promise<Response> {
 
 /** acceptDevicePairing PUTs the user_code/challenge to Hydra's admin API and
  * follows its redirect into the login + consent flow, refusing an unexpected
- * client. Shared by the unauthenticated GET path and the confirmed POST. */
+ * client. Reached only from the confirmed, session-bound POST
+ * (handleDeviceConfirm) — never from a GET. */
 async function acceptDevicePairing(
   hydra: { admin: string; public: string },
   userCode: string,

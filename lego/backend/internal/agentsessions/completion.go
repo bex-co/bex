@@ -83,6 +83,20 @@ type Completer struct {
 	APIPublicURL string
 	Interval     time.Duration
 	Now          func() time.Time
+
+	// MaxTranscriptBytes overrides the per-session cumulative transcript quota
+	// (store.MaxAgentSessionTranscriptBytes); zero => the platform default.
+	// Tests set it small to exercise the quota without 64 MiB payloads.
+	MaxTranscriptBytes int64
+}
+
+// transcriptQuota is the per-session cumulative transcript byte cap the
+// harvest shares with the gateway's live tee (w1/m65 F10).
+func (c *Completer) transcriptQuota() int64 {
+	if c.MaxTranscriptBytes > 0 {
+		return c.MaxTranscriptBytes
+	}
+	return store.MaxAgentSessionTranscriptBytes
 }
 
 func (c *Completer) enabled() bool {
@@ -283,14 +297,36 @@ func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSes
 		log.Printf("agent-session completer: transcript max-seq failed (session=%s): %v", record.ID, err)
 		return
 	}
-	for i := range parts {
-		parts[i].Seq = base + 1 + int64(i)
-	}
-	if err := c.Store.AppendAgentSessionTranscript(ctx, record.ID, parts); err != nil {
-		log.Printf("agent-session completer: transcript append failed (session=%s parts=%d): %v", record.ID, len(parts), err)
+	// Cumulative quota (w1/m65 F10): the harvest shares the session transcript
+	// cap with the gateway's live tee — seed from the already-stored bytes and
+	// keep only the parts that fit, so steered/reharvested turns can never grow
+	// the stored transcript past it.
+	storedBytes, err := c.Store.AgentSessionTranscriptBytes(ctx, record.ID)
+	if err != nil {
+		log.Printf("agent-session completer: transcript bytes failed (session=%s): %v", record.ID, err)
 		return
 	}
-	log.Printf("agent-session completer: captured transcript (session=%s turn=%d parts=%d)", record.ID, record.Turns, len(parts))
+	total := storedBytes
+	kept := parts[:0]
+	for _, p := range parts {
+		if total+int64(len(p.Part)) > c.transcriptQuota() {
+			log.Printf("agent-session completer: transcript quota reached, truncating harvest (session=%s)", record.ID)
+			break
+		}
+		total += int64(len(p.Part))
+		kept = append(kept, p)
+	}
+	if len(kept) == 0 {
+		return
+	}
+	for i := range kept {
+		kept[i].Seq = base + 1 + int64(i)
+	}
+	if err := c.Store.AppendAgentSessionTranscript(ctx, record.ID, kept); err != nil {
+		log.Printf("agent-session completer: transcript append failed (session=%s parts=%d): %v", record.ID, len(kept), err)
+		return
+	}
+	log.Printf("agent-session completer: captured transcript (session=%s turn=%d parts=%d)", record.ID, record.Turns, len(kept))
 }
 
 // parseTranscriptLog extracts the UI-message parts from the driver's redacted

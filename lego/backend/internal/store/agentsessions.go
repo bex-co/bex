@@ -239,6 +239,15 @@ func nullableJSON(v json.RawMessage) any {
 	return []byte(v)
 }
 
+// MaxAgentSessionTranscriptBytes caps the total payload bytes one session's
+// transcript may hold (w1/m65 F10), bounding Postgres growth from
+// tenant-controlled agent output and replay memory. Every write path (gateway
+// live splice, gateway prompt turn, Completer harvest) seeds its byte counter
+// from the already-stored total (AgentSessionTranscriptBytes) and stops
+// appending at this cap; the replay read (AgentSessionTranscript) is budgeted
+// by the same bound, so it never materializes more than the cap.
+const MaxAgentSessionTranscriptBytes = 64 << 20
+
 // AppendAgentSessionTranscript idempotently persists teed transcript parts
 // (ADR047 D9). The append is keyed by the driver's emission ordinal
 // (session_id, seq), so re-teeing the same part — from another gateway replica
@@ -273,10 +282,14 @@ func (s *PGStore) AppendAgentSessionTranscript(ctx context.Context, sessionID st
 }
 
 // AgentSessionTranscript returns a session's stored parts in emission order,
-// strictly after afterSeq (pass -1 for the whole transcript). It is the replay
-// source for reattach and for terminal-session history (ADR047 D9): it reads
-// the durable store, never the sandbox, so it works after the sandbox is gone.
-func (s *PGStore) AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64) ([]AgentSessionTranscriptPart, error) {
+// strictly after afterSeq (pass -1 for the whole transcript), capped at
+// maxBytes of cumulative payload: rows are scanned in seq order and the read
+// stops before the part that would exceed the budget, so a replay never
+// materializes more than maxBytes even if the stored transcript ever outgrew
+// it. It is the replay source for reattach and for terminal-session history
+// (ADR047 D9): it reads the durable store, never the sandbox, so it works
+// after the sandbox is gone.
+func (s *PGStore) AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64) ([]AgentSessionTranscriptPart, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT seq, turn, part, created_at
 		FROM agent_session_transcripts
@@ -287,14 +300,33 @@ func (s *PGStore) AgentSessionTranscript(ctx context.Context, sessionID string, 
 	}
 	defer rows.Close()
 	out := make([]AgentSessionTranscriptPart, 0)
+	var total int64
 	for rows.Next() {
 		var p AgentSessionTranscriptPart
 		if err := rows.Scan(&p.Seq, &p.Turn, &p.Part, &p.CreatedAt); err != nil {
 			return nil, err
 		}
+		if total+int64(len(p.Part)) > maxBytes {
+			break
+		}
+		total += int64(len(p.Part))
 		out = append(out, p)
 	}
 	return out, rows.Err()
+}
+
+// AgentSessionTranscriptBytes returns the total stored payload bytes of a
+// session's transcript. Write paths seed their cumulative quota counter from
+// it so the stored transcript can never exceed MaxAgentSessionTranscriptBytes
+// regardless of how many turns or attaches append.
+func (s *PGStore) AgentSessionTranscriptBytes(ctx context.Context, sessionID string) (int64, error) {
+	var total int64
+	if err := s.Pool.QueryRow(ctx,
+		`SELECT COALESCE(sum(octet_length(part)), 0) FROM agent_session_transcripts WHERE session_id=$1`,
+		sessionID).Scan(&total); err != nil {
+		return 0, err
+	}
+	return total, nil
 }
 
 // AgentSessionTranscriptMaxSeq returns the highest stored seq for a session and

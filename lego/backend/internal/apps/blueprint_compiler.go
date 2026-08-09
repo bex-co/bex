@@ -656,9 +656,46 @@ func parseBlueprintSource(manifest string) (*BlueprintSource, []BlueprintSourceP
 	if len(document.Content) != 1 {
 		return source, []BlueprintSourceProblem{{Code: "BLUEPRINT_YAML_EMPTY", Path: "#", Message: "Blueprint must contain one YAML document"}}
 	}
-	value, problems := yamlNodeToBlueprintValue(document.Content[0], nil, source.Locations)
+	value, problems := yamlNodeToBlueprintValue(document.Content[0], nil, source.Locations, 0, &blueprintWalkBudget{})
 	source.Value = value
 	return source, problems
+}
+
+// Structural budgets for Blueprint YAML materialization. The upload bound
+// (maxBlueprintValidationFileBytes, 10 MiB) caps input bytes, but bytes do not
+// bound the amplified in-memory shape: aliases are already rejected, yet a
+// small document can still spread into millions of tiny nodes — each
+// materializing a Go value plus one locations-map entry — or nest
+// pathologically deep. Every budget is checked during the walk, before the
+// allocation it guards, and the first breach refuses the whole document. The
+// limits are far above any real Blueprint (hundreds of nodes) and far below
+// yaml.v3's own 10k nesting ceiling.
+const (
+	blueprintMaxDepth             = 100
+	blueprintMaxNodes             = 100_000
+	blueprintMaxCollectionEntries = 10_000
+	blueprintMaxScalarBytes       = 1 << 20 // 1 MiB
+	// The locations map holds one pointer-string entry per value node — the
+	// most expensive per-node allocation — so it is capped tighter than raw
+	// nodes (whose count also includes mapping keys): a keyless document
+	// trips this budget first, a key-heavy one trips blueprintMaxNodes first.
+	blueprintMaxLocations = 75_000
+)
+
+// blueprintWalkBudget enforces the structural budgets above while a Blueprint
+// YAML document is materialized: it counts nodes as the walk visits them and,
+// on the first breach, bails the whole walk out fail-fast so an over-budget
+// document stops allocating immediately instead of after full amplification.
+type blueprintWalkBudget struct {
+	nodes  int
+	bailed bool
+}
+
+// fail marks the walk bailed — every later yamlNodeToBlueprintValue call
+// returns at once without allocating — and returns the breach diagnostic.
+func (b *blueprintWalkBudget) fail(code, pointer, message string, node *yaml.Node) []BlueprintSourceProblem {
+	b.bailed = true
+	return []BlueprintSourceProblem{{Code: code, Path: pointer, Message: message, Line: node.Line, Column: node.Column}}
 }
 
 var yamlSyntaxLine = regexp.MustCompile(`(?i)line\s+(\d+)`)
@@ -672,35 +709,69 @@ func yamlSyntaxLocation(err error) (line, column int) {
 	return line, 1
 }
 
-func yamlNodeToBlueprintValue(node *yaml.Node, path []string, locations map[string]BlueprintSourceLocation) (any, []BlueprintSourceProblem) {
+func yamlNodeToBlueprintValue(node *yaml.Node, path []string, locations map[string]BlueprintSourceLocation, depth int, budget *blueprintWalkBudget) (any, []BlueprintSourceProblem) {
 	pointer := renderSchemaPointer(path)
+	if budget.bailed {
+		return nil, nil
+	}
+	if depth > blueprintMaxDepth {
+		return nil, budget.fail("BLUEPRINT_YAML_DEPTH", pointer, fmt.Sprintf("Blueprint nests deeper than the supported %d levels", blueprintMaxDepth), node)
+	}
+	budget.nodes++
+	if budget.nodes > blueprintMaxNodes {
+		return nil, budget.fail("BLUEPRINT_YAML_NODES", pointer, fmt.Sprintf("Blueprint contains more than %d YAML nodes", blueprintMaxNodes), node)
+	}
+	if len(locations) >= blueprintMaxLocations {
+		return nil, budget.fail("BLUEPRINT_YAML_LOCATIONS", pointer, fmt.Sprintf("Blueprint maps more than %d source locations", blueprintMaxLocations), node)
+	}
 	locations[pointer] = BlueprintSourceLocation{Line: node.Line, Column: node.Column}
 	switch node.Kind {
 	case yaml.DocumentNode:
 		if len(node.Content) != 1 {
 			return nil, []BlueprintSourceProblem{{Code: "BLUEPRINT_YAML_EMPTY", Path: pointer, Message: "Blueprint must contain one YAML document", Line: node.Line, Column: node.Column}}
 		}
-		return yamlNodeToBlueprintValue(node.Content[0], path, locations)
+		return yamlNodeToBlueprintValue(node.Content[0], path, locations, depth, budget)
 	case yaml.AliasNode:
 		return nil, []BlueprintSourceProblem{{Code: "BLUEPRINT_YAML_ALIAS", Path: pointer, Message: "YAML aliases are not supported in Blueprints", Line: node.Line, Column: node.Column}}
 	case yaml.SequenceNode:
+		if len(node.Content) > blueprintMaxCollectionEntries {
+			return nil, budget.fail("BLUEPRINT_YAML_COLLECTION", pointer, fmt.Sprintf("Blueprint collections are limited to %d entries", blueprintMaxCollectionEntries), node)
+		}
 		values := make([]any, len(node.Content))
 		var problems []BlueprintSourceProblem
 		for i, child := range node.Content {
-			value, childProblems := yamlNodeToBlueprintValue(child, append(path, strconv.Itoa(i)), locations)
+			if budget.bailed {
+				break
+			}
+			value, childProblems := yamlNodeToBlueprintValue(child, append(path, strconv.Itoa(i)), locations, depth+1, budget)
 			values[i] = value
 			problems = append(problems, childProblems...)
 		}
 		return values, problems
 	case yaml.MappingNode:
+		if len(node.Content)/2 > blueprintMaxCollectionEntries {
+			return nil, budget.fail("BLUEPRINT_YAML_COLLECTION", pointer, fmt.Sprintf("Blueprint collections are limited to %d entries", blueprintMaxCollectionEntries), node)
+		}
 		values := map[string]any{}
 		seen := map[string]BlueprintSourceLocation{}
 		var problems []BlueprintSourceProblem
 		for i := 0; i < len(node.Content); i += 2 {
+			if budget.bailed {
+				break
+			}
 			key, value := node.Content[i], node.Content[i+1]
+			budget.nodes++
+			if budget.nodes > blueprintMaxNodes {
+				problems = append(problems, budget.fail("BLUEPRINT_YAML_NODES", pointer, fmt.Sprintf("Blueprint contains more than %d YAML nodes", blueprintMaxNodes), key)...)
+				break
+			}
 			if key.Kind != yaml.ScalarNode || key.Tag != "!!str" {
 				problems = append(problems, BlueprintSourceProblem{Code: "BLUEPRINT_YAML_MAPPING_KEY", Path: pointer, Message: "Blueprint mapping keys must be strings", Line: key.Line, Column: key.Column})
 				continue
+			}
+			if len(key.Value) > blueprintMaxScalarBytes {
+				problems = append(problems, budget.fail("BLUEPRINT_YAML_SCALAR_SIZE", pointer, fmt.Sprintf("Blueprint mapping keys are limited to %d bytes", blueprintMaxScalarBytes), key)...)
+				break
 			}
 			childPath := append(path, key.Value)
 			childPointer := renderSchemaPointer(childPath)
@@ -713,12 +784,15 @@ func yamlNodeToBlueprintValue(node *yaml.Node, path []string, locations map[stri
 				continue
 			}
 			seen[key.Value] = BlueprintSourceLocation{Line: key.Line, Column: key.Column}
-			child, childProblems := yamlNodeToBlueprintValue(value, childPath, locations)
+			child, childProblems := yamlNodeToBlueprintValue(value, childPath, locations, depth+1, budget)
 			values[key.Value] = child
 			problems = append(problems, childProblems...)
 		}
 		return values, problems
 	case yaml.ScalarNode:
+		if len(node.Value) > blueprintMaxScalarBytes {
+			return nil, budget.fail("BLUEPRINT_YAML_SCALAR_SIZE", pointer, fmt.Sprintf("Blueprint scalar values are limited to %d bytes", blueprintMaxScalarBytes), node)
+		}
 		return blueprintJSONScalar(node, pointer)
 	default:
 		return nil, []BlueprintSourceProblem{{Code: "BLUEPRINT_YAML_NODE", Path: pointer, Message: "Blueprint contains an unsupported YAML node", Line: node.Line, Column: node.Column}}

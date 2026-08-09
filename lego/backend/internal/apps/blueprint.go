@@ -242,7 +242,7 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 	}
 	st, err := parseCompiledStack(blueprintParseOverrides{repo: repo, branch: branch}, source, ir)
 	if err == nil {
-		err = s.validateBlueprintServices(st)
+		err = s.validateBlueprintServices(ctx, st)
 	}
 	if err == nil {
 		plan := blueprintValidationPlanFromIR(ir, st)

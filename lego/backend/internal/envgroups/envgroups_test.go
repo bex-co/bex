@@ -923,6 +923,74 @@ func TestEnvGroup_LinkRefusesForeignWorkspaceGroupEvenForDualMember(t *testing.T
 	}
 }
 
+func TestEnvGroup_MutationProjectsIntoOwningWorkspaceNotCallers(t *testing.T) {
+	// dana belongs to both tea-a (her default) and tea-b. Mutating a
+	// tea-b-owned group from her default-workspace context authorizes against
+	// the OWNING workspace — and the projection Secret must land there too,
+	// never in the caller's resolved (tea-a/default) namespace.
+	resolver := multiWorkspace{"dana": {"tea-a", "tea-b"}}
+	svc := &Service{
+		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: resolver},
+		Store: newFakeStore(),
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
+
+	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "bravo-secrets", OwnerID: "tea-b"})
+	if err != nil {
+		t.Fatalf("create tea-b group: %v", err)
+	}
+	if _, err := svc.SetEnvGroupVar(ctx, group.ID, "TOKEN", "s3cret"); err != nil {
+		t.Fatalf("SetEnvGroupVar: %v", err)
+	}
+	var sec corev1.Secret
+	if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: "tea-b", Name: envSecretName(group.ID)}, &sec); err != nil {
+		t.Fatalf("projection Secret must live in owning workspace tea-b: %v", err)
+	}
+	if string(sec.Data["TOKEN"]) != "s3cret" {
+		t.Fatalf("tea-b projection data = %v, want TOKEN=s3cret", sec.Data)
+	}
+	for _, ns := range []string{"tea-a", "default"} {
+		var stray corev1.Secret
+		if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: ns, Name: envSecretName(group.ID)}, &stray); !apierrors.IsNotFound(err) {
+			t.Errorf("caller-side namespace %s must hold no projection Secret, got err=%v", ns, err)
+		}
+	}
+}
+
+func TestEnvGroup_DeleteRemovesOwningWorkspaceProjectionOnly(t *testing.T) {
+	// Deleting a tea-b-owned group from dana's tea-a-defaulted context removes
+	// tea-b's projection Secrets; a same-named Secret in the caller's own
+	// workspace must survive untouched.
+	resolver := multiWorkspace{"dana": {"tea-a", "tea-b"}}
+	svc := &Service{
+		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: resolver},
+		Store: newFakeStore(),
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
+
+	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "bravo-secrets", OwnerID: "tea-b"})
+	if err != nil {
+		t.Fatalf("create tea-b group: %v", err)
+	}
+	decoy := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: envSecretName(group.ID), Namespace: "tea-a"}}
+	if err := svc.Client.Create(ctx, decoy); err != nil {
+		t.Fatalf("plant caller-side decoy: %v", err)
+	}
+	if err := svc.DeleteEnvGroup(ctx, group.ID); err != nil {
+		t.Fatalf("DeleteEnvGroup: %v", err)
+	}
+	for _, name := range []string{envSecretName(group.ID), filesSecretName(group.ID)} {
+		var gone corev1.Secret
+		if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: "tea-b", Name: name}, &gone); !apierrors.IsNotFound(err) {
+			t.Errorf("tea-b projection %s must be deleted, got err=%v", name, err)
+		}
+	}
+	var survived corev1.Secret
+	if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: "tea-a", Name: envSecretName(group.ID)}, &survived); err != nil {
+		t.Errorf("caller-side same-named Secret must be untouched: %v", err)
+	}
+}
+
 func TestEnvGroup_MigratesLegacyOwnerlessGroupOnceStoreIsLive(t *testing.T) {
 	store := newFakeStore()
 	audit := &recordingAuditSink{}

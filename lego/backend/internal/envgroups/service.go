@@ -461,7 +461,7 @@ func (s *Service) persistCreate(
 			}
 		}
 		for _, name := range []string{envSecretName(gid), filesSecretName(gid)} {
-			if err := s.deleteSecret(cleanupCtx, name); err != nil {
+			if err := s.deleteSecret(cleanupCtx, m.workspace, name); err != nil {
 				cleanup = append(cleanup, fmt.Errorf("delete projection Secret %q: %w", name, err))
 			}
 		}
@@ -482,10 +482,10 @@ func (s *Service) persistCreate(
 	if err := s.storeMap(ctx, filesPath(gid), files); err != nil {
 		return rollback(err)
 	}
-	if err := s.upsertSecret(ctx, envSecretName(gid), env); err != nil {
+	if err := s.upsertSecret(ctx, m.workspace, envSecretName(gid), env); err != nil {
 		return rollback(err)
 	}
-	if err := s.upsertSecret(ctx, filesSecretName(gid), files); err != nil {
+	if err := s.upsertSecret(ctx, m.workspace, filesSecretName(gid), files); err != nil {
 		return rollback(err)
 	}
 	for _, a := range services {
@@ -578,10 +578,10 @@ func (s *Service) DeleteEnvGroup(ctx context.Context, gid string) error {
 			return err
 		}
 	}
-	if err := s.deleteSecret(ctx, envSecretName(gid)); err != nil {
+	if err := s.deleteSecret(ctx, m.workspace, envSecretName(gid)); err != nil {
 		return err
 	}
-	if err := s.deleteSecret(ctx, filesSecretName(gid)); err != nil {
+	if err := s.deleteSecret(ctx, m.workspace, filesSecretName(gid)); err != nil {
 		return err
 	}
 	for _, p := range []string{envPath(gid), filesPath(gid), metaPath(gid)} {
@@ -612,7 +612,7 @@ func (s *Service) SetEnvGroupVars(ctx context.Context, gid string, vars []EnvVar
 	if err := s.storeMap(ctx, envPath(gid), env); err != nil {
 		return nil, err
 	}
-	if err := s.upsertSecret(ctx, envSecretName(gid), env); err != nil {
+	if err := s.upsertSecret(ctx, m.workspace, envSecretName(gid), env); err != nil {
 		return nil, err
 	}
 	if m, err = s.touch(ctx, gid, m); err != nil {
@@ -661,7 +661,7 @@ func (s *Service) SetEnvGroupVar(ctx context.Context, gid, key, value string) (E
 	if err := s.storeMap(ctx, envPath(gid), env); err != nil {
 		return EnvVarView{}, err
 	}
-	if err := s.upsertSecret(ctx, envSecretName(gid), env); err != nil {
+	if err := s.upsertSecret(ctx, m.workspace, envSecretName(gid), env); err != nil {
 		return EnvVarView{}, err
 	}
 	if m, err = s.touch(ctx, gid, m); err != nil {
@@ -691,7 +691,7 @@ func (s *Service) DeleteEnvGroupVar(ctx context.Context, gid, key string) error 
 	if err := s.storeMap(ctx, envPath(gid), env); err != nil {
 		return err
 	}
-	if err := s.upsertSecret(ctx, envSecretName(gid), env); err != nil {
+	if err := s.upsertSecret(ctx, m.workspace, envSecretName(gid), env); err != nil {
 		return err
 	}
 	if m, err = s.touch(ctx, gid, m); err != nil {
@@ -721,7 +721,7 @@ func (s *Service) SetEnvGroupFile(ctx context.Context, gid, name, content string
 	if err := s.storeMap(ctx, filesPath(gid), files); err != nil {
 		return SecretFileView{}, err
 	}
-	if err := s.upsertSecret(ctx, filesSecretName(gid), files); err != nil {
+	if err := s.upsertSecret(ctx, m.workspace, filesSecretName(gid), files); err != nil {
 		return SecretFileView{}, err
 	}
 	if m, err = s.touch(ctx, gid, m); err != nil {
@@ -751,7 +751,7 @@ func (s *Service) DeleteEnvGroupFile(ctx context.Context, gid, name string) erro
 	if err := s.storeMap(ctx, filesPath(gid), files); err != nil {
 		return err
 	}
-	if err := s.upsertSecret(ctx, filesSecretName(gid), files); err != nil {
+	if err := s.upsertSecret(ctx, m.workspace, filesSecretName(gid), files); err != nil {
 		return err
 	}
 	if m, err = s.touch(ctx, gid, m); err != nil {
@@ -991,13 +991,13 @@ func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[s
 	if err := s.storeMap(ctx, envPath(gid), next); err != nil {
 		return err
 	}
-	if err := s.upsertSecret(ctx, envSecretName(gid), next); err != nil {
+	if err := s.upsertSecret(ctx, m.workspace, envSecretName(gid), next); err != nil {
 		return err
 	}
 	if !found {
 		// A brand-new group also needs its files projection Secret to exist (parity
 		// with CreateEnvGroup), so a later files write / delete finds it.
-		if err := s.upsertSecret(ctx, filesSecretName(gid), nil); err != nil {
+		if err := s.upsertSecret(ctx, m.workspace, filesSecretName(gid), nil); err != nil {
 			return err
 		}
 	} else if _, err := s.touch(ctx, gid, m); err != nil {
@@ -1248,13 +1248,17 @@ func (s *Service) storeMap(ctx context.Context, path string, data map[string]str
 
 // upsertSecret creates or replaces a group projection Secret with exactly the
 // given data. Group Secrets have no App owner (a group outlives any one service),
-// so DeleteEnvGroup removes them explicitly.
-func (s *Service) upsertSecret(ctx context.Context, name string, data map[string]string) error {
+// so DeleteEnvGroup removes them explicitly. The workspace is the group's OWNER
+// (m.workspace from fetchGroup/authorizeGroup), never the caller's resolved
+// tenant: an ID-scoped verb authorizes against the owning workspace but leaves
+// the caller's named-or-default workspace in ctx, so deriving the namespace from
+// ctx would write the owner's secret material into the caller's namespace.
+func (s *Service) upsertSecret(ctx context.Context, workspace, name string, data map[string]string) error {
 	bytesData := make(map[string][]byte, len(data))
 	for k, v := range data {
 		bytesData[k] = []byte(v)
 	}
-	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.envGroupNamespace(ctx)}}
+	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.envGroupNamespace(workspace)}}
 	_, err := controllerutil.CreateOrUpdate(ctx, s.Client, sec, func() error {
 		sec.Type = corev1.SecretTypeOpaque
 		sec.Data = bytesData
@@ -1263,20 +1267,20 @@ func (s *Service) upsertSecret(ctx context.Context, name string, data map[string
 	return err
 }
 
-func (s *Service) deleteSecret(ctx context.Context, name string) error {
-	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.envGroupNamespace(ctx)}}
+// deleteSecret removes one projection Secret from the group's OWNING workspace
+// (same owner-workspace rule as upsertSecret).
+func (s *Service) deleteSecret(ctx context.Context, workspace, name string) error {
+	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.envGroupNamespace(workspace)}}
 	return client.IgnoreNotFound(s.Client.Delete(ctx, sec))
 }
 
-// envGroupNamespace is where a group's projection Secrets live: the workspace's
-// own namespace under per-tenant isolation (ADR043), so the linked services'
-// pods (all in that one namespace) resolve them via envFrom / projected volumes.
-// The group's workspace is the one the verb resolved into ctx (core.WithWorkspace
-// + s.Tenant), the same resolution every env-group verb authorizes against.
-// Empty tenant (store off / unbound caller) => the shared s.Namespace.
-func (s *Service) envGroupNamespace(ctx context.Context) string {
-	tenantID, _ := s.Tenant(ctx)
-	return s.AppNamespace(tenantID)
+// envGroupNamespace is where a group's projection Secrets live: the OWNING
+// workspace's own namespace under per-tenant isolation (ADR043), so the linked
+// services' pods (all in that one namespace) resolve them via envFrom /
+// projected volumes. Empty workspace (store off / unattributed) => the shared
+// s.Namespace.
+func (s *Service) envGroupNamespace(workspace string) string {
+	return s.AppNamespace(workspace)
 }
 
 // now is the rolling-restart stamp (RFC3339Nano so back-to-back edits differ).

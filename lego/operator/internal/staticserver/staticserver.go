@@ -39,6 +39,7 @@ import (
 	"path"
 	"strings"
 
+	"golang.org/x/sync/semaphore"
 	"golang.org/x/sync/singleflight"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -59,6 +60,15 @@ var ErrOverloaded = errors.New("staticserver: origin fetch capacity reached")
 // maxOriginObjectBytes bounds a single origin object read into memory. Generous
 // for real static assets, far below the pod memory budget.
 const maxOriginObjectBytes = 32 << 20 // 32 MiB
+
+// defaultMaxLiveBodyBytes bounds the summed size of response bodies held live
+// while being written to clients. The fetch gate releases its reservation when
+// the origin read completes, but the fetched body stays allocated until the
+// response write finishes — and a cache entry can be evicted mid-write, taking
+// the body out of cache accounting — so distinct large objects served to slow
+// clients need their own budget. Weighted by actual body size; on exhaustion
+// the handler sheds with 503 rather than writing past the budget.
+const defaultMaxLiveBodyBytes = 512 << 20 // 512 MiB
 
 // Object is a fetched origin object.
 type Object struct {
@@ -104,16 +114,21 @@ type Handler struct {
 	// gate bounds concurrent origin fetches (count + in-flight bytes) so a burst
 	// of distinct misses can't buffer an unbounded amount of memory (finding 12).
 	gate *fetchGate
+	// liveBodies bounds the total bytes of response bodies held live while being
+	// written to clients, extending memory accounting from fetch until the
+	// response write completes (the fetch gate alone releases at read time).
+	liveBodies *semaphore.Weighted
 }
 
 // New builds a Handler over a Resolver and Origin. cacheBytes caps the in-memory
 // object cache (0 disables caching).
 func New(resolver Resolver, origin Origin, cacheBytes int64) *Handler {
 	return &Handler{
-		resolver: resolver,
-		origin:   origin,
-		cache:    newCache(cacheBytes),
-		gate:     newFetchGate(defaultMaxConcurrentFetches, defaultMaxInflightBytes),
+		resolver:   resolver,
+		origin:     origin,
+		cache:      newCache(cacheBytes),
+		gate:       newFetchGate(defaultMaxConcurrentFetches, defaultMaxInflightBytes),
+		liveBodies: semaphore.NewWeighted(defaultMaxLiveBodyBytes),
 	}
 }
 
@@ -164,6 +179,23 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else if err != nil {
 		http.Error(w, "origin error", http.StatusBadGateway)
 		return
+	}
+
+	// Hold a live-body lease for the whole write: the body stays allocated
+	// until the response reaches the client, so slow clients must count
+	// against the in-flight memory budget even after the fetch gate released
+	// its reservation. HEAD responses carry no body and need no lease. On
+	// exhaustion shed with 503 (before any success header is written) rather
+	// than buffering past the budget.
+	var lease int64
+	if r.Method != http.MethodHead {
+		lease = int64(len(obj.Body))
+		if !h.liveBodies.TryAcquire(lease) {
+			w.Header().Set("Retry-After", "1")
+			http.Error(w, "server busy", http.StatusServiceUnavailable)
+			return
+		}
+		defer h.liveBodies.Release(lease)
 	}
 
 	hdr := w.Header()

@@ -18,7 +18,6 @@ package cliauth
 
 import (
 	"math"
-	"net"
 	"net/http"
 	"time"
 
@@ -40,6 +39,13 @@ import (
 // scales out).
 type DeviceRateLimiter struct {
 	*core.KeyedRateLimiter[string]
+	// TrustedProxies, when set (BEX_TRUSTED_PROXY_CIDRS), derives the real
+	// client IP from X-Forwarded-For/X-Real-IP when the immediate peer is a
+	// trusted proxy — without it every `render login` arrives from a Traefik
+	// pod IP and the whole platform shares one 30/min bucket (.pm/w4/029.md
+	// report #10). nil ⇒ headers ignored, peer IP used — byte-identical to
+	// before.
+	TrustedProxies core.TrustedProxies
 }
 
 const (
@@ -60,9 +66,11 @@ func NewDeviceRateLimiter(rpm float64, burst int) *DeviceRateLimiter {
 }
 
 // allow reports whether the request's source IP may proceed now; if not, the
-// seconds the caller should wait before retrying.
+// seconds the caller should wait before retrying. The source IP is derived
+// through the configured trusted proxies, so behind Traefik each real client
+// gets its own bucket instead of sharing the edge proxy's.
 func (rl *DeviceRateLimiter) allow(r *http.Request) (bool, int) {
-	lim := rl.Bucket(clientIP(r))
+	lim := rl.Bucket(rl.TrustedProxies.ClientIP(r))
 	res := lim.Reserve()
 	if d := res.Delay(); d > 0 {
 		res.Cancel()
@@ -73,14 +81,4 @@ func (rl *DeviceRateLimiter) allow(r *http.Request) (bool, int) {
 		return false, wait
 	}
 	return true, 0
-}
-
-// clientIP extracts the request's source IP, falling back to the raw
-// RemoteAddr if it isn't a host:port pair.
-func clientIP(r *http.Request) string {
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return ip
 }

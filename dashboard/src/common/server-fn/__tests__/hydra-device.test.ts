@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // fetchSession is mocked so the device handler's session check is deterministic:
-// by default no session (the unauthenticated pairing path the existing cases
-// exercise), overridden per-test for the confirmation gate (codex-security #9).
+// by default no session (the signed-out login-bounce path the phish-regression
+// cases exercise), overridden per-test for the confirmation gate
+// (codex-security #9).
 const fetchSessionMock = vi.fn();
 vi.mock("@/common/server-fn/session", () => ({
   fetchSession: (...args: unknown[]) => fetchSessionMock(...args),
@@ -45,83 +46,60 @@ describe("handleDeviceVerification", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("accepts Hydra's challenge server-side and follows only the fixed client", async () => {
-    const calls: { url: string; init?: RequestInit }[] = [];
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
-        calls.push({ url: String(input), init });
-        return new Response(
-          JSON.stringify({
-            redirect_to: `${PUBLIC}/oauth2/device/verify?device_verifier=v&client_id=${RENDER_CLI_CLIENT_ID}`,
-          }),
-          { status: 200 },
-        );
-      }),
+  it("answers honestly when device authorization is not configured", async () => {
+    delete process.env.HYDRA_PUBLIC_URL;
+    const unconfigured = await handleDeviceVerification(
+      new Request(`${DASHBOARD}/auth/device?user_code=ABCDEF`),
     );
+    expect(unconfigured.status).toBe(503);
+  });
+
+  it("bounces a signed-out visitor through login, preserving the code + challenge in `next`, without pairing (device-code phish)", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
     const response = await handleDeviceVerification(
       new Request(
         `${DASHBOARD}/auth/device?user_code=ABCDEF&device_challenge=challenge-1`,
       ),
     );
     expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toContain("device_verifier=v");
-    expect(calls).toHaveLength(1);
-    expect(calls[0].url).toContain(
-      "/admin/oauth2/auth/requests/device/accept?device_challenge=challenge-1",
+    const location = new URL(
+      String(response.headers.get("location")),
+      DASHBOARD,
     );
-    expect(calls[0].init?.method).toBe("PUT");
-    expect(JSON.parse(String(calls[0].init?.body))).toEqual({
-      user_code: "ABCDEF",
+    expect(location.origin).toBe(DASHBOARD);
+    expect(location.pathname).toBe("/auth/login");
+    // The login page returns the browser to this very verification URL after
+    // authenticating — where the now-signed-in visitor gets the confirmation
+    // page. The grant is NOT paired here: no admin accept call, so the trusted
+    // CLI client's skip_consent auto-accept can never be reached from a GET.
+    expect(location.searchParams.get("next")).toBe(
+      "/auth/device?user_code=ABCDEF&device_challenge=challenge-1",
+    );
+    expect(location.searchParams.get("aal")).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("asks for the second factor when the visitor owes one, instead of looping", async () => {
+    fetchSessionMock.mockResolvedValue({
+      session: null,
+      aal2Required: true,
     });
-  });
-
-  it("fails closed for expired/replayed codes and foreign clients", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response("expired", { status: 404 })),
-    );
-    const expired = await handleDeviceVerification(
+    const response = await handleDeviceVerification(
       new Request(
-        `${DASHBOARD}/auth/device?user_code=OLD&device_challenge=stale`,
+        `${DASHBOARD}/auth/device?user_code=ABCDEF&device_challenge=challenge-1`,
       ),
     );
-    expect(expired.status).toBe(400);
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        Response.json({
-          redirect_to: `${PUBLIC}/oauth2/device/verify?device_verifier=v&client_id=foreign`,
-        }),
-      ),
+    expect(response.status).toBe(302);
+    const location = new URL(
+      String(response.headers.get("location")),
+      DASHBOARD,
     );
-    const foreign = await handleDeviceVerification(
-      new Request(
-        `${DASHBOARD}/auth/device?user_code=ABCDEF&device_challenge=challenge-2`,
-      ),
+    expect(location.pathname).toBe("/auth/login");
+    expect(location.searchParams.get("aal")).toBe("aal2");
+    expect(location.searchParams.get("next")).toBe(
+      "/auth/device?user_code=ABCDEF&device_challenge=challenge-1",
     );
-    expect(foreign.status).toBe(403);
-  });
-
-  it("answers honestly when configuration or Hydra is unavailable", async () => {
-    delete process.env.HYDRA_PUBLIC_URL;
-    const unconfigured = await handleDeviceVerification(
-      new Request(`${DASHBOARD}/auth/device?user_code=ABCDEF`),
-    );
-    expect(unconfigured.status).toBe(503);
-
-    process.env.HYDRA_PUBLIC_URL = PUBLIC;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => Promise.reject(new Error("down"))),
-    );
-    const unavailable = await handleDeviceVerification(
-      new Request(
-        `${DASHBOARD}/auth/device?user_code=ABCDEF&device_challenge=challenge-3`,
-      ),
-    );
-    expect(unavailable.status).toBe(502);
   });
 
   it("renders a confirmation page for a signed-in caller instead of pairing silently (codex-security #9)", async () => {
@@ -174,8 +152,55 @@ describe("handleDeviceConfirm", () => {
       }),
     );
     expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toContain("device_verifier=v");
     expect(calls).toHaveLength(1);
+    expect(calls[0].url).toContain(
+      "/admin/oauth2/auth/requests/device/accept?device_challenge=challenge-1",
+    );
     expect(calls[0].init?.method).toBe("PUT");
+    expect(JSON.parse(String(calls[0].init?.body))).toEqual({
+      user_code: "ABCDEF",
+    });
+  });
+
+  it("fails closed for expired/replayed codes, foreign clients, and a down Hydra", async () => {
+    fetchSessionMock.mockResolvedValue({
+      session: { id: "session-abc", active: true, identity: { id: "id-1" } },
+    });
+    const confirm = () => {
+      const form = new FormData();
+      form.set("user_code", "ABCDEF");
+      form.set("device_challenge", "challenge-1");
+      return handleDeviceConfirm(
+        new Request(`${DASHBOARD}/auth/device`, {
+          method: "POST",
+          body: form,
+          headers: { origin: DASHBOARD },
+        }),
+      );
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("expired", { status: 404 })),
+    );
+    expect((await confirm()).status).toBe(400);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          redirect_to: `${PUBLIC}/oauth2/device/verify?device_verifier=v&client_id=foreign`,
+        }),
+      ),
+    );
+    expect((await confirm()).status).toBe(403);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Promise.reject(new Error("down"))),
+    );
+    expect((await confirm()).status).toBe(502);
   });
 
   it("refuses a cross-site or session-less confirmation", async () => {

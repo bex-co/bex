@@ -516,7 +516,7 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 // It is deliberately separate from deployStack for flows (Blueprint create and
 // sync) that must preflight before recording state, then apply that same result.
 func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st parsedStack) (StackResult, error) {
-	if err := s.validateBlueprintServices(st); err != nil {
+	if err := s.validateBlueprintServices(ctx, st); err != nil {
 		return StackResult{}, err
 	}
 	if err := s.requireStackPaymentMethod(ctx, st); err != nil {
@@ -810,7 +810,7 @@ func stackHasPaidPlan(st parsedStack) bool {
 // parsed service before deployStack writes groupings or resources. URL
 // ownership needs the configured base domain, so it lives here rather than in
 // the context-free YAML parser and is shared by ValidateBlueprint.
-func (s *Service) validateBlueprintServices(st parsedStack) error {
+func (s *Service) validateBlueprintServices(ctx context.Context, st parsedStack) error {
 	for _, svc := range st.services {
 		desired, err := specFromCreate(svc.req)
 		if err != nil {
@@ -820,7 +820,7 @@ func (s *Service) validateBlueprintServices(st parsedStack) error {
 			continue
 		}
 		probe := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: svc.req.Name}, Spec: desired}
-		if err := s.validateMaintenanceMode(probe, maintenanceModeView(desired.MaintenanceMode)); err != nil {
+		if err := s.validateMaintenanceMode(ctx, probe, maintenanceModeView(desired.MaintenanceMode)); err != nil {
 			return fmt.Errorf("service %q: %w", svc.req.Name, err)
 		}
 	}
@@ -1867,7 +1867,7 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 	if errors.Is(err, core.ErrNotFound) {
 		if desired.MaintenanceMode != nil {
 			probe := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: req.Name}, Spec: desired}
-			if err := s.validateMaintenanceMode(probe, maintenanceModeView(desired.MaintenanceMode)); err != nil {
+			if err := s.validateMaintenanceMode(ctx, probe, maintenanceModeView(desired.MaintenanceMode)); err != nil {
 				return AppView{}, err
 			}
 		}
@@ -1902,7 +1902,7 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 	final := existing.DeepCopy()
 	applyBlueprintServiceSpec(&final.Spec, desired, fields)
 	if final.Spec.MaintenanceMode != nil {
-		if err := s.validateMaintenanceMode(final, maintenanceModeView(final.Spec.MaintenanceMode)); err != nil {
+		if err := s.validateMaintenanceMode(ctx, final, maintenanceModeView(final.Spec.MaintenanceMode)); err != nil {
 			return AppView{}, err
 		}
 	}

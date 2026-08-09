@@ -17,6 +17,7 @@ limitations under the License.
 package apps
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -465,4 +466,112 @@ func findBlueprintProblem(problems []BlueprintSourceProblem, code string) *Bluep
 		}
 	}
 	return nil
+}
+
+func TestBlueprintCompilerEnforcesStructuralBudgets(t *testing.T) {
+	// Deeper than blueprintMaxDepth: 110 levels of single-key mappings.
+	var deep strings.Builder
+	for i := 0; i < 110; i++ {
+		deep.WriteString(strings.Repeat("  ", i))
+		deep.WriteString("k:\n")
+	}
+	deep.WriteString(strings.Repeat("  ", 110))
+	deep.WriteString(`"leaf"`)
+
+	// More than blueprintMaxNodes: key-heavy mappings (each entry costs a key
+	// node and a value node) while staying under the locations budget.
+	var nodes strings.Builder
+	nodes.WriteString("root:\n")
+	for i := 0; i < 10_000; i++ {
+		fmt.Fprintf(&nodes, "  k%d: {a: 1, b: 2, c: 3, d: 4, e: 5}\n", i)
+	}
+
+	// More than blueprintMaxLocations: keyless nested sequences, so value
+	// nodes (each with a locations entry) outnumber the locations budget
+	// while total nodes stay under blueprintMaxNodes.
+	var locations strings.Builder
+	for i := 0; i < 7_500; i++ {
+		locations.WriteString("- [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]\n")
+	}
+
+	// More than blueprintMaxCollectionEntries in one sequence.
+	var collection strings.Builder
+	for i := 0; i < blueprintMaxCollectionEntries+1; i++ {
+		collection.WriteString("- x\n")
+	}
+
+	// Longer than blueprintMaxScalarBytes.
+	scalar := "k: " + strings.Repeat("x", blueprintMaxScalarBytes+1)
+
+	for _, tc := range []struct {
+		name     string
+		manifest string
+		code     string
+	}{
+		{"depth", deep.String(), "BLUEPRINT_YAML_DEPTH"},
+		{"nodes", nodes.String(), "BLUEPRINT_YAML_NODES"},
+		{"locations", locations.String(), "BLUEPRINT_YAML_LOCATIONS"},
+		{"collection entries", collection.String(), "BLUEPRINT_YAML_COLLECTION"},
+		{"scalar length", scalar, "BLUEPRINT_YAML_SCALAR_SIZE"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, problems := CompileBlueprintSource(tc.manifest)
+			problem := findBlueprintProblem(problems, tc.code)
+			if problem == nil {
+				t.Fatalf("CompileBlueprintSource() problems = %+v, want %s", problems, tc.code)
+			}
+			if problem.Path == "" || problem.Line == 0 {
+				t.Errorf("budget problem = %+v, want source path and location", problem)
+			}
+		})
+	}
+}
+
+func TestBlueprintCompilerAcceptsDocumentNearStructuralBudgets(t *testing.T) {
+	// Deepest accepted nesting: exactly blueprintMaxDepth levels.
+	var deep strings.Builder
+	for i := 0; i < blueprintMaxDepth; i++ {
+		deep.WriteString(strings.Repeat("  ", i))
+		deep.WriteString("k:\n")
+	}
+	deep.WriteString(strings.Repeat("  ", blueprintMaxDepth))
+	deep.WriteString(`"leaf"`)
+	if _, problems := parseBlueprintSource(deep.String()); len(problems) != 0 {
+		t.Fatalf("nesting at the depth budget problems = %+v", problems)
+	}
+
+	// Largest accepted collection: exactly blueprintMaxCollectionEntries.
+	var collection strings.Builder
+	for i := 0; i < blueprintMaxCollectionEntries; i++ {
+		collection.WriteString("- x\n")
+	}
+	if _, problems := parseBlueprintSource(collection.String()); len(problems) != 0 {
+		t.Fatalf("collection at the entry budget problems = %+v", problems)
+	}
+
+	// Longest accepted scalar: exactly blueprintMaxScalarBytes.
+	scalar := "k: " + strings.Repeat("x", blueprintMaxScalarBytes)
+	if _, problems := parseBlueprintSource(scalar); len(problems) != 0 {
+		t.Fatalf("scalar at the length budget problems = %+v", problems)
+	}
+
+	// Breadth just under the node and locations budgets: 6800 sequences of 10
+	// items => 74,801 located value nodes (budget 75,000).
+	var wide strings.Builder
+	for i := 0; i < 6_800; i++ {
+		wide.WriteString("- [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]\n")
+	}
+	if _, problems := parseBlueprintSource(wide.String()); len(problems) != 0 {
+		t.Fatalf("breadth just under the node/location budgets problems = %+v", problems)
+	}
+
+	// A large realistic Blueprint well under every budget compiles clean.
+	var blueprint strings.Builder
+	blueprint.WriteString("services:\n")
+	for i := 0; i < 500; i++ {
+		fmt.Fprintf(&blueprint, "  - type: web\n    name: api-%d\n    runtime: image\n    image: {url: nginx:1.27}\n", i)
+	}
+	if _, problems := CompileBlueprintSource(blueprint.String()); len(problems) != 0 {
+		t.Fatalf("500-service Blueprint problems = %+v", problems)
+	}
 }

@@ -91,7 +91,7 @@ func (f *fakeAttachStore) AppendAgentSessionTranscript(_ context.Context, id str
 	return nil
 }
 
-func (f *fakeAttachStore) AgentSessionTranscript(_ context.Context, id string, afterSeq int64) ([]store.AgentSessionTranscriptPart, error) {
+func (f *fakeAttachStore) AgentSessionTranscript(_ context.Context, id string, afterSeq int64, maxBytes int64) ([]store.AgentSessionTranscriptPart, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	out := make([]store.AgentSessionTranscriptPart, 0)
@@ -101,7 +101,25 @@ func (f *fakeAttachStore) AgentSessionTranscript(_ context.Context, id string, a
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Seq < out[j].Seq })
+	// Honor the store's bounded-read contract: never return past the budget.
+	var total int64
+	for i, p := range out {
+		if total+int64(len(p.Part)) > maxBytes {
+			return out[:i], nil
+		}
+		total += int64(len(p.Part))
+	}
 	return out, nil
+}
+
+func (f *fakeAttachStore) AgentSessionTranscriptBytes(_ context.Context, id string) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var total int64
+	for _, p := range f.parts[id] {
+		total += int64(len(p.Part))
+	}
+	return total, nil
 }
 
 func (f *fakeAttachStore) AgentSessionTranscriptMaxSeq(_ context.Context, id string) (int64, bool, error) {
@@ -115,7 +133,6 @@ func (f *fakeAttachStore) AgentSessionTranscriptMaxSeq(_ context.Context, id str
 	}
 	return max, ok, nil
 }
-
 
 func (f *fakeAttachStore) ClaimShellNonce(_ context.Context, nonce string, _ time.Time) (bool, error) {
 	f.mu.Lock()
@@ -237,7 +254,7 @@ func TestAgentAttachReplaysThenSplicesLiveAndTees(t *testing.T) {
 		t.Fatalf("live part not forwarded verbatim:\n%q", got)
 	}
 	// The tee persisted the live part (seq 1) idempotently alongside the seed.
-	stored, _ := st.AgentSessionTranscript(context.Background(), session, -1)
+	stored, _ := st.AgentSessionTranscript(context.Background(), session, -1, 1<<30)
 	if len(stored) != 2 || stored[1].Seq != 1 || string(stored[1].Part) != `{"type":"text-delta","delta":"hi"}` {
 		t.Fatalf("tee = %+v, want seed + live seq 1", stored)
 	}
@@ -399,5 +416,117 @@ func TestAgentAttachDisabledWhenNoSecret(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusServiceUnavailable {
 		t.Fatalf("disabled attach = %d, want 503", resp.StatusCode)
+	}
+}
+
+// fakeTurnDriver serves the driver's POST /turn SSE: the turn's parts then the
+// `[DONE]` sentinel, exactly like the in-sandbox driver answering a live prompt.
+func fakeTurnDriver(parts []string) (*httptest.Server, string, int) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/turn", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("x-vercel-ai-ui-message-stream", "v1")
+		fl := w.(http.Flusher)
+		for _, part := range parts {
+			_, _ = io.WriteString(w, "data: "+part+"\n\n")
+			fl.Flush()
+		}
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
+		fl.Flush()
+	})
+	srv := httptest.NewServer(mux)
+	host, portStr, _ := net.SplitHostPort(strings.TrimPrefix(srv.URL, "http://"))
+	port, _ := strconv.Atoi(portStr)
+	return srv, host, port
+}
+
+// TestAgentTurnQuotaIsCumulative pins the F10 fix: the turn path's byte quota
+// is seeded from the session's ALREADY-STORED transcript bytes, not a fresh
+// per-POST counter — so N turns each under the cap can never grow the stored
+// transcript past it.
+func TestAgentTurnQuotaIsCumulative(t *testing.T) {
+	secret := []byte("shell-ticket-secret")
+	session := "ags-000000000000000000010"
+	st := newFakeAttachStore()
+	// A prior turn already stored 60 bytes (seq 0).
+	_ = st.AppendAgentSessionTranscript(context.Background(), session, []store.AgentSessionTranscriptPart{
+		{Seq: 0, Turn: 0, Part: []byte(strings.Repeat("s", 60))},
+	})
+	driver, host, port := fakeTurnDriver([]string{
+		strings.Repeat("a", 30), strings.Repeat("b", 30),
+	})
+	defer driver.Close()
+
+	gw := newAttachGateway(st, fixedPodIP{ip: host}, secret, port)
+	gw.MaxTranscriptBytes = 100 // small quota so the test needs no 64 MiB payloads
+	srv := httptest.NewServer(gw.Handler())
+	defer srv.Close()
+
+	postTurn := func() string {
+		req, _ := http.NewRequest(http.MethodPost, srv.URL, strings.NewReader(`{"prompt":"go"}`))
+		req.Header.Set(TicketHeader, attachTicket(t, secret, session))
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+		return string(body)
+	}
+
+	// Turn 1: 60 stored + 30 fits (90 ≤ 100); the next 30 would reach 120, so
+	// the turn stops there — the client still receives the fitting part.
+	body := postTurn()
+	if payloads := dataPayloads(body); len(payloads) != 1 || payloads[0] != strings.Repeat("a", 30) {
+		t.Fatalf("turn 1 client parts = %v, want the one part that fits", payloads)
+	}
+	// Turn 2: the stored 90 bytes leave only 10 under the cap, so NOTHING in
+	// this turn is appended — a fresh per-turn counter would have stored 60 more.
+	_ = postTurn()
+
+	stored, _ := st.AgentSessionTranscript(context.Background(), session, -1, 1<<30)
+	var total int64
+	for _, p := range stored {
+		total += int64(len(p.Part))
+	}
+	if total > gw.MaxTranscriptBytes {
+		t.Fatalf("stored transcript = %d bytes, exceeds the %d-byte session cap (quota not cumulative)", total, gw.MaxTranscriptBytes)
+	}
+	if total != 90 || len(stored) != 2 {
+		t.Fatalf("stored = %d bytes in %d parts, want 90 bytes in 2 parts (seed + the one fitting turn part)", total, len(stored))
+	}
+}
+
+// TestAgentAttachReplayReadIsBounded pins that the replay read itself is
+// budgeted at the store: even a store holding more than the quota (e.g. rows
+// written before the cumulative fix) replays only the capped prefix.
+func TestAgentAttachReplayReadIsBounded(t *testing.T) {
+	secret := []byte("shell-ticket-secret")
+	session := "ags-000000000000000000011"
+	st := newFakeAttachStore()
+	_ = st.AppendAgentSessionTranscript(context.Background(), session, []store.AgentSessionTranscriptPart{
+		{Seq: 0, Part: []byte(strings.Repeat("a", 40))},
+		{Seq: 1, Part: []byte(strings.Repeat("b", 40))},
+		{Seq: 2, Part: []byte(strings.Repeat("c", 40))},
+	})
+	gw := newAttachGateway(st, fixedPodIP{err: fmt.Errorf("terminal")}, secret, 8787)
+	gw.MaxTranscriptBytes = 100 // 40+40 fits; the third part would reach 120
+	srv := httptest.NewServer(gw.Handler())
+	defer srv.Close()
+
+	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	req.Header.Set(TicketHeader, attachTicket(t, secret, session))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	payloads := dataPayloads(string(body))
+	if len(payloads) != 2 || payloads[0] != strings.Repeat("a", 40) || payloads[1] != strings.Repeat("b", 40) {
+		t.Fatalf("bounded replay = %d parts, want the 2-part capped prefix", len(payloads))
+	}
+	if !strings.HasSuffix(strings.TrimSpace(string(body)), "data: [DONE]") {
+		t.Fatalf("bounded replay did not end with [DONE]:\n%s", body)
 	}
 }

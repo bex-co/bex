@@ -39,6 +39,7 @@ package agentattach
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -80,13 +81,16 @@ const maxAgentTurnRequest = 256 << 10
 // sandbox-exec per-line cap (1 MiB).
 const maxSSEPartBytes = 1 << 20
 
-// maxSessionTranscriptBytes caps the total transcript bytes one attach/turn
-// connection will tee into the durable store and materialize on replay (w1/m65
-// F10), bounding both gateway memory and unbounded Postgres growth from
-// tenant-controlled agent output. Because every write path enforces this cap,
-// the stored transcript can never exceed it, so replay is transitively bounded
-// too. A stream that hits the cap is stopped and settled with `[DONE]`.
-const maxSessionTranscriptBytes = 64 << 20
+// maxSessionTranscriptBytes caps the total transcript bytes stored for one
+// session and materialized on replay (w1/m65 F10), bounding both gateway
+// memory and unbounded Postgres growth from tenant-controlled agent output.
+// Every write path enforces the cap CUMULATIVELY: the live splice and the
+// prompt-turn forwarder seed their byte counter from the session's
+// already-stored transcript bytes, so the stored transcript can never exceed
+// the cap regardless of turn count — and the replay read is itself budgeted
+// to the same cap at the store. A stream that hits the cap is stopped and
+// settled with `[DONE]`.
+const maxSessionTranscriptBytes = store.MaxAgentSessionTranscriptBytes
 
 // errPartTooLarge is returned by the bounded SSE reader when one part exceeds
 // maxSSEPartBytes; the caller ends the stream rather than buffering it.
@@ -100,8 +104,9 @@ var errPartTooLarge = errors.New("agent attach: transcript part exceeds size lim
 // nonce claim reaches shell_ticket_nonces through the injected
 // sshgateway.NonceGuard.)
 type Store interface {
-	AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64) ([]store.AgentSessionTranscriptPart, error)
+	AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64) ([]store.AgentSessionTranscriptPart, error)
 	AgentSessionTranscriptMaxSeq(ctx context.Context, sessionID string) (int64, bool, error)
+	AgentSessionTranscriptBytes(ctx context.Context, sessionID string) (int64, error)
 	AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []store.AgentSessionTranscriptPart) error
 }
 
@@ -156,6 +161,11 @@ type Server struct {
 	Nonces  *sshgateway.NonceGuard
 
 	SessionTimeout time.Duration
+
+	// MaxTranscriptBytes overrides the per-session cumulative transcript quota
+	// (maxSessionTranscriptBytes); zero => the platform default. Tests set it
+	// small to exercise the quota without 64 MiB payloads.
+	MaxTranscriptBytes int64
 }
 
 func (s *Server) defaults() {
@@ -194,6 +204,15 @@ func (s *Server) driverPort() int {
 		return s.DriverPort
 	}
 	return defaultDriverPort
+}
+
+// transcriptQuota is the per-session cumulative transcript byte cap enforced
+// on every write path and on the replay read.
+func (s *Server) transcriptQuota() int64 {
+	if s.MaxTranscriptBytes > 0 {
+		return s.MaxTranscriptBytes
+	}
+	return maxSessionTranscriptBytes
 }
 
 func (s *Server) httpClient() *http.Client {
@@ -258,6 +277,21 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 
 	podIP, ipErr := s.Pods.PodIP(ctx, claims.Namespace, claims.Pod)
 
+	// A POST turn's body must be read BEFORE the SSE response starts: Go's http
+	// server closes the request body the moment the handler writes a response
+	// (ErrBodyReadAfterClose), so forwarding r.Body after startAgentSSE always
+	// fails. The read stays bounded by maxAgentTurnRequest (silent truncation,
+	// as before).
+	var turnBody []byte
+	if r.Method == http.MethodPost && ipErr == nil {
+		tb, err := io.ReadAll(io.LimitReader(r.Body, maxAgentTurnRequest))
+		if err != nil {
+			http.Error(w, "turn body read failed", http.StatusBadRequest)
+			return
+		}
+		turnBody = tb
+	}
+
 	sse := startAgentSSE(w, flusher)
 
 	if r.Method == http.MethodPost {
@@ -266,7 +300,7 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 			sse.errorAndDone("session is not live")
 			return
 		}
-		s.forwardAgentTurn(ctx, sse, podIP, claims.SessionID, claims.Turn, r.Body)
+		s.forwardAgentTurn(ctx, sse, podIP, claims.SessionID, claims.Turn, bytes.NewReader(turnBody))
 		return
 	}
 	s.streamAgentAttach(ctx, sse, podIP, ipErr, claims.SessionID, claims.Turn)
@@ -276,26 +310,26 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 // driver is reachable — splices the live driver stream and tees new parts into
 // the store. A terminal/gone session (ipErr) replays and closes with `[DONE]`.
 func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, podIP string, ipErr error, sessionID string, turn int) {
-	stored, err := s.Store.AgentSessionTranscript(ctx, sessionID, -1)
+	stored, err := s.Store.AgentSessionTranscript(ctx, sessionID, -1, s.transcriptQuota())
 	if err != nil {
 		log.Printf("agent attach: transcript replay failed (session=%s): %v", sessionID, err)
 		sse.errorAndDone("transcript unavailable")
 		return
 	}
 	var replayedMax int64 = -1
-	var replayedBytes int
+	var replayedBytes int64
 	for _, part := range stored {
-		// Defensive replay budget (F10): the write side caps a session's stored
-		// transcript at maxSessionTranscriptBytes, so this never trips in normal
-		// operation, but a bounded replay guarantees a large transcript can't be
-		// materialized+framed without limit even if the store ever exceeds it.
-		if replayedBytes+len(part.Part) > maxSessionTranscriptBytes {
+		// Defensive replay budget (F10): the store read is already capped at the
+		// session quota, so this never trips in normal operation, but a bounded
+		// replay loop guarantees a large transcript can't be materialized+framed
+		// without limit even if the budgeted read is ever bypassed.
+		if replayedBytes+int64(len(part.Part)) > s.transcriptQuota() {
 			log.Printf("agent attach: transcript replay truncated at cap (session=%s)", sessionID)
 			break
 		}
 		sse.frame(string(part.Part))
 		replayedMax = part.Seq
-		replayedBytes += len(part.Part)
+		replayedBytes += int64(len(part.Part))
 	}
 	if ipErr != nil {
 		// No live driver: this is the terminal-session history path.
@@ -314,7 +348,7 @@ func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, podIP str
 // already sent. The ordinal-keyed idempotent append means re-reading the
 // driver's replayed history (across reconnects/replicas) never duplicates a
 // stored part.
-func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, sessionID string, turn int, replayedMax int64, storedBytes int) error {
+func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, sessionID string, turn int, replayedMax int64, storedBytes int64) error {
 	resp, err := s.dialDriverStream(ctx, podIP)
 	if err != nil {
 		return err
@@ -339,14 +373,14 @@ func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, s
 			continue
 		}
 		// Per-session byte quota (F10): stop teeing+streaming once the session's
-		// stored transcript would exceed maxSessionTranscriptBytes, so tenant
-		// output can't grow Postgres or the gateway without bound. The client is
+		// stored transcript would exceed the cumulative cap, so tenant output
+		// can't grow Postgres or the gateway without bound. The client is
 		// settled with `[DONE]` by the caller.
-		if total+len(payload) > maxSessionTranscriptBytes {
+		if total+int64(len(payload)) > s.transcriptQuota() {
 			log.Printf("agent attach: session transcript byte quota reached, stopping splice (session=%s)", sessionID)
 			return nil
 		}
-		total += len(payload)
+		total += int64(len(payload))
 		ordinal++
 		// Tee every part (idempotent on the driver-ordinal key); forward to the
 		// client only the parts replay did not already deliver.
@@ -382,8 +416,17 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 		sse.errorAndDone("transcript unavailable")
 		return
 	}
+	// The quota is CUMULATIVE (F10): seed this turn's byte counter from the
+	// session's already-stored transcript bytes, exactly as the live splice
+	// seeds from replayedBytes, so N turns can never grow the stored transcript
+	// past the cap no matter how small each individual turn stays.
+	storedBytes, err := s.Store.AgentSessionTranscriptBytes(ctx, sessionID)
+	if err != nil {
+		sse.errorAndDone("transcript unavailable")
+		return
+	}
 	url := fmt.Sprintf("http://%s/turn", net.JoinHostPort(podIP, strconv.Itoa(s.driverPort())))
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, io.LimitReader(body, maxAgentTurnRequest))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
 	if err != nil {
 		sse.errorAndDone("turn dispatch failed")
 		return
@@ -400,7 +443,7 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 		return
 	}
 	ordinal := base
-	turnBytes := 0
+	total := storedBytes
 	reader := bufio.NewReader(resp.Body)
 	for {
 		payload, done, err := readSSEData(reader, maxSSEPartBytes)
@@ -410,13 +453,14 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 		if payload == "" {
 			continue
 		}
-		// Bound a single turn's teed output (F10): a runaway driver turn can't grow
-		// the transcript or gateway memory without limit.
-		if turnBytes+len(payload) > maxSessionTranscriptBytes {
-			log.Printf("agent turn: byte quota reached, stopping turn (session=%s)", sessionID)
+		// Cumulative per-session byte quota (F10): a runaway turn — or many
+		// individually small turns — can't grow the stored transcript or
+		// gateway memory past the cap.
+		if total+int64(len(payload)) > s.transcriptQuota() {
+			log.Printf("agent turn: session transcript byte quota reached, stopping turn (session=%s)", sessionID)
 			break
 		}
-		turnBytes += len(payload)
+		total += int64(len(payload))
 		ordinal++
 		if err := s.Store.AppendAgentSessionTranscript(ctx, sessionID, []store.AgentSessionTranscriptPart{
 			{Seq: ordinal, Turn: turn, Part: []byte(payload)},

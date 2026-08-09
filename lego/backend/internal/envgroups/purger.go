@@ -56,10 +56,10 @@ func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) e
 		if owner != tenantID {
 			continue
 		}
-		if err := p.deleteSecret(ctx, envSecretName(gid)); err != nil {
+		if err := p.deleteSecret(ctx, tenantID, envSecretName(gid)); err != nil {
 			return err
 		}
-		if err := p.deleteSecret(ctx, filesSecretName(gid)); err != nil {
+		if err := p.deleteSecret(ctx, tenantID, filesSecretName(gid)); err != nil {
 			return err
 		}
 		for _, path := range []string{envPath(gid), filesPath(gid), metaPath(gid)} {

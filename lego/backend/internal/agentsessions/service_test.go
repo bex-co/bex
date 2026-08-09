@@ -53,8 +53,9 @@ func (f *fakeStore) AppendAgentSessionTranscript(_ context.Context, id string, p
 }
 
 // AgentSessionTranscript is a test-only read-back (not on the Store interface):
-// returns the session's parts in seq order.
-func (f *fakeStore) AgentSessionTranscript(_ context.Context, id string, afterSeq int64) ([]store.AgentSessionTranscriptPart, error) {
+// returns the session's parts in seq order, capped at maxBytes of payload like
+// the real store's bounded read.
+func (f *fakeStore) AgentSessionTranscript(_ context.Context, id string, afterSeq int64, maxBytes int64) ([]store.AgentSessionTranscriptPart, error) {
 	out := make([]store.AgentSessionTranscriptPart, 0)
 	for seq, p := range f.transcript[id] {
 		if seq > afterSeq {
@@ -62,7 +63,22 @@ func (f *fakeStore) AgentSessionTranscript(_ context.Context, id string, afterSe
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Seq < out[j].Seq })
+	var total int64
+	for i, p := range out {
+		if total+int64(len(p.Part)) > maxBytes {
+			return out[:i], nil
+		}
+		total += int64(len(p.Part))
+	}
 	return out, nil
+}
+
+func (f *fakeStore) AgentSessionTranscriptBytes(_ context.Context, id string) (int64, error) {
+	var total int64
+	for _, p := range f.transcript[id] {
+		total += int64(len(p.Part))
+	}
+	return total, nil
 }
 
 func (f *fakeStore) AgentSessionTranscriptMaxSeq(_ context.Context, id string) (int64, bool, error) {
