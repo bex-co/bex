@@ -673,6 +673,7 @@ func (s *Service) NotifyDeploy(ctx context.Context, n store.DeployNotification) 
 		commitMessage: n.CommitMessage,
 		commitSHA:     n.CommitSHA,
 		repoURL:       n.RepoURL,
+		failureReason: n.FailureReason,
 	})
 }
 
@@ -685,6 +686,9 @@ type deployDetails struct {
 	commitMessage string
 	commitSHA     string
 	repoURL       string
+	// failureReason is the operator's diagnosis (w7/m79) — empty on the started
+	// and succeeded paths, and for a failure it could not explain.
+	failureReason string
 }
 
 // notifyDeploy performs the common preference lookup and bounded email fan-out
@@ -777,7 +781,8 @@ func (s *Service) deployLogsURL(appName, deployID string) string {
 }
 
 // deployEmail composes the deploy notification (w7/m44): impact framing that
-// matches Render's register, then the commit message, a "View logs" button, and
+// matches Render's register, then — for a failure — the operator's diagnosis of
+// what went wrong (w7/m79), then the commit message, a "View logs" button, and
 // a "View commit" link to the repo's web commit page — each rendered only when
 // its data is available (an image-backed deploy carries no commit; the logs link
 // needs the dashboard URL; the commit link needs the repo URL + resolved SHA).
@@ -797,6 +802,12 @@ func deployEmail(appName string, kind deployMailKind, details deployDetails, log
 			"This means your deploy didn't complete successfully and your latest changes may not be live.", appName)
 	}
 	msg = email.Message{Title: subject, Paragraphs: []string{lead}}
+	// Say what went wrong before naming the commit. The reason is the one thing
+	// the reader needs and the one thing this email used to omit, even though
+	// the platform had already diagnosed it (w7/m79).
+	if fr := strings.TrimSpace(details.failureReason); fr != "" && kind == deployMailFailed {
+		msg.Paragraphs = append(msg.Paragraphs, fr)
+	}
 	// The commit renders as one "Commit <sha>" block: a linked short SHA (when
 	// the repo URL resolves to a web commit page) above the message. With no
 	// resolvable link it stays the plain "Commit:\n<message>" paragraph — no

@@ -316,9 +316,12 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"region":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Region })},
 		"sshAddress":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.SSHAddress })},
 		// bex-native extras.
-		"phase":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Phase })},
-		"replicas": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AppView) any { return a.Replicas })},
-		"revision": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Revision })},
+		"phase": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Phase })},
+		// Why an exposed service has no public address (w7/m79). Empty when it
+		// is routed or is not the kind that carries a public URL.
+		"publicRoutingNotice": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.PublicRoutingNotice })},
+		"replicas":            &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AppView) any { return a.Replicas })},
+		"revision":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Revision })},
 		// idleTTLSeconds is the free-tier auto-sleep window (bex extension, no
 		// Render counterpart); the Settings tab reads it and setIdleTimeout writes it.
 		"idleTTLSeconds": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AppView) any { return a.IdleTTLSeconds })},

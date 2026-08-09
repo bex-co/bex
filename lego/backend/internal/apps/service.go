@@ -35,6 +35,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -287,7 +288,16 @@ type AppView struct {
 	Phase string   `json:"phase"`
 	URL   string   `json:"url"`
 	URLs  []string `json:"urls"`
-	Image string   `json:"image"`
+	// PublicRoutingNotice explains why a service that asked to be publicly
+	// reachable has no public address (bex extra, w7/m79). Empty when the
+	// service is routed, or is not the kind that carries a public URL.
+	//
+	// Read from the operator's PublicRouting condition rather than recomputed
+	// here on purpose: bex-api and the operator each carry their own
+	// BEX_BASE_DOMAIN and can disagree (.pm/w7/026.md), and the truth the user
+	// needs is what the component that actually writes Ingresses decided.
+	PublicRoutingNotice string `json:"publicRoutingNotice,omitempty"`
+	Image               string `json:"image"`
 	// SourceImage is the configured prebuilt image. Image above is observed
 	// deployment state (status.image), which can be empty until the operator has
 	// reconciled; Render's imagePath is configuration and must be available
@@ -705,13 +715,14 @@ func view(a *appv1alpha1.App) AppView {
 		phase = "Deleting"
 	}
 	return AppView{
-		ID:          appID,
-		Name:        name,
-		Slug:        a.Spec.PlatformSubdomain(a.Name),
-		DisplayName: a.Spec.DisplayName,
-		Type:        svcType,
-		Phase:       phase,
-		URL:         a.Status.URL,
+		ID:                  appID,
+		Name:                name,
+		Slug:                a.Spec.PlatformSubdomain(a.Name),
+		DisplayName:         a.Spec.DisplayName,
+		Type:                svcType,
+		Phase:               phase,
+		URL:                 a.Status.URL,
+		PublicRoutingNotice: publicRoutingNotice(a),
 		// The contract-level derivation (types/v1alpha1) the operator's slug
 		// Service answers — surfaced string and resolvable hostname cannot
 		// drift (ADR041 D2/D4).
@@ -809,6 +820,20 @@ func (s *Service) pendingPublicURL(a *appv1alpha1.App) string {
 		return "https://" + hosts[0]
 	}
 	return ""
+}
+
+// publicRoutingNotice surfaces the operator's PublicRouting condition when it
+// reports that an exposed service has no public address. The operator sets it
+// only for services meant to carry a public URL and never for a state the owner
+// chose (a worker, a private service, or renderSubdomainPolicy: disabled), so
+// this needs no second policy — reproducing that judgement here would be a
+// place for the two to drift.
+func publicRoutingNotice(a *appv1alpha1.App) string {
+	c := meta.FindStatusCondition(a.Status.Conditions, appv1alpha1.ConditionPublicRouting)
+	if c == nil || c.Status != metav1.ConditionFalse {
+		return ""
+	}
+	return c.Message
 }
 
 func publicID(a *appv1alpha1.App) string {

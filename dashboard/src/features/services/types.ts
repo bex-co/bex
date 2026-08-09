@@ -30,6 +30,18 @@ export interface ServiceView {
   /** Live URL, or null when the App has none yet. */
   url: string | null;
   /**
+   * Why an exposed service has NO public address (w7/m79): the platform
+   * subdomain is unavailable on this installation and no custom domain is
+   * attached. Null when the service is routed, or is not the kind that carries
+   * a public URL (a worker, a cron job, or an owner who switched their own
+   * platform subdomain off) — so the header can render it unconditionally.
+   *
+   * The text is the operator's own diagnosis, passed through like a deploy's
+   * failureReason rather than reconstructed here: only the operator knows the
+   * base domain actually in effect.
+   */
+  publicRoutingNotice?: string | null;
+  /**
    * Private-network address sibling services connect to — "<slug>:<port>",
    * scheme-less (Render's Connect → Internal string; ADR041 D4, w9/m58).
    * Web and private services only; null otherwise or when not selected

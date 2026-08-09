@@ -105,6 +105,13 @@ type DeployNotification struct {
 	// no repo, and a repo build without a resolved SHA has no target.
 	CommitSHA string
 	RepoURL   string
+	// FailureReason is the operator's actionable diagnosis for a failed deploy
+	// (w7/m79) — the same string the deploy row and every API surface carry.
+	// The failure email is the first thing most people read when a deploy
+	// breaks, and it named the commit and linked the logs without ever saying
+	// what went wrong. Empty for a succeeded deploy and for a failure the
+	// operator could not diagnose.
+	FailureReason string
 	// NotifyOnFail is the legacy failure-only override. NotificationsToSend is
 	// the authoritative Render policy when non-empty.
 	NotifyOnFail        string
@@ -407,6 +414,7 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 			CommitMessage:       open.CommitMessage,
 			CommitSHA:           open.Commit,
 			RepoURL:             cur.Spec.Repo,
+			FailureReason:       failureReason,
 			NotifyOnFail:        cur.Spec.NotifyOnFail,
 			NotificationsToSend: cur.Spec.NotificationsToSend,
 		})
@@ -724,10 +732,20 @@ func releaseIsActive(open Deploy, app *appv1alpha1.App) bool {
 
 // failureReasonFor picks what to stamp as a failing deploy's failure_reason
 // (w9/011): the current generation's Ready-condition message when the operator
-// diagnosed a concrete defect (crash loop, image pull, build or pre-deploy
-// failure — their messages are written to be user-actionable), the raw
-// condition message for any other PhaseFailed, and a synthesized timeout line
-// when the condition proves nothing (a pure health-gate-timeout close).
+// diagnosed a concrete defect (crash loop, image pull, unresolvable container
+// config, build or pre-deploy failure — their messages are written to be
+// user-actionable), the raw condition message for any other PhaseFailed, and a
+// synthesized timeout line when the condition proves nothing (a pure
+// health-gate-timeout close).
+//
+// CreateContainerConfigError was the gap w7/m79 closed. A pod whose Secret or
+// ConfigMap reference cannot be resolved never starts, so its App stays in
+// PhaseDeploying with a Ready=False condition the switch below did not
+// recognise — and the deploy therefore closed with the generic
+// "did not become healthy within the health-gate window" line while the
+// operator already knew the exact missing object. That is the 2026-08-08
+// incident's first failure leg: the cause existed, in the right place, and was
+// thrown away one step before the user could see it.
 func failureReasonFor(app *appv1alpha1.App) (string, string) {
 	for i := range app.Status.Conditions {
 		c := &app.Status.Conditions[i]
@@ -737,7 +755,7 @@ func failureReasonFor(app *appv1alpha1.App) (string, string) {
 		switch c.Reason {
 		case "ImagePullBackOff":
 			return c.Message, EventReasonImagePullBackoff
-		case "CrashLoopBackOff", "BuildFailed", "PreDeployFailed":
+		case "CrashLoopBackOff", "CreateContainerConfigError", "BuildFailed", "PreDeployFailed":
 			return c.Message, ""
 		}
 		if app.Status.Phase == appv1alpha1.PhaseFailed && c.Message != "" {
@@ -745,6 +763,25 @@ func failureReasonFor(app *appv1alpha1.App) (string, string) {
 		}
 	}
 	return "the deploy did not become healthy within the health-gate window; check the service logs", ""
+}
+
+// concreteContainerFailure reports whether a Ready=False reason names a defect
+// in the current revision's containers, as opposed to a rollout still making
+// ordinary progress. Only these count as a truthful failed-instance observation
+// while a deploy is still open and retrying.
+//
+// CreateContainerConfigError belongs here for the same reason the other two do:
+// a pod that cannot resolve its Secret/ConfigMap reference will never start, so
+// treating it as ordinary progress means the instance is silently unobserved
+// for the whole health-gate window. Transience is handled one layer up by
+// debounceUnhealthy, which requires two consecutive passes — so a Secret that
+// simply has not been materialised yet costs one tick, not a false alarm.
+func concreteContainerFailure(reason string) bool {
+	switch reason {
+	case "ImagePullBackOff", "CrashLoopBackOff", "CreateContainerConfigError":
+		return true
+	}
+	return false
 }
 
 func readyReasonForGeneration(app *appv1alpha1.App) (string, bool) {
@@ -782,7 +819,7 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 			// Ordinary rollout progress is not a service failure. A concrete
 			// current-revision container failure is still a truthful failed
 			// instance observation even while its deploy remains open/retrying.
-			if hasOpenDeploy && condition.Reason != "ImagePullBackOff" && condition.Reason != "CrashLoopBackOff" {
+			if hasOpenDeploy && !concreteContainerFailure(condition.Reason) {
 				break
 			}
 			// RolloutSettling = the operator's live pod scan says the full

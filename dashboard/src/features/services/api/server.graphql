@@ -22,6 +22,11 @@ query Server($id: String!) {
     # read-only in the Settings → General card, hidden when the install sets none.
     region
     url
+    # publicRoutingNotice explains why an exposed service has NO url (w7/m79):
+    # the platform subdomain is unavailable on this installation and no custom
+    # domain is attached. Empty when the service is routed or is not the kind
+    # that carries a public URL, so the header can render it unconditionally.
+    publicRoutingNotice
     # internalAddress is the private-network "<slug>:<port>" sibling services
     # connect to (web/private only, empty otherwise) — Render's Connect →
     # Internal string; a private service's header shows it as its Service

@@ -141,3 +141,105 @@ func TestDeploymentRolloutReadyRejectsReadyOldReplicaSet(t *testing.T) {
 		t.Fatal("fully updated and available rollout did not report complete")
 	}
 }
+
+// TestStuckPodMessageSurfacesUnresolvableConfig pins w7/m79/t001: the class the
+// w9/011 diagnosis originally missed.
+//
+// A pod whose Secret/ConfigMap reference cannot be resolved never starts, so it
+// never crash-loops and never fails an image pull — the two cases w9/011 covers.
+// It simply waits in CreateContainerConfigError while the deploy times out as an
+// unexplained health-check failure. That is the shape of the 2026-08-08
+// incident's first failure leg, where the operator had no signal to give and the
+// cause was visible only in pod state no tenant surface shows.
+func TestStuckPodMessageSurfacesUnresolvableConfig(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: "forum", Namespace: "tea-a"},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "forum"}},
+		},
+	}
+	configErrPod := func(kubeletMessage string) *corev1.Pod {
+		return &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "forum-1", Namespace: "tea-a", Labels: map[string]string{"app": "forum"},
+			},
+			Status: corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{{
+				State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{
+					Reason: "CreateContainerConfigError", Message: kubeletMessage,
+				}},
+			}}},
+		}
+	}
+
+	for _, tc := range []struct {
+		name     string
+		kubelet  string
+		mustName string
+	}{
+		{
+			name:     "missing datastore Secret",
+			kubelet:  `secret "dpg-d9nqg9dcavls73fp8m2g-app" not found`,
+			mustName: "dpg-d9nqg9dcavls73fp8m2g-app",
+		},
+		{
+			name:     "Secret present but the key is absent",
+			kubelet:  `couldn't find key uri in Secret tea-a/red-d9x`,
+			mustName: "red-d9x",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(configErrPod(tc.kubelet)).Build()
+			r := &AppReconciler{Client: cl, Scheme: scheme}
+
+			reason, msg := r.stuckPodMessage(context.Background(), dep, 3000)
+			if reason != "CreateContainerConfigError" {
+				t.Fatalf("reason = %q, want CreateContainerConfigError — the deploy would time out unexplained", reason)
+			}
+			// The kubelet already names the exact object; a message that dropped
+			// it would leave the user no better off than the silence being fixed.
+			if !strings.Contains(msg, tc.mustName) {
+				t.Errorf("message does not name the unresolvable object %q: %s", tc.mustName, msg)
+			}
+			if !strings.Contains(msg, "own namespace") {
+				t.Errorf("message gives no actionable cause: %s", msg)
+			}
+		})
+	}
+}
+
+// TestStuckPodMessageStaysQuietOnAHealthyRollout is the negative half. A
+// condition that fires while a normal rollout is merely progressing is worse
+// than none, because users learn to ignore it.
+func TestStuckPodMessageStaysQuietOnAHealthyRollout(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: "forum", Namespace: "tea-a"},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "forum"}},
+		},
+	}
+	for _, waiting := range []*corev1.ContainerStateWaiting{
+		nil,                           // running
+		{Reason: "ContainerCreating"}, // normal startup
+		{Reason: "PodInitializing"},   // normal startup
+	} {
+		pod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "forum-1", Namespace: "tea-a", Labels: map[string]string{"app": "forum"},
+			},
+			Status: corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{{
+				State: corev1.ContainerState{Waiting: waiting},
+			}}},
+		}
+		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(pod).Build()
+		r := &AppReconciler{Client: cl, Scheme: scheme}
+		if reason, msg := r.stuckPodMessage(context.Background(), dep, 3000); msg != "" {
+			t.Errorf("a progressing rollout reported %q/%q", reason, msg)
+		}
+	}
+}

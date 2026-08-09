@@ -48,6 +48,25 @@ const AnnotationCanceledReleaseGeneration = "app.bex.co/canceled-release-generat
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+// ConditionPublicRouting is the App status condition reporting whether a service
+// that asked to be publicly reachable actually has a host to be reached at
+// (w7/m79). It is deliberately separate from Ready: a service with no public
+// address can be perfectly healthy, so folding the two together would either
+// mark healthy services unhealthy or bury the routing state inside a signal
+// nobody reads that way.
+//
+// It lives on the CRD contract because both sides need it and must not drift —
+// the operator writes it (it alone knows the base domain actually in effect),
+// and bex-api reads it to explain a null url. Reasons:
+//
+//   - Routed        (True)  — serving at the listed hosts
+//   - NoPublicHost  (False) — exposed, but no platform subdomain and no custom
+//     domain, so nothing will ever route to it
+//
+// Absent for a service that carries no public URL by nature (worker, cron job,
+// private service) or whose owner switched its own platform subdomain off.
+const ConditionPublicRouting = "PublicRouting"
+
 // SubdomainPolicy controls whether the platform subdomain (<slug>.onbex.co) is
 // active for an App. Render's renderSubdomainPolicy enum values.
 const (

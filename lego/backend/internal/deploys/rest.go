@@ -79,8 +79,9 @@ type renderDeploy struct {
 	PreDeployStatus string `json:"preDeployStatus,omitempty"`
 	// FailureReason is the actionable cause of a failed deploy (bex extra,
 	// w9/011): the operator's diagnosis (crash loop with the $PORT hint,
-	// image-pull failure, build error) or a health-gate-timeout line. Omitted
-	// unless the deploy failed.
+	// image-pull failure, an unresolvable Secret/ConfigMap reference naming the
+	// missing object — w7/m79 — or a build error) or a health-gate-timeout line.
+	// Omitted unless the deploy failed.
 	FailureReason string `json:"failureReason,omitempty"`
 }
 

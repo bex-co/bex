@@ -1177,6 +1177,8 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// Ingress, so the ingress controller (traefik today) stays swappable.
 	hosts := effectiveHosts(app, r.BaseDomain)
 
+	r.setPublicRoutingCondition(app, hosts)
+
 	// Maintenance has public-routing precedence over both auto-hibernation and
 	// manual suspension. It changes only the public Ingress backend; the workload
 	// follows its independent replica/suspension policy.
@@ -1924,9 +1926,13 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	// for served content — the static-server dispatches by Host).
 	hosts := effectiveHosts(app, r.BaseDomain)
 	if len(hosts) == 0 {
+		// A static site fails loudly here, and always has. That asymmetry is
+		// what w7/m79 closes for web services, which produced the identical
+		// no-host state in silence.
 		return r.fail(ctx, app, "BadSpec",
 			fmt.Errorf("static_site requires a host: set spec.expose (with BEX_BASE_DOMAIN), spec.host, or spec.hosts"))
 	}
+	r.setPublicRoutingCondition(app, hosts)
 
 	// Suspended: stop serving by removing the Ingress; the published content stays
 	// in the object store, so resume just recreates the Ingress.
@@ -2703,10 +2709,76 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 				return "CrashLoopBackOff", msg
 			case "ImagePullBackOff", "ErrImagePull":
 				return "ImagePullBackOff", "image pull is failing: " + w.Message
+			case "CreateContainerConfigError":
+				// The pod's configuration cannot be resolved — almost always an
+				// env var or file whose Secret/ConfigMap is absent from the
+				// service's namespace, or present without the referenced key.
+				// The kubelet already names the object precisely ("secret
+				// \"dpg-…-app\" not found"), so pass its message through rather
+				// than re-deriving a worse one.
+				//
+				// This class was the 2026-08-08 incident's first failure leg and
+				// had no signal at all: the pod never starts, so it never crash-
+				// loops and never pulls badly, and the deploy simply timed out as
+				// an unexplained health-check failure minutes later (ADR043 D8).
+				return "CreateContainerConfigError",
+					"container configuration cannot be resolved: " + w.Message +
+						" — a referenced Secret or ConfigMap must exist in this service's own namespace and carry the referenced key. " +
+						"A linked Postgres or Key Value provides its Secret once the instance is provisioned."
 			}
 		}
 	}
 	return "", ""
+}
+
+// setPublicRoutingCondition records whether this App has a derivable public
+// host, and when it does not, why.
+//
+// This is w7/m79/t003, and it exists because of what w7/m78 found: production
+// runs with BEX_BASE_DOMAIN unset (onbex.co is a registrable domain, so tenant
+// JavaScript could set parent cookies a sibling tenant receives — w7/m54). With
+// no base domain a service that brought no custom domain has zero effective
+// hosts, so reconcileIngress correctly writes nothing, status.URL is never
+// populated, and the API reports url: null. All of that is right; the silence
+// is not. Nothing told the user their service would never be publicly
+// reachable, or what to do about it.
+//
+// The condition is also the durable per-service trace for a platform-wide
+// change: when BEX_BASE_DOMAIN was removed, every service that had only a
+// platform host had its Ingress deleted on the next reconcile, fleet-wide and
+// unrecorded. A Kubernetes Event would have been the obvious alternative, but
+// Events expire (default ~1h) and would be gone long before anyone investigated
+// — a condition persists on the CR for exactly as long as the state does.
+func (r *AppReconciler) setPublicRoutingCondition(app *appv1alpha1.App, hosts []string) {
+	// Only the types that carry a public URL at all. A worker or cron job has no
+	// public route by definition and must never report a routing problem.
+	switch app.Spec.Type {
+	case appv1alpha1.TypeWebService, appv1alpha1.TypeStaticSite, "":
+	default:
+		meta.RemoveStatusCondition(&app.Status.Conditions, appv1alpha1.ConditionPublicRouting)
+		return
+	}
+	if len(hosts) > 0 {
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type: appv1alpha1.ConditionPublicRouting, Status: metav1.ConditionTrue, Reason: "Routed",
+			Message:            "serving at " + strings.Join(hosts, ", "),
+			ObservedGeneration: app.Generation,
+		})
+		return
+	}
+	// A service that did not ask to be exposed, or that switched its own
+	// platform subdomain off without adding a custom domain, is in the state its
+	// owner chose. Reporting it would train users to ignore the condition.
+	if !app.Spec.Expose || app.Spec.SubdomainPolicy == appv1alpha1.SubdomainPolicyDisabled {
+		meta.RemoveStatusCondition(&app.Status.Conditions, appv1alpha1.ConditionPublicRouting)
+		return
+	}
+	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+		Type: appv1alpha1.ConditionPublicRouting, Status: metav1.ConditionFalse, Reason: "NoPublicHost",
+		Message: "this service has no public address: the platform subdomain is not available on this " +
+			"installation, and no custom domain is attached. Add a custom domain to serve it publicly.",
+		ObservedGeneration: app.Generation,
+	})
 }
 
 func (r *AppReconciler) setPhase(ctx context.Context, app *appv1alpha1.App, p appv1alpha1.AppPhase, reason, msg string) {
