@@ -183,13 +183,14 @@ metadata:
     # MachineDeployment via clusterName=bex and scales replicas within [min,max].
     # min 1 (w1/m19.1 t005, user decision 2026-07-11): a hosting platform keeps
     # at least one tenant node warm — apps and ACME solvers must never wait for
-    # a cold scale-from-zero. The Intel cx line is create-blocked in fsn1, so
-    # immutable replacements use the compatible x86 cpx32 shape shared with
-    # the burst pool below.
+    # a cold scale-from-zero. cx33 (Intel, 4 vCPU / 8 GB) capacity returned to
+    # fsn1 (checked 2026-08-08; ~4.7x cheaper than cpx32 at identical specs), so
+    # the immutable template is rotated back to cx33 (docs/ADR053). cpx32 stays
+    # the documented fallback for the next fsn1 cx stock-out.
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "1"
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "1"
     # Capacity hints (kept for DR bring-up / if min ever returns to 0):
-    # cpx32 = 4 vCPU / 8 GB (Hetzner API, 2026-07-09).
+    # cx33 = 4 vCPU / 8 GB (Hetzner API, 2026-08-08).
     capacity.cluster-autoscaler.kubernetes.io/cpu: "4"
     capacity.cluster-autoscaler.kubernetes.io/memory: "8G"
 spec:
@@ -214,9 +215,9 @@ spec:
       infrastructureRef:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: HCloudMachineTemplate
-        # Repointed to the rotated template (w1/m36 t001) — this change is what
-        # rolls the pool onto the baked snapshot.
-        name: bex-tenant-0-k134-cpx32
+        # Repointed to the rotated template (w1/m36 t001; cx33 rollback per
+        # docs/ADR053) — this repoint is what rolls the pool onto the new shape.
+        name: bex-tenant-0-k134-cx33
       version: v1.34.9
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
@@ -227,12 +228,12 @@ metadata:
   name: bex-tenant-burst
   namespace: default
   annotations:
-    # The Intel cx line is create-blocked in fsn1. Keep this compatible x86
-    # CPX pool cold at zero and let Cluster Autoscaler add up to two builders,
-    # preserving the tenant pools' former aggregate 1→3 range.
+    # cx33 (Intel) capacity returned to fsn1 (docs/ADR053); this burst pool is
+    # rotated back to cx33. Keep it cold at zero and let Cluster Autoscaler add
+    # up to two builders, preserving the tenant pools' former aggregate 1→3 range.
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "0"
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "2"
-    # cpx32 = 4 vCPU / 8 GB. These hints are required for scale-from-zero.
+    # cx33 = 4 vCPU / 8 GB. These hints are required for scale-from-zero.
     capacity.cluster-autoscaler.kubernetes.io/cpu: "4"
     capacity.cluster-autoscaler.kubernetes.io/labels: "bex.co/pool=tenant"
     capacity.cluster-autoscaler.kubernetes.io/memory: "8G"
@@ -258,7 +259,7 @@ spec:
       infrastructureRef:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: HCloudMachineTemplate
-        name: bex-tenant-burst-k134
+        name: bex-tenant-burst-k134-cx33
       version: v1.34.9
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
@@ -619,9 +620,12 @@ spec:
     infrastructureRef:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       kind: HCloudMachineTemplate
-      # cx33 replacement capacity is unavailable in fsn1. Rotate the immutable
-      # template to the supported x86 cpx line before the Kubernetes roll.
-      name: bex-control-plane-cpx32
+      # cx33 (Intel, 4 vCPU / 8 GB) capacity returned to fsn1 (docs/ADR053);
+      # the control plane is rotated back to the cx33 template below. Roll ONE
+      # etcd member at a time and keep CP on 8 GB cx33 (never 4 GB cx23 — CP
+      # live memory is ~3.8 GiB). cpx32 stays the fallback for the next
+      # stock-out (repoint back to bex-control-plane-cpx32).
+      name: bex-control-plane
   # 3 = etcd quorum (rearchitecture decision 2) — CP is HA and tainted; the KCP
   # webhook forbids even counts with stacked etcd.
   replicas: 3
@@ -719,6 +723,22 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
+  # cx33 rollback (docs/ADR053): HCloudMachineTemplate.Spec is immutable, so the
+  # return to cx33 needs a NEW template the tenant-0 MachineDeployment repoints
+  # to — that repoint is what rolls the pool. Same x86 baked snapshot as the
+  # -cpx32 sibling (cx33 and cpx32 are both x86_64, 4 vCPU / 8 GB — portable).
+  name: bex-tenant-0-k134-cx33
+  namespace: default
+spec:
+  template:
+    spec:
+      imageName: bex-worker-k8s-1-34
+      placementGroupName: tenant-0
+      type: cx33
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: HCloudMachineTemplate
+metadata:
   # CPX is the supported scale-out path in fsn1: the baked snapshot is x86 and
   # therefore portable from the existing Intel cx33 baseline to AMD cpx32.
   name: bex-tenant-burst-baked
@@ -765,6 +785,21 @@ spec:
       imageName: bex-worker-k8s-1-34
       placementGroupName: tenant-0
       type: cpx32
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: HCloudMachineTemplate
+metadata:
+  # cx33 rollback (docs/ADR053): new immutable template the tenant-burst
+  # MachineDeployment repoints to. Same x86 baked snapshot as the -cpx32
+  # sibling; cx33 is the cheaper default now that fsn1 stock returned.
+  name: bex-tenant-burst-k134-cx33
+  namespace: default
+spec:
+  template:
+    spec:
+      imageName: bex-worker-k8s-1-34
+      placementGroupName: tenant-0
+      type: cx33
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudRemediationTemplate
@@ -981,7 +1016,7 @@ metadata:
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "3"
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "3"
     # Capacity hints (used by scale-from-zero; kept for symmetry with the pools):
-    # cpx32 = 4 vCPU / 8 GB (Hetzner API, 2026-07-09).
+    # cx33 = 4 vCPU / 8 GB (Hetzner API, 2026-08-08).
     capacity.cluster-autoscaler.kubernetes.io/cpu: "4"
     capacity.cluster-autoscaler.kubernetes.io/memory: "8G"
 spec:
@@ -1006,7 +1041,7 @@ spec:
       infrastructureRef:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: HCloudMachineTemplate
-        name: bex-platform-k134-cpx32
+        name: bex-platform-k134-cx33
       version: v1.34.9
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
@@ -1057,6 +1092,21 @@ spec:
       imageName: bex-worker-k8s-1-34
       placementGroupName: platform
       type: cpx32
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: HCloudMachineTemplate
+metadata:
+  # cx33 rollback (docs/ADR053): new immutable template the platform
+  # MachineDeployment repoints to. Same x86 baked snapshot as the -cpx32
+  # sibling; cx33 is the cheaper default now that fsn1 stock returned.
+  name: bex-platform-k134-cx33
+  namespace: default
+spec:
+  template:
+    spec:
+      imageName: bex-worker-k8s-1-34
+      placementGroupName: platform
+      type: cx33
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineHealthCheck

@@ -136,8 +136,8 @@ fi
 echo "==> $OVERLAY control-plane replacement capacity"
 control_plane_infra="$(yq -N 'select(.kind=="KubeadmControlPlane") | .spec.machineTemplate.infrastructureRef.name' "$OVERLAY")"
 control_plane_type="$(yq -N "select(.kind==\"HCloudMachineTemplate\" and .metadata.name==\"$control_plane_infra\") | .spec.template.spec.type" "$OVERLAY")"
-if [ "$control_plane_type" != "cpx32" ]; then
-  echo "FAIL: control-plane template '$control_plane_infra' uses '$control_plane_type' (want cpx32; cx33 replacement capacity is unavailable in fsn1)" >&2
+if [ "$control_plane_type" != "cx33" ]; then
+  echo "FAIL: control-plane template '$control_plane_infra' uses '$control_plane_type' (want cx33, the cheaper default now that fsn1 stock returned; during an fsn1 cx stock-out flip to cpx32 here and in the overlay — docs/ADR053)" >&2
   fail=1
 fi
 
@@ -171,8 +171,8 @@ if [ "$burst_min" != "0" ] || [ "$burst_max" != "2" ]; then
   echo "FAIL: bex-tenant-burst must preserve cold scale-out (want min=0 max=2, got min=$burst_min max=$burst_max)" >&2
   fail=1
 fi
-if [ "$burst_type" != "cpx32" ]; then
-  echo "FAIL: bex-tenant-burst uses '$burst_type' (want x86 cpx32; cx33 creation is blocked in fsn1)" >&2
+if [ "$burst_type" != "cx33" ]; then
+  echo "FAIL: bex-tenant-burst uses '$burst_type' (want cx33, the cheaper default now that fsn1 stock returned; during an fsn1 cx stock-out flip to cpx32 here and in the overlay — docs/ADR053)" >&2
   fail=1
 fi
 if [ "$burst_labels" != "bex.co/pool=tenant" ]; then
