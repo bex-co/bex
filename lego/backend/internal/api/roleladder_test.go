@@ -326,6 +326,10 @@ var representativeVerbRelations = map[string]string{
 	"*apps.Service.SetSourceAndRegistryCredential": core.RelCanCreate,
 	"*agentsessions.Service.Create":                core.RelCanCreate,
 	"*deploys.Service.RegenerateDeployHook":        core.RelCanCreate,
+	// Steering re-dispatches a FRESH sandbox with the same reusable model key and
+	// a caller-supplied prompt + egress allowlist, so it is as create-like as
+	// Create itself — not a lifecycle verb (codex round-4 #3).
+	"*agentsessions.Service.Steer": core.RelCanCreate,
 	// can_view_sensitive — developer and up (connection strings, env values).
 	"*secrets.Service.GetEnvVar":               core.RelCanViewSensitive,
 	"*postgres.Service.ExecuteQuery":           core.RelCanViewSensitive,
@@ -333,7 +337,11 @@ var representativeVerbRelations = map[string]string{
 	"*deploys.Service.GetDeployHook":           core.RelCanViewSensitive,
 	// can_view_sensitive — developer and up: an interactive shell yields code
 	// execution in the pod, exposing its env vars and secret files (codex #1).
+	// BOTH transports to that pods/exec sink are pinned — the browser shell and
+	// native SSH — because pinning only one is exactly how #8 survived round 3:
+	// the relation belongs to the sink, not the transport.
 	"*apps.Service.CreateShellSession": core.RelCanViewSensitive,
+	"*apps.Service.ResolveSSHSession":  core.RelCanViewSensitive,
 	// can_manage_keys — developer and up (workspace API keys).
 	"*apikeys.Service.CreateAPIKey": core.RelCanManageKeys,
 	// can_manage — admin only (workspace/members/git settings).

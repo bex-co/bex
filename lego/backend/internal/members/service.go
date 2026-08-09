@@ -538,15 +538,18 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 	}
 	if m.Role == role {
 		// Already at the target role in the row — but a prior partial failure may
-		// have left OpenFGA out of sync (the row was written, then the grant failed).
-		// Repair the tuple rather than skipping (F7): the old blind early return made
-		// a retry a no-op, stranding a missing grant. grantRole check-before-grants,
-		// so with a checker present it grants only if the tuple is actually missing
-		// (and revokes nothing — nothing changed); without a checker (authz off) we
-		// can't tell a missing tuple from a present one, so keep the historical
-		// no-op. No audit row — nothing changed.
+		// have left OpenFGA out of sync. Converge to the EXACT role rather than
+		// only repairing the grant (codex round-4 #4): the row is committed before
+		// the tuple writes below, so a failed REVOKE strands the old, possibly
+		// HIGHER, role tuple and lands every retry here. A grant-only repair could
+		// never remove it, and the model ORs the five role relations, so a
+		// downgraded admin would stay admin forever. reconcileExactRole grants the
+		// target and revokes every other role tuple that actually exists, both
+		// check-before-write. Without a checker (authz off) it degrades to a bare
+		// idempotent grant — the historical no-op, since a missing tuple can't be
+		// told from a present one. No audit row — nothing changed.
 		if s.Base != nil && s.Base.Authz != nil {
-			if err := s.grantRole(ctx, workspaceID, "user:"+subject, role); err != nil {
+			if err := s.reconcileExactRole(ctx, workspaceID, "user:"+subject, role); err != nil {
 				return MemberView{}, err
 			}
 		}

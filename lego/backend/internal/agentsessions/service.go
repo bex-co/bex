@@ -610,7 +610,16 @@ func driverEnv(config AgentConfig, repo, branch, sessionID, namespace, credentia
 // runs the new prompt; the Completer then updates the same draft PR. The
 // delivery mode is recorded on the row.
 func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
-	if err := s.AuthorizeOn(ctx, core.RelCanOperate, sessionObject(req.SessionID)); err != nil {
+	// SECURITY (codex round-4 #3): Create gates on can_create because a session
+	// sandbox receives the workspace's reusable BYO model key and runs
+	// attacker-chosen tasks. Steering does exactly that again — it reloads the same
+	// key below and dispatches a FRESH sandbox with a caller-supplied prompt and
+	// egress allowlist — so Create's "the credential entered the sandbox at create
+	// time, authorized by a developer" rationale does not cover it. Gate on the same
+	// can_create (developer and up), against the session object so the decision
+	// follows the resource's own parent tuple. Lifecycle verbs that touch no fresh
+	// credential (resume/cancel/read) stay can_operate.
+	if err := s.AuthorizeOn(ctx, core.RelCanCreate, sessionObject(req.SessionID)); err != nil {
 		return View{}, err
 	}
 	if !s.enabled() || !s.ticketEnabled() {
