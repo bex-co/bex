@@ -6,6 +6,24 @@
 # lane (sub-hour alert triage), per the w7 README "Not in w7 (deliberate)" note —
 # this file only provides the config that produces them.
 #
+# Cadence policy: two speeds, and only two, because a package-ecosystem +
+# directory pair may appear only once in this file — there is no way to give
+# semver-major its own faster schedule than minor/patch on the same tree.
+#
+#   FAST  — security updates. GitHub opens these the moment an advisory with a
+#           fix is published, ignoring `schedule`, `cooldown`, AND
+#           `open-pull-requests-limit` (documented exemptions). They are grouped
+#           below only so a burst of advisories arrives as one PR per ecosystem
+#           rather than one per package. Nothing here can slow them down.
+#           NOTE: this lane requires repo Settings → Dependabot security updates
+#           to be ON; with it off, advisories raise alerts that never self-heal.
+#
+#   SLOW  — routine version bumps. Quarterly (first day of Jan/Apr/Jul/Oct),
+#           everything in one PR, behind a long cooldown so we only ever see
+#           releases the wider community has already shaken out. Majors ride the
+#           same quarterly batch on a 90-day cooldown; a breaking upgrade we
+#           actually want is a human-initiated PR, not a robot's.
+#
 # github-actions interplay: Dependabot rewrites each `uses:` SHA pin AND its
 # trailing `# vX.Y.Z` comment. Such a PR turns `scripts/github-actions-validate.sh`
 # RED until `expected_actions` is bumped to the new SHA — that is intended
@@ -17,22 +35,40 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "quarterly"
+    open-pull-requests-limit: 1
+    cooldown:
+      default-days: 30
     groups:
-      # One PR per week for all action bumps — the reviewer touches the inventory
-      # once, not per-action.
+      # One PR per quarter for all action bumps — the reviewer touches the
+      # inventory once, not per-action.
       github-actions:
+        patterns:
+          - "*"
+      # Advisory-driven action bumps still arrive immediately; grouped so a
+      # burst lands as a single PR.
+      github-actions-security:
+        applies-to: security-updates
         patterns:
           - "*"
 
   - package-ecosystem: "npm"
     directory: "/dashboard"
     schedule:
-      interval: "weekly"
+      interval: "quarterly"
+    open-pull-requests-limit: 1
+    cooldown:
+      default-days: 30
+      # Majors wait a full quarter's worth of other people's bug reports.
+      semver-major-days: 90
     groups:
-      # Minor/patch bumps ride together (low-risk, one PR); majors come as
-      # individual PRs so each breaking upgrade is reviewed on its own.
-      dashboard-minor-patch:
-        update-types:
-          - "minor"
-          - "patch"
+      # Everything in one quarterly PR, majors included. Splitting majors into
+      # their own PRs (the pre-2026-08 config) produced exactly the standing
+      # per-package noise this cadence exists to remove.
+      dashboard:
+        patterns:
+          - "*"
+      dashboard-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
