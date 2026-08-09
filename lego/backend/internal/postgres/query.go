@@ -154,7 +154,9 @@ func (s *Service) databaseSecret(ctx context.Context, db *appv1alpha1.Database) 
 		secretName = db.Name + "-app"
 	}
 	var sec corev1.Secret
-	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: secretName}, &sec); err != nil {
+	// The connection Secret is created by CNPG beside its Cluster, so it lives
+	// in the Database CR's own namespace (ADR043 D8), not the shared one.
+	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: db.Namespace, Name: secretName}, &sec); err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, core.ErrNotFound
 		}

@@ -67,6 +67,13 @@ const (
 	// (internal/apps) can map a quota-exceeded admission error back onto the
 	// Render-shaped cap message (core.QuotaCapError).
 	AppsQuotaCountKey = "count/apps.app.bex.co"
+	// DatabasesQuotaCountKey / KeyValuesQuotaCountKey are the datastore siblings.
+	// Live only since ADR043 D8 put the CRs in the namespace being charged
+	// (w7/m77); before that these dimensions existed but counted nothing. The
+	// postgres/keyvalue services map a rejection on these keys back to the same
+	// Render-shaped message the service cap uses.
+	DatabasesQuotaCountKey = "count/databases.app.bex.co"
+	KeyValuesQuotaCountKey = "count/keyvalues.app.bex.co"
 )
 
 // WorkspaceNamespace is the hosting namespace name for a workspace id. The
@@ -363,10 +370,16 @@ func baseResourceQuota(namespace string, t Tenant) *corev1.ResourceQuota {
 // application bug (ADR043 D3) — the app-code BEX_MAX_SERVICES/_POSTGRES/
 // _KEYVALUES counters this replaced were retired in w3/m34. The free tier
 // mirrors Render's Hobby anchors (25 services, 1 Postgres, 1 Key Value); paid
-// plans get a generous ceiling. Only Apps land in this namespace (Databases/
-// KeyValues stay in the shared apps namespace, ADR043), so the
-// count/databases.app.bex.co and count/keyvalues.app.bex.co caps here are not
-// currently enforced against any object that lands in `<ws>`.
+// plans get a generous ceiling. All three kinds land in this namespace, so all
+// three caps are enforced by the API server.
+//
+// The datastore caps were dead from w3/m34 until w7/m77: ADR043 was implemented
+// for Apps only, so Database/KeyValue CRs were created in the shared apps
+// namespace and never charged here — while the app-code BEX_MAX_POSTGRES /
+// BEX_MAX_KEYVALUES caps had already been deleted on the premise that this
+// quota replaced them. Postgres and Key Value creation was therefore uncapped in
+// practice (an honest, recorded gap: .pm/w3/010.md). ADR043 D8 moved the CRs
+// here, which is what makes these two dimensions real.
 //
 // requests.storage + persistentvolumeclaims bound aggregate tenant disk so an
 // autoscaling PVC (the CNPG Postgres disk-autoscaler grows PVCs automatically)
@@ -402,8 +415,8 @@ func quotaForPlan(plan string) corev1.ResourceList {
 		corev1.ResourceServicesNodePorts:      resource.MustParse("0"),
 		"count/jobs.batch":                    resource.MustParse(jobs),
 		AppsQuotaCountKey:                     *resource.NewQuantity(caps.Services, resource.DecimalSI),
-		"count/databases.app.bex.co":          *resource.NewQuantity(caps.Postgres, resource.DecimalSI),
-		"count/keyvalues.app.bex.co":          *resource.NewQuantity(caps.KeyValues, resource.DecimalSI),
+		DatabasesQuotaCountKey:                *resource.NewQuantity(caps.Postgres, resource.DecimalSI),
+		KeyValuesQuotaCountKey:                *resource.NewQuantity(caps.KeyValues, resource.DecimalSI),
 	}
 }
 
@@ -453,6 +466,7 @@ func allowNetworkPolicies(namespace, regime string) []*networkingv1.NetworkPolic
 			dnsEgressNetworkPolicy(namespace),
 			traefikIngressNetworkPolicy(namespace),
 			internetEgressNetworkPolicy(namespace),
+			datastoreControlIngressNetworkPolicy(namespace),
 		}
 	case RegimeSandbox:
 		// Sandboxes stay k8s-NetworkPolicy default-deny. The one sanctioned inbound
@@ -533,6 +547,60 @@ func traefikIngressNetworkPolicy(namespace string) *networkingv1.NetworkPolicy {
 		},
 	}
 }
+
+// datastoreControlIngressNetworkPolicy admits the platform control paths a
+// managed Postgres/Key Value needs once it lives in the tenant namespace
+// (ADR043 D8.3). The other four allows were written for application pods, which
+// only ever receive traffic from Traefik; a datastore is also driven and
+// observed by the platform:
+//
+//   - cnpg-system — the CloudNativePG operator reconciling its Cluster and
+//     talking to each instance manager. Omitting this is w7/m33's failure mode
+//     (CNPG stalling in bootstrap because a policy blocked its control traffic),
+//     relocated into every tenant namespace.
+//   - bex-system — the pg-/kv-sni-proxy pods that serve public
+//     `<name>.<BEX_DB_DOMAIN>` / `<BEX_KV_DOMAIN>` access, and bex-api's direct
+//     query path (postgres.Service.databaseSecret → psql).
+//   - monitoring — Prometheus scraping datastore metrics, which the disk
+//     autoscaler and the metrics API both read.
+//
+// Scoped by PEER rather than by port. These are three platform namespaces that
+// already carry their own default-deny ingress (deploy/gitops/base/network-policies.yaml),
+// so enumerating ports here would buy little — a compromised platform namespace
+// is not a threat this rule could contain — while getting the list wrong fails
+// silently as a stalled bootstrap or an empty metrics series. Narrowing to exact
+// ports is a reasonable follow-up once live traffic confirms the full set.
+//
+// Egress to the kube-apiserver, which CNPG's instance manager also needs, is
+// NOT here: it cannot be expressed portably as a k8s NetworkPolicy peer, and
+// bex-api may not create CiliumNetworkPolicies in a hosting namespace (ADR043
+// D6 admission). It is a cluster-wide Cilium policy in
+// deploy/gitops/base/datastore-control-egress.yaml instead — the same split the
+// sandbox regime already uses for paths bex-api must not be able to grant.
+func datastoreControlIngressNetworkPolicy(namespace string) *networkingv1.NetworkPolicy {
+	platformPeers := make([]networkingv1.NetworkPolicyPeer, 0, len(datastoreControlNamespaces))
+	for _, ns := range datastoreControlNamespaces {
+		platformPeers = append(platformPeers, networkingv1.NetworkPolicyPeer{
+			NamespaceSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"kubernetes.io/metadata.name": ns},
+			},
+		})
+	}
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: npMeta(namespace, "allow-datastore-control-ingress"),
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+			Ingress:     []networkingv1.NetworkPolicyIngressRule{{From: platformPeers}},
+		},
+	}
+}
+
+// datastoreControlNamespaces are the platform namespaces that must reach a
+// tenant namespace's managed datastores. Ordered so the generated policy is
+// stable across reconciles (an unstable peer order would rewrite the object on
+// every pass).
+var datastoreControlNamespaces = []string{"bex-system", "cnpg-system", "monitoring"}
 
 // internetEgressNetworkPolicy allows a hosting namespace's pods to reach the
 // public internet, minus in-cluster private ranges (RFC1918 / CGNAT) and the

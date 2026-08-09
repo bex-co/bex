@@ -741,10 +741,25 @@ func (r *AppReconciler) mirrorPreDeploySecrets(ctx context.Context, app *appv1al
 	if app.Spec.EnvFromSecret != "" {
 		names = append(names, app.Spec.EnvFromSecret)
 	}
+	// Per-variable secretKeyRefs too — this is how a Blueprint's
+	// fromDatabase/fromService link is injected (DATABASE_URL and friends), and
+	// a pre-deploy command is most often a database migration, so it is the one
+	// step that most needs them. Without this the Job is created and the pod
+	// fails at container-config time with `secret "<dpg-id>-app" not found`,
+	// which surfaces only as a failed deploy with no reason attached.
+	// appEnv renders these refs unchanged, so the Job resolves them in ITS
+	// namespace; the network path is already open (reconcileExecutionNetworkPolicy).
+	for _, e := range app.Spec.Env {
+		if e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil {
+			names = append(names, e.ValueFrom.SecretKeyRef.Name)
+		}
+	}
+	seen := make(map[string]bool, len(names))
 	for _, name := range names {
-		if name == "" {
+		if name == "" || seen[name] {
 			continue
 		}
+		seen[name] = true
 		if err := r.copyCloneSecret(ctx, app, app.Namespace, ns, name); err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("relocating secret %s to %s: %w", name, ns, err)
 		}

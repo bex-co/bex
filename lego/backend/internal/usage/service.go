@@ -403,6 +403,7 @@ func (s *Service) compact(ctx context.Context) {
 type datastoreEntry struct {
 	ID        string // immutable CR name (== service_id in usage rows)
 	Name      string // immutable data-plane name used in Prometheus selectors
+	Namespace string // the CR's OWN namespace (ADR043 D8) — Prometheus series are namespace-labeled
 	Display   string // required mutable user-facing spec.name
 	TenantID  string // from core.LabelTenant
 	Plan      string // Spec.Plan (== tier in usage rows)
@@ -411,16 +412,21 @@ type datastoreEntry struct {
 	CreatedAt time.Time
 }
 
-// listDatastores returns all tenant-owned Database and KeyValue CRs in the
-// service namespace via the k8s client. Skips unlabeled CRs (not tenant-owned).
-// Returns nil when the k8s client is not wired.
+// listDatastores returns all tenant-owned Database and KeyValue CRs via the k8s
+// client. Skips unlabeled CRs (not tenant-owned). Returns nil when the k8s
+// client is not wired.
+//
+// The lists are CLUSTER-WIDE: metering runs fleet-wide with no caller identity,
+// and under ADR043 D8 each workspace's datastores sit in its own namespace, so
+// a namespace-scoped list would meter only the un-migrated ones — under-billing
+// silently, which is the worst failure mode this loop has.
 func (s *Service) listDatastores(ctx context.Context) ([]datastoreEntry, error) {
 	if s.Client == nil {
 		return nil, nil
 	}
 	var out []datastoreEntry
 	var dbs appv1alpha1.DatabaseList
-	if err := s.Client.List(ctx, &dbs, client.InNamespace(s.Namespace)); err != nil {
+	if err := s.Client.List(ctx, &dbs); err != nil {
 		return nil, fmt.Errorf("list databases: %w", err)
 	}
 	for _, d := range dbs.Items {
@@ -431,6 +437,7 @@ func (s *Service) listDatastores(ctx context.Context) ([]datastoreEntry, error) 
 		out = append(out, datastoreEntry{
 			ID:        d.Name,
 			Name:      d.Name,
+			Namespace: d.Namespace,
 			Display:   d.Spec.Name,
 			TenantID:  tenantID,
 			Plan:      d.Spec.Plan,
@@ -440,7 +447,7 @@ func (s *Service) listDatastores(ctx context.Context) ([]datastoreEntry, error) 
 		})
 	}
 	var kvs appv1alpha1.KeyValueList
-	if err := s.Client.List(ctx, &kvs, client.InNamespace(s.Namespace)); err != nil {
+	if err := s.Client.List(ctx, &kvs); err != nil {
 		return nil, fmt.Errorf("list keyvalues: %w", err)
 	}
 	for _, kv := range kvs.Items {
@@ -451,6 +458,7 @@ func (s *Service) listDatastores(ctx context.Context) ([]datastoreEntry, error) 
 		out = append(out, datastoreEntry{
 			ID:        kv.Name,
 			Name:      kv.Name,
+			Namespace: kv.Namespace,
 			Display:   kv.Spec.Name,
 			TenantID:  tenantID,
 			Plan:      kv.Spec.Plan,
@@ -498,7 +506,7 @@ func (s *Service) processDatastoreMeterWindow(ctx context.Context, ds datastoreE
 	expectedFrom := usageExpectedFrom(ds.CreatedAt)
 	switch kind {
 	case store.UsageKindInstanceSeconds:
-		quantity, ok = s.queryInstanceSecondsStateful(ctx, ds.Name, s.Namespace, window, end)
+		quantity, ok = s.queryInstanceSecondsStateful(ctx, ds.Name, ds.Namespace, window, end)
 		health = oneSourceHealth(store.UsageSourceInstance, ok, expectedFrom)
 	case store.UsageKindStorageGBSeconds:
 		quantity, ok = s.queryStorageGBSeconds(ctx, ds, window, end)
@@ -838,7 +846,7 @@ func (s *Service) queryStorageGBSeconds(ctx context.Context, ds datastoreEntry, 
 	windowSecs := int64(end.Sub(start) / time.Second)
 	q := fmt.Sprintf(
 		`sum(avg_over_time(kubelet_volume_stats_used_bytes{namespace=%q,persistentvolumeclaim=~%q}[%ds]))`,
-		s.Namespace, pattern, windowSecs)
+		ds.Namespace, pattern, windowSecs)
 	usedBytes, err := egressquery.Instant(ctx, s.promHTTP, s.PromBase, q, end)
 	if err != nil {
 		log.Printf("usage: storage_gb_seconds for %s: %v", ds.Name, err)

@@ -542,7 +542,7 @@ All limits are env-tunable; `BEX_RATE_LIMIT=0` disables rate limiting entirely (
 
 ## Per-workspace resource caps (w7/m9, retired to ResourceQuota in w3/m34)
 
-Creation caps prevent a single workspace from monopolising the platform. Through w3/m34, the **service cap only** is enforced by the per-namespace Kubernetes `ResourceQuota` each workspace's `<ws>` namespace carries (`count/apps.app.bex.co`, ADR043 D3, `store.QuotaCapsForPlan`) — a create past the plan's service count is rejected by the API server, not app code, and cannot be bypassed by an application bug. `apps.mapServiceCapError` translates that admission rejection back into the same Render-shaped message the app-code check used to return, so REST/GraphQL/MCP callers see no difference:
+Creation caps prevent a single workspace from monopolising the platform. Every cap is enforced by the per-namespace Kubernetes `ResourceQuota` each workspace's `<ws>` namespace carries (`count/apps.app.bex.co`, ADR043 D3, `store.QuotaCapsForPlan`) — a create past the plan's service count is rejected by the API server, not app code, and cannot be bypassed by an application bug. `apps.mapServiceCapError` translates that admission rejection back into the same Render-shaped message the app-code check used to return, so REST/GraphQL/MCP callers see no difference:
 
 **Error shape when the service cap is exceeded:**
 
@@ -552,7 +552,7 @@ Creation caps prevent a single workspace from monopolising the platform. Through
 
 The cap is per-workspace (tenant-scoped): workspace B can always create even when workspace A is at its limit.
 
-**Known gap — Postgres and Key Value are currently uncapped.** The app-code `BEX_MAX_POSTGRES`/`BEX_MAX_KEYVALUES` checks were deleted alongside `BEX_MAX_SERVICES` in w3/m34, on the premise that the per-namespace `ResourceQuota`'s `count/databases.app.bex.co`/`count/keyvalues.app.bex.co` dimensions would replace them — but managed Postgres/KeyValue CRs are **not** namespaced under ADR043 (they stay in the shared apps namespace, `BEX_API_NAMESPACE`), so those quota dimensions are never actually charged. A workspace may currently create unlimited Postgres/Key Value instances. Tracked as a follow-up (`.pm` inbox) to either namespace those resource kinds too or restore app-code enforcement for them specifically.
+**Closed 2026-08-08 (w7/m77) — Postgres and Key Value are capped by the same mechanism as services.** The app-code `BEX_MAX_POSTGRES`/`BEX_MAX_KEYVALUES` checks were deleted alongside `BEX_MAX_SERVICES` in w3/m34, on the premise that the per-namespace `ResourceQuota`'s `count/databases.app.bex.co`/`count/keyvalues.app.bex.co` dimensions would replace them. That premise held only for services: ADR043 had been implemented for Apps only, so datastore CRs were still created in the shared apps namespace and those two dimensions counted nothing — leaving Postgres/Key Value creation uncapped in the interim (an honest, recorded gap). [ADR043 D8](ADR043-tenant-namespace-isolation.md) moved the CRs into the workspace's own namespace, which is what makes the dimensions bite; `postgres.CreatePostgres` and `keyvalue.CreateKeyValue` map the API server's rejection through the same `core.QuotaCapError` helper the service cap uses, so all three caps now return the identical Render-shaped 400 across REST/GraphQL/MCP.
 
 **Build concurrency cap (operator, w7/m9):**
 
@@ -567,8 +567,8 @@ The operator applies three build-concurrency controls:
 | Cap | Render anchor | Mechanism | Unset / `0` behavior |
 | --- | --- | --- | --- |
 | Services per workspace | 25 (Hobby) | per-namespace `ResourceQuota` (`count/apps.app.bex.co`, plan-tier `store.QuotaCapsForPlan`) | n/a — always enforced |
-| Postgres instances per workspace | 1 (Hobby) | **none (known gap, see above)** | n/a — currently unlimited |
-| Key-Value instances per workspace | 1 (Hobby) | **none (known gap, see above)** | n/a — currently unlimited |
+| Postgres instances per workspace | 1 (Hobby) | per-namespace `ResourceQuota` (`count/databases.app.bex.co`, plan-tier `store.QuotaCapsForPlan`) | n/a — always enforced |
+| Key-Value instances per workspace | 1 (Hobby) | per-namespace `ResourceQuota` (`count/keyvalues.app.bex.co`, plan-tier `store.QuotaCapsForPlan`) | n/a — always enforced |
 | Concurrent App reconcile workers | — (bex extension) | `BEX_APP_RECONCILE_WORKERS` | default `1` (values below 1 also use `1`) |
 | Concurrent build Jobs per workspace | — (bex extension) | `BEX_MAX_CONCURRENT_BUILDS` | unlimited |
 

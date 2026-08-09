@@ -32,6 +32,12 @@ import (
 // Build-plane, per-App registry, and admission-webhook Secret reads use uncached
 // clients, so their separately scoped build/platform Roles are unaffected by
 // this cache boundary.
+//
+// Managed Postgres/Key Value Secrets are on that same uncached path (ADR043 D8.2,
+// w7/m77): since datastores live in their workspace's own `<ws>` namespace, a
+// cached read would silently miss every one of them, and widening this informer
+// is not the alternative — the ClusterRole above is exactly what makes a
+// cluster-wide Secret list fail. See KeyValueReconciler.SecretClient.
 func NamespacedSecretCacheOptions(namespace string) cache.Options {
 	return cache.Options{
 		ByObject: map[client.Object]cache.ByObject{

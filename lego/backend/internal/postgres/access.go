@@ -129,7 +129,7 @@ func (s *Service) CreateUser(ctx context.Context, name, role string) (CreateUser
 	}
 	secretName := fmt.Sprintf("%s-user-%s", name, role)
 	sec := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: s.Namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: d.Namespace},
 		Type:       corev1.SecretTypeBasicAuth, // CNPG passwordSecret expects username/password
 		Data: map[string][]byte{
 			"username": []byte(role),
@@ -176,7 +176,7 @@ func (s *Service) DeleteUser(ctx context.Context, name, role string) error {
 		return err
 	}
 	if secretName != "" {
-		sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: s.Namespace}}
+		sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: d.Namespace}}
 		if err := s.Client.Delete(ctx, sec); err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}

@@ -108,7 +108,7 @@ func TestHostingNamespaceGetsAllowPoliciesSandboxSealed(t *testing.T) {
 	}
 
 	host := WorkspaceNamespace(tn.ID)
-	for _, name := range []string{"default-deny", "allow-same-namespace", "allow-dns-egress", "allow-traefik-ingress", "allow-internet-egress"} {
+	for _, name := range []string{"default-deny", "allow-same-namespace", "allow-dns-egress", "allow-traefik-ingress", "allow-internet-egress", "allow-datastore-control-ingress"} {
 		if !has(host, name) {
 			t.Errorf("hosting namespace missing policy %s", name)
 		}
@@ -122,7 +122,7 @@ func TestHostingNamespaceGetsAllowPoliciesSandboxSealed(t *testing.T) {
 	if !has(sandbox, "default-deny") {
 		t.Errorf("sandbox namespace missing default-deny")
 	}
-	for _, name := range []string{"allow-same-namespace", "allow-dns-egress", "allow-traefik-ingress", "allow-internet-egress", "allow-opensandbox-server-execd", "allow-gateway-driver-ingress"} {
+	for _, name := range []string{"allow-same-namespace", "allow-dns-egress", "allow-traefik-ingress", "allow-internet-egress", "allow-datastore-control-ingress", "allow-opensandbox-server-execd", "allow-gateway-driver-ingress"} {
 		if has(sandbox, name) {
 			t.Errorf("sandbox namespace must NOT have %s (per-sandbox boundary / Cilium-managed)", name)
 		}

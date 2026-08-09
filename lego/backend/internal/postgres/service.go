@@ -37,6 +37,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -403,12 +404,11 @@ func (s *Service) ListPostgres(ctx context.Context, ownerID string) ([]PostgresV
 			return []PostgresView{}, nil
 		}
 	}
-	opts := []client.ListOption{client.InNamespace(s.Namespace)}
-	if tenantID != "" {
-		// Push the scoping into the list call itself (server-side label selector)
-		// rather than fetching the whole namespace and filtering in memory.
-		opts = append(opts, client.MatchingLabels{core.LabelTenant: tenantID})
-	}
+	// Scoping is pushed into the list call itself (server-side label selector)
+	// rather than fetching a namespace and filtering in memory. Under ADR043 D8
+	// the selector also has to be what carries the tenant boundary: a workspace's
+	// datastores live in its own namespace, so no single namespace holds them all.
+	opts := s.DatastoreListOptions(tenantID)
 	var list appv1alpha1.DatabaseList
 	if err := s.Client.List(ctx, &list, opts...); err != nil {
 		return nil, err
@@ -435,7 +435,7 @@ func (s *Service) GetPostgres(ctx context.Context, name string) (PostgresView, e
 // their own scope when the control-plane tenant resolver is disabled.
 func (s *Service) ensureDatabaseNameAvailable(ctx context.Context, tenantID, name, excludeID string) error {
 	var list appv1alpha1.DatabaseList
-	if err := s.Client.List(ctx, &list, client.InNamespace(s.Namespace)); err != nil {
+	if err := s.Client.List(ctx, &list, s.DatastoreListOptions(tenantID)...); err != nil {
 		return fmt.Errorf("checking database name: %w", err)
 	}
 	for i := range list.Items {
@@ -490,7 +490,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 		crReplicas = append(crReplicas, appv1alpha1.DatabaseReadReplica{Name: r.Name})
 	}
 	d := &appv1alpha1.Database{
-		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.Postgres), Namespace: s.Namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.Postgres), Namespace: s.TenantNamespace(tenantID)},
 		Spec: appv1alpha1.DatabaseSpec{
 			Name:             req.Name,
 			DatabaseName:     req.DatabaseName,
@@ -537,6 +537,14 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 		if apierrors.IsAlreadyExists(err) {
 			return PostgresView{}, fmt.Errorf("%w: generated Postgres id collision; retry the request", core.ErrConflict)
 		}
+		// The per-namespace ResourceQuota is what enforces the plan's Postgres
+		// cap now that the CR lands in `<ws>` (ADR043 D8, closing w3/010).
+		// Translate the API server's Forbidden into the same Render-shaped
+		// message the service cap returns, or the caller sees a raw 403 about a
+		// Kubernetes object they have no concept of.
+		if mapped, ok := core.QuotaCapError(err, store.DatabasesQuotaCountKey, "Postgres database"); ok {
+			return PostgresView{}, mapped
+		}
 		return PostgresView{}, err
 	}
 	s.RecordDatabaseEffect(ctx, d, core.DatabaseCreated)
@@ -572,8 +580,11 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 	info := PostgresConnectionInfo{
 		Password:                 pass,
 		InternalConnectionString: internal,
+		// Qualify with the Database's OWN namespace (ADR043 D8) — this command is
+		// copy-pasted by humans from anywhere, so it must never depend on the
+		// reader happening to sit in the same namespace.
 		PSQLCommand: fmt.Sprintf("PGPASSWORD=%s psql -h %s-rw.%s.svc -U %s %s",
-			pass, d.Name, s.Namespace, user, dbn),
+			pass, d.Name, d.Namespace, user, dbn),
 	}
 	if d.Status.ExternalHost != "" {
 		// Standard sslmode=require works for all clients: the pg-sni-proxy
@@ -882,7 +893,7 @@ func planRequiresUpgradeBackup(plan string) bool {
 func (s *Service) hasCompletedBackup(ctx context.Context, d *appv1alpha1.Database) bool {
 	list := &unstructured.UnstructuredList{}
 	list.SetGroupVersionKind(cnpgBackupGVK)
-	if err := s.Client.List(ctx, list, client.InNamespace(s.Namespace), client.MatchingLabels{labelCNPGCluster: d.Name}); err != nil {
+	if err := s.Client.List(ctx, list, client.InNamespace(d.Namespace), client.MatchingLabels{labelCNPGCluster: d.Name}); err != nil {
 		return false
 	}
 	serverName := d.Status.BackupServerName

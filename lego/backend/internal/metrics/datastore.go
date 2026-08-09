@@ -168,20 +168,28 @@ func pvcPattern(kind, resource string) string {
 // Render-shaped series.
 func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) ([]MetricSeries, error) {
 	var isHA bool
+	// Prometheus series are namespace-labeled, so every request below must carry
+	// the datastore's OWN namespace (ADR043 D8). Querying the shared one for a
+	// migrated datastore returns an empty series rather than an error — the same
+	// silent-empty failure the App-side metrics path already had to fix.
+	namespace := s.Namespace
 	switch q.Kind {
 	case DatastoreDatabase:
 		db, err := s.AuthorizeDatabase(ctx, core.RelCanView, q.Resource)
 		if err != nil {
 			return nil, err
 		}
+		namespace = db.Namespace
 		isHA = db.Status.HighAvailabilityEnabled
 		if q.Metric == MetricKVMemory || q.Metric == MetricKVConnections {
 			return nil, fmt.Errorf("metric %q is key-value-only, not valid for a database resource", q.Metric)
 		}
 	case DatastoreKeyValue:
-		if _, err := s.AuthorizeKeyValue(ctx, core.RelCanView, q.Resource); err != nil {
+		kv, err := s.AuthorizeKeyValue(ctx, core.RelCanView, q.Resource)
+		if err != nil {
 			return nil, err
 		}
+		namespace = kv.Namespace
 		if q.Metric == MetricDBConnections || q.Metric == MetricReplicationLag {
 			return nil, fmt.Errorf("metric %q is Postgres-only, not valid for a key-value resource", q.Metric)
 		}
@@ -203,7 +211,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			return nil, core.ErrMetricsUnavailable
 		}
 		return s.DiskUsage(ctx, DiskUsageRequest{
-			Namespace:  s.Namespace,
+			Namespace:  namespace,
 			Resource:   q.Resource,
 			PVCPattern: pvcPattern(q.Kind, q.Resource),
 			Metric:     q.Metric,
@@ -216,7 +224,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			return nil, core.ErrMetricsUnavailable
 		}
 		return s.DBConnections(ctx, DBConnectionsRequest{
-			Namespace: s.Namespace, Cluster: q.Resource, Start: q.Start, End: q.End, Resolution: q.Resolution,
+			Namespace: namespace, Cluster: q.Resource, Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
 	case MetricReplicationLag:
 		// Gated on HighAvailabilityEnabled: a non-HA instance has no standby, and
@@ -230,7 +238,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			return nil, core.ErrMetricsUnavailable
 		}
 		return s.ReplicationLag(ctx, ReplicationLagRequest{
-			Namespace: s.Namespace, Cluster: q.Resource, Start: q.Start, End: q.End, Resolution: q.Resolution,
+			Namespace: namespace, Cluster: q.Resource, Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
 	case MetricKVMemory, MetricKVConnections:
 		if s.KeyValueStats == nil {
@@ -241,7 +249,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			dimension = "connections"
 		}
 		return s.KeyValueStats(ctx, KeyValueStatsRequest{
-			Namespace: s.Namespace, Resource: q.Resource, Dimension: dimension,
+			Namespace: namespace, Resource: q.Resource, Dimension: dimension,
 			Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
 	default:

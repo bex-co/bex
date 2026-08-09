@@ -123,24 +123,24 @@ func (s *Service) RecoveryInfo(ctx context.Context, name string) (RecoveryInfoVi
 	// first backup lands — then just report "now" as the latest recoverable point).
 	cluster := &unstructured.Unstructured{}
 	cluster.SetGroupVersionKind(cnpgClusterGVK)
-	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: name}, cluster); err == nil {
+	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: d.Namespace, Name: name}, cluster); err == nil {
 		if p, ok, _ := unstructured.NestedString(cluster.Object, "status", "firstRecoverabilityPoint"); ok {
 			info.EarliestRecoveryTime = p
 		}
 	}
 	info.LatestRecoveryTime = s.Now().UTC().Format(time.RFC3339)
-	info.Backups = s.listBackups(ctx, name)
+	info.Backups = s.listBackups(ctx, d.Namespace, name)
 	return info, nil
 }
 
 // listBackups lists the CNPG Backup objects for a database, mapping each to a
 // BackupView. Best-effort: an unavailable CNPG CRD (e.g. envtest) yields an
 // empty list.
-func (s *Service) listBackups(ctx context.Context, name string) []BackupView {
+func (s *Service) listBackups(ctx context.Context, namespace, name string) []BackupView {
 	sel := client.MatchingLabels{labelCNPGCluster: name}
 	list := &unstructured.UnstructuredList{}
 	list.SetGroupVersionKind(cnpgBackupGVK)
-	if err := s.Client.List(ctx, list, client.InNamespace(s.Namespace), sel); err != nil {
+	if err := s.Client.List(ctx, list, client.InNamespace(namespace), sel); err != nil {
 		return []BackupView{}
 	}
 	out := make([]BackupView, 0, len(list.Items))
@@ -212,7 +212,9 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 		sourceBackupServerName = src.Name
 	}
 	newDB := &appv1alpha1.Database{
-		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.Postgres), Namespace: s.Namespace},
+		// A recovered database belongs to the same workspace as its source, so it
+		// lands in the same namespace (ADR043 D8).
+		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.Postgres), Namespace: src.Namespace},
 		Spec: appv1alpha1.DatabaseSpec{
 			Name:         req.Name,
 			DatabaseName: src.Spec.EffectiveDatabaseName(src.Name),

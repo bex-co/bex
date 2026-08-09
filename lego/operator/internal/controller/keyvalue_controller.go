@@ -222,6 +222,29 @@ type KeyValueReconciler struct {
 	// ClusterIssuer signs the end-to-end Valkey server certificate used only by
 	// the proxy-facing TLS port. Public endpoints fail closed when it is empty.
 	ClusterIssuer string
+	// SecretClient reads and writes this KeyValue's credential Secrets. It must
+	// be an UNCACHED client: the manager's Secret informer covers exactly one
+	// namespace (NamespacedSecretCacheOptions), while under ADR043 D8 a KeyValue
+	// lives in its workspace's own `<ws>` namespace. Widening that informer is
+	// not an option — the operator's ClusterRole deliberately omits cluster-wide
+	// Secrets (w7/m7), so a cluster-wide Secret list would fail and stop the
+	// entire shared cache, App controller included, from ever starting.
+	// Nil falls back to the cached client, which keeps tests and embedders that
+	// do not wire one working exactly as before.
+	SecretClient client.Client
+	// BackupSourceNamespace holds the GitOps-installed S3 credential that tenant
+	// namespaces are projected from (ADR043 D8.4) — the shared apps namespace.
+	// Empty disables projection, correct for a single-namespace deployment.
+	BackupSourceNamespace string
+}
+
+// secretClient returns the uncached client for tenant-namespace Secret access —
+// the same escape hatch the App path uses (AppReconciler.buildPlaneClient).
+func (r *KeyValueReconciler) secretClient() client.Client {
+	if r.SecretClient != nil {
+		return r.SecretClient
+	}
+	return r.Client
 }
 
 // +kubebuilder:rbac:groups=app.bex.co,resources=keyvalues,verbs=get;list;watch;create;update;patch;delete
@@ -294,13 +317,13 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 	// from the legacy connection Secret during migration so an upgrade never
 	// rotates an existing store.
 	connection := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace}}
-	if err := r.Get(ctx, client.ObjectKeyFromObject(connection), connection); err != nil && !apierrors.IsNotFound(err) {
+	if err := r.secretClient().Get(ctx, client.ObjectKeyFromObject(connection), connection); err != nil && !apierrors.IsNotFound(err) {
 		result, failErr := r.kvFail(ctx, kv, "SecretFailed", err)
 		return nil, result, true, failErr
 	}
 	seedPassword := connection.Data["password"]
 	auth := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: kv.Name + "-auth", Namespace: kv.Namespace}}
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, auth, func() error {
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.secretClient(), auth, func() error {
 		if auth.Data == nil {
 			auth.Data = map[string][]byte{}
 		}
@@ -337,7 +360,7 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 		}
 		return nil, ctrl.Result{RequeueAfter: time.Second}, true, nil
 	}
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, connection, func() error {
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.secretClient(), connection, func() error {
 		connection.Data = desiredData
 		connection.Immutable = ptr(true)
 		return controllerutil.SetControllerReference(kv, connection, r.Scheme)
@@ -932,10 +955,15 @@ func (r *KeyValueReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		Owns(&corev1.Service{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&networkingv1.NetworkPolicy{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
-		// Secret data updates do not increment metadata.generation. ResourceVersion
-		// keeps credential drift self-healing while the manager cache scopes this
-		// watch to BEX_APPS_NAMESPACE (NamespacedSecretCacheOptions).
-		Owns(&corev1.Secret{}, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
+		// No Owns(&corev1.Secret{}) watch: it is cache-backed, and the manager's
+		// Secret informer covers only BEX_APPS_NAMESPACE, so it could never fire
+		// for a KeyValue in a tenant namespace (ADR043 D8). Keeping it would make
+		// drift healing work in one namespace and silently not in the others,
+		// which is worse than not having it. Nothing is lost that matters: the
+		// auth Secret is immutable (the API server rejects data edits outright),
+		// the connection Secret is derived and re-converged on every pass, and a
+		// Ready KeyValue re-reconciles every childHealthRequeue — so drift heals
+		// within ~30s uniformly instead of instantly in one namespace only.
 		Named("keyvalue").
 		Complete(r)
 }

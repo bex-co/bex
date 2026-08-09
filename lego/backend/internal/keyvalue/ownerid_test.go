@@ -132,7 +132,7 @@ func TestCreateKeyValue_StampsBothLabels(t *testing.T) {
 		t.Fatalf("created view = %+v, want OwnerID=tea-a, minted id, name=kv1", view)
 	}
 	var kv appv1alpha1.KeyValue
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: view.ID}, &kv); err != nil {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "tea-a", Name: view.ID}, &kv); err != nil {
 		t.Fatalf("get KeyValue: %v", err)
 	}
 	if kv.Spec.Name != "kv1" {
