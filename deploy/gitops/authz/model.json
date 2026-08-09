@@ -459,6 +459,7 @@
     {
       "metadata": {
         "relations": {
+          "can_create": {},
           "can_operate": {},
           "can_view": {},
           "workspace": {
@@ -471,6 +472,16 @@
         }
       },
       "relations": {
+        "can_create": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "can_create"
+            },
+            "tupleset": {
+              "relation": "workspace"
+            }
+          }
+        },
         "can_operate": {
           "tupleToUserset": {
             "computedUserset": {

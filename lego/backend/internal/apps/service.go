@@ -1059,7 +1059,14 @@ func (s *Service) ResolveSSHSession(ctx context.Context, username string) (SSHIn
 		// username, preserving the repository-wide 403-before-400/404 rule.
 		lookup = strings.TrimSpace(username)
 	}
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, lookup)
+	// SECURITY (codex round-4 #8): native SSH and the Browser Web Shell reach the
+	// SAME pods/exec sink, so they must enforce the SAME relation. CreateShellSession
+	// below requires can_view_sensitive because a shell is `printenv` on the pod's
+	// env vars and mounted secrets; gating this transport on the weaker can_operate
+	// let a contributor — who holds can_operate AND can_manage_ssh_keys — enroll a
+	// key and walk around that boundary with `ssh`. The relation belongs to the sink,
+	// not the transport.
+	a, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, lookup)
 	if err != nil {
 		return SSHInstanceTarget{}, err
 	}

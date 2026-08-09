@@ -108,7 +108,12 @@ func TestSSHAddressInstancesAndSpecificResolution(t *testing.T) {
 	}
 }
 
-func TestResolveSSHSessionAuthorizesCanOperateOnTargetWorkspace(t *testing.T) {
+// Native SSH reaches the same pods/exec sink as the Browser Web Shell, so it
+// must enforce the same can_view_sensitive relation (codex round-4 #8). A
+// contributor holds can_operate and can_manage_ssh_keys but NOT
+// can_view_sensitive, so this pins the transport that could otherwise be used to
+// walk around CreateShellSession's boundary.
+func TestResolveSSHSessionAuthorizesCanViewSensitiveOnTargetWorkspace(t *testing.T) {
 	app := sshApp()
 	recorder := &sshAuthzRecorder{allow: true}
 	service := &Service{Base: &core.Base{
@@ -122,22 +127,22 @@ func TestResolveSSHSessionAuthorizesCanOperateOnTargetWorkspace(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(recorder.calls) != 1 || recorder.calls[0] != (sshAuthzCall{
-		relation: core.RelCanOperate,
+		relation: core.RelCanViewSensitive,
 		object:   core.WorkspaceObject("tea-workspace"),
 	}) {
 		t.Fatalf("SSH authorization calls = %+v", recorder.calls)
 	}
 
-	// A member who can see the target but lacks can_operate must fail before a
-	// session target is returned. This is the viewer denial the public matrix
-	// later repeats against real OpenFGA.
+	// A member who can see the target but lacks can_view_sensitive must fail
+	// before a session target is returned. This is the viewer/contributor denial
+	// the public matrix later repeats against real OpenFGA.
 	recorder.allow = false
 	recorder.calls = nil
 	if _, err := service.ResolveSSHSession(ctxAs("user-a"), sshServiceID); !errors.Is(err, core.ErrForbidden) {
-		t.Fatalf("viewer resolution = %v, want forbidden", err)
+		t.Fatalf("under-privileged resolution = %v, want forbidden", err)
 	}
-	if len(recorder.calls) != 1 || recorder.calls[0].relation != core.RelCanOperate {
-		t.Fatalf("viewer authorization calls = %+v", recorder.calls)
+	if len(recorder.calls) != 1 || recorder.calls[0].relation != core.RelCanViewSensitive {
+		t.Fatalf("under-privileged authorization calls = %+v", recorder.calls)
 	}
 }
 

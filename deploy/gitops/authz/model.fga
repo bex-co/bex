@@ -103,3 +103,9 @@ type agent_session
     define workspace: [workspace]
     define can_view: can_view from workspace
     define can_operate: can_operate from workspace
+    # can_create is inherited so a session verb that provisions a FRESH
+    # credential-bearing sandbox (Steer re-dispatches one with the workspace's
+    # reusable model key and a caller-supplied prompt) can gate on the same
+    # developer-and-up relation Create does, against the session object rather
+    # than the caller's default workspace (codex round-4 #3).
+    define can_create: can_create from workspace
