@@ -254,6 +254,7 @@ func main() {
 		Client:                  mgr.GetClient(),
 		BuildClient:             uncachedClient,
 		Scheme:                  mgr.GetScheme(),
+		AppsNamespace:           appsNamespace,
 		Mode:                    envOr("BEX_RUNTIME", controller.ModeOpenSandbox),
 		Registry:                envOr("BEX_REGISTRY", "127.0.0.1:5050"),
 		KpackRegistry:           os.Getenv("BEX_KPACK_REGISTRY"),

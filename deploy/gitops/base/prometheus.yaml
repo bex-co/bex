@@ -616,9 +616,13 @@ spec:
                   # Expiry is approximated from the bex-kubeconfig Secret's creation
                   # timestamp (CAPI refreshes the Secret when kubeadm renews the cert).
                   # Fires 30d before expected expiry. Runbook: docs/ADR036-ca-rotation-runbook.md
+                  # The namespace matcher spans both `default` and the locked-down
+                  # `bex-capi` so it keeps working across the codex #5 relocation of
+                  # bex-kubeconfig out of the operator-readable default namespace
+                  # (docs/runbooks/operator-kubeconfig-isolation.md).
                   - alert: AdminCertExpiringSoon
                     expr: |
-                      (kube_secret_created{namespace="default", secret="bex-kubeconfig"} + 31536000 - time()) < (30 * 24 * 3600)
+                      (kube_secret_created{namespace=~"default|bex-capi", secret="bex-kubeconfig"} + 31536000 - time()) < (30 * 24 * 3600)
                     for: 1h
                     labels:
                       severity: warning

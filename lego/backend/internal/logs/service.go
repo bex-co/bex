@@ -332,6 +332,22 @@ func (q LogQuery) tailSupports() error {
 	return nil
 }
 
+// liveSubscribable reports (as an error) when a subscription has no live producer
+// to stream. The live tail has exactly two producers — app pod stdout and build
+// Job stdout — so a query the tail cannot honor (request logs, store-only
+// filters) or one that wants neither app nor build (e.g. type=predeploy) must be
+// refused up front rather than accepted into an idle stream that holds a
+// process-global SSE slot until the client disconnects (codex #3).
+func (q LogQuery) liveSubscribable() error {
+	if err := q.tailSupports(); err != nil {
+		return err
+	}
+	if len(q.Types) > 0 && !q.wants(LogTypeApp) && !q.wants(LogTypeBuild) {
+		return fmt.Errorf("%w: the live tail streams only app and build logs; type=%v has no live producer — use the historical logs query", core.ErrBadRequest, q.Types)
+	}
+	return nil
+}
+
 // keepPod reports whether a pod satisfies the `instance` filter — the one
 // structured filter the pod-log fallback CAN honor (a pod name is a pod name).
 func (q LogQuery) keepPod(pod string) bool {
@@ -750,8 +766,13 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 		return s.followBuildLogs(ctx, q, resource, app.Spec.Repo, app.Spec.Branch, emit)
 	}
 	if !q.wants(LogTypeApp) {
-		<-ctx.Done() // nothing to stream; hold until the client disconnects
-		return ctx.Err()
+		// SECURITY (codex #3): the live tail has exactly two producers — app pod
+		// stdout and build Job stdout. A query wanting neither (e.g. type=predeploy)
+		// has nothing to stream; it must NOT park on ctx.Done() holding one of the
+		// process-global SSE slots until the client disconnects. Refuse immediately
+		// so the slot is released. (logsSubscribe also rejects this pre-slot via
+		// liveSubscribable; this guards any other FollowLogs caller.)
+		return fmt.Errorf("%w: the live tail streams only app and build logs; type=%v has no live producer — use the historical logs query", core.ErrBadRequest, q.Types)
 	}
 
 	ctx, cancel := context.WithCancel(ctx)

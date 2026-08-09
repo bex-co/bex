@@ -120,6 +120,15 @@ func Verify(secret []byte, token string, now time.Time) (Claims, error) {
 	return claims, nil
 }
 
+// NonceExpiry is the instant this ticket's single-use nonce may be pruned from
+// the replay guard. It matches the verifier's EFFECTIVE acceptance window
+// (ExpiresAt + clockSkew), not the raw ExpiresAt — otherwise a still-verifiable
+// ticket's nonce could be pruned and re-claimed during the skew interval,
+// defeating single-use (codex #8).
+func (c Claims) NonceExpiry() time.Time {
+	return time.Unix(c.ExpiresAt, 0).Add(clockSkew)
+}
+
 // Username returns the SSH-style username the gateway feeds ResolveSSHSession:
 // the specific instance id when the ticket pins one, else the bare service id
 // (which selects a random Ready replica, matching native SSH).

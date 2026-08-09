@@ -271,6 +271,14 @@ func TestGithubOwnerRepo(t *testing.T) {
 		{"https://gitlab.com/acme/app", "", "", false},
 		{"https://github.com/acme", "", "", false},
 		{"", "", "", false},
+		// Origin-spoofing forms that must NOT canonicalize to github.com:
+		{"https://evil.example/@github.com/acme/app", "", "", false},     // @ in the PATH, not userinfo
+		{"https://evil.example/@github.com/acme/app.git", "", "", false}, // .git form of the same
+		{"https://github.com@evil.example/acme/app", "", "", false},      // real userinfo, host=evil.example
+		{"https://user@github.com/acme/app", "", "", false},              // userinfo rejected outright
+		{"https://github.com.evil.example/acme/app", "", "", false},      // github.com as a subdomain label
+		{"https://github.com:8443/acme/app", "", "", false},              // non-default port
+		{"ssh://git@github.com/acme/app", "", "", false},                 // ssh never mints an http token
 	} {
 		owner, repo, ok := githubOwnerRepo(c.url)
 		if ok != c.ok || owner != c.owner || repo != c.repo {
@@ -425,8 +433,10 @@ func TestCloneTokenRequiresGitHubOrigin(t *testing.T) {
 	ctx := context.Background()
 
 	for _, url := range []string{
-		"https://evil.example/octo/app",            // attacker host, granted path suffix
-		"https://evil.example/octo/app.git",        // .git form
+		"https://evil.example/octo/app",             // attacker host, granted path suffix
+		"https://evil.example/octo/app.git",         // .git form
+		"https://evil.example/@github.com/octo/app", // @github.com in the PATH — the F1-bypass this test now pins
+		"https://evil.example/@github.com/octo/app.git",
 		"https://github.com.evil.example/octo/app", // github.com as a subdomain prefix
 		"https://github.com@evil.example/octo/app", // userinfo trick
 		"git@evil.example:octo/app.git",            // scp form, attacker host

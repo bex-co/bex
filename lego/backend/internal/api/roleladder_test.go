@@ -316,11 +316,24 @@ var representativeVerbRelations = map[string]string{
 	"*keyvalue.Service.CreateKeyValue": core.RelCanCreate,
 	"*environments.Service.Create":     core.RelCanCreate,
 	"*secrets.Service.SetEnvVar":       core.RelCanCreate,
+	// can_create — developer and up: choosing the executable a service runs
+	// (source/image/commands), rotating a deploy-hook bearer secret, and
+	// provisioning a credential-bearing agent sandbox are create-like, not
+	// lifecycle (codex #1). Rotation uses can_create (a write) rather than
+	// can_view_sensitive so it stays in the service events feed.
+	"*apps.Service.SetCommands":                    core.RelCanCreate,
+	"*apps.Service.SetSource":                      core.RelCanCreate,
+	"*apps.Service.SetSourceAndRegistryCredential": core.RelCanCreate,
+	"*agentsessions.Service.Create":                core.RelCanCreate,
+	"*deploys.Service.RegenerateDeployHook":        core.RelCanCreate,
 	// can_view_sensitive — developer and up (connection strings, env values).
 	"*secrets.Service.GetEnvVar":               core.RelCanViewSensitive,
 	"*postgres.Service.ExecuteQuery":           core.RelCanViewSensitive,
 	"*keyvalue.Service.KeyValueConnectionInfo": core.RelCanViewSensitive,
 	"*deploys.Service.GetDeployHook":           core.RelCanViewSensitive,
+	// can_view_sensitive — developer and up: an interactive shell yields code
+	// execution in the pod, exposing its env vars and secret files (codex #1).
+	"*apps.Service.CreateShellSession": core.RelCanViewSensitive,
 	// can_manage_keys — developer and up (workspace API keys).
 	"*apikeys.Service.CreateAPIKey": core.RelCanManageKeys,
 	// can_manage — admin only (workspace/members/git settings).

@@ -167,8 +167,13 @@ type AppReconciler struct {
 	// namespaces; a cached client would try to establish forbidden cluster-wide
 	// informers before performing a namespaced Get. Tests may leave it nil and
 	// use Client.
-	BuildClient          client.Client
-	Scheme               *runtime.Scheme
+	BuildClient client.Client
+	Scheme      *runtime.Scheme
+	// AppsNamespace is the shared/bootstrap tenant namespace (BEX_APPS_NAMESPACE,
+	// default "default"). Together with each App's own workspace namespace it
+	// defines the canonical set the reconciler will act on — see canonicalNamespace
+	// and the codex #4 guard in Reconcile.
+	AppsNamespace        string
 	Mode                 string                  // ModeOpenSandbox | ModeKubernetes
 	Registry             string                  // in-cluster registry, e.g. zot.bex-registry.svc:5000
 	KpackRegistry        string                  // optional kpack alias for Registry (e.g. zot.local:5000 for plain HTTP)
@@ -271,6 +276,25 @@ var traefikHTTPMiddlewareGVK = schema.GroupVersionKind{Group: "traefik.io", Vers
 
 const traefikRouterMiddlewaresAnnotation = "traefik.ingress.kubernetes.io/router.middlewares"
 
+// canonicalNamespace reports whether app lives in a namespace the reconciler is
+// allowed to act on: the shared/bootstrap apps namespace (AppsNamespace, default
+// "default") or its own per-workspace namespace. The control plane projects each
+// App into WorkspaceNamespace(workspaceID)==workspaceID and stamps that same id as
+// the app.bex.co/workspace label, so for every legitimate App the namespace equals
+// one of those two. Any other namespace is a confused-deputy / cross-tenant write
+// (codex #4).
+func (r *AppReconciler) canonicalNamespace(app *appv1alpha1.App) bool {
+	appsNS := r.AppsNamespace
+	if appsNS == "" {
+		appsNS = "default" // mirror BEX_APPS_NAMESPACE's default so an unset field never refuses bootstrap Apps
+	}
+	if app.Namespace == appsNS {
+		return true
+	}
+	ws := app.Labels[labelWorkspace]
+	return ws != "" && app.Namespace == ws
+}
+
 //nolint:gocyclo // Reconcile intentionally coordinates the App state machine's distinct phases.
 func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var app appv1alpha1.App
@@ -286,6 +310,21 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if !app.DeletionTimestamp.IsZero() {
 		return r.handleAppDeletion(ctx, &app)
 	}
+
+	// SECURITY (codex #4): the bex-api ServiceAccount can create App CRs
+	// cluster-wide, so a compromised API pod could plant an App in a platform
+	// namespace or another tenant's namespace and use this operator as a deputy to
+	// run its image and resolve that namespace's Secrets. Fail closed: every
+	// legitimately-projected App lives in its own workspace namespace (namespace ==
+	// app.bex.co/workspace, since WorkspaceNamespace(id)==id) or the shared
+	// bootstrap apps namespace. Anything else gets no finalizer, no child
+	// workloads, and no requeue — the confused-deputy write is inert.
+	if !r.canonicalNamespace(&app) {
+		logf.FromContext(ctx).Info("refusing App outside a canonical tenant namespace (codex #4)",
+			"appNamespace", app.Namespace, "workspaceLabel", app.Labels[labelWorkspace], "appsNamespace", r.AppsNamespace)
+		return ctrl.Result{}, nil
+	}
+
 	if controllerutil.AddFinalizer(&app, finalizer) {
 		if err := r.Update(ctx, &app); err != nil {
 			return ctrl.Result{}, err

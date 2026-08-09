@@ -95,6 +95,19 @@ const enAuth: Record<string, TranslationEntry> = {
     message: "Redirecting to login…",
     description: "Logout page subtext once logout has completed",
   },
+  "auth.logoutFailedTitle": {
+    message: "Sign-out failed",
+    description: "Logout page heading when the provider logout request failed",
+  },
+  "auth.logoutFailedSubtitle": {
+    message:
+      "We couldn't end your session. You may still be signed in — please try again.",
+    description: "Logout page subtext when the provider logout request failed",
+  },
+  "auth.logoutRetry": {
+    message: "Try again",
+    description: "Logout page retry button after a failed sign-out",
+  },
   "auth.logoutTitle": {
     message: "Sign out",
     description: "Logout page document title",

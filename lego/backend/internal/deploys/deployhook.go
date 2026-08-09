@@ -127,8 +127,17 @@ func (s *Service) GetDeployHook(ctx context.Context, service string) (DeployHook
 
 // RegenerateDeployHook atomically replaces the service's credential. Requests
 // that resolve the old URL after this patch completes see no match and 404.
+//
+// SECURITY (codex #1): rotation RETURNS a fresh bearer secret, so it must be
+// restricted to the same developer-and-up tier that gates reading the hook
+// (GetDeployHook's can_view_sensitive) — not the weaker can_operate a contributor
+// holds. It gates on can_create rather than can_view_sensitive because rotation is
+// a state-changing WRITE (it must stay in the service events feed as
+// deploy_hook_regenerated); can_view_sensitive would reclassify it as a read and
+// drop the allowed rotation from the feed. Both relations deny contributors, so
+// the authorization outcome is identical while the audit semantics stay correct.
 func (s *Service) RegenerateDeployHook(ctx context.Context, service string) (DeployHookView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, service)
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return DeployHookView{}, err
 	}

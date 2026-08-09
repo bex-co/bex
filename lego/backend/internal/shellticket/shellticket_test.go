@@ -111,3 +111,24 @@ func TestMintEmptySecret(t *testing.T) {
 		t.Error("Mint with empty secret should error")
 	}
 }
+
+// TestNonceExpiryCoversVerifyWindow pins codex #8: the replay guard must retain a
+// ticket's single-use nonce at least as long as Verify still accepts the ticket.
+// NonceExpiry (ExpiresAt + clockSkew) must not fall before the last instant Verify
+// accepts, or a nonce pruned at raw ExpiresAt could be re-claimed and a
+// still-verifiable ticket replayed during the clock-skew interval.
+func TestNonceExpiryCoversVerifyWindow(t *testing.T) {
+	exp := time.Unix(1_800_000_000, 0)
+	token := mint(t, Claims{Subject: "user-1", ServiceID: "srv-abc", ExpiresAt: exp.Unix()})
+	lastAccepted := exp.Add(clockSkew) // Verify accepts through ExpiresAt+clockSkew.
+	claims, err := Verify(testSecret, token, lastAccepted)
+	if err != nil {
+		t.Fatalf("Verify at the last accepted instant: %v", err)
+	}
+	if claims.NonceExpiry().Before(lastAccepted) {
+		t.Fatalf("NonceExpiry %v precedes the last verifiable instant %v — replay window open", claims.NonceExpiry(), lastAccepted)
+	}
+	if _, err := Verify(testSecret, token, lastAccepted.Add(time.Second)); !errors.Is(err, ErrExpired) {
+		t.Fatalf("Verify just past the window = %v, want ErrExpired", err)
+	}
+}

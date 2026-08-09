@@ -1111,7 +1111,12 @@ type ShellSessionView struct {
 // Running with a live revision and image); a specific instanceID, when given,
 // must belong to the service (the gateway still re-validates it is Ready).
 func (s *Service) CreateShellSession(ctx context.Context, name, instanceID string) (ShellSessionView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	// SECURITY (codex #1): an interactive shell yields arbitrary code execution in
+	// the running pod, including reading its env vars and secret files — exactly
+	// what can_view_sensitive gates on the API. Gating the shell on the weaker
+	// can_operate would let a contributor `printenv` their way around that boundary,
+	// so shell mint requires can_view_sensitive (developer and up).
+	a, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, name)
 	if err != nil {
 		return ShellSessionView{}, err
 	}
@@ -2779,7 +2784,10 @@ func (s *Service) SetPreDeployCommand(ctx context.Context, name, command string)
 // jobs call their start command `command`, while the other runtime-backed
 // service types persist it as spec.startCommand.
 func (s *Service) SetCommands(ctx context.Context, name string, buildCommand, startCommand *string) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	// SECURITY (codex #1): build/start commands are attacker-chosen code the
+	// service executes with its runtime identity, so this is create-like, not
+	// lifecycle — gate on can_create (developer and up), not can_operate.
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -2825,7 +2833,10 @@ func (s *Service) SetRegistryCredential(ctx context.Context, name, credentialID 
 // clears it. Switching to a repo clears an old image credential unless the
 // request explicitly supplies one for a Dockerfile build.
 func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name string, repo, image, branch, registryCredentialID, imageOwnerID *string) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	// SECURITY (codex #1): repointing a service at a new repo or image chooses the
+	// executable the operator runs with the service identity — create-like, so gate
+	// on can_create (developer and up), not the lifecycle-oriented can_operate.
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}

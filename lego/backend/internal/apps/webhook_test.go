@@ -115,7 +115,7 @@ func TestRedeployMatchingComposesBuildFilterWithRootDir(t *testing.T) {
 
 	// Inside rootDir but only a doc change the filter ignores => no redeploy.
 	ignored := newPush(repo, []string{"services/api/README.md"})
-	got, _, err := h.redeployMatching(context.Background(), ignored, "main")
+	got, _, err := h.redeployMatching(context.Background(), ignored, "main", "")
 	if err != nil {
 		t.Fatalf("redeployMatching: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestRedeployMatchingComposesBuildFilterWithRootDir(t *testing.T) {
 
 	// Inside rootDir and not ignored => redeploy.
 	included := newPush(repo, []string{"services/api/main.go"})
-	got2, _, err := h.redeployMatching(context.Background(), included, "main")
+	got2, _, err := h.redeployMatching(context.Background(), included, "main", "")
 	if err != nil {
 		t.Fatalf("redeployMatching: %v", err)
 	}
@@ -193,7 +193,7 @@ func TestIgnoredCommitFactIsTypedAndDeliveryIdempotent(t *testing.T) {
 	ev.HeadCommit.URL = "https://github.com/x/mono/commit/abc123"
 
 	for range 2 {
-		if redeployed, _, err := h.redeployMatching(context.Background(), ev, "main"); err != nil || len(redeployed) != 0 {
+		if redeployed, _, err := h.redeployMatching(context.Background(), ev, "main", ""); err != nil || len(redeployed) != 0 {
 			t.Fatalf("redeploy = %v, err = %v, want ignored", redeployed, err)
 		}
 	}
@@ -360,7 +360,7 @@ func TestRedeployMatchingScopesToRootDir(t *testing.T) {
 	h := &GitWebhook{Svc: svc, Secret: "shh"}
 
 	outside := newPush(repo, []string{"services/web/index.js"})
-	redeployed, _, err := h.redeployMatching(context.Background(), outside, "main")
+	redeployed, _, err := h.redeployMatching(context.Background(), outside, "main", "")
 	if err != nil {
 		t.Fatalf("redeployMatching: %v", err)
 	}
@@ -372,7 +372,7 @@ func TestRedeployMatchingScopesToRootDir(t *testing.T) {
 	}
 
 	inside := newPush(repo, []string{"services/api/main.go"})
-	redeployed2, _, err := h.redeployMatching(context.Background(), inside, "main")
+	redeployed2, _, err := h.redeployMatching(context.Background(), inside, "main", "")
 	if err != nil {
 		t.Fatalf("redeployMatching: %v", err)
 	}
@@ -683,7 +683,7 @@ func TestWebhookPushCROnlyAppSkipsDeployRow(t *testing.T) {
 	svc, cl := newService(st, autoDeployApp("api", repo))
 	h := &GitWebhook{Svc: svc, Secret: "shh"}
 
-	redeployed, _, err := h.redeployMatching(context.Background(), newPush(repo, []string{"main.go"}), "main")
+	redeployed, _, err := h.redeployMatching(context.Background(), newPush(repo, []string{"main.go"}), "main", "")
 	if err != nil {
 		t.Fatalf("redeployMatching: %v", err)
 	}
