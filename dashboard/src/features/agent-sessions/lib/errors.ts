@@ -55,6 +55,28 @@ export class AgentSessionError extends Error {
   }
 }
 
+/**
+ * Resolves a typed agent-session error into a display string via `t()`: the
+ * house 503 copy for the unavailable state, the coded `agentSessions.errors.*`
+ * message (with params + server fallback) for a coded error, else the raw error
+ * text. Callers own only the sink (toast vs inline state); this keeps the
+ * error→copy mapping in one place instead of re-implemented per component.
+ * Note: a caller that needs to branch on the *kind* (e.g. the create composer
+ * anchoring a coded error to a form field) still inspects the typed error itself.
+ */
+export function agentSessionErrorMessage(
+  err: unknown,
+  t: (key: string, params?: Record<string, string | number>) => string,
+): string {
+  if (err instanceof AgentSessionsUnavailableError) {
+    return t("agentSessions.unavailableBody");
+  }
+  if (err instanceof AgentSessionError) {
+    return t(err.messageKey, { ...err.params, defaultValue: err.message });
+  }
+  return err instanceof Error ? err.message : String(err);
+}
+
 const UNAVAILABLE = /not configured/i;
 
 /** Pulls the flattened extension params (minus `code`) off one GraphQL error. */

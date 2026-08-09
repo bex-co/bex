@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertCircle, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
@@ -12,11 +12,6 @@ import {
 } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/common/components/ui/alert";
-import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -24,11 +19,8 @@ import {
 } from "@/common/components/ui/sheet";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSession } from "@/features/agent-sessions/hooks/use-agent-session";
-import { SessionDetailHeader } from "@/features/agent-sessions/components/session-detail-header";
-import { PrCard } from "@/features/agent-sessions/components/pr-card";
 import { EvidencePanel } from "@/features/agent-sessions/components/evidence-panel";
-import { SteeringComposer } from "@/features/agent-sessions/components/steering-composer";
-import { SessionConversation } from "@/features/agent-sessions/components/session-conversation";
+import { SessionChatColumn } from "@/features/agent-sessions/components/session-chat-column";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
 
@@ -89,71 +81,6 @@ function AgentSessionDetailPage() {
         />
       ) : null}
     </DashboardLayout>
-  );
-}
-
-/** The chat column: header (top) + scrollable transcript + docked composer. */
-function SessionChatColumn({
-  session,
-  chat,
-  onChatStateChange,
-  onChanged,
-  onOpenEvidence,
-}: {
-  session: AgentSessionView;
-  chat: ConversationChatHandle | null;
-  onChatStateChange: (handle: ConversationChatHandle | null) => void;
-  onChanged: () => void;
-  onOpenEvidence: () => void;
-}) {
-  const { t } = useTranslations();
-
-  // Phase-derived terminus label ("went to sleep" / error / canceled) — only a
-  // terminal session shows it (the impl gates on isTerminal + settled).
-  const terminalLabel =
-    session.phase === "completed"
-      ? t("agentSessions.terminalStatus.completed")
-      : session.phase === "failed"
-        ? t("agentSessions.terminalStatus.failed")
-        : session.phase === "canceled"
-          ? t("agentSessions.terminalStatus.canceled")
-          : undefined;
-
-  // Inline transcript footer: the failure callout (if any) then the draft-PR
-  // card, so both read as part of the conversation flow rather than side cards.
-  const footer = (
-    <>
-      {session.phase === "failed" && session.failureReason ? (
-        <Alert variant="destructive">
-          <AlertCircle />
-          <AlertTitle>{t("agentSessions.failureTitle")}</AlertTitle>
-          <AlertDescription>{session.failureReason}</AlertDescription>
-        </Alert>
-      ) : null}
-      <PrCard session={session} />
-    </>
-  );
-
-  return (
-    <>
-      <SessionDetailHeader
-        session={session}
-        onCanceled={onChanged}
-        onOpenEvidence={onOpenEvidence}
-      />
-
-      <div className="min-h-0 flex-1">
-        <SessionConversation
-          sessionId={session.id}
-          isTerminal={session.isTerminal}
-          onChatStateChange={onChatStateChange}
-          footer={footer}
-          terminalLabel={terminalLabel}
-        />
-      </div>
-
-      <SteeringComposer session={session} chat={chat} onSteered={onChanged} />
-    </>
   );
 }
 

@@ -258,8 +258,10 @@ func TestSteerRedispatchesFreshSandboxOnSameBranch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if view.Phase != PhaseRunning || view.DeliveryMode != DeliveryRedispatch || view.Ticket == "" {
-		t.Fatalf("steer view = %+v", view)
+	// Steer returns FAST (w2/m64): the redispatching phase with no ticket; the
+	// fresh sandbox is provisioned in the background (the sync runner completes it).
+	if view.Phase != PhaseRedispatching || view.Ticket != "" || view.URL != "" {
+		t.Fatalf("steer should return a fast, ticketless redispatching view: %+v", view)
 	}
 	if lc.created != beforeCreated+1 || lc.canceled != beforeCanceled+1 {
 		t.Fatalf("re-dispatch not clean: created=%d canceled=%d", lc.created, lc.canceled)
@@ -267,8 +269,11 @@ func TestSteerRedispatchesFreshSandboxOnSameBranch(t *testing.T) {
 	if lc.driverEnv["BEX_AGENT_PROMPT"] != "also update the docs" || lc.branch != "bex-agent/session-test" {
 		t.Fatalf("steer env/branch = %v %q", lc.driverEnv, lc.branch)
 	}
-	if st.rows[id].Turns != 2 {
-		t.Fatalf("turns = %d, want 2", st.rows[id].Turns)
+	// The background re-dispatch converged the store row: a second turn recorded on
+	// the redispatch delivery path, adopting the fresh sandbox.
+	settled := st.rows[id]
+	if settled.Turns != 2 || settled.DeliveryMode != DeliveryRedispatch || settled.Phase != PhaseRunning {
+		t.Fatalf("converged row = %+v, want turns=2 redispatch running", settled)
 	}
 }
 

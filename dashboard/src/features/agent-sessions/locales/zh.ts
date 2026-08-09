@@ -273,6 +273,24 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "会话失败",
     description: "Detail page — heading over a failed session's reason",
   },
+  "agentSessions.failureReasonFallback": {
+    message: "会话启动失败。",
+    description:
+      "Detail page — generic failure text when the session carries no specific reason",
+  },
+  "agentSessions.failureRetry": {
+    message: "重试",
+    description: "Detail page — button to re-run a failed session's original task",
+  },
+  "agentSessions.failureRetrying": {
+    message: "重试中…",
+    description: "Detail page — retry button label while the redispatch is in flight",
+  },
+  "agentSessions.provisioning": {
+    message: "正在启动沙箱…",
+    description:
+      "Detail page — shown while a new/steered session provisions its sandbox before the conversation stream is available",
+  },
   // Header meta + cancel
   "agentSessions.metaDuration": {
     message: "时长 {duration}",

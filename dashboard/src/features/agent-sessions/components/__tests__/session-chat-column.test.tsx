@@ -1,0 +1,151 @@
+import { describe, it, expect, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { SessionChatColumn } from "@/features/agent-sessions/components/session-chat-column";
+import type {
+  AgentSessionPhase,
+  AgentSessionView,
+} from "@/features/agent-sessions/types";
+
+// Isolate the column's own logic (provisioning gate + optimistic echo). The
+// heavy/collaborating children are stubbed: the conversation renders its footer
+// prop so we can inspect what the column injects, the composer exposes a button
+// that drives the optimistic-steer callback, and the header/PR/failure children
+// are inert.
+vi.mock("@/features/agent-sessions/components/session-detail-header", () => ({
+  SessionDetailHeader: () => <div data-testid="header" />,
+}));
+vi.mock("@/features/agent-sessions/components/session-conversation", () => ({
+  SessionConversation: ({ footer }: { footer: React.ReactNode }) => (
+    <div data-testid="conversation">{footer}</div>
+  ),
+}));
+vi.mock("@/features/agent-sessions/components/steering-composer", () => ({
+  SteeringComposer: ({
+    onOptimisticSteer,
+  }: {
+    onOptimisticSteer?: (p: string | null) => void;
+  }) => (
+    <button type="button" onClick={() => onOptimisticSteer?.("echoed prompt")}>
+      echo
+    </button>
+  ),
+}));
+vi.mock("@/features/agent-sessions/components/pr-card", () => ({
+  PrCard: () => null,
+}));
+vi.mock("@/features/agent-sessions/components/failure-callout", () => ({
+  FailureCallout: () => null,
+}));
+
+function view(
+  phase: AgentSessionPhase,
+  over: Partial<AgentSessionView> = {},
+): AgentSessionView {
+  return {
+    id: "as-1",
+    ownerId: "tea-1",
+    repo: "acme/widgets",
+    branch: "bex-agent/fix",
+    agentConfig: {
+      agent: "claude",
+      model: null,
+      modelEndpoint: null,
+      task: "t",
+      template: null,
+    },
+    sandboxId: null,
+    phase,
+    status: "s",
+    headSha: null,
+    prUrl: null,
+    prNumber: null,
+    evidence: null,
+    turns: 0,
+    deliveryMode: null,
+    failureReason: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    canceledAt: null,
+    isTerminal: ["completed", "failed", "canceled"].includes(phase),
+    isSteerable: ["completed", "failed"].includes(phase),
+    ...over,
+  };
+}
+
+const noop = () => {};
+
+function column(session: AgentSessionView) {
+  return (
+    <SessionChatColumn
+      session={session}
+      chat={null}
+      onChatStateChange={noop}
+      onChanged={noop}
+      onOpenEvidence={noop}
+    />
+  );
+}
+
+describe("SessionChatColumn provisioning gate (w2/m64)", () => {
+  it("shows the provisioning placeholder, not the stream, while a new session has no sandbox", () => {
+    render(column(view("creating", { sandboxId: null })));
+    expect(screen.getByText("Starting the sandbox…")).toBeInTheDocument();
+    // The conversation stream must NOT mount — attaching with no sandbox 409s.
+    expect(screen.queryByTestId("conversation")).not.toBeInTheDocument();
+  });
+
+  it("mounts the conversation stream once a sandbox id exists", () => {
+    render(column(view("running", { sandboxId: "sandbox-1" })));
+    expect(screen.getByTestId("conversation")).toBeInTheDocument();
+    expect(screen.queryByText("Starting the sandbox…")).not.toBeInTheDocument();
+  });
+
+  it("shows no provisioning spinner for a terminal session that never got a sandbox", () => {
+    // A dispatch failure leaves no sandbox; the fallback shows the footer (failure
+    // callout) but no "starting" spinner.
+    render(column(view("failed", { sandboxId: null })));
+    expect(screen.queryByText("Starting the sandbox…")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("conversation")).not.toBeInTheDocument();
+  });
+});
+
+describe("SessionChatColumn optimistic redispatch echo (w2/m64)", () => {
+  it("echoes the steered prompt immediately, then hides it once the turn settles", async () => {
+    const user = userEvent.setup();
+    const idle = view("completed", { sandboxId: "sandbox-1", turns: 1 });
+    const { rerender } = render(column(idle));
+
+    // Before submit: no echo.
+    expect(screen.queryByText("echoed prompt")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "echo" }));
+    // The echo appears immediately, inside the (mocked) conversation footer.
+    expect(screen.getByText("echoed prompt")).toBeInTheDocument();
+
+    // Re-dispatched turn recorded (turns advanced) AND settled → the durable
+    // transcript now carries it, so the optimistic echo is withdrawn.
+    rerender(
+      column(view("completed", { sandboxId: "sandbox-1", turns: 2 })),
+    );
+    expect(screen.queryByText("echoed prompt")).not.toBeInTheDocument();
+  });
+
+  it("keeps the echo visible while the redispatched turn is still in flight", async () => {
+    const user = userEvent.setup();
+    const idle = view("completed", { sandboxId: "sandbox-1", turns: 1 });
+    const { rerender } = render(column(idle));
+
+    await user.click(screen.getByRole("button", { name: "echo" }));
+    expect(screen.getByText("echoed prompt")).toBeInTheDocument();
+
+    // Session flips to a non-terminal working phase (redispatching): the turn is
+    // not settled yet, so the echo must remain.
+    rerender(
+      column(
+        view("redispatching", { sandboxId: "sandbox-1", turns: 1 }),
+      ),
+    );
+    expect(screen.getByText("echoed prompt")).toBeInTheDocument();
+  });
+});

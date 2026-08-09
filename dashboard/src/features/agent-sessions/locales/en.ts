@@ -275,6 +275,24 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Session failed",
     description: "Detail page — heading over a failed session's reason",
   },
+  "agentSessions.failureReasonFallback": {
+    message: "The session failed to start.",
+    description:
+      "Detail page — generic failure text when the session carries no specific reason",
+  },
+  "agentSessions.failureRetry": {
+    message: "Retry",
+    description: "Detail page — button to re-run a failed session's original task",
+  },
+  "agentSessions.failureRetrying": {
+    message: "Retrying…",
+    description: "Detail page — retry button label while the redispatch is in flight",
+  },
+  "agentSessions.provisioning": {
+    message: "Starting the sandbox…",
+    description:
+      "Detail page — shown while a new/steered session provisions its sandbox before the conversation stream is available",
+  },
   // Header meta + cancel
   "agentSessions.metaDuration": {
     message: "Duration {duration}",
