@@ -1,0 +1,38 @@
+# ONE-OFF, DELETE AFTER USE. Recovers the OpenBao unseal keys + root token from
+# GitHub Actions secrets by RSA-encrypting them to a caller-supplied public key
+# and uploading only the ciphertext as an artifact. Plaintext never touches the
+# logs (masked) nor the artifact (encrypted). Decrypt locally with the private
+# key held by the operator who triggered it. Remove this workflow once recovered.
+name: bao-key-retrieve (one-off)
+on:
+  workflow_dispatch:
+    inputs:
+      pubkey_b64:
+        description: base64 of the RSA public-key PEM to encrypt the keys to
+        required: true
+jobs:
+  emit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: encrypt OpenBao keys to caller public key
+        env:
+          K1: ${{ secrets.BAO_UNSEAL_KEY_1 }}
+          K2: ${{ secrets.BAO_UNSEAL_KEY_2 }}
+          K3: ${{ secrets.BAO_UNSEAL_KEY_3 }}
+          RT: ${{ secrets.BAO_ROOT_TOKEN }}
+          PUB_B64: ${{ github.event.inputs.pubkey_b64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$PUB_B64" | base64 -d > pub.pem
+          enc() { printf '%s' "$1" | openssl pkeyutl -encrypt -pubin -inkey pub.pem | base64 -w0; }
+          {
+            printf 'BAO_UNSEAL_KEY_1=%s\n' "$(enc "$K1")"
+            printf 'BAO_UNSEAL_KEY_2=%s\n' "$(enc "$K2")"
+            printf 'BAO_UNSEAL_KEY_3=%s\n' "$(enc "$K3")"
+            printf 'BAO_ROOT_TOKEN=%s\n'   "$(enc "$RT")"
+          } > bao-keys.enc
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bao-keys-enc
+          path: bao-keys.enc
+          retention-days: 1
