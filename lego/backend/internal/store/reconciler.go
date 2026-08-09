@@ -152,6 +152,12 @@ type Reconciler struct {
 	// (notifications feature off / store off).
 	DeployNotifier DeployNotifier
 
+	// unhealthyOnce remembers, per app, that the previous pass observed
+	// unhealthy without recording it — the w3/m78 single-tick debounce (see
+	// debounceUnhealthy). Per-process memory is deliberate: a restart just
+	// costs one extra confirming tick.
+	unhealthyOnce map[string]bool
+
 	kick chan struct{}
 }
 
@@ -159,6 +165,29 @@ type Reconciler struct {
 // workspace's per-tenant hosting namespace (ADR043).
 func namespaceFor(d DesiredApp) string {
 	return WorkspaceNamespace(d.TenantID)
+}
+
+// debounceUnhealthy suppresses a single-tick unhealthy observation: the first
+// pass that sees unhealthy is remembered but recorded as availability-unseen
+// (the checkpoint keeps its previous value); only a second consecutive
+// unhealthy pass records it and can emit server_failed. Found live in the
+// w3/m78 crash leg: during old-ReplicaSet reaping after a successful rollout,
+// a reconcile can land on a stale Deployment status (kube-controller-manager
+// catch-up) and report Ready=False for one pass, which — with the deploy
+// already closed — paged a phantom Critical server_failed + server_available
+// pair. A real outage persists across resyncs and is merely delayed one tick;
+// recovery stays immediate (a delayed all-clear helps nobody).
+func debounceUnhealthy(obs ObservedServiceState, unhealthyOnce map[string]bool) ObservedServiceState {
+	unhealthy := obs.AvailabilityObserved && obs.Availability == "unhealthy"
+	if unhealthy && !unhealthyOnce[obs.AppID] {
+		unhealthyOnce[obs.AppID] = true
+		obs.AvailabilityObserved = false
+		obs.Availability = ""
+		obs.ReasonCode = ""
+		return obs
+	}
+	unhealthyOnce[obs.AppID] = unhealthy
+	return obs
 }
 
 func NewReconciler(cl client.Client, store Store) *Reconciler {
@@ -283,7 +312,11 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 		if hasOpenDeploy {
 			r.recordDeploy(ctx, d, open, cur)
 		}
-		if _, err := r.Store.RecordObservedServiceState(ctx, observedServiceStateFor(d.ID, cur, hasOpenDeploy)); err != nil {
+		if r.unhealthyOnce == nil {
+			r.unhealthyOnce = make(map[string]bool)
+		}
+		obs := debounceUnhealthy(observedServiceStateFor(d.ID, cur, hasOpenDeploy), r.unhealthyOnce)
+		if _, err := r.Store.RecordObservedServiceState(ctx, obs); err != nil {
 			log.Printf("controlplane: record observed service state %s: %v", d.ID, err)
 		}
 		r.recordAutoscalingFacts(ctx, d.ID, cur.Status.Autoscaling)
@@ -293,6 +326,7 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 		if seen[id] {
 			continue
 		}
+		delete(r.unhealthyOnce, id)
 		if err := r.Client.Delete(ctx, cur); err != nil && !apierrors.IsNotFound(err) {
 			errs = append(errs, fmt.Errorf("delete App %s: %w", cur.Name, err))
 		}
@@ -751,7 +785,13 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 			if hasOpenDeploy && condition.Reason != "ImagePullBackOff" && condition.Reason != "CrashLoopBackOff" {
 				break
 			}
-			if app.Status.ActiveRevision != "" && condition.Reason != "Suspended" && condition.Reason != "AutoHibernated" {
+			// RolloutSettling = the operator's live pod scan says the full
+			// current-revision complement is ready and only the Deployment's
+			// status bookkeeping lags (old-pod reap, KCM catch-up) — the
+			// service is serving, so it is excluded from availability like
+			// Suspended/AutoHibernated (w3/m78 live-leg finding).
+			if app.Status.ActiveRevision != "" && condition.Reason != "Suspended" &&
+				condition.Reason != "AutoHibernated" && condition.Reason != "RolloutSettling" {
 				obs.Availability = "unhealthy"
 				obs.AvailabilityObserved = true
 				obs.ReasonCode = EventReasonReadinessFailed

@@ -480,18 +480,33 @@ func (s *PGStore) ReleasePushDelivery(ctx context.Context, delivery DuePushDeliv
 	return result.RowsAffected() == 1, nil
 }
 
+// pushServiceEvents is the service-scoped half of the DB-enqueueable push
+// vocabulary — together with pushAgentEvents it must stay equal to the
+// push_notifications event_type CHECK (migration 0070). The four lifecycle
+// names are deliberately the fact names; deploy_*/cron_failed are
+// projection-only names with no fact constant.
+var pushServiceEvents = map[string]bool{
+	"deploy_started": true, "deploy_succeeded": true, "deploy_failed": true,
+	string(EventFactServerFailed):     true,
+	string(EventFactServerAvailable):  true,
+	string(EventFactServiceSuspended): true,
+	string(EventFactServiceResumed):   true,
+	"cron_failed":                     true,
+}
+
+// pushAgentEvents are the agent-session terminal pushes (w11/m6 t005): a bex
+// extension keyed on the workspace, not an App — so the resource is the
+// agent_session id and the deep link opens the session, never a service.
+var pushAgentEvents = map[string]bool{
+	"agent_pr_ready": true, "agent_failed": true, "agent_needs_decision": true,
+}
+
+var pushUrgencies = map[string]bool{"routine": true, "important": true, "critical": true}
+
 func validatePushNotification(notification PushNotification) error {
-	serviceEvents := map[string]bool{
-		"deploy_started": true, "deploy_succeeded": true, "deploy_failed": true,
-		"server_failed": true, "cron_failed": true,
-	}
-	// Agent-session terminal pushes (w11/m6 t005): a bex extension keyed on the
-	// workspace, not an App — so the resource is the agent_session id and the
-	// deep link opens the session, never a service.
-	agentEvents := map[string]bool{
-		"agent_pr_ready": true, "agent_failed": true, "agent_needs_decision": true,
-	}
-	urgencies := map[string]bool{"routine": true, "important": true, "critical": true}
+	serviceEvents := pushServiceEvents
+	agentEvents := pushAgentEvents
+	urgencies := pushUrgencies
 	eventKind, eventOK := ids.KindOf(notification.EventID)
 	resourceKind, resourceOK := ids.KindOf(notification.ResourceID)
 	common := strings.TrimSpace(notification.TenantID) != "" && strings.TrimSpace(notification.Subject) != "" &&

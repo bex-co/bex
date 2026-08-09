@@ -171,6 +171,32 @@ func TestObservedServiceStateTreatsConcreteOpenDeployFailureAsInstanceFailure(t 
 	}
 }
 
+// RolloutSettling is the operator saying "pods fully ready, only Deployment
+// bookkeeping lags" (old-pod reap / KCM catch-up) — never an outage, even in
+// steady state where any other Ready=False reason counts (w3/m78 live-leg
+// finding: phantom server_failed pages during old-ReplicaSet reaping).
+func TestObservedServiceStateExcludesRolloutSettling(t *testing.T) {
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Generation: 5},
+		Status: appv1alpha1.AppStatus{
+			Phase:          appv1alpha1.PhaseDeploying,
+			ActiveRevision: "rev-3",
+			Conditions: []metav1.Condition{{
+				Type: "Ready", Status: metav1.ConditionFalse, Reason: "RolloutSettling",
+				ObservedGeneration: 5,
+			}},
+		},
+	}
+	if obs := observedServiceStateFor("srv-settle", app, false); obs.AvailabilityObserved {
+		t.Fatalf("steady-state RolloutSettling = %+v, must not be an outage", obs)
+	}
+	app.Status.Conditions[0].Reason = "RolloutProgressing"
+	obs := observedServiceStateFor("srv-settle", app, false)
+	if !obs.AvailabilityObserved || obs.Availability != "unhealthy" {
+		t.Fatalf("steady-state RolloutProgressing = %+v, want unhealthy (a hung or crashed service presents this way)", obs)
+	}
+}
+
 // getApp fetches the one public-name "web" CR every test projects. The object
 // name intentionally uses the immutable tenant id, not the mutable tenant name.
 // Cluster-wide (not InNamespace("default")): App CRs project into their

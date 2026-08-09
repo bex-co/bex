@@ -11,9 +11,13 @@ export const pushEvents = [
   PushNotificationEvent.CronFailed,
   PushNotificationEvent.DeployStarted,
   PushNotificationEvent.DeploySucceeded,
+  PushNotificationEvent.ServerAvailable,
+  PushNotificationEvent.ServiceSuspended,
+  PushNotificationEvent.ServiceResumed,
   PushNotificationEvent.UsageThreshold,
   PushNotificationEvent.AgentNeedsDecision,
   PushNotificationEvent.AgentPrReady,
+  PushNotificationEvent.AgentFailed,
 ] as const;
 
 export const pushUrgencies = [

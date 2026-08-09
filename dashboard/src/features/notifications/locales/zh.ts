@@ -104,6 +104,18 @@ const zhNotifications: Record<string, TranslationEntry> = {
     message: "部署成功",
     description: "Push event",
   },
+  "notifications.pushEventServerAvailable": {
+    message: "服务恢复正常",
+    description: "Push event",
+  },
+  "notifications.pushEventServiceSuspended": {
+    message: "服务已暂停",
+    description: "Push event",
+  },
+  "notifications.pushEventServiceResumed": {
+    message: "服务已恢复运行",
+    description: "Push event",
+  },
   "notifications.pushEventUsageThreshold": {
     message: "用量阈值",
     description: "Push event",
@@ -114,6 +126,10 @@ const zhNotifications: Record<string, TranslationEntry> = {
   },
   "notifications.pushEventAgentPrReady": {
     message: "智能体 PR 已就绪",
+    description: "Push event",
+  },
+  "notifications.pushEventAgentFailed": {
+    message: "智能体会话失败",
     description: "Push event",
   },
   "notifications.pushMinimumUrgency": {

@@ -12,13 +12,17 @@ export type AgentSessionConfigInput = {
 };
 
 export type PushNotificationEvent =
+  | 'AGENT_FAILED'
   | 'AGENT_NEEDS_DECISION'
   | 'AGENT_PR_READY'
   | 'CRON_FAILED'
   | 'DEPLOY_FAILED'
   | 'DEPLOY_STARTED'
   | 'DEPLOY_SUCCEEDED'
+  | 'SERVER_AVAILABLE'
   | 'SERVER_FAILED'
+  | 'SERVICE_RESUMED'
+  | 'SERVICE_SUSPENDED'
   | 'USAGE_THRESHOLD';
 
 export type MobileAgentSessionsQueryVariables = Exact<{

@@ -39,10 +39,23 @@ describe("parseNotificationEnvelope", () => {
     }
   });
 
+  it("accepts the observed-lifecycle events (w3/m78)", () => {
+    for (const event of [
+      "server_available",
+      "service_suspended",
+      "service_resumed",
+    ] as const) {
+      expect(parseNotificationEnvelope({ ...valid, event })?.event).toBe(event);
+    }
+  });
+
   it("rejects unknown events, schemas, ids, and extra fields", () => {
     expect(parseNotificationEnvelope({ ...valid, event: "billing_due" })).toBe(
       null,
     );
+    expect(
+      parseNotificationEnvelope({ ...valid, event: "usage_threshold" }),
+    ).toBe(null);
     expect(parseNotificationEnvelope({ ...valid, schema: "v2" })).toBe(null);
     expect(
       parseNotificationEnvelope({ ...valid, notificationId: "../bad" }),

@@ -44,11 +44,18 @@ const eventKeys: Record<PushNotificationEvent, string> = {
   [PushNotificationEvent.DeployStarted]: "notifications.pushEventDeployStarted",
   [PushNotificationEvent.DeploySucceeded]:
     "notifications.pushEventDeploySucceeded",
+  [PushNotificationEvent.ServerAvailable]:
+    "notifications.pushEventServerAvailable",
+  [PushNotificationEvent.ServiceSuspended]:
+    "notifications.pushEventServiceSuspended",
+  [PushNotificationEvent.ServiceResumed]:
+    "notifications.pushEventServiceResumed",
   [PushNotificationEvent.UsageThreshold]:
     "notifications.pushEventUsageThreshold",
   [PushNotificationEvent.AgentNeedsDecision]:
     "notifications.pushEventAgentNeedsDecision",
   [PushNotificationEvent.AgentPrReady]: "notifications.pushEventAgentPrReady",
+  [PushNotificationEvent.AgentFailed]: "notifications.pushEventAgentFailed",
 };
 
 const urgencyKeys: Record<PushNotificationUrgency, string> = {

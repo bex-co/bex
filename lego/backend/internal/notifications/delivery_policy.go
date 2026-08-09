@@ -41,6 +41,9 @@ const (
 	DeliveryEventDeploySucceeded    DeliveryEvent = "deploy_succeeded"
 	DeliveryEventDeployFailed       DeliveryEvent = "deploy_failed"
 	DeliveryEventServerFailed       DeliveryEvent = "server_failed"
+	DeliveryEventServerAvailable    DeliveryEvent = "server_available"
+	DeliveryEventServiceSuspended   DeliveryEvent = "service_suspended"
+	DeliveryEventServiceResumed     DeliveryEvent = "service_resumed"
 	DeliveryEventCronFailed         DeliveryEvent = "cron_failed"
 	DeliveryEventUsageThreshold     DeliveryEvent = "usage_threshold"
 	DeliveryEventAgentNeedsDecision DeliveryEvent = "agent_needs_decision"
@@ -399,15 +402,19 @@ func validDeliveryChannel(channel DeliveryChannel) bool {
 	return channel == DeliveryChannelEmail || channel == DeliveryChannelPush
 }
 
-func validDeliveryEvent(event DeliveryEvent) bool {
-	switch event {
-	case DeliveryEventDeployStarted, DeliveryEventDeploySucceeded, DeliveryEventDeployFailed,
-		DeliveryEventServerFailed, DeliveryEventCronFailed, DeliveryEventUsageThreshold,
-		DeliveryEventAgentNeedsDecision, DeliveryEventAgentPRReady, DeliveryEventAgentFailed:
-		return true
-	default:
-		return false
+// Validity is derived from orderedDeliveryEvents (service.go) so the closed
+// vocabulary is enumerated exactly once per package: a new event is added to
+// the constants and that one list.
+var validDeliveryEvents = func() map[DeliveryEvent]bool {
+	valid := make(map[DeliveryEvent]bool, len(orderedDeliveryEvents))
+	for _, event := range orderedDeliveryEvents {
+		valid[event] = true
 	}
+	return valid
+}()
+
+func validDeliveryEvent(event DeliveryEvent) bool {
+	return validDeliveryEvents[event]
 }
 
 func validDeliveryUrgency(urgency DeliveryUrgency) bool {

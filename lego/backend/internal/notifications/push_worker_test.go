@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -417,6 +418,9 @@ func TestProjectPushEventVocabulary(t *testing.T) {
 		{"update failed", store.WebhookEventRow{Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, Status: store.DeployUpdateFailed}, "", "deploy_failed", true},
 		{"canceled ignored", store.WebhookEventRow{Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, Status: store.DeployCanceled}, "", "", false},
 		{"server failed", store.WebhookEventRow{Source: store.EventSourceFact, FactType: string(store.EventFactServerFailed)}, "", "server_failed", true},
+		{"server available", store.WebhookEventRow{Source: store.EventSourceFact, FactType: string(store.EventFactServerAvailable)}, "", "server_available", true},
+		{"service suspended", store.WebhookEventRow{Source: store.EventSourceFact, FactType: string(store.EventFactServiceSuspended)}, "", "service_suspended", true},
+		{"service resumed", store.WebhookEventRow{Source: store.EventSourceFact, FactType: string(store.EventFactServiceResumed)}, "", "service_resumed", true},
 		{"failed job", store.WebhookEventRow{Source: store.EventSourceFact, FactType: string(store.EventFactJobRunEnded)}, store.EventStatusFailed, "cron_failed", true},
 		{"successful job ignored", store.WebhookEventRow{Source: store.EventSourceFact, FactType: string(store.EventFactJobRunEnded)}, store.EventStatusSucceeded, "", false},
 	}
@@ -429,6 +433,42 @@ func TestProjectPushEventVocabulary(t *testing.T) {
 				t.Fatalf("projectPushEvent() = (%+v,%v), want event=%q ok=%v", got, ok, test.want, test.ok)
 			}
 		})
+	}
+}
+
+// The lifecycle facts carry deliberate urgencies: recovery closes a Critical
+// page at Important; suspend/resume are Routine state changes.
+func TestProjectPushEventLifecycleUrgencies(t *testing.T) {
+	tests := []struct {
+		factType string
+		urgency  string
+	}{
+		{string(store.EventFactServerFailed), string(DeliveryUrgencyCritical)},
+		{string(store.EventFactServerAvailable), string(DeliveryUrgencyImportant)},
+		{string(store.EventFactServiceSuspended), string(DeliveryUrgencyRoutine)},
+		{string(store.EventFactServiceResumed), string(DeliveryUrgencyRoutine)},
+	}
+	for _, test := range tests {
+		row := store.WebhookEventRow{Source: store.EventSourceFact, FactType: test.factType, ServiceName: "api"}
+		got, ok := projectPushEvent(row, "srv-c185th5c2rvvnhbfiltg", "")
+		if !ok || got.urgency != test.urgency {
+			t.Fatalf("projectPushEvent(%s) = (%+v,%v), want urgency=%q", test.factType, got, ok, test.urgency)
+		}
+	}
+}
+
+// The default policy's event set grows only by deliberate decision, never as a
+// side effect of new events joining the vocabulary: the m78 lifecycle events
+// (server_available/service_suspended/service_resumed) are additive opt-in and
+// must stay out; the failure defaults plus w11/m6's agent terminal events are
+// the chosen set.
+func TestDefaultPushSettingsEventsUnchanged(t *testing.T) {
+	want := []DeliveryEvent{
+		DeliveryEventDeployFailed, DeliveryEventServerFailed, DeliveryEventCronFailed,
+		DeliveryEventAgentPRReady, DeliveryEventAgentFailed,
+	}
+	if !slices.Equal(defaultPushSettings.Events, want) {
+		t.Fatalf("defaultPushSettings.Events = %v, want %v", defaultPushSettings.Events, want)
 	}
 }
 

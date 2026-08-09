@@ -64,6 +64,36 @@ func TestObservedServiceStateRecordsEachRealEdgeOnce(t *testing.T) {
 	}
 }
 
+// A single-tick Ready=False (stale Deployment status during old-pod reaping)
+// must not reach the checkpoint; a sustained outage must, one tick late; a
+// recovery must pass through immediately (w3/m78 live-leg finding).
+func TestDebounceUnhealthySuppressesSingleTickBlips(t *testing.T) {
+	once := map[string]bool{}
+	unhealthy := ObservedServiceState{AppID: "srv-web", ServicePhase: "Deploying", Availability: "unhealthy", AvailabilityObserved: true, ReasonCode: EventReasonReadinessFailed}
+	healthy := ObservedServiceState{AppID: "srv-web", ServicePhase: "Running", Availability: "healthy", AvailabilityObserved: true}
+
+	if got := debounceUnhealthy(unhealthy, once); got.AvailabilityObserved {
+		t.Fatalf("first unhealthy tick recorded availability: %+v", got)
+	}
+	if got := debounceUnhealthy(healthy, once); !got.AvailabilityObserved || got.Availability != "healthy" {
+		t.Fatalf("healthy after a blip must pass through untouched: %+v", got)
+	}
+	if once["srv-web"] {
+		t.Fatal("blip left the app marked unhealthy-once")
+	}
+
+	if got := debounceUnhealthy(unhealthy, once); got.AvailabilityObserved {
+		t.Fatalf("first tick of a real outage recorded availability: %+v", got)
+	}
+	got := debounceUnhealthy(unhealthy, once)
+	if !got.AvailabilityObserved || got.Availability != "unhealthy" || got.ReasonCode != EventReasonReadinessFailed {
+		t.Fatalf("second consecutive unhealthy tick must record: %+v", got)
+	}
+	if got := debounceUnhealthy(healthy, once); !got.AvailabilityObserved {
+		t.Fatalf("recovery must be immediate: %+v", got)
+	}
+}
+
 func TestInsertServiceEventFactIsIdempotentInProducerFake(t *testing.T) {
 	st := newMemStore()
 	fact := ServiceEventFact{
