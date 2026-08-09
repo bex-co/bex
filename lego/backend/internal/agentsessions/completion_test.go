@@ -118,7 +118,7 @@ func TestCompleterHarvestsTranscriptBeforeTeardown(t *testing.T) {
 		t.Fatalf("sandbox not torn down: canceled=%d", lc.canceled)
 	}
 	// The parsed parts landed in the durable store at turn 1, seq 0..1.
-	parts, err := st.AgentSessionTranscript(context.Background(), id, -1)
+	parts, err := st.AgentSessionTranscript(context.Background(), id, -1, 1<<30)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,12 +148,46 @@ func TestCompleterHarvestConcatenatesTurns(t *testing.T) {
 	lc.transcriptLog = `{"part":{"type":"text","text":"t2"}}`
 	c.Reconcile(context.Background())
 
-	parts, _ := st.AgentSessionTranscript(context.Background(), id, -1)
+	parts, _ := st.AgentSessionTranscript(context.Background(), id, -1, 1<<30)
 	if len(parts) != 3 {
 		t.Fatalf("stored %d parts, want 3 (turn 2 appended)", len(parts))
 	}
 	if parts[2].Seq != 2 || parts[2].Turn != 2 {
 		t.Fatalf("turn-2 part = %+v, want seq 2 turn 2", parts[2])
+	}
+}
+
+// The harvest enforces the SAME cumulative session cap as the gateway's live
+// tee (w1/m65 F10): seeded near the cap, only the parts that still fit are
+// stored — never a per-harvest fresh budget.
+func TestCompleterHarvestRespectsCumulativeQuota(t *testing.T) {
+	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c.MaxTranscriptBytes = 100 // small quota so the test needs no 64 MiB payloads
+	// Turn 1 already stored 80 bytes; this reconcile finalizes turn 2.
+	_ = st.AppendAgentSessionTranscript(context.Background(), id, []store.AgentSessionTranscriptPart{
+		{Seq: 0, Turn: 1, Part: []byte(strings.Repeat("x", 80))},
+	})
+	row := st.rows[id]
+	row.Turns = 2
+	st.rows[id] = row
+	// The harvested part (~56 bytes with its JSON envelope) exceeds the 20
+	// bytes left under the cap, so nothing is appended.
+	lc.transcriptLog = `{"part":{"type":"text","text":"` + strings.Repeat("y", 30) + `"}}`
+	c.Reconcile(context.Background())
+
+	parts, _ := st.AgentSessionTranscript(context.Background(), id, -1, 1<<30)
+	var total int64
+	for _, p := range parts {
+		total += int64(len(p.Part))
+	}
+	if total > c.MaxTranscriptBytes {
+		t.Fatalf("stored transcript = %d bytes, exceeds the %d-byte session cap (harvest quota not cumulative)", total, c.MaxTranscriptBytes)
+	}
+	if len(parts) != 1 {
+		t.Fatalf("stored %d parts, want just the seed (oversized harvest dropped)", len(parts))
+	}
+	if st.rows[id].Phase != PhaseCompleted || lc.canceled != 1 {
+		t.Fatalf("quota truncation blocked finalize/teardown: phase=%s canceled=%d", st.rows[id].Phase, lc.canceled)
 	}
 }
 

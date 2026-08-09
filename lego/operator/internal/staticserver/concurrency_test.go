@@ -24,6 +24,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"golang.org/x/sync/semaphore"
 )
 
 // blockingOrigin fetches block until release is closed, so a test can hold origin
@@ -149,4 +151,63 @@ func TestFetchGateBoundsConcurrentDistinctKeyFetches(t *testing.T) {
 
 	close(origin.release)
 	done.Wait()
+}
+
+// blockingWriter is an http.ResponseWriter whose Write blocks until release is
+// closed, simulating a slow client that keeps the fetched body live after the
+// fetch gate has already released its reservation.
+type blockingWriter struct {
+	header  http.Header
+	code    int
+	release chan struct{}
+	writing chan struct{} // one send when Write is entered
+}
+
+func (w *blockingWriter) Header() http.Header  { return w.header }
+func (w *blockingWriter) WriteHeader(code int) { w.code = code }
+func (w *blockingWriter) Write(p []byte) (int, error) {
+	w.writing <- struct{}{}
+	<-w.release
+	return len(p), nil
+}
+
+// TestLiveBodyLeaseBoundsSlowClientWrites proves the live-body lease: a fetched
+// body stays accounted from fetch until the response write completes, so once
+// the budget is held by a blocked writer a new distinct fetch is shed as 503
+// even though the fetch gate itself has free capacity, and is served again once
+// the slow client drains.
+func TestLiveBodyLeaseBoundsSlowClientWrites(t *testing.T) {
+	origin := newFakeOrigin(map[string]Object{
+		key("a.html"): {Body: []byte("12345678"), ContentType: "text/html"},
+		key("b.html"): {Body: []byte("12345678"), ContentType: "text/html"},
+	})
+	h := newConcurrentHandler(origin, newFetchGate(32, 0)) // fetch gate wide open
+	h.liveBodies = semaphore.NewWeighted(10)               // one 8-byte body fits, two do not
+
+	blocked := &blockingWriter{header: http.Header{}, release: make(chan struct{}), writing: make(chan struct{}, 1)}
+	var done sync.WaitGroup
+	done.Add(1)
+	go func() {
+		defer done.Done()
+		req := httptest.NewRequest(http.MethodGet, "http://"+testHost+"/a.html", nil)
+		req.Host = testHost
+		h.ServeHTTP(blocked, req)
+	}()
+	<-blocked.writing // the first response holds 8 of the 10 live-body bytes in Write
+
+	// A distinct miss still passes the fetch gate and reaches the origin, but
+	// its body cannot be leased: the response is shed as 503 before headers.
+	if status := getStatus(h, "/b.html"); status != http.StatusServiceUnavailable {
+		t.Fatalf("GET /b.html => %d, want 503 (live-body budget held by a slow client)", status)
+	}
+
+	close(blocked.release)
+	done.Wait()
+	if blocked.code != http.StatusOK {
+		t.Fatalf("blocked write finished with %d, want 200", blocked.code)
+	}
+	// Once the slow client drains, the lease is returned and serving resumes.
+	if status := getStatus(h, "/b.html"); status != http.StatusOK {
+		t.Fatalf("GET /b.html after release => %d, want 200", status)
+	}
 }

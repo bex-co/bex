@@ -297,6 +297,40 @@ func TestSetMaintenanceModeValidatesURI(t *testing.T) {
 	}
 }
 
+// TestSetMaintenanceModeRejectsPlatformRoutedHosts is the backend layer of the
+// cross-service recursion guard: a maintenance page URI whose host belongs to
+// ANY App routed through the platform — not just the service itself — is
+// refused, so two paid services cannot point maintenance pages at each other
+// and close an amplifying synchronous-fetch cycle through the shared
+// activator. The claimed-host sweep is cluster-wide, so it reaches across
+// workspaces (per-tenant namespaces, ADR043); the activator re-checks the same
+// denylist at fetch time (defense in depth).
+func TestSetMaintenanceModeRejectsPlatformRoutedHosts(t *testing.T) {
+	other := paidWebApp("other")
+	other.Namespace = "tenant-b" // another workspace's namespace
+	other.Spec.Hosts = []string{"b.example.com"}
+	svc, cl := newBaseDomainService("onbex.co", "", paidWebApp("web"), other)
+
+	for _, uri := range []string{
+		"https://b.example.com/m",  // another service's custom host (the A->B half of a cycle)
+		"https://B.Example.com/m",  // case variant of the same host
+		"https://b.example.com./m", // trailing-dot spelling of the same host
+		"https://other.onbex.co/m", // another service's platform host
+	} {
+		if _, err := svc.SetMaintenanceMode(context.Background(), "web", MaintenanceModeView{Enabled: true, URI: uri}); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("SetMaintenanceMode(uri=%q) should be core.ErrBadRequest, got %v", uri, err)
+		}
+	}
+	if getApp(t, cl, "web").Spec.MaintenanceMode != nil {
+		t.Error("rejected SetMaintenanceMode calls must not mutate spec.maintenanceMode")
+	}
+
+	// A genuinely external page is still accepted.
+	if _, err := svc.SetMaintenanceMode(context.Background(), "web", MaintenanceModeView{Enabled: true, URI: "https://status.example.com/m"}); err != nil {
+		t.Errorf("SetMaintenanceMode with an external uri: %v", err)
+	}
+}
+
 // TestRedeployNeverTouchesMaintenanceMode is the interaction docs/render-
 // artifacts/maintenance-mode.md commits to: "deploys proceed normally... the
 // maintenance page persists... until explicitly disabled." A redeploy

@@ -36,6 +36,17 @@ spec:
         - name: static-server
           image: controller:latest # overridden by kustomize; same image as the manager, different entrypoint
           command: ["/staticserver"]
+          # Memory budgets the server self-enforces (staticserver.go): 256 MiB
+          # default object cache + 512 MiB live-body lease budget + 1 GiB
+          # worst-case fetch-gate in-flight reservation (32 fetches x 32 MiB)
+          # ~= 1.75 GiB; the limit leaves headroom for the process itself.
+          resources:
+            requests:
+              cpu: 10m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 2Gi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

@@ -49,6 +49,7 @@ type Store interface {
 	// at completion and appends it here (idempotent, keyed by session+seq).
 	AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []store.AgentSessionTranscriptPart) error
 	AgentSessionTranscriptMaxSeq(ctx context.Context, sessionID string) (int64, bool, error)
+	AgentSessionTranscriptBytes(ctx context.Context, sessionID string) (int64, error)
 	AgentSessionTranscriptTurnRecorded(ctx context.Context, sessionID string, turn int) (bool, error)
 }
 

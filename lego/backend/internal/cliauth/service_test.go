@@ -309,6 +309,58 @@ func TestDeviceRateLimiterShedsFloodPerIPNotGlobally(t *testing.T) {
 	}
 }
 
+// TestDeviceRateLimiterTrustedProxyXFF is the .pm/w4/029.md report-#10 fix on
+// the device routes: with BEX_TRUSTED_PROXY_CIDRS configured, each real client
+// behind the trusted Traefik peer gets its own bucket (so one attacker can no
+// longer hold the 30/min device budget platform-wide), while a spoofed
+// X-Forwarded-For from an UNTRUSTED peer is ignored.
+func TestDeviceRateLimiterTrustedProxyXFF(t *testing.T) {
+	rl := NewDeviceRateLimiter(60000, 1) // burst=1: a repeat for a key is shed
+	tp, err := core.ParseTrustedProxies("10.0.0.0/8")
+	if err != nil {
+		t.Fatalf("ParseTrustedProxies: %v", err)
+	}
+	rl.TrustedProxies = tp
+
+	from := func(peer, xff string) *http.Request {
+		r := deviceGrantRequest(peer)
+		if xff != "" {
+			r.Header.Set("X-Forwarded-For", xff)
+		}
+		return r
+	}
+
+	// Two different clients behind the same trusted peer: independent buckets.
+	if ok, _ := rl.allow(from("10.0.0.1", "203.0.113.1")); !ok {
+		t.Fatal("first request from client A behind the trusted proxy: want allowed")
+	}
+	if ok, _ := rl.allow(from("10.0.0.1", "203.0.113.2")); !ok {
+		t.Fatal("first request from client B behind the trusted proxy: want allowed (own bucket)")
+	}
+	// Client A's repeat exhausts only client A's bucket.
+	if ok, _ := rl.allow(from("10.0.0.1", "203.0.113.1")); ok {
+		t.Fatal("second request from client A: want shed")
+	}
+
+	// An untrusted peer's spoofed header is fiction: two requests claiming
+	// different clients from the same untrusted peer share the peer's bucket.
+	if ok, _ := rl.allow(from("192.0.2.9", "203.0.113.50")); !ok {
+		t.Fatal("first request from the untrusted peer: want allowed")
+	}
+	if ok, _ := rl.allow(from("192.0.2.9", "203.0.113.51")); ok {
+		t.Fatal("spoofed second client from the same untrusted peer: want shed (keyed on the peer)")
+	}
+
+	// Unset TrustedProxies stays byte-identical: headers ignored, peer keyed.
+	plain := NewDeviceRateLimiter(60000, 1)
+	if ok, _ := plain.allow(from("10.0.0.1", "203.0.113.60")); !ok {
+		t.Fatal("no trusted proxies, first request: want allowed")
+	}
+	if ok, _ := plain.allow(from("10.0.0.1", "203.0.113.61")); ok {
+		t.Fatal("no trusted proxies, same peer different XFF: want shed (headers ignored)")
+	}
+}
+
 // TestDeviceCeremonyAtPollingCadenceIsNotThrottled proves a steady arrival
 // rate at (not bursting past) the limiter's sustained rate is never shed —
 // modeling the official CLI's device-token poll loop (a fixed interval, RFC

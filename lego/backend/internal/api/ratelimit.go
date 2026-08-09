@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -44,6 +43,12 @@ import (
 // bucket) is the follow-up when bex-api scales out.
 type RateLimiter struct {
 	*core.KeyedRateLimiter[string]
+	// TrustedProxies, when set (BEX_TRUSTED_PROXY_CIDRS), lets the unauthenticated
+	// IP fallback derive the real client IP from X-Forwarded-For/X-Real-IP when
+	// the immediate peer is a trusted proxy, instead of keying every anonymous
+	// Internet client into the edge proxy's one bucket (.pm/w4/029.md report
+	// #10). nil ⇒ headers ignored, peer IP used — byte-identical to before.
+	TrustedProxies core.TrustedProxies
 }
 
 const (
@@ -66,7 +71,7 @@ func NewRateLimiter(rpm float64, burst int) *RateLimiter {
 // It must run inside the auth middleware so the caller Identity is in ctx.
 func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		key := callerKey(r)
+		key := rl.callerKey(r)
 		lim := rl.Bucket(key)
 		res := lim.Reserve()
 		if d := res.Delay(); d > 0 {
@@ -84,16 +89,14 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 }
 
 // callerKey derives the rate-limit key from the request: the authenticated
-// identity Subject when available, else the remote IP.
-func callerKey(r *http.Request) string {
+// identity Subject when available, else the client IP — derived through the
+// configured trusted proxies, or the raw peer IP when there are none (or the
+// peer is not one), which ignores spoofed forwarding headers.
+func (rl *RateLimiter) callerKey(r *http.Request) string {
 	if id, ok := core.IdentityFrom(r.Context()); ok && id.Subject != "" {
 		return "id:" + id.Subject
 	}
-	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
-	if ip == "" {
-		ip = r.RemoteAddr
-	}
-	return "ip:" + ip
+	return "ip:" + rl.TrustedProxies.ClientIP(r)
 }
 
 // writeTooManyRequests writes a Render-shaped 429 for the request's surface:

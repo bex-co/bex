@@ -179,6 +179,93 @@ func TestRateLimiterIPFallback(t *testing.T) {
 	}
 }
 
+// ---- Trusted-proxy client-IP derivation (BEX_TRUSTED_PROXY_CIDRS) ----
+
+// ipReq builds an unauthenticated request from peer with an optional
+// X-Forwarded-For header — the shape every request has when it arrives via
+// Traefik (peer = Traefik pod IP, XFF = real client chain).
+func ipReq(peer, xff string) *http.Request {
+	r := httptest.NewRequest("GET", "/v1/services", nil)
+	r.RemoteAddr = peer
+	if xff != "" {
+		r.Header.Set("X-Forwarded-For", xff)
+	}
+	return r
+}
+
+func TestRateLimiterTrustedProxyIndependentBuckets(t *testing.T) {
+	rl := NewRateLimiter(60000, 1) // burst=1: second request for a key is 429
+	tp, err := core.ParseTrustedProxies("10.0.0.0/8")
+	if err != nil {
+		t.Fatalf("ParseTrustedProxies: %v", err)
+	}
+	rl.TrustedProxies = tp
+	h := rl.Middleware(ok200)
+
+	// Two different clients behind the same trusted Traefik peer get
+	// independent buckets.
+	for _, xff := range []string{"203.0.113.1", "203.0.113.2"} {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, ipReq("10.0.0.1:443", xff))
+		if w.Code != http.StatusOK {
+			t.Fatalf("first request from XFF %s: want 200, got %d", xff, w.Code)
+		}
+	}
+	// A repeat from the first client exhausts ITS bucket only.
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, ipReq("10.0.0.1:443", "203.0.113.1"))
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("second request from XFF 203.0.113.1: want 429, got %d", w.Code)
+	}
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, ipReq("10.0.0.1:443", "203.0.113.3"))
+	if w.Code != http.StatusOK {
+		t.Fatalf("first request from XFF 203.0.113.3: want 200 (unaffected), got %d", w.Code)
+	}
+}
+
+func TestRateLimiterUntrustedPeerSpoofIgnored(t *testing.T) {
+	rl := NewRateLimiter(60000, 1)
+	tp, err := core.ParseTrustedProxies("10.0.0.0/8")
+	if err != nil {
+		t.Fatalf("ParseTrustedProxies: %v", err)
+	}
+	rl.TrustedProxies = tp
+	h := rl.Middleware(ok200)
+
+	// The peer is NOT in the trusted CIDRs: its X-Forwarded-For is fiction and
+	// must never change the key — two requests with different spoofed clients
+	// from the same untrusted peer share the peer's one bucket.
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, ipReq("192.0.2.9:443", "203.0.113.1"))
+	if w.Code != http.StatusOK {
+		t.Fatalf("first request from untrusted peer: want 200, got %d", w.Code)
+	}
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, ipReq("192.0.2.9:443", "203.0.113.2"))
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("spoofed second client from same untrusted peer: want 429, got %d", w.Code)
+	}
+}
+
+func TestRateLimiterNoTrustedProxiesByteIdentical(t *testing.T) {
+	rl := NewRateLimiter(60000, 1) // TrustedProxies unset — the old behavior
+	h := rl.Middleware(ok200)
+
+	// Forwarding headers are ignored entirely: every request keys on the peer
+	// IP exactly as before trusted-proxy support existed.
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, ipReq("10.0.0.1:443", "203.0.113.1"))
+	if w.Code != http.StatusOK {
+		t.Fatalf("first request: want 200, got %d", w.Code)
+	}
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, ipReq("10.0.0.1:443", "203.0.113.99"))
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("same peer, different XFF: want 429 (headers ignored), got %d", w.Code)
+	}
+}
+
 // ---- Body limit ----
 
 func TestBodyLimitRejects(t *testing.T) {

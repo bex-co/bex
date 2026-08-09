@@ -24,6 +24,7 @@ import (
 
 	"golang.org/x/net/publicsuffix"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -88,6 +89,31 @@ func domainType(hostname string) string {
 		return "apex"
 	}
 	return "subdomain"
+}
+
+// normalizeHostname canonicalizes a custom-hostname value: trim surrounding
+// whitespace, trim one terminal dot, lowercase. DNS names are
+// case-insensitive and a trailing dot is the root-label spelling of the same
+// name, so two inputs that differ only by case/dot/whitespace are ONE host —
+// persisting them verbatim let case-variant claims slip past the uniqueness
+// sweep while downstream consumers (the activator's last-write-wins host map)
+// canonicalized and collapsed them.
+func normalizeHostname(raw string) string {
+	return strings.ToLower(strings.TrimSuffix(strings.TrimSpace(raw), "."))
+}
+
+// canonicalHostname is normalizeHostname plus DNS-1123 host validation — the
+// ONE canonicalization every custom-hostname write boundary (create/update
+// spec.hosts, AddDomain) runs before persisting, so stored values are always
+// canonical and comparable. A leading "*." wildcard prefix is preserved and
+// its suffix validated, matching the operator's wildcard-host support.
+func canonicalHostname(raw string) (string, error) {
+	host := normalizeHostname(raw)
+	check := strings.TrimPrefix(host, "*.")
+	if check == "" || len(validation.IsDNS1123Subdomain(check)) != 0 {
+		return "", fmt.Errorf("%w: invalid hostname %q", core.ErrBadRequest, raw)
+	}
+	return host, nil
 }
 
 // wwwSibling returns the www<->apex pairing partner Render auto-adds when a
@@ -311,9 +337,12 @@ func errDomainInUse() error {
 // versa, matching the cross-App, cross-tenant collision Render blocks with
 // "this domain already exists on another site." wwwSibling is its own inverse
 // for a valid pair, so a single `wwwSibling(h) == host` check (no need to also
-// compute wwwSibling(host)) catches both add orders. The owning App's name is
-// deliberately not returned: a caller must not learn another tenant's service
-// name from the rejection.
+// compute wwwSibling(host)) catches both add orders. host must already be
+// canonical (canonicalHostname at the write boundaries); stored claims are
+// normalized defensively (normalizeHostname) so a legacy verbatim-stored value
+// with stray case/dot/whitespace still collides instead of slipping past. The
+// owning App's name is deliberately not returned: a caller must not learn
+// another tenant's service name from the rejection.
 func (s *Service) hostClaimedElsewhere(ctx context.Context, appName, host string) (bool, error) {
 	// A host is unique across the whole platform, and Apps are spread across
 	// per-tenant namespaces (ADR043), so the collision sweep must be cluster-wide.
@@ -328,6 +357,7 @@ func (s *Service) hostClaimedElsewhere(ctx context.Context, appName, host string
 		}
 		claimed := append([]string{a.Spec.Host}, a.Spec.Hosts...)
 		for _, h := range claimed {
+			h = normalizeHostname(h)
 			if h != "" && (h == host || wwwSibling(h) == host) {
 				return true, nil
 			}
@@ -362,8 +392,10 @@ func (s *Service) ensureHostsClaimable(ctx context.Context, appName, host string
 	return nil
 }
 
-// AddDomain appends hostname (lowercased, so casing can't split one logical
-// host into two spec.hosts[] entries) to App.spec.hosts[] if not already
+// AddDomain appends hostname (canonicalized by canonicalHostname — trimmed,
+// terminal dot dropped, lowercased, DNS-1123 validated — so casing or a
+// trailing dot can't split one logical host into two spec.hosts[] entries) to
+// App.spec.hosts[] if not already
 // present, then auto-pairs its www<->apex sibling (wwwSibling, t002) the way
 // Render's capture documents (docs/render-artifacts/custom-domain-pairing.md,
 // w6/m23 t001): adding `foo.com` also adds `www.foo.com`, and vice versa — one
@@ -379,12 +411,15 @@ func (s *Service) ensureHostsClaimable(ctx context.Context, appName, host string
 // hostClaimedElsewhere) elsewhere-claimed sibling is skipped silently rather
 // than failing the caller's own successful add.
 func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (DomainView, error) {
+	// The raw input goes straight to addOne, which authorizes FIRST (the
+	// authz-before-validation verb contract) and then canonicalizes; the
+	// canonical value comes back as view.Name for the sibling pairing below.
 	view, added, err := s.addOne(ctx, appName, hostname, "")
 	if err != nil || !added {
 		return view, err
 	}
-	if sib := wwwSibling(hostname); sib != "" {
-		_, _, _ = s.addOne(ctx, appName, sib, strings.ToLower(hostname))
+	if sib := wwwSibling(view.Name); sib != "" {
+		_, _, _ = s.addOne(ctx, appName, sib, view.Name)
 	}
 	return view, nil
 }
@@ -393,18 +428,19 @@ func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (Doma
 // calls it once for the primary host and, on a fresh add, once more for the
 // sibling. added reports whether this call actually wrote a new host (false
 // for the idempotent already-present path), so AddDomain knows whether pairing
-// applies. For store-managed Apps the row is written first (same rationale as
-// Suspend).
+// applies. Authorization runs BEFORE hostname canonicalization/validation — a
+// denied caller must get ErrForbidden, never input-validation feedback. For
+// store-managed Apps the row is written first (same rationale as Suspend).
 func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName string) (view DomainView, added bool, err error) {
 	app, err := s.AuthorizeApp(ctx, core.RelCanOperate, appName)
 	if err != nil {
 		return DomainView{}, false, err
 	}
-	if hostname == "" {
-		return DomainView{}, false, fmt.Errorf("%w: hostname is required", core.ErrBadRequest)
+	hostname, err = canonicalHostname(hostname)
+	if err != nil {
+		return DomainView{}, false, err
 	}
-	hostname = strings.ToLower(hostname)
-	redirectForName = strings.ToLower(redirectForName)
+	redirectForName = normalizeHostname(redirectForName)
 	for _, h := range app.Spec.Hosts {
 		if h == hostname {
 			if app.Spec.HostRedirects[hostname] == redirectForName {

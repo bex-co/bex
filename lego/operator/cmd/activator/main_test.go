@@ -287,12 +287,12 @@ func TestMaintenanceURLSafety(t *testing.T) {
 		"https://web.onbex.co/page",
 		"https://custom.example.com/page",
 	} {
-		if _, err := validateCustomPageURL(raw, app); err == nil {
+		if _, err := validateCustomPageURL(raw, app, nil); err == nil {
 			t.Errorf("validateCustomPageURL(%q) succeeded", raw)
 		}
 	}
 	for _, raw := range []string{"https://status.example.com/page", "http://status.example.com"} {
-		if _, err := validateCustomPageURL(raw, app); err != nil {
+		if _, err := validateCustomPageURL(raw, app, nil); err != nil {
 			t.Errorf("validateCustomPageURL(%q): %v", raw, err)
 		}
 	}
@@ -310,7 +310,7 @@ func TestMaintenanceURLSafety(t *testing.T) {
 
 func TestMaintenanceRedirectPolicyRejectsSelfAndLongChains(t *testing.T) {
 	app := maintenanceApp("")
-	policy := customPageRedirectPolicy(app)
+	policy := customPageRedirectPolicy(app, nil)
 	self := httptest.NewRequest(http.MethodGet, "https://web.onbex.co/redirected", nil)
 	selfVia := []*http.Request{httptest.NewRequest(http.MethodGet, "https://status.example.com", nil)}
 	if err := policy(self, selfVia); err == nil || !strings.Contains(err.Error(), "this service") {
@@ -324,6 +324,49 @@ func TestMaintenanceRedirectPolicyRejectsSelfAndLongChains(t *testing.T) {
 	}
 	if err := policy(external, via); err == nil || !strings.Contains(err.Error(), "too many redirects") {
 		t.Fatalf("long redirect chain error = %v", err)
+	}
+}
+
+// TestMaintenanceURLRejectsOtherAppHosts is the cross-service recursion guard:
+// a custom maintenance page URL whose host belongs to ANY App routed through
+// the platform — not just the App itself — must be refused, so two services
+// cannot point their maintenance pages at each other and close an amplifying
+// synchronous-fetch cycle through this shared activator. The denylist is the
+// host cache's cluster-wide host map, so it covers Apps in every workspace's
+// namespace.
+func TestMaintenanceURLRejectsOtherAppHosts(t *testing.T) {
+	appA := maintenanceApp("")
+	appB := &appv1alpha1.App{ // another workspace's namespace
+		ObjectMeta: metav1.ObjectMeta{Name: "other", Namespace: "tenant-b"},
+		Spec:       appv1alpha1.AppSpec{Hosts: []string{"b.example.com"}},
+		Status:     appv1alpha1.AppStatus{URL: "https://other.onbex.co"},
+	}
+	cache, _ := primedHostCache(t, appA, appB)
+
+	for _, raw := range []string{
+		"https://b.example.com/page",  // B's custom host (the A->B half of a cycle)
+		"https://B.Example.com/page",  // case variant of the same host
+		"https://b.example.com./page", // trailing-dot spelling of the same host
+		"https://other.onbex.co/page", // B's platform host
+	} {
+		if _, err := validateCustomPageURL(raw, appA, cache.claims); err == nil {
+			t.Errorf("validateCustomPageURL(%q) succeeded — cross-service cycle admitted", raw)
+		}
+	}
+	// A genuinely external page is still allowed.
+	if _, err := validateCustomPageURL("https://status.example.com/page", appA, cache.claims); err != nil {
+		t.Errorf("external maintenance page rejected: %v", err)
+	}
+
+	// End to end: A in maintenance mode pointing at B's host must answer 502
+	// from validation, never a live fetch.
+	cyclic := maintenanceApp("https://b.example.com/page")
+	cache, cl := primedHostCache(t, cyclic, appB)
+	handler := newHandler(cl, cache, logr.Discard())
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "https://web.onbex.co/", nil))
+	if rr.Code != http.StatusBadGateway {
+		t.Fatalf("cyclic maintenance page response = %d, want 502 (rejected before fetch)", rr.Code)
 	}
 }
 

@@ -817,6 +817,19 @@ func main() {
 		log.Fatalf("bex-api: deploy-hook token index backfill: %v", err)
 	}
 
+	// Trusted-proxy CIDRs for rate-limit identity (w4/m33 P2 register,
+	// .pm/w4/029.md report #10). In production every public request's TCP peer
+	// is a Traefik pod, so without this every IP-keyed limiter below keys all
+	// anonymous Internet clients into ONE shared bucket (the device flow's
+	// 30/min held platform-wide breaks `render login` for everyone). Set ⇒ a
+	// limiter derives the client IP from X-Forwarded-For/X-Real-IP only when
+	// the immediate peer is inside one of these CIDRs; unset ⇒ peer IP only,
+	// headers ignored (byte-identical to before). Malformed ⇒ fail closed.
+	trustedProxies, err := core.ParseTrustedProxies(os.Getenv("BEX_TRUSTED_PROXY_CIDRS"))
+	if err != nil {
+		log.Fatalf("bex-api: bad BEX_TRUSTED_PROXY_CIDRS: %v", err)
+	}
+
 	// Rate limiting + request caps (w7/m3). BEX_RATE_LIMIT=0 disables the limiter.
 	rpmStr := envOr("BEX_RATE_LIMIT", "500")
 	rpm, err := strconv.ParseFloat(rpmStr, 64)
@@ -869,6 +882,18 @@ func main() {
 	}
 	deployHookLookupBurst, _ := strconv.Atoi(envOr("BEX_DEPLOY_HOOK_LOOKUP_RATE_BURST", "10"))
 	srv.DeployHookLookupRateLimiter = api.NewRateLimiter(deployHookLookupRPM, deployHookLookupBurst)
+
+	// Trusted-proxy awareness applies to every IP-keyed budget alike: the
+	// per-caller, device-flow, webhook-intake, and deploy-hook limiters all
+	// derive the client IP through the same trusted CIDRs.
+	for _, rl := range []*api.RateLimiter{srv.RateLimiter, srv.WebhookRateLimiter, srv.DeployHookLookupRateLimiter} {
+		if rl != nil {
+			rl.TrustedProxies = trustedProxies
+		}
+	}
+	if srv.DeviceRateLimiter != nil {
+		srv.DeviceRateLimiter.TrustedProxies = trustedProxies
+	}
 
 	maxBody, _ := strconv.ParseInt(envOr("BEX_MAX_BODY_BYTES", "2097152"), 10, 64)
 	srv.MaxBodyBytes = maxBody

@@ -173,8 +173,11 @@ func assertAgentSessionTranscripts(ctx context.Context, t *testing.T, s *PGStore
 	if _, ok, err := s.AgentSessionTranscriptMaxSeq(ctx, sessionID); err != nil || ok {
 		t.Fatalf("empty transcript max seq: ok=%v err=%v", ok, err)
 	}
-	if parts, err := s.AgentSessionTranscript(ctx, sessionID, -1); err != nil || len(parts) != 0 {
+	if parts, err := s.AgentSessionTranscript(ctx, sessionID, -1, 1<<30); err != nil || len(parts) != 0 {
 		t.Fatalf("empty transcript replay = %+v err=%v", parts, err)
+	}
+	if total, err := s.AgentSessionTranscriptBytes(ctx, sessionID); err != nil || total != 0 {
+		t.Fatalf("empty transcript bytes = %d err=%v", total, err)
 	}
 
 	first := []AgentSessionTranscriptPart{
@@ -194,9 +197,25 @@ func assertAgentSessionTranscripts(ctx context.Context, t *testing.T, s *PGStore
 	if err != nil || !ok || maxSeq != 2 {
 		t.Fatalf("max seq after append = %d ok=%v err=%v", maxSeq, ok, err)
 	}
-	full, err := s.AgentSessionTranscript(ctx, sessionID, -1)
+	full, err := s.AgentSessionTranscript(ctx, sessionID, -1, 1<<30)
 	if err != nil || len(full) != 3 {
 		t.Fatalf("full replay = %d parts err=%v (dedup failed if 6)", len(full), err)
+	}
+	// The cumulative-byte counter the write paths seed their quota from.
+	var wantBytes int64
+	for _, p := range first {
+		wantBytes += int64(len(p.Part))
+	}
+	if total, err := s.AgentSessionTranscriptBytes(ctx, sessionID); err != nil || total != wantBytes {
+		t.Fatalf("transcript bytes = %d err=%v, want %d", total, err, wantBytes)
+	}
+	// The bounded replay read (w1/m65 F10 fix): a budget covering only the first
+	// two parts returns exactly that prefix, in order, never the whole
+	// transcript — the cap is enforced by the store method, not the caller.
+	prefixBudget := int64(len(first[0].Part) + len(first[1].Part))
+	prefix, err := s.AgentSessionTranscript(ctx, sessionID, -1, prefixBudget)
+	if err != nil || len(prefix) != 2 || prefix[0].Seq != 0 || prefix[1].Seq != 1 {
+		t.Fatalf("bounded replay = %+v err=%v, want the 2-part prefix", prefix, err)
 	}
 	if full[0].Seq != 0 || full[2].Seq != 2 || string(full[1].Part) != `{"type":"text-delta","delta":"hi"}` {
 		t.Fatalf("replay order/verbatim wrong: %+v", full)
@@ -219,7 +238,7 @@ func assertAgentSessionTranscripts(ctx context.Context, t *testing.T, s *PGStore
 	}); err != nil {
 		t.Fatalf("append tail: %v", err)
 	}
-	tail, err := s.AgentSessionTranscript(ctx, sessionID, maxSeq)
+	tail, err := s.AgentSessionTranscript(ctx, sessionID, maxSeq, 1<<30)
 	if err != nil || len(tail) != 1 || tail[0].Seq != 3 || tail[0].Turn != 2 {
 		t.Fatalf("cursor tail = %+v err=%v", tail, err)
 	}
@@ -235,7 +254,7 @@ func assertAgentSessionTranscripts(ctx context.Context, t *testing.T, s *PGStore
 	if n, err := s.PruneAgentSessionTranscripts(ctx, time.Now().Add(time.Hour)); err != nil || n != 4 {
 		t.Fatalf("prune (all) = %d err=%v", n, err)
 	}
-	if parts, err := s.AgentSessionTranscript(ctx, sessionID, -1); err != nil || len(parts) != 0 {
+	if parts, err := s.AgentSessionTranscript(ctx, sessionID, -1, 1<<30); err != nil || len(parts) != 0 {
 		t.Fatalf("post-prune replay = %+v err=%v", parts, err)
 	}
 
@@ -255,7 +274,7 @@ func assertAgentSessionTranscripts(ctx context.Context, t *testing.T, s *PGStore
 	if err := s.DeleteAgentSession(ctx, throwaway.ID); err != nil {
 		t.Fatalf("delete cascade session: %v", err)
 	}
-	if parts, err := s.AgentSessionTranscript(ctx, throwaway.ID, -1); err != nil || len(parts) != 0 {
+	if parts, err := s.AgentSessionTranscript(ctx, throwaway.ID, -1, 1<<30); err != nil || len(parts) != 0 {
 		t.Fatalf("transcript survived session delete = %+v err=%v", parts, err)
 	}
 

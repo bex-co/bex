@@ -543,7 +543,7 @@ func validateMaintenanceEligibility(serviceType, tier string, mode *MaintenanceM
 	return nil
 }
 
-func (s *Service) validateMaintenanceMode(a *appv1alpha1.App, mode MaintenanceModeView) error {
+func (s *Service) validateMaintenanceMode(ctx context.Context, a *appv1alpha1.App, mode MaintenanceModeView) error {
 	if err := validateMaintenanceEligibility(effectiveType(a.Spec.Type), a.Spec.Tier, &mode); err != nil {
 		return err
 	}
@@ -556,6 +556,20 @@ func (s *Service) validateMaintenanceMode(a *appv1alpha1.App, mode MaintenanceMo
 		if host == owned {
 			return fmt.Errorf("%w: maintenanceMode.uri cannot point to the same service", core.ErrBadRequest)
 		}
+	}
+	// Cross-service loop guard: every maintenance-page fetch is a synchronous
+	// public request through the shared activator, so a URI pointing at ANY
+	// platform-routed host (not just this service's own) can close an
+	// amplifying fetch cycle between two services. Reject platform-reserved
+	// hosts (`*.<base>`, dashboard — reservedHost) and any custom host claimed
+	// by another App cluster-wide (the same sweep AddDomain enforces).
+	if s.reservedHost(a.Name, host) {
+		return fmt.Errorf("%w: maintenanceMode.uri cannot point to a platform hostname", core.ErrBadRequest)
+	}
+	if claimed, err := s.hostClaimedElsewhere(ctx, a.Name, host); err != nil {
+		return err
+	} else if claimed {
+		return fmt.Errorf("%w: maintenanceMode.uri cannot point to another service on this platform", core.ErrBadRequest)
 	}
 	return nil
 }
@@ -1483,7 +1497,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	}
 	if desired.MaintenanceMode != nil {
 		probe := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: req.Name}, Spec: desired}
-		if err := s.validateMaintenanceMode(probe, maintenanceModeView(desired.MaintenanceMode)); err != nil {
+		if err := s.validateMaintenanceMode(ctx, probe, maintenanceModeView(desired.MaintenanceMode)); err != nil {
 			return AppView{}, err
 		}
 	}
@@ -2125,8 +2139,21 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		spec.Headers = headersFromViews(req.Headers)
 	}
 	if len(req.Hosts) > 0 {
-		spec.Host = req.Hosts[0]
-		spec.Hosts = append([]string(nil), req.Hosts[1:]...)
+		// Custom hostnames persist ONLY in canonical form (trimmed, terminal dot
+		// dropped, lowercased, DNS-1123 validated) so the cross-App uniqueness
+		// sweep and every downstream consumer compare like with like — a
+		// case/trailing-dot variant of another tenant's host must collapse to
+		// the same value here instead of slipping past as a distinct string.
+		hosts := make([]string, 0, len(req.Hosts))
+		for _, raw := range req.Hosts {
+			h, err := canonicalHostname(raw)
+			if err != nil {
+				return appv1alpha1.AppSpec{}, err
+			}
+			hosts = append(hosts, h)
+		}
+		spec.Host = hosts[0]
+		spec.Hosts = hosts[1:]
 	}
 	if req.Autoscaling != nil {
 		as, err := autoscalingSpec(*req.Autoscaling)
@@ -3161,7 +3188,7 @@ func (s *Service) setMaintenanceMode(ctx context.Context, name string, in Mainte
 		return AppView{}, err
 	}
 	in.URI = strings.TrimSpace(in.URI)
-	if err := s.validateMaintenanceMode(a, in); err != nil {
+	if err := s.validateMaintenanceMode(ctx, a, in); err != nil {
 		return AppView{}, err
 	}
 	current := maintenanceModeView(a.Spec.MaintenanceMode)
