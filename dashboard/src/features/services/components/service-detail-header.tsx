@@ -235,6 +235,15 @@ export function ServiceDetailHeader({
               errorText={t("services.headerCopyError")}
             />
           </div>
+        ) : service.publicRoutingNotice ? (
+          // No url, and the platform knows why (w7/m79). This slot used to
+          // render nothing at all, which is how a service that would never be
+          // publicly reachable looked identical to one still starting up.
+          // The text is the operator's own diagnosis, rendered raw like a
+          // deploy's failureReason — it names the missing piece and the fix.
+          <p className="text-muted-foreground text-xs">
+            {service.publicRoutingNotice}
+          </p>
         ) : null}
       </div>
 

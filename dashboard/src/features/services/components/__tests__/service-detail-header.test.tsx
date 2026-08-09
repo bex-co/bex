@@ -267,7 +267,9 @@ describe("ServiceDetailHeader", () => {
     renderHeader(svc({ type: "static_site", plan: "starter" }));
 
     await screen.findByRole("heading", { name: "app" });
-    expect(screen.queryByRole("link", { name: "Starter" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Starter" }),
+    ).not.toBeInTheDocument();
     // A compute type with the same plan still shows the chip.
     renderHeader(svc({ type: "web_service", plan: "starter" }));
     expect(
@@ -399,5 +401,44 @@ describe("ServiceDetailHeader", () => {
     expect(
       screen.queryByText("Maintenance mode is on"),
     ).not.toBeInTheDocument();
+  });
+});
+
+// w7/m79: a web service with no public address used to render nothing at all in
+// this slot, so "will never be reachable" looked exactly like "still starting".
+// The platform now says which it is, and what to do about it.
+describe("public routing notice", () => {
+  const notice =
+    "this service has no public address: the platform subdomain is not available on this " +
+    "installation, and no custom domain is attached. Add a custom domain to serve it publicly.";
+
+  it("explains a missing public address instead of showing nothing", async () => {
+    renderHeader(svc({ url: null, publicRoutingNotice: notice }));
+
+    expect(await screen.findByText(/no public address/i)).toBeInTheDocument();
+    // The remedy has to be in reach, or the notice is just a nicer silence.
+    expect(screen.getByText(/custom domain/i)).toBeInTheDocument();
+  });
+
+  it("prefers the real url when the service is routed", async () => {
+    renderHeader(
+      svc({ url: "https://app.onbex.co", publicRoutingNotice: null }),
+    );
+
+    expect(
+      await screen.findByRole("link", { name: "https://app.onbex.co" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/no public address/i)).not.toBeInTheDocument();
+  });
+
+  it("stays silent when there is no url and nothing to explain", async () => {
+    // A worker, a cron job, or an owner who switched their own subdomain off:
+    // the backend sends no notice, and the header must not invent one.
+    renderHeader(svc({ url: null, publicRoutingNotice: null }));
+
+    expect(
+      await screen.findByRole("heading", { name: "app" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/no public address/i)).not.toBeInTheDocument();
   });
 });
