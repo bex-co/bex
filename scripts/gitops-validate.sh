@@ -1790,12 +1790,19 @@ if [ "$static_cfg_kv" != "$mgr_origin_kv" ]; then
   echo "FAIL: static serve origin (bex-static-config) != publish origin (manager env): '$static_cfg_kv' vs '$mgr_origin_kv'" >&2
   fail=1
 fi
+# onbex.co is the sanctioned shared platform hosting suffix (exposed web services
+# auto-serve <slug>.onbex.co). Its PSL private-section submission is pending, so
+# the operator starts with a warning (hostingdomain.ValidateSharedSuffix +
+# cmd/manager) rather than refusing it. Any OTHER shared domain in prod is still a
+# misconfiguration and fails closed here.
 prod_shared_domain="$(
-  yq -N 'select(.kind == "Deployment" and (.metadata.name == "bex-controller-manager" or .metadata.name == "bex-api" or .metadata.name == "bex-static-server")) | .spec.template.spec.containers[].env[]? | select(.name == "BEX_BASE_DOMAIN") | .value' "$tmp/bex-operator-prod.yaml"
-  yq -N 'select(.kind == "ConfigMap" and .metadata.name == "bex-static-config") | .data.BEX_BASE_DOMAIN // ""' "$tmp/bex-operator-prod.yaml"
+  {
+    yq -N 'select(.kind == "Deployment" and (.metadata.name == "bex-controller-manager" or .metadata.name == "bex-api" or .metadata.name == "bex-static-server")) | .spec.template.spec.containers[].env[]? | select(.name == "BEX_BASE_DOMAIN") | .value' "$tmp/bex-operator-prod.yaml"
+    yq -N 'select(.kind == "ConfigMap" and .metadata.name == "bex-static-config") | .data.BEX_BASE_DOMAIN // ""' "$tmp/bex-operator-prod.yaml"
+  } | grep -vxF 'onbex.co' | grep -v '^$' || true
 )"
 if [ -n "$prod_shared_domain" ]; then
-  echo "FAIL: prod still configures unsafe shared BEX_BASE_DOMAIN values: $prod_shared_domain" >&2
+  echo "FAIL: prod configures an unrecognized shared BEX_BASE_DOMAIN (want onbex.co or empty): $prod_shared_domain" >&2
   fail=1
 fi
 kubectl kustomize lego/operator/config/default >"$tmp/bex-operator-default.yaml"
