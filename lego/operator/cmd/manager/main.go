@@ -18,6 +18,7 @@ package main
 
 import (
 	"crypto/tls"
+	"errors"
 	"flag"
 	"os"
 	"strconv"
@@ -119,8 +120,17 @@ func main() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	baseDomain := os.Getenv("BEX_BASE_DOMAIN")
 	if err := hostingdomain.ValidateSharedSuffix(baseDomain); err != nil {
-		setupLog.Error(err, "unsafe shared tenant hosting suffix")
-		os.Exit(1)
+		// A well-formed-but-not-yet-PSL-listed suffix (onbex.co) runs with a loud
+		// warning instead of taking the operator down: cross-tenant cookie
+		// isolation firms up once onbex.co is submitted to publicsuffix/list and a
+		// newer golang.org/x/net embeds it. A malformed suffix stays fatal.
+		if errors.Is(err, hostingdomain.ErrUnlistedSharedSuffix) {
+			setupLog.Info("WARNING: BEX_BASE_DOMAIN is not a private Public Suffix in this build; enabling shared platform hosts anyway. Cross-tenant cookie isolation is not browser-enforced until this suffix is in the PSL — submit onbex.co to publicsuffix/list",
+				"baseDomain", baseDomain, "reason", err.Error())
+		} else {
+			setupLog.Error(err, "unsafe shared tenant hosting suffix")
+			os.Exit(1)
+		}
 	}
 
 	// if the enable-http2 flag is false (the default), http/2 should be disabled

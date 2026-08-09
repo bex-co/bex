@@ -46,12 +46,10 @@ spec:
           env:
             - name: BEX_STATIC_ADDR
               value: ":8080"
-            # Explicit empty value is also an SSA tombstone for production
-            # Deployments that previously carried the unsafe onbex.co value.
-            # Replace this only with a browser-recognized private Public Suffix;
-            # empty disables shared platform hosts while custom domains remain.
+            # Shared platform hosting suffix — must match the operator/bex-api so
+            # a static_site's platform host "<slug>.onbex.co" resolves.
             - name: BEX_BASE_DOMAIN
-              value: ""
+              value: onbex.co
             # Never fall back to a node/cloud metadata credential if the
             # namespace-local reader Secret is malformed.
             - name: AWS_EC2_METADATA_DISABLED

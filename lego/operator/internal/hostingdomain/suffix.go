@@ -19,16 +19,30 @@ limitations under the License.
 package hostingdomain
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"golang.org/x/net/publicsuffix"
 )
 
+// ErrUnlistedSharedSuffix is the recoverable rejection: domain is a well-formed
+// registrable domain that is not (yet) a private entry in the Public Suffix List
+// embedded in this build of golang.org/x/net. The manager treats it as a loud
+// warning rather than a fatal error (onbex.co runs today; cross-tenant cookie
+// isolation firms up once the suffix is submitted to publicsuffix/list and a
+// newer x/net embeds it). Malformed input never wraps this sentinel, so it stays
+// fatal.
+var ErrUnlistedSharedSuffix = errors.New("shared tenant domain is not a private Public Suffix")
+
 // ValidateSharedSuffix permits an empty (disabled) platform domain or a
 // canonical domain listed in the Public Suffix List's PRIVATE section. Sharing
 // an ordinary registrable domain lets one tenant set a Domain cookie received
 // by every sibling tenant; a browser-recognized private suffix prevents that.
+//
+// A well-formed-but-unlisted domain fails with ErrUnlistedSharedSuffix (the
+// caller may proceed with a warning); a malformed domain fails with a plain,
+// fatal error.
 func ValidateSharedSuffix(domain string) error {
 	if domain == "" {
 		return nil
@@ -39,7 +53,7 @@ func ValidateSharedSuffix(domain string) error {
 	}
 	suffix, icann := publicsuffix.PublicSuffix(canonical)
 	if suffix != canonical || icann {
-		return fmt.Errorf("shared tenant domain %q is not a private Public Suffix; disable BEX_BASE_DOMAIN until the suffix is registered", domain)
+		return fmt.Errorf("%w: %q (submit it to publicsuffix/list for browser-enforced cross-tenant cookie isolation)", ErrUnlistedSharedSuffix, domain)
 	}
 	return nil
 }
