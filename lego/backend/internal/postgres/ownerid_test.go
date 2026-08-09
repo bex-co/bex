@@ -139,7 +139,7 @@ func TestCreatePostgres_StampsBothLabels(t *testing.T) {
 		t.Fatalf("created view OwnerID = %q, want tea-a", view.OwnerID)
 	}
 	var d appv1alpha1.Database
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: view.ID}, &d); err != nil {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "tea-a", Name: view.ID}, &d); err != nil {
 		t.Fatalf("get Database: %v", err)
 	}
 	if d.Labels[core.LabelTenant] != "tea-a" || d.Labels[core.LabelWorkspace] != "tea-a" {

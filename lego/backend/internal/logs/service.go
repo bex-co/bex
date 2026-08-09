@@ -508,10 +508,10 @@ func (s *Service) queryPostgresLogs(ctx context.Context, q LogQuery) ([]LogEntry
 	}
 	q = q.normalized()
 	if s.History != nil {
-		entries, err := s.History(ctx, s.Namespace, q)
+		entries, err := s.History(ctx, database.Namespace, q)
 		return setLogResource(entries, requested), err
 	}
-	entries, err := s.collectDatabasePodLogs(ctx, q)
+	entries, err := s.collectDatabasePodLogs(ctx, database.Namespace, q)
 	if err != nil {
 		return nil, err
 	}
@@ -555,10 +555,10 @@ func (s *Service) queryKeyValueLogs(ctx context.Context, q LogQuery) ([]LogEntry
 	}
 	q = q.normalized()
 	if s.History != nil {
-		entries, err := s.History(ctx, s.Namespace, q)
+		entries, err := s.History(ctx, kv.Namespace, q)
 		return setLogResource(entries, requested), err
 	}
-	entries, err := s.collectKeyValuePodLogs(ctx, q)
+	entries, err := s.collectKeyValuePodLogs(ctx, kv.Namespace, q)
 	if err != nil {
 		return nil, err
 	}
@@ -658,13 +658,13 @@ func (s *Service) postgresLogLabelValues(ctx context.Context, label string, q Lo
 		return nil, fmt.Errorf("%w: managed Postgres log label %q is unsupported (want %s)", core.ErrBadRequest, label, LabelInstance)
 	}
 	if s.LabelValues != nil {
-		values, err := s.LabelValues(ctx, s.Namespace, label, q.normalized())
+		values, err := s.LabelValues(ctx, database.Namespace, label, q.normalized())
 		if err != nil {
 			return nil, err
 		}
 		return slices.Compact(slices.Sorted(slices.Values(values))), nil
 	}
-	pods, err := s.DatabasePods(ctx, database.Name)
+	pods, err := s.DatabasePods(ctx, database.Namespace, database.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -689,13 +689,13 @@ func (s *Service) keyValueLogLabelValues(ctx context.Context, label string, q Lo
 		return nil, fmt.Errorf("%w: managed Key Value log label %q is unsupported (want %s)", core.ErrBadRequest, label, LabelInstance)
 	}
 	if s.LabelValues != nil {
-		values, err := s.LabelValues(ctx, s.Namespace, label, q.normalized())
+		values, err := s.LabelValues(ctx, kv.Namespace, label, q.normalized())
 		if err != nil {
 			return nil, err
 		}
 		return slices.Compact(slices.Sorted(slices.Values(values))), nil
 	}
-	pods, err := s.KeyValuePods(ctx, kv.Name)
+	pods, err := s.KeyValuePods(ctx, kv.Namespace, kv.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -989,13 +989,16 @@ type datastore struct {
 }
 
 // collectDatastorePodLogs reads one managed datastore's logs from its pods.
-func (s *Service) collectDatastorePodLogs(ctx context.Context, q LogQuery, pods []corev1.Pod, ds datastore) ([]LogEntry, error) {
+// namespace is the datastore CR's own namespace (ADR043 D8) — reading from the
+// shared one instead returns no error and no logs, which is how the App-side
+// version of this bug stayed invisible.
+func (s *Service) collectDatastorePodLogs(ctx context.Context, namespace string, q LogQuery, pods []corev1.Pod, ds datastore) ([]LogEntry, error) {
 	var out []LogEntry
 	for i := range pods {
 		if !q.keepPod(pods[i].Name) {
 			continue
 		}
-		entries, err := s.readContainerLogs(ctx, s.Namespace, ds.name, pods[i].Name, ds.container, q.Limit)
+		entries, err := s.readContainerLogs(ctx, namespace, ds.name, pods[i].Name, ds.container, q.Limit)
 		if err != nil {
 			return nil, err
 		}
@@ -1008,24 +1011,24 @@ func (s *Service) collectDatastorePodLogs(ctx context.Context, q LogQuery, pods 
 	return out, nil
 }
 
-func (s *Service) collectDatabasePodLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
-	pods, err := s.DatabasePods(ctx, q.Database)
+func (s *Service) collectDatabasePodLogs(ctx context.Context, namespace string, q LogQuery) ([]LogEntry, error) {
+	pods, err := s.DatabasePods(ctx, namespace, q.Database)
 	if err != nil {
 		return nil, err
 	}
-	return s.collectDatastorePodLogs(ctx, q, pods, datastore{
+	return s.collectDatastorePodLogs(ctx, namespace, q, pods, datastore{
 		name:      q.Database,
 		container: core.CNPGPostgresContainer,
 		kind:      datastorelogs.KindPostgres,
 	})
 }
 
-func (s *Service) collectKeyValuePodLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
-	pods, err := s.KeyValuePods(ctx, q.KeyValue)
+func (s *Service) collectKeyValuePodLogs(ctx context.Context, namespace string, q LogQuery) ([]LogEntry, error) {
+	pods, err := s.KeyValuePods(ctx, namespace, q.KeyValue)
 	if err != nil {
 		return nil, err
 	}
-	return s.collectDatastorePodLogs(ctx, q, pods, datastore{
+	return s.collectDatastorePodLogs(ctx, namespace, q, pods, datastore{
 		name:      q.KeyValue,
 		container: core.ValkeyContainer,
 		kind:      datastorelogs.KindKeyValue,

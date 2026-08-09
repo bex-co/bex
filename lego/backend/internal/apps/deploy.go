@@ -724,7 +724,7 @@ func (s *Service) resolveExistingBlueprintReferences(ctx context.Context, st par
 	tenantID, scoped := s.Tenant(ctx)
 	if len(neededDatabases) > 0 {
 		var databases appv1alpha1.DatabaseList
-		if err := s.Client.List(ctx, &databases, client.InNamespace(s.Namespace)); err != nil {
+		if err := s.Client.List(ctx, &databases, s.DatastoreListOptions(tenantID)...); err != nil {
 			return nil, nil, err
 		}
 		for name := range neededDatabases {
@@ -754,7 +754,7 @@ func (s *Service) resolveExistingBlueprintReferences(ctx context.Context, st par
 	}
 	if len(neededKeyValues) > 0 {
 		var keyValues appv1alpha1.KeyValueList
-		if err := s.Client.List(ctx, &keyValues, client.InNamespace(s.Namespace)); err != nil {
+		if err := s.Client.List(ctx, &keyValues, s.DatastoreListOptions(tenantID)...); err != nil {
 			return nil, nil, err
 		}
 		for name := range neededKeyValues {
@@ -2109,11 +2109,11 @@ func blueprintKeyValueSpecChanged(cur, want appv1alpha1.KeyValueSpec, fields map
 // else merge-patch the owned spec fields only when they changed. An unchanged
 // re-apply is a no-op.
 func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignment core.EnvironmentAssignment) (StackDatabaseView, error) {
+	tenantID, scoped := s.Tenant(ctx)
 	var databases appv1alpha1.DatabaseList
-	if err := s.Client.List(ctx, &databases, client.InNamespace(s.Namespace)); err != nil {
+	if err := s.Client.List(ctx, &databases, s.DatastoreListOptions(tenantID)...); err != nil {
 		return StackDatabaseView{}, err
 	}
-	tenantID, scoped := s.Tenant(ctx)
 	var existing *appv1alpha1.Database
 	for i := range databases.Items {
 		candidate := &databases.Items[i]
@@ -2174,7 +2174,7 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 		return stackDatabaseView(existing), nil
 	}
 	d := &appv1alpha1.Database{
-		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.Postgres), Namespace: s.Namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.Postgres), Namespace: s.TenantNamespace(tenantID)},
 		Spec:       db.spec,
 	}
 	if tenantID, ok := s.Tenant(ctx); ok {
@@ -2219,11 +2219,11 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 	// not by metadata.name — a store now carries an opaque red- id, so a re-apply
 	// of the same render.yaml entry must match on the user-facing name (w9/m6,
 	// mirroring applyDatabase).
+	tenantID, scoped := s.Tenant(ctx)
 	var keyValues appv1alpha1.KeyValueList
-	if err := s.Client.List(ctx, &keyValues, client.InNamespace(s.Namespace)); err != nil {
+	if err := s.Client.List(ctx, &keyValues, s.DatastoreListOptions(tenantID)...); err != nil {
 		return StackKeyValueView{}, err
 	}
-	tenantID, scoped := s.Tenant(ctx)
 	var existing *appv1alpha1.KeyValue
 	for i := range keyValues.Items {
 		candidate := &keyValues.Items[i]
@@ -2263,7 +2263,7 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 		return stackKeyValueView(existing), nil
 	}
 	resource := &appv1alpha1.KeyValue{
-		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.KeyValue), Namespace: s.Namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.KeyValue), Namespace: s.TenantNamespace(tenantID)},
 		Spec:       kv.spec,
 	}
 	if tenantID, ok := s.Tenant(ctx); ok {

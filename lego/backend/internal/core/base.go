@@ -261,17 +261,64 @@ type Base struct {
 	Payment PaymentGate
 }
 
-// AppNamespace returns the namespace a workspace's App CRs live in —
-// store.WorkspaceNamespace(tenantID), which is the workspace id itself
-// (ADR043) — so every App-CR read/write and pod lookup must resolve there.
-// An empty or default tenant (store off / unbound caller) has no workspace
-// namespace to resolve, so it maps to b.Namespace instead. Only Apps live in
-// the per-tenant namespace; Databases/KeyValues/Secrets stay in b.Namespace.
-func (b *Base) AppNamespace(tenantID string) string {
+// TenantNamespace returns the namespace a workspace's hosting workloads live
+// in — store.WorkspaceNamespace(tenantID), which is the workspace id itself
+// (ADR043 D1) — so every App / Database / KeyValue read/write and pod lookup
+// must resolve there. An empty or default tenant (store off / unbound caller)
+// has no workspace namespace to resolve, so it maps to b.Namespace instead.
+//
+// This covers datastores as well as Apps since ADR043 D8 (w7/m77). Until then
+// only Apps moved, which silently broke every fromDatabase/fromService link: a
+// secretKeyRef resolves same-namespace only, the tenant default-deny grants no
+// path out of the namespace, and CNPG's bare-Service-name host does not resolve
+// across one. Co-location is what fixes all three.
+func (b *Base) TenantNamespace(tenantID string) string {
 	if tenantID != "" && tenantID != DefaultTenant {
 		return tenantID
 	}
 	return b.Namespace
+}
+
+// AppNamespace is TenantNamespace under its historical name. Kept because the
+// App-side call sites read naturally as "the App's namespace"; new datastore
+// call sites should say TenantNamespace, which is what it has always computed.
+func (b *Base) AppNamespace(tenantID string) string { return b.TenantNamespace(tenantID) }
+
+// DatastoreListOptions scopes a Database/KeyValue List to one workspace.
+//
+// For a resolved workspace the list runs CLUSTER-WIDE with a server-side
+// LabelTenant selector rather than being pinned to a namespace — the same shape
+// App lists take, and for the same reason (see the note above AuthorizeApp):
+// under ADR043 D8 a workspace's datastores are in its own namespace, while
+// un-migrated ones are still in the shared one, so no single namespace holds
+// them all. The label selector, not the namespace, is what enforces the tenant
+// boundary here — and it is applied by the API server, not in memory.
+//
+// With no workspace resolved (store off / unbound caller) there are no tenant
+// namespaces at all, so the list stays scoped to the shared namespace exactly
+// as before.
+func (b *Base) DatastoreListOptions(tenantID string) []client.ListOption {
+	if tenantID == "" || tenantID == DefaultTenant {
+		return []client.ListOption{client.InNamespace(b.Namespace)}
+	}
+	return []client.ListOption{client.MatchingLabels{LabelTenant: tenantID}}
+}
+
+// DatastoreNamespaces returns the namespaces a Database/KeyValue CR may live
+// in, most-likely first: the acting workspace's own hosting namespace (ADR043
+// D8), then the shared apps namespace where every datastore lived before D8 and
+// where un-migrated ones still do.
+//
+// Resolution is by lookup rather than computation — the same choice the App
+// path makes (see appNamespaceByName) — so a not-yet-migrated datastore keeps
+// working through the identical code path, with no `if legacy` branch anywhere
+// and no flag day. See docs/runbooks/datastore-namespace-cutover.md.
+func (b *Base) DatastoreNamespaces(tenantID string) []string {
+	own := b.TenantNamespace(tenantID)
+	if own == b.Namespace {
+		return []string{b.Namespace}
+	}
+	return []string{own, b.Namespace}
 }
 
 // An App List that must reach ANY workspace (an exact srv-id, a service-name
@@ -698,8 +745,7 @@ func canonicalAppTarget(a *appv1alpha1.App) string {
 // KeyValue, below) carry the same core.LabelTenant contract as an App.
 func (b *Base) AuthorizeDatabase(ctx context.Context, relation, name string) (*appv1alpha1.Database, error) {
 	verb := callerVerb(verbFrameSkip)
-	var d appv1alpha1.Database
-	getErr := b.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: name}, &d)
+	d, getErr := b.findDatabase(ctx, name)
 	if apierrors.IsNotFound(getErr) {
 		object, resolveErr := b.callerWorkspace(ctx)
 		if err := b.authorizeAndAudit(ctx, relation, object, DatabaseTarget(name), verb, resolveErr); err != nil {
@@ -714,15 +760,14 @@ func (b *Base) AuthorizeDatabase(ctx context.Context, relation, name string) (*a
 	if err := b.authorizeAndAudit(ctx, relation, object, DatabaseTarget(name), verb, resolveErr); err != nil {
 		return nil, err
 	}
-	return &d, nil
+	return d, nil
 }
 
 // AuthorizeKeyValue is AuthorizeApp for a managed KeyValue — see AuthorizeApp
 // and AuthorizeDatabase.
 func (b *Base) AuthorizeKeyValue(ctx context.Context, relation, name string) (*appv1alpha1.KeyValue, error) {
 	verb := callerVerb(verbFrameSkip)
-	var kv appv1alpha1.KeyValue
-	getErr := b.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: name}, &kv)
+	kv, getErr := b.findKeyValue(ctx, name)
 	if apierrors.IsNotFound(getErr) {
 		object, resolveErr := b.callerWorkspace(ctx)
 		if err := b.authorizeAndAudit(ctx, relation, object, KeyValueTarget(name), verb, resolveErr); err != nil {
@@ -737,7 +782,75 @@ func (b *Base) AuthorizeKeyValue(ctx context.Context, relation, name string) (*a
 	if err := b.authorizeAndAudit(ctx, relation, object, KeyValueTarget(name), verb, resolveErr); err != nil {
 		return nil, err
 	}
-	return &kv, nil
+	return kv, nil
+}
+
+// findDatabase locates a Database CR by its (globally unique) name without
+// assuming which namespace it lives in — the acting workspace's own namespace
+// first, then the shared apps namespace, then a cluster-wide sweep for the
+// cross-workspace case a multi-workspace member can legitimately reach.
+//
+// The sweep is last, not first: it is the only unindexed read here, and the two
+// direct candidates answer every request except an explicit cross-workspace
+// one. This is the same shape AuthorizeApp uses (direct candidates, then a
+// cluster-wide fallback), for the same reason.
+//
+// Returns a NotFound error when no CR matches, so callers keep their existing
+// 403-before-404 handling unchanged.
+func (b *Base) findDatabase(ctx context.Context, name string) (*appv1alpha1.Database, error) {
+	acting, _ := b.resolveWorkspace(ctx)
+	var d appv1alpha1.Database
+	for _, ns := range b.DatastoreNamespaces(acting) {
+		err := b.Client.Get(ctx, client.ObjectKey{Namespace: ns, Name: name}, &d)
+		if err == nil {
+			return &d, nil
+		}
+		if !apierrors.IsNotFound(err) {
+			return nil, err
+		}
+	}
+	var list appv1alpha1.DatabaseList
+	if err := b.Client.List(ctx, &list); err != nil {
+		return nil, err
+	}
+	for i := range list.Items {
+		if list.Items[i].Name == name {
+			return &list.Items[i], nil
+		}
+	}
+	return nil, notFoundFor("databases", name)
+}
+
+// findKeyValue is findDatabase for a managed KeyValue — see its doc.
+func (b *Base) findKeyValue(ctx context.Context, name string) (*appv1alpha1.KeyValue, error) {
+	acting, _ := b.resolveWorkspace(ctx)
+	var kv appv1alpha1.KeyValue
+	for _, ns := range b.DatastoreNamespaces(acting) {
+		err := b.Client.Get(ctx, client.ObjectKey{Namespace: ns, Name: name}, &kv)
+		if err == nil {
+			return &kv, nil
+		}
+		if !apierrors.IsNotFound(err) {
+			return nil, err
+		}
+	}
+	var list appv1alpha1.KeyValueList
+	if err := b.Client.List(ctx, &list); err != nil {
+		return nil, err
+	}
+	for i := range list.Items {
+		if list.Items[i].Name == name {
+			return &list.Items[i], nil
+		}
+	}
+	return nil, notFoundFor("keyvalues", name)
+}
+
+// notFoundFor builds the apierrors NotFound the direct Get would have returned,
+// so a caller's apierrors.IsNotFound check behaves identically whether the miss
+// came from a Get or from the cluster-wide sweep.
+func notFoundFor(resource, name string) error {
+	return apierrors.NewNotFound(appv1alpha1.SchemeGroupVersion.WithResource(resource).GroupResource(), name)
 }
 
 // resourceWorkspace is the (object, err) pair AuthorizeApp/AuthorizeDatabase/
@@ -1152,10 +1265,19 @@ func (b *Base) BuildPods(ctx context.Context, app, namespace string) ([]corev1.P
 // the cnpg.io/cluster=<clusterName> label that CNPG stamps on every pod it owns.
 // Used by the postgres logs feature (w3/m28); clusterName is the Database CR's
 // metadata.name, which is also the CNPG Cluster CR name.
-func (b *Base) DatabasePods(ctx context.Context, clusterName string) ([]corev1.Pod, error) {
+//
+// namespace is the Database CR's own namespace (ADR043 D8) — callers hold the
+// CR from AuthorizeDatabase, so they pass d.Namespace. Empty falls back to the
+// shared apps namespace, matching the pre-D8 placement. Hardcoding b.Namespace
+// here is what made datastore logs silently empty for a migrated workspace: a
+// pod list in the wrong namespace returns no error, just nothing.
+func (b *Base) DatabasePods(ctx context.Context, namespace, clusterName string) ([]corev1.Pod, error) {
+	if namespace == "" {
+		namespace = b.Namespace
+	}
 	var pods corev1.PodList
 	if err := b.Client.List(ctx, &pods,
-		client.InNamespace(b.Namespace),
+		client.InNamespace(namespace),
 		client.MatchingLabels{PodLabelCNPGCluster: clusterName}); err != nil {
 		return nil, err
 	}
@@ -1165,11 +1287,15 @@ func (b *Base) DatabasePods(ctx context.Context, clusterName string) ([]corev1.P
 // KeyValuePods lists the Valkey pods for a managed Key Value store — selected
 // by the app.bex.co/keyvalue=<name> label the KeyValue reconciler stamps on
 // every StatefulSet pod template. Used by the keyvalue logs feature (w3/m30);
-// name is the KeyValue CR's metadata.name (the immutable red- id).
-func (b *Base) KeyValuePods(ctx context.Context, name string) ([]corev1.Pod, error) {
+// name is the KeyValue CR's metadata.name (the immutable red- id). namespace
+// follows the CR, exactly as DatabasePods above.
+func (b *Base) KeyValuePods(ctx context.Context, namespace, name string) ([]corev1.Pod, error) {
+	if namespace == "" {
+		namespace = b.Namespace
+	}
 	var pods corev1.PodList
 	if err := b.Client.List(ctx, &pods,
-		client.InNamespace(b.Namespace),
+		client.InNamespace(namespace),
 		client.MatchingLabels{PodLabelKeyValue: name}); err != nil {
 		return nil, err
 	}

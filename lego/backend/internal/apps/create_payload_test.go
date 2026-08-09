@@ -158,7 +158,7 @@ projects:
 		name   string
 		object client.Object
 	}{{name: result.Databases[0].ID, object: &appv1alpha1.Database{}}, {name: result.KeyValues[0].ID, object: &appv1alpha1.KeyValue{}}} {
-		if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: item.name}, item.object); err != nil {
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: "tea-a", Name: item.name}, item.object); err != nil {
 			t.Fatal(err)
 		}
 		if item.object.GetLabels()[core.LabelProject] != environment.ProjectID || item.object.GetLabels()[core.LabelEnvironment] != environment.ID {

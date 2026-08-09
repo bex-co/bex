@@ -138,7 +138,7 @@ func TestRESTKeyValueCRUD(t *testing.T) {
 		t.Errorf("fresh store should be not_suspended, got %q", kv.Suspended)
 	}
 	var got appv1alpha1.KeyValue
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: kv.ID}, &got); err != nil {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "tea-a", Name: kv.ID}, &got); err != nil {
 		t.Fatalf("kv CR not created: %v", err)
 	}
 	if got.Spec.Name != "cache-1" {
@@ -712,7 +712,7 @@ func TestGraphQLKeyValue(t *testing.T) {
 		t.Fatalf("createKeyValue association = %+v", created)
 	}
 	var made appv1alpha1.KeyValue
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: created["id"].(string)}, &made); err != nil || made.Spec.Plan != "standard" || made.Spec.Name != "gql-new" {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "tea-a", Name: created["id"].(string)}, &made); err != nil || made.Spec.Plan != "standard" || made.Spec.Name != "gql-new" {
 		t.Fatalf("createKeyValue did not create the CR with plan: %v %+v", err, made.Spec)
 	}
 	svc.Workspace = nil
@@ -808,7 +808,7 @@ func TestMCPKeyValue(t *testing.T) {
 		t.Fatalf("create_key_value = %+v", created)
 	}
 	var made appv1alpha1.KeyValue
-	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: createdID}, &made); err != nil || made.Spec.Plan != "standard" || made.Spec.Name != "mcp-new" {
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "tea-a", Name: createdID}, &made); err != nil || made.Spec.Plan != "standard" || made.Spec.Name != "mcp-new" {
 		t.Fatalf("create_key_value did not create the CR: %v %+v", err, made.Spec)
 	}
 }

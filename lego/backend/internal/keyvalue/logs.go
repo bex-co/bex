@@ -54,7 +54,7 @@ func (s *Service) QueryKeyValueLogs(ctx context.Context, name string, q KeyValue
 	if s.PodLogs == nil {
 		return nil, core.ErrLogsUnavailable
 	}
-	pods, err := s.KeyValuePods(ctx, kv.Name)
+	pods, err := s.KeyValuePods(ctx, kv.Namespace, kv.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,8 @@ func (s *Service) QueryKeyValueLogs(ctx context.Context, name string, q KeyValue
 		names = append(names, pods[i].Name)
 	}
 	return datastorelogs.Collect(ctx, datastorelogs.Instance{
-		Namespace: s.Namespace,
+		// The KeyValue's OWN namespace (ADR043 D8) — see postgres/logs.go.
+		Namespace: kv.Namespace,
 		Name:      kv.Name,
 		Kind:      datastorelogs.KindKeyValue,
 		Container: core.ValkeyContainer,

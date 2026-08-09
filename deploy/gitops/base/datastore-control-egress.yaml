@@ -1,0 +1,60 @@
+# Managed-datastore control egress (ADR043 D8.3, w7/m77/t013).
+#
+# Since ADR043 D8 a managed Postgres/Key Value lives in its workspace's own
+# `<ws>` namespace, which is default-deny. CloudNativePG's instance manager
+# talks to the kube-apiserver continuously (it watches its Cluster, updates
+# status, and runs leader election), and a Postgres whose control traffic is
+# blocked never finishes bootstrap — the exact failure w7/m33 fixed when the
+# ADR022 egress deny first caught CNPG pods.
+#
+# This lives in GitOps rather than in bex-api's NamespaceReconciler for two
+# reasons:
+#
+#  1. The kube-apiserver has no portable k8s NetworkPolicy representation. It is
+#     not a pod, so no namespaceSelector/podSelector reaches it, and its address
+#     is a cluster-specific ClusterIP-to-node-IP mapping that an ipBlock would
+#     have to hardcode. Cilium's `kube-apiserver` entity names it directly.
+#  2. bex-api may not create CiliumNetworkPolicies in a hosting namespace —
+#     bex-api-namespace-admission.yaml confines its CNP authority to canonical
+#     `<ws>-sandbox` namespaces (ADR043 D6). Granting apiserver reachability is
+#     exactly the kind of authority that should not be delegated to the
+#     component that provisions tenant namespaces, so the split is deliberate:
+#     the same pattern `sandbox-agent-driver-ingress` already uses for the one
+#     sanctioned inbound sandbox path.
+#
+# Cluster-wide and label-selected rather than per-namespace, because tenant
+# namespaces are created dynamically and GitOps cannot enumerate them.
+#
+# Scope note: this selects ONLY CNPG pods (`cnpg.io/cluster`). Valkey pods carry
+# no Kubernetes client and must not reach the apiserver — they stay under
+# `deny-tenant-node-and-metadata-egress` (tenant-node-egress.yaml), whose
+# selector already excludes `cnpg.io/cluster` for this same reason.
+#
+# `enableDefaultDeny.egress: false` is load-bearing, not boilerplate. In Cilium
+# any policy carrying a positive egress rule turns on default-deny egress for
+# every endpoint it selects. This policy selects CNPG pods CLUSTER-WIDE, which
+# includes the un-migrated ones still in the shared apps namespace — a namespace
+# with no default-deny at all. Without this flag those clusters would abruptly
+# be restricted to the single rule below, losing DNS, S3 backups, and everything
+# else, i.e. the cutover would break exactly the tenants it has not touched yet.
+# With it, the rule is purely additive: it grants the apiserver path where a
+# namespace default-deny requires one, and changes nothing anywhere else.
+#
+# This is the same hazard `deny-metadata-egress-all-pods` documents in
+# tenant-node-egress.yaml, and the reason an earlier `allow-cnpg-kube-apiserver`
+# could be deleted outright once that policy stopped enabling default-deny —
+# see the obsolete-allow guard in scripts/gitops-validate.sh.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: allow-cnpg-apiserver-egress
+spec:
+  endpointSelector:
+    matchExpressions:
+      - key: cnpg.io/cluster
+        operator: Exists
+  enableDefaultDeny:
+    egress: false
+  egress:
+    - toEntities:
+        - kube-apiserver

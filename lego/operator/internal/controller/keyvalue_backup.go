@@ -84,6 +84,19 @@ func keyValueBackupLabels(kv *appv1alpha1.KeyValue, component string) map[string
 	return labels
 }
 
+// reconcileTenantBackupCredential projects the S3 credential into a KeyValue's
+// own namespace — the Secret half of ADR043 D8.4, without the ObjectStore (the
+// KeyValue backup path talks to S3 directly from a CronJob rather than through
+// the Barman plugin). A no-op when the KeyValue already sits in the source
+// namespace, so the pre-D8 topology stays byte-identical.
+func (r *KeyValueReconciler) reconcileTenantBackupCredential(ctx context.Context, kv *appv1alpha1.KeyValue) error {
+	src := r.BackupSourceNamespace
+	if src == "" || src == kv.Namespace {
+		return nil
+	}
+	return projectBackupCredential(ctx, r.secretClient(), src, kv.Namespace, r.Backup.S3Secret)
+}
+
 func (r *KeyValueReconciler) reconcileKeyValueBackup(
 	ctx context.Context,
 	kv *appv1alpha1.KeyValue,
@@ -97,6 +110,14 @@ func (r *KeyValueReconciler) reconcileKeyValueBackup(
 			return fmt.Errorf("delete disabled KeyValue backup CronJob: %w", err)
 		}
 		return nil
+	}
+
+	// The CronJob mounts the S3 credential by name from its own namespace, so a
+	// KeyValue in a tenant namespace (ADR043 D8.4) needs it projected there
+	// first. Without this the CronJob is created happily and every run fails at
+	// mount time — a nightly backup that silently never produces a snapshot.
+	if err := r.reconcileTenantBackupCredential(ctx, kv); err != nil {
+		return err
 	}
 
 	cron := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: kv.Namespace}}

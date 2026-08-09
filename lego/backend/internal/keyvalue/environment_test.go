@@ -73,7 +73,7 @@ func TestCreateKeyValueEnvironmentResolution(t *testing.T) {
 		t.Fatalf("view = %+v, resolver calls = %d", view, resolver.calls)
 	}
 	var keyValue appv1alpha1.KeyValue
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: view.ID}, &keyValue); err != nil {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "tea-a", Name: view.ID}, &keyValue); err != nil {
 		t.Fatal(err)
 	}
 	if keyValue.Spec.Name != "cache" {

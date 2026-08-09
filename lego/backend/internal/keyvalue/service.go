@@ -46,6 +46,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -280,7 +281,9 @@ func (s *Service) loadSecret(ctx context.Context, relation, name string) (*appv1
 		secretName = kv.Name // the operator names the Secret after the KeyValue
 	}
 	var sec corev1.Secret
-	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: secretName}, &sec); err != nil {
+	// The credential Secret is written by the reconciler beside its KeyValue, so
+	// it lives in the CR's own namespace (ADR043 D8).
+	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: kv.Namespace, Name: secretName}, &sec); err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, nil, core.ErrNotFound // not provisioned yet
 		}
@@ -311,10 +314,10 @@ func (s *Service) ListKeyValues(ctx context.Context, ownerID string) ([]KeyValue
 			return []KeyValueView{}, nil
 		}
 	}
-	opts := []client.ListOption{client.InNamespace(s.Namespace)}
-	if tenantID != "" {
-		opts = append(opts, client.MatchingLabels{core.LabelTenant: tenantID})
-	}
+	// Label-scoped and cluster-wide, mirroring postgres.ListPostgres — see
+	// core.DatastoreListOptions for why the namespace can no longer carry the
+	// tenant boundary here.
+	opts := s.DatastoreListOptions(tenantID)
 	var list appv1alpha1.KeyValueList
 	if err := s.Client.List(ctx, &list, opts...); err != nil {
 		return nil, err
@@ -333,7 +336,7 @@ func (s *Service) ListKeyValues(ctx context.Context, ownerID string) ([]KeyValue
 // the control-plane tenant resolver is disabled.
 func (s *Service) ensureKeyValueNameAvailable(ctx context.Context, tenantID, name, excludeID string) error {
 	var list appv1alpha1.KeyValueList
-	if err := s.Client.List(ctx, &list, client.InNamespace(s.Namespace)); err != nil {
+	if err := s.Client.List(ctx, &list, s.DatastoreListOptions(tenantID)...); err != nil {
 		return fmt.Errorf("checking key-value name: %w", err)
 	}
 	for i := range list.Items {
@@ -399,7 +402,7 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 		}
 	}
 	kv := &appv1alpha1.KeyValue{
-		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.KeyValue), Namespace: s.Namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.KeyValue), Namespace: s.TenantNamespace(tenantID)},
 		Spec: appv1alpha1.KeyValueSpec{
 			Name:            req.Name,
 			Plan:            req.Plan,
@@ -441,6 +444,11 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if err := s.Client.Create(ctx, kv); err != nil {
 		if apierrors.IsAlreadyExists(err) {
 			return KeyValueView{}, fmt.Errorf("%w: generated key-value id collision; retry the request", core.ErrConflict)
+		}
+		// Plan cap, enforced by the namespace ResourceQuota — see the identical
+		// mapping in postgres.CreatePostgres.
+		if mapped, ok := core.QuotaCapError(err, store.KeyValuesQuotaCountKey, "key-value store"); ok {
+			return KeyValueView{}, mapped
 		}
 		return KeyValueView{}, err
 	}

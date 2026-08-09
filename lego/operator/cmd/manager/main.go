@@ -345,6 +345,13 @@ func main() {
 	databaseReconciler := &controller.DatabaseReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
+		// Datastore Secrets live beside their CR in the workspace's own
+		// namespace (ADR043 D8), which the manager's single-namespace Secret
+		// informer does not cover — see the field's doc.
+		SecretClient: uncachedClient,
+		// The GitOps-installed ObjectStore + S3 credential live here; the
+		// operator projects them into each tenant namespace (ADR043 D8.4).
+		BackupSourceNamespace: appsNamespace,
 		// DatabaseReconciler still consumes client-go's record.EventRecorder;
 		// controller-runtime's replacement uses the incompatible events API.
 		Recorder: mgr.GetEventRecorderFor("database-controller"), //nolint:staticcheck
@@ -379,10 +386,12 @@ func main() {
 			"secretNameConfigured", kvBackupSecret != "")
 	}
 	if err := (&controller.KeyValueReconciler{
-		Client:        mgr.GetClient(),
-		Scheme:        mgr.GetScheme(),
-		KvDomain:      envOr("BEX_KV_DOMAIN", ""),
-		ClusterIssuer: envOr("BEX_CLUSTER_ISSUER", ""),
+		Client:                mgr.GetClient(),
+		Scheme:                mgr.GetScheme(),
+		SecretClient:          uncachedClient, // see DatabaseReconciler above
+		BackupSourceNamespace: appsNamespace,
+		KvDomain:              envOr("BEX_KV_DOMAIN", ""),
+		ClusterIssuer:         envOr("BEX_CLUSTER_ISSUER", ""),
 		Backup: controller.BackupStore{
 			DestinationPath: kvBackupDestination,
 			EndpointURL:     kvBackupEndpoint,

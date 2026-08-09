@@ -908,6 +908,18 @@ if [ -f "$EGRESS" ]; then
   [ -z "$obsolete_platform_allows" ] \
     || { echo "FAIL: obsolete egress allows remain after disabling metadata-policy default-deny: $obsolete_platform_allows" >&2; fail=1; }
 
+  echo "==> CNPG apiserver allow is additive (does not enable default-deny)"
+  DSCTL="deploy/gitops/base/datastore-control-egress.yaml"
+  cnpg_allow_shape="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "allow-cnpg-apiserver-egress") |
+      [(.spec.enableDefaultDeny.egress | tostring),
+       (.spec.endpointSelector.matchExpressions[] | select(.key == "cnpg.io/cluster") | .operator),
+       ((.spec.egressDeny // []) | length | tostring),
+       (.spec.egress[0].toEntities | join(","))] | join(":")' \
+    "$DSCTL" | tr -d '\n')"
+  [ "$cnpg_allow_shape" = "false:Exists:0:kube-apiserver" ] \
+    || { echo "FAIL: allow-cnpg-apiserver-egress must select cnpg.io/cluster Exists and allow ONLY kube-apiserver with enableDefaultDeny.egress=false — a positive egress rule that enables default-deny would strand every un-migrated CNPG cluster in the shared namespace (ADR043 D8.3)" >&2; fail=1; }
+
   echo "==> sandbox Cilium DNS/FQDN/SNI and lifecycle-server egress boundaries"
   grep -qF -- '--set l7Proxy=true' .github/workflows/app-cluster.yml \
     || { echo "FAIL: sandbox TLS SNI policy requires Cilium l7Proxy=true at cluster bootstrap" >&2; fail=1; }

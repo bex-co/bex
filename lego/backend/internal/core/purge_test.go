@@ -27,10 +27,16 @@ import (
 
 // The per-feature purgers (apps, postgres, keyvalue) assert their own
 // tenant-scoping and idempotency against their own CR kind. What only the
-// shared helper can be held to is that it stays inside the Base's namespace and
-// works for any list kind — a purge that reached across namespaces would delete
-// another cluster tenant's CRs, which no single-namespace feature test would
-// catch.
+// shared helper can be held to is that it deletes exactly one tenant's CRs and
+// works for any list kind — a purge that reached other TENANTS would delete
+// their resources, which no single-namespace feature test would catch.
+//
+// This used to be phrased as "stays inside the Base's namespace", which under
+// ADR043 D8 is no longer the boundary and was never quite the point: a
+// workspace's Apps and datastores live in its own `<ws>` namespace, so a
+// namespace-pinned purge silently reclaims nothing and leaves real CNPG
+// clusters and Valkey volumes billing after the workspace is gone. The
+// LabelTenant selector is the boundary; the namespace is incidental.
 
 func labeledApp(ns, name, tenant string) *appv1alpha1.App {
 	return &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
@@ -44,9 +50,19 @@ func labeledDB(ns, name, tenant string) *appv1alpha1.Database {
 	}}
 }
 
-func TestPurgeByTenant_StaysInTheBaseNamespace(t *testing.T) {
+func TestPurgeByTenant_ReclaimsTheTenantAcrossNamespacesAndSparesOthers(t *testing.T) {
 	base := &Base{
-		Client:    fakeAppClient(labeledApp("bex-apps", "mine", "tea-a"), labeledApp("other-ns", "elsewhere", "tea-a")),
+		Client: fakeAppClient(
+			// tea-a's own hosting namespace (ADR043) — the normal case today.
+			labeledApp("tea-a", "mine", "tea-a"),
+			// tea-a again, still in the shared namespace: a pre-D8 resource that
+			// has not been cut over yet. A workspace delete must reclaim it too,
+			// or it bills forever with no owner left to notice.
+			labeledApp("bex-apps", "legacy", "tea-a"),
+			// A DIFFERENT tenant. This is the one that must survive, and the only
+			// thing the namespace fixture was ever really guarding.
+			labeledApp("tea-b", "someone-elses", "tea-b"),
+		),
 		Namespace: "bex-apps",
 	}
 
@@ -58,8 +74,8 @@ func TestPurgeByTenant_StaysInTheBaseNamespace(t *testing.T) {
 	if err := base.Client.List(context.Background(), &list); err != nil {
 		t.Fatalf("list: %v", err)
 	}
-	if len(list.Items) != 1 || list.Items[0].Namespace != "other-ns" {
-		t.Fatalf("apps after purge = %+v, want only other-ns's app left", list.Items)
+	if len(list.Items) != 1 || list.Items[0].Name != "someone-elses" {
+		t.Fatalf("apps after purge = %+v, want only tea-b's app left", list.Items)
 	}
 }
 

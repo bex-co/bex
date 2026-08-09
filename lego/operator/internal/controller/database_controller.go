@@ -55,6 +55,15 @@ var cnpgScheduledBackupGVK = schema.GroupVersionKind{Group: "postgresql.cnpg.io"
 var cnpgBackupGVK = schema.GroupVersionKind{Group: "postgresql.cnpg.io", Version: "v1", Kind: "Backup"}
 var cnpgPoolerGVK = schema.GroupVersionKind{Group: "postgresql.cnpg.io", Version: "v1", Kind: "Pooler"}
 
+// barmanCloudObjectStoreGVK is the Barman Cloud plugin's ObjectStore — a NAMESPACED
+// object the Cluster references by name. Projected via unstructured like the
+// CNPG resources above, so the operator needn't vendor the plugin's Go API.
+// (Named barmanCloud* rather than barman* to match barmanCloudPlugin above AND
+// to stay clear of the retired in-tree CNPG field name that
+// scripts/platform-deprecations-validate.sh greps for — this is the plugin's
+// ObjectStore CRD, an entirely different thing that merely reads alike.)
+var barmanCloudObjectStoreGVK = schema.GroupVersionKind{Group: "barmancloud.cnpg.io", Version: "v1", Kind: "ObjectStore"}
+
 const (
 	dbStorageClass = "hcloud-volumes"
 	// pgPort is the Postgres listen + Service port.
@@ -413,6 +422,26 @@ type DatabaseReconciler struct {
 	ExportRetention time.Duration
 	// Now is a test clock. Nil uses time.Now.
 	Now func() time.Time
+	// BackupSourceNamespace holds the GitOps-installed ObjectStore + S3
+	// credential that tenant namespaces are projected from (ADR043 D8.4). It is
+	// the shared apps namespace (BEX_APPS_NAMESPACE). Empty disables projection,
+	// which is correct for a single-namespace deployment: the Database is
+	// already beside the originals.
+	BackupSourceNamespace string
+	// SecretClient reads and writes this Database's derived Secrets. It must be
+	// an UNCACHED client — see KeyValueReconciler.SecretClient for why the
+	// manager's Secret informer cannot simply be widened. Nil falls back to the
+	// cached client.
+	SecretClient client.Client
+}
+
+// secretClient returns the uncached client for tenant-namespace Secret access —
+// the same escape hatch the App path uses (AppReconciler.buildPlaneClient).
+func (r *DatabaseReconciler) secretClient() client.Client {
+	if r.SecretClient != nil {
+		return r.SecretClient
+	}
+	return r.Client
 }
 
 // +kubebuilder:rbac:groups=app.bex.co,resources=databases,verbs=get;list;watch;create;update;patch;delete
@@ -496,6 +525,18 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if db.Spec.Recovery != nil && !storeConfigured {
 		return r.dbFail(ctx, &db, "RecoveryUnavailable",
 			fmt.Errorf("recovery requested but no backup store is configured"))
+	}
+
+	// The Barman ObjectStore and its S3 credential are namespaced, and GitOps
+	// installs exactly one of each in the shared apps namespace. A Database in a
+	// tenant namespace (ADR043 D8.4) therefore needs both projected there before
+	// the Cluster below can reference them by name. Failing loudly beats a
+	// Cluster that comes up with a dangling barmanObjectName and silently
+	// archives nothing.
+	if backupEnabled {
+		if err := r.reconcileTenantBackupStore(ctx, &db); err != nil {
+			return r.dbFail(ctx, &db, "BackupStoreUnavailable", err)
+		}
 	}
 
 	// --- project onto a CNPG Cluster (same name, same namespace) ---
@@ -638,7 +679,7 @@ func (r *DatabaseReconciler) reconcilePooler(ctx context.Context, db *appv1alpha
 // App spec. The source Secret is never mutated.
 func (r *DatabaseReconciler) reconcilePoolerConnectionSecret(ctx context.Context, db *appv1alpha1.Database) (bool, error) {
 	source := &corev1.Secret{}
-	if err := r.Get(ctx, client.ObjectKey{Namespace: db.Namespace, Name: db.Name + "-app"}, source); err != nil {
+	if err := r.secretClient().Get(ctx, client.ObjectKey{Namespace: db.Namespace, Name: db.Name + "-app"}, source); err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil
 		}
@@ -649,7 +690,7 @@ func (r *DatabaseReconciler) reconcilePoolerConnectionSecret(ctx context.Context
 		return false, fmt.Errorf("CNPG application Secret %q lacks username, password, or dbname", source.Name)
 	}
 	target := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: db.Name + "-pooler-app", Namespace: db.Namespace}}
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, target, func() error {
+	_, err := controllerutil.CreateOrUpdate(ctx, r.secretClient(), target, func() error {
 		target.Type = corev1.SecretTypeOpaque
 		target.Data = map[string][]byte{
 			"uri": fmt.Appendf(nil, "postgresql://%s:%s@%s:5432/%s", username, password, db.Status.PoolerHost, databaseName),
@@ -659,9 +700,85 @@ func (r *DatabaseReconciler) reconcilePoolerConnectionSecret(ctx context.Context
 	return err == nil, err
 }
 
+// reconcileTenantBackupStore projects the backup transport into a Database's own
+// namespace: the S3 credential Secret and the Barman Cloud ObjectStore the
+// Cluster references by name (ADR043 D8.4).
+//
+// Both are namespaced, and GitOps installs exactly one of each — it cannot
+// enumerate namespaces created at workspace-create time. The operator owns this
+// because it already owns the whole backup contract (the BEX_DB_BACKUP_* env is
+// its own); giving it to the namespace reconciler would split one contract
+// across two processes with two config sources.
+//
+// The ObjectStore spec is COPIED from the GitOps original rather than rebuilt
+// from env, so destination, retention, compression, and SSE stay single-sourced
+// in Git. Rebuilding it here would create a second place for the backup policy
+// to drift, and the drift would only be discovered at restore time.
+//
+// A no-op when the Database is already in the source namespace (the pre-D8
+// topology and single-namespace deployments), so those stay byte-identical.
+func (r *DatabaseReconciler) reconcileTenantBackupStore(ctx context.Context, db *appv1alpha1.Database) error {
+	src := r.BackupSourceNamespace
+	if src == "" || src == db.Namespace {
+		return nil
+	}
+
+	// The credential. Tenant workloads cannot read it: they have no Kubernetes
+	// API access and run with automountServiceAccountToken disabled (w7/m2), so
+	// a namespace-local Secret is not reachable from tenant code.
+	if err := projectBackupCredential(ctx, r.secretClient(), src, db.Namespace, r.Backup.S3Secret); err != nil {
+		return err
+	}
+
+	// The ObjectStore, spec copied verbatim from the GitOps original.
+	source := &unstructured.Unstructured{}
+	source.SetGroupVersionKind(barmanCloudObjectStoreGVK)
+	if err := r.Get(ctx, client.ObjectKey{Namespace: src, Name: tenantBackupObjectStoreName}, source); err != nil {
+		return fmt.Errorf("reading ObjectStore %s/%s: %w", src, tenantBackupObjectStoreName, err)
+	}
+	spec, found, err := unstructured.NestedMap(source.Object, "spec")
+	if err != nil || !found {
+		return fmt.Errorf("ObjectStore %s/%s has no usable spec", src, tenantBackupObjectStoreName)
+	}
+	target := &unstructured.Unstructured{}
+	target.SetGroupVersionKind(barmanCloudObjectStoreGVK)
+	target.SetName(tenantBackupObjectStoreName)
+	target.SetNamespace(db.Namespace)
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, target, func() error {
+		// Namespace-scoped and shared by every Database in this namespace, so it
+		// is deliberately NOT owned by any one of them — an ownerReference would
+		// delete the store the moment its first Database went away and silently
+		// break every sibling's archiving.
+		return unstructured.SetNestedMap(target.Object, spec, "spec")
+	}); err != nil {
+		return fmt.Errorf("projecting ObjectStore into %s: %w", db.Namespace, err)
+	}
+	return nil
+}
+
+// projectBackupCredential copies the platform's S3 backup credential from the
+// source namespace into a datastore's own namespace (ADR043 D8.4). Shared by the
+// Database and KeyValue reconcilers, which need the identical copy for different
+// consumers (the Barman ObjectStore vs. the RDB CronJob).
+func projectBackupCredential(ctx context.Context, cl client.Client, srcNS, dstNS, name string) error {
+	var credential corev1.Secret
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: srcNS, Name: name}, &credential); err != nil {
+		return fmt.Errorf("reading backup credential %s/%s: %w", srcNS, name, err)
+	}
+	projected := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: dstNS}}
+	if _, err := controllerutil.CreateOrUpdate(ctx, cl, projected, func() error {
+		projected.Type = credential.Type
+		projected.Data = credential.Data
+		return nil
+	}); err != nil {
+		return fmt.Errorf("projecting backup credential into %s: %w", dstNS, err)
+	}
+	return nil
+}
+
 func (r *DatabaseReconciler) deletePoolerConnectionSecret(ctx context.Context, db *appv1alpha1.Database) error {
 	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: db.Name + "-pooler-app", Namespace: db.Namespace}}
-	if err := r.Delete(ctx, secret); err != nil && !apierrors.IsNotFound(err) {
+	if err := r.secretClient().Delete(ctx, secret); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 	return nil

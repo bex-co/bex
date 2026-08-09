@@ -35,6 +35,7 @@ resources:
   - network-policies.yaml        # platform-side tenant isolation: deny tenant pods from bex-system/registry/secrets/monitoring (docs/ADR022-tenant-isolation.md)
   - build-boundary.yaml          # isolated namespace/RBAC/network boundary for tenant-controlled build/publish/pre-deploy execution
   - tenant-node-egress.yaml      # Cilium egressDeny: tenant pods -> node (host/remote-node) + link-local metadata (docs/ADR022-tenant-isolation.md); local overlay drops it (Calico CNI)
+  - datastore-control-egress.yaml # Cilium allow: CNPG instance managers -> kube-apiserver from any tenant namespace (ADR043 D8.3); local overlay drops it (Calico CNI)
   - platform-namespaces.yaml     # monitoring + secrets namespaces the raw resources above land in (from-scratch ordering, w1/m19 t006)
   - tenant-namespace.yaml        # PSS baseline + restricted warn/audit on the tenant apps namespace (w7/m2/t001)
   - tenant-quotas.yaml           # ResourceQuota + LimitRange for the tenant apps namespace (w7/m2/t003)

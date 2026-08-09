@@ -53,7 +53,7 @@ func (s *Service) QueryDatabaseLogs(ctx context.Context, name string, q Database
 	if s.PodLogs == nil {
 		return nil, core.ErrLogsUnavailable
 	}
-	pods, err := s.DatabasePods(ctx, d.Name)
+	pods, err := s.DatabasePods(ctx, d.Namespace, d.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,9 @@ func (s *Service) QueryDatabaseLogs(ctx context.Context, name string, q Database
 		names = append(names, pods[i].Name)
 	}
 	return datastorelogs.Collect(ctx, datastorelogs.Instance{
-		Namespace: s.Namespace,
+		// The Database's OWN namespace (ADR043 D8), not the shared one: pod logs
+		// are read from where the CNPG pods actually run.
+		Namespace: d.Namespace,
 		Name:      d.Name,
 		Kind:      datastorelogs.KindPostgres,
 		Container: core.CNPGPostgresContainer,

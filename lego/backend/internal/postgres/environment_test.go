@@ -73,7 +73,7 @@ func TestCreatePostgresEnvironmentResolution(t *testing.T) {
 		t.Fatalf("view = %+v, resolver calls = %d", view, resolver.calls)
 	}
 	var database appv1alpha1.Database
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: view.ID}, &database); err != nil {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "tea-a", Name: view.ID}, &database); err != nil {
 		t.Fatal(err)
 	}
 	if database.Labels[core.LabelProject] != "prj-platform" || database.Labels[core.LabelEnvironment] != "env-staging" {

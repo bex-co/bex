@@ -75,3 +75,51 @@ func TestQuotaCapError_IgnoresNonForbiddenAndNonQuotaErrors(t *testing.T) {
 		}
 	}
 }
+
+// TestQuotaCapError_MapsDatastoreDimensions covers the two dimensions w7/m77
+// brought to life. They were present in the quota but counted nothing while
+// datastore CRs lived outside the namespace being charged (ADR043 D8), so no
+// caller had ever seen a rejection on them — and an unmapped one surfaces as a
+// raw 403 about a Kubernetes object the caller has no concept of.
+func TestQuotaCapError_MapsDatastoreDimensions(t *testing.T) {
+	for _, tc := range []struct {
+		resource string
+		key      string
+		noun     string
+		limit    int
+		want     string
+	}{
+		{
+			resource: "databases", key: "count/databases.app.bex.co",
+			noun: "Postgres database", limit: 1,
+			want: "workspace is limited to 1 Postgres databases; delete an existing Postgres database to create another",
+		},
+		{
+			resource: "keyvalues", key: "count/keyvalues.app.bex.co",
+			noun: "key-value store", limit: 1,
+			want: "workspace is limited to 1 key-value stores; delete an existing key-value store to create another",
+		},
+	} {
+		err := quotaExceededErr(tc.resource, "over-cap", "tenant-quota", tc.key, 1, tc.limit, tc.limit)
+		mapped, ok := QuotaCapError(err, tc.key, tc.noun)
+		if !ok {
+			t.Fatalf("%s: QuotaCapError ok = false, want true", tc.resource)
+		}
+		if !errors.Is(mapped, ErrBadRequest) {
+			t.Errorf("%s: mapped error = %v, want it to wrap ErrBadRequest", tc.resource, mapped)
+		}
+		if got := mapped.Error(); got != fmt.Sprintf("%s: %s", ErrBadRequest, tc.want) {
+			t.Errorf("%s: mapped message = %q, want it to end with %q", tc.resource, got, tc.want)
+		}
+	}
+}
+
+// TestQuotaCapError_DoesNotCrossDatastoreDimensions guards the failure that
+// would be invisible: a Postgres rejection mapped with the Key Value key (or
+// vice versa) would silently fall through to a raw 403.
+func TestQuotaCapError_DoesNotCrossDatastoreDimensions(t *testing.T) {
+	err := quotaExceededErr("databases", "over-cap", "tenant-quota", "count/databases.app.bex.co", 1, 1, 1)
+	if _, ok := QuotaCapError(err, "count/keyvalues.app.bex.co", "key-value store"); ok {
+		t.Error("a Postgres quota rejection was mapped as a Key Value cap")
+	}
+}

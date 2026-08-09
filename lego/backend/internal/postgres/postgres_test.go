@@ -123,7 +123,7 @@ func TestRESTPostgresCRUD(t *testing.T) {
 		t.Fatalf("normalized names/spec wrong: %+v", pg)
 	}
 	var got appv1alpha1.Database
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: pg.ID}, &got); err != nil {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "tea-a", Name: pg.ID}, &got); err != nil {
 		t.Fatalf("db CR not created: %v", err)
 	}
 	if got.Spec.Name != "pg-test" {
@@ -540,7 +540,7 @@ func TestGraphQLPostgres(t *testing.T) {
 		t.Fatalf("createDatabase association = %+v", created)
 	}
 	var made appv1alpha1.Database
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: created["id"].(string)}, &made); err != nil || made.Spec.Plan != "basic-1gb" || made.Spec.Name != "gql-new" {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "tea-a", Name: created["id"].(string)}, &made); err != nil || made.Spec.Plan != "basic-1gb" || made.Spec.Name != "gql-new" {
 		t.Fatalf("createDatabase did not create the CR with plan: %v %+v", err, made.Spec)
 	}
 
@@ -623,7 +623,7 @@ func TestMCPPostgres(t *testing.T) {
 		t.Fatalf("create_postgres = %+v", created)
 	}
 	var made appv1alpha1.Database
-	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: createdID}, &made); err != nil || made.Spec.Plan != "basic-1gb" || made.Spec.Name != "mcp-new" {
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "tea-a", Name: createdID}, &made); err != nil || made.Spec.Plan != "basic-1gb" || made.Spec.Name != "mcp-new" {
 		t.Fatalf("create_postgres did not create the CR: %v %+v", err, made.Spec)
 	}
 }

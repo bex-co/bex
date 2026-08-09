@@ -29,13 +29,20 @@ import (
 // postgres, keyvalue, and secrets purgers each used to carry a verbatim copy of
 // the same List-by-LabelTenant loop.
 
-// ListByTenant fills list with the objects of its kind in the Base's namespace
-// that carry tenantID in LabelTenant — the label CreatePostgres/CreateKeyValue/
-// the App-CR projector all stamp, and the only attribution a deleted workspace's
-// leftovers still have.
+// ListByTenant fills list with the objects of its kind that carry tenantID in
+// LabelTenant — the label CreatePostgres/CreateKeyValue/the App-CR projector all
+// stamp, and the only attribution a deleted workspace's leftovers still have.
+//
+// The list is CLUSTER-WIDE, scoped by that label alone. Every caller passes an
+// App/Database/KeyValue list (never Secrets, whose grants are namespaced), and
+// under ADR043 those live in the workspace's own `<ws>` namespace while
+// un-migrated datastores are still in the shared one — so pinning a namespace
+// would silently return nothing for exactly the resources a workspace delete
+// needs to reclaim, leaving real CNPG clusters and Valkey volumes billing after
+// the workspace is gone. The label is the tenant boundary here, and the API
+// server applies it.
 func (b *Base) ListByTenant(ctx context.Context, list client.ObjectList, tenantID string) error {
-	return b.Client.List(ctx, list,
-		client.InNamespace(b.Namespace), client.MatchingLabels{LabelTenant: tenantID})
+	return b.Client.List(ctx, list, client.MatchingLabels{LabelTenant: tenantID})
 }
 
 // PurgeByTenant deletes every object of list's kind labeled with tenantID (see
