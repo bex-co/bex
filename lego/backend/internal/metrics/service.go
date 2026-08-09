@@ -452,7 +452,10 @@ func (s *Service) resourceMetric(ctx context.Context, q MetricQuery, appName str
 	if err != nil {
 		return nil, err
 	}
-	usage, err := s.ResourceMetrics(ctx, s.Namespace, appName)
+	// The snapshot source reads pod metrics from the App's per-tenant `<ws>`
+	// namespace (ADR043), same as the ranged source in rangedResourceSeries —
+	// the shared s.Namespace was emptied of pods by the migration.
+	usage, err := s.ResourceMetrics(ctx, s.AppNamespaceByName(ctx, appName), appName)
 	if err != nil {
 		return nil, err
 	}
@@ -860,7 +863,7 @@ func (s *Service) MetricsFilters(ctx context.Context, q MetricsFiltersQuery) ([]
 			}
 			out = append(out, MetricsFilterValues{Field: field, Values: instances})
 		case "STATUS_CODE":
-			values, err := s.filterValuesOrEmpty(ctx, app.Name, "code")
+			values, err := s.filterValuesOrEmpty(ctx, app, "code")
 			if err != nil {
 				return nil, err
 			}
@@ -872,9 +875,11 @@ func (s *Service) MetricsFilters(ctx context.Context, q MetricsFiltersQuery) ([]
 	return out, nil
 }
 
-func (s *Service) filterValuesOrEmpty(ctx context.Context, app, label string) ([]string, error) {
+func (s *Service) filterValuesOrEmpty(ctx context.Context, app *appv1alpha1.App, label string) ([]string, error) {
 	if s.MetricsFilterValuesSource == nil {
 		return []string{}, nil
 	}
-	return s.MetricsFilterValuesSource(ctx, s.Namespace, app, label)
+	// app.Namespace is the App's per-tenant `<ws>` namespace (ADR043), where
+	// its series live — never the shared s.Namespace.
+	return s.MetricsFilterValuesSource(ctx, app.Namespace, app.Name, label)
 }

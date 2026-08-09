@@ -82,9 +82,13 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `026.md` — `BEX_BASE_DOMAIN` is three independently-configured env vars that must agree, with nothing enforcing it (found by m78/t001); the static-server tombstones it explicitly while the operator and bex-api rely on absence. Sub-hour; promote only if a live check shows they already disagree.
-- `024.md` — build pods cannot schedule on tenant nodes despite real headroom (2026-08-08 report §5). The 7Gi+2CPU request is **deliberate** (`build.go:75-86` — node-exclusive so Cluster Autoscaler adds a node), so the reporter's Burstable-QoS suggestion is rejected; the real question is why the autoscaler declined to scale up. Sub-hour if it is a node-group bound; promote only if the capacity model itself needs revisiting.
-- `023.md` — **HELD until w3/m41 lands**: LLM token-metering proxy + `agent_token_units` (ADR047 wave 2) — the only honest token-metering path (the ACP provider reports zero usage); also the D5 exfiltration choke point.
+- `024.md` — build pods cannot schedule on tenant nodes despite real headroom (2026-08-08 report §5). The 7Gi+2CPU request is **deliberate** (`build.go:75-86` — node-exclusive so Cluster Autoscaler adds a node). **Repo-side investigation done 2026-08-09** (findings appended in the note): startup-taint branch ruled out; narrowed to burst-pool-at-max vs. the scale-from-zero simulation being mathematically unable to fit 7Gi + DaemonSets under the `8G` capacity hint. **Blocked on a hetzner-prod kubeconfig** for the branch-picking live check; if the capacity-model branch wins, promote per the note's sizing rule.
+- `023.md` — **HELD until w3/m41 lands** (verified still open 2026-08-09): LLM token-metering proxy + `agent_token_units` (ADR047 wave 2) — the only honest token-metering path (the ACP provider reports zero usage); also the D5 exfiltration choke point.
+
+> **Board review 2026-08-09** — every open w7 item dispositioned (implement, hold, or block-with-reason; nothing removed — each survivor is a real defect or a deliberate hold):
+>
+> - `025` **done** (was on disk but never listed here — index gap fixed by this entry): both App-side metrics fallback paths now resolve the App's `<ws>` namespace (`AppNamespaceByName` in the snapshot fallback, `app.Namespace` in filter-value discovery), pinned by `TestMetricsSnapshotAndFilterDiscoveryUseAppNamespace`. Honest impact recorded in the note: dev/degraded-mode only — prod sets `BEX_PROM_URL`, and the production filter-values source ignores its namespace argument.
+> - `026` **done** — the structural-guard candidate shipped: `gitops-validate.sh` asserts operator + bex-api + static-server render an identical effective `BEX_BASE_DOMAIN` (absent ≡ explicit `""`) in both prod and default renders; red-tested against a diverged manifest. Live SSA-tombstone verify-once folded into the next prod-access session (m77/t007).
 
 > **Inbox cleanup 2026-08-07** — `008`/`015`–`022` all retired to `done/` (dispositions appended in each note; `023` is the sole open note):
 >
