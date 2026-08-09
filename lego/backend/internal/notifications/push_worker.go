@@ -569,6 +569,21 @@ func projectPushEvent(row store.WebhookEventRow, serviceID, factStatus string) (
 				event: string(DeliveryEventServerFailed), title: "Service unavailable",
 				body: serviceName + " is unavailable.", urgency: string(DeliveryUrgencyCritical),
 			}, true
+		case string(store.EventFactServerAvailable):
+			return projectedPushEvent{
+				event: string(DeliveryEventServerAvailable), title: "Service recovered",
+				body: serviceName + " recovered.", urgency: string(DeliveryUrgencyImportant),
+			}, true
+		case string(store.EventFactServiceSuspended):
+			return projectedPushEvent{
+				event: string(DeliveryEventServiceSuspended), title: "Service suspended",
+				body: serviceName + " was suspended.", urgency: string(DeliveryUrgencyRoutine),
+			}, true
+		case string(store.EventFactServiceResumed):
+			return projectedPushEvent{
+				event: string(DeliveryEventServiceResumed), title: "Service resumed",
+				body: serviceName + " resumed.", urgency: string(DeliveryUrgencyRoutine),
+			}, true
 		case string(store.EventFactJobRunEnded):
 			if factStatus != store.EventStatusFailed {
 				return projectedPushEvent{}, false

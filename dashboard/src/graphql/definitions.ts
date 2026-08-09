@@ -47,6 +47,15 @@ export type AgentSession = {
   url: Maybe<Scalars['String']['output']>;
 };
 
+export type AgentSessionCapabilities = {
+  __typename: 'AgentSessionCapabilities';
+  agents: Array<AgentSessionProfile>;
+  enabled: Scalars['Boolean']['output'];
+  github: AgentSessionGitHubReadiness;
+  modelKeyReady: Scalars['Boolean']['output'];
+  ready: Scalars['Boolean']['output'];
+};
+
 export type AgentSessionConfig = {
   __typename: 'AgentSessionConfig';
   agent: Scalars['String']['output'];
@@ -72,6 +81,19 @@ export type AgentSessionEvidence = {
   outputTail: Maybe<Scalars['String']['output']>;
   testOutput: Maybe<Array<Scalars['String']['output']>>;
   truncated: Maybe<Scalars['Boolean']['output']>;
+};
+
+export type AgentSessionGitHubReadiness = {
+  __typename: 'AgentSessionGitHubReadiness';
+  accountLogin: Maybe<Scalars['String']['output']>;
+  connected: Scalars['Boolean']['output'];
+  installUrl: Maybe<Scalars['String']['output']>;
+};
+
+export type AgentSessionProfile = {
+  __typename: 'AgentSessionProfile';
+  id: Scalars['String']['output'];
+  label: Scalars['String']['output'];
 };
 
 export type ApiKey = {
@@ -178,6 +200,27 @@ export type Blueprint = {
   updatedAt: Maybe<Scalars['String']['output']>;
 };
 
+export type BlueprintEnvVarValueInput = {
+  key: Scalars['String']['input'];
+  value: Scalars['String']['input'];
+};
+
+export type BlueprintPlanAction = {
+  __typename: 'BlueprintPlanAction';
+  changedFields: Maybe<Array<Maybe<BlueprintPlanFieldChange>>>;
+  kind: Maybe<Scalars['String']['output']>;
+  message: Maybe<Scalars['String']['output']>;
+  name: Maybe<Scalars['String']['output']>;
+  operation: Maybe<Scalars['String']['output']>;
+  resourceId: Maybe<Scalars['String']['output']>;
+  sourcePath: Maybe<Scalars['String']['output']>;
+};
+
+export type BlueprintPlanFieldChange = {
+  __typename: 'BlueprintPlanFieldChange';
+  path: Maybe<Scalars['String']['output']>;
+};
+
 export type BlueprintPreview = {
   __typename: 'BlueprintPreview';
   commitId: Maybe<Scalars['String']['output']>;
@@ -185,6 +228,7 @@ export type BlueprintPreview = {
   found: Maybe<Scalars['Boolean']['output']>;
   manifest: Maybe<Scalars['String']['output']>;
   validation: Maybe<BlueprintValidation>;
+  warning: Maybe<Scalars['String']['output']>;
 };
 
 export type BlueprintResource = {
@@ -213,6 +257,7 @@ export type BlueprintValidation = {
 
 export type BlueprintValidationError = {
   __typename: 'BlueprintValidationError';
+  code: Maybe<Scalars['String']['output']>;
   column: Maybe<Scalars['Int']['output']>;
   error: Scalars['String']['output'];
   line: Maybe<Scalars['Int']['output']>;
@@ -221,29 +266,13 @@ export type BlueprintValidationError = {
 
 export type BlueprintValidationPlan = {
   __typename: 'BlueprintValidationPlan';
-	actions: Maybe<Array<Maybe<BlueprintPlanAction>>>;
+  actions: Maybe<Array<Maybe<BlueprintPlanAction>>>;
   databases: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   envGroups: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   keyValue: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-	mode: Maybe<Scalars['String']['output']>;
+  mode: Maybe<Scalars['String']['output']>;
   services: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   totalActions: Maybe<Scalars['Int']['output']>;
-};
-
-export type BlueprintPlanAction = {
-	__typename: 'BlueprintPlanAction';
-	changedFields: Maybe<Array<Maybe<BlueprintPlanFieldChange>>>;
-	kind: Maybe<Scalars['String']['output']>;
-	message: Maybe<Scalars['String']['output']>;
-	name: Maybe<Scalars['String']['output']>;
-	operation: Maybe<Scalars['String']['output']>;
-	resourceId: Maybe<Scalars['String']['output']>;
-	sourcePath: Maybe<Scalars['String']['output']>;
-};
-
-export type BlueprintPlanFieldChange = {
-	__typename: 'BlueprintPlanFieldChange';
-	path: Maybe<Scalars['String']['output']>;
 };
 
 export type BuildFilter = {
@@ -1025,6 +1054,7 @@ export type MutationCreateBillingPortalSessionArgs = {
 export type MutationCreateBlueprintArgs = {
   branch: Scalars['String']['input'];
   confirm?: InputMaybe<Scalars['String']['input']>;
+  envVarValues?: InputMaybe<Array<InputMaybe<BlueprintEnvVarValueInput>>>;
   name?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
   path?: InputMaybe<Scalars['String']['input']>;
@@ -1955,13 +1985,17 @@ export type PushNotificationClockRangeInput = {
 };
 
 export enum PushNotificationEvent {
+  AgentFailed = 'AGENT_FAILED',
   AgentNeedsDecision = 'AGENT_NEEDS_DECISION',
   AgentPrReady = 'AGENT_PR_READY',
   CronFailed = 'CRON_FAILED',
   DeployFailed = 'DEPLOY_FAILED',
   DeployStarted = 'DEPLOY_STARTED',
   DeploySucceeded = 'DEPLOY_SUCCEEDED',
+  ServerAvailable = 'SERVER_AVAILABLE',
   ServerFailed = 'SERVER_FAILED',
+  ServiceResumed = 'SERVICE_RESUMED',
+  ServiceSuspended = 'SERVICE_SUSPENDED',
   UsageThreshold = 'USAGE_THRESHOLD'
 }
 
@@ -2022,6 +2056,7 @@ export enum PushNotificationWeekday {
 export type Query = {
   __typename: 'Query';
   agentSession: Maybe<AgentSession>;
+  agentSessionCapabilities: AgentSessionCapabilities;
   agentSessions: Array<AgentSession>;
   apiKeys: Maybe<Array<Maybe<ApiKey>>>;
   auditLogs: Maybe<Array<Maybe<AuditLog>>>;
@@ -2112,6 +2147,11 @@ export type Query = {
 
 export type QueryAgentSessionArgs = {
   id: Scalars['String']['input'];
+};
+
+
+export type QueryAgentSessionCapabilitiesArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2844,6 +2884,13 @@ export type TableSizeInfo = {
   sizePretty: Maybe<Scalars['String']['output']>;
 };
 
+export type UsageCoverage = {
+  __typename: 'UsageCoverage';
+  degradedSources: Array<Scalars['String']['output']>;
+  state: Scalars['String']['output'];
+  through: Maybe<Scalars['String']['output']>;
+};
+
 export type UsageRow = {
   __typename: 'UsageRow';
   kind: Maybe<Scalars['String']['output']>;
@@ -2854,6 +2901,7 @@ export type UsageRow = {
 export type UsageSummary = {
   __typename: 'UsageSummary';
   billing: Maybe<Billing>;
+  coverage: UsageCoverage;
   estimatedCost: Maybe<EstimatedCost>;
   period: Maybe<Scalars['String']['output']>;
   services: Maybe<Array<Maybe<ServiceUsage>>>;

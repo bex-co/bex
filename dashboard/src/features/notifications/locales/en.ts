@@ -104,6 +104,18 @@ const enNotifications: Record<string, TranslationEntry> = {
     message: "Deploy succeeded",
     description: "Push event",
   },
+  "notifications.pushEventServerAvailable": {
+    message: "Service recovered",
+    description: "Push event",
+  },
+  "notifications.pushEventServiceSuspended": {
+    message: "Service suspended",
+    description: "Push event",
+  },
+  "notifications.pushEventServiceResumed": {
+    message: "Service resumed",
+    description: "Push event",
+  },
   "notifications.pushEventUsageThreshold": {
     message: "Usage threshold",
     description: "Push event",
@@ -114,6 +126,10 @@ const enNotifications: Record<string, TranslationEntry> = {
   },
   "notifications.pushEventAgentPrReady": {
     message: "Agent PR ready",
+    description: "Push event",
+  },
+  "notifications.pushEventAgentFailed": {
+    message: "Agent session failed",
     description: "Push event",
   },
   "notifications.pushMinimumUrgency": {

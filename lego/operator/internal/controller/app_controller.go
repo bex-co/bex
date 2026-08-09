@@ -1181,9 +1181,13 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	if !deploymentRolloutReady(dep, replicas) || !r.deploymentPodsReady(ctx, dep, replicas) {
 		app.Status.Phase = appv1alpha1.PhaseDeploying
 		app.Status.Image = image
+		notReadyReason, notReadyMessage := "RolloutProgressing", "waiting for the current Deployment revision and pods to become ready"
+		if r.currentRevisionFullyReady(ctx, dep, replicas) {
+			notReadyReason, notReadyMessage = "RolloutSettling", "current revision fully ready; Deployment status still converging"
+		}
 		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type: "Ready", Status: metav1.ConditionFalse, Reason: "RolloutProgressing",
-			Message: "waiting for the current Deployment revision and pods to become ready", ObservedGeneration: app.Generation,
+			Type: "Ready", Status: metav1.ConditionFalse, Reason: notReadyReason,
+			Message: notReadyMessage, ObservedGeneration: app.Generation,
 		})
 		// Surface why the rollout is stuck when a pod is crash-looping or cannot
 		// pull its image: the deploy would otherwise time out as an opaque
@@ -1381,9 +1385,13 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
 	if !deploymentRolloutReady(dep, replicas) || !r.deploymentPodsReady(ctx, dep, replicas) {
 		app.Status.Phase = appv1alpha1.PhaseDeploying
+		notReadyReason, notReadyMessage := "RolloutProgressing", "waiting for the current worker Deployment revision and pods to become ready"
+		if r.currentRevisionFullyReady(ctx, dep, replicas) {
+			notReadyReason, notReadyMessage = "RolloutSettling", "current revision fully ready; Deployment status still converging"
+		}
 		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type: "Ready", Status: metav1.ConditionFalse, Reason: "RolloutProgressing",
-			Message: "waiting for the current worker Deployment revision and pods to become ready", ObservedGeneration: app.Generation,
+			Type: "Ready", Status: metav1.ConditionFalse, Reason: notReadyReason,
+			Message: notReadyMessage, ObservedGeneration: app.Generation,
 		})
 		// Same stuck-rollout surfacing as the web path; port 0 — a worker has no
 		// HTTP endpoint, so the $PORT hint is omitted (w9/011).
@@ -1451,6 +1459,44 @@ func (r *AppReconciler) deploymentPodsReady(ctx context.Context, dep *appsv1.Dep
 		}
 	}
 	return current == 0 || ready >= replicas
+}
+
+// currentRevisionFullyReady reports that a LIVE pod listing shows the full
+// desired complement of current-revision, non-terminating pods PodReady. It is
+// the truthful counterpart to deploymentRolloutReady's status-based view: when
+// this holds while the Deployment status has not converged (stale bookkeeping
+// as kube-controller-manager catches up or reaps the old ReplicaSet), the
+// service is serving, so Ready=False must carry RolloutSettling rather than
+// RolloutProgressing — observed-state consumers exclude RolloutSettling from
+// availability (w3/m78: a phantom server_failed page otherwise fires on every
+// slow old-pod reap). Unlike deploymentPodsReady, a failed or empty listing is
+// NOT inconclusive-true: no visible current pods means not fully ready.
+func (r *AppReconciler) currentRevisionFullyReady(ctx context.Context, dep *appsv1.Deployment, replicas int32) bool {
+	if replicas == 0 || dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 {
+		return false
+	}
+	revision := dep.Spec.Template.Labels[labelRevision]
+	if revision == "" {
+		return false
+	}
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace), client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
+		return false
+	}
+	var ready int32
+	for i := range pods.Items {
+		pod := &pods.Items[i]
+		if !pod.DeletionTimestamp.IsZero() || pod.Labels[labelRevision] != revision {
+			continue
+		}
+		for _, condition := range pod.Status.Conditions {
+			if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
+				ready++
+				break
+			}
+		}
+	}
+	return ready >= replicas
 }
 
 // reconcileIPAllowListMiddleware creates or removes the Traefik HTTP

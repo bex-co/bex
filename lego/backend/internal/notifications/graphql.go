@@ -45,10 +45,14 @@ var pushDeliveryEventGQLEnum = graphql.NewEnum(graphql.EnumConfig{
 		"DEPLOY_SUCCEEDED":     &graphql.EnumValueConfig{Value: string(DeliveryEventDeploySucceeded)},
 		"DEPLOY_FAILED":        &graphql.EnumValueConfig{Value: string(DeliveryEventDeployFailed)},
 		"SERVER_FAILED":        &graphql.EnumValueConfig{Value: string(DeliveryEventServerFailed)},
+		"SERVER_AVAILABLE":     &graphql.EnumValueConfig{Value: string(DeliveryEventServerAvailable)},
+		"SERVICE_SUSPENDED":    &graphql.EnumValueConfig{Value: string(DeliveryEventServiceSuspended)},
+		"SERVICE_RESUMED":      &graphql.EnumValueConfig{Value: string(DeliveryEventServiceResumed)},
 		"CRON_FAILED":          &graphql.EnumValueConfig{Value: string(DeliveryEventCronFailed)},
 		"USAGE_THRESHOLD":      &graphql.EnumValueConfig{Value: string(DeliveryEventUsageThreshold)},
 		"AGENT_NEEDS_DECISION": &graphql.EnumValueConfig{Value: string(DeliveryEventAgentNeedsDecision)},
 		"AGENT_PR_READY":       &graphql.EnumValueConfig{Value: string(DeliveryEventAgentPRReady)},
+		"AGENT_FAILED":         &graphql.EnumValueConfig{Value: string(DeliveryEventAgentFailed)},
 	},
 })
 
