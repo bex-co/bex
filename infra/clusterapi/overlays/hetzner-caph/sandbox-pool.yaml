@@ -24,6 +24,20 @@ spec:
       placementGroupName: tenant-0
       type: cpx32
 ---
+# cx33 rollback (docs/ADR053): immutable template the sandbox MachineDeployment
+# repoints to; cpx32 above stays the fallback for an fsn1 cx stock-out.
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: HCloudMachineTemplate
+metadata:
+  name: bex-sandbox-cx33
+  namespace: default
+spec:
+  template:
+    spec:
+      imageName: bex-worker-k8s-1-34
+      placementGroupName: tenant-0
+      type: cx33
+---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KubeadmConfigTemplate
 metadata:
@@ -266,4 +280,4 @@ spec:
       infrastructureRef:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: HCloudMachineTemplate
-        name: bex-sandbox
+        name: bex-sandbox-cx33
