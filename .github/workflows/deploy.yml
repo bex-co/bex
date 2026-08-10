@@ -538,6 +538,14 @@ jobs:
       # control plane is CrashLooping. Require the just-built server digest and
       # both lifecycle/controller Deployments to become fully available.
       - name: wait for OpenSandbox control plane
+        # A superseded run built images but deliberately pinned nothing, so this
+        # digest can never appear in the cluster — waiting for it burns the full
+        # 10-minute budget and then fails a run the supersession check already
+        # concluded NEUTRAL, and the rollout restart below needlessly bounces the
+        # prod control plane. Skip it exactly like the rollout steps do. (No
+        # always() here: unlike those, this step should still skip when an
+        # earlier step failed, which is its current behavior.)
+        if: ${{ env.SUPERSEDED != 'true' }}
         timeout-minutes: 12
         env:
           BEX_EXPECTED_OPENSANDBOX_IMAGE: ${{ env.OPENSANDBOX_IMAGE }}@${{ steps.build_opensandbox.outputs.digest }}
