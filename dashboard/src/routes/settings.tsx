@@ -8,14 +8,36 @@ export const Route = createFileRoute("/settings")({
   beforeLoad: requireAuth(),
   // GitHub's cross-site install callback redirects failures here with one
   // bounded reason code. Keep it advisory: unknown values render the generic
-  // connect error and never flow into markup or backend requests.
+  // connect error and never flow into markup or backend requests. `returnTo`
+  // (w2/m66) is the path a RequiresSshKey CTA came from — round-tripped back
+  // after a key is saved; it is validated through safe-next.ts before any
+  // navigation, so an off-origin value can never become an open redirect.
   validateSearch: (
     search: Record<string, unknown>,
-  ): { flow?: string; git_error?: string } => {
-    const validated: { flow?: string; git_error?: string } = {};
+  ): {
+    flow?: string;
+    git_error?: string;
+    returnTo?: string;
+    addKey?: boolean;
+  } => {
+    const validated: {
+      flow?: string;
+      git_error?: string;
+      returnTo?: string;
+      addKey?: boolean;
+    } = {};
     if (typeof search.flow === "string") validated.flow = search.flow;
     if (typeof search.git_error === "string") {
       validated.git_error = search.git_error;
+    }
+    if (typeof search.returnTo === "string") {
+      validated.returnTo = search.returnTo;
+    }
+    // `addKey` (w2/m66) opens the add-key form on arrival from a RequiresSshKey
+    // CTA. It rides the query string (not the fragment) so the SSR render and
+    // the client agree — the dialog opens without a post-hydration effect.
+    if (search.addKey === true || search.addKey === "true") {
+      validated.addKey = true;
     }
     return validated;
   },

@@ -96,6 +96,19 @@ const enSSHKeys: Record<string, TranslationEntry> = {
     message: "Couldn't delete this SSH key",
     description: "Delete SSH key failure toast",
   },
+  "sshKeys.gateTitle": {
+    message: "Add an SSH key to connect",
+    description: "RequiresSshKey gate — CTA title when no key is registered",
+  },
+  "sshKeys.gateBody": {
+    message:
+      "This connects over SSH with your own key. Add your public key once, then come back to connect.",
+    description: "RequiresSshKey gate — CTA body",
+  },
+  "sshKeys.gateAddKey": {
+    message: "Add SSH key",
+    description: "RequiresSshKey gate — primary action linking to settings",
+  },
 };
 
 export default enSSHKeys;

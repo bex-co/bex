@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { KeyRound, Loader2, Plus } from "lucide-react";
+import { safeNext } from "@/common/lib/safe-next";
 import { Button } from "@/common/components/ui/button";
 import {
   Card,
@@ -45,7 +47,17 @@ const publicKeyPattern =
 export function SSHKeysPanel() {
   const { t } = useTranslations();
   const state = useSSHKeys();
-  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+  // A RequiresSshKey CTA (w2/m66) deep-links here: `returnTo` is the page it
+  // came from (sent back after a key is saved), and `addKey` opens the form on
+  // arrival. Both ride the query string so the SSR render and client agree —
+  // the form opens with no post-hydration effect; the `#ssh-public-keys` hash
+  // on the CTA link handles the native scroll-into-view.
+  const { returnTo, addKey } = useSearch({ strict: false }) as {
+    returnTo?: string;
+    addKey?: boolean;
+  };
+  const [open, setOpen] = useState(Boolean(addKey));
   const [name, setName] = useState("");
   const [publicKey, setPublicKey] = useState("");
   const keyValid = publicKeyPattern.test(publicKey.trim());
@@ -57,6 +69,10 @@ export function SSHKeysPanel() {
       setName("");
       setPublicKey("");
       setOpen(false);
+      // Round-trip back to the affordance the user came from. The create above
+      // refetched the shared SSH-keys cache, so the RequiresSshKey gate on that
+      // page now renders the real payload. safeNext refuses any off-origin value.
+      if (returnTo) void navigate({ href: safeNext(returnTo) });
     }
   }
 

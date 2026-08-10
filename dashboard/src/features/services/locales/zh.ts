@@ -23,6 +23,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "SSH",
     description: "SSH section label in the service connection menu",
   },
+  "services.openBrowserTerminal": {
+    message: "打开浏览器终端",
+    description:
+      "RequiresSshKey gate — zero-setup second door to the Web Shell (no SSH key)",
+  },
   "services.connectInternal": {
     message: "内部地址",
     description:
