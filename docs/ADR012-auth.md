@@ -124,6 +124,18 @@ The dashboard itself never uses OAuth — it authenticates with its Kratos sessi
 
   **Activation order matters.** Re-run `scripts/auth-bootstrap-client.sh` first, so the Render CLI and mobile clients carry the marker; only then set `BEX_OAUTH_REQUIRE_AUDIENCE=1`. The reverse order refuses those logins. This is why the flag ships off (`lego/operator/config/api/deployment.yaml`) instead of secure-by-default — an availability-first exception to the m65 F13/F16 direction, and a temporary one: flip it once prod's clients are re-stamped.
 
+  **Status: still off in production, and the scan found it again.** Round 5 of the security-review lineage (2026-08-10) re-reported this as a high, correctly — a control that ships inert protects nothing, and "temporary" had already lasted a full round. `w1/m68` made the inert state **loud** rather than silent: bex-api now logs a warning on every start where `BEX_OAUTH_RESOURCE` is set and the flag is off, naming the activation procedure (the same "never silent" treatment [`scripts/lib/ssh-hostkey.sh`](../scripts/lib/ssh-hostkey.sh) gives its trust-on-first-use fallback). The flip itself is **deliberately not automated**: it must follow a check that the _live_ Hydra records for the CLI and mobile clients actually carry `bex.co/platform-client`, and those records predate the script change that added the marker. The operator step, in order:
+
+  ```bash
+  # 1. Confirm the live records carry the marker (not just that the script would set it).
+  curl -s "$HYDRA_ADMIN/admin/clients/<render-cli-client-id>" | jq '.metadata'
+  # 2. If absent, re-stamp:
+  bash scripts/auth-bootstrap-client.sh
+  # 3. Only then flip BEX_OAUTH_REQUIRE_AUDIENCE to "1" and roll bex-api.
+  # 4. Verify: `render login` device flow still works; an audience-less token from
+  #    an unmarked DCR client is refused; client_credentials API keys unaffected.
+  ```
+
 **Verified end-to-end** by [scripts/auth-oauth21-e2e.sh](../scripts/auth-oauth21-e2e.sh) — throwaway dockerized Hydra + Kratos (in-memory), the real dashboard consent route, the real bex-api: RFC 9728 discovery → DCR → authorize (PKCE S256) → Kratos-native login-challenge accept → consent → code → token (access + refresh) → `Authorization: Bearer` passing bex-api introspection + audience check. It drives **both** consent paths: a blessed client (`skip_consent` PATCH — how a real trusted agent is onboarded) straight through headlessly, and three unblessed DCR clients through the consent page itself — approve (→ working `/mcp` token), deny (→ `error=access_denied`, no code), and a repeat authorization inside the remember window (→ no consent page). The page is a server-rendered form, so curl drives it exactly as a browser does. Run it locally with Docker; on the mock cluster the same config ships via the kratos/hydra value overlays.
 
 ### 8. API-key hygiene: access-token TTL + key metadata (w4/m13)

@@ -52,6 +52,28 @@ if grep -REn "node-version:[[:space:]]*['\"]?20(['\"]|$)" "$WORKFLOWS_DIR"; then
   exit 1
 fi
 
+# 4. Host-key pin coverage (w1/m68 F3). scripts/lib/ssh-hostkey.sh falls back to
+# StrictHostKeyChecking=accept-new when no pin is supplied, so a workflow that
+# fetches /etc/kubernetes/admin.conf over SSH without wiring BEX_SSH_KNOWN_HOSTS
+# trusts a first-seen control-plane key and hands every later step whatever
+# kubeconfig that host returned. w1/m66 wired two of the three such workflows and
+# missed openbao-restore-drill.yml — the one that then uses the OpenBao unseal
+# keys and root token. This derives the list from the tree rather than naming
+# workflows, so a NEW admin.conf fetcher is caught the day it is added.
+admin_conf_fetchers() {
+  grep -lE 'scripts/(fetch-app-kubeconfig|verify-substrate)\.sh' "$WORKFLOWS_DIR"/*.yml 2>/dev/null || true
+}
+unpinned_fetchers=""
+for wf in $(admin_conf_fetchers); do
+  grep -Fq 'BEX_SSH_KNOWN_HOSTS' "$wf" || unpinned_fetchers="$unpinned_fetchers $wf"
+done
+if [ -n "$unpinned_fetchers" ]; then
+  echo "FAIL: these workflows fetch admin.conf over SSH without wiring the BEX_SSH_KNOWN_HOSTS pin," >&2
+  echo "      so they trust the control-plane host key on first use:" >&2
+  printf '  %s\n' $unpinned_fetchers >&2
+  exit 1
+fi
+
 # The remaining checks pin the canonical tree's reviewed inventory + deploy.yml
 # wiring; they don't apply to a fixture dir, so stop here under an override.
 if [ "$canonical_tree" -eq 0 ]; then
@@ -102,4 +124,12 @@ if [ "$(grep -cF "env.SUPERSEDED != 'true'" .github/workflows/deploy.yml)" -lt 4
   exit 1
 fi
 
-echo "PASS: third-party actions SHA-pinned, reviewed inventory current, Node 20 absent, Gitleaks + supersession wiring intact"
+# Anti-vacuity for check 4: the pin-coverage loop passes trivially over a tree
+# with no admin.conf fetchers, so pin the known three (deploy, app-cluster,
+# openbao-restore-drill). Removing a fetcher is fine; silently having none is not.
+if [ "$(admin_conf_fetchers | wc -l | tr -d ' ')" -lt 3 ]; then
+  echo "FAIL: expected at least 3 workflows fetching admin.conf over SSH — the pin-coverage check (4) has gone vacuous" >&2
+  exit 1
+fi
+
+echo "PASS: third-party actions SHA-pinned, reviewed inventory current, Node 20 absent, Gitleaks + supersession wiring intact, admin.conf fetchers host-key pinned"

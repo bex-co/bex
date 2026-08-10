@@ -18,12 +18,18 @@ The five Render roles, verified live (`docs/render-artifacts/team-members.graphq
 | role | can, per the matrix ([ADR012-auth.md](ADR012-auth.md)) |
 | --- | --- |
 | `viewer` | read-only resource lists/details/metrics; **not** logs or sensitive fields |
-| `contributor` | + logs, restart/suspend/resume; **not** create/delete or sensitive fields |
+| `contributor` | + logs, restart/suspend/resume, bare redeploy, cron **schedule**; **not** create/delete, sensitive fields, or **choosing the code a workload runs** (w1/m68) |
 | `developer` | + create/delete, connection strings, env vars, API keys; **no** org settings |
 | `admin` | full resources **and** org settings — members, billing, protected envs |
 | `billing` | billing management only (Stripe onboarding/checkout/portal via `can_manage_billing`) + read-only non-sensitive names |
 
 Roles are **UPPERCASE on the wire** (Render's enum: `ADMIN`, `DEVELOPER`, …) and lowercase as the stored role / FGA relation; adapters convert at the view boundary. A change of role is a Revoke of the old relation tuple then a Grant of the new one; the `tenant_members.role` column is the source of truth, the tuple a best-effort follow-up (the resolver re-drives a missing grant on login).
+
+### The contributor boundary: lifecycle, not code (w1/m68)
+
+`contributor` is the "operate what exists" role, so the line bex draws is **whether the request supplies executable content**. Supplying a pre-deploy command, a cron `command`, a one-off job command, or a deploy `imageUrl`/`commitId` is create-like and needs `can_create` (developer and up); a parameter-free redeploy and a schedule-only cron change stay `can_operate`. The reasoning, and the verbs it covers, live in `lego/backend/internal/api/m68_executable_selection_test.go`, which enumerates the class so a new verb of the same shape cannot join it unnoticed — the failure mode that left four verbs behind when the class was first fixed.
+
+**Parity note, honestly stated.** Render's dashboard descriptions for CONTRIBUTOR are not capturable from this workspace's tier (`docs/render-artifacts/team-members.graphql`: Contributor/Viewer/Billing are Scale+-gated and not selectable), so bex's exact boundary for these parameters is **not verified against Render's**. Render's public docs describe Contributor as able to deploy, which bex preserves — a bare trigger still works. What is unverified is whether Render also lets a Contributor swap the image or pin an arbitrary commit. bex deliberately does not, because that is attacker-chosen code running with the service's secrets and network identity. If a Scale-tier capture ever shows Render permitting it, this is a **deliberate divergence to keep**, not a bug to close.
 
 The `billing` role's distinguishing capability became **live and enforced in w1/m60**: the customer-billing verbs (`internal/billing`'s `Status`/`Checkout`/`Portal`) now gate on `can_manage_billing` (`billing or admin`), so a billing-role member manages billing without workspace-admin — exactly Render's BILLING role — while staying denied every resource mutation and sensitive read. Before w1/m60 the relation was modelled in `model.fga` but had **no Go consumer** (billing verbs gated on admin-only `can_manage`), so the role's one distinguishing power was inert; the fix is the last modelled-but-dead relation gaining its consumer ([ADR012-auth.md](ADR012-auth.md), [ADR040-billing-metronome.md](ADR040-billing-metronome.md)).
 

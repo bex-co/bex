@@ -33,3 +33,17 @@ jobs:
       - name: make test (operator + envtest)
         working-directory: lego/operator
         run: make test
+      # w1/m68: `make test` REGENERATES manifests/deepcopy before running, so a
+      # stale committed CRD is silently repaired in the runner and the job stays
+      # green — drift ships. That is not hypothetical: `spec.deletedUsers` was
+      # added to the Database types on 2026-08-09 without regenerating the CRD,
+      # so the API server pruned the field and the security fix that introduced
+      # it (a deleted Postgres login role must actually be dropped) was inert in
+      # production from the day it shipped. Fail on any codegen the tree is
+      # missing.
+      - name: generated output is committed (codegen drift)
+        run: |
+          if ! git diff --exit-code -- lego/types lego/operator/config; then
+            echo "::error::committed codegen is stale — run 'make manifests generate' from lego/operator/ and commit the result" >&2
+            exit 1
+          fi

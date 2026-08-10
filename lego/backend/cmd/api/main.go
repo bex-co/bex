@@ -808,6 +808,19 @@ func main() {
 	// stamps the platform-client marker (scripts/auth-bootstrap-client.sh) — see
 	// docs/ADR012-auth.md §7.
 	srv.OAuthRequireAudience = os.Getenv("BEX_OAUTH_REQUIRE_AUDIENCE") == "1"
+	// w1/m68 F3: an opt-in security control that ships off is invisible, and this
+	// one stayed off through two remediation rounds. Announce the weaker mode on
+	// every start that has an OAuth resource configured — the same "never silent"
+	// treatment scripts/lib/ssh-hostkey.sh gives its trust-on-first-use fallback.
+	// This is a warning rather than a refusal on purpose: enforcing before the
+	// platform-client marker is stamped would refuse the official Render CLI's
+	// device-flow logins, so the order is bootstrap-then-flip, not flip-first.
+	if srv.OAuthResource != "" && !srv.OAuthRequireAudience {
+		log.Printf("WARNING: BEX_OAUTH_REQUIRE_AUDIENCE is off while BEX_OAUTH_RESOURCE=%q — an audience-less token "+
+			"from ANY self-registered OAuth client a user consents to carries that user's full workspace rights here. "+
+			"Activate: re-run scripts/auth-bootstrap-client.sh (stamps bex.co/platform-client), then set it to 1 "+
+			"(docs/ADR012-auth.md §7)", srv.OAuthResource)
+	}
 	srv.WebhookSecret = os.Getenv("BEX_WEBHOOK_SECRET")
 	// The GitHub App's app-wide webhook signs pushes with its own secret — a
 	// second accepted key so installed repos redeploy hands-free

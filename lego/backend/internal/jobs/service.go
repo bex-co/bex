@@ -172,7 +172,11 @@ func (s *Service) List(ctx context.Context, serviceID string, filter ListFilter)
 // record and a Kubernetes Job using the service's current image. If the
 // service has no image yet (not yet deployed), it returns ErrConflict.
 func (s *Service) Create(ctx context.Context, serviceID, startCommand, planID string) (JobView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, serviceID)
+	// SECURITY (codex round-5 F2): a one-off job runs a caller-supplied command
+	// in the service's image, which is attacker-chosen code execution — the same
+	// sink SetCommands is gated for. can_create (developer and up), not
+	// can_operate.
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, serviceID)
 	if err != nil {
 		return JobView{}, err
 	}

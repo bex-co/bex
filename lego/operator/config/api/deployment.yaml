@@ -401,6 +401,29 @@ spec:
             # (docs/ADR024-members.md § Email verification).
             - name: BEX_REQUIRE_VERIFIED_INVITE_EMAIL
               value: "1"
+            # w1/m68 F3 (round-5): every IP-keyed budget in bex-api — the m67
+            # pre-auth failure limiter above all — keys on the request's
+            # immediate peer unless that peer is inside a trusted CIDR. Public
+            # traffic arrives through Traefik, so with this UNSET (as it shipped
+            # until m68) every external client collapsed onto one Traefik pod IP
+            # and shared a single 60/min failure bucket: one anonymous client
+            # could drain it and 429 every uncached login in the platform.
+            #
+            # The value is the cluster POD CIDR, because prod Traefik runs as
+            # ordinary pods (hostNetwork: false — see
+            # deploy/gitops/overlays/prod/values/traefik.values.yaml) and its
+            # replicas' IPs are not stable enough to enumerate. Kept in lockstep
+            # with clusterNetwork.pods.cidrBlocks in
+            # infra/clusterapi/overlays/hetzner-caph/cluster.yaml by a
+            # scripts/gitops-validate.sh check.
+            #
+            # ⚠️ This trusts X-Forwarded-For from ANY pod in that CIDR, so it
+            # leans on the ADR043 default-deny east-west policy keeping tenant
+            # workloads off bex-api: if that lockdown is ever relaxed, a tenant
+            # pod reaching bex-api directly could spoof a client IP. Narrow this
+            # to the Traefik pods before relaxing it.
+            - name: BEX_TRUSTED_PROXY_CIDRS
+              value: 10.244.0.0/16
           ports:
             - name: http
               containerPort: 8090
