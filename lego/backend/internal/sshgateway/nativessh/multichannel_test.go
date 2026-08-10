@@ -19,6 +19,7 @@ package nativessh
 import (
 	"context"
 	"io"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -195,8 +196,14 @@ func TestSandboxAcceptsSFTPSubsystem(t *testing.T) {
 	if err := session.RequestSubsystem("sftp"); err != nil {
 		t.Fatalf("sftp subsystem should be accepted for a sandbox target: %v", err)
 	}
-	if len(exec.Command) != 1 || exec.Command[0] != "/usr/lib/openssh/sftp-server" {
-		t.Fatalf("sftp exec argv = %#v, want [/usr/lib/openssh/sftp-server]", exec.Command)
+	// Started via `sh -c 'cd "$HOME" && exec …/sftp-server'` so a relative upload
+	// path (Zed's `.zed_server/…`) resolves under $HOME, not the WORKDIR (w2/m65).
+	if len(exec.Command) != 3 || exec.Command[0] != "/bin/sh" || exec.Command[1] != "-c" {
+		t.Fatalf("sftp exec argv = %#v, want [/bin/sh -c <cd $HOME && exec sftp-server>]", exec.Command)
+	}
+	if !strings.Contains(exec.Command[2], "/usr/lib/openssh/sftp-server") ||
+		!strings.Contains(exec.Command[2], "HOME") {
+		t.Fatalf("sftp command should cd to $HOME then exec sftp-server, got %q", exec.Command[2])
 	}
 	_ = session.Close()
 }
